@@ -159,7 +159,31 @@ export function createParallelChatGroup(
     throw new RuntimeSessionPolicyError(parsedSessionPolicy.issue);
   }
 
+  const globalParticipantCatIdSet = new Set(input.participantCatIds ?? []);
+  const temporaryParticipantsByKey = new Map(
+    (input.temporaryParticipants ?? []).map((participant) => [
+      `temp:${participant.participantId}`,
+      participant,
+    ]),
+  );
+
   for (const target of [...input.targets].reverse()) {
+    const targetAudienceKeys = Array.isArray(target.audienceKeys)
+      ? target.audienceKeys.filter((key, index, source) =>
+          typeof key === 'string' && key.trim().length > 0 && source.indexOf(key) === index)
+      : null;
+    const targetParticipantCatIds = targetAudienceKeys
+      ? targetAudienceKeys
+        .filter((key) => key.startsWith('cat:'))
+        .map((key) => key.slice(4))
+        .filter((catId) => globalParticipantCatIdSet.has(catId))
+      : input.participantCatIds;
+    const targetTemporaryParticipants = targetAudienceKeys
+      ? targetAudienceKeys
+        .filter((key) => key.startsWith('temp:'))
+        .map((key) => temporaryParticipantsByKey.get(key))
+        .filter((participant): participant is NonNullable<typeof participant> => participant != null)
+      : input.temporaryParticipants;
     nextState = createChannel(
       nextState,
       {
@@ -173,6 +197,8 @@ export function createParallelChatGroup(
         pendingModel: target.model ?? undefined,
         pendingInstance: target.instance ?? undefined,
         pendingModelSelection: target.modelSelection ?? undefined,
+        participantCatIds: targetParticipantCatIds,
+        temporaryParticipants: targetTemporaryParticipants,
         skipBossCatGreeting: true,
       },
       now,

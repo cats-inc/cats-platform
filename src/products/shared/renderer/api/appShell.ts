@@ -8,6 +8,7 @@ import type {
   FolderBrowsePreferenceScope,
   FolderBrowsePreferences,
 } from '../../folderBrowsePreferences.js';
+import type { AdvancedDraftControlsPatch } from '../../advancedDraftControls.js';
 
 import { normalizeAppShellPayload } from './normalization.js';
 import { expectJson, readErrorMessage } from './http.js';
@@ -19,6 +20,7 @@ export interface WorkspacePreferencesPayload {
     showLiveProgressDetails?: boolean;
     concurrentPresentationMode?: string;
     newChatDefaults: NewChatDefaults;
+    advancedDraftControls?: Record<string, boolean>;
     folderBrowsePreferences?: FolderBrowsePreferences;
   };
 }
@@ -131,6 +133,27 @@ export async function updateConcurrentPresentationModePreference(
   return mutateAndRefetch(
     response,
     `cats concurrent presentation mode update returned ${response.status}`,
+    signal,
+  );
+}
+
+export async function updateAdvancedDraftControlsPreference(
+  patch: AdvancedDraftControlsPatch,
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch('/api/preferences', {
+    method: 'PATCH',
+    headers: {
+      'content-type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify({ advancedDraftControls: patch }),
+    signal,
+  });
+
+  return mutateAndRefetch(
+    response,
+    `cats advanced draft controls update returned ${response.status}`,
     signal,
   );
 }

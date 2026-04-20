@@ -1,5 +1,6 @@
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import { resolveChannelKind } from '../../channelTopology.js';
+import { createDefaultAdvancedDraftControlsPreferences } from '../../advancedDraftControls.js';
 import { createDefaultFolderBrowsePreferences } from '../../folderBrowsePreferences.js';
 
 function asRecord(value: unknown): Record<string, unknown> | null {
@@ -256,6 +257,9 @@ export function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayl
   }
   if (chatState.showLiveProgressDetails === undefined) {
     chatState.showLiveProgressDetails = false;
+  }
+  if (!asRecord(chatState.advancedDraftControls)) {
+    chatState.advancedDraftControls = createDefaultAdvancedDraftControlsPreferences();
   }
   if (!asRecord(chatState.folderBrowsePreferences)) {
     chatState.folderBrowsePreferences = createDefaultFolderBrowsePreferences();

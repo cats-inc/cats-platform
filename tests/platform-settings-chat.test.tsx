@@ -51,6 +51,11 @@ function createPayload(): AppShellPayload {
       showVerboseMessages: false,
       showLiveProgressDetails: true,
       concurrentPresentationMode: 'compare_cards',
+      advancedDraftControls: {
+        chat: false,
+        code: false,
+        work: false,
+      },
     },
     runtime: {
       baseUrl: 'http://127.0.0.1:3110',
@@ -85,23 +90,23 @@ function createPayload(): AppShellPayload {
   } as unknown as AppShellPayload;
 }
 
-test('PlatformSettingsChat renders concurrent response layout controls on the live settings page', () => {
+test('PlatformSettingsChat renders conversation and draft-builder controls on the live settings page', () => {
   const markup = renderToStaticMarkup(
     <StaticRouter location="/settings/chat">
       <PlatformSettingsChat
         payload={createPayload()}
-        feedback=""
         onPayloadUpdate={() => {}}
-        onFeedback={() => {}}
       />
     </StaticRouter>,
   );
 
-  assert.match(markup, /Conversation preferences/u);
+  assert.match(markup, /Conversation behavior/u);
   assert.match(markup, /Concurrent response layout/u);
   assert.match(markup, /Inline stack/u);
   assert.match(markup, /Compare cards/u);
   assert.match(markup, /Focus rail/u);
   assert.match(markup, /Adaptive/u);
+  assert.match(markup, /Draft builder/u);
+  assert.match(markup, /Enable advanced draft controls/u);
   assert.match(markup, /selected=""/u);
 });

@@ -60,6 +60,15 @@
   flex-shrink: 0;
 }
 
+.draftComposerStack {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: var(--chat-transcript-max-width, 680px);
+  min-width: 0;
+  justify-self: stretch;
+}
+
 .composerPlusMenu {
   position: absolute;
   left: 0;
@@ -118,7 +127,6 @@
   position: relative;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
   gap: 8px;
   margin-top: -14px;
   padding: 26px 16px 14px;
@@ -127,6 +135,31 @@
   border-radius: 0 0 22px 22px;
   background: transparent;
   box-shadow: 0 2px 6px rgba(52, 38, 20, 0.06);
+}
+
+.parallelStubBranchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.parallelStubAudienceControls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.parallelStubTargetControls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-width: 0;
 }
 
 .parallelStubRemove {
@@ -143,6 +176,11 @@
 }
 
 .parallelStubRemove:hover:not(:disabled) {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.parallelStubRemoveDanger:hover:not(:disabled) {
   background: rgba(140, 60, 50, 0.1);
   color: #8f4f3f;
 }
@@ -163,8 +201,15 @@
   padding-right: 16px;
 }
 
+.parallelAddRowInline {
+  width: auto;
+  max-width: none;
+  margin: 0 0 0 auto;
+  padding-right: 0;
+}
+
 .parallelAddHint {
-  color: rgba(60, 100, 180, 0.6);
+  color: var(--muted);
   font-size: 0.78rem;
 }
 
@@ -173,17 +218,32 @@
   width: 28px;
   height: 28px;
   place-items: center;
-  border: 1px dashed rgba(60, 100, 180, 0.4);
+  border: 1px dashed var(--border);
   border-radius: 50%;
   background: transparent;
-  color: rgba(60, 100, 180, 0.7);
+  color: var(--muted);
   cursor: pointer;
 }
 
 .parallelAddButton:hover:not(:disabled) {
+  background: var(--panel-hover);
+  color: var(--text);
+  border-style: solid;
+  border-color: var(--border);
+}
+
+.parallelAddHintAccent {
+  color: rgba(60, 100, 180, 0.6);
+}
+
+.parallelAddButtonAccent {
+  border-color: rgba(60, 100, 180, 0.4);
+  color: rgba(60, 100, 180, 0.7);
+}
+
+.parallelAddButtonAccent:hover:not(:disabled) {
   background: rgba(60, 100, 180, 0.08);
   color: #3464b4;
-  border-style: solid;
   border-color: rgba(60, 100, 180, 0.6);
 }
 
@@ -230,6 +290,11 @@
 .composerGroupAvatarRemove:hover {
   background: var(--panel-hover);
   color: var(--text);
+}
+
+.composerGroupAvatarRemoveDanger:hover {
+  background: rgba(140, 60, 50, 0.1);
+  color: #8f4f3f;
 }
 
 .composerRightGroup {
@@ -716,10 +781,18 @@
   justify-content: flex-start;
   gap: 8px;
   margin: 12px auto 0;
-  padding: 0 4px;
+  padding: 0 17px 0 4px;
   width: 100%;
   max-width: var(--chat-transcript-max-width, 680px);
   min-width: 0;
+}
+
+.composerFooterAccessory {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .composerHeaderRow {

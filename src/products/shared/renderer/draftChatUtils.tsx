@@ -298,9 +298,16 @@ export function resolveGenericDraftTemporaryParticipants(
   preset: 'default' | 'group' | 'parallel',
   existingParticipants: DraftTemporaryParticipant[],
   createGroupParticipants: () => DraftTemporaryParticipant[],
+  options: {
+    autoSeedGroupParticipants?: boolean;
+  } = {},
 ): DraftTemporaryParticipant[] {
   if (preset !== 'group') {
     return [];
+  }
+
+  if (options.autoSeedGroupParticipants === false) {
+    return existingParticipants;
   }
 
   return existingParticipants.length > 0
@@ -406,7 +413,16 @@ export function createDefaultParallelTargetForProvider(provider: string): DraftP
   };
 }
 
-export function createInitialParallelTargets(baseTarget: DraftParallelTarget): DraftParallelTarget[] {
+export function createInitialParallelTargets(
+  baseTarget: DraftParallelTarget,
+  options: {
+    includeCompareTarget?: boolean;
+  } = {},
+): DraftParallelTarget[] {
+  if (options.includeCompareTarget === false) {
+    return [baseTarget];
+  }
+
   const fallbackProvider = PRODUCT_PROVIDER_ORDER.find((provider) => provider !== baseTarget.provider)
     ?? 'codex';
 

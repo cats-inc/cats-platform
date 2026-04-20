@@ -5,6 +5,11 @@ import {
 } from '../../state/model/index.js';
 import { parseProviderModelSelection } from '../../../../shared/providerSelection.js';
 import {
+  applyAdvancedDraftControlsPatch,
+  createDefaultAdvancedDraftControlsPreferences,
+  type AdvancedDraftControlsPatch,
+} from '../../../shared/advancedDraftControls.js';
+import {
   createDefaultFolderBrowsePreferences,
   isFolderBrowsePreferenceSurface,
   normalizeFolderBrowsePreferences,
@@ -29,6 +34,8 @@ function serializePreferences(state: ChatState) {
     showLiveProgressDetails: state.showLiveProgressDetails ?? false,
     concurrentPresentationMode: state.concurrentPresentationMode ?? 'inline_stack',
     newChatDefaults: state.newChatDefaults,
+    advancedDraftControls:
+      state.advancedDraftControls ?? createDefaultAdvancedDraftControlsPreferences(),
     folderBrowsePreferences: state.folderBrowsePreferences ?? createDefaultFolderBrowsePreferences(),
   };
 }
@@ -39,6 +46,7 @@ function applyPreferencePatch(
     showVerboseMessages?: boolean;
     showLiveProgressDetails?: boolean;
     concurrentPresentationMode?: string;
+    advancedDraftControls?: AdvancedDraftControlsPatch;
     newChatDefaults?: {
       provider?: string;
       instance?: string | null;
@@ -73,6 +81,16 @@ function applyPreferencePatch(
     nextState = {
       ...nextState,
       concurrentPresentationMode: body.concurrentPresentationMode as typeof nextState.concurrentPresentationMode,
+    };
+  }
+
+  if (body.advancedDraftControls && typeof body.advancedDraftControls === 'object') {
+    nextState = {
+      ...nextState,
+      advancedDraftControls: applyAdvancedDraftControlsPatch(
+        nextState.advancedDraftControls,
+        body.advancedDraftControls,
+      ),
     };
   }
 
@@ -131,6 +149,7 @@ async function handleRestUpdatePreferences(
       showVerboseMessages?: boolean;
       showLiveProgressDetails?: boolean;
       concurrentPresentationMode?: string;
+      advancedDraftControls?: AdvancedDraftControlsPatch;
       newChatDefaults?: {
         provider?: string;
         instance?: string | null;

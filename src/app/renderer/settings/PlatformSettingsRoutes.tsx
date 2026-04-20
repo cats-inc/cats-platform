@@ -6,12 +6,13 @@ import { WorkspaceSettingsCatsCanvas } from '../../../products/shared/renderer/c
 import { isDesktopEnvironment } from '../../../shared/desktopRecoveryBridge.js';
 import { SettingsAssistants } from './SettingsAssistants.js';
 import { PlatformSettingsChat } from './PlatformSettingsChat.js';
+import { PlatformSettingsCode } from './PlatformSettingsCode.js';
 import { PlatformSettingsData } from './PlatformSettingsData.js';
 import { PlatformSettingsDesktopStartup } from './PlatformSettingsDesktopStartup.js';
 import { PlatformSettingsGeneral } from './PlatformSettingsGeneral.js';
-import { PlatformSettingsProductPlaceholder } from './PlatformSettingsProductPlaceholder.js';
 import { PlatformSettingsRuntime } from './PlatformSettingsRuntime.js';
 import { PlatformSettingsShell } from './PlatformSettingsShell.js';
+import { PlatformSettingsWork } from './PlatformSettingsWork.js';
 import './platform-settings.css';
 
 export interface PlatformSettingsRoutesProps<
@@ -93,11 +94,9 @@ export function PlatformSettingsRoutes<TPayload extends WorkspaceAppShellPayload
         <Route
           path="work"
           element={(
-            <PlatformSettingsProductPlaceholder
-              productId="work"
-              products={payload.products}
-              title="Work"
-              subtitle={`${workProduct.productName} settings will land here as product-owned sections.`}
+            <PlatformSettingsWork
+              payload={payload}
+              onPayloadUpdate={onWorkspacePayloadUpdate}
             />
           )}
         />
@@ -106,11 +105,9 @@ export function PlatformSettingsRoutes<TPayload extends WorkspaceAppShellPayload
         <Route
           path="code"
           element={(
-            <PlatformSettingsProductPlaceholder
-              productId="code"
-              products={payload.products}
-              title="Code"
-              subtitle={`${codeProduct.productName} settings will land here as product-owned sections.`}
+            <PlatformSettingsCode
+              payload={payload}
+              onPayloadUpdate={onWorkspacePayloadUpdate}
             />
           )}
         />

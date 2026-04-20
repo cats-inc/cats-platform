@@ -244,9 +244,16 @@ export function resolveGenericDraftTemporaryParticipants(
   preset: NewChatPreset,
   existingParticipants: DraftTemporaryParticipant[],
   createGroupParticipants: () => DraftTemporaryParticipant[],
+  options: {
+    autoSeedGroupParticipants?: boolean;
+  } = {},
 ): DraftTemporaryParticipant[] {
   if (preset !== 'group') {
     return [];
+  }
+
+  if (options.autoSeedGroupParticipants === false) {
+    return existingParticipants;
   }
 
   return existingParticipants.length > 0

@@ -46,6 +46,7 @@ import type {
 } from '../../../shared/platform-contract.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import type { FolderBrowsePreferences } from '../folderBrowsePreferences.js';
+import type { AdvancedDraftControlsPreferences } from '../advancedDraftControls.js';
 import type {
   RuntimePermissionMode,
   RuntimeSessionCreateContractInput,
@@ -454,6 +455,7 @@ export interface ChatState {
   showVerboseMessages: boolean;
   showLiveProgressDetails?: boolean;
   concurrentPresentationMode?: ConcurrentChatPresentationMode;
+  advancedDraftControls?: AdvancedDraftControlsPreferences;
   folderBrowsePreferences?: FolderBrowsePreferences;
 }
 
@@ -501,6 +503,7 @@ export interface ChatShellState {
   showVerboseMessages: boolean;
   showLiveProgressDetails?: boolean;
   concurrentPresentationMode?: ConcurrentChatPresentationMode;
+  advancedDraftControls?: AdvancedDraftControlsPreferences;
   folderBrowsePreferences?: FolderBrowsePreferences;
   botBindings: ChatBotBindingSummary[];
   newChatAssist?: GuideCatAssistNewChatByMode | null;

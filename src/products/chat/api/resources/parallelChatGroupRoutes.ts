@@ -82,6 +82,20 @@ async function handleSendParallelChatGroupMessage(
       );
       return;
     }
+    const perChannelInputsById = new Map(
+      (body.channelInputs ?? []).map((input) => [input.channelId, input]),
+    );
+    const unknownChannelInputId = [...perChannelInputsById.keys()].find((channelId) =>
+      !group.memberChannelIds.includes(channelId));
+    if (unknownChannelInputId) {
+      sendRestError(
+        context,
+        400,
+        'channel_not_in_compare_group',
+        'One or more parallel branch inputs target a chat outside this Parallel chat group.',
+      );
+      return;
+    }
 
     const acknowledged = await acknowledgeParallelChatBodies(context, {
       groupId,
@@ -91,7 +105,15 @@ async function handleSendParallelChatGroupMessage(
         state: lockedState,
         activeChannelId: body.activeChannelId,
         channelInputs: new Map(
-          lockedGroup.memberChannelIds.map((channelId) => [channelId, { body: body.body }]),
+          lockedGroup.memberChannelIds.map((channelId) => {
+            const channelInput = perChannelInputsById.get(channelId);
+            return [channelId, {
+              body: channelInput?.body ?? body.body,
+              ...(channelInput?.messageMetadata
+                ? { messageMetadata: channelInput.messageMetadata }
+                : {}),
+            }];
+          }),
         ),
       }),
     });

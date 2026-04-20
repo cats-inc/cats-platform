@@ -52,6 +52,18 @@ test('parallel chat client uses canonical parallel-chat-groups endpoints', async
         { provider: 'claude', instance: null, model: null, modelSelection: null },
         { provider: 'codex', instance: null, model: null, modelSelection: null },
       ],
+      participantCatIds: ['cat-reviewer'],
+      temporaryParticipants: [
+        {
+          participantId: 'temp-analyst',
+          name: 'Analyst',
+          provider: 'gemini',
+          instance: 'native',
+          model: 'gemini-3.1-pro',
+          modelSelection: null,
+          roleHint: 'Counterpoint',
+        },
+      ],
     });
     await sendParallelChatMessage('group-1', {
       activeChannelId: 'channel-1',
@@ -71,6 +83,18 @@ test('parallel chat client uses canonical parallel-chat-groups endpoints', async
         targets: [
           { provider: 'claude', instance: null, model: null, modelSelection: null },
           { provider: 'codex', instance: null, model: null, modelSelection: null },
+        ],
+        participantCatIds: ['cat-reviewer'],
+        temporaryParticipants: [
+          {
+            participantId: 'temp-analyst',
+            name: 'Analyst',
+            provider: 'gemini',
+            instance: 'native',
+            model: 'gemini-3.1-pro',
+            modelSelection: null,
+            roleHint: 'Counterpoint',
+          },
         ],
       },
     },

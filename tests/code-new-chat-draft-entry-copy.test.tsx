@@ -97,8 +97,6 @@ test('new code draft publishes code-specific copy overrides for the shared works
   assert.equal(NEW_CODE_DRAFT_COPY.executionEmptyState, 'No execution target set yet.');
   assert.equal(NEW_CODE_DRAFT_COPY.folderSectionTitle, 'Workspace');
   assert.equal(NEW_CODE_DRAFT_COPY.participantsEmptyState, 'No participants available yet.');
-  assert.equal(NEW_CODE_DRAFT_COPY.privateSessionEyebrow, 'Focused Code Session');
-  assert.equal(NEW_CODE_DRAFT_COPY.privateSessionHeroNote, 'Single-participant coding lane.');
 });
 
 test('new code default draft keeps the original shared composer structure without extra header chips', () => {
@@ -117,8 +115,8 @@ test('new code default draft keeps the original shared composer structure withou
 
   assert.match(markup, /What should this code session build, fix, or investigate\?/u);
   assert.match(markup, /composerBottomRow[\s\S]*class="audienceChip"/u);
+  assert.match(markup, /Choose workspace/u);
   assert.doesNotMatch(markup, /class="draftHeaderAccessory"/u);
-  assert.doesNotMatch(markup, /Choose workspace/u);
   assert.doesNotMatch(markup, /How can I help you today\?/u);
   assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
   assert.doesNotMatch(markup, /class="draftPromptChip"/u);
@@ -127,7 +125,7 @@ test('new code default draft keeps the original shared composer structure withou
 test('new code default draft does not render standalone setup chips between the greeting and composer', () => {
   const markup = renderToStaticMarkup(<NewChatDraft {...createProps()} />);
 
-  assert.doesNotMatch(markup, /Choose workspace/u);
+  assert.match(markup, /Choose workspace/u);
   assert.doesNotMatch(markup, /Choose execution target/u);
   assert.doesNotMatch(markup, /class="draftHeaderAccessory"/u);
   assert.doesNotMatch(markup, /class="draftPromptChip"/u);
@@ -207,7 +205,7 @@ test('new code default draft prefers payload-backed assist greeting and shows up
   assert.match(markup, />Refactor code</u);
   assert.doesNotMatch(markup, />Hidden helper</u);
   assert.doesNotMatch(markup, /Legacy code greeting\./u);
-  assert.doesNotMatch(markup, /Choose workspace/u);
+  assert.match(markup, /Choose workspace/u);
   assert.doesNotMatch(markup, /Choose execution target/u);
   assert.doesNotMatch(markup, /class="draftHeaderAccessory"/u);
 });
@@ -291,13 +289,13 @@ test('new code direct-lane drafts keep the participant stack in the composer row
     />,
   );
 
-  assert.match(markup, /Focused Code Session/u);
-  assert.match(markup, /Single-participant coding lane\./u);
+  assert.match(markup, /draftHeaderProfile/u);
+  assert.match(markup, /<h1 class="draftHeaderTitle">Milo<\/h1>/u);
+  assert.match(markup, /Choose workspace/u);
   assert.match(markup, /class="composerCatStack"/u);
-  assert.doesNotMatch(markup, /Private Chat/u);
 });
 
-test('new code direct-lane drafts keep the same hero copy when the participant is telegram-bound', () => {
+test('new code direct-lane drafts keep the same profile header when the participant is telegram-bound', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
@@ -319,9 +317,10 @@ test('new code direct-lane drafts keep the same hero copy when the participant i
     />,
   );
 
-  assert.match(markup, /Focused Code Session/u);
-  assert.match(markup, /Single-participant coding lane\./u);
-  assert.doesNotMatch(markup, /Telegram-bound private lane\./u);
+  assert.match(markup, /draftHeaderProfile/u);
+  assert.match(markup, /<h1 class="draftHeaderTitle">Milo<\/h1>/u);
+  assert.match(markup, /Choose workspace/u);
+  assert.doesNotMatch(markup, /Focused Code Session/u);
 });
 
 test('team code and peer code drafts continue to delegate to the shared chat draft flow', () => {
@@ -348,4 +347,101 @@ test('team code and peer code drafts continue to delegate to the shared chat dra
   assert.match(markup, /How can I help you today\?/u);
   assert.match(markup, /class="audienceChip"/u);
   assert.doesNotMatch(markup, /What should this code session build, fix, or investigate\?/u);
+});
+
+test('advanced draft controls expose collaborator and compare buttons on the default code draft without hint copy', () => {
+  const target = {
+    provider: 'claude',
+    instance: 'native',
+    model: 'claude-sonnet',
+    modelSelection: null,
+  } as const;
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        payload: createPayload({
+          advancedDraftControls: {
+            chat: false,
+            code: true,
+            work: false,
+          },
+        }),
+        selectedExecutionTarget: target,
+        onQuickAddDraftTemporaryParticipant: () => {},
+        onAddParallelTarget: () => {},
+      })}
+    />,
+  );
+
+  const addButtonMatches = markup.match(/class="parallelAddButton"/gu) ?? [];
+
+  assert.equal(addButtonMatches.length, 2);
+  assert.match(markup, /aria-label="Add another model to collaborate"/u);
+  assert.match(markup, /aria-label="Add parallel chat"/u);
+  assert.doesNotMatch(markup, /Add another model to compare/u);
+  assert.doesNotMatch(markup, /Add another model to collaborate<\/span>/u);
+});
+
+test('advanced draft controls keep team code drafts empty and still expose compare setup', () => {
+  const target = {
+    provider: 'claude',
+    instance: 'native',
+    model: 'claude-sonnet',
+    modelSelection: null,
+  } as const;
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        entryPreset: 'group',
+        payload: createPayload({
+          advancedDraftControls: {
+            chat: false,
+            code: true,
+            work: false,
+          },
+        }),
+        selectedExecutionTarget: target,
+        parallelTargets: [target],
+        onQuickAddDraftTemporaryParticipant: () => {},
+        onAddParallelTarget: () => {},
+      })}
+    />,
+  );
+
+  assert.match(markup, /aria-label="Add another model to collaborate"/u);
+  assert.match(markup, /aria-label="Add parallel chat"/u);
+  assert.doesNotMatch(markup, /class="composerGroupAvatarSlot"/u);
+  assert.doesNotMatch(markup, /Add another model to compare/u);
+});
+
+test('advanced draft controls keep peer code drafts on one lead target, expose collaborator setup, and preserve compare hint copy', () => {
+  const target = {
+    provider: 'claude',
+    instance: 'native',
+    model: 'claude-sonnet',
+    modelSelection: null,
+  } as const;
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        entryPreset: 'parallel',
+        payload: createPayload({
+          advancedDraftControls: {
+            chat: false,
+            code: true,
+            work: false,
+          },
+        }),
+        selectedExecutionTarget: target,
+        parallelTargets: [target],
+        onQuickAddDraftTemporaryParticipant: () => {},
+        onAddParallelTarget: () => {},
+      })}
+    />,
+  );
+
+  assert.match(markup, /aria-label="Add another model to collaborate"/u);
+  assert.match(markup, /aria-label="Add parallel chat"/u);
+  assert.match(markup, /Add another model to compare/u);
+  assert.doesNotMatch(markup, /class="parallelStubStack"/u);
 });

@@ -22,9 +22,14 @@ import {
   createParallelChatBusyState,
   type WorkspaceBusyState,
 } from '../../../../shared/workspaceBusy.js';
+import type { RoomWorkflowShape } from '../../../../shared/roomRouting.js';
 import type { ExecutionTargetValue } from '../../../shared/renderer/components/ExecutionTarget.js';
 import type { SelectedChannelView } from '../../shared/channelEntry.js';
 import { relayParallelChatMessage } from '../api/index.js';
+import {
+  createDraftParallelBranches,
+  updateDraftParallelBranchAt,
+} from '../../../shared/renderer/draftParallelBranches.js';
 
 type LoadStateLike =
   | { status: 'loading' }
@@ -41,6 +46,19 @@ export function createDefaultTargetForProvider(provider: string): ExecutionTarge
 }
 
 export function createInitialCompareTargets(baseTarget: ExecutionTargetValue): ExecutionTargetValue[] {
+  return createInitialCompareTargetsWithOptions(baseTarget);
+}
+
+function createInitialCompareTargetsWithOptions(
+  baseTarget: ExecutionTargetValue,
+  options: {
+    includeCompareTarget?: boolean;
+  } = {},
+): ExecutionTargetValue[] {
+  if (options.includeCompareTarget === false) {
+    return [baseTarget];
+  }
+
   const fallbackProvider = PRODUCT_PROVIDER_ORDER.find((provider) => provider !== baseTarget.provider)
     ?? 'codex';
 
@@ -108,6 +126,7 @@ export function useParallelChatDraft(options: {
   setState: Dispatch<SetStateAction<LoadStateLike>>;
   setBusy: Dispatch<SetStateAction<WorkspaceBusyState>>;
   setFeedback: Dispatch<SetStateAction<string>>;
+  seedCompareTarget?: boolean;
 }) {
   const {
     readyPayload,
@@ -116,17 +135,34 @@ export function useParallelChatDraft(options: {
     setState,
     setBusy,
     setFeedback,
+    seedCompareTarget = true,
   } = options;
-  const [draftParallelChatTargets, setDraftParallelChatTargets] = useState<ExecutionTargetValue[]>(
-    () => createInitialCompareTargets({
-      provider: draftExecutionTarget.provider,
-      model: draftExecutionTarget.model,
-      instance: draftExecutionTarget.instance,
-      modelSelection: draftExecutionTarget.modelSelection,
-    }),
+  const [draftParallelBranches, setDraftParallelBranches] = useState(
+    () => createDraftParallelBranches(
+      createInitialCompareTargetsWithOptions({
+        provider: draftExecutionTarget.provider,
+        model: draftExecutionTarget.model,
+        instance: draftExecutionTarget.instance,
+        modelSelection: draftExecutionTarget.modelSelection,
+      }, {
+        includeCompareTarget: seedCompareTarget,
+      }),
+    ),
   );
   const [compareSendScope, setCompareSendScope] = useState<'all_members' | 'active_only'>(
     'all_members',
+  );
+  const draftParallelChatTargets = useMemo(
+    () => draftParallelBranches.map((branch) => branch.target),
+    [draftParallelBranches],
+  );
+  const draftParallelBranchAudienceKeys = useMemo(
+    () => draftParallelBranches.map((branch) => branch.audienceKeys),
+    [draftParallelBranches],
+  );
+  const draftParallelBranchWorkflowShapes = useMemo(
+    () => draftParallelBranches.map((branch) => branch.workflowShape),
+    [draftParallelBranches],
   );
 
   const selectedParallelChatGroup = useMemo(
@@ -138,42 +174,99 @@ export function useParallelChatDraft(options: {
     [readyPayload, selectedChannel],
   );
 
-  const resetDraftParallelChatTargets = useCallback(() => {
-    setDraftParallelChatTargets(createInitialCompareTargets(draftExecutionTarget));
-  }, [draftExecutionTarget]);
+  const resetDraftParallelChatTargets = useCallback((options?: {
+    includeCompareTarget?: boolean;
+    seedAudienceKeys?: readonly string[] | null;
+    seedWorkflowShape?: RoomWorkflowShape;
+  }) => {
+    setDraftParallelBranches(createDraftParallelBranches(
+      createInitialCompareTargetsWithOptions(draftExecutionTarget, {
+        includeCompareTarget: options?.includeCompareTarget ?? seedCompareTarget,
+      }),
+      {
+        seedAudienceKeys: options?.seedAudienceKeys,
+        seedWorkflowShape: options?.seedWorkflowShape,
+      },
+    ));
+  }, [draftExecutionTarget, seedCompareTarget]);
 
   useEffect(() => {
     setCompareSendScope('all_members');
   }, [selectedParallelChatGroup?.id]);
 
   useEffect(() => {
-    setDraftParallelChatTargets((currentTargets) =>
-      syncLeadCompareTarget(currentTargets, draftExecutionTarget));
+    setDraftParallelBranches((currentBranches) =>
+      updateDraftParallelBranchAt(currentBranches, 0, (branch) => ({
+        ...branch,
+        target: syncLeadCompareTarget([branch.target], draftExecutionTarget)[0] ?? draftExecutionTarget,
+      })));
   }, [draftExecutionTarget]);
 
   const onDraftParallelChatTargetChange = useCallback((index: number, value: ExecutionTargetValue) => {
-    setDraftParallelChatTargets((prev) =>
-      prev.map((target, currentIndex) => (currentIndex === index ? value : target)),
+    setDraftParallelBranches((prev) =>
+      updateDraftParallelBranchAt(prev, index, (branch) => ({
+        ...branch,
+        target: value,
+      })),
     );
   }, []);
 
-  const onAddDraftParallelChatTarget = useCallback(() => {
-    setDraftParallelChatTargets((prev) => [
-      ...prev,
-      createNextCompareTarget(prev, draftExecutionTarget),
-    ]);
+  const onAddDraftParallelChatTarget = useCallback((options?: {
+    seedAudienceKeys?: readonly string[] | null;
+    seedWorkflowShape?: RoomWorkflowShape;
+  }) => {
+    setDraftParallelBranches((prev) => {
+      const nextTarget = createNextCompareTarget(
+        prev.map((branch) => branch.target),
+        draftExecutionTarget,
+      );
+      const seedBranch = prev[0] ?? null;
+      return [
+        ...prev,
+        {
+          target: nextTarget,
+          audienceKeys: options?.seedAudienceKeys != null
+            ? [...options.seedAudienceKeys]
+            : [...(seedBranch?.audienceKeys ?? [])],
+          workflowShape: options?.seedWorkflowShape
+            ?? seedBranch?.workflowShape
+            ?? 'sequential',
+        },
+      ];
+    });
   }, [
     draftExecutionTarget,
   ]);
 
   const onRemoveDraftParallelChatTarget = useCallback((index: number) => {
-    setDraftParallelChatTargets((prev) => {
-      if (prev.length <= 2) {
+    setDraftParallelBranches((prev) => {
+      if (prev.length <= 1) {
         return prev;
       }
 
       return prev.filter((_, currentIndex) => currentIndex !== index);
     });
+  }, []);
+
+  const onSetDraftParallelBranchAudienceKeys = useCallback((
+    index: number,
+    keys: string[],
+  ) => {
+    setDraftParallelBranches((prev) =>
+      updateDraftParallelBranchAt(prev, index, (branch) => ({
+        ...branch,
+        audienceKeys: [...keys],
+      })),
+    );
+  }, []);
+
+  const onToggleDraftParallelBranchWorkflowShape = useCallback((index: number) => {
+    setDraftParallelBranches((prev) =>
+      updateDraftParallelBranchAt(prev, index, (branch) => ({
+        ...branch,
+        workflowShape: branch.workflowShape === 'concurrent' ? 'sequential' : 'concurrent',
+      })),
+    );
   }, []);
 
   const onRelayCompareMessage = useCallback(async (
@@ -218,7 +311,10 @@ export function useParallelChatDraft(options: {
   ]);
 
   return {
+    draftParallelBranches,
     draftParallelChatTargets,
+    draftParallelBranchAudienceKeys,
+    draftParallelBranchWorkflowShapes,
     compareSendScope,
     setCompareSendScope,
     selectedParallelChatGroup,
@@ -226,7 +322,8 @@ export function useParallelChatDraft(options: {
     onDraftParallelChatTargetChange,
     onAddDraftParallelChatTarget,
     onRemoveDraftParallelChatTarget,
+    onSetDraftParallelBranchAudienceKeys,
+    onToggleDraftParallelBranchWorkflowShape,
     onRelayCompareMessage,
   };
 }
-

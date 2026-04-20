@@ -45,6 +45,7 @@ import { deriveAppRouteState, deriveAppViewState, type AppLoadState } from './ap
 import {
   resolveDraftRouteContext,
 } from './draftParticipants';
+import { isAdvancedDraftControlsEnabled } from '../../shared/advancedDraftControls.js';
 import { useAppChrome } from './hooks/useAppChrome';
 import { useAppDraftUiActions } from './hooks/useAppDraftUiActions';
 import { useAppNavigationActions } from './hooks/useAppNavigationActions';
@@ -308,7 +309,10 @@ export default function App() {
     updateChannelPendingExecutionTarget,
   });
   const {
+    draftParallelBranches,
     draftParallelChatTargets,
+    draftParallelBranchAudienceKeys,
+    draftParallelBranchWorkflowShapes,
     compareSendScope,
     setCompareSendScope,
     selectedParallelChatGroup,
@@ -316,6 +320,8 @@ export default function App() {
     onDraftParallelChatTargetChange,
     onAddDraftParallelChatTarget,
     onRemoveDraftParallelChatTarget,
+    onSetDraftParallelBranchAudienceKeys,
+    onToggleDraftParallelBranchWorkflowShape,
     onRelayCompareMessage,
   } = useParallelChatDraft({
     readyPayload,
@@ -324,7 +330,13 @@ export default function App() {
     setState,
     setBusy,
     setFeedback,
+    seedCompareTarget: showingParallelChatDraft,
   });
+  const advancedDraftControlsEnabled = isAdvancedDraftControlsEnabled(
+    readyPayload?.chat.advancedDraftControls ?? null,
+    'chat',
+  );
+  const hasVisibleParallelDraftTargets = draftParallelChatTargets.length > 1;
   const latestActiveUserMessage = selectedChannel?.messages
     ? [...selectedChannel.messages].reverse().find((message) => message.senderKind === 'user') ?? null
     : null;
@@ -450,6 +462,39 @@ export default function App() {
     ],
     [draftParticipants.participantCatIds, draftTemporaryParticipants],
   );
+  const appendAudienceKeyWithinLimit = useCallback((
+    currentKeys: readonly string[],
+    nextKey: string,
+  ): string[] => {
+    const normalized = currentKeys.filter((key, index, source) =>
+      source.indexOf(key) === index);
+    if (normalized.includes(nextKey)) {
+      return normalized;
+    }
+    if (Number.isFinite(maxDraftAudienceParticipants)
+      && normalized.length >= maxDraftAudienceParticipants) {
+      return normalized;
+    }
+    return [...normalized, nextKey];
+  }, [maxDraftAudienceParticipants]);
+  const resolveParallelAudienceSeed = useCallback((): string[] => {
+    const primaryBranchAudience = draftParallelBranchAudienceKeys[0];
+    if (primaryBranchAudience && primaryBranchAudience.length > 0) {
+      return [...primaryBranchAudience];
+    }
+    if (draftAudienceKeys && draftAudienceKeys.length > 0) {
+      return [...draftAudienceKeys];
+    }
+    if (!Number.isFinite(maxDraftAudienceParticipants)) {
+      return [...draftParticipantKeys];
+    }
+    return draftParticipantKeys.slice(0, maxDraftAudienceParticipants);
+  }, [
+    draftAudienceKeys,
+    draftParallelBranchAudienceKeys,
+    draftParticipantKeys,
+    maxDraftAudienceParticipants,
+  ]);
   const onToggleDraftCatWithAudienceSync = useCallback((catId: string) => {
     const isRemoving = draftParticipants.participantCatIds.includes(catId);
     onToggleDraftCat(catId);
@@ -479,11 +524,28 @@ export default function App() {
         removedParticipantKey,
         maxAudienceParticipants: maxDraftAudienceParticipants,
       }));
+    if (draftParallelChatTargets.length >= 2) {
+      draftParallelBranchAudienceKeys.forEach((branchAudienceKeys, index) => {
+        if (!branchAudienceKeys.includes(removedParticipantKey)) {
+          return;
+        }
+        onSetDraftParallelBranchAudienceKeys(index, reconcileDraftAudienceKeysAfterParticipantRemoval({
+          draftAudienceKeys: branchAudienceKeys,
+          previousParticipantKeys: draftParticipantKeys,
+          nextParticipantKeys,
+          removedParticipantKey,
+          maxAudienceParticipants: maxDraftAudienceParticipants,
+        }) ?? []);
+      });
+    }
   }, [
     draftParticipantKeys,
     draftParticipants.participantCatIds,
+    draftParallelBranchAudienceKeys,
+    draftParallelChatTargets.length,
     maxDraftAudienceParticipants,
     onToggleDraftCat,
+    onSetDraftParallelBranchAudienceKeys,
     setDraftAudienceKeys,
   ]);
   const onRemoveDraftTemporaryParticipantWithAudienceSync = useCallback((participantId: string) => {
@@ -498,10 +560,27 @@ export default function App() {
         removedParticipantKey,
         maxAudienceParticipants: maxDraftAudienceParticipants,
       }));
+    if (draftParallelChatTargets.length >= 2) {
+      draftParallelBranchAudienceKeys.forEach((branchAudienceKeys, index) => {
+        if (!branchAudienceKeys.includes(removedParticipantKey)) {
+          return;
+        }
+        onSetDraftParallelBranchAudienceKeys(index, reconcileDraftAudienceKeysAfterParticipantRemoval({
+          draftAudienceKeys: branchAudienceKeys,
+          previousParticipantKeys: draftParticipantKeys,
+          nextParticipantKeys,
+          removedParticipantKey,
+          maxAudienceParticipants: maxDraftAudienceParticipants,
+        }) ?? []);
+      });
+    }
   }, [
     draftParticipantKeys,
+    draftParallelBranchAudienceKeys,
+    draftParallelChatTargets.length,
     maxDraftAudienceParticipants,
     onRemoveDraftTemporaryParticipant,
+    onSetDraftParallelBranchAudienceKeys,
     setDraftAudienceKeys,
   ]);
   const onAddDraftTemporaryParticipantWithAudienceSync = useCallback((
@@ -542,6 +621,110 @@ export default function App() {
     setDraftAudienceKeys,
     setDraftExecutionTarget,
     showingNewChatDraft,
+  ]);
+  const onQuickAddDraftTemporaryParticipantToBranch = useCallback((branchIndex: number | null = null) => {
+    if (state.status !== 'ready') {
+      return;
+    }
+
+    const visibleCatNames = draftParticipants.participantCatIds
+      .map((catId) => state.payload.chat.cats.find((cat) => cat.id === catId)?.name ?? '')
+      .filter((name) => name.trim().length > 0);
+    let addedParticipantId: string | null = null;
+
+    setDraftTemporaryParticipants((current) => {
+      if (draftParticipants.participantCatIds.length + current.length >= maxDraftGroupParticipants) {
+        return current;
+      }
+
+      const nextParticipant = current.length === 0 && draftParticipants.participantCatIds.length === 0
+        ? createDraftTemporaryParticipant({
+            provider: draftExecutionTarget.provider,
+            instance: draftExecutionTarget.instance,
+            model: draftExecutionTarget.model,
+            modelSelection: draftExecutionTarget.modelSelection,
+            takenNames: [...visibleCatNames, ...current.map((participant) => participant.name)],
+            randomUUID: () =>
+              globalThis.crypto?.randomUUID?.() ?? `participant-${Date.now()}`,
+          })
+        : createNextGroupTemporaryParticipant({
+            baseProvider: draftExecutionTarget.provider,
+            existingParticipants: current,
+            takenNames: [...visibleCatNames, ...current.map((participant) => participant.name)],
+            randomUUID: () =>
+              globalThis.crypto?.randomUUID?.() ?? `participant-${Date.now()}`,
+          });
+      addedParticipantId = nextParticipant.participantId;
+      return [...current, nextParticipant];
+    });
+
+    if (!addedParticipantId) {
+      return;
+    }
+
+    const nextParticipantKey = `temp:${addedParticipantId}`;
+    if (branchIndex !== null && draftParallelChatTargets.length >= 2) {
+      onSetDraftParallelBranchAudienceKeys(
+        branchIndex,
+        appendAudienceKeyWithinLimit(
+          draftParallelBranchAudienceKeys[branchIndex] ?? [],
+          nextParticipantKey,
+        ),
+      );
+      return;
+    }
+
+    setDraftAudienceKeys((current) => {
+      const visibleCatKeys = draftParticipants.participantCatIds.map((catId) => `cat:${catId}`);
+      const currentParticipantKeys = [
+        ...visibleCatKeys,
+        ...draftTemporaryParticipants.map((participant) => `temp:${participant.participantId}`),
+      ];
+      const baseAudienceKeys = current ?? currentParticipantKeys;
+      const normalizedAudienceKeys = baseAudienceKeys.filter((key, index, source) =>
+        source.indexOf(key) === index && currentParticipantKeys.includes(key));
+
+      if (Number.isFinite(maxDraftAudienceParticipants)
+        && normalizedAudienceKeys.length >= maxDraftAudienceParticipants) {
+        return normalizedAudienceKeys;
+      }
+
+      return [...normalizedAudienceKeys, nextParticipantKey];
+    });
+  }, [
+    appendAudienceKeyWithinLimit,
+    draftParallelBranchAudienceKeys,
+    draftParallelChatTargets.length,
+    draftTemporaryParticipants,
+    draftExecutionTarget.instance,
+    draftExecutionTarget.model,
+    draftExecutionTarget.modelSelection,
+    draftExecutionTarget.provider,
+    draftParticipants.participantCatIds,
+    maxDraftAudienceParticipants,
+    maxDraftGroupParticipants,
+    onSetDraftParallelBranchAudienceKeys,
+    setDraftAudienceKeys,
+    setDraftTemporaryParticipants,
+    state,
+  ]);
+  const onDraftParallelBranchGroupAddButtonClick = useCallback((branchIndex: number): void => {
+    if (draftParticipants.participantCatIds.length === 0 && draftTemporaryParticipants.length === 0) {
+      const seededParticipants = seedDraftGroupParticipants();
+      const seededKeys = seededParticipants.map((participant) => `temp:${participant.participantId}`);
+      setDraftTemporaryParticipants((current) => current.length === 0 ? seededParticipants : current);
+      onSetDraftParallelBranchAudienceKeys(branchIndex, seededKeys);
+      return;
+    }
+
+    onQuickAddDraftTemporaryParticipantToBranch(branchIndex);
+  }, [
+    draftParticipants.participantCatIds.length,
+    draftTemporaryParticipants.length,
+    onQuickAddDraftTemporaryParticipantToBranch,
+    onSetDraftParallelBranchAudienceKeys,
+    seedDraftGroupParticipants,
+    setDraftTemporaryParticipants,
   ]);
   const {
     onOpenChatsOverview,
@@ -628,9 +811,12 @@ export default function App() {
     soloChannelExecutionTarget,
     setSoloChannelExecutionTarget,
     showingParallelChatDraft,
+    draftParallelBranches,
     draftParallelChatTargets,
     draftWorkflowShape,
     draftAudienceKeys,
+    draftParallelBranchAudienceKeys,
+    draftParallelBranchWorkflowShapes,
     activeWorkflowShape,
     activeAudienceKeys,
     resetDraftParallelChatTargets,
@@ -704,6 +890,7 @@ export default function App() {
       setDraftWorkflowShape,
       setDraftAudienceKeys,
     ]),
+    newChatPreset,
   );
 
   useEffect(() => {
@@ -762,6 +949,77 @@ export default function App() {
       setDraftExecutionTarget(value);
     }
   }, [onDraftParallelChatTargetChange, setDraftExecutionTarget]);
+  const onDraftGroupAddButtonClick = useCallback((): void => {
+    if ((newChatPreset === 'default' || newChatPreset === 'parallel')
+      && draftParticipants.participantCatIds.length === 0
+      && draftTemporaryParticipants.length === 0) {
+      const seededParticipants = resolveGenericDraftTemporaryParticipants(
+        'group',
+        [],
+        seedDraftGroupParticipants,
+      );
+      setDraftTemporaryParticipants((current) => current.length === 0 ? seededParticipants : current);
+      if (hasVisibleParallelDraftTargets) {
+        onSetDraftParallelBranchAudienceKeys(
+          0,
+          seededParticipants.map((participant) => `temp:${participant.participantId}`),
+        );
+      } else {
+        setDraftAudienceKeys(null);
+      }
+      return;
+    }
+
+    if (hasVisibleParallelDraftTargets) {
+      onQuickAddDraftTemporaryParticipantToBranch(0);
+      return;
+    }
+
+    onQuickAddDraftTemporaryParticipant();
+  }, [
+    draftParticipants.participantCatIds.length,
+    draftTemporaryParticipants.length,
+    hasVisibleParallelDraftTargets,
+    newChatPreset,
+    onQuickAddDraftTemporaryParticipant,
+    onQuickAddDraftTemporaryParticipantToBranch,
+    onSetDraftParallelBranchAudienceKeys,
+    seedDraftGroupParticipants,
+    setDraftAudienceKeys,
+    setDraftTemporaryParticipants,
+  ]);
+  const onDraftParallelAddButtonClick = useCallback((): void => {
+    const seedAudienceKeys = resolveParallelAudienceSeed();
+    const seedWorkflowShape = draftParallelBranchWorkflowShapes[0] ?? draftWorkflowShape;
+    if (newChatPreset === 'default') {
+      if (hasVisibleParallelDraftTargets) {
+        onAddDraftParallelChatTarget({
+          seedAudienceKeys,
+          seedWorkflowShape,
+        });
+        return;
+      }
+
+      resetDraftParallelChatTargets({
+        includeCompareTarget: true,
+        seedAudienceKeys,
+        seedWorkflowShape,
+      });
+      return;
+    }
+    onAddDraftParallelChatTarget({
+      seedAudienceKeys,
+      seedWorkflowShape,
+    });
+  }, [
+    draftParallelBranchWorkflowShapes,
+    draftWorkflowShape,
+    hasVisibleParallelDraftTargets,
+    newChatPreset,
+    onAddDraftParallelChatTarget,
+    resolveParallelAudienceSeed,
+    resetDraftParallelChatTargets,
+  ]);
 
   const onResumeChannel = useWorkspaceResumeChannel<AppShellPayload>({
     activateChatChannel,
@@ -970,7 +1228,7 @@ export default function App() {
                   onDraftCwdClear: () => setDraftCwd(null),
                   onToggleDraftCat: onToggleDraftCatWithAudienceSync,
                   onAddDraftTemporaryParticipant: onAddDraftTemporaryParticipantWithAudienceSync,
-                  onQuickAddDraftTemporaryParticipant,
+                  onQuickAddDraftTemporaryParticipant: onDraftGroupAddButtonClick,
                   onRemoveDraftTemporaryParticipant: onRemoveDraftTemporaryParticipantWithAudienceSync,
                   onUpdateDraftTemporaryParticipant: onUpdateDraftTemporaryParticipant,
                   autoResize,
@@ -983,16 +1241,68 @@ export default function App() {
                   draftCatExecutionTargetOverrides,
                   onDraftCatExecutionTargetOverride,
                   onDirectLaneExecutionTargetChange: onDirectLaneModelSave,
-                  parallelTargets: showingParallelChatDraft ? draftParallelChatTargets : undefined,
+                  parallelTargets:
+                    draftRoute.isGenericNewChatRoute
+                      && hasVisibleParallelDraftTargets
+                      ? draftParallelChatTargets
+                      : undefined,
                   onParallelTargetChange: showingParallelChatDraft
+                    || hasVisibleParallelDraftTargets
                     ? onDraftParallelChatTargetChangeWithSharedDefault
                     : undefined,
-                  onAddParallelTarget: showingParallelChatDraft ? onAddDraftParallelChatTarget : undefined,
-                  onRemoveParallelTarget: showingParallelChatDraft ? onRemoveDraftParallelChatTarget : undefined,
+                  onAddParallelTarget:
+                    draftRoute.isGenericNewChatRoute
+                      && (advancedDraftControlsEnabled || hasVisibleParallelDraftTargets)
+                      ? onDraftParallelAddButtonClick
+                      : undefined,
+                  onRemoveParallelTarget:
+                    showingParallelChatDraft || hasVisibleParallelDraftTargets
+                      ? onRemoveDraftParallelChatTarget
+                      : undefined,
+                  showDraftParallelAddButton:
+                    draftRoute.isGenericNewChatRoute
+                    && (advancedDraftControlsEnabled || hasVisibleParallelDraftTargets),
                   draftWorkflowShape,
                   onToggleDraftWorkflowShape: () => setDraftWorkflowShape((prev) => prev === 'concurrent' ? 'sequential' : 'concurrent'),
                   draftAudienceKeys,
                   onSetAudienceKeys: setDraftAudienceKeys,
+                  parallelBranchAudienceKeys:
+                    draftRoute.isGenericNewChatRoute
+                      && hasVisibleParallelDraftTargets
+                      ? draftParallelBranchAudienceKeys
+                      : undefined,
+                  parallelBranchWorkflowShapes:
+                    draftRoute.isGenericNewChatRoute
+                      && hasVisibleParallelDraftTargets
+                      ? draftParallelBranchWorkflowShapes
+                      : undefined,
+                  onSetParallelBranchAudienceKeys:
+                    draftRoute.isGenericNewChatRoute
+                      && hasVisibleParallelDraftTargets
+                      ? onSetDraftParallelBranchAudienceKeys
+                      : undefined,
+                  onToggleParallelBranchWorkflowShape:
+                    draftRoute.isGenericNewChatRoute
+                      && hasVisibleParallelDraftTargets
+                      ? onToggleDraftParallelBranchWorkflowShape
+                      : undefined,
+                  onQuickAddParallelBranchTemporaryParticipant:
+                    draftRoute.isGenericNewChatRoute
+                      && hasVisibleParallelDraftTargets
+                      ? onDraftParallelBranchGroupAddButtonClick
+                      : undefined,
+                  showDraftGroupAddButton:
+                    advancedDraftControlsEnabled
+                    && draftRoute.isGenericNewChatRoute
+                    && newChatPreset !== 'group',
+                  hideDraftGroupHint:
+                    advancedDraftControlsEnabled
+                    && draftRoute.isGenericNewChatRoute
+                    && newChatPreset !== 'group',
+                  hideDraftParallelHint:
+                    advancedDraftControlsEnabled
+                    && draftRoute.isGenericNewChatRoute
+                    && newChatPreset !== 'parallel',
                 }}
                 addCatOpen={showAddCatPanel}
                 onToggleAddCat={toggleAddCatPanel}

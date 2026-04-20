@@ -58,8 +58,9 @@ export function useAppNavigationActions(options: {
   setDraftCatExecutionTargetOverrides: Dispatch<SetStateAction<Map<string, ExecutionTargetValue>>>;
   setDraftWorkflowShape: Dispatch<SetStateAction<'sequential' | 'concurrent'>>;
   setDraftAudienceKeys: Dispatch<SetStateAction<string[] | null>>;
-  resetDraftParallelChatTargets: () => void;
+  resetDraftParallelChatTargets: (options?: { includeCompareTarget?: boolean }) => void;
   createInitialGroupParticipants: () => DraftTemporaryParticipant[];
+  seedInitialGroupParticipants?: boolean;
   setDraftFiles: Dispatch<SetStateAction<File[]>>;
   setChannelFiles: Dispatch<SetStateAction<File[]>>;
   confirm?: (options: { title: string; message: string; confirmLabel?: string }) => Promise<boolean>;
@@ -84,6 +85,7 @@ export function useAppNavigationActions(options: {
     setDraftAudienceKeys,
     resetDraftParallelChatTargets,
     createInitialGroupParticipants,
+    seedInitialGroupParticipants = true,
     setDraftFiles,
     setChannelFiles,
     confirm: confirmDialog,
@@ -103,7 +105,10 @@ export function useAppNavigationActions(options: {
     },
   });
 
-  const resetFreshDraftState = useCallback((options?: { openAddCatPanel?: boolean }) => {
+  const resetFreshDraftState = useCallback((options?: {
+    openAddCatPanel?: boolean;
+    includeCompareTarget?: boolean;
+  }) => {
     setComposerDraft('');
     setFeedback('');
     setAddCatOpen(Boolean(options?.openAddCatPanel));
@@ -116,7 +121,9 @@ export function useAppNavigationActions(options: {
     setDraftCatExecutionTargetOverrides(new Map());
     setDraftWorkflowShape('sequential');
     setDraftAudienceKeys(null);
-    resetDraftParallelChatTargets();
+    resetDraftParallelChatTargets({
+      includeCompareTarget: options?.includeCompareTarget ?? false,
+    });
     setDraftFiles([]);
     setChannelPlusMenuOpen(false);
     setChannelFiles([]);
@@ -237,7 +244,7 @@ export function useAppNavigationActions(options: {
 
   const onStartNewChat = useCallback(async (): Promise<void> => {
     navigate(buildNewChatPath(null));
-    resetFreshDraftState();
+    resetFreshDraftState({ includeCompareTarget: false });
   }, [
     navigate,
     resetFreshDraftState,
@@ -245,13 +252,21 @@ export function useAppNavigationActions(options: {
 
   const onStartNewGroupChat = useCallback(async (): Promise<void> => {
     navigate(buildNewGroupChatPath());
-    resetFreshDraftState();
-    setDraftTemporaryParticipants(createInitialGroupParticipants());
-  }, [navigate, resetFreshDraftState, setDraftTemporaryParticipants, createInitialGroupParticipants]);
+    resetFreshDraftState({ includeCompareTarget: false });
+    if (seedInitialGroupParticipants) {
+      setDraftTemporaryParticipants(createInitialGroupParticipants());
+    }
+  }, [
+    createInitialGroupParticipants,
+    navigate,
+    resetFreshDraftState,
+    seedInitialGroupParticipants,
+    setDraftTemporaryParticipants,
+  ]);
 
   const onStartNewParallelChat = useCallback(async (): Promise<void> => {
     navigate(buildNewParallelChatPath());
-    resetFreshDraftState();
+    resetFreshDraftState({ includeCompareTarget: true });
   }, [
     navigate,
     resetFreshDraftState,
@@ -269,4 +284,3 @@ export function useAppNavigationActions(options: {
     onStartNewParallelChat,
   };
 }
-

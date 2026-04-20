@@ -107,7 +107,7 @@ test('generic new chat draft with one selected cat renders cat-led copy', () => 
   assert.doesNotMatch(markup, /Group Chat/u);
 });
 
-test('generic new chat draft does not show helper chips out of the box', () => {
+test('generic new chat draft keeps only the product-owned starter chip out of the box', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps()}
@@ -115,11 +115,11 @@ test('generic new chat draft does not show helper chips out of the box', () => {
   );
 
   assert.match(markup, /Meow\. Ready when you are\./u);
+  assert.match(markup, />Pomodoro app</u);
   assert.doesNotMatch(markup, /Plan today's priorities/u);
-  assert.doesNotMatch(markup, /draftPromptChip/u);
 });
 
-test('generic new chat draft with multiple selected cats keeps a lightweight greeting without helper chips', () => {
+test('generic new chat draft with multiple selected cats keeps a lightweight greeting without runtime helper chips', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
@@ -149,8 +149,8 @@ test('generic new chat draft with multiple selected cats keeps a lightweight gre
   );
 
   assert.match(markup, /Meow\. Ready when you are\./u);
+  assert.match(markup, />Pomodoro app</u);
   assert.doesNotMatch(markup, /split roles, and ask for a coordinated plan/u);
-  assert.doesNotMatch(markup, /draftPromptChip/u);
   assert.doesNotMatch(markup, /Cat-led Chat/u);
 });
 
@@ -181,6 +181,36 @@ test('group route does not show helper chips without runtime-backed assist conte
   assert.doesNotMatch(markup, /draftPromptChip/u);
 });
 
+test('advanced draft controls expose group and compare add buttons on the default chat draft without hint copy', () => {
+  const target = {
+    provider: 'claude',
+    instance: 'native',
+    model: 'claude-sonnet',
+    modelSelection: null,
+  } as const;
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        selectedExecutionTarget: target,
+        showDraftGroupAddButton: true,
+        onQuickAddDraftTemporaryParticipant: () => {},
+        parallelTargets: [target],
+        onAddParallelTarget: () => {},
+        hideDraftGroupHint: true,
+        hideDraftParallelHint: true,
+      })}
+    />,
+  );
+
+  const addButtonMatches = markup.match(/class="parallelAddButton"/gu) ?? [];
+
+  assert.equal(addButtonMatches.length, 2);
+  assert.match(markup, /aria-label="Add another model to collaborate"/u);
+  assert.match(markup, /aria-label="Add parallel chat"/u);
+  assert.doesNotMatch(markup, /Add another model to compare/u);
+  assert.doesNotMatch(markup, /Add another model to collaborate<\/span>/u);
+});
+
 test('group route shows add-participant hint inside the composer', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
@@ -203,6 +233,34 @@ test('group route shows add-participant hint inside the composer', () => {
 
   assert.match(markup, /Add another model to collaborate/u);
   assert.doesNotMatch(markup, /Start a group chat/u);
+});
+
+test('advanced draft controls keep +Group drafts empty and show the compare button without hint copy', () => {
+  const target = {
+    provider: 'claude',
+    instance: 'native',
+    model: 'claude-sonnet',
+    modelSelection: null,
+  } as const;
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        entryPreset: 'group',
+        selectedExecutionTarget: target,
+        showDraftGroupAddButton: true,
+        onQuickAddDraftTemporaryParticipant: () => {},
+        parallelTargets: [target],
+        onAddParallelTarget: () => {},
+        hideDraftParallelHint: true,
+      })}
+    />,
+  );
+
+  assert.match(markup, /class="composerGroupAddRow"/u);
+  assert.match(markup, /aria-label="Add another model to collaborate"/u);
+  assert.match(markup, /aria-label="Add parallel chat"/u);
+  assert.doesNotMatch(markup, /class="composerGroupAvatarSlot"/u);
+  assert.doesNotMatch(markup, /Add another model to compare/u);
 });
 
 test('group route hides add-participant hint and button when max participants is reached', () => {
@@ -269,6 +327,34 @@ test('group route keeps the current audience chip and inline avatar row for part
   assert.match(markup, /data-tooltip="Gemini-CLI · gemini-3.1-pro"/u);
   assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
   assert.doesNotMatch(markup, /aria-label="Remove Inline Reviewer"/u);
+});
+
+test('advanced draft controls keep +Parallel drafts on one lead target, expose the group add button, and preserve compare hint copy', () => {
+  const target = {
+    provider: 'claude',
+    instance: 'native',
+    model: 'claude-sonnet',
+    modelSelection: null,
+  } as const;
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        entryPreset: 'parallel',
+        selectedExecutionTarget: target,
+        showDraftGroupAddButton: true,
+        onQuickAddDraftTemporaryParticipant: () => {},
+        parallelTargets: [target],
+        onAddParallelTarget: () => {},
+        hideDraftGroupHint: true,
+      })}
+    />,
+  );
+
+  assert.match(markup, /aria-label="Add another model to collaborate"/u);
+  assert.match(markup, /aria-label="Add parallel chat"/u);
+  assert.match(markup, /Add another model to compare/u);
+  assert.doesNotMatch(markup, /Add another model to collaborate<\/span>/u);
+  assert.doesNotMatch(markup, /class="parallelStubStack"/u);
 });
 
 test('group route caps the audience chip selection to the configured max audience count', () => {
@@ -471,7 +557,7 @@ test('parallel draft does not show helper chips without runtime-backed assist co
   assert.doesNotMatch(markup, /Compare how different models would approach the same task\./u);
 });
 
-test('direct-lane draft keeps private chat copy without helper chips', () => {
+test('direct-lane draft now uses the profile header without helper chips', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
@@ -481,9 +567,8 @@ test('direct-lane draft keeps private chat copy without helper chips', () => {
     />,
   );
 
-  assert.match(markup, /Private Chat/u);
-  assert.match(markup, /Private lane for this Cat\./u);
-  assert.doesNotMatch(markup, /focused update or recommendation/u);
+  assert.match(markup, /draftHeaderProfile/u);
+  assert.match(markup, /<h1 class="draftHeaderTitle">Milo<\/h1>/u);
   assert.doesNotMatch(markup, /draftPromptChip/u);
   assert.match(markup, /class="audienceChip"/u);
   assert.match(markup, /class="audienceChipAvatar"/u);
@@ -491,10 +576,10 @@ test('direct-lane draft keeps private chat copy without helper chips', () => {
   assert.match(markup, /background:#7A5B3A/u);
   assert.doesNotMatch(markup, /class="composerCatStack"/u);
   assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
-  assert.doesNotMatch(markup, /Cat-led Chat/u);
+  assert.doesNotMatch(markup, /Private Chat/u);
 });
 
-test('direct-lane draft with an active Telegram binding keeps the bound private-lane copy', () => {
+test('direct-lane draft ignores Telegram-bound private-lane copy and stays on the profile header', () => {
   const payload = createPayload();
   payload.chat.botBindings = [
     {
@@ -516,10 +601,11 @@ test('direct-lane draft with an active Telegram binding keeps the bound private-
     />,
   );
 
-  assert.match(markup, /Private Chat/u);
-  assert.match(markup, /Telegram-bound private lane\./u);
-  assert.doesNotMatch(markup, /Private lane for this Cat\./u);
+  assert.match(markup, /draftHeaderProfile/u);
+  assert.match(markup, /<h1 class="draftHeaderTitle">Milo<\/h1>/u);
   assert.doesNotMatch(markup, /draftPromptChip/u);
+  assert.doesNotMatch(markup, /Private Chat/u);
+  assert.doesNotMatch(markup, /Telegram-bound private lane\./u);
 });
 
 test('draft prefers payload-backed assist greeting and starter suggestions when the seam provides them', () => {

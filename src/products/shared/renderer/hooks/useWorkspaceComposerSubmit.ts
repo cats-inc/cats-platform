@@ -69,6 +69,7 @@ import { resolveActiveChannelMessageMetadata } from '../composerMessageMetadata.
 import { useComposerRequestControls } from './useComposerRequestControls.js';
 import { useComposerRequestLifecycle } from './useComposerRequestLifecycle.js';
 import { useComposerSubmitBindings } from './useComposerSubmitBindings.js';
+import type { DraftParallelBranchState } from '../draftParallelBranches.js';
 
 type LoadStateLike =
   | { status: 'loading' }
@@ -114,9 +115,12 @@ export interface WorkspaceComposerSubmitOptions<ModelValue extends WorkspaceExec
   draftExecutionTarget: ModelValue;
   soloChannelExecutionTarget: ModelValue;
   showingParallelChatDraft?: boolean;
+  draftParallelBranches?: DraftParallelBranchState<ModelValue>[];
   draftParallelChatTargets?: ModelValue[];
   draftWorkflowShape?: 'sequential' | 'concurrent';
   draftAudienceKeys?: string[] | null;
+  draftParallelBranchAudienceKeys?: string[][];
+  draftParallelBranchWorkflowShapes?: Array<'sequential' | 'concurrent'>;
   activeWorkflowShape?: 'sequential' | 'concurrent';
   activeAudienceKeys?: string[] | null;
   resetDraftParallelChatTargets?: () => void;
@@ -175,6 +179,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     draftExecutionTarget,
     soloChannelExecutionTarget,
     showingParallelChatDraft = false,
+    draftParallelBranches = [],
     draftParallelChatTargets = [],
     draftWorkflowShape = 'sequential',
     draftAudienceKeys = null,
@@ -273,7 +278,10 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
           originSurface,
           draftCwd,
           draftFiles,
+          draftParallelBranches,
           draftParallelChatTargets,
+          draftParticipantCatIds: draftCatIds,
+          draftTemporaryParticipants,
           buildChannelPath: (createdChannelId) =>
             buildWorkspaceChannelPath(chatPrefix, createdChannelId),
           signal: ackController.signal,
@@ -552,6 +560,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     setFeedback,
     setState,
     draftAudienceKeys,
+    draftParallelBranches,
     draftParallelChatTargets,
     draftWorkflowShape,
     activeAudienceKeys,

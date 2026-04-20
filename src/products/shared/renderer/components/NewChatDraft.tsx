@@ -18,6 +18,8 @@ import { type ExecutionTargetValue } from './ExecutionTarget.js';
 import { CatAvatarRow } from './CatAvatarRow.js';
 import { ComposerCatStack } from './ComposerCatStack.js';
 import { DraftHeader } from './DraftHeader.js';
+import { DraftComposerFooter } from './DraftComposerFooter.js';
+import { DraftComposerStack } from './DraftComposerStack.js';
 import { WorkspaceNewChatDraftTargetSlot } from './WorkspaceNewChatDraftTargetSlot.js';
 import { FolderBrowserContent } from './FolderBrowser.js';
 import { ProviderModelFields } from './ProviderModelFields.js';
@@ -130,6 +132,7 @@ export interface WorkspaceNewChatDraftProps {
   onDraftFilesChange: (files: File[]) => void;
   onDraftCwdClear: () => void;
   onToggleDraftCat: (catId: string) => void;
+  onQuickAddDraftTemporaryParticipant?: () => void;
   autoResize: (el: HTMLTextAreaElement) => void;
   draftDefaultRecipientCatId: string | null;
   onDraftDefaultRecipientChange: (catId: string | null) => void;
@@ -141,6 +144,7 @@ export interface WorkspaceNewChatDraftProps {
   draftCatExecutionTargetOverrides: Map<string, ExecutionTargetValue>;
   onDraftCatExecutionTargetOverride: (catId: string, value: ExecutionTargetValue) => void;
   onDirectLaneExecutionTargetChange?: (catId: string, value: ExecutionTargetValue) => void;
+  onAddParallelTarget?: () => void;
   folderBrowsePath?: string;
   folderBrowseCurrentPath?: string;
   folderBrowseParentPath?: string;
@@ -154,6 +158,8 @@ export interface WorkspaceNewChatDraftProps {
   composerFooterAccessory?: ReactNode;
   draftCustomRegion?: ReactNode;
   surfaceTag?: ReactNode;
+  showDraftGroupAddButton?: boolean;
+  showDraftParallelAddButton?: boolean;
   chooseFolderPlacement?: 'header' | 'plusMenu';
   ComposerCatStackComponent: ComponentType<ComposerCatStackProps>;
   ProviderModelFieldsComponent: ComponentType<ProviderModelFieldsProps>;
@@ -188,6 +194,7 @@ export function WorkspaceNewChatDraft({
   onDraftFilesChange,
   onDraftCwdClear,
   onToggleDraftCat,
+  onQuickAddDraftTemporaryParticipant,
   autoResize,
   draftDefaultRecipientCatId,
   onDraftDefaultRecipientChange,
@@ -199,6 +206,7 @@ export function WorkspaceNewChatDraft({
   draftCatExecutionTargetOverrides,
   onDraftCatExecutionTargetOverride,
   onDirectLaneExecutionTargetChange,
+  onAddParallelTarget,
   folderBrowsePath = '',
   folderBrowseCurrentPath = '',
   folderBrowseParentPath = '',
@@ -212,6 +220,8 @@ export function WorkspaceNewChatDraft({
   composerFooterAccessory = null,
   draftCustomRegion = null,
   surfaceTag = null,
+  showDraftGroupAddButton = false,
+  showDraftParallelAddButton = false,
   chooseFolderPlacement = 'header',
   ComposerCatStackComponent,
   ProviderModelFieldsComponent,
@@ -342,150 +352,174 @@ export function WorkspaceNewChatDraft({
             ) : null}
           </div>
         ) : null}
-        <form
-          className={`composerCard composerCardFresh${plusMenuOpen ? ' composerCardMenuOpen' : ''}`}
-          onSubmit={(event) => void onSendMessage(event)}
-        >
-          {draftFiles.length > 0 ? (
-            <div className="composerAttachments">
-              {draftFiles.map((file, index) => {
-                const isImage = file.type.startsWith('image/');
-                return (
-                  <div key={`${file.name}-${file.size}-${index}`} className="attachmentCard">
-                    <button
-                      className="attachmentRemove"
-                      type="button"
-                      disabled={isSubmittingFirstTurn}
-                      onClick={() => onDraftFilesChange(draftFiles.filter((_, i) => i !== index))}
-                      aria-label={`Remove ${file.name}`}
-                    >
-                      &times;
-                    </button>
-                    {isImage ? (
-                      <img
-                        className="attachmentPreview"
-                        src={URL.createObjectURL(file)}
-                        alt={file.name}
-                        onLoad={(event) => URL.revokeObjectURL((event.target as HTMLImageElement).src)}
-                      />
-                    ) : (
-                      <div className="attachmentFileIcon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                          <path d="M14 2v6h6" />
-                        </svg>
+        <DraftComposerStack
+          card={(
+            <form
+              className={`composerCard composerCardFresh${plusMenuOpen ? ' composerCardMenuOpen' : ''}`}
+              onSubmit={(event) => void onSendMessage(event)}
+            >
+              {draftFiles.length > 0 ? (
+                <div className="composerAttachments">
+                  {draftFiles.map((file, index) => {
+                    const isImage = file.type.startsWith('image/');
+                    return (
+                      <div key={`${file.name}-${file.size}-${index}`} className="attachmentCard">
+                        <button
+                          className="attachmentRemove"
+                          type="button"
+                          disabled={isSubmittingFirstTurn}
+                          onClick={() => onDraftFilesChange(draftFiles.filter((_, i) => i !== index))}
+                          aria-label={`Remove ${file.name}`}
+                        >
+                          &times;
+                        </button>
+                        {isImage ? (
+                          <img
+                            className="attachmentPreview"
+                            src={URL.createObjectURL(file)}
+                            alt={file.name}
+                            onLoad={(event) => URL.revokeObjectURL((event.target as HTMLImageElement).src)}
+                          />
+                        ) : (
+                          <div className="attachmentFileIcon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                              <path d="M14 2v6h6" />
+                            </svg>
+                          </div>
+                        )}
+                        <span className="attachmentName">{file.name}</span>
                       </div>
-                    )}
-                    <span className="attachmentName">{file.name}</span>
-                  </div>
-                );
-              })}
-            </div>
-          ) : null}
-          <textarea
-            className="composerInput"
-            rows={1}
-            placeholder={resolvedCopy.composerPlaceholder}
-            value={composerDraft}
-            disabled={isSubmittingFirstTurn}
-            onChange={(event) => {
-              onComposerChange(event.target.value);
-              autoResize(event.target);
-            }}
-            onKeyDown={(event) => void onComposerKeyDown(event)}
-          />
-          <div className="composerBottomRow">
-            <div className="composerLeftGroup">
-              <div className="composerPlusWrapper" ref={plusMenuRef}>
-                <button
-                  className="composerPlusButton"
-                  type="button"
-                  aria-label="Attach"
-                  disabled={isSubmittingFirstTurn}
-                  onClick={onTogglePlusMenu}
-                >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M8 3v10" />
-                    <path d="M3 8h10" />
-                  </svg>
-                </button>
-                {plusMenuOpen ? (
-                  <div className="composerPlusMenu">
+                    );
+                  })}
+                </div>
+              ) : null}
+              <textarea
+                className="composerInput"
+                rows={1}
+                placeholder={resolvedCopy.composerPlaceholder}
+                value={composerDraft}
+                disabled={isSubmittingFirstTurn}
+                onChange={(event) => {
+                  onComposerChange(event.target.value);
+                  autoResize(event.target);
+                }}
+                onKeyDown={(event) => void onComposerKeyDown(event)}
+              />
+              <div className="composerBottomRow">
+                <div className="composerLeftGroup">
+                  <div className="composerPlusWrapper" ref={plusMenuRef}>
                     <button
-                      className="composerPlusMenuItem"
+                      className="composerPlusButton"
                       type="button"
+                      aria-label="Attach"
                       disabled={isSubmittingFirstTurn}
-                      onClick={onFileSelect}
+                      onClick={onTogglePlusMenu}
                     >
                       <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M14 10v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-3" />
-                        <path d="M8 2v8" />
-                        <path d="M4 6l4-4 4 4" />
+                        <path d="M8 3v10" />
+                        <path d="M3 8h10" />
                       </svg>
-                      Add photos and files
                     </button>
-                    {chooseFolderPlacement === 'plusMenu' ? (
-                      <button
-                        className="composerPlusMenuItem"
-                        type="button"
-                        disabled={isSubmittingFirstTurn}
-                        onClick={() => {
-                          openSidePanelTo('cwd');
-                        }}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
-                        </svg>
-                        {resolvedCopy.folderActionLabel}
-                      </button>
+                    {plusMenuOpen ? (
+                      <div className="composerPlusMenu">
+                        <button
+                          className="composerPlusMenuItem"
+                          type="button"
+                          disabled={isSubmittingFirstTurn}
+                          onClick={onFileSelect}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M14 10v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-3" />
+                            <path d="M8 2v8" />
+                            <path d="M4 6l4-4 4 4" />
+                          </svg>
+                          Add photos and files
+                        </button>
+                        {chooseFolderPlacement === 'plusMenu' ? (
+                          <button
+                            className="composerPlusMenuItem"
+                            type="button"
+                            disabled={isSubmittingFirstTurn}
+                            onClick={() => {
+                              openSidePanelTo('cwd');
+                            }}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
+                            </svg>
+                            {resolvedCopy.folderActionLabel}
+                          </button>
+                        ) : null}
+                      </div>
                     ) : null}
                   </div>
-                ) : null}
+                  {showDraftGroupAddButton && onQuickAddDraftTemporaryParticipant ? (
+                    <button
+                      type="button"
+                      className="parallelAddButton"
+                      disabled={isSubmittingFirstTurn}
+                      onClick={onQuickAddDraftTemporaryParticipant}
+                      aria-label="Add another model to collaborate"
+                    >
+                      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M8 3v10" />
+                        <path d="M3 8h10" />
+                      </svg>
+                    </button>
+                  ) : null}
+                </div>
+                <DraftTargetSlotComponent
+                  payload={payload}
+                  effectiveDefaultRecipientCat={effectiveDefaultRecipientCat}
+                  nonLeadDraftCats={nonLeadDraftCatIds
+                    .map((id) => chatCats.find((cat) => cat.id === id))
+                    .filter((cat): cat is NonNullable<typeof cat> => cat != null)}
+                  isDirectLaneContext={isDirectLaneContext}
+                  activePanelExecutionTarget={activePanelExecutionTarget}
+                  isSubmittingFirstTurn={isSubmittingFirstTurn}
+                  onOpenExecution={() => openSidePanelTo('execution')}
+                />
+                <button
+                  className="composerSendButton"
+                  disabled={!composerDraft.trim() || isSubmittingFirstTurn}
+                  type="submit"
+                  aria-label="Send"
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8 13V3" />
+                    <path d="M3 7l5-5 5 5" />
+                  </svg>
+                </button>
               </div>
-            </div>
-            <DraftTargetSlotComponent
-              payload={payload}
-              effectiveDefaultRecipientCat={effectiveDefaultRecipientCat}
-              nonLeadDraftCats={nonLeadDraftCatIds
-                .map((id) => chatCats.find((cat) => cat.id === id))
-                .filter((cat): cat is NonNullable<typeof cat> => cat != null)}
-              isDirectLaneContext={isDirectLaneContext}
-              activePanelExecutionTarget={activePanelExecutionTarget}
-              isSubmittingFirstTurn={isSubmittingFirstTurn}
-              onOpenExecution={() => openSidePanelTo('execution')}
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                disabled={isSubmittingFirstTurn}
+                style={{ display: 'none' }}
+                onChange={(event) => {
+                  const input = event.currentTarget;
+                  if (input.files && input.files.length > 0) {
+                    const selected = Array.from(input.files);
+                    onDraftFilesChange([...draftFiles, ...selected]);
+                  }
+                  input.value = '';
+                }}
+              />
+            </form>
+          )}
+          footer={(
+            <DraftComposerFooter
+              accessory={composerFooterAccessory}
+              showParallelAddButton={showDraftParallelAddButton}
+              hideParallelHint
+              disabled={isSubmittingFirstTurn}
+              onAddParallelTarget={onAddParallelTarget}
             />
-            <button
-              className="composerSendButton"
-              disabled={!composerDraft.trim() || isSubmittingFirstTurn}
-              type="submit"
-              aria-label="Send"
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M8 13V3" />
-                <path d="M3 7l5-5 5 5" />
-              </svg>
-            </button>
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            disabled={isSubmittingFirstTurn}
-            style={{ display: 'none' }}
-            onChange={(event) => {
-              const input = event.currentTarget;
-              if (input.files && input.files.length > 0) {
-                const selected = Array.from(input.files);
-                onDraftFilesChange([...draftFiles, ...selected]);
-              }
-              input.value = '';
-            }}
-          />
-        </form>
-        {composerFooterAccessory ? (
-          <div className="composerFooterRow">{composerFooterAccessory}</div>
-        ) : null}
-        {postComposerAccessory}
+          )}
+          helperRegion={postComposerAccessory}
+        />
       </section>
       {sidePanelOpen ? (
         <SidePanel

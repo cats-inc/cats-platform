@@ -34,6 +34,7 @@ import type {
 import {
   createDefaultChatState,
 } from '../defaults.js';
+import { normalizeAdvancedDraftControlsPreferences } from '../../../shared/advancedDraftControls.js';
 import type { PersistedChatSnapshot } from '../core-snapshot/index.js';
 import {
   buildPersistedChatSnapshot,
@@ -150,6 +151,9 @@ export function normalizeChatState(rawState: unknown): ChatState {
     showLiveProgressDetails: readBoolean(stateRecord.showLiveProgressDetails, false),
     concurrentPresentationMode: normalizeConcurrentPresentationMode(
       stateRecord.concurrentPresentationMode,
+    ),
+    advancedDraftControls: normalizeAdvancedDraftControlsPreferences(
+      stateRecord.advancedDraftControls,
     ),
     folderBrowsePreferences: normalizeFolderBrowsePreferences(stateRecord.folderBrowsePreferences),
   };

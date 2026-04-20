@@ -15,6 +15,7 @@ import {
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
 import { listPlatformProductDescriptors } from '../../../shared/platformProducts.js';
 import { listEnabledPlatformSurfaces } from '../../../shared/platformSurfaces.js';
+import { cloneAdvancedDraftControlsPreferences } from '../../shared/advancedDraftControls.js';
 import { createDefaultFolderBrowsePreferences } from '../../shared/folderBrowsePreferences.js';
 import type { AppShellPayload, ChatBotBindingSummary, ChatState } from '../api/contracts.js';
 import { createUnavailableRuntimeSetupSummary } from '../../../runtime/setup.js';
@@ -120,6 +121,9 @@ export function createAppShell(
       showVerboseMessages: chat.showVerboseMessages,
       showLiveProgressDetails: chat.showLiveProgressDetails ?? false,
       concurrentPresentationMode: chat.concurrentPresentationMode ?? 'inline_stack',
+      advancedDraftControls: cloneAdvancedDraftControlsPreferences(
+        chat.advancedDraftControls,
+      ),
       folderBrowsePreferences: structuredClone(
         chat.folderBrowsePreferences ?? createDefaultFolderBrowsePreferences(),
       ),

@@ -6,7 +6,12 @@ import {
   sendParallelChatMessage,
 } from './api/index.js';
 import type { WorkspaceExecutionTargetValue } from './hooks/useWorkspaceComposerSubmit.js';
+import {
+  resolveDraftAudienceParticipantIds,
+  type DraftTemporaryParticipant,
+} from './draftChatUtils.js';
 import { createDraftChannelTitle } from './workspaceChatUtils.js';
+import type { DraftParallelBranchState } from './draftParallelBranches.js';
 
 export interface ParallelDispatchRequestState {
   kind: 'parallel';
@@ -36,7 +41,10 @@ export interface SubmitNewParallelChatDraftOptions {
   originSurface: PlatformSurfaceId;
   draftCwd: string | null;
   draftFiles: File[];
+  draftParallelBranches: DraftParallelBranchState<WorkspaceExecutionTargetValue>[];
   draftParallelChatTargets: WorkspaceExecutionTargetValue[];
+  draftParticipantCatIds?: string[];
+  draftTemporaryParticipants?: DraftTemporaryParticipant[];
   buildChannelPath: (channelId: string) => string;
   signal?: AbortSignal;
 }
@@ -54,7 +62,10 @@ export async function submitNewParallelChatDraft({
   originSurface,
   draftCwd,
   draftFiles,
+  draftParallelBranches,
   draftParallelChatTargets,
+  draftParticipantCatIds = [],
+  draftTemporaryParticipants = [],
   buildChannelPath,
   signal,
 }: SubmitNewParallelChatDraftOptions): Promise<SubmitNewParallelChatDraftResult> {
@@ -66,11 +77,22 @@ export async function submitNewParallelChatDraft({
     title: createDraftChannelTitle(body, payload.chat.channels.length),
     originSurface,
     repoPath: draftCwd ?? undefined,
-    targets: draftParallelChatTargets.map((target) => ({
+    targets: draftParallelChatTargets.map((target, index) => ({
       provider: target.provider,
       instance: target.instance ?? null,
       model: target.model ?? null,
       modelSelection: target.modelSelection ?? null,
+      audienceKeys: draftParallelBranches[index]?.audienceKeys ?? [],
+    })),
+    participantCatIds: draftParticipantCatIds,
+    temporaryParticipants: draftTemporaryParticipants.map((participant) => ({
+      participantId: participant.participantId,
+      name: participant.name,
+      provider: participant.provider,
+      instance: participant.instance ?? undefined,
+      model: participant.model ?? undefined,
+      modelSelection: participant.modelSelection ?? null,
+      roleHint: participant.roleHint ?? undefined,
     })),
   }, signal);
   const activeChannelId =
@@ -88,6 +110,30 @@ export async function submitNewParallelChatDraft({
     activeChannelId,
     body,
     attachments: encodedAttachments,
+    channelInputs: created.group.memberChannelIds.map((channelId, index) => {
+      const branch = draftParallelBranches[index];
+      if (!branch) {
+        return { channelId };
+      }
+      const recipientParticipantIds = branch.audienceKeys.length > 0
+        ? resolveDraftAudienceParticipantIds({
+            draftParticipantCatIds,
+            draftTemporaryParticipants,
+            draftAudienceKeys: branch.audienceKeys,
+            maxAudienceParticipants:
+              payload.chat.capabilities.maxAudienceParticipants ?? Number.POSITIVE_INFINITY,
+          })
+        : [];
+      return {
+        channelId,
+        messageMetadata: recipientParticipantIds.length > 0
+          ? {
+              recipientParticipantIds,
+              workflowShape: branch.workflowShape,
+            }
+          : undefined,
+      };
+    }),
   }, signal);
 
   return {

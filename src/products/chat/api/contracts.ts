@@ -47,6 +47,7 @@ import type {
 } from '../../../shared/platform-contract.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import type { FolderBrowsePreferences } from '../../shared/folderBrowsePreferences.js';
+import type { AdvancedDraftControlsPreferences } from '../../shared/advancedDraftControls.js';
 import type {
   RuntimePermissionMode,
   RuntimeSessionCreateContractInput,
@@ -469,6 +470,7 @@ export interface ChatState {
   showVerboseMessages: boolean;
   showLiveProgressDetails?: boolean;
   concurrentPresentationMode?: ConcurrentChatPresentationMode;
+  advancedDraftControls?: AdvancedDraftControlsPreferences;
   folderBrowsePreferences?: FolderBrowsePreferences;
 }
 
@@ -516,6 +518,7 @@ export interface ChatShellState {
   showVerboseMessages: boolean;
   showLiveProgressDetails?: boolean;
   concurrentPresentationMode?: ConcurrentChatPresentationMode;
+  advancedDraftControls?: AdvancedDraftControlsPreferences;
   folderBrowsePreferences?: FolderBrowsePreferences;
   botBindings: ChatBotBindingSummary[];
   newChatAssist?: GuideCatAssistNewChatByMode | null;
@@ -600,7 +603,11 @@ export interface CreateParallelChatGroupInput {
   originSurface: PlatformSurfaceId;
   repoPath?: string;
   responseLanguage?: string;
-  targets: ParallelChatTarget[];
+  targets: Array<ParallelChatTarget & {
+    audienceKeys?: string[];
+  }>;
+  participantCatIds?: string[];
+  temporaryParticipants?: CreateTemporaryParticipantInput[];
 }
 
 export interface UpdateGlobalOrchestratorInput {
@@ -639,6 +646,11 @@ export interface SendParallelChatMessageInput {
   activeChannelId: string;
   body: string;
   attachments?: ParallelChatAttachmentInput[];
+  channelInputs?: Array<{
+    channelId: string;
+    body?: string;
+    messageMetadata?: ChannelMessageMetadata;
+  }>;
 }
 
 export interface CancelParallelChatGroupInput {

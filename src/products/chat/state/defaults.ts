@@ -12,6 +12,7 @@ import {
   getDefaultProviderInstance,
 } from '../../../shared/providerCatalog.js';
 import { listEnabledPlatformSurfaces } from '../../../shared/platformSurfaces.js';
+import { createDefaultAdvancedDraftControlsPreferences } from '../../shared/advancedDraftControls.js';
 import { createDefaultFolderBrowsePreferences } from '../../shared/folderBrowsePreferences.js';
 export { createEmptyMemoryCheckpoint };
 
@@ -117,6 +118,7 @@ export function createDefaultChatState(): ChatState {
     showVerboseMessages: false,
     showLiveProgressDetails: false,
     concurrentPresentationMode: 'inline_stack' as const,
+    advancedDraftControls: createDefaultAdvancedDraftControlsPreferences(),
     folderBrowsePreferences: createDefaultFolderBrowsePreferences(),
   };
 }

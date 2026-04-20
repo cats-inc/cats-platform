@@ -5,9 +5,11 @@ import type {
   CancelChannelResponse,
   CancelParallelChatGroupInput,
   CancelParallelChatGroupResponse,
+  ChannelMessageMetadata,
   ChatChannelView,
   CreateChatChannelInput,
   CreateCatInput,
+  CreateTemporaryParticipantInput,
   RelayParallelChatMessageInput,
   SendChannelMessageInput,
   SendChannelMessageResponse,
@@ -271,7 +273,11 @@ export interface CreateParallelChatGroupInput {
   originSurface: PlatformSurfaceId;
   repoPath?: string;
   responseLanguage?: string;
-  targets: ParallelChatTargetInput[];
+  targets: Array<ParallelChatTargetInput & {
+    audienceKeys?: string[];
+  }>;
+  participantCatIds?: string[];
+  temporaryParticipants?: CreateTemporaryParticipantInput[];
 }
 
 export interface ParallelChatGroupMemberSummary extends ParallelChatTargetInput {
@@ -303,6 +309,11 @@ export interface SendParallelChatMessageInput {
   activeChannelId: string;
   body: string;
   attachments?: Array<{ name: string; data: string }>;
+  channelInputs?: Array<{
+    channelId: string;
+    body?: string;
+    messageMetadata?: ChannelMessageMetadata;
+  }>;
 }
 
 export interface ParallelChatDispatchResponse {

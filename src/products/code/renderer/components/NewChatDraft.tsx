@@ -13,6 +13,7 @@ import {
   useDraftHelperChipVisibility,
 } from '../../../shared/renderer/draftHelperChips.js';
 import { useDraftSessionChips } from '../../../shared/renderer/hooks/useDraftSessionChips.js';
+import { isAdvancedDraftControlsEnabled } from '../../../shared/advancedDraftControls.js';
 import { isComposerBusyForDraft } from '../../../../shared/composer.js';
 
 export const NEW_CODE_DRAFT_COPY: WorkspaceNewChatDraftCopy = {
@@ -63,6 +64,8 @@ function buildWorkspaceDraftProps(input: {
     draftRuntimeSessionPolicy,
     onDraftRuntimeSessionPolicyChange,
     onCancelPendingSend,
+    hideDraftGroupHint,
+    hideDraftParallelHint,
     ...workspaceProps
   } = props;
   const codeAssist = props.payload.guideCatAssist?.codeNewDraft ?? null;
@@ -89,6 +92,8 @@ function buildWorkspaceDraftProps(input: {
   void draftRuntimeSessionPolicy;
   void onDraftRuntimeSessionPolicyChange;
   void onCancelPendingSend;
+  void hideDraftGroupHint;
+  void hideDraftParallelHint;
 
   return {
     ...workspaceProps,
@@ -121,6 +126,11 @@ export function NewChatDraft(props: NewChatDraftProps) {
 }
 
 function CodeGroupParallelDraft(props: NewChatDraftProps) {
+  const advancedDraftControlsEnabled = isAdvancedDraftControlsEnabled(
+    props.payload.chat.advancedDraftControls,
+    'code',
+  );
+  const showCrossGroupButton = advancedDraftControlsEnabled && props.entryPreset === 'parallel';
   const { permissionChip, whereExtras } = useDraftSessionChips({
     draftCwd: props.draftCwd,
     busy: props.busy,
@@ -134,11 +144,22 @@ function CodeGroupParallelDraft(props: NewChatDraftProps) {
       composerHeaderWhereExtras={whereExtras}
       surfaceTag={<ComposerSurfaceChip surface="code" />}
       folderActionLabel={NEW_CODE_DRAFT_COPY.folderActionLabel}
+      showDraftGroupAddButton={showCrossGroupButton}
+      hideDraftGroupHint={showCrossGroupButton}
+      hideDraftParallelHint={advancedDraftControlsEnabled && props.entryPreset !== 'parallel'}
     />
   );
 }
 
 function CodeDefaultDraft(props: NewChatDraftProps) {
+  const advancedDraftControlsEnabled = isAdvancedDraftControlsEnabled(
+    props.payload.chat.advancedDraftControls,
+    'code',
+  );
+  const showAdvancedEntryButtons =
+    advancedDraftControlsEnabled
+    && props.allowAddCat !== false
+    && !props.draftDefaultRecipientCatId;
   const { permissionChip, whereExtras } = useDraftSessionChips({
     draftCwd: props.draftCwd,
     busy: props.busy,
@@ -172,6 +193,12 @@ function CodeDefaultDraft(props: NewChatDraftProps) {
       composerHeaderAccessory={permissionChip}
       composerHeaderWhereExtras={whereExtras}
       surfaceTag={<ComposerSurfaceChip surface="code" />}
+      showDraftGroupAddButton={showAdvancedEntryButtons}
+      onQuickAddDraftTemporaryParticipant={showAdvancedEntryButtons
+        ? props.onQuickAddDraftTemporaryParticipant
+        : undefined}
+      showDraftParallelAddButton={showAdvancedEntryButtons}
+      onAddParallelTarget={showAdvancedEntryButtons ? props.onAddParallelTarget : undefined}
     />
   );
 }

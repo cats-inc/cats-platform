@@ -6,17 +6,21 @@ import {
 export function useOnGenericDraftRouteEntry(
   isGenericDraftRoute: boolean,
   onEnterGenericDraftRoute: () => void,
+  genericDraftRouteKey: string = '__generic__',
 ): void {
-  const wasGenericDraftRoute = useRef(false);
+  const previousGenericDraftRouteKey = useRef<string | null>(null);
 
   useEffect(() => {
-    const justEnteredGenericDraftRoute =
-      isGenericDraftRoute && !wasGenericDraftRoute.current;
-    wasGenericDraftRoute.current = isGenericDraftRoute;
-    if (!justEnteredGenericDraftRoute) {
+    const nextGenericDraftRouteKey = isGenericDraftRoute ? genericDraftRouteKey : null;
+    const shouldRunEntryReset =
+      nextGenericDraftRouteKey != null
+      && previousGenericDraftRouteKey.current !== nextGenericDraftRouteKey;
+    previousGenericDraftRouteKey.current = nextGenericDraftRouteKey;
+
+    if (!shouldRunEntryReset) {
       return;
     }
 
     onEnterGenericDraftRoute();
-  }, [isGenericDraftRoute, onEnterGenericDraftRoute]);
+  }, [genericDraftRouteKey, isGenericDraftRoute, onEnterGenericDraftRoute]);
 }

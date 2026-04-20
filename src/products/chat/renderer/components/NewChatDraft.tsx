@@ -46,12 +46,17 @@ function NewChatDraftInner(props: NewChatDraftProps) {
 
   const isDirectLaneDraft = !(props.allowAddCat ?? true) && Boolean(props.draftDefaultRecipientCatId);
   const isParallelDraft = (props.parallelTargets?.length ?? 0) >= 2;
-  const isDefaultChatEntry =
-    (props.entryPreset ?? 'default') === 'default'
-    && !isDirectLaneDraft
-    && !isParallelDraft;
+  const entryPreset = props.entryPreset ?? 'default';
+  const showsChatStarterChip =
+    !isDirectLaneDraft
+    && (
+      entryPreset === 'default'
+      || entryPreset === 'group'
+      || entryPreset === 'parallel'
+      || isParallelDraft
+    );
 
-  const leadingStarterChips = isDefaultChatEntry
+  const leadingStarterChips = showsChatStarterChip
     ? [
       {
         id: 'pomodoro-app',

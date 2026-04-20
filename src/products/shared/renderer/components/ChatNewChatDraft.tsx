@@ -19,6 +19,9 @@ import {
   buildChatNewChatDraftSidePanelSections,
 } from './chatNewChatDraftSidePanel.js';
 import { DraftHeader } from './DraftHeader.js';
+import { DraftComposerFooter } from './DraftComposerFooter.js';
+import { DraftComposerStack } from './DraftComposerStack.js';
+import { ParallelDraftShadowBranchRow } from './ParallelDraftShadowBranchRow.js';
 import { resolveChatNewChatDraftViewState } from './chatNewChatDraftSupport.js';
 import { useChatNewChatDraftPanelState } from './useChatNewChatDraftPanelState.js';
 import type { RoomWorkflowShape } from '../../../../shared/roomRouting.js';
@@ -64,6 +67,7 @@ export interface NewChatDraftProps {
     },
   ) => void;
   onQuickAddDraftTemporaryParticipant?: () => void;
+  showDraftGroupAddButton?: boolean;
   onRemoveDraftTemporaryParticipant: (participantId: string) => void;
   onUpdateDraftTemporaryParticipant: (
     participantId: string,
@@ -85,6 +89,7 @@ export interface NewChatDraftProps {
   onParallelTargetChange?: (index: number, value: ExecutionTargetValue) => void;
   onAddParallelTarget?: () => void;
   onRemoveParallelTarget?: (index: number) => void;
+  showDraftParallelAddButton?: boolean;
   folderBrowsePath?: string;
   folderBrowseCurrentPath?: string;
   folderBrowseParentPath?: string;
@@ -98,6 +103,11 @@ export interface NewChatDraftProps {
   onToggleDraftWorkflowShape?: () => void;
   draftAudienceKeys?: string[] | null;
   onSetAudienceKeys?: (keys: string[]) => void;
+  parallelBranchAudienceKeys?: string[][];
+  parallelBranchWorkflowShapes?: RoomWorkflowShape[];
+  onSetParallelBranchAudienceKeys?: (index: number, keys: string[]) => void;
+  onToggleParallelBranchWorkflowShape?: (index: number) => void;
+  onQuickAddParallelBranchTemporaryParticipant?: (index: number) => void;
   draftRuntimeSessionPolicy?: RuntimeSessionPolicy | null;
   onDraftRuntimeSessionPolicyChange?: (policy: RuntimeSessionPolicy) => void;
   composerHeaderAccessory?: ReactNode;
@@ -105,6 +115,8 @@ export interface NewChatDraftProps {
   composerFooterAccessory?: ReactNode;
   draftCustomRegion?: ReactNode;
   surfaceTag?: ReactNode;
+  hideDraftGroupHint?: boolean;
+  hideDraftParallelHint?: boolean;
   folderActionLabel?: string;
   chooseFolderPlacement?: 'header' | 'plusMenu';
   leadingStarterChips?: ReadonlyArray<{
@@ -142,6 +154,7 @@ export function NewChatDraft({
   onToggleDraftCat,
   onAddDraftTemporaryParticipant,
   onQuickAddDraftTemporaryParticipant,
+  showDraftGroupAddButton = false,
   onRemoveDraftTemporaryParticipant,
   onUpdateDraftTemporaryParticipant,
   autoResize,
@@ -160,6 +173,7 @@ export function NewChatDraft({
   onParallelTargetChange,
   onAddParallelTarget,
   onRemoveParallelTarget,
+  showDraftParallelAddButton = false,
   folderBrowsePath = '',
   folderBrowseCurrentPath = '',
   folderBrowseParentPath = '',
@@ -173,11 +187,18 @@ export function NewChatDraft({
   onToggleDraftWorkflowShape,
   draftAudienceKeys,
   onSetAudienceKeys,
+  parallelBranchAudienceKeys,
+  parallelBranchWorkflowShapes,
+  onSetParallelBranchAudienceKeys,
+  onToggleParallelBranchWorkflowShape,
+  onQuickAddParallelBranchTemporaryParticipant,
   composerHeaderAccessory = null,
   composerHeaderWhereExtras = null,
   composerFooterAccessory = null,
   draftCustomRegion = null,
   surfaceTag = null,
+  hideDraftGroupHint = false,
+  hideDraftParallelHint = false,
   folderActionLabel = 'Choose folder',
   chooseFolderPlacement = 'header',
   leadingStarterChips,
@@ -237,11 +258,31 @@ export function NewChatDraft({
     return participants.slice(0, maxAudienceParticipants);
   }
 
+  function resolveParallelBranchAudienceParticipants(
+    branchIndex: number,
+    target: ExecutionTargetValue,
+  ): typeof groupComposerParticipants {
+    const branchAudienceKeys = parallelBranchAudienceKeys?.[branchIndex] ?? [];
+    if (groupComposerParticipants.length === 0 || branchAudienceKeys.length === 0) {
+      return [buildAudienceParticipantFromExecutionTarget(target, `parallel:${branchIndex}`)];
+    }
+
+    const byKey = new Map(groupComposerParticipants.map((participant) => [participant.key, participant]));
+    const resolved = branchAudienceKeys
+      .map((key) => byKey.get(key))
+      .filter(Boolean) as typeof groupComposerParticipants;
+
+    if (resolved.length > 0) {
+      return capAudienceParticipants(resolved);
+    }
+
+    return [buildAudienceParticipantFromExecutionTarget(target, `parallel:${branchIndex}`)];
+  }
+
   // Build unified audience participants for all modes
   const audienceParticipants: typeof groupComposerParticipants = (() => {
-    // Parallel mode: first target as implicit participant
     if (isParallelMode && parallelTargets?.[0]) {
-      return [buildAudienceParticipantFromExecutionTarget(parallelTargets[0], 'parallel:0')];
+      return resolveParallelBranchAudienceParticipants(0, parallelTargets[0]);
     }
 
     if (isGroupDraft) {
@@ -267,11 +308,18 @@ export function NewChatDraft({
 
     return [];
   })();
+  const hasPrimaryParallelBranchAudience = isParallelMode
+    && groupComposerParticipants.length > 0
+    && (parallelBranchAudienceKeys?.[0]?.length ?? 0) > 0;
 
   // Determine click action for single-participant chip
   const audienceSingleClick = (() => {
     if (isGroupDraft) return undefined;
-    if (isParallelMode) return () => openSidePanelTo('parallel:0');
+    if (isParallelMode) {
+      return hasPrimaryParallelBranchAudience
+        ? () => openSidePanelTo('cats')
+        : () => openSidePanelTo('parallel:0');
+    }
     if (isDirectLaneContext) return () => openSidePanelTo('execution');
     if (effectiveDefaultRecipientCat || effectiveDefaultRecipientTemporaryParticipant) {
       return () => openSidePanelTo('cats');
@@ -309,6 +357,64 @@ export function NewChatDraft({
     onUpdateDraftTemporaryParticipant,
   });
   const showCancelPendingSend = isAckPending && onCancelPendingSend != null;
+  const shouldRenderGroupAddRow =
+    !isDirectLaneContext && (isGroupDraft || showDraftGroupAddButton);
+  const canAddAnotherGroupParticipant = !hasReachedGroupParticipantLimit;
+  const shouldShowGroupParticipantRoster =
+    groupComposerParticipants.length > 0
+    && !isParallelMode
+    && (entryPreset === 'group' || groupComposerParticipants.length > 1);
+  const canRemoveGroupParticipant =
+    !isSubmittingFirstTurn
+    && (
+      entryPreset === 'group'
+        ? groupComposerParticipants.length > 2
+        : groupComposerParticipants.length >= 2
+    );
+  const minParallelTargetCount = entryPreset === 'parallel' ? 2 : 1;
+  const useDangerGroupRemoveHover = entryPreset === 'group';
+  const useDangerParallelRemoveHover = entryPreset === 'parallel';
+  const accentGroupAddButton = entryPreset === 'group';
+  const accentParallelAddButton = entryPreset === 'parallel';
+
+  function renderCollaborateAddControl(options: {
+    showHint: boolean;
+    accent: boolean;
+    className?: string;
+  }) {
+    if (!canAddAnotherGroupParticipant) {
+      return null;
+    }
+
+    return (
+      <div className={options.className ?? 'composerGroupAddRow'}>
+        <button
+          type="button"
+          className={`parallelAddButton${options.accent ? ' parallelAddButtonAccent' : ''}`}
+          disabled={isSubmittingFirstTurn}
+          onClick={() => {
+            if (onQuickAddDraftTemporaryParticipant) {
+              onQuickAddDraftTemporaryParticipant();
+              return;
+            }
+            openSidePanelTo('cats');
+          }}
+          aria-label="Add another model to collaborate"
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M8 3v10" />
+            <path d="M3 8h10" />
+          </svg>
+        </button>
+        {options.showHint ? (
+          <span className={`parallelAddHint${options.accent ? ' parallelAddHintAccent' : ''}`}>
+            Add another model to collaborate
+          </span>
+        ) : null}
+      </div>
+    );
+  }
+
   return (
     <div className="viewShell viewShellDraft">
       <section className="draftShell">
@@ -385,323 +491,333 @@ export function NewChatDraft({
             ) : null}
           </div>
         ) : null}
-        <form
-          className={`composerCard composerCardFresh${parallelTargets ? ' parallelComposerAnchor' : ''}${plusMenuOpen ? ' composerCardMenuOpen' : ''}`}
-          onSubmit={(event) => void onSendMessage(event)}
-        >
-          {draftFiles.length > 0 ? (
-            <div className="composerAttachments">
-              {draftFiles.map((file, index) => {
-                const isImage = file.type.startsWith('image/');
-                return (
-                  <div key={`${file.name}-${file.size}-${index}`} className="attachmentCard">
-                    <button
-                      className="attachmentRemove"
-                      type="button"
-                      disabled={isSubmittingFirstTurn}
-                      onClick={() => onDraftFilesChange(draftFiles.filter((_, i) => i !== index))}
-                      aria-label={`Remove ${file.name}`}
-                    >
-                      &times;
-                    </button>
-                    {isImage ? (
-                      <img
-                        className="attachmentPreview"
-                        src={URL.createObjectURL(file)}
-                        alt={file.name}
-                        onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)}
-                      />
-                    ) : (
-                      <div className="attachmentFileIcon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                          <path d="M14 2v6h6" />
-                        </svg>
-                      </div>
-                    )}
-                    <span className="attachmentName">{file.name}</span>
-                  </div>
-                );
-              })}
-            </div>
-          ) : null}
-          <textarea
-            className="composerInput"
-            rows={1}
-            placeholder="How can I help you today?"
-            value={composerDraft}
-            disabled={isSubmittingFirstTurn}
-            onChange={(event) => { onComposerChange(event.target.value); autoResize(event.target); }}
-            onKeyDown={(event) => void onComposerKeyDown(event)}
-          />
-          <div className="composerBottomRow">
-            <div className="composerLeftGroup">
-              <div className="composerPlusWrapper" ref={plusMenuRef}>
-                <button
-                  className="composerPlusButton"
-                  type="button"
-                  aria-label="Attach"
-                  disabled={isSubmittingFirstTurn}
-                  onClick={onTogglePlusMenu}
-                >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M8 3v10" />
-                    <path d="M3 8h10" />
-                  </svg>
-                </button>
-                {plusMenuOpen ? (
-                  <div className="composerPlusMenu">
-                    <button
-                      className="composerPlusMenuItem"
-                      type="button"
-                      disabled={isSubmittingFirstTurn}
-                      onClick={onFileSelect}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M14 10v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-3" />
-                        <path d="M8 2v8" />
-                        <path d="M4 6l4-4 4 4" />
-                      </svg>
-                      Add photos and files
-                    </button>
-                    {chooseFolderPlacement === 'plusMenu' ? (
-                      <button
-                        className="composerPlusMenuItem"
-                        type="button"
-                        disabled={isSubmittingFirstTurn}
-                        onClick={() => {
-                          openSidePanelTo('cwd');
-                        }}
-                      >
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
-                        </svg>
-                        {folderActionLabel}
-                      </button>
-                    ) : null}
-                  </div>
-                ) : null}
-              </div>
-              {isGroupDraft ? (
-                <div className="composerGroupAddRow">
-                  {groupComposerParticipants.map((participant) => {
-                    const canRemove = !isSubmittingFirstTurn && groupComposerParticipants.length > 2;
+        <DraftComposerStack
+          card={(
+            <form
+              className={`composerCard composerCardFresh${parallelTargets ? ' parallelComposerAnchor' : ''}${plusMenuOpen ? ' composerCardMenuOpen' : ''}`}
+              onSubmit={(event) => void onSendMessage(event)}
+            >
+              {draftFiles.length > 0 ? (
+                <div className="composerAttachments">
+                  {draftFiles.map((file, index) => {
+                    const isImage = file.type.startsWith('image/');
                     return (
-                      <div key={participant.key} className="composerGroupAvatarSlot">
-                        <div
-                          className="catAvatar"
-                          role={isSubmittingFirstTurn ? undefined : 'button'}
-                          tabIndex={isSubmittingFirstTurn ? undefined : 0}
-                          onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('cats')}
-                          data-tooltip={participant.isCat && participant.executionLabel
-                            ? `${participant.name} \u00b7 ${participant.executionLabel}`
-                            : (participant.executionLabel || participant.name)}
-                          style={
-                            participant.avatarUrl
-                              ? {
-                                  backgroundImage: `url(${participant.avatarUrl})`,
-                                  backgroundSize: 'cover',
-                                  backgroundPosition: 'center',
-                                }
-                              : participant.isCat
-                                ? { background: participant.avatarColor ?? '#8B7E74' }
-                                : {
-                                    background: '#fff',
-                                    color: '#222',
-                                    border: '1px solid rgba(0, 0, 0, 0.15)',
-                                  }
-                          }
+                      <div key={`${file.name}-${file.size}-${index}`} className="attachmentCard">
+                        <button
+                          className="attachmentRemove"
+                          type="button"
+                          disabled={isSubmittingFirstTurn}
+                          onClick={() => onDraftFilesChange(draftFiles.filter((_, i) => i !== index))}
+                          aria-label={`Remove ${file.name}`}
                         >
-                          {participant.avatarUrl ? null : catInitials(participant.name)}
-                        </div>
-                        {canRemove ? (
-                          <button
-                            type="button"
-                            className="composerGroupAvatarRemove"
-                            aria-label={`Remove ${participant.name}`}
-                            onClick={() => {
-                              if (participant.isCat && participant.catId) {
-                                onToggleDraftCat(participant.catId);
-                              } else if (participant.participantId) {
-                                onRemoveDraftTemporaryParticipant(participant.participantId);
-                              }
-                            }}
-                          >
-                            &times;
-                          </button>
-                        ) : null}
+                          &times;
+                        </button>
+                        {isImage ? (
+                          <img
+                            className="attachmentPreview"
+                            src={URL.createObjectURL(file)}
+                            alt={file.name}
+                            onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)}
+                          />
+                        ) : (
+                          <div className="attachmentFileIcon">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                              <path d="M14 2v6h6" />
+                            </svg>
+                          </div>
+                        )}
+                        <span className="attachmentName">{file.name}</span>
                       </div>
                     );
                   })}
-                  {!hasReachedGroupParticipantLimit ? (
-                    <>
-                      <button
-                        type="button"
-                        className="parallelAddButton"
-                        disabled={isSubmittingFirstTurn}
-                        onClick={() => {
-                          if (onQuickAddDraftTemporaryParticipant) {
-                            onQuickAddDraftTemporaryParticipant();
-                            return;
-                          }
-                          openSidePanelTo('cats');
-                        }}
-                        aria-label="Add another model to collaborate"
-                      >
-                        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M8 3v10" />
-                          <path d="M3 8h10" />
-                        </svg>
-                      </button>
-                      <span className="parallelAddHint">Add another model to collaborate</span>
-                    </>
-                  ) : null}
                 </div>
               ) : null}
-            </div>
-            <div className="composerRightGroup">
-              {audienceParticipants.length > 0 ? (
-                <AudienceChip
-                  audienceParticipants={audienceParticipants}
-                  allParticipants={isGroupDraft ? groupComposerParticipants : undefined}
-                  onSetAudienceKeys={isGroupDraft ? onSetAudienceKeys : undefined}
-                  onSingleClick={audienceSingleClick}
-                  disabled={isSubmittingFirstTurn}
-                  maxSelectedParticipants={isGroupDraft ? maxAudienceParticipants : undefined}
-                  workflowShape={draftWorkflowShape}
-                  onToggleWorkflowShape={isGroupDraft ? onToggleDraftWorkflowShape : undefined}
-                />
-              ) : null}
-              {showCancelPendingSend ? (
-                <button
-                  className="composerSendButton composerCancelButton"
-                  type="button"
-                  aria-label="Cancel send"
-                  onClick={() => onCancelPendingSend?.()}
-                >
-                  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
-                    <path d="M4 4l6 6" />
-                    <path d="M10 4l-6 6" />
-                  </svg>
-                </button>
-              ) : (
-                <button
-                  className="composerSendButton"
-                  disabled={!composerDraft.trim() || isSubmittingFirstTurn || (isGroupDraft && draftParticipantCount < 2)}
-                  type="submit"
-                  aria-label={isParallelMode ? 'Send to all chats' : 'Send'}
-                >
-                  {isParallelMode ? (
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M4 13V6" /><path d="M1 9l3-3 3 3" />
-                      <path d="M12 13V6" /><path d="M9 9l3-3 3 3" />
-                    </svg>
-                  ) : (
-                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M8 13V3" />
-                      <path d="M3 7l5-5 5 5" />
-                    </svg>
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            disabled={isSubmittingFirstTurn}
-            style={{ display: 'none' }}
-            onChange={(event) => {
-              const input = event.currentTarget;
-              if (input.files && input.files.length > 0) {
-                const selected = Array.from(input.files);
-                onDraftFilesChange([...draftFiles, ...selected]);
-              }
-              input.value = '';
-            }}
-          />
-        </form>
-        {composerFooterAccessory ? (
-          <div className="composerFooterRow">{composerFooterAccessory}</div>
-        ) : null}
-        {!isDirectLaneContext && (showDraftHelperChips || (leadingStarterChips && leadingStarterChips.length > 0)) ? (
-          <div className="draftPromptSuggestions">
-            <div className="chipRow">
-              {leadingStarterChips?.map((chip) => (
-                <button
-                  key={chip.id}
-                  className="promptChip draftPromptChip"
-                  type="button"
-                  disabled={isSubmittingFirstTurn}
-                  onClick={() => {
-                    dismissDraftHelperChips();
-                    chip.onClick();
-                  }}
-                >
-                  {chip.label}
-                </button>
-              ))}
-              {showDraftHelperChips
-                ? visibleStarterSuggestions.map((suggestion) => (
+              <textarea
+                className="composerInput"
+                rows={1}
+                placeholder="How can I help you today?"
+                value={composerDraft}
+                disabled={isSubmittingFirstTurn}
+                onChange={(event) => { onComposerChange(event.target.value); autoResize(event.target); }}
+                onKeyDown={(event) => void onComposerKeyDown(event)}
+              />
+              <div className="composerBottomRow">
+                <div className="composerLeftGroup">
+                  <div className="composerPlusWrapper" ref={plusMenuRef}>
                     <button
-                      key={suggestion.id}
-                      className="promptChip draftPromptChip"
+                      className="composerPlusButton"
                       type="button"
+                      aria-label="Attach"
                       disabled={isSubmittingFirstTurn}
-                      onClick={() => {
-                        dismissDraftHelperChips();
-                        onComposerChange(suggestion.prompt);
-                      }}
+                      onClick={onTogglePlusMenu}
                     >
-                      {suggestion.prompt}
+                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M8 3v10" />
+                        <path d="M3 8h10" />
+                      </svg>
                     </button>
-                  ))
-                : null}
-            </div>
-          </div>
-        ) : null}
-        {isParallelMode && parallelTargets && parallelTargets.length > 1 ? (
-          <div className="parallelStubStack">
-            {parallelTargets.slice(1).map((target, i, arr) => (
-              <div key={i + 1} className="parallelStubCard" style={{ zIndex: arr.length - i }}>
-                <AudienceChip
-                  audienceParticipants={[buildAudienceParticipantFromExecutionTarget(target, `parallel:${i + 1}`)]}
-                  onSingleClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo(`parallel:${i + 1}`)}
-                  disabled={isSubmittingFirstTurn}
-                />
-                <button
-                  type="button"
-                  className="parallelStubRemove"
-                  disabled={isSubmittingFirstTurn || parallelTargets.length <= 2}
-                  onClick={() => onRemoveParallelTarget?.(i + 1)}
-                  aria-label="Remove parallel chat"
-                >
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 8h10" />
-                  </svg>
-                </button>
+                    {plusMenuOpen ? (
+                      <div className="composerPlusMenu">
+                        <button
+                          className="composerPlusMenuItem"
+                          type="button"
+                          disabled={isSubmittingFirstTurn}
+                          onClick={onFileSelect}
+                        >
+                          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M14 10v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-3" />
+                            <path d="M8 2v8" />
+                            <path d="M4 6l4-4 4 4" />
+                          </svg>
+                          Add photos and files
+                        </button>
+                        {chooseFolderPlacement === 'plusMenu' ? (
+                          <button
+                            className="composerPlusMenuItem"
+                            type="button"
+                            disabled={isSubmittingFirstTurn}
+                            onClick={() => {
+                              openSidePanelTo('cwd');
+                            }}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
+                            </svg>
+                            {folderActionLabel}
+                          </button>
+                        ) : null}
+                      </div>
+                    ) : null}
+                  </div>
+                  {shouldRenderGroupAddRow ? (
+                    <div className="composerGroupAddRow">
+                      {shouldShowGroupParticipantRoster
+                        ? groupComposerParticipants.map((participant) => (
+                            <div key={participant.key} className="composerGroupAvatarSlot">
+                              <div
+                                className="catAvatar"
+                                role={isSubmittingFirstTurn ? undefined : 'button'}
+                                tabIndex={isSubmittingFirstTurn ? undefined : 0}
+                                onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('cats')}
+                                data-tooltip={participant.isCat && participant.executionLabel
+                                  ? `${participant.name} \u00b7 ${participant.executionLabel}`
+                                  : (participant.executionLabel || participant.name)}
+                                style={
+                                  participant.avatarUrl
+                                    ? {
+                                        backgroundImage: `url(${participant.avatarUrl})`,
+                                        backgroundSize: 'cover',
+                                        backgroundPosition: 'center',
+                                      }
+                                    : participant.isCat
+                                      ? { background: participant.avatarColor ?? '#8B7E74' }
+                                      : {
+                                          background: '#fff',
+                                          color: '#222',
+                                          border: '1px solid rgba(0, 0, 0, 0.15)',
+                                        }
+                                }
+                              >
+                                {participant.avatarUrl ? null : catInitials(participant.name)}
+                              </div>
+                              {canRemoveGroupParticipant ? (
+                                <button
+                                  type="button"
+                                  className={`composerGroupAvatarRemove${useDangerGroupRemoveHover ? ' composerGroupAvatarRemoveDanger' : ''}`}
+                                  aria-label={`Remove ${participant.name}`}
+                                  onClick={() => {
+                                    if (participant.isCat && participant.catId) {
+                                      onToggleDraftCat(participant.catId);
+                                    } else if (participant.participantId) {
+                                      onRemoveDraftTemporaryParticipant(participant.participantId);
+                                    }
+                                  }}
+                                >
+                                  &times;
+                                </button>
+                              ) : null}
+                            </div>
+                          ))
+                        : null}
+                      {renderCollaborateAddControl({
+                        showHint: !hideDraftGroupHint,
+                        accent: accentGroupAddButton,
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+                <div className="composerRightGroup">
+                  {audienceParticipants.length > 0 ? (
+                    <AudienceChip
+                      audienceParticipants={audienceParticipants}
+                      allParticipants={
+                        isParallelMode && hasPrimaryParallelBranchAudience
+                          ? groupComposerParticipants
+                          : (isGroupDraft ? groupComposerParticipants : undefined)
+                      }
+                      onSetAudienceKeys={
+                        isParallelMode && hasPrimaryParallelBranchAudience
+                          ? (onSetParallelBranchAudienceKeys
+                            ? (keys) => onSetParallelBranchAudienceKeys(0, keys)
+                            : undefined)
+                          : (isGroupDraft ? onSetAudienceKeys : undefined)
+                      }
+                      onSingleClick={audienceSingleClick}
+                      disabled={isSubmittingFirstTurn}
+                      maxSelectedParticipants={
+                        (isParallelMode && hasPrimaryParallelBranchAudience) || isGroupDraft
+                          ? maxAudienceParticipants
+                          : undefined
+                      }
+                      workflowShape={
+                        isParallelMode
+                          ? (parallelBranchWorkflowShapes?.[0] ?? draftWorkflowShape)
+                          : draftWorkflowShape
+                      }
+                      onToggleWorkflowShape={
+                        isParallelMode && hasPrimaryParallelBranchAudience
+                          ? (onToggleParallelBranchWorkflowShape
+                            ? () => onToggleParallelBranchWorkflowShape(0)
+                            : undefined)
+                          : (isGroupDraft ? onToggleDraftWorkflowShape : undefined)
+                      }
+                    />
+                  ) : null}
+                  {showCancelPendingSend ? (
+                    <button
+                      className="composerSendButton composerCancelButton"
+                      type="button"
+                      aria-label="Cancel send"
+                      onClick={() => onCancelPendingSend?.()}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
+                        <path d="M4 4l6 6" />
+                        <path d="M10 4l-6 6" />
+                      </svg>
+                    </button>
+                  ) : (
+                    <button
+                      className="composerSendButton"
+                      disabled={!composerDraft.trim() || isSubmittingFirstTurn || (isGroupDraft && draftParticipantCount < 2)}
+                      type="submit"
+                      aria-label={isParallelMode ? 'Send to all chats' : 'Send'}
+                    >
+                      {isParallelMode ? (
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M4 13V6" /><path d="M1 9l3-3 3 3" />
+                          <path d="M12 13V6" /><path d="M9 9l3-3 3 3" />
+                        </svg>
+                      ) : (
+                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M8 13V3" />
+                          <path d="M3 7l5-5 5 5" />
+                        </svg>
+                      )}
+                    </button>
+                  )}
+                </div>
               </div>
-            ))}
-          </div>
-        ) : null}
-        {parallelTargets && parallelTargets.length < (payload.chat.capabilities.maxParallelChats ?? 3) ? (
-          <div className="parallelAddRow">
-            <span className="parallelAddHint">Add another model to compare</span>
-            <button
-              type="button"
-              className="parallelAddButton"
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                disabled={isSubmittingFirstTurn}
+                style={{ display: 'none' }}
+                onChange={(event) => {
+                  const input = event.currentTarget;
+                  if (input.files && input.files.length > 0) {
+                    const selected = Array.from(input.files);
+                    onDraftFilesChange([...draftFiles, ...selected]);
+                  }
+                  input.value = '';
+                }}
+              />
+            </form>
+          )}
+          footer={(
+            <DraftComposerFooter
+              accessory={composerFooterAccessory}
+              showParallelAddButton={Boolean(
+                onAddParallelTarget
+                  && (showDraftParallelAddButton || (parallelTargets?.length ?? 0) > 0)
+                  && (parallelTargets?.length ?? 1) < (payload.chat.capabilities.maxParallelChats ?? 3),
+              )}
+              hideParallelHint={hideDraftParallelHint}
+              accentParallelAddButton={accentParallelAddButton}
               disabled={isSubmittingFirstTurn}
-              onClick={onAddParallelTarget}
-              aria-label="Add parallel chat"
-            >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M8 3v10" />
-                <path d="M3 8h10" />
-              </svg>
-            </button>
-          </div>
-        ) : null}
+              onAddParallelTarget={onAddParallelTarget}
+            />
+          )}
+          helperRegion={!isDirectLaneContext && (showDraftHelperChips || (leadingStarterChips && leadingStarterChips.length > 0)) ? (
+            <div className="draftPromptSuggestions">
+              <div className="chipRow">
+                {leadingStarterChips?.map((chip) => (
+                  <button
+                    key={chip.id}
+                    className="promptChip draftPromptChip"
+                    type="button"
+                    disabled={isSubmittingFirstTurn}
+                    onClick={() => {
+                      dismissDraftHelperChips();
+                      chip.onClick();
+                    }}
+                  >
+                    {chip.label}
+                  </button>
+                ))}
+                {showDraftHelperChips
+                  ? visibleStarterSuggestions.map((suggestion) => (
+                      <button
+                        key={suggestion.id}
+                        className="promptChip draftPromptChip"
+                        type="button"
+                        disabled={isSubmittingFirstTurn}
+                        onClick={() => {
+                          dismissDraftHelperChips();
+                          onComposerChange(suggestion.prompt);
+                        }}
+                      >
+                        {suggestion.prompt}
+                      </button>
+                    ))
+                  : null}
+              </div>
+            </div>
+          ) : null}
+          shadowStack={isParallelMode && parallelTargets && parallelTargets.length > 1 ? (
+            <div className="parallelStubStack">
+              {parallelTargets.slice(1).map((target, i, arr) => (
+                <div key={i + 1} style={{ position: 'relative', zIndex: arr.length - i }}>
+                  <ParallelDraftShadowBranchRow
+                    branchIndex={i + 1}
+                    target={target}
+                    audienceParticipants={
+                      groupComposerParticipants.length > 0
+                      && (parallelBranchAudienceKeys?.[i + 1]?.length ?? 0) > 0
+                        ? resolveParallelBranchAudienceParticipants(i + 1, target)
+                        : []
+                    }
+                    allParticipants={groupComposerParticipants}
+                    workflowShape={parallelBranchWorkflowShapes?.[i + 1] ?? 'sequential'}
+                    maxAudienceParticipants={maxAudienceParticipants}
+                    isSubmittingFirstTurn={isSubmittingFirstTurn}
+                    canAddCollaborator={canAddAnotherGroupParticipant}
+                    accentCollaborateButton={accentGroupAddButton}
+                    onAddCollaborator={onQuickAddParallelBranchTemporaryParticipant}
+                    onSetAudienceKeys={onSetParallelBranchAudienceKeys}
+                    onToggleWorkflowShape={onToggleParallelBranchWorkflowShape}
+                    onOpenAudience={() => openSidePanelTo('cats')}
+                    onOpenTarget={() => openSidePanelTo(`parallel:${i + 1}`)}
+                    onRemoveParallelTarget={onRemoveParallelTarget}
+                    canRemoveParallelTarget={parallelTargets.length > minParallelTargetCount}
+                    useDangerParallelRemoveHover={useDangerParallelRemoveHover}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : null}
+        />
       </section>
       {sidePanelOpen ? (
         <SidePanel

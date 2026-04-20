@@ -8,6 +8,7 @@ export default createWorkspaceProductApp({
   productName: "Work",
   chatPrefix: "/work",
   shellSurface: "work",
+  supportsStructuredDraftModes: true,
   BootShell,
   AppRoutesComponent: AppRoutes,
   renderSidebar: (props) => (

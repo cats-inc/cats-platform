@@ -72,6 +72,7 @@ import {
   sameExecutionTargetValue,
 } from '../../../shared/renderer/hooks/useWorkspaceExecutionTargetState.js';
 import { useComposerSubmitBindings } from '../../../shared/renderer/hooks/useComposerSubmitBindings.js';
+import type { DraftParallelBranchState } from '../../../shared/renderer/draftParallelBranches.js';
 
 type LoadStateLike =
   | { status: 'loading' }
@@ -149,9 +150,12 @@ export function useComposerSubmit(options: {
   soloChannelExecutionTarget: ExecutionTargetValue;
   setSoloChannelExecutionTarget: Dispatch<SetStateAction<ExecutionTargetValue>>;
   showingParallelChatDraft: boolean;
+  draftParallelBranches: DraftParallelBranchState<ExecutionTargetValue>[];
   draftParallelChatTargets: ExecutionTargetValue[];
   draftWorkflowShape: 'sequential' | 'concurrent';
   draftAudienceKeys: string[] | null;
+  draftParallelBranchAudienceKeys: string[][];
+  draftParallelBranchWorkflowShapes: Array<'sequential' | 'concurrent'>;
   activeWorkflowShape: 'sequential' | 'concurrent';
   activeAudienceKeys: string[] | null;
   resetDraftParallelChatTargets: () => void;
@@ -192,6 +196,7 @@ export function useComposerSubmit(options: {
     soloChannelExecutionTarget,
     setSoloChannelExecutionTarget,
     showingParallelChatDraft,
+    draftParallelBranches,
     draftParallelChatTargets,
     draftWorkflowShape,
     draftAudienceKeys,
@@ -310,7 +315,10 @@ export function useComposerSubmit(options: {
           originSurface: 'chat',
           draftCwd,
           draftFiles,
+          draftParallelBranches,
           draftParallelChatTargets,
+          draftParticipantCatIds,
+          draftTemporaryParticipants,
           signal: ackController.signal,
         });
 
@@ -582,6 +590,7 @@ export function useComposerSubmit(options: {
     draftExecutionTarget.provider,
     showingParallelChatDraft,
     draftParallelChatTargets,
+    draftParallelBranches,
     resetDraftParallelChatTargets,
     compareGroupId,
     compareSendScope,

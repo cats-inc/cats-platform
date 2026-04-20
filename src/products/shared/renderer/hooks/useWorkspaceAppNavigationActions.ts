@@ -120,8 +120,9 @@ export interface UseWorkspaceAppNavigationActionsOptions<
   setDraftRuntimeSessionPolicy?: Dispatch<SetStateAction<RuntimeSessionPolicy>>;
   setDraftWorkflowShape?: Dispatch<SetStateAction<'sequential' | 'concurrent'>>;
   setDraftAudienceKeys?: Dispatch<SetStateAction<string[] | null>>;
-  resetDraftParallelChatTargets?: () => void;
+  resetDraftParallelChatTargets?: (options?: { includeCompareTarget?: boolean }) => void;
   createInitialGroupParticipants?: () => TDraftParticipant[];
+  seedInitialGroupParticipants?: boolean;
   setDraftFiles: Dispatch<SetStateAction<File[]>>;
   setChannelFiles: Dispatch<SetStateAction<File[]>>;
   navigationApi?: WorkspaceAppNavigationApi<TPayload>;
@@ -157,6 +158,7 @@ export function useWorkspaceAppNavigationActions<
     setDraftAudienceKeys,
     resetDraftParallelChatTargets,
     createInitialGroupParticipants,
+    seedInitialGroupParticipants = true,
     setDraftFiles,
     setChannelFiles,
     navigationApi: providedNavigationApi,
@@ -167,7 +169,9 @@ export function useWorkspaceAppNavigationActions<
     providedNavigationApi ?? defaultNavigationApi
   ) as WorkspaceAppNavigationApi<TPayload>;
 
-  const clearDraftRouteState = useCallback(() => {
+  const clearDraftRouteState = useCallback((options?: {
+    includeCompareTarget?: boolean;
+  }) => {
     setAddCatOpen(false);
     setPlusMenuOpen(false);
     setDraftCwd(null);
@@ -178,7 +182,9 @@ export function useWorkspaceAppNavigationActions<
     setDraftRuntimeSessionPolicy?.(createDefaultRuntimeSessionPolicy());
     setDraftWorkflowShape?.('sequential');
     setDraftAudienceKeys?.(null);
-    resetDraftParallelChatTargets?.();
+    resetDraftParallelChatTargets?.({
+      includeCompareTarget: options?.includeCompareTarget ?? false,
+    });
     setDraftFiles([]);
     setChannelPlusMenuOpen(false);
     setChannelFiles([]);
@@ -330,7 +336,7 @@ export function useWorkspaceAppNavigationActions<
   const onStartNewChat = useCallback(async (): Promise<void> => {
     navigate(buildWorkspaceNewChatPath(chatPrefix, null));
     setComposerDraft('');
-    clearDraftRouteState();
+    clearDraftRouteState({ includeCompareTarget: false });
     setFeedback('');
   }, [
     chatPrefix,
@@ -343,9 +349,11 @@ export function useWorkspaceAppNavigationActions<
   const onStartNewGroupChat = useCallback(async (): Promise<void> => {
     navigate(buildWorkspaceNewGroupChatPath(chatPrefix));
     setComposerDraft('');
-    clearDraftRouteState();
+    clearDraftRouteState({ includeCompareTarget: false });
     setFeedback('');
-    setDraftTemporaryParticipants?.(createInitialGroupParticipants?.() ?? []);
+    if (seedInitialGroupParticipants) {
+      setDraftTemporaryParticipants?.(createInitialGroupParticipants?.() ?? []);
+    }
   }, [
     chatPrefix,
     clearDraftRouteState,
@@ -353,13 +361,14 @@ export function useWorkspaceAppNavigationActions<
     setComposerDraft,
     setDraftTemporaryParticipants,
     createInitialGroupParticipants,
+    seedInitialGroupParticipants,
     setFeedback,
   ]);
 
   const onStartNewParallelChat = useCallback(async (): Promise<void> => {
     navigate(buildWorkspaceNewParallelChatPath(chatPrefix));
     setComposerDraft('');
-    clearDraftRouteState();
+    clearDraftRouteState({ includeCompareTarget: true });
     setFeedback('');
   }, [
     chatPrefix,
