@@ -54,6 +54,11 @@ import {
   WORK_API_WAR_ROOM_PATH,
   WORK_API_WORK_ITEMS_PATH,
 } from '../shared/apiPaths.js';
+import {
+  createActiveWorkProductRef,
+  createWorkProductRef,
+  WORK_PRODUCT_NAME,
+} from '../shared/productMetadata.js';
 
 const WORK_DASHBOARD_INTAKE_LIMIT = 8;
 const WORK_DASHBOARD_PENDING_PLAN_LIMIT = 8;
@@ -116,7 +121,7 @@ export interface WorkProjectListSummary {
 export interface WorkProjectListProjection {
   product: {
     id: 'work';
-    name: 'Cats Work';
+    name: typeof WORK_PRODUCT_NAME;
   };
   projects: WorkProjectListItem[];
   summary: WorkProjectListSummary;
@@ -125,7 +130,7 @@ export interface WorkProjectListProjection {
 export interface WorkProjectDetailProjection {
   product: {
     id: 'work';
-    name: 'Cats Work';
+    name: typeof WORK_PRODUCT_NAME;
   };
   project: CoreProjectRecord;
   ownerName: string;
@@ -188,7 +193,7 @@ export interface WorkWorkItemListSummary {
 export interface WorkWorkItemListProjection {
   product: {
     id: 'work';
-    name: 'Cats Work';
+    name: typeof WORK_PRODUCT_NAME;
   };
   workItems: WorkWorkItemListItem[];
   summary: WorkWorkItemListSummary;
@@ -197,7 +202,7 @@ export interface WorkWorkItemListProjection {
 export interface WorkWorkItemDetailProjection {
   product: {
     id: 'work';
-    name: 'Cats Work';
+    name: typeof WORK_PRODUCT_NAME;
   };
   workItem: CoreWorkItemRecord;
   ownerName: string;
@@ -255,7 +260,7 @@ export interface WorkTaskListSummary {
 export interface WorkTaskListProjection {
   product: {
     id: 'work';
-    name: 'Cats Work';
+    name: typeof WORK_PRODUCT_NAME;
   };
   tasks: WorkTaskListItem[];
   summary: WorkTaskListSummary;
@@ -317,7 +322,7 @@ export interface WorkRecoveryItem extends CoreTaskRecoveryView {
 export interface WorkDashboardProjection {
   product: {
     id: 'work';
-    name: 'Cats Work';
+    name: typeof WORK_PRODUCT_NAME;
     status: 'active';
     routeBase: '/work';
     apiBase: typeof WORK_API_PREFIX;
@@ -346,7 +351,7 @@ export interface WorkDashboardProjection {
 export interface WorkTaskDetailProjection {
   product: {
     id: 'work';
-    name: 'Cats Work';
+    name: typeof WORK_PRODUCT_NAME;
   };
   task: CoreTaskRecord;
   project: WorkProjectListItem | null;
@@ -715,13 +720,7 @@ export function buildWorkDashboardProjection(core: CatsCoreState): WorkDashboard
   const taskStatusCounts = buildTaskStatusCounts(workTasks);
 
   return {
-    product: {
-      id: 'work',
-      name: 'Cats Work',
-      status: 'active',
-      routeBase: '/work',
-      apiBase: WORK_API_PREFIX,
-    },
+    product: createActiveWorkProductRef(),
     summary: {
       ownerActorId: core.ownerProfile.actorId,
       actorCount: core.actors.length,
@@ -817,10 +816,7 @@ export function buildWorkProjectListProjection(
 ): WorkProjectListProjection {
   const projects = buildProjectListItems(core, Number.POSITIVE_INFINITY);
   return {
-    product: {
-      id: 'work',
-      name: 'Cats Work',
-    },
+    product: createWorkProductRef(),
     projects,
     summary: buildProjectListSummary(projects, core),
   };
@@ -831,10 +827,7 @@ export function buildWorkTaskListProjection(
 ): WorkTaskListProjection {
   const tasks = buildTaskListItems(core, Number.POSITIVE_INFINITY);
   return {
-    product: {
-      id: 'work',
-      name: 'Cats Work',
-    },
+    product: createWorkProductRef(),
     tasks,
     summary: buildTaskListSummary(tasks, core),
   };
@@ -881,10 +874,7 @@ export function buildWorkProjectDetailProjection(
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 
   return {
-    product: {
-      id: 'work',
-      name: 'Cats Work',
-    },
+    product: createWorkProductRef(),
     project,
     ownerName: resolveActorName(core, project.ownerActorId),
     primaryConversation: project.primaryConversationId
@@ -908,10 +898,7 @@ export function buildWorkWorkItemListProjection(
 ): WorkWorkItemListProjection {
   const workItems = buildWorkItemListItems(core, Number.POSITIVE_INFINITY);
   return {
-    product: {
-      id: 'work',
-      name: 'Cats Work',
-    },
+    product: createWorkProductRef(),
     workItems,
     summary: buildWorkItemListSummary(workItems, core),
   };
@@ -933,10 +920,7 @@ export function buildWorkWorkItemDetailProjection(
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 
   return {
-    product: {
-      id: 'work',
-      name: 'Cats Work',
-    },
+    product: createWorkProductRef(),
     workItem,
     ownerName: resolveActorName(core, workItem.ownerActorId),
     project: project

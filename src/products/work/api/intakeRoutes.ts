@@ -27,6 +27,7 @@ import {
   WORK_API_INTAKE_REJECT_PATTERN,
   WORK_API_TEMPLATES_PATH,
 } from '../shared/apiPaths.js';
+import { createWorkProductRef } from '../shared/productMetadata.js';
 
 function readNonEmptyString(value: unknown): string | null {
   if (typeof value !== 'string') {
@@ -90,7 +91,7 @@ export async function routeWorkIntakeApi(
     }
 
     sendJson(context.response, 200, {
-      product: { id: 'work', name: 'Cats Work' },
+      product: createWorkProductRef(),
       templates: listWorkTemplates(),
     });
     return true;

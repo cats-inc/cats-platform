@@ -17,6 +17,7 @@ import {
 } from '../../../shared/taskPlanning.js';
 import { resolveTaskExecutionProduct } from '../../../shared/taskExecutionBridge.js';
 import { getWorkTemplate } from '../templates/index.js';
+import { createWorkProductRef, WORK_PRODUCT_NAME } from '../shared/productMetadata.js';
 
 export interface WorkIntakePlanTaskView {
   id: string;
@@ -39,7 +40,7 @@ export interface WorkIntakePlanTaskView {
 }
 
 export interface WorkIntakePlanProjection {
-  product: { id: 'work'; name: 'Cats Work' };
+  product: { id: 'work'; name: typeof WORK_PRODUCT_NAME };
   project: CoreProjectRecord;
   workItem: CoreWorkItemRecord;
   template: { id: string; label: string } | null;
@@ -207,7 +208,7 @@ export function buildWorkIntakePlanProjection(
     .sort((left, right) => right.createdAt.localeCompare(left.createdAt));
 
   return {
-    product: { id: 'work', name: 'Cats Work' },
+    product: createWorkProductRef(),
     project,
     workItem,
     template: template
