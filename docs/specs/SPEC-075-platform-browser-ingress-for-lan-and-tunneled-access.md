@@ -70,6 +70,9 @@ and preserve the current packaged Electron loopback-only sidecar topology.
    `cats-runtime`.
 9. Any future external-base-url or webhook-facing absolute URL setting shall be
    owned by the platform host, not by the runtime.
+10. Platform-owned ingress diagnostics shall distinguish local, LAN, and
+    trusted-overlay browser URLs while excluding common virtual-only adapter
+    addresses from operator entry suggestions.
 
 ### Non-Functional Requirements
 

@@ -82,7 +82,9 @@ Notes:
 - This is a trusted-LAN workflow only. It is not equivalent to a public
   internet deployment.
 - `GET /api/platform/ingress` returns a machine-readable summary of the current
-  bind mode plus the candidate local/LAN URLs for this machine.
+  bind mode plus the candidate local, LAN, and trusted-overlay URLs for this
+  machine. Common virtual adapters such as WSL/Docker are intentionally
+  filtered out of those browser-entry suggestions.
 
 Current first-run behavior:
 
@@ -665,4 +667,4 @@ or managed deployments that must always quit on close, set
 
 ---
 
-*Last updated: 2026-03-29*
+*Last updated: 2026-04-20*

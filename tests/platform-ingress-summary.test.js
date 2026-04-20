@@ -22,6 +22,7 @@ test('summarizePlatformIngress reports loopback-only bindings as not LAN reachab
   });
   assert.deepEqual(summary.urls.localUrls, ['http://127.0.0.1:8181']);
   assert.deepEqual(summary.urls.lanUrls, []);
+  assert.deepEqual(summary.urls.overlayUrls, []);
   assert.equal(summary.runtimeIngress.rootPath, '/runtime');
   assert.equal(summary.runtimeIngress.apiBasePath, '/runtime/api');
   assert.match(summary.notes[0] ?? '', /loopback-only/u);
@@ -39,6 +40,9 @@ test('summarizePlatformIngress lists LAN candidate URLs for wildcard bindings', 
         { address: '192.168.1.25', family: 'IPv4', internal: false },
         { address: '10.0.0.8', family: 'IPv4', internal: false },
       ],
+      Tailscale: [
+        { address: '100.101.102.103', family: 'IPv4', internal: false },
+      ],
       Wsl: [
         { address: '172.20.80.1', family: 'IPv4', internal: false },
       ],
@@ -54,10 +58,14 @@ test('summarizePlatformIngress lists LAN candidate URLs for wildcard bindings', 
   assert.deepEqual(summary.urls.localUrls, ['http://127.0.0.1:8181']);
   assert.deepEqual(summary.urls.lanUrls, [
     'http://10.0.0.8:8181',
-    'http://172.20.80.1:8181',
     'http://192.168.1.25:8181',
   ]);
-  assert.match(summary.notes[0] ?? '', /wildcard/u);
+  assert.deepEqual(summary.urls.overlayUrls, [
+    'http://100.101.102.103:8181',
+  ]);
+  assert.ok(summary.notes.some((note) => /wildcard/u.test(note)));
+  assert.ok(summary.notes.some((note) => /Overlay URLs/u.test(note)));
+  assert.ok(summary.notes.some((note) => /virtual adapter IPv4 addresses/u.test(note)));
 });
 
 test('summarizePlatformIngress keeps only the matched LAN URL for specific host binds', () => {
@@ -80,5 +88,33 @@ test('summarizePlatformIngress keeps only the matched LAN URL for specific host 
   });
   assert.deepEqual(summary.urls.localUrls, ['http://192.168.1.25:8181']);
   assert.deepEqual(summary.urls.lanUrls, ['http://192.168.1.25:8181']);
-  assert.match(summary.notes[0] ?? '', /LAN-visible/u);
+  assert.deepEqual(summary.urls.overlayUrls, []);
+  assert.ok(summary.notes.some((note) => /LAN-visible/u.test(note)));
+});
+
+test('summarizePlatformIngress reports trusted overlay binds without mislabeling them as LAN-visible', () => {
+  const summary = summarizePlatformIngress({
+    host: '100.101.102.103',
+    port: 8181,
+    networkInterfaces: {
+      Tailscale: [
+        { address: '100.101.102.103', family: 'IPv4', internal: false },
+      ],
+      Ethernet: [
+        { address: '192.168.1.25', family: 'IPv4', internal: false },
+      ],
+    },
+  });
+
+  assert.deepEqual(summary.binding, {
+    host: '100.101.102.103',
+    port: 8181,
+    mode: 'specific',
+    canReachFromLan: false,
+  });
+  assert.deepEqual(summary.urls.localUrls, ['http://100.101.102.103:8181']);
+  assert.deepEqual(summary.urls.lanUrls, []);
+  assert.deepEqual(summary.urls.overlayUrls, ['http://100.101.102.103:8181']);
+  assert.ok(summary.notes.some((note) => /trusted overlay interface/u.test(note)));
+  assert.ok(summary.notes.some((note) => /Overlay URLs/u.test(note)));
 });

@@ -78,5 +78,6 @@ test('GET /api/platform/ingress returns a machine-readable trusted ingress summa
     assert.equal(payload.runtimeIngress.apiBasePath, '/runtime/api');
     assert.deepEqual(payload.urls.localUrls, ['http://127.0.0.1:8181']);
     assert.deepEqual(payload.urls.lanUrls, []);
+    assert.deepEqual(payload.urls.overlayUrls, []);
   });
 });

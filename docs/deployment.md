@@ -55,7 +55,8 @@ Current decision:
   because browser-facing runtime/recovery links are same-origin relative paths
 - this remains a trusted operator workflow, not a public-internet deployment
 - `GET /api/platform/ingress` exposes the current bind mode plus candidate
-  local/LAN browser URLs for operator verification
+  local/LAN/trusted-overlay browser URLs for operator verification, while
+  filtering out common virtual-only adapter addresses such as WSL/Docker
 
 ### Desktop Host First Slice
 

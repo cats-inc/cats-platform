@@ -12,6 +12,7 @@ export interface PlatformIngressBindingSummary {
 export interface PlatformIngressUrlSummary {
   localUrls: string[];
   lanUrls: string[];
+  overlayUrls: string[];
 }
 
 export interface PlatformIngressSummary {
@@ -33,6 +34,8 @@ type NetworkInterfaceAddressLike = {
 
 type NetworkInterfacesLike = Record<string, NetworkInterfaceAddressLike[] | undefined>;
 
+type InterfaceReachability = 'lan' | 'overlay' | 'virtual';
+
 function isIpv4Family(family: string | number | null | undefined): boolean {
   return family === 'IPv4' || family === 4;
 }
@@ -49,22 +52,42 @@ function isLoopbackHost(host: string): boolean {
     || normalized === '::1';
 }
 
+function classifyInterfaceReachability(interfaceName: string): InterfaceReachability {
+  const normalized = interfaceName.trim().toLowerCase();
+  if (/tailscale/u.test(normalized)) {
+    return 'overlay';
+  }
+  if (/wsl|docker|vethernet|hyper-v|virtualbox|vmware|podman/u.test(normalized)) {
+    return 'virtual';
+  }
+  return 'lan';
+}
+
 function listExternalIpv4Addresses(
   networkInterfaces: NetworkInterfacesLike,
-): string[] {
-  const addresses = new Set<string>();
+): Record<InterfaceReachability, string[]> {
+  const addresses = {
+    lan: new Set<string>(),
+    overlay: new Set<string>(),
+    virtual: new Set<string>(),
+  } satisfies Record<InterfaceReachability, Set<string>>;
 
-  for (const entries of Object.values(networkInterfaces)) {
+  for (const [interfaceName, entries] of Object.entries(networkInterfaces)) {
+    const reachability = classifyInterfaceReachability(interfaceName);
     for (const entry of entries ?? []) {
       const address = entry.address?.trim();
       if (!address || entry.internal || !isIpv4Family(entry.family)) {
         continue;
       }
-      addresses.add(address);
+      addresses[reachability].add(address);
     }
   }
 
-  return Array.from(addresses).sort((left, right) => left.localeCompare(right));
+  return {
+    lan: Array.from(addresses.lan).sort((left, right) => left.localeCompare(right)),
+    overlay: Array.from(addresses.overlay).sort((left, right) => left.localeCompare(right)),
+    virtual: Array.from(addresses.virtual).sort((left, right) => left.localeCompare(right)),
+  };
 }
 
 function buildHttpUrl(host: string, port: number): string {
@@ -95,20 +118,42 @@ export function summarizePlatformIngress(input: {
   const lanUrls = loopbackHost
     ? []
     : wildcardHost
-      ? externalIpv4Addresses.map((address) => buildHttpUrl(address, port))
-      : externalIpv4Addresses.includes(host)
+      ? externalIpv4Addresses.lan.map((address) => buildHttpUrl(address, port))
+      : externalIpv4Addresses.lan.includes(host)
         ? [buildHttpUrl(host, port)]
         : [];
+  const overlayUrls = loopbackHost
+    ? []
+    : wildcardHost
+      ? externalIpv4Addresses.overlay.map((address) => buildHttpUrl(address, port))
+      : externalIpv4Addresses.overlay.includes(host)
+        ? [buildHttpUrl(host, port)]
+        : [];
+  const hasLanUrls = lanUrls.length > 0;
+  const hasOverlayUrls = overlayUrls.length > 0;
+  const hasVirtualIpv4Addresses = externalIpv4Addresses.virtual.length > 0;
 
   const notes: string[] = [];
   if (mode === 'loopback') {
     notes.push('Current bind host is loopback-only. Other devices on the LAN cannot reach this server.');
-  } else if (mode === 'wildcard') {
+  } else if (mode === 'wildcard' && hasLanUrls) {
     notes.push('Current bind host is wildcard. Use one of the LAN URLs below from a trusted local network.');
-  } else if (lanUrls.length > 0) {
+  } else if (mode === 'wildcard' && hasOverlayUrls) {
+    notes.push('Current bind host is wildcard. No LAN IPv4 interfaces were detected, but trusted overlay URLs are available below.');
+  } else if (mode === 'wildcard') {
+    notes.push('Current bind host is wildcard, but no external IPv4 interfaces were detected.');
+  } else if (hasLanUrls) {
     notes.push('Current bind host is LAN-visible. Use the listed URL from a trusted local network.');
+  } else if (hasOverlayUrls) {
+    notes.push('Current bind host matches a trusted overlay interface. Use the listed overlay URL from that trusted network.');
   } else {
     notes.push('Current bind host is not loopback, but no matching external IPv4 interface was detected.');
+  }
+  if (hasOverlayUrls) {
+    notes.push('Overlay URLs were detected on trusted overlay interfaces such as Tailscale.');
+  }
+  if (hasVirtualIpv4Addresses) {
+    notes.push('Common virtual adapter IPv4 addresses such as WSL or Docker are intentionally excluded from browser entry suggestions.');
   }
   notes.push('Browser-facing runtime pages stay under the Cats origin at /runtime and /runtime/api.');
 
@@ -118,11 +163,12 @@ export function summarizePlatformIngress(input: {
       host,
       port,
       mode,
-      canReachFromLan: lanUrls.length > 0,
+      canReachFromLan: hasLanUrls,
     },
     urls: {
       localUrls,
       lanUrls,
+      overlayUrls,
     },
     runtimeIngress: {
       rootPath: PLATFORM_RUNTIME_ROOT_PATH,

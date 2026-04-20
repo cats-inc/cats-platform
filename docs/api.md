@@ -317,7 +317,8 @@ GET  /api/platform/ingress
 - `GET /api/platform/ingress` returns a trusted-operator ingress summary for the
   current host bind, including:
   - `binding` mode (`loopback`, `wildcard`, or `specific`)
-  - candidate local and LAN browser URLs
+  - candidate local, LAN, and trusted-overlay browser URLs
+  - common virtual-only adapters filtered out of those browser-entry suggestions
   - the same-origin runtime ingress roots (`/runtime`, `/runtime/api`)
   - operator notes about whether the current bind is reachable from another
     device on the LAN
@@ -2979,4 +2980,4 @@ Errors use a minimal payload:
 
 ---
 
-*Last updated: 2026-03-28*
+*Last updated: 2026-04-20*
