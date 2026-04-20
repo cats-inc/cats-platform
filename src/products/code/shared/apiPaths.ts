@@ -1,3 +1,5 @@
+import { PLATFORM_CODE_API_BASE } from '../../../shared/platformSurfaceApi.js';
+
 function normalizeCodeApiPathToken(value: string | null | undefined): string | null {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
@@ -15,7 +17,7 @@ function buildCodeApiDetailPath(
   return `${basePath}/${encodeURIComponent(normalizedId)}`;
 }
 
-export const CODE_API_PREFIX = '/api/code';
+export const CODE_API_PREFIX = PLATFORM_CODE_API_BASE;
 export const CODE_API_TASKS_PATH = `${CODE_API_PREFIX}/tasks`;
 export const CODE_API_ARTIFACTS_PATH = `${CODE_API_PREFIX}/artifacts`;
 export const CODE_API_BUILDS_PATH = `${CODE_API_PREFIX}/builds`;

@@ -1,3 +1,5 @@
+import { PLATFORM_WORK_API_BASE } from '../../../shared/platformSurfaceApi.js';
+
 function normalizeApiPathToken(value: string | null | undefined): string | null {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
@@ -15,7 +17,7 @@ function buildWorkApiDetailPath(
   return `${basePath}/${encodeURIComponent(normalizedId)}`;
 }
 
-export const WORK_API_PREFIX = '/api/work';
+export const WORK_API_PREFIX = PLATFORM_WORK_API_BASE;
 export const WORK_API_PROJECTS_PATH = `${WORK_API_PREFIX}/projects`;
 export const WORK_API_TASKS_PATH = `${WORK_API_PREFIX}/tasks`;
 export const WORK_API_WORK_ITEMS_PATH = `${WORK_API_PREFIX}/work-items`;

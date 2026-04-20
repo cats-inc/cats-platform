@@ -1,6 +1,7 @@
 export type { PlatformSurfaceId } from '../../shared/platform-contract.js';
 import type { PlatformSurfaceId } from '../../shared/platform-contract.js';
 import { isEnabledPlatformSurface, normalizePlatformSurface } from '../../shared/platformSurfaces.js';
+import { resolvePlatformSurfaceApiBase } from '../../shared/platformSurfaceApi.js';
 import {
   listPlatformSurfaceDescriptors,
   resolvePlatformSurfaceFromPath,
@@ -13,19 +14,13 @@ export interface PlatformSurfaceRoute {
   placeholder: boolean;
 }
 
-const PLATFORM_SURFACE_API_BASES: Readonly<Record<PlatformSurfaceId, string | null>> = {
-  chat: null,
-  work: '/api/work',
-  code: '/api/code',
-};
-
 export const PLATFORM_SURFACE_ROUTES = Object.fromEntries(
   listPlatformSurfaceDescriptors().map((descriptor) => [
     descriptor.id,
     {
       surface: descriptor.id,
       routePrefix: descriptor.routePrefix,
-      apiBase: PLATFORM_SURFACE_API_BASES[descriptor.id],
+      apiBase: resolvePlatformSurfaceApiBase(descriptor.id),
       placeholder: !isEnabledPlatformSurface(descriptor.id),
     } satisfies PlatformSurfaceRoute,
   ]),
