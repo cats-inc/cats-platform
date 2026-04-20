@@ -30,6 +30,7 @@ import {
   CODE_API_RELAY_ROSTER_ENTRY_PATTERN,
   CODE_API_RELAY_THREADS_PATH,
 } from '../shared/apiPaths.js';
+import { createCodeProductRef } from '../shared/productMetadata.js';
 
 function readNonEmptyString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
@@ -199,10 +200,7 @@ async function buildRelayThreadsPayload(
     ?? null;
 
   return {
-    product: {
-      id: 'code',
-      name: 'Cats Code',
-    },
+    product: createCodeProductRef(),
     contract: createRelayContract(runtimeConfig),
     defaults: {
       roster: defaultRoster,

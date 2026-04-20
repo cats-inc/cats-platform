@@ -5,6 +5,7 @@ import {
   buildCodeApiRelayRosterEntryPath,
   CODE_API_RELAY_THREADS_PATH,
 } from '../../shared/apiPaths.js';
+import { CODE_PRODUCT_NAME } from '../../shared/productMetadata.js';
 
 export interface CodeRelayRosterEntryPayload {
   id: string;
@@ -86,7 +87,7 @@ export interface CodeRelayThreadPayload {
 export interface CodeRelayThreadsPayload {
   product: {
     id: 'code';
-    name: 'Cats Code';
+    name: typeof CODE_PRODUCT_NAME;
   };
   contract: CodeRelayThreadPayload['contract'];
   defaults: {

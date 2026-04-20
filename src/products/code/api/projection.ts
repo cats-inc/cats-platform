@@ -49,6 +49,11 @@ import {
   CODE_API_TASK_DETAIL_PATH_TEMPLATE,
   CODE_API_TASKS_PATH,
 } from '../shared/apiPaths.js';
+import {
+  CODE_PRODUCT_NAME,
+  createActiveCodeProductRef,
+  createCodeProductRef,
+} from '../shared/productMetadata.js';
 
 const CODE_DASHBOARD_TASK_LIMIT = 16;
 const CODE_DASHBOARD_ARTIFACT_LIMIT = 18;
@@ -122,7 +127,7 @@ export interface CodeArtifactListSummary {
 export interface CodeTaskDetailProjection {
   product: {
     id: 'code';
-    name: 'Cats Code';
+    name: typeof CODE_PRODUCT_NAME;
   };
   task: CoreTaskRecord;
   conversation: CoreConversationRecord | null;
@@ -156,7 +161,7 @@ export interface CodeTaskDetailProjection {
 export interface CodeArtifactDetailProjection {
   product: {
     id: 'code';
-    name: 'Cats Code';
+    name: typeof CODE_PRODUCT_NAME;
   };
   artifact: CoreArtifactRecord;
   task: CodeTaskListItem | null;
@@ -192,7 +197,7 @@ export interface CodeArtifactListProjection {
 export interface CodeDashboardProjection {
   product: {
     id: 'code';
-    name: 'Cats Code';
+    name: typeof CODE_PRODUCT_NAME;
     status: 'active';
     routeBase: '/code';
     apiBase: typeof CODE_API_PREFIX;
@@ -447,10 +452,7 @@ export function buildCodeTaskDetailProjection(
   const timeline = queryCoreTaskTimelineView(core, task, { limit: CODE_TIMELINE_PREVIEW_LIMIT });
 
   return {
-    product: {
-      id: 'code',
-      name: 'Cats Code',
-    },
+    product: createCodeProductRef(),
     task,
     conversation,
     workItem: buildWorkItemReference(core, workItem),
@@ -508,10 +510,7 @@ export function buildCodeArtifactDetailProjection(
     .map((candidate) => buildCodeArtifactListItem(core, candidate, taskItemById));
 
   return {
-    product: {
-      id: 'code',
-      name: 'Cats Code',
-    },
+    product: createCodeProductRef(),
     artifact,
     task: taskProjection,
     workItem: buildWorkItemReference(core, workItem),
@@ -535,13 +534,7 @@ export function buildCodeDashboardProjection(core: CatsCoreState): CodeDashboard
   const artifactList = buildCodeArtifactListProjection(core);
 
   return {
-    product: {
-      id: 'code',
-      name: 'Cats Code',
-      status: 'active',
-      routeBase: '/code',
-      apiBase: CODE_API_PREFIX,
-    },
+    product: createActiveCodeProductRef(),
     summary: {
       ownerActorId: core.ownerProfile.actorId,
       actorCount: core.actors.length,
