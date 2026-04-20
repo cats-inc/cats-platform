@@ -1,13 +1,28 @@
 import type { ReactElement, ReactNode } from 'react';
 
+import type {
+  SettingsActionBar,
+  SettingsActionBarProps,
+} from './SettingsActionBar.js';
+
+/** The `<button>` / `<SettingsActionBar>` forms that the section's row
+ * rhythm lays out correctly. Typed as a discriminated union on the
+ * element's intrinsic/component type so `<>…</>` fragments, `<div>`
+ * wrappers, and children arrays are rejected at compile time — plain
+ * `ReactElement` would accept `React.Fragment` and the two-button
+ * footgun would compile again. */
+type SettingsDangerZoneAction =
+  | ReactElement<unknown, 'button'>
+  | ReactElement<SettingsActionBarProps, typeof SettingsActionBar>;
+
 export interface SettingsDangerZoneProps {
   title: string;
   description?: ReactNode;
-  /** Single action element (typically a `<button className="dangerButton">`).
-   * For multi-button rows, wrap in `<SettingsActionBar>` — otherwise the
-   * section's `> * + *` row rhythm stacks the buttons vertically. Typed as
-   * `ReactElement` so the multi-child mistake fails at compile time. */
-  children: ReactElement;
+  /** Either a bare `<button className="dangerButton">` for a single
+   * destructive action, or a `<SettingsActionBar>` wrapping multiple
+   * buttons. Other shapes — fragments, `<div>`, arbitrary components,
+   * multiple bare children — do not type-check. */
+  children: SettingsDangerZoneAction;
   className?: string;
 }
 
