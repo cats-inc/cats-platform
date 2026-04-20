@@ -2,10 +2,14 @@ import { readJsonBody, sendJson, sendMethodNotAllowed } from '../../shared/http.
 import type { PlatformSetupCompleteInput } from '../../shared/platform-contract.js';
 import type { ProviderModelSelection } from '../../shared/providerSelection.js';
 import { toBootstrapEventError } from '../../shared/bootstrapDiagnostics.js';
+import {
+  createPlatformAppDescriptor,
+  createPlatformResponseMetadata,
+  createPlatformWarmRuntimeSummary,
+} from '../../shared/platformEnvelopeMetadata.js';
 import { appendPlatformOnboardingEvent } from '../../shared/platformOnboardingHistory.js';
 import { listPlatformProductDescriptors } from '../../shared/platformProducts.js';
 import { readPlatformPreferences, writePlatformPreferences } from '../../shared/platformPreferences.js';
-import { PLATFORM_RUNTIME_ROOT_PATH } from '../../shared/runtimeIngressPaths.js';
 import { cloneProviderModelSelection } from '../../shared/providerSelection.js';
 import {
   readRuntimeSetupSummary,
@@ -238,11 +242,15 @@ async function handlePlatformSetupComplete(
         () => undefined,
       );
       payload = {
-        app: { name: 'cats-platform', stage: 'phase-2-shell', runtimeBoundary: 'cats-runtime' },
+        app: createPlatformAppDescriptor(),
         products: listPlatformProductDescriptors(),
-        runtime: { baseUrl: PLATFORM_RUNTIME_ROOT_PATH, reachable: false, status: 'warm', service: 'cats-runtime' },
+        runtime: createPlatformWarmRuntimeSummary(),
         runtimeSetup: runtimeSetup ?? null,
-        metadata: { generatedAt: now.toISOString(), host: context.dependencies.config.host, port: context.dependencies.config.port },
+        metadata: createPlatformResponseMetadata({
+          generatedAt: now,
+          host: context.dependencies.config.host,
+          port: context.dependencies.config.port,
+        }),
         bootstrapAttemptId: attemptId,
         setupCompleteAt: core.setupCompleteAt,
         ownerDisplayName: core.ownerProfile.displayName,

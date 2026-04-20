@@ -13,9 +13,13 @@ import {
   type ProviderModelSelection,
 } from '../../../shared/providerSelection.js';
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
+import {
+  attachPlatformRuntimeRoot,
+  createPlatformAppDescriptor,
+  createPlatformResponseMetadata,
+} from '../../../shared/platformEnvelopeMetadata.js';
 import { listPlatformProductDescriptors } from '../../../shared/platformProducts.js';
 import { listEnabledPlatformSurfaces } from '../../../shared/platformSurfaces.js';
-import { PLATFORM_RUNTIME_ROOT_PATH } from '../../../shared/runtimeIngressPaths.js';
 import { cloneAdvancedDraftControlsPreferences } from '../../shared/advancedDraftControls.js';
 import { createDefaultFolderBrowsePreferences } from '../../shared/folderBrowsePreferences.js';
 import type { AppShellPayload, ChatBotBindingSummary, ChatState } from '../api/contracts.js';
@@ -74,17 +78,10 @@ export function createAppShell(
   const summary = summarizeState(chat);
   const botBindings: ChatBotBindingSummary[] = setup?.botBindings ?? [];
   const resolvedSetupCompleteAt = resolveSetupCompleteAt(chat, now, setup);
-  const browserRuntime = {
-    ...runtime,
-    baseUrl: PLATFORM_RUNTIME_ROOT_PATH,
-  };
+  const browserRuntime = attachPlatformRuntimeRoot(runtime);
 
   return {
-    app: {
-      name: 'cats-platform',
-      stage: 'phase-2-shell',
-      runtimeBoundary: 'cats-runtime',
-    },
+    app: createPlatformAppDescriptor(),
     products: listPlatformProductDescriptors(),
     desktop: {
       startAtLogin: setup?.desktop?.startAtLogin ?? true,
@@ -139,11 +136,11 @@ export function createAppShell(
     runtimeSetup: setup?.runtimeSetup ?? createUnavailableRuntimeSetupSummary(
       new Error('Runtime setup was missing while building the app shell.'),
     ),
-    metadata: {
-      generatedAt: now.toISOString(),
+    metadata: createPlatformResponseMetadata({
+      generatedAt: now,
       host: config.host,
       port: config.port,
-    },
+    }),
     bootstrapAttemptId: setup?.bootstrapAttemptId ?? null,
     setupCompleteAt: resolvedSetupCompleteAt,
     ownerDisplayName: setup?.ownerDisplayName ?? 'Owner',
