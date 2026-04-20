@@ -121,6 +121,42 @@ export function resolveInitialWorkspaceWarmNavigationPayload<
   );
 }
 
+export async function runWorkspaceInitialAppShellLoad<
+  TPayload extends WorkspaceRoutingPayloadLike = AppShellPayload,
+>(
+  input: {
+    initialHadReadyState: boolean;
+    match: CrossSurfaceNavigationRouteTarget;
+    fetchAppShell: (signal: AbortSignal) => Promise<TPayload>;
+    signal: AbortSignal;
+    consumeWarmPayload?: (match: CrossSurfaceNavigationRouteTarget) => TPayload | null;
+    onReady: (payload: TPayload) => void;
+    onError: (message: string) => void;
+  },
+): Promise<void> {
+  const warmPayload = resolveInitialWorkspaceWarmNavigationPayload<TPayload>({
+    initialHadReadyState: input.initialHadReadyState,
+    match: input.match,
+    consumeWarmPayload: input.consumeWarmPayload,
+  });
+
+  if (warmPayload) {
+    input.onReady(warmPayload);
+  }
+
+  try {
+    const payload = await input.fetchAppShell(input.signal);
+    if (input.signal.aborted) {
+      return;
+    }
+    input.onReady(payload);
+  } catch (error: unknown) {
+    if (!input.signal.aborted && !warmPayload && !input.initialHadReadyState) {
+      input.onError(error instanceof Error ? error.message : 'Unknown renderer error');
+    }
+  }
+}
+
 export function shouldApplyWorkspaceBackgroundRefresh<
   TPayload extends BackgroundRefreshPayloadLike = AppShellPayload,
 >(
@@ -248,38 +284,26 @@ export function useWorkspaceAppShellRouting<
     // Warm handoff is intentionally one-shot for the first mounted route only.
     // Later route changes should refresh from the canonical URL/app-shell flow
     // instead of re-consuming a stale staged bundle from a previous navigation.
-    const warmPayload = resolveInitialWorkspaceWarmNavigationPayload<TPayload>({
+    void runWorkspaceInitialAppShellLoad<TPayload>({
       initialHadReadyState: initialHadReadyStateRef.current,
       match: {
         surface: initialNavigationMatchRef.current.surface,
         path: initialNavigationMatchRef.current.path,
       },
-    });
-
-    if (warmPayload) {
-      startTransition(() => {
-        setState({ status: 'ready', payload: warmPayload });
-      });
-    }
-
-    void fetchAppShell(controller.signal)
-      .then((payload) => {
+      fetchAppShell,
+      signal: controller.signal,
+      onReady: (payload) => {
         startTransition(() => {
           setState({ status: 'ready', payload });
         });
-      })
-      .catch((error: unknown) => {
-        if (
-          !controller.signal.aborted
-          && !warmPayload
-          && !initialHadReadyStateRef.current
-        ) {
-          setState({
-            status: 'error',
-            message: error instanceof Error ? error.message : 'Unknown renderer error',
-          });
-        }
-      });
+      },
+      onError: (message) => {
+        setState({
+          status: 'error',
+          message,
+        });
+      },
+    });
 
     return () => controller.abort();
   }, [fetchAppShell, setState]);

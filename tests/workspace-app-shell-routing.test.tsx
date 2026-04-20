@@ -5,6 +5,7 @@ import {
   applyWorkspaceBackgroundRefresh,
   mergeWorkspaceBackgroundRefreshPayload,
   resolveInitialWorkspaceWarmNavigationPayload,
+  runWorkspaceInitialAppShellLoad,
   shouldApplyWorkspaceBackgroundRefresh,
 } from '../src/products/shared/renderer/hooks/useWorkspaceAppShellRouting.ts';
 
@@ -156,4 +157,159 @@ test('workspace background refresh ignores stale envelopes and non-ready states'
     ),
     { status: 'loading' },
   );
+});
+
+test('runWorkspaceInitialAppShellLoad publishes warm payload first and then the fetched payload', async () => {
+  const readyPayloads: Array<ReturnType<typeof createPayload>> = [];
+  const errors: string[] = [];
+  const warmPayload = createPayload({
+    metadata: {
+      generatedAt: '2026-04-20T10:05:00.000Z',
+      requestId: 'request-warm',
+      version: 'test',
+    },
+  });
+  const fetchedPayload = createPayload({
+    metadata: {
+      generatedAt: '2026-04-20T10:10:00.000Z',
+      requestId: 'request-fetched',
+      version: 'test',
+    },
+  });
+  const controller = new AbortController();
+
+  await runWorkspaceInitialAppShellLoad({
+    initialHadReadyState: false,
+    match: {
+      surface: 'code',
+      path: '/code/chats/channel-ready',
+    },
+    signal: controller.signal,
+    consumeWarmPayload: () => warmPayload,
+    fetchAppShell: async () => fetchedPayload,
+    onReady: (payload) => {
+      readyPayloads.push(payload);
+    },
+    onError: (message) => {
+      errors.push(message);
+    },
+  });
+
+  assert.deepEqual(readyPayloads, [warmPayload, fetchedPayload]);
+  assert.deepEqual(errors, []);
+});
+
+test('runWorkspaceInitialAppShellLoad suppresses fetch errors after a warm payload hydrated the route', async () => {
+  const readyPayloads: Array<ReturnType<typeof createPayload>> = [];
+  const errors: string[] = [];
+  const warmPayload = createPayload({
+    metadata: {
+      generatedAt: '2026-04-20T10:05:00.000Z',
+      requestId: 'request-warm',
+      version: 'test',
+    },
+  });
+  const controller = new AbortController();
+
+  await runWorkspaceInitialAppShellLoad({
+    initialHadReadyState: false,
+    match: {
+      surface: 'code',
+      path: '/code/chats/channel-ready',
+    },
+    signal: controller.signal,
+    consumeWarmPayload: () => warmPayload,
+    fetchAppShell: async () => {
+      throw new Error('network timeout');
+    },
+    onReady: (payload) => {
+      readyPayloads.push(payload);
+    },
+    onError: (message) => {
+      errors.push(message);
+    },
+  });
+
+  assert.deepEqual(readyPayloads, [warmPayload]);
+  assert.deepEqual(errors, []);
+});
+
+test('runWorkspaceInitialAppShellLoad reports fetch failures only when the route did not already hydrate', async () => {
+  const controller = new AbortController();
+  const readyPayloads: Array<ReturnType<typeof createPayload>> = [];
+  const errors: string[] = [];
+
+  await runWorkspaceInitialAppShellLoad({
+    initialHadReadyState: false,
+    match: {
+      surface: 'work',
+      path: '/work/chats/channel-ready',
+    },
+    signal: controller.signal,
+    fetchAppShell: async () => {
+      throw new Error('backend unavailable');
+    },
+    onReady: (payload) => {
+      readyPayloads.push(payload);
+    },
+    onError: (message) => {
+      errors.push(message);
+    },
+  });
+
+  assert.deepEqual(readyPayloads, []);
+  assert.deepEqual(errors, ['backend unavailable']);
+});
+
+test('runWorkspaceInitialAppShellLoad ignores aborted fetch completions and failures', async () => {
+  const controller = new AbortController();
+  const readyPayloads: Array<ReturnType<typeof createPayload>> = [];
+  const errors: string[] = [];
+  const deferred = Promise.withResolvers<ReturnType<typeof createPayload>>();
+  const loadPromise = runWorkspaceInitialAppShellLoad({
+    initialHadReadyState: false,
+    match: {
+      surface: 'work',
+      path: '/work/chats/channel-ready',
+    },
+    signal: controller.signal,
+    fetchAppShell: async () => deferred.promise,
+    onReady: (payload) => {
+      readyPayloads.push(payload);
+    },
+    onError: (message) => {
+      errors.push(message);
+    },
+  });
+
+  controller.abort();
+  deferred.resolve(createPayload({
+    metadata: {
+      generatedAt: '2026-04-20T10:15:00.000Z',
+      requestId: 'request-late',
+      version: 'test',
+    },
+  }));
+  await loadPromise;
+
+  await runWorkspaceInitialAppShellLoad({
+    initialHadReadyState: false,
+    match: {
+      surface: 'work',
+      path: '/work/chats/channel-ready',
+    },
+    signal: AbortSignal.abort(),
+    fetchAppShell: async () => {
+      throw new Error('aborted late');
+    },
+    onReady: (payload) => {
+      readyPayloads.push(payload);
+    },
+    onError: (message) => {
+      errors.push(message);
+    },
+  });
+
+  assert.deepEqual(readyPayloads, []);
+  assert.deepEqual(errors, []);
 });
