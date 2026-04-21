@@ -4,6 +4,7 @@ import { Sidebar } from "./components/Sidebar";
 import { BootShell } from "./chatUtils";
 import {
   CODE_BUILD_PATH,
+  CODE_MOCK_STACK_PATH,
   CODE_RELAY_PATH,
 } from "./codePaths.js";
 import "./styles.css";
@@ -21,6 +22,7 @@ export default createWorkspaceProductApp({
       onStartNewParallelChat={props.onStartNewParallelChat}
       onOpenRelay={() => props.navigate(CODE_RELAY_PATH)}
       onOpenBuild={() => props.navigate(CODE_BUILD_PATH)}
+      onOpenMockStack={() => props.navigate(CODE_MOCK_STACK_PATH)}
     />
   ),
 });

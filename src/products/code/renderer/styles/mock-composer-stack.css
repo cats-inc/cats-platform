@@ -1,0 +1,286 @@
+.mockStackView {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 48px 16px 64px;
+  outline: none;
+  overflow-y: auto;
+}
+
+.mockStackDraftShell {
+  max-width: 760px;
+  width: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.mockStackHero {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.mockStackTitle {
+  margin: 0;
+  font-size: 1.4rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.mockStackSubtitle {
+  margin: 0;
+  color: rgba(94, 104, 116, 0.78);
+  font-size: 0.86rem;
+  max-width: 520px;
+}
+
+/* ── Single chrome rows (header / footer bound to active card) ── */
+
+.mockStackChrome {
+  animation: mockStackChromeSettle 220ms ease 280ms both;
+}
+
+.mockStackChromeHeader {
+  transform-origin: top center;
+  --chrome-offset: -4px;
+}
+
+.mockStackChromeFooter {
+  transform-origin: bottom center;
+  --chrome-offset: 4px;
+}
+
+@keyframes mockStackChromeSettle {
+  from {
+    opacity: 0;
+    transform: translateY(var(--chrome-offset, 0));
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ── Stack container (composer cards + side nav) ── */
+
+.mockStackContainer {
+  position: relative;
+  width: 100%;
+  max-width: var(--chat-transcript-max-width, 680px);
+  margin: 0 auto;
+}
+
+/* padding-bottom reserves vertical room for peek cards that sit behind the
+   active one (they are position:absolute and would otherwise overlap the
+   footer). Each peek offsets by 14px; we keep a small baseline so the side
+   nav has a touch of breathing room even with a single card. */
+.mockStackContainerPeekReserve {
+  padding-bottom: var(--peek-reserve, 0px);
+}
+
+.mockStackSideNav {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -50px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+  z-index: 1001;
+}
+
+.mockStackSideNavButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--border, #E4DFD7);
+  border-radius: 999px;
+  background: var(--panel, #ffffff);
+  color: var(--muted, #6B6560);
+  cursor: pointer;
+  flex: 0 0 auto;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.mockStackSideNavButton:hover:not(:disabled) {
+  background: var(--panel-hover, #E8E4DC);
+  color: var(--text, #1A1A1A);
+}
+
+.mockStackSideNavButton:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+
+.mockStackDotColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  padding: 8px 0;
+}
+
+.mockStackDot {
+  width: 6px;
+  height: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--muted-soft, #8C857D);
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.mockStackDot:hover:not(.mockStackDotActive) {
+  background: var(--muted, #6B6560);
+}
+
+.mockStackDotActive {
+  background: var(--text, #1A1A1A);
+}
+
+/* ── Composer cards (the stacked forms) ── */
+
+.mockStackCard {
+  transition:
+    transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 240ms ease,
+    filter 240ms ease;
+  will-change: transform, opacity;
+  transform-origin: top center;
+}
+
+.mockStackCardActive {
+  position: relative;
+  z-index: 1000;
+  transform: translate3d(0, 0, 0) scale(1);
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.mockStackCardPeek {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  cursor: pointer;
+  filter: saturate(0.9);
+}
+
+.mockStackCardBottomRow {
+  align-items: center;
+}
+
+.mockStackAgentRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+  justify-content: flex-end;
+}
+
+.mockStackAgentChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px 4px 10px;
+  border-radius: 14px;
+  color: #fff;
+  font-size: 0.74rem;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.mockStackAgentLabel {
+  letter-spacing: 0.01em;
+}
+
+.mockStackAgentRemove {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  padding: 0 2px;
+  font-size: 14px;
+  line-height: 1;
+  border-radius: 6px;
+  transition: background 120ms ease;
+}
+
+.mockStackAgentRemove:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.mockStackAgentRemove:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Footer content (task chip + add/remove) ── */
+
+.mockStackCardFooterLeft {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mockStackTaskChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 14px;
+  background: var(--panel, #ffffff);
+  color: var(--muted, #4a5560);
+  font-size: 0.74rem;
+  font-weight: 500;
+  border: 1px solid var(--border, rgba(94, 104, 116, 0.32));
+  line-height: 1;
+}
+
+.mockStackTaskChip svg {
+  flex: 0 0 auto;
+}
+
+.mockStackCardActions {
+  gap: 6px;
+}
+
+.mockStackCardRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border, #E4DFD7);
+  background: var(--panel, #ffffff);
+  color: var(--muted, #6B6560);
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.mockStackCardRemove:hover:not(:disabled) {
+  background: rgba(185, 66, 53, 0.1);
+  color: #b94235;
+  border-color: rgba(185, 66, 53, 0.4);
+}
+
+.mockStackCardRemove:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
