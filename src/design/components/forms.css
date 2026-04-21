@@ -183,17 +183,23 @@ textarea.textInput {
 }
 
 .dangerButton {
-  padding: 10px 18px;
-  border: 0;
+  /* Box model kept 1:1 with `.primaryButton` / `.secondaryButton`
+   * (same padding + same 1px border) so danger buttons sit at the
+   * exact same height/width as siblings in a `<SettingsActionBar>`.
+   * Previously `border: 0` + `padding: 10px 18px` + `margin-top: 12px`
+   * made Delete buttons 2px shorter, 8px wider, and vertically offset
+   * when placed alongside Recover / Archive. */
+  padding: 10px 14px;
+  border: 1px solid var(--danger);
   border-radius: 12px;
   background: var(--danger);
   color: #fff;
   font: inherit;
   font-weight: 600;
   cursor: pointer;
-  margin-top: 12px;
 }
 
 .dangerButton:hover:not(:disabled) {
   background: var(--danger-hover);
+  border-color: var(--danger-hover);
 }

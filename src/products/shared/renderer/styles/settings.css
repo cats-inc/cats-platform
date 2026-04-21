@@ -81,76 +81,6 @@
   cursor: default;
 }
 
-.catsDetailMoreWrap {
-  position: relative;
-  display: inline-flex;
-}
-
-.catsDetailMoreButton {
-  display: grid;
-  place-items: center;
-  width: 38px;
-  height: 38px;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: transparent;
-  color: var(--muted);
-  cursor: pointer;
-  font: inherit;
-}
-
-.catsDetailMoreButton:hover {
-  background: var(--panel-hover);
-  color: var(--text);
-}
-
-.catsDetailMoreMenu {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  min-width: 160px;
-  padding: 4px;
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  background: var(--panel);
-  box-shadow: var(--shadow, 0 6px 20px rgba(0, 0, 0, 0.12));
-  z-index: 80;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.catsDetailMoreMenu button {
-  display: block;
-  width: 100%;
-  padding: 8px 12px;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-
-.catsDetailMoreMenu button:hover:not(:disabled) {
-  background: var(--panel-hover);
-}
-
-.catsDetailMoreMenu button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.catsDetailMoreMenu .catsDetailMoreMenuDanger {
-  color: var(--danger, #d04040);
-}
-
-.catsDetailMoreMenu .catsDetailMoreMenuDanger:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--danger, #d04040) 10%, transparent);
-}
-
 .catsSubCard {
   background: color-mix(in srgb, var(--panel) 70%, var(--sidebar-bg) 30%);
   border: 1px solid var(--border);
@@ -175,12 +105,6 @@
   padding-top: 12px;
 }
 
-
-.catsIdentityRow {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
 
 .catAvatar.catsIdentityAvatar {
   width: 56px;
@@ -426,17 +350,11 @@
   margin-top: 0;
 }
 
-/* Page-like title: larger than the standard 1.1rem section title
- * because the detail card functions as a mini page within the
- * /settings/cats view. The inline flex layout preserves space for the
- * Boss / Archived tags that render alongside the cat name.
- *
- * `:not([data-nested])` scopes this to the OUTER detail card's h2 only,
- * so the nested h3s inside Identity / AI Provider / Telegram / Memory
- * sub-sections stay at the canonical `--settings-subtitle-size` (1rem). */
+/* The cat-name h2 uses the canonical `--settings-title-size` (1.1rem),
+ * same as General > Profile, so page-title size is consistent across
+ * Settings. Only the inline-flex / gap is kept so Boss / Archived pills
+ * sit beside the cat name with breathing space. */
 .catsDetailCard .settings-section-header__title:not([data-nested]) {
-  font-size: 1.3rem;
-  letter-spacing: -0.01em;
   display: flex;
   align-items: center;
   gap: 10px;

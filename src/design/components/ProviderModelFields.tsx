@@ -286,7 +286,7 @@ export function ProviderModelFields({
       </label>
       {showInstanceField ? (
         <label className="fieldLabel">
-          <span>Provider Instance</span>
+          <span>Provider instance</span>
           <select
             className="textInput"
             value={resolvedInstance}
@@ -344,7 +344,7 @@ export function ProviderModelFields({
       </label>
       {isLegacyModelTarget ? (
         <label className="fieldLabel">
-          <span>Legacy Model ID</span>
+          <span>Legacy model ID</span>
           <input
             className="textInput"
             type="text"

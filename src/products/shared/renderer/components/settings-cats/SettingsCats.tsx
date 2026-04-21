@@ -262,16 +262,6 @@ export function SettingsCatsCanvas({
   }, [effectiveMode, isCreateRoute]);
 
   const [avatarCropOpen, setAvatarCropOpen] = useState(false);
-  const [detailMoreMenuOpen, setDetailMoreMenuOpen] = useState(false);
-  useEffect(() => {
-    if (!detailMoreMenuOpen) return;
-    const onDocClick = () => setDetailMoreMenuOpen(false);
-    document.addEventListener('click', onDocClick);
-    return () => document.removeEventListener('click', onDocClick);
-  }, [detailMoreMenuOpen]);
-  useEffect(() => {
-    setDetailMoreMenuOpen(false);
-  }, [selectedCatId, effectiveMode]);
   const [pendingCreateAvatar, setPendingCreateAvatar] = useState<string | null>(null);
   useEffect(() => {
     if (!isCreateRoute) setPendingCreateAvatar(null);
@@ -461,65 +451,35 @@ export function SettingsCatsCanvas({
               status={
                 effectiveMode === 'view' && selectedCat ? (
                   <SettingsActionBar>
-                    <div className="catsDetailMoreWrap" onClick={(e) => e.stopPropagation()}>
+                    {selectedCat.status === 'active' ? (
                       <button
                         type="button"
-                        className="catsDetailMoreButton"
-                        onClick={() => setDetailMoreMenuOpen((v) => !v)}
-                        aria-label="More actions"
-                        aria-haspopup="menu"
-                        aria-expanded={detailMoreMenuOpen}
+                        className="secondaryButton"
+                        disabled={isCatBusy(busy, 'archive', selectedCat.id)}
+                        onClick={() => void onArchiveCat(selectedCat.id, selectedCat.name)}
                       >
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                          <circle cx="5" cy="12" r="1.6" />
-                          <circle cx="12" cy="12" r="1.6" />
-                          <circle cx="19" cy="12" r="1.6" />
-                        </svg>
+                        Archive
                       </button>
-                      {detailMoreMenuOpen ? (
-                        <div className="catsDetailMoreMenu" role="menu">
-                          {selectedCat.status === 'active' ? (
-                            <button
-                              type="button"
-                              role="menuitem"
-                              disabled={isCatBusy(busy, 'archive', selectedCat.id)}
-                              onClick={() => {
-                                setDetailMoreMenuOpen(false);
-                                void onArchiveCat(selectedCat.id, selectedCat.name);
-                              }}
-                            >
-                              Archive
-                            </button>
-                          ) : (
-                            <>
-                              <button
-                                type="button"
-                                role="menuitem"
-                                disabled={isCatBusy(busy, 'unarchive', selectedCat.id)}
-                                onClick={() => {
-                                  setDetailMoreMenuOpen(false);
-                                  void onUnarchiveCat(selectedCat.id, selectedCat.name);
-                                }}
-                              >
-                                Recover
-                              </button>
-                              <button
-                                type="button"
-                                role="menuitem"
-                                className="catsDetailMoreMenuDanger"
-                                disabled={isCatBusy(busy, 'delete', selectedCat.id)}
-                                onClick={() => {
-                                  setDetailMoreMenuOpen(false);
-                                  void onDeleteCat(selectedCat.id, selectedCat.name);
-                                }}
-                              >
-                                Delete
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      ) : null}
-                    </div>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="secondaryButton"
+                          disabled={isCatBusy(busy, 'unarchive', selectedCat.id)}
+                          onClick={() => void onUnarchiveCat(selectedCat.id, selectedCat.name)}
+                        >
+                          Recover
+                        </button>
+                        <button
+                          type="button"
+                          className="dangerButton"
+                          disabled={isCatBusy(busy, 'delete', selectedCat.id)}
+                          onClick={() => void onDeleteCat(selectedCat.id, selectedCat.name)}
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
                   </SettingsActionBar>
                 ) : effectiveMode === 'create' ? (
                   <SettingsActionBar>
@@ -551,10 +511,9 @@ export function SettingsCatsCanvas({
             <div className="catsDetailBody">
               <div className="catsDetailColumn">
                 <SettingsSubSection headerless className="catsSubCard catsIdentityCard">
-                  <div className="catsIdentityRow">
-                    <div className="fieldLabel">
-                      <span>Avatar</span>
-                      <div className="catsAvatarDock">
+                  <div className="fieldLabel">
+                    <span>Avatar</span>
+                    <div className="catsAvatarDock">
                       <button
                         type="button"
                         className={[
@@ -601,31 +560,7 @@ export function SettingsCatsCanvas({
                           </svg>
                         </button>
                       ) : null}
-                      </div>
                     </div>
-                    <label className="fieldLabel fieldLabelInline">
-                      <input
-                        type="checkbox"
-                        checked={catForm.makeBoss}
-                        onChange={async (event) => {
-                          const next = event.target.checked;
-                          if (next && payload.chat.bossCatId) {
-                            const currentBoss = payload.chat.cats.find((c) => c.id === payload.chat.bossCatId);
-                            const confirmed = await confirm({
-                              title: 'Change Boss Cat',
-                              message: `${currentBoss?.name ?? 'Another cat'} is currently the Boss Cat. Set this new cat as the Boss instead?`,
-                              confirmLabel: 'Confirm',
-                            });
-                            if (!confirmed) return;
-                          }
-                          setCatForm({
-                            ...catForm,
-                            makeBoss: next,
-                          });
-                        }}
-                      />
-                      <span>Set as Boss Cat</span>
-                    </label>
                   </div>
                   <label className="fieldLabel">
                     <span>Name</span>
@@ -636,6 +571,29 @@ export function SettingsCatsCanvas({
                       placeholder="Cat name"
                       onChange={(event) => setCatForm({ ...catForm, name: event.target.value })}
                     />
+                  </label>
+                  <label className="fieldLabel fieldLabelInline">
+                    <input
+                      type="checkbox"
+                      checked={catForm.makeBoss}
+                      onChange={async (event) => {
+                        const next = event.target.checked;
+                        if (next && payload.chat.bossCatId) {
+                          const currentBoss = payload.chat.cats.find((c) => c.id === payload.chat.bossCatId);
+                          const confirmed = await confirm({
+                            title: 'Change Boss Cat',
+                            message: `${currentBoss?.name ?? 'Another cat'} is currently the Boss Cat. Set this new cat as the Boss instead?`,
+                            confirmLabel: 'Confirm',
+                          });
+                          if (!confirmed) return;
+                        }
+                        setCatForm({
+                          ...catForm,
+                          makeBoss: next,
+                        });
+                      }}
+                    />
+                    <span>Set as Boss Cat</span>
                   </label>
                 </SettingsSubSection>
 
@@ -659,7 +617,10 @@ export function SettingsCatsCanvas({
               </div>
 
               <div className="catsDetailColumn">
-                <SettingsSubSection headerless className="catsSubCard">
+                <SettingsSubSection
+                  className="catsSubCard"
+                  header={<SettingsSectionHeader title="Brain" nested />}
+                >
                   <ProviderModelFields
                     provider={catForm.provider}
                     instance={catForm.instance}
@@ -686,10 +647,9 @@ export function SettingsCatsCanvas({
             >
               <div className="catsDetailColumn">
               <SettingsSubSection headerless className="catsSubCard catsIdentityCard">
-                <div className="catsIdentityRow">
-                  <div className="fieldLabel">
-                    <span>Avatar</span>
-                    <div className="catsAvatarDock">
+                <div className="fieldLabel">
+                  <span>Avatar</span>
+                  <div className="catsAvatarDock">
                     <button
                       type="button"
                       className="catAvatar catsIdentityAvatar"
@@ -728,38 +688,7 @@ export function SettingsCatsCanvas({
                         </svg>
                       </button>
                     ) : null}
-                    </div>
                   </div>
-                  {!isArchived && selectedCat.id !== payload.chat.bossCatId ? (
-                    <label className="fieldLabel fieldLabelInline">
-                      <input
-                        type="checkbox"
-                        // Always unchecked: the checkbox is a trigger, not a
-                        // stable toggle — you can only promote a cat to
-                        // Boss, not un-Boss them here (the new Boss takes
-                        // over as part of the same commit).
-                        checked={false}
-                        onChange={async (event) => {
-                          if (!event.target.checked) return;
-                          if (payload.chat.bossCatId && payload.chat.bossCatId !== selectedCat.id) {
-                            const currentBoss = payload.chat.cats.find((c) => c.id === payload.chat.bossCatId);
-                            const confirmed = await confirm({
-                              title: 'Change Boss Cat',
-                              message: `${currentBoss?.name ?? 'Another cat'} is currently the Boss Cat. Set ${selectedCat.name} as the Boss instead?`,
-                              confirmLabel: 'Confirm',
-                            });
-                            if (!confirmed) return;
-                          }
-                          await commitCatProfile(
-                            selectedCat.id,
-                            { makeBoss: true },
-                            'Failed to set Boss Cat.',
-                          );
-                        }}
-                      />
-                      <span>Set as Boss Cat</span>
-                    </label>
-                  ) : null}
                 </div>
                 <label className="fieldLabel">
                   <span>Name</span>
@@ -790,6 +719,36 @@ export function SettingsCatsCanvas({
                     }}
                   />
                 </label>
+                {!isArchived && selectedCat.id !== payload.chat.bossCatId ? (
+                  <label className="fieldLabel fieldLabelInline">
+                    <input
+                      type="checkbox"
+                      // Always unchecked: the checkbox is a trigger, not a
+                      // stable toggle — you can only promote a cat to
+                      // Boss, not un-Boss them here (the new Boss takes
+                      // over as part of the same commit).
+                      checked={false}
+                      onChange={async (event) => {
+                        if (!event.target.checked) return;
+                        if (payload.chat.bossCatId && payload.chat.bossCatId !== selectedCat.id) {
+                          const currentBoss = payload.chat.cats.find((c) => c.id === payload.chat.bossCatId);
+                          const confirmed = await confirm({
+                            title: 'Change Boss Cat',
+                            message: `${currentBoss?.name ?? 'Another cat'} is currently the Boss Cat. Set ${selectedCat.name} as the Boss instead?`,
+                            confirmLabel: 'Confirm',
+                          });
+                          if (!confirmed) return;
+                        }
+                        await commitCatProfile(
+                          selectedCat.id,
+                          { makeBoss: true },
+                          'Failed to set Boss Cat.',
+                        );
+                      }}
+                    />
+                    <span>Set as Boss Cat</span>
+                  </label>
+                ) : null}
               </SettingsSubSection>
 
               <SettingsSubSection
@@ -822,7 +781,7 @@ export function SettingsCatsCanvas({
 
               <SettingsSubSection
                 className="catsSubCard"
-                header={<SettingsSectionHeader title="Telegram Bot" nested />}
+                header={<SettingsSectionHeader title="Channel" nested />}
               >
                 <SettingsCatsDetailPanelContent
                   busy={busy}
@@ -876,7 +835,10 @@ export function SettingsCatsCanvas({
               </div>
 
               <div className="catsDetailColumn">
-                <SettingsSubSection headerless className="catsSubCard">
+                <SettingsSubSection
+                  className="catsSubCard"
+                  header={<SettingsSectionHeader title="Brain" nested />}
+                >
                   <ProviderModelFields
                     provider={selectedCat.defaultExecutionTarget.provider ?? ''}
                     instance={selectedCat.defaultExecutionTarget.instance ?? ''}
@@ -891,7 +853,7 @@ export function SettingsCatsCanvas({
                           model: target.model || null,
                           modelSelection: target.modelSelection ?? null,
                         },
-                        'Failed to update AI Provider.',
+                        'Failed to update Brain.',
                       );
                     }}
                     fetchProviderRegistry={fetchProviderRegistry}
