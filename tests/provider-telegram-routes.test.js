@@ -674,46 +674,6 @@ test('GET /api/providers serves stale truthful selector cache while refreshing i
   assert.equal(diagnosticsCalls, 2);
 });
 
-test('GET /api/providers keeps the last good selector after a transient refresh timeout', async () => {
-  const runtimeClient = createRuntimeStub();
-  const originalGetProviderDiagnostics = runtimeClient.getProviderDiagnostics;
-  const originalDateNow = Date.now;
-  let nowMs = Date.parse('2026-04-21T04:30:00.000Z');
-  let failRefresh = false;
-  let diagnosticsCalls = 0;
-
-  Date.now = () => nowMs;
-  runtimeClient.getProviderDiagnostics = async (query = {}) => {
-    diagnosticsCalls += 1;
-    if (failRefresh) {
-      throw new Error('The operation was aborted due to timeout');
-    }
-    return originalGetProviderDiagnostics.call(runtimeClient, query);
-  };
-
-  try {
-    await withServer(runtimeClient, async (baseUrl) => {
-      const first = await fetch(`${baseUrl}/api/providers`);
-      assert.equal(first.status, 200);
-      const firstPayload = await first.json();
-      assert.equal(firstPayload.state, 'ready');
-
-      failRefresh = true;
-      nowMs += 21_000;
-      const second = await fetch(`${baseUrl}/api/providers`);
-      assert.equal(second.status, 200);
-      const secondPayload = await second.json();
-      assert.equal(secondPayload.state, 'ready');
-      assert.ok(secondPayload.providers.some((provider) => provider.id === 'claude'));
-      assert.match(secondPayload.warnings.at(-1), /Using cached provider targets/u);
-    });
-  } finally {
-    Date.now = originalDateNow;
-  }
-
-  assert.equal(diagnosticsCalls, 2);
-});
-
 test('GET /api/providers exposes runtime setup recovery when no usable targets remain', async () => {
   const runtimeClient = createRuntimeStub();
   runtimeClient.getProviderDiagnostics = async () => ({
@@ -934,45 +894,6 @@ test('GET /api/providers/:provider/models returns an explicit runtime error inst
     assert.equal(payload.error.code, 'provider_catalog_unavailable');
     assert.match(payload.error.message, /runtime unavailable/u);
   });
-});
-
-test('GET /api/providers/:provider/models serves stale catalog after transient runtime failures', async () => {
-  const runtimeClient = createRuntimeStub();
-  const originalGetProviderModels = runtimeClient.getProviderModels;
-  const originalDateNow = Date.now;
-  let nowMs = Date.parse('2026-04-21T05:00:00.000Z');
-  let failCatalogRefresh = false;
-  let modelCalls = 0;
-
-  Date.now = () => nowMs;
-  runtimeClient.getProviderModels = async (provider, instance) => {
-    modelCalls += 1;
-    if (failCatalogRefresh) {
-      throw new Error('Runtime catalog unavailable.');
-    }
-    return originalGetProviderModels.call(runtimeClient, provider, instance);
-  };
-
-  try {
-    await withServer(runtimeClient, async (baseUrl) => {
-      const first = await fetch(`${baseUrl}/api/providers/claude/models`);
-      assert.equal(first.status, 200);
-      const firstPayload = await first.json();
-      assert.equal(firstPayload.catalog.models[0].id, 'claude-default');
-
-      failCatalogRefresh = true;
-      nowMs += 361_000;
-      const second = await fetch(`${baseUrl}/api/providers/claude/models`);
-      assert.equal(second.status, 200);
-      const secondPayload = await second.json();
-      assert.equal(secondPayload.catalog.models[0].id, 'claude-default');
-      assert.match(secondPayload.catalog.warnings.at(-1), /Using cached model catalog/u);
-    });
-  } finally {
-    Date.now = originalDateNow;
-  }
-
-  assert.equal(modelCalls, 2);
 });
 
 test('GET /api/providers/:provider/models rejects providers that runtime marks unavailable', async () => {

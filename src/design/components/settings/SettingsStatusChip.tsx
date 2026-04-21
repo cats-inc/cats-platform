@@ -1,18 +1,15 @@
 import type { ReactNode } from 'react';
 
-export type SettingsStatusChipTone = 'ready' | 'warm' | 'muted';
+import {
+  SETTINGS_STATUS_CHIP_TONE_CLASS,
+  type SettingsStatusChipTone,
+} from './SettingsStatusChipTone.js';
 
 export interface SettingsStatusChipProps {
   tone: SettingsStatusChipTone;
   children: ReactNode;
   className?: string;
 }
-
-const TONE_CLASS: Record<SettingsStatusChipTone, string> = {
-  ready: 'statusChipReady',
-  warm: 'statusChipWarm',
-  muted: 'statusChipMuted',
-};
 
 export function SettingsStatusChip({
   tone,
@@ -21,7 +18,7 @@ export function SettingsStatusChip({
 }: SettingsStatusChipProps) {
   const merged = [
     'statusChip',
-    TONE_CLASS[tone],
+    SETTINGS_STATUS_CHIP_TONE_CLASS[tone],
     'settings-status-chip',
     className,
   ]

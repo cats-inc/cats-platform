@@ -9,9 +9,7 @@ export type { SettingsOptionRowProps } from './SettingsOptionRow.js';
 export { SettingsActionBar } from './SettingsActionBar.js';
 export type { SettingsActionBarProps } from './SettingsActionBar.js';
 export { SettingsStatusChip } from './SettingsStatusChip.js';
-export type {
-  SettingsStatusChipProps,
-  SettingsStatusChipTone,
-} from './SettingsStatusChip.js';
+export type { SettingsStatusChipProps } from './SettingsStatusChip.js';
+export type { SettingsStatusChipTone } from './SettingsStatusChipTone.js';
 export { SettingsDangerZone } from './SettingsDangerZone.js';
 export type { SettingsDangerZoneProps } from './SettingsDangerZone.js';
