@@ -1310,7 +1310,10 @@ async function main(): Promise<void> {
   });
   ipcMain.handle(DESKTOP_SCREENSHOT_IPC_CHANNEL, async (event, payload: unknown) => {
     assertMainWindowScreenshotIpcSender(event, mainWindow);
-    return await captureScreenshotRegion(parseDesktopScreenshotCaptureRequest(payload));
+    return await captureScreenshotRegion({
+      request: parseDesktopScreenshotCaptureRequest(payload),
+      mainWindow,
+    });
   });
   ipcMain.handle('cats-host:update-desktop-preferences', async (_event, payload: unknown) => {
     if (

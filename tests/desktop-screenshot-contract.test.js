@@ -10,6 +10,7 @@ import {
   DESKTOP_SCREENSHOT_IPC_CHANNEL,
   isMainWindowScreenshotIpcSender,
   parseDesktopScreenshotCaptureRequest,
+  runWithMainWindowHiddenForScreenshot,
 } from '../build/desktop/screenshotCapture.js';
 
 const UNSUPPORTED_MESSAGE =
@@ -54,11 +55,75 @@ test('desktop screenshot IPC sender validation only accepts the main window webC
 });
 
 test('desktop screenshot bridge returns explicit unsupported before native capture lands', async () => {
+  const events = [];
+  const mainWindow = createFakeMainWindow(events);
+
   assert.deepEqual(
-    await captureScreenshotRegion({ source: 'composer' }),
+    await captureScreenshotRegion({
+      request: { source: 'composer' },
+      mainWindow,
+      waitForHiddenFrame: async () => {
+        events.push('wait');
+      },
+    }),
     {
       outcome: 'platform_unsupported',
       message: UNSUPPORTED_MESSAGE,
     },
   );
+  assert.deepEqual(events, ['hide', 'wait', 'show', 'focus']);
 });
+
+test('desktop screenshot lifecycle restores the main window after capture errors', async () => {
+  const events = [];
+  const mainWindow = createFakeMainWindow(events);
+
+  await assert.rejects(
+    () => runWithMainWindowHiddenForScreenshot(
+      mainWindow,
+      async () => {
+        events.push('capture');
+        throw new Error('capture failed');
+      },
+      async () => {
+        events.push('wait');
+      },
+    ),
+    /capture failed/u,
+  );
+
+  assert.deepEqual(events, ['hide', 'wait', 'capture', 'show', 'focus']);
+});
+
+function createFakeMainWindow(events) {
+  return {
+    webContents: {},
+    hide() {
+      events.push('hide');
+    },
+    show() {
+      events.push('show');
+    },
+    isMinimized() {
+      return false;
+    },
+    restore() {
+      events.push('restore');
+    },
+    focus() {
+      events.push('focus');
+    },
+    isFocused() {
+      return true;
+    },
+    isMaximized() {
+      return false;
+    },
+    maximize() {
+      events.push('maximize');
+    },
+    minimize() {
+      events.push('minimize');
+    },
+  };
+}
