@@ -288,7 +288,9 @@ contracts.
       boolean `readiness.ready === true`, so malformed ready flags or error
       responses cannot pass the packaged host startup gate. Update checks now
       reject malformed manifests without a valid version, and reject manifests
-      whose declared channel does not match the configured channel.
+      whose declared channel does not match the configured channel. Persisted
+      host-state snapshots now clamp corrupted host metadata before exposing it
+      back to the desktop bootstrap surface.
 - [ ] Add installed-app verification beyond the current unpacked smoke pass,
       including real Windows post-install launch checks, persisted host-state
       assertions on installed machines, and later packaging CI coverage

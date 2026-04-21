@@ -7,9 +7,11 @@ import type {
   DesktopBootstrapEventError,
   DesktopBootstrapEventReference,
   DesktopBootstrapEventStatus,
+  DesktopBootstrapPhase,
   DesktopBootstrapSnapshot,
   DesktopHostDiagnosticsState,
   DesktopHostPersistedState,
+  DesktopHealthStatus,
   DesktopManagedServiceLog,
   DesktopProductBootstrapDiagnostics,
   DesktopPackagingPlan,
@@ -17,6 +19,11 @@ import type {
   DesktopSetupInterruption,
   DesktopSetupState,
   DesktopUpdateState,
+} from './contracts.js';
+import {
+  DESKTOP_BOOTSTRAP_PHASES,
+  DESKTOP_HOST_NAME,
+  DESKTOP_HOST_VERSION,
 } from './contracts.js';
 import type { DesktopHostConfig } from './config.js';
 import { createEmptyDesktopDiagnosticsState } from './bootstrapDiagnostics.js';
@@ -46,6 +53,19 @@ function isObjectRecord(value: unknown): value is Record<string, unknown> {
 
 function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value : null;
+}
+
+function normalizeBootstrapPhase(value: unknown): DesktopBootstrapPhase {
+  return typeof value === 'string'
+    && DESKTOP_BOOTSTRAP_PHASES.includes(value as DesktopBootstrapPhase)
+    ? value as DesktopBootstrapPhase
+    : 'checking_prerequisites';
+}
+
+function normalizeHealthStatus(value: unknown): DesktopHealthStatus {
+  return value === 'ok' || value === 'degraded' || value === 'unavailable'
+    ? value
+    : 'degraded';
 }
 
 function normalizeBackgroundState(
@@ -390,6 +410,30 @@ function normalizeDiagnosticsState(
   };
 }
 
+function normalizeBootstrapSnapshotMetadata(
+  value: unknown,
+  options: {
+    fallbackTimestamp: string;
+    hostStatePath: string;
+  },
+): DesktopBootstrapSnapshot {
+  const snapshot = isObjectRecord(value)
+    ? value as unknown as DesktopBootstrapSnapshot
+    : {} as DesktopBootstrapSnapshot;
+
+  return {
+    ...snapshot,
+    service: DESKTOP_HOST_NAME,
+    version: readString(snapshot.version) ?? DESKTOP_HOST_VERSION,
+    timestamp: readString(snapshot.timestamp) ?? options.fallbackTimestamp,
+    phase: normalizeBootstrapPhase(snapshot.phase),
+    status: normalizeHealthStatus(snapshot.status),
+    summary: readString(snapshot.summary)
+      ?? 'Restored desktop host state is incomplete; rechecking desktop services.',
+    hostStatePath: options.hostStatePath,
+  };
+}
+
 export class DesktopHostStateStore {
   private writeQueue = Promise.resolve();
 
@@ -418,7 +462,11 @@ export class DesktopHostStateStore {
         return null;
       }
 
-      const snapshot = parsed.snapshot as unknown as DesktopBootstrapSnapshot;
+      const savedAt = readString(parsed.savedAt) ?? this.now().toISOString();
+      const snapshot = normalizeBootstrapSnapshotMetadata(parsed.snapshot, {
+        fallbackTimestamp: savedAt,
+        hostStatePath: this.statePath,
+      });
       const diagnosticsFallback = createEmptyDesktopDiagnosticsState(['cats-runtime', 'cats-platform']);
       return {
         snapshot: {
@@ -443,7 +491,7 @@ export class DesktopHostStateStore {
           : defaults.packaging,
         setup: normalizeSetupState(parsed.setup, defaults.setup),
         diagnostics: normalizeDiagnosticsState(parsed.diagnostics, diagnosticsFallback),
-        savedAt: readString(parsed.savedAt) ?? this.now().toISOString(),
+        savedAt,
       };
     } catch {
       return null;
