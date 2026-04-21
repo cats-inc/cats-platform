@@ -1,9 +1,11 @@
 import type { RuntimeStatusSummary } from '../../platform/runtime/client.js';
 import type { SettingsStatusChipTone } from './settings/SettingsStatusChipTone.js';
 
+export type RuntimeConnectionChipTone = 'ready' | 'warm' | 'muted';
+
 export function resolveRuntimeConnectionChip(
   runtime: RuntimeStatusSummary,
-): { tone: SettingsStatusChipTone; label: string } {
+): { tone: RuntimeConnectionChipTone; label: string } {
   if (!runtime.reachable) {
     return { tone: 'warm', label: 'Runtime unavailable' };
   }

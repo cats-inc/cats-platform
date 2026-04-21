@@ -33,6 +33,7 @@ import {
 import { routeChatApi } from '../../products/chat/api/index.js';
 import { routeCodeApi } from '../../products/code/api/index.js';
 import { routeWorkApi } from '../../products/work/api/index.js';
+import { routeEntitySubscriptionApi } from './subscribeRoutes.js';
 import {
   getAppLifecycleContract,
   getAppOperationalStatus,
@@ -401,6 +402,10 @@ export async function routeRequest(
   }
 
   if (await routeCoreApi(coreContext)) {
+    return;
+  }
+
+  if (await routeEntitySubscriptionApi(chatContext)) {
     return;
   }
 
