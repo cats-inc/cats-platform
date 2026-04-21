@@ -53,8 +53,11 @@ for the full observation set and options matrix.
 
 ### 1. Outbound fanout is a chat-event-hub subscriber, not an inline hook
 
-Every message append publishes a chat event via the existing
-`chatEventHub`. We add a new subscriber, `TransportFanout`, that:
+Every message append persists the message first and then publishes a
+chat event via the existing `chatEventHub`. The event detail carries
+stable metadata that already exists on the appended message
+(`messageId`, `origin`, and optional `sourceTransportBindingId`). We
+add a new subscriber, `TransportFanout`, that:
 
 - reads messages from the canonical room store after append
 - evaluates per-binding fanout policy
@@ -66,7 +69,11 @@ append, so web UI send latency stays independent of Telegram
 round-trip latency. Failures in fanout log and surface as diagnostics
 but do not fail the append itself.
 
-### 2. Every appended message carries an `origin` tag
+The subscriber must not depend on a later bridge-delivery mutation to
+decide whether a binding is eligible. All loop-prevention metadata is
+known before the `room_updated` event is emitted.
+
+### 2. Every appended message carries origin and source-binding metadata
 
 `appendMessage` (and its callers) take an explicit `origin` value
 that identifies the transport or surface that produced the message:
@@ -77,10 +84,18 @@ that identifies the transport or surface that produced the message:
 - `'email'` — email transport (future)
 - `'runtime'` — assistant turn produced by runtime session
 
+Transport ingress also records `sourceTransportBindingId` when a
+specific binding owns the ingress. For Telegram-origin user messages,
+this is the Telegram binding id. Runtime assistant messages produced
+for that Telegram ingress carry the same source binding id before
+they are appended. Web-originated messages leave it unset.
+
 `TransportFanout` uses `origin` to avoid echoing a message back to
 its source transport. A Telegram-origin message does not re-fanout
 to Telegram; a web-origin message fans out to every non-web
-transport.
+transport. It also uses `sourceTransportBindingId` to skip the exact
+binding whose bridge already owns delivery for a same-ingress
+assistant reply.
 
 ### 3. Mirror both user and assistant messages by default
 
@@ -90,11 +105,11 @@ the half that originated from Telegram. Default policy:
 - user message with `origin='web'` → mirror to every non-web
   binding on the cat's private lane
 - assistant message with `origin='runtime'` produced in response
-  to any ingress → mirror to every binding except the one that
-  originated the triggering message (which already gets delivered
-  by its own ingress handler — for Telegram, the bridge delivers
-  the reply directly; for web, the reply is visible in the UI
-  natively)
+  to a web-side ingress → mirror to every enabled non-web binding
+- assistant message with `origin='runtime'` produced in response
+  to transport ingress → mirror to every enabled binding except
+  `sourceTransportBindingId`; that binding's bridge already owns
+  reply delivery
 
 This rule makes the bridge's existing `deliver` and the new fanout
 stage non-overlapping:
@@ -103,6 +118,11 @@ stage non-overlapping:
   triggering ingress was Telegram** (today's behavior)
 - fanout delivers to Telegram when the triggering ingress was
   web (new)
+
+The Telegram bridge stamps the source binding id on both the inbound
+user message and the resulting runtime assistant message before the
+messages publish `room_updated`. Fanout therefore never races a
+post-delivery marker.
 
 If a future design collapses the bridge's delivery into fanout
 (one call site for every case), this ADR does not stand in the way,
@@ -180,10 +200,10 @@ upgraded to exactly-once-across-restarts.
   (`TransportFanout`) that runs alongside the bridge's existing
   delivery, so future maintenance must keep the "who delivers
   what" policy consistent
-- message append path grows an `origin` parameter that every
-  caller must fill in correctly; forgetting it defaults to an
-  obvious fallback (`'unknown'`) but the subscriber refuses to
-  fanout unknown origins (loop safety)
+- message append path grows origin/source-binding metadata that every
+  caller must fill in correctly; forgetting origin defaults to an
+  obvious fallback (`'unknown'`) but the subscriber refuses to fanout
+  unknown origins (loop safety)
 - per-binding toggle is a new policy field on bindings; must be
   respected by fanout and surfaced in binding diagnostics
 - first-slice idempotency is in-memory; a process restart mid-fanout
@@ -191,11 +211,12 @@ upgraded to exactly-once-across-restarts.
 
 ### Neutral
 
-- does not change persisted message shapes except the `origin`
-  field (additive)
+- does not change persisted message shapes except the additive
+  `origin` and `sourceTransportBindingId` fields
 - does not change the Telegram bridge's reply-threading or
   chunking behavior; fanout reuses the same chunking helper
-- does not change `/api/events/chat` event shapes
+- does not change `/api/events/chat` event kinds or SSE envelope;
+  `room_updated.detail` gains additive fields
 - does not introduce a new network transport
 
 ## Alternatives Considered

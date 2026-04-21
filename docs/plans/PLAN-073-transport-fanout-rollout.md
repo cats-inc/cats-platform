@@ -2,9 +2,9 @@
 
 > Ship the ADR-080 / SPEC-081 outbound fanout stage so web-UI
 > messages mirror to Telegram (and future transports) via a single
-> chat-event-hub subscriber. Three phases: add message `origin`
-> tagging, introduce the fanout subscriber with Telegram as the
-> first deliverer, then wire the per-binding toggle.
+> chat-event-hub subscriber. Three phases: add message origin/source
+> binding metadata, introduce the fanout subscriber with Telegram as
+> the first deliverer, then wire the per-binding toggle.
 
 ## Metadata
 
@@ -26,10 +26,12 @@
 
 Three phases, each shippable standalone:
 
-- **Phase 1 — Origin tagging on appends.** Add a `MessageOrigin`
-  type; require every `appendMessage` call to supply it;
-  `chatEventHub`'s `room_updated` detail carries it forward. No
-  behavioral change alone, but every later phase depends on it.
+- **Phase 1 — Origin/source-binding tagging on appends.** Add a
+  `MessageOrigin` type; require every `appendMessage` call to
+  supply it; carry optional `sourceTransportBindingId` for
+  transport-owned ingress; `chatEventHub`'s `room_updated` detail
+  carries those fields forward. No behavioral change alone, but
+  every later phase depends on it.
 - **Phase 2 — `TransportFanout` subscriber with Telegram deliverer.**
   The subscriber reads `room_updated` events, applies the
   eligibility rules from SPEC-081, and dispatches to Telegram via
@@ -42,7 +44,7 @@ Three phases, each shippable standalone:
 
 ## Implementation Phases
 
-### Phase 1: Origin Tagging on Message Appends
+### Phase 1: Origin and Source-Binding Tagging on Message Appends
 
 - [ ] Task 1.1: Introduce `MessageOrigin` type under the chat
       message model: `'web' | 'telegram' | 'browser' | 'email' |
@@ -54,21 +56,26 @@ Three phases, each shippable standalone:
     `origin='runtime'` for assistant segments
   - group chat routes — same discipline as parallel
   - Telegram bridge ingress persist — `origin='telegram'` for
-    user message, `origin='runtime'` for assistant message
+    user message and `sourceTransportBindingId=<bindingId>`;
+    `origin='runtime'` for the assistant message with the same
+    source binding id
   - any system / room-lifecycle append — `origin='system'`
 - [ ] Task 1.3: Extend `ChatEvent.detail` on `room_updated` to
-      include optional `messageId`, `origin`, and (Phase 2+)
-      `bridgeDeliveredTo`. Update `publishRoomMutation` /
-      `publishTelegramBridgeResult` to pass through.
+      include optional `messageId`, `origin`, and
+      `sourceTransportBindingId`. Update `publishRoomMutation` to
+      pass through metadata that already exists on the appended
+      message.
 - [ ] Task 1.4: Unit tests — append from each call site results in
-      the expected `origin` on the persisted message and the
-      published event.
+      the expected `origin` and source binding metadata on the
+      persisted message and the published event.
 - [ ] Task 1.5: Add an ESLint rule or review checklist note
-      reminding future `appendMessage` callers to supply `origin`.
+      reminding future `appendMessage` callers to supply `origin`
+      and source binding metadata where applicable.
 
-**Deliverables**: every new message persists with a known origin;
-`room_updated` events carry origin metadata; no user-visible
-behavior change.
+**Deliverables**: every new message persists with a known origin and
+transport-ingress messages persist their source binding;
+`room_updated` events carry that metadata; no user-visible behavior
+change.
 
 ### Phase 2: `TransportFanout` Subscriber with Telegram Deliverer
 
@@ -87,10 +94,10 @@ behavior change.
     SPEC-081 eligibility rules
   - dispatches through the deliverer registry
   - maintains the in-memory idempotency map
-- [ ] Task 2.4: Wire the bridge to stamp `bridgeDeliveredTo:
-      bindingId` on `publishTelegramBridgeResult`'s event detail
-      when it delivered the assistant reply to Telegram, so the
-      subscriber can skip that exact pair.
+- [ ] Task 2.4: Wire the Telegram bridge to pass the selected
+      binding id into the message append path before publication.
+      The subscriber skips `sourceTransportBindingId` for the same
+      message; do not depend on a post-delivery event marker.
 - [ ] Task 2.5: Implement text formatting — `"💬 [from web] "`
       prefix for `origin='web'` user messages dispatched to
       Telegram. No prefix for `origin='runtime'` assistant messages.
@@ -100,7 +107,8 @@ behavior change.
   - web-originated user message with an active Telegram binding
     → Telegram delivery fires with prefixed text
   - telegram-ingress flow → bridge delivers assistant reply →
-    fanout skips that exact pair (no duplicate delivery)
+    fanout skips the source binding from the first `room_updated`
+    event (no duplicate delivery)
   - web-originated message with no Telegram binding → fanout is
     a no-op
   - message with `origin='unknown'` → fanout skips
@@ -120,8 +128,8 @@ duplicate delivery on Telegram-ingress flows.
 - [ ] Task 3.2: Update `TransportFanout` to check
       `binding.outboundFanoutEnabled !== false` before dispatch.
 - [ ] Task 3.3: Add a minimum binding-management API endpoint
-      (`PATCH /api/bindings/:id { outboundFanoutEnabled }`) so the
-      flag is flippable without a UI change.
+      (`PATCH /api/bot-bindings/:id { outboundFanoutEnabled }`) so
+      the flag is flippable without a UI change.
 - [ ] Task 3.4: Integration test — binding with
       `outboundFanoutEnabled: false` receives no fanout
       deliveries; binding with `true` behaves as Phase 2.
@@ -135,20 +143,20 @@ backend; UI surface can land in a follow-up.
 
 | File | Action | Description |
 |------|--------|-------------|
-| `cats-platform/src/products/chat/state/messages.ts` (or the canonical append helper) | Modify | `appendMessage` requires `origin: MessageOrigin`; persist it on the message record. |
-| `cats-platform/src/products/chat/api/chatEventHub.ts` | Modify | `ChatEvent.detail` gains optional `messageId`, `origin`, `bridgeDeliveredTo`. |
+| `cats-platform/src/products/chat/state/messages.ts` (or the canonical append helper) | Modify | `appendMessage` requires `origin: MessageOrigin`; persist origin and optional `sourceTransportBindingId` on the message record. |
+| `cats-platform/src/products/chat/api/chatEventHub.ts` | Modify | `ChatEvent.detail` gains optional `messageId`, `origin`, `sourceTransportBindingId`. |
 | `cats-platform/src/products/chat/api/transportEventPublisher.ts` | Modify | `publishRoomMutation` accepts and forwards the new detail fields. |
-| `cats-platform/src/server/routes/telegram.ts` | Modify | `publishTelegramBridgeResult` marks `bridgeDeliveredTo` when the bridge delivered to a Telegram binding. |
-| `cats-platform/src/platform/transports/telegram/bridge.ts` | Modify | Persist user-ingress message with `origin='telegram'`; assistant with `origin='runtime'`; thread `bridgeDeliveredTo` through bridge result. |
+| `cats-platform/src/server/routes/telegram.ts` | Modify | Preserve the selected binding id through Telegram ingress so appends can stamp `sourceTransportBindingId`. |
+| `cats-platform/src/platform/transports/telegram/bridge.ts` | Modify | Persist user-ingress message with `origin='telegram'`; assistant with `origin='runtime'`; both carry the selected `sourceTransportBindingId` before publish. |
 | `cats-platform/src/products/chat/api/resources/parallelChatGroupRoutes.ts` | Modify | Supply `origin='web'` / `origin='runtime'` on every append. |
 | `cats-platform/src/products/chat/api/routeSupport.ts` / `routeStateSupport.ts` | Modify | Same discipline on all non-bridge append sites. |
 | `cats-platform/src/platform/transports/fanout/registry.ts` | Create | `TransportDeliverer` contract + registry keyed by `binding.platform`. |
 | `cats-platform/src/platform/transports/fanout/subscriber.ts` | Create | `TransportFanout` subscribes to `chatEventHub`; applies eligibility; dispatches via registry; idempotency map. |
 | `cats-platform/src/platform/transports/telegram/fanout.ts` | Create | `telegramFanoutDeliverer` wrapping `telegramRelay.deliver` and `chunkTelegramReply`. |
 | `cats-platform/src/app/server/contracts.ts` (or equivalent) | Modify | Wire `TransportFanout` into `ResolvedServerDependencies` construction and startup. |
-| `cats-platform/src/platform/transports/telegram/contracts.ts` | Modify | Binding record gains `outboundFanoutEnabled?: boolean`. |
-| `cats-platform/src/app/server/routes/bindings.ts` (new or existing) | Create/Modify | `PATCH /api/bindings/:id` accepts the toggle. |
-| `cats-platform/tests/transport-fanout.test.js` | Create | Covers eligibility rules, bridge-deliveredTo dedup, text prefix, unsupported origins. |
+| `cats-platform/src/core/types.ts` | Modify | `BotBindingRecord` gains `outboundFanoutEnabled?: boolean`. |
+| `cats-platform/src/products/chat/api/botBindingRoutes.ts` | Modify | `PATCH /api/bot-bindings/:id` accepts the toggle. |
+| `cats-platform/tests/transport-fanout.test.js` | Create | Covers eligibility rules, source-binding dedup, text prefix, unsupported origins. |
 | `cats-platform/tests/telegram-bridge-fanout.test.js` | Create | End-to-end: Telegram ingress does not duplicate; web ingress fans out correctly. |
 
 ## Technical Decisions
@@ -197,7 +205,7 @@ backend; UI surface can land in a follow-up.
 | Risk | Impact | Mitigation |
 |------|--------|------------|
 | Forgotten `origin` on a future `appendMessage` call creates silently-unrouted messages | Medium | Required argument in TS; ESLint rule / review gate; `'unknown'` is the explicit fallback and is never fanned out. |
-| Fanout races the bridge's own delivery and produces duplicate Telegram messages | High | `bridgeDeliveredTo` marker on the event detail; subscriber skips matching pairs; integration test covers this exact race. |
+| Fanout races the bridge's own delivery and produces duplicate Telegram messages | High | `sourceTransportBindingId` is persisted before `room_updated`; subscriber skips the source binding without waiting for bridge delivery; integration test covers this exact race. |
 | Rate limiting on Telegram's `sendMessage` causes cascading failures | Medium | Bounded concurrency per binding in the subscriber; exponential backoff; visible in binding diagnostics. |
 | Attachments on web-originated messages get silently dropped | Low | Log-and-skip with visible diagnostic; follow-up slice extends to attachments. |
 | In-memory idempotency map loses state on restart, causing duplicate delivery on subscriber re-run | Low | Documented limitation; persistent log is a follow-up; process restart during active fanout is a rare event. |

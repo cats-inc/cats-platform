@@ -55,6 +55,10 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [PLAN-073](./plans/PLAN-073-transport-fanout-rollout.md)
+- [SPEC-081](./specs/SPEC-081-transport-fanout-for-web-originated-messages.md)
+- [ADR-080](./decisions/080-fan-out-web-originated-messages-to-bound-transports.md)
+- [2026-04-22 Web to Telegram Outbound Fanout](./research/2026-04-22-web-to-telegram-outbound-fanout.md)
 - [PLAN-071](./plans/PLAN-071-region-screenshot-composer-rollout.md)
 - [SPEC-079](./specs/SPEC-079-region-screenshot-composer-attachments.md)
 - [ADR-078](./decisions/078-use-electron-native-region-screenshot-with-web-fallback.md)

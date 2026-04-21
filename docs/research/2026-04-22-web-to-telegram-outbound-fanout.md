@@ -123,14 +123,18 @@ user wants to silence assistant-to-Telegram specifically.
 If every `appendMessage` naively triggers `deliver`, the bridge's
 own `appendMessage` calls would fanout right back to Telegram,
 producing duplicates (or infinite loops if an envelope comes back).
-The fix is origin tagging:
+The fix is source-aware origin tagging:
 
 - every message append carries an `origin` marker: `'web'`,
   `'telegram'`, `'browser-transport'`, etc.
-- fanout logic only triggers when the origin is **not** the same
-  transport it would fanout to
-- the bridge's appends already sit on a known origin path; add the
-  origin tag there and the fanout helper filters trivially
+- transport-owned ingress also carries `sourceTransportBindingId`
+  before the message is published
+- fanout skips the target binding when it matches
+  `sourceTransportBindingId`, and uses `origin` to avoid echoing
+  transport-origin user messages back to the same platform
+- the bridge's appends already sit on a known origin path; add both
+  fields there so the fanout helper can filter on the first
+  `room_updated` event, without waiting for a delivery receipt
 
 ### Per-binding opt-in
 
@@ -221,8 +225,8 @@ ids.
   reuses existing chat event hub; polymorphic (each transport adds
   its own subscriber); composes naturally with the staged events
   from ADR-079.
-- **Cons**: introduces a new subscriber on the hub; must get
-  ordering vs `publishTelegramBridgeResult` right to avoid
+- **Cons**: introduces a new subscriber on the hub; must stamp
+  source-binding metadata before the room update publishes to avoid
   echoing.
 - **Why appealing**: cleanest long-term shape; the minimum
   plumbing to unlock correct behavior without regressing anything.
@@ -242,12 +246,13 @@ ids.
 Ship Option 3 with per-binding opt-in and origin tagging:
 
 1. Extend chat message append with an `origin` tag
-   (`'web' | 'telegram' | ...`).
+   (`'web' | 'telegram' | ...`) plus optional
+   `sourceTransportBindingId` for transport-owned ingress.
 2. Add a new subscriber on the chat event hub, `TransportFanout`,
-   that receives `room_updated` events (or a new more specific
-   event) and, for every message whose `origin` is not the target
-   transport, looks up the cat's bindings and dispatches the
-   message to each eligible binding.
+    that receives `room_updated` events (or a new more specific
+   event), looks up the cat's bindings, skips the message's source
+   binding when present, and dispatches the message to each eligible
+   binding.
 3. For Telegram, `TransportFanout` calls `telegramRelay.deliver`
    with the mirrored chunk(s).
 4. Add a per-binding `outboundFanoutEnabled` flag, default `true`.
@@ -269,8 +274,9 @@ completion event.
       render differently on the Telegram side (e.g. italic, quoted
       block) so the Telegram user can distinguish "bot speaking in
       reply to Telegram" from "bot mirroring a web conversation"?
-- [ ] Where should `outboundFanoutEnabled` live on the binding
-      schema? New column vs reuse of an existing capabilities bag?
+- [x] Where should `outboundFanoutEnabled` live on the binding
+      schema? First slice should add it to `BotBindingRecord` in
+      `src/core/types.ts` as an additive optional field.
 - [ ] Do group chat / parallel chat bindings need different fanout
       semantics, or does a single per-binding toggle suffice?
 - [ ] What happens if the web-originated message is edited or

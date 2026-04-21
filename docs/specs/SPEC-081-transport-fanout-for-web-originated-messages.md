@@ -46,7 +46,8 @@ for their `binding.platform`.
 ## Non-Goals
 
 - no change to persisted message shapes except adding a
-  non-optional `origin` tag at append time
+  non-optional `origin` tag and optional
+  `sourceTransportBindingId` at append time
 - no replacement of the bridge's existing `deliver` call site (it
   stays; fanout covers the gap, not the overlap)
 - no edit / delete sync of mirrored messages in the first slice
@@ -84,19 +85,18 @@ for their `binding.platform`.
    a `TransportFanout` module subscribes to the chat event hub.
    It receives every `room_updated` event with
    `mutation: 'message_added'` and looks up the appended
-   message's metadata (id, origin, content).
+   message's metadata (id, origin, source binding, content).
 3. **FR-3 (Eligibility rules).** For a given message `M` on a
    room attached to a cat `C` with bindings `B1..Bn`:
    - skip fanout if `M.origin === 'unknown'`
    - for each binding `Bi` where `Bi.outboundFanoutEnabled !==
      false` (default `true`):
-     - if `Bi.platform === M.origin`, skip (do not echo to
-       source)
-     - if the bridge already delivered `M` as a reply to the
-       same binding (same-ingress case), skip (deduplication
-       against bridge's delivery)
-     - otherwise, dispatch `M` to `Bi` via the deliverer
-       registered for `Bi.platform`
+      - if `M.sourceTransportBindingId === Bi.id`, skip (that
+        source bridge owns same-ingress delivery for this binding)
+      - if `Bi.platform === M.origin`, skip (do not echo to
+        source)
+      - otherwise, dispatch `M` to `Bi` via the deliverer
+        registered for `Bi.platform`
 4. **FR-4 (Deliverer registry).** Each transport registers a
    deliverer under its `binding.platform` key:
    `{ platform: 'telegram', deliver: (binding, message) => ... }`.
@@ -123,18 +123,20 @@ for their `binding.platform`.
    `(messageId, bindingId, error)` and surfaced through the
    existing binding diagnostics channel. The underlying
    `appendMessage` call is unaffected.
-9. **FR-9 (Bridge non-overlap).** When the bridge delivers an
-   assistant reply in response to a Telegram ingress, it
-   populates a marker on the delivered message receipt (e.g.
-   `bridgeDeliveredTo: bindingId`) that the fanout subscriber
-   reads to skip that exact `(messageId, bindingId)` pair. The
-   marker flows through the chat event payload (extending
-   `ChatEvent.detail`).
+9. **FR-9 (Source-binding non-overlap).** When Telegram ingress
+   appends the inbound user message, it stamps
+   `sourceTransportBindingId` with the Telegram binding id. The
+   runtime assistant reply produced for that ingress carries the
+   same source binding id before it is appended and before
+   `room_updated` is emitted. Fanout reads this stable metadata and
+   skips that exact `(messageId, bindingId)` pair; it does not wait
+   for a post-delivery bridge marker.
 
 ### Non-Functional Requirements
 
-- **Compatibility**: every existing caller of `appendMessage`
-  continues to work; those without an explicit origin default to
+- **Compatibility**: Phase 1 updates every existing caller of
+  `appendMessage` to supply an explicit origin. Older persisted
+  records without origin/source-binding metadata normalize to
   `'unknown'` and are not fanned out.
 - **Observability**: every dispatch attempt logs start / end /
   result; counts surface under the binding diagnostics.
@@ -173,18 +175,23 @@ AFTER (this spec):
     → runtime →
     appendMessage(assistant, origin='runtime') →
     publishRoomMutation(room_updated, {messageId, origin})
-      └─ TransportFanout: dispatch to each binding except the one the
-         bridge already delivered to (if any)
+      └─ TransportFanout: dispatch to each enabled non-web binding
 
-  Telegram poll → bridge → appendMessage(user, origin='telegram') →
-    publishRoomMutation(room_updated, {messageId, origin})
-      └─ TransportFanout: skip telegram binding (origin match);
+  Telegram poll → bridge →
+    appendMessage(user, origin='telegram',
+      sourceTransportBindingId=bindingId) →
+    publishRoomMutation(room_updated,
+      {messageId, origin, sourceTransportBindingId})
+      └─ TransportFanout: skip source/telegram binding;
          dispatch to other bindings if they exist
-    → runtime → appendMessage(assistant, origin='runtime') →
-    telegramRelay.deliver(assistant) [bridge delivers, marks receipt] →
-    publishRoomMutation(room_updated, {messageId, origin, bridgeDeliveredTo})
-      └─ TransportFanout: skip telegram binding (already bridge-delivered);
+    → runtime →
+    appendMessage(assistant, origin='runtime',
+      sourceTransportBindingId=bindingId) →
+    publishRoomMutation(room_updated,
+      {messageId, origin, sourceTransportBindingId})
+      └─ TransportFanout: skip source binding (bridge owns delivery);
          dispatch to other bindings if they exist
+    → telegramRelay.deliver(assistant) [bridge delivery for source binding]
 ```
 
 ### Deliverer contract
@@ -237,7 +244,7 @@ export const telegramFanoutDeliverer: TransportDeliverer = {
 
 ### ChatEvent extension
 
-`room_updated` events gain an optional `detail.fanout` field:
+`room_updated` events gain optional detail fields:
 
 ```ts
 {
@@ -248,12 +255,20 @@ export const telegramFanoutDeliverer: TransportDeliverer = {
     mutation: 'message_added' | 'updated' | 'created',
     messageId?: string,
     origin?: MessageOrigin,
-    bridgeDeliveredTo?: string,  // bindingId — subscriber uses this to skip
+    sourceTransportBindingId?: string | null,
   }
 }
 ```
 
-Existing consumers that ignore `detail.fanout` are unaffected.
+Existing consumers that ignore the additive detail fields are
+unaffected.
+
+### Message metadata extension
+
+Persisted chat messages gain `origin: MessageOrigin` and optional
+`sourceTransportBindingId?: string | null`. The source binding field
+is set only when a transport binding owns the ingress that produced
+the message or its immediate runtime reply.
 
 ### Binding schema extension
 
@@ -282,9 +297,9 @@ Migration is additive; existing rows need no backfill.
 - [ ] How do parallel chat groups interact with fanout? Each
       member room has its own bindings; do we fanout from every
       member, or only from the group's canonical room?
-- [ ] Should we add a `MessageOrigin.runtimeTurnId` correlation so
-      fanout can recognize "this is the assistant reply to a
-      specific ingress" and apply origin-aware logic?
+- [ ] Do we need a runtime-turn correlation in addition to
+      `sourceTransportBindingId` for multi-step assistant flows, or
+      is the source binding id enough for first-slice non-overlap?
 - [ ] Persistent dispatch log (FR-7 upgrade) — when do we commit
       to it? Tied to a user-visible "retry fanout" action?
 - [ ] Polymorphic deliverer registry location — live in
