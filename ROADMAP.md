@@ -189,13 +189,16 @@ contracts.
       execution-target reconciliation, task-execution context, and activation
       result shaping now live in separated helpers instead of one orchestration
       function.
-- [ ] Persist solo-composer model changes immediately on selector change instead of
+- [x] Persist solo-composer model changes immediately on selector change instead of
       only committing the pending provider/model when the next message is sent
-- [ ] Add a platform-local cache for truthful runtime-backed selector reads,
+- [x] Add a platform-local cache for truthful runtime-backed selector reads,
       model catalogs, and advanced catalogs so repeated setup, cat-creation,
       and product selector mounts do not refetch the same provider/instance
       metadata on every reopen while still preserving usable-target truth and
       without reintroducing product-owned static fallback catalogs
+      Completed: renderer-side provider registry reads use the shared client
+      cache, and model plus advanced catalog reads now share short-lived
+      provider/instance client cache buckets with in-flight request dedupe.
 - [ ] Stop rebuilding the full truthful selector registry in front of every
       `/api/providers/{provider}/models` and `/api/providers/{provider}/models/advanced`
       request; once a provider target is already known usable, model-catalog
