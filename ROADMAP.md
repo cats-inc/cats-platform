@@ -577,6 +577,9 @@ contracts.
       execution-target summary/label helper for header and side-panel surfaces,
       and consolidating the growing draft extension props into a more
       structured slot namespace before more Code-only seams are added
+      Progress: per-branch draft callbacks are now grouped under the shared
+      `parallelBranchActions` namespace instead of continuing to expand the
+      flat `NewChatDraftProps` surface.
 - [ ] Add a product-owned side-panel composition seam for Code drafts together
       with render-level coverage for empty participant states, section-open
       behavior, and later execution-profile sections, so `+New code` does not

@@ -111,6 +111,19 @@ export function createDraftCompareShadowCardId(
   return `shadow-${branchIndex}-${target.provider}-${target.instance ?? ''}-${target.model ?? ''}`;
 }
 
+export interface ParallelBranchDraftActions {
+  onPickFolder?: (index: number) => void;
+  onSetAudienceKeys?: (index: number, keys: string[]) => void;
+  onSetCwd?: (index: number, cwd: string | null) => void;
+  onSetRuntimeSessionPolicy?: (
+    index: number,
+    policy: RuntimeSessionPolicy | null,
+  ) => void;
+  onSetPromptOverride?: (index: number, promptOverride: string | null) => void;
+  onToggleWorkflowShape?: (index: number) => void;
+  onQuickAddTemporaryParticipant?: (index: number) => void;
+}
+
 function BranchRuntimeSessionPolicyControls({
   branchIndex,
   target,
@@ -278,7 +291,7 @@ export interface NewChatDraftProps {
   onParallelTargetChange?: (index: number, value: ExecutionTargetValue) => void;
   onAddParallelTarget?: () => void;
   onRemoveParallelTarget?: (index: number) => void;
-  onPickParallelBranchFolder?: (index: number) => void;
+  parallelBranchActions?: ParallelBranchDraftActions;
   showDraftParallelAddButton?: boolean;
   folderBrowsePath?: string;
   folderBrowseCurrentPath?: string;
@@ -293,15 +306,6 @@ export interface NewChatDraftProps {
   onToggleDraftWorkflowShape?: () => void;
   draftAudienceKeys?: string[] | null;
   onSetAudienceKeys?: (keys: string[]) => void;
-  onSetParallelBranchAudienceKeys?: (index: number, keys: string[]) => void;
-  onSetParallelBranchCwd?: (index: number, cwd: string | null) => void;
-  onSetParallelBranchRuntimeSessionPolicy?: (
-    index: number,
-    policy: RuntimeSessionPolicy | null,
-  ) => void;
-  onSetParallelBranchPromptOverride?: (index: number, promptOverride: string | null) => void;
-  onToggleParallelBranchWorkflowShape?: (index: number) => void;
-  onQuickAddParallelBranchTemporaryParticipant?: (index: number) => void;
   draftRuntimeSessionPolicy?: RuntimeSessionPolicy | null;
   onDraftRuntimeSessionPolicyChange?: (policy: RuntimeSessionPolicy) => void;
   composerHeaderAccessory?: ReactNode;
@@ -369,7 +373,7 @@ export function NewChatDraft({
   onParallelTargetChange,
   onAddParallelTarget,
   onRemoveParallelTarget,
-  onPickParallelBranchFolder,
+  parallelBranchActions,
   showDraftParallelAddButton = false,
   folderBrowsePath = '',
   folderBrowseCurrentPath = '',
@@ -384,12 +388,6 @@ export function NewChatDraft({
   onToggleDraftWorkflowShape,
   draftAudienceKeys,
   onSetAudienceKeys,
-  onSetParallelBranchAudienceKeys,
-  onSetParallelBranchCwd,
-  onSetParallelBranchRuntimeSessionPolicy,
-  onSetParallelBranchPromptOverride,
-  onToggleParallelBranchWorkflowShape,
-  onQuickAddParallelBranchTemporaryParticipant,
   draftRuntimeSessionPolicy = null,
   composerHeaderAccessory = null,
   composerHeaderWhereExtras = null,
@@ -404,6 +402,15 @@ export function NewChatDraft({
   leadingStarterChips,
   preserveHelperChipsOnSelect = false,
 }: NewChatDraftProps) {
+  const onPickParallelBranchFolder = parallelBranchActions?.onPickFolder;
+  const onSetParallelBranchAudienceKeys = parallelBranchActions?.onSetAudienceKeys;
+  const onSetParallelBranchCwd = parallelBranchActions?.onSetCwd;
+  const onSetParallelBranchRuntimeSessionPolicy =
+    parallelBranchActions?.onSetRuntimeSessionPolicy;
+  const onSetParallelBranchPromptOverride = parallelBranchActions?.onSetPromptOverride;
+  const onToggleParallelBranchWorkflowShape = parallelBranchActions?.onToggleWorkflowShape;
+  const onQuickAddParallelBranchTemporaryParticipant =
+    parallelBranchActions?.onQuickAddTemporaryParticipant;
   const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
   const [activeBranchIndex, setActiveBranchIndex] = useState(0);
   const [

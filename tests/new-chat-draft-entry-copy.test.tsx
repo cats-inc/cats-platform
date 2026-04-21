@@ -1104,7 +1104,7 @@ test('advanced draft controls on exposes a collaborator button on every parallel
         ],
         showDraftGroupAddButton: true,
         onQuickAddDraftTemporaryParticipant: () => {},
-        onQuickAddParallelBranchTemporaryParticipant: () => {},
+        parallelBranchActions: { onQuickAddTemporaryParticipant: () => {} },
         onAddParallelTarget: () => {},
       })}
     />,
@@ -1135,7 +1135,7 @@ test('+Group preset with advanced on still lets every shadow row add collaborato
         ],
         showDraftGroupAddButton: false,
         onQuickAddDraftTemporaryParticipant: () => {},
-        onQuickAddParallelBranchTemporaryParticipant: () => {},
+        parallelBranchActions: { onQuickAddTemporaryParticipant: () => {} },
         onAddParallelTarget: () => {},
       })}
     />,
@@ -1174,8 +1174,10 @@ test('+Group + +compare keeps the lead roster scoped to branch-0 audience and ex
           { participantId: 'lead-b', name: 'Bram', provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
           { participantId: 'shadow-c', name: 'Cleo', provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null, roleHint: null },
         ],
-        onQuickAddParallelBranchTemporaryParticipant: () => {},
-        onSetParallelBranchAudienceKeys: () => {},
+        parallelBranchActions: {
+          onQuickAddTemporaryParticipant: () => {},
+          onSetAudienceKeys: () => {},
+        },
         onAddParallelTarget: () => {},
       })}
     />,
@@ -1216,7 +1218,7 @@ test('+Group + +compare hides lead remove buttons while lead branch sits at the 
           { participantId: 'lead-b', name: 'Bram', provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
           { participantId: 'shadow-c', name: 'Cleo', provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null, roleHint: null },
         ],
-        onSetParallelBranchAudienceKeys: () => {},
+        parallelBranchActions: { onSetAudienceKeys: () => {} },
         onAddParallelTarget: () => {},
       })}
     />,
@@ -1252,7 +1254,7 @@ test('parallel shadow branch with a single audience member renders as a target-s
         draftTemporaryParticipants: [
           { participantId: 'shadow-c', name: 'Cleo', provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null, roleHint: null },
         ],
-        onSetParallelBranchAudienceKeys: () => {},
+        parallelBranchActions: { onSetAudienceKeys: () => {} },
         onAddParallelTarget: () => {},
       })}
     />,
@@ -1281,7 +1283,7 @@ test('parallel shadow branch with detached cwd renders a relinkable cwd chip', (
             cwd: 'C:/repo/worktrees/review',
           },
         ],
-        onSetParallelBranchCwd: () => {},
+        parallelBranchActions: { onSetCwd: () => {} },
         onAddParallelTarget: () => {},
       })}
     />,
@@ -1309,7 +1311,7 @@ test('parallel shadow branch following lead exposes the branch folder picker whe
             workflowShape: 'sequential',
           },
         ],
-        onPickParallelBranchFolder: () => {},
+        parallelBranchActions: { onPickFolder: () => {} },
         onAddParallelTarget: () => {},
       })}
     />,
@@ -1359,7 +1361,7 @@ test('parallel shadow branch following lead exposes the session policy detach co
             workflowShape: 'sequential',
           },
         ],
-        onSetParallelBranchRuntimeSessionPolicy: () => {},
+        parallelBranchActions: { onSetRuntimeSessionPolicy: () => {} },
         onAddParallelTarget: () => {},
       })}
     />,
@@ -1387,7 +1389,7 @@ test('parallel shadow branch following lead exposes the prompt detach affordance
             workflowShape: 'sequential',
           },
         ],
-        onSetParallelBranchPromptOverride: () => {},
+        parallelBranchActions: { onSetPromptOverride: () => {} },
         onAddParallelTarget: () => {},
       })}
     />,
@@ -1417,7 +1419,7 @@ test('parallel shadow branch with detached prompt renders editable prompt and re
             promptOverride: 'Branch prompt',
           },
         ],
-        onSetParallelBranchPromptOverride: () => {},
+        parallelBranchActions: { onSetPromptOverride: () => {} },
         onAddParallelTarget: () => {},
       })}
     />,
@@ -1486,10 +1488,12 @@ test('synthetic orchestrator-authored parallel draft renders landed branch field
           { participantId: 'reviewer', name: 'Reviewer Cat', provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null, roleHint: null },
           { participantId: 'critic', name: 'Critic Cat', provider: 'gemini-cli', instance: null, model: 'gemini-2.5-pro', modelSelection: null, roleHint: null },
         ],
-        onSetParallelBranchAudienceKeys: () => {},
-        onSetParallelBranchCwd: () => {},
-        onSetParallelBranchRuntimeSessionPolicy: () => {},
-        onSetParallelBranchPromptOverride: () => {},
+        parallelBranchActions: {
+          onSetAudienceKeys: () => {},
+          onSetCwd: () => {},
+          onSetRuntimeSessionPolicy: () => {},
+          onSetPromptOverride: () => {},
+        },
         onAddParallelTarget: () => {},
       })}
     />,
@@ -1525,7 +1529,7 @@ test('parallel shadow branch with detached runtime policy renders a relinkable p
             },
           },
         ],
-        onSetParallelBranchRuntimeSessionPolicy: () => {},
+        parallelBranchActions: { onSetRuntimeSessionPolicy: () => {} },
         onAddParallelTarget: () => {},
       })}
     />,
@@ -1584,8 +1588,10 @@ test('+Group + many +compares keeps every branch collaborator button visible whi
           { participantId: 'e', name: 'Echo', provider: 'cursor-cli', instance: null, model: 'composer-max', modelSelection: null, roleHint: null },
         ],
         onQuickAddDraftTemporaryParticipant: () => {},
-        onQuickAddParallelBranchTemporaryParticipant: () => {},
-        onSetParallelBranchAudienceKeys: () => {},
+        parallelBranchActions: {
+          onQuickAddTemporaryParticipant: () => {},
+          onSetAudienceKeys: () => {},
+        },
         onAddParallelTarget: () => {},
       })}
     />,

@@ -1674,13 +1674,54 @@ export function createWorkspaceProductApp({
                         && (showingParallelChatDraft || hasVisibleParallelDraftTargets)
                         ? onRemoveDraftParallelChatTarget
                         : undefined,
-                    onPickParallelBranchFolder:
-                      advancedDraftControlsEnabled
-                        && supportsStructuredDraftModes
-                        && showingGenericNewChatDraft
-                        && hasVisibleParallelDraftTargets
-                        ? openDraftParallelBranchFolderPicker
-                        : undefined,
+                    parallelBranchActions: {
+                      onPickFolder:
+                        advancedDraftControlsEnabled
+                          && supportsStructuredDraftModes
+                          && showingGenericNewChatDraft
+                          && hasVisibleParallelDraftTargets
+                          ? openDraftParallelBranchFolderPicker
+                          : undefined,
+                      onSetAudienceKeys:
+                        supportsStructuredDraftModes
+                          && showingGenericNewChatDraft
+                          && hasVisibleParallelDraftTargets
+                          ? onSetDraftParallelBranchAudienceKeys
+                          : undefined,
+                      onSetCwd:
+                        supportsStructuredDraftModes
+                          && showingGenericNewChatDraft
+                          && hasVisibleParallelDraftTargets
+                          ? onSetDraftParallelBranchCwd
+                          : undefined,
+                      onSetRuntimeSessionPolicy:
+                        advancedDraftControlsEnabled
+                          && supportsStructuredDraftModes
+                          && showingGenericNewChatDraft
+                          && hasVisibleParallelDraftTargets
+                          ? onSetDraftParallelBranchRuntimeSessionPolicy
+                          : undefined,
+                      onSetPromptOverride:
+                        advancedDraftControlsEnabled
+                          && supportsStructuredDraftModes
+                          && showingGenericNewChatDraft
+                          && hasVisibleParallelDraftTargets
+                          ? onSetDraftParallelBranchPromptOverride
+                          : undefined,
+                      onToggleWorkflowShape:
+                        supportsStructuredDraftModes
+                          && showingGenericNewChatDraft
+                          && hasVisibleParallelDraftTargets
+                          ? onToggleDraftParallelBranchWorkflowShape
+                          : undefined,
+                      onQuickAddTemporaryParticipant:
+                        advancedDraftControlsEnabled
+                          && supportsStructuredDraftModes
+                          && showingGenericNewChatDraft
+                          && hasVisibleParallelDraftTargets
+                          ? onDraftParallelBranchGroupAddButtonClick
+                          : undefined,
+                    },
                     showDraftParallelAddButton:
                       supportsStructuredDraftModes
                       && showingGenericNewChatDraft
@@ -1697,45 +1738,6 @@ export function createWorkspaceProductApp({
                     onSetAudienceKeys: supportsStructuredDraftModes
                       ? setDraftAudienceKeys
                       : undefined,
-                    onSetParallelBranchAudienceKeys:
-                      supportsStructuredDraftModes
-                        && showingGenericNewChatDraft
-                        && hasVisibleParallelDraftTargets
-                        ? onSetDraftParallelBranchAudienceKeys
-                        : undefined,
-                    onSetParallelBranchCwd:
-                      supportsStructuredDraftModes
-                        && showingGenericNewChatDraft
-                        && hasVisibleParallelDraftTargets
-                        ? onSetDraftParallelBranchCwd
-                        : undefined,
-                    onSetParallelBranchRuntimeSessionPolicy:
-                      advancedDraftControlsEnabled
-                        && supportsStructuredDraftModes
-                        && showingGenericNewChatDraft
-                        && hasVisibleParallelDraftTargets
-                        ? onSetDraftParallelBranchRuntimeSessionPolicy
-                        : undefined,
-                    onSetParallelBranchPromptOverride:
-                      advancedDraftControlsEnabled
-                        && supportsStructuredDraftModes
-                        && showingGenericNewChatDraft
-                        && hasVisibleParallelDraftTargets
-                        ? onSetDraftParallelBranchPromptOverride
-                        : undefined,
-                    onToggleParallelBranchWorkflowShape:
-                      supportsStructuredDraftModes
-                        && showingGenericNewChatDraft
-                        && hasVisibleParallelDraftTargets
-                        ? onToggleDraftParallelBranchWorkflowShape
-                        : undefined,
-                    onQuickAddParallelBranchTemporaryParticipant:
-                      advancedDraftControlsEnabled
-                        && supportsStructuredDraftModes
-                        && showingGenericNewChatDraft
-                        && hasVisibleParallelDraftTargets
-                        ? onDraftParallelBranchGroupAddButtonClick
-                        : undefined,
                     showDraftGroupAddButton:
                       advancedDraftControlsEnabled
                       && showingGenericNewChatDraft

@@ -1440,12 +1440,47 @@ export default function App() {
                     showingParallelChatDraft || hasVisibleParallelDraftTargets
                       ? onRemoveDraftParallelChatTarget
                       : undefined,
-                  onPickParallelBranchFolder:
-                    advancedDraftControlsEnabled
-                      && draftRoute.isGenericNewChatRoute
-                      && hasVisibleParallelDraftTargets
-                      ? openDraftParallelBranchFolderPicker
-                      : undefined,
+                  parallelBranchActions: {
+                    onPickFolder:
+                      advancedDraftControlsEnabled
+                        && draftRoute.isGenericNewChatRoute
+                        && hasVisibleParallelDraftTargets
+                        ? openDraftParallelBranchFolderPicker
+                        : undefined,
+                    onSetAudienceKeys:
+                      draftRoute.isGenericNewChatRoute
+                        && hasVisibleParallelDraftTargets
+                        ? onSetDraftParallelBranchAudienceKeys
+                        : undefined,
+                    onSetCwd:
+                      draftRoute.isGenericNewChatRoute
+                        && hasVisibleParallelDraftTargets
+                        ? onSetDraftParallelBranchCwd
+                        : undefined,
+                    onSetRuntimeSessionPolicy:
+                      advancedDraftControlsEnabled
+                        && draftRoute.isGenericNewChatRoute
+                        && hasVisibleParallelDraftTargets
+                        ? onSetDraftParallelBranchRuntimeSessionPolicy
+                        : undefined,
+                    onSetPromptOverride:
+                      advancedDraftControlsEnabled
+                        && draftRoute.isGenericNewChatRoute
+                        && hasVisibleParallelDraftTargets
+                        ? onSetDraftParallelBranchPromptOverride
+                        : undefined,
+                    onToggleWorkflowShape:
+                      draftRoute.isGenericNewChatRoute
+                        && hasVisibleParallelDraftTargets
+                        ? onToggleDraftParallelBranchWorkflowShape
+                        : undefined,
+                    onQuickAddTemporaryParticipant:
+                      advancedDraftControlsEnabled
+                        && draftRoute.isGenericNewChatRoute
+                        && hasVisibleParallelDraftTargets
+                        ? onDraftParallelBranchGroupAddButtonClick
+                        : undefined,
+                  },
                   showDraftParallelAddButton:
                     draftRoute.isGenericNewChatRoute
                     && (advancedDraftControlsEnabled || hasVisibleParallelDraftTargets),
@@ -1453,39 +1488,6 @@ export default function App() {
                   onToggleDraftWorkflowShape: () => setDraftWorkflowShape((prev) => prev === 'concurrent' ? 'sequential' : 'concurrent'),
                   draftAudienceKeys,
                   onSetAudienceKeys: setDraftAudienceKeys,
-                  onSetParallelBranchAudienceKeys:
-                    draftRoute.isGenericNewChatRoute
-                      && hasVisibleParallelDraftTargets
-                      ? onSetDraftParallelBranchAudienceKeys
-                      : undefined,
-                  onSetParallelBranchCwd:
-                    draftRoute.isGenericNewChatRoute
-                      && hasVisibleParallelDraftTargets
-                      ? onSetDraftParallelBranchCwd
-                      : undefined,
-                  onSetParallelBranchRuntimeSessionPolicy:
-                    advancedDraftControlsEnabled
-                      && draftRoute.isGenericNewChatRoute
-                      && hasVisibleParallelDraftTargets
-                      ? onSetDraftParallelBranchRuntimeSessionPolicy
-                      : undefined,
-                  onSetParallelBranchPromptOverride:
-                    advancedDraftControlsEnabled
-                      && draftRoute.isGenericNewChatRoute
-                      && hasVisibleParallelDraftTargets
-                      ? onSetDraftParallelBranchPromptOverride
-                      : undefined,
-                  onToggleParallelBranchWorkflowShape:
-                    draftRoute.isGenericNewChatRoute
-                      && hasVisibleParallelDraftTargets
-                      ? onToggleDraftParallelBranchWorkflowShape
-                      : undefined,
-                  onQuickAddParallelBranchTemporaryParticipant:
-                    advancedDraftControlsEnabled
-                      && draftRoute.isGenericNewChatRoute
-                      && hasVisibleParallelDraftTargets
-                      ? onDraftParallelBranchGroupAddButtonClick
-                      : undefined,
                   showDraftGroupAddButton:
                     advancedDraftControlsEnabled
                     && draftRoute.isGenericNewChatRoute
