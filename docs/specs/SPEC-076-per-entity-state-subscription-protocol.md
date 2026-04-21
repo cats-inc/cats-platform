@@ -64,13 +64,17 @@ This spec defines a single subscription protocol, keyed by
   runtime-health refresh in the first slice
 - **does not define or replace collection-level invalidation.** The
   existing [ADR-041](../decisions/041-push-transport-and-chat-invalidations-over-sse.md)
-  `/api/events/chat` SSE stream (consumed via `useChatEvents` in
-  `useChatAppShellRefresh`) remains the authoritative seam for
-  "channel list / parallelChatGroups / recents / unread /
+  `/api/events/chat` SSE stream — today consumed only by
+  `useChatAppShellRefresh` on the Chat shell, and which PLAN-068
+  Task 3.5 extends to the shared workspace shell so Code/Work
+  target surfaces are also covered — remains the authoritative
+  seam for "channel list / parallelChatGroups / recents / unread /
   transport-ingress changed → refetch app-shell." Entity
   subscriptions only cover the deep state of a single mounted
   `(kind, id)`; they do not replace ADR-041, and ADR-041 does not
-  replace them.
+  replace them. The merge rule that keeps these two from stomping
+  each other is defined below in *Merge contract: ADR-041 refetch
+  must not overwrite subscribed entity state*.
 
 ## User Stories
 
@@ -334,13 +338,64 @@ names the fix: extract (or lift) the ADR-041 consumer into a
 shared hook that every target shell mounts. Without that, the
 two-tier model is a false promise on non-Chat surfaces.
 
-Renderer ordering is well-defined: ADR-041 invalidations run
-through `refreshAppShell()`, which re-populates the app-shell
-slices that SPEC-076 does not own. SPEC-076 patches are applied to
-the mounted entity's slice only and are never overwritten by a
-collection-level refetch (because the poll and refetch paths
-already exclude the chat slice — see
-`mergeWorkspaceBackgroundRefreshPayload`).
+**Merge contract: ADR-041 refetch must not overwrite subscribed
+entity state.**
+
+Today only the 5s background runtime-health poll is safe against
+overwriting entity state — it uses
+`mergeWorkspaceBackgroundRefreshPayload`
+(`useWorkspaceAppShellRouting.ts:176`), which explicitly excludes
+the chat slice. The ADR-041 path is *not* safe today:
+`useChatAppShellRefresh.ts:134-148` calls
+`setPayloadImmediate(payload)` which does
+`setState({ status: 'ready', payload })`, a full replace. If that
+path keeps running unchanged after entity subscriptions land, an
+invalidation on a sibling channel would clobber the active
+subscription's `selectedChannel.messages` on every `refreshAppShell()`
+call.
+
+The contract this spec imposes on implementers:
+
+1. The ADR-041 consumer must not apply an incoming
+   `refreshAppShell()` payload with a blind full replace when any
+   entity subscription is active for the currently selected
+   channel (or any other entity kind whose state lives inside the
+   app-shell payload). It must route the payload through a merge
+   helper that preserves subscription-owned slices.
+2. Implementers introduce (or extend) a helper — working name
+   `mergeAppShellPreservingActiveEntityState(current, next,
+   activeSubscribedIds)` — that:
+   - copies collection-level fields from `next`
+     (`chat.channels`, `chat.recents`, `chat.parallelChatGroups`,
+     unread counters, runtime/runtimeSetup/metadata)
+   - keeps `current.selectedChannel` whenever
+     `activeSubscribedIds` contains the mounted channel id
+     (because the subscription snapshot + patches are the
+     authoritative writer for that slice)
+   - falls through to `next.selectedChannel` only when no
+     subscription is active for that id (e.g. during the brief
+     window between mount and first subscription snapshot)
+3. The entity subscription hub exposes `getActiveSubscribedIds(kind)`
+   (or equivalent) so the merge helper can query without reaching
+   into internals.
+4. The 5s poll's existing exclusion via
+   `mergeWorkspaceBackgroundRefreshPayload` stays as-is.
+5. Reconnect behavior remains: when an entity subscription
+   reconnects, its fresh `snapshot` is authoritative and
+   replaces local subscription-owned state regardless of what the
+   ADR-041 refetch path last wrote.
+
+Symmetric rule: when no subscription is active for the mounted
+channel (e.g. during the brief pre-snapshot window), ADR-041
+refetches may write the full payload — there is no
+subscription-owned state to preserve. The merge helper is a
+no-op in that case.
+
+Without this merge contract, the two-tier model deadlocks: every
+sidebar invalidation would flush the live transcript. Implementers
+who follow PLAN-068 Task 3.5 without Task 2.7 (the merge helper
+task) would ship a renderer that regresses the very bug this spec
+was written to close.
 
 ### Interaction with liveIndicator (no regression)
 
