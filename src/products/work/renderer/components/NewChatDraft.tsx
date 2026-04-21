@@ -7,6 +7,7 @@ import {
 } from '../../../shared/renderer/components/NewChatDraft.js';
 import { ComposerSurfaceChip } from '../../../shared/renderer/components/ComposerSurfaceChip.js';
 import { isAdvancedDraftControlsEnabled } from '../../../shared/advancedDraftControls.js';
+import { resolveChatNewChatDraftBuilderControls } from '../../../shared/renderer/draftBuilderControls.js';
 
 export type { NewChatDraftProps };
 
@@ -21,14 +22,12 @@ function WorkChatDraft(props: NewChatDraftProps) {
     props.payload.chat.advancedDraftControls,
     'work',
   );
-  const showDraftGroupAddButton = advancedDraftControlsEnabled
-    && props.entryPreset !== 'group';
-  const hideDraftGroupHint = advancedDraftControlsEnabled
-    && props.entryPreset !== 'group';
-  const hideDraftParallelHint = advancedDraftControlsEnabled
-    && props.entryPreset !== 'parallel';
-  const showDraftParallelAddButton = advancedDraftControlsEnabled
-    || (props.parallelTargets?.length ?? 0) > 1;
+  const builderControls = resolveChatNewChatDraftBuilderControls({
+    advancedDraftControlsEnabled,
+    entryPreset: props.entryPreset ?? 'default',
+    showStructuredDraftControls: true,
+    hasVisibleParallelDraftTargets: (props.parallelTargets?.length ?? 0) > 1,
+  });
 
   return (
     <ChatNewChatDraft
@@ -36,12 +35,7 @@ function WorkChatDraft(props: NewChatDraftProps) {
       draftChrome={{
         surfaceTag: <ComposerSurfaceChip surface="work" />,
       }}
-      builderControls={{
-        showGroupAddButton: showDraftGroupAddButton,
-        showParallelAddButton: showDraftParallelAddButton,
-        hideGroupHint: hideDraftGroupHint,
-        hideParallelHint: hideDraftParallelHint,
-      }}
+      builderControls={builderControls}
     />
   );
 }

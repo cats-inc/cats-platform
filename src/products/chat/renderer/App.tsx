@@ -50,6 +50,7 @@ import {
 } from './draftParticipants';
 import { createNextCompareTarget } from './hooks/useParallelChatDraft.js';
 import { isAdvancedDraftControlsEnabled } from '../../shared/advancedDraftControls.js';
+import { resolveChatNewChatDraftBuilderControls } from '../../shared/renderer/draftBuilderControls.js';
 import { useAppChrome } from './hooks/useAppChrome';
 import { useAppDraftUiActions } from './hooks/useAppDraftUiActions';
 import { useAppNavigationActions } from './hooks/useAppNavigationActions';
@@ -1481,23 +1482,12 @@ export default function App() {
                         ? onDraftParallelBranchGroupAddButtonClick
                         : undefined,
                   },
-                  builderControls: {
-                    showParallelAddButton:
-                      draftRoute.isGenericNewChatRoute
-                      && (advancedDraftControlsEnabled || hasVisibleParallelDraftTargets),
-                    showGroupAddButton:
-                      advancedDraftControlsEnabled
-                      && draftRoute.isGenericNewChatRoute
-                      && newChatPreset !== 'group',
-                    hideGroupHint:
-                      advancedDraftControlsEnabled
-                      && draftRoute.isGenericNewChatRoute
-                      && newChatPreset !== 'group',
-                    hideParallelHint:
-                      advancedDraftControlsEnabled
-                      && draftRoute.isGenericNewChatRoute
-                      && newChatPreset !== 'parallel',
-                  },
+                  builderControls: resolveChatNewChatDraftBuilderControls({
+                    advancedDraftControlsEnabled,
+                    entryPreset: newChatPreset,
+                    showStructuredDraftControls: draftRoute.isGenericNewChatRoute,
+                    hasVisibleParallelDraftTargets,
+                  }),
                   draftWorkflowShape,
                   onToggleDraftWorkflowShape: () => setDraftWorkflowShape((prev) => prev === 'concurrent' ? 'sequential' : 'concurrent'),
                   draftAudienceKeys,

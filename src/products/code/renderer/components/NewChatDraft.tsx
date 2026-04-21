@@ -13,6 +13,7 @@ import {
 import { ComposerSurfaceChip } from '../../../shared/renderer/components/ComposerSurfaceChip.js';
 import { useDraftSessionChips } from '../../../shared/renderer/hooks/useDraftSessionChips.js';
 import { isAdvancedDraftControlsEnabled } from '../../../shared/advancedDraftControls.js';
+import { resolveChatNewChatDraftBuilderControls } from '../../../shared/renderer/draftBuilderControls.js';
 import { isComposerBusyForDraft } from '../../../../shared/composer.js';
 
 export const NEW_CODE_DRAFT_COPY: WorkspaceNewChatDraftCopy = {
@@ -212,14 +213,12 @@ function CodeChatDraft(props: NewChatDraftProps) {
     draftRuntimeSessionPolicy: props.draftRuntimeSessionPolicy,
     onDraftRuntimeSessionPolicyChange: props.onDraftRuntimeSessionPolicyChange,
   });
-  const showDraftGroupAddButton = advancedDraftControlsEnabled
-    && props.entryPreset !== 'group';
-  const hideDraftGroupHint = advancedDraftControlsEnabled
-    && props.entryPreset !== 'group';
-  const hideDraftParallelHint = advancedDraftControlsEnabled
-    && props.entryPreset !== 'parallel';
-  const showDraftParallelAddButton = advancedDraftControlsEnabled
-    || (props.parallelTargets?.length ?? 0) > 1;
+  const builderControls = resolveChatNewChatDraftBuilderControls({
+    advancedDraftControlsEnabled,
+    entryPreset: props.entryPreset ?? 'default',
+    showStructuredDraftControls: true,
+    hasVisibleParallelDraftTargets: (props.parallelTargets?.length ?? 0) > 1,
+  });
   const codeGreeting = resolveCodeDraftGreeting(props);
 
   return (
@@ -246,12 +245,7 @@ function CodeChatDraft(props: NewChatDraftProps) {
         folderActionLabel: NEW_CODE_DRAFT_COPY.folder?.actionLabel,
         sidePanel: NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY,
       }}
-      builderControls={{
-        showGroupAddButton: showDraftGroupAddButton,
-        showParallelAddButton: showDraftParallelAddButton,
-        hideGroupHint: hideDraftGroupHint,
-        hideParallelHint: hideDraftParallelHint,
-      }}
+      builderControls={builderControls}
     />
   );
 }

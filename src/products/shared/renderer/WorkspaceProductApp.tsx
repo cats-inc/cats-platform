@@ -120,6 +120,7 @@ import {
 } from "./draftChatUtils.js";
 import { resolveActiveChannelAudienceState } from "./composerMessageMetadata.js";
 import { isAdvancedDraftControlsEnabled } from "../advancedDraftControls.js";
+import { resolveChatNewChatDraftBuilderControls } from "./draftBuilderControls.js";
 import {
 } from "../channelPaths.js";
 
@@ -1722,24 +1723,13 @@ export function createWorkspaceProductApp({
                           ? onDraftParallelBranchGroupAddButtonClick
                           : undefined,
                     },
-                    builderControls: {
-                      showParallelAddButton:
-                        supportsStructuredDraftModes
-                        && showingGenericNewChatDraft
-                        && (advancedDraftControlsEnabled || hasVisibleParallelDraftTargets),
-                      showGroupAddButton:
-                        advancedDraftControlsEnabled
-                        && showingGenericNewChatDraft
-                        && effectiveNewChatPreset !== "group",
-                      hideGroupHint:
-                        advancedDraftControlsEnabled
-                        && showingGenericNewChatDraft
-                        && effectiveNewChatPreset !== "group",
-                      hideParallelHint:
-                        advancedDraftControlsEnabled
-                        && showingGenericNewChatDraft
-                        && effectiveNewChatPreset !== "parallel",
-                    },
+                    builderControls: resolveChatNewChatDraftBuilderControls({
+                      advancedDraftControlsEnabled,
+                      entryPreset: effectiveNewChatPreset,
+                      showStructuredDraftControls:
+                        supportsStructuredDraftModes && showingGenericNewChatDraft,
+                      hasVisibleParallelDraftTargets,
+                    }),
                     draftWorkflowShape,
                     draftRuntimeSessionPolicy: draftSessionPolicy,
                     onDraftRuntimeSessionPolicyChange: setDraftSessionPolicy,
