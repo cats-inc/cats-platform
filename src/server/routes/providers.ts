@@ -29,6 +29,14 @@ const TRUTHFUL_SELECTOR_CONFIG_ENRICHMENT_BUDGET_MS = 500;
 const PROVIDER_MODEL_CATALOG_CACHE_TTL_MS = 60_000;
 const PROVIDER_MODEL_CATALOG_STALE_WINDOW_MS = 5 * 60_000;
 
+interface ProviderTimedCacheEntry<TValue> {
+  value: TValue;
+  freshUntilMs: number;
+  staleUntilMs: number;
+  staleIfErrorUntilMs: number;
+  cacheRefreshWarning?: string;
+}
+
 interface TruthfulProviderRegistryReadModel {
   state: ProviderRegistryState;
   providers: ProductProviderDescriptor[];
@@ -39,12 +47,8 @@ interface TruthfulProviderRegistryReadModel {
   warnings?: string[];
 }
 
-interface TruthfulProviderRegistryCacheEntry {
-  value: TruthfulProviderRegistryReadModel;
-  freshUntilMs: number;
-  staleUntilMs: number;
-  staleIfErrorUntilMs: number;
-}
+type TruthfulProviderRegistryCacheEntry =
+  ProviderTimedCacheEntry<TruthfulProviderRegistryReadModel>;
 
 interface TruthfulProviderRegistryCacheState {
   entries: Map<string, TruthfulProviderRegistryCacheEntry>;
@@ -55,12 +59,8 @@ const truthfulProviderRegistryCache = new WeakMap<RuntimeClient, TruthfulProvide
 
 type ProviderCatalogCacheValue = ProviderModelCatalog | ProviderAdvancedModelCatalog;
 
-interface ProviderCatalogCacheEntry<TCatalog extends ProviderCatalogCacheValue> {
-  value: TCatalog;
-  freshUntilMs: number;
-  staleUntilMs: number;
-  staleIfErrorUntilMs: number;
-}
+type ProviderCatalogCacheEntry<TCatalog extends ProviderCatalogCacheValue> =
+  ProviderTimedCacheEntry<TCatalog>;
 
 interface ProviderCatalogCacheState {
   entries: Map<string, ProviderCatalogCacheEntry<ProviderCatalogCacheValue>>;
@@ -282,30 +282,59 @@ function shouldCacheTruthfulProviderRegistry(
 function appendProviderCacheWarning(
   warnings: string[] | undefined,
   warning: string,
+  previousCacheRefreshWarning?: string,
 ): string[] {
   const existing = Array.isArray(warnings) ? warnings : [];
-  const retained = existing.filter((entry) => !entry.startsWith('Using cached '));
+  const retained = previousCacheRefreshWarning
+    ? existing.filter((entry) => entry !== previousCacheRefreshWarning)
+    : existing;
   return retained.includes(warning) ? retained : [...retained, warning];
 }
 
 function appendTruthfulProviderRegistryWarning(
   value: TruthfulProviderRegistryReadModel,
   warning: string,
+  previousCacheRefreshWarning?: string,
 ): TruthfulProviderRegistryReadModel {
   return {
     ...value,
-    warnings: appendProviderCacheWarning(value.warnings, warning),
+    warnings: appendProviderCacheWarning(value.warnings, warning, previousCacheRefreshWarning),
   };
 }
 
 function appendProviderCatalogWarning<TCatalog extends ProviderCatalogCacheValue>(
   value: TCatalog,
   warning: string,
+  previousCacheRefreshWarning?: string,
 ): TCatalog {
   return {
     ...value,
-    warnings: appendProviderCacheWarning(value.warnings, warning),
+    warnings: appendProviderCacheWarning(value.warnings, warning, previousCacheRefreshWarning),
   };
+}
+
+function writeProviderCacheErrorBackoff<TValue>(
+  entries: Map<string, ProviderTimedCacheEntry<TValue>>,
+  cacheKey: string,
+  cached: ProviderTimedCacheEntry<TValue>,
+  warning: string,
+  appendWarning: (
+    value: TValue,
+    warning: string,
+    previousCacheRefreshWarning?: string,
+  ) => TValue,
+): TValue {
+  const now = Date.now();
+  const value = appendWarning(cached.value, warning, cached.cacheRefreshWarning);
+  entries.set(cacheKey, {
+    ...cached,
+    value,
+    freshUntilMs: now + PROVIDER_CACHE_ERROR_BACKOFF_MS,
+    staleUntilMs: Math.max(cached.staleUntilMs, now + PROVIDER_CACHE_ERROR_BACKOFF_MS),
+    staleIfErrorUntilMs: cached.staleIfErrorUntilMs,
+    cacheRefreshWarning: warning,
+  });
+  return value;
 }
 
 function readRuntimeFailureMessage(error: unknown, fallback: string): string {
@@ -628,20 +657,15 @@ function writeTruthfulProviderRegistryErrorBackoff(
   cached: TruthfulProviderRegistryCacheEntry,
   failedRefresh: TruthfulProviderRegistryReadModel,
 ): TruthfulProviderRegistryReadModel {
-  const now = Date.now();
-  const value = appendTruthfulProviderRegistryWarning(
-    cached.value,
+  return writeProviderCacheErrorBackoff(
+    cacheState.entries,
+    cacheKey,
+    cached,
     `Using cached provider targets because runtime refresh failed: ${
       readTruthfulProviderRegistryFailureMessage(failedRefresh)
     }`,
+    appendTruthfulProviderRegistryWarning,
   );
-  cacheState.entries.set(cacheKey, {
-    value,
-    freshUntilMs: now + PROVIDER_CACHE_ERROR_BACKOFF_MS,
-    staleUntilMs: Math.max(cached.staleUntilMs, now + PROVIDER_CACHE_ERROR_BACKOFF_MS),
-    staleIfErrorUntilMs: cached.staleIfErrorUntilMs,
-  });
-  return value;
 }
 
 function getProviderCatalogCacheState(
@@ -692,20 +716,15 @@ function writeProviderCatalogErrorBackoff<TCatalog extends ProviderCatalogCacheV
   cached: ProviderCatalogCacheEntry<ProviderCatalogCacheValue>,
   error: unknown,
 ): TCatalog {
-  const now = Date.now();
-  const value = appendProviderCatalogWarning(
-    cached.value as TCatalog,
+  return writeProviderCacheErrorBackoff(
+    cacheState.entries,
+    cacheKey,
+    cached,
     `Using cached model catalog because runtime refresh failed: ${
       readRuntimeFailureMessage(error, 'Runtime catalog unavailable.')
     }`,
-  );
-  cacheState.entries.set(cacheKey, {
-    value,
-    freshUntilMs: now + PROVIDER_CACHE_ERROR_BACKOFF_MS,
-    staleUntilMs: Math.max(cached.staleUntilMs, now + PROVIDER_CACHE_ERROR_BACKOFF_MS),
-    staleIfErrorUntilMs: cached.staleIfErrorUntilMs,
-  });
-  return value;
+    appendProviderCatalogWarning,
+  ) as TCatalog;
 }
 
 function pruneExpiredProviderCatalogCacheEntries(

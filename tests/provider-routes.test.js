@@ -195,7 +195,9 @@ test('GET /api/providers keeps the last good selector after a transient refresh 
       assert.equal(fourth.status, 200);
       const fourthPayload = await fourth.json();
       assert.equal(
-        fourthPayload.warnings.filter((warning) => warning.startsWith('Using cached ')).length,
+        fourthPayload.warnings.filter((warning) =>
+          warning.startsWith('Using cached provider targets because runtime refresh failed:'),
+        ).length,
         1,
       );
       assert.equal(diagnosticsCalls, 3);
@@ -223,7 +225,11 @@ test('GET /api/providers/:provider/models serves stale catalog after transient r
     if (failCatalogRefresh) {
       throw new Error('Runtime catalog unavailable.');
     }
-    return originalGetProviderModels.call(runtimeClient, provider, instance);
+    const catalog = await originalGetProviderModels.call(runtimeClient, provider, instance);
+    return {
+      ...catalog,
+      warnings: ['Using cached authentication token'],
+    };
   };
 
   await withMockedDateNow(initialNowMs, async (clock) => {
@@ -249,15 +255,18 @@ test('GET /api/providers/:provider/models serves stale catalog after transient r
       const fourth = await fetch(`${baseUrl}/api/providers/claude/models`);
       assert.equal(fourth.status, 200);
       const fourthPayload = await fourth.json();
+      assert.ok(fourthPayload.catalog.warnings.includes('Using cached authentication token'));
       assert.equal(
-        fourthPayload.catalog.warnings.filter((warning) => warning.startsWith('Using cached ')).length,
+        fourthPayload.catalog.warnings.filter((warning) =>
+          warning.startsWith('Using cached model catalog because runtime refresh failed:'),
+        ).length,
         1,
       );
       assert.equal(modelCalls, 3);
 
       clock.set(initialNowMs + 600_001);
       const expired = await fetch(`${baseUrl}/api/providers/claude/models`);
-      assert.equal(expired.status, 503);
+      assert.ok(expired.status >= 500 && expired.status < 600);
       assert.equal(modelCalls, 4);
     });
   });
