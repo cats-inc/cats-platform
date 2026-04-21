@@ -10,7 +10,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | In Progress (First Slice Landed) |
+| **Status** | Phase 1 Complete (follow-on work moved to PLAN-070) |
 | **Owner** | Shared renderer (Claude during this rollout, transitioning to whichever specialist owns the next slice) |
 | **Reviewer** | User |
 
@@ -92,48 +92,22 @@ field is added.
       `docs/decisions/README.md`, `docs/specs/README.md`,
       `docs/plans/README.md` indexes.
 
-### Phase 2: Per-branch task chip and per-branch cwd unlocks (Open)
+### Phase 2 / Phase 3 moved to PLAN-070
 
-- [ ] Task 2.1: Spec the per-branch task chip (label, lifecycle,
-      where the branch task identity comes from). Likely a new SPEC
-      branched off SPEC-077 once orchestrator-composed drafts have a
-      task model to anchor on.
-- [ ] Task 2.2: Reserve the per-card `composerFooterRow` left slot
-      for the task chip. Currently empty on shadow cards; lead card
-      uses `DraftComposerFooter` which exposes its `accessory` slot
-      for this purpose.
-- [ ] Task 2.3: Spec the per-branch cwd / workspace override
-      semantics. Options to evaluate:
-      - "Follows lead" chip becomes interactive — click to detach
-        and pick a per-branch cwd.
-      - Detached cards swap the chip for a `composerCwdChip` that
-        owns its own value.
-      - Per-branch cwd persists into `DraftParallelTarget`
-        (extension to the data model; coordinate with shared draft
-        primitives ownership in ADR-067).
-- [ ] Task 2.4: Implement per-branch cwd UI on the carousel once
-      the spec lands. Confirm peek cards continue to display the
-      override (cwd chip rotates with the card, same as the
-      "Follows lead" chip does today).
-- [ ] Task 2.5: Update SPEC-077's "Non-Goals" section as items move
-      out of non-goal status.
+Per-branch cwd / session policy / prompt detach UX, task-chip
+wiring, and orchestrator-composed draft ingestion all depend on a
+schema that makes `DraftParallelTarget` per-branch-addressable.
+That schema work lives in its own ADR / SPEC / PLAN so this rollout
+stays scoped to carousel layout:
 
-### Phase 3: Orchestrator-composed multi-branch drafts (Future)
+- [ADR-077: Make parallel draft state per-branch-addressable](../decisions/077-make-parallel-draft-state-per-branch-addressable-for-orchestrator-composition.md)
+- [SPEC-078: Per-Branch Draft State Schema and Lead-Default Fallback Semantics](../specs/SPEC-078-per-branch-draft-state-schema.md)
+- [PLAN-070: Programmable Per-Branch Draft Rollout](./PLAN-070-programmable-per-branch-draft-rollout.md)
 
-- [ ] Task 3.1: Specify the orchestrator → draft hand-off shape:
-      what arrives over the wire, how it maps onto
-      `parallelTargets[]` and per-branch audience keys, where
-      per-branch prompts (if any) come from.
-- [ ] Task 3.2: Confirm the carousel renders an orchestrator-composed
-      draft cleanly without renderer-side composition logic — it
-      should be a pure projection of the supplied state.
-- [ ] Task 3.3: Re-evaluate "active card on mount" heuristic. With
-      orchestrator-composed drafts, the carousel may want to land
-      on a non-lead branch the orchestrator marked as primary
-      focus.
-- [ ] Task 3.4: Evaluate whether the bounded-no-wrap rule survives
-      once branch ordering becomes orchestrator-driven (it
-      probably should — lead-as-anchor remains useful).
+PLAN-069 is considered complete at Phase 1. Any later carousel-only
+changes (e.g., animation polish, nav affordance tweaks) will slot
+back in under this plan; everything per-branch state-related now
+lives in PLAN-070.
 
 ## Files Touched (Phase 1)
 
