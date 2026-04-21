@@ -22,8 +22,11 @@ management and exposes a narrow preload bridge to a sandboxed renderer.
 Cats Chat will expose one user-facing composer action, "Take screenshot", with
 environment-specific implementation:
 
-- Electron desktop uses a host-owned native region screenshot flow.
-- Web uses a browser screen-capture fallback based on `getDisplayMedia()`.
+- Electron desktop on Windows, macOS, and Linux-X11 uses a host-owned native
+  region screenshot flow built on `desktopCapturer` plus a frozen-snapshot
+  overlay window (LINE-style).
+- Web and Linux-Wayland desktop use a browser/portal screen-capture fallback
+  based on `getDisplayMedia()`.
 
 The Electron implementation will keep OS capture, main-window hide/restore,
 display enumeration, overlay windows, and PNG cropping in the Electron host
@@ -31,8 +34,24 @@ side of the boundary. The renderer will only request a screenshot after an
 explicit user action and receive sanitized image data that it converts into a
 composer attachment.
 
-The web fallback may use the same button and attach the resulting PNG, but it
-must not claim LINE-style desktop selection when the browser cannot provide it.
+The web/Wayland fallback uses the same "Take screenshot" button and attaches
+the resulting PNG via the same attachment pipeline, but its tooltip and
+unavailable-state copy must not promise LINE-style desktop selection when the
+underlying platform can only provide a picker-driven flow. User-visible copy
+for each path is specified in SPEC-079.
+
+### Scope
+
+This decision is limited to the region screenshot capture boundary. Related
+but separate decisions, not covered here:
+
+- Clipboard-paste image attachment (pasting an OS screenshot already on the
+  clipboard into the composer) — a lighter orthogonal feature, can ship
+  independently under a separate note.
+- Runtime/model multimodal interpretation of the captured image — separate
+  capability question.
+- Screen sharing for calls or live collaboration — would use
+  `session.setDisplayMediaRequestHandler()`, not `desktopCapturer`.
 
 ## Consequences
 
@@ -50,10 +69,16 @@ must not claim LINE-style desktop selection when the browser cannot provide it.
 
 - Electron and web implementations will not be behaviorally identical.
 - Multi-monitor and HiDPI crop correctness require platform-specific testing.
-- macOS needs explicit Screen Recording permission handling.
-- Linux support may vary between X11 and Wayland/PipeWire environments.
-- Overlay-window behavior introduces a new desktop UX surface that needs manual
-  smoke testing beyond unit tests.
+- macOS needs explicit Screen Recording permission handling, and permission
+  changes typically require an app restart to take effect.
+- Linux Wayland **cannot provide the LINE-style UX** — `desktopCapturer` on
+  Wayland is routed through xdg-desktop-portal / PipeWire, which always shows
+  a system picker dialog. Wayland users get the web-fallback experience, not
+  the native overlay. This is a hard platform limit, not a validation gap.
+- Overlay-window behavior introduces a new desktop UX surface that needs
+  manual smoke testing beyond unit tests.
+- Maintaining two capture code paths (host-native and web fallback) adds a
+  long-term maintenance cost; feature changes must be considered against both.
 
 ### Neutral
 
@@ -106,4 +131,5 @@ must not claim LINE-style desktop selection when the browser cannot provide it.
 ---
 
 *Decision proposed: 2026-04-21*
+*Last revised: 2026-04-22 (review pass: scope section added, Wayland limit hardened, maintenance cost acknowledged)*
 *Decision makers: Sammy, Codex*

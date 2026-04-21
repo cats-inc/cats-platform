@@ -39,59 +39,117 @@ provider and existing attachment previews.
 
 ### Phase 2: Electron Host Capture Bridge
 
+- [ ] Define the screenshot IPC contract in `desktop/host/contracts.ts`:
+      request shape, success result (`{ png: Uint8Array; mime: 'image/png';
+      filename: string; width: number; height: number }`), and explicit
+      outcome variants (`ok`, `cancelled`, `permission_denied`,
+      `platform_unsupported`, `error`).
 - [ ] Extend the preload bridge with a narrow `captureScreenshotRegion()`
-      method that returns PNG bytes, MIME type, filename, width, and height.
-- [ ] Add an `ipcMain.handle` implementation in the Electron host.
-- [ ] Validate that capture requests originate from the trusted app window.
-- [ ] Hide or minimize the main Cats window before desktop capture and restore
-      it after complete, cancel, or error.
-- [ ] Use `desktopCapturer.getSources()` with display-aware thumbnail sizing.
-- [ ] Normalize permission-denied and cancelled results into explicit outcomes
-      instead of generic failures.
+      method that returns the contract result above.
+- [ ] Add an `ipcMain.handle` implementation in the Electron host that
+      rejects calls where `event.sender !== mainWindow.webContents`
+      (prevents the overlay window or any embedded view from invoking it).
+- [ ] `hide()` the main Cats window before capture (not `minimize()`).
+      Record prior state (`isMaximized`, `isFocused`, `isMinimized`) so it
+      can be restored exactly.
+- [ ] Wait one compositor frame (~80–150ms or `requestAnimationFrame`-equiv)
+      after hide before invoking `desktopCapturer.getSources()`, so Cats is
+      no longer in the display buffer at capture time. Measure empirically
+      on the primary Windows target.
+- [ ] Use `desktopCapturer.getSources({ types: ['screen'] })` with
+      physical-pixel `thumbnailSize` derived from `display.bounds *
+      display.scaleFactor`.
+- [ ] Exclude the OS cursor from captured bitmaps (resolve SPEC Open
+      Question on Windows mechanism before implementation).
+- [ ] Wrap the full capture flow in `try…finally` so main window restoration
+      is guaranteed on exceptions.
+- [ ] Normalize permission-denied, cancelled, and unsupported-platform
+      results into the contract's outcome variants instead of generic
+      failures.
 
-**Deliverables**: Host can capture full-display snapshots and return bounded
-results through the preload bridge.
+**Deliverables**: Host can capture full-display, cursor-free snapshots and
+return bounded results through the preload bridge; main window always
+recovers.
 
 ### Phase 3: Region Selection Overlay
 
-- [ ] Create a minimal overlay renderer for frozen desktop screenshots.
-- [ ] Open transparent, frameless, always-on-top overlay windows for the active
-      display set.
-- [ ] Implement pointer drag selection, selection rectangle rendering, confirm
-      on mouse release, and Escape cancellation.
-- [ ] Map CSS selection coordinates to physical image coordinates using display
-      bounds and scale factor.
-- [ ] Crop selected image data and return PNG bytes to the bridge caller.
-- [ ] Smoke test multi-monitor and HiDPI behavior on the primary Windows target.
+- [ ] Create a dedicated overlay renderer entry (HTML + TSX) that receives
+      the pre-captured per-display bitmap and draws it as the overlay's
+      background. This is the LINE-style "frozen snapshot" — users select
+      against the still image, not live pixels.
+- [ ] Decide and implement the overlay HTML loading strategy: packaged
+      `file://` vs Vite multi-entry dev server vs inline `data:` URL.
+      Affects `vite.config.ts` and packaging.
+- [ ] Add a dedicated preload script for the overlay BrowserWindow
+      (separate from the main renderer preload — different trust boundary
+      and different exposed API).
+- [ ] Open one overlay BrowserWindow per display with config:
+      `transparent: true`, `frame: false`, `resizable: false`,
+      `hasShadow: false`, `skipTaskbar: true`, `fullscreenable: false`,
+      `alwaysOnTop` via `setAlwaysOnTop(true, 'screen-saver')`, positioned
+      to each display's `bounds` (must handle negative-coordinate displays).
+- [ ] Implement pointer drag selection, live selection rectangle rendering,
+      live dimensions indicator (e.g. "320×180"), automatic confirm on
+      mouse-up, reject selections smaller than 8×8 physical pixels.
+- [ ] Implement cancellation via Escape, right-click, and click-without-drag
+      outside any selection.
+- [ ] Map CSS selection coordinates to physical image coordinates using
+      display bounds and scale factor. Unit-test this mapping with HiDPI
+      and negative-coordinate display fixtures.
+- [ ] Crop selected image data using `nativeImage.crop()` in the main
+      process (not in the overlay renderer — avoids marshaling the full
+      bitmap back to main).
+- [ ] Close all overlay windows before returning the result to the bridge
+      caller, so the overlay is never briefly visible alongside the
+      restored Cats window.
+- [ ] Smoke test multi-monitor, HiDPI, and negative-coordinate display
+      behavior on the primary Windows target.
 
-**Deliverables**: Desktop MVP supports LINE-style region selection and returns
-cropped PNG attachments.
+**Deliverables**: Desktop MVP supports LINE-style region selection against a
+frozen snapshot and returns cropped PNG attachments.
 
 ### Phase 4: Web Fallback
 
-- [ ] Implement `getDisplayMedia()` capture after explicit user click.
-- [ ] Capture the first video frame into a canvas and stop media tracks
-      immediately.
-- [ ] Attach the captured PNG through the same renderer helper.
-- [ ] Show truthful unavailable or permission-denied feedback where browser
-      support is missing.
-- [ ] Decide whether the first web slice attaches the full selected source frame
-      or adds an in-app crop step.
+- [ ] Invoke `navigator.mediaDevices.getDisplayMedia()` **synchronously from
+      the click event handler** — no `await` or intermediate confirm dialog
+      between the click and the API call, or browsers will reject it for
+      lost user-gesture context. Any preflight state must be fetched
+      before the click.
+- [ ] Capture the first video frame into an `OffscreenCanvas` (or `<canvas>`
+      if OffscreenCanvas is unavailable) and call `canvas.toBlob('image/png')`.
+- [ ] Stop all `MediaStreamTrack` instances immediately after frame capture,
+      so the browser's "this tab is being recorded" indicator dismisses.
+- [ ] Attach the captured PNG through the same renderer helper used by the
+      desktop path.
+- [ ] Feature-detect `getDisplayMedia` support; when unavailable, render the
+      button disabled with an explanatory tooltip rather than hiding it
+      (per SPEC Web Fallback UI Affordance).
+- [ ] Show truthful permission-denied feedback via the platform toast
+      pattern — not inline in the composer.
+- [ ] For MVP: attach the full selected source frame directly (no in-app
+      crop). In-app crop can be added in Phase 5+ if desired.
 
 **Deliverables**: Web users get a functional fallback without desktop-overlay
-claims.
+claims; browser user-gesture requirement is respected.
 
 ### Phase 5: Validation and Documentation
 
 - [ ] Run focused renderer tests for composer attachment behavior.
 - [ ] Run `npm run build:web` and `npm run build:host` because the work touches
       both renderer and desktop host boundaries.
-- [ ] Manually verify Windows desktop capture: app hide/restore, drag select,
-      cancel, multi-monitor baseline, HiDPI crop, and screenshot-only send.
-- [ ] Manually verify browser fallback on at least Chromium-based desktop
-      browser.
+- [ ] Manually verify Windows desktop capture: app hide/restore, compositor
+      timing (no self-capture), drag select against frozen snapshot,
+      live dimensions indicator, Escape/right-click cancel, multi-monitor
+      baseline, HiDPI crop, negative-coordinate display, cursor excluded
+      from bitmap, and screenshot-only send.
+- [ ] Manually verify macOS Screen Recording permission flow on a fresh user
+      profile (first-run denial, system-settings grant, app restart, retry).
+- [ ] Manually verify browser fallback on at least one Chromium-based desktop
+      browser, covering: user-gesture preservation, MediaStreamTrack
+      shutdown, unavailable-API disabled-button state.
 - [ ] Document macOS Screen Recording permission behavior after validation.
-- [ ] Document Linux support limits after X11 and Wayland checks.
+- [ ] Document Linux X11 and Wayland behavior. Confirm Wayland uses the
+      fallback path and not the native overlay.
 
 **Deliverables**: The feature has targeted automated coverage plus explicit
 desktop/browser smoke evidence.
@@ -100,15 +158,20 @@ desktop/browser smoke evidence.
 
 | File | Action | Description |
 |------|--------|-------------|
-| `desktop/host/preload.cts` | Modify | Expose the bounded screenshot bridge method |
-| `desktop/host/main.ts` | Modify | Register host IPC and window hide/restore orchestration |
-| `desktop/host/contracts.ts` | Modify | Add screenshot bridge result contracts |
-| `desktop/host/*screenshot*` | Create | Isolate desktop capture and overlay support if the main file would grow too much |
+| `desktop/host/preload.cts` | Modify | Expose the bounded `captureScreenshotRegion()` bridge method |
+| `desktop/host/main.ts` | Modify | Register host IPC and wire window hide/restore orchestration |
+| `desktop/host/contracts.ts` | Modify | Add screenshot IPC request/result contracts and outcome variants |
+| `desktop/host/screenshotCapture.ts` | Create | Owns capture lifecycle, overlay windows, compositor wait, crop |
+| `desktop/overlay/index.html` + `overlay.tsx` | Create | Dedicated overlay renderer with frozen-snapshot background and drag-select |
+| `desktop/overlay/preload.cts` | Create | Narrow preload for the overlay BrowserWindow |
+| `vite.config.ts` / `tsconfig.desktop.json` | Modify | Add overlay as a second desktop entry point |
+| `src/shared/desktopRecoveryBridge.ts` | Modify | Extend `DesktopHostBridge` type with optional `captureScreenshotRegion?` |
 | `src/products/shared/renderer/components/ChatNewChatDraft.tsx` | Modify | Add draft composer screenshot action |
-| `src/products/shared/renderer/components/chat-view/ChatComposerArea.tsx` | Modify | Add existing-channel composer screenshot action |
-| `src/products/shared/renderer/*screenshot*` | Create | Shared renderer capture provider and `File` conversion helpers |
-| `tests/*screenshot*.test.tsx` | Create | Targeted renderer tests for menu and attachment behavior |
-| `tests/*desktop*.test.js` | Create/Modify | Narrow host contract tests where practical |
+| `src/products/shared/renderer/components/chat-view/ChatComposerArea.tsx` | Modify | Add existing-channel composer screenshot action; update send-enablement to allow attachment-only |
+| `src/products/chat/renderer/hooks/useAppDraftUiActions.ts` | Modify | Add `captureAndAttachScreenshot()` handler next to existing `openChannelFilePicker` |
+| `src/products/shared/renderer/screenshotCapture.ts` | Create | Shared renderer capture provider: desktop bridge path + web `getDisplayMedia` fallback + PNG→`File` helper |
+| `tests/screenshot-composer.test.tsx` | Create | Targeted renderer tests for menu visibility, attachment append, cancellation, attachment-only send |
+| `tests/desktop-screenshot-contract.test.js` | Create | Narrow host contract tests for IPC shape and sender validation |
 
 ## Technical Decisions
 
@@ -133,20 +196,28 @@ desktop/browser smoke evidence.
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
+| Self-capture: Cats window appears in snapshot due to hide→capture race | High | Insert deterministic compositor-flush wait between `hide()` and `desktopCapturer.getSources()`; verify via visual smoke test on Windows |
+| Overlay-in-capture: overlay window briefly visible during snapshot | High | Capture must complete fully before any overlay window is created or shown |
 | Display coordinate mismatch on HiDPI screens | High | Use Electron display scale factor and test physical crop output |
+| Negative-coordinate multi-monitor layouts mis-position overlay | High | Unit-test coordinate mapping with Windows secondary-left fixtures; verify overlays cover negative bounds |
 | Main window remains hidden after error | High | Centralize restore in `finally` and add cancellation/error smoke checks |
-| macOS permission denial confuses users | Medium | Preflight status when available and show explicit recovery guidance |
-| Wayland capture behaves differently | Medium | Ship Windows-first, document Linux support limits, validate PipeWire separately |
-| Renderer receives too much native authority | High | Keep bridge payload narrow and one-shot; never expose raw Electron modules |
-| Screenshot-only sends break message body assumptions | Medium | Add tests for attachment-only sends and decide stored body behavior before implementation |
+| macOS permission denial confuses users | Medium | Preflight `systemPreferences.getMediaAccessStatus('screen')` when available and show explicit recovery toast pointing at System Settings |
+| Wayland capture cannot deliver LINE-style UX | Medium | Accepted platform limit; Wayland routes through the web fallback path with an explicit SPEC non-goal |
+| Renderer receives too much native authority | High | Keep bridge payload narrow and one-shot; never expose raw Electron modules; reject IPC where sender ≠ main window webContents |
+| Screenshot-only sends break message body assumptions | Medium | Add tests for attachment-only sends; stored body is empty, no synthetic caption (SPEC Req 13) |
+| Web fallback loses user-gesture context via intermediate `await` | High | Invoke `getDisplayMedia()` synchronously from the click handler; any preflight state must be fetched before the click; cover with a test that mocks a deferred gesture |
+| Oversized captures break upload pipeline | Medium | Downscale to ≤8000×8000 and ≤10 MB per SPEC Req 16; test with simulated 8K multi-monitor snapshot |
 
 ## Progress Log
 
 | Date | Update |
 |------|--------|
 | 2026-04-21 | Plan created from LINE-style screenshot feasibility discussion |
+| 2026-04-22 | Review pass: tightened Phase 2/3/4 tasks (frozen snapshot, compositor wait, cursor exclusion, overlay config, user-gesture); expanded Risks; corrected Files table to include `useAppDraftUiActions.ts`, overlay entry, and shared bridge type |
 
 ---
 
 *Created: 2026-04-21*
+*Last revised: 2026-04-22 (review pass)*
 *Author: Codex*
+*Reviewer pass: Claude*

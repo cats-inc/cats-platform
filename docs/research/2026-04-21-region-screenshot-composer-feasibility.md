@@ -37,23 +37,48 @@ is implemented in the host process and exposed through the existing preload
 bridge pattern. The viable flow is:
 
 1. Renderer invokes a bounded desktop bridge method after an explicit user click.
-2. The Electron host hides or minimizes the main Cats window.
-3. The host captures display thumbnails with `desktopCapturer.getSources()`.
-4. The host opens one transparent, frameless, always-on-top overlay window per
-   display, or one virtual-desktop overlay where supported by the platform.
-5. The overlay renders the frozen desktop image and lets the user drag-select a
-   rectangle.
-6. The host crops the captured image with display scale-factor correction.
-7. The host returns PNG bytes, MIME type, dimensions, and filename metadata to
+2. The Electron host hides the main Cats window via `BrowserWindow.hide()`
+   (not `minimize()`; minimize animations on Windows and macOS can be captured
+   into the snapshot as the compositor is mid-transition).
+3. The host waits briefly (~80–150ms, or until the next compositor frame) so
+   the hidden Cats window is actually gone from the display buffer before
+   capture. Without this wait, Cats itself appears in the snapshot.
+4. The host captures full-resolution desktop bitmaps with
+   `desktopCapturer.getSources({ types: ['screen'] })`, requesting
+   `thumbnailSize` sized in physical pixels (`bounds.width * scaleFactor`).
+5. The host opens one transparent, frameless, always-on-top
+   (`setAlwaysOnTop(true, 'screen-saver')`) overlay window per display,
+   positioned to cover each display's bounds.
+6. The overlay renders the pre-captured desktop bitmap as its background and
+   lets the user drag-select a rectangle. This "frozen snapshot" approach is
+   what LINE Desktop, ShareX, Flameshot, and Slack use — the user selects
+   against a still image, so clocks do not tick, notifications do not pop, and
+   other apps' animations do not shift pixels mid-selection.
+7. The host crops the captured bitmap with display scale-factor correction,
+   mapping CSS selection coordinates to physical image coordinates.
+8. The host returns PNG bytes, MIME type, dimensions, and filename metadata to
    the renderer.
-8. The renderer wraps the PNG as a `File` and appends it to the existing
+9. The renderer wraps the PNG as a `File` and appends it to the existing
    composer attachment state.
-9. The host restores the main window.
+10. The host restores the main window to its previous state
+    (maximized / normal / focused).
 
 Cats already has an Electron host, a sandboxed renderer, context isolation, and
 a typed preload bridge. The screenshot capability should follow that boundary:
 host owns OS capture and window management; renderer owns composer state and
 attachment preview.
+
+#### Why `desktopCapturer` over `setDisplayMediaRequestHandler` inside Electron
+
+Electron also supports the standard `navigator.mediaDevices.getDisplayMedia()`
+API from the renderer side, wired via `session.setDisplayMediaRequestHandler()`.
+That path still centers the interaction on a source-picker UI rather than an
+OS-wide region selector, so it does not by itself deliver the LINE-style UX.
+`desktopCapturer` gives the host a raw per-display bitmap with no picker, which
+is the primitive needed to build the frozen-snapshot overlay. The two APIs are
+complementary — `setDisplayMediaRequestHandler` remains relevant if Cats later
+wants to expose screen sharing for calls or live collaboration — but the
+region-screenshot feature is `desktopCapturer`-based.
 
 ### Current Cats attachment fit
 
@@ -76,22 +101,42 @@ attachment is present.
 - macOS requires Screen Recording permission for desktop capture. First-run
   permission denial should be handled explicitly and may require app restart
   after permission changes.
-- Linux support depends on display server details. X11 is usually simpler.
-  Wayland/PipeWire can require portal-driven capture behavior and should be
-  validated separately.
+- Linux X11 supports the LINE-style UX; Linux Wayland **does not**. On Wayland
+  `desktopCapturer` is routed through the xdg-desktop-portal / PipeWire stack,
+  which always surfaces a system picker dialog before releasing pixels. The
+  "Cats hides, user draws a rectangle over the live desktop" flow is
+  architecturally unavailable on Wayland — the best Wayland can do is the
+  portal picker path. This is a hard platform limit, not a validation gap.
 - Multi-monitor support needs display scale-factor aware coordinate mapping.
-  Cropping must use physical image coordinates, not only CSS pixels.
+  Cropping must use physical image coordinates, not only CSS pixels. Windows
+  multi-monitor setups commonly use negative-coordinate displays (secondary
+  screen to the left of primary); overlay positioning must handle negative
+  bounds.
+- `BrowserWindow.hide()` followed by immediate capture will include the Cats
+  window itself in the snapshot on Windows and macOS because the compositor has
+  not yet finished removing it. A short deterministic wait (~80–150ms, or one
+  `requestAnimationFrame` tick) between hide and capture is required.
+- On Windows, `desktopCapturer` includes the OS cursor in the bitmap by
+  default; LINE-style capture should exclude it. Capture implementations must
+  either hide the cursor before capture or composite a cursor-free bitmap.
 
 ## Recommendation
 
 Adopt one product action named "Take screenshot" with two environment-specific
 implementations:
 
-- Electron desktop: native region selector, LINE-style.
-- Web app: browser screen-picker fallback using `getDisplayMedia()`.
+- Electron desktop (Windows / macOS / Linux-X11): native region selector,
+  LINE-style, using `desktopCapturer` + frozen-snapshot overlay.
+- Web app and Linux-Wayland desktop: browser/portal screen-picker fallback
+  using `getDisplayMedia()`.
+
+The web fallback must be invoked synchronously from the user click event
+handler — browsers reject `getDisplayMedia()` calls that have lost their user
+gesture context through intermediate async work (confirm dialogs, permission
+preflight, etc.).
 
 This keeps the Cats Chat UI consistent while giving desktop users the intended
-native capture experience.
+native capture experience on the majority of target platforms.
 
 ## Follow-Up Work
 
@@ -113,4 +158,4 @@ native capture experience.
 
 ---
 
-*Last updated: 2026-04-21*
+*Last updated: 2026-04-22 (review pass: frozen-snapshot mechanism, compositor timing, Wayland limit, cursor exclusion, `desktopCapturer` vs `setDisplayMediaRequestHandler` rationale)*
