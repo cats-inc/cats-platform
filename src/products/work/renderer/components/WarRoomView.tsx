@@ -6,11 +6,16 @@ import {
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import { taskExecutionProductLabel } from '../../../../core/taskHandoff.js';
 import type { WorkDashboardProjection } from '../../api/projection.js';
 import { buildChannelPath, buildMyCatPath } from '../../shared/channelPaths.js';
 import { listCatActorLinks } from '../actorLinks.js';
 import { fetchWorkDashboard } from '../api/dashboard.js';
+import {
+  formatWorkDeliveryMode,
+  formatWorkExecutionProduct,
+  formatWorkExecutionStrategy,
+  formatWorkTokenList,
+} from '../workExecutionPresentation.js';
 import { IntakeStatusCard } from './IntakeStatusCard.js';
 
 type WorkOperatorInboxItem = WorkDashboardProjection['sections']['operatorInbox']['items'][number];
@@ -31,16 +36,6 @@ function formatTimestamp(value: string | null | undefined): string {
 
 function compactList(values: readonly string[]): string {
   return values.length > 0 ? values.join(', ') : 'None';
-}
-
-function formatProduct(product: string | null | undefined): string {
-  if (!product) {
-    return 'Unassigned';
-  }
-
-  return product === 'chat' || product === 'work' || product === 'code'
-    ? taskExecutionProductLabel(product)
-    : product;
 }
 
 function attentionBadgeClassName(severity: string | null | undefined): string {
@@ -250,14 +245,14 @@ function OperatorInboxSection({
               <p>{item.summary ?? 'No task summary recorded.'}</p>
               <div className="operatorMetaRow">
                 <span>Reasons: {compactList(item.attention.reasons)}</span>
-                <span>Actions: {compactList(item.nextActions.map((action) => action.kind))}</span>
+                <span>Actions: {formatWorkTokenList(item.nextActions.map((action) => action.kind))}</span>
               </div>
               <div className="operatorMetaRow">
-                <span>Product: {formatProduct(item.planning.effectiveProduct)}</span>
-                <span>Strategy: {item.runtimeBridge.request.requestedStrategy ?? 'Not specified'}</span>
+                <span>Product: {formatWorkExecutionProduct(item.planning.effectiveProduct)}</span>
+                <span>Strategy: {formatWorkExecutionStrategy(item.runtimeBridge.request.requestedStrategy)}</span>
               </div>
               <div className="operatorMetaRow">
-                <span>Delivery: {item.runtimeDeliveryIntent?.mode ?? 'Not specified'}</span>
+                <span>Delivery: {formatWorkDeliveryMode(item.runtimeDeliveryIntent?.mode)}</span>
                 <span>Workflow: {item.workflowContinuation?.blockedReason ?? 'No replay block'}</span>
               </div>
               <div className="operatorMetaRow">
@@ -326,12 +321,12 @@ function ControlPlaneSection({
                     : 'No continuation target currently recorded.'}
               </p>
               <div className="operatorMetaRow">
-                <span>Product: {formatProduct(item.planning.effectiveProduct)}</span>
-                <span>Strategy: {item.planning.effectiveStrategy ?? 'Not specified'}</span>
+                <span>Product: {formatWorkExecutionProduct(item.planning.effectiveProduct)}</span>
+                <span>Strategy: {formatWorkExecutionStrategy(item.planning.effectiveStrategy)}</span>
               </div>
               <div className="operatorMetaRow">
-                <span>Next: {compactList(item.nextActions.map((action) => action.kind))}</span>
-                <span>Delivery: {item.runtimeDeliveryIntent?.mode ?? 'Not specified'}</span>
+                <span>Next: {formatWorkTokenList(item.nextActions.map((action) => action.kind))}</span>
+                <span>Delivery: {formatWorkDeliveryMode(item.runtimeDeliveryIntent?.mode)}</span>
               </div>
               <div className="operatorMetaRow">
                 <span>Replay: {item.workflowContinuation?.replayState ?? 'Not recorded'}</span>
@@ -550,7 +545,7 @@ function RecoverySection({
                   ?? 'No recovery note recorded.'}
               </p>
               <div className="operatorMetaRow">
-                <span>Delivery: {item.context?.deliveryMode ?? 'Not specified'}</span>
+                <span>Delivery: {formatWorkDeliveryMode(item.context?.deliveryMode)}</span>
                 <span>Approval: {item.approval.status}</span>
               </div>
               <div className="operatorMetaRow">

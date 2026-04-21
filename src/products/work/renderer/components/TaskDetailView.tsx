@@ -6,11 +6,18 @@ import {
 } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
-import { taskExecutionProductLabel } from '../../../../core/taskHandoff.js';
 import type { WorkTaskDetailProjection } from '../../api/projection.js';
 import { buildChannelPath, buildMyCatPath } from '../../shared/channelPaths.js';
 import { listCatActorLinks } from '../actorLinks.js';
 import { fetchWorkTaskDetail } from '../api/dashboard.js';
+import {
+  formatWorkCorrelation,
+  formatWorkDeliveryMode,
+  formatWorkExecutionProduct,
+  formatWorkExecutionStrategy,
+  formatWorkRuntimeBridgeProduct,
+  formatWorkTokenList,
+} from '../workExecutionPresentation.js';
 
 function formatTimestamp(value: string | null | undefined): string {
   if (!value) {
@@ -23,16 +30,6 @@ function formatTimestamp(value: string | null | undefined): string {
 
 function compactList(values: readonly string[]): string {
   return values.length > 0 ? values.join(', ') : 'None';
-}
-
-function formatProduct(product: string | null | undefined): string {
-  if (!product) {
-    return 'Unassigned';
-  }
-
-  return product === 'chat' || product === 'work' || product === 'code'
-    ? taskExecutionProductLabel(product)
-    : product;
 }
 
 function statusBadgeClassName(status: string | null | undefined): string {
@@ -219,8 +216,8 @@ export function TaskDetailView() {
               </div>
               <p>{payload.task.summary ?? 'No task summary recorded.'}</p>
               <div className="operatorMetaRow">
-                <span>Product: {formatProduct(payload.inspection.planning.effectiveProduct)}</span>
-                <span>Strategy: {payload.inspection.planning.effectiveStrategy ?? 'Not specified'}</span>
+                <span>Product: {formatWorkExecutionProduct(payload.inspection.planning.effectiveProduct)}</span>
+                <span>Strategy: {formatWorkExecutionStrategy(payload.inspection.planning.effectiveStrategy)}</span>
               </div>
               <div className="operatorMetaRow">
                 <span>Conversation: {payload.conversation?.title ?? payload.task.conversationId ?? 'Detached'}</span>
@@ -235,7 +232,7 @@ export function TaskDetailView() {
                 <span>Task: {payload.task.id}</span>
               </div>
               <div className="operatorMetaRow">
-                <span>Actions: {compactList(payload.controlPlane.nextActions.map((action) => action.kind))}</span>
+                <span>Actions: {formatWorkTokenList(payload.controlPlane.nextActions.map((action) => action.kind))}</span>
                 <span>Attention: {compactList(payload.controlPlane.attention.reasons)}</span>
               </div>
               <div className="workWarRoomHeaderActions">
@@ -300,7 +297,7 @@ export function TaskDetailView() {
             <SectionHeader
               eyebrow="Planning"
               title="Planning & Runtime"
-              summary={payload.inspection.runtimeBridge.product ?? 'no runtime bridge'}
+              summary={formatWorkRuntimeBridgeProduct(payload.inspection.runtimeBridge.product)}
             />
             <div className="workTaskDetailGrid">
               <DetailCard
@@ -313,17 +310,13 @@ export function TaskDetailView() {
               />
               <DetailCard
                 label="Requested Strategy"
-                value={payload.inspection.runtimeBridge.request.requestedStrategy ?? 'Not specified'}
+                value={formatWorkExecutionStrategy(
+                  payload.inspection.runtimeBridge.request.requestedStrategy,
+                )}
               />
               <DetailCard
                 label="Correlation"
-                value={[
-                  payload.inspection.runtimeBridge.request.correlation?.product
-                    ? formatProduct(payload.inspection.runtimeBridge.request.correlation.product)
-                    : null,
-                  payload.inspection.runtimeBridge.request.correlation?.workItemId ?? null,
-                  payload.inspection.runtimeBridge.request.correlation?.conversationId ?? null,
-                ].filter((value): value is string => Boolean(value)).join(' | ') || 'Not recorded'}
+                value={formatWorkCorrelation(payload.inspection.runtimeBridge.request.correlation)}
               />
             </div>
           </section>
@@ -332,20 +325,22 @@ export function TaskDetailView() {
             <SectionHeader
               eyebrow="Control"
               title="Control Plane"
-              summary={payload.controlPlane.runtimeDeliveryIntent?.mode ?? 'no delivery intent'}
+              summary={formatWorkDeliveryMode(payload.controlPlane.runtimeDeliveryIntent?.mode)}
             />
             <div className="workTaskDetailGrid">
               <DetailCard
                 label="Next Actions"
-                value={compactList(payload.controlPlane.nextActions.map((action) => action.kind))}
+                value={formatWorkTokenList(payload.controlPlane.nextActions.map((action) => action.kind))}
               />
               <DetailCard
                 label="Delivery Gates"
-                value={compactList(payload.controlPlane.runtimeDeliveryIntent?.gates ?? [])}
+                value={formatWorkTokenList(payload.controlPlane.runtimeDeliveryIntent?.gates)}
               />
               <DetailCard
                 label="Requested Delivery"
-                value={compactList(payload.controlPlane.runtimeDeliveryIntent?.requestedActions ?? [])}
+                value={formatWorkTokenList(
+                  payload.controlPlane.runtimeDeliveryIntent?.requestedActions,
+                )}
               />
               <DetailCard
                 label="Continuation"

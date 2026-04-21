@@ -10,6 +10,11 @@ import type { WorkWorkItemDetailProjection } from '../../api/projection.js';
 import { buildChannelPath, buildMyCatPath } from '../../shared/channelPaths.js';
 import { listCatActorLinks } from '../actorLinks.js';
 import { fetchWorkItemDetail } from '../api/dashboard.js';
+import {
+  formatWorkDeliveryMode,
+  formatWorkExecutionStrategy,
+  formatWorkTokenList,
+} from '../workExecutionPresentation.js';
 
 function formatTimestamp(value: string | null | undefined): string {
   if (!value) {
@@ -265,11 +270,11 @@ export function WorkItemDetailView() {
                 </div>
                 <p>{payload.linkedTask.task.summary ?? 'No task summary recorded.'}</p>
                 <div className="operatorMetaRow">
-                  <span>Strategy: {payload.linkedTask.inspection.planning.effectiveStrategy ?? 'Not specified'}</span>
-                  <span>Delivery: {payload.linkedTask.controlPlane.runtimeDeliveryIntent?.mode ?? 'Not specified'}</span>
+                  <span>Strategy: {formatWorkExecutionStrategy(payload.linkedTask.inspection.planning.effectiveStrategy)}</span>
+                  <span>Delivery: {formatWorkDeliveryMode(payload.linkedTask.controlPlane.runtimeDeliveryIntent?.mode)}</span>
                 </div>
                 <div className="operatorMetaRow">
-                  <span>Next: {compactList(payload.linkedTask.controlPlane.nextActions.map((action) => action.kind))}</span>
+                  <span>Next: {formatWorkTokenList(payload.linkedTask.controlPlane.nextActions.map((action) => action.kind))}</span>
                   <span>Recovery: {payload.linkedTask.recovery.workflowContinuationReplay?.blockedReason ?? 'No replay block'}</span>
                 </div>
                 <div className="operatorMetaRow">

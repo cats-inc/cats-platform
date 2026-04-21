@@ -10,6 +10,7 @@ import type { WorkTaskListProjection } from '../../api/projection.js';
 import { buildChannelPath, buildMyCatPath } from '../../shared/channelPaths.js';
 import { listCatActorLinks } from '../actorLinks.js';
 import { fetchWorkTaskList } from '../api/dashboard.js';
+import { formatWorkTokenList } from '../workExecutionPresentation.js';
 
 function formatTimestamp(value: string | null | undefined): string {
   if (!value) {
@@ -225,7 +226,7 @@ export function WorkTaskListView() {
                     </div>
                     <div className="operatorMetaRow">
                       <span>Attention: {compactList(task.controlPlane.attention.reasons)}</span>
-                      <span>Next: {compactList(task.controlPlane.nextActions.map((action) => action.kind))}</span>
+                      <span>Next: {formatWorkTokenList(task.controlPlane.nextActions.map((action) => action.kind))}</span>
                     </div>
                     <div className="operatorMetaRow">
                       <span>Conversation: {task.conversationTitle ?? 'No linked conversation'}</span>
