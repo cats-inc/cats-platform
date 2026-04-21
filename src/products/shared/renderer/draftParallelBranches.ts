@@ -10,10 +10,6 @@ export interface DraftParallelTargetBranchFields {
   attachmentsOverride?: DraftAttachmentRef[] | null;
 }
 
-export interface DraftParallelBranchState<TTarget extends object> {
-  target: TTarget & DraftParallelTargetBranchFields;
-}
-
 function normalizeAudienceKeys(
   audienceKeys: readonly string[] | null | undefined,
 ): string[] {
@@ -55,51 +51,49 @@ export function mergeDraftParallelTargetBranchFields<TTarget extends object>(
   };
 }
 
-function normalizeDraftParallelBranch<TTarget extends object>(
-  branch: DraftParallelBranchState<TTarget>,
-): DraftParallelBranchState<TTarget> {
-  const audienceKeys = normalizeAudienceKeys(branch.target.audienceKeys);
-  const workflowShape = branch.target.workflowShape ?? 'sequential';
-  return {
-    target: syncTargetBranchFields(branch.target, audienceKeys, workflowShape),
-  };
+function normalizeDraftParallelTarget<TTarget extends object>(
+  target: TTarget & DraftParallelTargetBranchFields,
+): TTarget & DraftParallelTargetBranchFields {
+  const audienceKeys = normalizeAudienceKeys(target.audienceKeys);
+  const workflowShape = target.workflowShape ?? 'sequential';
+  return syncTargetBranchFields(target, audienceKeys, workflowShape);
 }
 
-export function createDraftParallelBranches<TTarget extends object>(
+export function createDraftParallelTargets<TTarget extends object>(
   targets: readonly TTarget[],
   options: {
     seedAudienceKeys?: readonly string[] | null;
     seedWorkflowShape?: DraftRoomWorkflowShape;
   } = {},
-): DraftParallelBranchState<TTarget>[] {
+): Array<TTarget & DraftParallelTargetBranchFields> {
   const audienceKeys = normalizeAudienceKeys(options.seedAudienceKeys);
   const workflowShape = options.seedWorkflowShape ?? 'sequential';
 
-  return targets.map((target) => createDraftParallelBranch(target, {
+  return targets.map((target) => createDraftParallelTarget(target, {
     audienceKeys,
     workflowShape,
   }));
 }
 
-export function createDraftParallelBranch<TTarget extends object>(
+export function createDraftParallelTarget<TTarget extends object>(
   target: TTarget,
   options: {
     audienceKeys?: readonly string[] | null;
     workflowShape?: DraftRoomWorkflowShape;
   } = {},
-): DraftParallelBranchState<TTarget> {
+): TTarget & DraftParallelTargetBranchFields {
   const audienceKeys = normalizeAudienceKeys(options.audienceKeys);
   const workflowShape = options.workflowShape ?? 'sequential';
-  return {
-    target: syncTargetBranchFields(target, audienceKeys, workflowShape),
-  };
+  return syncTargetBranchFields(target, audienceKeys, workflowShape);
 }
 
-export function updateDraftParallelBranchAt<TTarget extends object>(
-  branches: readonly DraftParallelBranchState<TTarget>[],
+export function updateDraftParallelTargetAt<TTarget extends object>(
+  targets: readonly (TTarget & DraftParallelTargetBranchFields)[],
   index: number,
-  updater: (branch: DraftParallelBranchState<TTarget>) => DraftParallelBranchState<TTarget>,
-): DraftParallelBranchState<TTarget>[] {
-  return branches.map((branch, currentIndex) =>
-    currentIndex === index ? normalizeDraftParallelBranch(updater(branch)) : branch);
+  updater: (
+    target: TTarget & DraftParallelTargetBranchFields,
+  ) => TTarget & DraftParallelTargetBranchFields,
+): Array<TTarget & DraftParallelTargetBranchFields> {
+  return targets.map((target, currentIndex) =>
+    currentIndex === index ? normalizeDraftParallelTarget(updater(target)) : target);
 }

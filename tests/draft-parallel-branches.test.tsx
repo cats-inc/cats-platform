@@ -2,76 +2,65 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  createDraftParallelBranches,
+  createDraftParallelTargets,
   mergeDraftParallelTargetBranchFields,
-  updateDraftParallelBranchAt,
+  updateDraftParallelTargetAt,
 } from '../src/products/shared/renderer/draftParallelBranches.ts';
 
-test('createDraftParallelBranches seeds every branch with deduped audience keys and one workflow shape', () => {
+test('createDraftParallelTargets seeds every target with deduped audience keys and one workflow shape', () => {
   const targets = [
     { provider: 'claude', model: 'opus' },
     { provider: 'codex', model: 'gpt-5.4' },
   ];
 
-  const branches = createDraftParallelBranches(targets, {
+  const parallelTargets = createDraftParallelTargets(targets, {
     seedAudienceKeys: ['cat-1', 'cat-2', 'cat-1', '', 'cat-2'],
     seedWorkflowShape: 'concurrent',
   });
 
-  assert.deepEqual(branches, [
+  assert.deepEqual(parallelTargets, [
     {
-      target: {
-        ...targets[0],
-        audienceKeys: ['cat-1', 'cat-2'],
-        workflowShape: 'concurrent',
-      },
+      ...targets[0],
+      audienceKeys: ['cat-1', 'cat-2'],
+      workflowShape: 'concurrent',
     },
     {
-      target: {
-        ...targets[1],
-        audienceKeys: ['cat-1', 'cat-2'],
-        workflowShape: 'concurrent',
-      },
+      ...targets[1],
+      audienceKeys: ['cat-1', 'cat-2'],
+      workflowShape: 'concurrent',
     },
   ]);
-  assert.notEqual(branches[0]?.target.audienceKeys, branches[1]?.target.audienceKeys);
+  assert.notEqual(parallelTargets[0]?.audienceKeys, parallelTargets[1]?.audienceKeys);
 });
 
-test('createDraftParallelBranches falls back to empty audience and sequential workflow', () => {
-  const branches = createDraftParallelBranches([{ id: 'target-1' }]);
+test('createDraftParallelTargets falls back to empty audience and sequential workflow', () => {
+  const targets = createDraftParallelTargets([{ id: 'target-1' }]);
 
-  assert.deepEqual(branches, [
-    {
-      target: { id: 'target-1', audienceKeys: [], workflowShape: 'sequential' },
-    },
+  assert.deepEqual(targets, [
+    { id: 'target-1', audienceKeys: [], workflowShape: 'sequential' },
   ]);
 });
 
-test('updateDraftParallelBranchAt only replaces the requested branch', () => {
-  const branches = createDraftParallelBranches(
+test('updateDraftParallelTargetAt only replaces the requested target', () => {
+  const targets = createDraftParallelTargets(
     [{ id: 'target-1' }, { id: 'target-2' }, { id: 'target-3' }],
     { seedAudienceKeys: ['cat-1'] },
   );
 
-  const next = updateDraftParallelBranchAt(branches, 1, (branch) => ({
-    ...branch,
-    target: {
-      ...branch.target,
-      workflowShape: 'concurrent',
-      audienceKeys: [...(branch.target.audienceKeys ?? []), 'cat-2'],
-    },
+  const next = updateDraftParallelTargetAt(targets, 1, (target) => ({
+    ...target,
+    workflowShape: 'concurrent',
+    audienceKeys: [...(target.audienceKeys ?? []), 'cat-2'],
   }));
 
-  assert.notEqual(next, branches);
-  assert.equal(next[0], branches[0]);
-  assert.notEqual(next[1], branches[1]);
-  assert.equal(next[2], branches[2]);
+  assert.notEqual(next, targets);
+  assert.equal(next[0], targets[0]);
+  assert.notEqual(next[1], targets[1]);
+  assert.equal(next[2], targets[2]);
   assert.deepEqual(next[1], {
-    target: {
-      id: 'target-2',
-      audienceKeys: ['cat-1', 'cat-2'],
-      workflowShape: 'concurrent',
-    },
+    id: 'target-2',
+    audienceKeys: ['cat-1', 'cat-2'],
+    workflowShape: 'concurrent',
   });
 });
 

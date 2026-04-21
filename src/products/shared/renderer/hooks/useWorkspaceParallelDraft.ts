@@ -1,7 +1,6 @@
 import {
   useCallback,
   useEffect,
-  useMemo,
   useState,
 } from 'react';
 import type { DraftRoomWorkflowShape } from '../../../../shared/roomRouting.js';
@@ -13,10 +12,10 @@ import {
 } from '../draftChatUtils.js';
 import type { WorkspaceExecutionTargetValue } from './useWorkspaceComposerSubmit.js';
 import {
-  createDraftParallelBranch,
-  createDraftParallelBranches,
+  createDraftParallelTarget,
+  createDraftParallelTargets,
   mergeDraftParallelTargetBranchFields,
-  updateDraftParallelBranchAt,
+  updateDraftParallelTargetAt,
 } from '../draftParallelBranches.js';
 
 export function useWorkspaceParallelDraft(options: {
@@ -29,8 +28,8 @@ export function useWorkspaceParallelDraft(options: {
     maxParallelChats,
     seedCompareTarget = true,
   } = options;
-  const [draftParallelBranches, setDraftParallelBranches] = useState(
-    () => createDraftParallelBranches(
+  const [draftParallelChatTargets, setDraftParallelChatTargets] = useState(
+    () => createDraftParallelTargets(
       createInitialParallelTargets({
         provider: draftExecutionTarget.provider,
         model: draftExecutionTarget.model,
@@ -41,17 +40,13 @@ export function useWorkspaceParallelDraft(options: {
       }),
     ),
   );
-  const draftParallelChatTargets = useMemo(
-    () => draftParallelBranches.map((branch) => branch.target),
-    [draftParallelBranches],
-  );
 
   const resetDraftParallelChatTargets = useCallback((options?: {
     includeCompareTarget?: boolean;
     seedAudienceKeys?: readonly string[] | null;
     seedWorkflowShape?: DraftRoomWorkflowShape;
   }) => {
-    setDraftParallelBranches(createDraftParallelBranches(
+    setDraftParallelChatTargets(createDraftParallelTargets(
       createInitialParallelTargets(draftExecutionTarget, {
         includeCompareTarget: options?.includeCompareTarget ?? seedCompareTarget,
       }),
@@ -63,22 +58,18 @@ export function useWorkspaceParallelDraft(options: {
   }, [draftExecutionTarget, seedCompareTarget]);
 
   useEffect(() => {
-    setDraftParallelBranches((currentBranches) =>
-      updateDraftParallelBranchAt(currentBranches, 0, (branch) => ({
-        ...branch,
-        target: mergeDraftParallelTargetBranchFields(
-          syncLeadParallelTarget([branch.target], draftExecutionTarget)[0] ?? draftExecutionTarget,
-          branch.target,
-        ),
-      })));
+    setDraftParallelChatTargets((currentTargets) =>
+      updateDraftParallelTargetAt(currentTargets, 0, (target) =>
+        mergeDraftParallelTargetBranchFields(
+          syncLeadParallelTarget([target], draftExecutionTarget)[0] ?? draftExecutionTarget,
+          target,
+        )));
   }, [draftExecutionTarget]);
 
   const onDraftParallelChatTargetChange = useCallback((index: number, value: WorkspaceExecutionTargetValue) => {
-    setDraftParallelBranches((prev) =>
-      updateDraftParallelBranchAt(prev, index, (branch) => ({
-        ...branch,
-        target: mergeDraftParallelTargetBranchFields(value, branch.target),
-      })),
+    setDraftParallelChatTargets((prev) =>
+      updateDraftParallelTargetAt(prev, index, (target) =>
+        mergeDraftParallelTargetBranchFields(value, target)),
     );
   }, []);
 
@@ -86,21 +77,21 @@ export function useWorkspaceParallelDraft(options: {
     seedAudienceKeys?: readonly string[] | null;
     seedWorkflowShape?: DraftRoomWorkflowShape;
   }) => {
-    setDraftParallelBranches((prev) => {
+    setDraftParallelChatTargets((prev) => {
       if (prev.length >= maxParallelChats) {
         return prev;
       }
 
-      const seedBranch = prev[0] ?? null;
-      const audienceKeys = options?.seedAudienceKeys ?? seedBranch?.target.audienceKeys ?? [];
+      const seedTarget = prev[0] ?? null;
+      const audienceKeys = options?.seedAudienceKeys ?? seedTarget?.audienceKeys ?? [];
       const workflowShape = options?.seedWorkflowShape
-        ?? seedBranch?.target.workflowShape
+        ?? seedTarget?.workflowShape
         ?? 'sequential';
       return [
         ...prev,
-        createDraftParallelBranch(
+        createDraftParallelTarget(
           createNextParallelTarget(
-            prev.map((branch) => branch.target),
+            prev,
             draftExecutionTarget,
           ),
           { audienceKeys, workflowShape },
@@ -113,7 +104,7 @@ export function useWorkspaceParallelDraft(options: {
   ]);
 
   const onRemoveDraftParallelChatTarget = useCallback((index: number) => {
-    setDraftParallelBranches((prev) => {
+    setDraftParallelChatTargets((prev) => {
       if (prev.length <= 1) {
         return prev;
       }
@@ -123,31 +114,24 @@ export function useWorkspaceParallelDraft(options: {
   }, []);
 
   const onSetDraftParallelBranchAudienceKeys = useCallback((index: number, keys: string[]) => {
-    setDraftParallelBranches((prev) =>
-      updateDraftParallelBranchAt(prev, index, (branch) => ({
-        ...branch,
-        target: {
-          ...branch.target,
-          audienceKeys: [...keys],
-        },
+    setDraftParallelChatTargets((prev) =>
+      updateDraftParallelTargetAt(prev, index, (target) => ({
+        ...target,
+        audienceKeys: [...keys],
       })),
     );
   }, []);
 
   const onToggleDraftParallelBranchWorkflowShape = useCallback((index: number) => {
-    setDraftParallelBranches((prev) =>
-      updateDraftParallelBranchAt(prev, index, (branch) => ({
-        ...branch,
-        target: {
-          ...branch.target,
-          workflowShape: branch.target.workflowShape === 'concurrent' ? 'sequential' : 'concurrent',
-        },
+    setDraftParallelChatTargets((prev) =>
+      updateDraftParallelTargetAt(prev, index, (target) => ({
+        ...target,
+        workflowShape: target.workflowShape === 'concurrent' ? 'sequential' : 'concurrent',
       })),
     );
   }, []);
 
   return {
-    draftParallelBranches,
     draftParallelChatTargets,
     resetDraftParallelChatTargets,
     onDraftParallelChatTargetChange,
