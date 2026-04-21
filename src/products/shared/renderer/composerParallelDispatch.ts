@@ -1,5 +1,6 @@
 import type { AppShellPayload } from '../api/workspaceContracts.js';
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
+import type { DraftRoomWorkflowShape } from '../../../shared/roomRouting.js';
 import type { RuntimeSessionPolicy } from '../../../shared/runtimeSessionPolicy.js';
 import type { CreateParallelChatGroupInput } from './api/chat.js';
 import {
@@ -12,11 +13,33 @@ import {
   resolveDraftAudienceParticipantIds,
   type DraftTemporaryParticipant,
 } from './draftChatUtils.js';
-import { assertNoBranchAttachmentOverrides } from './draftBranchResolution.js';
+import {
+  assertNoBranchAttachmentOverrides,
+  resolveBranch,
+  type DraftLeadContext,
+} from './draftBranchResolution.js';
 import { createDraftChannelTitle } from './workspaceChatUtils.js';
 import type { DraftParallelTargetBranchFields } from './draftParallelBranches.js';
 
 type ParallelDispatchTarget = WorkspaceExecutionTargetValue & DraftParallelTargetBranchFields;
+
+function createDraftLeadContext(input: {
+  body: string;
+  draftCwd: string | null;
+  draftSessionPolicy?: RuntimeSessionPolicy | null;
+  draftFiles: File[];
+  draftWorkflowShape?: DraftRoomWorkflowShape;
+  draftAudienceKeys?: string[] | null;
+}): DraftLeadContext {
+  return {
+    composerDraft: input.body,
+    draftCwd: input.draftCwd,
+    draftRuntimeSessionPolicy: input.draftSessionPolicy ?? null,
+    draftAudienceKeys: input.draftAudienceKeys ?? null,
+    draftWorkflowShape: input.draftWorkflowShape ?? 'sequential',
+    draftFiles: input.draftFiles,
+  };
+}
 
 export interface ParallelDispatchRequestState {
   kind: 'parallel';
@@ -47,6 +70,8 @@ export interface SubmitNewParallelChatDraftOptions {
   draftCwd: string | null;
   draftSessionPolicy?: RuntimeSessionPolicy | null;
   draftFiles: File[];
+  draftWorkflowShape?: DraftRoomWorkflowShape;
+  draftAudienceKeys?: string[] | null;
   draftParallelChatTargets: ParallelDispatchTarget[];
   draftParticipantCatIds?: string[];
   draftTemporaryParticipants?: DraftTemporaryParticipant[];
@@ -67,11 +92,24 @@ export function buildParallelChatDraftCreateInput(input: {
   originSurface: PlatformSurfaceId;
   draftCwd: string | null;
   draftSessionPolicy?: RuntimeSessionPolicy | null;
+  draftFiles?: File[];
+  draftWorkflowShape?: DraftRoomWorkflowShape;
+  draftAudienceKeys?: string[] | null;
   draftParallelChatTargets: ParallelDispatchTarget[];
   draftParticipantCatIds?: string[];
   draftTemporaryParticipants?: DraftTemporaryParticipant[];
 }): CreateParallelChatGroupInput {
   assertNoBranchAttachmentOverrides(input.draftParallelChatTargets);
+  const leadContext = createDraftLeadContext({
+    body: input.body,
+    draftCwd: input.draftCwd,
+    draftSessionPolicy: input.draftSessionPolicy,
+    draftFiles: input.draftFiles ?? [],
+    draftWorkflowShape: input.draftWorkflowShape,
+    draftAudienceKeys: input.draftAudienceKeys,
+  });
+  const resolvedBranches = input.draftParallelChatTargets.map((target) =>
+    resolveBranch(target, leadContext));
 
   return {
     title: createDraftChannelTitle(input.body, input.existingCount),
@@ -80,13 +118,14 @@ export function buildParallelChatDraftCreateInput(input: {
     ...(input.draftSessionPolicy === undefined
       ? {}
       : { runtimeSessionPolicy: input.draftSessionPolicy }),
-    targets: input.draftParallelChatTargets.map((target) => {
+    targets: input.draftParallelChatTargets.map((target, index) => {
+      const resolvedBranch = resolvedBranches[index]!;
       return {
         provider: target.provider,
         instance: target.instance ?? null,
         model: target.model ?? null,
         modelSelection: target.modelSelection ?? null,
-        audienceKeys: target.audienceKeys ?? [],
+        audienceKeys: resolvedBranch.effectiveAudienceKeys,
         ...(target.cwd === undefined ? {} : { cwd: target.cwd }),
         ...(target.runtimeSessionPolicy === undefined
           ? {}
@@ -113,6 +152,8 @@ export async function submitNewParallelChatDraft({
   draftCwd,
   draftSessionPolicy,
   draftFiles,
+  draftWorkflowShape,
+  draftAudienceKeys,
   draftParallelChatTargets,
   draftParticipantCatIds = [],
   draftTemporaryParticipants = [],
@@ -122,6 +163,16 @@ export async function submitNewParallelChatDraft({
   if (draftParallelChatTargets.length < 2) {
     throw new Error('Choose at least two parallel chats before sending.');
   }
+  const leadContext = createDraftLeadContext({
+    body,
+    draftCwd,
+    draftSessionPolicy,
+    draftFiles,
+    draftWorkflowShape,
+    draftAudienceKeys,
+  });
+  const resolvedBranches = draftParallelChatTargets.map((target) =>
+    resolveBranch(target, leadContext));
 
   const created = await createParallelChatGroup(
     buildParallelChatDraftCreateInput({
@@ -130,6 +181,9 @@ export async function submitNewParallelChatDraft({
       originSurface,
       draftCwd,
       draftSessionPolicy,
+      draftFiles,
+      draftWorkflowShape,
+      draftAudienceKeys,
       draftParallelChatTargets,
       draftParticipantCatIds,
       draftTemporaryParticipants,
@@ -152,12 +206,12 @@ export async function submitNewParallelChatDraft({
     body,
     attachments: encodedAttachments,
     channelInputs: created.group.memberChannelIds.map((channelId, index) => {
-      const target = draftParallelChatTargets[index];
-      if (!target) {
+      const resolvedBranch = resolvedBranches[index];
+      if (!resolvedBranch) {
         return { channelId };
       }
-      const branchAudienceKeys = target.audienceKeys ?? [];
-      const branchWorkflowShape = target.workflowShape ?? 'sequential';
+      const branchAudienceKeys = resolvedBranch.effectiveAudienceKeys;
+      const branchWorkflowShape = resolvedBranch.effectiveWorkflowShape;
       const recipientParticipantIds = branchAudienceKeys.length > 0
         ? resolveDraftAudienceParticipantIds({
             draftParticipantCatIds,

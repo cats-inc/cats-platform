@@ -119,6 +119,36 @@ test('buildParallelChatDraftCreateInput normalizes nullable fields for code-owne
   ]);
 });
 
+test('buildParallelChatDraftCreateInput resolves branch audience from lead defaults', () => {
+  const input = buildParallelChatDraftCreateInput({
+    body: 'Review the same lead audience on every branch',
+    existingCount: 1,
+    originSurface: 'code',
+    draftCwd: 'C:/repo/cats-platform',
+    draftAudienceKeys: ['cat-lead', 'cat-lead', '', 'cat-reviewer'],
+    draftParallelChatTargets: [
+      {
+        provider: 'claude',
+        instance: null,
+        model: 'claude-opus-4-6',
+        modelSelection: null,
+        audienceKeys: null,
+      },
+      {
+        provider: 'codex',
+        instance: null,
+        model: 'gpt-5.4',
+        modelSelection: null,
+      },
+    ],
+  });
+
+  assert.deepEqual(input.targets.map((target) => target.audienceKeys), [
+    ['cat-lead', 'cat-reviewer'],
+    ['cat-lead', 'cat-reviewer'],
+  ]);
+});
+
 test('buildParallelChatDraftCreateInput rejects reserved per-branch attachment overrides', () => {
   assert.throws(
     () => buildParallelChatDraftCreateInput({

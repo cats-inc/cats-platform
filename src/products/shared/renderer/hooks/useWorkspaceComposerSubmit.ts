@@ -278,6 +278,8 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
           draftCwd,
           draftSessionPolicy,
           draftFiles,
+          draftWorkflowShape,
+          draftAudienceKeys,
           draftParallelChatTargets,
           draftParticipantCatIds: draftCatIds,
           draftTemporaryParticipants,

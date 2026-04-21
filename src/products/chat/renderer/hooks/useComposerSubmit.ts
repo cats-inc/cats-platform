@@ -395,6 +395,8 @@ export function useComposerSubmit(options: {
           draftCwd,
           draftSessionPolicy: null,
           draftFiles,
+          draftWorkflowShape,
+          draftAudienceKeys,
           draftParallelChatTargets,
           draftParticipantCatIds,
           draftTemporaryParticipants,
