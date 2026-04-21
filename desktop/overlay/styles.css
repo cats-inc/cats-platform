@@ -70,10 +70,6 @@ body {
   z-index: 2;
 }
 
-.screenshotSelectionSizeBlocked {
-  background: rgba(127, 29, 29, 0.95);
-}
-
 .screenshotCursorExclusion {
   position: absolute;
   border: 1px dashed rgba(248, 113, 113, 0.85);
@@ -89,16 +85,18 @@ body {
   box-shadow: 0 0 0 1px rgba(127, 29, 29, 0.45);
 }
 
-.screenshotCursorExclusion span {
+.screenshotCursorWarning {
   position: absolute;
-  left: 50%;
-  top: 100%;
-  transform: translate(-50%, 6px);
-  white-space: nowrap;
+  box-sizing: border-box;
+  width: 132px;
   padding: 3px 6px;
   border-radius: 4px;
   background: rgba(127, 29, 29, 0.92);
   color: #ffffff;
   font-size: 12px;
   line-height: 1.2;
+  pointer-events: none;
+  text-align: center;
+  white-space: nowrap;
+  z-index: 3;
 }

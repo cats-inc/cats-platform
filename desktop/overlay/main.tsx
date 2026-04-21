@@ -24,10 +24,21 @@ import {
 } from '../host/screenshotGeometry.js';
 import './styles.css';
 
+const CURSOR_WARNING_LABEL_WIDTH = 132;
+const CURSOR_WARNING_LABEL_HEIGHT = 22;
+const FLOATING_LABEL_MARGIN = 8;
+
 declare global {
   interface Window {
     catsScreenshotOverlay?: DesktopScreenshotOverlayBridge;
   }
+}
+
+function clamp(value: number, min: number, max: number): number {
+  if (max < min) {
+    return min;
+  }
+  return Math.min(max, Math.max(min, value));
 }
 
 function toGlobalPoint(
@@ -75,6 +86,29 @@ function relativeRectStyle(
     top: cssRect.y - payload.bounds.y,
     width: cssRect.width,
     height: cssRect.height,
+  };
+}
+
+function resolveCursorWarningStyle(
+  cssRect: DesktopScreenshotCssRect,
+  payload: DesktopScreenshotOverlaySnapshotPayload,
+): React.CSSProperties {
+  const relativeLeft = cssRect.x - payload.bounds.x;
+  const relativeTop = cssRect.y - payload.bounds.y;
+  const idealLeft = relativeLeft + (cssRect.width - CURSOR_WARNING_LABEL_WIDTH) / 2;
+  const belowTop = relativeTop + cssRect.height + 6;
+  const aboveTop = relativeTop - CURSOR_WARNING_LABEL_HEIGHT - 6;
+  const maxLeft = payload.bounds.width - CURSOR_WARNING_LABEL_WIDTH - FLOATING_LABEL_MARGIN;
+  const maxTop = payload.bounds.height - CURSOR_WARNING_LABEL_HEIGHT - FLOATING_LABEL_MARGIN;
+  const top = belowTop <= maxTop
+    ? belowTop
+    : aboveTop >= FLOATING_LABEL_MARGIN
+      ? aboveTop
+      : clamp(belowTop, FLOATING_LABEL_MARGIN, maxTop);
+
+  return {
+    left: clamp(idealLeft, FLOATING_LABEL_MARGIN, maxLeft),
+    top,
   };
 }
 
@@ -217,8 +251,14 @@ function ScreenshotOverlay() {
             activeSelectionOverlapsCursor ? 'screenshotCursorExclusionActive' : '',
           ].filter(Boolean).join(' ')}
           style={relativeRectStyle(cursorExclusionRect, payload)}
+        />
+      ) : null}
+      {cursorExclusionRect && activeSelectionOverlapsCursor ? (
+        <div
+          className="screenshotCursorWarning"
+          style={resolveCursorWarningStyle(cursorExclusionRect, payload)}
         >
-          {activeSelectionOverlapsCursor ? <span>Move cursor away</span> : null}
+          Move cursor away
         </div>
       ) : null}
       {activeSelection ? (
@@ -230,20 +270,17 @@ function ScreenshotOverlay() {
             ].filter(Boolean).join(' ')}
             style={relativeRectStyle(activeSelection.cssRect, payload)}
           />
-          <div
-            className={[
-              'screenshotSelectionSize',
-              activeSelectionOverlapsCursor ? 'screenshotSelectionSizeBlocked' : '',
-            ].filter(Boolean).join(' ')}
-            style={{
-              left: activeSelection.cssRect.x - payload.bounds.x + activeSelection.cssRect.width,
-              top: activeSelection.cssRect.y - payload.bounds.y + activeSelection.cssRect.height,
-            }}
-          >
-            {activeSelectionOverlapsCursor
-              ? 'Move cursor away'
-              : `${activeSelection.cropRect.width}x${activeSelection.cropRect.height}`}
-          </div>
+          {!activeSelectionOverlapsCursor ? (
+            <div
+              className="screenshotSelectionSize"
+              style={{
+                left: activeSelection.cssRect.x - payload.bounds.x + activeSelection.cssRect.width,
+                top: activeSelection.cssRect.y - payload.bounds.y + activeSelection.cssRect.height,
+              }}
+            >
+              {`${activeSelection.cropRect.width}x${activeSelection.cropRect.height}`}
+            </div>
+          ) : null}
         </>
       ) : null}
     </div>

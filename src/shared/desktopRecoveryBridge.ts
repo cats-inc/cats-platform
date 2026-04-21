@@ -23,11 +23,14 @@ interface DesktopBootstrapSnapshot {
   summary: string;
 }
 
-export type DesktopScreenshotCancelReason =
-  | 'user_cancel'
-  | 'too_small'
-  | 'cursor_overlap'
-  | 'unknown_display';
+export const DESKTOP_SCREENSHOT_CANCEL_REASONS = [
+  'user_cancel',
+  'too_small',
+  'cursor_overlap',
+  'unknown_display',
+] as const;
+
+export type DesktopScreenshotCancelReason = typeof DESKTOP_SCREENSHOT_CANCEL_REASONS[number];
 
 export type DesktopScreenshotCaptureResult =
   | {

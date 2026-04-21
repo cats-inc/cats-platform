@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  DESKTOP_SCREENSHOT_CANCEL_REASONS,
+  DESKTOP_SCREENSHOT_CANCEL_REASONS as HOST_DESKTOP_SCREENSHOT_CANCEL_REASONS,
   DESKTOP_SCREENSHOT_CAPTURE_OUTCOMES,
   DESKTOP_SCREENSHOT_CAPTURE_SOURCES,
 } from '../build/desktop/contracts.js';
@@ -13,6 +13,9 @@ import {
   parseDesktopScreenshotCaptureRequest,
   runWithMainWindowHiddenForScreenshot,
 } from '../build/desktop/screenshotCapture.js';
+import {
+  DESKTOP_SCREENSHOT_CANCEL_REASONS as RENDERER_DESKTOP_SCREENSHOT_CANCEL_REASONS,
+} from '../build/server/shared/desktopRecoveryBridge.js';
 
 const UNSUPPORTED_MESSAGE =
   'Native region screenshot capture is not implemented in this desktop build yet.';
@@ -27,12 +30,16 @@ test('desktop screenshot contract exposes composer capture request and explicit 
     'platform_unsupported',
     'error',
   ]);
-  assert.deepEqual(DESKTOP_SCREENSHOT_CANCEL_REASONS, [
+  assert.deepEqual(HOST_DESKTOP_SCREENSHOT_CANCEL_REASONS, [
     'user_cancel',
     'too_small',
     'cursor_overlap',
     'unknown_display',
   ]);
+  assert.deepEqual(
+    RENDERER_DESKTOP_SCREENSHOT_CANCEL_REASONS,
+    HOST_DESKTOP_SCREENSHOT_CANCEL_REASONS,
+  );
   assert.deepEqual(
     parseDesktopScreenshotCaptureRequest({ source: 'composer' }),
     { source: 'composer' },
