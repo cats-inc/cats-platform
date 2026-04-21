@@ -81,6 +81,7 @@ import { usePublishReadyPayload } from "./hooks/usePublishReadyPayload.js";
 import { useWorkspaceAppDraftUiActions } from "./hooks/useWorkspaceAppDraftUiActions.js";
 import { useWorkspaceAppNavigationActions } from "./hooks/useWorkspaceAppNavigationActions.js";
 import { useWorkspaceAppShellRouting } from "./hooks/useWorkspaceAppShellRouting.js";
+import { useWorkspaceChatEvents } from "./hooks/useWorkspaceChatEvents.js";
 import { useWorkspaceCatAssignmentActions } from "./hooks/useWorkspaceCatAssignmentActions.js";
 import { createUseComposerSubmit } from "./hooks/useWorkspaceComposerSubmit.js";
 import { useWorkspaceGovernanceActions } from "./hooks/useWorkspaceGovernanceActions.js";
@@ -1264,6 +1265,14 @@ export function createWorkspaceProductApp({
       showingMyCatDirectLane,
       routeDirectLaneSummary,
       readySelectedChannel,
+    });
+    // ADR-041 owns collection-tier chat invalidations on every product shell.
+    // ADR-075 owns mounted channel state, so refetches must preserve active
+    // entity subscriptions instead of replacing the whole app-shell payload.
+    useWorkspaceChatEvents({
+      state,
+      setState,
+      enabled: state.status === 'ready',
     });
 
     const onDraftExecutionTargetChange = useCallback(

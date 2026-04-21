@@ -7,6 +7,10 @@ import {
 import type { AppShellPayload } from '../../api/contracts.js';
 import { fetchAppShell } from '../api/index.js';
 import { useChatEvents } from './useChatEvents.js';
+import { entitySubscriptionHub } from '../../../shared/renderer/entitySubscriptionHub.js';
+import {
+  mergeAppShellPreservingActiveEntityState,
+} from '../../../shared/renderer/mergeAppShellPreservingActiveEntityState.js';
 
 type LoadStateLike =
   | { status: 'loading' }
@@ -107,6 +111,9 @@ export function useChatAppShellRefresh(options: {
   const latestPayloadGeneratedAtRef = useRef<string | null>(
     state.status === 'ready' ? state.payload.metadata.generatedAt : null,
   );
+  const latestPayloadRef = useRef<AppShellPayload | null>(
+    state.status === 'ready' ? state.payload : null,
+  );
   const refreshStateRef = useRef<EventDrivenAppShellRefresherState>({
     controller: null,
     inFlight: false,
@@ -118,6 +125,7 @@ export function useChatAppShellRefresh(options: {
     latestPayloadGeneratedAtRef.current = state.status === 'ready'
       ? state.payload.metadata.generatedAt
       : null;
+    latestPayloadRef.current = state.status === 'ready' ? state.payload : null;
   }, [state]);
 
   useEffect(() => {
@@ -137,12 +145,23 @@ export function useChatAppShellRefresh(options: {
       fetchAppShell,
       () => latestPayloadGeneratedAtRef.current,
       (payload) => {
-        latestPayloadGeneratedAtRef.current = payload.metadata.generatedAt;
+        const currentPayload = latestPayloadRef.current;
+        // ADR-041 refetches collection-tier chat state; ADR-075 entity
+        // subscriptions own the mounted channel slice and must survive refetch.
+        const mergedPayload = currentPayload
+          ? mergeAppShellPreservingActiveEntityState(
+              currentPayload,
+              payload,
+              entitySubscriptionHub.getActiveSubscribedIds('channel'),
+            )
+          : payload;
+        latestPayloadGeneratedAtRef.current = mergedPayload.metadata.generatedAt;
+        latestPayloadRef.current = mergedPayload;
         if (setPayloadImmediate) {
-          setPayloadImmediate(payload);
+          setPayloadImmediate(mergedPayload);
           return;
         }
-        updatePayload(payload);
+        updatePayload(mergedPayload);
       },
     )();
   }, [setPayloadImmediate, updatePayload]);

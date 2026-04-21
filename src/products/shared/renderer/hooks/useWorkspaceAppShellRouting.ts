@@ -179,6 +179,9 @@ export function mergeWorkspaceBackgroundRefreshPayload<
   currentPayload: TPayload,
   nextPayload: TPayload,
 ): TPayload {
+  // ADR-075/SPEC-076: runtime-health polling must not merge chat state.
+  // Collection chat updates arrive through ADR-041 SSE invalidations, while
+  // mounted channel state is owned by per-entity subscriptions.
   return {
     ...currentPayload,
     runtime: nextPayload.runtime,
