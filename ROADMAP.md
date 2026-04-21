@@ -318,6 +318,9 @@ contracts.
       setup runtime-bootstrap proxy path so hung runtime setup scans or applies
       do not leave renderer and app-server requests pinned until the runtime
       client timeout expires
+      Progress: the platform runtime API proxy now aborts the upstream
+      `cats-runtime` fetch when the caller disconnects or aborts, with
+      regression coverage for a hung `/setup-scan` request.
 - [ ] Finish demoting the Electron host bootstrap page into a failure/recovery
       surface only, so the happy path stays background-first and successful
       packaged runs flow directly into `cats-platform /setup` or the current

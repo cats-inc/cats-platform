@@ -140,6 +140,49 @@ async function withRuntimeStub(callback) {
   }
 }
 
+async function withSlowSetupScanRuntimeStub(callback) {
+  const requestReceived = Promise.withResolvers();
+  const requestClosed = Promise.withResolvers();
+  const server = createHttpServer(async (request, response) => {
+    const url = new URL(request.url ?? '/', 'http://127.0.0.1');
+    if (url.pathname === '/setup-scan' && url.searchParams.get('slow') === '1') {
+      requestReceived.resolve();
+      response.on('close', () => {
+        requestClosed.resolve();
+      });
+      return;
+    }
+
+    response.writeHead(404, {
+      'content-type': 'application/json; charset=utf-8',
+    });
+    response.end(JSON.stringify({
+      error: {
+        code: 'not_found',
+      },
+    }));
+  });
+
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+
+  const address = server.address();
+  if (!address || typeof address === 'string') {
+    throw new Error('Failed to resolve runtime stub address');
+  }
+
+  try {
+    await callback(`http://127.0.0.1:${address.port}`, {
+      requestReceived: requestReceived.promise,
+      requestClosed: requestClosed.promise,
+    });
+  } finally {
+    server.closeAllConnections();
+    server.close();
+    await once(server, 'close');
+  }
+}
+
 async function withPlatformServer(runtimeBaseUrl, runtimeApiKey, callback) {
   const server = createPlatformServer({
     shared: {
@@ -172,6 +215,12 @@ async function withPlatformServer(runtimeBaseUrl, runtimeApiKey, callback) {
     server.close();
     await once(server, 'close');
   }
+}
+
+function rejectAfter(ms, message) {
+  return new Promise((_resolve, reject) => {
+    setTimeout(() => reject(new Error(message)), ms);
+  });
 }
 
 test('GET /runtime/setup serves a platform-hosted runtime surface', async () => {
@@ -247,6 +296,37 @@ test('POST /runtime/api/setup-scan forwards body and fallback runtime auth', asy
           body: '{"manual":true}',
         },
       });
+    });
+  });
+});
+
+test('POST /runtime/api/setup-scan aborts the upstream runtime request when the caller aborts', async () => {
+  await withSlowSetupScanRuntimeStub(async (runtimeBaseUrl, slowRuntime) => {
+    await withPlatformServer(runtimeBaseUrl, '', async (platformBaseUrl) => {
+      const controller = new AbortController();
+      const request = fetch(`${platformBaseUrl}/runtime/api/setup-scan?slow=1`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ manual: true }),
+        signal: controller.signal,
+      });
+
+      await Promise.race([
+        slowRuntime.requestReceived,
+        rejectAfter(500, 'runtime did not receive setup-scan'),
+      ]);
+      controller.abort();
+
+      await assert.rejects(
+        request,
+        /aborted|AbortError/u,
+      );
+      await Promise.race([
+        slowRuntime.requestClosed,
+        rejectAfter(500, 'runtime setup-scan was not aborted'),
+      ]);
     });
   });
 });

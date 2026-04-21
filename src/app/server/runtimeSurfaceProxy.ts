@@ -74,6 +74,11 @@ const FORWARDED_RESPONSE_HEADER_BLOCKLIST = new Set<string>([
 
 const RUNTIME_PROXY_INJECTION_MARKER = 'data-cats-runtime-platform-proxy';
 
+interface ClientAbortScope {
+  signal: AbortSignal;
+  dispose: () => void;
+}
+
 function buildRuntimeUrl(runtimeBaseUrl: string, pathname: string, search = ''): string {
   return `${runtimeBaseUrl.replace(/\/+$/u, '')}${pathname}${search}`;
 }
@@ -121,6 +126,29 @@ function createForwardedHeaders(
   return headers;
 }
 
+function createClientAbortScope(
+  request: IncomingMessage,
+  response: ServerResponse,
+): ClientAbortScope {
+  const controller = new AbortController();
+  const abort = () => {
+    if (!controller.signal.aborted) {
+      controller.abort();
+    }
+  };
+
+  request.once('aborted', abort);
+  response.once('close', abort);
+
+  return {
+    signal: controller.signal,
+    dispose: () => {
+      request.off('aborted', abort);
+      response.off('close', abort);
+    },
+  };
+}
+
 function createForwardedResponseHeaders(upstream: Response): Record<string, string> {
   const headers: Record<string, string> = {};
 
@@ -138,6 +166,7 @@ async function fetchRuntimeUpstream(
   request: IncomingMessage,
   url: string,
   runtimeApiKey: string,
+  signal?: AbortSignal,
 ): Promise<Response> {
   const method = request.method ?? 'GET';
   const headers = createForwardedHeaders(request, runtimeApiKey);
@@ -145,6 +174,7 @@ async function fetchRuntimeUpstream(
     method,
     headers,
     redirect: 'manual',
+    signal,
   };
 
   if (method !== 'GET' && method !== 'HEAD') {
@@ -342,11 +372,13 @@ export async function handleRuntimeSurfaceRoute(
     return true;
   }
 
+  const abortScope = createClientAbortScope(request, response);
   try {
     const upstream = await fetchRuntimeUpstream(
       request,
       buildRuntimeUrl(dependencies.shared.config.runtimeBaseUrl, runtimeSurfacePath, url.search),
       dependencies.shared.config.runtimeApiKey,
+      abortScope.signal,
     );
 
     if (upstream.status >= 300 && upstream.status < 400) {
@@ -375,12 +407,17 @@ export async function handleRuntimeSurfaceRoute(
     });
     response.end(body);
   } catch (error) {
+    if (abortScope.signal.aborted || response.destroyed || response.writableEnded) {
+      return true;
+    }
     sendJson(response, 502, {
       error: {
         code: 'runtime_surface_unavailable',
         message: error instanceof Error ? error.message : 'cats-runtime is unreachable',
       },
     });
+  } finally {
+    abortScope.dispose();
   }
 
   return true;
@@ -409,20 +446,27 @@ export async function handleRuntimeApiProxyRoute(
     return true;
   }
 
+  const abortScope = createClientAbortScope(request, response);
   try {
     const upstream = await fetchRuntimeUpstream(
       request,
       buildRuntimeUrl(dependencies.shared.config.runtimeBaseUrl, runtimePath, url.search),
       dependencies.shared.config.runtimeApiKey,
+      abortScope.signal,
     );
     await writeUpstreamResponse(response, upstream);
   } catch (error) {
+    if (abortScope.signal.aborted || response.destroyed || response.writableEnded) {
+      return true;
+    }
     sendJson(response, 502, {
       error: {
         code: 'runtime_proxy_unavailable',
         message: error instanceof Error ? error.message : 'cats-runtime is unreachable',
       },
     });
+  } finally {
+    abortScope.dispose();
   }
 
   return true;
