@@ -135,6 +135,7 @@ export async function routeEntitySubscriptionApi(
       refresh();
     }
   });
+  refresh();
 
   context.response.on('close', () => {
     clearInterval(heartbeat);

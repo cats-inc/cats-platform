@@ -1,12 +1,34 @@
 import assert from 'node:assert/strict';
+import { mkdtemp } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import {
+  buildChannelSubscriptionState,
   buildChannelSubscriptionPatches,
 } from '../build/server/platform/orchestration/entitySubscriptions/channel.js';
 import {
   serializeEntitySubscriptionSseEvent,
 } from '../build/server/platform/orchestration/entitySubscriptions/index.js';
+import { loadConfig } from '../build/server/config.js';
+import {
+  createParallelChatGroup,
+} from '../build/server/products/chat/state/model/index.js';
+import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+
+function createRuntimeStub() {
+  return {
+    async getHealth() {
+      return {
+        baseUrl: 'http://127.0.0.1:3110',
+        reachable: true,
+        status: 'ok',
+        service: 'cats-runtime',
+      };
+    },
+  };
+}
 
 function createChannelState(overrides = {}) {
   const selectedChannel = {
@@ -98,4 +120,50 @@ test('diffs subscribed compare group membership changes into membership patches'
   assert.equal(patches.length, 1);
   assert.equal(patches[0].kind, 'compareGroupMembership.updated');
   assert.equal(patches[0].state, next);
+});
+
+test('buildChannelSubscriptionState projects mounted channel and its compare groups only', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-entity-subscription-'));
+  const chatStore = new MemoryChatStore();
+  const now = new Date('2026-04-21T00:00:00.000Z');
+  let state = await chatStore.read();
+  state = createParallelChatGroup(
+    state,
+    {
+      title: 'Compare pomodoro',
+      originSurface: 'code',
+      targets: [
+        { provider: 'openai', instance: null, model: 'gpt-5', modelSelection: null },
+        { provider: 'anthropic', instance: null, model: 'claude', modelSelection: null },
+      ],
+    },
+    now,
+  );
+  await chatStore.write(state);
+  const subscribedChannelId = state.parallelChatGroups[0].memberChannelIds[0];
+  const config = loadConfig({
+    CATS_PLATFORM_DIR: tempDir,
+    CATS_RUNTIME_DIR: path.join(tempDir, 'runtime'),
+    CATS_DESKTOP_DIR: path.join(tempDir, 'desktop'),
+  });
+
+  const snapshot = await buildChannelSubscriptionState(
+    {
+      config,
+      runtimeClient: createRuntimeStub(),
+      chatStore,
+      mutationGate: {
+        async run(_key, operation) {
+          return operation();
+        },
+      },
+      now: () => now,
+    },
+    subscribedChannelId,
+  );
+
+  assert.equal(snapshot.selectedChannelId, subscribedChannelId);
+  assert.equal(snapshot.selectedChannel.id, subscribedChannelId);
+  assert.equal(snapshot.parallelChatGroups.length, 1);
+  assert.equal(snapshot.parallelChatGroups[0].memberChannelIds.includes(subscribedChannelId), true);
 });
