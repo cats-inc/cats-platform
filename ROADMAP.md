@@ -228,9 +228,13 @@ contracts.
       can settle. Cache entries now use a fresh/error-backoff discriminated
       lifecycle, so `cacheRefreshWarning` can only exist on error-backoff
       entries instead of as an optional field on every cache entry.
-- [ ] Refine advanced provider-model UX now that runtime presets and controls are
+- [x] Refine advanced provider-model UX now that runtime presets and controls are
       first-class, including an `Advanced settings` disclosure pattern that prevents
       large control sets from overwhelming the base provider/instance/model flow
+      Completed: runtime presets, persistent controls, advanced catalog warnings,
+      and request-only control hints now live behind an `Advanced settings`
+      disclosure that opens automatically when an advanced selection or warning
+      is already present.
 - [x] Make unsupported provider/model reasoning-effort combinations explicit in
       the composer and reopen flow, so selectors warn before sanitize/fallback
       instead of silently reverting to the model default

@@ -42,6 +42,39 @@
   margin-top: 2px;
 }
 
+.providerAdvancedSettings {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+}
+
+.providerAdvancedSettings > summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  color: var(--text);
+  font-size: 0.82rem;
+  font-weight: 650;
+  list-style-position: inside;
+}
+
+.providerAdvancedSettingsSummary {
+  margin-left: auto;
+  color: var(--muted-soft);
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+.providerAdvancedSettingsBody {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+}
+
 .providerCatalogRecoveryActions {
   display: flex;
   gap: 8px;
