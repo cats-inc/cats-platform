@@ -16,6 +16,12 @@ import {
   buildWorkspaceNewParallelChatPath,
   resolveWorkspaceVisibleChatPath,
 } from '../../channelPaths.js';
+import {
+  prefetchCrossSurfaceNavigationTarget,
+} from '../crossSurfaceNavigationRegistry.js';
+import {
+  stageCrossSurfaceConversationNavigationHandoff,
+} from '../crossSurfaceConversationNavigation.js';
 import { resolveMyCatNavigationTargetForPrefix } from '../../../../app/renderer/productShell/myCatNavigation.js';
 import type { RoomRoutingMode } from '../../../../shared/roomRouting.js';
 import {
@@ -215,18 +221,37 @@ export function useWorkspaceAppNavigationActions<
   }, [chatPrefix, navigate, platformShellSurface, setAddCatOpen, setFeedback, state]);
 
   const onSelect = useCallback((channelId: string): void => {
-    navigate(buildWorkspaceChannelPath(chatPrefix, channelId));
+    const selectedChannel = state.status === 'ready'
+      ? state.payload.chat.channels.find((channel) => channel.id === channelId) ?? null
+      : null;
+    const targetSurface = selectedChannel?.originSurface ?? platformShellSurface;
+    const targetRoute = stageCrossSurfaceConversationNavigationHandoff({
+      sourceSurface: platformShellSurface,
+      targetSurface,
+      channelId,
+    });
+    if (targetRoute) {
+      void prefetchCrossSurfaceNavigationTarget(targetSurface);
+    }
+    navigate(
+      targetRoute?.path
+        ?? buildWorkspaceChannelPath(
+          resolvePlatformSurfaceRoutePrefix(targetSurface),
+          channelId,
+        ),
+    );
     setFeedback('');
     setAddCatOpen(false);
     setChannelFiles([]);
     setChannelPlusMenuOpen(false);
   }, [
-    chatPrefix,
     navigate,
+    platformShellSurface,
     setAddCatOpen,
     setChannelFiles,
     setChannelPlusMenuOpen,
     setFeedback,
+    state,
   ]);
 
   const onRenameChannel = useCallback(async (channelId: string, title: string): Promise<void> => {

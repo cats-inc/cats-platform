@@ -1456,6 +1456,8 @@ test('renderer app consumes dedicated navigation actions instead of defining rou
   assert.match(hookImplementationSource, /deleteChatChannel/u);
   assert.match(hookImplementationSource, /deleteGlobalCat/u);
   assert.match(hookImplementationSource, /resolveMyCatNavigationTarget(?:ForPrefix)?/u);
+  assert.match(hookImplementationSource, /stageCrossSurfaceConversationNavigationHandoff/u);
+  assert.match(hookImplementationSource, /prefetchCrossSurfaceNavigationTarget/u);
 });
 
 test('renderer app consumes dedicated draft-ui actions instead of defining menu toggles inline', async () => {
@@ -1567,7 +1569,7 @@ test('settings cats consumes dedicated registry actions instead of defining cat 
   assert.match(sharedRegistryHookSource, /updateCatProfile/u);
 });
 
-test('settings cats consumes a dedicated transport panel instead of rendering telegram diagnostics inline', async () => {
+test('settings cats consumes dedicated detail content instead of rendering telegram diagnostics inline', async () => {
   const settingsCatsSource = await readFile(
     new URL('../src/products/chat/renderer/components/settings-cats/SettingsCats.tsx', import.meta.url),
     'utf8',
@@ -1576,12 +1578,8 @@ test('settings cats consumes a dedicated transport panel instead of rendering te
     new URL('../src/products/shared/renderer/components/settings-cats/SettingsCats.tsx', import.meta.url),
     'utf8',
   );
-  const transportPanelSource = await readFile(
-    new URL('../src/products/chat/renderer/components/settings-cats/SettingsCatsTransportPanel.tsx', import.meta.url),
-    'utf8',
-  );
-  const sharedTransportPanelSource = await readFile(
-    new URL('../src/products/shared/renderer/components/settings-cats/SettingsCatsTransportPanel.tsx', import.meta.url),
+  const sharedDetailContentSource = await readFile(
+    new URL('../src/products/shared/renderer/components/settings-cats/SettingsCatsDetailPanelContent.tsx', import.meta.url),
     'utf8',
   );
 
@@ -1589,13 +1587,12 @@ test('settings cats consumes a dedicated transport panel instead of rendering te
     settingsCatsSource,
     /shared\/renderer\/components\/settings-cats\/SettingsCats\.js/u,
   );
-  assert.match(sharedSettingsCatsSource, /SettingsCatsTransportPanel/u);
+  assert.match(sharedSettingsCatsSource, /SettingsCatsDetailPanel/u);
   assert.doesNotMatch(settingsCatsSource, /Last inbound: \{formatTransportTimestamp/u);
   assert.doesNotMatch(settingsCatsSource, /Tracked inboxes \{telegramDiagnostics\.bindings\.length\}/u);
-  assert.match(transportPanelSource, /shared\/renderer\/components\/settings-cats\/SettingsCatsTransportPanel\.js/u);
-  assert.match(sharedTransportPanelSource, /export function SettingsCatsTransportPanel/u);
-  assert.match(sharedTransportPanelSource, /formatTransportTimestamp/u);
-  assert.match(sharedTransportPanelSource, /No Telegram inbox bindings have received traffic yet\./u);
+  assert.match(sharedDetailContentSource, /export function SettingsCatsDetailPanelContent/u);
+  assert.match(sharedDetailContentSource, /formatTransportTimestamp/u);
+  assert.match(sharedDetailContentSource, /Last inbound \{formatTransportTimestamp/u);
 });
 
 test('settings cats composes dedicated shared settings modules instead of keeping helper logic inline', async () => {

@@ -705,13 +705,18 @@ contracts.
       prefetch, and handoff-state consumption
       Progress: registry and handoff-store seam coverage now prove
       `conversation` targets already route and round-trip through the generic
-      warm-navigation stack; actual non-draft consumers for conversations,
-      artifacts, tasks, and runs still remain.
-- [ ] After the first cross-surface draft submit path ships, choose and land
+      warm-navigation stack. Workspace conversation selection now stages
+      cross-surface `navigate-conversation` handoffs for existing conversations
+      whose stored `originSurface` belongs to another product, prefetching the
+      target product before navigation. Artifact, task, and run consumers still
+      remain.
+- [x] After the first cross-surface draft submit path ships, choose and land
       the first non-draft consumer of the warm navigation seam so the generic
       investment is proven by a real follow-on path rather than remaining
       draft-only in practice; likely candidates are existing-conversation,
       artifact, or task/run deep links
+      Completed: existing-conversation selection is now the first non-draft
+      consumer of the same cross-surface handoff store.
 - [ ] Re-enable `Cats Code` recents on top of the same product-scoped
       `originSurface` filter, and only then evaluate whether Chat/Work/Code
       also need an explicit secondary cross-product `All recents` lens instead
