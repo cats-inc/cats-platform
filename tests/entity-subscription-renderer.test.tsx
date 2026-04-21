@@ -9,6 +9,7 @@ import {
   EntitySubscriptionHub,
   type EntitySubscriptionSnapshot,
 } from '../src/products/shared/renderer/entitySubscriptionHub.js';
+import { createDefaultRoomRoutingState } from '../src/core/roomRoutingState.js';
 
 class FakeEventSource {
   listeners = new Map<string, Array<(event: MessageEvent) => void>>();
@@ -117,6 +118,87 @@ test('channel subscription state replaces selectedChannel and only subscribed co
   assert.equal(next.chat.parallelChatGroups.length, 2);
   assert.equal(next.chat.parallelChatGroups[0].title, 'Live group');
   assert.equal(next.chat.parallelChatGroups[1].title, 'Sibling group');
+});
+
+test('channel subscription state keeps selected channel summary routing in sync', () => {
+  const completedAt = '2026-04-21T00:00:03.000Z';
+  const roomRouting = createDefaultRoomRoutingState();
+  roomRouting.workflow.lastOutcomeEvent = {
+    id: 'event-1',
+    turnId: 'turn-1',
+    kind: 'outcome',
+    status: 'completed',
+    message: 'Completed.',
+    actor: null,
+    sourceMessageId: 'message-1',
+    targets: [],
+    dispatchId: null,
+    checkpointId: null,
+    outcomeId: 'outcome-1',
+    createdAt: completedAt,
+    metadata: {},
+  };
+
+  const payload = {
+    metadata: { generatedAt: '2026-04-21T00:00:00.000Z' },
+    chat: {
+      selectedChannelId: 'channel-1',
+      selectedChannel: null,
+      channels: [
+        {
+          id: 'channel-1',
+          title: 'Old channel',
+          topic: '',
+          originSurface: 'code',
+          status: 'active',
+          unreadCount: 0,
+          catCount: 0,
+          activeCatCount: 0,
+          repoPath: null,
+          chatCwd: null,
+          lastMessageAt: '2026-04-21T00:00:01.000Z',
+          lastActivatedAt: null,
+          routingStatus: 'running',
+          lastRoutingAt: '2026-04-21T00:00:01.000Z',
+        },
+      ],
+      parallelChatGroups: [],
+    },
+  };
+  const subscriptionState: ChannelSubscriptionState = {
+    selectedChannelId: 'channel-1',
+    selectedChannel: {
+      id: 'channel-1',
+      title: 'Live channel',
+      topic: 'Updated topic',
+      originSurface: 'code',
+      status: 'active',
+      unreadCount: 0,
+      repoPath: null,
+      chatCwd: null,
+      runtimeWorkspaceKind: null,
+      runtimeWorkspaceAccess: null,
+      runtimePermissionMode: null,
+      lastMessageAt: '2026-04-21T00:00:03.000Z',
+      lastActivatedAt: null,
+      composerMode: 'solo',
+      pendingProvider: 'claude',
+      pendingModel: null,
+      pendingModelSelection: null,
+      roomRouting,
+      assignedCats: [],
+      messages: [],
+    } as ChannelSubscriptionState['selectedChannel'],
+    parallelChatGroups: [],
+  };
+
+  const next = applyChannelSubscriptionStateToPayload(payload, subscriptionState);
+  const channelSummary = next.chat.channels[0];
+
+  assert.equal(channelSummary?.title, 'Live channel');
+  assert.equal(channelSummary?.lastMessageAt, '2026-04-21T00:00:03.000Z');
+  assert.equal(channelSummary?.routingStatus, 'completed');
+  assert.equal(channelSummary?.lastRoutingAt, completedAt);
 });
 
 test('entity subscription hub coalesces same entity subscribers', () => {

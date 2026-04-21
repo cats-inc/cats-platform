@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   mergeAppShellPreservingActiveEntityState,
 } from '../src/products/shared/renderer/mergeAppShellPreservingActiveEntityState.js';
+import { createDefaultRoomRoutingState } from '../src/core/roomRoutingState.js';
 
 function group(input: {
   id: string;
@@ -44,12 +45,86 @@ function group(input: {
   };
 }
 
+function channelSummary(input: {
+  id: string;
+  title?: string;
+  routingStatus?: 'idle' | 'running' | 'completed' | 'blocked' | 'error';
+  lastRoutingAt?: string | null;
+}) {
+  return {
+    id: input.id,
+    title: input.title ?? input.id,
+    topic: '',
+    originSurface: 'code' as const,
+    status: 'active' as const,
+    unreadCount: 0,
+    catCount: 0,
+    activeCatCount: 0,
+    repoPath: null,
+    chatCwd: null,
+    lastMessageAt: null,
+    lastActivatedAt: null,
+    routingStatus: input.routingStatus ?? 'idle',
+    lastRoutingAt: input.lastRoutingAt ?? null,
+  };
+}
+
+function selectedChannel(input: {
+  id: string;
+  title: string;
+  lastRoutingAt?: string;
+}) {
+  const roomRouting = createDefaultRoomRoutingState();
+  if (input.lastRoutingAt) {
+    roomRouting.workflow.lastOutcomeEvent = {
+      id: 'event-1',
+      turnId: 'turn-1',
+      kind: 'outcome',
+      status: 'completed',
+      message: 'Completed.',
+      actor: null,
+      sourceMessageId: 'message-1',
+      targets: [],
+      dispatchId: null,
+      checkpointId: null,
+      outcomeId: 'outcome-1',
+      createdAt: input.lastRoutingAt,
+      metadata: {},
+    };
+  }
+
+  return {
+    id: input.id,
+    title: input.title,
+    topic: '',
+    originSurface: 'code' as const,
+    status: 'active' as const,
+    unreadCount: 0,
+    repoPath: null,
+    chatCwd: null,
+    runtimeWorkspaceKind: null,
+    runtimeWorkspaceAccess: null,
+    runtimePermissionMode: null,
+    lastMessageAt: null,
+    lastActivatedAt: null,
+    composerMode: 'solo' as const,
+    pendingProvider: 'claude',
+    pendingModel: null,
+    pendingModelSelection: null,
+    roomRouting,
+    assignedCats: [],
+    messages: [],
+  };
+}
+
 function payload(input: {
   selectedChannelId: string;
   selectedChannelTitle: string;
   selectedMessages: string[];
   groups?: ReturnType<typeof group>[];
   cats?: Array<{ id: string; name: string }>;
+  channels?: ReturnType<typeof channelSummary>[];
+  selectedChannelOverride?: ReturnType<typeof selectedChannel>;
 }) {
   return {
     metadata: { generatedAt: '2026-04-21T00:00:00.000Z' },
@@ -58,14 +133,14 @@ function payload(input: {
       id: 'chat',
       name: 'Chat',
       selectedChannelId: input.selectedChannelId,
-      selectedChannel: {
+      selectedChannel: input.selectedChannelOverride ?? {
         id: input.selectedChannelId,
         title: input.selectedChannelTitle,
         messages: input.selectedMessages.map((id) => ({ id })),
       },
       parallelChatGroups: input.groups ?? [],
       cats: input.cats ?? [],
-      channels: [],
+      channels: input.channels ?? [],
       bossCatId: null,
     },
   };
@@ -108,6 +183,48 @@ test('active subscription preserves selectedChannelId and selectedChannel togeth
   assert.equal(merged.chat.selectedChannel?.id, 'channel-a');
   assert.deepEqual(merged.chat.selectedChannel?.messages, [{ id: 'subscription-message' }]);
   assert.deepEqual(merged.chat.cats, [{ id: 'cat-1', name: 'Fresh cat' }]);
+});
+
+test('active subscription preserves selected channel summary routing across refreshes', () => {
+  const completedAt = '2026-04-21T00:00:03.000Z';
+  const current = payload({
+    selectedChannelId: 'channel-a',
+    selectedChannelTitle: 'Subscribed',
+    selectedMessages: [],
+    selectedChannelOverride: selectedChannel({
+      id: 'channel-a',
+      title: 'Subscribed',
+      lastRoutingAt: completedAt,
+    }),
+    channels: [
+      channelSummary({
+        id: 'channel-a',
+        title: 'Subscribed',
+        routingStatus: 'completed',
+        lastRoutingAt: completedAt,
+      }),
+    ],
+  });
+  const next = payload({
+    selectedChannelId: 'channel-a',
+    selectedChannelTitle: 'Refetched',
+    selectedMessages: [],
+    channels: [
+      channelSummary({
+        id: 'channel-a',
+        title: 'Refetched',
+        routingStatus: 'running',
+        lastRoutingAt: '2026-04-21T00:00:01.000Z',
+      }),
+    ],
+  });
+
+  const merged = mergeAppShellPreservingActiveEntityState(current, next, ['channel-a']);
+  const mergedChannel = merged.chat.channels[0];
+
+  assert.equal(mergedChannel?.title, 'Subscribed');
+  assert.equal(mergedChannel?.routingStatus, 'completed');
+  assert.equal(mergedChannel?.lastRoutingAt, completedAt);
 });
 
 test('compare group merge preserves subscribed membership but flows sibling metadata', () => {

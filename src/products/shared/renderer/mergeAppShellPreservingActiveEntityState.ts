@@ -1,13 +1,16 @@
 import type {
+  ChatChannelSummary,
   ChatChannelView,
   ParallelChatGroupMemberSummary,
   ParallelChatGroupSummary,
 } from '../api/workspaceContracts.js';
+import { mergeChannelSummaryWithChannelView } from './entitySubscriptionChannelDispatcher.js';
 
 export interface MergeableAppShellPayload {
   chat: {
     selectedChannelId: string;
     selectedChannel: ChatChannelView | null;
+    channels: ChatChannelSummary[];
     parallelChatGroups: ParallelChatGroupSummary[];
   };
 }
@@ -102,6 +105,38 @@ function mergeParallelChatGroups(
   return result;
 }
 
+function mergeChannelSummaries(
+  currentChannels: ChatChannelSummary[],
+  nextChannels: ChatChannelSummary[],
+  currentSelectedChannel: ChatChannelView | null,
+  activeIds: Set<string>,
+): ChatChannelSummary[] {
+  const currentById = new Map(currentChannels.map((channel) => [channel.id, channel]));
+  const nextIds = new Set(nextChannels.map((channel) => channel.id));
+  const result = nextChannels.map((nextChannel) => {
+    if (!activeIds.has(nextChannel.id)) {
+      return nextChannel;
+    }
+
+    const currentChannel = currentById.get(nextChannel.id) ?? nextChannel;
+    return currentSelectedChannel?.id === nextChannel.id
+      ? mergeChannelSummaryWithChannelView(currentChannel, currentSelectedChannel)
+      : currentChannel;
+  });
+
+  for (const activeId of activeIds) {
+    if (nextIds.has(activeId)) {
+      continue;
+    }
+    const currentChannel = currentById.get(activeId);
+    if (currentChannel) {
+      result.unshift(currentChannel);
+    }
+  }
+
+  return result;
+}
+
 export function mergeAppShellPreservingActiveEntityState<
   TPayload extends MergeableAppShellPayload,
 >(
@@ -128,6 +163,12 @@ export function mergeAppShellPreservingActiveEntityState<
       selectedChannel: preserveSelectedChannel
         ? current.chat.selectedChannel
         : next.chat.selectedChannel,
+      channels: mergeChannelSummaries(
+        current.chat.channels,
+        next.chat.channels,
+        current.chat.selectedChannel,
+        activeIds,
+      ),
       parallelChatGroups: mergeParallelChatGroups(
         current.chat.parallelChatGroups,
         next.chat.parallelChatGroups,
