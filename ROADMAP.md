@@ -610,7 +610,7 @@ contracts.
       runtime session policy context through that builder seam and insert a
       Code-owned `Session Profile` side-panel section ahead of the workspace
       browser, with render coverage for the policy summary and permission mode.
-- [ ] Move `+Team code` and `+Peer code` off the current shared chat-draft
+- [x] Move `+Team code` and `+Peer code` off the current shared chat-draft
       fallback onto product-owned draft surfaces above the same shared
       primitives, so Code group/parallel entry no longer inherits chat-specific
       setup copy or side-panel framing while still reusing the shared draft
