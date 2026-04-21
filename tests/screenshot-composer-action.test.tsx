@@ -5,7 +5,10 @@ import { renderToStaticMarkup } from 'react-dom/server.browser';
 
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
 import { ChatComposerArea } from '../src/products/shared/renderer/components/chat-view/ChatComposerArea.tsx';
-import { createScreenshotFilename } from '../src/products/shared/renderer/screenshotCapture.ts';
+import {
+  createScreenshotFilename,
+  resolveScreenshotCaptureRoute,
+} from '../src/products/shared/renderer/screenshotCapture.ts';
 
 type ChatComposerAreaRenderProps = ComponentProps<typeof ChatComposerArea>;
 
@@ -116,4 +119,35 @@ test('screenshot filenames remain unique within the same second', () => {
 
   assert.equal(createScreenshotFilename(now), 'cats-screenshot-20260422-010203-001.png');
   assert.equal(createScreenshotFilename(now), 'cats-screenshot-20260422-010203-002.png');
+});
+
+test('screenshot routing requires explicit native desktop capability', () => {
+  const hostGlobal = globalThis as typeof globalThis & {
+    catsDesktopHost?: unknown;
+  };
+  const previous = hostGlobal.catsDesktopHost;
+
+  try {
+    hostGlobal.catsDesktopHost = {
+      screenshotRegionCaptureAvailable: false,
+      captureScreenshotRegion: async () => ({
+        outcome: 'platform_unsupported',
+      }),
+    };
+    assert.equal(resolveScreenshotCaptureRoute(), 'unavailable');
+
+    hostGlobal.catsDesktopHost = {
+      screenshotRegionCaptureAvailable: true,
+      captureScreenshotRegion: async () => ({
+        outcome: 'cancelled',
+      }),
+    };
+    assert.equal(resolveScreenshotCaptureRoute(), 'desktop_region');
+  } finally {
+    if (previous === undefined) {
+      delete hostGlobal.catsDesktopHost;
+    } else {
+      hostGlobal.catsDesktopHost = previous;
+    }
+  }
 });

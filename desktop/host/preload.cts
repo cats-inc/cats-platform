@@ -98,6 +98,7 @@ function assertDesktopSetupHelperMode(value: unknown): DesktopSetupHelperMode {
 }
 
 const bridge = {
+  screenshotRegionCaptureAvailable: false,
   getSnapshot(): Promise<DesktopBootstrapSnapshot> {
     return ipcRenderer.invoke('cats-host:get-snapshot');
   },

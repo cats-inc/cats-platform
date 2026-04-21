@@ -17,7 +17,9 @@ function supportsWebScreenCapture(): boolean {
 }
 
 function hasDesktopScreenshotCapture(): boolean {
-  return typeof resolveDesktopHostBridge()?.captureScreenshotRegion === 'function';
+  const bridge = resolveDesktopHostBridge();
+  return bridge?.screenshotRegionCaptureAvailable === true
+    && typeof bridge.captureScreenshotRegion === 'function';
 }
 
 export function resolveScreenshotCaptureRoute(): ScreenshotCaptureRoute {

@@ -41,6 +41,7 @@ export interface DesktopHostBridge {
   getSetupSnapshot?: () => Promise<DesktopSetupSnapshot>;
   runAction?: (actionId: string) => Promise<DesktopBootstrapSnapshot>;
   resumeSetup?: () => Promise<DesktopSetupSnapshot>;
+  screenshotRegionCaptureAvailable?: boolean;
   captureScreenshotRegion?: () => Promise<DesktopScreenshotCaptureResult>;
 }
 
