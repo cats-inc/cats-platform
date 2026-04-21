@@ -592,7 +592,7 @@ contracts.
       Composer/folder/side-panel copy and starter-chip behavior are now grouped
       under `draftCopy` and `starterChips`. Builder-control policy is resolved
       through one shared helper across Chat, Work, and Code wrappers.
-- [ ] Add a product-owned side-panel composition seam for Code drafts together
+- [x] Add a product-owned side-panel composition seam for Code drafts together
       with render-level coverage for empty participant states, section-open
       behavior, and later execution-profile sections, so `+New code` does not
       remain blocked on internal shared-draft state or brittle static-markup
