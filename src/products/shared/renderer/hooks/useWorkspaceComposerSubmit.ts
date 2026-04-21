@@ -69,7 +69,7 @@ import {
   type PendingDispatchHydration,
 } from './useComposerRequestLifecycle.js';
 import { useComposerSubmitBindings } from './useComposerSubmitBindings.js';
-import type { DraftParallelTargetBranchFields } from '../draftParallelBranches.js';
+import type { DraftParallelTargetBranchFields } from '../draftParallelTargets.js';
 
 type LoadStateLike =
   | { status: 'loading' }

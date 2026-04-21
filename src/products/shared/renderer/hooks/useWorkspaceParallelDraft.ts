@@ -16,7 +16,7 @@ import {
   createDraftParallelTargets,
   mergeDraftParallelTargetBranchFields,
   updateDraftParallelTargetAt,
-} from '../draftParallelBranches.js';
+} from '../draftParallelTargets.js';
 
 export function useWorkspaceParallelDraft(options: {
   draftExecutionTarget: WorkspaceExecutionTargetValue;

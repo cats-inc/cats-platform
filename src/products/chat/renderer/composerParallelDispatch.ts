@@ -14,7 +14,7 @@ import {
   type DraftTemporaryParticipant,
 } from './chatUtils.js';
 import { buildChannelPath as buildChatChannelPath } from '../shared/channelPaths.js';
-import type { DraftParallelTargetBranchFields } from '../../shared/renderer/draftParallelBranches.js';
+import type { DraftParallelTargetBranchFields } from '../../shared/renderer/draftParallelTargets.js';
 import {
   assertNoBranchAttachmentOverrides,
   resolveBranch,

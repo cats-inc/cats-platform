@@ -71,7 +71,7 @@ import {
   sameExecutionTargetValue,
 } from '../../../shared/renderer/hooks/useWorkspaceExecutionTargetState.js';
 import { useComposerSubmitBindings } from '../../../shared/renderer/hooks/useComposerSubmitBindings.js';
-import type { DraftParallelTargetBranchFields } from '../../../shared/renderer/draftParallelBranches.js';
+import type { DraftParallelTargetBranchFields } from '../../../shared/renderer/draftParallelTargets.js';
 import {
   buildCrossSurfaceChannelPath,
   prefetchCrossSurfaceNavigationTarget,

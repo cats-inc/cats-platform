@@ -19,7 +19,7 @@ import {
   type DraftLeadContext,
 } from './draftBranchResolution.js';
 import { createDraftChannelTitle } from './workspaceChatUtils.js';
-import type { DraftParallelTargetBranchFields } from './draftParallelBranches.js';
+import type { DraftParallelTargetBranchFields } from './draftParallelTargets.js';
 
 type ParallelDispatchTarget = WorkspaceExecutionTargetValue & DraftParallelTargetBranchFields;
 

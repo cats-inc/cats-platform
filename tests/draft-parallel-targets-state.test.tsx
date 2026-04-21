@@ -5,7 +5,7 @@ import {
   createDraftParallelTargets,
   mergeDraftParallelTargetBranchFields,
   updateDraftParallelTargetAt,
-} from '../src/products/shared/renderer/draftParallelBranches.ts';
+} from '../src/products/shared/renderer/draftParallelTargets.ts';
 
 test('createDraftParallelTargets seeds every target with deduped audience keys and one workflow shape', () => {
   const targets = [

@@ -31,7 +31,7 @@ import {
   createDraftParallelTargets,
   mergeDraftParallelTargetBranchFields,
   updateDraftParallelTargetAt,
-} from '../../../shared/renderer/draftParallelBranches.js';
+} from '../../../shared/renderer/draftParallelTargets.js';
 
 type LoadStateLike =
   | { status: 'loading' }
