@@ -119,6 +119,41 @@ function normalizeHealthStatus(value: string | undefined): DesktopHealthStatus |
   return null;
 }
 
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function readNonEmptyString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value : null;
+}
+
+function readReadinessPayloadDetail(payload: unknown, fallback: string): string {
+  if (!isObjectRecord(payload)) {
+    return fallback;
+  }
+
+  const summary = readNonEmptyString(payload.summary);
+  if (summary) {
+    return summary;
+  }
+
+  const readiness = isObjectRecord(payload.readiness) ? payload.readiness : null;
+  const phase = readNonEmptyString(readiness?.phase);
+  if (phase) {
+    return phase;
+  }
+
+  return readNonEmptyString(payload.status) ?? fallback;
+}
+
+function isStrictlyReadyPayload(payload: unknown): boolean {
+  if (!isObjectRecord(payload) || !isObjectRecord(payload.readiness)) {
+    return false;
+  }
+
+  return payload.readiness.ready === true;
+}
+
 function resolveAppEntryPath(setupCompleteAt: string | null | undefined): string {
   return setupCompleteAt ? '/' : '/setup';
 }
@@ -593,13 +628,20 @@ export async function waitForServiceReadiness<T extends ReadinessPayload>(
   while (Date.now() < deadline) {
     try {
       const response = await fetch(url);
-      const payload = await response.json() as T;
-      if (payload.readiness?.ready) {
-        return payload;
+      const payload = await response.json() as unknown;
+      if (!response.ok) {
+        const httpDetail = `received HTTP ${response.status}`;
+        const payloadDetail = readReadinessPayloadDetail(payload, httpDetail);
+        lastDetail = payloadDetail === httpDetail
+          ? httpDetail
+          : `${httpDetail}: ${payloadDetail}`;
+        await sleep(options.pollIntervalMs);
+        continue;
       }
-      lastDetail = payload.summary
-        || payload.readiness?.phase
-        || `received HTTP ${response.status}`;
+      if (isStrictlyReadyPayload(payload)) {
+        return payload as T;
+      }
+      lastDetail = readReadinessPayloadDetail(payload, `received HTTP ${response.status}`);
     } catch (error) {
       lastDetail = error instanceof Error ? error.message : String(error);
     }

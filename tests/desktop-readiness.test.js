@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { buildDesktopBootstrapSnapshot } from '../build/desktop/readiness.js';
+import {
+  buildDesktopBootstrapSnapshot,
+  waitForServiceReadiness,
+} from '../build/desktop/readiness.js';
 
 const desktopConfig = {
   packageRoot: 'cats-platform',
@@ -53,6 +56,62 @@ function readyService(name, healthUrl) {
     exitCode: null,
   };
 }
+
+test('waitForServiceReadiness rejects HTTP error payloads even when they claim ready', async (t) => {
+  let calls = 0;
+  t.mock.method(globalThis, 'fetch', async () => {
+    calls += 1;
+    return new Response(JSON.stringify({
+      readiness: {
+        ready: true,
+        phase: 'ready',
+      },
+      summary: 'Service is still returning an error response.',
+    }), {
+      status: 503,
+      headers: {
+        'content-type': 'application/json',
+      },
+    });
+  });
+
+  await assert.rejects(
+    waitForServiceReadiness('http://127.0.0.1:8181/health', {
+      timeoutMs: 5,
+      pollIntervalMs: 1,
+    }),
+    /HTTP 503: Service is still returning an error response\./,
+  );
+  assert.ok(calls > 0);
+});
+
+test('waitForServiceReadiness requires readiness.ready to be boolean true', async (t) => {
+  let calls = 0;
+  t.mock.method(globalThis, 'fetch', async () => {
+    calls += 1;
+    return new Response(JSON.stringify({
+      readiness: {
+        ready: 'true',
+        phase: 'booting',
+      },
+      summary: 'Readiness flag is not a boolean.',
+    }), {
+      status: 200,
+      headers: {
+        'content-type': 'application/json',
+      },
+    });
+  });
+
+  await assert.rejects(
+    waitForServiceReadiness('http://127.0.0.1:8181/health', {
+      timeoutMs: 5,
+      pollIntervalMs: 1,
+    }),
+    /Readiness flag is not a boolean\./,
+  );
+  assert.ok(calls > 0);
+});
 
 test('desktop bootstrap stays in ready_for_setup until setup is completed', () => {
   const snapshot = buildDesktopBootstrapSnapshot({

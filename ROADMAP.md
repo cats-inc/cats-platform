@@ -284,6 +284,9 @@ contracts.
       machine-readable validation for host-state snapshots, readiness payloads,
       and update manifests so corrupted local files or malformed service
       responses cannot silently degrade packaged runs
+      Progress: service readiness polling now requires HTTP success plus a
+      boolean `readiness.ready === true`, so malformed ready flags or error
+      responses cannot pass the packaged host startup gate.
 - [ ] Add installed-app verification beyond the current unpacked smoke pass,
       including real Windows post-install launch checks, persisted host-state
       assertions on installed machines, and later packaging CI coverage
