@@ -16,6 +16,19 @@ const SOURCE_SVG = `<?xml version="1.0" encoding="UTF-8"?>
 </svg>
 `;
 
+const GRADIENT_BACKGROUND_SVG = `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#111827" />
+      <stop offset="100%" stop-color="#2563eb" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)" />
+  <circle cx="256" cy="256" r="96" fill="#f9fafb" />
+</svg>
+`;
+
 async function createWorkspace() {
   return mkdtemp(join(tmpdir(), 'cats-platform-icons-'));
 }
@@ -129,4 +142,34 @@ test('generateElectronIcons can keep explicit square outputs when requested', as
 
   const trayTemplateCorner = await readPixel(join(assetsRoot, 'tray-iconTemplate.png'), 0, 0);
   assert.equal(trayTemplateCorner.alpha >= 0, true);
+});
+
+test('generateElectronIcons removes edge-connected gradient backgrounds from tray templates', async () => {
+  const workspace = await createWorkspace();
+  const inputSvgPath = join(workspace, 'icon-source.svg');
+  const assetsRoot = join(workspace, 'assets');
+  const buildResourcesDir = join(assetsRoot, 'build');
+
+  await writeFile(inputSvgPath, GRADIENT_BACKGROUND_SVG);
+
+  await generateElectronIcons({
+    inputSvgPath,
+    assetsRoot,
+    buildResourcesDir,
+    iconShape: 'square',
+  });
+
+  const trayTemplateBackground = await readPixel(
+    join(assetsRoot, 'tray-iconTemplate.png'),
+    15,
+    15,
+  );
+  assert.equal(trayTemplateBackground.alpha, 0);
+
+  const trayTemplateForeground = await readPixel(
+    join(assetsRoot, 'tray-iconTemplate.png'),
+    8,
+    8,
+  );
+  assert.equal(trayTemplateForeground.alpha > 0, true);
 });

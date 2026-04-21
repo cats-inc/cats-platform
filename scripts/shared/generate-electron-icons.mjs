@@ -151,11 +151,65 @@ async function renderSvgPng(svgBuffer, size, iconShape) {
   return applyIconShapeMask(pngBuffer, size, iconShape);
 }
 
-function rgbaDistance(rawBuffer, index, background) {
-  return Math.abs(rawBuffer[index] - background[0])
-    + Math.abs(rawBuffer[index + 1] - background[1])
-    + Math.abs(rawBuffer[index + 2] - background[2])
-    + Math.abs(rawBuffer[index + 3] - background[3]);
+function pixelOffset(pixelIndex) {
+  return pixelIndex * 4;
+}
+
+function rgbaDistance(rawBuffer, leftOffset, rightOffset) {
+  return Math.abs(rawBuffer[leftOffset] - rawBuffer[rightOffset])
+    + Math.abs(rawBuffer[leftOffset + 1] - rawBuffer[rightOffset + 1])
+    + Math.abs(rawBuffer[leftOffset + 2] - rawBuffer[rightOffset + 2])
+    + Math.abs(rawBuffer[leftOffset + 3] - rawBuffer[rightOffset + 3]);
+}
+
+function enqueueBackgroundPixel(backgroundMask, queue, pixelIndex) {
+  if (backgroundMask[pixelIndex]) {
+    return;
+  }
+  backgroundMask[pixelIndex] = 1;
+  queue.push(pixelIndex);
+}
+
+function buildEdgeConnectedBackgroundMask(data, width, height) {
+  const backgroundMask = new Uint8Array(width * height);
+  const queue = [];
+
+  for (let x = 0; x < width; x += 1) {
+    enqueueBackgroundPixel(backgroundMask, queue, x);
+    enqueueBackgroundPixel(backgroundMask, queue, ((height - 1) * width) + x);
+  }
+  for (let y = 1; y < height - 1; y += 1) {
+    enqueueBackgroundPixel(backgroundMask, queue, y * width);
+    enqueueBackgroundPixel(backgroundMask, queue, (y * width) + width - 1);
+  }
+
+  for (let cursor = 0; cursor < queue.length; cursor += 1) {
+    const pixelIndex = queue[cursor];
+    const x = pixelIndex % width;
+    const y = Math.floor(pixelIndex / width);
+    const sourceOffset = pixelOffset(pixelIndex);
+    const neighborIndexes = [
+      x > 0 ? pixelIndex - 1 : null,
+      x < width - 1 ? pixelIndex + 1 : null,
+      y > 0 ? pixelIndex - width : null,
+      y < height - 1 ? pixelIndex + width : null,
+    ];
+
+    for (const neighborIndex of neighborIndexes) {
+      if (neighborIndex === null || backgroundMask[neighborIndex]) {
+        continue;
+      }
+      const neighborOffset = pixelOffset(neighborIndex);
+      if (
+        data[neighborOffset + 3] === 0
+        || rgbaDistance(data, sourceOffset, neighborOffset) <= 64
+      ) {
+        enqueueBackgroundPixel(backgroundMask, queue, neighborIndex);
+      }
+    }
+  }
+
+  return backgroundMask;
 }
 
 async function renderTrayTemplate(svgBuffer, size, iconShape) {
@@ -165,15 +219,12 @@ async function renderTrayTemplate(svgBuffer, size, iconShape) {
     .raw()
     .toBuffer({ resolveWithObject: true });
   const output = Buffer.alloc(data.length);
-  const background = [data[0], data[1], data[2], data[3]];
+  const backgroundMask = buildEdgeConnectedBackgroundMask(data, info.width, info.height);
 
   for (let index = 0; index < data.length; index += 4) {
+    const pixelIndex = index / 4;
     const alpha = data[index + 3];
-    if (alpha === 0) {
-      continue;
-    }
-    const keepPixel = rgbaDistance(data, index, background) > 48;
-    if (!keepPixel) {
+    if (alpha === 0 || backgroundMask[pixelIndex]) {
       continue;
     }
     output[index] = 0;

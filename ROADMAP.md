@@ -258,11 +258,15 @@ contracts.
 - [ ] Replace the current deprecated `rcedit`-based Windows executable icon
       edit step with a supported or vendored path so release packaging does
       not depend on an unsupported npm package
-- [ ] Harden the reusable desktop icon pipeline beyond the current first slice
+- [x] Harden the reusable desktop icon pipeline beyond the current first slice
       so one source asset can safely generate app/tray icons even when future
       SVGs use transparent backgrounds, gradients, or non-square visual
       composition, instead of relying on the current top-left-background tray
       template heuristic alone
+      Completed: tray template generation now removes edge-connected
+      background regions with a small flood-fill pass instead of comparing
+      every pixel to the top-left color, with regression coverage for gradient
+      backgrounds.
 - [x] Extend the current desktop packaging contract beyond Windows staging so
       macOS and Linux also produce real installer artifacts instead of staged
       manifests only
