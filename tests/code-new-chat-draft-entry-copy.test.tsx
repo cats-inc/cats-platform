@@ -216,6 +216,12 @@ test('new code draft owns shared side panel sections through its product builder
     onTemporaryParticipantFormOpenChange: () => {},
     onSubmitTemporaryParticipant: () => {},
     draftCwd: null,
+    draftRuntimeSessionPolicy: {
+      workspaceKind: 'worktree',
+      workspaceAccess: 'read_only',
+      permissionMode: 'default',
+    },
+    onDraftRuntimeSessionPolicyChange: () => {},
     onCloseSidePanel: () => {},
     sidePanelCopy: {
       participants: {
@@ -239,9 +245,15 @@ test('new code draft owns shared side panel sections through its product builder
 
   assert.equal(sections.find((section) => section.id === 'cats')?.title, 'Participants');
   assert.equal(sections.find((section) => section.id === 'execution')?.title, 'Execution');
+  assert.equal(
+    sections.find((section) => section.id === 'code:session-profile')?.title,
+    'Session Profile',
+  );
   assert.equal(sections.find((section) => section.id === 'cwd')?.title, 'Workspace');
   assert.match(markup, /No participants available yet\./u);
   assert.match(markup, /No execution target set yet\./u);
+  assert.match(markup, /Independent worktree/u);
+  assert.match(markup, /Read only/u);
   assert.match(markup, /No workspace selected yet\./u);
   assert.doesNotMatch(markup, /Chat participant fallback should not render\./u);
   assert.doesNotMatch(markup, /Chat execution fallback should not render\./u);

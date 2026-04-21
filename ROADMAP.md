@@ -606,7 +606,10 @@ contracts.
       their own empty-state/title contract so future execution-profile sections
       can be inserted without editing shared Chat draft internals. Section-open
       behavior now has a pure coverage seam for the folder-browse side effect,
-      including the branch-card `skipSectionAction` path.
+      including the branch-card `skipSectionAction` path. Code drafts now pass
+      runtime session policy context through that builder seam and insert a
+      Code-owned `Session Profile` side-panel section ahead of the workspace
+      browser, with render coverage for the policy summary and permission mode.
 - [ ] Move `+Team code` and `+Peer code` off the current shared chat-draft
       fallback onto product-owned draft surfaces above the same shared
       primitives, so Code group/parallel entry no longer inherits chat-specific

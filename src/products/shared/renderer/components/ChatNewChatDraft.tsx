@@ -416,6 +416,7 @@ export function NewChatDraft({
   draftAudienceKeys,
   onSetAudienceKeys,
   draftRuntimeSessionPolicy = null,
+  onDraftRuntimeSessionPolicyChange,
   draftChrome,
   draftCopy,
   starterChips,
@@ -1172,6 +1173,8 @@ export function NewChatDraft({
         onFolderBrowsePathChange,
         onFolderBrowse,
         onFolderBrowseSelect,
+        draftRuntimeSessionPolicy,
+        onDraftRuntimeSessionPolicyChange,
         onCloseSidePanel: () => setSidePanelOpen(false),
         sidePanelCopy: resolvedSidePanelCopy,
       })}

@@ -16,6 +16,7 @@ import {
 import { ProviderModelFields } from './ProviderModelFields.js';
 import { type SidePanelSection } from '../../../../design/components/SidePanel.js';
 import type { ProviderTargetSelection } from '../../../../shared/providerSelection.js';
+import type { RuntimeSessionPolicy } from '../../../../shared/runtimeSessionPolicy.js';
 
 export interface ChatNewChatTemporaryParticipantFormState {
   roleHint: string;
@@ -140,6 +141,8 @@ export interface BuildChatNewChatDraftSidePanelSectionsInput {
   onFolderBrowsePathChange?: (path: string) => void;
   onFolderBrowse?: (path: string) => void;
   onFolderBrowseSelect?: () => void;
+  draftRuntimeSessionPolicy: RuntimeSessionPolicy | null;
+  onDraftRuntimeSessionPolicyChange?: (policy: RuntimeSessionPolicy) => void;
   onCloseSidePanel: () => void;
   sidePanelCopy?: ChatNewChatDraftSidePanelCopy;
 }

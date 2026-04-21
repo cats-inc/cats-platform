@@ -71,6 +71,7 @@ test('chat new draft side panel copy can be product-owned by callers', () => {
     onTemporaryParticipantFormOpenChange: () => {},
     onSubmitTemporaryParticipant: () => {},
     draftCwd: null,
+    draftRuntimeSessionPolicy: null,
     onCloseSidePanel: () => {},
     sidePanelCopy: copy,
   });
