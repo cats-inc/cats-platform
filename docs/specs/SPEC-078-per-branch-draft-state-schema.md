@@ -634,7 +634,7 @@ Tests:
   migrates to the new shape or asserts the resolver reads it
   correctly during the transitional diff.
 
-## Open Questions
+## Open Questions Carried Forward
 
 1. **Where does `TaskRef` live in the type system?** Currently no
    shared task type; downstream spec will decide whether it's an
@@ -643,12 +643,13 @@ Tests:
    additive ("branch has lead's attachments + its own") or
    replacing? Reserved field is `attachmentsOverride: AttachmentRef[]`
    which implies replace; downstream SPEC will confirm.
-3. **Per-branch provider fallback.** `provider` is already required
-   on `DraftParallelTarget`. Should we extend the "inherit from lead"
-   rule to it (so a branch can inherit provider too)? Current
-   position: no — provider is the whole reason to have a branch;
-   requiring it prevents degenerate branches. Revisit if
-   orchestrator workflows demand it.
+
+Resolved during PLAN-070:
+
+- **Per-branch provider fallback.** `provider` stays required on
+  `DraftParallelTarget`; it is the branch identity, not an inheritable
+  lead-default dimension. Orchestrator ingestion must provide a
+  concrete provider for every branch.
 
 ## References
 

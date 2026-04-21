@@ -284,8 +284,9 @@ order once Phase 1 lands.
       `attachmentsOverride` remains schema-reserved and rejected
       when non-null; the UI keeps producing null / undefined only.
       A synthetic orchestrator-authored fixture now renders with all
-      landed per-branch fields populated. `taskRef` is still blocked
-      on the upstream task model spec.
+      landed per-branch fields populated. SPEC-078 open questions are
+      closed down to the two true follow-up specs: upstream `TaskRef`
+      shape and per-branch attachment ownership.
 - [x] Task 3.1: Add `promptOverride?: string | null` to
       `DraftParallelTarget`. Add the corresponding resolution
       helper. Wire dispatch to read resolved prompt per branch.
@@ -314,7 +315,7 @@ order once Phase 1 lands.
       without UI regressions. Confirms the schema is
       orchestrator-ready even though the orchestrator itself
       isn't wired.
-- [ ] Task 3.6: Close out SPEC-078 open questions that resolved
+- [x] Task 3.6: Close out SPEC-078 open questions that resolved
       during implementation; carry any remaining forward into
       orchestrator-ingestion spec (TBD).
 
@@ -484,10 +485,9 @@ Phase 2 / Phase 3 surfaces will be listed when they're scheduled.
   fields (== "Follows lead" for those dimensions). That's fine —
   orchestrator authors use the degree of freedom that's wired,
   humans tweak the rest manually.
-- **`TaskRef` shape**. Deferred from Phase 1 schema entirely;
-  added in Phase 3 once the upstream task model spec defines
-  `TaskRef`. If the task model lands late, Phase 3 ships
-  prompt-detach work first and slots `taskRef` in when ready.
+- **`TaskRef` shape**. Deferred until the upstream task model spec
+  defines `TaskRef`. PLAN-070 does not add a placeholder; a follow-up
+  task/orchestrator spec owns the type and authoring path.
 - **Detach UX discoverability**. "Click the Follows-lead chip to
   detach" is not self-evident. Phase 2 will need at least a
   tooltip; may also need a settings-level onboarding hint the
@@ -502,6 +502,8 @@ Phase 2 / Phase 3 surfaces will be listed when they're scheduled.
 | Date | Phase | Note |
 |------|-------|------|
 | 2026-04-21 | Phase 1 | Landed the target-owned branch schema, resolver module, wrapper removal, parallel-group create contract extension, product-owned create materialization, attachment override rejection, and focused renderer / dispatcher / state-model tests. Per-channel runtime dispatch wire remains unchanged by design; renderer submit now resolves effective branch audience/workflow before the first parallel message. |
+| 2026-04-21 | Phase 2 | Landed branch cwd and runtime-session-policy detach UI, branch-scoped folder picker targeting, editable detached policy controls, re-link helpers, API propagation tests, and carousel identity guard. |
+| 2026-04-21 | Phase 3 | Landed prompt override schema/resolution/dispatch, prompt detach/re-link UI, synthetic orchestrator-authored renderer fixture for landed branch fields, and closed SPEC-078 open questions down to `TaskRef` plus attachment ownership follow-ups. |
 | 2026-04-21 | — | Plan drafted off ADR-077 / SPEC-078 / PLAN-069 hand-off. |
 
 ---
