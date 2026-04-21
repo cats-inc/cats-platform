@@ -30,3 +30,51 @@ export interface DesktopScreenshotOverlayBridge {
   completeSelection(result: DesktopScreenshotOverlaySelectionResult): Promise<void>;
   cancel(reason: string): Promise<void>;
 }
+
+function parseFiniteNumber(value: unknown, label: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new Error(`Invalid screenshot overlay ${label}: ${String(value)}`);
+  }
+  return value;
+}
+
+function parseRect(
+  value: unknown,
+  label: string,
+): DesktopScreenshotOverlaySelectionResult['cssRect'] {
+  if (typeof value !== 'object' || value === null) {
+    throw new Error(`Invalid screenshot overlay ${label} rect.`);
+  }
+  const rect = value as Record<string, unknown>;
+  return {
+    x: parseFiniteNumber(rect.x, `${label}.x`),
+    y: parseFiniteNumber(rect.y, `${label}.y`),
+    width: parseFiniteNumber(rect.width, `${label}.width`),
+    height: parseFiniteNumber(rect.height, `${label}.height`),
+  };
+}
+
+export function parseDesktopScreenshotOverlayDisplayId(value: unknown): number {
+  return parseFiniteNumber(value, 'displayId');
+}
+
+export function parseDesktopScreenshotOverlaySelectionResult(
+  value: unknown,
+): DesktopScreenshotOverlaySelectionResult {
+  if (typeof value !== 'object' || value === null) {
+    throw new Error('Invalid screenshot overlay selection result.');
+  }
+  const result = value as Record<string, unknown>;
+  return {
+    displayId: parseDesktopScreenshotOverlayDisplayId(result.displayId),
+    cssRect: parseRect(result.cssRect, 'cssRect'),
+    cropRect: parseRect(result.cropRect, 'cropRect'),
+  };
+}
+
+export function parseDesktopScreenshotOverlayCancelReason(value: unknown): string {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw new Error('Invalid screenshot overlay cancellation reason.');
+  }
+  return value;
+}

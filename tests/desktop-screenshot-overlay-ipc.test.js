@@ -5,6 +5,9 @@ import {
   DESKTOP_SCREENSHOT_OVERLAY_CANCEL_CHANNEL,
   DESKTOP_SCREENSHOT_OVERLAY_COMPLETE_CHANNEL,
   DESKTOP_SCREENSHOT_OVERLAY_GET_SNAPSHOT_CHANNEL,
+  parseDesktopScreenshotOverlayCancelReason,
+  parseDesktopScreenshotOverlayDisplayId,
+  parseDesktopScreenshotOverlaySelectionResult,
 } from '../build/desktop/screenshotOverlayIpc.js';
 
 test('desktop screenshot overlay IPC uses dedicated channels', () => {
@@ -19,5 +22,34 @@ test('desktop screenshot overlay IPC uses dedicated channels', () => {
   assert.equal(
     DESKTOP_SCREENSHOT_OVERLAY_CANCEL_CHANNEL,
     'cats-host:screenshot-overlay:cancel',
+  );
+});
+
+test('desktop screenshot overlay IPC parses untrusted overlay payloads', () => {
+  assert.equal(parseDesktopScreenshotOverlayDisplayId(2), 2);
+  assert.equal(parseDesktopScreenshotOverlayCancelReason('escape'), 'escape');
+  assert.deepEqual(
+    parseDesktopScreenshotOverlaySelectionResult({
+      displayId: 2,
+      cssRect: { x: -1180, y: 20, width: 200, height: 100 },
+      cropRect: { x: 200, y: 40, width: 400, height: 200 },
+    }),
+    {
+      displayId: 2,
+      cssRect: { x: -1180, y: 20, width: 200, height: 100 },
+      cropRect: { x: 200, y: 40, width: 400, height: 200 },
+    },
+  );
+  assert.throws(
+    () => parseDesktopScreenshotOverlayDisplayId(Number.NaN),
+    /Invalid screenshot overlay displayId/u,
+  );
+  assert.throws(
+    () => parseDesktopScreenshotOverlaySelectionResult({ displayId: 2 }),
+    /Invalid screenshot overlay cssRect rect/u,
+  );
+  assert.throws(
+    () => parseDesktopScreenshotOverlayCancelReason(''),
+    /Invalid screenshot overlay cancellation reason/u,
   );
 });

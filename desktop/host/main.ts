@@ -100,6 +100,17 @@ import {
   DESKTOP_SCREENSHOT_IPC_CHANNEL,
   parseDesktopScreenshotCaptureRequest,
 } from './screenshotCapture.js';
+import {
+  DESKTOP_SCREENSHOT_OVERLAY_CANCEL_CHANNEL,
+  DESKTOP_SCREENSHOT_OVERLAY_COMPLETE_CHANNEL,
+  DESKTOP_SCREENSHOT_OVERLAY_GET_SNAPSHOT_CHANNEL,
+  parseDesktopScreenshotOverlayCancelReason,
+  parseDesktopScreenshotOverlayDisplayId,
+  parseDesktopScreenshotOverlaySelectionResult,
+} from './screenshotOverlayIpc.js';
+import {
+  DesktopScreenshotOverlaySession,
+} from './screenshotOverlaySession.js';
 
 let mainWindow: BrowserWindow | null = null;
 let hostConfig: DesktopHostConfig | null = null;
@@ -132,6 +143,7 @@ let latestDesktopStartupPreferences: DesktopStartupPreferences = {
   openWindowOnStartup: false,
   systemTrayEnabled: true,
 };
+let activeScreenshotOverlaySession: DesktopScreenshotOverlaySession | null = null;
 
 interface ProductBootstrapDiagnosticsPayload {
   generatedAt?: string;
@@ -1315,6 +1327,36 @@ async function main(): Promise<void> {
       mainWindow,
     });
   });
+  ipcMain.handle(
+    DESKTOP_SCREENSHOT_OVERLAY_GET_SNAPSHOT_CHANNEL,
+    async (_event, displayId: unknown) => {
+      if (!activeScreenshotOverlaySession) {
+        throw new Error('No screenshot overlay session is active.');
+      }
+      return activeScreenshotOverlaySession.getSnapshot(
+        parseDesktopScreenshotOverlayDisplayId(displayId),
+      );
+    },
+  );
+  ipcMain.handle(
+    DESKTOP_SCREENSHOT_OVERLAY_COMPLETE_CHANNEL,
+    async (_event, payload: unknown) => {
+      if (!activeScreenshotOverlaySession) {
+        throw new Error('No screenshot overlay session is active.');
+      }
+      activeScreenshotOverlaySession.completeSelection(
+        parseDesktopScreenshotOverlaySelectionResult(payload),
+      );
+    },
+  );
+  ipcMain.handle(
+    DESKTOP_SCREENSHOT_OVERLAY_CANCEL_CHANNEL,
+    async (_event, reason: unknown) => {
+      activeScreenshotOverlaySession?.cancel(
+        parseDesktopScreenshotOverlayCancelReason(reason),
+      );
+    },
+  );
   ipcMain.handle('cats-host:update-desktop-preferences', async (_event, payload: unknown) => {
     if (
       typeof payload !== 'object'
