@@ -190,10 +190,13 @@ export function mergeChannelSummaryWithChannelView(
     runtimePermissionMode: selectedChannel.runtimePermissionMode ?? null,
     lastMessageAt: selectedChannel.lastMessageAt,
     lastActivatedAt: selectedChannel.lastActivatedAt,
-    composerMode: selectedChannel.composerMode,
-    pendingProvider: selectedChannel.pendingProvider,
-    pendingModel: selectedChannel.pendingModel,
-    pendingModelSelection: selectedChannel.pendingModelSelection ?? null,
+    composerMode: selectedChannel.composerMode ?? currentSummary?.composerMode,
+    pendingProvider: selectedChannel.pendingProvider ?? currentSummary?.pendingProvider,
+    pendingModel: selectedChannel.pendingModel ?? currentSummary?.pendingModel,
+    pendingModelSelection:
+      selectedChannel.pendingModelSelection
+      ?? currentSummary?.pendingModelSelection
+      ?? null,
     roomMode: roomRouting.mode,
     routingStatus: resolveSubscribedChannelRoutingStatus(selectedChannel),
     lastRoutingAt: resolveSubscribedChannelLastRoutingAt(selectedChannel),
@@ -204,10 +207,13 @@ export function syncSubscribedChannelSummary(
   channels: ChatChannelSummary[],
   selectedChannel: ChatChannelView,
 ): ChatChannelSummary[] {
-  return channels.map((channel) =>
-    channel.id === selectedChannel.id
-      ? mergeChannelSummaryWithChannelView(channel, selectedChannel)
-      : channel);
+  const index = channels.findIndex((channel) => channel.id === selectedChannel.id);
+  if (index === -1) {
+    return channels;
+  }
+  const result = [...channels];
+  result[index] = mergeChannelSummaryWithChannelView(channels[index], selectedChannel);
+  return result;
 }
 
 export function mergeChannelSummariesPreservingSubscribedView(input: {
