@@ -725,12 +725,14 @@ contracts.
       recents builder. Code recents show code-origin channels and compare
       groups, filter out chat-origin entries, and wire compare group
       rename/ungroup/delete actions through the workspace shell.
-- [ ] Keep work surfaces product-owned and avoid leaking provider or runtime
+- [x] Keep work surfaces product-owned and avoid leaking provider or runtime
       internals into the UI model
-      Progress: Work execution surfaces now route runtime bridge product,
+      Completed: Work execution surfaces now route runtime bridge product,
       strategy, delivery mode, delivery actions, and correlation labels through
       a Work-owned presentation helper before rendering War Room, task detail,
-      task list, and work-item detail UI.
+      task list, intake plan review, and work-item detail UI. The remaining
+      Work renderer provider/model references are explicit provider selection
+      controls, not hidden runtime bridge presentation.
 - [ ] Move product-scoped conversation-behavior preferences off the temporary
       `chat.conversationBehavior.{work,code}` seam and shared
       `PATCH /api/preferences` route onto Work- and Code-owned state slices
