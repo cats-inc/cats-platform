@@ -126,6 +126,15 @@ export interface ParallelBranchDraftActions {
   onQuickAddTemporaryParticipant?: (index: number) => void;
 }
 
+export interface ChatNewChatDraftChrome {
+  headerAccessory?: ReactNode;
+  headerWhereExtras?: ReactNode;
+  footerAccessory?: ReactNode;
+  customRegion?: ReactNode;
+  surfaceTag?: ReactNode;
+  chooseFolderPlacement?: 'header' | 'plusMenu';
+}
+
 function BranchRuntimeSessionPolicyControls({
   branchIndex,
   target,
@@ -310,17 +319,12 @@ export interface NewChatDraftProps {
   onSetAudienceKeys?: (keys: string[]) => void;
   draftRuntimeSessionPolicy?: RuntimeSessionPolicy | null;
   onDraftRuntimeSessionPolicyChange?: (policy: RuntimeSessionPolicy) => void;
-  composerHeaderAccessory?: ReactNode;
-  composerHeaderWhereExtras?: ReactNode;
-  composerFooterAccessory?: ReactNode;
-  draftCustomRegion?: ReactNode;
-  surfaceTag?: ReactNode;
+  draftChrome?: ChatNewChatDraftChrome;
   composerPlaceholder?: string;
   hideDraftGroupHint?: boolean;
   hideDraftParallelHint?: boolean;
   folderActionLabel?: string;
   sidePanelCopy?: ChatNewChatDraftSidePanelCopy;
-  chooseFolderPlacement?: 'header' | 'plusMenu';
   leadingStarterChips?: ReadonlyArray<{
     id: string;
     label: string;
@@ -392,20 +396,23 @@ export function NewChatDraft({
   draftAudienceKeys,
   onSetAudienceKeys,
   draftRuntimeSessionPolicy = null,
-  composerHeaderAccessory = null,
-  composerHeaderWhereExtras = null,
-  composerFooterAccessory = null,
-  draftCustomRegion = null,
-  surfaceTag = null,
+  draftChrome,
   composerPlaceholder = 'How can I help you today?',
   hideDraftGroupHint = false,
   hideDraftParallelHint = false,
   folderActionLabel = 'Choose folder',
   sidePanelCopy,
-  chooseFolderPlacement = 'header',
   leadingStarterChips,
   preserveHelperChipsOnSelect = false,
 }: NewChatDraftProps) {
+  const {
+    headerAccessory: composerHeaderAccessory = null,
+    headerWhereExtras: composerHeaderWhereExtras = null,
+    footerAccessory: composerFooterAccessory = null,
+    customRegion: draftCustomRegion = null,
+    surfaceTag = null,
+    chooseFolderPlacement = 'header',
+  } = draftChrome ?? {};
   const onPickParallelBranchFolder = parallelBranchActions?.onPickFolder;
   const onSetParallelBranchAudienceKeys = parallelBranchActions?.onSetAudienceKeys;
   const onSetParallelBranchCwd = parallelBranchActions?.onSetCwd;

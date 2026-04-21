@@ -584,7 +584,9 @@ contracts.
       concerns instead of one flat copy object. Execution-target label/summary
       and `ProviderModelFields` selection-to-target mapping now route through
       the shared renderer `ExecutionTarget` helper instead of being reimplemented
-      across draft and chat side-panel surfaces.
+      across draft and chat side-panel surfaces. Chat draft header/footer/surface
+      presentation slots are grouped under `draftChrome`, so Code and Work no
+      longer add new flat chrome props to the shared draft surface.
 - [ ] Add a product-owned side-panel composition seam for Code drafts together
       with render-level coverage for empty participant states, section-open
       behavior, and later execution-profile sections, so `+New code` does not

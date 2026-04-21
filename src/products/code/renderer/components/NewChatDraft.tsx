@@ -236,9 +236,11 @@ function CodeChatDraft(props: NewChatDraftProps) {
             onClick: () => { props.onComposerChange(chip.prompt); },
           }))
         : undefined}
-      composerHeaderAccessory={permissionChip}
-      composerHeaderWhereExtras={whereExtras}
-      surfaceTag={<ComposerSurfaceChip surface="code" />}
+      draftChrome={{
+        headerAccessory: permissionChip,
+        headerWhereExtras: whereExtras,
+        surfaceTag: <ComposerSurfaceChip surface="code" />,
+      }}
       composerPlaceholder={NEW_CODE_DRAFT_COPY.composer?.placeholder}
       folderActionLabel={NEW_CODE_DRAFT_COPY.folder?.actionLabel}
       sidePanelCopy={NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY}

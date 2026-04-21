@@ -33,7 +33,9 @@ function WorkChatDraft(props: NewChatDraftProps) {
   return (
     <ChatNewChatDraft
       {...props}
-      surfaceTag={<ComposerSurfaceChip surface="work" />}
+      draftChrome={{
+        surfaceTag: <ComposerSurfaceChip surface="work" />,
+      }}
       showDraftGroupAddButton={showDraftGroupAddButton}
       hideDraftGroupHint={hideDraftGroupHint}
       hideDraftParallelHint={hideDraftParallelHint}

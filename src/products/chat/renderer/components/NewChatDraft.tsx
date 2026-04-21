@@ -92,10 +92,12 @@ function NewChatDraftInner(props: NewChatDraftProps) {
   return (
     <SharedChatNewChatDraft
       {...props}
-      composerHeaderAccessory={composerHeaderAccessory}
-      composerHeaderWhereExtras={composerHeaderWhereExtras}
-      surfaceTag={surfaceTag}
-      chooseFolderPlacement={chooseFolderPlacement}
+      draftChrome={{
+        headerAccessory: composerHeaderAccessory,
+        headerWhereExtras: composerHeaderWhereExtras,
+        surfaceTag,
+        chooseFolderPlacement,
+      }}
       folderActionLabel={folderActionLabel}
       leadingStarterChips={leadingStarterChips}
     />

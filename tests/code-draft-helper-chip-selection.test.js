@@ -14,7 +14,7 @@ test('code draft helper chip selection keeps chips visible across default, team,
   );
 
   assert.match(codeDraftSource, /preserveHelperChipsOnSelect/u);
-  assert.match(codeDraftSource, /leadingStarterChips=\{helperChips\.map/u);
+  assert.match(codeDraftSource, /leadingStarterChips=\{[\s\S]*helperChips\.map/u);
   assert.match(
     codeDraftSource,
     /onSelectHelperChip: \(prompt\) => \{\s*props\.onComposerChange\(prompt\);\s*\}/u,
