@@ -62,7 +62,7 @@ order once Phase 1 lands.
 
 ### Phase 1: Schema foundation and parallel-array absorption
 
-- [ ] Task 1.1: Extend `DraftParallelTarget` in
+- [x] Task 1.1: Extend `DraftParallelTarget` in
       `src/products/shared/renderer/draftChatUtils.tsx` (the type
       lives there alongside `createDefaultParallelTargetForProvider`
       and the parallel-target list helpers — `ExecutionTarget.ts`
@@ -70,7 +70,7 @@ order once Phase 1 lands.
       the fields defined in SPEC-078 § Schema. All new fields are
       optional / nullable; no existing code path should break on a
       target where every new field is undefined.
-- [ ] Task 1.2: Add the resolution module
+- [x] Task 1.2: Add the resolution module
       `src/products/shared/renderer/draftBranchResolution.ts`
       exporting the **Phase 1 subset** of helpers defined in
       SPEC-078 § Resolution Helpers: `resolveBranchCwd`,
@@ -82,7 +82,7 @@ order once Phase 1 lands.
       additions that arrive together with `promptOverride` /
       `taskRef` on `DraftParallelTarget`. Phase-1 callers read
       the lead prompt directly from `leadContext.composerDraft`.
-- [ ] Task 1.3: Flatten the existing `DraftParallelBranchState<T>`
+- [x] Task 1.3: Flatten the existing `DraftParallelBranchState<T>`
       wrapper onto the target.
       - Correction from the previous plan draft: there **is** a
         wrapper today, at
@@ -114,7 +114,7 @@ order once Phase 1 lands.
         in place. `parallelTargets[i].audienceKeys` and
         `parallelTargets[i].workflowShape` become the source of
         truth.
-- [ ] Task 1.4: Update `ChatNewChatDraft` render path to consume
+- [x] Task 1.4: Update `ChatNewChatDraft` render path to consume
       resolved branches:
       - Replace inline `parallelBranchAudienceKeys?.[i] ?? []`
         reads with `resolveBranchAudienceKeys(target, lead)`.
@@ -130,7 +130,7 @@ order once Phase 1 lands.
       Every per-branch dispatch point reads resolved effective
       values. The per-channel wire from product → runtime is
       unchanged once the parallel group's child channels exist.
-- [ ] Task 1.6: **Extend the parallel-group create contract** in
+- [x] Task 1.6: **Extend the parallel-group create contract** in
       `src/products/chat/api/contracts.ts` so per-branch cwd /
       session policy can round-trip at group-creation time.
       Two coordinated extensions:
@@ -185,7 +185,7 @@ order once Phase 1 lands.
         reintroducing the server-default-fallback bug.
       - Without this whole chain, Phase 2's per-branch cwd /
         session policy UI ships nowhere it can write to.
-- [ ] Task 1.7: **Update the product-owned parallel-group create
+- [x] Task 1.7: **Update the product-owned parallel-group create
       path** to consume the extended contract. Per ADR-067, this
       is product-owned, not in `src/app/server/**`. Touch both
       layers:
@@ -208,7 +208,7 @@ order once Phase 1 lands.
         - Run ADR-071 validation per resolved per-channel
           policy; reject the whole group create with a
           per-target error if any child fails.
-- [ ] Task 1.8: Dispatch rejects a target whose
+- [x] Task 1.8: Dispatch rejects a target whose
       `attachmentsOverride` is non-null — Phase 1 does not
       implement per-branch attachments. Clear error message
       ("attachments are not yet per-branch; remove the override").
@@ -224,7 +224,7 @@ order once Phase 1 lands.
       the expected group-level `runtimeSessionPolicy`. Add a small
       resolution-helper test suite: null → inherit, concrete →
       use-as-is, lead-target override equals-lead-default.
-- [ ] Task 1.10: Document in SPEC-078 which fields have landed;
+- [x] Task 1.10: Document in SPEC-078 which fields have landed;
       move Phase 1 items from § Migration into "landed".
 
 ### Phase 2: Detach cwd and session policy
@@ -472,6 +472,7 @@ Phase 2 / Phase 3 surfaces will be listed when they're scheduled.
 
 | Date | Phase | Note |
 |------|-------|------|
+| 2026-04-21 | Phase 1 | Landed the target-owned branch schema, resolver module, wrapper removal, parallel-group create contract extension, product-owned create materialization, attachment override rejection, and focused renderer / dispatcher / state-model tests. Per-channel runtime dispatch wire remains unchanged by design; renderer submit now resolves effective branch audience/workflow before the first parallel message. |
 | 2026-04-21 | — | Plan drafted off ADR-077 / SPEC-078 / PLAN-069 hand-off. |
 
 ---

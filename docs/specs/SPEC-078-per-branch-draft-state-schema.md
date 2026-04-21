@@ -131,6 +131,24 @@ interface DraftParallelTarget {
 by a future per-branch attachments spec. Phase 1 ignores the field;
 dispatch rejects any non-null value with the documented error.
 
+### Phase 1 Landed Fields
+
+As of 2026-04-21, Phase 1 has landed the target-owned fields
+`cwd`, `runtimeSessionPolicy`, `audienceKeys`, `workflowShape`, and
+schema-reserved `attachmentsOverride` on `DraftParallelTarget`.
+The former `DraftParallelBranchState<T>` wrapper and the derived
+`parallelBranchAudienceKeys[]` / `parallelBranchWorkflowShapes[]`
+renderer props have been removed; `DraftParallelTarget[]` is now the
+canonical renderer draft state.
+
+The resolver module is present at
+`src/products/shared/renderer/draftBranchResolution.ts`, including
+`createDraftLeadContext`, the Phase 1 field resolvers,
+`resolveBranch(...)`, and the Phase 1 rejection guard for non-null
+`attachmentsOverride`. Renderer submit resolves effective branch
+audience/workflow before first-message dispatch; the per-channel
+runtime message wire remains unchanged by design.
+
 ### Lead-level draft state (unchanged)
 
 The draft-shared fields stay where they are. They now act as the
