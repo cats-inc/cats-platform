@@ -245,6 +245,15 @@ export function useParallelChatDraft(options: {
     );
   }, []);
 
+  const onSetDraftParallelBranchCwd = useCallback((index: number, cwd: string | null) => {
+    setDraftParallelChatTargets((prev) =>
+      updateDraftParallelTargetAt(prev, index, (target) => ({
+        ...target,
+        cwd,
+      })),
+    );
+  }, []);
+
   const onToggleDraftParallelBranchWorkflowShape = useCallback((index: number) => {
     setDraftParallelChatTargets((prev) =>
       updateDraftParallelTargetAt(prev, index, (target) => ({
@@ -305,6 +314,7 @@ export function useParallelChatDraft(options: {
     onAddDraftParallelChatTarget,
     onRemoveDraftParallelChatTarget,
     onSetDraftParallelBranchAudienceKeys,
+    onSetDraftParallelBranchCwd,
     onToggleDraftParallelBranchWorkflowShape,
     onRelayCompareMessage,
   };

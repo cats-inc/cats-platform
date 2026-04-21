@@ -354,6 +354,7 @@ export default function App() {
     onAddDraftParallelChatTarget,
     onRemoveDraftParallelChatTarget,
     onSetDraftParallelBranchAudienceKeys,
+    onSetDraftParallelBranchCwd,
     onToggleDraftParallelBranchWorkflowShape,
     onRelayCompareMessage,
   } = useParallelChatDraft({
@@ -1418,6 +1419,11 @@ export default function App() {
                     draftRoute.isGenericNewChatRoute
                       && hasVisibleParallelDraftTargets
                       ? onSetDraftParallelBranchAudienceKeys
+                      : undefined,
+                  onSetParallelBranchCwd:
+                    draftRoute.isGenericNewChatRoute
+                      && hasVisibleParallelDraftTargets
+                      ? onSetDraftParallelBranchCwd
                       : undefined,
                   onToggleParallelBranchWorkflowShape:
                     draftRoute.isGenericNewChatRoute

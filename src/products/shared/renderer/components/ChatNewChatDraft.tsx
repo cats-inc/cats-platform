@@ -123,6 +123,7 @@ export interface NewChatDraftProps {
   draftAudienceKeys?: string[] | null;
   onSetAudienceKeys?: (keys: string[]) => void;
   onSetParallelBranchAudienceKeys?: (index: number, keys: string[]) => void;
+  onSetParallelBranchCwd?: (index: number, cwd: string | null) => void;
   onToggleParallelBranchWorkflowShape?: (index: number) => void;
   onQuickAddParallelBranchTemporaryParticipant?: (index: number) => void;
   draftRuntimeSessionPolicy?: RuntimeSessionPolicy | null;
@@ -207,6 +208,7 @@ export function NewChatDraft({
   draftAudienceKeys,
   onSetAudienceKeys,
   onSetParallelBranchAudienceKeys,
+  onSetParallelBranchCwd,
   onToggleParallelBranchWorkflowShape,
   onQuickAddParallelBranchTemporaryParticipant,
   draftRuntimeSessionPolicy = null,
@@ -944,7 +946,7 @@ export function NewChatDraft({
   // chip instead of the cwd chip, per-branch audience + collaborate +
   // remove controls).
 
-  function buildShadowCardContent(branchIndex: number, target: ExecutionTargetValue): ReactNode {
+  function buildShadowCardContent(branchIndex: number, target: DraftParallelTarget): ReactNode {
     const branchAudienceKeysLen = resolveParallelBranchAudienceKeys(branchIndex).length;
     const branchMembers = resolveParallelBranchMembers(branchIndex);
     const branchAudienceParticipants = branchAudienceKeysLen > 1
@@ -957,19 +959,40 @@ export function NewChatDraft({
     const canRemoveBranch = parallelCount > minParallelTargetCount;
     const canAddMoreBranches = parallelCount < maxParallelChats;
     const showCompareHint = accentParallelAddButton && !hideDraftParallelHint;
+    const branchCwd = target.cwd?.trim() || null;
 
     return (
       <>
         <div className="composerHeaderRow">
           <div className="composerHeaderLeft">
             {surfaceTag}
-            <span className="composerFollowsLeadChip">
-              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <path d="M6 3l-3 5 3 5" />
-                <path d="M3 8h10" />
-              </svg>
-              <span>Follows lead</span>
-            </span>
+            {branchCwd ? (
+              <span className="composerCwdChip" data-tooltip={branchCwd}>
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
+                </svg>
+                <span>{truncatePath(branchCwd)}</span>
+                {onSetParallelBranchCwd ? (
+                  <button
+                    className="composerChipClose"
+                    type="button"
+                    disabled={isSubmittingFirstTurn}
+                    onClick={() => onSetParallelBranchCwd(branchIndex, null)}
+                    aria-label="Re-link branch folder to lead"
+                  >
+                    &times;
+                  </button>
+                ) : null}
+              </span>
+            ) : (
+              <span className="composerFollowsLeadChip">
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M6 3l-3 5 3 5" />
+                  <path d="M3 8h10" />
+                </svg>
+                <span>Follows lead</span>
+              </span>
+            )}
           </div>
         </div>
 

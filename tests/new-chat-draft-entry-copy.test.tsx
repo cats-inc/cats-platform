@@ -1262,6 +1262,35 @@ test('parallel shadow branch with a single audience member renders as a target-s
   assert.doesNotMatch(markup, /Cleo/u);
 });
 
+test('parallel shadow branch with detached cwd renders a relinkable cwd chip', () => {
+  const leadTarget = { provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null } as const;
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        selectedExecutionTarget: leadTarget,
+        parallelTargets: [
+          { ...leadTarget, audienceKeys: [], workflowShape: 'sequential' },
+          {
+            provider: 'codex-cli',
+            instance: null,
+            model: 'codex-max',
+            modelSelection: null,
+            audienceKeys: [],
+            workflowShape: 'sequential',
+            cwd: 'C:/repo/worktrees/review',
+          },
+        ],
+        onSetParallelBranchCwd: () => {},
+        onAddParallelTarget: () => {},
+      })}
+    />,
+  );
+
+  assert.match(markup, /class="composerCwdChip"/u);
+  assert.match(markup, /C:\/repo\/worktrees\/review/u);
+  assert.match(markup, /aria-label="Re-link branch folder to lead"/u);
+});
+
 test('+Group + many +compares keeps every branch collaborator button visible while each branch is under its M cap', () => {
   // Regression guard: the +collaborate button must be gated per-branch
   // (each branch audience vs maxAudienceParticipants), not by the
