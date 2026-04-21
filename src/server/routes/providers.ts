@@ -69,14 +69,17 @@ interface TruthfulProviderRegistryCacheState {
 
 const truthfulProviderRegistryCache = new WeakMap<RuntimeClient, TruthfulProviderRegistryCacheState>();
 
-type ProviderCatalogCacheValue = ProviderModelCatalog | ProviderAdvancedModelCatalog;
-
-type ProviderCatalogCacheEntry<TCatalog extends ProviderCatalogCacheValue> =
+type ProviderCatalogCacheEntry<TCatalog extends { warnings?: string[] }> =
   ProviderTimedCacheEntry<TCatalog>;
 
+interface ProviderCatalogTypedCacheState<TCatalog extends { warnings?: string[] }> {
+  entries: Map<string, ProviderCatalogCacheEntry<TCatalog>>;
+  inflight: Map<string, Promise<TCatalog>>;
+}
+
 interface ProviderCatalogCacheState {
-  entries: Map<string, ProviderCatalogCacheEntry<ProviderCatalogCacheValue>>;
-  inflight: Map<string, Promise<ProviderCatalogCacheValue>>;
+  models: ProviderCatalogTypedCacheState<ProviderModelCatalog>;
+  advanced: ProviderCatalogTypedCacheState<ProviderAdvancedModelCatalog>;
 }
 
 const providerCatalogCache = new WeakMap<RuntimeClient, ProviderCatalogCacheState>();
@@ -309,7 +312,7 @@ function appendTruthfulProviderRegistryWarning(
   };
 }
 
-function appendProviderCatalogWarning<TCatalog extends ProviderCatalogCacheValue>(
+function appendProviderCatalogWarning<TCatalog extends { warnings?: string[] }>(
   value: TCatalog,
   warning: string,
 ): TCatalog {
@@ -649,8 +652,14 @@ function getProviderCatalogCacheState(
   let state = providerCatalogCache.get(runtimeClient);
   if (!state) {
     state = {
-      entries: new Map(),
-      inflight: new Map(),
+      models: {
+        entries: new Map(),
+        inflight: new Map(),
+      },
+      advanced: {
+        entries: new Map(),
+        inflight: new Map(),
+      },
     };
     providerCatalogCache.set(runtimeClient, state);
   }
@@ -658,26 +667,24 @@ function getProviderCatalogCacheState(
 }
 
 function buildProviderCatalogCacheKey(input: {
-  kind: 'models' | 'advanced';
   provider: string;
   instance?: string | null;
 }): string {
   return [
-    input.kind,
     input.provider.trim(),
     input.instance?.trim() || '',
   ].join('\u0000');
 }
 
-function readProviderCatalogCacheEntry<TCatalog extends ProviderCatalogCacheValue>(
-  cacheState: ProviderCatalogCacheState,
+function readProviderCatalogCacheEntry<TCatalog extends { warnings?: string[] }>(
+  cacheState: ProviderCatalogTypedCacheState<TCatalog>,
   cacheKey: string,
 ): ProviderCatalogCacheEntry<TCatalog> | undefined {
-  return cacheState.entries.get(cacheKey) as ProviderCatalogCacheEntry<TCatalog> | undefined;
+  return cacheState.entries.get(cacheKey);
 }
 
-function writeProviderCatalogCacheEntry<TCatalog extends ProviderCatalogCacheValue>(
-  cacheState: ProviderCatalogCacheState,
+function writeProviderCatalogCacheEntry<TCatalog extends { warnings?: string[] }>(
+  cacheState: ProviderCatalogTypedCacheState<TCatalog>,
   cacheKey: string,
   value: TCatalog,
 ): void {
@@ -692,8 +699,8 @@ function writeProviderCatalogCacheEntry<TCatalog extends ProviderCatalogCacheVal
   });
 }
 
-function writeProviderCatalogErrorBackoff<TCatalog extends ProviderCatalogCacheValue>(
-  cacheState: ProviderCatalogCacheState,
+function writeProviderCatalogErrorBackoff<TCatalog extends { warnings?: string[] }>(
+  cacheState: ProviderCatalogTypedCacheState<TCatalog>,
   cacheKey: string,
   cached: ProviderCatalogCacheEntry<TCatalog>,
   error: unknown,
@@ -711,8 +718,8 @@ function writeProviderCatalogErrorBackoff<TCatalog extends ProviderCatalogCacheV
   );
 }
 
-function pruneExpiredProviderCatalogCacheEntries(
-  cacheState: ProviderCatalogCacheState,
+function pruneExpiredProviderCatalogCacheEntries<TCatalog extends { warnings?: string[] }>(
+  cacheState: ProviderCatalogTypedCacheState<TCatalog>,
   now: number,
 ): void {
   for (const [cacheKey, cached] of cacheState.entries) {
@@ -722,14 +729,14 @@ function pruneExpiredProviderCatalogCacheEntries(
   }
 }
 
-function refreshProviderCatalogCacheEntry<TCatalog extends ProviderCatalogCacheValue>(
-  cacheState: ProviderCatalogCacheState,
+function refreshProviderCatalogCacheEntry<TCatalog extends { warnings?: string[] }>(
+  cacheState: ProviderCatalogTypedCacheState<TCatalog>,
   cacheKey: string,
   load: () => Promise<TCatalog>,
 ): Promise<TCatalog> {
   const inflight = cacheState.inflight.get(cacheKey);
   if (inflight) {
-    return inflight as Promise<TCatalog>;
+    return inflight;
   }
 
   const refreshPromise = load()
@@ -738,7 +745,7 @@ function refreshProviderCatalogCacheEntry<TCatalog extends ProviderCatalogCacheV
       return value;
     })
     .catch((error) => {
-      const cached = readProviderCatalogCacheEntry<TCatalog>(cacheState, cacheKey);
+      const cached = readProviderCatalogCacheEntry(cacheState, cacheKey);
       if (
         shouldServeStaleProviderCatalogForError(error)
         && cached
@@ -756,29 +763,27 @@ function refreshProviderCatalogCacheEntry<TCatalog extends ProviderCatalogCacheV
   return refreshPromise;
 }
 
-async function readProviderCatalogCached<TCatalog extends ProviderCatalogCacheValue>(input: {
-  dependencies: ProviderRouteDependencies;
-  kind: 'models' | 'advanced';
+async function readProviderCatalogCached<TCatalog extends { warnings?: string[] }>(input: {
+  cacheState: ProviderCatalogTypedCacheState<TCatalog>;
   provider: string;
   instance?: string | null;
   load: () => Promise<TCatalog>;
 }): Promise<TCatalog> {
-  const cacheState = getProviderCatalogCacheState(input.dependencies.runtimeClient);
   const cacheKey = buildProviderCatalogCacheKey(input);
   const now = Date.now();
-  pruneExpiredProviderCatalogCacheEntries(cacheState, now);
-  const cached = readProviderCatalogCacheEntry<TCatalog>(cacheState, cacheKey);
+  pruneExpiredProviderCatalogCacheEntries(input.cacheState, now);
+  const cached = readProviderCatalogCacheEntry(input.cacheState, cacheKey);
 
   if (cached && cached.freshUntilMs > now) {
     return readProviderCacheValue(cached, appendProviderCatalogWarning);
   }
 
   if (cached && cached.staleUntilMs > now) {
-    void refreshProviderCatalogCacheEntry(cacheState, cacheKey, input.load).catch(() => {});
+    void refreshProviderCatalogCacheEntry(input.cacheState, cacheKey, input.load).catch(() => {});
     return readProviderCacheValue(cached, appendProviderCatalogWarning);
   }
 
-  return refreshProviderCatalogCacheEntry(cacheState, cacheKey, input.load);
+  return refreshProviderCatalogCacheEntry(input.cacheState, cacheKey, input.load);
 }
 
 function sendJson(response: ServerResponse, statusCode: number, payload: unknown): void {
@@ -861,9 +866,9 @@ export async function handleProviderModels(
   }
 
   try {
+    const providerCatalogCacheState = getProviderCatalogCacheState(dependencies.runtimeClient);
     const catalog = await readProviderCatalogCached({
-      dependencies,
-      kind: 'models',
+      cacheState: providerCatalogCacheState.models,
       provider,
       instance: normalizedInstance,
       load: () => dependencies.runtimeClient.getProviderModels(provider, normalizedInstance),
@@ -940,9 +945,9 @@ export async function handleAdvancedProviderModels(
   }
 
   try {
+    const providerCatalogCacheState = getProviderCatalogCacheState(dependencies.runtimeClient);
     const catalog = await readProviderCatalogCached({
-      dependencies,
-      kind: 'advanced',
+      cacheState: providerCatalogCacheState.advanced,
       provider,
       instance: normalizedInstance,
       load: () => dependencies.runtimeClient.getAdvancedProviderModels(provider, normalizedInstance),

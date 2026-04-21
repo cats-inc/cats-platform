@@ -214,6 +214,9 @@ contracts.
       `PROVIDER_CACHE_ERROR_BACKOFF_MS` so outage recovery does not flash
       cache-refresh warnings on and off while the two retry loops race each
       other
+      Progress: server-side model and advanced catalog caches are now separate
+      typed buckets, so catalog cache reads no longer cast a shared union map
+      back into the caller's expected catalog shape.
 - [ ] Refine advanced provider-model UX now that runtime presets and controls are
       first-class, including an `Advanced settings` disclosure pattern that prevents
       large control sets from overwhelming the base provider/instance/model flow
