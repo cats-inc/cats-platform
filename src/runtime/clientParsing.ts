@@ -81,11 +81,7 @@ export function normalizeRuntimeProviderConfigRegistry(
                     typeof instance.command === 'string' && instance.command.trim().length > 0
                       ? instance.command
                       : null,
-                  args: Array.isArray(instance.args)
-                    ? instance.args
-                      .filter((arg): arg is string =>
-                        typeof arg === 'string' && arg.trim().length > 0)
-                    : [],
+                  args: normalizeRuntimeProviderArgs(instance.args),
                   runner:
                     typeof instance.runner === 'string' && instance.runner.trim().length > 0
                       ? instance.runner
@@ -113,6 +109,34 @@ export function normalizeRuntimeProviderConfigRegistry(
       })
       .filter((entry): entry is readonly [string, RuntimeProviderConfigEntry] => entry !== null),
   );
+}
+
+function normalizeRuntimeProviderArgs(value: unknown): string[] | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+
+  if (!Array.isArray(value)) {
+    console.warn('[runtime-client] Ignoring provider args: expected string[].');
+    return null;
+  }
+
+  const normalized: string[] = [];
+  let ignored = 0;
+  for (const arg of value) {
+    if (typeof arg === 'string' && arg.trim().length > 0) {
+      normalized.push(arg.trim());
+    } else {
+      ignored += 1;
+    }
+  }
+
+  if (ignored > 0) {
+    const label = ignored === 1 ? 'entry' : 'entries';
+    console.warn(`[runtime-client] Ignored ${ignored} invalid provider args ${label}.`);
+  }
+
+  return normalized;
 }
 
 function normalizeRuntimeProviderDiagnosticsAvailability(

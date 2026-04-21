@@ -33,7 +33,7 @@ test('normalizeRuntimeProviderConfigRegistry keeps valid providers and instances
             target: 'cli/native',
             backend: 'cli',
             command: 'claude',
-            args: ['--chrome', '', 12],
+            args: ['<redacted>'],
             runner: 'pty',
             runtime: 'cats-runtime',
             transport: 'stdio',
@@ -71,7 +71,7 @@ test('normalizeRuntimeProviderConfigRegistry keeps valid providers and instances
           target: 'cli/native',
           backend: 'cli',
           command: 'claude',
-          args: ['--chrome'],
+          args: ['<redacted>'],
           runner: 'pty',
           runtime: 'cats-runtime',
           transport: 'stdio',
@@ -92,6 +92,36 @@ test('normalizeRuntimeProviderConfigRegistry keeps valid providers and instances
       ],
     },
   });
+});
+
+test('normalizeRuntimeProviderConfigRegistry warns when provider args are malformed', () => {
+  const warnings: string[] = [];
+  const originalWarn = console.warn;
+  console.warn = (message?: unknown) => {
+    warnings.push(String(message));
+  };
+
+  try {
+    const registry = normalizeRuntimeProviderConfigRegistry({
+      providers: {
+        claude: {
+          instances: [
+            {
+              id: 'native',
+              args: ['--chrome', '', 12],
+            },
+          ],
+        },
+      },
+    });
+
+    assert.deepEqual(registry.claude?.instances[0]?.args, ['--chrome']);
+    assert.deepEqual(warnings, [
+      '[runtime-client] Ignored 2 invalid provider args entries.',
+    ]);
+  } finally {
+    console.warn = originalWarn;
+  }
 });
 
 test('normalizeRuntimeProviderDiagnosticsPayload preserves valid entries and falls back unknown availability to safe defaults', () => {
