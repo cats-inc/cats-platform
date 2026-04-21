@@ -82,7 +82,9 @@ once the schema lands.
 ### 1. `DraftParallelTarget` becomes the per-branch source of truth
 
 Extend `DraftParallelTarget` from a provider/model tuple into a
-self-contained branch spec:
+self-contained branch spec. The schema is delivered across phases
+— SPEC-078 and PLAN-070 carry the exact phase assignment; this
+ADR reproduces the shape for orientation:
 
 ```ts
 interface DraftParallelTarget {
@@ -95,13 +97,18 @@ interface DraftParallelTarget {
 
   // New per-branch overrides (all optional; null/undefined = inherit
   // from draft-level lead value)
+
+  // ── Phase 1 (SPEC-078, PLAN-070 Phase 1) ─────────────────────
   cwd?: string | null;
   runtimeSessionPolicy?: RuntimeSessionPolicy | null;
-  promptOverride?: string | null;
-  taskRef?: TaskRef | null;
-  audienceKeys?: string[] | null;     // absorbs parallelBranchAudienceKeys[i]
-  workflowShape?: DraftRoomWorkflowShape | null;  // absorbs parallelBranchWorkflowShapes[i]
-  attachmentsOverride?: AttachmentRef[] | null;   // future-reserved; not Phase 1
+  audienceKeys?: string[] | null;                  // flattens DraftParallelBranchState.audienceKeys
+  workflowShape?: DraftRoomWorkflowShape | null;   // flattens DraftParallelBranchState.workflowShape
+  attachmentsOverride?: AttachmentRef[] | null;    // schema-reserved; dispatch rejects non-null
+
+  // ── Phase 3 (NOT in Phase 1 schema; placeholders deliberately
+  //            NOT added early to avoid premature contract speculation)
+  //   promptOverride?: string | null;
+  //   taskRef?: TaskRef | null;
 }
 ```
 
@@ -112,20 +119,31 @@ the override and the chrome flips from "Follows lead" to "Detached".
 
 ### 2. Lead-default fallback is explicit and centralized
 
-A small set of resolution helpers (likely in `draftChatUtils.ts` or a
-new `draftBranchResolution.ts`) computes the effective per-branch
-value at render / submit time:
+A small set of resolution helpers (in a new
+`draftBranchResolution.ts`) computes the effective per-branch value
+at render / submit time. SPEC-078 defines the concrete Phase-1
+subset; the shape is:
 
 ```ts
-function resolveBranchCwd(target: DraftParallelTarget, leadCwd: string | null): string | null
-function resolveBranchSessionPolicy(target, leadPolicy): RuntimeSessionPolicy
-function resolveBranchPrompt(target, leadPrompt: string): string
-// ...etc
+// Phase 1 helpers
+function resolveBranchCwd(target: DraftParallelTarget, lead): string | null
+function resolveBranchSessionPolicy(target, lead): RuntimeSessionPolicy | null
+function resolveBranchAudienceKeys(target, lead): string[]
+function resolveBranchWorkflowShape(target, lead): DraftRoomWorkflowShape
+function resolveBranchAttachments(target, lead): File[]   // Phase 1: always lead.draftFiles
+function resolveBranch(target, lead): ResolvedBranch      // aggregate
+
+// Phase 3 additions (NOT shipped in Phase 1):
+//   function resolveBranchPrompt(target, lead): string
+//   function resolveBranchTaskRef(target): TaskRef | null
 ```
 
 Renderer and dispatch code go through these helpers — no caller
 hand-rolls "if target.cwd != null then target.cwd else draftCwd"
-inline. This keeps the inheritance contract in one file.
+inline. This keeps the inheritance contract in one file. Phase-1
+callers read the lead prompt directly from `lead.composerDraft`
+(no stub `resolveBranchPrompt` that would exist only to return the
+lead value every time).
 
 ### 3. Parallel arrays for audience / workflow are deprecated, then removed
 
@@ -230,16 +248,25 @@ indistinguishable from a draft a user clicked together by hand. No
   in `src/products/chat/api/contracts.ts`) does need to grow.
   Today it carries a single group-level `repoPath` and a `targets`
   array of provider/model tuples (`ParallelChatTarget`); per-target
-  cwd or session policy cannot round-trip. SPEC-078 / PLAN-070
-  Phase 1 extend the create-input shape with optional per-target
-  `cwd` / `runtimeSessionPolicy`, and update the product-owned
-  parallel-group create path (the Chat route handler at
+  cwd or session policy cannot round-trip, and there's no
+  group-level `runtimeSessionPolicy` at all — a per-target `null`
+  would collapse to a server-side default instead of inheriting
+  the lead draft's policy. SPEC-078 / PLAN-070 Phase 1 extend the
+  create-input shape with (a) a new group-level
+  `runtimeSessionPolicy` field mirroring the existing group-level
+  `repoPath`, and (b) optional per-target `cwd` /
+  `runtimeSessionPolicy` overrides. The product-owned parallel-
+  group create path (the Chat route handler at
   `src/products/chat/api/resources/parallelChatGroupCrudRoutes.ts`
   and the state-model consumer at
   `src/products/chat/state/model/index.ts`, per ADR-067 — **not**
-  `src/app/server/**`) to resolve those overrides into each child
-  `CreateChatChannelInput`. This contract change is in scope for
-  Phase 1 because no Phase 2 UI affordance can ship without it.
+  `src/app/server/**`) resolves per-target overrides against the
+  group-level lead defaults before materializing each child
+  `CreateChatChannelInput`. The renderer's submit path also needs
+  to populate the new group-level field from
+  `draftRuntimeSessionPolicy` at submit time. This contract change
+  is in scope for Phase 1 because no Phase 2 UI affordance can
+  ship without it.
 - ADR-071 (runtime session policy boundary validation) continues to
   apply — per-branch policies still go through the same
   reject-invalid-combinations gate, now invoked per resolved

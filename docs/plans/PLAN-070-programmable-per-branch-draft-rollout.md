@@ -72,12 +72,16 @@ order once Phase 1 lands.
       target where every new field is undefined.
 - [ ] Task 1.2: Add the resolution module
       `src/products/shared/renderer/draftBranchResolution.ts`
-      exporting `resolveBranchCwd`, `resolveBranchSessionPolicy`,
-      `resolveBranchPrompt`, `resolveBranchAudienceKeys`,
-      `resolveBranchWorkflowShape`, `resolveBranchTaskRef`,
-      `resolveBranchAttachments`, and the aggregate
-      `resolveBranch(target, leadContext) → ResolvedBranch` per
-      SPEC-078 § Resolution Helpers.
+      exporting the **Phase 1 subset** of helpers defined in
+      SPEC-078 § Resolution Helpers: `resolveBranchCwd`,
+      `resolveBranchSessionPolicy`, `resolveBranchAudienceKeys`,
+      `resolveBranchWorkflowShape`, `resolveBranchAttachments`,
+      and the aggregate `resolveBranch(target, leadContext) →
+      ResolvedBranch`. Do **not** ship `resolveBranchPrompt` or
+      `resolveBranchTaskRef` in Phase 1 — those are Phase 3
+      additions that arrive together with `promptOverride` /
+      `taskRef` on `DraftParallelTarget`. Phase-1 callers read
+      the lead prompt directly from `leadContext.composerDraft`.
 - [ ] Task 1.3: Flatten the existing `DraftParallelBranchState<T>`
       wrapper onto the target.
       - Correction from the previous plan draft: there **is** a
@@ -129,17 +133,31 @@ order once Phase 1 lands.
 - [ ] Task 1.6: **Extend the parallel-group create contract** in
       `src/products/chat/api/contracts.ts` so per-branch cwd /
       session policy can round-trip at group-creation time.
-      `CreateParallelChatGroupInput.targets` element gains
-      optional `cwd?: string | null` and
-      `runtimeSessionPolicy?: RuntimeSessionPolicy | null`; the
-      group-level `repoPath` stays as the lead default. The
-      read-model `ParallelChatTarget` itself does not grow —
-      per-channel `repoPath` is already projected onto the
-      resulting `ChatChannelView`. Mirror the same extension in
-      `src/products/shared/renderer/api/chat.ts`, which re-declares
-      the same input shape for the renderer-side client.
-      Without this, Phase 2's per-branch cwd UI ships nowhere it
-      can write to.
+      Two coordinated extensions:
+      - `CreateParallelChatGroupInput.targets` element gains
+        optional `cwd?: string | null` and
+        `runtimeSessionPolicy?: RuntimeSessionPolicy | null`.
+      - Add a new **group-level** `runtimeSessionPolicy?: RuntimeSessionPolicy | null`
+        field on `CreateParallelChatGroupInput` itself, mirroring
+        the existing group-level `repoPath`. This is the lead
+        default that per-target `runtimeSessionPolicy` falls
+        back to; without it, a per-target `null` would collapse
+        to a server-side default instead of inheriting the
+        lead draft's policy.
+      - The read-model `ParallelChatTarget` itself does not grow
+        — per-channel `repoPath` / session policy are already
+        projected onto the resulting `ChatChannelView`.
+      - Mirror the same extension (both group-level and
+        per-target) in `src/products/shared/renderer/api/chat.ts`,
+        which re-declares the input shape for the renderer-side
+        client.
+      - Update the renderer's parallel-group submit path to
+        populate the new group-level `runtimeSessionPolicy` from
+        `draftRuntimeSessionPolicy` at submit time — without
+        this wiring, the contract field is nominally present
+        but never carries a real lead policy.
+      - Without these, Phase 2's per-branch cwd / session policy
+        UI ships nowhere it can write to.
 - [ ] Task 1.7: **Update the product-owned parallel-group create
       path** to consume the extended contract. Per ADR-067, this
       is product-owned, not in `src/app/server/**`. Touch both
@@ -147,19 +165,22 @@ order once Phase 1 lands.
       - `src/products/chat/api/resources/parallelChatGroupCrudRoutes.ts`
         — the product's HTTP route handler parses
         `CreateParallelChatGroupInput`. Pass the new per-target
-        overrides through without collapsing them to the group
-        default at this layer.
+        overrides and the new group-level `runtimeSessionPolicy`
+        through without collapsing them at this layer.
       - `src/products/chat/state/model/index.ts` — the state
         model's `createParallelChatGroup`-equivalent consumer is
         where the group's child channels are materialized. For
-        each target, resolve `cwd` against the group's
-        `repoPath` and `runtimeSessionPolicy` against a
-        group-level default, then forward the resolved
-        per-channel values via the existing
-        `RuntimeSessionCreateContractInput` mix-in to each child
-        `CreateChatChannelInput`. Run ADR-071 validation per
-        resolved per-channel policy; reject the whole group
-        create with a per-target error if any child fails.
+        each target:
+        - Resolve `cwd` against the group's `repoPath` (existing
+          lead default field).
+        - Resolve `runtimeSessionPolicy` against the new
+          group-level `runtimeSessionPolicy` lead default.
+        - Forward the resolved per-channel values via the
+          existing `RuntimeSessionCreateContractInput` mix-in to
+          each child `CreateChatChannelInput`.
+        - Run ADR-071 validation per resolved per-channel
+          policy; reject the whole group create with a
+          per-target error if any child fails.
 - [ ] Task 1.8: Dispatch rejects a target whose
       `attachmentsOverride` is non-null — Phase 1 does not
       implement per-branch attachments. Clear error message
@@ -302,14 +323,23 @@ Phase 2 / Phase 3 surfaces will be listed when they're scheduled.
     don't inadvertently change behaviour).
 - Contract / server tests:
   - `CreateParallelChatGroupInput` with no per-target overrides
-    produces the same per-channel inputs as today.
+    and no group-level `runtimeSessionPolicy` produces the same
+    per-channel inputs as today (server default applies).
+  - `CreateParallelChatGroupInput` with a group-level
+    `runtimeSessionPolicy` and no per-target overrides
+    propagates the group policy to every child channel.
   - Per-target `cwd` overrides surface as the corresponding
     per-channel `repoPath`; missing per-target `cwd` falls back
     to the group's `repoPath`.
-  - Per-target `runtimeSessionPolicy` overrides flow into the
-    per-channel `RuntimeSessionCreateContractInput` mix-in;
-    ADR-071 rejection on a single target rejects the whole group
-    create with a per-target error message.
+  - Per-target `runtimeSessionPolicy` overrides surface on the
+    corresponding per-channel `RuntimeSessionCreateContractInput`
+    mix-in; missing per-target `runtimeSessionPolicy` falls back
+    to the group-level `runtimeSessionPolicy`, then to server
+    default. ADR-071 rejection on a single target rejects the
+    whole group create with a per-target error message.
+  - Renderer submit populates group-level
+    `runtimeSessionPolicy` from `draftRuntimeSessionPolicy`
+    when the lead draft has a concrete policy.
 
 ### Phase 2 exit criteria
 

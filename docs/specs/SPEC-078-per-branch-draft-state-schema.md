@@ -324,47 +324,66 @@ The `CreateParallelChatGroupInput` contract in
 
 Per-branch cwd and per-branch session policy *cannot* round-trip
 through that contract today. To deliver Phase 2 of PLAN-070, we
-extend the contract:
+extend the contract with BOTH group-level lead defaults AND
+per-target overrides:
 
-1. Add optional per-target overrides on the parallel-group create
+1. Add a new **group-level** `runtimeSessionPolicy` field to
+   `CreateParallelChatGroupInput` itself, mirroring the existing
+   group-level `repoPath`. This carries the lead draft's policy
+   so per-target `runtimeSessionPolicy = null` can inherit it.
+   Without this field, a null per-target policy would collapse to
+   a server-side default, not the lead draft's policy.
+2. Add optional per-target overrides on the parallel-group create
    input shape:
 
    ```ts
-   targets: Array<ParallelChatTarget & {
-     audienceKeys?: string[];
-     // New, optional, all null/undefined = inherit from group level:
-     cwd?: string | null;
-     runtimeSessionPolicy?: RuntimeSessionPolicy | null;
-   }>;
+   interface CreateParallelChatGroupInput {
+     title: string;
+     originSurface: PlatformSurfaceId;
+     repoPath?: string;                                    // existing — lead default for per-target `cwd`
+     runtimeSessionPolicy?: RuntimeSessionPolicy | null;   // NEW — lead default for per-target `runtimeSessionPolicy`
+     responseLanguage?: string;
+     targets: Array<ParallelChatTarget & {
+       audienceKeys?: string[];
+       // New, optional, all null/undefined = inherit from group level:
+       cwd?: string | null;
+       runtimeSessionPolicy?: RuntimeSessionPolicy | null;
+     }>;
+     participantCatIds?: string[];
+     temporaryParticipants?: CreateTemporaryParticipantInput[];
+   }
    ```
 
-2. The group-level `repoPath` stays — it's the lead default that
-   per-target `cwd` falls back to, matching the renderer's
-   lead-default rule.
-3. Server-side create handler must:
-   - Read each target's `cwd` (falling back to the group's
-     `repoPath` when null) and pass that as the per-channel `repoPath`
-     when materializing the corresponding `CreateChatChannelInput`.
-   - Read each target's `runtimeSessionPolicy` (falling back to a
-     group-level default if we add one, or to `null = renderer
-     resolves to lead's policy at submit`) and forward it via the
-     existing `RuntimeSessionCreateContractInput` mix-in on the
-     per-channel create.
-   - Run ADR-071 validation per resolved per-channel policy; reject
-     the whole group create if any child fails.
-4. `ParallelChatTarget` itself (the runtime-facing read model used
+3. The renderer's parallel-group submit path populates the new
+   group-level `runtimeSessionPolicy` from
+   `draftRuntimeSessionPolicy` at submit time — without this
+   wiring, the contract field is nominally present but never
+   carries a real lead policy.
+4. The parallel-group create handler (product-owned, see
+   § Surfaces Affected) resolves per-target overrides against the
+   group-level lead defaults:
+   - Each target's effective `cwd` = `target.cwd ?? group.repoPath`
+     (passed as the per-channel `repoPath`).
+   - Each target's effective `runtimeSessionPolicy` =
+     `target.runtimeSessionPolicy ?? group.runtimeSessionPolicy ??
+     serverDefault` (forwarded via the existing
+     `RuntimeSessionCreateContractInput` mix-in on the per-channel
+     create).
+   - ADR-071 validation runs per resolved per-channel policy;
+     reject the whole group create if any child fails.
+5. `ParallelChatTarget` itself (the runtime-facing read model used
    by `ParallelChatGroupMemberSummary`) does not need to grow —
-   the per-channel `repoPath` is already projected onto each
-   `ChatChannelView`. The contract change is on the create-input
-   side only.
+   the per-channel `repoPath` and session policy are already
+   projected onto each `ChatChannelView`. The contract change is
+   on the create-input side only.
 
 This contract change is in scope for **PLAN-070 Phase 1** because
 no Phase 2 UI work can land usefully without it. Once the contract
-exists with sane defaults (every per-target field nullable,
-inheriting group defaults), Phase 1 ships the schema + resolution
-+ wire change together, even though nothing in the UI yet *writes*
-to the new fields. Phase 2 then attaches the UI affordances that
-populate them.
+exists with sane defaults (group-level field present, per-target
+fields nullable inheriting group defaults), Phase 1 ships the
+schema + resolution + wire change together, even though nothing
+in the UI yet *writes* to the new fields. Phase 2 then attaches
+the UI affordances that populate them.
 
 ## Invariants and Rejection Rules
 
