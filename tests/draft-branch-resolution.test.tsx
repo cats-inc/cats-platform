@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  assertNoBranchAttachmentOverrides,
   resolveBranch,
   resolveBranchAttachments,
   resolveBranchAudienceKeys,
@@ -107,4 +108,21 @@ test('lead branch overrides equal to lead defaults resolve without changing valu
   assert.equal(resolved.effectiveSessionPolicy, leadPolicy);
   assert.deepEqual(resolved.effectiveAudienceKeys, ['cat:lead', 'temp:reviewer']);
   assert.equal(resolved.effectiveWorkflowShape, lead.draftWorkflowShape);
+});
+
+test('dispatch guard rejects reserved per-branch attachment overrides', () => {
+  assert.throws(
+    () => assertNoBranchAttachmentOverrides([
+      createTarget(),
+      createTarget({
+        attachmentsOverride: [{ relativePath: 'branch-only.txt' }],
+      }),
+    ]),
+    /Branch 2: attachments are not yet per-branch; remove the override\./u,
+  );
+
+  assert.doesNotThrow(() => assertNoBranchAttachmentOverrides([
+    createTarget({ attachmentsOverride: null }),
+    createTarget(),
+  ]));
 });

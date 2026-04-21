@@ -137,3 +137,52 @@ test('buildParallelChatDraftCreateInput normalizes nullable fields for code-owne
     },
   ]);
 });
+
+test('buildParallelChatDraftCreateInput rejects reserved per-branch attachment overrides', () => {
+  assert.throws(
+    () => buildParallelChatDraftCreateInput({
+      body: 'Reserved attachments should not dispatch',
+      existingCount: 0,
+      originSurface: 'code',
+      draftCwd: null,
+      draftParallelChatTargets: [
+        {
+          provider: 'claude',
+          instance: null,
+          model: 'claude-opus-4-6',
+          modelSelection: null,
+        },
+        {
+          provider: 'codex',
+          instance: null,
+          model: 'gpt-5.4',
+          modelSelection: null,
+        },
+      ],
+      draftParallelBranches: [
+        {
+          target: {
+            provider: 'claude',
+            instance: null,
+            model: 'claude-opus-4-6',
+            modelSelection: null,
+          },
+          audienceKeys: [],
+          workflowShape: 'sequential',
+        },
+        {
+          target: {
+            provider: 'codex',
+            instance: null,
+            model: 'gpt-5.4',
+            modelSelection: null,
+            attachmentsOverride: [{ relativePath: 'branch-only.txt' }],
+          },
+          audienceKeys: [],
+          workflowShape: 'sequential',
+        },
+      ],
+    }),
+    /Branch 2: attachments are not yet per-branch; remove the override\./u,
+  );
+});

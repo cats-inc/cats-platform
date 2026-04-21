@@ -2,6 +2,9 @@ import type { RuntimeSessionPolicy } from '../../../shared/runtimeSessionPolicy.
 import type { DraftRoomWorkflowShape } from '../../../shared/roomRouting.js';
 import type { DraftParallelTarget } from './draftChatUtils.js';
 
+const BRANCH_ATTACHMENT_OVERRIDE_ERROR =
+  'attachments are not yet per-branch; remove the override';
+
 export interface DraftLeadContext {
   composerDraft: string;
   draftCwd: string | null;
@@ -68,6 +71,16 @@ export function resolveBranchAttachments(
   lead: DraftLeadContext,
 ): File[] {
   return lead.draftFiles;
+}
+
+export function assertNoBranchAttachmentOverrides(
+  targets: readonly Pick<DraftParallelTarget, 'attachmentsOverride'>[],
+): void {
+  const index = targets.findIndex((target) => target.attachmentsOverride != null);
+  if (index === -1) {
+    return;
+  }
+  throw new Error(`Branch ${index + 1}: ${BRANCH_ATTACHMENT_OVERRIDE_ERROR}.`);
 }
 
 export function resolveBranch(

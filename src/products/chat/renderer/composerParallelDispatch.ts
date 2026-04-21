@@ -14,6 +14,7 @@ import {
 } from './chatUtils.js';
 import { buildChannelPath as buildChatChannelPath } from '../shared/channelPaths.js';
 import type { DraftParallelBranchState } from '../../shared/renderer/draftParallelBranches.js';
+import { assertNoBranchAttachmentOverrides } from '../../shared/renderer/draftBranchResolution.js';
 
 export interface ParallelDispatchRequestState {
   kind: 'parallel';
@@ -76,6 +77,9 @@ export async function submitNewParallelChatDraft({
   if (draftParallelChatTargets.length < 2) {
     throw new Error('Choose at least two parallel chats before sending.');
   }
+  const branchTargets = draftParallelChatTargets.map((target, index) =>
+    draftParallelBranches[index]?.target ?? target);
+  assertNoBranchAttachmentOverrides(branchTargets);
 
   const created = await createParallelChatGroup({
     title: createDraftChannelTitle(body, payload.chat.channels.length),
@@ -84,8 +88,8 @@ export async function submitNewParallelChatDraft({
     ...(draftSessionPolicy === undefined
       ? {}
       : { runtimeSessionPolicy: draftSessionPolicy }),
-    targets: draftParallelChatTargets.map((target, index) => {
-      const branchTarget = draftParallelBranches[index]?.target;
+    targets: branchTargets.map((target, index) => {
+      const branchTarget = draftParallelBranches[index]?.target ?? target;
       return {
         provider: target.provider,
         instance: target.instance ?? null,

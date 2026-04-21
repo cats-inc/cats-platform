@@ -12,6 +12,7 @@ import {
   resolveDraftAudienceParticipantIds,
   type DraftTemporaryParticipant,
 } from './draftChatUtils.js';
+import { assertNoBranchAttachmentOverrides } from './draftBranchResolution.js';
 import { createDraftChannelTitle } from './workspaceChatUtils.js';
 import type { DraftParallelBranchState } from './draftParallelBranches.js';
 
@@ -70,6 +71,10 @@ export function buildParallelChatDraftCreateInput(input: {
   draftParticipantCatIds?: string[];
   draftTemporaryParticipants?: DraftTemporaryParticipant[];
 }): CreateParallelChatGroupInput {
+  const branchTargets = input.draftParallelChatTargets.map((target, index) =>
+    input.draftParallelBranches[index]?.target ?? target);
+  assertNoBranchAttachmentOverrides(branchTargets);
+
   return {
     title: createDraftChannelTitle(input.body, input.existingCount),
     originSurface: input.originSurface,
@@ -77,8 +82,8 @@ export function buildParallelChatDraftCreateInput(input: {
     ...(input.draftSessionPolicy === undefined
       ? {}
       : { runtimeSessionPolicy: input.draftSessionPolicy }),
-    targets: input.draftParallelChatTargets.map((target, index) => {
-      const branchTarget = input.draftParallelBranches[index]?.target;
+    targets: branchTargets.map((target, index) => {
+      const branchTarget = input.draftParallelBranches[index]?.target ?? target;
       return {
         provider: target.provider,
         instance: target.instance ?? null,
