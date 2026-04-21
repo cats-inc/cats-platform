@@ -110,6 +110,107 @@ test('parallel chat client uses canonical parallel-chat-groups endpoints', async
   ]);
 });
 
+test('parallel chat client posts detached branch cwd and runtime policy fields', async () => {
+  const originalFetch = globalThis.fetch;
+  const requests: Array<{ url: string; method: string; body: unknown }> = [];
+
+  globalThis.fetch = async (input, init = {}) => {
+    requests.push({
+      url: String(input),
+      method: init.method ?? 'GET',
+      body: typeof init.body === 'string' ? JSON.parse(init.body) : null,
+    });
+
+    return new Response(JSON.stringify({
+      appShell: { chat: { selectedChannelId: 'channel-1' } },
+      group: {
+        id: 'group-1',
+        memberChannelIds: ['channel-1', 'channel-2'],
+        members: [],
+      },
+    }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  };
+
+  try {
+    await createParallelChatGroup({
+      title: 'Peer Code',
+      originSurface: 'code',
+      repoPath: 'C:/repo/main',
+      runtimeSessionPolicy: {
+        workspaceKind: 'source',
+        workspaceAccess: 'read_write',
+        permissionMode: 'skip',
+      },
+      targets: [
+        {
+          provider: 'claude',
+          instance: null,
+          model: 'claude-opus-4-6',
+          modelSelection: null,
+        },
+        {
+          provider: 'codex',
+          instance: null,
+          model: 'gpt-5.4',
+          modelSelection: null,
+          cwd: 'C:/repo/worktrees/right',
+          runtimeSessionPolicy: {
+            workspaceKind: 'worktree',
+            workspaceAccess: 'read_only',
+            permissionMode: 'default',
+          },
+        },
+      ],
+      participantCatIds: [],
+      temporaryParticipants: [],
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.deepEqual(requests, [
+    {
+      url: '/api/parallel-chat-groups',
+      method: 'POST',
+      body: {
+        title: 'Peer Code',
+        originSurface: 'code',
+        repoPath: 'C:/repo/main',
+        runtimeSessionPolicy: {
+          workspaceKind: 'source',
+          workspaceAccess: 'read_write',
+          permissionMode: 'skip',
+        },
+        targets: [
+          {
+            provider: 'claude',
+            instance: null,
+            model: 'claude-opus-4-6',
+            modelSelection: null,
+          },
+          {
+            provider: 'codex',
+            instance: null,
+            model: 'gpt-5.4',
+            modelSelection: null,
+            cwd: 'C:/repo/worktrees/right',
+            runtimeSessionPolicy: {
+              workspaceKind: 'worktree',
+              workspaceAccess: 'read_only',
+              permissionMode: 'default',
+            },
+          },
+        ],
+        participantCatIds: [],
+        temporaryParticipants: [],
+      },
+    },
+  ]);
+});
+
 test('parallel chat resource route keeps the legacy concurrent-groups alias', () => {
   const source = readFileSync(
     path.join(

@@ -238,6 +238,9 @@ order once Phase 1 lands.
       controls and opens the folder picker scoped to that branch.
       Session-policy detach and permission edit controls are wired;
       branch workspace-mode editing is still pending.
+      Focused API client coverage now asserts detached branch cwd and
+      runtime policy fields are present in the parallel-group create
+      POST body.
 - [ ] Task 2.1: UX for per-branch cwd detach.
       - Non-lead card's `composerFollowsLeadChip` gains a click
         target that opens the side-panel cwd picker scoped to the
