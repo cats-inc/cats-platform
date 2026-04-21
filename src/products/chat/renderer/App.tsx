@@ -1463,7 +1463,8 @@ export default function App() {
                       ? onSetDraftParallelBranchCwd
                       : undefined,
                   onSetParallelBranchRuntimeSessionPolicy:
-                    draftRoute.isGenericNewChatRoute
+                    advancedDraftControlsEnabled
+                      && draftRoute.isGenericNewChatRoute
                       && hasVisibleParallelDraftTargets
                       ? onSetDraftParallelBranchRuntimeSessionPolicy
                       : undefined,

@@ -1318,7 +1318,34 @@ test('parallel shadow branch following lead exposes the branch folder picker whe
   assert.match(markup, /aria-label="Choose branch folder"/u);
 });
 
-test('parallel shadow branch with detached runtime policy renders a relinkable policy chip', () => {
+test('parallel shadow branch following lead exposes the session policy detach control when wired', () => {
+  const leadTarget = { provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null } as const;
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        selectedExecutionTarget: leadTarget,
+        parallelTargets: [
+          { ...leadTarget, audienceKeys: [], workflowShape: 'sequential' },
+          {
+            provider: 'codex-cli',
+            instance: null,
+            model: 'codex-max',
+            modelSelection: null,
+            audienceKeys: [],
+            workflowShape: 'sequential',
+          },
+        ],
+        onSetParallelBranchRuntimeSessionPolicy: () => {},
+        onAddParallelTarget: () => {},
+      })}
+    />,
+  );
+
+  assert.match(markup, /Policy follows lead/u);
+  assert.match(markup, /aria-label="Detach branch session policy"/u);
+});
+
+test('parallel shadow branch with detached runtime policy renders a relinkable policy editor', () => {
   const leadTarget = { provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null } as const;
   const markup = renderToStaticMarkup(
     <NewChatDraft
@@ -1346,7 +1373,8 @@ test('parallel shadow branch with detached runtime policy renders a relinkable p
     />,
   );
 
-  assert.match(markup, /composerBranchPolicyChip/u);
+  assert.match(markup, /composerBranchPolicyControl/u);
+  assert.match(markup, /composerPermissionChip/u);
   assert.match(markup, /Worktree \/ Read only/u);
   assert.match(markup, /aria-label="Re-link branch session policy to lead"/u);
 });

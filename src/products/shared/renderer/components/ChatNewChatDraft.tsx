@@ -44,8 +44,13 @@ import {
 import { resolveChatNewChatDraftViewState } from './chatNewChatDraftSupport.js';
 import { useChatNewChatDraftPanelState } from './useChatNewChatDraftPanelState.js';
 import type { DraftRoomWorkflowShape } from '../../../../shared/roomRouting.js';
-import type {
-  RuntimeSessionPolicy,
+import {
+  completeRuntimeSessionPolicy,
+  createDefaultRuntimeSessionPolicy,
+  resolveCreateRuntimeSessionPolicy,
+  resolveDraftPermissionModeFromRuntimeAccess,
+  resolveRuntimePermissionPolicyFromDraft,
+  type RuntimeSessionPolicy,
 } from '../../../../shared/runtimeSessionPolicy.js';
 import {
   buildAudienceParticipantFromCat,
@@ -53,6 +58,7 @@ import {
   buildAudienceParticipantFromTemporaryParticipant,
 } from '../audienceParticipantBuilder.js';
 import { AudienceChip } from './AudienceChip.js';
+import { PermissionModeChip } from './PermissionModeChip.js';
 
 export interface NewChatDraftProps {
   payload: AppShellPayload;
@@ -330,6 +336,32 @@ export function NewChatDraft({
     const permissionLabel = policy.workspaceAccess === 'read_only' ? 'Read only' : 'Full access';
     return `${workspaceLabel} / ${permissionLabel}`;
   }
+
+  function resolveDraftBranchRuntimeSessionPolicy(target: DraftParallelTarget): RuntimeSessionPolicy {
+    return resolveCreateRuntimeSessionPolicy({
+      repoPath: target.cwd ?? draftCwd,
+      policy: target.runtimeSessionPolicy
+        ?? draftRuntimeSessionPolicy
+        ?? createDefaultRuntimeSessionPolicy(),
+    });
+  }
+
+  function updateDraftBranchRuntimePermission(
+    branchIndex: number,
+    target: DraftParallelTarget,
+    permissionMode: 'full' | 'read_only',
+  ): void {
+    const currentPolicy = target.runtimeSessionPolicy
+      ?? resolveDraftBranchRuntimeSessionPolicy(target);
+    onSetParallelBranchRuntimeSessionPolicy?.(
+      branchIndex,
+      completeRuntimeSessionPolicy({
+        workspaceKind: currentPolicy.workspaceKind,
+        ...resolveRuntimePermissionPolicyFromDraft(permissionMode),
+      }),
+    );
+  }
+
   function resolveParallelBranchWorkflowShape(
     branchIndex: number,
   ): DraftRoomWorkflowShape {
@@ -978,6 +1010,8 @@ export function NewChatDraft({
     const showCompareHint = accentParallelAddButton && !hideDraftParallelHint;
     const branchCwd = target.cwd?.trim() || null;
     const branchSessionPolicy = target.runtimeSessionPolicy ?? null;
+    const canEditBranchSessionPolicy = onSetParallelBranchRuntimeSessionPolicy != null;
+    const effectiveBranchSessionPolicy = resolveDraftBranchRuntimeSessionPolicy(target);
 
     return (
       <>
@@ -1028,7 +1062,30 @@ export function NewChatDraft({
                 <span>Follows lead</span>
               </span>
             )}
-            {branchSessionPolicy ? (
+            {branchSessionPolicy && canEditBranchSessionPolicy ? (
+              <div
+                className="composerBranchPolicyControl"
+                data-tooltip={formatBranchRuntimeSessionPolicy(branchSessionPolicy)}
+              >
+                <PermissionModeChip
+                  value={resolveDraftPermissionModeFromRuntimeAccess(
+                    branchSessionPolicy.workspaceAccess,
+                  )}
+                  onChange={(nextMode) =>
+                    updateDraftBranchRuntimePermission(branchIndex, target, nextMode)}
+                  disabled={isSubmittingFirstTurn}
+                />
+                <button
+                  className="composerChipClose"
+                  type="button"
+                  disabled={isSubmittingFirstTurn}
+                  onClick={() => onSetParallelBranchRuntimeSessionPolicy(branchIndex, null)}
+                  aria-label="Re-link branch session policy to lead"
+                >
+                  &times;
+                </button>
+              </div>
+            ) : branchSessionPolicy ? (
               <span
                 className="composerSelectChip composerPermissionChip composerBranchPolicyChip"
                 data-tooltip={formatBranchRuntimeSessionPolicy(branchSessionPolicy)}
@@ -1037,18 +1094,24 @@ export function NewChatDraft({
                   <path d="M8 1.5l5.5 2v4c0 3.3-2.4 6.2-5.5 7-3.1-.8-5.5-3.7-5.5-7v-4z" />
                 </svg>
                 <span>{formatBranchRuntimeSessionPolicy(branchSessionPolicy)}</span>
-                {onSetParallelBranchRuntimeSessionPolicy ? (
-                  <button
-                    className="composerChipClose"
-                    type="button"
-                    disabled={isSubmittingFirstTurn}
-                    onClick={() => onSetParallelBranchRuntimeSessionPolicy(branchIndex, null)}
-                    aria-label="Re-link branch session policy to lead"
-                  >
-                    &times;
-                  </button>
-                ) : null}
               </span>
+            ) : canEditBranchSessionPolicy ? (
+              <button
+                type="button"
+                className="composerFollowsLeadChip composerFollowsLeadChipClickable"
+                disabled={isSubmittingFirstTurn}
+                onClick={() =>
+                  onSetParallelBranchRuntimeSessionPolicy(
+                    branchIndex,
+                    effectiveBranchSessionPolicy,
+                  )}
+                aria-label="Detach branch session policy"
+              >
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M8 1.5l5.5 2v4c0 3.3-2.4 6.2-5.5 7-3.1-.8-5.5-3.7-5.5-7v-4z" />
+                </svg>
+                <span>Policy follows lead</span>
+              </button>
             ) : null}
           </div>
         </div>

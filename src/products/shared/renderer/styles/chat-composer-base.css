@@ -949,6 +949,17 @@
   text-overflow: ellipsis;
 }
 
+.composerBranchPolicyControl {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+
+.composerBranchPolicyControl .composerSelectChip {
+  padding-right: 8px;
+}
+
 .composerSelectChipMenu {
   position: absolute;
   top: calc(100% + 6px);

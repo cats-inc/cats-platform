@@ -1709,7 +1709,8 @@ export function createWorkspaceProductApp({
                         ? onSetDraftParallelBranchCwd
                         : undefined,
                     onSetParallelBranchRuntimeSessionPolicy:
-                      supportsStructuredDraftModes
+                      advancedDraftControlsEnabled
+                        && supportsStructuredDraftModes
                         && showingGenericNewChatDraft
                         && hasVisibleParallelDraftTargets
                         ? onSetDraftParallelBranchRuntimeSessionPolicy

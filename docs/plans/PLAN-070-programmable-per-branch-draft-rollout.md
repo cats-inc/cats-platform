@@ -236,7 +236,8 @@ order once Phase 1 lands.
       clears the branch override back to lead inheritance. The branch
       cwd "Follows lead" chip is now clickable under advanced draft
       controls and opens the folder picker scoped to that branch.
-      Session-policy edit controls are still pending.
+      Session-policy detach and permission edit controls are wired;
+      branch workspace-mode editing is still pending.
 - [ ] Task 2.1: UX for per-branch cwd detach.
       - Non-lead card's `composerFollowsLeadChip` gains a click
         target that opens the side-panel cwd picker scoped to the
