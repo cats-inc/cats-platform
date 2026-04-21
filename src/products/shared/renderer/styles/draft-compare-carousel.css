@@ -1,0 +1,166 @@
+/* Horizontal 3D carousel for compare/parallel composer cards.
+ *
+ * Structure produced by DraftCompareCarousel.tsx:
+ *   .draftCompareCarousel
+ *     .draftCompareCarouselTrack        (grid, hosts cards + nav buttons)
+ *       .draftCompareCarouselNav×2      (prev / next, absolute)
+ *       .draftCompareCarouselCard×N     (grid-cell overlay, active in flow)
+ *     .draftCompareCarouselDots         (horizontal pagination dots)
+ *
+ * The track uses CSS grid (single 1fr column, place-items: center) so
+ * every card wrapper sits in the same cell — the active card stays at
+ * identity transform and drives the cell height, while peeks overlay
+ * the same cell via translate/rotateY/scale inline styles. Because
+ * transforms don't contribute to grid sizing, peeks never pad the
+ * carousel vertically.
+ */
+
+.draftCompareCarousel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 14px;
+}
+
+.draftCompareCarouselTrack {
+  position: relative;
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto;
+  place-items: center;
+  perspective: 1600px;
+  perspective-origin: 50% 50%;
+  transform-style: preserve-3d;
+  overflow: visible;
+}
+
+.draftCompareCarouselCard {
+  grid-column: 1;
+  grid-row: 1;
+  width: 100%;
+  max-width: var(--chat-transcript-max-width, 680px);
+  display: flex;
+  flex-direction: column;
+  transform-origin: center center;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  transition:
+    transform 460ms cubic-bezier(0.25, 0.85, 0.25, 1),
+    opacity 380ms ease,
+    filter 320ms ease;
+  will-change: transform, opacity;
+}
+
+.draftCompareCarouselCardActive {
+  pointer-events: auto;
+}
+
+.draftCompareCarouselCardPeek {
+  cursor: pointer;
+  filter: saturate(0.82);
+}
+
+/* The composer's own header / footer rows live inside each card
+ * wrapper; tighten their default margin so the three rows read as
+ * one "travelling" unit during carousel rotation. */
+.draftCompareCarouselCard .composerHeaderRow {
+  margin-bottom: 10px;
+}
+
+.draftCompareCarouselCard .composerFooterRow {
+  margin-top: 10px;
+}
+
+.draftCompareCarouselNav {
+  position: absolute;
+  top: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  transform: translateY(-50%);
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+  z-index: 1200;
+}
+
+.draftCompareCarouselNavPrev {
+  left: -44px;
+}
+
+.draftCompareCarouselNavNext {
+  right: -44px;
+}
+
+.draftCompareCarouselNav:hover:not(:disabled) {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.draftCompareCarouselNav:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+
+/* Pagination dots — same visual language as compareCardsPaginationDot
+ * so the draft builder shares its "you are here" vocabulary with the
+ * chat-view compare carousel. */
+.draftCompareCarouselDots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 0;
+}
+
+.draftCompareCarouselDot {
+  width: 6px;
+  height: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--muted-soft);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.draftCompareCarouselDot:hover:not(.draftCompareCarouselDotActive):not(:disabled) {
+  background: var(--muted);
+}
+
+.draftCompareCarouselDot:disabled {
+  opacity: 0.32;
+  cursor: not-allowed;
+}
+
+.draftCompareCarouselDotActive {
+  background: var(--text);
+  transform: scale(1.2);
+}
+
+/* Non-lead branch's "follows lead" chip, in the slot where the lead's
+ * cwd chip would appear. Purely informational — not clickable. */
+.composerFollowsLeadChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  white-space: nowrap;
+}
+
+.composerFollowsLeadChip svg {
+  flex: 0 0 auto;
+  opacity: 0.75;
+}

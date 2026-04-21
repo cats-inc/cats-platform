@@ -1,4 +1,11 @@
-import { type FormEvent, type KeyboardEvent, type ReactNode, type RefObject } from 'react';
+import {
+  useEffect,
+  useState,
+  type FormEvent,
+  type KeyboardEvent,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
@@ -23,8 +30,11 @@ import { DraftHeader } from './DraftHeader.js';
 import { DraftComposerFooter } from './DraftComposerFooter.js';
 import { DraftComposerStack } from './DraftComposerStack.js';
 import { BranchAudienceRoster } from './BranchAudienceRoster.js';
-import { CollaborateIcon } from './DraftBuilderIcons.js';
-import { ParallelDraftShadowBranchRow } from './ParallelDraftShadowBranchRow.js';
+import { CollaborateIcon, CompareIcon } from './DraftBuilderIcons.js';
+import {
+  DraftCompareCarousel,
+  type DraftCompareCarouselCard,
+} from './DraftCompareCarousel.js';
 import { resolveChatNewChatDraftViewState } from './chatNewChatDraftSupport.js';
 import { useChatNewChatDraftPanelState } from './useChatNewChatDraftPanelState.js';
 import type { DraftRoomWorkflowShape } from '../../../../shared/roomRouting.js';
@@ -211,6 +221,18 @@ export function NewChatDraft({
   preserveHelperChipsOnSelect = false,
 }: NewChatDraftProps) {
   const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
+  const [activeBranchIndex, setActiveBranchIndex] = useState(0);
+  const parallelCount = parallelTargets?.length ?? 0;
+  useEffect(() => {
+    if (!isParallelMode) {
+      if (activeBranchIndex !== 0) setActiveBranchIndex(0);
+      return;
+    }
+    if (activeBranchIndex >= parallelCount) {
+      setActiveBranchIndex(Math.max(0, parallelCount - 1));
+    }
+  }, [activeBranchIndex, isParallelMode, parallelCount]);
+
   const maxAudienceParticipants = payload.chat.capabilities.maxAudienceParticipants ?? 3;
   // Per-branch membership cap. Each branch (lead OR shadow) is its
   // own sub-chat, so maxChatParticipants applies per branch, not to
@@ -412,6 +434,7 @@ export function NewChatDraft({
   const useDangerParallelRemoveHover = entryPreset === 'parallel';
   const accentGroupAddButton = entryPreset === 'group';
   const accentParallelAddButton = entryPreset === 'parallel';
+  const maxParallelChats = payload.chat.capabilities.maxParallelChats ?? 3;
 
   function renderCollaborateAddControl(options: {
     showHint: boolean;
@@ -448,477 +471,651 @@ export function NewChatDraft({
     );
   }
 
+  // ── Hoisted JSX pieces: used by both the parallel-mode carousel
+  // (each branch card stitches header + form + footer together) and
+  // the non-parallel single-card layout (passed to DraftComposerStack).
+
+  const draftHeaderJsx = isDirectLaneContext && defaultRecipientCat ? (
+    <DraftHeader
+      variant="profile"
+      title={defaultRecipientCat.name}
+      avatarName={defaultRecipientCat.name}
+      avatarUrl={defaultRecipientCat.avatarUrl}
+      avatarColor={defaultRecipientCat.avatarColor}
+    />
+  ) : isCatLedDraft && effectiveDefaultRecipientCat ? (
+    <DraftHeader
+      variant="intro"
+      eyebrow="Cat-led Chat"
+      title={`Start with ${effectiveDefaultRecipientCat.name}`}
+      description={`Ask ${effectiveDefaultRecipientCat.name} to take the first pass. Add more Cats anytime, or keep the thread focused.`}
+    />
+  ) : (
+    <DraftHeader
+      variant="intro"
+      title={resolvedGreeting}
+    />
+  );
+
+  const hasComposerHeaderContent = Boolean(
+    surfaceTag
+    || draftCwd
+    || chooseFolderPlacement === 'header'
+    || composerHeaderWhereExtras
+    || composerHeaderAccessory,
+  );
+
+  const composerHeaderRowJsx = hasComposerHeaderContent ? (
+    <div className="composerHeaderRow">
+      <div className="composerHeaderLeft">
+        {surfaceTag}
+        {draftCwd ? (
+          <span
+            className="composerCwdChip composerCwdClickable"
+            data-tooltip={draftCwd}
+            role="button"
+            tabIndex={isSubmittingFirstTurn ? undefined : 0}
+            onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('cwd')}
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
+            </svg>
+            <span>{truncatePath(draftCwd)}</span>
+            <button
+              className="composerChipClose"
+              type="button"
+              disabled={isSubmittingFirstTurn}
+              onClick={(event) => {
+                event.stopPropagation();
+                onDraftCwdClear();
+              }}
+              aria-label="Remove folder"
+            >
+              &times;
+            </button>
+          </span>
+        ) : chooseFolderPlacement === 'header' ? (
+          <button
+            type="button"
+            className="composerHeaderChooseButton"
+            disabled={isSubmittingFirstTurn}
+            onClick={() => openSidePanelTo('cwd')}
+          >
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
+            </svg>
+            <span>{folderActionLabel}</span>
+          </button>
+        ) : null}
+        {composerHeaderWhereExtras}
+      </div>
+      {composerHeaderAccessory ? (
+        <div className="composerHeaderRight">{composerHeaderAccessory}</div>
+      ) : null}
+    </div>
+  ) : null;
+
+  const leadFormJsx = (
+    <form
+      className={`composerCard composerCardFresh${parallelTargets ? ' parallelComposerAnchor' : ''}${plusMenuOpen ? ' composerCardMenuOpen' : ''}`}
+      onSubmit={(event) => void onSendMessage(event)}
+    >
+      {draftFiles.length > 0 ? (
+        <div className="composerAttachments">
+          {draftFiles.map((file, index) => {
+            const isImage = file.type.startsWith('image/');
+            return (
+              <div key={`${file.name}-${file.size}-${index}`} className="attachmentCard">
+                <button
+                  className="attachmentRemove"
+                  type="button"
+                  disabled={isSubmittingFirstTurn}
+                  onClick={() => onDraftFilesChange(draftFiles.filter((_, i) => i !== index))}
+                  aria-label={`Remove ${file.name}`}
+                >
+                  &times;
+                </button>
+                {isImage ? (
+                  <img
+                    className="attachmentPreview"
+                    src={URL.createObjectURL(file)}
+                    alt={file.name}
+                    onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)}
+                  />
+                ) : (
+                  <div className="attachmentFileIcon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <path d="M14 2v6h6" />
+                    </svg>
+                  </div>
+                )}
+                <span className="attachmentName">{file.name}</span>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+      <textarea
+        className="composerInput"
+        rows={1}
+        placeholder={composerPlaceholder}
+        value={composerDraft}
+        disabled={isSubmittingFirstTurn}
+        onChange={(event) => { onComposerChange(event.target.value); autoResize(event.target); }}
+        onKeyDown={(event) => void onComposerKeyDown(event)}
+      />
+      <div className="composerBottomRow">
+        <div className="composerLeftGroup">
+          <div className="composerPlusWrapper" ref={plusMenuRef}>
+            <button
+              className="composerPlusButton"
+              type="button"
+              aria-label="Attach"
+              disabled={isSubmittingFirstTurn}
+              onClick={onTogglePlusMenu}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 3v10" />
+                <path d="M3 8h10" />
+              </svg>
+            </button>
+            {plusMenuOpen ? (
+              <div className="composerPlusMenu">
+                <button
+                  className="composerPlusMenuItem"
+                  type="button"
+                  disabled={isSubmittingFirstTurn}
+                  onClick={onFileSelect}
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 10v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-3" />
+                    <path d="M8 2v8" />
+                    <path d="M4 6l4-4 4 4" />
+                  </svg>
+                  Add photos and files
+                </button>
+                {chooseFolderPlacement === 'plusMenu' ? (
+                  <button
+                    className="composerPlusMenuItem"
+                    type="button"
+                    disabled={isSubmittingFirstTurn}
+                    onClick={() => {
+                      openSidePanelTo('cwd');
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
+                    </svg>
+                    {folderActionLabel}
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+          {shouldRenderGroupAddRow ? (
+            <div className="composerGroupAddRow">
+              <BranchAudienceRoster
+                audienceParticipants={isParallelMode ? leadBranchMembers : groupComposerParticipants}
+                isSubmittingFirstTurn={isSubmittingFirstTurn}
+                canRemoveParticipant={canRemoveGroupParticipant}
+                useDangerRemoveHover={useDangerGroupRemoveHover}
+                onAvatarClick={() => openSidePanelTo('cats')}
+                onRemoveParticipant={(participant) => {
+                  // Parallel mode: the lead row is one branch among
+                  // many. Removing here must stay branch-scoped so
+                  // we don't rip the participant out of the pool
+                  // and break shadow branches that still reference
+                  // it. Pool-level deletion stays in the side panel.
+                  if (isParallelMode) {
+                    if (!onSetParallelBranchAudienceKeys) return;
+                    const nextKeys = leadBranchMembers
+                      .filter((p) => p.key !== participant.key)
+                      .map((p) => p.key);
+                    onSetParallelBranchAudienceKeys(0, nextKeys);
+                    return;
+                  }
+                  if (participant.isCat && participant.catId) {
+                    onToggleDraftCat(participant.catId);
+                  } else if (participant.participantId) {
+                    onRemoveDraftTemporaryParticipant(participant.participantId);
+                  }
+                }}
+              />
+              {renderCollaborateAddControl({
+                showHint: !hideDraftGroupHint,
+                accent: accentGroupAddButton,
+              })}
+            </div>
+          ) : null}
+        </div>
+        <div className="composerRightGroup">
+          {audienceParticipants.length > 0 ? (
+            <AudienceChip
+              audienceParticipants={audienceParticipants}
+              allParticipants={
+                isParallelMode && hasPrimaryParallelBranchAudience
+                  ? groupComposerParticipants
+                  : (isGroupDraft ? groupComposerParticipants : undefined)
+              }
+              onSetAudienceKeys={
+                isParallelMode && hasPrimaryParallelBranchAudience
+                  ? (onSetParallelBranchAudienceKeys
+                    ? (keys) => onSetParallelBranchAudienceKeys(0, keys)
+                    : undefined)
+                  : (isGroupDraft ? onSetAudienceKeys : undefined)
+              }
+              onSingleClick={audienceSingleClick}
+              disabled={isSubmittingFirstTurn}
+              maxSelectedParticipants={
+                (isParallelMode && hasPrimaryParallelBranchAudience) || isGroupDraft
+                  ? maxAudienceParticipants
+                  : undefined
+              }
+              workflowShape={
+                isParallelMode
+                  ? (parallelBranchWorkflowShapes?.[0] ?? draftWorkflowShape)
+                  : draftWorkflowShape
+              }
+              onToggleWorkflowShape={
+                isParallelMode && hasPrimaryParallelBranchAudience
+                  ? (onToggleParallelBranchWorkflowShape
+                    ? () => onToggleParallelBranchWorkflowShape(0)
+                    : undefined)
+                  : (isGroupDraft ? onToggleDraftWorkflowShape : undefined)
+              }
+            />
+          ) : null}
+          {showCancelPendingSend ? (
+            <button
+              className="composerSendButton composerCancelButton"
+              type="button"
+              aria-label="Cancel send"
+              onClick={() => onCancelPendingSend?.()}
+            >
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
+                <path d="M4 4l6 6" />
+                <path d="M10 4l-6 6" />
+              </svg>
+            </button>
+          ) : (
+            <button
+              className="composerSendButton"
+              disabled={!composerDraft.trim() || isSubmittingFirstTurn || (isGroupDraft && draftParticipantCount < 2)}
+              type="submit"
+              aria-label={isParallelMode ? 'Send to all chats' : 'Send'}
+            >
+              {isParallelMode ? (
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M4 13V6" /><path d="M1 9l3-3 3 3" />
+                  <path d="M12 13V6" /><path d="M9 9l3-3 3 3" />
+                </svg>
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M8 13V3" />
+                  <path d="M3 7l5-5 5 5" />
+                </svg>
+              )}
+            </button>
+          )}
+        </div>
+      </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        disabled={isSubmittingFirstTurn}
+        style={{ display: 'none' }}
+        onChange={(event) => {
+          const input = event.currentTarget;
+          if (input.files && input.files.length > 0) {
+            const selected = Array.from(input.files);
+            onDraftFilesChange([...draftFiles, ...selected]);
+          }
+          input.value = '';
+        }}
+      />
+    </form>
+  );
+
+  const draftComposerFooterJsx = (
+    <DraftComposerFooter
+      accessory={composerFooterAccessory}
+      showParallelAddButton={Boolean(
+        onAddParallelTarget
+          && (showDraftParallelAddButton || (parallelTargets?.length ?? 0) > 0)
+          && (parallelTargets?.length ?? 1) < maxParallelChats,
+      )}
+      hideParallelHint={hideDraftParallelHint}
+      accentParallelAddButton={accentParallelAddButton}
+      disabled={isSubmittingFirstTurn}
+      onAddParallelTarget={onAddParallelTarget}
+    />
+  );
+
+  const helperRegionJsx = (() => {
+    const { runtimeChipsRendered, fallbackChipsRendered } =
+      resolveDraftHelperRegionVisibility({
+        isDirectLaneContext,
+        showDraftHelperChips,
+        runtimeChipCount: visibleStarterSuggestions.length,
+        fallbackChipCount: leadingStarterChips?.length ?? 0,
+      });
+    if (!runtimeChipsRendered && !fallbackChipsRendered) return null;
+    return (
+      <div className="draftPromptSuggestions">
+        <div className="chipRow">
+          {fallbackChipsRendered
+            ? leadingStarterChips?.map((chip) => (
+                <button
+                  key={chip.id}
+                  className="promptChip draftPromptChip"
+                  type="button"
+                  disabled={isSubmittingFirstTurn}
+                  onClick={() => {
+                    if (!preserveHelperChipsOnSelect) {
+                      dismissDraftHelperChips();
+                    }
+                    chip.onClick();
+                  }}
+                >
+                  {chip.label}
+                </button>
+              ))
+            : null}
+          {runtimeChipsRendered
+            ? visibleStarterSuggestions.map((suggestion) => (
+                <button
+                  key={suggestion.id}
+                  className="promptChip draftPromptChip"
+                  type="button"
+                  disabled={isSubmittingFirstTurn}
+                  onClick={() => {
+                    if (!preserveHelperChipsOnSelect) {
+                      dismissDraftHelperChips();
+                    }
+                    onComposerChange(suggestion.prompt);
+                  }}
+                >
+                  {suggestion.prompt}
+                </button>
+              ))
+            : null}
+        </div>
+      </div>
+    );
+  })();
+
+  const sidePanelJsx = sidePanelOpen ? (
+    <SidePanel
+      title="New Chat Setup"
+      activeSection={sidePanelSection}
+      onSectionToggle={isSubmittingFirstTurn ? () => {} : switchSection}
+      onClose={isSubmittingFirstTurn ? () => {} : () => setSidePanelOpen(false)}
+      className="chatPaneSidePanel"
+      sections={buildChatNewChatDraftSidePanelSections({
+        payload,
+        chatCats,
+        draftCatIds,
+        draftHighlightedCatId,
+        effectiveDefaultRecipientCat,
+        isGroupDraft,
+        isDirectLaneContext,
+        isParallelMode,
+        groupDraftSelectionLabel,
+        assistantPresets,
+        draftTemporaryParticipants,
+        editingTemporaryParticipantId,
+        editingTemporaryParticipantName,
+        temporaryParticipantFormOpen,
+        temporaryParticipantForm,
+        hasReachedGroupParticipantLimit,
+        isSubmittingFirstTurn,
+        defaultRecipientCat,
+        activePanelExecutionTarget,
+        onToggleDraftCat,
+        onHighlightDraftCat,
+        onAddDraftTemporaryParticipant,
+        onRemoveDraftTemporaryParticipant,
+        onBeginTemporaryParticipantRename: beginTemporaryParticipantRename,
+        onCancelTemporaryParticipantRename: cancelTemporaryParticipantRename,
+        onSubmitTemporaryParticipantRename: submitTemporaryParticipantRename,
+        onEditingTemporaryParticipantNameChange: setEditingTemporaryParticipantName,
+        onTemporaryParticipantFormChange: (updater) =>
+          setTemporaryParticipantForm((current) => updater(current)),
+        createTemporaryParticipantFormValue,
+        onTemporaryParticipantFormOpenChange: setTemporaryParticipantFormOpen,
+        onSubmitTemporaryParticipant: submitTemporaryParticipant,
+        selectedExecutionTarget,
+        onExecutionTargetChange,
+        onDirectLaneExecutionTargetChange,
+        parallelTargets,
+        onParallelTargetChange,
+        folderBrowsePath,
+        folderBrowseCurrentPath,
+        folderBrowseParentPath,
+        folderBrowseEntries,
+        folderBrowseLoading,
+        folderBrowseError,
+        draftCwd,
+        onFolderBrowsePathChange,
+        onFolderBrowse,
+        onFolderBrowseSelect,
+        onCloseSidePanel: () => setSidePanelOpen(false),
+      })}
+    />
+  ) : null;
+
+  // ── Parallel-mode branch carousel ──
+  //
+  // When two or more parallel targets exist, lay out the lead + shadow
+  // branches as a single 3D carousel where each card carries its own
+  // header / form / footer chrome. The lead card reuses the shared
+  // `leadFormJsx` above so its interactive surface stays intact; shadow
+  // cards render a simpler mirror (read-only textarea, "follows lead"
+  // chip instead of the cwd chip, per-branch audience + collaborate +
+  // remove controls).
+
+  function buildShadowCardContent(branchIndex: number, target: ExecutionTargetValue): ReactNode {
+    const branchAudienceKeysLen = parallelBranchAudienceKeys?.[branchIndex]?.length ?? 0;
+    const branchMembers = resolveParallelBranchMembers(branchIndex);
+    const branchAudienceParticipants = branchAudienceKeysLen > 1
+      ? resolveParallelBranchAudienceParticipants(branchIndex, target)
+      : [buildAudienceParticipantFromExecutionTarget(target, `parallel:${branchIndex}`)];
+    const canAddToBranch = branchAudienceKeysLen < maxBranchMembers;
+    const branchWorkflowShape = parallelBranchWorkflowShapes?.[branchIndex] ?? 'sequential';
+    const canRemoveBranch = parallelCount > minParallelTargetCount;
+    const canAddMoreBranches = parallelCount < maxParallelChats;
+    const showCompareHint = accentParallelAddButton && !hideDraftParallelHint;
+
+    return (
+      <>
+        <div className="composerHeaderRow">
+          <div className="composerHeaderLeft">
+            {surfaceTag}
+            <span className="composerFollowsLeadChip">
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M6 3l-3 5 3 5" />
+                <path d="M3 8h10" />
+              </svg>
+              <span>Follows lead</span>
+            </span>
+          </div>
+        </div>
+
+        <form className="composerCard composerCardFresh parallelComposerAnchor" onSubmit={(event) => event.preventDefault()}>
+          <textarea
+            className="composerInput"
+            rows={1}
+            placeholder={composerPlaceholder}
+            value={composerDraft}
+            disabled
+            readOnly
+          />
+          <div className="composerBottomRow">
+            <div className="composerLeftGroup">
+              <div className="composerPlusWrapper">
+                <button
+                  type="button"
+                  className="composerPlusButton"
+                  aria-label="Attach"
+                  disabled
+                >
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M8 3v10" />
+                    <path d="M3 8h10" />
+                  </svg>
+                </button>
+              </div>
+              {branchMembers.length > 0 ? (
+                <div className="composerGroupAddRow">
+                  <BranchAudienceRoster
+                    audienceParticipants={branchMembers}
+                    isSubmittingFirstTurn={isSubmittingFirstTurn}
+                    canRemoveParticipant={canRemoveGroupParticipant}
+                    useDangerRemoveHover={useDangerGroupRemoveHover}
+                    onAvatarClick={() => openSidePanelTo('cats')}
+                    onRemoveParticipant={(p) => {
+                      if (!onSetParallelBranchAudienceKeys) return;
+                      const nextKeys = branchMembers
+                        .filter((m) => m.key !== p.key)
+                        .map((m) => m.key);
+                      onSetParallelBranchAudienceKeys(branchIndex, nextKeys);
+                    }}
+                  />
+                  {canAddToBranch && onQuickAddParallelBranchTemporaryParticipant ? (
+                    <button
+                      type="button"
+                      className="parallelAddButton"
+                      disabled={isSubmittingFirstTurn}
+                      onClick={() => onQuickAddParallelBranchTemporaryParticipant(branchIndex)}
+                      aria-label="Add another model to collaborate"
+                    >
+                      <CollaborateIcon />
+                    </button>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
+            <div className="composerRightGroup">
+              <AudienceChip
+                audienceParticipants={branchAudienceParticipants}
+                allParticipants={branchAudienceKeysLen > 1 ? groupComposerParticipants : undefined}
+                onSetAudienceKeys={
+                  branchAudienceKeysLen > 1 && onSetParallelBranchAudienceKeys
+                    ? (keys) => onSetParallelBranchAudienceKeys(branchIndex, keys)
+                    : undefined
+                }
+                onSingleClick={() => openSidePanelTo('cats')}
+                disabled={isSubmittingFirstTurn}
+                maxSelectedParticipants={maxAudienceParticipants}
+                workflowShape={branchWorkflowShape}
+                onToggleWorkflowShape={
+                  onToggleParallelBranchWorkflowShape
+                    ? () => onToggleParallelBranchWorkflowShape(branchIndex)
+                    : undefined
+                }
+              />
+            </div>
+          </div>
+        </form>
+
+        <div className="composerFooterRow">
+          <div className="parallelAddRow parallelAddRowInline">
+            {canRemoveBranch ? (
+              <button
+                type="button"
+                className={`parallelStubRemove${useDangerParallelRemoveHover ? ' parallelStubRemoveDanger' : ''}`}
+                disabled={isSubmittingFirstTurn}
+                onClick={() => onRemoveParallelTarget?.(branchIndex)}
+                aria-label={`Remove branch ${branchIndex + 1}`}
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                  <path d="M4 8h8" />
+                </svg>
+              </button>
+            ) : null}
+            {onAddParallelTarget && canAddMoreBranches ? (
+              <button
+                type="button"
+                className={`parallelAddButton${accentParallelAddButton ? ' parallelAddButtonAccent' : ''}`}
+                disabled={isSubmittingFirstTurn}
+                onClick={onAddParallelTarget}
+                aria-label="Add parallel chat"
+              >
+                <CompareIcon />
+              </button>
+            ) : null}
+            {showCompareHint && onAddParallelTarget && canAddMoreBranches ? (
+              <span className="parallelAddHint parallelAddHintAccent">
+                Add another model to compare
+              </span>
+            ) : null}
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  const isParallelCarouselActive = isParallelMode
+    && Array.isArray(parallelTargets)
+    && parallelTargets.length >= 2;
+
+  if (isParallelCarouselActive && parallelTargets) {
+    const branchCards: DraftCompareCarouselCard[] = parallelTargets.map((target, branchIndex) => {
+      if (branchIndex === 0) {
+        return {
+          id: `lead-${target.provider}-${target.instance ?? ''}-${target.model ?? ''}`,
+          content: (
+            <>
+              {composerHeaderRowJsx}
+              {leadFormJsx}
+              {draftComposerFooterJsx}
+            </>
+          ),
+        };
+      }
+      return {
+        id: `shadow-${branchIndex}-${target.provider}-${target.instance ?? ''}-${target.model ?? ''}`,
+        content: buildShadowCardContent(branchIndex, target),
+      };
+    });
+
+    return (
+      <div className="viewShell viewShellDraft">
+        <section className="draftShell">
+          {draftHeaderJsx}
+          {draftCustomRegion ? (
+            <div className="draftCustomRegion">{draftCustomRegion}</div>
+          ) : null}
+          <DraftCompareCarousel
+            cards={branchCards}
+            activeIndex={activeBranchIndex}
+            onActiveIndexChange={setActiveBranchIndex}
+            disabled={isSubmittingFirstTurn}
+          />
+          {helperRegionJsx}
+        </section>
+        {sidePanelJsx}
+      </div>
+    );
+  }
+
   return (
     <div className="viewShell viewShellDraft">
       <section className="draftShell">
-        {isDirectLaneContext && defaultRecipientCat ? (
-          <DraftHeader
-            variant="profile"
-            title={defaultRecipientCat.name}
-            avatarName={defaultRecipientCat.name}
-            avatarUrl={defaultRecipientCat.avatarUrl}
-            avatarColor={defaultRecipientCat.avatarColor}
-          />
-        ) : isCatLedDraft && effectiveDefaultRecipientCat ? (
-          <DraftHeader
-            variant="intro"
-            eyebrow="Cat-led Chat"
-            title={`Start with ${effectiveDefaultRecipientCat.name}`}
-            description={`Ask ${effectiveDefaultRecipientCat.name} to take the first pass. Add more Cats anytime, or keep the thread focused.`}
-          />
-        ) : (
-          <DraftHeader
-            variant="intro"
-            title={resolvedGreeting}
-          />
-        )}
+        {draftHeaderJsx}
         {draftCustomRegion ? (
           <div className="draftCustomRegion">{draftCustomRegion}</div>
         ) : null}
-        {(surfaceTag || draftCwd || chooseFolderPlacement === 'header' || composerHeaderWhereExtras || composerHeaderAccessory) ? (
-          <div className="composerHeaderRow">
-            <div className="composerHeaderLeft">
-              {surfaceTag}
-              {draftCwd ? (
-                <span
-                  className="composerCwdChip composerCwdClickable"
-                  data-tooltip={draftCwd}
-                  role="button"
-                  tabIndex={isSubmittingFirstTurn ? undefined : 0}
-                  onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('cwd')}
-                >
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
-                  </svg>
-                  <span>{truncatePath(draftCwd)}</span>
-                  <button
-                    className="composerChipClose"
-                    type="button"
-                    disabled={isSubmittingFirstTurn}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onDraftCwdClear();
-                    }}
-                    aria-label="Remove folder"
-                  >
-                    &times;
-                  </button>
-                </span>
-              ) : chooseFolderPlacement === 'header' ? (
-                <button
-                  type="button"
-                  className="composerHeaderChooseButton"
-                  disabled={isSubmittingFirstTurn}
-                  onClick={() => openSidePanelTo('cwd')}
-                >
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
-                  </svg>
-                  <span>{folderActionLabel}</span>
-                </button>
-              ) : null}
-              {composerHeaderWhereExtras}
-            </div>
-            {composerHeaderAccessory ? (
-              <div className="composerHeaderRight">{composerHeaderAccessory}</div>
-            ) : null}
-          </div>
-        ) : null}
+        {composerHeaderRowJsx}
         <DraftComposerStack
-          card={(
-            <form
-              className={`composerCard composerCardFresh${parallelTargets ? ' parallelComposerAnchor' : ''}${plusMenuOpen ? ' composerCardMenuOpen' : ''}`}
-              onSubmit={(event) => void onSendMessage(event)}
-            >
-              {draftFiles.length > 0 ? (
-                <div className="composerAttachments">
-                  {draftFiles.map((file, index) => {
-                    const isImage = file.type.startsWith('image/');
-                    return (
-                      <div key={`${file.name}-${file.size}-${index}`} className="attachmentCard">
-                        <button
-                          className="attachmentRemove"
-                          type="button"
-                          disabled={isSubmittingFirstTurn}
-                          onClick={() => onDraftFilesChange(draftFiles.filter((_, i) => i !== index))}
-                          aria-label={`Remove ${file.name}`}
-                        >
-                          &times;
-                        </button>
-                        {isImage ? (
-                          <img
-                            className="attachmentPreview"
-                            src={URL.createObjectURL(file)}
-                            alt={file.name}
-                            onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)}
-                          />
-                        ) : (
-                          <div className="attachmentFileIcon">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                              <path d="M14 2v6h6" />
-                            </svg>
-                          </div>
-                        )}
-                        <span className="attachmentName">{file.name}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : null}
-              <textarea
-                className="composerInput"
-                rows={1}
-                placeholder={composerPlaceholder}
-                value={composerDraft}
-                disabled={isSubmittingFirstTurn}
-                onChange={(event) => { onComposerChange(event.target.value); autoResize(event.target); }}
-                onKeyDown={(event) => void onComposerKeyDown(event)}
-              />
-              <div className="composerBottomRow">
-                <div className="composerLeftGroup">
-                  <div className="composerPlusWrapper" ref={plusMenuRef}>
-                    <button
-                      className="composerPlusButton"
-                      type="button"
-                      aria-label="Attach"
-                      disabled={isSubmittingFirstTurn}
-                      onClick={onTogglePlusMenu}
-                    >
-                      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M8 3v10" />
-                        <path d="M3 8h10" />
-                      </svg>
-                    </button>
-                    {plusMenuOpen ? (
-                      <div className="composerPlusMenu">
-                        <button
-                          className="composerPlusMenuItem"
-                          type="button"
-                          disabled={isSubmittingFirstTurn}
-                          onClick={onFileSelect}
-                        >
-                          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M14 10v3a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1v-3" />
-                            <path d="M8 2v8" />
-                            <path d="M4 6l4-4 4 4" />
-                          </svg>
-                          Add photos and files
-                        </button>
-                        {chooseFolderPlacement === 'plusMenu' ? (
-                          <button
-                            className="composerPlusMenuItem"
-                            type="button"
-                            disabled={isSubmittingFirstTurn}
-                            onClick={() => {
-                              openSidePanelTo('cwd');
-                            }}
-                          >
-                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
-                            </svg>
-                            {folderActionLabel}
-                          </button>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                  {shouldRenderGroupAddRow ? (
-                    <div className="composerGroupAddRow">
-                      <BranchAudienceRoster
-                        audienceParticipants={isParallelMode ? leadBranchMembers : groupComposerParticipants}
-                        isSubmittingFirstTurn={isSubmittingFirstTurn}
-                        canRemoveParticipant={canRemoveGroupParticipant}
-                        useDangerRemoveHover={useDangerGroupRemoveHover}
-                        onAvatarClick={() => openSidePanelTo('cats')}
-                        onRemoveParticipant={(participant) => {
-                          // Parallel mode: the lead row is one branch among
-                          // many. Removing here must stay branch-scoped so
-                          // we don't rip the participant out of the pool
-                          // and break shadow branches that still reference
-                          // it. Pool-level deletion stays in the side panel.
-                          if (isParallelMode) {
-                            if (!onSetParallelBranchAudienceKeys) return;
-                            const nextKeys = leadBranchMembers
-                              .filter((p) => p.key !== participant.key)
-                              .map((p) => p.key);
-                            onSetParallelBranchAudienceKeys(0, nextKeys);
-                            return;
-                          }
-                          if (participant.isCat && participant.catId) {
-                            onToggleDraftCat(participant.catId);
-                          } else if (participant.participantId) {
-                            onRemoveDraftTemporaryParticipant(participant.participantId);
-                          }
-                        }}
-                      />
-                      {renderCollaborateAddControl({
-                        showHint: !hideDraftGroupHint,
-                        accent: accentGroupAddButton,
-                      })}
-                    </div>
-                  ) : null}
-                </div>
-                <div className="composerRightGroup">
-                  {audienceParticipants.length > 0 ? (
-                    <AudienceChip
-                      audienceParticipants={audienceParticipants}
-                      allParticipants={
-                        isParallelMode && hasPrimaryParallelBranchAudience
-                          ? groupComposerParticipants
-                          : (isGroupDraft ? groupComposerParticipants : undefined)
-                      }
-                      onSetAudienceKeys={
-                        isParallelMode && hasPrimaryParallelBranchAudience
-                          ? (onSetParallelBranchAudienceKeys
-                            ? (keys) => onSetParallelBranchAudienceKeys(0, keys)
-                            : undefined)
-                          : (isGroupDraft ? onSetAudienceKeys : undefined)
-                      }
-                      onSingleClick={audienceSingleClick}
-                      disabled={isSubmittingFirstTurn}
-                      maxSelectedParticipants={
-                        (isParallelMode && hasPrimaryParallelBranchAudience) || isGroupDraft
-                          ? maxAudienceParticipants
-                          : undefined
-                      }
-                      workflowShape={
-                        isParallelMode
-                          ? (parallelBranchWorkflowShapes?.[0] ?? draftWorkflowShape)
-                          : draftWorkflowShape
-                      }
-                      onToggleWorkflowShape={
-                        isParallelMode && hasPrimaryParallelBranchAudience
-                          ? (onToggleParallelBranchWorkflowShape
-                            ? () => onToggleParallelBranchWorkflowShape(0)
-                            : undefined)
-                          : (isGroupDraft ? onToggleDraftWorkflowShape : undefined)
-                      }
-                    />
-                  ) : null}
-                  {showCancelPendingSend ? (
-                    <button
-                      className="composerSendButton composerCancelButton"
-                      type="button"
-                      aria-label="Cancel send"
-                      onClick={() => onCancelPendingSend?.()}
-                    >
-                      <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
-                        <path d="M4 4l6 6" />
-                        <path d="M10 4l-6 6" />
-                      </svg>
-                    </button>
-                  ) : (
-                    <button
-                      className="composerSendButton"
-                      disabled={!composerDraft.trim() || isSubmittingFirstTurn || (isGroupDraft && draftParticipantCount < 2)}
-                      type="submit"
-                      aria-label={isParallelMode ? 'Send to all chats' : 'Send'}
-                    >
-                      {isParallelMode ? (
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M4 13V6" /><path d="M1 9l3-3 3 3" />
-                          <path d="M12 13V6" /><path d="M9 9l3-3 3 3" />
-                        </svg>
-                      ) : (
-                        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M8 13V3" />
-                          <path d="M3 7l5-5 5 5" />
-                        </svg>
-                      )}
-                    </button>
-                  )}
-                </div>
-              </div>
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                disabled={isSubmittingFirstTurn}
-                style={{ display: 'none' }}
-                onChange={(event) => {
-                  const input = event.currentTarget;
-                  if (input.files && input.files.length > 0) {
-                    const selected = Array.from(input.files);
-                    onDraftFilesChange([...draftFiles, ...selected]);
-                  }
-                  input.value = '';
-                }}
-              />
-            </form>
-          )}
-          footer={(
-            <DraftComposerFooter
-              accessory={composerFooterAccessory}
-              showParallelAddButton={Boolean(
-                onAddParallelTarget
-                  && (showDraftParallelAddButton || (parallelTargets?.length ?? 0) > 0)
-                  && (parallelTargets?.length ?? 1) < (payload.chat.capabilities.maxParallelChats ?? 3),
-              )}
-              hideParallelHint={hideDraftParallelHint}
-              accentParallelAddButton={accentParallelAddButton}
-              disabled={isSubmittingFirstTurn}
-              onAddParallelTarget={onAddParallelTarget}
-            />
-          )}
-          helperRegion={(() => {
-            const { runtimeChipsRendered, fallbackChipsRendered } =
-              resolveDraftHelperRegionVisibility({
-                isDirectLaneContext,
-                showDraftHelperChips,
-                runtimeChipCount: visibleStarterSuggestions.length,
-                fallbackChipCount: leadingStarterChips?.length ?? 0,
-              });
-            if (!runtimeChipsRendered && !fallbackChipsRendered) return null;
-            return (
-              <div className="draftPromptSuggestions">
-                <div className="chipRow">
-                  {fallbackChipsRendered
-                    ? leadingStarterChips?.map((chip) => (
-                        <button
-                          key={chip.id}
-                          className="promptChip draftPromptChip"
-                          type="button"
-                          disabled={isSubmittingFirstTurn}
-                          onClick={() => {
-                            if (!preserveHelperChipsOnSelect) {
-                              dismissDraftHelperChips();
-                            }
-                            chip.onClick();
-                          }}
-                        >
-                          {chip.label}
-                        </button>
-                      ))
-                    : null}
-                  {runtimeChipsRendered
-                    ? visibleStarterSuggestions.map((suggestion) => (
-                        <button
-                          key={suggestion.id}
-                          className="promptChip draftPromptChip"
-                          type="button"
-                          disabled={isSubmittingFirstTurn}
-                          onClick={() => {
-                            if (!preserveHelperChipsOnSelect) {
-                              dismissDraftHelperChips();
-                            }
-                            onComposerChange(suggestion.prompt);
-                          }}
-                        >
-                          {suggestion.prompt}
-                        </button>
-                      ))
-                    : null}
-                </div>
-              </div>
-            );
-          })()}
-          shadowStack={isParallelMode && parallelTargets && parallelTargets.length > 1 ? (
-            <div className="parallelStubStack">
-              {parallelTargets.slice(1).map((target, i, arr) => (
-                <div key={i + 1} style={{ position: 'relative', zIndex: arr.length - i }}>
-                  <ParallelDraftShadowBranchRow
-                    branchIndex={i + 1}
-                    target={target}
-                    branchMembers={resolveParallelBranchMembers(i + 1)}
-                    audienceParticipants={
-                      // A shadow row with only a single branch member
-                      // is effectively solo — fall through to the
-                      // target-derived chip so the chip stays plain
-                      // (no avatar, no popover). Two or more members
-                      // means the shadow has grown via +collaborate
-                      // and earns the full branch-audience treatment.
-                      (parallelBranchAudienceKeys?.[i + 1]?.length ?? 0) > 1
-                        ? resolveParallelBranchAudienceParticipants(i + 1, target)
-                        : []
-                    }
-                    allParticipants={groupComposerParticipants}
-                    workflowShape={parallelBranchWorkflowShapes?.[i + 1] ?? 'sequential'}
-                    maxAudienceParticipants={maxAudienceParticipants}
-                    isSubmittingFirstTurn={isSubmittingFirstTurn}
-                    canAddCollaborator={
-                      (parallelBranchAudienceKeys?.[i + 1]?.length ?? 0) < maxBranchMembers
-                    }
-                    // Accent (blue) styling is reserved for the two
-                    // hint-labelled teaching affordances in the Chat
-                    // composer: the lead row's +collaborate in
-                    // +Group preset and the +compare button in
-                    // +Parallel preset. Shadow rows always use the
-                    // default chrome.
-                    accentCollaborateButton={false}
-                    onAddCollaborator={onQuickAddParallelBranchTemporaryParticipant}
-                    onSetAudienceKeys={onSetParallelBranchAudienceKeys}
-                    onToggleWorkflowShape={onToggleParallelBranchWorkflowShape}
-                    onOpenAudience={() => openSidePanelTo('cats')}
-                    onRemoveParallelTarget={onRemoveParallelTarget}
-                    canRemoveParallelTarget={parallelTargets.length > minParallelTargetCount}
-                    useDangerParallelRemoveHover={useDangerParallelRemoveHover}
-                  />
-                </div>
-              ))}
-            </div>
-          ) : null}
+          card={leadFormJsx}
+          footer={draftComposerFooterJsx}
+          helperRegion={helperRegionJsx}
         />
       </section>
-      {sidePanelOpen ? (
-        <SidePanel
-          title="New Chat Setup"
-          activeSection={sidePanelSection}
-          onSectionToggle={isSubmittingFirstTurn ? () => {} : switchSection}
-          onClose={isSubmittingFirstTurn ? () => {} : () => setSidePanelOpen(false)}
-          className="chatPaneSidePanel"
-          sections={buildChatNewChatDraftSidePanelSections({
-            payload,
-            chatCats,
-            draftCatIds,
-            draftHighlightedCatId,
-            effectiveDefaultRecipientCat,
-            isGroupDraft,
-            isDirectLaneContext,
-            isParallelMode,
-            groupDraftSelectionLabel,
-            assistantPresets,
-            draftTemporaryParticipants,
-            editingTemporaryParticipantId,
-            editingTemporaryParticipantName,
-            temporaryParticipantFormOpen,
-            temporaryParticipantForm,
-            hasReachedGroupParticipantLimit,
-            isSubmittingFirstTurn,
-            defaultRecipientCat,
-            activePanelExecutionTarget,
-            onToggleDraftCat,
-            onHighlightDraftCat,
-            onAddDraftTemporaryParticipant,
-            onRemoveDraftTemporaryParticipant,
-            onBeginTemporaryParticipantRename: beginTemporaryParticipantRename,
-            onCancelTemporaryParticipantRename: cancelTemporaryParticipantRename,
-            onSubmitTemporaryParticipantRename: submitTemporaryParticipantRename,
-            onEditingTemporaryParticipantNameChange: setEditingTemporaryParticipantName,
-            onTemporaryParticipantFormChange: (updater) =>
-              setTemporaryParticipantForm((current) => updater(current)),
-            createTemporaryParticipantFormValue,
-            onTemporaryParticipantFormOpenChange: setTemporaryParticipantFormOpen,
-            onSubmitTemporaryParticipant: submitTemporaryParticipant,
-            selectedExecutionTarget,
-            onExecutionTargetChange,
-            onDirectLaneExecutionTargetChange,
-            parallelTargets,
-            onParallelTargetChange,
-            folderBrowsePath,
-            folderBrowseCurrentPath,
-            folderBrowseParentPath,
-            folderBrowseEntries,
-            folderBrowseLoading,
-            folderBrowseError,
-            draftCwd,
-            onFolderBrowsePathChange,
-            onFolderBrowse,
-            onFolderBrowseSelect,
-            onCloseSidePanel: () => setSidePanelOpen(false),
-          })}
-        />
-      ) : null}
+      {sidePanelJsx}
     </div>
   );
 }

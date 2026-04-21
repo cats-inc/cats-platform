@@ -45,13 +45,8 @@ export function CompareIcon({ size = 14 }: IconProps) {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      {/* Chat bubble with a small tail at the bottom-left corner.
-        * Sized to match CollaborateIcon's person silhouette so the
-        * two teaching buttons feel equally weighted. */}
-      <path d="M1.5 4C1.5 3.17 2.17 2.5 3 2.5H8.5C9.33 2.5 10 3.17 10 4V9C10 9.83 9.33 10.5 8.5 10.5H5L3 12.5V10.5C2.17 10.5 1.5 9.83 1.5 9V4Z" />
-      {/* Plus sign, same size and centre as CollaborateIcon. */}
-      <path d="M13 4v4" />
-      <path d="M11 6h4" />
+      <path d="M8 3v10" />
+      <path d="M3 8h10" />
     </svg>
   );
 }

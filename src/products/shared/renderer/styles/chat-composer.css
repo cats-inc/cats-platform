@@ -1,4 +1,5 @@
 @import '../../../shared/renderer/styles/chat-composer-base.css';
+@import '../../../shared/renderer/styles/draft-compare-carousel.css';
 
 .composerStopButton {
   background: var(--danger);
