@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
+import type { RuntimeSessionPolicy } from '../src/shared/runtimeSessionPolicy.ts';
 import { createDefaultChatState } from '../src/products/chat/state/defaults.ts';
 import { createParallelChatGroup } from '../src/products/chat/state/model/index.ts';
 
@@ -59,4 +60,37 @@ test('createParallelChatGroup materializes group defaults and per-target runtime
   assert.equal(memberChannels[1]?.runtimeWorkspaceKind, 'worktree');
   assert.equal(memberChannels[1]?.runtimeWorkspaceAccess, 'read_write');
   assert.equal(memberChannels[1]?.runtimePermissionMode, 'skip');
+});
+
+test('createParallelChatGroup reports invalid per-target runtime policy with target index', () => {
+  assert.throws(
+    () => createParallelChatGroup(
+      createDefaultChatState(),
+      {
+        title: 'Invalid target policy',
+        originSurface: 'code',
+        targets: [
+          {
+            provider: 'claude',
+            instance: null,
+            model: 'claude-opus-4-6',
+            modelSelection: null,
+          },
+          {
+            provider: 'codex',
+            instance: null,
+            model: 'gpt-5.4',
+            modelSelection: null,
+            runtimeSessionPolicy: {
+              workspaceKind: 'source',
+              workspaceAccess: 'read_only',
+              permissionMode: 'skip',
+            } as unknown as RuntimeSessionPolicy,
+          },
+        ],
+      },
+      new Date('2026-04-21T00:00:00.000Z'),
+    ),
+    /Parallel chat target 2's session policy: read_only sessions may only use the default permission gate\./u,
+  );
 });
