@@ -15,6 +15,15 @@ const baseConfig = {
   chatStatePath: 'unused-for-tests',
 };
 
+const PROVIDER_TARGETS_CACHE_WARNING_PREFIX =
+  'Using cached provider targets because runtime refresh failed:';
+const MODEL_CATALOG_CACHE_WARNING_PREFIX =
+  'Using cached model catalog because runtime refresh failed:';
+
+function listCacheRefreshWarnings(warnings, prefix) {
+  return warnings.filter((warning) => warning.startsWith(prefix));
+}
+
 function createRuntimeRequestError(message, status) {
   return Object.assign(new Error(message), { status });
 }
@@ -195,8 +204,9 @@ test('GET /api/providers keeps the last good selector after a transient refresh 
       assert.equal(fourth.status, 200);
       const fourthPayload = await fourth.json();
       assert.equal(
-        fourthPayload.warnings.filter((warning) =>
-          warning.startsWith('Using cached provider targets because runtime refresh failed:'),
+        listCacheRefreshWarnings(
+          fourthPayload.warnings,
+          PROVIDER_TARGETS_CACHE_WARNING_PREFIX,
         ).length,
         1,
       );
@@ -257,8 +267,9 @@ test('GET /api/providers/:provider/models serves stale catalog after transient r
       const fourthPayload = await fourth.json();
       assert.ok(fourthPayload.catalog.warnings.includes('Using cached authentication token'));
       assert.equal(
-        fourthPayload.catalog.warnings.filter((warning) =>
-          warning.startsWith('Using cached model catalog because runtime refresh failed:'),
+        listCacheRefreshWarnings(
+          fourthPayload.catalog.warnings,
+          MODEL_CATALOG_CACHE_WARNING_PREFIX,
         ).length,
         1,
       );
@@ -270,6 +281,77 @@ test('GET /api/providers/:provider/models serves stale catalog after transient r
       assert.equal(modelCalls, 4);
     });
   });
+});
+
+test('GET /api/providers/:provider/models replaces generated stale warnings and clears them after recovery', async () => {
+  const runtimeClient = createRuntimeStub();
+  const originalGetProviderModels = runtimeClient.getProviderModels;
+  const initialNowMs = Date.parse('2026-04-21T05:15:00.000Z');
+  let failCatalogRefresh = false;
+  let failureCount = 0;
+  let modelCalls = 0;
+
+  runtimeClient.getProviderModels = async (provider, instance) => {
+    modelCalls += 1;
+    if (failCatalogRefresh) {
+      failureCount += 1;
+      throw new Error(failureCount === 1
+        ? 'Runtime catalog unavailable.'
+        : 'Runtime catalog still unavailable.');
+    }
+    const catalog = await originalGetProviderModels.call(runtimeClient, provider, instance);
+    return {
+      ...catalog,
+      warnings: ['Using cached authentication token'],
+    };
+  };
+
+  await withMockedDateNow(initialNowMs, async (clock) => {
+    await withServer(runtimeClient, async (baseUrl) => {
+      const first = await fetch(`${baseUrl}/api/providers/claude/models`);
+      assert.equal(first.status, 200);
+
+      failCatalogRefresh = true;
+      clock.advance(361_000);
+      const firstFailure = await fetch(`${baseUrl}/api/providers/claude/models`);
+      assert.equal(firstFailure.status, 200);
+      const firstFailurePayload = await firstFailure.json();
+      const firstFailureCacheWarnings = listCacheRefreshWarnings(
+        firstFailurePayload.catalog.warnings,
+        MODEL_CATALOG_CACHE_WARNING_PREFIX,
+      );
+      assert.equal(firstFailureCacheWarnings.length, 1);
+      assert.match(firstFailureCacheWarnings[0], /Runtime catalog unavailable\./u);
+
+      clock.advance(30_001);
+      const secondFailure = await fetch(`${baseUrl}/api/providers/claude/models`);
+      assert.equal(secondFailure.status, 200);
+      const secondFailurePayload = await secondFailure.json();
+      const secondFailureCacheWarnings = listCacheRefreshWarnings(
+        secondFailurePayload.catalog.warnings,
+        MODEL_CATALOG_CACHE_WARNING_PREFIX,
+      );
+      assert.equal(secondFailureCacheWarnings.length, 1);
+      assert.match(secondFailureCacheWarnings[0], /Runtime catalog still unavailable\./u);
+      assert.ok(secondFailurePayload.catalog.warnings.includes('Using cached authentication token'));
+
+      failCatalogRefresh = false;
+      clock.advance(30_001);
+      const recovered = await fetch(`${baseUrl}/api/providers/claude/models`);
+      assert.equal(recovered.status, 200);
+      const recoveredPayload = await recovered.json();
+      assert.deepEqual(
+        listCacheRefreshWarnings(
+          recoveredPayload.catalog.warnings,
+          MODEL_CATALOG_CACHE_WARNING_PREFIX,
+        ),
+        [],
+      );
+      assert.deepEqual(recoveredPayload.catalog.warnings, ['Using cached authentication token']);
+    });
+  });
+
+  assert.equal(modelCalls, 4);
 });
 
 test('GET /api/providers/:provider/models serves stale catalog after runtime rate limits', async () => {
