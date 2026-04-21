@@ -384,13 +384,57 @@ export function filterPersistentControlValues(
     if (!control) {
       return false;
     }
-    if (control.kind !== 'enum' || typeof value !== 'string' || !control.values?.length) {
+    if (control.kind !== 'enum' || !control.values?.length) {
       return true;
     }
     return listApplicableControlValueOptions(control, entryId)
       .some((option) => option.value === value);
   });
   return entries.length > 0 ? Object.fromEntries(entries) : undefined;
+}
+
+function formatControlWarningValue(
+  control: ProviderAdvancedCatalogControl,
+  value: ProviderAdvancedControlValue,
+): string {
+  const option = control.values?.find((candidate) => candidate.value === value);
+  return option?.label ?? String(value);
+}
+
+export function resolveUnsupportedPersistentControlWarning(input: {
+  controls: ProviderAdvancedCatalogControl[];
+  entryId: string;
+  modelSelection?: ProviderModelSelection | null;
+}): string | null {
+  const controlValues = input.modelSelection?.controls;
+  if (!input.entryId || !controlValues) {
+    return null;
+  }
+
+  const allowedControls = listPersistentControlOptions(input.controls, input.entryId);
+  const allowedControlMap = new Map(allowedControls.map((control) => [control.key, control]));
+  const catalogControlMap = new Map(input.controls.map((control) => [control.key, control]));
+
+  for (const [key, value] of Object.entries(controlValues)) {
+    const allowedControl = allowedControlMap.get(key);
+    const catalogControl = catalogControlMap.get(key);
+    const controlLabel = allowedControl?.label ?? catalogControl?.label ?? key;
+    if (!allowedControl) {
+      return `${controlLabel} is not supported by ${input.entryId}; Cats will use the model default instead.`;
+    }
+
+    if (
+      allowedControl.kind === 'enum'
+      && allowedControl.values?.length
+      && !allowedControl.values.some((option) => option.value === value)
+    ) {
+      return `${controlLabel} value ${
+        formatControlWarningValue(catalogControl ?? allowedControl, value)
+      } is not supported by ${input.entryId}; Cats will use the model default instead.`;
+    }
+  }
+
+  return null;
 }
 
 function resolveExecutionLabelControlValues(input: {
@@ -679,6 +723,7 @@ export function resolveProviderModelFieldsViewState(input: {
   presetOptions: ProviderAdvancedCatalogPreset[];
   selectedPresetId: string;
   controlOptions: ProviderAdvancedCatalogControl[];
+  unsupportedSelectionWarning: string | null;
   requestScopedControlCount: number;
   controlValues: Record<string, ProviderAdvancedControlValue>;
   supportBadge: {
@@ -760,6 +805,13 @@ export function resolveProviderModelFieldsViewState(input: {
   const controlOptions = !isLegacyModelTarget
     ? listPersistentControlOptions(effectiveAdvancedCatalog.controls, selectedCatalogEntryId)
     : [];
+  const unsupportedSelectionWarning = !isLegacyModelTarget
+    ? resolveUnsupportedPersistentControlWarning({
+        controls: effectiveAdvancedCatalog.controls,
+        entryId: selectedCatalogEntryId,
+        modelSelection,
+      })
+    : null;
   const requestScopedControlCount = !isLegacyModelTarget
     ? countRequestScopedControls(effectiveAdvancedCatalog.controls, selectedCatalogEntryId)
     : 0;
@@ -806,6 +858,7 @@ export function resolveProviderModelFieldsViewState(input: {
     presetOptions,
     selectedPresetId,
     controlOptions,
+    unsupportedSelectionWarning,
     requestScopedControlCount,
     controlValues,
     supportBadge,

@@ -19,6 +19,7 @@ import {
   resolveProviderModelFieldsViewState,
   resolveProviderSupportBadge,
   resolveSelectedInstanceEventCapabilities,
+  resolveUnsupportedPersistentControlWarning,
   sanitizePersistentTargetSelection,
   shouldAutoRecheckProviderRegistry,
   shouldAllowLegacyManualModelEntry,
@@ -825,6 +826,76 @@ test('runtime reconciliation sanitizes Claude Max when reopening a Sonnet select
   assert.equal(
     resolveDisplayedEnumControlValue(advancedCatalog.controls[0], 'sonnet', target.modelSelection?.controls?.['claude.reasoning_effort']),
     'medium',
+  );
+});
+
+test('unsupported persistent controls surface a warning before runtime reconciliation sanitizes them', () => {
+  const { advancedCatalog } = buildCurrentAdvancedCatalog('claude');
+
+  const warning = resolveUnsupportedPersistentControlWarning({
+    controls: advancedCatalog.controls,
+    entryId: 'sonnet',
+    modelSelection: {
+      entryId: 'sonnet',
+      entryMode: 'explicit',
+      controls: {
+        'claude.reasoning_effort': 'max',
+      },
+    },
+  });
+
+  assert.equal(
+    warning,
+    'Reasoning effort value Max is not supported by sonnet; Cats will use the model default instead.',
+  );
+});
+
+test('provider model field view state exposes unsupported persistent control warnings', () => {
+  const { catalog, advancedCatalog } = buildCurrentAdvancedCatalog('codex');
+  const provider = {
+    id: 'codex',
+    label: 'Codex',
+    defaultModel: 'gpt-5.4',
+    defaultInstance: 'native',
+    defaultBackend: 'cli',
+    instances: [
+      {
+        id: 'native',
+        label: 'cli/native',
+        target: 'cli/native',
+        backend: 'cli',
+        default: true,
+      },
+    ],
+    modelsPath: '/api/providers/codex/models',
+  };
+
+  const viewState = resolveProviderModelFieldsViewState({
+    selectedProvider: provider,
+    provider: 'codex',
+    instance: 'native',
+    model: 'gpt-5.1-codex-mini',
+    modelSelection: {
+      entryId: 'gpt-5.1-codex-mini',
+      entryMode: 'explicit',
+      controls: {
+        'codex.reasoning_effort': 'xhigh',
+      },
+    },
+    catalogLoading: false,
+    providersLoaded: true,
+    providerRegistry: {
+      state: 'ready',
+      providers: [provider],
+    },
+    effectiveCatalog: catalog,
+    effectiveAdvancedCatalog: advancedCatalog,
+    isLegacyModelTarget: false,
+  });
+
+  assert.equal(
+    viewState.unsupportedSelectionWarning,
+    'Reasoning effort value Extra high is not supported by gpt-5.1-codex-mini; Cats will use the model default instead.',
   );
 });
 

@@ -231,9 +231,12 @@ contracts.
 - [ ] Refine advanced provider-model UX now that runtime presets and controls are
       first-class, including an `Advanced settings` disclosure pattern that prevents
       large control sets from overwhelming the base provider/instance/model flow
-- [ ] Make unsupported provider/model reasoning-effort combinations explicit in
+- [x] Make unsupported provider/model reasoning-effort combinations explicit in
       the composer and reopen flow, so selectors warn before sanitize/fallback
       instead of silently reverting to the model default
+      Completed: provider selector view state now reports unsupported persisted
+      control values for the selected runtime catalog entry before reconciliation
+      sanitizes them, and the composer renders that warning near the controls.
 - [ ] Stop duplicating provider alias normalization rules between `cats-platform`
       and `cats-runtime` by having runtime-owned model catalog APIs return a
       canonical alias/legacy-id map that selector reconciliation and session

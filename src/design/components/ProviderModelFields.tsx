@@ -51,6 +51,7 @@ export {
   resolveProviderRegistrySetupHref,
   resolveProviderSupportBadge,
   resolveSelectedInstanceEventCapabilities,
+  resolveUnsupportedPersistentControlWarning,
   sanitizePersistentTargetSelection,
   shouldAllowLegacyManualModelEntry,
   shouldAutoRecheckProviderRegistry,
@@ -143,6 +144,7 @@ export function ProviderModelFields({
     presetOptions,
     selectedPresetId,
     controlOptions,
+    unsupportedSelectionWarning,
     requestScopedControlCount,
     controlValues,
     supportBadge,
@@ -397,6 +399,11 @@ export function ProviderModelFields({
         controlValues={controlValues}
         onControlChange={onControlChange}
       />
+      {unsupportedSelectionWarning ? (
+        <span className="fieldHint providerCatalogHint">
+          {unsupportedSelectionWarning}
+        </span>
+      ) : null}
       {requestScopedControlCount > 0 ? (
         <span className="fieldHint providerCatalogHint">
           Request-only runtime overrides are hidden here because this selector persists chat/session defaults.
