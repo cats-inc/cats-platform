@@ -6,6 +6,7 @@ import { renderToStaticMarkup } from 'react-dom/server.browser';
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
 import { pickDraftGreeting } from '../src/products/chat/renderer/chatUtils.tsx';
 import { NewChatDraft, type NewChatDraftProps } from '../src/products/chat/renderer/components/NewChatDraft.tsx';
+import { createDraftCompareShadowCardId } from '../src/products/shared/renderer/components/ChatNewChatDraft.tsx';
 import { clearBusyState } from '../src/shared/workspaceBusy.ts';
 
 function createPayload(): AppShellPayload {
@@ -1316,6 +1317,29 @@ test('parallel shadow branch following lead exposes the branch folder picker whe
 
   assert.match(markup, /composerFollowsLeadChipClickable/u);
   assert.match(markup, /aria-label="Choose branch folder"/u);
+});
+
+test('parallel shadow card id stays stable when branch cwd and policy detach', () => {
+  const baseTarget = {
+    provider: 'codex-cli',
+    instance: null,
+    model: 'codex-max',
+    modelSelection: null,
+  } as const;
+  const detachedTarget = {
+    ...baseTarget,
+    cwd: 'C:/repo/worktrees/right',
+    runtimeSessionPolicy: {
+      workspaceKind: 'worktree',
+      workspaceAccess: 'read_only',
+      permissionMode: 'default',
+    },
+  } as const;
+
+  assert.equal(
+    createDraftCompareShadowCardId(1, detachedTarget),
+    createDraftCompareShadowCardId(1, baseTarget),
+  );
 });
 
 test('parallel shadow branch following lead exposes the session policy detach control when wired', () => {

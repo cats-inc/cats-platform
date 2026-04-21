@@ -241,7 +241,9 @@ order once Phase 1 lands.
       Focused API client coverage now asserts detached branch cwd and
       runtime policy fields are present in the parallel-group create
       POST body, and pure target-helper tests cover set + re-link
-      clear for branch cwd and runtime policy.
+      clear for branch cwd and runtime policy. Carousel transition
+      stability is guarded by keeping shadow-card ids independent of
+      cwd / session-policy detach state.
 - [x] Task 2.1: UX for per-branch cwd detach.
       - Non-lead card's `composerFollowsLeadChip` gains a click
         target that opens the side-panel cwd picker scoped to the
@@ -257,7 +259,7 @@ order once Phase 1 lands.
       `runtimeSessionPolicy`. ADR-071 validation runs against the
       resolved per-branch policy at submit time (already wired by
       Phase 1 Task 1.5); Phase 2 just exposes the editing UI.
-- [ ] Task 2.3: Verify the carousel animation still works when a
+- [x] Task 2.3: Verify the carousel animation still works when a
       card's header chips change shape (chip→cwd chip) during an
       active carousel transition — edge case when detaching a
       peek card. If janky, debounce chip swap until transition

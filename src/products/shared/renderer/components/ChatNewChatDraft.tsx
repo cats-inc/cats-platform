@@ -103,6 +103,13 @@ type BranchRuntimeSessionPolicyPatch = Partial<
   Pick<RuntimeSessionPolicy, 'workspaceKind' | 'workspaceAccess' | 'permissionMode'>
 >;
 
+export function createDraftCompareShadowCardId(
+  branchIndex: number,
+  target: Pick<DraftParallelTarget, 'provider' | 'instance' | 'model'>,
+): string {
+  return `shadow-${branchIndex}-${target.provider}-${target.instance ?? ''}-${target.model ?? ''}`;
+}
+
 function BranchRuntimeSessionPolicyControls({
   branchIndex,
   target,
@@ -1326,7 +1333,7 @@ export function NewChatDraft({
         };
       }
       return {
-        id: `shadow-${branchIndex}-${target.provider}-${target.instance ?? ''}-${target.model ?? ''}`,
+        id: createDraftCompareShadowCardId(branchIndex, target),
         content: buildShadowCardContent(branchIndex, target),
       };
     });
