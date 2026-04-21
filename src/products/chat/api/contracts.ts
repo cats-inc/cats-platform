@@ -51,6 +51,7 @@ import type { AdvancedDraftControlsPreferences } from '../../shared/advancedDraf
 import type { ConversationBehaviorPreferences } from '../../shared/conversationBehavior.js';
 import type {
   RuntimePermissionMode,
+  RuntimeSessionPolicy,
   RuntimeSessionCreateContractInput,
   RuntimeWorkspaceAccess,
   RuntimeWorkspaceKind,
@@ -599,9 +600,12 @@ export interface CreateParallelChatGroupInput {
   title: string;
   originSurface: PlatformSurfaceId;
   repoPath?: string;
+  runtimeSessionPolicy?: RuntimeSessionPolicy | null;
   responseLanguage?: string;
   targets: Array<ParallelChatTarget & {
     audienceKeys?: string[];
+    cwd?: string | null;
+    runtimeSessionPolicy?: RuntimeSessionPolicy | null;
   }>;
   participantCatIds?: string[];
   temporaryParticipants?: CreateTemporaryParticipantInput[];

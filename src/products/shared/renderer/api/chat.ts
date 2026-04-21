@@ -16,6 +16,7 @@ import type {
   UpdateChannelParticipantInput,
 } from '../../api/workspaceContracts.js';
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
+import type { RuntimeSessionPolicy } from '../../../../shared/runtimeSessionPolicy.js';
 
 import { fetchAppShell, refetchAfterMutation } from './appShell.js';
 import { expectJson } from './http.js';
@@ -272,9 +273,12 @@ export interface CreateParallelChatGroupInput {
   title: string;
   originSurface: PlatformSurfaceId;
   repoPath?: string;
+  runtimeSessionPolicy?: RuntimeSessionPolicy | null;
   responseLanguage?: string;
   targets: Array<ParallelChatTargetInput & {
     audienceKeys?: string[];
+    cwd?: string | null;
+    runtimeSessionPolicy?: RuntimeSessionPolicy | null;
   }>;
   participantCatIds?: string[];
   temporaryParticipants?: CreateTemporaryParticipantInput[];

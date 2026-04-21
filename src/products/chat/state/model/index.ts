@@ -29,6 +29,7 @@ import { normalizePlatformSurface } from '../../../../shared/platformSurfaces.js
 import {
   RuntimeSessionPolicyError,
   parseRuntimeSessionPolicyCreateInput,
+  type RuntimeSessionPolicyInput,
   type RuntimeSessionPolicy,
 } from '../../../../shared/runtimeSessionPolicy.js';
 import {
@@ -136,6 +137,37 @@ function resolveCreateInputOriginSurface(
   throw new Error('originSurface must be one of: chat, work, code.');
 }
 
+function parseParallelCreateRuntimeSessionPolicy(input: {
+  repoPath?: string | null;
+  policy?: RuntimeSessionPolicyInput | null;
+  targetIndex?: number;
+}): RuntimeSessionPolicy {
+  const parsed = parseRuntimeSessionPolicyCreateInput({
+    repoPath: input.repoPath,
+    policy: {
+      workspaceKind: input.policy?.workspaceKind,
+      workspaceAccess: input.policy?.workspaceAccess,
+      permissionMode: input.policy?.permissionMode,
+    },
+  });
+  if (parsed.ok) {
+    return parsed.policy;
+  }
+
+  if (typeof input.targetIndex === 'number') {
+    throw new RuntimeSessionPolicyError({
+      ...parsed.issue,
+      message: `Parallel chat target ${input.targetIndex + 1}'s session policy: ${parsed.issue.message}`,
+      details: {
+        ...(parsed.issue.details ?? {}),
+        targetIndex: input.targetIndex,
+      },
+    });
+  }
+
+  throw new RuntimeSessionPolicyError(parsed.issue);
+}
+
 export function createParallelChatGroup(
   state: ChatState,
   input: CreateParallelChatGroupInput,
@@ -149,15 +181,12 @@ export function createParallelChatGroup(
   const nowIso = isoAt(now);
   const memberChannelIds: string[] = [];
   const originSurface = resolveCreateInputOriginSurface(input.originSurface);
-  // Parse the group-level runtime policy once; every child channel below
-  // receives it pre-parsed so createChannel never re-parses the same input.
-  const parsedSessionPolicy = parseRuntimeSessionPolicyCreateInput({
-    repoPath: input.repoPath,
-    policy: {},
-  });
-  if (!parsedSessionPolicy.ok) {
-    throw new RuntimeSessionPolicyError(parsedSessionPolicy.issue);
-  }
+  const groupRuntimeSessionPolicy = input.runtimeSessionPolicy == null
+    ? null
+    : parseParallelCreateRuntimeSessionPolicy({
+      repoPath: input.repoPath,
+      policy: input.runtimeSessionPolicy,
+    });
 
   const globalParticipantCatIdSet = new Set(input.participantCatIds ?? []);
   const temporaryParticipantsByKey = new Map(
@@ -167,7 +196,9 @@ export function createParallelChatGroup(
     ]),
   );
 
-  for (const target of [...input.targets].reverse()) {
+  for (const { target, targetIndex } of input.targets
+    .map((target, targetIndex) => ({ target, targetIndex }))
+    .reverse()) {
     const targetAudienceKeys = Array.isArray(target.audienceKeys)
       ? target.audienceKeys.filter((key, index, source) =>
           typeof key === 'string' && key.trim().length > 0 && source.indexOf(key) === index)
@@ -184,13 +215,22 @@ export function createParallelChatGroup(
         .map((key) => temporaryParticipantsByKey.get(key))
         .filter((participant): participant is NonNullable<typeof participant> => participant != null)
       : input.temporaryParticipants;
+    const targetRepoPath = target.cwd ?? input.repoPath;
+    const targetRuntimeSessionPolicy = target.runtimeSessionPolicy == null
+      ? groupRuntimeSessionPolicy
+        ?? parseParallelCreateRuntimeSessionPolicy({ repoPath: targetRepoPath })
+      : parseParallelCreateRuntimeSessionPolicy({
+        repoPath: targetRepoPath,
+        policy: target.runtimeSessionPolicy,
+        targetIndex,
+      });
     nextState = createChannel(
       nextState,
       {
         title: input.title,
         topic: input.title,
         originSurface,
-        repoPath: input.repoPath,
+        repoPath: targetRepoPath,
         responseLanguage: input.responseLanguage,
         composerMode: 'solo',
         pendingProvider: target.provider,
@@ -202,7 +242,7 @@ export function createParallelChatGroup(
         skipBossCatGreeting: true,
       },
       now,
-      { prevalidatedRuntimePolicy: parsedSessionPolicy.policy },
+      { prevalidatedRuntimePolicy: targetRuntimeSessionPolicy },
     );
     memberChannelIds.unshift(nextState.selectedChannelId);
   }

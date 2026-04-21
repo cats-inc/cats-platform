@@ -44,6 +44,7 @@ export async function handleCreateParallelChatGroup(
         title,
         originSurface,
         repoPath: body.repoPath,
+        runtimeSessionPolicy: body.runtimeSessionPolicy,
         responseLanguage: body.responseLanguage,
         targets: body.targets,
         participantCatIds: body.participantCatIds,
