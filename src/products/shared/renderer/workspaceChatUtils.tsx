@@ -496,7 +496,7 @@ export function insertCreatedChannelIntoPayload<TPayload extends AppShellPayload
     id: normalizedChannel.id,
     title: normalizedChannel.title,
     topic: normalizedChannel.topic,
-    originSurface: normalizedChannel.originSurface ?? 'chat',
+    originSurface: normalizedChannel.originSurface,
     channelKind: normalizedChannel.channelKind,
     status: normalizedChannel.status,
     unreadCount: normalizedChannel.unreadCount,

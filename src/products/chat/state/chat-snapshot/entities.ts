@@ -339,7 +339,7 @@ export function normalizeChannel(
     id: channelId,
     title: readString(channelRecord.title, 'Untitled chat'),
     topic: readString(channelRecord.topic, 'This chat is still taking shape.'),
-    originSurface: normalizePlatformSurface(channelRecord.originSurface, 'chat'),
+    originSurface: normalizePlatformSurface(channelRecord.originSurface),
     channelKind,
     recoverableDirectLaneCatId: readNullableString(channelRecord.recoverableDirectLaneCatId),
     status,
@@ -485,7 +485,7 @@ export function normalizeParallelChatGroup(rawGroup: unknown): ParallelChatGroup
   return {
     id: readString(groupRecord.id, randomUUID()),
     title: readString(groupRecord.title, 'Parallel chat'),
-    originSurface: normalizePlatformSurface(groupRecord.originSurface, 'chat'),
+    originSurface: normalizePlatformSurface(groupRecord.originSurface),
     mode: 'parallel',
     status: rawStatus === 'archived' ? 'archived' : 'active',
     memberChannelIds: readStringArray(groupRecord.memberChannelIds),

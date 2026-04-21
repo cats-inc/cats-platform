@@ -90,8 +90,8 @@ interface ConversationSidebarHelpers<
 
 export function resolveConversationSidebarChannelSurface(
   originSurface: PlatformSurfaceId | null | undefined,
-): PlatformSurfaceId {
-  return normalizePlatformSurface(originSurface, 'chat');
+): PlatformSurfaceId | null {
+  return normalizePlatformSurface(originSurface);
 }
 
 function channelMatchesActiveSurface<TChannel extends ConversationSidebarChannel>(
