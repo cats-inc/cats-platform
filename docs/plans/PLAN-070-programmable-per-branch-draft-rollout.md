@@ -78,22 +78,36 @@ order once Phase 1 lands.
       `resolveBranchAttachments`, and the aggregate
       `resolveBranch(target, leadContext) → ResolvedBranch` per
       SPEC-078 § Resolution Helpers.
-- [ ] Task 1.3: Absorb the two existing per-branch parallel arrays
-      onto the target:
-      - Source today is loose state on the renderer state hooks
-        (`parallelBranchAudienceKeys: string[][]`,
-        `parallelBranchWorkflowShapes: DraftRoomWorkflowShape[]`),
-        not a `DraftParallelBranchState` wrapper — there is no
-        wrapper to retire.
-      - Remove the two parallel arrays from `NewChatDraftProps`,
-        the draft state hooks, reducers, and all callers across
-        Chat / Code / Work draft state directories.
-      - Initializers that used to push to the parallel arrays
-        now write `target.audienceKeys` / `target.workflowShape`
-        instead.
-      - Reducers that update a branch's audience keys / workflow
-        shape update the target in place.
-        `parallelTargets[i].audienceKeys` and
+- [ ] Task 1.3: Flatten the existing `DraftParallelBranchState<T>`
+      wrapper onto the target.
+      - Correction from the previous plan draft: there **is** a
+        wrapper today, at
+        `src/products/shared/renderer/draftParallelBranches.ts`:
+        `interface DraftParallelBranchState<TTarget> { target; audienceKeys; workflowShape }`.
+        Chat / Workspace composer hooks
+        (`composerParallelDispatch.ts`, `useComposerSubmit.ts`,
+        `useWorkspaceComposerSubmit.ts`) hold
+        `DraftParallelBranchState<ExecutionTargetValue>[]` as the
+        canonical branch state; the renderer-facing
+        `parallelBranchAudienceKeys[]` /
+        `parallelBranchWorkflowShapes[]` props are derived from
+        that wrapper, not stored loose.
+      - Migration: move `audienceKeys` and `workflowShape` onto
+        the extended `DraftParallelTarget`. The remaining wrapper
+        shape becomes trivial (just `{ target }`) — either
+        deleted outright (every consumer switches to
+        `DraftParallelTarget[]`) or kept as a type alias for one
+        release if that simplifies the diff. Decide at
+        implementation time based on call-site count.
+      - Remove the derived `parallelBranchAudienceKeys` /
+        `parallelBranchWorkflowShapes` props from
+        `NewChatDraftProps` once consumers switch to the
+        resolver suite.
+      - Initializers that used to populate `DraftParallelBranchState`
+        fields now populate `target.audienceKeys` /
+        `target.workflowShape` directly. Reducers that updated a
+        branch's audience keys / workflow shape update the target
+        in place. `parallelTargets[i].audienceKeys` and
         `parallelTargets[i].workflowShape` become the source of
         truth.
 - [ ] Task 1.4: Update `ChatNewChatDraft` render path to consume
@@ -121,19 +135,31 @@ order once Phase 1 lands.
       group-level `repoPath` stays as the lead default. The
       read-model `ParallelChatTarget` itself does not grow —
       per-channel `repoPath` is already projected onto the
-      resulting `ChatChannelView`. Without this, Phase 2's
-      per-branch cwd UI ships nowhere it can write to.
-- [ ] Task 1.7: **Update the server parallel-group create handler**
-      to consume the extended contract. Locate the existing
-      handler under `src/app/server/**` (the consumer of
-      `CreateParallelChatGroupInput`); for each target, resolve
-      `cwd` against the group's `repoPath`, resolve
-      `runtimeSessionPolicy` against the group default, and
-      forward the resolved per-channel values via the existing
-      `RuntimeSessionCreateContractInput` mix-in to each child
-      `CreateChatChannelInput`. Run ADR-071 validation per
-      resolved per-channel policy; reject the whole group create
-      with a per-target error if any child fails.
+      resulting `ChatChannelView`. Mirror the same extension in
+      `src/products/shared/renderer/api/chat.ts`, which re-declares
+      the same input shape for the renderer-side client.
+      Without this, Phase 2's per-branch cwd UI ships nowhere it
+      can write to.
+- [ ] Task 1.7: **Update the product-owned parallel-group create
+      path** to consume the extended contract. Per ADR-067, this
+      is product-owned, not in `src/app/server/**`. Touch both
+      layers:
+      - `src/products/chat/api/resources/parallelChatGroupCrudRoutes.ts`
+        — the product's HTTP route handler parses
+        `CreateParallelChatGroupInput`. Pass the new per-target
+        overrides through without collapsing them to the group
+        default at this layer.
+      - `src/products/chat/state/model/index.ts` — the state
+        model's `createParallelChatGroup`-equivalent consumer is
+        where the group's child channels are materialized. For
+        each target, resolve `cwd` against the group's
+        `repoPath` and `runtimeSessionPolicy` against a
+        group-level default, then forward the resolved
+        per-channel values via the existing
+        `RuntimeSessionCreateContractInput` mix-in to each child
+        `CreateChatChannelInput`. Run ADR-071 validation per
+        resolved per-channel policy; reject the whole group
+        create with a per-target error if any child fails.
 - [ ] Task 1.8: Dispatch rejects a target whose
       `attachmentsOverride` is non-null — Phase 1 does not
       implement per-branch attachments. Clear error message
@@ -213,21 +239,46 @@ order once Phase 1 lands.
 ## Files Touched (Phase 1 expected)
 
 ```
-src/products/shared/renderer/draftChatUtils.tsx                         (DraftParallelTarget extension + parallel-array constructor absorption)
-src/products/shared/renderer/draftBranchResolution.ts                   (new — resolution helpers)
-src/products/shared/renderer/components/ChatNewChatDraft.tsx            (consume resolved branches; drop parallel-array prop reads)
-src/products/{chat,code,work}/state/draft/**                            (draft state hooks: drop parallel arrays, store on target)
-src/products/chat/api/contracts.ts                                      (CreateParallelChatGroupInput.targets per-target cwd / runtimeSessionPolicy)
-src/app/server/**                                                       (parallel-group create handler resolves per-target overrides into per-channel CreateChatChannelInput)
-src/products/chat/state/runtime-dispatch/**                             (resolved-branch dispatch)
-tests/** (draft-dispatch, parallel-chat, carousel render, contract fixtures, server create handler) (updates)
-docs/specs/SPEC-078-per-branch-draft-state-schema.md                    (landed-fields annotation)
-docs/plans/PLAN-070-programmable-per-branch-draft-rollout.md            (progress log)
+# Renderer types + resolver + branch-state flattening
+src/products/shared/renderer/draftChatUtils.tsx                              (DraftParallelTarget extension)
+src/products/shared/renderer/draftParallelBranches.ts                        (flatten DraftParallelBranchState: fields move onto target)
+src/products/shared/renderer/draftBranchResolution.ts                        (new — resolver suite, ResolvedBranch aggregate)
+src/products/shared/renderer/composerParallelDispatch.ts                     (update to consume extended target / resolver output)
+src/products/chat/renderer/composerParallelDispatch.ts                       (update to consume extended target / resolver output)
+src/products/shared/renderer/hooks/useWorkspaceComposerSubmit.ts             (accept extended target)
+src/products/chat/renderer/hooks/useComposerSubmit.ts                        (accept extended target)
+src/products/shared/renderer/components/ChatNewChatDraft.tsx                 (consume ResolvedBranch; drop derived parallel-array prop reads)
+
+# Draft state hooks across products (audience/workflow move onto target)
+src/products/chat/state/**                                                   (draft hooks: return DraftParallelTarget[] with per-branch fields)
+src/products/code/state/** / src/products/work/state/**                      (matching migrations if they mirror chat state)
+
+# Frozen API contract (both declaration sites)
+src/products/chat/api/contracts.ts                                           (CreateParallelChatGroupInput.targets per-target cwd / runtimeSessionPolicy)
+src/products/shared/renderer/api/chat.ts                                     (mirror the extended input shape for the renderer client)
+
+# Product-owned parallel-group create path (NOT src/app/server/**)
+src/products/chat/api/resources/parallelChatGroupCrudRoutes.ts               (route handler passes per-target overrides through)
+src/products/chat/state/model/index.ts                                       (resolve per-target cwd / runtimeSessionPolicy, forward to per-channel CreateChatChannelInput)
+
+# Runtime dispatch
+src/products/chat/state/runtime-dispatch/**                                  (consume ResolvedBranch at submit time)
+
+# Tests
+tests/** (draft-dispatch, parallel-chat, carousel render, resolver unit tests,
+          CreateParallelChatGroupInput contract fixtures, parallelChatGroup create-route tests,
+          state-model group-create tests)
+
+# Docs
+docs/specs/SPEC-078-per-branch-draft-state-schema.md                         (landed-fields annotation)
+docs/plans/PLAN-070-programmable-per-branch-draft-rollout.md                 (progress log)
 ```
 
-The exact path to the server create handler under `src/app/server/**`
-should be confirmed during Task 1.7 (the consumer of
-`CreateParallelChatGroupInput`).
+ADR-067 reminder: the parallel-group create path lives in the Chat
+product, not in `src/app/server/**`. A previous revision of this
+plan pointed at the wrong boundary; the correct entry points are
+the route handler in `src/products/chat/api/resources/` and the
+state model in `src/products/chat/state/model/`.
 
 Phase 2 / Phase 3 surfaces will be listed when they're scheduled.
 

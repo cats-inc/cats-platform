@@ -232,8 +232,12 @@ indistinguishable from a draft a user clicked together by hand. No
   array of provider/model tuples (`ParallelChatTarget`); per-target
   cwd or session policy cannot round-trip. SPEC-078 / PLAN-070
   Phase 1 extend the create-input shape with optional per-target
-  `cwd` / `runtimeSessionPolicy`, and update the server's parallel-
-  group create handler to resolve those overrides into each child
+  `cwd` / `runtimeSessionPolicy`, and update the product-owned
+  parallel-group create path (the Chat route handler at
+  `src/products/chat/api/resources/parallelChatGroupCrudRoutes.ts`
+  and the state-model consumer at
+  `src/products/chat/state/model/index.ts`, per ADR-067 — **not**
+  `src/app/server/**`) to resolve those overrides into each child
   `CreateChatChannelInput`. This contract change is in scope for
   Phase 1 because no Phase 2 UI affordance can ship without it.
 - ADR-071 (runtime session policy boundary validation) continues to

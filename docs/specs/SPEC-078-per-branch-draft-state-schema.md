@@ -52,6 +52,11 @@
   field from the schema — adding a placeholder type now would
   invite premature task-contract speculation. Wired in Phase 3
   alongside the carousel task chip work that SPEC-077 reserved.
+- **Per-branch prompt override (`promptOverride`)**. Deferred to
+  Phase 3. Lands together with the carousel prompt-detach UX
+  (explicit "Detach prompt" confirm) so the schema field and the
+  authoring affordance ship in the same slice. Phase 1 / Phase 2
+  keep the "Follows lead" prompt behaviour from SPEC-077.
 - **Per-branch cat identity**. Cats still live in the shared draft
   pool (`draftCatIds`, `draftTemporaryParticipants`). Per-branch
   membership is expressed through `audienceKeys`, referring into
@@ -89,22 +94,20 @@ interface DraftParallelTarget {
   /** Per-branch runtime session policy. Lead default: draft.draftRuntimeSessionPolicy. */
   runtimeSessionPolicy?: RuntimeSessionPolicy | null;
 
-  /** Per-branch prompt override. Lead default: draft.composerDraft. */
-  promptOverride?: string | null;
-
   /**
-   * Per-branch audience keys (absorbs the existing per-branch parallel
-   * array `parallelBranchAudienceKeys[branchIndex]`, which today lives
-   * loose on the renderer state hooks — there is no `DraftParallelBranchState`
-   * wrapper). Lead default: draft.draftAudienceKeys ?? []. Lead branch's
-   * own audienceKeys replaces the old `parallelBranchAudienceKeys[0]`.
+   * Per-branch audience keys (absorbs the `audienceKeys` field on the
+   * existing `DraftParallelBranchState<T>` wrapper defined in
+   * `src/products/shared/renderer/draftParallelBranches.ts`, which is
+   * the canonical per-branch state today; the renderer-facing
+   * `parallelBranchAudienceKeys[]` prop is derived from that wrapper).
+   * Lead default: draft.draftAudienceKeys ?? []. Lead branch's own
+   * audienceKeys replaces the wrapper's `branches[0].audienceKeys`.
    */
   audienceKeys?: string[] | null;
 
   /**
-   * Per-branch workflow shape (absorbs the existing per-branch parallel
-   * array `parallelBranchWorkflowShapes[branchIndex]`). Lead default:
-   * draft.draftWorkflowShape.
+   * Per-branch workflow shape (absorbs the `workflowShape` field on
+   * `DraftParallelBranchState<T>`). Lead default: draft.draftWorkflowShape.
    */
   workflowShape?: DraftRoomWorkflowShape | null;
 
@@ -115,9 +118,12 @@ interface DraftParallelTarget {
    */
   attachmentsOverride?: AttachmentRef[] | null;
 
-  // Reserved for Phase 3 (not in Phase 1 schema): `taskRef?: TaskRef | null`.
-  // Wired only once an upstream task model spec defines `TaskRef`. Adding a
-  // placeholder type now would invite premature task-contract speculation.
+  // Reserved for Phase 3 (not in Phase 1 schema):
+  //   `promptOverride?: string | null`  — per-branch prompt detach, UX-
+  //     gated on "Detach prompt" confirm to avoid accidental divergence.
+  //   `taskRef?: TaskRef | null`        — wired only once an upstream
+  //     task model spec defines `TaskRef`. Adding either placeholder
+  //     type in Phase 1 would invite premature contract speculation.
 }
 ```
 
@@ -132,12 +138,12 @@ The draft-shared fields stay where they are. They now act as the
 
 | Draft-level field | Inherited by target field |
 |-------------------|---------------------------|
-| `draftCwd` | `DraftParallelTarget.cwd` |
-| `draftRuntimeSessionPolicy` | `DraftParallelTarget.runtimeSessionPolicy` |
-| `composerDraft` | `DraftParallelTarget.promptOverride` |
-| `draftAudienceKeys` | `DraftParallelTarget.audienceKeys` |
-| `draftWorkflowShape` | `DraftParallelTarget.workflowShape` |
-| `draftFiles` | (no per-branch equivalent in Phase 1) |
+| `draftCwd` | `DraftParallelTarget.cwd` (Phase 1) |
+| `draftRuntimeSessionPolicy` | `DraftParallelTarget.runtimeSessionPolicy` (Phase 1) |
+| `draftAudienceKeys` | `DraftParallelTarget.audienceKeys` (Phase 1) |
+| `draftWorkflowShape` | `DraftParallelTarget.workflowShape` (Phase 1) |
+| `composerDraft` | `DraftParallelTarget.promptOverride` (Phase 3) |
+| `draftFiles` | `DraftParallelTarget.attachmentsOverride` (Phase 3+, schema-reserved) |
 
 ### Lead branch is `parallelTargets[0]`
 
@@ -167,7 +173,7 @@ interface DraftLeadContext {
   draftFiles: File[];
 }
 
-// Branch-level resolvers
+// Branch-level resolvers (Phase 1)
 export function resolveBranchCwd(
   target: DraftParallelTarget, lead: DraftLeadContext,
 ): string | null;
@@ -175,10 +181,6 @@ export function resolveBranchCwd(
 export function resolveBranchSessionPolicy(
   target: DraftParallelTarget, lead: DraftLeadContext,
 ): RuntimeSessionPolicy | null;
-
-export function resolveBranchPrompt(
-  target: DraftParallelTarget, lead: DraftLeadContext,
-): string;
 
 export function resolveBranchAudienceKeys(
   target: DraftParallelTarget, lead: DraftLeadContext,
@@ -188,37 +190,51 @@ export function resolveBranchWorkflowShape(
   target: DraftParallelTarget, lead: DraftLeadContext,
 ): DraftRoomWorkflowShape;
 
-export function resolveBranchTaskRef(
-  target: DraftParallelTarget,
-): TaskRef | null;
-
 export function resolveBranchAttachments(
   target: DraftParallelTarget, lead: DraftLeadContext,
 ): File[];  // Phase 1 always returns lead.draftFiles; attachmentsOverride ignored
 
-// Aggregate: one call, one resolved branch view
+// Aggregate: one call, one resolved branch view (Phase 1 shape)
 export function resolveBranch(
   target: DraftParallelTarget, lead: DraftLeadContext,
 ): ResolvedBranch;
 
 interface ResolvedBranch {
-  target: DraftParallelTarget;     // raw target kept for provenance
-  effectivePrompt: string;
-  effectiveCwd: string | null;
-  effectiveSessionPolicy: RuntimeSessionPolicy | null;
-  effectiveAudienceKeys: string[];
-  effectiveWorkflowShape: DraftRoomWorkflowShape;
-  effectiveTaskRef: TaskRef | null;
-  effectiveAttachments: File[];
+  target: DraftParallelTarget;                          // raw target kept for provenance
+  effectivePrompt: string;                              // Phase 1: always lead.composerDraft
+  effectiveCwd: string | null;                          // Phase 1: resolved
+  effectiveSessionPolicy: RuntimeSessionPolicy | null;  // Phase 1: resolved
+  effectiveAudienceKeys: string[];                      // Phase 1: resolved
+  effectiveWorkflowShape: DraftRoomWorkflowShape;       // Phase 1: resolved
+  effectiveAttachments: File[];                         // Phase 1: always lead.draftFiles
   isDetached: {
     cwd: boolean;
     sessionPolicy: boolean;
-    prompt: boolean;
     audienceKeys: boolean;
     workflowShape: boolean;
   };
 }
 ```
+
+Phase-3 additions (listed here so implementers know what the
+aggregate will grow into, but MUST NOT ship as placeholders in
+Phase 1):
+
+```ts
+// Phase 3 additions to ResolvedBranch:
+//   effectiveTaskRef: TaskRef | null;
+//   isDetached.prompt: boolean;
+//
+// Phase 3 additions to the resolver suite:
+//   export function resolveBranchPrompt(...): string;
+//   export function resolveBranchTaskRef(...): TaskRef | null;
+```
+
+Phase-1 callers MUST read the lead's prompt directly from
+`lead.composerDraft` (not through a `resolveBranchPrompt` helper that
+would exist only to return `lead.composerDraft` every time). When
+Phase 3 adds `promptOverride`, `resolveBranchPrompt` is introduced
+alongside the override and call sites migrate.
 
 The `isDetached` flags let the renderer decide, per dimension, which
 chip to show on a branch card ("Follows lead" vs the detached value).
@@ -257,11 +273,14 @@ policy are landed in Phase 1 (above). Phase 2 only adds UI:
 
 ### Phase 3: prompt detach + taskRef + attachments
 
-1. Add `promptOverride` to `DraftParallelTarget`. Carousel
-   "Follows lead" prompt chip becomes clickable to detach;
-   detached state enables editing that branch's textarea.
+1. Add `promptOverride?: string | null` to `DraftParallelTarget`.
+   Add `resolveBranchPrompt` to the resolver suite. Carousel
+   "Follows lead" prompt chip becomes clickable to detach
+   (explicit "Detach prompt" confirm); detached state enables
+   editing that branch's textarea.
 2. Add `taskRef?: TaskRef | null` to `DraftParallelTarget` once
-   the upstream task model spec defines `TaskRef`. Wire to the
+   the upstream task model spec defines `TaskRef`. Add
+   `resolveBranchTaskRef` to the resolver suite. Wire to the
    task chip slot reserved by SPEC-077.
 3. `attachmentsOverride` remains reserved until the UX for
    per-branch attachments is spec'd separately.
@@ -361,14 +380,16 @@ populate them.
    a clear "attachments are not yet per-branch; remove the override"
    error. Schema has the field so we don't migrate again; runtime
    dispatch rejects until Phase 3 lands the real implementation.
-5. **`promptOverride` that resolves to empty string** is treated as
-   the lead prompt (empty override is indistinguishable from "follow
-   lead" — intentional). Orchestrator authors SHOULD prefer `null`
-   over `""` for clarity, but the renderer tolerates both.
-6. **Per-target `cwd` references that don't resolve to a usable
-   path** at create time are rejected by the server's parallel-group
+5. **Per-target `cwd` references that don't resolve to a usable
+   path** at create time are rejected by the parallel-group
    create handler with a per-target error message. Resolution
    happens before the runtime ever sees the channel.
+6. **`promptOverride` empty-string rule (Phase 3)**. When
+   `promptOverride` ships, an empty-string override resolves to
+   the lead prompt (empty override is indistinguishable from
+   "follow lead" — intentional). Orchestrator authors SHOULD
+   prefer `null` over `""` for clarity, but the renderer
+   tolerates both.
 
 ## Surfaces Affected
 
@@ -376,26 +397,41 @@ Renderer:
 
 - `src/products/shared/renderer/draftChatUtils.tsx` — `DraftParallelTarget`
   type extension (the type lives here, **not** in `ExecutionTarget.ts`,
-  which only declares `ExecutionTargetValue`); also absorbs the
-  per-branch parallel-array constructors into target-based defaults.
+  which only declares `ExecutionTargetValue`). The extended target
+  subsumes the fields currently held on the branch wrapper.
+- `src/products/shared/renderer/draftParallelBranches.ts` — home of
+  the existing `DraftParallelBranchState<TTarget>` wrapper
+  (`{ target, audienceKeys, workflowShape }`). Phase 1 flattens the
+  wrapper: `audienceKeys` / `workflowShape` move onto the target
+  itself, and the remaining `DraftParallelBranchState` shape becomes
+  trivial (just a `TTarget`) — callers switch to holding
+  `DraftParallelTarget[]` directly and the wrapper module is retired
+  once no consumer imports it. Retirement decisions (keep thin
+  wrapper vs delete outright) follow the renderer cleanup at the end
+  of Phase 1.
+- `src/products/chat/renderer/composerParallelDispatch.ts`,
+  `src/products/shared/renderer/composerParallelDispatch.ts`,
+  `src/products/chat/renderer/hooks/useComposerSubmit.ts`,
+  `src/products/shared/renderer/hooks/useWorkspaceComposerSubmit.ts`
+  — today these accept
+  `DraftParallelBranchState<ExecutionTargetValue>[]`; Phase 1 migrates
+  them to read from the extended `DraftParallelTarget` (or the
+  flattened branch shape) via the new resolver suite.
 - `src/products/shared/renderer/draftBranchResolution.ts` (new) —
   resolution helpers, `ResolvedBranch` aggregate.
 - `src/products/shared/renderer/components/ChatNewChatDraft.tsx` —
   render path consumes resolved branches; per-branch chip state
-  reads `ResolvedBranch.isDetached`. Also where the loose
-  per-branch parallel arrays
-  (`parallelBranchAudienceKeys`, `parallelBranchWorkflowShapes`)
-  are read today; those reads move to `resolveBranchAudienceKeys` /
-  `resolveBranchWorkflowShape`.
+  reads `ResolvedBranch.isDetached`. Today reads
+  `parallelBranchAudienceKeys` / `parallelBranchWorkflowShapes`
+  derived from `DraftParallelBranchState[]`; those reads move to
+  `resolveBranchAudienceKeys` / `resolveBranchWorkflowShape`.
 - `src/products/shared/renderer/components/DraftCompareCarousel.tsx`
   — unaffected; UI is already per-card.
-- Draft state hooks (the Chat product's
-  `src/products/chat/state/draft/**` and the Code/Work equivalents)
-  — drop the loose parallel arrays
-  (`parallelBranchAudienceKeys[]`, `parallelBranchWorkflowShapes[]`),
-  store branch-side state on `DraftParallelTarget` directly. There
-  is no current `DraftParallelBranchState` wrapper to retire — the
-  arrays live as loose state today.
+- Draft state hooks (Chat's `src/products/chat/state/**` plus the
+  Code/Work equivalents) — stop producing the derived parallel
+  arrays; return `DraftParallelTarget[]` with per-branch fields
+  populated. Verify every consumer of the old derived arrays
+  migrates to the resolver suite.
 
 Frozen API contract (per ADR-077, this is in-scope for Phase 1
 because Phase 2 cannot ship per-branch cwd / policy without it):
@@ -405,18 +441,28 @@ because Phase 2 cannot ship per-branch cwd / policy without it):
   per-target `cwd` and `runtimeSessionPolicy`. The group-level
   `repoPath` stays as the lead default. `ParallelChatTarget`
   itself is a read-model export; it doesn't grow.
+- `src/products/shared/renderer/api/chat.ts` mirrors the
+  renderer-side `CreateParallelChatGroupInput` shape; extend in
+  lock-step.
 
-Server / platform host:
+Product-owned API / state model (ADR-067: product APIs are
+product-owned delegates, not `src/app/server/**`):
 
-- The parallel-group create handler in `src/app/server/**` (or
-  wherever `CreateParallelChatGroupInput` is consumed today)
-  resolves each target's per-target overrides against the
-  group-level defaults and forwards the per-channel `repoPath`
-  + `RuntimeSessionCreateContractInput` to each child
-  `CreateChatChannelInput`. Locate the existing handler before
-  starting Phase 1 to confirm the exact path.
-- ADR-071 validation runs per resolved per-channel policy; reject
-  the whole group create if any child fails.
+- `src/products/chat/api/resources/parallelChatGroupCrudRoutes.ts`
+  — the product's parallel-group create route handler. It parses
+  `CreateParallelChatGroupInput` and delegates to the state
+  model. Phase 1 teaches this handler to pass per-target
+  overrides through (no `null = inherit` collapse at this layer —
+  let the state model resolve).
+- `src/products/chat/state/model/index.ts` — the consumer that
+  actually creates the group and its child channels. For each
+  target, resolve `cwd` against the group's `repoPath` and
+  `runtimeSessionPolicy` against a group-level default, then
+  forward the resolved per-channel values via the existing
+  `RuntimeSessionCreateContractInput` mix-in to each child
+  `CreateChatChannelInput`. ADR-071 validation runs per resolved
+  per-channel policy; reject the whole group create with a
+  per-target error if any child fails.
 
 Per-channel runtime dispatch:
 
@@ -429,6 +475,10 @@ Tests:
 - Update fixtures to use target-shape per-branch data, including
   contract-level fixtures for `CreateParallelChatGroupInput` with
   per-target `cwd` / `runtimeSessionPolicy`.
+- Add coverage of the flattened wrapper migration: every existing
+  test that constructs a `DraftParallelBranchState<T>` fixture
+  either migrates to the new shape or asserts the resolver reads
+  it correctly during the transitional diff.
 
 ## Open Questions
 
