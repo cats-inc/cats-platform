@@ -31,7 +31,10 @@ import {
   fetchProviderModels,
   fetchProviderRegistry,
 } from '../api/providers.js';
-import type { ExecutionTargetValue } from '../components/ExecutionTarget.js';
+import {
+  createExecutionTargetValueFromProviderSelection,
+  type ExecutionTargetValue,
+} from '../components/ExecutionTarget.js';
 
 export interface ExecutionTargetDefaultsLike {
   provider?: string | null;
@@ -491,13 +494,7 @@ export async function reconcileRuntimeBackedExecutionTargetValue(input: {
         executionLabel: null,
       };
 
-  return {
-    provider: labeledTarget.provider,
-    instance: labeledTarget.instance || null,
-    model: labeledTarget.model || null,
-    modelSelection: labeledTarget.modelSelection ?? null,
-    executionLabel: labeledTarget.executionLabel ?? null,
-  };
+  return createExecutionTargetValueFromProviderSelection(labeledTarget);
 }
 
 export function toSoloChannelExecutionTargetValue<

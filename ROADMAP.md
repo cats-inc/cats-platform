@@ -581,7 +581,10 @@ contracts.
       `parallelBranchActions` namespace instead of continuing to expand the
       flat `NewChatDraftProps` surface, and `WorkspaceNewChatDraftCopy` is
       grouped by composer / side panel / participants / execution / folder
-      concerns instead of one flat copy object.
+      concerns instead of one flat copy object. Execution-target label/summary
+      and `ProviderModelFields` selection-to-target mapping now route through
+      the shared renderer `ExecutionTarget` helper instead of being reimplemented
+      across draft and chat side-panel surfaces.
 - [ ] Add a product-owned side-panel composition seam for Code drafts together
       with render-level coverage for empty participant states, section-open
       behavior, and later execution-profile sections, so `+New code` does not

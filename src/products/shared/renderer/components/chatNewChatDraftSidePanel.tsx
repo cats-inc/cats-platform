@@ -10,6 +10,7 @@ import { CatAvatarRow } from './CatAvatarRow.js';
 import { FolderBrowserContent } from './FolderBrowser.js';
 import {
   buildExecutionTargetLabel,
+  createExecutionTargetValueFromProviderSelection,
   type ExecutionTargetValue,
 } from './ExecutionTarget.js';
 import { ProviderModelFields } from './ProviderModelFields.js';
@@ -320,13 +321,10 @@ export function buildChatNewChatDraftSidePanelSections(
             model={input.activePanelExecutionTarget.model ?? ''}
             modelSelection={input.activePanelExecutionTarget.modelSelection}
             onTargetChange={(target: ProviderTargetSelection) => {
-              input.onDirectLaneExecutionTargetChange?.(input.defaultRecipientCat!.id, {
-                provider: target.provider,
-                model: target.model || null,
-                instance: target.instance || null,
-                modelSelection: target.modelSelection ?? null,
-                executionLabel: target.executionLabel ?? null,
-              });
+              input.onDirectLaneExecutionTargetChange?.(
+                input.defaultRecipientCat!.id,
+                createExecutionTargetValueFromProviderSelection(target),
+              );
             }}
           />
         </>
@@ -346,13 +344,7 @@ export function buildChatNewChatDraftSidePanelSections(
             modelSelection={input.activePanelExecutionTarget.modelSelection}
             onTargetChange={(target: ProviderTargetSelection) => {
               if (!input.effectiveDefaultRecipientCat && input.onExecutionTargetChange) {
-                input.onExecutionTargetChange({
-                  provider: target.provider,
-                  model: target.model || null,
-                  instance: target.instance || null,
-                  modelSelection: target.modelSelection ?? null,
-                  executionLabel: target.executionLabel ?? null,
-                });
+                input.onExecutionTargetChange(createExecutionTargetValueFromProviderSelection(target));
               }
             }}
           />
@@ -375,13 +367,10 @@ export function buildChatNewChatDraftSidePanelSections(
             model={target.model ?? ''}
             modelSelection={target.modelSelection}
             onTargetChange={(next: ProviderTargetSelection) => {
-              input.onParallelTargetChange?.(index, {
-                provider: next.provider,
-                model: next.model || null,
-                instance: next.instance || null,
-                modelSelection: next.modelSelection ?? null,
-                executionLabel: next.executionLabel ?? null,
-              });
+              input.onParallelTargetChange?.(
+                index,
+                createExecutionTargetValueFromProviderSelection(next),
+              );
             }}
           />
         ),

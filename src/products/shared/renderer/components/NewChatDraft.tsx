@@ -14,7 +14,10 @@ import type { ProviderTargetSelection } from '../../../../shared/providerSelecti
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import type { BrowseDirectoryEntry } from '../api/index.js';
 import { isChatCat, truncatePath } from '../workspaceChatUtils.js';
-import { type ExecutionTargetValue } from './ExecutionTarget.js';
+import {
+  createExecutionTargetValueFromProviderSelection,
+  type ExecutionTargetValue,
+} from './ExecutionTarget.js';
 import { CatAvatarRow } from './CatAvatarRow.js';
 import { ComposerCatStack } from './ComposerCatStack.js';
 import { CollaborateIcon } from './DraftBuilderIcons.js';
@@ -632,14 +635,11 @@ export function WorkspaceNewChatDraft({
               instance={activePanelExecutionTarget.instance ?? ''}
               model={activePanelExecutionTarget.model ?? ''}
               modelSelection={activePanelExecutionTarget.modelSelection}
-              onTargetChange={(target: ProviderTargetSelection) => {
-                onDirectLaneExecutionTargetChange?.(defaultRecipientCat.id, {
-                  provider: target.provider,
-                  model: target.model || null,
-                  instance: target.instance || null,
-                  modelSelection: target.modelSelection ?? null,
-                  executionLabel: target.executionLabel ?? null,
-                });
+              onTargetChange={(target) => {
+                onDirectLaneExecutionTargetChange?.(
+                  defaultRecipientCat.id,
+                  createExecutionTargetValueFromProviderSelection(target),
+                );
               }}
             />
           </>
@@ -653,15 +653,9 @@ export function WorkspaceNewChatDraft({
               instance={activePanelExecutionTarget.instance ?? ''}
               model={activePanelExecutionTarget.model ?? ''}
               modelSelection={activePanelExecutionTarget.modelSelection}
-              onTargetChange={(target: ProviderTargetSelection) => {
+              onTargetChange={(target) => {
                 if (!effectiveDefaultRecipientCat && onExecutionTargetChange) {
-                  onExecutionTargetChange({
-                    provider: target.provider,
-                    model: target.model || null,
-                    instance: target.instance || null,
-                    modelSelection: target.modelSelection ?? null,
-                    executionLabel: target.executionLabel ?? null,
-                  });
+                  onExecutionTargetChange(createExecutionTargetValueFromProviderSelection(target));
                 }
               }}
             />

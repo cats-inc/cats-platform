@@ -1,12 +1,7 @@
 import type { CSSProperties } from 'react';
 
 import type { SidePanelSection } from '../../../../../design/components/SidePanel.js';
-import type { ProviderTargetSelection } from '../../../../../shared/providerSelection.js';
 import { isChannelBusy } from '../../../../../shared/workspaceBusy.js';
-import {
-  getProviderDisplayName,
-  getProviderModels,
-} from '../../../../../shared/providerCatalog.js';
 import type { AppShellPayload, ChatCat } from '../../../api/workspaceContracts.js';
 import type {
   ChatOperatorView,
@@ -20,7 +15,11 @@ import { openFolderInExplorer } from '../../api/index.js';
 import { catInitials, type SelectedChannelView } from '../../workspaceChatUtils.js';
 import { ActivityFeed } from '../ActivityFeed.js';
 import { ApprovalQueuePanel } from '../ApprovalQueuePanel.js';
-import type { ExecutionTargetValue } from '../../../../shared/renderer/components/ExecutionTarget.js';
+import {
+  buildExecutionTargetSummary,
+  createExecutionTargetValueFromProviderSelection,
+  type ExecutionTargetValue,
+} from '../../../../shared/renderer/components/ExecutionTarget.js';
 import { ProgressSummaryPanel } from '../ProgressSummaryPanel.js';
 import { ProviderModelFields } from '../ProviderModelFields.js';
 import { RunInspector } from '../RunInspector.js';
@@ -161,14 +160,11 @@ export function buildChatSidePanelSections({
             instance={directLaneExecutionTarget.instance ?? ''}
             model={directLaneExecutionTarget.model ?? ''}
             modelSelection={directLaneExecutionTarget.modelSelection}
-            onTargetChange={(target: ProviderTargetSelection) => {
-              onDirectLaneExecutionTargetChange?.(directLaneCat.id, {
-                provider: target.provider,
-                model: target.model || null,
-                instance: target.instance || null,
-                modelSelection: target.modelSelection ?? null,
-                executionLabel: target.executionLabel ?? null,
-              });
+            onTargetChange={(target) => {
+              onDirectLaneExecutionTargetChange?.(
+                directLaneCat.id,
+                createExecutionTargetValueFromProviderSelection(target),
+              );
             }}
           />
         </>
@@ -182,14 +178,8 @@ export function buildChatSidePanelSections({
             instance={selectedExecutionTarget.instance ?? ''}
             model={selectedExecutionTarget.model ?? ''}
             modelSelection={selectedExecutionTarget.modelSelection}
-            onTargetChange={(target: ProviderTargetSelection) => {
-              onExecutionTargetChange({
-                provider: target.provider,
-                model: target.model || null,
-                instance: target.instance || null,
-                modelSelection: target.modelSelection ?? null,
-                executionLabel: target.executionLabel ?? null,
-              });
+            onTargetChange={(target) => {
+              onExecutionTargetChange(createExecutionTargetValueFromProviderSelection(target));
             }}
           />
           {onStartFresh ? (
@@ -211,13 +201,12 @@ export function buildChatSidePanelSections({
       );
     }
     if (!isSoloComposer && defaultRecipientParticipant) {
-      const providerName = getProviderDisplayName(defaultRecipientParticipant.execution.target.provider);
-      const modelLabel = defaultRecipientParticipant.execution.target.model
-        ? (getProviderModels(defaultRecipientParticipant.execution.target.provider)
-            .find((model) => model.value === defaultRecipientParticipant.execution.target.model)?.label
-              ?? defaultRecipientParticipant.execution.target.model)
-            .replace(/\s*\(default\)\s*/iu, '')
-        : null;
+      const executionSummary = buildExecutionTargetSummary({
+        provider: defaultRecipientParticipant.execution.target.provider,
+        instance: defaultRecipientParticipant.execution.target.instance ?? null,
+        model: defaultRecipientParticipant.execution.target.model ?? null,
+        modelSelection: defaultRecipientParticipant.execution.modelSelection ?? null,
+      });
       if (defaultRecipientParticipant.sourceKind !== 'cat') {
         return (
           <div className="catInspectPanelBody">
@@ -241,17 +230,17 @@ export function buildChatSidePanelSections({
             ) : null}
             <div className="catInspectField">
               <span className="catInspectFieldLabel">AI Service</span>
-              <span>{providerName}</span>
+              <span>{executionSummary.providerLabel}</span>
             </div>
-            {defaultRecipientParticipant.execution.target.instance ? (
+            {executionSummary.instanceLabel ? (
               <div className="catInspectField">
                 <span className="catInspectFieldLabel">Connection</span>
-                <span>{defaultRecipientParticipant.execution.target.instance}</span>
+                <span>{executionSummary.instanceLabel}</span>
               </div>
             ) : null}
             <div className="catInspectField">
               <span className="catInspectFieldLabel">Model</span>
-              <span>{modelLabel ?? 'default'}</span>
+              <span>{executionSummary.modelLabel}</span>
             </div>
           </div>
         );
@@ -279,17 +268,17 @@ export function buildChatSidePanelSections({
           </div>
           <div className="catInspectField">
             <span className="catInspectFieldLabel">AI Service</span>
-            <span>{providerName}</span>
+            <span>{executionSummary.providerLabel}</span>
           </div>
-          {defaultRecipientParticipant.execution.target.instance ? (
+          {executionSummary.instanceLabel ? (
             <div className="catInspectField">
               <span className="catInspectFieldLabel">Connection</span>
-              <span>{defaultRecipientParticipant.execution.target.instance}</span>
+              <span>{executionSummary.instanceLabel}</span>
             </div>
           ) : null}
           <div className="catInspectField">
             <span className="catInspectFieldLabel">Model</span>
-            <span>{modelLabel ?? 'default'}</span>
+            <span>{executionSummary.modelLabel}</span>
           </div>
         </div>
       );

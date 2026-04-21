@@ -1,10 +1,7 @@
 import { useEffect, useRef } from 'react';
 
-import {
-  getProviderDisplayName,
-  getProviderModels,
-} from '../../../../shared/providerCatalog.js';
 import { catInitials } from '../workspaceChatUtils.js';
+import { buildExecutionTargetSummary } from './ExecutionTarget.js';
 
 export interface CatInspectTarget {
   id: string;
@@ -36,11 +33,12 @@ export function CatInspectPanel({ cat, onClose }: CatInspectPanelProps) {
     return () => document.removeEventListener('mousedown', onClickOutside);
   }, [onClose]);
 
-  const providerName = getProviderDisplayName(cat.provider);
-  const modelLabel = cat.model
-    ? (getProviderModels(cat.provider).find((model) => model.value === cat.model)?.label ?? cat.model)
-        .replace(/\s*\(default\)\s*/iu, '')
-    : null;
+  const executionSummary = buildExecutionTargetSummary({
+    provider: cat.provider,
+    instance: cat.instance,
+    model: cat.model,
+    modelSelection: null,
+  });
 
   return (
     <div className="catInspectPanel" ref={panelRef}>
@@ -73,19 +71,19 @@ export function CatInspectPanel({ cat, onClose }: CatInspectPanelProps) {
 
         <div className="catInspectField">
           <span className="catInspectFieldLabel">Provider</span>
-          <span>{providerName}</span>
+          <span>{executionSummary.providerLabel}</span>
         </div>
 
-        {cat.instance ? (
+        {executionSummary.instanceLabel ? (
           <div className="catInspectField">
             <span className="catInspectFieldLabel">Instance</span>
-            <span>{cat.instance}</span>
+            <span>{executionSummary.instanceLabel}</span>
           </div>
         ) : null}
 
         <div className="catInspectField">
           <span className="catInspectFieldLabel">Model</span>
-          <span>{modelLabel ?? 'default'}</span>
+          <span>{executionSummary.modelLabel}</span>
         </div>
 
         {cat.skillProfile ? (

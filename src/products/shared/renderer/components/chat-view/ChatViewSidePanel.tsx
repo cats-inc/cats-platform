@@ -1,9 +1,4 @@
 import { SidePanel, type SidePanelSection } from '../../../../../design/components/SidePanel.js';
-import type { ProviderTargetSelection } from '../../../../../shared/providerSelection.js';
-import {
-  getProviderDisplayName,
-  getProviderModels,
-} from '../../../../../shared/providerCatalog.js';
 import type {
   AppShellPayload,
   ChatCat,
@@ -17,7 +12,11 @@ import { catInitials, type SelectedChannelView } from '../../workspaceChatUtils.
 import { ActivityFeed } from '../ActivityFeed.js';
 import { ApprovalQueuePanel } from '../ApprovalQueuePanel.js';
 import { CatAvatarRow } from '../CatAvatarRow.js';
-import type { ExecutionTargetValue } from '../ExecutionTarget.js';
+import {
+  buildExecutionTargetSummary,
+  createExecutionTargetValueFromProviderSelection,
+  type ExecutionTargetValue,
+} from '../ExecutionTarget.js';
 import { ProgressSummaryPanel } from '../ProgressSummaryPanel.js';
 import { ProviderModelFields } from '../ProviderModelFields.js';
 import { RunInspector } from '../RunInspector.js';
@@ -163,14 +162,11 @@ export function ChatViewSidePanel({
               instance={directLaneExecutionTarget.instance ?? ''}
               model={directLaneExecutionTarget.model ?? ''}
               modelSelection={directLaneExecutionTarget.modelSelection}
-            onTargetChange={(target: ProviderTargetSelection) => {
-              onDirectLaneExecutionTargetChange?.(directLaneCat.id, {
-                provider: target.provider,
-                model: target.model || null,
-                instance: target.instance || null,
-                modelSelection: target.modelSelection ?? null,
-                executionLabel: target.executionLabel ?? null,
-              });
+            onTargetChange={(target) => {
+              onDirectLaneExecutionTargetChange?.(
+                directLaneCat.id,
+                createExecutionTargetValueFromProviderSelection(target),
+              );
             }}
           />
           </>
@@ -183,26 +179,20 @@ export function ChatViewSidePanel({
             instance={selectedExecutionTarget.instance ?? ''}
             model={selectedExecutionTarget.model ?? ''}
             modelSelection={selectedExecutionTarget.modelSelection}
-            onTargetChange={(target: ProviderTargetSelection) => {
-              onExecutionTargetChange({
-                provider: target.provider,
-                model: target.model || null,
-                instance: target.instance || null,
-                modelSelection: target.modelSelection ?? null,
-                executionLabel: target.executionLabel ?? null,
-              });
+            onTargetChange={(target) => {
+              onExecutionTargetChange(createExecutionTargetValueFromProviderSelection(target));
             }}
           />
         );
       }
       if (!isSoloComposer && defaultRecipientCat) {
         const catRecord = payload.chat.cats.find((cat) => cat.id === defaultRecipientCat.catId);
-        const providerName = getProviderDisplayName(defaultRecipientCat.execution.target.provider);
-        const modelLabel = defaultRecipientCat.execution.target.model
-          ? (getProviderModels(defaultRecipientCat.execution.target.provider)
-              .find((model) => model.value === defaultRecipientCat.execution.target.model)?.label ?? defaultRecipientCat.execution.target.model)
-              .replace(/\s*\(default\)\s*/iu, '')
-          : null;
+        const executionSummary = buildExecutionTargetSummary({
+          provider: defaultRecipientCat.execution.target.provider,
+          instance: defaultRecipientCat.execution.target.instance ?? null,
+          model: defaultRecipientCat.execution.target.model ?? null,
+          modelSelection: defaultRecipientCat.execution.modelSelection ?? null,
+        });
         return (
           <div className="catInspectPanelBody">
             <div className="catInspectIdentity">
@@ -221,17 +211,17 @@ export function ChatViewSidePanel({
             </div>
             <div className="catInspectField">
               <span className="catInspectFieldLabel">AI Service</span>
-              <span>{providerName}</span>
+              <span>{executionSummary.providerLabel}</span>
             </div>
-            {defaultRecipientCat.execution.target.instance ? (
+            {executionSummary.instanceLabel ? (
               <div className="catInspectField">
                 <span className="catInspectFieldLabel">Connection</span>
-                <span>{defaultRecipientCat.execution.target.instance}</span>
+                <span>{executionSummary.instanceLabel}</span>
               </div>
             ) : null}
             <div className="catInspectField">
               <span className="catInspectFieldLabel">Model</span>
-              <span>{modelLabel ?? 'default'}</span>
+              <span>{executionSummary.modelLabel}</span>
             </div>
           </div>
         );
