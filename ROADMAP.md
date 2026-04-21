@@ -270,10 +270,13 @@ contracts.
 - [x] Extend the current desktop packaging contract beyond Windows staging so
       macOS and Linux also produce real installer artifacts instead of staged
       manifests only
-- [ ] Add release-facing verification for generated desktop icons beyond the
+- [x] Add release-facing verification for generated desktop icons beyond the
       current generator regression coverage, including packaged-app assertions
       that Windows/macOS/Linux installers and tray surfaces actually consume
       the generated assets end to end
+      Completed: desktop packaging preflight now requires the generated icon
+      manifest and verifies it references the same app, installer, Linux, and
+      tray assets that packaging stages.
 - [ ] Strengthen the packaged host trust chain beyond the current HTTPS and
       allow-list checks, including signed update manifests, verified download
       integrity, and controlled apply/restart orchestration

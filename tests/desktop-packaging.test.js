@@ -29,6 +29,38 @@ async function seedFile(path, contents = '') {
   await writeFile(path, contents);
 }
 
+function createDesktopIconManifest(overrides = {}) {
+  return {
+    sourceSvg: 'assets/app-icon-silhouette.svg',
+    shape: 'circle',
+    app: {
+      png: 'assets/build/icon.png',
+      ico: 'assets/build/icon.ico',
+      icns: 'assets/build/icon.icns',
+      installerIcon: 'assets/build/installerIcon.ico',
+      uninstallerIcon: 'assets/build/uninstallerIcon.ico',
+      installerHeaderIcon: 'assets/build/installerHeaderIcon.ico',
+      linuxIcons: {
+        16: 'assets/build/icons/linux/16x16.png',
+        24: 'assets/build/icons/linux/24x24.png',
+        32: 'assets/build/icons/linux/32x32.png',
+        48: 'assets/build/icons/linux/48x48.png',
+        64: 'assets/build/icons/linux/64x64.png',
+        128: 'assets/build/icons/linux/128x128.png',
+        256: 'assets/build/icons/linux/256x256.png',
+        512: 'assets/build/icons/linux/512x512.png',
+      },
+    },
+    tray: {
+      default: 'assets/tray-icon.png',
+      retina: 'assets/tray-icon@2x.png',
+      template: 'assets/tray-iconTemplate.png',
+      templateRetina: 'assets/tray-iconTemplate@2x.png',
+    },
+    ...overrides,
+  };
+}
+
 async function seedRuntimeSidecar(runtimeRoot) {
   await seedFile(join(runtimeRoot, 'build', 'runtime', 'index.js'), 'export {};');
   await seedFile(join(runtimeRoot, 'package.json'), JSON.stringify({
@@ -879,10 +911,40 @@ test('package-desktop requires prebuilt icon assets instead of regenerating them
 
   const requiredPaths = resolveRequiredDesktopIconPaths(workingDir);
   for (const iconPath of requiredPaths) {
-    await seedFile(iconPath, 'icon');
+    await seedFile(
+      iconPath,
+      iconPath.endsWith('icon-manifest.json')
+        ? JSON.stringify(createDesktopIconManifest(), null, 2)
+        : 'icon',
+    );
   }
 
   await assert.doesNotReject(assertDesktopIconAssetsPresent(workingDir));
+});
+
+test('package-desktop verifies the generated icon manifest matches packaged icon assets', async () => {
+  const workingDir = await mkdtemp(join(tmpdir(), 'cats-package-icon-manifest-'));
+  const requiredPaths = resolveRequiredDesktopIconPaths(workingDir);
+
+  for (const iconPath of requiredPaths) {
+    await seedFile(
+      iconPath,
+      iconPath.endsWith('icon-manifest.json')
+        ? JSON.stringify(createDesktopIconManifest({
+            tray: {
+              default: 'assets/tray-icon.png',
+              retina: 'assets/tray-icon@2x.png',
+              template: 'assets/tray-iconTemplate.png',
+            },
+          }), null, 2)
+        : 'icon',
+    );
+  }
+
+  await assert.rejects(
+    assertDesktopIconAssetsPresent(workingDir),
+    /Desktop icon manifest is missing generated asset: assets\/tray-iconTemplate@2x\.png/u,
+  );
 });
 
 test('stageDesktopPackagingOutputs writes staging manifests and shared assets', async () => {

@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
 import process from 'node:process';
-import { access } from 'node:fs/promises';
+import { access, readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const PROJECT_ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
+const DESKTOP_ICON_MANIFEST_RELATIVE_PATH = 'assets/build/icon-manifest.json';
 const REQUIRED_DESKTOP_ICON_RELATIVE_PATHS = [
   'assets/build/icon.png',
   'assets/build/icon.ico',
@@ -81,7 +82,63 @@ export function parseArgs(argv, env = process.env) {
 }
 
 export function resolveRequiredDesktopIconPaths(projectRoot = PROJECT_ROOT) {
-  return REQUIRED_DESKTOP_ICON_RELATIVE_PATHS.map((relativePath) => resolve(projectRoot, relativePath));
+  return [
+    ...REQUIRED_DESKTOP_ICON_RELATIVE_PATHS,
+    DESKTOP_ICON_MANIFEST_RELATIVE_PATH,
+  ].map((relativePath) => resolve(projectRoot, relativePath));
+}
+
+function listDesktopIconManifestAssetPaths(manifest) {
+  return [
+    manifest?.app?.png,
+    manifest?.app?.ico,
+    manifest?.app?.icns,
+    manifest?.app?.installerIcon,
+    manifest?.app?.uninstallerIcon,
+    manifest?.app?.installerHeaderIcon,
+    ...Object.values(manifest?.app?.linuxIcons ?? {}),
+    manifest?.tray?.default,
+    manifest?.tray?.retina,
+    manifest?.tray?.template,
+    manifest?.tray?.templateRetina,
+  ].filter((value) => typeof value === 'string' && value.length > 0);
+}
+
+async function readDesktopIconManifest(projectRoot = PROJECT_ROOT) {
+  const manifestPath = resolve(projectRoot, DESKTOP_ICON_MANIFEST_RELATIVE_PATH);
+  try {
+    return JSON.parse(await readFile(manifestPath, 'utf8'));
+  } catch (error) {
+    throw new Error(
+      `Invalid desktop icon manifest: ${DESKTOP_ICON_MANIFEST_RELATIVE_PATH}. ${
+        error instanceof Error ? error.message : 'Unable to parse manifest.'
+      }`,
+    );
+  }
+}
+
+async function assertDesktopIconManifestMatchesRequiredAssets(projectRoot = PROJECT_ROOT) {
+  const manifest = await readDesktopIconManifest(projectRoot);
+  const manifestPaths = listDesktopIconManifestAssetPaths(manifest);
+  const manifestPathSet = new Set(manifestPaths);
+  const requiredPathSet = new Set(REQUIRED_DESKTOP_ICON_RELATIVE_PATHS);
+  const missingFromManifest = REQUIRED_DESKTOP_ICON_RELATIVE_PATHS
+    .filter((relativePath) => !manifestPathSet.has(relativePath));
+  if (missingFromManifest.length > 0) {
+    throw new Error(
+      `Desktop icon manifest is missing generated asset: ${missingFromManifest[0]}. `
+      + 'Run `npm run desktop:icons` before packaging.',
+    );
+  }
+
+  const unexpectedManifestPath = manifestPaths.find((relativePath) =>
+    !requiredPathSet.has(relativePath));
+  if (unexpectedManifestPath) {
+    throw new Error(
+      `Desktop icon manifest references unexpected asset: ${unexpectedManifestPath}. `
+      + 'Run `npm run desktop:icons` before packaging.',
+    );
+  }
 }
 
 export async function assertDesktopIconAssetsPresent(projectRoot = PROJECT_ROOT) {
@@ -97,6 +154,7 @@ export async function assertDesktopIconAssetsPresent(projectRoot = PROJECT_ROOT)
       );
     }
   }
+  await assertDesktopIconManifestMatchesRequiredAssets(projectRoot);
 }
 
 async function main() {
