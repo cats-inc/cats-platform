@@ -571,7 +571,7 @@ contracts.
       surfaces over the shared conversation/container engine, including
       convergence policy, automated review-share loops, and role/workflow
       templates such as single-coder, team PDCA, and peer review modes
-- [ ] Finish the first `+New code` renderer-ownership cleanup after the landed
+- [x] Finish the first `+New code` renderer-ownership cleanup after the landed
       draft-shell slices, including regrouping the flat
       `WorkspaceNewChatDraftCopy` contract by concern, extracting one shared
       execution-target summary/label helper for header and side-panel surfaces,
