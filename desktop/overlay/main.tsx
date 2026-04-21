@@ -5,6 +5,9 @@ import type {
   DesktopScreenshotOverlaySnapshotPayload,
 } from '../host/screenshotOverlayPayload.js';
 import type {
+  DesktopScreenshotOverlayBridge,
+} from '../host/screenshotOverlayIpc.js';
+import type {
   DesktopScreenshotOverlaySelectionState,
 } from '../host/screenshotOverlaySelection.js';
 import {
@@ -17,34 +20,13 @@ import {
 import {
   mapCssSelectionToPhysicalCropRect,
   normalizeDesktopScreenshotCssRect,
+  type DesktopScreenshotCssRect,
 } from '../host/screenshotGeometry.js';
 import './styles.css';
 
-interface ScreenshotOverlaySelectionResult {
-  displayId: number;
-  cssRect: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  };
-  cropRect: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-  };
-}
-
-interface ScreenshotOverlayBridge {
-  getSnapshot(): Promise<DesktopScreenshotOverlaySnapshotPayload>;
-  completeSelection(result: ScreenshotOverlaySelectionResult): Promise<void>;
-  cancel(reason: string): Promise<void>;
-}
-
 declare global {
   interface Window {
-    catsScreenshotOverlay?: ScreenshotOverlayBridge;
+    catsScreenshotOverlay?: DesktopScreenshotOverlayBridge;
   }
 }
 
@@ -85,7 +67,7 @@ function resolveSelectionRect(
 }
 
 function relativeRectStyle(
-  cssRect: ScreenshotOverlaySelectionResult['cssRect'],
+  cssRect: DesktopScreenshotCssRect,
   payload: DesktopScreenshotOverlaySnapshotPayload,
 ): React.CSSProperties {
   return {
