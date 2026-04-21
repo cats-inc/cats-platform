@@ -1,13 +1,16 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
-import { taskExecutionProductLabel } from '../../../../core/taskHandoff.js';
 import type { WorkIntakePlanProjection } from '../../api/intakeProjection.js';
 import {
   approveIntakePlan,
   fetchIntakePlan,
   rejectIntakePlan,
 } from '../api/intake.js';
+import {
+  formatWorkExecutionProduct,
+  formatWorkExecutionStrategy,
+} from '../workExecutionPresentation.js';
 
 function ProductBadge({ product }: { product: string | null }) {
   if (!product) {
@@ -16,9 +19,7 @@ function ProductBadge({ product }: { product: string | null }) {
 
   return (
     <span className={`work-plan-badge work-plan-badge--${product}`}>
-      {product === 'chat' || product === 'work' || product === 'code'
-        ? taskExecutionProductLabel(product)
-        : product}
+      {formatWorkExecutionProduct(product)}
     </span>
   );
 }
@@ -29,7 +30,9 @@ function StrategyBadge({ strategy }: { strategy: string | null }) {
   }
 
   return (
-    <span className="work-plan-badge work-plan-badge--strategy">{strategy}</span>
+    <span className="work-plan-badge work-plan-badge--strategy">
+      {formatWorkExecutionStrategy(strategy)}
+    </span>
   );
 }
 
