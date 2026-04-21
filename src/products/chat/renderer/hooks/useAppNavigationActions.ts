@@ -103,8 +103,11 @@ export function useAppNavigationActions(options: {
     navigationApi: {
       deleteChatChannel,
       deleteGlobalCat,
+      deleteParallelChatGroup,
       renameChatChannel,
+      renameParallelChatGroup,
       resetSetup,
+      ungroupParallelChatGroup,
     },
   });
 

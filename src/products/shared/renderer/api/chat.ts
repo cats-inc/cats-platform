@@ -294,7 +294,8 @@ export interface ParallelChatGroupMemberSummary extends ParallelChatTargetInput 
 export interface ParallelChatGroupSummary {
   id: string;
   title: string;
-  mode: 'parallel';
+  originSurface?: PlatformSurfaceId | null;
+  mode: 'parallel' | 'compare';
   status: 'active' | 'archived';
   memberCount: number;
   memberChannelIds: string[];
@@ -330,6 +331,10 @@ export interface ParallelChatDispatchResponse {
     sourceMessageId?: string;
     error?: string;
   }>;
+}
+
+export interface UpdateParallelChatGroupInput {
+  title?: string;
 }
 
 export async function encodeAttachmentFiles(
@@ -433,6 +438,75 @@ export async function cancelParallelChatGroup(
   return expectJson<CancelParallelChatGroupResponse>(
     response,
     `parallel chat cancel returned ${response.status}`,
+  );
+}
+
+export async function renameParallelChatGroup(
+  groupId: string,
+  input: UpdateParallelChatGroupInput,
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch(
+    `${PARALLEL_CHAT_GROUPS_API_BASE}/${encodeURIComponent(groupId)}`,
+    {
+      method: 'PATCH',
+      headers: {
+        'content-type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(input),
+      signal,
+    },
+  );
+
+  return refetchAfterMutation(
+    response,
+    `parallel chat rename returned ${response.status}`,
+    signal,
+  );
+}
+
+export async function ungroupParallelChatGroup(
+  groupId: string,
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch(
+    `${PARALLEL_CHAT_GROUPS_API_BASE}/${encodeURIComponent(groupId)}/ungroup`,
+    {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+      },
+      signal,
+    },
+  );
+
+  return refetchAfterMutation(
+    response,
+    `parallel chat ungroup returned ${response.status}`,
+    signal,
+  );
+}
+
+export async function deleteParallelChatGroup(
+  groupId: string,
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  const response = await fetch(
+    `${PARALLEL_CHAT_GROUPS_API_BASE}/${encodeURIComponent(groupId)}`,
+    {
+      method: 'DELETE',
+      headers: {
+        Accept: 'application/json',
+      },
+      signal,
+    },
+  );
+
+  return refetchAfterMutation(
+    response,
+    `parallel chat deletion returned ${response.status}`,
+    signal,
   );
 }
 

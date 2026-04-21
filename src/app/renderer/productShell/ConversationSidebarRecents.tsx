@@ -239,6 +239,7 @@ function GroupHeaderItem({
   const deleteBusy = deleteBusyKey
     ? isConcurrentGroupBusy(busy, 'delete', groupIdFromBusyKey(deleteBusyKey))
     : false;
+  const hasOverflowActions = Boolean(onRename || onUngroup || onDelete);
   const {
     renaming,
     renameValue,
@@ -313,20 +314,22 @@ function GroupHeaderItem({
               <path d="M11 3v10" />
             </svg>
           </span>
-          <button
-            ref={overflowButtonRef}
-            className="recentOverflowButton"
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onOverflowToggle();
-            }}
-          >
-            &#x22EF;
-          </button>
+          {hasOverflowActions ? (
+            <button
+              ref={overflowButtonRef}
+              className="recentOverflowButton"
+              type="button"
+              onClick={(event) => {
+                event.stopPropagation();
+                onOverflowToggle();
+              }}
+            >
+              &#x22EF;
+            </button>
+          ) : null}
         </span>
       ) : null}
-      {overflowOpen ? (
+      {overflowOpen && hasOverflowActions ? (
         <SidebarFloatingMenuPortal
           menuRef={overflowMenuRef}
           className="recentOverflowMenu"

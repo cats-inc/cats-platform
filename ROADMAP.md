@@ -717,10 +717,14 @@ contracts.
       artifact, or task/run deep links
       Completed: existing-conversation selection is now the first non-draft
       consumer of the same cross-surface handoff store.
-- [ ] Re-enable `Cats Code` recents on top of the same product-scoped
+- [x] Re-enable `Cats Code` recents on top of the same product-scoped
       `originSurface` filter, and only then evaluate whether Chat/Work/Code
       also need an explicit secondary cross-product `All recents` lens instead
       of one global mixed default
+      Completed: Chat, Work, and Code sidebars now share the same grouped
+      recents builder. Code recents show code-origin channels and compare
+      groups, filter out chat-origin entries, and wire compare group
+      rename/ungroup/delete actions through the workspace shell.
 - [ ] Keep work surfaces product-owned and avoid leaking provider or runtime
       internals into the UI model
 - [ ] Move product-scoped conversation-behavior preferences off the temporary

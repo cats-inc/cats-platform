@@ -173,6 +173,9 @@ export interface WorkspaceProductSidebarProps {
   onSelect: (channelId: string) => void;
   onDeleteChannel: (channelId: string) => void;
   onRenameChannel: (channelId: string, title: string) => void;
+  onRenameParallelChatGroup: (groupId: string, title: string) => void;
+  onUngroupParallelChatGroup: (groupId: string) => void;
+  onDeleteParallelChatGroup: (groupId: string) => void;
   onArchiveCat: (catId: string) => void;
   onAccountMenuToggle: () => void;
   onOverflowMenuToggle: (channelId: string | null) => void;
@@ -1038,6 +1041,9 @@ export function createWorkspaceProductApp({
       onSelect,
       onRenameChannel,
       onDeleteChannel,
+      onRenameParallelChatGroup,
+      onUngroupParallelChatGroup,
+      onDeleteParallelChatGroup,
       onDeleteCat,
       onNavigateSettings,
       onNavigateRuntime,
@@ -1524,6 +1530,9 @@ export function createWorkspaceProductApp({
                 onSelect,
                 onDeleteChannel,
                 onRenameChannel,
+                onRenameParallelChatGroup,
+                onUngroupParallelChatGroup,
+                onDeleteParallelChatGroup,
                 onArchiveCat,
                 onAccountMenuToggle: () => setAccountMenuOpen(!accountMenuOpen),
                 onOverflowMenuToggle: setOverflowMenuOpenId,

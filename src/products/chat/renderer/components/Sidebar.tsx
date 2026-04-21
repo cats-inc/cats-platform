@@ -5,7 +5,7 @@ import {
   type ConversationSidebarAction,
   type ConversationSidebarRecentEntry,
 } from '../../../../app/renderer/productShell/ConversationSidebar.js';
-import { resolveConversationSidebarChannelSurface } from '../../../../app/renderer/productShell/conversationSidebarViewModel.js';
+import { buildConversationSidebarRecentEntries } from '../../../../app/renderer/productShell/conversationSidebarRecentEntries.js';
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
 import type { AppShellPayload, ChatChannelSummary } from '../../api/contracts.js';
 import {
@@ -126,89 +126,18 @@ function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] 
 }
 
 function buildRecentEntries(props: SidebarProps): ConversationSidebarRecentEntry<ChatChannelSummary>[] {
-  const activeSurface = props.shellSurface ?? 'chat';
-  const recentsChannels = props.payload.chat.channels.filter((channel) =>
-    !isDirectLaneSummary(channel)
-    && resolveConversationSidebarChannelSurface(channel.originSurface) === activeSurface,
-  );
-  const activeParallelChatGroups = (props.payload.chat.parallelChatGroups ?? []).filter(
-    (group) =>
-      group.status === 'active'
-      && resolveConversationSidebarChannelSurface(group.originSurface) === activeSurface,
-  );
-  const parallelChatGroupByChannelId = new Map<string, typeof activeParallelChatGroups[number]>();
-
-  for (const group of activeParallelChatGroups) {
-    for (const channelId of group.memberChannelIds) {
-      parallelChatGroupByChannelId.set(channelId, group);
-    }
-  }
-
-  const channelById = new Map(recentsChannels.map((channel) => [channel.id, channel] as const));
-  const recentEntries: ConversationSidebarRecentEntry<ChatChannelSummary>[] = [];
-  const seenChannelIds = new Set<string>();
-  const seenGroupIds = new Set<string>();
-
-  for (const channel of recentsChannels) {
-    if (seenChannelIds.has(channel.id)) {
-      continue;
-    }
-
-    const compareGroup = parallelChatGroupByChannelId.get(channel.id);
-    if (compareGroup && !seenGroupIds.has(compareGroup.id)) {
-      const groupChannels = compareGroup.memberChannelIds
-        .map((channelId) => channelById.get(channelId) ?? null)
-        .filter((member): member is ChatChannelSummary => member != null);
-
-      if (groupChannels.length > 1) {
-        seenGroupIds.add(compareGroup.id);
-        groupChannels.forEach((member) => seenChannelIds.add(member.id));
-        recentEntries.push({
-          kind: 'group',
-          key: compareGroup.id,
-          title: compareGroup.title,
-          originSurface: compareGroup.originSurface,
-          overflowKey: `group:${compareGroup.id}`,
-          isSelected: compareGroup.memberChannelIds.includes(props.routeChannelId ?? ''),
-          onSelect: () => {
-            const firstChannelId = compareGroup.memberChannelIds[0];
-            if (firstChannelId) {
-              props.onSelect(firstChannelId);
-            }
-          },
-          onRename: (title) => {
-            void props.onRenameParallelChatGroup(compareGroup.id, title);
-          },
-          onUngroup: () => {
-            void props.onUngroupParallelChatGroup(compareGroup.id);
-          },
-          onDelete: () => {
-            props.onOverflowMenuToggle(null);
-            void props.onDeleteParallelChatGroup(compareGroup.id);
-          },
-          renameBusyKey: `concurrent-group:rename:${compareGroup.id}`,
-          ungroupBusyKey: `concurrent-group:ungroup:${compareGroup.id}`,
-          deleteBusyKey: `concurrent-group:delete:${compareGroup.id}`,
-          channels: groupChannels.map((memberChannel) => ({
-            channel: memberChannel,
-            titleOverride: compareGroup.members.find(
-              (member) => member.channelId === memberChannel.id,
-            )?.title,
-            disableRename: true,
-          })),
-        });
-        continue;
-      }
-    }
-
-    seenChannelIds.add(channel.id);
-    recentEntries.push({
-      kind: 'channel',
-      channel,
-    });
-  }
-
-  return recentEntries;
+  return buildConversationSidebarRecentEntries({
+    channels: props.payload.chat.channels,
+    parallelChatGroups: props.payload.chat.parallelChatGroups,
+    activeSurface: props.shellSurface ?? 'chat',
+    routeChannelId: props.routeChannelId,
+    isDirectLaneSummary,
+    onSelect: props.onSelect,
+    onRenameParallelGroup: props.onRenameParallelChatGroup,
+    onUngroupParallelGroup: props.onUngroupParallelChatGroup,
+    onDeleteParallelGroup: props.onDeleteParallelChatGroup,
+    onCloseOverflowMenu: () => props.onOverflowMenuToggle(null),
+  });
 }
 
 export function Sidebar(props: SidebarProps) {

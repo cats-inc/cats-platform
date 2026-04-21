@@ -4,8 +4,11 @@ import {
   ConversationSidebar,
   type ConversationSidebarAction,
   type ConversationSidebarActionGroup,
+  type ConversationSidebarRecentEntry,
 } from '../../../../app/renderer/productShell/ConversationSidebar.js';
+import { buildConversationSidebarRecentEntries } from '../../../../app/renderer/productShell/conversationSidebarRecentEntries.js';
 import type { AppShellPayload } from '../../api/contracts.js';
+import type { ChatChannelSummary } from '../../../shared/api/workspaceContracts.js';
 import {
   catInitials,
   isChatCat,
@@ -47,6 +50,9 @@ export interface SidebarProps {
   onSelect: (channelId: string) => void;
   onDeleteChannel: (channelId: string) => void;
   onRenameChannel: (channelId: string, title: string) => void;
+  onRenameParallelChatGroup?: (groupId: string, title: string) => void;
+  onUngroupParallelChatGroup?: (groupId: string) => void;
+  onDeleteParallelChatGroup?: (groupId: string) => void;
   onArchiveCat: (catId: string) => void;
   onAccountMenuToggle: () => void;
   onOverflowMenuToggle: (channelId: string | null) => void;
@@ -209,6 +215,21 @@ function createExtraActionGroups(props: SidebarProps): ConversationSidebarAction
   return groups;
 }
 
+function buildRecentEntries(props: SidebarProps): ConversationSidebarRecentEntry<ChatChannelSummary>[] {
+  return buildConversationSidebarRecentEntries({
+    channels: props.payload.chat.channels,
+    parallelChatGroups: props.payload.chat.parallelChatGroups,
+    activeSurface: props.shellSurface ?? 'code',
+    routeChannelId: props.routeChannelId,
+    isDirectLaneSummary,
+    onSelect: props.onSelect,
+    onRenameParallelGroup: props.onRenameParallelChatGroup,
+    onUngroupParallelGroup: props.onUngroupParallelChatGroup,
+    onDeleteParallelGroup: props.onDeleteParallelChatGroup,
+    onCloseOverflowMenu: () => props.onOverflowMenuToggle(null),
+  });
+}
+
 export function Sidebar(props: SidebarProps) {
   return ConversationSidebar({
     payload: props.payload,
@@ -222,6 +243,7 @@ export function Sidebar(props: SidebarProps) {
     accountMenuRef: props.accountMenuRef,
     primaryActions: createPrimaryActions(props),
     extraActionGroups: createExtraActionGroups(props),
+    recentEntries: buildRecentEntries(props),
     recentEmptyStateLabel: 'No codes yet',
     myCatsSectionLabel: 'My Clowders',
     myCatsSectionCats: [],

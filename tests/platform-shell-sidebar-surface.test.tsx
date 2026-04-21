@@ -99,6 +99,7 @@ function createPayload(
         },
       ],
       channels,
+      parallelChatGroups: [],
       selectedChannel: null,
       globalOrchestrator: {
         mode: 'global',
@@ -782,6 +783,193 @@ test('Code sidebar surfaces code-origin recents once a +New code channel lands',
   assert.equal(entries[0]?.kind, 'channel');
   assert.equal(entries[0]?.channel?.id, 'code-1');
   assert.equal(recentsSection.props.emptyStateLabel, 'No codes yet');
+});
+
+test('Code sidebar groups code-origin compare recents while filtering chat groups', () => {
+  const payload = createPayload([
+    {
+      id: 'code-compare-1',
+      title: 'Code branch A',
+      topic: '',
+      originSurface: 'code',
+      status: 'active',
+      unreadCount: 0,
+      catCount: 0,
+      activeCatCount: 0,
+      repoPath: null,
+      chatCwd: null,
+      lastMessageAt: null,
+      lastActivatedAt: null,
+    },
+    {
+      id: 'code-compare-2',
+      title: 'Code branch B',
+      topic: '',
+      originSurface: 'code',
+      status: 'active',
+      unreadCount: 0,
+      catCount: 0,
+      activeCatCount: 0,
+      repoPath: null,
+      chatCwd: null,
+      lastMessageAt: null,
+      lastActivatedAt: null,
+    },
+    {
+      id: 'chat-compare-1',
+      title: 'Chat branch A',
+      topic: '',
+      originSurface: 'chat',
+      status: 'active',
+      unreadCount: 0,
+      catCount: 0,
+      activeCatCount: 0,
+      repoPath: null,
+      chatCwd: null,
+      lastMessageAt: null,
+      lastActivatedAt: null,
+    },
+    {
+      id: 'chat-compare-2',
+      title: 'Chat branch B',
+      topic: '',
+      originSurface: 'chat',
+      status: 'active',
+      unreadCount: 0,
+      catCount: 0,
+      activeCatCount: 0,
+      repoPath: null,
+      chatCwd: null,
+      lastMessageAt: null,
+      lastActivatedAt: null,
+    },
+  ]) as unknown as CodeAppShellPayload;
+  payload.chat.parallelChatGroups = [
+    {
+      id: 'code-group',
+      title: 'Code compare',
+      originSurface: 'code',
+      mode: 'compare',
+      status: 'active',
+      memberCount: 2,
+      memberChannelIds: ['code-compare-1', 'code-compare-2'],
+      createdAt: '2026-04-01T00:00:00.000Z',
+      updatedAt: '2026-04-01T00:00:00.000Z',
+      lastMessageAt: '2026-04-01T00:05:00.000Z',
+      members: [
+        {
+          channelId: 'code-compare-1',
+          title: 'Claude branch',
+          index: 0,
+          provider: 'claude',
+          instance: null,
+          model: 'claude-sonnet-4',
+          modelSelection: null,
+          lastMessageAt: null,
+        },
+        {
+          channelId: 'code-compare-2',
+          title: 'GPT branch',
+          index: 1,
+          provider: 'openai',
+          instance: null,
+          model: 'gpt-5',
+          modelSelection: null,
+          lastMessageAt: null,
+        },
+      ],
+    },
+    {
+      id: 'chat-group',
+      title: 'Chat compare',
+      originSurface: 'chat',
+      mode: 'compare',
+      status: 'active',
+      memberCount: 2,
+      memberChannelIds: ['chat-compare-1', 'chat-compare-2'],
+      createdAt: '2026-04-01T00:00:00.000Z',
+      updatedAt: '2026-04-01T00:00:00.000Z',
+      lastMessageAt: '2026-04-01T00:05:00.000Z',
+      members: [],
+    },
+  ];
+  const actions: string[] = [];
+
+  const tree = CodeSidebar({
+    payload,
+    sidebarOpen: true,
+    accountMenuOpen: false,
+    overflowMenuOpenId: null,
+    busy: clearBusyState(),
+    surface: 'chats',
+    shellSurface: 'code',
+    routeChannelId: 'code-compare-2',
+    accountMenuRef: { current: null } as RefObject<HTMLDivElement>,
+    onToggleSidebar: () => {},
+    onCollapsedSidebarClick: () => {},
+    onOpenChatsOverview: () => {},
+    onStartNewChat: () => {},
+    onSelect: (channelId) => actions.push(`select:${channelId}`),
+    onDeleteChannel: () => {},
+    onRenameChannel: () => {},
+    onRenameParallelChatGroup: (groupId, title) => actions.push(`rename:${groupId}:${title}`),
+    onUngroupParallelChatGroup: (groupId) => actions.push(`ungroup:${groupId}`),
+    onDeleteParallelChatGroup: (groupId) => actions.push(`delete:${groupId}`),
+    onArchiveCat: () => {},
+    onAccountMenuToggle: () => {},
+    onOverflowMenuToggle: (key) => actions.push(`overflow:${key ?? 'closed'}`),
+    onNavigateSettings: () => {},
+    onNavigateRuntime: () => {},
+    onSwitchProduct: () => {},
+    activeMyCatId: null,
+    onDirectChatCat: () => {},
+    onOpenBuild: () => {},
+    onOpenRelay: () => {},
+  });
+
+  const recentsSection = findElementByComponent(tree, ConversationSidebarRecentsSection);
+  if (!recentsSection) {
+    throw new Error('ConversationSidebarRecentsSection not found.');
+  }
+
+  const entries = recentsSection.props.entries as ReadonlyArray<
+    | { kind: 'channel'; channel: { id: string; title: string }; titleOverride?: string }
+    | {
+        kind: 'group';
+        title: string;
+        isSelected?: boolean;
+        channels: ReadonlyArray<{ channel: { id: string; title: string }; titleOverride?: string }>;
+        onSelect: () => void;
+        onRename?: (title: string) => void;
+        onUngroup?: () => void;
+        onDelete?: () => void;
+      }
+  >;
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0]?.kind, 'group');
+  const group = entries[0];
+  if (group?.kind !== 'group') {
+    throw new Error('Code compare group was not rendered.');
+  }
+
+  assert.equal(group.title, 'Code compare');
+  assert.equal(group.isSelected, true);
+  assert.deepEqual(
+    group.channels.map((entry) => entry.titleOverride ?? entry.channel.title),
+    ['Claude branch', 'GPT branch'],
+  );
+
+  group.onSelect();
+  group.onRename?.('Renamed code compare');
+  group.onUngroup?.();
+  group.onDelete?.();
+  assert.deepEqual(actions, [
+    'select:code-compare-1',
+    'rename:code-group:Renamed code compare',
+    'ungroup:code-group',
+    'overflow:closed',
+    'delete:code-group',
+  ]);
 });
 
 test('Work and Code sidebars wire split-click navigation through the shared footer', () => {
