@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   captureDesktopDisplaySnapshots,
+  cropDesktopDisplaySnapshotSelection,
   matchDesktopSourceForDisplay,
   resolveDesktopCaptureThumbnailSize,
 } from '../build/desktop/screenshotNativeCapture.js';
@@ -115,4 +116,67 @@ test('desktop screenshot native capture builds per-display PNG snapshots', async
     scaleFactor: 2,
   });
   assert.deepEqual(Array.from(snapshots[1]?.png ?? []), [4, 5, 6]);
+});
+
+test('desktop screenshot native capture crops selected display snapshots', () => {
+  const cropCalls = [];
+  const result = cropDesktopDisplaySnapshotSelection(
+    {
+      displayId: 2,
+      sourceId: 'screen:2:0',
+      sourceName: 'Left display',
+      geometry: {
+        bounds: { x: -1280, y: 0, width: 1280, height: 720 },
+        imageSize: { width: 2560, height: 1440 },
+        scaleFactor: 2,
+      },
+      png: new Uint8Array([9, 9, 9]),
+    },
+    { x: -1180, y: 20, width: 200, height: 100 },
+    {
+      cropPng(sourcePng, cropRect) {
+        cropCalls.push({ sourcePng: Array.from(sourcePng), cropRect });
+        return new Uint8Array([7, 8, 9]);
+      },
+    },
+  );
+
+  assert.deepEqual(cropCalls, [
+    {
+      sourcePng: [9, 9, 9],
+      cropRect: { x: 200, y: 40, width: 400, height: 200 },
+    },
+  ]);
+  assert.deepEqual(result, {
+    displayId: 2,
+    sourceId: 'screen:2:0',
+    width: 400,
+    height: 200,
+    cropRect: { x: 200, y: 40, width: 400, height: 200 },
+    png: new Uint8Array([7, 8, 9]),
+  });
+});
+
+test('desktop screenshot native capture treats tiny crop selections as cancellation', () => {
+  const result = cropDesktopDisplaySnapshotSelection(
+    {
+      displayId: 1,
+      sourceId: 'screen:1:0',
+      sourceName: 'Built-in display',
+      geometry: {
+        bounds: { x: 0, y: 0, width: 100, height: 100 },
+        imageSize: { width: 100, height: 100 },
+        scaleFactor: 1,
+      },
+      png: new Uint8Array([1]),
+    },
+    { x: 0, y: 0, width: 7, height: 8 },
+    {
+      cropPng() {
+        throw new Error('tiny selections should not be cropped');
+      },
+    },
+  );
+
+  assert.equal(result, null);
 });

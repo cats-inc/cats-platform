@@ -1,5 +1,11 @@
 import type {
+  DesktopScreenshotCssRect,
   DesktopScreenshotDisplayGeometry,
+  DesktopScreenshotPhysicalRect,
+} from './screenshotGeometry.js';
+import {
+  isPhysicalCropRectLargeEnough,
+  mapCssSelectionToPhysicalCropRect,
 } from './screenshotGeometry.js';
 
 export interface DesktopScreenshotNativeDisplay {
@@ -37,6 +43,19 @@ export interface DesktopScreenshotDisplaySnapshot {
   sourceId: string;
   sourceName: string;
   geometry: DesktopScreenshotDisplayGeometry;
+  png: Uint8Array;
+}
+
+export interface DesktopScreenshotCropDependencies {
+  cropPng(sourcePng: Uint8Array, cropRect: DesktopScreenshotPhysicalRect): Uint8Array;
+}
+
+export interface DesktopScreenshotCroppedRegion {
+  displayId: number;
+  sourceId: string;
+  width: number;
+  height: number;
+  cropRect: DesktopScreenshotPhysicalRect;
   png: Uint8Array;
 }
 
@@ -98,4 +117,24 @@ export async function captureDesktopDisplaySnapshots(
       png: source.thumbnail.toPNG(),
     }];
   });
+}
+
+export function cropDesktopDisplaySnapshotSelection(
+  snapshot: DesktopScreenshotDisplaySnapshot,
+  selection: DesktopScreenshotCssRect,
+  dependencies: DesktopScreenshotCropDependencies,
+): DesktopScreenshotCroppedRegion | null {
+  const cropRect = mapCssSelectionToPhysicalCropRect(selection, snapshot.geometry);
+  if (!isPhysicalCropRectLargeEnough(cropRect)) {
+    return null;
+  }
+
+  return {
+    displayId: snapshot.displayId,
+    sourceId: snapshot.sourceId,
+    width: cropRect.width,
+    height: cropRect.height,
+    cropRect,
+    png: dependencies.cropPng(snapshot.png, cropRect),
+  };
 }
