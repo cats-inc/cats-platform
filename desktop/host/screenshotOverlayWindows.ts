@@ -1,0 +1,75 @@
+import type {
+  DesktopScreenshotDisplaySnapshot,
+} from './screenshotNativeCapture.js';
+
+export interface DesktopScreenshotOverlayWindowPlan {
+  displayId: number;
+  sourceId: string;
+  bounds: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  url: string;
+  alwaysOnTop: {
+    enabled: true;
+    level: 'screen-saver';
+  };
+  options: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    frame: false;
+    transparent: true;
+    resizable: false;
+    hasShadow: false;
+    skipTaskbar: true;
+    fullscreenable: false;
+    webPreferences: {
+      preload: string;
+      contextIsolation: true;
+      nodeIntegration: false;
+      sandbox: true;
+    };
+  };
+}
+
+export function buildScreenshotOverlayWindowPlans(input: {
+  snapshots: DesktopScreenshotDisplaySnapshot[];
+  overlayUrl: string;
+  preloadPath: string;
+}): DesktopScreenshotOverlayWindowPlan[] {
+  return input.snapshots.map((snapshot) => {
+    const bounds = snapshot.geometry.bounds;
+    return {
+      displayId: snapshot.displayId,
+      sourceId: snapshot.sourceId,
+      bounds,
+      url: input.overlayUrl,
+      alwaysOnTop: {
+        enabled: true,
+        level: 'screen-saver',
+      },
+      options: {
+        x: bounds.x,
+        y: bounds.y,
+        width: bounds.width,
+        height: bounds.height,
+        frame: false,
+        transparent: true,
+        resizable: false,
+        hasShadow: false,
+        skipTaskbar: true,
+        fullscreenable: false,
+        webPreferences: {
+          preload: input.preloadPath,
+          contextIsolation: true,
+          nodeIntegration: false,
+          sandbox: true,
+        },
+      },
+    };
+  });
+}
