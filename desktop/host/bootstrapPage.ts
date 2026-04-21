@@ -622,10 +622,14 @@ export function buildDesktopBootstrapPage(): string {
      * ================================================================ */
 
     function recoveryTitle(snap) {
-      if (snap.phase === 'failed') return 'Cats couldn\u2019t start';
-      if (snap.phase === 'needs_prerequisites') return 'Something needs attention';
-      if (snap.phase === 'ready_for_setup') return 'Ready for setup';
-      return 'Recovery';
+      if (snap.phase === 'failed') return 'Cats needs a quick restart';
+      if (snap.phase === 'needs_prerequisites') {
+        return snap.app && snap.app.setupCompleteAt
+          ? 'Cats can open, but one helper needs attention'
+          : 'Cats needs one setup fix';
+      }
+      if (snap.phase === 'ready_for_setup') return 'Cats is ready to set up';
+      return 'Cats recovery';
     }
 
     function recoverySummary(snap) {
@@ -633,18 +637,18 @@ export function buildDesktopBootstrapPage(): string {
         var failedSvc = snap.services.find(function (s) { return s.status === 'failed'; });
         if (failedSvc) {
           return getServiceDisplayName(failedSvc.name)
-            + ' didn\u2019t start up. You can retry, or check the details below.';
+            + ' did not start. Try again first; use advanced details only if it keeps failing.';
         }
-        return 'One of the local services failed to start. You can retry or look at the details below.';
+        return 'A local helper did not start. Try again first; use advanced details only if it keeps failing.';
       }
       if (snap.phase === 'needs_prerequisites') {
         if (snap.app && snap.app.setupCompleteAt) {
-          return 'Cats is still usable, but a background service needs repair. You can open Cats now or check below.';
+          return 'You can keep using Cats now. Repair the local helper when convenient, or open advanced details if you need them.';
         }
-        return 'A prerequisite check found something that needs fixing before you can continue.';
+        return 'Finish the setup fix below, then Cats will continue.';
       }
       if (snap.phase === 'ready_for_setup') {
-        return 'Local services are running. Continue into setup to get started.';
+        return 'Local helpers are running. Continue into setup to get started.';
       }
       return snap.summary || 'See details below.';
     }
@@ -735,7 +739,7 @@ export function buildDesktopBootstrapPage(): string {
       if (items.length === 0) {
         items.push(el('div', { class: 'detail-meta' }, 'No specific issues were reported.'));
       }
-      return ExpandableSection('Why am I seeing this?', items);
+      return ExpandableSection('What needs attention', items);
     }
 
     function ServiceStatusSection(snap) {
@@ -760,13 +764,13 @@ export function buildDesktopBootstrapPage(): string {
         return parts;
       });
 
-      return ExpandableSection('Service status', [el('div', { class: 'card' }, rows.flat())]);
+      return ExpandableSection('Local helpers', [el('div', { class: 'card' }, rows.flat())]);
     }
 
     function DiagnosticsSection(snap) {
       var diagnostics = snap.diagnostics;
       var actionRow = el('div', { class: 'actions', style: 'margin-top:12px' },
-        Btn('Open runtime diagnostics', {
+        Btn('Open advanced diagnostics', {
           onclick: function () {
             bridge.runAction('open_runtime_diagnostics');
           }
@@ -775,7 +779,7 @@ export function buildDesktopBootstrapPage(): string {
 
       if (!diagnostics || !diagnostics.aggregation) {
         return ExpandableSection('Diagnostics', [
-          el('div', { class: 'detail-meta' }, 'Diagnostics are still loading.'),
+          el('div', { class: 'detail-meta' }, 'Advanced diagnostics are still loading.'),
           actionRow,
         ]);
       }
@@ -817,7 +821,7 @@ export function buildDesktopBootstrapPage(): string {
 
       content.push(actionRow);
 
-      return ExpandableSection('Diagnostics', content);
+      return ExpandableSection('Advanced diagnostics', content);
     }
 
     function LogsAndPathsSection(snap) {
@@ -851,10 +855,10 @@ export function buildDesktopBootstrapPage(): string {
         }
       }
       if (items.length === 0) {
-        items.push(el('div', { class: 'detail-meta' }, 'No log paths available yet.'));
+        items.push(el('div', { class: 'detail-meta' }, 'No advanced log paths available yet.'));
       }
 
-      return ExpandableSection('Logs and paths', [el('div', { class: 'card' }, items)]);
+      return ExpandableSection('Advanced logs and paths', [el('div', { class: 'card' }, items)]);
     }
 
     function SetupRecoverySection(snap, setupSnap, bridge) {
@@ -875,7 +879,7 @@ export function buildDesktopBootstrapPage(): string {
         if (Array.isArray(ra.manualSteps) && ra.manualSteps.length) {
           rac.push(el('div', { class: 'detail-meta' }, ra.manualSteps[0]));
         }
-        rac.push(Btn('Resume setup', {
+        rac.push(Btn('Continue setup fix', {
           onclick: function () {
             var self = this;
             self.disabled = true;
@@ -906,7 +910,7 @@ export function buildDesktopBootstrapPage(): string {
         cards.push(el('div', { class: 'card' }, lac));
       }
 
-      return ExpandableSection('Setup recovery', cards);
+      return ExpandableSection('Setup fix', cards);
     }
 
     /* ================================================================
@@ -968,7 +972,7 @@ export function buildDesktopBootstrapPage(): string {
           showRecoveryDetails = false;
           doRender();
         }
-      }, '\u2190 Back');
+      }, '\u2190 Back to quick fix');
 
       /* Summary card with 3-slot action row */
       var summary = RecoverySummaryCard(snap, bridge);

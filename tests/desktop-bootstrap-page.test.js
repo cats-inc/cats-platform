@@ -19,9 +19,11 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /RecoverySummaryCard/);
 
   // Human-friendly copy per state
-  assert.match(html, /couldn\u2019t start/);
-  assert.match(html, /Something needs attention/);
-  assert.match(html, /Ready for setup/);
+  assert.match(html, /Cats needs a quick restart/);
+  assert.match(html, /Cats needs one setup fix/);
+  assert.match(html, /Cats is ready to set up/);
+  assert.match(html, /Try again first/);
+  assert.match(html, /Back to quick fix/);
 
   // Back button to leave detail mode
   assert.match(html, /recovery-back/);
@@ -30,11 +32,11 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /expand-trigger/);
   assert.match(html, /expand-body/);
   assert.match(html, /ExpandableSection/);
-  assert.match(html, /Why am I seeing this\?/);
-  assert.match(html, /Service status/);
-  assert.match(html, /Diagnostics/);
-  assert.match(html, /Logs and paths/);
-  assert.match(html, /Setup recovery/);
+  assert.match(html, /What needs attention/);
+  assert.match(html, /Local helpers/);
+  assert.match(html, /Advanced diagnostics/);
+  assert.match(html, /Advanced logs and paths/);
+  assert.match(html, /Setup fix/);
 
   // Service status section preserved
   assert.match(html, /getServiceDisplayName/);
@@ -45,9 +47,10 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /primary:\s*action\.primary === true/);
   assert.doesNotMatch(html, /var isFirst = snap\.actions\.indexOf\(action\) === 0;/);
 
-  // Runtime diagnostics lives in Diagnostics, not Service status, and is not runtimeReady-gated
+  // Runtime diagnostics lives in advanced details, not Local helpers, and is not runtimeReady-gated
   assert.match(html, /function DiagnosticsSection\(snap\)[\s\S]*open_runtime_diagnostics/);
-  assert.match(html, /return ExpandableSection\('Service status', \[el\('div', \{ class: 'card' \}, rows\.flat\(\)\)\]\);/);
+  assert.match(html, /return ExpandableSection\('Local helpers', \[el\('div', \{ class: 'card' \}, rows\.flat\(\)\)\]\);/);
+  assert.match(html, /Open advanced diagnostics/);
   assert.doesNotMatch(html, /var runtimeReady = snap\.services\.some/);
 
   // Setup recovery section
@@ -56,6 +59,7 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /resumeSetup/);
   assert.match(html, /snap\.setup/);
   assert.match(html, /Recommended next step/);
+  assert.match(html, /Continue setup fix/);
   assert.match(html, /renderInterruptions/);
 
   // Diagnostics section preserved
