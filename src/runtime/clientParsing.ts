@@ -81,6 +81,11 @@ export function normalizeRuntimeProviderConfigRegistry(
                     typeof instance.command === 'string' && instance.command.trim().length > 0
                       ? instance.command
                       : null,
+                  args: Array.isArray(instance.args)
+                    ? instance.args
+                      .filter((arg): arg is string =>
+                        typeof arg === 'string' && arg.trim().length > 0)
+                    : [],
                   runner:
                     typeof instance.runner === 'string' && instance.runner.trim().length > 0
                       ? instance.runner

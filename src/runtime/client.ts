@@ -39,6 +39,7 @@ export interface RuntimeProviderInstanceConfig {
   target: string | null;
   backend: string | null;
   command: string | null;
+  args: string[];
   runner: string | null;
   runtime: string | null;
   transport: string | null;
