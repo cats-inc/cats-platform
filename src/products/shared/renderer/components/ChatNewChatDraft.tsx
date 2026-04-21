@@ -9,7 +9,7 @@ import {
 
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
-import { SidePanel } from '../../../../design/components/SidePanel.js';
+import { SidePanel, type SidePanelSection } from '../../../../design/components/SidePanel.js';
 import type { BrowseDirectoryEntry } from '../api/index.js';
 import { type NewChatPreset } from '../draftStarterSuggestionContext.js';
 import {
@@ -33,6 +33,7 @@ import { type ExecutionTargetValue } from './ExecutionTarget.js';
 import {
   buildChatNewChatDraftSidePanelSections,
   resolveChatNewChatDraftSidePanelCopy,
+  type BuildChatNewChatDraftSidePanelSectionsInput,
   type ChatNewChatDraftSidePanelCopy,
 } from './chatNewChatDraftSidePanel.js';
 import { DraftHeader } from './DraftHeader.js';
@@ -155,6 +156,13 @@ export interface ChatNewChatDraftStarterChips {
     onClick: () => void;
   }>;
   preserveOnSelect?: boolean;
+}
+
+export interface ChatNewChatDraftSidePanelComposition {
+  title?: string;
+  buildSections?: (
+    input: BuildChatNewChatDraftSidePanelSectionsInput,
+  ) => SidePanelSection[];
 }
 
 function BranchRuntimeSessionPolicyControls({
@@ -343,6 +351,7 @@ export interface NewChatDraftProps {
   draftChrome?: ChatNewChatDraftChrome;
   draftCopy?: ChatNewChatDraftCopy;
   starterChips?: ChatNewChatDraftStarterChips;
+  sidePanel?: ChatNewChatDraftSidePanelComposition;
 }
 
 export function NewChatDraft({
@@ -410,6 +419,7 @@ export function NewChatDraft({
   draftChrome,
   draftCopy,
   starterChips,
+  sidePanel,
 }: NewChatDraftProps) {
   const {
     headerAccessory: composerHeaderAccessory = null,
@@ -440,6 +450,9 @@ export function NewChatDraft({
   const onQuickAddParallelBranchTemporaryParticipant =
     parallelBranchActions?.onQuickAddTemporaryParticipant;
   const resolvedSidePanelCopy = resolveChatNewChatDraftSidePanelCopy(sidePanelCopy);
+  const sidePanelTitle = sidePanel?.title ?? resolvedSidePanelCopy.title;
+  const buildDraftSidePanelSections =
+    sidePanel?.buildSections ?? buildChatNewChatDraftSidePanelSections;
   const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
   const [activeBranchIndex, setActiveBranchIndex] = useState(0);
   const [
@@ -1106,12 +1119,12 @@ export function NewChatDraft({
 
   const sidePanelJsx = sidePanelOpen ? (
     <SidePanel
-      title={resolvedSidePanelCopy.title}
+      title={sidePanelTitle}
       activeSection={sidePanelSection}
       onSectionToggle={isSubmittingFirstTurn ? () => {} : switchSection}
       onClose={isSubmittingFirstTurn ? () => {} : () => setSidePanelOpen(false)}
       className="chatPaneSidePanel"
-      sections={buildChatNewChatDraftSidePanelSections({
+      sections={buildDraftSidePanelSections({
         payload,
         chatCats,
         draftCatIds,

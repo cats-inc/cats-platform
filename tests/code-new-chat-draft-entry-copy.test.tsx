@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server.browser';
 
 import type { AppShellPayload } from '../src/products/code/api/contracts.ts';
 import {
+  buildCodeNewChatDraftSidePanelSections,
   NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY,
   NewChatDraft,
   NEW_CODE_DRAFT_COPY,
@@ -167,6 +168,84 @@ test('new code draft publishes code-specific copy overrides for the shared works
   );
   assert.equal(NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY.execution?.sectionTitle, 'Execution');
   assert.equal(NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY.folder?.sectionTitle, 'Workspace');
+});
+
+test('new code draft owns shared side panel sections through its product builder', () => {
+  const sections = buildCodeNewChatDraftSidePanelSections({
+    payload: createPayload({ cats: [] }),
+    chatCats: [],
+    draftCatIds: [],
+    draftHighlightedCatId: null,
+    effectiveDefaultRecipientCat: null,
+    isGroupDraft: true,
+    isDirectLaneContext: false,
+    isParallelMode: false,
+    groupDraftSelectionLabel: 'No participants selected.',
+    assistantPresets: [],
+    draftTemporaryParticipants: [],
+    editingTemporaryParticipantId: null,
+    editingTemporaryParticipantName: '',
+    temporaryParticipantFormOpen: false,
+    temporaryParticipantForm: {
+      roleHint: '',
+      provider: 'claude',
+      instance: 'native',
+      model: 'claude-sonnet',
+      modelSelection: null,
+    },
+    hasReachedGroupParticipantLimit: false,
+    isSubmittingFirstTurn: false,
+    defaultRecipientCat: null,
+    activePanelExecutionTarget: null,
+    onToggleDraftCat: () => {},
+    onHighlightDraftCat: () => {},
+    onAddDraftTemporaryParticipant: () => {},
+    onRemoveDraftTemporaryParticipant: () => {},
+    onBeginTemporaryParticipantRename: () => {},
+    onCancelTemporaryParticipantRename: () => {},
+    onSubmitTemporaryParticipantRename: () => {},
+    onEditingTemporaryParticipantNameChange: () => {},
+    onTemporaryParticipantFormChange: () => {},
+    createTemporaryParticipantFormValue: () => ({
+      roleHint: '',
+      provider: 'claude',
+      instance: 'native',
+      model: 'claude-sonnet',
+      modelSelection: null,
+    }),
+    onTemporaryParticipantFormOpenChange: () => {},
+    onSubmitTemporaryParticipant: () => {},
+    draftCwd: null,
+    onCloseSidePanel: () => {},
+    sidePanelCopy: {
+      participants: {
+        emptyState: 'Chat participant fallback should not render.',
+      },
+      execution: {
+        emptyState: 'Chat execution fallback should not render.',
+      },
+      folder: {
+        emptyState: 'Chat workspace fallback should not render.',
+      },
+    },
+  });
+  const markup = renderToStaticMarkup(
+    <>
+      {sections.map((section) => (
+        <React.Fragment key={section.id}>{section.children}</React.Fragment>
+      ))}
+    </>,
+  );
+
+  assert.equal(sections.find((section) => section.id === 'cats')?.title, 'Participants');
+  assert.equal(sections.find((section) => section.id === 'execution')?.title, 'Execution');
+  assert.equal(sections.find((section) => section.id === 'cwd')?.title, 'Workspace');
+  assert.match(markup, /No participants available yet\./u);
+  assert.match(markup, /No execution target set yet\./u);
+  assert.match(markup, /No workspace selected yet\./u);
+  assert.doesNotMatch(markup, /Chat participant fallback should not render\./u);
+  assert.doesNotMatch(markup, /Chat execution fallback should not render\./u);
+  assert.doesNotMatch(markup, /Chat workspace fallback should not render\./u);
 });
 
 test('new code default draft keeps the original shared composer structure without extra header chips', () => {

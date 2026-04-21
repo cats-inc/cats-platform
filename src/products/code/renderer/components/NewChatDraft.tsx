@@ -2,9 +2,12 @@ import {
   NewChatDraft as ChatNewChatDraft,
   type NewChatDraftProps,
 } from '../../../shared/renderer/components/ChatNewChatDraft.js';
-import type {
-  ChatNewChatDraftSidePanelCopy,
+import {
+  buildChatNewChatDraftSidePanelSections,
+  type BuildChatNewChatDraftSidePanelSectionsInput,
+  type ChatNewChatDraftSidePanelCopy,
 } from '../../../shared/renderer/components/chatNewChatDraftSidePanel.js';
+import type { SidePanelSection } from '../../../../design/components/SidePanel.js';
 import {
   NewChatDraft as WorkspaceNewChatDraft,
   type NewChatDraftProps as WorkspaceDraftProps,
@@ -56,6 +59,15 @@ export const NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY: ChatNewChatDraftSidePanelCopy 
     emptyState: NEW_CODE_DRAFT_COPY.folder?.emptyState,
   },
 };
+
+export function buildCodeNewChatDraftSidePanelSections(
+  input: BuildChatNewChatDraftSidePanelSectionsInput,
+): SidePanelSection[] {
+  return buildChatNewChatDraftSidePanelSections({
+    ...input,
+    sidePanelCopy: NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY,
+  });
+}
 
 export type {
   NewChatDraftProps,
@@ -113,6 +125,7 @@ function buildWorkspaceDraftProps(input: {
     onDraftRuntimeSessionPolicyChange,
     onCancelPendingSend,
     builderControls,
+    sidePanel,
     ...workspaceProps
   } = props;
   const isSubmittingFirstTurn = isComposerBusyForDraft(props.busy);
@@ -140,6 +153,7 @@ function buildWorkspaceDraftProps(input: {
   void onDraftRuntimeSessionPolicyChange;
   void onCancelPendingSend;
   void builderControls;
+  void sidePanel;
 
   return {
     ...workspaceProps,
@@ -243,7 +257,10 @@ function CodeChatDraft(props: NewChatDraftProps) {
       draftCopy={{
         composerPlaceholder: NEW_CODE_DRAFT_COPY.composer?.placeholder,
         folderActionLabel: NEW_CODE_DRAFT_COPY.folder?.actionLabel,
-        sidePanel: NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY,
+      }}
+      sidePanel={{
+        title: NEW_CODE_DRAFT_COPY.sidePanel?.title,
+        buildSections: buildCodeNewChatDraftSidePanelSections,
       }}
       builderControls={builderControls}
     />

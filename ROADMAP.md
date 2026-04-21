@@ -600,7 +600,11 @@ contracts.
       Progress: Chat draft side-panel mechanics now accept caller-owned copy for
       panel title, participant/execution/workspace section titles, and empty
       states. Code group/parallel drafts feed the same Code copy through that
-      seam instead of inheriting Chat setup labels.
+      seam instead of inheriting Chat setup labels. Shared `ChatNewChatDraft`
+      now also exposes a product-owned side-panel composition namespace with a
+      section-builder seam, and Code drafts wrap the shared default builder with
+      their own empty-state/title contract so future execution-profile sections
+      can be inserted without editing shared Chat draft internals.
 - [ ] Move `+Team code` and `+Peer code` off the current shared chat-draft
       fallback onto product-owned draft surfaces above the same shared
       primitives, so Code group/parallel entry no longer inherits chat-specific
