@@ -429,3 +429,74 @@ test('DesktopHostStateStore clamps corrupted snapshot metadata during load', asy
   assert.match(loaded?.snapshot.summary ?? '', /incomplete/i);
   assert.equal(loaded?.snapshot.hostStatePath, config.paths.hostStatePath);
 });
+
+test('DesktopHostStateStore normalizes corrupted persisted update state during load', async () => {
+  const workingDir = await mkdtemp(join(tmpdir(), 'cats-host-state-update-'));
+  const config = resolveDesktopHostConfig({
+    env: {
+      CATS_DESKTOP_APP_ENTRY: join(workingDir, 'build', 'server', 'index.js'),
+      CATS_DESKTOP_RUNTIME_ENTRY: join(workingDir, 'cats-runtime', 'build', 'runtime', 'index.js'),
+      CATS_DESKTOP_RUNTIME_ROOT: join(workingDir, 'cats-runtime'),
+      CATS_DESKTOP_UPDATE_MANIFEST_URL: 'https://updates.example.com/cats/stable.json',
+    },
+    userDataDir: join(workingDir, 'user-data'),
+    catsHomeDir: join(workingDir, '.cats'),
+  });
+  const background = createDesktopBackgroundState(config);
+  const updates = createDefaultDesktopUpdateState(config.update);
+  const packaging = createDesktopPackagingPlan(config);
+  const setup = createEmptyDesktopSetupState();
+  const store = new DesktopHostStateStore(config.paths.hostStatePath);
+  const corruptedUpdates = {
+    channel: 'nightly',
+    status: 'exploded',
+    currentVersion: '',
+    latestVersion: 42,
+    summary: '',
+    lastCheckedAt: '2026-04-11T09:15:00.000Z',
+    manifestUrl: 'https://updates.example.com/cats/stable.json',
+    downloadUrl: 7,
+    error: '',
+  };
+
+  await mkdir(join(config.paths.hostStatePath, '..'), { recursive: true });
+  await writeFile(config.paths.hostStatePath, JSON.stringify({
+    snapshot: {
+      service: DESKTOP_HOST_NAME,
+      version: DESKTOP_HOST_VERSION,
+      timestamp: '2026-04-11T09:10:00.000Z',
+      phase: 'checking_prerequisites',
+      status: 'degraded',
+      summary: 'Restored snapshot.',
+      background,
+      updates: corruptedUpdates,
+      packaging,
+      setup,
+      hostStatePath: config.paths.hostStatePath,
+    },
+    background,
+    updates: corruptedUpdates,
+    packaging,
+    setup,
+    savedAt: '2026-04-11T09:12:00.000Z',
+  }, null, 2));
+
+  const loaded = await store.load(config, {
+    background,
+    updates,
+    packaging,
+    setup,
+  });
+
+  assert.ok(loaded);
+  assert.equal(loaded?.updates.channel, updates.channel);
+  assert.equal(loaded?.updates.status, updates.status);
+  assert.equal(loaded?.updates.currentVersion, updates.currentVersion);
+  assert.equal(loaded?.updates.latestVersion, null);
+  assert.equal(loaded?.updates.summary, updates.summary);
+  assert.equal(loaded?.updates.lastCheckedAt, '2026-04-11T09:15:00.000Z');
+  assert.equal(loaded?.updates.manifestUrl, 'https://updates.example.com/cats/stable.json');
+  assert.equal(loaded?.updates.downloadUrl, null);
+  assert.equal(loaded?.updates.error, null);
+  assert.deepEqual(loaded?.snapshot.updates, loaded?.updates);
+});

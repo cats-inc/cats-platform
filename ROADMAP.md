@@ -293,7 +293,8 @@ contracts.
       reject malformed manifests without a valid version, and reject manifests
       whose declared channel does not match the configured channel. Persisted
       host-state snapshots now clamp corrupted host metadata before exposing it
-      back to the desktop bootstrap surface.
+      back to the desktop bootstrap surface, and persisted update state now
+      normalizes invalid status/channel/string fields before reuse.
 - [ ] Add installed-app verification beyond the current unpacked smoke pass,
       including real Windows post-install launch checks, persisted host-state
       assertions on installed machines, and later packaging CI coverage

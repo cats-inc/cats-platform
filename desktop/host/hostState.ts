@@ -18,12 +18,16 @@ import type {
   DesktopSetupActionRecord,
   DesktopSetupInterruption,
   DesktopSetupState,
+  DesktopUpdateChannel,
+  DesktopUpdateStatus,
   DesktopUpdateState,
 } from './contracts.js';
 import {
   DESKTOP_BOOTSTRAP_PHASES,
   DESKTOP_HOST_NAME,
   DESKTOP_HOST_VERSION,
+  DESKTOP_UPDATE_CHANNELS,
+  DESKTOP_UPDATE_STATUSES,
 } from './contracts.js';
 import type { DesktopHostConfig } from './config.js';
 import { createEmptyDesktopDiagnosticsState } from './bootstrapDiagnostics.js';
@@ -68,6 +72,26 @@ function normalizeHealthStatus(value: unknown): DesktopHealthStatus {
     : 'degraded';
 }
 
+function normalizeUpdateChannel(
+  value: unknown,
+  fallback: DesktopUpdateChannel,
+): DesktopUpdateChannel {
+  return typeof value === 'string'
+    && DESKTOP_UPDATE_CHANNELS.includes(value as DesktopUpdateChannel)
+    ? value as DesktopUpdateChannel
+    : fallback;
+}
+
+function normalizeUpdateStatus(
+  value: unknown,
+  fallback: DesktopUpdateStatus,
+): DesktopUpdateStatus {
+  return typeof value === 'string'
+    && DESKTOP_UPDATE_STATUSES.includes(value as DesktopUpdateStatus)
+    ? value as DesktopUpdateStatus
+    : fallback;
+}
+
 function normalizeBackgroundState(
   value: unknown,
   fallback: DesktopBackgroundState,
@@ -85,6 +109,27 @@ function normalizeBackgroundState(
     closeBehavior: fallback.closeBehavior,
     windowVisible: value.windowVisible !== false,
     lastHiddenAt: readString(value.lastHiddenAt),
+  };
+}
+
+function normalizeUpdateState(
+  value: unknown,
+  fallback: DesktopUpdateState,
+): DesktopUpdateState {
+  if (!isObjectRecord(value)) {
+    return fallback;
+  }
+
+  return {
+    channel: normalizeUpdateChannel(value.channel, fallback.channel),
+    status: normalizeUpdateStatus(value.status, fallback.status),
+    currentVersion: readString(value.currentVersion) ?? fallback.currentVersion,
+    latestVersion: readString(value.latestVersion),
+    summary: readString(value.summary) ?? fallback.summary,
+    lastCheckedAt: readString(value.lastCheckedAt),
+    manifestUrl: readString(value.manifestUrl),
+    downloadUrl: readString(value.downloadUrl),
+    error: readString(value.error),
   };
 }
 
@@ -472,9 +517,7 @@ export class DesktopHostStateStore {
         snapshot: {
           ...snapshot,
           background: normalizeBackgroundState(snapshot.background, defaults.background),
-          updates: isObjectRecord(snapshot.updates)
-            ? snapshot.updates as unknown as DesktopUpdateState
-            : defaults.updates,
+          updates: normalizeUpdateState(snapshot.updates, defaults.updates),
           packaging: isObjectRecord(snapshot.packaging)
             ? snapshot.packaging as unknown as DesktopPackagingPlan
             : defaults.packaging,
@@ -483,9 +526,7 @@ export class DesktopHostStateStore {
           hostStatePath: this.statePath,
         },
         background: normalizeBackgroundState(parsed.background, defaults.background),
-        updates: isObjectRecord(parsed.updates)
-          ? parsed.updates as unknown as DesktopUpdateState
-          : defaults.updates,
+        updates: normalizeUpdateState(parsed.updates, defaults.updates),
         packaging: isObjectRecord(parsed.packaging)
           ? parsed.packaging as unknown as DesktopPackagingPlan
           : defaults.packaging,
