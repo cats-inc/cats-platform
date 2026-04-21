@@ -1722,10 +1722,24 @@ export function createWorkspaceProductApp({
                           ? onDraftParallelBranchGroupAddButtonClick
                           : undefined,
                     },
-                    showDraftParallelAddButton:
-                      supportsStructuredDraftModes
-                      && showingGenericNewChatDraft
-                      && (advancedDraftControlsEnabled || hasVisibleParallelDraftTargets),
+                    builderControls: {
+                      showParallelAddButton:
+                        supportsStructuredDraftModes
+                        && showingGenericNewChatDraft
+                        && (advancedDraftControlsEnabled || hasVisibleParallelDraftTargets),
+                      showGroupAddButton:
+                        advancedDraftControlsEnabled
+                        && showingGenericNewChatDraft
+                        && effectiveNewChatPreset !== "group",
+                      hideGroupHint:
+                        advancedDraftControlsEnabled
+                        && showingGenericNewChatDraft
+                        && effectiveNewChatPreset !== "group",
+                      hideParallelHint:
+                        advancedDraftControlsEnabled
+                        && showingGenericNewChatDraft
+                        && effectiveNewChatPreset !== "parallel",
+                    },
                     draftWorkflowShape,
                     draftRuntimeSessionPolicy: draftSessionPolicy,
                     onDraftRuntimeSessionPolicyChange: setDraftSessionPolicy,
@@ -1738,18 +1752,6 @@ export function createWorkspaceProductApp({
                     onSetAudienceKeys: supportsStructuredDraftModes
                       ? setDraftAudienceKeys
                       : undefined,
-                    showDraftGroupAddButton:
-                      advancedDraftControlsEnabled
-                      && showingGenericNewChatDraft
-                      && effectiveNewChatPreset !== "group",
-                    hideDraftGroupHint:
-                      advancedDraftControlsEnabled
-                      && showingGenericNewChatDraft
-                      && effectiveNewChatPreset !== "group",
-                    hideDraftParallelHint:
-                      advancedDraftControlsEnabled
-                      && showingGenericNewChatDraft
-                      && effectiveNewChatPreset !== "parallel",
                   }}
                   addCatOpen={showAddCatPanel}
                   onToggleAddCat={toggleAddCatPanel}

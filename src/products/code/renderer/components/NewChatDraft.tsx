@@ -111,8 +111,7 @@ function buildWorkspaceDraftProps(input: {
     draftRuntimeSessionPolicy,
     onDraftRuntimeSessionPolicyChange,
     onCancelPendingSend,
-    hideDraftGroupHint,
-    hideDraftParallelHint,
+    builderControls,
     ...workspaceProps
   } = props;
   const isSubmittingFirstTurn = isComposerBusyForDraft(props.busy);
@@ -139,8 +138,7 @@ function buildWorkspaceDraftProps(input: {
   void draftRuntimeSessionPolicy;
   void onDraftRuntimeSessionPolicyChange;
   void onCancelPendingSend;
-  void hideDraftGroupHint;
-  void hideDraftParallelHint;
+  void builderControls;
 
   return {
     ...workspaceProps,
@@ -244,10 +242,12 @@ function CodeChatDraft(props: NewChatDraftProps) {
       composerPlaceholder={NEW_CODE_DRAFT_COPY.composer?.placeholder}
       folderActionLabel={NEW_CODE_DRAFT_COPY.folder?.actionLabel}
       sidePanelCopy={NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY}
-      showDraftGroupAddButton={showDraftGroupAddButton}
-      hideDraftGroupHint={hideDraftGroupHint}
-      hideDraftParallelHint={hideDraftParallelHint}
-      showDraftParallelAddButton={showDraftParallelAddButton}
+      builderControls={{
+        showGroupAddButton: showDraftGroupAddButton,
+        showParallelAddButton: showDraftParallelAddButton,
+        hideGroupHint: hideDraftGroupHint,
+        hideParallelHint: hideDraftParallelHint,
+      }}
     />
   );
 }

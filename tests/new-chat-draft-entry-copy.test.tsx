@@ -286,12 +286,14 @@ test('advanced draft controls expose group and compare add buttons on the defaul
     <NewChatDraft
       {...createProps({
         selectedExecutionTarget: target,
-        showDraftGroupAddButton: true,
         onQuickAddDraftTemporaryParticipant: () => {},
         parallelTargets: [target],
         onAddParallelTarget: () => {},
-        hideDraftGroupHint: true,
-        hideDraftParallelHint: true,
+        builderControls: {
+          showGroupAddButton: true,
+          hideGroupHint: true,
+          hideParallelHint: true,
+        },
       })}
     />,
   );
@@ -341,11 +343,13 @@ test('advanced draft controls keep +Group drafts empty and show the compare butt
       {...createProps({
         entryPreset: 'group',
         selectedExecutionTarget: target,
-        showDraftGroupAddButton: true,
         onQuickAddDraftTemporaryParticipant: () => {},
         parallelTargets: [target],
         onAddParallelTarget: () => {},
-        hideDraftParallelHint: true,
+        builderControls: {
+          showGroupAddButton: true,
+          hideParallelHint: true,
+        },
       })}
     />,
   );
@@ -435,11 +439,13 @@ test('advanced draft controls keep +Parallel drafts on one lead target, expose t
       {...createProps({
         entryPreset: 'parallel',
         selectedExecutionTarget: target,
-        showDraftGroupAddButton: true,
         onQuickAddDraftTemporaryParticipant: () => {},
         parallelTargets: [target],
         onAddParallelTarget: () => {},
-        hideDraftGroupHint: true,
+        builderControls: {
+          showGroupAddButton: true,
+          hideGroupHint: true,
+        },
       })}
     />,
   );
@@ -1080,7 +1086,6 @@ test('advanced draft controls off hides the per-branch collaborator button on pa
           { provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null },
           { provider: 'gemini-cli', instance: null, model: 'gemini-2.5-pro', modelSelection: null },
         ],
-        showDraftGroupAddButton: false,
         onAddParallelTarget: () => {},
       })}
     />,
@@ -1102,7 +1107,9 @@ test('advanced draft controls on exposes a collaborator button on every parallel
           { provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null },
           { provider: 'gemini-cli', instance: null, model: 'gemini-2.5-pro', modelSelection: null },
         ],
-        showDraftGroupAddButton: true,
+        builderControls: {
+          showGroupAddButton: true,
+        },
         onQuickAddDraftTemporaryParticipant: () => {},
         parallelBranchActions: { onQuickAddTemporaryParticipant: () => {} },
         onAddParallelTarget: () => {},
@@ -1118,7 +1125,7 @@ test('advanced draft controls on exposes a collaborator button on every parallel
 
 test('+Group preset with advanced on still lets every shadow row add collaborators', () => {
   // Regression guard: the +Group entry intentionally sets
-  // showDraftGroupAddButton=false (the preset already gives lead its
+  // builderControls.showGroupAddButton=false (the preset already gives lead its
   // group add row via isGroupDraft). Shadow rows must still pick up
   // their +collaborate button from the per-branch quick-add callback
   // so the M>=2 × N>=2 matrix stays reachable from +Group.
@@ -1133,7 +1140,6 @@ test('+Group preset with advanced on still lets every shadow row add collaborato
           { provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null },
           { provider: 'gemini-cli', instance: null, model: 'gemini-2.5-pro', modelSelection: null },
         ],
-        showDraftGroupAddButton: false,
         onQuickAddDraftTemporaryParticipant: () => {},
         parallelBranchActions: { onQuickAddTemporaryParticipant: () => {} },
         onAddParallelTarget: () => {},

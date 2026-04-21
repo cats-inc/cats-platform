@@ -36,10 +36,12 @@ function WorkChatDraft(props: NewChatDraftProps) {
       draftChrome={{
         surfaceTag: <ComposerSurfaceChip surface="work" />,
       }}
-      showDraftGroupAddButton={showDraftGroupAddButton}
-      hideDraftGroupHint={hideDraftGroupHint}
-      hideDraftParallelHint={hideDraftParallelHint}
-      showDraftParallelAddButton={showDraftParallelAddButton}
+      builderControls={{
+        showGroupAddButton: showDraftGroupAddButton,
+        showParallelAddButton: showDraftParallelAddButton,
+        hideGroupHint: hideDraftGroupHint,
+        hideParallelHint: hideDraftParallelHint,
+      }}
     />
   );
 }

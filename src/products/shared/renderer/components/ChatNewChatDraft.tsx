@@ -135,6 +135,13 @@ export interface ChatNewChatDraftChrome {
   chooseFolderPlacement?: 'header' | 'plusMenu';
 }
 
+export interface ChatNewChatDraftBuilderControls {
+  showGroupAddButton?: boolean;
+  showParallelAddButton?: boolean;
+  hideGroupHint?: boolean;
+  hideParallelHint?: boolean;
+}
+
 function BranchRuntimeSessionPolicyControls({
   branchIndex,
   target,
@@ -280,7 +287,6 @@ export interface NewChatDraftProps {
     },
   ) => void;
   onQuickAddDraftTemporaryParticipant?: () => void;
-  showDraftGroupAddButton?: boolean;
   onRemoveDraftTemporaryParticipant: (participantId: string) => void;
   onUpdateDraftTemporaryParticipant: (
     participantId: string,
@@ -303,7 +309,7 @@ export interface NewChatDraftProps {
   onAddParallelTarget?: () => void;
   onRemoveParallelTarget?: (index: number) => void;
   parallelBranchActions?: ParallelBranchDraftActions;
-  showDraftParallelAddButton?: boolean;
+  builderControls?: ChatNewChatDraftBuilderControls;
   folderBrowsePath?: string;
   folderBrowseCurrentPath?: string;
   folderBrowseParentPath?: string;
@@ -321,8 +327,6 @@ export interface NewChatDraftProps {
   onDraftRuntimeSessionPolicyChange?: (policy: RuntimeSessionPolicy) => void;
   draftChrome?: ChatNewChatDraftChrome;
   composerPlaceholder?: string;
-  hideDraftGroupHint?: boolean;
-  hideDraftParallelHint?: boolean;
   folderActionLabel?: string;
   sidePanelCopy?: ChatNewChatDraftSidePanelCopy;
   leadingStarterChips?: ReadonlyArray<{
@@ -361,7 +365,6 @@ export function NewChatDraft({
   onToggleDraftCat,
   onAddDraftTemporaryParticipant,
   onQuickAddDraftTemporaryParticipant,
-  showDraftGroupAddButton = false,
   onRemoveDraftTemporaryParticipant,
   onUpdateDraftTemporaryParticipant,
   autoResize,
@@ -381,7 +384,7 @@ export function NewChatDraft({
   onAddParallelTarget,
   onRemoveParallelTarget,
   parallelBranchActions,
-  showDraftParallelAddButton = false,
+  builderControls,
   folderBrowsePath = '',
   folderBrowseCurrentPath = '',
   folderBrowseParentPath = '',
@@ -398,8 +401,6 @@ export function NewChatDraft({
   draftRuntimeSessionPolicy = null,
   draftChrome,
   composerPlaceholder = 'How can I help you today?',
-  hideDraftGroupHint = false,
-  hideDraftParallelHint = false,
   folderActionLabel = 'Choose folder',
   sidePanelCopy,
   leadingStarterChips,
@@ -413,6 +414,12 @@ export function NewChatDraft({
     surfaceTag = null,
     chooseFolderPlacement = 'header',
   } = draftChrome ?? {};
+  const {
+    showGroupAddButton: showDraftGroupAddButton = false,
+    showParallelAddButton: showDraftParallelAddButton = false,
+    hideGroupHint: hideDraftGroupHint = false,
+    hideParallelHint: hideDraftParallelHint = false,
+  } = builderControls ?? {};
   const onPickParallelBranchFolder = parallelBranchActions?.onPickFolder;
   const onSetParallelBranchAudienceKeys = parallelBranchActions?.onSetAudienceKeys;
   const onSetParallelBranchCwd = parallelBranchActions?.onSetCwd;

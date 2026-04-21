@@ -1481,25 +1481,27 @@ export default function App() {
                         ? onDraftParallelBranchGroupAddButtonClick
                         : undefined,
                   },
-                  showDraftParallelAddButton:
-                    draftRoute.isGenericNewChatRoute
-                    && (advancedDraftControlsEnabled || hasVisibleParallelDraftTargets),
+                  builderControls: {
+                    showParallelAddButton:
+                      draftRoute.isGenericNewChatRoute
+                      && (advancedDraftControlsEnabled || hasVisibleParallelDraftTargets),
+                    showGroupAddButton:
+                      advancedDraftControlsEnabled
+                      && draftRoute.isGenericNewChatRoute
+                      && newChatPreset !== 'group',
+                    hideGroupHint:
+                      advancedDraftControlsEnabled
+                      && draftRoute.isGenericNewChatRoute
+                      && newChatPreset !== 'group',
+                    hideParallelHint:
+                      advancedDraftControlsEnabled
+                      && draftRoute.isGenericNewChatRoute
+                      && newChatPreset !== 'parallel',
+                  },
                   draftWorkflowShape,
                   onToggleDraftWorkflowShape: () => setDraftWorkflowShape((prev) => prev === 'concurrent' ? 'sequential' : 'concurrent'),
                   draftAudienceKeys,
                   onSetAudienceKeys: setDraftAudienceKeys,
-                  showDraftGroupAddButton:
-                    advancedDraftControlsEnabled
-                    && draftRoute.isGenericNewChatRoute
-                    && newChatPreset !== 'group',
-                  hideDraftGroupHint:
-                    advancedDraftControlsEnabled
-                    && draftRoute.isGenericNewChatRoute
-                    && newChatPreset !== 'group',
-                  hideDraftParallelHint:
-                    advancedDraftControlsEnabled
-                    && draftRoute.isGenericNewChatRoute
-                    && newChatPreset !== 'parallel',
                 }}
                 addCatOpen={showAddCatPanel}
                 onToggleAddCat={toggleAddCatPanel}

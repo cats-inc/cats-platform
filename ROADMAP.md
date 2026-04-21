@@ -586,7 +586,9 @@ contracts.
       the shared renderer `ExecutionTarget` helper instead of being reimplemented
       across draft and chat side-panel surfaces. Chat draft header/footer/surface
       presentation slots are grouped under `draftChrome`, so Code and Work no
-      longer add new flat chrome props to the shared draft surface.
+      longer add new flat chrome props to the shared draft surface. Advanced
+      draft add/hint switches are grouped under `builderControls`, keeping
+      the shared chat draft prop surface from growing one toggle at a time.
 - [ ] Add a product-owned side-panel composition seam for Code drafts together
       with render-level coverage for empty participant states, section-open
       behavior, and later execution-profile sections, so `+New code` does not
