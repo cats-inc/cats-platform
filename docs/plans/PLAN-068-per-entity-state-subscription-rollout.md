@@ -113,27 +113,59 @@ projection remains single-owner.
       Introduce
       `mergeAppShellPreservingActiveEntityState(current, next,
       activeSubscribedIds)` in
-      `products/shared/renderer/hooks/` (or a peer location) that:
-      - copies collection-level fields from `next`
-        (`chat.channels`, `chat.recents`,
-        `chat.parallelChatGroups`, unread counters,
-        runtime/runtimeSetup/metadata);
-      - keeps `current.selectedChannel` whenever
-        `activeSubscribedIds` contains the mounted channel id;
-      - falls through to `next.selectedChannel` when no
-        subscription is active for that id.
+      `products/shared/renderer/` (or a peer location). The full
+      per-field rule lives in SPEC-076 *Merge contract* — the
+      helper implements exactly that. Summary of the load-bearing
+      parts:
+      - **Envelope-level fields** (`app`, `products`, `desktop`,
+        `lobby`, `guideCatAssist`, `runtime`, `runtimeSetup`,
+        `metadata`, `bootstrapAttemptId`, plus owner-context
+        fields): copy from `next` unconditionally.
+      - **Chat collection fields** (inside `chat`): copy from
+        `next` unconditionally — `id`, `name`, `bossCatId`,
+        `cats`, `channels` (carries per-channel unread/last-activity),
+        `globalOrchestrator`, `newChatDefaults`, `capabilities`,
+        `conversationBehavior`, `advancedDraftControls`,
+        `folderBrowsePreferences`, `botBindings`, `newChatAssist`.
+      - **Selection identity pair**
+        (`chat.selectedChannelId` + `chat.selectedChannel`):
+        preserve **both** from `current` when
+        `activeSubscribedIds` contains
+        `current.chat.selectedChannelId`; otherwise copy **both**
+        from `next`. Never split the pair — the shared renderer
+        reads both independently (`workspaceAppViewState.ts:46-47`)
+        and mismatches trigger `channelEntry.ts:66` route wake.
+      - **Compare-group membership** (`chat.parallelChatGroups`):
+        for each group, if `memberChannelIds` intersects
+        `activeSubscribedIds`, keep the `current` entry
+        (subscription is the writer); otherwise take the `next`
+        entry. New groups in `next` with no subscribed member
+        get added; groups dropped by `next` that still contain
+        a subscribed member are kept for the subscription to
+        resolve.
       Expose `entitySubscriptionHub.getActiveSubscribedIds(kind)`
       so the helper can query active subscriptions without
       reaching into hub internals. Replace the
-      `setPayloadImmediate(payload)` call with a call that uses
-      this merge helper. See SPEC-076 *Merge contract* for the
-      full rule.
-- [ ] Task 2.8: Tests for the merge helper: invalidation for a
-      sibling channel doesn't modify the mounted
-      `selectedChannel.messages`; invalidation that also changes
-      `chat.channels` / `chat.recents` / `chat.parallelChatGroups`
-      still applies those collection fields; no active
-      subscription → full-replace behavior preserved.
+      `setPayloadImmediate(payload)` call at
+      `useChatAppShellRefresh.ts:141-145` with a call that uses
+      this merge helper.
+- [ ] Task 2.8: Tests for the merge helper:
+      - sibling-channel invalidation doesn't modify the mounted
+        `selectedChannel.messages` or its
+        `selectedChannelId`/`selectedChannel` pair
+      - selection identity pair moves together — no half-update
+        that would trip `channelEntry.ts:66`
+      - compare-group membership: a sibling group updates
+        freely, but a group containing the mounted channel is
+        not overwritten by a stale `next.parallelChatGroups`
+      - invalidation that also changes `chat.channels` /
+        `chat.cats` / `chat.botBindings` /
+        `chat.parallelChatGroups` (sibling groups) still applies
+        those collection fields
+      - no active subscription → full-replace behavior preserved
+      - edge case: `next` drops a group that `current` has with
+        a subscribed member → group kept, subscription patches
+        resolve the fate
 
 **Deliverables**: the cross-surface Chat→Code handoff no longer leaves
 the target surface frozen. Observable symptom: the unnamed dot
@@ -297,12 +329,15 @@ template without architecture change.
   is a full state replace and would stomp entity-subscription
   state if left unchanged. Phase 2 introduces a
   `mergeAppShellPreservingActiveEntityState` helper that the
-  shared ADR-041 consumer routes through; it keeps the current
-  `selectedChannel` slice whenever an entity subscription is
-  active for that channel id, and only writes the collection-
-  level fields from the fresh payload. See SPEC-076 *Merge
-  contract: ADR-041 refetch must not overwrite subscribed entity
-  state* for the rule text.
+  shared ADR-041 consumer routes through. Preservation scope when
+  a subscription is active for the mounted channel: the selection
+  identity pair (`chat.selectedChannelId` AND `chat.selectedChannel`,
+  never split), and any `chat.parallelChatGroups` entry whose
+  `memberChannelIds` contains a subscribed channel id. Everything
+  else (sibling channels, cats roster, product-level settings,
+  envelope-level runtime/metadata) copies from the fresh payload.
+  See SPEC-076 *Merge contract: ADR-041 refetch must not overwrite
+  subscribed entity state* for the full per-field rule.
 
 ## Testing Strategy
 
@@ -325,18 +360,31 @@ template without architecture change.
   - ADR-041 coexistence — shared workspace shell: mount
     `WorkspaceProductApp` on `/code/chats/:id=A` (and separately
     on `/work/...`), open an entity subscription on channel A
-    that has received some `message.appended` patches whose
+    that has received (a) some `message.appended` patches whose
     content is NOT yet in the server's app-shell projection
-    (e.g. patched mid-turn), then emit a server-side
-    `room_updated` / `unread_changed` / `recents_changed` /
-    `transport_ingress` event for channel B; assert:
+    (e.g. patched mid-turn) and (b) a
+    `compareGroupMembership.updated` patch putting channel A
+    into group G1 while the server's app-shell projection still
+    returns an older `parallelChatGroups` without G1 containing
+    A. Then emit a server-side `room_updated` /
+    `unread_changed` / `transport_ingress` event for channel B;
+    assert:
     - the target surface calls `refreshAppShell()`
-    - collection-level fields (`chat.channels`, `chat.recents`,
-      `chat.parallelChatGroups`, unread counters) update from
-      the refetched payload
+    - collection fields for non-subscribed entities update from
+      the refetched payload: `chat.channels` (including per-
+      channel unread on B), `chat.cats`, `chat.botBindings`,
+      and sibling entries in `chat.parallelChatGroups` (groups
+      that don't contain channel A)
     - `selectedChannel.messages` on channel A is **unchanged** —
       the patched messages are still there, *not* replaced by
-      the (staler) server projection of A
+      the staler server projection of A
+    - the selection identity pair is preserved together —
+      `chat.selectedChannelId` still equals A and
+      `chat.selectedChannel.id` still equals A; `channelEntry.ts`
+      does not fire a spurious route-wake
+    - group G1 in `chat.parallelChatGroups` still contains A —
+      the subscription-applied membership is not overwritten by
+      the staler refetch
     - parity against the Chat shell at `/chat/chats/:id=A`
     This test is the durable regression lock for the Task 2.7
     merge helper.
@@ -363,6 +411,8 @@ template without architecture change.
 | Channel snapshot drifts into carrying collection-level state (sibling channels, global unread, recents) | Medium — snapshot payload bloats and ADR-041 boundary erodes | SPEC-076 scopes snapshot to channel-local fields + compare-group membership of the mounted channel only; review must reject snapshot additions that aren't channel-local |
 | Phase 3 lands but ADR-041 consumer stays Chat-only; Code/Work target shells have no collection-level refresh path after handoff | High — recents/sidebar/parallelChatGroups go stale on Code/Work surfaces; the two-tier model is a false promise outside Chat | Task 3.5 is a hard prerequisite for closing Phase 3. Acceptance test must exercise ADR-041 invalidation arriving while mounted on `/code/chats/:id` and `/work/...`, not only `/chat/chats/:id` |
 | ADR-041 consumer keeps its current `setPayloadImmediate(payload)` full-replace behavior after entity subscriptions land | High — every sibling-channel invalidation stomps the mounted channel's entity-subscription state; the cross-surface transcript regresses to the exact bug this rollout was written to close | Task 2.7 introduces `mergeAppShellPreservingActiveEntityState` and the ADR-041 consumer must route through it. Task 3.5 explicitly requires the shared consumer to call the merge helper, not `setPayloadImmediate`. Integration test asserts mounted `selectedChannel.messages` unchanged after a sibling-channel invalidation |
+| Merge helper preserves `selectedChannel` but not `selectedChannelId`, so the selection identity pair ends up half-updated | Medium — the shared renderer reads both fields independently (`workspaceAppViewState.ts:46-47`) and `channelEntry.ts:66` treats a mismatch as "route is out of sync", firing extra `updateSelectedChannel()` calls and selection churn | Task 2.7 rule explicitly mandates moving the pair together. Task 2.8 tests include "selection identity pair moves together". Integration test asserts both halves stay on A after sibling invalidation |
+| Merge helper lets `next.chat.parallelChatGroups` fully replace the array, overwriting a live `compareGroupMembership.updated` patch for the mounted channel | Medium — compare footer flips back to the staler server projection whenever any sibling-channel ADR-041 event fires; the "entity snapshot owns mounted channel's compare membership" contract is a false promise | Task 2.7 partitions `parallelChatGroups` by `memberChannelIds ∩ activeSubscribedIds`: subscribed-intersecting groups come from `current`, others from `next`. Task 2.8 tests include "group containing mounted channel is not overwritten". Integration test asserts the subscription-applied G1 membership survives a sibling invalidation |
 
 ## Progress Log
 

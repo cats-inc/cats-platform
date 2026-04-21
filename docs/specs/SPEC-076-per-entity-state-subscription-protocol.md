@@ -228,25 +228,35 @@ an unsupported shape rather than silently render corrupt state.
 
 ### Event vocabulary for `kind = 'channel'` (first slice)
 
-Snapshot `state` payload is the existing `SelectedChannelView`
-projection plus the channel-local fields the renderer reads today
-to render the mounted channel. Concretely the snapshot must carry:
+Snapshot `state` payload is the existing `ChatChannelView`
+projection (the shape today served as
+`ChatShellState.selectedChannel`) plus the channel-local fields
+the renderer reads today to render the mounted channel. Concretely
+the snapshot must carry:
 
-- `selectedChannel.messages`, `selectedChannel.roomRouting`,
-  `selectedChannel.workflow`, and other fields currently populated
-  by `resolveSelectedChannelView()`
+- the `ChatChannelView` fields for the mounted channel id —
+  transcript messages, room routing / workflow / active turn,
+  participants, runtime-session metadata carried on the channel
+  itself — all of the state currently populated under
+  `AppShellPayload.chat.selectedChannel`
+- the **selection identity pair** `chat.selectedChannelId` +
+  `chat.selectedChannel.id`; the snapshot asserts both and the
+  merge helper preserves them together
 - the **parallel chat group membership of the mounted channel** —
-  the subset of `parallelChatGroups` entries that reference the
-  subscribed channel id (so `resolveChatViewCompareState` can render
-  the compare footer for the mounted channel without depending on
-  an app-shell refetch)
-- the runtime-session identity of the mounted channel
-  (`runtime.chatSession` / `runtime.codeSession` / ... as applicable)
+  the subset of `ChatShellState.parallelChatGroups` entries whose
+  `memberChannelIds` contains the subscribed channel id (so
+  `resolveChatViewCompareState` can render the compare footer for
+  the mounted channel without depending on an app-shell refetch)
 
 The snapshot is explicitly *not* the whole `AppShellPayload.chat`
-tree — sibling channels, the global recents list, and unread counts
-belong to the ADR-041 collection tier and are not republished on
-this stream.
+tree. Sibling channels (`chat.channels`), cross-channel product
+metadata (`chat.globalOrchestrator`, `chat.capabilities`,
+`chat.botBindings`, `chat.newChatAssist`), the cats roster
+(`chat.cats`), and compare groups that don't include the mounted
+channel all stay on the ADR-041 collection tier and are not
+republished on this stream. Envelope-level fields
+(`runtime: RuntimeStatusSummary`, `runtimeSetup`, `metadata`,
+`bootstrapAttemptId`, etc.) likewise stay off-stream.
 
 Patch event kinds:
 
@@ -344,58 +354,125 @@ entity state.**
 Today only the 5s background runtime-health poll is safe against
 overwriting entity state — it uses
 `mergeWorkspaceBackgroundRefreshPayload`
-(`useWorkspaceAppShellRouting.ts:176`), which explicitly excludes
-the chat slice. The ADR-041 path is *not* safe today:
+(`useWorkspaceAppShellRouting.ts:176`), which only copies
+`runtime`, `runtimeSetup`, `metadata`, and `bootstrapAttemptId`
+from the fresh payload. The ADR-041 path is *not* safe today:
 `useChatAppShellRefresh.ts:134-148` calls
 `setPayloadImmediate(payload)` which does
 `setState({ status: 'ready', payload })`, a full replace. If that
 path keeps running unchanged after entity subscriptions land, an
 invalidation on a sibling channel would clobber the active
-subscription's `selectedChannel.messages` on every `refreshAppShell()`
-call.
+subscription's `selectedChannel.messages` on every
+`refreshAppShell()` call.
 
-The contract this spec imposes on implementers:
+The contract this spec imposes on implementers is stated below.
+Field names refer to the actual shapes of
+`AppShellPayload extends PlatformHostEnvelope` and
+`ChatShellState` in
+`src/products/shared/api/workspaceContracts.ts` and
+`src/shared/platform-contract.ts`.
 
 1. The ADR-041 consumer must not apply an incoming
    `refreshAppShell()` payload with a blind full replace when any
-   entity subscription is active for the currently selected
-   channel (or any other entity kind whose state lives inside the
-   app-shell payload). It must route the payload through a merge
-   helper that preserves subscription-owned slices.
+   entity subscription is active. It must route the payload
+   through a merge helper that preserves subscription-owned
+   slices.
+
 2. Implementers introduce (or extend) a helper — working name
    `mergeAppShellPreservingActiveEntityState(current, next,
-   activeSubscribedIds)` — that:
-   - copies collection-level fields from `next`
-     (`chat.channels`, `chat.recents`, `chat.parallelChatGroups`,
-     unread counters, runtime/runtimeSetup/metadata)
-   - keeps `current.selectedChannel` whenever
-     `activeSubscribedIds` contains the mounted channel id
-     (because the subscription snapshot + patches are the
-     authoritative writer for that slice)
-   - falls through to `next.selectedChannel` only when no
-     subscription is active for that id (e.g. during the brief
-     window between mount and first subscription snapshot)
-3. The entity subscription hub exposes `getActiveSubscribedIds(kind)`
-   (or equivalent) so the merge helper can query without reaching
-   into internals.
-4. The 5s poll's existing exclusion via
-   `mergeWorkspaceBackgroundRefreshPayload` stays as-is.
-5. Reconnect behavior remains: when an entity subscription
-   reconnects, its fresh `snapshot` is authoritative and
-   replaces local subscription-owned state regardless of what the
-   ADR-041 refetch path last wrote.
+   activeSubscribedIds)` — with these per-field rules. The
+   helper returns a new `AppShellPayload`.
 
-Symmetric rule: when no subscription is active for the mounted
-channel (e.g. during the brief pre-snapshot window), ADR-041
-refetches may write the full payload — there is no
-subscription-owned state to preserve. The merge helper is a
-no-op in that case.
+3. **Envelope-level fields** (from `PlatformHostEnvelope`). Copy
+   from `next` unconditionally: `app`, `products`, `desktop`,
+   `lobby`, `guideCatAssist`, `runtime`, `runtimeSetup`,
+   `metadata`, `bootstrapAttemptId`, plus the `PlatformOwnerContext`
+   fields (`setupCompleteAt`, `ownerDisplayName`, `ownerAvatarColor`,
+   `ownerAvatarUrl`, `lastProductSurface`, `guideCat`,
+   `assistantPresets`). None of these are owned by channel-kind
+   subscriptions.
+
+4. **Chat collection fields** (inside `chat: ChatShellState`).
+   Copy from `next` unconditionally: `id`, `name`, `bossCatId`,
+   `cats`, `channels`, `globalOrchestrator`, `newChatDefaults`,
+   `capabilities`, `conversationBehavior`,
+   `advancedDraftControls`, `folderBrowsePreferences`,
+   `botBindings`, `newChatAssist`. These describe sibling
+   channels, the whole-tenant roster, and product-level settings;
+   they are not owned by any single channel subscription.
+   Per-channel unread counts and last-activity markers live
+   inside `ChatChannelSummary` entries on `chat.channels`, so
+   they ride along with the collection refresh.
+
+5. **Selection identity pair** (`chat.selectedChannelId` and
+   `chat.selectedChannel`). These **must move together**. The
+   shared renderer reads both independently
+   (`workspaceAppViewState.ts:46` reads `selectedChannelId`,
+   `:47` reads `selectedChannel?.id`) and a mismatch triggers
+   `shouldWakeRouteChannel` in `channelEntry.ts:66` → extra
+   `updateSelectedChannel()` calls and churn. The merge rule:
+   - If `activeSubscribedIds` contains `current.chat.selectedChannelId`:
+     keep both `current.chat.selectedChannelId` AND
+     `current.chat.selectedChannel` as a pair (the subscription
+     owns both halves of this identity).
+   - Otherwise: copy both `next.chat.selectedChannelId` AND
+     `next.chat.selectedChannel` from `next` as a pair.
+   Never split the pair across `current` and `next` — that is the
+   split-brain state `channelEntry.ts:66` is specifically checking
+   against.
+
+6. **Compare-group membership** (`chat.parallelChatGroups`). The
+   entity snapshot declares the subscription is the authoritative
+   writer for "which groups contain the mounted channel" (see
+   *Event vocabulary for `kind = 'channel'`* above — the snapshot
+   carries the mounted channel's membership, and
+   `compareGroupMembership.updated` patches keep it current). If
+   the merge helper let `next.chat.parallelChatGroups` fully
+   replace the array, a stale `memberChannelIds` from an
+   app-shell refetch could overwrite a live subscription patch.
+   Rule:
+   - Partition `next.chat.parallelChatGroups` and
+     `current.chat.parallelChatGroups` by whether each group's
+     `memberChannelIds` intersects `activeSubscribedIds` for kind
+     `'channel'`.
+   - For groups that **do not** intersect (sibling groups): take
+     the `next` version. These are pure ADR-041 territory.
+   - For groups that **do** intersect (groups containing at
+     least one subscribed channel): take the `current` version.
+     The entity subscription writes these; the refetch must not
+     touch them.
+   - Groups that exist in `current` but not `next` while
+     containing a subscribed channel: keep them (let the
+     subscription deliver a `compareGroupMembership.updated`
+     patch or a fresh snapshot decide their fate).
+   - Groups that exist in `next` but not `current`: add them
+     (new group creation visible to the refetch).
+
+7. The entity subscription hub exposes
+   `getActiveSubscribedIds(kind)` (or equivalent) so the merge
+   helper can query active subscriptions without reaching into
+   hub internals.
+
+8. The 5s poll's existing exclusion via
+   `mergeWorkspaceBackgroundRefreshPayload` stays as-is.
+
+9. Reconnect behavior remains: when an entity subscription
+   reconnects, its fresh `snapshot` is authoritative and
+   replaces local subscription-owned slices regardless of what
+   the ADR-041 refetch path last wrote.
+
+Symmetric rule: when no subscription is active
+(`activeSubscribedIds` empty, or the mounted channel's id is
+not in the set), ADR-041 refetches may write the full payload —
+there is no subscription-owned state to preserve. The merge
+helper degrades to a full replace in that case.
 
 Without this merge contract, the two-tier model deadlocks: every
-sidebar invalidation would flush the live transcript. Implementers
-who follow PLAN-068 Task 3.5 without Task 2.7 (the merge helper
-task) would ship a renderer that regresses the very bug this spec
-was written to close.
+sidebar invalidation would flush the live transcript and/or flip
+the mounted channel's compare membership back to a stale server
+projection. Implementers who follow PLAN-068 Task 3.5 without
+Task 2.7 (the merge helper task) would ship a renderer that
+regresses the very bug this spec was written to close.
 
 ### Interaction with liveIndicator (no regression)
 
