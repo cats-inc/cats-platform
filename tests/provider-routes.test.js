@@ -5,9 +5,11 @@ import test from 'node:test';
 import { createServer } from '../build/server/app/server/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 
+let dateNowMockLock = Promise.resolve();
+
 const baseConfig = {
   host: '127.0.0.1',
-  port: 8181,
+  port: 0,
   runtimeBaseUrl: 'http://127.0.0.1:3110',
   runtimeApiKey: '',
   chatStatePath: 'unused-for-tests',
@@ -127,15 +129,39 @@ async function withServer(runtimeClient, callback) {
   }
 }
 
+async function withMockedDateNow(initialNowMs, callback) {
+  const previousLock = dateNowMockLock;
+  let releaseLock = () => {};
+  dateNowMockLock = new Promise((resolve) => {
+    releaseLock = resolve;
+  });
+
+  await previousLock;
+  const originalDateNow = Date.now;
+  let currentNowMs = initialNowMs;
+  Date.now = () => currentNowMs;
+  try {
+    await callback({
+      advance(ms) {
+        currentNowMs += ms;
+      },
+      set(value) {
+        currentNowMs = value;
+      },
+    });
+  } finally {
+    Date.now = originalDateNow;
+    releaseLock();
+  }
+}
+
 test('GET /api/providers keeps the last good selector after a transient refresh timeout', async () => {
   const runtimeClient = createRuntimeStub();
   const originalGetProviderDiagnostics = runtimeClient.getProviderDiagnostics;
-  const originalDateNow = Date.now;
-  let nowMs = Date.parse('2026-04-21T04:30:00.000Z');
+  const initialNowMs = Date.parse('2026-04-21T04:30:00.000Z');
   let failRefresh = false;
   let diagnosticsCalls = 0;
 
-  Date.now = () => nowMs;
   runtimeClient.getProviderDiagnostics = async (query = {}) => {
     diagnosticsCalls += 1;
     if (failRefresh) {
@@ -144,7 +170,7 @@ test('GET /api/providers keeps the last good selector after a transient refresh 
     return originalGetProviderDiagnostics.call(runtimeClient, query);
   };
 
-  try {
+  await withMockedDateNow(initialNowMs, async (clock) => {
     await withServer(runtimeClient, async (baseUrl) => {
       const first = await fetch(`${baseUrl}/api/providers`);
       assert.equal(first.status, 200);
@@ -152,30 +178,46 @@ test('GET /api/providers keeps the last good selector after a transient refresh 
       assert.equal(firstPayload.state, 'ready');
 
       failRefresh = true;
-      nowMs += 21_000;
+      clock.advance(21_000);
       const second = await fetch(`${baseUrl}/api/providers`);
       assert.equal(second.status, 200);
       const secondPayload = await second.json();
       assert.equal(secondPayload.state, 'ready');
       assert.ok(secondPayload.providers.some((provider) => provider.id === 'claude'));
       assert.match(secondPayload.warnings.at(-1), /Using cached provider targets/u);
-    });
-  } finally {
-    Date.now = originalDateNow;
-  }
 
-  assert.equal(diagnosticsCalls, 2);
+      const third = await fetch(`${baseUrl}/api/providers`);
+      assert.equal(third.status, 200);
+      assert.equal(diagnosticsCalls, 2);
+
+      clock.advance(30_001);
+      const fourth = await fetch(`${baseUrl}/api/providers`);
+      assert.equal(fourth.status, 200);
+      const fourthPayload = await fourth.json();
+      assert.equal(
+        fourthPayload.warnings.filter((warning) => warning.startsWith('Using cached ')).length,
+        1,
+      );
+      assert.equal(diagnosticsCalls, 3);
+
+      clock.set(initialNowMs + 600_001);
+      const expired = await fetch(`${baseUrl}/api/providers`);
+      assert.equal(expired.status, 200);
+      const expiredPayload = await expired.json();
+      assert.equal(expiredPayload.state, 'runtime_unreachable');
+    });
+  });
+
+  assert.equal(diagnosticsCalls, 4);
 });
 
 test('GET /api/providers/:provider/models serves stale catalog after transient runtime failures', async () => {
   const runtimeClient = createRuntimeStub();
   const originalGetProviderModels = runtimeClient.getProviderModels;
-  const originalDateNow = Date.now;
-  let nowMs = Date.parse('2026-04-21T05:00:00.000Z');
+  const initialNowMs = Date.parse('2026-04-21T05:00:00.000Z');
   let failCatalogRefresh = false;
   let modelCalls = 0;
 
-  Date.now = () => nowMs;
   runtimeClient.getProviderModels = async (provider, instance) => {
     modelCalls += 1;
     if (failCatalogRefresh) {
@@ -184,7 +226,7 @@ test('GET /api/providers/:provider/models serves stale catalog after transient r
     return originalGetProviderModels.call(runtimeClient, provider, instance);
   };
 
-  try {
+  await withMockedDateNow(initialNowMs, async (clock) => {
     await withServer(runtimeClient, async (baseUrl) => {
       const first = await fetch(`${baseUrl}/api/providers/claude/models`);
       assert.equal(first.status, 200);
@@ -192,7 +234,7 @@ test('GET /api/providers/:provider/models serves stale catalog after transient r
       assert.equal(firstPayload.catalog.models[0].id, 'claude-default');
 
       failCatalogRefresh = true;
-      nowMs += 361_000;
+      clock.advance(361_000);
       const second = await fetch(`${baseUrl}/api/providers/claude/models`);
       assert.equal(second.status, 200);
       const secondPayload = await second.json();
@@ -202,19 +244,30 @@ test('GET /api/providers/:provider/models serves stale catalog after transient r
       const third = await fetch(`${baseUrl}/api/providers/claude/models`);
       assert.equal(third.status, 200);
       assert.equal(modelCalls, 2);
+
+      clock.advance(30_001);
+      const fourth = await fetch(`${baseUrl}/api/providers/claude/models`);
+      assert.equal(fourth.status, 200);
+      const fourthPayload = await fourth.json();
+      assert.equal(
+        fourthPayload.catalog.warnings.filter((warning) => warning.startsWith('Using cached ')).length,
+        1,
+      );
+      assert.equal(modelCalls, 3);
+
+      clock.set(initialNowMs + 600_001);
+      const expired = await fetch(`${baseUrl}/api/providers/claude/models`);
+      assert.equal(expired.status, 503);
+      assert.equal(modelCalls, 4);
     });
-  } finally {
-    Date.now = originalDateNow;
-  }
+  });
 });
 
 test('GET /api/providers/:provider/models serves stale catalog after runtime rate limits', async () => {
   const runtimeClient = createRuntimeStub();
-  const originalDateNow = Date.now;
-  let nowMs = Date.parse('2026-04-21T05:30:00.000Z');
+  const initialNowMs = Date.parse('2026-04-21T05:30:00.000Z');
   let rateLimited = false;
 
-  Date.now = () => nowMs;
   runtimeClient.getProviderModels = async (provider, instance) => {
     if (rateLimited) {
       throw createRuntimeRequestError('Runtime catalog rate limited.', 429);
@@ -233,31 +286,27 @@ test('GET /api/providers/:provider/models serves stale catalog after runtime rat
     };
   };
 
-  try {
+  await withMockedDateNow(initialNowMs, async (clock) => {
     await withServer(runtimeClient, async (baseUrl) => {
       const first = await fetch(`${baseUrl}/api/providers/claude/models`);
       assert.equal(first.status, 200);
 
       rateLimited = true;
-      nowMs += 361_000;
+      clock.advance(361_000);
       const second = await fetch(`${baseUrl}/api/providers/claude/models`);
       assert.equal(second.status, 200);
       const payload = await second.json();
       assert.equal(payload.catalog.models[0].id, 'claude-default');
       assert.match(payload.catalog.warnings.at(-1), /rate limited/u);
     });
-  } finally {
-    Date.now = originalDateNow;
-  }
+  });
 });
 
 test('GET /api/providers/:provider/models does not hide non-rate-limit 4xx catalog errors behind stale cache', async () => {
   const runtimeClient = createRuntimeStub();
-  const originalDateNow = Date.now;
-  let nowMs = Date.parse('2026-04-21T06:00:00.000Z');
+  const initialNowMs = Date.parse('2026-04-21T06:00:00.000Z');
   let badRequest = false;
 
-  Date.now = () => nowMs;
   runtimeClient.getProviderModels = async (provider, instance) => {
     if (badRequest) {
       throw createRuntimeRequestError('Invalid provider target.', 400);
@@ -276,19 +325,17 @@ test('GET /api/providers/:provider/models does not hide non-rate-limit 4xx catal
     };
   };
 
-  try {
+  await withMockedDateNow(initialNowMs, async (clock) => {
     await withServer(runtimeClient, async (baseUrl) => {
       const first = await fetch(`${baseUrl}/api/providers/claude/models`);
       assert.equal(first.status, 200);
 
       badRequest = true;
-      nowMs += 361_000;
+      clock.advance(361_000);
       const second = await fetch(`${baseUrl}/api/providers/claude/models`);
       assert.equal(second.status, 400);
       const payload = await second.json();
       assert.equal(payload.error.code, 'provider_catalog_lookup_failed');
     });
-  } finally {
-    Date.now = originalDateNow;
-  }
+  });
 });

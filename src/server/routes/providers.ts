@@ -22,12 +22,12 @@ interface ProviderRouteDependencies {
 
 type ProviderRegistryState = 'ready' | 'no_usable_targets' | 'runtime_unreachable';
 const PROVIDER_CACHE_STALE_IF_ERROR_MS = 10 * 60_000;
+const PROVIDER_CACHE_ERROR_BACKOFF_MS = 30_000;
 const TRUTHFUL_SELECTOR_CACHE_TTL_MS = 5_000;
 const TRUTHFUL_SELECTOR_STALE_WINDOW_MS = 15_000;
 const TRUTHFUL_SELECTOR_CONFIG_ENRICHMENT_BUDGET_MS = 500;
 const PROVIDER_MODEL_CATALOG_CACHE_TTL_MS = 60_000;
 const PROVIDER_MODEL_CATALOG_STALE_WINDOW_MS = 5 * 60_000;
-const PROVIDER_MODEL_CATALOG_ERROR_BACKOFF_MS = 30_000;
 
 interface TruthfulProviderRegistryReadModel {
   state: ProviderRegistryState;
@@ -279,12 +279,13 @@ function shouldCacheTruthfulProviderRegistry(
   return value.state !== 'runtime_unreachable';
 }
 
-function appendWarning(
+function appendProviderCacheWarning(
   warnings: string[] | undefined,
   warning: string,
 ): string[] {
   const existing = Array.isArray(warnings) ? warnings : [];
-  return existing.includes(warning) ? existing : [...existing, warning];
+  const retained = existing.filter((entry) => !entry.startsWith('Using cached '));
+  return retained.includes(warning) ? retained : [...retained, warning];
 }
 
 function appendTruthfulProviderRegistryWarning(
@@ -293,7 +294,7 @@ function appendTruthfulProviderRegistryWarning(
 ): TruthfulProviderRegistryReadModel {
   return {
     ...value,
-    warnings: appendWarning(value.warnings, warning),
+    warnings: appendProviderCacheWarning(value.warnings, warning),
   };
 }
 
@@ -303,7 +304,7 @@ function appendProviderCatalogWarning<TCatalog extends ProviderCatalogCacheValue
 ): TCatalog {
   return {
     ...value,
-    warnings: appendWarning(value.warnings, warning),
+    warnings: appendProviderCacheWarning(value.warnings, warning),
   };
 }
 
@@ -525,12 +526,7 @@ async function refreshTruthfulProviderRegistry(
 
       const cached = cacheState.entries.get(cacheKey);
       if (cached && cached.staleIfErrorUntilMs > Date.now()) {
-        return appendTruthfulProviderRegistryWarning(
-          cached.value,
-          `Using cached provider targets because runtime refresh failed: ${
-            readTruthfulProviderRegistryFailureMessage(value)
-          }`,
-        );
+        return writeTruthfulProviderRegistryErrorBackoff(cacheState, cacheKey, cached, value);
       }
       return value;
     })
@@ -626,6 +622,28 @@ async function readTruthfulProviderRegistry(
   return refreshTruthfulProviderRegistry(dependencies, cacheState, cacheKey, options);
 }
 
+function writeTruthfulProviderRegistryErrorBackoff(
+  cacheState: TruthfulProviderRegistryCacheState,
+  cacheKey: string,
+  cached: TruthfulProviderRegistryCacheEntry,
+  failedRefresh: TruthfulProviderRegistryReadModel,
+): TruthfulProviderRegistryReadModel {
+  const now = Date.now();
+  const value = appendTruthfulProviderRegistryWarning(
+    cached.value,
+    `Using cached provider targets because runtime refresh failed: ${
+      readTruthfulProviderRegistryFailureMessage(failedRefresh)
+    }`,
+  );
+  cacheState.entries.set(cacheKey, {
+    value,
+    freshUntilMs: now + PROVIDER_CACHE_ERROR_BACKOFF_MS,
+    staleUntilMs: Math.max(cached.staleUntilMs, now + PROVIDER_CACHE_ERROR_BACKOFF_MS),
+    staleIfErrorUntilMs: cached.staleIfErrorUntilMs,
+  });
+  return value;
+}
+
 function getProviderCatalogCacheState(
   runtimeClient: RuntimeClient,
 ): ProviderCatalogCacheState {
@@ -683,12 +701,9 @@ function writeProviderCatalogErrorBackoff<TCatalog extends ProviderCatalogCacheV
   );
   cacheState.entries.set(cacheKey, {
     value,
-    freshUntilMs: now + PROVIDER_MODEL_CATALOG_ERROR_BACKOFF_MS,
-    staleUntilMs: Math.max(cached.staleUntilMs, now + PROVIDER_MODEL_CATALOG_ERROR_BACKOFF_MS),
-    staleIfErrorUntilMs: Math.max(
-      cached.staleIfErrorUntilMs,
-      now + PROVIDER_CACHE_STALE_IF_ERROR_MS,
-    ),
+    freshUntilMs: now + PROVIDER_CACHE_ERROR_BACKOFF_MS,
+    staleUntilMs: Math.max(cached.staleUntilMs, now + PROVIDER_CACHE_ERROR_BACKOFF_MS),
+    staleIfErrorUntilMs: cached.staleIfErrorUntilMs,
   });
   return value;
 }
