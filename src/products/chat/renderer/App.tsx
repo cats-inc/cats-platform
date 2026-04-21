@@ -347,8 +347,6 @@ export default function App() {
   const {
     draftParallelBranches,
     draftParallelChatTargets,
-    draftParallelBranchAudienceKeys,
-    draftParallelBranchWorkflowShapes,
     compareSendScope,
     setCompareSendScope,
     selectedParallelChatGroup,
@@ -373,6 +371,14 @@ export default function App() {
     'chat',
   );
   const hasVisibleParallelDraftTargets = draftParallelChatTargets.length > 1;
+  const draftParallelTargetAudienceKeys = useMemo(
+    () => draftParallelChatTargets.map((target) => target.audienceKeys ?? []),
+    [draftParallelChatTargets],
+  );
+  const draftParallelTargetWorkflowShapes = useMemo(
+    () => draftParallelChatTargets.map((target) => target.workflowShape ?? 'sequential'),
+    [draftParallelChatTargets],
+  );
   const latestActiveUserMessage = selectedChannel?.messages
     ? [...selectedChannel.messages].reverse().find((message) => message.senderKind === 'user') ?? null
     : null;
@@ -547,7 +553,7 @@ export default function App() {
     return [...normalized, nextKey];
   }, [maxDraftAudienceParticipants]);
   const resolveParallelAudienceSeed = useCallback((): string[] => {
-    const primaryBranchAudience = draftParallelBranchAudienceKeys[0];
+    const primaryBranchAudience = draftParallelTargetAudienceKeys[0];
     if (primaryBranchAudience && primaryBranchAudience.length > 0) {
       return [...primaryBranchAudience];
     }
@@ -560,7 +566,7 @@ export default function App() {
     return draftParticipantKeys.slice(0, maxDraftAudienceParticipants);
   }, [
     draftAudienceKeys,
-    draftParallelBranchAudienceKeys,
+    draftParallelTargetAudienceKeys,
     draftParticipantKeys,
     maxDraftAudienceParticipants,
   ]);
@@ -594,7 +600,7 @@ export default function App() {
         maxAudienceParticipants: maxDraftAudienceParticipants,
       }));
     if (draftParallelChatTargets.length >= 2) {
-      draftParallelBranchAudienceKeys.forEach((branchAudienceKeys, index) => {
+      draftParallelTargetAudienceKeys.forEach((branchAudienceKeys, index) => {
         if (!branchAudienceKeys.includes(removedParticipantKey)) {
           return;
         }
@@ -610,7 +616,7 @@ export default function App() {
   }, [
     draftParticipantKeys,
     draftParticipants.participantCatIds,
-    draftParallelBranchAudienceKeys,
+    draftParallelTargetAudienceKeys,
     draftParallelChatTargets.length,
     maxDraftAudienceParticipants,
     onToggleDraftCat,
@@ -630,7 +636,7 @@ export default function App() {
         maxAudienceParticipants: maxDraftAudienceParticipants,
       }));
     if (draftParallelChatTargets.length >= 2) {
-      draftParallelBranchAudienceKeys.forEach((branchAudienceKeys, index) => {
+      draftParallelTargetAudienceKeys.forEach((branchAudienceKeys, index) => {
         if (!branchAudienceKeys.includes(removedParticipantKey)) {
           return;
         }
@@ -645,7 +651,7 @@ export default function App() {
     }
   }, [
     draftParticipantKeys,
-    draftParallelBranchAudienceKeys,
+    draftParallelTargetAudienceKeys,
     draftParallelChatTargets.length,
     maxDraftAudienceParticipants,
     onRemoveDraftTemporaryParticipant,
@@ -704,7 +710,7 @@ export default function App() {
       // can legitimately grow past that total when multiple branches
       // each hold their own members — the pool-wide cap does not
       // apply here.
-      const branchMembers = draftParallelBranchAudienceKeys[branchIndex] ?? [];
+      const branchMembers = draftParallelTargetAudienceKeys[branchIndex] ?? [];
       if (Number.isFinite(maxDraftGroupParticipants)
         && branchMembers.length >= maxDraftGroupParticipants) {
         return;
@@ -755,7 +761,7 @@ export default function App() {
       // appendAudienceKeyWithinLimit because that helper caps at
       // maxDraftAudienceParticipants, which is the chip-selection cap,
       // not the per-branch membership cap (maxDraftGroupParticipants).
-      const currentBranchKeys = draftParallelBranchAudienceKeys[branchIndex] ?? [];
+      const currentBranchKeys = draftParallelTargetAudienceKeys[branchIndex] ?? [];
       const dedupedKeys = currentBranchKeys.filter((key, index, source) =>
         source.indexOf(key) === index);
       const nextBranchKeys = dedupedKeys.includes(nextParticipantKey)
@@ -784,7 +790,7 @@ export default function App() {
     });
   }, [
     appendAudienceKeyWithinLimit,
-    draftParallelBranchAudienceKeys,
+    draftParallelTargetAudienceKeys,
     draftParallelChatTargets.length,
     draftTemporaryParticipants,
     draftExecutionTarget.instance,
@@ -817,7 +823,7 @@ export default function App() {
     // The first +collaborate click on an empty shadow should jump
     // straight to 2 members so the roster becomes visible (roster
     // hides itself at length <= 1). Matches the lead-row bootstrap.
-    const currentBranchKeys = draftParallelBranchAudienceKeys[branchIndex] ?? [];
+    const currentBranchKeys = draftParallelTargetAudienceKeys[branchIndex] ?? [];
     if (currentBranchKeys.length === 0) {
       const branchTarget = draftParallelChatTargets[branchIndex] ?? draftExecutionTarget;
       const visibleCatNames = draftParticipants.participantCatIds
@@ -857,7 +863,7 @@ export default function App() {
     onQuickAddDraftTemporaryParticipantToBranch(branchIndex);
   }, [
     draftExecutionTarget,
-    draftParallelBranchAudienceKeys,
+    draftParallelTargetAudienceKeys,
     draftParallelChatTargets,
     draftParticipants.participantCatIds,
     draftTemporaryParticipants,
@@ -959,8 +965,6 @@ export default function App() {
     draftParallelChatTargets,
     draftWorkflowShape,
     draftAudienceKeys,
-    draftParallelBranchAudienceKeys,
-    draftParallelBranchWorkflowShapes,
     activeWorkflowShape,
     activeAudienceKeys,
     resetDraftParallelChatTargets,
@@ -1137,7 +1141,7 @@ export default function App() {
   const onDraftParallelAddButtonClick = useCallback((): void => {
     if (state.status !== 'ready') return;
 
-    const seedWorkflowShape = draftParallelBranchWorkflowShapes[0] ?? draftWorkflowShape;
+    const seedWorkflowShape = draftParallelTargetWorkflowShapes[0] ?? draftWorkflowShape;
 
     // +compare only appends a parallel target — it never creates a
     // temp or seeds a branch audience. Each shadow row starts solo
@@ -1155,7 +1159,7 @@ export default function App() {
       seedWorkflowShape,
     });
   }, [
-    draftParallelBranchWorkflowShapes,
+    draftParallelTargetWorkflowShapes,
     draftWorkflowShape,
     hasVisibleParallelDraftTargets,
     onAddDraftParallelChatTarget,

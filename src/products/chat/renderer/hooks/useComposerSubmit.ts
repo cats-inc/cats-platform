@@ -72,7 +72,6 @@ import {
 } from '../../../shared/renderer/hooks/useWorkspaceExecutionTargetState.js';
 import { useComposerSubmitBindings } from '../../../shared/renderer/hooks/useComposerSubmitBindings.js';
 import type { DraftParallelBranchState } from '../../../shared/renderer/draftParallelBranches.js';
-import type { DraftRoomWorkflowShape } from '../../../../shared/roomRouting.js';
 import {
   buildCrossSurfaceChannelPath,
   prefetchCrossSurfaceNavigationTarget,
@@ -217,8 +216,6 @@ export function useComposerSubmit(options: {
   draftParallelChatTargets: ExecutionTargetValue[];
   draftWorkflowShape: 'sequential' | 'concurrent';
   draftAudienceKeys: string[] | null;
-  draftParallelBranchAudienceKeys: string[][];
-  draftParallelBranchWorkflowShapes: DraftRoomWorkflowShape[];
   activeWorkflowShape: 'sequential' | 'concurrent';
   activeAudienceKeys: string[] | null;
   resetDraftParallelChatTargets: () => void;

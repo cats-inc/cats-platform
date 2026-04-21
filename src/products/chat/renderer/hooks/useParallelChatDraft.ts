@@ -157,14 +157,6 @@ export function useParallelChatDraft(options: {
     () => draftParallelBranches.map((branch) => branch.target),
     [draftParallelBranches],
   );
-  const draftParallelBranchAudienceKeys = useMemo(
-    () => draftParallelBranches.map((branch) => branch.target.audienceKeys ?? branch.audienceKeys),
-    [draftParallelBranches],
-  );
-  const draftParallelBranchWorkflowShapes = useMemo(
-    () => draftParallelBranches.map((branch) => branch.target.workflowShape ?? branch.workflowShape),
-    [draftParallelBranches],
-  );
 
   const selectedParallelChatGroup = useMemo(
     () => readyPayload && selectedChannel
@@ -310,8 +302,6 @@ export function useParallelChatDraft(options: {
   return {
     draftParallelBranches,
     draftParallelChatTargets,
-    draftParallelBranchAudienceKeys,
-    draftParallelBranchWorkflowShapes,
     compareSendScope,
     setCompareSendScope,
     selectedParallelChatGroup,

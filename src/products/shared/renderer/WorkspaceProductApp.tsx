@@ -513,8 +513,6 @@ export function createWorkspaceProductApp({
     const {
       draftParallelBranches,
       draftParallelChatTargets,
-      draftParallelBranchAudienceKeys,
-      draftParallelBranchWorkflowShapes,
       resetDraftParallelChatTargets,
       onDraftParallelChatTargetChange,
       onAddDraftParallelChatTarget,
@@ -527,6 +525,14 @@ export function createWorkspaceProductApp({
       seedCompareTarget: showingParallelChatDraft,
     });
     const hasVisibleParallelDraftTargets = draftParallelChatTargets.length > 1;
+    const draftParallelTargetAudienceKeys = useMemo(
+      () => draftParallelChatTargets.map((target) => target.audienceKeys ?? []),
+      [draftParallelChatTargets],
+    );
+    const draftParallelTargetWorkflowShapes = useMemo(
+      () => draftParallelChatTargets.map((target) => target.workflowShape ?? "sequential"),
+      [draftParallelChatTargets],
+    );
     const seedDraftGroupParticipants = useCallback(
       () => createInitialGroupParticipants(draftExecutionTarget, maxDraftGroupParticipants),
       [
@@ -562,7 +568,7 @@ export function createWorkspaceProductApp({
       return [...normalized, nextKey];
     }, [maxDraftAudienceParticipants]);
     const resolveParallelAudienceSeed = useCallback((): string[] => {
-      const primaryBranchAudience = draftParallelBranchAudienceKeys[0];
+      const primaryBranchAudience = draftParallelTargetAudienceKeys[0];
       if (primaryBranchAudience && primaryBranchAudience.length > 0) {
         return [...primaryBranchAudience];
       }
@@ -575,7 +581,7 @@ export function createWorkspaceProductApp({
       return draftParticipantKeys.slice(0, maxDraftAudienceParticipants);
     }, [
       draftAudienceKeys,
-      draftParallelBranchAudienceKeys,
+      draftParallelTargetAudienceKeys,
       draftParticipantKeys,
       maxDraftAudienceParticipants,
     ]);
@@ -696,7 +702,7 @@ export function createWorkspaceProductApp({
           maxAudienceParticipants: maxDraftAudienceParticipants,
         }));
       if (draftParallelChatTargets.length >= 2) {
-        draftParallelBranchAudienceKeys.forEach((branchAudienceKeys, index) => {
+        draftParallelTargetAudienceKeys.forEach((branchAudienceKeys, index) => {
           if (!branchAudienceKeys.includes(removedParticipantKey)) {
             return;
           }
@@ -712,7 +718,7 @@ export function createWorkspaceProductApp({
     }, [
       draftParticipantKeys,
       draftParticipants.participantCatIds,
-      draftParallelBranchAudienceKeys,
+      draftParallelTargetAudienceKeys,
       draftParallelChatTargets.length,
       draftTemporaryParticipants.length,
       maxDraftAudienceParticipants,
@@ -739,7 +745,7 @@ export function createWorkspaceProductApp({
           maxAudienceParticipants: maxDraftAudienceParticipants,
         }));
       if (draftParallelChatTargets.length >= 2) {
-        draftParallelBranchAudienceKeys.forEach((branchAudienceKeys, index) => {
+        draftParallelTargetAudienceKeys.forEach((branchAudienceKeys, index) => {
           if (!branchAudienceKeys.includes(removedParticipantKey)) {
             return;
           }
@@ -754,7 +760,7 @@ export function createWorkspaceProductApp({
       }
     }, [
       draftParticipantKeys,
-      draftParallelBranchAudienceKeys,
+      draftParallelTargetAudienceKeys,
       draftParallelChatTargets.length,
       maxDraftAudienceParticipants,
       onRemoveDraftTemporaryParticipant,
@@ -822,7 +828,7 @@ export function createWorkspaceProductApp({
         // maxChatParticipants caps branch membership. The shared pool
         // can legitimately grow past that total when multiple
         // branches each hold their own members.
-        const branchMembers = draftParallelBranchAudienceKeys[branchIndex] ?? [];
+        const branchMembers = draftParallelTargetAudienceKeys[branchIndex] ?? [];
         if (
           Number.isFinite(maxDraftGroupParticipants)
           && branchMembers.length >= maxDraftGroupParticipants
@@ -876,7 +882,7 @@ export function createWorkspaceProductApp({
         // maxDraftAudienceParticipants, which is the chip-selection
         // cap, not the per-branch membership cap
         // (maxDraftGroupParticipants).
-        const currentBranchKeys = draftParallelBranchAudienceKeys[branchIndex] ?? [];
+        const currentBranchKeys = draftParallelTargetAudienceKeys[branchIndex] ?? [];
         const dedupedKeys = currentBranchKeys.filter((key, index, source) =>
           source.indexOf(key) === index);
         const nextBranchKeys = dedupedKeys.includes(nextParticipantKey)
@@ -911,7 +917,7 @@ export function createWorkspaceProductApp({
       draftExecutionTarget.model,
       draftExecutionTarget.modelSelection,
       draftExecutionTarget.provider,
-      draftParallelBranchAudienceKeys,
+      draftParallelTargetAudienceKeys,
       draftParallelChatTargets.length,
       draftParticipants.participantCatIds,
       draftTemporaryParticipants,
@@ -943,7 +949,7 @@ export function createWorkspaceProductApp({
       // The first +collaborate click on an empty shadow should jump
       // straight to 2 members so the roster becomes visible (roster
       // hides itself at length <= 1). Matches the lead-row bootstrap.
-      const currentBranchKeys = draftParallelBranchAudienceKeys[branchIndex] ?? [];
+      const currentBranchKeys = draftParallelTargetAudienceKeys[branchIndex] ?? [];
       if (currentBranchKeys.length === 0) {
         const branchTarget = draftParallelChatTargets[branchIndex] ?? draftExecutionTarget;
         const visibleCatNames = draftParticipants.participantCatIds
@@ -983,7 +989,7 @@ export function createWorkspaceProductApp({
       onQuickAddDraftTemporaryParticipantToBranch(branchIndex);
     }, [
       draftExecutionTarget,
-      draftParallelBranchAudienceKeys,
+      draftParallelTargetAudienceKeys,
       draftParallelChatTargets,
       draftParticipants.participantCatIds,
       draftTemporaryParticipants,
@@ -1151,8 +1157,6 @@ export function createWorkspaceProductApp({
       draftParallelChatTargets,
       draftWorkflowShape,
       draftAudienceKeys,
-      draftParallelBranchAudienceKeys,
-      draftParallelBranchWorkflowShapes,
       activeWorkflowShape,
       activeAudienceKeys,
       resetDraftParallelChatTargets,
@@ -1361,7 +1365,7 @@ export function createWorkspaceProductApp({
         return;
       }
 
-      const seedWorkflowShape = draftParallelBranchWorkflowShapes[0] ?? draftWorkflowShape;
+      const seedWorkflowShape = draftParallelTargetWorkflowShapes[0] ?? draftWorkflowShape;
 
       // +compare only appends a parallel target — it never creates a
       // temp or seeds a branch audience. Each shadow row starts solo
@@ -1379,7 +1383,7 @@ export function createWorkspaceProductApp({
         seedWorkflowShape,
       });
     }, [
-      draftParallelBranchWorkflowShapes,
+      draftParallelTargetWorkflowShapes,
       draftWorkflowShape,
       hasVisibleParallelDraftTargets,
       onAddDraftParallelChatTarget,

@@ -44,14 +44,6 @@ export function useWorkspaceParallelDraft(options: {
     () => draftParallelBranches.map((branch) => branch.target),
     [draftParallelBranches],
   );
-  const draftParallelBranchAudienceKeys = useMemo(
-    () => draftParallelBranches.map((branch) => branch.target.audienceKeys ?? branch.audienceKeys),
-    [draftParallelBranches],
-  );
-  const draftParallelBranchWorkflowShapes = useMemo(
-    () => draftParallelBranches.map((branch) => branch.target.workflowShape ?? branch.workflowShape),
-    [draftParallelBranches],
-  );
 
   const resetDraftParallelChatTargets = useCallback((options?: {
     includeCompareTarget?: boolean;
@@ -147,8 +139,6 @@ export function useWorkspaceParallelDraft(options: {
   return {
     draftParallelBranches,
     draftParallelChatTargets,
-    draftParallelBranchAudienceKeys,
-    draftParallelBranchWorkflowShapes,
     resetDraftParallelChatTargets,
     onDraftParallelChatTargetChange,
     onAddDraftParallelChatTarget,
