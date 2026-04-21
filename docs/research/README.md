@@ -6,6 +6,7 @@
 
 | Document | Date | Topic | Summary |
 |----------|------|-------|---------|
+| [2026-04-22-telegram-ingress-streaming-and-draft-transition](./2026-04-22-telegram-ingress-streaming-and-draft-transition.md) | 2026-04-22 | Telegram ingress streaming UX and direct-lane draft transition | Live-debug of the post-`9f428603` behavior shows backend events fire once post-completion with `catId=null`, so Telegram-originated flows get no dot-bubble and direct-lane drafts run through a heavyweight app-shell refetch; recommend three additive stages (populate `catId`, stage bridge emission, add `kind='cat'` entity subscription) on top of the ADR-041 / ADR-075 tiers already in flight |
 | [2026-04-21-region-screenshot-composer-feasibility](./2026-04-21-region-screenshot-composer-feasibility.md) | 2026-04-21 | Region screenshot composer feasibility | Compare web `getDisplayMedia()` limits with Electron native capture; recommend one "Take screenshot" action with LINE-style Electron region selection and browser fallback |
 | [2026-04-21-per-entity-state-subscription-architecture](./2026-04-21-per-entity-state-subscription-architecture.md) | 2026-04-21 | Per-entity state subscription architecture | Survey four renderer-sync options for the cross-surface handoff gap (catch-up fetch, expand-poll merge, client-side re-projection, push-based per-entity subscription); recommend push-based `(kind, id)` subscription as the long-term renderer sync primitive coexisting with the ADR-041 collection-level invalidation tier |
 | [2026-04-20-platform-browser-ingress-local-probe](./2026-04-20-platform-browser-ingress-local-probe.md) | 2026-04-20 | Platform browser ingress local probe | Real-machine Wi-Fi and Tailscale probes confirm the new same-origin `/runtime/*` + `/runtime/api/*` seam works over non-loopback addresses while filtering virtual adapters from candidate browser URLs |
@@ -44,4 +45,4 @@ Action Items:
 
 ---
 
-*Last updated: 2026-04-21 (region screenshot composer feasibility added)*
+*Last updated: 2026-04-22 (telegram ingress streaming and draft transition added)*
