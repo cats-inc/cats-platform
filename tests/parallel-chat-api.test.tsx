@@ -151,9 +151,9 @@ test('workspace parallel draft create input carries group-level runtime session 
           instance: null,
           model: 'claude-opus-4-6',
           modelSelection: null,
+          audienceKeys: ['cat:reviewer'],
+          workflowShape: 'sequential',
         },
-        audienceKeys: ['cat:reviewer'],
-        workflowShape: 'sequential',
       },
       {
         target: {
@@ -161,6 +161,8 @@ test('workspace parallel draft create input carries group-level runtime session 
           instance: null,
           model: 'gpt-5.4',
           modelSelection: null,
+          audienceKeys: [],
+          workflowShape: 'sequential',
           cwd: 'C:/repo/worktrees/right',
           runtimeSessionPolicy: {
             workspaceKind: 'source',
@@ -168,8 +170,6 @@ test('workspace parallel draft create input carries group-level runtime session 
             permissionMode: 'skip',
           },
         },
-        audienceKeys: [],
-        workflowShape: 'sequential',
       },
     ],
   });

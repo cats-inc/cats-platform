@@ -15,6 +15,7 @@ import type { WorkspaceExecutionTargetValue } from './useWorkspaceComposerSubmit
 import {
   createDraftParallelBranch,
   createDraftParallelBranches,
+  mergeDraftParallelTargetBranchFields,
   updateDraftParallelBranchAt,
 } from '../draftParallelBranches.js';
 
@@ -65,7 +66,10 @@ export function useWorkspaceParallelDraft(options: {
     setDraftParallelBranches((currentBranches) =>
       updateDraftParallelBranchAt(currentBranches, 0, (branch) => ({
         ...branch,
-        target: syncLeadParallelTarget([branch.target], draftExecutionTarget)[0] ?? draftExecutionTarget,
+        target: mergeDraftParallelTargetBranchFields(
+          syncLeadParallelTarget([branch.target], draftExecutionTarget)[0] ?? draftExecutionTarget,
+          branch.target,
+        ),
       })));
   }, [draftExecutionTarget]);
 
@@ -73,7 +77,7 @@ export function useWorkspaceParallelDraft(options: {
     setDraftParallelBranches((prev) =>
       updateDraftParallelBranchAt(prev, index, (branch) => ({
         ...branch,
-        target: value,
+        target: mergeDraftParallelTargetBranchFields(value, branch.target),
       })),
     );
   }, []);
@@ -88,9 +92,9 @@ export function useWorkspaceParallelDraft(options: {
       }
 
       const seedBranch = prev[0] ?? null;
-      const audienceKeys = options?.seedAudienceKeys ?? seedBranch?.audienceKeys ?? [];
+      const audienceKeys = options?.seedAudienceKeys ?? seedBranch?.target.audienceKeys ?? [];
       const workflowShape = options?.seedWorkflowShape
-        ?? seedBranch?.workflowShape
+        ?? seedBranch?.target.workflowShape
         ?? 'sequential';
       return [
         ...prev,
@@ -122,7 +126,10 @@ export function useWorkspaceParallelDraft(options: {
     setDraftParallelBranches((prev) =>
       updateDraftParallelBranchAt(prev, index, (branch) => ({
         ...branch,
-        audienceKeys: [...keys],
+        target: {
+          ...branch.target,
+          audienceKeys: [...keys],
+        },
       })),
     );
   }, []);
@@ -131,7 +138,10 @@ export function useWorkspaceParallelDraft(options: {
     setDraftParallelBranches((prev) =>
       updateDraftParallelBranchAt(prev, index, (branch) => ({
         ...branch,
-        workflowShape: branch.workflowShape === 'concurrent' ? 'sequential' : 'concurrent',
+        target: {
+          ...branch.target,
+          workflowShape: branch.target.workflowShape === 'concurrent' ? 'sequential' : 'concurrent',
+        },
       })),
     );
   }, []);

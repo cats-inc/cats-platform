@@ -95,9 +95,7 @@ export async function submitNewParallelChatDraft({
         instance: target.instance ?? null,
         model: target.model ?? null,
         modelSelection: target.modelSelection ?? null,
-        audienceKeys: branchTarget?.audienceKeys
-          ?? draftParallelBranches[index]?.audienceKeys
-          ?? [],
+        audienceKeys: branchTarget?.audienceKeys ?? [],
         ...(branchTarget?.cwd === undefined ? {} : { cwd: branchTarget.cwd }),
         ...(branchTarget?.runtimeSessionPolicy === undefined
           ? {}
@@ -136,8 +134,8 @@ export async function submitNewParallelChatDraft({
       if (!branch) {
         return { channelId };
       }
-      const branchAudienceKeys = branch.target.audienceKeys ?? branch.audienceKeys;
-      const branchWorkflowShape = branch.target.workflowShape ?? branch.workflowShape;
+      const branchAudienceKeys = branch.target.audienceKeys ?? [];
+      const branchWorkflowShape = branch.target.workflowShape ?? 'sequential';
       const recipientParticipantIds = branchAudienceKeys.length > 0
         ? resolveDraftAudienceParticipantIds({
             draftParticipantCatIds,

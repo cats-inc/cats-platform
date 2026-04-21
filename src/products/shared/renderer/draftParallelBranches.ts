@@ -12,8 +12,6 @@ export interface DraftParallelTargetBranchFields {
 
 export interface DraftParallelBranchState<TTarget extends object> {
   target: TTarget & DraftParallelTargetBranchFields;
-  audienceKeys: string[];
-  workflowShape: DraftRoomWorkflowShape;
 }
 
 function normalizeAudienceKeys(
@@ -39,15 +37,31 @@ function syncTargetBranchFields<TTarget extends object>(
   };
 }
 
+export function mergeDraftParallelTargetBranchFields<TTarget extends object>(
+  target: TTarget,
+  currentFields: DraftParallelTargetBranchFields,
+): TTarget & DraftParallelTargetBranchFields {
+  return {
+    ...target,
+    audienceKeys: normalizeAudienceKeys(currentFields.audienceKeys),
+    workflowShape: currentFields.workflowShape ?? 'sequential',
+    ...(currentFields.cwd === undefined ? {} : { cwd: currentFields.cwd }),
+    ...(currentFields.runtimeSessionPolicy === undefined
+      ? {}
+      : { runtimeSessionPolicy: currentFields.runtimeSessionPolicy }),
+    ...(currentFields.attachmentsOverride === undefined
+      ? {}
+      : { attachmentsOverride: currentFields.attachmentsOverride }),
+  };
+}
+
 function normalizeDraftParallelBranch<TTarget extends object>(
   branch: DraftParallelBranchState<TTarget>,
 ): DraftParallelBranchState<TTarget> {
-  const audienceKeys = normalizeAudienceKeys(branch.audienceKeys);
-  const workflowShape = branch.workflowShape ?? 'sequential';
+  const audienceKeys = normalizeAudienceKeys(branch.target.audienceKeys);
+  const workflowShape = branch.target.workflowShape ?? 'sequential';
   return {
     target: syncTargetBranchFields(branch.target, audienceKeys, workflowShape),
-    audienceKeys,
-    workflowShape,
   };
 }
 
@@ -78,8 +92,6 @@ export function createDraftParallelBranch<TTarget extends object>(
   const workflowShape = options.workflowShape ?? 'sequential';
   return {
     target: syncTargetBranchFields(target, audienceKeys, workflowShape),
-    audienceKeys: [...audienceKeys],
-    workflowShape,
   };
 }
 
