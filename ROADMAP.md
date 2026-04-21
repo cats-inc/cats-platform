@@ -640,7 +640,7 @@ contracts.
       surfaces preserved, invalid values rejected, missing ownership rejected);
       the lower-level create helpers now require explicit ownership just like
       the raw HTTP boundary.
-- [ ] Replace the current stderr-only `originSurface` compatibility warning
+- [x] Replace the current stderr-only `originSurface` compatibility warning
       path with a measurable platform logging/telemetry seam, so the team can
       see how often legacy callers still omit ownership metadata and know when
       the compatibility fallback can safely be removed
@@ -652,8 +652,9 @@ contracts.
       semantics, route-support unit coverage now locks explicit / missing /
       invalid origin-surface resolution semantics, and route-level server
       coverage now proves explicit non-chat channel/group creates bypass the
-      compatibility fallback entirely; broader platform logging/reporting still
-      remains.
+      compatibility fallback entirely. The raw fallback path has since been
+      retired, so the debug snapshot should stay at zero and the stderr-only
+      warning path no longer exists.
 - [x] Wire cross-surface draft dispatch and warm navigation handoff so that
       flipping `+New chat`'s draft surface (currently chat -> code via the
       seeded Pomodoro helper chip, later more entries) actually creates a
