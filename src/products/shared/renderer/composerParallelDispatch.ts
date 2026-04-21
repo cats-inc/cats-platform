@@ -1,5 +1,6 @@
 import type { AppShellPayload } from '../api/workspaceContracts.js';
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
+import type { RuntimeSessionPolicy } from '../../../shared/runtimeSessionPolicy.js';
 import type { CreateParallelChatGroupInput } from './api/chat.js';
 import {
   createParallelChatGroup,
@@ -41,6 +42,7 @@ export interface SubmitNewParallelChatDraftOptions {
   payload: AppShellPayload;
   originSurface: PlatformSurfaceId;
   draftCwd: string | null;
+  draftSessionPolicy?: RuntimeSessionPolicy | null;
   draftFiles: File[];
   draftParallelBranches: DraftParallelBranchState<WorkspaceExecutionTargetValue>[];
   draftParallelChatTargets: WorkspaceExecutionTargetValue[];
@@ -62,6 +64,7 @@ export function buildParallelChatDraftCreateInput(input: {
   existingCount: number;
   originSurface: PlatformSurfaceId;
   draftCwd: string | null;
+  draftSessionPolicy?: RuntimeSessionPolicy | null;
   draftParallelBranches: DraftParallelBranchState<WorkspaceExecutionTargetValue>[];
   draftParallelChatTargets: WorkspaceExecutionTargetValue[];
   draftParticipantCatIds?: string[];
@@ -71,6 +74,9 @@ export function buildParallelChatDraftCreateInput(input: {
     title: createDraftChannelTitle(input.body, input.existingCount),
     originSurface: input.originSurface,
     repoPath: input.draftCwd ?? undefined,
+    ...(input.draftSessionPolicy === undefined
+      ? {}
+      : { runtimeSessionPolicy: input.draftSessionPolicy }),
     targets: input.draftParallelChatTargets.map((target, index) => ({
       provider: target.provider,
       instance: target.instance ?? null,
@@ -96,6 +102,7 @@ export async function submitNewParallelChatDraft({
   payload,
   originSurface,
   draftCwd,
+  draftSessionPolicy,
   draftFiles,
   draftParallelBranches,
   draftParallelChatTargets,
@@ -114,6 +121,7 @@ export async function submitNewParallelChatDraft({
       existingCount: payload.chat.channels.length,
       originSurface,
       draftCwd,
+      draftSessionPolicy,
       draftParallelBranches,
       draftParallelChatTargets,
       draftParticipantCatIds,

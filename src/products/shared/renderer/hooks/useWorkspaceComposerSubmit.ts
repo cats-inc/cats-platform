@@ -281,6 +281,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
           payload: initialPayload,
           originSurface,
           draftCwd,
+          draftSessionPolicy,
           draftFiles,
           draftParallelBranches,
           draftParallelChatTargets,

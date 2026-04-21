@@ -1,5 +1,6 @@
 import type { AppShellPayload } from '../api/contracts.js';
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
+import type { RuntimeSessionPolicy } from '../../../shared/runtimeSessionPolicy.js';
 import {
   createParallelChatGroup,
   encodeAttachmentFiles,
@@ -41,6 +42,7 @@ export interface SubmitNewParallelChatDraftOptions {
   payload: AppShellPayload;
   originSurface: PlatformSurfaceId;
   draftCwd: string | null;
+  draftSessionPolicy?: RuntimeSessionPolicy | null;
   draftFiles: File[];
   draftParallelBranches: DraftParallelBranchState<ExecutionTargetValue>[];
   draftParallelChatTargets: ExecutionTargetValue[];
@@ -62,6 +64,7 @@ export async function submitNewParallelChatDraft({
   payload,
   originSurface,
   draftCwd,
+  draftSessionPolicy,
   draftFiles,
   draftParallelBranches,
   draftParallelChatTargets,
@@ -78,6 +81,9 @@ export async function submitNewParallelChatDraft({
     title: createDraftChannelTitle(body, payload.chat.channels.length),
     originSurface,
     repoPath: draftCwd ?? undefined,
+    ...(draftSessionPolicy === undefined
+      ? {}
+      : { runtimeSessionPolicy: draftSessionPolicy }),
     targets: draftParallelChatTargets.map((target, index) => ({
       provider: target.provider,
       instance: target.instance ?? null,

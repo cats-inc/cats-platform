@@ -7,6 +7,7 @@ import {
   createParallelChatGroup,
   sendParallelChatMessage,
 } from '../src/products/shared/renderer/api/chat.ts';
+import { buildParallelChatDraftCreateInput } from '../src/products/shared/renderer/composerParallelDispatch.ts';
 
 test('parallel chat client uses canonical parallel-chat-groups endpoints', async () => {
   const originalFetch = globalThis.fetch;
@@ -121,4 +122,55 @@ test('parallel chat resource route keeps the legacy concurrent-groups alias', ()
   assert.match(source, /\/api\/parallel-chat-groups/u);
   assert.match(source, /\/api\/concurrent-groups/u);
   assert.match(source, /\(\?:parallel-chat-groups\|concurrent-groups\)/u);
+});
+
+test('workspace parallel draft create input carries group-level runtime session policy', () => {
+  const createInput = buildParallelChatDraftCreateInput({
+    body: 'Compare session policy propagation',
+    existingCount: 0,
+    originSurface: 'code',
+    draftCwd: 'C:/repo/main',
+    draftSessionPolicy: {
+      workspaceKind: 'worktree',
+      workspaceAccess: 'read_only',
+      permissionMode: 'default',
+    },
+    draftParallelChatTargets: [
+      {
+        provider: 'claude',
+        instance: null,
+        model: 'claude-opus-4-6',
+        modelSelection: null,
+      },
+      { provider: 'codex', instance: null, model: 'gpt-5.4', modelSelection: null },
+    ],
+    draftParallelBranches: [
+      {
+        target: {
+          provider: 'claude',
+          instance: null,
+          model: 'claude-opus-4-6',
+          modelSelection: null,
+        },
+        audienceKeys: ['cat:reviewer'],
+        workflowShape: 'sequential',
+      },
+      {
+        target: { provider: 'codex', instance: null, model: 'gpt-5.4', modelSelection: null },
+        audienceKeys: [],
+        workflowShape: 'sequential',
+      },
+    ],
+  });
+
+  assert.deepEqual(createInput.runtimeSessionPolicy, {
+    workspaceKind: 'worktree',
+    workspaceAccess: 'read_only',
+    permissionMode: 'default',
+  });
+  assert.equal(createInput.repoPath, 'C:/repo/main');
+  assert.deepEqual(createInput.targets.map((target) => target.audienceKeys), [
+    ['cat:reviewer'],
+    [],
+  ]);
 });

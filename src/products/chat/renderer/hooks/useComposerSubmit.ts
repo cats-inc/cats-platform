@@ -398,6 +398,7 @@ export function useComposerSubmit(options: {
           payload: initialPayload,
           originSurface: targetSurface,
           draftCwd,
+          draftSessionPolicy: null,
           draftFiles,
           draftParallelBranches,
           draftParallelChatTargets,
