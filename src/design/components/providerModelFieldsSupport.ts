@@ -27,7 +27,7 @@ import {
   resolveControlDisplayLabels,
 } from '../../shared/executionLabel.js';
 
-export const PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS = 3000;
+export const PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS = 30_000;
 
 export function createEmptyProviderModelCatalog(
   provider: string,

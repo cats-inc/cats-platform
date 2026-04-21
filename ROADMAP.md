@@ -216,7 +216,10 @@ contracts.
       other
       Progress: server-side model and advanced catalog caches are now separate
       typed buckets, so catalog cache reads no longer cast a shared union map
-      back into the caller's expected catalog shape.
+      back into the caller's expected catalog shape. Renderer auto-recheck now
+      uses the same 30s cooldown as the server cache error-backoff window, so
+      runtime outage recovery does not retry faster than stale-cache warnings
+      can settle.
 - [ ] Refine advanced provider-model UX now that runtime presets and controls are
       first-class, including an `Advanced settings` disclosure pattern that prevents
       large control sets from overwhelming the base provider/instance/model flow

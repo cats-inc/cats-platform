@@ -550,6 +550,8 @@ test('provider registry auto-recheck only triggers for empty truthful states aft
 });
 
 test('provider registry auto-recheck delay schedules retry instead of waiting for focus events only', () => {
+  assert.equal(PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS, 30_000);
+
   assert.equal(resolveProviderRegistryAutoRecheckDelayMs({
     providersLoaded: true,
     providerCount: 0,
@@ -559,7 +561,7 @@ test('provider registry auto-recheck delay schedules retry instead of waiting fo
     documentVisible: true,
     lastAutoRecheckAt: 0,
     now: 10_000,
-  }), 0);
+  }), PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS - 10_000);
 
   assert.equal(resolveProviderRegistryAutoRecheckDelayMs({
     providersLoaded: true,
