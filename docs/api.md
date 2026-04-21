@@ -823,7 +823,9 @@ GET /api/debug/origin-surface-compatibility
 - `GET /api/debug/origin-surface-compatibility` returns the current
   `originSurface` compatibility-fallback telemetry snapshot when
   `debugLiveTrace` is enabled; otherwise it returns `404` with
-  `origin_surface_compatibility_debug_disabled`.
+  `origin_surface_compatibility_debug_disabled`. After raw create compatibility
+  retirement, this snapshot should normally stay at zero and serves as a rollout
+  verification signal.
 - Warm-navigation handoff telemetry is renderer-owned, not app-server-owned.
   Browser debugging should inspect
   `window.__catsCrossSurfaceNavigationHandoffTelemetry`, which mirrors:
@@ -2661,6 +2663,7 @@ Request body:
 {
   "title": "Ops Radar",
   "topic": "Track runtime regressions before the desktop host arrives.",
+  "originSurface": "chat",
   "repoPath": "C:/Users/kenne/Source/SK2/one-man-digital-company",
   "language": "TypeScript",
   "responseLanguage": "zh-TW",
@@ -2679,6 +2682,8 @@ Request body:
 Behavior:
 
 - trims title and topic before persistence
+- requires `originSurface` (`chat`, `work`, or `code`) and rejects missing
+  values with `origin_surface_required`
 - creates a new persisted channel in the local chat store
 - promotes any draft `cats` into the chat-global cat registry
 - creates channel assignments for those cats in the new chat

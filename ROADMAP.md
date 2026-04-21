@@ -619,10 +619,15 @@ contracts.
       rendering shared primitives, with explicit direct-lane / default / team /
       peer components and coverage proving `+Team code` and `+Peer code` no
       longer rely on an implicit shared-chat fallback dispatch.
-- [ ] Retire the temporary raw-HTTP `originSurface` compatibility seam once
+- [x] Retire the temporary raw-HTTP `originSurface` compatibility seam once
       legacy callers have been updated, so channel and parallel-group create
       paths fail fast on missing product ownership instead of defaulting to
       `chat` beyond the rollout window
+      Completed: raw `POST /api/channels` and `POST /api/concurrent-groups`
+      create requests now reject missing `originSurface` with
+      `origin_surface_required` instead of recording a fallback/defaulting to
+      `chat`; product integration and API docs now describe the required raw
+      create ownership field.
 - [ ] Harden the internal Chat create/model APIs around `originSurface`
       invariants after the current legacy fixtures are migrated, so typed
       product-owned create paths and lower-level state mutation helpers no

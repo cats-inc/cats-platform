@@ -89,9 +89,6 @@ import {
   queueGuideCatAssistRefresh,
   resolveChatGuideCatAssistReadModel,
 } from './guideCatAssist.js';
-import {
-  recordOriginSurfaceCompatibilityFallback,
-} from './originSurfaceCompatibilityTelemetry.js';
 export { mapChannelCat } from './routeStateSupport.js';
 import { readRuntimeSetupSummary } from '../../../runtime/setup.js';
 export {
@@ -378,18 +375,14 @@ export function resolveCreateOriginSurface(
   originSurface: unknown,
   options: {
     targetNoun: string;
-    telemetryTarget?: string;
   },
 ): PlatformSurfaceId {
   if (originSurface === undefined || originSurface === null) {
-    recordOriginSurfaceCompatibilityFallback(
-      options.telemetryTarget ?? options.targetNoun,
-      'chat',
+    throw new ChatApiError(
+      400,
+      'origin_surface_required',
+      `${options.targetNoun} originSurface is required.`,
     );
-    process.stderr.write(
-      `[cats-chat-api] ${options.targetNoun} missing explicit originSurface; defaulting to chat for compatibility.\n`,
-    );
-    return 'chat';
   }
 
   const explicitSurface = normalizePlatformSurface(originSurface);

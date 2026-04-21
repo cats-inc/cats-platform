@@ -326,7 +326,6 @@ async function handleRestCreateChannel(
     const body = await readJsonBody<CreateChatChannelInput>(context.request);
     const originSurface = resolveCreateOriginSurface(body.originSurface, {
       targetNoun: 'Channel create request',
-      telemetryTarget: 'channel',
     });
     const persisted = await persistCreatedChannel(context, {
       ...body,

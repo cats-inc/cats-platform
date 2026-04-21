@@ -93,7 +93,7 @@ async function withServer(callback) {
   }
 }
 
-test('POST /api/channels keeps legacy raw create requests compatible by defaulting missing originSurface to chat', async () => {
+test('POST /api/channels rejects raw create requests missing originSurface', async () => {
   resetOriginSurfaceCompatibilityTelemetry();
   await withServer(async (baseUrl, chatStore) => {
     const response = await fetch(`${baseUrl}/api/channels`, {
@@ -105,22 +105,18 @@ test('POST /api/channels keeps legacy raw create requests compatible by defaulti
       }),
     });
 
-    assert.equal(response.status, 201);
+    assert.equal(response.status, 400);
     const payload = await response.json();
-    assert.equal(payload.channel.originSurface, 'chat');
+    assert.equal(payload.error.code, 'origin_surface_required');
+    assert.match(payload.error.message, /Channel create request originSurface is required/u);
 
     const persisted = await chatStore.read();
-    assert.equal(persisted.channels[0]?.originSurface, 'chat');
+    assert.equal(persisted.channels.length, 0);
 
     assert.deepEqual(inspectOriginSurfaceCompatibilityTelemetry(), {
-      fallbackCount: 1,
-      fallbackTargetCounts: {
-        channel: 1,
-      },
-      latestFallback: {
-        targetNoun: 'channel',
-        resolvedSurface: 'chat',
-      },
+      fallbackCount: 0,
+      fallbackTargetCounts: {},
+      latestFallback: null,
     });
   });
 });
@@ -174,7 +170,7 @@ test('POST /api/channels rejects invalid originSurface values instead of silentl
   });
 });
 
-test('POST /api/concurrent-groups keeps legacy raw create requests compatible by defaulting missing originSurface to chat', async () => {
+test('POST /api/concurrent-groups rejects raw create requests missing originSurface', async () => {
   resetOriginSurfaceCompatibilityTelemetry();
   await withServer(async (baseUrl, chatStore) => {
     const response = await fetch(`${baseUrl}/api/concurrent-groups`, {
@@ -189,29 +185,19 @@ test('POST /api/concurrent-groups keeps legacy raw create requests compatible by
       }),
     });
 
-    assert.equal(response.status, 201);
+    assert.equal(response.status, 400);
     const payload = await response.json();
-    assert.equal(payload.group.originSurface, 'chat');
+    assert.equal(payload.error.code, 'origin_surface_required');
+    assert.match(payload.error.message, /Parallel chat create request originSurface is required/u);
 
     const persisted = await chatStore.read();
-    const group = persisted.parallelChatGroups[0];
-    assert.equal(group?.originSurface, 'chat');
-    assert.ok(group);
-    assert.deepEqual(
-      group.memberChannelIds.map((channelId) =>
-        persisted.channels.find((channel) => channel.id === channelId)?.originSurface ?? null),
-      ['chat', 'chat'],
-    );
+    assert.equal(persisted.parallelChatGroups.length, 0);
+    assert.equal(persisted.channels.length, 0);
 
     assert.deepEqual(inspectOriginSurfaceCompatibilityTelemetry(), {
-      fallbackCount: 1,
-      fallbackTargetCounts: {
-        parallel_group: 1,
-      },
-      latestFallback: {
-        targetNoun: 'parallel_group',
-        resolvedSurface: 'chat',
-      },
+      fallbackCount: 0,
+      fallbackTargetCounts: {},
+      latestFallback: null,
     });
   });
 });

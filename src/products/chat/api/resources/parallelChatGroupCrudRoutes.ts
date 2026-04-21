@@ -35,7 +35,6 @@ export async function handleCreateParallelChatGroup(
     }
     const originSurface = resolveCreateOriginSurface(body.originSurface, {
       targetNoun: 'Parallel chat create request',
-      telemetryTarget: 'parallel_group',
     });
 
     const nextState = createParallelChatGroup(

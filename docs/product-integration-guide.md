@@ -137,14 +137,12 @@ Rules:
 - Typed create payload contracts must require `originSurface`; do not keep it
   optional in renderer or product-owned builders once a surface owns that
   create path.
-- Raw legacy HTTP callers may still normalize missing `originSurface` to
-  `chat` during rollout compatibility. Invalid non-surface values must still be
+- Raw HTTP create callers must include `originSurface`; missing values are
+  rejected with `origin_surface_required`, and invalid non-surface values are
   rejected rather than silently coerced.
-- New product-owned create paths must not rely on that compatibility seam.
 - If a product temporarily hides recents, it must still write
   `originSurface` on new conversations so later recents behavior stays
   correct.
-- Missing legacy `originSurface` values normalize to `chat` for compatibility.
 - Any future cross-product `All recents` lens must stay explicit and
   secondary, not the default.
 

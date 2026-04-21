@@ -136,7 +136,7 @@ The platform needs explicit conversation-origin metadata that survives:
 
 ```text
 RECENTS(currentSurface) = channels/groups where originSurface === currentSurface
-legacy missing originSurface -> 'chat'
+missing originSurface at raw create boundary -> reject with origin_surface_required
 ```
 
 ### Why Explicit Metadata
