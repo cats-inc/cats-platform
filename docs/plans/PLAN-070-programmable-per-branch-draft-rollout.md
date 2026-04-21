@@ -124,12 +124,17 @@ order once Phase 1 lands.
         resolver — the PLAN-069 "Follows lead" chip continues to
         show because every resolved override equals the lead
         value.
-- [ ] Task 1.5: Update dispatch pipeline
+- [x] Task 1.5: Update dispatch pipeline
       (`src/products/chat/state/runtime-dispatch/**`) to iterate
       `resolvedBranches`, not `parallelTargets` + parallel arrays.
       Every per-branch dispatch point reads resolved effective
       values. The per-channel wire from product → runtime is
       unchanged once the parallel group's child channels exist.
+      Implementation note: this landed at the renderer submit
+      boundary rather than by changing runtime-dispatch internals.
+      Both Chat and Workspace parallel submit paths build
+      `resolvedBranches` before first-message dispatch; per-channel
+      runtime dispatch continues to receive concrete channel inputs.
 - [x] Task 1.6: **Extend the parallel-group create contract** in
       `src/products/chat/api/contracts.ts` so per-branch cwd /
       session policy can round-trip at group-creation time.
@@ -212,7 +217,7 @@ order once Phase 1 lands.
       `attachmentsOverride` is non-null — Phase 1 does not
       implement per-branch attachments. Clear error message
       ("attachments are not yet per-branch; remove the override").
-- [ ] Task 1.9: Tests — update existing parallel-chat tests to
+- [x] Task 1.9: Tests — update existing parallel-chat tests to
       construct per-branch state via target fields rather than
       parallel arrays. Add contract-level test fixtures for
       `CreateParallelChatGroupInput` covering group-level-only
@@ -224,6 +229,12 @@ order once Phase 1 lands.
       the expected group-level `runtimeSessionPolicy`. Add a small
       resolution-helper test suite: null → inherit, concrete →
       use-as-is, lead-target override equals-lead-default.
+      Verified by focused renderer / contract / state-model suites:
+      `draft-branch-resolution`, `parallel-chat-api`,
+      `workspace-parallel-dispatch-seams`,
+      `parallel-chat-group-create-policy`,
+      `parallel-chat-state-model`, `code-draft-session-policy-chain`,
+      and `new-chat-routing`.
 - [x] Task 1.10: Document in SPEC-078 which fields have landed;
       move Phase 1 items from § Migration into "landed".
 
