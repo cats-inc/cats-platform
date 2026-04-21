@@ -5,10 +5,6 @@ import {
   clearServerLiveTrace,
   pushServerLiveTrace,
 } from '../build/server/shared/liveTrace.js';
-import {
-  recordOriginSurfaceCompatibilityFallback,
-  resetOriginSurfaceCompatibilityTelemetry,
-} from '../build/server/products/chat/api/originSurfaceCompatibilityTelemetry.js';
 import { routeChatDebugResourceApi } from '../build/server/products/chat/api/resources/debugRoutes.js';
 
 function createResponse() {
@@ -85,35 +81,7 @@ test('routeChatDebugResourceApi reports disabled tracing when the env flag is of
   assert.equal(JSON.parse(response.body).error, 'live_trace_disabled');
 });
 
-test('routeChatDebugResourceApi returns origin-surface compatibility telemetry when enabled', async () => {
-  resetOriginSurfaceCompatibilityTelemetry();
-  recordOriginSurfaceCompatibilityFallback('channel', 'chat');
-  recordOriginSurfaceCompatibilityFallback('parallel_group', 'chat');
-
-  const response = createResponse();
-  const handled = await routeChatDebugResourceApi({
-    url: new URL('http://localhost/api/debug/origin-surface-compatibility'),
-    method: 'GET',
-    response,
-    dependencies: {
-      config: {
-        debugLiveTrace: true,
-      },
-    },
-  });
-
-  assert.equal(handled, true);
-  assert.equal(response.statusCode, 200);
-  const payload = JSON.parse(response.body);
-  assert.equal(payload.enabled, true);
-  assert.equal(payload.compatibility.fallbackCount, 2);
-  assert.equal(payload.compatibility.fallbackTargetCounts.channel, 1);
-  assert.equal(payload.compatibility.fallbackTargetCounts.parallel_group, 1);
-  assert.equal(payload.compatibility.latestFallback.targetNoun, 'parallel_group');
-  resetOriginSurfaceCompatibilityTelemetry();
-});
-
-test('routeChatDebugResourceApi reports disabled origin-surface compatibility telemetry when the debug flag is off', async () => {
+test('routeChatDebugResourceApi does not handle retired origin-surface compatibility telemetry', async () => {
   const response = createResponse();
   const handled = await routeChatDebugResourceApi({
     url: new URL('http://localhost/api/debug/origin-surface-compatibility'),
@@ -126,7 +94,6 @@ test('routeChatDebugResourceApi reports disabled origin-surface compatibility te
     },
   });
 
-  assert.equal(handled, true);
-  assert.equal(response.statusCode, 404);
-  assert.equal(JSON.parse(response.body).error, 'origin_surface_compatibility_debug_disabled');
+  assert.equal(handled, false);
+  assert.equal(response.statusCode, null);
 });

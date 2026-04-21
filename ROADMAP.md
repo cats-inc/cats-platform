@@ -644,17 +644,13 @@ contracts.
       path with a measurable platform logging/telemetry seam, so the team can
       see how often legacy callers still omit ownership metadata and know when
       the compatibility fallback can safely be removed
-      Progress: the Chat create routes now record inspectable fallback counts,
-      stable target keys, and the latest compatibility fallback alongside the
-      existing stderr line, and `/api/debug/origin-surface-compatibility` now
-      surfaces that per-process snapshot behind the existing debug gate.
-      Telemetry helper coverage now also locks defensive inspect/reset
-      semantics, route-support unit coverage now locks explicit / missing /
+      Progress: route-support unit coverage now locks explicit / missing /
       invalid origin-surface resolution semantics, and route-level server
-      coverage now proves explicit non-chat channel/group creates bypass the
-      compatibility fallback entirely. The raw fallback path has since been
-      retired, so the debug snapshot should stay at zero and the stderr-only
-      warning path no longer exists.
+      coverage now proves raw create requests reject missing or invalid
+      `originSurface` values while explicit non-chat channel/group creates
+      persist their owning surface. The compatibility fallback, stderr warning,
+      fallback telemetry helper, and `/api/debug/origin-surface-compatibility`
+      endpoint have been removed rather than retained as dead rollout overhead.
 - [x] Wire cross-surface draft dispatch and warm navigation handoff so that
       flipping `+New chat`'s draft surface (currently chat -> code via the
       seeded Pomodoro helper chip, later more entries) actually creates a

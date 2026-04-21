@@ -6,10 +6,6 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { createServer } from '../build/server/app/server/index.js';
-import {
-  inspectOriginSurfaceCompatibilityTelemetry,
-  resetOriginSurfaceCompatibilityTelemetry,
-} from '../build/server/products/chat/api/originSurfaceCompatibilityTelemetry.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 
 const baseConfig = {
@@ -94,7 +90,6 @@ async function withServer(callback) {
 }
 
 test('POST /api/channels rejects raw create requests missing originSurface', async () => {
-  resetOriginSurfaceCompatibilityTelemetry();
   await withServer(async (baseUrl, chatStore) => {
     const response = await fetch(`${baseUrl}/api/channels`, {
       method: 'POST',
@@ -112,17 +107,10 @@ test('POST /api/channels rejects raw create requests missing originSurface', asy
 
     const persisted = await chatStore.read();
     assert.equal(persisted.channels.length, 0);
-
-    assert.deepEqual(inspectOriginSurfaceCompatibilityTelemetry(), {
-      fallbackCount: 0,
-      fallbackTargetCounts: {},
-      latestFallback: null,
-    });
   });
 });
 
 test('POST /api/channels preserves explicit non-chat originSurface values without recording a compatibility fallback', async () => {
-  resetOriginSurfaceCompatibilityTelemetry();
   await withServer(async (baseUrl, chatStore) => {
     const response = await fetch(`${baseUrl}/api/channels`, {
       method: 'POST',
@@ -140,11 +128,6 @@ test('POST /api/channels preserves explicit non-chat originSurface values withou
 
     const persisted = await chatStore.read();
     assert.equal(persisted.channels[0]?.originSurface, 'work');
-    assert.deepEqual(inspectOriginSurfaceCompatibilityTelemetry(), {
-      fallbackCount: 0,
-      fallbackTargetCounts: {},
-      latestFallback: null,
-    });
   });
 });
 
@@ -171,7 +154,6 @@ test('POST /api/channels rejects invalid originSurface values instead of silentl
 });
 
 test('POST /api/concurrent-groups rejects raw create requests missing originSurface', async () => {
-  resetOriginSurfaceCompatibilityTelemetry();
   await withServer(async (baseUrl, chatStore) => {
     const response = await fetch(`${baseUrl}/api/concurrent-groups`, {
       method: 'POST',
@@ -193,17 +175,10 @@ test('POST /api/concurrent-groups rejects raw create requests missing originSurf
     const persisted = await chatStore.read();
     assert.equal(persisted.parallelChatGroups.length, 0);
     assert.equal(persisted.channels.length, 0);
-
-    assert.deepEqual(inspectOriginSurfaceCompatibilityTelemetry(), {
-      fallbackCount: 0,
-      fallbackTargetCounts: {},
-      latestFallback: null,
-    });
   });
 });
 
 test('POST /api/concurrent-groups preserves explicit non-chat originSurface values without recording a compatibility fallback', async () => {
-  resetOriginSurfaceCompatibilityTelemetry();
   await withServer(async (baseUrl, chatStore) => {
     const response = await fetch(`${baseUrl}/api/concurrent-groups`, {
       method: 'POST',
@@ -231,11 +206,6 @@ test('POST /api/concurrent-groups preserves explicit non-chat originSurface valu
         persisted.channels.find((channel) => channel.id === channelId)?.originSurface ?? null),
       ['code', 'code'],
     );
-    assert.deepEqual(inspectOriginSurfaceCompatibilityTelemetry(), {
-      fallbackCount: 0,
-      fallbackTargetCounts: {},
-      latestFallback: null,
-    });
   });
 });
 
