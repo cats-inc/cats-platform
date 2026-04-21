@@ -9,7 +9,7 @@ import type {
   EntitySubscriptionSnapshot,
 } from './entitySubscriptionHub.js';
 import {
-  mergeChannelSummaryWithChannelView,
+  mergeChannelSummariesPreservingSubscribedView,
   mergeParallelChatGroupsPreservingSubscribedMembership,
 } from './activeEntityMerge.js';
 
@@ -96,21 +96,13 @@ function mergeSubscribedChannelSummaries(
   }
 
   const channelId = subscriptionState.selectedChannel.id;
-  let replaced = false;
-  const result = currentChannels.map((channel) => {
-    if (channel.id !== channelId) {
-      return channel;
-    }
-    replaced = true;
-    return mergeChannelSummaryWithChannelView(channel, subscriptionState.selectedChannel);
+  return mergeChannelSummariesPreservingSubscribedView({
+    currentChannels,
+    nextChannels: currentChannels,
+    currentSelectedChannel: subscriptionState.selectedChannel,
+    activeSubscribedIds: [channelId],
+    insertMissingActive: false,
   });
-
-  return replaced
-    ? result
-    : [
-        mergeChannelSummaryWithChannelView(undefined, subscriptionState.selectedChannel),
-        ...result,
-      ];
 }
 
 function isCurrentSubscriptionState(

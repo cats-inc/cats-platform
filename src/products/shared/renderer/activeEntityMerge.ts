@@ -14,6 +14,12 @@ function normalizeActiveSubscribedIds(activeSubscribedIds: Iterable<string>): Se
   );
 }
 
+function normalizeActiveSubscribedIdSet(
+  activeSubscribedIds: Iterable<string> | Set<string>,
+): Set<string> {
+  return normalizeActiveSubscribedIds(activeSubscribedIds);
+}
+
 function insertAt<T>(values: T[], index: number, value: T): T[] {
   const next = [...values];
   next.splice(Math.max(0, Math.min(index, next.length)), 0, value);
@@ -101,6 +107,49 @@ export function mergeParallelChatGroupsPreservingSubscribedMembership(
   return result;
 }
 
+interface ChannelParticipantLike {
+  status: string;
+}
+
+interface ChannelViewWithOptionalParticipants extends ChatChannelView {
+  assignedParticipants?: ChannelParticipantLike[];
+}
+
+function resolveAssignedParticipants(selectedChannel: ChatChannelView): ChannelParticipantLike[] {
+  const assignedParticipants = (selectedChannel as ChannelViewWithOptionalParticipants)
+    .assignedParticipants;
+  return Array.isArray(assignedParticipants) && assignedParticipants.length > 0
+    ? assignedParticipants
+    : selectedChannel.assignedCats;
+}
+
+function resolveSelectedChannelSummaryCounts(selectedChannel: ChatChannelView): Pick<
+  ChatChannelSummary,
+  | 'participantCount'
+  | 'activeParticipantCount'
+  | 'catCount'
+  | 'activeCatCount'
+  | 'defaultRecipientCatId'
+  | 'defaultRecipientLeaseStatus'
+> {
+  const roomRouting = resolveRoomRoutingState(selectedChannel.roomRouting);
+  const participants = resolveAssignedParticipants(selectedChannel);
+  const assignedCats = selectedChannel.assignedCats ?? [];
+  const defaultRecipientCat = roomRouting.defaultRecipientId
+    ? assignedCats.find((cat) => cat.catId === roomRouting.defaultRecipientId)
+    : null;
+
+  return {
+    participantCount: participants.length,
+    activeParticipantCount: participants.filter((participant) =>
+      participant.status === 'active').length,
+    catCount: assignedCats.length,
+    activeCatCount: assignedCats.filter((cat) => cat.status === 'active').length,
+    defaultRecipientCatId: defaultRecipientCat?.catId ?? null,
+    defaultRecipientLeaseStatus: defaultRecipientCat?.execution.lease.status ?? null,
+  };
+}
+
 function resolveSubscribedChannelRoutingStatus(
   selectedChannel: ChatChannelView,
 ): ChatChannelSummary['routingStatus'] {
@@ -136,13 +185,7 @@ function fallbackSubscribedChannelSummary(
   selectedChannel: ChatChannelView,
 ): ChatChannelSummary {
   const roomRouting = resolveRoomRoutingState(selectedChannel.roomRouting);
-  const assignedCats = selectedChannel.assignedCats ?? [];
-  const assignedCatCount = assignedCats.length;
-  const activeAssignedCatCount = assignedCats.filter((cat) =>
-    cat.status === 'active').length;
-  const defaultRecipientCat = roomRouting.defaultRecipientId
-    ? assignedCats.find((cat) => cat.catId === roomRouting.defaultRecipientId)
-    : null;
+  const summaryCounts = resolveSelectedChannelSummaryCounts(selectedChannel);
 
   return {
     id: selectedChannel.id,
@@ -152,10 +195,7 @@ function fallbackSubscribedChannelSummary(
     channelKind: selectedChannel.channelKind,
     status: selectedChannel.status,
     unreadCount: selectedChannel.unreadCount,
-    catCount: assignedCatCount,
-    activeCatCount: activeAssignedCatCount,
-    participantCount: assignedCatCount,
-    activeParticipantCount: activeAssignedCatCount,
+    ...summaryCounts,
     repoPath: selectedChannel.repoPath,
     chatCwd: selectedChannel.chatCwd,
     runtimeWorkspaceKind: selectedChannel.runtimeWorkspaceKind ?? null,
@@ -167,8 +207,6 @@ function fallbackSubscribedChannelSummary(
     pendingProvider: selectedChannel.pendingProvider,
     pendingModel: selectedChannel.pendingModel,
     pendingModelSelection: selectedChannel.pendingModelSelection ?? null,
-    defaultRecipientCatId: defaultRecipientCat?.catId ?? null,
-    defaultRecipientLeaseStatus: defaultRecipientCat?.execution.lease.status ?? null,
     roomMode: roomRouting.mode,
     routingStatus: resolveSubscribedChannelRoutingStatus(selectedChannel),
     lastRoutingAt: resolveSubscribedChannelLastRoutingAt(selectedChannel),
@@ -180,6 +218,7 @@ export function mergeChannelSummaryWithChannelView(
   selectedChannel: ChatChannelView,
 ): ChatChannelSummary {
   const fallbackSummary = fallbackSubscribedChannelSummary(selectedChannel);
+  const summaryCounts = resolveSelectedChannelSummaryCounts(selectedChannel);
   return {
     ...fallbackSummary,
     ...currentSummary,
@@ -190,6 +229,7 @@ export function mergeChannelSummaryWithChannelView(
     channelKind: selectedChannel.channelKind ?? currentSummary?.channelKind,
     status: selectedChannel.status,
     unreadCount: selectedChannel.unreadCount,
+    ...summaryCounts,
     repoPath: selectedChannel.repoPath,
     chatCwd: selectedChannel.chatCwd,
     runtimeWorkspaceKind: selectedChannel.runtimeWorkspaceKind ?? null,
@@ -205,4 +245,46 @@ export function mergeChannelSummaryWithChannelView(
     routingStatus: resolveSubscribedChannelRoutingStatus(selectedChannel),
     lastRoutingAt: resolveSubscribedChannelLastRoutingAt(selectedChannel),
   };
+}
+
+export function mergeChannelSummariesPreservingSubscribedView(input: {
+  currentChannels: ChatChannelSummary[];
+  nextChannels: ChatChannelSummary[];
+  currentSelectedChannel: ChatChannelView | null;
+  activeSubscribedIds: Iterable<string> | Set<string>;
+  insertMissingActive?: boolean;
+}): ChatChannelSummary[] {
+  const activeIds = normalizeActiveSubscribedIdSet(input.activeSubscribedIds);
+  if (activeIds.size === 0) {
+    return input.nextChannels;
+  }
+
+  const currentById = new Map(input.currentChannels.map((channel) => [channel.id, channel]));
+  const nextIds = new Set(input.nextChannels.map((channel) => channel.id));
+  const result = input.nextChannels.map((nextChannel) => {
+    if (!activeIds.has(nextChannel.id)) {
+      return nextChannel;
+    }
+
+    const currentChannel = currentById.get(nextChannel.id) ?? nextChannel;
+    return input.currentSelectedChannel?.id === nextChannel.id
+      ? mergeChannelSummaryWithChannelView(currentChannel, input.currentSelectedChannel)
+      : currentChannel;
+  });
+
+  if (input.insertMissingActive === false) {
+    return result;
+  }
+
+  for (const activeId of activeIds) {
+    if (nextIds.has(activeId)) {
+      continue;
+    }
+    const currentChannel = currentById.get(activeId);
+    if (currentChannel) {
+      result.unshift(currentChannel);
+    }
+  }
+
+  return result;
 }

@@ -4,7 +4,7 @@ import type {
   ParallelChatGroupSummary,
 } from '../api/workspaceContracts.js';
 import {
-  mergeChannelSummaryWithChannelView,
+  mergeChannelSummariesPreservingSubscribedView,
   mergeParallelChatGroupsPreservingSubscribedMembership,
 } from './activeEntityMerge.js';
 
@@ -23,38 +23,6 @@ function normalizeActiveIds(activeSubscribedIds: Iterable<string>): Set<string> 
       .map((id) => id.trim())
       .filter((id) => id.length > 0),
   );
-}
-
-function mergeChannelSummaries(
-  currentChannels: ChatChannelSummary[],
-  nextChannels: ChatChannelSummary[],
-  currentSelectedChannel: ChatChannelView | null,
-  activeIds: Set<string>,
-): ChatChannelSummary[] {
-  const currentById = new Map(currentChannels.map((channel) => [channel.id, channel]));
-  const nextIds = new Set(nextChannels.map((channel) => channel.id));
-  const result = nextChannels.map((nextChannel) => {
-    if (!activeIds.has(nextChannel.id)) {
-      return nextChannel;
-    }
-
-    const currentChannel = currentById.get(nextChannel.id) ?? nextChannel;
-    return currentSelectedChannel?.id === nextChannel.id
-      ? mergeChannelSummaryWithChannelView(currentChannel, currentSelectedChannel)
-      : currentChannel;
-  });
-
-  for (const activeId of activeIds) {
-    if (nextIds.has(activeId)) {
-      continue;
-    }
-    const currentChannel = currentById.get(activeId);
-    if (currentChannel) {
-      result.unshift(currentChannel);
-    }
-  }
-
-  return result;
 }
 
 export function mergeAppShellPreservingActiveEntityState<
@@ -83,12 +51,12 @@ export function mergeAppShellPreservingActiveEntityState<
       selectedChannel: preserveSelectedChannel
         ? current.chat.selectedChannel
         : next.chat.selectedChannel,
-      channels: mergeChannelSummaries(
-        current.chat.channels,
-        next.chat.channels,
-        current.chat.selectedChannel,
-        activeIds,
-      ),
+      channels: mergeChannelSummariesPreservingSubscribedView({
+        currentChannels: current.chat.channels,
+        nextChannels: next.chat.channels,
+        currentSelectedChannel: current.chat.selectedChannel,
+        activeSubscribedIds: activeIds,
+      }),
       parallelChatGroups: mergeParallelChatGroupsPreservingSubscribedMembership(
         current.chat.parallelChatGroups,
         next.chat.parallelChatGroups,

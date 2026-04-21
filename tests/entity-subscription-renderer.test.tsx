@@ -214,9 +214,32 @@ test('channel subscription state removes stale compare membership for mounted ch
   );
 });
 
+test('channel subscription state does not synthesize missing sidebar summaries', () => {
+  const payload = {
+    ...createPayload(),
+    chat: {
+      ...createPayload().chat,
+      channels: [],
+    },
+  };
+  const subscriptionState: ChannelSubscriptionState = {
+    selectedChannelId: 'channel-1',
+    selectedChannel: {
+      id: 'channel-1',
+      title: 'Live channel',
+      messages: [],
+    } as ChannelSubscriptionState['selectedChannel'],
+    parallelChatGroups: [],
+  };
+
+  const next = applyChannelSubscriptionStateToPayload(payload, subscriptionState);
+
+  assert.deepEqual(next.chat.channels, []);
+});
+
 test('channel subscription state keeps selected channel summary routing in sync', () => {
   const completedAt = '2026-04-21T00:00:03.000Z';
-  const roomRouting = createDefaultRoomRoutingState();
+  const roomRouting = createDefaultRoomRoutingState({ defaultRecipientId: 'cat-1' });
   roomRouting.workflow.lastOutcomeEvent = {
     id: 'event-1',
     turnId: 'turn-1',
@@ -248,10 +271,14 @@ test('channel subscription state keeps selected channel summary routing in sync'
           unreadCount: 0,
           catCount: 0,
           activeCatCount: 0,
+          participantCount: 0,
+          activeParticipantCount: 0,
           repoPath: null,
           chatCwd: null,
           lastMessageAt: '2026-04-21T00:00:01.000Z',
           lastActivatedAt: null,
+          defaultRecipientCatId: null,
+          defaultRecipientLeaseStatus: null,
           routingStatus: 'running',
           lastRoutingAt: '2026-04-21T00:00:01.000Z',
         },
@@ -280,7 +307,18 @@ test('channel subscription state keeps selected channel summary routing in sync'
       pendingModel: null,
       pendingModelSelection: null,
       roomRouting,
-      assignedCats: [],
+      assignedCats: [
+        {
+          catId: 'cat-1',
+          status: 'active',
+          execution: { lease: { status: 'ready' } },
+        },
+        {
+          catId: 'cat-2',
+          status: 'removed',
+          execution: { lease: { status: 'removed' } },
+        },
+      ],
       messages: [],
     } as ChannelSubscriptionState['selectedChannel'],
     parallelChatGroups: [],
@@ -293,6 +331,12 @@ test('channel subscription state keeps selected channel summary routing in sync'
   assert.equal(channelSummary?.lastMessageAt, '2026-04-21T00:00:03.000Z');
   assert.equal(channelSummary?.routingStatus, 'completed');
   assert.equal(channelSummary?.lastRoutingAt, completedAt);
+  assert.equal(channelSummary?.catCount, 2);
+  assert.equal(channelSummary?.activeCatCount, 1);
+  assert.equal(channelSummary?.participantCount, 2);
+  assert.equal(channelSummary?.activeParticipantCount, 1);
+  assert.equal(channelSummary?.defaultRecipientCatId, 'cat-1');
+  assert.equal(channelSummary?.defaultRecipientLeaseStatus, 'ready');
 });
 
 test('entity subscription hub coalesces same entity subscribers', () => {
