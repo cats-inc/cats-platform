@@ -40,6 +40,7 @@ export interface TelegramRelay {
     conversationId?: string | null;
     chatId?: string | null;
     bindingId?: string | null;
+    roomId?: string | null;
   }): TelegramConversationBinding | null;
   linkRoom(input: {
     conversationId?: string | null;
@@ -86,6 +87,7 @@ function resolveStoredBinding(
     conversationId?: string | null;
     chatId?: string | null;
     bindingId?: string | null;
+    roomId?: string | null;
   },
 ): TelegramConversationBinding | null {
   const bindingId = readTelegramString(input.bindingId);
@@ -97,6 +99,14 @@ function resolveStoredBinding(
   const chatId = readTelegramString(input.chatId);
   if (chatId) {
     return store.getBinding(chatId, bindingId);
+  }
+
+  const roomId = readTelegramString(input.roomId);
+  if (roomId) {
+    return store.listBindings().find((binding) =>
+      binding.linkedRoomId === roomId
+      && (!bindingId || binding.bindingId === bindingId),
+    ) ?? null;
   }
 
   return null;

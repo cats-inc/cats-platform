@@ -124,6 +124,7 @@ export function createChatTelegramRoomBridge(input: {
       occurredAt,
       errorMessage,
       includeInboundMessage,
+      bindingId,
     }) {
       let recoveryState = state;
 
@@ -137,6 +138,18 @@ export function createChatTelegramRoomBridge(input: {
             body: inboundBody,
           },
           occurredAt,
+          {
+            metadata: {
+              transport: 'telegram',
+              transportBindingId: bindingId
+                ? buildTelegramBotTransportBindingId(bindingId)
+                : null,
+            },
+            origin: 'telegram',
+            sourceTransportBindingId: bindingId
+              ? buildTelegramBotTransportBindingId(bindingId)
+              : null,
+          },
         ).state;
       }
 

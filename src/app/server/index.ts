@@ -6,6 +6,7 @@ import type { ServerDependencies } from './contracts.js';
 import { resolveServerDependencies } from './dependencies.js';
 import { routeRequest } from './requestRouter.js';
 import { runServerStartupRecoveryPasses } from './startupRecovery.js';
+import { startTransportFanout } from '../../platform/transports/fanout/subscriber.js';
 
 export type { ServerDependencies } from './contracts.js';
 
@@ -16,6 +17,12 @@ function reportUnhandledServerError(error: unknown): void {
 
 export function createServer(dependencies: ServerDependencies) {
   const resolvedDependencies = resolveServerDependencies(dependencies);
+  const stopTransportFanout = startTransportFanout({
+    eventHub: resolvedDependencies.chat.eventHub,
+    chatStore: resolvedDependencies.chat.chatStore,
+    telegramRelay: resolvedDependencies.chat.telegramRelay,
+    now: resolvedDependencies.shared.now,
+  });
 
   const server = createHttpServer((request, response) => {
     void routeRequest(request, response, resolvedDependencies).catch((error) => {
@@ -30,6 +37,7 @@ export function createServer(dependencies: ServerDependencies) {
   });
 
   server.on('close', () => {
+    stopTransportFanout();
     resolvedDependencies.chat.pollingSupervisor.stopAll();
   });
 

@@ -711,6 +711,7 @@ export interface BotBindingRecord {
   inboundMode: BotBindingInboundMode;
   roomMode: 'boss_chat' | 'direct_cat_chat';
   status: 'active' | 'disabled';
+  outboundFanoutEnabled?: boolean;
   createdAt: string;
   updatedAt: string;
 }

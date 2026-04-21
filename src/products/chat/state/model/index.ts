@@ -4,6 +4,7 @@ import type {
   ChannelParticipantAssignment,
   CreateParallelChatGroupInput,
   CreateChatChannelInput,
+  MessageOrigin,
   MessageUsageSummary,
   SendChannelMessageInput,
   ChatChannelState,
@@ -742,19 +743,32 @@ export function appendMessage(
       model?: string | null;
       instance?: string | null;
     };
+    origin?: MessageOrigin;
+    sourceTransportBindingId?: string | null;
     incrementUnread?: boolean;
   } = {},
 ): { state: ChatState; message: ChatMessage } {
   const nextState = cloneState(state);
   const nowIso = isoAt(now);
   const channel = requireChannel(nextState, channelId);
+  const normalizedSourceTransportBindingId =
+    typeof options.sourceTransportBindingId === 'string'
+      && options.sourceTransportBindingId.trim().length > 0
+      ? options.sourceTransportBindingId.trim()
+      : null;
   const message = createMessageRecord(
     channelId,
     input.senderKind,
     input.senderName,
     input.body,
     nowIso,
-    options.metadata ?? {},
+    {
+      ...(options.metadata ?? {}),
+      ...(options.origin ? { origin: options.origin } : {}),
+      ...(normalizedSourceTransportBindingId
+        ? { sourceTransportBindingId: normalizedSourceTransportBindingId }
+        : {}),
+    },
     options.usage ?? null,
     options.execution ?? {},
     {

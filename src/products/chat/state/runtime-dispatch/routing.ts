@@ -5,6 +5,7 @@ import type {
   SendChannelMessageInput,
   ChatMessage,
   ChatState,
+  MessageOrigin,
 } from '../../api/contracts.js';
 import type { CatsCoreState } from '../../../../core/types.js';
 import type {
@@ -116,6 +117,10 @@ function readMessageRetryMetadata(
         }
       : {}),
   };
+}
+
+function resolveUserMessageOrigin(transport: RuntimeTransportContext | undefined): MessageOrigin {
+  return transport === 'telegram' ? 'telegram' : 'web';
 }
 
 function buildRetrySendPayload(message: ChatMessage): SendChannelMessageInput {
@@ -276,6 +281,7 @@ export async function beginChannelMessageDispatch(
     {
       metadata: {
         ...(payload.messageMetadata ?? {}),
+        ...(options.transportBindingId ? { transportBindingId: options.transportBindingId } : {}),
         ...(payload.choiceResponse
           ? {
               event: 'choice_response',
@@ -284,6 +290,10 @@ export async function beginChannelMessageDispatch(
           : {}),
       },
       choiceResponse: payload.choiceResponse,
+      origin: resolveUserMessageOrigin(options.transport),
+      sourceTransportBindingId: options.transport === 'telegram'
+        ? options.transportBindingId ?? null
+        : null,
     },
   ).state;
   nextState = refreshDerivedMemoryLayers(nextState, channelId, now);

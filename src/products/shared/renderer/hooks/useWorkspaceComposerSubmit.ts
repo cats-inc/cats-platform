@@ -453,6 +453,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
 
       const dispatch = await sendChatMessage(channelId, {
         body: messageBody,
+        senderName: payload.ownerDisplayName,
         ...(soloDispatchTarget ?? {}),
         ...(messageMetadata ? { messageMetadata } : {}),
       }, ackController.signal);

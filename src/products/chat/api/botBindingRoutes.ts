@@ -44,6 +44,7 @@ function summarizeBinding(
     catName: cat?.name ?? null,
     inboundMode: binding.inboundMode,
     roomMode: resolveEffectiveBotBindingRoomMode(binding),
+    outboundFanoutEnabled: binding.outboundFanoutEnabled !== false,
     isBossBinding: Boolean(context.bossCatId && cat?.id === context.bossCatId),
     status: binding.status,
     updatedAt: binding.updatedAt,
@@ -90,6 +91,7 @@ function createBindingRecord(
     inboundMode,
     roomMode: input.roomMode === 'boss_chat' ? 'direct_cat_chat' : input.roomMode ?? 'direct_cat_chat',
     status: 'active',
+    outboundFanoutEnabled: input.outboundFanoutEnabled !== false,
     createdAt: nowIso,
     updatedAt: nowIso,
   };
@@ -217,6 +219,9 @@ async function handleUpdateBotBinding(
             inboundMode,
             roomMode,
             status: body.status ?? binding.status,
+            outboundFanoutEnabled: body.outboundFanoutEnabled === undefined
+              ? binding.outboundFanoutEnabled
+              : body.outboundFanoutEnabled,
             updatedAt: nowIso,
           }
         : binding,

@@ -469,6 +469,7 @@ export interface BotBindingSummary {
   inboundMode: BotBindingInboundMode;
   roomMode: string;
   status: 'active' | 'disabled';
+  outboundFanoutEnabled: boolean;
   webhookPath: string;
   hasBotToken: boolean;
   hasWebhookSecret: boolean;
@@ -484,6 +485,7 @@ export interface ChatBotBindingSummary {
   roomMode: string;
   isBossBinding: boolean;
   status: 'active' | 'disabled';
+  outboundFanoutEnabled: boolean;
   updatedAt: string;
   webhookPath: string;
   hasBotToken: boolean;
@@ -718,6 +720,7 @@ export interface CreateBotBindingInput {
   roomMode?: RoomRoutingMode;
   botToken?: string;
   webhookSecret?: string;
+  outboundFanoutEnabled?: boolean;
 }
 
 export interface UpdateBotBindingInput {
@@ -728,4 +731,5 @@ export interface UpdateBotBindingInput {
   status?: 'active' | 'disabled';
   botToken?: string | null;
   webhookSecret?: string | null;
+  outboundFanoutEnabled?: boolean;
 }

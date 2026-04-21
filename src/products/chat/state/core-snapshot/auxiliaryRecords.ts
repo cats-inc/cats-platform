@@ -61,6 +61,7 @@ export function normalizeBotBinding(
     inboundMode,
     roomMode,
     status: rawStatus === 'disabled' ? 'disabled' : 'active',
+    outboundFanoutEnabled: bindingRecord.outboundFanoutEnabled !== false,
     createdAt: readString(bindingRecord.createdAt, new Date().toISOString()),
     updatedAt: readString(bindingRecord.updatedAt, new Date().toISOString()),
   };

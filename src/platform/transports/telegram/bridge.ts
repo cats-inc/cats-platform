@@ -62,6 +62,7 @@ export interface TelegramRoomBridgeRecoveryInput<TState extends TelegramRoomBrid
   occurredAt: Date;
   errorMessage: string;
   includeInboundMessage: boolean;
+  bindingId?: string | null;
 }
 
 export interface TelegramRoomBridge<TState extends TelegramRoomBridgeState = TelegramRoomBridgeState> {
@@ -468,6 +469,7 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
                   inboundBody,
                   messageCountBeforeDispatch,
                 }),
+                bindingId: input.receipt.bindingId,
               }),
               currentState.selectedChannelId,
             ),

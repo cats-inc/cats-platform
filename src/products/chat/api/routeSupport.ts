@@ -275,6 +275,7 @@ export async function buildAppShellPayload(
       roomMode: resolveEffectiveBotBindingRoomMode(binding),
       isBossBinding: Boolean(resolvedState.bossCatId && matchedCat?.id === resolvedState.bossCatId),
       status: binding.status,
+      outboundFanoutEnabled: binding.outboundFanoutEnabled !== false,
       updatedAt: binding.updatedAt,
       webhookPath: `/api/transports/telegram/webhook/${binding.id}`,
       hasBotToken: Boolean(binding.botToken),

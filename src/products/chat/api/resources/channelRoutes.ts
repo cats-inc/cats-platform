@@ -40,7 +40,10 @@ import {
 import {
   channelDispatchCancellationRegistry,
 } from '../../state/runtime-dispatch/cancellation.js';
-import { publishRoomMutation } from '../transportEventPublisher.js';
+import {
+  buildRoomMessageMutationDetail,
+  publishRoomMutation,
+} from '../transportEventPublisher.js';
 import { routeChatChannelAttachmentResourceApi } from './channelAttachmentRoutes.js';
 import { routeChatChannelRuntimeResourceApi } from './channelRuntimeRoutes.js';
 import type { CatsCoreState, TurnRecord } from '../../../../core/types.js';
@@ -54,8 +57,14 @@ function publishChannelMutationEvents(
   context: ChatApiRouteContext,
   channelId: string,
   kind: 'created' | 'updated' | 'message_added' = 'updated',
+  message?: ReturnType<typeof requireChannel>['messages'][number],
 ): void {
-  publishRoomMutation(context.dependencies.eventHub, channelId, kind);
+  publishRoomMutation(
+    context.dependencies.eventHub,
+    channelId,
+    kind,
+    message ? buildRoomMessageMutationDetail(message) : {},
+  );
   context.dependencies.eventHub?.emit({
     kind: 'recents_changed',
     channelId,
@@ -63,13 +72,20 @@ function publishChannelMutationEvents(
   });
 }
 
-function resolvePersistedChannelMutationKind(
+function publishPersistedChannelMutationEvents(
+  context: ChatApiRouteContext,
+  channelId: string,
   previousState: ReturnType<typeof requireChannel>,
   persistedState: ReturnType<typeof requireChannel>,
-): 'updated' | 'message_added' {
-  return persistedState.messages.length > previousState.messages.length
-    ? 'message_added'
-    : 'updated';
+): void {
+  if (persistedState.messages.length <= previousState.messages.length) {
+    publishChannelMutationEvents(context, channelId, 'updated');
+    return;
+  }
+
+  for (const message of persistedState.messages.slice(previousState.messages.length)) {
+    publishChannelMutationEvents(context, channelId, 'message_added', message);
+  }
 }
 
 function logBackgroundDispatchPersistenceError(
@@ -226,13 +242,11 @@ async function continueAcknowledgedChannelDispatchInBackground(
       if (!persistedState.channels.some((channel) => channel.id === channelId)) {
         return;
       }
-      publishChannelMutationEvents(
+      publishPersistedChannelMutationEvents(
         context,
         channelId,
-        resolvePersistedChannelMutationKind(
-          requireChannel(previousState, channelId),
-          requireChannel(persistedState, channelId),
-        ),
+        requireChannel(previousState, channelId),
+        requireChannel(persistedState, channelId),
       );
     },
   });
@@ -569,7 +583,12 @@ async function handleRestSendMessage(
     const acknowledgedDispatch: Awaited<ReturnType<typeof beginChannelMessageDispatch>> =
       begunDispatch;
 
-    publishChannelMutationEvents(context, channelId, 'message_added');
+    publishChannelMutationEvents(
+      context,
+      channelId,
+      'message_added',
+      acknowledgedDispatch.userMessage,
+    );
     void (async () => {
       await continueAcknowledgedChannelDispatchInBackground(
         context,

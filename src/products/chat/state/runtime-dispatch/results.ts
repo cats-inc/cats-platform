@@ -702,6 +702,8 @@ export function applyDispatchExecutions(
           },
           usage: isLastSegment ? execution.usage : null,
           execution: executionMeta,
+          origin: 'runtime',
+          sourceTransportBindingId: execution.transportBindingId ?? null,
           incrementUnread: false,
         },
       );
@@ -749,6 +751,8 @@ export function applyDispatchExecutions(
           },
           usage: execution.usage,
           execution: executionMeta,
+          origin: 'runtime',
+          sourceTransportBindingId: execution.transportBindingId ?? null,
           incrementUnread: false,
         },
       );

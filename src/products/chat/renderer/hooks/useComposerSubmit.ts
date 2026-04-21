@@ -608,6 +608,7 @@ export function useComposerSubmit(options: {
 
       const dispatch = await sendChatMessage(channelId, {
         body: messageBody,
+        senderName: payload.ownerDisplayName,
         ...(soloDispatchTarget ?? {}),
         ...(messageMetadata
           ? {

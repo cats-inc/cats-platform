@@ -149,6 +149,7 @@ export function createBotBinding(
     inboundMode: 'polling',
     roomMode: input.roomMode ?? 'direct_cat_chat',
     status: 'active',
+    outboundFanoutEnabled: true,
     createdAt: nowIso,
     updatedAt: nowIso,
   };
