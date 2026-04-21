@@ -1,3 +1,5 @@
+import { dirname, join } from 'node:path';
+
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
 
 import { buildDesktopBootstrapPage } from './bootstrapPage.js';
@@ -26,6 +28,8 @@ import type {
   DesktopSetupHelperMode,
   DesktopSetupSnapshot,
   DesktopSetupState,
+  DesktopScreenshotCaptureRequest,
+  DesktopScreenshotCaptureResult,
   DesktopUpdateState,
 } from './contracts.js';
 import {
@@ -101,6 +105,23 @@ import {
   parseDesktopScreenshotCaptureRequest,
 } from './screenshotCapture.js';
 import {
+  createElectronScreenshotCaptureDependencies,
+  createElectronScreenshotCropDependencies,
+} from './screenshotElectronAdapter.js';
+import {
+  createElectronScreenshotOverlayWindowFactory,
+} from './screenshotElectronOverlay.js';
+import {
+  createDesktopScreenshotFilename,
+} from './screenshotFilename.js';
+import {
+  captureDesktopDisplaySnapshots,
+  type DesktopScreenshotDisplaySnapshot,
+} from './screenshotNativeCapture.js';
+import {
+  openScreenshotOverlayWindows,
+} from './screenshotOverlayController.js';
+import {
   DESKTOP_SCREENSHOT_OVERLAY_CANCEL_CHANNEL,
   DESKTOP_SCREENSHOT_OVERLAY_COMPLETE_CHANNEL,
   DESKTOP_SCREENSHOT_OVERLAY_GET_SNAPSHOT_CHANNEL,
@@ -111,6 +132,13 @@ import {
 import {
   DesktopScreenshotOverlaySession,
 } from './screenshotOverlaySession.js';
+import {
+  buildScreenshotOverlayWindowPlans,
+} from './screenshotOverlayWindows.js';
+import {
+  runDesktopScreenshotRegionCapture,
+  type DesktopScreenshotOverlayController,
+} from './screenshotRegionCapture.js';
 
 let mainWindow: BrowserWindow | null = null;
 let hostConfig: DesktopHostConfig | null = null;
@@ -182,6 +210,80 @@ interface ProductBootstrapDiagnosticsPayload {
 
 function encodeDataUrl(html: string): string {
   return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
+}
+
+function resolveScreenshotOverlayUrl(config: DesktopHostConfig): string {
+  return new URL('/desktop/overlay/index.html', config.appBaseUrl).toString();
+}
+
+function resolveScreenshotOverlayPreloadPath(config: DesktopHostConfig): string {
+  return join(dirname(config.paths.preloadScript), 'screenshotOverlayPreload.cjs');
+}
+
+async function openElectronScreenshotOverlay(
+  snapshots: DesktopScreenshotDisplaySnapshot[],
+): Promise<DesktopScreenshotOverlayController> {
+  if (!hostConfig) {
+    throw new Error('Desktop host is not initialized.');
+  }
+  if (activeScreenshotOverlaySession) {
+    throw new Error('A screenshot overlay session is already active.');
+  }
+
+  const session = new DesktopScreenshotOverlaySession(
+    snapshots,
+    createElectronScreenshotCropDependencies(),
+  );
+  activeScreenshotOverlaySession = session;
+
+  try {
+    const windows = await openScreenshotOverlayWindows(
+      buildScreenshotOverlayWindowPlans({
+        snapshots,
+        overlayUrl: resolveScreenshotOverlayUrl(hostConfig),
+        preloadPath: resolveScreenshotOverlayPreloadPath(hostConfig),
+      }),
+      createElectronScreenshotOverlayWindowFactory(),
+    );
+
+    return {
+      waitForResult() {
+        return session.waitForResult();
+      },
+      closeAll() {
+        windows.closeAll();
+        if (activeScreenshotOverlaySession === session) {
+          activeScreenshotOverlaySession = null;
+        }
+      },
+    };
+  } catch (error) {
+    if (activeScreenshotOverlaySession === session) {
+      activeScreenshotOverlaySession = null;
+    }
+    throw error;
+  }
+}
+
+async function captureNativeScreenshotRegion(
+  _request: DesktopScreenshotCaptureRequest,
+): Promise<DesktopScreenshotCaptureResult> {
+  try {
+    return await runDesktopScreenshotRegionCapture({
+      captureDisplaySnapshots() {
+        return captureDesktopDisplaySnapshots(
+          createElectronScreenshotCaptureDependencies(),
+        );
+      },
+      openOverlay: openElectronScreenshotOverlay,
+      createFilename: createDesktopScreenshotFilename,
+    });
+  } catch (error) {
+    return {
+      outcome: 'error',
+      message: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
 async function openExternalDesktopUrl(rawUrl: string): Promise<void> {
@@ -1325,6 +1427,7 @@ async function main(): Promise<void> {
     return await captureScreenshotRegion({
       request: parseDesktopScreenshotCaptureRequest(payload),
       mainWindow,
+      captureNativeRegion: captureNativeScreenshotRegion,
     });
   });
   ipcMain.handle(
