@@ -395,11 +395,15 @@ export default function App() {
     .map((participant) => participant.participantId)
     .join('|');
   const subscribedChannel = selectedChannel ?? selectedDirectLane ?? null;
+  const subscribedChannelId = subscribedChannel
+    && readyPayload?.chat.selectedChannelId === subscribedChannel.id
+    ? subscribedChannel.id
+    : null;
 
   useEntitySubscription<ChannelSubscriptionState, ChannelSubscriptionPatch>({
     kind: 'channel',
-    id: subscribedChannel?.id ?? null,
-    enabled: state.status === 'ready',
+    id: subscribedChannelId,
+    enabled: state.status === 'ready' && Boolean(subscribedChannelId),
     onSnapshot: (snapshot) => {
       startTransition(() => {
         setState((current) =>

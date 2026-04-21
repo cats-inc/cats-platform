@@ -55,7 +55,28 @@ function createPayload() {
           createdAt: '2026-04-21T00:00:00.000Z',
           updatedAt: '2026-04-21T00:00:00.000Z',
           lastMessageAt: null,
-          members: [],
+          members: [
+            {
+              channelId: 'channel-1',
+              title: 'Channel 1 current',
+              index: 0,
+              provider: 'openai',
+              instance: null,
+              model: 'gpt-5',
+              modelSelection: null,
+              lastMessageAt: null,
+            },
+            {
+              channelId: 'channel-2',
+              title: 'Channel 2 fresh',
+              index: 1,
+              provider: 'anthropic',
+              instance: null,
+              model: 'claude',
+              modelSelection: null,
+              lastMessageAt: '2026-04-21T00:00:02.000Z',
+            },
+          ],
         },
         {
           id: 'group-2',
@@ -74,7 +95,7 @@ function createPayload() {
   };
 }
 
-test('channel subscription state replaces selectedChannel and only subscribed compare groups', () => {
+test('channel subscription state updates selectedChannel without replacing group metadata', () => {
   const payload = createPayload();
   const subscriptionState: ChannelSubscriptionState = {
     selectedChannelId: 'channel-1',
@@ -101,12 +122,23 @@ test('channel subscription state replaces selectedChannel and only subscribed co
         title: 'Live group',
         mode: 'parallel',
         status: 'active',
-        memberCount: 2,
-        memberChannelIds: ['channel-1', 'channel-2'],
+        memberCount: 1,
+        memberChannelIds: ['channel-1'],
         createdAt: '2026-04-21T00:00:00.000Z',
         updatedAt: '2026-04-21T00:00:01.000Z',
         lastMessageAt: '2026-04-21T00:00:01.000Z',
-        members: [],
+        members: [
+          {
+            channelId: 'channel-1',
+            title: 'Channel 1 subscription',
+            index: 0,
+            provider: 'openai',
+            instance: null,
+            model: 'gpt-5',
+            modelSelection: null,
+            lastMessageAt: null,
+          },
+        ],
       },
     ],
   };
@@ -116,8 +148,70 @@ test('channel subscription state replaces selectedChannel and only subscribed co
   assert.equal(next.chat.selectedChannel?.title, 'Live channel');
   assert.equal(next.chat.selectedChannel?.messages.length, 1);
   assert.equal(next.chat.parallelChatGroups.length, 2);
-  assert.equal(next.chat.parallelChatGroups[0].title, 'Live group');
+  assert.equal(next.chat.parallelChatGroups[0].title, 'Old group');
+  assert.deepEqual(next.chat.parallelChatGroups[0].memberChannelIds, ['channel-1', 'channel-2']);
+  const freshSiblingMember = next.chat.parallelChatGroups[0].members.find((member) =>
+    member.channelId === 'channel-2');
+  assert.equal(
+    freshSiblingMember?.title,
+    'Channel 2 fresh',
+  );
   assert.equal(next.chat.parallelChatGroups[1].title, 'Sibling group');
+});
+
+test('channel subscription state ignores stale selection snapshots', () => {
+  const payload = createPayload();
+  const subscriptionState: ChannelSubscriptionState = {
+    selectedChannelId: 'channel-1',
+    selectedChannel: {
+      id: 'channel-1',
+      title: 'Stale channel',
+      messages: [],
+    } as ChannelSubscriptionState['selectedChannel'],
+    parallelChatGroups: [],
+  };
+  const currentPayload = {
+    ...payload,
+    chat: {
+      ...payload.chat,
+      selectedChannelId: 'channel-2',
+      selectedChannel: {
+        id: 'channel-2',
+        title: 'Current channel',
+        messages: [],
+      },
+    },
+  };
+
+  const next = applyChannelSubscriptionStateToPayload(currentPayload, subscriptionState);
+
+  assert.equal(next, currentPayload);
+  assert.equal(next.chat.selectedChannelId, 'channel-2');
+  assert.equal(next.chat.selectedChannel?.title, 'Current channel');
+});
+
+test('channel subscription state removes stale compare membership for mounted channel', () => {
+  const payload = createPayload();
+  const subscriptionState: ChannelSubscriptionState = {
+    selectedChannelId: 'channel-1',
+    selectedChannel: {
+      id: 'channel-1',
+      title: 'Live channel',
+      messages: [],
+    } as ChannelSubscriptionState['selectedChannel'],
+    parallelChatGroups: [],
+  };
+
+  const next = applyChannelSubscriptionStateToPayload(payload, subscriptionState);
+  const mergedGroup = next.chat.parallelChatGroups[0];
+
+  assert.deepEqual(mergedGroup?.memberChannelIds, ['channel-2']);
+  assert.equal(mergedGroup?.memberCount, 1);
+  assert.equal(mergedGroup?.title, 'Old group');
+  assert.equal(
+    mergedGroup?.members.find((member) => member.channelId === 'channel-2')?.title,
+    'Channel 2 fresh',
+  );
 });
 
 test('channel subscription state keeps selected channel summary routing in sync', () => {

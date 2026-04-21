@@ -1042,10 +1042,14 @@ export function createWorkspaceProductApp({
       selectedChannel: liveIndicatorChannel,
       debugTraceEnabled: readyPayload?.chat.capabilities.debugLiveTrace === true,
     });
+    const subscribedChannelId = liveIndicatorChannel
+      && readyPayload?.chat.selectedChannelId === liveIndicatorChannel.id
+      ? liveIndicatorChannel.id
+      : null;
     useEntitySubscription<ChannelSubscriptionState, ChannelSubscriptionPatch>({
       kind: 'channel',
-      id: liveIndicatorChannel?.id ?? null,
-      enabled: state.status === 'ready',
+      id: subscribedChannelId,
+      enabled: state.status === 'ready' && Boolean(subscribedChannelId),
       onSnapshot: (snapshot) => {
         startTransition(() => {
           setState((current) =>

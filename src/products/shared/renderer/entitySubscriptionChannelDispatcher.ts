@@ -4,11 +4,14 @@ import type {
   ChatChannelView,
   ParallelChatGroupSummary,
 } from '../api/workspaceContracts.js';
-import { resolveRoomRoutingState } from '../../../core/roomRoutingState.js';
 import type {
   EntitySubscriptionPatch,
   EntitySubscriptionSnapshot,
 } from './entitySubscriptionHub.js';
+import {
+  mergeChannelSummaryWithChannelView,
+  mergeParallelChatGroupsPreservingSubscribedMembership,
+} from './activeEntityMerge.js';
 
 export interface ChannelSubscriptionState {
   selectedChannelId: string;
@@ -35,6 +38,20 @@ export type ChannelSubscriptionLoadState<TPayload extends ChannelSubscriptionPay
   | { status: 'ready'; payload: TPayload }
   | { status: 'error'; message: string };
 
+function removeSubscribedChannelFromGroup(
+  group: ParallelChatGroupSummary,
+  channelId: string,
+): ParallelChatGroupSummary {
+  const memberChannelIds = group.memberChannelIds.filter((memberChannelId) =>
+    memberChannelId !== channelId);
+  return {
+    ...group,
+    memberChannelIds,
+    members: group.members.filter((member) => member.channelId !== channelId),
+    memberCount: memberChannelIds.length,
+  };
+}
+
 function mergeSubscribedParallelGroups(
   currentGroups: ParallelChatGroupSummary[],
   subscriptionState: ChannelSubscriptionState,
@@ -43,135 +60,31 @@ function mergeSubscribedParallelGroups(
   const subscriptionGroupsById = new Map(
     subscriptionState.parallelChatGroups.map((group) => [group.id, group]),
   );
-  const result: ParallelChatGroupSummary[] = [];
-  const emittedGroupIds = new Set<string>();
+  const emittedSubscriptionGroups = new Set<string>();
+  const subscriptionOwnedGroups: ParallelChatGroupSummary[] = currentGroups
+    .flatMap((group) => {
+      const subscriptionGroup = subscriptionGroupsById.get(group.id);
+      if (subscriptionGroup) {
+        emittedSubscriptionGroups.add(group.id);
+        return [subscriptionGroup];
+      }
 
-  for (const group of currentGroups) {
-    if (!group.memberChannelIds.includes(channelId)) {
-      result.push(group);
-      continue;
-    }
+      return group.memberChannelIds.includes(channelId)
+        ? [removeSubscribedChannelFromGroup(group, channelId)]
+        : [];
+    });
 
-    const replacement = subscriptionGroupsById.get(group.id);
-    if (replacement) {
-      result.push(replacement);
-      emittedGroupIds.add(replacement.id);
-    }
-  }
-
-  for (const group of subscriptionState.parallelChatGroups) {
-    if (!emittedGroupIds.has(group.id)) {
-      result.push(group);
+  for (const subscriptionGroup of subscriptionState.parallelChatGroups) {
+    if (!emittedSubscriptionGroups.has(subscriptionGroup.id)) {
+      subscriptionOwnedGroups.push(subscriptionGroup);
     }
   }
 
-  return result;
-}
-
-function resolveSubscribedChannelRoutingStatus(
-  selectedChannel: ChatChannelView,
-): ChatChannelSummary['routingStatus'] {
-  const roomRouting = resolveRoomRoutingState(selectedChannel.roomRouting);
-  const workflowStatus = roomRouting.workflow.activeTurn?.status
-    ?? roomRouting.workflow.lastOutcomeEvent?.status
-    ?? null;
-  switch (workflowStatus) {
-    case 'pending':
-      return 'running';
-    case 'failed':
-      return 'error';
-    case 'idle':
-    case 'running':
-    case 'completed':
-    case 'blocked':
-      return workflowStatus;
-    default:
-      return roomRouting.lastOutcome?.status ?? 'idle';
-  }
-}
-
-function resolveSubscribedChannelLastRoutingAt(selectedChannel: ChatChannelView): string | null {
-  const roomRouting = resolveRoomRoutingState(selectedChannel.roomRouting);
-  return roomRouting.workflow.activeTurn?.updatedAt
-    ?? roomRouting.workflow.lastOutcomeEvent?.createdAt
-    ?? roomRouting.lastOutcome?.completedAt
-    ?? roomRouting.lastCheckpoint?.createdAt
-    ?? null;
-}
-
-function fallbackSubscribedChannelSummary(
-  selectedChannel: ChatChannelView,
-): ChatChannelSummary {
-  const roomRouting = resolveRoomRoutingState(selectedChannel.roomRouting);
-  const assignedCats = selectedChannel.assignedCats ?? [];
-  const assignedCatCount = assignedCats.length;
-  const activeAssignedCatCount = assignedCats.filter((cat) =>
-    cat.status === 'active').length;
-  const defaultRecipientCat = roomRouting.defaultRecipientId
-    ? assignedCats.find((cat) => cat.catId === roomRouting.defaultRecipientId)
-    : null;
-
-  return {
-    id: selectedChannel.id,
-    title: selectedChannel.title,
-    topic: selectedChannel.topic,
-    originSurface: selectedChannel.originSurface ?? 'chat',
-    channelKind: selectedChannel.channelKind,
-    status: selectedChannel.status,
-    unreadCount: selectedChannel.unreadCount,
-    catCount: assignedCatCount,
-    activeCatCount: activeAssignedCatCount,
-    participantCount: assignedCatCount,
-    activeParticipantCount: activeAssignedCatCount,
-    repoPath: selectedChannel.repoPath,
-    chatCwd: selectedChannel.chatCwd,
-    runtimeWorkspaceKind: selectedChannel.runtimeWorkspaceKind ?? null,
-    runtimeWorkspaceAccess: selectedChannel.runtimeWorkspaceAccess ?? null,
-    runtimePermissionMode: selectedChannel.runtimePermissionMode ?? null,
-    lastMessageAt: selectedChannel.lastMessageAt,
-    lastActivatedAt: selectedChannel.lastActivatedAt,
-    composerMode: selectedChannel.composerMode,
-    pendingProvider: selectedChannel.pendingProvider,
-    pendingModel: selectedChannel.pendingModel,
-    pendingModelSelection: selectedChannel.pendingModelSelection ?? null,
-    defaultRecipientCatId: defaultRecipientCat?.catId ?? null,
-    defaultRecipientLeaseStatus: defaultRecipientCat?.execution.lease.status ?? null,
-    roomMode: roomRouting.mode,
-    routingStatus: resolveSubscribedChannelRoutingStatus(selectedChannel),
-    lastRoutingAt: resolveSubscribedChannelLastRoutingAt(selectedChannel),
-  };
-}
-
-export function mergeChannelSummaryWithChannelView(
-  currentSummary: ChatChannelSummary | undefined,
-  selectedChannel: ChatChannelView,
-): ChatChannelSummary {
-  const fallbackSummary = fallbackSubscribedChannelSummary(selectedChannel);
-  return {
-    ...fallbackSummary,
-    ...currentSummary,
-    id: selectedChannel.id,
-    title: selectedChannel.title,
-    topic: selectedChannel.topic,
-    originSurface: selectedChannel.originSurface ?? currentSummary?.originSurface ?? 'chat',
-    channelKind: selectedChannel.channelKind ?? currentSummary?.channelKind,
-    status: selectedChannel.status,
-    unreadCount: selectedChannel.unreadCount,
-    repoPath: selectedChannel.repoPath,
-    chatCwd: selectedChannel.chatCwd,
-    runtimeWorkspaceKind: selectedChannel.runtimeWorkspaceKind ?? null,
-    runtimeWorkspaceAccess: selectedChannel.runtimeWorkspaceAccess ?? null,
-    runtimePermissionMode: selectedChannel.runtimePermissionMode ?? null,
-    lastMessageAt: selectedChannel.lastMessageAt,
-    lastActivatedAt: selectedChannel.lastActivatedAt,
-    composerMode: selectedChannel.composerMode,
-    pendingProvider: selectedChannel.pendingProvider,
-    pendingModel: selectedChannel.pendingModel,
-    pendingModelSelection: selectedChannel.pendingModelSelection ?? null,
-    roomMode: resolveRoomRoutingState(selectedChannel.roomRouting).mode,
-    routingStatus: resolveSubscribedChannelRoutingStatus(selectedChannel),
-    lastRoutingAt: resolveSubscribedChannelLastRoutingAt(selectedChannel),
-  };
+  return mergeParallelChatGroupsPreservingSubscribedMembership(
+    subscriptionOwnedGroups,
+    currentGroups,
+    [channelId],
+  );
 }
 
 function mergeSubscribedChannelSummaries(
@@ -200,12 +113,24 @@ function mergeSubscribedChannelSummaries(
       ];
 }
 
+function isCurrentSubscriptionState(
+  payload: ChannelSubscriptionPayloadLike,
+  subscriptionState: ChannelSubscriptionState,
+): boolean {
+  return payload.chat.selectedChannelId === subscriptionState.selectedChannelId
+    && subscriptionState.selectedChannel.id === subscriptionState.selectedChannelId;
+}
+
 export function applyChannelSubscriptionStateToPayload<
   TPayload extends ChannelSubscriptionPayloadLike = AppShellPayload,
 >(
   payload: TPayload,
   subscriptionState: ChannelSubscriptionState,
 ): TPayload {
+  if (!isCurrentSubscriptionState(payload, subscriptionState)) {
+    return payload;
+  }
+
   const channels = mergeSubscribedChannelSummaries(
     payload.chat.channels,
     subscriptionState,
