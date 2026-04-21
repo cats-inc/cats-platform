@@ -36,6 +36,11 @@ interface ProviderCacheRefreshWarning {
   message: string;
 }
 
+export const PROVIDER_TARGETS_CACHE_REFRESH_WARNING_PREFIX =
+  'Using cached provider targets because runtime refresh failed:';
+export const MODEL_CATALOG_CACHE_REFRESH_WARNING_PREFIX =
+  'Using cached model catalog because runtime refresh failed:';
+
 interface ProviderTimedCacheEntry<TValue> {
   value: TValue;
   freshUntilMs: number;
@@ -367,37 +372,6 @@ function readTruthfulProviderRegistryFailureMessage(
   return value.warnings?.[0] ?? 'cats-runtime is unavailable.';
 }
 
-function writeTruthfulProviderRegistryCacheEntry(
-  cacheState: TruthfulProviderRegistryCacheState,
-  cacheKey: string,
-  value: TruthfulProviderRegistryReadModel,
-  timing: {
-    freshUntilMs?: number;
-    staleUntilMs?: number;
-    staleIfErrorUntilMs?: number;
-    cacheRefreshWarning?: ProviderCacheRefreshWarning;
-  } = {},
-): void {
-  if (!shouldCacheTruthfulProviderRegistry(value)) {
-    return;
-  }
-
-  const now = Date.now();
-  cacheState.entries.set(cacheKey, {
-    value,
-    freshUntilMs: timing.freshUntilMs ?? (now + TRUTHFUL_SELECTOR_CACHE_TTL_MS),
-    staleUntilMs: timing.staleUntilMs ?? (
-      now + TRUTHFUL_SELECTOR_CACHE_TTL_MS + TRUTHFUL_SELECTOR_STALE_WINDOW_MS
-    ),
-    staleIfErrorUntilMs: timing.staleIfErrorUntilMs ?? (
-      now + PROVIDER_CACHE_STALE_IF_ERROR_MS
-    ),
-    ...(timing.cacheRefreshWarning
-      ? { cacheRefreshWarning: timing.cacheRefreshWarning }
-      : {}),
-  });
-}
-
 function deriveTruthfulProviderRegistryForProvider(
   source: TruthfulProviderRegistryReadModel,
   providerId: string,
@@ -580,6 +554,11 @@ function tryReadTruthfulProviderRegistryFromRootCache(
   provider: string,
   now: number,
 ): TruthfulProviderRegistryReadModel | Promise<TruthfulProviderRegistryReadModel> | null {
+  // Root is the authoritative source for refresh state; derived responses
+  // project root's current cacheRefreshWarning at read time rather than
+  // snapshotting it into a provider-specific entry, which would otherwise
+  // keep warning users after root recovered (or vice versa) until derived's
+  // own stale window expired.
   const rootCacheKey = buildTruthfulProviderRegistryCacheKey();
   const rootCached = cacheState.entries.get(rootCacheKey);
   if (rootCached && rootCached.staleUntilMs > now) {
@@ -587,19 +566,6 @@ function tryReadTruthfulProviderRegistryFromRootCache(
     const derived = rootCached.cacheRefreshWarning
       ? appendTruthfulProviderRegistryWarning(derivedBase, rootCached.cacheRefreshWarning.message)
       : derivedBase;
-    writeTruthfulProviderRegistryCacheEntry(
-      cacheState,
-      buildTruthfulProviderRegistryCacheKey({ provider }),
-      derivedBase,
-      {
-        freshUntilMs: rootCached.freshUntilMs,
-        staleUntilMs: rootCached.staleUntilMs,
-        staleIfErrorUntilMs: rootCached.staleIfErrorUntilMs,
-        ...(rootCached.cacheRefreshWarning
-          ? { cacheRefreshWarning: rootCached.cacheRefreshWarning }
-          : {}),
-      },
-    );
 
     if (rootCached.freshUntilMs <= now) {
       void refreshTruthfulProviderRegistry(
@@ -614,15 +580,9 @@ function tryReadTruthfulProviderRegistryFromRootCache(
 
   const rootInflight = cacheState.inflight.get(rootCacheKey);
   if (rootInflight) {
-    return rootInflight.then((value) => {
-      const derived = deriveTruthfulProviderRegistryForProvider(value, provider);
-      writeTruthfulProviderRegistryCacheEntry(
-        cacheState,
-        buildTruthfulProviderRegistryCacheKey({ provider }),
-        derived,
-      );
-      return derived;
-    });
+    return rootInflight.then((value) =>
+      deriveTruthfulProviderRegistryForProvider(value, provider),
+    );
   }
 
   return null;
@@ -674,7 +634,7 @@ function writeTruthfulProviderRegistryErrorBackoff(
     cached,
     {
       kind: 'provider-targets',
-      message: `Using cached provider targets because runtime refresh failed: ${
+      message: `${PROVIDER_TARGETS_CACHE_REFRESH_WARNING_PREFIX} ${
         readTruthfulProviderRegistryFailureMessage(failedRefresh)
       }`,
     },
@@ -742,7 +702,7 @@ function writeProviderCatalogErrorBackoff<TCatalog extends ProviderCatalogCacheV
     cached,
     {
       kind: 'model-catalog',
-      message: `Using cached model catalog because runtime refresh failed: ${
+      message: `${MODEL_CATALOG_CACHE_REFRESH_WARNING_PREFIX} ${
         readRuntimeFailureMessage(error, 'Runtime catalog unavailable.')
       }`,
     },

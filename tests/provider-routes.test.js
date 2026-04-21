@@ -4,6 +4,10 @@ import test from 'node:test';
 
 import { createServer } from '../build/server/app/server/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import {
+  MODEL_CATALOG_CACHE_REFRESH_WARNING_PREFIX as MODEL_CATALOG_CACHE_WARNING_PREFIX,
+  PROVIDER_TARGETS_CACHE_REFRESH_WARNING_PREFIX as PROVIDER_TARGETS_CACHE_WARNING_PREFIX,
+} from '../build/server/server/routes/providers.js';
 
 let dateNowMockLock = Promise.resolve();
 
@@ -14,11 +18,6 @@ const baseConfig = {
   runtimeApiKey: '',
   chatStatePath: 'unused-for-tests',
 };
-
-const PROVIDER_TARGETS_CACHE_WARNING_PREFIX =
-  'Using cached provider targets because runtime refresh failed:';
-const MODEL_CATALOG_CACHE_WARNING_PREFIX =
-  'Using cached model catalog because runtime refresh failed:';
 
 function listCacheRefreshWarnings(warnings, prefix) {
   return warnings.filter((warning) => warning.startsWith(prefix));
