@@ -52,6 +52,33 @@ declare module 'electron' {
     focus(): void;
   }
 
+  export interface Display {
+    id: number;
+    bounds: {
+      x: number;
+      y: number;
+      width: number;
+      height: number;
+    };
+    scaleFactor: number;
+  }
+
+  export interface NativeImage {
+    getSize(): {
+      width: number;
+      height: number;
+    };
+    toPNG(): Uint8Array;
+    crop(rect: { x: number; y: number; width: number; height: number }): NativeImage;
+  }
+
+  export interface DesktopCapturerSource {
+    id: string;
+    display_id?: string;
+    name: string;
+    thumbnail: NativeImage;
+  }
+
   export const ipcMain: {
     handle<TArgs extends unknown[] = unknown[], TResult = unknown>(
       channel: string,
@@ -84,7 +111,20 @@ declare module 'electron' {
   };
 
   export const nativeImage: {
-    createFromDataURL(dataUrl: string): unknown;
+    createFromDataURL(dataUrl: string): NativeImage;
+    createFromBuffer(buffer: Uint8Array): NativeImage;
+  };
+
+  export const screen: {
+    getAllDisplays(): Display[];
+  };
+
+  export const desktopCapturer: {
+    getSources(options: {
+      types: ['screen'];
+      thumbnailSize: { width: number; height: number };
+      fetchWindowIcons: false;
+    }): Promise<DesktopCapturerSource[]>;
   };
 
   export class Tray {
