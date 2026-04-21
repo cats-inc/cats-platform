@@ -668,7 +668,7 @@ contracts.
       [SPEC-074](./docs/specs/SPEC-074-cross-surface-draft-dispatch-and-warm-product-handoff.md),
       and
       [PLAN-066](./docs/plans/PLAN-066-cross-surface-draft-dispatch-and-warm-product-handoff-rollout.md).
-- [ ] Add measurable warm-navigation observability above the current dev-only
+- [x] Add measurable warm-navigation observability above the current dev-only
       miss warnings, including hit/miss/stale counters and enough route-target
       metadata to judge whether the generic handoff seam is paying for itself
       once more consumers adopt it
@@ -676,8 +676,9 @@ contracts.
       stage/hit/miss telemetry counters plus latest route metadata and active
       staged targets, and the renderer now mirrors that per-process snapshot to
       `window.__catsCrossSurfaceNavigationHandoffTelemetry` for browser-side
-      inspection; product-level wiring and longer-horizon reporting still
-      remain.
+      inspection. This gives local measurable hit/miss/stale visibility; any
+      future product analytics sink can subscribe through the existing observer
+      seam without changing the handoff store.
 - [ ] Add integration coverage for the warm-navigation seam instead of relying
       only on pure seam tests, specifically `useWorkspaceAppShellRouting`
       mount-time consume + background refresh behavior and the cross-surface
