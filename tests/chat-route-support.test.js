@@ -117,6 +117,7 @@ test('persistCatAssignmentUpdate starts new cat sessions from the orchestrator a
   state = createChannel(state, {
     title: 'Route support lane',
     topic: 'spawn new cat sessions from the orchestrator attachment cwd',
+    originSurface: 'chat',
     skipBossCatGreeting: true,
   }, now);
   const channelId = state.selectedChannelId;
@@ -210,6 +211,7 @@ test('persistCatAssignmentUpdate keeps direct-lane transport binding on session_
   state = createChannel(state, {
     title: 'Route support direct lane failure',
     topic: 'keep direct-lane transport binding on session_start_failed metadata',
+    originSurface: 'chat',
     roomMode: 'direct_cat_chat',
     repoPath: 'C:/repo/cats-platform',
     defaultRecipientId: catId,
@@ -299,6 +301,7 @@ test('persistCatAssignmentUpdate keeps direct-lane transport binding on session_
   state = createChannel(state, {
     title: 'Route support direct lane close failure',
     topic: 'keep direct-lane transport binding on session_close_failed metadata',
+    originSurface: 'chat',
     roomMode: 'direct_cat_chat',
     defaultRecipientId: catId,
     skipBossCatGreeting: true,
@@ -401,6 +404,7 @@ test('persistCatAssignmentRemoval keeps direct-lane transport binding on session
   state = createChannel(state, {
     title: 'Route support direct lane removal close failure',
     topic: 'keep direct-lane transport binding on removal session_close_failed metadata',
+    originSurface: 'chat',
     roomMode: 'direct_cat_chat',
     defaultRecipientId: catId,
     skipBossCatGreeting: true,

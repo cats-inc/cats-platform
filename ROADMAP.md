@@ -628,7 +628,7 @@ contracts.
       `origin_surface_required` instead of recording a fallback/defaulting to
       `chat`; product integration and API docs now describe the required raw
       create ownership field.
-- [ ] Harden the internal Chat create/model APIs around `originSurface`
+- [x] Harden the internal Chat create/model APIs around `originSurface`
       invariants after the current legacy fixtures are migrated, so typed
       product-owned create paths and lower-level state mutation helpers no
       longer diverge on whether missing ownership metadata is tolerated
@@ -637,8 +637,9 @@ contracts.
       typed channel-create input, and shared parallel-draft payload helpers now
       cover the same contract for grouped fan-out. State-model characterization
       coverage now also locks the current lower-level behavior (explicit
-      surfaces preserved, invalid values rejected, missing ownership still
-      defaulting to `chat`); actual tolerance cleanup still remains.
+      surfaces preserved, invalid values rejected, missing ownership rejected);
+      the lower-level create helpers now require explicit ownership just like
+      the raw HTTP boundary.
 - [ ] Replace the current stderr-only `originSurface` compatibility warning
       path with a measurable platform logging/telemetry seam, so the team can
       see how often legacy callers still omit ownership metadata and know when

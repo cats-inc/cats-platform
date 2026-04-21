@@ -7,7 +7,7 @@ import {
   createParallelChatGroup,
 } from '../build/server/products/chat/state/model/index.js';
 
-test('state-model channel create preserves explicit originSurface and still defaults missing ownership to chat', () => {
+test('state-model channel create preserves explicit originSurface and rejects missing ownership', () => {
   const baseState = createDefaultChatState();
 
   const workState = createChannel(baseState, {
@@ -18,15 +18,17 @@ test('state-model channel create preserves explicit originSurface and still defa
   });
   assert.equal(workState.channels[0]?.originSurface, 'work');
 
-  const defaultedState = createChannel(baseState, {
-    title: 'Legacy room',
-    topic: 'Model helper still tolerates missing originSurface for now.',
-    skipBossCatGreeting: true,
-  });
-  assert.equal(defaultedState.channels[0]?.originSurface, 'chat');
+  assert.throws(
+    () => createChannel(baseState, {
+      title: 'Missing owner room',
+      topic: 'Model helper should reject missing originSurface.',
+      skipBossCatGreeting: true,
+    }),
+    /originSurface is required\./u,
+  );
 });
 
-test('state-model parallel create preserves explicit originSurface and still defaults missing ownership to chat', () => {
+test('state-model parallel create preserves explicit originSurface and rejects missing ownership', () => {
   const baseState = createDefaultChatState();
 
   const codeState = createParallelChatGroup(baseState, {
@@ -43,17 +45,15 @@ test('state-model parallel create preserves explicit originSurface and still def
     ['code', 'code'],
   );
 
-  const defaultedState = createParallelChatGroup(baseState, {
-    title: 'Legacy fanout',
-    targets: [
-      { provider: 'claude', instance: null, model: 'claude-opus-4-6' },
-      { provider: 'codex', instance: null, model: 'gpt-5.4' },
-    ],
-  });
-  assert.equal(defaultedState.parallelChatGroups[0]?.originSurface, 'chat');
-  assert.deepEqual(
-    defaultedState.channels.slice(0, 2).map((channel) => channel.originSurface),
-    ['chat', 'chat'],
+  assert.throws(
+    () => createParallelChatGroup(baseState, {
+      title: 'Missing owner fanout',
+      targets: [
+        { provider: 'claude', instance: null, model: 'claude-opus-4-6' },
+        { provider: 'codex', instance: null, model: 'gpt-5.4' },
+      ],
+    }),
+    /originSurface is required\./u,
   );
 });
 

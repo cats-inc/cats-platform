@@ -126,7 +126,7 @@ function resolveCreateInputOriginSurface(
   originSurface: unknown,
 ): PlatformSurfaceId {
   if (originSurface === undefined || originSurface === null) {
-    return 'chat';
+    throw new Error('originSurface is required.');
   }
 
   const normalized = normalizePlatformSurface(originSurface);
