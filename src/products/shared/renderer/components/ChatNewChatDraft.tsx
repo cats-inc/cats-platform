@@ -108,6 +108,7 @@ export interface NewChatDraftProps {
   onParallelTargetChange?: (index: number, value: ExecutionTargetValue) => void;
   onAddParallelTarget?: () => void;
   onRemoveParallelTarget?: (index: number) => void;
+  onPickParallelBranchFolder?: (index: number) => void;
   showDraftParallelAddButton?: boolean;
   folderBrowsePath?: string;
   folderBrowseCurrentPath?: string;
@@ -197,6 +198,7 @@ export function NewChatDraft({
   onParallelTargetChange,
   onAddParallelTarget,
   onRemoveParallelTarget,
+  onPickParallelBranchFolder,
   showDraftParallelAddButton = false,
   folderBrowsePath = '',
   folderBrowseCurrentPath = '',
@@ -1000,6 +1002,23 @@ export function NewChatDraft({
                   </button>
                 ) : null}
               </span>
+            ) : onPickParallelBranchFolder ? (
+              <button
+                type="button"
+                className="composerFollowsLeadChip composerFollowsLeadChipClickable"
+                disabled={isSubmittingFirstTurn}
+                onClick={() => {
+                  onPickParallelBranchFolder(branchIndex);
+                  openSidePanelTo('cwd', { skipSectionAction: true });
+                }}
+                aria-label="Choose branch folder"
+              >
+                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M6 3l-3 5 3 5" />
+                  <path d="M3 8h10" />
+                </svg>
+                <span>Follows lead</span>
+              </button>
             ) : (
               <span className="composerFollowsLeadChip">
                 <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

@@ -233,8 +233,10 @@ order once Phase 1 lands.
       shadow cards now render detached branch cwd chips and detached
       runtime-session-policy chips when those fields are already set on
       `parallelTargets[i]`; both chips expose a re-link action that
-      clears the branch override back to lead inheritance. Branch-scoped
-      picker/edit controls are still pending.
+      clears the branch override back to lead inheritance. The branch
+      cwd "Follows lead" chip is now clickable under advanced draft
+      controls and opens the folder picker scoped to that branch.
+      Session-policy edit controls are still pending.
 - [ ] Task 2.1: UX for per-branch cwd detach.
       - Non-lead card's `composerFollowsLeadChip` gains a click
         target that opens the side-panel cwd picker scoped to the

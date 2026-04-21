@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import {
@@ -119,6 +120,10 @@ import {
 } from './components/Sidebar';
 import './styles.css';
 
+type DraftFolderBrowseTarget =
+  | { kind: 'lead' }
+  | { kind: 'parallel-branch'; index: number };
+
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -183,6 +188,18 @@ export default function App() {
     createEmptyCatForm: emptyCatForm,
     pickGreeting,
   });
+  const draftFolderBrowseTargetRef = useRef<DraftFolderBrowseTarget>({ kind: 'lead' });
+  const parallelBranchCwdSetterRef = useRef<(
+    (index: number, cwd: string | null) => void
+  ) | null>(null);
+  const applyDraftFolderSelection = useCallback((path: string): void => {
+    const target = draftFolderBrowseTargetRef.current;
+    if (target.kind === 'parallel-branch') {
+      parallelBranchCwdSetterRef.current?.(target.index, path);
+      return;
+    }
+    setDraftCwd(path);
+  }, [setDraftCwd]);
   const maxDraftGroupParticipants = state.status === 'ready'
     ? state.payload.chat.capabilities.maxChatParticipants ?? Number.POSITIVE_INFINITY
     : Number.POSITIVE_INFINITY;
@@ -272,7 +289,7 @@ export default function App() {
     selectCurrentFolder,
     setFolderBrowsePath,
   } = useFolderBrowser({
-    onSelectPath: setDraftCwd,
+    onSelectPath: applyDraftFolderSelection,
     surface: 'chat',
     directLaneCatId: routeMyCatId,
     initialPreferences:
@@ -280,6 +297,10 @@ export default function App() {
         ? state.payload.chat.folderBrowsePreferences
         : undefined,
   });
+  const openLeadFolderBrowser = useCallback(async (path?: string | null): Promise<void> => {
+    draftFolderBrowseTargetRef.current = { kind: 'lead' };
+    await openFolderBrowser(path);
+  }, [openFolderBrowser]);
   const {
     toggleAddCatPanel,
     toggleChannelPlusMenu,
@@ -305,7 +326,7 @@ export default function App() {
     setChannelPlusMenuOpen,
     channelFileInputRef,
     fileInputRef,
-    openFolderBrowser,
+    openFolderBrowser: openLeadFolderBrowser,
   });
   const {
     readyPayload,
@@ -367,6 +388,15 @@ export default function App() {
     setFeedback,
     seedCompareTarget: showingParallelChatDraft,
   });
+  useEffect(() => {
+    parallelBranchCwdSetterRef.current = onSetDraftParallelBranchCwd;
+  }, [onSetDraftParallelBranchCwd]);
+  const openDraftParallelBranchFolderPicker = useCallback((branchIndex: number): void => {
+    draftFolderBrowseTargetRef.current = { kind: 'parallel-branch', index: branchIndex };
+    const branchCwd = draftParallelChatTargets[branchIndex]?.cwd ?? draftCwd;
+    void openFolderBrowser(branchCwd);
+    setPlusMenuOpen(false);
+  }, [draftCwd, draftParallelChatTargets, openFolderBrowser, setPlusMenuOpen]);
   const advancedDraftControlsEnabled = isAdvancedDraftControlsEnabled(
     readyPayload?.chat.advancedDraftControls ?? null,
     'chat',
@@ -1408,6 +1438,12 @@ export default function App() {
                   onRemoveParallelTarget:
                     showingParallelChatDraft || hasVisibleParallelDraftTargets
                       ? onRemoveDraftParallelChatTarget
+                      : undefined,
+                  onPickParallelBranchFolder:
+                    advancedDraftControlsEnabled
+                      && draftRoute.isGenericNewChatRoute
+                      && hasVisibleParallelDraftTargets
+                      ? openDraftParallelBranchFolderPicker
                       : undefined,
                   showDraftParallelAddButton:
                     draftRoute.isGenericNewChatRoute

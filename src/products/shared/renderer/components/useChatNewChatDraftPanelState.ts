@@ -52,8 +52,12 @@ export function useChatNewChatDraftPanelState(input: {
     }
   }
 
-  function openSidePanelTo(section: string): void {
+  function openSidePanelTo(section: string, options?: { skipSectionAction?: boolean }): void {
     setSidePanelOpen(true);
+    if (options?.skipSectionAction) {
+      setSidePanelSection(section);
+      return;
+    }
     switchSection(section);
   }
 

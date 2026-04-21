@@ -3,6 +3,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ComponentType,
   type MouseEvent as ReactMouseEvent,
@@ -130,6 +131,10 @@ type DraftSurfaceProps = Omit<
 > & {
   greeting: string;
 };
+
+type DraftFolderBrowseTarget =
+  | { kind: "lead" }
+  | { kind: "parallel-branch"; index: number };
 
 export interface WorkspaceProductAppRoutesProps {
   payload: AppShellPayload;
@@ -295,6 +300,18 @@ export function createWorkspaceProductApp({
       createEmptyCatForm: emptyCatForm,
       pickGreeting,
     });
+    const draftFolderBrowseTargetRef = useRef<DraftFolderBrowseTarget>({ kind: "lead" });
+    const parallelBranchCwdSetterRef = useRef<(
+      (index: number, cwd: string | null) => void
+    ) | null>(null);
+    const applyDraftFolderSelection = useCallback((path: string): void => {
+      const target = draftFolderBrowseTargetRef.current;
+      if (target.kind === "parallel-branch") {
+        parallelBranchCwdSetterRef.current?.(target.index, path);
+        return;
+      }
+      setDraftCwd(path);
+    }, [setDraftCwd]);
     const {
       draftCatIds,
       setDraftCatIds,
@@ -393,7 +410,7 @@ export function createWorkspaceProductApp({
       selectCurrentFolder,
       setFolderBrowsePath,
     } = useFolderBrowser({
-      onSelectPath: setDraftCwd,
+      onSelectPath: applyDraftFolderSelection,
       surface: shellSurface,
       directLaneCatId: null,
       initialPreferences:
@@ -401,6 +418,10 @@ export function createWorkspaceProductApp({
           ? state.payload.chat.folderBrowsePreferences
           : undefined,
     });
+    const openLeadFolderBrowser = useCallback(async (path?: string | null): Promise<void> => {
+      draftFolderBrowseTargetRef.current = { kind: "lead" };
+      await openFolderBrowser(path);
+    }, [openFolderBrowser]);
     const {
       toggleAddCatPanel,
       toggleChannelPlusMenu,
@@ -427,7 +448,7 @@ export function createWorkspaceProductApp({
       setChannelPlusMenuOpen,
       channelFileInputRef,
       fileInputRef,
-      openFolderBrowser,
+      openFolderBrowser: openLeadFolderBrowser,
     });
     const onArchiveCat = useCallback(
       async (catId: string): Promise<void> => {
@@ -525,6 +546,15 @@ export function createWorkspaceProductApp({
       maxParallelChats,
       seedCompareTarget: showingParallelChatDraft,
     });
+    useEffect(() => {
+      parallelBranchCwdSetterRef.current = onSetDraftParallelBranchCwd;
+    }, [onSetDraftParallelBranchCwd]);
+    const openDraftParallelBranchFolderPicker = useCallback((branchIndex: number): void => {
+      draftFolderBrowseTargetRef.current = { kind: "parallel-branch", index: branchIndex };
+      const branchCwd = draftParallelChatTargets[branchIndex]?.cwd ?? draftCwd;
+      void openFolderBrowser(branchCwd);
+      setPlusMenuOpen(false);
+    }, [draftCwd, draftParallelChatTargets, openFolderBrowser, setPlusMenuOpen]);
     const hasVisibleParallelDraftTargets = draftParallelChatTargets.length > 1;
     const draftParallelTargetAudienceKeys = useMemo(
       () => draftParallelChatTargets.map((target) => target.audienceKeys ?? []),
@@ -1642,6 +1672,13 @@ export function createWorkspaceProductApp({
                       supportsStructuredDraftModes
                         && (showingParallelChatDraft || hasVisibleParallelDraftTargets)
                         ? onRemoveDraftParallelChatTarget
+                        : undefined,
+                    onPickParallelBranchFolder:
+                      advancedDraftControlsEnabled
+                        && supportsStructuredDraftModes
+                        && showingGenericNewChatDraft
+                        && hasVisibleParallelDraftTargets
+                        ? openDraftParallelBranchFolderPicker
                         : undefined,
                     showDraftParallelAddButton:
                       supportsStructuredDraftModes

@@ -164,3 +164,18 @@
   flex: 0 0 auto;
   opacity: 0.75;
 }
+
+.composerFollowsLeadChipClickable {
+  cursor: pointer;
+  font: inherit;
+}
+
+.composerFollowsLeadChipClickable:hover:not(:disabled) {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.composerFollowsLeadChipClickable:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}

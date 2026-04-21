@@ -1291,6 +1291,33 @@ test('parallel shadow branch with detached cwd renders a relinkable cwd chip', (
   assert.match(markup, /aria-label="Re-link branch folder to lead"/u);
 });
 
+test('parallel shadow branch following lead exposes the branch folder picker when wired', () => {
+  const leadTarget = { provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null } as const;
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        selectedExecutionTarget: leadTarget,
+        parallelTargets: [
+          { ...leadTarget, audienceKeys: [], workflowShape: 'sequential' },
+          {
+            provider: 'codex-cli',
+            instance: null,
+            model: 'codex-max',
+            modelSelection: null,
+            audienceKeys: [],
+            workflowShape: 'sequential',
+          },
+        ],
+        onPickParallelBranchFolder: () => {},
+        onAddParallelTarget: () => {},
+      })}
+    />,
+  );
+
+  assert.match(markup, /composerFollowsLeadChipClickable/u);
+  assert.match(markup, /aria-label="Choose branch folder"/u);
+});
+
 test('parallel shadow branch with detached runtime policy renders a relinkable policy chip', () => {
   const leadTarget = { provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null } as const;
   const markup = renderToStaticMarkup(
