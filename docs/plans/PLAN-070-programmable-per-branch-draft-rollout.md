@@ -236,12 +236,12 @@ order once Phase 1 lands.
       clears the branch override back to lead inheritance. The branch
       cwd "Follows lead" chip is now clickable under advanced draft
       controls and opens the folder picker scoped to that branch.
-      Session-policy detach and permission edit controls are wired;
-      branch workspace-mode editing is still pending.
+      Session-policy detach, permission edit, and repo-ready
+      workspace-mode edit controls are wired.
       Focused API client coverage now asserts detached branch cwd and
       runtime policy fields are present in the parallel-group create
       POST body.
-- [ ] Task 2.1: UX for per-branch cwd detach.
+- [x] Task 2.1: UX for per-branch cwd detach.
       - Non-lead card's `composerFollowsLeadChip` gains a click
         target that opens the side-panel cwd picker scoped to the
         branch.
@@ -252,7 +252,7 @@ order once Phase 1 lands.
         `cwd`, returning to the "Follows lead" state.
       - Gated by "Enable advanced draft controls" — basic users
         never see the detach affordance.
-- [ ] Task 2.2: Session policy detach. Mirror the cwd flow for
+- [x] Task 2.2: Session policy detach. Mirror the cwd flow for
       `runtimeSessionPolicy`. ADR-071 validation runs against the
       resolved per-branch policy at submit time (already wired by
       Phase 1 Task 1.5); Phase 2 just exposes the editing UI.

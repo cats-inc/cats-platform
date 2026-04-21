@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, type ReactNode } from 'react';
 
 import {
   PermissionModeChip,
@@ -22,53 +22,7 @@ import {
   type RuntimeSessionPolicyInput,
 } from '../../../../shared/runtimeSessionPolicy.js';
 import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
-import { inspectPath } from '../api/shell.js';
-
-interface RepoProbeResult {
-  isRepo: boolean;
-  repoRoot: string | null;
-  branch: string | null;
-}
-
-function useRepoProbe(cwd: string | null): RepoProbeResult {
-  const [result, setResult] = useState<RepoProbeResult>({
-    isRepo: false,
-    repoRoot: null,
-    branch: null,
-  });
-
-  useEffect(() => {
-    if (!cwd) {
-      setResult({ isRepo: false, repoRoot: null, branch: null });
-      return;
-    }
-
-    const controller = new AbortController();
-    inspectPath(cwd, controller.signal)
-      .then((info) => {
-        if (controller.signal.aborted) {
-          return;
-        }
-        setResult({
-          isRepo: Boolean(info.isRepo),
-          repoRoot: info.repoRoot ?? null,
-          branch: info.branch ?? null,
-        });
-      })
-      .catch(() => {
-        if (controller.signal.aborted) {
-          return;
-        }
-        setResult({ isRepo: false, repoRoot: null, branch: null });
-      });
-
-    return () => {
-      controller.abort();
-    };
-  }, [cwd]);
-
-  return result;
-}
+import { useRepoProbe } from './useRepoProbe.js';
 
 export interface UseDraftSessionChipsInput {
   draftCwd: string | null;

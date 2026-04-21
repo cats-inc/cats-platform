@@ -49,7 +49,9 @@ import {
   createDefaultRuntimeSessionPolicy,
   resolveCreateRuntimeSessionPolicy,
   resolveDraftPermissionModeFromRuntimeAccess,
+  resolveDraftWorkspaceModeFromRuntimeKind,
   resolveRuntimePermissionPolicyFromDraft,
+  resolveRuntimeWorkspaceKindFromDraft,
   type RuntimeSessionPolicy,
 } from '../../../../shared/runtimeSessionPolicy.js';
 import {
@@ -59,6 +61,160 @@ import {
 } from '../audienceParticipantBuilder.js';
 import { AudienceChip } from './AudienceChip.js';
 import { PermissionModeChip } from './PermissionModeChip.js';
+import { WorkspaceModeChip } from './WorkspaceModeChip.js';
+import { useRepoProbe } from '../hooks/useRepoProbe.js';
+
+function formatBranchRuntimeSessionPolicy(policy: RuntimeSessionPolicy): string {
+  const workspaceLabel = policy.workspaceKind === 'worktree'
+    ? 'Worktree'
+    : policy.workspaceKind === 'source'
+      ? 'Current folder'
+      : 'Sandbox';
+  const permissionLabel = policy.workspaceAccess === 'read_only' ? 'Read only' : 'Full access';
+  return `${workspaceLabel} / ${permissionLabel}`;
+}
+
+function resolveDraftBranchRuntimeSessionPolicy(input: {
+  target: DraftParallelTarget;
+  draftCwd: string | null;
+  draftRuntimeSessionPolicy: RuntimeSessionPolicy | null;
+}): RuntimeSessionPolicy {
+  return resolveCreateRuntimeSessionPolicy({
+    repoPath: input.target.cwd ?? input.draftCwd,
+    policy: input.target.runtimeSessionPolicy
+      ?? input.draftRuntimeSessionPolicy
+      ?? createDefaultRuntimeSessionPolicy(),
+  });
+}
+
+interface BranchRuntimeSessionPolicyControlsProps {
+  branchIndex: number;
+  target: DraftParallelTarget;
+  draftCwd: string | null;
+  draftRuntimeSessionPolicy: RuntimeSessionPolicy | null;
+  isSubmittingFirstTurn: boolean;
+  onSetParallelBranchRuntimeSessionPolicy?: (
+    index: number,
+    policy: RuntimeSessionPolicy | null,
+  ) => void;
+}
+
+type BranchRuntimeSessionPolicyPatch = Partial<
+  Pick<RuntimeSessionPolicy, 'workspaceKind' | 'workspaceAccess' | 'permissionMode'>
+>;
+
+function BranchRuntimeSessionPolicyControls({
+  branchIndex,
+  target,
+  draftCwd,
+  draftRuntimeSessionPolicy,
+  isSubmittingFirstTurn,
+  onSetParallelBranchRuntimeSessionPolicy,
+}: BranchRuntimeSessionPolicyControlsProps) {
+  const branchSessionPolicy = target.runtimeSessionPolicy ?? null;
+  const canEditBranchSessionPolicy = onSetParallelBranchRuntimeSessionPolicy != null;
+  const branchCwd = target.cwd ?? draftCwd;
+  const { isRepo, repoRoot } = useRepoProbe(branchCwd);
+  const repoReady = Boolean(branchCwd && isRepo && repoRoot);
+  const effectiveBranchSessionPolicy = resolveDraftBranchRuntimeSessionPolicy({
+    target,
+    draftCwd,
+    draftRuntimeSessionPolicy,
+  });
+
+  function updateDraftBranchRuntimePolicy(
+    patch: BranchRuntimeSessionPolicyPatch,
+  ): void {
+    const currentPolicy = target.runtimeSessionPolicy ?? effectiveBranchSessionPolicy;
+    onSetParallelBranchRuntimeSessionPolicy?.(
+      branchIndex,
+      completeRuntimeSessionPolicy({
+        workspaceKind: currentPolicy.workspaceKind,
+        workspaceAccess: currentPolicy.workspaceAccess,
+        permissionMode: currentPolicy.permissionMode,
+        ...patch,
+      }),
+    );
+  }
+
+  if (branchSessionPolicy && canEditBranchSessionPolicy) {
+    return (
+      <div
+        className="composerBranchPolicyControl"
+        data-tooltip={formatBranchRuntimeSessionPolicy(branchSessionPolicy)}
+      >
+        {repoReady ? (
+          <WorkspaceModeChip
+            value={resolveDraftWorkspaceModeFromRuntimeKind(branchSessionPolicy.workspaceKind)}
+            onChange={(nextMode) =>
+              updateDraftBranchRuntimePolicy({
+                workspaceKind: resolveRuntimeWorkspaceKindFromDraft({
+                  hasCwd: Boolean(branchCwd),
+                  isRepo: repoReady,
+                  workspaceMode: nextMode,
+                }),
+              })}
+            disabled={isSubmittingFirstTurn}
+          />
+        ) : null}
+        <PermissionModeChip
+          value={resolveDraftPermissionModeFromRuntimeAccess(
+            branchSessionPolicy.workspaceAccess,
+          )}
+          onChange={(nextMode) =>
+            updateDraftBranchRuntimePolicy(resolveRuntimePermissionPolicyFromDraft(nextMode))}
+          disabled={isSubmittingFirstTurn}
+        />
+        <button
+          className="composerChipClose"
+          type="button"
+          disabled={isSubmittingFirstTurn}
+          onClick={() => onSetParallelBranchRuntimeSessionPolicy(branchIndex, null)}
+          aria-label="Re-link branch session policy to lead"
+        >
+          &times;
+        </button>
+      </div>
+    );
+  }
+
+  if (branchSessionPolicy) {
+    return (
+      <span
+        className="composerSelectChip composerPermissionChip composerBranchPolicyChip"
+        data-tooltip={formatBranchRuntimeSessionPolicy(branchSessionPolicy)}
+      >
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <path d="M8 1.5l5.5 2v4c0 3.3-2.4 6.2-5.5 7-3.1-.8-5.5-3.7-5.5-7v-4z" />
+        </svg>
+        <span>{formatBranchRuntimeSessionPolicy(branchSessionPolicy)}</span>
+      </span>
+    );
+  }
+
+  if (!canEditBranchSessionPolicy) {
+    return null;
+  }
+
+  return (
+    <button
+      type="button"
+      className="composerFollowsLeadChip composerFollowsLeadChipClickable"
+      disabled={isSubmittingFirstTurn}
+      onClick={() =>
+        onSetParallelBranchRuntimeSessionPolicy(
+          branchIndex,
+          effectiveBranchSessionPolicy,
+        )}
+      aria-label="Detach branch session policy"
+    >
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M8 1.5l5.5 2v4c0 3.3-2.4 6.2-5.5 7-3.1-.8-5.5-3.7-5.5-7v-4z" />
+      </svg>
+      <span>Policy follows lead</span>
+    </button>
+  );
+}
 
 export interface NewChatDraftProps {
   payload: AppShellPayload;
@@ -325,41 +481,6 @@ export function NewChatDraft({
       return [];
     }
     return resolveBranchAudienceKeys(target, draftLeadContext);
-  }
-
-  function formatBranchRuntimeSessionPolicy(policy: RuntimeSessionPolicy): string {
-    const workspaceLabel = policy.workspaceKind === 'worktree'
-      ? 'Worktree'
-      : policy.workspaceKind === 'source'
-        ? 'Current folder'
-        : 'Sandbox';
-    const permissionLabel = policy.workspaceAccess === 'read_only' ? 'Read only' : 'Full access';
-    return `${workspaceLabel} / ${permissionLabel}`;
-  }
-
-  function resolveDraftBranchRuntimeSessionPolicy(target: DraftParallelTarget): RuntimeSessionPolicy {
-    return resolveCreateRuntimeSessionPolicy({
-      repoPath: target.cwd ?? draftCwd,
-      policy: target.runtimeSessionPolicy
-        ?? draftRuntimeSessionPolicy
-        ?? createDefaultRuntimeSessionPolicy(),
-    });
-  }
-
-  function updateDraftBranchRuntimePermission(
-    branchIndex: number,
-    target: DraftParallelTarget,
-    permissionMode: 'full' | 'read_only',
-  ): void {
-    const currentPolicy = target.runtimeSessionPolicy
-      ?? resolveDraftBranchRuntimeSessionPolicy(target);
-    onSetParallelBranchRuntimeSessionPolicy?.(
-      branchIndex,
-      completeRuntimeSessionPolicy({
-        workspaceKind: currentPolicy.workspaceKind,
-        ...resolveRuntimePermissionPolicyFromDraft(permissionMode),
-      }),
-    );
   }
 
   function resolveParallelBranchWorkflowShape(
@@ -1009,9 +1130,6 @@ export function NewChatDraft({
     const canAddMoreBranches = parallelCount < maxParallelChats;
     const showCompareHint = accentParallelAddButton && !hideDraftParallelHint;
     const branchCwd = target.cwd?.trim() || null;
-    const branchSessionPolicy = target.runtimeSessionPolicy ?? null;
-    const canEditBranchSessionPolicy = onSetParallelBranchRuntimeSessionPolicy != null;
-    const effectiveBranchSessionPolicy = resolveDraftBranchRuntimeSessionPolicy(target);
 
     return (
       <>
@@ -1062,57 +1180,14 @@ export function NewChatDraft({
                 <span>Follows lead</span>
               </span>
             )}
-            {branchSessionPolicy && canEditBranchSessionPolicy ? (
-              <div
-                className="composerBranchPolicyControl"
-                data-tooltip={formatBranchRuntimeSessionPolicy(branchSessionPolicy)}
-              >
-                <PermissionModeChip
-                  value={resolveDraftPermissionModeFromRuntimeAccess(
-                    branchSessionPolicy.workspaceAccess,
-                  )}
-                  onChange={(nextMode) =>
-                    updateDraftBranchRuntimePermission(branchIndex, target, nextMode)}
-                  disabled={isSubmittingFirstTurn}
-                />
-                <button
-                  className="composerChipClose"
-                  type="button"
-                  disabled={isSubmittingFirstTurn}
-                  onClick={() => onSetParallelBranchRuntimeSessionPolicy(branchIndex, null)}
-                  aria-label="Re-link branch session policy to lead"
-                >
-                  &times;
-                </button>
-              </div>
-            ) : branchSessionPolicy ? (
-              <span
-                className="composerSelectChip composerPermissionChip composerBranchPolicyChip"
-                data-tooltip={formatBranchRuntimeSessionPolicy(branchSessionPolicy)}
-              >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M8 1.5l5.5 2v4c0 3.3-2.4 6.2-5.5 7-3.1-.8-5.5-3.7-5.5-7v-4z" />
-                </svg>
-                <span>{formatBranchRuntimeSessionPolicy(branchSessionPolicy)}</span>
-              </span>
-            ) : canEditBranchSessionPolicy ? (
-              <button
-                type="button"
-                className="composerFollowsLeadChip composerFollowsLeadChipClickable"
-                disabled={isSubmittingFirstTurn}
-                onClick={() =>
-                  onSetParallelBranchRuntimeSessionPolicy(
-                    branchIndex,
-                    effectiveBranchSessionPolicy,
-                  )}
-                aria-label="Detach branch session policy"
-              >
-                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M8 1.5l5.5 2v4c0 3.3-2.4 6.2-5.5 7-3.1-.8-5.5-3.7-5.5-7v-4z" />
-                </svg>
-                <span>Policy follows lead</span>
-              </button>
-            ) : null}
+            <BranchRuntimeSessionPolicyControls
+              branchIndex={branchIndex}
+              target={target}
+              draftCwd={draftCwd}
+              draftRuntimeSessionPolicy={draftRuntimeSessionPolicy ?? null}
+              isSubmittingFirstTurn={isSubmittingFirstTurn}
+              onSetParallelBranchRuntimeSessionPolicy={onSetParallelBranchRuntimeSessionPolicy}
+            />
           </div>
         </div>
 

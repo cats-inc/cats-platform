@@ -87,7 +87,7 @@ test('new code default draft hides the permission chip and footer row entirely w
   assert.doesNotMatch(markup, /class="composerFooterRow"/u);
 });
 
-test('new code default draft renders the permission chip as the leftmost session policy chip when a cwd is set', () => {
+test('new code default draft renders the permission chip in the header when a cwd is set', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({ draftCwd: '/tmp/my-repo' })}
@@ -95,10 +95,10 @@ test('new code default draft renders the permission chip as the leftmost session
   );
 
   // Branch chip is absent on first render (probe not resolved yet) but the
-  // permission chip should still anchor the session policy row.
+  // permission chip should still anchor the session policy controls.
   assert.match(
     markup,
-    /class="composerFooterRow"[\s\S]*?composerPermissionChipWrapper/u,
+    /class="composerHeaderRight"[\s\S]*?composerPermissionChipWrapper/u,
   );
   assert.match(markup, /composerPermissionChip[\s\S]*?Full access/u);
 });
