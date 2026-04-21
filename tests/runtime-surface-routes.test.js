@@ -183,7 +183,7 @@ async function withSlowSetupScanRuntimeStub(callback) {
   }
 }
 
-async function withPlatformServer(runtimeBaseUrl, runtimeApiKey, callback) {
+async function withPlatformServer(runtimeBaseUrl, runtimeApiKey, callback, configOverrides = {}) {
   const server = createPlatformServer({
     shared: {
       config: {
@@ -192,6 +192,7 @@ async function withPlatformServer(runtimeBaseUrl, runtimeApiKey, callback) {
         runtimeBaseUrl,
         runtimeApiKey,
         chatStatePath: 'unused-for-tests',
+        ...configOverrides,
       },
       runtimeClient: createRuntimeClientStub(runtimeBaseUrl),
       now: () => new Date('2026-04-20T00:00:00.000Z'),
@@ -327,6 +328,30 @@ test('POST /runtime/api/setup-scan aborts the upstream runtime request when the 
         slowRuntime.requestClosed,
         rejectAfter(500, 'runtime setup-scan was not aborted'),
       ]);
+    });
+  });
+});
+
+test('POST /runtime/api/setup-scan times out hung upstream runtime requests', async () => {
+  await withSlowSetupScanRuntimeStub(async (runtimeBaseUrl, slowRuntime) => {
+    await withPlatformServer(runtimeBaseUrl, '', async (platformBaseUrl) => {
+      const response = await fetch(`${platformBaseUrl}/runtime/api/setup-scan?slow=1`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ manual: true }),
+      });
+
+      assert.equal(response.status, 504);
+      const payload = await response.json();
+      assert.equal(payload.error?.code, 'runtime_proxy_timeout');
+      await Promise.race([
+        slowRuntime.requestClosed,
+        rejectAfter(500, 'runtime setup-scan was not closed after timeout'),
+      ]);
+    }, {
+      runtimeSetupProxyTimeoutMs: 5,
     });
   });
 });

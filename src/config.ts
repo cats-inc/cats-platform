@@ -12,6 +12,7 @@ export interface AppConfig {
   port: number;
   runtimeBaseUrl: string;
   runtimeApiKey: string;
+  runtimeSetupProxyTimeoutMs?: number;
   debugLiveTrace: boolean;
   debugKeepRuntimeSessionsOnProductDelete: boolean;
   runtimeDataDir: string;
@@ -33,6 +34,7 @@ export interface AppConfig {
 const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_PORT = 8181;
 const DEFAULT_RUNTIME_BASE_URL = 'http://127.0.0.1:3110';
+const DEFAULT_RUNTIME_SETUP_PROXY_TIMEOUT_MS = 30_000;
 const DEFAULT_MAX_BOSS_CATS = 1;
 const DEFAULT_MAX_CATS = 5;
 const DEFAULT_MAX_CHAT_PARTICIPANTS = 5;
@@ -107,6 +109,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     port: parsePort(readFirstDefined(env, ['CATS_PORT', 'CATS_INC_PORT']), DEFAULT_PORT),
     runtimeBaseUrl: (env.CATS_RUNTIME_BASE_URL || DEFAULT_RUNTIME_BASE_URL).replace(/\/+$/, ''),
     runtimeApiKey: env.CATS_RUNTIME_API_KEY?.trim() || '',
+    runtimeSetupProxyTimeoutMs: parsePositiveInt(
+      env.CATS_RUNTIME_SETUP_PROXY_TIMEOUT_MS,
+      DEFAULT_RUNTIME_SETUP_PROXY_TIMEOUT_MS,
+    ),
     debugLiveTrace: parseBoolean(env.CATS_DEBUG_LIVE_TRACE, false),
     debugKeepRuntimeSessionsOnProductDelete: parseBoolean(
       env.CATS_DEBUG_KEEP_RUNTIME_SESSIONS_ON_PRODUCT_DELETE,

@@ -15,6 +15,7 @@ test('loadConfig derives storage paths from canonical root directories', () => {
     CATS_INC_PORT: '9292',
     CATS_RUNTIME_BASE_URL: 'http://127.0.0.1:3110/',
     CATS_RUNTIME_API_KEY: 'token',
+    CATS_RUNTIME_SETUP_PROXY_TIMEOUT_MS: '12345',
     CATS_RUNTIME_STALE_SESSION_RETRY_LIMIT: '3',
     CATS_MAX_CHAT_PARTICIPANTS: '7',
     CATS_MAX_AUDIENCE_PARTICIPANTS: '2',
@@ -36,6 +37,7 @@ test('loadConfig derives storage paths from canonical root directories', () => {
   );
   assert.equal(config.runtimeBaseUrl, 'http://127.0.0.1:3110');
   assert.equal(config.runtimeApiKey, 'token');
+  assert.equal(config.runtimeSetupProxyTimeoutMs, 12345);
   assert.equal(config.debugLiveTrace, false);
   assert.equal(config.debugKeepRuntimeSessionsOnProductDelete, false);
   assert.equal(config.runtimeStaleSessionRetryLimit, 3);

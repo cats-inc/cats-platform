@@ -30,6 +30,12 @@ const EXACT_RUNTIME_API_PATHS = new Set<string>([
   '/discovery/status',
 ]);
 
+const SETUP_MUTATION_RUNTIME_API_PATHS = new Set<string>([
+  '/setup-scan',
+  '/setup-apply',
+]);
+const DEFAULT_RUNTIME_SETUP_PROXY_TIMEOUT_MS = 30_000;
+
 const PREFIX_RUNTIME_API_PATHS = [
   '/sessions',
   '/diagnostics',
@@ -79,6 +85,11 @@ interface ClientAbortScope {
   dispose: () => void;
 }
 
+interface RuntimeProxyTimeoutScope {
+  signal: AbortSignal;
+  timedOut: () => boolean;
+}
+
 function buildRuntimeUrl(runtimeBaseUrl: string, pathname: string, search = ''): string {
   return `${runtimeBaseUrl.replace(/\/+$/u, '')}${pathname}${search}`;
 }
@@ -126,6 +137,12 @@ function createForwardedHeaders(
   return headers;
 }
 
+function resolveRuntimeSetupProxyTimeoutMs(value: number | undefined): number {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0
+    ? value
+    : DEFAULT_RUNTIME_SETUP_PROXY_TIMEOUT_MS;
+}
+
 function createClientAbortScope(
   request: IncomingMessage,
   response: ServerResponse,
@@ -146,6 +163,24 @@ function createClientAbortScope(
       request.off('aborted', abort);
       response.off('close', abort);
     },
+  };
+}
+
+function createRuntimeProxyTimeoutScope(
+  clientSignal: AbortSignal,
+  timeoutMs: number | null,
+): RuntimeProxyTimeoutScope {
+  if (timeoutMs === null) {
+    return {
+      signal: clientSignal,
+      timedOut: () => false,
+    };
+  }
+
+  const timeoutSignal = AbortSignal.timeout(timeoutMs);
+  return {
+    signal: AbortSignal.any([clientSignal, timeoutSignal]),
+    timedOut: () => timeoutSignal.aborted && !clientSignal.aborted,
   };
 }
 
@@ -447,16 +482,33 @@ export async function handleRuntimeApiProxyRoute(
   }
 
   const abortScope = createClientAbortScope(request, response);
+  const timeoutScope = createRuntimeProxyTimeoutScope(
+    abortScope.signal,
+    SETUP_MUTATION_RUNTIME_API_PATHS.has(runtimePath)
+      ? resolveRuntimeSetupProxyTimeoutMs(
+          dependencies.shared.config.runtimeSetupProxyTimeoutMs,
+        )
+      : null,
+  );
   try {
     const upstream = await fetchRuntimeUpstream(
       request,
       buildRuntimeUrl(dependencies.shared.config.runtimeBaseUrl, runtimePath, url.search),
       dependencies.shared.config.runtimeApiKey,
-      abortScope.signal,
+      timeoutScope.signal,
     );
     await writeUpstreamResponse(response, upstream);
   } catch (error) {
     if (abortScope.signal.aborted || response.destroyed || response.writableEnded) {
+      return true;
+    }
+    if (timeoutScope.timedOut()) {
+      sendJson(response, 504, {
+        error: {
+          code: 'runtime_proxy_timeout',
+          message: `Timed out forwarding runtime setup request: ${runtimePath}`,
+        },
+      });
       return true;
     }
     sendJson(response, 502, {

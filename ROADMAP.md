@@ -314,13 +314,15 @@ contracts.
       longer needs a follow-up `GET /setup-state` after `POST /setup-scan` or
       `POST /setup-apply`, ideally by having runtime mutation responses return
       the updated read model in the same round-trip
-- [ ] Propagate cancellation and timeout intent end-to-end through the packaged
+- [x] Propagate cancellation and timeout intent end-to-end through the packaged
       setup runtime-bootstrap proxy path so hung runtime setup scans or applies
       do not leave renderer and app-server requests pinned until the runtime
       client timeout expires
       Progress: the platform runtime API proxy now aborts the upstream
       `cats-runtime` fetch when the caller disconnects or aborts, with
-      regression coverage for a hung `/setup-scan` request.
+      regression coverage for a hung `/setup-scan` request. Completed: setup
+      mutation proxy calls now also have a bounded timeout and return 504 on
+      hung runtime scans/applies instead of pinning the app-server request.
 - [ ] Finish demoting the Electron host bootstrap page into a failure/recovery
       surface only, so the happy path stays background-first and successful
       packaged runs flow directly into `cats-platform /setup` or the current
