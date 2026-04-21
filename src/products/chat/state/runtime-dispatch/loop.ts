@@ -695,11 +695,11 @@ export async function processDispatchQueue(
 
     const stateSnapshot = nextState;
     const executions = await settleInCompletionOrder(
-      readyRequests.map((request) =>
+      readyRequests.map((readyRequest) =>
         executeDispatchWithRecovery({
           state: stateSnapshot,
           channelId,
-          request,
+          request: readyRequest.request,
           runtimeClient,
           now,
           transport,
@@ -710,6 +710,7 @@ export async function processDispatchQueue(
           chatStatePath: options.chatStatePath,
           runtimeDataDir: options.runtimeDataDir,
           runtimeRecovery,
+          ...(readyRequest.core ? { core: readyRequest.core } : {}),
         }),
       ),
     );

@@ -61,14 +61,17 @@ export async function maybeAutoCheckoutChannelTask(
   target: RoutingTarget,
   now: Date,
   taskExecutionContext?: ChannelTaskExecutionContext,
-): Promise<void> {
+): Promise<ChannelTaskExecutionContext | undefined> {
+  if (!taskExecutionContext) {
+    return undefined;
+  }
+
   if (
     !chatStore
     || !target.sessionId
-    || !taskExecutionContext
     || taskExecutionContext.task.status !== 'approved'
   ) {
-    return;
+    return taskExecutionContext;
   }
 
   const checkout = checkoutTaskExecution({
@@ -92,4 +95,14 @@ export async function maybeAutoCheckoutChannelTask(
     sessionId: target.sessionId,
     actorId: taskExecutionContext.actorId,
   });
+
+  return {
+    ...taskExecutionContext,
+    core: persisted,
+    task: persistedTask,
+    executionRequest: buildChatTaskRuntimeExecutionRequest({
+      core: persisted,
+      task: persistedTask,
+    }),
+  };
 }

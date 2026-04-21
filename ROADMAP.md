@@ -543,7 +543,10 @@ contracts.
       room dispatch no longer re-reads `Cats Core` just to rebuild identical
       execution metadata before checkout, and stale-session wake retries now
       also carry the already-resolved task execution context instead of
-      rereading `Cats Core` on each retry branch.
+      rereading `Cats Core` on each retry branch. Dispatch execution now also
+      receives the checked-out task core snapshot from wake preparation, so the
+      prompt builder no longer rereads `Cats Core` immediately after checkout
+      for the same turn.
 - [ ] Revisit a limited Chat mobile companion only after the desktop Chat
       surface is stable
 

@@ -1279,10 +1279,10 @@ test('routeChannelMessage auto-checks out an approved channel task for the assig
 
   assert.ok(task);
   assert.ok(run);
-  // One read primes the task-aware session request, the watcher performs its
-  // initial and terminal reconciliation reads, and canonical prompt recovery
-  // may require one extra inspection when dispatch metadata has drifted.
-  assert.ok(routeReadCoreCount >= 3 && routeReadCoreCount <= 4);
+  // One read primes the task-aware session request, while the watcher performs
+  // its initial and terminal reconciliation reads. Dispatch prompt construction
+  // reuses the checked-out core snapshot instead of rereading Cats Core.
+  assert.equal(routeReadCoreCount, 3);
   assert.equal(runtimeClient.createdSessions[0]?.requestedStrategy, 'react');
   assert.deepEqual(runtimeClient.createdSessions[0]?.correlation, {
     taskId,

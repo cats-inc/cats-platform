@@ -3,6 +3,7 @@ import type {
   ChatMessage,
   ChatState,
 } from '../../api/contracts.js';
+import type { CatsCoreState } from '../../../../core/types.js';
 import type {
   RoomRoutingCheckpoint,
   RoomRoutingOutcome,
@@ -48,6 +49,11 @@ import {
 } from './recovery.js';
 import { requireChannel } from '../model/index.js';
 
+export interface ReadyDispatchRequest {
+  request: DispatchRequest;
+  core?: CatsCoreState;
+}
+
 function collectRecoveredDispatchMessages(
   baselineState: ChatState,
   recoveredState: ChatState,
@@ -87,7 +93,7 @@ export async function prepareReadyRequests(
 ): Promise<{
   state: ChatState;
   latestCheckpoint: RoomRoutingCheckpoint | null;
-  readyRequests: DispatchRequest[];
+  readyRequests: ReadyDispatchRequest[];
 }> {
   const {
     activeTurn,
@@ -99,7 +105,7 @@ export async function prepareReadyRequests(
   } = options;
   let latestCheckpoint = options.latestCheckpoint;
   let nextState = state;
-  const readyRequests: DispatchRequest[] = [];
+  const readyRequests: ReadyDispatchRequest[] = [];
 
   for (const request of requests) {
     const ensured = await ensureTargetSession(
@@ -200,7 +206,7 @@ export async function prepareReadyRequests(
     }
 
     nextState = ensureChannelMarkedActive(nextState, channelId, now);
-    await maybeAutoCheckoutChannelTask(
+    const taskExecutionContext = await maybeAutoCheckoutChannelTask(
       options.chatStore,
       runtimeClient,
       channelId,
@@ -209,8 +215,11 @@ export async function prepareReadyRequests(
       ensured.taskExecutionContext,
     );
     readyRequests.push({
-      ...request,
-      target: ensured.target,
+      request: {
+        ...request,
+        target: ensured.target,
+      },
+      ...(taskExecutionContext ? { core: taskExecutionContext.core } : {}),
     });
     updateDispatch(outcome, request.dispatchId, {
       laneId: ensured.target.laneId ?? request.target.laneId ?? null,
@@ -278,6 +287,7 @@ export async function executeDispatchWithRecovery(input: {
   chatStatePath?: string;
   runtimeDataDir?: string;
   runtimeRecovery: RuntimeDispatchRecoveryPolicy;
+  core?: CatsCoreState;
 }): Promise<DispatchExecution> {
   let dispatchState = input.state;
   let request = input.request;
@@ -285,11 +295,11 @@ export async function executeDispatchWithRecovery(input: {
   let recoveredChannelChatCwd: string | undefined;
   let recoveredMessages: DispatchExecution['recoveredMessages'];
   let staleRecoveryCount = 0;
+  let dispatchCore = input.core;
 
   while (true) {
-    const core = input.chatStore
-      ? await input.chatStore.readCore()
-      : undefined;
+    const core = dispatchCore
+      ?? (input.chatStore ? await input.chatStore.readCore() : undefined);
     const execution = await executeDispatch(
       dispatchState,
       input.channelId,
@@ -381,7 +391,7 @@ export async function executeDispatchWithRecovery(input: {
     }
 
     if (input.chatStore) {
-      await maybeAutoCheckoutChannelTask(
+      const taskExecutionContext = await maybeAutoCheckoutChannelTask(
         input.chatStore,
         input.runtimeClient,
         input.channelId,
@@ -389,6 +399,7 @@ export async function executeDispatchWithRecovery(input: {
         input.now,
         ensured.taskExecutionContext,
       );
+      dispatchCore = taskExecutionContext?.core;
     }
 
     recoveredLeasePatch = extractTargetLeasePatchFromState(
