@@ -9,6 +9,7 @@ export interface DesktopScreenshotOverlaySnapshotPayload {
   bounds: DesktopScreenshotDisplaySnapshot['geometry']['bounds'];
   imageSize: DesktopScreenshotDisplaySnapshot['geometry']['imageSize'];
   scaleFactor: number;
+  captureCursor?: DesktopScreenshotDisplaySnapshot['captureCursor'];
   imageDataUrl: string;
 }
 
@@ -26,6 +27,7 @@ export function buildScreenshotOverlaySnapshotPayload(
     bounds: snapshot.geometry.bounds,
     imageSize: snapshot.geometry.imageSize,
     scaleFactor: snapshot.geometry.scaleFactor,
+    ...(snapshot.captureCursor ? { captureCursor: snapshot.captureCursor } : {}),
     imageDataUrl: encodePngDataUrl(snapshot.png),
   };
 }

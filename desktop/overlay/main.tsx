@@ -78,6 +78,32 @@ function relativeRectStyle(
   };
 }
 
+function rectsOverlap(
+  left: DesktopScreenshotCssRect,
+  right: DesktopScreenshotCssRect,
+): boolean {
+  return left.x < right.x + right.width
+    && left.x + left.width > right.x
+    && left.y < right.y + right.height
+    && left.y + left.height > right.y;
+}
+
+function resolveCursorExclusionRect(
+  payload: DesktopScreenshotOverlaySnapshotPayload,
+): DesktopScreenshotCssRect | null {
+  const cursor = payload.captureCursor;
+  if (!cursor) {
+    return null;
+  }
+
+  return {
+    x: cursor.point.x - cursor.exclusionRadius,
+    y: cursor.point.y - cursor.exclusionRadius,
+    width: cursor.exclusionRadius * 2,
+    height: cursor.exclusionRadius * 2,
+  };
+}
+
 function ScreenshotOverlay() {
   const [payload, setPayload] = useState<DesktopScreenshotOverlaySnapshotPayload | null>(null);
   const [selection, setSelection] = useState<DesktopScreenshotOverlaySelectionState>(
@@ -123,6 +149,15 @@ function ScreenshotOverlay() {
   const activeSelection = useMemo(
     () => payload ? resolveSelectionRect(selection, payload) : null,
     [payload, selection],
+  );
+  const cursorExclusionRect = useMemo(
+    () => payload ? resolveCursorExclusionRect(payload) : null,
+    [payload],
+  );
+  const activeSelectionOverlapsCursor = Boolean(
+    activeSelection
+    && cursorExclusionRect
+    && rectsOverlap(activeSelection.cssRect, cursorExclusionRect),
   );
 
   if (!payload) {
@@ -175,20 +210,36 @@ function ScreenshotOverlay() {
         }
       }}
     >
+      {cursorExclusionRect ? (
+        <div
+          className="screenshotCursorExclusion"
+          style={relativeRectStyle(cursorExclusionRect, payload)}
+        >
+          <span>Move cursor away</span>
+        </div>
+      ) : null}
       {activeSelection ? (
         <>
           <div
-            className="screenshotSelectionRect"
+            className={[
+              'screenshotSelectionRect',
+              activeSelectionOverlapsCursor ? 'screenshotSelectionRectBlocked' : '',
+            ].filter(Boolean).join(' ')}
             style={relativeRectStyle(activeSelection.cssRect, payload)}
           />
           <div
-            className="screenshotSelectionSize"
+            className={[
+              'screenshotSelectionSize',
+              activeSelectionOverlapsCursor ? 'screenshotSelectionSizeBlocked' : '',
+            ].filter(Boolean).join(' ')}
             style={{
               left: activeSelection.cssRect.x - payload.bounds.x + activeSelection.cssRect.width,
               top: activeSelection.cssRect.y - payload.bounds.y + activeSelection.cssRect.height,
             }}
           >
-            {activeSelection.cropRect.width}x{activeSelection.cropRect.height}
+            {activeSelectionOverlapsCursor
+              ? 'Move cursor away'
+              : `${activeSelection.cropRect.width}x${activeSelection.cropRect.height}`}
           </div>
         </>
       ) : null}

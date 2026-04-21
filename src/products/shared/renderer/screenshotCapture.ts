@@ -185,6 +185,10 @@ async function captureWebScreenshotFile(): Promise<File | null> {
 function buildDesktopScreenshotError(
   result: Exclude<DesktopScreenshotCaptureResult, { outcome: 'ok' }>,
 ): Error | null {
+  if (result.outcome === 'cancelled' && result.message === 'cursor_overlap') {
+    return new Error('Move your mouse away from the area you want to capture and try again.');
+  }
+
   if (result.outcome === 'cancelled') {
     return null;
   }

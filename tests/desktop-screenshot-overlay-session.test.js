@@ -81,7 +81,7 @@ test('desktop screenshot overlay session cancels selections overlapping capture 
       ...createSnapshot(),
       captureCursor: {
         point: { x: -1100, y: 50 },
-        exclusionRadius: 64,
+        exclusionRadius: 32,
       },
     },
   ], {

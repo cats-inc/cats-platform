@@ -43,7 +43,7 @@ export interface DesktopScreenshotCaptureDependencies {
 export const DESKTOP_SCREENSHOT_MAX_WIDTH = 8000;
 export const DESKTOP_SCREENSHOT_MAX_HEIGHT = 8000;
 export const DESKTOP_SCREENSHOT_MAX_BYTES = 10 * 1024 * 1024;
-export const DESKTOP_SCREENSHOT_CURSOR_EXCLUSION_RADIUS = 64;
+export const DESKTOP_SCREENSHOT_CURSOR_EXCLUSION_RADIUS = 32;
 
 export interface DesktopScreenshotCaptureCursor {
   point: DesktopScreenshotCssPoint;

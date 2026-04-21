@@ -122,7 +122,7 @@ test('desktop screenshot native capture builds per-display PNG snapshots', async
   assert.deepEqual(Array.from(snapshots[1]?.png ?? []), [4, 5, 6]);
   assert.deepEqual(snapshots[1]?.captureCursor, {
     point: { x: -100, y: 20 },
-    exclusionRadius: 64,
+    exclusionRadius: 32,
   });
 });
 

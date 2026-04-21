@@ -8,6 +8,7 @@ import { ChatComposerArea } from '../src/products/shared/renderer/components/cha
 import {
   createScreenshotFilename,
   resolveScreenshotCaptureRoute,
+  captureScreenshotFile,
   stopMediaStreamTracks,
 } from '../src/products/shared/renderer/screenshotCapture.ts';
 
@@ -165,4 +166,32 @@ test('screenshot web fallback can stop media tracks before PNG encoding', () => 
   });
 
   assert.deepEqual(stops, ['video', 'audio']);
+});
+
+test('desktop cursor-overlap cancellation returns actionable feedback', async () => {
+  const hostGlobal = globalThis as typeof globalThis & {
+    catsDesktopHost?: unknown;
+  };
+  const previous = hostGlobal.catsDesktopHost;
+
+  try {
+    hostGlobal.catsDesktopHost = {
+      screenshotRegionCaptureAvailable: true,
+      captureScreenshotRegion: async () => ({
+        outcome: 'cancelled',
+        message: 'cursor_overlap',
+      }),
+    };
+
+    await assert.rejects(
+      () => captureScreenshotFile('desktop_region'),
+      /Move your mouse away from the area you want to capture/u,
+    );
+  } finally {
+    if (previous === undefined) {
+      delete hostGlobal.catsDesktopHost;
+    } else {
+      hostGlobal.catsDesktopHost = previous;
+    }
+  }
 });

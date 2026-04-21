@@ -66,9 +66,11 @@ provider and existing attachment previews.
 - [ ] Exclude the OS cursor from captured bitmaps (resolve SPEC Open
       Question on Windows mechanism before implementation). Follow-up
       mitigation now records the capture-time cursor point and cancels final
-      crops that overlap a conservative cursor exclusion rect, so attachments
-      are not emitted when they would include the captured cursor. Full
-      source-bitmap cursor removal remains unresolved.
+      crops that overlap a 32px cursor exclusion radius, so attachments are
+      not emitted when they would include the captured cursor. The overlay
+      renders that exclusion zone and the renderer shows actionable toast
+      feedback on `cursor_overlap`; full source-bitmap cursor removal remains
+      unresolved.
 - [x] Wrap the full capture flow in `try…finally` so main window restoration
       is guaranteed on exceptions.
 - [x] Normalize permission-denied, cancelled, and unsupported-platform
@@ -232,6 +234,7 @@ desktop/browser smoke evidence.
 | 2026-04-22 | Native desktop flow enabled: main-window hide/restore now invokes `desktopCapturer`, opens one frozen-snapshot overlay per display, crops selected regions through `nativeImage`, returns PNGs through the preload bridge, and appends them as composer attachments. Validation run: `npm run build`, `npm run typecheck`, focused desktop screenshot tests, focused renderer screenshot tests, and an alternate-port Electron host smoke where `cats-runtime` and `cats-platform` reached ready state and `/desktop/overlay/index.html` returned 200. Full `npm test` hit the 10-minute tool timeout without returning output, so broad-suite completion remains pending. |
 | 2026-04-22 | Added macOS Screen Recording preflight: Electron now maps denied/restricted `screen` media access to the screenshot contract's `permission_denied` outcome before opening overlays, while allowing `not-determined` to continue so the first capture attempt can trigger the platform consent path. |
 | 2026-04-22 | Follow-up review fixes: desktop cropped PNGs now apply the same 8000×8000 / 10 MB bounds as the web path, web fallback stops `MediaStreamTrack`s immediately after drawing the frame to canvas, and desktop sessions cancel cursor-overlap selections using capture-time cursor metadata. |
+| 2026-04-22 | Cursor-overlap UX follow-up: overlay payloads now include cursor exclusion metadata, the overlay renders a visible "Move cursor away" warning zone and blocked selection state, renderer cancellation handling turns `cursor_overlap` into toast feedback, and the exclusion radius was reduced from 64px to 32px. |
 
 ---
 

@@ -22,6 +22,10 @@ test('desktop screenshot overlay payload preserves display geometry metadata', (
       scaleFactor: 2,
     },
     png: new Uint8Array([4, 5, 6]),
+    captureCursor: {
+      point: { x: -1000, y: 100 },
+      exclusionRadius: 32,
+    },
   };
 
   assert.deepEqual(buildScreenshotOverlaySnapshotPayload(snapshot), {
@@ -31,6 +35,10 @@ test('desktop screenshot overlay payload preserves display geometry metadata', (
     bounds: { x: -1280, y: 0, width: 1280, height: 720 },
     imageSize: { width: 2560, height: 1440 },
     scaleFactor: 2,
+    captureCursor: {
+      point: { x: -1000, y: 100 },
+      exclusionRadius: 32,
+    },
     imageDataUrl: 'data:image/png;base64,BAUG',
   });
   assert.equal(buildScreenshotOverlaySnapshotPayloads([snapshot]).length, 1);
