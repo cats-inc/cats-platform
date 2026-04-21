@@ -752,6 +752,10 @@ test('Windows installer smoke-check script validates bundled sidecars and host s
   assert.match(script, /ready_for_setup/);
   assert.match(script, /ready_for_chat/);
   assert.match(script, /needs_prerequisites/);
+  assert.match(script, /persisted\.savedAt/);
+  assert.match(script, /persisted\.diagnostics/);
+  assert.match(script, /diagnostics\.serviceLogs/);
+  assert.match(script, /diagnostics\.aggregation/);
 });
 
 test('macOS and Linux unpacked smoke-check scripts validate bundled sidecars and packaged setup assets', async () => {

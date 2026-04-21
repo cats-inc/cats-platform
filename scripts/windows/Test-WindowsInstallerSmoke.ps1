@@ -207,6 +207,7 @@ try {
 
   Assert-True ($persisted.snapshot.service -eq 'cats-electron-host') 'host state service id matches cats-electron-host'
   Assert-True ($persisted.snapshot.hostStatePath -eq $resolvedHostStatePath) 'host state file path matches the expected path'
+  Assert-True (-not [string]::IsNullOrWhiteSpace($persisted.savedAt)) 'host state includes a savedAt timestamp'
   Assert-True (Test-StableBootstrapPhase -Phase $persisted.snapshot.phase) 'host snapshot reached a stable bootstrap phase'
   Assert-True (($persisted.snapshot.services | Measure-Object).Count -ge 2) 'host snapshot includes managed service entries'
 
@@ -218,6 +219,12 @@ try {
   Assert-True ($persisted.snapshot.background.trayEnabled -is [bool]) 'host snapshot includes background lifecycle state'
   Assert-True ($persisted.snapshot.packaging.strategy -eq 'electron-sidecar-bundle') 'host snapshot includes packaging metadata'
   Assert-True (($persisted.snapshot.packaging.targets | Where-Object { $_.platform -eq 'windows' }).Count -ge 1) 'host snapshot packaging metadata keeps the Windows target'
+  Assert-True ($null -ne $persisted.diagnostics) 'host state includes desktop diagnostics'
+  Assert-True (($persisted.diagnostics.serviceLogs | Measure-Object).Count -ge 2) 'host diagnostics include managed service logs'
+  Assert-True (($persisted.diagnostics.serviceLogs | Where-Object { $_.service -eq 'cats-runtime' }).Count -ge 1) 'host diagnostics include cats-runtime service log metadata'
+  Assert-True (($persisted.diagnostics.serviceLogs | Where-Object { $_.service -eq 'cats-platform' }).Count -ge 1) 'host diagnostics include cats-platform service log metadata'
+  Assert-True ($null -ne $persisted.diagnostics.aggregation) 'host diagnostics include an aggregation bundle'
+  Assert-True (-not [string]::IsNullOrWhiteSpace($persisted.diagnostics.aggregation.layers.host.summary)) 'host diagnostics aggregation includes a host summary'
 
   Write-Step "Installer smoke-check completed successfully for phase $($persisted.snapshot.phase)"
 } finally {

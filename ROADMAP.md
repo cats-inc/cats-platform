@@ -294,6 +294,9 @@ contracts.
 - [ ] Add installed-app verification beyond the current unpacked smoke pass,
       including real Windows post-install launch checks, persisted host-state
       assertions on installed machines, and later packaging CI coverage
+      Progress: the Windows installed-app smoke script now gates on persisted
+      `savedAt` plus desktop diagnostics service-log and aggregation metadata,
+      not only the basic bootstrap snapshot fields.
 - [ ] Land host-owned privileged provider install/resume and remediation flows,
       including Windows elevation/UAC handling and resumable installer-first
       recovery contracts
