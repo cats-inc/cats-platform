@@ -206,7 +206,7 @@ contracts.
       Completed: model and advanced catalog routes now read provider-scoped
       selector truth, so runtime diagnostics are filtered to the requested
       provider and can reuse the provider-specific selector cache.
-- [ ] Tighten the landed provider-catalog and truthful-selector stale-cache
+- [x] Tighten the landed provider-catalog and truthful-selector stale-cache
       hygiene beyond the current stale-if-error plus error-backoff slices:
       replace the optional `cacheRefreshWarning` field with a discriminated
       fresh-vs-error-backoff entry shape so the lifecycle invariant is
@@ -227,7 +227,9 @@ contracts.
       runtime outage recovery does not retry faster than stale-cache warnings
       can settle. Cache entries now use a fresh/error-backoff discriminated
       lifecycle, so `cacheRefreshWarning` can only exist on error-backoff
-      entries instead of as an optional field on every cache entry.
+      entries instead of as an optional field on every cache entry. Provider
+      route clock tests now use `node:test` scoped Date.now mocks with
+      non-concurrent test declarations instead of a module-level lock.
 - [x] Refine advanced provider-model UX now that runtime presets and controls are
       first-class, including an `Advanced settings` disclosure pattern that prevents
       large control sets from overwhelming the base provider/instance/model flow

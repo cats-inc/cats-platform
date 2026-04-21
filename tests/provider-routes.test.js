@@ -9,8 +9,6 @@ import {
   PROVIDER_TARGETS_CACHE_REFRESH_WARNING_PREFIX as PROVIDER_TARGETS_CACHE_WARNING_PREFIX,
 } from '../build/server/server/routes/providers.js';
 
-let dateNowMockLock = Promise.resolve();
-
 const baseConfig = {
   host: '127.0.0.1',
   port: 0,
@@ -137,30 +135,18 @@ async function withServer(runtimeClient, callback) {
   }
 }
 
-async function withMockedDateNow(initialNowMs, callback) {
-  const previousLock = dateNowMockLock;
-  let releaseLock = () => {};
-  dateNowMockLock = new Promise((resolve) => {
-    releaseLock = resolve;
-  });
-
-  await previousLock;
-  const originalDateNow = Date.now;
+async function withMockedDateNow(testContext, initialNowMs, callback) {
   let currentNowMs = initialNowMs;
-  Date.now = () => currentNowMs;
-  try {
-    await callback({
-      advance(ms) {
-        currentNowMs += ms;
-      },
-      set(value) {
-        currentNowMs = value;
-      },
-    });
-  } finally {
-    Date.now = originalDateNow;
-    releaseLock();
-  }
+  testContext.mock.method(Date, 'now', () => currentNowMs);
+
+  await callback({
+    advance(ms) {
+      currentNowMs += ms;
+    },
+    set(value) {
+      currentNowMs = value;
+    },
+  });
 }
 
 test('GET /api/providers/:provider/models scopes selector diagnostics to the requested provider', async () => {
@@ -209,7 +195,9 @@ test('GET /api/providers/:provider/models/advanced scopes selector diagnostics t
   ]);
 });
 
-test('GET /api/providers keeps the last good selector after a transient refresh timeout', async () => {
+test('GET /api/providers keeps the last good selector after a transient refresh timeout', {
+  concurrency: false,
+}, async (t) => {
   const runtimeClient = createRuntimeStub();
   const originalGetProviderDiagnostics = runtimeClient.getProviderDiagnostics;
   const initialNowMs = Date.parse('2026-04-21T04:30:00.000Z');
@@ -224,7 +212,7 @@ test('GET /api/providers keeps the last good selector after a transient refresh 
     return originalGetProviderDiagnostics.call(runtimeClient, query);
   };
 
-  await withMockedDateNow(initialNowMs, async (clock) => {
+  await withMockedDateNow(t, initialNowMs, async (clock) => {
     await withServer(runtimeClient, async (baseUrl) => {
       const first = await fetch(`${baseUrl}/api/providers`);
       assert.equal(first.status, 200);
@@ -268,7 +256,9 @@ test('GET /api/providers keeps the last good selector after a transient refresh 
   assert.equal(diagnosticsCalls, 4);
 });
 
-test('GET /api/providers/:provider/models serves stale catalog after transient runtime failures', async () => {
+test('GET /api/providers/:provider/models serves stale catalog after transient runtime failures', {
+  concurrency: false,
+}, async (t) => {
   const runtimeClient = createRuntimeStub();
   const originalGetProviderModels = runtimeClient.getProviderModels;
   const initialNowMs = Date.parse('2026-04-21T05:00:00.000Z');
@@ -287,7 +277,7 @@ test('GET /api/providers/:provider/models serves stale catalog after transient r
     };
   };
 
-  await withMockedDateNow(initialNowMs, async (clock) => {
+  await withMockedDateNow(t, initialNowMs, async (clock) => {
     await withServer(runtimeClient, async (baseUrl) => {
       const first = await fetch(`${baseUrl}/api/providers/claude/models`);
       assert.equal(first.status, 200);
@@ -328,7 +318,9 @@ test('GET /api/providers/:provider/models serves stale catalog after transient r
   });
 });
 
-test('GET /api/providers/:provider/models replaces generated stale warnings and clears them after recovery', async () => {
+test('GET /api/providers/:provider/models replaces generated stale warnings and clears them after recovery', {
+  concurrency: false,
+}, async (t) => {
   const runtimeClient = createRuntimeStub();
   const originalGetProviderModels = runtimeClient.getProviderModels;
   const initialNowMs = Date.parse('2026-04-21T05:15:00.000Z');
@@ -351,7 +343,7 @@ test('GET /api/providers/:provider/models replaces generated stale warnings and 
     };
   };
 
-  await withMockedDateNow(initialNowMs, async (clock) => {
+  await withMockedDateNow(t, initialNowMs, async (clock) => {
     await withServer(runtimeClient, async (baseUrl) => {
       const first = await fetch(`${baseUrl}/api/providers/claude/models`);
       assert.equal(first.status, 200);
@@ -399,7 +391,9 @@ test('GET /api/providers/:provider/models replaces generated stale warnings and 
   assert.equal(modelCalls, 4);
 });
 
-test('GET /api/providers/:provider/models serves stale catalog after runtime rate limits', async () => {
+test('GET /api/providers/:provider/models serves stale catalog after runtime rate limits', {
+  concurrency: false,
+}, async (t) => {
   const runtimeClient = createRuntimeStub();
   const initialNowMs = Date.parse('2026-04-21T05:30:00.000Z');
   let rateLimited = false;
@@ -422,7 +416,7 @@ test('GET /api/providers/:provider/models serves stale catalog after runtime rat
     };
   };
 
-  await withMockedDateNow(initialNowMs, async (clock) => {
+  await withMockedDateNow(t, initialNowMs, async (clock) => {
     await withServer(runtimeClient, async (baseUrl) => {
       const first = await fetch(`${baseUrl}/api/providers/claude/models`);
       assert.equal(first.status, 200);
@@ -438,7 +432,9 @@ test('GET /api/providers/:provider/models serves stale catalog after runtime rat
   });
 });
 
-test('GET /api/providers/:provider/models does not hide non-rate-limit 4xx catalog errors behind stale cache', async () => {
+test('GET /api/providers/:provider/models does not hide non-rate-limit 4xx catalog errors behind stale cache', {
+  concurrency: false,
+}, async (t) => {
   const runtimeClient = createRuntimeStub();
   const initialNowMs = Date.parse('2026-04-21T06:00:00.000Z');
   let badRequest = false;
@@ -461,7 +457,7 @@ test('GET /api/providers/:provider/models does not hide non-rate-limit 4xx catal
     };
   };
 
-  await withMockedDateNow(initialNowMs, async (clock) => {
+  await withMockedDateNow(t, initialNowMs, async (clock) => {
     await withServer(runtimeClient, async (baseUrl) => {
       const first = await fetch(`${baseUrl}/api/providers/claude/models`);
       assert.equal(first.status, 200);
