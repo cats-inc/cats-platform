@@ -6,6 +6,7 @@ import {
   type DraftTemporaryParticipant,
 } from '../draftChatUtils.js';
 import type { ChatNewChatTemporaryParticipantFormState } from './chatNewChatDraftSidePanel.js';
+import { shouldBrowseFolderOnDraftSidePanelSectionOpen } from './chatNewChatDraftSidePanelState.js';
 
 export function useChatNewChatDraftPanelState(input: {
   payload: AppShellPayload;
@@ -47,7 +48,11 @@ export function useChatNewChatDraftPanelState(input: {
 
   function switchSection(section: string): void {
     setSidePanelSection(section);
-    if (section === 'cwd' && !input.folderBrowseCurrentPath && !input.folderBrowseLoading) {
+    if (shouldBrowseFolderOnDraftSidePanelSectionOpen({
+      section,
+      folderBrowseCurrentPath: input.folderBrowseCurrentPath,
+      folderBrowseLoading: input.folderBrowseLoading,
+    })) {
       input.onPickFolder();
     }
   }

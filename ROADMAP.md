@@ -604,7 +604,9 @@ contracts.
       now also exposes a product-owned side-panel composition namespace with a
       section-builder seam, and Code drafts wrap the shared default builder with
       their own empty-state/title contract so future execution-profile sections
-      can be inserted without editing shared Chat draft internals.
+      can be inserted without editing shared Chat draft internals. Section-open
+      behavior now has a pure coverage seam for the folder-browse side effect,
+      including the branch-card `skipSectionAction` path.
 - [ ] Move `+Team code` and `+Peer code` off the current shared chat-draft
       fallback onto product-owned draft surfaces above the same shared
       primitives, so Code group/parallel entry no longer inherits chat-specific
