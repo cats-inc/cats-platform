@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-077](./SPEC-077-compare-draft-carousel-and-per-card-chrome.md) | Compare Draft Carousel and Per-Card Chrome Contract | In Progress (First Slice Landed) | [PLAN-069](../plans/PLAN-069-compare-draft-carousel-rollout.md), [ADR-076](../decisions/076-lay-parallel-draft-branches-in-a-3d-compare-carousel.md) |
 | [SPEC-076](./SPEC-076-per-entity-state-subscription-protocol.md) | Per-Entity State Subscription Protocol | Draft | [PLAN-068](../plans/PLAN-068-per-entity-state-subscription-rollout.md), [ADR-075](../decisions/075-adopt-push-based-per-entity-state-subscription.md) |
 | [SPEC-075](./SPEC-075-platform-browser-ingress-for-lan-and-tunneled-access.md) | Platform Browser Ingress for LAN and Tunneled Access | Draft | [PLAN-067](../plans/PLAN-067-platform-browser-ingress-rollout.md), [ADR-074](../decisions/074-keep-browser-ingress-at-platform-host-and-phase-lan-before-tunnels.md) |
 | [SPEC-074](./SPEC-074-cross-surface-draft-dispatch-and-warm-product-handoff.md) | Cross-Surface Draft Dispatch and Warm Product Handoff | Draft | [PLAN-066](../plans/PLAN-066-cross-surface-draft-dispatch-and-warm-product-handoff-rollout.md), [ADR-073](../decisions/073-use-target-surface-dispatch-and-warm-cross-surface-handoff.md) |
@@ -132,6 +133,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-04-21*
+*Last updated: 2026-04-21 (SPEC-077 added)*
 
 *See also: [plans/](../plans/) for implementation plans*

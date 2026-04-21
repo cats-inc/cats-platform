@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [076-lay-parallel-draft-branches-in-a-3d-compare-carousel](./076-lay-parallel-draft-branches-in-a-3d-compare-carousel.md) | Lay parallel-draft branches out as a bounded 3D compare carousel with per-card chrome | Proposed | 2026-04-21 |
 | [075-adopt-push-based-per-entity-state-subscription](./075-adopt-push-based-per-entity-state-subscription.md) | Adopt Push-Based Per-Entity State Subscription as the Renderer Sync Primitive | Proposed | 2026-04-21 |
 | [074-keep-browser-ingress-at-platform-host-and-phase-lan-before-tunnels](./074-keep-browser-ingress-at-platform-host-and-phase-lan-before-tunnels.md) | Keep browser ingress at the platform host and phase LAN before tunnels | Accepted | 2026-04-20 |
 | [073-use-target-surface-dispatch-and-warm-cross-surface-handoff](./073-use-target-surface-dispatch-and-warm-cross-surface-handoff.md) | Use target-surface dispatch and warm cross-surface handoff for draft submits | Accepted | 2026-04-20 |
@@ -117,6 +118,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-04-21*
+*Last updated: 2026-04-21 (ADR-076 added)*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*
