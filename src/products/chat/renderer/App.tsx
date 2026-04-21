@@ -377,6 +377,7 @@ export default function App() {
     onSetDraftParallelBranchAudienceKeys,
     onSetDraftParallelBranchCwd,
     onSetDraftParallelBranchRuntimeSessionPolicy,
+    onSetDraftParallelBranchPromptOverride,
     onToggleDraftParallelBranchWorkflowShape,
     onRelayCompareMessage,
   } = useParallelChatDraft({
@@ -1467,6 +1468,12 @@ export default function App() {
                       && draftRoute.isGenericNewChatRoute
                       && hasVisibleParallelDraftTargets
                       ? onSetDraftParallelBranchRuntimeSessionPolicy
+                      : undefined,
+                  onSetParallelBranchPromptOverride:
+                    advancedDraftControlsEnabled
+                      && draftRoute.isGenericNewChatRoute
+                      && hasVisibleParallelDraftTargets
+                      ? onSetDraftParallelBranchPromptOverride
                       : undefined,
                   onToggleParallelBranchWorkflowShape:
                     draftRoute.isGenericNewChatRoute

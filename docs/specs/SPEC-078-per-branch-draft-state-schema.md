@@ -52,10 +52,6 @@
   field from the schema — adding a placeholder type now would
   invite premature task-contract speculation. Wired in Phase 3
   alongside the carousel task chip work that SPEC-077 reserved.
-- **Per-branch prompt detach UI**. Phase 3 Task 3.1 lands the
-  `promptOverride` schema / resolver / dispatch wire. The carousel
-  authoring affordance remains separate Phase 3 work: explicit
-  "Detach prompt" confirm, detached textarea editing, and re-link.
 - **Per-branch cat identity**. Cats still live in the shared draft
   pool (`draftCatIds`, `draftTemporaryParticipants`). Per-branch
   membership is expressed through `audienceKeys`, referring into
@@ -146,8 +142,13 @@ As of 2026-04-21, Phase 3 Task 3.1 has landed
 `promptOverride?: string | null` on `DraftParallelTarget`.
 `resolveBranchPrompt(...)` resolves it against `lead.composerDraft`,
 and parallel submit dispatch sends each branch's `effectivePrompt`
-through the existing `channelInputs[].body` wire. Prompt authoring UI
-is not exposed yet.
+through the existing `channelInputs[].body` wire.
+
+As of 2026-04-21, Phase 3 Task 3.2 has landed prompt detach UI on
+non-lead carousel cards. The followed prompt textarea opens an
+explicit detach confirmation; detached prompts are edited directly in
+that branch textarea; re-link clears `promptOverride` to return to
+lead inheritance.
 
 The resolver module is present at
 `src/products/shared/renderer/draftBranchResolution.ts`, including
@@ -316,9 +317,10 @@ As of 2026-04-21, Phase 2 cwd / session-policy UI has landed:
 1. Add `promptOverride?: string | null` to `DraftParallelTarget`.
    Add `resolveBranchPrompt` to the resolver suite and dispatch
    through `channelInputs[].body`. Landed in Phase 3 Task 3.1.
-   The remaining UI work is: carousel "Follows lead" prompt chip
-   becomes clickable to detach (explicit "Detach prompt" confirm);
-   detached state enables editing that branch's textarea.
+   Carousel prompt detach UI landed in Phase 3 Task 3.2: followed
+   prompt textareas open an explicit detach confirmation, detached
+   prompt textareas edit `promptOverride`, and re-link clears the
+   override.
 2. Add `taskRef?: TaskRef | null` to `DraftParallelTarget` once
    the upstream task model spec defines `TaskRef`. Add
    `resolveBranchTaskRef` to the resolver suite. Wire to the
@@ -530,6 +532,8 @@ Renderer:
   owns the Phase 2 branch detach controls. The shadow-card cwd chip
   opens a branch-scoped folder picker, while detached session policy
   renders permission controls plus repo-ready workspace-mode controls.
+  Phase 3 prompt detach UI also lives here: non-lead prompt textareas
+  confirm detach, edit detached prompts, and re-link back to lead.
 - `src/products/shared/renderer/components/DraftCompareCarousel.tsx`
   — unaffected; UI is already per-card.
 - Draft state hooks (Chat's `src/products/chat/state/**` plus the

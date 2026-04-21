@@ -277,12 +277,14 @@ order once Phase 1 lands.
       `DraftParallelTarget.promptOverride` resolves through
       `resolveBranchPrompt`, and renderer parallel dispatch sends
       each branch's `effectivePrompt` through the existing
-      `channelInputs[].body` wire. No prompt authoring UI is
-      exposed yet; that remains Task 3.2.
+      `channelInputs[].body` wire. Prompt detach UI is now exposed
+      on non-lead carousel cards: clicking the followed textarea
+      opens an explicit detach confirmation, detached prompts become
+      editable, and re-link clears the override back to lead.
 - [x] Task 3.1: Add `promptOverride?: string | null` to
       `DraftParallelTarget`. Add the corresponding resolution
       helper. Wire dispatch to read resolved prompt per branch.
-- [ ] Task 3.2: Prompt detach UX. Non-lead textarea in carousel
+- [x] Task 3.2: Prompt detach UX. Non-lead textarea in carousel
       becomes click-to-detach; detached state enables editing
       that branch's textarea; re-link clears `promptOverride`.
       Guard against accidental detach: require an explicit "Detach

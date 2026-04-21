@@ -32,6 +32,7 @@ import {
   createDraftParallelTargets,
   mergeDraftParallelTargetBranchFields,
   setDraftParallelTargetCwd,
+  setDraftParallelTargetPromptOverride,
   setDraftParallelTargetRuntimeSessionPolicy,
   updateDraftParallelTargetAt,
 } from '../../../shared/renderer/draftParallelTargets.js';
@@ -261,6 +262,15 @@ export function useParallelChatDraft(options: {
     );
   }, []);
 
+  const onSetDraftParallelBranchPromptOverride = useCallback((
+    index: number,
+    promptOverride: string | null,
+  ) => {
+    setDraftParallelChatTargets((prev) =>
+      setDraftParallelTargetPromptOverride(prev, index, promptOverride),
+    );
+  }, []);
+
   const onToggleDraftParallelBranchWorkflowShape = useCallback((index: number) => {
     setDraftParallelChatTargets((prev) =>
       updateDraftParallelTargetAt(prev, index, (target) => ({
@@ -323,6 +333,7 @@ export function useParallelChatDraft(options: {
     onSetDraftParallelBranchAudienceKeys,
     onSetDraftParallelBranchCwd,
     onSetDraftParallelBranchRuntimeSessionPolicy,
+    onSetDraftParallelBranchPromptOverride,
     onToggleDraftParallelBranchWorkflowShape,
     onRelayCompareMessage,
   };

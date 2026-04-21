@@ -1369,6 +1369,66 @@ test('parallel shadow branch following lead exposes the session policy detach co
   assert.match(markup, /aria-label="Detach branch session policy"/u);
 });
 
+test('parallel shadow branch following lead exposes the prompt detach affordance when wired', () => {
+  const leadTarget = { provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null } as const;
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        composerDraft: 'Lead prompt',
+        selectedExecutionTarget: leadTarget,
+        parallelTargets: [
+          { ...leadTarget, audienceKeys: [], workflowShape: 'sequential' },
+          {
+            provider: 'codex-cli',
+            instance: null,
+            model: 'codex-max',
+            modelSelection: null,
+            audienceKeys: [],
+            workflowShape: 'sequential',
+          },
+        ],
+        onSetParallelBranchPromptOverride: () => {},
+        onAddParallelTarget: () => {},
+      })}
+    />,
+  );
+
+  assert.match(markup, /composerInputPromptFollowsLead/u);
+  assert.match(markup, /aria-label="Open branch prompt detach confirmation"/u);
+  assert.match(markup, /Click to detach this branch prompt/u);
+});
+
+test('parallel shadow branch with detached prompt renders editable prompt and relink chip', () => {
+  const leadTarget = { provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null } as const;
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        composerDraft: 'Lead prompt',
+        selectedExecutionTarget: leadTarget,
+        parallelTargets: [
+          { ...leadTarget, audienceKeys: [], workflowShape: 'sequential' },
+          {
+            provider: 'codex-cli',
+            instance: null,
+            model: 'codex-max',
+            modelSelection: null,
+            audienceKeys: [],
+            workflowShape: 'sequential',
+            promptOverride: 'Branch prompt',
+          },
+        ],
+        onSetParallelBranchPromptOverride: () => {},
+        onAddParallelTarget: () => {},
+      })}
+    />,
+  );
+
+  assert.match(markup, /Prompt detached/u);
+  assert.match(markup, /composerInputPromptDetached/u);
+  assert.match(markup, /Branch prompt/u);
+  assert.match(markup, /aria-label="Re-link branch prompt to lead"/u);
+});
+
 test('parallel shadow branch with detached runtime policy renders a relinkable policy editor', () => {
   const leadTarget = { provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null } as const;
   const markup = renderToStaticMarkup(

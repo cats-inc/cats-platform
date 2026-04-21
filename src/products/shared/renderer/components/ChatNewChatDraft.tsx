@@ -18,6 +18,7 @@ import {
 } from '../draftChatUtils.js';
 import {
   resolveBranchAudienceKeys,
+  resolveBranchPrompt,
   resolveBranchWorkflowShape,
   type DraftLeadContext,
 } from '../draftBranchResolution.js';
@@ -298,6 +299,7 @@ export interface NewChatDraftProps {
     index: number,
     policy: RuntimeSessionPolicy | null,
   ) => void;
+  onSetParallelBranchPromptOverride?: (index: number, promptOverride: string | null) => void;
   onToggleParallelBranchWorkflowShape?: (index: number) => void;
   onQuickAddParallelBranchTemporaryParticipant?: (index: number) => void;
   draftRuntimeSessionPolicy?: RuntimeSessionPolicy | null;
@@ -385,6 +387,7 @@ export function NewChatDraft({
   onSetParallelBranchAudienceKeys,
   onSetParallelBranchCwd,
   onSetParallelBranchRuntimeSessionPolicy,
+  onSetParallelBranchPromptOverride,
   onToggleParallelBranchWorkflowShape,
   onQuickAddParallelBranchTemporaryParticipant,
   draftRuntimeSessionPolicy = null,
@@ -403,6 +406,10 @@ export function NewChatDraft({
 }: NewChatDraftProps) {
   const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
   const [activeBranchIndex, setActiveBranchIndex] = useState(0);
+  const [
+    promptDetachConfirmBranchIndex,
+    setPromptDetachConfirmBranchIndex,
+  ] = useState<number | null>(null);
   const parallelCount = parallelTargets?.length ?? 0;
   useEffect(() => {
     if (!isParallelMode) {
@@ -498,6 +505,14 @@ export function NewChatDraft({
       return 'sequential';
     }
     return resolveBranchWorkflowShape(target, draftLeadContext);
+  }
+
+  function resolveParallelBranchPrompt(branchIndex: number): string {
+    const target = parallelTargets?.[branchIndex];
+    if (!target) {
+      return composerDraft;
+    }
+    return resolveBranchPrompt(target, draftLeadContext);
   }
 
   function resolveParallelBranchMembers(
@@ -1137,6 +1152,18 @@ export function NewChatDraft({
     const canAddMoreBranches = parallelCount < maxParallelChats;
     const showCompareHint = accentParallelAddButton && !hideDraftParallelHint;
     const branchCwd = target.cwd?.trim() || null;
+    const canEditBranchPrompt = onSetParallelBranchPromptOverride != null;
+    const branchPromptDetached = target.promptOverride != null && target.promptOverride !== '';
+    const branchPromptValue = resolveParallelBranchPrompt(branchIndex);
+    const showPromptDetachConfirm =
+      promptDetachConfirmBranchIndex === branchIndex
+      && canEditBranchPrompt
+      && !branchPromptDetached;
+    const branchPromptClassName = [
+      'composerInput',
+      canEditBranchPrompt && !branchPromptDetached ? 'composerInputPromptFollowsLead' : null,
+      branchPromptDetached ? 'composerInputPromptDetached' : null,
+    ].filter(Boolean).join(' ');
 
     return (
       <>
@@ -1199,14 +1226,79 @@ export function NewChatDraft({
         </div>
 
         <form className="composerCard composerCardFresh parallelComposerAnchor" onSubmit={(event) => event.preventDefault()}>
+          {branchPromptDetached ? (
+            <div className="composerPromptDetachToolbar">
+              <span className="composerBranchChip composerPromptOverrideChip">
+                <span>Prompt detached</span>
+                {onSetParallelBranchPromptOverride ? (
+                  <button
+                    className="composerChipClose"
+                    type="button"
+                    disabled={isSubmittingFirstTurn}
+                    onClick={() => onSetParallelBranchPromptOverride(branchIndex, null)}
+                    aria-label="Re-link branch prompt to lead"
+                  >
+                    &times;
+                  </button>
+                ) : null}
+              </span>
+            </div>
+          ) : null}
           <textarea
-            className="composerInput"
+            className={branchPromptClassName}
             rows={1}
             placeholder={composerPlaceholder}
-            value={composerDraft}
-            disabled
-            readOnly
+            value={branchPromptValue}
+            disabled={isSubmittingFirstTurn}
+            readOnly={!branchPromptDetached || !onSetParallelBranchPromptOverride}
+            title={
+              canEditBranchPrompt && !branchPromptDetached
+                ? 'Click to detach this branch prompt'
+                : undefined
+            }
+            aria-label={
+              canEditBranchPrompt && !branchPromptDetached
+                ? 'Open branch prompt detach confirmation'
+                : undefined
+            }
+            onClick={
+              canEditBranchPrompt && !branchPromptDetached
+                ? () => setPromptDetachConfirmBranchIndex(branchIndex)
+                : undefined
+            }
+            onChange={
+              branchPromptDetached && onSetParallelBranchPromptOverride
+                ? (event) => {
+                    onSetParallelBranchPromptOverride(branchIndex, event.currentTarget.value);
+                    autoResize(event.currentTarget);
+                  }
+                : undefined
+            }
           />
+          {showPromptDetachConfirm ? (
+            <div className="composerPromptDetachConfirm">
+              <span>Detach this branch prompt from the lead?</span>
+              <button
+                type="button"
+                className="composerPromptDetachButton"
+                disabled={isSubmittingFirstTurn}
+                onClick={() => {
+                  onSetParallelBranchPromptOverride?.(branchIndex, composerDraft);
+                  setPromptDetachConfirmBranchIndex(null);
+                }}
+              >
+                Detach prompt
+              </button>
+              <button
+                type="button"
+                className="composerPromptKeepLinkedButton"
+                disabled={isSubmittingFirstTurn}
+                onClick={() => setPromptDetachConfirmBranchIndex(null)}
+              >
+                Keep linked
+              </button>
+            </div>
+          ) : null}
           <div className="composerBottomRow">
             <div className="composerLeftGroup">
               <div className="composerPlusWrapper">
