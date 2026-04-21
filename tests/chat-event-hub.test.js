@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { ChatEventHub } from '../build/server/products/chat/api/chatEventHub.js';
+import { publishChannelMutation } from '../build/server/products/chat/api/transportEventPublisher.js';
 
 test('subscribe and emit delivers events to listener', () => {
   const hub = new ChatEventHub();
@@ -68,3 +69,16 @@ test('listener error does not break other subscribers', () => {
   assert.equal(received.length, 1);
 });
 
+test('publishChannelMutation emits room update and channel-scoped recents invalidation', () => {
+  const hub = new ChatEventHub();
+  const received = [];
+  hub.subscribe((event) => received.push(event));
+
+  publishChannelMutation(hub, 'channel-1', 'updated');
+
+  assert.equal(received.length, 2);
+  assert.equal(received[0].kind, 'room_updated');
+  assert.equal(received[0].channelId, 'channel-1');
+  assert.equal(received[1].kind, 'recents_changed');
+  assert.equal(received[1].channelId, 'channel-1');
+});

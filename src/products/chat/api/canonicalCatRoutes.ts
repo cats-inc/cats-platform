@@ -16,6 +16,7 @@ import {
   persistUpdatedCat,
   type ChatApiRouteContext,
 } from './routeSupport.js';
+import { publishChannelMutation } from './transportEventPublisher.js';
 
 async function handleCanonicalListCats(
   context: ChatApiRouteContext,
@@ -168,6 +169,7 @@ async function handleCanonicalAssignChannelCat(
       sendJson(context.response, isNew ? 201 : 200, {
         cat: assignment ? mapChannelCat(assignment) : null,
       });
+      publishChannelMutation(context.dependencies.eventHub, channelId);
     });
   } catch (error) {
     handleCanonicalCatError(context, error);
@@ -183,6 +185,7 @@ async function handleCanonicalRemoveChannelCat(
     await context.dependencies.mutationGate.run(channelId, async () => {
       await persistCatAssignmentRemoval(context, channelId, catId);
       sendJson(context.response, 200, { removed: true, channelId, catId });
+      publishChannelMutation(context.dependencies.eventHub, channelId);
     });
   } catch (error) {
     handleCanonicalCatError(context, error);

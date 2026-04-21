@@ -45,3 +45,16 @@ export function publishRoomMutation(
     detail: { mutation: kind },
   });
 }
+
+export function publishChannelMutation(
+  hub: ChatEventHub | undefined,
+  channelId: string,
+  kind: 'created' | 'updated' | 'message_added' = 'updated',
+): void {
+  publishRoomMutation(hub, channelId, kind);
+  hub?.emit({
+    kind: 'recents_changed',
+    channelId,
+    timestamp: new Date().toISOString(),
+  });
+}

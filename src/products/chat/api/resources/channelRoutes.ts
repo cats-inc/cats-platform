@@ -339,6 +339,7 @@ async function handleRestCreateChannel(
     sendJson(context.response, 201, {
       channel: buildChannelView(persisted, createdChannelId),
     });
+    publishChannelMutationEvents(context, createdChannelId, 'created');
   } catch (error) {
     handleRestError(context, error);
   }
@@ -443,6 +444,7 @@ async function handleRestPatchChannel(
       sendJson(context.response, 200, {
         channel: toChannelSummary(requireChannel(persisted, channelId), persisted),
       });
+      publishChannelMutationEvents(context, channelId);
     });
   } catch (error) {
     handleRestError(context, error);
@@ -489,6 +491,7 @@ async function handleRestDeleteChannel(
     await context.dependencies.mutationGate.run(channelId, async () => {
       await persistDeletedChannel(context, channelId);
       sendJson(context.response, 200, { deleted: true, channelId });
+      publishChannelMutationEvents(context, channelId);
     });
   } catch (error) {
     handleRestError(context, error);

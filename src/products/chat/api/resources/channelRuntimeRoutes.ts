@@ -386,6 +386,7 @@ async function handleRestCancelChannel(
         cancelledSessionCount,
       },
     });
+    publishStreamAttachMutationEvents(context, channelId);
   } catch (error) {
     handleRestError(context, error);
   }
@@ -441,6 +442,7 @@ async function handleRestDeactivateChannel(
           closedSessionCount: sessionIds.length,
         },
       });
+      publishStreamAttachMutationEvents(context, channelId);
     });
   } catch (error) {
     handleRestError(context, error);
@@ -482,6 +484,7 @@ async function handleRestActivateChannel(
           results: activation.results,
         },
       });
+      publishStreamAttachMutationEvents(context, channelId);
     });
   } catch (error) {
     handleRestError(context, error);
