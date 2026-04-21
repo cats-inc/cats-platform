@@ -3,6 +3,8 @@ import {
   resolveExecutionTargetLabel,
 } from '../../../shared/executionLabel.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
+import type { RuntimeSessionPolicy } from '../../../shared/runtimeSessionPolicy.js';
+import type { DraftRoomWorkflowShape } from '../../../shared/roomRouting.js';
 import {
   PRODUCT_PROVIDER_ORDER,
   getDefaultModel,
@@ -402,6 +404,17 @@ export interface DraftParallelTarget {
   model: string | null;
   instance: string | null;
   modelSelection: ProviderModelSelection | null;
+  executionLabel?: string | null;
+  cwd?: string | null;
+  runtimeSessionPolicy?: RuntimeSessionPolicy | null;
+  audienceKeys?: string[] | null;
+  workflowShape?: DraftRoomWorkflowShape | null;
+  attachmentsOverride?: DraftAttachmentRef[] | null;
+}
+
+export interface DraftAttachmentRef {
+  name?: string | null;
+  relativePath: string;
 }
 
 export function createDefaultParallelTargetForProvider(provider: string): DraftParallelTarget {
