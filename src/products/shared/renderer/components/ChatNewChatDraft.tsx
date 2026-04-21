@@ -299,6 +299,9 @@ export interface NewChatDraftProps {
   onCancelPendingSend?: () => void;
   onTogglePlusMenu: () => void;
   onFileSelect: () => void;
+  onTakeScreenshot?: () => void;
+  screenshotCaptureDisabled?: boolean;
+  screenshotCaptureTooltip?: string;
   onPickFolder: () => void;
   onOpenAddCat: () => void;
   onDraftFilesChange: (files: File[]) => void;
@@ -375,6 +378,9 @@ export function NewChatDraft({
   onCancelPendingSend,
   onTogglePlusMenu,
   onFileSelect,
+  onTakeScreenshot,
+  screenshotCaptureDisabled = false,
+  screenshotCaptureTooltip = 'Capture a screen, window, or tab',
   onPickFolder,
   onOpenAddCat,
   onDraftFilesChange,
@@ -907,6 +913,21 @@ export function NewChatDraft({
                   </svg>
                   Add photos and files
                 </button>
+                {onTakeScreenshot ? (
+                  <button
+                    className="composerPlusMenuItem"
+                    type="button"
+                    disabled={isSubmittingFirstTurn || screenshotCaptureDisabled}
+                    data-tooltip={screenshotCaptureTooltip}
+                    onClick={onTakeScreenshot}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M5 3.5l1-1h4l1 1h2a1 1 0 0 1 1 1v7.5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1h2z" />
+                      <circle cx="8" cy="8.5" r="2.5" />
+                    </svg>
+                    Take screenshot
+                  </button>
+                ) : null}
                 {chooseFolderPlacement === 'plusMenu' ? (
                   <button
                     className="composerPlusMenuItem"
@@ -1013,7 +1034,11 @@ export function NewChatDraft({
           ) : (
             <button
               className="composerSendButton"
-              disabled={!composerDraft.trim() || isSubmittingFirstTurn || (isGroupDraft && draftParticipantCount < 2)}
+              disabled={
+                (!composerDraft.trim() && draftFiles.length === 0)
+                || isSubmittingFirstTurn
+                || (isGroupDraft && draftParticipantCount < 2)
+              }
               type="submit"
               aria-label={isParallelMode ? 'Send to all chats' : 'Send'}
             >

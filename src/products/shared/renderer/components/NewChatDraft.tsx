@@ -540,7 +540,10 @@ export function WorkspaceNewChatDraft({
                 />
                 <button
                   className="composerSendButton"
-                  disabled={!composerDraft.trim() || isSubmittingFirstTurn}
+                  disabled={
+                    (!composerDraft.trim() && draftFiles.length === 0)
+                    || isSubmittingFirstTurn
+                  }
                   type="submit"
                   aria-label="Send"
                 >

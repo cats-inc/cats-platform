@@ -214,6 +214,9 @@ export interface ChatViewProps {
   onStopMessage?: () => void;
   onToggleChannelPlusMenu: () => void;
   onChannelFileSelect: () => void;
+  onTakeScreenshot?: () => void;
+  screenshotCaptureDisabled?: boolean;
+  screenshotCaptureTooltip?: string;
   onChannelFilesChange: (files: File[]) => void;
   onApprovalDecision: (taskId: string, action: 'approve' | 'reroute' | 'reject') => void;
   onChoiceSubmit: (input: MessageChoicesSubmitInput) => void;
@@ -290,6 +293,9 @@ export function ChatView({
   onStopMessage,
   onToggleChannelPlusMenu,
   onChannelFileSelect,
+  onTakeScreenshot,
+  screenshotCaptureDisabled,
+  screenshotCaptureTooltip,
   onChannelFilesChange,
   onApprovalDecision,
   onChoiceSubmit,
@@ -1166,6 +1172,9 @@ export function ChatView({
         onSendMessage={onSendMessage}
         onToggleChannelPlusMenu={onToggleChannelPlusMenu}
         onChannelFileSelect={onChannelFileSelect}
+        onTakeScreenshot={onTakeScreenshot}
+        screenshotCaptureDisabled={screenshotCaptureDisabled}
+        screenshotCaptureTooltip={screenshotCaptureTooltip}
         onChannelFilesChange={onChannelFilesChange}
         onScrollToBottom={scrollToBottom}
         onCompareSendScopeChange={onCompareSendScopeChange}

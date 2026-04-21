@@ -17,6 +17,7 @@ import type {
   NewChatEntryKind,
 } from '../api/contracts';
 import { useConfirmDialog } from '../../../design/components/ConfirmDialog';
+import { ToastContainer, useToast } from '../../../design/components/Toast';
 import {
   CHAT_PREFIX,
   isNewChatPath,
@@ -102,6 +103,12 @@ import {
   buildFolderBrowserContentProps,
   resolveVisibleChatChannelId,
 } from '../../shared/renderer/appShellPresentation.js';
+import {
+  captureScreenshotFile,
+  isScreenshotCaptureAvailable,
+  resolveScreenshotCaptureRoute,
+  resolveScreenshotCaptureTooltip,
+} from '../../shared/renderer/screenshotCapture.js';
 import {
   buildCrossSurfaceNavigationMatchPath,
   peekCrossSurfaceNavigationSnapshot,
@@ -212,6 +219,10 @@ export default function App() {
   const [activeWorkflowShape, setActiveWorkflowShape] = useState<'sequential' | 'concurrent'>('sequential');
   const [activeAudienceKeys, setActiveAudienceKeys] = useState<string[] | null>(null);
   const { dialog: appDialog, confirm: appConfirm, handleClose: appHandleClose } = useConfirmDialog();
+  const { toasts, showToast } = useToast();
+  const screenshotCaptureRoute = resolveScreenshotCaptureRoute();
+  const screenshotCaptureTooltip = resolveScreenshotCaptureTooltip(screenshotCaptureRoute);
+  const screenshotCaptureDisabled = !isScreenshotCaptureAvailable(screenshotCaptureRoute);
 
   const publishReadyPayload = usePublishReadyPayload<AppShellPayload>(setState);
 
@@ -302,12 +313,37 @@ export default function App() {
     draftFolderBrowseTargetRef.current = { kind: 'lead' };
     await openFolderBrowser(path);
   }, [openFolderBrowser]);
+  const showScreenshotCaptureError = useCallback((error: unknown): void => {
+    showToast(error instanceof Error ? error.message : 'Failed to capture screenshot.');
+  }, [showToast]);
+  const captureAndAppendDraftScreenshot = useCallback((): void => {
+    const capturePromise = captureScreenshotFile(screenshotCaptureRoute);
+    void capturePromise
+      .then((file) => {
+        if (file) {
+          setDraftFiles((current) => [...current, file]);
+        }
+      })
+      .catch(showScreenshotCaptureError);
+  }, [screenshotCaptureRoute, setDraftFiles, showScreenshotCaptureError]);
+  const captureAndAppendChannelScreenshot = useCallback((): void => {
+    const capturePromise = captureScreenshotFile(screenshotCaptureRoute);
+    void capturePromise
+      .then((file) => {
+        if (file) {
+          setChannelFiles((current) => [...current, file]);
+        }
+      })
+      .catch(showScreenshotCaptureError);
+  }, [screenshotCaptureRoute, setChannelFiles, showScreenshotCaptureError]);
   const {
     toggleAddCatPanel,
     toggleChannelPlusMenu,
     openChannelFilePicker,
+    captureAndAttachChannelScreenshot,
     toggleDraftPlusMenu,
     openDraftFilePicker,
+    captureAndAttachDraftScreenshot,
     openDraftFolderPicker,
     openDraftAddCatPanel,
     changeDraftDefaultRecipient,
@@ -328,6 +364,8 @@ export default function App() {
     channelFileInputRef,
     fileInputRef,
     openFolderBrowser: openLeadFolderBrowser,
+    onDraftScreenshotCapture: captureAndAppendDraftScreenshot,
+    onChannelScreenshotCapture: captureAndAppendChannelScreenshot,
   });
   const {
     readyPayload,
@@ -1236,11 +1274,12 @@ export default function App() {
   });
 
   return (
-    <ProductAppStateBoundary
-      state={state}
-      BootShell={BootShell}
-      unavailableTitle="Chat unavailable"
-      renderReady={(payload) => {
+    <>
+      <ProductAppStateBoundary
+        state={state}
+        BootShell={BootShell}
+        unavailableTitle="Chat unavailable"
+        renderReady={(payload) => {
         const {
           surface,
           directLaneChannel,
@@ -1351,6 +1390,9 @@ export default function App() {
                   onRetryMessage,
                   onToggleChannelPlusMenu: toggleChannelPlusMenu,
                   onChannelFileSelect: openChannelFilePicker,
+                  onTakeScreenshot: captureAndAttachChannelScreenshot,
+                  screenshotCaptureDisabled,
+                  screenshotCaptureTooltip,
                   onChannelFilesChange: setChannelFiles,
                   onApprovalDecision,
                   onChoiceSubmit,
@@ -1405,6 +1447,9 @@ export default function App() {
                   onCancelPendingSend,
                   onTogglePlusMenu: toggleDraftPlusMenu,
                   onFileSelect: openDraftFilePicker,
+                  onTakeScreenshot: captureAndAttachDraftScreenshot,
+                  screenshotCaptureDisabled,
+                  screenshotCaptureTooltip,
                   onPickFolder: openDraftFolderPicker,
                   onDraftFilesChange: setDraftFiles,
                   onDraftCwdClear: () => setDraftCwd(null),
@@ -1545,8 +1590,10 @@ export default function App() {
             onResetSetup={onResetSetup}
             onConfirmClose={appHandleClose}
           />
-        );
-      }}
-    />
+          );
+        }}
+      />
+      <ToastContainer toasts={toasts} />
+    </>
   );
 }

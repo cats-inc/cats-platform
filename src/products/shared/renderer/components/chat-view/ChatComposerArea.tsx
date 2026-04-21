@@ -52,6 +52,9 @@ export interface ChatComposerAreaProps {
   onSendMessage: (event: FormEvent<HTMLFormElement>) => void;
   onToggleChannelPlusMenu: () => void;
   onChannelFileSelect: () => void;
+  onTakeScreenshot?: () => void;
+  screenshotCaptureDisabled?: boolean;
+  screenshotCaptureTooltip?: string;
   onChannelFilesChange: (files: File[]) => void;
   onScrollToBottom: () => void;
   onCompareSendScopeChange?: (value: 'all_members' | 'active_only') => void;
@@ -99,6 +102,9 @@ export function ChatComposerArea({
   onSendMessage,
   onToggleChannelPlusMenu,
   onChannelFileSelect,
+  onTakeScreenshot,
+  screenshotCaptureDisabled = false,
+  screenshotCaptureTooltip = 'Capture a screen, window, or tab',
   onChannelFilesChange,
   onScrollToBottom,
   onCompareSendScopeChange,
@@ -114,6 +120,7 @@ export function ChatComposerArea({
     directLaneRecipient?.catId
       ? payload.chat.cats.find((cat) => cat.id === directLaneRecipient.catId) ?? null
       : null;
+  const hasSendableContent = composerDraft.trim().length > 0 || channelFiles.length > 0;
 
   const stackClassName = (() => {
     const classes = ['composerAreaStack'];
@@ -267,6 +274,21 @@ export function ChatComposerArea({
                   </svg>
                   Add photos and files
                 </button>
+                {onTakeScreenshot ? (
+                  <button
+                    className="composerPlusMenuItem"
+                    type="button"
+                    disabled={composerBusy || screenshotCaptureDisabled}
+                    data-tooltip={screenshotCaptureTooltip}
+                    onClick={onTakeScreenshot}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <path d="M5 3.5l1-1h4l1 1h2a1 1 0 0 1 1 1v7.5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1h2z" />
+                      <circle cx="8" cy="8.5" r="2.5" />
+                    </svg>
+                    Take screenshot
+                  </button>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -317,7 +339,7 @@ export function ChatComposerArea({
             <div className="composerSplitSend">
               <button
                 className="composerSplitSendMain"
-                disabled={!composerDraft.trim() || composerBusy || compareBusy}
+                disabled={!hasSendableContent || composerBusy || compareBusy}
                 type="submit"
                 aria-label={compareSendScope === 'all_members' ? 'Send to all chats' : 'Send to this chat'}
               >
@@ -347,7 +369,7 @@ export function ChatComposerArea({
           ) : (
             <button
               className="composerSendButton"
-              disabled={!composerDraft.trim() || composerBusy || compareBusy}
+              disabled={!hasSendableContent || composerBusy || compareBusy}
               type="submit"
               aria-label="Send"
             >

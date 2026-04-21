@@ -26,6 +26,8 @@ export interface WorkspaceAppDraftUiActionsOptions<CatFormState> {
   channelFileInputRef: RefObject<HTMLInputElement | null>;
   fileInputRef: RefObject<HTMLInputElement | null>;
   openFolderBrowser: (path?: string | null) => Promise<void>;
+  onDraftScreenshotCapture?: () => void;
+  onChannelScreenshotCapture?: () => void;
 }
 
 export function useWorkspaceAppDraftUiActions<CatFormState>(
@@ -50,6 +52,8 @@ export function useWorkspaceAppDraftUiActions<CatFormState>(
     channelFileInputRef,
     fileInputRef,
     openFolderBrowser,
+    onDraftScreenshotCapture,
+    onChannelScreenshotCapture,
   } = options;
 
   function toggleAddCatPanel(): void {
@@ -68,12 +72,22 @@ export function useWorkspaceAppDraftUiActions<CatFormState>(
     setChannelPlusMenuOpen(false);
   }
 
+  function captureAndAttachChannelScreenshot(): void {
+    onChannelScreenshotCapture?.();
+    setChannelPlusMenuOpen(false);
+  }
+
   function toggleDraftPlusMenu(): void {
     setPlusMenuOpen(!plusMenuOpen);
   }
 
   function openDraftFilePicker(): void {
     fileInputRef.current?.click();
+    setPlusMenuOpen(false);
+  }
+
+  function captureAndAttachDraftScreenshot(): void {
+    onDraftScreenshotCapture?.();
     setPlusMenuOpen(false);
   }
 
@@ -106,8 +120,10 @@ export function useWorkspaceAppDraftUiActions<CatFormState>(
     toggleAddCatPanel,
     toggleChannelPlusMenu,
     openChannelFilePicker,
+    captureAndAttachChannelScreenshot,
     toggleDraftPlusMenu,
     openDraftFilePicker,
+    captureAndAttachDraftScreenshot,
     openDraftFolderPicker,
     openDraftAddCatPanel,
     changeDraftDefaultRecipient,

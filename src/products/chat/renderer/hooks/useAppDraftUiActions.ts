@@ -33,6 +33,8 @@ export function useAppDraftUiActions(options: {
   channelFileInputRef: RefObject<HTMLInputElement | null>;
   fileInputRef: RefObject<HTMLInputElement | null>;
   openFolderBrowser: (path?: string | null) => Promise<void>;
+  onDraftScreenshotCapture?: () => void;
+  onChannelScreenshotCapture?: () => void;
 }) {
   const {
     addCatOpen,
@@ -51,6 +53,8 @@ export function useAppDraftUiActions(options: {
     channelFileInputRef,
     fileInputRef,
     openFolderBrowser,
+    onDraftScreenshotCapture,
+    onChannelScreenshotCapture,
   } = options;
   return useWorkspaceAppDraftUiActions({
     addCatOpen,
@@ -78,5 +82,7 @@ export function useAppDraftUiActions(options: {
     channelFileInputRef,
     fileInputRef,
     openFolderBrowser,
+    onDraftScreenshotCapture,
+    onChannelScreenshotCapture,
   });
 }

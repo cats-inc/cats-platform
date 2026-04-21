@@ -23,13 +23,28 @@ interface DesktopBootstrapSnapshot {
   summary: string;
 }
 
-interface DesktopHostBridge {
+export type DesktopScreenshotCaptureResult =
+  | {
+      outcome: 'ok';
+      png: Uint8Array;
+      mime: 'image/png';
+      filename: string;
+      width: number;
+      height: number;
+    }
+  | {
+      outcome: 'cancelled' | 'permission_denied' | 'platform_unsupported' | 'error';
+      message?: string;
+    };
+
+export interface DesktopHostBridge {
   getSetupSnapshot?: () => Promise<DesktopSetupSnapshot>;
   runAction?: (actionId: string) => Promise<DesktopBootstrapSnapshot>;
   resumeSetup?: () => Promise<DesktopSetupSnapshot>;
+  captureScreenshotRegion?: () => Promise<DesktopScreenshotCaptureResult>;
 }
 
-function resolveDesktopHostBridge(): DesktopHostBridge | null {
+export function resolveDesktopHostBridge(): DesktopHostBridge | null {
   const candidate = (
     globalThis as typeof globalThis & {
       catsDesktopHost?: DesktopHostBridge;

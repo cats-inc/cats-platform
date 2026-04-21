@@ -227,7 +227,9 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     }
 
     const body = composerDraft.trim();
-    if (!body) {
+    const hasDraftAttachments = draftFiles.length > 0;
+    const hasChannelAttachments = channelFiles.length > 0;
+    if (!body && !hasDraftAttachments && !hasChannelAttachments) {
       return;
     }
 
