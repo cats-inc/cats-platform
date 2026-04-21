@@ -7,6 +7,7 @@ import type { CatsMemoryService } from '../../platform/memory/index.js';
 import {
   bridgeTelegramWebhookToRoom,
   type TelegramRoomBridge,
+  type TelegramWebhookBridgeResult,
   TelegramWebhookBridgeError,
 } from '../../platform/transports/telegram/bridge.js';
 import type { TelegramRelayContext, TelegramWebhookUpdate } from '../../platform/transports/telegram/contracts.js';
@@ -269,6 +270,18 @@ export async function handleTelegramDiagnostics(
   });
 }
 
+export function publishTelegramBridgeResult(
+  eventHub: ChatEventHub | undefined,
+  bridgeResult: Pick<TelegramWebhookBridgeResult, 'roomId'>,
+): void {
+  if (!bridgeResult.roomId) {
+    return;
+  }
+
+  publishTransportIngress(eventHub, bridgeResult.roomId);
+  publishRoomMutation(eventHub, bridgeResult.roomId, 'message_added');
+}
+
 export async function handleTelegramWebhook(
   request: IncomingMessage,
   response: ServerResponse,
@@ -347,11 +360,7 @@ export async function handleTelegramWebhook(
         now: dependencies.now,
       });
       receipt = bridgeResult.receipt;
-      const roomId = receipt.mappedConversationId ?? null;
-      if (roomId) {
-        publishTransportIngress(dependencies.eventHub, roomId);
-        publishRoomMutation(dependencies.eventHub, roomId, 'message_added');
-      }
+      publishTelegramBridgeResult(dependencies.eventHub, bridgeResult);
     }
     sendJson(response, 202, { receipt });
   } catch (error) {
@@ -385,6 +394,7 @@ interface TelegramPollingReconnectDependencies {
   telegramRelay: TelegramRelay;
   runtimeClient: RuntimeClient;
   pollingSupervisor: TelegramPollingSupervisor;
+  eventHub?: ChatEventHub;
   now?: () => Date;
 }
 
@@ -431,6 +441,10 @@ export async function handleTelegramPollingReconnect(
       memoryService: dependencies.memoryService,
       runtimeClient: dependencies.runtimeClient,
       telegramRelay: dependencies.telegramRelay,
+      onBridgeResult: (bridgeResult) => publishTelegramBridgeResult(
+        dependencies.eventHub,
+        bridgeResult,
+      ),
     });
 
     const status = dependencies.pollingSupervisor.getPollingStatus(dependencies.bindingId);

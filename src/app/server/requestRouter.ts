@@ -546,6 +546,7 @@ export async function routeRequest(
       telegramRelay: dependencies.chat.telegramRelay,
       runtimeClient: dependencies.shared.runtimeClient,
       pollingSupervisor: dependencies.chat.pollingSupervisor,
+      eventHub: dependencies.chat.eventHub,
       now: dependencies.shared.now,
     });
     return;

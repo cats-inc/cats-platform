@@ -5,6 +5,7 @@ import { telegramIpv4Fetch, type TelegramFetch } from './http.js';
 import {
   bridgeTelegramWebhookToRoom,
   type TelegramRoomBridge,
+  type TelegramWebhookBridgeResult,
 } from './bridge.js';
 import type {
   TelegramPollingHealth,
@@ -24,6 +25,8 @@ export interface TelegramPollingSupervisor {
   getAllPollingStatuses(): TelegramPollingStatus[];
 }
 
+export type TelegramPollingBridgeResultHandler = (result: TelegramWebhookBridgeResult) => void;
+
 export interface StartPollingInput {
   bindingId: string;
   botToken: string;
@@ -33,6 +36,7 @@ export interface StartPollingInput {
   memoryService: CatsMemoryService;
   runtimeClient: RuntimeClient;
   telegramRelay: TelegramRelay;
+  onBridgeResult?: TelegramPollingBridgeResultHandler;
 }
 
 export interface ReconcilePollingInput {
@@ -43,6 +47,7 @@ export interface ReconcilePollingInput {
   memoryService: CatsMemoryService;
   runtimeClient: RuntimeClient;
   telegramRelay: TelegramRelay;
+  onBridgeResult?: TelegramPollingBridgeResultHandler;
 }
 
 interface PollingConsumer {
@@ -229,7 +234,7 @@ export function createTelegramPollingSupervisor(
 
           if (receipt.status === 'accepted') {
             try {
-              await bridgeTelegramWebhookToRoom({
+              const bridgeResult = await bridgeTelegramWebhookToRoom({
                 update,
                 receipt,
                 context: scopedContext,
@@ -239,6 +244,11 @@ export function createTelegramPollingSupervisor(
                 telegramRelay,
                 now: options.now,
               });
+              try {
+                input.onBridgeResult?.(bridgeResult);
+              } catch {
+                // Polling delivery already succeeded; UI/event hooks stay best-effort.
+              }
             } catch {
               // Bridge errors are already handled inside bridgeTelegramWebhookToRoom
             }
@@ -362,6 +372,7 @@ export function createTelegramPollingSupervisor(
             memoryService: input.memoryService,
             runtimeClient: input.runtimeClient,
             telegramRelay: input.telegramRelay,
+            onBridgeResult: input.onBridgeResult,
           });
         }
       }

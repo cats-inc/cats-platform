@@ -287,6 +287,128 @@ test('reconcilePolling forwards fresh scoped context into polling consumers', as
   await new Promise((resolve) => setTimeout(resolve, 100));
 });
 
+test('polling supervisor reports bridge results for accepted updates', async () => {
+  const { mockFetch } = createMockFetch([
+    { ok: true, json: { ok: true } },
+    {
+      ok: true,
+      json: {
+        ok: true,
+        result: [
+          {
+            update_id: 778,
+            message: {
+              message_id: 10,
+              text: 'wake direct lane',
+              chat: { id: 42, type: 'private' },
+              from: { id: 7, first_name: 'Kenny' },
+            },
+          },
+        ],
+      },
+    },
+    { ok: true, json: { ok: true, result: [] } },
+  ]);
+
+  const supervisor = createTelegramPollingSupervisor({
+    fetchImpl: mockFetch,
+    pollingTimeout: 0,
+  });
+
+  let roomState = {
+    selectedChannelId: 'seed',
+    channels: [{ id: 'seed' }],
+    cats: [{ id: 'cat-1', name: 'Poll Cat' }],
+  };
+  const bridgeResults = [];
+  const roomBridge = {
+    readState: async () => roomState,
+    writeState: async (state) => {
+      roomState = state;
+      return roomState;
+    },
+    findReusableRoomId: () => null,
+    createRoom: (state) => ({
+      roomId: 'room-poll-1',
+      state: {
+        ...state,
+        selectedChannelId: 'room-poll-1',
+        channels: [...state.channels, { id: 'room-poll-1' }],
+      },
+    }),
+    readRoom: (state, roomId) => ({
+      id: roomId,
+      title: 'Polling room',
+      messages: [],
+    }),
+    routeRoomMessage: async ({ state }) => ({ state }),
+    buildRecoveryState: ({ state }) => state,
+  };
+  const botBinding = {
+    id: 'poll-1',
+    platform: 'telegram',
+    botName: 'poll_bot',
+    orchestratorActorId: 'actor-orchestrator-global',
+    catActorId: 'actor-cat-cat-1',
+    bossCatActorId: null,
+    botToken: 'token-poll',
+    webhookSecret: null,
+    inboundMode: 'polling',
+    roomMode: 'direct_cat_chat',
+    status: 'active',
+    createdAt: '2026-03-23T00:00:00.000Z',
+    updatedAt: '2026-03-23T00:00:00.000Z',
+  };
+
+  await supervisor.startPolling({
+    bindingId: 'poll-1',
+    botToken: 'token-poll',
+    context: {
+      bossCatId: 'cat-1',
+      bossCatName: 'Poll Cat',
+      bossCatActorId: 'actor-cat-cat-1',
+      botBindings: [botBinding],
+      defaultBotBinding: botBinding,
+      selectedBotBinding: botBinding,
+    },
+    roomBridge,
+    memoryService: {},
+    runtimeClient: {},
+    telegramRelay: {
+      receiveUpdate: () => ({
+        status: 'accepted',
+        platform: 'telegram',
+        updateId: 778,
+        chatId: '42',
+        bindingId: 'poll-1',
+        mappedConversationId: 'telegram:poll-1:42',
+        messageId: '10',
+        messageSummary: { textPreview: 'wake direct lane' },
+        roomRouting: {},
+      }),
+      resolveBinding: () => null,
+      linkRoom: ({ roomId }) => ({
+        roomRoutingStatus: 'linked_room',
+        linkedRoomId: roomId,
+      }),
+      deliver: async () => ({ status: 'sent' }),
+      recordBridgeDispatchFailure: () => {},
+    },
+    onBridgeResult: (result) => {
+      bridgeResults.push(result);
+    },
+  });
+
+  await new Promise((resolve) => setTimeout(resolve, 200));
+
+  assert.equal(bridgeResults.length, 1);
+  assert.equal(bridgeResults[0].roomId, 'room-poll-1');
+  assert.equal(bridgeResults[0].receipt.roomRouting.linkedRoomId, 'room-poll-1');
+
+  supervisor.stopAll();
+  await new Promise((resolve) => setTimeout(resolve, 100));
+});
+
 test('stopPolling stops a specific consumer without affecting others', async () => {
   const { mockFetch } = createMockFetch([
     { ok: true, json: { ok: true } },
@@ -374,4 +496,3 @@ test('reconcilePolling restarts a consumer when its bot token changes', async ()
   assert.ok(calls.some((call) => call.url.includes('bottoken-old/getUpdates')));
   assert.ok(calls.some((call) => call.url.includes('bottoken-new/getUpdates')));
 });
-

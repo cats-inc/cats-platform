@@ -20,7 +20,10 @@ import { normalizePlatformSurface } from '../../../shared/platformSurfaces.js';
 import { createExplicitProviderModelSelection } from '../../../shared/providerSelection.js';
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
 import { parseRuntimeSessionPolicyCreateInput } from '../../../shared/runtimeSessionPolicy.js';
-import { readTelegramPollingContext } from '../../../server/routes/telegram.js';
+import {
+  publishTelegramBridgeResult,
+  readTelegramPollingContext,
+} from '../../../server/routes/telegram.js';
 import {
   appendMessage,
   archiveCat,
@@ -196,6 +199,7 @@ export async function reconcileTelegramTransportAfterBindingMutation(
     chatStore,
     memoryService,
     runtimeClient,
+    eventHub,
   } = context.dependencies;
   if (telegramCommandSurfaceSync) {
     try {
@@ -217,6 +221,7 @@ export async function reconcileTelegramTransportAfterBindingMutation(
       memoryService,
       runtimeClient,
       telegramRelay,
+      onBridgeResult: (bridgeResult) => publishTelegramBridgeResult(eventHub, bridgeResult),
     });
   } catch {
     // Binding cleanup already succeeded. Polling reconciliation stays best-effort.

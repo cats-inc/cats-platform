@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import { ChatEventHub } from '../build/server/products/chat/api/chatEventHub.js';
 import { publishChannelMutation } from '../build/server/products/chat/api/transportEventPublisher.js';
+import { publishTelegramBridgeResult } from '../build/server/server/routes/telegram.js';
 
 test('subscribe and emit delivers events to listener', () => {
   const hub = new ChatEventHub();
@@ -81,4 +82,19 @@ test('publishChannelMutation emits room update and channel-scoped recents invali
   assert.equal(received[0].channelId, 'channel-1');
   assert.equal(received[1].kind, 'recents_changed');
   assert.equal(received[1].channelId, 'channel-1');
+});
+
+test('publishTelegramBridgeResult emits ingress and room update for the linked Cats room', () => {
+  const hub = new ChatEventHub();
+  const received = [];
+  hub.subscribe((event) => received.push(event));
+
+  publishTelegramBridgeResult(hub, { roomId: 'channel-telegram-1' });
+
+  assert.equal(received.length, 3);
+  assert.equal(received[0].kind, 'transport_ingress');
+  assert.equal(received[0].channelId, 'channel-telegram-1');
+  assert.equal(received[1].kind, 'recents_changed');
+  assert.equal(received[2].kind, 'room_updated');
+  assert.equal(received[2].channelId, 'channel-telegram-1');
 });

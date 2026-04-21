@@ -1,5 +1,8 @@
 import type { ResolvedServerDependencies } from './contracts.js';
-import { readTelegramPollingContext } from '../../server/routes/telegram.js';
+import {
+  publishTelegramBridgeResult,
+  readTelegramPollingContext,
+} from '../../server/routes/telegram.js';
 
 export async function reconcilePollingOnStartup(
   dependencies: ResolvedServerDependencies,
@@ -17,5 +20,9 @@ export async function reconcilePollingOnStartup(
     memoryService: dependencies.chat.memoryService,
     runtimeClient: dependencies.shared.runtimeClient,
     telegramRelay: dependencies.chat.telegramRelay,
+    onBridgeResult: (bridgeResult) => publishTelegramBridgeResult(
+      dependencies.chat.eventHub,
+      bridgeResult,
+    ),
   });
 }
