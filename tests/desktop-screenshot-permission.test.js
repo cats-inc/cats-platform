@@ -25,6 +25,16 @@ test('desktop screenshot permission allows granted macOS screen access', () => {
   );
 });
 
+test('desktop screenshot permission allows first macOS screen access attempt', () => {
+  assert.equal(
+    resolveDesktopScreenshotPermissionResult({
+      platform: 'darwin',
+      mediaAccessStatus: 'not-determined',
+    }),
+    null,
+  );
+});
+
 test('desktop screenshot permission maps denied macOS screen access to contract outcome', () => {
   assert.deepEqual(
     resolveDesktopScreenshotPermissionResult({
