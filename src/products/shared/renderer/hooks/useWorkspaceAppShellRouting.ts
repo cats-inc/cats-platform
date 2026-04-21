@@ -27,7 +27,7 @@ import { shouldWakeRouteChannelOnEntry, type SelectedChannelView } from '../../c
 import { isDirectLaneChannel } from '../../channelTopology.js';
 import type { ChatLifecycleState } from '../../lifecycle.js';
 import {
-  consumeCrossSurfaceNavigationHandoff,
+  consumeCrossSurfaceNavigationSnapshot,
   type CrossSurfaceNavigationRouteTarget,
 } from '../crossSurfaceNavigationHandoff.js';
 
@@ -89,6 +89,29 @@ export interface WorkspaceAppShellRoutingOptions<
   }) => string;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value && typeof value === 'object' && !Array.isArray(value));
+}
+
+function isWorkspaceRoutingPayloadLike(value: unknown): value is WorkspaceRoutingPayloadLike {
+  if (!isRecord(value) || !isRecord(value.chat)) {
+    return false;
+  }
+
+  return Array.isArray(value.chat.channels)
+    && Array.isArray(value.chat.cats)
+    && (
+      typeof value.chat.selectedChannelId === 'string'
+      || value.chat.selectedChannelId === null
+    );
+}
+
+function isWarmNavigationPayload<TPayload extends WorkspaceRoutingPayloadLike>(
+  value: unknown,
+): value is TPayload {
+  return isWorkspaceRoutingPayloadLike(value);
+}
+
 function consumeInitialWarmNavigationPayload<
   TPayload extends WorkspaceRoutingPayloadLike = AppShellPayload,
 >(
@@ -97,9 +120,8 @@ function consumeInitialWarmNavigationPayload<
     path: string;
   },
 ): TPayload | null {
-  return (
-    consumeCrossSurfaceNavigationHandoff(match)?.snapshot?.appShellPayload ?? null
-  ) as unknown as TPayload | null;
+  const snapshot = consumeCrossSurfaceNavigationSnapshot(match);
+  return isWarmNavigationPayload<TPayload>(snapshot) ? snapshot : null;
 }
 
 export function resolveInitialWorkspaceWarmNavigationPayload<

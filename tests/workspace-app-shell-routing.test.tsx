@@ -2,6 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  clearCrossSurfaceNavigationHandoff,
+  stageCrossSurfaceNavigationHandoff,
+} from '../src/products/shared/renderer/crossSurfaceNavigationHandoff.ts';
+import {
   applyWorkspaceBackgroundRefresh,
   mergeWorkspaceBackgroundRefreshPayload,
   resolveInitialWorkspaceWarmNavigationPayload,
@@ -82,6 +86,47 @@ test('resolveInitialWorkspaceWarmNavigationPayload always drains staged handoff 
     warmPayload,
   );
   assert.equal(calls, 2);
+});
+
+test('resolveInitialWorkspaceWarmNavigationPayload rejects invalid warm snapshots after draining them', () => {
+  const match = {
+    surface: 'code' as const,
+    path: '/code/chats/channel-invalid-snapshot',
+  };
+  clearCrossSurfaceNavigationHandoff();
+  stageCrossSurfaceNavigationHandoff({
+    kind: 'navigate-conversation',
+    sourceSurface: 'chat',
+    targetSurface: 'code',
+    destination: {
+      entityKind: 'conversation',
+      entityId: 'channel-invalid-snapshot',
+      route: match,
+    },
+    createdAt: new Date().toISOString(),
+    snapshot: {
+      appShellPayload: {
+        chat: {
+          selectedChannelId: 'channel-invalid-snapshot',
+        },
+      } as never,
+    },
+  });
+
+  assert.equal(
+    resolveInitialWorkspaceWarmNavigationPayload({
+      initialHadReadyState: false,
+      match,
+    }),
+    null,
+  );
+  assert.equal(
+    resolveInitialWorkspaceWarmNavigationPayload({
+      initialHadReadyState: false,
+      match,
+    }),
+    null,
+  );
 });
 
 test('workspace background refresh keeps chat state while updating runtime envelope fields', () => {
