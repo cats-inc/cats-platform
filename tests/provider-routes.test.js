@@ -163,6 +163,52 @@ async function withMockedDateNow(initialNowMs, callback) {
   }
 }
 
+test('GET /api/providers/:provider/models scopes selector diagnostics to the requested provider', async () => {
+  const runtimeClient = createRuntimeStub();
+  const originalGetProviderDiagnostics = runtimeClient.getProviderDiagnostics;
+  const diagnosticsQueries = [];
+
+  runtimeClient.getProviderDiagnostics = async (query = {}) => {
+    diagnosticsQueries.push({ ...query });
+    return originalGetProviderDiagnostics.call(runtimeClient, query);
+  };
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/providers/claude/models`);
+    assert.equal(response.status, 200);
+  });
+
+  assert.deepEqual(diagnosticsQueries, [
+    {
+      provider: 'claude',
+      scope: 'availability',
+    },
+  ]);
+});
+
+test('GET /api/providers/:provider/models/advanced scopes selector diagnostics to the requested provider', async () => {
+  const runtimeClient = createRuntimeStub();
+  const originalGetProviderDiagnostics = runtimeClient.getProviderDiagnostics;
+  const diagnosticsQueries = [];
+
+  runtimeClient.getProviderDiagnostics = async (query = {}) => {
+    diagnosticsQueries.push({ ...query });
+    return originalGetProviderDiagnostics.call(runtimeClient, query);
+  };
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/providers/claude/models/advanced`);
+    assert.equal(response.status, 200);
+  });
+
+  assert.deepEqual(diagnosticsQueries, [
+    {
+      provider: 'claude',
+      scope: 'availability',
+    },
+  ]);
+});
+
 test('GET /api/providers keeps the last good selector after a transient refresh timeout', async () => {
   const runtimeClient = createRuntimeStub();
   const originalGetProviderDiagnostics = runtimeClient.getProviderDiagnostics;

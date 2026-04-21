@@ -844,7 +844,7 @@ export async function handleProviderModels(
     return;
   }
 
-  const registry = await readTruthfulProviderRegistry(dependencies);
+  const registry = await readTruthfulProviderRegistry(dependencies, { provider });
   if (registry.state === 'runtime_unreachable') {
     sendRestError(
       response,
@@ -923,7 +923,7 @@ export async function handleAdvancedProviderModels(
     return;
   }
 
-  const registry = await readTruthfulProviderRegistry(dependencies);
+  const registry = await readTruthfulProviderRegistry(dependencies, { provider });
   if (registry.state === 'runtime_unreachable') {
     sendRestError(
       response,

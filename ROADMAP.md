@@ -199,10 +199,13 @@ contracts.
       Completed: renderer-side provider registry reads use the shared client
       cache, and model plus advanced catalog reads now share short-lived
       provider/instance client cache buckets with in-flight request dedupe.
-- [ ] Stop rebuilding the full truthful selector registry in front of every
+- [x] Stop rebuilding the full truthful selector registry in front of every
       `/api/providers/{provider}/models` and `/api/providers/{provider}/models/advanced`
       request; once a provider target is already known usable, model-catalog
       reads should reuse that truth or a short-lived shared selector cache
+      Completed: model and advanced catalog routes now read provider-scoped
+      selector truth, so runtime diagnostics are filtered to the requested
+      provider and can reuse the provider-specific selector cache.
 - [ ] Tighten the landed provider-catalog and truthful-selector stale-cache
       hygiene beyond the current stale-if-error plus error-backoff slices:
       replace the optional `cacheRefreshWarning` field with a discriminated
