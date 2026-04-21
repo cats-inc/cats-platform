@@ -1,4 +1,5 @@
 import type {
+  ChatChannelParticipant,
   ChatChannelSummary,
   ChatChannelView,
   ParallelChatGroupMemberSummary,
@@ -12,12 +13,6 @@ function normalizeActiveSubscribedIds(activeSubscribedIds: Iterable<string>): Se
       .map((id) => id.trim())
       .filter((id) => id.length > 0),
   );
-}
-
-function normalizeActiveSubscribedIdSet(
-  activeSubscribedIds: Iterable<string> | Set<string>,
-): Set<string> {
-  return normalizeActiveSubscribedIds(activeSubscribedIds);
 }
 
 function insertAt<T>(values: T[], index: number, value: T): T[] {
@@ -107,17 +102,8 @@ export function mergeParallelChatGroupsPreservingSubscribedMembership(
   return result;
 }
 
-interface ChannelParticipantLike {
-  status: string;
-}
-
-interface ChannelViewWithOptionalParticipants extends ChatChannelView {
-  assignedParticipants?: ChannelParticipantLike[];
-}
-
-function resolveAssignedParticipants(selectedChannel: ChatChannelView): ChannelParticipantLike[] {
-  const assignedParticipants = (selectedChannel as ChannelViewWithOptionalParticipants)
-    .assignedParticipants;
+function resolveAssignedParticipants(selectedChannel: ChatChannelView): ChatChannelParticipant[] {
+  const assignedParticipants = selectedChannel.assignedParticipants;
   return Array.isArray(assignedParticipants) && assignedParticipants.length > 0
     ? assignedParticipants
     : selectedChannel.assignedCats;
@@ -181,46 +167,13 @@ function resolveSubscribedChannelLastRoutingAt(selectedChannel: ChatChannelView)
     ?? null;
 }
 
-function fallbackSubscribedChannelSummary(
-  selectedChannel: ChatChannelView,
-): ChatChannelSummary {
-  const roomRouting = resolveRoomRoutingState(selectedChannel.roomRouting);
-  const summaryCounts = resolveSelectedChannelSummaryCounts(selectedChannel);
-
-  return {
-    id: selectedChannel.id,
-    title: selectedChannel.title,
-    topic: selectedChannel.topic,
-    originSurface: selectedChannel.originSurface ?? 'chat',
-    channelKind: selectedChannel.channelKind,
-    status: selectedChannel.status,
-    unreadCount: selectedChannel.unreadCount,
-    ...summaryCounts,
-    repoPath: selectedChannel.repoPath,
-    chatCwd: selectedChannel.chatCwd,
-    runtimeWorkspaceKind: selectedChannel.runtimeWorkspaceKind ?? null,
-    runtimeWorkspaceAccess: selectedChannel.runtimeWorkspaceAccess ?? null,
-    runtimePermissionMode: selectedChannel.runtimePermissionMode ?? null,
-    lastMessageAt: selectedChannel.lastMessageAt,
-    lastActivatedAt: selectedChannel.lastActivatedAt,
-    composerMode: selectedChannel.composerMode,
-    pendingProvider: selectedChannel.pendingProvider,
-    pendingModel: selectedChannel.pendingModel,
-    pendingModelSelection: selectedChannel.pendingModelSelection ?? null,
-    roomMode: roomRouting.mode,
-    routingStatus: resolveSubscribedChannelRoutingStatus(selectedChannel),
-    lastRoutingAt: resolveSubscribedChannelLastRoutingAt(selectedChannel),
-  };
-}
-
 export function mergeChannelSummaryWithChannelView(
   currentSummary: ChatChannelSummary | undefined,
   selectedChannel: ChatChannelView,
 ): ChatChannelSummary {
-  const fallbackSummary = fallbackSubscribedChannelSummary(selectedChannel);
+  const roomRouting = resolveRoomRoutingState(selectedChannel.roomRouting);
   const summaryCounts = resolveSelectedChannelSummaryCounts(selectedChannel);
   return {
-    ...fallbackSummary,
     ...currentSummary,
     id: selectedChannel.id,
     title: selectedChannel.title,
@@ -241,20 +194,30 @@ export function mergeChannelSummaryWithChannelView(
     pendingProvider: selectedChannel.pendingProvider,
     pendingModel: selectedChannel.pendingModel,
     pendingModelSelection: selectedChannel.pendingModelSelection ?? null,
-    roomMode: resolveRoomRoutingState(selectedChannel.roomRouting).mode,
+    roomMode: roomRouting.mode,
     routingStatus: resolveSubscribedChannelRoutingStatus(selectedChannel),
     lastRoutingAt: resolveSubscribedChannelLastRoutingAt(selectedChannel),
   };
+}
+
+export function syncSubscribedChannelSummary(
+  channels: ChatChannelSummary[],
+  selectedChannel: ChatChannelView,
+): ChatChannelSummary[] {
+  return channels.map((channel) =>
+    channel.id === selectedChannel.id
+      ? mergeChannelSummaryWithChannelView(channel, selectedChannel)
+      : channel);
 }
 
 export function mergeChannelSummariesPreservingSubscribedView(input: {
   currentChannels: ChatChannelSummary[];
   nextChannels: ChatChannelSummary[];
   currentSelectedChannel: ChatChannelView | null;
-  activeSubscribedIds: Iterable<string> | Set<string>;
+  activeSubscribedIds: Iterable<string>;
   insertMissingActive?: boolean;
 }): ChatChannelSummary[] {
-  const activeIds = normalizeActiveSubscribedIdSet(input.activeSubscribedIds);
+  const activeIds = normalizeActiveSubscribedIds(input.activeSubscribedIds);
   if (activeIds.size === 0) {
     return input.nextChannels;
   }

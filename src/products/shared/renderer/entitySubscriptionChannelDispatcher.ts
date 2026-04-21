@@ -9,8 +9,8 @@ import type {
   EntitySubscriptionSnapshot,
 } from './entitySubscriptionHub.js';
 import {
-  mergeChannelSummariesPreservingSubscribedView,
   mergeParallelChatGroupsPreservingSubscribedMembership,
+  syncSubscribedChannelSummary,
 } from './activeEntityMerge.js';
 
 export interface ChannelSubscriptionState {
@@ -95,14 +95,7 @@ function mergeSubscribedChannelSummaries(
     return currentChannels;
   }
 
-  const channelId = subscriptionState.selectedChannel.id;
-  return mergeChannelSummariesPreservingSubscribedView({
-    currentChannels,
-    nextChannels: currentChannels,
-    currentSelectedChannel: subscriptionState.selectedChannel,
-    activeSubscribedIds: [channelId],
-    insertMissingActive: false,
-  });
+  return syncSubscribedChannelSummary(currentChannels, subscriptionState.selectedChannel);
 }
 
 function isCurrentSubscriptionState(

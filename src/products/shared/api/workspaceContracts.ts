@@ -328,6 +328,7 @@ export interface ChatChannelState {
 }
 
 export interface ChatChannelView extends ChatChannelState {
+  assignedParticipants?: ChatChannelParticipant[];
   assignedCats: ChatChannelCat[];
 }
 
