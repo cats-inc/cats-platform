@@ -597,38 +597,132 @@
   gap: 6px;
 }
 
-.botBindingList {
+/* ── Telegram sub-card (single-binding UX) ───────────────────────────
+ * Two states: empty (Connect CTA) → opens TelegramConnectDialog, or
+ * connected (binding summary + disconnect). Shares pill / fieldLabel /
+ * button classes with the rest of the detail card.
+ */
+
+.catsTelegramEmpty {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  margin-bottom: 10px;
+  align-items: flex-start;
+  gap: 8px;
 }
 
-.botBindingItem {
+.catsTelegramConnected {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.catsTelegramBinding {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.catsTelegramBindingHeader {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
-  padding: 6px 8px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--panel);
-  font-size: 0.78rem;
 }
 
-.botBindingForm {
+.catsTelegramBindingHeader strong {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+/* Inline delete icon button: 24×24 square with a 14×14 × glyph
+ * centred. Scoped class (not `.chromeButton`) so the sidebar's 28×28
+ * icon-button tan-hover rules do not leak onto text-adjacent × buttons
+ * in the detail card (used by Telegram disconnect + memory row delete). */
+.catsInlineDeleteButton {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.catsInlineDeleteButton:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--danger, #d04040) 10%, transparent);
+  color: var(--danger, #d04040);
+}
+
+.catsInlineDeleteButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.catsTelegramHint {
+  margin: 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+
+/* ── Cats dialog (shared shell for Telegram + Memory editors) ────────
+ * Same modal pattern as AvatarCropDialog (fixed overlay + centered
+ * panel). Reuses the confirmFadeIn/confirmSlideIn keyframes defined in
+ * design/components/confirm-dialog.css.
+ */
+.catsDialogOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.5);
+  animation: confirmFadeIn 0.15s ease-out;
+}
+
+.catsDialog {
+  width: min(420px, calc(100vw - 48px));
+  padding: 24px;
+  border-radius: 16px;
+  background: var(--panel);
+  box-shadow: var(--shadow-sheet);
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 14px;
+  animation: confirmSlideIn 0.15s ease-out;
+}
+
+.catsDialogTitle {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.catsDialogActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+/* Memory sub-section body: list (if any) + Add memory button stacked
+ * with a consistent gap. Matches `.catsTelegramEmpty`'s flex column. */
+.catsMemorySection {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
 }
 
 .memoryList {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  margin-bottom: 10px;
   max-height: 200px;
   overflow-y: auto;
+  align-self: stretch;
 }
 
 .memoryItem {
@@ -640,12 +734,6 @@
   border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 0.78rem;
-}
-
-.memoryForm {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
 }
 
 .recentCatDot {

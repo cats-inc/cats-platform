@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from 'react';
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 
 import type { AppShellPayload } from '../../../api/workspaceContracts.js';
 import type {
@@ -14,7 +14,9 @@ import {
   isMemoryBusy,
   type WorkspaceBusyState,
 } from '../../../../../shared/workspaceBusy.js';
-import { MEMORY_CATEGORIES, SKILL_PROFILES, formatTransportTimestamp } from './viewSupport.js';
+import { MemoryEditorDialog } from './MemoryEditorDialog.js';
+import { TelegramConnectDialog } from './TelegramConnectDialog.js';
+import { SKILL_PROFILES, formatTransportTimestamp } from './viewSupport.js';
 
 export interface SettingsCatsDetailPanelRegistryController {
   botForm: BotFormState;
@@ -87,6 +89,34 @@ export function SettingsCatsDetailPanelContent({
   ) ?? [];
   const canBindTelegramBot = cat.status === 'active'
     && hasPlatformSurface(cat.products, 'chat', { fallback: defaultCatProducts() });
+
+  // Dialog is opened from the empty-state button; it closes itself when
+  // the create succeeds (catBindings.length transitions from 0 → >0) or
+  // when the user cancels / hits Escape / clicks the overlay.
+  const [telegramDialogOpen, setTelegramDialogOpen] = useState(false);
+  useEffect(() => {
+    if (catBindings.length > 0) setTelegramDialogOpen(false);
+  }, [catBindings.length]);
+  useEffect(() => {
+    setTelegramDialogOpen(false);
+  }, [cat.id]);
+
+  // Memory dialog closes on successful add — the controller's addMemory
+  // resolves to void and catches errors internally, so we detect
+  // success by watching catMemory.length increase while the dialog is
+  // open (unlike Telegram's 0→1 transition, memory grows monotonically).
+  const [memoryDialogOpen, setMemoryDialogOpen] = useState(false);
+  const prevMemoryLenRef = useRef(catMemory.length);
+  useEffect(() => {
+    const prev = prevMemoryLenRef.current;
+    if (memoryDialogOpen && catMemory.length > prev) {
+      setMemoryDialogOpen(false);
+    }
+    prevMemoryLenRef.current = catMemory.length;
+  }, [memoryDialogOpen, catMemory.length]);
+  useEffect(() => {
+    setMemoryDialogOpen(false);
+  }, [cat.id]);
 
   return (
     <>
@@ -162,135 +192,86 @@ export function SettingsCatsDetailPanelContent({
       ) : null}
 
       {shouldRender('telegram') ? (
-        <div className="catDetailSection">
-          <p className="sectionLabel">Telegram Bot</p>
-        {catBindings.length > 0 ? (
-          <div className="botBindingList">
-            {catBindings.map((binding) => (
-              <div key={binding.id} className="botBindingItem">
-                <div>
-                  <strong>@{binding.botName}</strong>
-                  <span className="statusChip statusChipReady" style={{ marginLeft: 8 }}>
-                    {binding.status}
-                  </span>
-                  <span
-                    className={`statusChip ${binding.inboundMode === 'polling' ? 'statusChipMuted' : 'statusChipPending'}`}
-                    style={{ marginLeft: 4 }}
-                  >
-                    {binding.inboundMode}
-                  </span>
-                  <div style={{ marginTop: 6, opacity: 0.7 }}>
-                    {binding.inboundMode === 'webhook' ? (
-                      <div>Webhook: {binding.webhookPath}</div>
-                    ) : null}
-                    <div>Room mode: {binding.roomMode}</div>
-                    <div>
-                      Token {binding.hasBotToken ? 'configured' : 'missing'}
-                      {binding.inboundMode === 'webhook' ? (
-                        <>{' · '}Secret {binding.hasWebhookSecret ? 'configured' : 'missing'}</>
-                      ) : null}
-                    </div>
-                    {catBindingDiagnostics
-                      .filter((diagnostic) => diagnostic.bindingId === binding.id)
-                      .slice(0, 1)
-                      .map((diagnostic) => (
-                        <div key={diagnostic.conversationId}>
-                          Inbox {diagnostic.telegramChatId}
-                          {' · '}
-                          Room {diagnostic.linkedRoomId ?? 'pending'}
-                          {' · '}
-                          Last inbound {formatTransportTimestamp(diagnostic.lastInboundAt)}
-                        </div>
-                      ))}
+        catBindings.length > 0 ? (
+          // Connected view. One cat currently supports one bot; the
+          // `.map()` is defensive in case the cap ever changes.
+          <div className="catsTelegramConnected">
+            {catBindings.map((binding) => {
+              const diagnostic = catBindingDiagnostics.find(
+                (entry) => entry.bindingId === binding.id,
+              );
+              return (
+                <div key={binding.id} className="catsTelegramBinding">
+                  <div className="catsTelegramBindingHeader">
+                    <strong>@{binding.botName}</strong>
+                    <span
+                      className={`statusChip ${binding.status === 'active' ? 'statusChipReady' : 'statusChipMuted'}`}
+                    >
+                      {binding.status === 'active' ? 'Active' : 'Disabled'}
+                    </span>
+                    <button
+                      type="button"
+                      className="catsInlineDeleteButton"
+                      style={{ marginLeft: 'auto' }}
+                      disabled={isBotBusy(busy, 'delete', binding.id)}
+                      onClick={() => void onDeleteBinding(binding.id)}
+                      aria-label="Disconnect Telegram"
+                      data-tooltip="Disconnect"
+                    >
+                      <svg
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                      </svg>
+                    </button>
                   </div>
+                  <p className="catsTelegramHint">
+                    {binding.inboundMode === 'polling' ? 'Polling' : 'Webhook'}
+                    {diagnostic?.lastInboundAt ? (
+                      <> · Last inbound {formatTransportTimestamp(diagnostic.lastInboundAt)}</>
+                    ) : null}
+                  </p>
                 </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  <button
-                    className="chromeButton"
-                    type="button"
-                    disabled={isBotBusy(busy, 'delete', binding.id)}
-                    onClick={() => void onDeleteBinding(binding.id)}
-                  >
-                    &#x2715;
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
-          <p style={{ opacity: 0.6, marginBottom: 8 }}>No Telegram bot bound yet.</p>
-        )}
-        {catBindings.length > 0 && catBindingDiagnostics.length === 0 ? (
-          <p style={{ opacity: 0.6, marginBottom: 8 }}>
-            No webhook traffic has been recorded for this cat yet.
-          </p>
-        ) : null}
-        {catBindings.length === 0 ? (
-          <div className="botBindingForm">
-            <input
-              className="textInput"
-              placeholder="Bot username (e.g. my_cat_bot)"
-              value={botForm.botName}
-              onChange={(event) => setBotForm({ ...botForm, botName: event.target.value })}
-            />
-            <input
-              className="textInput"
-              placeholder="Bot token"
-              type="password"
-              value={botForm.botToken}
-              onChange={(event) => setBotForm({ ...botForm, botToken: event.target.value })}
-            />
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <label style={{ opacity: 0.8, fontSize: 12 }}>Mode:</label>
-              <button
-                type="button"
-                className={`chromeButton${botForm.inboundMode === 'polling' ? ' chromeButtonActive' : ''}`}
-                onClick={() => setBotForm({ ...botForm, inboundMode: 'polling' })}
-                style={{ fontSize: 11 }}
-              >
-                Polling
-              </button>
-              <button
-                type="button"
-                className={`chromeButton${botForm.inboundMode === 'webhook' ? ' chromeButtonActive' : ''}`}
-                onClick={() => setBotForm({ ...botForm, inboundMode: 'webhook' })}
-                style={{ fontSize: 11 }}
-              >
-                Webhook
-              </button>
-            </div>
-            {botForm.inboundMode === 'webhook' ? (
-              <input
-                className="textInput"
-                placeholder="Webhook secret (optional)"
-                value={botForm.webhookSecret}
-                onChange={(event) => setBotForm({ ...botForm, webhookSecret: event.target.value })}
-              />
-            ) : null}
+          <div className="catsTelegramEmpty">
             <button
-              className="primaryButton"
               type="button"
-              disabled={!botForm.botName.trim() || isBotBusy(busy, 'create') || !canBindTelegramBot}
-              onClick={() => void onCreateBinding(cat.id)}
+              className="primaryButton"
+              disabled={!canBindTelegramBot}
+              onClick={() => setTelegramDialogOpen(true)}
             >
-              {isBotBusy(busy, 'create')
-                ? 'Creating...'
-                : canBindTelegramBot
-                  ? 'Add Telegram Bot'
-                  : 'Unavailable for archived/non-chat cats'}
+              Connect Telegram
             </button>
+            {!canBindTelegramBot ? (
+              <p className="catsTelegramHint">Unavailable for archived or non-chat cats.</p>
+            ) : null}
           </div>
-        ) : (
-          <p style={{ opacity: 0.6, marginBottom: 8 }}>
-            This Cat already has a Telegram bot. Remove it first if you want to bind another one.
-            </p>
-          )}
-        </div>
+        )
+      ) : null}
+
+      {telegramDialogOpen ? (
+        <TelegramConnectDialog
+          botForm={botForm}
+          setBotForm={setBotForm}
+          busyCreating={isBotBusy(busy, 'create')}
+          onSubmit={() => void onCreateBinding(cat.id)}
+          onClose={() => setTelegramDialogOpen(false)}
+        />
       ) : null}
 
       {shouldRender('memory') ? (
-        <div className="catDetailSection">
-          <p className="sectionLabel">Memory ({memoryLoading ? '...' : catMemory.length})</p>
+        <div className="catsMemorySection">
           {catMemory.length > 0 ? (
             <div className="memoryList">
               {catMemory.map((memoryRecord) => (
@@ -302,40 +283,26 @@ export function SettingsCatsDetailPanelContent({
                 />
               ))}
             </div>
-          ) : !memoryLoading ? (
-            <p style={{ opacity: 0.6, marginBottom: 8 }}>No memory records yet.</p>
           ) : null}
-          <div className="memoryForm">
-            <select
-              className="textInput"
-              value={memoryForm.category}
-              onChange={(event) =>
-                setMemoryForm({ ...memoryForm, category: event.target.value })}
-            >
-              {MEMORY_CATEGORIES.map((category) => (
-                <option key={category} value={category}>
-                  {category}
-                </option>
-              ))}
-            </select>
-            <textarea
-              className="textInput"
-              rows={2}
-              placeholder="Memory content..."
-              value={memoryForm.content}
-              onChange={(event) =>
-                setMemoryForm({ ...memoryForm, content: event.target.value })}
-            />
-            <button
-              className="primaryButton"
-              type="button"
-              disabled={!memoryForm.content.trim() || isMemoryBusy(busy, 'create')}
-              onClick={() => void addMemory(cat.id)}
-            >
-              {isMemoryBusy(busy, 'create') ? 'Saving...' : 'Add Memory'}
-            </button>
-          </div>
+          <button
+            type="button"
+            className="primaryButton"
+            disabled={isMemoryBusy(busy, 'create')}
+            onClick={() => setMemoryDialogOpen(true)}
+          >
+            Add memory
+          </button>
         </div>
+      ) : null}
+
+      {memoryDialogOpen ? (
+        <MemoryEditorDialog
+          memoryForm={memoryForm}
+          setMemoryForm={setMemoryForm}
+          busyCreating={isMemoryBusy(busy, 'create')}
+          onSubmit={() => void addMemory(cat.id)}
+          onClose={() => setMemoryDialogOpen(false)}
+        />
       ) : null}
     </>
   );
@@ -360,12 +327,25 @@ function SettingsCatsMemoryRow({
         </span>
       </div>
       <button
-        className="chromeButton"
+        className="catsInlineDeleteButton"
         type="button"
         disabled={isMemoryBusy(busy, 'delete', memoryRecord.id)}
         onClick={onDelete}
+        aria-label="Delete memory"
       >
-        &#x2715;
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <line x1="18" y1="6" x2="6" y2="18" />
+          <line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
       </button>
     </div>
   );

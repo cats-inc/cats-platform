@@ -49,8 +49,6 @@ guide, and a dedupe pass on colliding CSS.
   `SettingsTextarea` remain **out of scope**. Controls stay as bare HTML
   elements styled by existing classes (`.textInput`, `.toggleRow`,
   `.primaryButton`, `.secondaryButton`).
-- No `<SettingsSubSection>` primitive shipped. Card-in-card is not
-  institutionalized until an actual page proves the shape.
 - No changes outside Settings. Chat, Work, Code main surfaces are not
   migrated by this SPEC.
 - No runtime / API / data behavior changes. This SPEC is visual-structural
@@ -94,10 +92,13 @@ composition primitives.
 
 ### Functional Requirements
 
-- **FR-1**: Six React primitives live under
+- **FR-1**: Seven React primitives live under
   `src/design/components/settings/`:
-  `<SettingsSection>`, `<SettingsSectionHeader>`, `<SettingsOptionRow>`,
+  `<SettingsSection>`, `<SettingsSubSection>`,
+  `<SettingsSectionHeader>`, `<SettingsOptionRow>`,
   `<SettingsActionBar>`, `<SettingsStatusChip>`, `<SettingsDangerZone>`.
+  `<SettingsSubSection>` was promoted in Phase 4.2 after My Cats proved
+  the card-in-card pattern (5+ nested sub-cards per detail view).
 - **FR-2**: Each primitive renders a documented CSS class contract
   (see *Class contract* below) and consumes Settings-scoped semantic
   tokens.
@@ -155,6 +156,7 @@ src/design/components/settings/
   settings-tokens.css           — Settings-scoped semantic tokens
   settings.css                  — class contract (BEM-ish naming)
   SettingsSection.tsx
+  SettingsSubSection.tsx
   SettingsSectionHeader.tsx
   SettingsOptionRow.tsx
   SettingsActionBar.tsx
@@ -193,16 +195,35 @@ interface SettingsSectionCommonProps {
 
 // SettingsSectionHeader — the canonical h2 treatment.
 interface SettingsSectionHeaderProps {
-  title: string;                 // h2 text, sentence case
+  // ReactNode (not string) so callers can inline tags/badges alongside
+  // the title text (e.g. Boss / Archived pills on My Cats' detail
+  // header). Plain-string callers continue to work unchanged.
+  title: ReactNode;
   eyebrow?: string;              // free-form string; CSS applies UPPERCASE
   status?: ReactNode;            // typically a <SettingsStatusChip/>
   description?: ReactNode;       // optional subtitle rendered below h2
   /**
    * If true, renders a smaller h3 instead of h2.
-   * Reserved for nested sections (card-in-card); not used in
-   * Phase 1 but scaffolded so we do not need a prop rename later.
+   * Reserved for nested sections (card-in-card); used inside
+   * <SettingsSubSection> so sub-card titles do not compete with
+   * the parent section's h2.
    */
   nested?: boolean;
+}
+
+// SettingsSubSection — inner card for grouping related fields inside
+// a <SettingsSection>. Header is required unless `headerless` is set
+// (same "every section has a header" contract as SettingsSection).
+// The parent decides layout: a grid in <SettingsSection> places
+// sub-sections in columns, a column-flex stack stacks them.
+type SettingsSubSectionProps =
+  | (SettingsSubSectionCommonProps & { header: ReactElement; headerless?: false })
+  | (SettingsSubSectionCommonProps & { headerless: true; header?: never });
+
+interface SettingsSubSectionCommonProps {
+  children: ReactNode;
+  className?: string;            // escape hatch (e.g. product-local bg tint)
+  id?: string;
 }
 
 // SettingsOptionRow — a single setting row.
@@ -301,6 +322,7 @@ with the existing `.settings*` classes during migration. Each primitive
 renders the classes below.
 
 - `<SettingsSection>` → `.settings-section[ data-variant="form"? ]`
+- `<SettingsSubSection>` → `.settings-sub-section`
 - `<SettingsSectionHeader>` →
   `.settings-section-header`
   - `.settings-section-header__eyebrow` (applies `text-transform: uppercase`
@@ -466,9 +488,12 @@ SPEC.
   `--radius-lg` token under `src/design/` for reuse by non-Settings
   components? Proposal: keep Settings-scoped for now; promote when a
   second surface needs the same scale.
-- [ ] **`<SettingsSubSection>` timing** — Do any Phase 3 pages
-  (Desktop / Chat / Runtime / Data) genuinely want a nested card, or
-  can they all flatten to one level? Revisit after Phase 3.
+- [x] **`<SettingsSubSection>` timing** — Resolved in Phase 4.2.
+  Phase 3 pages all flattened to one level; My Cats proved the nested
+  pattern (identity / AI provider / telegram / memory sub-cards in a
+  2-column grid), at which point the primitive was promoted. Profile
+  card in General still uses the legacy `.settings-sub-card` bare
+  div; it can migrate to `<SettingsSubSection>` in a later pass.
 - [ ] **Barrel vs per-file imports** — `index.tsx` barrel is convenient
   but harder to tree-shake. Proposal: ship the barrel; measure bundle
   cost at the end of migration.

@@ -188,16 +188,45 @@ SPEC-073 update before widening the API.
       - Form fields continue to use `.fieldLabel` + `.textInput`
         classes inside `<SettingsOptionRow control={…}>`
       - Owner review before commit
-- [ ] **4.2** Migrate `src/products/shared/renderer/components/settings-cats/SettingsCats.tsx`
+- [x] **4.2** Migrate `src/products/shared/renderer/components/settings-cats/SettingsCats.tsx`
       and its sub-components:
-      - `SettingsCatsRegistry.tsx`
-      - `SettingsCatsDetailPanel.tsx`
-      - `SettingsCatsDetailPanelContent.tsx`
-      - `SettingsCatsCreateForm.tsx`
-      - `SettingsCatsTransportPanel.tsx`
-      - Confirm that importing from `src/design/components/settings/`
-        from `products/shared/` does not violate any layer rule
-        (ADR-035 / ADR-072 both explicitly allow it)
+      - [x] Promoted `<SettingsSubSection>` primitive + SPEC-073 update
+      - [x] Outer `.catsDetailCard` → `<SettingsSection>` +
+            `<SettingsSectionHeader>` + `<SettingsActionBar>`
+      - [x] Identity / AI Provider / Telegram Bot / Memory sub-cards
+            (create + view, where applicable) →
+            `<SettingsSubSection header={<SettingsSectionHeader title
+            nested />}>` with real enforced titles. Memory title carries
+            a loading-aware count badge.
+      - [x] Dropped `.catsDetailCard .sectionLabel` and
+            `.catsDetailCard .fieldLabel > span:first-child` product
+            typography overrides so canonical Settings-scoped sizes apply
+            (0.85rem/--text field labels, 0.73rem/0.04em sectionLabels,
+            matching General Profile)
+      - [x] `SettingsCatsDetailPanelContent.tsx` — stripped outer
+            `<div className="catDetailSection"><p className="sectionLabel">`
+            wrappers for the telegram + memory branches (outer
+            `<SettingsSubSection>` now owns the header + card chrome).
+            rename / makeBoss / skill branches left alone — they only
+            render from the vestigial `SettingsCatsDetailPanel` flow.
+      - [x] `SettingsCatsTransportPanel.tsx` — replaced
+            `.contentCardHeader` + `.catDetailPanel` + 4×
+            `.catDetailSection` with `<SettingsSectionHeader>` +
+            `<SettingsSubSection>`s (Overview / Ingress / Delivery /
+            Bindings & dedupe, each with nested h3). Inline hint `<p>`s
+            with `style={{ opacity: 0.7 }}` replaced by a
+            `.catsTransportHint` class routed through semantic tokens.
+      - [x] `telegramError` inline `<p className="feedbackText">` removed
+            (SPEC-073 forbids inline feedback in Settings); relayed via
+            `toastFeedback` from `SettingsCats.tsx` via
+            `useEffect(telegramError)`.
+      - [ ] `SettingsCatsRegistry.tsx`, `SettingsCatsDetailPanel.tsx`,
+            `SettingsCatsCreateForm.tsx` — vestigial callers no longer in
+            the current `/settings/cats` render path; leave for the
+            Phase 4.3 audit to decide whether to delete or migrate.
+      - Confirmed that `products/shared/` importing from
+        `src/design/components/settings/` works (ADR-035 / ADR-072 both
+        explicitly allow it)
       - Owner review before commit
 - [ ] **4.3** Post-Phase-4 audit:
       - Grep for remaining direct uses of `.contentCard`,
@@ -345,6 +374,7 @@ duplicated pattern with bare CSS classes where a primitive exists.
 | 2026-04-21 | Phase 3.3 follow-up — Runtime page-local rules (`.settingsRuntime*`) moved out of `platform-setup.css` into `platform-settings.css` and routed through Settings tokens; removes the `.setupRuntimeList margin: 0` that was collapsing the section row-gap against Ready providers / Need attention |
 | 2026-04-21 | Phase 1.7 closed (no consolidation) — `.sectionLabel` and `.eyebrow` are distinct patterns, not duplicates. Settings-scoped canonical already exists as `.settings-section-header__eyebrow`. Remaining Settings `.sectionLabel` callsites migrate through Phase 4 |
 | 2026-04-21 | Phase 3.5 recorded — `PlatformSettingsCode.tsx` / `PlatformSettingsWork.tsx` (created after Phase 3 list was drafted, via upstream split-conversation-behavior commit) are primitive-consuming from birth via shared sections. Orphan `PlatformSettingsProductPlaceholder.tsx` deleted. |
+| 2026-04-21 | Phase 4.2 complete — full `/settings/cats` surface enforced. `<SettingsSubSection>` primitive promoted and SPEC-073 updated (open question resolved, non-goal flipped). Outer `.catsDetailCard` migrated to `<SettingsSection>` + `<SettingsSectionHeader>` with Boss/Archived tags in the title slot and Revert/Save/More in a `<SettingsActionBar>` via the status slot. All 4 content sub-cards (Identity, AI Provider, Telegram Bot, Memory) get enforced nested h3 titles; Memory title carries a loading-aware count badge. Transport panel rebuilt on primitives (Overview / Ingress / Delivery / Bindings & dedupe each `<SettingsSubSection>`); inline error feedback relayed to toast per SPEC-073 FR feedback rule. Dropped two product-level typography overrides under `.catsDetailCard` (field label 0.78rem/--muted and sectionLabel 0.7rem/0.08em drifts) so canonical sizes apply (0.85rem/--text field labels, 0.73rem/0.04em sectionLabels) — My Cats typography now matches General Profile. Title prop on `<SettingsSectionHeader>` widened to `ReactNode` so inline pills/badges can render. |
 
 ---
 

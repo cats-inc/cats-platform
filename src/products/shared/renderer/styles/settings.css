@@ -61,6 +61,18 @@
   min-width: 0;
 }
 
+/* Each column stacks its own sub-sections. Left column carries
+ * Identity → Telegram → Skill → Memory; right column carries AI
+ * Provider (and only AI Provider) so provider fields stay long and
+ * legible rather than fighting for horizontal space with short
+ * identity / skill / telegram cards. */
+.catsDetailColumn {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+
 .catsDetailBodyReadOnly {
   opacity: 0.75;
 }
@@ -390,26 +402,40 @@
   padding: 18px 22px;
 }
 
-.catsDetailHeader {
-  display: flex;
-  align-items: center;
+/* The primitive header ships as flex w/ gap var(--space-2) but no
+ * justify-content / border-bottom / padding rhythm by default. My Cats'
+ * detail card ships with a visible divider under the header and slightly
+ * more breathing room, so we re-apply that here on top of the primitive.
+ *
+ * `>` scopes this to the OUTER detail-card header only; the
+ * `<SettingsSubSection>` sub-cards inside each have their own nested
+ * `<header class="settings-section-header">` and should NOT inherit the
+ * divider / extra spacing (they sit as tinted sub-cards, not ruled rows). */
+.catsDetailCard > .settings-section-header {
+  justify-content: space-between;
   gap: 10px;
   padding-bottom: 10px;
   margin-bottom: 14px;
   border-bottom: 1px solid var(--border);
-  justify-content: space-between;
 }
 
-.catsDetailHeaderActions {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+/* The first body (create div or view fieldset) sits directly after the
+ * header; the header owns the gap via margin-bottom, so cancel the
+ * default `.settings-section > * + *` top margin here. */
+.catsDetailCard > .catsDetailBody {
+  margin-top: 0;
 }
 
-.catsDetailHeader h2 {
-  margin: 0;
+/* Page-like title: larger than the standard 1.1rem section title
+ * because the detail card functions as a mini page within the
+ * /settings/cats view. The inline flex layout preserves space for the
+ * Boss / Archived tags that render alongside the cat name.
+ *
+ * `:not([data-nested])` scopes this to the OUTER detail card's h2 only,
+ * so the nested h3s inside Identity / AI Provider / Telegram / Memory
+ * sub-sections stay at the canonical `--settings-subtitle-size` (1rem). */
+.catsDetailCard .settings-section-header__title:not([data-nested]) {
   font-size: 1.3rem;
-  font-weight: 600;
   letter-spacing: -0.01em;
   display: flex;
   align-items: center;
@@ -452,18 +478,16 @@
 .catsDetailCard .providerCatalogHint {
   display: none;
 }
-
-.catsDetailCard .sectionLabel {
-  font-size: 0.7rem;
-  letter-spacing: 0.08em;
-  margin: 0 0 6px;
-}
-
-.catsDetailCard .fieldLabel > span:first-child,
-.catsDetailCard label > span:first-child {
-  font-size: 0.78rem;
-  color: var(--muted);
-}
+/* Removed: `.catsDetailCard .sectionLabel` (0.7rem / 0.08em) and
+ * `.catsDetailCard .fieldLabel > span:first-child` (0.78rem --muted)
+ * overrides. Both drifted from canonical — Settings-scoped rules in
+ * design/components/settings/settings.css already apply
+ * `.settings-section .fieldLabel > span:not(.fieldHint)` (0.85rem
+ * --text weight 500) and the canonical `.sectionLabel` from
+ * sidebar-chrome.css (0.73rem / 0.04em). The product overrides made
+ * "Name" / "Provider Instance" / "AI Provider" render smaller and
+ * grayer than the matching labels in General Settings' Profile card;
+ * removing them brings the typography in line with the reference. */
 
 .catsCreateEmbedded {
   display: block;
@@ -572,46 +596,6 @@
   gap: 10px;
   justify-content: flex-end;
   margin-top: 4px;
-}
-
-.catsTransportDetails {
-  padding: 0;
-}
-
-.catsTransportDetails > summary {
-  list-style: none;
-  cursor: pointer;
-  padding: 14px 16px;
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  border-radius: inherit;
-}
-
-.catsTransportDetails > summary::-webkit-details-marker {
-  display: none;
-}
-
-.catsTransportDetails > summary::before {
-  content: '▸';
-  color: var(--muted);
-  font-size: 0.8rem;
-  transition: transform 0.15s ease;
-  display: inline-block;
-  width: 0.9em;
-}
-
-.catsTransportDetails[open] > summary::before {
-  transform: rotate(90deg);
-}
-
-.catsTransportSummaryHint {
-  color: var(--muted);
-  font-size: 0.82rem;
-}
-
-.catsTransportBody {
-  padding: 0 16px 16px;
 }
 
 .catCard {

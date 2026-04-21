@@ -151,14 +151,32 @@
   align-items: center;
 }
 
-/* ─── Sub-card ────────────────────────────────────────────────────────── */
-/* Inner card with a tinted background, used to group a coherent set of
- * fields inside a section (e.g. avatar + name on the Profile card).
- * Matches the visual weight of My Cats' `.catCard` — same warm tint,
- * 14px padding/radius — but tokenized so future palette changes
- * propagate. Constrained to roughly half the section width so the
- * grouped fields read as a compact identity block rather than
- * stretching across the whole card. */
+/* ─── Sub-section ─────────────────────────────────────────────────────── */
+/* Rendered by <SettingsSubSection> — an inner card with a tinted
+ * background, used to group coherent fields inside a <SettingsSection>
+ * (identity block, AI provider, telegram binding, memory list, etc.).
+ * Tokenized via --settings-sub-surface so palette changes propagate.
+ * No intrinsic width: the parent section (or a grid inside it) decides
+ * how sub-sections lay out, so the same primitive serves both
+ * single-sub-section cards (Profile) and 2-column grids (My Cats).
+ */
+.settings-sub-section {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px 18px;
+  border: 1px solid var(--settings-border);
+  border-radius: 14px;
+  background: var(--settings-sub-surface);
+  min-width: 0;
+}
+
+/* ─── Sub-card (legacy; migrate to .settings-sub-section) ─────────────── */
+/* Kept for General's Profile card until it migrates. Same body style as
+ * .settings-sub-section plus the historical 50%-width clamp that keeps
+ * a single sub-card from stretching across its parent section. When
+ * Profile migrates, it can opt into the clamp via a local class or
+ * grid constraint on its parent. */
 .settings-sub-card {
   display: grid;
   gap: 10px;

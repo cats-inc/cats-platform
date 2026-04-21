@@ -1,5 +1,7 @@
 export { SettingsSection } from './SettingsSection.js';
 export type { SettingsSectionProps } from './SettingsSection.js';
+export { SettingsSubSection } from './SettingsSubSection.js';
+export type { SettingsSubSectionProps } from './SettingsSubSection.js';
 export { SettingsSectionHeader } from './SettingsSectionHeader.js';
 export type { SettingsSectionHeaderProps } from './SettingsSectionHeader.js';
 export { SettingsOptionRow } from './SettingsOptionRow.js';

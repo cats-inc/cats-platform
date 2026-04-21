@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
 
 export interface SettingsSectionHeaderProps {
-  title: string;
+  // ReactNode (not string) so callers can inline tags/badges alongside
+  // the title text (e.g. Boss / Archived pills on My Cats' detail header).
+  title: ReactNode;
   eyebrow?: string;
   status?: ReactNode;
   description?: ReactNode;

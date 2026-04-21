@@ -5,7 +5,12 @@ import type { AppShellPayload } from '../../../api/workspaceContracts.js';
 import { ConfirmDialog, useConfirmDialog } from '../../../../../design/components/ConfirmDialog.js';
 import { ProviderModelFields } from '../../../../../design/components/ProviderModelFields.js';
 import { ToastContainer, useToast } from '../../../../../design/components/Toast.js';
-import type { ProviderTargetSelection } from '../../../../../shared/providerSelection.js';
+import {
+  SettingsActionBar,
+  SettingsSection,
+  SettingsSectionHeader,
+  SettingsSubSection,
+} from '../../../../../design/components/settings/index.js';
 import { isCatBusy, type WorkspaceBusyState } from '../../../../../shared/workspaceBusy.js';
 import {
   fetchAdvancedProviderModels,
@@ -24,11 +29,7 @@ import { useSettingsCatsTelegram } from '../../hooks/useSettingsCatsTelegram.js'
 import { AvatarCropDialog } from '../../../../../design/components/AvatarCropDialog.js';
 import { SettingsCatsDetailPanelContent } from './SettingsCatsDetailPanelContent.js';
 import { SettingsCatsRegistry } from './SettingsCatsRegistry.js';
-import { SettingsCatsTransportPanel } from './SettingsCatsTransportPanel.js';
-import {
-  findNewlyCreatedActiveCat,
-  hasModelSelectionChanged,
-} from './settingsCatsSupport.js';
+import { findNewlyCreatedActiveCat } from './settingsCatsSupport.js';
 import { SKILL_PROFILES } from './viewSupport.js';
 
 export interface SettingsCatsRegistryController<TBotForm> {
@@ -142,12 +143,17 @@ export function SettingsCatsCanvas({
   } = actions;
   const {
     botBindings,
-    telegramStatus,
     telegramDiagnostics,
-    telegramLoading,
     telegramError,
-    refreshTelegramDiagnostics,
   } = useSettingsCatsTelegram(payload);
+  // The Telegram hook still fetches diagnostics (per-binding info is
+  // rendered inside each cat's Telegram sub-card); surface any fetch
+  // error via toast (SPEC-073 forbids inline feedback for Settings).
+  useEffect(() => {
+    if (telegramError) {
+      toastFeedback(telegramError);
+    }
+  }, [telegramError, toastFeedback]);
   const memoryController = useSettingsCatsMemory({
     expandedCatId,
     onBusy,
@@ -299,96 +305,30 @@ export function SettingsCatsCanvas({
     }
   };
 
-  const [nameDraft, setNameDraft] = useState<string>(selectedCat?.name ?? '');
-  const [skillDraft, setSkillDraft] = useState<string>(selectedCat?.skillProfile ?? 'chat-default');
-  const [makeBossDraft, setMakeBossDraft] = useState<boolean>(false);
-  const [providerDraft, setProviderDraft] = useState<ProviderTargetSelection>(() => ({
-    provider: selectedCat?.defaultExecutionTarget.provider ?? '',
-    instance: selectedCat?.defaultExecutionTarget.instance ?? '',
-    model: selectedCat?.defaultExecutionTarget.model ?? '',
-    modelSelection: selectedCat?.defaultModelSelection ?? null,
-  }));
-  useEffect(() => {
-    if (!selectedCat) return;
-    setNameDraft(selectedCat.name);
-    setSkillDraft(selectedCat.skillProfile ?? 'chat-default');
-    setMakeBossDraft(false);
-    setProviderDraft({
-      provider: selectedCat.defaultExecutionTarget.provider ?? '',
-      instance: selectedCat.defaultExecutionTarget.instance ?? '',
-      model: selectedCat.defaultExecutionTarget.model ?? '',
-      modelSelection: selectedCat.defaultModelSelection ?? null,
-    });
-  }, [selectedCat]);
-
-  const savedName = selectedCat?.name ?? '';
-  const savedSkill = selectedCat?.skillProfile ?? 'chat-default';
-  const savedProvider = selectedCat?.defaultExecutionTarget.provider ?? '';
-  const savedInstance = selectedCat?.defaultExecutionTarget.instance ?? '';
-  const savedModel = selectedCat?.defaultExecutionTarget.model ?? '';
-  const savedModelSelection = selectedCat?.defaultModelSelection ?? null;
-  const detailDirty = Boolean(
-    selectedCat && (
-      nameDraft.trim() !== savedName
-      || skillDraft !== savedSkill
-      || makeBossDraft
-      || providerDraft.provider !== savedProvider
-      || (providerDraft.instance ?? '') !== savedInstance
-      || (providerDraft.model ?? '') !== savedModel
-      || hasModelSelectionChanged(providerDraft.modelSelection, savedModelSelection)
-    )
-  );
   const isArchived = selectedCat?.status === 'archived';
-  const saveDisabled = !detailDirty || nameDraft.trim().length === 0 || isArchived;
-  const [savingDetail, setSavingDetail] = useState(false);
 
-  const handleSaveAll = async () => {
-    if (!selectedCat || saveDisabled) return;
-    if (makeBossDraft && payload.chat.bossCatId && payload.chat.bossCatId !== selectedCat.id) {
-      const currentBoss = payload.chat.cats.find((c) => c.id === payload.chat.bossCatId);
-      const confirmed = await confirm({
-        title: 'Change Boss Cat',
-        message: `${currentBoss?.name ?? 'Another cat'} is currently the Boss Cat. Set ${selectedCat.name} as the Boss instead?`,
-        confirmLabel: 'Confirm',
-      });
-      if (!confirmed) return;
-    }
-    setSavingDetail(true);
-    try {
-      const patch: Parameters<typeof updateCatProfile>[1] = {};
-      const trimmedName = nameDraft.trim();
-      if (trimmedName !== savedName) patch.name = trimmedName;
-      if (skillDraft !== savedSkill) patch.skillProfile = skillDraft;
-      if (makeBossDraft) patch.makeBoss = true;
-      if (providerDraft.provider !== savedProvider) patch.provider = providerDraft.provider;
-      if ((providerDraft.instance ?? '') !== savedInstance) patch.instance = providerDraft.instance || null;
-      if ((providerDraft.model ?? '') !== savedModel) patch.model = providerDraft.model || null;
-      if (hasModelSelectionChanged(providerDraft.modelSelection, savedModelSelection)) {
-        patch.modelSelection = providerDraft.modelSelection ?? null;
+  // All view-mode field edits save immediately (on change for discrete
+  // choices, on blur for free-text). No dirty tracking / Save button:
+  // each field commits through `updateCatProfile` and surfaces failure
+  // via toast. Create mode still uses the `catForm` draft (see below) —
+  // a new cat is an all-or-nothing batch with required fields.
+  const commitCatProfile = useCallback(
+    async (
+      catId: string,
+      patch: Parameters<typeof updateCatProfile>[1],
+      errorLabel: string,
+    ): Promise<boolean> => {
+      try {
+        const next = await updateCatProfile(catId, patch);
+        onPayloadUpdate(next);
+        return true;
+      } catch (error) {
+        toastFeedback(error instanceof Error ? error.message : errorLabel);
+        return false;
       }
-      const next = await updateCatProfile(selectedCat.id, patch);
-      onPayloadUpdate(next);
-      setMakeBossDraft(false);
-      toastFeedback('Saved.');
-    } catch (error) {
-      toastFeedback(error instanceof Error ? error.message : 'Failed to save.');
-    } finally {
-      setSavingDetail(false);
-    }
-  };
-
-  const handleRevert = () => {
-    if (!selectedCat) return;
-    setNameDraft(selectedCat.name);
-    setSkillDraft(selectedCat.skillProfile ?? 'chat-default');
-    setMakeBossDraft(false);
-    setProviderDraft({
-      provider: selectedCat.defaultExecutionTarget.provider ?? '',
-      instance: selectedCat.defaultExecutionTarget.instance ?? '',
-      model: selectedCat.defaultExecutionTarget.model ?? '',
-      modelSelection: selectedCat.defaultModelSelection ?? null,
-    });
-  };
+    },
+    [onPayloadUpdate, toastFeedback],
+  );
 
   const handleCreateCat = async () => {
     const next = await performCreateCat();
@@ -501,213 +441,208 @@ export function SettingsCatsCanvas({
           ) : null}
         </nav>
 
-        <section className="contentCard catsDetailCard">
-          <header className="catsDetailHeader">
-            <h2>
-              {effectiveMode === 'create' ? 'New cat' : selectedCat ? (
-                <>
-                  {selectedCat.name}
-                  {selectedCat.id === payload.chat.bossCatId ? (
-                    <span className="catsDetailBossTag">Boss</span>
-                  ) : null}
-                  {selectedCat.status === 'archived' ? (
-                    <span className="catsDetailArchivedTag">Archived</span>
-                  ) : null}
-                </>
-              ) : null}
-            </h2>
-            {effectiveMode === 'view' && selectedCat ? (
-              <div className="catsDetailHeaderActions">
-                {detailDirty ? (
-                  <button
-                    type="button"
-                    className="secondaryButton"
-                    onClick={handleRevert}
-                    disabled={savingDetail}
-                  >
-                    Revert
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  className="primaryButton"
-                  disabled={saveDisabled || savingDetail}
-                  onClick={() => void handleSaveAll()}
-                >
-                  {savingDetail ? 'Saving...' : detailDirty ? 'Save changes' : 'Saved'}
-                </button>
-                <div className="catsDetailMoreWrap" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    type="button"
-                    className="catsDetailMoreButton"
-                    onClick={() => setDetailMoreMenuOpen((v) => !v)}
-                    aria-label="More actions"
-                    aria-haspopup="menu"
-                    aria-expanded={detailMoreMenuOpen}
-                  >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
-                      <circle cx="5" cy="12" r="1.6" />
-                      <circle cx="12" cy="12" r="1.6" />
-                      <circle cx="19" cy="12" r="1.6" />
-                    </svg>
-                  </button>
-                  {detailMoreMenuOpen ? (
-                    <div className="catsDetailMoreMenu" role="menu">
-                      {selectedCat.status === 'active' ? (
-                        <button
-                          type="button"
-                          role="menuitem"
-                          disabled={isCatBusy(busy, 'archive', selectedCat.id)}
-                          onClick={() => {
-                            setDetailMoreMenuOpen(false);
-                            void onArchiveCat(selectedCat.id, selectedCat.name);
-                          }}
-                        >
-                          Archive
-                        </button>
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            role="menuitem"
-                            disabled={isCatBusy(busy, 'unarchive', selectedCat.id)}
-                            onClick={() => {
-                              setDetailMoreMenuOpen(false);
-                              void onUnarchiveCat(selectedCat.id, selectedCat.name);
-                            }}
-                          >
-                            Recover
-                          </button>
-                          <button
-                            type="button"
-                            role="menuitem"
-                            className="catsDetailMoreMenuDanger"
-                            disabled={isCatBusy(busy, 'delete', selectedCat.id)}
-                            onClick={() => {
-                              setDetailMoreMenuOpen(false);
-                              void onDeleteCat(selectedCat.id, selectedCat.name);
-                            }}
-                          >
-                            Delete
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  ) : null}
-                </div>
-              </div>
-            ) : null}
-            {effectiveMode === 'create' ? (
-              <div className="catsDetailHeaderActions">
-                {activeCatCount > 0 ? (
-                  <button
-                    type="button"
-                    className="secondaryButton"
-                    onClick={() => navigate('/settings/cats', { replace: true })}
-                    disabled={isCatBusy(busy, 'create')}
-                  >
-                    Cancel
-                  </button>
-                ) : null}
-                <button
-                  type="button"
-                  className="primaryButton"
-                  disabled={!catForm.name.trim() || !catForm.provider.trim() || !catForm.model.trim() || atCatLimit || isCatBusy(busy, 'create')}
-                  onClick={() => { void handleCreateCat(); }}
-                >
-                  {isCatBusy(busy, 'create') ? 'Saving...' : 'Save'}
-                </button>
-              </div>
-            ) : null}
-          </header>
-          {effectiveMode === 'create' ? (
-            <div className="catsDetailBody">
-              <section className="catsSubCard catsIdentityCard">
-                <div className="catsIdentityRow">
-                  <div className="catsAvatarDock">
-                    <button
-                      type="button"
-                      className={[
-                        'catAvatar',
-                        'catsIdentityAvatar',
-                        pendingCreateAvatar ? '' : 'catsIdentityAvatarPlaceholder',
-                      ].filter(Boolean).join(' ')}
-                      style={pendingCreateAvatar
-                        ? { backgroundImage: `url(${pendingCreateAvatar})`, backgroundSize: 'cover', backgroundPosition: 'center', color: 'transparent' }
-                        : undefined}
-                      onClick={() => setAvatarCropOpen(true)}
-                      aria-label={pendingCreateAvatar ? 'Change avatar' : 'Upload avatar'}
-                      data-tooltip={pendingCreateAvatar ? 'Change avatar' : 'Upload avatar'}
-                    >
-                      {pendingCreateAvatar ? '' : (catForm.name.trim() ? catInitials(catForm.name) : (
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                          <circle cx="9" cy="7" r="4" />
-                          <line x1="19" y1="8" x2="19" y2="14" />
-                          <line x1="22" y1="11" x2="16" y2="11" />
-                        </svg>
-                      ))}
-                    </button>
-                    <span className="catsAvatarCameraBadge" aria-hidden="true">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                        <circle cx="12" cy="13" r="4" />
-                      </svg>
-                    </span>
-                    {pendingCreateAvatar ? (
+        <SettingsSection
+          className="catsDetailCard"
+          header={
+            <SettingsSectionHeader
+              title={
+                effectiveMode === 'create' ? 'New cat' : selectedCat ? (
+                  <>
+                    {selectedCat.name}
+                    {selectedCat.id === payload.chat.bossCatId ? (
+                      <span className="catsDetailBossTag">Boss</span>
+                    ) : null}
+                    {selectedCat.status === 'archived' ? (
+                      <span className="catsDetailArchivedTag">Archived</span>
+                    ) : null}
+                  </>
+                ) : ''
+              }
+              status={
+                effectiveMode === 'view' && selectedCat ? (
+                  <SettingsActionBar>
+                    <div className="catsDetailMoreWrap" onClick={(e) => e.stopPropagation()}>
                       <button
                         type="button"
-                        className="catsAvatarRemoveBadge"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          setPendingCreateAvatar(null);
-                        }}
-                        aria-label="Remove avatar"
-                        data-tooltip="Remove avatar"
+                        className="catsDetailMoreButton"
+                        onClick={() => setDetailMoreMenuOpen((v) => !v)}
+                        aria-label="More actions"
+                        aria-haspopup="menu"
+                        aria-expanded={detailMoreMenuOpen}
                       >
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <line x1="18" y1="6" x2="6" y2="18" />
-                          <line x1="6" y1="6" x2="18" y2="18" />
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                          <circle cx="5" cy="12" r="1.6" />
+                          <circle cx="12" cy="12" r="1.6" />
+                          <circle cx="19" cy="12" r="1.6" />
                         </svg>
                       </button>
+                      {detailMoreMenuOpen ? (
+                        <div className="catsDetailMoreMenu" role="menu">
+                          {selectedCat.status === 'active' ? (
+                            <button
+                              type="button"
+                              role="menuitem"
+                              disabled={isCatBusy(busy, 'archive', selectedCat.id)}
+                              onClick={() => {
+                                setDetailMoreMenuOpen(false);
+                                void onArchiveCat(selectedCat.id, selectedCat.name);
+                              }}
+                            >
+                              Archive
+                            </button>
+                          ) : (
+                            <>
+                              <button
+                                type="button"
+                                role="menuitem"
+                                disabled={isCatBusy(busy, 'unarchive', selectedCat.id)}
+                                onClick={() => {
+                                  setDetailMoreMenuOpen(false);
+                                  void onUnarchiveCat(selectedCat.id, selectedCat.name);
+                                }}
+                              >
+                                Recover
+                              </button>
+                              <button
+                                type="button"
+                                role="menuitem"
+                                className="catsDetailMoreMenuDanger"
+                                disabled={isCatBusy(busy, 'delete', selectedCat.id)}
+                                onClick={() => {
+                                  setDetailMoreMenuOpen(false);
+                                  void onDeleteCat(selectedCat.id, selectedCat.name);
+                                }}
+                              >
+                                Delete
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  </SettingsActionBar>
+                ) : effectiveMode === 'create' ? (
+                  <SettingsActionBar>
+                    {activeCatCount > 0 ? (
+                      <button
+                        type="button"
+                        className="secondaryButton"
+                        onClick={() => navigate('/settings/cats', { replace: true })}
+                        disabled={isCatBusy(busy, 'create')}
+                      >
+                        Cancel
+                      </button>
                     ) : null}
-                  </div>
-                  <label className="fieldLabel fieldLabelInline">
-                    <input
-                      type="checkbox"
-                      checked={catForm.makeBoss}
-                      onChange={async (event) => {
-                        const next = event.target.checked;
-                        if (next && payload.chat.bossCatId) {
-                          const currentBoss = payload.chat.cats.find((c) => c.id === payload.chat.bossCatId);
-                          const confirmed = await confirm({
-                            title: 'Change Boss Cat',
-                            message: `${currentBoss?.name ?? 'Another cat'} is currently the Boss Cat. Set this new cat as the Boss instead?`,
-                            confirmLabel: 'Confirm',
+                    <button
+                      type="button"
+                      className="primaryButton"
+                      disabled={!catForm.name.trim() || !catForm.provider.trim() || !catForm.model.trim() || atCatLimit || isCatBusy(busy, 'create')}
+                      onClick={() => { void handleCreateCat(); }}
+                    >
+                      {isCatBusy(busy, 'create') ? 'Saving...' : 'Save'}
+                    </button>
+                  </SettingsActionBar>
+                ) : null
+              }
+            />
+          }
+        >
+          {effectiveMode === 'create' ? (
+            <div className="catsDetailBody">
+              <div className="catsDetailColumn">
+                <SettingsSubSection headerless className="catsSubCard catsIdentityCard">
+                  <div className="catsIdentityRow">
+                    <div className="fieldLabel">
+                      <span>Avatar</span>
+                      <div className="catsAvatarDock">
+                      <button
+                        type="button"
+                        className={[
+                          'catAvatar',
+                          'catsIdentityAvatar',
+                          pendingCreateAvatar ? '' : 'catsIdentityAvatarPlaceholder',
+                        ].filter(Boolean).join(' ')}
+                        style={pendingCreateAvatar
+                          ? { backgroundImage: `url(${pendingCreateAvatar})`, backgroundSize: 'cover', backgroundPosition: 'center', color: 'transparent' }
+                          : undefined}
+                        onClick={() => setAvatarCropOpen(true)}
+                        aria-label={pendingCreateAvatar ? 'Change avatar' : 'Upload avatar'}
+                        data-tooltip={pendingCreateAvatar ? 'Change avatar' : 'Upload avatar'}
+                      >
+                        {pendingCreateAvatar ? '' : (catForm.name.trim() ? catInitials(catForm.name) : (
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                            <circle cx="9" cy="7" r="4" />
+                            <line x1="19" y1="8" x2="19" y2="14" />
+                            <line x1="22" y1="11" x2="16" y2="11" />
+                          </svg>
+                        ))}
+                      </button>
+                      <span className="catsAvatarCameraBadge" aria-hidden="true">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                          <circle cx="12" cy="13" r="4" />
+                        </svg>
+                      </span>
+                      {pendingCreateAvatar ? (
+                        <button
+                          type="button"
+                          className="catsAvatarRemoveBadge"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setPendingCreateAvatar(null);
+                          }}
+                          aria-label="Remove avatar"
+                          data-tooltip="Remove avatar"
+                        >
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                        </button>
+                      ) : null}
+                      </div>
+                    </div>
+                    <label className="fieldLabel fieldLabelInline">
+                      <input
+                        type="checkbox"
+                        checked={catForm.makeBoss}
+                        onChange={async (event) => {
+                          const next = event.target.checked;
+                          if (next && payload.chat.bossCatId) {
+                            const currentBoss = payload.chat.cats.find((c) => c.id === payload.chat.bossCatId);
+                            const confirmed = await confirm({
+                              title: 'Change Boss Cat',
+                              message: `${currentBoss?.name ?? 'Another cat'} is currently the Boss Cat. Set this new cat as the Boss instead?`,
+                              confirmLabel: 'Confirm',
+                            });
+                            if (!confirmed) return;
+                          }
+                          setCatForm({
+                            ...catForm,
+                            makeBoss: next,
                           });
-                          if (!confirmed) return;
-                        }
-                        setCatForm({
-                          ...catForm,
-                          makeBoss: next,
-                        });
-                      }}
+                        }}
+                      />
+                      <span>Set as Boss Cat</span>
+                    </label>
+                  </div>
+                  <label className="fieldLabel">
+                    <span>Name</span>
+                    <input
+                      ref={createNameInputRef}
+                      className="textInput"
+                      value={catForm.name}
+                      placeholder="Cat name"
+                      onChange={(event) => setCatForm({ ...catForm, name: event.target.value })}
                     />
-                    <span>Set as Boss Cat</span>
                   </label>
-                </div>
-                <label className="fieldLabel">
-                  <span>Name</span>
-                  <input
-                    ref={createNameInputRef}
-                    className="textInput"
-                    value={catForm.name}
-                    placeholder="Cat name"
-                    onChange={(event) => setCatForm({ ...catForm, name: event.target.value })}
-                  />
-                </label>
-                <div className="fieldLabel">
-                  <span>Skill Profile</span>
+                </SettingsSubSection>
+
+                <SettingsSubSection
+                  className="catsSubCard"
+                  header={<SettingsSectionHeader title="Skill" nested />}
+                >
                   <div className="skillPills">
                     {SKILL_PROFILES.map((profile) => (
                       <button
@@ -720,37 +655,41 @@ export function SettingsCatsCanvas({
                       </button>
                     ))}
                   </div>
-                </div>
-              </section>
+                </SettingsSubSection>
+              </div>
 
-              <section className="catsSubCard">
-                <p className="sectionLabel">AI Provider</p>
-                <ProviderModelFields
-                  provider={catForm.provider}
-                  instance={catForm.instance}
-                  model={catForm.model}
-                  modelSelection={catForm.modelSelection}
-                  onTargetChange={(target) => setCatForm({
-                    ...catForm,
-                    provider: target.provider,
-                    instance: target.instance,
-                    model: target.model,
-                    modelSelection: target.modelSelection ?? null,
-                  })}
-                  fetchProviderRegistry={fetchProviderRegistry}
-                  fetchProviderModels={fetchProviderModels}
-                  fetchAdvancedProviderModels={fetchAdvancedProviderModels}
-                />
-              </section>
+              <div className="catsDetailColumn">
+                <SettingsSubSection headerless className="catsSubCard">
+                  <ProviderModelFields
+                    provider={catForm.provider}
+                    instance={catForm.instance}
+                    model={catForm.model}
+                    modelSelection={catForm.modelSelection}
+                    onTargetChange={(target) => setCatForm({
+                      ...catForm,
+                      provider: target.provider,
+                      instance: target.instance,
+                      model: target.model,
+                      modelSelection: target.modelSelection ?? null,
+                    })}
+                    fetchProviderRegistry={fetchProviderRegistry}
+                    fetchProviderModels={fetchProviderModels}
+                    fetchAdvancedProviderModels={fetchAdvancedProviderModels}
+                  />
+                </SettingsSubSection>
+              </div>
             </div>
           ) : selectedCat ? (
             <fieldset
               className={isArchived ? 'catsDetailBody catsDetailBodyReadOnly' : 'catsDetailBody'}
               disabled={isArchived}
             >
-              <section className="catsSubCard catsIdentityCard">
+              <div className="catsDetailColumn">
+              <SettingsSubSection headerless className="catsSubCard catsIdentityCard">
                 <div className="catsIdentityRow">
-                  <div className="catsAvatarDock">
+                  <div className="fieldLabel">
+                    <span>Avatar</span>
+                    <div className="catsAvatarDock">
                     <button
                       type="button"
                       className="catAvatar catsIdentityAvatar"
@@ -789,14 +728,33 @@ export function SettingsCatsCanvas({
                         </svg>
                       </button>
                     ) : null}
+                    </div>
                   </div>
                   {!isArchived && selectedCat.id !== payload.chat.bossCatId ? (
                     <label className="fieldLabel fieldLabelInline">
                       <input
                         type="checkbox"
-                        checked={makeBossDraft}
-                        onChange={(event) => {
-                          setMakeBossDraft(event.target.checked);
+                        // Always unchecked: the checkbox is a trigger, not a
+                        // stable toggle — you can only promote a cat to
+                        // Boss, not un-Boss them here (the new Boss takes
+                        // over as part of the same commit).
+                        checked={false}
+                        onChange={async (event) => {
+                          if (!event.target.checked) return;
+                          if (payload.chat.bossCatId && payload.chat.bossCatId !== selectedCat.id) {
+                            const currentBoss = payload.chat.cats.find((c) => c.id === payload.chat.bossCatId);
+                            const confirmed = await confirm({
+                              title: 'Change Boss Cat',
+                              message: `${currentBoss?.name ?? 'Another cat'} is currently the Boss Cat. Set ${selectedCat.name} as the Boss instead?`,
+                              confirmLabel: 'Confirm',
+                            });
+                            if (!confirmed) return;
+                          }
+                          await commitCatProfile(
+                            selectedCat.id,
+                            { makeBoss: true },
+                            'Failed to set Boss Cat.',
+                          );
                         }}
                       />
                       <span>Set as Boss Cat</span>
@@ -806,46 +764,66 @@ export function SettingsCatsCanvas({
                 <label className="fieldLabel">
                   <span>Name</span>
                   <input
+                    // `key` re-mounts the uncontrolled input when the
+                    // selected cat switches, picking up the new
+                    // defaultValue without a second useState.
+                    key={selectedCat.id}
                     className="textInput"
-                    value={nameDraft}
-                    onChange={(event) => setNameDraft(event.target.value)}
+                    defaultValue={selectedCat.name}
                     placeholder={selectedCat.name}
                     disabled={isArchived}
+                    onBlur={async (event) => {
+                      const next = event.currentTarget.value.trim();
+                      if (!next) {
+                        event.currentTarget.value = selectedCat.name;
+                        return;
+                      }
+                      if (next === selectedCat.name) return;
+                      const ok = await commitCatProfile(
+                        selectedCat.id,
+                        { name: next },
+                        'Failed to rename.',
+                      );
+                      if (!ok) {
+                        event.currentTarget.value = selectedCat.name;
+                      }
+                    }}
                   />
                 </label>
-                <div className="fieldLabel">
-                  <span>Skill Profile</span>
-                  <div className="skillPills">
-                    {SKILL_PROFILES.map((profile) => (
+              </SettingsSubSection>
+
+              <SettingsSubSection
+                className="catsSubCard"
+                header={<SettingsSectionHeader title="Skill" nested />}
+              >
+                <div className="skillPills">
+                  {SKILL_PROFILES.map((profile) => {
+                    const active = (selectedCat.skillProfile ?? 'chat-default') === profile.value;
+                    return (
                       <button
                         key={profile.value}
                         type="button"
-                        className={skillDraft === profile.value ? 'draftLeadPill draftLeadPillActive' : 'draftLeadPill'}
-                        onClick={() => setSkillDraft(profile.value)}
-                        disabled={isArchived}
+                        className={active ? 'draftLeadPill draftLeadPillActive' : 'draftLeadPill'}
+                        disabled={isArchived || active}
+                        onClick={() => {
+                          void commitCatProfile(
+                            selectedCat.id,
+                            { skillProfile: profile.value },
+                            'Failed to change skill profile.',
+                          );
+                        }}
                       >
                         {profile.label}
                       </button>
-                    ))}
-                  </div>
+                    );
+                  })}
                 </div>
-              </section>
+              </SettingsSubSection>
 
-              <section className="catsSubCard">
-                <p className="sectionLabel">AI Provider</p>
-                <ProviderModelFields
-                  provider={providerDraft.provider}
-                  instance={providerDraft.instance}
-                  model={providerDraft.model}
-                  modelSelection={providerDraft.modelSelection}
-                  onTargetChange={setProviderDraft}
-                  fetchProviderRegistry={fetchProviderRegistry}
-                  fetchProviderModels={fetchProviderModels}
-                  fetchAdvancedProviderModels={fetchAdvancedProviderModels}
-                />
-              </section>
-
-              <section className="catsSubCard">
+              <SettingsSubSection
+                className="catsSubCard"
+                header={<SettingsSectionHeader title="Telegram Bot" nested />}
+              >
                 <SettingsCatsDetailPanelContent
                   busy={busy}
                   botBindings={botBindings}
@@ -867,9 +845,12 @@ export function SettingsCatsCanvas({
                   confirm={confirm}
                   sections={['telegram']}
                 />
-              </section>
+              </SettingsSubSection>
 
-              <section className="catsSubCard">
+              <SettingsSubSection
+                className="catsSubCard"
+                header={<SettingsSectionHeader title="Memory" nested />}
+              >
                 <SettingsCatsDetailPanelContent
                   busy={busy}
                   botBindings={botBindings}
@@ -891,29 +872,38 @@ export function SettingsCatsCanvas({
                   confirm={confirm}
                   sections={['memory']}
                 />
-              </section>
+              </SettingsSubSection>
+              </div>
 
+              <div className="catsDetailColumn">
+                <SettingsSubSection headerless className="catsSubCard">
+                  <ProviderModelFields
+                    provider={selectedCat.defaultExecutionTarget.provider ?? ''}
+                    instance={selectedCat.defaultExecutionTarget.instance ?? ''}
+                    model={selectedCat.defaultExecutionTarget.model ?? ''}
+                    modelSelection={selectedCat.defaultModelSelection ?? null}
+                    onTargetChange={(target) => {
+                      void commitCatProfile(
+                        selectedCat.id,
+                        {
+                          provider: target.provider,
+                          instance: target.instance || null,
+                          model: target.model || null,
+                          modelSelection: target.modelSelection ?? null,
+                        },
+                        'Failed to update AI Provider.',
+                      );
+                    }}
+                    fetchProviderRegistry={fetchProviderRegistry}
+                    fetchProviderModels={fetchProviderModels}
+                    fetchAdvancedProviderModels={fetchAdvancedProviderModels}
+                  />
+                </SettingsSubSection>
+              </div>
             </fieldset>
           ) : null}
-        </section>
+        </SettingsSection>
 
-        {activeCatCount > 0 ? (
-          <details className="contentCard catsTransportDetails">
-            <summary className="catsTransportSummary">
-              <span className="sectionLabel">Transport bindings</span>
-              <span className="catsTransportSummaryHint">Telegram and other channel bindings</span>
-            </summary>
-            <div className="catsTransportBody">
-              <SettingsCatsTransportPanel
-                telegramDiagnostics={telegramDiagnostics}
-                telegramError={telegramError}
-                telegramLoading={telegramLoading}
-                telegramStatus={telegramStatus}
-                onRefresh={() => void refreshTelegramDiagnostics()}
-              />
-            </div>
-          </details>
-        ) : null}
       </div>
       <ConfirmDialog dialog={dialog} onClose={handleClose} />
       <ToastContainer toasts={toasts} />
