@@ -377,6 +377,44 @@ per-target overrides:
    projected onto each `ChatChannelView`. The contract change is
    on the create-input side only.
 
+### Why `runtimeSessionPolicy` is nested, not flattened like on `CreateChatChannelInput`
+
+The existing channel-create contract is
+`CreateChatChannelInput = CreateChatChannelInputBase & RuntimeSessionCreateContractInput`
+— a TypeScript intersection that hoists three top-level fields
+(`runtimeWorkspaceKind`, `runtimeWorkspaceAccess`,
+`runtimePermissionMode`) onto the input. That shape is correct for
+single-channel creation where "unspecified means server default".
+
+The parallel-create contract intentionally **diverges** and uses a
+nested `runtimeSessionPolicy?: RuntimeSessionPolicy | null` both at
+group level and at per-target level. The reason is that parallel
+create needs three distinct states, not two:
+
+- `undefined` — field absent; fall back one level up
+  (per-target → group → server default).
+- `null` — explicit "inherit from the next level up" (per-target
+  `null` says "use the group-level policy", group `null` says
+  "use server default"). Equivalent to `undefined` in behaviour,
+  but orchestrator-authored drafts may want to serialize intent
+  explicitly.
+- Concrete `RuntimeSessionPolicy` — use as-is for that scope.
+
+A flattened intersection can't cleanly distinguish these because
+the three member fields
+(`runtimeWorkspaceKind` / `runtimeWorkspaceAccess` /
+`runtimePermissionMode`) can each be individually absent or set.
+"Did this target override the whole policy?" becomes a
+multi-field check with no single authoritative field — error-prone
+for orchestrator authors and the state-model consumer alike.
+
+The state-model consumer (§ Surfaces Affected) converts each
+resolved per-target `RuntimeSessionPolicy` back into the flattened
+`RuntimeSessionCreateContractInput` shape when calling the
+existing per-channel create path, so the per-channel wire is
+unchanged. Only the parallel-group create envelope carries the
+nested shape.
+
 This contract change is in scope for **PLAN-070 Phase 1** because
 no Phase 2 UI work can land usefully without it. Once the contract
 exists with sane defaults (group-level field present, per-target
@@ -455,14 +493,33 @@ Renderer:
 Frozen API contract (per ADR-077, this is in-scope for Phase 1
 because Phase 2 cannot ship per-branch cwd / policy without it):
 
-- `src/products/chat/api/contracts.ts` — extend the `targets`
-  element type in `CreateParallelChatGroupInput` with optional
-  per-target `cwd` and `runtimeSessionPolicy`. The group-level
-  `repoPath` stays as the lead default. `ParallelChatTarget`
-  itself is a read-model export; it doesn't grow.
+- `src/products/chat/api/contracts.ts` — two coordinated extensions
+  to `CreateParallelChatGroupInput`:
+  1. **New group-level field**
+     `runtimeSessionPolicy?: RuntimeSessionPolicy | null`,
+     mirroring the existing group-level `repoPath`. This is the
+     lead default that per-target `runtimeSessionPolicy` falls back
+     to. Without this field, per-target `null` collapses to a
+     server-side default instead of inheriting the lead draft's
+     policy.
+  2. **New per-target overrides** on the `targets[]` element:
+     optional `cwd?: string | null` and
+     `runtimeSessionPolicy?: RuntimeSessionPolicy | null`.
+  `ParallelChatTarget` itself is a read-model export; it doesn't
+  grow. The `runtimeSessionPolicy` field is intentionally nested
+  (not flattened into the existing
+  `RuntimeSessionCreateContractInput` shape used by
+  `CreateChatChannelInput`) — see § Dispatch Contract ›
+  "Why `runtimeSessionPolicy` is nested" for the rationale.
 - `src/products/shared/renderer/api/chat.ts` mirrors the
-  renderer-side `CreateParallelChatGroupInput` shape; extend in
-  lock-step.
+  renderer-side `CreateParallelChatGroupInput` shape; extend
+  BOTH the group-level `runtimeSessionPolicy` and the
+  `targets[]` per-target overrides in lock-step.
+- Renderer parallel-submit path — at submit time, populate the new
+  group-level `runtimeSessionPolicy` from the lead draft's
+  `draftRuntimeSessionPolicy`. Without this wiring, the contract
+  field exists but never carries a real lead policy, and a
+  per-target `null` would collapse to server default.
 
 Product-owned API / state model (ADR-067: product APIs are
 product-owned delegates, not `src/app/server/**`):
@@ -470,18 +527,26 @@ product-owned delegates, not `src/app/server/**`):
 - `src/products/chat/api/resources/parallelChatGroupCrudRoutes.ts`
   — the product's parallel-group create route handler. It parses
   `CreateParallelChatGroupInput` and delegates to the state
-  model. Phase 1 teaches this handler to pass per-target
-  overrides through (no `null = inherit` collapse at this layer —
-  let the state model resolve).
+  model. Phase 1 teaches this handler to pass BOTH the new
+  group-level `runtimeSessionPolicy` AND the per-target
+  overrides through (no `null = inherit` collapse at this layer
+  — let the state model resolve).
 - `src/products/chat/state/model/index.ts` — the consumer that
   actually creates the group and its child channels. For each
-  target, resolve `cwd` against the group's `repoPath` and
-  `runtimeSessionPolicy` against a group-level default, then
-  forward the resolved per-channel values via the existing
-  `RuntimeSessionCreateContractInput` mix-in to each child
-  `CreateChatChannelInput`. ADR-071 validation runs per resolved
-  per-channel policy; reject the whole group create with a
-  per-target error if any child fails.
+  target:
+  - Resolve `cwd` as `target.cwd ?? group.repoPath`.
+  - Resolve `runtimeSessionPolicy` as
+    `target.runtimeSessionPolicy ?? group.runtimeSessionPolicy
+    ?? serverDefault`. Flatten the resolved policy into the
+    existing `RuntimeSessionCreateContractInput` field shape
+    (`runtimeWorkspaceKind` / `runtimeWorkspaceAccess` /
+    `runtimePermissionMode`) when building each child
+    `CreateChatChannelInput`. Per-channel wire shape is
+    unchanged — only the parallel-group envelope carries the
+    nested shape.
+  - ADR-071 validation runs per resolved per-channel policy;
+    reject the whole group create with a per-target error if
+    any child fails.
 
 Per-channel runtime dispatch:
 

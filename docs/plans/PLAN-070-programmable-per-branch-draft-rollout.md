@@ -274,13 +274,16 @@ src/products/shared/renderer/components/ChatNewChatDraft.tsx                 (co
 src/products/chat/state/**                                                   (draft hooks: return DraftParallelTarget[] with per-branch fields)
 src/products/code/state/** / src/products/work/state/**                      (matching migrations if they mirror chat state)
 
-# Frozen API contract (both declaration sites)
-src/products/chat/api/contracts.ts                                           (CreateParallelChatGroupInput.targets per-target cwd / runtimeSessionPolicy)
-src/products/shared/renderer/api/chat.ts                                     (mirror the extended input shape for the renderer client)
+# Frozen API contract (both declaration sites; both group-level AND per-target extensions)
+src/products/chat/api/contracts.ts                                           (CreateParallelChatGroupInput gets NEW group-level runtimeSessionPolicy AND per-target cwd / runtimeSessionPolicy on targets[])
+src/products/shared/renderer/api/chat.ts                                     (mirror both extensions for the renderer client)
+
+# Renderer submit path
+src/products/{chat,shared}/renderer/composerParallelDispatch.ts              (populate group-level runtimeSessionPolicy from draftRuntimeSessionPolicy at submit time)
 
 # Product-owned parallel-group create path (NOT src/app/server/**)
-src/products/chat/api/resources/parallelChatGroupCrudRoutes.ts               (route handler passes per-target overrides through)
-src/products/chat/state/model/index.ts                                       (resolve per-target cwd / runtimeSessionPolicy, forward to per-channel CreateChatChannelInput)
+src/products/chat/api/resources/parallelChatGroupCrudRoutes.ts               (route handler passes BOTH group-level runtimeSessionPolicy AND per-target overrides through)
+src/products/chat/state/model/index.ts                                       (resolve target.cwd ?? group.repoPath, target.runtimeSessionPolicy ?? group.runtimeSessionPolicy ?? server default; flatten resolved policy into per-channel RuntimeSessionCreateContractInput)
 
 # Runtime dispatch
 src/products/chat/state/runtime-dispatch/**                                  (consume ResolvedBranch at submit time)
@@ -300,6 +303,22 @@ product, not in `src/app/server/**`. A previous revision of this
 plan pointed at the wrong boundary; the correct entry points are
 the route handler in `src/products/chat/api/resources/` and the
 state model in `src/products/chat/state/model/`.
+
+Contract-extension reminder: the create contract change is **two
+coordinated edits**, not one. Both sides must land together:
+
+1. New group-level `runtimeSessionPolicy?: RuntimeSessionPolicy | null`
+   on `CreateParallelChatGroupInput` itself (mirroring the existing
+   group-level `repoPath`).
+2. New per-target `cwd?` and `runtimeSessionPolicy?` on the
+   `targets[]` element.
+
+Shipping only per-target overrides would leave every un-overridden
+branch falling back to server default instead of lead draft policy.
+See SPEC-078 § Dispatch Contract › "Why `runtimeSessionPolicy` is
+nested" for the rationale behind the nested shape (vs the flattened
+`RuntimeSessionCreateContractInput` used by
+`CreateChatChannelInput`).
 
 Phase 2 / Phase 3 surfaces will be listed when they're scheduled.
 
