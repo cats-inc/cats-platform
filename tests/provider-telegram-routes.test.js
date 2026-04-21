@@ -1768,6 +1768,7 @@ test('telegram webhook for a cat binding reuses that cat direct lane', async () 
       body: JSON.stringify({
         title: '',
         topic: 'Companion direct lane',
+        originSurface: 'chat',
         roomMode: 'direct_cat_chat',
         participantCatIds: [catId],
         defaultRecipientId: catId,
