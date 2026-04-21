@@ -409,6 +409,7 @@ export interface DraftParallelTarget {
   runtimeSessionPolicy?: RuntimeSessionPolicy | null;
   audienceKeys?: string[] | null;
   workflowShape?: DraftRoomWorkflowShape | null;
+  promptOverride?: string | null;
   attachmentsOverride?: DraftAttachmentRef[] | null;
 }
 

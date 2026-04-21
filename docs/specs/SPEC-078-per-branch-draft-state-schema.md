@@ -52,11 +52,10 @@
   field from the schema — adding a placeholder type now would
   invite premature task-contract speculation. Wired in Phase 3
   alongside the carousel task chip work that SPEC-077 reserved.
-- **Per-branch prompt override (`promptOverride`)**. Deferred to
-  Phase 3. Lands together with the carousel prompt-detach UX
-  (explicit "Detach prompt" confirm) so the schema field and the
-  authoring affordance ship in the same slice. Phase 1 / Phase 2
-  keep the "Follows lead" prompt behaviour from SPEC-077.
+- **Per-branch prompt detach UI**. Phase 3 Task 3.1 lands the
+  `promptOverride` schema / resolver / dispatch wire. The carousel
+  authoring affordance remains separate Phase 3 work: explicit
+  "Detach prompt" confirm, detached textarea editing, and re-link.
 - **Per-branch cat identity**. Cats still live in the shared draft
   pool (`draftCatIds`, `draftTemporaryParticipants`). Per-branch
   membership is expressed through `audienceKeys`, referring into
@@ -87,6 +86,7 @@ interface DraftParallelTarget {
   // ── New per-branch overrides (all nullable / optional) ───────────
   // Absolute rule: null | undefined  ⇒  inherit from lead-level field.
   //                concrete value     ⇒  detached; use as-is for this branch.
+  // Exception: promptOverride treats "" as inherit-from-lead; see invariants.
 
   /** Per-branch working directory. Lead default: draft.draftCwd. */
   cwd?: string | null;
@@ -111,6 +111,9 @@ interface DraftParallelTarget {
    */
   workflowShape?: DraftRoomWorkflowShape | null;
 
+  /** Per-branch prompt body. Lead default: draft.composerDraft; "" also inherits. */
+  promptOverride?: string | null;
+
   /**
    * Reserved for future per-branch attachment overrides. Phase 1 writes
    * nothing to this field; renderer ignores it; dispatch rejects it
@@ -119,8 +122,6 @@ interface DraftParallelTarget {
   attachmentsOverride?: AttachmentRef[] | null;
 
   // Reserved for Phase 3 (not in Phase 1 schema):
-  //   `promptOverride?: string | null`  — per-branch prompt detach, UX-
-  //     gated on "Detach prompt" confirm to avoid accidental divergence.
   //   `taskRef?: TaskRef | null`        — wired only once an upstream
   //     task model spec defines `TaskRef`. Adding either placeholder
   //     type in Phase 1 would invite premature contract speculation.
@@ -141,13 +142,20 @@ The former `DraftParallelBranchState<T>` wrapper and the derived
 renderer props have been removed; `DraftParallelTarget[]` is now the
 canonical renderer draft state.
 
+As of 2026-04-21, Phase 3 Task 3.1 has landed
+`promptOverride?: string | null` on `DraftParallelTarget`.
+`resolveBranchPrompt(...)` resolves it against `lead.composerDraft`,
+and parallel submit dispatch sends each branch's `effectivePrompt`
+through the existing `channelInputs[].body` wire. Prompt authoring UI
+is not exposed yet.
+
 The resolver module is present at
 `src/products/shared/renderer/draftBranchResolution.ts`, including
-`createDraftLeadContext`, the Phase 1 field resolvers,
+`createDraftLeadContext`, the landed field resolvers,
 `resolveBranch(...)`, and the Phase 1 rejection guard for non-null
 `attachmentsOverride`. Renderer submit resolves effective branch
-audience/workflow before first-message dispatch; the per-channel
-runtime message wire remains unchanged by design.
+prompt / audience / workflow before first-message dispatch; the
+per-channel runtime message wire remains unchanged by design.
 
 ### Lead-level draft state (unchanged)
 
@@ -160,7 +168,7 @@ The draft-shared fields stay where they are. They now act as the
 | `draftRuntimeSessionPolicy` | `DraftParallelTarget.runtimeSessionPolicy` (Phase 1) |
 | `draftAudienceKeys` | `DraftParallelTarget.audienceKeys` (Phase 1) |
 | `draftWorkflowShape` | `DraftParallelTarget.workflowShape` (Phase 1) |
-| `composerDraft` | `DraftParallelTarget.promptOverride` (Phase 3) |
+| `composerDraft` | `DraftParallelTarget.promptOverride` (Phase 3 Task 3.1) |
 | `draftFiles` | `DraftParallelTarget.attachmentsOverride` (Phase 3+, schema-reserved) |
 
 ### Lead branch is `parallelTargets[0]`
@@ -212,20 +220,21 @@ export function resolveBranchAttachments(
   target: DraftParallelTarget, lead: DraftLeadContext,
 ): File[];  // Phase 1 always returns lead.draftFiles; attachmentsOverride ignored
 
-// Aggregate: one call, one resolved branch view (Phase 1 shape)
+// Aggregate: one call, one resolved branch view
 export function resolveBranch(
   target: DraftParallelTarget, lead: DraftLeadContext,
 ): ResolvedBranch;
 
 interface ResolvedBranch {
   target: DraftParallelTarget;                          // raw target kept for provenance
-  effectivePrompt: string;                              // Phase 1: always lead.composerDraft
+  effectivePrompt: string;                              // Phase 3 Task 3.1: resolved
   effectiveCwd: string | null;                          // Phase 1: resolved
   effectiveSessionPolicy: RuntimeSessionPolicy | null;  // Phase 1: resolved
   effectiveAudienceKeys: string[];                      // Phase 1: resolved
   effectiveWorkflowShape: DraftRoomWorkflowShape;       // Phase 1: resolved
   effectiveAttachments: File[];                         // Phase 1: always lead.draftFiles
   isDetached: {
+    prompt: boolean;
     cwd: boolean;
     sessionPolicy: boolean;
     audienceKeys: boolean;
@@ -241,18 +250,14 @@ Phase 1):
 ```ts
 // Phase 3 additions to ResolvedBranch:
 //   effectiveTaskRef: TaskRef | null;
-//   isDetached.prompt: boolean;
 //
 // Phase 3 additions to the resolver suite:
-//   export function resolveBranchPrompt(...): string;
 //   export function resolveBranchTaskRef(...): TaskRef | null;
 ```
 
-Phase-1 callers MUST read the lead's prompt directly from
-`lead.composerDraft` (not through a `resolveBranchPrompt` helper that
-would exist only to return `lead.composerDraft` every time). When
-Phase 3 adds `promptOverride`, `resolveBranchPrompt` is introduced
-alongside the override and call sites migrate.
+Phase 3 Task 3.1 introduced `resolveBranchPrompt(...)` alongside
+`promptOverride`; parallel submit call sites now read
+`resolvedBranch.effectivePrompt` for each branch.
 
 The `isDetached` flags let the renderer decide, per dimension, which
 chip to show on a branch card ("Follows lead" vs the detached value).
@@ -309,10 +314,11 @@ As of 2026-04-21, Phase 2 cwd / session-policy UI has landed:
 ### Phase 3: prompt detach + taskRef + attachments
 
 1. Add `promptOverride?: string | null` to `DraftParallelTarget`.
-   Add `resolveBranchPrompt` to the resolver suite. Carousel
-   "Follows lead" prompt chip becomes clickable to detach
-   (explicit "Detach prompt" confirm); detached state enables
-   editing that branch's textarea.
+   Add `resolveBranchPrompt` to the resolver suite and dispatch
+   through `channelInputs[].body`. Landed in Phase 3 Task 3.1.
+   The remaining UI work is: carousel "Follows lead" prompt chip
+   becomes clickable to detach (explicit "Detach prompt" confirm);
+   detached state enables editing that branch's textarea.
 2. Add `taskRef?: TaskRef | null` to `DraftParallelTarget` once
    the upstream task model spec defines `TaskRef`. Add
    `resolveBranchTaskRef` to the resolver suite. Wire to the

@@ -23,6 +23,7 @@ export interface ResolvedBranch {
   effectiveWorkflowShape: DraftRoomWorkflowShape;
   effectiveAttachments: File[];
   isDetached: {
+    prompt: boolean;
     cwd: boolean;
     sessionPolicy: boolean;
     audienceKeys: boolean;
@@ -61,6 +62,15 @@ export function resolveBranchCwd(
   lead: DraftLeadContext,
 ): string | null {
   return target.cwd ?? lead.draftCwd;
+}
+
+export function resolveBranchPrompt(
+  target: DraftParallelTarget,
+  lead: DraftLeadContext,
+): string {
+  return target.promptOverride == null || target.promptOverride === ''
+    ? lead.composerDraft
+    : target.promptOverride;
 }
 
 export function resolveBranchSessionPolicy(
@@ -107,13 +117,14 @@ export function resolveBranch(
 ): ResolvedBranch {
   return {
     target,
-    effectivePrompt: lead.composerDraft,
+    effectivePrompt: resolveBranchPrompt(target, lead),
     effectiveCwd: resolveBranchCwd(target, lead),
     effectiveSessionPolicy: resolveBranchSessionPolicy(target, lead),
     effectiveAudienceKeys: resolveBranchAudienceKeys(target, lead),
     effectiveWorkflowShape: resolveBranchWorkflowShape(target, lead),
     effectiveAttachments: resolveBranchAttachments(target, lead),
     isDetached: {
+      prompt: target.promptOverride != null && target.promptOverride !== '',
       cwd: target.cwd != null,
       sessionPolicy: target.runtimeSessionPolicy != null,
       audienceKeys: target.audienceKeys != null,

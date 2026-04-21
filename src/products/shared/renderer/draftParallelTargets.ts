@@ -7,6 +7,7 @@ export interface DraftParallelTargetBranchFields {
   runtimeSessionPolicy?: RuntimeSessionPolicy | null;
   audienceKeys?: string[] | null;
   workflowShape?: DraftRoomWorkflowShape | null;
+  promptOverride?: string | null;
   attachmentsOverride?: DraftAttachmentRef[] | null;
 }
 
@@ -45,6 +46,9 @@ export function mergeDraftParallelTargetBranchFields<TTarget extends object>(
     ...(currentFields.runtimeSessionPolicy === undefined
       ? {}
       : { runtimeSessionPolicy: currentFields.runtimeSessionPolicy }),
+    ...(currentFields.promptOverride === undefined
+      ? {}
+      : { promptOverride: currentFields.promptOverride }),
     ...(currentFields.attachmentsOverride === undefined
       ? {}
       : { attachmentsOverride: currentFields.attachmentsOverride }),
@@ -117,5 +121,16 @@ export function setDraftParallelTargetRuntimeSessionPolicy<TTarget extends objec
   return updateDraftParallelTargetAt(targets, index, (target) => ({
     ...target,
     runtimeSessionPolicy,
+  }));
+}
+
+export function setDraftParallelTargetPromptOverride<TTarget extends object>(
+  targets: readonly (TTarget & DraftParallelTargetBranchFields)[],
+  index: number,
+  promptOverride: string | null,
+): Array<TTarget & DraftParallelTargetBranchFields> {
+  return updateDraftParallelTargetAt(targets, index, (target) => ({
+    ...target,
+    promptOverride,
   }));
 }

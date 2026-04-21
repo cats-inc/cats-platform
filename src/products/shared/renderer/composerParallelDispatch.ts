@@ -205,6 +205,7 @@ export async function submitNewParallelChatDraft({
         : [];
       return {
         channelId,
+        body: resolvedBranch.effectivePrompt,
         messageMetadata: recipientParticipantIds.length > 0
           ? {
               recipientParticipantIds,

@@ -272,7 +272,14 @@ order once Phase 1 lands.
 
 ### Phase 3: Detach prompt, add + wire `taskRef`, reserve `attachmentsOverride`
 
-- [ ] Task 3.1: Add `promptOverride?: string | null` to
+- Progress as of 2026-04-21:
+      Prompt override schema / resolver groundwork is landed:
+      `DraftParallelTarget.promptOverride` resolves through
+      `resolveBranchPrompt`, and renderer parallel dispatch sends
+      each branch's `effectivePrompt` through the existing
+      `channelInputs[].body` wire. No prompt authoring UI is
+      exposed yet; that remains Task 3.2.
+- [x] Task 3.1: Add `promptOverride?: string | null` to
       `DraftParallelTarget`. Add the corresponding resolution
       helper. Wire dispatch to read resolved prompt per branch.
 - [ ] Task 3.2: Prompt detach UX. Non-lead textarea in carousel

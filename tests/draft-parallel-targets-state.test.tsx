@@ -5,6 +5,7 @@ import {
   createDraftParallelTargets,
   mergeDraftParallelTargetBranchFields,
   setDraftParallelTargetCwd,
+  setDraftParallelTargetPromptOverride,
   setDraftParallelTargetRuntimeSessionPolicy,
   updateDraftParallelTargetAt,
 } from '../src/products/shared/renderer/draftParallelTargets.ts';
@@ -84,6 +85,7 @@ test('mergeDraftParallelTargetBranchFields preserves branch-scoped controls on t
         workspaceAccess: 'read_write',
         permissionMode: 'skip',
       },
+      promptOverride: 'Branch-specific prompt',
       attachmentsOverride: [{ relativePath: 'src/app.ts' }],
     }),
     {
@@ -96,6 +98,7 @@ test('mergeDraftParallelTargetBranchFields preserves branch-scoped controls on t
         workspaceAccess: 'read_write',
         permissionMode: 'skip',
       },
+      promptOverride: 'Branch-specific prompt',
       attachmentsOverride: [{ relativePath: 'src/app.ts' }],
     },
   );
@@ -137,4 +140,18 @@ test('setDraftParallelTargetRuntimeSessionPolicy writes and re-links one branch'
 
   assert.equal(relinked[0], detached[0]);
   assert.equal(relinked[1]?.runtimeSessionPolicy, null);
+});
+
+test('setDraftParallelTargetPromptOverride writes and re-links one branch', () => {
+  const targets = createDraftParallelTargets([{ id: 'lead' }, { id: 'right' }]);
+  const detached = setDraftParallelTargetPromptOverride(targets, 1, 'Branch prompt');
+
+  assert.notEqual(detached, targets);
+  assert.equal(detached[0], targets[0]);
+  assert.equal(detached[1]?.promptOverride, 'Branch prompt');
+
+  const relinked = setDraftParallelTargetPromptOverride(detached, 1, null);
+
+  assert.equal(relinked[0], detached[0]);
+  assert.equal(relinked[1]?.promptOverride, null);
 });

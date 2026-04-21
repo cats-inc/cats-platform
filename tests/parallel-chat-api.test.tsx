@@ -7,7 +7,11 @@ import {
   createParallelChatGroup,
   sendParallelChatMessage,
 } from '../src/products/shared/renderer/api/chat.ts';
-import { buildParallelChatDraftCreateInput } from '../src/products/shared/renderer/composerParallelDispatch.ts';
+import type { AppShellPayload } from '../src/products/shared/api/workspaceContracts.ts';
+import {
+  buildParallelChatDraftCreateInput,
+  submitNewParallelChatDraft,
+} from '../src/products/shared/renderer/composerParallelDispatch.ts';
 
 test('parallel chat client uses canonical parallel-chat-groups endpoints', async () => {
   const originalFetch = globalThis.fetch;
@@ -277,5 +281,104 @@ test('workspace parallel draft create input carries group-level runtime session 
     workspaceKind: 'source',
     workspaceAccess: 'read_write',
     permissionMode: 'skip',
+  });
+});
+
+test('workspace parallel submit sends branch prompt override bodies', async () => {
+  const originalFetch = globalThis.fetch;
+  const requests: Array<{ url: string; method: string; body: unknown }> = [];
+
+  globalThis.fetch = async (input, init = {}) => {
+    requests.push({
+      url: String(input),
+      method: init.method ?? 'GET',
+      body: typeof init.body === 'string' ? JSON.parse(init.body) : null,
+    });
+
+    if (String(input) === '/api/parallel-chat-groups') {
+      return new Response(JSON.stringify({
+        appShell: { chat: { selectedChannelId: 'channel-1' } },
+        group: {
+          id: 'group-1',
+          memberChannelIds: ['channel-1', 'channel-2'],
+          members: [
+            { channelId: 'channel-1' },
+            { channelId: 'channel-2' },
+          ],
+        },
+      }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+
+    return new Response(JSON.stringify({
+      appShell: {
+        chat: {
+          channels: [
+            { id: 'channel-1', routingStatus: 'idle' },
+            { id: 'channel-2', routingStatus: 'running' },
+          ],
+        },
+      },
+      groupId: 'group-1',
+      phase: 'acknowledged',
+      results: [],
+    }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  };
+
+  try {
+    await submitNewParallelChatDraft({
+      body: 'Lead prompt',
+      payload: {
+        chat: {
+          channels: [],
+          capabilities: { maxAudienceParticipants: 4 },
+        },
+      } as unknown as AppShellPayload,
+      originSurface: 'code',
+      draftCwd: null,
+      draftFiles: [],
+      draftParallelChatTargets: [
+        {
+          provider: 'claude',
+          instance: null,
+          model: 'claude-opus-4-6',
+          modelSelection: null,
+          audienceKeys: [],
+          workflowShape: 'sequential',
+        },
+        {
+          provider: 'codex',
+          instance: null,
+          model: 'gpt-5.4',
+          modelSelection: null,
+          audienceKeys: [],
+          workflowShape: 'sequential',
+          promptOverride: 'Branch prompt',
+        },
+      ],
+      buildChannelPath: (channelId) => `/code/chats/${channelId}`,
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.deepEqual(requests[1]?.body, {
+    activeChannelId: 'channel-1',
+    body: 'Lead prompt',
+    channelInputs: [
+      {
+        channelId: 'channel-1',
+        body: 'Lead prompt',
+      },
+      {
+        channelId: 'channel-2',
+        body: 'Branch prompt',
+      },
+    ],
   });
 });

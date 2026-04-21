@@ -8,6 +8,7 @@ import {
   resolveBranchAttachments,
   resolveBranchAudienceKeys,
   resolveBranchCwd,
+  resolveBranchPrompt,
   resolveBranchSessionPolicy,
   resolveBranchWorkflowShape,
   type DraftLeadContext,
@@ -74,8 +75,10 @@ test('branch resolvers inherit lead values for null and undefined overrides', ()
     runtimeSessionPolicy: null,
     audienceKeys: null,
     workflowShape: null,
+    promptOverride: null,
   });
 
+  assert.equal(resolveBranchPrompt(target, lead), lead.composerDraft);
   assert.equal(resolveBranchCwd(target, lead), lead.draftCwd);
   assert.equal(resolveBranchSessionPolicy(target, lead), leadPolicy);
   assert.deepEqual(resolveBranchAudienceKeys(target, lead), ['cat:lead', 'temp:reviewer']);
@@ -85,6 +88,7 @@ test('branch resolvers inherit lead values for null and undefined overrides', ()
   const resolved = resolveBranch(target, lead);
   assert.equal(resolved.effectivePrompt, 'Lead prompt');
   assert.deepEqual(resolved.isDetached, {
+    prompt: false,
     cwd: false,
     sessionPolicy: false,
     audienceKeys: false,
@@ -99,20 +103,34 @@ test('branch resolvers use concrete overrides and mark detached dimensions', () 
     runtimeSessionPolicy: detachedPolicy,
     audienceKeys: ['cat:branch'],
     workflowShape: 'sequential',
+    promptOverride: 'Branch prompt',
   });
 
   const resolved = resolveBranch(target, lead);
+  assert.equal(resolved.effectivePrompt, 'Branch prompt');
   assert.equal(resolved.effectiveCwd, 'C:/repo/worktrees/right');
   assert.equal(resolved.effectiveSessionPolicy, detachedPolicy);
   assert.deepEqual(resolved.effectiveAudienceKeys, ['cat:branch']);
   assert.equal(resolved.effectiveWorkflowShape, 'sequential');
   assert.equal(resolved.effectiveAttachments, lead.draftFiles);
   assert.deepEqual(resolved.isDetached, {
+    prompt: true,
     cwd: true,
     sessionPolicy: true,
     audienceKeys: true,
     workflowShape: true,
   });
+});
+
+test('empty prompt override follows the lead prompt', () => {
+  const lead = createLeadContext();
+  const target = createTarget({ promptOverride: '' });
+
+  assert.equal(resolveBranchPrompt(target, lead), lead.composerDraft);
+
+  const resolved = resolveBranch(target, lead);
+  assert.equal(resolved.effectivePrompt, lead.composerDraft);
+  assert.equal(resolved.isDetached.prompt, false);
 });
 
 test('lead branch overrides equal to lead defaults resolve without changing values', () => {
@@ -122,9 +140,11 @@ test('lead branch overrides equal to lead defaults resolve without changing valu
     runtimeSessionPolicy: leadPolicy,
     audienceKeys: ['cat:lead', 'temp:reviewer'],
     workflowShape: lead.draftWorkflowShape,
+    promptOverride: lead.composerDraft,
   });
 
   const resolved = resolveBranch(target, lead);
+  assert.equal(resolved.effectivePrompt, lead.composerDraft);
   assert.equal(resolved.effectiveCwd, lead.draftCwd);
   assert.equal(resolved.effectiveSessionPolicy, leadPolicy);
   assert.deepEqual(resolved.effectiveAudienceKeys, ['cat:lead', 'temp:reviewer']);
