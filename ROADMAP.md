@@ -296,7 +296,10 @@ contracts.
       whose declared channel does not match the configured channel. Persisted
       host-state snapshots now clamp corrupted host metadata before exposing it
       back to the desktop bootstrap surface, and persisted update state now
-      normalizes invalid status/channel/string fields before reuse.
+      normalizes invalid status/channel/string fields before reuse. Persisted
+      `savedAt`, snapshot timestamp, and update `lastCheckedAt` fields now
+      normalize to valid ISO timestamps or fall back/null instead of accepting
+      arbitrary strings.
 - [ ] Add installed-app verification beyond the current unpacked smoke pass,
       including real Windows post-install launch checks, persisted host-state
       assertions on installed machines, and later packaging CI coverage

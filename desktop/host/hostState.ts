@@ -59,6 +59,15 @@ function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value : null;
 }
 
+function readTimestamp(value: unknown): string | null {
+  const raw = readString(value);
+  if (!raw) {
+    return null;
+  }
+  const timestamp = Date.parse(raw);
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString() : null;
+}
+
 function normalizeBootstrapPhase(value: unknown): DesktopBootstrapPhase {
   return typeof value === 'string'
     && DESKTOP_BOOTSTRAP_PHASES.includes(value as DesktopBootstrapPhase)
@@ -131,7 +140,7 @@ function normalizeUpdateState(
     currentVersion: readString(value.currentVersion) ?? fallback.currentVersion,
     latestVersion: readString(value.latestVersion),
     summary: readString(value.summary) ?? fallback.summary,
-    lastCheckedAt: readString(value.lastCheckedAt),
+    lastCheckedAt: readTimestamp(value.lastCheckedAt),
     manifestUrl: readString(value.manifestUrl),
     downloadUrl: readString(value.downloadUrl),
     sha256: normalizeSha256(value.sha256),
@@ -476,7 +485,7 @@ function normalizeBootstrapSnapshotMetadata(
     ...snapshot,
     service: DESKTOP_HOST_NAME,
     version: readString(snapshot.version) ?? DESKTOP_HOST_VERSION,
-    timestamp: readString(snapshot.timestamp) ?? options.fallbackTimestamp,
+    timestamp: readTimestamp(snapshot.timestamp) ?? options.fallbackTimestamp,
     phase: normalizeBootstrapPhase(snapshot.phase),
     status: normalizeHealthStatus(snapshot.status),
     summary: readString(snapshot.summary)
@@ -513,7 +522,7 @@ export class DesktopHostStateStore {
         return null;
       }
 
-      const savedAt = readString(parsed.savedAt) ?? this.now().toISOString();
+      const savedAt = readTimestamp(parsed.savedAt) ?? this.now().toISOString();
       const snapshot = normalizeBootstrapSnapshotMetadata(parsed.snapshot, {
         fallbackTimestamp: savedAt,
         hostStatePath: this.statePath,

@@ -235,7 +235,9 @@ test('DesktopHostStateStore normalizes legacy quit-on-close background flags bac
     userDataDir: join(workingDir, 'user-data'),
     catsHomeDir: join(workingDir, '.cats'),
   });
-  const store = new DesktopHostStateStore(config.paths.hostStatePath);
+  const store = new DesktopHostStateStore(config.paths.hostStatePath, {
+    now: () => new Date('2026-04-11T09:01:00.000Z'),
+  });
 
   await mkdir(join(workingDir, '.cats', 'desktop'), { recursive: true });
   await writeFile(config.paths.hostStatePath, JSON.stringify({
@@ -389,7 +391,9 @@ test('DesktopHostStateStore clamps corrupted snapshot metadata during load', asy
   const updates = createDefaultDesktopUpdateState(config.update);
   const packaging = createDesktopPackagingPlan(config);
   const setup = createEmptyDesktopSetupState();
-  const store = new DesktopHostStateStore(config.paths.hostStatePath);
+  const store = new DesktopHostStateStore(config.paths.hostStatePath, {
+    now: () => new Date('2026-04-11T09:01:00.000Z'),
+  });
 
   await mkdir(join(config.paths.hostStatePath, '..'), { recursive: true });
   await writeFile(config.paths.hostStatePath, JSON.stringify({
@@ -410,7 +414,7 @@ test('DesktopHostStateStore clamps corrupted snapshot metadata during load', asy
     updates,
     packaging,
     setup,
-    savedAt: '2026-04-11T09:00:00.000Z',
+    savedAt: 'not-a-date',
   }, null, 2));
 
   const loaded = await store.load(config, {
@@ -423,7 +427,8 @@ test('DesktopHostStateStore clamps corrupted snapshot metadata during load', asy
   assert.ok(loaded);
   assert.equal(loaded?.snapshot.service, DESKTOP_HOST_NAME);
   assert.equal(loaded?.snapshot.version, DESKTOP_HOST_VERSION);
-  assert.equal(loaded?.snapshot.timestamp, '2026-04-11T09:00:00.000Z');
+  assert.equal(loaded?.snapshot.timestamp, '2026-04-11T09:01:00.000Z');
+  assert.equal(loaded?.savedAt, '2026-04-11T09:01:00.000Z');
   assert.equal(loaded?.snapshot.phase, 'checking_prerequisites');
   assert.equal(loaded?.snapshot.status, 'degraded');
   assert.match(loaded?.snapshot.summary ?? '', /incomplete/i);
@@ -453,7 +458,7 @@ test('DesktopHostStateStore normalizes corrupted persisted update state during l
     currentVersion: '',
     latestVersion: 42,
     summary: '',
-    lastCheckedAt: '2026-04-11T09:15:00.000Z',
+    lastCheckedAt: 'not-a-date',
     manifestUrl: 'https://updates.example.com/cats/stable.json',
     downloadUrl: 7,
     sha256: 'not-a-digest',
@@ -495,7 +500,7 @@ test('DesktopHostStateStore normalizes corrupted persisted update state during l
   assert.equal(loaded?.updates.currentVersion, updates.currentVersion);
   assert.equal(loaded?.updates.latestVersion, null);
   assert.equal(loaded?.updates.summary, updates.summary);
-  assert.equal(loaded?.updates.lastCheckedAt, '2026-04-11T09:15:00.000Z');
+  assert.equal(loaded?.updates.lastCheckedAt, null);
   assert.equal(loaded?.updates.manifestUrl, 'https://updates.example.com/cats/stable.json');
   assert.equal(loaded?.updates.downloadUrl, null);
   assert.equal(loaded?.updates.sha256, null);
