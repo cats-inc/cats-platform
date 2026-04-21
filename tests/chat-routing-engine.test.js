@@ -8,9 +8,9 @@ import {
   appendMessage,
   assignCatToChannel,
   buildChannelView,
-  createChannel,
+  createChannel as createModelChannel,
   createCat,
-  createParallelChatGroup,
+  createParallelChatGroup as createModelParallelChatGroup,
   removeCatFromChannel,
   requireChannel,
   resetSoloChannelContinuity,
@@ -33,6 +33,28 @@ import {
   buildDirectLaneTransportBindingId,
   CHAT_ROOT_CONTAINER_ID,
 } from '../build/server/shared/chatCoreIds.js';
+
+function createChannel(state, input, now) {
+  return createModelChannel(
+    state,
+    {
+      originSurface: 'chat',
+      ...input,
+    },
+    now,
+  );
+}
+
+function createParallelChatGroup(state, input, now) {
+  return createModelParallelChatGroup(
+    state,
+    {
+      originSurface: 'chat',
+      ...input,
+    },
+    now,
+  );
+}
 
 function createRuntimeStub(responder) {
   let nextSession = 1;
