@@ -16,6 +16,7 @@ export interface DesktopUpdateManifest {
   version?: string;
   summary?: string;
   downloadUrl?: string;
+  sha256?: string;
 }
 
 interface NormalizedDesktopUpdateManifest {
@@ -23,6 +24,7 @@ interface NormalizedDesktopUpdateManifest {
   version: string;
   summary: string | null;
   downloadUrl: string | null;
+  sha256: string | null;
 }
 
 interface CheckForDesktopUpdatesDependencies {
@@ -49,6 +51,17 @@ function readOptionalManifestString(value: unknown, fieldName: string): string |
     throw new Error(`Update manifest field "${fieldName}" must be a string.`);
   }
   return value.trim() || null;
+}
+
+function readOptionalManifestSha256(value: unknown): string | null {
+  const digest = readOptionalManifestString(value, 'sha256');
+  if (digest === null) {
+    return null;
+  }
+  if (!/^[a-f0-9]{64}$/iu.test(digest)) {
+    throw new Error('Update manifest field "sha256" must be a 64 character hex digest.');
+  }
+  return digest.toLowerCase();
 }
 
 function parseVersion(value: string): number[] | null {
@@ -115,6 +128,7 @@ function normalizeDesktopUpdateManifest(
     version,
     summary: readOptionalManifestString(payload.summary, 'summary'),
     downloadUrl: readOptionalManifestString(payload.downloadUrl, 'downloadUrl'),
+    sha256: readOptionalManifestSha256(payload.sha256),
   };
 }
 
@@ -132,6 +146,7 @@ export function createDefaultDesktopUpdateState(
     lastCheckedAt: null,
     manifestUrl: config.manifestUrl,
     downloadUrl: null,
+    sha256: null,
     error: null,
   };
 }
@@ -174,6 +189,9 @@ export async function checkForDesktopUpdates(
     if (hasUpdate && !manifest.downloadUrl) {
       throw new Error('Update manifest is missing required field "downloadUrl" for a newer version.');
     }
+    if (manifest.downloadUrl && !manifest.sha256) {
+      throw new Error('Update manifest is missing required field "sha256" for a download artifact.');
+    }
 
     const downloadUrl = manifest.downloadUrl
       ? validateDesktopUrl(manifest.downloadUrl, {
@@ -194,6 +212,7 @@ export async function checkForDesktopUpdates(
       lastCheckedAt: now.toISOString(),
       manifestUrl: validatedManifestUrl,
       downloadUrl,
+      sha256: downloadUrl ? manifest.sha256 : null,
       error: null,
     };
   } catch (error) {
@@ -206,6 +225,7 @@ export async function checkForDesktopUpdates(
       lastCheckedAt: now.toISOString(),
       manifestUrl: config.manifestUrl,
       downloadUrl: null,
+      sha256: null,
       error: error instanceof Error ? error.message : String(error),
     };
   }

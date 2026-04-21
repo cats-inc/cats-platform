@@ -92,6 +92,11 @@ function normalizeUpdateStatus(
     : fallback;
 }
 
+function normalizeSha256(value: unknown): string | null {
+  const digest = readString(value);
+  return digest && /^[a-f0-9]{64}$/iu.test(digest) ? digest.toLowerCase() : null;
+}
+
 function normalizeBackgroundState(
   value: unknown,
   fallback: DesktopBackgroundState,
@@ -129,6 +134,7 @@ function normalizeUpdateState(
     lastCheckedAt: readString(value.lastCheckedAt),
     manifestUrl: readString(value.manifestUrl),
     downloadUrl: readString(value.downloadUrl),
+    sha256: normalizeSha256(value.sha256),
     error: readString(value.error),
   };
 }

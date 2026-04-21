@@ -456,6 +456,7 @@ test('DesktopHostStateStore normalizes corrupted persisted update state during l
     lastCheckedAt: '2026-04-11T09:15:00.000Z',
     manifestUrl: 'https://updates.example.com/cats/stable.json',
     downloadUrl: 7,
+    sha256: 'not-a-digest',
     error: '',
   };
 
@@ -497,6 +498,7 @@ test('DesktopHostStateStore normalizes corrupted persisted update state during l
   assert.equal(loaded?.updates.lastCheckedAt, '2026-04-11T09:15:00.000Z');
   assert.equal(loaded?.updates.manifestUrl, 'https://updates.example.com/cats/stable.json');
   assert.equal(loaded?.updates.downloadUrl, null);
+  assert.equal(loaded?.updates.sha256, null);
   assert.equal(loaded?.updates.error, null);
   assert.deepEqual(loaded?.snapshot.updates, loaded?.updates);
 });

@@ -57,6 +57,7 @@ test('checkForDesktopUpdates reports update_available when manifest version is n
           version: '0.2.0',
           summary: 'A newer desktop bundle is available.',
           downloadUrl: 'https://downloads.example.com/cats-0.2.0.exe',
+          sha256: 'A'.repeat(64),
         };
       },
     }),
@@ -66,6 +67,7 @@ test('checkForDesktopUpdates reports update_available when manifest version is n
   assert.equal(state.status, 'update_available');
   assert.equal(state.latestVersion, '0.2.0');
   assert.equal(state.downloadUrl, 'https://downloads.example.com/cats-0.2.0.exe');
+  assert.equal(state.sha256, 'a'.repeat(64));
   assert.equal(state.lastCheckedAt, '2026-03-24T10:00:00.000Z');
 });
 
@@ -144,6 +146,61 @@ test('checkForDesktopUpdates reports failed when newer manifest omits downloadUr
   assert.equal(state.latestVersion, null);
 });
 
+test('checkForDesktopUpdates reports failed when newer manifest omits artifact sha256', async () => {
+  const state = await checkForDesktopUpdates({
+    channel: 'stable',
+    manifestUrl: 'https://updates.example.com/cats/stable.json',
+    allowedHosts: ['downloads.example.com'],
+    checkOnStartup: false,
+    autoDownload: false,
+  }, {
+    fetchImpl: async () => ({
+      ok: true,
+      async json() {
+        return {
+          version: '0.2.0',
+          summary: 'A newer desktop bundle is available.',
+          downloadUrl: 'https://downloads.example.com/cats-0.2.0.exe',
+        };
+      },
+    }),
+    now: () => new Date('2026-03-24T10:04:45.000Z'),
+  });
+
+  assert.equal(state.status, 'failed');
+  assert.match(state.error ?? '', /missing required field "sha256"/);
+  assert.equal(state.downloadUrl, null);
+  assert.equal(state.sha256, null);
+});
+
+test('checkForDesktopUpdates reports failed when manifest sha256 is malformed', async () => {
+  const state = await checkForDesktopUpdates({
+    channel: 'stable',
+    manifestUrl: 'https://updates.example.com/cats/stable.json',
+    allowedHosts: ['downloads.example.com'],
+    checkOnStartup: false,
+    autoDownload: false,
+  }, {
+    fetchImpl: async () => ({
+      ok: true,
+      async json() {
+        return {
+          version: '0.2.0',
+          summary: 'A newer desktop bundle is available.',
+          downloadUrl: 'https://downloads.example.com/cats-0.2.0.exe',
+          sha256: 'not-a-digest',
+        };
+      },
+    }),
+    now: () => new Date('2026-03-24T10:04:50.000Z'),
+  });
+
+  assert.equal(state.status, 'failed');
+  assert.match(state.error ?? '', /64 character hex digest/);
+  assert.equal(state.downloadUrl, null);
+  assert.equal(state.sha256, null);
+});
+
 test('checkForDesktopUpdates reports failed when manifest fetch breaks', async () => {
   const state = await checkForDesktopUpdates({
     channel: 'stable',
@@ -176,6 +233,7 @@ test('checkForDesktopUpdates rejects insecure or non-allow-listed download URLs'
         return {
           version: '0.2.0',
           downloadUrl: 'https://downloads.example.com/cats-0.2.0.exe',
+          sha256: 'b'.repeat(64),
         };
       },
     }),

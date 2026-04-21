@@ -364,6 +364,7 @@ export interface DesktopUpdateState {
   lastCheckedAt: string | null;
   manifestUrl: string | null;
   downloadUrl: string | null;
+  sha256: string | null;
   error: string | null;
 }
 
