@@ -1,4 +1,5 @@
 import {
+  startTransition,
   useCallback,
   useEffect,
   useMemo,
@@ -84,6 +85,13 @@ import {
 import {
   usePublishReadyPayload,
 } from '../../shared/renderer/hooks/usePublishReadyPayload.js';
+import {
+  applyChannelSubscriptionPatchToLoadState,
+  applyChannelSubscriptionSnapshotToLoadState,
+  type ChannelSubscriptionPatch,
+  type ChannelSubscriptionState,
+} from '../../shared/renderer/entitySubscriptionChannelDispatcher.js';
+import { useEntitySubscription } from '../../shared/renderer/entitySubscriptionHub.js';
 import {
   ProductAppStateBoundary,
 } from '../../shared/renderer/ProductRendererFrame.js';
@@ -386,6 +394,31 @@ export default function App() {
     .filter((participant) => participant.status === 'active')
     .map((participant) => participant.participantId)
     .join('|');
+  const subscribedChannel = selectedChannel ?? selectedDirectLane ?? null;
+
+  useEntitySubscription<ChannelSubscriptionState, ChannelSubscriptionPatch>({
+    kind: 'channel',
+    id: subscribedChannel?.id ?? null,
+    enabled: state.status === 'ready',
+    onSnapshot: (snapshot) => {
+      startTransition(() => {
+        setState((current) =>
+          applyChannelSubscriptionSnapshotToLoadState<AppShellPayload>(
+            current,
+            snapshot,
+          ));
+      });
+    },
+    onPatch: (patch) => {
+      startTransition(() => {
+        setState((current) =>
+          applyChannelSubscriptionPatchToLoadState<AppShellPayload>(
+            current,
+            patch,
+          ));
+      });
+    },
+  });
 
   useEffect(() => {
     setDraftSurface('chat');

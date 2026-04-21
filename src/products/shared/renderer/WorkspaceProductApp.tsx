@@ -85,6 +85,13 @@ import { useWorkspaceCatAssignmentActions } from "./hooks/useWorkspaceCatAssignm
 import { createUseComposerSubmit } from "./hooks/useWorkspaceComposerSubmit.js";
 import { useWorkspaceGovernanceActions } from "./hooks/useWorkspaceGovernanceActions.js";
 import {
+  applyChannelSubscriptionPatchToLoadState,
+  applyChannelSubscriptionSnapshotToLoadState,
+  type ChannelSubscriptionPatch,
+  type ChannelSubscriptionState,
+} from "./entitySubscriptionChannelDispatcher.js";
+import { useEntitySubscription } from "./entitySubscriptionHub.js";
+import {
   createDefaultRuntimeSessionPolicy,
   type RuntimeSessionPolicy,
 } from "../../../shared/runtimeSessionPolicy.js";
@@ -1033,6 +1040,23 @@ export function createWorkspaceProductApp({
       busy,
       selectedChannel: liveIndicatorChannel,
       debugTraceEnabled: readyPayload?.chat.capabilities.debugLiveTrace === true,
+    });
+    useEntitySubscription<ChannelSubscriptionState, ChannelSubscriptionPatch>({
+      kind: 'channel',
+      id: liveIndicatorChannel?.id ?? null,
+      enabled: state.status === 'ready',
+      onSnapshot: (snapshot) => {
+        startTransition(() => {
+          setState((current) =>
+            applyChannelSubscriptionSnapshotToLoadState(current, snapshot));
+        });
+      },
+      onPatch: (patch) => {
+        startTransition(() => {
+          setState((current) =>
+            applyChannelSubscriptionPatchToLoadState(current, patch));
+        });
+      },
     });
     const latestActiveUserMessage = selectedChannel?.messages
       ? [...selectedChannel.messages].reverse().find((message) => message.senderKind === 'user') ?? null

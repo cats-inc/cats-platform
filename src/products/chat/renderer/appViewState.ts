@@ -22,8 +22,21 @@ export function deriveAppRouteState(input: {
   routeChannelId: string | null;
   draftDefaultRecipientCatId: string | null;
   showingMyCatDirectLane: boolean;
-}) {
-  return deriveWorkspaceAppRouteState(input);
+}): {
+  readyPayload: AppShellPayload | null;
+  readyChat: AppShellPayload['chat'] | null;
+  readySelectedChannel: SelectedChannelView | null;
+  selectedChannelId: string | null;
+  selectedChannelViewId: string | null;
+  selectedChannelEntryLifecycle: ReturnType<typeof deriveWorkspaceAppRouteState>['selectedChannelEntryLifecycle'];
+  routeChannelExists: boolean;
+  routeChannelTitle: string | null;
+  routeDirectLaneSummary: ReturnType<typeof findDirectLaneForCat> | null;
+  selectedChannel: SelectedChannelView | null;
+  selectedDirectLane: SelectedChannelView | null;
+  operatorRefreshKey: string;
+} {
+  return deriveWorkspaceAppRouteState(input) as unknown as ReturnType<typeof deriveAppRouteState>;
 }
 
 export function deriveAppViewState(input: {
