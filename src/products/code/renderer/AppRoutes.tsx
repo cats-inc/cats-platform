@@ -19,7 +19,6 @@ import { ComposerSurfaceChip } from '../../shared/renderer/components/ComposerSu
 import { ArtifactDetailView } from './components/ArtifactDetailView.js';
 import { CodeBuilderView } from './components/CodeBuilderView.js';
 import { CodeRelayView } from './components/CodeRelayView.js';
-import { MockComposerStackView } from './components/MockComposerStackView.js';
 import {
   NewChatDraft,
   type NewChatDraftProps,
@@ -105,11 +104,6 @@ export function AppRoutes({
         key="artifact-detail"
         path="artifacts/:artifactId"
         element={<ArtifactDetailView />}
-      />,
-      <Route
-        key="mock-stack"
-        path="mock-stack"
-        element={<MockComposerStackView />}
       />,
     ],
     renderBootShell: () => <BootShell />,

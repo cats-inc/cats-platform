@@ -25,7 +25,6 @@ import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
 import {
   CODE_ROUTE_PREFIX,
   isCodeBuildPath,
-  isCodeMockStackPath,
   isCodeRelayPath,
 } from '../codePaths.js';
 
@@ -58,7 +57,6 @@ export interface SidebarProps {
   onDirectChatCat: (catId: string) => void;
   onOpenBuild?: () => void;
   onOpenRelay?: () => void;
-  onOpenMockStack?: () => void;
 }
 
 function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] {
@@ -201,37 +199,6 @@ function createExtraActionGroups(props: SidebarProps): ConversationSidebarAction
               <path d="M2 4l6-2 6 2v6l-6 2-6-2z" />
               <path d="M2 4l6 2 6-2" />
               <path d="M8 6v8" />
-            </svg>
-          ),
-        },
-      ],
-    });
-  }
-
-  if (props.onOpenMockStack) {
-    groups.push({
-      key: 'mock-stack',
-      ariaLabel: 'Mock compare stack',
-      items: [
-        {
-          key: 'mock-stack',
-          label: 'Mock Stack',
-          onClick: props.onOpenMockStack,
-          active: isCodeMockStackPath(currentPath),
-          icon: (
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect x="3" y="6" width="10" height="7" rx="1.5" />
-              <path d="M4.5 4.5h7" />
-              <path d="M5.5 3h5" />
             </svg>
           ),
         },
