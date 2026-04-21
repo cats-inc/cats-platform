@@ -1,62 +1,59 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
 import type { AssistantPresetRecord, GuideCatRecord } from '../../../core/types.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
-import { CatCreationFields } from '../setup/CatCreationFields.js';
+import { ConfirmDialog, useConfirmDialog } from '../../../design/components/ConfirmDialog.js';
+import { ProviderModelFields } from '../../../design/components/ProviderModelFields.js';
+import {
+  SettingsActionBar,
+  SettingsSection,
+  SettingsSectionHeader,
+  SettingsSubSection,
+} from '../../../design/components/settings/index.js';
 import { ToastContainer, useToast } from '../../../design/components/Toast.js';
-import { buildExecutionLabel } from '../../../shared/executionLabel.js';
-import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
+import {
+  fetchAdvancedProviderModels,
+  fetchProviderModels,
+  fetchProviderRegistry,
+} from '../../../products/shared/renderer/api/index.js';
 import {
   isGuideCatEnabledStatus,
   resolveClientGuideCatName,
 } from '../../../shared/guideCatIdentity.js';
+import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
 
 export interface SettingsAssistantsProps {
   payload: AppShellPayload;
   onPayloadUpdate: (payload: AppShellPayload) => void;
 }
 
-interface GuideCatFormState {
+interface AssistantDraft {
+  name: string;
+  roleHint: string;
   provider: string;
   instance: string;
   model: string;
   modelSelection: ProviderModelSelection | null;
 }
 
-interface AssistantPresetFormState extends GuideCatFormState {
-  name: string;
-  roleHint: string;
-}
-
-function guideCatFormStateFromRecord(record: GuideCatRecord | null): GuideCatFormState {
+function emptyAssistantDraft(): AssistantDraft {
   return {
-    provider: record?.executionTarget.provider ?? 'claude',
-    instance: record?.executionTarget.instance ?? '',
-    model: record?.executionTarget.model ?? '',
-    modelSelection: record?.modelSelection ?? null,
+    name: 'Assistant',
+    roleHint: '',
+    provider: 'claude',
+    instance: '',
+    model: '',
+    modelSelection: null,
   };
 }
 
-function assistantPresetFormStateFromRecord(
-  record: AssistantPresetRecord | null,
-): AssistantPresetFormState {
-  return {
-    name: record?.name ?? 'Assistant',
-    provider: record?.executionTarget.provider ?? 'claude',
-    instance: record?.executionTarget.instance ?? '',
-    model: record?.executionTarget.model ?? '',
-    modelSelection: record?.modelSelection ?? null,
-    roleHint: record?.roleHint ?? '',
-  };
-}
-
-function formatTimestamps(record: { createdAt: string; updatedAt: string }): string {
-  const created = `Created ${new Date(record.createdAt).toLocaleDateString()}`;
-  if (record.updatedAt === record.createdAt) {
-    return created;
-  }
-  return `${created} \u00b7 Updated ${new Date(record.updatedAt).toLocaleDateString()}`;
+function assistantInitials(name: string): string {
+  const trimmed = name.trim();
+  if (!trimmed) return '?';
+  const parts = trimmed.split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return `${parts[0].charAt(0)}${parts[parts.length - 1].charAt(0)}`.toUpperCase();
 }
 
 export function SettingsAssistants({
@@ -67,170 +64,220 @@ export function SettingsAssistants({
   const guideCatName = resolveClientGuideCatName();
   const guideCatEnabled = guideCat ? isGuideCatEnabledStatus(guideCat.status) : false;
   const assistantPresets = payload.assistantPresets ?? [];
-  const [guideForm, setGuideForm] = useState<GuideCatFormState>(() =>
-    guideCatFormStateFromRecord(guideCat),
-  );
+
+  const { toasts, showToast } = useToast();
+  const { dialog, confirm, handleClose } = useConfirmDialog();
+
   const [guideBusy, setGuideBusy] = useState(false);
+  const [assistantBusy, setAssistantBusy] = useState(false);
+
   const [selectedAssistantId, setSelectedAssistantId] = useState<string | null>(
     assistantPresets[0]?.id ?? null,
   );
-  const selectedAssistant = assistantPresets.find(
-    (assistant) => assistant.id === selectedAssistantId,
-  ) ?? null;
-  const [assistantForm, setAssistantForm] = useState<AssistantPresetFormState>(() =>
-    assistantPresetFormStateFromRecord(selectedAssistant),
+  const selectedAssistant = useMemo(
+    () => assistantPresets.find((a) => a.id === selectedAssistantId) ?? null,
+    [assistantPresets, selectedAssistantId],
   );
-  const [assistantBusy, setAssistantBusy] = useState(false);
-  const { toasts, showToast } = useToast();
+  const [isCreatingAssistant, setIsCreatingAssistant] = useState<boolean>(
+    () => assistantPresets.length === 0,
+  );
+  const [createDraft, setCreateDraft] = useState<AssistantDraft>(emptyAssistantDraft);
 
   useEffect(() => {
-    setGuideForm(guideCatFormStateFromRecord(guideCat));
-  }, [guideCat]);
-
-  useEffect(() => {
-    if (
-      selectedAssistantId
-      && !assistantPresets.some((assistant) => assistant.id === selectedAssistantId)
-    ) {
+    if (selectedAssistantId
+      && !assistantPresets.some((a) => a.id === selectedAssistantId)) {
       setSelectedAssistantId(assistantPresets[0]?.id ?? null);
     }
-  }, [assistantPresets, selectedAssistantId]);
-
-  useEffect(() => {
-    setAssistantForm(assistantPresetFormStateFromRecord(selectedAssistant));
-  }, [selectedAssistant]);
-
-  const canSaveGuide = guideForm.provider.trim().length > 0
-    && guideForm.model.trim().length > 0;
-  const canSaveAssistant = assistantForm.name.trim().length > 0
-    && assistantForm.provider.trim().length > 0
-    && assistantForm.model.trim().length > 0;
-
-  const saveGuideConfig = useCallback(async (): Promise<GuideCatRecord> => {
-    const response = await fetch('/api/platform/guide-cat', {
-      method: 'PUT',
-      headers: { 'content-type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({
-        provider: guideForm.provider,
-        instance: guideForm.instance || null,
-        model: guideForm.model || null,
-        modelSelection: guideForm.modelSelection,
-      }),
-    });
-    if (!response.ok) {
-      const errorPayload = await response.json().catch(() => null);
-      throw new Error(
-        (errorPayload as { error?: { message?: string } } | null)?.error?.message
-        ?? `Save failed (${response.status})`,
-      );
+    if (assistantPresets.length === 0 && !isCreatingAssistant) {
+      setIsCreatingAssistant(true);
     }
-    const result = (await response.json()) as { guideCat: GuideCatRecord };
-    return result.guideCat;
-  }, [guideForm.instance, guideForm.model, guideForm.modelSelection, guideForm.provider]);
+  }, [assistantPresets, isCreatingAssistant, selectedAssistantId]);
 
-  const patchGuideStatus = useCallback(async (
-    status: 'active' | 'dismissed',
-  ): Promise<GuideCatRecord> => {
-    const response = await fetch('/api/platform/guide-cat', {
-      method: 'PATCH',
-      headers: { 'content-type': 'application/json', Accept: 'application/json' },
-      body: JSON.stringify({ status }),
-    });
-    if (!response.ok) {
-      const errorPayload = await response.json().catch(() => null);
-      throw new Error(
-        (errorPayload as { error?: { message?: string } } | null)?.error?.message
-        ?? `Status update failed (${response.status})`,
-      );
-    }
-    const result = (await response.json()) as { guideCat: GuideCatRecord };
-    return result.guideCat;
-  }, []);
+  const toastError = useCallback(
+    (message: string) => { showToast(message); },
+    [showToast],
+  );
 
-  const handleSaveGuide = useCallback(async () => {
-    setGuideBusy(true);
-    try {
-      const nextGuideCat = await saveGuideConfig();
-      onPayloadUpdate({ ...payload, guideCat: nextGuideCat });
-      dispatchPlatformEnvelopeRefresh();
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to save Guide Cat.');
-    } finally {
-      setGuideBusy(false);
-    }
-  }, [onPayloadUpdate, payload, saveGuideConfig, showToast]);
+  // ── Guide Cat helpers ────────────────────────────────────────────────
+  const commitGuideCat = useCallback(
+    async (
+      patch: Partial<{
+        provider: string;
+        instance: string | null;
+        model: string | null;
+        modelSelection: ProviderModelSelection | null;
+      }>,
+    ): Promise<boolean> => {
+      setGuideBusy(true);
+      try {
+        const body = {
+          provider: patch.provider ?? guideCat?.executionTarget.provider ?? 'claude',
+          instance: patch.instance !== undefined
+            ? patch.instance
+            : guideCat?.executionTarget.instance ?? null,
+          model: patch.model !== undefined
+            ? patch.model
+            : guideCat?.executionTarget.model ?? null,
+          modelSelection: patch.modelSelection !== undefined
+            ? patch.modelSelection
+            : guideCat?.modelSelection ?? null,
+        };
+        const response = await fetch('/api/platform/guide-cat', {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (!response.ok) {
+          const errorPayload = await response.json().catch(() => null);
+          throw new Error(
+            (errorPayload as { error?: { message?: string } } | null)?.error?.message
+              ?? `Save failed (${response.status})`,
+          );
+        }
+        const result = (await response.json()) as { guideCat: GuideCatRecord };
+        onPayloadUpdate({ ...payload, guideCat: result.guideCat });
+        dispatchPlatformEnvelopeRefresh();
+        return true;
+      } catch (error) {
+        toastError(error instanceof Error ? error.message : 'Failed to save Guide Cat.');
+        return false;
+      } finally {
+        setGuideBusy(false);
+      }
+    },
+    [guideCat, onPayloadUpdate, payload, toastError],
+  );
+
+  const patchGuideStatus = useCallback(
+    async (status: 'active' | 'dismissed'): Promise<boolean> => {
+      setGuideBusy(true);
+      try {
+        const response = await fetch('/api/platform/guide-cat', {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ status }),
+        });
+        if (!response.ok) {
+          const errorPayload = await response.json().catch(() => null);
+          throw new Error(
+            (errorPayload as { error?: { message?: string } } | null)?.error?.message
+              ?? `Status update failed (${response.status})`,
+          );
+        }
+        const result = (await response.json()) as { guideCat: GuideCatRecord };
+        onPayloadUpdate({ ...payload, guideCat: result.guideCat });
+        dispatchPlatformEnvelopeRefresh();
+        return true;
+      } catch (error) {
+        toastError(error instanceof Error ? error.message : 'Failed to update Guide Cat.');
+        return false;
+      } finally {
+        setGuideBusy(false);
+      }
+    },
+    [onPayloadUpdate, payload, toastError],
+  );
 
   const handleEnableGuide = useCallback(async () => {
-    setGuideBusy(true);
-    try {
-      let nextGuideCat = guideCat;
-      if (!nextGuideCat) {
-        nextGuideCat = await saveGuideConfig();
-      } else if (!isGuideCatEnabledStatus(nextGuideCat.status)) {
-        nextGuideCat = await saveGuideConfig();
-        nextGuideCat = await patchGuideStatus('active');
-      }
-      if (!nextGuideCat) {
-        throw new Error('Failed to enable Guide Cat.');
-      }
-      onPayloadUpdate({ ...payload, guideCat: nextGuideCat });
-      dispatchPlatformEnvelopeRefresh();
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to enable Guide Cat.');
-    } finally {
-      setGuideBusy(false);
-    }
-  }, [guideCat, onPayloadUpdate, patchGuideStatus, payload, saveGuideConfig, showToast]);
-
-  const handleDisableGuide = useCallback(async () => {
     if (!guideCat) {
+      const saved = await commitGuideCat({});
+      if (saved) await patchGuideStatus('active');
       return;
     }
-    setGuideBusy(true);
-    try {
-      const nextGuideCat = await patchGuideStatus('dismissed');
-      onPayloadUpdate({ ...payload, guideCat: nextGuideCat });
-      dispatchPlatformEnvelopeRefresh();
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to disable Guide Cat.');
-    } finally {
-      setGuideBusy(false);
+    if (!isGuideCatEnabledStatus(guideCat.status)) {
+      await patchGuideStatus('active');
     }
-  }, [guideCat, onPayloadUpdate, patchGuideStatus, payload, showToast]);
+  }, [commitGuideCat, guideCat, patchGuideStatus]);
 
-  const handleSelectAssistant = useCallback((assistantId: string | null) => {
-    setSelectedAssistantId(assistantId);
-    if (assistantId === null) {
-      setAssistantForm(assistantPresetFormStateFromRecord(null));
-    }
-  }, []);
+  const handleDisableGuide = useCallback(() => {
+    if (!guideCat) return;
+    void patchGuideStatus('dismissed');
+  }, [guideCat, patchGuideStatus]);
 
-  const handleSaveAssistant = useCallback(async () => {
-    setAssistantBusy(true);
-    const isEditing = Boolean(selectedAssistant);
-    try {
-      const response = await fetch(
-        isEditing
-          ? `/api/platform/assistants/${selectedAssistant!.id}`
-          : '/api/platform/assistants',
-        {
-          method: isEditing ? 'PUT' : 'POST',
+  // ── Assistant helpers ────────────────────────────────────────────────
+  const commitAssistant = useCallback(
+    async (
+      assistantId: string,
+      patch: Partial<{
+        name: string;
+        roleHint: string | null;
+        provider: string;
+        instance: string | null;
+        model: string | null;
+        modelSelection: ProviderModelSelection | null;
+      }>,
+      errorLabel: string,
+    ): Promise<boolean> => {
+      const current = assistantPresets.find((a) => a.id === assistantId);
+      if (!current) return false;
+      setAssistantBusy(true);
+      try {
+        const body = {
+          name: patch.name !== undefined ? patch.name : current.name,
+          provider: patch.provider !== undefined
+            ? patch.provider
+            : current.executionTarget.provider,
+          instance: patch.instance !== undefined
+            ? patch.instance
+            : current.executionTarget.instance ?? null,
+          model: patch.model !== undefined
+            ? patch.model
+            : current.executionTarget.model ?? null,
+          modelSelection: patch.modelSelection !== undefined
+            ? patch.modelSelection
+            : current.modelSelection,
+          roleHint: patch.roleHint !== undefined
+            ? patch.roleHint
+            : current.roleHint,
+        };
+        const response = await fetch(`/api/platform/assistants/${assistantId}`, {
+          method: 'PUT',
           headers: { 'content-type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify({
-            name: assistantForm.name.trim(),
-            provider: assistantForm.provider,
-            instance: assistantForm.instance || null,
-            model: assistantForm.model || null,
-            modelSelection: assistantForm.modelSelection,
-            roleHint: assistantForm.roleHint.trim() || null,
-          }),
-        },
-      );
+          body: JSON.stringify(body),
+        });
+        if (!response.ok) {
+          const errorPayload = await response.json().catch(() => null);
+          throw new Error(
+            (errorPayload as { error?: { message?: string } } | null)?.error?.message
+              ?? `Save failed (${response.status})`,
+          );
+        }
+        const result = (await response.json()) as {
+          assistant: AssistantPresetRecord;
+          assistants: AssistantPresetRecord[];
+        };
+        onPayloadUpdate({ ...payload, assistantPresets: result.assistants });
+        return true;
+      } catch (error) {
+        toastError(error instanceof Error ? error.message : errorLabel);
+        return false;
+      } finally {
+        setAssistantBusy(false);
+      }
+    },
+    [assistantPresets, onPayloadUpdate, payload, toastError],
+  );
+
+  const handleCreateAssistant = useCallback(async () => {
+    setAssistantBusy(true);
+    try {
+      const response = await fetch('/api/platform/assistants', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', Accept: 'application/json' },
+        body: JSON.stringify({
+          name: createDraft.name.trim(),
+          provider: createDraft.provider,
+          instance: createDraft.instance || null,
+          model: createDraft.model || null,
+          modelSelection: createDraft.modelSelection,
+          roleHint: createDraft.roleHint.trim() || null,
+        }),
+      });
       if (!response.ok) {
         const errorPayload = await response.json().catch(() => null);
         throw new Error(
           (errorPayload as { error?: { message?: string } } | null)?.error?.message
-          ?? `Save failed (${response.status})`,
+            ?? `Save failed (${response.status})`,
         );
       }
       const result = (await response.json()) as {
@@ -239,273 +286,407 @@ export function SettingsAssistants({
       };
       onPayloadUpdate({ ...payload, assistantPresets: result.assistants });
       setSelectedAssistantId(result.assistant.id);
-      setAssistantForm(assistantPresetFormStateFromRecord(result.assistant));
+      setIsCreatingAssistant(false);
+      setCreateDraft(emptyAssistantDraft());
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to save assistant.');
+      toastError(error instanceof Error ? error.message : 'Failed to save assistant.');
     } finally {
       setAssistantBusy(false);
     }
-  }, [assistantForm, onPayloadUpdate, payload, selectedAssistant, showToast]);
+  }, [createDraft, onPayloadUpdate, payload, toastError]);
 
   const handleDeleteAssistant = useCallback(async () => {
-    if (!selectedAssistant) {
-      return;
-    }
+    if (!selectedAssistant) return;
+    const confirmed = await confirm({
+      title: 'Remove assistant',
+      message: `Remove "${selectedAssistant.name}"? This can't be undone.`,
+      confirmLabel: 'Remove',
+    });
+    if (!confirmed) return;
     setAssistantBusy(true);
     try {
-      const response = await fetch(`/api/platform/assistants/${selectedAssistant.id}`, {
-        method: 'DELETE',
-        headers: { Accept: 'application/json' },
-      });
+      const response = await fetch(
+        `/api/platform/assistants/${selectedAssistant.id}`,
+        {
+          method: 'DELETE',
+          headers: { Accept: 'application/json' },
+        },
+      );
       if (!response.ok) {
         const errorPayload = await response.json().catch(() => null);
         throw new Error(
           (errorPayload as { error?: { message?: string } } | null)?.error?.message
-          ?? `Delete failed (${response.status})`,
+            ?? `Delete failed (${response.status})`,
         );
       }
       const result = (await response.json()) as {
         assistants: AssistantPresetRecord[];
       };
       onPayloadUpdate({ ...payload, assistantPresets: result.assistants });
-      setSelectedAssistantId(null);
-      setAssistantForm(assistantPresetFormStateFromRecord(null));
+      setSelectedAssistantId(result.assistants[0]?.id ?? null);
+      if (result.assistants.length === 0) {
+        setIsCreatingAssistant(true);
+      }
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to remove assistant.');
+      toastError(error instanceof Error ? error.message : 'Failed to remove assistant.');
     } finally {
       setAssistantBusy(false);
     }
-  }, [onPayloadUpdate, payload, selectedAssistant, showToast]);
+  }, [confirm, onPayloadUpdate, payload, selectedAssistant, toastError]);
+
+  const handleSelectAssistant = useCallback((assistantId: string) => {
+    setSelectedAssistantId(assistantId);
+    setIsCreatingAssistant(false);
+  }, []);
+
+  const handleStartCreate = useCallback(() => {
+    setIsCreatingAssistant(true);
+    setCreateDraft(emptyAssistantDraft());
+  }, []);
+
+  const handleCancelCreate = useCallback(() => {
+    if (assistantPresets.length === 0) return;
+    setIsCreatingAssistant(false);
+    if (!selectedAssistantId) {
+      setSelectedAssistantId(assistantPresets[0]?.id ?? null);
+    }
+  }, [assistantPresets, selectedAssistantId]);
+
+  const canSaveCreate = createDraft.name.trim().length > 0
+    && createDraft.provider.trim().length > 0
+    && createDraft.model.trim().length > 0;
+
+  const showCreateView = isCreatingAssistant || !selectedAssistant;
 
   return (
-    <div className="catsLayout">
-      <section className="contentCard">
-        <div className="contentCardHeader">
-          <div>
-            <p className="sectionLabel">Guide Cat</p>
-            <h2>{guideCatName}</h2>
-          </div>
-          <span className={guideCatEnabled ? 'statusChip statusChipReady' : 'statusChip statusChipWarm'}>
-            {guideCatEnabled ? 'Enabled' : 'Disabled'}
-          </span>
-        </div>
-
-        {guideCat ? (
-          <div className="settingsCardNote">
-            <p>
-              <strong>Target:</strong>{' '}
-              {buildExecutionLabel(
-                guideCat.executionTarget.provider,
-                guideCat.executionTarget.instance,
-                guideCat.executionTarget.model,
-              )}
-            </p>
-            {!guideCatEnabled ? (
-              <p className="muted">
-                {guideCatName} is currently disabled. Enable it again here whenever you want the
-                floating helper back.
-              </p>
-            ) : null}
-            <p className="muted">{formatTimestamps(guideCat)}</p>
-          </div>
-        ) : (
-          <p className="settingsCardNote">
-            {guideCatName} is currently disabled. Enable it to help across Chat, Work, and Code.
-          </p>
-        )}
-      </section>
-
-      <section className="contentCard contentCardForm">
-        <div className="contentCardHeader">
-          <div>
-            <p className="sectionLabel">{guideCatEnabled ? 'Edit' : 'Enable'}</p>
-            <h2>{guideCatName}</h2>
-          </div>
-        </div>
-        <div className="stackForm">
-          <CatCreationFields
-            name={guideCatName}
-            onNameChange={() => {}}
-            nameReadOnly
-            provider={guideForm.provider}
-            instance={guideForm.instance}
-            model={guideForm.model}
-            modelSelection={guideForm.modelSelection}
-            onTargetChange={(target) =>
-              setGuideForm((prev) => ({
-                ...prev,
-                provider: target.provider,
-                instance: target.instance,
-                model: target.model,
-                modelSelection: target.modelSelection ?? null,
-              }))}
-            nameLabel="Guide Cat name"
-            namePlaceholder={guideCatName}
-            nameHint="Cats keeps this name fixed. It can vary by app language later."
-            hideMakeBoss
-            hideProductToggles
-          />
-          <div className="settingsActionRow">
-            {!guideCatEnabled ? (
-              <button
-                className="primaryButton"
-                type="button"
-                disabled={guideBusy || !canSaveGuide}
-                onClick={() => void handleEnableGuide()}
-              >
-                {guideBusy ? 'Saving...' : `Enable ${guideCatName}`}
-              </button>
-            ) : null}
-            <button
-              className={guideCatEnabled ? 'primaryButton' : 'secondaryButton'}
-              type="button"
-              disabled={guideBusy || !canSaveGuide}
-              onClick={() => void handleSaveGuide()}
-            >
-              {guideBusy ? 'Saving...' : 'Save changes'}
-            </button>
-            {guideCatEnabled ? (
-              <button
-                className="secondaryButton"
-                type="button"
-                disabled={guideBusy}
-                onClick={() => void handleDisableGuide()}
-              >
-                Disable
-              </button>
-            ) : null}
-          </div>
-        </div>
-      </section>
-
-      <section className="contentCard">
-        <div className="contentCardHeader">
-          <div>
-            <p className="sectionLabel">Saved Assistants</p>
-            <h2>
-              {assistantPresets.length > 0
-                ? `${assistantPresets.length} saved`
-                : 'No saved assistants yet'}
-            </h2>
-          </div>
-          {assistantPresets.length > 0 ? (
-            <span className="statusChip statusChipReady">{assistantPresets.length}</span>
-          ) : null}
-        </div>
-        {assistantPresets.length > 0 ? (
-          <div className="stackForm">
-            {assistantPresets.map((assistant) => (
-              <div key={assistant.id} className="settingsCardNote">
-                <p>
-                  <strong>{assistant.name}</strong>
-                </p>
-                <p>
-                  {buildExecutionLabel(
-                    assistant.executionTarget.provider,
-                    assistant.executionTarget.instance,
-                    assistant.executionTarget.model,
+    <>
+      <div className="catsLayout catsLayoutSidePanel">
+        {/* ── Guide Cat ───────────────────────────────────────────── */}
+        <SettingsSection
+          className="catsDetailCard"
+          header={
+            <SettingsSectionHeader
+              title={guideCatName}
+              status={
+                <SettingsActionBar>
+                  {guideCatEnabled ? (
+                    <button
+                      type="button"
+                      className="secondaryButton"
+                      disabled={guideBusy}
+                      onClick={() => void handleDisableGuide()}
+                    >
+                      Disable
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="primaryButton"
+                      disabled={guideBusy}
+                      onClick={() => void handleEnableGuide()}
+                    >
+                      {guideBusy ? 'Saving...' : 'Enable'}
+                    </button>
                   )}
-                </p>
-                {assistant.roleHint ? <p className="muted">{assistant.roleHint}</p> : null}
-                <p className="muted">{formatTimestamps(assistant)}</p>
-                <div className="settingsActionRow">
-                  <button
-                    className="secondaryButton"
-                    type="button"
-                    onClick={() => handleSelectAssistant(assistant.id)}
-                  >
-                    {selectedAssistant?.id === assistant.id ? 'Editing' : 'Edit'}
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="settingsCardNote">
-            Saved assistants are reusable lightweight presets for group chats. Channel-only
-            temporary participants stay inside the room.
-          </p>
-        )}
-      </section>
-
-      <section className="contentCard contentCardForm">
-        <div className="contentCardHeader">
-          <div>
-            <p className="sectionLabel">{selectedAssistant ? 'Edit' : 'Create'}</p>
-            <h2>{selectedAssistant ? selectedAssistant.name : 'Assistant preset'}</h2>
-          </div>
-        </div>
-        <div className="stackForm">
-          <label className="fieldLabel">
-            <span>Role hint</span>
-            <textarea
-              className="textInput"
-              rows={3}
-              value={assistantForm.roleHint}
-              placeholder="Reviewer, debugger, copy editor, API specialist..."
-              onChange={(event) =>
-                setAssistantForm((prev) => ({ ...prev, roleHint: event.target.value }))}
+                </SettingsActionBar>
+              }
             />
-            <span className="fieldHint">
-              Lightweight display guidance only. This slice does not treat it as a full persona.
-            </span>
-          </label>
-          <CatCreationFields
-            name={assistantForm.name}
-            onNameChange={(name) => setAssistantForm((prev) => ({ ...prev, name }))}
-            provider={assistantForm.provider}
-            instance={assistantForm.instance}
-            model={assistantForm.model}
-            modelSelection={assistantForm.modelSelection}
-            onTargetChange={(target) =>
-              setAssistantForm((prev) => ({
-                ...prev,
-                provider: target.provider,
-                instance: target.instance,
-                model: target.model,
-                modelSelection: target.modelSelection ?? null,
-              }))}
-            nameLabel="Assistant name"
-            namePlaceholder="Assistant"
-            nameHint="Reusable lightweight preset for group chat. It does not create a full Cat."
-            hideMakeBoss
-            hideProductToggles
-          />
-          <div className="settingsActionRow">
-            <button
-              className="primaryButton"
-              type="button"
-              disabled={assistantBusy || !canSaveAssistant}
-              onClick={() => void handleSaveAssistant()}
-            >
-              {assistantBusy
-                ? 'Saving...'
-                : selectedAssistant
-                  ? 'Save changes'
-                  : 'Create assistant'}
-            </button>
-            <button
-              className="secondaryButton"
-              type="button"
-              disabled={assistantBusy}
-              onClick={() => handleSelectAssistant(null)}
-            >
-              New assistant
-            </button>
-            {selectedAssistant ? (
-              <button
-                className="dangerButton"
-                type="button"
-                disabled={assistantBusy}
-                onClick={() => void handleDeleteAssistant()}
+          }
+        >
+          <div className="catsDetailBody">
+            <div className="catsDetailColumn">
+              <SettingsSubSection headerless className="catsSubCard catsIdentityCard">
+                <div className="fieldLabel">
+                  <span>Status</span>
+                  <p className="fieldHint">
+                    {guideCatEnabled
+                      ? `${guideCatName} is enabled and helps across Chat, Work, and Code.`
+                      : `${guideCatName} is disabled. Enable it to help across Chat, Work, and Code.`}
+                  </p>
+                </div>
+              </SettingsSubSection>
+            </div>
+            <div className="catsDetailColumn">
+              <SettingsSubSection
+                className="catsSubCard"
+                header={<SettingsSectionHeader title="Brain" nested />}
               >
-                Remove
-              </button>
-            ) : null}
+                <ProviderModelFields
+                  provider={guideCat?.executionTarget.provider ?? 'claude'}
+                  instance={guideCat?.executionTarget.instance ?? ''}
+                  model={guideCat?.executionTarget.model ?? ''}
+                  modelSelection={guideCat?.modelSelection ?? null}
+                  onTargetChange={(target) => {
+                    void commitGuideCat({
+                      provider: target.provider,
+                      instance: target.instance || null,
+                      model: target.model || null,
+                      modelSelection: target.modelSelection ?? null,
+                    });
+                  }}
+                  fetchProviderRegistry={fetchProviderRegistry}
+                  fetchProviderModels={fetchProviderModels}
+                  fetchAdvancedProviderModels={fetchAdvancedProviderModels}
+                />
+              </SettingsSubSection>
+            </div>
           </div>
-        </div>
-      </section>
+        </SettingsSection>
+
+        {/* ── Assistants roster ───────────────────────────────────── */}
+        <nav
+          className="catsSelectorStrip"
+          role="tablist"
+          aria-label="Select an assistant"
+        >
+          {assistantPresets.map((assistant) => {
+            const isSelected = !isCreatingAssistant
+              && assistant.id === selectedAssistantId;
+            const className = [
+              'catAvatar',
+              'catsSelectorAvatar',
+              isSelected ? 'catsSelectorAvatarActive' : '',
+            ].filter(Boolean).join(' ');
+            return (
+              <button
+                key={assistant.id}
+                type="button"
+                role="tab"
+                aria-selected={isSelected}
+                className={className}
+                onClick={() => handleSelectAssistant(assistant.id)}
+                data-tooltip={assistant.name}
+                aria-label={assistant.name}
+              >
+                {assistantInitials(assistant.name)}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            className={[
+              'catAvatar',
+              'catsSelectorAvatar',
+              'catsSelectorNewAvatar',
+              isCreatingAssistant ? 'catsSelectorAvatarActive' : '',
+            ].filter(Boolean).join(' ')}
+            onClick={handleStartCreate}
+            aria-label="Add new assistant"
+            data-tooltip="Add new assistant"
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.25"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+          </button>
+        </nav>
+
+        {/* ── Assistant detail ────────────────────────────────────── */}
+        <SettingsSection
+          className="catsDetailCard"
+          header={
+            <SettingsSectionHeader
+              title={showCreateView
+                ? 'New assistant'
+                : (selectedAssistant?.name ?? '')}
+              status={
+                showCreateView ? (
+                  <SettingsActionBar>
+                    {assistantPresets.length > 0 ? (
+                      <button
+                        type="button"
+                        className="secondaryButton"
+                        disabled={assistantBusy}
+                        onClick={handleCancelCreate}
+                      >
+                        Cancel
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="primaryButton"
+                      disabled={assistantBusy || !canSaveCreate}
+                      onClick={() => void handleCreateAssistant()}
+                    >
+                      {assistantBusy ? 'Saving...' : 'Save'}
+                    </button>
+                  </SettingsActionBar>
+                ) : (
+                  <SettingsActionBar>
+                    <button
+                      type="button"
+                      className="dangerButton"
+                      disabled={assistantBusy}
+                      onClick={() => void handleDeleteAssistant()}
+                    >
+                      Delete
+                    </button>
+                  </SettingsActionBar>
+                )
+              }
+            />
+          }
+        >
+          {showCreateView ? (
+            <div className="catsDetailBody">
+              <div className="catsDetailColumn">
+                <SettingsSubSection headerless className="catsSubCard catsIdentityCard">
+                  <label className="fieldLabel">
+                    <span>Name</span>
+                    <input
+                      className="textInput"
+                      value={createDraft.name}
+                      placeholder="Assistant"
+                      onChange={(event) =>
+                        setCreateDraft((prev) => ({
+                          ...prev,
+                          name: event.target.value,
+                        }))}
+                    />
+                  </label>
+                </SettingsSubSection>
+                <SettingsSubSection
+                  className="catsSubCard"
+                  header={<SettingsSectionHeader title="Role hint" nested />}
+                >
+                  <textarea
+                    className="textInput"
+                    rows={3}
+                    value={createDraft.roleHint}
+                    placeholder="Reviewer, debugger, copy editor, API specialist..."
+                    onChange={(event) =>
+                      setCreateDraft((prev) => ({
+                        ...prev,
+                        roleHint: event.target.value,
+                      }))}
+                  />
+                </SettingsSubSection>
+              </div>
+              <div className="catsDetailColumn">
+                <SettingsSubSection
+                  className="catsSubCard"
+                  header={<SettingsSectionHeader title="Brain" nested />}
+                >
+                  <ProviderModelFields
+                    provider={createDraft.provider}
+                    instance={createDraft.instance}
+                    model={createDraft.model}
+                    modelSelection={createDraft.modelSelection}
+                    onTargetChange={(target) =>
+                      setCreateDraft((prev) => ({
+                        ...prev,
+                        provider: target.provider,
+                        instance: target.instance,
+                        model: target.model,
+                        modelSelection: target.modelSelection ?? null,
+                      }))}
+                    fetchProviderRegistry={fetchProviderRegistry}
+                    fetchProviderModels={fetchProviderModels}
+                    fetchAdvancedProviderModels={fetchAdvancedProviderModels}
+                  />
+                </SettingsSubSection>
+              </div>
+            </div>
+          ) : selectedAssistant ? (
+            <div className="catsDetailBody">
+              <div className="catsDetailColumn">
+                <SettingsSubSection headerless className="catsSubCard catsIdentityCard">
+                  <label className="fieldLabel">
+                    <span>Name</span>
+                    <input
+                      key={selectedAssistant.id}
+                      className="textInput"
+                      defaultValue={selectedAssistant.name}
+                      placeholder="Assistant"
+                      onBlur={async (event) => {
+                        const next = event.currentTarget.value.trim();
+                        if (!next) {
+                          event.currentTarget.value = selectedAssistant.name;
+                          return;
+                        }
+                        if (next === selectedAssistant.name) return;
+                        const ok = await commitAssistant(
+                          selectedAssistant.id,
+                          { name: next },
+                          'Failed to rename assistant.',
+                        );
+                        if (!ok) {
+                          event.currentTarget.value = selectedAssistant.name;
+                        }
+                      }}
+                    />
+                  </label>
+                </SettingsSubSection>
+                <SettingsSubSection
+                  className="catsSubCard"
+                  header={<SettingsSectionHeader title="Role hint" nested />}
+                >
+                  <textarea
+                    key={selectedAssistant.id}
+                    className="textInput"
+                    rows={3}
+                    defaultValue={selectedAssistant.roleHint ?? ''}
+                    placeholder="Reviewer, debugger, copy editor, API specialist..."
+                    onBlur={async (event) => {
+                      const raw = event.currentTarget.value.trim();
+                      const next: string | null = raw ? raw : null;
+                      const current = selectedAssistant.roleHint ?? null;
+                      if (next === current) return;
+                      const ok = await commitAssistant(
+                        selectedAssistant.id,
+                        { roleHint: next },
+                        'Failed to update role hint.',
+                      );
+                      if (!ok) {
+                        event.currentTarget.value = selectedAssistant.roleHint ?? '';
+                      }
+                    }}
+                  />
+                </SettingsSubSection>
+              </div>
+              <div className="catsDetailColumn">
+                <SettingsSubSection
+                  className="catsSubCard"
+                  header={<SettingsSectionHeader title="Brain" nested />}
+                >
+                  <ProviderModelFields
+                    provider={selectedAssistant.executionTarget.provider}
+                    instance={selectedAssistant.executionTarget.instance ?? ''}
+                    model={selectedAssistant.executionTarget.model ?? ''}
+                    modelSelection={selectedAssistant.modelSelection}
+                    onTargetChange={(target) => {
+                      void commitAssistant(
+                        selectedAssistant.id,
+                        {
+                          provider: target.provider,
+                          instance: target.instance || null,
+                          model: target.model || null,
+                          modelSelection: target.modelSelection ?? null,
+                        },
+                        'Failed to update Brain.',
+                      );
+                    }}
+                    fetchProviderRegistry={fetchProviderRegistry}
+                    fetchProviderModels={fetchProviderModels}
+                    fetchAdvancedProviderModels={fetchAdvancedProviderModels}
+                  />
+                </SettingsSubSection>
+              </div>
+            </div>
+          ) : null}
+        </SettingsSection>
+      </div>
+      <ConfirmDialog dialog={dialog} onClose={handleClose} />
       <ToastContainer toasts={toasts} />
-    </div>
+    </>
   );
 }
