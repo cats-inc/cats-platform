@@ -15,6 +15,8 @@ declare global {
 
 declare module 'electron' {
   export interface BrowserWindowConstructorOptions {
+    x?: number;
+    y?: number;
     width?: number;
     height?: number;
     minWidth?: number;
@@ -22,6 +24,12 @@ declare module 'electron' {
     show?: boolean;
     title?: string;
     backgroundColor?: string;
+    frame?: boolean;
+    transparent?: boolean;
+    resizable?: boolean;
+    hasShadow?: boolean;
+    skipTaskbar?: boolean;
+    fullscreenable?: boolean;
     webPreferences?: {
       preload?: string;
       contextIsolation?: boolean;
@@ -50,6 +58,9 @@ declare module 'electron' {
     isMinimized(): boolean;
     restore(): void;
     focus(): void;
+    setAlwaysOnTop(flag: boolean, level?: string): void;
+    close(): void;
+    isDestroyed(): boolean;
   }
 
   export interface Display {
