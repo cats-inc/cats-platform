@@ -738,11 +738,11 @@ contracts.
       delegates for conversation behavior updates. Those delegates still use
       the shared `/api/preferences` backing route until product-owned state
       slices and server delegates land.
-- [ ] Extend task-strategy handoff beyond the current Chat-first
+- [x] Extend task-strategy handoff beyond the current Chat-first
       `product: 'chat'` call sites so `Cats Work` and `Cats Code` resolve
       product defaults and runtime bridge inputs through their own
       product-owned adapters
-      Progress: task runtime bridge resolution now supports a fallback product
+      Completed: task runtime bridge resolution now supports a fallback product
       that does not override planning handoff metadata. Chat runtime session
       task checkout uses `fallbackProduct: 'chat'`, so Work/Code planning
       handoffs keep their product defaults instead of being forced back to
