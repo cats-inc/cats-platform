@@ -33,6 +33,7 @@ import {
   resetSetup as resetWorkspaceSetup,
   ungroupParallelChatGroup as ungroupWorkspaceParallelChatGroup,
 } from '../api/index.js';
+import type { DeleteChatChannelResult } from '../api/chat.js';
 import { resetComposerDraftState } from '../composerDraftState.js';
 import {
   buildDeleteCatConfirmation,
@@ -88,7 +89,7 @@ export interface WorkspaceNavigationPayloadLike {
 }
 
 export interface WorkspaceAppNavigationApi<TPayload extends WorkspaceNavigationPayloadLike> {
-  deleteChatChannel: (channelId: string) => Promise<TPayload>;
+  deleteChatChannel: (channelId: string) => Promise<TPayload | DeleteChatChannelResult<TPayload>>;
   deleteGlobalCat: (catId: string) => Promise<TPayload>;
   deleteParallelChatGroup: (groupId: string) => Promise<TPayload>;
   renameChatChannel: (channelId: string, title: string) => Promise<TPayload>;
@@ -106,6 +107,29 @@ const defaultNavigationApi: WorkspaceAppNavigationApi<WorkspaceAppShellPayload> 
   resetSetup: resetWorkspaceSetup,
   ungroupParallelChatGroup: ungroupWorkspaceParallelChatGroup,
 };
+
+function isDeleteChatChannelResult<TPayload extends WorkspaceNavigationPayloadLike>(
+  value: TPayload | DeleteChatChannelResult<TPayload>,
+): value is DeleteChatChannelResult<TPayload> {
+  return Boolean(
+    value
+    && typeof value === 'object'
+    && 'payload' in value
+    && 'runtimeCleanup' in value,
+  );
+}
+
+function resolveDeleteChannelFeedback<TPayload extends WorkspaceNavigationPayloadLike>(
+  result: TPayload | DeleteChatChannelResult<TPayload>,
+): string {
+  if (!isDeleteChatChannelResult(result) || result.runtimeCleanup.retainedSessionCount === 0) {
+    return '';
+  }
+
+  const count = result.runtimeCleanup.retainedSessionCount;
+  const noun = count === 1 ? 'runtime session was' : 'runtime sessions were';
+  return `Conversation deleted. ${count} linked ${noun} retained by Cats Runtime; open runtime diagnostics if disk cleanup matters.`;
+}
 
 export type WorkspaceNavigationLoadState<
   TPayload extends WorkspaceNavigationPayloadLike = WorkspaceAppShellPayload,
@@ -304,11 +328,13 @@ export function useWorkspaceAppNavigationActions<
 
     setBusy(createChannelBusyState('delete', channelId));
     try {
-      const payload = await navigationApi.deleteChatChannel(channelId);
+      const result = await navigationApi.deleteChatChannel(channelId);
+      const payload = isDeleteChatChannelResult(result) ? result.payload : result;
+      const feedback = resolveDeleteChannelFeedback(result);
       startTransition(() => {
         setState({ status: 'ready', payload });
         setAddCatOpen(false);
-        setFeedback('');
+        setFeedback(feedback);
       });
       navigate(
         resolveWorkspaceVisibleChatPath(

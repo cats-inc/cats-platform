@@ -71,6 +71,25 @@ interface ProductDeleteRuntimeFailureDetail {
   runtimeStatusCode?: number;
 }
 
+export interface ProductDeleteRuntimeCleanupSummary {
+  attemptedSessionCount: number;
+  retainedSessionCount: number;
+  retainedSessions: Array<{
+    sessionId: string;
+    reason: string | null;
+  }>;
+}
+
+function createProductDeleteRuntimeCleanupSummary(
+  attemptedSessionCount: number,
+): ProductDeleteRuntimeCleanupSummary {
+  return {
+    attemptedSessionCount,
+    retainedSessionCount: 0,
+    retainedSessions: [],
+  };
+}
+
 function logRetainedProductDeleteSession(
   sessionId: string,
   reason: string | null | undefined,
@@ -85,15 +104,16 @@ function logRetainedProductDeleteSession(
 export async function cleanupSessionsForProductDelete(
   context: ChatApiRouteContext,
   sessionIds: Array<string | null | undefined>,
-): Promise<void> {
+): Promise<ProductDeleteRuntimeCleanupSummary> {
   const validSessionIds = normalizeSessionIds(sessionIds);
+  const summary = createProductDeleteRuntimeCleanupSummary(validSessionIds.length);
   if (validSessionIds.length === 0) {
-    return;
+    return summary;
   }
 
   if (context.dependencies.config.debugKeepRuntimeSessionsOnProductDelete) {
     await closeSessionIds(context, validSessionIds);
-    return;
+    return summary;
   }
 
   const failures: ProductDeleteRuntimeFailureDetail[] = [];
@@ -117,6 +137,10 @@ export async function cleanupSessionsForProductDelete(
       const result = await context.dependencies.runtimeClient.deleteSession(sessionId);
       if (result.status === 'retained') {
         logRetainedProductDeleteSession(sessionId, result.reason);
+        summary.retainedSessions.push({
+          sessionId,
+          reason: result.reason?.trim() || null,
+        });
         continue;
       }
     } catch (error) {
@@ -134,7 +158,8 @@ export async function cleanupSessionsForProductDelete(
   }
 
   if (failures.length === 0) {
-    return;
+    summary.retainedSessionCount = summary.retainedSessions.length;
+    return summary;
   }
 
   throw new ChatApiError(

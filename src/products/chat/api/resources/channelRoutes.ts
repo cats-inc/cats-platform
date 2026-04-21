@@ -488,8 +488,8 @@ async function handleRestDeleteChannel(
   try {
     requireValidChatScopeId(chatScopeId);
     await context.dependencies.mutationGate.run(channelId, async () => {
-      await persistDeletedChannel(context, channelId);
-      sendJson(context.response, 200, { deleted: true, channelId });
+      const runtimeCleanup = await persistDeletedChannel(context, channelId);
+      sendJson(context.response, 200, { deleted: true, channelId, runtimeCleanup });
       publishChannelMutationEvents(context, channelId);
     });
   } catch (error) {

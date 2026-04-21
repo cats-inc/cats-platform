@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -237,6 +237,14 @@ test('DELETE /api/channels/:id no longer fails on retained runtime deletes', asy
       assert.equal(response.status, 200);
       const payload = await response.json();
       assert.equal(payload.deleted, true);
+      assert.deepEqual(payload.runtimeCleanup, {
+        attemptedSessionCount: 1,
+        retainedSessionCount: 1,
+        retainedSessions: [{
+          sessionId: 'session-retained-channel',
+          reason: 'Session files were kept for retry.',
+        }],
+      });
 
       const persisted = await store.read();
       assert.equal(persisted.channels.some((channel) => channel.id === channelId), false);
@@ -249,6 +257,38 @@ test('DELETE /api/channels/:id no longer fails on retained runtime deletes', asy
     stderrWrites.join(''),
     /runtime retained linked session session-retained-channel; continuing product delete; reason: Session files were kept for retry\./u,
   );
+});
+
+test('renderer delete channel feedback surfaces retained runtime cleanup', async () => {
+  const hookSource = await readFile(
+    path.join(
+      process.cwd(),
+      'src',
+      'products',
+      'shared',
+      'renderer',
+      'hooks',
+      'useWorkspaceAppNavigationActions.ts',
+    ),
+    'utf8',
+  );
+  const apiSource = await readFile(
+    path.join(
+      process.cwd(),
+      'src',
+      'products',
+      'shared',
+      'renderer',
+      'api',
+      'chat.ts',
+    ),
+    'utf8',
+  );
+
+  assert.match(apiSource, /runtimeCleanup: normalizeDeleteRuntimeCleanup/u);
+  assert.match(hookSource, /resolveDeleteChannelFeedback/u);
+  assert.match(hookSource, /retained by Cats Runtime/u);
+  assert.match(hookSource, /setFeedback\(feedback\)/u);
 });
 
 test('DELETE /api/channels/:id still fails on real runtime delete errors', async () => {

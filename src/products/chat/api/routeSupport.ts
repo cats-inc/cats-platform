@@ -110,6 +110,7 @@ export {
 import {
   cleanupSessionsForProductDelete,
   closeSessionIds,
+  type ProductDeleteRuntimeCleanupSummary,
 } from './routeSessions.js';
 export {
   maybeAutoResumeRecoveredCatContinuation,
@@ -422,11 +423,11 @@ async function writeCoreWithUpdatedBindings(
 export async function persistDeletedChannel(
   context: ChatApiRouteContext,
   channelId: string,
-): Promise<void> {
+): Promise<ProductDeleteRuntimeCleanupSummary> {
   const currentState = await context.dependencies.chatStore.read();
   const channel = requireChannel(currentState, channelId);
 
-  await cleanupSessionsForProductDelete(
+  const runtimeCleanup = await cleanupSessionsForProductDelete(
     context,
     collectLinkedChannelSessionIds(channel),
   );
@@ -434,6 +435,7 @@ export async function persistDeletedChannel(
   await context.dependencies.chatStore.write(
     deleteChannel(currentState, channelId),
   );
+  return runtimeCleanup;
 }
 
 export async function persistRenamedChannel(

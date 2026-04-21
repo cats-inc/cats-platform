@@ -19,10 +19,72 @@ import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js'
 import type { RuntimeSessionPolicy } from '../../../../shared/runtimeSessionPolicy.js';
 
 import { fetchAppShell, refetchAfterMutation } from './appShell.js';
-import { expectJson } from './http.js';
+import { expectJson, readErrorMessage } from './http.js';
 import { normalizeSelectedChannelView } from '../../channelEntry.js';
 
 const PARALLEL_CHAT_GROUPS_API_BASE = '/api/parallel-chat-groups';
+
+export interface DeleteChatChannelRuntimeCleanup {
+  attemptedSessionCount: number;
+  retainedSessionCount: number;
+  retainedSessions: Array<{
+    sessionId: string;
+    reason: string | null;
+  }>;
+}
+
+export interface DeleteChatChannelResult<TPayload = AppShellPayload> {
+  payload: TPayload;
+  runtimeCleanup: DeleteChatChannelRuntimeCleanup;
+}
+
+interface DeleteChatChannelMutationResponse {
+  runtimeCleanup?: unknown;
+}
+
+function normalizeDeleteRuntimeCleanup(value: unknown): DeleteChatChannelRuntimeCleanup {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return {
+      attemptedSessionCount: 0,
+      retainedSessionCount: 0,
+      retainedSessions: [],
+    };
+  }
+
+  const record = value as Record<string, unknown>;
+  const retainedSessions = Array.isArray(record.retainedSessions)
+    ? record.retainedSessions.flatMap((entry) => {
+      if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+        return [];
+      }
+      const retained = entry as Record<string, unknown>;
+      const sessionId = typeof retained.sessionId === 'string'
+        ? retained.sessionId.trim()
+        : '';
+      if (!sessionId) {
+        return [];
+      }
+      return [{
+        sessionId,
+        reason: typeof retained.reason === 'string' && retained.reason.trim()
+          ? retained.reason.trim()
+          : null,
+      }];
+    })
+    : [];
+
+  const attemptedSessionCount = typeof record.attemptedSessionCount === 'number'
+    && Number.isFinite(record.attemptedSessionCount)
+    && record.attemptedSessionCount > 0
+    ? Math.floor(record.attemptedSessionCount)
+    : 0;
+
+  return {
+    attemptedSessionCount,
+    retainedSessionCount: retainedSessions.length,
+    retainedSessions,
+  };
+}
 
 function encodeBytesToBase64(bytes: Uint8Array): string {
   const chunkSize = 0x8000;
@@ -101,7 +163,7 @@ export async function renameChatChannel(
 export async function deleteChatChannel(
   channelId: string,
   signal?: AbortSignal,
-): Promise<AppShellPayload> {
+): Promise<DeleteChatChannelResult> {
   const response = await fetch(`/api/channels/${channelId}`, {
     method: 'DELETE',
     headers: {
@@ -110,11 +172,25 @@ export async function deleteChatChannel(
     signal,
   });
 
-  return refetchAfterMutation(
-    response,
-    `cats chat deletion returned ${response.status}`,
-    signal,
-  );
+  if (!response.ok) {
+    throw new Error(await readErrorMessage(
+      response,
+      `cats chat deletion returned ${response.status}`,
+    ));
+  }
+
+  const mutation = await response.json() as DeleteChatChannelMutationResponse;
+  let payload: AppShellPayload;
+  try {
+    payload = await fetchAppShell(signal);
+  } catch {
+    payload = await fetchAppShell();
+  }
+
+  return {
+    payload,
+    runtimeCleanup: normalizeDeleteRuntimeCleanup(mutation.runtimeCleanup),
+  };
 }
 
 export async function createGlobalCat(

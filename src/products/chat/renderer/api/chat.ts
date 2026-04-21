@@ -37,6 +37,7 @@ import {
   updateCatProfile as updateWorkspaceCatProfile,
   updateChannelParticipantApi as updateWorkspaceChannelParticipantApi,
   uploadChannelAttachments as uploadWorkspaceChannelAttachments,
+  type DeleteChatChannelResult,
 } from '../../../shared/renderer/api/chat.js';
 import { refetchAfterMutation } from './appShell.js';
 import { expectJson } from './http.js';
@@ -68,8 +69,8 @@ export async function renameChatChannel(
 export async function deleteChatChannel(
   channelId: string,
   signal?: AbortSignal,
-): Promise<AppShellPayload> {
-  return deleteWorkspaceChatChannel(channelId, signal) as Promise<AppShellPayload>;
+): Promise<DeleteChatChannelResult<AppShellPayload>> {
+  return deleteWorkspaceChatChannel(channelId, signal) as Promise<DeleteChatChannelResult<AppShellPayload>>;
 }
 
 export async function createGlobalCat(

@@ -141,7 +141,7 @@ test('DELETE /api/channels/:id deletes linked runtime sessions by default', asyn
   let state = await chatStore.read();
   state = createCat(state, { name: 'Cleanup Cat', provider: 'claude' }, now);
   const catId = state.cats[0].id;
-  state = createChannel(state, { title: 'Delete Channel', topic: 'cleanup' }, now);
+  state = createChannel(state, { title: 'Delete Channel', topic: 'cleanup', originSurface: 'chat' }, now);
   const channelId = state.selectedChannelId;
   state = assignCatToChannel(state, channelId, { catId, provider: 'claude' }, now);
   state = setChannelCatLease(state, channelId, catId, {
@@ -172,6 +172,7 @@ test('DELETE /api/channels/:id deletes linked temporary participant runtime sess
   state = createChannel(state, {
     title: 'Delete Temporary Participant Channel',
     topic: 'cleanup temporary participant sessions',
+    originSurface: 'chat',
     temporaryParticipants: [
       {
         participantId: 'participant-inline',
@@ -207,7 +208,7 @@ test('DELETE /api/channels/:id keeps close-only behavior when debug retention ov
   let state = await chatStore.read();
   state = createCat(state, { name: 'Debug Cat', provider: 'claude' }, now);
   const catId = state.cats[0].id;
-  state = createChannel(state, { title: 'Debug Delete', topic: 'cleanup' }, now);
+  state = createChannel(state, { title: 'Debug Delete', topic: 'cleanup', originSurface: 'chat' }, now);
   const channelId = state.selectedChannelId;
   state = assignCatToChannel(state, channelId, { catId, provider: 'claude' }, now);
   state = setChannelCatLease(state, channelId, catId, {
@@ -251,7 +252,7 @@ test('DELETE /api/channels/:id treats retained runtime delete as success and rem
   let state = await chatStore.read();
   state = createCat(state, { name: 'Retained Cat', provider: 'claude' }, now);
   const catId = state.cats[0].id;
-  state = createChannel(state, { title: 'Retained Delete', topic: 'cleanup' }, now);
+  state = createChannel(state, { title: 'Retained Delete', topic: 'cleanup', originSurface: 'chat' }, now);
   const channelId = state.selectedChannelId;
   state = assignCatToChannel(state, channelId, { catId, provider: 'claude' }, now);
   state = setChannelCatLease(state, channelId, catId, {
@@ -279,6 +280,14 @@ test('DELETE /api/channels/:id treats retained runtime delete as success and rem
       assert.equal(response.status, 200);
       const payload = await response.json();
       assert.equal(payload.deleted, true);
+      assert.deepEqual(payload.runtimeCleanup, {
+        attemptedSessionCount: 1,
+        retainedSessionCount: 1,
+        retainedSessions: [{
+          sessionId: 'session-retained-channel',
+          reason: 'Session files were kept for retry.',
+        }],
+      });
 
       const persisted = await store.read();
       assert.ok(!persisted.channels.some((channel) => channel.id === channelId));
@@ -304,7 +313,7 @@ test('DELETE /api/channels/:id returns 502 and keeps product state when runtime 
   let state = await chatStore.read();
   state = createCat(state, { name: 'Delete Error Cat', provider: 'claude' }, now);
   const catId = state.cats[0].id;
-  state = createChannel(state, { title: 'Delete Error Channel', topic: 'cleanup' }, now);
+  state = createChannel(state, { title: 'Delete Error Channel', topic: 'cleanup', originSurface: 'chat' }, now);
   const channelId = state.selectedChannelId;
   state = assignCatToChannel(state, channelId, { catId, provider: 'claude' }, now);
   state = setChannelCatLease(state, channelId, catId, {
@@ -338,7 +347,7 @@ test('DELETE /api/cats/:id deletes linked runtime sessions by default', async ()
   let state = await chatStore.read();
   state = createCat(state, { name: 'Delete Me', provider: 'claude' }, now);
   const catId = state.cats[0].id;
-  state = createChannel(state, { title: 'Delete Cat Channel', topic: 'cleanup' }, now);
+  state = createChannel(state, { title: 'Delete Cat Channel', topic: 'cleanup', originSurface: 'chat' }, now);
   const channelId = state.selectedChannelId;
   state = assignCatToChannel(state, channelId, { catId, provider: 'claude' }, now);
   state = setChannelCatLease(state, channelId, catId, {
@@ -365,6 +374,7 @@ test('DELETE /api/concurrent-groups/:id deletes member chat runtime sessions by 
   let state = await chatStore.read();
   state = createParallelChatGroup(state, {
     title: 'Parallel Cleanup',
+    originSurface: 'chat',
     targets: [
       { provider: 'claude' },
       { provider: 'codex' },
@@ -413,7 +423,7 @@ test('DELETE /api/channels/:id treats missing runtime sessions as idempotent suc
   let state = await chatStore.read();
   state = createCat(state, { name: 'Missing Runtime', provider: 'claude' }, now);
   const catId = state.cats[0].id;
-  state = createChannel(state, { title: 'Missing Runtime Delete', topic: 'cleanup' }, now);
+  state = createChannel(state, { title: 'Missing Runtime Delete', topic: 'cleanup', originSurface: 'chat' }, now);
   const channelId = state.selectedChannelId;
   state = assignCatToChannel(state, channelId, { catId, provider: 'claude' }, now);
   state = setChannelCatLease(state, channelId, catId, {

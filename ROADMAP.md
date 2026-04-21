@@ -180,7 +180,10 @@ contracts.
       `CATS_DEBUG_KEEP_RUNTIME_SESSIONS_ON_PRODUCT_DELETE=true`
       Progress: single-conversation deletes now require an explicit confirmation,
       and conversation / parallel-group / Cat destructive confirmations now state
-      that linked runtime sessions are removed too.
+      that linked runtime sessions are removed too. Product deletes now return a
+      `runtimeCleanup` summary, and the shared renderer navigation hook surfaces
+      retained linked runtime sessions as post-delete feedback instead of
+      silently clearing the message area.
 - [x] Refactor `ensureTargetSession(...)` so runtime session creation, lease wake state,
       and execution-target reconciliation stop living in one function now that
       session startup also persists runtime-sanitized model selections back into
