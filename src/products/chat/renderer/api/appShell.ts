@@ -2,7 +2,7 @@ import type {
   AppShellPayload,
   NewChatDefaults,
   UpdateGlobalOrchestratorInput,
-} from '../../api/contracts';
+} from '../../api/contracts.js';
 import type { SurfaceConversationBehaviorPatch } from '../../../shared/conversationBehavior.js';
 import type { ProviderModelSelection } from '../../../../shared/providerSelection.js';
 import { createKeyedRequestCoalescer } from '../../shared/asyncControl.js';

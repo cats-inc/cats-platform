@@ -27,12 +27,14 @@ export interface ResolveTaskExecutionProductInput {
   core?: Pick<CatsCoreState, 'conversations'> | null;
   task: Pick<CoreTaskRecord, 'conversationId' | 'metadata'>;
   product?: TaskExecutionProduct | null;
+  fallbackProduct?: TaskExecutionProduct | null;
 }
 
 export interface BuildTaskRuntimeExecutionRequestInput {
   core?: Pick<CatsCoreState, 'conversations' | 'workItems'> | null;
   task: Pick<CoreTaskRecord, 'id' | 'conversationId' | 'metadata'>;
   product?: TaskExecutionProduct | null;
+  fallbackProduct?: TaskExecutionProduct | null;
   workItemId?: string | null;
 }
 
@@ -133,13 +135,13 @@ export function resolveTaskExecutionProduct(
   }
 
   if (!input.core || !input.task.conversationId) {
-    return null;
+    return input.fallbackProduct ?? null;
   }
 
   const conversation = input.core.conversations.find(
     (candidate) => candidate.id === input.task.conversationId,
   );
-  return mapConversationKindToProduct(conversation?.kind);
+  return mapConversationKindToProduct(conversation?.kind) ?? input.fallbackProduct ?? null;
 }
 
 export function cloneTaskRuntimeExecutionRequest(
@@ -192,6 +194,7 @@ export function buildTaskRuntimeExecutionRequest(
     core: input.core,
     task: input.task,
     product: input.product,
+    fallbackProduct: input.fallbackProduct,
   });
   const workItemId = input.workItemId
     ?? resolveTaskWorkItemId(input.core, input.task.id);

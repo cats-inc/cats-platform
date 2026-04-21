@@ -746,6 +746,11 @@ contracts.
       `product: 'chat'` call sites so `Cats Work` and `Cats Code` resolve
       product defaults and runtime bridge inputs through their own
       product-owned adapters
+      Progress: task runtime bridge resolution now supports a fallback product
+      that does not override planning handoff metadata. Chat runtime session
+      task checkout uses `fallbackProduct: 'chat'`, so Work/Code planning
+      handoffs keep their product defaults instead of being forced back to
+      Chat strategy semantics.
 
 ### Near-Term Migration Focus
 

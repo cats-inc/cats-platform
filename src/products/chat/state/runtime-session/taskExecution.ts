@@ -50,7 +50,7 @@ export async function resolveChannelTaskExecutionRequest(
     executionRequest: buildTaskRuntimeExecutionRequest({
       core,
       task,
-      product: 'chat',
+      fallbackProduct: 'chat',
     }),
   };
 }

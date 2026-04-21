@@ -374,6 +374,71 @@ test('planning product handoff stays authoritative over conversation kind when n
   });
 });
 
+test('fallback product supplies defaults without overriding planning handoff metadata', () => {
+  const now = new Date('2026-03-26T03:50:00.000Z');
+  const core = createDefaultCoreState();
+  const handoffWrite = upsertCoreTask(
+    core,
+    {
+      id: 'task-chat-entry-code-handoff',
+      title: 'Chat entry handoff to Code',
+      status: 'approved',
+      ownerActorId: 'actor-owner',
+      assignedActorIds: ['actor-coder'],
+      metadata: writeTaskPlanningMetadata(
+        {},
+        {
+          productHint: 'code',
+        },
+      ),
+    },
+    now,
+  );
+
+  assert.deepEqual(
+    buildTaskRuntimeExecutionRequest({
+      core: handoffWrite.core,
+      task: handoffWrite.task,
+      fallbackProduct: 'chat',
+    }),
+    {
+      requestedStrategy: 'reflexion',
+      correlation: {
+        taskId: 'task-chat-entry-code-handoff',
+        product: 'code',
+      },
+    },
+  );
+
+  const defaultWrite = upsertCoreTask(
+    handoffWrite.core,
+    {
+      id: 'task-chat-entry-default',
+      title: 'Chat entry default',
+      status: 'approved',
+      ownerActorId: 'actor-owner',
+      assignedActorIds: ['actor-cat'],
+      metadata: {},
+    },
+    now,
+  );
+
+  assert.deepEqual(
+    buildTaskRuntimeExecutionRequest({
+      core: defaultWrite.core,
+      task: defaultWrite.task,
+      fallbackProduct: 'chat',
+    }),
+    {
+      requestedStrategy: 'react',
+      correlation: {
+        taskId: 'task-chat-entry-default',
+        product: 'chat',
+      },
+    },
+  );
+});
+
 test('task lifecycle sends additive runtime bridge fields without changing checkout semantics', async () => {
   const fixture = createTaskBridgeFixture();
   assert.ok(fixture.task);
@@ -572,4 +637,3 @@ test('task lifecycle normalizes ad hoc execution requests before persistence and
     },
   });
 });
-
