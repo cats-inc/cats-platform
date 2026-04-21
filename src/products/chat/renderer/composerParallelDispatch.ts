@@ -17,29 +17,11 @@ import { buildChannelPath as buildChatChannelPath } from '../shared/channelPaths
 import type { DraftParallelTargetBranchFields } from '../../shared/renderer/draftParallelTargets.js';
 import {
   assertNoBranchAttachmentOverrides,
+  createDraftLeadContext,
   resolveBranch,
-  type DraftLeadContext,
 } from '../../shared/renderer/draftBranchResolution.js';
 
 type ParallelDispatchTarget = ExecutionTargetValue & DraftParallelTargetBranchFields;
-
-function createDraftLeadContext(input: {
-  body: string;
-  draftCwd: string | null;
-  draftSessionPolicy?: RuntimeSessionPolicy | null;
-  draftFiles: File[];
-  draftWorkflowShape?: DraftRoomWorkflowShape;
-  draftAudienceKeys?: string[] | null;
-}): DraftLeadContext {
-  return {
-    composerDraft: input.body,
-    draftCwd: input.draftCwd,
-    draftRuntimeSessionPolicy: input.draftSessionPolicy ?? null,
-    draftAudienceKeys: input.draftAudienceKeys ?? null,
-    draftWorkflowShape: input.draftWorkflowShape ?? 'sequential',
-    draftFiles: input.draftFiles,
-  };
-}
 
 export interface ParallelDispatchRequestState {
   kind: 'parallel';
@@ -106,9 +88,9 @@ export async function submitNewParallelChatDraft({
   }
   assertNoBranchAttachmentOverrides(draftParallelChatTargets);
   const leadContext = createDraftLeadContext({
-    body,
+    composerDraft: body,
     draftCwd,
-    draftSessionPolicy,
+    draftRuntimeSessionPolicy: draftSessionPolicy,
     draftFiles,
     draftWorkflowShape,
     draftAudienceKeys,

@@ -30,6 +30,24 @@ export interface ResolvedBranch {
   };
 }
 
+export function createDraftLeadContext(input: {
+  composerDraft: string;
+  draftCwd: string | null;
+  draftRuntimeSessionPolicy?: RuntimeSessionPolicy | null;
+  draftAudienceKeys?: string[] | null;
+  draftWorkflowShape?: DraftRoomWorkflowShape;
+  draftFiles: File[];
+}): DraftLeadContext {
+  return {
+    composerDraft: input.composerDraft,
+    draftCwd: input.draftCwd,
+    draftRuntimeSessionPolicy: input.draftRuntimeSessionPolicy ?? null,
+    draftAudienceKeys: input.draftAudienceKeys ?? null,
+    draftWorkflowShape: input.draftWorkflowShape ?? 'sequential',
+    draftFiles: input.draftFiles,
+  };
+}
+
 function normalizeAudienceKeys(keys: readonly string[] | null | undefined): string[] {
   if (!Array.isArray(keys) || keys.length === 0) {
     return [];

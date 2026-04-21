@@ -15,31 +15,13 @@ import {
 } from './draftChatUtils.js';
 import {
   assertNoBranchAttachmentOverrides,
+  createDraftLeadContext,
   resolveBranch,
-  type DraftLeadContext,
 } from './draftBranchResolution.js';
 import { createDraftChannelTitle } from './workspaceChatUtils.js';
 import type { DraftParallelTargetBranchFields } from './draftParallelTargets.js';
 
 type ParallelDispatchTarget = WorkspaceExecutionTargetValue & DraftParallelTargetBranchFields;
-
-function createDraftLeadContext(input: {
-  body: string;
-  draftCwd: string | null;
-  draftSessionPolicy?: RuntimeSessionPolicy | null;
-  draftFiles: File[];
-  draftWorkflowShape?: DraftRoomWorkflowShape;
-  draftAudienceKeys?: string[] | null;
-}): DraftLeadContext {
-  return {
-    composerDraft: input.body,
-    draftCwd: input.draftCwd,
-    draftRuntimeSessionPolicy: input.draftSessionPolicy ?? null,
-    draftAudienceKeys: input.draftAudienceKeys ?? null,
-    draftWorkflowShape: input.draftWorkflowShape ?? 'sequential',
-    draftFiles: input.draftFiles,
-  };
-}
 
 export interface ParallelDispatchRequestState {
   kind: 'parallel';
@@ -101,9 +83,9 @@ export function buildParallelChatDraftCreateInput(input: {
 }): CreateParallelChatGroupInput {
   assertNoBranchAttachmentOverrides(input.draftParallelChatTargets);
   const leadContext = createDraftLeadContext({
-    body: input.body,
+    composerDraft: input.body,
     draftCwd: input.draftCwd,
-    draftSessionPolicy: input.draftSessionPolicy,
+    draftRuntimeSessionPolicy: input.draftSessionPolicy,
     draftFiles: input.draftFiles ?? [],
     draftWorkflowShape: input.draftWorkflowShape,
     draftAudienceKeys: input.draftAudienceKeys,
@@ -164,9 +146,9 @@ export async function submitNewParallelChatDraft({
     throw new Error('Choose at least two parallel chats before sending.');
   }
   const leadContext = createDraftLeadContext({
-    body,
+    composerDraft: body,
     draftCwd,
-    draftSessionPolicy,
+    draftRuntimeSessionPolicy: draftSessionPolicy,
     draftFiles,
     draftWorkflowShape,
     draftAudienceKeys,

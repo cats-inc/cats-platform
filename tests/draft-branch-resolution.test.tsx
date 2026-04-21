@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   assertNoBranchAttachmentOverrides,
+  createDraftLeadContext,
   resolveBranch,
   resolveBranchAttachments,
   resolveBranchAudienceKeys,
@@ -45,6 +46,26 @@ function createTarget(overrides: Partial<DraftParallelTarget> = {}): DraftParall
     ...overrides,
   };
 }
+
+test('createDraftLeadContext normalizes omitted optional lead defaults', () => {
+  const files = [new File(['lead'], 'lead.txt')];
+
+  assert.deepEqual(
+    createDraftLeadContext({
+      composerDraft: 'Lead prompt',
+      draftCwd: null,
+      draftFiles: files,
+    }),
+    {
+      composerDraft: 'Lead prompt',
+      draftCwd: null,
+      draftRuntimeSessionPolicy: null,
+      draftAudienceKeys: null,
+      draftWorkflowShape: 'sequential',
+      draftFiles: files,
+    },
+  );
+});
 
 test('branch resolvers inherit lead values for null and undefined overrides', () => {
   const lead = createLeadContext();
