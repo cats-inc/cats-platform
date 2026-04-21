@@ -150,6 +150,13 @@ explicit detach confirmation; detached prompts are edited directly in
 that branch textarea; re-link clears `promptOverride` to return to
 lead inheritance.
 
+As of 2026-04-21, the renderer has a synthetic
+orchestrator-authored draft fixture covering the landed per-branch
+fields (`cwd`, `runtimeSessionPolicy`, `audienceKeys`,
+`workflowShape`, `promptOverride`, and `attachmentsOverride: null`).
+`taskRef` remains excluded until the upstream task model spec defines
+it.
+
 The resolver module is present at
 `src/products/shared/renderer/draftBranchResolution.ts`, including
 `createDraftLeadContext`, the landed field resolvers,

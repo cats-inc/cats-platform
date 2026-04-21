@@ -281,6 +281,11 @@ order once Phase 1 lands.
       on non-lead carousel cards: clicking the followed textarea
       opens an explicit detach confirmation, detached prompts become
       editable, and re-link clears the override back to lead.
+      `attachmentsOverride` remains schema-reserved and rejected
+      when non-null; the UI keeps producing null / undefined only.
+      A synthetic orchestrator-authored fixture now renders with all
+      landed per-branch fields populated. `taskRef` is still blocked
+      on the upstream task model spec.
 - [x] Task 3.1: Add `promptOverride?: string | null` to
       `DraftParallelTarget`. Add the corresponding resolution
       helper. Wire dispatch to read resolved prompt per branch.
@@ -298,11 +303,11 @@ order once Phase 1 lands.
       by SPEC-077. Authoring path (how a `TaskRef` gets written
       into a branch) is decided by the task model spec and is
       handled there, not here.
-- [ ] Task 3.4: Keep `attachmentsOverride` schema-reserved. Phase
+- [x] Task 3.4: Keep `attachmentsOverride` schema-reserved. Phase
       3 does not implement per-branch attachments; a dedicated
       future SPEC will. Dispatch continues to reject
       `attachmentsOverride != null`.
-- [ ] Task 3.5: Orchestrator handoff sanity: produce a synthetic
+- [x] Task 3.5: Orchestrator handoff sanity: produce a synthetic
       orchestrator-authored draft (test fixture with all
       per-branch fields populated, including `taskRef` once the
       type exists) and assert the renderer renders it cleanly

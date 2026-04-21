@@ -1429,6 +1429,80 @@ test('parallel shadow branch with detached prompt renders editable prompt and re
   assert.match(markup, /aria-label="Re-link branch prompt to lead"/u);
 });
 
+test('synthetic orchestrator-authored parallel draft renders landed branch fields cleanly', () => {
+  const leadTarget = { provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null } as const;
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        composerDraft: 'Lead orchestrator prompt',
+        selectedExecutionTarget: leadTarget,
+        draftCwd: 'C:/repo/main',
+        draftRuntimeSessionPolicy: {
+          workspaceKind: 'source',
+          workspaceAccess: 'read_write',
+          permissionMode: 'skip',
+        },
+        parallelTargets: [
+          {
+            ...leadTarget,
+            audienceKeys: ['temp:lead'],
+            workflowShape: 'concurrent',
+            cwd: null,
+            runtimeSessionPolicy: null,
+            promptOverride: null,
+            attachmentsOverride: null,
+          },
+          {
+            provider: 'codex-cli',
+            instance: null,
+            model: 'codex-max',
+            modelSelection: null,
+            audienceKeys: ['temp:reviewer'],
+            workflowShape: 'sequential',
+            cwd: 'C:/repo/worktrees/review',
+            runtimeSessionPolicy: {
+              workspaceKind: 'worktree',
+              workspaceAccess: 'read_only',
+              permissionMode: 'default',
+            },
+            promptOverride: 'Review the implementation branch.',
+            attachmentsOverride: null,
+          },
+          {
+            provider: 'gemini-cli',
+            instance: null,
+            model: 'gemini-2.5-pro',
+            modelSelection: null,
+            audienceKeys: ['temp:critic'],
+            workflowShape: 'concurrent',
+            cwd: null,
+            runtimeSessionPolicy: null,
+            promptOverride: '',
+            attachmentsOverride: null,
+          },
+        ],
+        draftTemporaryParticipants: [
+          { participantId: 'lead', name: 'Lead Cat', provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
+          { participantId: 'reviewer', name: 'Reviewer Cat', provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null, roleHint: null },
+          { participantId: 'critic', name: 'Critic Cat', provider: 'gemini-cli', instance: null, model: 'gemini-2.5-pro', modelSelection: null, roleHint: null },
+        ],
+        onSetParallelBranchAudienceKeys: () => {},
+        onSetParallelBranchCwd: () => {},
+        onSetParallelBranchRuntimeSessionPolicy: () => {},
+        onSetParallelBranchPromptOverride: () => {},
+        onAddParallelTarget: () => {},
+      })}
+    />,
+  );
+
+  assert.match(markup, /class="draftCompareCarousel"/u);
+  assert.match(markup, /Review the implementation branch\./u);
+  assert.match(markup, /Prompt detached/u);
+  assert.match(markup, /C:\/repo\/worktrees\/review/u);
+  assert.match(markup, /Worktree \/ Read only/u);
+  assert.match(markup, /Gemini-cli · gemini-2\.5-pro/u);
+});
+
 test('parallel shadow branch with detached runtime policy renders a relinkable policy editor', () => {
   const leadTarget = { provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null } as const;
   const markup = renderToStaticMarkup(
