@@ -63,11 +63,13 @@ order once Phase 1 lands.
 ### Phase 1: Schema foundation and parallel-array absorption
 
 - [ ] Task 1.1: Extend `DraftParallelTarget` in
-      `src/products/shared/renderer/components/ExecutionTarget.ts`
-      with the fields defined in SPEC-078 § Schema.
-      All new fields are optional / nullable; no existing code
-      path should break on a target where every new field is
-      undefined.
+      `src/products/shared/renderer/draftChatUtils.tsx` (the type
+      lives there alongside `createDefaultParallelTargetForProvider`
+      and the parallel-target list helpers — `ExecutionTarget.ts`
+      only declares the unrelated `ExecutionTargetValue` shape) with
+      the fields defined in SPEC-078 § Schema. All new fields are
+      optional / nullable; no existing code path should break on a
+      target where every new field is undefined.
 - [ ] Task 1.2: Add the resolution module
       `src/products/shared/renderer/draftBranchResolution.ts`
       exporting `resolveBranchCwd`, `resolveBranchSessionPolicy`,
@@ -76,17 +78,24 @@ order once Phase 1 lands.
       `resolveBranchAttachments`, and the aggregate
       `resolveBranch(target, leadContext) → ResolvedBranch` per
       SPEC-078 § Resolution Helpers.
-- [ ] Task 1.3: Absorb the two existing parallel arrays into the
-      target:
-      - Remove `parallelBranchAudienceKeys` and
-        `parallelBranchWorkflowShapes` from `NewChatDraftProps`,
-        the draft state store, reducers, and all callers.
+- [ ] Task 1.3: Absorb the two existing per-branch parallel arrays
+      onto the target:
+      - Source today is loose state on the renderer state hooks
+        (`parallelBranchAudienceKeys: string[][]`,
+        `parallelBranchWorkflowShapes: DraftRoomWorkflowShape[]`),
+        not a `DraftParallelBranchState` wrapper — there is no
+        wrapper to retire.
+      - Remove the two parallel arrays from `NewChatDraftProps`,
+        the draft state hooks, reducers, and all callers across
+        Chat / Code / Work draft state directories.
       - Initializers that used to push to the parallel arrays
         now write `target.audienceKeys` / `target.workflowShape`
         instead.
       - Reducers that update a branch's audience keys / workflow
-        shape update the target in place. `parallelTargets[i].audienceKeys`
-        is the new source of truth.
+        shape update the target in place.
+        `parallelTargets[i].audienceKeys` and
+        `parallelTargets[i].workflowShape` become the source of
+        truth.
 - [ ] Task 1.4: Update `ChatNewChatDraft` render path to consume
       resolved branches:
       - Replace inline `parallelBranchAudienceKeys?.[i] ?? []`
@@ -101,18 +110,43 @@ order once Phase 1 lands.
       (`src/products/chat/state/runtime-dispatch/**`) to iterate
       `resolvedBranches`, not `parallelTargets` + parallel arrays.
       Every per-branch dispatch point reads resolved effective
-      values. Runtime wire format unchanged.
-- [ ] Task 1.6: Dispatch rejects a target whose
+      values. The per-channel wire from product → runtime is
+      unchanged once the parallel group's child channels exist.
+- [ ] Task 1.6: **Extend the parallel-group create contract** in
+      `src/products/chat/api/contracts.ts` so per-branch cwd /
+      session policy can round-trip at group-creation time.
+      `CreateParallelChatGroupInput.targets` element gains
+      optional `cwd?: string | null` and
+      `runtimeSessionPolicy?: RuntimeSessionPolicy | null`; the
+      group-level `repoPath` stays as the lead default. The
+      read-model `ParallelChatTarget` itself does not grow —
+      per-channel `repoPath` is already projected onto the
+      resulting `ChatChannelView`. Without this, Phase 2's
+      per-branch cwd UI ships nowhere it can write to.
+- [ ] Task 1.7: **Update the server parallel-group create handler**
+      to consume the extended contract. Locate the existing
+      handler under `src/app/server/**` (the consumer of
+      `CreateParallelChatGroupInput`); for each target, resolve
+      `cwd` against the group's `repoPath`, resolve
+      `runtimeSessionPolicy` against the group default, and
+      forward the resolved per-channel values via the existing
+      `RuntimeSessionCreateContractInput` mix-in to each child
+      `CreateChatChannelInput`. Run ADR-071 validation per
+      resolved per-channel policy; reject the whole group create
+      with a per-target error if any child fails.
+- [ ] Task 1.8: Dispatch rejects a target whose
       `attachmentsOverride` is non-null — Phase 1 does not
       implement per-branch attachments. Clear error message
       ("attachments are not yet per-branch; remove the override").
-- [ ] Task 1.7: Tests — update existing parallel-chat tests to
+- [ ] Task 1.9: Tests — update existing parallel-chat tests to
       construct per-branch state via target fields rather than
-      parallel arrays. Add a small resolution-helper test suite:
-      null → inherit, concrete → use-as-is, lead-target override
-      equals-lead-default.
-- [ ] Task 1.8: Document in SPEC-078 which fields have landed; move
-      Phase 1 items from § Migration into "landed".
+      parallel arrays. Add contract-level test fixtures for
+      `CreateParallelChatGroupInput` with per-target `cwd` /
+      `runtimeSessionPolicy`, and a small resolution-helper test
+      suite: null → inherit, concrete → use-as-is, lead-target
+      override equals-lead-default.
+- [ ] Task 1.10: Document in SPEC-078 which fields have landed;
+      move Phase 1 items from § Migration into "landed".
 
 ### Phase 2: Detach cwd and session policy
 
@@ -142,46 +176,58 @@ order once Phase 1 lands.
 - [ ] Task 2.5: Update SPEC-078 § Migration and § Surfaces Affected
       to reflect the new UI touch points.
 
-### Phase 3: Detach prompt, wire `taskRef`, reserve `attachmentsOverride`
+### Phase 3: Detach prompt, add + wire `taskRef`, reserve `attachmentsOverride`
 
-- [ ] Task 3.1: Prompt detach UX. Non-lead textarea in carousel
+- [ ] Task 3.1: Add `promptOverride?: string | null` to
+      `DraftParallelTarget`. Add the corresponding resolution
+      helper. Wire dispatch to read resolved prompt per branch.
+- [ ] Task 3.2: Prompt detach UX. Non-lead textarea in carousel
       becomes click-to-detach; detached state enables editing
       that branch's textarea; re-link clears `promptOverride`.
       Guard against accidental detach: require an explicit "Detach
       prompt" confirm (textarea is small enough that a stray
       keystroke could otherwise trigger unwanted editing).
-- [ ] Task 3.2: Task chip wiring. Once an upstream spec defines
-      `TaskRef`, consume it via the task-chip slot reserved by
-      SPEC-077. Phase-3 ships the renderer read path; authoring
-      path (how a `TaskRef` gets written into a branch) depends
-      on the task model spec.
-- [ ] Task 3.3: Keep `attachmentsOverride` schema-reserved. Phase
+- [ ] Task 3.3: **Add `taskRef?: TaskRef | null` to
+      `DraftParallelTarget`** — deferred from Phase 1 because
+      `TaskRef` requires an upstream task model spec. When that
+      spec lands, add the field, the resolution helper, and wire
+      the renderer read path through the task-chip slot reserved
+      by SPEC-077. Authoring path (how a `TaskRef` gets written
+      into a branch) is decided by the task model spec and is
+      handled there, not here.
+- [ ] Task 3.4: Keep `attachmentsOverride` schema-reserved. Phase
       3 does not implement per-branch attachments; a dedicated
       future SPEC will. Dispatch continues to reject
       `attachmentsOverride != null`.
-- [ ] Task 3.4: Orchestrator handoff sanity: produce a synthetic
+- [ ] Task 3.5: Orchestrator handoff sanity: produce a synthetic
       orchestrator-authored draft (test fixture with all
-      per-branch fields populated) and assert the renderer
-      renders it cleanly without UI regressions. Confirms the
-      schema is orchestrator-ready even though the orchestrator
-      itself isn't wired.
-- [ ] Task 3.5: Close out SPEC-078 open questions that resolved
+      per-branch fields populated, including `taskRef` once the
+      type exists) and assert the renderer renders it cleanly
+      without UI regressions. Confirms the schema is
+      orchestrator-ready even though the orchestrator itself
+      isn't wired.
+- [ ] Task 3.6: Close out SPEC-078 open questions that resolved
       during implementation; carry any remaining forward into
       orchestrator-ingestion spec (TBD).
 
 ## Files Touched (Phase 1 expected)
 
 ```
-src/products/shared/renderer/components/ExecutionTarget.ts              (DraftParallelTarget extension)
+src/products/shared/renderer/draftChatUtils.tsx                         (DraftParallelTarget extension + parallel-array constructor absorption)
 src/products/shared/renderer/draftBranchResolution.ts                   (new — resolution helpers)
-src/products/shared/renderer/components/ChatNewChatDraft.tsx            (consume resolved branches)
-src/products/shared/renderer/draftChatUtils.tsx                         (absorb parallel-array constructors)
-src/products/shared/renderer/state/** (draft reducers, per repo layout) (target-based state)
+src/products/shared/renderer/components/ChatNewChatDraft.tsx            (consume resolved branches; drop parallel-array prop reads)
+src/products/{chat,code,work}/state/draft/**                            (draft state hooks: drop parallel arrays, store on target)
+src/products/chat/api/contracts.ts                                      (CreateParallelChatGroupInput.targets per-target cwd / runtimeSessionPolicy)
+src/app/server/**                                                       (parallel-group create handler resolves per-target overrides into per-channel CreateChatChannelInput)
 src/products/chat/state/runtime-dispatch/**                             (resolved-branch dispatch)
-tests/** (draft-dispatch, parallel-chat, carousel render tests)         (update fixtures)
+tests/** (draft-dispatch, parallel-chat, carousel render, contract fixtures, server create handler) (updates)
 docs/specs/SPEC-078-per-branch-draft-state-schema.md                    (landed-fields annotation)
 docs/plans/PLAN-070-programmable-per-branch-draft-rollout.md            (progress log)
 ```
+
+The exact path to the server create handler under `src/app/server/**`
+should be confirmed during Task 1.7 (the consumer of
+`CreateParallelChatGroupInput`).
 
 Phase 2 / Phase 3 surfaces will be listed when they're scheduled.
 
@@ -203,6 +249,16 @@ Phase 2 / Phase 3 surfaces will be listed when they're scheduled.
   - lead-branch (`index 0`) override equal-to-lead resolves to
     lead (regression guard so orchestrators who set lead overrides
     don't inadvertently change behaviour).
+- Contract / server tests:
+  - `CreateParallelChatGroupInput` with no per-target overrides
+    produces the same per-channel inputs as today.
+  - Per-target `cwd` overrides surface as the corresponding
+    per-channel `repoPath`; missing per-target `cwd` falls back
+    to the group's `repoPath`.
+  - Per-target `runtimeSessionPolicy` overrides flow into the
+    per-channel `RuntimeSessionCreateContractInput` mix-in;
+    ADR-071 rejection on a single target rejects the whole group
+    create with a per-target error message.
 
 ### Phase 2 exit criteria
 
@@ -228,6 +284,14 @@ Phase 2 / Phase 3 surfaces will be listed when they're scheduled.
 
 ## Risks and Open Questions
 
+- **Phase 1 grew once: contract + server work is in scope.**
+  Initial draft underestimated this — per-branch cwd and
+  session policy require extending
+  `CreateParallelChatGroupInput.targets` and the server's
+  parallel-group create handler. Without that, Phase 2's UI
+  ships against fields that can't round-trip to runtime. Treat
+  this as load-bearing — do not slice the contract change out of
+  Phase 1.
 - **Scope of Phase 1 touch**. Absorbing parallel arrays means
   touching every reader. Today the list is small (lead-branch
   audience, shadow rows, dispatch). As the codebase grows this
@@ -238,10 +302,10 @@ Phase 2 / Phase 3 surfaces will be listed when they're scheduled.
   fields (== "Follows lead" for those dimensions). That's fine —
   orchestrator authors use the degree of freedom that's wired,
   humans tweak the rest manually.
-- **`TaskRef` shape**. Phase 3 depends on an upstream task model
-  spec. If the task model lands late, Phase 3 ships without task
-  chip wiring; `taskRef` remains schema-reserved like
-  `attachmentsOverride`.
+- **`TaskRef` shape**. Deferred from Phase 1 schema entirely;
+  added in Phase 3 once the upstream task model spec defines
+  `TaskRef`. If the task model lands late, Phase 3 ships
+  prompt-detach work first and slots `taskRef` in when ready.
 - **Detach UX discoverability**. "Click the Follows-lead chip to
   detach" is not self-evident. Phase 2 will need at least a
   tooltip; may also need a settings-level onboarding hint the

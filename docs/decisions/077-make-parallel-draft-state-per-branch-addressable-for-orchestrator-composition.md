@@ -222,12 +222,25 @@ indistinguishable from a draft a user clicked together by hand. No
   chip in the non-lead header slot changes meaning (from "Follows
   lead, locked" to "Follows lead, click to detach").
 - Send-time dispatch logic gains a step ("resolve effective per-
-  branch value") but the wire format to runtime is unchanged — the
-  resolved values flow into the same dispatch payload that exists
-  today.
+  branch value") but the per-channel wire from product → runtime
+  is unchanged once a parallel group's child channels exist — the
+  resolved values flow into the same per-channel dispatch payload
+  that exists today.
+- The parallel-group **create** contract (`CreateParallelChatGroupInput`
+  in `src/products/chat/api/contracts.ts`) does need to grow.
+  Today it carries a single group-level `repoPath` and a `targets`
+  array of provider/model tuples (`ParallelChatTarget`); per-target
+  cwd or session policy cannot round-trip. SPEC-078 / PLAN-070
+  Phase 1 extend the create-input shape with optional per-target
+  `cwd` / `runtimeSessionPolicy`, and update the server's parallel-
+  group create handler to resolve those overrides into each child
+  `CreateChatChannelInput`. This contract change is in scope for
+  Phase 1 because no Phase 2 UI affordance can ship without it.
 - ADR-071 (runtime session policy boundary validation) continues to
   apply — per-branch policies still go through the same
-  reject-invalid-combinations gate at dispatch time.
+  reject-invalid-combinations gate, now invoked per resolved
+  per-channel policy at parallel-group create time as well as at
+  per-channel dispatch.
 
 ## Alternatives Considered
 
