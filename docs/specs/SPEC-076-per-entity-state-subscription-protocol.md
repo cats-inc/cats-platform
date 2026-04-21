@@ -68,8 +68,10 @@ This spec defines a single subscription protocol, keyed by
   `useChatAppShellRefresh` on the Chat shell, and which PLAN-068
   Task 3.5 extends to the shared workspace shell so Code/Work
   target surfaces are also covered — remains the authoritative
-  seam for "channel list / parallelChatGroups / recents / unread /
-  transport-ingress changed → refetch app-shell." Entity
+  seam for "channel list (incl. per-channel unread / last
+  activity on each `ChatChannelSummary`) / parallelChatGroups /
+  private-lane promotion / transport-ingress changed → refetch
+  app-shell." Entity
   subscriptions only cover the deep state of a single mounted
   `(kind, id)`; they do not replace ADR-041, and ADR-041 does not
   replace them. The merge rule that keeps these two from stomping
@@ -324,7 +326,10 @@ The two run side-by-side on every target surface:
 - ADR-041's `/api/events/chat` stream drives
   `refreshAppShell()` on `room_updated`, `recents_changed`,
   `unread_changed`, `transport_ingress` so collection-level state
-  (channel list, `parallelChatGroups`, recents, unread,
+  (the `chat.channels` array — whose `ChatChannelSummary` entries
+  carry per-channel `unreadCount` / `lastMessageAt` /
+  `lastActivatedAt`, expressing recency without a dedicated
+  `chat.recents` slice — plus `chat.parallelChatGroups`,
   private-lane promotion) stays fresh.
 - SPEC-076's `/api/subscribe?kind=channel&id=<mounted>` stream
   keeps the *deep* state of the currently-mounted channel fresh
@@ -583,10 +588,13 @@ once the subscription layer has matured.
       **every** target surface (Chat / Code / Work) after cross-
       surface handoff, not only on the Chat shell. The shared
       `WorkspaceProductApp` mounts an ADR-041 consumer, so a new
-      message on a sibling channel still updates recents / unread /
-      `parallelChatGroups` via `refreshAppShell()` whether the user
-      is on `/chat/chats/:id`, `/code/chats/:id`, or `/work/...`.
-      A new private lane still promotes on all three. Entity
+      message on a sibling channel still updates
+      `ChatChannelSummary.unreadCount` / `lastMessageAt` on the
+      relevant `chat.channels` entry and refreshes
+      `chat.parallelChatGroups` via `refreshAppShell()` whether
+      the user is on `/chat/chats/:id`, `/code/chats/:id`, or
+      `/work/...`. A new private lane still promotes on all
+      three. Entity
       subscription and ADR-041 stream coexist without either
       shadowing the other.
 
