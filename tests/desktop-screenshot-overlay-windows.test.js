@@ -36,6 +36,7 @@ test('desktop screenshot overlay windows cover every display snapshot', () => {
   });
 
   assert.equal(plans.length, 2);
+  assert.equal(plans[1]?.url, 'file:///app/overlay.html?displayId=2');
   assert.deepEqual(plans[1]?.bounds, { x: -1280, y: 0, width: 1280, height: 720 });
   assert.deepEqual(plans[1]?.alwaysOnTop, {
     enabled: true,

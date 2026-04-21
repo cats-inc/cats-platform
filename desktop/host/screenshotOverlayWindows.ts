@@ -36,6 +36,12 @@ export interface DesktopScreenshotOverlayWindowPlan {
   };
 }
 
+function appendDisplayIdToOverlayUrl(rawUrl: string, displayId: number): string {
+  const url = new URL(rawUrl);
+  url.searchParams.set('displayId', String(displayId));
+  return url.toString();
+}
+
 export function buildScreenshotOverlayWindowPlans(input: {
   snapshots: DesktopScreenshotDisplaySnapshot[];
   overlayUrl: string;
@@ -47,7 +53,7 @@ export function buildScreenshotOverlayWindowPlans(input: {
       displayId: snapshot.displayId,
       sourceId: snapshot.sourceId,
       bounds,
-      url: input.overlayUrl,
+      url: appendDisplayIdToOverlayUrl(input.overlayUrl, snapshot.displayId),
       alwaysOnTop: {
         enabled: true,
         level: 'screen-saver',

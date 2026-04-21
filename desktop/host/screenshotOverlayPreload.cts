@@ -44,8 +44,11 @@ function assertSelectionResult(value: unknown): DesktopScreenshotOverlaySelectio
 }
 
 const bridge: DesktopScreenshotOverlayBridge = {
-  getSnapshot() {
-    return ipcRenderer.invoke(DESKTOP_SCREENSHOT_OVERLAY_GET_SNAPSHOT_CHANNEL);
+  getSnapshot(displayId) {
+    return ipcRenderer.invoke(
+      DESKTOP_SCREENSHOT_OVERLAY_GET_SNAPSHOT_CHANNEL,
+      assertFiniteNumber(displayId, 'displayId'),
+    );
   },
   async completeSelection(result) {
     await ipcRenderer.invoke(

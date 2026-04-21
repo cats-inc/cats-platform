@@ -84,10 +84,20 @@ function ScreenshotOverlay() {
     createIdleScreenshotOverlaySelection(),
   );
   const bridge = window.catsScreenshotOverlay;
+  const displayId = useMemo(() => {
+    const rawDisplayId = new URLSearchParams(window.location.search).get('displayId');
+    const parsed = Number.parseInt(rawDisplayId ?? '', 10);
+    return Number.isFinite(parsed) ? parsed : null;
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
-    void bridge?.getSnapshot().then((nextPayload) => {
+    if (displayId === null) {
+      return () => {
+        cancelled = true;
+      };
+    }
+    void bridge?.getSnapshot(displayId).then((nextPayload) => {
       if (!cancelled) {
         setPayload(nextPayload);
       }
@@ -95,7 +105,7 @@ function ScreenshotOverlay() {
     return () => {
       cancelled = true;
     };
-  }, [bridge]);
+  }, [bridge, displayId]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

@@ -26,7 +26,7 @@ export interface DesktopScreenshotOverlaySelectionResult {
 }
 
 export interface DesktopScreenshotOverlayBridge {
-  getSnapshot(): Promise<DesktopScreenshotOverlaySnapshotPayload>;
+  getSnapshot(displayId: number): Promise<DesktopScreenshotOverlaySnapshotPayload>;
   completeSelection(result: DesktopScreenshotOverlaySelectionResult): Promise<void>;
   cancel(reason: string): Promise<void>;
 }
