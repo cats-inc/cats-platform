@@ -1,5 +1,6 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
+import { resolve } from 'node:path';
 
 function readFirstDefined(
   env: Record<string, string | undefined>,
@@ -60,6 +61,12 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       outDir: 'build/renderer',
+      rollupOptions: {
+        input: {
+          app: resolve(process.cwd(), 'index.html'),
+          screenshotOverlay: resolve(process.cwd(), 'desktop/overlay/index.html'),
+        },
+      },
     },
   };
 });
