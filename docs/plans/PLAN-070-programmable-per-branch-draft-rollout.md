@@ -158,16 +158,26 @@ order once Phase 1 lands.
         already receives `draftSessionPolicy` in its options
         (line 103 at the time of writing) but its
         `submitNewParallelChatDraft(...)` call site does not
-        forward it. Same gap in the Chat hook
-        (`src/products/chat/renderer/hooks/useComposerSubmit.ts`).
+        forward it. The Chat hook
+        (`src/products/chat/renderer/hooks/useComposerSubmit.ts`)
+        currently has no option-level `draftSessionPolicy`; do
+        not treat it as an already-present pass-through. Phase 1
+        must either add Chat draft policy state/options before
+        wiring Chat's dispatcher, or explicitly pass the Chat
+        product default (`null` / resolved default) and test that
+        fallback as the intended behaviour.
         The fix is:
         1. `submitNewParallelChatDraft` (both copies in
            `src/products/{chat,shared}/renderer/composerParallelDispatch.ts`)
            accepts a new `draftSessionPolicy?: RuntimeSessionPolicy | null`
            parameter.
-        2. Both hooks pass their option-level `draftSessionPolicy`
-           into that call site.
-        3. The dispatcher writes it onto the `CreateParallelChatGroupInput`
+        2. The Workspace hook passes its existing option-level
+           `draftSessionPolicy` into that call site.
+        3. The Chat hook either passes a newly added option-level
+           `draftSessionPolicy` (if Chat owns editable draft policy)
+           or an explicit default/null value (if Chat stays governed
+           by product defaults).
+        4. The dispatcher writes it onto the `CreateParallelChatGroupInput`
            as the group-level `runtimeSessionPolicy`.
         Without the full chain, changing only the dispatcher
         leaves the hook never giving the dispatcher a policy to
@@ -205,10 +215,15 @@ order once Phase 1 lands.
 - [ ] Task 1.9: Tests — update existing parallel-chat tests to
       construct per-branch state via target fields rather than
       parallel arrays. Add contract-level test fixtures for
-      `CreateParallelChatGroupInput` with per-target `cwd` /
-      `runtimeSessionPolicy`, and a small resolution-helper test
-      suite: null → inherit, concrete → use-as-is, lead-target
-      override equals-lead-default.
+      `CreateParallelChatGroupInput` covering group-level-only
+      `runtimeSessionPolicy`, per-target `cwd` /
+      `runtimeSessionPolicy` overrides, and neither-set fallback
+      to server default. Add a submit-chain propagation guard:
+      Workspace / Chat submit with a non-null `draftSessionPolicy`
+      (or Chat's explicitly documented default/null path) produces
+      the expected group-level `runtimeSessionPolicy`. Add a small
+      resolution-helper test suite: null → inherit, concrete →
+      use-as-is, lead-target override equals-lead-default.
 - [ ] Task 1.10: Document in SPEC-078 which fields have landed;
       move Phase 1 items from § Migration into "landed".
 
@@ -297,7 +312,7 @@ src/products/shared/renderer/api/chat.ts                                     (mi
 
 # Renderer submit path — threading draftSessionPolicy from hook options to group-level wire field
 src/products/shared/renderer/hooks/useWorkspaceComposerSubmit.ts             (Workspace hook: forward draftSessionPolicy into the submitNewParallelChatDraft call — currently receives draftSessionPolicy at line 103 but does not pass it through at the line 279 call site)
-src/products/chat/renderer/hooks/useComposerSubmit.ts                        (Chat hook: matching wire-through for its submitNewParallelChatDraft call site)
+src/products/chat/renderer/hooks/useComposerSubmit.ts                        (Chat hook: add/pass draftSessionPolicy only if Chat owns editable draft policy; otherwise pass an explicit null/default and test that fallback)
 src/products/shared/renderer/composerParallelDispatch.ts                     (accept draftSessionPolicy arg and populate group-level runtimeSessionPolicy on the CreateParallelChatGroupInput it builds)
 src/products/chat/renderer/composerParallelDispatch.ts                       (same, for the Chat-product copy)
 
@@ -377,8 +392,12 @@ Phase 2 / Phase 3 surfaces will be listed when they're scheduled.
     default. ADR-071 rejection on a single target rejects the
     whole group create with a per-target error message.
   - Renderer submit populates group-level
-    `runtimeSessionPolicy` from `draftRuntimeSessionPolicy`
-    when the lead draft has a concrete policy.
+    `runtimeSessionPolicy` from the lead draft policy
+    (`draftSessionPolicy` at the hook boundary /
+    `draftRuntimeSessionPolicy` at the component boundary) when
+    the lead draft has a concrete policy, and explicitly covers
+    Chat's documented default/null path if Chat does not own
+    editable draft policy.
 
 ### Phase 2 exit criteria
 
