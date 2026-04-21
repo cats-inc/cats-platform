@@ -16,6 +16,8 @@ import {
   createDraftParallelTarget,
   createDraftParallelTargets,
   mergeDraftParallelTargetBranchFields,
+  setDraftParallelTargetCwd,
+  setDraftParallelTargetRuntimeSessionPolicy,
   updateDraftParallelTargetAt,
 } from '../draftParallelTargets.js';
 
@@ -124,12 +126,7 @@ export function useWorkspaceParallelDraft(options: {
   }, []);
 
   const onSetDraftParallelBranchCwd = useCallback((index: number, cwd: string | null) => {
-    setDraftParallelChatTargets((prev) =>
-      updateDraftParallelTargetAt(prev, index, (target) => ({
-        ...target,
-        cwd,
-      })),
-    );
+    setDraftParallelChatTargets((prev) => setDraftParallelTargetCwd(prev, index, cwd));
   }, []);
 
   const onSetDraftParallelBranchRuntimeSessionPolicy = useCallback((
@@ -137,10 +134,7 @@ export function useWorkspaceParallelDraft(options: {
     runtimeSessionPolicy: RuntimeSessionPolicy | null,
   ) => {
     setDraftParallelChatTargets((prev) =>
-      updateDraftParallelTargetAt(prev, index, (target) => ({
-        ...target,
-        runtimeSessionPolicy,
-      })),
+      setDraftParallelTargetRuntimeSessionPolicy(prev, index, runtimeSessionPolicy),
     );
   }, []);
 

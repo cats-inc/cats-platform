@@ -240,7 +240,8 @@ order once Phase 1 lands.
       workspace-mode edit controls are wired.
       Focused API client coverage now asserts detached branch cwd and
       runtime policy fields are present in the parallel-group create
-      POST body.
+      POST body, and pure target-helper tests cover set + re-link
+      clear for branch cwd and runtime policy.
 - [x] Task 2.1: UX for per-branch cwd detach.
       - Non-lead card's `composerFollowsLeadChip` gains a click
         target that opens the side-panel cwd picker scoped to the
@@ -261,7 +262,7 @@ order once Phase 1 lands.
       active carousel transition — edge case when detaching a
       peek card. If janky, debounce chip swap until transition
       settles.
-- [ ] Task 2.4: Tests — add coverage for "detach cwd on branch 2,
+- [x] Task 2.4: Tests — add coverage for "detach cwd on branch 2,
       submit, assert dispatch sees branch-2's cwd" and the re-link
       flow.
 - [x] Task 2.5: Update SPEC-078 § Migration and § Surfaces Affected

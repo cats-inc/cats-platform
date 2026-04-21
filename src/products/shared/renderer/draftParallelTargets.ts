@@ -97,3 +97,25 @@ export function updateDraftParallelTargetAt<TTarget extends object>(
   return targets.map((target, currentIndex) =>
     currentIndex === index ? normalizeDraftParallelTarget(updater(target)) : target);
 }
+
+export function setDraftParallelTargetCwd<TTarget extends object>(
+  targets: readonly (TTarget & DraftParallelTargetBranchFields)[],
+  index: number,
+  cwd: string | null,
+): Array<TTarget & DraftParallelTargetBranchFields> {
+  return updateDraftParallelTargetAt(targets, index, (target) => ({
+    ...target,
+    cwd,
+  }));
+}
+
+export function setDraftParallelTargetRuntimeSessionPolicy<TTarget extends object>(
+  targets: readonly (TTarget & DraftParallelTargetBranchFields)[],
+  index: number,
+  runtimeSessionPolicy: RuntimeSessionPolicy | null,
+): Array<TTarget & DraftParallelTargetBranchFields> {
+  return updateDraftParallelTargetAt(targets, index, (target) => ({
+    ...target,
+    runtimeSessionPolicy,
+  }));
+}
