@@ -142,6 +142,7 @@ test('screenshot routing requires explicit native desktop capability', () => {
       screenshotRegionCaptureAvailable: true,
       captureScreenshotRegion: async () => ({
         outcome: 'cancelled',
+        reason: 'user_cancel',
       }),
     };
     assert.equal(resolveScreenshotCaptureRoute(), 'desktop_region');
@@ -179,13 +180,13 @@ test('desktop cursor-overlap cancellation returns actionable feedback', async ()
       screenshotRegionCaptureAvailable: true,
       captureScreenshotRegion: async () => ({
         outcome: 'cancelled',
-        message: 'cursor_overlap',
+        reason: 'cursor_overlap',
       }),
     };
 
     await assert.rejects(
       () => captureScreenshotFile('desktop_region'),
-      /Move your mouse away from the area you want to capture/u,
+      /selection overlaps the mouse cursor/u,
     );
   } finally {
     if (previous === undefined) {

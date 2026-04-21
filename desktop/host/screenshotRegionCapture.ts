@@ -1,4 +1,5 @@
 import type {
+  DesktopScreenshotCancelReason,
   DesktopScreenshotCaptureResult,
 } from './contracts.js';
 import type {
@@ -21,6 +22,21 @@ export interface DesktopScreenshotRegionCaptureDependencies {
   createFilename(): string;
 }
 
+export function toDesktopScreenshotCancelReason(
+  reason: string,
+): DesktopScreenshotCancelReason {
+  if (reason === 'cursor_overlap') {
+    return 'cursor_overlap';
+  }
+  if (reason === 'too_small') {
+    return 'too_small';
+  }
+  if (reason === 'unknown_display' || reason.startsWith('unknown_display:')) {
+    return 'unknown_display';
+  }
+  return 'user_cancel';
+}
+
 export async function runDesktopScreenshotRegionCapture(
   dependencies: DesktopScreenshotRegionCaptureDependencies,
 ): Promise<DesktopScreenshotCaptureResult> {
@@ -38,7 +54,7 @@ export async function runDesktopScreenshotRegionCapture(
     if (result.outcome === 'cancelled') {
       return {
         outcome: 'cancelled',
-        message: result.reason,
+        reason: toDesktopScreenshotCancelReason(result.reason),
       };
     }
 

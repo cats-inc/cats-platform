@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  DESKTOP_SCREENSHOT_CANCEL_REASONS,
   DESKTOP_SCREENSHOT_CAPTURE_OUTCOMES,
   DESKTOP_SCREENSHOT_CAPTURE_SOURCES,
 } from '../build/desktop/contracts.js';
@@ -25,6 +26,12 @@ test('desktop screenshot contract exposes composer capture request and explicit 
     'permission_denied',
     'platform_unsupported',
     'error',
+  ]);
+  assert.deepEqual(DESKTOP_SCREENSHOT_CANCEL_REASONS, [
+    'user_cancel',
+    'too_small',
+    'cursor_overlap',
+    'unknown_display',
   ]);
   assert.deepEqual(
     parseDesktopScreenshotCaptureRequest({ source: 'composer' }),

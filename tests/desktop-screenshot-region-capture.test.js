@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   runDesktopScreenshotRegionCapture,
+  toDesktopScreenshotCancelReason,
 } from '../build/desktop/screenshotRegionCapture.js';
 
 function createSnapshot() {
@@ -91,9 +92,20 @@ test('desktop screenshot region capture closes overlays after cancellation', asy
 
   assert.deepEqual(result, {
     outcome: 'cancelled',
-    message: 'escape',
+    reason: 'user_cancel',
   });
   assert.deepEqual(events, ['wait', 'close']);
+});
+
+test('desktop screenshot region capture normalizes overlay cancel reasons', () => {
+  assert.equal(toDesktopScreenshotCancelReason('cursor_overlap'), 'cursor_overlap');
+  assert.equal(toDesktopScreenshotCancelReason('too_small'), 'too_small');
+  assert.equal(toDesktopScreenshotCancelReason('unknown_display'), 'unknown_display');
+  assert.equal(toDesktopScreenshotCancelReason('unknown_display:42'), 'unknown_display');
+  assert.equal(toDesktopScreenshotCancelReason('escape'), 'user_cancel');
+  assert.equal(toDesktopScreenshotCancelReason('right_click'), 'user_cancel');
+  assert.equal(toDesktopScreenshotCancelReason('no_drag'), 'user_cancel');
+  assert.equal(toDesktopScreenshotCancelReason('something_new'), 'user_cancel');
 });
 
 test('desktop screenshot region capture returns unsupported when no displays exist', async () => {

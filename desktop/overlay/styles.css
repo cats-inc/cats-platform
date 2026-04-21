@@ -76,12 +76,17 @@ body {
 
 .screenshotCursorExclusion {
   position: absolute;
-  border: 1px solid rgba(248, 113, 113, 0.95);
-  border-radius: 999px;
-  background: rgba(248, 113, 113, 0.14);
-  box-shadow: 0 0 0 1px rgba(127, 29, 29, 0.4);
+  border: 1px dashed rgba(248, 113, 113, 0.85);
+  background: rgba(248, 113, 113, 0.1);
   pointer-events: none;
   z-index: 2;
+}
+
+.screenshotCursorExclusionActive {
+  border-style: solid;
+  border-color: rgba(248, 113, 113, 0.98);
+  background: rgba(248, 113, 113, 0.18);
+  box-shadow: 0 0 0 1px rgba(127, 29, 29, 0.45);
 }
 
 .screenshotCursorExclusion span {

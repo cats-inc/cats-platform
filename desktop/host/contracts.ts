@@ -180,6 +180,12 @@ export const DESKTOP_SCREENSHOT_CAPTURE_OUTCOMES = [
   'platform_unsupported',
   'error',
 ] as const;
+export const DESKTOP_SCREENSHOT_CANCEL_REASONS = [
+  'user_cancel',
+  'too_small',
+  'cursor_overlap',
+  'unknown_display',
+] as const;
 
 export type DesktopBootstrapPhase = typeof DESKTOP_BOOTSTRAP_PHASES[number];
 export type DesktopHostActionId = typeof DESKTOP_HOST_ACTION_IDS[number];
@@ -211,6 +217,7 @@ export type DesktopSetupResumeReason = typeof DESKTOP_SETUP_RESUME_REASONS[numbe
 export type DesktopSetupInterruptionKind = typeof DESKTOP_SETUP_INTERRUPTION_KINDS[number];
 export type DesktopScreenshotCaptureSource = typeof DESKTOP_SCREENSHOT_CAPTURE_SOURCES[number];
 export type DesktopScreenshotCaptureOutcome = typeof DESKTOP_SCREENSHOT_CAPTURE_OUTCOMES[number];
+export type DesktopScreenshotCancelReason = typeof DESKTOP_SCREENSHOT_CANCEL_REASONS[number];
 
 export interface DesktopScreenshotCaptureRequest {
   source: DesktopScreenshotCaptureSource;
@@ -226,7 +233,11 @@ export type DesktopScreenshotCaptureResult =
       height: number;
     }
   | {
-      outcome: Exclude<DesktopScreenshotCaptureOutcome, 'ok'>;
+      outcome: 'cancelled';
+      reason: DesktopScreenshotCancelReason;
+    }
+  | {
+      outcome: 'permission_denied' | 'platform_unsupported' | 'error';
       message?: string;
     };
 

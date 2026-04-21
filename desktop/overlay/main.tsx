@@ -212,10 +212,13 @@ function ScreenshotOverlay() {
     >
       {cursorExclusionRect ? (
         <div
-          className="screenshotCursorExclusion"
+          className={[
+            'screenshotCursorExclusion',
+            activeSelectionOverlapsCursor ? 'screenshotCursorExclusionActive' : '',
+          ].filter(Boolean).join(' ')}
           style={relativeRectStyle(cursorExclusionRect, payload)}
         >
-          <span>Move cursor away</span>
+          {activeSelectionOverlapsCursor ? <span>Move cursor away</span> : null}
         </div>
       ) : null}
       {activeSelection ? (

@@ -23,6 +23,12 @@ interface DesktopBootstrapSnapshot {
   summary: string;
 }
 
+export type DesktopScreenshotCancelReason =
+  | 'user_cancel'
+  | 'too_small'
+  | 'cursor_overlap'
+  | 'unknown_display';
+
 export type DesktopScreenshotCaptureResult =
   | {
       outcome: 'ok';
@@ -33,7 +39,11 @@ export type DesktopScreenshotCaptureResult =
       height: number;
     }
   | {
-      outcome: 'cancelled' | 'permission_denied' | 'platform_unsupported' | 'error';
+      outcome: 'cancelled';
+      reason: DesktopScreenshotCancelReason;
+    }
+  | {
+      outcome: 'permission_denied' | 'platform_unsupported' | 'error';
       message?: string;
     };
 

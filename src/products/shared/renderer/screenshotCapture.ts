@@ -182,15 +182,26 @@ async function captureWebScreenshotFile(): Promise<File | null> {
   }
 }
 
+export const SCREENSHOT_CURSOR_OVERLAP_MESSAGE =
+  'The selection overlaps the mouse cursor. Move the cursor away and try again.';
+
 function buildDesktopScreenshotError(
   result: Exclude<DesktopScreenshotCaptureResult, { outcome: 'ok' }>,
 ): Error | null {
-  if (result.outcome === 'cancelled' && result.message === 'cursor_overlap') {
-    return new Error('Move your mouse away from the area you want to capture and try again.');
-  }
-
   if (result.outcome === 'cancelled') {
-    return null;
+    switch (result.reason) {
+      case 'cursor_overlap':
+        return new Error(SCREENSHOT_CURSOR_OVERLAP_MESSAGE);
+      case 'unknown_display':
+        return new Error('Screenshot failed: the selected display is no longer available.');
+      case 'too_small':
+      case 'user_cancel':
+        return null;
+      default: {
+        const exhaustive: never = result.reason;
+        return new Error(`Unhandled screenshot cancellation reason: ${exhaustive as string}`);
+      }
+    }
   }
 
   if (result.message) {

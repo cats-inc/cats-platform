@@ -235,6 +235,7 @@ desktop/browser smoke evidence.
 | 2026-04-22 | Added macOS Screen Recording preflight: Electron now maps denied/restricted `screen` media access to the screenshot contract's `permission_denied` outcome before opening overlays, while allowing `not-determined` to continue so the first capture attempt can trigger the platform consent path. |
 | 2026-04-22 | Follow-up review fixes: desktop cropped PNGs now apply the same 8000×8000 / 10 MB bounds as the web path, web fallback stops `MediaStreamTrack`s immediately after drawing the frame to canvas, and desktop sessions cancel cursor-overlap selections using capture-time cursor metadata. |
 | 2026-04-22 | Cursor-overlap UX follow-up: overlay payloads now include cursor exclusion metadata, the overlay renders a visible "Move cursor away" warning zone and blocked selection state, renderer cancellation handling turns `cursor_overlap` into toast feedback, and the exclusion radius was reduced from 64px to 32px. |
+| 2026-04-22 | Contract cleanup: cancellation result now carries a typed `DesktopScreenshotCancelReason` (`user_cancel`/`too_small`/`cursor_overlap`/`unknown_display`) instead of a free-form `message`, so the renderer exhaustive-switches on a shared literal union. Overlay visual indicator switched from a circle to a square with a dashed border (matches the rectangular collision box); the "Move cursor away" chip is now only shown while a drag actually overlaps the exclusion zone. `unknown_display` now surfaces as a toast instead of a silent cancel. |
 
 ---
 
