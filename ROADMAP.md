@@ -197,6 +197,20 @@ contracts.
       `/api/providers/{provider}/models` and `/api/providers/{provider}/models/advanced`
       request; once a provider target is already known usable, model-catalog
       reads should reuse that truth or a short-lived shared selector cache
+- [ ] Tighten the landed provider-catalog and truthful-selector stale-cache
+      hygiene beyond the current stale-if-error plus error-backoff slices:
+      replace the optional `cacheRefreshWarning` field with a discriminated
+      fresh-vs-error-backoff entry shape so the lifecycle invariant is
+      enforced by types instead of relying on "don't spread the old entry"
+      convention, split the provider-catalog cache into separate typed
+      `model-catalog` and `advanced-catalog` maps so
+      `readProviderCatalogCacheEntry<TCatalog>` no longer needs an unsafe
+      cast, retire the test-only `withMockedDateNow` module-level lock in
+      favor of `node:test`'s concurrency primitives, and align the renderer
+      `PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS` with the server's
+      `PROVIDER_CACHE_ERROR_BACKOFF_MS` so outage recovery does not flash
+      cache-refresh warnings on and off while the two retry loops race each
+      other
 - [ ] Refine advanced provider-model UX now that runtime presets and controls are
       first-class, including an `Advanced settings` disclosure pattern that prevents
       large control sets from overwhelming the base provider/instance/model flow
