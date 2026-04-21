@@ -178,6 +178,9 @@ contracts.
       clearer confirmation and busy states for chat / parallel-group / Cat delete,
       and debug-retention messaging when
       `CATS_DEBUG_KEEP_RUNTIME_SESSIONS_ON_PRODUCT_DELETE=true`
+      Progress: single-conversation deletes now require an explicit confirmation,
+      and conversation / parallel-group / Cat destructive confirmations now state
+      that linked runtime sessions are removed too.
 - [x] Refactor `ensureTargetSession(...)` so runtime session creation, lease wake state,
       and execution-target reconciliation stop living in one function now that
       session startup also persists runtime-sanitized model selections back into

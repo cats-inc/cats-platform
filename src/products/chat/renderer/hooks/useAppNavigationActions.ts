@@ -32,6 +32,9 @@ import {
   type WorkspaceNavigationLoadState,
 } from '../../../shared/renderer/hooks/useWorkspaceAppNavigationActions.js';
 import {
+  buildDeleteParallelChatGroupConfirmation,
+} from '../../../shared/renderer/deleteConfirmations.js';
+import {
   clearBusyState,
   createCatBusyState,
   createConcurrentGroupBusyState,
@@ -192,11 +195,7 @@ export function useAppNavigationActions(options: {
       ? (state.payload.chat.parallelChatGroups.find((group) => group.id === groupId)?.title ?? 'this parallel chat')
       : 'this parallel chat';
     const confirmed = confirmDialog
-      ? await confirmDialog({
-          title: 'Delete all chats',
-          message: `Delete all chats in "${groupTitle}"? This cannot be undone.`,
-          confirmLabel: 'Delete all',
-        })
+      ? await confirmDialog(buildDeleteParallelChatGroupConfirmation(groupTitle))
       : true;
     if (!confirmed) return;
 

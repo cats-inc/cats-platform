@@ -11,6 +11,7 @@ import {
   emptyBotForm,
   type BotFormState,
 } from './settingsCatsRegistryActions.js';
+import { buildDeleteCatConfirmation } from '../deleteConfirmations.js';
 import { updateCatProfile } from '../api/index.js';
 import { emptyCatForm, type CatFormState } from '../workspaceChatUtils.js';
 
@@ -109,7 +110,7 @@ export function useSettingsCatsRegistryActions(options: {
 
   async function onDeleteCat(catId: string, catName: string): Promise<void> {
     const confirmed = confirmDialog
-      ? await confirmDialog({ title: 'Delete cat', message: `Delete "${catName}"? This cannot be undone.` })
+      ? await confirmDialog(buildDeleteCatConfirmation(catName))
       : true;
     if (!confirmed) return;
     await onDeleteCatBase(catId, catName);

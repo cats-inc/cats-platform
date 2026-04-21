@@ -34,6 +34,11 @@ import {
   ungroupParallelChatGroup as ungroupWorkspaceParallelChatGroup,
 } from '../api/index.js';
 import { resetComposerDraftState } from '../composerDraftState.js';
+import {
+  buildDeleteCatConfirmation,
+  buildDeleteConversationConfirmation,
+  buildDeleteParallelChatGroupConfirmation,
+} from '../deleteConfirmations.js';
 import { syncDesktopHostPlatformShellState } from '../../../../app/renderer/setup/desktopHostBridge.js';
 import { clearRememberedExecutionLabels } from '../../../../shared/executionLabel.js';
 import {
@@ -48,6 +53,7 @@ import { type RuntimeSessionPolicy } from '../../../../shared/runtimeSessionPoli
 
 export interface WorkspaceNavigationChannelRef {
   id: string;
+  title?: string | null;
   originSurface?: PlatformSurfaceId | null;
   channelKind?: 'boss_thread' | 'direct_lane' | 'multi_cat_room' | null;
   defaultRecipientCatId?: string | null;
@@ -69,6 +75,10 @@ export interface WorkspaceNavigationPayloadLike {
   }>;
   chat: {
     channels: ReadonlyArray<WorkspaceNavigationChannelRef>;
+    cats?: ReadonlyArray<{
+      id: string;
+      name?: string | null;
+    }>;
     parallelChatGroups?: ReadonlyArray<{
       id: string;
       title: string;
@@ -284,6 +294,14 @@ export function useWorkspaceAppNavigationActions<
   }, [navigationApi, setBusy, setFeedback, setState]);
 
   const onDeleteChannel = useCallback(async (channelId: string): Promise<void> => {
+    const channelTitle = state.status === 'ready'
+      ? (state.payload.chat.channels.find((channel) => channel.id === channelId)?.title ?? null)
+      : null;
+    const confirmed = confirmDialog
+      ? await confirmDialog(buildDeleteConversationConfirmation(channelTitle))
+      : true;
+    if (!confirmed) return;
+
     setBusy(createChannelBusyState('delete', channelId));
     try {
       const payload = await navigationApi.deleteChatChannel(channelId);
@@ -307,6 +325,7 @@ export function useWorkspaceAppNavigationActions<
     }
   }, [
     chatPrefix,
+    confirmDialog,
     navigate,
     navigationApi,
     platformShellSurface,
@@ -314,6 +333,7 @@ export function useWorkspaceAppNavigationActions<
     setBusy,
     setFeedback,
     setState,
+    state,
   ]);
 
   const onRenameParallelChatGroup = useCallback(async (
@@ -354,11 +374,7 @@ export function useWorkspaceAppNavigationActions<
       ? (state.payload.chat.parallelChatGroups?.find((group) => group.id === groupId)?.title ?? 'this parallel chat')
       : 'this parallel chat';
     const confirmed = confirmDialog
-      ? await confirmDialog({
-          title: 'Delete all chats',
-          message: `Delete all chats in "${groupTitle}"? This cannot be undone.`,
-          confirmLabel: 'Delete all',
-        })
+      ? await confirmDialog(buildDeleteParallelChatGroupConfirmation(groupTitle))
       : true;
     if (!confirmed) return;
 
@@ -397,8 +413,11 @@ export function useWorkspaceAppNavigationActions<
   ]);
 
   const onDeleteCat = useCallback(async (catId: string): Promise<void> => {
+    const catName = state.status === 'ready'
+      ? (state.payload.chat.cats?.find((cat) => cat.id === catId)?.name ?? null)
+      : null;
     const confirmed = confirmDialog
-      ? await confirmDialog({ title: 'Delete cat', message: 'Delete this cat? This cannot be undone.' })
+      ? await confirmDialog(buildDeleteCatConfirmation(catName))
       : true;
     if (!confirmed) return;
     setBusy(createCatBusyState('delete', catId));
@@ -410,7 +429,7 @@ export function useWorkspaceAppNavigationActions<
     } finally {
       setBusy(clearBusyState());
     }
-  }, [confirmDialog, navigationApi, setBusy, setFeedback, setState]);
+  }, [confirmDialog, navigationApi, setBusy, setFeedback, setState, state]);
 
   const onNavigateSettings = useCallback((): void => {
     navigate('/settings/general', {
