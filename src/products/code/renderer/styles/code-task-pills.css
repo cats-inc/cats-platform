@@ -1,0 +1,154 @@
+/* === CODE TASK PILLS MOCKUP (SPEC-068 follow-up, 2026-04-22) ===
+ *
+ * Visual mockup for user-triggered task reminders sitting in the
+ * composer footer row of active Code conversations. Pills + "+ Task"
+ * affordance + hide-per-pill. No persistence — state is local-only.
+ * Remove this file and its @import once the real task-reminder slice
+ * replaces it.
+ */
+
+.codeTaskPillsBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
+.codeTaskPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 2px 0 4px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
+  font-size: 0.78rem;
+  max-width: 240px;
+  overflow: hidden;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.codeTaskPill:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.codeTaskPillFocused {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.codeTaskPillFocused:hover {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.codeTaskPillLabel {
+  background: transparent;
+  border: none;
+  color: inherit;
+  font: inherit;
+  padding: 4px 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  flex: 0 1 auto;
+  line-height: 1;
+}
+
+.codeTaskPillInput {
+  background: rgba(255, 255, 255, 0.95);
+  border: 0;
+  outline: 0;
+  color: var(--text);
+  font: inherit;
+  padding: 4px 6px;
+  margin: 0;
+  min-width: 120px;
+  width: 160px;
+  max-width: 220px;
+  line-height: 1;
+  border-radius: 4px;
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
+.codeTaskPillInput::placeholder {
+  color: var(--muted-soft);
+  opacity: 0.8;
+}
+
+.codeTaskPillDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: 0 0 auto;
+  margin-left: 4px;
+  opacity: 0.6;
+}
+
+.codeTaskPillFocused .codeTaskPillDot {
+  opacity: 1;
+}
+
+.codeTaskPillHide {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted-soft);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.codeTaskPillHide:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.codeTaskPillFocused .codeTaskPillHide {
+  color: var(--accent);
+  opacity: 0.7;
+}
+
+.codeTaskPillFocused .codeTaskPillHide:hover {
+  background: rgba(196, 101, 58, 0.15);
+  opacity: 1;
+}
+
+.codeAddTaskButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px 4px 8px;
+  border: 1px dashed var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  cursor: pointer;
+  line-height: 1;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.codeAddTaskButton:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+  border-color: var(--muted);
+  border-style: solid;
+}
+
+.codeAddTaskButton svg {
+  flex: 0 0 auto;
+}

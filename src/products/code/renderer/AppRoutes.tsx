@@ -15,6 +15,7 @@ import {
   type ChatViewProps,
 } from './components/ChatView.js';
 import { ActiveCodeComposerChips } from './components/ActiveCodeComposerChips.js';
+import { CodeTaskPillsBar } from './components/CodeTaskPillsBar.js';
 import { ComposerSurfaceChip } from '../../shared/renderer/components/ComposerSurfaceChip.js';
 import { ArtifactDetailView } from './components/ArtifactDetailView.js';
 import { CodeBuilderView } from './components/CodeBuilderView.js';
@@ -121,6 +122,7 @@ export function AppRoutes({
         renderComposerHeaderWhereExtras={(ctx) => (
           <ActiveCodeComposerChips channel={ctx.selectedChannel} placement="where" />
         )}
+        renderComposerFooterAccessory={() => <CodeTaskPillsBar />}
         renderComposerSurfaceTag={() => <ComposerSurfaceChip surface="code" />}
       />
     ),
