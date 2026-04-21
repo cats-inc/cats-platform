@@ -5,6 +5,7 @@
   padding: 48px 16px 64px;
   outline: none;
   overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .mockStackDraftShell {
@@ -38,97 +39,111 @@
   max-width: 520px;
 }
 
-/* ── Single chrome rows (header / footer bound to active card) ── */
+/* ── Carousel (grid overlay; active drives container height) ── */
 
-.mockStackChrome {
-  animation: mockStackChromeSettle 220ms ease 280ms both;
-}
-
-.mockStackChromeHeader {
-  transform-origin: top center;
-  --chrome-offset: -4px;
-}
-
-.mockStackChromeFooter {
-  transform-origin: bottom center;
-  --chrome-offset: 4px;
-}
-
-@keyframes mockStackChromeSettle {
-  from {
-    opacity: 0;
-    transform: translateY(var(--chrome-offset, 0));
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* ── Stack container (composer cards + side nav) ── */
-
-.mockStackContainer {
+.mockStackCarousel {
   position: relative;
   width: 100%;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto;
+  place-items: center;
+  perspective: 1600px;
+  perspective-origin: 50% 50%;
+  transform-style: preserve-3d;
+  overflow: visible;
+}
+
+/* Each card is a rotating unit that contains its own header + body + footer,
+   so header/footer rotate together with the composer form during carousel
+   transitions — every branch shows its own chrome travelling with the card. */
+.mockStackCardWrapper {
+  grid-column: 1;
+  grid-row: 1;
+  width: 100%;
   max-width: var(--chat-transcript-max-width, 680px);
-  margin: 0 auto;
-}
-
-/* padding-bottom reserves vertical room for peek cards that sit behind the
-   active one (they are position:absolute and would otherwise overlap the
-   footer). Each peek offsets by 14px; we keep a small baseline so the side
-   nav has a touch of breathing room even with a single card. */
-.mockStackContainerPeekReserve {
-  padding-bottom: var(--peek-reserve, 0px);
-}
-
-.mockStackSideNav {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  right: -50px;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 0;
-  z-index: 1001;
+  transform-origin: center center;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  transition:
+    transform 460ms cubic-bezier(0.25, 0.85, 0.25, 1),
+    opacity 380ms ease,
+    filter 320ms ease;
+  will-change: transform, opacity;
 }
 
-.mockStackSideNavButton {
+.mockStackCardActive {
+  pointer-events: auto;
+}
+
+.mockStackCardPeek {
+  cursor: pointer;
+  filter: saturate(0.82);
+}
+
+/* Tighten per-card chrome margins so header/body/footer sit flush within
+   the wrapper; the wrapper itself handles vertical rhythm relative to the
+   draftShell via flex flow. */
+.mockStackCardWrapper .composerHeaderRow {
+  margin-bottom: 10px;
+}
+
+.mockStackCardWrapper .composerFooterRow {
+  margin-top: 10px;
+}
+
+.mockStackCardBody {
+  width: 100%;
+}
+
+.mockStackCarouselNav {
+  position: absolute;
+  top: 50%;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   padding: 0;
   border: 1px solid var(--border, #E4DFD7);
   border-radius: 999px;
   background: var(--panel, #ffffff);
   color: var(--muted, #6B6560);
   cursor: pointer;
-  flex: 0 0 auto;
-  transition: background 120ms ease, color 120ms ease;
+  transform: translateY(-50%);
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+  z-index: 1200;
 }
 
-.mockStackSideNavButton:hover:not(:disabled) {
+.mockStackCarouselNavPrev {
+  left: -44px;
+}
+
+.mockStackCarouselNavNext {
+  right: -44px;
+}
+
+.mockStackCarouselNav:hover:not(:disabled) {
   background: var(--panel-hover, #E8E4DC);
   color: var(--text, #1A1A1A);
+  border-color: rgba(94, 104, 116, 0.4);
 }
 
-.mockStackSideNavButton:disabled {
+.mockStackCarouselNav:disabled {
   opacity: 0.32;
   cursor: not-allowed;
 }
 
-.mockStackDotColumn {
+/* ── Pagination dots (horizontal, below chrome footer) ── */
+
+.mockStackDotRow {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  align-items: center;
   justify-content: center;
-  flex: 1;
-  padding: 8px 0;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 0 2px;
 }
 
 .mockStackDot {
@@ -139,7 +154,7 @@
   border-radius: 50%;
   background: var(--muted-soft, #8C857D);
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, transform 0.15s ease;
 }
 
 .mockStackDot:hover:not(.mockStackDotActive) {
@@ -148,35 +163,10 @@
 
 .mockStackDotActive {
   background: var(--text, #1A1A1A);
+  transform: scale(1.2);
 }
 
-/* ── Composer cards (the stacked forms) ── */
-
-.mockStackCard {
-  transition:
-    transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1),
-    opacity 240ms ease,
-    filter 240ms ease;
-  will-change: transform, opacity;
-  transform-origin: top center;
-}
-
-.mockStackCardActive {
-  position: relative;
-  z-index: 1000;
-  transform: translate3d(0, 0, 0) scale(1);
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.mockStackCardPeek {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  cursor: pointer;
-  filter: saturate(0.9);
-}
+/* ── Composer body specifics ── */
 
 .mockStackCardBottomRow {
   align-items: center;

@@ -70,6 +70,19 @@ function truncatePath(path: string, max = 34): string {
   return `…${path.slice(path.length - max + 1)}`;
 }
 
+/**
+ * Linear distance from active. Positive = to the right, negative = to
+ * the left. No wrap: the first card (lead) has nothing on its left, the
+ * last card has nothing on its right — matches the lead-branch
+ * semantics of the underlying draft.
+ */
+function relativeCarouselPosition(
+  index: number,
+  activeIndex: number,
+): number {
+  return index - activeIndex;
+}
+
 export function MockComposerStackView() {
   const [cards, setCards] = useState<MockCard[]>(() => [createCard(0), createCard(1)]);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -131,28 +144,27 @@ export function MockComposerStackView() {
     updateCard(cardId, { cwd: null, branch: null });
   }, [updateCard]);
 
-  function goPrev(): void {
+  const goPrev = useCallback(() => {
     setActiveIndex((i) => Math.max(0, i - 1));
-  }
-  function goNext(): void {
+  }, []);
+
+  const goNext = useCallback(() => {
     setActiveIndex((i) => Math.min(cards.length - 1, i + 1));
-  }
+  }, [cards.length]);
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
     if (event.target instanceof HTMLTextAreaElement) return;
-    if (event.key === 'ArrowUp') {
+    if (event.key === 'ArrowLeft') {
       event.preventDefault();
       goPrev();
-    } else if (event.key === 'ArrowDown') {
+    } else if (event.key === 'ArrowRight') {
       event.preventDefault();
       goNext();
     }
   }
 
-  const activeCard = cards[activeIndex] ?? null;
-  const canRemove = cards.length > 1;
   const canAdd = cards.length < 5;
-  const taskLabel = `task ${activeIndex + 1}`;
+  const canRemove = cards.length > 1;
 
   return (
     <div
@@ -163,128 +175,22 @@ export function MockComposerStackView() {
     >
       <section className="draftShell mockStackDraftShell">
         <header className="mockStackHero">
-          <h1 className="mockStackTitle">Mock compare stack</h1>
+          <h1 className="mockStackTitle">Mock compare carousel</h1>
           <p className="mockStackSubtitle">
-            Prototype for stacked per-card composers. Click a peek card or tap a dot to promote it;
-            use ↑/↓ when focus is outside the textarea.
+            Horizontal 3D carousel: active composer centred, peeks rotate on either
+            side with their own chrome attached. Bounded at the lead branch — no
+            wrap-around. Click a side card or tap a dot to spin to it; use ←/→
+            when focus is outside the textarea.
           </p>
         </header>
 
-        {activeCard ? (
-          <div
-            key={`chrome-header-${activeCard.id}`}
-            className="composerHeaderRow mockStackChrome mockStackChromeHeader"
-          >
-            <div className="composerHeaderLeft">
-              <ComposerSurfaceChip surface="code" />
-              {activeCard.cwd ? (
-                <span
-                  className="composerCwdChip composerCwdClickable"
-                  data-tooltip={activeCard.cwd}
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => cycleCwd(activeCard.id)}
-                >
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
-                  </svg>
-                  <span>{truncatePath(activeCard.cwd)}</span>
-                  <button
-                    type="button"
-                    className="composerChipClose"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      clearCwd(activeCard.id);
-                    }}
-                    aria-label="Clear cwd"
-                  >
-                    &times;
-                  </button>
-                </span>
-              ) : (
-                <button
-                  type="button"
-                  className="composerHeaderChooseButton"
-                  onClick={() => cycleCwd(activeCard.id)}
-                >
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
-                  </svg>
-                  <span>Choose workspace</span>
-                </button>
-              )}
-              {activeCard.branch ? (
-                <span className="composerBranchChip">
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <circle cx="4" cy="4" r="1.6" />
-                    <circle cx="12" cy="4" r="1.6" />
-                    <circle cx="4" cy="12" r="1.6" />
-                    <path d="M4 5.6v4.8" />
-                    <path d="M12 5.6v2.4a2 2 0 0 1-2 2H6" />
-                  </svg>
-                  <span>{activeCard.branch}</span>
-                </span>
-              ) : null}
-            </div>
-          </div>
-        ) : null}
-
-        <div
-          className="mockStackContainer mockStackContainerPeekReserve"
-          style={{ '--peek-reserve': `${Math.max(0, cards.length - 1) * 14}px` } as CSSProperties}
-        >
-          {cards.map((card, index) => (
-            <MockComposerCard
-              key={card.id}
-              card={card}
-              active={index === activeIndex}
-              depth={
-                index === activeIndex
-                  ? 0
-                  : index < activeIndex
-                    ? index + 1
-                    : index
-              }
-              onPromote={index === activeIndex ? undefined : () => setActiveIndex(index)}
-              onPromptChange={(value) => updateCard(card.id, { prompt: value })}
-              onAddAgent={() => addAgent(card.id)}
-              onRemoveAgent={(agentId) => removeAgent(card.id, agentId)}
-            />
-          ))}
-
-          <div className="mockStackSideNav" aria-label="Switch compare card">
+        <div className="mockStackCarousel">
+          {cards.length > 1 ? (
             <button
               type="button"
-              className="mockStackSideNavButton"
-              disabled={activeIndex === 0}
+              className="mockStackCarouselNav mockStackCarouselNavPrev"
               onClick={goPrev}
+              disabled={activeIndex === 0}
               aria-label="Previous card"
             >
               <svg
@@ -297,25 +203,37 @@ export function MockComposerStackView() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <polyline points="18 15 12 9 6 15" />
+                <polyline points="15 18 9 12 15 6" />
               </svg>
             </button>
-            <div className="mockStackDotColumn">
-              {cards.map((card, index) => (
-                <button
-                  key={card.id}
-                  type="button"
-                  className={`mockStackDot${index === activeIndex ? ' mockStackDotActive' : ''}`}
-                  onClick={() => setActiveIndex(index)}
-                  aria-label={`Go to card ${index + 1}`}
-                />
-              ))}
-            </div>
+          ) : null}
+
+          {cards.map((card, index) => (
+            <MockComposerCard
+              key={card.id}
+              card={card}
+              taskLabel={`task ${index + 1}`}
+              active={index === activeIndex}
+              relative={relativeCarouselPosition(index, activeIndex)}
+              canAdd={canAdd}
+              canRemove={canRemove}
+              onPromote={index === activeIndex ? undefined : () => setActiveIndex(index)}
+              onPromptChange={(value) => updateCard(card.id, { prompt: value })}
+              onAddAgent={() => addAgent(card.id)}
+              onRemoveAgent={(agentId) => removeAgent(card.id, agentId)}
+              onCycleCwd={() => cycleCwd(card.id)}
+              onClearCwd={() => clearCwd(card.id)}
+              onAddCard={addCard}
+              onRemoveCard={() => removeCard(card.id)}
+            />
+          ))}
+
+          {cards.length > 1 ? (
             <button
               type="button"
-              className="mockStackSideNavButton"
-              disabled={activeIndex >= cards.length - 1}
+              className="mockStackCarouselNav mockStackCarouselNavNext"
               onClick={goNext}
+              disabled={activeIndex >= cards.length - 1}
               aria-label="Next card"
             >
               <svg
@@ -328,67 +246,23 @@ export function MockComposerStackView() {
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <polyline points="6 9 12 15 18 9" />
+                <polyline points="9 18 15 12 9 6" />
               </svg>
             </button>
-          </div>
+          ) : null}
         </div>
 
-        {activeCard ? (
-          <div
-            key={`chrome-footer-${activeCard.id}`}
-            className="composerFooterRow mockStackChrome mockStackChromeFooter"
-          >
-            <div className="mockStackCardFooterLeft">
-              <span className="mockStackTaskChip">
-                <svg
-                  width="13"
-                  height="13"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.6"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
-                  <rect x="2.5" y="3" width="11" height="10" rx="1.5" />
-                  <path d="M5 6.5l2 2 4-4" />
-                </svg>
-                <span>{taskLabel}</span>
-              </span>
-            </div>
-            <div className="parallelAddRow parallelAddRowInline mockStackCardActions">
+        {cards.length > 1 ? (
+          <div className="mockStackDotRow" aria-label="Select compare card">
+            {cards.map((card, index) => (
               <button
+                key={card.id}
                 type="button"
-                className="parallelAddButton"
-                disabled={!canAdd}
-                onClick={addCard}
-                aria-label="Add compare card"
-              >
-                <CompareIcon />
-              </button>
-              {canRemove ? (
-                <button
-                  type="button"
-                  className="mockStackCardRemove"
-                  onClick={() => removeCard(activeCard.id)}
-                  aria-label="Remove this compare card"
-                >
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 16 16"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="1.8"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="M4 8h8" />
-                  </svg>
-                </button>
-              ) : null}
-            </div>
+                className={`mockStackDot${index === activeIndex ? ' mockStackDotActive' : ''}`}
+                onClick={() => setActiveIndex(index)}
+                aria-label={`Go to card ${index + 1}`}
+              />
+            ))}
           </div>
         ) : null}
       </section>
@@ -398,22 +272,36 @@ export function MockComposerStackView() {
 
 interface MockComposerCardProps {
   card: MockCard;
+  taskLabel: string;
   active: boolean;
-  depth: number;
+  relative: number;
+  canAdd: boolean;
+  canRemove: boolean;
   onPromote?: () => void;
   onPromptChange: (value: string) => void;
   onAddAgent: () => void;
   onRemoveAgent: (agentId: string) => void;
+  onCycleCwd: () => void;
+  onClearCwd: () => void;
+  onAddCard: () => void;
+  onRemoveCard: () => void;
 }
 
 function MockComposerCard({
   card,
+  taskLabel,
   active,
-  depth,
+  relative,
+  canAdd,
+  canRemove,
   onPromote,
   onPromptChange,
   onAddAgent,
   onRemoveAgent,
+  onCycleCwd,
+  onClearCwd,
+  onAddCard,
+  onRemoveCard,
 }: MockComposerCardProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -424,16 +312,33 @@ function MockComposerCard({
     el.style.height = `${el.scrollHeight}px`;
   }, [card.prompt]);
 
-  const depthClass = active ? 'mockStackCardActive' : 'mockStackCardPeek';
-  const peekStyle = active
-    ? undefined
+  // Active card stays in the grid flow at identity transform — it drives
+  // the grid cell height, which in turn drives the carousel's natural
+  // height so chrome sits flush against the card. Peek cards overlay the
+  // same grid cell via inline transform (translate sideways, rotateY into
+  // depth, scale down); they don't affect layout because scale/rotate
+  // aren't measured by grid.
+  const absRel = Math.abs(relative);
+  const sign = relative === 0 ? 0 : relative > 0 ? 1 : -1;
+  const translatePercent = sign * (88 + (absRel - 1) * 28);
+  const rotateDeg = -sign * (38 + (absRel - 1) * 10);
+  const scale = Math.max(0.38, 0.55 - (absRel - 1) * 0.12);
+  const opacity = Math.max(0.1, 0.64 - (absRel - 1) * 0.28);
+  const zIndex = active ? 1000 : Math.max(1, 900 - absRel * 10);
+
+  const wrapperStyle: CSSProperties = active
+    ? { zIndex }
     : {
-        transform: `translate3d(0, ${depth * 14}px, 0) scale(${(1 - depth * 0.025).toFixed(3)})`,
-        opacity: Math.max(0.22, 0.82 - (depth - 1) * 0.18).toFixed(3),
-        zIndex: Math.max(1, 999 - depth),
+        transform: `translate(${translatePercent}%, 0) rotateY(${rotateDeg}deg) scale(${scale.toFixed(3)})`,
+        opacity: opacity.toFixed(3),
+        zIndex,
       };
 
-  function handlePromoteClick(event: ReactMouseEvent<HTMLFormElement>): void {
+  const className = active
+    ? 'mockStackCardWrapper mockStackCardActive'
+    : 'mockStackCardWrapper mockStackCardPeek';
+
+  function handlePromoteClick(event: ReactMouseEvent<HTMLDivElement>): void {
     if (active || !onPromote) return;
     if (event.target instanceof HTMLElement && event.target.closest('button, textarea, [role="button"]')) {
       return;
@@ -442,40 +347,29 @@ function MockComposerCard({
   }
 
   return (
-    <form
-      className={`composerCard composerCardFresh mockStackCard ${depthClass}`}
-      style={peekStyle}
+    <div
+      className={className}
+      style={wrapperStyle}
       aria-hidden={active ? undefined : true}
       onClick={handlePromoteClick}
-      onSubmit={(event) => event.preventDefault()}
     >
-      <textarea
-        ref={textareaRef}
-        className="composerInput"
-        rows={1}
-        placeholder="What should this card build, fix, or investigate?"
-        value={card.prompt}
-        disabled={!active}
-        onChange={(event) => {
-          onPromptChange(event.target.value);
-          const el = event.target;
-          el.style.height = 'auto';
-          el.style.height = `${el.scrollHeight}px`;
-        }}
-      />
-      <div className="composerBottomRow mockStackCardBottomRow">
-        <div className="composerLeftGroup">
-          <div className="composerPlusWrapper">
-            <button
-              type="button"
-              className="composerPlusButton"
-              aria-label="Attach"
-              disabled={!active}
-              onClick={(event) => event.stopPropagation()}
+      <div className="composerHeaderRow mockStackCardHeader">
+        <div className="composerHeaderLeft">
+          <ComposerSurfaceChip surface="code" />
+          {card.cwd ? (
+            <span
+              className="composerCwdChip composerCwdClickable"
+              data-tooltip={card.cwd}
+              role="button"
+              tabIndex={active ? 0 : -1}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (active) onCycleCwd();
+              }}
             >
               <svg
-                width="16"
-                height="16"
+                width="14"
+                height="14"
                 viewBox="0 0 16 16"
                 fill="none"
                 stroke="currentColor"
@@ -483,71 +377,235 @@ function MockComposerCard({
                 strokeLinecap="round"
                 strokeLinejoin="round"
               >
-                <path d="M8 3v10" />
-                <path d="M3 8h10" />
+                <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
               </svg>
+              <span>{truncatePath(card.cwd)}</span>
+              <button
+                type="button"
+                className="composerChipClose"
+                disabled={!active}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (active) onClearCwd();
+                }}
+                aria-label="Clear cwd"
+              >
+                &times;
+              </button>
+            </span>
+          ) : (
+            <button
+              type="button"
+              className="composerHeaderChooseButton"
+              disabled={!active}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (active) onCycleCwd();
+              }}
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
+              </svg>
+              <span>Choose workspace</span>
+            </button>
+          )}
+          {card.branch ? (
+            <span className="composerBranchChip">
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <circle cx="4" cy="4" r="1.6" />
+                <circle cx="12" cy="4" r="1.6" />
+                <circle cx="4" cy="12" r="1.6" />
+                <path d="M4 5.6v4.8" />
+                <path d="M12 5.6v2.4a2 2 0 0 1-2 2H6" />
+              </svg>
+              <span>{card.branch}</span>
+            </span>
+          ) : null}
+        </div>
+      </div>
+
+      <form
+        className="composerCard composerCardFresh mockStackCardBody"
+        onSubmit={(event) => event.preventDefault()}
+      >
+        <textarea
+          ref={textareaRef}
+          className="composerInput"
+          rows={1}
+          placeholder="What should this card build, fix, or investigate?"
+          value={card.prompt}
+          disabled={!active}
+          onChange={(event) => {
+            onPromptChange(event.target.value);
+            const el = event.target;
+            el.style.height = 'auto';
+            el.style.height = `${el.scrollHeight}px`;
+          }}
+        />
+        <div className="composerBottomRow mockStackCardBottomRow">
+          <div className="composerLeftGroup">
+            <div className="composerPlusWrapper">
+              <button
+                type="button"
+                className="composerPlusButton"
+                aria-label="Attach"
+                disabled={!active}
+                onClick={(event) => event.stopPropagation()}
+              >
+                <svg
+                  width="16"
+                  height="16"
+                  viewBox="0 0 16 16"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M8 3v10" />
+                  <path d="M3 8h10" />
+                </svg>
+              </button>
+            </div>
+            <button
+              type="button"
+              className="parallelAddButton"
+              disabled={!active || card.agents.length >= AGENT_LIBRARY.length}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (active) onAddAgent();
+              }}
+              aria-label="Add agent to collaborate"
+            >
+              <CollaborateIcon />
             </button>
           </div>
+          <div className="mockStackAgentRow">
+            {card.agents.map((agent) => (
+              <span
+                key={agent.id}
+                className="mockStackAgentChip"
+                style={{ background: agent.tint }}
+              >
+                <span className="mockStackAgentLabel">{agent.label}</span>
+                {card.agents.length > 1 ? (
+                  <button
+                    type="button"
+                    className="mockStackAgentRemove"
+                    disabled={!active}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      if (active) onRemoveAgent(agent.id);
+                    }}
+                    aria-label={`Remove ${agent.label}`}
+                  >
+                    &times;
+                  </button>
+                ) : null}
+              </span>
+            ))}
+          </div>
+          <button
+            type="submit"
+            className="composerSendButton"
+            disabled={!active || card.prompt.trim().length === 0}
+            aria-label="Send"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M8 13V3" />
+              <path d="M3 7l5-5 5 5" />
+            </svg>
+          </button>
+        </div>
+      </form>
+
+      <div className="composerFooterRow mockStackCardFooter">
+        <div className="mockStackCardFooterLeft">
+          <span className="mockStackTaskChip">
+            <svg
+              width="13"
+              height="13"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="2.5" y="3" width="11" height="10" rx="1.5" />
+              <path d="M5 6.5l2 2 4-4" />
+            </svg>
+            <span>{taskLabel}</span>
+          </span>
+        </div>
+        <div className="parallelAddRow parallelAddRowInline mockStackCardActions">
+          {canRemove ? (
+            <button
+              type="button"
+              className="mockStackCardRemove"
+              disabled={!active}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (active) onRemoveCard();
+              }}
+              aria-label="Remove this compare card"
+            >
+              <svg
+                width="14"
+                height="14"
+                viewBox="0 0 16 16"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M4 8h8" />
+              </svg>
+            </button>
+          ) : null}
           <button
             type="button"
             className="parallelAddButton"
-            disabled={!active || card.agents.length >= AGENT_LIBRARY.length}
+            disabled={!active || !canAdd}
             onClick={(event) => {
               event.stopPropagation();
-              if (active) onAddAgent();
+              if (active && canAdd) onAddCard();
             }}
-            aria-label="Add agent to collaborate"
+            aria-label="Add compare card"
           >
-            <CollaborateIcon />
+            <CompareIcon />
           </button>
         </div>
-        <div className="mockStackAgentRow">
-          {card.agents.map((agent) => (
-            <span
-              key={agent.id}
-              className="mockStackAgentChip"
-              style={{ background: agent.tint }}
-            >
-              <span className="mockStackAgentLabel">{agent.label}</span>
-              {card.agents.length > 1 ? (
-                <button
-                  type="button"
-                  className="mockStackAgentRemove"
-                  disabled={!active}
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    if (active) onRemoveAgent(agent.id);
-                  }}
-                  aria-label={`Remove ${agent.label}`}
-                >
-                  &times;
-                </button>
-              ) : null}
-            </span>
-          ))}
-        </div>
-        <button
-          type="submit"
-          className="composerSendButton"
-          disabled={!active || card.prompt.trim().length === 0}
-          aria-label="Send"
-          onClick={(event) => event.stopPropagation()}
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 16 16"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M8 13V3" />
-            <path d="M3 7l5-5 5 5" />
-          </svg>
-        </button>
       </div>
-    </form>
+    </div>
   );
 }
