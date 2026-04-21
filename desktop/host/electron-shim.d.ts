@@ -81,6 +81,7 @@ declare module 'electron' {
     };
     toPNG(): Uint8Array;
     crop(rect: { x: number; y: number; width: number; height: number }): NativeImage;
+    resize(size: { width: number; height: number }): NativeImage;
   }
 
   export interface DesktopCapturerSource {
@@ -128,6 +129,7 @@ declare module 'electron' {
 
   export const screen: {
     getAllDisplays(): Display[];
+    getCursorScreenPoint(): { x: number; y: number };
   };
 
   export const desktopCapturer: {

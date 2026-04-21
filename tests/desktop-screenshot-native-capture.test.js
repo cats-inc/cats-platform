@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   captureDesktopDisplaySnapshots,
   cropDesktopDisplaySnapshotSelection,
+  doesDesktopScreenshotSelectionOverlapCaptureCursor,
   matchDesktopSourceForDisplay,
   resolveDesktopCaptureThumbnailSize,
 } from '../build/desktop/screenshotNativeCapture.js';
@@ -100,6 +101,9 @@ test('desktop screenshot native capture builds per-display PNG snapshots', async
         },
       ];
     },
+    getCursorScreenPoint() {
+      return { x: -100, y: 20 };
+    },
   });
 
   assert.deepEqual(calls, [
@@ -116,6 +120,10 @@ test('desktop screenshot native capture builds per-display PNG snapshots', async
     scaleFactor: 2,
   });
   assert.deepEqual(Array.from(snapshots[1]?.png ?? []), [4, 5, 6]);
+  assert.deepEqual(snapshots[1]?.captureCursor, {
+    point: { x: -100, y: 20 },
+    exclusionRadius: 64,
+  });
 });
 
 test('desktop screenshot native capture crops selected display snapshots', () => {
@@ -138,6 +146,9 @@ test('desktop screenshot native capture crops selected display snapshots', () =>
         cropCalls.push({ sourcePng: Array.from(sourcePng), cropRect });
         return new Uint8Array([7, 8, 9]);
       },
+      resizePng() {
+        throw new Error('bounded crop should not be resized');
+      },
     },
   );
 
@@ -157,6 +168,115 @@ test('desktop screenshot native capture crops selected display snapshots', () =>
   });
 });
 
+test('desktop screenshot native capture downscales oversized crop dimensions', () => {
+  const resizeCalls = [];
+  const result = cropDesktopDisplaySnapshotSelection(
+    {
+      displayId: 1,
+      sourceId: 'screen:1:0',
+      sourceName: 'Built-in display',
+      geometry: {
+        bounds: { x: 0, y: 0, width: 9000, height: 4500 },
+        imageSize: { width: 9000, height: 4500 },
+        scaleFactor: 1,
+      },
+      png: new Uint8Array([1]),
+    },
+    { x: 0, y: 0, width: 9000, height: 4500 },
+    {
+      cropPng() {
+        return new Uint8Array([9, 9, 9]);
+      },
+      resizePng(sourcePng, size) {
+        resizeCalls.push({ sourcePng: Array.from(sourcePng), size });
+        return new Uint8Array([8, 8]);
+      },
+    },
+  );
+
+  assert.deepEqual(resizeCalls, [
+    {
+      sourcePng: [9, 9, 9],
+      size: { width: 8000, height: 4000 },
+    },
+  ]);
+  assert.deepEqual(result, {
+    displayId: 1,
+    sourceId: 'screen:1:0',
+    width: 8000,
+    height: 4000,
+    cropRect: { x: 0, y: 0, width: 9000, height: 4500 },
+    png: new Uint8Array([8, 8]),
+  });
+});
+
+test('desktop screenshot native capture downscales oversized encoded PNG bytes', () => {
+  const resizeCalls = [];
+  const result = cropDesktopDisplaySnapshotSelection(
+    {
+      displayId: 1,
+      sourceId: 'screen:1:0',
+      sourceName: 'Built-in display',
+      geometry: {
+        bounds: { x: 0, y: 0, width: 4000, height: 2000 },
+        imageSize: { width: 4000, height: 2000 },
+        scaleFactor: 1,
+      },
+      png: new Uint8Array([1]),
+    },
+    { x: 0, y: 0, width: 4000, height: 2000 },
+    {
+      cropPng() {
+        return new Uint8Array(10 * 1024 * 1024 + 1);
+      },
+      resizePng(_sourcePng, size) {
+        resizeCalls.push(size);
+        return new Uint8Array([7]);
+      },
+    },
+  );
+
+  assert.deepEqual(resizeCalls, [
+    { width: 3400, height: 1700 },
+  ]);
+  assert.equal(result?.width, 3400);
+  assert.equal(result?.height, 1700);
+  assert.deepEqual(result?.png, new Uint8Array([7]));
+});
+
+test('desktop screenshot native capture detects selections overlapping capture cursor', () => {
+  const snapshot = {
+    displayId: 1,
+    sourceId: 'screen:1:0',
+    sourceName: 'Built-in display',
+    geometry: {
+      bounds: { x: 0, y: 0, width: 1000, height: 800 },
+      imageSize: { width: 1000, height: 800 },
+      scaleFactor: 1,
+    },
+    png: new Uint8Array([1]),
+    captureCursor: {
+      point: { x: 500, y: 400 },
+      exclusionRadius: 64,
+    },
+  };
+
+  assert.equal(
+    doesDesktopScreenshotSelectionOverlapCaptureCursor(
+      snapshot,
+      { x: 450, y: 350, width: 100, height: 100 },
+    ),
+    true,
+  );
+  assert.equal(
+    doesDesktopScreenshotSelectionOverlapCaptureCursor(
+      snapshot,
+      { x: 0, y: 0, width: 100, height: 100 },
+    ),
+    false,
+  );
+});
+
 test('desktop screenshot native capture treats tiny crop selections as cancellation', () => {
   const result = cropDesktopDisplaySnapshotSelection(
     {
@@ -174,6 +294,9 @@ test('desktop screenshot native capture treats tiny crop selections as cancellat
     {
       cropPng() {
         throw new Error('tiny selections should not be cropped');
+      },
+      resizePng() {
+        throw new Error('tiny selections should not be resized');
       },
     },
   );

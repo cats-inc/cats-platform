@@ -14,6 +14,9 @@ export function createElectronScreenshotCaptureDependencies(): DesktopScreenshot
         scaleFactor: display.scaleFactor,
       }));
     },
+    getCursorScreenPoint() {
+      return screen.getCursorScreenPoint();
+    },
     async getScreenSources(options) {
       return await desktopCapturer.getSources(options);
     },
@@ -26,6 +29,12 @@ export function createElectronScreenshotCropDependencies(): DesktopScreenshotCro
       return nativeImage
         .createFromBuffer(Buffer.from(sourcePng))
         .crop(cropRect)
+        .toPNG();
+    },
+    resizePng(sourcePng, size) {
+      return nativeImage
+        .createFromBuffer(Buffer.from(sourcePng))
+        .resize(size)
         .toPNG();
     },
   };

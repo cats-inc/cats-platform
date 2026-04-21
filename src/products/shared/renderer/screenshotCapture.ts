@@ -138,6 +138,15 @@ async function canvasToBoundedPngBlob(canvas: HTMLCanvasElement): Promise<Blob> 
   return blob;
 }
 
+export function stopMediaStreamTracks(stream: Pick<MediaStream, 'getTracks'> | null): void {
+  if (!stream) {
+    return;
+  }
+  for (const track of stream.getTracks()) {
+    track.stop();
+  }
+}
+
 async function captureWebScreenshotFile(): Promise<File | null> {
   if (!supportsWebScreenCapture()) {
     throw new Error(resolveScreenshotCaptureTooltip('unavailable'));
@@ -159,6 +168,8 @@ async function captureWebScreenshotFile(): Promise<File | null> {
     await waitForVideoMetadata(video);
     await video.play();
     const canvas = createCanvasForVideo(video);
+    stopMediaStreamTracks(stream);
+    stream = null;
     const blob = await canvasToBoundedPngBlob(canvas);
     return new File([blob], createScreenshotFilename(), { type: 'image/png' });
   } catch (error) {
@@ -167,11 +178,7 @@ async function captureWebScreenshotFile(): Promise<File | null> {
     }
     throw error;
   } finally {
-    if (stream) {
-      for (const track of stream.getTracks()) {
-        track.stop();
-      }
-    }
+    stopMediaStreamTracks(stream);
   }
 }
 

@@ -45,6 +45,9 @@ test('desktop screenshot overlay session recomputes crop instead of trusting ove
       cropCalls.push({ sourcePng: Array.from(sourcePng), cropRect });
       return new Uint8Array([9, 8, 7]);
     },
+    resizePng() {
+      throw new Error('bounded crop should not be resized');
+    },
   });
 
   session.completeSelection({
@@ -69,6 +72,36 @@ test('desktop screenshot overlay session recomputes crop instead of trusting ove
       cropRect: { x: 200, y: 40, width: 400, height: 200 },
       png: new Uint8Array([9, 8, 7]),
     },
+  });
+});
+
+test('desktop screenshot overlay session cancels selections overlapping capture cursor', async () => {
+  const session = new DesktopScreenshotOverlaySession([
+    {
+      ...createSnapshot(),
+      captureCursor: {
+        point: { x: -1100, y: 50 },
+        exclusionRadius: 64,
+      },
+    },
+  ], {
+    cropPng() {
+      throw new Error('cursor-overlap selections should not be cropped');
+    },
+    resizePng() {
+      throw new Error('cursor-overlap selections should not be resized');
+    },
+  });
+
+  session.completeSelection({
+    displayId: 2,
+    cssRect: { x: -1180, y: 20, width: 200, height: 100 },
+    cropRect: { x: 0, y: 0, width: 1, height: 1 },
+  });
+
+  assert.deepEqual(await session.waitForResult(), {
+    outcome: 'cancelled',
+    reason: 'cursor_overlap',
   });
 });
 

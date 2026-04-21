@@ -8,6 +8,7 @@ import { ChatComposerArea } from '../src/products/shared/renderer/components/cha
 import {
   createScreenshotFilename,
   resolveScreenshotCaptureRoute,
+  stopMediaStreamTracks,
 } from '../src/products/shared/renderer/screenshotCapture.ts';
 
 type ChatComposerAreaRenderProps = ComponentProps<typeof ChatComposerArea>;
@@ -150,4 +151,18 @@ test('screenshot routing requires explicit native desktop capability', () => {
       hostGlobal.catsDesktopHost = previous;
     }
   }
+});
+
+test('screenshot web fallback can stop media tracks before PNG encoding', () => {
+  const stops: string[] = [];
+  stopMediaStreamTracks({
+    getTracks() {
+      return [
+        { stop: () => stops.push('video') },
+        { stop: () => stops.push('audio') },
+      ] as MediaStreamTrack[];
+    },
+  });
+
+  assert.deepEqual(stops, ['video', 'audio']);
 });

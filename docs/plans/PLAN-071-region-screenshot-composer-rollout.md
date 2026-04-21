@@ -64,16 +64,21 @@ provider and existing attachment previews.
       physical-pixel `thumbnailSize` derived from `display.bounds *
       display.scaleFactor`.
 - [ ] Exclude the OS cursor from captured bitmaps (resolve SPEC Open
-      Question on Windows mechanism before implementation).
+      Question on Windows mechanism before implementation). Follow-up
+      mitigation now records the capture-time cursor point and cancels final
+      crops that overlap a conservative cursor exclusion rect, so attachments
+      are not emitted when they would include the captured cursor. Full
+      source-bitmap cursor removal remains unresolved.
 - [x] Wrap the full capture flow in `try…finally` so main window restoration
       is guaranteed on exceptions.
 - [x] Normalize permission-denied, cancelled, and unsupported-platform
       results into the contract's outcome variants instead of generic
       failures.
 
-**Deliverables**: Host can capture full-display, cursor-free snapshots and
-return bounded results through the preload bridge; main window always
-recovers.
+**Deliverables**: Host can capture full-display snapshots, avoid emitting
+cursor-overlap attachments, and return bounded results through the preload
+bridge; main window always recovers. Full source-bitmap cursor removal remains
+pending behind the SPEC open question.
 
 ### Phase 3: Region Selection Overlay
 
@@ -226,6 +231,7 @@ desktop/browser smoke evidence.
 | 2026-04-22 | Implementation started: renderer screenshot action, web fallback, attachment-only send, desktop bridge contract, capability-gated desktop route, host hide/restore guard, crop geometry, display snapshot/crop pipeline, overlay renderer entry, overlay IPC/preload contract, overlay session/controller helpers, and targeted tests landed in incremental commits. Native desktop capability remains intentionally disabled until the Electron overlay flow is wired end-to-end and manually smoke-tested. |
 | 2026-04-22 | Native desktop flow enabled: main-window hide/restore now invokes `desktopCapturer`, opens one frozen-snapshot overlay per display, crops selected regions through `nativeImage`, returns PNGs through the preload bridge, and appends them as composer attachments. Validation run: `npm run build`, `npm run typecheck`, focused desktop screenshot tests, focused renderer screenshot tests, and an alternate-port Electron host smoke where `cats-runtime` and `cats-platform` reached ready state and `/desktop/overlay/index.html` returned 200. Full `npm test` hit the 10-minute tool timeout without returning output, so broad-suite completion remains pending. |
 | 2026-04-22 | Added macOS Screen Recording preflight: Electron now maps denied/restricted `screen` media access to the screenshot contract's `permission_denied` outcome before opening overlays, while allowing `not-determined` to continue so the first capture attempt can trigger the platform consent path. |
+| 2026-04-22 | Follow-up review fixes: desktop cropped PNGs now apply the same 8000×8000 / 10 MB bounds as the web path, web fallback stops `MediaStreamTrack`s immediately after drawing the frame to canvas, and desktop sessions cancel cursor-overlap selections using capture-time cursor metadata. |
 
 ---
 
