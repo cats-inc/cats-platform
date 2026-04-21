@@ -171,6 +171,9 @@ export async function checkForDesktopUpdates(
     const latestVersion = manifest.version;
     const hasUpdate = compareVersions(DESKTOP_HOST_VERSION, latestVersion) < 0;
     const status = hasUpdate ? 'update_available' : 'up_to_date';
+    if (hasUpdate && !manifest.downloadUrl) {
+      throw new Error('Update manifest is missing required field "downloadUrl" for a newer version.');
+    }
 
     const downloadUrl = manifest.downloadUrl
       ? validateDesktopUrl(manifest.downloadUrl, {

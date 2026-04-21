@@ -119,6 +119,31 @@ test('checkForDesktopUpdates reports failed when manifest channel mismatches con
   assert.equal(state.downloadUrl, null);
 });
 
+test('checkForDesktopUpdates reports failed when newer manifest omits downloadUrl', async () => {
+  const state = await checkForDesktopUpdates({
+    channel: 'stable',
+    manifestUrl: 'https://updates.example.com/cats/stable.json',
+    allowedHosts: [],
+    checkOnStartup: false,
+    autoDownload: false,
+  }, {
+    fetchImpl: async () => ({
+      ok: true,
+      async json() {
+        return {
+          version: '0.2.0',
+          summary: 'A newer desktop bundle is available.',
+        };
+      },
+    }),
+    now: () => new Date('2026-03-24T10:04:30.000Z'),
+  });
+
+  assert.equal(state.status, 'failed');
+  assert.match(state.error ?? '', /missing required field "downloadUrl"/);
+  assert.equal(state.latestVersion, null);
+});
+
 test('checkForDesktopUpdates reports failed when manifest fetch breaks', async () => {
   const state = await checkForDesktopUpdates({
     channel: 'stable',

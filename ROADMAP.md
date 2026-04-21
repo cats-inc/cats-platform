@@ -280,6 +280,9 @@ contracts.
 - [ ] Strengthen the packaged host trust chain beyond the current HTTPS and
       allow-list checks, including signed update manifests, verified download
       integrity, and controlled apply/restart orchestration
+      Progress: newer-version update manifests now must include an allow-listed
+      `downloadUrl`; malformed "update available" manifests without a download
+      artifact fail closed instead of surfacing an unactionable update.
 - [ ] Harden desktop host persistence and readiness parsing with stricter
       machine-readable validation for host-state snapshots, readiness payloads,
       and update manifests so corrupted local files or malformed service
