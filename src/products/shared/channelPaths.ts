@@ -1,6 +1,5 @@
 import type { PlatformSurfaceId } from '../../shared/platform-contract.js';
 import type { RoomRoutingMode } from '../../shared/roomRouting.js';
-import { normalizePlatformSurface } from '../../shared/platformSurfaces.js';
 import { isDirectLaneSummary, type ProductChannelKind } from './channelTopology.js';
 
 export const UUID_PATTERN =
@@ -118,7 +117,7 @@ export function resolveWorkspaceVisibleChatPath(
 ): string {
   const visibleChannels = activeSurface
     ? channels.filter((channel) =>
-      normalizePlatformSurface(channel.originSurface, 'chat') === activeSurface)
+      channel.originSurface === activeSurface)
     : channels;
   const normalized = selectedChannelId?.trim() ?? '';
   const selectedVisible = visibleChannels.find((channel) =>

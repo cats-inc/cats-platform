@@ -60,6 +60,15 @@ test('workspace channel paths keep product prefixes while sharing visible-chat s
   assert.equal(resolveCodeVisibleChatPath(crossSurfaceChannels, 'chat-1'), '/code/chats/code-1');
   assert.equal(resolveWorkVisibleChatPath(crossSurfaceChannels, 'chat-1'), '/work/new');
   assert.equal(
+    resolveWorkspaceVisibleChatPath(
+      '/code',
+      [{ id: 'legacy-1', roomMode: 'boss_chat' as const }],
+      'legacy-1',
+      'code',
+    ),
+    '/code/new',
+  );
+  assert.equal(
     resolveCodeVisibleChatPath(
       [{ id: 'chat-1', originSurface: 'chat' as const, roomMode: 'boss_chat' as const }],
       'chat-1',

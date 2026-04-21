@@ -26,8 +26,8 @@ test('resolveDefaultChatPath falls back to the dedicated new-chat route', () => 
 
 test('resolveVisibleChatPath skips hidden direct lanes when choosing Chats overview target', () => {
   const channels = [
-    { id: 'direct-1', roomMode: 'direct_cat_chat' },
-    { id: 'boss-1', roomMode: 'boss_chat' },
+    { id: 'direct-1', roomMode: 'direct_cat_chat', originSurface: 'chat' },
+    { id: 'boss-1', roomMode: 'boss_chat', originSurface: 'chat' },
   ];
 
   assert.equal(
@@ -39,7 +39,9 @@ test('resolveVisibleChatPath skips hidden direct lanes when choosing Chats overv
     '/chat/chats/boss-1',
   );
   assert.equal(
-    resolveVisibleChatPath([{ id: 'direct-1', roomMode: 'direct_cat_chat' }], 'direct-1'),
+    resolveVisibleChatPath([
+      { id: 'direct-1', roomMode: 'direct_cat_chat', originSurface: 'chat' },
+    ], 'direct-1'),
     NEW_CHAT_PATH,
   );
 
@@ -56,12 +58,26 @@ test('resolveVisibleChatPath skips hidden direct lanes when choosing Chats overv
     resolveVisibleChatPath([{ id: 'code-1', roomMode: 'boss_chat', originSurface: 'code' }], 'code-1'),
     NEW_CHAT_PATH,
   );
+  assert.equal(
+    resolveVisibleChatPath([{ id: 'legacy-1', roomMode: 'boss_chat' }], 'legacy-1'),
+    NEW_CHAT_PATH,
+  );
 });
 
 test('resolveVisibleChatPath trusts channelKind for direct lanes even when roomMode is legacy-mismatched', () => {
   const channels = [
-    { id: 'direct-1', channelKind: 'direct_lane', roomMode: 'boss_chat' },
-    { id: 'boss-1', channelKind: 'boss_thread', roomMode: 'boss_chat' },
+    {
+      id: 'direct-1',
+      channelKind: 'direct_lane',
+      roomMode: 'boss_chat',
+      originSurface: 'chat',
+    },
+    {
+      id: 'boss-1',
+      channelKind: 'boss_thread',
+      roomMode: 'boss_chat',
+      originSurface: 'chat',
+    },
   ];
 
   assert.equal(
