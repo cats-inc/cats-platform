@@ -590,6 +590,10 @@ contracts.
       behavior, and later execution-profile sections, so `+New code` does not
       remain blocked on internal shared-draft state or brittle static-markup
       assertions
+      Progress: Chat draft side-panel mechanics now accept caller-owned copy for
+      panel title, participant/execution/workspace section titles, and empty
+      states. Code group/parallel drafts feed the same Code copy through that
+      seam instead of inheriting Chat setup labels.
 - [ ] Move `+Team code` and `+Peer code` off the current shared chat-draft
       fallback onto product-owned draft surfaces above the same shared
       primitives, so Code group/parallel entry no longer inherits chat-specific

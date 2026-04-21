@@ -32,6 +32,8 @@ import { ChatNewChatDraftTargetSlot } from './ChatNewChatDraftTargetSlot.js';
 import { type ExecutionTargetValue } from './ExecutionTarget.js';
 import {
   buildChatNewChatDraftSidePanelSections,
+  resolveChatNewChatDraftSidePanelCopy,
+  type ChatNewChatDraftSidePanelCopy,
 } from './chatNewChatDraftSidePanel.js';
 import { DraftHeader } from './DraftHeader.js';
 import { DraftComposerFooter } from './DraftComposerFooter.js';
@@ -317,6 +319,7 @@ export interface NewChatDraftProps {
   hideDraftGroupHint?: boolean;
   hideDraftParallelHint?: boolean;
   folderActionLabel?: string;
+  sidePanelCopy?: ChatNewChatDraftSidePanelCopy;
   chooseFolderPlacement?: 'header' | 'plusMenu';
   leadingStarterChips?: ReadonlyArray<{
     id: string;
@@ -398,6 +401,7 @@ export function NewChatDraft({
   hideDraftGroupHint = false,
   hideDraftParallelHint = false,
   folderActionLabel = 'Choose folder',
+  sidePanelCopy,
   chooseFolderPlacement = 'header',
   leadingStarterChips,
   preserveHelperChipsOnSelect = false,
@@ -411,6 +415,7 @@ export function NewChatDraft({
   const onToggleParallelBranchWorkflowShape = parallelBranchActions?.onToggleWorkflowShape;
   const onQuickAddParallelBranchTemporaryParticipant =
     parallelBranchActions?.onQuickAddTemporaryParticipant;
+  const resolvedSidePanelCopy = resolveChatNewChatDraftSidePanelCopy(sidePanelCopy);
   const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
   const [activeBranchIndex, setActiveBranchIndex] = useState(0);
   const [
@@ -1077,7 +1082,7 @@ export function NewChatDraft({
 
   const sidePanelJsx = sidePanelOpen ? (
     <SidePanel
-      title="New Chat Setup"
+      title={resolvedSidePanelCopy.title}
       activeSection={sidePanelSection}
       onSectionToggle={isSubmittingFirstTurn ? () => {} : switchSection}
       onClose={isSubmittingFirstTurn ? () => {} : () => setSidePanelOpen(false)}
@@ -1131,6 +1136,7 @@ export function NewChatDraft({
         onFolderBrowse,
         onFolderBrowseSelect,
         onCloseSidePanel: () => setSidePanelOpen(false),
+        sidePanelCopy: resolvedSidePanelCopy,
       })}
     />
   ) : null;

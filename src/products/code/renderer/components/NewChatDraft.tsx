@@ -2,6 +2,9 @@ import {
   NewChatDraft as ChatNewChatDraft,
   type NewChatDraftProps,
 } from '../../../shared/renderer/components/ChatNewChatDraft.js';
+import type {
+  ChatNewChatDraftSidePanelCopy,
+} from '../../../shared/renderer/components/chatNewChatDraftSidePanel.js';
 import {
   NewChatDraft as WorkspaceNewChatDraft,
   type NewChatDraftProps as WorkspaceDraftProps,
@@ -33,6 +36,23 @@ export const NEW_CODE_DRAFT_COPY: WorkspaceNewChatDraftCopy = {
     sectionTitle: 'Workspace',
     actionLabel: 'Choose workspace',
     emptyState: 'No workspace selected yet.',
+  },
+};
+
+export const NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY: ChatNewChatDraftSidePanelCopy = {
+  title: NEW_CODE_DRAFT_COPY.sidePanel?.title,
+  participants: {
+    catsSectionTitle: NEW_CODE_DRAFT_COPY.participants?.sectionTitle,
+    groupSectionTitle: NEW_CODE_DRAFT_COPY.participants?.sectionTitle,
+    emptyState: NEW_CODE_DRAFT_COPY.participants?.emptyState,
+  },
+  execution: {
+    sectionTitle: NEW_CODE_DRAFT_COPY.execution?.sectionTitle,
+    emptyState: NEW_CODE_DRAFT_COPY.execution?.emptyState,
+  },
+  folder: {
+    sectionTitle: NEW_CODE_DRAFT_COPY.folder?.sectionTitle,
+    emptyState: NEW_CODE_DRAFT_COPY.folder?.emptyState,
   },
 };
 
@@ -221,6 +241,7 @@ function CodeChatDraft(props: NewChatDraftProps) {
       surfaceTag={<ComposerSurfaceChip surface="code" />}
       composerPlaceholder={NEW_CODE_DRAFT_COPY.composer?.placeholder}
       folderActionLabel={NEW_CODE_DRAFT_COPY.folder?.actionLabel}
+      sidePanelCopy={NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY}
       showDraftGroupAddButton={showDraftGroupAddButton}
       hideDraftGroupHint={hideDraftGroupHint}
       hideDraftParallelHint={hideDraftParallelHint}

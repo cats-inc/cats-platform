@@ -25,6 +25,67 @@ export interface ChatNewChatTemporaryParticipantFormState {
   modelSelection: ExecutionTargetValue['modelSelection'];
 }
 
+export interface ChatNewChatDraftSidePanelCopy {
+  title?: string;
+  participants?: {
+    catsSectionTitle?: string;
+    groupSectionTitle?: string;
+    emptyState?: string;
+  };
+  execution?: {
+    sectionTitle?: string;
+    emptyState?: string;
+  };
+  folder?: {
+    sectionTitle?: string;
+    emptyState?: string;
+  };
+}
+
+type ResolvedChatNewChatDraftSidePanelCopy = Required<{
+  title: string;
+  participants: Required<NonNullable<ChatNewChatDraftSidePanelCopy['participants']>>;
+  execution: Required<NonNullable<ChatNewChatDraftSidePanelCopy['execution']>>;
+  folder: Required<NonNullable<ChatNewChatDraftSidePanelCopy['folder']>>;
+}>;
+
+const defaultChatNewChatDraftSidePanelCopy: ResolvedChatNewChatDraftSidePanelCopy = {
+  title: 'New Chat Setup',
+  participants: {
+    catsSectionTitle: 'Cats',
+    groupSectionTitle: 'Participants',
+    emptyState: 'No cats are available yet.',
+  },
+  execution: {
+    sectionTitle: 'AI Reply',
+    emptyState: 'No AI reply setup yet.',
+  },
+  folder: {
+    sectionTitle: 'Folder',
+    emptyState: 'No folder selected yet.',
+  },
+};
+
+export function resolveChatNewChatDraftSidePanelCopy(
+  copy: ChatNewChatDraftSidePanelCopy | undefined,
+): ResolvedChatNewChatDraftSidePanelCopy {
+  return {
+    title: copy?.title ?? defaultChatNewChatDraftSidePanelCopy.title,
+    participants: {
+      ...defaultChatNewChatDraftSidePanelCopy.participants,
+      ...copy?.participants,
+    },
+    execution: {
+      ...defaultChatNewChatDraftSidePanelCopy.execution,
+      ...copy?.execution,
+    },
+    folder: {
+      ...defaultChatNewChatDraftSidePanelCopy.folder,
+      ...copy?.folder,
+    },
+  };
+}
+
 export interface BuildChatNewChatDraftSidePanelSectionsInput {
   payload: AppShellPayload;
   chatCats: AppShellPayload['chat']['cats'];
@@ -80,16 +141,20 @@ export interface BuildChatNewChatDraftSidePanelSectionsInput {
   onFolderBrowse?: (path: string) => void;
   onFolderBrowseSelect?: () => void;
   onCloseSidePanel: () => void;
+  sidePanelCopy?: ChatNewChatDraftSidePanelCopy;
 }
 
 export function buildChatNewChatDraftSidePanelSections(
   input: BuildChatNewChatDraftSidePanelSectionsInput,
 ): SidePanelSection[] {
   const sections: SidePanelSection[] = [];
+  const copy = resolveChatNewChatDraftSidePanelCopy(input.sidePanelCopy);
 
   sections.push({
     id: 'cats',
-    title: input.isGroupDraft ? 'Participants' : 'Cats',
+    title: input.isGroupDraft
+      ? copy.participants.groupSectionTitle
+      : copy.participants.catsSectionTitle,
     children: (
       <div className="sidePanelSectionStack">
         {input.isGroupDraft ? (
@@ -109,7 +174,7 @@ export function buildChatNewChatDraftSidePanelSections(
             onHighlight={(id) => input.onHighlightDraftCat(id)}
           />
         ) : (
-          <p className="operatorEmptyState">No cats are available yet.</p>
+          <p className="operatorEmptyState">{copy.participants.emptyState}</p>
         )}
         {input.isGroupDraft ? (
           <>
@@ -351,9 +416,13 @@ export function buildChatNewChatDraftSidePanelSections(
         </div>
       );
     }
-    return <p className="operatorEmptyState">No AI reply setup yet.</p>;
+    return <p className="operatorEmptyState">{copy.execution.emptyState}</p>;
   })();
-  sections.push({ id: 'execution', title: 'AI Reply', children: executionChildren });
+  sections.push({
+    id: 'execution',
+    title: copy.execution.sectionTitle,
+    children: executionChildren,
+  });
 
   if (input.isParallelMode && input.parallelTargets) {
     input.parallelTargets.forEach((target, index) => {
@@ -380,7 +449,7 @@ export function buildChatNewChatDraftSidePanelSections(
 
   sections.push({
     id: 'cwd',
-    title: 'Folder',
+    title: copy.folder.sectionTitle,
     children: input.onFolderBrowsePathChange && input.onFolderBrowse && input.onFolderBrowseSelect ? (
       <FolderBrowserContent
         folderBrowsePath={input.folderBrowsePath ?? ''}
@@ -402,7 +471,7 @@ export function buildChatNewChatDraftSidePanelSections(
           {input.draftCwd}
         </p>
       ) : (
-        <p className="operatorEmptyState">No folder selected yet.</p>
+        <p className="operatorEmptyState">{copy.folder.emptyState}</p>
       )
     ),
   });

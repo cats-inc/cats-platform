@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server.browser';
 
 import type { AppShellPayload } from '../src/products/code/api/contracts.ts';
 import {
+  NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY,
   NewChatDraft,
   NEW_CODE_DRAFT_COPY,
   type NewChatDraftProps,
@@ -159,6 +160,13 @@ test('new code draft publishes code-specific copy overrides for the shared works
   assert.equal(NEW_CODE_DRAFT_COPY.execution?.emptyState, 'No execution target set yet.');
   assert.equal(NEW_CODE_DRAFT_COPY.folder?.sectionTitle, 'Workspace');
   assert.equal(NEW_CODE_DRAFT_COPY.participants?.emptyState, 'No participants available yet.');
+  assert.equal(NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY.title, 'New Code Setup');
+  assert.equal(
+    NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY.participants?.groupSectionTitle,
+    'Participants',
+  );
+  assert.equal(NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY.execution?.sectionTitle, 'Execution');
+  assert.equal(NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY.folder?.sectionTitle, 'Workspace');
 });
 
 test('new code default draft keeps the original shared composer structure without extra header chips', () => {
