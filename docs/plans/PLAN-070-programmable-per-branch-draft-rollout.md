@@ -264,7 +264,7 @@ order once Phase 1 lands.
 - [ ] Task 2.4: Tests — add coverage for "detach cwd on branch 2,
       submit, assert dispatch sees branch-2's cwd" and the re-link
       flow.
-- [ ] Task 2.5: Update SPEC-078 § Migration and § Surfaces Affected
+- [x] Task 2.5: Update SPEC-078 § Migration and § Surfaces Affected
       to reflect the new UI touch points.
 
 ### Phase 3: Detach prompt, add + wire `taskRef`, reserve `attachmentsOverride`

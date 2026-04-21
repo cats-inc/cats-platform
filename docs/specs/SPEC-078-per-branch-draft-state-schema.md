@@ -289,6 +289,23 @@ policy are landed in Phase 1 (above). Phase 2 only adds UI:
    `target.runtimeSessionPolicy`.
 2. "Re-link to lead" affordance nulls the override.
 
+As of 2026-04-21, Phase 2 cwd / session-policy UI has landed:
+
+1. Non-lead carousel cards render a clickable "Follows lead" cwd
+   chip under advanced draft controls. It opens the existing folder
+   picker scoped to the branch and writes the selected path to
+   `parallelTargets[i].cwd`.
+2. Detached branch cwd renders as a `composerCwdChip`; its re-link
+   action clears `parallelTargets[i].cwd` back to `null`.
+3. Non-lead cards render a "Policy follows lead" chip under advanced
+   draft controls. Activating it writes the resolved lead policy to
+   `parallelTargets[i].runtimeSessionPolicy`.
+4. Detached branch session policy renders editable permission controls
+   immediately. Workspace-mode controls are shown only after the branch
+   cwd repo probe succeeds, matching the lead draft's repo-ready gating.
+5. Re-link clears `parallelTargets[i].runtimeSessionPolicy` back to
+   `null`, returning the branch to lead inheritance.
+
 ### Phase 3: prompt detach + taskRef + attachments
 
 1. Add `promptOverride?: string | null` to `DraftParallelTarget`.
@@ -488,16 +505,10 @@ Renderer:
   type extension (the type lives here, **not** in `ExecutionTarget.ts`,
   which only declares `ExecutionTargetValue`). The extended target
   subsumes the fields currently held on the branch wrapper.
-- `src/products/shared/renderer/draftParallelBranches.ts` — home of
-  the existing `DraftParallelBranchState<TTarget>` wrapper
-  (`{ target, audienceKeys, workflowShape }`). Phase 1 flattens the
-  wrapper: `audienceKeys` / `workflowShape` move onto the target
-  itself, and the remaining `DraftParallelBranchState` shape becomes
-  trivial (just a `TTarget`) — callers switch to holding
-  `DraftParallelTarget[]` directly and the wrapper module is retired
-  once no consumer imports it. Retirement decisions (keep thin
-  wrapper vs delete outright) follow the renderer cleanup at the end
-  of Phase 1.
+- `src/products/shared/renderer/draftParallelTargets.ts` — target-list
+  helpers for `DraftParallelTarget[]`. The old
+  `draftParallelBranches.ts` wrapper module has been retired; renderer
+  hooks now hold branch-owned fields directly on each target.
 - `src/products/chat/renderer/composerParallelDispatch.ts`,
   `src/products/shared/renderer/composerParallelDispatch.ts`,
   `src/products/chat/renderer/hooks/useComposerSubmit.ts`,
@@ -509,11 +520,10 @@ Renderer:
 - `src/products/shared/renderer/draftBranchResolution.ts` (new) —
   resolution helpers, `ResolvedBranch` aggregate.
 - `src/products/shared/renderer/components/ChatNewChatDraft.tsx` —
-  render path consumes resolved branches; per-branch chip state
-  reads `ResolvedBranch.isDetached`. Today reads
-  `parallelBranchAudienceKeys` / `parallelBranchWorkflowShapes`
-  derived from `DraftParallelBranchState[]`; those reads move to
-  `resolveBranchAudienceKeys` / `resolveBranchWorkflowShape`.
+  render path consumes resolved branches for audience/workflow and
+  owns the Phase 2 branch detach controls. The shadow-card cwd chip
+  opens a branch-scoped folder picker, while detached session policy
+  renders permission controls plus repo-ready workspace-mode controls.
 - `src/products/shared/renderer/components/DraftCompareCarousel.tsx`
   — unaffected; UI is already per-card.
 - Draft state hooks (Chat's `src/products/chat/state/**` plus the
