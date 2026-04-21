@@ -34,6 +34,18 @@ function createChannelState(overrides = {}) {
   const selectedChannel = {
     id: 'channel-1',
     messages: [],
+    orchestratorLease: {
+      sessionId: null,
+      laneId: null,
+      status: 'not_started',
+      cwd: null,
+      lastError: null,
+      provider: null,
+      model: null,
+      startedAt: null,
+      lastUsedAt: null,
+    },
+    assignedCats: [],
     roomRouting: {
       workflow: {
         activeTurn: null,
@@ -119,6 +131,35 @@ test('diffs subscribed compare group membership changes into membership patches'
 
   assert.equal(patches.length, 1);
   assert.equal(patches[0].kind, 'compareGroupMembership.updated');
+  assert.equal(patches[0].state, next);
+});
+
+test('diffs channel session lifecycle into session patches', () => {
+  const previous = createChannelState();
+  const next = createChannelState({
+    selectedChannel: {
+      id: 'channel-1',
+      messages: [],
+      orchestratorLease: {
+        sessionId: 'session-1',
+        laneId: 'lane-1',
+        status: 'ready',
+        cwd: 'C:/repo',
+        lastError: null,
+        provider: 'openai',
+        model: 'gpt-5',
+        startedAt: '2026-04-21T00:00:00.000Z',
+        lastUsedAt: '2026-04-21T00:00:00.000Z',
+      },
+    },
+  });
+
+  const patches = buildChannelSubscriptionPatches(previous, next);
+
+  assert.equal(patches.length, 1);
+  assert.equal(patches[0].kind, 'session.started');
+  assert.equal(patches[0].session.sessionId, 'session-1');
+  assert.equal(patches[0].session.participantId, 'orchestrator');
   assert.equal(patches[0].state, next);
 });
 

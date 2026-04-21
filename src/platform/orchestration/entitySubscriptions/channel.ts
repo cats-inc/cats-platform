@@ -39,6 +39,16 @@ export type ChannelSubscriptionPatch =
       state: ChannelSubscriptionState;
     }
   | {
+      kind: 'session.started';
+      session: ChannelSubscriptionSession;
+      state: ChannelSubscriptionState;
+    }
+  | {
+      kind: 'session.closed';
+      session: ChannelSubscriptionSession;
+      state: ChannelSubscriptionState;
+    }
+  | {
       kind: 'compareGroupMembership.updated';
       state: ChannelSubscriptionState;
     }
@@ -46,6 +56,20 @@ export type ChannelSubscriptionPatch =
       kind: 'channel.replaced';
       state: ChannelSubscriptionState;
     };
+
+export interface ChannelSubscriptionSession {
+  participantId: string;
+  participantKind: 'orchestrator' | 'participant';
+  catId: string | null;
+  participantName: string | null;
+  sessionId: string;
+  laneId: string | null;
+  status: string;
+  provider: string | null;
+  model: string | null;
+  startedAt: string | null;
+  lastUsedAt: string | null;
+}
 
 function stableSerialize(value: unknown): string {
   return JSON.stringify(value);
@@ -76,6 +100,53 @@ function compareGroupsEqual(
 ): boolean {
   return stableSerialize(previous.parallelChatGroups)
     === stableSerialize(next.parallelChatGroups);
+}
+
+function collectChannelSessions(
+  state: ChannelSubscriptionState,
+): Map<string, ChannelSubscriptionSession> {
+  const sessions = new Map<string, ChannelSubscriptionSession>();
+  const channel = state.selectedChannel;
+  const orchestratorSessionId = channel.orchestratorLease.sessionId?.trim() || null;
+  if (orchestratorSessionId) {
+    sessions.set('orchestrator', {
+      participantId: 'orchestrator',
+      participantKind: 'orchestrator',
+      catId: null,
+      participantName: 'Orchestrator',
+      sessionId: orchestratorSessionId,
+      laneId: channel.orchestratorLease.laneId ?? null,
+      status: channel.orchestratorLease.status,
+      provider: channel.orchestratorLease.provider ?? null,
+      model: channel.orchestratorLease.model ?? null,
+      startedAt: channel.orchestratorLease.startedAt ?? null,
+      lastUsedAt: channel.orchestratorLease.lastUsedAt ?? null,
+    });
+  }
+
+  for (const participant of channel.assignedParticipants ?? channel.assignedCats) {
+    const sessionId = participant.execution.lease.sessionId?.trim() || null;
+    if (!sessionId) {
+      continue;
+    }
+    sessions.set(participant.participantId, {
+      participantId: participant.participantId,
+      participantKind: 'participant',
+      catId: 'catId' in participant && typeof participant.catId === 'string'
+        ? participant.catId
+        : null,
+      participantName: participant.name,
+      sessionId,
+      laneId: participant.execution.lease.laneId ?? null,
+      status: participant.execution.lease.status,
+      provider: participant.execution.lease.provider ?? null,
+      model: participant.execution.lease.model ?? null,
+      startedAt: participant.execution.lease.startedAt ?? null,
+      lastUsedAt: participant.execution.lease.lastUsedAt ?? null,
+    });
+  }
+
+  return sessions;
 }
 
 export async function buildChannelSubscriptionState(
@@ -159,6 +230,29 @@ export function buildChannelSubscriptionPatches(
       kind: 'turn.updated',
       state: next,
     });
+  }
+
+  const previousSessions = collectChannelSessions(previous);
+  const nextSessions = collectChannelSessions(next);
+  for (const [participantId, session] of previousSessions) {
+    const nextSession = nextSessions.get(participantId) ?? null;
+    if (!nextSession || nextSession.sessionId !== session.sessionId) {
+      patches.push({
+        kind: 'session.closed',
+        session,
+        state: next,
+      });
+    }
+  }
+  for (const [participantId, session] of nextSessions) {
+    const previousSession = previousSessions.get(participantId) ?? null;
+    if (!previousSession || previousSession.sessionId !== session.sessionId) {
+      patches.push({
+        kind: 'session.started',
+        session,
+        state: next,
+      });
+    }
   }
 
   if (!compareGroupsEqual(previous, next)) {
