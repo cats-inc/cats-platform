@@ -738,6 +738,10 @@ contracts.
       `PATCH /api/preferences` route onto Work- and Code-owned state slices
       plus product delegates, so surface behavior settings stop piggybacking
       on Chat contracts once those products have stable preference boundaries
+      Progress: Settings now calls Chat-, Work-, and Code-owned renderer
+      delegates for conversation behavior updates. Those delegates still use
+      the shared `/api/preferences` backing route until product-owned state
+      slices and server delegates land.
 - [ ] Extend task-strategy handoff beyond the current Chat-first
       `product: 'chat'` call sites so `Cats Work` and `Cats Code` resolve
       product defaults and runtime bridge inputs through their own

@@ -3,9 +3,13 @@ import type {
   NewChatDefaults,
   UpdateGlobalOrchestratorInput,
 } from '../../api/contracts';
+import type { SurfaceConversationBehaviorPatch } from '../../../shared/conversationBehavior.js';
 import type { ProviderModelSelection } from '../../../../shared/providerSelection.js';
 import { createKeyedRequestCoalescer } from '../../shared/asyncControl.js';
-import { resetChannelContinuity as resetWorkspaceChannelContinuity } from '../../../shared/renderer/api/appShell.js';
+import {
+  resetChannelContinuity as resetWorkspaceChannelContinuity,
+  updateConversationBehaviorPreference as updateWorkspaceConversationBehaviorPreference,
+} from '../../../shared/renderer/api/appShell.js';
 
 import { normalizeAppShellPayload } from './normalization.js';
 import { expectJson, readErrorMessage } from './http.js';
@@ -112,6 +116,13 @@ export async function updateNewChatDefaultsPreference(
     `cats new chat defaults update returned ${response.status}`,
     signal,
   );
+}
+
+export async function updateChatConversationBehaviorPreference(
+  patch: SurfaceConversationBehaviorPatch,
+  signal?: AbortSignal,
+): Promise<AppShellPayload> {
+  return updateWorkspaceConversationBehaviorPreference('chat', patch, signal) as Promise<AppShellPayload>;
 }
 
 export async function updateChannelPendingExecutionTarget(

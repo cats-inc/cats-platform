@@ -15,7 +15,7 @@ import {
   SettingsSection,
   SettingsSectionHeader,
 } from '../../../design/components/settings/index.js';
-import { updateConversationBehaviorPreference } from '../../../products/shared/renderer/api/index.js';
+import { updateProductConversationBehaviorPreference } from './productConversationBehaviorApi.js';
 
 const PRODUCT_LABEL_BY_SURFACE: Record<ConversationBehaviorSurface, string> = {
   chat: 'Cats Chat',
@@ -67,7 +67,7 @@ export function ProductConversationBehaviorSection({
   ): Promise<void> {
     onPayloadUpdate(applyConversationBehaviorPatchToPayload(payload, surface, patch));
     try {
-      const next = await updateConversationBehaviorPreference(surface, patch);
+      const next = await updateProductConversationBehaviorPreference(surface, patch);
       startTransition(() => onPayloadUpdate(next));
     } catch (error) {
       onPayloadUpdate(payload);
