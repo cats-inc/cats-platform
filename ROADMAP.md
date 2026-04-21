@@ -579,7 +579,9 @@ contracts.
       structured slot namespace before more Code-only seams are added
       Progress: per-branch draft callbacks are now grouped under the shared
       `parallelBranchActions` namespace instead of continuing to expand the
-      flat `NewChatDraftProps` surface.
+      flat `NewChatDraftProps` surface, and `WorkspaceNewChatDraftCopy` is
+      grouped by composer / side panel / participants / execution / folder
+      concerns instead of one flat copy object.
 - [ ] Add a product-owned side-panel composition seam for Code drafts together
       with render-level coverage for empty participant states, section-open
       behavior, and later execution-profile sections, so `+New code` does not

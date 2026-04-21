@@ -14,16 +14,26 @@ import { isComposerBusyForDraft } from '../../../../shared/composer.js';
 
 export const NEW_CODE_DRAFT_COPY: WorkspaceNewChatDraftCopy = {
   greeting: 'Ready to code.',
-  composerPlaceholder: 'What should this code session build, fix, or investigate?',
-  sidePanelTitle: 'New Code Setup',
-  participantsSectionTitle: 'Participants',
-  participantsEmptyState: 'No participants available yet.',
-  executionSectionTitle: 'Execution',
-  executionActionLabel: 'Choose execution target',
-  executionEmptyState: 'No execution target set yet.',
-  folderSectionTitle: 'Workspace',
-  folderActionLabel: 'Choose workspace',
-  folderEmptyState: 'No workspace selected yet.',
+  composer: {
+    placeholder: 'What should this code session build, fix, or investigate?',
+  },
+  sidePanel: {
+    title: 'New Code Setup',
+  },
+  participants: {
+    sectionTitle: 'Participants',
+    emptyState: 'No participants available yet.',
+  },
+  execution: {
+    sectionTitle: 'Execution',
+    actionLabel: 'Choose execution target',
+    emptyState: 'No execution target set yet.',
+  },
+  folder: {
+    sectionTitle: 'Workspace',
+    actionLabel: 'Choose workspace',
+    emptyState: 'No workspace selected yet.',
+  },
 };
 
 export type {
@@ -209,8 +219,8 @@ function CodeChatDraft(props: NewChatDraftProps) {
       composerHeaderAccessory={permissionChip}
       composerHeaderWhereExtras={whereExtras}
       surfaceTag={<ComposerSurfaceChip surface="code" />}
-      composerPlaceholder={NEW_CODE_DRAFT_COPY.composerPlaceholder}
-      folderActionLabel={NEW_CODE_DRAFT_COPY.folderActionLabel}
+      composerPlaceholder={NEW_CODE_DRAFT_COPY.composer?.placeholder}
+      folderActionLabel={NEW_CODE_DRAFT_COPY.folder?.actionLabel}
       showDraftGroupAddButton={showDraftGroupAddButton}
       hideDraftGroupHint={hideDraftGroupHint}
       hideDraftParallelHint={hideDraftParallelHint}

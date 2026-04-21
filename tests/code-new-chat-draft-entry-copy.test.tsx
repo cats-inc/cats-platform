@@ -150,15 +150,15 @@ function createCodeAssistPayload(): AppShellPayload {
 test('new code draft publishes code-specific copy overrides for the shared workspace draft', () => {
   assert.equal(NEW_CODE_DRAFT_COPY.greeting, 'Ready to code.');
   assert.equal(
-    NEW_CODE_DRAFT_COPY.composerPlaceholder,
+    NEW_CODE_DRAFT_COPY.composer?.placeholder,
     'What should this code session build, fix, or investigate?',
   );
-  assert.equal(NEW_CODE_DRAFT_COPY.sidePanelTitle, 'New Code Setup');
-  assert.equal(NEW_CODE_DRAFT_COPY.executionSectionTitle, 'Execution');
-  assert.equal(NEW_CODE_DRAFT_COPY.executionActionLabel, 'Choose execution target');
-  assert.equal(NEW_CODE_DRAFT_COPY.executionEmptyState, 'No execution target set yet.');
-  assert.equal(NEW_CODE_DRAFT_COPY.folderSectionTitle, 'Workspace');
-  assert.equal(NEW_CODE_DRAFT_COPY.participantsEmptyState, 'No participants available yet.');
+  assert.equal(NEW_CODE_DRAFT_COPY.sidePanel?.title, 'New Code Setup');
+  assert.equal(NEW_CODE_DRAFT_COPY.execution?.sectionTitle, 'Execution');
+  assert.equal(NEW_CODE_DRAFT_COPY.execution?.actionLabel, 'Choose execution target');
+  assert.equal(NEW_CODE_DRAFT_COPY.execution?.emptyState, 'No execution target set yet.');
+  assert.equal(NEW_CODE_DRAFT_COPY.folder?.sectionTitle, 'Workspace');
+  assert.equal(NEW_CODE_DRAFT_COPY.participants?.emptyState, 'No participants available yet.');
 });
 
 test('new code default draft keeps the original shared composer structure without extra header chips', () => {

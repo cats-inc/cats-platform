@@ -76,17 +76,36 @@ interface DraftTargetSlotProps {
 
 export interface WorkspaceNewChatDraftCopy {
   greeting?: string;
-  composerPlaceholder?: string;
-  sidePanelTitle?: string;
-  participantsSectionTitle?: string;
-  participantsEmptyState?: string;
-  executionSectionTitle?: string;
-  executionActionLabel?: string;
-  executionEmptyState?: string;
-  folderSectionTitle?: string;
-  folderActionLabel?: string;
-  folderEmptyState?: string;
+  composer?: {
+    placeholder?: string;
+  };
+  sidePanel?: {
+    title?: string;
+  };
+  participants?: {
+    sectionTitle?: string;
+    emptyState?: string;
+  };
+  execution?: {
+    sectionTitle?: string;
+    actionLabel?: string;
+    emptyState?: string;
+  };
+  folder?: {
+    sectionTitle?: string;
+    actionLabel?: string;
+    emptyState?: string;
+  };
 }
+
+type ResolvedWorkspaceNewChatDraftCopy = Required<{
+  greeting: string;
+  composer: Required<NonNullable<WorkspaceNewChatDraftCopy['composer']>>;
+  sidePanel: Required<NonNullable<WorkspaceNewChatDraftCopy['sidePanel']>>;
+  participants: Required<NonNullable<WorkspaceNewChatDraftCopy['participants']>>;
+  execution: Required<NonNullable<WorkspaceNewChatDraftCopy['execution']>>;
+  folder: Required<NonNullable<WorkspaceNewChatDraftCopy['folder']>>;
+}>;
 
 export type WorkspaceNewChatDraftSectionId =
   | 'cats'
@@ -94,19 +113,57 @@ export type WorkspaceNewChatDraftSectionId =
   | 'cwd'
   | (string & {});
 
-const defaultWorkspaceNewChatDraftCopy: Required<WorkspaceNewChatDraftCopy> = {
+const defaultWorkspaceNewChatDraftCopy: ResolvedWorkspaceNewChatDraftCopy = {
   greeting: 'Meow. Ready when you are.',
-  composerPlaceholder: 'How can I help you today?',
-  sidePanelTitle: 'New Chat Setup',
-  participantsSectionTitle: 'Cats',
-  participantsEmptyState: 'No cats are available yet.',
-  executionSectionTitle: 'AI Reply',
-  executionActionLabel: 'Choose AI reply',
-  executionEmptyState: 'No AI reply setup yet.',
-  folderSectionTitle: 'Folder',
-  folderActionLabel: 'Choose folder',
-  folderEmptyState: 'No folder selected yet.',
+  composer: {
+    placeholder: 'How can I help you today?',
+  },
+  sidePanel: {
+    title: 'New Chat Setup',
+  },
+  participants: {
+    sectionTitle: 'Cats',
+    emptyState: 'No cats are available yet.',
+  },
+  execution: {
+    sectionTitle: 'AI Reply',
+    actionLabel: 'Choose AI reply',
+    emptyState: 'No AI reply setup yet.',
+  },
+  folder: {
+    sectionTitle: 'Folder',
+    actionLabel: 'Choose folder',
+    emptyState: 'No folder selected yet.',
+  },
 };
+
+export function resolveWorkspaceNewChatDraftCopy(
+  copy: WorkspaceNewChatDraftCopy | undefined,
+): ResolvedWorkspaceNewChatDraftCopy {
+  return {
+    greeting: copy?.greeting ?? defaultWorkspaceNewChatDraftCopy.greeting,
+    composer: {
+      ...defaultWorkspaceNewChatDraftCopy.composer,
+      ...copy?.composer,
+    },
+    sidePanel: {
+      ...defaultWorkspaceNewChatDraftCopy.sidePanel,
+      ...copy?.sidePanel,
+    },
+    participants: {
+      ...defaultWorkspaceNewChatDraftCopy.participants,
+      ...copy?.participants,
+    },
+    execution: {
+      ...defaultWorkspaceNewChatDraftCopy.execution,
+      ...copy?.execution,
+    },
+    folder: {
+      ...defaultWorkspaceNewChatDraftCopy.folder,
+      ...copy?.folder,
+    },
+  };
+}
 
 export interface WorkspaceNewChatDraftProps {
   payload: AppShellPayload;
@@ -233,7 +290,7 @@ export function WorkspaceNewChatDraft({
 }: WorkspaceNewChatDraftProps) {
   void bossCatName;
   void bossCatAvatarColor;
-  const resolvedCopy = { ...defaultWorkspaceNewChatDraftCopy, ...copy };
+  const resolvedCopy = resolveWorkspaceNewChatDraftCopy(copy);
   const resolvedGreeting = greeting ?? resolvedCopy.greeting;
 
   const chatCats = payload.chat.cats.filter(isChatCat);
@@ -343,7 +400,7 @@ export function WorkspaceNewChatDraft({
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
                   </svg>
-                  <span>{resolvedCopy.folderActionLabel}</span>
+                  <span>{resolvedCopy.folder.actionLabel}</span>
                 </button>
               ) : null}
               {composerHeaderWhereExtras}
@@ -398,7 +455,7 @@ export function WorkspaceNewChatDraft({
               <textarea
                 className="composerInput"
                 rows={1}
-                placeholder={resolvedCopy.composerPlaceholder}
+                placeholder={resolvedCopy.composer.placeholder}
                 value={composerDraft}
                 disabled={isSubmittingFirstTurn}
                 onChange={(event) => {
@@ -449,7 +506,7 @@ export function WorkspaceNewChatDraft({
                             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                               <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
                             </svg>
-                            {resolvedCopy.folderActionLabel}
+                            {resolvedCopy.folder.actionLabel}
                           </button>
                         ) : null}
                       </div>
@@ -521,7 +578,7 @@ export function WorkspaceNewChatDraft({
       </section>
       {sidePanelOpen ? (
         <SidePanel
-          title={resolvedCopy.sidePanelTitle}
+          title={resolvedCopy.sidePanel.title}
           activeSection={sidePanelSection}
           onSectionToggle={isSubmittingFirstTurn ? () => {} : (sectionId) => switchSection(sectionId)}
           onClose={isSubmittingFirstTurn ? () => {} : () => setSidePanelOpen(false)}
@@ -537,7 +594,7 @@ export function WorkspaceNewChatDraft({
 
     sections.push({
       id: 'cats',
-      title: resolvedCopy.participantsSectionTitle,
+      title: resolvedCopy.participants.sectionTitle,
       children: chatCats.filter((cat) => cat.status === 'active').length > 0 ? (
         <CatAvatarRowComponent
           cats={chatCats}
@@ -551,7 +608,7 @@ export function WorkspaceNewChatDraft({
           onHighlight={(catId) => onHighlightDraftCat(catId)}
         />
       ) : (
-        <p className="operatorEmptyState">{resolvedCopy.participantsEmptyState}</p>
+        <p className="operatorEmptyState">{resolvedCopy.participants.emptyState}</p>
       ),
     });
 
@@ -611,17 +668,17 @@ export function WorkspaceNewChatDraft({
           </div>
         );
       }
-      return <p className="operatorEmptyState">{resolvedCopy.executionEmptyState}</p>;
+      return <p className="operatorEmptyState">{resolvedCopy.execution.emptyState}</p>;
     })();
     sections.push({
       id: 'execution',
-      title: resolvedCopy.executionSectionTitle,
+      title: resolvedCopy.execution.sectionTitle,
       children: executionChildren,
     });
 
     sections.push({
       id: 'cwd',
-      title: resolvedCopy.folderSectionTitle,
+      title: resolvedCopy.folder.sectionTitle,
       children: onFolderBrowsePathChange && onFolderBrowse && onFolderBrowseSelect ? (
         <FolderBrowserContentComponent
           folderBrowsePath={folderBrowsePath}
@@ -641,7 +698,7 @@ export function WorkspaceNewChatDraft({
         draftCwd ? (
           <p style={{ margin: 0, fontSize: '0.85rem', wordBreak: 'break-all' }}>{draftCwd}</p>
         ) : (
-          <p className="operatorEmptyState">{resolvedCopy.folderEmptyState}</p>
+          <p className="operatorEmptyState">{resolvedCopy.folder.emptyState}</p>
         )
       ),
     });
