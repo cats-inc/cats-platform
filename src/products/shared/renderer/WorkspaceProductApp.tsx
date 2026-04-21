@@ -518,6 +518,7 @@ export function createWorkspaceProductApp({
       onRemoveDraftParallelChatTarget,
       onSetDraftParallelBranchAudienceKeys,
       onSetDraftParallelBranchCwd,
+      onSetDraftParallelBranchRuntimeSessionPolicy,
       onToggleDraftParallelBranchWorkflowShape,
     } = useWorkspaceParallelDraft({
       draftExecutionTarget,
@@ -1669,6 +1670,12 @@ export function createWorkspaceProductApp({
                         && showingGenericNewChatDraft
                         && hasVisibleParallelDraftTargets
                         ? onSetDraftParallelBranchCwd
+                        : undefined,
+                    onSetParallelBranchRuntimeSessionPolicy:
+                      supportsStructuredDraftModes
+                        && showingGenericNewChatDraft
+                        && hasVisibleParallelDraftTargets
+                        ? onSetDraftParallelBranchRuntimeSessionPolicy
                         : undefined,
                     onToggleParallelBranchWorkflowShape:
                       supportsStructuredDraftModes

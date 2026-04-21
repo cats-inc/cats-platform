@@ -4,6 +4,7 @@ import {
   useState,
 } from 'react';
 import type { DraftRoomWorkflowShape } from '../../../../shared/roomRouting.js';
+import type { RuntimeSessionPolicy } from '../../../../shared/runtimeSessionPolicy.js';
 
 import {
   createInitialParallelTargets,
@@ -131,6 +132,18 @@ export function useWorkspaceParallelDraft(options: {
     );
   }, []);
 
+  const onSetDraftParallelBranchRuntimeSessionPolicy = useCallback((
+    index: number,
+    runtimeSessionPolicy: RuntimeSessionPolicy | null,
+  ) => {
+    setDraftParallelChatTargets((prev) =>
+      updateDraftParallelTargetAt(prev, index, (target) => ({
+        ...target,
+        runtimeSessionPolicy,
+      })),
+    );
+  }, []);
+
   const onToggleDraftParallelBranchWorkflowShape = useCallback((index: number) => {
     setDraftParallelChatTargets((prev) =>
       updateDraftParallelTargetAt(prev, index, (target) => ({
@@ -148,6 +161,7 @@ export function useWorkspaceParallelDraft(options: {
     onRemoveDraftParallelChatTarget,
     onSetDraftParallelBranchAudienceKeys,
     onSetDraftParallelBranchCwd,
+    onSetDraftParallelBranchRuntimeSessionPolicy,
     onToggleDraftParallelBranchWorkflowShape,
   };
 }

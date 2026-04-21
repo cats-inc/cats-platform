@@ -229,6 +229,12 @@ order once Phase 1 lands.
 
 ### Phase 2: Detach cwd and session policy
 
+- Progress as of 2026-04-21:
+      shadow cards now render detached branch cwd chips and detached
+      runtime-session-policy chips when those fields are already set on
+      `parallelTargets[i]`; both chips expose a re-link action that
+      clears the branch override back to lead inheritance. Branch-scoped
+      picker/edit controls are still pending.
 - [ ] Task 2.1: UX for per-branch cwd detach.
       - Non-lead card's `composerFollowsLeadChip` gains a click
         target that opens the side-panel cwd picker scoped to the

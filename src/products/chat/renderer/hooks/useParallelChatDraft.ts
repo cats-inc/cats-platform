@@ -23,6 +23,7 @@ import {
   type WorkspaceBusyState,
 } from '../../../../shared/workspaceBusy.js';
 import type { DraftRoomWorkflowShape } from '../../../../shared/roomRouting.js';
+import type { RuntimeSessionPolicy } from '../../../../shared/runtimeSessionPolicy.js';
 import type { ExecutionTargetValue } from '../../../shared/renderer/components/ExecutionTarget.js';
 import type { SelectedChannelView } from '../../shared/channelEntry.js';
 import { relayParallelChatMessage } from '../api/index.js';
@@ -254,6 +255,18 @@ export function useParallelChatDraft(options: {
     );
   }, []);
 
+  const onSetDraftParallelBranchRuntimeSessionPolicy = useCallback((
+    index: number,
+    runtimeSessionPolicy: RuntimeSessionPolicy | null,
+  ) => {
+    setDraftParallelChatTargets((prev) =>
+      updateDraftParallelTargetAt(prev, index, (target) => ({
+        ...target,
+        runtimeSessionPolicy,
+      })),
+    );
+  }, []);
+
   const onToggleDraftParallelBranchWorkflowShape = useCallback((index: number) => {
     setDraftParallelChatTargets((prev) =>
       updateDraftParallelTargetAt(prev, index, (target) => ({
@@ -315,6 +328,7 @@ export function useParallelChatDraft(options: {
     onRemoveDraftParallelChatTarget,
     onSetDraftParallelBranchAudienceKeys,
     onSetDraftParallelBranchCwd,
+    onSetDraftParallelBranchRuntimeSessionPolicy,
     onToggleDraftParallelBranchWorkflowShape,
     onRelayCompareMessage,
   };

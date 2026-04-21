@@ -124,6 +124,10 @@ export interface NewChatDraftProps {
   onSetAudienceKeys?: (keys: string[]) => void;
   onSetParallelBranchAudienceKeys?: (index: number, keys: string[]) => void;
   onSetParallelBranchCwd?: (index: number, cwd: string | null) => void;
+  onSetParallelBranchRuntimeSessionPolicy?: (
+    index: number,
+    policy: RuntimeSessionPolicy | null,
+  ) => void;
   onToggleParallelBranchWorkflowShape?: (index: number) => void;
   onQuickAddParallelBranchTemporaryParticipant?: (index: number) => void;
   draftRuntimeSessionPolicy?: RuntimeSessionPolicy | null;
@@ -209,6 +213,7 @@ export function NewChatDraft({
   onSetAudienceKeys,
   onSetParallelBranchAudienceKeys,
   onSetParallelBranchCwd,
+  onSetParallelBranchRuntimeSessionPolicy,
   onToggleParallelBranchWorkflowShape,
   onQuickAddParallelBranchTemporaryParticipant,
   draftRuntimeSessionPolicy = null,
@@ -312,6 +317,16 @@ export function NewChatDraft({
       return [];
     }
     return resolveBranchAudienceKeys(target, draftLeadContext);
+  }
+
+  function formatBranchRuntimeSessionPolicy(policy: RuntimeSessionPolicy): string {
+    const workspaceLabel = policy.workspaceKind === 'worktree'
+      ? 'Worktree'
+      : policy.workspaceKind === 'source'
+        ? 'Current folder'
+        : 'Sandbox';
+    const permissionLabel = policy.workspaceAccess === 'read_only' ? 'Read only' : 'Full access';
+    return `${workspaceLabel} / ${permissionLabel}`;
   }
   function resolveParallelBranchWorkflowShape(
     branchIndex: number,
@@ -960,6 +975,7 @@ export function NewChatDraft({
     const canAddMoreBranches = parallelCount < maxParallelChats;
     const showCompareHint = accentParallelAddButton && !hideDraftParallelHint;
     const branchCwd = target.cwd?.trim() || null;
+    const branchSessionPolicy = target.runtimeSessionPolicy ?? null;
 
     return (
       <>
@@ -993,6 +1009,28 @@ export function NewChatDraft({
                 <span>Follows lead</span>
               </span>
             )}
+            {branchSessionPolicy ? (
+              <span
+                className="composerSelectChip composerPermissionChip composerBranchPolicyChip"
+                data-tooltip={formatBranchRuntimeSessionPolicy(branchSessionPolicy)}
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M8 1.5l5.5 2v4c0 3.3-2.4 6.2-5.5 7-3.1-.8-5.5-3.7-5.5-7v-4z" />
+                </svg>
+                <span>{formatBranchRuntimeSessionPolicy(branchSessionPolicy)}</span>
+                {onSetParallelBranchRuntimeSessionPolicy ? (
+                  <button
+                    className="composerChipClose"
+                    type="button"
+                    disabled={isSubmittingFirstTurn}
+                    onClick={() => onSetParallelBranchRuntimeSessionPolicy(branchIndex, null)}
+                    aria-label="Re-link branch session policy to lead"
+                  >
+                    &times;
+                  </button>
+                ) : null}
+              </span>
+            ) : null}
           </div>
         </div>
 

@@ -1291,6 +1291,39 @@ test('parallel shadow branch with detached cwd renders a relinkable cwd chip', (
   assert.match(markup, /aria-label="Re-link branch folder to lead"/u);
 });
 
+test('parallel shadow branch with detached runtime policy renders a relinkable policy chip', () => {
+  const leadTarget = { provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null } as const;
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        selectedExecutionTarget: leadTarget,
+        parallelTargets: [
+          { ...leadTarget, audienceKeys: [], workflowShape: 'sequential' },
+          {
+            provider: 'codex-cli',
+            instance: null,
+            model: 'codex-max',
+            modelSelection: null,
+            audienceKeys: [],
+            workflowShape: 'sequential',
+            runtimeSessionPolicy: {
+              workspaceKind: 'worktree',
+              workspaceAccess: 'read_only',
+              permissionMode: 'default',
+            },
+          },
+        ],
+        onSetParallelBranchRuntimeSessionPolicy: () => {},
+        onAddParallelTarget: () => {},
+      })}
+    />,
+  );
+
+  assert.match(markup, /composerBranchPolicyChip/u);
+  assert.match(markup, /Worktree \/ Read only/u);
+  assert.match(markup, /aria-label="Re-link branch session policy to lead"/u);
+});
+
 test('+Group + many +compares keeps every branch collaborator button visible while each branch is under its M cap', () => {
   // Regression guard: the +collaborate button must be gated per-branch
   // (each branch audience vs maxAudienceParticipants), not by the

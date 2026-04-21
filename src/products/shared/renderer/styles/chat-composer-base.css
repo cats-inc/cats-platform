@@ -937,6 +937,18 @@
   opacity: 0.6;
 }
 
+.composerBranchPolicyChip {
+  cursor: default;
+  max-width: 220px;
+  overflow: hidden;
+  padding-right: 6px;
+}
+
+.composerBranchPolicyChip > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .composerSelectChipMenu {
   position: absolute;
   top: calc(100% + 6px);
