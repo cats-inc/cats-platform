@@ -84,7 +84,6 @@ test('chat composer shows the screenshot attachment action when wired', () => {
       {...createComposerProps({
         channelPlusMenuOpen: true,
         onTakeScreenshot: () => {},
-        screenshotCaptureTooltip: 'Capture a screen, window, or tab',
       })}
     />,
   );
@@ -93,8 +92,9 @@ test('chat composer shows the screenshot attachment action when wired', () => {
   assert.match(markup, /Take screenshot/u);
   assert.match(
     markup,
-    /<button class="composerPlusMenuItem" type="button" data-tooltip="Capture a screen, window, or tab"[^>]*>[\s\S]*Take screenshot/u,
+    /<button class="composerPlusMenuItem" type="button"[^>]*>\s*<svg[^>]*aria-hidden="true"[\s\S]*Take screenshot/u,
   );
+  assert.doesNotMatch(markup, /data-tooltip="Capture a screen, window, or tab"/u);
 });
 
 test('chat composer can send an attachment-only screenshot draft', () => {

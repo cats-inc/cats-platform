@@ -301,7 +301,6 @@ export interface NewChatDraftProps {
   onFileSelect: () => void;
   onTakeScreenshot?: () => void;
   screenshotCaptureDisabled?: boolean;
-  screenshotCaptureTooltip?: string;
   onPickFolder: () => void;
   onOpenAddCat: () => void;
   onDraftFilesChange: (files: File[]) => void;
@@ -380,7 +379,6 @@ export function NewChatDraft({
   onFileSelect,
   onTakeScreenshot,
   screenshotCaptureDisabled = false,
-  screenshotCaptureTooltip = 'Capture a screen, window, or tab',
   onPickFolder,
   onOpenAddCat,
   onDraftFilesChange,
@@ -918,7 +916,6 @@ export function NewChatDraft({
                     className="composerPlusMenuItem"
                     type="button"
                     disabled={isSubmittingFirstTurn || screenshotCaptureDisabled}
-                    data-tooltip={screenshotCaptureTooltip}
                     onClick={onTakeScreenshot}
                   >
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

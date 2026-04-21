@@ -54,7 +54,6 @@ export interface ChatComposerAreaProps {
   onChannelFileSelect: () => void;
   onTakeScreenshot?: () => void;
   screenshotCaptureDisabled?: boolean;
-  screenshotCaptureTooltip?: string;
   onChannelFilesChange: (files: File[]) => void;
   onScrollToBottom: () => void;
   onCompareSendScopeChange?: (value: 'all_members' | 'active_only') => void;
@@ -104,7 +103,6 @@ export function ChatComposerArea({
   onChannelFileSelect,
   onTakeScreenshot,
   screenshotCaptureDisabled = false,
-  screenshotCaptureTooltip = 'Capture a screen, window, or tab',
   onChannelFilesChange,
   onScrollToBottom,
   onCompareSendScopeChange,
@@ -279,7 +277,6 @@ export function ChatComposerArea({
                     className="composerPlusMenuItem"
                     type="button"
                     disabled={composerBusy || screenshotCaptureDisabled}
-                    data-tooltip={screenshotCaptureTooltip}
                     onClick={onTakeScreenshot}
                   >
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

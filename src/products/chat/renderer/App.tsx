@@ -107,7 +107,6 @@ import {
   captureScreenshotFile,
   isScreenshotCaptureAvailable,
   resolveScreenshotCaptureRoute,
-  resolveScreenshotCaptureTooltip,
 } from '../../shared/renderer/screenshotCapture.js';
 import {
   buildCrossSurfaceNavigationMatchPath,
@@ -221,7 +220,6 @@ export default function App() {
   const { dialog: appDialog, confirm: appConfirm, handleClose: appHandleClose } = useConfirmDialog();
   const { toasts, showToast } = useToast();
   const screenshotCaptureRoute = resolveScreenshotCaptureRoute();
-  const screenshotCaptureTooltip = resolveScreenshotCaptureTooltip(screenshotCaptureRoute);
   const screenshotCaptureDisabled = !isScreenshotCaptureAvailable(screenshotCaptureRoute);
 
   const publishReadyPayload = usePublishReadyPayload<AppShellPayload>(setState);
@@ -1392,7 +1390,6 @@ export default function App() {
                   onChannelFileSelect: openChannelFilePicker,
                   onTakeScreenshot: captureAndAttachChannelScreenshot,
                   screenshotCaptureDisabled,
-                  screenshotCaptureTooltip,
                   onChannelFilesChange: setChannelFiles,
                   onApprovalDecision,
                   onChoiceSubmit,
@@ -1449,7 +1446,6 @@ export default function App() {
                   onFileSelect: openDraftFilePicker,
                   onTakeScreenshot: captureAndAttachDraftScreenshot,
                   screenshotCaptureDisabled,
-                  screenshotCaptureTooltip,
                   onPickFolder: openDraftFolderPicker,
                   onDraftFilesChange: setDraftFiles,
                   onDraftCwdClear: () => setDraftCwd(null),
