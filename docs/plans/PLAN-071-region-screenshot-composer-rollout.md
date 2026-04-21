@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | In Progress |
 | **Owner** | Codex |
 | **Reviewer** | Sammy |
 
@@ -223,6 +223,7 @@ desktop/browser smoke evidence.
 | 2026-04-21 | Plan created from LINE-style screenshot feasibility discussion |
 | 2026-04-22 | Review pass: tightened Phase 2/3/4 tasks (frozen snapshot, compositor wait, cursor exclusion, overlay config, user-gesture); expanded Risks; corrected Files table to include `useAppDraftUiActions.ts`, overlay entry, and shared bridge type |
 | 2026-04-22 | Follow-up: clarified pre-click capture-route caching so web fallback keeps user-gesture context |
+| 2026-04-22 | Implementation started: renderer screenshot action, web fallback, attachment-only send, desktop bridge contract, capability-gated desktop route, host hide/restore guard, crop geometry, display snapshot/crop pipeline, overlay renderer entry, overlay IPC/preload contract, overlay session/controller helpers, and targeted tests landed in incremental commits. Native desktop capability remains intentionally disabled until the Electron overlay flow is wired end-to-end and manually smoke-tested. |
 
 ---
 
