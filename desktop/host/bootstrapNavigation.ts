@@ -33,6 +33,21 @@ export function shouldNavigateDesktopBootstrap(options: {
   return options.showWindowOnStartup || options.windowRevealRequested;
 }
 
+export function shouldRevealDesktopBootstrapRecovery(
+  snapshot: Pick<DesktopBootstrapSnapshot, 'phase' | 'app'>,
+  options: {
+    showWindowOnStartup: boolean;
+    windowRevealRequested: boolean;
+  },
+): boolean {
+  if (!shouldNavigateDesktopBootstrap(options)) {
+    return false;
+  }
+
+  return snapshot.phase === 'failed'
+    || (snapshot.phase === 'needs_prerequisites' && !snapshot.app.setupCompleteAt);
+}
+
 export function resolveDesktopWindowRevealNavigation(
   snapshot: Pick<DesktopBootstrapSnapshot, 'phase' | 'app'> | null,
   options: {

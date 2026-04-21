@@ -3,6 +3,7 @@ import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import { buildDesktopBootstrapPage } from './bootstrapPage.js';
 import {
   resolveDesktopBootstrapNavigation,
+  shouldRevealDesktopBootstrapRecovery,
   shouldNavigateDesktopBootstrap,
   resolveDesktopWindowRevealNavigation,
 } from './bootstrapNavigation.js';
@@ -882,17 +883,25 @@ async function maybeOpenApp(snapshot: DesktopBootstrapSnapshot): Promise<void> {
   if (!mainWindow || !hostConfig) {
     return;
   }
+  const shouldNavigate = shouldNavigateDesktopBootstrap({
+    showWindowOnStartup: startupLaunchContext?.showWindowOnStartup !== false,
+    windowRevealRequested: bootstrapWindowRevealRequested,
+  });
   const nextUrl = resolveDesktopBootstrapNavigation(snapshot, {
     appBaseUrl: hostConfig.appBaseUrl,
-    showWindowOnStartup: shouldNavigateDesktopBootstrap({
-      showWindowOnStartup: startupLaunchContext?.showWindowOnStartup !== false,
-      windowRevealRequested: bootstrapWindowRevealRequested,
-    }),
+    showWindowOnStartup: shouldNavigate,
   });
-  if (!nextUrl) {
+  if (nextUrl) {
+    await showMainWindow(nextUrl);
     return;
   }
-  await showMainWindow(nextUrl);
+  if (shouldRevealDesktopBootstrapRecovery(snapshot, {
+    showWindowOnStartup: startupLaunchContext?.showWindowOnStartup !== false,
+    windowRevealRequested: bootstrapWindowRevealRequested,
+  })) {
+    await ensureBootstrapPageVisible();
+    await showMainWindow();
+  }
 }
 
 async function maybeRecoverFromLateReadyStateChange(): Promise<void> {
@@ -994,7 +1003,8 @@ async function bootstrapDesktopHost(restartServices = false): Promise<DesktopBoo
   })().catch((error) => {
     const message = error instanceof Error ? error.message : String(error);
     latestBootstrapError = message;
-    return publishSnapshot(buildSnapshot());
+    const snapshot = publishSnapshot(buildSnapshot());
+    return maybeOpenApp(snapshot).then(() => snapshot);
   }).finally(() => {
     bootstrapPromise = null;
   });
@@ -1130,12 +1140,7 @@ async function resumeSetupAction(): Promise<DesktopSetupSnapshot> {
   });
 }
 
-async function createMainWindow(
-  config: DesktopHostConfig,
-  options: {
-    showWindowOnStartup: boolean;
-  },
-): Promise<BrowserWindow> {
+async function createMainWindow(config: DesktopHostConfig): Promise<BrowserWindow> {
   const windowIconPath = resolveDesktopWindowIconPath(app.getAppPath());
   const window = new BrowserWindow({
     width: 1280,
@@ -1168,16 +1173,6 @@ async function createMainWindow(
   });
 
   applyDesktopWindowChrome(window);
-
-  const showBootstrapWindow = () => {
-    if (!options.showWindowOnStartup || window.isDestroyed() || window.isVisible()) {
-      return;
-    }
-    window.show();
-  };
-
-  window.webContents.once('did-finish-load', showBootstrapWindow);
-  window.once('ready-to-show', showBootstrapWindow);
 
   bootstrapPageVisible = true;
   await window.loadURL(encodeDataUrl(buildDesktopBootstrapPage()));
@@ -1361,9 +1356,7 @@ async function main(): Promise<void> {
     publishSnapshot(buildSnapshot(null));
   });
 
-  mainWindow = await createMainWindow(hostConfig, {
-    showWindowOnStartup: startupLaunchContext?.showWindowOnStartup !== false,
-  });
+  mainWindow = await createMainWindow(hostConfig);
   await syncTrayController();
 
   app.on('before-quit', (event) => {

@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { resolveDesktopBootstrapNavigation } from '../build/desktop/bootstrapNavigation.js';
+import {
+  resolveDesktopBootstrapNavigation,
+  shouldRevealDesktopBootstrapRecovery,
+} from '../build/desktop/bootstrapNavigation.js';
 
 test('desktop bootstrap navigation opens setup when services are ready but setup is incomplete', () => {
   const nextUrl = resolveDesktopBootstrapNavigation({
@@ -55,4 +58,57 @@ test('desktop bootstrap navigation opens Cats recovery instead of setup after on
     appBaseUrl: 'http://127.0.0.1:8181',
     showWindowOnStartup: true,
   }), 'http://127.0.0.1:8181/');
+});
+
+test('desktop bootstrap only reveals the host recovery page for failed or setup-blocked states', () => {
+  const options = {
+    showWindowOnStartup: true,
+    windowRevealRequested: false,
+  };
+
+  assert.equal(shouldRevealDesktopBootstrapRecovery({
+    phase: 'ready_for_chat',
+    app: {
+      entryPath: '/',
+      setupCompleteAt: '2026-04-08T09:00:00.000Z',
+    },
+  }, options), false);
+  assert.equal(shouldRevealDesktopBootstrapRecovery({
+    phase: 'ready_for_setup',
+    app: {
+      entryPath: '/setup',
+      setupCompleteAt: null,
+    },
+  }, options), false);
+  assert.equal(shouldRevealDesktopBootstrapRecovery({
+    phase: 'failed',
+    app: {
+      entryPath: '/setup',
+      setupCompleteAt: null,
+    },
+  }, options), true);
+  assert.equal(shouldRevealDesktopBootstrapRecovery({
+    phase: 'needs_prerequisites',
+    app: {
+      entryPath: '/setup',
+      setupCompleteAt: null,
+    },
+  }, options), true);
+  assert.equal(shouldRevealDesktopBootstrapRecovery({
+    phase: 'needs_prerequisites',
+    app: {
+      entryPath: '/',
+      setupCompleteAt: '2026-04-08T09:00:00.000Z',
+    },
+  }, options), false);
+  assert.equal(shouldRevealDesktopBootstrapRecovery({
+    phase: 'failed',
+    app: {
+      entryPath: '/setup',
+      setupCompleteAt: null,
+    },
+  }, {
+    showWindowOnStartup: false,
+    windowRevealRequested: false,
+  }), false);
 });

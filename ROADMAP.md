@@ -326,10 +326,14 @@ contracts.
       regression coverage for a hung `/setup-scan` request. Completed: setup
       mutation proxy calls now also have a bounded timeout and return 504 on
       hung runtime scans/applies instead of pinning the app-server request.
-- [ ] Finish demoting the Electron host bootstrap page into a failure/recovery
+- [x] Finish demoting the Electron host bootstrap page into a failure/recovery
       surface only, so the happy path stays background-first and successful
       packaged runs flow directly into `cats-platform /setup` or the current
       product entry instead of leaving end users on a host-owned blocking page
+      Completed: the desktop host now keeps the bootstrap page hidden during
+      normal startup, navigates directly to `/setup` or the product URL on
+      successful readiness, and only reveals the host page for failed or
+      setup-blocked recovery states.
 - [ ] Replace the current operator-style packaged setup copy and diagnostics-
       first layout with progressive disclosure for end users, including
       simplified prerequisite/remediation messaging plus an explicit advanced
