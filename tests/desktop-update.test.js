@@ -69,6 +69,56 @@ test('checkForDesktopUpdates reports update_available when manifest version is n
   assert.equal(state.lastCheckedAt, '2026-03-24T10:00:00.000Z');
 });
 
+test('checkForDesktopUpdates reports failed when manifest omits version', async () => {
+  const state = await checkForDesktopUpdates({
+    channel: 'stable',
+    manifestUrl: 'https://updates.example.com/cats/stable.json',
+    allowedHosts: [],
+    checkOnStartup: false,
+    autoDownload: false,
+  }, {
+    fetchImpl: async () => ({
+      ok: true,
+      async json() {
+        return {
+          summary: 'Malformed manifest without a version.',
+        };
+      },
+    }),
+    now: () => new Date('2026-03-24T10:03:00.000Z'),
+  });
+
+  assert.equal(state.status, 'failed');
+  assert.match(state.error ?? '', /missing required field "version"/);
+  assert.equal(state.latestVersion, null);
+});
+
+test('checkForDesktopUpdates reports failed when manifest channel mismatches config', async () => {
+  const state = await checkForDesktopUpdates({
+    channel: 'stable',
+    manifestUrl: 'https://updates.example.com/cats/stable.json',
+    allowedHosts: [],
+    checkOnStartup: false,
+    autoDownload: false,
+  }, {
+    fetchImpl: async () => ({
+      ok: true,
+      async json() {
+        return {
+          channel: 'beta',
+          version: '0.2.0',
+          summary: 'Wrong channel manifest.',
+        };
+      },
+    }),
+    now: () => new Date('2026-03-24T10:04:00.000Z'),
+  });
+
+  assert.equal(state.status, 'failed');
+  assert.match(state.error ?? '', /does not match configured channel "stable"/);
+  assert.equal(state.downloadUrl, null);
+});
+
 test('checkForDesktopUpdates reports failed when manifest fetch breaks', async () => {
   const state = await checkForDesktopUpdates({
     channel: 'stable',
@@ -110,4 +160,3 @@ test('checkForDesktopUpdates rejects insecure or non-allow-listed download URLs'
   assert.equal(state.status, 'failed');
   assert.match(state.error ?? '', /allow-listed/);
 });
-

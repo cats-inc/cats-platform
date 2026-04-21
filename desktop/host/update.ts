@@ -18,6 +18,13 @@ export interface DesktopUpdateManifest {
   downloadUrl?: string;
 }
 
+interface NormalizedDesktopUpdateManifest {
+  channel: DesktopUpdateChannel | null;
+  version: string;
+  summary: string | null;
+  downloadUrl: string | null;
+}
+
 interface CheckForDesktopUpdatesDependencies {
   fetchImpl?: typeof fetch;
   now?: () => Date;
@@ -28,6 +35,20 @@ function normalizeChannel(value: string | undefined): DesktopUpdateChannel {
     return value;
   }
   return 'stable';
+}
+
+function isObjectRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function readOptionalManifestString(value: unknown, fieldName: string): string | null {
+  if (value === undefined || value === null) {
+    return null;
+  }
+  if (typeof value !== 'string') {
+    throw new Error(`Update manifest field "${fieldName}" must be a string.`);
+  }
+  return value.trim() || null;
 }
 
 function parseVersion(value: string): number[] | null {
@@ -61,6 +82,40 @@ function compareVersions(left: string, right: string): number {
     return leftValue < rightValue ? -1 : 1;
   }
   return 0;
+}
+
+function normalizeDesktopUpdateManifest(
+  payload: unknown,
+  expectedChannel: DesktopUpdateChannel,
+): NormalizedDesktopUpdateManifest {
+  if (!isObjectRecord(payload)) {
+    throw new Error('Update manifest must be a JSON object.');
+  }
+
+  const channel = readOptionalManifestString(payload.channel, 'channel');
+  if (channel !== null && channel !== 'alpha' && channel !== 'beta' && channel !== 'stable') {
+    throw new Error(`Update manifest channel is unsupported: ${channel}`);
+  }
+  if (channel !== null && channel !== expectedChannel) {
+    throw new Error(
+      `Update manifest channel "${channel}" does not match configured channel "${expectedChannel}".`,
+    );
+  }
+
+  const version = readOptionalManifestString(payload.version, 'version');
+  if (!version) {
+    throw new Error('Update manifest is missing required field "version".');
+  }
+  if (!parseVersion(version)) {
+    throw new Error(`Update manifest version is invalid: ${version}`);
+  }
+
+  return {
+    channel,
+    version,
+    summary: readOptionalManifestString(payload.summary, 'summary'),
+    downloadUrl: readOptionalManifestString(payload.downloadUrl, 'downloadUrl'),
+  };
 }
 
 export function createDefaultDesktopUpdateState(
@@ -112,14 +167,13 @@ export async function checkForDesktopUpdates(
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
-    const manifest = await response.json() as DesktopUpdateManifest;
-    const latestVersion = manifest.version?.trim() || null;
-    const hasUpdate = latestVersion !== null
-      && compareVersions(DESKTOP_HOST_VERSION, latestVersion) < 0;
+    const manifest = normalizeDesktopUpdateManifest(await response.json(), config.channel);
+    const latestVersion = manifest.version;
+    const hasUpdate = compareVersions(DESKTOP_HOST_VERSION, latestVersion) < 0;
     const status = hasUpdate ? 'update_available' : 'up_to_date';
 
-    const downloadUrl = manifest.downloadUrl?.trim()
-      ? validateDesktopUrl(manifest.downloadUrl.trim(), {
+    const downloadUrl = manifest.downloadUrl
+      ? validateDesktopUrl(manifest.downloadUrl, {
         httpsOnly: true,
         allowedHosts: [manifestUrl.hostname, ...config.allowedHosts],
       })
