@@ -29,6 +29,10 @@ reuse the existing channel attachment upload path.
       and existing-channel composer surfaces.
 - [ ] Detect desktop bridge capability and fall back to browser capture when it
       is not available.
+- [ ] Resolve and cache the capture route before the menu click completes
+      (`desktop_region`, `web_picker`, or `unavailable`). The click handler
+      must not await desktop IPC before deciding to use the web picker because
+      `getDisplayMedia()` requires preserved user-gesture context.
 - [ ] Update composer send enablement so text or at least one attachment can
       submit.
 - [ ] Add targeted tests for screenshot action visibility, attachment append,
@@ -124,6 +128,10 @@ frozen snapshot and returns cropped PNG attachments.
 - [ ] Feature-detect `getDisplayMedia` support; when unavailable, render the
       button disabled with an explanatory tooltip rather than hiding it
       (per SPEC Web Fallback UI Affordance).
+- [ ] Use the precomputed capture route from Phase 1. Do not attempt desktop
+      IPC first and then fall through to `getDisplayMedia()` after an awaited
+      `platform_unsupported` result, because that loses browser user-gesture
+      context.
 - [ ] Show truthful permission-denied feedback via the platform toast
       pattern — not inline in the composer.
 - [ ] For MVP: attach the full selected source frame directly (no in-app
@@ -214,10 +222,10 @@ desktop/browser smoke evidence.
 |------|--------|
 | 2026-04-21 | Plan created from LINE-style screenshot feasibility discussion |
 | 2026-04-22 | Review pass: tightened Phase 2/3/4 tasks (frozen snapshot, compositor wait, cursor exclusion, overlay config, user-gesture); expanded Risks; corrected Files table to include `useAppDraftUiActions.ts`, overlay entry, and shared bridge type |
+| 2026-04-22 | Follow-up: clarified pre-click capture-route caching so web fallback keeps user-gesture context |
 
 ---
 
 *Created: 2026-04-21*
 *Last revised: 2026-04-22 (review pass)*
 *Author: Codex*
-*Reviewer pass: Claude*

@@ -11,11 +11,11 @@
 ## Summary
 
 Cats Chat should add a screenshot action to the composer attachment menu. In
-the Electron desktop app, the action should behave like LINE Desktop: hide or
-minimize Cats, let the user drag-select any rectangular desktop region, then
-insert the captured PNG as an attachment preview in the composer. In the web
-app, the same action should use a browser-compatible fallback based on screen
-capture picker APIs.
+the Electron desktop app, the action should behave like LINE Desktop: hide Cats,
+let the user drag-select any rectangular desktop region, then insert the
+captured PNG as an attachment preview in the composer. In the web app, the same
+action should use a browser-compatible fallback based on screen capture picker
+APIs.
 
 ## Goals
 
@@ -202,5 +202,4 @@ Resolved and promoted to Requirements:
 *Created: 2026-04-21*
 *Last revised: 2026-04-22 (review pass: hide-vs-minimize decided, frozen snapshot required, cursor exclusion, size/count bounds, user-gesture rule, Web Fallback UI Affordance, Open Questions pruned)*
 *Author: Codex*
-*Reviewer pass: Claude (review against feasibility gaps)*
 *Related Plan: [PLAN-071](../plans/PLAN-071-region-screenshot-composer-rollout.md)*
