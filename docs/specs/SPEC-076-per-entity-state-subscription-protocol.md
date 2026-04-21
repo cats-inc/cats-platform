@@ -268,9 +268,14 @@ Patch event kinds:
 - `message.removed` — retracted or gc'd message
 - `turn.updated` — `roomRouting.workflow.activeTurn` or
   `turnHistory` change
-- `session.started` — `runtime.*Session` set; may be redundant with
-  `message.appended` for the session_started message but kept
-  explicit for clarity
+- `session.started` — a runtime session is newly attached to the
+  mounted channel. The payload carries the channel-local session
+  identity (the `RuntimeSessionInfo`-shaped object that today
+  lives alongside the channel view's runtime metadata; note the
+  envelope-level `PlatformHostEnvelope.runtime` is a generic
+  `RuntimeStatusSummary` and is *not* what this patch carries).
+  May be redundant with `message.appended` for the
+  session_started message but kept explicit for clarity.
 - `session.closed` — paired lifecycle event
 - `compareGroupMembership.updated` — the subscribed channel was
   added to / removed from / reordered inside a parallel chat group
@@ -341,8 +346,10 @@ only place that calls `useChatEvents` — which means
 `src/products/shared/renderer/WorkspaceProductApp.tsx` (used by
 Code, Work, and any future cross-surface product) currently relies
 exclusively on cold load + the runtime-health background refresh
-for its `chat.channels`, `chat.recents`, `chat.parallelChatGroups`,
-and unread slices. That is a real freshness gap on Code and Work
+for its `chat.channels`, `chat.parallelChatGroups`, `chat.cats`,
+`chat.botBindings`, and per-channel unread counts (which ride on
+`ChatChannelSummary.unreadCount`). That is a real freshness gap
+on Code and Work
 target surfaces after cross-surface handoff. PLAN-068 Task 3.5
 names the fix: extract (or lift) the ADR-041 consumer into a
 shared hook that every target shell mounts. Without that, the
@@ -421,32 +428,70 @@ Field names refer to the actual shapes of
    split-brain state `channelEntry.ts:66` is specifically checking
    against.
 
-6. **Compare-group membership** (`chat.parallelChatGroups`). The
-   entity snapshot declares the subscription is the authoritative
-   writer for "which groups contain the mounted channel" (see
-   *Event vocabulary for `kind = 'channel'`* above — the snapshot
-   carries the mounted channel's membership, and
-   `compareGroupMembership.updated` patches keep it current). If
-   the merge helper let `next.chat.parallelChatGroups` fully
-   replace the array, a stale `memberChannelIds` from an
-   app-shell refetch could overwrite a live subscription patch.
-   Rule:
-   - Partition `next.chat.parallelChatGroups` and
-     `current.chat.parallelChatGroups` by whether each group's
-     `memberChannelIds` intersects `activeSubscribedIds` for kind
-     `'channel'`.
-   - For groups that **do not** intersect (sibling groups): take
-     the `next` version. These are pure ADR-041 territory.
-   - For groups that **do** intersect (groups containing at
-     least one subscribed channel): take the `current` version.
-     The entity subscription writes these; the refetch must not
-     touch them.
-   - Groups that exist in `current` but not `next` while
-     containing a subscribed channel: keep them (let the
-     subscription deliver a `compareGroupMembership.updated`
-     patch or a fresh snapshot decide their fate).
-   - Groups that exist in `next` but not `current`: add them
-     (new group creation visible to the refetch).
+6. **Compare-group membership** (`chat.parallelChatGroups`).
+   Ownership split is narrower than "the whole group object":
+   - *Entity-tier owns*: **whether the mounted channel is a
+     member of each group**. Concretely, the mounted channel's
+     presence (or absence) in `memberChannelIds` and in the
+     `members[]` array (specifically the
+     `ParallelChatGroupMemberSummary` entry where
+     `channelId === mounted channel id`). This is what the
+     entity snapshot and `compareGroupMembership.updated`
+     patches actually carry.
+   - *Collection-tier owns (ADR-041 refetch)*: everything else
+     about each group — `title`, `originSurface`, `mode`,
+     `status`, `memberCount`, `createdAt`, `updatedAt`,
+     `lastMessageAt`, and the **other** entries in `members[]`
+     for sibling channels (each sibling's `title`, `index`,
+     `lastMessageAt`, `provider`/`instance`/`model` via
+     `ParallelChatTarget`). The compare footer reads these
+     sibling fields directly
+     (`chatViewSupport.ts:79`, `ParallelFooterBar.tsx:14`), so
+     they must stay fresh.
+
+   Because the split is field-level, do not simply choose
+   `current` or `next` for a whole group. Merge per group:
+
+   - Build the result array by id, taking the union of groups
+     that appear in `current.chat.parallelChatGroups` and
+     `next.chat.parallelChatGroups`. For each id, let
+     `currentG` and `nextG` be the entries if present.
+   - If `nextG` exists but `currentG` does not: output `nextG`
+     (brand-new group the refetch discovered; no
+     subscription-owned state to preserve).
+   - If `nextG` does not exist and `currentG` does:
+     - If no id in `currentG.memberChannelIds` is in
+       `activeSubscribedIds`: drop the group (refetch legitimately
+       removed a collection-tier group).
+     - Otherwise: keep `currentG` as-is. The refetch thinks the
+       group is gone but the subscription still says the mounted
+       channel is in it; let a subsequent
+       `compareGroupMembership.updated` patch or fresh snapshot
+       reconcile.
+   - If both exist: start from `nextG` (collection-tier base —
+     brings fresh `title`, `updatedAt`, `lastMessageAt`, sibling
+     `members[]` entries, and sibling `memberChannelIds`). Then
+     reconcile **only the subscribed channel's presence**:
+     - For each `subId` in `activeSubscribedIds`:
+       - `currentHasSub = currentG.memberChannelIds.includes(subId)`
+       - `nextHasSub = nextG.memberChannelIds.includes(subId)`
+       - If `currentHasSub` and not `nextHasSub`: add `subId`
+         back to `result.memberChannelIds` and re-insert the
+         member entry from `currentG.members` (subscription says
+         the mounted channel is still in the group even though
+         the refetch disagrees).
+       - If not `currentHasSub` and `nextHasSub`: remove `subId`
+         from `result.memberChannelIds` and drop the member
+         entry (subscription has removed the mounted channel
+         but the refetch's projection is stale).
+       - Otherwise: leave `nextG`'s version of that `subId`'s
+         membership alone.
+     - Recompute `result.memberCount = result.memberChannelIds.length`.
+
+   Effect: a sibling channel's title/provider/model/lastMessageAt
+   update, or a new sibling joining/leaving the group, still
+   flows through the refetch. Only the mounted channel's own
+   membership is frozen to subscription-owned state.
 
 7. The entity subscription hub exposes
    `getActiveSubscribedIds(kind)` (or equivalent) so the merge
