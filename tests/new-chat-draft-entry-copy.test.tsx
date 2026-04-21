@@ -1158,14 +1158,16 @@ test('+Group + +compare keeps the lead roster scoped to branch-0 audience and ex
         entryPreset: 'group',
         selectedExecutionTarget: leadTarget,
         parallelTargets: [
-          leadTarget,
-          { provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null },
+          { ...leadTarget, audienceKeys: ['temp:lead-a', 'temp:lead-b'], workflowShape: 'sequential' },
+          {
+            provider: 'codex-cli',
+            instance: null,
+            model: 'codex-max',
+            modelSelection: null,
+            audienceKeys: ['temp:shadow-c'],
+            workflowShape: 'sequential',
+          },
         ],
-        parallelBranchAudienceKeys: [
-          ['temp:lead-a', 'temp:lead-b'],
-          ['temp:shadow-c'],
-        ],
-        parallelBranchWorkflowShapes: ['sequential', 'sequential'],
         draftTemporaryParticipants: [
           { participantId: 'lead-a', name: 'Aria', provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
           { participantId: 'lead-b', name: 'Bram', provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
@@ -1198,14 +1200,16 @@ test('+Group + +compare hides lead remove buttons while lead branch sits at the 
         entryPreset: 'group',
         selectedExecutionTarget: leadTarget,
         parallelTargets: [
-          leadTarget,
-          { provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null },
+          { ...leadTarget, audienceKeys: ['temp:lead-a', 'temp:lead-b'], workflowShape: 'sequential' },
+          {
+            provider: 'codex-cli',
+            instance: null,
+            model: 'codex-max',
+            modelSelection: null,
+            audienceKeys: ['temp:shadow-c'],
+            workflowShape: 'sequential',
+          },
         ],
-        parallelBranchAudienceKeys: [
-          ['temp:lead-a', 'temp:lead-b'],
-          ['temp:shadow-c'],
-        ],
-        parallelBranchWorkflowShapes: ['sequential', 'sequential'],
         draftTemporaryParticipants: [
           { participantId: 'lead-a', name: 'Aria', provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
           { participantId: 'lead-b', name: 'Bram', provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
@@ -1234,14 +1238,16 @@ test('parallel shadow branch with a single audience member renders as a target-s
       {...createProps({
         selectedExecutionTarget: leadTarget,
         parallelTargets: [
-          leadTarget,
-          { provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null },
+          { ...leadTarget, audienceKeys: [], workflowShape: 'sequential' },
+          {
+            provider: 'codex-cli',
+            instance: null,
+            model: 'codex-max',
+            modelSelection: null,
+            audienceKeys: ['temp:shadow-c'],
+            workflowShape: 'sequential',
+          },
         ],
-        parallelBranchAudienceKeys: [
-          [],
-          ['temp:shadow-c'],
-        ],
-        parallelBranchWorkflowShapes: ['sequential', 'sequential'],
         draftTemporaryParticipants: [
           { participantId: 'shadow-c', name: 'Cleo', provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null, roleHint: null },
         ],
@@ -1269,18 +1275,32 @@ test('+Group + many +compares keeps every branch collaborator button visible whi
         entryPreset: 'group',
         selectedExecutionTarget: leadTarget,
         parallelTargets: [
-          leadTarget,
-          { provider: 'codex-cli', instance: null, model: 'codex-max', modelSelection: null },
-          { provider: 'gemini-cli', instance: null, model: 'gemini-2.5-pro', modelSelection: null },
-          { provider: 'cursor-cli', instance: null, model: 'composer-max', modelSelection: null },
+          { ...leadTarget, audienceKeys: ['temp:a', 'temp:b'], workflowShape: 'sequential' },
+          {
+            provider: 'codex-cli',
+            instance: null,
+            model: 'codex-max',
+            modelSelection: null,
+            audienceKeys: ['temp:c'],
+            workflowShape: 'sequential',
+          },
+          {
+            provider: 'gemini-cli',
+            instance: null,
+            model: 'gemini-2.5-pro',
+            modelSelection: null,
+            audienceKeys: ['temp:d'],
+            workflowShape: 'sequential',
+          },
+          {
+            provider: 'cursor-cli',
+            instance: null,
+            model: 'composer-max',
+            modelSelection: null,
+            audienceKeys: ['temp:e'],
+            workflowShape: 'sequential',
+          },
         ],
-        parallelBranchAudienceKeys: [
-          ['temp:a', 'temp:b'],
-          ['temp:c'],
-          ['temp:d'],
-          ['temp:e'],
-        ],
-        parallelBranchWorkflowShapes: ['sequential', 'sequential', 'sequential', 'sequential'],
         draftTemporaryParticipants: [
           { participantId: 'a', name: 'Aria', provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null, roleHint: null },
           { participantId: 'b', name: 'Bram', provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null, roleHint: null },

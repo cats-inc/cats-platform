@@ -1655,18 +1655,6 @@ export function createWorkspaceProductApp({
                     onSetAudienceKeys: supportsStructuredDraftModes
                       ? setDraftAudienceKeys
                       : undefined,
-                    parallelBranchAudienceKeys:
-                      supportsStructuredDraftModes
-                        && showingGenericNewChatDraft
-                        && hasVisibleParallelDraftTargets
-                        ? draftParallelBranchAudienceKeys
-                        : undefined,
-                    parallelBranchWorkflowShapes:
-                      supportsStructuredDraftModes
-                        && showingGenericNewChatDraft
-                        && hasVisibleParallelDraftTargets
-                        ? draftParallelBranchWorkflowShapes
-                        : undefined,
                     onSetParallelBranchAudienceKeys:
                       supportsStructuredDraftModes
                         && showingGenericNewChatDraft

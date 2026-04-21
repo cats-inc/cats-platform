@@ -122,8 +122,6 @@ export interface NewChatDraftProps {
   onToggleDraftWorkflowShape?: () => void;
   draftAudienceKeys?: string[] | null;
   onSetAudienceKeys?: (keys: string[]) => void;
-  parallelBranchAudienceKeys?: string[][];
-  parallelBranchWorkflowShapes?: DraftRoomWorkflowShape[];
   onSetParallelBranchAudienceKeys?: (index: number, keys: string[]) => void;
   onToggleParallelBranchWorkflowShape?: (index: number) => void;
   onQuickAddParallelBranchTemporaryParticipant?: (index: number) => void;
@@ -208,8 +206,6 @@ export function NewChatDraft({
   onToggleDraftWorkflowShape,
   draftAudienceKeys,
   onSetAudienceKeys,
-  parallelBranchAudienceKeys,
-  parallelBranchWorkflowShapes,
   onSetParallelBranchAudienceKeys,
   onToggleParallelBranchWorkflowShape,
   onQuickAddParallelBranchTemporaryParticipant,
@@ -308,37 +304,21 @@ export function NewChatDraft({
     draftWorkflowShape: draftWorkflowShape ?? 'sequential',
     draftFiles,
   };
-  function resolveParallelTargetForBranch(
-    branchIndex: number,
-    target: DraftParallelTarget,
-  ): DraftParallelTarget {
-    return {
-      ...target,
-      audienceKeys: target.audienceKeys ?? parallelBranchAudienceKeys?.[branchIndex] ?? null,
-      workflowShape: target.workflowShape ?? parallelBranchWorkflowShapes?.[branchIndex] ?? null,
-    };
-  }
   function resolveParallelBranchAudienceKeys(branchIndex: number): string[] {
     const target = parallelTargets?.[branchIndex];
     if (!target) {
-      return parallelBranchAudienceKeys?.[branchIndex] ?? [];
+      return [];
     }
-    return resolveBranchAudienceKeys(
-      resolveParallelTargetForBranch(branchIndex, target),
-      draftLeadContext,
-    );
+    return resolveBranchAudienceKeys(target, draftLeadContext);
   }
   function resolveParallelBranchWorkflowShape(
     branchIndex: number,
   ): DraftRoomWorkflowShape {
     const target = parallelTargets?.[branchIndex];
     if (!target) {
-      return parallelBranchWorkflowShapes?.[branchIndex] ?? 'sequential';
+      return 'sequential';
     }
-    return resolveBranchWorkflowShape(
-      resolveParallelTargetForBranch(branchIndex, target),
-      draftLeadContext,
-    );
+    return resolveBranchWorkflowShape(target, draftLeadContext);
   }
 
   function resolveParallelBranchMembers(

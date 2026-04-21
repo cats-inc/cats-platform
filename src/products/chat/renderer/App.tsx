@@ -1412,16 +1412,6 @@ export default function App() {
                   onToggleDraftWorkflowShape: () => setDraftWorkflowShape((prev) => prev === 'concurrent' ? 'sequential' : 'concurrent'),
                   draftAudienceKeys,
                   onSetAudienceKeys: setDraftAudienceKeys,
-                  parallelBranchAudienceKeys:
-                    draftRoute.isGenericNewChatRoute
-                      && hasVisibleParallelDraftTargets
-                      ? draftParallelBranchAudienceKeys
-                      : undefined,
-                  parallelBranchWorkflowShapes:
-                    draftRoute.isGenericNewChatRoute
-                      && hasVisibleParallelDraftTargets
-                      ? draftParallelBranchWorkflowShapes
-                      : undefined,
                   onSetParallelBranchAudienceKeys:
                     draftRoute.isGenericNewChatRoute
                       && hasVisibleParallelDraftTargets
