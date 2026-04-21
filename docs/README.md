@@ -55,6 +55,10 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [PLAN-071](./plans/PLAN-071-region-screenshot-composer-rollout.md)
+- [SPEC-079](./specs/SPEC-079-region-screenshot-composer-attachments.md)
+- [ADR-078](./decisions/078-use-electron-native-region-screenshot-with-web-fallback.md)
+- [2026-04-21 Region Screenshot Composer Feasibility](./research/2026-04-21-region-screenshot-composer-feasibility.md)
 - [PLAN-068](./plans/PLAN-068-per-entity-state-subscription-rollout.md)
 - [SPEC-076](./specs/SPEC-076-per-entity-state-subscription-protocol.md)
 - [ADR-075](./decisions/075-adopt-push-based-per-entity-state-subscription.md)

@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-071](./PLAN-071-region-screenshot-composer-rollout.md) | Region Screenshot Composer Rollout | Draft | [SPEC-079](../specs/SPEC-079-region-screenshot-composer-attachments.md), [ADR-078](../decisions/078-use-electron-native-region-screenshot-with-web-fallback.md) |
 | [PLAN-070](./PLAN-070-programmable-per-branch-draft-rollout.md) | Programmable Per-Branch Draft Rollout | In Progress (Phase 1 Schema Landed) | [SPEC-078](../specs/SPEC-078-per-branch-draft-state-schema.md), [ADR-077](../decisions/077-make-parallel-draft-state-per-branch-addressable-for-orchestrator-composition.md) |
 | [PLAN-069](./PLAN-069-compare-draft-carousel-rollout.md) | Compare Draft Carousel Rollout | Phase 1 Complete (follow-on in PLAN-070) | [SPEC-077](../specs/SPEC-077-compare-draft-carousel-and-per-card-chrome.md), [ADR-076](../decisions/076-lay-parallel-draft-branches-in-a-3d-compare-carousel.md) |
 | [PLAN-068](./PLAN-068-per-entity-state-subscription-rollout.md) | Per-Entity State Subscription Rollout | Draft | [SPEC-076](../specs/SPEC-076-per-entity-state-subscription-protocol.md), [ADR-075](../decisions/075-adopt-push-based-per-entity-state-subscription.md), [ADR-041](../decisions/041-push-transport-and-chat-invalidations-over-sse.md) |
@@ -124,6 +125,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-04-21 (PLAN-070 added)*
+*Last updated: 2026-04-21 (PLAN-071 added)*
 
 *See also: [specs/](../specs/) for feature specifications*
