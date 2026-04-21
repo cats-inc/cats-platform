@@ -345,7 +345,6 @@ export default function App() {
     updateChannelPendingExecutionTarget,
   });
   const {
-    draftParallelBranches,
     draftParallelChatTargets,
     compareSendScope,
     setCompareSendScope,
@@ -961,7 +960,6 @@ export default function App() {
     soloChannelExecutionTarget,
     setSoloChannelExecutionTarget,
     showingParallelChatDraft,
-    draftParallelBranches,
     draftParallelChatTargets,
     draftWorkflowShape,
     draftAudienceKeys,

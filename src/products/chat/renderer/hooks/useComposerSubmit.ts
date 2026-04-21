@@ -71,7 +71,7 @@ import {
   sameExecutionTargetValue,
 } from '../../../shared/renderer/hooks/useWorkspaceExecutionTargetState.js';
 import { useComposerSubmitBindings } from '../../../shared/renderer/hooks/useComposerSubmitBindings.js';
-import type { DraftParallelBranchState } from '../../../shared/renderer/draftParallelBranches.js';
+import type { DraftParallelTargetBranchFields } from '../../../shared/renderer/draftParallelBranches.js';
 import {
   buildCrossSurfaceChannelPath,
   prefetchCrossSurfaceNavigationTarget,
@@ -212,8 +212,7 @@ export function useComposerSubmit(options: {
   soloChannelExecutionTarget: ExecutionTargetValue;
   setSoloChannelExecutionTarget: Dispatch<SetStateAction<ExecutionTargetValue>>;
   showingParallelChatDraft: boolean;
-  draftParallelBranches: DraftParallelBranchState<ExecutionTargetValue>[];
-  draftParallelChatTargets: ExecutionTargetValue[];
+  draftParallelChatTargets: Array<ExecutionTargetValue & DraftParallelTargetBranchFields>;
   draftWorkflowShape: 'sequential' | 'concurrent';
   draftAudienceKeys: string[] | null;
   activeWorkflowShape: 'sequential' | 'concurrent';
@@ -257,7 +256,6 @@ export function useComposerSubmit(options: {
     soloChannelExecutionTarget,
     setSoloChannelExecutionTarget,
     showingParallelChatDraft,
-    draftParallelBranches,
     draftParallelChatTargets,
     draftWorkflowShape,
     draftAudienceKeys,
@@ -397,7 +395,6 @@ export function useComposerSubmit(options: {
           draftCwd,
           draftSessionPolicy: null,
           draftFiles,
-          draftParallelBranches,
           draftParallelChatTargets,
           draftParticipantCatIds,
           draftTemporaryParticipants,
@@ -710,7 +707,6 @@ export function useComposerSubmit(options: {
     draftExecutionTarget.provider,
     showingParallelChatDraft,
     draftParallelChatTargets,
-    draftParallelBranches,
     resetDraftParallelChatTargets,
     compareGroupId,
     compareSendScope,

@@ -69,7 +69,7 @@ import {
   type PendingDispatchHydration,
 } from './useComposerRequestLifecycle.js';
 import { useComposerSubmitBindings } from './useComposerSubmitBindings.js';
-import type { DraftParallelBranchState } from '../draftParallelBranches.js';
+import type { DraftParallelTargetBranchFields } from '../draftParallelBranches.js';
 
 type LoadStateLike =
   | { status: 'loading' }
@@ -115,8 +115,7 @@ export interface WorkspaceComposerSubmitOptions<ModelValue extends WorkspaceExec
   draftExecutionTarget: ModelValue;
   soloChannelExecutionTarget: ModelValue;
   showingParallelChatDraft?: boolean;
-  draftParallelBranches?: DraftParallelBranchState<ModelValue>[];
-  draftParallelChatTargets?: ModelValue[];
+  draftParallelChatTargets?: Array<ModelValue & DraftParallelTargetBranchFields>;
   draftWorkflowShape?: 'sequential' | 'concurrent';
   draftAudienceKeys?: string[] | null;
   activeWorkflowShape?: 'sequential' | 'concurrent';
@@ -178,7 +177,6 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     draftExecutionTarget,
     soloChannelExecutionTarget,
     showingParallelChatDraft = false,
-    draftParallelBranches = [],
     draftParallelChatTargets = [],
     draftWorkflowShape = 'sequential',
     draftAudienceKeys = null,
@@ -280,7 +278,6 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
           draftCwd,
           draftSessionPolicy,
           draftFiles,
-          draftParallelBranches,
           draftParallelChatTargets,
           draftParticipantCatIds: draftCatIds,
           draftTemporaryParticipants,
@@ -564,7 +561,6 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     setFeedback,
     setState,
     draftAudienceKeys,
-    draftParallelBranches,
     draftParallelChatTargets,
     draftWorkflowShape,
     activeAudienceKeys,

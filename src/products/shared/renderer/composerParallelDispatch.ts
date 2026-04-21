@@ -14,7 +14,9 @@ import {
 } from './draftChatUtils.js';
 import { assertNoBranchAttachmentOverrides } from './draftBranchResolution.js';
 import { createDraftChannelTitle } from './workspaceChatUtils.js';
-import type { DraftParallelBranchState } from './draftParallelBranches.js';
+import type { DraftParallelTargetBranchFields } from './draftParallelBranches.js';
+
+type ParallelDispatchTarget = WorkspaceExecutionTargetValue & DraftParallelTargetBranchFields;
 
 export interface ParallelDispatchRequestState {
   kind: 'parallel';
@@ -45,8 +47,7 @@ export interface SubmitNewParallelChatDraftOptions {
   draftCwd: string | null;
   draftSessionPolicy?: RuntimeSessionPolicy | null;
   draftFiles: File[];
-  draftParallelBranches: DraftParallelBranchState<WorkspaceExecutionTargetValue>[];
-  draftParallelChatTargets: WorkspaceExecutionTargetValue[];
+  draftParallelChatTargets: ParallelDispatchTarget[];
   draftParticipantCatIds?: string[];
   draftTemporaryParticipants?: DraftTemporaryParticipant[];
   buildChannelPath: (channelId: string) => string;
@@ -66,14 +67,11 @@ export function buildParallelChatDraftCreateInput(input: {
   originSurface: PlatformSurfaceId;
   draftCwd: string | null;
   draftSessionPolicy?: RuntimeSessionPolicy | null;
-  draftParallelBranches: DraftParallelBranchState<WorkspaceExecutionTargetValue>[];
-  draftParallelChatTargets: WorkspaceExecutionTargetValue[];
+  draftParallelChatTargets: ParallelDispatchTarget[];
   draftParticipantCatIds?: string[];
   draftTemporaryParticipants?: DraftTemporaryParticipant[];
 }): CreateParallelChatGroupInput {
-  const branchTargets = input.draftParallelChatTargets.map((target, index) =>
-    input.draftParallelBranches[index]?.target ?? target);
-  assertNoBranchAttachmentOverrides(branchTargets);
+  assertNoBranchAttachmentOverrides(input.draftParallelChatTargets);
 
   return {
     title: createDraftChannelTitle(input.body, input.existingCount),
@@ -82,18 +80,17 @@ export function buildParallelChatDraftCreateInput(input: {
     ...(input.draftSessionPolicy === undefined
       ? {}
       : { runtimeSessionPolicy: input.draftSessionPolicy }),
-    targets: branchTargets.map((target, index) => {
-      const branchTarget = input.draftParallelBranches[index]?.target ?? target;
+    targets: input.draftParallelChatTargets.map((target) => {
       return {
         provider: target.provider,
         instance: target.instance ?? null,
         model: target.model ?? null,
         modelSelection: target.modelSelection ?? null,
-        audienceKeys: branchTarget?.audienceKeys ?? [],
-        ...(branchTarget?.cwd === undefined ? {} : { cwd: branchTarget.cwd }),
-        ...(branchTarget?.runtimeSessionPolicy === undefined
+        audienceKeys: target.audienceKeys ?? [],
+        ...(target.cwd === undefined ? {} : { cwd: target.cwd }),
+        ...(target.runtimeSessionPolicy === undefined
           ? {}
-          : { runtimeSessionPolicy: branchTarget.runtimeSessionPolicy }),
+          : { runtimeSessionPolicy: target.runtimeSessionPolicy }),
       };
     }),
     participantCatIds: input.draftParticipantCatIds ?? [],
@@ -116,7 +113,6 @@ export async function submitNewParallelChatDraft({
   draftCwd,
   draftSessionPolicy,
   draftFiles,
-  draftParallelBranches,
   draftParallelChatTargets,
   draftParticipantCatIds = [],
   draftTemporaryParticipants = [],
@@ -134,7 +130,6 @@ export async function submitNewParallelChatDraft({
       originSurface,
       draftCwd,
       draftSessionPolicy,
-      draftParallelBranches,
       draftParallelChatTargets,
       draftParticipantCatIds,
       draftTemporaryParticipants,
@@ -157,12 +152,12 @@ export async function submitNewParallelChatDraft({
     body,
     attachments: encodedAttachments,
     channelInputs: created.group.memberChannelIds.map((channelId, index) => {
-      const branch = draftParallelBranches[index];
-      if (!branch) {
+      const target = draftParallelChatTargets[index];
+      if (!target) {
         return { channelId };
       }
-      const branchAudienceKeys = branch.target.audienceKeys ?? [];
-      const branchWorkflowShape = branch.target.workflowShape ?? 'sequential';
+      const branchAudienceKeys = target.audienceKeys ?? [];
+      const branchWorkflowShape = target.workflowShape ?? 'sequential';
       const recipientParticipantIds = branchAudienceKeys.length > 0
         ? resolveDraftAudienceParticipantIds({
             draftParticipantCatIds,

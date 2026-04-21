@@ -511,7 +511,6 @@ export function createWorkspaceProductApp({
         ? "group"
         : "solo";
     const {
-      draftParallelBranches,
       draftParallelChatTargets,
       resetDraftParallelChatTargets,
       onDraftParallelChatTargetChange,
@@ -1153,7 +1152,6 @@ export function createWorkspaceProductApp({
       draftExecutionTarget,
       soloChannelExecutionTarget,
       showingParallelChatDraft: supportsStructuredDraftModes && showingParallelChatDraft,
-      draftParallelBranches,
       draftParallelChatTargets,
       draftWorkflowShape,
       draftAudienceKeys,

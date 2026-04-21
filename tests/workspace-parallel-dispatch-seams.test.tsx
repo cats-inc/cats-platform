@@ -17,34 +17,16 @@ test('buildParallelChatDraftCreateInput preserves non-chat originSurface and bra
         instance: 'native',
         model: 'claude-opus-4-6',
         modelSelection: null,
+        audienceKeys: ['cat-planner', 'participant-inline'],
+        workflowShape: 'sequential',
       },
       {
         provider: 'codex',
         instance: null,
         model: 'gpt-5.4',
         modelSelection: null,
-      },
-    ],
-    draftParallelBranches: [
-      {
-        target: {
-          provider: 'claude',
-          instance: 'native',
-          model: 'claude-opus-4-6',
-          modelSelection: null,
-          audienceKeys: ['cat-planner', 'participant-inline'],
-          workflowShape: 'sequential',
-        },
-      },
-      {
-        target: {
-          provider: 'codex',
-          instance: null,
-          model: 'gpt-5.4',
-          modelSelection: null,
-          audienceKeys: [],
-          workflowShape: 'concurrent',
-        },
+        audienceKeys: [],
+        workflowShape: 'concurrent',
       },
     ],
     draftParticipantCatIds: ['cat-planner'],
@@ -113,7 +95,6 @@ test('buildParallelChatDraftCreateInput normalizes nullable fields for code-owne
         modelSelection: null,
       },
     ],
-    draftParallelBranches: [],
   });
 
   assert.equal(input.originSurface, 'code');
@@ -151,35 +132,17 @@ test('buildParallelChatDraftCreateInput rejects reserved per-branch attachment o
           instance: null,
           model: 'claude-opus-4-6',
           modelSelection: null,
+          audienceKeys: [],
+          workflowShape: 'sequential',
         },
         {
           provider: 'codex',
           instance: null,
           model: 'gpt-5.4',
           modelSelection: null,
-        },
-      ],
-      draftParallelBranches: [
-        {
-          target: {
-            provider: 'claude',
-            instance: null,
-            model: 'claude-opus-4-6',
-            modelSelection: null,
-            audienceKeys: [],
-            workflowShape: 'sequential',
-          },
-        },
-        {
-          target: {
-            provider: 'codex',
-            instance: null,
-            model: 'gpt-5.4',
-            modelSelection: null,
-            audienceKeys: [],
-            workflowShape: 'sequential',
-            attachmentsOverride: [{ relativePath: 'branch-only.txt' }],
-          },
+          audienceKeys: [],
+          workflowShape: 'sequential',
+          attachmentsOverride: [{ relativePath: 'branch-only.txt' }],
         },
       ],
     }),
