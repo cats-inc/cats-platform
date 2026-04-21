@@ -1,6 +1,6 @@
 import { dirname, join } from 'node:path';
 
-import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, ipcMain, shell, systemPreferences } from 'electron';
 
 import { buildDesktopBootstrapPage } from './bootstrapPage.js';
 import {
@@ -132,6 +132,10 @@ import {
 import {
   DesktopScreenshotOverlaySession,
 } from './screenshotOverlaySession.js';
+import {
+  resolveDesktopScreenshotPermissionResult,
+  type DesktopScreenshotMediaAccessStatus,
+} from './screenshotPermission.js';
 import {
   buildScreenshotOverlayWindowPlans,
 } from './screenshotOverlayWindows.js';
@@ -269,6 +273,18 @@ async function captureNativeScreenshotRegion(
   _request: DesktopScreenshotCaptureRequest,
 ): Promise<DesktopScreenshotCaptureResult> {
   try {
+    const permissionResult = process.platform === 'darwin'
+      ? resolveDesktopScreenshotPermissionResult({
+          platform: process.platform,
+          mediaAccessStatus: systemPreferences.getMediaAccessStatus(
+            'screen',
+          ) as DesktopScreenshotMediaAccessStatus,
+        })
+      : null;
+    if (permissionResult) {
+      return permissionResult;
+    }
+
     return await runDesktopScreenshotRegionCapture({
       captureDisplaySnapshots() {
         return captureDesktopDisplaySnapshots(
