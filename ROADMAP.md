@@ -589,6 +589,8 @@ contracts.
       longer add new flat chrome props to the shared draft surface. Advanced
       draft add/hint switches are grouped under `builderControls`, keeping
       the shared chat draft prop surface from growing one toggle at a time.
+      Composer/folder/side-panel copy and starter-chip behavior are now grouped
+      under `draftCopy` and `starterChips`.
 - [ ] Add a product-owned side-panel composition seam for Code drafts together
       with render-level coverage for empty participant states, section-open
       behavior, and later execution-profile sections, so `+New code` does not

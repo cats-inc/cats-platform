@@ -98,8 +98,12 @@ function NewChatDraftInner(props: NewChatDraftProps) {
         surfaceTag,
         chooseFolderPlacement,
       }}
-      folderActionLabel={folderActionLabel}
-      leadingStarterChips={leadingStarterChips}
+      draftCopy={{
+        folderActionLabel,
+      }}
+      starterChips={{
+        leading: leadingStarterChips,
+      }}
     />
   );
 }

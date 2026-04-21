@@ -226,22 +226,26 @@ function CodeChatDraft(props: NewChatDraftProps) {
     <ChatNewChatDraft
       {...props}
       greeting={codeGreeting}
-      preserveHelperChipsOnSelect
-      leadingStarterChips={helperChips.length > 0
-        ? helperChips.map((chip) => ({
-            id: chip.id,
-            label: chip.label,
-            onClick: () => { props.onComposerChange(chip.prompt); },
-          }))
-        : undefined}
+      starterChips={{
+        preserveOnSelect: true,
+        leading: helperChips.length > 0
+          ? helperChips.map((chip) => ({
+              id: chip.id,
+              label: chip.label,
+              onClick: () => { props.onComposerChange(chip.prompt); },
+            }))
+          : undefined,
+      }}
       draftChrome={{
         headerAccessory: permissionChip,
         headerWhereExtras: whereExtras,
         surfaceTag: <ComposerSurfaceChip surface="code" />,
       }}
-      composerPlaceholder={NEW_CODE_DRAFT_COPY.composer?.placeholder}
-      folderActionLabel={NEW_CODE_DRAFT_COPY.folder?.actionLabel}
-      sidePanelCopy={NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY}
+      draftCopy={{
+        composerPlaceholder: NEW_CODE_DRAFT_COPY.composer?.placeholder,
+        folderActionLabel: NEW_CODE_DRAFT_COPY.folder?.actionLabel,
+        sidePanel: NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY,
+      }}
       builderControls={{
         showGroupAddButton: showDraftGroupAddButton,
         showParallelAddButton: showDraftParallelAddButton,

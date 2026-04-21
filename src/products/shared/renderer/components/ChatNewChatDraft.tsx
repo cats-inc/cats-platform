@@ -142,6 +142,21 @@ export interface ChatNewChatDraftBuilderControls {
   hideParallelHint?: boolean;
 }
 
+export interface ChatNewChatDraftCopy {
+  composerPlaceholder?: string;
+  folderActionLabel?: string;
+  sidePanel?: ChatNewChatDraftSidePanelCopy;
+}
+
+export interface ChatNewChatDraftStarterChips {
+  leading?: ReadonlyArray<{
+    id: string;
+    label: string;
+    onClick: () => void;
+  }>;
+  preserveOnSelect?: boolean;
+}
+
 function BranchRuntimeSessionPolicyControls({
   branchIndex,
   target,
@@ -326,15 +341,8 @@ export interface NewChatDraftProps {
   draftRuntimeSessionPolicy?: RuntimeSessionPolicy | null;
   onDraftRuntimeSessionPolicyChange?: (policy: RuntimeSessionPolicy) => void;
   draftChrome?: ChatNewChatDraftChrome;
-  composerPlaceholder?: string;
-  folderActionLabel?: string;
-  sidePanelCopy?: ChatNewChatDraftSidePanelCopy;
-  leadingStarterChips?: ReadonlyArray<{
-    id: string;
-    label: string;
-    onClick: () => void;
-  }>;
-  preserveHelperChipsOnSelect?: boolean;
+  draftCopy?: ChatNewChatDraftCopy;
+  starterChips?: ChatNewChatDraftStarterChips;
 }
 
 export function NewChatDraft({
@@ -400,11 +408,8 @@ export function NewChatDraft({
   onSetAudienceKeys,
   draftRuntimeSessionPolicy = null,
   draftChrome,
-  composerPlaceholder = 'How can I help you today?',
-  folderActionLabel = 'Choose folder',
-  sidePanelCopy,
-  leadingStarterChips,
-  preserveHelperChipsOnSelect = false,
+  draftCopy,
+  starterChips,
 }: NewChatDraftProps) {
   const {
     headerAccessory: composerHeaderAccessory = null,
@@ -420,6 +425,11 @@ export function NewChatDraft({
     hideGroupHint: hideDraftGroupHint = false,
     hideParallelHint: hideDraftParallelHint = false,
   } = builderControls ?? {};
+  const composerPlaceholder = draftCopy?.composerPlaceholder ?? 'How can I help you today?';
+  const folderActionLabel = draftCopy?.folderActionLabel ?? 'Choose folder';
+  const sidePanelCopy = draftCopy?.sidePanel;
+  const leadingStarterChips = starterChips?.leading;
+  const preserveHelperChipsOnSelect = starterChips?.preserveOnSelect ?? false;
   const onPickParallelBranchFolder = parallelBranchActions?.onPickFolder;
   const onSetParallelBranchAudienceKeys = parallelBranchActions?.onSetAudienceKeys;
   const onSetParallelBranchCwd = parallelBranchActions?.onSetCwd;
