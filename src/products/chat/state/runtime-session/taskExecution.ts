@@ -3,9 +3,9 @@ import type { ChatStore } from '../store.js';
 import type { RuntimeClient } from '../../../../platform/runtime/client.js';
 import type { CatsCoreState, CoreTaskRecord } from '../../../../core/types.js';
 import {
-  buildTaskRuntimeExecutionRequest,
   type TaskRuntimeExecutionRequest,
 } from '../../../../shared/taskExecutionBridge.js';
+import { buildChatTaskRuntimeExecutionRequest } from '../taskExecutionRequest.js';
 import {
   checkoutTaskExecution,
   startTaskRunWatcher,
@@ -47,10 +47,9 @@ export async function resolveChannelTaskExecutionRequest(
     core,
     task,
     actorId,
-    executionRequest: buildTaskRuntimeExecutionRequest({
+    executionRequest: buildChatTaskRuntimeExecutionRequest({
       core,
       task,
-      fallbackProduct: 'chat',
     }),
   };
 }

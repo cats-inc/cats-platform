@@ -15,6 +15,9 @@ import {
   cloneTaskRuntimeExecutionRequest,
   serializeTaskRuntimeExecutionRequest,
 } from '../build/server/shared/taskExecutionBridge.js';
+import { buildChatTaskRuntimeExecutionRequest } from '../build/server/products/chat/state/taskExecutionRequest.js';
+import { buildCodeTaskRuntimeExecutionRequest } from '../build/server/products/code/state/taskExecutionRequest.js';
+import { buildWorkTaskRuntimeExecutionRequest } from '../build/server/products/work/state/taskExecutionRequest.js';
 import {
   patchTaskPlanningMetadata,
   readTaskPlanningMetadata,
@@ -434,6 +437,94 @@ test('fallback product supplies defaults without overriding planning handoff met
       correlation: {
         taskId: 'task-chat-entry-default',
         product: 'chat',
+      },
+    },
+  );
+});
+
+test('product task runtime request adapters own their surface defaults', () => {
+  const now = new Date('2026-03-26T03:55:00.000Z');
+  const core = createDefaultCoreState();
+  const chatHandoffWrite = upsertCoreTask(
+    core,
+    {
+      id: 'task-chat-adapter-code-handoff',
+      title: 'Chat adapter handoff to Code',
+      status: 'approved',
+      ownerActorId: 'actor-owner',
+      assignedActorIds: ['actor-coder'],
+      metadata: writeTaskPlanningMetadata(
+        {},
+        {
+          productHint: 'code',
+        },
+      ),
+    },
+    now,
+  );
+
+  assert.deepEqual(
+    buildChatTaskRuntimeExecutionRequest({
+      core: chatHandoffWrite.core,
+      task: chatHandoffWrite.task,
+    }),
+    {
+      requestedStrategy: 'reflexion',
+      correlation: {
+        taskId: 'task-chat-adapter-code-handoff',
+        product: 'code',
+      },
+    },
+  );
+
+  const workWrite = upsertCoreTask(
+    chatHandoffWrite.core,
+    {
+      id: 'task-work-adapter-default',
+      title: 'Work adapter default',
+      status: 'approved',
+      ownerActorId: 'actor-owner',
+      assignedActorIds: ['actor-worker'],
+      metadata: {},
+    },
+    now,
+  );
+  assert.deepEqual(
+    buildWorkTaskRuntimeExecutionRequest({
+      core: workWrite.core,
+      task: workWrite.task,
+    }),
+    {
+      requestedStrategy: 'pdca',
+      correlation: {
+        taskId: 'task-work-adapter-default',
+        product: 'work',
+      },
+    },
+  );
+
+  const codeWrite = upsertCoreTask(
+    workWrite.core,
+    {
+      id: 'task-code-adapter-default',
+      title: 'Code adapter default',
+      status: 'approved',
+      ownerActorId: 'actor-owner',
+      assignedActorIds: ['actor-coder'],
+      metadata: {},
+    },
+    now,
+  );
+  assert.deepEqual(
+    buildCodeTaskRuntimeExecutionRequest({
+      core: codeWrite.core,
+      task: codeWrite.task,
+    }),
+    {
+      requestedStrategy: 'reflexion',
+      correlation: {
+        taskId: 'task-code-adapter-default',
+        product: 'code',
       },
     },
   );

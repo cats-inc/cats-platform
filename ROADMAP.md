@@ -750,7 +750,10 @@ contracts.
       that does not override planning handoff metadata. Chat runtime session
       task checkout uses `fallbackProduct: 'chat'`, so Work/Code planning
       handoffs keep their product defaults instead of being forced back to
-      Chat strategy semantics.
+      Chat strategy semantics. Chat, Work, and Code now also expose
+      product-owned task runtime request adapters; Chat and Code runtime call
+      sites consume those adapters, while Work has the same adapter seam ready
+      for its first owned runtime entry.
 
 ### Near-Term Migration Focus
 

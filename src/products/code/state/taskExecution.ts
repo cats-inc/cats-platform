@@ -7,12 +7,10 @@ import {
   type TaskPlanningMetadataInput,
 } from '../../../shared/taskPlanning.js';
 import {
-  buildTaskRuntimeExecutionRequest,
-} from '../../../shared/taskExecutionBridge.js';
-import {
   writeCodeWorkspaceSummary,
   type CodeWorkspaceKind,
 } from '../shared/workspaceSummary.js';
+import { buildCodeTaskRuntimeExecutionRequest } from './taskExecutionRequest.js';
 
 export interface CreateCodeTaskInput {
   title: string;
@@ -129,10 +127,9 @@ export async function bridgeCodeTaskToRuntime(
     throw new Error(`Task not found: ${input.taskId}`);
   }
 
-  const executionRequest = buildTaskRuntimeExecutionRequest({
+  const executionRequest = buildCodeTaskRuntimeExecutionRequest({
     core,
     task,
-    product: 'code',
   });
 
   const session = await runtimeClient.createSession({
