@@ -615,6 +615,10 @@ contracts.
       primitives, so Code group/parallel entry no longer inherits chat-specific
       setup copy or side-panel framing while still reusing the shared draft
       mechanics
+      Progress: Code now resolves a product-owned draft surface kind before
+      rendering shared primitives, with explicit direct-lane / default / team /
+      peer components and coverage proving `+Team code` and `+Peer code` no
+      longer rely on an implicit shared-chat fallback dispatch.
 - [ ] Retire the temporary raw-HTTP `originSurface` compatibility seam once
       legacy callers have been updated, so channel and parallel-group create
       paths fail fast on missing product ownership instead of defaulting to

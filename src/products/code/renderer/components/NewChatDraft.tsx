@@ -145,6 +145,24 @@ export type {
   NewChatDraftProps,
 } from '../../../shared/renderer/components/ChatNewChatDraft.js';
 
+export type CodeNewChatDraftSurfaceKind = 'direct-lane' | 'default' | 'team' | 'peer';
+
+export function resolveCodeNewChatDraftSurfaceKind(input: {
+  draftDefaultRecipientCatId: string | null;
+  entryPreset?: NewChatDraftProps['entryPreset'];
+}): CodeNewChatDraftSurfaceKind {
+  if (input.draftDefaultRecipientCatId) {
+    return 'direct-lane';
+  }
+  if (input.entryPreset === 'group') {
+    return 'team';
+  }
+  if (input.entryPreset === 'parallel') {
+    return 'peer';
+  }
+  return 'default';
+}
+
 function resolveCodeDraftHelperChips(props: NewChatDraftProps): Array<{
   id: string;
   label: string;
@@ -339,9 +357,31 @@ function CodeChatDraft(props: NewChatDraftProps) {
   );
 }
 
+function CodeDefaultDraft(props: NewChatDraftProps) {
+  return <CodeChatDraft {...props} />;
+}
+
+function CodeTeamDraft(props: NewChatDraftProps) {
+  return <CodeChatDraft {...props} />;
+}
+
+function CodePeerDraft(props: NewChatDraftProps) {
+  return <CodeChatDraft {...props} />;
+}
+
 export function NewChatDraft(props: NewChatDraftProps) {
-  if (props.draftDefaultRecipientCatId) {
+  const surfaceKind = resolveCodeNewChatDraftSurfaceKind({
+    draftDefaultRecipientCatId: props.draftDefaultRecipientCatId,
+    entryPreset: props.entryPreset,
+  });
+  if (surfaceKind === 'direct-lane') {
     return <CodeDirectLaneDraft {...props} />;
   }
-  return <CodeChatDraft {...props} />;
+  if (surfaceKind === 'team') {
+    return <CodeTeamDraft {...props} />;
+  }
+  if (surfaceKind === 'peer') {
+    return <CodePeerDraft {...props} />;
+  }
+  return <CodeDefaultDraft {...props} />;
 }

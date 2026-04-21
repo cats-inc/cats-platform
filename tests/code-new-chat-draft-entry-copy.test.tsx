@@ -9,6 +9,7 @@ import {
   NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY,
   NewChatDraft,
   NEW_CODE_DRAFT_COPY,
+  resolveCodeNewChatDraftSurfaceKind,
   type NewChatDraftProps,
 } from '../src/products/code/renderer/components/NewChatDraft.tsx';
 import { clearBusyState } from '../src/shared/workspaceBusy.ts';
@@ -168,6 +169,37 @@ test('new code draft publishes code-specific copy overrides for the shared works
   );
   assert.equal(NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY.execution?.sectionTitle, 'Execution');
   assert.equal(NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY.folder?.sectionTitle, 'Workspace');
+});
+
+test('new code draft resolves product-owned surfaces before shared primitive render', () => {
+  assert.equal(
+    resolveCodeNewChatDraftSurfaceKind({
+      draftDefaultRecipientCatId: 'cat-lead',
+      entryPreset: 'parallel',
+    }),
+    'direct-lane',
+  );
+  assert.equal(
+    resolveCodeNewChatDraftSurfaceKind({
+      draftDefaultRecipientCatId: null,
+      entryPreset: 'default',
+    }),
+    'default',
+  );
+  assert.equal(
+    resolveCodeNewChatDraftSurfaceKind({
+      draftDefaultRecipientCatId: null,
+      entryPreset: 'group',
+    }),
+    'team',
+  );
+  assert.equal(
+    resolveCodeNewChatDraftSurfaceKind({
+      draftDefaultRecipientCatId: null,
+      entryPreset: 'parallel',
+    }),
+    'peer',
+  );
 });
 
 test('new code draft owns shared side panel sections through its product builder', () => {
@@ -443,7 +475,7 @@ test('new code direct-lane drafts keep the same profile header when the particip
   assert.doesNotMatch(markup, /Focused Code Session/u);
 });
 
-test('team code and peer code drafts continue to delegate to the shared chat draft flow', () => {
+test('team code and peer code drafts render through code-owned shared primitives', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
