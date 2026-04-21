@@ -5,18 +5,21 @@ import type {
 import { normalizeProductProviderEventCapabilities } from '../../shared/providerCatalog.js';
 
 export const PROVIDER_REGISTRY_CLIENT_CACHE_TTL_MS = 15_000;
+export const PROVIDER_REGISTRY_CLIENT_STALE_IF_ERROR_MS = 10 * 60_000;
 
 type ProviderRegistryFetch = typeof fetch;
 
 interface ProviderRegistryClientCacheState {
   value: ProductProviderRegistryReadModel | null;
   freshUntilMs: number;
+  staleIfErrorUntilMs: number;
   inflight: Promise<ProductProviderRegistryReadModel> | null;
 }
 
 const providerRegistryClientCache: ProviderRegistryClientCacheState = {
   value: null,
   freshUntilMs: 0,
+  staleIfErrorUntilMs: 0,
   inflight: null,
 };
 
@@ -82,6 +85,41 @@ function shouldCacheProviderRegistryValue(
   return value.state !== 'runtime_unreachable';
 }
 
+function appendProviderRegistryWarning(
+  value: ProductProviderRegistryReadModel,
+  warning: string,
+): ProductProviderRegistryReadModel {
+  const warnings = Array.isArray(value.warnings) ? value.warnings : [];
+  return {
+    ...value,
+    warnings: warnings.includes(warning)
+      ? warnings
+      : [...warnings, warning],
+  };
+}
+
+function resolveProviderRegistryFailureMessage(
+  value: ProductProviderRegistryReadModel,
+): string {
+  return value.warnings?.[0] ?? 'Failed to refresh providers.';
+}
+
+function writeProviderRegistryClientCache(
+  value: ProductProviderRegistryReadModel,
+): void {
+  const now = Date.now();
+  providerRegistryClientCache.value = value;
+  providerRegistryClientCache.freshUntilMs = now + PROVIDER_REGISTRY_CLIENT_CACHE_TTL_MS;
+  providerRegistryClientCache.staleIfErrorUntilMs =
+    now + PROVIDER_REGISTRY_CLIENT_STALE_IF_ERROR_MS;
+}
+
+function clearExpiredProviderRegistryClientCache(): void {
+  providerRegistryClientCache.value = null;
+  providerRegistryClientCache.freshUntilMs = 0;
+  providerRegistryClientCache.staleIfErrorUntilMs = 0;
+}
+
 async function loadProviderRegistry(
   fetchImpl: ProviderRegistryFetch,
 ): Promise<ProductProviderRegistryReadModel> {
@@ -105,6 +143,7 @@ async function loadProviderRegistry(
 export function clearProviderRegistryClientCache(): void {
   providerRegistryClientCache.value = null;
   providerRegistryClientCache.freshUntilMs = 0;
+  providerRegistryClientCache.staleIfErrorUntilMs = 0;
   providerRegistryClientCache.inflight = null;
 }
 
@@ -128,12 +167,21 @@ export async function fetchProviderRegistryFromClientCache(options: {
   const request = loadProviderRegistry(options.fetchImpl ?? fetch)
     .then((value) => {
       if (shouldCacheProviderRegistryValue(value)) {
-        providerRegistryClientCache.value = value;
-        providerRegistryClientCache.freshUntilMs = Date.now() + PROVIDER_REGISTRY_CLIENT_CACHE_TTL_MS;
-      } else {
-        providerRegistryClientCache.value = null;
-        providerRegistryClientCache.freshUntilMs = 0;
+        writeProviderRegistryClientCache(value);
+        return value;
       }
+
+      const cachedValue = providerRegistryClientCache.value;
+      if (cachedValue && providerRegistryClientCache.staleIfErrorUntilMs > Date.now()) {
+        return appendProviderRegistryWarning(
+          cachedValue,
+          `Using cached providers because refresh failed: ${
+            resolveProviderRegistryFailureMessage(value)
+          }`,
+        );
+      }
+
+      clearExpiredProviderRegistryClientCache();
       return value;
     })
     .finally(() => {

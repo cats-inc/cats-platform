@@ -11,6 +11,7 @@ import {
   PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
   listPersistentControlOptions,
   resolveProviderRegistryHint,
+  resolveProviderRegistryAutoRecheckDelayMs,
   resolveProviderRegistrySetupHref,
   resolveProviderRegistryPlaceholder,
   resolveDisplayedEnumControlValue,
@@ -546,6 +547,41 @@ test('provider registry auto-recheck only triggers for empty truthful states aft
     lastAutoRecheckAt: 1000,
     now: 1000 + PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
   }), true);
+});
+
+test('provider registry auto-recheck delay schedules retry instead of waiting for focus events only', () => {
+  assert.equal(resolveProviderRegistryAutoRecheckDelayMs({
+    providersLoaded: true,
+    providerCount: 0,
+    registryState: 'runtime_unreachable',
+    retryable: true,
+    hasSetupHref: false,
+    documentVisible: true,
+    lastAutoRecheckAt: 0,
+    now: 10_000,
+  }), 0);
+
+  assert.equal(resolveProviderRegistryAutoRecheckDelayMs({
+    providersLoaded: true,
+    providerCount: 0,
+    registryState: 'runtime_unreachable',
+    retryable: true,
+    hasSetupHref: false,
+    documentVisible: true,
+    lastAutoRecheckAt: 10_000,
+    now: 10_000 + PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS - 250,
+  }), 250);
+
+  assert.equal(resolveProviderRegistryAutoRecheckDelayMs({
+    providersLoaded: true,
+    providerCount: 1,
+    registryState: 'runtime_unreachable',
+    retryable: true,
+    hasSetupHref: false,
+    documentVisible: true,
+    lastAutoRecheckAt: 10_000,
+    now: 20_000,
+  }), null);
 });
 
 test('static fallback catalogs do not classify unknown persisted models as legacy before runtime data arrives', () => {

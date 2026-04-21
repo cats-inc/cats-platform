@@ -1,7 +1,10 @@
 import { useEffect } from 'react';
 
 import type { ProductProviderRegistryState } from '../../shared/providerCatalog.js';
-import { shouldAutoRecheckProviderRegistry } from './providerModelFieldsSupport.js';
+import {
+  resolveProviderRegistryAutoRecheckDelayMs,
+  shouldAutoRecheckProviderRegistry,
+} from './providerModelFieldsSupport.js';
 
 interface BrowserWindowLike {
   addEventListener: (event: 'focus', listener: () => void) => void;
@@ -64,9 +67,26 @@ export function useProviderRegistryAutoRecheck(input: {
       reloadProviderRegistry({ markAutoRecheckAt: now });
     }
 
+    const nextAutoRecheckDelayMs = resolveProviderRegistryAutoRecheckDelayMs({
+      providersLoaded,
+      providerCount,
+      registryState,
+      retryable,
+      hasSetupHref: Boolean(providerRegistrySetupHref),
+      documentVisible: currentDocument.visibilityState !== 'hidden',
+      lastAutoRecheckAt: lastAutoProviderRegistryRecheckAt,
+      now: Date.now(),
+    });
+    const timeout = nextAutoRecheckDelayMs === null
+      ? null
+      : setTimeout(maybeAutoRecheck, nextAutoRecheckDelayMs);
+
     currentWindow.addEventListener('focus', maybeAutoRecheck);
     currentDocument.addEventListener('visibilitychange', maybeAutoRecheck);
     return () => {
+      if (timeout !== null) {
+        clearTimeout(timeout);
+      }
       currentWindow.removeEventListener('focus', maybeAutoRecheck);
       currentDocument.removeEventListener('visibilitychange', maybeAutoRecheck);
     };

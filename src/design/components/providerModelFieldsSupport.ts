@@ -134,23 +134,37 @@ export function shouldAutoRecheckProviderRegistry(input: {
   lastAutoRecheckAt: number;
   now: number;
 }): boolean {
+  return resolveProviderRegistryAutoRecheckDelayMs(input) === 0;
+}
+
+export function resolveProviderRegistryAutoRecheckDelayMs(input: {
+  providersLoaded: boolean;
+  providerCount: number;
+  registryState: ProductProviderRegistryState;
+  retryable: boolean;
+  hasSetupHref: boolean;
+  documentVisible: boolean;
+  lastAutoRecheckAt: number;
+  now: number;
+}): number | null {
   if (!input.providersLoaded) {
-    return false;
+    return null;
   }
 
   if (input.providerCount > 0 || input.registryState === 'ready') {
-    return false;
+    return null;
   }
 
   if (!input.retryable || !input.documentVisible) {
-    return false;
+    return null;
   }
 
   if (input.registryState !== 'runtime_unreachable' && !input.hasSetupHref) {
-    return false;
+    return null;
   }
 
-  return input.now - input.lastAutoRecheckAt >= PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS;
+  const elapsedMs = input.now - input.lastAutoRecheckAt;
+  return Math.max(0, PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS - elapsedMs);
 }
 
 function presetAppliesToEntry(

@@ -3,6 +3,8 @@ import type { ServerResponse } from 'node:http';
 import {
   isKnownProvider,
   listProductProviders,
+  type ProviderAdvancedModelCatalog,
+  type ProviderModelCatalog,
   type ProductProviderDescriptor,
   type ProductProviderInstanceDescriptor,
 } from '../../shared/providerCatalog.js';
@@ -21,7 +23,11 @@ interface ProviderRouteDependencies {
 type ProviderRegistryState = 'ready' | 'no_usable_targets' | 'runtime_unreachable';
 const TRUTHFUL_SELECTOR_CACHE_TTL_MS = 5_000;
 const TRUTHFUL_SELECTOR_STALE_WINDOW_MS = 15_000;
+const TRUTHFUL_SELECTOR_STALE_IF_ERROR_MS = 10 * 60_000;
 const TRUTHFUL_SELECTOR_CONFIG_ENRICHMENT_BUDGET_MS = 500;
+const PROVIDER_MODEL_CATALOG_CACHE_TTL_MS = 60_000;
+const PROVIDER_MODEL_CATALOG_STALE_WINDOW_MS = 5 * 60_000;
+const PROVIDER_MODEL_CATALOG_STALE_IF_ERROR_MS = 30 * 60_000;
 
 interface TruthfulProviderRegistryReadModel {
   state: ProviderRegistryState;
@@ -37,6 +43,7 @@ interface TruthfulProviderRegistryCacheEntry {
   value: TruthfulProviderRegistryReadModel;
   freshUntilMs: number;
   staleUntilMs: number;
+  staleIfErrorUntilMs: number;
 }
 
 interface TruthfulProviderRegistryCacheState {
@@ -45,6 +52,22 @@ interface TruthfulProviderRegistryCacheState {
 }
 
 const truthfulProviderRegistryCache = new WeakMap<RuntimeClient, TruthfulProviderRegistryCacheState>();
+
+type ProviderCatalogCacheValue = ProviderModelCatalog | ProviderAdvancedModelCatalog;
+
+interface ProviderCatalogCacheEntry<TCatalog extends ProviderCatalogCacheValue> {
+  value: TCatalog;
+  freshUntilMs: number;
+  staleUntilMs: number;
+  staleIfErrorUntilMs: number;
+}
+
+interface ProviderCatalogCacheState {
+  entries: Map<string, ProviderCatalogCacheEntry<ProviderCatalogCacheValue>>;
+  inflight: Map<string, Promise<ProviderCatalogCacheValue>>;
+}
+
+const providerCatalogCache = new WeakMap<RuntimeClient, ProviderCatalogCacheState>();
 
 function isSelectableAvailabilityStatus(status: string | null | undefined): boolean {
   return status === 'ok' || status === 'degraded';
@@ -256,6 +279,54 @@ function shouldCacheTruthfulProviderRegistry(
   return value.state !== 'runtime_unreachable';
 }
 
+function appendWarning(
+  warnings: string[] | undefined,
+  warning: string,
+): string[] {
+  const existing = Array.isArray(warnings) ? warnings : [];
+  return existing.includes(warning) ? existing : [...existing, warning];
+}
+
+function appendTruthfulProviderRegistryWarning(
+  value: TruthfulProviderRegistryReadModel,
+  warning: string,
+): TruthfulProviderRegistryReadModel {
+  return {
+    ...value,
+    warnings: appendWarning(value.warnings, warning),
+  };
+}
+
+function appendProviderCatalogWarning<TCatalog extends ProviderCatalogCacheValue>(
+  value: TCatalog,
+  warning: string,
+): TCatalog {
+  return {
+    ...value,
+    warnings: appendWarning(value.warnings, warning),
+  };
+}
+
+function readRuntimeFailureMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function isClientRuntimeRequestError(error: unknown): boolean {
+  return Boolean(
+    error
+    && typeof error === 'object'
+    && 'status' in error
+    && typeof error.status === 'number'
+    && error.status < 500,
+  );
+}
+
+function readTruthfulProviderRegistryFailureMessage(
+  value: TruthfulProviderRegistryReadModel,
+): string {
+  return value.warnings?.[0] ?? 'cats-runtime is unavailable.';
+}
+
 function writeTruthfulProviderRegistryCacheEntry(
   cacheState: TruthfulProviderRegistryCacheState,
   cacheKey: string,
@@ -263,6 +334,7 @@ function writeTruthfulProviderRegistryCacheEntry(
   timing: {
     freshUntilMs?: number;
     staleUntilMs?: number;
+    staleIfErrorUntilMs?: number;
   } = {},
 ): void {
   if (!shouldCacheTruthfulProviderRegistry(value)) {
@@ -275,6 +347,9 @@ function writeTruthfulProviderRegistryCacheEntry(
     freshUntilMs: timing.freshUntilMs ?? (now + TRUTHFUL_SELECTOR_CACHE_TTL_MS),
     staleUntilMs: timing.staleUntilMs ?? (
       now + TRUTHFUL_SELECTOR_CACHE_TTL_MS + TRUTHFUL_SELECTOR_STALE_WINDOW_MS
+    ),
+    staleIfErrorUntilMs: timing.staleIfErrorUntilMs ?? (
+      now + TRUTHFUL_SELECTOR_STALE_IF_ERROR_MS
     ),
   });
 }
@@ -436,7 +511,19 @@ async function refreshTruthfulProviderRegistry(
           value,
           freshUntilMs: now + TRUTHFUL_SELECTOR_CACHE_TTL_MS,
           staleUntilMs: now + TRUTHFUL_SELECTOR_CACHE_TTL_MS + TRUTHFUL_SELECTOR_STALE_WINDOW_MS,
+          staleIfErrorUntilMs: now + TRUTHFUL_SELECTOR_STALE_IF_ERROR_MS,
         });
+        return value;
+      }
+
+      const cached = cacheState.entries.get(cacheKey);
+      if (cached && cached.staleIfErrorUntilMs > Date.now()) {
+        return appendTruthfulProviderRegistryWarning(
+          cached.value,
+          `Using cached provider targets because runtime refresh failed: ${
+            readTruthfulProviderRegistryFailureMessage(value)
+          }`,
+        );
       }
       return value;
     })
@@ -465,6 +552,7 @@ function tryReadTruthfulProviderRegistryFromRootCache(
       {
         freshUntilMs: rootCached.freshUntilMs,
         staleUntilMs: rootCached.staleUntilMs,
+        staleIfErrorUntilMs: rootCached.staleIfErrorUntilMs,
       },
     );
 
@@ -529,6 +617,111 @@ async function readTruthfulProviderRegistry(
   }
 
   return refreshTruthfulProviderRegistry(dependencies, cacheState, cacheKey, options);
+}
+
+function getProviderCatalogCacheState(
+  runtimeClient: RuntimeClient,
+): ProviderCatalogCacheState {
+  let state = providerCatalogCache.get(runtimeClient);
+  if (!state) {
+    state = {
+      entries: new Map(),
+      inflight: new Map(),
+    };
+    providerCatalogCache.set(runtimeClient, state);
+  }
+  return state;
+}
+
+function buildProviderCatalogCacheKey(input: {
+  kind: 'models' | 'advanced';
+  provider: string;
+  instance?: string | null;
+}): string {
+  return [
+    input.kind,
+    input.provider.trim(),
+    input.instance?.trim() || '',
+  ].join('\u0000');
+}
+
+function writeProviderCatalogCacheEntry<TCatalog extends ProviderCatalogCacheValue>(
+  cacheState: ProviderCatalogCacheState,
+  cacheKey: string,
+  value: TCatalog,
+): void {
+  const now = Date.now();
+  cacheState.entries.set(cacheKey, {
+    value,
+    freshUntilMs: now + PROVIDER_MODEL_CATALOG_CACHE_TTL_MS,
+    staleUntilMs: now
+      + PROVIDER_MODEL_CATALOG_CACHE_TTL_MS
+      + PROVIDER_MODEL_CATALOG_STALE_WINDOW_MS,
+    staleIfErrorUntilMs: now + PROVIDER_MODEL_CATALOG_STALE_IF_ERROR_MS,
+  });
+}
+
+function refreshProviderCatalogCacheEntry<TCatalog extends ProviderCatalogCacheValue>(
+  cacheState: ProviderCatalogCacheState,
+  cacheKey: string,
+  load: () => Promise<TCatalog>,
+): Promise<TCatalog> {
+  const inflight = cacheState.inflight.get(cacheKey);
+  if (inflight) {
+    return inflight as Promise<TCatalog>;
+  }
+
+  const refreshPromise = load()
+    .then((value) => {
+      writeProviderCatalogCacheEntry(cacheState, cacheKey, value);
+      return value;
+    })
+    .catch((error) => {
+      const cached = cacheState.entries.get(cacheKey);
+      if (
+        !isClientRuntimeRequestError(error)
+        && cached
+        && cached.staleIfErrorUntilMs > Date.now()
+      ) {
+        return appendProviderCatalogWarning(
+          cached.value as TCatalog,
+          `Using cached model catalog because runtime refresh failed: ${
+            readRuntimeFailureMessage(error, 'Runtime catalog unavailable.')
+          }`,
+        );
+      }
+      throw error;
+    })
+    .finally(() => {
+      cacheState.inflight.delete(cacheKey);
+    });
+
+  cacheState.inflight.set(cacheKey, refreshPromise);
+  return refreshPromise;
+}
+
+async function readProviderCatalogCached<TCatalog extends ProviderCatalogCacheValue>(input: {
+  dependencies: ProviderRouteDependencies;
+  kind: 'models' | 'advanced';
+  provider: string;
+  instance?: string | null;
+  load: () => Promise<TCatalog>;
+}): Promise<TCatalog> {
+  const cacheState = getProviderCatalogCacheState(input.dependencies.runtimeClient);
+  const cacheKey = buildProviderCatalogCacheKey(input);
+  const now = Date.now();
+  const cached = cacheState.entries.get(cacheKey);
+
+  if (cached && cached.freshUntilMs > now) {
+    return cached.value as TCatalog;
+  }
+
+  if (cached && cached.staleUntilMs > now) {
+    void refreshProviderCatalogCacheEntry(cacheState, cacheKey, input.load).catch(() => {});
+    return cached.value as TCatalog;
+  }
+
+  return refreshProviderCatalogCacheEntry(cacheState, cacheKey, input.load);
 }
 
 function sendJson(response: ServerResponse, statusCode: number, payload: unknown): void {
@@ -611,7 +804,13 @@ export async function handleProviderModels(
   }
 
   try {
-    const catalog = await dependencies.runtimeClient.getProviderModels(provider, normalizedInstance);
+    const catalog = await readProviderCatalogCached({
+      dependencies,
+      kind: 'models',
+      provider,
+      instance: normalizedInstance,
+      load: () => dependencies.runtimeClient.getProviderModels(provider, normalizedInstance),
+    });
     sendJson(response, 200, { catalog });
   } catch (error) {
     const runtimeError = error as RuntimeRequestError | Error;
@@ -684,7 +883,13 @@ export async function handleAdvancedProviderModels(
   }
 
   try {
-    const catalog = await dependencies.runtimeClient.getAdvancedProviderModels(provider, normalizedInstance);
+    const catalog = await readProviderCatalogCached({
+      dependencies,
+      kind: 'advanced',
+      provider,
+      instance: normalizedInstance,
+      load: () => dependencies.runtimeClient.getAdvancedProviderModels(provider, normalizedInstance),
+    });
     sendJson(response, 200, { catalog });
   } catch (error) {
     const runtimeError = error as RuntimeRequestError | Error;

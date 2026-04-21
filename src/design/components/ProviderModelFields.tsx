@@ -46,6 +46,7 @@ export {
   resolveCatalogEntryStatusSuffix,
   resolveProviderModelFieldsViewState,
   resolveProviderRegistryHint,
+  resolveProviderRegistryAutoRecheckDelayMs,
   resolveProviderRegistryPlaceholder,
   resolveProviderRegistrySetupHref,
   resolveProviderSupportBadge,
