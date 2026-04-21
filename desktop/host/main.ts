@@ -94,6 +94,12 @@ import {
   type DesktopStartupPreferences,
 } from './desktopStartup.js';
 import { loadDesktopEnvFiles } from './env.js';
+import {
+  assertMainWindowScreenshotIpcSender,
+  captureScreenshotRegion,
+  DESKTOP_SCREENSHOT_IPC_CHANNEL,
+  parseDesktopScreenshotCaptureRequest,
+} from './screenshotCapture.js';
 
 let mainWindow: BrowserWindow | null = null;
 let hostConfig: DesktopHostConfig | null = null;
@@ -1301,6 +1307,10 @@ async function main(): Promise<void> {
   });
   ipcMain.handle('cats-host:resume-setup', async () => {
     return await resumeSetupAction();
+  });
+  ipcMain.handle(DESKTOP_SCREENSHOT_IPC_CHANNEL, async (event, payload: unknown) => {
+    assertMainWindowScreenshotIpcSender(event, mainWindow);
+    return await captureScreenshotRegion(parseDesktopScreenshotCaptureRequest(payload));
   });
   ipcMain.handle('cats-host:update-desktop-preferences', async (_event, payload: unknown) => {
     if (

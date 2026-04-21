@@ -170,6 +170,16 @@ export const DESKTOP_SETUP_INTERRUPTION_KINDS = [
   'first_wsl_boot_required',
   'docker_warm_up_required',
 ] as const;
+export const DESKTOP_SCREENSHOT_CAPTURE_SOURCES = [
+  'composer',
+] as const;
+export const DESKTOP_SCREENSHOT_CAPTURE_OUTCOMES = [
+  'ok',
+  'cancelled',
+  'permission_denied',
+  'platform_unsupported',
+  'error',
+] as const;
 
 export type DesktopBootstrapPhase = typeof DESKTOP_BOOTSTRAP_PHASES[number];
 export type DesktopHostActionId = typeof DESKTOP_HOST_ACTION_IDS[number];
@@ -199,6 +209,26 @@ export type DesktopSetupHelperMode = typeof DESKTOP_SETUP_HELPER_MODES[number];
 export type DesktopSetupActionRunState = typeof DESKTOP_SETUP_ACTION_RUN_STATES[number];
 export type DesktopSetupResumeReason = typeof DESKTOP_SETUP_RESUME_REASONS[number];
 export type DesktopSetupInterruptionKind = typeof DESKTOP_SETUP_INTERRUPTION_KINDS[number];
+export type DesktopScreenshotCaptureSource = typeof DESKTOP_SCREENSHOT_CAPTURE_SOURCES[number];
+export type DesktopScreenshotCaptureOutcome = typeof DESKTOP_SCREENSHOT_CAPTURE_OUTCOMES[number];
+
+export interface DesktopScreenshotCaptureRequest {
+  source: DesktopScreenshotCaptureSource;
+}
+
+export type DesktopScreenshotCaptureResult =
+  | {
+      outcome: 'ok';
+      png: Uint8Array;
+      mime: 'image/png';
+      filename: string;
+      width: number;
+      height: number;
+    }
+  | {
+      outcome: Exclude<DesktopScreenshotCaptureOutcome, 'ok'>;
+      message?: string;
+    };
 
 export interface DesktopBootstrapEventReference {
   artifactId?: string;

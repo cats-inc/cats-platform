@@ -1,5 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
+import type { DesktopScreenshotCaptureResult } from './contracts.js';
+
 type DesktopHostActionId =
   | 'retry'
   | 'resume_setup'
@@ -119,6 +121,11 @@ const bridge = {
   },
   resumeSetup(): Promise<DesktopSetupSnapshot> {
     return ipcRenderer.invoke('cats-host:resume-setup');
+  },
+  captureScreenshotRegion(): Promise<DesktopScreenshotCaptureResult> {
+    return ipcRenderer.invoke('cats-host:capture-screenshot-region', {
+      source: 'composer',
+    });
   },
   updateDesktopPreferences(
     prefs: DesktopStartupPreferences,
