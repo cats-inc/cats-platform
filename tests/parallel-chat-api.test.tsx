@@ -156,7 +156,18 @@ test('workspace parallel draft create input carries group-level runtime session 
         workflowShape: 'sequential',
       },
       {
-        target: { provider: 'codex', instance: null, model: 'gpt-5.4', modelSelection: null },
+        target: {
+          provider: 'codex',
+          instance: null,
+          model: 'gpt-5.4',
+          modelSelection: null,
+          cwd: 'C:/repo/worktrees/right',
+          runtimeSessionPolicy: {
+            workspaceKind: 'source',
+            workspaceAccess: 'read_write',
+            permissionMode: 'skip',
+          },
+        },
         audienceKeys: [],
         workflowShape: 'sequential',
       },
@@ -173,4 +184,10 @@ test('workspace parallel draft create input carries group-level runtime session 
     ['cat:reviewer'],
     [],
   ]);
+  assert.equal(createInput.targets[1]?.cwd, 'C:/repo/worktrees/right');
+  assert.deepEqual(createInput.targets[1]?.runtimeSessionPolicy, {
+    workspaceKind: 'source',
+    workspaceAccess: 'read_write',
+    permissionMode: 'skip',
+  });
 });

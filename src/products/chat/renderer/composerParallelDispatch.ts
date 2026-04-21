@@ -84,13 +84,22 @@ export async function submitNewParallelChatDraft({
     ...(draftSessionPolicy === undefined
       ? {}
       : { runtimeSessionPolicy: draftSessionPolicy }),
-    targets: draftParallelChatTargets.map((target, index) => ({
-      provider: target.provider,
-      instance: target.instance ?? null,
-      model: target.model ?? null,
-      modelSelection: target.modelSelection ?? null,
-      audienceKeys: draftParallelBranches[index]?.audienceKeys ?? [],
-    })),
+    targets: draftParallelChatTargets.map((target, index) => {
+      const branchTarget = draftParallelBranches[index]?.target;
+      return {
+        provider: target.provider,
+        instance: target.instance ?? null,
+        model: target.model ?? null,
+        modelSelection: target.modelSelection ?? null,
+        audienceKeys: branchTarget?.audienceKeys
+          ?? draftParallelBranches[index]?.audienceKeys
+          ?? [],
+        ...(branchTarget?.cwd === undefined ? {} : { cwd: branchTarget.cwd }),
+        ...(branchTarget?.runtimeSessionPolicy === undefined
+          ? {}
+          : { runtimeSessionPolicy: branchTarget.runtimeSessionPolicy }),
+      };
+    }),
     participantCatIds: draftParticipantCatIds,
     temporaryParticipants: draftTemporaryParticipants.map((participant) => ({
       participantId: participant.participantId,
@@ -123,11 +132,13 @@ export async function submitNewParallelChatDraft({
       if (!branch) {
         return { channelId };
       }
-      const recipientParticipantIds = branch.audienceKeys.length > 0
+      const branchAudienceKeys = branch.target.audienceKeys ?? branch.audienceKeys;
+      const branchWorkflowShape = branch.target.workflowShape ?? branch.workflowShape;
+      const recipientParticipantIds = branchAudienceKeys.length > 0
         ? resolveDraftAudienceParticipantIds({
             draftParticipantCatIds,
             draftTemporaryParticipants,
-            draftAudienceKeys: branch.audienceKeys,
+            draftAudienceKeys: branchAudienceKeys,
             maxAudienceParticipants:
               payload.chat.capabilities.maxAudienceParticipants ?? Number.POSITIVE_INFINITY,
           })
@@ -137,7 +148,7 @@ export async function submitNewParallelChatDraft({
         messageMetadata: recipientParticipantIds.length > 0
           ? {
               recipientParticipantIds,
-              workflowShape: branch.workflowShape,
+              workflowShape: branchWorkflowShape,
             }
           : undefined,
       };

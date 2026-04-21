@@ -19,12 +19,20 @@ test('createDraftParallelBranches seeds every branch with deduped audience keys 
 
   assert.deepEqual(branches, [
     {
-      target: targets[0],
+      target: {
+        ...targets[0],
+        audienceKeys: ['cat-1', 'cat-2'],
+        workflowShape: 'concurrent',
+      },
       audienceKeys: ['cat-1', 'cat-2'],
       workflowShape: 'concurrent',
     },
     {
-      target: targets[1],
+      target: {
+        ...targets[1],
+        audienceKeys: ['cat-1', 'cat-2'],
+        workflowShape: 'concurrent',
+      },
       audienceKeys: ['cat-1', 'cat-2'],
       workflowShape: 'concurrent',
     },
@@ -37,7 +45,7 @@ test('createDraftParallelBranches falls back to empty audience and sequential wo
 
   assert.deepEqual(branches, [
     {
-      target: { id: 'target-1' },
+      target: { id: 'target-1', audienceKeys: [], workflowShape: 'sequential' },
       audienceKeys: [],
       workflowShape: 'sequential',
     },
@@ -61,7 +69,11 @@ test('updateDraftParallelBranchAt only replaces the requested branch', () => {
   assert.notEqual(next[1], branches[1]);
   assert.equal(next[2], branches[2]);
   assert.deepEqual(next[1], {
-    target: { id: 'target-2' },
+    target: {
+      id: 'target-2',
+      audienceKeys: ['cat-1', 'cat-2'],
+      workflowShape: 'concurrent',
+    },
     audienceKeys: ['cat-1', 'cat-2'],
     workflowShape: 'concurrent',
   });

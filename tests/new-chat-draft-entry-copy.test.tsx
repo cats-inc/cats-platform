@@ -614,7 +614,7 @@ test('parallel draft keeps follower targets on the same audience-chip treatment 
   const recipientChipMatches = markup.match(/class="composerRecipientChip"/gu) ?? [];
   const implicitIconMatches = markup.match(/recipientChipIcon/gu) ?? [];
 
-  assert.match(markup, /class="parallelStubStack"/u);
+  assert.match(markup, /class="draftCompareCarousel"/u);
   assert.match(markup, /data-tooltip="[^"]*opus-4\.6-1m"/u);
   assert.match(markup, /data-tooltip="[^"]*codex-max"/u);
   assert.match(markup, /data-tooltip="[^"]*gemini-2\.5-pro"/u);
@@ -1085,7 +1085,7 @@ test('advanced draft controls off hides the per-branch collaborator button on pa
     />,
   );
 
-  assert.match(markup, /class="parallelStubStack"/u);
+  assert.match(markup, /class="draftCompareCarousel"/u);
   const collabButtons = markup.match(/aria-label="Add another model to collaborate"/gu) ?? [];
   assert.equal(collabButtons.length, 0);
 });
@@ -1109,7 +1109,7 @@ test('advanced draft controls on exposes a collaborator button on every parallel
     />,
   );
 
-  assert.match(markup, /class="parallelStubStack"/u);
+  assert.match(markup, /class="draftCompareCarousel"/u);
   const collabButtons = markup.match(/aria-label="Add another model to collaborate"/gu) ?? [];
   // 1 lead row + 2 shadow rows = 3 collaborator buttons when advanced is on.
   assert.equal(collabButtons.length, 3);
@@ -1140,7 +1140,7 @@ test('+Group preset with advanced on still lets every shadow row add collaborato
     />,
   );
 
-  assert.match(markup, /class="parallelStubStack"/u);
+  assert.match(markup, /class="draftCompareCarousel"/u);
   const collabButtons = markup.match(/aria-label="Add another model to collaborate"/gu) ?? [];
   // 1 lead (via isGroupDraft) + 2 shadows (via callback presence).
   assert.equal(collabButtons.length, 3);
@@ -1178,7 +1178,7 @@ test('+Group + +compare keeps the lead roster scoped to branch-0 audience and ex
     />,
   );
 
-  assert.match(markup, /class="parallelStubStack"/u);
+  assert.match(markup, /class="draftCompareCarousel"/u);
   const leadRosterSlots = markup.match(/class="composerGroupAvatarSlot"/gu) ?? [];
   // Lead roster: 2 participants (Aria + Bram). The shadow-only temp
   // (Cleo) must not show up here even though it shares the same pool.
@@ -1251,7 +1251,7 @@ test('parallel shadow branch with a single audience member renders as a target-s
     />,
   );
 
-  assert.match(markup, /class="parallelStubStack"/u);
+  assert.match(markup, /class="draftCompareCarousel"/u);
   assert.doesNotMatch(markup, /class="audienceChipAvatar"/u);
   assert.doesNotMatch(markup, /Cleo/u);
 });
@@ -1320,7 +1320,7 @@ test('parallel draft without temp participants keeps the lead roster collapsed a
     />,
   );
 
-  assert.match(markup, /class="parallelStubStack"/u);
+  assert.match(markup, /class="draftCompareCarousel"/u);
   assert.doesNotMatch(markup, /class="composerGroupAvatarSlot"/u);
   assert.doesNotMatch(markup, /class="audienceChipAvatar"/u);
 });

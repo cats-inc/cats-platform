@@ -27,6 +27,7 @@ import type { ExecutionTargetValue } from '../../../shared/renderer/components/E
 import type { SelectedChannelView } from '../../shared/channelEntry.js';
 import { relayParallelChatMessage } from '../api/index.js';
 import {
+  createDraftParallelBranch,
   createDraftParallelBranches,
   updateDraftParallelBranchAt,
 } from '../../../shared/renderer/draftParallelBranches.js';
@@ -157,11 +158,11 @@ export function useParallelChatDraft(options: {
     [draftParallelBranches],
   );
   const draftParallelBranchAudienceKeys = useMemo(
-    () => draftParallelBranches.map((branch) => branch.audienceKeys),
+    () => draftParallelBranches.map((branch) => branch.target.audienceKeys ?? branch.audienceKeys),
     [draftParallelBranches],
   );
   const draftParallelBranchWorkflowShapes = useMemo(
-    () => draftParallelBranches.map((branch) => branch.workflowShape),
+    () => draftParallelBranches.map((branch) => branch.target.workflowShape ?? branch.workflowShape),
     [draftParallelBranches],
   );
 
@@ -221,17 +222,13 @@ export function useParallelChatDraft(options: {
         draftExecutionTarget,
       );
       const seedBranch = prev[0] ?? null;
+      const audienceKeys = options?.seedAudienceKeys ?? seedBranch?.audienceKeys ?? [];
+      const workflowShape = options?.seedWorkflowShape
+        ?? seedBranch?.workflowShape
+        ?? 'sequential';
       return [
         ...prev,
-        {
-          target: nextTarget,
-          audienceKeys: options?.seedAudienceKeys != null
-            ? [...options.seedAudienceKeys]
-            : [...(seedBranch?.audienceKeys ?? [])],
-          workflowShape: options?.seedWorkflowShape
-            ?? seedBranch?.workflowShape
-            ?? 'sequential',
-        },
+        createDraftParallelBranch(nextTarget, { audienceKeys, workflowShape }),
       ];
     });
   }, [

@@ -13,6 +13,7 @@ import {
 } from '../draftChatUtils.js';
 import type { WorkspaceExecutionTargetValue } from './useWorkspaceComposerSubmit.js';
 import {
+  createDraftParallelBranch,
   createDraftParallelBranches,
   updateDraftParallelBranchAt,
 } from '../draftParallelBranches.js';
@@ -44,11 +45,11 @@ export function useWorkspaceParallelDraft(options: {
     [draftParallelBranches],
   );
   const draftParallelBranchAudienceKeys = useMemo(
-    () => draftParallelBranches.map((branch) => branch.audienceKeys),
+    () => draftParallelBranches.map((branch) => branch.target.audienceKeys ?? branch.audienceKeys),
     [draftParallelBranches],
   );
   const draftParallelBranchWorkflowShapes = useMemo(
-    () => draftParallelBranches.map((branch) => branch.workflowShape),
+    () => draftParallelBranches.map((branch) => branch.target.workflowShape ?? branch.workflowShape),
     [draftParallelBranches],
   );
 
@@ -95,20 +96,19 @@ export function useWorkspaceParallelDraft(options: {
       }
 
       const seedBranch = prev[0] ?? null;
+      const audienceKeys = options?.seedAudienceKeys ?? seedBranch?.audienceKeys ?? [];
+      const workflowShape = options?.seedWorkflowShape
+        ?? seedBranch?.workflowShape
+        ?? 'sequential';
       return [
         ...prev,
-        {
-          target: createNextParallelTarget(
+        createDraftParallelBranch(
+          createNextParallelTarget(
             prev.map((branch) => branch.target),
             draftExecutionTarget,
           ),
-          audienceKeys: options?.seedAudienceKeys != null
-            ? [...options.seedAudienceKeys]
-            : [...(seedBranch?.audienceKeys ?? [])],
-          workflowShape: options?.seedWorkflowShape
-            ?? seedBranch?.workflowShape
-            ?? 'sequential',
-        },
+          { audienceKeys, workflowShape },
+        ),
       ];
     });
   }, [

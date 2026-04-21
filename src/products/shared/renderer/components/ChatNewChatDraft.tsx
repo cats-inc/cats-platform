@@ -13,8 +13,14 @@ import { SidePanel } from '../../../../design/components/SidePanel.js';
 import type { BrowseDirectoryEntry } from '../api/index.js';
 import { type NewChatPreset } from '../draftStarterSuggestionContext.js';
 import {
+  type DraftParallelTarget,
   type DraftTemporaryParticipant,
 } from '../draftChatUtils.js';
+import {
+  resolveBranchAudienceKeys,
+  resolveBranchWorkflowShape,
+  type DraftLeadContext,
+} from '../draftBranchResolution.js';
 import {
   fingerprintDraftHelperChips,
   resolveDraftHelperRegionVisibility,
@@ -98,7 +104,7 @@ export interface NewChatDraftProps {
   draftCatExecutionTargetOverrides: Map<string, ExecutionTargetValue>;
   onDraftCatExecutionTargetOverride: (catId: string, value: ExecutionTargetValue) => void;
   onDirectLaneExecutionTargetChange?: (catId: string, value: ExecutionTargetValue) => void;
-  parallelTargets?: ExecutionTargetValue[];
+  parallelTargets?: DraftParallelTarget[];
   onParallelTargetChange?: (index: number, value: ExecutionTargetValue) => void;
   onAddParallelTarget?: () => void;
   onRemoveParallelTarget?: (index: number) => void;
@@ -207,6 +213,7 @@ export function NewChatDraft({
   onSetParallelBranchAudienceKeys,
   onToggleParallelBranchWorkflowShape,
   onQuickAddParallelBranchTemporaryParticipant,
+  draftRuntimeSessionPolicy = null,
   composerHeaderAccessory = null,
   composerHeaderWhereExtras = null,
   composerFooterAccessory = null,
@@ -293,10 +300,51 @@ export function NewChatDraft({
     return participants.slice(0, maxAudienceParticipants);
   }
 
+  const draftLeadContext: DraftLeadContext = {
+    composerDraft,
+    draftCwd,
+    draftRuntimeSessionPolicy: draftRuntimeSessionPolicy ?? null,
+    draftAudienceKeys: draftAudienceKeys ?? null,
+    draftWorkflowShape: draftWorkflowShape ?? 'sequential',
+    draftFiles,
+  };
+  function resolveParallelTargetForBranch(
+    branchIndex: number,
+    target: DraftParallelTarget,
+  ): DraftParallelTarget {
+    return {
+      ...target,
+      audienceKeys: target.audienceKeys ?? parallelBranchAudienceKeys?.[branchIndex] ?? null,
+      workflowShape: target.workflowShape ?? parallelBranchWorkflowShapes?.[branchIndex] ?? null,
+    };
+  }
+  function resolveParallelBranchAudienceKeys(branchIndex: number): string[] {
+    const target = parallelTargets?.[branchIndex];
+    if (!target) {
+      return parallelBranchAudienceKeys?.[branchIndex] ?? [];
+    }
+    return resolveBranchAudienceKeys(
+      resolveParallelTargetForBranch(branchIndex, target),
+      draftLeadContext,
+    );
+  }
+  function resolveParallelBranchWorkflowShape(
+    branchIndex: number,
+  ): DraftRoomWorkflowShape {
+    const target = parallelTargets?.[branchIndex];
+    if (!target) {
+      return parallelBranchWorkflowShapes?.[branchIndex] ?? 'sequential';
+    }
+    return resolveBranchWorkflowShape(
+      resolveParallelTargetForBranch(branchIndex, target),
+      draftLeadContext,
+    );
+  }
+
   function resolveParallelBranchMembers(
     branchIndex: number,
   ): typeof groupComposerParticipants {
-    const branchAudienceKeys = parallelBranchAudienceKeys?.[branchIndex] ?? [];
+    const branchAudienceKeys = resolveParallelBranchAudienceKeys(branchIndex);
     if (groupComposerParticipants.length === 0 || branchAudienceKeys.length === 0) {
       return [];
     }
@@ -350,7 +398,7 @@ export function NewChatDraft({
   })();
   const hasPrimaryParallelBranchAudience = isParallelMode
     && groupComposerParticipants.length > 0
-    && (parallelBranchAudienceKeys?.[0]?.length ?? 0) > 0;
+    && resolveParallelBranchAudienceKeys(0).length > 0;
   // Lead branch membership (uncapped): the roster must show every
   // member of the lead branch, whereas the audience chip stays
   // capped at maxAudienceParticipants via audienceParticipants.
@@ -411,7 +459,7 @@ export function NewChatDraft({
   // because a pool can legitimately grow past that when multiple
   // branches each host their own members.
   const leadBranchAudienceLength = isParallelMode
-    ? (parallelBranchAudienceKeys?.[0]?.length ?? 0)
+    ? resolveParallelBranchAudienceKeys(0).length
     : groupComposerParticipants.length;
   const canAddAnotherGroupParticipant = isParallelMode
     ? leadBranchAudienceLength < maxBranchMembers
@@ -714,7 +762,7 @@ export function NewChatDraft({
               }
               workflowShape={
                 isParallelMode
-                  ? (parallelBranchWorkflowShapes?.[0] ?? draftWorkflowShape)
+                  ? resolveParallelBranchWorkflowShape(0)
                   : draftWorkflowShape
               }
               onToggleWorkflowShape={
@@ -917,13 +965,15 @@ export function NewChatDraft({
   // remove controls).
 
   function buildShadowCardContent(branchIndex: number, target: ExecutionTargetValue): ReactNode {
-    const branchAudienceKeysLen = parallelBranchAudienceKeys?.[branchIndex]?.length ?? 0;
+    const branchAudienceKeysLen = resolveParallelBranchAudienceKeys(branchIndex).length;
     const branchMembers = resolveParallelBranchMembers(branchIndex);
     const branchAudienceParticipants = branchAudienceKeysLen > 1
       ? resolveParallelBranchAudienceParticipants(branchIndex, target)
       : [buildAudienceParticipantFromExecutionTarget(target, `parallel:${branchIndex}`)];
     const canAddToBranch = branchAudienceKeysLen < maxBranchMembers;
-    const branchWorkflowShape = parallelBranchWorkflowShapes?.[branchIndex] ?? 'sequential';
+    const showBranchCollaborateButton =
+      canAddToBranch && onQuickAddParallelBranchTemporaryParticipant != null;
+    const branchWorkflowShape = resolveParallelBranchWorkflowShape(branchIndex);
     const canRemoveBranch = parallelCount > minParallelTargetCount;
     const canAddMoreBranches = parallelCount < maxParallelChats;
     const showCompareHint = accentParallelAddButton && !hideDraftParallelHint;
@@ -967,23 +1017,25 @@ export function NewChatDraft({
                   </svg>
                 </button>
               </div>
-              {branchMembers.length > 0 ? (
+              {branchMembers.length > 0 || showBranchCollaborateButton ? (
                 <div className="composerGroupAddRow">
-                  <BranchAudienceRoster
-                    audienceParticipants={branchMembers}
-                    isSubmittingFirstTurn={isSubmittingFirstTurn}
-                    canRemoveParticipant={canRemoveGroupParticipant}
-                    useDangerRemoveHover={useDangerGroupRemoveHover}
-                    onAvatarClick={() => openSidePanelTo('cats')}
-                    onRemoveParticipant={(p) => {
-                      if (!onSetParallelBranchAudienceKeys) return;
-                      const nextKeys = branchMembers
-                        .filter((m) => m.key !== p.key)
-                        .map((m) => m.key);
-                      onSetParallelBranchAudienceKeys(branchIndex, nextKeys);
-                    }}
-                  />
-                  {canAddToBranch && onQuickAddParallelBranchTemporaryParticipant ? (
+                  {branchMembers.length > 0 ? (
+                    <BranchAudienceRoster
+                      audienceParticipants={branchMembers}
+                      isSubmittingFirstTurn={isSubmittingFirstTurn}
+                      canRemoveParticipant={canRemoveGroupParticipant}
+                      useDangerRemoveHover={useDangerGroupRemoveHover}
+                      onAvatarClick={() => openSidePanelTo('cats')}
+                      onRemoveParticipant={(p) => {
+                        if (!onSetParallelBranchAudienceKeys) return;
+                        const nextKeys = branchMembers
+                          .filter((m) => m.key !== p.key)
+                          .map((m) => m.key);
+                        onSetParallelBranchAudienceKeys(branchIndex, nextKeys);
+                      }}
+                    />
+                  ) : null}
+                  {showBranchCollaborateButton ? (
                     <button
                       type="button"
                       className="parallelAddButton"
