@@ -15,7 +15,8 @@ export function buildDeleteConversationConfirmation(
   const label = readEntityLabel(conversationTitle, 'this conversation');
   return {
     title: 'Delete conversation',
-    message: `Delete "${label}"? This removes the conversation and linked runtime sessions. `
+    message: `Delete "${label}"? This removes the conversation `
+      + 'and cleans up linked runtime sessions. '
       + 'This cannot be undone.',
     confirmLabel: 'Delete',
   };
@@ -28,7 +29,8 @@ export function buildDeleteParallelChatGroupConfirmation(
   return {
     title: 'Delete all conversations',
     message: `Delete all conversations in "${label}"? `
-      + 'This removes each conversation and linked runtime sessions. This cannot be undone.',
+      + 'This removes each conversation and cleans up linked runtime sessions. '
+      + 'This cannot be undone.',
     confirmLabel: 'Delete all',
   };
 }
@@ -39,7 +41,8 @@ export function buildDeleteCatConfirmation(
   const label = readEntityLabel(catName, 'this cat');
   return {
     title: 'Delete cat',
-    message: `Delete "${label}"? This removes the Cat and any linked runtime sessions. `
+    message: `Delete "${label}"? This removes the Cat `
+      + 'and cleans up linked runtime sessions. '
       + 'This cannot be undone.',
     confirmLabel: 'Delete',
   };
