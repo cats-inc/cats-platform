@@ -300,10 +300,9 @@ place — chat state is owned by the subscription, not the poll.
 
 This spec is **orthogonal** to [ADR-041's invalidation
 contract](../decisions/041-push-transport-and-chat-invalidations-over-sse.md).
-The two run side-by-side on the target surface:
+The two run side-by-side on every target surface:
 
-- ADR-041's `/api/events/chat` stream keeps fired through
-  `useChatEvents` exactly as today. It drives
+- ADR-041's `/api/events/chat` stream drives
   `refreshAppShell()` on `room_updated`, `recents_changed`,
   `unread_changed`, `transport_ingress` so collection-level state
   (channel list, `parallelChatGroups`, recents, unread,
@@ -311,14 +310,29 @@ The two run side-by-side on the target surface:
 - SPEC-076's `/api/subscribe?kind=channel&id=<mounted>` stream
   keeps the *deep* state of the currently-mounted channel fresh
   via snapshot + patch.
-- A renderer mount opens both: ADR-041 once at app level, ADR-075
-  per mounted entity. Neither contract tries to absorb the other.
+- A renderer mount opens both: ADR-041 once at shell level,
+  ADR-075 per mounted entity. Neither contract tries to absorb
+  the other.
 - When a message lands on a sibling channel that the user is not
   viewing, ADR-041 invalidates and `refreshAppShell()` updates the
   sidebar; SPEC-076 is silent because no subscription targets that
   entity. When the user navigates into that channel, a new
   subscription opens and its `snapshot` provides the full live
   state.
+
+**Mount owner for the ADR-041 consumer is the shared workspace
+shell, not only the Chat shell.** Today
+`src/products/chat/renderer/hooks/useChatAppShellRefresh.ts` is the
+only place that calls `useChatEvents` — which means
+`src/products/shared/renderer/WorkspaceProductApp.tsx` (used by
+Code, Work, and any future cross-surface product) currently relies
+exclusively on cold load + the runtime-health background refresh
+for its `chat.channels`, `chat.recents`, `chat.parallelChatGroups`,
+and unread slices. That is a real freshness gap on Code and Work
+target surfaces after cross-surface handoff. PLAN-068 Task 3.5
+names the fix: extract (or lift) the ADR-041 consumer into a
+shared hook that every target shell mounts. Without that, the
+two-tier model is a false promise on non-Chat surfaces.
 
 Renderer ordering is well-defined: ADR-041 invalidations run
 through `refreshAppShell()`, which re-populates the app-shell
@@ -389,11 +403,15 @@ once the subscription layer has matured.
       server-side projector + schema + consuming view only; no
       subscription hub or transport change required.
 - [ ] ADR-041 collection-level invalidation continues to flow on
-      the target surface after cross-surface handoff: a new message
-      on a sibling channel still updates recents / unread /
-      `parallelChatGroups` via `refreshAppShell()`, and a new
-      private lane still promotes. Entity subscription and ADR-041
-      stream coexist without either shadowing the other.
+      **every** target surface (Chat / Code / Work) after cross-
+      surface handoff, not only on the Chat shell. The shared
+      `WorkspaceProductApp` mounts an ADR-041 consumer, so a new
+      message on a sibling channel still updates recents / unread /
+      `parallelChatGroups` via `refreshAppShell()` whether the user
+      is on `/chat/chats/:id`, `/code/chats/:id`, or `/work/...`.
+      A new private lane still promotes on all three. Entity
+      subscription and ADR-041 stream coexist without either
+      shadowing the other.
 
 ## References
 

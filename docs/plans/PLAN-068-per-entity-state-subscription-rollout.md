@@ -128,25 +128,59 @@ channel.
       payload does not balloon just to keep chat-field clients happy;
       if we can trim chat slices in the poll response now that nothing
       consumes them, do it (optional tail task).
-- [ ] Task 3.5: Verify ADR-041 coexistence on target surface. After
-      a cross-surface handoff, `/api/events/chat` invalidation events
-      must continue flowing to `useChatAppShellRefresh` /
-      `useChatEvents` and must continue driving `refreshAppShell()`
-      on `room_updated` / `recents_changed` / `unread_changed` /
-      `transport_ingress`. The entity subscription must not prevent
-      or duplicate this path.
-- [ ] Task 3.6: Document the two-tier model in code: add a
-      structured comment at the `useChatEvents` call site in
-      `useChatAppShellRefresh.ts` pointing at ADR-041 (collection
-      tier) and ADR-075 (entity tier) so future contributors don't
-      try to collapse them into one stream.
-- [ ] Task 3.7: Audit every surface that reads collection-level
+- [ ] Task 3.5: **Land an ADR-041 consumer on the shared workspace
+      shell.** Today the `/api/events/chat` invalidation SSE is only
+      consumed by `src/products/chat/renderer/hooks/useChatAppShellRefresh.ts`
+      (which is mounted by the Chat-only `App.tsx`). The shared
+      `src/products/shared/renderer/WorkspaceProductApp.tsx` — used
+      by Code, Work, and any future product target surfaces — only
+      runs cold load (`useWorkspaceAppShellRouting.ts:176` and
+      `:313`) plus the 5s runtime-health refresh via
+      `mergeWorkspaceBackgroundRefreshPayload`, which explicitly
+      excludes chat state. That means after a cross-surface
+      handoff (e.g. Chat → Code Pomodoro), the Code target shell
+      has **no** live path for channel list / recents /
+      `parallelChatGroups` / unread freshness. Fix this by either:
+      - extracting the ADR-041 consumer into a shared hook
+        (e.g. `products/shared/renderer/hooks/useWorkspaceChatEvents.ts`)
+        and mounting it inside `WorkspaceProductApp`, or
+      - lifting `useChatEvents` itself into a shared location and
+        wiring both `App.tsx` and `WorkspaceProductApp.tsx` to it.
+      Implementer choice; either path must reach every target
+      shell (`/chat`, `/code`, `/work`). This task is a **hard
+      prerequisite** for declaring Phase 3 done: without it, the
+      target-surface promise of "collection state stays live via
+      ADR-041 while entity subscription streams deep state" is
+      false on Code/Work surfaces.
+- [ ] Task 3.6: Verify ADR-041 coexistence on every target
+      surface. After a cross-surface handoff to Code or Work,
+      emit a server-side `room_updated` / `recents_changed` /
+      `unread_changed` / `transport_ingress` event and assert the
+      target shell calls `refreshAppShell()` and updates its
+      collection state. The entity subscription on the mounted
+      channel must not be disturbed by the refetch.
+- [ ] Task 3.7: Document the two-tier model in code: add a
+      structured comment at the shared `useChatEvents` (or
+      `useWorkspaceChatEvents`) call site and at the Chat-side
+      `useChatAppShellRefresh.ts` consumer, pointing at ADR-041
+      (collection tier) and ADR-075 (entity tier). If Task 3.5
+      consolidates the consumer into a shared hook, the old
+      Chat-only call site is removed rather than duplicated.
+- [ ] Task 3.8: Audit every surface that reads collection-level
       chat state — `payload.chat.channels`, `payload.chat.recents`,
-      `payload.chat.parallelChatGroups`, unread counters — to
-      confirm none of them accidentally depend on the entity
-      subscription for freshness. Anything that does must either
+      `payload.chat.parallelChatGroups`, unread counters — on
+      Chat, Code, and Work shells. Confirm none of them accidentally
+      depend on the entity subscription for freshness and none are
+      stranded on cold-load-only. Anything that is must either
       move to the entity snapshot (if it's truly per-entity) or
-      stay on the ADR-041 refetch path (if it's collection-level).
+      move onto the ADR-041 refetch path (if it's collection-level).
+
+**Deliverables**: the polling path is explicitly runtime-health only;
+chat state sync is owned end-to-end by two **named, landed** paths
+— ADR-041 collection-tier invalidation consumed on the **shared
+workspace shell** (not only on the Chat shell) plus ADR-075 entity
+subscription on the mounted entity. Code and Work target surfaces
+observably receive collection-level invalidations after handoff.
 
 ### Phase 4: Polymorphism Proof with a Second Entity Kind
 
@@ -196,8 +230,10 @@ template without architecture change.
 | `cats-platform/tests/entity-subscription-channel-roundtrip.test.ts` | Create | Server-side publisher + renderer dispatcher roundtrip (snapshot, patch, reconnect). |
 | `cats-platform/tests/cross-surface-handoff-transcript-sync.test.tsx` | Create | Target surface receives `session_started` + assistant segments after warm handoff. |
 | `cats-platform/tests/app-shell-background-refresh-chat-exclusion.test.ts` | Create | Explicit regression lock: chat state is never merged from poll. |
-| `cats-platform/tests/adr-041-coexistence-after-cross-surface-handoff.test.tsx` | Create | After warm handoff, ADR-041 invalidation events still reach `useChatEvents` and trigger `refreshAppShell()` for collection-level changes. |
-| `cats-platform/src/products/chat/renderer/hooks/useChatAppShellRefresh.ts` | Modify (comment only) | Add structured comment at the `useChatEvents` call site pointing at the ADR-041 / ADR-075 two-tier model. |
+| `cats-platform/tests/adr-041-coexistence-after-cross-surface-handoff.test.tsx` | Create | After warm handoff to Code/Work, ADR-041 invalidation events reach the shared workspace shell and trigger `refreshAppShell()` for collection-level changes. |
+| `cats-platform/src/products/shared/renderer/hooks/useWorkspaceChatEvents.ts` | Create (or lift `useChatEvents` into this shared location) | Shared ADR-041 consumer that every target shell (Chat/Code/Work) mounts. Closes the gap where `WorkspaceProductApp` today has no `/api/events/chat` consumer and relies solely on cold load + runtime-health poll. |
+| `cats-platform/src/products/shared/renderer/WorkspaceProductApp.tsx` | Modify | Mount the shared ADR-041 consumer so Code/Work target surfaces refresh collection state on invalidation. Add structured comment at the call site pointing at ADR-041 (collection tier) and ADR-075 (entity tier). |
+| `cats-platform/src/products/chat/renderer/hooks/useChatAppShellRefresh.ts` | Modify | Re-point at the shared `useWorkspaceChatEvents` (or equivalent) so the Chat shell uses the same consumer as Code/Work. Add structured comment at the call site pointing at ADR-041 / ADR-075 two-tier model. |
 
 ## Technical Decisions
 
@@ -235,12 +271,15 @@ template without architecture change.
     reach target renderer
   - reconnect: drop the SSE mid-turn, reconnect, confirm replacement
     snapshot brings the view back in sync
-  - ADR-041 coexistence: with an active entity subscription on
-    channel A, emit a server-side `room_updated` / `unread_changed`
-    / `recents_changed` / `transport_ingress` event for channel B;
+  - ADR-041 coexistence — shared workspace shell: mount
+    `WorkspaceProductApp` on `/code/chats/:id` (and separately on
+    `/work/...`), open an entity subscription on channel A, emit a
+    server-side `room_updated` / `unread_changed` /
+    `recents_changed` / `transport_ingress` event for channel B;
     assert the target surface calls `refreshAppShell()` and picks
-    up collection-level changes without disturbing the entity
-    subscription state on channel A
+    up collection-level changes. Assert parity against the Chat
+    shell at `/chat/chats/:id`. The entity subscription state on
+    channel A must not be disturbed by the refetch.
 - **Manual Testing**:
   - `+New chat → Pomodoro app` → target Code surface shows named
     assistant bubble and streams the reply; Chat surface in parallel
@@ -262,6 +301,7 @@ template without architecture change.
 | Phase 1 lands server-side without any renderer consumer | Low — dead code risk | Phase 1 and Phase 2 gated together in rollout; server publisher stays feature-flagged until renderer hub ships |
 | A contributor "simplifies" by folding ADR-041 invalidation into the entity subscription or vice versa | Medium — regresses sibling-channel recents/unread or forces every sidebar channel to subscribe | Structured comment at the `useChatEvents` site plus SPEC-076 non-goal plus explicit coexistence test (Task 3.5) block the refactor at review time |
 | Channel snapshot drifts into carrying collection-level state (sibling channels, global unread, recents) | Medium — snapshot payload bloats and ADR-041 boundary erodes | SPEC-076 scopes snapshot to channel-local fields + compare-group membership of the mounted channel only; review must reject snapshot additions that aren't channel-local |
+| Phase 3 lands but ADR-041 consumer stays Chat-only; Code/Work target shells have no collection-level refresh path after handoff | High — recents/sidebar/parallelChatGroups go stale on Code/Work surfaces; the two-tier model is a false promise outside Chat | Task 3.5 is a hard prerequisite for closing Phase 3. Acceptance test must exercise ADR-041 invalidation arriving while mounted on `/code/chats/:id` and `/work/...`, not only `/chat/chats/:id` |
 
 ## Progress Log
 
