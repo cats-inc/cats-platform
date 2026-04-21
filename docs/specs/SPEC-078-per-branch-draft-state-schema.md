@@ -408,6 +408,20 @@ the three member fields
 multi-field check with no single authoritative field — error-prone
 for orchestrator authors and the state-model consumer alike.
 
+**Caveat: `undefined` and `null` collapse at resolution time.**
+The three-state distinction is authoring-intent only. The
+resolver uses `??`, so `target.runtimeSessionPolicy ??
+group.runtimeSessionPolicy ?? serverDefault` treats `undefined`
+and `null` identically — both fall through to the next level.
+Callers that want "this field was explicitly set to null" as a
+runtime-observable signal (e.g., "orchestrator asserted this
+branch must use server default, do NOT inherit group") would
+need a separate discriminator; today's contract does not provide
+one. If a later spec needs that distinction, it can add an
+explicit `inherit: 'server-default' | 'group'` marker alongside
+the nullable field. The intent-preservation note here exists so
+future implementers don't mistake the `??` collapse for a bug.
+
 The state-model consumer (§ Surfaces Affected) converts each
 resolved per-target `RuntimeSessionPolicy` back into the flattened
 `RuntimeSessionCreateContractInput` shape when calling the
@@ -556,13 +570,24 @@ Per-channel runtime dispatch:
 
 Tests:
 
-- Update fixtures to use target-shape per-branch data, including
-  contract-level fixtures for `CreateParallelChatGroupInput` with
-  per-target `cwd` / `runtimeSessionPolicy`.
-- Add coverage of the flattened wrapper migration: every existing
-  test that constructs a `DraftParallelBranchState<T>` fixture
-  either migrates to the new shape or asserts the resolver reads
-  it correctly during the transitional diff.
+- Contract-level fixtures for `CreateParallelChatGroupInput`:
+  - Group-level `runtimeSessionPolicy` set, no per-target
+    overrides → every child channel inherits the group policy.
+  - Per-target `cwd` / `runtimeSessionPolicy` overrides set →
+    overrides surface on the corresponding per-channel input.
+  - Neither set → server default applies (regression guard for
+    the "empty group-level field" case that motivated adding
+    the field in the first place).
+- Submit-chain propagation: a Workspace / Chat hook receiving a
+  non-null `draftSessionPolicy` option populates the group-level
+  `runtimeSessionPolicy` on the `CreateParallelChatGroupInput`
+  it emits — no "dispatcher updated but hook never forwards"
+  regression.
+- Update existing fixtures to use target-shape per-branch data.
+- Flattened wrapper migration: every existing test that
+  constructs a `DraftParallelBranchState<T>` fixture either
+  migrates to the new shape or asserts the resolver reads it
+  correctly during the transitional diff.
 
 ## Open Questions
 

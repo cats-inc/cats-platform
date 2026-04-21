@@ -151,13 +151,30 @@ order once Phase 1 lands.
         per-target) in `src/products/shared/renderer/api/chat.ts`,
         which re-declares the input shape for the renderer-side
         client.
-      - Update the renderer's parallel-group submit path to
-        populate the new group-level `runtimeSessionPolicy` from
-        `draftRuntimeSessionPolicy` at submit time — without
-        this wiring, the contract field is nominally present
-        but never carries a real lead policy.
-      - Without these, Phase 2's per-branch cwd / session policy
-        UI ships nowhere it can write to.
+      - **Thread `draftSessionPolicy` through the submit-hook
+        chain all the way to the new group-level wire field.**
+        The Workspace hook
+        (`src/products/shared/renderer/hooks/useWorkspaceComposerSubmit.ts`)
+        already receives `draftSessionPolicy` in its options
+        (line 103 at the time of writing) but its
+        `submitNewParallelChatDraft(...)` call site does not
+        forward it. Same gap in the Chat hook
+        (`src/products/chat/renderer/hooks/useComposerSubmit.ts`).
+        The fix is:
+        1. `submitNewParallelChatDraft` (both copies in
+           `src/products/{chat,shared}/renderer/composerParallelDispatch.ts`)
+           accepts a new `draftSessionPolicy?: RuntimeSessionPolicy | null`
+           parameter.
+        2. Both hooks pass their option-level `draftSessionPolicy`
+           into that call site.
+        3. The dispatcher writes it onto the `CreateParallelChatGroupInput`
+           as the group-level `runtimeSessionPolicy`.
+        Without the full chain, changing only the dispatcher
+        leaves the hook never giving the dispatcher a policy to
+        write, and the group-level contract field stays empty —
+        reintroducing the server-default-fallback bug.
+      - Without this whole chain, Phase 2's per-branch cwd /
+        session policy UI ships nowhere it can write to.
 - [ ] Task 1.7: **Update the product-owned parallel-group create
       path** to consume the extended contract. Per ADR-067, this
       is product-owned, not in `src/app/server/**`. Touch both
@@ -278,8 +295,11 @@ src/products/code/state/** / src/products/work/state/**                      (ma
 src/products/chat/api/contracts.ts                                           (CreateParallelChatGroupInput gets NEW group-level runtimeSessionPolicy AND per-target cwd / runtimeSessionPolicy on targets[])
 src/products/shared/renderer/api/chat.ts                                     (mirror both extensions for the renderer client)
 
-# Renderer submit path
-src/products/{chat,shared}/renderer/composerParallelDispatch.ts              (populate group-level runtimeSessionPolicy from draftRuntimeSessionPolicy at submit time)
+# Renderer submit path — threading draftSessionPolicy from hook options to group-level wire field
+src/products/shared/renderer/hooks/useWorkspaceComposerSubmit.ts             (Workspace hook: forward draftSessionPolicy into the submitNewParallelChatDraft call — currently receives draftSessionPolicy at line 103 but does not pass it through at the line 279 call site)
+src/products/chat/renderer/hooks/useComposerSubmit.ts                        (Chat hook: matching wire-through for its submitNewParallelChatDraft call site)
+src/products/shared/renderer/composerParallelDispatch.ts                     (accept draftSessionPolicy arg and populate group-level runtimeSessionPolicy on the CreateParallelChatGroupInput it builds)
+src/products/chat/renderer/composerParallelDispatch.ts                       (same, for the Chat-product copy)
 
 # Product-owned parallel-group create path (NOT src/app/server/**)
 src/products/chat/api/resources/parallelChatGroupCrudRoutes.ts               (route handler passes BOTH group-level runtimeSessionPolicy AND per-target overrides through)
@@ -384,14 +404,28 @@ Phase 2 / Phase 3 surfaces will be listed when they're scheduled.
 
 ## Risks and Open Questions
 
-- **Phase 1 grew once: contract + server work is in scope.**
-  Initial draft underestimated this — per-branch cwd and
-  session policy require extending
-  `CreateParallelChatGroupInput.targets` and the server's
-  parallel-group create handler. Without that, Phase 2's UI
-  ships against fields that can't round-trip to runtime. Treat
-  this as load-bearing — do not slice the contract change out of
-  Phase 1.
+- **Phase 1 grew once: contract + submit chain + state-model
+  work is in scope.** Initial draft underestimated this. Per-
+  branch cwd and session policy require:
+  1. Extending `CreateParallelChatGroupInput` with BOTH a new
+     group-level `runtimeSessionPolicy` field (mirroring
+     `repoPath`) AND per-target `cwd` / `runtimeSessionPolicy`
+     overrides on `targets[]`.
+  2. Threading `draftSessionPolicy` end-to-end through the
+     submit-hook chain (Workspace / Chat hook → dispatcher →
+     group-level wire field). Changing only the dispatcher
+     helper leaves the hook never handing it a policy, and the
+     new group-level field stays empty. That reintroduces the
+     server-default-fallback bug the group-level field was
+     added to fix.
+  3. Updating the product-owned parallel-group create path
+     (route handler + state model) to resolve per-target
+     overrides against the new group-level defaults and flatten
+     into `RuntimeSessionCreateContractInput` on each child
+     `CreateChatChannelInput`.
+  Without all three, Phase 2's UI ships against fields that
+  don't round-trip to runtime. Treat this as load-bearing — do
+  not slice any piece out of Phase 1.
 - **Scope of Phase 1 touch**. Absorbing parallel arrays means
   touching every reader. Today the list is small (lead-branch
   audience, shadow rows, dispatch). As the codebase grows this
