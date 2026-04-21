@@ -41,13 +41,25 @@ export const PROVIDER_TARGETS_CACHE_REFRESH_WARNING_PREFIX =
 export const MODEL_CATALOG_CACHE_REFRESH_WARNING_PREFIX =
   'Using cached model catalog because runtime refresh failed:';
 
-interface ProviderTimedCacheEntry<TValue> {
+interface ProviderTimedCacheEntryBase<TValue> {
   value: TValue;
   freshUntilMs: number;
   staleUntilMs: number;
   staleIfErrorUntilMs: number;
-  cacheRefreshWarning?: ProviderCacheRefreshWarning;
 }
+
+interface ProviderFreshCacheEntry<TValue> extends ProviderTimedCacheEntryBase<TValue> {
+  lifecycle: 'fresh';
+}
+
+interface ProviderErrorBackoffCacheEntry<TValue> extends ProviderTimedCacheEntryBase<TValue> {
+  lifecycle: 'error_backoff';
+  cacheRefreshWarning: ProviderCacheRefreshWarning;
+}
+
+type ProviderTimedCacheEntry<TValue> =
+  | ProviderFreshCacheEntry<TValue>
+  | ProviderErrorBackoffCacheEntry<TValue>;
 
 interface TruthfulProviderRegistryReadModel {
   state: ProviderRegistryState;
@@ -326,7 +338,7 @@ function readProviderCacheValue<TValue>(
   cached: ProviderTimedCacheEntry<TValue>,
   appendWarning: (value: TValue, warning: string) => TValue,
 ): TValue {
-  return cached.cacheRefreshWarning
+  return cached.lifecycle === 'error_backoff'
     ? appendWarning(cached.value, cached.cacheRefreshWarning.message)
     : cached.value;
 }
@@ -340,6 +352,7 @@ function writeProviderCacheErrorBackoff<TValue>(
   const now = Date.now();
   writeEntry({
     ...cached,
+    lifecycle: 'error_backoff',
     freshUntilMs: now + PROVIDER_CACHE_ERROR_BACKOFF_MS,
     staleUntilMs: Math.max(cached.staleUntilMs, now + PROVIDER_CACHE_ERROR_BACKOFF_MS),
     staleIfErrorUntilMs: cached.staleIfErrorUntilMs,
@@ -529,6 +542,7 @@ async function refreshTruthfulProviderRegistry(
       if (shouldCacheTruthfulProviderRegistry(value)) {
         const now = Date.now();
         cacheState.entries.set(cacheKey, {
+          lifecycle: 'fresh',
           value,
           freshUntilMs: now + TRUTHFUL_SELECTOR_CACHE_TTL_MS,
           staleUntilMs: now + TRUTHFUL_SELECTOR_CACHE_TTL_MS + TRUTHFUL_SELECTOR_STALE_WINDOW_MS,
@@ -558,15 +572,15 @@ function tryReadTruthfulProviderRegistryFromRootCache(
   now: number,
 ): TruthfulProviderRegistryReadModel | Promise<TruthfulProviderRegistryReadModel> | null {
   // Root is the authoritative source for refresh state; derived responses
-  // project root's current cacheRefreshWarning at read time rather than
-  // snapshotting it into a provider-specific entry, which would otherwise
-  // keep warning users after root recovered (or vice versa) until derived's
-  // own stale window expired.
+  // project root's current error-backoff warning at read time rather than
+  // snapshotting it into a provider-specific entry, which would otherwise keep
+  // warning users after root recovered (or vice versa) until derived's own
+  // stale window expired.
   const rootCacheKey = buildTruthfulProviderRegistryCacheKey();
   const rootCached = cacheState.entries.get(rootCacheKey);
   if (rootCached && rootCached.staleUntilMs > now) {
     const derivedBase = deriveTruthfulProviderRegistryForProvider(rootCached.value, provider);
-    const derived = rootCached.cacheRefreshWarning
+    const derived = rootCached.lifecycle === 'error_backoff'
       ? appendTruthfulProviderRegistryWarning(derivedBase, rootCached.cacheRefreshWarning.message)
       : derivedBase;
 
@@ -690,6 +704,7 @@ function writeProviderCatalogCacheEntry<TCatalog extends { warnings?: string[] }
 ): void {
   const now = Date.now();
   cacheState.entries.set(cacheKey, {
+    lifecycle: 'fresh',
     value,
     freshUntilMs: now + PROVIDER_MODEL_CATALOG_CACHE_TTL_MS,
     staleUntilMs: now

@@ -219,7 +219,9 @@ contracts.
       back into the caller's expected catalog shape. Renderer auto-recheck now
       uses the same 30s cooldown as the server cache error-backoff window, so
       runtime outage recovery does not retry faster than stale-cache warnings
-      can settle.
+      can settle. Cache entries now use a fresh/error-backoff discriminated
+      lifecycle, so `cacheRefreshWarning` can only exist on error-backoff
+      entries instead of as an optional field on every cache entry.
 - [ ] Refine advanced provider-model UX now that runtime presets and controls are
       first-class, including an `Advanced settings` disclosure pattern that prevents
       large control sets from overwhelming the base provider/instance/model flow
