@@ -143,6 +143,10 @@ import {
   runDesktopScreenshotRegionCapture,
   type DesktopScreenshotOverlayController,
 } from './screenshotRegionCapture.js';
+import {
+  captureWlrootsNativeScreenshotRegion,
+  isLikelyWlrootsScreenshotSession,
+} from './screenshotWlrootsCapture.js';
 
 let mainWindow: BrowserWindow | null = null;
 let hostConfig: DesktopHostConfig | null = null;
@@ -288,6 +292,20 @@ async function captureNativeScreenshotRegion(
       : null;
     if (permissionResult) {
       return permissionResult;
+    }
+
+    if (isLikelyWlrootsScreenshotSession({
+      platform: process.platform,
+      env: process.env,
+    })) {
+      const wlrootsResult = await captureWlrootsNativeScreenshotRegion({
+        platform: process.platform,
+        env: process.env,
+        createFilename: createDesktopScreenshotFilename,
+      });
+      if (wlrootsResult.outcome !== 'platform_unsupported') {
+        return wlrootsResult;
+      }
     }
 
     return await runDesktopScreenshotRegionCapture({
