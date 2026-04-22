@@ -101,11 +101,11 @@
 }
 
 .myCatRowPlaceholder {
-  background: color-mix(in srgb, var(--sidebar-bg) 86%, var(--accent) 14%);
+  background: color-mix(in srgb, var(--sidebar-bg) 82%, #d4a030 18%);
 }
 
 .myCatRowPlaceholder:hover {
-  background: color-mix(in srgb, var(--sidebar-bg) 74%, var(--accent) 26%);
+  background: color-mix(in srgb, var(--sidebar-bg) 70%, #d4a030 30%);
 }
 
 .myCatRowPlaceholderStatic {
@@ -113,7 +113,7 @@
 }
 
 .myCatRowPlaceholderStatic:hover {
-  background: color-mix(in srgb, var(--sidebar-bg) 86%, var(--accent) 14%);
+  background: color-mix(in srgb, var(--sidebar-bg) 82%, #d4a030 18%);
 }
 
 .myCatTelegramIcon {
