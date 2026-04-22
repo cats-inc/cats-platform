@@ -30,7 +30,10 @@ export interface DesktopScreenshotOverlayWindowsController {
 export interface DesktopScreenshotOverlayWindowsControllerOptions {
   onEscape?: () => void;
   onWindowClosed?: () => void;
+  loadTimeoutMs?: number;
 }
+
+export const DEFAULT_DESKTOP_SCREENSHOT_OVERLAY_LOAD_TIMEOUT_MS = 30_000;
 
 export async function openScreenshotOverlayWindows(
   plans: DesktopScreenshotOverlayWindowPlan[],
@@ -39,6 +42,7 @@ export async function openScreenshotOverlayWindows(
 ): Promise<DesktopScreenshotOverlayWindowsController> {
   const windows: DesktopScreenshotOverlayWindowHandle[] = [];
   const cleanupListeners: Array<() => void> = [];
+  const loadTimeoutMs = options.loadTimeoutMs ?? DEFAULT_DESKTOP_SCREENSHOT_OVERLAY_LOAD_TIMEOUT_MS;
 
   try {
     for (const plan of plans) {
@@ -46,7 +50,7 @@ export async function openScreenshotOverlayWindows(
       windows.push(window);
       registerOverlayWindowListeners(window, cleanupListeners, options);
       window.setAlwaysOnTop(plan.alwaysOnTop.enabled, plan.alwaysOnTop.level);
-      await window.loadURL(plan.url);
+      await loadScreenshotOverlayUrlWithTimeout(window, plan.url, loadTimeoutMs);
       window.focus?.();
     }
   } catch (error) {
@@ -61,6 +65,30 @@ export async function openScreenshotOverlayWindows(
       closeScreenshotOverlayWindows(windows);
     },
   };
+}
+
+async function loadScreenshotOverlayUrlWithTimeout(
+  window: DesktopScreenshotOverlayWindowHandle,
+  url: string,
+  timeoutMs: number,
+): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      window.loadURL(url),
+      new Promise<never>((_, reject) => {
+        timer = setTimeout(() => {
+          reject(new Error(
+            `Screenshot overlay window load timed out after ${timeoutMs}ms.`,
+          ));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer !== undefined) {
+      clearTimeout(timer);
+    }
+  }
 }
 
 function registerOverlayWindowListeners(
