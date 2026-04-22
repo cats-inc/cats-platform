@@ -227,6 +227,21 @@ function resolveScreenshotOverlayPreloadPath(config: DesktopHostConfig): string 
   return join(dirname(config.paths.preloadScript), 'screenshotOverlayPreload.cjs');
 }
 
+const DESKTOP_SCREENSHOT_OVERLAY_SAFETY_TIMEOUT_MS = 120_000;
+
+function reportScreenshotOverlayEscapeShortcutFailure(
+  failure: { reason: 'returned_false' | 'threw'; error?: unknown },
+): void {
+  const suffix = failure.reason === 'threw' && failure.error instanceof Error
+    ? `: ${failure.error.message}`
+    : '';
+  process.stderr.write(
+    `Screenshot overlay Escape global shortcut unavailable (${failure.reason})${suffix}. `
+      + 'Renderer before-input-event remains the primary cancel path; '
+      + 'if that also fails, a 120s safety timeout will cancel the session.\n',
+  );
+}
+
 async function openElectronScreenshotOverlay(
   snapshots: DesktopScreenshotDisplaySnapshot[],
 ): Promise<DesktopScreenshotOverlayController> {
@@ -242,10 +257,10 @@ async function openElectronScreenshotOverlay(
     createElectronScreenshotCropDependencies(),
   );
   activeScreenshotOverlaySession = session;
-  const unregisterEscapeShortcut = registerDesktopScreenshotOverlayEscapeShortcut(
-    globalShortcut,
-    () => session.cancel('escape'),
-  );
+  const safetyTimer = setTimeout(() => {
+    session.cancel('timeout');
+  }, DESKTOP_SCREENSHOT_OVERLAY_SAFETY_TIMEOUT_MS);
+  let unregisterEscapeShortcut: (() => void) | null = null;
 
   try {
     const windows = await openScreenshotOverlayWindows(
@@ -260,13 +275,20 @@ async function openElectronScreenshotOverlay(
         onWindowClosed: () => session.cancel('window_closed'),
       },
     );
+    app.focus({ steal: true });
+    unregisterEscapeShortcut = registerDesktopScreenshotOverlayEscapeShortcut(
+      globalShortcut,
+      () => session.cancel('escape'),
+      reportScreenshotOverlayEscapeShortcutFailure,
+    );
 
     return {
       waitForResult() {
         return session.waitForResult();
       },
       closeAll() {
-        unregisterEscapeShortcut();
+        clearTimeout(safetyTimer);
+        unregisterEscapeShortcut?.();
         windows.closeAll();
         if (activeScreenshotOverlaySession === session) {
           activeScreenshotOverlaySession = null;
@@ -274,7 +296,8 @@ async function openElectronScreenshotOverlay(
       },
     };
   } catch (error) {
-    unregisterEscapeShortcut();
+    clearTimeout(safetyTimer);
+    unregisterEscapeShortcut?.();
     if (activeScreenshotOverlaySession === session) {
       activeScreenshotOverlaySession = null;
     }
