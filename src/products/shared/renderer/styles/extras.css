@@ -619,18 +619,57 @@
 .catsTelegramBinding {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 10px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-subtle, var(--panel));
+  min-width: 0;
 }
 
 .catsTelegramBindingHeader {
   display: flex;
   align-items: center;
   gap: 8px;
+  min-width: 0;
 }
 
-.catsTelegramBindingHeader strong {
+.catsTelegramBindingIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #229ED9;
+}
+
+.catsTelegramBindingName {
+  flex: 1 1 auto;
+  min-width: 0;
   font-size: 0.95rem;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.catsTelegramBindingDisconnect {
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.catsTelegramBindingMeta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.catsTelegramBindingLastInbound {
+  font-size: 0.82rem;
+  color: var(--muted-soft);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* Inline delete icon button: 24×24 square with a 14×14 × glyph
@@ -664,6 +703,8 @@
   margin: 0;
   color: var(--muted);
   font-size: var(--text-sm);
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 /* ── Cats dialog (shared shell for Telegram + Memory editors) ────────

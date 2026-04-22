@@ -203,16 +203,20 @@ export function SettingsCatsDetailPanelContent({
               return (
                 <div key={binding.id} className="catsTelegramBinding">
                   <div className="catsTelegramBindingHeader">
-                    <strong>@{binding.botName}</strong>
-                    <span
-                      className={`statusChip ${binding.status === 'active' ? 'statusChipReady' : 'statusChipMuted'}`}
-                    >
-                      {binding.status === 'active' ? 'Active' : 'Disabled'}
+                    <span className="catsTelegramBindingIcon" aria-hidden="true">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M20.66 3.88 2.92 10.9a.73.73 0 0 0 .04 1.38l4.45 1.4 1.72 5.52a.78.78 0 0 0 1.24.37l2.48-2.02 4.87 3.6a.78.78 0 0 0 1.2-.46L21.7 4.76c.17-.7-.52-1.27-1.04-0.88ZM10.1 14.6l-.44 3.15-1.34-4.3 9.38-6.2Z" />
+                      </svg>
                     </span>
+                    <strong
+                      className="catsTelegramBindingName"
+                      data-tooltip={`@${binding.botName}`}
+                    >
+                      @{binding.botName}
+                    </strong>
                     <button
                       type="button"
-                      className="catsInlineDeleteButton"
-                      style={{ marginLeft: 'auto' }}
+                      className="catsInlineDeleteButton catsTelegramBindingDisconnect"
                       disabled={isBotBusy(busy, 'delete', binding.id)}
                       onClick={() => void onDeleteBinding(binding.id)}
                       aria-label="Disconnect Telegram"
@@ -233,12 +237,21 @@ export function SettingsCatsDetailPanelContent({
                       </svg>
                     </button>
                   </div>
-                  <p className="catsTelegramHint">
-                    {binding.inboundMode === 'polling' ? 'Polling' : 'Webhook'}
+                  <div className="catsTelegramBindingMeta">
+                    <span
+                      className={`statusChip ${binding.status === 'active' ? 'statusChipReady' : 'statusChipMuted'}`}
+                    >
+                      {binding.status === 'active' ? 'Active' : 'Disabled'}
+                    </span>
+                    <span className="statusChip statusChipMuted">
+                      {binding.inboundMode === 'polling' ? 'Polling' : 'Webhook'}
+                    </span>
                     {diagnostic?.lastInboundAt ? (
-                      <> · Last inbound {formatTransportTimestamp(diagnostic.lastInboundAt)}</>
+                      <span className="catsTelegramBindingLastInbound">
+                        Last inbound {formatTransportTimestamp(diagnostic.lastInboundAt)}
+                      </span>
                     ) : null}
-                  </p>
+                  </div>
                 </div>
               );
             })}
