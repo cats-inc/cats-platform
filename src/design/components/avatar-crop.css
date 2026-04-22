@@ -79,3 +79,26 @@
   border-color: var(--accent);
   color: var(--accent);
 }
+
+.coverCropDialog {
+  width: min(560px, calc(100vw - 48px));
+}
+
+.coverCropCanvasWrap {
+  width: 480px;
+  height: 180px;
+  margin: 0 auto;
+  border-radius: 12px;
+}
+
+.coverCropCanvas {
+  width: 480px;
+  height: 180px;
+}
+
+.coverCropUploadArea {
+  width: 480px;
+  height: 180px;
+  max-width: 100%;
+  border-radius: 12px;
+}

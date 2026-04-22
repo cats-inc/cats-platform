@@ -213,44 +213,111 @@
 }
 
 .catsCoverField {
-  align-items: flex-start;
+  align-items: stretch;
 }
 
-.catsCoverRow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-wrap: wrap;
+.catsCoverDock {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 6;
+  max-height: 160px;
 }
 
 .catsCoverThumb {
-  width: 160px;
-  height: 56px;
-  border-radius: 6px;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border-radius: 10px;
   border: 1px solid var(--border);
-  background-color: #d8c3a5;
-  background-image: linear-gradient(135deg, #e8d5b7 0%, #b8866a 55%, #6d4a30 100%);
+  background-color: color-mix(in srgb, var(--cat-avatar-color, #b8866a) 75%, #fff);
+  background-image: linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--cat-avatar-color, #b8866a) 45%, #fff) 0%,
+    var(--cat-avatar-color, #b8866a) 55%,
+    color-mix(in srgb, var(--cat-avatar-color, #b8866a) 45%, #000) 100%
+  );
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
-  flex-shrink: 0;
+  cursor: pointer;
+  transition: filter 0.18s ease, border-color 0.18s ease;
 }
 
 .catsCoverThumbLoaded {
   background-color: #2a2a2a;
 }
 
-.catsCoverActions {
+.catsCoverThumb:hover {
+  filter: brightness(0.95);
+  border-color: var(--accent);
+}
+
+.catsCoverThumb:disabled {
+  cursor: default;
+  filter: none;
+}
+
+.catsCoverCameraBadge {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--panel, #fff);
+  color: var(--muted, #6e655c);
+  box-shadow: 0 0 0 2px var(--panel, #fff), 0 1px 3px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.catsCoverDock:hover .catsCoverCameraBadge {
+  background: var(--accent);
+  color: #fff;
+}
+
+.catsCoverRemoveBadge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--panel, #fff);
+  color: var(--muted, #6e655c);
+  cursor: pointer;
+  box-shadow: 0 0 0 2px var(--panel, #fff), 0 1px 3px rgba(0, 0, 0, 0.12);
+  opacity: 0;
+  z-index: 2;
+  transition: opacity 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.catsCoverDock:hover .catsCoverRemoveBadge,
+.catsCoverRemoveBadge:focus-visible {
+  opacity: 1;
+}
+
+.catsCoverRemoveBadge:hover {
+  background: #d04040;
+  color: #fff;
+}
+
+.catsIdentityAvatarRow {
   display: flex;
-  gap: 8px;
   align-items: center;
+  gap: 20px;
   flex-wrap: wrap;
 }
 
-.catsCoverError {
-  margin: 8px 0 0;
-  font-size: 0.82rem;
-  color: #dc3545;
+.catsIdentityBossToggle {
+  margin: 0;
 }
 
 .linkButton:hover {

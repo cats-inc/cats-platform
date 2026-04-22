@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ComponentType, type Dispatch, type FormEvent, type SetStateAction } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type Dispatch, type FormEvent, type SetStateAction } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import type { AppShellPayload } from '../../../api/workspaceContracts.js';
@@ -27,8 +27,8 @@ import {
 } from '../../hooks/useSettingsCatsRegistryActions.js';
 import { useSettingsCatsTelegram } from '../../hooks/useSettingsCatsTelegram.js';
 import { AvatarCropDialog } from '../../../../../design/components/AvatarCropDialog.js';
+import { CoverCropDialog } from '../../../../../design/components/CoverCropDialog.js';
 import {
-  MAX_COVER_BYTES,
   readCatCover,
   subscribeCatCover,
   writeCatCover,
@@ -301,47 +301,24 @@ export function SettingsCatsCanvas({
     }
   };
 
-  const coverInputRef = useRef<HTMLInputElement | null>(null);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
-  const [coverError, setCoverError] = useState<string | null>(null);
+  const [coverCropOpen, setCoverCropOpen] = useState(false);
   useEffect(() => {
     if (!selectedCat) {
       setCoverUrl(null);
       return;
     }
     setCoverUrl(readCatCover(selectedCat.id));
-    setCoverError(null);
     return subscribeCatCover(selectedCat.id, setCoverUrl);
   }, [selectedCat?.id]);
 
-  const handleCoverPick = (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] ?? null;
-    event.target.value = '';
-    if (!file || !selectedCat) return;
-    if (!file.type.startsWith('image/')) {
-      setCoverError('Please choose an image file.');
-      return;
-    }
-    if (file.size > MAX_COVER_BYTES) {
-      setCoverError('Image must be under 4MB.');
-      return;
-    }
-    setCoverError(null);
-    const catId = selectedCat.id;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === 'string' ? reader.result : null;
-      if (!result) return;
-      writeCatCover(catId, result);
-    };
-    reader.onerror = () => {
-      setCoverError('Could not read the selected image.');
-    };
-    reader.readAsDataURL(file);
+  const handleCoverSave = (dataUrl: string) => {
+    setCoverCropOpen(false);
+    if (!selectedCat) return;
+    writeCatCover(selectedCat.id, dataUrl);
   };
   const handleCoverRemove = () => {
     if (!selectedCat) return;
-    setCoverError(null);
     writeCatCover(selectedCat.id, null);
   };
 
@@ -699,44 +676,72 @@ export function SettingsCatsCanvas({
               <SettingsSubSection headerless className="catsSubCard catsIdentityCard">
                 <div className="fieldLabel">
                   <span>Avatar</span>
-                  <div className="catsAvatarDock">
-                    <button
-                      type="button"
-                      className="catAvatar catsIdentityAvatar"
-                      style={selectedCat.avatarUrl
-                        ? { backgroundImage: `url(${selectedCat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', color: 'transparent' }
-                        : selectedCat.avatarColor ? { background: selectedCat.avatarColor } : undefined}
-                      onClick={() => { if (!isArchived) setAvatarCropOpen(true); }}
-                      disabled={isArchived}
-                      aria-label={selectedCat.avatarUrl ? 'Change avatar' : 'Upload avatar'}
-                      data-tooltip={isArchived ? undefined : (selectedCat.avatarUrl ? 'Change avatar' : 'Upload avatar')}
-                    >
-                      {selectedCat.avatarUrl ? '' : catInitials(selectedCat.name)}
-                    </button>
-                    {!isArchived ? (
-                      <span className="catsAvatarCameraBadge" aria-hidden="true">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                          <circle cx="12" cy="13" r="4" />
-                        </svg>
-                      </span>
-                    ) : null}
-                    {selectedCat.avatarUrl && !isArchived ? (
+                  <div className="catsIdentityAvatarRow">
+                    <div className="catsAvatarDock">
                       <button
                         type="button"
-                        className="catsAvatarRemoveBadge"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          void handleAvatarRemove();
-                        }}
-                        aria-label="Remove avatar"
-                        data-tooltip="Remove avatar"
+                        className="catAvatar catsIdentityAvatar"
+                        style={selectedCat.avatarUrl
+                          ? { backgroundImage: `url(${selectedCat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', color: 'transparent' }
+                          : selectedCat.avatarColor ? { background: selectedCat.avatarColor } : undefined}
+                        onClick={() => { if (!isArchived) setAvatarCropOpen(true); }}
+                        disabled={isArchived}
+                        aria-label={selectedCat.avatarUrl ? 'Change avatar' : 'Upload avatar'}
+                        data-tooltip={isArchived ? undefined : (selectedCat.avatarUrl ? 'Change avatar' : 'Upload avatar')}
                       >
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <line x1="18" y1="6" x2="6" y2="18" />
-                          <line x1="6" y1="6" x2="18" y2="18" />
-                        </svg>
+                        {selectedCat.avatarUrl ? '' : catInitials(selectedCat.name)}
                       </button>
+                      {!isArchived ? (
+                        <span className="catsAvatarCameraBadge" aria-hidden="true">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                            <circle cx="12" cy="13" r="4" />
+                          </svg>
+                        </span>
+                      ) : null}
+                      {selectedCat.avatarUrl && !isArchived ? (
+                        <button
+                          type="button"
+                          className="catsAvatarRemoveBadge"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void handleAvatarRemove();
+                          }}
+                          aria-label="Remove avatar"
+                          data-tooltip="Remove avatar"
+                        >
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                        </button>
+                      ) : null}
+                    </div>
+                    {!isArchived && selectedCat.id !== payload.chat.bossCatId ? (
+                      <label className="fieldLabelInline catsIdentityBossToggle">
+                        <input
+                          type="checkbox"
+                          checked={false}
+                          onChange={async (event) => {
+                            if (!event.target.checked) return;
+                            if (payload.chat.bossCatId && payload.chat.bossCatId !== selectedCat.id) {
+                              const currentBoss = payload.chat.cats.find((c) => c.id === payload.chat.bossCatId);
+                              const confirmed = await confirm({
+                                title: 'Change Boss Cat',
+                                message: `${currentBoss?.name ?? 'Another cat'} is currently the Boss Cat. Set ${selectedCat.name} as the Boss instead?`,
+                                confirmLabel: 'Confirm',
+                              });
+                              if (!confirmed) return;
+                            }
+                            await commitCatProfile(
+                              selectedCat.id,
+                              { makeBoss: true },
+                              'Failed to set Boss Cat.',
+                            );
+                          }}
+                        />
+                        <span>Set as Boss Cat</span>
+                      </label>
                     ) : null}
                   </div>
                 </div>
@@ -769,75 +774,51 @@ export function SettingsCatsCanvas({
                     }}
                   />
                 </label>
-                {!isArchived && selectedCat.id !== payload.chat.bossCatId ? (
-                  <label className="fieldLabel fieldLabelInline">
-                    <input
-                      type="checkbox"
-                      // Always unchecked: the checkbox is a trigger, not a
-                      // stable toggle — you can only promote a cat to
-                      // Boss, not un-Boss them here (the new Boss takes
-                      // over as part of the same commit).
-                      checked={false}
-                      onChange={async (event) => {
-                        if (!event.target.checked) return;
-                        if (payload.chat.bossCatId && payload.chat.bossCatId !== selectedCat.id) {
-                          const currentBoss = payload.chat.cats.find((c) => c.id === payload.chat.bossCatId);
-                          const confirmed = await confirm({
-                            title: 'Change Boss Cat',
-                            message: `${currentBoss?.name ?? 'Another cat'} is currently the Boss Cat. Set ${selectedCat.name} as the Boss instead?`,
-                            confirmLabel: 'Confirm',
-                          });
-                          if (!confirmed) return;
-                        }
-                        await commitCatProfile(
-                          selectedCat.id,
-                          { makeBoss: true },
-                          'Failed to set Boss Cat.',
-                        );
-                      }}
-                    />
-                    <span>Set as Boss Cat</span>
-                  </label>
-                ) : null}
                 <div className="fieldLabel catsCoverField">
                   <span>Cover photo</span>
-                  <div className="catsCoverRow">
-                    <div
+                  <div
+                    className="catsCoverDock"
+                    style={
+                      selectedCat.avatarColor
+                        ? ({ '--cat-avatar-color': selectedCat.avatarColor } as Record<string, string>)
+                        : undefined
+                    }
+                  >
+                    <button
+                      type="button"
                       className={`catsCoverThumb${coverUrl ? ' catsCoverThumbLoaded' : ''}`}
                       style={coverUrl ? { backgroundImage: `url(${coverUrl})` } : undefined}
-                      aria-label={coverUrl ? 'Current cover photo' : 'No cover photo set'}
+                      onClick={() => { if (!isArchived) setCoverCropOpen(true); }}
+                      disabled={isArchived}
+                      aria-label={coverUrl ? 'Change cover photo' : 'Upload cover photo'}
+                      data-tooltip={isArchived ? undefined : (coverUrl ? 'Change cover' : 'Upload cover')}
                     />
-                    <div className="catsCoverActions">
+                    {!isArchived ? (
+                      <span className="catsCoverCameraBadge" aria-hidden="true">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                          <circle cx="12" cy="13" r="4" />
+                        </svg>
+                      </span>
+                    ) : null}
+                    {coverUrl && !isArchived ? (
                       <button
                         type="button"
-                        className="secondaryButton"
-                        disabled={isArchived}
-                        onClick={() => coverInputRef.current?.click()}
+                        className="catsCoverRemoveBadge"
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          handleCoverRemove();
+                        }}
+                        aria-label="Remove cover"
+                        data-tooltip="Remove cover"
                       >
-                        {coverUrl ? 'Change cover' : 'Upload cover'}
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
                       </button>
-                      {coverUrl ? (
-                        <button
-                          type="button"
-                          className="secondaryButton"
-                          disabled={isArchived}
-                          onClick={handleCoverRemove}
-                        >
-                          Remove cover
-                        </button>
-                      ) : null}
-                    </div>
-                    <input
-                      ref={coverInputRef}
-                      type="file"
-                      accept="image/*"
-                      style={{ display: 'none' }}
-                      onChange={handleCoverPick}
-                    />
+                    ) : null}
                   </div>
-                  {coverError ? (
-                    <p className="catsCoverError" role="alert">{coverError}</p>
-                  ) : null}
                 </div>
               </SettingsSubSection>
 
@@ -963,6 +944,18 @@ export function SettingsCatsCanvas({
         <AvatarCropDialog
           onSave={(dataUrl) => void handleAvatarSave(dataUrl)}
           onClose={() => setAvatarCropOpen(false)}
+          initialDataUrl={
+            effectiveMode === 'create'
+              ? pendingCreateAvatar
+              : selectedCat?.avatarUrl ?? null
+          }
+        />
+      ) : null}
+      {coverCropOpen ? (
+        <CoverCropDialog
+          onSave={handleCoverSave}
+          onClose={() => setCoverCropOpen(false)}
+          initialDataUrl={coverUrl}
         />
       ) : null}
     </>

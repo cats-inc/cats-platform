@@ -236,6 +236,18 @@ export default function App() {
     publishReadyPayload,
   });
 
+  const onCatAvatarSave = useCallback(
+    async (catId: string, dataUrl: string) => {
+      try {
+        const next = await updateCatProfile(catId, { avatarUrl: dataUrl });
+        startTransition(() => publishReadyPayload(next));
+      } catch {
+        // silent; payload-backed avatar stays visible.
+      }
+    },
+    [publishReadyPayload],
+  );
+
   const onUpdateChannelParticipant = useChannelParticipantUpdate({
     updateChannelParticipantApi,
     setBusy,
@@ -1549,6 +1561,7 @@ export default function App() {
                   onToggleDraftWorkflowShape: () => setDraftWorkflowShape((prev) => prev === 'concurrent' ? 'sequential' : 'concurrent'),
                   draftAudienceKeys,
                   onSetAudienceKeys: setDraftAudienceKeys,
+                  onCatAvatarSave,
                 }}
                 addCatOpen={showAddCatPanel}
                 onToggleAddCat={toggleAddCatPanel}

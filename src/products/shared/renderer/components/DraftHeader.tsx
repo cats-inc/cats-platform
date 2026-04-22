@@ -1,15 +1,14 @@
 import {
   useEffect,
-  useRef,
   useState,
-  type ChangeEvent,
   type CSSProperties,
   type ReactNode,
 } from 'react';
 
+import { AvatarCropDialog } from '../../../../design/components/AvatarCropDialog.js';
+import { CoverCropDialog } from '../../../../design/components/CoverCropDialog.js';
 import { nameInitials } from '../../../../shared/nameInitials.js';
 import {
-  MAX_COVER_BYTES,
   readCatCover,
   subscribeCatCover,
   writeCatCover,
@@ -28,6 +27,7 @@ export interface DraftHeaderProps {
   avatarUrl?: string | null;
   avatarColor?: string | null;
   coverStorageKey?: string | null;
+  onAvatarSave?: (dataUrl: string) => void;
 }
 
 function buildAvatarStyle(input: {
@@ -47,6 +47,25 @@ function buildAvatarStyle(input: {
   return undefined;
 }
 
+function CameraIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+      <circle cx="12" cy="13" r="4" />
+    </svg>
+  );
+}
+
 export function DraftHeader({
   variant = 'intro',
   eyebrow,
@@ -58,12 +77,13 @@ export function DraftHeader({
   avatarUrl,
   avatarColor,
   coverStorageKey,
+  onAvatarSave,
 }: DraftHeaderProps) {
   const hasAvatar = variant === 'profile' && Boolean(avatarName);
   const hasCover = variant === 'profile' && Boolean(coverStorageKey);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
-  const [coverError, setCoverError] = useState<string | null>(null);
+  const [coverDialogOpen, setCoverDialogOpen] = useState(false);
+  const [avatarDialogOpen, setAvatarDialogOpen] = useState(false);
 
   useEffect(() => {
     if (!hasCover || !coverStorageKey) {
@@ -74,34 +94,27 @@ export function DraftHeader({
     return subscribeCatCover(coverStorageKey, setCoverUrl);
   }, [coverStorageKey, hasCover]);
 
-  function handleCoverPick(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0] ?? null;
-    event.target.value = '';
-    if (!file || !coverStorageKey) return;
-    if (!file.type.startsWith('image/')) {
-      setCoverError('Please choose an image file.');
-      return;
-    }
-    if (file.size > MAX_COVER_BYTES) {
-      setCoverError('Image must be under 4MB.');
-      return;
-    }
-    setCoverError(null);
-    const reader = new FileReader();
-    reader.onload = () => {
-      const result = typeof reader.result === 'string' ? reader.result : null;
-      if (!result) return;
-      writeCatCover(coverStorageKey, result);
-    };
-    reader.onerror = () => {
-      setCoverError('Could not read the selected image.');
-    };
-    reader.readAsDataURL(file);
+  function handleCoverSave(dataUrl: string) {
+    setCoverDialogOpen(false);
+    if (!coverStorageKey) return;
+    writeCatCover(coverStorageKey, dataUrl);
   }
 
-  const coverStyle: CSSProperties | undefined = coverUrl
-    ? { backgroundImage: `url(${coverUrl})` }
-    : undefined;
+  function handleAvatarSave(dataUrl: string) {
+    setAvatarDialogOpen(false);
+    onAvatarSave?.(dataUrl);
+  }
+
+  const coverStyle: CSSProperties | undefined = (() => {
+    const style: CSSProperties = {};
+    if (coverUrl) {
+      style.backgroundImage = `url(${coverUrl})`;
+    }
+    if (avatarColor) {
+      (style as Record<string, string>)['--cat-avatar-color'] = avatarColor;
+    }
+    return Object.keys(style).length > 0 ? style : undefined;
+  })();
 
   const headerClassName = [
     'draftHeader',
@@ -111,6 +124,9 @@ export function DraftHeader({
     .filter(Boolean)
     .join(' ');
 
+  const avatarIsEditable = hasAvatar && !avatarUrl && typeof onAvatarSave === 'function';
+  const coverIsEditable = hasCover && !coverUrl;
+
   return (
     <div className={headerClassName}>
       {hasCover ? (
@@ -118,54 +134,45 @@ export function DraftHeader({
           className={`draftHeaderCover${coverUrl ? ' draftHeaderCoverLoaded' : ''}`}
           style={coverStyle}
         >
-          {!coverUrl ? (
-            <div className="draftHeaderCoverActions">
-              <button
-                type="button"
-                className="draftHeaderCoverButton"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <svg
-                  width="14"
-                  height="14"
-                  viewBox="0 0 16 16"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="1.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
-                >
-                  <path d="M5 3.5l1-1h4l1 1h2a1 1 0 0 1 1 1v7.5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1h2z" />
-                  <circle cx="8" cy="8.5" r="2.5" />
-                </svg>
-                <span>Add cover photo</span>
-              </button>
-            </div>
-          ) : null}
-          {coverError ? (
-            <div className="draftHeaderCoverError" role="alert">{coverError}</div>
-          ) : null}
-          {!coverUrl ? (
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              style={{ display: 'none' }}
-              onChange={handleCoverPick}
-            />
+          {coverIsEditable ? (
+            <button
+              type="button"
+              className="draftHeaderCoverAddButton"
+              onClick={() => setCoverDialogOpen(true)}
+              aria-label="Add cover photo"
+            >
+              <CameraIcon />
+              <span>Add cover photo</span>
+            </button>
           ) : null}
         </div>
       ) : null}
       {hasAvatar ? (
         <div className="draftHeaderVisual">
-          <div
-            className="draftHeaderAvatar"
-            style={buildAvatarStyle({ avatarUrl, avatarColor })}
-            aria-hidden="true"
-          >
-            {avatarUrl ? null : nameInitials(avatarName ?? '')}
-          </div>
+          {avatarIsEditable ? (
+            <button
+              type="button"
+              className="draftHeaderAvatar draftHeaderAvatarEditable"
+              style={buildAvatarStyle({ avatarUrl, avatarColor })}
+              onClick={() => setAvatarDialogOpen(true)}
+              aria-label="Add avatar"
+            >
+              <span className="draftHeaderAvatarInitials" aria-hidden="true">
+                {nameInitials(avatarName ?? '')}
+              </span>
+              <span className="draftHeaderAvatarCameraBadge" aria-hidden="true">
+                <CameraIcon />
+              </span>
+            </button>
+          ) : (
+            <div
+              className="draftHeaderAvatar"
+              style={buildAvatarStyle({ avatarUrl, avatarColor })}
+              aria-hidden="true"
+            >
+              {avatarUrl ? null : nameInitials(avatarName ?? '')}
+            </div>
+          )}
         </div>
       ) : null}
       <div className="draftHeaderBody">
@@ -179,6 +186,18 @@ export function DraftHeader({
           <div className="draftHeaderSupportingContent">{supportingContent}</div>
         ) : null}
       </div>
+      {coverDialogOpen ? (
+        <CoverCropDialog
+          onSave={handleCoverSave}
+          onClose={() => setCoverDialogOpen(false)}
+        />
+      ) : null}
+      {avatarDialogOpen ? (
+        <AvatarCropDialog
+          onSave={handleAvatarSave}
+          onClose={() => setAvatarDialogOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }

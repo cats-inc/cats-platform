@@ -350,6 +350,7 @@ export interface NewChatDraftProps {
   onSetAudienceKeys?: (keys: string[]) => void;
   draftRuntimeSessionPolicy?: RuntimeSessionPolicy | null;
   onDraftRuntimeSessionPolicyChange?: (policy: RuntimeSessionPolicy) => void;
+  onCatAvatarSave?: (catId: string, dataUrl: string) => void;
   draftChrome?: ChatNewChatDraftChrome;
   draftCopy?: ChatNewChatDraftCopy;
   starterChips?: ChatNewChatDraftStarterChips;
@@ -421,6 +422,7 @@ export function NewChatDraft({
   onSetAudienceKeys,
   draftRuntimeSessionPolicy = null,
   onDraftRuntimeSessionPolicyChange,
+  onCatAvatarSave,
   draftChrome,
   draftCopy,
   starterChips,
@@ -759,6 +761,11 @@ export function NewChatDraft({
       avatarUrl={defaultRecipientCat.avatarUrl}
       avatarColor={defaultRecipientCat.avatarColor}
       coverStorageKey={defaultRecipientCat.id}
+      onAvatarSave={
+        onCatAvatarSave
+          ? (dataUrl) => onCatAvatarSave(defaultRecipientCat.id, dataUrl)
+          : undefined
+      }
     />
   ) : isCatLedDraft && effectiveDefaultRecipientCat ? (
     <DraftHeader

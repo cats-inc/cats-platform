@@ -1,10 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-const OUTPUT_SIZE = 256;
+const OUTPUT_WIDTH = 960;
+const OUTPUT_HEIGHT = 360;
+const CANVAS_WIDTH = 480;
+const CANVAS_HEIGHT = 180;
 
-export interface AvatarCropDialogProps {
+export interface CoverCropDialogProps {
   onSave: (dataUrl: string) => void;
   onClose: () => void;
+  title?: string;
   initialDataUrl?: string | null;
 }
 
@@ -15,31 +19,38 @@ interface ImageState {
   scale: number;
 }
 
-function clampOffset(state: ImageState, canvasSize: number): { x: number; y: number } {
+function clampOffset(state: ImageState, width: number, height: number): { x: number; y: number } {
   const w = state.img.naturalWidth * state.scale;
   const h = state.img.naturalHeight * state.scale;
-  const minX = canvasSize - w;
-  const minY = canvasSize - h;
   return {
-    x: Math.min(0, Math.max(minX, state.x)),
-    y: Math.min(0, Math.max(minY, state.y)),
+    x: Math.min(0, Math.max(width - w, state.x)),
+    y: Math.min(0, Math.max(height - h, state.y)),
   };
 }
 
-function drawImage(ctx: CanvasRenderingContext2D, state: ImageState, size: number): void {
-  ctx.clearRect(0, 0, size, size);
+function drawImage(
+  ctx: CanvasRenderingContext2D,
+  state: ImageState,
+  width: number,
+  height: number,
+): void {
+  ctx.clearRect(0, 0, width, height);
   const w = state.img.naturalWidth * state.scale;
   const h = state.img.naturalHeight * state.scale;
-  const clamped = clampOffset(state, size);
+  const clamped = clampOffset(state, width, height);
   ctx.drawImage(state.img, clamped.x, clamped.y, w, h);
 }
 
-function fitScale(img: HTMLImageElement, canvasSize: number): number {
-  const minDim = Math.min(img.naturalWidth, img.naturalHeight);
-  return canvasSize / minDim;
+function fitScale(img: HTMLImageElement, width: number, height: number): number {
+  return Math.max(width / img.naturalWidth, height / img.naturalHeight);
 }
 
-export function AvatarCropDialog({ onSave, onClose, initialDataUrl }: AvatarCropDialogProps) {
+export function CoverCropDialog({
+  onSave,
+  onClose,
+  title = 'Upload cover photo',
+  initialDataUrl,
+}: CoverCropDialogProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageState, setImageState] = useState<ImageState | null>(null);
@@ -48,7 +59,7 @@ export function AvatarCropDialog({ onSave, onClose, initialDataUrl }: AvatarCrop
   const redraw = useCallback(() => {
     const ctx = canvasRef.current?.getContext('2d');
     if (!ctx || !imageState) return;
-    drawImage(ctx, imageState, OUTPUT_SIZE);
+    drawImage(ctx, imageState, CANVAS_WIDTH, CANVAS_HEIGHT);
   }, [imageState]);
 
   useEffect(() => {
@@ -62,13 +73,13 @@ export function AvatarCropDialog({ onSave, onClose, initialDataUrl }: AvatarCrop
     img.crossOrigin = 'anonymous';
     img.onload = () => {
       if (cancelled) return;
-      const scale = fitScale(img, OUTPUT_SIZE);
+      const scale = fitScale(img, CANVAS_WIDTH, CANVAS_HEIGHT);
       const w = img.naturalWidth * scale;
       const h = img.naturalHeight * scale;
       setImageState({
         img,
-        x: (OUTPUT_SIZE - w) / 2,
-        y: (OUTPUT_SIZE - h) / 2,
+        x: (CANVAS_WIDTH - w) / 2,
+        y: (CANVAS_HEIGHT - h) / 2,
         scale,
       });
     };
@@ -82,13 +93,13 @@ export function AvatarCropDialog({ onSave, onClose, initialDataUrl }: AvatarCrop
     if (!file.type.startsWith('image/')) return;
     const img = new Image();
     img.onload = () => {
-      const scale = fitScale(img, OUTPUT_SIZE);
+      const scale = fitScale(img, CANVAS_WIDTH, CANVAS_HEIGHT);
       const w = img.naturalWidth * scale;
       const h = img.naturalHeight * scale;
       setImageState({
         img,
-        x: (OUTPUT_SIZE - w) / 2,
-        y: (OUTPUT_SIZE - h) / 2,
+        x: (CANVAS_WIDTH - w) / 2,
+        y: (CANVAS_HEIGHT - h) / 2,
         scale,
       });
     };
@@ -112,7 +123,7 @@ export function AvatarCropDialog({ onSave, onClose, initialDataUrl }: AvatarCrop
       setImageState((prev) => {
         if (!prev) return prev;
         const next = { ...prev, x: dragRef.current!.origX + dx, y: dragRef.current!.origY + dy };
-        const clamped = clampOffset(next, OUTPUT_SIZE);
+        const clamped = clampOffset(next, CANVAS_WIDTH, CANVAS_HEIGHT);
         return { ...next, ...clamped };
       });
     }
@@ -133,30 +144,33 @@ export function AvatarCropDialog({ onSave, onClose, initialDataUrl }: AvatarCrop
     const delta = e.deltaY > 0 ? 0.95 : 1.05;
     setImageState((prev) => {
       if (!prev) return prev;
-      const minScale = fitScale(prev.img, OUTPUT_SIZE);
+      const minScale = fitScale(prev.img, CANVAS_WIDTH, CANVAS_HEIGHT);
       const newScale = Math.max(minScale, Math.min(prev.scale * delta, minScale * 5));
-      const cx = OUTPUT_SIZE / 2;
-      const cy = OUTPUT_SIZE / 2;
+      const cx = CANVAS_WIDTH / 2;
+      const cy = CANVAS_HEIGHT / 2;
       const newX = cx - (cx - prev.x) * (newScale / prev.scale);
       const newY = cy - (cy - prev.y) * (newScale / prev.scale);
       const next = { ...prev, scale: newScale, x: newX, y: newY };
-      const clamped = clampOffset(next, OUTPUT_SIZE);
+      const clamped = clampOffset(next, CANVAS_WIDTH, CANVAS_HEIGHT);
       return { ...next, ...clamped };
     });
   }
 
   function handleSave(): void {
-    const canvas = canvasRef.current;
-    if (!canvas || !imageState) return;
+    if (!imageState) return;
     const outCanvas = document.createElement('canvas');
-    outCanvas.width = OUTPUT_SIZE;
-    outCanvas.height = OUTPUT_SIZE;
+    outCanvas.width = OUTPUT_WIDTH;
+    outCanvas.height = OUTPUT_HEIGHT;
     const ctx = outCanvas.getContext('2d')!;
-    ctx.beginPath();
-    ctx.arc(OUTPUT_SIZE / 2, OUTPUT_SIZE / 2, OUTPUT_SIZE / 2, 0, Math.PI * 2);
-    ctx.clip();
-    drawImage(ctx, imageState, OUTPUT_SIZE);
-    onSave(outCanvas.toDataURL('image/png'));
+    const scaleUp = OUTPUT_WIDTH / CANVAS_WIDTH;
+    const highResState: ImageState = {
+      img: imageState.img,
+      x: imageState.x * scaleUp,
+      y: imageState.y * scaleUp,
+      scale: imageState.scale * scaleUp,
+    };
+    drawImage(ctx, highResState, OUTPUT_WIDTH, OUTPUT_HEIGHT);
+    onSave(outCanvas.toDataURL('image/jpeg', 0.85));
   }
 
   useEffect(() => {
@@ -169,27 +183,30 @@ export function AvatarCropDialog({ onSave, onClose, initialDataUrl }: AvatarCrop
 
   return (
     <div className="avatarCropOverlay" onClick={onClose}>
-      <div className="avatarCropDialog" onClick={(e) => e.stopPropagation()}>
-        <p className="avatarCropTitle">Upload avatar</p>
+      <div
+        className="avatarCropDialog coverCropDialog"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <p className="avatarCropTitle">{title}</p>
         {imageState ? (
           <>
             <div
-              className="avatarCropCanvasWrap"
+              className="avatarCropCanvasWrap coverCropCanvasWrap"
               onMouseDown={handleMouseDown}
               onWheel={handleWheel}
             >
               <canvas
                 ref={canvasRef}
-                className="avatarCropCanvas"
-                width={OUTPUT_SIZE}
-                height={OUTPUT_SIZE}
+                className="avatarCropCanvas coverCropCanvas"
+                width={CANVAS_WIDTH}
+                height={CANVAS_HEIGHT}
               />
             </div>
             <p className="avatarCropHint">Drag to reposition, scroll to zoom</p>
           </>
         ) : (
           <div
-            className="avatarCropUploadArea"
+            className="avatarCropUploadArea coverCropUploadArea"
             onClick={() => fileInputRef.current?.click()}
           >
             Click to choose image
