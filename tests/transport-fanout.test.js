@@ -216,6 +216,52 @@ test('transport fanout links a recent unlinked Telegram conversation for first w
   }
 });
 
+test('transport fanout skips auto-link when multiple unlinked Telegram conversations are ambiguous', async () => {
+  const fixture = await createFanoutFixture({}, { linkRoom: false });
+  try {
+    const context = {
+      bossCatId: null,
+      bossCatName: null,
+      bossCatActorId: null,
+      botBindings: [fixture.binding],
+      defaultBotBinding: fixture.binding,
+      selectedBotBinding: fixture.binding,
+    };
+    fixture.relay.receiveUpdate({
+      update: {
+        update_id: 102,
+        message: {
+          message_id: 89,
+          text: 'hello from stranger',
+          chat: { id: 67890, type: 'private' },
+        },
+      },
+      context,
+    });
+
+    await appendAndPublish(
+      fixture,
+      {
+        senderKind: 'user',
+        senderName: 'Kenneth',
+        body: 'should not leak to stranger',
+      },
+      { origin: 'web' },
+    );
+
+    assert.equal(fixture.deliveries.length, 0);
+    assert.equal(
+      fixture.relay.resolveBinding({
+        roomId: fixture.channelId,
+        bindingId: fixture.binding.id,
+      }),
+      null,
+    );
+  } finally {
+    fixture.stop();
+  }
+});
+
 test('transport fanout skips the Telegram source binding for ingress-originated turns', async () => {
   const fixture = await createFanoutFixture();
   try {

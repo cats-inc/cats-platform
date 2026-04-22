@@ -42,6 +42,7 @@ export interface TelegramRelay {
     bindingId?: string | null;
     roomId?: string | null;
   }): TelegramConversationBinding | null;
+  findSoleUnlinkedConversation(bindingId: string): TelegramConversationBinding | null;
   linkRoom(input: {
     conversationId?: string | null;
     chatId?: string | null;
@@ -109,10 +110,6 @@ function resolveStoredBinding(
     ) ?? null;
   }
 
-  if (bindingId) {
-    return store.listBindings().find((binding) => binding.bindingId === bindingId) ?? null;
-  }
-
   return null;
 }
 
@@ -169,6 +166,15 @@ export function createTelegramRelay(options: TelegramRelayOptions = {}): Telegra
 
     resolveBinding(input): TelegramConversationBinding | null {
       return resolveStoredBinding(store, input);
+    },
+
+    findSoleUnlinkedConversation(bindingId: string): TelegramConversationBinding | null {
+      const normalized = readTelegramString(bindingId);
+      if (!normalized) return null;
+      const unlinked = store
+        .listBindings()
+        .filter((binding) => binding.bindingId === normalized && !binding.linkedRoomId);
+      return unlinked.length === 1 ? unlinked[0] : null;
     },
 
     linkRoom(input): TelegramConversationBinding | null {

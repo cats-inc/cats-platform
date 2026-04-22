@@ -68,14 +68,18 @@ function resolveLinkedConversation(
     return linkedConversation;
   }
 
-  const recentConversation = relay.resolveBinding({ bindingId: input.binding.id });
-  if (!recentConversation || recentConversation.linkedRoomId) {
+  // Auto-link only when there is exactly one unlinked conversation for this
+  // binding. If multiple unlinked conversations exist (bot used by more than
+  // one Telegram user), we cannot safely guess which one belongs to the owner,
+  // so we skip rather than risk leaking web-originated messages to a stranger.
+  const candidate = relay.findSoleUnlinkedConversation(input.binding.id);
+  if (!candidate) {
     return null;
   }
 
   return relay.linkRoom({
-    conversationId: recentConversation.conversationId,
-    chatId: recentConversation.telegramChatId,
+    conversationId: candidate.conversationId,
+    chatId: candidate.telegramChatId,
     bindingId: input.binding.id,
     roomId: input.channelId,
   });

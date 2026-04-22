@@ -1,5 +1,23 @@
 import type { ChatEventHub } from './chatEventHub.js';
-import type { ChatMessage, MessageOrigin } from './contracts.js';
+import type { MessageOrigin } from './contracts.js';
+
+const MESSAGE_ORIGINS = new Set<MessageOrigin>([
+  'web',
+  'telegram',
+  'browser',
+  'email',
+  'runtime',
+  'system',
+  'unknown',
+]);
+
+export function normalizeMessageOrigin(value: unknown): MessageOrigin | null {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed && MESSAGE_ORIGINS.has(trimmed as MessageOrigin)
+    ? trimmed as MessageOrigin
+    : null;
+}
 
 export interface RoomMutationDetail {
   messageId?: string;
@@ -17,13 +35,18 @@ function readMetadataString(
     : null;
 }
 
-export function buildRoomMessageMutationDetail(message: ChatMessage): RoomMutationDetail {
+export function buildRoomMessageMutationDetail(
+  message: { id?: string | null; metadata?: Record<string, unknown> | null },
+): RoomMutationDetail {
   const metadata = message.metadata ?? {};
-  const origin = readMetadataString(metadata, 'origin') as MessageOrigin | null;
+  const origin = normalizeMessageOrigin(metadata.origin);
   const sourceTransportBindingId = readMetadataString(metadata, 'sourceTransportBindingId');
+  const messageId = typeof message.id === 'string' && message.id.length > 0
+    ? message.id
+    : null;
 
   return {
-    messageId: message.id,
+    ...(messageId ? { messageId } : {}),
     ...(origin ? { origin } : {}),
     ...(sourceTransportBindingId ? { sourceTransportBindingId } : {}),
   };

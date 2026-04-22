@@ -147,3 +147,32 @@ test('publishTelegramBridgeResult emits message metadata for every appended brid
     },
   ]);
 });
+
+test('publishTelegramBridgeResult drops unknown origin values from room_updated detail', () => {
+  const hub = new ChatEventHub();
+  const received = [];
+  hub.subscribe((event) => received.push(event));
+
+  publishTelegramBridgeResult(hub, {
+    roomId: 'channel-telegram-1',
+    messages: [
+      {
+        id: 'msg-spoofed',
+        senderKind: 'user',
+        senderName: 'Spoofed',
+        body: 'nope',
+        metadata: {
+          origin: 'not-a-real-origin',
+          sourceTransportBindingId: 'transport-telegram-bot-binding-cat',
+        },
+      },
+    ],
+  });
+
+  const roomUpdate = received.find((event) => event.kind === 'room_updated');
+  assert.deepEqual(roomUpdate.detail, {
+    mutation: 'message_added',
+    messageId: 'msg-spoofed',
+    sourceTransportBindingId: 'transport-telegram-bot-binding-cat',
+  });
+});

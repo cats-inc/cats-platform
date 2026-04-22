@@ -20,7 +20,7 @@ import { normalizeEffectiveBotBinding } from '../../products/chat/state/botBindi
 import type { ChatEventHub } from '../../products/chat/api/chatEventHub.js';
 import { updateCatSkillProfile } from '../../products/chat/state/model/index.js';
 import {
-  type RoomMutationDetail,
+  buildRoomMessageMutationDetail,
   publishRoomMutation,
   publishTransportIngress,
 } from '../../products/chat/api/transportEventPublisher.js';
@@ -287,20 +287,15 @@ export function publishTelegramBridgeResult(
   }
 
   for (const message of messages) {
-    const metadata = message.metadata ?? {};
-    const origin = typeof metadata.origin === 'string' && metadata.origin.trim()
-      ? metadata.origin.trim() as RoomMutationDetail['origin']
-      : undefined;
-    const sourceTransportBindingId =
-      typeof metadata.sourceTransportBindingId === 'string'
-        && metadata.sourceTransportBindingId.trim()
-        ? metadata.sourceTransportBindingId.trim()
-        : undefined;
-    publishRoomMutation(eventHub, bridgeResult.roomId, 'message_added', {
-      ...(message.id ? { messageId: message.id } : {}),
-      ...(origin ? { origin } : {}),
-      ...(sourceTransportBindingId ? { sourceTransportBindingId } : {}),
-    });
+    publishRoomMutation(
+      eventHub,
+      bridgeResult.roomId,
+      'message_added',
+      buildRoomMessageMutationDetail({
+        id: message.id ?? undefined,
+        metadata: message.metadata,
+      }),
+    );
   }
 }
 
