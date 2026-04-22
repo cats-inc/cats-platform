@@ -4,7 +4,7 @@ import type { AppShellPayload } from '../../../products/shared/api/workspaceCont
 import type { AssistantPresetRecord, GuideCatRecord } from '../../../core/types.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import { ConfirmDialog, useConfirmDialog } from '../../../design/components/ConfirmDialog.js';
-import { ProviderModelFields } from '../../../design/components/ProviderModelFields.js';
+import { ProviderModelBrainCard } from '../../../design/components/ProviderModelBrainCard.js';
 import {
   SettingsActionBar,
   SettingsSection,
@@ -407,28 +407,23 @@ export function SettingsAssistants({
               </SettingsSubSection>
             </div>
             <div className="catsDetailColumn">
-              <SettingsSubSection
-                className="catsSubCard"
-                header={<SettingsSectionHeader title="Brain" nested />}
-              >
-                <ProviderModelFields
-                  provider={guideCat?.executionTarget.provider ?? 'claude'}
-                  instance={guideCat?.executionTarget.instance ?? ''}
-                  model={guideCat?.executionTarget.model ?? ''}
-                  modelSelection={guideCat?.modelSelection ?? null}
-                  onTargetChange={(target) => {
-                    void commitGuideCat({
-                      provider: target.provider,
-                      instance: target.instance || null,
-                      model: target.model || null,
-                      modelSelection: target.modelSelection ?? null,
-                    });
-                  }}
-                  fetchProviderRegistry={fetchProviderRegistry}
-                  fetchProviderModels={fetchProviderModels}
-                  fetchAdvancedProviderModels={fetchAdvancedProviderModels}
-                />
-              </SettingsSubSection>
+              <ProviderModelBrainCard
+                provider={guideCat?.executionTarget.provider ?? 'claude'}
+                instance={guideCat?.executionTarget.instance ?? ''}
+                model={guideCat?.executionTarget.model ?? ''}
+                modelSelection={guideCat?.modelSelection ?? null}
+                onTargetChange={(target) => {
+                  void commitGuideCat({
+                    provider: target.provider,
+                    instance: target.instance || null,
+                    model: target.model || null,
+                    modelSelection: target.modelSelection ?? null,
+                  });
+                }}
+                fetchProviderRegistry={fetchProviderRegistry}
+                fetchProviderModels={fetchProviderModels}
+                fetchAdvancedProviderModels={fetchAdvancedProviderModels}
+              />
             </div>
           </div>
         </SettingsSection>
@@ -572,28 +567,23 @@ export function SettingsAssistants({
                 </SettingsSubSection>
               </div>
               <div className="catsDetailColumn">
-                <SettingsSubSection
-                  className="catsSubCard"
-                  header={<SettingsSectionHeader title="Brain" nested />}
-                >
-                  <ProviderModelFields
-                    provider={createDraft.provider}
-                    instance={createDraft.instance}
-                    model={createDraft.model}
-                    modelSelection={createDraft.modelSelection}
-                    onTargetChange={(target) =>
-                      setCreateDraft((prev) => ({
-                        ...prev,
-                        provider: target.provider,
-                        instance: target.instance,
-                        model: target.model,
-                        modelSelection: target.modelSelection ?? null,
-                      }))}
-                    fetchProviderRegistry={fetchProviderRegistry}
-                    fetchProviderModels={fetchProviderModels}
-                    fetchAdvancedProviderModels={fetchAdvancedProviderModels}
-                  />
-                </SettingsSubSection>
+                <ProviderModelBrainCard
+                  provider={createDraft.provider}
+                  instance={createDraft.instance}
+                  model={createDraft.model}
+                  modelSelection={createDraft.modelSelection}
+                  onTargetChange={(target) =>
+                    setCreateDraft((prev) => ({
+                      ...prev,
+                      provider: target.provider,
+                      instance: target.instance,
+                      model: target.model,
+                      modelSelection: target.modelSelection ?? null,
+                    }))}
+                  fetchProviderRegistry={fetchProviderRegistry}
+                  fetchProviderModels={fetchProviderModels}
+                  fetchAdvancedProviderModels={fetchAdvancedProviderModels}
+                />
               </div>
             </div>
           ) : selectedAssistant ? (
@@ -654,32 +644,27 @@ export function SettingsAssistants({
                 </SettingsSubSection>
               </div>
               <div className="catsDetailColumn">
-                <SettingsSubSection
-                  className="catsSubCard"
-                  header={<SettingsSectionHeader title="Brain" nested />}
-                >
-                  <ProviderModelFields
-                    provider={selectedAssistant.executionTarget.provider}
-                    instance={selectedAssistant.executionTarget.instance ?? ''}
-                    model={selectedAssistant.executionTarget.model ?? ''}
-                    modelSelection={selectedAssistant.modelSelection}
-                    onTargetChange={(target) => {
-                      void commitAssistant(
-                        selectedAssistant.id,
-                        {
-                          provider: target.provider,
-                          instance: target.instance || null,
-                          model: target.model || null,
-                          modelSelection: target.modelSelection ?? null,
-                        },
-                        'Failed to update Brain.',
-                      );
-                    }}
-                    fetchProviderRegistry={fetchProviderRegistry}
-                    fetchProviderModels={fetchProviderModels}
-                    fetchAdvancedProviderModels={fetchAdvancedProviderModels}
-                  />
-                </SettingsSubSection>
+                <ProviderModelBrainCard
+                  provider={selectedAssistant.executionTarget.provider}
+                  instance={selectedAssistant.executionTarget.instance ?? ''}
+                  model={selectedAssistant.executionTarget.model ?? ''}
+                  modelSelection={selectedAssistant.modelSelection}
+                  onTargetChange={(target) => {
+                    void commitAssistant(
+                      selectedAssistant.id,
+                      {
+                        provider: target.provider,
+                        instance: target.instance || null,
+                        model: target.model || null,
+                        modelSelection: target.modelSelection ?? null,
+                      },
+                      'Failed to update Brain.',
+                    );
+                  }}
+                  fetchProviderRegistry={fetchProviderRegistry}
+                  fetchProviderModels={fetchProviderModels}
+                  fetchAdvancedProviderModels={fetchAdvancedProviderModels}
+                />
               </div>
             </div>
           ) : null}

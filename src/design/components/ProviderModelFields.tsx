@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 
 import {
   type ProductProviderRegistryReadModel,
@@ -61,6 +61,12 @@ export {
   updatePersistentControlValues,
 } from './providerModelFieldsSupport.js';
 
+export interface ProviderRegistryRecoveryState {
+  canRetry: boolean;
+  retry: () => void;
+  setupHref: string | null;
+}
+
 interface SharedProviderModelFieldsProps {
   provider: string;
   instance: string;
@@ -74,6 +80,12 @@ interface SharedProviderModelFieldsProps {
     instance?: string | null,
   ) => Promise<ProviderAdvancedModelCatalog>;
   onProviderRegistryChange?: (registry: ProductProviderRegistryReadModel) => void;
+  /** When true, the inline Retry button under the Provider dropdown is hidden
+   * so callers can surface it elsewhere (e.g. in the Brain subcard header). */
+  hideInlineRetry?: boolean;
+  /** Called when the registry recovery state (canRetry/setupHref) changes so
+   * callers can render their own Retry affordance; receives null on unmount. */
+  onRegistryRecoveryChange?: (state: ProviderRegistryRecoveryState | null) => void;
 }
 
 export function ProviderModelFields({
@@ -86,6 +98,8 @@ export function ProviderModelFields({
   fetchProviderModels,
   fetchAdvancedProviderModels,
   onProviderRegistryChange,
+  hideInlineRetry = false,
+  onRegistryRecoveryChange,
 }: SharedProviderModelFieldsProps) {
   const {
     providers,
@@ -182,6 +196,30 @@ export function ProviderModelFields({
     lastAutoProviderRegistryRecheckAt,
     reloadProviderRegistry,
   });
+
+  // Give consumers (e.g. the Brain subcard header) a stable way to reach
+  // `forceReloadProviderRegistry` without re-running the effect every render:
+  // forceReloadProviderRegistry is created fresh on each render of the state
+  // hook, so we capture the latest version in a ref and expose a stable
+  // wrapper.
+  const forceReloadRef = useRef(forceReloadProviderRegistry);
+  forceReloadRef.current = forceReloadProviderRegistry;
+  const stableForceReload = useMemo(
+    () => (): void => forceReloadRef.current(),
+    [],
+  );
+  const onRegistryRecoveryChangeRef = useRef(onRegistryRecoveryChange);
+  onRegistryRecoveryChangeRef.current = onRegistryRecoveryChange;
+  useEffect(() => {
+    onRegistryRecoveryChangeRef.current?.({
+      canRetry: canRetryProviderRegistry,
+      retry: stableForceReload,
+      setupHref: providerRegistrySetupHref,
+    });
+  }, [canRetryProviderRegistry, providerRegistrySetupHref, stableForceReload]);
+  useEffect(() => () => {
+    onRegistryRecoveryChangeRef.current?.(null);
+  }, []);
 
   const {
     onProviderChange,
@@ -284,6 +322,7 @@ export function ProviderModelFields({
             canRetryProviderRegistry={canRetryProviderRegistry}
             providerRegistrySetupHref={providerRegistrySetupHref}
             forceReloadProviderRegistry={forceReloadProviderRegistry}
+            hideRetry={hideInlineRetry}
           />
         ) : null}
       </label>

@@ -5,20 +5,24 @@ export function ProviderRegistryRecovery(input: {
   canRetryProviderRegistry: boolean;
   providerRegistrySetupHref: string | null;
   forceReloadProviderRegistry: () => void;
+  hideRetry?: boolean;
 }) {
   const {
     providerRegistryHint,
     canRetryProviderRegistry,
     providerRegistrySetupHref,
     forceReloadProviderRegistry,
+    hideRetry = false,
   } = input;
+
+  const showRetry = canRetryProviderRegistry && !hideRetry;
 
   return (
     <>
       <span className="fieldHint">
         {providerRegistryHint}
       </span>
-      {canRetryProviderRegistry ? (
+      {showRetry ? (
         <div className="providerCatalogRecoveryActions">
           <button
             className="secondaryButton"

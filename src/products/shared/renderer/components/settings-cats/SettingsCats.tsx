@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 import type { AppShellPayload } from '../../../api/workspaceContracts.js';
 import { ConfirmDialog, useConfirmDialog } from '../../../../../design/components/ConfirmDialog.js';
-import { ProviderModelFields } from '../../../../../design/components/ProviderModelFields.js';
+import { ProviderModelBrainCard } from '../../../../../design/components/ProviderModelBrainCard.js';
 import { ToastContainer, useToast } from '../../../../../design/components/Toast.js';
 import {
   SettingsActionBar,
@@ -644,27 +644,22 @@ export function SettingsCatsCanvas({
               </div>
 
               <div className="catsDetailColumn">
-                <SettingsSubSection
-                  className="catsSubCard"
-                  header={<SettingsSectionHeader title="Brain" nested />}
-                >
-                  <ProviderModelFields
-                    provider={catForm.provider}
-                    instance={catForm.instance}
-                    model={catForm.model}
-                    modelSelection={catForm.modelSelection}
-                    onTargetChange={(target) => setCatForm({
-                      ...catForm,
-                      provider: target.provider,
-                      instance: target.instance,
-                      model: target.model,
-                      modelSelection: target.modelSelection ?? null,
-                    })}
-                    fetchProviderRegistry={fetchProviderRegistry}
-                    fetchProviderModels={fetchProviderModels}
-                    fetchAdvancedProviderModels={fetchAdvancedProviderModels}
-                  />
-                </SettingsSubSection>
+                <ProviderModelBrainCard
+                  provider={catForm.provider}
+                  instance={catForm.instance}
+                  model={catForm.model}
+                  modelSelection={catForm.modelSelection}
+                  onTargetChange={(target) => setCatForm({
+                    ...catForm,
+                    provider: target.provider,
+                    instance: target.instance,
+                    model: target.model,
+                    modelSelection: target.modelSelection ?? null,
+                  })}
+                  fetchProviderRegistry={fetchProviderRegistry}
+                  fetchProviderModels={fetchProviderModels}
+                  fetchAdvancedProviderModels={fetchAdvancedProviderModels}
+                />
               </div>
             </div>
           ) : selectedCat ? (
@@ -906,32 +901,27 @@ export function SettingsCatsCanvas({
               </div>
 
               <div className="catsDetailColumn">
-                <SettingsSubSection
-                  className="catsSubCard"
-                  header={<SettingsSectionHeader title="Brain" nested />}
-                >
-                  <ProviderModelFields
-                    provider={selectedCat.defaultExecutionTarget.provider ?? ''}
-                    instance={selectedCat.defaultExecutionTarget.instance ?? ''}
-                    model={selectedCat.defaultExecutionTarget.model ?? ''}
-                    modelSelection={selectedCat.defaultModelSelection ?? null}
-                    onTargetChange={(target) => {
-                      void commitCatProfile(
-                        selectedCat.id,
-                        {
-                          provider: target.provider,
-                          instance: target.instance || null,
-                          model: target.model || null,
-                          modelSelection: target.modelSelection ?? null,
-                        },
-                        'Failed to update Brain.',
-                      );
-                    }}
-                    fetchProviderRegistry={fetchProviderRegistry}
-                    fetchProviderModels={fetchProviderModels}
-                    fetchAdvancedProviderModels={fetchAdvancedProviderModels}
-                  />
-                </SettingsSubSection>
+                <ProviderModelBrainCard
+                  provider={selectedCat.defaultExecutionTarget.provider ?? ''}
+                  instance={selectedCat.defaultExecutionTarget.instance ?? ''}
+                  model={selectedCat.defaultExecutionTarget.model ?? ''}
+                  modelSelection={selectedCat.defaultModelSelection ?? null}
+                  onTargetChange={(target) => {
+                    void commitCatProfile(
+                      selectedCat.id,
+                      {
+                        provider: target.provider,
+                        instance: target.instance || null,
+                        model: target.model || null,
+                        modelSelection: target.modelSelection ?? null,
+                      },
+                      'Failed to update Brain.',
+                    );
+                  }}
+                  fetchProviderRegistry={fetchProviderRegistry}
+                  fetchProviderModels={fetchProviderModels}
+                  fetchAdvancedProviderModels={fetchAdvancedProviderModels}
+                />
               </div>
             </fieldset>
           ) : null}
