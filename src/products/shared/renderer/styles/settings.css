@@ -331,6 +331,32 @@
   margin: 0;
 }
 
+/* Static identity variants used by Catlas: avatar and name are shown
+ * for identification but cannot be changed or removed. No hover lift,
+ * no pointer cursor. */
+.catAvatar.catsIdentityAvatar.catsIdentityAvatarStatic {
+  cursor: default;
+  overflow: hidden;
+}
+
+.catAvatar.catsIdentityAvatar.catsIdentityAvatarStatic:hover {
+  box-shadow: 0 0 0 2px var(--panel), 0 0 0 3px color-mix(in srgb, var(--border) 80%, transparent);
+}
+
+.catsIdentityAvatarImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.catsIdentityNameStatic {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--text);
+  padding: 6px 0;
+}
+
 .linkButton:hover {
   color: var(--text);
 }

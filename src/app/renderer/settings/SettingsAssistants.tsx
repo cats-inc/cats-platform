@@ -4,6 +4,7 @@ import type { AppShellPayload } from '../../../products/shared/api/workspaceCont
 import type { AssistantPresetRecord, GuideCatRecord } from '../../../core/types.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import { ConfirmDialog, useConfirmDialog } from '../../../design/components/ConfirmDialog.js';
+import { GUIDE_CAT_AVATAR_URL } from '../../../design/components/GuideCatSidecar.js';
 import { ProviderModelBrainCard } from '../../../design/components/ProviderModelBrainCard.js';
 import {
   SettingsActionBar,
@@ -397,12 +398,24 @@ export function SettingsAssistants({
             <div className="catsDetailColumn">
               <SettingsSubSection headerless className="catsSubCard catsIdentityCard">
                 <div className="fieldLabel">
-                  <span>Status</span>
-                  <p className="fieldHint">
-                    {guideCatEnabled
-                      ? `${guideCatName} is enabled and helps across Chat, Work, and Code.`
-                      : `${guideCatName} is disabled. Enable it to help across Chat, Work, and Code.`}
-                  </p>
+                  <span>Avatar</span>
+                  <div className="catsAvatarDock">
+                    <div
+                      className="catAvatar catsIdentityAvatar catsIdentityAvatarStatic"
+                      aria-label={guideCatName}
+                    >
+                      <img
+                        className="catsIdentityAvatarImage"
+                        src={GUIDE_CAT_AVATAR_URL}
+                        alt=""
+                        aria-hidden="true"
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div className="fieldLabel">
+                  <span>Name</span>
+                  <div className="catsIdentityNameStatic">{guideCatName}</div>
                 </div>
               </SettingsSubSection>
             </div>
