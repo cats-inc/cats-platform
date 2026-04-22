@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [081-canonicalize-three-tier-core-record-taxonomy](./081-canonicalize-three-tier-core-record-taxonomy.md) | Canonicalize the Core record taxonomy as Interaction / Planning / Execution | Proposed | 2026-04-22 |
 | [080-fan-out-web-originated-messages-to-bound-transports](./080-fan-out-web-originated-messages-to-bound-transports.md) | Fan Out Web-Originated Messages to Bound Transports | Proposed | 2026-04-22 |
 | [078-use-electron-native-region-screenshot-with-web-fallback](./078-use-electron-native-region-screenshot-with-web-fallback.md) | Use Electron-native region screenshot with web fallback | Proposed | 2026-04-21 |
 | [077-make-parallel-draft-state-per-branch-addressable-for-orchestrator-composition](./077-make-parallel-draft-state-per-branch-addressable-for-orchestrator-composition.md) | Make parallel draft state per-branch-addressable so orchestrators can compose M×N team plans | Proposed | 2026-04-21 |
@@ -121,6 +122,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-04-22 (ADR-080 added)*
+*Last updated: 2026-04-22 (ADR-081 added)*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*

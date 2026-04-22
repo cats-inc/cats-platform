@@ -107,8 +107,8 @@ Canonical naming rule:
 | Parallel container | A parent grouping that owns many child conversations, such as `Parallel Chat` or future `Peer code`. It is not the same thing as a concurrent response cluster. |
 | Materialization | The process by which interaction outcomes become durable structured product state outside the transcript projection. |
 | Mutation | A structured output proposing or applying a change to durable product state. |
-| Artifact | A durable output such as a spec, plan, code change, test result, preview, or review record. |
-| Reference | A structured pointer linking interaction state to files, workspaces, repos, conversations, or other resources. |
+| Artifact | A Run / Task by-product record; see canonical definition under **Managed Work and Execution Terms**. |
+| Reference | A structured pointer field shape (not a record family); see canonical definition under **Managed Work and Execution Terms**. |
 | Projection | A product-specific view over shared canonical state, such as a chat transcript, work dashboard, or code review pane. |
 | Lens | A stable view over one canonical product home or record family. In `MY CATS`, lenses such as `Overview`, `Chat`, `Work`, and `Code` expose different agent state without forking identity. |
 | Contextual subset | A product-local subset or panel that shows only the state relevant to the current surface, such as `Cats in this chat`, assigned agents in Work, or a Code crew list. A contextual subset is not a second registry and should deep-link back to the canonical platform home when appropriate. |
@@ -122,19 +122,38 @@ Canonical naming rule:
 | Team Code | The shared-room `Cats Code` entry preset that creates one multi-participant coding conversation with workflow policy. |
 | Peer Code | The branch/review `Cats Code` entry preset that creates one parallel container with many child coding conversations and optional automation policies. |
 
-## Execution and Work Terms
+## Managed Work and Execution Terms
+
+Canonical taxonomy (see [ADR-081](./decisions/081-canonicalize-three-tier-core-record-taxonomy.md)):
+
+- **Planning layer** (independent entities): `Project`, `WorkItem`, `Approval`.
+- **Execution layer** (independent entities): `Task`, `Run`, `Mission` (Task variant bound to an agent).
+- **Run by-products** (dependent children, not peer entities): `Artifact`, `Outcome`, `Checkpoint`, `Trace` (+ `Activity` feed projection).
+- **Rules, not entities**: `Schedule`, `Trigger`, scheduler / sharing / dispatch / delivery / budget policies.
+
+Surface-level concepts such as `Goal`, `Requirement`, `Backlog Item`, `Issue`, `Story`, `Epic`, `Defect` are **`WorkItem` kinds**, not separate record families. `Work Task` and `Code Task` are both `Task`. `Execution Result` is `Outcome`. `Assignment` is a UI synonym for `Mission`.
 
 | Term | Meaning |
 |------|---------|
-| Managed Work | The operator-facing family of durable planning records such as goals, projects, requirements, backlog items, issues, tasks, and approvals. |
-| Code Task | A code-oriented durable task record linked to a code conversation. In the MVP, a Code task is the primary anchor for runs, artifacts, review outputs, and repair follow-ups in `Cats Code`. |
-| Work Task | One operator-managed durable task record inside Managed Work. A Work task is not automatically the same thing as a mission or run. |
-| Mission | An agent-delegated work unit that bridges managed work, interaction context, and execution. One Work task may spawn many missions; some missions may remain internal and never become Work tasks. |
-| Assignment | An optional synonym for a mission when a product surface wants user-facing wording like "assigned to this agent." New shared contracts should still prefer `Mission`. |
-| Run | One concrete execution attempt for a task or mission, such as one coder session, tool batch, build, test, retry, or takeover attempt. A run is not the durable objective itself; one task may accumulate many runs over time. |
-| Schedule | A durable rule that can create or activate missions later, such as a cron schedule or recurring automation rule. |
-| Trigger | The immediate event that starts work, such as a cron tick, webhook, transport ingress, owner click, or workflow continuation. |
-| Job | An overloaded legacy term. In new Cats docs and contracts, prefer `Mission` for delegated work and `Run` for concrete execution attempts unless an external system explicitly requires the word `job`. |
+| Managed Work | The operator-facing Planning layer. Independent durable records: `Project`, `WorkItem`, `Approval`. Surface-level concepts like goals, requirements, backlog items, and issues are `WorkItem` kinds, not separate records. |
+| Project | The top-level Planning container. Holds `WorkItem` rows and links to a primary `Conversation`. Not to be confused with the platform-level `project_workspace` `Container` kind. |
+| Work Item | The generic Planning unit (`CoreWorkItemRecord` / `ManagedWorkRecord`). Self-nestable via `parentWorkItemId`. Bridges into Execution via the optional `taskId` link. Subsumes goals, requirements, backlog items, issues, stories, epics, and defects via metadata kind. |
+| Work Task | Legacy alias. In shared contracts prefer `Task` (optionally noting the linked `Conversation.kind` when the distinction matters). |
+| Code Task | Legacy alias for a `Task` whose linked `Conversation.kind` is `code_thread`. Not a separate record type. |
+| Task | The Execution orchestration unit (`CoreTaskRecord`). Self-nestable via `parentTaskId`, approval-gated via `CoreApprovalRecord`. Parent of `Run`. |
+| Mission | The `Task` variant bound to an `assignedAgentId` and anchored to a `managedWorkId`. One `WorkItem` may spawn many missions; some missions remain internal and never surface as `WorkItem` rows. |
+| Assignment | UI-facing synonym for `Mission`. Do not use in shared schemas. |
+| Approval | The cross-cutting approval record and its binding. An `ApprovalBinding.subjectKind` may be `project | work_item | task | run | artifact | conversation` — approval is not a layer, it is a gate attached to any layer. |
+| Run | One concrete execution attempt for a `Task` or `Mission` (one coder session, tool batch, build, retry, takeover). Self-nestable via `parentRunId`. A run is not the durable objective; one task accumulates many runs. |
+| Outcome | The durable success/failure conclusion for a `Task` or `Run` (`CoreOrchestrationOutcomeRecord`). A Run by-product, not a peer of Run. Legacy terms `Execution Result` / `Result` resolve here. |
+| Checkpoint | A mid-execution state snapshot bound to a `Run` (or occasionally a `Task`). A Run by-product. |
+| Trace | The event-log record produced during Task / Run execution. A Run by-product. `Activity` is a feed projection over Trace, not a separate entity. |
+| Activity | The feed-shaped projection over Trace (and related mutations). Derived surface, not a peer entity to Run. |
+| Artifact | A durable output produced by a Run or Task (spec, plan, code change, test result, preview, review record). A Run by-product; carries back-references into Planning and Execution via `projectId` / `workItemId` / `taskId` / `runId`. |
+| Schedule | A rule (not an entity) that can create or activate missions / runs later, such as a cron schedule or recurring automation rule. Persisted as configuration, not listed alongside `Task` / `Run` as a peer record. |
+| Trigger | The immediate event that starts work — cron tick, webhook, transport ingress, owner click, workflow continuation. A rule-firing event, not a durable entity. |
+| Reference | A structured pointer type linking interaction or execution state to files, workspaces, repos, conversations, or other resources. A field shape, not a record family of its own. |
+| Job | Overloaded legacy term. In new Cats docs and contracts prefer `Mission` (delegated work) or `Run` (concrete execution attempt) unless an external system explicitly requires the word `job`. |
 
 ## Roles
 
@@ -155,4 +174,4 @@ Canonical naming rule:
 
 ---
 
-Last updated: 2026-04-19
+Last updated: 2026-04-22 (ADR-081 canonicalized the three-tier record taxonomy; Managed Work section rewritten.)
