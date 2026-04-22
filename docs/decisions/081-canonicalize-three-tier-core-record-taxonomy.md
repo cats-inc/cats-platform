@@ -63,36 +63,54 @@ the job by making the taxonomy exhaustive and deduplicated.
 
 ## Decision
 
-### 1. Three canonical layers, each with a finite entity list
+### 1. Three canonical layers over the declared canonical record set
 
-The Core data model has exactly three layers. Each layer has a
-fixed set of **independent durable entities** — anything not on
-these lists is either a `kind` discriminator on an existing
-entity, a by-product reference, or a policy/rule object.
+The Core data model declares its canonical record set in
+`CORE_CANONICAL_RECORD_FAMILIES` (`src/core/types.ts:21-34`).
+This ADR groups those families — plus a few closely related
+records such as `CoreProjectRecord` / `CoreWorkItemRecord` /
+`CoreTaskRecord` that predate that list — into **three
+functional layers**. The layers are an organizing frame for
+docs and reviews, not a replacement for the declared record
+set. Every canonical record family appears in exactly one
+layer below; no canonical family is dropped.
 
-**Layer 1 — Interaction Core** (durable interaction structure):
+**Layer 1 — Interaction Core** (who interacts, through which
+channel, and inside what durable interaction shape):
 
+- `Agent` / `CoreActorRecord` — reusable identity (Cat,
+  orchestrator, worker, bot, resource)
+- `Participant` — one `Agent`'s membership inside one
+  `Conversation`
 - `Container`
 - `Conversation`
 - `Turn`
 - `Lane`
 - `Segment`
-- `Session` (ephemeral runtime attachment; included because it is
-  part of the interaction shape even though not durable)
+- `Session` (ephemeral runtime attachment; included because it
+  is part of the interaction shape even though not durable)
+- `TransportBinding` — mapping from one external transport
+  thread to one Cats entry path; lives here because it selects
+  the Conversation that a transport message lands in
 
 **Layer 2 — Managed Work / Planning** (what the operator wants
 done):
 
 - `Project`
-- `WorkItem`
-- `Approval`
+- `WorkItem` (a.k.a. `ManagedWorkRecord`)
 
 **Layer 3 — Execution / Orchestration** (how work gets executed
 and what it leaves behind):
 
 - `Task`
 - `Run`
-- `Mission` (Task variant bound to an agent)
+- `Mission` — a distinct Execution entity (not a `Task`
+  variant) that anchors to a `WorkItem` via `managedWorkId` and
+  is optionally bound to an agent via `assignedAgentId`. See
+  ADR-063.
+
+`Approval` is intentionally absent from the Planning entity
+list and is documented as a cross-cutting gate in §3 below.
 
 Every other noun currently used in docs or discussions either
 resolves to one of these via the deduplication rules below, or
@@ -106,16 +124,39 @@ and code comments:
 - `Goal`, `Requirement`, `Backlog Item`, `Issue`, `Defect`,
   `Story`, `Epic` → **`WorkItem` with a `kind` discriminator**.
   None of these gets its own record.
-- `Work Task`, `Code Task` → **`Task`**. The `code_thread`
-  distinction lives on the linked `Conversation.kind`, not on a
-  separate record type.
-- `Mission`, `Assignment` → **`Mission`** is a `Task` variant
-  bound to an `assignedAgentId`. `Assignment` is a UI synonym
-  and should not appear in shared schemas.
+- `Work Task`, `Code Task` → **`Task`**. There is no separate
+  record type. Whether a given `Task` surfaces in the Code
+  product is resolved at projection time by `isCodeTask`
+  (`src/products/code/api/projection.ts`) in priority order:
+  (1) the task has a `build` or `preview` `Artifact` → Code;
+  (2) otherwise `resolveTaskExecutionProduct`
+  (`src/shared/taskExecutionBridge.ts`) consults the task's
+  planning handoff — `planning.productHint === 'code'` or
+  `planning.transfer.suggestedProduct === 'code'` is
+  authoritative; (3) the linked `Conversation.kind ===
+  'code_thread'` is only a legacy / no-planning fallback. Do
+  not document Code Task as "a Task with a `code_thread`
+  Conversation" — that inverts the actual priority.
+- `Mission`, `Assignment` → **`Mission`** is its own
+  Execution-layer record (`MissionRecord`), distinct from
+  `Task`. It anchors to a `WorkItem` via `managedWorkId` and
+  optionally binds an agent via `assignedAgentId`; it carries
+  `sourceTurnId` / `sourceLaneId` to tie back to the interaction
+  that produced it. Per ADR-063, mission and task were
+  deliberately separated — do not describe `Mission` as a
+  subtype of `Task`. `Assignment` remains a UI synonym for
+  `Mission` and should not appear in shared schemas.
 - `Execution Result` → **`Outcome`** (`CoreOrchestrationOutcomeRecord`).
-- `Activity` → **a feed projection over `Trace`**, not a parallel
-  entity. The `CoreActivityRecord` table exists but represents a
-  derived surface, not a new top-level family.
+- `Activity` → **an independent operator-feed record**
+  (`CoreActivityRecord`), not a projection over `Trace`. It has
+  its own `/api/core/activities` GET/POST surface and its own
+  `kind` enum (`note`, `status_change`, `approval_requested`,
+  `approval_decided`, `operator_action`, `artifact_recorded`,
+  `checkpoint_recorded`, `work_item_updated`). Readers must
+  consume `CoreActivityRecord` directly; they must not attempt
+  to reconstruct the activity feed from `Trace` records alone,
+  because operator-authored activities are written straight to
+  the activities table and never flow through `Trace`.
 - `Job` → avoid. Use `Mission` (delegation) or `Run` (execution
   attempt) per ADR-063.
 
@@ -131,19 +172,34 @@ doc:
   durable records at the same level as `Task` or `Run`. They may
   be persisted as configuration rows, but they are never listed
   alongside `Task` / `Run` as peer entities.
-- **Pointers / references** — `Reference`, `Transport binding`
-  (record form: `TransportBindingRecord`), `Bot binding`. A
-  `Reference` in particular is a structured pointer type, not a
-  record family of its own. Transport and bot bindings are
-  real records, but they sit outside the three-layer taxonomy as
-  infra/integration glue.
+- **Pointers / references** — `Reference` is a structured
+  pointer type (a field shape), not a record family of its own.
+  `TransportBindingRecord` and `BotBindingRecord` are real
+  records; `TransportBindingRecord` sits inside Interaction Core
+  (§1) because it selects the Conversation that a transport
+  message lands in. `BotBindingRecord` is infra/integration
+  glue between Cats and external bot identities, and is not
+  listed in `CORE_CANONICAL_RECORD_FAMILIES`.
+- **Cross-cutting approval gate** — `CoreApprovalRecord` is
+  **not** an independent top-level record. It is an embedded
+  value object on `CoreTaskRecord.approval` that captures the
+  approval state for a single task. The independent record is
+  `CoreApprovalBindingRecord`, persisted at
+  `core.approvalBindings`, which binds an approval task onto
+  any subject whose `subjectKind` is
+  `project | work_item | task | run | artifact | conversation`
+  (see `CoreApprovalBindingSubjectKind`). Approval therefore
+  attaches to any layer but does not itself own a layer slot.
 - **Run by-products** — `Artifact`, `Outcome`, `Checkpoint`,
-  `Trace` (and its `Activity` projection). Each is produced by a
-  `Run` (or occasionally a `Task` without a Run, such as a
-  planning checkpoint), and carries a back-reference. They are
-  canonical records but they **are not a fourth layer** and they
-  **are not peers of `Run`** — they are dependent children of the
-  Execution layer.
+  `Trace`, and `Activity`. Each is a canonical record with
+  back-references into the Planning / Execution / Interaction
+  graph (`projectId` / `workItemId` / `taskId` / `runId` /
+  `conversationId`). They are dependent children of the
+  Execution layer, not peers of `Run`. `Activity` is included
+  here despite not flowing through a `Run`'s own event stream
+  because its back-references and lifecycle match the other
+  by-products; see §2 for why `Activity` is **not** a projection
+  over `Trace`.
 
 ### 4. Cross-layer link contract (frozen)
 
@@ -231,9 +287,16 @@ way `Artifact` already carries `projectId` / `workItemId` /
 - any future need for a true independent `Goal` or `Requirement`
   record now requires a follow-up ADR to amend this one rather
   than silently adding a table
-- the `Activity` record is downgraded to "feed projection over
-  Trace" in status, even though the code still persists it — docs
-  must be careful not to imply it is a peer of `Run`
+- the Interaction Core layer grew to include `Agent`,
+  `Participant`, and `TransportBinding` to match
+  `CORE_CANONICAL_RECORD_FAMILIES`; contributors who were using
+  a smaller "5 interaction records" mental model need to expand
+  it
+- the Planning layer now lists only `Project` and `WorkItem`
+  as independent entities; `Approval` moved to the cross-cutting
+  gate description in §3, and `Task` stays in Execution. Surface
+  docs that previously grouped "Project / WorkItem / Task /
+  Approval" under Planning need to be re-scoped.
 
 ### Neutral
 
@@ -301,6 +364,9 @@ way `Artifact` already carries `projectId` / `workItemId` /
 - [ADR-063: Separate managed work, agent missions, execution runs, and transport bindings](./063-agent-missions-and-transport-bindings.md)
 - [ADR-077: Make parallel draft state per-branch-addressable for orchestrator composition](./077-make-parallel-draft-state-per-branch-addressable-for-orchestrator-composition.md)
 - `cats-platform/src/core/types.ts` — canonical record declarations
+- `cats-platform/src/core/types.ts:21` — `CORE_CANONICAL_RECORD_FAMILIES` (the authoritative record set this ADR groups into layers)
+- `cats-platform/src/products/code/api/projection.ts` — `isCodeTask` routing (artifact kind + `resolveTaskExecutionProduct`)
+- `cats-platform/src/shared/taskExecutionBridge.ts` — `resolveTaskExecutionProduct` priority (planning handoff authoritative, conversation kind is fallback)
 - `cats-platform/docs/terminology.md` — updated in the same change set
 
 ---

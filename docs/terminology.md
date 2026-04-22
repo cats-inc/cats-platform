@@ -124,31 +124,34 @@ Canonical naming rule:
 
 ## Managed Work and Execution Terms
 
-Canonical taxonomy (see [ADR-081](./decisions/081-canonicalize-three-tier-core-record-taxonomy.md)):
+Canonical taxonomy (see [ADR-081](./decisions/081-canonicalize-three-tier-core-record-taxonomy.md)). The authoritative record set is declared in `CORE_CANONICAL_RECORD_FAMILIES` (`src/core/types.ts:21-34`). This layering groups those families; it does not replace them.
 
-- **Planning layer** (independent entities): `Project`, `WorkItem`, `Approval`.
-- **Execution layer** (independent entities): `Task`, `Run`, `Mission` (Task variant bound to an agent).
-- **Run by-products** (dependent children, not peer entities): `Artifact`, `Outcome`, `Checkpoint`, `Trace` (+ `Activity` feed projection).
+- **Planning layer** (independent entities): `Project`, `WorkItem`.
+- **Execution layer** (independent entities): `Task`, `Run`, `Mission` (distinct record anchored to `WorkItem` via `managedWorkId`, not a `Task` subtype — see ADR-063).
+- **Cross-cutting approval gate** (not a layer): `CoreApprovalRecord` is embedded on `CoreTaskRecord.approval`; `CoreApprovalBindingRecord` is the independent record at `core.approvalBindings` and attaches approval onto any subject (`project | work_item | task | run | artifact | conversation`).
+- **Run / Task by-products** (dependent children, not peer entities): `Artifact`, `Outcome`, `Checkpoint`, `Trace`, `Activity`. `Activity` is an independent operator-feed record with its own `/api/core/activities` surface — it is **not** a projection over `Trace`, and consumers must read it directly.
 - **Rules, not entities**: `Schedule`, `Trigger`, scheduler / sharing / dispatch / delivery / budget policies.
 
 Surface-level concepts such as `Goal`, `Requirement`, `Backlog Item`, `Issue`, `Story`, `Epic`, `Defect` are **`WorkItem` kinds**, not separate record families. `Work Task` and `Code Task` are both `Task`. `Execution Result` is `Outcome`. `Assignment` is a UI synonym for `Mission`.
 
+Note: `AgentRecord`, `ParticipantRecord`, and `TransportBindingRecord` are also canonical record families per `CORE_CANONICAL_RECORD_FAMILIES`; they sit in the Interaction Core layer (see the **Interaction Core Terms** section above).
+
 | Term | Meaning |
 |------|---------|
-| Managed Work | The operator-facing Planning layer. Independent durable records: `Project`, `WorkItem`, `Approval`. Surface-level concepts like goals, requirements, backlog items, and issues are `WorkItem` kinds, not separate records. |
+| Managed Work | The operator-facing Planning layer. Independent durable records: `Project`, `WorkItem`. Surface-level concepts like goals, requirements, backlog items, and issues are `WorkItem` kinds, not separate records. `Approval` is not listed here because it is cross-cutting — see the `Approval` row below. |
 | Project | The top-level Planning container. Holds `WorkItem` rows and links to a primary `Conversation`. Not to be confused with the platform-level `project_workspace` `Container` kind. |
 | Work Item | The generic Planning unit (`CoreWorkItemRecord` / `ManagedWorkRecord`). Self-nestable via `parentWorkItemId`. Bridges into Execution via the optional `taskId` link. Subsumes goals, requirements, backlog items, issues, stories, epics, and defects via metadata kind. |
-| Work Task | Legacy alias. In shared contracts prefer `Task` (optionally noting the linked `Conversation.kind` when the distinction matters). |
-| Code Task | Legacy alias for a `Task` whose linked `Conversation.kind` is `code_thread`. Not a separate record type. |
-| Task | The Execution orchestration unit (`CoreTaskRecord`). Self-nestable via `parentTaskId`, approval-gated via `CoreApprovalRecord`. Parent of `Run`. |
-| Mission | The `Task` variant bound to an `assignedAgentId` and anchored to a `managedWorkId`. One `WorkItem` may spawn many missions; some missions remain internal and never surface as `WorkItem` rows. |
+| Work Task | Legacy alias for a `Task` that lives on the Work side. In shared contracts prefer `Task`. |
+| Code Task | A `Task` that the Code product owns. Product routing priority: (1) presence of a `build` or `preview` `Artifact` on the task forces Code; (2) otherwise `resolveTaskExecutionProduct` consults the task's planning handoff — `planning.productHint === 'code'` or `planning.transfer.suggestedProduct === 'code'` is authoritative; (3) the linked `Conversation.kind === 'code_thread'` is only a legacy / no-planning fallback. Not a separate record type — always a `CoreTaskRecord`. |
+| Task | The Execution orchestration unit (`CoreTaskRecord`). Self-nestable via `parentTaskId`. Carries approval state inline via `CoreTaskRecord.approval` (a `CoreApprovalRecord` value object, not a standalone table). Parent of `Run`. |
+| Mission | A distinct Execution-layer record (`MissionRecord`), not a `Task` variant — ADR-063 deliberately separated the two. Anchors to a `WorkItem` via `managedWorkId`, optionally binds an agent via `assignedAgentId`, and carries `sourceTurnId` / `sourceLaneId` to tie back to the originating turn or lane. One `WorkItem` may spawn many missions; some missions remain internal and never surface as `WorkItem` rows. |
 | Assignment | UI-facing synonym for `Mission`. Do not use in shared schemas. |
-| Approval | The cross-cutting approval record and its binding. An `ApprovalBinding.subjectKind` may be `project | work_item | task | run | artifact | conversation` — approval is not a layer, it is a gate attached to any layer. |
+| Approval | A cross-cutting gate, not a layer. `CoreApprovalRecord` is embedded on `CoreTaskRecord.approval` and captures the approval state of a single task; it is not a standalone table. `CoreApprovalBindingRecord` is the independent record (persisted at `core.approvalBindings`) that attaches an approval task onto any subject whose `subjectKind` is `project | work_item | task | run | artifact | conversation`. |
 | Run | One concrete execution attempt for a `Task` or `Mission` (one coder session, tool batch, build, retry, takeover). Self-nestable via `parentRunId`. A run is not the durable objective; one task accumulates many runs. |
 | Outcome | The durable success/failure conclusion for a `Task` or `Run` (`CoreOrchestrationOutcomeRecord`). A Run by-product, not a peer of Run. Legacy terms `Execution Result` / `Result` resolve here. |
 | Checkpoint | A mid-execution state snapshot bound to a `Run` (or occasionally a `Task`). A Run by-product. |
-| Trace | The event-log record produced during Task / Run execution. A Run by-product. `Activity` is a feed projection over Trace, not a separate entity. |
-| Activity | The feed-shaped projection over Trace (and related mutations). Derived surface, not a peer entity to Run. |
+| Trace | The execution event log (`CoreTraceRecord`) produced during Task / Run execution — `note`, `status`, `dispatch`, `approval`, `checkpoint`, `outcome`, `error` kinds. A Run by-product and a distinct record from `Activity`. |
+| Activity | An independent operator-feed record (`CoreActivityRecord`), persisted at `core.activities` with its own `/api/core/activities` GET/POST surface. Its `kind` enum covers `note`, `status_change`, `approval_requested`, `approval_decided`, `operator_action`, `artifact_recorded`, `checkpoint_recorded`, `work_item_updated`. **Not** a projection over `Trace` — operator-authored activities are written straight to this table and do not flow through `Trace`; consumers must read `CoreActivityRecord` directly. |
 | Artifact | A durable output produced by a Run or Task (spec, plan, code change, test result, preview, review record). A Run by-product; carries back-references into Planning and Execution via `projectId` / `workItemId` / `taskId` / `runId`. |
 | Schedule | A rule (not an entity) that can create or activate missions / runs later, such as a cron schedule or recurring automation rule. Persisted as configuration, not listed alongside `Task` / `Run` as a peer record. |
 | Trigger | The immediate event that starts work — cron tick, webhook, transport ingress, owner click, workflow continuation. A rule-firing event, not a durable entity. |
@@ -174,4 +177,4 @@ Surface-level concepts such as `Goal`, `Requirement`, `Backlog Item`, `Issue`, `
 
 ---
 
-Last updated: 2026-04-22 (ADR-081 canonicalized the three-tier record taxonomy; Managed Work section rewritten.)
+Last updated: 2026-04-22 (ADR-081 canonicalized the three-tier record taxonomy; Managed Work section rewritten. Follow-up corrections: Mission is a distinct Execution record not a Task variant; Approval split into embedded `CoreTaskRecord.approval` + independent `CoreApprovalBindingRecord`; Activity is an independent operator-feed record not a Trace projection; Code Task routing priority corrected to artifact kind → planning handoff → conversation kind fallback; Interaction Core layer explicitly covers `AgentRecord`, `ParticipantRecord`, `TransportBindingRecord`.)
