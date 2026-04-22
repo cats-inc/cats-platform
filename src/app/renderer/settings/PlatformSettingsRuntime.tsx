@@ -1,5 +1,6 @@
 import { useState } from 'react';
 
+import { ToastContainer, useToast } from '../../../design/components/Toast.js';
 import { resolveRuntimeConnectionChip } from '../../../design/components/runtimeChips.js';
 import {
   SettingsSection,
@@ -31,12 +32,6 @@ function resolveRuntimeSetupChip(
   }
 }
 
-type RefreshStatus =
-  | { kind: 'idle' }
-  | { kind: 'running' }
-  | { kind: 'success'; refreshed: number; failures: number }
-  | { kind: 'error'; message: string };
-
 export function PlatformSettingsRuntime({
   payload,
 }: {
@@ -44,22 +39,26 @@ export function PlatformSettingsRuntime({
 }) {
   const runtimeChip = resolveRuntimeConnectionChip(payload.runtime);
   const runtimeSetupChip = resolveRuntimeSetupChip(payload.runtimeSetup);
-  const [refreshStatus, setRefreshStatus] = useState<RefreshStatus>({ kind: 'idle' });
+  const { toasts, showToast } = useToast();
+  const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = async () => {
-    setRefreshStatus({ kind: 'running' });
+    setRefreshing(true);
     try {
       const result = await refreshProviderModelCatalogs();
-      setRefreshStatus({
-        kind: 'success',
-        refreshed: result.refreshed,
-        failures: result.failures.length,
-      });
+      if (result.failures.length > 0) {
+        showToast(
+          `Refreshed ${result.refreshed} · ${result.failures.length} failed`,
+        );
+      } else {
+        showToast(
+          `Refreshed ${result.refreshed} target${result.refreshed === 1 ? '' : 's'}`,
+        );
+      }
     } catch (error) {
-      setRefreshStatus({
-        kind: 'error',
-        message: error instanceof Error ? error.message : 'Refresh failed.',
-      });
+      showToast(error instanceof Error ? error.message : 'Refresh failed.');
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -154,26 +153,14 @@ export function PlatformSettingsRuntime({
           />
         }
       >
-        <div className="settingsChipRow">
-          <button
-            type="button"
-            className="secondaryButton"
-            onClick={() => { void handleRefresh(); }}
-            disabled={refreshStatus.kind === 'running'}
-          >
-            {refreshStatus.kind === 'running' ? 'Refreshing…' : 'Refresh model catalogs'}
-          </button>
-          {refreshStatus.kind === 'success' ? (
-            <SettingsStatusChip tone={refreshStatus.failures > 0 ? 'warm' : 'ready'}>
-              {refreshStatus.failures > 0
-                ? `Refreshed ${refreshStatus.refreshed} · ${refreshStatus.failures} failed`
-                : `Refreshed ${refreshStatus.refreshed} target${refreshStatus.refreshed === 1 ? '' : 's'}`}
-            </SettingsStatusChip>
-          ) : null}
-          {refreshStatus.kind === 'error' ? (
-            <SettingsStatusChip tone="warm">{refreshStatus.message}</SettingsStatusChip>
-          ) : null}
-        </div>
+        <button
+          type="button"
+          className="secondaryButton"
+          onClick={() => { void handleRefresh(); }}
+          disabled={refreshing}
+        >
+          {refreshing ? 'Refreshing…' : 'Refresh model catalogs'}
+        </button>
       </SettingsSection>
 
       <SettingsSection
@@ -193,6 +180,7 @@ export function PlatformSettingsRuntime({
           Open Cats Runtime setup
         </a>
       </SettingsSection>
+      <ToastContainer toasts={toasts} />
     </PlatformSettingsShell>
   );
 }
