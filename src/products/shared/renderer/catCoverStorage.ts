@@ -33,15 +33,16 @@ export function subscribeCatCover(
   callback: (value: string | null) => void,
 ): () => void {
   if (!catId) return () => {};
+  const coverCatId = catId;
   function handle(event: Event) {
     const detail = (event as CustomEvent<{ catId: string }>).detail;
-    if (detail?.catId === catId) {
-      callback(readCatCover(catId));
+    if (detail?.catId === coverCatId) {
+      callback(readCatCover(coverCatId));
     }
   }
   function handleStorage(event: StorageEvent) {
-    if (event.key === storageKey(catId)) {
-      callback(readCatCover(catId));
+    if (event.key === storageKey(coverCatId)) {
+      callback(readCatCover(coverCatId));
     }
   }
   window.addEventListener(COVER_UPDATED_EVENT, handle);
