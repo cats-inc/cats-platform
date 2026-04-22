@@ -1301,7 +1301,12 @@ async function resumeSetupAction(): Promise<DesktopSetupSnapshot> {
   });
 }
 
-async function createMainWindow(config: DesktopHostConfig): Promise<BrowserWindow> {
+async function createMainWindow(
+  config: DesktopHostConfig,
+  options: {
+    showWindowOnStartup: boolean;
+  },
+): Promise<BrowserWindow> {
   const windowIconPath = resolveDesktopWindowIconPath(app.getAppPath());
   const window = new BrowserWindow({
     width: 1280,
@@ -1334,6 +1339,16 @@ async function createMainWindow(config: DesktopHostConfig): Promise<BrowserWindo
   });
 
   applyDesktopWindowChrome(window);
+
+  const showBootstrapWindow = () => {
+    if (!options.showWindowOnStartup || window.isDestroyed() || window.isVisible()) {
+      return;
+    }
+    window.show();
+  };
+
+  window.webContents.once('did-finish-load', showBootstrapWindow);
+  window.once('ready-to-show', showBootstrapWindow);
 
   bootstrapPageVisible = true;
   await window.loadURL(encodeDataUrl(buildDesktopBootstrapPage()));
@@ -1555,7 +1570,9 @@ async function main(): Promise<void> {
     publishSnapshot(buildSnapshot(null));
   });
 
-  mainWindow = await createMainWindow(hostConfig);
+  mainWindow = await createMainWindow(hostConfig, {
+    showWindowOnStartup: startupLaunchContext?.showWindowOnStartup !== false,
+  });
   await syncTrayController();
 
   app.on('before-quit', (event) => {
