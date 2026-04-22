@@ -26,7 +26,7 @@ export const AVATAR_PALETTE = [
 const DEFAULT_CAT_NAME = 'Boss Cat';
 const DEFAULT_AVATAR_COLOR = '#90A4AE';
 
-function demoteDirectLaneIfLeadingCatRemoved(
+function updateDirectLaneAfterLeadingCatRemoval(
   channel: ChatState['channels'][number],
   catId: string,
   options: { preserveRecoverableDirectLane: boolean },
@@ -36,13 +36,68 @@ function demoteDirectLaneIfLeadingCatRemoved(
     isDirectLaneChannel(channel)
     && roomRouting.defaultRecipientId === catId
   ) {
-    channel.recoverableDirectLaneCatId = options.preserveRecoverableDirectLane ? catId : null;
-    channel.channelKind = 'boss_thread';
-    roomRouting.mode = 'boss_chat';
-    roomRouting.defaultRecipientId = null;
-    channel.roomRouting = roomRouting;
-  } else if (!options.preserveRecoverableDirectLane && channel.recoverableDirectLaneCatId === catId) {
+    if (options.preserveRecoverableDirectLane) {
+      channel.recoverableDirectLaneCatId = catId;
+      channel.channelKind = 'direct_lane';
+      roomRouting.mode = 'direct_cat_chat';
+      roomRouting.defaultRecipientId = catId;
+      channel.roomRouting = roomRouting;
+    } else {
+      channel.recoverableDirectLaneCatId = null;
+      channel.channelKind = 'boss_thread';
+      roomRouting.mode = 'boss_chat';
+      roomRouting.defaultRecipientId = null;
+      channel.roomRouting = roomRouting;
+    }
+  } else if (
+    !options.preserveRecoverableDirectLane
+    && channel.recoverableDirectLaneCatId === catId
+  ) {
     channel.recoverableDirectLaneCatId = null;
+  }
+}
+
+function isDirectLaneForCat(
+  channel: ChatState['channels'][number],
+  catId: string,
+): boolean {
+  if (channel.recoverableDirectLaneCatId === catId) {
+    return true;
+  }
+
+  if (!isDirectLaneChannel(channel)) {
+    return false;
+  }
+
+  const roomRouting = resolveRoomRoutingState(channel.roomRouting);
+  return roomRouting.defaultRecipientId === catId
+    || channel.catAssignments.some((assignment) => assignment.catId === catId);
+}
+
+function removeDirectLanesForDeletedCat(state: ChatState, catId: string): void {
+  const deletedChannelIds = new Set(
+    state.channels
+      .filter((channel) => isDirectLaneForCat(channel, catId))
+      .map((channel) => channel.id),
+  );
+  if (deletedChannelIds.size === 0) {
+    return;
+  }
+
+  state.channels = state.channels.filter(
+    (channel) => !deletedChannelIds.has(channel.id),
+  );
+  state.parallelChatGroups = state.parallelChatGroups
+    .map((group) => ({
+      ...group,
+      memberChannelIds: group.memberChannelIds.filter(
+        (channelId) => !deletedChannelIds.has(channelId),
+      ),
+    }))
+    .filter((group) => group.memberChannelIds.length > 1);
+
+  if (deletedChannelIds.has(state.selectedChannelId)) {
+    state.selectedChannelId = state.channels[0]?.id ?? '';
   }
 }
 
@@ -122,7 +177,7 @@ function detachCatFromChannels(
       );
     }
 
-    demoteDirectLaneIfLeadingCatRemoved(channel, catId, {
+    updateDirectLaneAfterLeadingCatRemoval(channel, catId, {
       preserveRecoverableDirectLane: options.preserveRecoverableDirectLane,
     });
     syncChannelDefaultRecipientAndComposerMode(channel);
@@ -258,6 +313,7 @@ export function deleteCat(
     nextState.bossCatId = null;
   }
   nextState.cats.splice(catIndex, 1);
+  removeDirectLanesForDeletedCat(nextState, catId);
   detachCatFromChannels(nextState, catId, isoAt(now), {
     preserveAssignmentHistory: false,
     preserveRecoverableDirectLane: false,

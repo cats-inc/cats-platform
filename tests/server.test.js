@@ -11086,7 +11086,7 @@ test('PATCH /api/preferences only selects the requested direct chat lead without
   });
 });
 
-test('PATCH /api/cats/:id archive closes live direct-lane sessions and converts the room back to a visible chat', async () => {
+test('PATCH /api/cats/:id archive closes live direct-lane sessions without promoting the lane to recents', async () => {
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
@@ -11134,6 +11134,7 @@ test('PATCH /api/cats/:id archive closes live direct-lane sessions and converts 
       body: JSON.stringify({
         title: 'Companion Direct',
         topic: 'Archive should not leave a hidden zombie lane.',
+        originSurface: 'chat',
         roomMode: 'direct_cat_chat',
         participantCatIds: [catId],
         defaultRecipientId: catId,
@@ -11160,11 +11161,13 @@ test('PATCH /api/cats/:id archive closes live direct-lane sessions and converts 
 
     assert.ok(runtimeClient.closedSessions.includes('session-1'));
     assert.equal(archivePayload.chat.selectedChannel.id, channelId);
-    assert.equal(archivePayload.chat.selectedChannel.roomRouting.mode, 'boss_chat');
-    assert.equal(archivePayload.chat.selectedChannel.roomRouting.defaultRecipientId, null);
-    assert.equal(archivePayload.chat.selectedChannel.composerMode, 'solo');
+    assert.equal(archivePayload.chat.selectedChannel.channelKind, 'direct_lane');
+    assert.equal(archivePayload.chat.selectedChannel.roomRouting.mode, 'direct_cat_chat');
+    assert.equal(archivePayload.chat.selectedChannel.roomRouting.defaultRecipientId, catId);
+    assert.equal(archivePayload.chat.selectedChannel.composerMode, 'cat_led');
     assert.equal(archivePayload.chat.selectedChannel.assignedCats[0]?.status, 'removed');
-    assert.equal(archivePayload.chat.channels[0]?.roomMode, 'boss_chat');
+    assert.equal(archivePayload.chat.channels[0]?.channelKind, 'direct_lane');
+    assert.equal(archivePayload.chat.channels[0]?.roomMode, 'direct_cat_chat');
     assert.equal(
       archivePayload.chat.botBindings.find((binding) => binding.id === bindingId),
       undefined,
@@ -11276,6 +11279,7 @@ test('unarchiving a cat restores it without reviving Telegram bindings', async (
       body: JSON.stringify({
         title: 'Companion Direct',
         topic: 'Recover should rebuild the direct lane without waking it.',
+        originSurface: 'chat',
         roomMode: 'direct_cat_chat',
         participantCatIds: [catId],
         defaultRecipientId: catId,
@@ -11426,6 +11430,23 @@ test('DELETE /api/cats/:id removes Telegram bot bindings for the deleted cat', a
     });
     assert.equal(bindingResponse.status, 201);
 
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Companion Direct',
+        topic: 'Delete should not promote this private lane into recents.',
+        originSurface: 'chat',
+        roomMode: 'direct_cat_chat',
+        participantCatIds: [catId],
+        defaultRecipientId: catId,
+        skipBossCatGreeting: true,
+      }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const createChannelPayload = await createChannelResponse.json();
+    const channelId = createChannelPayload.channel.id;
+
     const deleteResponse = await fetch(`${baseUrl}/api/cats/${catId}`, {
       method: 'DELETE',
     });
@@ -11435,6 +11456,14 @@ test('DELETE /api/cats/:id removes Telegram bot bindings for the deleted cat', a
     assert.equal(listBindingsResponse.status, 200);
     const listBindingsPayload = await listBindingsResponse.json();
     assert.equal(listBindingsPayload.botBindings.length, 0);
+
+    const appShellResponse = await fetch(`${baseUrl}/api/app-shell`);
+    assert.equal(appShellResponse.status, 200);
+    const appShellPayload = await appShellResponse.json();
+    assert.equal(
+      appShellPayload.chat.channels.some((channel) => channel.id === channelId),
+      false,
+    );
   });
 });
 
@@ -11472,6 +11501,7 @@ test('first send does not fall back to Boss Cat when a direct chat lead is missi
       body: JSON.stringify({
         title: 'Companion Direct',
         topic: 'Do not wake Boss Cat when the direct lead is gone.',
+        originSurface: 'chat',
         roomMode: 'direct_cat_chat',
         participantCatIds: [catId],
         defaultRecipientId: catId,

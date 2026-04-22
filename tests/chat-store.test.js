@@ -406,7 +406,7 @@ test('FileChatStore recreates a default snapshot when the primary file is empty 
   assert.ok(repairedSnapshot.ownerProfile);
 });
 
-test('archiving a direct-lane cat preserves history but demotes the room back to a visible chat', () => {
+test('archiving a direct-lane cat preserves private lane history without promoting it to recents', () => {
   const now = new Date('2026-03-26T00:00:00.000Z');
   let state = createDefaultChatState();
 
@@ -425,7 +425,8 @@ test('archiving a direct-lane cat preserves history but demotes the room back to
     state,
     {
       title: 'Companion Direct',
-      topic: 'Keep this transcript visible after archiving the cat.',
+      topic: 'Keep this transcript private after archiving the cat.',
+      originSurface: 'chat',
       roomMode: 'direct_cat_chat',
       participantCatIds: [catId],
       defaultRecipientId: catId,
@@ -445,9 +446,11 @@ test('archiving a direct-lane cat preserves history but demotes the room back to
   assert.ok(assignment.leftAt);
   assert.equal(assignment.execution.lease.sessionId, null);
   assert.equal(assignment.execution.lease.status, 'removed');
-  assert.equal(channel.roomRouting?.mode, 'boss_chat');
-  assert.equal(channel.roomRouting?.defaultRecipientId, null);
-  assert.equal(channel.composerMode, 'solo');
+  assert.equal(channel.channelKind, 'direct_lane');
+  assert.equal(channel.roomRouting?.mode, 'direct_cat_chat');
+  assert.equal(channel.roomRouting?.defaultRecipientId, catId);
+  assert.equal(channel.composerMode, 'cat_led');
+  assert.equal(channel.recoverableDirectLaneCatId, catId);
 });
 
 test('unarchiving a cat restores its direct lane while keeping avatar metadata and sleeping lease state', () => {
@@ -471,6 +474,7 @@ test('unarchiving a cat restores its direct lane while keeping avatar metadata a
     {
       title: 'Companion Direct',
       topic: 'Recover should not silently rebuild the lane.',
+      originSurface: 'chat',
       roomMode: 'direct_cat_chat',
       participantCatIds: [catId],
       defaultRecipientId: catId,
@@ -501,7 +505,7 @@ test('unarchiving a cat restores its direct lane while keeping avatar metadata a
   assert.equal(channel.recoverableDirectLaneCatId ?? null, null);
 });
 
-test('deleting a direct-lane cat clears hidden-lane routing state so the room stays reachable', () => {
+test('deleting a direct-lane cat removes the private lane instead of promoting it to recents', () => {
   const now = new Date('2026-03-26T00:00:00.000Z');
   let state = createDefaultChatState();
 
@@ -521,6 +525,7 @@ test('deleting a direct-lane cat clears hidden-lane routing state so the room st
     {
       title: 'Companion Direct',
       topic: 'Deleting the cat should not strand the channel.',
+      originSurface: 'chat',
       roomMode: 'direct_cat_chat',
       participantCatIds: [catId],
       defaultRecipientId: catId,
@@ -530,13 +535,10 @@ test('deleting a direct-lane cat clears hidden-lane routing state so the room st
   );
 
   state = deleteCat(state, catId);
-  const channel = state.channels[0];
 
   assert.equal(state.cats.length, 0);
-  assert.equal(channel.catAssignments.length, 0);
-  assert.equal(channel.roomRouting?.mode, 'boss_chat');
-  assert.equal(channel.roomRouting?.defaultRecipientId, null);
-  assert.equal(channel.composerMode, 'solo');
+  assert.equal(state.channels.length, 0);
+  assert.equal(state.selectedChannelId, '');
 });
 
 test('direct lanes reject assigning a second cat beyond the lead', () => {

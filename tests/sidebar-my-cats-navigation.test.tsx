@@ -137,6 +137,7 @@ function createChannel(
     id: overrides.id,
     title: overrides.title,
     topic: '',
+    originSurface: 'chat',
     status: 'active',
     unreadCount: 0,
     catCount: 1,
