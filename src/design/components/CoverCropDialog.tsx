@@ -52,6 +52,7 @@ export function CoverCropDialog({
   initialDataUrl,
 }: CoverCropDialogProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageState, setImageState] = useState<ImageState | null>(null);
   const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
@@ -118,11 +119,12 @@ export function CoverCropDialog({
 
     function onMove(ev: MouseEvent): void {
       if (!dragRef.current) return;
-      const dx = ev.clientX - dragRef.current.startX;
-      const dy = ev.clientY - dragRef.current.startY;
+      const { startX, startY, origX, origY } = dragRef.current;
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
       setImageState((prev) => {
         if (!prev) return prev;
-        const next = { ...prev, x: dragRef.current!.origX + dx, y: dragRef.current!.origY + dy };
+        const next = { ...prev, x: origX + dx, y: origY + dy };
         const clamped = clampOffset(next, CANVAS_WIDTH, CANVAS_HEIGHT);
         return { ...next, ...clamped };
       });
@@ -138,23 +140,28 @@ export function CoverCropDialog({
     document.addEventListener('mouseup', onUp);
   }
 
-  function handleWheel(e: React.WheelEvent): void {
-    if (!imageState) return;
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.95 : 1.05;
-    setImageState((prev) => {
-      if (!prev) return prev;
-      const minScale = fitScale(prev.img, CANVAS_WIDTH, CANVAS_HEIGHT);
-      const newScale = Math.max(minScale, Math.min(prev.scale * delta, minScale * 5));
-      const cx = CANVAS_WIDTH / 2;
-      const cy = CANVAS_HEIGHT / 2;
-      const newX = cx - (cx - prev.x) * (newScale / prev.scale);
-      const newY = cy - (cy - prev.y) * (newScale / prev.scale);
-      const next = { ...prev, scale: newScale, x: newX, y: newY };
-      const clamped = clampOffset(next, CANVAS_WIDTH, CANVAS_HEIGHT);
-      return { ...next, ...clamped };
-    });
-  }
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    function onWheel(ev: WheelEvent): void {
+      ev.preventDefault();
+      const delta = ev.deltaY > 0 ? 0.95 : 1.05;
+      setImageState((prev) => {
+        if (!prev) return prev;
+        const minScale = fitScale(prev.img, CANVAS_WIDTH, CANVAS_HEIGHT);
+        const newScale = Math.max(minScale, Math.min(prev.scale * delta, minScale * 5));
+        const cx = CANVAS_WIDTH / 2;
+        const cy = CANVAS_HEIGHT / 2;
+        const newX = cx - (cx - prev.x) * (newScale / prev.scale);
+        const newY = cy - (cy - prev.y) * (newScale / prev.scale);
+        const next = { ...prev, scale: newScale, x: newX, y: newY };
+        const clamped = clampOffset(next, CANVAS_WIDTH, CANVAS_HEIGHT);
+        return { ...next, ...clamped };
+      });
+    }
+    wrap.addEventListener('wheel', onWheel, { passive: false });
+    return () => wrap.removeEventListener('wheel', onWheel);
+  }, [imageState == null]);
 
   function handleSave(): void {
     if (!imageState) return;
@@ -191,9 +198,9 @@ export function CoverCropDialog({
         {imageState ? (
           <>
             <div
+              ref={wrapRef}
               className="avatarCropCanvasWrap coverCropCanvasWrap"
               onMouseDown={handleMouseDown}
-              onWheel={handleWheel}
             >
               <canvas
                 ref={canvasRef}
