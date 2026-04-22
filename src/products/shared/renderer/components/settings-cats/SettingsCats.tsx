@@ -269,8 +269,12 @@ export function SettingsCatsCanvas({
 
   const [avatarCropOpen, setAvatarCropOpen] = useState(false);
   const [pendingCreateAvatar, setPendingCreateAvatar] = useState<string | null>(null);
+  const [pendingCreateCover, setPendingCreateCover] = useState<string | null>(null);
   useEffect(() => {
-    if (!isCreateRoute) setPendingCreateAvatar(null);
+    if (!isCreateRoute) {
+      setPendingCreateAvatar(null);
+      setPendingCreateCover(null);
+    }
   }, [isCreateRoute]);
 
   const handleAvatarSave = async (dataUrl: string): Promise<void> => {
@@ -314,10 +318,18 @@ export function SettingsCatsCanvas({
 
   const handleCoverSave = (dataUrl: string) => {
     setCoverCropOpen(false);
+    if (effectiveMode === 'create') {
+      setPendingCreateCover(dataUrl);
+      return;
+    }
     if (!selectedCat) return;
     writeCatCover(selectedCat.id, dataUrl);
   };
   const handleCoverRemove = () => {
+    if (effectiveMode === 'create') {
+      setPendingCreateCover(null);
+      return;
+    }
     if (!selectedCat) return;
     writeCatCover(selectedCat.id, null);
   };
@@ -364,6 +376,10 @@ export function SettingsCatsCanvas({
           setPendingCreateAvatar(null);
           toastFeedback(error instanceof Error ? error.message : 'Failed to save avatar.');
         }
+      }
+      if (pendingCreateCover) {
+        writeCatCover(newCat.id, pendingCreateCover);
+        setPendingCreateCover(null);
       }
     }
   };
@@ -540,53 +556,77 @@ export function SettingsCatsCanvas({
                 <SettingsSubSection headerless className="catsSubCard catsIdentityCard">
                   <div className="fieldLabel">
                     <span>Avatar</span>
-                    <div className="catsAvatarDock">
-                      <button
-                        type="button"
-                        className={[
-                          'catAvatar',
-                          'catsIdentityAvatar',
-                          pendingCreateAvatar ? '' : 'catsIdentityAvatarPlaceholder',
-                        ].filter(Boolean).join(' ')}
-                        style={pendingCreateAvatar
-                          ? { backgroundImage: `url(${pendingCreateAvatar})`, backgroundSize: 'cover', backgroundPosition: 'center', color: 'transparent' }
-                          : undefined}
-                        onClick={() => setAvatarCropOpen(true)}
-                        aria-label={pendingCreateAvatar ? 'Change avatar' : 'Upload avatar'}
-                        data-tooltip={pendingCreateAvatar ? 'Change avatar' : 'Upload avatar'}
-                      >
-                        {pendingCreateAvatar ? '' : (catForm.name.trim() ? catInitials(catForm.name) : (
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-                            <circle cx="9" cy="7" r="4" />
-                            <line x1="19" y1="8" x2="19" y2="14" />
-                            <line x1="22" y1="11" x2="16" y2="11" />
-                          </svg>
-                        ))}
-                      </button>
-                      <span className="catsAvatarCameraBadge" aria-hidden="true">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                          <circle cx="12" cy="13" r="4" />
-                        </svg>
-                      </span>
-                      {pendingCreateAvatar ? (
+                    <div className="catsIdentityAvatarRow">
+                      <div className="catsAvatarDock">
                         <button
                           type="button"
-                          className="catsAvatarRemoveBadge"
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            setPendingCreateAvatar(null);
-                          }}
-                          aria-label="Remove avatar"
-                          data-tooltip="Remove avatar"
+                          className={[
+                            'catAvatar',
+                            'catsIdentityAvatar',
+                            pendingCreateAvatar ? '' : 'catsIdentityAvatarPlaceholder',
+                          ].filter(Boolean).join(' ')}
+                          style={pendingCreateAvatar
+                            ? { backgroundImage: `url(${pendingCreateAvatar})`, backgroundSize: 'cover', backgroundPosition: 'center', color: 'transparent' }
+                            : undefined}
+                          onClick={() => setAvatarCropOpen(true)}
+                          aria-label={pendingCreateAvatar ? 'Change avatar' : 'Upload avatar'}
+                          data-tooltip={pendingCreateAvatar ? 'Change avatar' : 'Upload avatar'}
                         >
-                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <line x1="18" y1="6" x2="6" y2="18" />
-                            <line x1="6" y1="6" x2="18" y2="18" />
-                          </svg>
+                          {pendingCreateAvatar ? '' : (catForm.name.trim() ? catInitials(catForm.name) : (
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                              <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                              <circle cx="8.5" cy="8.5" r="1.5" />
+                              <polyline points="21 15 16 10 5 21" />
+                            </svg>
+                          ))}
                         </button>
-                      ) : null}
+                        <span className="catsAvatarCameraBadge" aria-hidden="true">
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                            <circle cx="12" cy="13" r="4" />
+                          </svg>
+                        </span>
+                        {pendingCreateAvatar ? (
+                          <button
+                            type="button"
+                            className="catsAvatarRemoveBadge"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setPendingCreateAvatar(null);
+                            }}
+                            aria-label="Remove avatar"
+                            data-tooltip="Remove avatar"
+                          >
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="18" y1="6" x2="6" y2="18" />
+                              <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                          </button>
+                        ) : null}
+                      </div>
+                      <label className="fieldLabelInline catsIdentityBossToggle">
+                        <input
+                          type="checkbox"
+                          checked={catForm.makeBoss}
+                          onChange={async (event) => {
+                            const next = event.target.checked;
+                            if (next && payload.chat.bossCatId) {
+                              const currentBoss = payload.chat.cats.find((c) => c.id === payload.chat.bossCatId);
+                              const confirmed = await confirm({
+                                title: 'Change Boss Cat',
+                                message: `${currentBoss?.name ?? 'Another cat'} is currently the Boss Cat. Set this new cat as the Boss instead?`,
+                                confirmLabel: 'Confirm',
+                              });
+                              if (!confirmed) return;
+                            }
+                            setCatForm({
+                              ...catForm,
+                              makeBoss: next,
+                            });
+                          }}
+                        />
+                        <span>Set as Boss Cat</span>
+                      </label>
                     </div>
                   </div>
                   <label className="fieldLabel">
@@ -599,29 +639,42 @@ export function SettingsCatsCanvas({
                       onChange={(event) => setCatForm({ ...catForm, name: event.target.value })}
                     />
                   </label>
-                  <label className="fieldLabel fieldLabelInline">
-                    <input
-                      type="checkbox"
-                      checked={catForm.makeBoss}
-                      onChange={async (event) => {
-                        const next = event.target.checked;
-                        if (next && payload.chat.bossCatId) {
-                          const currentBoss = payload.chat.cats.find((c) => c.id === payload.chat.bossCatId);
-                          const confirmed = await confirm({
-                            title: 'Change Boss Cat',
-                            message: `${currentBoss?.name ?? 'Another cat'} is currently the Boss Cat. Set this new cat as the Boss instead?`,
-                            confirmLabel: 'Confirm',
-                          });
-                          if (!confirmed) return;
-                        }
-                        setCatForm({
-                          ...catForm,
-                          makeBoss: next,
-                        });
-                      }}
-                    />
-                    <span>Set as Boss Cat</span>
-                  </label>
+                  <div className="fieldLabel catsCoverField">
+                    <span>Cover photo</span>
+                    <div className="catsCoverDock">
+                      <button
+                        type="button"
+                        className={`catsCoverThumb${pendingCreateCover ? ' catsCoverThumbLoaded' : ' catsCoverThumbPlaceholder'}`}
+                        style={pendingCreateCover ? { backgroundImage: `url(${pendingCreateCover})` } : undefined}
+                        onClick={() => setCoverCropOpen(true)}
+                        aria-label={pendingCreateCover ? 'Change cover photo' : 'Upload cover photo'}
+                        data-tooltip={pendingCreateCover ? 'Change cover' : 'Upload cover'}
+                      />
+                      <span className="catsCoverCameraBadge" aria-hidden="true">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                          <circle cx="12" cy="13" r="4" />
+                        </svg>
+                      </span>
+                      {pendingCreateCover ? (
+                        <button
+                          type="button"
+                          className="catsCoverRemoveBadge"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            setPendingCreateCover(null);
+                          }}
+                          aria-label="Remove cover"
+                          data-tooltip="Remove cover"
+                        >
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
                 </SettingsSubSection>
 
                 <SettingsSubSection
@@ -945,7 +998,7 @@ export function SettingsCatsCanvas({
         <CoverCropDialog
           onSave={handleCoverSave}
           onClose={() => setCoverCropOpen(false)}
-          initialDataUrl={coverUrl}
+          initialDataUrl={effectiveMode === 'create' ? pendingCreateCover : coverUrl}
         />
       ) : null}
     </>

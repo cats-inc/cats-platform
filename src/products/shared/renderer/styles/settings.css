@@ -248,6 +248,17 @@
   background-color: #2a2a2a;
 }
 
+.catsCoverThumbPlaceholder {
+  background-color: #d4cec8;
+  background-image: none;
+  outline: 1px dashed rgba(110, 101, 92, 0.35);
+  outline-offset: -3px;
+}
+
+.catsCoverThumbPlaceholder:hover {
+  background-color: color-mix(in srgb, #d4cec8 80%, var(--accent) 20%);
+}
+
 .catsCoverThumb:hover {
   filter: brightness(0.95);
   border-color: var(--accent);
