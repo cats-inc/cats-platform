@@ -50,9 +50,12 @@ was still open, but it now actively misleads:
 Within Execution the confusion is symmetric:
 `Checkpoint`, `Outcome`, `Trace`, `Activity`, `Artifact` look
 like peers of `Run` in the terminology doc, but the code treats
-them as **by-products of a Run** — each record carries a nullable
-`runId` / `taskId` / `conversationId` back-reference and is
-produced by a Run, never owns one.
+them as a **materialization / evidence tier** sitting under the
+Execution layer — each record carries nullable `runId` / `taskId`
+/ `workItemId` / `projectId` / `conversationId` back-references.
+Some rows are direct run by-products; others (operator-authored
+activities, documents, reports, datasets, transcript exports)
+have no run at all. None of them own a `Run`.
 
 The right fix is not to rename code or add new tables. It is
 to freeze a canonical **three-tier** taxonomy with finite entity
@@ -105,9 +108,11 @@ and what it leaves behind):
 - `Task`
 - `Run`
 - `Mission` — a distinct Execution entity (not a `Task`
-  variant) that anchors to a `WorkItem` via `managedWorkId` and
-  is optionally bound to an agent via `assignedAgentId`. See
-  ADR-063.
+  variant). `managedWorkId`, `conversationId`, `assignedAgentId`,
+  `sourceTurnId`, and `sourceLaneId` are all nullable; a mission
+  may anchor to a `WorkItem`, remain fully internal, or tie back
+  to a specific turn / lane, depending on how it was spawned.
+  See ADR-063.
 
 `Approval` is intentionally absent from the Planning entity
 list and is documented as a cross-cutting gate in §3 below.
@@ -139,13 +144,16 @@ and code comments:
   Conversation" — that inverts the actual priority.
 - `Mission`, `Assignment` → **`Mission`** is its own
   Execution-layer record (`MissionRecord`), distinct from
-  `Task`. It anchors to a `WorkItem` via `managedWorkId` and
-  optionally binds an agent via `assignedAgentId`; it carries
-  `sourceTurnId` / `sourceLaneId` to tie back to the interaction
-  that produced it. Per ADR-063, mission and task were
-  deliberately separated — do not describe `Mission` as a
-  subtype of `Task`. `Assignment` remains a UI synonym for
-  `Mission` and should not appear in shared schemas.
+  `Task`. All of its anchoring fields are nullable:
+  `managedWorkId` (optional `WorkItem` anchor),
+  `assignedAgentId` (optional agent binding),
+  `sourceTurnId` / `sourceLaneId` / `conversationId` (optional
+  interaction provenance). A mission may therefore remain fully
+  internal and never surface as a `WorkItem`, per ADR-063. Do
+  not describe `Mission` as a subtype of `Task`, and do not
+  document it as requiring a `WorkItem` anchor. `Assignment`
+  remains a UI synonym for `Mission` and should not appear in
+  shared schemas.
 - `Execution Result` → **`Outcome`** (`CoreOrchestrationOutcomeRecord`).
 - `Activity` → **an independent operator-feed record**
   (`CoreActivityRecord`), not a projection over `Trace`. It has
@@ -160,7 +168,7 @@ and code comments:
 - `Job` → avoid. Use `Mission` (delegation) or `Run` (execution
   attempt) per ADR-063.
 
-### 3. Rules vs. entities vs. by-products
+### 3. Rules vs. entities vs. materialization records
 
 Three structural distinctions that must survive in every future
 doc:
@@ -190,16 +198,24 @@ doc:
   `project | work_item | task | run | artifact | conversation`
   (see `CoreApprovalBindingSubjectKind`). Approval therefore
   attaches to any layer but does not itself own a layer slot.
-- **Run by-products** — `Artifact`, `Outcome`, `Checkpoint`,
-  `Trace`, and `Activity`. Each is a canonical record with
-  back-references into the Planning / Execution / Interaction
-  graph (`projectId` / `workItemId` / `taskId` / `runId` /
-  `conversationId`). They are dependent children of the
-  Execution layer, not peers of `Run`. `Activity` is included
-  here despite not flowing through a `Run`'s own event stream
-  because its back-references and lifecycle match the other
-  by-products; see §2 for why `Activity` is **not** a projection
-  over `Trace`.
+- **Materialization records** — `Artifact`, `Outcome`,
+  `Checkpoint`, `Trace`, and `Activity`. Each is a canonical
+  record that captures durable state produced around the
+  Planning / Execution / Interaction graph, with back-references
+  into any of `projectId` / `workItemId` / `taskId` / `runId` /
+  `conversationId` (all nullable). Some instances are direct
+  run by-products — for example `Outcome`, `Checkpoint`, and
+  `build` / `preview` `Artifact` rows typically carry a `runId`
+  and/or `taskId` — but others are created outside any run:
+  `Activity` has operator-authored kinds
+  (`note`, `operator_action`, `work_item_updated`, etc.) that
+  attach to a project / work-item / conversation with no task
+  or run; `Artifact` kinds `document`, `report`, `attachment`,
+  `transcript_export`, and `dataset` likewise do not require a
+  `Run`. Treat this group as the materialization / evidence
+  tier that sits under the Execution layer rather than as
+  "children of a Run". `Activity` is still **not** a projection
+  over `Trace` — see §2.
 
 ### 4. Cross-layer link contract (frozen)
 
