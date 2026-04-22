@@ -1014,6 +1014,7 @@ export function ChatView({
       secondarySurfacePosition={layoutMetrics.secondarySurfacePosition}
       layoutStyle={layoutStyle}
       hasConversationStarted={hasConversationStarted}
+      activeDirectCatId={isDirectLane && hasConversationStarted ? (defaultRecipientCat?.catId ?? null) : null}
       topBar={(
         <ChatViewTopBar
           avatars={topBarParticipants.map((participant) => ({

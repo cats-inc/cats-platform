@@ -524,10 +524,6 @@
   transform: scale(0.97);
 }
 
-.draftHeaderCoverLoaded {
-  background-color: #2a2a2a;
-}
-
 .draftHeaderVisual {
   display: flex;
   align-items: center;

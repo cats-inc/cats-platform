@@ -1,4 +1,6 @@
-import type { CSSProperties, ReactNode } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
+
+import { readCatCover, subscribeCatCover } from '../../catCoverStorage.js';
 
 export interface ChatViewFrameProps {
   conversationMode: string;
@@ -11,6 +13,7 @@ export interface ChatViewFrameProps {
   statusRow?: ReactNode;
   children: ReactNode;
   sidePanel: ReactNode;
+  activeDirectCatId?: string | null;
 }
 
 export function ChatViewFrame({
@@ -24,7 +27,18 @@ export function ChatViewFrame({
   statusRow = null,
   children,
   sidePanel,
+  activeDirectCatId = null,
 }: ChatViewFrameProps) {
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!activeDirectCatId) {
+      setCoverUrl(null);
+      return;
+    }
+    setCoverUrl(readCatCover(activeDirectCatId));
+    return subscribeCatCover(activeDirectCatId, setCoverUrl);
+  }, [activeDirectCatId]);
+
   return (
     <>
       <div
@@ -38,6 +52,13 @@ export function ChatViewFrame({
         {topBar}
         {statusRow}
         <div className="channelWorkspace">
+          {coverUrl ? (
+            <div
+              className="activeChatCoverBackdrop"
+              style={{ backgroundImage: `url(${coverUrl})` }}
+              aria-hidden="true"
+            />
+          ) : null}
           <section className={hasConversationStarted ? 'channelShell' : 'channelShell channelShellFresh'}>
             {children}
           </section>
