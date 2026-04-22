@@ -48,12 +48,9 @@ platform can.
 ## Why This Matters
 
 If Cats Work tries to become a large rule-based planner, it risks fighting the
-direction of agent coding. The most capable current systems are already good at
-planning, tool use, file inspection, iteration, and recovery when they are given
-the right operating context.
-
-The platform's advantage is not that it can write better plans than every model.
-Its advantage is that it can provide the things raw agent processes do not own:
+direction of agent coding. The platform's advantage is not that it can write
+better plans than every capable model. Its advantage is that it can provide the
+things raw agent processes do not own:
 
 - durable product state
 - official tools and APIs
@@ -67,10 +64,39 @@ Its advantage is that it can provide the things raw agent processes do not own:
 - cost-aware routing across expensive, cheap, free, local, and provider-backed
   execution lanes
 
-This is the same pattern as human management. A highly capable worker gets
-goals, resources, constraints, and occasional review. A weaker worker gets
-smaller assignments, clearer SOPs, closer checkpoints, and less authority. The
-manager has one role, but varies the management style.
+This is the same pattern as human management: capable workers get goals,
+resources, constraints, and review points; weaker workers get smaller
+assignments, clearer SOPs, closer checkpoints, and less authority. The manager
+has one role, but varies the management style.
+
+## Addressable Targets and Cat Identity
+
+The discussion started from a Cats Chat modeling problem: solo targets,
+temporary participants, My Cats, Boss Cat, and Guide Cat were being treated as
+separate product ideas without a clean shared abstraction.
+
+The useful unification is not "everything is a Cat." The useful unification is
+that they are all addressable targets for a turn or workflow:
+
+```ts
+type AddressableTarget =
+  | { kind: 'implicit_execution_target'; provider: string; model: string | null }
+  | { kind: 'channel_participant'; participantId: string }
+  | { kind: 'cat'; catId: string };
+```
+
+That keeps the important boundaries intact:
+
+- provider/model/control is execution, not identity
+- a temporary participant belongs to one room unless promoted
+- a My Cat is a reusable registry identity with settings, memory, direct-lane,
+  and transport implications
+- Boss Cat and Guide Cat are Cat identities with capabilities layered on top
+
+This distinction matters for Cats Work because the orchestrator should be able
+to address models, temporary workers, reusable Cats, or external agent processes
+without accidentally giving every target the lifecycle and side effects of a
+durable Cat.
 
 ## Orchestrator Definition
 
@@ -140,11 +166,16 @@ truth.
 The supervision model should not be a boolean switch between `autonomous` and
 `rule_based`.
 
-It should be continuous and policy-driven:
+It should be policy-driven across independent dials:
 
 ```ts
 interface SupervisionPolicy {
-  autonomyLevel: 0 | 1 | 2 | 3 | 4 | 5;
+  decisionAuthority:
+    | 'none'
+    | 'propose_only'
+    | 'bounded_step'
+    | 'milestone_owner'
+    | 'outcome_owner';
   taskGranularity: 'tiny' | 'step' | 'milestone' | 'outcome';
   toolScope: 'none' | 'read_only' | 'narrow_write' | 'broad_write';
   checkpointCadence: 'every_step' | 'milestone' | 'on_risk' | 'final';
@@ -153,16 +184,21 @@ interface SupervisionPolicy {
 }
 ```
 
-This allows one orchestrator personality to manage different workers
-differently:
+`decisionAuthority` is intentionally an enum, not a `0..5` score. These states
+are not smooth numeric intervals; `none` to `propose_only`, or `bounded_step` to
+`milestone_owner`, can be discontinuous changes in responsibility.
 
-| Worker class | Supervision style | Appropriate work |
-|--------------|-------------------|------------------|
-| Strong autonomous agent | Outcome delegation with broad tools and approval gates | planning, coding, multi-step execution, delegation |
-| Strong but high-risk context | Milestone checkpoints and stricter approval | production changes, external sends, destructive actions |
-| Mid-tier model | Template-driven workflow with limited tools | research summaries, structured plans, drafts |
-| Weak local model | Tiny tasks, schema output, no direct mutation | classification, extraction, title generation, summarization |
-| Untrusted model | Draft-only, human or strong-agent approval | suggestions, alternatives, low-confidence proposals |
+The table below is a set of example supervision shapes, not a worker taxonomy.
+The same worker may move between shapes as task risk, context, budget, and
+recent performance change:
+
+| Context pattern | Supervision shape | Appropriate work |
+|-----------------|-------------------|------------------|
+| Capable agent, reversible task | Outcome delegation with broad tools and approval gates | planning, coding, multi-step execution, delegation |
+| Capable agent, high-risk task | Milestone checkpoints and stricter approval | production changes, external sends, destructive actions |
+| Mid-confidence model or new provider | Template-driven workflow with limited tools | research summaries, structured plans, drafts |
+| Weak local model on narrow work | Tiny tasks, schema output, no direct mutation | classification, extraction, title generation, summarization |
+| Untrusted or low-confidence output | Draft-only, human or strong-agent approval | suggestions, alternatives, low-confidence proposals |
 
 ## Role of Rule-Based Logic
 
@@ -195,6 +231,23 @@ Give one small step + constrained input + schema + validator.
 That is not two different orchestrators. It is one supervision system varying
 management intensity.
 
+### Chat Rule-Based Scope
+
+Cats Chat still needs more deterministic behavior than Work's agentic task
+surface. Conversational integrity depends on rules that should not be handed to
+an LLM:
+
+- mention resolution must be predictable
+- room membership and audience limits must be enforced
+- direct lanes and Recents must keep their product semantics
+- transcript mutation, delete/archive behavior, and transport fanout must remain
+  consistent
+
+That does not mean Chat's rule-based routing should become the shared brain for
+Work and Code. The better split is: Chat keeps deterministic conversational
+contracts, while Work and Code use the platform's tools, scheduler, and
+guardrails to host stronger agent processes.
+
 ## Scheduler and Lifecycle Are Required
 
 Even if a strong agent is the real planner, it cannot reliably own its own
@@ -215,6 +268,17 @@ Cats Work still needs a scheduler/task substrate that can:
 
 The agent may decide what should happen next. The platform decides what is
 allowed, what is scheduled, what is durable, and what must be approved.
+
+Multi-agent work needs explicit lifecycle semantics, not implicit recursive
+spawning:
+
+- a delegated child run may be `blocking` or `async`
+- child runs inherit budget envelopes unless explicitly granted more
+- parent and child runs need traceable ownership and cancellation behavior
+- the scheduler must detect obvious deadlocks, such as two runs waiting on each
+  other inside the same constrained session pool
+- spawn requests are proposals until the platform allocates capacity and records
+  the run
 
 ## Cats Work Product Thesis
 
@@ -262,14 +326,18 @@ portfolio of workers productive.
 ## Open Questions
 
 - How should Cats Work score agent capability over time?
-- Should capability tiers be manually assigned, measured from evals, learned
-  from task history, or all three?
+- How should a new provider bootstrap its capability profile before there are
+  eval results or session history? Conservative defaults, provider-declared
+  event capabilities, quick probes, and user overrides likely all need a role.
 - What is the smallest useful scheduler/task substrate that supports this model
   without becoming a heavyweight workflow engine too early?
 - Which actions should always require human approval, even when requested by a
   trusted strong agent?
 - How should weak-model output confidence be represented when the model cannot
   self-assess reliably?
+- How should supervision policy functions be versioned, tested, and rolled back
+  when a `decideToolSurface` or validation-policy change regresses one worker /
+  task combination?
 
 ## Recommended Next Step
 
