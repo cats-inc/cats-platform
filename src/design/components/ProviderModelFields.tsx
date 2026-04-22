@@ -172,26 +172,6 @@ export function ProviderModelFields({
     effectiveAdvancedCatalog,
     isLegacyModelTarget,
   });
-  const selectedPreset = presetOptions.find((preset) => preset.id === selectedPresetId) ?? null;
-  const advancedSettingsVisible =
-    !isLegacyModelTarget
-    && (
-      presetOptions.length > 0
-      || controlOptions.length > 0
-      || Boolean(unsupportedSelectionWarning)
-      || requestScopedControlCount > 0
-      || effectiveAdvancedCatalog.warnings.length > 0
-    );
-  const advancedSettingsDefaultOpen =
-    Boolean(selectedPresetId)
-    || Object.keys(controlValues).length > 0
-    || Boolean(unsupportedSelectionWarning)
-    || effectiveAdvancedCatalog.warnings.length > 0;
-  const advancedSettingsSummary = selectedPreset
-    ? selectedPreset.label
-    : controlOptions.length > 0
-      ? `${controlOptions.length} runtime control${controlOptions.length === 1 ? '' : 's'}`
-      : 'Standard defaults';
 
   useProviderRegistryAutoRecheck({
     providersLoaded,
@@ -379,69 +359,60 @@ export function ProviderModelFields({
             Manual model id passthrough. Runtime resolves this as the legacy `model` field, not a structured entry/preset selection.
           </span>
         </label>
-      ) : advancedSettingsVisible ? (
-        <details
-          className="providerAdvancedSettings"
-          open={advancedSettingsDefaultOpen}
-        >
-          <summary>
-            <span>Advanced settings</span>
-            <span className="providerAdvancedSettingsSummary">
-              {advancedSettingsSummary}
+      ) : (
+        <label className="fieldLabel">
+          <span>Mode</span>
+          <select
+            className="textInput"
+            value={selectedPresetId}
+            disabled={presetOptions.length === 0}
+            onChange={(event) => onPresetChange(event.target.value)}
+          >
+            <option value="">{presetOptions.length > 0 ? 'Standard' : 'Standard only'}</option>
+            {presetOptions.map((preset) => (
+              <option
+                key={preset.id}
+                value={preset.id}
+                disabled={preset.availability === 'unavailable'}
+              >
+                {preset.label}
+                {preset.availability === 'preview' ? ' (preview)' : ''}
+                {preset.availability === 'unavailable' ? ' (unavailable)' : ''}
+              </option>
+            ))}
+          </select>
+          {selectedPresetId ? (
+            <span className="fieldHint">
+              {presetOptions.find((preset) => preset.id === selectedPresetId)?.description
+                ?? 'Extra tuning for this model.'}
             </span>
-          </summary>
-          <div className="providerAdvancedSettingsBody">
-            {presetOptions.length > 0 ? (
-              <label className="fieldLabel">
-                <span>Mode</span>
-                <select
-                  className="textInput"
-                  value={selectedPresetId}
-                  onChange={(event) => onPresetChange(event.target.value)}
-                >
-                  <option value="">Standard</option>
-                  {presetOptions.map((preset) => (
-                    <option
-                      key={preset.id}
-                      value={preset.id}
-                      disabled={preset.availability === 'unavailable'}
-                    >
-                      {preset.label}
-                      {preset.availability === 'preview' ? ' (preview)' : ''}
-                      {preset.availability === 'unavailable' ? ' (unavailable)' : ''}
-                    </option>
-                  ))}
-                </select>
-                {selectedPresetId ? (
-                  <span className="fieldHint">
-                    {selectedPreset?.description ?? 'Extra tuning for this model.'}
-                  </span>
-                ) : null}
-              </label>
-            ) : null}
-            <ProviderModelFieldControls
-              controlOptions={controlOptions}
-              selectedCatalogEntryId={selectedCatalogEntryId}
-              controlValues={controlValues}
-              onControlChange={onControlChange}
-            />
-            {unsupportedSelectionWarning ? (
-              <span className="fieldHint providerCatalogHint">
-                {unsupportedSelectionWarning}
-              </span>
-            ) : null}
-            {requestScopedControlCount > 0 ? (
-              <span className="fieldHint providerCatalogHint">
-                Request-only runtime overrides are hidden here because this selector persists chat/session defaults.
-              </span>
-            ) : null}
-            {effectiveAdvancedCatalog.warnings.length > 0 ? (
-              <span className="fieldHint providerCatalogHint">
-                {effectiveAdvancedCatalog.warnings[0]}
-              </span>
-            ) : null}
-          </div>
-        </details>
+          ) : presetOptions.length === 0 ? (
+            <span className="fieldHint">
+              This provider target exposes only the base catalog entry for persisted chat/session settings.
+            </span>
+          ) : null}
+        </label>
+      )}
+      <ProviderModelFieldControls
+        controlOptions={controlOptions}
+        selectedCatalogEntryId={selectedCatalogEntryId}
+        controlValues={controlValues}
+        onControlChange={onControlChange}
+      />
+      {unsupportedSelectionWarning ? (
+        <span className="fieldHint providerCatalogHint">
+          {unsupportedSelectionWarning}
+        </span>
+      ) : null}
+      {requestScopedControlCount > 0 ? (
+        <span className="fieldHint providerCatalogHint">
+          Request-only runtime overrides are hidden here because this selector persists chat/session defaults.
+        </span>
+      ) : null}
+      {effectiveAdvancedCatalog.warnings.length > 0 ? (
+        <span className="fieldHint providerCatalogHint">
+          {effectiveAdvancedCatalog.warnings[0]}
+        </span>
       ) : null}
     </>
   );

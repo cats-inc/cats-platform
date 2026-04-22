@@ -1926,22 +1926,6 @@ test('ProviderModelFields composes dedicated support helpers instead of defining
   assert.match(supportSource, /export function shouldAutoRecheckProviderRegistry/u);
 });
 
-test('ProviderModelFields keeps runtime presets and controls behind an advanced settings disclosure', async () => {
-  const componentSource = await readFile(
-    new URL('../src/design/components/ProviderModelFields.tsx', import.meta.url),
-    'utf8',
-  );
-  const formsSource = await readFile(
-    new URL('../src/design/components/forms.css', import.meta.url),
-    'utf8',
-  );
-
-  assert.match(componentSource, /<details\s+className="providerAdvancedSettings"/u);
-  assert.match(componentSource, />Advanced settings</u);
-  assert.match(componentSource, /<ProviderModelFieldControls/u);
-  assert.match(formsSource, /\.providerAdvancedSettings/u);
-});
-
 test('platform setup routes consume dedicated parser helpers instead of keeping validation inline', async () => {
   const routeSource = await readFile(
     new URL('../src/app/server/platformSetupRoutes.ts', import.meta.url),
