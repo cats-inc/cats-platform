@@ -1,7 +1,6 @@
 import { useState } from 'react';
 
 import { ToastContainer, useToast } from '../../../design/components/Toast.js';
-import { resolveRuntimeConnectionChip } from '../../../design/components/runtimeChips.js';
 import {
   SettingsSection,
   SettingsSectionHeader,
@@ -12,20 +11,29 @@ import type { AppShellPayload } from '../../../products/shared/api/workspaceCont
 import { refreshProviderModelCatalogs } from '../../../products/shared/renderer/api/providers.js';
 import { PLATFORM_RUNTIME_SETUP_PATH } from '../../../shared/runtimeIngressPaths.js';
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
+import { resolveRuntimePresentationStatus } from '../../../shared/runtimeStatusPresentation.js';
 import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 
-function resolveRuntimeSetupChip(
+function resolveRuntimeStatusChip(
+  runtime: AppShellPayload['runtime'],
   runtimeSetup: RuntimeSetupSummary,
 ): { tone: SettingsStatusChipTone; label: string } {
+  const connection = resolveRuntimePresentationStatus(runtime);
+  if (connection === 'unavailable' || connection === 'unknown') {
+    return { tone: 'warm', label: 'Runtime unavailable' };
+  }
+  if (connection === 'degraded') {
+    return { tone: 'warm', label: 'Runtime degraded' };
+  }
   switch (runtimeSetup.status) {
     case 'ready':
       return { tone: 'ready', label: 'Runtime ready' };
     case 'ready_to_apply':
-      return { tone: 'warm', label: 'Ready to apply' };
+      return { tone: 'warm', label: 'Setup ready to apply' };
     case 'attention_required':
-      return { tone: 'warm', label: 'Needs remediation' };
+      return { tone: 'warm', label: 'Setup needs remediation' };
     case 'scan_required':
-      return { tone: 'warm', label: 'Scan required' };
+      return { tone: 'warm', label: 'Provider scan required' };
     case 'unavailable':
     default:
       return { tone: 'warm', label: 'Setup unavailable' };
@@ -37,8 +45,7 @@ export function PlatformSettingsRuntime({
 }: {
   payload: AppShellPayload;
 }) {
-  const runtimeChip = resolveRuntimeConnectionChip(payload.runtime);
-  const runtimeSetupChip = resolveRuntimeSetupChip(payload.runtimeSetup);
+  const runtimeChip = resolveRuntimeStatusChip(payload.runtime, payload.runtimeSetup);
   const { toasts, showToast } = useToast();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -72,16 +79,13 @@ export function PlatformSettingsRuntime({
         header={
           <SettingsSectionHeader
             title="Runtime status"
-            description={payload.runtimeSetup.summary}
+            description="Whether cats-runtime is reachable and your provider setup is complete. The breakdown below shows how many providers are currently usable."
           />
         }
       >
         <div className="settingsChipRow">
           <SettingsStatusChip tone={runtimeChip.tone}>
             {runtimeChip.label}
-          </SettingsStatusChip>
-          <SettingsStatusChip tone={runtimeSetupChip.tone}>
-            {runtimeSetupChip.label}
           </SettingsStatusChip>
         </div>
         <div className="settingsRuntimeMetrics">
