@@ -50,14 +50,13 @@ was still open, but it now actively misleads:
 Around Execution the confusion is symmetric:
 `Checkpoint`, `Outcome`, `Trace`, `Activity`, `Artifact` look
 like peers of `Run` in the terminology doc, but the code treats
-them as a **cross-layer materialization / evidence tier** —
-each record carries nullable `runId` / `taskId` / `workItemId`
-/ `projectId` / `conversationId` back-references, and may
-attach at any layer. Some rows are direct run by-products;
-others (operator-authored activities, documents, reports,
-datasets, transcript exports) have no run at all and live
-against a project, work item, or conversation. None of them
-own a `Run`.
+them as a **cross-layer materialization / evidence tier** with
+**record-specific nullable anchors**. `Trace`, `Checkpoint`,
+and `Outcome` carry only `conversationId` / `runId` / `taskId`
+and never anchor directly at the Planning layer; `Artifact`
+and `Activity` additionally carry `projectId` / `workItemId`
+and routinely attach to a project, work item, or conversation
+with no `Task` or `Run`. None of the five ever own a `Run`.
 
 The right fix is not to rename code or add new tables. It is
 to freeze a canonical **three-tier** taxonomy with finite entity
@@ -207,22 +206,37 @@ doc:
 - **Cross-layer materialization / evidence tier** —
   `Artifact`, `Outcome`, `Checkpoint`, `Trace`, and `Activity`.
   Each is a canonical record that captures durable state around
-  the Planning / Execution / Interaction graph, with
-  back-references into any of `projectId` / `workItemId` /
-  `taskId` / `runId` / `conversationId` (all nullable). Some
-  instances are direct run by-products — for example `Outcome`,
-  `Checkpoint`, and `build` / `preview` `Artifact` rows
-  typically carry a `runId` and/or `taskId`. Others are
-  created outside any run and attach directly to a project,
-  work item, or conversation: `Activity` has operator-authored
-  kinds (`note`, `operator_action`, `work_item_updated`, etc.)
-  that never touch a task or run, and `Artifact` kinds
-  `document`, `report`, `attachment`, `transcript_export`, and
-  `dataset` likewise do not require a `Run`. This tier
-  therefore **does not sit under the Execution layer** — it
-  cuts across Planning, Execution, and Interaction in the same
-  way approval does. `Activity` is still **not** a projection
-  over `Trace` — see §2.
+  the graph, but the available anchor fields are
+  **record-specific** — do not assume a uniform
+  `projectId / workItemId / taskId / runId / conversationId`
+  set across the tier:
+  - `CoreTraceRecord` (`src/core/types.ts:595`): nullable
+    `conversationId` / `runId` / `taskId` only. No direct
+    Planning anchor.
+  - `CoreCheckpointRecord` (`types.ts:610`): nullable
+    `conversationId` / `runId` / `taskId` (+ `sourceTraceId`).
+    No direct Planning anchor.
+  - `CoreOrchestrationOutcomeRecord` (`types.ts:631`): nullable
+    `conversationId` / `runId` / `taskId`. No direct Planning
+    anchor.
+  - `CoreArtifactRecord` (`types.ts:655`): nullable `projectId`
+    / `workItemId` / `conversationId` / `taskId` / `runId`.
+  - `CoreActivityRecord` (`types.ts:684`): nullable `projectId`
+    / `workItemId` / `conversationId` / `taskId` / `runId` (+
+    `artifactId`, `actorId`).
+
+  So only `Artifact` and `Activity` may attach directly at the
+  Planning layer. `Trace`, `Checkpoint`, and `Outcome` reach
+  Planning only indirectly — via the `Task` or `Conversation`
+  they anchor on — and in practice behave as
+  Execution-anchored evidence. The tier as a whole still does
+  not live strictly under Execution: operator-authored
+  `Activity` and most `Artifact` kinds (`document`, `report`,
+  `attachment`, `transcript_export`, `dataset`) routinely
+  attach to a project, work item, or conversation with no
+  `Task` or `Run` at all. None of the five ever own a `Run`.
+  `Activity` is still **not** a projection over `Trace` — see
+  §2.
 
 ### 4. Cross-layer link contract (frozen)
 
