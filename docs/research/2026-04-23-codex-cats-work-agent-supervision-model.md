@@ -120,6 +120,13 @@ At runtime, it may bind to:
 The important distinction is that provider/model is execution, Cat is identity,
 and orchestration is supervision plus lifecycle control.
 
+There is also a current implementation ambiguity to unwind: "orchestrator" can
+mean the deterministic product router, or it can mean a runtime-backed
+participant that speaks in the transcript. Those should not collapse into one
+mental object. The router side should become thinner product policy and
+lifecycle infrastructure; the speaking/planning side should be an agent binding
+that can use tools.
+
 ## The Fourth Option
 
 In the earlier framing, three possible orchestrator interpretations were on the
@@ -148,8 +155,8 @@ enforced programmatically at the API and tool boundary.
 Examples:
 
 - adding too many participants returns a structured `limit_exceeded` error
-- cueing too many audience members is rejected, reduced, or converted into an
-  approval-required state
+- cueing too many audience members is rejected or converted into an explicit
+  approval-required state, not silently clipped
 - destructive actions require explicit approval
 - high-cost provider/tool access is checked against budget and allowlists
 - runtime-session limits are enforced by the platform, not by a prompt request
@@ -160,6 +167,19 @@ can plan well, but the platform must still enforce them when the tool is called.
 
 This gives the agent freedom to think while preventing it from violating product
 truth.
+
+Tool failures should be structured enough for capable agents to recover:
+
+```ts
+type ToolResult<T> =
+  | { ok: true; result: T }
+  | { ok: false; error: { code: string; message: string; details?: unknown } };
+```
+
+Write tools should also have paired read/preflight tools where possible. An
+agent should be able to ask for channel capacity, permission posture, budget
+state, or participant lists before attempting a mutation instead of using
+failed writes as probes.
 
 ## Capability-Aware Supervision
 
@@ -200,6 +220,20 @@ recent performance change:
 | Weak local model on narrow work | Tiny tasks, schema output, no direct mutation | classification, extraction, title generation, summarization |
 | Untrusted or low-confidence output | Draft-only, human or strong-agent approval | suggestions, alternatives, low-confidence proposals |
 
+The policy inputs should be vector-shaped, not a single "tier":
+
+- capability profile: tool-use reliability, JSON fidelity, context length,
+  recovery behavior, delivery richness
+- task profile: risk, reversibility, side effects, expected duration, required
+  systems
+- session history: recent errors, repeated tool calls, format failures,
+  completion quality
+- resource state: remaining budget, runtime capacity, deadlines, owner approval
+  posture
+
+That lets the same agent receive high authority on a reversible draft task and
+strict checkpoints on a destructive production action.
+
 ## Role of Rule-Based Logic
 
 Rule-based logic is still important, but it should not be the main brain for
@@ -230,6 +264,12 @@ Give one small step + constrained input + schema + validator.
 
 That is not two different orchestrators. It is one supervision system varying
 management intensity.
+
+A weak model should not be treated as a smaller autonomous agent by default. It
+is usually better modeled as a text worker inside a pipeline: summarize this,
+classify that, extract these fields, draft three options. Decision authority
+stays with the workflow, a stronger agent, or the human until the weak model has
+earned a narrower trusted role through evidence.
 
 ### Chat Rule-Based Scope
 
@@ -269,6 +309,18 @@ Cats Work still needs a scheduler/task substrate that can:
 The agent may decide what should happen next. The platform decides what is
 allowed, what is scheduled, what is durable, and what must be approved.
 
+The substrate should support at least three session modes:
+
+- `interactive`: user message wakes the run; idle state checkpoints
+- `background`: cron, event, or webhook wakes the run; completion checkpoints
+- `delegated`: an agent requests a child run; the platform allocates it and
+  returns either a blocking result path or an async handle
+
+Every run should carry a budget envelope: token limits, wall-clock limits,
+provider quota, concurrency limits, and inheritance rules for child runs.
+Supervision can then detect stuck loops, stalls, repeated tool failures, or
+capacity exhaustion without becoming the semantic planner.
+
 Multi-agent work needs explicit lifecycle semantics, not implicit recursive
 spawning:
 
@@ -299,6 +351,13 @@ This creates a strong economic angle:
 
 The user should not need every worker to be elite. Cats Work should make a
 portfolio of workers productive.
+
+The cost curve is the reason this belongs most centrally in Work. Chat can often
+justify a high-quality concierge model because usage is conversational. Code can
+justify expensive reasoning for high-stakes implementation and review. Work is
+more likely to contain high-frequency, repetitive, semi-structured tasks where a
+strong model on every step destroys the economics. The product win is using
+strong agents for leverage and cheap/free/local models for bounded throughput.
 
 ## Implications for Product Design
 
