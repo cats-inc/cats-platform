@@ -52,6 +52,8 @@ test('desktop screenshot overlay windows cover every display snapshot', () => {
     resizable: false,
     hasShadow: false,
     skipTaskbar: true,
+    focusable: true,
+    acceptFirstMouse: true,
     fullscreenable: false,
     webPreferences: {
       preload: 'C:/app/build/desktop/overlay-preload.cjs',

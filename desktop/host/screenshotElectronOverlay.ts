@@ -16,6 +16,21 @@ export function createElectronScreenshotOverlayWindowFactory(): DesktopScreensho
         setAlwaysOnTop(enabled, level) {
           window.setAlwaysOnTop(enabled, level);
         },
+        focus() {
+          window.focus();
+        },
+        onBeforeInputEvent(listener) {
+          window.webContents.on('before-input-event', listener);
+          return () => {
+            window.webContents.off('before-input-event', listener);
+          };
+        },
+        onClosed(listener) {
+          window.once('closed', listener);
+          return () => {
+            window.off('closed', listener);
+          };
+        },
         close() {
           window.close();
         },

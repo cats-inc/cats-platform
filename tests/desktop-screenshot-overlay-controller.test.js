@@ -22,6 +22,8 @@ function createPlan(id) {
       resizable: false,
       hasShadow: false,
       skipTaskbar: true,
+      focusable: true,
+      acceptFirstMouse: true,
       fullscreenable: false,
       webPreferences: {
         preload: 'overlay-preload.cjs',
@@ -49,6 +51,9 @@ test('desktop screenshot overlay controller opens and closes planned windows', a
           async loadURL(url) {
             events.push(`url:${id}:${url}`);
           },
+          focus() {
+            events.push(`focus:${id}`);
+          },
           close() {
             destroyed = true;
             events.push(`close:${id}`);
@@ -68,9 +73,11 @@ test('desktop screenshot overlay controller opens and closes planned windows', a
     'create:1:100x100',
     'top:1:true:screen-saver',
     'url:1:file:///overlay.html?displayId=1',
+    'focus:1',
     'create:2:100x100',
     'top:2:true:screen-saver',
     'url:2:file:///overlay.html?displayId=2',
+    'focus:2',
     'close:1',
     'close:2',
   ]);
@@ -118,5 +125,111 @@ test('desktop screenshot overlay controller closes already-opened windows on loa
     'url:2',
     'close:1',
     'close:2',
+  ]);
+});
+
+test('desktop screenshot overlay controller routes escape before renderer IPC', async () => {
+  const events = [];
+  let beforeInputListener = null;
+
+  const controller = await openScreenshotOverlayWindows(
+    [createPlan(1)],
+    {
+      createWindow() {
+        return {
+          setAlwaysOnTop() {},
+          async loadURL() {},
+          onBeforeInputEvent(listener) {
+            beforeInputListener = listener;
+            events.push('listen');
+            return () => {
+              events.push('unlisten');
+              beforeInputListener = null;
+            };
+          },
+          close() {
+            events.push('close');
+          },
+          isDestroyed() {
+            return false;
+          },
+        };
+      },
+    },
+    {
+      onEscape() {
+        events.push('escape');
+      },
+    },
+  );
+
+  beforeInputListener(
+    {
+      preventDefault() {
+        events.push('prevent');
+      },
+    },
+    { key: 'Escape', type: 'keyDown' },
+  );
+  beforeInputListener(
+    {
+      preventDefault() {
+        events.push('prevent-other');
+      },
+    },
+    { key: 'A', type: 'keyDown' },
+  );
+  controller.closeAll();
+
+  assert.deepEqual(events, [
+    'listen',
+    'prevent',
+    'escape',
+    'unlisten',
+    'close',
+  ]);
+  assert.equal(beforeInputListener, null);
+});
+
+test('desktop screenshot overlay controller reports unexpected window closure', async () => {
+  const events = [];
+  let closeListener = null;
+
+  await openScreenshotOverlayWindows(
+    [createPlan(1)],
+    {
+      createWindow() {
+        return {
+          setAlwaysOnTop() {},
+          async loadURL() {},
+          onClosed(listener) {
+            closeListener = listener;
+            events.push('listen-close');
+            return () => {
+              events.push('unlisten-close');
+              closeListener = null;
+            };
+          },
+          close() {
+            events.push('close');
+          },
+          isDestroyed() {
+            return false;
+          },
+        };
+      },
+    },
+    {
+      onWindowClosed() {
+        events.push('window-closed');
+      },
+    },
+  );
+
+  closeListener();
+
+  assert.deepEqual(events, [
+    'listen-close',
+    'window-closed',
   ]);
 });

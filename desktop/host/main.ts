@@ -1,6 +1,6 @@
 import { dirname, join } from 'node:path';
 
-import { app, BrowserWindow, ipcMain, shell, systemPreferences } from 'electron';
+import { app, BrowserWindow, globalShortcut, ipcMain, shell, systemPreferences } from 'electron';
 
 import { buildDesktopBootstrapPage } from './bootstrapPage.js';
 import {
@@ -122,6 +122,9 @@ import {
   openScreenshotOverlayWindows,
 } from './screenshotOverlayController.js';
 import {
+  registerDesktopScreenshotOverlayEscapeShortcut,
+} from './screenshotOverlayEscapeShortcut.js';
+import {
   DESKTOP_SCREENSHOT_OVERLAY_CANCEL_CHANNEL,
   DESKTOP_SCREENSHOT_OVERLAY_COMPLETE_CHANNEL,
   DESKTOP_SCREENSHOT_OVERLAY_GET_SNAPSHOT_CHANNEL,
@@ -239,6 +242,10 @@ async function openElectronScreenshotOverlay(
     createElectronScreenshotCropDependencies(),
   );
   activeScreenshotOverlaySession = session;
+  const unregisterEscapeShortcut = registerDesktopScreenshotOverlayEscapeShortcut(
+    globalShortcut,
+    () => session.cancel('escape'),
+  );
 
   try {
     const windows = await openScreenshotOverlayWindows(
@@ -248,6 +255,10 @@ async function openElectronScreenshotOverlay(
         preloadPath: resolveScreenshotOverlayPreloadPath(hostConfig),
       }),
       createElectronScreenshotOverlayWindowFactory(),
+      {
+        onEscape: () => session.cancel('escape'),
+        onWindowClosed: () => session.cancel('window_closed'),
+      },
     );
 
     return {
@@ -255,6 +266,7 @@ async function openElectronScreenshotOverlay(
         return session.waitForResult();
       },
       closeAll() {
+        unregisterEscapeShortcut();
         windows.closeAll();
         if (activeScreenshotOverlaySession === session) {
           activeScreenshotOverlaySession = null;
@@ -262,6 +274,7 @@ async function openElectronScreenshotOverlay(
       },
     };
   } catch (error) {
+    unregisterEscapeShortcut();
     if (activeScreenshotOverlaySession === session) {
       activeScreenshotOverlaySession = null;
     }

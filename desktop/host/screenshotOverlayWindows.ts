@@ -26,6 +26,8 @@ export interface DesktopScreenshotOverlayWindowPlan {
     resizable: false;
     hasShadow: false;
     skipTaskbar: true;
+    focusable: true;
+    acceptFirstMouse: true;
     fullscreenable: false;
     webPreferences: {
       preload: string;
@@ -68,6 +70,8 @@ export function buildScreenshotOverlayWindowPlans(input: {
         resizable: false,
         hasShadow: false,
         skipTaskbar: true,
+        focusable: true,
+        acceptFirstMouse: true,
         fullscreenable: false,
         webPreferences: {
           preload: input.preloadPath,
