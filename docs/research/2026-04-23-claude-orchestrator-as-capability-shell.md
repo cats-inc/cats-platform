@@ -125,6 +125,8 @@ Invariant 的正確實作是 tool adapter 層的守門 + 結構化錯誤，**絕
 
 每個「改」的 tool 也該搭配「查」的 tool（`@get-channel-capacity`、`@list-participants`、`@describe-permissions`），讓 agent 能 pre-check，不用撞牆當探針。
 
+**Evidence capture 是 invariant 的自然延伸**。每一次真正發生的 mutation 應該產生結構化憑證 — **誰請求、哪個 model / agent 提出、哪條 policy 批准、改了什麼、是否走過人類確認**。理由不是合規潔癖，而是 Work 本質上是**把 AI 生產的結果交回給人類接手審核**：人要能在事後回放整段「誰建議了什麼、系統為什麼放行、最後結果如何」才能信任產出。這也是除 tool retval 之外，**session history / policy 調整** 真正有源可溯的來源。
+
 ## 6. Lifecycle：agent 無法為自己出生
 
 Scheduler 最小形狀含三種 session mode，但共用同一個 runtime：
@@ -165,6 +167,7 @@ Owner 點出的類比直接把上述結論翻譯成人類直覺：
 - 放手 ≠ 無法無天。就算 superstar 員工也不能刷公司卡、碰 production DB。對應 invariant + budget + human-in-the-loop。
 - 弱下屬偶爾在窄領域特別強（某人翻譯特快）。對應強 driver 呼叫 `@ask-weak` 把本機 7B 用在翻譯這類事。
 - 檢查頻率不是美德，是能力決定的函數。對強下屬天天 status update 是羞辱；對弱下屬不盯緊就出包。
+- **強但高風險情境** 是獨立一類，不是強下屬的子集。資深工程師改 production schema、superstar PM 代公司發聲明 — 再強的人在高破壞性 / 高不可逆的動作上都該有 milestone checkpoint 和外部批准，不是因為不信任他能力，是因為錯誤代價夠高所以該多一道人類確認。對應：**autonomy dial 高 + approvalThreshold 高**，這兩個 dial 必須能獨立調，不能綁在一起。（這點是 Codex 平行研究明確點出的 worker 分類，我原稿漏了，併入時修正。）
 
 這個類比把整個架構的選擇從「技術潔癖」提升為「直覺對齊」— 大部分管理者本能就會這麼分配，我們的系統架構應與之同構。
 
@@ -233,7 +236,66 @@ Policy 的範圍是「當下這個動作」，不是整個 session。強 driver 
 - 「progressive fallback」的邏輯突兀（它其實就是 policy 讀了 session history 自動收緊，不是切換 mode）。
 - 「強駕駛 + 弱副手」混合場景的實作困難。
 
-## 11. 未解問題
+### Policy 的具體 schema 草稿
+
+光有 `decide*(ctx)` 的函數簽名還不是 contract。Codex 平行研究提出過一個 `SupervisionPolicy` interface，值得當作起點但需要對齊本文的 dial 命名並做兩處修正。合併後的 shape：
+
+```ts
+interface SupervisionPolicy {
+  // 放手程度：從完全代步到全權交付
+  autonomy: 'none' | 'single_step' | 'milestone_plan' | 'outcome_delegation';
+
+  // 每次給它多大塊任務
+  taskGranularity: 'tiny' | 'step' | 'milestone' | 'outcome';
+
+  // 這一刻開放哪一層 tool
+  toolScope: 'none' | 'read_only' | 'narrow_write' | 'broad_write';
+
+  // Scaffolding 強度（本文第 10 節的 decideScaffolding）
+  scaffolding: 'none' | 'few_shot' | 'grammar_forced' | 'sop_template';
+
+  // Output 驗證強度（本文 decideValidation）
+  validation: 'best_effort' | 'schema_required' | 'semantic_check';
+
+  // 多久檢查一次
+  checkpointCadence: 'every_step' | 'milestone' | 'on_risk' | 'final';
+
+  // 需要人類按鈕的門檻（獨立於 autonomy，見第 8 節「強但高風險」）
+  approvalThreshold: 'low' | 'medium' | 'high';
+
+  // 失敗 / 異常時的 recovery 路徑
+  fallbackPolicy: 'retry' | 'ask_human' | 'escalate_model' | 'delegate_other';
+}
+```
+
+對原版本的兩處修正值得記下來：
+
+1. **`autonomy` 不該是 0-5 scalar**。Codex 原版用整數是為了方便插值，但 autonomy 實際上是**離散斷點**：「完全不能自主」到「給一個目標自己跑」之間沒有連續光譜，是**有沒有多步 reasoning 許可權**這個開關，以及**多大範圍可決策**這個範圍。用 enum 比數字誠實。
+2. **`approvalThreshold` 必須與 `autonomy` 正交**。否則強但高風險那一類員工在 schema 裡無法表達。本文第 8 節剛修正過這件事。
+
+使用方式是：每個決策點（要不要讓 agent plan、要給哪些 tool、output 該多嚴）各自呼對應的 `decide*(ctx)`，產出這一刻這個欄位的值；合起來就是這一刻對這個 caller 的 `SupervisionPolicy`。policy 不是 session 開機時 snapshot 固定，而是每個 action 邊界即時算。
+
+這個 schema 也給工程團隊一個可下手的 PR 目標：**先把這個 interface 落下來，跑一條 vertical slice**。下節接著說這條 slice 長什麼樣。
+
+## 11. 建議的 Vertical Slice
+
+本研究純概念，但 Codex 平行研究提出了一個很務實的落地建議值得納入：與其整個 orchestrator 一次重構，不如**先跑一條最小的 end-to-end 切片**把所有核心元素打通，再決定怎麼擴張。建議的切片四件事：
+
+1. **一條強 agent 路徑** — 某個 Work session 由 Claude / Opus 擔任 driver，拿到 outcome-level 任務（「整理這週的 Linear issue 寫一份週報」），開機時透過 `decide*(ctx)` 算出 `SupervisionPolicy = { autonomy: 'outcome_delegation', toolScope: 'broad_write', scaffolding: 'none', approvalThreshold: 'medium', ... }`，走 concierge 模式自主 plan + execute。
+2. **一條弱 model 路徑** — 同一條 Work session 裡，driver 呼叫 `@ask-weak` 把「把 30 則 issue 標題分類成 5 個主題」交給本機 7B。這一步的 `SupervisionPolicy = { autonomy: 'none', taskGranularity: 'tiny', toolScope: 'none', scaffolding: 'grammar_forced', validation: 'schema_required', ... }`，走 conductor pipeline。
+3. **一個共享的 invariant tool 邊界** — 兩條路徑都透過同一組 `@read-linear-issue / @update-workitem` 之類的 tool adapter 動手；tool layer 強制 `E_NOT_AUTHORIZED` / `E_BUDGET_EXCEEDED` 之類的結構化錯誤、破壞性動作走 `pending_user_confirm`。
+4. **一條 audit trail** — 從 task 開始到 run 完，把 model 名 / prompt hash / policy shape / tool call / tool result / approval 記錄 / 最終 output 全部寫成一份 evidence record，UI 能回放。
+
+切片跑通之後可以回答幾個本研究沒回答的問題：
+
+- Policy 評估的 overhead 是否可接受（每個 action 跑一次函數還是某種層級 cache）。
+- Strong / Weak 混用時的 UI 如何呈現（一條 Work 任務是一個實體，但底下有兩種模型在動）。
+- Evidence record 的 schema 需要多詳細才夠人類審核、又不至於爆量。
+- `SupervisionPolicy` 的實際合理預設值（多少個 session 之後才敢放寬到 `outcome_delegation`）。
+
+這些問題不會在紙上解決，但在一條跑得起來的切片上會很快浮現答案。**這條切片本身就是驗證本研究核心論點（orchestrator 是能力殼、不是 planner）的實驗裝置**。
+
+## 12. 未解問題
 
 - **Capability profile 怎麼維護？** Provider catalog 已有部分（`ProductProviderEventCapabilities`），但 tool-use 準確度、JSON fidelity 這些需要實測資料。首次跑某 provider 的 session 用什麼預設？
 - **Policy 輸入要不要經過小模型 classifier？** 「task 複雜度」這個維度難以純規則判斷。一個便宜的 intent classifier 跑在 task profile 分析上是否合理？如果是，classifier 本身不就成為 agent 判斷的一環？界線在哪裡？
@@ -242,7 +304,7 @@ Policy 的範圍是「當下這個動作」，不是整個 session。強 driver 
 - **多 agent 協作的 deadlock 與 priority inversion**：A spawn B 等結果，B 又 spawn A 的同一批 session pool — 如何偵測？
 - **Policy 本身需不需要 version 化 / A-B 測試**：不同版本的 `decideToolSurface` 可能對不同模型不同任務有不同效果。這變成系統參數調校問題。
 
-## 12. 結論
+## 13. 結論
 
 本次討論的最深收穫不是某一個架構決定，而是**澄清了一個錯誤的二分法**：我們本來以為 orchestrator 的選擇是「規則驅動」vs「完全放手 agent 驅動」，實際上兩者都不對。正解是：
 
@@ -262,3 +324,12 @@ Policy 的範圍是「當下這個動作」，不是整個 session。強 driver 
 2. 第 4 節：原本籠統說「Agent 管開機後做什麼」與第 7 節弱模型「決策主權留在工作流」有張力。修改為明確區分 **強 agent 擁有 task-level agency** 與 **弱 model 是 pipeline step（無 agency）**。
 3. 第 4 節：原本說「scheduler 不能讀訊息內容」過於絕對。修改為 **lifecycle scheduler** 不應做語意決策；policy engine / classifier / workflow step 在可審計的 tool boundary 上可以且應該讀內容。
 4. 第 9 節：原本說「Chat / Code 可以全走 concierge」低估了 Code 的 hybrid 空間。修改為 Code 主線可 concierge，但 subtask（lint、搜尋、摘要、boilerplate、測試分類、簡單改寫）同樣受惠於 hybrid。
+
+**2026-04-23 Codex 平行研究交互吸收**：讀完 Codex 版本後，把四處值得納入的補進本文：
+
+1. 第 5 節末尾新增 **Evidence capture** 段落 — 每一次 mutation 應產生結構化憑證（誰請求、哪個 model 提出、哪條 policy 批准、改了什麼、是否走過人類確認），作為 invariant 與 session history 的橫切補充。
+2. 第 8 節增加 **強但高風險情境** 推論 — superstar 員工做高破壞性 / 高不可逆動作時仍需 milestone checkpoint 與 approval；對應 `autonomy dial` 與 `approvalThreshold` 必須獨立，不綁在一起。
+3. 第 10 節新增 **Policy 具體 schema 草稿** — 把 Codex 提的 `SupervisionPolicy` interface 對齊本文的 dial 命名後做為 contract 草案，並修正兩處：autonomy 應是 enum 而非 0-5 scalar、approvalThreshold 須與 autonomy 正交。
+4. 新增第 11 節 **建議的 Vertical Slice** — 採納 Codex 的四步切片（強 agent 路徑 + 弱 model 路徑 + 共享 invariant tool + audit trail）作為可執行落地建議，並列出這條切片能驗證本研究哪些論點。
+
+原第 11 / 12 節（未解問題、結論）順推為第 12 / 13 節。
