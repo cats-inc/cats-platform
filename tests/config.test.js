@@ -38,6 +38,8 @@ test('loadConfig derives storage paths from canonical root directories', () => {
   assert.equal(config.runtimeBaseUrl, 'http://127.0.0.1:3110');
   assert.equal(config.runtimeApiKey, 'token');
   assert.equal(config.runtimeSetupProxyTimeoutMs, 12345);
+  assert.equal(config.runtimeSetupScanProxyTimeoutMs, 12345);
+  assert.equal(config.runtimeSetupApplyProxyTimeoutMs, 12345);
   assert.equal(config.debugLiveTrace, false);
   assert.equal(config.debugKeepRuntimeSessionsOnProductDelete, false);
   assert.equal(config.runtimeStaleSessionRetryLimit, 3);
@@ -60,6 +62,9 @@ test('loadConfig falls back to CATS_INC_* compatibility aliases for host and por
   );
   assert.equal(config.debugLiveTrace, false);
   assert.equal(config.debugKeepRuntimeSessionsOnProductDelete, false);
+  assert.equal(config.runtimeSetupProxyTimeoutMs, undefined);
+  assert.equal(config.runtimeSetupScanProxyTimeoutMs, 120000);
+  assert.equal(config.runtimeSetupApplyProxyTimeoutMs, 30000);
   assert.equal(config.runtimeStaleSessionRetryLimit, 1);
   assert.equal(config.maxChatParticipants, 5);
   assert.equal(config.maxAudienceParticipants, 3);

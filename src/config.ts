@@ -13,6 +13,8 @@ export interface AppConfig {
   runtimeBaseUrl: string;
   runtimeApiKey: string;
   runtimeSetupProxyTimeoutMs?: number;
+  runtimeSetupScanProxyTimeoutMs?: number;
+  runtimeSetupApplyProxyTimeoutMs?: number;
   debugLiveTrace: boolean;
   debugKeepRuntimeSessionsOnProductDelete: boolean;
   runtimeDataDir: string;
@@ -34,7 +36,8 @@ export interface AppConfig {
 const DEFAULT_HOST = '127.0.0.1';
 const DEFAULT_PORT = 8181;
 const DEFAULT_RUNTIME_BASE_URL = 'http://127.0.0.1:3110';
-const DEFAULT_RUNTIME_SETUP_PROXY_TIMEOUT_MS = 30_000;
+const DEFAULT_RUNTIME_SETUP_SCAN_PROXY_TIMEOUT_MS = 120_000;
+const DEFAULT_RUNTIME_SETUP_APPLY_PROXY_TIMEOUT_MS = 30_000;
 const DEFAULT_MAX_BOSS_CATS = 1;
 const DEFAULT_MAX_CATS = 5;
 const DEFAULT_MAX_CHAT_PARTICIPANTS = 5;
@@ -73,6 +76,13 @@ function parsePositiveInt(raw: string | undefined, fallback: number): number {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function parseOptionalPositiveInt(raw: string | undefined): number | undefined {
+  const trimmed = raw?.trim();
+  if (!trimmed) return undefined;
+  const parsed = Number.parseInt(trimmed, 10);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : undefined;
+}
+
 function parseNonNegativeInt(raw: string | undefined, fallback: number): number {
   const trimmed = raw?.trim();
   if (!trimmed) return fallback;
@@ -104,14 +114,22 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     || joinCatsHomePath(catsHomeDir, 'runtime');
   const desktopDir = env.CATS_DESKTOP_DIR?.trim()
     || joinCatsHomePath(catsHomeDir, 'desktop');
+  const legacySetupProxyTimeoutMs = parseOptionalPositiveInt(
+    env.CATS_RUNTIME_SETUP_PROXY_TIMEOUT_MS,
+  );
   return {
     host: readFirstDefined(env, ['CATS_HOST', 'CATS_INC_HOST']) || DEFAULT_HOST,
     port: parsePort(readFirstDefined(env, ['CATS_PORT', 'CATS_INC_PORT']), DEFAULT_PORT),
     runtimeBaseUrl: (env.CATS_RUNTIME_BASE_URL || DEFAULT_RUNTIME_BASE_URL).replace(/\/+$/, ''),
     runtimeApiKey: env.CATS_RUNTIME_API_KEY?.trim() || '',
-    runtimeSetupProxyTimeoutMs: parsePositiveInt(
-      env.CATS_RUNTIME_SETUP_PROXY_TIMEOUT_MS,
-      DEFAULT_RUNTIME_SETUP_PROXY_TIMEOUT_MS,
+    runtimeSetupProxyTimeoutMs: legacySetupProxyTimeoutMs,
+    runtimeSetupScanProxyTimeoutMs: parsePositiveInt(
+      env.CATS_RUNTIME_SETUP_SCAN_PROXY_TIMEOUT_MS,
+      legacySetupProxyTimeoutMs ?? DEFAULT_RUNTIME_SETUP_SCAN_PROXY_TIMEOUT_MS,
+    ),
+    runtimeSetupApplyProxyTimeoutMs: parsePositiveInt(
+      env.CATS_RUNTIME_SETUP_APPLY_PROXY_TIMEOUT_MS,
+      legacySetupProxyTimeoutMs ?? DEFAULT_RUNTIME_SETUP_APPLY_PROXY_TIMEOUT_MS,
     ),
     debugLiveTrace: parseBoolean(env.CATS_DEBUG_LIVE_TRACE, false),
     debugKeepRuntimeSessionsOnProductDelete: parseBoolean(

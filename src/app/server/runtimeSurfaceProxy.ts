@@ -34,7 +34,8 @@ const SETUP_MUTATION_RUNTIME_API_PATHS = new Set<string>([
   '/setup-scan',
   '/setup-apply',
 ]);
-const DEFAULT_RUNTIME_SETUP_PROXY_TIMEOUT_MS = 30_000;
+const DEFAULT_RUNTIME_SETUP_SCAN_PROXY_TIMEOUT_MS = 120_000;
+const DEFAULT_RUNTIME_SETUP_APPLY_PROXY_TIMEOUT_MS = 30_000;
 
 const PREFIX_RUNTIME_API_PATHS = [
   '/sessions',
@@ -137,10 +138,32 @@ function createForwardedHeaders(
   return headers;
 }
 
-function resolveRuntimeSetupProxyTimeoutMs(value: number | undefined): number {
+function resolvePositiveTimeoutMs(value: number | undefined, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0
     ? value
-    : DEFAULT_RUNTIME_SETUP_PROXY_TIMEOUT_MS;
+    : fallback;
+}
+
+function resolveRuntimeSetupProxyTimeoutMs(
+  runtimePath: string,
+  dependencies: ResolvedServerDependencies,
+): number | null {
+  const config = dependencies.shared.config;
+  if (runtimePath === '/setup-scan') {
+    return resolvePositiveTimeoutMs(
+      config.runtimeSetupScanProxyTimeoutMs ?? config.runtimeSetupProxyTimeoutMs,
+      DEFAULT_RUNTIME_SETUP_SCAN_PROXY_TIMEOUT_MS,
+    );
+  }
+
+  if (runtimePath === '/setup-apply') {
+    return resolvePositiveTimeoutMs(
+      config.runtimeSetupApplyProxyTimeoutMs ?? config.runtimeSetupProxyTimeoutMs,
+      DEFAULT_RUNTIME_SETUP_APPLY_PROXY_TIMEOUT_MS,
+    );
+  }
+
+  return null;
 }
 
 function createClientAbortScope(
@@ -485,9 +508,7 @@ export async function handleRuntimeApiProxyRoute(
   const timeoutScope = createRuntimeProxyTimeoutScope(
     abortScope.signal,
     SETUP_MUTATION_RUNTIME_API_PATHS.has(runtimePath)
-      ? resolveRuntimeSetupProxyTimeoutMs(
-          dependencies.shared.config.runtimeSetupProxyTimeoutMs,
-        )
+      ? resolveRuntimeSetupProxyTimeoutMs(runtimePath, dependencies)
       : null,
   );
   try {

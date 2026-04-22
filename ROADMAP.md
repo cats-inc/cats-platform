@@ -332,8 +332,9 @@ contracts.
       Progress: the platform runtime API proxy now aborts the upstream
       `cats-runtime` fetch when the caller disconnects or aborts, with
       regression coverage for a hung `/setup-scan` request. Completed: setup
-      mutation proxy calls now also have a bounded timeout and return 504 on
-      hung runtime scans/applies instead of pinning the app-server request.
+      mutation proxy calls now also have bounded route-specific timeouts, with
+      `/setup-scan` allowed to cover normal slow provider scans and
+      `/setup-apply` kept on a shorter guardrail.
 - [ ] Refine the Electron host bootstrap page so normal packaged startup gives
       immediate visible progress while still handing off automatically to
       `cats-platform /setup` or the current product entry once readiness
