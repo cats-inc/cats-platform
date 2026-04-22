@@ -23,7 +23,7 @@ interface ProviderRouteDependencies {
 type ProviderRegistryState = 'ready' | 'no_usable_targets' | 'runtime_unreachable';
 const PROVIDER_CACHE_STALE_IF_ERROR_MS = 10 * 60_000;
 const PROVIDER_CACHE_ERROR_BACKOFF_MS = 30_000;
-const TRUTHFUL_SELECTOR_CACHE_TTL_MS = 5_000;
+const TRUTHFUL_SELECTOR_CACHE_TTL_MS = 30_000;
 const TRUTHFUL_SELECTOR_STALE_WINDOW_MS = 15_000;
 const TRUTHFUL_SELECTOR_CONFIG_ENRICHMENT_BUDGET_MS = 500;
 const PROVIDER_MODEL_CATALOG_CACHE_TTL_MS = 60_000;

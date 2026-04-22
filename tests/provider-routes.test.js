@@ -253,7 +253,7 @@ test('GET /api/providers keeps the last good selector after a transient refresh 
       assert.equal(firstPayload.state, 'ready');
 
       failRefresh = true;
-      clock.advance(21_000);
+      clock.advance(46_000);
       const second = await fetch(`${baseUrl}/api/providers`);
       assert.equal(second.status, 200);
       const secondPayload = await second.json();
