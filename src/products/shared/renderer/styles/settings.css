@@ -253,10 +253,17 @@
   background-image: none;
   outline: 1px dashed rgba(110, 101, 92, 0.35);
   outline-offset: -3px;
+  display: grid;
+  place-items: center;
+  color: var(--muted, #6e655c);
 }
 
 .catsCoverThumbPlaceholder:hover {
   background-color: color-mix(in srgb, #d4cec8 80%, var(--accent) 20%);
+}
+
+.catsCoverPlaceholderIcon {
+  opacity: 0.75;
 }
 
 .catsCoverThumb:hover {
