@@ -112,19 +112,16 @@ test('SettingsAssistants renders guide cat and saved assistant presets', () => {
   );
 
   assert.match(markup, new RegExp(guideCatName, 'u'));
-  assert.match(markup, /readonly/u);
   assert.match(markup, /Disable/u);
-  assert.match(markup, /Saved Assistants/u);
   assert.match(markup, /Pair Reviewer/u);
   assert.match(markup, /Checks routing changes before they reach runtime/u);
-  assert.match(markup, /New assistant/u);
+  assert.match(markup, /Add new assistant/u);
 });
 
 test('SettingsAssistants empty state keeps temporary participants out of settings', () => {
   const payload = createPayload();
   payload.guideCat = null;
   payload.assistantPresets = [];
-  const guideCatName = resolveClientGuideCatName();
 
   const markup = renderToStaticMarkup(
     <SettingsAssistants
@@ -133,8 +130,11 @@ test('SettingsAssistants empty state keeps temporary participants out of setting
     />,
   );
 
-  assert.match(markup, new RegExp(`${guideCatName} is currently disabled`, 'u'));
-  assert.match(markup, new RegExp(`Enable ${guideCatName}`, 'u'));
-  assert.match(markup, /No saved assistants yet/u);
-  assert.match(markup, /temporary participants stay inside the room/u);
+  // Guide cat disabled → Enable button surfaces; no saved presets → only the
+  // create affordance appears in the selector strip and the body shows the
+  // "New assistant" create form instead of any preset detail.
+  assert.match(markup, />Enable</u);
+  assert.match(markup, /New assistant/u);
+  assert.match(markup, /Add new assistant/u);
+  assert.doesNotMatch(markup, /Pair Reviewer/u);
 });

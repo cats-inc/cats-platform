@@ -396,16 +396,8 @@ export function createWorkspaceProductApp({
 
     const showScreenshotCaptureError = useCallback((error: unknown): void => {
       const feedback = resolveScreenshotCaptureFeedback(error);
-      if (feedback.surface === "notification") {
-        showNotification({
-          title: feedback.title,
-          message: feedback.message,
-          level: feedback.level,
-        });
-        return;
-      }
       showToast(feedback.message);
-    }, [showNotification, showToast]);
+    }, [showToast]);
     const captureAndAppendDraftScreenshot = useCallback((): void => {
       const capturePromise = captureScreenshotFile(screenshotCaptureRoute);
       void capturePromise
