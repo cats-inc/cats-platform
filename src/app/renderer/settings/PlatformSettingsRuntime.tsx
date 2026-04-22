@@ -12,7 +12,6 @@ import { refreshProviderModelCatalogs } from '../../../products/shared/renderer/
 import { PLATFORM_RUNTIME_SETUP_PATH } from '../../../shared/runtimeIngressPaths.js';
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
 import { resolveRuntimePresentationStatus } from '../../../shared/runtimeStatusPresentation.js';
-import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 
 function resolveRuntimeStatusChip(
   runtime: AppShellPayload['runtime'],
@@ -70,11 +69,7 @@ export function PlatformSettingsRuntime({
   };
 
   return (
-    <PlatformSettingsShell
-      section="runtime"
-      title="Runtime"
-      products={payload.products}
-    >
+    <>
       <SettingsSection
         header={
           <SettingsSectionHeader
@@ -185,6 +180,6 @@ export function PlatformSettingsRuntime({
         </a>
       </SettingsSection>
       <ToastContainer toasts={toasts} />
-    </PlatformSettingsShell>
+    </>
   );
 }

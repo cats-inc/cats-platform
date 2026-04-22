@@ -5,7 +5,6 @@ import {
   isSetupResetBusy,
   type WorkspaceBusyState,
 } from '../../../shared/workspaceBusy.js';
-import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 
 export interface PlatformSettingsDataProps {
   payload: AppShellPayload;
@@ -14,7 +13,6 @@ export interface PlatformSettingsDataProps {
 }
 
 export function PlatformSettingsData({
-  payload,
   busy,
   onResetSetup,
 }: PlatformSettingsDataProps) {
@@ -30,11 +28,7 @@ export function PlatformSettingsData({
   }
 
   return (
-    <PlatformSettingsShell
-      section="data"
-      title="Data"
-      products={payload.products}
-    >
+    <>
       <SettingsDangerZone
         title="Reset all data"
         description="This will erase all chats, cats, platform preferences, and setup state. You will be returned to the setup wizard."
@@ -49,6 +43,6 @@ export function PlatformSettingsData({
         </button>
       </SettingsDangerZone>
       <ToastContainer toasts={toasts} />
-    </PlatformSettingsShell>
+    </>
   );
 }

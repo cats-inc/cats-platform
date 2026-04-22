@@ -8,7 +8,6 @@ import {
   SettingsSectionHeader,
 } from '../../../design/components/settings/index.js';
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
-import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 
 export interface PlatformSettingsDesktopStartupProps {
   payload: AppShellPayload;
@@ -89,11 +88,7 @@ export function PlatformSettingsDesktopStartup({
   }
 
   return (
-    <PlatformSettingsShell
-      section="desktop"
-      title="Desktop"
-      products={payload.products}
-    >
+    <>
       <SettingsSection
         header={
           <SettingsSectionHeader
@@ -168,6 +163,6 @@ export function PlatformSettingsDesktopStartup({
       </SettingsSection>
 
       <ToastContainer toasts={toasts} />
-    </PlatformSettingsShell>
+    </>
   );
 }

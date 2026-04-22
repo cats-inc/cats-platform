@@ -7,7 +7,6 @@ import {
   isAdvancedDraftControlsEnabled,
   normalizeAdvancedDraftControlsPreferences,
 } from '../../../products/shared/advancedDraftControls.js';
-import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 import { ProductAdvancedDraftControlsSection } from './ProductAdvancedDraftControlsSection.js';
 import { ProductConversationBehaviorSection } from './ProductConversationBehaviorSection.js';
 
@@ -50,7 +49,7 @@ export function PlatformSettingsWork({
   }
 
   return (
-    <PlatformSettingsShell section="work" title="Work" products={payload.products}>
+    <>
       <ProductConversationBehaviorSection
         surface="work"
         payload={payload}
@@ -65,6 +64,6 @@ export function PlatformSettingsWork({
         }}
       />
       <ToastContainer toasts={toasts} />
-    </PlatformSettingsShell>
+    </>
   );
 }

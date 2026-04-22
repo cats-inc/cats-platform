@@ -12,7 +12,6 @@ import { nameInitials } from '../../../shared/nameInitials.js';
 import type { GuideCatSidecarMode } from '../../../shared/platform-contract.js';
 import { useGuideCatUiPrefs } from '../guideCatUiPrefsStore.js';
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
-import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 import {
   isGuideCatEnabledStatus,
   resolveClientGuideCatName,
@@ -171,11 +170,6 @@ export function PlatformSettingsGeneral({
 
   return (
     <>
-      <PlatformSettingsShell
-        section="general"
-        title="General"
-        products={payload.products}
-      >
         <SettingsSection
           header={
             <SettingsSectionHeader
@@ -388,7 +382,6 @@ export function PlatformSettingsGeneral({
           </SettingsSection>
         ) : null}
 
-      </PlatformSettingsShell>
       {cropOpen ? (
         <AvatarCropDialog
           onSave={(dataUrl) => {

@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 
 import type { AppShellPayload as WorkspaceAppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
 import type { WorkspaceBusyState } from '../../../shared/workspaceBusy.js';
@@ -26,6 +26,34 @@ export interface PlatformSettingsRoutesProps<
   onResetSetup: () => Promise<void>;
 }
 
+function resolveSettingsSectionConfig(pathname: string): { section: string; title: string } {
+  if (pathname.startsWith('/settings/cats/assistants')) {
+    return { section: 'cats:assistants', title: 'Assistants' };
+  }
+  if (pathname.startsWith('/settings/cats')) {
+    return { section: 'cats:my-cats', title: 'My Cats' };
+  }
+  if (pathname.startsWith('/settings/chat')) {
+    return { section: 'chat', title: 'Chat' };
+  }
+  if (pathname.startsWith('/settings/work')) {
+    return { section: 'work', title: 'Work' };
+  }
+  if (pathname.startsWith('/settings/code')) {
+    return { section: 'code', title: 'Code' };
+  }
+  if (pathname.startsWith('/settings/desktop')) {
+    return { section: 'desktop', title: 'Desktop' };
+  }
+  if (pathname.startsWith('/settings/runtime')) {
+    return { section: 'runtime', title: 'Runtime' };
+  }
+  if (pathname.startsWith('/settings/data')) {
+    return { section: 'data', title: 'Data' };
+  }
+  return { section: 'general', title: 'General' };
+}
+
 export function PlatformSettingsRoutes<TPayload extends WorkspaceAppShellPayload>({
   payload,
   onPayloadUpdate,
@@ -34,6 +62,7 @@ export function PlatformSettingsRoutes<TPayload extends WorkspaceAppShellPayload
   onBusy,
   onResetSetup,
 }: PlatformSettingsRoutesProps<TPayload>) {
+  const location = useLocation();
   const workProduct = payload.products.find((product) => product.id === 'work');
   const codeProduct = payload.products.find((product) => product.id === 'code');
   const showDesktop = isDesktopEnvironment();
@@ -41,107 +70,106 @@ export function PlatformSettingsRoutes<TPayload extends WorkspaceAppShellPayload
     onPayloadUpdate(nextPayload as TPayload);
   };
   const catsElement = (
-      <PlatformSettingsShell section="cats:my-cats" title="My Cats" products={payload.products}>
-      <WorkspaceSettingsCatsCanvas
-        payload={payload}
-        busy={busy}
-        onPayloadUpdate={onWorkspacePayloadUpdate}
-        onFeedback={onFeedback}
-        onBusy={onBusy}
-      />
-    </PlatformSettingsShell>
+    <WorkspaceSettingsCatsCanvas
+      payload={payload}
+      busy={busy}
+      onPayloadUpdate={onWorkspacePayloadUpdate}
+      onFeedback={onFeedback}
+      onBusy={onBusy}
+    />
   );
+  const { section, title } = resolveSettingsSectionConfig(location.pathname);
 
   return (
-    <Routes>
-      <Route index element={<Navigate to="/settings/general" replace />} />
-      <Route
-        path="general"
-        element={(
-          <PlatformSettingsGeneral
-            payload={payload}
-            onPayloadUpdate={onWorkspacePayloadUpdate}
-          />
-        )}
-      />
-      <Route path="cats" element={catsElement} />
-      <Route path="cats/new" element={catsElement} />
-      <Route
-        path="cats/my-cats"
-        element={<Navigate to="/settings/cats" replace />}
-      />
-      <Route
-        path="cats/assistants"
-        element={(
-          <PlatformSettingsShell section="cats:assistants" title="Assistants" products={payload.products}>
+    <PlatformSettingsShell section={section} title={title} products={payload.products}>
+      <Routes>
+        <Route index element={<Navigate to="/settings/general" replace />} />
+        <Route
+          path="general"
+          element={(
+            <PlatformSettingsGeneral
+              payload={payload}
+              onPayloadUpdate={onWorkspacePayloadUpdate}
+            />
+          )}
+        />
+        <Route path="cats" element={catsElement} />
+        <Route path="cats/new" element={catsElement} />
+        <Route
+          path="cats/my-cats"
+          element={<Navigate to="/settings/cats" replace />}
+        />
+        <Route
+          path="cats/assistants"
+          element={(
             <SettingsAssistants
               payload={payload}
               onPayloadUpdate={onWorkspacePayloadUpdate}
             />
-          </PlatformSettingsShell>
-        )}
-      />
-      <Route
-        path="chat"
-        element={(
-          <PlatformSettingsChat
-            payload={payload}
-            onPayloadUpdate={onWorkspacePayloadUpdate}
+          )}
+        />
+        <Route
+          path="chat"
+          element={(
+            <PlatformSettingsChat
+              payload={payload}
+              onPayloadUpdate={onWorkspacePayloadUpdate}
+            />
+          )}
+        />
+        {workProduct ? (
+          <Route
+            path="work"
+            element={(
+              <PlatformSettingsWork
+                payload={payload}
+                onPayloadUpdate={onWorkspacePayloadUpdate}
+              />
+            )}
           />
-        )}
-      />
-      {workProduct ? (
-        <Route
-          path="work"
-          element={(
-            <PlatformSettingsWork
-              payload={payload}
-              onPayloadUpdate={onWorkspacePayloadUpdate}
-            />
-          )}
-        />
-      ) : null}
-      {codeProduct ? (
-        <Route
-          path="code"
-          element={(
-            <PlatformSettingsCode
-              payload={payload}
-              onPayloadUpdate={onWorkspacePayloadUpdate}
-            />
-          )}
-        />
-      ) : null}
-      {showDesktop ? (
-        <Route
-          path="desktop"
-          element={(
-            <PlatformSettingsDesktopStartup
-              payload={payload}
-              onPayloadUpdate={onWorkspacePayloadUpdate}
-            />
-          )}
-        />
-      ) : null}
-      {showDesktop ? (
-        <Route path="desktop-startup" element={<Navigate to="/settings/desktop" replace />} />
-      ) : null}
-      <Route
-        path="runtime"
-        element={<PlatformSettingsRuntime payload={payload} />}
-      />
-      <Route
-        path="data"
-        element={(
-          <PlatformSettingsData
-            payload={payload}
-            busy={busy}
-            onResetSetup={onResetSetup}
+        ) : null}
+        {codeProduct ? (
+          <Route
+            path="code"
+            element={(
+              <PlatformSettingsCode
+                payload={payload}
+                onPayloadUpdate={onWorkspacePayloadUpdate}
+              />
+            )}
           />
-        )}
-      />
-      <Route path="*" element={<Navigate to="/settings/general" replace />} />
-    </Routes>
+        ) : null}
+        {showDesktop ? (
+          <Route
+            path="desktop"
+            element={(
+              <PlatformSettingsDesktopStartup
+                payload={payload}
+                onPayloadUpdate={onWorkspacePayloadUpdate}
+              />
+            )}
+          />
+        ) : null}
+        {showDesktop ? (
+          <Route path="desktop-startup" element={<Navigate to="/settings/desktop" replace />} />
+        ) : null}
+        <Route
+          path="runtime"
+          element={<PlatformSettingsRuntime payload={payload} />}
+        />
+        <Route
+          path="data"
+          element={(
+            <PlatformSettingsData
+              payload={payload}
+              busy={busy}
+              onResetSetup={onResetSetup}
+            />
+          )}
+        />
+        <Route path="*" element={<Navigate to="/settings/general" replace />} />
+      </Routes>
+    </PlatformSettingsShell>
   );
 }
 
