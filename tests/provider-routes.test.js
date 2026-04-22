@@ -149,7 +149,7 @@ async function withMockedDateNow(testContext, initialNowMs, callback) {
   });
 }
 
-test('GET /api/providers/:provider/models fetches the full availability registry and derives locally', async () => {
+test('GET /api/providers/:provider/models scopes selector diagnostics to the requested provider', async () => {
   const runtimeClient = createRuntimeStub();
   const originalGetProviderDiagnostics = runtimeClient.getProviderDiagnostics;
   const diagnosticsQueries = [];
@@ -164,14 +164,13 @@ test('GET /api/providers/:provider/models fetches the full availability registry
     assert.equal(response.status, 200);
   });
 
-  assert.deepEqual(diagnosticsQueries, [
-    {
-      scope: 'availability',
-    },
-  ]);
+  assert.ok(
+    diagnosticsQueries.some((query) => query.provider === 'claude' && query.scope === 'availability'),
+    `expected scoped availability query for 'claude', saw ${JSON.stringify(diagnosticsQueries)}`,
+  );
 });
 
-test('GET /api/providers/:provider/models/advanced fetches the full availability registry and derives locally', async () => {
+test('GET /api/providers/:provider/models/advanced scopes selector diagnostics to the requested provider', async () => {
   const runtimeClient = createRuntimeStub();
   const originalGetProviderDiagnostics = runtimeClient.getProviderDiagnostics;
   const diagnosticsQueries = [];
@@ -186,11 +185,10 @@ test('GET /api/providers/:provider/models/advanced fetches the full availability
     assert.equal(response.status, 200);
   });
 
-  assert.deepEqual(diagnosticsQueries, [
-    {
-      scope: 'availability',
-    },
-  ]);
+  assert.ok(
+    diagnosticsQueries.some((query) => query.provider === 'claude' && query.scope === 'availability'),
+    `expected scoped availability query for 'claude', saw ${JSON.stringify(diagnosticsQueries)}`,
+  );
 });
 
 test('GET /api/providers keeps the last good selector after a transient refresh timeout', {

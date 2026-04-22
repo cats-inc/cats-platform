@@ -417,8 +417,12 @@ async function readProviderConfig(
 
 async function readProviderDiagnostics(
   dependencies: ProviderRouteDependencies,
+  options: {
+    provider?: string | null;
+  } = {},
 ): Promise<RuntimeProviderDiagnosticsPayload> {
   return dependencies.runtimeClient.getProviderDiagnostics({
+    ...(options.provider?.trim() ? { provider: options.provider.trim() } : {}),
     scope: 'availability',
   });
 }
@@ -451,12 +455,18 @@ async function readProviderConfigBestEffort(
 
 async function loadTruthfulProviderRegistryFromRuntime(
   dependencies: ProviderRouteDependencies,
+  options: {
+    provider?: string | null;
+  } = {},
 ): Promise<TruthfulProviderRegistryReadModel> {
+  const requestedProvider = options.provider?.trim() || null;
   const configTask = readProviderConfigBestEffort(dependencies);
 
   let diagnostics: RuntimeProviderDiagnosticsPayload;
   try {
-    diagnostics = await readProviderDiagnostics(dependencies);
+    diagnostics = await readProviderDiagnostics(dependencies, {
+      provider: requestedProvider,
+    });
   } catch (error) {
     return {
       state: 'runtime_unreachable',
@@ -471,7 +481,8 @@ async function loadTruthfulProviderRegistryFromRuntime(
   }
 
   const configuredProductProviders = listProductProviders().filter((provider) =>
-    listSelectableDiagnosticsForProvider(diagnostics, provider.id).length > 0
+    (!requestedProvider || provider.id === requestedProvider)
+    && listSelectableDiagnosticsForProvider(diagnostics, provider.id).length > 0
   );
 
   if (configuredProductProviders.length === 0) {
@@ -569,6 +580,14 @@ async function readTruthfulProviderRegistry(
   if (cached && cached.staleUntilMs > now) {
     void refreshTruthfulProviderRegistry(dependencies, cacheState).catch(() => {});
     return project(readProviderCacheValue(cached, appendTruthfulProviderRegistryWarning));
+  }
+
+  if (requestedProvider) {
+    // Cold scoped: ask runtime with the provider filter so it can serve a
+    // narrow probe instead of waiting on unrelated targets. Fire a
+    // background root refresh so future broad queries can hit the cache.
+    void refreshTruthfulProviderRegistry(dependencies, cacheState).catch(() => {});
+    return loadTruthfulProviderRegistryFromRuntime(dependencies, { provider: requestedProvider });
   }
 
   return project(await refreshTruthfulProviderRegistry(dependencies, cacheState));
