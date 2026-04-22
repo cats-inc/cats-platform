@@ -15,6 +15,7 @@ import {
   handleAdvancedProviderModels,
   handleProviderModels,
   handleProviderRegistry,
+  handleRefreshProviderCatalogs,
 } from '../../server/routes/providers.js';
 import {
   handleTelegramDiagnostics,
@@ -425,6 +426,18 @@ export async function routeRequest(
     await handleProviderRegistry({
       runtimeClient: dependencies.shared.runtimeClient,
     }, response);
+    return;
+  }
+
+  if (url.pathname === '/api/providers/models/refresh') {
+    if (method !== 'POST') {
+      sendMethodNotAllowed(response, ['POST']);
+      return;
+    }
+    await handleRefreshProviderCatalogs(
+      { runtimeClient: dependencies.shared.runtimeClient },
+      response,
+    );
     return;
   }
 

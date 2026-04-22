@@ -948,3 +948,68 @@ export async function handleAdvancedProviderModels(
     );
   }
 }
+
+interface RefreshProviderCatalogsResult {
+  refreshed: number;
+  failures: Array<{ provider: string; instance: string | null; message: string }>;
+}
+
+async function refreshProviderCatalogsInternal(
+  dependencies: ProviderRouteDependencies,
+): Promise<RefreshProviderCatalogsResult> {
+  const registry = await readTruthfulProviderRegistry(dependencies);
+  if (registry.state !== 'ready') {
+    throw new Error(
+      registry.warnings?.[0] ?? 'cats-runtime did not report any usable providers to refresh.',
+    );
+  }
+
+  const cacheState = getProviderCatalogCacheState(dependencies.runtimeClient);
+  const failures: RefreshProviderCatalogsResult['failures'] = [];
+  let refreshed = 0;
+
+  const tasks: Array<Promise<void>> = [];
+  for (const provider of registry.providers) {
+    for (const instance of provider.instances) {
+      const task = (async () => {
+        try {
+          const [models, advanced] = await Promise.all([
+            dependencies.runtimeClient.getProviderModels(provider.id, instance.id, { forceRefresh: true }),
+            dependencies.runtimeClient.getAdvancedProviderModels(provider.id, instance.id, { forceRefresh: true }),
+          ]);
+          const cacheKey = buildProviderCatalogCacheKey({ provider: provider.id, instance: instance.id });
+          writeProviderCatalogCacheEntry(cacheState.models, cacheKey, models);
+          writeProviderCatalogCacheEntry(cacheState.advanced, cacheKey, advanced);
+          refreshed += 1;
+        } catch (error) {
+          failures.push({
+            provider: provider.id,
+            instance: instance.id,
+            message: error instanceof Error ? error.message : 'Runtime catalog refresh failed.',
+          });
+        }
+      })();
+      tasks.push(task);
+    }
+  }
+
+  await Promise.all(tasks);
+  return { refreshed, failures };
+}
+
+export async function handleRefreshProviderCatalogs(
+  dependencies: ProviderRouteDependencies,
+  response: ServerResponse,
+): Promise<void> {
+  try {
+    const result = await refreshProviderCatalogsInternal(dependencies);
+    sendJson(response, 200, result);
+  } catch (error) {
+    sendRestError(
+      response,
+      503,
+      'provider_catalog_refresh_failed',
+      error instanceof Error ? error.message : 'Failed to refresh provider model catalogs.',
+    );
+  }
+}

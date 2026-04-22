@@ -1,3 +1,5 @@
+import { useState } from 'react';
+
 import { resolveRuntimeConnectionChip } from '../../../design/components/runtimeChips.js';
 import {
   SettingsSection,
@@ -6,6 +8,7 @@ import {
   type SettingsStatusChipTone,
 } from '../../../design/components/settings/index.js';
 import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
+import { refreshProviderModelCatalogs } from '../../../products/shared/renderer/api/providers.js';
 import { PLATFORM_RUNTIME_SETUP_PATH } from '../../../shared/runtimeIngressPaths.js';
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
 import { PlatformSettingsShell } from './PlatformSettingsShell.js';
@@ -28,6 +31,12 @@ function resolveRuntimeSetupChip(
   }
 }
 
+type RefreshStatus =
+  | { kind: 'idle' }
+  | { kind: 'running' }
+  | { kind: 'success'; refreshed: number; failures: number }
+  | { kind: 'error'; message: string };
+
 export function PlatformSettingsRuntime({
   payload,
 }: {
@@ -35,6 +44,24 @@ export function PlatformSettingsRuntime({
 }) {
   const runtimeChip = resolveRuntimeConnectionChip(payload.runtime);
   const runtimeSetupChip = resolveRuntimeSetupChip(payload.runtimeSetup);
+  const [refreshStatus, setRefreshStatus] = useState<RefreshStatus>({ kind: 'idle' });
+
+  const handleRefresh = async () => {
+    setRefreshStatus({ kind: 'running' });
+    try {
+      const result = await refreshProviderModelCatalogs();
+      setRefreshStatus({
+        kind: 'success',
+        refreshed: result.refreshed,
+        failures: result.failures.length,
+      });
+    } catch (error) {
+      setRefreshStatus({
+        kind: 'error',
+        message: error instanceof Error ? error.message : 'Refresh failed.',
+      });
+    }
+  };
 
   return (
     <PlatformSettingsShell
@@ -118,6 +145,36 @@ export function PlatformSettingsRuntime({
           </ul>
         </SettingsSection>
       ) : null}
+
+      <SettingsSection
+        header={
+          <SettingsSectionHeader
+            title="Model catalogs"
+            description="Ask cats-runtime to refresh every provider's model list now, so newly released models show up in the Brain picker without waiting for the background caches to expire."
+          />
+        }
+      >
+        <div className="settingsChipRow">
+          <button
+            type="button"
+            className="secondaryButton"
+            onClick={() => { void handleRefresh(); }}
+            disabled={refreshStatus.kind === 'running'}
+          >
+            {refreshStatus.kind === 'running' ? 'Refreshing…' : 'Refresh model catalogs'}
+          </button>
+          {refreshStatus.kind === 'success' ? (
+            <SettingsStatusChip tone={refreshStatus.failures > 0 ? 'warm' : 'ready'}>
+              {refreshStatus.failures > 0
+                ? `Refreshed ${refreshStatus.refreshed} · ${refreshStatus.failures} failed`
+                : `Refreshed ${refreshStatus.refreshed} target${refreshStatus.refreshed === 1 ? '' : 's'}`}
+            </SettingsStatusChip>
+          ) : null}
+          {refreshStatus.kind === 'error' ? (
+            <SettingsStatusChip tone="warm">{refreshStatus.message}</SettingsStatusChip>
+          ) : null}
+        </div>
+      </SettingsSection>
 
       <SettingsSection
         header={

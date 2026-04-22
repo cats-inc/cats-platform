@@ -278,8 +278,16 @@ export interface RuntimeClient {
   getProviderDiagnostics(
     query?: RuntimeProviderDiagnosticsQuery,
   ): Promise<RuntimeProviderDiagnosticsPayload>;
-  getProviderModels(provider: string, instance?: string | null): Promise<ProviderModelCatalog>;
-  getAdvancedProviderModels(provider: string, instance?: string | null): Promise<ProviderAdvancedModelCatalog>;
+  getProviderModels(
+    provider: string,
+    instance?: string | null,
+    options?: { forceRefresh?: boolean },
+  ): Promise<ProviderModelCatalog>;
+  getAdvancedProviderModels(
+    provider: string,
+    instance?: string | null,
+    options?: { forceRefresh?: boolean },
+  ): Promise<ProviderAdvancedModelCatalog>;
   createSession(input: RuntimeSessionCreateInput): Promise<RuntimeSessionInfo>;
   sendMessage(
     sessionId: string,
@@ -466,10 +474,14 @@ export class CatsRuntimeClient implements RuntimeClient {
   async getProviderModels(
     provider: string,
     instance?: string | null,
+    options: { forceRefresh?: boolean } = {},
   ): Promise<ProviderModelCatalog> {
     const url = new URL(`${this.baseUrl}/providers/${encodeURIComponent(provider)}/models`);
     if (instance?.trim()) {
       url.searchParams.set('instance', instance.trim());
+    }
+    if (options.forceRefresh) {
+      url.searchParams.set('refresh', '1');
     }
 
     const response = await fetch(url, {
@@ -494,10 +506,14 @@ export class CatsRuntimeClient implements RuntimeClient {
   async getAdvancedProviderModels(
     provider: string,
     instance?: string | null,
+    options: { forceRefresh?: boolean } = {},
   ): Promise<ProviderAdvancedModelCatalog> {
     const url = new URL(`${this.baseUrl}/providers/${encodeURIComponent(provider)}/models/advanced`);
     if (instance?.trim()) {
       url.searchParams.set('instance', instance.trim());
+    }
+    if (options.forceRefresh) {
+      url.searchParams.set('refresh', '1');
     }
 
     const response = await fetch(url, {
