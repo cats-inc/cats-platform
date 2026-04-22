@@ -68,12 +68,6 @@
   border-color: color-mix(in srgb, var(--accent) 28%, var(--border) 72%);
 }
 
-.providerSupportBadgecatalog {
-  color: var(--warm-text);
-  background: var(--warm-bg);
-  border-color: color-mix(in srgb, var(--warm-text) 24%, var(--border) 76%);
-}
-
 .providerSupportBadgereadOnly {
   color: var(--muted-text);
   background: var(--muted-bg);

@@ -376,10 +376,7 @@ test('support badge labels match runtime catalog support tiers', () => {
     label: 'Advanced',
     tone: 'advanced',
   });
-  assert.deepEqual(resolveProviderSupportBadge('entry_only'), {
-    label: 'Catalog',
-    tone: 'catalog',
-  });
+  assert.equal(resolveProviderSupportBadge('entry_only'), null);
   assert.deepEqual(resolveProviderSupportBadge('read_only'), {
     label: 'Read-only',
     tone: 'readOnly',

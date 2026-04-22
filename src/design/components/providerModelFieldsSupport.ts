@@ -302,15 +302,15 @@ export function resolveProviderSupportBadge(
   supportTier: ProviderAdvancedModelCatalog['support']['tier'] | null | undefined,
 ): {
   label: string;
-  tone: 'advanced' | 'catalog' | 'readOnly';
-} {
+  tone: 'advanced' | 'readOnly';
+} | null {
   if (supportTier === 'full') {
     return { label: 'Advanced', tone: 'advanced' };
   }
   if (supportTier === 'read_only') {
     return { label: 'Read-only', tone: 'readOnly' };
   }
-  return { label: 'Catalog', tone: 'catalog' };
+  return null;
 }
 
 export function resolveCatalogEntryStatusSuffix(
@@ -728,8 +728,8 @@ export function resolveProviderModelFieldsViewState(input: {
   controlValues: Record<string, ProviderAdvancedControlValue>;
   supportBadge: {
     label: string;
-    tone: 'advanced' | 'catalog' | 'readOnly';
-  };
+    tone: 'advanced' | 'readOnly';
+  } | null;
   selectedEntryNotes: string[];
   primaryCatalogWarning: string | null;
   providerPlaceholder: string;

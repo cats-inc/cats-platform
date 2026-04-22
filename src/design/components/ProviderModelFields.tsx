@@ -311,9 +311,11 @@ export function ProviderModelFields({
       <label className="fieldLabel">
         <div className="fieldLabelInline">
           <span>Model</span>
-          <span className={`providerSupportBadge providerSupportBadge${supportBadge.tone}`}>
-            {supportBadge.label}
-          </span>
+          {supportBadge ? (
+            <span className={`providerSupportBadge providerSupportBadge${supportBadge.tone}`}>
+              {supportBadge.label}
+            </span>
+          ) : null}
         </div>
         <select
           className="textInput"
