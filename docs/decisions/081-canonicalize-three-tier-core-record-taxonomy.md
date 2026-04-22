@@ -47,15 +47,17 @@ was still open, but it now actively misleads:
   independent entity makes the draft schema's `taskId` /
   `workItemId` / `projectId` reference fields look incomplete
 
-Within Execution the confusion is symmetric:
+Around Execution the confusion is symmetric:
 `Checkpoint`, `Outcome`, `Trace`, `Activity`, `Artifact` look
 like peers of `Run` in the terminology doc, but the code treats
-them as a **materialization / evidence tier** sitting under the
-Execution layer — each record carries nullable `runId` / `taskId`
-/ `workItemId` / `projectId` / `conversationId` back-references.
-Some rows are direct run by-products; others (operator-authored
-activities, documents, reports, datasets, transcript exports)
-have no run at all. None of them own a `Run`.
+them as a **cross-layer materialization / evidence tier** —
+each record carries nullable `runId` / `taskId` / `workItemId`
+/ `projectId` / `conversationId` back-references, and may
+attach at any layer. Some rows are direct run by-products;
+others (operator-authored activities, documents, reports,
+datasets, transcript exports) have no run at all and live
+against a project, work item, or conversation. None of them
+own a `Run`.
 
 The right fix is not to rename code or add new tables. It is
 to freeze a canonical **three-tier** taxonomy with finite entity
@@ -92,9 +94,12 @@ channel, and inside what durable interaction shape):
 - `Segment`
 - `Session` (ephemeral runtime attachment; included because it
   is part of the interaction shape even though not durable)
-- `TransportBinding` — mapping from one external transport
-  thread to one Cats entry path; lives here because it selects
-  the Conversation that a transport message lands in
+- `TransportBinding` — record for one external transport
+  thread and its optional links into Cats. `conversationId`,
+  `participantId`, and `agentId` are all nullable; a binding
+  may resolve to a `Conversation` or stay unresolved. Lives
+  here because, when it does resolve, it is what selects the
+  `Conversation` a transport ingress lands in.
 
 **Layer 2 — Managed Work / Planning** (what the operator wants
 done):
@@ -184,10 +189,11 @@ doc:
   pointer type (a field shape), not a record family of its own.
   `TransportBindingRecord` and `BotBindingRecord` are real
   records; `TransportBindingRecord` sits inside Interaction Core
-  (§1) because it selects the Conversation that a transport
-  message lands in. `BotBindingRecord` is infra/integration
-  glue between Cats and external bot identities, and is not
-  listed in `CORE_CANONICAL_RECORD_FAMILIES`.
+  (§1) because, when its nullable `conversationId` resolves, it
+  is what selects the Conversation a transport ingress lands in.
+  `BotBindingRecord` is infra/integration glue between Cats and
+  external bot identities, and is not listed in
+  `CORE_CANONICAL_RECORD_FAMILIES`.
 - **Cross-cutting approval gate** — `CoreApprovalRecord` is
   **not** an independent top-level record. It is an embedded
   value object on `CoreTaskRecord.approval` that captures the
@@ -198,23 +204,24 @@ doc:
   `project | work_item | task | run | artifact | conversation`
   (see `CoreApprovalBindingSubjectKind`). Approval therefore
   attaches to any layer but does not itself own a layer slot.
-- **Materialization records** — `Artifact`, `Outcome`,
-  `Checkpoint`, `Trace`, and `Activity`. Each is a canonical
-  record that captures durable state produced around the
-  Planning / Execution / Interaction graph, with back-references
-  into any of `projectId` / `workItemId` / `taskId` / `runId` /
-  `conversationId` (all nullable). Some instances are direct
-  run by-products — for example `Outcome`, `Checkpoint`, and
-  `build` / `preview` `Artifact` rows typically carry a `runId`
-  and/or `taskId` — but others are created outside any run:
-  `Activity` has operator-authored kinds
-  (`note`, `operator_action`, `work_item_updated`, etc.) that
-  attach to a project / work-item / conversation with no task
-  or run; `Artifact` kinds `document`, `report`, `attachment`,
-  `transcript_export`, and `dataset` likewise do not require a
-  `Run`. Treat this group as the materialization / evidence
-  tier that sits under the Execution layer rather than as
-  "children of a Run". `Activity` is still **not** a projection
+- **Cross-layer materialization / evidence tier** —
+  `Artifact`, `Outcome`, `Checkpoint`, `Trace`, and `Activity`.
+  Each is a canonical record that captures durable state around
+  the Planning / Execution / Interaction graph, with
+  back-references into any of `projectId` / `workItemId` /
+  `taskId` / `runId` / `conversationId` (all nullable). Some
+  instances are direct run by-products — for example `Outcome`,
+  `Checkpoint`, and `build` / `preview` `Artifact` rows
+  typically carry a `runId` and/or `taskId`. Others are
+  created outside any run and attach directly to a project,
+  work item, or conversation: `Activity` has operator-authored
+  kinds (`note`, `operator_action`, `work_item_updated`, etc.)
+  that never touch a task or run, and `Artifact` kinds
+  `document`, `report`, `attachment`, `transcript_export`, and
+  `dataset` likewise do not require a `Run`. This tier
+  therefore **does not sit under the Execution layer** — it
+  cuts across Planning, Execution, and Interaction in the same
+  way approval does. `Activity` is still **not** a projection
   over `Trace` — see §2.
 
 ### 4. Cross-layer link contract (frozen)
