@@ -212,6 +212,47 @@
   text-decoration: underline;
 }
 
+.catsCoverField {
+  align-items: flex-start;
+}
+
+.catsCoverRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.catsCoverThumb {
+  width: 160px;
+  height: 56px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background-color: #d8c3a5;
+  background-image: linear-gradient(135deg, #e8d5b7 0%, #b8866a 55%, #6d4a30 100%);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  flex-shrink: 0;
+}
+
+.catsCoverThumbLoaded {
+  background-color: #2a2a2a;
+}
+
+.catsCoverActions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.catsCoverError {
+  margin: 8px 0 0;
+  font-size: 0.82rem;
+  color: #dc3545;
+}
+
 .linkButton:hover {
   color: var(--text);
 }

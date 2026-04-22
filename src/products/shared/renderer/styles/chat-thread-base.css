@@ -365,6 +365,10 @@
   margin: 0 auto;
 }
 
+.draftShell:has(.draftHeaderWithCover) {
+  padding-top: 0;
+}
+
 .composerCard {
   width: 100%;
   margin: 0 auto;
@@ -455,10 +459,124 @@
   text-align: left;
 }
 
+.draftHeaderProfile.draftHeaderWithCover {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "cover cover"
+    "avatar body";
+  column-gap: 20px;
+  row-gap: 0;
+  max-width: 680px;
+  width: 100%;
+  margin: 0 auto 16px;
+  align-items: start;
+  text-align: left;
+}
+
+.draftHeaderCover {
+  grid-area: cover;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 6;
+  max-height: 220px;
+  min-height: 180px;
+  border-radius: 0 0 16px 16px;
+  background-color: #d8c3a5;
+  background-image: linear-gradient(135deg, #e8d5b7 0%, #b8866a 55%, #6d4a30 100%);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  overflow: hidden;
+  margin-top: -48px;
+  margin-bottom: -48px;
+}
+
+.draftHeaderCoverLoaded {
+  background-color: #2a2a2a;
+}
+
+.draftHeaderCoverActions {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: flex;
+  gap: 8px;
+  z-index: 2;
+}
+
+.draftHeaderCoverButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: background-color 120ms ease, transform 120ms ease;
+}
+
+.draftHeaderCoverButton:hover {
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.draftHeaderCoverButton:active {
+  transform: scale(0.97);
+}
+
+.draftHeaderCoverRemoveButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: background-color 120ms ease;
+}
+
+.draftHeaderCoverRemoveButton:hover {
+  background: rgba(220, 53, 69, 0.85);
+}
+
+.draftHeaderCoverError {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(220, 53, 69, 0.9);
+  color: #fff;
+  font-size: 0.78rem;
+  z-index: 2;
+}
+
 .draftHeaderVisual {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.draftHeaderWithCover .draftHeaderVisual {
+  grid-area: avatar;
+  position: relative;
+  z-index: 1;
+  justify-self: start;
+  justify-content: flex-start;
+  padding-left: 24px;
 }
 
 .draftHeaderAvatar {
@@ -472,6 +590,20 @@
   font-size: 1.6rem;
   font-weight: 700;
   overflow: hidden;
+}
+
+.draftHeaderWithCover .draftHeaderAvatar {
+  width: 120px;
+  height: 120px;
+  border: 4px solid var(--surface, #fff);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+}
+
+.draftHeaderWithCover .draftHeaderBody {
+  grid-area: body;
+  align-self: start;
+  padding: 0 24px 0 0;
+  margin-top: 48px;
 }
 
 .draftHeaderBody {
@@ -523,6 +655,36 @@
 
   .draftHeaderTitleRow {
     justify-content: center;
+  }
+
+  .draftHeaderProfile.draftHeaderWithCover {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "cover"
+      "avatar"
+      "body";
+    text-align: center;
+    column-gap: 0;
+  }
+
+  .draftHeaderWithCover .draftHeaderVisual {
+    justify-self: center;
+    justify-content: center;
+    padding-left: 0;
+  }
+
+  .draftHeaderCover {
+    margin-bottom: -40px;
+  }
+
+  .draftHeaderWithCover .draftHeaderAvatar {
+    width: 96px;
+    height: 96px;
+  }
+
+  .draftHeaderWithCover .draftHeaderBody {
+    margin-top: 8px;
+    padding: 0 12px;
   }
 }
 

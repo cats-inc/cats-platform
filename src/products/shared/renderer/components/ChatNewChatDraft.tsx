@@ -758,6 +758,7 @@ export function NewChatDraft({
       avatarName={defaultRecipientCat.name}
       avatarUrl={defaultRecipientCat.avatarUrl}
       avatarColor={defaultRecipientCat.avatarColor}
+      coverStorageKey={defaultRecipientCat.id}
     />
   ) : isCatLedDraft && effectiveDefaultRecipientCat ? (
     <DraftHeader

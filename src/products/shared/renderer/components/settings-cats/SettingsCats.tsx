@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type Dispatch, type FormEvent, type SetStateAction } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type ComponentType, type Dispatch, type FormEvent, type SetStateAction } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 import type { AppShellPayload } from '../../../api/workspaceContracts.js';
@@ -27,6 +27,12 @@ import {
 } from '../../hooks/useSettingsCatsRegistryActions.js';
 import { useSettingsCatsTelegram } from '../../hooks/useSettingsCatsTelegram.js';
 import { AvatarCropDialog } from '../../../../../design/components/AvatarCropDialog.js';
+import {
+  MAX_COVER_BYTES,
+  readCatCover,
+  subscribeCatCover,
+  writeCatCover,
+} from '../../catCoverStorage.js';
 import { SettingsCatsDetailPanelContent } from './SettingsCatsDetailPanelContent.js';
 import { SettingsCatsRegistry } from './SettingsCatsRegistry.js';
 import { findNewlyCreatedActiveCat } from './settingsCatsSupport.js';
@@ -293,6 +299,50 @@ export function SettingsCatsCanvas({
     } catch {
       // silent
     }
+  };
+
+  const coverInputRef = useRef<HTMLInputElement | null>(null);
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+  const [coverError, setCoverError] = useState<string | null>(null);
+  useEffect(() => {
+    if (!selectedCat) {
+      setCoverUrl(null);
+      return;
+    }
+    setCoverUrl(readCatCover(selectedCat.id));
+    setCoverError(null);
+    return subscribeCatCover(selectedCat.id, setCoverUrl);
+  }, [selectedCat?.id]);
+
+  const handleCoverPick = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] ?? null;
+    event.target.value = '';
+    if (!file || !selectedCat) return;
+    if (!file.type.startsWith('image/')) {
+      setCoverError('Please choose an image file.');
+      return;
+    }
+    if (file.size > MAX_COVER_BYTES) {
+      setCoverError('Image must be under 4MB.');
+      return;
+    }
+    setCoverError(null);
+    const catId = selectedCat.id;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : null;
+      if (!result) return;
+      writeCatCover(catId, result);
+    };
+    reader.onerror = () => {
+      setCoverError('Could not read the selected image.');
+    };
+    reader.readAsDataURL(file);
+  };
+  const handleCoverRemove = () => {
+    if (!selectedCat) return;
+    setCoverError(null);
+    writeCatCover(selectedCat.id, null);
   };
 
   const isArchived = selectedCat?.status === 'archived';
@@ -749,6 +799,46 @@ export function SettingsCatsCanvas({
                     <span>Set as Boss Cat</span>
                   </label>
                 ) : null}
+                <div className="fieldLabel catsCoverField">
+                  <span>Cover photo</span>
+                  <div className="catsCoverRow">
+                    <div
+                      className={`catsCoverThumb${coverUrl ? ' catsCoverThumbLoaded' : ''}`}
+                      style={coverUrl ? { backgroundImage: `url(${coverUrl})` } : undefined}
+                      aria-label={coverUrl ? 'Current cover photo' : 'No cover photo set'}
+                    />
+                    <div className="catsCoverActions">
+                      <button
+                        type="button"
+                        className="secondaryButton"
+                        disabled={isArchived}
+                        onClick={() => coverInputRef.current?.click()}
+                      >
+                        {coverUrl ? 'Change cover' : 'Upload cover'}
+                      </button>
+                      {coverUrl ? (
+                        <button
+                          type="button"
+                          className="secondaryButton"
+                          disabled={isArchived}
+                          onClick={handleCoverRemove}
+                        >
+                          Remove cover
+                        </button>
+                      ) : null}
+                    </div>
+                    <input
+                      ref={coverInputRef}
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={handleCoverPick}
+                    />
+                  </div>
+                  {coverError ? (
+                    <p className="catsCoverError" role="alert">{coverError}</p>
+                  ) : null}
+                </div>
               </SettingsSubSection>
 
               <SettingsSubSection
