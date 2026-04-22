@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useSyncExternalStore } from 'react';
 
 import { ToastContainer, useToast } from '../../../design/components/Toast.js';
 import {
@@ -8,7 +8,12 @@ import {
   type SettingsStatusChipTone,
 } from '../../../design/components/settings/index.js';
 import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
-import { refreshProviderModelCatalogs } from '../../../products/shared/renderer/api/providers.js';
+import {
+  getProviderCatalogRefreshSnapshot,
+  subscribeProviderCatalogRefresh,
+  subscribeProviderCatalogRefreshResult,
+  triggerProviderCatalogRefresh,
+} from '../../../products/shared/renderer/api/providerCatalogRefreshStore.js';
 import { PLATFORM_RUNTIME_SETUP_PATH } from '../../../shared/runtimeIngressPaths.js';
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
 import { resolveRuntimePresentationStatus } from '../../../shared/runtimeStatusPresentation.js';
@@ -46,26 +51,32 @@ export function PlatformSettingsRuntime({
 }) {
   const runtimeChip = resolveRuntimeStatusChip(payload.runtime, payload.runtimeSetup);
   const { toasts, showToast } = useToast();
-  const [refreshing, setRefreshing] = useState(false);
+  const refreshSnapshot = useSyncExternalStore(
+    subscribeProviderCatalogRefresh,
+    getProviderCatalogRefreshSnapshot,
+    getProviderCatalogRefreshSnapshot,
+  );
+  const refreshing = refreshSnapshot.inflight;
 
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    try {
-      const result = await refreshProviderModelCatalogs();
-      if (result.failures.length > 0) {
-        showToast(
-          `Refreshed ${result.refreshed} · ${result.failures.length} failed`,
-        );
+  useEffect(() => subscribeProviderCatalogRefreshResult((result) => {
+    if (result.type === 'success') {
+      const { refreshed, failures } = result.value;
+      if (failures.length > 0) {
+        showToast(`Refreshed ${refreshed} · ${failures.length} failed`);
       } else {
-        showToast(
-          `Refreshed ${result.refreshed} target${result.refreshed === 1 ? '' : 's'}`,
-        );
+        showToast(`Refreshed ${refreshed} target${refreshed === 1 ? '' : 's'}`);
       }
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Refresh failed.');
-    } finally {
-      setRefreshing(false);
+    } else {
+      showToast(
+        result.error instanceof Error ? result.error.message : 'Refresh failed.',
+      );
     }
+  }), [showToast]);
+
+  const handleRefresh = () => {
+    void triggerProviderCatalogRefresh().catch(() => {
+      // Errors are surfaced via the shared result subscription above.
+    });
   };
 
   return (
@@ -154,11 +165,18 @@ export function PlatformSettingsRuntime({
       >
         <button
           type="button"
-          className="secondaryButton"
-          onClick={() => { void handleRefresh(); }}
+          className="secondaryButton settingsRefreshButton"
+          onClick={handleRefresh}
           disabled={refreshing}
         >
-          {refreshing ? 'Refreshing…' : 'Refresh model catalogs'}
+          {refreshing ? (
+            <>
+              <span className="settingsRefreshSpinner" aria-hidden="true" />
+              <span>Refreshing</span>
+            </>
+          ) : (
+            'Refresh model catalogs'
+          )}
         </button>
       </SettingsSection>
 

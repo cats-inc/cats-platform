@@ -317,6 +317,7 @@ interface RuntimeClientOptions {
 
 const DEFAULT_RUNTIME_REQUEST_TIMEOUT_MS = 5_000;
 const DEFAULT_RUNTIME_PROVIDER_REGISTRY_TIMEOUT_MS = 10_000;
+const DEFAULT_RUNTIME_PROVIDER_CATALOG_REFRESH_TIMEOUT_MS = 60_000;
 const DEFAULT_RUNTIME_SELECTOR_CONFIG_TIMEOUT_MS = 5_000;
 const DEFAULT_RUNTIME_SELECTOR_DIAGNOSTICS_TIMEOUT_MS = 8_000;
 
@@ -489,7 +490,11 @@ export class CatsRuntimeClient implements RuntimeClient {
         ...this.authHeaders(),
         Accept: 'application/json',
       },
-      signal: AbortSignal.timeout(this.providerRegistryTimeoutMs),
+      signal: AbortSignal.timeout(
+        options.forceRefresh
+          ? DEFAULT_RUNTIME_PROVIDER_CATALOG_REFRESH_TIMEOUT_MS
+          : this.providerRegistryTimeoutMs,
+      ),
     });
 
     if (!response.ok) {
@@ -521,7 +526,11 @@ export class CatsRuntimeClient implements RuntimeClient {
         ...this.authHeaders(),
         Accept: 'application/json',
       },
-      signal: AbortSignal.timeout(this.providerRegistryTimeoutMs),
+      signal: AbortSignal.timeout(
+        options.forceRefresh
+          ? DEFAULT_RUNTIME_PROVIDER_CATALOG_REFRESH_TIMEOUT_MS
+          : this.providerRegistryTimeoutMs,
+      ),
     });
 
     if (!response.ok) {
