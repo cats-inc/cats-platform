@@ -11,6 +11,7 @@ import {
 export interface DesktopScreenshotNativeDisplay {
   id: number;
   bounds: DesktopScreenshotDisplayGeometry['bounds'];
+  workArea?: DesktopScreenshotDisplayGeometry['bounds'];
   scaleFactor: number;
 }
 
@@ -28,6 +29,7 @@ export interface DesktopScreenshotNativeSource {
 
 export interface DesktopScreenshotCaptureDependencies {
   getAllDisplays(): DesktopScreenshotNativeDisplay[];
+  cropPng?: DesktopScreenshotCropDependencies['cropPng'];
   getScreenSources(options: {
     types: ['screen'];
     thumbnailSize: {
@@ -131,6 +133,30 @@ export function resolveDesktopCaptureThumbnailSize(
   );
 }
 
+function areDesktopScreenshotRectsEqual(
+  left: DesktopScreenshotCssRect,
+  right: DesktopScreenshotCssRect,
+): boolean {
+  return left.x === right.x
+    && left.y === right.y
+    && left.width === right.width
+    && left.height === right.height;
+}
+
+export function resolveDesktopScreenshotCaptureBounds(
+  display: DesktopScreenshotNativeDisplay,
+): DesktopScreenshotCssRect {
+  if (
+    !display.workArea
+    || display.workArea.width <= 0
+    || display.workArea.height <= 0
+  ) {
+    return display.bounds;
+  }
+
+  return display.workArea;
+}
+
 export function matchDesktopSourceForDisplay(
   display: DesktopScreenshotNativeDisplay,
   sources: DesktopScreenshotNativeSource[],
@@ -159,16 +185,43 @@ export async function captureDesktopDisplaySnapshots(
     if (!source) {
       return [];
     }
+    const fullImageSize = source.thumbnail.getSize();
+    const fullPng = source.thumbnail.toPNG();
+    const captureBounds = resolveDesktopScreenshotCaptureBounds(display);
+    const fullGeometry = {
+      bounds: display.bounds,
+      imageSize: fullImageSize,
+      scaleFactor: display.scaleFactor,
+    };
+    const shouldCropToWorkArea = !areDesktopScreenshotRectsEqual(
+      captureBounds,
+      display.bounds,
+    );
+    const cropRect = shouldCropToWorkArea
+      ? mapCssSelectionToPhysicalCropRect(captureBounds, fullGeometry)
+      : null;
+    if (
+      cropRect
+      && (!dependencies.cropPng || !isPhysicalCropRectLargeEnough(cropRect, 1))
+    ) {
+      return [];
+    }
+    const imageSize = cropRect
+      ? { width: cropRect.width, height: cropRect.height }
+      : fullImageSize;
+
     return [{
       displayId: display.id,
       sourceId: source.id,
       sourceName: source.name,
       geometry: {
-        bounds: display.bounds,
-        imageSize: source.thumbnail.getSize(),
+        bounds: captureBounds,
+        imageSize,
         scaleFactor: display.scaleFactor,
       },
-      png: source.thumbnail.toPNG(),
+      png: cropRect && dependencies.cropPng
+        ? dependencies.cropPng(fullPng, cropRect)
+        : fullPng,
     }];
   });
 }

@@ -119,6 +119,65 @@ test('desktop screenshot native capture builds per-display PNG snapshots', async
   assert.equal(snapshots[1]?.captureCursor, undefined);
 });
 
+test('desktop screenshot native capture crops display snapshots to work areas', async () => {
+  const calls = [];
+  const cropCalls = [];
+  const snapshots = await captureDesktopDisplaySnapshots({
+    getAllDisplays() {
+      return [
+        {
+          id: 1,
+          bounds: { x: 0, y: 0, width: 1000, height: 800 },
+          workArea: { x: 0, y: 24, width: 1000, height: 736 },
+          scaleFactor: 2,
+        },
+      ];
+    },
+    cropPng(sourcePng, cropRect) {
+      cropCalls.push({ sourcePng: Array.from(sourcePng), cropRect });
+      return new Uint8Array([9, 9, 9]);
+    },
+    async getScreenSources(options) {
+      calls.push(options);
+      return [
+        {
+          id: 'screen:1:0',
+          display_id: '1',
+          name: 'Built-in display',
+          thumbnail: createImage(2000, 1600, [1, 2, 3]),
+        },
+      ];
+    },
+  });
+
+  assert.deepEqual(calls, [
+    {
+      types: ['screen'],
+      thumbnailSize: { width: 2000, height: 1600 },
+      fetchWindowIcons: false,
+    },
+  ]);
+  assert.deepEqual(cropCalls, [
+    {
+      sourcePng: [1, 2, 3],
+      cropRect: { x: 0, y: 48, width: 2000, height: 1472 },
+    },
+  ]);
+  assert.deepEqual(snapshots, [
+    {
+      displayId: 1,
+      sourceId: 'screen:1:0',
+      sourceName: 'Built-in display',
+      geometry: {
+        bounds: { x: 0, y: 24, width: 1000, height: 736 },
+        imageSize: { width: 2000, height: 1472 },
+        scaleFactor: 2,
+      },
+      png: new Uint8Array([9, 9, 9]),
+    },
+  ]);
+});
+
 test('desktop screenshot native capture crops selected display snapshots', () => {
   const cropCalls = [];
   const result = cropDesktopDisplaySnapshotSelection(

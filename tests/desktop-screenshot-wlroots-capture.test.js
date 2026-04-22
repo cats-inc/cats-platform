@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   captureWlrootsNativeScreenshotRegion,
   formatWlrootsScreenshotGeometry,
+  formatWlrootsScreenshotWorkAreaInput,
   isLikelyWlrootsScreenshotSession,
   parseWlrootsScreenshotGeometry,
 } from '../build/desktop/screenshotWlrootsCapture.js';
@@ -69,6 +70,13 @@ test('wlroots screenshot geometry parser accepts slurp format', () => {
     height: 180,
   }), '-10,20 320x180');
   assert.equal(parseWlrootsScreenshotGeometry('not geometry'), null);
+  assert.equal(
+    formatWlrootsScreenshotWorkAreaInput([
+      { x: 0, y: 24, width: 1000, height: 736 },
+      { x: -1280, y: 0, width: 1280, height: 680 },
+    ]),
+    '0,24 1000x736\n-1280,0 1280x680\n',
+  );
 });
 
 test(
@@ -131,6 +139,62 @@ test(
     );
   },
 );
+
+test('wlroots screenshot capture restricts slurp selection to work areas', async () => {
+  const calls = [];
+  const png = createPngHeader(900, 600);
+  const result = await captureWlrootsNativeScreenshotRegion({
+    platform: 'linux',
+    env: createWlrootsEnv(),
+    workAreas: [
+      { x: 0, y: 24, width: 1000, height: 736 },
+      { x: -1280, y: 0, width: 1280, height: 680 },
+    ],
+    createFilename: () => 'cats-screenshot-20260422-010203-001.png',
+    async runCommand(command, args, options) {
+      calls.push({ command, args, options });
+      if (args[0] === '-h') {
+        return { stdout: new Uint8Array(), stderr: '' };
+      }
+      if (command === 'slurp') {
+        return {
+          stdout: Buffer.from('0,24 900x600\n', 'utf8'),
+          stderr: '',
+        };
+      }
+      if (command === 'grim') {
+        return { stdout: png, stderr: '' };
+      }
+      throw new Error(`unexpected command: ${command}`);
+    },
+  });
+
+  assert.equal(result.outcome, 'ok');
+  assert.deepEqual(calls[2], {
+    command: 'slurp',
+    args: [
+      '-f',
+      '%x,%y %wx%h',
+      '-b',
+      '#00000055',
+      '-c',
+      '#f8fafcff',
+      '-s',
+      '#ffffff22',
+      '-w',
+      '1',
+      '-r',
+    ],
+    options: {
+      stdin: '0,24 1000x736\n-1280,0 1280x680\n',
+    },
+  });
+  assert.deepEqual(calls[3], {
+    command: 'grim',
+    args: ['-g', '0,24 900x600', '-t', 'png', '-'],
+    options: { maxBufferBytes: 32 * 1024 * 1024 },
+  });
+});
 
 test('wlroots screenshot capture maps slurp cancellation to user cancellation', async () => {
   const calls = [];

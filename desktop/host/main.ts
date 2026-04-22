@@ -107,6 +107,7 @@ import {
 import {
   createElectronScreenshotCaptureDependencies,
   createElectronScreenshotCropDependencies,
+  resolveElectronScreenshotWorkAreas,
 } from './screenshotElectronAdapter.js';
 import {
   createElectronScreenshotOverlayWindowFactory,
@@ -301,6 +302,7 @@ async function captureNativeScreenshotRegion(
       const wlrootsResult = await captureWlrootsNativeScreenshotRegion({
         platform: process.platform,
         env: process.env,
+        workAreas: resolveElectronScreenshotWorkAreas(),
         createFilename: createDesktopScreenshotFilename,
       });
       if (wlrootsResult.outcome !== 'platform_unsupported') {

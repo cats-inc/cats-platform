@@ -25,6 +25,7 @@ const WLROOTS_UNSUPPORTED_MESSAGE =
 export interface WlrootsScreenshotCommandOptions {
   timeoutMs?: number;
   maxBufferBytes?: number;
+  stdin?: string;
 }
 
 export interface WlrootsScreenshotCommandResult {
@@ -45,6 +46,7 @@ export interface WlrootsScreenshotSessionInput {
 
 export interface CaptureWlrootsScreenshotRegionOptions extends WlrootsScreenshotSessionInput {
   runCommand?: WlrootsScreenshotCommandRunner;
+  workAreas?: DesktopScreenshotPhysicalRect[];
   createFilename: () => string;
 }
 
@@ -86,7 +88,7 @@ export function createNodeWlrootsScreenshotCommandRunner(): WlrootsScreenshotCom
     let settled = false;
     let timedOut = false;
     const child = spawn(command, args, {
-      stdio: ['ignore', 'pipe', 'pipe'],
+      stdio: ['pipe', 'pipe', 'pipe'],
     });
     const timeout = options.timeoutMs
       ? setTimeout(() => {
@@ -122,6 +124,10 @@ export function createNodeWlrootsScreenshotCommandRunner(): WlrootsScreenshotCom
     child.stderr?.on('data', (chunk: Buffer) => {
       stderrChunks.push(chunk);
     });
+    child.stdin?.on('error', () => {
+      // Child process failures are reported through error/close handlers.
+    });
+    child.stdin?.end(options.stdin ?? '');
     child.on('error', (error: NodeJS.ErrnoException) => {
       const wrapped = new Error(error.message) as WlrootsScreenshotCommandFailure;
       wrapped.code = error.code;
@@ -183,7 +189,7 @@ export async function captureWlrootsNativeScreenshotRegion(
     };
   }
 
-  const selection = await selectWlrootsScreenshotRegion(runCommand);
+  const selection = await selectWlrootsScreenshotRegion(runCommand, options.workAreas);
   if (selection.outcome !== 'ok') {
     return selection;
   }
@@ -255,11 +261,13 @@ async function hasWlrootsScreenshotTool(
 
 async function selectWlrootsScreenshotRegion(
   runCommand: WlrootsScreenshotCommandRunner,
+  workAreas: DesktopScreenshotPhysicalRect[] | undefined,
 ): Promise<
   | { outcome: 'ok'; rect: DesktopScreenshotPhysicalRect }
   | Exclude<DesktopScreenshotCaptureResult, { outcome: 'ok' }>
 > {
   try {
+    const workAreaInput = formatWlrootsScreenshotWorkAreaInput(workAreas);
     const selection = await runCommand('slurp', [
       '-f',
       '%x,%y %wx%h',
@@ -271,7 +279,8 @@ async function selectWlrootsScreenshotRegion(
       '#ffffff22',
       '-w',
       '1',
-    ]);
+      ...(workAreaInput ? ['-r'] : []),
+    ], workAreaInput ? { stdin: workAreaInput } : undefined);
     const rect = parseWlrootsScreenshotGeometry(
       Buffer.from(selection.stdout).toString('utf8'),
     );
@@ -319,6 +328,15 @@ export function formatWlrootsScreenshotGeometry(
   rect: Pick<DesktopScreenshotPhysicalRect, 'x' | 'y' | 'width' | 'height'>,
 ): string {
   return `${rect.x},${rect.y} ${rect.width}x${rect.height}`;
+}
+
+export function formatWlrootsScreenshotWorkAreaInput(
+  workAreas: DesktopScreenshotPhysicalRect[] | undefined,
+): string | null {
+  const lines = (workAreas ?? [])
+    .filter((workArea) => workArea.width > 0 && workArea.height > 0)
+    .map((workArea) => formatWlrootsScreenshotGeometry(workArea));
+  return lines.length > 0 ? `${lines.join('\n')}\n` : null;
 }
 
 function isMissingCommandError(error: unknown): boolean {
