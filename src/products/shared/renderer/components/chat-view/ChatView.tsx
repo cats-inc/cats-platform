@@ -1100,7 +1100,13 @@ export function ChatView({
               .join(',');
             const combinedSignature =
               `raw=${rawSignature}|vis=${visibleSignature}|turn=${activeTurnUpdatedAt ?? 'none'}|msgs=${messagesSignature}`;
-            if (combinedSignature !== _lastLiveIndicatorLogSignature) {
+            const isIdleOpeningFrame = _lastLiveIndicatorLogSignature === null
+              && rawSignature === 'inactive'
+              && visibleSignature === 'inactive';
+            if (isIdleOpeningFrame) {
+              _lastLiveIndicatorLogSignature = combinedSignature;
+              _lastLiveIndicatorLogAt = Date.now();
+            } else if (combinedSignature !== _lastLiveIndicatorLogSignature) {
               const now = Date.now();
               const gapMs = _lastLiveIndicatorLogAt != null ? now - _lastLiveIndicatorLogAt : 0;
               _lastLiveIndicatorLogSignature = combinedSignature;
