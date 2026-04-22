@@ -45,18 +45,26 @@ export function useProviderRegistryState(input: {
     if (requestId !== providerRegistryRequestIdRef.current) {
       return;
     }
-    const nextRegistry: ProductProviderRegistryReadModel = {
-      state: 'runtime_unreachable',
-      providers: [],
-      recovery: {
-        retryable: true,
-      },
-      warnings: [error instanceof Error ? error.message : 'Failed to load providers.'],
-    };
-    setProviders([]);
-    setProviderRegistry(nextRegistry);
+    const errorMessage = error instanceof Error ? error.message : 'Failed to load providers.';
+    setProviderRegistry((current) => {
+      const baseWarnings = (current.warnings ?? []).filter((warning) => warning !== errorMessage);
+      const keepProviders = current.providers.length > 0;
+      const nextRegistry: ProductProviderRegistryReadModel = {
+        state: 'runtime_unreachable',
+        // Preserve the last known providers list on transient failures so the
+        // dropdowns keep working; we still surface the outage through the
+        // registry state and warnings. First-load failures have nothing to
+        // preserve and fall through to an empty list as before.
+        providers: keepProviders ? current.providers : [],
+        recovery: {
+          retryable: true,
+        },
+        warnings: [...baseWarnings, errorMessage],
+      };
+      onProviderRegistryChangeRef.current?.(nextRegistry);
+      return nextRegistry;
+    });
     setProvidersLoaded(true);
-    onProviderRegistryChangeRef.current?.(nextRegistry);
   }
 
   useEffect(() => {
@@ -84,7 +92,9 @@ export function useProviderRegistryState(input: {
     if (options?.markAutoRecheckAt !== undefined) {
       setLastAutoProviderRegistryRecheckAt(options.markAutoRecheckAt);
     }
-    setProvidersLoaded(false);
+    // Keep `providersLoaded` true so existing dropdown options stay visible
+    // while the background refresh runs; commit/error handlers will update
+    // state when the fetch resolves.
     setProviderRegistryReloadToken((current) => current + 1);
   }
 
@@ -92,7 +102,6 @@ export function useProviderRegistryState(input: {
     if (options?.markAutoRecheckAt !== undefined) {
       setLastAutoProviderRegistryRecheckAt(options.markAutoRecheckAt);
     }
-    setProvidersLoaded(false);
     const requestId = ++providerRegistryRequestIdRef.current;
     void input.fetchProviderRegistry({ force: true })
       .then((nextRegistryResult) => {
