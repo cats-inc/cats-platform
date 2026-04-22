@@ -147,6 +147,17 @@ export function clearProviderRegistryClientCache(): void {
   providerRegistryClientCache.inflight = null;
 }
 
+export function peekProviderRegistryClientCache(): ProductProviderRegistryReadModel | null {
+  const now = Date.now();
+  if (
+    providerRegistryClientCache.value
+    && providerRegistryClientCache.freshUntilMs > now
+  ) {
+    return providerRegistryClientCache.value;
+  }
+  return null;
+}
+
 export async function fetchProviderRegistryFromClientCache(options: {
   force?: boolean;
   fetchImpl?: ProviderRegistryFetch;

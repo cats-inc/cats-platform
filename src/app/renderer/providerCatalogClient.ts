@@ -131,6 +131,46 @@ export function clearProviderCatalogClientCache(): void {
   providerAdvancedCatalogClientCache.inflight.clear();
 }
 
+function peekProviderCatalogClientCache<TCatalog>(
+  cache: ProviderCatalogClientCacheState<TCatalog>,
+  provider: string,
+  instance: string | null | undefined,
+): TCatalog | null {
+  const normalizedProvider = provider.trim();
+  if (!normalizedProvider) return null;
+  const cacheKey = buildProviderCatalogCacheKey(
+    normalizedProvider,
+    normalizeCatalogInstance(instance),
+  );
+  const cached = cache.entries.get(cacheKey);
+  if (cached && cached.freshUntilMs > Date.now()) {
+    return cached.value;
+  }
+  return null;
+}
+
+export function peekProviderModelCatalogFromClientCache(options: {
+  provider: string;
+  instance?: string | null;
+}): ProviderModelCatalog | null {
+  return peekProviderCatalogClientCache(
+    providerModelCatalogClientCache,
+    options.provider,
+    options.instance,
+  );
+}
+
+export function peekProviderAdvancedCatalogFromClientCache(options: {
+  provider: string;
+  instance?: string | null;
+}): ProviderAdvancedModelCatalog | null {
+  return peekProviderCatalogClientCache(
+    providerAdvancedCatalogClientCache,
+    options.provider,
+    options.instance,
+  );
+}
+
 export async function fetchProviderModelCatalogFromClientCache(options: {
   provider: string;
   instance?: string | null;

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
+import { peekProviderRegistryClientCache } from '../../app/renderer/providerRegistryClient.js';
 import type { ProductProviderRegistryReadModel } from '../../shared/providerCatalog.js';
 import {
   createDefaultProviderRegistryReadModel,
@@ -10,11 +11,17 @@ export function useProviderRegistryState(input: {
   fetchProviderRegistry: (options?: { force?: boolean }) => Promise<ProductProviderRegistryReadModel>;
   onProviderRegistryChange?: (registry: ProductProviderRegistryReadModel) => void;
 }) {
-  const [providers, setProviders] = useState<ProductProviderRegistryReadModel['providers']>([]);
-  const [providerRegistry, setProviderRegistry] = useState<ProductProviderRegistryReadModel>(() =>
-    createDefaultProviderRegistryReadModel(),
+  const initialCached = peekProviderRegistryClientCache();
+  const initialRegistry = initialCached
+    ? sanitizeProviderRegistryReadModel(initialCached)
+    : null;
+  const [providers, setProviders] = useState<ProductProviderRegistryReadModel['providers']>(
+    initialRegistry?.providers ?? [],
   );
-  const [providersLoaded, setProvidersLoaded] = useState(false);
+  const [providerRegistry, setProviderRegistry] = useState<ProductProviderRegistryReadModel>(
+    () => initialRegistry ?? createDefaultProviderRegistryReadModel(),
+  );
+  const [providersLoaded, setProvidersLoaded] = useState(Boolean(initialRegistry));
   const [providerRegistryReloadToken, setProviderRegistryReloadToken] = useState(0);
   const [lastAutoProviderRegistryRecheckAt, setLastAutoProviderRegistryRecheckAt] = useState(0);
   const onProviderRegistryChangeRef = useRef(input.onProviderRegistryChange);

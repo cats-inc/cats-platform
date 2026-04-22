@@ -1,5 +1,9 @@
 import { useEffect, useState } from 'react';
 
+import {
+  peekProviderAdvancedCatalogFromClientCache,
+  peekProviderModelCatalogFromClientCache,
+} from '../../app/renderer/providerCatalogClient.js';
 import type {
   ProviderAdvancedModelCatalog,
   ProviderModelCatalog,
@@ -11,6 +15,29 @@ import {
   resolveAdvancedCatalogFallback,
 } from './providerModelFieldsSupport.js';
 
+function peekCachedCatalogPair(
+  provider: string,
+  instance: string,
+  hasSelectedProvider: boolean,
+): { models: ProviderModelCatalog; advanced: ProviderAdvancedModelCatalog } | null {
+  if (!hasSelectedProvider || !provider) {
+    return null;
+  }
+  const normalizedInstance = instance || null;
+  const models = peekProviderModelCatalogFromClientCache({
+    provider,
+    instance: normalizedInstance,
+  });
+  const advanced = peekProviderAdvancedCatalogFromClientCache({
+    provider,
+    instance: normalizedInstance,
+  });
+  if (models && advanced) {
+    return { models, advanced };
+  }
+  return null;
+}
+
 export function useProviderCatalogState(input: {
   provider: string;
   resolvedInstance: string;
@@ -21,33 +48,52 @@ export function useProviderCatalogState(input: {
     instance?: string | null,
   ) => Promise<ProviderAdvancedModelCatalog>;
 }) {
-  const [catalogLoading, setCatalogLoading] = useState(Boolean(input.provider));
+  const initialPeek = peekCachedCatalogPair(
+    input.provider,
+    input.resolvedInstance,
+    input.hasSelectedProvider,
+  );
+  const [catalogLoading, setCatalogLoading] = useState(
+    Boolean(input.provider) && !initialPeek,
+  );
   const [catalog, setCatalog] = useState<ProviderModelCatalog>(() =>
-    createEmptyProviderModelCatalog(input.provider),
+    initialPeek?.models
+      ?? createEmptyProviderModelCatalog(input.provider, input.resolvedInstance || null),
   );
   const [advancedCatalog, setAdvancedCatalog] = useState<ProviderAdvancedModelCatalog>(() =>
-    createEmptyProviderAdvancedModelCatalog(input.provider),
+    initialPeek?.advanced
+      ?? createEmptyProviderAdvancedModelCatalog(input.provider, input.resolvedInstance || null),
   );
 
   useEffect(() => {
     let cancelled = false;
-    const nextFallbackCatalog = createEmptyProviderModelCatalog(
-      input.provider,
-      input.resolvedInstance || null,
-    );
-    const nextFallbackAdvancedCatalog = createEmptyProviderAdvancedModelCatalog(
-      input.provider,
-      input.resolvedInstance || null,
-    );
-
-    setCatalog(nextFallbackCatalog);
-    setAdvancedCatalog(nextFallbackAdvancedCatalog);
-    setCatalogLoading(Boolean(input.hasSelectedProvider && input.provider));
 
     if (!input.hasSelectedProvider || !input.provider) {
+      setCatalog(createEmptyProviderModelCatalog(input.provider, input.resolvedInstance || null));
+      setAdvancedCatalog(
+        createEmptyProviderAdvancedModelCatalog(input.provider, input.resolvedInstance || null),
+      );
+      setCatalogLoading(false);
       return () => {
         cancelled = true;
       };
+    }
+
+    const peek = peekCachedCatalogPair(
+      input.provider,
+      input.resolvedInstance,
+      input.hasSelectedProvider,
+    );
+    if (peek) {
+      setCatalog(peek.models);
+      setAdvancedCatalog(peek.advanced);
+      setCatalogLoading(false);
+    } else {
+      setCatalog(createEmptyProviderModelCatalog(input.provider, input.resolvedInstance || null));
+      setAdvancedCatalog(
+        createEmptyProviderAdvancedModelCatalog(input.provider, input.resolvedInstance || null),
+      );
+      setCatalogLoading(true);
     }
 
     void Promise.allSettled([
