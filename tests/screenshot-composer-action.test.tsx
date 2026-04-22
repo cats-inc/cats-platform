@@ -6,7 +6,10 @@ import { renderToStaticMarkup } from 'react-dom/server.browser';
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
 import { ChatComposerArea } from '../src/products/shared/renderer/components/chat-view/ChatComposerArea.tsx';
 import {
+  captureScreenshotFile,
   createScreenshotFilename,
+  isScreenshotPermissionDeniedError,
+  resolveScreenshotCaptureFeedback,
   resolveScreenshotCaptureRoute,
   stopMediaStreamTracks,
 } from '../src/products/shared/renderer/screenshotCapture.ts';
@@ -168,3 +171,39 @@ test('screenshot web fallback can stop media tracks before PNG encoding', () => 
   assert.deepEqual(stops, ['video', 'audio']);
 });
 
+test('screenshot permission errors resolve to notification feedback', async () => {
+  const hostGlobal = globalThis as typeof globalThis & {
+    catsDesktopHost?: unknown;
+  };
+  const previous = hostGlobal.catsDesktopHost;
+
+  try {
+    hostGlobal.catsDesktopHost = {
+      screenshotRegionCaptureAvailable: true,
+      captureScreenshotRegion: async () => ({
+        outcome: 'permission_denied',
+        message: 'Screen Recording permission is required to capture a screenshot.',
+      }),
+    };
+
+    await assert.rejects(
+      () => captureScreenshotFile('desktop_region'),
+      (error) => {
+        assert.equal(isScreenshotPermissionDeniedError(error), true);
+        assert.deepEqual(resolveScreenshotCaptureFeedback(error), {
+          surface: 'notification',
+          title: 'Screen Recording permission required',
+          message: 'Screen Recording permission is required to capture a screenshot.',
+          level: 'error',
+        });
+        return true;
+      },
+    );
+  } finally {
+    if (previous === undefined) {
+      delete hostGlobal.catsDesktopHost;
+    } else {
+      hostGlobal.catsDesktopHost = previous;
+    }
+  }
+});

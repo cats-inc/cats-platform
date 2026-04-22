@@ -3,6 +3,11 @@ import type { DesktopScreenshotCaptureResult } from '../../../shared/desktopReco
 
 export type ScreenshotCaptureRoute = 'desktop_region' | 'web_picker' | 'unavailable';
 
+const SCREENSHOT_PERMISSION_DENIED_ERROR_CODE = 'screenshot_permission_denied';
+const SCREENSHOT_PERMISSION_NOTIFICATION_TITLE = 'Screen Recording permission required';
+const SCREENSHOT_PERMISSION_DENIED_FALLBACK =
+  'Screen Recording permission is required to capture a screenshot.';
+
 const MAX_CAPTURE_WIDTH = 8000;
 const MAX_CAPTURE_HEIGHT = 8000;
 const MAX_CAPTURE_BYTES = 10 * 1024 * 1024;
@@ -48,6 +53,59 @@ export function resolveScreenshotCaptureTooltip(route: ScreenshotCaptureRoute): 
 
 export function isScreenshotCaptureAvailable(route: ScreenshotCaptureRoute): boolean {
   return route !== 'unavailable';
+}
+
+export function resolveScreenshotCaptureToastMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Failed to capture screenshot.';
+}
+
+export class ScreenshotPermissionDeniedError extends Error {
+  readonly code = SCREENSHOT_PERMISSION_DENIED_ERROR_CODE;
+
+  constructor(message = SCREENSHOT_PERMISSION_DENIED_FALLBACK) {
+    super(message);
+    this.name = 'ScreenshotPermissionDeniedError';
+  }
+}
+
+export function isScreenshotPermissionDeniedError(
+  error: unknown,
+): error is ScreenshotPermissionDeniedError {
+  return error instanceof ScreenshotPermissionDeniedError
+    || (
+      typeof error === 'object'
+      && error !== null
+      && 'code' in error
+      && (error as { code?: unknown }).code === SCREENSHOT_PERMISSION_DENIED_ERROR_CODE
+    );
+}
+
+export type ScreenshotCaptureFeedback =
+  | {
+      surface: 'toast';
+      message: string;
+    }
+  | {
+      surface: 'notification';
+      title: string;
+      message: string;
+      level: 'error';
+    };
+
+export function resolveScreenshotCaptureFeedback(error: unknown): ScreenshotCaptureFeedback {
+  const message = resolveScreenshotCaptureToastMessage(error);
+  if (isScreenshotPermissionDeniedError(error)) {
+    return {
+      surface: 'notification',
+      title: SCREENSHOT_PERMISSION_NOTIFICATION_TITLE,
+      message,
+      level: 'error',
+    };
+  }
+  return {
+    surface: 'toast',
+    message,
+  };
 }
 
 function pad(value: number, width: number): string {
@@ -199,12 +257,12 @@ function buildDesktopScreenshotError(
     }
   }
 
-  if (result.message) {
-    return new Error(result.message);
+  if (result.outcome === 'permission_denied') {
+    return new ScreenshotPermissionDeniedError(result.message);
   }
 
-  if (result.outcome === 'permission_denied') {
-    return new Error('Screen Recording permission is required to capture a screenshot.');
+  if (result.message) {
+    return new Error(result.message);
   }
 
   if (result.outcome === 'platform_unsupported') {

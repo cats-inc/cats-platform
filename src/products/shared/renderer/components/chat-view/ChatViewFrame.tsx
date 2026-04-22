@@ -39,7 +39,6 @@ export function ChatViewFrame({
         {statusRow}
         <div className="channelWorkspace">
           <section className={hasConversationStarted ? 'channelShell' : 'channelShell channelShellFresh'}>
-            {/* Feedback is now shown via NotificationContainer */}
             {children}
           </section>
         </div>
