@@ -1,8 +1,13 @@
 import path from 'node:path';
 import { app, Menu, Tray, nativeImage } from 'electron';
 
-import type { BrowserWindow, MenuItemConstructorOptions } from 'electron';
+import type {
+  BrowserWindow,
+  Menu as ElectronMenu,
+  MenuItemConstructorOptions,
+} from 'electron';
 import type { DesktopBootstrapPhase, DesktopHostActionId } from './contracts.js';
+import { resolveDesktopTrayInteractionPolicy } from './trayInteractionPolicy.js';
 import { createGuardedTrayLifecycle } from './trayLifecycle.js';
 import type { DesktopTrayMenuState } from './trayMenu.js';
 
@@ -165,13 +170,20 @@ export async function createDesktopTrayController(
     runDesktopTrayShowWindow(options.onShowWindow);
   };
 
+  const interactionPolicy = resolveDesktopTrayInteractionPolicy();
+  let currentMenu: ElectronMenu | null = null;
+
   const trayLifecycle = createGuardedTrayLifecycle<DesktopTrayMenuState>({
     apply(state) {
-      tray.setContextMenu(Menu.buildFromTemplate(
+      currentMenu = Menu.buildFromTemplate(
         buildDesktopTrayMenuTemplate(state, options, showWindow),
-      ));
+      );
+      if (interactionPolicy.contextMenuBinding === 'native-context-menu') {
+        tray.setContextMenu(currentMenu);
+      }
     },
     destroy() {
+      currentMenu = null;
       tray.destroy();
     },
   });
@@ -191,6 +203,18 @@ export async function createDesktopTrayController(
   tray.on('click', () => {
     showWindow();
   });
+
+  tray.on('double-click', () => {
+    showWindow();
+  });
+
+  if (interactionPolicy.contextMenuBinding === 'manual-right-click-popup') {
+    tray.on('right-click', () => {
+      if (currentMenu) {
+        tray.popUpContextMenu(currentMenu);
+      }
+    });
+  }
 
   return {
     showWindow,

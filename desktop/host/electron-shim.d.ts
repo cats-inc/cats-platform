@@ -144,6 +144,7 @@ declare module 'electron' {
     constructor(image: unknown);
     setToolTip(tooltip: string): void;
     setContextMenu(menu: unknown): void;
+    popUpContextMenu(menu?: unknown): void;
     on(event: string, listener: (...args: any[]) => void): this;
     destroy(): void;
   }
