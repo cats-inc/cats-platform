@@ -14,9 +14,6 @@ export function createElectronScreenshotCaptureDependencies(): DesktopScreenshot
         scaleFactor: display.scaleFactor,
       }));
     },
-    getCursorScreenPoint() {
-      return screen.getCursorScreenPoint();
-    },
     async getScreenSources(options) {
       return await desktopCapturer.getSources(options);
     },

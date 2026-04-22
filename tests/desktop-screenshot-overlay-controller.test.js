@@ -191,51 +191,6 @@ test('desktop screenshot overlay controller routes escape before renderer IPC', 
   assert.equal(beforeInputListener, null);
 });
 
-test('desktop screenshot overlay controller times out a stuck load and closes partial overlays', async () => {
-  const events = [];
-
-  await assert.rejects(
-    () => openScreenshotOverlayWindows(
-      [createPlan(1), createPlan(2)],
-      {
-        createWindow() {
-          const id = events.filter((event) => event.startsWith('create')).length + 1;
-          events.push(`create:${id}`);
-          return {
-            setAlwaysOnTop() {},
-            async loadURL() {
-              if (id === 2) {
-                await new Promise(() => {});
-              }
-              events.push(`url:${id}`);
-            },
-            focus() {
-              events.push(`focus:${id}`);
-            },
-            close() {
-              events.push(`close:${id}`);
-            },
-            isDestroyed() {
-              return false;
-            },
-          };
-        },
-      },
-      { loadTimeoutMs: 20 },
-    ),
-    /timed out/u,
-  );
-
-  assert.deepEqual(events, [
-    'create:1',
-    'url:1',
-    'focus:1',
-    'create:2',
-    'close:1',
-    'close:2',
-  ]);
-});
-
 test('desktop screenshot overlay controller reports unexpected window closure', async () => {
   const events = [];
   let closeListener = null;

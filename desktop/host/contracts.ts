@@ -183,7 +183,6 @@ export const DESKTOP_SCREENSHOT_CAPTURE_OUTCOMES = [
 export const DESKTOP_SCREENSHOT_CANCEL_REASONS = [
   'user_cancel',
   'too_small',
-  'cursor_overlap',
   'unknown_display',
 ] as const;
 

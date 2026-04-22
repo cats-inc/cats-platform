@@ -1,5 +1,4 @@
 import type {
-  DesktopScreenshotCssPoint,
   DesktopScreenshotCssRect,
   DesktopScreenshotDisplayGeometry,
   DesktopScreenshotPhysicalRect,
@@ -29,7 +28,6 @@ export interface DesktopScreenshotNativeSource {
 
 export interface DesktopScreenshotCaptureDependencies {
   getAllDisplays(): DesktopScreenshotNativeDisplay[];
-  getCursorScreenPoint?(): DesktopScreenshotCssPoint;
   getScreenSources(options: {
     types: ['screen'];
     thumbnailSize: {
@@ -43,12 +41,6 @@ export interface DesktopScreenshotCaptureDependencies {
 export const DESKTOP_SCREENSHOT_MAX_WIDTH = 8000;
 export const DESKTOP_SCREENSHOT_MAX_HEIGHT = 8000;
 export const DESKTOP_SCREENSHOT_MAX_BYTES = 10 * 1024 * 1024;
-export const DESKTOP_SCREENSHOT_CURSOR_EXCLUSION_RADIUS = 32;
-
-export interface DesktopScreenshotCaptureCursor {
-  point: DesktopScreenshotCssPoint;
-  exclusionRadius: number;
-}
 
 export interface DesktopScreenshotDisplaySnapshot {
   displayId: number;
@@ -56,7 +48,6 @@ export interface DesktopScreenshotDisplaySnapshot {
   sourceName: string;
   geometry: DesktopScreenshotDisplayGeometry;
   png: Uint8Array;
-  captureCursor?: DesktopScreenshotCaptureCursor;
 }
 
 export interface DesktopScreenshotCropDependencies {
@@ -74,44 +65,6 @@ export interface DesktopScreenshotCroppedRegion {
   height: number;
   cropRect: DesktopScreenshotPhysicalRect;
   png: Uint8Array;
-}
-
-function isPointWithinDisplayBounds(
-  point: DesktopScreenshotCssPoint,
-  bounds: DesktopScreenshotDisplayGeometry['bounds'],
-): boolean {
-  return point.x >= bounds.x
-    && point.x < bounds.x + bounds.width
-    && point.y >= bounds.y
-    && point.y < bounds.y + bounds.height;
-}
-
-function rectsOverlap(
-  left: DesktopScreenshotCssRect,
-  right: DesktopScreenshotCssRect,
-): boolean {
-  return left.x < right.x + right.width
-    && left.x + left.width > right.x
-    && left.y < right.y + right.height
-    && left.y + left.height > right.y;
-}
-
-export function doesDesktopScreenshotSelectionOverlapCaptureCursor(
-  snapshot: DesktopScreenshotDisplaySnapshot,
-  selection: DesktopScreenshotCssRect,
-): boolean {
-  const cursor = snapshot.captureCursor;
-  if (!cursor) {
-    return false;
-  }
-
-  const radius = cursor.exclusionRadius;
-  return rectsOverlap(selection, {
-    x: cursor.point.x - radius,
-    y: cursor.point.y - radius,
-    width: radius * 2,
-    height: radius * 2,
-  });
 }
 
 export function resolveBoundedDesktopScreenshotSize(input: {
@@ -195,7 +148,6 @@ export async function captureDesktopDisplaySnapshots(
     return [];
   }
 
-  const cursorPoint = dependencies.getCursorScreenPoint?.();
   const sources = await dependencies.getScreenSources({
     types: ['screen'],
     thumbnailSize: resolveDesktopCaptureThumbnailSize(displays),
@@ -217,14 +169,6 @@ export async function captureDesktopDisplaySnapshots(
         scaleFactor: display.scaleFactor,
       },
       png: source.thumbnail.toPNG(),
-      ...(cursorPoint && isPointWithinDisplayBounds(cursorPoint, display.bounds)
-        ? {
-            captureCursor: {
-              point: cursorPoint,
-              exclusionRadius: DESKTOP_SCREENSHOT_CURSOR_EXCLUSION_RADIUS,
-            },
-          }
-        : {}),
     }];
   });
 }

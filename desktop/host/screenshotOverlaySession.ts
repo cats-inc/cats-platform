@@ -14,7 +14,6 @@ import type {
 } from './screenshotNativeCapture.js';
 import {
   cropDesktopDisplaySnapshotSelection,
-  doesDesktopScreenshotSelectionOverlapCaptureCursor,
 } from './screenshotNativeCapture.js';
 
 export type DesktopScreenshotOverlaySessionResult =
@@ -57,10 +56,6 @@ export class DesktopScreenshotOverlaySession {
     const snapshot = this.snapshotsByDisplayId.get(result.displayId);
     if (!snapshot) {
       this.cancel(`unknown_display:${result.displayId}`);
-      return;
-    }
-    if (doesDesktopScreenshotSelectionOverlapCaptureCursor(snapshot, result.cssRect)) {
-      this.cancel('cursor_overlap');
       return;
     }
 

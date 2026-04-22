@@ -75,36 +75,6 @@ test('desktop screenshot overlay session recomputes crop instead of trusting ove
   });
 });
 
-test('desktop screenshot overlay session cancels selections overlapping capture cursor', async () => {
-  const session = new DesktopScreenshotOverlaySession([
-    {
-      ...createSnapshot(),
-      captureCursor: {
-        point: { x: -1100, y: 50 },
-        exclusionRadius: 32,
-      },
-    },
-  ], {
-    cropPng() {
-      throw new Error('cursor-overlap selections should not be cropped');
-    },
-    resizePng() {
-      throw new Error('cursor-overlap selections should not be resized');
-    },
-  });
-
-  session.completeSelection({
-    displayId: 2,
-    cssRect: { x: -1180, y: 20, width: 200, height: 100 },
-    cropRect: { x: 0, y: 0, width: 1, height: 1 },
-  });
-
-  assert.deepEqual(await session.waitForResult(), {
-    outcome: 'cancelled',
-    reason: 'cursor_overlap',
-  });
-});
-
 test('desktop screenshot overlay session resolves cancellation once', async () => {
   const session = new DesktopScreenshotOverlaySession([createSnapshot()], {
     cropPng() {

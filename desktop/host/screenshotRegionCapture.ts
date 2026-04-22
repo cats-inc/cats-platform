@@ -25,9 +25,6 @@ export interface DesktopScreenshotRegionCaptureDependencies {
 export function toDesktopScreenshotCancelReason(
   reason: string,
 ): DesktopScreenshotCancelReason {
-  if (reason === 'cursor_overlap') {
-    return 'cursor_overlap';
-  }
   if (reason === 'too_small') {
     return 'too_small';
   }

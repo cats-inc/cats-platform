@@ -16,10 +16,9 @@ body {
 .screenshotOverlay {
   position: fixed;
   inset: 0;
-  background-color: rgba(0, 0, 0, 0.2);
-  background-position: center;
+  background-color: #000000;
+  background-position: top left;
   background-repeat: no-repeat;
-  background-size: 100% 100%;
   font-family:
     Inter,
     ui-sans-serif,
@@ -34,7 +33,7 @@ body {
   content: "";
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.22);
+  background: rgba(0, 0, 0, 0.32);
   pointer-events: none;
 }
 
@@ -49,14 +48,6 @@ body {
   z-index: 1;
 }
 
-.screenshotSelectionRectBlocked {
-  border-color: rgba(248, 113, 113, 0.98);
-  background: rgba(248, 113, 113, 0.16);
-  box-shadow:
-    0 0 0 9999px rgba(0, 0, 0, 0.38),
-    0 0 0 1px rgba(127, 29, 29, 0.6);
-}
-
 .screenshotSelectionSize {
   position: absolute;
   transform: translate(8px, 8px);
@@ -68,35 +59,4 @@ body {
   line-height: 1.2;
   pointer-events: none;
   z-index: 2;
-}
-
-.screenshotCursorExclusion {
-  position: absolute;
-  border: 1px dashed rgba(248, 113, 113, 0.85);
-  background: rgba(248, 113, 113, 0.1);
-  pointer-events: none;
-  z-index: 2;
-}
-
-.screenshotCursorExclusionActive {
-  border-style: solid;
-  border-color: rgba(248, 113, 113, 0.98);
-  background: rgba(248, 113, 113, 0.18);
-  box-shadow: 0 0 0 1px rgba(127, 29, 29, 0.45);
-}
-
-.screenshotCursorWarning {
-  position: absolute;
-  box-sizing: border-box;
-  width: 132px;
-  padding: 3px 6px;
-  border-radius: 4px;
-  background: rgba(127, 29, 29, 0.92);
-  color: #ffffff;
-  font-size: 12px;
-  line-height: 1.2;
-  pointer-events: none;
-  text-align: center;
-  white-space: nowrap;
-  z-index: 3;
 }

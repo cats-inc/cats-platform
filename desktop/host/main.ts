@@ -1,6 +1,6 @@
 import { dirname, join } from 'node:path';
 
-import { app, BrowserWindow, globalShortcut, ipcMain, shell, systemPreferences } from 'electron';
+import { app, BrowserWindow, ipcMain, shell, systemPreferences } from 'electron';
 
 import { buildDesktopBootstrapPage } from './bootstrapPage.js';
 import {
@@ -122,9 +122,6 @@ import {
   openScreenshotOverlayWindows,
 } from './screenshotOverlayController.js';
 import {
-  registerDesktopScreenshotOverlayEscapeShortcut,
-} from './screenshotOverlayEscapeShortcut.js';
-import {
   DESKTOP_SCREENSHOT_OVERLAY_CANCEL_CHANNEL,
   DESKTOP_SCREENSHOT_OVERLAY_COMPLETE_CHANNEL,
   DESKTOP_SCREENSHOT_OVERLAY_GET_SNAPSHOT_CHANNEL,
@@ -227,21 +224,6 @@ function resolveScreenshotOverlayPreloadPath(config: DesktopHostConfig): string 
   return join(dirname(config.paths.preloadScript), 'screenshotOverlayPreload.cjs');
 }
 
-const DESKTOP_SCREENSHOT_OVERLAY_SAFETY_TIMEOUT_MS = 120_000;
-
-function reportScreenshotOverlayEscapeShortcutFailure(
-  failure: { reason: 'returned_false' | 'threw'; error?: unknown },
-): void {
-  const suffix = failure.reason === 'threw' && failure.error instanceof Error
-    ? `: ${failure.error.message}`
-    : '';
-  process.stderr.write(
-    `Screenshot overlay Escape global shortcut unavailable (${failure.reason})${suffix}. `
-      + 'Renderer before-input-event remains the primary cancel path; '
-      + 'if that also fails, a 120s safety timeout will cancel the session.\n',
-  );
-}
-
 async function openElectronScreenshotOverlay(
   snapshots: DesktopScreenshotDisplaySnapshot[],
 ): Promise<DesktopScreenshotOverlayController> {
@@ -257,14 +239,9 @@ async function openElectronScreenshotOverlay(
     createElectronScreenshotCropDependencies(),
   );
   activeScreenshotOverlaySession = session;
-  const safetyTimer = setTimeout(() => {
-    session.cancel('timeout');
-  }, DESKTOP_SCREENSHOT_OVERLAY_SAFETY_TIMEOUT_MS);
-  let unregisterEscapeShortcut: (() => void) | null = null;
-  let windows: Awaited<ReturnType<typeof openScreenshotOverlayWindows>> | null = null;
 
   try {
-    windows = await openScreenshotOverlayWindows(
+    const windows = await openScreenshotOverlayWindows(
       buildScreenshotOverlayWindowPlans({
         snapshots,
         overlayUrl: resolveScreenshotOverlayUrl(hostConfig),
@@ -277,30 +254,19 @@ async function openElectronScreenshotOverlay(
       },
     );
     app.focus({ steal: true });
-    unregisterEscapeShortcut = registerDesktopScreenshotOverlayEscapeShortcut(
-      globalShortcut,
-      () => session.cancel('escape'),
-      reportScreenshotOverlayEscapeShortcutFailure,
-    );
 
-    const openedWindows = windows;
     return {
       waitForResult() {
         return session.waitForResult();
       },
       closeAll() {
-        clearTimeout(safetyTimer);
-        unregisterEscapeShortcut?.();
-        openedWindows.closeAll();
+        windows.closeAll();
         if (activeScreenshotOverlaySession === session) {
           activeScreenshotOverlaySession = null;
         }
       },
     };
   } catch (error) {
-    clearTimeout(safetyTimer);
-    unregisterEscapeShortcut?.();
-    windows?.closeAll();
     if (activeScreenshotOverlaySession === session) {
       activeScreenshotOverlaySession = null;
     }

@@ -33,7 +33,6 @@ test('desktop screenshot contract exposes composer capture request and explicit 
   assert.deepEqual(HOST_DESKTOP_SCREENSHOT_CANCEL_REASONS, [
     'user_cancel',
     'too_small',
-    'cursor_overlap',
     'unknown_display',
   ]);
   assert.deepEqual(

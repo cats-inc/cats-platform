@@ -98,7 +98,6 @@ test('desktop screenshot region capture closes overlays after cancellation', asy
 });
 
 test('desktop screenshot region capture normalizes overlay cancel reasons', () => {
-  assert.equal(toDesktopScreenshotCancelReason('cursor_overlap'), 'cursor_overlap');
   assert.equal(toDesktopScreenshotCancelReason('too_small'), 'too_small');
   assert.equal(toDesktopScreenshotCancelReason('unknown_display'), 'unknown_display');
   assert.equal(toDesktopScreenshotCancelReason('unknown_display:42'), 'unknown_display');
