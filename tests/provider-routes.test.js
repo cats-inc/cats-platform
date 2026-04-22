@@ -149,7 +149,7 @@ async function withMockedDateNow(testContext, initialNowMs, callback) {
   });
 }
 
-test('GET /api/providers/:provider/models scopes selector diagnostics to the requested provider', async () => {
+test('GET /api/providers/:provider/models fetches the full availability registry and derives locally', async () => {
   const runtimeClient = createRuntimeStub();
   const originalGetProviderDiagnostics = runtimeClient.getProviderDiagnostics;
   const diagnosticsQueries = [];
@@ -166,13 +166,12 @@ test('GET /api/providers/:provider/models scopes selector diagnostics to the req
 
   assert.deepEqual(diagnosticsQueries, [
     {
-      provider: 'claude',
       scope: 'availability',
     },
   ]);
 });
 
-test('GET /api/providers/:provider/models/advanced scopes selector diagnostics to the requested provider', async () => {
+test('GET /api/providers/:provider/models/advanced fetches the full availability registry and derives locally', async () => {
   const runtimeClient = createRuntimeStub();
   const originalGetProviderDiagnostics = runtimeClient.getProviderDiagnostics;
   const diagnosticsQueries = [];
@@ -189,7 +188,6 @@ test('GET /api/providers/:provider/models/advanced scopes selector diagnostics t
 
   assert.deepEqual(diagnosticsQueries, [
     {
-      provider: 'claude',
       scope: 'availability',
     },
   ]);

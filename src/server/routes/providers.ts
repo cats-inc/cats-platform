@@ -292,13 +292,7 @@ function getTruthfulProviderRegistryCacheState(
   return state;
 }
 
-function buildTruthfulProviderRegistryCacheKey(
-  options: {
-    provider?: string | null;
-  } = {},
-): string {
-  return options.provider?.trim() || '*';
-}
+const TRUTHFUL_PROVIDER_REGISTRY_CACHE_KEY = '*';
 
 function shouldCacheTruthfulProviderRegistry(
   value: TruthfulProviderRegistryReadModel,
@@ -423,12 +417,8 @@ async function readProviderConfig(
 
 async function readProviderDiagnostics(
   dependencies: ProviderRouteDependencies,
-  options: {
-    provider?: string | null;
-  } = {},
 ): Promise<RuntimeProviderDiagnosticsPayload> {
   return dependencies.runtimeClient.getProviderDiagnostics({
-    ...(options.provider?.trim() ? { provider: options.provider.trim() } : {}),
     scope: 'availability',
   });
 }
@@ -461,18 +451,12 @@ async function readProviderConfigBestEffort(
 
 async function loadTruthfulProviderRegistryFromRuntime(
   dependencies: ProviderRouteDependencies,
-  options: {
-    provider?: string | null;
-  } = {},
 ): Promise<TruthfulProviderRegistryReadModel> {
-  const requestedProvider = options.provider?.trim() || null;
   const configTask = readProviderConfigBestEffort(dependencies);
 
   let diagnostics: RuntimeProviderDiagnosticsPayload;
   try {
-    diagnostics = await readProviderDiagnostics(dependencies, {
-      provider: requestedProvider,
-    });
+    diagnostics = await readProviderDiagnostics(dependencies);
   } catch (error) {
     return {
       state: 'runtime_unreachable',
@@ -487,8 +471,7 @@ async function loadTruthfulProviderRegistryFromRuntime(
   }
 
   const configuredProductProviders = listProductProviders().filter((provider) =>
-    (!requestedProvider || provider.id === requestedProvider)
-    && listSelectableDiagnosticsForProvider(diagnostics, provider.id).length > 0
+    listSelectableDiagnosticsForProvider(diagnostics, provider.id).length > 0
   );
 
   if (configuredProductProviders.length === 0) {
@@ -527,17 +510,14 @@ async function loadTruthfulProviderRegistryFromRuntime(
 async function refreshTruthfulProviderRegistry(
   dependencies: ProviderRouteDependencies,
   cacheState: TruthfulProviderRegistryCacheState,
-  cacheKey: string,
-  options: {
-    provider?: string | null;
-  } = {},
 ): Promise<TruthfulProviderRegistryReadModel> {
+  const cacheKey = TRUTHFUL_PROVIDER_REGISTRY_CACHE_KEY;
   const inflight = cacheState.inflight.get(cacheKey);
   if (inflight) {
     return inflight;
   }
 
-  const refreshPromise = loadTruthfulProviderRegistryFromRuntime(dependencies, options)
+  const refreshPromise = loadTruthfulProviderRegistryFromRuntime(dependencies)
     .then((value) => {
       if (shouldCacheTruthfulProviderRegistry(value)) {
         const now = Date.now();
@@ -565,46 +545,6 @@ async function refreshTruthfulProviderRegistry(
   return refreshPromise;
 }
 
-function tryReadTruthfulProviderRegistryFromRootCache(
-  dependencies: ProviderRouteDependencies,
-  cacheState: TruthfulProviderRegistryCacheState,
-  provider: string,
-  now: number,
-): TruthfulProviderRegistryReadModel | Promise<TruthfulProviderRegistryReadModel> | null {
-  // Root is the authoritative source for refresh state; derived responses
-  // project root's current error-backoff warning at read time rather than
-  // snapshotting it into a provider-specific entry, which would otherwise keep
-  // warning users after root recovered (or vice versa) until derived's own
-  // stale window expired.
-  const rootCacheKey = buildTruthfulProviderRegistryCacheKey();
-  const rootCached = cacheState.entries.get(rootCacheKey);
-  if (rootCached && rootCached.staleUntilMs > now) {
-    const derivedBase = deriveTruthfulProviderRegistryForProvider(rootCached.value, provider);
-    const derived = rootCached.lifecycle === 'error_backoff'
-      ? appendTruthfulProviderRegistryWarning(derivedBase, rootCached.cacheRefreshWarning.message)
-      : derivedBase;
-
-    if (rootCached.freshUntilMs <= now) {
-      void refreshTruthfulProviderRegistry(
-        dependencies,
-        cacheState,
-        rootCacheKey,
-      ).catch(() => {});
-    }
-
-    return derived;
-  }
-
-  const rootInflight = cacheState.inflight.get(rootCacheKey);
-  if (rootInflight) {
-    return rootInflight.then((value) =>
-      deriveTruthfulProviderRegistryForProvider(value, provider),
-    );
-  }
-
-  return null;
-}
-
 async function readTruthfulProviderRegistry(
   dependencies: ProviderRouteDependencies,
   options: {
@@ -612,33 +552,26 @@ async function readTruthfulProviderRegistry(
   } = {},
 ): Promise<TruthfulProviderRegistryReadModel> {
   const cacheState = getTruthfulProviderRegistryCacheState(dependencies.runtimeClient);
-  const cacheKey = buildTruthfulProviderRegistryCacheKey(options);
+  const cacheKey = TRUTHFUL_PROVIDER_REGISTRY_CACHE_KEY;
   const now = Date.now();
   const cached = cacheState.entries.get(cacheKey);
+  const requestedProvider = options.provider?.trim() || null;
+
+  const project = (value: TruthfulProviderRegistryReadModel): TruthfulProviderRegistryReadModel =>
+    requestedProvider
+      ? deriveTruthfulProviderRegistryForProvider(value, requestedProvider)
+      : value;
 
   if (cached && cached.freshUntilMs > now) {
-    return readProviderCacheValue(cached, appendTruthfulProviderRegistryWarning);
+    return project(readProviderCacheValue(cached, appendTruthfulProviderRegistryWarning));
   }
 
   if (cached && cached.staleUntilMs > now) {
-    void refreshTruthfulProviderRegistry(dependencies, cacheState, cacheKey, options).catch(() => {});
-    return readProviderCacheValue(cached, appendTruthfulProviderRegistryWarning);
+    void refreshTruthfulProviderRegistry(dependencies, cacheState).catch(() => {});
+    return project(readProviderCacheValue(cached, appendTruthfulProviderRegistryWarning));
   }
 
-  const requestedProvider = options.provider?.trim() || null;
-  if (requestedProvider) {
-    const cachedFromRoot = tryReadTruthfulProviderRegistryFromRootCache(
-      dependencies,
-      cacheState,
-      requestedProvider,
-      now,
-    );
-    if (cachedFromRoot) {
-      return cachedFromRoot;
-    }
-  }
-
-  return refreshTruthfulProviderRegistry(dependencies, cacheState, cacheKey, options);
+  return project(await refreshTruthfulProviderRegistry(dependencies, cacheState));
 }
 
 function writeTruthfulProviderRegistryErrorBackoff(
