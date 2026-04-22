@@ -155,6 +155,21 @@ for shared `Cats Core v1` contracts that `Cats Chat`, `Cats Work`, and
 
 ---
 
+## Pre-Release Compatibility Policy
+
+- This product has never had a public or stable release. Agents MUST treat
+  legacy product surfaces, stale room modes, deprecated contracts, and
+  exploratory prototypes as replaceable implementation history, not
+  compatibility targets.
+- When changing product or runtime contracts, remove the obsolete path in the
+  same change instead of preserving adapters, aliases, fallback branches, or
+  compatibility shims that only support unreleased behavior.
+- Keep the architecture correct and lean. Update tests and documentation to the
+  current contract instead of layering support for old flows or unnecessary
+  aliases.
+
+---
+
 ## Tech Stack
 
 | Category | Technology | Version |
@@ -764,6 +779,7 @@ chore: maintenance tasks
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.2.3 | 2026-04-22 | Add pre-release compatibility policy |
 | 1.2.2 | 2026-03-25 | Refresh current product direction, parallel delivery rules, and product integration references |
 | 1.2.1 | 2026-01-05 | Normalize compliance headings and template guidance |
 | 1.2.0 | 2025-01 | Add Development Workflow overview, Feature Specifications, Implementation Plans (CDD support) |
