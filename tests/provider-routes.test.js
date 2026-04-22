@@ -170,6 +170,43 @@ test('GET /api/providers/:provider/models scopes selector diagnostics to the req
   );
 });
 
+test('cold scoped registry request finishes before the background root refresh starts', async () => {
+  const runtimeClient = createRuntimeStub();
+  const originalGetProviderDiagnostics = runtimeClient.getProviderDiagnostics;
+  const events = [];
+  let observedUnscoped;
+  const unscopedObserved = new Promise((resolve) => {
+    observedUnscoped = resolve;
+  });
+
+  runtimeClient.getProviderDiagnostics = async (query = {}) => {
+    const scoped = Boolean(query.provider);
+    events.push({ type: 'start', scoped });
+    const result = await originalGetProviderDiagnostics.call(runtimeClient, query);
+    events.push({ type: 'end', scoped });
+    if (!scoped) {
+      observedUnscoped();
+    }
+    return result;
+  };
+
+  await withServer(runtimeClient, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/providers/claude/models`);
+    assert.equal(response.status, 200);
+  });
+
+  await unscopedObserved;
+
+  const scopedEnd = events.findIndex((event) => event.type === 'end' && event.scoped);
+  const unscopedStart = events.findIndex((event) => event.type === 'start' && !event.scoped);
+  assert.ok(scopedEnd >= 0, `expected scoped runtime call to complete; events=${JSON.stringify(events)}`);
+  assert.ok(unscopedStart >= 0, `expected background unscoped refresh; events=${JSON.stringify(events)}`);
+  assert.ok(
+    unscopedStart > scopedEnd,
+    `background unscoped refresh must start after the scoped foreground ends; events=${JSON.stringify(events)}`,
+  );
+});
+
 test('GET /api/providers/:provider/models/advanced scopes selector diagnostics to the requested provider', async () => {
   const runtimeClient = createRuntimeStub();
   const originalGetProviderDiagnostics = runtimeClient.getProviderDiagnostics;

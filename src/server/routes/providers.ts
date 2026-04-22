@@ -584,10 +584,16 @@ async function readTruthfulProviderRegistry(
 
   if (requestedProvider) {
     // Cold scoped: ask runtime with the provider filter so it can serve a
-    // narrow probe instead of waiting on unrelated targets. Fire a
-    // background root refresh so future broad queries can hit the cache.
+    // narrow probe instead of waiting on unrelated targets. Defer the
+    // background root warm until the scoped foreground completes — starting
+    // a full-catalog probe first would let it claim runtime health probe
+    // slots ahead of the scoped request and recreate the 8s timeout risk.
+    const scopedRegistry = await loadTruthfulProviderRegistryFromRuntime(
+      dependencies,
+      { provider: requestedProvider },
+    );
     void refreshTruthfulProviderRegistry(dependencies, cacheState).catch(() => {});
-    return loadTruthfulProviderRegistryFromRuntime(dependencies, { provider: requestedProvider });
+    return scopedRegistry;
   }
 
   return project(await refreshTruthfulProviderRegistry(dependencies, cacheState));
