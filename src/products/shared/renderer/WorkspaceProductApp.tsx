@@ -19,6 +19,14 @@ import {
   ConfirmDialog,
   useConfirmDialog,
 } from "../../../design/components/ConfirmDialog";
+import {
+  NotificationContainer,
+  useNotifications,
+} from "../../../design/components/Notification";
+import {
+  ToastContainer,
+  useToast,
+} from "../../../design/components/Toast";
 import type { PlatformSurfaceId } from "../../../shared/platform-contract.js";
 import { platformSurfaceRoutePrefix } from "../../../core/platformSurface.js";
 import {
@@ -107,6 +115,12 @@ import {
   peekCrossSurfaceNavigationHandoffForMatch,
   peekCrossSurfaceNavigationSnapshot,
 } from "./crossSurfaceNavigationHandoff.js";
+import {
+  captureScreenshotFile,
+  isScreenshotCaptureAvailable,
+  resolveScreenshotCaptureFeedback,
+  resolveScreenshotCaptureRoute,
+} from "./screenshotCapture.js";
 import type { PendingDispatchHydration } from "./hooks/useComposerRequestLifecycle.js";
 import {
   createInitialGroupParticipants,
@@ -371,6 +385,47 @@ export function createWorkspaceProductApp({
       confirm: appConfirm,
       handleClose: appHandleClose,
     } = useConfirmDialog();
+    const { toasts, showToast } = useToast();
+    const {
+      notifications,
+      notify: showNotification,
+      dismiss: dismissNotification,
+    } = useNotifications();
+    const screenshotCaptureRoute = resolveScreenshotCaptureRoute();
+    const screenshotCaptureDisabled = !isScreenshotCaptureAvailable(screenshotCaptureRoute);
+
+    const showScreenshotCaptureError = useCallback((error: unknown): void => {
+      const feedback = resolveScreenshotCaptureFeedback(error);
+      if (feedback.surface === "notification") {
+        showNotification({
+          title: feedback.title,
+          message: feedback.message,
+          level: feedback.level,
+        });
+        return;
+      }
+      showToast(feedback.message);
+    }, [showNotification, showToast]);
+    const captureAndAppendDraftScreenshot = useCallback((): void => {
+      const capturePromise = captureScreenshotFile(screenshotCaptureRoute);
+      void capturePromise
+        .then((file) => {
+          if (file) {
+            setDraftFiles((current) => [...current, file]);
+          }
+        })
+        .catch(showScreenshotCaptureError);
+    }, [screenshotCaptureRoute, setDraftFiles, showScreenshotCaptureError]);
+    const captureAndAppendChannelScreenshot = useCallback((): void => {
+      const capturePromise = captureScreenshotFile(screenshotCaptureRoute);
+      void capturePromise
+        .then((file) => {
+          if (file) {
+            setChannelFiles((current) => [...current, file]);
+          }
+        })
+        .catch(showScreenshotCaptureError);
+    }, [screenshotCaptureRoute, setChannelFiles, showScreenshotCaptureError]);
 
     const publishReadyPayload = usePublishReadyPayload<AppShellPayload>(setState);
 
@@ -430,8 +485,10 @@ export function createWorkspaceProductApp({
       toggleAddCatPanel,
       toggleChannelPlusMenu,
       openChannelFilePicker,
+      captureAndAttachChannelScreenshot,
       toggleDraftPlusMenu,
       openDraftFilePicker,
+      captureAndAttachDraftScreenshot,
       openDraftFolderPicker,
       openDraftAddCatPanel,
       changeDraftDefaultRecipient,
@@ -453,6 +510,8 @@ export function createWorkspaceProductApp({
       channelFileInputRef,
       fileInputRef,
       openFolderBrowser: openLeadFolderBrowser,
+      onDraftScreenshotCapture: captureAndAppendDraftScreenshot,
+      onChannelScreenshotCapture: captureAndAppendChannelScreenshot,
     });
     const onArchiveCat = useCallback(
       async (catId: string): Promise<void> => {
@@ -1459,11 +1518,12 @@ export function createWorkspaceProductApp({
     });
 
     return (
-      <ProductAppStateBoundary
-        state={state}
-        BootShell={BootShell}
-        unavailableTitle="Chat unavailable"
-        renderReady={(payload) => {
+      <>
+        <ProductAppStateBoundary
+          state={state}
+          BootShell={BootShell}
+          unavailableTitle="Chat unavailable"
+          renderReady={(payload) => {
           const {
             surface,
             directLaneChannel,
@@ -1580,6 +1640,8 @@ export function createWorkspaceProductApp({
                     onRetryMessage,
                     onToggleChannelPlusMenu: toggleChannelPlusMenu,
                     onChannelFileSelect: openChannelFilePicker,
+                    onTakeScreenshot: captureAndAttachChannelScreenshot,
+                    screenshotCaptureDisabled,
                     onChannelFilesChange: setChannelFiles,
                     onApprovalDecision,
                     onChoiceSubmit,
@@ -1642,6 +1704,8 @@ export function createWorkspaceProductApp({
                     onSendMessage,
                     onTogglePlusMenu: toggleDraftPlusMenu,
                     onFileSelect: openDraftFilePicker,
+                    onTakeScreenshot: captureAndAttachDraftScreenshot,
+                    screenshotCaptureDisabled,
                     onPickFolder: openDraftFolderPicker,
                     onDraftFilesChange: setDraftFiles,
                     onDraftCwdClear: () => setDraftCwd(null),
@@ -1801,8 +1865,14 @@ export function createWorkspaceProductApp({
               onConfirmClose={appHandleClose}
             />
           );
-        }}
-      />
+          }}
+        />
+        <NotificationContainer
+          notifications={notifications}
+          onDismiss={dismissNotification}
+        />
+        <ToastContainer toasts={toasts} />
+      </>
     );
   };
 }

@@ -188,6 +188,8 @@ export interface WorkspaceNewChatDraftProps {
   onSendMessage: (event: FormEvent<HTMLFormElement>) => void;
   onTogglePlusMenu: () => void;
   onFileSelect: () => void;
+  onTakeScreenshot?: () => void;
+  screenshotCaptureDisabled?: boolean;
   onPickFolder: () => void;
   onOpenAddCat: () => void;
   onDraftFilesChange: (files: File[]) => void;
@@ -250,6 +252,8 @@ export function WorkspaceNewChatDraft({
   onSendMessage,
   onTogglePlusMenu,
   onFileSelect,
+  onTakeScreenshot,
+  screenshotCaptureDisabled = false,
   onPickFolder,
   onOpenAddCat,
   onDraftFilesChange,
@@ -497,6 +501,20 @@ export function WorkspaceNewChatDraft({
                           </svg>
                           Add photos and files
                         </button>
+                        {onTakeScreenshot ? (
+                          <button
+                            className="composerPlusMenuItem"
+                            type="button"
+                            disabled={isSubmittingFirstTurn || screenshotCaptureDisabled}
+                            onClick={onTakeScreenshot}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                              <path d="M5 3.5l1-1h4l1 1h2a1 1 0 0 1 1 1v7.5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1h2z" />
+                              <circle cx="8" cy="8.5" r="2.5" />
+                            </svg>
+                            Take screenshot
+                          </button>
+                        ) : null}
                         {chooseFolderPlacement === 'plusMenu' ? (
                           <button
                             className="composerPlusMenuItem"

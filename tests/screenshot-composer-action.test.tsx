@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import test from 'node:test';
 import React, { type ComponentProps } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
@@ -116,6 +118,18 @@ test('chat composer can send an attachment-only screenshot draft', () => {
 
   assert.ok(sendButton);
   assert.doesNotMatch(sendButton[0], /disabled/u);
+});
+
+test('workspace product app wires screenshot capture into Work and Code composers', async () => {
+  const source = await readFile(
+    path.join(process.cwd(), 'src', 'products', 'shared', 'renderer', 'WorkspaceProductApp.tsx'),
+    'utf8',
+  );
+
+  assert.match(source, /onDraftScreenshotCapture:\s*captureAndAppendDraftScreenshot/u);
+  assert.match(source, /onChannelScreenshotCapture:\s*captureAndAppendChannelScreenshot/u);
+  assert.match(source, /onTakeScreenshot:\s*captureAndAttachDraftScreenshot/u);
+  assert.match(source, /onTakeScreenshot:\s*captureAndAttachChannelScreenshot/u);
 });
 
 test('screenshot filenames remain unique within the same second', () => {

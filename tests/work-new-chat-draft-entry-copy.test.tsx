@@ -176,3 +176,63 @@ test('advanced draft controls keep +Parallel work drafts on one lead target, exp
   assert.match(markup, /Add another model to compare/u);
   assert.doesNotMatch(markup, /class="parallelStubStack"/u);
 });
+
+test('work draft presets expose the screenshot attachment action when wired', () => {
+  const target = {
+    provider: 'claude',
+    instance: 'native',
+    model: 'claude-sonnet',
+    modelSelection: null,
+  } as const;
+  const markups = [
+    renderToStaticMarkup(
+      <NewChatDraft
+        {...createProps({
+          plusMenuOpen: true,
+          onTakeScreenshot: () => {},
+        })}
+      />,
+    ),
+    renderToStaticMarkup(
+      <NewChatDraft
+        {...createProps({
+          entryPreset: 'group',
+          plusMenuOpen: true,
+          selectedExecutionTarget: target,
+          onTakeScreenshot: () => {},
+        })}
+      />,
+    ),
+    renderToStaticMarkup(
+      <NewChatDraft
+        {...createProps({
+          entryPreset: 'parallel',
+          parallelTargets: [target],
+          plusMenuOpen: true,
+          selectedExecutionTarget: target,
+          onTakeScreenshot: () => {},
+        })}
+      />,
+    ),
+    renderToStaticMarkup(
+      <NewChatDraft
+        {...createProps({
+          allowAddCat: false,
+          draftCatIds: ['cat-lead'],
+          draftDefaultRecipientCatId: 'cat-lead',
+          plusMenuOpen: true,
+          onTakeScreenshot: () => {},
+        })}
+      />,
+    ),
+  ];
+
+  for (const markup of markups) {
+    assert.match(markup, /Add photos and files/u);
+    assert.match(markup, /Take screenshot/u);
+    assert.match(
+      markup,
+      /<button class="composerPlusMenuItem" type="button"[^>]*>\s*<svg[^>]*aria-hidden="true"[\s\S]*Take screenshot/u,
+    );
+  }
+});
