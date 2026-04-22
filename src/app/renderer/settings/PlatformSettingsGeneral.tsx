@@ -396,6 +396,7 @@ export function PlatformSettingsGeneral({
             void updateOwnerAvatar(dataUrl, 'Failed to save avatar');
           }}
           onClose={() => setCropOpen(false)}
+          initialDataUrl={avatarUrl ?? null}
         />
       ) : null}
       <ToastContainer toasts={toasts} />
