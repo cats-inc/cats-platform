@@ -171,7 +171,7 @@ test('screenshot web fallback can stop media tracks before PNG encoding', () => 
   assert.deepEqual(stops, ['video', 'audio']);
 });
 
-test('screenshot permission errors resolve to notification feedback', async () => {
+test('screenshot permission errors resolve to toast feedback', async () => {
   const hostGlobal = globalThis as typeof globalThis & {
     catsDesktopHost?: unknown;
   };
@@ -191,10 +191,8 @@ test('screenshot permission errors resolve to notification feedback', async () =
       (error) => {
         assert.equal(isScreenshotPermissionDeniedError(error), true);
         assert.deepEqual(resolveScreenshotCaptureFeedback(error), {
-          surface: 'notification',
-          title: 'Screen Recording permission required',
+          surface: 'toast',
           message: 'Screen Recording permission is required to capture a screenshot.',
-          level: 'error',
         });
         return true;
       },

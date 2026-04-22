@@ -4,7 +4,6 @@ import type { DesktopScreenshotCaptureResult } from '../../../shared/desktopReco
 export type ScreenshotCaptureRoute = 'desktop_region' | 'web_picker' | 'unavailable';
 
 const SCREENSHOT_PERMISSION_DENIED_ERROR_CODE = 'screenshot_permission_denied';
-const SCREENSHOT_PERMISSION_NOTIFICATION_TITLE = 'Screen Recording permission required';
 const SCREENSHOT_PERMISSION_DENIED_FALLBACK =
   'Screen Recording permission is required to capture a screenshot.';
 
@@ -80,31 +79,15 @@ export function isScreenshotPermissionDeniedError(
     );
 }
 
-export type ScreenshotCaptureFeedback =
-  | {
-      surface: 'toast';
-      message: string;
-    }
-  | {
-      surface: 'notification';
-      title: string;
-      message: string;
-      level: 'error';
-    };
+export interface ScreenshotCaptureFeedback {
+  surface: 'toast';
+  message: string;
+}
 
 export function resolveScreenshotCaptureFeedback(error: unknown): ScreenshotCaptureFeedback {
-  const message = resolveScreenshotCaptureToastMessage(error);
-  if (isScreenshotPermissionDeniedError(error)) {
-    return {
-      surface: 'notification',
-      title: SCREENSHOT_PERMISSION_NOTIFICATION_TITLE,
-      message,
-      level: 'error',
-    };
-  }
   return {
     surface: 'toast',
-    message,
+    message: resolveScreenshotCaptureToastMessage(error),
   };
 }
 

@@ -17,7 +17,6 @@ import type {
   NewChatEntryKind,
 } from '../api/contracts';
 import { useConfirmDialog } from '../../../design/components/ConfirmDialog';
-import { NotificationContainer, useNotifications } from '../../../design/components/Notification';
 import { ToastContainer, useToast } from '../../../design/components/Toast';
 import {
   CHAT_PREFIX,
@@ -221,11 +220,6 @@ export default function App() {
   const [activeAudienceKeys, setActiveAudienceKeys] = useState<string[] | null>(null);
   const { dialog: appDialog, confirm: appConfirm, handleClose: appHandleClose } = useConfirmDialog();
   const { toasts, showToast } = useToast();
-  const {
-    notifications,
-    notify: showNotification,
-    dismiss: dismissNotification,
-  } = useNotifications();
   const screenshotCaptureRoute = resolveScreenshotCaptureRoute();
   const screenshotCaptureDisabled = !isScreenshotCaptureAvailable(screenshotCaptureRoute);
 
@@ -332,16 +326,8 @@ export default function App() {
   }, [openFolderBrowser]);
   const showScreenshotCaptureError = useCallback((error: unknown): void => {
     const feedback = resolveScreenshotCaptureFeedback(error);
-    if (feedback.surface === 'notification') {
-      showNotification({
-        title: feedback.title,
-        message: feedback.message,
-        level: feedback.level,
-      });
-      return;
-    }
     showToast(feedback.message);
-  }, [showNotification, showToast]);
+  }, [showToast]);
   const captureAndAppendDraftScreenshot = useCallback((): void => {
     const capturePromise = captureScreenshotFile(screenshotCaptureRoute);
     void capturePromise
@@ -1618,7 +1604,6 @@ export default function App() {
           );
         }}
       />
-      <NotificationContainer notifications={notifications} onDismiss={dismissNotification} />
       <ToastContainer toasts={toasts} />
     </>
   );
