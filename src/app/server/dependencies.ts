@@ -225,7 +225,7 @@ export function resolveServerDependencies(
       telegramRoomBridge,
       pollingSupervisor,
       telegramCommandSurfaceSync,
-      eventHub: createChatEventHub(),
+      eventHub: dependencies.chat.eventHub ?? createChatEventHub(),
     },
     work: {
       coreStore: dependencies.work?.coreStore ?? sharedCoreStore,

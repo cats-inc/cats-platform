@@ -77,9 +77,11 @@ export function createChatTelegramRoomBridge(input: {
         id: channel.id,
         title: channel.title,
         messages: channel.messages.map((message) => ({
+          id: message.id,
           senderKind: message.senderKind,
           senderName: message.senderName ?? null,
           body: message.body,
+          metadata: message.metadata ?? {},
         })),
       };
     },

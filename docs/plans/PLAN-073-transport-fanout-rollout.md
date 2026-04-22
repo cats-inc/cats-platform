@@ -98,9 +98,10 @@ change.
       binding id into the message append path before publication.
       The subscriber skips `sourceTransportBindingId` for the same
       message; do not depend on a post-delivery event marker.
-- [ ] Task 2.5: Implement text formatting — `"💬 [from web] "`
+- [ ] Task 2.5: Implement text formatting — `"[<sender name>] "`
       prefix for `origin='web'` user messages dispatched to
-      Telegram. No prefix for `origin='runtime'` assistant messages.
+      Telegram, with `senderName` sourced from the owner profile
+      display name. No prefix for `origin='runtime'` assistant messages.
       No `replyToMessageId` on fanout dispatches (since there is
       no originating Telegram message to thread under).
 - [ ] Task 2.6: Server integration tests:
@@ -114,7 +115,7 @@ change.
   - message with `origin='unknown'` → fanout skips
 - [ ] Task 2.7: Manual verification — in the EE-style scenario,
       type a message in web UI, observe it land in the Telegram
-      chat with `💬 [from web] ...`. Send from Telegram, observe
+      chat with `[<sender name>] ...`. Send from Telegram, observe
       it NOT come back via fanout (bridge delivers, fanout skips).
 
 **Deliverables**: web-originated messages reach Telegram; no

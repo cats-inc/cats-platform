@@ -1,5 +1,7 @@
 const DEFAULT_TELEGRAM_LIMIT = 4096;
 
+export const TELEGRAM_REPLY_LIMIT = 4000;
+
 /**
  * Split a long reply into chunks safe for Telegram.
  * Preserves fenced code blocks, paragraph boundaries, and list structure.

@@ -3,16 +3,17 @@ import {
   buildTelegramBotTransportBindingId,
 } from '../../../shared/chatCoreIds.js';
 import type { ChatMessage, MessageOrigin } from '../../../products/chat/api/contracts.js';
-import { chunkTelegramReply } from './chunking.js';
-import type { TelegramRelayContext } from './contracts.js';
+import {
+  TELEGRAM_REPLY_LIMIT,
+  chunkTelegramReply,
+} from './chunking.js';
+import type { TelegramConversationBinding, TelegramRelayContext } from './contracts.js';
 import type { TelegramRelay } from './relay/index.js';
 import type {
   TransportDeliverer,
   TransportFanoutDeliveryInput,
   TransportFanoutDeliveryResult,
 } from '../fanout/registry.js';
-
-const TELEGRAM_FANOUT_LIMIT = 4000;
 
 export interface TelegramFanoutDelivererOptions {
   telegramRelay: TelegramRelay;
@@ -55,6 +56,31 @@ function sourceMatchesBinding(
     || sourceTransportBindingId === buildTelegramBotTransportBindingId(binding.id);
 }
 
+function resolveLinkedConversation(
+  relay: TelegramRelay,
+  input: TransportFanoutDeliveryInput,
+): TelegramConversationBinding | null {
+  const linkedConversation = relay.resolveBinding({
+    roomId: input.channelId,
+    bindingId: input.binding.id,
+  });
+  if (linkedConversation) {
+    return linkedConversation;
+  }
+
+  const recentConversation = relay.resolveBinding({ bindingId: input.binding.id });
+  if (!recentConversation || recentConversation.linkedRoomId) {
+    return null;
+  }
+
+  return relay.linkRoom({
+    conversationId: recentConversation.conversationId,
+    chatId: recentConversation.telegramChatId,
+    bindingId: input.binding.id,
+    roomId: input.channelId,
+  });
+}
+
 export function createTelegramFanoutDeliverer(
   options: TelegramFanoutDelivererOptions,
 ): TransportDeliverer {
@@ -70,10 +96,7 @@ export function createTelegramFanoutDeliverer(
         return { status: 'skipped', reason: 'empty_text' };
       }
 
-      const linkedConversation = options.telegramRelay.resolveBinding({
-        roomId: input.channelId,
-        bindingId: input.binding.id,
-      });
+      const linkedConversation = resolveLinkedConversation(options.telegramRelay, input);
       if (!linkedConversation) {
         return { status: 'skipped', reason: 'unlinked_room' };
       }
@@ -84,7 +107,7 @@ export function createTelegramFanoutDeliverer(
         selectedBotBinding: input.binding,
       };
 
-      for (const chunk of chunkTelegramReply(text, TELEGRAM_FANOUT_LIMIT)) {
+      for (const chunk of chunkTelegramReply(text, TELEGRAM_REPLY_LIMIT)) {
         await options.telegramRelay.deliver({
           request: {
             operation: 'send',

@@ -18,14 +18,17 @@ import {
   readTelegramString,
   resolveActiveTelegramBinding,
 } from './utils.js';
-import { chunkTelegramReply } from './chunking.js';
-
-const TELEGRAM_REPLY_LIMIT = 4000;
+import {
+  TELEGRAM_REPLY_LIMIT,
+  chunkTelegramReply,
+} from './chunking.js';
 
 export interface TelegramRoomBridgeMessage {
+  id?: string | null;
   senderKind: string;
   senderName: string | null;
   body: string;
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface TelegramRoomBridgeView {
@@ -298,6 +301,7 @@ export interface TelegramWebhookBridgeResult {
   roomId: string | null;
   roomCreated: boolean;
   deliveryReceipt: TelegramDeliveryReceipt | null;
+  messages: TelegramRoomBridgeMessage[];
 }
 
 export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBridgeState>(input: {
@@ -319,6 +323,7 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
       roomId: null,
       roomCreated: false,
       deliveryReceipt: null,
+      messages: [],
     };
   }
 
@@ -386,6 +391,7 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
           roomId: null,
           roomCreated: false,
           deliveryReceipt: null,
+          messages: [],
         };
       }
 
@@ -413,6 +419,10 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
         restoreSelection(dispatch.state, currentState.selectedChannelId),
       );
       nextState = persistedState;
+      const appendedMessages = input.roomBridge
+        .readRoom(persistedState, roomId)
+        .messages
+        .slice(messageCountBeforeDispatch);
 
       const replyText = buildTelegramReplyText({
         roomBridge: input.roomBridge,
@@ -445,6 +455,7 @@ export async function bridgeTelegramWebhookToRoom<TState extends TelegramRoomBri
         roomId,
         roomCreated,
         deliveryReceipt,
+        messages: appendedMessages,
       };
     } catch (error) {
       const errorMessage = describeBridgeFailure(error);

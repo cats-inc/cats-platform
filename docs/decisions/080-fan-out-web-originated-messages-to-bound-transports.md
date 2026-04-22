@@ -145,15 +145,20 @@ message. A Telegram user looking at the chat can already tell
 `replyToMessageId`). A mirrored web-originated message would look
 like "the bot is suddenly talking" without context.
 
-First-slice attribution: prepend a short marker to mirrored text.
+First-slice attribution: prepend the web user's display name to
+mirrored user text.
 
-- `💬 [from web] <text>` for web-origin user messages
+- `[<sender name>] <text>` for web-origin user messages. The
+  sender name is the persisted chat `senderName`, which the web
+  composer sets from the owner profile display name.
 - assistant replies keep their current rendering (no prefix), but
   receive no `replyToMessageId` (there is nothing to thread under
   since the trigger was a web-side event, not a Telegram message)
 
-Prefix format is hard-coded for first slice. ADR leaves room for a
-later ADR to make it per-binding configurable if demand emerges.
+The attribution source is intentionally visible in Telegram because
+the bot remains the sender at the Telegram protocol layer. ADR
+leaves room for a later ADR to make the prefix per-binding
+configurable if demand emerges.
 
 ### 6. Idempotent fanout with per-message dispatch log
 

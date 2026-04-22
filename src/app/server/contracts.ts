@@ -68,6 +68,7 @@ export interface ChatServerDependencies {
   telegramRoomBridge?: TelegramRoomBridge<ChatState>;
   pollingSupervisor?: TelegramPollingSupervisor;
   telegramCommandSurfaceSync?: TelegramCommandSurfaceSync;
+  eventHub?: ChatEventHub;
 }
 
 export interface WorkServerDependencies extends Partial<WorkApiDependencies> {}

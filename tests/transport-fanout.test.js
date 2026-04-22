@@ -58,7 +58,7 @@ function createBinding(catId, overrides = {}) {
   };
 }
 
-async function createFanoutFixture(bindingOverrides = {}) {
+async function createFanoutFixture(bindingOverrides = {}, options = {}) {
   const now = new Date('2026-04-22T00:00:00.000Z');
   let chat = createDefaultChatState();
   chat = createCat(
@@ -117,13 +117,15 @@ async function createFanoutFixture(bindingOverrides = {}) {
     },
     context,
   });
-  relay.linkRoom({
-    conversationId: receipt.mappedConversationId,
-    chatId: receipt.chatId,
-    bindingId: binding.id,
-    roomId: channelId,
-    linkedAt: now.toISOString(),
-  });
+  if (options.linkRoom !== false) {
+    relay.linkRoom({
+      conversationId: receipt.mappedConversationId,
+      chatId: receipt.chatId,
+      bindingId: binding.id,
+      roomId: channelId,
+      linkedAt: now.toISOString(),
+    });
+  }
 
   const eventHub = createChatEventHub();
   const stop = startTransportFanout({
@@ -133,7 +135,7 @@ async function createFanoutFixture(bindingOverrides = {}) {
     now: () => now,
   });
 
-  return { binding, channelId, chatStore, deliveries, eventHub, stop };
+  return { binding, channelId, chatStore, deliveries, eventHub, relay, stop };
 }
 
 async function flushFanout() {
@@ -181,6 +183,34 @@ test('transport fanout mirrors web-originated user messages to linked Telegram b
     assert.equal(fixture.deliveries[0].operation, 'send');
     assert.equal(fixture.deliveries[0].chatId, '12345');
     assert.equal(fixture.deliveries[0].text, '[Kenneth] hello from web');
+  } finally {
+    fixture.stop();
+  }
+});
+
+test('transport fanout links a recent unlinked Telegram conversation for first web delivery', async () => {
+  const fixture = await createFanoutFixture({}, { linkRoom: false });
+  try {
+    await appendAndPublish(
+      fixture,
+      {
+        senderKind: 'user',
+        senderName: 'Kenneth',
+        body: 'hello before telegram room link',
+      },
+      { origin: 'web' },
+    );
+
+    assert.equal(fixture.deliveries.length, 1);
+    assert.equal(fixture.deliveries[0].chatId, '12345');
+    assert.equal(fixture.deliveries[0].text, '[Kenneth] hello before telegram room link');
+    assert.equal(
+      fixture.relay.resolveBinding({
+        roomId: fixture.channelId,
+        bindingId: fixture.binding.id,
+      })?.telegramChatId,
+      '12345',
+    );
   } finally {
     fixture.stop();
   }

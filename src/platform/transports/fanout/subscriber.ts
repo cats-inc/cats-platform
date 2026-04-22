@@ -29,6 +29,8 @@ const MESSAGE_ORIGINS = new Set<MessageOrigin>([
   'unknown',
 ]);
 
+const MAX_PROCESSED_FANOUT_PAIRS = 10000;
+
 export interface TransportFanoutOptions {
   eventHub: ChatEventHub;
   chatStore: ChatStore;
@@ -161,6 +163,9 @@ function resolveCandidateMessage(
 }
 
 function shouldSkipByOrigin(origin: MessageOrigin, binding: BotBindingRecord): boolean {
+  // First-slice loop safety intentionally suppresses same-platform fanout.
+  // A later multi-binding Telegram design can relax this once cross-bot
+  // attribution and duplicate rules are explicit.
   return origin === 'unknown'
     || origin === 'system'
     || binding.platform === origin;
@@ -174,7 +179,7 @@ function reportFanoutError(error: unknown): void {
 export class TransportFanout {
   private readonly registry = new TransportDelivererRegistry();
 
-  private readonly processedPairs = new Set<string>();
+  private readonly processedPairs = new Map<string, true>();
 
   constructor(private readonly options: TransportFanoutOptions) {
     this.registry.register(createTelegramFanoutDeliverer({
@@ -235,11 +240,10 @@ export class TransportFanout {
       }
 
       const pairKey = `${message.id}:${binding.id}`;
-      if (this.processedPairs.has(pairKey)) {
+      if (!this.rememberProcessedPair(pairKey)) {
         continue;
       }
 
-      this.processedPairs.add(pairKey);
       try {
         await deliverer.deliver({
           channelId,
@@ -253,6 +257,22 @@ export class TransportFanout {
         reportFanoutError(error);
       }
     }
+  }
+
+  private rememberProcessedPair(pairKey: string): boolean {
+    if (this.processedPairs.has(pairKey)) {
+      return false;
+    }
+
+    this.processedPairs.set(pairKey, true);
+    if (this.processedPairs.size > MAX_PROCESSED_FANOUT_PAIRS) {
+      const oldestPair = this.processedPairs.keys().next().value as string | undefined;
+      if (oldestPair) {
+        this.processedPairs.delete(oldestPair);
+      }
+    }
+
+    return true;
   }
 }
 

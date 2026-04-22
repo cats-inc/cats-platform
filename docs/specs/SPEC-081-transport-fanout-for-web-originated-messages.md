@@ -105,7 +105,9 @@ for their `binding.platform`.
    `TELEGRAM_REPLY_LIMIT`.
 5. **FR-5 (Text content formatting).** For the first slice:
    - user messages with `origin='web'` dispatched to Telegram
-     carry a prefix: `"💬 [from web] "` followed by the text
+     carry a prefix: `"[<sender name>] "` followed by the text.
+     The web composer sets `senderName` from the owner profile
+     display name before POSTing the message.
    - assistant messages (`origin='runtime'`) dispatched to
      Telegram carry no prefix; they are sent as standalone bot
      messages without `replyToMessageId`
@@ -288,9 +290,8 @@ Migration is additive; existing rows need no backfill.
 
 ## Open Questions
 
-- [ ] Is the `"💬 [from web] "` prefix acceptable as a hard-coded
-      default, or should it be per-binding configurable at first
-      ship?
+- [ ] Should the `"[<sender name>] "` prefix stay hard-coded, or
+      should it be per-binding configurable at first ship?
 - [ ] Should the `outboundFanoutEnabled` toggle surface in the UI
       as part of this slice, or stay a backend-only flag that only
       the binding API supports?

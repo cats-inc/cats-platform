@@ -109,6 +109,10 @@ function resolveStoredBinding(
     ) ?? null;
   }
 
+  if (bindingId) {
+    return store.listBindings().find((binding) => binding.bindingId === bindingId) ?? null;
+  }
+
   return null;
 }
 

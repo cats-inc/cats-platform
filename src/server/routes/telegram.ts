@@ -20,6 +20,7 @@ import { normalizeEffectiveBotBinding } from '../../products/chat/state/botBindi
 import type { ChatEventHub } from '../../products/chat/api/chatEventHub.js';
 import { updateCatSkillProfile } from '../../products/chat/state/model/index.js';
 import {
+  type RoomMutationDetail,
   publishRoomMutation,
   publishTransportIngress,
 } from '../../products/chat/api/transportEventPublisher.js';
@@ -272,14 +273,35 @@ export async function handleTelegramDiagnostics(
 
 export function publishTelegramBridgeResult(
   eventHub: ChatEventHub | undefined,
-  bridgeResult: Pick<TelegramWebhookBridgeResult, 'roomId'>,
+  bridgeResult: Pick<TelegramWebhookBridgeResult, 'roomId'> & Partial<Pick<TelegramWebhookBridgeResult, 'messages'>>,
 ): void {
   if (!bridgeResult.roomId) {
     return;
   }
 
   publishTransportIngress(eventHub, bridgeResult.roomId);
-  publishRoomMutation(eventHub, bridgeResult.roomId, 'message_added');
+  const messages = bridgeResult.messages ?? [];
+  if (messages.length === 0) {
+    publishRoomMutation(eventHub, bridgeResult.roomId, 'message_added');
+    return;
+  }
+
+  for (const message of messages) {
+    const metadata = message.metadata ?? {};
+    const origin = typeof metadata.origin === 'string' && metadata.origin.trim()
+      ? metadata.origin.trim() as RoomMutationDetail['origin']
+      : undefined;
+    const sourceTransportBindingId =
+      typeof metadata.sourceTransportBindingId === 'string'
+        && metadata.sourceTransportBindingId.trim()
+        ? metadata.sourceTransportBindingId.trim()
+        : undefined;
+    publishRoomMutation(eventHub, bridgeResult.roomId, 'message_added', {
+      ...(message.id ? { messageId: message.id } : {}),
+      ...(origin ? { origin } : {}),
+      ...(sourceTransportBindingId ? { sourceTransportBindingId } : {}),
+    });
+  }
 }
 
 export async function handleTelegramWebhook(

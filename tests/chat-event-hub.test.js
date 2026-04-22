@@ -98,3 +98,52 @@ test('publishTelegramBridgeResult emits ingress and room update for the linked C
   assert.equal(received[2].kind, 'room_updated');
   assert.equal(received[2].channelId, 'channel-telegram-1');
 });
+
+test('publishTelegramBridgeResult emits message metadata for every appended bridge message', () => {
+  const hub = new ChatEventHub();
+  const received = [];
+  hub.subscribe((event) => received.push(event));
+
+  publishTelegramBridgeResult(hub, {
+    roomId: 'channel-telegram-1',
+    messages: [
+      {
+        id: 'msg-user',
+        senderKind: 'user',
+        senderName: 'Telegram User',
+        body: 'hello',
+        metadata: {
+          origin: 'telegram',
+          sourceTransportBindingId: 'transport-telegram-bot-binding-cat',
+        },
+      },
+      {
+        id: 'msg-agent',
+        senderKind: 'agent',
+        senderName: 'Companion',
+        body: 'hi',
+        metadata: {
+          origin: 'runtime',
+          sourceTransportBindingId: 'transport-telegram-bot-binding-cat',
+        },
+      },
+    ],
+  });
+
+  const roomUpdates = received.filter((event) => event.kind === 'room_updated');
+  assert.equal(roomUpdates.length, 2);
+  assert.deepEqual(roomUpdates.map((event) => event.detail), [
+    {
+      mutation: 'message_added',
+      messageId: 'msg-user',
+      origin: 'telegram',
+      sourceTransportBindingId: 'transport-telegram-bot-binding-cat',
+    },
+    {
+      mutation: 'message_added',
+      messageId: 'msg-agent',
+      origin: 'runtime',
+      sourceTransportBindingId: 'transport-telegram-bot-binding-cat',
+    },
+  ]);
+});
