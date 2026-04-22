@@ -102,15 +102,14 @@ test('PlatformSettingsDesktopStartup renders desktop controls with system tray b
     <StaticRouter location="/settings/desktop">
       <PlatformSettingsDesktopStartup
         payload={createPayload()}
-        feedback=""
         onPayloadUpdate={() => {}}
-        onFeedback={() => {}}
       />
     </StaticRouter>,
   );
 
   try {
-    assert.match(markup, />Desktop</u);
+    // Shell title (`>Desktop<`) is no longer rendered by the page body;
+    // PlatformSettingsRoutes owns the shell wrapper. Body-only assertions here.
     assert.match(markup, /Start Cats Desktop when you sign in to your computer/u);
     assert.match(markup, /Keep Cats in the system tray when you close the window/u);
     assert.match(markup, /Open Cats after sign-in startup/u);
