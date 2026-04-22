@@ -58,6 +58,7 @@ Recent additions:
 - [PLAN-073](./plans/PLAN-073-transport-fanout-rollout.md)
 - [SPEC-081](./specs/SPEC-081-transport-fanout-for-web-originated-messages.md)
 - [ADR-080](./decisions/080-fan-out-web-originated-messages-to-bound-transports.md)
+- [2026-04-23 Claude Orchestrator as Capability Shell](./research/2026-04-23-claude-orchestrator-as-capability-shell.md)
 - [2026-04-23 Codex Cats Work Agent Supervision Model](./research/2026-04-23-codex-cats-work-agent-supervision-model.md)
 - [2026-04-22 Web to Telegram Outbound Fanout](./research/2026-04-22-web-to-telegram-outbound-fanout.md)
 - [PLAN-071](./plans/PLAN-071-region-screenshot-composer-rollout.md)
@@ -142,7 +143,7 @@ Recent additions:
 
 | Document | Status | Description |
 |----------|--------|-------------|
-| [research/](./research/) | Partial | Research notes for exploratory Paperclip-informed control-plane evolution, product-boundary positioning for `Cats Chat` / `Cats Work` / `Cats Code`, the Codex-authored Cats Work agent-supervision model, browser-ingress local probe validation evidence, temporary draft-canvas/composer guidance, the current Chat/runtime killer-feature audits for Paperclip and OpenClaw, OpenClaw memory-layering benchmarks, unified planning strategy notes, Cats Chat spatial layout guidance, companion capability baselines, external knowledge ingestion and connector strategy, packaged setup and packaged-startup operational investigations including the new packaged cold-start trace evidence, the self-hosted CLI-provider port matrix, the long-range AI-first app-store platform vision, the `Cats Coding` playground concept, and the sibling A2A pilot alignment with `cats-runtime` |
+| [research/](./research/) | Partial | Research notes for exploratory Paperclip-informed control-plane evolution, product-boundary positioning for `Cats Chat` / `Cats Work` / `Cats Code`, the Claude orchestrator-as-capability-shell synthesis and the sibling Codex-authored Cats Work agent-supervision model, browser-ingress local probe validation evidence, temporary draft-canvas/composer guidance, the current Chat/runtime killer-feature audits for Paperclip and OpenClaw, OpenClaw memory-layering benchmarks, unified planning strategy notes, Cats Chat spatial layout guidance, companion capability baselines, external knowledge ingestion and connector strategy, packaged setup and packaged-startup operational investigations including the new packaged cold-start trace evidence, the self-hosted CLI-provider port matrix, the long-range AI-first app-store platform vision, the `Cats Coding` playground concept, and the sibling A2A pilot alignment with `cats-runtime` |
 
 ## Context-Driven Development
 

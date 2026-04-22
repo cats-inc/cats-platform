@@ -25,15 +25,22 @@
 - **Boss Cat**：My Cat + `isBoss` 旗標。
 - **Guide Cat (Catlas)**：built-in、不可刪、persona 鎖死。
 
-仔細看這五者的差異只落在四個正交軸上：**頭像來源、名字來源、生命週期、身分旗標**。每一軸都是 optional 欄位或 enum。換言之，它們本質上是**同一個 `Cat` shape 的退化光譜**：
+仔細看這五者的差異只落在四個正交軸上：**頭像來源、名字來源、生命週期、身分旗標**。每一軸都是 optional 欄位或 enum。
 
-- Solo = Cat with no name, no avatar, no persona, lifetime-per-turn
-- Temp = Cat with synthesized identity, lifetime-per-channel
-- My = 基準形態，persistent
+但**統一要分兩層講**，否則會把不該一起的東西混在一起：
+
+- **Runtime addressable-target / participant-like 層**：五者可共享同一個可被 mention、可被發話、可被渲染頭像的 participant shape。composer、participant resolver、audience 計算今天寫滿的 `if isSolo / else if isTemp / else if isCat` 分叉就是這層的稅金，應該抽掉。
+- **Durable Cat registry 層**：**不共用**。Solo 與 Temp 沒有「我被加進書櫃、可 rename、有 direct lane、可 delete / archive、有 memory、有 transport binding」這些語意。把它們硬塞進同一個 registry 會讓它們意外繼承 My Cat 的持久化副作用，這是目前型別分家所唯一保住的正確東西。
+
+用 Codex 平行研究的分法：**identity / execution / supervision 三軸正交**。Cat 是 identity（有沒有登記、會不會被記住）、provider/model 是 execution（這次用誰發話）、orchestration 是 supervision（誰管束它）。前面五類貓真正共享的是 participant 形狀，不是 identity 倉儲 — 這個區分必須明文。
+
+- Solo = participant with no name, no avatar, no persona, lifetime-per-turn, **no registry record**
+- Temp = participant with synthesized identity, lifetime-per-channel, **no registry record**
+- My = 基準形態，persistent，**registry record**
 - Boss = My + `flags.isBoss`
 - Guide = My + `flags.isBuiltin` + `flags.isReadOnly`
 
-沒有任何一條技術必要性阻止這個統一。現行碼分家的原因是累積式演化 — 每加一個 case 都 bolt-on 一個小結構，從未回頭抽離共通抽象。代價顯現在到處寫 `if isSolo / else if isTemp / else if isCat` 的分叉，撐大 composer、participant resolver、audience 計算每一個觸及之處。
+現行碼分家的部分是誤差（runtime participant shape 沒抽出），部分是正確（durable registry 沒亂塞）。重構的正確路徑是**抽出 ParticipantLike / AddressableTarget 作為 runtime 抽象，保留 Cat registry 只容納 durable records**，不是把五者全塞進同一個 Cat 表。
 
 這件事單獨看不重要，但它暴露了一個更深的症狀：**Cats 的型別系統內化了當初的「對話對象有角色階層」直覺，而這個直覺正是 orchestrator 設計決定的下游。**
 
@@ -86,9 +93,17 @@ Agent 無法為自己出生、不會自己打卡、不會自己 checkpoint。系
 
 **主權切分**
 - 系統管：什麼時候開機關機、有沒有錢有沒有權、狀態存哪裡、事件給誰看。
-- Agent 管：開機後做什麼、呼哪個 tool、何時 delegate、何時收尾。
+- **強 agent** 管：開機後做什麼、呼哪個 tool、何時 delegate、何時收尾 — **task-level agency 在它身上**。
+- **弱 model** 不在這條線上 — 它不是 agent，是 pipeline step。決策主權留在上層（rule / SOP / conductor pipeline / 呼叫它的強 agent），它只負責把某一個明確 I/O 邊界的單步動作執行好。這點在第 7 節展開。
 
-守住這條線最危險的漏點是：**scheduler 不能讀訊息內容來做決策**。它看 metadata（時間、budget、錯誤次數、signal），不看文字。一旦它開始因為某則訊息「講了 X」就自動 reschedule，就又悄悄把 rule-based router 種回去了。
+守住這條線最危險的漏點是：**lifecycle scheduler 不該偷偷做語意決策**。它看 metadata（時間、budget、錯誤次數、signal）來排 session 生老病死，**不看訊息文字**來決定要不要重排 — 那是 router 回魂。
+
+但注意這個界線是對 **lifecycle scheduler** 的限制，不是對整個系統的限制。Policy engine、intent classifier、workflow step（包括呼叫弱 model 做分類的那一步）當然可以讀內容 — 這就是它們的職責。差別在：
+
+- **Lifecycle scheduler 讀內容做決策 = 禁止**（會變相 router 化、不可審計、職責污染）。
+- **Tool / policy / pipeline step 讀內容做決策 = 允許**，但必須在 tool/API boundary 上、可審計、回傳結構化結果。
+
+換句話說，限制的是「誰」讀、用途是什麼，不是「能不能」讀。
 
 ## 5. Invariant 的工學
 
@@ -157,14 +172,15 @@ Owner 點出的類比直接把上述結論翻譯成人類直覺：
 
 三個產品線的成本經濟學不同：
 
-- **Chat**：低頻、高單價 OK，使用者買的是對話品質。Concierge + 強模型合理。
-- **Code**：中頻、品質壓倒一切，讓 Opus 慢慢 reason 幾分鐘換一個好答案值得。
+- **Chat**：低頻、高單價 OK，使用者買的是對話品質。主線 concierge + 強模型合理。
+- **Code**：中頻、品質壓倒一切，高價值主線（reasoning、重構、跨檔案規劃）讓 Opus 慢慢跑值得。但 Code 的**次要 subtask** — lint、語意搜尋、摘要、boilerplate 生成、測試分類、簡單改寫、commit message 草擬 — 完全可以 offload 到便宜 / 本機模型或 deterministic tools，hybrid 在 Code 也有可觀節省空間。
 - **Work**：**高頻批次、重複**。一個自動化任務一天跑 500 次，Opus ≈ $50/天，本機 7B ≈ $0。**這是數量級差距。**
 
 這意味著：
 
-- Chat / Code 可以全走 concierge 就好。
-- Work 不行 — 全走 concierge 等於貴版 Chat，全走 conductor 等於沒 AI 的 Zapier。**只有 hybrid（強 driver + 弱 workers）同時存在，Work 產品才經濟可行。**
+- **Chat 主線**可以全走 concierge，Work 不行。
+- **Code 主線**可走 concierge，但 subtask 同樣受惠於 hybrid。全 concierge 不會錯，只是把本來可以省的錢燒掉。
+- **Work 不行** — 全走 concierge 等於貴版 Chat，全走 conductor 等於沒 AI 的 Zapier。**只有 hybrid（強 driver + 弱 workers）同時存在，Work 產品才經濟可行。**
 
 這個觀察把 orchestrator 的雙模能力從「nice-to-have」升級為「決定 Work 能否成立的底層經濟學」。
 
@@ -239,3 +255,10 @@ Policy 的範圍是「當下這個動作」，不是整個 session。強 driver 
 ---
 
 **作者後記**：本文由 Claude 於 2026-04-23 當天討論後撰寫。過程中 Claude 兩度被 owner 糾正設計方向（tier-scaled 單框架被駁回、dual orchestrator 雙人格被駁回），記錄於文中第 7、10 節。這些糾正是本文能抵達現在結論的直接原因。
+
+**2026-04-23 review 後的修訂**：初稿提交後經 reviewer 指出四處需要收緊，本版本已吸收：
+
+1. 第 1 節：原本把五類貓說成「同一個 Cat shape 的退化光譜」容易讓人誤以為應塞入同一個 durable registry。修改為 runtime ParticipantLike / AddressableTarget 層可共享、durable Cat registry 層不共用的兩層區分，並引入 Codex 平行研究的 identity / execution / supervision 三軸正交框架。
+2. 第 4 節：原本籠統說「Agent 管開機後做什麼」與第 7 節弱模型「決策主權留在工作流」有張力。修改為明確區分 **強 agent 擁有 task-level agency** 與 **弱 model 是 pipeline step（無 agency）**。
+3. 第 4 節：原本說「scheduler 不能讀訊息內容」過於絕對。修改為 **lifecycle scheduler** 不應做語意決策；policy engine / classifier / workflow step 在可審計的 tool boundary 上可以且應該讀內容。
+4. 第 9 節：原本說「Chat / Code 可以全走 concierge」低估了 Code 的 hybrid 空間。修改為 Code 主線可 concierge，但 subtask（lint、搜尋、摘要、boilerplate、測試分類、簡單改寫）同樣受惠於 hybrid。

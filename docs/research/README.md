@@ -6,6 +6,7 @@
 
 | Document | Date | Topic | Summary |
 |----------|------|-------|---------|
+| [2026-04-23-claude-orchestrator-as-capability-shell](./2026-04-23-claude-orchestrator-as-capability-shell.md) | 2026-04-23 | Claude view of orchestrator as capability shell | Conversation synthesis recasting the Cats orchestrator from a rule-based planner into a capability shell with four irreducible responsibilities (UI / tools / invariants / lifecycle); covers the five-Cat-types runtime-vs-registry split, the strong-agent / weak-worker management analogy, the hybrid cost economics that make Cats Work viable, and the single-orchestrator policy-dial design that replaces the earlier dual-class framing |
 | [2026-04-23-codex-cats-work-agent-supervision-model](./2026-04-23-codex-cats-work-agent-supervision-model.md) | 2026-04-23 | Codex view of Cats Work agent supervision | Conversation synthesis framing Cats Work as a management layer for mixed-capability AI labor: strong agents receive goals, tools, constraints, and approval gates, while weaker/free models receive smaller SOP-shaped tasks, narrower tools, schema validation, and escalation paths |
 | [2026-04-22-web-to-telegram-outbound-fanout](./2026-04-22-web-to-telegram-outbound-fanout.md) | 2026-04-22 | Web-originated messages fanout to bound transports | Code inspection confirms `telegramRelay.deliver` is only called from inside the Telegram ingress bridge, so web-UI-typed messages never reach Telegram (polling is unrelated); recommend a chat-event-hub-driven `TransportFanout` subscriber with per-message origin/source-binding metadata, per-binding `outboundFanoutEnabled` toggle, and a polymorphic deliverer registry keyed by `binding.platform` |
 | [2026-04-22-telegram-ingress-streaming-and-draft-transition](./2026-04-22-telegram-ingress-streaming-and-draft-transition.md) | 2026-04-22 | Telegram ingress streaming UX and direct-lane draft transition | Live-debug of the post-`9f428603` behavior shows backend events fire once post-completion with `catId=null`, so Telegram-originated flows get no dot-bubble and direct-lane drafts run through a heavyweight app-shell refetch; recommend three additive stages (populate `catId`, stage bridge emission, add `kind='cat'` entity subscription) on top of the ADR-041 / ADR-075 tiers already in flight |
@@ -47,4 +48,4 @@ Action Items:
 
 ---
 
-*Last updated: 2026-04-23 (Codex Cats Work agent supervision model added)*
+*Last updated: 2026-04-23 (Claude orchestrator-as-capability-shell note added alongside Codex Cats Work agent supervision model)*
