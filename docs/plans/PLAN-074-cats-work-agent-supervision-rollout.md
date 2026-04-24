@@ -60,6 +60,12 @@ The rollout target is:
 
 ### Phase 1: Shared Supervision Contracts
 
+- [ ] Task 1.0: Survey existing type/function names before adding new
+      contracts. Run `rg` across `src/platform/orchestration`,
+      `src/platform/runtime`, `src/core`, and `src/shared` for
+      `SupervisionPolicy`, `ToolResult`, `RunState`, `CapabilityAssessment`,
+      and `CancellationContext`; reuse or rename deliberately rather than
+      accidentally shadowing local concepts.
 - [ ] Task 1.1: Create `src/platform/supervision/contracts.ts` exporting:
   - `SupervisionPolicy`
   - `SupervisionPolicySnapshot`
@@ -73,6 +79,10 @@ The rollout target is:
   - `RunPrimaryState`
   - `RunBlocker`
   - `CancellationContext`
+  - `SupervisionSchemaVersion`
+  `CancellationContext` shall include the SPEC-082 mandatory fields,
+  including `reasonCode`; `toolCancellation` shall be derived from the tool
+  manifest's `cancellation` value.
 - [ ] Task 1.2: Create `src/platform/supervision/errors.ts` for stable
       rejection codes:
   - `E_AUDIENCE_LIMIT_EXCEEDED`
@@ -90,7 +100,9 @@ The rollout target is:
   - `ToolResult` is discriminated by `status`
   - `AddressableTarget` excludes human operators
   - `SupervisedToolManifest.cancellation` is mandatory
+  - `CancellationContext.reasonCode` is mandatory
   - policy snapshots use `policyBundleVersion` and optional `dialVersions`
+  - aggregate-method/schema evolution is tied to `SupervisionSchemaVersion`
 
 **Deliverables**: compile-time contracts and unit coverage, with no runtime
 behavior change.
@@ -106,20 +118,32 @@ behavior change.
   - conflicts are recorded when the same dimension has different levels
 - [ ] Task 2.2: Create `src/platform/supervision/policyEngine.ts` with pure
       `decideSupervisionPolicy(ctx)` and per-dial helpers. The first version
-      may be simple, but it must evaluate per action.
+      may be simple, but it must evaluate per action. In Phase 2, manifest-
+      coupled dials such as tool-scope and approval decisions shall use small
+      test fixtures rather than the future registry; Phase 3 completes those
+      dials against the real `toolRegistry`.
 - [ ] Task 2.3: Create `src/platform/supervision/policyVersions.ts` with
       `policyBundleVersion` and optional `dialVersions`.
 - [ ] Task 2.4: Add operator override support as source evidence. Overrides
       may adjust effective policy but must not raise `confidenceLevel` above
-      strongest non-override evidence.
+      strongest non-override evidence and must not bypass the FR-19 effective-
+      policy floor for `unknown` / `catalog_only` profiles. Any override that
+      attempts `toolScope: 'broad_write'` or unrestricted
+      `autonomy: 'outcome_delegation'` under that floor shall be rejected with
+      `E_TOOL_SCOPE_DENIED` and recorded in policy snapshot reasons.
 - [ ] Task 2.5: Add tests for:
   - unknown/catalog-only profile stays conservative
   - rich provider delivery events do not raise capability confidence
   - eval/history can downgrade catalog claims
   - conflicting source evidence populates `conflicts[]`
   - operator override metadata appears in snapshot reasons
+  - operator override cannot lift the FR-19 floor; attempted `broad_write` /
+    unrestricted `outcome_delegation` under `unknown` / `catalog_only` returns
+    `E_TOOL_SCOPE_DENIED` and records the attempt in snapshot reasons
   - `dialVersions` appears when a dial is independently versioned or
     experiment-participating
+  - `aggregateMethod: 'conservative_per_dimension'` is covered by the current
+    `SupervisionSchemaVersion`
 
 **Deliverables**: deterministic, replayable policy decisions over explicit
 capability evidence.
@@ -133,11 +157,15 @@ capability evidence.
   - tool-surface filtering by policy and parent run grants
 - [ ] Task 3.2: Create `src/platform/supervision/toolBoundary.ts` that wraps
       tool execution and returns `ToolResult<T>` for every supervised call.
+      In Phase 3, use an in-memory evidence sink so tool-boundary behavior can
+      be tested before Phase 4 durable evidence persistence lands.
 - [ ] Task 3.3: Implement the first three supervised tools:
   - `work.context.lookup`: read-only lookup over Work/core projection data
   - `work.local_note.apply`: local-state mutation for a draft/run note
   - `work.approval_gated.apply`: mutation that always returns
-    `pending_approval` before landing
+    `pending_approval` before landing, applies idempotently after approval,
+    returns `E_APPROVAL_DENIED` when a denied approval request is retried, and
+    returns `E_RUN_CANCELLED` when called against a cancelled run
 - [ ] Task 3.4: Wire preflight behavior:
   - read-only preflight where feasible
   - `preflight: 'not_supported'` only with declared failure codes
@@ -145,13 +173,20 @@ capability evidence.
 - [ ] Task 3.5: Wire cancellation behavior:
   - `cooperative` / `best_effort` tools receive cancel requests
   - `not_supported` tools are not assumed interruptible
+  - manifest `cancellation` maps into `CancellationContext.toolCancellation`
+    (`cooperative` → `cooperative_requested`, `best_effort` →
+    `best_effort_requested`, `not_supported` → `not_supported`)
+  - cancellation evidence includes mandatory `reasonCode`
   - cancelled runs reject new tool calls with `E_RUN_CANCELLED`
   - denied approval retries reject with `E_APPROVAL_DENIED`
 - [ ] Task 3.6: Add tool-boundary tests for:
   - all three `ToolResult` statuses
   - `E_TOOL_SCOPE_DENIED` when parent grants and action policy intersect empty
+  - `E_TOOL_SCOPE_DENIED` when an override attempts to bypass the FR-19 floor
   - pending approval means no mutation landed
   - approval accepted applies idempotently
+  - denied approval retry returns `E_APPROVAL_DENIED`
+  - cancelled-run tool call returns `E_RUN_CANCELLED`
   - over-limit/invariant failure is rejected, not clipped
   - cancellation manifest behavior
 
@@ -171,6 +206,7 @@ Work runs and contract tests.
   - operator cancellation
   - terminal-state precedence
   - cancellation context for late-finishing actions
+  - `CancellationContext.reasonCode` and `toolCancellation` mapping
 - [ ] Task 4.3: Extend `src/platform/persistence/evidence.ts` or adjacent
       execution persistence to write redacted evidence rows for applied
       mutations and high-risk rejections.
@@ -183,20 +219,58 @@ Work runs and contract tests.
   - approval denial fallback vs terminal failure
   - operator cancellation closes pending approvals
   - applied mutations are not rolled back by cancellation
-  - late-finishing actions carry `CancellationContext`
+  - late-finishing actions carry `CancellationContext` with mandatory
+    `reasonCode` and correct manifest-derived `toolCancellation`
   - scheduler decisions use metadata and do not read message/transcript text
+- [ ] Task 4.7: Add static import-boundary enforcement, either as a dedicated
+      test or small script, proving:
+  - scheduler/run-state modules do not import raw message/transcript/prompt
+    content readers
+  - `src/platform/supervision/**` does not import
+    `src/products/*/renderer/**`
+  - Work supervision does not import Chat routing internals except through
+    declared product APIs
 
 **Deliverables**: Work can create and inspect supervised run state with durable
 policy/evidence lineage.
 
 ### Phase 5: Fake Driving-Agent and Weak-Worker Harness
 
-- [ ] Task 5.1: Create a fake driving-agent harness under tests that returns
-      alternative semantic plans. The platform must execute/enforce boundaries
-      around the selected plan without substituting its own semantic plan.
+- [ ] Task 5.0: Define the fake driving-agent harness interface before writing
+      the vertical-slice tests:
+
+  ```ts
+  interface FakeDrivingAgent {
+    nextPlan(input: FakeAgentInput): SemanticPlan;
+  }
+
+  interface SemanticPlan {
+    planId: string;
+    steps: Array<{
+      stepId: string;
+      target: AddressableTarget;
+      toolName: string;
+      args: unknown;
+      expectation?: 'applied' | 'pending_approval' | 'rejected';
+    }>;
+    stopCondition: 'after_steps' | 'after_approval' | 'on_rejection';
+  }
+
+  interface ObservedActionTrace {
+    planId: string;
+    observedStepIds: string[];
+    toolCalls: Array<{ stepId: string; toolName: string; status: ToolResult<unknown>['status'] }>;
+  }
+  ```
+
+  The test harness shall compare `SemanticPlan.steps[*].stepId` with
+  `ObservedActionTrace.observedStepIds` to prove the platform enforced the
+  submitted plan rather than substituting a platform-generated semantic plan.
+- [ ] Task 5.1: Create the fake driving-agent harness under tests with at
+      least two alternative semantic plans for the same Work fixture.
 - [ ] Task 5.2: Add a weak-worker/SOP sample tool, such as
       `work.sop.classify_text_batch`, with:
-  - `toolScope: 'none'` or `read_only`
+  - `toolScope: 'none'`
   - strict input/output schema
   - explicit budget envelope
   - schema validation before the result reaches the driving agent
@@ -206,8 +280,12 @@ policy/evidence lineage.
   - weak-worker classification
   - local mutation
   - approval-gated mutation
+  This fixture drives `platform/supervision` internals directly and does not
+  go through Work API routes; Phase 6 is the first phase that exercises the
+  product API path.
 - [ ] Task 5.4: Add contract tests proving:
   - semantic planning choice comes from the fake agent
+  - observed action trace preserves the fake agent's selected step order
   - deterministic routing/invariants remain platform-owned
   - weak-worker tool surface is narrower than parent run
   - worker schema failure follows `fallbackPolicy`
@@ -227,8 +305,11 @@ provider agent.
   - pending approvals
   - evidence summaries
   - tool-call results
-- [ ] Task 6.3: Reuse existing Work renderer surfaces such as `RunInspector`
-      where possible. Do not put React/UI logic in platform supervision.
+- [ ] Task 6.3: Add a minimal Work-visible supervised-run status surface.
+      Prefer reusing `RunInspector`, but if it cannot absorb the first slice
+      cleanly, add the smallest product-owned renderer change that shows run
+      state, blockers, pending approval, and evidence summary. Full inspection
+      UX remains deferred. Do not put React/UI logic in platform supervision.
 - [ ] Task 6.4: Add manual verification notes for the first supervised Work
       run fixture.
 - [ ] Task 6.5: Update docs if actual implementation paths differ from this
@@ -256,12 +337,13 @@ product-owned API/projection surfaces.
 | `cats-platform/src/products/work/api/contracts.ts` | Modify | Add Work-facing run/projection contract shapes. |
 | `cats-platform/src/products/work/api/projectionSupport.ts` | Modify | Add supervised run projection helpers. |
 | `cats-platform/src/products/work/api/index.ts` | Modify | Wire minimal supervised-run routes. |
-| `cats-platform/src/products/work/renderer/components/RunInspector.tsx` | Modify (optional) | Display supervised run state if existing component can absorb it cleanly. |
+| `cats-platform/src/products/work/renderer/components/RunInspector.tsx` | Modify | Add the minimal supervised-run status surface, or add an equivalent Work-owned renderer component if `RunInspector` is the wrong seam. |
 | `cats-platform/tests/supervision-contracts.test.ts` | Create | Contract shape and discriminated union tests. |
 | `cats-platform/tests/supervision-capability-assessment.test.ts` | Create | Bootstrap, evidence, conflict, override, delivery-split tests. |
 | `cats-platform/tests/supervision-policy-engine.test.ts` | Create | Policy versioning and per-action dial tests. |
 | `cats-platform/tests/supervision-tool-boundary.test.ts` | Create | ToolResult, approval, preflight, rejection, cancellation tests. |
 | `cats-platform/tests/supervision-run-state.test.ts` | Create | Run state, blockers, denial, cancel, scheduler content-blind tests. |
+| `cats-platform/tests/supervision-boundary-imports.test.ts` | Create | Static import-boundary checks for content-blind scheduler and no renderer imports in platform supervision. |
 | `cats-platform/tests/work-supervised-run.test.ts` | Create | Fake driving-agent and weak-worker vertical-slice tests. |
 | `cats-platform/docs/specs/SPEC-082-cats-work-agent-supervision-and-tool-boundary.md` | Modify | Link this plan in metadata. |
 | `cats-platform/docs/plans/README.md` | Modify | Add PLAN-074 to index. |
@@ -272,10 +354,19 @@ product-owned API/projection surfaces.
 
 - **Create `platform/supervision/` as the shared home.** `Cats Work` is the
   first consumer, but the contracts are not Work-only. This keeps later Code
-  adoption possible without importing Work internals.
+  adoption possible without importing Work internals. This is an explicit
+  assumption, not a permanent entitlement: after the first Work slice, if no
+  second product consumer is planned, review whether run-state helpers should
+  remain platform-level or move down into `products/work`.
 - **Use fake driving agents first.** Real provider integration would obscure
   whether failures come from the boundary or the provider. The first vertical
   slice should be deterministic and testable.
+- **Phase 2 policy engine is allowed to be skeletal.** Dials that need real
+  tool manifests are completed in Phase 3 against `toolRegistry`; Phase 2 uses
+  fixture manifests only.
+- **Phase 3 tool-boundary evidence uses a mock sink.** Durable evidence
+  persistence lands in Phase 4. Phase 3 tests assert the boundary emits the
+  right evidence request, not that it is durably stored.
 - **Persist policy snapshots in the execution layer.** They are durable
   evidence context, not a new top-level canonical record family.
 - **Keep scheduler content-blind.** Any test or implementation that reads raw
@@ -286,6 +377,17 @@ product-owned API/projection surfaces.
   contracts/projections/events; product renderers own UI.
 - **Approval and cancellation are boundary semantics.** Tools do not invent
   local pending/denied/cancelled conventions.
+
+## Phase Gates
+
+- Do not start real provider-agent integration until Phase 5 fake-driving-agent
+  contract tests are green.
+- Do not expose a broad/write tool to any provider model until FR-19 override
+  floor tests are green.
+- Do not ship Work API routes for supervised runs until policy snapshots and
+  evidence references are durable.
+- Do not add product-renderer imports to `src/platform/supervision/**`; a
+  static boundary test must fail such imports.
 
 ## Testing Strategy
 
@@ -315,6 +417,7 @@ product-owned API/projection surfaces.
 |------|--------|------------|
 | Plan grows into a full agent runtime before contracts are tested | High | Use fake driving agents and three sample tools first; real providers are out of scope. |
 | Capability profile becomes a black box | High | Persist source evidence with `evidenceId`, source metadata, conflicts, and policy snapshot reasons. |
+| Operator override bypasses the conservative unknown/catalog-only floor | High | FR-19 tests require `E_TOOL_SCOPE_DENIED` and snapshot reasons for attempted broad-write / unrestricted outcome delegation. |
 | Scheduler reintroduces semantic routing by reading content | High | Content-blind scheduler tests and explicit module-boundary checks. |
 | Tool manifests drift from actual behavior | Medium | Registry-level manifest validation and tool-boundary tests for preflight/approval/cancellation/evidence. |
 | Approval/cancellation edge cases fork across tools | Medium | Centralize pending/denied/cancelled behavior in `toolBoundary.ts` and `runState.ts`. |
@@ -327,6 +430,7 @@ product-owned API/projection surfaces.
 | Date | Update |
 |------|--------|
 | 2026-04-25 | Plan created from ADR-082 / SPEC-082 after supervision-spec review rounds. |
+| 2026-04-25 | Follow-up review pass: added override-floor coverage, fake driving-agent harness shape, cancellation reason mapping, phase dependency notes, and static boundary enforcement. |
 
 ---
 
