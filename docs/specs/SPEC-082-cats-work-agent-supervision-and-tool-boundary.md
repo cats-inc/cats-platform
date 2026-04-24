@@ -159,17 +159,28 @@ invocations are tools unless explicitly promoted by a later feature.
    - `completed`
    - `failed`
    - `cancelled`
-   `waiting_for_approval` is the primary state when at least one unresolved
-   approval request is gating progress. `blocked` is the primary state for
-   non-approval blockers such as budget exhaustion, dependency waits, missing
-   configuration, timeout, or tool unavailability. If multiple blockers exist,
-   the run shall also carry a `blockers[]` list; unresolved approval takes
-   precedence in the primary state, while other blockers remain visible in
-   `blockers[]`. Terminal states (`completed`, `failed`, `cancelled`) take
-   precedence over both waiting states. A run may transition from `blocked` to
-   `waiting_for_approval` when an approval gate is added, and from
-   `waiting_for_approval` to `blocked` when approval resolves but another
-   blocker remains.
+   Primary state is derived on every run-state evaluation, including initial
+   run creation. `waiting_for_approval` is the primary state when at least one
+   unresolved approval request is gating progress. `blocked` is the primary
+   state for non-approval blockers such as budget exhaustion, dependency
+   waits, missing configuration, timeout, or tool unavailability. If multiple
+   blockers exist, the run shall also carry a `blockers[]` list; unresolved
+   approval takes precedence in the primary state, while other blockers remain
+   visible in `blockers[]`. Terminal states (`completed`, `failed`,
+   `cancelled`) take precedence over both waiting states.
+
+   Approval denial shall close the approval request as `denied`. If the
+   current `fallbackPolicy` can continue without the denied action, the run
+   shall re-evaluate blockers and return to `running`, `blocked`, or
+   `waiting_for_approval`; otherwise the run shall become `failed` with the
+   denial recorded as the terminal cause. Operator cancellation shall set the
+   primary state to `cancelled`, mark unresolved approval requests as
+   `cancelled`, stop scheduling new actions, and request cooperative
+   cancellation for in-flight cancellable tool calls. Already-applied
+   mutations shall not be rolled back by cancellation; evidence for in-flight
+   actions that finish after cancellation shall carry a cancellation context
+   tag so reviewers can see whether the effect landed before or after the
+   cancel request.
 3. **FR-3 (Scheduler owns lifecycle and stays content-blind).** The lifecycle
    scheduler shall create, pause, resume, cancel, and terminate runs based on
    metadata such as trigger, budget, health, approvals, timeouts, retry count,
@@ -184,11 +195,12 @@ invocations are tools unless explicitly promoted by a later feature.
    decides whether that request becomes real execution.
 5. **FR-5 (Invocation categories).** The first slice shall distinguish
    blocking tool calls from async lifecycle requests:
-   - a blocking tool call returns `ToolResult<T>` where
-     `status: 'applied'` carries the immediate tool output
+   - a blocking tool call returns `ToolResult<T>`; all three statuses are
+     valid, and only `status: 'applied'` carries the immediate tool output
    - an async lifecycle request is mediated by a tool boundary and returns
      `ToolResult<RunRef | LifecycleRequestRef>` where `status: 'applied'`
      means the run/request was created, not that the child work completed
+     and `pending_approval` / `rejected` retain the normal ToolResult meaning
    Child run progress and completion shall arrive later through scheduler/run
    events, not by overloading the lifecycle request result.
 6. **FR-6 (Budget inheritance).** Delegated runs and worker invocations shall
@@ -231,7 +243,9 @@ invocations are tools unless explicitly promoted by a later feature.
     independently. A strong model may keep `outcome_delegation` while a risky
     tool still requires `approvalThreshold: 'high'`.
 12. **FR-12 (Policy snapshot).** Every supervised action shall persist a
-    durable policy decision snapshot with at least:
+    durable policy decision snapshot in the ADR-081 execution layer alongside
+    run/action/evidence records. It is not a new canonical top-level record
+    family. The snapshot shall include at least:
 
     ```ts
     interface SupervisionPolicySnapshot {
@@ -250,10 +264,12 @@ invocations are tools unless explicitly promoted by a later feature.
 
 13. **FR-13 (Policy versioning).** Policy decision functions shall be versioned
     at bundle granularity by default. If individual `decide*` dial functions
-    can ship independently, the snapshot shall also capture `dialVersions`.
-    The policy bundle version and any dial-level versions used for an action
-    shall be captured in the snapshot and in evidence for any resulting
-    mutation.
+    can ship independently, have ever bumped independently from the bundle, or
+    participate in an A/B experiment, the snapshot shall capture
+    `dialVersions` for those dials. If all dials ship only as one bundle,
+    `dialVersions` may be omitted. The policy bundle version and any required
+    dial-level versions used for an action shall be captured in the snapshot
+    and in evidence for any resulting mutation.
 14. **FR-14 (A/B safety).** Policy A/B tests shall be opt-in by configuration
     and shall record `experimentId`. A default production run shall have a
     deterministic policy version without silent randomization.
@@ -280,22 +296,62 @@ invocations are tools unless explicitly promoted by a later feature.
     observability and model intelligence/tool skill are separate axes.
 18. **FR-18 (Bootstrap confidence).** A provider/model with no evals and no
     session history shall start with a conservative bootstrap assessment that
-    separates confidence level from evidence source:
+    separates confidence level from source evidence:
 
     ```ts
-    interface CapabilityAssessment {
-      confidenceLevel: 'unknown' | 'catalog_only' | 'evaluated' | 'observed';
-      confidenceSources: Array<
+    type CapabilityDimension =
+      | 'tool_use_accuracy'
+      | 'json_fidelity'
+      | 'reasoning_depth'
+      | 'context_reliability'
+      | 'recovery_reliability';
+
+    interface CapabilityClaim {
+      level: 'unknown' | 'catalog_only' | 'evaluated' | 'observed';
+      summary: string;
+    }
+
+    interface CapabilitySourceEvidence {
+      source:
         | 'provider_catalog'
         | 'operator_override'
         | 'eval_suite'
-        | 'session_history'
-      >;
-      overrideReason?: string;
+        | 'session_history';
+      sourceRef: string;
+      observedAt: string;
+      claims: Partial<Record<CapabilityDimension, CapabilityClaim>>;
+      metadata?: {
+        catalogVersion?: string;
+        evalSuiteId?: string;
+        evalRunId?: string;
+        historyWindow?: { startedAt: string; endedAt: string; runIds: string[] };
+        overrideId?: string;
+        overrideReason?: string;
+        overrideExpiresAt?: string;
+      };
+    }
+
+    interface CapabilityAssessment {
+      assessedAt: string;
+      confidenceLevel: 'unknown' | 'catalog_only' | 'evaluated' | 'observed';
+      confidenceSources: CapabilitySourceEvidence[];
+      aggregateMethod: 'conservative_per_dimension';
+      conflicts: Array<{
+        dimension: CapabilityDimension;
+        sourceRefs: string[];
+        selectedLevel: CapabilityClaim['level'];
+        reason: string;
+      }>;
     }
     ```
-    `operator_override` is a source, not a confidence level; it may raise or
-    lower effective policy only when recorded in the policy snapshot reasons.
+    `confidenceSources` is an unordered evidence set; array order carries no
+    priority. Aggregation shall be per capability dimension. Eval-suite and
+    session-history evidence may downgrade provider-catalog claims; positive
+    catalog facts alone shall not upgrade a profile above `catalog_only`.
+    Operator override is a source, not a confidence level; it may raise or
+    lower effective policy only when it carries override metadata and appears
+    in the policy snapshot reasons. Conflicting source claims shall be
+    preserved in `conflicts[]` rather than overwritten.
 
 19. **FR-19 (Conservative unknown default).** `unknown` and `catalog_only`
     profiles shall not receive `broad_write` or unrestricted
@@ -351,6 +407,8 @@ invocations are tools unless explicitly promoted by a later feature.
     invocation shall be the intersection of the parent run's granted tool
     surface and the policy grants for the worker action. A worker shall never
     receive tools broader than either its parent run or its own action policy.
+    If the requested worker tool is outside that intersection, the call shall
+    return `rejected` with `E_TOOL_SCOPE_DENIED`.
 
 #### Tool results, approvals, and invariants
 
@@ -373,6 +431,8 @@ invocations are tools unless explicitly promoted by a later feature.
     - `E_NOT_AUTHORIZED`
     - `E_BUDGET_EXCEEDED`
     - `E_APPROVAL_REQUIRED`
+    - `E_APPROVAL_DENIED`
+    - `E_RUN_CANCELLED`
     - `E_PRECHECK_FAILED`
     - `E_TOOL_SCOPE_DENIED`
     - `E_SCHEMA_INVALID`
@@ -503,12 +563,13 @@ invocations are tools unless explicitly promoted by a later feature.
 57. **FR-57 (Work-to-Chat calls respect Chat API).** If a Work agent requests
     an action that touches Chat, the Chat product API shall still enforce Chat
     routing and participant invariants through structured results.
-58. **FR-58 (Product boundary).** Work supervision shall not create a second
-    hidden Chat routing engine. It may call Chat tools; Chat remains the owner
-    of Chat semantics. Supervision/orchestration modules shall emit contracts,
-    projections, and events only; rendering and input capture belong to product
-    renderers under `src/products/*/renderer/` and shared design code under
-    `src/design/`.
+58. **FR-58 (Chat product boundary).** Work supervision shall not create a
+    second hidden Chat routing engine. It may call Chat tools; Chat remains the
+    owner of Chat semantics.
+59. **FR-59 (UI ownership boundary).** Supervision/orchestration modules shall
+    emit contracts, projections, and events only. Rendering and input capture
+    belong to product renderers under `src/products/*/renderer/` and shared
+    design code under `src/design/`.
 
 ### Non-Functional Requirements
 
@@ -568,10 +629,11 @@ For a new provider/model:
 
 1. Start with provider catalog facts only: context window, declared tool-use
    support, streaming/event support, pricing or local cost class.
-2. Mark `confidenceLevel` as `catalog_only` and
-   `confidenceSources: ['provider_catalog']`. If an operator override exists,
-   add `operator_override` as a source and record the override reason, but do
-   not treat the override itself as a confidence level.
+2. Mark `confidenceLevel` as `catalog_only` and add one
+   `provider_catalog` source evidence item with catalog version, timestamp,
+   and per-dimension claims. If an operator override exists, add a separate
+   `operator_override` source evidence item with override id, reason, and
+   optional expiry, but do not treat the override itself as a confidence level.
 3. Use conservative policy: narrow or read-only tools, schema-required output,
    frequent checkpoints, and approval for higher-risk side effects.
 4. Promote confidence only after evals or observed run history demonstrate
@@ -605,17 +667,22 @@ the parent action's fallback policy.
   policy snapshot.
 - Scheduler tests prove lifecycle decisions use metadata and do not read raw
   message/transcript/prompt/completion content for semantic rescheduling.
-- Work decision-boundary tests prove agentic semantic planning remains with
-  the driving agent while deterministic routing, invariants, weak-model SOPs,
-  validation/retry shaping, lifecycle, approvals, budget, and evidence remain
-  platform-owned.
+- Work decision-boundary contract tests inject two possible next-step plans
+  from a fake driving agent and verify the platform applies only tool-surface,
+  deterministic routing, invariant, validation/retry, lifecycle, approval,
+  budget, and evidence rules without substituting its own semantic plan.
 - A supervised tool manifest can describe manifest version, side effect,
   preflight support, approval behavior, evidence behavior, stable failure
   codes, and versioned canonical input/output schema references.
 - Unit tests or contract tests cover all three `ToolResult` statuses.
 - A pending approval does not mutate state until approval is accepted.
-- Run-state tests cover `waiting_for_approval`, `blocked`, terminal state
-  precedence, and multiple simultaneous blockers through `blockers[]`.
+- Run-state tests cover initial evaluation with simultaneous approval and
+  non-approval blockers, approval denial with and without fallback, operator
+  cancellation, terminal state precedence, and multiple simultaneous blockers
+  through `blockers[]`.
+- Cancellation tests prove pending approvals are closed, new actions stop
+  scheduling, already-applied mutations are not rolled back, and late-finishing
+  in-flight actions carry cancellation context in evidence.
 - An over-limit participant/audience-style request returns `rejected` with a
   stable code rather than clipping the request.
 - A mutation that lands emits evidence with actor, model, policy snapshot,
@@ -624,12 +691,14 @@ the parent action's fallback policy.
   explicit budget envelope, and its tool surface is a subset of both parent
   run grants and worker-action policy.
 - Unknown provider/model capability bootstrap starts conservative and records
-  its confidence source.
+  unordered per-source evidence metadata, including timestamp, source
+  reference, per-dimension claims, and conflict resolution.
 - A provider with rich delivery events but no evals or observed successful
   history remains conservative; delivery observability alone does not raise
   capability confidence.
 - Policy snapshots include `policyBundleVersion`, optional `dialVersions`, and
-  optional `experimentId`.
+  optional `experimentId`; `dialVersions` is present when any dial has
+  independently versioned or participated in an experiment.
 - `AddressableTarget` can represent durable Cats, solo execution targets,
   temporary participants, and worker tools without converting all of them into
   Cat registry records; human operators are addressed through approval,
