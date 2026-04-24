@@ -32,6 +32,18 @@ test('useVoiceInputComposer cancels recognition when disabled flips true', async
   assert.match(source, /useWebSpeechInput\(/u);
 });
 
+test('useVoiceInputComposer falls back to append when textarea selection is untrusted', async () => {
+  const source = await readFile(
+    path.join(HOOKS_DIR, 'useVoiceInputComposer.ts'),
+    'utf8',
+  );
+
+  assert.match(source, /hasUserSelectionRef/u);
+  assert.match(source, /document\.activeElement === el/u);
+  assert.match(source, /addEventListener\(['"]focus['"]/u);
+  assert.match(source, /selectionIsTrustworthy/u);
+});
+
 test('useWebSpeechInput cancel aborts and invalidates stale recognition callbacks', async () => {
   const source = await readFile(
     path.join(HOOKS_DIR, 'useWebSpeechInput.ts'),

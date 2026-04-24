@@ -27,6 +27,23 @@ export function useVoiceInputComposer({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const valueRef = useRef(value);
   valueRef.current = value;
+  const hasUserSelectionRef = useRef(false);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const markInteracted = () => {
+      hasUserSelectionRef.current = true;
+    };
+    el.addEventListener('focus', markInteracted);
+    el.addEventListener('pointerdown', markInteracted);
+    el.addEventListener('keydown', markInteracted);
+    return () => {
+      el.removeEventListener('focus', markInteracted);
+      el.removeEventListener('pointerdown', markInteracted);
+      el.removeEventListener('keydown', markInteracted);
+    };
+  }, []);
 
   const handleTranscript = useCallback(
     (text: string) => {
@@ -34,11 +51,16 @@ export function useVoiceInputComposer({
       if (!trimmed) return;
       const current = valueRef.current;
       const el = textareaRef.current;
+      const selectionIsTrustworthy =
+        !!el &&
+        (typeof document !== 'undefined' && document.activeElement === el
+          ? true
+          : hasUserSelectionRef.current);
       let nextValue: string;
       let cursorPos: number;
-      if (el && typeof el.selectionStart === 'number' && typeof el.selectionEnd === 'number') {
-        const start = el.selectionStart;
-        const end = el.selectionEnd;
+      if (selectionIsTrustworthy && el) {
+        const start = el.selectionStart ?? current.length;
+        const end = el.selectionEnd ?? current.length;
         const before = current.slice(0, start);
         const after = current.slice(end);
         const needLeading = before.length > 0 && !/\s$/.test(before);
