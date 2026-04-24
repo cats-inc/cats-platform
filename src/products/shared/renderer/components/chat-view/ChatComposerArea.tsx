@@ -142,6 +142,7 @@ export function ChatComposerArea({
     listening: voiceInputListening,
     start: startVoiceInput,
     stop: stopVoiceInput,
+    cancel: cancelVoiceInput,
   } = useWebSpeechInput({ onTranscript: handleVoiceTranscript });
   const handleVoiceInputToggle = useCallback(() => {
     if (voiceInputListening) {
@@ -151,8 +152,8 @@ export function ChatComposerArea({
     }
   }, [voiceInputListening, startVoiceInput, stopVoiceInput]);
   useEffect(() => {
-    if (composerBusy && voiceInputListening) stopVoiceInput();
-  }, [composerBusy, voiceInputListening, stopVoiceInput]);
+    if (composerBusy && voiceInputListening) cancelVoiceInput();
+  }, [composerBusy, voiceInputListening, cancelVoiceInput]);
 
   const stackClassName = (() => {
     const classes = ['composerAreaStack'];

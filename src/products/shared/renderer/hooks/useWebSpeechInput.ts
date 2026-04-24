@@ -49,6 +49,7 @@ export interface UseWebSpeechInputResult {
   listening: boolean;
   start: () => void;
   stop: () => void;
+  cancel: () => void;
 }
 
 export function useWebSpeechInput({
@@ -58,6 +59,7 @@ export function useWebSpeechInput({
   const [supported, setSupported] = useState<boolean>(() => getSpeechRecognitionCtor() !== null);
   const [listening, setListening] = useState<boolean>(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
+  const sessionTokenRef = useRef(0);
   const onTranscriptRef = useRef(onTranscript);
   onTranscriptRef.current = onTranscript;
 
@@ -71,15 +73,37 @@ export function useWebSpeechInput({
     }
   }, []);
 
+  const cancelCurrentRecognition = useCallback((updateListening: boolean) => {
+    const recognition = recognitionRef.current;
+    if (!recognition) return;
+    sessionTokenRef.current += 1;
+    recognitionRef.current = null;
+    if (updateListening) setListening(false);
+    try {
+      recognition.abort();
+    } catch {
+      // already stopped or not started
+    }
+  }, []);
+
+  const cancel = useCallback(() => {
+    cancelCurrentRecognition(true);
+  }, [cancelCurrentRecognition]);
+
   const start = useCallback(() => {
     if (recognitionRef.current) return;
     const Ctor = getSpeechRecognitionCtor();
     if (!Ctor) return;
     const recognition = new Ctor();
+    const sessionToken = sessionTokenRef.current + 1;
+    sessionTokenRef.current = sessionToken;
+    const isCurrentSession = () =>
+      recognitionRef.current === recognition && sessionTokenRef.current === sessionToken;
     recognition.continuous = true;
     recognition.interimResults = false;
     if (lang) recognition.lang = lang;
     recognition.onresult = (event) => {
+      if (!isCurrentSession()) return;
       let finalText = '';
       for (let i = event.resultIndex; i < event.results.length; i += 1) {
         const result = event.results[i];
@@ -90,6 +114,7 @@ export function useWebSpeechInput({
       if (finalText) onTranscriptRef.current(finalText);
     };
     recognition.onerror = (event) => {
+      if (!isCurrentSession()) return;
       const kind = event?.error;
       if (kind) {
         if (PERMANENT_ERROR_KINDS.has(kind)) {
@@ -103,6 +128,7 @@ export function useWebSpeechInput({
       recognitionRef.current = null;
     };
     recognition.onend = () => {
+      if (!isCurrentSession()) return;
       setListening(false);
       recognitionRef.current = null;
     };
@@ -118,16 +144,9 @@ export function useWebSpeechInput({
 
   useEffect(() => {
     return () => {
-      const recognition = recognitionRef.current;
-      if (!recognition) return;
-      try {
-        recognition.abort();
-      } catch {
-        // no-op
-      }
-      recognitionRef.current = null;
+      cancelCurrentRecognition(false);
     };
-  }, []);
+  }, [cancelCurrentRecognition]);
 
-  return { supported, listening, start, stop };
+  return { supported, listening, start, stop, cancel };
 }
