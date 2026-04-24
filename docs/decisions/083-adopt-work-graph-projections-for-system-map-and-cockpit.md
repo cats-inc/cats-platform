@@ -7,7 +7,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Context
 
@@ -38,9 +38,9 @@ Four viable view families exist:
    owns a peer pane.
 2. **Tables** - Airtable-like record tables for Projects, WorkItems,
    Tasks, Runs, Artifacts, Approvals, and Activities.
-3. **Cockpit** - monday-inspired owner command center organized around
-   operational triage, decision pressure, blockers, shipped evidence,
-   and role / team load.
+3. **Cockpit** - monday-style dashboard polish, without monday's
+   department-lane structure, organized around operational triage,
+   decision pressure, blockers, shipped evidence, and role / team load.
 4. **Task Hub** - ClickUp-like work-object operation view centered on
    task queues and task detail actions.
 
