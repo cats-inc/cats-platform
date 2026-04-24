@@ -3,11 +3,13 @@
 > The current orchestrator in `src/platform/orchestration/` conflates
 > rule-based routing with visible-participant execution and leaves no
 > room for agent-native planning to surface. Narrow the orchestrator's
-> declared scope to a capability shell (UI, tools, invariants,
-> lifecycle), move all "what happens next" decisions into the driving
-> agent process, and govern supervision intensity through a single
-> per-action `SupervisionPolicy` contract instead of per-session mode
-> switching.
+> declared scope to a capability shell (UI-facing contracts, tools,
+> invariants, lifecycle), move **agent-native semantic planning**
+> into the driving agent process while **deterministic routing,
+> invariant enforcement, weak-model SOP pipelines, and validation /
+> retry shaping remain platform responsibilities**, and govern
+> supervision intensity through a single per-action `SupervisionPolicy`
+> contract instead of per-session mode switching.
 
 ## Status
 
@@ -104,12 +106,22 @@ The platform orchestrator (system layer, not the visible Cat)
 declares exactly four responsibilities. Anything not on this list
 belongs to the driving agent process or to a product / UI layer.
 
-- **UI framework** — transcript rendering, input capture, presence
-  and progress indicators, identity display. Pure presentation.
+- **UI-facing contracts, projections, and progress events** — the
+  data shapes, projections, and event streams that product
+  renderers consume (participant shape, lane / turn / segment state,
+  live-indicator events, transcript event envelopes). The platform
+  orchestrator **does not own rendering or input capture** — those
+  belong to the product renderers under `src/products/*/renderer/`
+  and to the shared design layer under `src/design/`. The
+  orchestrator's job is to emit the structured truth the renderers
+  need; drawing pixels is the renderer's job.
 - **Tool / MCP / API surface** — the full set of capabilities an
   agent can invoke: internal APIs (workitem, participant, channel,
   runtime), external CLI wrappers (Claude Code, Codex, Gemini),
-  third-party MCP servers, local compute resources.
+  third-party MCP servers, local compute resources. Some tools on
+  this surface are implemented internally as rule-based SOP
+  pipelines that may call weak models as workers — from the calling
+  agent's point of view those are still tools, not peer agents.
 - **Invariants** — hard constraints enforced at the tool boundary:
   audience / participant limits, permissions, destructive-action
   gates, budget caps, rate limits. Never enforced only in prompt
@@ -120,9 +132,33 @@ belongs to the driving agent process or to a product / UI layer.
   budget envelopes, supervision detection (stuck loop / stall /
   confusion), event streaming, forced termination.
 
-All planning, routing, delegation, tool selection, step
-decomposition, recovery, and summarization belong to the agent
-process, not to the orchestrator.
+### Division of "who decides what happens next"
+
+Within the above shell, the line between agent and platform is
+**not** "agent decides everything, platform does nothing
+intelligent":
+
+- **Agent (driving LLM process) owns** high-level semantic
+  planning for agentic workloads: step decomposition during an
+  open-ended Code / Work task, delegation choices, tool selection
+  across a task, mid-flight recovery reasoning, summarization of
+  its own output, when to stop.
+- **Platform owns** deterministic routing (for example explicit
+  `@mention` resolution, channel-wired dispatch to a named target),
+  invariant enforcement, weak-model SOP pipelines invoked as
+  tools, validation / retry shaping applied by
+  `SupervisionPolicy.validation` and
+  `SupervisionPolicy.fallbackPolicy`, and evidence capture on
+  every mutation (§5). These are policy responsibilities, not
+  agent reasoning surfaces.
+
+The platform's rule-based logic is therefore **not retired in
+general**; it is retired from pretending to plan on behalf of
+capable agents. The same rule logic continues to own the
+interactions where determinism is the product promise (Chat routing
+is the clearest case) and the pipelines where no agent-level
+reasoning is appropriate (weak-model conductor flows exposed as
+tools).
 
 ### 2. Separation between lifecycle scheduler and semantic policy
 
@@ -198,19 +234,46 @@ capability context; the driver's own autonomy is unchanged.
 
 ### 4. Invariants as structured errors, not silent clipping
 
-Every tool call returns either `{ ok: true, result }` or
-`{ ok: false, error: { code, message, details } }`. `code` is a
-recognizable constant (for example `E_AUDIENCE_LIMIT_EXCEEDED`,
-`E_NOT_AUTHORIZED`, `E_BUDGET_EXCEEDED`,
-`E_TOOL_REQUIRES_HUMAN_CONFIRM`). The platform must never silently
-clip, redirect, or partially apply an over-limit request, because
-that pollutes the agent's world model and every subsequent reasoning
-step is built on a false premise.
+Every tool call returns a **discriminated three-way result** so
+that "applied", "not applied yet", and "refused" are never
+collapsed into the same top-level flag:
 
-Destructive / externally-visible / expensive actions return
-`{ ok: true, result: { state: 'pending_user_confirm', requestId } }`
-instead of executing; the UI surfaces the pending request and only
-on explicit user confirmation does the effect land.
+```ts
+type ToolResult<T> =
+  | { status: 'applied';          result: T }
+  | { status: 'pending_approval'; requestId: string; summary: string }
+  | { status: 'rejected';         error:  { code: string; message: string; details?: unknown } };
+```
+
+Rules:
+
+- `status: 'applied'` means the effect has landed. The agent can
+  safely reason forward assuming the requested change took effect.
+- `status: 'pending_approval'` means **nothing has happened yet**;
+  a request for human confirmation is now in flight. The agent
+  must not assume the change took effect and must not retry blindly.
+  It may continue with unrelated work or wait; the platform emits
+  a follow-up event when the user accepts or declines.
+- `status: 'rejected'` means a structured refusal. `code` is a
+  recognizable constant (for example `E_AUDIENCE_LIMIT_EXCEEDED`,
+  `E_NOT_AUTHORIZED`, `E_BUDGET_EXCEEDED`). The agent decides
+  whether to adjust and retry, ask for help, or give up.
+
+The platform must never silently clip, redirect, or partially
+apply an over-limit request, because that pollutes the agent's
+world model and every subsequent reasoning step is built on a
+false premise. The earlier `{ ok: true, ... }` / `{ ok: false, ... }`
+shape is **explicitly replaced** by this three-way result —
+overloading `ok: true` to mean both "succeeded" and "awaiting
+approval" was one of the mistakes the first draft made.
+
+Destructive / externally-visible / expensive actions therefore
+return `{ status: 'pending_approval', requestId, summary }`
+instead of executing. The UI surfaces the pending request; only
+on explicit user confirmation does the effect land, at which
+point the platform emits a follow-up event whose payload carries
+the eventual `{ status: 'applied', result }` or
+`{ status: 'rejected', error }`.
 
 Every mutating tool has a matching read-only query
 (`@get-channel-capacity`, `@list-participants`,
@@ -229,6 +292,30 @@ particular depends on. Evidence is not a new canonical record type
 evidence rows per ADR-081 — but the platform orchestrator is
 responsible for ensuring every mutation through its tool surface
 emits an evidence row.
+
+**Redaction / size / secrets guardrail** — pre-image and post-image
+are meant as **minimal redacted structural snapshots**, not raw
+dumps. The evidence row must not inline:
+
+- full message transcripts, raw prompts / completions, or entire
+  tool call arguments / results (summarize structurally; keep full
+  content behind a pointer)
+- bearer tokens, API keys, OAuth secrets, or any credential-like
+  value (always redacted; never persisted even once)
+- large binary / blob content (images, PDFs, audio, video, build
+  outputs — link via `CoreArtifactRecord` reference instead)
+- external third-party payloads beyond the structural summary
+  needed for audit (quote the specific fields that changed, not
+  the whole envelope)
+
+Large or sensitive content belongs in a referenced record
+(`CoreArtifactRecord`, existing transcript storage, opaque
+`artifactId` pointer) so evidence rows stay small, auditable,
+cheap to query, and safe to ship across trust boundaries. Evidence
+that cannot be captured within these bounds — for example an
+action whose meaningful pre/post image is inherently secret —
+should instead record the action's occurrence and an opaque
+reference, not the secret content itself.
 
 ### 6. Identity / execution / supervision three-axis separation
 
