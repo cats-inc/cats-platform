@@ -190,8 +190,23 @@ invocations are tools unless explicitly promoted by a later feature.
      runStateAtRequest: 'queued' | 'running' | 'waiting_for_approval' | 'blocked';
      toolCancellation: 'cooperative_requested' | 'best_effort_requested' | 'not_supported';
      effectLanded: 'before_cancel_request' | 'after_cancel_request' | 'not_applied';
+     reasonCode:
+       | 'operator_decision'
+       | 'budget_hard_stop'
+       | 'policy_violation'
+       | 'external_event'
+       | 'other';
+     reasonNote?: string;
    }
    ```
+   `reasonCode` is mandatory; `reasonNote` is an optional human-readable note.
+   `toolCancellation` is derived from the tool's manifest `cancellation` value
+   (`cooperative` → `cooperative_requested`, `best_effort` →
+   `best_effort_requested`, `not_supported` → `not_supported`) and only appears
+   on evidence rows for in-flight tool calls; a run cancelled while `queued`
+   with no in-flight tool call does not emit a tool-evidence
+   `CancellationContext` but shall still record the cancel reason on the
+   run-state audit trail.
    After a run reaches `cancelled`, any new tool call against that run shall
    return `rejected` with `E_RUN_CANCELLED`. If an agent retries or resumes a
    request whose approval was denied, the tool boundary shall return
@@ -377,13 +392,22 @@ invocations are tools unless explicitly promoted by a later feature.
     Operator override is a source, not a confidence level. It may raise or
     lower effective policy only when it carries override metadata and appears
     in the policy snapshot reasons, but it shall not raise `confidenceLevel`
-    above the strongest non-override evidence level. Conflicting source claims
-    shall be preserved in `conflicts[]` rather than overwritten.
+    above the strongest non-override evidence level **and** shall not lift the
+    effective-policy floor defined in FR-19. Conflicting source claims shall be
+    preserved in `conflicts[]` rather than overwritten.
 
-19. **FR-19 (Conservative unknown default).** `unknown` and `catalog_only`
-    profiles shall not receive `broad_write` or unrestricted
-    `outcome_delegation` without either an operator override or a high-approval
-    gate.
+19. **FR-19 (Conservative unknown default).** When `confidenceLevel` is
+    `unknown` or `catalog_only`, the effective policy shall not grant
+    `toolScope: 'broad_write'` or unrestricted `autonomy:
+    'outcome_delegation'` **regardless of operator override**. An operator
+    override may raise or lower other dials (such as `toolScope: 'narrow_write'`,
+    `autonomy: 'milestone_plan'`, or `approvalThreshold`), but it shall not
+    remove this floor. Any override attempting to reach `broad_write` or
+    unrestricted `outcome_delegation` under `unknown` / `catalog_only`
+    shall be rejected with `E_TOOL_SCOPE_DENIED`, and the override attempt
+    shall appear in the policy snapshot reasons. This is the combined
+    invariant across FR-18 (override cannot raise `confidenceLevel` above
+    non-override evidence) and FR-19 (effective policy floor).
 20. **FR-20 (Observed hot-start).** Session/run history such as JSON failures,
     tool misuse, repeated retries, or successful validated outputs shall be
     allowed to tighten or loosen policy within the same run.
@@ -717,7 +741,10 @@ the parent action's fallback policy.
   through `blockers[]`.
 - Cancellation tests prove pending approvals are closed, new actions stop
   scheduling, already-applied mutations are not rolled back, and late-finishing
-  in-flight actions carry cancellation context in evidence.
+  in-flight actions carry a `CancellationContext` in evidence with correct
+  `requestedAt`, `runStateAtRequest`, `effectLanded`, a mandatory `reasonCode`,
+  and a `toolCancellation` value that correctly maps from the tool manifest
+  (`cooperative` → `cooperative_requested`, etc.).
 - Cancelled-run tool-call tests prove new tool calls return `E_RUN_CANCELLED`,
   denied approval retries return `E_APPROVAL_DENIED`, and cancellation requests
   are sent only to tools whose manifests declare cooperative or best-effort
@@ -738,7 +765,10 @@ the parent action's fallback policy.
   `selectedLevel` follows the conservative-per-dimension rule.
 - Operator override tests prove override metadata is recorded and can adjust
   effective policy but cannot raise `confidenceLevel` above the strongest
-  non-override evidence level.
+  non-override evidence level **and** cannot lift the FR-19 floor: an override
+  attempting `broad_write` or unrestricted `outcome_delegation` under
+  `unknown` / `catalog_only` confidence shall be rejected with
+  `E_TOOL_SCOPE_DENIED` and recorded in policy snapshot reasons.
 - A provider with rich delivery events but no evals or observed successful
   history remains conservative; delivery observability alone does not raise
   capability confidence.
