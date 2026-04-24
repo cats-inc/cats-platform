@@ -24,6 +24,12 @@ type SpeechRecognitionLike = {
 
 type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
+const PERMANENT_ERROR_KINDS = new Set([
+  'not-allowed',
+  'service-not-allowed',
+  'audio-capture',
+]);
+
 function getSpeechRecognitionCtor(): SpeechRecognitionConstructor | null {
   if (typeof window === 'undefined') return null;
   const w = window as unknown as {
@@ -49,7 +55,7 @@ export function useWebSpeechInput({
   onTranscript,
   lang,
 }: UseWebSpeechInputOptions): UseWebSpeechInputResult {
-  const [supported] = useState<boolean>(() => getSpeechRecognitionCtor() !== null);
+  const [supported, setSupported] = useState<boolean>(() => getSpeechRecognitionCtor() !== null);
   const [listening, setListening] = useState<boolean>(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const onTranscriptRef = useRef(onTranscript);
@@ -83,7 +89,16 @@ export function useWebSpeechInput({
       }
       if (finalText) onTranscriptRef.current(finalText);
     };
-    recognition.onerror = () => {
+    recognition.onerror = (event) => {
+      const kind = event?.error;
+      if (kind) {
+        if (PERMANENT_ERROR_KINDS.has(kind)) {
+          console.warn(`[useWebSpeechInput] disabling after permanent error: ${kind}`);
+          setSupported(false);
+        } else {
+          console.warn(`[useWebSpeechInput] transient error: ${kind}`);
+        }
+      }
       setListening(false);
       recognitionRef.current = null;
     };

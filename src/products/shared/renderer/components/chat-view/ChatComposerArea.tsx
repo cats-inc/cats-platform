@@ -1,5 +1,7 @@
 import {
   useCallback,
+  useEffect,
+  useRef,
   type FormEvent,
   type KeyboardEvent,
   type ReactNode,
@@ -122,14 +124,18 @@ export function ChatComposerArea({
       : null;
   const hasSendableContent = composerDraft.trim().length > 0 || channelFiles.length > 0;
 
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const handleVoiceTranscript = useCallback(
     (text: string) => {
       const trimmed = text.trim();
       if (!trimmed) return;
       const separator = composerDraft && !/\s$/.test(composerDraft) ? ' ' : '';
       onComposerChange(`${composerDraft}${separator}${trimmed}`);
+      requestAnimationFrame(() => {
+        if (textareaRef.current) autoResize(textareaRef.current);
+      });
     },
-    [composerDraft, onComposerChange],
+    [composerDraft, onComposerChange, autoResize],
   );
   const {
     supported: voiceInputSupported,
@@ -144,6 +150,9 @@ export function ChatComposerArea({
       startVoiceInput();
     }
   }, [voiceInputListening, startVoiceInput, stopVoiceInput]);
+  useEffect(() => {
+    if (composerBusy && voiceInputListening) stopVoiceInput();
+  }, [composerBusy, voiceInputListening, stopVoiceInput]);
 
   const stackClassName = (() => {
     const classes = ['composerAreaStack'];
@@ -255,6 +264,7 @@ export function ChatComposerArea({
           excludedMentionNames={directLaneExcludedMentionNames}
         />
         <textarea
+          ref={textareaRef}
           className="composerInput composerInputOverlay"
           rows={1}
           placeholder={compareBusy ? 'Waiting for parallel replies...' : hasConversationStarted ? 'Reply...' : 'How can I help you today?'}
