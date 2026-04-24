@@ -303,23 +303,6 @@ export function ChatComposerArea({
               </div>
             ) : null}
           </div>
-          {voiceInputSupported ? (
-            <button
-              className={`composerPlusButton composerVoiceButton${voiceInputListening ? ' composerVoiceButtonActive' : ''}`}
-              type="button"
-              aria-label={voiceInputListening ? 'Stop voice input' : 'Start voice input'}
-              aria-pressed={voiceInputListening}
-              disabled={composerBusy}
-              onClick={toggleVoiceInput}
-            >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <rect x="6" y="2" width="4" height="8" rx="2" />
-                <path d="M3 8a5 5 0 0 0 10 0" />
-                <path d="M8 13v2" />
-                <path d="M6 15h4" />
-              </svg>
-            </button>
-          ) : null}
         </div>
         <div className="composerRightGroup">
           {composerTargetSlot ?? (
@@ -339,6 +322,23 @@ export function ChatComposerArea({
               onOpenSection={onOpenSection}
             />
           )}
+          {voiceInputSupported ? (
+            <button
+              className={`composerPlusButton composerVoiceButton${voiceInputListening ? ' composerVoiceButtonActive' : ''}`}
+              type="button"
+              aria-label={voiceInputListening ? 'Stop voice input' : 'Start voice input'}
+              aria-pressed={voiceInputListening}
+              disabled={composerBusy}
+              onClick={toggleVoiceInput}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="6" y="2" width="4" height="8" rx="2" />
+                <path d="M3 8a5 5 0 0 0 10 0" />
+                <path d="M8 13v2" />
+                <path d="M6 15h4" />
+              </svg>
+            </button>
+          ) : null}
           {showCancelComposerAction ? (
             <button
               className="composerSendButton composerCancelButton"
