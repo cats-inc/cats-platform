@@ -55,6 +55,8 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [SPEC-082](./specs/SPEC-082-work-system-map-and-cockpit-projections.md)
+- [ADR-083](./decisions/083-adopt-work-graph-projections-for-system-map-and-cockpit.md)
 - [PLAN-074](./plans/PLAN-074-cats-work-agent-supervision-rollout.md)
 - [SPEC-082](./specs/SPEC-082-cats-work-agent-supervision-and-tool-boundary.md)
 - [ADR-082](./decisions/082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md)
