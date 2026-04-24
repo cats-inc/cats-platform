@@ -187,7 +187,10 @@
       "artifactName": "Cats-${version}-${arch}.${ext}",
       "category": "public.app-category.productivity",
       "hardenedRuntime": false,
-      "gatekeeperAssess": false
+      "gatekeeperAssess": false,
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Cats uses the microphone for voice input in the chat composer."
+      }
     },
     "linux": {
       "target": [
