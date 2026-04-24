@@ -67,6 +67,7 @@ import { AudienceChip } from './AudienceChip.js';
 import { PermissionModeChip } from './PermissionModeChip.js';
 import { WorkspaceModeChip } from './WorkspaceModeChip.js';
 import { useRepoProbe } from '../hooks/useRepoProbe.js';
+import { useVoiceInputComposer } from '../hooks/useVoiceInputComposer.js';
 
 function formatBranchRuntimeSessionPolicy(policy: RuntimeSessionPolicy): string {
   const workspaceLabel = policy.workspaceKind === 'worktree'
@@ -519,6 +520,17 @@ export function NewChatDraft({
     busy,
   });
   const { isGroupDraft, isDirectLaneContext, isCatLedDraft } = draftSuggestionContext;
+  const {
+    supported: voiceInputSupported,
+    listening: voiceInputListening,
+    toggle: toggleVoiceInput,
+    textareaRef,
+  } = useVoiceInputComposer({
+    value: composerDraft,
+    onChange: onComposerChange,
+    autoResize,
+    disabled: isSubmittingFirstTurn,
+  });
   const helperChipResetKey = fingerprintDraftHelperChips(visibleStarterSuggestions);
   const {
     showDraftHelperChips,
@@ -881,6 +893,7 @@ export function NewChatDraft({
         </div>
       ) : null}
       <textarea
+        ref={textareaRef}
         className="composerInput"
         rows={1}
         placeholder={composerPlaceholder}
@@ -951,6 +964,23 @@ export function NewChatDraft({
               </div>
             ) : null}
           </div>
+          {voiceInputSupported ? (
+            <button
+              className={`composerPlusButton composerVoiceButton${voiceInputListening ? ' composerVoiceButtonActive' : ''}`}
+              type="button"
+              aria-label={voiceInputListening ? 'Stop voice input' : 'Start voice input'}
+              aria-pressed={voiceInputListening}
+              disabled={isSubmittingFirstTurn}
+              onClick={toggleVoiceInput}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="6" y="2" width="4" height="8" rx="2" />
+                <path d="M3 8a5 5 0 0 0 10 0" />
+                <path d="M8 13v2" />
+                <path d="M6 15h4" />
+              </svg>
+            </button>
+          ) : null}
           {shouldRenderGroupAddRow ? (
             <div className="composerGroupAddRow">
               <BranchAudienceRoster

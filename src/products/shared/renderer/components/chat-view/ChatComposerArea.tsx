@@ -1,7 +1,4 @@
 import {
-  useCallback,
-  useEffect,
-  useRef,
   type FormEvent,
   type KeyboardEvent,
   type ReactNode,
@@ -10,7 +7,7 @@ import {
 } from 'react';
 
 import type { AppShellPayload } from '../../../api/workspaceContracts.js';
-import { useWebSpeechInput } from '../../hooks/useWebSpeechInput.js';
+import { useVoiceInputComposer } from '../../hooks/useVoiceInputComposer.js';
 import { truncatePath } from '../../workspaceChatUtils.js';
 import { ComposerHighlight } from '../ComposerHighlight.js';
 import type { ComposerStackParticipant } from '../ComposerParticipantStack.js';
@@ -124,36 +121,17 @@ export function ChatComposerArea({
       : null;
   const hasSendableContent = composerDraft.trim().length > 0 || channelFiles.length > 0;
 
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const handleVoiceTranscript = useCallback(
-    (text: string) => {
-      const trimmed = text.trim();
-      if (!trimmed) return;
-      const separator = composerDraft && !/\s$/.test(composerDraft) ? ' ' : '';
-      onComposerChange(`${composerDraft}${separator}${trimmed}`);
-      requestAnimationFrame(() => {
-        if (textareaRef.current) autoResize(textareaRef.current);
-      });
-    },
-    [composerDraft, onComposerChange, autoResize],
-  );
   const {
     supported: voiceInputSupported,
     listening: voiceInputListening,
-    start: startVoiceInput,
-    stop: stopVoiceInput,
-    cancel: cancelVoiceInput,
-  } = useWebSpeechInput({ onTranscript: handleVoiceTranscript });
-  const handleVoiceInputToggle = useCallback(() => {
-    if (voiceInputListening) {
-      stopVoiceInput();
-    } else {
-      startVoiceInput();
-    }
-  }, [voiceInputListening, startVoiceInput, stopVoiceInput]);
-  useEffect(() => {
-    if (composerBusy && voiceInputListening) cancelVoiceInput();
-  }, [composerBusy, voiceInputListening, cancelVoiceInput]);
+    toggle: toggleVoiceInput,
+    textareaRef,
+  } = useVoiceInputComposer({
+    value: composerDraft,
+    onChange: onComposerChange,
+    autoResize,
+    disabled: composerBusy,
+  });
 
   const stackClassName = (() => {
     const classes = ['composerAreaStack'];
@@ -332,7 +310,7 @@ export function ChatComposerArea({
               aria-label={voiceInputListening ? 'Stop voice input' : 'Start voice input'}
               aria-pressed={voiceInputListening}
               disabled={composerBusy}
-              onClick={handleVoiceInputToggle}
+              onClick={toggleVoiceInput}
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <rect x="6" y="2" width="4" height="8" rx="2" />
