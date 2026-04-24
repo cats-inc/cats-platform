@@ -256,6 +256,9 @@ quietly widened:
 - `Task.conversationId` → `Conversation`
 - `Mission.managedWorkId` → `WorkItem`
 - `Mission.conversationId` → `Conversation`
+- `Mission.sourceTurnId` → `Turn` (Interaction-layer provenance)
+- `Mission.sourceLaneId` → `Lane` (Interaction-layer provenance)
+- `Mission.assignedAgentId` → `Agent` / `CoreActorRecord`
 - `Run.taskId` → `Task`
 - `Run.parentRunId` → `Run` (self-nest)
 - `Run.conversationId` → `Conversation`
@@ -410,3 +413,4 @@ way `Artifact` already carries `projectId` / `workItemId` /
 
 *Proposed: 2026-04-22*
 *Proposed by: Claude under user-directed investigation (三套心智模型 去重討論)*
+*Amended: 2026-04-25 — §4 completed with `Mission.sourceTurnId` / `sourceLaneId` / `assignedAgentId`; gap discovered during SPEC-082 review*

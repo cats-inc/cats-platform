@@ -117,10 +117,16 @@ Tables and Task Hub remain later projections over the same graph.
     schema provides those anchors.
 15. Outcome, Checkpoint, and Trace evidence shall render only under or beside
     their anchored Conversation, Task, or Run objects.
-16. Approval and approval-binding state shall render as gate decorators on the
-    subject object, not as Planning entities and not as a peer pane.
-17. Approval graph objects may exist for stable drawer identity and detail
-    inspection. They shall not render as primary cards in any System Map pane.
+16. Approval state, whether embedded on a Task (`CoreTaskRecord.approval`) or
+    carried by a standalone `CoreApprovalBindingRecord`, shall render as badges,
+    overlays, or detail-drawer decorators on the subject object. It shall not
+    occupy a structural layer slot or a peer pane.
+17. Standalone `CoreApprovalBindingRecord` instances may exist as
+    `approval_binding`-kind graph objects for stable drawer identity and detail
+    inspection. Embedded `CoreTaskRecord.approval` state does not become a
+    standalone graph object; it surfaces through the owning Task's drawer and
+    as a gate badge on the Task. Neither renders as a primary card in any
+    System Map pane.
 18. System Map shall surface orphan and broken-link diagnostics, including:
     - WorkItem without expected Project when project linkage is required by the
       current selection or filter
@@ -145,8 +151,9 @@ Tables and Task Hub remain later projections over the same graph.
     team, or capability metadata exists in the graph. V1 shall derive role lanes
     from `CoreActorRecord.roles` through resolved owner, assignee,
     orchestrator, or activity actor ids. If no actor roles resolve, the
-    `Teams / Roles` section shall render an empty state and the object shall
-    remain visible in the non-team operational buckets.
+    `Teams / Roles` section shall render an empty state. Graph objects whose
+    anchoring actors resolve to no roles shall still appear in `Needs Decision`
+    / `Active` / `Blocked` / `Recently Shipped` based on their attention state.
 23. Cockpit shall use the same graph object identities as System Map.
 24. Cockpit shall not read from System Map UI state. It shall read from
     `WorkGraphProjection` directly.
@@ -188,7 +195,7 @@ Tables and Task Hub remain later projections over the same graph.
     - Conversation
     - Artifact
     - Activity
-    - Approval / approval binding
+    - ApprovalBinding
 35. Detail drawer content shall show both structural links and operational
     next actions when available.
 36. Chat-created or Chat-linked records shall be visible through the same graph
@@ -222,8 +229,11 @@ Tables and Task Hub remain later projections over the same graph.
    structural objects allowed by their record schemas.
 9. Outcome, Checkpoint, and Trace writes shall project as anchored evidence only
    on Conversation, Task, or Run lineage.
-10. Approval / approval-binding writes shall project as gate decorators with
-    `subjectKind` and `subjectId`; they shall not claim a structural layer slot.
+10. An `ApprovalBinding` write shall project as a gate decorator with the
+    binding's `subjectKind` and `subjectId`; it shall not claim a structural
+    layer slot. Updates to embedded `CoreTaskRecord.approval` state are part of
+    the owning Task write and surface as badges on the Task, not as separate
+    graph objects.
 11. A producer that creates Work-owned data without the required anchors below,
     or with present anchors that do not resolve, shall cause a deterministic
     System Map diagnostic.
@@ -342,7 +352,7 @@ type WorkGraphObjectKind =
   | 'checkpoint'
   | 'trace'
   | 'activity'
-  | 'approval';
+  | 'approval_binding';
 
 type WorkAttentionState =
   | 'none'
@@ -427,6 +437,13 @@ and are located through authoritative top-level `evidenceAttachments` or
 `gateDecorators`, not by claiming a peer layer. Consumers that need reverse
 lookups must build indexes from those top-level collections.
 
+The `status` field's runtime values are the per-kind status enums defined in
+`src/core/types.ts` (`CoreProjectStatus`, `CoreWorkItemStatus`,
+`CoreTaskStatus`, `CoreRunStatus`, `MissionRecordStatus`,
+`CoreConversationStatus`, `CoreActorStatus`, etc.). `WorkGraphGateDecorator.state`
+uses `CoreApprovalStatus`. Implementations must not introduce Work-specific
+status values that shadow or extend the canonical Core enums.
+
 ### View Mode Ownership
 
 ```text
@@ -503,12 +520,17 @@ behind the new graph and shell contracts.
 
 - [ ] Which detail drawer fields are mandatory for each object kind in the
       first implementation?
-- [ ] Which broken-link diagnostics should block handoff versus remain warnings?
 - [x] Work view mode uses query state on `/work`; System Map is the default when
       `view` is absent.
 - [x] Cockpit is opt-in in this ADR; it does not become the default route.
 - [x] V1 role / team lanes use `CoreActorRecord.roles` from resolved actor ids;
       no free-text inference is required.
+- [x] Severity rules: `error` for `broken_fk` and `missing_gate_subject` (object
+      cannot render correctly); `warning` for `missing_project_anchor`,
+      `unanchored_run`, `unanchored_evidence`, and
+      `missing_planning_execution_bridge` (object visible but flagged); `info`
+      for `unsupported_view_filter` (user-facing filter mismatch, not a producer
+      defect). Diagnostics surface state; they do not block producer writes.
 
 ## References
 
