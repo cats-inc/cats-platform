@@ -39,9 +39,14 @@ test('useVoiceInputComposer falls back to append when textarea selection is untr
   );
 
   assert.match(source, /hasUserSelectionRef/u);
+  assert.match(source, /trustedSelectionValueRef/u);
   assert.match(source, /document\.activeElement === el/u);
   assert.match(source, /addEventListener\(['"]focus['"]/u);
+  assert.match(source, /addEventListener\(['"]input['"]/u);
   assert.match(source, /selectionIsTrustworthy/u);
+  assert.match(source, /trustedSelectionValueRef\.current === current/u);
+  assert.match(source, /trustedSelectionValueRef\.current === value/u);
+  assert.match(source, /trustedSelectionValueRef\.current = nextValue/u);
 });
 
 test('useWebSpeechInput cancel aborts and invalidates stale recognition callbacks', async () => {

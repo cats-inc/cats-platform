@@ -28,22 +28,38 @@ export function useVoiceInputComposer({
   const valueRef = useRef(value);
   valueRef.current = value;
   const hasUserSelectionRef = useRef(false);
+  const trustedSelectionValueRef = useRef<string | null>(null);
 
   useEffect(() => {
     const el = textareaRef.current;
     if (!el) return;
     const markInteracted = () => {
       hasUserSelectionRef.current = true;
+      trustedSelectionValueRef.current = valueRef.current;
+    };
+    const markInput = () => {
+      hasUserSelectionRef.current = true;
+      trustedSelectionValueRef.current = el.value;
     };
     el.addEventListener('focus', markInteracted);
     el.addEventListener('pointerdown', markInteracted);
     el.addEventListener('keydown', markInteracted);
+    el.addEventListener('input', markInput);
     return () => {
       el.removeEventListener('focus', markInteracted);
       el.removeEventListener('pointerdown', markInteracted);
       el.removeEventListener('keydown', markInteracted);
+      el.removeEventListener('input', markInput);
     };
   }, []);
+
+  useEffect(() => {
+    if (trustedSelectionValueRef.current === null || trustedSelectionValueRef.current === value) {
+      return;
+    }
+    hasUserSelectionRef.current = false;
+    trustedSelectionValueRef.current = null;
+  }, [value]);
 
   const handleTranscript = useCallback(
     (text: string) => {
@@ -55,7 +71,7 @@ export function useVoiceInputComposer({
         !!el &&
         (typeof document !== 'undefined' && document.activeElement === el
           ? true
-          : hasUserSelectionRef.current);
+          : hasUserSelectionRef.current && trustedSelectionValueRef.current === current);
       let nextValue: string;
       let cursorPos: number;
       if (selectionIsTrustworthy && el) {
@@ -73,6 +89,8 @@ export function useVoiceInputComposer({
         nextValue = `${current}${separator}${trimmed}`;
         cursorPos = nextValue.length;
       }
+      hasUserSelectionRef.current = true;
+      trustedSelectionValueRef.current = nextValue;
       onChange(nextValue);
       requestAnimationFrame(() => {
         const node = textareaRef.current;
