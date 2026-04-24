@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision](./082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md) | Recast the orchestrator as a capability shell with policy-dial supervision | Proposed | 2026-04-25 |
 | [081-canonicalize-three-tier-core-record-taxonomy](./081-canonicalize-three-tier-core-record-taxonomy.md) | Canonicalize the Core record taxonomy as Interaction / Planning / Execution | Proposed | 2026-04-22 |
 | [080-fan-out-web-originated-messages-to-bound-transports](./080-fan-out-web-originated-messages-to-bound-transports.md) | Fan Out Web-Originated Messages to Bound Transports | Proposed | 2026-04-22 |
 | [078-use-electron-native-region-screenshot-with-web-fallback](./078-use-electron-native-region-screenshot-with-web-fallback.md) | Use Electron-native region screenshot with web fallback | Proposed | 2026-04-21 |
@@ -122,6 +123,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-04-22 (ADR-081 added)*
+*Last updated: 2026-04-25 (ADR-082 added)*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*

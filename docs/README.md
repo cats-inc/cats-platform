@@ -55,6 +55,7 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [ADR-082](./decisions/082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md)
 - [PLAN-073](./plans/PLAN-073-transport-fanout-rollout.md)
 - [SPEC-081](./specs/SPEC-081-transport-fanout-for-web-originated-messages.md)
 - [ADR-080](./decisions/080-fan-out-web-originated-messages-to-bound-transports.md)
