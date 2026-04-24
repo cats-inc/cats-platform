@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-082](./SPEC-082-cats-work-agent-supervision-and-tool-boundary.md) | Cats Work Agent Supervision and Tool Boundary | Draft | TBD, [ADR-082](../decisions/082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md) |
 | [SPEC-081](./SPEC-081-transport-fanout-for-web-originated-messages.md) | Transport Fanout for Web-Originated Messages | Draft | [PLAN-073](../plans/PLAN-073-transport-fanout-rollout.md), [ADR-080](../decisions/080-fan-out-web-originated-messages-to-bound-transports.md) |
 | [SPEC-079](./SPEC-079-region-screenshot-composer-attachments.md) | Region Screenshot Composer Attachments | Draft | [PLAN-071](../plans/PLAN-071-region-screenshot-composer-rollout.md), [ADR-078](../decisions/078-use-electron-native-region-screenshot-with-web-fallback.md) |
 | [SPEC-078](./SPEC-078-per-branch-draft-state-schema.md) | Per-Branch Draft State Schema and Lead-Default Fallback Semantics | In Progress (Phase 1 Schema Landed) | [PLAN-070](../plans/PLAN-070-programmable-per-branch-draft-rollout.md), [ADR-077](../decisions/077-make-parallel-draft-state-per-branch-addressable-for-orchestrator-composition.md) |
@@ -136,6 +137,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-04-22 (SPEC-081 added)*
+*Last updated: 2026-04-25 (SPEC-082 added)*
 
 *See also: [plans/](../plans/) for implementation plans*
