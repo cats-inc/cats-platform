@@ -152,7 +152,11 @@ behavior change.
     unrestricted `outcome_delegation` under `unknown` / `catalog_only` returns
     `E_TOOL_SCOPE_DENIED` and records the attempt in snapshot reasons
   - evaluated/observed capability can grant `broad_write` when other policy
-    inputs allow it and approval remains appropriately strict
+    inputs allow it, the tool's `sideEffect` is `external_visible`,
+    `destructive`, or `expensive`, and the resulting
+    `approvalThreshold` is `high`; combinations that would grant
+    `broad_write` with `medium` or lower approval on side-effect-bearing
+    tools shall fail the test
   - `dialVersions` appears when a dial is independently versioned or
     experiment-participating
   - `aggregateMethod: 'conservative_per_dimension'` is covered by the current
@@ -333,9 +337,14 @@ policy/evidence lineage.
   - semantic planning choice comes from the fake agent
   - rejection recovery plan comes from `reviseAfterRejection`, not platform
     substitution
+  - the platform caps `reviseAfterRejection` recovery depth at a declared
+    maximum (default 3). Exceeding the cap shall terminate the run with
+    `failed` and evidence reasoning referencing the cap; the platform shall
+    not silently keep calling `reviseAfterRejection` forever
   - observed action trace preserves the fake agent's selected step order
-  - observed trace captures rejection `error.code` for assertions such as
-    `E_TOOL_SCOPE_DENIED`
+  - observed trace captures rejection `error.code` across the main FR-29
+    codes, at minimum: `E_TOOL_SCOPE_DENIED`, `E_APPROVAL_DENIED`,
+    `E_RUN_CANCELLED`, `E_BUDGET_EXCEEDED`, and `E_SCHEMA_INVALID`
   - deterministic routing/invariants remain platform-owned
   - weak-worker tool surface is narrower than parent run
   - worker schema failure follows `fallbackPolicy`
