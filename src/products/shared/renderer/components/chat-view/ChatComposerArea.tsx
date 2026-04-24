@@ -1,4 +1,5 @@
 import {
+  useCallback,
   type FormEvent,
   type KeyboardEvent,
   type ReactNode,
@@ -7,6 +8,7 @@ import {
 } from 'react';
 
 import type { AppShellPayload } from '../../../api/workspaceContracts.js';
+import { useWebSpeechInput } from '../../hooks/useWebSpeechInput.js';
 import { truncatePath } from '../../workspaceChatUtils.js';
 import { ComposerHighlight } from '../ComposerHighlight.js';
 import type { ComposerStackParticipant } from '../ComposerParticipantStack.js';
@@ -119,6 +121,29 @@ export function ChatComposerArea({
       ? payload.chat.cats.find((cat) => cat.id === directLaneRecipient.catId) ?? null
       : null;
   const hasSendableContent = composerDraft.trim().length > 0 || channelFiles.length > 0;
+
+  const handleVoiceTranscript = useCallback(
+    (text: string) => {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+      const separator = composerDraft && !/\s$/.test(composerDraft) ? ' ' : '';
+      onComposerChange(`${composerDraft}${separator}${trimmed}`);
+    },
+    [composerDraft, onComposerChange],
+  );
+  const {
+    supported: voiceInputSupported,
+    listening: voiceInputListening,
+    start: startVoiceInput,
+    stop: stopVoiceInput,
+  } = useWebSpeechInput({ onTranscript: handleVoiceTranscript });
+  const handleVoiceInputToggle = useCallback(() => {
+    if (voiceInputListening) {
+      stopVoiceInput();
+    } else {
+      startVoiceInput();
+    }
+  }, [voiceInputListening, startVoiceInput, stopVoiceInput]);
 
   const stackClassName = (() => {
     const classes = ['composerAreaStack'];
@@ -289,6 +314,23 @@ export function ChatComposerArea({
               </div>
             ) : null}
           </div>
+          {voiceInputSupported ? (
+            <button
+              className={`composerPlusButton composerVoiceButton${voiceInputListening ? ' composerVoiceButtonActive' : ''}`}
+              type="button"
+              aria-label={voiceInputListening ? 'Stop voice input' : 'Start voice input'}
+              aria-pressed={voiceInputListening}
+              disabled={composerBusy}
+              onClick={handleVoiceInputToggle}
+            >
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect x="6" y="2" width="4" height="8" rx="2" />
+                <path d="M3 8a5 5 0 0 0 10 0" />
+                <path d="M8 13v2" />
+                <path d="M6 15h4" />
+              </svg>
+            </button>
+          ) : null}
         </div>
         <div className="composerRightGroup">
           {composerTargetSlot ?? (
