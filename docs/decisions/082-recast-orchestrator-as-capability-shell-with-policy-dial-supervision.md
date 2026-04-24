@@ -217,8 +217,23 @@ function at the moment the action is about to execute. Context is
 a vector, not a scalar tier label, at minimum:
 
 - **Capability profile** — tool-use accuracy, JSON fidelity,
-  reasoning depth, context length (sourced from
-  `ProductProviderEventCapabilities` and observed evaluation data).
+  reasoning depth, context length. Sources are a combination of
+  (1) provider / model catalog limits (e.g., declared context
+  window, declared tool-use support), (2) eval results run against
+  the provider / model, (3) accumulated task history per provider
+  / model, and (4) operator overrides. **Not sourced from
+  `ProductProviderEventCapabilities`** — that signal describes
+  delivery / observability (whether we can observe incremental
+  text, tool_use events, tool_result events, progress, reasoning
+  events), not intelligence. A provider can deliver tool_use
+  events perfectly while the model inside calls tools with poor
+  accuracy; the two axes are independent and must not be conflated.
+- **Delivery / observability signals** — `ProductProviderEventCapabilities`
+  and adjacent delivery-shape metadata. These influence a
+  different subset of policy dials (for example `validation` and
+  `fallbackPolicy` may need to be stricter when we cannot observe
+  incremental progress) but **do not** constitute the capability
+  profile on their own.
 - **Task profile** — complexity, side-effects, idempotency,
   reversibility, cross-system reach.
 - **Session history** — success rate, format-failure count, tool
@@ -275,10 +290,29 @@ point the platform emits a follow-up event whose payload carries
 the eventual `{ status: 'applied', result }` or
 `{ status: 'rejected', error }`.
 
-Every mutating tool has a matching read-only query
+Mutating tools **should** ship with a matching read-only
+preflight query where it is feasible to provide one
 (`@get-channel-capacity`, `@list-participants`,
-`@describe-permissions`) so an agent can pre-check rather than
-treat errors as discovery probes.
+`@describe-permissions`) so an agent can pre-check capacity,
+permission, and conflict state rather than treat errors as
+discovery probes.
+
+Not every tool can offer a precise preflight — external APIs
+without query endpoints, one-shot side effects on opaque provider
+CLIs, actions whose feasibility genuinely depends on execution
+time — and forcing one would either lie or block useful
+capabilities. The contract is therefore:
+
+- where feasible, provide a preflight query covering
+  capacity / permission / known-blocking-conflict checks;
+- where not feasible, the tool's schema and documentation must
+  explicitly mark the action as non-preflightable and carry the
+  expected failure codes so the agent can plan around it without
+  expecting a pre-check.
+
+Silent "there is no preflight, try and see" tools are not
+acceptable; the absence of a preflight must itself be an
+advertised property of the tool.
 
 ### 5. Evidence capture as a first-class cross-cutting concern
 
@@ -512,7 +546,7 @@ delete / archive).
 - [Research: Cats Work Agent Supervision Model (Codex)](../research/2026-04-23-codex-cats-work-agent-supervision-model.md)
 - `cats-platform/src/platform/orchestration/` — current orchestrator subsystem (planner, dispatcher, execution workflow)
 - `cats-platform/src/products/chat/state/runtimeTargeting.ts` — `resolveOrchestratorExecutionTarget` (today's participant-hat entry point)
-- `cats-platform/src/shared/providerCatalog.ts` — `ProductProviderEventCapabilities` (capability profile source)
+- `cats-platform/src/shared/providerCatalog.ts` — `ProductProviderEventCapabilities` (delivery / observability signal for supervision policy inputs; **not** a capability / intelligence profile — see §3)
 
 ---
 
