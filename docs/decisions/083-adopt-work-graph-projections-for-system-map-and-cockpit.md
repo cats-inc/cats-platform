@@ -1,10 +1,9 @@
 # ADR-083: Adopt Work Graph Projections for System Map and Cockpit
 
 > Recast Cats Work around one product-owned Work Graph projection layer.
-> Build the System Map view first to validate the shared mental model and
-> cross-product slots, then build the Cockpit view as the production-facing
-> owner surface. Tables and Task Hub remain deferred projections over the same
-> graph.
+> Build System Map first and keep it as the production default / conformance
+> surface. Build Cockpit second as an opt-in operational projection. Tables and
+> Task Hub remain deferred projections over the same graph.
 
 ## Status
 
@@ -34,20 +33,24 @@ The open product decision is how Cats Work should expose that model.
 Four viable view families exist:
 
 1. **System Map** - ADR-081-like structural view over Interaction /
-   Planning / Execution / Evidence.
+   Planning / Execution. Evidence is rendered from record-specific
+   anchors, and gates are rendered as cross-cutting decorators; neither
+   owns a peer pane.
 2. **Tables** - Airtable-like record tables for Projects, WorkItems,
    Tasks, Runs, Artifacts, Approvals, and Activities.
-3. **Cockpit** - monday-like owner command center organized around
-   decisions, active work, blockers, shipped outputs, and teams.
+3. **Cockpit** - monday-inspired owner command center organized around
+   operational triage, decision pressure, blockers, shipped evidence,
+   and role / team load.
 4. **Task Hub** - ClickUp-like work-object operation view centered on
    task queues and task detail actions.
 
 The project needs two things first:
 
-- a reliable way to prove Chat and Code outputs can land in correct
-  Work slots; and
-- a production-facing Work surface that a non-technical owner can use
-  without reading chat transcripts or raw record tables.
+- an always-available default Work surface that proves Chat and Code
+  outputs land in correct ADR-081 slots and exposes mistakes
+  immediately; and
+- a later production owner cockpit that can summarize active work
+  without hiding taxonomy or anchoring errors.
 
 ## Decision
 
@@ -59,9 +62,15 @@ persistence model and does not add new Core record families. It is the
 shared read-model layer that normalizes:
 
 - identity and link structure across Conversation, Project, WorkItem,
-  Task, Run, Artifact, Activity, Approval, and related records;
-- layer classification such as `interaction`, `planning`,
-  `execution`, `evidence`, and `gate`;
+  Task, Mission, Run, Artifact, Activity, Approval, and related
+  records;
+- structural layer classification limited to `interaction`,
+  `planning`, and `execution`;
+- cross-layer evidence attachments such as Artifact, Outcome,
+  Checkpoint, Trace, and Activity, using their record-specific anchor
+  fields;
+- cross-cutting gate decorators such as ApprovalBinding, using subject
+  object identity rather than a separate layer slot;
 - operational classification such as attention state, blocked state,
   handoff state, owner role, and next action; and
 - stable object identity so all views open the same shared detail
@@ -81,24 +90,37 @@ not:
 View A state -> compatibility adapter -> View C state
 ```
 
-### 2. Build System Map first
+### 2. Build System Map first and keep it as the production default
 
 The first top-down Work view will be **System Map**. Its job is to
 validate the mental model and give Chat / Code clear slots to fill.
-It groups the Work Graph into:
+It is also the production default Work entry, not a dev-only or
+inspection-only surface.
+
+System Map groups the Work Graph into exactly the ADR-081 structural
+panes:
 
 - `Interaction` - Agent, Participant, Container, Conversation, Turn,
   Lane, Segment, Session, TransportBinding.
 - `Planning` - Project and WorkItem.
 - `Execution` - Task, Mission, Run.
-- `Evidence` - Artifact, Outcome, Checkpoint, Trace, Activity.
-- `Gates` - approvals and approval bindings as cross-cutting gates.
 
-System Map is allowed to feel structural and inspection-oriented. It
-is the first implementation target because it is easier to verify:
-records either anchor correctly, or they are orphaned / inconsistent.
+Evidence is shown at its anchored object, not as a fourth pane.
+Artifact and Activity can materialize from Project / WorkItem /
+Conversation / Task / Run anchors as their schemas allow. Outcome,
+Checkpoint, and Trace are shown only through their Conversation / Task /
+Run anchors. Evidence with no useful anchor is a diagnostic, not a
+separate navigation bucket.
 
-### 3. Build Cockpit second and make it the production-facing Work default
+Gates are shown as badges, overlays, or detail-drawer decorators on
+their subject objects. Approval does not own a System Map pane or
+structural layer slot.
+
+System Map remains the default because it is the conformance test for
+the product. If Chat or Code writes an object into the wrong place, the
+owner should see the mismatch in the default Work surface immediately.
+
+### 3. Build Cockpit second as an opt-in operational projection
 
 The second Work view will be **Cockpit**. It uses the same Work Graph
 but groups it by owner-operational questions:
@@ -107,14 +129,42 @@ but groups it by owner-operational questions:
 - What is active?
 - What is blocked or failing?
 - What shipped or produced evidence?
-- Which teams / roles / capabilities are overloaded, idle, or
+- Which teams, roles, or capabilities are overloaded, idle, or
   repeatedly failing?
 
-Cockpit becomes the default production-facing Work entry once it is
-usable. System Map remains available as an inspection / model
-validation view.
+Cockpit is production-quality when built, but it is not the default
+Work entry in this ADR. It is an opt-in view mode over the same graph.
+System Map remains the default until a future ADR explicitly changes
+that decision.
 
-### 4. Defer Tables and Task Hub
+This also clarifies the monday influence: Cockpit is not a monday clone
+and does not require fake departments. It may show role-framed or
+team-framed lanes when the data is real, but its first grouping is
+operational triage.
+
+### 4. Producers write canonical slots, not view-specific state
+
+Chat, Code, Work, and runtime producers must write canonical records and
+anchors that the Work Graph can project. They must not write
+System-Map-specific or Cockpit-specific state.
+
+The slot contract is:
+
+- Interaction writes create or link Conversation-family records.
+- Planning writes create or link Project and WorkItem records.
+- Execution writes create or link Task, Mission, and Run records.
+- Evidence writes create Artifact / Activity records with their
+  allowed anchors, or Outcome / Checkpoint / Trace records with
+  Conversation / Task / Run anchors.
+- Gate writes create ApprovalBinding-style records with a subject kind
+  and subject id.
+
+Views can derive grouping, badges, attention states, and diagnostics
+from those records. If a producer claims Work ownership but omits the
+anchors required to locate the object, System Map must surface that as
+a broken-slot diagnostic.
+
+### 5. Defer Tables and Task Hub
 
 Tables and Task Hub are useful but not on the first production path.
 
@@ -127,7 +177,7 @@ Tables and Task Hub are useful but not on the first production path.
 
 Neither should block System Map or Cockpit.
 
-### 5. Work view mode owns Work navigation
+### 6. Work view mode owns Work navigation
 
 Work has two navigation layers:
 
@@ -139,16 +189,21 @@ Work has two navigation layers:
 
 Changing from System Map to Cockpit changes the Work-local sidebar,
 main content layout, grouping, sorting, empty states, and CTAs. It
-does not change the underlying object identities or the shared detail
-drawer.
+does not change the underlying object identities, selection intent,
+filters that still apply, or the shared detail drawer.
 
-### 6. Old Work renderer UI is not a design constraint
+### 7. Old Work renderer UI must be isolated before the new shell starts
 
 The existing Work renderer components may be mined for useful API
 clients, projection helpers, or tests, but they do not define the new
 information architecture, layout, visual style, or component contract.
-When the new Work shell is ready, obsolete Work renderer prototypes
-should be deleted rather than preserved through compatibility shims.
+
+Before implementation starts on the new Work shell, the old Work UI
+routes and renderer components must be isolated or retired so the new
+shell is not co-resident with the rejected prototype. Non-UI helpers
+may be moved behind the new boundaries when they still fit. Hybrid
+fallbacks and compatibility shims for the old Work renderer are
+explicitly rejected.
 
 This follows the repository pre-release policy: unreleased prototypes
 are implementation history, not compatibility targets.
@@ -158,6 +213,8 @@ are implementation history, not compatibility targets.
 ### Positive
 
 - Work can move top-down without waiting for Chat-mode UI cleanup.
+- System Map stays visible enough to prevent taxonomy drift and bad
+  Chat / Code writes from hiding behind friendly dashboards.
 - Chat and Code get explicit Work slots to target when they produce
   conversations, work items, tasks, runs, artifacts, and activities.
 - System Map provides a testable first slice for link integrity,
@@ -166,17 +223,19 @@ are implementation history, not compatibility targets.
   creating a second data model.
 - Tables and Task Hub remain available expansion paths without
   blocking the main Work rollout.
-- Existing unapproved Work UI can be retired cleanly.
+- Existing unapproved Work UI can be retired cleanly before it
+  influences the new shell.
 
 ### Negative
 
-- The first System Map slice may look more structural than
-  production-polished, which requires discipline not to mistake it for
-  the final owner experience.
+- The default Work entry will initially be more structural than a
+  polished owner cockpit.
 - A Work Graph projection layer adds an explicit read-model seam that
   must be kept honest with tests.
 - Two view modes require Work-local navigation to be generated from
   projection metadata instead of hard-coded as one static sidebar.
+- Producers must satisfy the slot contract rather than relying on a
+  forgiving dashboard to mask missing anchors.
 
 ### Neutral
 
@@ -188,13 +247,14 @@ are implementation history, not compatibility targets.
 
 ## Alternatives Considered
 
-### Alternative 1: Make Cockpit first
+### Alternative 1: Make Cockpit first or make it the default
 
 - **Pros**: fastest path to a human-facing owner dashboard.
 - **Cons**: risks hiding model errors behind friendly groupings before
   Chat and Code prove they can write into the right slots.
 - **Why rejected**: the current blocker is model / slot confidence.
-  System Map proves that first; Cockpit follows as a projection.
+  System Map proves that first and remains the production conformance
+  surface. Cockpit follows as an opt-in projection.
 
 ### Alternative 2: Make Tables first
 
@@ -211,7 +271,8 @@ are implementation history, not compatibility targets.
 - **Pros**: aligns with day-to-day work-object operations and agent
   task handling.
 - **Cons**: collapses Work back toward task-centric execution before
-  Project / WorkItem / Interaction / Evidence slots are proven.
+  Project / WorkItem / Interaction slots and cross-layer evidence
+  anchors are proven.
 - **Why rejected**: Task Hub is valuable after the graph and shared
   detail drawer exist, but premature as the primary top-down frame.
 
@@ -221,7 +282,8 @@ are implementation history, not compatibility targets.
 - **Cons**: keeps the product anchored to unapproved bottom-up
   prototypes and preserves information architecture that the owner has
   explicitly rejected.
-- **Why rejected**: the old Work UI has no design authority.
+- **Why rejected**: the old Work UI has no design authority and must
+  be isolated before the new shell starts.
 
 ## References
 
@@ -235,4 +297,5 @@ are implementation history, not compatibility targets.
 ---
 
 *Decision made: 2026-04-25*
+*Decision revised: 2026-04-25*
 *Decision makers: User + Codex*

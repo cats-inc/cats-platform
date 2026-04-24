@@ -1,8 +1,8 @@
 # SPEC-082: Work System Map and Cockpit Projections
 
 > Define the first top-down Cats Work UI framework around one Work Graph
-> projection layer, a System Map view for model validation, and a Cockpit view
-> for the production owner surface.
+> projection layer, System Map as the production default / conformance surface,
+> and Cockpit as an opt-in operational projection.
 
 ## Metadata
 
@@ -21,9 +21,10 @@ top-down operating framework. The new framework uses one shared Work Graph
 projection over canonical Core records and renders it through two first-class
 view modes:
 
-- **System Map** first, to validate ADR-081 slots and prove Chat / Code outputs
-  can land in the right places.
-- **Cockpit** second, to become the production-facing owner command center.
+- **System Map** first and as the default Work entry, to validate ADR-081 slots
+  and prove Chat / Code outputs can land in the right places.
+- **Cockpit** second and opt-in, to provide a production-quality operational
+  command center without hiding slot or anchor errors.
 
 Tables and Task Hub remain later projections over the same graph.
 
@@ -32,13 +33,14 @@ Tables and Task Hub remain later projections over the same graph.
 - Build Work from the documented mental model instead of from existing Work UI
   prototypes.
 - Define one Work Graph view-model contract that all Work views consume.
-- Ship System Map first as a structural validation and inspection surface.
-- Define Cockpit as the production-facing projection over the same graph.
+- Ship System Map first and keep it as the production default conformance
+  surface.
+- Define Cockpit as an opt-in production projection over the same graph.
 - Separate platform shell chrome from Work view-owned navigation.
-- Keep shared object identity stable across view modes through one detail
-  drawer / inspector model.
-- Give Chat and Code explicit slots for conversations, tasks, runs, artifacts,
-  activities, and approvals.
+- Keep shared object identity, selection intent, and applicable filters stable
+  across view modes through one detail drawer / inspector model.
+- Give Chat and Code explicit write slots for conversations, projects, work
+  items, tasks, missions, runs, artifacts, activities, and approvals.
 - Preserve the option to add Tables and Task Hub later without changing the
   underlying graph.
 
@@ -54,13 +56,13 @@ Tables and Task Hub remain later projections over the same graph.
 
 ## User Stories
 
-- As the owner, I want Work to show whether the system's project, work item,
-  task, run, artifact, conversation, and approval records are connected
-  correctly before I rely on automation.
-- As the owner, I want a production Cockpit that tells me what needs my
-  decision, what is active, what is blocked, and what shipped.
-- As a Chat implementer, I want to know exactly where a conversation-generated
-  task, work item, or artifact appears in Work.
+- As the owner, I want the default Work surface to show whether the system's
+  project, work item, task, run, artifact, conversation, and approval records
+  are connected correctly before I rely on automation.
+- As the owner, I want an opt-in Cockpit that tells me what needs my decision,
+  what is active, what is blocked, and what shipped.
+- As a Chat implementer, I want to know exactly what canonical records and
+  anchors I must write so conversation-generated work appears in Work.
 - As a Code implementer, I want code tasks, execution runs, previews, build
   artifacts, and review evidence to land in predictable Work slots.
 - As a future power user, I want the same records to be available later through
@@ -81,95 +83,136 @@ Tables and Task Hub remain later projections over the same graph.
    - `sourceRecordFamily`
    - `title`
    - `status`
-4. Every graph object shall expose a structural layer:
+4. Every structural graph object shall expose one ADR-081 layer only:
    - `interaction`
    - `planning`
    - `execution`
-   - `evidence`
-   - `gate`
-5. Every graph object shall expose operational classification sufficient for
+5. Evidence records shall not create a fourth structural pane. They shall render
+   through record-specific anchors on structural objects.
+6. Gate / approval records shall not create a structural pane. They shall render
+   as badges, overlays, or detail-drawer decorators on subject objects.
+7. Every graph object shall expose operational classification sufficient for
    Cockpit grouping:
    - attention state
    - blocked / failed / ready state
    - owner role or team lane when known
    - next action summary when known
    - linked project / work item / task / conversation ids when applicable
-6. System Map shall be the first required view mode.
-7. System Map shall group graph objects into at least these panes:
+8. System Map shall be the first required view mode and the default Work route
+   when no explicit view mode is selected.
+9. System Map shall group graph objects into exactly these primary panes:
    - `Interaction`
    - `Planning`
    - `Execution`
-   - `Evidence`
-   - `Gates`
-8. The Interaction pane shall include interaction records and references such as
-   Agent, Participant, Container, Conversation, Turn, Lane, Segment, Session,
-   and TransportBinding when they are available in the projection.
-9. The Planning pane shall include Project and WorkItem records.
-10. The Execution pane shall include Task, Mission, and Run records.
-11. The Evidence pane shall include Artifact, Outcome, Checkpoint, Trace, and
-    Activity records.
-12. The Gates pane shall include approval state and approval bindings as
-    cross-cutting gates rather than treating Approval as a Planning entity.
-13. System Map shall surface orphan and broken-link diagnostics, including:
+10. The Interaction pane shall include interaction records and references such
+    as Agent, Participant, Container, Conversation, Turn, Lane, Segment,
+    Session, and TransportBinding when they are available in the projection.
+11. The Planning pane shall include Project and WorkItem records.
+12. The Execution pane shall include Task, Mission, and Run records.
+13. Artifact and Activity evidence shall render under or beside their anchored
+    Project, WorkItem, Conversation, Task, or Run objects when the underlying
+    schema provides those anchors.
+14. Outcome, Checkpoint, and Trace evidence shall render only under or beside
+    their anchored Conversation, Task, or Run objects.
+15. Approval and approval-binding state shall render as gate decorators on the
+    subject object, not as Planning entities and not as a peer pane.
+16. System Map shall surface orphan and broken-link diagnostics, including:
     - WorkItem without expected Project when project linkage is required by the
-      current view
+      current selection or filter
     - Task without expected WorkItem when the task claims Work ownership
     - Run without task or mission lineage when lineage is expected
     - Artifact or Activity missing all useful anchors
+    - Outcome, Checkpoint, or Trace missing required execution / conversation
+      anchors
     - Conversation-linked work with no visible Planning / Execution bridge
-14. System Map shall allow selecting any graph object and opening a shared
+17. System Map shall allow selecting any graph object and opening a shared
     detail drawer / inspector.
-15. Cockpit shall be the second required view mode.
-16. Cockpit shall group graph objects by owner-operational questions:
+18. Cockpit shall be the second required view mode.
+19. Cockpit shall group graph objects by operational triage, not by fake
+    department structure:
     - `Needs Decision`
     - `Active`
     - `Blocked`
     - `Recently Shipped`
     - `Teams / Roles`
-17. Cockpit shall use the same graph object identities as System Map.
-18. Cockpit shall not read from System Map UI state. It shall read from
+20. Cockpit may show monday-like role or team lanes only when real owner, role,
+    team, or capability metadata exists in the graph.
+21. Cockpit shall use the same graph object identities as System Map.
+22. Cockpit shall not read from System Map UI state. It shall read from
     `WorkGraphProjection` directly.
-19. Work shall expose a view mode switch for at least:
+23. Work shall expose a view mode switch for at least:
     - `System Map`
     - `Cockpit`
-20. Changing view mode shall change the Work-owned sidebar entries, main
+24. Work view mode shall be represented as bookmarkable route/query state on
+    the Work surface, with `/work` defaulting to System Map when the mode is
+    absent.
+25. Changing view mode shall change the Work-owned sidebar entries, main
     content grouping, sorting, empty states, and primary CTAs.
-21. Changing view mode shall not change the selected object's canonical
-    identity or detail drawer behavior.
-22. Platform shell chrome shall stay outside Work view mode ownership.
-23. Work view-owned sidebar entries shall be generated from projection metadata,
+26. Changing view mode shall preserve canonical selected-object identity when
+    the object exists in both projections.
+27. Changing view mode shall preserve applicable filters such as project,
+    work item, task, status, owner role, and attention state. A projection may
+    ignore filters it cannot express, but it must not silently discard them from
+    route / selection state.
+28. Platform shell chrome shall stay outside Work view mode ownership.
+29. Work view-owned sidebar entries shall be generated from projection metadata,
     not hard-coded as one static list for all modes.
-24. The first System Map sidebar shall include at least:
+30. The first System Map sidebar shall include at least:
     - Interaction
     - Planning
     - Execution
-    - Evidence
-    - Gates
-    - Broken Links
-25. The first Cockpit sidebar shall include at least:
+    - Broken Links / Diagnostics
+31. The first Cockpit sidebar shall include at least:
     - Command Center
     - Needs Decision
     - Active Work
     - Blocked
     - Shipped
-    - Teams
-26. The shared detail drawer shall support at least these object kinds:
+    - Teams / Roles
+32. The shared detail drawer shall support at least these object kinds:
     - Project
     - WorkItem
     - Task
+    - Mission
     - Run
     - Conversation
     - Artifact
     - Activity
     - Approval / approval binding
-27. Detail drawer content shall show both structural links and operational
+33. Detail drawer content shall show both structural links and operational
     next actions when available.
-28. Chat-created or Chat-linked records shall be visible through the same graph
+34. Chat-created or Chat-linked records shall be visible through the same graph
     slots rather than through Chat-specific Work UI branches.
-29. Code-created or Code-linked records shall be visible through the same graph
+35. Code-created or Code-linked records shall be visible through the same graph
     slots rather than through Code-specific Work UI branches.
-30. Existing Work renderer prototypes may be removed once replacement views
-    cover their required routes or their functionality is explicitly deferred.
+36. Existing Work renderer routes and UI components shall be isolated or
+    disabled before new Work shell implementation starts. The new shell shall
+    not keep a hybrid fallback to the rejected prototype.
+
+### Producer Slot Contract
+
+1. Producers shall write canonical Core records and anchors, not
+   view-specific System Map or Cockpit state.
+2. A Conversation-family write shall project into the Interaction pane.
+3. A Project write shall project into the Planning pane.
+4. A WorkItem write shall project into the Planning pane and should include its
+   `projectId` when the work item belongs to a project.
+5. A Task write shall project into the Execution pane and should include the
+   strongest available anchors, such as `conversationId`, planning metadata, or
+   parent task lineage.
+6. A Mission write shall project into the Execution pane. Mission shall remain
+   distinct from Task and may have nullable managed-work anchors when it
+   represents coordination that is not yet bound to a work item.
+7. A Run write shall project into the Execution pane and should include task,
+   mission, conversation, parent-run, or runtime lineage when available.
+8. Artifact and Activity writes shall project as anchored evidence on the
+   structural objects allowed by their record schemas.
+9. Outcome, Checkpoint, and Trace writes shall project as anchored evidence only
+   on Conversation, Task, or Run lineage.
+10. Approval / approval-binding writes shall project as gate decorators with
+    `subjectKind` and `subjectId`; they shall not claim a structural layer slot.
+11. A producer that creates Work-owned data without enough anchors for the
+    relevant slot shall cause a System Map diagnostic.
 
 ### Non-Functional Requirements
 
@@ -177,8 +220,9 @@ Tables and Task Hub remain later projections over the same graph.
   a friendly label, it must still map back to the canonical layer and record.
 - **Projection integrity**: System Map and Cockpit must consume the same graph
   projection.
-- **Testability**: System Map slot assignment and broken-link diagnostics must
-  be testable without browser-only visual assertions.
+- **Testability**: System Map slot assignment, anchored evidence rendering, gate
+  decorators, and broken-link diagnostics must be testable without browser-only
+  visual assertions.
 - **Extensibility**: Tables and Task Hub must be addable as projections without
   changing the graph contract.
 - **No prototype compatibility**: unreleased Work renderer components must not
@@ -202,12 +246,7 @@ Cats Core records
 ### Suggested Work Graph Shape
 
 ```ts
-type WorkGraphLayer =
-  | 'interaction'
-  | 'planning'
-  | 'execution'
-  | 'evidence'
-  | 'gate';
+type WorkGraphLayer = 'interaction' | 'planning' | 'execution';
 
 type WorkGraphObjectKind =
   | 'agent'
@@ -242,7 +281,7 @@ type WorkAttentionState =
 interface WorkGraphObjectSummary {
   id: string;
   kind: WorkGraphObjectKind;
-  layer: WorkGraphLayer;
+  structuralLayer: WorkGraphLayer | null;
   sourceRecordId: string;
   sourceRecordFamily: string;
   title: string;
@@ -257,6 +296,20 @@ interface WorkGraphObjectSummary {
   linkedTaskId: string | null;
   linkedRunId: string | null;
   updatedAt: string | null;
+  evidenceObjectIds: string[];
+  gateObjectIds: string[];
+}
+
+interface WorkGraphEvidenceAttachment {
+  evidenceObjectId: string;
+  anchorObjectId: string;
+  relation: 'artifact' | 'activity' | 'outcome' | 'checkpoint' | 'trace';
+}
+
+interface WorkGraphGateDecorator {
+  gateObjectId: string;
+  subjectObjectId: string;
+  state: string;
 }
 
 interface WorkGraphProjection {
@@ -266,6 +319,8 @@ interface WorkGraphProjection {
     toId: string;
     relation: string;
   }>;
+  evidenceAttachments: WorkGraphEvidenceAttachment[];
+  gateDecorators: WorkGraphGateDecorator[];
   diagnostics: Array<{
     id: string;
     severity: 'info' | 'warning' | 'error';
@@ -276,8 +331,11 @@ interface WorkGraphProjection {
 ```
 
 This is a specification shape, not a required final TypeScript file layout.
-Implementation may split summaries, links, and diagnostics if needed, but the
-semantic fields must remain available to both System Map and Cockpit.
+Implementation may split summaries, links, attachments, decorators, and
+diagnostics if needed, but the semantic fields must remain available to both
+System Map and Cockpit. Evidence and gate objects use `structuralLayer: null`
+and are located through `evidenceAttachments` or `gateDecorators`, not by
+claiming a peer layer.
 
 ### View Mode Ownership
 
@@ -300,6 +358,22 @@ Work Product Shell
     Same object identity across view modes
 ```
 
+### Routing State
+
+The first implementation uses `/work` with query state, not separate route
+families:
+
+```text
+/work
+/work?view=system-map
+/work?view=cockpit&projectId=proj_123
+/work?view=system-map&projectId=proj_123&taskId=task_456
+```
+
+When `view` is absent or invalid, Work defaults to System Map. Switching between
+System Map and Cockpit must preserve selected object and filter query state
+where the target projection can express it.
+
 ## Boundaries
 
 ### What may be reused from current Work code
@@ -316,6 +390,14 @@ Work Product Shell
 - Current Work component hierarchy.
 - Current Work visual style.
 - Current Work chat-derived route assumptions.
+- Current Work route fallback behavior.
+
+### Old UI isolation requirement
+
+Before implementation starts on the new Work shell, existing Work renderer UI
+routes/components shall be isolated, disabled, moved under a scrapped boundary,
+or deleted. Reuse is limited to non-UI helpers that are deliberately moved
+behind the new graph and shell contracts.
 
 ## Dependencies
 
@@ -329,15 +411,14 @@ Work Product Shell
 
 ## Open Questions
 
-- [ ] Should the first implementation use a new `/work/map` route family or a
-      persisted `?view=system-map` mode on `/work`?
 - [ ] Which detail drawer fields are mandatory for each object kind in the
       first implementation?
-- [ ] Should Cockpit become the default route immediately after it lands, or
-      only after System Map diagnostics are clean for Chat / Code writes?
 - [ ] Which broken-link diagnostics should block handoff versus remain warnings?
 - [ ] How much role / team inference should be deterministic in the first slice
       versus stored as metadata on tasks and work items?
+- [x] Work view mode uses query state on `/work`; System Map is the default when
+      `view` is absent.
+- [x] Cockpit is opt-in in this ADR; it does not become the default route.
 
 ## References
 
@@ -350,5 +431,6 @@ Work Product Shell
 ---
 
 *Created: 2026-04-25*
+*Revised: 2026-04-25*
 *Author: Codex*
 *Related Plan: TBD*
