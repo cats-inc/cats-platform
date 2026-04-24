@@ -8,6 +8,7 @@ import {
 } from 'react';
 
 import { SidePanel, type SidePanelSection } from '../../../../design/components/SidePanel';
+import { ToastContainer } from '../../../../design/components/Toast.js';
 import { isComposerBusyForDraft } from '../../../../shared/composer.js';
 import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
 import type { ProviderTargetSelection } from '../../../../shared/providerSelection.js';
@@ -354,6 +355,7 @@ export function WorkspaceNewChatDraft({
     listening: voiceInputListening,
     toggle: toggleVoiceInput,
     textareaRef,
+    toasts: voiceInputToasts,
   } = useVoiceInputComposer({
     value: composerDraft,
     onChange: onComposerChange,
@@ -640,6 +642,7 @@ export function WorkspaceNewChatDraft({
           sections={buildDraftSidePanelSections()}
         />
       ) : null}
+      <ToastContainer toasts={voiceInputToasts} />
     </div>
   );
 

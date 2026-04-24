@@ -24,11 +24,7 @@ type SpeechRecognitionLike = {
 
 type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
 
-const PERMANENT_ERROR_KINDS = new Set([
-  'not-allowed',
-  'service-not-allowed',
-  'audio-capture',
-]);
+const SILENT_ERROR_KINDS = new Set(['no-speech', 'aborted']);
 
 function getSpeechRecognitionCtor(): SpeechRecognitionConstructor | null {
   if (typeof window === 'undefined') return null;
@@ -41,6 +37,7 @@ function getSpeechRecognitionCtor(): SpeechRecognitionConstructor | null {
 
 export interface UseWebSpeechInputOptions {
   onTranscript: (text: string) => void;
+  onError?: (kind: string) => void;
   lang?: string;
 }
 
@@ -54,14 +51,17 @@ export interface UseWebSpeechInputResult {
 
 export function useWebSpeechInput({
   onTranscript,
+  onError,
   lang,
 }: UseWebSpeechInputOptions): UseWebSpeechInputResult {
-  const [supported, setSupported] = useState<boolean>(() => getSpeechRecognitionCtor() !== null);
+  const [supported] = useState<boolean>(() => getSpeechRecognitionCtor() !== null);
   const [listening, setListening] = useState<boolean>(false);
   const recognitionRef = useRef<SpeechRecognitionLike | null>(null);
   const sessionTokenRef = useRef(0);
   const onTranscriptRef = useRef(onTranscript);
   onTranscriptRef.current = onTranscript;
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
 
   const stop = useCallback(() => {
     const recognition = recognitionRef.current;
@@ -117,11 +117,9 @@ export function useWebSpeechInput({
       if (!isCurrentSession()) return;
       const kind = event?.error;
       if (kind) {
-        if (PERMANENT_ERROR_KINDS.has(kind)) {
-          console.warn(`[useWebSpeechInput] disabling after permanent error: ${kind}`);
-          setSupported(false);
-        } else {
-          console.warn(`[useWebSpeechInput] transient error: ${kind}`);
+        console.warn(`[useWebSpeechInput] recognition error: ${kind}`);
+        if (!SILENT_ERROR_KINDS.has(kind)) {
+          onErrorRef.current?.(kind);
         }
       }
       setListening(false);

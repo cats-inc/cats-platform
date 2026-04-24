@@ -6,6 +6,7 @@ import {
   type RefObject,
 } from 'react';
 
+import { ToastContainer } from '../../../../../design/components/Toast.js';
 import type { AppShellPayload } from '../../../api/workspaceContracts.js';
 import { useVoiceInputComposer } from '../../hooks/useVoiceInputComposer.js';
 import { truncatePath } from '../../workspaceChatUtils.js';
@@ -126,6 +127,7 @@ export function ChatComposerArea({
     listening: voiceInputListening,
     toggle: toggleVoiceInput,
     textareaRef,
+    toasts: voiceInputToasts,
   } = useVoiceInputComposer({
     value: composerDraft,
     onChange: onComposerChange,
@@ -428,6 +430,7 @@ export function ChatComposerArea({
     {composerFooterAccessory ? (
       <div className="composerFooterRow">{composerFooterAccessory}</div>
     ) : null}
+    <ToastContainer toasts={voiceInputToasts} />
     </div>
   );
 }

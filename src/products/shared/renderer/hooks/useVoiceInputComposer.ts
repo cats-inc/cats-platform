@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, type RefObject } from 'react';
 
+import { useToast } from '../../../../design/components/Toast.js';
 import { useWebSpeechInput } from './useWebSpeechInput.js';
 
 export interface UseVoiceInputComposerOptions {
@@ -15,6 +16,19 @@ export interface UseVoiceInputComposerResult {
   listening: boolean;
   toggle: () => void;
   textareaRef: RefObject<HTMLTextAreaElement>;
+  toasts: ReturnType<typeof useToast>['toasts'];
+}
+
+const ERROR_MESSAGES: Record<string, string> = {
+  'not-allowed': 'Microphone access was denied. Check your system and browser permissions.',
+  'service-not-allowed': 'Voice input is not available in this environment.',
+  'audio-capture': 'No microphone was detected.',
+  'network': 'Voice input could not reach the recognition service.',
+  'language-not-supported': 'Voice input does not support the current language.',
+};
+
+function resolveVoiceErrorMessage(kind: string): string {
+  return ERROR_MESSAGES[kind] ?? `Voice input failed (${kind}).`;
 }
 
 export function useVoiceInputComposer({
@@ -106,8 +120,17 @@ export function useVoiceInputComposer({
     [onChange, autoResize],
   );
 
+  const { toasts, showToast } = useToast();
+  const handleRecognitionError = useCallback(
+    (kind: string) => {
+      showToast(resolveVoiceErrorMessage(kind));
+    },
+    [showToast],
+  );
+
   const { supported, listening, start, stop, cancel } = useWebSpeechInput({
     onTranscript: handleTranscript,
+    onError: handleRecognitionError,
     lang,
   });
 
@@ -120,5 +143,5 @@ export function useVoiceInputComposer({
     if (disabled && listening) cancel();
   }, [disabled, listening, cancel]);
 
-  return { supported, listening, toggle, textareaRef };
+  return { supported, listening, toggle, textareaRef, toasts };
 }

@@ -10,6 +10,7 @@ import {
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
 import { SidePanel, type SidePanelSection } from '../../../../design/components/SidePanel.js';
+import { ToastContainer } from '../../../../design/components/Toast.js';
 import type { BrowseDirectoryEntry } from '../api/index.js';
 import { type NewChatPreset } from '../draftStarterSuggestionContext.js';
 import {
@@ -525,6 +526,7 @@ export function NewChatDraft({
     listening: voiceInputListening,
     toggle: toggleVoiceInput,
     textareaRef,
+    toasts: voiceInputToasts,
   } = useVoiceInputComposer({
     value: composerDraft,
     onChange: onComposerChange,
@@ -1578,6 +1580,7 @@ export function NewChatDraft({
         />
       </section>
       {sidePanelJsx}
+      <ToastContainer toasts={voiceInputToasts} />
     </div>
   );
 }

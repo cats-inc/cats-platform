@@ -80,5 +80,32 @@ test('composer entry points route voice input through useVoiceInputComposer', as
       /voiceInputSupported\s*\?/u,
       `${path.basename(file)} must gate the mic button on voiceInputSupported`,
     );
+    assert.match(
+      source,
+      /<ToastContainer toasts=\{voiceInputToasts\}/u,
+      `${path.basename(file)} must render voice-input toasts`,
+    );
   }
+});
+
+test('useWebSpeechInput never permanently disables itself on runtime errors', async () => {
+  const source = await readFile(
+    path.join(HOOKS_DIR, 'useWebSpeechInput.ts'),
+    'utf8',
+  );
+
+  assert.doesNotMatch(source, /setSupported\(false\)/u);
+  assert.match(source, /onError\?:/u);
+  assert.match(source, /onErrorRef\.current\?\.\(kind\)/u);
+});
+
+test('useVoiceInputComposer surfaces recognition errors via toast', async () => {
+  const source = await readFile(
+    path.join(HOOKS_DIR, 'useVoiceInputComposer.ts'),
+    'utf8',
+  );
+
+  assert.match(source, /useToast/u);
+  assert.match(source, /showToast\(resolveVoiceErrorMessage\(kind\)\)/u);
+  assert.match(source, /return \{ supported, listening, toggle, textareaRef, toasts \};/u);
 });
