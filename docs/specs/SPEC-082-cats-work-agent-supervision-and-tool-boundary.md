@@ -176,11 +176,26 @@ invocations are tools unless explicitly promoted by a later feature.
    denial recorded as the terminal cause. Operator cancellation shall set the
    primary state to `cancelled`, mark unresolved approval requests as
    `cancelled`, stop scheduling new actions, and request cooperative
-   cancellation for in-flight cancellable tool calls. Already-applied
-   mutations shall not be rolled back by cancellation; evidence for in-flight
-   actions that finish after cancellation shall carry a cancellation context
-   tag so reviewers can see whether the effect landed before or after the
-   cancel request.
+   cancellation for in-flight tool calls whose manifest declares
+   `cancellation: 'cooperative'` or `'best_effort'`. Already-applied mutations
+   shall not be rolled back by cancellation; evidence for in-flight actions
+   that finish after cancellation shall carry a structured cancellation context
+   so reviewers can see whether the effect landed before or after the cancel
+   request:
+
+   ```ts
+   interface CancellationContext {
+     requestedAt: string;
+     requestedBy: string;
+     runStateAtRequest: 'queued' | 'running' | 'waiting_for_approval' | 'blocked';
+     toolCancellation: 'cooperative_requested' | 'best_effort_requested' | 'not_supported';
+     effectLanded: 'before_cancel_request' | 'after_cancel_request' | 'not_applied';
+   }
+   ```
+   After a run reaches `cancelled`, any new tool call against that run shall
+   return `rejected` with `E_RUN_CANCELLED`. If an agent retries or resumes a
+   request whose approval was denied, the tool boundary shall return
+   `rejected` with `E_APPROVAL_DENIED`.
 3. **FR-3 (Scheduler owns lifecycle and stays content-blind).** The lifecycle
    scheduler shall create, pause, resume, cancel, and terminate runs based on
    metadata such as trigger, budget, health, approvals, timeouts, retry count,
@@ -264,12 +279,12 @@ invocations are tools unless explicitly promoted by a later feature.
 
 13. **FR-13 (Policy versioning).** Policy decision functions shall be versioned
     at bundle granularity by default. If individual `decide*` dial functions
-    can ship independently, have ever bumped independently from the bundle, or
-    participate in an A/B experiment, the snapshot shall capture
-    `dialVersions` for those dials. If all dials ship only as one bundle,
-    `dialVersions` may be omitted. The policy bundle version and any required
-    dial-level versions used for an action shall be captured in the snapshot
-    and in evidence for any resulting mutation.
+    have ever bumped independently from the bundle or participate in an A/B
+    experiment, the snapshot shall capture `dialVersions` for those dials. If
+    all dials ship only as one bundle, `dialVersions` may be omitted. The
+    policy bundle version and any required dial-level versions used for an
+    action shall be captured in the snapshot and in evidence for any resulting
+    mutation.
 14. **FR-14 (A/B safety).** Policy A/B tests shall be opt-in by configuration
     and shall record `experimentId`. A default production run shall have a
     deterministic policy version without silent randomization.
@@ -312,12 +327,12 @@ invocations are tools unless explicitly promoted by a later feature.
     }
 
     interface CapabilitySourceEvidence {
+      evidenceId: string;
       source:
         | 'provider_catalog'
         | 'operator_override'
         | 'eval_suite'
         | 'session_history';
-      sourceRef: string;
       observedAt: string;
       claims: Partial<Record<CapabilityDimension, CapabilityClaim>>;
       metadata?: {
@@ -338,20 +353,32 @@ invocations are tools unless explicitly promoted by a later feature.
       aggregateMethod: 'conservative_per_dimension';
       conflicts: Array<{
         dimension: CapabilityDimension;
-        sourceRefs: string[];
+        evidenceIds: string[];
         selectedLevel: CapabilityClaim['level'];
         reason: string;
       }>;
     }
     ```
     `confidenceSources` is an unordered evidence set; array order carries no
-    priority. Aggregation shall be per capability dimension. Eval-suite and
-    session-history evidence may downgrade provider-catalog claims; positive
-    catalog facts alone shall not upgrade a profile above `catalog_only`.
-    Operator override is a source, not a confidence level; it may raise or
+    priority. `evidenceId` is a stable identifier for the evidence item inside
+    the assessment and is the value referenced by `conflicts[].evidenceIds`;
+    source-specific machine identifiers live in `metadata` and are the
+    authoritative join keys. Aggregation shall be per capability dimension.
+    Eval-suite and session-history evidence may downgrade provider-catalog
+    claims; positive catalog facts alone shall not upgrade a profile above
+    `catalog_only`. Adding a new evidence item shall update top-level
+    `assessedAt` while preserving older source `observedAt` values. A conflict
+    exists when two or more evidence items make claims for the same dimension
+    with different `level` values; same-level claims with different summaries
+    are not conflicts, but implementations may preserve both summaries for
+    audit. `aggregateMethod: 'conservative_per_dimension'` is the only
+    supported first-slice aggregation method and is persisted as an audit
+    label; adding another method requires a schema/manifest version bump.
+    Operator override is a source, not a confidence level. It may raise or
     lower effective policy only when it carries override metadata and appears
-    in the policy snapshot reasons. Conflicting source claims shall be
-    preserved in `conflicts[]` rather than overwritten.
+    in the policy snapshot reasons, but it shall not raise `confidenceLevel`
+    above the strongest non-override evidence level. Conflicting source claims
+    shall be preserved in `conflicts[]` rather than overwritten.
 
 19. **FR-19 (Conservative unknown default).** `unknown` and `catalog_only`
     profiles shall not receive `broad_write` or unrestricted
@@ -385,6 +412,7 @@ invocations are tools unless explicitly promoted by a later feature.
       sideEffect: 'none' | 'local_state' | 'external_visible' | 'destructive' | 'expensive';
       preflight: 'required' | 'available' | 'not_supported';
       blocking: 'blocking' | 'async';
+      cancellation: 'cooperative' | 'best_effort' | 'not_supported';
       approval: 'never' | 'policy' | 'always';
       evidence: 'none' | 'summary' | 'pre_post_snapshot' | 'artifact_reference';
       failureCodes: string[];
@@ -393,6 +421,11 @@ invocations are tools unless explicitly promoted by a later feature.
       outputSchema: SchemaRef;
     }
     ```
+    `cancellation` is mandatory. `cooperative` means the tool promises to
+    observe platform cancel requests and stop safely when possible.
+    `best_effort` means the platform may send a cancel request but completion
+    is not guaranteed. `not_supported` means the scheduler shall not assume
+    the in-flight call can be interrupted.
 
 23. **FR-23 (Preflight clarity).** Mutating tools shall provide a read-only
     preflight where feasible. If preflight is impossible, the manifest shall
@@ -630,10 +663,11 @@ For a new provider/model:
 1. Start with provider catalog facts only: context window, declared tool-use
    support, streaming/event support, pricing or local cost class.
 2. Mark `confidenceLevel` as `catalog_only` and add one
-   `provider_catalog` source evidence item with catalog version, timestamp,
-   and per-dimension claims. If an operator override exists, add a separate
-   `operator_override` source evidence item with override id, reason, and
-   optional expiry, but do not treat the override itself as a confidence level.
+   `provider_catalog` source evidence item with `evidenceId`, catalog version,
+   timestamp, and per-dimension claims. If an operator override exists, add a
+   separate `operator_override` source evidence item with its own `evidenceId`,
+   override id, reason, and optional expiry, but do not treat the override
+   itself as a confidence level.
 3. Use conservative policy: narrow or read-only tools, schema-required output,
    frequent checkpoints, and approval for higher-risk side effects.
 4. Promote confidence only after evals or observed run history demonstrate
@@ -672,8 +706,9 @@ the parent action's fallback policy.
   deterministic routing, invariant, validation/retry, lifecycle, approval,
   budget, and evidence rules without substituting its own semantic plan.
 - A supervised tool manifest can describe manifest version, side effect,
-  preflight support, approval behavior, evidence behavior, stable failure
-  codes, and versioned canonical input/output schema references.
+  preflight support, cancellation behavior, approval behavior, evidence
+  behavior, stable failure codes, and versioned canonical input/output schema
+  references.
 - Unit tests or contract tests cover all three `ToolResult` statuses.
 - A pending approval does not mutate state until approval is accepted.
 - Run-state tests cover initial evaluation with simultaneous approval and
@@ -683,6 +718,10 @@ the parent action's fallback policy.
 - Cancellation tests prove pending approvals are closed, new actions stop
   scheduling, already-applied mutations are not rolled back, and late-finishing
   in-flight actions carry cancellation context in evidence.
+- Cancelled-run tool-call tests prove new tool calls return `E_RUN_CANCELLED`,
+  denied approval retries return `E_APPROVAL_DENIED`, and cancellation requests
+  are sent only to tools whose manifests declare cooperative or best-effort
+  cancellation.
 - An over-limit participant/audience-style request returns `rejected` with a
   stable code rather than clipping the request.
 - A mutation that lands emits evidence with actor, model, policy snapshot,
@@ -692,7 +731,14 @@ the parent action's fallback policy.
   run grants and worker-action policy.
 - Unknown provider/model capability bootstrap starts conservative and records
   unordered per-source evidence metadata, including timestamp, source
-  reference, per-dimension claims, and conflict resolution.
+  evidence id, per-dimension claims, source-specific metadata, and conflict
+  resolution.
+- Capability conflict tests prove different levels for the same dimension
+  produce `conflicts[]`, same-level summary differences do not, and
+  `selectedLevel` follows the conservative-per-dimension rule.
+- Operator override tests prove override metadata is recorded and can adjust
+  effective policy but cannot raise `confidenceLevel` above the strongest
+  non-override evidence level.
 - A provider with rich delivery events but no evals or observed successful
   history remains conservative; delivery observability alone does not raise
   capability confidence.
