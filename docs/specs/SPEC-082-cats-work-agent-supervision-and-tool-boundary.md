@@ -14,7 +14,7 @@
 | **Owner** | Codex |
 | **Reviewer** | User |
 | **Related ADR** | [ADR-082](../decisions/082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md) |
-| **Follow-up plan** | TBD |
+| **Follow-up plan** | [PLAN-074](../plans/PLAN-074-cats-work-agent-supervision-rollout.md) |
 
 ## Summary
 

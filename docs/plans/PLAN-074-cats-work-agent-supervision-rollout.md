@@ -1,0 +1,334 @@
+# PLAN-074: Cats Work Agent Supervision Rollout
+
+> Turn ADR-082 / SPEC-082 into the first shippable Work vertical slice:
+> shared supervision contracts, conservative capability bootstrap,
+> supervised tool boundaries, policy snapshots, evidence, and a fake
+> driving-agent harness that proves Cats owns the boundary while the
+> agent owns semantic planning.
+
+## Metadata
+
+| Field | Value |
+|-------|-------|
+| **Status** | Draft |
+| **Owner** | Codex |
+| **Reviewer** | User |
+
+## Related Spec / Dependencies
+
+- [SPEC-082: Cats Work Agent Supervision and Tool Boundary](../specs/SPEC-082-cats-work-agent-supervision-and-tool-boundary.md)
+- [ADR-082: Recast the Orchestrator as a Capability Shell with Policy-Dial Supervision](../decisions/082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md)
+- [ADR-081: Canonicalize the Core Record Taxonomy as Interaction / Planning / Execution](../decisions/081-canonicalize-three-tier-core-record-taxonomy.md)
+- [SPEC-062: Agent Missions, Managed Work, and Transport Bindings](../specs/SPEC-062-agent-missions-and-transport-bindings.md)
+- [PLAN-054: Agent Missions, Managed Work, and Transport Bindings](./PLAN-054-agent-missions-managed-work-and-transport-bindings.md)
+- [SPEC-040: Cats Work Team Templates and Work Intake](../specs/SPEC-040-cats-work-team-templates-and-work-intake.md)
+- [PLAN-028: Cats Work Team Templates and Work Intake](./PLAN-028-cats-work-team-templates-and-work-intake.md)
+
+## Overview
+
+This plan ships the supervision model as a thin platform capability consumed
+by `Cats Work` first. It deliberately does **not** wire a real Claude/Codex
+agent process as the first step. The first slice must prove the contracts
+before provider-specific behavior enters the system.
+
+The rollout target is:
+
+- shared TypeScript contracts for `SupervisionPolicy`, policy snapshots,
+  capability assessment, tool manifests, `ToolResult`, run state, cancellation,
+  and `AddressableTarget`
+- conservative capability bootstrap that keeps provider delivery events
+  separate from model/tool skill
+- a supervised tool registry that enforces manifests, policy, invariants,
+  approval, cancellation, and evidence
+- Work run state and projection support that stays content-blind at the
+  scheduler layer
+- a fake driving-agent test harness that supplies semantic plans so tests can
+  verify the platform enforces boundaries without replacing the plan
+- one weak-worker/SOP sample path that is schema-validated and budget-limited
+
+## Non-Goals
+
+- no real provider-agent integration in this plan
+- no Chat routing refactor and no deletion of `planner.ts` / `dispatcher.ts`
+- no final Work supervision UI beyond existing/projection-compatible run
+  inspection surfaces
+- no new top-level canonical record family outside ADR-081 execution records
+- no promotion of weak workers into durable Cats or operational agents
+- no broad tool catalog; first slice uses a small testable tool set
+
+## Implementation Phases
+
+### Phase 1: Shared Supervision Contracts
+
+- [ ] Task 1.1: Create `src/platform/supervision/contracts.ts` exporting:
+  - `SupervisionPolicy`
+  - `SupervisionPolicySnapshot`
+  - `PolicyContextSummary`
+  - `CapabilityAssessment`
+  - `CapabilitySourceEvidence`
+  - `SupervisedToolManifest`
+  - `SchemaRef`
+  - `ToolResult<T>`
+  - `AddressableTarget`
+  - `RunPrimaryState`
+  - `RunBlocker`
+  - `CancellationContext`
+- [ ] Task 1.2: Create `src/platform/supervision/errors.ts` for stable
+      rejection codes:
+  - `E_AUDIENCE_LIMIT_EXCEEDED`
+  - `E_NOT_AUTHORIZED`
+  - `E_BUDGET_EXCEEDED`
+  - `E_APPROVAL_REQUIRED`
+  - `E_APPROVAL_DENIED`
+  - `E_RUN_CANCELLED`
+  - `E_PRECHECK_FAILED`
+  - `E_TOOL_SCOPE_DENIED`
+  - `E_SCHEMA_INVALID`
+- [ ] Task 1.3: Add `src/platform/supervision/index.ts` exports and keep the
+      module independent from `products/work/renderer`.
+- [ ] Task 1.4: Add contract tests proving:
+  - `ToolResult` is discriminated by `status`
+  - `AddressableTarget` excludes human operators
+  - `SupervisedToolManifest.cancellation` is mandatory
+  - policy snapshots use `policyBundleVersion` and optional `dialVersions`
+
+**Deliverables**: compile-time contracts and unit coverage, with no runtime
+behavior change.
+
+### Phase 2: Capability Assessment and Policy Engine
+
+- [ ] Task 2.1: Create `src/platform/supervision/capabilityAssessment.ts`
+      implementing conservative bootstrap:
+  - provider catalog source evidence produces `catalog_only`
+  - delivery/observability capabilities do not raise model confidence
+  - source evidence is unordered and keyed by `evidenceId`
+  - `assessedAt` updates when evidence changes; old `observedAt` values remain
+  - conflicts are recorded when the same dimension has different levels
+- [ ] Task 2.2: Create `src/platform/supervision/policyEngine.ts` with pure
+      `decideSupervisionPolicy(ctx)` and per-dial helpers. The first version
+      may be simple, but it must evaluate per action.
+- [ ] Task 2.3: Create `src/platform/supervision/policyVersions.ts` with
+      `policyBundleVersion` and optional `dialVersions`.
+- [ ] Task 2.4: Add operator override support as source evidence. Overrides
+      may adjust effective policy but must not raise `confidenceLevel` above
+      strongest non-override evidence.
+- [ ] Task 2.5: Add tests for:
+  - unknown/catalog-only profile stays conservative
+  - rich provider delivery events do not raise capability confidence
+  - eval/history can downgrade catalog claims
+  - conflicting source evidence populates `conflicts[]`
+  - operator override metadata appears in snapshot reasons
+  - `dialVersions` appears when a dial is independently versioned or
+    experiment-participating
+
+**Deliverables**: deterministic, replayable policy decisions over explicit
+capability evidence.
+
+### Phase 3: Supervised Tool Registry and Boundary
+
+- [ ] Task 3.1: Create `src/platform/supervision/toolRegistry.ts` with:
+  - manifest registration
+  - schema reference validation hooks
+  - side-effect classification
+  - tool-surface filtering by policy and parent run grants
+- [ ] Task 3.2: Create `src/platform/supervision/toolBoundary.ts` that wraps
+      tool execution and returns `ToolResult<T>` for every supervised call.
+- [ ] Task 3.3: Implement the first three supervised tools:
+  - `work.context.lookup`: read-only lookup over Work/core projection data
+  - `work.local_note.apply`: local-state mutation for a draft/run note
+  - `work.approval_gated.apply`: mutation that always returns
+    `pending_approval` before landing
+- [ ] Task 3.4: Wire preflight behavior:
+  - read-only preflight where feasible
+  - `preflight: 'not_supported'` only with declared failure codes
+  - no silent try-and-see mutating tools
+- [ ] Task 3.5: Wire cancellation behavior:
+  - `cooperative` / `best_effort` tools receive cancel requests
+  - `not_supported` tools are not assumed interruptible
+  - cancelled runs reject new tool calls with `E_RUN_CANCELLED`
+  - denied approval retries reject with `E_APPROVAL_DENIED`
+- [ ] Task 3.6: Add tool-boundary tests for:
+  - all three `ToolResult` statuses
+  - `E_TOOL_SCOPE_DENIED` when parent grants and action policy intersect empty
+  - pending approval means no mutation landed
+  - approval accepted applies idempotently
+  - over-limit/invariant failure is rejected, not clipped
+  - cancellation manifest behavior
+
+**Deliverables**: a small but real supervised tool layer that can be used by
+Work runs and contract tests.
+
+### Phase 4: Work Run State, Policy Snapshots, and Evidence
+
+- [ ] Task 4.1: Add execution-layer record helpers for supervised runs,
+      actions, policy snapshots, approval references, and evidence references.
+      Reuse ADR-081 execution records; do not add a new canonical top-level
+      record family.
+- [ ] Task 4.2: Create `src/platform/supervision/runState.ts` implementing:
+  - primary state derivation
+  - `blockers[]`
+  - approval-denied path with/without fallback
+  - operator cancellation
+  - terminal-state precedence
+  - cancellation context for late-finishing actions
+- [ ] Task 4.3: Extend `src/platform/persistence/evidence.ts` or adjacent
+      execution persistence to write redacted evidence rows for applied
+      mutations and high-risk rejections.
+- [ ] Task 4.4: Ensure policy snapshots are durable and referenced by evidence.
+- [ ] Task 4.5: Add projection support for Work run inspection using existing
+      Work/API projection patterns. Keep rendering in Work renderer modules;
+      platform supervision emits only contracts/events/projections.
+- [ ] Task 4.6: Add tests for:
+  - initial state with simultaneous approval and non-approval blockers
+  - approval denial fallback vs terminal failure
+  - operator cancellation closes pending approvals
+  - applied mutations are not rolled back by cancellation
+  - late-finishing actions carry `CancellationContext`
+  - scheduler decisions use metadata and do not read message/transcript text
+
+**Deliverables**: Work can create and inspect supervised run state with durable
+policy/evidence lineage.
+
+### Phase 5: Fake Driving-Agent and Weak-Worker Harness
+
+- [ ] Task 5.1: Create a fake driving-agent harness under tests that returns
+      alternative semantic plans. The platform must execute/enforce boundaries
+      around the selected plan without substituting its own semantic plan.
+- [ ] Task 5.2: Add a weak-worker/SOP sample tool, such as
+      `work.sop.classify_text_batch`, with:
+  - `toolScope: 'none'` or `read_only`
+  - strict input/output schema
+  - explicit budget envelope
+  - schema validation before the result reaches the driving agent
+- [ ] Task 5.3: Add a Work run fixture that combines:
+  - strong-driver outcome delegation
+  - read-only lookup
+  - weak-worker classification
+  - local mutation
+  - approval-gated mutation
+- [ ] Task 5.4: Add contract tests proving:
+  - semantic planning choice comes from the fake agent
+  - deterministic routing/invariants remain platform-owned
+  - weak-worker tool surface is narrower than parent run
+  - worker schema failure follows `fallbackPolicy`
+  - evidence captures actor/model/policy/tool/approval/pre-post summaries
+
+**Deliverables**: first end-to-end supervised Work run without relying on a real
+provider agent.
+
+### Phase 6: Work API and Minimal Projection Integration
+
+- [ ] Task 6.1: Add Work API routes for starting a supervised run from a
+      managed-work/mission fixture or selected Work item.
+- [ ] Task 6.2: Add Work API routes/projections for:
+  - run state
+  - blockers
+  - policy snapshot summary
+  - pending approvals
+  - evidence summaries
+  - tool-call results
+- [ ] Task 6.3: Reuse existing Work renderer surfaces such as `RunInspector`
+      where possible. Do not put React/UI logic in platform supervision.
+- [ ] Task 6.4: Add manual verification notes for the first supervised Work
+      run fixture.
+- [ ] Task 6.5: Update docs if actual implementation paths differ from this
+      plan.
+
+**Deliverables**: Work can start and inspect the first supervised run through
+product-owned API/projection surfaces.
+
+## Files to Create/Modify
+
+| File | Action | Description |
+|------|--------|-------------|
+| `cats-platform/src/platform/supervision/contracts.ts` | Create | Shared supervision contracts from SPEC-082. |
+| `cats-platform/src/platform/supervision/errors.ts` | Create | Stable rejection code constants and helpers. |
+| `cats-platform/src/platform/supervision/capabilityAssessment.ts` | Create | Conservative capability bootstrap and evidence aggregation. |
+| `cats-platform/src/platform/supervision/policyEngine.ts` | Create | Per-action policy decision functions. |
+| `cats-platform/src/platform/supervision/policyVersions.ts` | Create | Bundle/dial version metadata. |
+| `cats-platform/src/platform/supervision/toolRegistry.ts` | Create | Tool manifest registry and tool-surface filtering. |
+| `cats-platform/src/platform/supervision/toolBoundary.ts` | Create | Policy/invariant/approval/evidence boundary returning `ToolResult<T>`. |
+| `cats-platform/src/platform/supervision/runState.ts` | Create | Run primary-state derivation, blockers, cancellation, approval-denial behavior. |
+| `cats-platform/src/platform/supervision/index.ts` | Create | Public exports. |
+| `cats-platform/src/platform/persistence/evidence.ts` | Modify | Add or reuse evidence helpers for supervised tool mutations and high-risk rejections. |
+| `cats-platform/src/core/model/executionRecords.ts` | Modify | Add execution-layer shapes only if needed for supervised run snapshots/evidence references. |
+| `cats-platform/src/core/api/recordExecutionRoutes.ts` | Modify | Expose supervised run/policy/evidence projections if existing execution routes are the right seam. |
+| `cats-platform/src/products/work/api/contracts.ts` | Modify | Add Work-facing run/projection contract shapes. |
+| `cats-platform/src/products/work/api/projectionSupport.ts` | Modify | Add supervised run projection helpers. |
+| `cats-platform/src/products/work/api/index.ts` | Modify | Wire minimal supervised-run routes. |
+| `cats-platform/src/products/work/renderer/components/RunInspector.tsx` | Modify (optional) | Display supervised run state if existing component can absorb it cleanly. |
+| `cats-platform/tests/supervision-contracts.test.ts` | Create | Contract shape and discriminated union tests. |
+| `cats-platform/tests/supervision-capability-assessment.test.ts` | Create | Bootstrap, evidence, conflict, override, delivery-split tests. |
+| `cats-platform/tests/supervision-policy-engine.test.ts` | Create | Policy versioning and per-action dial tests. |
+| `cats-platform/tests/supervision-tool-boundary.test.ts` | Create | ToolResult, approval, preflight, rejection, cancellation tests. |
+| `cats-platform/tests/supervision-run-state.test.ts` | Create | Run state, blockers, denial, cancel, scheduler content-blind tests. |
+| `cats-platform/tests/work-supervised-run.test.ts` | Create | Fake driving-agent and weak-worker vertical-slice tests. |
+| `cats-platform/docs/specs/SPEC-082-cats-work-agent-supervision-and-tool-boundary.md` | Modify | Link this plan in metadata. |
+| `cats-platform/docs/plans/README.md` | Modify | Add PLAN-074 to index. |
+| `cats-platform/docs/specs/README.md` | Modify | Link SPEC-082 to PLAN-074. |
+| `cats-platform/docs/README.md` | Modify | Add PLAN-074 to documentation index recent additions. |
+
+## Technical Decisions
+
+- **Create `platform/supervision/` as the shared home.** `Cats Work` is the
+  first consumer, but the contracts are not Work-only. This keeps later Code
+  adoption possible without importing Work internals.
+- **Use fake driving agents first.** Real provider integration would obscure
+  whether failures come from the boundary or the provider. The first vertical
+  slice should be deterministic and testable.
+- **Persist policy snapshots in the execution layer.** They are durable
+  evidence context, not a new top-level canonical record family.
+- **Keep scheduler content-blind.** Any test or implementation that reads raw
+  transcript/message content in the lifecycle scheduler violates SPEC-082.
+- **Treat weak workers as tools.** They enter through manifests, schema
+  validation, budgets, and `ToolResult`, not as durable Cats.
+- **No UI ownership in supervision modules.** Platform supervision emits
+  contracts/projections/events; product renderers own UI.
+- **Approval and cancellation are boundary semantics.** Tools do not invent
+  local pending/denied/cancelled conventions.
+
+## Testing Strategy
+
+- **Unit Tests**:
+  - contracts, rejection codes, policy decisions, capability aggregation,
+    schema references, tool-surface filtering, run-state derivation
+- **Integration Tests**:
+  - fake driving-agent supervised Work run
+  - approval-gated mutation lifecycle
+  - cancellation with cooperative/best-effort/not-supported tools
+  - evidence row references durable policy snapshot
+  - weak-worker schema validation and fallback behavior
+- **Static / Boundary Tests**:
+  - scheduler module does not import transcript/message content readers
+  - platform supervision modules do not import product renderer modules
+  - Chat routing remains product-owned
+- **Manual Testing**:
+  - start a fixture Work run
+  - inspect run state, blockers, policy snapshot, pending approval, and
+    evidence summary
+  - approve/deny a pending request and verify state/evidence changes
+  - cancel a run and verify pending approvals close and new tool calls reject
+
+## Risks & Mitigations
+
+| Risk | Impact | Mitigation |
+|------|--------|------------|
+| Plan grows into a full agent runtime before contracts are tested | High | Use fake driving agents and three sample tools first; real providers are out of scope. |
+| Capability profile becomes a black box | High | Persist source evidence with `evidenceId`, source metadata, conflicts, and policy snapshot reasons. |
+| Scheduler reintroduces semantic routing by reading content | High | Content-blind scheduler tests and explicit module-boundary checks. |
+| Tool manifests drift from actual behavior | Medium | Registry-level manifest validation and tool-boundary tests for preflight/approval/cancellation/evidence. |
+| Approval/cancellation edge cases fork across tools | Medium | Centralize pending/denied/cancelled behavior in `toolBoundary.ts` and `runState.ts`. |
+| Evidence stores too much sensitive content | Medium | Evidence helpers only store redacted summaries and artifact/transcript references. |
+| Work UI work leaks into supervision modules | Medium | Keep renderer changes optional/product-owned; add import-boundary checks. |
+| Existing orchestration code conflicts with new contracts | Medium | New module is additive; do not delete `planner.ts` / `dispatcher.ts` in this plan. |
+
+## Progress Log
+
+| Date | Update |
+|------|--------|
+| 2026-04-25 | Plan created from ADR-082 / SPEC-082 after supervision-spec review rounds. |
+
+---
+
+*Created: 2026-04-25*
+*Author: Codex*
