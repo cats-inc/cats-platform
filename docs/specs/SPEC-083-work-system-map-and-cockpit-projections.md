@@ -1,4 +1,4 @@
-# SPEC-082: Work System Map and Cockpit Projections
+# SPEC-083: Work System Map and Cockpit Projections
 
 > Define the first top-down Cats Work UI framework around one Work Graph
 > projection layer, System Map as the production default / conformance surface,
