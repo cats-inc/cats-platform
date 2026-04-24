@@ -150,8 +150,8 @@ invocations are tools unless explicitly promoted by a later feature.
 
 1. **FR-1 (Work run launch).** A supervised Work run shall start from a
    managed-work or mission context, not from an untracked provider session.
-2. **FR-2 (Run state model).** The first slice shall represent at least these
-   run states:
+2. **FR-2 (Run state model).** The first slice shall represent a primary run
+   state with explicit blocker reasons. Primary run states are:
    - `queued`
    - `running`
    - `waiting_for_approval`
@@ -159,17 +159,38 @@ invocations are tools unless explicitly promoted by a later feature.
    - `completed`
    - `failed`
    - `cancelled`
-3. **FR-3 (Scheduler owns lifecycle).** The lifecycle scheduler shall create,
-   pause, resume, cancel, and terminate runs based on metadata such as trigger,
-   budget, health, approvals, timeouts, retry count, and operator action.
+   `waiting_for_approval` is the primary state when at least one unresolved
+   approval request is gating progress. `blocked` is the primary state for
+   non-approval blockers such as budget exhaustion, dependency waits, missing
+   configuration, timeout, or tool unavailability. If multiple blockers exist,
+   the run shall also carry a `blockers[]` list; unresolved approval takes
+   precedence in the primary state, while other blockers remain visible in
+   `blockers[]`. Terminal states (`completed`, `failed`, `cancelled`) take
+   precedence over both waiting states. A run may transition from `blocked` to
+   `waiting_for_approval` when an approval gate is added, and from
+   `waiting_for_approval` to `blocked` when approval resolves but another
+   blocker remains.
+3. **FR-3 (Scheduler owns lifecycle and stays content-blind).** The lifecycle
+   scheduler shall create, pause, resume, cancel, and terminate runs based on
+   metadata such as trigger, budget, health, approvals, timeouts, retry count,
+   and operator action. The scheduler shall not read raw message content,
+   transcript text, prompts, completions, or artifact bodies to make semantic
+   planning, routing, or rescheduling decisions. Policy engines, classifiers,
+   workflow steps, and supervised tools may read content only at auditable
+   tool/API boundaries and shall emit structured results.
 4. **FR-4 (No unmanaged self-spawn).** A driving agent shall not directly
    create unmanaged sessions, agents, or runs. It may request delegation,
    worker invocation, or a new run through tools; the scheduler/tool boundary
    decides whether that request becomes real execution.
-5. **FR-5 (Minimal delegation shape).** The first slice shall support both:
-   - blocking tool invocations, where the driving agent waits for the result
-   - async lifecycle requests, where the result is a scheduled run or approval
-     reference rather than immediate output
+5. **FR-5 (Invocation categories).** The first slice shall distinguish
+   blocking tool calls from async lifecycle requests:
+   - a blocking tool call returns `ToolResult<T>` where
+     `status: 'applied'` carries the immediate tool output
+   - an async lifecycle request is mediated by a tool boundary and returns
+     `ToolResult<RunRef | LifecycleRequestRef>` where `status: 'applied'`
+     means the run/request was created, not that the child work completed
+   Child run progress and completion shall arrive later through scheduler/run
+   events, not by overloading the lifecycle request result.
 6. **FR-6 (Budget inheritance).** Delegated runs and worker invocations shall
    receive an explicit budget envelope derived from the parent run. They shall
    not inherit unlimited access by default.
@@ -198,18 +219,24 @@ invocations are tools unless explicitly promoted by a later feature.
 
 9. **FR-9 (No scalar autonomy).** Autonomy shall remain an enum, not a numeric
    0-5 score. The values are gates with discontinuities, not a smooth scale.
-10. **FR-10 (Per-action evaluation).** The policy shall be computed for each
-    supervised action. A session, run, agent, or provider shall not be assigned
-    one fixed supervision mode for its whole lifetime.
+10. **FR-10 (Per-action evaluation and decision ownership).** The policy shall
+    be computed for each supervised action. A session, run, agent, or provider
+    shall not be assigned one fixed supervision mode for its whole lifetime.
+    For agentic Work workloads, the driving agent owns semantic planning,
+    decomposition, tool selection, delegation choices, recovery reasoning, and
+    stop judgment within the granted tool surface. The platform owns
+    deterministic routing, invariant enforcement, weak-model SOP pipelines,
+    validation/retry shaping, lifecycle, approvals, budget, and evidence.
 11. **FR-11 (Independent dials).** Each policy field shall be resolved
     independently. A strong model may keep `outcome_delegation` while a risky
     tool still requires `approvalThreshold: 'high'`.
-12. **FR-12 (Policy snapshot).** Every supervised action shall persist or emit
-    a policy decision snapshot with at least:
+12. **FR-12 (Policy snapshot).** Every supervised action shall persist a
+    durable policy decision snapshot with at least:
 
     ```ts
     interface SupervisionPolicySnapshot {
-      policyVersion: string;
+      policyBundleVersion: string;
+      dialVersions?: Partial<Record<keyof SupervisionPolicy, string>>;
       experimentId?: string;
       evaluatedAt: string;
       actionId: string;
@@ -221,9 +248,12 @@ invocations are tools unless explicitly promoted by a later feature.
     }
     ```
 
-13. **FR-13 (Policy versioning).** Policy decision functions shall be versioned.
-    The version used for an action shall be captured in the snapshot and in
-    evidence for any resulting mutation.
+13. **FR-13 (Policy versioning).** Policy decision functions shall be versioned
+    at bundle granularity by default. If individual `decide*` dial functions
+    can ship independently, the snapshot shall also capture `dialVersions`.
+    The policy bundle version and any dial-level versions used for an action
+    shall be captured in the snapshot and in evidence for any resulting
+    mutation.
 14. **FR-14 (A/B safety).** Policy A/B tests shall be opt-in by configuration
     and shall record `experimentId`. A default production run shall have a
     deterministic policy version without silent randomization.
@@ -249,16 +279,23 @@ invocations are tools unless explicitly promoted by a later feature.
     not be sourced from `ProductProviderEventCapabilities`. Provider delivery
     observability and model intelligence/tool skill are separate axes.
 18. **FR-18 (Bootstrap confidence).** A provider/model with no evals and no
-    session history shall start with a conservative bootstrap profile:
+    session history shall start with a conservative bootstrap assessment that
+    separates confidence level from evidence source:
 
     ```ts
-    type CapabilityConfidence =
-      | 'unknown'
-      | 'catalog_only'
-      | 'operator_override'
-      | 'evaluated'
-      | 'observed';
+    interface CapabilityAssessment {
+      confidenceLevel: 'unknown' | 'catalog_only' | 'evaluated' | 'observed';
+      confidenceSources: Array<
+        | 'provider_catalog'
+        | 'operator_override'
+        | 'eval_suite'
+        | 'session_history'
+      >;
+      overrideReason?: string;
+    }
     ```
+    `operator_override` is a source, not a confidence level; it may raise or
+    lower effective policy only when recorded in the policy snapshot reasons.
 
 19. **FR-19 (Conservative unknown default).** `unknown` and `catalog_only`
     profiles shall not receive `broad_write` or unrestricted
@@ -274,11 +311,20 @@ invocations are tools unless explicitly promoted by a later feature.
 #### Tool manifests
 
 22. **FR-22 (Tool manifest contract).** Every tool exposed to a driving agent
-    or worker shall declare a manifest with at least:
+    or worker shall declare a versioned manifest with canonical schema
+    references:
 
     ```ts
+    interface SchemaRef {
+      id: string;          // canonical schema registry id
+      version: string;
+      format: 'json_schema';
+      uri?: string;        // optional resolvable URI, not a local-only path
+    }
+
     interface SupervisedToolManifest {
       name: string;
+      manifestVersion: string;
       description: string;
       sideEffect: 'none' | 'local_state' | 'external_visible' | 'destructive' | 'expensive';
       preflight: 'required' | 'available' | 'not_supported';
@@ -287,8 +333,8 @@ invocations are tools unless explicitly promoted by a later feature.
       evidence: 'none' | 'summary' | 'pre_post_snapshot' | 'artifact_reference';
       failureCodes: string[];
       maxBudgetHint?: BudgetEnvelope;
-      inputSchemaRef: string;
-      outputSchemaRef: string;
+      inputSchema: SchemaRef;
+      outputSchema: SchemaRef;
     }
     ```
 
@@ -302,8 +348,9 @@ invocations are tools unless explicitly promoted by a later feature.
     the policy inputs used to decide `toolScope`, `approvalThreshold`,
     `validation`, and `fallbackPolicy`.
 26. **FR-26 (Tool surface narrowing).** The tool surface exposed to a worker
-    invocation shall be no broader than the policy grants for that action,
-    even if the parent run has a broader surface.
+    invocation shall be the intersection of the parent run's granted tool
+    surface and the policy grants for the worker action. A worker shall never
+    receive tools broader than either its parent run or its own action policy.
 
 #### Tool results, approvals, and invariants
 
@@ -358,7 +405,7 @@ invocations are tools unless explicitly promoted by a later feature.
     - proposing provider/model/control
     - run id and action id
     - tool call id
-    - policy snapshot reference
+    - durable policy snapshot reference
     - approval reference, if any
     - redacted pre-image summary
     - redacted post-image summary
@@ -370,8 +417,11 @@ invocations are tools unless explicitly promoted by a later feature.
     behind artifact/transcript references where the existing record model
     supports it. Evidence rows shall remain small and queryable.
 39. **FR-39 (Evidence on policy denial).** Rejected high-risk or security-
-    relevant actions should emit a lightweight audit event even when no
-    mutation lands, so repeated unsafe attempts can be inspected.
+    relevant actions shall emit a lightweight audit event even when no mutation
+    lands, so repeated unsafe attempts can be inspected. Low-risk repeated
+    validation or rate-limit rejections may be aggregated, but the aggregate
+    shall preserve count, time range, actor, tool/action class, and rejection
+    code.
 
 #### Strong-agent path
 
@@ -392,8 +442,9 @@ invocations are tools unless explicitly promoted by a later feature.
 
 #### Weak-model and SOP path
 
-44. **FR-44 (Worker invocation as tool).** Weak models shall enter the first
-    slice as worker tools or SOP steps, not as autonomous Cats by default.
+44. **FR-44 (Worker invocation as tool).** Weak models shall enter this spec's
+    slice as worker tools or SOP steps, not as autonomous Cats. Promotion of a
+    worker into a durable operational agent requires a separate spec.
 45. **FR-45 (Tight scaffolding).** Weak-worker policy shall commonly use:
     - `autonomy: 'none'` or `single_step`
     - `taskGranularity: 'tiny'` or `step`
@@ -422,8 +473,7 @@ invocations are tools unless explicitly promoted by a later feature.
       | { kind: 'durable_agent'; agentId: string; projection?: 'chat' | 'work' | 'code' }
       | { kind: 'execution_target'; provider: string; model: string; control?: string }
       | { kind: 'temporary_participant'; participantId: string; roleHint?: string; displayName?: string; avatarHint?: string }
-      | { kind: 'worker_tool'; toolName: string; workerProfileId?: string }
-      | { kind: 'human_operator'; userId: string };
+      | { kind: 'worker_tool'; toolName: string; workerProfileId?: string };
     ```
 
 51. **FR-51 (Durable Cat semantics).** My Cats, Boss Cat, Guide Cat, and other
@@ -441,6 +491,9 @@ invocations are tools unless explicitly promoted by a later feature.
 55. **FR-55 (Registry separation).** `AddressableTarget` shall not imply direct
     lane, memory, transport binding, rename/archive/delete, or My Cats roster
     membership. Those belong only to durable agent identity.
+    Human operators are addressed through approval, assignment, or
+    notification records, not through `AddressableTarget`; tools shall not
+    target a human as though the human were an executable endpoint.
 
 #### Chat and product boundary
 
@@ -450,14 +503,17 @@ invocations are tools unless explicitly promoted by a later feature.
 57. **FR-57 (Work-to-Chat calls respect Chat API).** If a Work agent requests
     an action that touches Chat, the Chat product API shall still enforce Chat
     routing and participant invariants through structured results.
-58. **FR-58 (No hidden Chat policy fork).** Work supervision shall not create
-    a second hidden Chat routing engine. It may call Chat tools; Chat remains
-    the owner of Chat semantics.
+58. **FR-58 (Product boundary).** Work supervision shall not create a second
+    hidden Chat routing engine. It may call Chat tools; Chat remains the owner
+    of Chat semantics. Supervision/orchestration modules shall emit contracts,
+    projections, and events only; rendering and input capture belong to product
+    renderers under `src/products/*/renderer/` and shared design code under
+    `src/design/`.
 
 ### Non-Functional Requirements
 
 - **Auditability**: any applied mutation can be traced to actor, model,
-  policy version, approval, and redacted pre/post state.
+  policy bundle/dial version, approval, and redacted pre/post state.
 - **Cost control**: weak-worker usage must be budgeted explicitly and strong
   agents must not receive unlimited delegated budget by default.
 - **Safety**: destructive, externally-visible, expensive, or irreversible
@@ -512,7 +568,10 @@ For a new provider/model:
 
 1. Start with provider catalog facts only: context window, declared tool-use
    support, streaming/event support, pricing or local cost class.
-2. Mark confidence as `catalog_only` unless an operator override exists.
+2. Mark `confidenceLevel` as `catalog_only` and
+   `confidenceSources: ['provider_catalog']`. If an operator override exists,
+   add `operator_override` as a source and record the override reason, but do
+   not treat the override itself as a confidence level.
 3. Use conservative policy: narrow or read-only tools, schema-required output,
    frequent checkpoints, and approval for higher-risk side effects.
 4. Promote confidence only after evals or observed run history demonstrate
@@ -544,22 +603,37 @@ the parent action's fallback policy.
 
 - A Work run can launch with a driving agent, budget envelope, and initial
   policy snapshot.
-- A supervised tool manifest can describe side effect, preflight support,
-  approval behavior, evidence behavior, and failure codes.
+- Scheduler tests prove lifecycle decisions use metadata and do not read raw
+  message/transcript/prompt/completion content for semantic rescheduling.
+- Work decision-boundary tests prove agentic semantic planning remains with
+  the driving agent while deterministic routing, invariants, weak-model SOPs,
+  validation/retry shaping, lifecycle, approvals, budget, and evidence remain
+  platform-owned.
+- A supervised tool manifest can describe manifest version, side effect,
+  preflight support, approval behavior, evidence behavior, stable failure
+  codes, and versioned canonical input/output schema references.
 - Unit tests or contract tests cover all three `ToolResult` statuses.
 - A pending approval does not mutate state until approval is accepted.
+- Run-state tests cover `waiting_for_approval`, `blocked`, terminal state
+  precedence, and multiple simultaneous blockers through `blockers[]`.
 - An over-limit participant/audience-style request returns `rejected` with a
   stable code rather than clipping the request.
 - A mutation that lands emits evidence with actor, model, policy snapshot,
   tool call id, approval reference if any, and redacted pre/post summaries.
 - A weak-worker invocation uses a narrow policy, schema validation, and an
-  explicit budget envelope.
+  explicit budget envelope, and its tool surface is a subset of both parent
+  run grants and worker-action policy.
 - Unknown provider/model capability bootstrap starts conservative and records
   its confidence source.
-- Policy snapshots include `policyVersion` and optional `experimentId`.
+- A provider with rich delivery events but no evals or observed successful
+  history remains conservative; delivery observability alone does not raise
+  capability confidence.
+- Policy snapshots include `policyBundleVersion`, optional `dialVersions`, and
+  optional `experimentId`.
 - `AddressableTarget` can represent durable Cats, solo execution targets,
-  temporary participants, worker tools, and humans without converting all of
-  them into Cat registry records.
+  temporary participants, and worker tools without converting all of them into
+  Cat registry records; human operators are addressed through approval,
+  assignment, or notification references instead.
 
 ## Dependencies
 
@@ -606,4 +680,3 @@ the parent action's fallback policy.
 
 *Created: 2026-04-25*
 *Author: Codex*
-*Related Plan: TBD*
