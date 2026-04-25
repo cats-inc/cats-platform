@@ -83,11 +83,14 @@ Completed:
   inspection back through task detail
 - static import-boundary enforcement for content-blind supervision lifecycle
   modules and product-owned rendering
+- supervised tool approval requests can now be persisted into the production
+  approval queue through run-scoped approval bindings, and owner decisions can
+  be synchronized back into supervised run-state metadata
 
 Remaining before real provider-agent integration:
 
-- broaden approval lifecycle integration from in-memory sample tools to the
-  production operator approval flow
+- wire supervised approval persistence/decision sync into the formal HTTP/UI
+  operator approval path instead of invoking the helper from tests
 - add manual verification notes for the first supervised Work run fixture
 - decide whether supervised launch should also create or bind managed-work /
   mission records, or remain task/run-first for the first release slice
@@ -526,9 +529,9 @@ artifact exists.
     to verify the fake-agent Work path: API launch, policy snapshot
     persistence, durable evidence, lifecycle child-run delegation, and task
     detail inspection
-  - approve/deny of supervised tool requests remains a follow-up because the
-    current production approval queue is task-level, while supervised tool
-    approvals are run/action-level
+  - approval persistence and decision sync are covered by
+    `supervision-approval-requests.test.tsx`; wiring those helpers into the
+    formal HTTP/UI operator approval path remains a follow-up
 
 ## Risks & Mitigations
 
@@ -551,7 +554,7 @@ artifact exists.
 | 2026-04-25 | Plan created from ADR-082 / SPEC-082 after supervision-spec review rounds. |
 | 2026-04-25 | Follow-up review pass: added override-floor coverage, fake driving-agent harness shape, cancellation reason mapping, phase dependency notes, and static boundary enforcement. |
 | 2026-04-25 | Follow-up review pass: added recovery-capable fake-agent harness, schema-version shape, phase-gate enforcement, real-provider follow-up boundary, and stricter minimal Work status surface. |
-| 2026-04-25 | Implementation pass: added Work supervised-run launch, bounded budgets, durable policy/evidence lineage, lifecycle child-run spawn, Work renderer launch action, idempotent active-run reuse, and product-level fake-agent vertical coverage. |
+| 2026-04-25 | Implementation pass: added Work supervised-run launch, bounded budgets, durable policy/evidence lineage, lifecycle child-run spawn, Work renderer launch action, idempotent active-run reuse, approval queue persistence/decision sync helpers, and product-level fake-agent vertical coverage. |
 
 ---
 
