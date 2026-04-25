@@ -7,6 +7,7 @@ import type {
   ChatState,
 } from '../../api/contracts.js';
 import type { CatsCoreState } from '../../../../core/types.js';
+import type { OrchestratorTurnPlan } from '../../../../platform/orchestration/contracts.js';
 import type {
   RoomRoutingCheckpoint,
   RoomRoutingOutcome,
@@ -97,6 +98,33 @@ export interface PreparedDispatchTurn {
   terminalResult: { state: ChatState; results: ChannelDispatchResult[] } | null;
 }
 
+export interface PrepareDispatchTurnOptions {
+  orchestratorPlan?: OrchestratorTurnPlan | null;
+}
+
+function resolveOrchestratorPlanInitialResolution(
+  plan: OrchestratorTurnPlan | null | undefined,
+  channelId: string,
+): TargetResolution | null {
+  if (!plan || plan.channelId !== channelId) {
+    return null;
+  }
+
+  return {
+    targets: plan.routing.initialTargets.map((target) => ({
+      participantKind: target.targetKind,
+      participantId: target.targetId,
+      participantName: target.targetName,
+      laneId: target.laneId,
+      sessionId: target.sessionId,
+    })),
+    unresolved: [...plan.routing.unresolvedMentions],
+    mentionNames: [...plan.routing.mentionNames],
+    trigger: plan.routing.trigger,
+    resolution: structuredClone(plan.routing.resolution),
+  };
+}
+
 export function prepareDispatchTurnForUserMessage(
   state: ChatState,
   channelId: string,
@@ -104,6 +132,7 @@ export function prepareDispatchTurnForUserMessage(
   userMessage: ChatMessage,
   now: Date,
   core?: CatsCoreState,
+  options: PrepareDispatchTurnOptions = {},
 ): PreparedDispatchTurn {
   let nextState = state;
   const channelAfterUserMessage = buildChannelView(nextState, channelId);
@@ -114,6 +143,9 @@ export function prepareDispatchTurnForUserMessage(
         payload.choiceResponse.sourceMessageId,
         core,
       )
+    : null;
+  const orchestratorPlanResolution = !choiceResponseTarget
+    ? resolveOrchestratorPlanInitialResolution(options.orchestratorPlan, channelId)
     : null;
   let initialResolution = choiceResponseTarget
     ? {
@@ -131,7 +163,7 @@ export function prepareDispatchTurnForUserMessage(
           note: 'Structured choice response routed back to the originating participant.',
         },
       }
-    : resolveTargets(nextState, channelId, payload.body, {
+    : orchestratorPlanResolution ?? resolveTargets(nextState, channelId, payload.body, {
         allowDefaultTarget: true,
         explicitTrigger: 'explicit_mention',
       });
@@ -415,6 +447,7 @@ export function prepareDispatchTurn(
   payload: SendChannelMessageInput,
   now: Date,
   core?: CatsCoreState,
+  options: PrepareDispatchTurnOptions = {},
 ): PreparedDispatchTurn {
   const channelAfterUserMessage = buildChannelView(state, channelId);
   const userMessage =
@@ -426,6 +459,7 @@ export function prepareDispatchTurn(
     userMessage,
     now,
     core,
+    options,
   );
 }
 
@@ -436,6 +470,7 @@ export function prepareDispatchTurnForExistingUserMessage(
   messageId: string,
   now: Date,
   core?: CatsCoreState,
+  options: PrepareDispatchTurnOptions = {},
 ): PreparedDispatchTurn {
   const channel = buildChannelView(state, channelId);
   const userMessage = findChannelUserMessage(channel, messageId, core);
@@ -446,5 +481,6 @@ export function prepareDispatchTurnForExistingUserMessage(
     userMessage,
     now,
     core,
+    options,
   );
 }

@@ -601,6 +601,7 @@ async function handleRestSendMessage(
           },
           cancellationRegistry: channelDispatchCancellationRegistry,
           onStateWritten: notifyStreamTargetChanged,
+          orchestratorPlan,
         },
       );
       const appShell = await buildAppShellPayload(
@@ -730,6 +731,17 @@ async function handleRestRetryMessage(
         return;
       }
 
+      const orchestratorPlan = buildOrchestratorTurnPlan(
+        state,
+        core,
+        {
+          channelId,
+          body: retryMessage.body,
+          senderName: retryMessage.senderName,
+          transport: 'web',
+        },
+        context.dependencies.orchestratorPlannerSurface,
+      );
       acknowledgedDispatch = await beginChannelMessageRetryDispatch(
         state,
         channelId,
@@ -747,6 +759,7 @@ async function handleRestRetryMessage(
           },
           cancellationRegistry: channelDispatchCancellationRegistry,
           onStateWritten: notifyStreamTargetChanged,
+          orchestratorPlan,
         },
       );
       const appShell = await buildAppShellPayload(
@@ -758,6 +771,18 @@ async function handleRestRetryMessage(
         phase: 'acknowledged',
         message: acknowledgedDispatch.userMessage,
         results: acknowledgedDispatch.results,
+        dispatch: {
+          channelId,
+          results: acknowledgedDispatch.results,
+          orchestrator: {
+            planId: orchestratorPlan.planId,
+            planner: orchestratorPlan.execution.planner,
+            loopMode: orchestratorPlan.execution.loopMode,
+            dispatchBoundary: orchestratorPlan.executionLoop.dispatchBoundary,
+            runtimeToolBoundary: orchestratorPlan.runtimeToolPlane.boundary,
+            initialTargets: orchestratorPlan.routing.initialTargets,
+          },
+        },
       });
     });
 

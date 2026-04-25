@@ -8,6 +8,7 @@ import type {
   MessageOrigin,
 } from '../../api/contracts.js';
 import type { CatsCoreState } from '../../../../core/types.js';
+import type { OrchestratorTurnPlan } from '../../../../platform/orchestration/contracts.js';
 import type {
   RoomRoutingGuardReason,
 } from '../../../../shared/roomRouting.js';
@@ -81,6 +82,7 @@ interface RouteChannelMessageOptions {
   runtimeDataDir?: string;
   cancellationRegistry?: ChannelDispatchCancellationRegistry;
   onStateWritten?: (channelId: string) => void;
+  orchestratorPlan?: OrchestratorTurnPlan | null;
 }
 
 function readMessageRetryMetadata(
@@ -307,6 +309,9 @@ export async function beginChannelMessageDispatch(
     payload,
     now,
     choiceResponseCore,
+    {
+      orchestratorPlan: options.orchestratorPlan,
+    },
   );
   nextState = materializeInFlightDispatchState(
     preparedTurn.state,
@@ -365,6 +370,9 @@ export async function beginChannelMessageRetryDispatch(
     sourceMessageId,
     now,
     choiceResponseCore,
+    {
+      orchestratorPlan: options.orchestratorPlan,
+    },
   );
   nextState = await persistInFlightDispatchState(
     options.chatStore,
