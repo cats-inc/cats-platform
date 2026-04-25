@@ -10,7 +10,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | In Progress |
 | **Owner** | Codex |
 | **Reviewer** | User |
 
@@ -45,6 +45,42 @@ The rollout target is:
 - a fake driving-agent test harness that supplies semantic plans so tests can
   verify the platform enforces boundaries without replacing the plan
 - one weak-worker/SOP sample path that is schema-validated and budget-limited
+
+## Implementation Status
+
+As of 2026-04-25, the local implementation has completed the supervision
+contract/policy/tool-boundary foundation and moved into the first Work
+inspection slice.
+
+Completed:
+
+- shared supervision contracts, stable rejection codes, capability assessment,
+  policy dials, schema versioning, tool manifests, runtime boundary manifests,
+  and Work sample supervised tools
+- durable tool-boundary evidence JSONL persistence with policy snapshot refs
+- durable policy snapshot persistence as ADR-081 execution traces, without a
+  new canonical record family
+- supervised run inspection projection over core runs, run-state metadata,
+  policy snapshot traces, and evidence rows
+- Work task detail API projection with durable evidence supplied through the
+  route dependency
+- Work-owned task detail panel showing supervised run state, blockers, pending
+  approvals, policy snapshot count, and evidence count
+- cancellation context propagation into durable tool evidence
+- fake driving-agent harness with rejection recovery and policy snapshot
+  lineage on boundary evidence
+- standardized helper for writing `metadata.supervision.runState`
+
+Remaining before real provider-agent integration:
+
+- connect the supervised Work launcher to actual managed-work/mission creation
+  rather than only projection/test fixtures
+- broaden approval lifecycle integration from in-memory sample tools to the
+  production operator approval flow
+- add budget inheritance / delegated run creation around the async lifecycle
+  request shape
+- run the full Phase 5 fake Work run as a product-level contract gate before
+  opening a separate real-provider PLAN
 
 ## Non-Goals
 
