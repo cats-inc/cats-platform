@@ -494,10 +494,10 @@ artifact exists.
 
 | Gate | Enforcement |
 |------|-------------|
-| Do not start real provider-agent integration until Phase 5 fake-driving-agent contract tests are green. | PR checklist must cite `work-supervised-run.test.ts` passing; real-provider work belongs in a separate follow-up PLAN. |
+| Do not start real provider-agent integration until Phase 5 fake-driving-agent contract tests are green. | PR checklist must cite `work-supervised-run.test.tsx` passing; real-provider work belongs in a separate follow-up PLAN. |
 | Do not expose a broad/write tool to any provider model until FR-19 override floor tests are green. | PR checklist must cite `supervision-policy-engine.test.ts` and `supervision-tool-boundary.test.ts` cases for `E_TOOL_SCOPE_DENIED` plus evaluated/observed positive path. |
 | Do not ship Work API routes for supervised runs until policy snapshots and evidence references are durable. | PR checklist must cite Phase 4 persistence tests. |
-| Do not add product-renderer imports to `src/platform/supervision/**`. | `supervision-boundary-imports.test.ts` must fail such imports. |
+| Do not add product-renderer imports to `src/platform/supervision/**`. | `supervision-static-boundary.test.tsx` must fail such imports. |
 
 ## Testing Strategy
 
@@ -515,11 +515,20 @@ artifact exists.
   - platform supervision modules do not import product renderer modules
   - Chat routing remains product-owned
 - **Manual Testing**:
-  - start a fixture Work run
-  - inspect run state, blockers, policy snapshot, pending approval, and
-    evidence summary
-  - approve/deny a pending request and verify state/evidence changes
-  - cancel a run and verify pending approvals close and new tool calls reject
+  - run `npm run build`
+  - open a Work task detail view and click `Start supervised run`
+  - verify the page stays on the same task detail route and refreshes the
+    `Run Guardrails` panel
+  - inspect run state, blockers, policy snapshot count, pending approval
+    count, and evidence summary in the Work-owned renderer
+  - run `npm run build:test-ui` and
+    `node --test --test-isolation=none build/test/work-supervised-run.test.js`
+    to verify the fake-agent Work path: API launch, policy snapshot
+    persistence, durable evidence, lifecycle child-run delegation, and task
+    detail inspection
+  - approve/deny of supervised tool requests remains a follow-up because the
+    current production approval queue is task-level, while supervised tool
+    approvals are run/action-level
 
 ## Risks & Mitigations
 
@@ -542,6 +551,7 @@ artifact exists.
 | 2026-04-25 | Plan created from ADR-082 / SPEC-082 after supervision-spec review rounds. |
 | 2026-04-25 | Follow-up review pass: added override-floor coverage, fake driving-agent harness shape, cancellation reason mapping, phase dependency notes, and static boundary enforcement. |
 | 2026-04-25 | Follow-up review pass: added recovery-capable fake-agent harness, schema-version shape, phase-gate enforcement, real-provider follow-up boundary, and stricter minimal Work status surface. |
+| 2026-04-25 | Implementation pass: added Work supervised-run launch, bounded budgets, durable policy/evidence lineage, lifecycle child-run spawn, Work renderer launch action, idempotent active-run reuse, and product-level fake-agent vertical coverage. |
 
 ---
 
