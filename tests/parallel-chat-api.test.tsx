@@ -5,6 +5,7 @@ import path from 'node:path';
 
 import {
   createParallelChatGroup,
+  sendChatMessage,
   sendParallelChatMessage,
 } from '../src/products/shared/renderer/api/chat.ts';
 import type { AppShellPayload } from '../src/products/shared/api/workspaceContracts.ts';
@@ -108,6 +109,72 @@ test('parallel chat client uses canonical parallel-chat-groups endpoints', async
       method: 'POST',
       body: {
         activeChannelId: 'channel-1',
+        body: 'hi',
+      },
+    },
+  ]);
+});
+
+test('chat message client preserves dispatch acknowledgement metadata', async () => {
+  const originalFetch = globalThis.fetch;
+  const requests: Array<{ url: string; method: string; body: unknown }> = [];
+  const dispatch = {
+    channelId: 'channel-1',
+    results: [],
+    orchestrator: {
+      planId: 'plan-1',
+      planner: 'dynamic_room_workflow',
+      loopMode: 'checkpoint_driven',
+      dispatchBoundary: 'supervised_runtime_boundary',
+      runtimeToolBoundary: 'runtime_mcp_facade',
+      initialTargets: [
+        {
+          targetKind: 'orchestrator',
+          targetId: 'orchestrator',
+          targetName: 'Orchestrator',
+          laneId: 'lane-1',
+          sessionId: null,
+          trigger: 'room_default',
+          plannedDepth: 0,
+        },
+      ],
+    },
+  };
+
+  globalThis.fetch = async (input, init = {}) => {
+    requests.push({
+      url: String(input),
+      method: init.method ?? 'GET',
+      body: typeof init.body === 'string' ? JSON.parse(init.body) : null,
+    });
+
+    return new Response(JSON.stringify({
+      appShell: { chat: { selectedChannelId: 'channel-1' } },
+      message: null,
+      phase: 'acknowledged',
+      results: [],
+      dispatch,
+    }), {
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+    });
+  };
+
+  try {
+    const payload = await sendChatMessage('channel-1', {
+      body: 'hi',
+    });
+
+    assert.deepEqual(payload.dispatch, dispatch);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.deepEqual(requests, [
+    {
+      url: '/api/channels/channel-1/messages',
+      method: 'POST',
+      body: {
         body: 'hi',
       },
     },
