@@ -174,3 +174,63 @@ test('cancelled run rejects approval-gated tool calls with E_RUN_CANCELLED', asy
   assert.equal(result.error.code, 'E_RUN_CANCELLED');
   assert.deepEqual(tools.state.approvalMutations, []);
 });
+
+test('work.sop.classify_text_batch uses strict schema and no downstream tool scope', async () => {
+  const { boundary, tools } = createHarness();
+  const manifest = tools.manifests.find((tool) => tool.name === 'work.sop.classify_text_batch');
+
+  const result = await boundary.invoke({
+    toolName: 'work.sop.classify_text_batch',
+    input: {
+      items: [
+        { id: 'item-1', text: 'This needs legal review.' },
+        { id: 'item-2', text: 'Engineering follow-up.' },
+      ],
+      labels: ['legal', 'engineering'],
+    },
+    actionId: 'action-sop',
+    runId: 'run-1',
+    actorRef: 'agent:boss',
+    grant: {
+      parentToolScope: 'read_only',
+      policyToolScope: 'read_only',
+    },
+    execute: tools.executors['work.sop.classify_text_batch'],
+  });
+
+  assert.equal(tools.sopWorkerProfile.toolScope, 'none');
+  assert.deepEqual(tools.sopWorkerProfile.budget, {
+    maxDurationMs: 1000,
+    maxTokens: 1024,
+    hardStop: true,
+  });
+  assert.deepEqual(manifest?.maxBudgetHint, tools.sopWorkerProfile.budget);
+  assert.equal(result.status, 'applied');
+  assert.deepEqual(result.result.classifications.map((classification) => classification.label), [
+    'legal',
+    'engineering',
+  ]);
+});
+
+test('work.sop.classify_text_batch rejects invalid schema before result reaches agent', async () => {
+  const { boundary, tools } = createHarness();
+
+  const result = await boundary.invoke({
+    toolName: 'work.sop.classify_text_batch',
+    input: {
+      items: [{ id: '', text: 'No id' }],
+      labels: [],
+    },
+    actionId: 'action-sop-invalid',
+    runId: 'run-1',
+    actorRef: 'agent:boss',
+    grant: {
+      parentToolScope: 'read_only',
+      policyToolScope: 'read_only',
+    },
+    execute: tools.executors['work.sop.classify_text_batch'],
+  });
+
+  assert.equal(result.status, 'rejected');
+  assert.equal(result.error.code, 'E_SCHEMA_INVALID');
+});

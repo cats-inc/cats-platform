@@ -39,6 +39,32 @@ export interface WorkApprovalGatedApplyResult {
   value: string;
 }
 
+export interface WorkSopClassifyTextBatchInput {
+  items: Array<{
+    id: string;
+    text: string;
+  }>;
+  labels: string[];
+}
+
+export interface WorkSopClassifyTextBatchResult {
+  classifications: Array<{
+    id: string;
+    label: string;
+    confidence: number;
+  }>;
+}
+
+export interface WorkSopWorkerProfile {
+  toolName: 'work.sop.classify_text_batch';
+  toolScope: 'none';
+  budget: {
+    maxDurationMs: number;
+    maxTokens: number;
+    hardStop: true;
+  };
+}
+
 export type WorkApprovalState = 'pending' | 'approved' | 'denied';
 
 export interface WorkApprovalRequest {
@@ -71,7 +97,12 @@ export interface WorkSupervisedTools {
       WorkApprovalGatedApplyInput,
       WorkApprovalGatedApplyResult
     >;
+    'work.sop.classify_text_batch': SupervisedToolExecutor<
+      WorkSopClassifyTextBatchInput,
+      WorkSopClassifyTextBatchResult
+    >;
   };
+  sopWorkerProfile: WorkSopWorkerProfile;
   register(registry: SupervisedToolRegistry): void;
   approve(requestId: string): void;
   deny(requestId: string): void;
@@ -97,6 +128,16 @@ export function createInMemoryWorkSupervisedTools(input: {
       'work.context.lookup': createContextLookupExecutor(state),
       'work.local_note.apply': createLocalNoteApplyExecutor(state),
       'work.approval_gated.apply': createApprovalGatedApplyExecutor(state),
+      'work.sop.classify_text_batch': createSopClassifyTextBatchExecutor(),
+    },
+    sopWorkerProfile: {
+      toolName: 'work.sop.classify_text_batch',
+      toolScope: 'none',
+      budget: {
+        maxDurationMs: 1000,
+        maxTokens: 1024,
+        hardStop: true,
+      },
     },
     register(registry) {
       for (const manifest of manifests) {
@@ -140,6 +181,19 @@ export function createWorkSupervisedToolManifests(): SupervisedToolManifest[] {
       preflight: 'required',
       approval: 'always',
       failureCodes: ['E_APPROVAL_DENIED', 'E_RUN_CANCELLED', 'E_PRECHECK_FAILED'],
+    }),
+    createManifest({
+      name: 'work.sop.classify_text_batch',
+      description: 'Classify a small text batch using a strict SOP worker.',
+      sideEffect: 'none',
+      preflight: 'required',
+      approval: 'never',
+      failureCodes: ['E_SCHEMA_INVALID'],
+      maxBudgetHint: {
+        maxDurationMs: 1000,
+        maxTokens: 1024,
+        hardStop: true,
+      },
     }),
   ];
 }
@@ -237,10 +291,50 @@ function createApprovalGatedApplyExecutor(
   };
 }
 
+function createSopClassifyTextBatchExecutor(): SupervisedToolExecutor<
+  WorkSopClassifyTextBatchInput,
+  WorkSopClassifyTextBatchResult
+> {
+  return (input) => {
+    if (!isClassifyTextBatchInput(input)) {
+      return {
+        status: 'rejected',
+        error: {
+          code: 'E_SCHEMA_INVALID',
+          message: 'Invalid work.sop.classify_text_batch input schema.',
+        },
+      };
+    }
+
+    const result: WorkSopClassifyTextBatchResult = {
+      classifications: input.items.map((item) => ({
+        id: item.id,
+        label: classifyText(item.text, input.labels),
+        confidence: 0.6,
+      })),
+    };
+
+    if (!isClassifyTextBatchResult(result)) {
+      return {
+        status: 'rejected',
+        error: {
+          code: 'E_SCHEMA_INVALID',
+          message: 'Invalid work.sop.classify_text_batch output schema.',
+        },
+      };
+    }
+
+    return {
+      status: 'applied',
+      result,
+    };
+  };
+}
+
 function createManifest(input: Pick<
   SupervisedToolManifest,
   'name' | 'description' | 'sideEffect' | 'preflight' | 'approval' | 'failureCodes'
->): SupervisedToolManifest {
+> & Pick<Partial<SupervisedToolManifest>, 'maxBudgetHint'>): SupervisedToolManifest {
   return {
     schemaVersion: DEFAULT_SUPERVISION_SCHEMA_VERSION,
     name: input.name,
@@ -253,6 +347,7 @@ function createManifest(input: Pick<
     approval: input.approval,
     evidence: 'summary',
     failureCodes: input.failureCodes,
+    maxBudgetHint: input.maxBudgetHint,
     inputSchema: {
       id: `${input.name}.input`,
       version: '1.0',
@@ -282,6 +377,46 @@ function updateApprovalState(
 
 function defaultApprovalRequestId(context: ToolBoundaryExecutionContext): string {
   return `${context.runId}:${context.actionId}:approval`;
+}
+
+function isClassifyTextBatchInput(input: unknown): input is WorkSopClassifyTextBatchInput {
+  if (!isRecord(input) || !Array.isArray(input.items) || !Array.isArray(input.labels)) {
+    return false;
+  }
+  if (input.labels.length === 0 || !input.labels.every((label) => typeof label === 'string')) {
+    return false;
+  }
+
+  return input.items.every((item) =>
+    isRecord(item) &&
+    typeof item.id === 'string' &&
+    item.id.trim() !== '' &&
+    typeof item.text === 'string',
+  );
+}
+
+function isClassifyTextBatchResult(input: unknown): input is WorkSopClassifyTextBatchResult {
+  return isRecord(input) &&
+    Array.isArray(input.classifications) &&
+    input.classifications.every((classification) =>
+      isRecord(classification) &&
+      typeof classification.id === 'string' &&
+      typeof classification.label === 'string' &&
+      typeof classification.confidence === 'number' &&
+      classification.confidence >= 0 &&
+      classification.confidence <= 1,
+    );
+}
+
+function classifyText(text: string, labels: string[]): string {
+  const normalizedText = text.toLowerCase();
+  const matchingLabel = labels.find((label) => normalizedText.includes(label.toLowerCase()));
+
+  return matchingLabel ?? labels[0] ?? 'unknown';
+}
+
+function isRecord(input: unknown): input is Record<string, unknown> {
+  return typeof input === 'object' && input !== null;
 }
 
 function rejected<T>(
