@@ -1,14 +1,21 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import {
   DEFAULT_SUPERVISION_SCHEMA_VERSION,
+  createDurableToolEvidenceSink,
   createInMemoryToolEvidenceSink,
   createSupervisedToolRegistry,
   createToolBoundary,
   type SupervisedToolManifest,
   type SupervisionPolicySnapshot,
 } from '../src/platform/supervision/index.ts';
+import {
+  readEvidenceEvents,
+} from '../src/platform/persistence/evidence.ts';
 
 function manifest(name: string, sideEffect: SupervisedToolManifest['sideEffect']): SupervisedToolManifest {
   return {
@@ -225,4 +232,60 @@ test('tool boundary evidence captures actor, policy, tool, and approval metadata
     evidence: 'summary',
   });
   assert.equal(event?.approvalRequestId, 'approval-5');
+});
+
+test('durable tool evidence sink writes boundary evidence into evidence JSONL', async () => {
+  const dataDir = await mkdtemp(path.join(os.tmpdir(), 'cats-supervision-evidence-'));
+  try {
+    const registry = createSupervisedToolRegistry();
+    const evidenceSink = createDurableToolEvidenceSink({
+      dataDir,
+      conversationId: 'conversation-supervision',
+      sessionId: 'session-supervision',
+    });
+    const boundary = createToolBoundary({
+      registry,
+      evidenceSink,
+      now: () => '2026-04-25T09:00:00.000Z',
+    });
+    registry.register(manifest('work.approval_gated.apply', 'external_visible'));
+
+    const result = await boundary.invoke({
+      toolName: 'work.approval_gated.apply',
+      input: {},
+      actionId: 'action-durable',
+      runId: 'run-durable',
+      actorRef: 'agent:boss',
+      policySnapshot: policySnapshot(),
+      grant: {
+        parentToolScope: 'broad_write',
+        policyToolScope: 'broad_write',
+      },
+      execute: () => ({
+        status: 'pending_approval',
+        requestId: 'approval-durable',
+        summary: 'Durable approval request.',
+      }),
+    });
+
+    const events = readEvidenceEvents(dataDir, 'conversation-supervision');
+    assert.equal(result.status, 'pending_approval');
+    assert.equal(evidenceSink.read().length, 1);
+    assert.equal(events.length, 1);
+    assert.equal(events[0]?.id, 'run-durable:action-durable:work.approval_gated.apply:2026-04-25T09:00:00.000Z');
+    assert.equal(events[0]?.conversationId, 'conversation-supervision');
+    assert.equal(events[0]?.sessionId, 'session-supervision');
+    assert.equal(events[0]?.kind, 'system_event');
+    assert.equal(events[0]?.payload.source, 'supervision_tool_boundary');
+    assert.equal(events[0]?.payload.toolName, 'work.approval_gated.apply');
+    assert.equal(events[0]?.payload.status, 'pending_approval');
+    assert.equal(events[0]?.payload.approvalRequestId, 'approval-durable');
+    assert.deepEqual(events[0]?.payload.policySnapshotRef, {
+      policyBundleVersion: 'test-policy@1',
+      actionId: 'policy-action',
+      runId: 'run-1',
+    });
+  } finally {
+    await rm(dataDir, { recursive: true, force: true });
+  }
 });
