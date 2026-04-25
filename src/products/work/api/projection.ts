@@ -27,6 +27,10 @@ import {
   type CoreTaskTimelineQuerySummary,
   type CoreTaskTimelineView,
 } from '../../../core/taskTimeline.js';
+import {
+  buildSupervisedRunInspectionProjection,
+  type SupervisedRunInspectionProjection,
+} from '../../../platform/supervision/index.js';
 import type {
   CatsCoreState,
   CoreConversationRecord,
@@ -362,6 +366,7 @@ export interface WorkTaskDetailProjection {
     displayName: string;
   }>;
   inspection: CoreTaskInspectionView;
+  supervision: SupervisedRunInspectionProjection | null;
   controlPlane: CoreTaskControlPlaneView;
   recovery: CoreTaskRecoveryView;
   timeline: {
@@ -958,6 +963,7 @@ export function buildWorkTaskDetailProjection(
   const timeline = queryCoreTaskTimelineView(core, task, {
     limit: WORK_TIMELINE_PREVIEW_LIMIT,
   });
+  const inspection = buildCoreTaskInspectionView(core, task);
   const linkedWorkItem = core.workItems.find((candidate) => candidate.taskId === task.id) ?? null;
   const project = linkedWorkItem?.projectId
     ? core.projects.find((candidate) => candidate.id === linkedWorkItem.projectId) ?? null
@@ -996,7 +1002,10 @@ export function buildWorkTaskDetailProjection(
       : null,
     conversation,
     assignedActors,
-    inspection: buildCoreTaskInspectionView(core, task),
+    inspection,
+    supervision: inspection.latestRun
+      ? buildSupervisedRunInspectionProjection(core, inspection.latestRun.id)
+      : null,
     controlPlane: buildCoreTaskControlPlaneView(core, task),
     recovery: buildCoreTaskRecoveryView(core, task),
     timeline: {
