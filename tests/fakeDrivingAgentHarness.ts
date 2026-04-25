@@ -177,6 +177,7 @@ async function executeSemanticPlan(input: {
       runId: input.input.runId,
       actorRef: 'fake-agent',
       grant: input.grantForStep(step),
+      policySnapshot: input.input.policySnapshot,
       execute,
     });
     trace.observedStepIds.push(step.stepId);

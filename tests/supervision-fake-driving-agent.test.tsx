@@ -5,6 +5,7 @@ import {
   DEFAULT_SUPERVISION_SCHEMA_VERSION,
   createInMemoryToolEvidenceSink,
   createInMemoryWorkSupervisedTools,
+  createSupervisionPolicySnapshotRef,
   createSupervisedToolRegistry,
   createToolBoundary,
   type SupervisionPolicySnapshot,
@@ -113,7 +114,8 @@ function plan(input: {
 }
 
 test('fake driving agent owns semantic plan selection and observed step order', async () => {
-  const { boundary, executors, tools } = createHarness();
+  const { boundary, executors, tools, evidenceSink } = createHarness();
+  const input = fakeAgentInput();
   const initialPlan = plan({
     planId: 'agent-plan-note',
     stepId: 'agent-step-note',
@@ -130,7 +132,7 @@ test('fake driving agent owns semantic plan selection and observed step order', 
 
   const result = await runFakeDrivingAgentHarness({
     agent,
-    input: fakeAgentInput(),
+    input,
     boundary,
     executors,
     grantForStep: () => ({
@@ -143,6 +145,10 @@ test('fake driving agent owns semantic plan selection and observed step order', 
   assert.deepEqual(result.traces[0]?.observedStepIds, ['agent-step-note']);
   assert.equal(result.traces[0]?.planId, 'agent-plan-note');
   assert.equal(tools.state.notes.get('note-1')?.body, 'Chosen by fake agent');
+  assert.deepEqual(
+    evidenceSink.read()[0]?.policySnapshotRef,
+    createSupervisionPolicySnapshotRef(input.policySnapshot),
+  );
 });
 
 test('rejection recovery plan comes from reviseAfterRejection', async () => {
