@@ -1,5 +1,13 @@
 import type { CoreStore } from '../../../core/store.js';
 import type { EvidenceEvent } from '../../../core/types.js';
+import { CoreNotFoundError } from '../../../core/errors.js';
+import { upsertCoreRun } from '../../../core/model/index.js';
+import { handleCoreError } from '../../../core/api/shared.js';
+import {
+  buildSupervisedRunInspectionProjection,
+  deriveRunState,
+  writeRunStateMetadata,
+} from '../../../platform/supervision/index.js';
 import {
   buildWorkDashboardProjection,
   buildWorkProjectDetailProjection,
@@ -29,6 +37,7 @@ import {
   WORK_API_PROJECT_DETAIL_PATTERN,
   WORK_API_PROJECTS_PATH,
   WORK_API_TASK_DETAIL_PATTERN,
+  WORK_API_TASK_SUPERVISED_RUN_PATTERN,
   WORK_API_TASKS_PATH,
   WORK_API_WORK_ITEM_DETAIL_PATTERN,
   WORK_API_WORK_ITEMS_PATH,
@@ -57,6 +66,53 @@ export function createWorkTaskDetailPayload(
 ): WorkTaskDetailProjection | null {
   const task = core.tasks.find((candidate) => candidate.id === taskId) ?? null;
   return task ? buildWorkTaskDetailProjection(core, task, evidenceEvents) : null;
+}
+
+export async function createWorkSupervisedRunPayload(
+  dependencies: WorkApiDependencies,
+  taskId: string,
+) {
+  const now = dependencies.now?.() ?? new Date();
+  const evaluatedAt = now.toISOString();
+  const core = await dependencies.coreStore.readCore();
+  const task = core.tasks.find((candidate) => candidate.id === taskId) ?? null;
+
+  if (!task) {
+    throw new CoreNotFoundError(`No task found for id ${taskId}.`, 'task_not_found');
+  }
+
+  const runState = deriveRunState({ lifecycle: 'queued' });
+  const next = upsertCoreRun(
+    core,
+    {
+      title: `Supervised run for ${task.title}`,
+      status: 'queued',
+      conversationId: task.conversationId,
+      taskId: task.id,
+      orchestratorActorId: task.ownerActorId,
+      summary: 'Queued supervised Work run.',
+      createdAt: evaluatedAt,
+      metadata: writeRunStateMetadata({
+        metadata: {
+          supervision: {
+            source: 'work_supervised_run_launcher',
+          },
+        },
+        evaluation: runState,
+        evaluatedAt,
+      }),
+    },
+    now,
+  );
+  const persisted = await dependencies.coreStore.writeCore(next.core);
+  const run = persisted.runs.find((candidate) => candidate.id === next.run.id) ?? next.run;
+
+  return {
+    task,
+    run,
+    created: next.created,
+    supervision: buildSupervisedRunInspectionProjection(persisted, run.id),
+  };
 }
 
 export function createWorkProjectListPayload(
@@ -200,6 +256,36 @@ export async function routeWorkApi(
       200,
       createWorkTaskListPayload(await context.dependencies.coreStore.readCore()),
     );
+    return true;
+  }
+
+  const supervisedRunMatch = matchRoute(
+    context.url.pathname,
+    WORK_API_TASK_SUPERVISED_RUN_PATTERN,
+  );
+  if (supervisedRunMatch) {
+    if (context.method !== 'POST') {
+      sendMethodNotAllowed(context.response, ['POST']);
+      return true;
+    }
+
+    const taskId = supervisedRunMatch[0];
+    if (!taskId) {
+      sendJson(context.response, 400, {
+        error: { code: 'invalid_task_id', message: 'Task id is required.' },
+      });
+      return true;
+    }
+
+    try {
+      sendJson(
+        context.response,
+        201,
+        await createWorkSupervisedRunPayload(context.dependencies, taskId),
+      );
+    } catch (error) {
+      handleCoreError(context, error);
+    }
     return true;
   }
 
