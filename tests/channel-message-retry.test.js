@@ -158,6 +158,28 @@ test('POST /api/channels/:id/messages/:messageId/retry replays the same acknowle
     assert.equal(firstSendResponse.status, 200);
     const firstSendPayload = await firstSendResponse.json();
     const sourceMessageId = firstSendPayload.message.id;
+    assert.equal(
+      firstSendPayload.message.metadata.orchestratorBoundary,
+      'chat_message_dispatch',
+    );
+    assert.equal(
+      firstSendPayload.message.metadata.orchestratorPlanId,
+      firstSendPayload.dispatch.orchestrator.planId,
+    );
+    assert.equal(firstSendPayload.dispatch.orchestrator.planner, 'dynamic_room_workflow');
+    assert.equal(firstSendPayload.dispatch.orchestrator.loopMode, 'checkpoint_driven');
+    assert.equal(
+      firstSendPayload.dispatch.orchestrator.dispatchBoundary,
+      'supervised_runtime_boundary',
+    );
+    assert.equal(
+      firstSendPayload.dispatch.orchestrator.runtimeToolBoundary,
+      'runtime_mcp_facade',
+    );
+    assert.equal(
+      firstSendPayload.dispatch.orchestrator.initialTargets[0]?.targetKind,
+      'orchestrator',
+    );
 
     const failedChannel = await waitForCondition(async () => {
       const channelResponse = await fetch(`${baseUrl}/api/channels/${channelId}`);

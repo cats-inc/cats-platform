@@ -49,6 +49,10 @@ import { routeChatChannelRuntimeResourceApi } from './channelRuntimeRoutes.js';
 import type { CatsCoreState, TurnRecord } from '../../../../core/types.js';
 import { bestEffortFlushRuntimeSessionMemory } from '../../../../platform/memory/runtimeMaintenance.js';
 import {
+  buildOrchestratorTurnPlan,
+  type OrchestratorTurnPlan,
+} from '../../../../platform/orchestration/index.js';
+import {
   buildCanonicalChatUserMessage,
   readChatCoreTurnMetadataString,
 } from '../../state/chatCoreInterop.js';
@@ -70,6 +74,33 @@ function publishChannelMutationEvents(
     channelId,
     timestamp: new Date().toISOString(),
   });
+}
+
+function attachOrchestratorPlanMetadata(
+  body: SendChannelMessageInput,
+  plan: OrchestratorTurnPlan,
+): SendChannelMessageInput {
+  return {
+    ...body,
+    messageMetadata: {
+      ...(body.messageMetadata ?? {}),
+      orchestratorBoundary: 'chat_message_dispatch',
+      orchestratorPlanId: plan.planId,
+      orchestratorPlanner: plan.execution.planner,
+      orchestratorLoopMode: plan.execution.loopMode,
+      orchestratorDispatchBoundary: plan.executionLoop.dispatchBoundary,
+      orchestratorRuntimeToolBoundary: plan.runtimeToolPlane.boundary,
+      orchestratorRoutingTrigger: plan.routing.trigger,
+      orchestratorRoutingSelectionKind: plan.routing.resolution.selectionKind,
+      orchestratorInitialTargets: plan.routing.initialTargets.map((target) => ({
+        targetKind: target.targetKind,
+        targetId: target.targetId,
+        targetName: target.targetName,
+        trigger: target.trigger,
+        plannedDepth: target.plannedDepth,
+      })),
+    },
+  };
 }
 
 function publishPersistedChannelMutationEvents(
@@ -541,10 +572,22 @@ async function handleRestSendMessage(
 
     await context.dependencies.mutationGate.run(channelId, async () => {
       const stateBefore = await context.dependencies.chatStore.read();
+      const coreBefore = await context.dependencies.chatStore.readCore();
+      const orchestratorPlan = buildOrchestratorTurnPlan(
+        stateBefore,
+        coreBefore,
+        {
+          channelId,
+          body: body.body,
+          senderName: body.senderName,
+          transport: 'web',
+        },
+        context.dependencies.orchestratorPlannerSurface,
+      );
       begunDispatch = await beginChannelMessageDispatch(
         stateBefore,
         channelId,
-        body,
+        attachOrchestratorPlanMetadata(body, orchestratorPlan),
         context.dependencies.runtimeClient,
         nowFrom(context.dependencies),
         {
@@ -573,6 +616,14 @@ async function handleRestSendMessage(
         dispatch: {
           channelId,
           results: begunDispatch.results,
+          orchestrator: {
+            planId: orchestratorPlan.planId,
+            planner: orchestratorPlan.execution.planner,
+            loopMode: orchestratorPlan.execution.loopMode,
+            dispatchBoundary: orchestratorPlan.executionLoop.dispatchBoundary,
+            runtimeToolBoundary: orchestratorPlan.runtimeToolPlane.boundary,
+            initialTargets: orchestratorPlan.routing.initialTargets,
+          },
         },
       });
     });
