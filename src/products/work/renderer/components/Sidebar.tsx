@@ -50,7 +50,6 @@ export interface SidebarProps {
   onCollapsedSidebarClick: (event: ReactMouseEvent<HTMLElement>) => void;
   onOpenChatsOverview: () => void;
   onStartNewChat: () => void;
-  onStartWorkIntake?: () => void;
   onOpenWarRoom?: () => void;
   onOpenProjects?: () => void;
   onOpenTasks?: () => void;
@@ -75,10 +74,10 @@ export interface SidebarProps {
 }
 
 function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] {
-  const actions: ConversationSidebarAction[] = [
+  return [
     {
-      key: 'new-chat',
-      label: 'New chat',
+      key: 'new-work',
+      label: 'New work',
       onClick: props.onStartNewChat,
       icon: (
         <svg
@@ -97,32 +96,6 @@ function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] 
       ),
     },
   ];
-
-  if (props.onStartWorkIntake) {
-    actions.push({
-      key: 'start-work',
-      label: 'Start work',
-      onClick: props.onStartWorkIntake,
-      icon: (
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <rect x="3" y="3" width="10" height="10" rx="1.5" />
-          <path d="M6 7h4" />
-          <path d="M6 9.5h2.5" />
-        </svg>
-      ),
-    });
-  }
-
-  return actions;
 }
 
 function createExtraActionGroups(props: SidebarProps): ConversationSidebarActionGroup[] {

@@ -5,7 +5,6 @@ import { BootShell } from "./chatUtils";
 import {
   WORK_BROKEN_LINKS_PATH,
   WORK_COCKPIT_PATH,
-  WORK_INTAKE_PATH,
   WORK_PROJECTS_PATH,
   WORK_SYSTEM_MAP_PATH,
   WORK_TASKS_PATH,
@@ -23,7 +22,6 @@ export default createWorkspaceProductApp({
   renderSidebar: (props) => (
     <Sidebar
       {...props}
-      onStartWorkIntake={() => props.navigate(WORK_INTAKE_PATH)}
       onOpenWarRoom={() => props.navigate(WORK_WAR_ROOM_PATH)}
       onOpenProjects={() => props.navigate(WORK_PROJECTS_PATH)}
       onOpenTasks={() => props.navigate(WORK_TASKS_PATH)}
