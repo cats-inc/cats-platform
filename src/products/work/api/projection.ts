@@ -34,6 +34,7 @@ import {
 import type {
   CatsCoreState,
   CoreConversationRecord,
+  EvidenceEvent,
   CoreProjectRecord,
   CoreProjectStatus,
   CoreTaskRecord,
@@ -959,6 +960,7 @@ export function buildWorkWorkItemDetailProjection(
 export function buildWorkTaskDetailProjection(
   core: CatsCoreState,
   task: CoreTaskRecord,
+  evidenceEvents: EvidenceEvent[] = [],
 ): WorkTaskDetailProjection {
   const timeline = queryCoreTaskTimelineView(core, task, {
     limit: WORK_TIMELINE_PREVIEW_LIMIT,
@@ -1004,7 +1006,7 @@ export function buildWorkTaskDetailProjection(
     assignedActors,
     inspection,
     supervision: inspection.latestRun
-      ? buildSupervisedRunInspectionProjection(core, inspection.latestRun.id)
+      ? buildSupervisedRunInspectionProjection(core, inspection.latestRun.id, evidenceEvents)
       : null,
     controlPlane: buildCoreTaskControlPlaneView(core, task),
     recovery: buildCoreTaskRecoveryView(core, task),

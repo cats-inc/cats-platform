@@ -8,6 +8,7 @@ import {
 } from '../src/core/model/index.ts';
 import { MemoryCoreStore } from '../src/core/store.ts';
 import type { EvidenceEvent } from '../src/core/types.ts';
+import { createWorkTaskDetailPayload } from '../src/products/work/api/index.ts';
 import { buildWorkTaskDetailProjection } from '../src/products/work/api/projection.ts';
 import {
   DEFAULT_SUPERVISION_SCHEMA_VERSION,
@@ -159,13 +160,20 @@ test('supervised run projection combines run state, policy snapshots, and eviden
 });
 
 test('Work task detail projection exposes supervised latest-run inspection', async () => {
-  const { core } = await createFixtureCore();
+  const { core, snapshot } = await createFixtureCore();
   const task = core.tasks.find((candidate) => candidate.id === 'task-supervised-1');
   assert.ok(task);
 
-  const detail = buildWorkTaskDetailProjection(core, task);
+  const detail = buildWorkTaskDetailProjection(core, task, [evidenceEvent(snapshot)]);
+  const payload = createWorkTaskDetailPayload(
+    core,
+    'task-supervised-1',
+    [evidenceEvent(snapshot)],
+  );
 
   assert.equal(detail.supervision?.run.id, 'run-supervised-1');
   assert.equal(detail.supervision?.primaryState, 'waiting_for_approval');
   assert.equal(detail.supervision?.counts.policySnapshots, 1);
+  assert.equal(detail.supervision?.counts.evidence, 1);
+  assert.equal(payload?.supervision?.evidence[0]?.eventId, 'evidence-supervised-1');
 });

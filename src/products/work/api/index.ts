@@ -1,4 +1,5 @@
 import type { CoreStore } from '../../../core/store.js';
+import type { EvidenceEvent } from '../../../core/types.js';
 import {
   buildWorkDashboardProjection,
   buildWorkProjectDetailProjection,
@@ -37,6 +38,7 @@ export const WORK_API_SLICE = 'work';
 
 export interface WorkApiDependencies {
   coreStore: CoreStore;
+  readEvidenceEvents?: (conversationId: string) => EvidenceEvent[];
   now?: () => Date;
 }
 
@@ -51,9 +53,10 @@ export function createWorkDashboardPayload(
 export function createWorkTaskDetailPayload(
   core: Awaited<ReturnType<CoreStore['readCore']>>,
   taskId: string,
+  evidenceEvents: EvidenceEvent[] = [],
 ): WorkTaskDetailProjection | null {
   const task = core.tasks.find((candidate) => candidate.id === taskId) ?? null;
-  return task ? buildWorkTaskDetailProjection(core, task) : null;
+  return task ? buildWorkTaskDetailProjection(core, task, evidenceEvents) : null;
 }
 
 export function createWorkProjectListPayload(
@@ -215,10 +218,14 @@ export async function routeWorkApi(
       return true;
     }
 
-    const payload = createWorkTaskDetailPayload(
-      await context.dependencies.coreStore.readCore(),
-      taskId,
-    );
+    const core = await context.dependencies.coreStore.readCore();
+    const task = core.tasks.find((candidate) => candidate.id === taskId) ?? null;
+    const evidenceEvents = task?.conversationId
+      ? context.dependencies.readEvidenceEvents?.(task.conversationId) ?? []
+      : [];
+    const payload = task
+      ? buildWorkTaskDetailProjection(core, task, evidenceEvents)
+      : null;
     if (!payload) {
       sendJson(context.response, 404, {
         error: { code: 'task_not_found', message: `No task found for id ${taskId}.` },

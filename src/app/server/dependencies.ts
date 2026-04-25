@@ -22,6 +22,7 @@ import {
   createFileBackedTelegramRelayStore,
   InMemoryTelegramRelayStore,
 } from '../../platform/transports/telegram/store/index.js';
+import { readEvidenceEvents as readPersistedEvidenceEvents } from '../../platform/persistence/evidence.js';
 import { dispatchOrchestratorTurn } from '../../platform/orchestration/index.js';
 import type { PendingOrchestratorDispatchRequest } from '../../platform/orchestration/pendingDispatch.js';
 import { createMemoryAwareCompanionBoxStore } from '../../products/chat/state/companionMemoryAdapter.js';
@@ -230,6 +231,9 @@ export function resolveServerDependencies(
     },
     work: {
       coreStore: dependencies.work?.coreStore ?? sharedCoreStore,
+      readEvidenceEvents: dependencies.work?.readEvidenceEvents
+        ?? ((conversationId: string) =>
+          readPersistedEvidenceEvents(dependencies.shared.config.chatStatePath, conversationId)),
       now: dependencies.shared.now,
     },
     code: {
