@@ -49,8 +49,8 @@ The rollout target is:
 ## Implementation Status
 
 As of 2026-04-25, the local implementation has completed the supervision
-contract/policy/tool-boundary foundation and moved into the first Work
-inspection slice.
+contract/policy/tool-boundary foundation and the first shippable Work
+supervised-run vertical slice.
 
 Completed:
 
@@ -70,17 +70,29 @@ Completed:
 - fake driving-agent harness with rejection recovery and policy snapshot
   lineage on boundary evidence
 - standardized helper for writing `metadata.supervision.runState`
+- Work supervised-run launch route that seeds a bounded budget, reuses an
+  existing active supervised run for the same task, and returns the inspection
+  projection
+- Work renderer action for starting a supervised run from task detail without
+  changing navigation flow
+- async lifecycle spawn tool for creating managed child runs under parent
+  budget caps, plus Work fake-run coverage that delegates a child run through
+  the tool boundary
+- product-level Work fake-agent vertical test that starts through the Work API,
+  persists policy snapshots, writes durable evidence, and reads the resulting
+  inspection back through task detail
+- static import-boundary enforcement for content-blind supervision lifecycle
+  modules and product-owned rendering
 
 Remaining before real provider-agent integration:
 
-- connect the supervised Work launcher to actual managed-work/mission creation
-  rather than only projection/test fixtures
 - broaden approval lifecycle integration from in-memory sample tools to the
   production operator approval flow
-- add budget inheritance / delegated run creation around the async lifecycle
-  request shape
-- run the full Phase 5 fake Work run as a product-level contract gate before
-  opening a separate real-provider PLAN
+- add manual verification notes for the first supervised Work run fixture
+- decide whether supervised launch should also create or bind managed-work /
+  mission records, or remain task/run-first for the first release slice
+- open the separate real-provider integration PLAN only after this fake-agent
+  contract path is accepted
 
 ## Non-Goals
 
