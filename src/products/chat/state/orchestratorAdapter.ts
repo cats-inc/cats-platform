@@ -50,6 +50,7 @@ export function createChatOrchestratorChannelRouter(
           runtimeRecovery: options.runtimeRecovery,
           chatStatePath: options.chatStatePath,
           runtimeDataDir: options.runtimeDataDir,
+          orchestratorPlan: input.orchestratorPlan,
         },
       );
     },

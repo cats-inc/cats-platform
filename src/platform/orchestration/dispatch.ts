@@ -209,6 +209,7 @@ export async function dispatchOrchestratorTurn<TCompanionStore, TState extends O
     companionStore: input.companionStore,
     memoryService: input.memoryService,
     chatStore: input.chatStore,
+    orchestratorPlan: plan,
   });
   const persisted = await input.chatStore.write(routed.state);
   const persistedChannel = input.channelRouter.buildChannelView(

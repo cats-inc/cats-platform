@@ -459,6 +459,7 @@ export interface OrchestratorChannelRouteInput<
   chatStore: OrchestratorChatStore<TState>;
   companionStore?: TCompanionStore;
   memoryService?: CatsMemoryService;
+  orchestratorPlan?: OrchestratorTurnPlan | null;
 }
 
 export interface OrchestratorChannelRouter<
