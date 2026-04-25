@@ -24,6 +24,8 @@ import {
   nowFrom,
   type ChatApiRouteContext,
 } from '../routeSupport.js';
+import { attachOrchestratorPlanMetadata } from '../orchestratorDispatchMetadata.js';
+import { buildOrchestratorTurnPlan } from '../../../../platform/orchestration/index.js';
 import {
   channelDispatchCancellationRegistry,
 } from '../../state/runtime-dispatch/cancellation.js';
@@ -222,6 +224,7 @@ async function stageParallelChatBodies(
   }
 
   const begunDispatches: BegunParallelChatDispatch[] = [];
+  const core = await context.dependencies.chatStore.readCore();
   for (const [channelId, input] of effectiveChannelInputs.entries()) {
     const trimmedBody = input.body.trim();
     if (!trimmedBody) {
@@ -234,10 +237,21 @@ async function stageParallelChatBodies(
     }
 
     try {
+      const orchestratorPlan = buildOrchestratorTurnPlan(
+        acknowledgedState,
+        core,
+        {
+          channelId,
+          body: trimmedBody,
+          senderName: input.senderName,
+          transport: 'web',
+        },
+        context.dependencies.orchestratorPlannerSurface,
+      );
       const begun = await beginChannelMessageDispatch(
         acknowledgedState,
         channelId,
-        { ...input, body: trimmedBody },
+        attachOrchestratorPlanMetadata({ ...input, body: trimmedBody }, orchestratorPlan),
         context.dependencies.runtimeClient,
         now,
         {
@@ -250,6 +264,7 @@ async function stageParallelChatBodies(
           },
           cancellationRegistry: channelDispatchCancellationRegistry,
           onStateWritten: notifyStreamTargetChanged,
+          orchestratorPlan,
         },
       );
       acknowledgedState = replaceState(

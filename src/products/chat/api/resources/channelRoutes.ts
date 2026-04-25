@@ -48,10 +48,8 @@ import { routeChatChannelAttachmentResourceApi } from './channelAttachmentRoutes
 import { routeChatChannelRuntimeResourceApi } from './channelRuntimeRoutes.js';
 import type { CatsCoreState, TurnRecord } from '../../../../core/types.js';
 import { bestEffortFlushRuntimeSessionMemory } from '../../../../platform/memory/runtimeMaintenance.js';
-import {
-  buildOrchestratorTurnPlan,
-  type OrchestratorTurnPlan,
-} from '../../../../platform/orchestration/index.js';
+import { buildOrchestratorTurnPlan } from '../../../../platform/orchestration/index.js';
+import { attachOrchestratorPlanMetadata } from '../orchestratorDispatchMetadata.js';
 import {
   buildCanonicalChatUserMessage,
   readChatCoreTurnMetadataString,
@@ -74,33 +72,6 @@ function publishChannelMutationEvents(
     channelId,
     timestamp: new Date().toISOString(),
   });
-}
-
-function attachOrchestratorPlanMetadata(
-  body: SendChannelMessageInput,
-  plan: OrchestratorTurnPlan,
-): SendChannelMessageInput {
-  return {
-    ...body,
-    messageMetadata: {
-      ...(body.messageMetadata ?? {}),
-      orchestratorBoundary: 'chat_message_dispatch',
-      orchestratorPlanId: plan.planId,
-      orchestratorPlanner: plan.execution.planner,
-      orchestratorLoopMode: plan.execution.loopMode,
-      orchestratorDispatchBoundary: plan.executionLoop.dispatchBoundary,
-      orchestratorRuntimeToolBoundary: plan.runtimeToolPlane.boundary,
-      orchestratorRoutingTrigger: plan.routing.trigger,
-      orchestratorRoutingSelectionKind: plan.routing.resolution.selectionKind,
-      orchestratorInitialTargets: plan.routing.initialTargets.map((target) => ({
-        targetKind: target.targetKind,
-        targetId: target.targetId,
-        targetName: target.targetName,
-        trigger: target.trigger,
-        plannedDepth: target.plannedDepth,
-      })),
-    },
-  };
 }
 
 function publishPersistedChannelMutationEvents(
