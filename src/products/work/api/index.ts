@@ -5,8 +5,10 @@ import { upsertCoreRun } from '../../../core/model/index.js';
 import { handleCoreError } from '../../../core/api/shared.js';
 import {
   buildSupervisedRunInspectionProjection,
+  deriveChildBudgetEnvelope,
   deriveRunState,
   writeRunStateMetadata,
+  type BudgetEnvelope,
 } from '../../../platform/supervision/index.js';
 import {
   buildWorkDashboardProjection,
@@ -46,6 +48,18 @@ import {
 
 export const WORK_API_SLICE = 'work';
 
+const WORK_SUPERVISED_RUN_PARENT_BUDGET: BudgetEnvelope = {
+  maxTokens: 120_000,
+  maxDurationMs: 60 * 60 * 1000,
+  hardStop: true,
+};
+
+const WORK_SUPERVISED_RUN_DEFAULT_BUDGET: BudgetEnvelope = {
+  maxTokens: 60_000,
+  maxDurationMs: 30 * 60 * 1000,
+  hardStop: true,
+};
+
 export interface WorkApiDependencies {
   coreStore: CoreStore;
   readEvidenceEvents?: (conversationId: string) => EvidenceEvent[];
@@ -83,6 +97,19 @@ export async function createWorkSupervisedRunPayload(
   }
 
   const runState = deriveRunState({ lifecycle: 'queued' });
+  const taskSupervision = asRecord(task.metadata.supervision);
+  const parentBudget =
+    readBudgetEnvelope(taskSupervision?.parentBudget) ??
+    readBudgetEnvelope(task.metadata.supervisionParentBudget) ??
+    WORK_SUPERVISED_RUN_PARENT_BUDGET;
+  const requestedBudget =
+    readBudgetEnvelope(taskSupervision?.requestedBudget) ??
+    readBudgetEnvelope(task.metadata.supervisionRequestedBudget);
+  const budget = deriveChildBudgetEnvelope({
+    parent: parentBudget,
+    requested: requestedBudget,
+    defaults: WORK_SUPERVISED_RUN_DEFAULT_BUDGET,
+  });
   const next = upsertCoreRun(
     core,
     {
@@ -96,6 +123,8 @@ export async function createWorkSupervisedRunPayload(
       metadata: writeRunStateMetadata({
         metadata: {
           supervision: {
+            budget,
+            budgetSource: 'work_supervised_run_launcher',
             source: 'work_supervised_run_launcher',
           },
         },
@@ -339,4 +368,36 @@ export async function routeWorkApi(
   }
 
   return false;
+}
+
+function readBudgetEnvelope(value: unknown): BudgetEnvelope | undefined {
+  const record = asRecord(value);
+  if (!record) {
+    return undefined;
+  }
+
+  const budget: BudgetEnvelope = {
+    ...readFiniteNumberProperty(record, 'maxCostUsd'),
+    ...readFiniteNumberProperty(record, 'maxTokens'),
+    ...readFiniteNumberProperty(record, 'maxDurationMs'),
+    ...(typeof record.hardStop === 'boolean' ? { hardStop: record.hardStop } : {}),
+  };
+
+  return Object.keys(budget).length > 0 ? budget : undefined;
+}
+
+function readFiniteNumberProperty(
+  record: Record<string, unknown>,
+  key: 'maxCostUsd' | 'maxTokens' | 'maxDurationMs',
+): Pick<BudgetEnvelope, typeof key> {
+  const value = record[key];
+  return typeof value === 'number' && Number.isFinite(value)
+    ? { [key]: value } as Pick<BudgetEnvelope, typeof key>
+    : {};
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
 }

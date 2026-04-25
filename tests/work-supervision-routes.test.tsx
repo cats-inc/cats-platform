@@ -144,5 +144,11 @@ test('POST /api/work/tasks/:taskId/supervised-run creates a queued supervised ru
   assert.equal(payload.run.taskId, 'task-supervision-route');
   assert.equal(payload.supervision.primaryState, 'queued');
   assert.equal(supervision?.source, 'work_supervised_run_launcher');
+  assert.deepEqual(supervision?.budget, {
+    maxTokens: 60_000,
+    maxDurationMs: 30 * 60 * 1000,
+    hardStop: true,
+  });
+  assert.equal(supervision?.budgetSource, 'work_supervised_run_launcher');
   assert.equal(runState?.primaryState, 'queued');
 });
