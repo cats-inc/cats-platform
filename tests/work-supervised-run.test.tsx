@@ -18,6 +18,7 @@ import {
   createSupervisedLifecycleTools,
   createSupervisedToolRegistry,
   createToolBoundary,
+  persistSupervisionPolicySnapshot,
   type BudgetEnvelope,
   type SupervisionPolicySnapshot,
 } from '../src/platform/supervision/index.ts';
@@ -157,13 +158,21 @@ test('Work supervised run launch can be driven by a fake agent and inspected fro
   });
   const runId = String(launchPayload.run.id);
   const runBudget = readBudgetEnvelopeFromLaunch(launchPayload);
+  const policySnapshot = fakePolicySnapshot(runId);
+  await persistSupervisionPolicySnapshot({
+    coreStore,
+    snapshot: policySnapshot,
+    conversationId: 'conversation-fake-agent',
+    taskId: 'task-fake-agent',
+    now: () => new Date('2026-04-25T13:01:00.000Z'),
+  });
   const result = await runFakeDrivingAgentHarness({
     agent,
     input: {
       runId,
       goal: 'Prove Work supervised fake run path',
       availableTools: tools.manifests,
-      policySnapshot: fakePolicySnapshot(runId),
+      policySnapshot,
       contextRefs: ['goal'],
       budget: runBudget,
     } satisfies FakeAgentInput,
@@ -208,7 +217,13 @@ test('Work supervised run launch can be driven by a fake agent and inspected fro
 
   assert.equal(detailResponse.status, 200);
   assert.equal(detailPayload.supervision.run.id, runId);
+  assert.equal(detailPayload.supervision.counts.policySnapshots, 1);
+  assert.equal(detailPayload.supervision.latestPolicySnapshot.snapshot.actionId, 'work-fake-policy');
   assert.equal(detailPayload.supervision.counts.evidence, 4);
+  assert.equal(
+    detailPayload.supervision.evidence[0]?.policySnapshotRef?.snapshotId,
+    detailPayload.supervision.latestPolicySnapshot.snapshotRef.snapshotId,
+  );
   assert.deepEqual(
     detailPayload.supervision.evidence.map((event: { status: string }) => event.status),
     ['applied', 'applied', 'applied', 'pending_approval'],
