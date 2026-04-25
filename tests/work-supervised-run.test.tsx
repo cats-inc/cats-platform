@@ -8,7 +8,9 @@ import test from 'node:test';
 import { buildApprovalQueue } from '../src/core/approvalQueue.ts';
 import {
   createDefaultCoreState,
+  upsertCoreRun,
   upsertCoreTask,
+  writeApprovalDecision,
 } from '../src/core/model/index.ts';
 import { MemoryCoreStore } from '../src/core/store.ts';
 import {
@@ -19,6 +21,7 @@ import {
   createSupervisedLifecycleTools,
   createSupervisedToolRegistry,
   createToolBoundary,
+  applySupervisionApprovalDecision,
   persistSupervisionApprovalRequest,
   persistSupervisionPolicySnapshot,
   type BudgetEnvelope,
@@ -75,6 +78,21 @@ test('Work supervised run launch can be driven by a fake agent and inspected fro
 
   assert.equal(launchResponse.status, 201);
   assert.equal(launchPayload.run.status, 'queued');
+
+  const queuedCore = await coreStore.readCore();
+  const queuedRun = queuedCore.runs.find((candidate) => candidate.id === launchPayload.run.id);
+  assert.ok(queuedRun);
+  await coreStore.writeCore(
+    upsertCoreRun(
+      queuedCore,
+      {
+        id: queuedRun.id,
+        title: queuedRun.title,
+        status: 'running',
+      },
+      new Date('2026-04-25T13:00:30.000Z'),
+    ).core,
+  );
 
   const lifecycleTools = createSupervisedLifecycleTools({
     coreStore,
@@ -219,11 +237,27 @@ test('Work supervised run launch can be driven by a fake agent and inspected fro
     requestedByActorId: 'fake-agent',
     now: new Date('2026-04-25T13:02:00.000Z'),
   });
-  await coreStore.writeCore(approvalPersistence.core);
+  const pendingApprovalQueue = buildApprovalQueue(approvalPersistence.core);
+  const approved = writeApprovalDecision(
+    approvalPersistence.core,
+    {
+      taskId: approvalPersistence.task.id,
+      status: 'approved',
+      action: 'approve',
+      decidedByActorId: 'owner:local',
+    },
+    new Date('2026-04-25T13:03:00.000Z'),
+  );
+  const approvedSync = applySupervisionApprovalDecision({
+    core: approved.core,
+    approvalTaskId: approvalPersistence.task.id,
+    fallbackPolicy: 'retry',
+    now: new Date('2026-04-25T13:03:00.000Z'),
+  });
+  await coreStore.writeCore(approvedSync.core);
   const coreAfterFakeRun = await coreStore.readCore();
   const childRun = coreAfterFakeRun.runs.find((candidate) => candidate.parentRunId === runId);
   const childSupervision = childRun?.metadata.supervision as Record<string, unknown> | undefined;
-  const approvalQueue = buildApprovalQueue(coreAfterFakeRun);
 
   assert.equal(childRun?.title, 'Delegated fake Work child run');
   assert.equal(childRun?.status, 'queued');
@@ -232,7 +266,8 @@ test('Work supervised run launch can be driven by a fake agent and inspected fro
     maxDurationMs: 5 * 60 * 1000,
     hardStop: true,
   });
-  assert.equal(approvalQueue[0]?.taskId, approvalPersistence.task.id);
+  assert.equal(pendingApprovalQueue[0]?.taskId, approvalPersistence.task.id);
+  assert.equal(buildApprovalQueue(coreAfterFakeRun).length, 0);
   assert.equal(approvalPersistence.approvalBinding.subjectId, runId);
 
   const detailResponse = await fetch(`${baseUrl}/api/work/tasks/task-fake-agent`);
@@ -240,6 +275,8 @@ test('Work supervised run launch can be driven by a fake agent and inspected fro
 
   assert.equal(detailResponse.status, 200);
   assert.equal(detailPayload.supervision.run.id, runId);
+  assert.equal(detailPayload.supervision.primaryState, 'running');
+  assert.equal(detailPayload.supervision.counts.pendingApprovals, 0);
   assert.equal(detailPayload.supervision.counts.policySnapshots, 1);
   assert.equal(detailPayload.supervision.latestPolicySnapshot.snapshot.actionId, 'work-fake-policy');
   assert.equal(detailPayload.supervision.counts.evidence, 4);
