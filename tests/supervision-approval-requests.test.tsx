@@ -1,13 +1,16 @@
 import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
 import test from 'node:test';
 
 import { buildApprovalQueue } from '../src/core/approvalQueue.ts';
+import { routeCoreApprovalsApi } from '../src/core/api/controlApprovals.ts';
 import {
   createDefaultCoreState,
   upsertCoreRun,
   upsertCoreTask,
   writeApprovalDecision,
 } from '../src/core/model/index.ts';
+import { MemoryCoreStore } from '../src/core/store.ts';
 import {
   applySupervisionApprovalDecision,
   persistSupervisionApprovalRequest,
@@ -166,6 +169,60 @@ test('supervision approval decisions synchronize back to run state metadata', ()
     deniedRunState?.terminalCause,
     `approval denied: ${deniedSeed.approvalRequestId}`,
   );
+});
+
+test('core approvals route synchronizes supervision approval decisions to runs', async (t) => {
+  const seeded = seedApprovalRequest();
+  const coreStore = new MemoryCoreStore(seeded.core);
+  const server = createServer(async (request, response) => {
+    const url = new URL(request.url ?? '/', 'http://localhost');
+    const handled = await routeCoreApprovalsApi({
+      request,
+      response,
+      url,
+      method: request.method ?? 'GET',
+      dependencies: {
+        coreStore,
+        now: () => new Date('2026-04-25T15:12:00.000Z'),
+      },
+    });
+
+    if (!handled) {
+      response.writeHead(404, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({ error: 'not found' }));
+    }
+  });
+
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  t.after(() => server.close());
+
+  const address = server.address();
+  assert.ok(address && typeof address === 'object');
+  const response = await fetch(`http://127.0.0.1:${address.port}/api/core/approvals`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      taskId: seeded.approvalTaskId,
+      status: 'approved',
+      action: 'approve',
+      decidedByActorId: 'owner:local',
+      supervisionFallbackPolicy: 'retry',
+    }),
+  });
+  const payload = await response.json();
+  const core = await coreStore.readCore();
+  const run = core.runs.find((candidate) => candidate.id === seeded.runId);
+  const runState = (
+    run?.metadata.supervision as Record<string, unknown> | undefined
+  )?.runState as Record<string, unknown> | undefined;
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(payload.supervisionApprovalSync, {
+    runId: seeded.runId,
+    approvalRequestId: seeded.approvalRequestId,
+    state: 'approved',
+  });
+  assert.equal(runState?.primaryState, 'running');
 });
 
 function seedApprovalRequest(): {

@@ -13,6 +13,12 @@ import { writeOrchestratorDispatchReplayMetadata } from '../../platform/orchestr
 import {
   persistOrchestratorReplayActivity,
 } from '../../platform/orchestration/replayActivity.js';
+import {
+  applySupervisionApprovalDecision,
+} from '../../platform/supervision/approvalRequests.js';
+import {
+  SUPERVISION_FALLBACK_POLICY_VALUES,
+} from '../../platform/supervision/contracts.js';
 import { buildTaskRuntimeExecutionRequest } from '../../shared/taskExecutionBridge.js';
 import {
   handleCoreError,
@@ -450,6 +456,32 @@ async function handleCoreApprovalWrite(
     );
     let persisted = await context.dependencies.coreStore.writeCore(activity.core);
     let persistedTask = persisted.tasks.find((candidate) => candidate.id === next.task.id);
+    let supervisionApprovalSync: {
+      runId: string;
+      approvalRequestId: string;
+      state: string;
+    } | undefined;
+    if (hasSupervisionApprovalBinding(persisted, next.task.id)) {
+      const synced = applySupervisionApprovalDecision({
+        core: persisted,
+        approvalTaskId: next.task.id,
+        fallbackPolicy:
+          readEnumValue(
+            approval.supervisionFallbackPolicy,
+            'supervisionFallbackPolicy',
+            SUPERVISION_FALLBACK_POLICY_VALUES,
+          ) ?? 'ask_human',
+        now,
+      });
+      persisted = await context.dependencies.coreStore.writeCore(synced.core);
+      persistedTask = persisted.tasks.find((candidate) => candidate.id === next.task.id)
+        ?? persistedTask;
+      supervisionApprovalSync = {
+        runId: synced.runId,
+        approvalRequestId: synced.approvalRequest.requestId,
+        state: synced.approvalRequest.state,
+      };
+    }
     let autoResume: CoreOrchestratorAutoResumeSummary | undefined;
     if (
       next.task.approval.decisionAction === 'approve'
@@ -514,10 +546,26 @@ async function handleCoreApprovalWrite(
       ...(wakeups.length > 0 ? { wakeups } : {}),
       ...(persistedLifecycleActivities.length > 0 ? { activities: persistedLifecycleActivities } : {}),
       ...(autoResume ? { autoResume } : {}),
+      ...(supervisionApprovalSync ? { supervisionApprovalSync } : {}),
     });
   } catch (error) {
     handleCoreError(context, error);
   }
+}
+
+function hasSupervisionApprovalBinding(
+  core: CatsCoreState,
+  approvalTaskId: string,
+): boolean {
+  return core.approvalBindings.some((binding) =>
+    binding.approvalTaskId === approvalTaskId &&
+    asRecord(binding.metadata.supervisionApproval)?.source === 'supervision_tool_boundary');
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
 }
 
 export async function routeCoreApprovalsApi(
