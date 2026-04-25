@@ -24,7 +24,6 @@ import {
   nowFrom,
   type ChatApiRouteContext,
 } from '../routeSupport.js';
-import { attachOrchestratorPlanMetadata } from '../orchestratorDispatchMetadata.js';
 import { buildOrchestratorTurnPlan } from '../../../../platform/orchestration/index.js';
 import {
   channelDispatchCancellationRegistry,
@@ -251,7 +250,7 @@ async function stageParallelChatBodies(
       const begun = await beginChannelMessageDispatch(
         acknowledgedState,
         channelId,
-        attachOrchestratorPlanMetadata({ ...input, body: trimmedBody }, orchestratorPlan),
+        { ...input, body: trimmedBody },
         context.dependencies.runtimeClient,
         now,
         {

@@ -85,6 +85,33 @@ interface RouteChannelMessageOptions {
   orchestratorPlan?: OrchestratorTurnPlan | null;
 }
 
+function buildOrchestratorPlanMessageMetadata(
+  plan: OrchestratorTurnPlan | null | undefined,
+  channelId: string,
+): NonNullable<SendChannelMessageInput['messageMetadata']> {
+  if (!plan || plan.channelId !== channelId) {
+    return {};
+  }
+
+  return {
+    orchestratorBoundary: 'chat_message_dispatch',
+    orchestratorPlanId: plan.planId,
+    orchestratorPlanner: plan.execution.planner,
+    orchestratorLoopMode: plan.execution.loopMode,
+    orchestratorDispatchBoundary: plan.executionLoop.dispatchBoundary,
+    orchestratorRuntimeToolBoundary: plan.runtimeToolPlane.boundary,
+    orchestratorRoutingTrigger: plan.routing.trigger,
+    orchestratorRoutingSelectionKind: plan.routing.resolution.selectionKind,
+    orchestratorInitialTargets: plan.routing.initialTargets.map((target) => ({
+      targetKind: target.targetKind,
+      targetId: target.targetId,
+      targetName: target.targetName,
+      trigger: target.trigger,
+      plannedDepth: target.plannedDepth,
+    })),
+  };
+}
+
 function readMessageRetryMetadata(
   message: ChatMessage,
 ): SendChannelMessageInput['messageMetadata'] | undefined {
@@ -283,6 +310,7 @@ export async function beginChannelMessageDispatch(
     {
       metadata: {
         ...(payload.messageMetadata ?? {}),
+        ...buildOrchestratorPlanMessageMetadata(options.orchestratorPlan, channelId),
         ...(options.transportBindingId ? { transportBindingId: options.transportBindingId } : {}),
         ...(payload.choiceResponse
           ? {

@@ -49,7 +49,6 @@ import { routeChatChannelRuntimeResourceApi } from './channelRuntimeRoutes.js';
 import type { CatsCoreState, TurnRecord } from '../../../../core/types.js';
 import { bestEffortFlushRuntimeSessionMemory } from '../../../../platform/memory/runtimeMaintenance.js';
 import { buildOrchestratorTurnPlan } from '../../../../platform/orchestration/index.js';
-import { attachOrchestratorPlanMetadata } from '../orchestratorDispatchMetadata.js';
 import {
   buildCanonicalChatUserMessage,
   readChatCoreTurnMetadataString,
@@ -558,7 +557,7 @@ async function handleRestSendMessage(
       begunDispatch = await beginChannelMessageDispatch(
         stateBefore,
         channelId,
-        attachOrchestratorPlanMetadata(body, orchestratorPlan),
+        body,
         context.dependencies.runtimeClient,
         nowFrom(context.dependencies),
         {

@@ -20,6 +20,7 @@ function createRuntimeStub() {
 
 function buildPlanTargetingParticipant(channelId, participant) {
   return {
+    planId: 'orch-plan-test',
     channelId,
     routing: {
       trigger: 'room_default',
@@ -55,6 +56,16 @@ function buildPlanTargetingParticipant(channelId, participant) {
           toolIntent: null,
         },
       ],
+    },
+    execution: {
+      planner: 'dynamic_room_workflow',
+      loopMode: 'agent_driven',
+    },
+    executionLoop: {
+      dispatchBoundary: 'supervised_runtime_boundary',
+    },
+    runtimeToolPlane: {
+      boundary: 'runtime_mcp_facade',
     },
   };
 }
@@ -104,4 +115,6 @@ test('Chat dispatch consumes orchestrator plan targets instead of recomputing de
     begun.preparedTurn?.activeTurn.targetStatuses[0]?.participant.participantId,
     participant.participantId,
   );
+  assert.equal(begun.userMessage.metadata.orchestratorPlanId, 'orch-plan-test');
+  assert.equal(begun.userMessage.metadata.orchestratorDispatchBoundary, 'supervised_runtime_boundary');
 });
