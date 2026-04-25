@@ -397,3 +397,79 @@ test('observed trace captures main FR-29 rejection codes', async () => {
     assert.equal(result.traces[0]?.toolCalls[0]?.error?.code, testCase.code);
   }
 });
+
+test('fake Work run fixture combines lookup, weak worker, local mutation, and approval gate', async () => {
+  const { boundary, executors, tools } = createHarness();
+  const initialPlan: SemanticPlan = {
+    planId: 'agent-plan-vertical',
+    steps: [
+      {
+        stepId: 'step-lookup',
+        target: { kind: 'worker_tool', toolName: 'work.context.lookup' },
+        toolName: 'work.context.lookup',
+        args: { key: 'goal' },
+      },
+      {
+        stepId: 'step-classify',
+        target: { kind: 'worker_tool', toolName: 'work.sop.classify_text_batch' },
+        toolName: 'work.sop.classify_text_batch',
+        args: {
+          items: [{ id: 'goal', text: 'Engineering should ship the harness.' }],
+          labels: ['engineering', 'legal'],
+        },
+      },
+      {
+        stepId: 'step-local-note',
+        target: { kind: 'worker_tool', toolName: 'work.local_note.apply' },
+        toolName: 'work.local_note.apply',
+        args: {
+          noteId: 'vertical-note',
+          body: 'Local note from fake agent plan.',
+        },
+      },
+      {
+        stepId: 'step-approval',
+        target: { kind: 'worker_tool', toolName: 'work.approval_gated.apply' },
+        toolName: 'work.approval_gated.apply',
+        args: {
+          value: 'approval-gated vertical change',
+        },
+        expectation: 'pending_approval',
+      },
+    ],
+    stopCondition: 'after_approval',
+  };
+  const agent = createScriptedFakeDrivingAgent({
+    initialPlan,
+    revisions: [],
+  });
+
+  const result = await runFakeDrivingAgentHarness({
+    agent,
+    input: fakeAgentInput(),
+    boundary,
+    executors,
+    grantForStep: (step) =>
+      step.toolName === 'work.local_note.apply'
+        ? { parentToolScope: 'narrow_write', policyToolScope: 'narrow_write' }
+        : step.toolName === 'work.approval_gated.apply'
+          ? { parentToolScope: 'broad_write', policyToolScope: 'broad_write' }
+          : { parentToolScope: 'read_only', policyToolScope: 'read_only' },
+  });
+
+  assert.equal(result.finalState, 'completed');
+  assert.deepEqual(result.traces[0]?.observedStepIds, [
+    'step-lookup',
+    'step-classify',
+    'step-local-note',
+    'step-approval',
+  ]);
+  assert.deepEqual(result.traces[0]?.toolCalls.map((call) => call.status), [
+    'applied',
+    'applied',
+    'applied',
+    'pending_approval',
+  ]);
+  assert.equal(tools.state.notes.get('vertical-note')?.body, 'Local note from fake agent plan.');
+  assert.deepEqual(tools.state.approvalMutations, []);
+});
