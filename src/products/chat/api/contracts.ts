@@ -726,11 +726,35 @@ export interface ActivateChannelResponse {
   results: ChannelActivationResult[];
 }
 
+export interface ChannelDispatchOrchestratorSummary {
+  planId: string;
+  planner: string;
+  loopMode: string;
+  dispatchBoundary: string;
+  runtimeToolBoundary: string;
+  initialTargets: Array<{
+    targetKind: 'orchestrator' | 'cat';
+    targetId: string;
+    targetName: string;
+    laneId: string | null;
+    sessionId: string | null;
+    trigger: RoomRoutingTrigger;
+    plannedDepth: number;
+  }>;
+}
+
+export interface ChannelDispatchAcknowledgement {
+  channelId: string;
+  results: ChannelDispatchResult[];
+  orchestrator: ChannelDispatchOrchestratorSummary;
+}
+
 export interface SendChannelMessageResponse {
   appShell: AppShellPayload;
   message: ChatMessage | null;
   phase: 'acknowledged';
   results: ChannelDispatchResult[];
+  dispatch?: ChannelDispatchAcknowledgement;
 }
 
 export interface CancelChannelResponse {
