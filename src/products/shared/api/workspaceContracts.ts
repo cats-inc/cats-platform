@@ -652,6 +652,7 @@ export interface UpdateChannelInput {
   pendingModel?: string | null;
   pendingInstance?: string | null;
   pendingModelSelection?: ProviderModelSelection | null;
+  resetContinuity?: boolean;
 }
 
 export interface UpdateChannelParticipantInput {
@@ -700,6 +701,7 @@ export interface ChannelActivationResult {
   targetKind: 'orchestrator' | 'cat';
   targetId: string;
   targetName: string;
+  laneId: string | null;
   status: 'started' | 'already_started' | 'error';
   sessionId: string | null;
   error?: string;
@@ -709,6 +711,7 @@ export interface ChannelDispatchResult {
   targetKind: 'orchestrator' | 'cat';
   targetId: string;
   targetName: string;
+  laneId: string | null;
   sessionId: string | null;
   status: 'sent' | 'skipped' | 'error';
   dispatchId?: string;
