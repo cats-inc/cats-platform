@@ -1,5 +1,5 @@
 import type { CoreStore } from '../../../core/store.js';
-import type { EvidenceEvent } from '../../../core/types.js';
+import type { CoreRunRecord, EvidenceEvent } from '../../../core/types.js';
 import { CoreNotFoundError } from '../../../core/errors.js';
 import { upsertCoreRun } from '../../../core/model/index.js';
 import { handleCoreError } from '../../../core/api/shared.js';
@@ -94,6 +94,16 @@ export async function createWorkSupervisedRunPayload(
 
   if (!task) {
     throw new CoreNotFoundError(`No task found for id ${taskId}.`, 'task_not_found');
+  }
+
+  const existingRun = findActiveWorkSupervisedRun(core.runs, task.id);
+  if (existingRun) {
+    return {
+      task,
+      run: existingRun,
+      created: false,
+      supervision: buildSupervisedRunInspectionProjection(core, existingRun.id),
+    };
   }
 
   const runState = deriveRunState({ lifecycle: 'queued' });
@@ -308,10 +318,11 @@ export async function routeWorkApi(
     }
 
     try {
+      const payload = await createWorkSupervisedRunPayload(context.dependencies, taskId);
       sendJson(
         context.response,
-        201,
-        await createWorkSupervisedRunPayload(context.dependencies, taskId),
+        payload.created ? 201 : 200,
+        payload,
       );
     } catch (error) {
       handleCoreError(context, error);
@@ -368,6 +379,22 @@ export async function routeWorkApi(
   }
 
   return false;
+}
+
+function findActiveWorkSupervisedRun(
+  runs: CoreRunRecord[],
+  taskId: string,
+): CoreRunRecord | null {
+  return runs
+    .filter((run) =>
+      run.taskId === taskId &&
+      isActiveRunStatus(run.status) &&
+      asRecord(run.metadata.supervision)?.source === 'work_supervised_run_launcher')
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0] ?? null;
+}
+
+function isActiveRunStatus(status: CoreRunRecord['status']): boolean {
+  return status === 'queued' || status === 'running' || status === 'blocked';
 }
 
 function readBudgetEnvelope(value: unknown): BudgetEnvelope | undefined {

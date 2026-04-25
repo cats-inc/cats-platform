@@ -151,4 +151,20 @@ test('POST /api/work/tasks/:taskId/supervised-run creates a queued supervised ru
   });
   assert.equal(supervision?.budgetSource, 'work_supervised_run_launcher');
   assert.equal(runState?.primaryState, 'queued');
+
+  const secondResponse = await fetch(
+    `http://127.0.0.1:${address.port}/api/work/tasks/task-supervision-route/supervised-run`,
+    { method: 'POST' },
+  );
+  const secondPayload = await secondResponse.json();
+  const secondCore = await coreStore.readCore();
+  const supervisedRuns = secondCore.runs.filter((candidate) =>
+    candidate.taskId === 'task-supervision-route' &&
+    (candidate.metadata.supervision as Record<string, unknown> | undefined)?.source ===
+      'work_supervised_run_launcher');
+
+  assert.equal(secondResponse.status, 200);
+  assert.equal(secondPayload.created, false);
+  assert.equal(secondPayload.run.id, payload.run.id);
+  assert.equal(supervisedRuns.length, 1);
 });
