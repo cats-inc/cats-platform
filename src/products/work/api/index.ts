@@ -8,12 +8,13 @@ import type {
   ExecutionTargetSummary,
 } from '../../../core/types.js';
 import { CoreNotFoundError } from '../../../core/errors.js';
-import { upsertCoreRun } from '../../../core/model/index.js';
+import { appendCoreTrace, upsertCoreRun } from '../../../core/model/index.js';
 import { handleCoreError } from '../../../core/api/shared.js';
-import type {
-  RuntimeClient,
-  RuntimeMessageResult,
-  RuntimeSessionInfo,
+import {
+  resolveFullResponseText,
+  type RuntimeClient,
+  type RuntimeMessageResult,
+  type RuntimeSessionInfo,
 } from '../../../platform/runtime/client.js';
 import {
   buildSupervisedRunInspectionProjection,
@@ -502,7 +503,28 @@ async function launchRuntimeForWorkSupervisedRun(input: {
       },
       now,
     );
-    const persisted = await dependencies.coreStore.writeCore(next.core);
+    const traced = appendCoreTrace(
+      next.core,
+      {
+        id: `${input.run.id}:runtime-response`,
+        traceId: input.run.traceId ?? `trace-${input.run.id}`,
+        kind: 'outcome',
+        conversationId: input.run.conversationId,
+        runId: input.run.id,
+        taskId: input.task.id,
+        actorId: runtime.actorRef,
+        message: buildRuntimeResponseTraceMessage(runtime.session, runtime.message),
+        metadata: {
+          source: 'work_supervised_runtime_bridge',
+          sessionId: runtime.session.id,
+          provider: runtime.session.provider,
+          model: runtime.session.model,
+          tokensUsed: runtime.message.tokensUsed,
+        },
+      },
+      now,
+    );
+    const persisted = await dependencies.coreStore.writeCore(traced.core);
     const run = persisted.runs.find((candidate) => candidate.id === input.run.id) ?? next.run;
 
     return {
@@ -563,6 +585,7 @@ async function startWorkSupervisedRuntime(input: {
   session: RuntimeSessionInfo;
   message: RuntimeMessageResult;
   target: ResolvedWorkRuntimeTarget;
+  actorRef: string;
 }> {
   const drivingActor = resolveDrivingActor(input.core, input.task, input.run);
   const target = resolveWorkRuntimeTarget(input.core, input.task, drivingActor, input.dependencies);
@@ -652,6 +675,7 @@ async function startWorkSupervisedRuntime(input: {
     session,
     message,
     target,
+    actorRef: supervision.actorRef,
   };
 }
 
@@ -804,6 +828,22 @@ function writeRuntimeBridgeMetadata(
           },
     },
   };
+}
+
+function buildRuntimeResponseTraceMessage(
+  session: RuntimeSessionInfo,
+  message: RuntimeMessageResult,
+): string {
+  const text = resolveFullResponseText(message.segments).trim();
+  if (!text) {
+    return `Runtime session ${session.id} started and returned no text.`;
+  }
+
+  return clipTraceMessage(`Runtime response from ${session.provider}: ${text}`);
+}
+
+function clipTraceMessage(value: string): string {
+  return value.length > 2_000 ? `${value.slice(0, 1_997)}...` : value;
 }
 
 function formatRuntimeLaunchError(error: unknown): string {

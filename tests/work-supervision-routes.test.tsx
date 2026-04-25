@@ -345,6 +345,18 @@ test('POST /api/work/tasks/:taskId/supervised-run starts supervised runtime sess
     ['cats.runtime.session.create', 'cats.runtime.message.send'],
   );
 
+  const detailResponse = await fetch(
+    `http://127.0.0.1:${address.port}/api/work/tasks/task-supervision-route`,
+  );
+  const detailPayload = await detailResponse.json();
+  const runtimeTrace = detailPayload.timeline.view.items.find(
+    (item: { kind: string; summary: string | null }) =>
+      item.kind === 'trace' && item.summary?.includes('work runtime ok'),
+  );
+
+  assert.equal(detailResponse.status, 200);
+  assert.ok(runtimeTrace, 'expected Work task timeline to include the runtime response');
+
   const secondResponse = await fetch(
     `http://127.0.0.1:${address.port}/api/work/tasks/task-supervision-route/supervised-run`,
     { method: 'POST' },
