@@ -7,6 +7,10 @@ import {
 import { listProductProviders } from '../../../shared/providerCatalog.js';
 import { parseProviderModelSelection } from '../../../shared/providerSelection.js';
 import { resolveFullResponseText, type RuntimeProviderConfigRegistry } from '../../../runtime/client.js';
+import {
+  createSupervisedRuntimeSession,
+  sendSupervisedRuntimeMessage,
+} from '../../../platform/supervision/index.js';
 import type { CodeApiRouteContext } from './index.js';
 import {
   applyCodeRelayRosterProbe,
@@ -224,33 +228,56 @@ async function completeFanOutInBackground(
 ): Promise<void> {
   const dispatchResults = await Promise.all(input.targetEntries.map(async (entry) => {
     let sessionId: string | null = null;
+    const runId = `code-relay:${input.threadId}:${input.roundId}:${entry.id}`;
+    const supervision = {
+      product: 'cats-code',
+      surface: 'code-relay-fan-out',
+      runId,
+      actionId: `${runId}:runtime-session`,
+      actorRef: entry.id,
+      reason: 'code_relay_fan_out',
+    };
     try {
-      const session = await context.dependencies.runtimeClient.createSession({
-        provider: entry.provider,
-        instance: entry.instance,
-        model: entry.model,
-        modelSelection: entry.modelSelection ?? undefined,
-        cwd: input.repoPath,
-        workspaceKind: input.repoPath ? 'source' : undefined,
-        workspaceAccess: 'read_only',
-        context: {
-          source: 'interactive',
-          reason: 'code_relay_fan_out',
-          ...(input.repoPath ? { workspace: { cwd: input.repoPath } } : {}),
-          metadata: {
-            product: 'cats-code',
-            surface: 'relay',
-            relayAgentId: entry.id,
-            relayMode: 'fan_out',
+      const session = await createSupervisedRuntimeSession({
+        runtimeClient: context.dependencies.runtimeClient,
+        input: {
+          provider: entry.provider,
+          instance: entry.instance,
+          model: entry.model,
+          modelSelection: entry.modelSelection ?? undefined,
+          cwd: input.repoPath,
+          workspaceKind: input.repoPath ? 'source' : undefined,
+          workspaceAccess: 'read_only',
+          context: {
+            source: 'interactive',
+            reason: 'code_relay_fan_out',
+            ...(input.repoPath ? { workspace: { cwd: input.repoPath } } : {}),
+            metadata: {
+              product: 'cats-code',
+              surface: 'relay',
+              relayAgentId: entry.id,
+              relayMode: 'fan_out',
+            },
           },
         },
+        supervision,
       });
       sessionId = session.id;
-      const result = await context.dependencies.runtimeClient.sendMessage(session.id, input.prompt, {
-        context: {
-          source: 'interactive',
-          reason: 'code_relay_fan_out',
-          ...(input.repoPath ? { workspace: { cwd: input.repoPath } } : {}),
+      const result = await sendSupervisedRuntimeMessage({
+        runtimeClient: context.dependencies.runtimeClient,
+        sessionId: session.id,
+        content: input.prompt,
+        input: {
+          context: {
+            source: 'interactive',
+            reason: 'code_relay_fan_out',
+            ...(input.repoPath ? { workspace: { cwd: input.repoPath } } : {}),
+          },
+        },
+        supervision: {
+          ...supervision,
+          actionId: `${runId}:runtime-message`,
+          reason: 'code_relay_fan_out_prompt',
         },
       });
       return {

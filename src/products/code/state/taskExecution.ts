@@ -2,6 +2,7 @@ import type { CoreStore } from '../../../core/store.js';
 import type { CatsCoreState, CoreTaskRecord } from '../../../core/types.js';
 import type { RuntimeClient, RuntimeSessionInfo } from '../../../runtime/client.js';
 import { upsertCoreTask } from '../../../core/model/taskControls.js';
+import { createSupervisedRuntimeSession } from '../../../platform/supervision/index.js';
 import {
   writeTaskPlanningMetadata,
   type TaskPlanningMetadataInput,
@@ -132,14 +133,38 @@ export async function bridgeCodeTaskToRuntime(
     task,
   });
 
-  const session = await runtimeClient.createSession({
-    provider: input.provider,
-    model: input.model ?? undefined,
-    instance: input.instance ?? undefined,
-    cwd: input.workspacePath,
-    workspaceKind: 'source',
-    workspaceAccess: 'read_write',
-    ...executionRequest,
+  const session = await createSupervisedRuntimeSession({
+    runtimeClient,
+    input: {
+      provider: input.provider,
+      model: input.model ?? undefined,
+      instance: input.instance ?? undefined,
+      cwd: input.workspacePath,
+      workspaceKind: 'source',
+      workspaceAccess: 'read_write',
+      context: {
+        source: 'assignment',
+        reason: 'code_task_execute',
+        taskId: task.id,
+        workspace: {
+          cwd: input.workspacePath,
+        },
+        metadata: {
+          product: 'code',
+          taskId: task.id,
+          surface: 'task_execute',
+        },
+      },
+      ...executionRequest,
+    },
+    supervision: {
+      product: 'cats-code',
+      surface: 'code-task-execute',
+      runId: task.id,
+      actionId: `${task.id}:runtime-session`,
+      actorRef: task.orchestratorActorId ?? 'actor-orchestrator-global',
+      reason: 'code_task_execute',
+    },
   });
 
   const nextMetadata = writeCodeWorkspaceSummary(
