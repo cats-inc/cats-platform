@@ -50,6 +50,9 @@ import type { CatsCoreState, TurnRecord } from '../../../../core/types.js';
 import { bestEffortFlushRuntimeSessionMemory } from '../../../../platform/memory/runtimeMaintenance.js';
 import { buildOrchestratorTurnPlan } from '../../../../platform/orchestration/index.js';
 import {
+  buildChannelMessageOrchestratorPlanState,
+} from '../orchestratorPlanState.js';
+import {
   buildCanonicalChatUserMessage,
   readChatCoreTurnMetadataString,
 } from '../../state/chatCoreInterop.js';
@@ -543,8 +546,9 @@ async function handleRestSendMessage(
     await context.dependencies.mutationGate.run(channelId, async () => {
       const stateBefore = await context.dependencies.chatStore.read();
       const coreBefore = await context.dependencies.chatStore.readCore();
+      const now = nowFrom(context.dependencies);
       const orchestratorPlan = buildOrchestratorTurnPlan(
-        stateBefore,
+        buildChannelMessageOrchestratorPlanState(stateBefore, channelId, body, now),
         coreBefore,
         {
           channelId,
@@ -559,7 +563,7 @@ async function handleRestSendMessage(
         channelId,
         body,
         context.dependencies.runtimeClient,
-        nowFrom(context.dependencies),
+        now,
         {
           companionStore: context.dependencies.companionStore,
           memoryService: context.dependencies.memoryService,
