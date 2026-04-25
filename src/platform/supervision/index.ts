@@ -1,4 +1,5 @@
 export * from './capabilityAssessment.js';
+export * from './cancellation.js';
 export * from './contracts.js';
 export * from './errors.js';
 export * from './policyEngine.js';
