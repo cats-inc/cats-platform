@@ -50,6 +50,7 @@ import type { AdvancedDraftControlsPreferences } from '../advancedDraftControls.
 import type { ConversationBehaviorPreferences } from '../conversationBehavior.js';
 import type {
   RuntimePermissionMode,
+  RuntimeSessionPolicy,
   RuntimeSessionCreateContractInput,
   RuntimeWorkspaceAccess,
   RuntimeWorkspaceKind,
@@ -587,6 +588,21 @@ interface CreateChatChannelInputBase {
 export type CreateChatChannelInput =
   CreateChatChannelInputBase & RuntimeSessionCreateContractInput;
 
+export interface CreateParallelChatGroupInput {
+  title: string;
+  originSurface: PlatformSurfaceId;
+  repoPath?: string;
+  runtimeSessionPolicy?: RuntimeSessionPolicy | null;
+  responseLanguage?: string;
+  targets: Array<ParallelChatTarget & {
+    audienceKeys?: string[];
+    cwd?: string | null;
+    runtimeSessionPolicy?: RuntimeSessionPolicy | null;
+  }>;
+  participantCatIds?: string[];
+  temporaryParticipants?: CreateTemporaryParticipantInput[];
+}
+
 export interface UpdateGlobalOrchestratorInput {
   provider: string;
   instance?: string;
@@ -614,6 +630,22 @@ export interface SendChannelMessageInput {
   choiceResponse?: ChatMessageChoiceResponse | null;
 }
 
+export interface ParallelChatAttachmentInput {
+  name: string;
+  data: string;
+}
+
+export interface SendParallelChatMessageInput {
+  activeChannelId: string;
+  body: string;
+  attachments?: ParallelChatAttachmentInput[];
+  channelInputs?: Array<{
+    channelId: string;
+    body?: string;
+    messageMetadata?: ChannelMessageMetadata;
+  }>;
+}
+
 export interface UpdateChannelInput {
   title?: string;
   pendingProvider?: string | null;
@@ -638,6 +670,10 @@ export interface RelayParallelChatMessageInput {
 
 export interface CancelParallelChatGroupInput {
   activeChannelId: string;
+}
+
+export interface UpdateParallelChatGroupInput {
+  title?: string;
 }
 
 export interface CancelChannelResponse {
@@ -718,6 +754,26 @@ export interface SendChannelMessageResponse {
   phase: 'acknowledged';
   results: ChannelDispatchResult[];
   dispatch?: ChannelDispatchAcknowledgement;
+}
+
+export interface ParallelChatDispatchResult {
+  channelId: string;
+  status: 'sent' | 'error' | 'skipped';
+  sourceMessageId?: string;
+  error?: string;
+  orchestrator?: ChannelDispatchOrchestratorSummary;
+}
+
+export interface CreateParallelChatGroupResponse {
+  appShell: AppShellPayload;
+  group: ParallelChatGroupSummary;
+}
+
+export interface ParallelChatDispatchResponse {
+  appShell: AppShellPayload;
+  groupId: string;
+  phase: 'acknowledged' | 'completed';
+  results: ParallelChatDispatchResult[];
 }
 
 export interface ChannelExportPayload {

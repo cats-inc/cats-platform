@@ -5,19 +5,31 @@ import type {
   CancelChannelResponse,
   CancelParallelChatGroupInput,
   CancelParallelChatGroupResponse,
-  ChannelDispatchOrchestratorSummary,
-  ChannelMessageMetadata,
   ChatChannelView,
   CreateChatChannelInput,
   CreateCatInput,
-  CreateTemporaryParticipantInput,
+  CreateParallelChatGroupInput,
+  CreateParallelChatGroupResponse,
+  ParallelChatDispatchResponse,
   RelayParallelChatMessageInput,
+  SendParallelChatMessageInput,
   SendChannelMessageInput,
   SendChannelMessageResponse,
   UpdateChannelParticipantInput,
+  UpdateParallelChatGroupInput,
 } from '../../api/workspaceContracts.js';
-import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
-import type { RuntimeSessionPolicy } from '../../../../shared/runtimeSessionPolicy.js';
+
+export type {
+  CreateParallelChatGroupInput,
+  CreateParallelChatGroupResponse,
+  ParallelChatDispatchResponse,
+  ParallelChatDispatchResult,
+  ParallelChatGroupMemberSummary,
+  ParallelChatGroupSummary,
+  ParallelChatTarget,
+  SendParallelChatMessageInput,
+  UpdateParallelChatGroupInput,
+} from '../../api/workspaceContracts.js';
 
 import { fetchAppShell, refetchAfterMutation } from './appShell.js';
 import { expectJson, readErrorMessage } from './http.js';
@@ -337,82 +349,6 @@ export async function uploadChannelAttachments(
   }>(response, `attachment upload returned ${response.status}`);
 
   return result.attachments;
-}
-
-export interface ParallelChatTargetInput {
-  provider: string;
-  instance: string | null;
-  model: string | null;
-  modelSelection?: import('../../../../shared/providerSelection.js').ProviderModelSelection | null;
-}
-
-export interface CreateParallelChatGroupInput {
-  title: string;
-  originSurface: PlatformSurfaceId;
-  repoPath?: string;
-  runtimeSessionPolicy?: RuntimeSessionPolicy | null;
-  responseLanguage?: string;
-  targets: Array<ParallelChatTargetInput & {
-    audienceKeys?: string[];
-    cwd?: string | null;
-    runtimeSessionPolicy?: RuntimeSessionPolicy | null;
-  }>;
-  participantCatIds?: string[];
-  temporaryParticipants?: CreateTemporaryParticipantInput[];
-}
-
-export interface ParallelChatGroupMemberSummary extends ParallelChatTargetInput {
-  channelId: string;
-  title: string;
-  index: number;
-  lastMessageAt: string | null;
-}
-
-export interface ParallelChatGroupSummary {
-  id: string;
-  title: string;
-  originSurface?: PlatformSurfaceId | null;
-  mode: 'parallel' | 'compare';
-  status: 'active' | 'archived';
-  memberCount: number;
-  memberChannelIds: string[];
-  createdAt: string;
-  updatedAt: string;
-  lastMessageAt: string | null;
-  members: ParallelChatGroupMemberSummary[];
-}
-
-export interface CreateParallelChatGroupResponse {
-  appShell: AppShellPayload;
-  group: ParallelChatGroupSummary;
-}
-
-export interface SendParallelChatMessageInput {
-  activeChannelId: string;
-  body: string;
-  attachments?: Array<{ name: string; data: string }>;
-  channelInputs?: Array<{
-    channelId: string;
-    body?: string;
-    messageMetadata?: ChannelMessageMetadata;
-  }>;
-}
-
-export interface ParallelChatDispatchResponse {
-  appShell: AppShellPayload;
-  groupId: string;
-  phase: 'acknowledged' | 'completed';
-  results: Array<{
-    channelId: string;
-    status: 'sent' | 'error' | 'skipped';
-    sourceMessageId?: string;
-    error?: string;
-    orchestrator?: ChannelDispatchOrchestratorSummary;
-  }>;
-}
-
-export interface UpdateParallelChatGroupInput {
-  title?: string;
 }
 
 export async function encodeAttachmentFiles(
