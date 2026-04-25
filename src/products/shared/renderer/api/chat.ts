@@ -579,19 +579,10 @@ export async function sendChatMessage(
     signal,
   });
 
-  const { appShell, message, phase, results, dispatch } = await expectJson<{
-    appShell: AppShellPayload;
-    message: SendChannelMessageResponse['message'];
-    phase: SendChannelMessageResponse['phase'];
-    results?: SendChannelMessageResponse['results'];
-    dispatch?: { channelId: string; results: SendChannelMessageResponse['results'] };
-  }>(response, `cats channel messaging returned ${response.status}`);
-  return {
-    appShell,
-    message,
-    phase,
-    results: results ?? dispatch?.results ?? [],
-  };
+  return expectJson<SendChannelMessageResponse>(
+    response,
+    `cats channel messaging returned ${response.status}`,
+  );
 }
 
 export async function updateCatProfile(
