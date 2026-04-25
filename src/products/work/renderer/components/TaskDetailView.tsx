@@ -9,7 +9,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import type { WorkTaskDetailProjection } from '../../api/projection.js';
 import { buildChannelPath, buildMyCatPath } from '../../shared/channelPaths.js';
 import { listCatActorLinks } from '../actorLinks.js';
-import { fetchWorkTaskDetail } from '../api/dashboard.js';
+import { fetchWorkTaskDetail, startWorkSupervisedRun } from '../api/dashboard.js';
 import {
   formatWorkCorrelation,
   formatWorkDeliveryMode,
@@ -124,6 +124,7 @@ export function TaskDetailView() {
   const navigate = useNavigate();
   const [payload, setPayload] = useState<WorkTaskDetailProjection | null>(null);
   const [loading, setLoading] = useState(true);
+  const [startingSupervisedRun, setStartingSupervisedRun] = useState(false);
   const [error, setError] = useState('');
 
   const loadTask = useCallback(async (nextTaskId: string, signal?: AbortSignal) => {
@@ -156,6 +157,25 @@ export function TaskDetailView() {
     return () => controller.abort();
   }, [loadTask, taskId]);
 
+  const handleStartSupervisedRun = useCallback(() => {
+    if (!taskId) {
+      return;
+    }
+
+    setError('');
+    setStartingSupervisedRun(true);
+    void startWorkSupervisedRun(taskId)
+      .then(() => loadTask(taskId))
+      .catch((launchError) => {
+        setError(
+          launchError instanceof Error
+            ? launchError.message
+            : 'Failed to start supervised run.',
+        );
+      })
+      .finally(() => setStartingSupervisedRun(false));
+  }, [loadTask, taskId]);
+
   return (
     <div className="workTaskDetailView">
       <div className="codeBuilderHeader">
@@ -176,6 +196,14 @@ export function TaskDetailView() {
             }}
           >
             Back to Tasks
+          </button>
+          <button
+            type="button"
+            className="operatorActionButton"
+            onClick={handleStartSupervisedRun}
+            disabled={loading || startingSupervisedRun || !taskId}
+          >
+            {startingSupervisedRun ? 'Starting...' : 'Start supervised run'}
           </button>
           <button
             type="button"

@@ -83,9 +83,11 @@ test('work war-room surfaces consume typed dashboard contracts without local unk
   assert.doesNotMatch(projectListSource, /as unknown as/u);
 
   assert.match(taskDetailSource, /fetchWorkTaskDetail/u);
+  assert.match(taskDetailSource, /startWorkSupervisedRun/u);
   assert.match(taskDetailSource, /buildChannelPath/u);
   assert.match(taskDetailSource, /buildMyCatPath/u);
   assert.match(taskDetailSource, /navigate\('\/work\/tasks'\)/u);
+  assert.match(taskDetailSource, /handleStartSupervisedRun/u);
   assert.match(taskDetailSource, /payload\.supervision/u);
   assert.match(taskDetailSource, /formatSupervisionBlockers/u);
   assert.match(taskDetailSource, /formatSupervisionApprovals/u);
