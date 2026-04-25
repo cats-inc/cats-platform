@@ -63,6 +63,23 @@ function attentionBadgeClassName(severity: string | null | undefined): string {
   }
 }
 
+function formatSupervisionBlockers(
+  blockers: NonNullable<WorkTaskDetailProjection['supervision']>['blockers'],
+): string {
+  return blockers.length > 0
+    ? blockers.map((blocker) => `${blocker.code}: ${blocker.message}`).join(' | ')
+    : 'None';
+}
+
+function formatSupervisionApprovals(
+  approvals: NonNullable<WorkTaskDetailProjection['supervision']>['approvalRequests'],
+): string {
+  return approvals.length > 0
+    ? approvals.map((approval) =>
+      `${approval.requestId}: ${approval.state}${approval.gating ? ' gated' : ''}`).join(' | ')
+    : 'None';
+}
+
 function SectionHeader({
   eyebrow,
   title,
@@ -368,6 +385,50 @@ export function TaskDetailView() {
               />
             </div>
           </section>
+
+          {payload.supervision ? (
+            <section className="operatorPanel">
+              <SectionHeader
+                eyebrow="Supervision"
+                title="Run Guardrails"
+                summary={payload.supervision.primaryState}
+              />
+              <div className="workTaskDetailGrid">
+                <DetailCard
+                  label="Run State"
+                  value={`${payload.supervision.run.title} | ${payload.supervision.primaryState}`}
+                />
+                <DetailCard
+                  label="Pending Approvals"
+                  value={`${payload.supervision.counts.pendingApprovals} | ${formatSupervisionApprovals(
+                    payload.supervision.approvalRequests,
+                  )}`}
+                />
+                <DetailCard
+                  label="Blockers"
+                  value={formatSupervisionBlockers(payload.supervision.blockers)}
+                />
+                <DetailCard
+                  label="Policy Snapshot"
+                  value={
+                    payload.supervision.latestPolicySnapshot?.snapshotRef.snapshotId
+                      ?? 'No policy snapshot recorded'
+                  }
+                />
+                <DetailCard
+                  label="Evidence"
+                  value={
+                    `${payload.supervision.counts.evidence} event(s) | ` +
+                    `${payload.supervision.counts.rejectedActions} rejected`
+                  }
+                />
+                <DetailCard
+                  label="Terminal Cause"
+                  value={payload.supervision.terminalCause ?? 'None'}
+                />
+              </div>
+            </section>
+          ) : null}
 
           <section className="operatorPanel">
             <SectionHeader
