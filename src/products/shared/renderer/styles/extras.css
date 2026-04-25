@@ -116,6 +116,46 @@
   background: color-mix(in srgb, var(--sidebar-bg) 82%, #d4a030 18%);
 }
 
+/* Per-product tints on the empty-state placeholder. The shell sidebar emits
+ * data-shell-surface on its <aside>, so we scope the placeholder background
+ * to match the product's brand tint (Code green / Work blue) seen in the
+ * existing composer surface chip. The default rule above keeps the chat
+ * orange tint when no shell surface is set. */
+
+.sidebar[data-shell-surface="code"] .myCatRowPlaceholder {
+  background: color-mix(in srgb, var(--sidebar-bg) 78%, #48a064 22%);
+}
+
+.sidebar[data-shell-surface="code"] .myCatRowPlaceholder:hover,
+.sidebar[data-shell-surface="code"] .myCatRowPlaceholderStatic:hover {
+  background: color-mix(in srgb, var(--sidebar-bg) 64%, #48a064 36%);
+}
+
+.sidebar[data-shell-surface="code"] .myCatItemPlaceholder {
+  color: #2e6f43;
+}
+
+.sidebar[data-shell-surface="code"] .myCatNamePlaceholder {
+  color: #2e6f43;
+}
+
+.sidebar[data-shell-surface="work"] .myCatRowPlaceholder {
+  background: color-mix(in srgb, var(--sidebar-bg) 78%, #5f87f0 22%);
+}
+
+.sidebar[data-shell-surface="work"] .myCatRowPlaceholder:hover,
+.sidebar[data-shell-surface="work"] .myCatRowPlaceholderStatic:hover {
+  background: color-mix(in srgb, var(--sidebar-bg) 64%, #5f87f0 36%);
+}
+
+.sidebar[data-shell-surface="work"] .myCatItemPlaceholder {
+  color: #3856a0;
+}
+
+.sidebar[data-shell-surface="work"] .myCatNamePlaceholder {
+  color: #3856a0;
+}
+
 .myCatTelegramIcon {
   grid-area: 1 / 1;
   display: inline-flex;

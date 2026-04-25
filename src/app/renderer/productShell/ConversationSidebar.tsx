@@ -246,6 +246,7 @@ export function ConversationSidebar<
   return (
     <aside
       className={sidebarOpen ? 'sidebar' : 'sidebar sidebarCollapsed'}
+      data-shell-surface={shellSurface ?? activeSurface}
       onClick={(event) => onCollapsedSidebarClick(event)}
     >
       <div className="sidebarInner">

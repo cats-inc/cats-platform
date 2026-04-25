@@ -352,6 +352,11 @@ export function Sidebar(props: SidebarProps) {
     recentEmptyStateLabel: 'No work yet',
     myCatsSectionLabel: 'My Catteries',
     myCatsSectionCats: [],
+    forceShowMyCatsSection: true,
+    myCatsEmptyStatePlaceholder: {
+      label: 'New cattery',
+      onClick: () => undefined,
+    },
     helpers: {
       catInitials,
       presentChannelTitle,

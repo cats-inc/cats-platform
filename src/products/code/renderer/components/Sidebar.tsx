@@ -247,6 +247,11 @@ export function Sidebar(props: SidebarProps) {
     recentEmptyStateLabel: 'No codes yet',
     myCatsSectionLabel: 'My Clowders',
     myCatsSectionCats: [],
+    forceShowMyCatsSection: true,
+    myCatsEmptyStatePlaceholder: {
+      label: 'New clowder',
+      onClick: () => undefined,
+    },
     helpers: {
       catInitials,
       presentChannelTitle,
