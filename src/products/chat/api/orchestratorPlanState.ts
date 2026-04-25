@@ -8,15 +8,12 @@ import {
   setChannelPendingExecutionTarget,
 } from '../state/model/index.js';
 import {
-  cloneProviderModelSelection,
-  createExplicitProviderModelSelection,
   sameProviderModelSelection,
 } from '../../../shared/providerSelection.js';
-
-function normalizePendingTargetValue(value: string | null | undefined): string | null {
-  const normalized = value?.trim();
-  return normalized ? normalized : null;
-}
+import {
+  hasPendingExecutionTargetPatch,
+  resolveNextPendingExecutionTarget,
+} from '../state/pendingExecutionTarget.js';
 
 export function buildChannelMessageOrchestratorPlanState(
   state: ChatState,
@@ -24,37 +21,20 @@ export function buildChannelMessageOrchestratorPlanState(
   payload: SendChannelMessageInput,
   now: Date,
 ): ChatState {
-  if (
-    payload.pendingProvider === undefined
-    && payload.pendingModel === undefined
-    && payload.pendingInstance === undefined
-    && payload.pendingModelSelection === undefined
-  ) {
+  if (!hasPendingExecutionTargetPatch(payload)) {
     return state;
   }
 
   const channel = requireChannel(state, channelId);
-  const nextPendingProvider = payload.pendingProvider === undefined
-    ? channel.pendingProvider
-    : normalizePendingTargetValue(payload.pendingProvider);
-  const nextPendingModel = payload.pendingModel === undefined
-    ? channel.pendingModel
-    : normalizePendingTargetValue(payload.pendingModel);
-  const nextPendingInstance = payload.pendingInstance === undefined
-    ? channel.pendingInstance
-    : normalizePendingTargetValue(payload.pendingInstance);
-  const nextPendingModelSelection = payload.pendingModelSelection === undefined
-    ? cloneProviderModelSelection(channel.pendingModelSelection)
-    : cloneProviderModelSelection(payload.pendingModelSelection)
-      ?? createExplicitProviderModelSelection(payload.pendingModel ?? channel.pendingModel);
+  const nextTarget = resolveNextPendingExecutionTarget(channel, payload);
   const pendingTargetChanged = channel.composerMode === 'solo'
     && (
-      nextPendingProvider !== channel.pendingProvider
-      || nextPendingModel !== channel.pendingModel
-      || nextPendingInstance !== channel.pendingInstance
+      nextTarget.provider !== channel.pendingProvider
+      || nextTarget.model !== channel.pendingModel
+      || nextTarget.instance !== channel.pendingInstance
       || !sameProviderModelSelection(
         channel.pendingModelSelection,
-        nextPendingModelSelection,
+        nextTarget.modelSelection,
       )
     );
 
@@ -67,10 +47,10 @@ export function buildChannelMessageOrchestratorPlanState(
         sessionId: null,
         status: 'not_started',
         lastError: null,
-        provider: nextPendingProvider,
-        instance: nextPendingInstance,
-        model: nextPendingModel,
-        modelSelection: nextPendingModelSelection ?? null,
+        provider: nextTarget.provider,
+        instance: nextTarget.instance,
+        model: nextTarget.model,
+        modelSelection: nextTarget.modelSelection,
         startedAt: null,
       },
       now,
@@ -81,10 +61,10 @@ export function buildChannelMessageOrchestratorPlanState(
     nextState,
     channelId,
     {
-      provider: nextPendingProvider,
-      model: nextPendingModel,
-      instance: nextPendingInstance,
-      modelSelection: nextPendingModelSelection,
+      provider: nextTarget.provider,
+      model: nextTarget.model,
+      instance: nextTarget.instance,
+      modelSelection: nextTarget.modelSelection,
     },
     now,
   );

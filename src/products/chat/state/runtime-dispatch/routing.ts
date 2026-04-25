@@ -30,8 +30,6 @@ import {
   setChannelOrchestratorLease,
 } from '../model/index.js';
 import {
-  cloneProviderModelSelection,
-  createExplicitProviderModelSelection,
   sameProviderModelSelection,
 } from '../../../../shared/providerSelection.js';
 import { normalizeRuntimeDispatchRecoveryPolicy } from '../../../../shared/runtimeRecovery.js';
@@ -42,6 +40,9 @@ import {
   buildCanonicalChatUserMessage,
 } from '../chatCoreInterop.js';
 import { refreshDerivedMemoryLayers } from '../memoryLayers.js';
+import {
+  resolveNextPendingExecutionTarget,
+} from '../pendingExecutionTarget.js';
 import {
   type RuntimeTransportContext,
 } from '../runtimeTargeting.js';
@@ -225,11 +226,6 @@ function applyOrchestratorPlanMetadataToExistingUserMessage(
   };
 }
 
-function normalizePendingTargetValue(value: string | null | undefined): string | null {
-  const normalized = value?.trim();
-  return normalized ? normalized : null;
-}
-
 function describeGuardReason(reason: Exclude<RoomRoutingGuardReason, null>): string {
   switch (reason) {
     case 'max_continuations':
@@ -262,29 +258,15 @@ export async function beginChannelMessageDispatch(
 ): Promise<BegunChannelMessageDispatch> {
   let nextState = state;
   const channelBeforeMessage = requireChannel(nextState, channelId);
-  const nextPendingProvider = payload.pendingProvider === undefined
-    ? channelBeforeMessage.pendingProvider
-    : normalizePendingTargetValue(payload.pendingProvider);
-  const nextPendingModel = payload.pendingModel === undefined
-    ? channelBeforeMessage.pendingModel
-    : normalizePendingTargetValue(payload.pendingModel);
-  const nextPendingInstance = payload.pendingInstance === undefined
-    ? channelBeforeMessage.pendingInstance
-    : normalizePendingTargetValue(payload.pendingInstance);
-  const nextPendingModelSelection = payload.pendingModelSelection === undefined
-    ? cloneProviderModelSelection(channelBeforeMessage.pendingModelSelection)
-    : cloneProviderModelSelection(payload.pendingModelSelection)
-      ?? createExplicitProviderModelSelection(
-        payload.pendingModel ?? channelBeforeMessage.pendingModel,
-      );
+  const nextTarget = resolveNextPendingExecutionTarget(channelBeforeMessage, payload);
   const pendingTargetChanged = channelBeforeMessage.composerMode === 'solo'
     && (
-      nextPendingProvider !== channelBeforeMessage.pendingProvider
-      || nextPendingModel !== channelBeforeMessage.pendingModel
-      || nextPendingInstance !== channelBeforeMessage.pendingInstance
+      nextTarget.provider !== channelBeforeMessage.pendingProvider
+      || nextTarget.model !== channelBeforeMessage.pendingModel
+      || nextTarget.instance !== channelBeforeMessage.pendingInstance
       || !sameProviderModelSelection(
         channelBeforeMessage.pendingModelSelection,
-        nextPendingModelSelection,
+        nextTarget.modelSelection,
       )
     );
   const orchestratorSessionAttachment = resolveOrchestratorLeaseAttachment(channelBeforeMessage);
@@ -311,10 +293,10 @@ export async function beginChannelMessageDispatch(
         sessionId: null,
         status: 'not_started',
         lastError: null,
-        provider: nextPendingProvider,
-        instance: nextPendingInstance,
-        model: nextPendingModel,
-        modelSelection: nextPendingModelSelection ?? null,
+        provider: nextTarget.provider,
+        instance: nextTarget.instance,
+        model: nextTarget.model,
+        modelSelection: nextTarget.modelSelection,
         startedAt: null,
       },
       now,
@@ -325,10 +307,10 @@ export async function beginChannelMessageDispatch(
     nextState,
     channelId,
     {
-      provider: nextPendingProvider,
-      model: nextPendingModel,
-      instance: nextPendingInstance,
-      modelSelection: nextPendingModelSelection,
+      provider: nextTarget.provider,
+      model: nextTarget.model,
+      instance: nextTarget.instance,
+      modelSelection: nextTarget.modelSelection,
     },
     now,
   );
