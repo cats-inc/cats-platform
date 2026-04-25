@@ -262,6 +262,7 @@ async function createChannel(baseUrl, options = {}) {
     body: JSON.stringify({
       title: options.title ?? 'Orchestrator Lab',
       topic: options.topic ?? 'Validate contract-first orchestration seams.',
+      originSurface: 'chat',
       roomMode: options.roomMode ?? 'boss_chat',
       cats: options.cats ?? [
         {
@@ -333,7 +334,7 @@ test('POST /api/orchestrator/plan returns machine-readable plan and tool intent'
     assert.equal(payload.plan.routing.initialTargets.length, 1);
     assert.equal(payload.plan.routing.initialTargets[0].targetName, 'Inline-Agent');
     assert.equal(payload.plan.routing.initialTargets[0].laneId, laneId);
-    assert.equal(payload.plan.executionLoop.dispatchBoundary, 'direct_runtime_api');
+    assert.equal(payload.plan.executionLoop.dispatchBoundary, 'supervised_runtime_boundary');
     assert.equal(payload.plan.executionLoop.supportsReplan, true);
     assert.equal(payload.plan.execution.state, 'planned');
     assert.equal(payload.plan.execution.approval.status, 'not_requested');
@@ -2126,6 +2127,7 @@ test('startup-recovered continuation replay auto-resumes on server startup when 
     {
       title: 'Recovered converge review',
       topic: 'Retry a startup-recovered continuation through operator actions.',
+      originSurface: 'chat',
       cats: [
         {
           name: 'Inline-Agent',
@@ -2375,6 +2377,7 @@ test('startup-recovered continuation replay auto-resumes on server startup when 
     {
       title: 'Recovered continuation after session recovery',
       topic: 'Resume a startup-recovered continuation once the reviewer gets a fresh session.',
+      originSurface: 'chat',
       repoPath: 'C:/repo/cats-platform',
       cats: [
         {
@@ -2607,6 +2610,7 @@ test('startup-recovered initial sequential latest handoff auto-resumes on server
     {
       title: 'Recovered startup latest handoff',
       topic: 'Resume the remaining audience from the latest assistant handoff during startup.',
+      originSurface: 'chat',
       repoPath: 'C:/repo/cats-platform',
       cats: [
         {
@@ -2901,6 +2905,7 @@ test('startup-recovered initial sequential latest handoff keeps source identity 
     {
       title: 'Recovered latest handoff after session recovery',
       topic: 'Resume the remaining audience from the latest assistant handoff once Agent-2 is back.',
+      originSurface: 'chat',
       repoPath: 'C:/repo/cats-platform',
       cats: [
         {
@@ -3214,6 +3219,7 @@ test('startup-recovered continuation replay auto-resumes when channel activation
     {
       title: 'Recovered orchestrator continuation',
       topic: 'Resume a startup-recovered continuation once channel activation restores Boss Cat.',
+      originSurface: 'chat',
       cats: [
         {
           name: 'Inline-Agent',
@@ -3451,6 +3457,7 @@ test('startup-recovered parallel continuation replay waits for every concrete ta
     {
       title: 'Recovered parallel continuation',
       topic: 'Wait for every preserved parallel target to return before replay.',
+      originSurface: 'chat',
       cats: [
         {
           name: 'Inline-Agent',

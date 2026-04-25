@@ -100,7 +100,7 @@ function buildExecutionLoopContract<TState extends OrchestratorStateView>(
   const roomRouting = plannerSurface.resolveRoomRoutingState(channel.roomRouting);
   return {
     planner: 'dynamic_room_workflow',
-    dispatchBoundary: 'direct_runtime_api',
+    dispatchBoundary: 'supervised_runtime_boundary',
     initialShape: initialTargetCount === 0 ? 'blocked' : workflowShapeForTargets(initialTargetCount),
     initialStageId: workflowStageIdForTrigger(trigger),
     supportsReplan: true,
@@ -200,8 +200,8 @@ function buildInitialTargetPlan(
     targetKind: target.participantKind,
     targetId: target.participantId,
     targetName: target.participantName,
-    laneId: target.laneId,
-    sessionId: target.sessionId,
+    laneId: target.laneId ?? participant?.lease.laneId ?? null,
+    sessionId: target.sessionId ?? participant?.lease.sessionId ?? null,
     trigger,
     plannedDepth: 0,
     branchStrategy: 'fresh_no_parent',

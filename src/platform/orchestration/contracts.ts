@@ -658,7 +658,7 @@ export interface OrchestratorOperatorSeams {
 
 export interface OrchestratorExecutionLoopContract {
   planner: 'dynamic_room_workflow';
-  dispatchBoundary: 'direct_runtime_api';
+  dispatchBoundary: 'supervised_runtime_boundary';
   initialShape: RoomWorkflowShape | 'blocked';
   initialStageId: string;
   supportsReplan: true;
