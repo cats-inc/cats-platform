@@ -55,6 +55,9 @@ export function toEvidenceEvent(
       ...(event.policySnapshotRef ? { policySnapshotRef: event.policySnapshotRef } : {}),
       ...(event.rejectionCode ? { rejectionCode: event.rejectionCode } : {}),
       ...(event.approvalRequestId ? { approvalRequestId: event.approvalRequestId } : {}),
+      ...(event.cancellationContext
+        ? { cancellationContext: event.cancellationContext }
+        : {}),
       ...(event.summary ? { summary: event.summary } : {}),
     },
   };

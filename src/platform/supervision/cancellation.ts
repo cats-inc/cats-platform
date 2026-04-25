@@ -45,6 +45,6 @@ export function buildCancellationContext(
     toolCancellation: mapManifestCancellationToToolContext(input.manifest.cancellation),
     effectLanded: input.effectLanded ?? 'not_applied',
     reasonCode: input.reasonCode,
-    reasonNote: input.reasonNote,
+    ...(input.reasonNote === undefined ? {} : { reasonNote: input.reasonNote }),
   };
 }

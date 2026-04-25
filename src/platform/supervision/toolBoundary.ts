@@ -1,4 +1,5 @@
 import type {
+  CancellationContext,
   SupervisedToolManifest,
   SupervisionPolicySnapshot,
   SupervisionPolicySnapshotRef,
@@ -29,6 +30,7 @@ export interface ToolBoundaryEvidenceEvent {
   policySnapshotRef?: SupervisionPolicySnapshotRef;
   rejectionCode?: string;
   approvalRequestId?: string;
+  cancellationContext?: CancellationContext;
   summary?: string;
 }
 
@@ -57,6 +59,7 @@ export interface SupervisedToolInvocation<TInput, TOutput> {
   actorRef: string;
   grant: ToolSurfaceGrant;
   policySnapshot?: SupervisionPolicySnapshot;
+  cancellationContext?: CancellationContext;
   execute: SupervisedToolExecutor<TInput, TOutput>;
 }
 
@@ -154,6 +157,7 @@ function appendBoundaryEvidence<TInput, TOutput>(
       : createSupervisionPolicySnapshotRef(invocation.policySnapshot),
     rejectionCode: result.status === 'rejected' ? result.error.code : undefined,
     approvalRequestId: result.status === 'pending_approval' ? result.requestId : undefined,
+    cancellationContext: invocation.cancellationContext,
     summary: result.status === 'pending_approval' ? result.summary : undefined,
   });
 }

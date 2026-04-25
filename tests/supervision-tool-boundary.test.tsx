@@ -6,6 +6,7 @@ import test from 'node:test';
 
 import {
   DEFAULT_SUPERVISION_SCHEMA_VERSION,
+  buildCancellationContext,
   createDurableToolEvidenceSink,
   createInMemoryToolEvidenceSink,
   createSupervisedToolRegistry,
@@ -287,6 +288,65 @@ test('durable tool evidence sink writes boundary evidence into evidence JSONL', 
       actionId: 'policy-action',
       runId: 'run-1',
     });
+  } finally {
+    await rm(dataDir, { recursive: true, force: true });
+  }
+});
+
+test('tool boundary persists cancellation context on late-finishing action evidence', async () => {
+  const dataDir = await mkdtemp(path.join(os.tmpdir(), 'cats-supervision-cancel-evidence-'));
+  try {
+    const registry = createSupervisedToolRegistry();
+    const evidenceSink = createDurableToolEvidenceSink({
+      dataDir,
+      conversationId: 'conversation-cancel',
+    });
+    const boundary = createToolBoundary({
+      registry,
+      evidenceSink,
+      now: () => '2026-04-25T09:30:00.000Z',
+    });
+    const toolManifest = manifest('work.local_note.apply', 'local_state');
+    const cancellationContext = buildCancellationContext({
+      manifest: toolManifest,
+      requestedAt: '2026-04-25T09:29:00.000Z',
+      requestedBy: 'operator:owner',
+      runStateAtRequest: 'running',
+      reasonCode: 'operator_decision',
+      effectLanded: 'after_cancel_request',
+    });
+    registry.register(toolManifest);
+
+    const result = await boundary.invoke({
+      toolName: 'work.local_note.apply',
+      input: { noteId: 'note-1', body: 'late write' },
+      actionId: 'action-cancel',
+      runId: 'run-cancel',
+      actorRef: 'agent:boss',
+      cancellationContext,
+      grant: {
+        parentToolScope: 'narrow_write',
+        policyToolScope: 'narrow_write',
+      },
+      execute: () => ({
+        status: 'applied',
+        result: { ok: true },
+      }),
+    });
+
+    const event = evidenceSink.read()[0];
+    const events = readEvidenceEvents(dataDir, 'conversation-cancel');
+    assert.equal(result.status, 'applied');
+    assert.deepEqual(event?.cancellationContext, cancellationContext);
+    assert.deepEqual(events[0]?.payload.cancellationContext, cancellationContext);
+    assert.equal(
+      (events[0]?.payload.cancellationContext as typeof cancellationContext).reasonCode,
+      'operator_decision',
+    );
+    assert.equal(
+      (events[0]?.payload.cancellationContext as typeof cancellationContext).toolCancellation,
+      'cooperative_requested',
+    );
   } finally {
     await rm(dataDir, { recursive: true, force: true });
   }
