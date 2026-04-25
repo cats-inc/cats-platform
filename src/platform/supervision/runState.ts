@@ -51,6 +51,35 @@ export interface OperatorCancellationResult extends RunStateEvaluation {
   };
 }
 
+export interface RunStateMetadataSnapshot extends RunStateEvaluation {
+  evaluatedAt: string;
+}
+
+export function writeRunStateMetadata(input: {
+  metadata?: Record<string, unknown> | null;
+  evaluation: RunStateEvaluation;
+  evaluatedAt: string;
+}): Record<string, unknown> {
+  const metadata = asRecord(input.metadata);
+  const supervision = asRecord(metadata.supervision);
+
+  return {
+    ...metadata,
+    supervision: {
+      ...supervision,
+      runState: {
+        evaluatedAt: input.evaluatedAt,
+        primaryState: input.evaluation.primaryState,
+        blockers: input.evaluation.blockers,
+        approvalRequests: input.evaluation.approvalRequests,
+        ...(input.evaluation.terminalCause === undefined
+          ? {}
+          : { terminalCause: input.evaluation.terminalCause }),
+      } satisfies RunStateMetadataSnapshot,
+    },
+  };
+}
+
 export function deriveRunState(input: RunStateEvaluationInput): RunStateEvaluation {
   const blockers = input.blockers ?? [];
   const approvalRequests = input.approvalRequests ?? [];
@@ -87,6 +116,12 @@ export function deriveRunState(input: RunStateEvaluationInput): RunStateEvaluati
     approvalRequests,
     terminalCause: input.terminalCause,
   };
+}
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
 }
 
 export function applyApprovalDenied(input: ApprovalDeniedInput): RunStateEvaluation {

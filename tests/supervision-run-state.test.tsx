@@ -6,6 +6,7 @@ import {
   applyOperatorCancellation,
   canFallbackContinueWithoutDeniedAction,
   deriveRunState,
+  writeRunStateMetadata,
 } from '../src/platform/supervision/index.ts';
 
 test('pending approval wins primary state while retaining non-approval blockers', () => {
@@ -149,4 +150,54 @@ test('fallback continuation policy is explicit', () => {
   assert.equal(canFallbackContinueWithoutDeniedAction('escalate_model'), true);
   assert.equal(canFallbackContinueWithoutDeniedAction('delegate_other'), true);
   assert.equal(canFallbackContinueWithoutDeniedAction('ask_human'), false);
+});
+
+test('run state metadata writer preserves supervision namespace and records derived state', () => {
+  const evaluation = deriveRunState({
+    lifecycle: 'active',
+    blockers: [
+      {
+        code: 'BUDGET_SOFT_LIMIT',
+        message: 'Budget is near limit.',
+      },
+    ],
+    approvalRequests: [
+      {
+        requestId: 'approval-1',
+        state: 'pending',
+        gating: true,
+      },
+    ],
+  });
+
+  const metadata = writeRunStateMetadata({
+    metadata: {
+      unrelated: true,
+      supervision: {
+        owner: 'scheduler',
+      },
+    },
+    evaluation,
+    evaluatedAt: '2026-04-25T12:30:00.000Z',
+  });
+
+  assert.equal(metadata.unrelated, true);
+  assert.equal((metadata.supervision as Record<string, unknown>).owner, 'scheduler');
+  assert.deepEqual((metadata.supervision as Record<string, unknown>).runState, {
+    evaluatedAt: '2026-04-25T12:30:00.000Z',
+    primaryState: 'waiting_for_approval',
+    blockers: [
+      {
+        code: 'BUDGET_SOFT_LIMIT',
+        message: 'Budget is near limit.',
+      },
+    ],
+    approvalRequests: [
+      {
+        requestId: 'approval-1',
+        state: 'pending',
+        gating: true,
+      },
+    ],
+  });
 });
