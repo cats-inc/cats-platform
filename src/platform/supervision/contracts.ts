@@ -111,6 +111,13 @@ export interface SupervisionPolicySnapshot {
   reasons: string[];
 }
 
+export interface SupervisionPolicySnapshotRef {
+  snapshotId: string;
+  policyBundleVersion: string;
+  actionId: string;
+  runId: string;
+}
+
 export const CAPABILITY_DIMENSION_VALUES = [
   'tool_use_accuracy',
   'json_fidelity',

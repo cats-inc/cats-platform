@@ -4,6 +4,7 @@ export * from './contracts.js';
 export * from './errors.js';
 export * from './evidenceSink.js';
 export * from './policyEngine.js';
+export * from './policySnapshots.js';
 export * from './policyVersions.js';
 export * from './runState.js';
 export * from './runtimeBoundary.js';

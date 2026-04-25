@@ -1,9 +1,11 @@
 import type {
   SupervisedToolManifest,
   SupervisionPolicySnapshot,
+  SupervisionPolicySnapshotRef,
   ToolResult,
   ToolResultStatus,
 } from './contracts.js';
+import { createSupervisionPolicySnapshotRef } from './policySnapshots.js';
 import type {
   SupervisedToolRegistry,
   ToolSurfaceGrant,
@@ -24,11 +26,7 @@ export interface ToolBoundaryEvidenceEvent {
     approval: SupervisedToolManifest['approval'];
     evidence: SupervisedToolManifest['evidence'];
   };
-  policySnapshotRef?: {
-    policyBundleVersion: string;
-    actionId: string;
-    runId: string;
-  };
+  policySnapshotRef?: SupervisionPolicySnapshotRef;
   rejectionCode?: string;
   approvalRequestId?: string;
   summary?: string;
@@ -153,11 +151,7 @@ function appendBoundaryEvidence<TInput, TOutput>(
         },
     policySnapshotRef: invocation.policySnapshot === undefined
       ? undefined
-      : {
-          policyBundleVersion: invocation.policySnapshot.policyBundleVersion,
-          actionId: invocation.policySnapshot.actionId,
-          runId: invocation.policySnapshot.runId,
-        },
+      : createSupervisionPolicySnapshotRef(invocation.policySnapshot),
     rejectionCode: result.status === 'rejected' ? result.error.code : undefined,
     approvalRequestId: result.status === 'pending_approval' ? result.requestId : undefined,
     summary: result.status === 'pending_approval' ? result.summary : undefined,
