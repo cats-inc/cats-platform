@@ -6,10 +6,14 @@ import {
   createDefaultCoreState,
   upsertCoreRun,
   upsertCoreTask,
+  writeApprovalDecision,
 } from '../src/core/model/index.ts';
 import {
+  applySupervisionApprovalDecision,
   persistSupervisionApprovalRequest,
 } from '../src/platform/supervision/index.ts';
+
+let seedCounter = 0;
 
 test('supervision approval requests enter the production approval queue via run binding', () => {
   let core = createDefaultCoreState();
@@ -101,3 +105,105 @@ test('supervision approval request persistence requires an existing run', () => 
     /Run not found: run-missing/u,
   );
 });
+
+test('supervision approval decisions synchronize back to run state metadata', () => {
+  const seeded = seedApprovalRequest();
+  const approved = writeApprovalDecision(
+    seeded.core,
+    {
+      taskId: seeded.approvalTaskId,
+      status: 'approved',
+      action: 'approve',
+      decidedByActorId: 'owner:local',
+    },
+    new Date('2026-04-25T15:10:00.000Z'),
+  );
+  const approvedSync = applySupervisionApprovalDecision({
+    core: approved.core,
+    approvalTaskId: seeded.approvalTaskId,
+    fallbackPolicy: 'retry',
+    now: new Date('2026-04-25T15:10:00.000Z'),
+  });
+  const approvedRun = approvedSync.core.runs.find((run) => run.id === seeded.runId);
+  const approvedRunState = (
+    approvedRun?.metadata.supervision as Record<string, unknown> | undefined
+  )?.runState as Record<string, unknown> | undefined;
+  const approvedRequests = approvedRunState?.approvalRequests as Array<
+    Record<string, unknown>
+  > | undefined;
+
+  assert.equal(approvedSync.approvalRequest.state, 'approved');
+  assert.equal(approvedRun?.status, 'running');
+  assert.equal(approvedRunState?.primaryState, 'running');
+  assert.equal(approvedRequests?.[0]?.state, 'approved');
+
+  const deniedSeed = seedApprovalRequest();
+  const rejected = writeApprovalDecision(
+    deniedSeed.core,
+    {
+      taskId: deniedSeed.approvalTaskId,
+      status: 'rejected',
+      action: 'reject',
+      decidedByActorId: 'owner:local',
+    },
+    new Date('2026-04-25T15:11:00.000Z'),
+  );
+  const deniedSync = applySupervisionApprovalDecision({
+    core: rejected.core,
+    approvalTaskId: deniedSeed.approvalTaskId,
+    fallbackPolicy: 'ask_human',
+    now: new Date('2026-04-25T15:11:00.000Z'),
+  });
+  const deniedRun = deniedSync.core.runs.find((run) => run.id === deniedSeed.runId);
+  const deniedRunState = (
+    deniedRun?.metadata.supervision as Record<string, unknown> | undefined
+  )?.runState as Record<string, unknown> | undefined;
+
+  assert.equal(deniedSync.approvalRequest.state, 'denied');
+  assert.equal(deniedRun?.status, 'failed');
+  assert.equal(deniedRunState?.primaryState, 'failed');
+  assert.equal(
+    deniedRunState?.terminalCause,
+    `approval denied: ${deniedSeed.approvalRequestId}`,
+  );
+});
+
+function seedApprovalRequest(): {
+  core: ReturnType<typeof createDefaultCoreState>;
+  runId: string;
+  approvalTaskId: string;
+  approvalRequestId: string;
+} {
+  let core = createDefaultCoreState();
+  seedCounter += 1;
+  const runId = `run-supervision-decision-${seedCounter}`;
+  const approvalRequestId = `${runId}:action-approval:approval`;
+  core = upsertCoreRun(
+    core,
+    {
+      id: runId,
+      title: 'Run with approval decision',
+      status: 'running',
+      conversationId: 'conversation-supervision-decision',
+      createdAt: '2026-04-25T15:09:00.000Z',
+    },
+    new Date('2026-04-25T15:09:00.000Z'),
+  ).core;
+  const persisted = persistSupervisionApprovalRequest({
+    core,
+    runId,
+    approvalRequestId,
+    actionId: 'action-approval',
+    toolName: 'work.approval_gated.apply',
+    summary: 'Apply approval-gated Work change.',
+    requestedByActorId: 'agent:boss',
+    now: new Date('2026-04-25T15:09:30.000Z'),
+  });
+
+  return {
+    core: persisted.core,
+    runId,
+    approvalTaskId: persisted.task.id,
+    approvalRequestId,
+  };
+}
