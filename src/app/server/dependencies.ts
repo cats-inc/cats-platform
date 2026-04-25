@@ -231,6 +231,9 @@ export function resolveServerDependencies(
     },
     work: {
       coreStore: dependencies.work?.coreStore ?? sharedCoreStore,
+      runtimeClient: dependencies.work?.runtimeClient ?? dependencies.shared.runtimeClient,
+      runtimeTarget: dependencies.work?.runtimeTarget,
+      evidenceDataDir: dependencies.work?.evidenceDataDir ?? dependencies.shared.config.chatStatePath,
       readEvidenceEvents: dependencies.work?.readEvidenceEvents
         ?? ((conversationId: string) =>
           readPersistedEvidenceEvents(dependencies.shared.config.chatStatePath, conversationId)),

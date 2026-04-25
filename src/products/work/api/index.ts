@@ -1,15 +1,31 @@
 import type { CoreStore } from '../../../core/store.js';
-import type { CoreRunRecord, EvidenceEvent } from '../../../core/types.js';
+import type {
+  CatsCoreState,
+  CoreActorRecord,
+  CoreRunRecord,
+  CoreTaskRecord,
+  EvidenceEvent,
+  ExecutionTargetSummary,
+} from '../../../core/types.js';
 import { CoreNotFoundError } from '../../../core/errors.js';
 import { upsertCoreRun } from '../../../core/model/index.js';
 import { handleCoreError } from '../../../core/api/shared.js';
+import type {
+  RuntimeClient,
+  RuntimeMessageResult,
+  RuntimeSessionInfo,
+} from '../../../platform/runtime/client.js';
 import {
   buildSupervisedRunInspectionProjection,
+  createDurableToolEvidenceSink,
+  createSupervisedRuntimeSession,
   deriveChildBudgetEnvelope,
   deriveRunState,
+  sendSupervisedRuntimeMessage,
   writeRunStateMetadata,
   type BudgetEnvelope,
 } from '../../../platform/supervision/index.js';
+import { buildWorkTaskRuntimeExecutionRequest } from '../state/taskExecutionRequest.js';
 import {
   buildWorkDashboardProjection,
   buildWorkProjectDetailProjection,
@@ -60,8 +76,18 @@ const WORK_SUPERVISED_RUN_DEFAULT_BUDGET: BudgetEnvelope = {
   hardStop: true,
 };
 
+export interface WorkRuntimeTargetOverride {
+  provider?: string | null;
+  instance?: string | null;
+  model?: string | null;
+  cwd?: string | null;
+}
+
 export interface WorkApiDependencies {
   coreStore: CoreStore;
+  runtimeClient?: RuntimeClient;
+  runtimeTarget?: WorkRuntimeTargetOverride;
+  evidenceDataDir?: string;
   readEvidenceEvents?: (conversationId: string) => EvidenceEvent[];
   now?: () => Date;
 }
@@ -98,6 +124,18 @@ export async function createWorkSupervisedRunPayload(
 
   const existingRun = findActiveWorkSupervisedRun(core.runs, task.id);
   if (existingRun) {
+    if (dependencies.runtimeClient && !hasStartedRuntimeBridge(existingRun)) {
+      return launchRuntimeForWorkSupervisedRun({
+        dependencies,
+        core,
+        task,
+        run: existingRun,
+        created: false,
+        evaluatedAt,
+        now,
+      });
+    }
+
     return {
       task,
       run: existingRun,
@@ -146,6 +184,18 @@ export async function createWorkSupervisedRunPayload(
   );
   const persisted = await dependencies.coreStore.writeCore(next.core);
   const run = persisted.runs.find((candidate) => candidate.id === next.run.id) ?? next.run;
+
+  if (dependencies.runtimeClient) {
+    return launchRuntimeForWorkSupervisedRun({
+      dependencies,
+      core: persisted,
+      task,
+      run,
+      created: next.created,
+      evaluatedAt,
+      now,
+    });
+  }
 
   return {
     task,
@@ -395,6 +445,378 @@ function findActiveWorkSupervisedRun(
 
 function isActiveRunStatus(status: CoreRunRecord['status']): boolean {
   return status === 'queued' || status === 'running' || status === 'blocked';
+}
+
+async function launchRuntimeForWorkSupervisedRun(input: {
+  dependencies: WorkApiDependencies;
+  core: CatsCoreState;
+  task: CoreTaskRecord;
+  run: CoreRunRecord;
+  created: boolean;
+  evaluatedAt: string;
+  now: Date;
+}): Promise<WorkSupervisedRunLaunchProjection> {
+  const { dependencies, task, created, evaluatedAt, now } = input;
+  const runtimeClient = dependencies.runtimeClient;
+
+  if (!runtimeClient) {
+    return {
+      task,
+      run: input.run,
+      created,
+      supervision: buildSupervisedRunInspectionProjection(input.core, input.run.id),
+    };
+  }
+
+  try {
+    const runtime = await startWorkSupervisedRuntime({
+      dependencies,
+      runtimeClient,
+      core: input.core,
+      task,
+      run: input.run,
+      evaluatedAt,
+    });
+    const activeRunState = deriveRunState({ lifecycle: 'active' });
+    const metadata = writeRunStateMetadata({
+      metadata: writeRuntimeBridgeMetadata(input.run.metadata, {
+        status: 'started',
+        session: runtime.session,
+        message: runtime.message,
+        target: runtime.target,
+        startedAt: evaluatedAt,
+        messageSentAt: evaluatedAt,
+      }),
+      evaluation: activeRunState,
+      evaluatedAt,
+    });
+    const next = upsertCoreRun(
+      input.core,
+      {
+        id: input.run.id,
+        title: input.run.title,
+        status: 'running',
+        startedAt: input.run.startedAt ?? evaluatedAt,
+        summary: `Started supervised Work runtime session ${runtime.session.id}.`,
+        metadata,
+      },
+      now,
+    );
+    const persisted = await dependencies.coreStore.writeCore(next.core);
+    const run = persisted.runs.find((candidate) => candidate.id === input.run.id) ?? next.run;
+
+    return {
+      task,
+      run,
+      created,
+      supervision: buildSupervisedRunInspectionProjection(persisted, run.id),
+    };
+  } catch (error) {
+    const blocker = {
+      code: 'runtime_launch_failed',
+      message: formatRuntimeLaunchError(error),
+    };
+    const blockedRunState = deriveRunState({
+      lifecycle: 'active',
+      blockers: [blocker],
+    });
+    const metadata = writeRunStateMetadata({
+      metadata: writeRuntimeBridgeMetadata(input.run.metadata, {
+        status: 'failed',
+        error: blocker.message,
+        failedAt: evaluatedAt,
+      }),
+      evaluation: blockedRunState,
+      evaluatedAt,
+    });
+    const next = upsertCoreRun(
+      input.core,
+      {
+        id: input.run.id,
+        title: input.run.title,
+        status: 'blocked',
+        summary: 'Blocked before runtime launch completed.',
+        metadata,
+      },
+      now,
+    );
+    const persisted = await dependencies.coreStore.writeCore(next.core);
+    const run = persisted.runs.find((candidate) => candidate.id === input.run.id) ?? next.run;
+
+    return {
+      task,
+      run,
+      created,
+      supervision: buildSupervisedRunInspectionProjection(persisted, run.id),
+    };
+  }
+}
+
+async function startWorkSupervisedRuntime(input: {
+  dependencies: WorkApiDependencies;
+  runtimeClient: RuntimeClient;
+  core: CatsCoreState;
+  task: CoreTaskRecord;
+  run: CoreRunRecord;
+  evaluatedAt: string;
+}): Promise<{
+  session: RuntimeSessionInfo;
+  message: RuntimeMessageResult;
+  target: ResolvedWorkRuntimeTarget;
+}> {
+  const drivingActor = resolveDrivingActor(input.core, input.task, input.run);
+  const target = resolveWorkRuntimeTarget(input.core, input.task, drivingActor, input.dependencies);
+  const evidenceSink = input.dependencies.evidenceDataDir && input.run.conversationId
+    ? createDurableToolEvidenceSink({
+      dataDir: input.dependencies.evidenceDataDir,
+      conversationId: input.run.conversationId,
+    })
+    : undefined;
+  const executionRequest = buildWorkTaskRuntimeExecutionRequest({
+    core: input.core,
+    task: input.task,
+  });
+  const budget = readBudgetEnvelope(
+    asRecord(input.run.metadata.supervision)?.budget,
+  );
+  const baseContext = {
+    source: 'assignment' as const,
+    reason: 'work_supervised_run',
+    taskId: input.task.id,
+    labels: ['cats-work', 'supervised-run'],
+    ...(target.cwd
+      ? {
+          workspace: {
+            cwd: target.cwd,
+          },
+        }
+      : {}),
+    metadata: {
+      product: 'work',
+      taskId: input.task.id,
+      runId: input.run.id,
+      actorId: drivingActor?.id ?? input.run.orchestratorActorId,
+      launchedAt: input.evaluatedAt,
+    },
+  };
+  const supervision = {
+    product: 'cats-work',
+    surface: 'work-supervised-run-launch',
+    runId: input.run.id,
+    actionId: `${input.run.id}:runtime-session`,
+    actorRef: drivingActor?.id ?? input.run.orchestratorActorId ?? 'actor-orchestrator-global',
+    reason: 'work_supervised_run_start',
+    evidenceSink,
+    budget,
+  };
+  const session = await createSupervisedRuntimeSession({
+    runtimeClient: input.runtimeClient,
+    input: {
+      provider: target.provider,
+      instance: target.instance ?? undefined,
+      model: target.model ?? undefined,
+      cwd: target.cwd,
+      workspaceKind: target.cwd ? 'source' : 'sandbox',
+      workspaceAccess: 'read_write',
+      permissionMode: 'skip',
+      sharingMode: 'isolated',
+      instructions: WORK_SUPERVISED_RUNTIME_INSTRUCTIONS,
+      context: baseContext,
+      ...executionRequest,
+    },
+    supervision,
+  });
+  const message = await sendSupervisedRuntimeMessage({
+    runtimeClient: input.runtimeClient,
+    sessionId: session.id,
+    content: buildWorkSupervisedRunPrompt(input.core, input.task, input.run),
+    input: {
+      instructions: WORK_SUPERVISED_RUNTIME_INSTRUCTIONS,
+      context: {
+        ...baseContext,
+        metadata: {
+          ...baseContext.metadata,
+          runtimeSessionId: session.id,
+        },
+      },
+      ...executionRequest,
+    },
+    supervision: {
+      ...supervision,
+      actionId: `${input.run.id}:runtime-message`,
+      reason: 'work_supervised_run_prompt',
+    },
+  });
+
+  return {
+    session,
+    message,
+    target,
+  };
+}
+
+const WORK_SUPERVISED_RUNTIME_INSTRUCTIONS = [
+  'You are the driving agent for a Cats Work supervised run.',
+  'Do the next useful execution step for the assigned Work task.',
+  'Respect supervision metadata, approvals, budgets, and tool/API boundaries.',
+  'If required context or permission is missing, state the blocker instead of inventing facts.',
+].join(' ');
+
+interface ResolvedWorkRuntimeTarget {
+  provider: string;
+  instance: string | null;
+  model: string | null;
+  cwd: string | null;
+}
+
+function hasStartedRuntimeBridge(run: CoreRunRecord): boolean {
+  const runtimeBridge = asRecord(asRecord(run.metadata.supervision)?.runtimeBridge);
+  return runtimeBridge?.status === 'started' && typeof runtimeBridge.sessionId === 'string';
+}
+
+function resolveDrivingActor(
+  core: CatsCoreState,
+  task: CoreTaskRecord,
+  run: CoreRunRecord,
+): CoreActorRecord | null {
+  const assignedActor = task.assignedActorIds
+    .map((actorId) => core.actors.find((actor) => actor.id === actorId) ?? null)
+    .find((actor) => actor?.defaultExecutionTarget) ?? null;
+  if (assignedActor) {
+    return assignedActor;
+  }
+
+  return core.actors.find((actor) => actor.id === run.orchestratorActorId)
+    ?? core.actors.find((actor) => actor.kind === 'orchestrator' && actor.defaultExecutionTarget)
+    ?? null;
+}
+
+function resolveWorkRuntimeTarget(
+  core: CatsCoreState,
+  task: CoreTaskRecord,
+  drivingActor: CoreActorRecord | null,
+  dependencies: WorkApiDependencies,
+): ResolvedWorkRuntimeTarget {
+  const actorTarget = drivingActor?.defaultExecutionTarget;
+  const target = normalizeExecutionTarget({
+    provider: dependencies.runtimeTarget?.provider ?? actorTarget?.provider ?? 'claude',
+    instance: dependencies.runtimeTarget?.instance ?? actorTarget?.instance ?? null,
+    model: dependencies.runtimeTarget?.model ?? actorTarget?.model ?? null,
+  });
+
+  return {
+    ...target,
+    cwd: readNonEmptyString(dependencies.runtimeTarget?.cwd)
+      ?? resolveWorkTaskWorkspacePath(core, task),
+  };
+}
+
+function normalizeExecutionTarget(target: Partial<ExecutionTargetSummary>): ExecutionTargetSummary {
+  return {
+    provider: readNonEmptyString(target.provider) ?? 'claude',
+    instance: readNonEmptyString(target.instance),
+    model: readNonEmptyString(target.model),
+  };
+}
+
+function resolveWorkTaskWorkspacePath(
+  core: CatsCoreState,
+  task: CoreTaskRecord,
+): string | null {
+  const workItem = core.workItems.find((candidate) => candidate.taskId === task.id) ?? null;
+  const project = workItem?.projectId
+    ? core.projects.find((candidate) => candidate.id === workItem.projectId) ?? null
+    : null;
+
+  return readNonEmptyString(project?.repoPath);
+}
+
+function buildWorkSupervisedRunPrompt(
+  core: CatsCoreState,
+  task: CoreTaskRecord,
+  run: CoreRunRecord,
+): string {
+  const workItem = core.workItems.find((candidate) => candidate.taskId === task.id) ?? null;
+  const project = workItem?.projectId
+    ? core.projects.find((candidate) => candidate.id === workItem.projectId) ?? null
+    : null;
+  const planning = buildWorkTaskRuntimeExecutionRequest({
+    core,
+    task,
+  });
+  const sections = [
+    `Work task: ${task.title}`,
+    task.summary ? `Task summary: ${task.summary}` : null,
+    workItem ? `Work item: ${workItem.title}` : null,
+    project ? `Project: ${project.title}` : null,
+    planning.requestedStrategy ? `Requested strategy: ${planning.requestedStrategy}` : null,
+    planning.acceptanceCriteria ? `Acceptance criteria: ${planning.acceptanceCriteria}` : null,
+    `Supervised run id: ${run.id}`,
+    'Return progress, blockers, and the concrete next action you took.',
+  ];
+
+  return sections.filter((section): section is string => Boolean(section)).join('\n');
+}
+
+function writeRuntimeBridgeMetadata(
+  metadata: Record<string, unknown>,
+  update: {
+    status: 'started';
+    session: RuntimeSessionInfo;
+    message: RuntimeMessageResult;
+    target: ResolvedWorkRuntimeTarget;
+    startedAt: string;
+    messageSentAt: string;
+  } | {
+    status: 'failed';
+    error: string;
+    failedAt: string;
+  },
+): Record<string, unknown> {
+  const supervision = asRecord(metadata.supervision) ?? {};
+  const existingBridge = asRecord(supervision.runtimeBridge) ?? {};
+
+  return {
+    ...metadata,
+    supervision: {
+      ...supervision,
+      runtimeBridge: update.status === 'started'
+        ? {
+            ...existingBridge,
+            status: 'started',
+            sessionId: update.session.id,
+            provider: update.session.provider,
+            instance: update.target.instance,
+            model: update.session.model,
+            requestedProvider: update.target.provider,
+            requestedModel: update.target.model,
+            cwd: update.session.cwd,
+            startedAt: update.startedAt,
+            messageSentAt: update.messageSentAt,
+            tokensUsed: update.message.tokensUsed,
+            lastError: null,
+          }
+        : {
+            ...existingBridge,
+            status: 'failed',
+            failedAt: update.failedAt,
+            lastError: update.error,
+          },
+    },
+  };
+}
+
+function formatRuntimeLaunchError(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  return 'Runtime launch failed';
+}
+
+function readNonEmptyString(value: string | null | undefined): string | null {
+  const normalized = value?.trim();
+  return normalized ? normalized : null;
 }
 
 function readBudgetEnvelope(value: unknown): BudgetEnvelope | undefined {
