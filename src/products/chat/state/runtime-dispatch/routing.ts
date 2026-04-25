@@ -191,6 +191,40 @@ function restoreMissingTranscriptMessage(
   return refreshDerivedMemoryLayers(nextState, channelId, now);
 }
 
+function applyOrchestratorPlanMetadataToExistingUserMessage(
+  state: ChatState,
+  channelId: string,
+  messageId: string,
+  plan: OrchestratorTurnPlan | null | undefined,
+  now: Date,
+): {
+  state: ChatState;
+  userMessage: ChatMessage | null;
+} {
+  const planMetadata = buildOrchestratorPlanMessageMetadata(plan, channelId);
+  if (Object.keys(planMetadata).length === 0) {
+    return { state, userMessage: null };
+  }
+
+  const channel = requireChannel(state, channelId);
+  const messageIndex = channel.messages.findIndex((message) => message.id === messageId);
+  if (messageIndex < 0) {
+    return { state, userMessage: null };
+  }
+
+  const nextState = structuredClone(state);
+  const nextChannel = requireChannel(nextState, channelId);
+  const nextMessage = nextChannel.messages[messageIndex]!;
+  nextMessage.metadata = {
+    ...(nextMessage.metadata ?? {}),
+    ...planMetadata,
+  };
+  return {
+    state: refreshDerivedMemoryLayers(nextState, channelId, now),
+    userMessage: nextMessage,
+  };
+}
+
 function normalizePendingTargetValue(value: string | null | undefined): string | null {
   const normalized = value?.trim();
   return normalized ? normalized : null;
@@ -390,6 +424,17 @@ export async function beginChannelMessageRetryDispatch(
     : core;
   if (sourceWasMissingFromTranscript) {
     nextState = restoreMissingTranscriptMessage(nextState, channelId, sourceMessage, now);
+  }
+  const metadataApplied = applyOrchestratorPlanMetadataToExistingUserMessage(
+    nextState,
+    channelId,
+    sourceMessageId,
+    options.orchestratorPlan,
+    now,
+  );
+  nextState = metadataApplied.state;
+  if (metadataApplied.userMessage) {
+    sourceMessage = metadataApplied.userMessage;
   }
   const preparedTurn = prepareDispatchTurnForExistingUserMessage(
     nextState,
