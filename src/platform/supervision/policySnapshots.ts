@@ -25,7 +25,9 @@ export function createSupervisionPolicySnapshotRef(
   snapshot: SupervisionPolicySnapshot,
 ): SupervisionPolicySnapshotRef {
   return {
-    snapshotId: `policy-snapshot:${snapshot.runId}:${snapshot.actionId}`,
+    snapshotId:
+      `policy-snapshot:${snapshot.runId}:${snapshot.actionId}:` +
+      `${snapshot.policyBundleVersion}:${snapshot.evaluatedAt}`,
     policyBundleVersion: snapshot.policyBundleVersion,
     actionId: snapshot.actionId,
     runId: snapshot.runId,

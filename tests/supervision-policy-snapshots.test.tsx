@@ -56,7 +56,9 @@ test('policy snapshots persist as execution traces with durable refs', async () 
   const trace = core.traces[0];
 
   assert.deepEqual(result.snapshotRef, {
-    snapshotId: 'policy-snapshot:run-policy-1:action-policy-1',
+    snapshotId:
+      'policy-snapshot:run-policy-1:action-policy-1:test-policy@1:' +
+      '2026-04-25T10:00:00.000Z',
     policyBundleVersion: 'test-policy@1',
     actionId: 'action-policy-1',
     runId: 'run-policy-1',
@@ -80,7 +82,9 @@ test('policy snapshot refs are deterministic for evidence linkage', () => {
   const ref = createSupervisionPolicySnapshotRef(policySnapshot());
 
   assert.deepEqual(ref, {
-    snapshotId: 'policy-snapshot:run-policy-1:action-policy-1',
+    snapshotId:
+      'policy-snapshot:run-policy-1:action-policy-1:test-policy@1:' +
+      '2026-04-25T10:00:00.000Z',
     policyBundleVersion: 'test-policy@1',
     actionId: 'action-policy-1',
     runId: 'run-policy-1',

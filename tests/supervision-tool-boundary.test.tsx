@@ -221,7 +221,9 @@ test('tool boundary evidence captures actor, policy, tool, and approval metadata
   assert.equal(result.status, 'pending_approval');
   assert.equal(event?.actorRef, 'agent:boss');
   assert.deepEqual(event?.policySnapshotRef, {
-    snapshotId: 'policy-snapshot:run-1:policy-action',
+    snapshotId:
+      'policy-snapshot:run-1:policy-action:test-policy@1:' +
+      '2026-04-25T08:00:00.000Z',
     policyBundleVersion: 'test-policy@1',
     actionId: 'policy-action',
     runId: 'run-1',
@@ -283,7 +285,9 @@ test('durable tool evidence sink writes boundary evidence into evidence JSONL', 
     assert.equal(events[0]?.payload.status, 'pending_approval');
     assert.equal(events[0]?.payload.approvalRequestId, 'approval-durable');
     assert.deepEqual(events[0]?.payload.policySnapshotRef, {
-      snapshotId: 'policy-snapshot:run-1:policy-action',
+      snapshotId:
+        'policy-snapshot:run-1:policy-action:test-policy@1:' +
+        '2026-04-25T08:00:00.000Z',
       policyBundleVersion: 'test-policy@1',
       actionId: 'policy-action',
       runId: 'run-1',
