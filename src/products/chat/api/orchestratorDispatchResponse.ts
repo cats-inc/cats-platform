@@ -14,7 +14,15 @@ export function buildChannelDispatchOrchestratorSummary(
     loopMode: plan.execution.loopMode,
     dispatchBoundary: plan.executionLoop.dispatchBoundary,
     runtimeToolBoundary: plan.runtimeToolPlane.boundary,
-    initialTargets: plan.routing.initialTargets,
+    initialTargets: plan.routing.initialTargets.map((target) => ({
+      targetKind: target.targetKind,
+      targetId: target.targetId,
+      targetName: target.targetName,
+      laneId: target.laneId,
+      sessionId: target.sessionId,
+      trigger: target.trigger,
+      plannedDepth: target.plannedDepth,
+    })),
   };
 }
 

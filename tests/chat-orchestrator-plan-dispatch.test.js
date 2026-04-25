@@ -11,6 +11,9 @@ import {
 import {
   beginChannelMessageDispatch,
 } from '../build/server/products/chat/state/runtimeActions.js';
+import {
+  buildChannelDispatchOrchestratorSummary,
+} from '../build/server/products/chat/api/orchestratorDispatchResponse.js';
 
 function createRuntimeStub() {
   return {
@@ -117,4 +120,27 @@ test('Chat dispatch consumes orchestrator plan targets instead of recomputing de
   );
   assert.equal(begun.userMessage.metadata.orchestratorPlanId, 'orch-plan-test');
   assert.equal(begun.userMessage.metadata.orchestratorDispatchBoundary, 'supervised_runtime_boundary');
+});
+
+test('dispatch acknowledgement summaries expose only the public target projection', () => {
+  const channelId = 'channel-summary';
+  const plan = buildPlanTargetingParticipant(channelId, {
+    participantId: 'participant-summary',
+    name: 'Summary Cat',
+  });
+
+  const summary = buildChannelDispatchOrchestratorSummary(plan);
+  assert.deepEqual(summary.initialTargets, [
+    {
+      targetKind: 'cat',
+      targetId: 'participant-summary',
+      targetName: 'Summary Cat',
+      laneId: null,
+      sessionId: null,
+      trigger: 'room_default',
+      plannedDepth: 0,
+    },
+  ]);
+  assert.equal('branchStrategy' in summary.initialTargets[0], false);
+  assert.equal('toolIntent' in summary.initialTargets[0], false);
 });
