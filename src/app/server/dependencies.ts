@@ -166,6 +166,7 @@ export function resolveServerDependencies(
       chatStore: dependencies.chat.chatStore,
       companionStore,
       mutationGate,
+      orchestratorPlannerSurface,
       chatStatePath: dependencies.shared.config.chatStatePath,
       runtimeDataDir: dependencies.shared.config.runtimeDataDir,
       runtimeRecovery: {
