@@ -10,6 +10,7 @@ test('work renderer dashboard api keeps war-room payloads typed', async () => {
   );
 
   assert.match(dashboardApiSource, /expectJson<WorkDashboardProjection>/u);
+  assert.match(dashboardApiSource, /expectJson<WorkSupervisedRunLaunchProjection>/u);
   assert.match(dashboardApiSource, /expectJson<WorkProjectListProjection>/u);
   assert.match(dashboardApiSource, /expectJson<WorkTaskListProjection>/u);
   assert.match(dashboardApiSource, /expectJson<WorkTaskDetailProjection>/u);

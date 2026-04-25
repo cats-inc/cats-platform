@@ -18,6 +18,7 @@ import {
   buildWorkWorkItemListProjection,
   type WorkDashboardProjection,
   type WorkProjectDetailProjection,
+  type WorkSupervisedRunLaunchProjection,
   type WorkTaskListProjection,
   type WorkTaskDetailProjection,
   type WorkWorkItemDetailProjection,
@@ -71,7 +72,7 @@ export function createWorkTaskDetailPayload(
 export async function createWorkSupervisedRunPayload(
   dependencies: WorkApiDependencies,
   taskId: string,
-) {
+): Promise<WorkSupervisedRunLaunchProjection> {
   const now = dependencies.now?.() ?? new Date();
   const evaluatedAt = now.toISOString();
   const core = await dependencies.coreStore.readCore();

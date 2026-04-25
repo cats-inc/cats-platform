@@ -37,6 +37,7 @@ import type {
   EvidenceEvent,
   CoreProjectRecord,
   CoreProjectStatus,
+  CoreRunRecord,
   CoreTaskRecord,
   CoreTaskStatus,
   CoreWorkItemRecord,
@@ -374,6 +375,13 @@ export interface WorkTaskDetailProjection {
     summary: CoreTaskTimelineQuerySummary;
     view: CoreTaskTimelineView;
   };
+}
+
+export interface WorkSupervisedRunLaunchProjection {
+  task: CoreTaskRecord;
+  run: CoreRunRecord;
+  created: boolean;
+  supervision: SupervisedRunInspectionProjection | null;
 }
 
 function buildProjectListItems(

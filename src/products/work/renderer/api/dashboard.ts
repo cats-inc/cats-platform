@@ -4,6 +4,7 @@ import type {
   WorkDashboardProjection,
   WorkProjectListProjection,
   WorkProjectDetailProjection,
+  WorkSupervisedRunLaunchProjection,
   WorkTaskListProjection,
   WorkTaskDetailProjection,
   WorkWorkItemListProjection,
@@ -12,6 +13,7 @@ import type {
 import {
   buildWorkApiProjectPath,
   buildWorkApiTaskPath,
+  buildWorkApiTaskSupervisedRunPath,
   buildWorkApiWorkItemPath,
   WORK_API_PREFIX,
   WORK_API_PROJECTS_PATH,
@@ -32,6 +34,20 @@ export async function fetchWorkTaskDetail(
 ): Promise<WorkTaskDetailProjection> {
   const response = await fetch(buildWorkApiTaskPath(taskId), { signal });
   return expectJson<WorkTaskDetailProjection>(response, 'Failed to load work task detail');
+}
+
+export async function startWorkSupervisedRun(
+  taskId: string,
+  signal?: AbortSignal,
+): Promise<WorkSupervisedRunLaunchProjection> {
+  const response = await fetch(buildWorkApiTaskSupervisedRunPath(taskId), {
+    method: 'POST',
+    signal,
+  });
+  return expectJson<WorkSupervisedRunLaunchProjection>(
+    response,
+    'Failed to start supervised Work run',
+  );
 }
 
 export async function fetchWorkTaskList(
