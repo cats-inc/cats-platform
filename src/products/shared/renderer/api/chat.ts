@@ -5,6 +5,7 @@ import type {
   CancelChannelResponse,
   CancelParallelChatGroupInput,
   CancelParallelChatGroupResponse,
+  ChannelDispatchOrchestratorSummary,
   ChannelMessageMetadata,
   ChatChannelView,
   CreateChatChannelInput,
@@ -406,6 +407,7 @@ export interface ParallelChatDispatchResponse {
     status: 'sent' | 'error' | 'skipped';
     sourceMessageId?: string;
     error?: string;
+    orchestrator?: ChannelDispatchOrchestratorSummary;
   }>;
 }
 

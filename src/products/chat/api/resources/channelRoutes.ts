@@ -52,6 +52,7 @@ import { buildOrchestratorTurnPlan } from '../../../../platform/orchestration/in
 import {
   buildChannelMessageOrchestratorPlanState,
 } from '../orchestratorPlanState.js';
+import { buildChannelDispatchAcknowledgement } from '../orchestratorDispatchResponse.js';
 import {
   buildCanonicalChatUserMessage,
   readChatCoreTurnMetadataString,
@@ -588,18 +589,11 @@ async function handleRestSendMessage(
         phase: 'acknowledged',
         message: begunDispatch.userMessage,
         results: begunDispatch.results,
-        dispatch: {
+        dispatch: buildChannelDispatchAcknowledgement({
           channelId,
           results: begunDispatch.results,
-          orchestrator: {
-            planId: orchestratorPlan.planId,
-            planner: orchestratorPlan.execution.planner,
-            loopMode: orchestratorPlan.execution.loopMode,
-            dispatchBoundary: orchestratorPlan.executionLoop.dispatchBoundary,
-            runtimeToolBoundary: orchestratorPlan.runtimeToolPlane.boundary,
-            initialTargets: orchestratorPlan.routing.initialTargets,
-          },
-        },
+          plan: orchestratorPlan,
+        }),
       });
     });
 
@@ -745,18 +739,11 @@ async function handleRestRetryMessage(
         phase: 'acknowledged',
         message: acknowledgedDispatch.userMessage,
         results: acknowledgedDispatch.results,
-        dispatch: {
+        dispatch: buildChannelDispatchAcknowledgement({
           channelId,
           results: acknowledgedDispatch.results,
-          orchestrator: {
-            planId: orchestratorPlan.planId,
-            planner: orchestratorPlan.execution.planner,
-            loopMode: orchestratorPlan.execution.loopMode,
-            dispatchBoundary: orchestratorPlan.executionLoop.dispatchBoundary,
-            runtimeToolBoundary: orchestratorPlan.runtimeToolPlane.boundary,
-            initialTargets: orchestratorPlan.routing.initialTargets,
-          },
-        },
+          plan: orchestratorPlan,
+        }),
       });
     });
 

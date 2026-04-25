@@ -17,6 +17,7 @@ import type {
   SendChannelMessageInput,
   SendParallelChatMessageInput,
   ChatState,
+  ChannelDispatchOrchestratorSummary,
 } from '../contracts.js';
 import { persistAttachmentsForChannels } from '../attachmentSupport.js';
 import {
@@ -25,6 +26,7 @@ import {
   type ChatApiRouteContext,
 } from '../routeSupport.js';
 import { buildOrchestratorTurnPlan } from '../../../../platform/orchestration/index.js';
+import { buildChannelDispatchOrchestratorSummary } from '../orchestratorDispatchResponse.js';
 import {
   channelDispatchCancellationRegistry,
 } from '../../state/runtime-dispatch/cancellation.js';
@@ -69,6 +71,7 @@ interface BegunParallelChatDispatch {
   status: 'sent' | 'error' | 'skipped';
   sourceMessageId?: string;
   error?: string;
+  orchestrator?: ChannelDispatchOrchestratorSummary;
 }
 
 export interface StagedParallelChatDispatch {
@@ -169,6 +172,7 @@ export async function acknowledgeParallelChatBodies(
         status: dispatch.status,
         ...(dispatch.sourceMessageId ? { sourceMessageId: dispatch.sourceMessageId } : {}),
         ...(dispatch.error ? { error: dispatch.error } : {}),
+        ...(dispatch.orchestrator ? { orchestrator: dispatch.orchestrator } : {}),
       })),
     },
   };
@@ -275,6 +279,7 @@ async function stageParallelChatBodies(
         begun,
         status: 'sent',
         sourceMessageId: begun.results[0]?.sourceMessageId,
+        orchestrator: buildChannelDispatchOrchestratorSummary(orchestratorPlan),
       });
     } catch (error) {
       begunDispatches.push({
@@ -315,6 +320,7 @@ export async function finalizeParallelChatBodies(
           status: dispatch.status,
           sourceMessageId: dispatch.sourceMessageId,
           error: dispatch.error,
+          orchestrator: dispatch.orchestrator,
         };
       }
 
@@ -369,6 +375,7 @@ export async function finalizeParallelChatBodies(
           error: failedResults.length > 0
             ? failedResults.map((result) => result.error || 'Runtime dispatch failed.').join(' ')
             : undefined,
+          orchestrator: dispatch.orchestrator,
         };
       } catch (error) {
         return {
@@ -378,6 +385,7 @@ export async function finalizeParallelChatBodies(
           status: 'error' as const,
           error: error instanceof Error ? error.message : 'Failed to dispatch parallel chat turn.',
           sourceMessageId: dispatch.begun.results[0]?.sourceMessageId,
+          orchestrator: dispatch.orchestrator,
           rawError: error,
         };
       }
@@ -398,6 +406,7 @@ export async function finalizeParallelChatBodies(
             status: dispatch.status,
             ...(dispatch.sourceMessageId ? { sourceMessageId: dispatch.sourceMessageId } : {}),
             ...(dispatch.error ? { error: dispatch.error } : {}),
+            ...(dispatch.orchestrator ? { orchestrator: dispatch.orchestrator } : {}),
           });
           continue;
         }
@@ -424,6 +433,7 @@ export async function finalizeParallelChatBodies(
           status: dispatch.status,
           ...(dispatch.sourceMessageId ? { sourceMessageId: dispatch.sourceMessageId } : {}),
           ...(dispatch.error ? { error: dispatch.error } : {}),
+          ...(dispatch.orchestrator ? { orchestrator: dispatch.orchestrator } : {}),
         });
       }
 

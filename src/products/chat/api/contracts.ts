@@ -771,6 +771,7 @@ export interface ParallelChatDispatchResult {
   status: 'sent' | 'error' | 'skipped';
   sourceMessageId?: string;
   error?: string;
+  orchestrator?: ChannelDispatchOrchestratorSummary;
 }
 
 export interface CreateParallelChatGroupResponse {
