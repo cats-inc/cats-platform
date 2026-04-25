@@ -30,7 +30,10 @@ test('run-state and scheduler supervision modules stay content-blind', () => {
   const violations = collectImportViolations({
     files: lifecycleFiles,
     forbidden: (resolvedSpecifier) =>
-      /(?:transcript|messageContent|messageSegments)/i.test(resolvedSpecifier),
+      includesPathSegment(resolvedSpecifier, ['src', 'products', 'chat']) ||
+      /(?:transcript|messageContent|messageSegments|promptContent|rawPrompt)/i.test(
+        resolvedSpecifier,
+      ),
   });
 
   assert.deepEqual(violations, []);
