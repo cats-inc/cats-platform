@@ -27,7 +27,10 @@ import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js'
 import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
 import {
   WORK_ROUTE_PREFIX,
+  isWorkBrokenLinksPath,
+  isWorkCockpitPath,
   isWorkProjectsPath,
+  isWorkSystemMapPath,
   isWorkTasksPath,
   isWorkWarRoomPath,
   isWorkWorkItemsPath,
@@ -52,6 +55,9 @@ export interface SidebarProps {
   onOpenProjects?: () => void;
   onOpenTasks?: () => void;
   onOpenWorkItems?: () => void;
+  onOpenSystemMap?: () => void;
+  onOpenCockpit?: () => void;
+  onOpenBrokenLinks?: () => void;
   onSelect: (channelId: string) => void;
   onDeleteChannel: (channelId: string) => void;
   onRenameChannel: (channelId: string, title: string) => void;
@@ -248,6 +254,93 @@ function createExtraActionGroups(props: SidebarProps): ConversationSidebarAction
           ),
         },
       ],
+    });
+  }
+
+  // Top-down Work surfaces (ADR-083 / SPEC-083): structural inspection,
+  // operational triage, and conformance. Each entry navigates to a
+  // dedicated full-canvas page.
+  const topDownItems: ConversationSidebarAction[] = [];
+  if (props.onOpenSystemMap) {
+    topDownItems.push({
+      key: 'system-map',
+      label: 'System Map',
+      onClick: props.onOpenSystemMap,
+      active: isWorkSystemMapPath(currentPath),
+      icon: (
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <rect x="2" y="2" width="4" height="4" rx="1" />
+          <rect x="6.5" y="6.5" width="4" height="4" rx="1" />
+          <rect x="11" y="11" width="3" height="3" rx="0.75" />
+          <path d="M6 4h2" />
+          <path d="M9 8h1.5" />
+        </svg>
+      ),
+    });
+  }
+  if (props.onOpenCockpit) {
+    topDownItems.push({
+      key: 'cockpit',
+      label: 'Cockpit',
+      onClick: props.onOpenCockpit,
+      active: isWorkCockpitPath(currentPath),
+      icon: (
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M2 12.5a6 6 0 0 1 12 0" />
+          <path d="M8 12.5V8" />
+          <path d="M8 8l3-2.5" />
+          <circle cx="8" cy="12.5" r="0.6" fill="currentColor" stroke="none" />
+        </svg>
+      ),
+    });
+  }
+  if (props.onOpenBrokenLinks) {
+    topDownItems.push({
+      key: 'broken-links',
+      label: 'Broken Links',
+      onClick: props.onOpenBrokenLinks,
+      active: isWorkBrokenLinksPath(currentPath),
+      icon: (
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M6 6.5L4 8.5a2.12 2.12 0 0 0 3 3l1-1" />
+          <path d="M10 9.5l2-2a2.12 2.12 0 0 0-3-3l-1 1" />
+          <path d="M5.5 10.5l5-5" strokeDasharray="1.5 1.5" />
+        </svg>
+      ),
+    });
+  }
+  if (topDownItems.length > 0) {
+    groups.push({
+      key: 'top-down',
+      ariaLabel: 'Work top-down surfaces',
+      items: topDownItems,
     });
   }
 

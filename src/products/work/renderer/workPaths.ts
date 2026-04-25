@@ -6,6 +6,9 @@ export const WORK_INTAKE_PATH = `${WORK_ROUTE_PREFIX}/intake`;
 export const WORK_PROJECTS_PATH = `${WORK_ROUTE_PREFIX}/projects`;
 export const WORK_TASKS_PATH = `${WORK_ROUTE_PREFIX}/tasks`;
 export const WORK_WORK_ITEMS_PATH = `${WORK_ROUTE_PREFIX}/work-items`;
+export const WORK_SYSTEM_MAP_PATH = `${WORK_ROUTE_PREFIX}/system-map`;
+export const WORK_COCKPIT_PATH = `${WORK_ROUTE_PREFIX}/cockpit`;
+export const WORK_BROKEN_LINKS_PATH = `${WORK_ROUTE_PREFIX}/broken-links`;
 
 export function buildWorkIntakePath(projectId?: string | null): string {
   const normalized = projectId?.trim();
@@ -49,4 +52,16 @@ export function isWorkProjectsPath(pathname: string): boolean {
 
 export function isWorkWorkItemsPath(pathname: string): boolean {
   return pathname.startsWith(WORK_WORK_ITEMS_PATH);
+}
+
+export function isWorkSystemMapPath(pathname: string): boolean {
+  return pathname.startsWith(WORK_SYSTEM_MAP_PATH);
+}
+
+export function isWorkCockpitPath(pathname: string): boolean {
+  return pathname.startsWith(WORK_COCKPIT_PATH);
+}
+
+export function isWorkBrokenLinksPath(pathname: string): boolean {
+  return pathname.startsWith(WORK_BROKEN_LINKS_PATH);
 }

@@ -29,6 +29,9 @@ import { TaskDetailView } from './components/TaskDetailView.js';
 import { WarRoomView } from './components/WarRoomView.js';
 import { WorkItemListView } from './components/WorkItemListView.js';
 import { WorkItemDetailView } from './components/WorkItemDetailView.js';
+import { BrokenLinksPage } from './components/topdown/BrokenLinksPage.js';
+import { CockpitPage } from './components/topdown/CockpitPage.js';
+import { SystemMapPage } from './components/topdown/SystemMapPage.js';
 import {
   WorkspaceAppRoutes,
   type WorkspaceAppRoutesProps,
@@ -98,6 +101,9 @@ export function AppRoutes({
       <Route key="task-detail" path="tasks/:taskId" element={<TaskDetailView />} />,
       <Route key="work-item-list" path="work-items" element={<WorkItemListView />} />,
       <Route key="work-item-detail" path="work-items/:workItemId" element={<WorkItemDetailView />} />,
+      <Route key="system-map" path="system-map" element={<SystemMapPage />} />,
+      <Route key="cockpit" path="cockpit" element={<CockpitPage />} />,
+      <Route key="broken-links" path="broken-links" element={<BrokenLinksPage />} />,
     ],
     renderBootShell: () => <BootShell />,
     renderChatView: (channel, options) => (
