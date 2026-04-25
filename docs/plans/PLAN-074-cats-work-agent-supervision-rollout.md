@@ -91,9 +91,6 @@ Completed:
 
 Remaining before real provider-agent integration:
 
-- add manual verification notes for the first supervised Work run fixture
-- decide whether supervised launch should also create or bind managed-work /
-  mission records, or remain task/run-first for the first release slice
 - open the separate real-provider integration PLAN only after this fake-agent
   contract path is accepted
 
@@ -480,6 +477,11 @@ product-owned API/projection surfaces.
   right evidence request, not that it is durably stored.
 - **Persist policy snapshots in the execution layer.** They are durable
   evidence context, not a new top-level canonical record family.
+- **Keep the first release slice task/run-first.** `PLAN-074` does not create
+  or bind extra managed-work / mission records during supervised launch. Those
+  records can be added by a follow-up Work planning/mission rollout if the
+  product needs them, but the first slice proves the supervision boundary with
+  existing task and run records.
 - **Keep scheduler content-blind.** Any test or implementation that reads raw
   transcript/message content in the lifecycle scheduler violates SPEC-082.
 - **Treat weak workers as tools.** They enter through manifests, schema
