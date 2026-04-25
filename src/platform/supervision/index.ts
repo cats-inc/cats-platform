@@ -3,4 +3,5 @@ export * from './contracts.js';
 export * from './errors.js';
 export * from './policyEngine.js';
 export * from './policyVersions.js';
+export * from './toolBoundary.js';
 export * from './toolRegistry.js';
