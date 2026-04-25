@@ -8,8 +8,10 @@ import {
   SUPERVISED_TOOL_CANCELLATION_VALUES,
   TOOL_RESULT_STATUS_VALUES,
   type AddressableTarget,
+  type AsyncLifecycleRequestResult,
   type CancellationContext,
   type CapabilityAssessment,
+  type RunRef,
   type SupervisedToolManifest,
   type SupervisionPolicySnapshot,
   type ToolResult,
@@ -52,6 +54,36 @@ test('ToolResult is discriminated by status', () => {
     }),
     [true, 'approval-1', 'E_TOOL_SCOPE_DENIED'],
   );
+});
+
+test('async lifecycle requests return refs through normal ToolResult states', () => {
+  const runRef: RunRef = {
+    kind: 'run',
+    runId: 'run-child-1',
+    parentRunId: 'run-parent-1',
+  };
+  const results: AsyncLifecycleRequestResult[] = [
+    { status: 'applied', result: runRef },
+    { status: 'pending_approval', requestId: 'approval-run-1', summary: 'Spawn child run.' },
+    {
+      status: 'rejected',
+      error: { code: 'E_TOOL_SCOPE_DENIED', message: 'Child run denied.' },
+    },
+  ];
+
+  assert.deepEqual(results.map((result) => result.status), [
+    'applied',
+    'pending_approval',
+    'rejected',
+  ]);
+  assert.deepEqual(results[0], {
+    status: 'applied',
+    result: {
+      kind: 'run',
+      runId: 'run-child-1',
+      parentRunId: 'run-parent-1',
+    },
+  });
 });
 
 test('AddressableTarget excludes human operators from executable targets', () => {

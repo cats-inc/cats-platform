@@ -200,6 +200,21 @@ export type ToolResult<T> =
   | { status: 'pending_approval'; requestId: string; summary: string }
   | { status: 'rejected'; error: SupervisionRejectionError };
 
+export interface RunRef {
+  kind: 'run';
+  runId: string;
+  parentRunId?: string | null;
+}
+
+export interface LifecycleRequestRef {
+  kind: 'lifecycle_request';
+  requestId: string;
+  requestedAt: string;
+  target: AddressableTarget;
+}
+
+export type AsyncLifecycleRequestResult = ToolResult<RunRef | LifecycleRequestRef>;
+
 export const ADDRESSABLE_TARGET_KIND_VALUES = [
   'durable_agent',
   'execution_target',
