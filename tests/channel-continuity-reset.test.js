@@ -209,6 +209,7 @@ test('PATCH /api/channels/:channelId flushes pending runtime memory hooks before
       body: JSON.stringify({
         title: 'Solo Draft',
         topic: 'Flush memory before explicit fresh-start resets.',
+        originSurface: 'chat',
         composerMode: 'solo',
         pendingProvider: 'claude',
         pendingInstance: 'native',

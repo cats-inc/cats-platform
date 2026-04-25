@@ -133,6 +133,7 @@ test('assigning a cat emits session_started metadata keyed by participantId', as
       body: JSON.stringify({
         title: 'Spawn target identity',
         topic: 'Use participant identity for session_started messages.',
+        originSurface: 'chat',
         repoPath: 'C:/repo/cats-platform',
         skipBossCatGreeting: true,
       }),
@@ -210,6 +211,7 @@ test('channel creation rejects runtime policy combinations that would otherwise 
       body: JSON.stringify({
         title: 'Invalid runtime policy',
         topic: 'Do not silently rewrite read_write + default.',
+        originSurface: 'chat',
         repoPath: 'C:/repo/cats-platform',
         runtimeWorkspaceAccess: 'read_write',
         runtimePermissionMode: 'default',
@@ -261,6 +263,7 @@ test('assigning a cat keeps direct-lane transport binding on session_start_faile
       body: JSON.stringify({
         title: 'Spawn target direct failure',
         topic: 'Keep direct-lane binding on session_start_failed messages.',
+        originSurface: 'chat',
         roomMode: 'direct_cat_chat',
         defaultRecipientId: catId,
         repoPath: 'C:/repo/cats-platform',
@@ -317,6 +320,7 @@ test('assigning a cat reuses the channel runtime session policy when starting a 
       body: JSON.stringify({
         title: 'Policy-aware spawn',
         topic: 'Carry code draft session policy into runtime session creation.',
+        originSurface: 'chat',
         repoPath: 'C:/repo/cats-platform',
         runtimeWorkspaceKind: 'worktree',
         runtimeWorkspaceAccess: 'read_only',

@@ -138,6 +138,7 @@ test('POST /api/channels/:id/messages/:messageId/retry replays the same acknowle
   state = createChannel(state, {
     title: 'Retry the same turn',
     topic: 'Verify last-message retry replays the acknowledged user message.',
+    originSurface: 'chat',
     entryKind: 'solo',
     skipBossCatGreeting: true,
   }, now);
@@ -218,6 +219,7 @@ test('POST /api/channels/:id/messages/:messageId/retry rebuilds a missing user s
   state = createChannel(state, {
     title: 'Retry from canonical source',
     topic: 'Verify retry survives transcript drift.',
+    originSurface: 'chat',
     entryKind: 'solo',
     skipBossCatGreeting: true,
   }, now);
@@ -299,6 +301,7 @@ test('POST /api/channels/:id/messages/:messageId/retry accepts the latest failed
   state = createChannel(state, {
     title: 'Retry from canonical failure state',
     topic: 'Verify retry survives workflow snapshot drift.',
+    originSurface: 'chat',
     entryKind: 'solo',
     skipBossCatGreeting: true,
   }, now);
@@ -392,6 +395,7 @@ test('POST /api/channels/:id/messages/:messageId/retry rejects retry when the la
   state = createChannel(state, {
     title: 'No retry needed',
     topic: 'Reject retry when the latest turn already completed.',
+    originSurface: 'chat',
     entryKind: 'solo',
     skipBossCatGreeting: true,
   }, now);
@@ -450,6 +454,7 @@ test('POST /api/channels/:id/messages/:messageId/retry restores a drifted direct
   state = createChannel(state, {
     title: 'Retry direct-lane canonical turn',
     topic: 'Verify retry restores a drifted direct-lane turn from canonical history.',
+    originSurface: 'chat',
     roomMode: 'direct_cat_chat',
     defaultRecipientId: catId,
     repoPath: 'C:/repo/cats-platform',
