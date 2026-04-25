@@ -5,3 +5,4 @@ export * from './policyEngine.js';
 export * from './policyVersions.js';
 export * from './toolBoundary.js';
 export * from './toolRegistry.js';
+export * from './workSupervisedTools.js';
