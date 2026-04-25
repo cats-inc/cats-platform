@@ -1,5 +1,6 @@
 import type {
   SupervisedToolManifest,
+  SupervisionPolicySnapshot,
   ToolResult,
   ToolResultStatus,
 } from './contracts.js';
@@ -12,10 +13,24 @@ export interface ToolBoundaryEvidenceEvent {
   eventId: string;
   actionId: string;
   runId: string;
+  actorRef: string;
   toolName: string;
   status: ToolResultStatus;
   occurredAt: string;
+  toolManifest?: {
+    name: string;
+    manifestVersion: string;
+    sideEffect: SupervisedToolManifest['sideEffect'];
+    approval: SupervisedToolManifest['approval'];
+    evidence: SupervisedToolManifest['evidence'];
+  };
+  policySnapshotRef?: {
+    policyBundleVersion: string;
+    actionId: string;
+    runId: string;
+  };
   rejectionCode?: string;
+  approvalRequestId?: string;
   summary?: string;
 }
 
@@ -43,6 +58,7 @@ export interface SupervisedToolInvocation<TInput, TOutput> {
   runId: string;
   actorRef: string;
   grant: ToolSurfaceGrant;
+  policySnapshot?: SupervisionPolicySnapshot;
   execute: SupervisedToolExecutor<TInput, TOutput>;
 }
 
@@ -92,7 +108,7 @@ export function createToolBoundary(options: ToolBoundaryOptions): ToolBoundary {
           actorRef: invocation.actorRef,
           manifest,
         });
-        appendBoundaryEvidence(options.evidenceSink, now, invocation, result);
+        appendBoundaryEvidence(options.evidenceSink, now, invocation, result, manifest);
         return result;
       } catch (error) {
         const result: ToolResult<TOutput> = {
@@ -102,7 +118,7 @@ export function createToolBoundary(options: ToolBoundaryOptions): ToolBoundary {
             message: formatToolExecutionError(error),
           },
         };
-        appendBoundaryEvidence(options.evidenceSink, now, invocation, result);
+        appendBoundaryEvidence(options.evidenceSink, now, invocation, result, manifest);
         return result;
       }
     },
@@ -114,6 +130,7 @@ function appendBoundaryEvidence<TInput, TOutput>(
   now: () => string,
   invocation: SupervisedToolInvocation<TInput, TOutput>,
   result: ToolResult<TOutput>,
+  manifest?: SupervisedToolManifest,
 ): void {
   const occurredAt = now();
 
@@ -121,10 +138,28 @@ function appendBoundaryEvidence<TInput, TOutput>(
     eventId: `${invocation.runId}:${invocation.actionId}:${invocation.toolName}:${occurredAt}`,
     actionId: invocation.actionId,
     runId: invocation.runId,
+    actorRef: invocation.actorRef,
     toolName: invocation.toolName,
     status: result.status,
     occurredAt,
+    toolManifest: manifest === undefined
+      ? undefined
+      : {
+          name: manifest.name,
+          manifestVersion: manifest.manifestVersion,
+          sideEffect: manifest.sideEffect,
+          approval: manifest.approval,
+          evidence: manifest.evidence,
+        },
+    policySnapshotRef: invocation.policySnapshot === undefined
+      ? undefined
+      : {
+          policyBundleVersion: invocation.policySnapshot.policyBundleVersion,
+          actionId: invocation.policySnapshot.actionId,
+          runId: invocation.policySnapshot.runId,
+        },
     rejectionCode: result.status === 'rejected' ? result.error.code : undefined,
+    approvalRequestId: result.status === 'pending_approval' ? result.requestId : undefined,
     summary: result.status === 'pending_approval' ? result.summary : undefined,
   });
 }

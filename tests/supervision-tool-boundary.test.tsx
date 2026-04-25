@@ -7,6 +7,7 @@ import {
   createSupervisedToolRegistry,
   createToolBoundary,
   type SupervisedToolManifest,
+  type SupervisionPolicySnapshot,
 } from '../src/platform/supervision/index.ts';
 
 function manifest(name: string, sideEffect: SupervisedToolManifest['sideEffect']): SupervisedToolManifest {
@@ -45,6 +46,35 @@ function createFixtureBoundary() {
   });
 
   return { registry, evidenceSink, boundary };
+}
+
+function policySnapshot(): SupervisionPolicySnapshot {
+  return {
+    schemaVersion: DEFAULT_SUPERVISION_SCHEMA_VERSION,
+    policyBundleVersion: 'test-policy@1',
+    evaluatedAt: '2026-04-25T08:00:00.000Z',
+    actionId: 'policy-action',
+    runId: 'run-1',
+    actorRef: 'agent:boss',
+    policy: {
+      autonomy: 'single_step',
+      taskGranularity: 'step',
+      toolScope: 'read_only',
+      scaffolding: 'few_shot',
+      validation: 'schema_required',
+      checkpointCadence: 'every_step',
+      approvalThreshold: 'low',
+      fallbackPolicy: 'retry',
+    },
+    contextSummary: {
+      actorRef: 'agent:boss',
+      targetRef: 'tool:lookup',
+      actionType: 'tool_call',
+      sideEffect: 'none',
+      capabilityConfidence: 'catalog_only',
+    },
+    reasons: ['test policy'],
+  };
 }
 
 test('tool boundary returns applied results and records evidence', async () => {
@@ -155,4 +185,44 @@ test('tool boundary converts thrown executor failures to rejected ToolResult', a
   assert.equal(result.error.code, 'E_PRECHECK_FAILED');
   assert.equal(result.error.message, 'preflight failed');
   assert.equal(evidenceSink.read()[0]?.rejectionCode, 'E_PRECHECK_FAILED');
+});
+
+test('tool boundary evidence captures actor, policy, tool, and approval metadata', async () => {
+  const { registry, evidenceSink, boundary } = createFixtureBoundary();
+  registry.register(manifest('work.approval_gated.apply', 'external_visible'));
+
+  const result = await boundary.invoke({
+    toolName: 'work.approval_gated.apply',
+    input: {},
+    actionId: 'action-5',
+    runId: 'run-1',
+    actorRef: 'agent:boss',
+    policySnapshot: policySnapshot(),
+    grant: {
+      parentToolScope: 'broad_write',
+      policyToolScope: 'broad_write',
+    },
+    execute: () => ({
+      status: 'pending_approval',
+      requestId: 'approval-5',
+      summary: 'Needs approval.',
+    }),
+  });
+  const event = evidenceSink.read()[0];
+
+  assert.equal(result.status, 'pending_approval');
+  assert.equal(event?.actorRef, 'agent:boss');
+  assert.deepEqual(event?.policySnapshotRef, {
+    policyBundleVersion: 'test-policy@1',
+    actionId: 'policy-action',
+    runId: 'run-1',
+  });
+  assert.deepEqual(event?.toolManifest, {
+    name: 'work.approval_gated.apply',
+    manifestVersion: '1.0',
+    sideEffect: 'external_visible',
+    approval: 'policy',
+    evidence: 'summary',
+  });
+  assert.equal(event?.approvalRequestId, 'approval-5');
 });
