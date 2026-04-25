@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
+import { buildApprovalQueue } from '../src/core/approvalQueue.ts';
 import {
   createDefaultCoreState,
   upsertCoreTask,
@@ -18,6 +19,7 @@ import {
   createSupervisedLifecycleTools,
   createSupervisedToolRegistry,
   createToolBoundary,
+  persistSupervisionApprovalRequest,
   persistSupervisionPolicySnapshot,
   type BudgetEnvelope,
   type SupervisionPolicySnapshot,
@@ -200,9 +202,28 @@ test('Work supervised run launch can be driven by a fake agent and inspected fro
     'Fake agent selected this Work mutation.',
   );
   assert.equal(tools.state.approvalMutations.length, 0);
+  const approvalCall = result.traces[0]?.toolCalls.find((call) =>
+    call.status === 'pending_approval');
+
+  assert.equal(approvalCall?.toolName, 'work.approval_gated.apply');
+  const approvalRequestId = approvalCall?.requestId;
+  assert.ok(approvalRequestId);
+
+  const approvalPersistence = persistSupervisionApprovalRequest({
+    core: await coreStore.readCore(),
+    runId,
+    approvalRequestId,
+    actionId: approvalCall?.stepId ?? 'step-approval',
+    toolName: approvalCall?.toolName ?? 'work.approval_gated.apply',
+    summary: 'Apply approval-gated fake Work change.',
+    requestedByActorId: 'fake-agent',
+    now: new Date('2026-04-25T13:02:00.000Z'),
+  });
+  await coreStore.writeCore(approvalPersistence.core);
   const coreAfterFakeRun = await coreStore.readCore();
   const childRun = coreAfterFakeRun.runs.find((candidate) => candidate.parentRunId === runId);
   const childSupervision = childRun?.metadata.supervision as Record<string, unknown> | undefined;
+  const approvalQueue = buildApprovalQueue(coreAfterFakeRun);
 
   assert.equal(childRun?.title, 'Delegated fake Work child run');
   assert.equal(childRun?.status, 'queued');
@@ -211,6 +232,8 @@ test('Work supervised run launch can be driven by a fake agent and inspected fro
     maxDurationMs: 5 * 60 * 1000,
     hardStop: true,
   });
+  assert.equal(approvalQueue[0]?.taskId, approvalPersistence.task.id);
+  assert.equal(approvalPersistence.approvalBinding.subjectId, runId);
 
   const detailResponse = await fetch(`${baseUrl}/api/work/tasks/task-fake-agent`);
   const detailPayload = await detailResponse.json();
