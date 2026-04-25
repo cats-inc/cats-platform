@@ -35,6 +35,9 @@ function createHarness() {
     'work.context.lookup': tools.executors['work.context.lookup'] as UnknownToolExecutor,
     'work.local_note.apply': tools.executors['work.local_note.apply'] as UnknownToolExecutor,
     'work.approval_gated.apply': tools.executors['work.approval_gated.apply'] as UnknownToolExecutor,
+    'work.sop.classify_text_batch': tools.executors[
+      'work.sop.classify_text_batch'
+    ] as UnknownToolExecutor,
   };
 
   return { registry, evidenceSink, tools, boundary, executors };
@@ -232,4 +235,165 @@ test('fake harness caps rejection recovery depth', async () => {
     'agent-plan-denied-1',
     'agent-plan-denied-2',
   ]);
+});
+
+test('observed trace captures main FR-29 rejection codes', async () => {
+  const cases = [
+    {
+      code: 'E_TOOL_SCOPE_DENIED',
+      create: () => {
+        const harness = createHarness();
+        return {
+          ...harness,
+          semanticPlan: plan({
+            planId: 'plan-scope-denied',
+            stepId: 'step-scope-denied',
+            toolName: 'work.local_note.apply',
+            args: {
+              noteId: 'scope-denied',
+              body: 'Should not land',
+            },
+          }),
+          grant: {
+            parentToolScope: 'read_only' as const,
+            policyToolScope: 'read_only' as const,
+          },
+        };
+      },
+    },
+    {
+      code: 'E_APPROVAL_DENIED',
+      create: async () => {
+        const harness = createHarness();
+        await harness.boundary.invoke({
+          toolName: 'work.approval_gated.apply',
+          input: {
+            requestId: 'approval-denied',
+            value: 'denied-change',
+          },
+          actionId: 'seed-denied-approval',
+          runId: 'run-fake-1',
+          actorRef: 'agent:boss',
+          grant: {
+            parentToolScope: 'broad_write',
+            policyToolScope: 'broad_write',
+          },
+          execute: harness.tools.executors['work.approval_gated.apply'],
+        });
+        harness.tools.deny('approval-denied');
+
+        return {
+          ...harness,
+          semanticPlan: plan({
+            planId: 'plan-approval-denied',
+            stepId: 'step-approval-denied',
+            toolName: 'work.approval_gated.apply',
+            args: {
+              requestId: 'approval-denied',
+              value: 'denied-change',
+            },
+          }),
+          grant: {
+            parentToolScope: 'broad_write' as const,
+            policyToolScope: 'broad_write' as const,
+          },
+        };
+      },
+    },
+    {
+      code: 'E_RUN_CANCELLED',
+      create: () => {
+        const harness = createHarness();
+        harness.tools.cancelRun('run-fake-1');
+
+        return {
+          ...harness,
+          semanticPlan: plan({
+            planId: 'plan-run-cancelled',
+            stepId: 'step-run-cancelled',
+            toolName: 'work.approval_gated.apply',
+            args: {
+              value: 'cancelled-change',
+            },
+          }),
+          grant: {
+            parentToolScope: 'broad_write' as const,
+            policyToolScope: 'broad_write' as const,
+          },
+        };
+      },
+    },
+    {
+      code: 'E_BUDGET_EXCEEDED',
+      create: () => {
+        const harness = createHarness();
+        return {
+          ...harness,
+          executors: {
+            ...harness.executors,
+            'work.context.lookup': (() => ({
+              status: 'rejected',
+              error: {
+                code: 'E_BUDGET_EXCEEDED',
+                message: 'Budget exhausted before lookup.',
+              },
+            })) as UnknownToolExecutor,
+          },
+          semanticPlan: plan({
+            planId: 'plan-budget-exceeded',
+            stepId: 'step-budget-exceeded',
+            toolName: 'work.context.lookup',
+            args: {
+              key: 'goal',
+            },
+          }),
+          grant: {
+            parentToolScope: 'read_only' as const,
+            policyToolScope: 'read_only' as const,
+          },
+        };
+      },
+    },
+    {
+      code: 'E_SCHEMA_INVALID',
+      create: () => {
+        const harness = createHarness();
+        return {
+          ...harness,
+          semanticPlan: plan({
+            planId: 'plan-schema-invalid',
+            stepId: 'step-schema-invalid',
+            toolName: 'work.sop.classify_text_batch',
+            args: {
+              items: [{ id: '', text: 'bad' }],
+              labels: [],
+            },
+          }),
+          grant: {
+            parentToolScope: 'read_only' as const,
+            policyToolScope: 'read_only' as const,
+          },
+        };
+      },
+    },
+  ];
+
+  for (const testCase of cases) {
+    const harness = await testCase.create();
+    const agent = createScriptedFakeDrivingAgent({
+      initialPlan: harness.semanticPlan,
+      revisions: [],
+    });
+    const result = await runFakeDrivingAgentHarness({
+      agent,
+      input: fakeAgentInput(),
+      boundary: harness.boundary,
+      executors: harness.executors,
+      maxRecoveryDepth: 0,
+      grantForStep: () => harness.grant,
+    });
+
+    assert.equal(result.finalState, 'failed');
+    assert.equal(result.traces[0]?.toolCalls[0]?.error?.code, testCase.code);
+  }
 });
