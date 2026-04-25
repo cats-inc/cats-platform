@@ -1,0 +1,193 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import {
+  ADDRESSABLE_TARGET_KIND_VALUES,
+  CAPABILITY_AGGREGATE_METHOD,
+  DEFAULT_SUPERVISION_SCHEMA_VERSION,
+  SUPERVISED_TOOL_CANCELLATION_VALUES,
+  TOOL_RESULT_STATUS_VALUES,
+  type AddressableTarget,
+  type CancellationContext,
+  type CapabilityAssessment,
+  type SupervisedToolManifest,
+  type SupervisionPolicySnapshot,
+  type ToolResult,
+} from '../src/platform/supervision/index.ts';
+import {
+  SUPERVISION_REJECTION_CODES,
+  type SupervisionRejectionCode,
+} from '../src/platform/supervision/errors.ts';
+
+test('ToolResult is discriminated by status', () => {
+  assert.deepEqual(TOOL_RESULT_STATUS_VALUES, [
+    'applied',
+    'pending_approval',
+    'rejected',
+  ]);
+
+  const results: Array<ToolResult<{ ok: true }>> = [
+    { status: 'applied', result: { ok: true } },
+    { status: 'pending_approval', requestId: 'approval-1', summary: 'Needs approval' },
+    {
+      status: 'rejected',
+      error: { code: 'E_TOOL_SCOPE_DENIED', message: 'Denied by policy' },
+    },
+  ];
+
+  assert.deepEqual(
+    results.map((result) => {
+      switch (result.status) {
+        case 'applied':
+          return result.result.ok;
+        case 'pending_approval':
+          return result.requestId;
+        case 'rejected':
+          return result.error.code;
+        default: {
+          const exhaustive: never = result;
+          return exhaustive;
+        }
+      }
+    }),
+    [true, 'approval-1', 'E_TOOL_SCOPE_DENIED'],
+  );
+});
+
+test('AddressableTarget excludes human operators from executable targets', () => {
+  assert.deepEqual(ADDRESSABLE_TARGET_KIND_VALUES, [
+    'durable_agent',
+    'execution_target',
+    'temporary_participant',
+    'worker_tool',
+  ]);
+  assert.equal((ADDRESSABLE_TARGET_KIND_VALUES as readonly string[]).includes('human_operator'), false);
+
+  const target: AddressableTarget = {
+    kind: 'worker_tool',
+    toolName: 'work.sop.classify_text_batch',
+  };
+  assert.equal(target.kind, 'worker_tool');
+});
+
+test('SupervisedToolManifest requires cancellation and schema version fields', () => {
+  assert.deepEqual(SUPERVISED_TOOL_CANCELLATION_VALUES, [
+    'cooperative',
+    'best_effort',
+    'not_supported',
+  ]);
+
+  const manifest: SupervisedToolManifest = {
+    schemaVersion: DEFAULT_SUPERVISION_SCHEMA_VERSION,
+    name: 'work.context.lookup',
+    manifestVersion: '1.0',
+    description: 'Read Work context',
+    sideEffect: 'none',
+    preflight: 'available',
+    blocking: 'blocking',
+    cancellation: 'cooperative',
+    approval: 'never',
+    evidence: 'summary',
+    failureCodes: [],
+    inputSchema: {
+      id: 'work.context.lookup.input',
+      version: '1.0',
+      format: 'json_schema',
+    },
+    outputSchema: {
+      id: 'work.context.lookup.output',
+      version: '1.0',
+      format: 'json_schema',
+    },
+  };
+
+  assert.equal(manifest.cancellation, 'cooperative');
+  assert.deepEqual(manifest.schemaVersion, { major: 1, minor: 0 });
+});
+
+test('CancellationContext requires reasonCode and manifest-derived cancellation context', () => {
+  const context: CancellationContext = {
+    requestedAt: '2026-04-25T00:00:00.000Z',
+    requestedBy: 'operator:owner',
+    runStateAtRequest: 'running',
+    toolCancellation: 'best_effort_requested',
+    effectLanded: 'after_cancel_request',
+    reasonCode: 'operator_decision',
+  };
+
+  assert.equal(context.reasonCode, 'operator_decision');
+  assert.equal(context.toolCancellation, 'best_effort_requested');
+});
+
+test('policy snapshots carry bundle version and schema version', () => {
+  const snapshot: SupervisionPolicySnapshot = {
+    schemaVersion: DEFAULT_SUPERVISION_SCHEMA_VERSION,
+    policyBundleVersion: 'supervision-policy@1',
+    dialVersions: {
+      toolScope: 'tool-scope@1',
+    },
+    evaluatedAt: '2026-04-25T00:00:00.000Z',
+    actionId: 'action-1',
+    runId: 'run-1',
+    actorRef: 'agent:boss',
+    policy: {
+      autonomy: 'single_step',
+      taskGranularity: 'step',
+      toolScope: 'read_only',
+      scaffolding: 'few_shot',
+      validation: 'schema_required',
+      checkpointCadence: 'every_step',
+      approvalThreshold: 'medium',
+      fallbackPolicy: 'retry',
+    },
+    contextSummary: {
+      actorRef: 'agent:boss',
+      targetRef: 'worker:context',
+      actionType: 'lookup',
+      sideEffect: 'none',
+      capabilityConfidence: 'catalog_only',
+    },
+    reasons: ['catalog_only capability starts conservative'],
+  };
+
+  assert.equal(snapshot.policyBundleVersion, 'supervision-policy@1');
+  assert.equal(snapshot.dialVersions?.toolScope, 'tool-scope@1');
+  assert.deepEqual(snapshot.schemaVersion, { major: 1, minor: 0 });
+});
+
+test('capability assessments tie aggregate method to schema version', () => {
+  const assessment: CapabilityAssessment = {
+    schemaVersion: DEFAULT_SUPERVISION_SCHEMA_VERSION,
+    assessedAt: '2026-04-25T00:00:00.000Z',
+    confidenceLevel: 'catalog_only',
+    confidenceSources: [
+      {
+        evidenceId: 'provider-catalog:demo:1',
+        source: 'provider_catalog',
+        observedAt: '2026-04-25T00:00:00.000Z',
+        claims: {
+          tool_use_accuracy: {
+            level: 'catalog_only',
+            summary: 'Provider catalog advertises tool support.',
+          },
+        },
+        metadata: {
+          catalogVersion: '1',
+        },
+      },
+    ],
+    aggregateMethod: CAPABILITY_AGGREGATE_METHOD,
+    conflicts: [],
+  };
+
+  assert.equal(assessment.aggregateMethod, 'conservative_per_dimension');
+  assert.deepEqual(assessment.schemaVersion, { major: 1, minor: 0 });
+});
+
+test('stable supervision rejection codes include approval, cancellation, and scope failures', () => {
+  const codes = new Set<SupervisionRejectionCode>(SUPERVISION_REJECTION_CODES);
+
+  assert.equal(codes.has('E_APPROVAL_DENIED'), true);
+  assert.equal(codes.has('E_RUN_CANCELLED'), true);
+  assert.equal(codes.has('E_TOOL_SCOPE_DENIED'), true);
+});
