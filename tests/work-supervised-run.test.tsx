@@ -12,8 +12,10 @@ import {
 import { MemoryCoreStore } from '../src/core/store.ts';
 import {
   DEFAULT_SUPERVISION_SCHEMA_VERSION,
+  SUPERVISED_LIFECYCLE_RUN_SPAWN_TOOL,
   createDurableToolEvidenceSink,
   createInMemoryWorkSupervisedTools,
+  createSupervisedLifecycleTools,
   createSupervisedToolRegistry,
   createToolBoundary,
   type BudgetEnvelope,
@@ -71,12 +73,17 @@ test('Work supervised run launch can be driven by a fake agent and inspected fro
   assert.equal(launchResponse.status, 201);
   assert.equal(launchPayload.run.status, 'queued');
 
+  const lifecycleTools = createSupervisedLifecycleTools({
+    coreStore,
+    now: () => new Date('2026-04-25T13:01:00.000Z'),
+  });
   const tools = createInMemoryWorkSupervisedTools({
     context: {
       goal: 'Prove Work supervised fake run path',
     },
   });
   const registry = createSupervisedToolRegistry();
+  lifecycleTools.register(registry);
   tools.register(registry);
   const boundary = createToolBoundary({
     registry,
@@ -87,6 +94,9 @@ test('Work supervised run launch can be driven by a fake agent and inspected fro
     now: () => '2026-04-25T13:01:00.000Z',
   });
   const executors: Record<string, UnknownToolExecutor> = {
+    [SUPERVISED_LIFECYCLE_RUN_SPAWN_TOOL]: lifecycleTools.executors[
+      SUPERVISED_LIFECYCLE_RUN_SPAWN_TOOL
+    ] as UnknownToolExecutor,
     'work.context.lookup': tools.executors['work.context.lookup'] as UnknownToolExecutor,
     'work.local_note.apply': tools.executors['work.local_note.apply'] as UnknownToolExecutor,
     'work.approval_gated.apply': tools.executors[
@@ -109,6 +119,24 @@ test('Work supervised run launch can be driven by a fake agent and inspected fro
         args: {
           noteId: 'work-fake-agent-note',
           body: 'Fake agent selected this Work mutation.',
+        },
+      },
+      {
+        stepId: 'step-spawn-child',
+        target: { kind: 'worker_tool', toolName: SUPERVISED_LIFECYCLE_RUN_SPAWN_TOOL },
+        toolName: SUPERVISED_LIFECYCLE_RUN_SPAWN_TOOL,
+        args: {
+          title: 'Delegated fake Work child run',
+          target: {
+            kind: 'durable_agent',
+            agentId: 'agent:worker',
+            projection: 'work',
+          },
+          requestedBudget: {
+            maxTokens: 10_000,
+            maxDurationMs: 5 * 60 * 1000,
+            hardStop: false,
+          },
         },
       },
       {
@@ -144,6 +172,8 @@ test('Work supervised run launch can be driven by a fake agent and inspected fro
     grantForStep: (step) =>
       step.toolName === 'work.local_note.apply'
         ? { parentToolScope: 'narrow_write', policyToolScope: 'narrow_write' }
+        : step.toolName === SUPERVISED_LIFECYCLE_RUN_SPAWN_TOOL
+          ? { parentToolScope: 'narrow_write', policyToolScope: 'narrow_write' }
         : step.toolName === 'work.approval_gated.apply'
           ? { parentToolScope: 'broad_write', policyToolScope: 'broad_write' }
           : { parentToolScope: 'read_only', policyToolScope: 'read_only' },
@@ -153,6 +183,7 @@ test('Work supervised run launch can be driven by a fake agent and inspected fro
   assert.deepEqual(result.traces[0]?.observedStepIds, [
     'step-read-goal',
     'step-note',
+    'step-spawn-child',
     'step-approval',
   ]);
   assert.equal(
@@ -160,18 +191,29 @@ test('Work supervised run launch can be driven by a fake agent and inspected fro
     'Fake agent selected this Work mutation.',
   );
   assert.equal(tools.state.approvalMutations.length, 0);
+  const coreAfterFakeRun = await coreStore.readCore();
+  const childRun = coreAfterFakeRun.runs.find((candidate) => candidate.parentRunId === runId);
+  const childSupervision = childRun?.metadata.supervision as Record<string, unknown> | undefined;
+
+  assert.equal(childRun?.title, 'Delegated fake Work child run');
+  assert.equal(childRun?.status, 'queued');
+  assert.deepEqual(childSupervision?.budget, {
+    maxTokens: 10_000,
+    maxDurationMs: 5 * 60 * 1000,
+    hardStop: true,
+  });
 
   const detailResponse = await fetch(`${baseUrl}/api/work/tasks/task-fake-agent`);
   const detailPayload = await detailResponse.json();
 
   assert.equal(detailResponse.status, 200);
   assert.equal(detailPayload.supervision.run.id, runId);
-  assert.equal(detailPayload.supervision.counts.evidence, 3);
+  assert.equal(detailPayload.supervision.counts.evidence, 4);
   assert.deepEqual(
     detailPayload.supervision.evidence.map((event: { status: string }) => event.status),
-    ['applied', 'applied', 'pending_approval'],
+    ['applied', 'applied', 'applied', 'pending_approval'],
   );
-  assert.equal(detailPayload.supervision.evidence[2]?.approvalRequestId !== undefined, true);
+  assert.equal(detailPayload.supervision.evidence[3]?.approvalRequestId !== undefined, true);
 });
 
 function createWorkCoreStore() {

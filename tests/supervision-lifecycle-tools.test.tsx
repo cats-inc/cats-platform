@@ -90,7 +90,7 @@ test('supervised lifecycle spawn creates a bounded queued child run', async () =
   assert.equal(childRun?.status, 'queued');
   assert.equal(childRun?.parentRunId, 'run-parent-lifecycle');
   assert.equal(childRun?.conversationId, 'conversation-lifecycle');
-  assert.equal(childRun?.taskId, 'task-lifecycle');
+  assert.equal(childRun?.taskId, null);
   assert.deepEqual(supervision?.budget, {
     maxTokens: 10_000,
     maxDurationMs: 10_000,

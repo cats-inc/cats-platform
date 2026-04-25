@@ -129,7 +129,7 @@ function createRunSpawnExecutor(input: {
         title: toolInput.title,
         status: 'queued',
         conversationId: toolInput.conversationId ?? parentRun.conversationId,
-        taskId: toolInput.taskId ?? parentRun.taskId,
+        taskId: toolInput.taskId === undefined ? null : toolInput.taskId,
         parentRunId: parentRun.id,
         orchestratorActorId: context.actorRef,
         summary: toolInput.summary ?? 'Queued supervised child run.',
