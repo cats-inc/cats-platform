@@ -496,10 +496,13 @@ categories:
 
 ### Phase 8: Chat Router Ownership and Old Semantic Core Removal
 
-- [ ] Task 8.1: Move or rename retained deterministic Chat routing into a
+- [x] Task 8.1: Move or rename retained deterministic Chat routing into a
       Chat-owned module path. Its contract remains `@mention` resolution,
       direct-lane binding, room-default dispatch, audience limits,
       lane/container addressing, and recents/origin ownership.
+      `deterministicRouterAdapter` no longer consumes old platform
+      `OrchestratorTurnPlan` payloads; Chat dispatch acknowledgements use the
+      Chat-owned `DeterministicChatRoutingPlan` projection.
 - [ ] Task 8.2: Remove semantic-planning exports from the old
       planner/dispatcher modules after Chat, Work, and Code semantic paths use
       the provider-agent seam.

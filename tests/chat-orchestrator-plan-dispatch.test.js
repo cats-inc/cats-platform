@@ -21,58 +21,6 @@ function createRuntimeStub() {
   };
 }
 
-function buildPlanTargetingParticipant(channelId, participant) {
-  return {
-    planId: 'orch-plan-test',
-    channelId,
-    routing: {
-      trigger: 'room_default',
-      unresolvedMentions: [],
-      mentionNames: [],
-      resolution: {
-        routingMode: 'room_default',
-        selectionKind: 'default_target',
-        defaultTarget: {
-          participantKind: 'cat',
-          participantId: participant.participantId,
-          participantName: participant.name,
-        },
-        defaultTargetReason: 'boss_chat_default',
-        fallbackTarget: null,
-        blockedReason: null,
-        note: null,
-      },
-      initialTargets: [
-        {
-          targetKind: 'cat',
-          targetId: participant.participantId,
-          targetName: participant.name,
-          laneId: null,
-          sessionId: null,
-          trigger: 'room_default',
-          plannedDepth: 0,
-          branchStrategy: 'fresh_no_parent',
-          handoffReason: 'room_default',
-          skillProfile: null,
-          mcpProfile: null,
-          runtimeSkills: null,
-          toolIntent: null,
-        },
-      ],
-    },
-    execution: {
-      planner: 'dynamic_room_workflow',
-      loopMode: 'agent_driven',
-    },
-    executionLoop: {
-      dispatchBoundary: 'supervised_runtime_boundary',
-    },
-    runtimeToolPlane: {
-      boundary: 'runtime_mcp_facade',
-    },
-  };
-}
-
 function buildDeterministicPlanTargetingParticipant(channelId, participant) {
   return {
     planId: 'chat-plan-test',
@@ -166,7 +114,7 @@ test('Chat dispatch consumes Chat-owned deterministic plan targets instead of re
 
 test('dispatch acknowledgement summaries expose only the public target projection', () => {
   const channelId = 'channel-summary';
-  const plan = buildPlanTargetingParticipant(channelId, {
+  const plan = buildDeterministicPlanTargetingParticipant(channelId, {
     participantId: 'participant-summary',
     name: 'Summary Cat',
   });

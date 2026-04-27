@@ -4,21 +4,21 @@ import type {
   ChannelDispatchResult,
 } from './contracts.js';
 import type { BegunChannelMessageDispatch } from '../state/runtime-dispatch/routing.js';
-import type { OrchestratorTurnPlan } from '../../../platform/orchestration/contracts.js';
+import type { DeterministicChatRoutingPlan } from '../state/runtime-dispatch/deterministicPlan.js';
 
 export function buildChannelDispatchOrchestratorSummary(
-  plan: OrchestratorTurnPlan,
+  plan: DeterministicChatRoutingPlan,
 ): ChannelDispatchOrchestratorSummary {
   return {
     planId: plan.planId,
-    planner: plan.execution.planner,
-    loopMode: plan.execution.loopMode,
-    dispatchBoundary: plan.executionLoop.dispatchBoundary,
-    runtimeToolBoundary: plan.runtimeToolPlane.boundary,
+    planner: plan.metadata.planner,
+    loopMode: plan.metadata.loopMode,
+    dispatchBoundary: plan.metadata.dispatchBoundary,
+    runtimeToolBoundary: plan.metadata.runtimeToolBoundary,
     initialTargets: plan.routing.initialTargets.map((target) => ({
-      targetKind: target.targetKind,
-      targetId: target.targetId,
-      targetName: target.targetName,
+      targetKind: target.participantKind,
+      targetId: target.participantId,
+      targetName: target.participantName,
       laneId: target.laneId,
       sessionId: target.sessionId,
       trigger: target.trigger,
@@ -30,7 +30,7 @@ export function buildChannelDispatchOrchestratorSummary(
 export function buildChannelDispatchAcknowledgement(input: {
   channelId: string;
   results: ChannelDispatchResult[];
-  plan: OrchestratorTurnPlan;
+  plan: DeterministicChatRoutingPlan;
 }): ChannelDispatchAcknowledgement {
   return {
     channelId: input.channelId,

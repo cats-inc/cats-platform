@@ -129,6 +129,27 @@ test('dispatch turn consumes a Chat-owned deterministic routing plan shape', () 
   assert.equal(source.includes('DeterministicChatRoutingPlan'), true);
 });
 
+test('Chat deterministic router adapter does not consume old platform plans', () => {
+  const source = readFileSync(
+    path.join(process.cwd(), 'src/products/chat/state/deterministicRouterAdapter.ts'),
+    'utf8',
+  );
+
+  assert.equal(source.includes('OrchestratorTurnPlan'), false);
+  assert.equal(source.includes('toDeterministicChatRoutingPlan'), false);
+  assert.equal(source.includes('input.orchestratorPlan'), false);
+});
+
+test('Chat dispatch acknowledgement summaries use Chat-owned deterministic plans', () => {
+  const source = readFileSync(
+    path.join(process.cwd(), 'src/products/chat/api/orchestratorDispatchResponse.ts'),
+    'utf8',
+  );
+
+  assert.equal(source.includes('OrchestratorTurnPlan'), false);
+  assert.equal(source.includes('DeterministicChatRoutingPlan'), true);
+});
+
 test('Chat runtime dispatch API no longer accepts old platform plans', () => {
   const source = readFileSync(
     path.join(process.cwd(), 'src/products/chat/state/runtime-dispatch/routing.ts'),
