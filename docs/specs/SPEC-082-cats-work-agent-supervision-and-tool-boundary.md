@@ -601,8 +601,14 @@ invocations are tools unless explicitly promoted by a later feature.
     `execution_target`. Changing its provider/model changes execution, not a
     durable identity record.
 53. **FR-53 (Temporary participant semantics).** A temporary participant maps
-    to `temporary_participant`. Role hints, display names, or avatar hints are
-    presentation/runtime hints, not durable Cat identity fields.
+    to `temporary_participant`. This kind describes channel-scoped identity
+    and lifecycle only; it is not a capability tier and does not imply
+    non-agentic or weak execution. A temporary participant may resolve to a
+    strong provider/model execution target, capability profile, and
+    `SupervisionPolicy` for a room turn, including provider-agent semantic
+    planning and supervised tool access when policy allows. Role hints,
+    display names, or avatar hints are presentation/runtime hints, not
+    durable Cat identity fields.
 54. **FR-54 (Worker semantics).** A weak worker maps to `worker_tool` unless a
     later spec explicitly promotes it into a durable operational agent.
 55. **FR-55 (Registry separation).** `AddressableTarget` shall not imply direct

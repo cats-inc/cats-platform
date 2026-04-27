@@ -88,6 +88,10 @@ This plan covers:
   tool-surface narrowing without introducing a separate dispatcher component
 - Chat semantic decision-core cutover while preserving deterministic Chat
   routing behavior and visible Chat UI flows
+- `+Group chat` and similar preset-created temporary participants with strong
+  provider/model/control targets enter the same provider-agent decision seam
+  under capability profile and policy supervision; their temporary lifecycle
+  does not cap agency or tool eligibility
 - Work supervised run lifecycle beyond one-shot runtime launch
 - Code task execute and relay fan-out convergence through the same run model
 - lifecycle scheduler and run-loop ownership needed to keep provider agents
@@ -101,7 +105,9 @@ This plan covers:
 - no redesign of Chat, Work, or Code renderer flows
 - no new top-level Cat registry shape
 - no conversion of temporary participants, solo execution targets, or worker
-  invocations into durable Cats
+  invocations into durable Cats. This non-goal does not prevent temporary
+  participants from using strong execution targets, capability profiles, or
+  agentic supervision while they remain channel-scoped.
 - no provider-specific business logic outside provider adapters/capability
   profiles
 - no direct product calls to runtime create/send outside
@@ -130,6 +136,9 @@ This plan covers:
 - Chat direct, solo, group, and parallel send flows route semantic next-step
   choice through the new provider-agent decision seam where the task is
   agentic.
+- Temporary participants created by Chat, Work, or Code presets can be strong
+  provider-agent participants under supervision without being promoted to
+  durable Cats.
 - Chat deterministic routing is explicitly carved out and remains product-owned:
   `@mention` resolution, room-default dispatch, audience / participant limits,
   lane/container addressing, and product recents/origin rules stay

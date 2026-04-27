@@ -372,6 +372,12 @@ durable Cat registry, because they have no persistent identity
 semantics (no direct lane, no memory, no transport binding, no
 delete / archive).
 
+That registry separation does not cap agency. A room-scoped temporary
+participant created from a strong provider preset can still run under
+provider-agent supervision, tool grants, budgets, and approvals for that
+room. The temporary part is its identity / lifecycle, not its capability
+ceiling.
+
 ## Scope — what this ADR does not do
 
 - It does **not** add or rename any record type in
