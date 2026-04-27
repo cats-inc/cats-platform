@@ -138,3 +138,14 @@ test('Telegram bridge routes through Chat dispatch without building old platform
   assert.equal(source.includes('buildOrchestratorTurnPlan'), false);
   assert.equal(source.includes('orchestratorPlannerSurface'), false);
 });
+
+test('parallel chat dispatch derives summaries from Chat dispatch state, not old platform plans', () => {
+  const source = readFileSync(
+    path.join(process.cwd(), 'src/products/chat/api/resources/parallelChatGroupDispatch.ts'),
+    'utf8',
+  );
+
+  assert.equal(source.includes('buildOrchestratorTurnPlan'), false);
+  assert.equal(source.includes('orchestratorPlannerSurface'), false);
+  assert.equal(source.includes('buildParallelDispatchOrchestratorSummary'), true);
+});

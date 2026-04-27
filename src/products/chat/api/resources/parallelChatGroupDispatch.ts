@@ -25,8 +25,6 @@ import {
   nowFrom,
   type ChatApiRouteContext,
 } from '../routeSupport.js';
-import { buildOrchestratorTurnPlan } from '../../../../platform/orchestration/index.js';
-import { buildChannelDispatchOrchestratorSummary } from '../orchestratorDispatchResponse.js';
 import {
   channelDispatchCancellationRegistry,
 } from '../../state/runtime-dispatch/cancellation.js';
@@ -91,6 +89,38 @@ export class ParallelChatAttachmentWorkspaceError extends Error {
     this.name = 'ParallelChatAttachmentWorkspaceError';
     this.channelIds = channelIds;
   }
+}
+
+function buildParallelDispatchOrchestratorSummary(
+  channelId: string,
+  begun: Awaited<ReturnType<typeof beginChannelMessageDispatch>>,
+): ChannelDispatchOrchestratorSummary {
+  const preparedTurn = begun.preparedTurn;
+  const trigger = preparedTurn?.initialResolution.trigger ?? 'room_default';
+  return {
+    planId:
+      preparedTurn?.providerAgentObservation?.observationId
+      ?? `chat-deterministic:${channelId}:${begun.userMessage.id}`,
+    planner: preparedTurn?.providerAgentObservation ? 'provider_agent_observation' : 'chat_deterministic_router',
+    loopMode: 'agent_driven',
+    dispatchBoundary: 'supervised_runtime_boundary',
+    runtimeToolBoundary: 'runtime_mcp_facade',
+    initialTargets: (preparedTurn?.initialResolution.targets ?? []).map((target) => {
+      const targetStatus = preparedTurn?.activeTurn.targetStatuses.find((candidate) =>
+        candidate.participant.participantKind === target.participantKind
+        && candidate.participant.participantId === target.participantId
+        && candidate.laneId === (target.laneId ?? null));
+      return {
+        targetKind: target.participantKind,
+        targetId: target.participantId,
+        targetName: target.participantName,
+        laneId: target.laneId,
+        sessionId: target.sessionId,
+        trigger: targetStatus?.trigger ?? trigger,
+        plannedDepth: targetStatus?.depth ?? 0,
+      };
+    }),
+  };
 }
 
 export async function dispatchParallelChatBodies(
@@ -227,7 +257,6 @@ async function stageParallelChatBodies(
   }
 
   const begunDispatches: BegunParallelChatDispatch[] = [];
-  const core = await context.dependencies.chatStore.readCore();
   for (const [channelId, input] of effectiveChannelInputs.entries()) {
     const trimmedBody = input.body.trim();
     if (!trimmedBody) {
@@ -240,17 +269,6 @@ async function stageParallelChatBodies(
     }
 
     try {
-      const orchestratorPlan = buildOrchestratorTurnPlan(
-        acknowledgedState,
-        core,
-        {
-          channelId,
-          body: trimmedBody,
-          senderName: input.senderName,
-          transport: 'web',
-        },
-        context.dependencies.orchestratorPlannerSurface,
-      );
       const begun = await beginChannelMessageDispatch(
         acknowledgedState,
         channelId,
@@ -267,7 +285,6 @@ async function stageParallelChatBodies(
           },
           cancellationRegistry: channelDispatchCancellationRegistry,
           onStateWritten: notifyStreamTargetChanged,
-          orchestratorPlan,
         },
       );
       acknowledgedState = replaceState(
@@ -279,7 +296,7 @@ async function stageParallelChatBodies(
         begun,
         status: 'sent',
         sourceMessageId: begun.results[0]?.sourceMessageId,
-        orchestrator: buildChannelDispatchOrchestratorSummary(orchestratorPlan),
+        orchestrator: buildParallelDispatchOrchestratorSummary(channelId, begun),
       });
     } catch (error) {
       begunDispatches.push({
