@@ -424,7 +424,7 @@ categories:
       scope narrowing, and deadlock/cycle detection.
 - [x] Task 4.4: Keep semantic decisions outside the scheduler; static tests must
       prevent scheduler imports of transcript/message content readers.
-- [ ] Task 4.5: Define the run-loop decision handoff: after each provider
+- [x] Task 4.5: Define the run-loop decision handoff: after each provider
       response, semantic next-step choice returns to the provider-agent seam or
       the weak-worker tool boundary; the scheduler never reads response text to
       decide the next semantic action.
@@ -695,3 +695,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 35: completed Phase 4 Task 4.2 by recording cancellation request state, deriving late-finishing `CancellationContext` from tool manifests, rejecting terminal-run cancellation, and preserving content-blind lifecycle boundaries. |
 | 2026-04-28 | Implementation slice 36: completed Phase 4 Task 4.3 by tightening supervised child-run spawn with parent-budget caps, tool-scope narrowing metadata, run-tree parent validation, existing ancestry cycle rejection, and Work fake-run coverage. |
 | 2026-04-28 | Implementation slice 37: completed Phase 4 Task 4.4 by strengthening supervision static boundaries so lifecycle/scheduler modules cannot import content readers or contain provider-agent semantic planning entrypoints. |
+| 2026-04-28 | Implementation slice 38: completed Phase 4 Task 4.5 by adding a metadata-only run-loop handoff contract that returns provider responses to the provider-agent seam, weak-worker results to the tool boundary, and terminal runs to terminal state without scheduler text inspection. |

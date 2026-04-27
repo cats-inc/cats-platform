@@ -26,7 +26,7 @@ test('platform supervision does not import product renderer or design modules', 
 
 test('run-state and scheduler supervision modules stay content-blind', () => {
   const lifecycleFiles = collectSourceFiles(SUPERVISION_ROOT).filter((filePath) =>
-    /(?:runState|scheduler|lifecycle)\.ts$/.test(filePath),
+    /(?:runState|scheduler|lifecycle|runLoopHandoff)\.ts$/.test(filePath),
   );
   const violations = collectImportViolations({
     files: lifecycleFiles,

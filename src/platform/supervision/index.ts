@@ -12,6 +12,7 @@ export * from './policyVersions.js';
 export * from './providerCapabilityProfiles.js';
 export * from './runProjection.js';
 export * from './runLifecycleService.js';
+export * from './runLoopHandoff.js';
 export * from './runState.js';
 export * from './runtimeBoundary.js';
 export * from './toolBoundary.js';
