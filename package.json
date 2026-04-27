@@ -228,6 +228,11 @@
       "artifactName": "Cats-${version}-${arch}.${ext}",
       "category": "Utility"
     },
+    "deb": {
+      "depends": [
+        "libpulse0"
+      ]
+    },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,

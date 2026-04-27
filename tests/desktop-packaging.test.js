@@ -834,6 +834,12 @@ test('build-desktop-installer script avoids shell execution on Windows', async (
   assert.match(script, /swift', \['build', '-c', 'release'/);
   assert.match(script, /dotnet',\s*\[\s*'publish'/);
   assert.match(script, /'--self-contained',\s*'true'/);
+  // Linux whisper.cpp helper build is gated on CATS_BUNDLE_WHISPER_PLATFORMS;
+  // default `linux` bundles the whisper helper for Linux installers.
+  assert.match(script, /CATS_BUNDLE_WHISPER_PLATFORMS/);
+  assert.match(script, /buildLinuxVoiceHelper/);
+  assert.match(script, /'cmake',\s*\['-S',\s*packageRoot,\s*'-B',\s*buildDir/);
+  assert.match(script, /fetch-model\.sh/);
   assert.match(linuxWrapper, /build-desktop-installer\.mjs --target linux/);
   assert.match(macosWrapper, /build-desktop-installer\.mjs --target macos/);
 });
