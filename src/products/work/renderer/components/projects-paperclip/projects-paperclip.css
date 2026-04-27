@@ -97,7 +97,15 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 20px max(28px, calc((100% - 980px) / 2));
+  /* No top padding — bar's border-bottom abuts the content area like
+   * active chat's channelWorkspace does. Vertical breathing room is on
+   * the inner list / cards instead. */
+  padding: 0 max(28px, calc((100% - 980px) / 2));
+}
+
+.paperclipProjects__list {
+  margin-top: 16px;
+  margin-bottom: 24px;
 }
 
 .paperclipProjects__empty {
@@ -414,10 +422,17 @@
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 24px max(28px, calc((100% - 980px) / 2));
+  /* No top padding — content abuts the bar's border-bottom like active
+   * chat. Inner sections keep their own gap via `gap: 18px` plus the
+   * top/bottom margins below. */
+  padding: 0 max(28px, calc((100% - 980px) / 2)) 24px;
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+
+.paperclipProject__main > .paperclipProject__section:first-child {
+  margin-top: 18px;
 }
 
 .paperclipProject__section {
