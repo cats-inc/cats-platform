@@ -338,6 +338,16 @@ test('POST /api/work/tasks/:taskId/supervised-run starts supervised runtime sess
   assert.equal(runtimeBridge?.provider, 'codex');
   assert.equal(runtimeBridge?.instance, 'native');
   assert.equal(runtimeBridge?.tokensUsed, 15);
+  assert.deepEqual(runtimeBridge?.runLoopHandoff, {
+    kind: 'provider_agent_seam',
+    runId: payload.run.id,
+    actionId: `${payload.run.id}:runtime-message`,
+    observationRef: {
+      refId: `${payload.run.id}:runtime-message:provider-response`,
+      source: 'provider_response',
+      resultStatus: 'applied',
+    },
+  });
   assert.equal(runtimeClient.sentMessages[0]?.sessionId, 'runtime-session-work-1');
   assert.match(runtimeClient.sentMessages[0]?.content ?? '', /Work task: Route supervised task/u);
   assert.deepEqual(

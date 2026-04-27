@@ -434,7 +434,7 @@ categories:
 
 ### Phase 5: Work Real Provider Runs
 
-- [ ] Task 5.1: Replace Work one-shot launch with a supervised provider-agent
+- [x] Task 5.1: Replace Work one-shot launch with a supervised provider-agent
       run loop that can continue after first response. The loop lives in the
       provider-agent decision seam from Phase 2, not inside the lifecycle
       scheduler from Phase 4 and not inside `products/work/api`; the lifecycle
@@ -697,3 +697,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 37: completed Phase 4 Task 4.4 by strengthening supervision static boundaries so lifecycle/scheduler modules cannot import content readers or contain provider-agent semantic planning entrypoints. |
 | 2026-04-28 | Implementation slice 38: completed Phase 4 Task 4.5 by adding a metadata-only run-loop handoff contract that returns provider responses to the provider-agent seam, weak-worker results to the tool boundary, and terminal runs to terminal state without scheduler text inspection. |
 | 2026-04-28 | Implementation slice 39: completed Phase 4 Task 4.6 and Phase 0 Task 0.5 by inventorying lifecycle runtime needs, adding the missing platform client wrapper for the existing `cats-runtime` `/sessions/:id/resume` route, and recording that no `cats-runtime` server contract change is required because resume, cancel, observe, stream, close, delete, and invocation metadata already exist server-side. |
+| 2026-04-28 | Implementation slice 40: completed Phase 5 Task 5.1 by moving Work runtime session/message startup behind the shared provider-agent run-loop starter, persisting the first-response handoff back to the provider-agent seam, and adding a boundary test that prevents Work API from calling runtime create/send directly. |

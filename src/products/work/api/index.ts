@@ -19,13 +19,13 @@ import {
 import {
   buildSupervisedRunInspectionProjection,
   createDurableToolEvidenceSink,
-  createSupervisedRuntimeSession,
   deriveChildBudgetEnvelope,
   deriveRunState,
-  sendSupervisedRuntimeMessage,
   writeRunStateMetadata,
   type BudgetEnvelope,
+  type RunLoopDecisionHandoff,
 } from '../../../platform/supervision/index.js';
+import { startProviderAgentRunLoop } from '../../../platform/orchestration/index.js';
 import { buildWorkTaskRuntimeExecutionRequest } from '../state/taskExecutionRequest.js';
 import {
   buildWorkDashboardProjection,
@@ -487,6 +487,7 @@ async function launchRuntimeForWorkSupervisedRun(input: {
         target: runtime.target,
         startedAt: evaluatedAt,
         messageSentAt: evaluatedAt,
+        handoff: runtime.handoff,
       }),
       evaluation: activeRunState,
       evaluatedAt,
@@ -586,6 +587,7 @@ async function startWorkSupervisedRuntime(input: {
   message: RuntimeMessageResult;
   target: ResolvedWorkRuntimeTarget;
   actorRef: string;
+  handoff: RunLoopDecisionHandoff;
 }> {
   const drivingActor = resolveDrivingActor(input.core, input.task, input.run);
   const target = resolveWorkRuntimeTarget(input.core, input.task, drivingActor, input.dependencies);
@@ -622,19 +624,18 @@ async function startWorkSupervisedRuntime(input: {
       launchedAt: input.evaluatedAt,
     },
   };
-  const supervision = {
+  const actorRef = drivingActor?.id ?? input.run.orchestratorActorId ?? 'actor-orchestrator-global';
+  const loop = await startProviderAgentRunLoop({
+    runtimeClient: input.runtimeClient,
     product: 'cats-work',
-    surface: 'work-supervised-run-launch',
+    surface: 'work-supervised-run-loop',
     runId: input.run.id,
-    actionId: `${input.run.id}:runtime-session`,
-    actorRef: drivingActor?.id ?? input.run.orchestratorActorId ?? 'actor-orchestrator-global',
-    reason: 'work_supervised_run_start',
+    actorRef,
     evidenceSink,
     budget,
-  };
-  const session = await createSupervisedRuntimeSession({
-    runtimeClient: input.runtimeClient,
-    input: {
+    sessionActionId: `${input.run.id}:runtime-session`,
+    sessionReason: 'work_supervised_run_start',
+    sessionInput: {
       provider: target.provider,
       instance: target.instance ?? undefined,
       model: target.model ?? undefined,
@@ -647,13 +648,10 @@ async function startWorkSupervisedRuntime(input: {
       context: baseContext,
       ...executionRequest,
     },
-    supervision,
-  });
-  const message = await sendSupervisedRuntimeMessage({
-    runtimeClient: input.runtimeClient,
-    sessionId: session.id,
-    content: buildWorkSupervisedRunPrompt(input.core, input.task, input.run),
-    input: {
+    messageActionId: `${input.run.id}:runtime-message`,
+    messageReason: 'work_supervised_run_prompt',
+    messageContent: buildWorkSupervisedRunPrompt(input.core, input.task, input.run),
+    messageInput: (session) => ({
       instructions: WORK_SUPERVISED_RUNTIME_INSTRUCTIONS,
       context: {
         ...baseContext,
@@ -663,19 +661,15 @@ async function startWorkSupervisedRuntime(input: {
         },
       },
       ...executionRequest,
-    },
-    supervision: {
-      ...supervision,
-      actionId: `${input.run.id}:runtime-message`,
-      reason: 'work_supervised_run_prompt',
-    },
+    }),
   });
 
   return {
-    session,
-    message,
+    session: loop.session,
+    message: loop.message,
     target,
-    actorRef: supervision.actorRef,
+    actorRef,
+    handoff: loop.handoff,
   };
 }
 
@@ -791,6 +785,7 @@ function writeRuntimeBridgeMetadata(
     target: ResolvedWorkRuntimeTarget;
     startedAt: string;
     messageSentAt: string;
+    handoff: RunLoopDecisionHandoff;
   } | {
     status: 'failed';
     error: string;
@@ -818,6 +813,7 @@ function writeRuntimeBridgeMetadata(
             startedAt: update.startedAt,
             messageSentAt: update.messageSentAt,
             tokensUsed: update.message.tokensUsed,
+            runLoopHandoff: update.handoff,
             lastError: null,
           }
         : {

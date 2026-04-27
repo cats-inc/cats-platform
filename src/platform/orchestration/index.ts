@@ -60,6 +60,11 @@ export {
   type ProviderAgentRuntimeTarget,
 } from './providerAgentAdapter.js';
 export {
+  startProviderAgentRunLoop,
+  type ProviderAgentRunLoopStartResult,
+  type StartProviderAgentRunLoopInput,
+} from './providerAgentRunLoop.js';
+export {
   applyProviderAgentPolicyGate,
   validateProviderAgentPolicyGate,
   type ProviderAgentPolicyGateInput,
