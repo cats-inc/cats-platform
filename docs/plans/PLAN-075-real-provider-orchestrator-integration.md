@@ -479,7 +479,7 @@ categories:
       tools own prompt templates, expected schemas, retry limits, escalation
       targets, and confidence thresholds for their bounded operation; they do
       not introduce a parallel dispatcher layer above the tool boundary.
-- [ ] Task 7.3: Enforce weak-capability dials through `policyEngine` and
+- [x] Task 7.3: Enforce weak-capability dials through `policyEngine` and
       `toolBoundary`: no autonomous delegation, broad-write, unrestricted
       outcome delegation, or open-ended recovery ownership unless capability
       evidence and policy explicitly allow it. Coverage lands in
@@ -711,3 +711,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 49: added the gated `code-live-provider-smoke.test.tsx` harness for Phase 6 Task 6.4 so Claude/Codex Code task execute and relay fan-out can be manually verified through the supervised runtime boundary when live credentials are available. |
 | 2026-04-28 | Implementation slice 50: completed Phase 7 Task 7.1 by registering the first-slice `work.sop.ask_weak` weak-worker SOP shell in the existing supervised tool registry, forcing empty downstream tool subgrants, bounded hard budgets, schema refs, and structured output validation. |
 | 2026-04-28 | Implementation slice 51: completed Phase 7 Task 7.2 by making `work.sop.ask_weak` return deterministic SOP scaffold metadata for template id, retry limit, confidence threshold, escalation target, and expected schema ownership inside the tool boundary. |
+| 2026-04-28 | Implementation slice 52: completed Phase 7 Task 7.3 by extending weak-capability policy floors to reject `milestone_plan`, `delegate_other`, and `broad_write` under catalog-only confidence, with tool-boundary coverage for weak-worker scope denial. |

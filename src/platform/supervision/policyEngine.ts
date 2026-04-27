@@ -173,9 +173,19 @@ function validatePolicy(
     reasons.push(message);
     return message;
   }
-  if (constrainedByFloor && policy.autonomy === 'outcome_delegation') {
+  if (
+    constrainedByFloor &&
+    (policy.autonomy === 'milestone_plan' || policy.autonomy === 'outcome_delegation')
+  ) {
     const message =
-      `FR-19 rejected outcome_delegation under ${confidence} confidence with ` +
+      `FR-19 rejected ${policy.autonomy} under ${confidence} confidence with ` +
+      'E_TOOL_SCOPE_DENIED.';
+    reasons.push(message);
+    return message;
+  }
+  if (constrainedByFloor && policy.fallbackPolicy === 'delegate_other') {
+    const message =
+      `FR-19 rejected delegate_other recovery under ${confidence} confidence with ` +
       'E_TOOL_SCOPE_DENIED.';
     reasons.push(message);
     return message;
