@@ -194,11 +194,7 @@ const bridge = {
   },
 };
 
-if (
-  process.platform === 'darwin'
-  || process.platform === 'win32'
-  || process.platform === 'linux'
-) {
+if (process.platform === 'darwin' || process.platform === 'win32') {
   Object.assign(bridge, {
     startVoiceCapture(options: VoiceCaptureStartOptions): Promise<void> {
       return ipcRenderer.invoke(

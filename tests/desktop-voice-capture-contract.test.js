@@ -15,7 +15,6 @@ import {
 } from '../build/desktop/contracts.js';
 import {
   DesktopVoiceCaptureController,
-  LINUX_STOP_CLEANUP_TIMEOUT_MS,
   isMainWindowVoiceCaptureIpcSender,
   parseVoiceCaptureHelperEvent,
   parseVoiceCaptureSessionId,
@@ -104,78 +103,8 @@ test('desktop voice capture helper path honors platform and env overrides', () =
       platform: 'linux',
       env: {},
     }),
-    '/repo/cats-platform/desktop/native/linux-stt/build/cats-stt-linux',
-  );
-  assert.equal(
-    resolveVoiceCaptureHelperPath({
-      config,
-      platform: 'linux',
-      env: { CATS_STT_LINUX_HELPER: '/opt/custom/cats-stt-linux' },
-    }),
-    '/opt/custom/cats-stt-linux',
-  );
-  assert.equal(
-    resolveVoiceCaptureHelperPath({
-      config: { packaged: true, packageRoot: '/repo/cats-platform' },
-      platform: 'linux',
-      env: {},
-      resourcesPath: '/opt/Cats/resources',
-    }),
-    '/opt/Cats/resources/native/linux-stt/cats-stt-linux',
-  );
-  assert.equal(
-    resolveVoiceCaptureHelperPath({
-      config,
-      platform: 'freebsd',
-      env: {},
-    }),
     null,
   );
-});
-
-test('desktop voice capture stop cleanup window defaults to 60s on Linux', () => {
-  const linuxController = new DesktopVoiceCaptureController({
-    config: { packaged: false, packageRoot: '/tmp' },
-    platform: 'linux',
-    env: {},
-    sendEvent: () => {},
-    logLine: () => {},
-  });
-  assert.equal(linuxController.stopCleanupTimeoutMs, LINUX_STOP_CLEANUP_TIMEOUT_MS);
-  assert.equal(linuxController.stopCleanupTimeoutMs, 60_000);
-
-  const darwinController = new DesktopVoiceCaptureController({
-    config: { packaged: false, packageRoot: '/tmp' },
-    platform: 'darwin',
-    env: {},
-    sendEvent: () => {},
-    logLine: () => {},
-  });
-  assert.equal(darwinController.stopCleanupTimeoutMs, 5_000);
-
-  const win32Controller = new DesktopVoiceCaptureController({
-    config: { packaged: false, packageRoot: '/tmp' },
-    platform: 'win32',
-    env: {},
-    sendEvent: () => {},
-    logLine: () => {},
-  });
-  assert.equal(win32Controller.stopCleanupTimeoutMs, 5_000);
-
-  // Explicit overrides still win on Linux.
-  const overriddenLinux = new DesktopVoiceCaptureController({
-    config: { packaged: false, packageRoot: '/tmp' },
-    platform: 'linux',
-    env: {},
-    sendEvent: () => {},
-    logLine: () => {},
-    stopCleanupTimeoutMs: 200,
-  });
-  assert.equal(overriddenLinux.stopCleanupTimeoutMs, 200);
-
-  // Cancel cleanup default is unaffected by platform — cancel is always 1 s.
-  assert.equal(linuxController.cancelCleanupTimeoutMs, 1_000);
-  assert.equal(darwinController.cancelCleanupTimeoutMs, 1_000);
 });
 
 test('desktop voice capture parses helper events defensively', () => {

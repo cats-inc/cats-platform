@@ -566,23 +566,9 @@ recognition where Cats has a host-owned helper:
   Speech > Online speech recognition and the installed language speech pack.
   Cats reports this as `mode: 'unknown'` and shows the conservative in-app
   privacy badge because the WinRT API does not expose the active route.
-- Linux uses a bundled whisper.cpp helper under `resources/native/linux-stt/`
-  with the multilingual `ggml-base.bin` model (~140 MB). Recognition runs
-  fully on-device via libpulse-simple audio capture; audio never leaves the
-  user's machine. The deb declares `libpulse0` as a runtime dependency.
-  Recording is bounded at 30 seconds per utterance; on reaching the cap the
-  helper auto-stops and emits the same `final` → `end` sequence as a
-  user-initiated stop. Linux uses an extended 60-second host-side stop
-  cleanup window (vs the 5-second default on macOS / Windows) so whisper
-  inference has time to land. Building the Linux installer locally requires
-  the whisper.cpp git submodule to be initialized first
-  (`git submodule update --init cats-platform/desktop/native/linux-stt/whisper.cpp`)
-  and CMake plus a recent g++/clang and `libpulse-dev` on the build host.
-  To skip bundling the whisper helper on Linux (e.g. for a smaller installer
-  that surfaces `engine_unavailable` on click), set
-  `CATS_BUNDLE_WHISPER_PLATFORMS=` empty before invoking the desktop
-  installer build. ALSA-only Linux environments surface `mic_unavailable`
-  because the helper requires PulseAudio or PipeWire-pulse.
+- Linux has no v1 native STT helper. The Electron renderer keeps the existing
+  Web Speech fallback reachable so the microphone button can show the existing
+  unavailable/error toast instead of silently disappearing.
 
 ### Windows Post-Install Smoke Check
 

@@ -207,69 +207,15 @@ async function buildWindowsVoiceHelper(archOverride) {
   );
 }
 
-async function buildLinuxVoiceHelper() {
-  if (process.platform !== 'linux') {
-    throw new Error('The Linux voice helper must be built on Linux.');
-  }
-
-  const packageRoot = resolve(PROJECT_ROOT, 'desktop', 'native', 'linux-stt');
-  const buildDir = resolve(packageRoot, 'build');
-  await mkdir(buildDir, { recursive: true });
-  await runCommand('cmake', ['-S', packageRoot, '-B', buildDir, '-DCMAKE_BUILD_TYPE=Release'], PROJECT_ROOT);
-  await runCommand('cmake', ['--build', buildDir, '--config', 'Release', '--parallel'], PROJECT_ROOT);
-
-  const outputDir = resolve(NATIVE_BUILD_ROOT, 'linux-stt');
-  await mkdir(outputDir, { recursive: true });
-  await copyFile(
-    resolve(buildDir, 'cats-stt-linux'),
-    resolve(outputDir, 'cats-stt-linux'),
-  );
-  await copyFile(
-    resolve(packageRoot, 'NOTICE'),
-    resolve(outputDir, 'NOTICE'),
-  );
-  await runCommand(
-    resolve(packageRoot, 'scripts', 'fetch-model.sh'),
-    [outputDir],
-    PROJECT_ROOT,
-  );
-}
-
-function parseWhisperBundlePlatforms(envValue) {
-  // Default behavior: bundle whisper.cpp helper only on Linux. Set
-  // CATS_BUNDLE_WHISPER_PLATFORMS to override (comma-separated electron
-  // platform names: 'linux', 'darwin', 'win32'). Empty value disables
-  // bundling entirely; missing env var falls back to the default.
-  const raw = (envValue ?? 'linux').trim();
-  if (!raw) return new Set();
-  return new Set(raw.split(',').map((entry) => entry.trim()).filter(Boolean));
-}
-
 async function buildNativeVoiceHelpers(target, archOverride) {
   await prepareNativeBuildRoot();
-  const whisperPlatforms = parseWhisperBundlePlatforms(process.env.CATS_BUNDLE_WHISPER_PLATFORMS);
-
   if (target === 'macos') {
     await buildMacosVoiceHelper();
-    // CATS_BUNDLE_WHISPER_PLATFORMS=darwin would also bundle the whisper
-    // helper alongside the macOS native helper. v1 leaves this unwired
-    // because cross-platform whisper helper builds (whisper.cpp + libpulse
-    // alternative on macOS) need their own ADR before shipping.
     return;
   }
   if (target === 'windows') {
     await buildWindowsVoiceHelper(archOverride);
-    // Same as the macOS branch: CATS_BUNDLE_WHISPER_PLATFORMS=win32 is
-    // accepted by the parser so the contract test can lock the build flag's
-    // surface, but the helper build is not wired in v1.
-    return;
   }
-  if (target === 'linux' && whisperPlatforms.has('linux')) {
-    await buildLinuxVoiceHelper();
-  }
-  // target === 'linux' without 'linux' in whisperPlatforms is an explicit
-  // operator opt-out; the resulting Linux installer ships no whisper helper
-  // and the renderer surfaces engine_unavailable on click.
 }
 
 function resolveBuilderTarget(target) {
