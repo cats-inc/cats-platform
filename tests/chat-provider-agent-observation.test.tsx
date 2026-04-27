@@ -12,8 +12,9 @@ import {
   type SupervisionPolicy,
 } from '../src/platform/supervision/index.ts';
 import { createDefaultChatState } from '../src/products/chat/state/defaults.ts';
-import { createChannel } from '../src/products/chat/state/model/index.ts';
+import { appendMessage, createChannel } from '../src/products/chat/state/model/index.ts';
 import { buildChatProviderAgentObservation } from '../src/products/chat/state/providerAgentObservation.ts';
+import { prepareDispatchTurn } from '../src/products/chat/state/runtime-dispatch/turn.ts';
 
 function policy(): SupervisionPolicy {
   return {
@@ -125,4 +126,45 @@ test('Chat provider-agent observation carries routing metadata without raw messa
     observation.contextRefs.includes(`chat-channel:${channel.id}`),
     true,
   );
+});
+
+test('Chat dispatch preparation builds a provider-agent observation for the user turn', () => {
+  const rawMessage = 'route this without exposing raw body to the provider-agent seam';
+  let state = createChannel(
+    createDefaultChatState(),
+    {
+      title: 'Dispatch room',
+      topic: 'Implementation',
+      originSurface: 'chat',
+      roomMode: 'boss_chat',
+    },
+    new Date('2026-04-28T00:00:00.000Z'),
+  );
+  const channel = state.channels[0]!;
+  const appended = appendMessage(
+    state,
+    channel.id,
+    {
+      senderKind: 'user',
+      senderName: 'User',
+      body: rawMessage,
+    },
+    new Date('2026-04-28T00:01:00.000Z'),
+  );
+  state = appended.state;
+
+  const prepared = prepareDispatchTurn(
+    state,
+    channel.id,
+    { body: rawMessage },
+    new Date('2026-04-28T00:01:00.000Z'),
+  );
+
+  assert.equal(prepared.providerAgentObservation?.task.kind, 'chat_turn');
+  assert.equal(
+    prepared.providerAgentObservation?.summaries.some((summary) =>
+      summary.key === 'input_character_count' && summary.value === rawMessage.length),
+    true,
+  );
+  assert.equal(JSON.stringify(prepared.providerAgentObservation).includes(rawMessage), false);
 });

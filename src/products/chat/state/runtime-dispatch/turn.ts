@@ -7,7 +7,12 @@ import type {
   ChatState,
 } from '../../api/contracts.js';
 import type { CatsCoreState } from '../../../../core/types.js';
+import type { ProviderAgentBoundedObservation } from '../../../../platform/orchestration/index.js';
 import type { OrchestratorTurnPlan } from '../../../../platform/orchestration/contracts.js';
+import {
+  decideSupervisionPolicy,
+  resolveProviderCapabilityProfile,
+} from '../../../../platform/supervision/index.js';
 import type {
   RoomRoutingCheckpoint,
   RoomRoutingOutcome,
@@ -49,7 +54,15 @@ import {
   createWorkflowTurn,
   finalizeWorkflowTurn,
 } from '../room-routing/workflow.js';
-import { resolveChoiceResponseTarget } from '../runtimeTargeting.js';
+import {
+  resolveChoiceResponseTarget,
+  resolveOrchestratorExecutionTarget,
+} from '../runtimeTargeting.js';
+import {
+  CHAT_PROVIDER_AGENT_DECISION_TOOL,
+  buildChatProviderAgentObservation,
+  createChatProviderAgentDecisionManifest,
+} from '../providerAgentObservation.js';
 import {
   applyRoomRoutingSnapshot,
   toParticipantRef,
@@ -95,6 +108,7 @@ export interface PreparedDispatchTurn {
   maxContinuations: number;
   maxDispatches: number;
   maxTargetVisits: number;
+  providerAgentObservation: ProviderAgentBoundedObservation | null;
   terminalResult: { state: ChatState; results: ChannelDispatchResult[] } | null;
 }
 
@@ -187,6 +201,14 @@ export function prepareDispatchTurnForUserMessage(
   }
   const results: ChannelDispatchResult[] = [];
   const nowIso = now.toISOString();
+  const providerAgentObservation = buildProviderAgentObservationForTurn({
+    state: nextState,
+    channelId,
+    payload,
+    userMessage,
+    initialResolution,
+    nowIso,
+  });
   const channelRouting = requireChannel(nextState, channelId).roomRouting;
   const baseRoomRouting = resolveRoomRoutingState(channelRouting);
   const workflow = resolveRoomWorkflowState(baseRoomRouting.workflow);
@@ -398,6 +420,7 @@ export function prepareDispatchTurnForUserMessage(
       maxContinuations,
       maxDispatches,
       maxTargetVisits,
+      providerAgentObservation,
       terminalResult: {
         state: nextState,
         results,
@@ -419,8 +442,64 @@ export function prepareDispatchTurnForUserMessage(
     maxContinuations,
     maxDispatches,
     maxTargetVisits,
+    providerAgentObservation,
     terminalResult: null,
   };
+}
+
+function buildProviderAgentObservationForTurn(input: {
+  state: ChatState;
+  channelId: string;
+  payload: SendChannelMessageInput;
+  userMessage: ChatMessage;
+  initialResolution: TargetResolution;
+  nowIso: string;
+}): ProviderAgentBoundedObservation | null {
+  const channel = requireChannel(input.state, input.channelId);
+  const executionTarget = resolveOrchestratorExecutionTarget(input.state, channel);
+  const capabilityProfile = resolveProviderCapabilityProfile(
+    {
+      provider: executionTarget.provider,
+      instance: executionTarget.instance,
+      model: executionTarget.model,
+      modelSelection: executionTarget.modelSelection ?? null,
+    },
+    {
+      assessedAt: input.nowIso,
+    },
+  );
+  const policyDecision = decideSupervisionPolicy({
+    actionId: `${input.userMessage.id}:provider-agent-observation`,
+    runId: `chat:${input.channelId}`,
+    actorRef: 'orchestrator',
+    targetRef: CHAT_PROVIDER_AGENT_DECISION_TOOL,
+    providerRef: capabilityProfile.profileId,
+    actionType: 'chat_turn_semantic_decision',
+    evaluatedAt: input.nowIso,
+    capabilityAssessment: capabilityProfile.assessment,
+    toolManifest: createChatProviderAgentDecisionManifest(),
+  });
+
+  if (policyDecision.status !== 'applied') {
+    return null;
+  }
+
+  return buildChatProviderAgentObservation({
+    state: input.state,
+    channelId: input.channelId,
+    actorRef: 'orchestrator',
+    capabilityProfile,
+    policy: policyDecision.result.policy,
+    messageCharacterCount: input.payload.body.length,
+    routing: {
+      trigger: input.initialResolution.trigger,
+      resolution: input.initialResolution.resolution,
+      targetCount: input.initialResolution.targets.length,
+      unresolvedCount: input.initialResolution.unresolved.length,
+      mentionCount: input.initialResolution.mentionNames.length,
+    },
+    now: new Date(input.nowIso),
+  });
 }
 
 function findChannelUserMessage(

@@ -9,7 +9,9 @@ import type {
   ProviderCapabilityProfile,
   SupervisionFallbackPolicy,
   SupervisionPolicy,
+  SupervisedToolManifest,
 } from '../../../platform/supervision/index.js';
+import { DEFAULT_SUPERVISION_SCHEMA_VERSION } from '../../../platform/supervision/index.js';
 import type {
   RoomRouteResolution,
   RoomRoutingTrigger,
@@ -35,6 +37,34 @@ export interface BuildChatProviderAgentObservationInput {
   allowedFallbacks?: SupervisionFallbackPolicy[];
   availableTools?: ProviderAgentToolDescriptor[];
   now?: Date;
+}
+
+export const CHAT_PROVIDER_AGENT_DECISION_TOOL = 'chat.provider_agent.semantic_decision' as const;
+
+export function createChatProviderAgentDecisionManifest(): SupervisedToolManifest {
+  return {
+    schemaVersion: DEFAULT_SUPERVISION_SCHEMA_VERSION,
+    name: CHAT_PROVIDER_AGENT_DECISION_TOOL,
+    manifestVersion: '1.0',
+    description: 'Prepare a bounded provider-agent semantic decision for a Chat turn.',
+    sideEffect: 'none',
+    preflight: 'available',
+    blocking: 'blocking',
+    cancellation: 'cooperative',
+    approval: 'never',
+    evidence: 'summary',
+    failureCodes: ['E_TOOL_SCOPE_DENIED', 'E_SCHEMA_INVALID'],
+    inputSchema: {
+      id: `${CHAT_PROVIDER_AGENT_DECISION_TOOL}.input`,
+      version: '1.0',
+      format: 'json_schema',
+    },
+    outputSchema: {
+      id: `${CHAT_PROVIDER_AGENT_DECISION_TOOL}.output`,
+      version: '1.0',
+      format: 'json_schema',
+    },
+  };
 }
 
 export function buildChatProviderAgentObservation(
