@@ -70,8 +70,13 @@ storybook, or tests. It should not claim that the final post model is complete.
 production ship point. A production release of the revised companion profile
 requires the Phase 2 read-model guards for Posts, classifier behavior,
 Inspector lifecycle, and Activity aggregation. If Phase 1 is merged earlier, it
-shall remain behind a companion-profile IA feature flag or equivalent
-development-only path.
+shall remain behind the runtime-checked feature flag
+`cats.chat.companionProfileIA` (default `false`), surfaced through the
+existing app-shell feature-flags channel. Both renderer and server entry points
+gate the new IA on this flag; production toggling Phase 1 on without Phase 2
+guards is explicitly disallowed by the flag-handler contract. Compile-time
+`import.meta.env.DEV` paths and `vite` dev-only branches do not satisfy this
+release rule.
 
 ### Phase 2: Companion Content Projection Read Model
 
@@ -83,20 +88,31 @@ development-only path.
       `CompanionDerivedRecord` records, such as records with
       `metadata.profileSurface === 'post'`.
 - [ ] Add the v1 profile-post producer as an explicit owner `Promote to post`
-      action that creates/updates a `CompanionDerivedRecord` with
+      action that creates or updates a `CompanionDerivedRecord` with
       `metadata.profileSurface === 'post'`,
       `metadata.profilePostStatus === 'active'`,
-      `metadata.profilePostProducer === 'owner_promotion_v1'`, and preserved
-      source/derived provenance.
+      `metadata.profilePostProducer === 'owner_promotion_v1'`,
+      `metadata.profilePostOriginType` and `metadata.profilePostOriginId`
+      pointing at the promoted item, and preserved source lineage in
+      top-level `sourceIds`.
 - [ ] Expose `Promote to post` as an item-level overflow action from Sources
       rows, media tiles, Files rows, and eligible Inspector selections.
-- [ ] Add the promotion dialog with editable title, body/excerpt, tags, media
-      inclusion, `Cancel`, and `Promote`.
-- [ ] Add `Edit post` and `Remove from Posts`; removal sets
-      `metadata.profilePostStatus === 'removed'` rather than deleting the
-      original source.
+- [ ] Add the promotion dialog with required Title (auto-prefilled from
+      selection title / derived title / filename without extension / first 60
+      chars of body, in that order), optional Body/excerpt, optional Tags,
+      optional per-media-item inclusion checkboxes, `Cancel`, and `Promote`
+      (disabled until Title is non-empty).
+- [ ] Add `Edit post` and `Remove from Posts`. `Remove` flips
+      `metadata.profilePostStatus` to `removed` (no GC, leave the matching
+      `post_removed` Activity entry) and re-promoting the same item flips it
+      back to `active`.
+- [ ] Use `(catId, profilePostOriginType, profilePostOriginId)` as the
+      promoted-post dedup key so re-promote updates the existing record.
 - [ ] Treat top-level `sourceIds` as authoritative source lineage for promoted
-      posts; do not introduce `metadata.profilePostSourceId`.
+      posts; treat `metadata.profilePostOriginId` as a provenance pointer for
+      the promoted item itself (overlapping `sourceIds` only when
+      `originType === 'source'`); do not introduce
+      `metadata.profilePostSourceId`.
 - [ ] Do not auto-promote every source summary, caption, event, memory
       highlight, or derived record into `Posts`.
 - [ ] Keep mock posts out of production runtime and use an empty state when no
@@ -130,6 +146,12 @@ development-only path.
 - [ ] Freeze Inspector snapshot state at the last successful resolve of the
       selected item, updating it after successful edits and before any later
       deleted/missing/inaccessible transition.
+- [ ] Add a URL/route parameter for Inspector selection (e.g.,
+      `?inspector={type}:{id}` on the companion route). Reload with a valid
+      parameter restores selection by re-resolving; reload without it clears
+      selection; malformed parameters clear selection per SPEC-085.
+- [ ] Project `source_only` classifier results as Sources-only (no Posts,
+      Photos, Videos, Music, or Files projection); they remain promotable.
 
 **Deliverables**: renderer can read a coherent companion profile model without
 finalizing post storage.
@@ -142,18 +164,25 @@ finalizing post storage.
       metadata.
 - [ ] Implement the first local serialized form:
       `cats://companion/v1/{scopeId}/{catId}/{type}/{targetId}`.
-- [ ] Add the host-owned product data `scopeId`: generate a UUIDv4 once per
-      durable Cats product data root, persist it server-side with that data
-      root, and expose it to all renderer surfaces through one product API or
-      shared app-shell record.
-- [ ] Add parser/recognition helpers for the canonical local form and reject
-      wrong schemes, wrong hosts, unknown target types, missing segments, extra
-      segments, and malformed percent-encoding.
+- [ ] Add the platform-host product data `scopeId`: generate a UUIDv4 once per
+      durable Cats product data root in the cats-platform host process (the
+      desktop main process for local-first installs), persist it next to that
+      data root, and surface it to all renderer surfaces through the shared
+      app-shell record (the same payload that already carries cats, cat
+      bindings, and channel state).
+- [ ] Add parser/recognition helpers that apply checks in this fixed order:
+      scheme → host → version (short-circuit `unsupported_version` here) →
+      percent-decoding → segment count → target type. Each rejected check
+      returns the matching `CompanionReferenceParseInvalidReason`.
 - [ ] Resolve `scopeId` mismatches as `inaccessible`, not as malformed
       references.
 - [ ] Return a distinct `unsupported_version` parser result for syntactically
-      valid `cats://companion/...` references with unsupported versions; preserve
-      raw text and show a non-blocking unsupported-reference affordance.
+      valid `cats://companion/...` references with unsupported versions; render
+      composer affordance as an inline subdued chip labelled
+      `Unsupported version`, transcript fallback card labelled
+      `Unsupported reference version` plus the parsed version token, and
+      Inspector/other surfaces as plain text with tooltip; never throw or drop
+      the raw text.
 - [ ] Keep Phase 3 to in-app parser/resolver behavior; do not register a global
       OS-level `cats://` protocol handler in this rollout.
 - [ ] Ensure `available`, `missing`, `deleted`, and `inaccessible` states follow
@@ -258,9 +287,19 @@ the post model is finalized.
   not duplicate the `DurableMemoryItem` Settings ledger.
 - Use `cats://companion/v1/{scopeId}/{catId}/{type}/{targetId}` as the first
   local serialized reference form.
-- Define `scopeId` as the host-owned product data scope UUID, generated once
-  per durable Cats product data root and shared across all renderer surfaces for
-  that root.
+- Define `scopeId` as the platform-host product data scope UUIDv4, generated
+  once per durable Cats product data root by the cats-platform host process,
+  persisted next to that root, and surfaced through the shared app-shell
+  record. Local-first installs use the desktop main process as the platform
+  host. `scopeId` is not an auth account id, browser storage value, or
+  workspace id.
+- Phase 1 release rule is enforced through the `cats.chat.companionProfileIA`
+  runtime feature flag; build-time `import.meta.env.DEV` paths do not count.
+- Promote-to-post identity dedup key is
+  `(catId, profilePostOriginType, profilePostOriginId)`; re-promote updates
+  the existing record and can flip `removed` back to `active`.
+- Inspector selection is restorable via a route parameter; reload without it
+  clears selection.
 - Keep `cats://` resolution in-app in this rollout; do not register a global OS
   protocol handler yet.
 - Treat unsupported `cats://companion` versions as `unsupported_version`, not as

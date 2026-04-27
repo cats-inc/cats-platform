@@ -135,71 +135,97 @@ tab.
     - a `Files` row
     - a selected source, media item, file, or derived record in `Inspector`
 13. `Promote to post` shall open a lightweight dialog before writing. The
-    dialog shall let the owner review or edit title, body/excerpt, tags, and
-    media inclusion; `Cancel` shall close without writing.
+    dialog shall expose:
+    - **Title** (required, non-empty after trim) — pre-filled from the
+      selected item's title, derived-record title, filename without extension,
+      or the first 60 characters of the body excerpt, in that order
+    - **Body/excerpt** (optional) — pre-filled from any existing summary,
+      excerpt, or transcript; empty is allowed
+    - **Tags** (optional) — pre-filled from the selected item's tags when
+      present
+    - **Media inclusion** (optional) — checkbox per attachable media item
+      surfaced from the selection; defaults match the selection's natural
+      media set
+    - **Cancel** closes without writing
+    - **Promote** is disabled until Title is non-empty
 14. The v1 producer shall create or update a `CompanionDerivedRecord` with:
     - `metadata.profileSurface === 'post'`
     - `metadata.profilePostStatus === 'active'`
     - `metadata.profilePostProducer === 'owner_promotion_v1'`
     - `metadata.profilePostOriginType` in `source`, `derived`, or `artifact`
-    - `metadata.profilePostOriginId` set to the selected item id
+    - `metadata.profilePostOriginId` set to the promoted item id
     - `sourceIds` preserving the underlying source lineage when available
-15. `sourceIds` is the authoritative source-lineage field for profile posts.
-    The product shall not duplicate source truth in
-    `metadata.profilePostSourceId`; if future metadata conflicts with
-    `sourceIds`, `sourceIds` wins.
-16. Once an item is promoted, the item-level action shall become `Edit post`
-    and `Remove from Posts`. `Edit post` reopens the same dialog and updates
-    the profile-post derived record; it shall not mutate the original source
-    record. `Remove from Posts` shall set
-    `metadata.profilePostStatus === 'removed'`, and `Posts` readers shall only
-    include records whose status is `active`.
-17. Source ingestion shall not automatically promote every summary, caption,
+15. `metadata.profilePostOriginId` is the provenance pointer for the promoted
+    item itself, not source lineage; for `originType === 'derived'` or
+    `'artifact'` it points at a derived/artifact id and does not duplicate
+    `sourceIds`. `sourceIds` remains the authoritative source-lineage field.
+    For `originType === 'source'`, the `originId` will overlap with
+    `sourceIds`; if any future metadata field claims source lineage that
+    disagrees with `sourceIds`, `sourceIds` wins. The product shall not
+    introduce a `metadata.profilePostSourceId` field.
+16. Promoted post identity is keyed by
+    `(catId, profilePostOriginType, profilePostOriginId)`. Promote-to-post on
+    the same item shall update an existing derived record rather than create a
+    duplicate. If a record with that identity exists with
+    `profilePostStatus === 'removed'`, re-promoting shall flip its status back
+    to `active` and apply the new dialog values.
+17. Once an item is promoted, the item-level action shall become `Edit post`
+    and `Remove from Posts`. `Edit post` reopens the same dialog populated
+    from the existing record and updates it; it shall not mutate the original
+    source record. `Remove from Posts` shall set
+    `metadata.profilePostStatus === 'removed'`, keep the record (no GC), and
+    leave the corresponding `post_removed` Activity entry intact. `Posts`
+    readers shall only include records whose status is `active`.
+18. Source ingestion shall not automatically promote every summary, caption,
     note, event, or memory highlight into `Posts`. Automatic post producers
     require a later post-model decision.
-18. Post cards should support at least:
+19. Post cards should support at least:
     - author Cat identity
     - time or relative timestamp
     - body/excerpt
     - optional hashtags or tags
     - optional media grid
     - optional item-level share action
-19. The product shall not add comment input to companion posts by default.
+20. The product shall not add comment input to companion posts by default.
 
 #### Photos, videos, and music
 
-20. `Photos` shall show image-like companion content from product-owned sources,
+21. `Photos` shall show image-like companion content from product-owned sources,
     derived records, or artifact projections.
-21. `Videos` shall show video-like companion content from product-owned sources,
+22. `Videos` shall show video-like companion content from product-owned sources,
     derived records, or artifact projections.
-22. `Music` shall show audio/music-like companion content from product-owned
+23. `Music` shall show audio/music-like companion content from product-owned
     sources, derived records, or artifact projections.
-23. These tabs may use placeholder/mock projections in early UI slices, but the
+24. These tabs may use placeholder/mock projections in early UI slices, but the
     IA shall keep their labels distinct.
-24. Media records whose source substrate is also owner-provided material shall
+25. Media records whose source substrate is also owner-provided material shall
     still appear in `Sources`; their media-tab appearance is a browsing
     projection, not a second stored object.
 
 #### Files
 
-25. `Files` shall be a primary main-surface tab.
-26. `Files` shall show document/file-like companion content that can be opened,
+26. `Files` shall be a primary main-surface tab.
+27. `Files` shall show document/file-like companion content that can be opened,
     referenced, or inserted into chat.
-27. `Files` shall not be hidden inside the side panel.
-28. `Files` may include imported resources, linked files, and generated
+28. `Files` shall not be hidden inside the side panel.
+29. `Files` may include imported resources, linked files, and generated
     artifacts when they are file-like and user-browsable.
-29. A source shall project into `Files` only when the shared classifier marks it
+30. A source shall project into `Files` only when the shared classifier marks it
     as `file`. The classifier shall use `kind`, normalized `mimeType`, and the
     extension from `originalFileName`, `linkedPath`, or `sourceUrl`;
     `storedPath` alone is not enough because imported notes may also have
     materialized storage.
-30. The same owner-uploaded PDF shall appear in both `Sources` and `Files`:
+31. The same owner-uploaded PDF shall appear in both `Sources` and `Files`:
     `Sources` is provenance and ingestion management; `Files` is browsing,
     opening, insertion, and sharing. This is one underlying object with two
     UI projections, not duplicate storage.
-31. The v1 `Files` tab is not the all-uploads view. All raw owner-provided
+32. The v1 `Files` tab is not the all-uploads view. All raw owner-provided
     material remains visible in `Sources`; a cross-type `All content` or
     `All uploads` browsing/filter surface is tracked separately in SPEC-089.
+33. A source classified as `source_only` shall remain visible in `Sources` and
+    shall not project into Posts, Photos, Videos, Music, or Files. It can be
+    promoted into a post via the `Promote to post` action just like any other
+    source.
 
 The v1 source classifier shall normalize `mimeType` and file extension to
 lowercase before comparison and shall follow this precedence:
@@ -212,9 +238,9 @@ lowercase before comparison and shall follow this precedence:
 | `kind === "audio"` or `mimeType` starts with `audio/` or extension is `.mp3`, `.wav`, `.m4a`, `.aac`, `.flac`, `.ogg`, `.opus` | `music` |
 | `mimeType` is `application/pdf`, `application/json`, `application/x-ndjson`, `application/xml`, `text/xml`, `text/plain`, `text/markdown`, `text/csv`, `text/tab-separated-values`, `application/zip`, `application/x-zip-compressed`, `application/x-tar`, `application/gzip`, `application/msword`, `application/vnd.openxmlformats-officedocument.wordprocessingml.document`, `application/vnd.ms-excel`, `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, `application/vnd.ms-powerpoint`, `application/vnd.openxmlformats-officedocument.presentationml.presentation`, `application/vnd.oasis.opendocument.text`, `application/vnd.oasis.opendocument.spreadsheet`, or `application/vnd.oasis.opendocument.presentation` | `file` |
 | extension is `.pdf`, `.md`, `.markdown`, `.txt`, `.csv`, `.tsv`, `.json`, `.jsonl`, `.xml`, `.yaml`, `.yml`, `.zip`, `.tar`, `.gz`, `.doc`, `.docx`, `.xls`, `.xlsx`, `.ppt`, `.pptx`, `.odt`, `.ods`, `.odp` | `file` |
-| `mimeType === "application/octet-stream"` with a recognized extension | classify by the recognized extension |
+| `mimeType === "application/octet-stream"` with a recognized extension | re-run the classifier from the top with `mimeType` ignored, using the recognized extension; if no row above this one matches, fall through to the unknown-binary row below |
 | `mimeType === "application/octet-stream"` without a recognized extension | `file` as unknown binary |
-| `kind === "path_ref"` with a recognized media or file extension in `linkedPath` or `sourceUrl` | classify by that extension |
+| `kind === "path_ref"` with a recognized media or file extension in `linkedPath` or `sourceUrl` | re-run the classifier from the top using that extension; if no row above matches, fall through to the unknown-linked-file row below |
 | `kind === "path_ref"` with no recognized media/file extension or MIME | `file` as unknown linked file |
 | `kind === "note"`, `kind === "article"`, or `kind === "conversation_log"` with no file name/path and no file MIME | `source_only` |
 
@@ -224,118 +250,120 @@ tables.
 
 #### Activity
 
-29. `Activity` shall show a companion-scoped event stream.
-30. Activity entries may include:
-    - companion presence changes
-    - source additions/removals
-    - memory additions/updates/removals
-    - generated artifact or derived-record creation
-    - chat/transport ingestion milestones
-    - file or media publish/share actions
-31. Activity shall not be treated as the default tab unless a later user
+34. `Activity` shall show a companion-scoped event stream.
+35. The v1 Activity vocabulary is exhaustive. Only the following event groups
+    shall render in v1; anything else is reserved for a later spec:
+    - companion presence changes (`presence_changed`)
+    - source add/remove (`source_added`, `source_removed`)
+    - owner memory add/update/remove (`memory_added`, `memory_updated`,
+      `memory_removed`)
+    - profile-post promote/edit/remove (`post_promoted`, `post_edited`,
+      `post_removed`)
+    - file/media share insertion (`share_inserted`)
+    - transport ingestion milestones (`transport_ingested`)
+
+    Generic derived-record creation events shall not render unless they fall
+    under one of the listed groups. Adding a new group requires amending this
+    list.
+36. Activity shall not be treated as the default tab unless a later user
     direction changes the IA.
-32. The first Activity vocabulary shall include source add/remove, owner memory
-    add/update/remove, profile-post promote/edit/remove, file/media share
-    insertion, and transport ingestion milestone groups. Other derived-record
-    creation events shall appear only when they create user-visible profile
-    content.
-33. Activity is not a raw write log. The first implementation shall coalesce
+37. Activity is not a raw write log. The first implementation shall coalesce
     high-frequency source, memory, and derived-record writes by object type and
     local day.
-34. Burst aggregation shall use this key:
+38. Burst aggregation shall use this key:
     `{catId, correlationId || minuteBucket, eventGroup, targetKind}`.
     `minuteBucket` is the event timestamp rounded down to a 60-second local
     window. Import/ingestion commands should pass a stable `correlationId` so
     one operation becomes one rendered activity group even if it emits many
     writes.
-35. The first implementation shall cap the visible Activity feed to the most
+39. The first implementation shall cap the visible Activity feed to the most
     recent 100 rendered entries or the most recent 30 days, whichever is
     smaller. v1 shall not expose `Load more`; when older matching activity is
     hidden, the UI should show a bounded "Older activity is hidden" indicator
     instead of pretending the feed is complete.
-36. Selecting an Activity entry shall open that activity entry in `Inspector`.
+40. Selecting an Activity entry shall open that activity entry in `Inspector`.
     If the entry has a primary target, the entry shall expose a separate `Open`
     action that navigates to the target item.
-37. Activity entries should be concise and scan-friendly.
+41. Activity entries should be concise and scan-friendly.
 
 #### Side panel
 
-36. The companion side panel shall not expose a section named `Settings`.
-37. The companion side panel shall use these sections:
+42. The companion side panel shall not expose a section named `Settings`.
+43. The companion side panel shall use these sections:
     - `Status`
     - `Sources`
     - `Memory`
     - `Behavior`
     - `Inspector`
-38. `Status` shall include presence, wake/sleep, runtime/session health, and
+44. `Status` shall include presence, wake/sleep, runtime/session health, and
     recent errors.
-39. `Sources` shall manage raw owner-provided material used to feed or curate
+45. `Sources` shall manage raw owner-provided material used to feed or curate
     the companion.
-40. `Sources` shall list raw `CompanionSourceRecord` inputs and their ingestion
+46. `Sources` shall list raw `CompanionSourceRecord` inputs and their ingestion
     controls, including records that also project into Photos, Videos, Music,
     or Files.
-41. `Sources` shall not be treated as the same user-facing surface as `Files`.
-42. `Memory` shall expose one companion-scoped memory surface backed by
+47. `Sources` shall not be treated as the same user-facing surface as `Files`.
+48. `Memory` shall expose one companion-scoped memory surface backed by
     `CompanionMemoryRecord` in v1. The companion side panel shall not render
     the `Settings > My Cats` `DurableMemoryItem` list as a second ledger.
-43. `CompanionMemoryRecord` remains the side-panel source of truth because it
+49. `CompanionMemoryRecord` remains the side-panel source of truth because it
     carries companion-box lineage (`sourceIds`), curation state (`curatedBy`),
     lifecycle state (`status`), and replacement linkage (`replacedById`).
-44. Any future merge or synchronization between `DurableMemoryItem` and
+50. Any future merge or synchronization between `DurableMemoryItem` and
     `CompanionMemoryRecord` requires the bridge contract tracked in SPEC-088.
     Until that exists, the UI shall label this as companion memory rather than
     implying it is the canonical Settings memory registry.
-45. `Behavior` shall expose response style/profile controls that are directly
+51. `Behavior` shall expose response style/profile controls that are directly
     relevant to this companion.
-46. `Inspector` shall show contextual details only after the user selects a
+52. `Inspector` shall show contextual details only after the user selects a
     concrete post, photo, video, music item, file, source, memory record, or
     activity entry.
-47. When no item is selected, `Inspector` shall show an empty state equivalent
+53. When no item is selected, `Inspector` shall show an empty state equivalent
     to "Select an item to inspect."
-48. If the selected item becomes unavailable, `Inspector` shall show captured
+54. If the selected item becomes unavailable, `Inspector` shall show captured
     snapshot metadata plus the appropriate unavailable state instead of
     becoming a miscellaneous fallback container.
-49. `Inspector` shall not host global transport, behavior, or memory controls;
+55. `Inspector` shall not host global transport, behavior, or memory controls;
     those controls belong to their named side-panel sections.
-50. Inspector selection shall be scoped to the current companion Cat. Changing
+56. Inspector selection shall be scoped to the current companion Cat. Changing
     Cat, leaving the companion profile route, or full page reload without an
     explicit inspector selection parameter shall clear the selection.
-51. Switching main tabs within the same companion Cat shall not clear the
+57. Switching main tabs within the same companion Cat shall not clear the
     selection. If the selected item is deleted or becomes unavailable while the
     user remains on the same Cat, `Inspector` shall keep the selection and show
     the snapshot/unavailable state until the user selects another item or
     clears the Inspector.
-52. Inspector snapshots shall freeze at the last successful resolve of the
+58. Inspector snapshots shall freeze at the last successful resolve of the
     selected item. If the item is edited while selected and the edit resolves
     successfully, the snapshot updates to the edited state. If the next resolve
     returns deleted, missing, or inaccessible, the snapshot freezes at the last
     successful resolved state before that unavailable transition.
-53. A full reload with a valid explicit inspector selection parameter shall
+59. A full reload with a valid explicit inspector selection parameter shall
     attempt to restore the selection by resolving the parameter. If it resolves,
     `Inspector` shows the item; if it resolves unavailable, `Inspector` shows
     the unavailable fallback; if the parameter is malformed, selection clears.
-54. The word `Profile` shall refer to the whole companion page, not a side-panel
+60. The word `Profile` shall refer to the whole companion page, not a side-panel
     section.
 
 #### Transport binding visibility
 
-55. Telegram, LINE, and other transport binding management shall remain
+61. Telegram, LINE, and other transport binding management shall remain
     canonical in `Settings > My Cats`.
-56. The companion profile may show read-only badges such as `Telegram
+62. The companion profile may show read-only badges such as `Telegram
     connected` or `Available on Telegram`.
-57. When management is needed, the companion surface shall deep-link to the
+63. When management is needed, the companion surface shall deep-link to the
     canonical settings route rather than duplicating controls.
 
 #### Content references
 
-58. Every main content tab shall be able to expose items that can later become
+64. Every main content tab shall be able to expose items that can later become
     shareable companion content references.
-59. Item-level `Share` belongs to concrete post cards, media tiles, file rows,
+65. Item-level `Share` belongs to concrete post cards, media tiles, file rows,
     and activity entries with a primary shareable target. It may be enabled
     only when that concrete item can produce a SPEC-086 reference. Header-level
     `Share` remains separate and disabled in v1 unless a companion profile
     reference type is later specified.
-60. Chat insertion and preview behavior is specified separately in SPEC-086.
+66. Chat insertion and preview behavior is specified separately in SPEC-086.
 
 ### Non-Functional Requirements
 
