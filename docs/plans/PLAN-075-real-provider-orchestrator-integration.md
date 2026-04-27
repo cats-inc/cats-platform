@@ -184,10 +184,9 @@ This plan covers:
   envelope by default. Child runs are reserved for delegation initiated by one
   running agent.
 - Static tests fail any new product-layer direct runtime create/send calls.
-- Non-Chat product trees cannot import the old Chat planner/dispatcher modules.
-  Remaining Chat deterministic routing code is renamed/moved into a
-  Chat-owned router path; old planner/dispatcher modules become un-importable
-  from product trees once deterministic Chat routing lands in Chat ownership.
+- Product trees cannot import old platform planner/dispatcher modules. Those
+  modules are retired; retained Chat routing and debug projection code lives
+  under `src/products/chat/**`.
 
 ## Phase Gates
 
@@ -198,7 +197,7 @@ This plan covers:
 | Do not wire live provider-agent autonomy before fake driving-agent recovery tests are green. | `supervision-fake-driving-agent.test.tsx` and `work-supervised-run.test.tsx` pass. |
 | Do not change Chat visible UI while cutting the decision core. | Targeted Chat smoke/probe tests prove direct, solo, group, and parallel runtime handoff. |
 | Do not add direct runtime create/send calls in product code. | `supervision-runtime-boundary.test.tsx` and `rg runtimeClient.createSession/sendMessage` show only `runtimeBoundary.ts` calls runtime directly. |
-| Do not retire old semantic planner paths before Chat deterministic routing is carved out. | Static import test proves non-Chat product trees cannot import old Chat planner/dispatcher modules; Chat router tests prove deterministic behavior remains. |
+| Do not retire old semantic planner paths before Chat deterministic routing is carved out. | `supervision-static-boundary.test.tsx` proves retired platform planner/dispatcher modules are absent and un-importable from product trees; Chat router tests prove deterministic behavior remains. |
 | Do not add weak-model tools that bypass the provider-agent seam. | `weak-worker-no-ad-hoc-routing.test.ts` enforces the Anti-Bypass Invariant. |
 
 ## Chat Deterministic Routing Carve-Out
@@ -226,10 +225,31 @@ Provider-agent semantic planning includes:
 - how to summarize progress and decide stop/readiness inside the task
 - how to choose among platform-approved fallback options after failure
 
-The cutover must split these two responsibilities before any old
-planner/dispatcher semantic code is removed. The likely outcome is that
-deterministic Chat routing is renamed or moved under `src/products/chat/**`,
-while semantic planning exits the old core.
+The Phase 8 cutover split these two responsibilities before retiring the old
+platform planner/dispatcher files. Deterministic Chat routing and legacy
+operator/debug projections now live under `src/products/chat/**`; semantic
+planning exits the old core and enters through provider-agent decisions.
+
+## Canonical Ownership Split
+
+Post-cutover orchestration has three owners:
+
+- Chat deterministic routing owns product routing facts: `@mention`
+  resolution, direct-lane binding, room defaults, current-turn audience caps,
+  lane/container addressing, recents, origin ownership, and whether a requested
+  participant or audience mutation is allowed.
+- The provider-agent seam owns agentic semantic choices: task decomposition,
+  next allowed tool, allowed delegation, stop/readiness, and selection among
+  platform-approved fallback options.
+- Supervision policy owns deterministic enforcement: validation, retry
+  envelope, fallback option set, approval gates, budget, scope, evidence, and
+  invariant errors.
+
+The tests that pin this split are `chat-deterministic-routing-boundary.test.tsx`
+for Chat routing ownership, `chat-provider-agent-observation.test.tsx` and
+provider-agent contract tests for bounded semantic handoff, and
+`supervision-static-boundary.test.tsx` for retired module and direct-runtime
+guards.
 
 ## Orchestrator Two-Hat Split
 
@@ -320,11 +340,9 @@ categories:
 - [x] Task 0.2: Add a static boundary test that records the allowed direct
       runtime call location as only `src/platform/supervision/runtimeBoundary.ts`.
 - [x] Task 0.3: Add a static rescope test for old planner/dispatcher imports:
-      non-Chat product trees must not import them. Chat imports are temporarily
-      allowed only for deterministic routing until deterministic Chat routing
-      lands in a Chat-owned router path; once it lands, the allowlist drops to
-      the new router path and the old planner/dispatcher modules become
-      un-importable from any product tree.
+      product trees must not import the retired platform modules. Chat owns
+      retained deterministic routing and debug projections under
+      `src/products/chat/**`.
 - [ ] Task 0.4: Record baseline targeted tests for Chat, Work, and Code runtime
       paths before cutover.
 - [x] Task 0.5: Inventory `cats-runtime` client/server capabilities required
@@ -525,10 +543,12 @@ categories:
       `supervision-static-boundary.test.tsx` now asserts the old platform
       planner/dispatcher files are absent and no product tree imports those
       retired module paths.
-- [ ] Task 8.4: Update docs and tests so the canonical split is explicit:
+- [x] Task 8.4: Update docs and tests so the canonical split is explicit:
       Chat deterministic router owns routing; provider-agent seam owns
       agentic semantic planning; supervision policy owns validation, fallback,
       approval, budget, and invariants.
+      The `Canonical Ownership Split` section records the three owners and the
+      tests that pin each boundary.
 
 ## Weak-Model Control Contract
 
@@ -624,7 +644,7 @@ execution. The difference is control density, not a boolean switch.
 
 - Unit tests for provider-agent contract parsing, validation, and rejection.
 - Static boundary tests for direct runtime calls, scheduler content blindness,
-  and non-Chat imports of old Chat planner/dispatcher modules.
+  and product imports of retired platform planner/dispatcher modules.
 - Capability profile tests for catalog source evidence, eval/history source
   fixtures without ingestion, operator override, conflict preservation,
   conservative unknown defaults, and FR-19 override-floor enforcement.
@@ -733,3 +753,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 53: completed Phase 7 Task 7.4 with a contrast test proving strong and weak profiles enter the same provider-agent observation contract while policy dials and registry-filtered tools narrow the weak path. |
 | 2026-04-28 | Implementation slice 54: completed Phase 7 Task 7.5 by proving `work.sop.ask_weak` evidence is recorded as a tool-boundary event on the parent driver run and actor, without introducing a peer worker run id. |
 | 2026-04-28 | Implementation slice 55: completed Phase 7 Task 7.6 with `weak-worker-no-ad-hoc-routing.test.ts`, guarding against product/orchestration weak-provider runtime entrypoints, `ask_weak` runtime bypasses, and standalone weak dispatcher modules. |
+| 2026-04-28 | Implementation slice 56: completed Phase 8 by moving legacy Chat plan/dispatch shells under Chat ownership, retiring `src/platform/orchestration/planner.ts` and `dispatch.ts`, strengthening static import guards, and documenting the canonical split among Chat routing, provider-agent semantics, and supervision policy. |

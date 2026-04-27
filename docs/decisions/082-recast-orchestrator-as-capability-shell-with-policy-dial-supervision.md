@@ -391,10 +391,11 @@ capability ceiling.
 - It does **not** implement `SupervisionPolicy` — the interface
   declared above is the contract target; the first implementation
   lands through the PLAN that follows this ADR.
-- It does **not** delete `src/platform/orchestration/planner.ts` or
-  `dispatcher.ts` today. Those subsystems remain operative for Chat
-  until the per-action policy path ships end-to-end; they are
-  re-scoped over time, not removed in one PR.
+- At decision time it did **not** delete
+  `src/platform/orchestration/planner.ts` or
+  `src/platform/orchestration/dispatch.ts`. PLAN-075 later retired those
+  files after deterministic Chat routing and legacy debug projections moved
+  under Chat ownership.
 - It does **not** change the visible-orchestrator-Cat model
   established by ADR-011, the transport-binding rules of ADR-028,
   or the managed-work / mission / run separation of ADR-063.
@@ -434,11 +435,10 @@ capability ceiling.
 
 ### Negative
 
-- `src/platform/orchestration/planner.ts`,
-  `dispatcher.ts`, and `execution/workflow.ts` are now declared
-  legacy for non-Chat surfaces, even though they remain in use.
-  Engineering must track the gradual migration without breaking
-  today's Chat behavior.
+- `execution/workflow.ts` remains shared execution projection
+  infrastructure. The old platform `planner.ts` and `dispatch.ts` files were
+  retired by PLAN-075 after Chat-owned replacements landed, so future drift is
+  guarded by static import tests rather than compatibility shims.
 - `SupervisionPolicy` evaluation adds a per-action compute step; a
   naive implementation could double tool-call overhead. The first
   vertical slice must measure this and introduce caching only if
@@ -473,9 +473,8 @@ capability ceiling.
 
 ### Alternative 1: Keep the current rule-based orchestrator
 
-- **Pros**: No migration work; Chat behavior stays identical;
-  `planner.ts` / `dispatcher.ts` already cover today's routing
-  cases.
+- **Pros**: No migration work; Chat behavior would have stayed identical; the
+  old `planner.ts` / `dispatch.ts` files covered then-current routing cases.
 - **Cons**: Locks Cats Work into unfavorable economics (all
   concierge is too expensive, all conductor is not competitive);
   wastes strong-model reasoning for Code and Work; accumulates
