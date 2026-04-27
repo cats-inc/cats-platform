@@ -3,10 +3,6 @@ import type { RuntimeDispatchRecoveryPolicy } from '../../../shared/runtimeRecov
 import {
   buildTelegramBotTransportBindingId,
 } from '../../../shared/chatCoreIds.js';
-import {
-  buildOrchestratorTurnPlan,
-} from '../../../platform/orchestration/index.js';
-import type { OrchestratorPlannerSurface } from '../../../platform/orchestration/contracts.js';
 import type { ChatState } from '../api/contracts.js';
 import type { AsyncKeyedGate } from '../shared/asyncControl.js';
 import { refreshDerivedMemoryLayers } from './memoryLayers.js';
@@ -24,7 +20,6 @@ export function createChatTelegramRoomBridge(input: {
   chatStore: ChatStore;
   companionStore: CompanionBoxStore;
   mutationGate?: AsyncKeyedGate;
-  orchestratorPlannerSurface?: OrchestratorPlannerSurface<ChatState>;
   runtimeRecovery?: Partial<RuntimeDispatchRecoveryPolicy>;
   chatStatePath?: string;
   runtimeDataDir?: string;
@@ -100,19 +95,6 @@ export function createChatTelegramRoomBridge(input: {
       memoryService,
       timestamp,
     }) {
-      const orchestratorPlan = input.orchestratorPlannerSurface
-        ? buildOrchestratorTurnPlan(
-            state,
-            await input.chatStore.readCore(),
-            {
-              channelId: roomId,
-              body,
-              senderName,
-              transport: 'telegram',
-            },
-            input.orchestratorPlannerSurface,
-          )
-        : null;
       return routeChannelMessage(
         state,
         roomId,
@@ -133,7 +115,6 @@ export function createChatTelegramRoomBridge(input: {
           runtimeRecovery: input.runtimeRecovery,
           chatStatePath: input.chatStatePath,
           runtimeDataDir: input.runtimeDataDir,
-          orchestratorPlan,
         },
       );
     },

@@ -128,3 +128,13 @@ test('dispatch turn consumes a Chat-owned deterministic routing plan shape', () 
   assert.equal(source.includes('platform/orchestration/contracts'), false);
   assert.equal(source.includes('DeterministicChatRoutingPlan'), true);
 });
+
+test('Telegram bridge routes through Chat dispatch without building old platform plans', () => {
+  const source = readFileSync(
+    path.join(process.cwd(), 'src/products/chat/state/telegramBridgeAdapter.ts'),
+    'utf8',
+  );
+
+  assert.equal(source.includes('buildOrchestratorTurnPlan'), false);
+  assert.equal(source.includes('orchestratorPlannerSurface'), false);
+});
