@@ -42,6 +42,7 @@ test('loadConfig derives storage paths from canonical root directories', () => {
   assert.equal(config.runtimeSetupApplyProxyTimeoutMs, 12345);
   assert.equal(config.debugLiveTrace, false);
   assert.equal(config.debugKeepRuntimeSessionsOnProductDelete, false);
+  assert.equal(config.chatProviderAgentDecisionEnabled, false);
   assert.equal(config.runtimeStaleSessionRetryLimit, 3);
   assert.equal(config.maxChatParticipants, 7);
   assert.equal(config.maxAudienceParticipants, 2);
@@ -113,4 +114,18 @@ test('loadConfig enables runtime session retention override only when explicitly
   assert.equal(traced.debugLiveTrace, true);
   assert.equal(enabled.debugKeepRuntimeSessionsOnProductDelete, true);
   assert.equal(disabled.debugKeepRuntimeSessionsOnProductDelete, false);
+});
+
+test('loadConfig enables Chat provider-agent decisions only when explicitly true', () => {
+  const enabled = loadConfig({
+    CATS_CHAT_PROVIDER_AGENT_DECISION_ENABLED: 'true',
+  });
+  const disabled = loadConfig({
+    CATS_CHAT_PROVIDER_AGENT_DECISION_ENABLED: 'false',
+  });
+  const unset = loadConfig({});
+
+  assert.equal(enabled.chatProviderAgentDecisionEnabled, true);
+  assert.equal(disabled.chatProviderAgentDecisionEnabled, false);
+  assert.equal(unset.chatProviderAgentDecisionEnabled, false);
 });

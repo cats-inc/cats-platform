@@ -38,6 +38,7 @@ import {
   chatOrchestratorPlannerSurface,
   resumeStoredWorkflowContinuationDispatch,
 } from '../../products/chat/state/orchestratorAdapter.js';
+import { createChatProviderAgentDecisionRequester } from '../../products/chat/state/providerAgentDecisionRequester.js';
 import { MemoryChatStore } from '../../products/chat/state/store.js';
 import { createAsyncKeyedGate } from '../../products/chat/shared/asyncControl.js';
 import { createChatTaskExecutionLocator } from '../../products/chat/state/taskExecutionLocator.js';
@@ -160,6 +161,12 @@ export function resolveServerDependencies(
     );
   const orchestratorPlannerSurface = dependencies.chat.orchestratorPlannerSurface
     ?? chatOrchestratorPlannerSurface;
+  const providerAgentDecisionRequester = dependencies.chat.providerAgentDecisionRequester
+    ?? (
+      dependencies.shared.config.chatProviderAgentDecisionEnabled === true
+        ? createChatProviderAgentDecisionRequester()
+        : undefined
+    );
   const taskExecutionLocator = dependencies.chat.taskExecutionLocator
     ?? createChatTaskExecutionLocator(dependencies.chat.chatStore);
   const telegramRoomBridge = dependencies.chat.telegramRoomBridge
@@ -227,6 +234,7 @@ export function resolveServerDependencies(
       pollingSupervisor,
       telegramCommandSurfaceSync,
       eventHub: dependencies.chat.eventHub ?? createChatEventHub(),
+      providerAgentDecisionRequester,
     },
     work: {
       coreStore: dependencies.work?.coreStore ?? sharedCoreStore,

@@ -17,6 +17,7 @@ export interface AppConfig {
   runtimeSetupApplyProxyTimeoutMs?: number;
   debugLiveTrace: boolean;
   debugKeepRuntimeSessionsOnProductDelete: boolean;
+  chatProviderAgentDecisionEnabled?: boolean;
   runtimeDataDir: string;
   desktopHostStatePath: string;
   desktopDir: string;
@@ -134,6 +135,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     debugLiveTrace: parseBoolean(env.CATS_DEBUG_LIVE_TRACE, false),
     debugKeepRuntimeSessionsOnProductDelete: parseBoolean(
       env.CATS_DEBUG_KEEP_RUNTIME_SESSIONS_ON_PRODUCT_DELETE,
+      false,
+    ),
+    chatProviderAgentDecisionEnabled: parseBoolean(
+      env.CATS_CHAT_PROVIDER_AGENT_DECISION_ENABLED,
       false,
     ),
     runtimeDataDir: path.join(runtimeDir, 'data'),
