@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-079](./PLAN-079-work-graph-link-relations-rollout.md) | Work Graph Link Relations Rollout | Draft | [SPEC-090](../specs/SPEC-090-work-graph-link-relations.md), [ADR-086](../decisions/086-adopt-n-to-m-work-graph-link-relations.md) |
 | [PLAN-078](./PLAN-078-linux-composer-voice-input-whisper-cpp-rollout.md) | Linux Composer Voice Input whisper.cpp Rollout | Cancelled (not adopted) | [SPEC-087](../specs/SPEC-087-linux-composer-voice-input-via-bundled-whisper-cpp.md), [ADR-085](../decisions/085-bundle-whisper-cpp-on-linux-for-composer-voice-input.md) |
 | [PLAN-077](./PLAN-077-companion-profile-and-share-preview-rollout.md) | Companion Profile and Share Preview Rollout | Draft | [SPEC-085](../specs/SPEC-085-companion-profile-feed-and-library-ia.md), [SPEC-086](../specs/SPEC-086-shareable-companion-content-links-and-chat-previews.md), [ADR-084](../decisions/084-adopt-companion-profile-ia-and-shareable-content-references.md) |
 | [PLAN-076](./PLAN-076-composer-voice-input-native-stt-rollout.md) | Composer Voice Input Native STT Rollout | Draft | [SPEC-084](../specs/SPEC-084-composer-voice-input-via-platform-native-stt.md), [ADR-079](../decisions/079-use-platform-native-stt-with-linux-toast-fallback.md) |
@@ -131,6 +132,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-04-28 (PLAN-078 marked Cancelled alongside ADR-085 rejection; the implementation commits 7bf53024 + f31ed25d were reverted in 1f559db9.)*
+*Last updated: 2026-04-28 (PLAN-079 added for Work Graph link relations; PLAN-078 marked Cancelled alongside ADR-085 rejection.)*
 
 *See also: [specs/](../specs/) for feature specifications*

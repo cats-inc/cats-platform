@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-090](./SPEC-090-work-graph-link-relations.md) | Work Graph Link Relations | Draft | [PLAN-079](../plans/PLAN-079-work-graph-link-relations-rollout.md), [ADR-086](../decisions/086-adopt-n-to-m-work-graph-link-relations.md) |
 | [SPEC-089](./SPEC-089-companion-all-content-library-placeholder.md) | Companion All-Content Library Placeholder | Placeholder | [PLAN-077](../plans/PLAN-077-companion-profile-and-share-preview-rollout.md), [ADR-084](../decisions/084-adopt-companion-profile-ia-and-shareable-content-references.md) |
 | [SPEC-088](./SPEC-088-companion-memory-bridge-contract-placeholder.md) | Companion Memory Bridge Contract Placeholder | Placeholder | [PLAN-077](../plans/PLAN-077-companion-profile-and-share-preview-rollout.md), [ADR-084](../decisions/084-adopt-companion-profile-ia-and-shareable-content-references.md) |
 | [SPEC-087](./SPEC-087-linux-composer-voice-input-via-bundled-whisper-cpp.md) | Linux Composer Voice Input via Bundled whisper.cpp | Cancelled (not adopted) | [PLAN-078](../plans/PLAN-078-linux-composer-voice-input-whisper-cpp-rollout.md), [ADR-085](../decisions/085-bundle-whisper-cpp-on-linux-for-composer-voice-input.md) |
@@ -145,5 +146,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 ---
 
 *Last updated: 2026-04-28 (SPEC-087 marked Cancelled alongside ADR-085 rejection; SPEC-088/SPEC-089 companion placeholders unchanged.)*
+*Last updated: 2026-04-28 (SPEC-090 added for Work Graph link relations; SPEC-087 marked Cancelled alongside ADR-085 rejection.)*
 
 *See also: [plans/](../plans/) for implementation plans*
