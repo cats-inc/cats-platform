@@ -294,11 +294,26 @@ invariant; Phase Gate, Task 7.6, Testing Strategy, and risk-mitigation
 references throughout this plan point at the same invariant rather than
 restating it.
 
+## Current Planner/Dispatcher Inventory
+
+The old planner/dispatcher imports currently split into these replacement
+categories:
+
+| Path | Current Use | Replacement Direction |
+|------|-------------|-----------------------|
+| `src/products/chat/api/resources/channelRoutes.ts` | Builds `OrchestratorTurnPlan` for send/retry acknowledgement metadata and initial routing injection. | Replace with Chat-owned deterministic routing summary plus provider-agent observation/decision metadata; keep UI acknowledgement shape stable. |
+| `src/products/chat/api/resources/parallelChatGroupDispatch.ts` | Builds one plan per parallel member dispatch for acknowledgement metadata and member routing. | Replace with per-member Chat deterministic routing summary; each member remains a solo execution target inside the provider-agent seam. |
+| `src/products/chat/state/telegramBridgeAdapter.ts` | Builds a plan before Telegram-origin Chat dispatch. | Route Telegram through the same Chat-owned deterministic routing summary and provider-agent observation path as web sends. |
+| `src/products/chat/api/orchestratorRoutes.ts` | Exposes legacy direct plan/dispatch surfaces for operator/debug flows. | Keep only if it delegates to the new provider-agent seam; otherwise retire after product routes stop depending on old plan output. |
+| `src/products/chat/state/runtime-dispatch/turn.ts` | Accepts an `OrchestratorTurnPlan` only to override initial target resolution. | Replace the platform plan type with a Chat-owned deterministic routing input that contains no semantic planning authority. |
+| `src/platform/orchestration/dispatch.ts` | Direct product API dispatch shell that couples plan build, approval persistence, and Chat routing. | Split approval/operator persistence from planning; Chat routes should call Chat deterministic routing plus provider-agent decision seams directly. |
+| `src/platform/orchestration/planner.ts` | Old mixed semantic/deterministic planner implementation. | Move deterministic Chat routing ownership to `src/products/chat/**`; delete or reduce platform exports once no product path imports them. |
+
 ## Implementation Phases
 
 ### Phase 0: Inventory and Guardrails
 
-- [ ] Task 0.1: Inventory current Chat planner/dispatcher imports and classify
+- [x] Task 0.1: Inventory current Chat planner/dispatcher imports and classify
       each path as decision, routing, transcript projection, runtime dispatch,
       or recovery.
 - [x] Task 0.2: Add a static boundary test that records the allowed direct
@@ -655,3 +670,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 11: added `temp-participant-strong-agent.test.tsx` proving preset/ad hoc temporary participants can resolve strong-provider capability profiles and provider-agent observations without durable Cat promotion. |
 | 2026-04-28 | Implementation slice 12: expanded `chat-provider-agent-observation.test.tsx` with direct-cat, solo, group explicit-mention, and parallel-member probes so Chat routing semantics enter the provider-agent seam as bounded metadata without changing UI or transcript behavior. |
 | 2026-04-28 | Implementation slice 13: reconciled Phase 1 Task 1.3 with the already-landed FR-19 operator-override floor implementation and corrected the policy test filenames referenced by the phase gate. |
+| 2026-04-28 | Implementation slice 14: completed Phase 0 planner/dispatcher import inventory, classifying each old-plan use by current purpose and replacement direction before router rescope work continues. |
