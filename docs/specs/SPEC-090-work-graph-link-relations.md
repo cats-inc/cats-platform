@@ -89,54 +89,69 @@ read or write links at v1.
      set is `blocks`, `related_to`, `duplicate_of`, `follows`.
      `blocked_by` is **not** stored — it is a projection-derived
      inverse of `blocks` (see §4 below).
-   - `sourceRecordKind`: Core record family of the source. Restricted
+   - `sourceRecordFamily`: Core record family of the source. Restricted
      to `project | work_item | task` at v1.
    - `sourceRecordId`: Core record id within that family.
-   - `targetRecordKind`: same shape, same restriction.
+   - `targetRecordFamily`: same shape, same restriction.
    - `targetRecordId`: same shape, same restriction.
    - `createdAt`: ISO-8601 timestamp.
    - `createdByActorId` (optional).
    - `note` (optional, ≤ 280 chars).
-2. Both `(sourceRecordKind, sourceRecordId)` and `(targetRecordKind,
+2. Both `(sourceRecordFamily, sourceRecordId)` and `(targetRecordFamily,
    targetRecordId)` MUST resolve to an existing Core record at write
    time. Otherwise the producer / write API fails with a structured
    error.
 3. The producer / write API MUST reject self-links — defined as
-   `sourceRecordKind == targetRecordKind && sourceRecordId ==
-   targetRecordId` — at write time. Self-link rejection is a write-side
-   responsibility; the projection layer is read-only and only emits an
-   `orphan_link` diagnostic if a self-link somehow appears in storage
-   (defensive, not authoritative).
+   `sourceRecordFamily == targetRecordFamily && sourceRecordId ==
+   targetRecordId` — at write time. Self-link rejection is exclusively
+   a write-side responsibility; the projection layer is read-only and
+   does not police self-links. (If a self-link still leaks into
+   storage due to a producer bug, that is a write-pipeline integrity
+   issue, not a projection diagnostic.)
 4. **Canonicalization at write time** (per ADR-086 §3):
    - `blocks` is the only blocker kind stored. A producer that detects
      `B blocked_by A` MUST write `A blocks B` (swap source / target).
      The write API SHOULD coerce `blocked_by` submissions by swapping
      before insert, but MUST NOT store both directions.
    - `related_to` is symmetric. Storage canonicalizes the pair by
-     ordering `(sourceRecordKind, sourceRecordId)` and
-     `(targetRecordKind, targetRecordId)` lexicographically; the
+     ordering `(sourceRecordFamily, sourceRecordId)` and
+     `(targetRecordFamily, targetRecordId)` lexicographically; the
      smaller tuple is always the source. Producers MAY submit either
      order.
    - `duplicate_of` and `follows` are directional and stored as
      written.
-5. The projection layer MUST derive read-time views for the operator:
-   - For each `A blocks B` row, render `A blocks B` on A's detail
-     page and `B blocked_by A` on B's detail page.
-   - For each canonical `related_to` row, render the relation on both
-     ends.
-6. `WorkGraphProjection` (see ADR-083 §2 / SPEC-083 §Suggested Work
-   Graph Shape) gains a new field `links: WorkGraphLink[]`.
+5. The projection layer MUST derive read-time views from the stored
+   rows and expose them per-endpoint. Specifically, each stored row
+   contributes the following entries to
+   `WorkGraphProjection.linksByEndpoint`:
+   - `A blocks B` → a `blocks` view on A and a `blocked_by` view on B.
+   - canonical `related_to` between A and B → a `related_to` view on
+     both A and B (each with the other as `otherEndpoint`).
+   - `A duplicate_of B` → a `duplicate_of` view on A only at v1
+     (the canonical side renders no entry; revisit if user demand
+     emerges).
+   - `A follows B` → a `follows` view on A only at v1 (mirror of the
+     `duplicate_of` rule).
+6. `WorkGraphProjection` gains two new fields per the shape in §
+   Suggested Record Shape:
+   - `links: WorkGraphLink[]` — raw stored rows.
+   - `linksByEndpoint: Record<WorkGraphEndpointKey, WorkGraphLinkView[]>`
+     — per-endpoint derived views including all inverse / symmetric
+     entries called out in §5.
 7. `WorkGraphProjection.diagnostics` gains two new
    `WorkGraphDiagnosticKind` values:
-   - `orphan_link`: a link whose `(sourceRecordKind, sourceRecordId)`
-     or `(targetRecordKind, targetRecordId)` does not resolve to an
+   - `orphan_link`: a link whose `(sourceRecordFamily, sourceRecordId)`
+     or `(targetRecordFamily, targetRecordId)` does not resolve to an
      existing Core record (e.g., the underlying record was deleted).
    - `link_cycle`: at least one cycle exists in the directed `blocks`
      subgraph. Diagnostics MUST include the participating record
      identities.
 8. `duplicate_of` and `follows` cycles are not flagged at v1.
    `related_to` is symmetric and so cannot cycle.
-9. The renderer MUST surface links in two places at v1:
+9. The renderer MUST surface links in two places at v1, both reading
+   from `WorkGraphProjection.linksByEndpoint` (NOT from `links`
+   directly — the renderer must not re-derive `blocked_by` or
+   symmetric `related_to`):
    - **Per-object detail pages** (Project, Work Item, Task) gain a
      "Linkage" section listing each relation grouped by displayed
      kind (Blocking / Blocked by / Related / Duplicate of / Follows),
@@ -157,7 +172,7 @@ read or write links at v1.
 
 - The link write API MUST be idempotent on the canonical form. After
   applying §4 canonicalization, writing the same `(kind,
-  sourceRecordKind, sourceRecordId, targetRecordKind, targetRecordId)`
+  sourceRecordFamily, sourceRecordId, targetRecordFamily, targetRecordId)`
   is a no-op (no duplicate row, same `id` returned).
 - The projection MUST keep cycle-detection cost bounded by the count of
   `blocks` rows, not the count of all graph objects.
@@ -187,22 +202,30 @@ export type WorkGraphLinkKind =
   | "follows";
 
 // Endpoint identity is canonical Core identity, NOT projection object id.
+// At v1 only Project / Work Item / Task records can be link endpoints.
 export type WorkGraphLinkEndpointKind = "project" | "work_item" | "task";
 
+// Stored row shape. Endpoints reuse SPEC-083's
+// `sourceRecordFamily / sourceRecordId` naming on
+// `WorkGraphObjectSummary` so the projection can resolve a link
+// endpoint to a graph object by direct field match.
 export interface WorkGraphLink {
   id: string;
   kind: WorkGraphLinkKind;
-  sourceRecordKind: WorkGraphLinkEndpointKind;
+  sourceRecordFamily: WorkGraphLinkEndpointKind;
   sourceRecordId: string;
-  targetRecordKind: WorkGraphLinkEndpointKind;
+  targetRecordFamily: WorkGraphLinkEndpointKind;
   targetRecordId: string;
   createdAt: string;
   createdByActorId: string | null;
   note: string | null;
 }
 
-// Read-side view kinds the projection synthesizes per object — includes
-// the derived `blocked_by` view that does not appear in storage.
+// Read-side view kinds the projection synthesizes per object. Includes
+// the derived `blocked_by` view that does not appear in storage. Each
+// stored `blocks` row produces a `blocks` view on the source endpoint
+// AND a `blocked_by` view on the target endpoint. Each stored
+// `related_to` row produces a `related_to` view on both endpoints.
 export type WorkGraphLinkViewKind =
   | "blocks"
   | "blocked_by"
@@ -210,11 +233,50 @@ export type WorkGraphLinkViewKind =
   | "duplicate_of"
   | "follows";
 
+// Per-endpoint read-side projection of a link, oriented "from this
+// endpoint's perspective". The renderer iterates `views[endpointKey]`
+// and renders one row per entry under the appropriate displayed kind.
+export interface WorkGraphLinkView {
+  // Same id as the underlying stored WorkGraphLink, so unfollow /
+  // delete can target it without an extra lookup.
+  linkId: string;
+  // Read-side kind, oriented from `selfEndpoint` toward
+  // `otherEndpoint`. May be `blocked_by` even though no stored row
+  // has that kind.
+  kind: WorkGraphLinkViewKind;
+  selfEndpoint: WorkGraphLinkEndpointRef;
+  otherEndpoint: WorkGraphLinkEndpointRef;
+  note: string | null;
+  createdAt: string;
+}
+
+export interface WorkGraphLinkEndpointRef {
+  recordFamily: WorkGraphLinkEndpointKind;
+  recordId: string;
+}
+
+// Serializable composite key form: `${recordFamily}:${recordId}`.
+// Used as the key for both `linksByEndpoint` and any object-by-record
+// lookup. Stable across projection rebuilds because Core identity
+// drives it.
+export type WorkGraphEndpointKey = `${WorkGraphLinkEndpointKind}:${string}`;
+
 export interface WorkGraphProjection {
   // existing fields …
   links: WorkGraphLink[];
+  // Per-endpoint read-side views the renderer consumes directly. Both
+  // sides of every stored row appear here — see view-kind comment
+  // above.
+  linksByEndpoint: Record<WorkGraphEndpointKey, WorkGraphLinkView[]>;
 }
 ```
+
+`WorkGraphObjectSummary` already exposes `sourceRecordFamily` /
+`sourceRecordId` per SPEC-083 §Suggested Work Graph Shape. The renderer
+resolves a link endpoint to its graph object by matching those fields
+against `WorkGraphLinkEndpointRef`; no separate map is required as
+long as the projection populates those summary fields for every
+Project / Work Item / Task object.
 
 ## Producer Interface
 
@@ -224,12 +286,12 @@ Work Graph projection object id:
 
 - `createLink({
     kind,
-    source: { recordKind, recordId },
-    target: { recordKind, recordId },
+    source: { recordFamily, recordId },
+    target: { recordFamily, recordId },
     note?
   }) → WorkGraphLink`
 - `removeLink(linkId) → void`
-- `listLinks({ recordKind?, recordId?, kind? }) → WorkGraphLink[]`
+- `listLinks({ recordFamily?, recordId?, kind? }) → WorkGraphLink[]`
 
 `createLink` MUST apply §4 canonicalization before insert and MUST
 behave idempotently on the canonical form. Submitting `blocked_by` is
@@ -287,24 +349,34 @@ For Project / Work Item / Task detail pages:
 
 A v1 slice is acceptable when:
 
-1. The Work Graph projection includes `links: WorkGraphLink[]` and the
-   two new diagnostic kinds.
+1. The Work Graph projection includes `links: WorkGraphLink[]`,
+   `linksByEndpoint: Record<WorkGraphEndpointKey,
+   WorkGraphLinkView[]>`, and the two new diagnostic kinds.
 2. The mock fixture under
    `src/products/work/renderer/components/topdown/mock.ts` (or the next
    producer source of truth) includes representative examples of every
-   v1 link kind.
+   **stored** link kind (`blocks`, `related_to`, `duplicate_of`,
+   `follows`). It MUST NOT seed any `blocked_by` rows in storage. A
+   separate test confirms the projection emits `blocked_by` views on
+   the inverse endpoint of each seeded `blocks` row, and `related_to`
+   views on both endpoints of each seeded canonical `related_to` row.
 3. Project / Work Item / Task detail pages render the Linkage section
    and let the user follow each link.
-4. The Add-link dialog can write each of the v1 kinds and the writes
-   round-trip via the projection.
+4. The Add-link dialog can write each of the v1 **stored** kinds
+   (`blocks`, `related_to`, `duplicate_of`, `follows`) and the writes
+   round-trip via the projection. A `blocked_by` submission from the
+   dialog is coerced into `blocks` per §4 canonicalization and shows
+   up as a `blocked_by` view on the inverse endpoint at read time.
 5. Cockpit renders the Blockers rail for items in its current
    attention list.
 6. Broken Links page renders `orphan_link` and `link_cycle` entries.
 7. Cycle detection on `blocks` produces deterministic diagnostics
    regardless of object iteration order.
 8. None of the above changes the existing System Map structural view,
-   the existing `linkedXxxId` parent fields, or the ADR-081 tier
-   contract.
+   the existing `linkedXxxId` projection fields, the ADR-081 §4 Core
+   FK contract (including `WorkItem.parentWorkItemId`), or the
+   `sourceRecordFamily` / `sourceRecordId` fields on
+   `WorkGraphObjectSummary` defined by SPEC-083.
 
 ## Open Questions
 

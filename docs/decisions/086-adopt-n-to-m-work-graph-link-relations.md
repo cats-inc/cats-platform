@@ -84,17 +84,17 @@ following minimum shape (Core identity, not projection identity):
   - `follows` (directed; the source supersedes the target)
   - `blocked_by` is **not** stored — it is a projection-derived
     inverse of `blocks`. See §3 for canonicalization rules.
-- `sourceRecordKind` / `sourceRecordId` — the Core record family and
-  id this relation originates from. At v1, `sourceRecordKind` is
+- `sourceRecordFamily` / `sourceRecordId` — the Core record family and
+  id this relation originates from. At v1, `sourceRecordFamily` is
   restricted to `project | work_item | task`. (This is the endpoint
   family restriction, not the relation `kind` enum above.)
-- `targetRecordKind` / `targetRecordId` — same shape; `targetRecordKind`
+- `targetRecordFamily` / `targetRecordId` — same shape; `targetRecordFamily`
   is restricted to the same set.
 - `createdAt`, optional `createdByActorId`, optional `note`.
 
 `WorkGraphLink` is a Core record family, not a renderer-only construct.
 Producers (chat, code, runtime) write Core identity; the Work Graph
-projection layer maps `(recordKind, recordId)` to graph object id at
+projection layer maps `(recordFamily, recordId)` to graph object id at
 read time. This means renaming or rebuilding the projection cannot
 orphan a link, and links written by one producer are immediately
 visible to any other.
@@ -121,7 +121,7 @@ To keep the link table free of duplicate-but-equivalent rows:
   `A blocks B` (i.e. swap source and target). The projection derives
   `blocked_by` for read.
 - `related_to` is symmetric. Storage canonicalizes the pair by sorting
-  `(sourceRecordKind, sourceRecordId)` and `(targetRecordKind,
+  `(sourceRecordFamily, sourceRecordId)` and `(targetRecordFamily,
   targetRecordId)` lexicographically; the smaller tuple is always the
   source. Producers MAY submit either order; the canonicalization
   happens at the write API boundary. The projection presents the
@@ -130,7 +130,7 @@ To keep the link table free of duplicate-but-equivalent rows:
   (no canonicalization).
 
 Idempotency is on the canonical form: writing the same
-`(kind, sourceRecordKind, sourceRecordId, targetRecordKind,
+`(kind, sourceRecordFamily, sourceRecordId, targetRecordFamily,
 targetRecordId)` after canonicalization is a no-op.
 
 ### 4. Linkage is orthogonal to hierarchy, not a replacement
@@ -175,8 +175,8 @@ The Work Graph projection diagnostics layer already enumerates classes
 like `broken_fk`, `unanchored_run`, etc.. Linkage adds two new
 diagnostic kinds at v1:
 
-- `orphan_link` — `(sourceRecordKind, sourceRecordId)` or
-  `(targetRecordKind, targetRecordId)` does not resolve to a known
+- `orphan_link` — `(sourceRecordFamily, sourceRecordId)` or
+  `(targetRecordFamily, targetRecordId)` does not resolve to a known
   Core record.
 - `link_cycle` — a chain of `blocks` links forms a cycle.
 
@@ -198,7 +198,7 @@ flagged at v1.
   intact — nothing about `WorkItem.projectId`, `WorkItem.taskId`,
   `WorkItem.parentWorkItemId`, `Task.parentTaskId`, `Run.taskId`, or
   any other ADR-081 §4 FK changes.
-- Anchoring on Core record identity (`recordKind`, `recordId`)
+- Anchoring on Core record identity (`recordFamily`, `recordId`)
   instead of Work Graph projection object id keeps the link table
   durable across renderer or projection refactors.
 

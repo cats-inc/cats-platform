@@ -29,75 +29,88 @@ mock fixtures first.
 
 ## Phase 1 — Type and projection contract
 
+The projection contract is normative in SPEC-090 §Suggested Record
+Shape and §Functional Requirements §5–6. This phase implements that
+contract verbatim. PLAN-079 does not invent shape — it only
+sequences delivery.
+
 **Scope.**
-- Add `WorkGraphLinkKind` (stored kinds only — `blocks`, `related_to`,
-  `duplicate_of`, `follows`) and `WorkGraphLinkViewKind` (read-side
-  view kinds, including the projection-derived `blocked_by`) to
-  `src/products/work/renderer/components/topdown/types.ts`.
-- Add the `WorkGraphLink` shape with Core-identity endpoints
-  (`sourceRecordKind / sourceRecordId / targetRecordKind /
-  targetRecordId`) per SPEC-090 §Suggested Record Shape.
-- Extend `WorkGraphProjection` with `links: WorkGraphLink[]` plus
-  whatever Core-identity lookup the renderer needs to resolve a link
-  endpoint to a graph object. Two acceptable shapes:
-  - **Option A (recommended)**: extend `WorkGraphObjectSummary` with
-    explicit Core identity (`coreRecordKind: WorkGraphLinkEndpointKind;
-    coreRecordId: string;`) so any consumer can look up a graph
-    object by record identity directly.
-  - **Option B**: keep `WorkGraphObjectSummary` as today and add a
-    separate `objectsByRecord: ReadonlyMap<` `${kind}:${id}`,
-    `WorkGraphObjectSummary>` to `WorkGraphProjection`.
-  Either way, the renderer MUST NOT assume `WorkGraphObjectSummary.id`
-  equals the Core record id; that equivalence is implementation-
-  specific and may not hold once the projection covers cross-record-
-  family graph objects.
+- Add the SPEC-090 types verbatim to
+  `src/products/work/renderer/components/topdown/types.ts`:
+  `WorkGraphLinkKind` (stored kinds only — `blocks`, `related_to`,
+  `duplicate_of`, `follows`), `WorkGraphLinkViewKind` (includes the
+  projection-derived `blocked_by`), `WorkGraphLinkEndpointKind`,
+  `WorkGraphLinkEndpointRef`, `WorkGraphEndpointKey`,
+  `WorkGraphLink`, and `WorkGraphLinkView`.
+- Extend `WorkGraphProjection` with the two new fields per SPEC-090
+  §FR6: `links: WorkGraphLink[]` and `linksByEndpoint:
+  Record<WorkGraphEndpointKey, WorkGraphLinkView[]>`.
+- Confirm `WorkGraphObjectSummary` carries `sourceRecordFamily:
+  WorkGraphLinkEndpointKind` and `sourceRecordId: string` for every
+  Project / Work Item / Task object, per SPEC-083 §Suggested Work
+  Graph Shape. If today's `types.ts` (which predates the SPEC-083
+  shape) does not yet carry those fields, this phase adds them. The
+  renderer resolves a link endpoint (`recordFamily`, `recordId`) to
+  its graph object by matching those fields directly. The projection
+  MUST use the composite key form `${recordFamily}:${recordId}` (the
+  `WorkGraphEndpointKey` type) when building `linksByEndpoint`.
 - Extend `WorkGraphDiagnosticKind` with `orphan_link` and `link_cycle`.
 - Update mock fixture under
-  `src/products/work/renderer/components/topdown/mock.ts` to seed at
-  least one example per **stored** link kind (`blocks`, `related_to`,
-  `duplicate_of`, `follows`), plus one orphan-link example and one
-  cycle for the diagnostics surface. Do not seed any `blocked_by`
-  rows in storage — the derived `blocked_by` view is exercised in
-  Phase 2 by rendering against the seeded `blocks` rows.
+  `src/products/work/renderer/components/topdown/mock.ts` to seed one
+  or more rows of every **stored** kind only (`blocks`, `related_to`,
+  `duplicate_of`, `follows`) — never `blocked_by`, which is
+  projection-derived per SPEC-090 §FR5. Also seed one orphan-link
+  example and one cycle for the diagnostics surface.
 - Update `buildIndexes` / projection helpers (in
-  `components/topdown/shared.ts`) to:
-  - materialize the `blocked_by` read-side view by inverting each
-    stored `blocks` row;
-  - present `related_to` symmetrically (each stored row produces a
-    rendered relation on both endpoints, regardless of which side is
-    the canonical source);
-  - detect cycles in the stored `blocks` subgraph;
-  - surface the Core-identity lookup chosen above.
+  `components/topdown/shared.ts`) to populate `linksByEndpoint` per
+  SPEC-090 §FR5: every stored row produces views on the endpoints
+  enumerated there (both sides of `blocks` and `related_to`;
+  source-side only for `duplicate_of` / `follows` at v1).
+- Add cycle detection for the stored `blocks` subgraph.
 
 **Done when.**
 - `tsc --noEmit` passes.
-- `MOCK_WORK_GRAPH.links` contains examples of every **stored** kind,
-  no `blocked_by` rows in storage, and a renderer test (or Phase 2
-  smoke check) confirms `blocked_by` shows up on the inverse endpoint
-  of every seeded `blocks` row.
-- Diagnostics emit `orphan_link` / `link_cycle` for the seeded fixtures.
-- Given a `WorkGraphLink` row, the renderer can resolve both endpoints
-  to their `WorkGraphObjectSummary` through the projection without
-  guessing about id equality.
+- Storage (`MOCK_WORK_GRAPH.links`) contains examples of every
+  stored kind, **no `blocked_by` rows in storage**.
+- A renderer-side test reads
+  `MOCK_WORK_GRAPH.linksByEndpoint["work_item:<some id>"]` and finds
+  a `blocked_by` view there for every seeded `blocks` row whose
+  target is that id — proving derivation works without storing
+  `blocked_by`.
+- Diagnostics emit `orphan_link` / `link_cycle` for the seeded
+  fixtures.
+- Given a `WorkGraphLinkEndpointRef`, the renderer can resolve it to
+  its `WorkGraphObjectSummary` by matching `sourceRecordFamily` /
+  `sourceRecordId` on the summary, without assuming
+  `WorkGraphObjectSummary.id` equals the Core record id.
 
 **Risks.**
 - Cycle detection has to be deterministic regardless of object
   ordering. Start with a simple Tarjan / DFS pass keyed on
   lexicographically sorted Core identity tuples; revisit if hot-path
   cost matters.
-- If Option A is taken, the existing `WorkGraphObjectSummary`
-  consumers (System Map, Cockpit, Broken Links, the new Projects /
-  Work Items pages) need a coordinated schema bump; Option B avoids
-  that but adds a parallel index.
+- Adding `sourceRecordFamily` / `sourceRecordId` to
+  `WorkGraphObjectSummary` (if missing today) touches every existing
+  consumer (System Map, Cockpit, Broken Links, Projects / Work Items
+  pages). Land that as a single-commit type bump before any link-
+  reading code so consumers compile under the new shape immediately.
 
 ## Phase 2 — Detail page Linkage section
 
 **Scope.**
 - Add a "Linkage" section to `ProjectDetailPage`, `WorkItemDetailPage`,
-  and (later) `TaskDetailPage` that groups `links` by `kind`.
-- Each entry renders status dot + title + relation badge and links to
-  the target object's detail page through the existing route map
-  (`/work/projects/:id`, `/work/work-items/:id`, etc.).
+  and (later) `TaskDetailPage` that reads
+  `WorkGraphProjection.linksByEndpoint[<self endpoint key>]` and
+  groups the returned `WorkGraphLinkView[]` by `kind` (Blocking /
+  Blocked by / Related / Duplicate of / Follows). Per SPEC-090 §FR9,
+  the renderer MUST consume `linksByEndpoint`, not raw `links`, so
+  derived `blocked_by` and symmetric `related_to` views show up
+  without the renderer re-deriving them.
+- Each entry renders status dot + title + relation badge using the
+  graph object resolved from `view.otherEndpoint` against
+  `WorkGraphObjectSummary.sourceRecordFamily` /
+  `sourceRecordId`. The link target is the resolved summary's detail
+  page route (`/work/projects/:id`, `/work/work-items/:id`, etc.).
 - Pure read-only at this phase. No writes yet.
 - Empty-state copy per relation kind is defined and matches the warm /
   light visual identity already used by Projects / Work Items.
@@ -156,7 +169,7 @@ Core record family from day one.
   optional note. Submission calls the producer-pipeline `createLink`
   endpoint; there is **no** renderer-side persistence layer.
 - Each detail page's Linkage section gains an "Add link" button that
-  opens the dialog with the source record's `(recordKind, recordId)`
+  opens the dialog with the source record's `(recordFamily, recordId)`
   already filled.
 
 **Done when.**
