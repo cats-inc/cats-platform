@@ -484,7 +484,7 @@ categories:
       outcome delegation, or open-ended recovery ownership unless capability
       evidence and policy explicitly allow it. Coverage lands in
       `weak-worker-tool-contracts.test.ts`.
-- [ ] Task 7.4: Add a contrast test in `weak-worker-tool-contracts.test.ts`
+- [x] Task 7.4: Add a contrast test in `weak-worker-tool-contracts.test.ts`
       proving strong and weak capability profiles enter the same provider-agent
       seam for the same high-level request, while weak profiles receive
       stricter policy dials and narrower permitted tools.
@@ -712,3 +712,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 50: completed Phase 7 Task 7.1 by registering the first-slice `work.sop.ask_weak` weak-worker SOP shell in the existing supervised tool registry, forcing empty downstream tool subgrants, bounded hard budgets, schema refs, and structured output validation. |
 | 2026-04-28 | Implementation slice 51: completed Phase 7 Task 7.2 by making `work.sop.ask_weak` return deterministic SOP scaffold metadata for template id, retry limit, confidence threshold, escalation target, and expected schema ownership inside the tool boundary. |
 | 2026-04-28 | Implementation slice 52: completed Phase 7 Task 7.3 by extending weak-capability policy floors to reject `milestone_plan`, `delegate_other`, and `broad_write` under catalog-only confidence, with tool-boundary coverage for weak-worker scope denial. |
+| 2026-04-28 | Implementation slice 53: completed Phase 7 Task 7.4 with a contrast test proving strong and weak profiles enter the same provider-agent observation contract while policy dials and registry-filtered tools narrow the weak path. |

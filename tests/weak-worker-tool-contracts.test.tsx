@@ -10,8 +10,14 @@ import {
   createToolBoundary,
   decideSupervisionPolicy,
 } from '../src/platform/supervision/index.ts';
+import {
+  PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+  validateProviderAgentBoundedObservation,
+  type ProviderAgentBoundedObservation,
+} from '../src/platform/orchestration/index.ts';
 import type {
   CapabilityAssessment,
+  SupervisionPolicy,
   SchemaRef,
   SupervisedToolManifest,
 } from '../src/platform/supervision/contracts.ts';
@@ -61,6 +67,56 @@ function weakPolicyContext(toolManifest: SupervisedToolManifest) {
     evaluatedAt: '2026-04-28T04:00:00.000Z',
     capabilityAssessment: catalogOnlyAssessment(),
     toolManifest,
+  };
+}
+
+function providerAgentObservation(input: {
+  actorRef: string;
+  provider: string;
+  model: string;
+  policy: SupervisionPolicy;
+  tools: SupervisedToolManifest[];
+}): ProviderAgentBoundedObservation {
+  return {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    observationId: `observation-${input.provider}`,
+    runId: 'run-weak-contrast',
+    goal: 'Resolve the same high-level work request.',
+    task: {
+      kind: 'work_run',
+      risk: 'medium',
+    },
+    actor: {
+      actorRef: input.actorRef,
+      target: {
+        kind: 'execution_target',
+        provider: input.provider,
+        model: input.model,
+      },
+      capabilityProfileRef: `provider-capability:${input.provider}:${input.model}`,
+      providerRef: `provider:${input.provider}`,
+    },
+    policy: {
+      dials: input.policy,
+      allowedFallbacks: ['retry', 'ask_human'],
+    },
+    availableTools: input.tools.map((tool) => ({
+      manifest: tool,
+      reason: `${tool.name} allowed by policy surface.`,
+    })),
+    contextRefs: ['work-item:same-request'],
+    summaries: [
+      {
+        key: 'tool_rejection_count',
+        kind: 'count',
+        value: 0,
+      },
+    ],
+    budget: {
+      maxDurationMs: 30_000,
+      hardStop: true,
+    },
+    invariants: ['same seam; policy dials select autonomy'],
   };
 }
 
@@ -222,4 +278,62 @@ test('toolBoundary rejects weak-worker tools outside the effective scope', async
 
   assert.equal(result.status, 'rejected');
   assert.equal(result.error.code, 'E_TOOL_SCOPE_DENIED');
+});
+
+test('strong and weak profiles use the same provider-agent seam with different dials', () => {
+  const { registry } = createHarness();
+  const strongPolicy: SupervisionPolicy = {
+    autonomy: 'milestone_plan',
+    taskGranularity: 'milestone',
+    toolScope: 'narrow_write',
+    scaffolding: 'few_shot',
+    validation: 'semantic_check',
+    checkpointCadence: 'milestone',
+    approvalThreshold: 'medium',
+    fallbackPolicy: 'retry',
+  };
+  const weakPolicy: SupervisionPolicy = {
+    autonomy: 'single_step',
+    taskGranularity: 'tiny',
+    toolScope: 'read_only',
+    scaffolding: 'sop_template',
+    validation: 'schema_required',
+    checkpointCadence: 'every_step',
+    approvalThreshold: 'low',
+    fallbackPolicy: 'ask_human',
+  };
+  const strongObservation = providerAgentObservation({
+    actorRef: 'agent:codex',
+    provider: 'codex',
+    model: 'gpt-5.4',
+    policy: strongPolicy,
+    tools: registry.filter({
+      parentToolScope: 'narrow_write',
+      policyToolScope: strongPolicy.toolScope,
+    }),
+  });
+  const weakObservation = providerAgentObservation({
+    actorRef: 'worker:ollama-small',
+    provider: 'ollama',
+    model: 'llama-small',
+    policy: weakPolicy,
+    tools: registry.filter({
+      parentToolScope: 'read_only',
+      policyToolScope: weakPolicy.toolScope,
+    }),
+  });
+
+  assert.deepEqual(validateProviderAgentBoundedObservation(strongObservation), []);
+  assert.deepEqual(validateProviderAgentBoundedObservation(weakObservation), []);
+  assert.equal(strongObservation.contractVersion, weakObservation.contractVersion);
+  assert.equal(strongObservation.task.kind, weakObservation.task.kind);
+  assert.notEqual(strongObservation.policy.dials.autonomy, weakObservation.policy.dials.autonomy);
+  assert.ok(strongObservation.availableTools.some((tool) =>
+    tool.manifest.name === 'work.local_note.apply'));
+  assert.equal(
+    weakObservation.availableTools.some((tool) => tool.manifest.name === 'work.local_note.apply'),
+    false,
+  );
+  assert.ok(weakObservation.availableTools.some((tool) =>
+    tool.manifest.name === 'work.sop.ask_weak'));
 });
