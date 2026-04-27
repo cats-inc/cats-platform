@@ -109,6 +109,13 @@ This plan covers:
 - no deletion of deterministic Chat routing behavior. The target is not "no
   product path imports any router"; the target is "only Chat owns deterministic
   routing, and semantic planning no longer lives in the old core."
+- no eval-suite or session-history ingestion infrastructure. PLAN-075 lands the
+  schema seam for capability evidence sources but does not run evals or stream
+  session-history observations into capability profiles; eval-driven and
+  history-driven profile updates are tracked by a separate follow-up plan.
+- no per-session provider-mode enum or capability-tier control-flow branch.
+  Capability is an input to `policyEngine.decide*(ctx)`; it does not select an
+  alternate orchestration path.
 
 ## Acceptance Criteria
 
@@ -235,32 +242,40 @@ LLM-backed participant semantics.
 - [ ] Task 0.2: Add a static boundary test that records the allowed direct
       runtime call location as only `src/platform/supervision/runtimeBoundary.ts`.
 - [ ] Task 0.3: Add a static rescope test for old planner/dispatcher imports:
-      non-Chat product trees must not import them; Chat imports are temporarily
-      allowed only for deterministic routing until the router is renamed/moved.
+      non-Chat product trees must not import them. Chat imports are temporarily
+      allowed only for deterministic routing until Phase 8 Task 8.1 lands the
+      Chat-owned router path; once it lands, the allowlist drops to the new
+      router path and the old planner/dispatcher modules become un-importable
+      from any product tree.
 - [ ] Task 0.4: Record baseline targeted tests for Chat, Work, and Code runtime
       paths before cutover.
 - [ ] Task 0.5: Inventory `cats-runtime` client/server capabilities required
       for lifecycle work: resume, cancel, observe, stream, close, delete, and
       session metadata persistence.
 
-### Phase 1: Capability Profiles and Provider Mode Mapping
+### Phase 1: Capability Profiles and Per-Action Policy Inputs
 
 - [ ] Task 1.1: Bootstrap provider capability profiles for Claude, Codex,
       Ollama/local, and unknown providers using conservative defaults before
       any live provider-agent autonomy is enabled.
 - [ ] Task 1.2: Define source-of-truth ingestion paths for capability evidence:
       provider catalog, eval suite/eval run, session-history observation, and
-      operator override.
+      operator override. PLAN-075 only lands the schema seam for these sources;
+      live eval/history ingestion is a follow-up plan.
 - [ ] Task 1.3: Enforce operator override ceilings and FR-19 override floor:
       overrides may change effective policy within evidence limits, but cannot
       create broad-write or unrestricted outcome delegation under
       unknown/catalog-only confidence.
-- [ ] Task 1.4: Map provider modes before live runs:
-      strong driver, supervised worker tool, classifier, SOP pipeline, and
-      unknown/conservative.
+- [ ] Task 1.4: Wire the capability profile as a per-action input to
+      `policyEngine.decide*(ctx)` so dial output reflects provider capability
+      together with task profile, session history, and invariants. Do not
+      introduce a per-session provider-mode enum or branch the orchestration
+      path on capability tier; capability is a vector input, not a control-flow
+      switch.
 - [ ] Task 1.5: Add tests for capability conflicts, source metadata, override
-      floor/ceiling, conservative unknown defaults, and strong-vs-weak provider
-      mode mapping.
+      floor/ceiling, conservative unknown defaults, and how capability profiles
+      shift `policyEngine.decide*(ctx)` dial output for the same task input
+      across strong and weak providers.
 
 ### Phase 2: Provider-Agent Decision Seam
 
@@ -294,10 +309,13 @@ LLM-backed participant semantics.
 - [ ] Task 3.3: Preserve direct-cat, solo, group, and parallel semantics:
       participants, lanes, audience, runtime session metadata, typing handoff,
       and recents origin must not regress.
-- [ ] Task 3.4: Move recovery reasoning into provider-agent callbacks only
-      within the platform-selected `SupervisionPolicy.fallbackPolicy` options.
-      Platform still owns validation, retry shaping, escalation policy,
-      approval gates, and state transitions.
+- [ ] Task 3.4: Split recovery ownership. Choosing whether to retry, abort, or
+      escalate, and the retry envelope/escalation target/approval gate, is
+      platform policy via `SupervisionPolicy.fallbackPolicy`. Choosing the
+      corrected semantic input for a retry the policy already allows is
+      provider-agent reasoning. The agent must not override the platform
+      decision on which fallback option is permitted, and the platform must not
+      synthesize the corrected semantic content on the agent's behalf.
 - [ ] Task 3.5: Add targeted Chat probes for direct, solo, group, and parallel
       sends that assert session start, assistant progress, response, and no
       direct runtime calls.
@@ -326,7 +344,12 @@ LLM-backed participant semantics.
 ### Phase 5: Work Real Provider Runs
 
 - [ ] Task 5.1: Replace Work one-shot launch with a supervised provider-agent
-      run loop that can continue after first response.
+      run loop that can continue after first response. The loop lives in the
+      provider-agent decision seam from Phase 2, not inside the lifecycle
+      scheduler from Phase 4 and not inside `products/work/api`; the lifecycle
+      scheduler only manages run-state transitions and budget/cancellation
+      bookkeeping and never reads response content to decide the next semantic
+      action.
 - [ ] Task 5.2: Persist provider-agent observations, plans, tool requests,
       approvals, and outcomes into task timeline, evidence, and run metadata.
 - [ ] Task 5.3: Implement Work resume/retry/cancel endpoints or actions using
@@ -485,3 +508,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-27 | Clarified weak-model final state: Cats retains denser SOP/policy control for weak providers, while strong providers may own more semantic planning under the same supervision boundary. |
 | 2026-04-28 | Aligned phases with ADR-082: capability profiles move before live autonomy, weak providers default to tool-internal SOP workers, Chat deterministic routing is carved out as a retained product contract, and old core cleanup targets semantic-planning paths only. |
 | 2026-04-28 | Removed the standalone weak-model dispatcher shape: weak-model control now stays on the same provider-agent seam and is expressed through policy dials, tool manifests, tool boundary enforcement, and individual SOP tool internals. |
+| 2026-04-28 | Closing pass: dropped the residual provider-mode enum from Phase 1 in favor of capability-as-policy-input, pinned the Work run loop to the Phase 2 provider-agent seam, scoped the temporary Chat planner import allowance to Phase 8 Task 8.1, split recovery ownership between platform `fallbackPolicy` and agent semantic reasoning, and recorded eval/history ingestion + provider-mode enum as Non-Goals. |
