@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 
 import { MOCK_WORK_GRAPH } from "../topdown/mock";
 import { formatRelative } from "../topdown/shared";
+import { usePinnedProjects } from "../../state/pinnedProjectsStore";
 import "./projects.css";
 
 interface ProjectCounts {
@@ -15,10 +16,14 @@ interface ProjectCounts {
 
 export function ProjectsListPage(): JSX.Element {
   const graph = MOCK_WORK_GRAPH;
+  const { deletedIds } = usePinnedProjects();
 
   const projects = useMemo(
-    () => graph.objects.filter((o) => o.kind === "project"),
-    [graph],
+    () =>
+      graph.objects.filter(
+        (o) => o.kind === "project" && !deletedIds.has(o.id),
+      ),
+    [graph, deletedIds],
   );
 
   const countsById = useMemo(() => {

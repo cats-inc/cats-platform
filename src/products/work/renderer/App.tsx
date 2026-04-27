@@ -24,6 +24,7 @@ export default createWorkspaceProductApp({
       {...props}
       onOpenWarRoom={() => props.navigate(WORK_WAR_ROOM_PATH)}
       onOpenProjects={() => props.navigate(WORK_PROJECTS_PATH)}
+      onOpenProject={(projectId) => props.navigate(`${WORK_PROJECTS_PATH}/${projectId}`)}
       onOpenTasks={() => props.navigate(WORK_TASKS_PATH)}
       onOpenWorkItems={() => props.navigate(WORK_WORK_ITEMS_PATH)}
       onOpenSystemMap={() => props.navigate(WORK_SYSTEM_MAP_PATH)}

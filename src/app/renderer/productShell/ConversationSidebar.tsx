@@ -18,6 +18,10 @@ import {
   type ConversationSidebarMyCatsPlaceholder,
 } from './ConversationSidebarMyCats.js';
 import { ConversationSidebarNavigation } from './ConversationSidebarNavigation.js';
+import {
+  ConversationSidebarPinnedItemRow,
+  type ConversationSidebarPinnedItem,
+} from './ConversationSidebarPinned.js';
 import { buildConversationSidebarViewModel } from './conversationSidebarViewModel.js';
 import { ConversationSidebarRecentsSection } from './ConversationSidebarRecents.js';
 
@@ -84,6 +88,7 @@ export interface ConversationSidebarActionGroup {
   key: string;
   ariaLabel: string;
   items: readonly ConversationSidebarAction[];
+  pinnedItems?: readonly ConversationSidebarPinnedItem[];
 }
 
 export interface ConversationSidebarRecentChannelEntry<
@@ -285,6 +290,25 @@ export function ConversationSidebar<
                   <span className="navLabel">{item.label}</span>
                 </button>
               ))}
+              {group.pinnedItems && group.pinnedItems.length > 0 ? (
+                <div className="navGroupPinnedList">
+                  {group.pinnedItems.map((item) => {
+                    const overflowKey = `pinned:${group.key}:${item.id}`;
+                    const overflowOpen = overflowMenuOpenId === overflowKey;
+                    return (
+                      <ConversationSidebarPinnedItemRow
+                        key={item.id}
+                        overflowKey={overflowKey}
+                        item={item}
+                        overflowOpen={overflowOpen}
+                        onOverflowToggle={() => onOverflowMenuToggle(
+                          overflowOpen ? null : overflowKey,
+                        )}
+                      />
+                    );
+                  })}
+                </div>
+              ) : null}
             </nav>
           ))}
 

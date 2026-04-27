@@ -6,6 +6,14 @@ import {
   type ConversationSidebarActionGroup,
   type ConversationSidebarRecentEntry,
 } from '../../../../app/renderer/productShell/ConversationSidebar.js';
+import type { ConversationSidebarPinnedItem } from '../../../../app/renderer/productShell/ConversationSidebarPinned.js';
+import { MOCK_WORK_GRAPH } from './topdown/mock';
+import {
+  pinnedProjectsStore,
+  usePinnedProjects,
+  type PinnedProjectsSnapshot,
+} from '../state/pinnedProjectsStore';
+import './projects/projects.css';
 import { buildConversationSidebarRecentEntries } from '../../../../app/renderer/productShell/conversationSidebarRecentEntries.js';
 import type { AppShellPayload } from '../../api/contracts.js';
 import type { ChatChannelSummary } from '../../../shared/api/workspaceContracts.js';
@@ -52,6 +60,7 @@ export interface SidebarProps {
   onStartNewChat: () => void;
   onOpenWarRoom?: () => void;
   onOpenProjects?: () => void;
+  onOpenProject?: (projectId: string) => void;
   onOpenTasks?: () => void;
   onOpenWorkItems?: () => void;
   onOpenSystemMap?: () => void;
@@ -98,7 +107,10 @@ function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] 
   ];
 }
 
-function createExtraActionGroups(props: SidebarProps): ConversationSidebarActionGroup[] {
+function createExtraActionGroups(
+  props: SidebarProps,
+  pinnedSnapshot: PinnedProjectsSnapshot,
+): ConversationSidebarActionGroup[] {
   const currentPath = globalThis.location?.pathname ?? WORK_ROUTE_PREFIX;
   const groups: ConversationSidebarActionGroup[] = [];
 
@@ -195,6 +207,12 @@ function createExtraActionGroups(props: SidebarProps): ConversationSidebarAction
           ),
         },
       ],
+      pinnedItems: buildPinnedProjectItems(
+        props,
+        currentPath,
+        pinnedSnapshot.pinnedIds,
+        pinnedSnapshot.deletedIds,
+      ),
     });
   }
 
@@ -320,6 +338,47 @@ function createExtraActionGroups(props: SidebarProps): ConversationSidebarAction
   return groups;
 }
 
+function buildPinnedProjectItems(
+  props: SidebarProps,
+  currentPath: string,
+  pinnedIds: ReadonlySet<string>,
+  deletedIds: ReadonlySet<string>,
+): ConversationSidebarPinnedItem[] {
+  if (!props.onOpenProject) return [];
+  return MOCK_WORK_GRAPH.objects
+    .filter((obj) => obj.kind === 'project')
+    .filter((project) => pinnedIds.has(project.id) && !deletedIds.has(project.id))
+    .map((project) => ({
+      id: project.id,
+      label: project.title,
+      isActive: currentPath === `${WORK_ROUTE_PREFIX}/projects/${project.id}`,
+      onClick: () => props.onOpenProject?.(project.id),
+      statusDot: {
+        className: `projectsList__dot projectsList__dot--small projectsList__dot--${project.status}`,
+        title: project.status.replace(/_/g, ' '),
+      },
+      overflowActions: [
+        {
+          key: 'unpin',
+          label: 'Unpin',
+          onClick: () => {
+            props.onOverflowMenuToggle(null);
+            pinnedProjectsStore.unpin(project.id);
+          },
+        },
+        {
+          key: 'delete',
+          label: 'Delete',
+          destructive: true,
+          onClick: () => {
+            props.onOverflowMenuToggle(null);
+            pinnedProjectsStore.remove(project.id);
+          },
+        },
+      ],
+    }));
+}
+
 function buildRecentEntries(props: SidebarProps): ConversationSidebarRecentEntry<ChatChannelSummary>[] {
   return buildConversationSidebarRecentEntries({
     channels: props.payload.chat.channels,
@@ -336,6 +395,7 @@ function buildRecentEntries(props: SidebarProps): ConversationSidebarRecentEntry
 }
 
 export function Sidebar(props: SidebarProps) {
+  const pinnedSnapshot = usePinnedProjects();
   return ConversationSidebar({
     payload: props.payload,
     sidebarOpen: props.sidebarOpen,
@@ -347,7 +407,7 @@ export function Sidebar(props: SidebarProps) {
     routeChannelId: props.routeChannelId,
     accountMenuRef: props.accountMenuRef,
     primaryActions: createPrimaryActions(props),
-    extraActionGroups: createExtraActionGroups(props),
+    extraActionGroups: createExtraActionGroups(props, pinnedSnapshot),
     recentEntries: buildRecentEntries(props),
     recentEmptyStateLabel: 'No work yet',
     myCatsSectionLabel: 'My Catteries',

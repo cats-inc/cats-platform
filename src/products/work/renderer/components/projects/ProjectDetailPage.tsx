@@ -9,16 +9,22 @@ import {
   KIND_LABEL,
 } from "../topdown/shared";
 import type { WorkGraphObjectSummary } from "../topdown/types";
+import { usePinnedProjects } from "../../state/pinnedProjectsStore";
 import "./projects.css";
 
 export function ProjectDetailPage(): JSX.Element {
   const { projectId } = useParams<{ projectId: string }>();
   const graph = MOCK_WORK_GRAPH;
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
+  const { deletedIds } = usePinnedProjects();
 
   const project = projectId ? indexes.objectsById.get(projectId) : undefined;
 
-  if (!project || project.kind !== "project") {
+  if (
+    !project
+    || project.kind !== "project"
+    || (projectId !== undefined && deletedIds.has(projectId))
+  ) {
     return <ProjectNotFound projectId={projectId ?? null} />;
   }
 

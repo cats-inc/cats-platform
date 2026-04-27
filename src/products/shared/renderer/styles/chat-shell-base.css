@@ -176,6 +176,29 @@
   font-size: 0.9rem;
 }
 
+.pinnedSelectButton {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pinnedSelectButton > strong {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.navGroupPinnedList {
+  display: grid;
+  gap: 0;
+}
+
+.navGroupPinnedList .recentItemCard {
+  padding-left: 30px;
+}
+
 .overviewCardSelect:hover,
 .overviewDeleteButton:hover {
   background: var(--sidebar-hover-bg);
