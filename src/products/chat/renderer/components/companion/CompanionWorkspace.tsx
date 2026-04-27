@@ -1,13 +1,15 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 
 import type { AppShellPayload, ChatCat } from '../../../api/contracts.js';
-import type { CompanionWorkspaceTab } from '../../companionViewTypes.js';
+import {
+  companionTabLabel,
+  type CompanionWorkspaceTab,
+} from '../../companionViewTypes.js';
 import { SidePanel } from '../../../../../design/components/SidePanel.js';
 import { catInitials } from '../../chatUtils.js';
 import { useCompanionPresence } from '../../hooks/useCompanionPresence.js';
 import { useCompanionWorkspace } from '../../hooks/useCompanionWorkspace.js';
 import { CompanionModeToggleChip } from './CompanionModeToggleChip.js';
-import { CompanionNav } from './CompanionNav.js';
 import { CompanionOverviewSection } from './CompanionOverviewSection.js';
 import { CompanionResourcesSection } from './CompanionResourcesSection.js';
 import { CompanionCreationsSection } from './CompanionCreationsSection.js';
@@ -29,11 +31,10 @@ export function CompanionWorkspace({
   onWake,
   onSleep,
 }: CompanionWorkspaceProps) {
-  const [activeTab, setActiveTab] = useState<CompanionWorkspaceTab>('overview');
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
-  const [sidePanelSection, setSidePanelSection] = useState<string | null>('profile');
+  const [activeTab, setActiveTab] = useState<CompanionWorkspaceTab | null>('overview');
   const presence = useCompanionPresence(cat.id, payload);
-  const workspace = useCompanionWorkspace(cat.id, activeTab);
+  const workspace = useCompanionWorkspace(cat.id, activeTab ?? 'overview');
 
   const handleWake = useCallback(() => {
     onWake(cat.id);
@@ -54,88 +55,93 @@ export function CompanionWorkspace({
       ? { background: cat.avatarColor }
       : undefined;
 
-  function renderActiveSection() {
-    switch (activeTab) {
-      case 'overview':
-        return (
-          <CompanionOverviewSection
-            summary={workspace.summary}
-            recentMemory={workspace.memory}
-            presence={presence}
-            onWake={handleWake}
-            onSleep={handleSleep}
-            loading={workspace.loading}
-          />
-        );
-      case 'resources':
-        return (
-          <CompanionResourcesSection
-            sources={workspace.sources}
-            loading={workspace.loading}
-            onAddSource={workspace.addSource}
-            onDeleteSource={workspace.removeSource}
-          />
-        );
-      case 'creations':
-        return (
-          <CompanionCreationsSection
-            derived={workspace.derived}
-            loading={workspace.loading}
-          />
-        );
-      case 'memory':
-        return (
-          <CompanionMemorySection
-            memory={workspace.memory}
-            loading={workspace.loading}
-            onAddMemory={workspace.addMemory}
-            onDeleteMemory={workspace.removeMemory}
-          />
-        );
-      case 'settings':
-        return (
-          <CompanionSettingsSection
-            catId={cat.id}
-            responseProfile={workspace.responseProfile}
-            payload={payload}
-            loading={workspace.loading}
-            onUpdateResponseProfile={workspace.editResponseProfile}
-          />
-        );
-    }
+  function wrapSection(node: ReactNode): ReactNode {
+    return (
+      <>
+        {workspace.error ? (
+          <div className="companionError">
+            {workspace.error}
+            <button
+              type="button"
+              className="companionActionButton"
+              onClick={workspace.refreshTab}
+            >
+              Retry
+            </button>
+          </div>
+        ) : null}
+        {node}
+      </>
+    );
   }
 
   const sidePanelSections = [
     {
-      id: 'profile',
-      title: 'Profile',
-      children: (
-        <div className="companionSidePanelProfile">
-          <div className="companionSidePanelProfileRow">
-            <span className="companionLabel">Name</span>
-            <span>{cat.name}</span>
-          </div>
-          <div className="companionSidePanelProfileRow">
-            <span className="companionLabel">Presence</span>
-            <span className={`companionPresenceBadge ${presence.className}`}>
-              <span className="companionPresenceDot" />
-              {presence.label}
-            </span>
-          </div>
-          {workspace.summary ? (
-            <div className="companionSidePanelProfileRow">
-              <span className="companionLabel">Box</span>
-              <span>
-                {workspace.summary.sourceCount} resources ·{' '}
-                {workspace.summary.derivedCount} creations ·{' '}
-                {workspace.summary.memoryCount} memories
-              </span>
-            </div>
-          ) : null}
-        </div>
+      id: 'overview' satisfies CompanionWorkspaceTab,
+      title: companionTabLabel('overview'),
+      children: wrapSection(
+        <CompanionOverviewSection
+          summary={workspace.summary}
+          recentMemory={workspace.memory}
+          presence={presence}
+          onWake={handleWake}
+          onSleep={handleSleep}
+          loading={workspace.loading}
+        />,
+      ),
+    },
+    {
+      id: 'resources' satisfies CompanionWorkspaceTab,
+      title: companionTabLabel('resources'),
+      children: wrapSection(
+        <CompanionResourcesSection
+          sources={workspace.sources}
+          loading={workspace.loading}
+          onAddSource={workspace.addSource}
+          onDeleteSource={workspace.removeSource}
+        />,
+      ),
+    },
+    {
+      id: 'creations' satisfies CompanionWorkspaceTab,
+      title: companionTabLabel('creations'),
+      children: wrapSection(
+        <CompanionCreationsSection
+          derived={workspace.derived}
+          loading={workspace.loading}
+        />,
+      ),
+    },
+    {
+      id: 'memory' satisfies CompanionWorkspaceTab,
+      title: companionTabLabel('memory'),
+      children: wrapSection(
+        <CompanionMemorySection
+          memory={workspace.memory}
+          loading={workspace.loading}
+          onAddMemory={workspace.addMemory}
+          onDeleteMemory={workspace.removeMemory}
+        />,
+      ),
+    },
+    {
+      id: 'settings' satisfies CompanionWorkspaceTab,
+      title: companionTabLabel('settings'),
+      children: wrapSection(
+        <CompanionSettingsSection
+          catId={cat.id}
+          responseProfile={workspace.responseProfile}
+          payload={payload}
+          loading={workspace.loading}
+          onUpdateResponseProfile={workspace.editResponseProfile}
+        />,
       ),
     },
   ];
+
+  function onSidePanelSectionToggle(id: string): void {
+    setActiveTab((prev) => (prev === id ? null : (id as CompanionWorkspaceTab)));
+  }
 
   return (
     <>
@@ -162,10 +168,6 @@ export function CompanionWorkspace({
             </span>
           </div>
           <div className="channelTopBarEnd">
-            <span className={`companionPresenceBadge ${presence.className}`}>
-              <span className="companionPresenceDot" />
-              {presence.label}
-            </span>
             <CompanionModeToggleChip
               companionMode={true}
               onToggle={onBackToChat}
@@ -193,31 +195,13 @@ export function CompanionWorkspace({
             </button>
           </div>
         </header>
-        <CompanionNav
-          activeTab={activeTab}
-          onTabChange={setActiveTab}
-        />
-        <div className="companionContent">
-          {workspace.error && (
-            <div className="companionError">
-              {workspace.error}
-              <button
-                type="button"
-                className="companionActionButton"
-                onClick={workspace.refreshTab}
-              >
-                Retry
-              </button>
-            </div>
-          )}
-          {renderActiveSection()}
-        </div>
+        <div className="companionContent" />
       </div>
       {sidePanelOpen ? (
         <SidePanel
           title="Companion"
-          activeSection={sidePanelSection}
-          onSectionToggle={setSidePanelSection}
+          activeSection={activeTab}
+          onSectionToggle={onSidePanelSectionToggle}
           onClose={() => setSidePanelOpen(false)}
           position="side"
           className="chatPaneSidePanel chatPaneSidePanelBelowBar"

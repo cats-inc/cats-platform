@@ -29,19 +29,6 @@
   z-index: 2;
 }
 
-/* Companion side-panel inline profile rows */
-.companionSidePanelProfile {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  font-size: 13px;
-}
-.companionSidePanelProfileRow {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
 /* Presence badge */
 .companionPresenceBadge {
   display: inline-flex;
@@ -68,35 +55,6 @@
   align-items: center;
   gap: 6px;
   font-size: 14px;
-  font-weight: 500;
-}
-
-/* Navigation tabs */
-.companionNav {
-  display: flex;
-  gap: 2px;
-  padding: 6px 16px;
-  border-bottom: 1px solid var(--border);
-  flex-shrink: 0;
-}
-
-.companionNavTab {
-  background: none;
-  border: none;
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 13px;
-  cursor: pointer;
-  color: var(--muted);
-  transition: background 0.15s, color 0.15s;
-}
-.companionNavTab:hover {
-  background: var(--sidebar-hover-bg);
-  color: var(--text);
-}
-.companionNavTab.isActive {
-  background: var(--sidebar-active-bg);
-  color: var(--text);
   font-weight: 500;
 }
 

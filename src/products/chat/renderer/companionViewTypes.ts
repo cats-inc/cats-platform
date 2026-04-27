@@ -16,14 +16,6 @@ export type CompanionWorkspaceTab =
   | 'memory'
   | 'settings';
 
-export const COMPANION_WORKSPACE_TABS: readonly CompanionWorkspaceTab[] = [
-  'overview',
-  'resources',
-  'creations',
-  'memory',
-  'settings',
-] as const;
-
 export function companionTabLabel(tab: CompanionWorkspaceTab): string {
   switch (tab) {
     case 'overview':
