@@ -509,7 +509,10 @@ categories:
       First slice: the public `platform/orchestration/index.ts` barrel no
       longer exports old turn-plan builders or `dispatchOrchestratorTurn`;
       remaining legacy debug routes import them directly until their product
-      ownership is retired.
+      ownership is retired. Second slice: legacy orchestrator dispatch moved
+      to Chat ownership in `src/products/chat/api/orchestratorDispatch.ts`,
+      while the old platform dispatcher is no longer imported by product or app
+      routes.
 - [ ] Task 8.3: Add/keep static tests proving non-Chat product trees cannot
       import old planner/dispatcher modules. Chat may import the new
       deterministic router path because that routing is still a product

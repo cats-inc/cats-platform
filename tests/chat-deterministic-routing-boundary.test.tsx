@@ -163,6 +163,22 @@ test('platform orchestration barrel does not export old semantic plan entrypoint
   assert.equal(source.includes('OrchestratorPlanResponse'), false);
 });
 
+test('Chat owns legacy orchestrator dispatch while old platform dispatcher is not imported', () => {
+  const chatRouteSource = readFileSync(
+    path.join(process.cwd(), 'src/products/chat/api/orchestratorRoutes.ts'),
+    'utf8',
+  );
+  const appDependencySource = readFileSync(
+    path.join(process.cwd(), 'src/app/server/dependencies.ts'),
+    'utf8',
+  );
+
+  assert.equal(chatRouteSource.includes('platform/orchestration/dispatch'), false);
+  assert.equal(appDependencySource.includes('platform/orchestration/dispatch'), false);
+  assert.equal(chatRouteSource.includes('./orchestratorDispatch.js'), true);
+  assert.equal(appDependencySource.includes('products/chat/api/orchestratorDispatch'), true);
+});
+
 test('Chat runtime dispatch API no longer accepts old platform plans', () => {
   const source = readFileSync(
     path.join(process.cwd(), 'src/products/chat/state/runtime-dispatch/routing.ts'),

@@ -5,7 +5,7 @@ import {
 } from '../../../platform/orchestration/planner.js';
 import {
   dispatchOrchestratorTurn,
-} from '../../../platform/orchestration/dispatch.js';
+} from './orchestratorDispatch.js';
 import type { OrchestratorPlanRequest } from '../../../platform/orchestration/contracts.js';
 import type { ChatApiRouteContext } from './routeSupport.js';
 import { handleRestError } from './routeSupport.js';

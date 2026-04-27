@@ -23,7 +23,7 @@ import {
   InMemoryTelegramRelayStore,
 } from '../../platform/transports/telegram/store/index.js';
 import { readEvidenceEvents as readPersistedEvidenceEvents } from '../../platform/persistence/evidence.js';
-import { dispatchOrchestratorTurn } from '../../platform/orchestration/dispatch.js';
+import { dispatchOrchestratorTurn } from '../../products/chat/api/orchestratorDispatch.js';
 import type { PendingOrchestratorDispatchRequest } from '../../platform/orchestration/pendingDispatch.js';
 import { createMemoryAwareCompanionBoxStore } from '../../products/chat/state/companionMemoryAdapter.js';
 import {
