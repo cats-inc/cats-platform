@@ -30,28 +30,65 @@ mock fixtures first.
 ## Phase 1 — Type and projection contract
 
 **Scope.**
-- Add `WorkGraphLinkKind` and `WorkGraphLink` to
+- Add `WorkGraphLinkKind` (stored kinds only — `blocks`, `related_to`,
+  `duplicate_of`, `follows`) and `WorkGraphLinkViewKind` (read-side
+  view kinds, including the projection-derived `blocked_by`) to
   `src/products/work/renderer/components/topdown/types.ts`.
-- Extend `WorkGraphProjection` with `links: WorkGraphLink[]`.
+- Add the `WorkGraphLink` shape with Core-identity endpoints
+  (`sourceRecordKind / sourceRecordId / targetRecordKind /
+  targetRecordId`) per SPEC-090 §Suggested Record Shape.
+- Extend `WorkGraphProjection` with `links: WorkGraphLink[]` plus
+  whatever Core-identity lookup the renderer needs to resolve a link
+  endpoint to a graph object. Two acceptable shapes:
+  - **Option A (recommended)**: extend `WorkGraphObjectSummary` with
+    explicit Core identity (`coreRecordKind: WorkGraphLinkEndpointKind;
+    coreRecordId: string;`) so any consumer can look up a graph
+    object by record identity directly.
+  - **Option B**: keep `WorkGraphObjectSummary` as today and add a
+    separate `objectsByRecord: ReadonlyMap<` `${kind}:${id}`,
+    `WorkGraphObjectSummary>` to `WorkGraphProjection`.
+  Either way, the renderer MUST NOT assume `WorkGraphObjectSummary.id`
+  equals the Core record id; that equivalence is implementation-
+  specific and may not hold once the projection covers cross-record-
+  family graph objects.
 - Extend `WorkGraphDiagnosticKind` with `orphan_link` and `link_cycle`.
 - Update mock fixture under
   `src/products/work/renderer/components/topdown/mock.ts` to seed at
-  least one example per v1 link kind (`blocks`, `blocked_by`,
-  `related_to`, `duplicate_of`, `follows`), plus one orphan-link
-  example and one cycle for the diagnostics surface.
+  least one example per **stored** link kind (`blocks`, `related_to`,
+  `duplicate_of`, `follows`), plus one orphan-link example and one
+  cycle for the diagnostics surface. Do not seed any `blocked_by`
+  rows in storage — the derived `blocked_by` view is exercised in
+  Phase 2 by rendering against the seeded `blocks` rows.
 - Update `buildIndexes` / projection helpers (in
-  `components/topdown/shared.ts`) to materialize `blocks ↔ blocked_by`
-  inverses and to detect cycles in the `blocks` subgraph.
+  `components/topdown/shared.ts`) to:
+  - materialize the `blocked_by` read-side view by inverting each
+    stored `blocks` row;
+  - present `related_to` symmetrically (each stored row produces a
+    rendered relation on both endpoints, regardless of which side is
+    the canonical source);
+  - detect cycles in the stored `blocks` subgraph;
+  - surface the Core-identity lookup chosen above.
 
 **Done when.**
 - `tsc --noEmit` passes.
-- `MOCK_WORK_GRAPH.links` is iterable and includes the v1 examples.
+- `MOCK_WORK_GRAPH.links` contains examples of every **stored** kind,
+  no `blocked_by` rows in storage, and a renderer test (or Phase 2
+  smoke check) confirms `blocked_by` shows up on the inverse endpoint
+  of every seeded `blocks` row.
 - Diagnostics emit `orphan_link` / `link_cycle` for the seeded fixtures.
+- Given a `WorkGraphLink` row, the renderer can resolve both endpoints
+  to their `WorkGraphObjectSummary` through the projection without
+  guessing about id equality.
 
 **Risks.**
 - Cycle detection has to be deterministic regardless of object
   ordering. Start with a simple Tarjan / DFS pass keyed on
-  lexicographically sorted ids; revisit if hot-path cost matters.
+  lexicographically sorted Core identity tuples; revisit if hot-path
+  cost matters.
+- If Option A is taken, the existing `WorkGraphObjectSummary`
+  consumers (System Map, Cockpit, Broken Links, the new Projects /
+  Work Items pages) need a coordinated schema bump; Option B avoids
+  that but adds a parallel index.
 
 ## Phase 2 — Detail page Linkage section
 

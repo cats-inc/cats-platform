@@ -85,9 +85,11 @@ following minimum shape (Core identity, not projection identity):
   - `blocked_by` is **not** stored — it is a projection-derived
     inverse of `blocks`. See §3 for canonicalization rules.
 - `sourceRecordKind` / `sourceRecordId` — the Core record family and
-  id this relation originates from. At v1, `kind` is restricted to
-  `project | work_item | task`.
-- `targetRecordKind` / `targetRecordId` — same shape, same restriction.
+  id this relation originates from. At v1, `sourceRecordKind` is
+  restricted to `project | work_item | task`. (This is the endpoint
+  family restriction, not the relation `kind` enum above.)
+- `targetRecordKind` / `targetRecordId` — same shape; `targetRecordKind`
+  is restricted to the same set.
 - `createdAt`, optional `createdByActorId`, optional `note`.
 
 `WorkGraphLink` is a Core record family, not a renderer-only construct.

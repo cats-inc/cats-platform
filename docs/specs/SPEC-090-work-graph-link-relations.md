@@ -41,8 +41,12 @@ read or write links at v1.
 
 ## Non-Goals
 
-- Adding recursive Sub-Work-Item parenting. ADR-086 explicitly rejects
-  this.
+- Introducing or surfacing recursive Sub-Work-Item parenting. The
+  underlying FK (`WorkItem.parentWorkItemId`) is already part of the
+  frozen ADR-081 §4 Core contract; ADR-086 neither adds it nor rejects
+  it, and SPEC-090 leaves it untouched. Whether Work UI v1 ever
+  surfaces a Sub-Work-Item create affordance is a separate UI-scope
+  decision tracked elsewhere.
 - Linking Conversation, Turn, Lane, Run, Artifact, Activity, Outcome,
   Approval Binding, Agent, or Container objects in v1. Existing
   single-parent and evidence-attachment mechanisms continue to cover
@@ -95,10 +99,14 @@ read or write links at v1.
    - `note` (optional, ≤ 280 chars).
 2. Both `(sourceRecordKind, sourceRecordId)` and `(targetRecordKind,
    targetRecordId)` MUST resolve to an existing Core record at write
-   time. Otherwise the write fails with a structured error.
-3. The projection layer MUST reject self-links — defined as
+   time. Otherwise the producer / write API fails with a structured
+   error.
+3. The producer / write API MUST reject self-links — defined as
    `sourceRecordKind == targetRecordKind && sourceRecordId ==
-   targetRecordId` — at write time.
+   targetRecordId` — at write time. Self-link rejection is a write-side
+   responsibility; the projection layer is read-only and only emits an
+   `orphan_link` diagnostic if a self-link somehow appears in storage
+   (defensive, not authoritative).
 4. **Canonicalization at write time** (per ADR-086 §3):
    - `blocks` is the only blocker kind stored. A producer that detects
      `B blocked_by A` MUST write `A blocks B` (swap source / target).
