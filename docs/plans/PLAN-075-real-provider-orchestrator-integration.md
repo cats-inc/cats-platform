@@ -62,11 +62,12 @@ The target architecture is:
    persists evidence, traces, run state, and user-visible product projections.
 4. Weak providers can still participate through narrower SOP/classifier/worker
    modes without being treated as autonomous peer agents.
-5. Cats keeps a first-class rule-based dispatcher for weak providers. It
-   selects safe task slices, SOP steps, schema checks, retry/escalation, and
-   tool scope before a weak model is called through a supervised tool such as
-   `@ask-weak`; the weak model does not own broad delegation or semantic
-   next-step planning by default.
+5. Weak-model control is implemented by existing supervision pieces:
+   `policyEngine` tightens per-action dials, `toolRegistry` exposes narrow
+   weak-worker/SOP tools, `toolBoundary` validates schema, side effects, and
+   approvals, and individual SOP tools run deterministic scaffolding before
+   calling the weak model. PLAN-075 does not add a third first-class dispatcher
+   or an alternate orchestration path.
 6. Chat deterministic routing remains product-owned: explicit `@mention`
    resolution, room-default dispatch, audience / participant limits, lane /
    container addressing, and product recents/origin rules stay deterministic.
@@ -82,9 +83,9 @@ This plan covers:
 - capability profile bootstrap before live provider autonomy is enabled
 - Ollama/local weak-model integration as tool-internal SOP/worker/classifier
   support, not as default autonomous agent execution
-- Cats-owned rule-based dispatch for weak models, including task slicing,
-  SOP selection, schema validation, retry, escalation, and tool-surface
-  narrowing
+- weak-model policy dials and SOP tool internals, including tiny task
+  granularity, SOP scaffolding, schema validation, retry, escalation, and
+  tool-surface narrowing without introducing a separate dispatcher component
 - Chat semantic decision-core cutover while preserving deterministic Chat
   routing behavior and visible Chat UI flows
 - Work supervised run lifecycle beyond one-shot runtime launch
@@ -134,18 +135,21 @@ This plan covers:
   task execute and relay fan-out are represented as supervised runs.
 - Claude and Codex live provider paths can drive at least one Chat turn, one
   Work supervised run, and one Code task/relay path under supervision.
-- Ollama/local weak-model paths default to supervised weak-worker tools invoked
-  by a strong driver or platform SOP dispatcher; they do not enter the
-  provider-agent decision loop as peer driving agents by default.
-- Weak-model execution uses Cats-authored rule-based dispatch for work
-  allocation: the platform chooses the bounded step/SOP/tool surface, passes
-  only that slice to the weak model, validates the output schema, and escalates
-  or retries deterministically on failure.
+- Ollama/local weak-model paths use the same provider-agent decision seam and
+  supervision lifecycle, but capability policy clamps their per-action dials:
+  autonomy no higher than `single_step`, tiny task granularity, SOP scaffolding,
+  schema-required validation, every-step checkpointing, narrow tool surfaces,
+  and deterministic retry/escalation.
+- Weak-model execution uses Cats-authored SOP tool internals rather than a
+  separate dispatcher: a strong driver may call tools such as `@ask-weak` or
+  `work.sop.*`, and weak drivers may request only policy-allowed single-step
+  SOP/tool actions.
 - A weak model attempting autonomous delegation, broad-write access, or an
   unsupported next-step decision is rejected or escalated before execution.
-- Tests demonstrate the same high-level request taking the strong-provider
-  path through provider-agent semantic planning and the weak-provider path
-  through Cats rule-based dispatch/SOP execution.
+- Tests demonstrate the same high-level request entering the same
+  provider-agent decision seam under strong and weak capability profiles. The
+  expected difference is policy dial output and allowed tool surface, not a
+  second orchestration path.
 - Provider-agent recovery happens within platform-selected
   `SupervisionPolicy.fallbackPolicy` options. The agent may reason about which
   allowed fallback to use, but it does not bypass validation, retry shaping,
@@ -196,9 +200,9 @@ Provider-agent semantic planning includes:
 - how to choose among platform-approved fallback options after failure
 
 The cutover must split these two responsibilities before any old
-planner/dispatcher code is deleted. The likely outcome is that deterministic
-Chat routing is renamed or moved under `src/products/chat/**`, while semantic
-planning exits the old core.
+planner/dispatcher semantic code is removed. The likely outcome is that
+deterministic Chat routing is renamed or moved under `src/products/chat/**`,
+while semantic planning exits the old core.
 
 ## Orchestrator Two-Hat Split
 
@@ -266,12 +270,15 @@ LLM-backed participant semantics.
 - [ ] Task 2.2: Implement a provider-agent adapter that calls runtime through
       the supervised runtime boundary, not directly.
 - [ ] Task 2.3: Make policy validation own deterministic routing, invariants,
-      approval, weak-model SOP selection, budget, retry, and rejection.
+      approval, weak-model policy dial tightening, budget, retry, and
+      rejection.
 - [ ] Task 2.4: Add tests proving the platform preserves agent semantic choices
       instead of substituting its own plan.
-- [ ] Task 2.5: Define the weak-model dispatch handoff: provider-agent semantic
-      planning is skipped when capability profile is too weak, and the platform
-      selects a bounded SOP step instead.
+- [ ] Task 2.5: Define weak-capability policy dials without bypassing the
+      provider-agent seam: autonomy no higher than `single_step`, tiny task
+      granularity, `sop_template` scaffolding, schema-required validation,
+      every-step checkpointing, narrow tool surfaces, and deterministic
+      retry/escalation.
 - [ ] Task 2.6: Split `globalOrchestrator.executionTarget` into deterministic
       router configuration and visible orchestrator participant execution
       target. Renderers must receive projections that distinguish both hats.
@@ -341,21 +348,21 @@ LLM-backed participant semantics.
 
 ### Phase 7: Weak-Worker Tools and SOP Pipelines
 
-- [ ] Task 7.1: Implement the Cats rule-based weak-model dispatcher. It shall
-      choose task slice, SOP template, allowed tool surface, expected schema,
-      retry limit, escalation target, and confidence threshold before invoking
-      a weak provider.
-- [ ] Task 7.2: Expose weak providers as supervised tools, for example
-      `@ask-weak`, classifier, extraction, summarization, translation, and
-      schema-fill tools. The default path is strong-driver/platform invoking a
-      weak-worker tool, not a weak provider running its own provider-agent loop.
-- [ ] Task 7.3: Map weak providers to SOP/classifier/worker modes with narrow
-      tool scope, schema-required validation, and explicit escalation. Weak
-      providers must not receive autonomous delegation, broad-write, or
-      open-ended recovery ownership by default.
-- [ ] Task 7.4: Add a contrast test proving a strong provider receives the
-      semantic-planning contract while a weak provider receives only a
-      platform-selected SOP slice for the same high-level request.
+- [ ] Task 7.1: Extend `toolRegistry` with weak-worker/SOP tools, for example
+      `@ask-weak`, classifier, extraction, summarization, translation,
+      schema-fill, and `work.sop.*` tools. Each manifest declares narrow input
+      schemas, side-effect class, approval behavior, and capability floor.
+- [ ] Task 7.2: Implement deterministic SOP scaffolding inside the individual
+      weak-worker tools. SOP tools own prompt templates, expected schemas,
+      retry limits, escalation targets, and confidence thresholds for their
+      bounded operation.
+- [ ] Task 7.3: Enforce weak-capability dials through `policyEngine` and
+      `toolBoundary`: no autonomous delegation, broad-write, unrestricted
+      outcome delegation, or open-ended recovery ownership unless capability
+      evidence and policy explicitly allow it.
+- [ ] Task 7.4: Add a contrast test proving strong and weak capability profiles
+      enter the same provider-agent seam for the same high-level request, while
+      weak profiles receive stricter policy dials and narrower permitted tools.
 - [ ] Task 7.5: Add evidence tests proving weak-worker calls are attributed as
       tool executions under the parent run/driver, not as independent peer
       agent lifecycles by default.
@@ -378,26 +385,38 @@ LLM-backed participant semantics.
       agentic semantic planning; supervision policy owns validation, fallback,
       approval, budget, and invariants.
 
-## Weak-Model Dispatch Contract
+## Weak-Model Control Contract
 
 Weak-model support is not a second personality mode for the Orchestrator. It is
 the same supervision system applying denser platform control when the worker is
 not capable enough to own the plan.
 
-For weak providers, Cats owns:
+PLAN-075 must not introduce a standalone weak-model dispatcher. The ownership
+line is:
 
-- task decomposition into bounded slices
-- SOP/template selection
-- prompt scaffolding and required output schema
-- allowed tool surface and side-effect class
-- retry, fallback, escalation, and approval policy
-- progress checkpoints and evidence persistence
+- `policyEngine` chooses per-action supervision dials from capability evidence,
+  risk, tool manifest, run budget, and product invariant context
+- `toolRegistry` defines the weak-worker/SOP tools that may call a weak model
+- `toolBoundary` enforces schema, side-effect class, approval, scope, retry,
+  rejection, and evidence emission
+- each SOP tool owns its internal prompt scaffolding, expected output schema,
+  bounded retry, confidence threshold, and escalation target
 
-The weak model owns only the bounded response for the assigned slice. It may
-classify, summarize, extract, rewrite, format, or complete a narrow SOP step.
-It does not own broad delegation, multi-step recovery, cross-product routing,
-or write-heavy tool choice unless capability evidence and policy explicitly
-grant that access.
+For weak providers, the default policy dial shape is:
+
+- `autonomy <= single_step`
+- `taskGranularity = tiny`
+- `scaffolding = sop_template`
+- `validation = schema_required`
+- `checkpointCadence = every_step`
+- narrow tool surface and no broad-write tools
+- deterministic retry/escalation selected by policy and the tool manifest
+
+The weak model owns only the bounded response for the current action. It may
+classify, summarize, extract, rewrite, format, or complete a narrow SOP tool
+call. It does not own broad delegation, multi-step recovery, cross-product
+routing, or write-heavy tool choice unless capability evidence and policy
+explicitly grant that access for that action.
 
 For strong providers, Cats can allow more semantic planning, but the same
 policy/invariant/tool boundary still validates every proposed action before
@@ -421,7 +440,7 @@ execution. The difference is control density, not a boolean switch.
 | `tests/chat-*.test.*` | Modify/Create | Chat decision-core cutover probes. |
 | `tests/work-*.test.*` | Modify/Create | Work real-provider run lifecycle coverage. |
 | `tests/code-*.test.*` | Modify/Create | Code task/relay supervised run coverage. |
-| `tests/weak-worker-*.test.*` | Create | Weak-provider-as-tool dispatch, schema validation, escalation, and evidence attribution. |
+| `tests/weak-worker-*.test.*` | Create | Weak-worker/SOP tool manifests, schema validation, escalation, policy dials, and evidence attribution. |
 
 ## Testing Strategy
 
@@ -439,9 +458,9 @@ execution. The difference is control density, not a boolean switch.
   local/manual evidence for one Chat turn, one Work supervised run, and one
   Code task/relay path. If credentials are unavailable, this plan remains
   blocked rather than silently complete.
-- Weak-model tests prove Ollama/local models are invoked as supervised
-  weak-worker tools by default, receive only platform-selected SOP/tool
-  surfaces, validate required schemas, and persist evidence under the parent
+- Weak-model tests prove Ollama/local capability profiles use the same decision
+  seam, receive stricter policy dials, can only access allowed weak-worker/SOP
+  tools, validate required schemas, and persist evidence under the parent
   run/driver instead of creating peer driving-agent lifecycles.
 
 ## Risks
@@ -452,9 +471,9 @@ execution. The difference is control density, not a boolean switch.
 | Provider autonomy bypasses platform invariants | High | All provider outputs become proposed intents; platform validates and executes through supervised boundaries. |
 | Chat deterministic routing is accidentally treated as obsolete old core | High | Move/rename it into Chat ownership and test `@mention`, room default, direct lane, audience, and recents routing as product contracts. |
 | Old planner/dispatcher semantic behavior lingers indefinitely | High | Add non-Chat import tests and make old semantic-planning path removal a phase gate while preserving Chat deterministic routing. |
-| Weak models are treated like autonomous agents | Medium | Expose weak providers as supervised weak-worker tools invoked by a strong driver or platform SOP dispatcher by default. |
+| Weak models are treated like autonomous agents | Medium | Keep weak profiles on the same seam with stricter policy dials and expose weak-model calls only through supervised weak-worker/SOP tools by default. |
 | Capability profiles arrive after live provider autonomy | High | Phase 1 and phase gates require conservative profile bootstrap and FR-19 override-floor tests before live autonomy is wired. |
-| Rule-based weak-model dispatch grows into a competing semantic planner | Medium | Keep the dispatcher deterministic: it may slice, route, scaffold, validate, retry, and escalate, but not invent semantic strategy beyond explicit SOP rules. |
+| Weak-model SOP control grows into a competing semantic planner | Medium | Do not introduce a standalone dispatcher; keep semantic choice in the provider-agent seam, supervision dials in `policyEngine`, enforcement in `toolBoundary`, and deterministic scaffolding inside individual SOP tools. |
 | Lifecycle scheduler starts reading transcript content | High | Static import tests enforce scheduler content blindness. |
 | Real provider smoke becomes flaky or expensive | Medium | Keep live-provider tests optional; CI uses deterministic runtime stubs. |
 
@@ -463,5 +482,6 @@ execution. The difference is control density, not a boolean switch.
 | Date | Update |
 |------|--------|
 | 2026-04-27 | Plan opened after PLAN-074 fake-driving-agent and runtime-boundary cutover prerequisites were met. |
-| 2026-04-27 | Clarified weak-model final state: Cats retains rule-based dispatch/SOP control for weak providers, while strong providers may own more semantic planning under the same supervision boundary. |
+| 2026-04-27 | Clarified weak-model final state: Cats retains denser SOP/policy control for weak providers, while strong providers may own more semantic planning under the same supervision boundary. |
 | 2026-04-28 | Aligned phases with ADR-082: capability profiles move before live autonomy, weak providers default to tool-internal SOP workers, Chat deterministic routing is carved out as a retained product contract, and old core cleanup targets semantic-planning paths only. |
+| 2026-04-28 | Removed the standalone weak-model dispatcher shape: weak-model control now stays on the same provider-agent seam and is expressed through policy dials, tool manifests, tool boundary enforcement, and individual SOP tool internals. |
