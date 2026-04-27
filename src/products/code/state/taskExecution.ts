@@ -4,6 +4,7 @@ import type { RuntimeClient, RuntimeSessionInfo } from '../../../runtime/client.
 import { upsertCoreRun } from '../../../core/model/executionRecords.js';
 import { upsertCoreTask } from '../../../core/model/taskControls.js';
 import {
+  createDurableToolEvidenceSink,
   createSupervisedRuntimeSession,
   deriveRunState,
   writeRunStateMetadata,
@@ -59,6 +60,10 @@ export interface BridgeCodeTaskResult {
   runId: string;
   sessionId: string;
   session: RuntimeSessionInfo;
+}
+
+export interface BridgeCodeTaskOptions {
+  evidenceDataDir?: string;
 }
 
 export function createCodeTask(
@@ -128,6 +133,7 @@ export async function bridgeCodeTaskToRuntime(
   runtimeClient: RuntimeClient,
   input: BridgeCodeTaskInput,
   now: Date = new Date(),
+  options: BridgeCodeTaskOptions = {},
 ): Promise<BridgeCodeTaskResult> {
   let core = await coreStore.readCore();
   const task = core.tasks.find((t) => t.id === input.taskId);
@@ -201,6 +207,12 @@ export async function bridgeCodeTaskToRuntime(
       actionId: `${runDraft.run.id}:runtime-session`,
       actorRef: task.orchestratorActorId ?? 'actor-orchestrator-global',
       reason: 'code_task_execute',
+      evidenceSink: options.evidenceDataDir && task.conversationId
+        ? createDurableToolEvidenceSink({
+            dataDir: options.evidenceDataDir,
+            conversationId: task.conversationId,
+          })
+        : undefined,
     },
   });
   const persistedRun = upsertCoreRun(core, {

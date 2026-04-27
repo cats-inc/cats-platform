@@ -95,6 +95,10 @@ export async function routeCodeTaskMutationApi(
         context.dependencies.coreStore,
         context.dependencies.runtimeClient,
         input,
+        context.dependencies.now?.(),
+        {
+          evidenceDataDir: context.dependencies.evidenceDataDir,
+        },
       );
 
       const taskDetail = buildCodeTaskDetailProjection(result.core, result.task);

@@ -250,6 +250,10 @@ export function resolveServerDependencies(
       coreStore: dependencies.code?.coreStore ?? sharedCoreStore,
       runtimeClient: dependencies.code?.runtimeClient ?? dependencies.shared.runtimeClient,
       config: dependencies.code?.config ?? dependencies.shared.config,
+      evidenceDataDir: dependencies.code?.evidenceDataDir ?? dependencies.shared.config.chatStatePath,
+      readEvidenceEvents: dependencies.code?.readEvidenceEvents
+        ?? ((conversationId: string) =>
+          readPersistedEvidenceEvents(dependencies.shared.config.chatStatePath, conversationId)),
       now: dependencies.code?.now ?? dependencies.shared.now,
     },
   };

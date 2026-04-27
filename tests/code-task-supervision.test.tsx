@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import { createDefaultCoreState } from '../src/core/model/index.ts';
@@ -11,6 +14,7 @@ import {
   bridgeCodeTaskToRuntime,
   createCodeTask,
 } from '../src/products/code/state/taskExecution.ts';
+import { readEvidenceEvents } from '../src/platform/persistence/evidence.ts';
 
 function createRuntimeStub(): RuntimeClient & {
   createdSessions: RuntimeSessionCreateInput[];
@@ -120,7 +124,12 @@ function createRuntimeStub(): RuntimeClient & {
   };
 }
 
-test('bridgeCodeTaskToRuntime creates a supervised run for Code task execution', async () => {
+test('bridgeCodeTaskToRuntime creates a supervised run for Code task execution', async (t) => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-code-supervision-'));
+  t.after(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
   const created = createCodeTask(
     createDefaultCoreState(),
     {
@@ -128,6 +137,7 @@ test('bridgeCodeTaskToRuntime creates a supervised run for Code task execution',
       summary: 'Move execution behind supervision.',
       workspacePath: 'C:/repo/cats-platform',
       workspaceKind: 'user_selected',
+      conversationId: 'conversation-code-supervision',
     },
     new Date('2026-04-28T01:00:00.000Z'),
   );
@@ -145,10 +155,14 @@ test('bridgeCodeTaskToRuntime creates a supervised run for Code task execution',
       model: 'gpt-5.4',
     },
     new Date('2026-04-28T01:05:00.000Z'),
+    {
+      evidenceDataDir: tempDir,
+    },
   );
   const persisted = await coreStore.readCore();
   const run = persisted.runs.find((candidate) => candidate.id === result.runId);
   const task = persisted.tasks.find((candidate) => candidate.id === created.task.id);
+  const evidence = readEvidenceEvents(tempDir, 'conversation-code-supervision');
   const runSupervision = run?.metadata.supervision as Record<string, unknown> | undefined;
   const runtimeBridge = runSupervision?.runtimeBridge as Record<string, unknown> | undefined;
   const taskExecution = task?.metadata.codeExecution as Record<string, unknown> | undefined;
@@ -168,4 +182,9 @@ test('bridgeCodeTaskToRuntime creates a supervised run for Code task execution',
   assert.equal(result.run.id, run.id);
   assert.equal(runtimeClient.createdSessions[0]?.context?.metadata?.runId, run.id);
   assert.equal(runtimeClient.createdSessions[0]?.context?.metadata?.taskId, created.task.id);
+  assert.deepEqual(
+    evidence.map((event) => event.payload.toolName),
+    ['cats.runtime.session.create'],
+  );
+  assert.equal(evidence[0]?.payload.runId, run.id);
 });

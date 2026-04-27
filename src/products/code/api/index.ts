@@ -1,5 +1,6 @@
 import type { AppConfig } from '../../../config.js';
 import type { CoreStore } from '../../../core/store.js';
+import type { EvidenceEvent } from '../../../core/types.js';
 import type { RuntimeClient } from '../../../platform/runtime/client.js';
 import {
   buildCodeArtifactDetailProjection,
@@ -41,6 +42,8 @@ export interface CodeApiDependencies {
   coreStore: CoreStore;
   runtimeClient: RuntimeClient;
   config: AppConfig;
+  evidenceDataDir?: string;
+  readEvidenceEvents?: (conversationId: string) => EvidenceEvent[];
   now?: () => Date;
 }
 
