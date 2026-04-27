@@ -83,7 +83,7 @@ function observation(
   };
 }
 
-function createRuntimeStub(): RuntimeClient & {
+function createRuntimeStub(options: { responseText?: string } = {}): RuntimeClient & {
   createdSessions: unknown[];
   sentMessages: Array<{ sessionId: string; content: string; input: unknown }>;
 } {
@@ -125,7 +125,14 @@ function createRuntimeStub(): RuntimeClient & {
     async sendMessage(sessionId, content, input) {
       this.sentMessages.push({ sessionId, content, input });
       return {
-        segments: [{ kind: 'text', text: JSON.stringify(decision()), toolName: null, toolId: null }],
+        segments: [
+          {
+            kind: 'text',
+            text: options.responseText ?? JSON.stringify(decision()),
+            toolName: null,
+            toolId: null,
+          },
+        ],
         inputTokens: 10,
         outputTokens: 8,
         tokensUsed: 18,
@@ -200,4 +207,22 @@ test('Chat provider-agent decision requester ignores non-execution targets', asy
   assert.equal(result, null);
   assert.equal(runtimeClient.createdSessions.length, 0);
   assert.equal(runtimeClient.sentMessages.length, 0);
+});
+
+test('Chat provider-agent decision requester can fail open for live route enablement', async () => {
+  const runtimeClient = createRuntimeStub({ responseText: 'not json' });
+  const requester = createChatProviderAgentDecisionRequester({ failureMode: 'return_null' });
+
+  const result = await requester({
+    state: {} as never,
+    channelId: 'channel-1',
+    payload: { body: 'hello' },
+    observation: observation(),
+    runtimeClient,
+    now: new Date('2026-04-28T00:00:00.000Z'),
+  });
+
+  assert.equal(result, null);
+  assert.equal(runtimeClient.createdSessions.length, 1);
+  assert.equal(runtimeClient.sentMessages.length, 1);
 });

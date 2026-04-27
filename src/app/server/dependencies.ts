@@ -164,7 +164,7 @@ export function resolveServerDependencies(
   const providerAgentDecisionRequester = dependencies.chat.providerAgentDecisionRequester
     ?? (
       dependencies.shared.config.chatProviderAgentDecisionEnabled === true
-        ? createChatProviderAgentDecisionRequester()
+        ? createChatProviderAgentDecisionRequester({ failureMode: 'return_null' })
         : undefined
     );
   const taskExecutionLocator = dependencies.chat.taskExecutionLocator
