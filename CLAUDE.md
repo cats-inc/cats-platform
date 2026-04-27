@@ -128,7 +128,7 @@ The three layers on `.claudeShell > .canvas`:
 2. **`scrollbar-gutter: stable`** — reserves space on the right equal to the OS scrollbar width. **Do not hardcode `-15px` to compensate** — scrollbar width is in *device* pixels, so the CSS-px equivalent drifts under browser zoom and the bar realigns wrong at non-100%.
 3. **`justify-items: center`** on the grid — a page wrapper at intrinsic content width (no explicit `width: 100%`) gets centred within the grid column, creating new gaps as viewport widens (clearly visible at 1600px+).
 
-Fix pattern (canonical reference: `src/products/work/renderer/components/projects-paperclip/projects-paperclip.css`):
+Fix pattern (canonical reference: `src/products/work/renderer/components/projects/projects.css`):
 
 ```css
 main.canvas:has(> .myPageWrapper) {

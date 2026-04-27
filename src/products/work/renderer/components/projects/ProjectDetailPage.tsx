@@ -9,7 +9,7 @@ import {
   KIND_LABEL,
 } from "../topdown/shared";
 import type { WorkGraphObjectSummary } from "../topdown/types";
-import "./projects-paperclip.css";
+import "./projects.css";
 
 export function ProjectDetailPage(): JSX.Element {
   const { projectId } = useParams<{ projectId: string }>();
@@ -38,13 +38,13 @@ export function ProjectDetailPage(): JSX.Element {
     : undefined;
 
   return (
-    <div className="paperclipProject">
-      <header className="channelTopBar paperclipProjectTopBar">
-        <div className="channelTopBarStart paperclipProjectTopBar__start">
+    <div className="projectDetail">
+      <header className="channelTopBar projectDetailTopBar">
+        <div className="channelTopBarStart projectDetailTopBar__start">
           <Link
             to=".."
             relative="path"
-            className="paperclipProjectTopBar__back"
+            className="projectDetailTopBar__back"
             aria-label="Back to projects"
           >
             <svg
@@ -63,34 +63,34 @@ export function ProjectDetailPage(): JSX.Element {
             <span>Projects</span>
           </Link>
         </div>
-        <div className="channelTopBarCenter paperclipProjectTopBar__center">
+        <div className="channelTopBarCenter projectDetailTopBar__center">
           <span
-            className={`paperclipProjects__dot paperclipProjects__dot--${project.status}`}
+            className={`projectsList__dot projectsList__dot--${project.status}`}
             aria-hidden="true"
           />
-          <h1 className="channelTopBarTitle paperclipProjectTopBar__title">
+          <h1 className="channelTopBarTitle projectDetailTopBar__title">
             {project.title}
           </h1>
         </div>
-        <div className="channelTopBarEnd paperclipProjectTopBar__end">
+        <div className="channelTopBarEnd projectDetailTopBar__end">
           {project.attention !== "none" && ATTENTION_LABEL[project.attention] ? (
             <span
-              className={`paperclipProject__attention paperclipProject__attention--${project.attention}`}
+              className={`projectDetail__attention projectDetail__attention--${project.attention}`}
             >
               {ATTENTION_LABEL[project.attention]}
             </span>
           ) : null}
           <span
-            className={`paperclipProjects__statusPill paperclipProjects__statusPill--${project.status}`}
+            className={`projectsList__statusPill projectsList__statusPill--${project.status}`}
           >
             {project.status.replace(/_/g, " ")}
           </span>
-          <span className="paperclipProjectTopBar__updated">
+          <span className="projectDetailTopBar__updated">
             updated {formatRelative(project.updatedAt)}
           </span>
           <button
             type="button"
-            className="paperclipProjectTopBar__action"
+            className="projectDetailTopBar__action"
             onClick={() => undefined}
             aria-label="Project settings"
           >
@@ -111,12 +111,12 @@ export function ProjectDetailPage(): JSX.Element {
           </button>
         </div>
       </header>
-      <main className="paperclipProject__main">
-        <section className="paperclipProject__section paperclipProject__overview">
-          <header className="paperclipProject__sectionHeader">
+      <main className="projectDetail__main">
+        <section className="projectDetail__section projectDetail__overview">
+          <header className="projectDetail__sectionHeader">
             <h2>Overview</h2>
           </header>
-          <dl className="paperclipProject__overviewList">
+          <dl className="projectDetail__overviewList">
             {project.summary ? (
               <>
                 <dt>Summary</dt>
@@ -131,7 +131,7 @@ export function ProjectDetailPage(): JSX.Element {
               <>
                 <dt>Conversation</dt>
                 <dd>
-                  <span className="paperclipProject__convoTitle">
+                  <span className="projectDetail__convoTitle">
                     {conversation.title}
                   </span>
                 </dd>
@@ -152,29 +152,29 @@ export function ProjectDetailPage(): JSX.Element {
           emptyLabel="No tasks in this project yet."
         />
 
-        <section className="paperclipProject__section">
-          <header className="paperclipProject__sectionHeader">
+        <section className="projectDetail__section">
+          <header className="projectDetail__sectionHeader">
             <h2>Activity</h2>
-            <span className="paperclipProject__sectionCount">
+            <span className="projectDetail__sectionCount">
               {activities.length}
             </span>
           </header>
           {activities.length === 0 ? (
-            <p className="paperclipProject__empty">
+            <p className="projectDetail__empty">
               No activity recorded for this project.
             </p>
           ) : (
-            <ul className="paperclipProject__activity">
+            <ul className="projectDetail__activity">
               {activities.map((act) => (
-                <li key={act.id} className="paperclipProject__activityRow">
-                  <span className="paperclipProject__activityWhen">
+                <li key={act.id} className="projectDetail__activityRow">
+                  <span className="projectDetail__activityWhen">
                     {formatRelative(act.updatedAt)}
                   </span>
-                  <span className="paperclipProject__activityTitle">
+                  <span className="projectDetail__activityTitle">
                     {act.title}
                   </span>
                   {act.summary ? (
-                    <span className="paperclipProject__activitySummary">
+                    <span className="projectDetail__activitySummary">
                       {act.summary}
                     </span>
                   ) : null}
@@ -200,37 +200,37 @@ function ItemsSection({
   emptyLabel,
 }: ItemsSectionProps): JSX.Element {
   return (
-    <section className="paperclipProject__section">
-      <header className="paperclipProject__sectionHeader">
+    <section className="projectDetail__section">
+      <header className="projectDetail__sectionHeader">
         <h2>{title}</h2>
-        <span className="paperclipProject__sectionCount">{items.length}</span>
+        <span className="projectDetail__sectionCount">{items.length}</span>
       </header>
       {items.length === 0 ? (
-        <p className="paperclipProject__empty">{emptyLabel}</p>
+        <p className="projectDetail__empty">{emptyLabel}</p>
       ) : (
-        <ul className="paperclipProject__items">
+        <ul className="projectDetail__items">
           {items.map((item) => (
-            <li key={item.id} className="paperclipProject__item">
+            <li key={item.id} className="projectDetail__item">
               <span
-                className={`paperclipProjects__dot paperclipProjects__dot--small paperclipProjects__dot--${item.status}`}
+                className={`projectsList__dot projectsList__dot--small projectsList__dot--${item.status}`}
                 aria-hidden="true"
               />
-              <span className="paperclipProject__itemKind">
+              <span className="projectDetail__itemKind">
                 {KIND_LABEL[item.kind]}
               </span>
-              <span className="paperclipProject__itemTitle">{item.title}</span>
+              <span className="projectDetail__itemTitle">{item.title}</span>
               {item.attention !== "none" && ATTENTION_LABEL[item.attention] ? (
                 <span
-                  className={`paperclipProject__itemAttention paperclipProject__itemAttention--${item.attention}`}
+                  className={`projectDetail__itemAttention projectDetail__itemAttention--${item.attention}`}
                 >
                   {ATTENTION_LABEL[item.attention]}
                 </span>
               ) : null}
-              <span className="paperclipProject__itemStatus">
+              <span className="projectDetail__itemStatus">
                 {item.status.replace(/_/g, " ")}
               </span>
               {item.ownerRole ? (
-                <span className="paperclipProject__itemOwner">
+                <span className="projectDetail__itemOwner">
                   {item.ownerRole}
                 </span>
               ) : null}
@@ -248,26 +248,26 @@ function ProjectNotFound({
   projectId: string | null;
 }): JSX.Element {
   return (
-    <div className="paperclipProject">
-      <header className="channelTopBar paperclipProjectTopBar">
-        <div className="channelTopBarStart paperclipProjectTopBar__start">
+    <div className="projectDetail">
+      <header className="channelTopBar projectDetailTopBar">
+        <div className="channelTopBarStart projectDetailTopBar__start">
           <Link
             to=".."
             relative="path"
-            className="paperclipProjectTopBar__back"
+            className="projectDetailTopBar__back"
           >
             <span>← Projects</span>
           </Link>
-          <span className="paperclipProjectTopBar__separator" aria-hidden="true">
+          <span className="projectDetailTopBar__separator" aria-hidden="true">
             /
           </span>
-          <h1 className="channelTopBarTitle paperclipProjectTopBar__title">
+          <h1 className="channelTopBarTitle projectDetailTopBar__title">
             Not found
           </h1>
         </div>
       </header>
-      <main className="paperclipProject__main">
-        <p className="paperclipProject__empty">
+      <main className="projectDetail__main">
+        <p className="projectDetail__empty">
           Project <code>{projectId ?? "(missing id)"}</code> is not in the
           current projection.
         </p>

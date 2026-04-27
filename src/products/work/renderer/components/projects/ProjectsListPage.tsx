@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 
 import { MOCK_WORK_GRAPH } from "../topdown/mock";
 import { formatRelative } from "../topdown/shared";
-import "./projects-paperclip.css";
+import "./projects.css";
 
 interface ProjectCounts {
   workItems: number;
@@ -49,25 +49,25 @@ export function ProjectsListPage(): JSX.Element {
   }, [projects, graph]);
 
   return (
-    <div className="paperclipProjects">
-      <header className="channelTopBar paperclipProjectsTopBar">
-        <div className="channelTopBarStart paperclipProjectsTopBar__start">
-          <h1 className="channelTopBarTitle paperclipProjectsTopBar__title">
+    <div className="projectsList">
+      <header className="channelTopBar projectsListTopBar">
+        <div className="channelTopBarStart projectsListTopBar__start">
+          <h1 className="channelTopBarTitle projectsListTopBar__title">
             Projects
           </h1>
-          <span className="paperclipProjectsTopBar__count">
+          <span className="projectsListTopBar__count">
             {projects.length}
           </span>
         </div>
-        <div className="channelTopBarCenter paperclipProjectsTopBar__center">
-          <span className="paperclipProjectsTopBar__lede">
+        <div className="channelTopBarCenter projectsListTopBar__center">
+          <span className="projectsListTopBar__lede">
             Pick a project to drill into its work items, tasks, and activity.
           </span>
         </div>
-        <div className="channelTopBarEnd paperclipProjectsTopBar__end">
+        <div className="channelTopBarEnd projectsListTopBar__end">
           <button
             type="button"
-            className="paperclipProjectsTopBar__addBtn"
+            className="projectsListTopBar__addBtn"
             onClick={() => undefined}
             aria-label="Create new project"
           >
@@ -89,13 +89,13 @@ export function ProjectsListPage(): JSX.Element {
           </button>
         </div>
       </header>
-      <main className="paperclipProjects__main">
+      <main className="projectsList__main">
         {projects.length === 0 ? (
-          <p className="paperclipProjects__empty">
+          <p className="projectsList__empty">
             No projects yet. Click <strong>New project</strong> to start one.
           </p>
         ) : (
-          <ul className="paperclipProjects__list">
+          <ul className="projectsList__list">
             {projects.map((project) => {
               const counts = countsById.get(project.id) ?? {
                 workItems: 0,
@@ -105,51 +105,51 @@ export function ProjectsListPage(): JSX.Element {
                 blocked: 0,
               };
               return (
-                <li key={project.id} className="paperclipProjects__row">
+                <li key={project.id} className="projectsList__row">
                   <Link
                     to={project.id}
-                    className="paperclipProjects__rowLink"
+                    className="projectsList__rowLink"
                     aria-label={`Open project ${project.title}`}
                   >
-                    <div className="paperclipProjects__rowMain">
+                    <div className="projectsList__rowMain">
                       <span
-                        className={`paperclipProjects__dot paperclipProjects__dot--${project.status}`}
+                        className={`projectsList__dot projectsList__dot--${project.status}`}
                         aria-hidden="true"
                       />
-                      <div className="paperclipProjects__rowText">
-                        <span className="paperclipProjects__rowTitle">
+                      <div className="projectsList__rowText">
+                        <span className="projectsList__rowTitle">
                           {project.title}
                         </span>
                         {project.summary ? (
-                          <span className="paperclipProjects__rowSummary">
+                          <span className="projectsList__rowSummary">
                             {project.summary}
                           </span>
                         ) : null}
                       </div>
                     </div>
-                    <div className="paperclipProjects__rowMeta">
+                    <div className="projectsList__rowMeta">
                       {counts.needsDecision > 0 ? (
-                        <span className="paperclipProjects__pip paperclipProjects__pip--decision">
+                        <span className="projectsList__pip projectsList__pip--decision">
                           {counts.needsDecision} decision
                           {counts.needsDecision === 1 ? "" : "s"}
                         </span>
                       ) : null}
                       {counts.blocked > 0 ? (
-                        <span className="paperclipProjects__pip paperclipProjects__pip--blocked">
+                        <span className="projectsList__pip projectsList__pip--blocked">
                           {counts.blocked} blocked
                         </span>
                       ) : null}
-                      <span className="paperclipProjects__metric">
+                      <span className="projectsList__metric">
                         <strong>{counts.workItems}</strong> WI
                       </span>
-                      <span className="paperclipProjects__metric">
+                      <span className="projectsList__metric">
                         <strong>{counts.tasks}</strong> tasks
                       </span>
-                      <span className="paperclipProjects__metric paperclipProjects__metric--muted">
+                      <span className="projectsList__metric projectsList__metric--muted">
                         {formatRelative(project.updatedAt)}
                       </span>
                       <span
-                        className={`paperclipProjects__statusPill paperclipProjects__statusPill--${project.status}`}
+                        className={`projectsList__statusPill projectsList__statusPill--${project.status}`}
                       >
                         {project.status.replace(/_/g, " ")}
                       </span>

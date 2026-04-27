@@ -1,18 +1,16 @@
 /* =========================================================
- * Paperclip-style Projects (list + drill-down)
+ * Work — Projects (list + drill-down detail)
  *
- * Visual identity: cats-platform warm/light look-and-feel.
- * Uses existing design tokens (--canvas-bg, --panel, --border,
- * --accent, --muted, etc.). The "paperclip" name in class
- * prefixes refers to the IA pattern (flat list → click → detail
- * page), NOT to Paperclip's dark theme.
+ * Flat-list IA: list page → click row → detail page.
+ * Visual identity: cats-platform warm/light look-and-feel
+ * (--canvas-bg, --panel, --border, --accent, --muted tokens).
  *
  * Top bar uses .channelTopBar (chat-thread-base.css, 60px sticky)
  * so the height + grid layout match active chat exactly.
  * ========================================================= */
 
-.paperclipProjects,
-.paperclipProject {
+.projectsList,
+.projectDetail {
   display: flex;
   flex-direction: column;
   width: 100%;
@@ -34,8 +32,8 @@
  * wrapper fills main.canvas's content area cleanly; then the default
  * .channelTopBar bleed (-28px each side) lands exactly on canvas edges
  * regardless of zoom. */
-main.canvas:has(> .paperclipProjects),
-main.canvas:has(> .paperclipProject) {
+main.canvas:has(> .projectsList),
+main.canvas:has(> .projectDetail) {
   grid-template-columns: minmax(0, 1fr);
   scrollbar-gutter: auto;
   /* main.canvas defaults to `justify-items: center`, which centres our
@@ -47,20 +45,20 @@ main.canvas:has(> .paperclipProject) {
 
 /* ------------- List page top bar ------------- */
 
-.paperclipProjectsTopBar__start {
+.projectsListTopBar__start {
   flex-direction: row;
   align-items: baseline;
   gap: 10px;
 }
 
-.paperclipProjectsTopBar__title {
+.projectsListTopBar__title {
   margin: 0;
   font-size: 1.05rem;
   font-weight: 600;
   text-align: left;
 }
 
-.paperclipProjectsTopBar__count {
+.projectsListTopBar__count {
   font-size: 0.74rem;
   color: var(--muted);
   background: var(--panel);
@@ -70,21 +68,21 @@ main.canvas:has(> .paperclipProject) {
   font-weight: 500;
 }
 
-.paperclipProjectsTopBar__center {
+.projectsListTopBar__center {
   justify-content: center;
 }
 
-.paperclipProjectsTopBar__lede {
+.projectsListTopBar__lede {
   font-size: 0.78rem;
   color: var(--muted);
   text-align: center;
 }
 
-.paperclipProjectsTopBar__end {
+.projectsListTopBar__end {
   justify-content: flex-end;
 }
 
-.paperclipProjectsTopBar__addBtn {
+.projectsListTopBar__addBtn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -100,19 +98,19 @@ main.canvas:has(> .paperclipProject) {
   transition: background 0.12s ease, box-shadow 0.12s ease;
 }
 
-.paperclipProjectsTopBar__addBtn:hover {
+.projectsListTopBar__addBtn:hover {
   background: #b35a32;
   box-shadow: 0 1px 4px rgba(196, 101, 58, 0.25);
 }
 
-.paperclipProjectsTopBar__addBtn:focus-visible {
+.projectsListTopBar__addBtn:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
 /* ------------- List body ------------- */
 
-.paperclipProjects__main {
+.projectsList__main {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -122,12 +120,12 @@ main.canvas:has(> .paperclipProject) {
   padding: 0 max(28px, calc((100% - 980px) / 2));
 }
 
-.paperclipProjects__list {
+.projectsList__list {
   margin-top: 16px;
   margin-bottom: 24px;
 }
 
-.paperclipProjects__empty {
+.projectsList__empty {
   margin: 60px auto 0;
   max-width: 360px;
   text-align: center;
@@ -135,7 +133,7 @@ main.canvas:has(> .paperclipProject) {
   color: var(--muted);
 }
 
-.paperclipProjects__list {
+.projectsList__list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -144,7 +142,7 @@ main.canvas:has(> .paperclipProject) {
   gap: 8px;
 }
 
-.paperclipProjects__row {
+.projectsList__row {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -154,13 +152,13 @@ main.canvas:has(> .paperclipProject) {
     background 0.12s ease;
 }
 
-.paperclipProjects__row:hover {
+.projectsList__row:hover {
   border-color: rgba(196, 101, 58, 0.35);
   background: var(--panel-hover);
   box-shadow: var(--shadow);
 }
 
-.paperclipProjects__rowLink {
+.projectsList__rowLink {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -171,12 +169,12 @@ main.canvas:has(> .paperclipProject) {
   border-radius: inherit;
 }
 
-.paperclipProjects__rowLink:focus-visible {
+.projectsList__rowLink:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
 
-.paperclipProjects__rowMain {
+.projectsList__rowMain {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -184,7 +182,7 @@ main.canvas:has(> .paperclipProject) {
   flex: 1;
 }
 
-.paperclipProjects__dot {
+.projectsList__dot {
   flex-shrink: 0;
   width: 10px;
   height: 10px;
@@ -193,48 +191,48 @@ main.canvas:has(> .paperclipProject) {
   box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.6);
 }
 
-.paperclipProjects__dot--small {
+.projectsList__dot--small {
   width: 8px;
   height: 8px;
 }
 
-.paperclipProjects__dot--active,
-.paperclipProjects__dot--in_progress {
+.projectsList__dot--active,
+.projectsList__dot--in_progress {
   background: var(--accent);
 }
 
-.paperclipProjects__dot--planned,
-.paperclipProjects__dot--draft {
+.projectsList__dot--planned,
+.projectsList__dot--draft {
   background: #c2a25e;
 }
 
-.paperclipProjects__dot--blocked {
+.projectsList__dot--blocked {
   background: #c0382b;
 }
 
-.paperclipProjects__dot--paused {
+.projectsList__dot--paused {
   background: #8a8178;
 }
 
-.paperclipProjects__dot--completed,
-.paperclipProjects__dot--ready {
+.projectsList__dot--completed,
+.projectsList__dot--ready {
   background: #4a8f63;
 }
 
-.paperclipProjects__dot--archived,
-.paperclipProjects__dot--cancelled {
+.projectsList__dot--archived,
+.projectsList__dot--cancelled {
   background: var(--muted-soft);
   opacity: 0.6;
 }
 
-.paperclipProjects__rowText {
+.projectsList__rowText {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
 }
 
-.paperclipProjects__rowTitle {
+.projectsList__rowTitle {
   font-size: 0.92rem;
   font-weight: 600;
   color: var(--text);
@@ -244,7 +242,7 @@ main.canvas:has(> .paperclipProject) {
   text-overflow: ellipsis;
 }
 
-.paperclipProjects__rowSummary {
+.projectsList__rowSummary {
   font-size: 0.74rem;
   color: var(--muted);
   white-space: nowrap;
@@ -253,14 +251,14 @@ main.canvas:has(> .paperclipProject) {
   max-width: 56ch;
 }
 
-.paperclipProjects__rowMeta {
+.projectsList__rowMeta {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
 }
 
-.paperclipProjects__pip {
+.projectsList__pip {
   font-size: 0.66rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -269,17 +267,17 @@ main.canvas:has(> .paperclipProject) {
   border-radius: 999px;
 }
 
-.paperclipProjects__pip--decision {
+.projectsList__pip--decision {
   background: var(--accent-soft);
   color: var(--accent);
 }
 
-.paperclipProjects__pip--blocked {
+.projectsList__pip--blocked {
   background: rgba(192, 56, 43, 0.12);
   color: #a93226;
 }
 
-.paperclipProjects__metric {
+.projectsList__metric {
   font-size: 0.72rem;
   color: var(--muted);
   display: inline-flex;
@@ -287,17 +285,17 @@ main.canvas:has(> .paperclipProject) {
   gap: 3px;
 }
 
-.paperclipProjects__metric strong {
+.projectsList__metric strong {
   color: var(--text);
   font-weight: 600;
   font-size: 0.78rem;
 }
 
-.paperclipProjects__metric--muted {
+.projectsList__metric--muted {
   color: var(--muted-soft);
 }
 
-.paperclipProjects__statusPill {
+.projectsList__statusPill {
   font-size: 0.7rem;
   text-transform: lowercase;
   font-weight: 500;
@@ -308,36 +306,36 @@ main.canvas:has(> .paperclipProject) {
   color: var(--muted);
 }
 
-.paperclipProjects__statusPill--active,
-.paperclipProjects__statusPill--in_progress {
+.projectsList__statusPill--active,
+.projectsList__statusPill--in_progress {
   background: var(--accent-soft);
   color: var(--accent);
   border-color: rgba(196, 101, 58, 0.32);
 }
 
-.paperclipProjects__statusPill--planned,
-.paperclipProjects__statusPill--draft {
+.projectsList__statusPill--planned,
+.projectsList__statusPill--draft {
   background: var(--warm-bg);
   color: var(--warm-text);
   border-color: rgba(191, 146, 73, 0.4);
 }
 
-.paperclipProjects__statusPill--blocked {
+.projectsList__statusPill--blocked {
   background: rgba(192, 56, 43, 0.1);
   color: #a93226;
   border-color: rgba(192, 56, 43, 0.3);
 }
 
-.paperclipProjects__statusPill--completed,
-.paperclipProjects__statusPill--ready {
+.projectsList__statusPill--completed,
+.projectsList__statusPill--ready {
   background: var(--ready-bg);
   color: var(--ready-text);
   border-color: rgba(61, 167, 121, 0.32);
 }
 
-.paperclipProjects__statusPill--paused,
-.paperclipProjects__statusPill--archived,
-.paperclipProjects__statusPill--cancelled {
+.projectsList__statusPill--paused,
+.projectsList__statusPill--archived,
+.projectsList__statusPill--cancelled {
   background: var(--muted-bg);
   color: var(--muted-text);
 }
@@ -346,12 +344,12 @@ main.canvas:has(> .paperclipProject) {
  * Detail page
  * ============================================================ */
 
-.paperclipProjectTopBar__start {
+.projectDetailTopBar__start {
   align-items: center;
   gap: 8px;
 }
 
-.paperclipProjectTopBar__back {
+.projectDetailTopBar__back {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -363,24 +361,24 @@ main.canvas:has(> .paperclipProject) {
   transition: background 0.12s ease, color 0.12s ease;
 }
 
-.paperclipProjectTopBar__back:hover {
+.projectDetailTopBar__back:hover {
   background: var(--panel-hover);
   color: var(--text);
 }
 
-.paperclipProjectTopBar__separator {
+.projectDetailTopBar__separator {
   color: var(--muted-soft);
   font-size: 0.82rem;
 }
 
 /* Detail page puts the title in CENTER (matches chat's channel-title pattern).
  * Start has only the back link; end carries status pills + updated + cog. */
-.channelTopBar.paperclipProjectTopBar .paperclipProjectTopBar__center {
+.channelTopBar.projectDetailTopBar .projectDetailTopBar__center {
   gap: 8px;
   flex-wrap: nowrap;
 }
 
-.channelTopBar.paperclipProjectTopBar .paperclipProjectTopBar__title {
+.channelTopBar.projectDetailTopBar .projectDetailTopBar__title {
   margin: 0;
   font-size: 0.95rem;
   font-weight: 600;
@@ -391,34 +389,34 @@ main.canvas:has(> .paperclipProject) {
   min-width: 0;
 }
 
-.channelTopBar.paperclipProjectTopBar .paperclipProjectTopBar__end {
+.channelTopBar.projectDetailTopBar .projectDetailTopBar__end {
   gap: 10px;
   flex-wrap: nowrap;
 }
 
 /* List-page title also lives in start — same override so it doesn't centre-
  * collapse if the page title gets long. */
-.channelTopBar.paperclipProjectsTopBar .paperclipProjectsTopBar__title {
+.channelTopBar.projectsListTopBar .projectsListTopBar__title {
   text-align: left;
   max-width: none;
 }
 
-.paperclipProjectTopBar__center {
+.projectDetailTopBar__center {
   justify-content: center;
   gap: 10px;
   flex-wrap: wrap;
 }
 
-.paperclipProjectTopBar__updated {
+.projectDetailTopBar__updated {
   font-size: 0.7rem;
   color: var(--muted-soft);
 }
 
-.paperclipProjectTopBar__end {
+.projectDetailTopBar__end {
   justify-content: flex-end;
 }
 
-.paperclipProjectTopBar__action {
+.projectDetailTopBar__action {
   width: 32px;
   height: 32px;
   border: 1px solid var(--border);
@@ -432,12 +430,12 @@ main.canvas:has(> .paperclipProject) {
   transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
 
-.paperclipProjectTopBar__action:hover {
+.projectDetailTopBar__action:hover {
   background: var(--panel-hover);
   color: var(--text);
 }
 
-.paperclipProject__main {
+.projectDetail__main {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -450,18 +448,18 @@ main.canvas:has(> .paperclipProject) {
   gap: 18px;
 }
 
-.paperclipProject__main > .paperclipProject__section:first-child {
+.projectDetail__main > .projectDetail__section:first-child {
   margin-top: 18px;
 }
 
-.paperclipProject__section {
+.projectDetail__section {
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: 10px;
   overflow: hidden;
 }
 
-.paperclipProject__sectionHeader {
+.projectDetail__sectionHeader {
   display: flex;
   align-items: baseline;
   gap: 10px;
@@ -470,14 +468,14 @@ main.canvas:has(> .paperclipProject) {
   background: var(--panel-subtle);
 }
 
-.paperclipProject__sectionHeader h2 {
+.projectDetail__sectionHeader h2 {
   margin: 0;
   font-size: 0.82rem;
   font-weight: 600;
   letter-spacing: -0.005em;
 }
 
-.paperclipProject__sectionCount {
+.projectDetail__sectionCount {
   font-size: 0.7rem;
   color: var(--muted);
   background: var(--canvas-bg);
@@ -487,11 +485,11 @@ main.canvas:has(> .paperclipProject) {
   font-weight: 500;
 }
 
-.paperclipProject__overview {
+.projectDetail__overview {
   /* nothing extra */
 }
 
-.paperclipProject__overviewList {
+.projectDetail__overviewList {
   margin: 0;
   padding: 14px 18px;
   display: grid;
@@ -501,7 +499,7 @@ main.canvas:has(> .paperclipProject) {
   font-size: 0.82rem;
 }
 
-.paperclipProject__overviewList dt {
+.projectDetail__overviewList dt {
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -509,22 +507,22 @@ main.canvas:has(> .paperclipProject) {
   padding-top: 3px;
 }
 
-.paperclipProject__overviewList dd {
+.projectDetail__overviewList dd {
   margin: 0;
   color: var(--text);
 }
 
-.paperclipProject__overviewList em {
+.projectDetail__overviewList em {
   color: var(--muted-soft);
   font-style: italic;
 }
 
-.paperclipProject__convoTitle {
+.projectDetail__convoTitle {
   color: var(--accent);
   font-weight: 500;
 }
 
-.paperclipProject__attention {
+.projectDetail__attention {
   font-size: 0.66rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -533,38 +531,38 @@ main.canvas:has(> .paperclipProject) {
   border-radius: 4px;
 }
 
-.paperclipProject__attention--decision_needed {
+.projectDetail__attention--decision_needed {
   background: var(--accent-soft);
   color: var(--accent);
 }
 
-.paperclipProject__attention--blocked {
+.projectDetail__attention--blocked {
   background: rgba(192, 56, 43, 0.12);
   color: #a93226;
 }
 
-.paperclipProject__attention--failed {
+.projectDetail__attention--failed {
   background: rgba(192, 56, 43, 0.18);
   color: #a93226;
 }
 
-.paperclipProject__attention--ready_to_review {
+.projectDetail__attention--ready_to_review {
   background: var(--accent-soft);
   color: var(--accent);
 }
 
-.paperclipProject__attention--recently_shipped {
+.projectDetail__attention--recently_shipped {
   background: var(--ready-bg);
   color: var(--ready-text);
 }
 
-.paperclipProject__items {
+.projectDetail__items {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.paperclipProject__item {
+.projectDetail__item {
   display: grid;
   grid-template-columns: auto auto 1fr auto auto auto;
   align-items: center;
@@ -574,15 +572,15 @@ main.canvas:has(> .paperclipProject) {
   border-bottom: 1px solid var(--border);
 }
 
-.paperclipProject__item:last-child {
+.projectDetail__item:last-child {
   border-bottom: none;
 }
 
-.paperclipProject__item:hover {
+.projectDetail__item:hover {
   background: var(--panel-hover);
 }
 
-.paperclipProject__itemKind {
+.projectDetail__itemKind {
   font-size: 0.66rem;
   color: var(--muted);
   text-transform: uppercase;
@@ -593,7 +591,7 @@ main.canvas:has(> .paperclipProject) {
   border-radius: 4px;
 }
 
-.paperclipProject__itemTitle {
+.projectDetail__itemTitle {
   color: var(--text);
   font-weight: 500;
   white-space: nowrap;
@@ -601,7 +599,7 @@ main.canvas:has(> .paperclipProject) {
   text-overflow: ellipsis;
 }
 
-.paperclipProject__itemAttention {
+.projectDetail__itemAttention {
   font-size: 0.62rem;
   font-weight: 600;
   text-transform: uppercase;
@@ -610,30 +608,30 @@ main.canvas:has(> .paperclipProject) {
   border-radius: 4px;
 }
 
-.paperclipProject__itemAttention--decision_needed,
-.paperclipProject__itemAttention--ready_to_review {
+.projectDetail__itemAttention--decision_needed,
+.projectDetail__itemAttention--ready_to_review {
   background: var(--accent-soft);
   color: var(--accent);
 }
 
-.paperclipProject__itemAttention--blocked,
-.paperclipProject__itemAttention--failed {
+.projectDetail__itemAttention--blocked,
+.projectDetail__itemAttention--failed {
   background: rgba(192, 56, 43, 0.12);
   color: #a93226;
 }
 
-.paperclipProject__itemAttention--recently_shipped {
+.projectDetail__itemAttention--recently_shipped {
   background: var(--ready-bg);
   color: var(--ready-text);
 }
 
-.paperclipProject__itemStatus {
+.projectDetail__itemStatus {
   font-size: 0.7rem;
   color: var(--muted);
   text-transform: lowercase;
 }
 
-.paperclipProject__itemOwner {
+.projectDetail__itemOwner {
   font-size: 0.66rem;
   color: var(--muted-soft);
   text-transform: uppercase;
@@ -643,13 +641,13 @@ main.canvas:has(> .paperclipProject) {
   background: var(--canvas-bg);
 }
 
-.paperclipProject__activity {
+.projectDetail__activity {
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.paperclipProject__activityRow {
+.projectDetail__activityRow {
   display: grid;
   grid-template-columns: 90px 1fr;
   column-gap: 14px;
@@ -659,29 +657,29 @@ main.canvas:has(> .paperclipProject) {
   border-bottom: 1px solid var(--border);
 }
 
-.paperclipProject__activityRow:last-child {
+.projectDetail__activityRow:last-child {
   border-bottom: none;
 }
 
-.paperclipProject__activityWhen {
+.projectDetail__activityWhen {
   color: var(--muted-soft);
   font-size: 0.7rem;
   padding-top: 2px;
 }
 
-.paperclipProject__activityTitle {
+.projectDetail__activityTitle {
   color: var(--text);
   font-weight: 500;
 }
 
-.paperclipProject__activitySummary {
+.projectDetail__activitySummary {
   grid-column: 2;
   color: var(--muted);
   font-size: 0.74rem;
   line-height: 1.4;
 }
 
-.paperclipProject__empty {
+.projectDetail__empty {
   margin: 0;
   padding: 24px 18px;
   font-size: 0.78rem;
@@ -690,7 +688,7 @@ main.canvas:has(> .paperclipProject) {
   text-align: center;
 }
 
-.paperclipProject__empty code {
+.projectDetail__empty code {
   font-family: var(--font-mono, "SFMono-Regular", Consolas, monospace);
   font-size: 0.74rem;
   background: var(--canvas-bg);
