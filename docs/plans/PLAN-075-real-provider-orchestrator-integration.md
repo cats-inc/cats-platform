@@ -123,7 +123,10 @@ This plan covers:
 - Capability profiles for Claude, Codex, Ollama/local, and unknown providers
   exist before any live provider-agent autonomy is enabled. Bootstrap covers
   catalog source evidence, schema-only eval/history source fixtures,
-  operator overrides, and FR-19 override-floor enforcement.
+  operator overrides, and FR-19 override-floor enforcement. Live runs initially
+  see catalog and operator override evidence only; session-history summaries
+  default to a conservative empty fixture until the follow-up producer plan
+  ships.
 - Chat direct, solo, group, and parallel send flows route semantic next-step
   choice through the new provider-agent decision seam where the task is
   agentic.
@@ -184,7 +187,7 @@ This plan covers:
 | Do not change Chat visible UI while cutting the decision core. | Targeted Chat smoke/probe tests prove direct, solo, group, and parallel runtime handoff. |
 | Do not add direct runtime create/send calls in product code. | `supervision-runtime-boundary.test.tsx` and `rg runtimeClient.createSession/sendMessage` show only `runtimeBoundary.ts` calls runtime directly. |
 | Do not retire old semantic planner paths before Chat deterministic routing is carved out. | Static import test proves non-Chat product trees cannot import old Chat planner/dispatcher modules; Chat router tests prove deterministic behavior remains. |
-| Do not add weak-model tools that bypass the provider-agent seam. | `weak-worker-no-ad-hoc-routing.test.ts` proves weak-model calls enter through registered supervised tools and `toolBoundary`; no product/platform routing entrypoint introduced for weak providers may invoke a weak provider directly. |
+| Do not add weak-model tools that bypass the provider-agent seam. | `weak-worker-no-ad-hoc-routing.test.ts` enforces the Anti-Bypass Invariant. |
 
 ## Chat Deterministic Routing Carve-Out
 
@@ -267,8 +270,17 @@ fragments, and unbounded history summaries never enter
 PLAN-075 does not implement the producer, storage, or refresh cadence for
 session-history summaries. Those summaries are represented as explicit
 fixtures/defaults in this plan. A follow-up plan shall assign the producer
-and durable storage, likely from lifecycle/evidence records after terminal
-run or action events.
+and durable storage.
+
+## Anti-Bypass Invariant
+
+Weak-provider invocations enter the system only through registered supervised
+tool executors and `toolBoundary`. No product or platform routing entrypoint
+introduced for weak providers may invoke a weak provider directly. The
+`weak-worker-no-ad-hoc-routing.test.ts` static/contract test enforces this
+invariant; Phase Gate, Task 7.6, Testing Strategy, and risk-mitigation
+references throughout this plan point at the same invariant rather than
+restating it.
 
 ## Implementation Phases
 
@@ -356,7 +368,10 @@ run or action events.
       fallback choices, and must not synthesize corrected semantic content on
       the agent's behalf. Chat cutover must use the lifecycle service's
       terminal-failure behavior when no fallback option remains allowed, rather
-      than implementing product-specific recovery state.
+      than implementing product-specific recovery state. Task 3.4 cannot
+      complete before Phase 4 Task 4.2 lands the lifecycle service's
+      terminal-failure behavior; the rest of Phase 3 may proceed in parallel
+      with Phase 4.
 - [ ] Task 3.5: Add targeted Chat probes for direct, solo, group, and parallel
       sends that assert session start, assistant progress, response, and no
       direct runtime calls.
@@ -433,20 +448,17 @@ run or action events.
 - [ ] Task 7.3: Enforce weak-capability dials through `policyEngine` and
       `toolBoundary`: no autonomous delegation, broad-write, unrestricted
       outcome delegation, or open-ended recovery ownership unless capability
-      evidence and policy explicitly allow it.
-- [ ] Task 7.4: Add a contrast test proving strong and weak capability profiles
-      enter the same provider-agent seam for the same high-level request, while
-      weak profiles receive stricter policy dials and narrower permitted tools.
-- [ ] Task 7.5: Add evidence tests proving weak-worker calls are attributed as
-      tool executions under the parent run/driver, not as independent peer
-      agent lifecycles by default.
-- [ ] Task 7.6: Add a static or contract test proving Phase 7 does not create
-      a weak-model routing entrypoint outside the provider-agent seam,
-      `toolRegistry`, and `toolBoundary`. Weak-provider calls must originate
-      from registered supervised tool executors, not ad hoc route helpers.
-      Name this test `weak-worker-no-ad-hoc-routing.test.ts`; it shall assert
-      that no product/platform routing entrypoint introduced for weak providers
-      invokes a weak provider directly.
+      evidence and policy explicitly allow it. Coverage lands in
+      `weak-worker-tool-contracts.test.ts`.
+- [ ] Task 7.4: Add a contrast test in `weak-worker-tool-contracts.test.ts`
+      proving strong and weak capability profiles enter the same provider-agent
+      seam for the same high-level request, while weak profiles receive
+      stricter policy dials and narrower permitted tools.
+- [ ] Task 7.5: Add evidence tests in `weak-worker-tool-contracts.test.ts`
+      proving weak-worker calls are attributed as tool executions under the
+      parent run/driver, not as independent peer agent lifecycles by default.
+- [ ] Task 7.6: Add `weak-worker-no-ad-hoc-routing.test.ts` enforcing the
+      Anti-Bypass Invariant.
 
 ### Phase 8: Chat Router Ownership and Old Semantic Core Removal
 
@@ -500,7 +512,10 @@ contract is:
 - `allowedToolNames` is an upper-bound subgrant, not tool autonomy. It must be
   a subset of the parent run grant and current policy-approved tool surface,
   may be forced to an empty list by policy, and does not authorize the weak
-  provider to invoke tools directly
+  provider to invoke tools directly. Use case: weak workers may classify intent
+  and surface candidate tool names; the strong driver decides whether to honor
+  any suggestion. The first slice forces `allowedToolNames = []`; tool
+  suggestion is not surfaced to drivers until a real product use case lands
 - any tool request suggested by the weak provider must return to the
   provider-agent seam and pass through `toolBoundary` with the current parent
   run grant and action policy before execution
@@ -570,9 +585,7 @@ execution. The difference is control density, not a boolean switch.
   seam, receive stricter policy dials, can only access allowed weak-worker/SOP
   tool(s), validate required schemas, and persist evidence under the parent
   run/driver instead of creating peer driving-agent lifecycles.
-- `weak-worker-no-ad-hoc-routing.test.ts` proves no product/platform routing
-  entrypoint introduced for weak providers calls a weak provider outside
-  registered supervised tool executors and `toolBoundary`.
+- `weak-worker-no-ad-hoc-routing.test.ts` enforces the Anti-Bypass Invariant.
 
 ## Risks
 
@@ -584,7 +597,7 @@ execution. The difference is control density, not a boolean switch.
 | Old planner/dispatcher semantic behavior lingers indefinitely | High | Add non-Chat import tests and make old semantic-planning path removal a phase gate while preserving Chat deterministic routing. |
 | Weak models are treated like autonomous agents | Medium | Keep weak profiles on the same seam with stricter policy dials and expose weak-model calls only through supervised weak-worker/SOP tools by default. |
 | Capability profiles arrive after live provider autonomy | High | Phase 1 and phase gates require conservative profile bootstrap and FR-19 override-floor tests before live autonomy is wired. |
-| Phase 7 SOP work grows ad-hoc routing that bypasses the provider-agent seam | Medium | Do not introduce a standalone dispatcher; keep semantic choice in the provider-agent seam, supervision dials in `policyEngine`, enforcement in `toolBoundary`, deterministic scaffolding inside individual SOP tools, and `weak-worker-no-ad-hoc-routing.test.ts` against any product/platform routing entrypoint introduced for weak providers. |
+| Weak-provider routing grows ad-hoc paths that bypass the provider-agent seam | Medium | Do not introduce a standalone dispatcher; keep semantic choice in the provider-agent seam, supervision dials in `policyEngine`, enforcement in `toolBoundary`, deterministic scaffolding inside individual SOP tools, and `weak-worker-no-ad-hoc-routing.test.ts` enforcing the Anti-Bypass Invariant. |
 | Lifecycle scheduler starts reading transcript content | High | Static import tests enforce scheduler content blindness. |
 | Real provider smoke becomes flaky or expensive | Medium | Keep live-provider tests optional; CI uses deterministic runtime stubs. |
 
@@ -601,3 +614,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Review close-out: scoped eval/history to schema fixtures, bounded session-history inputs to metadata summaries, restored recovery as agent proposals within platform fallback policy, made Chat router move/rename mandatory, canonicalized weak-worker tool ids, narrowed Phase 7 first-slice tools, and added a no-ad-hoc-weak-routing gate/test. |
 | 2026-04-28 | Precision close-out: defined bounded capability summaries, made the schema seam type-plus-fixture only, committed Phase 7's first weak-provider slice to non-passthrough `work.sop.ask_weak`, assigned alias resolution to the product command resolver, and unified the anti-bypass guard under `weak-worker-no-ad-hoc-routing.test.ts`. |
 | 2026-04-28 | Precision follow-up: kept `work.sop.ask_weak` schema in the Weak-Model Control Contract only, defined `allowedToolNames` as a policy-bounded subgrant with `toolBoundary` revalidation, tied `expectedOutputSchemaRef` to PLAN-074 `SchemaRef`, assigned no-fallback terminal failure to lifecycle service behavior, and scoped session-history summary production/storage to follow-up work. |
+| 2026-04-28 | Final closing pass: extracted the Anti-Bypass Invariant into a single section that Phase Gate / Task 7.6 / Testing Strategy / Risk now reference instead of restating; added `allowedToolNames` rationale plus first-slice empty-list constraint; declared Task 3.4 dependency on Phase 4 Task 4.2; pointed Tasks 7.3-7.5 at `weak-worker-tool-contracts.test.ts`; dropped the producer/storage hedge; noted live runs initially lack session-history evidence; broadened the SOP-routing risk title to weak-provider routing in general. |
