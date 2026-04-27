@@ -75,6 +75,15 @@ import {
 import { applyRoomRoutingSnapshot } from '../runtime-session/state.js';
 import { resolveOrchestratorLeaseAttachment } from '../../shared/channelParticipants.js';
 
+export type ProviderAgentDecisionRequester = (input: {
+  state: ChatState;
+  channelId: string;
+  payload: SendChannelMessageInput;
+  observation: NonNullable<import('./turn.js').PreparedDispatchTurn['providerAgentObservation']>;
+  runtimeClient: RuntimeClient;
+  now: Date;
+}) => Promise<ProviderAgentDecision | null>;
+
 interface RouteChannelMessageOptions {
   transport?: RuntimeTransportContext;
   transportBindingId?: string | null;
@@ -88,14 +97,7 @@ interface RouteChannelMessageOptions {
   cancellationRegistry?: ChannelDispatchCancellationRegistry;
   onStateWritten?: (channelId: string) => void;
   deterministicRoutingPlan?: DeterministicChatRoutingPlan | null;
-  providerAgentDecisionRequester?: (input: {
-    state: ChatState;
-    channelId: string;
-    payload: SendChannelMessageInput;
-    observation: NonNullable<import('./turn.js').PreparedDispatchTurn['providerAgentObservation']>;
-    runtimeClient: RuntimeClient;
-    now: Date;
-  }) => Promise<ProviderAgentDecision | null>;
+  providerAgentDecisionRequester?: ProviderAgentDecisionRequester;
 }
 
 function readMessageRetryMetadata(

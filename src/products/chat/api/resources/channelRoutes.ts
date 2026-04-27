@@ -560,6 +560,7 @@ async function handleRestSendMessage(
           runtimeRecovery: {
             staleSessionRetryLimit: context.dependencies.config.runtimeStaleSessionRetryLimit,
           },
+          providerAgentDecisionRequester: context.dependencies.providerAgentDecisionRequester,
           cancellationRegistry: channelDispatchCancellationRegistry,
           onStateWritten: notifyStreamTargetChanged,
         },
@@ -698,6 +699,7 @@ async function handleRestRetryMessage(
           runtimeRecovery: {
             staleSessionRetryLimit: context.dependencies.config.runtimeStaleSessionRetryLimit,
           },
+          providerAgentDecisionRequester: context.dependencies.providerAgentDecisionRequester,
           cancellationRegistry: channelDispatchCancellationRegistry,
           onStateWritten: notifyStreamTargetChanged,
         },

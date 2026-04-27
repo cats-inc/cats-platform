@@ -10,6 +10,7 @@ import {
 } from '../../../platform/supervision/runtimeBoundary.js';
 import type { CatsMemoryService } from '../../../platform/memory/index.js';
 import type { ChatEventHub } from './chatEventHub.js';
+import type { ProviderAgentDecisionRequester } from '../state/runtime-dispatch/routing.js';
 import type {
   OrchestratorChannelRouter,
   OrchestratorPlannerSurface,
@@ -150,6 +151,7 @@ export interface ChatApiDependencies {
   companionStore: CompanionBoxStore;
   memoryService: CatsMemoryService;
   eventHub?: ChatEventHub;
+  providerAgentDecisionRequester?: ProviderAgentDecisionRequester;
   now?: () => Date;
 }
 

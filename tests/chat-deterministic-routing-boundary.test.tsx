@@ -172,3 +172,15 @@ test('channel message routes acknowledge Chat dispatch without building old plat
   assert.equal(source.includes('buildChannelMessageOrchestratorPlanState'), false);
   assert.equal(source.includes('buildChannelDispatchAcknowledgementFromBegun'), true);
 });
+
+test('channel message routes expose the provider-agent decision requester seam', () => {
+  const source = readFileSync(
+    path.join(process.cwd(), 'src/products/chat/api/resources/channelRoutes.ts'),
+    'utf8',
+  );
+
+  assert.equal(
+    source.includes('providerAgentDecisionRequester: context.dependencies.providerAgentDecisionRequester'),
+    true,
+  );
+});
