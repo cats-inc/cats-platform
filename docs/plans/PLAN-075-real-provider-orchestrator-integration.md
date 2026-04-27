@@ -491,7 +491,7 @@ categories:
 - [x] Task 7.5: Add evidence tests in `weak-worker-tool-contracts.test.ts`
       proving weak-worker calls are attributed as tool executions under the
       parent run/driver, not as independent peer agent lifecycles by default.
-- [ ] Task 7.6: Add `weak-worker-no-ad-hoc-routing.test.ts` enforcing the
+- [x] Task 7.6: Add `weak-worker-no-ad-hoc-routing.test.ts` enforcing the
       Anti-Bypass Invariant.
 
 ### Phase 8: Chat Router Ownership and Old Semantic Core Removal
@@ -714,3 +714,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 52: completed Phase 7 Task 7.3 by extending weak-capability policy floors to reject `milestone_plan`, `delegate_other`, and `broad_write` under catalog-only confidence, with tool-boundary coverage for weak-worker scope denial. |
 | 2026-04-28 | Implementation slice 53: completed Phase 7 Task 7.4 with a contrast test proving strong and weak profiles enter the same provider-agent observation contract while policy dials and registry-filtered tools narrow the weak path. |
 | 2026-04-28 | Implementation slice 54: completed Phase 7 Task 7.5 by proving `work.sop.ask_weak` evidence is recorded as a tool-boundary event on the parent driver run and actor, without introducing a peer worker run id. |
+| 2026-04-28 | Implementation slice 55: completed Phase 7 Task 7.6 with `weak-worker-no-ad-hoc-routing.test.ts`, guarding against product/orchestration weak-provider runtime entrypoints, `ask_weak` runtime bypasses, and standalone weak dispatcher modules. |
