@@ -67,6 +67,16 @@ function observation(): ProviderAgentBoundedObservation {
       providerRef: 'provider:codex',
     },
     policy: {
+      dials: {
+        autonomy: 'milestone_plan',
+        taskGranularity: 'milestone',
+        toolScope: 'read_only',
+        scaffolding: 'few_shot',
+        validation: 'best_effort',
+        checkpointCadence: 'milestone',
+        approvalThreshold: 'low',
+        fallbackPolicy: 'retry',
+      },
       allowedFallbacks: ['retry', 'ask_human'],
     },
     availableTools: [

@@ -16,8 +16,8 @@ import type { ProviderAgentBoundedObservation, ProviderAgentDecision } from './p
 import {
   PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
   validateProviderAgentBoundedObservation,
-  validateProviderAgentDecision,
 } from './providerAgentDecision.js';
+import { applyProviderAgentPolicyGate } from './providerAgentPolicyGate.js';
 
 export const PROVIDER_AGENT_ADAPTER_VERSION = 1;
 export const PROVIDER_AGENT_DECISION_PROMPT_SCHEMA = 'cats.provider_agent.decision.v1' as const;
@@ -118,15 +118,23 @@ export async function requestProviderAgentDecision(
     supervision: deriveRuntimeSupervision(input.supervision, 'decision'),
   });
   const decision = parseProviderAgentDecision(runtimeMessage);
-  const decisionErrors = validateProviderAgentDecision({
+  const policyGateResult = applyProviderAgentPolicyGate({
     observation: input.observation,
     decision,
   });
-  if (decisionErrors.length > 0) {
+  if (policyGateResult.status === 'rejected') {
+    const details = policyGateResult.error.details as { errors?: string[] } | undefined;
     throw new ProviderAgentAdapterError(
       'INVALID_DECISION',
-      'Provider-agent decision failed validation',
-      decisionErrors,
+      policyGateResult.error.message,
+      details?.errors,
+    );
+  }
+  if (policyGateResult.status === 'pending_approval') {
+    throw new ProviderAgentAdapterError(
+      'INVALID_DECISION',
+      'Provider-agent policy gate unexpectedly returned pending approval',
+      [policyGateResult.summary],
     );
   }
 
@@ -134,7 +142,7 @@ export async function requestProviderAgentDecision(
     sessionId,
     createdSession,
     runtimeMessage,
-    decision,
+    decision: policyGateResult.result,
   };
 }
 

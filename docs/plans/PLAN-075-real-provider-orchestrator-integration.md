@@ -347,7 +347,7 @@ restating it.
       recovery decisions, tool/delegation requests, and confidence.
 - [x] Task 2.2: Implement a provider-agent adapter that calls runtime through
       the supervised runtime boundary, not directly.
-- [ ] Task 2.3: Make policy validation own deterministic routing, invariants,
+- [x] Task 2.3: Make policy validation own deterministic routing, invariants,
       approval, weak-model policy dial tightening, budget, retry, and
       rejection.
 - [ ] Task 2.4: Add tests proving the platform preserves agent semantic choices
@@ -645,3 +645,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 1: landed provider capability profile bootstrap for Claude, Codex, Ollama/local, and unknown providers; added eval/history schema fixtures, policy dial tests for strong vs weak profiles, and static guardrails for direct runtime calls plus non-Chat planner/dispatcher imports. |
 | 2026-04-28 | Implementation slice 2: added the provider-agent decision contract for bounded observations, semantic plans, tool/delegation requests, and recovery decisions, with validation that raw-content summaries and out-of-surface tools are rejected. |
 | 2026-04-28 | Implementation slice 3: added the provider-agent runtime adapter, keeping create/send calls behind `platform/supervision/runtimeBoundary`, validating bounded observations before runtime calls, and rejecting provider decisions that exceed the bounded tool surface. |
+| 2026-04-28 | Implementation slice 4: added a deterministic provider-agent policy gate over policy dials, parent/tool-scope intersection, schema-required validation, single-step weak-profile limits, delegation autonomy, and allowed recovery fallback choices. |

@@ -4,7 +4,9 @@ import type {
   SchemaRef,
   SupervisedToolManifest,
   SupervisionFallbackPolicy,
+  SupervisionPolicy,
   SupervisionPolicySnapshotRef,
+  SupervisionToolScope,
 } from '../supervision/contracts.js';
 
 export const PROVIDER_AGENT_DECISION_CONTRACT_VERSION = 1;
@@ -50,6 +52,8 @@ export interface ProviderAgentBoundedObservation {
   };
   policy: {
     snapshotRef?: SupervisionPolicySnapshotRef;
+    dials: SupervisionPolicy;
+    parentToolScope?: SupervisionToolScope;
     allowedFallbacks: SupervisionFallbackPolicy[];
   };
   availableTools: ProviderAgentToolDescriptor[];

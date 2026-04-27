@@ -60,6 +60,13 @@ export {
   type ProviderAgentRuntimeTarget,
 } from './providerAgentAdapter.js';
 export {
+  applyProviderAgentPolicyGate,
+  validateProviderAgentPolicyGate,
+  type ProviderAgentPolicyGateInput,
+  type ProviderAgentPolicyGateResult,
+  type ProviderAgentPolicyToolScope,
+} from './providerAgentPolicyGate.js';
+export {
   PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
   PROVIDER_AGENT_MAX_GOAL_LENGTH,
   PROVIDER_AGENT_MAX_SUMMARY_TEXT_LENGTH,
