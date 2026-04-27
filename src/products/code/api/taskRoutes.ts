@@ -39,6 +39,15 @@ interface ExecuteTaskBody {
   instance?: string | null;
 }
 
+function readTaskEvidenceEvents(
+  context: CodeApiRouteContext,
+  conversationId: string | null,
+) {
+  return conversationId
+    ? context.dependencies.readEvidenceEvents?.(conversationId) ?? []
+    : [];
+}
+
 export async function routeCodeTaskMutationApi(
   context: CodeApiRouteContext,
 ): Promise<boolean> {
@@ -101,7 +110,11 @@ export async function routeCodeTaskMutationApi(
         },
       );
 
-      const taskDetail = buildCodeTaskDetailProjection(result.core, result.task);
+      const taskDetail = buildCodeTaskDetailProjection(
+        result.core,
+        result.task,
+        readTaskEvidenceEvents(context, result.task.conversationId),
+      );
       sendJson(context.response, 200, {
         task: taskDetail,
         runId: result.runId,
@@ -140,7 +153,11 @@ export async function routeCodeTaskMutationApi(
       const result = resumeCodeTask(core, { taskId });
       await context.dependencies.coreStore.writeCore(result.core);
 
-      const taskDetail = buildCodeTaskDetailProjection(result.core, result.task);
+      const taskDetail = buildCodeTaskDetailProjection(
+        result.core,
+        result.task,
+        readTaskEvidenceEvents(context, result.task.conversationId),
+      );
       sendJson(context.response, 200, { task: taskDetail });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Resume failed.';

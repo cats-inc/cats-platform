@@ -450,7 +450,7 @@ categories:
 
 ### Phase 6: Code Real Provider Runs
 
-- [ ] Task 6.1: Represent Code task execute as a supervised run with runtime
+- [x] Task 6.1: Represent Code task execute as a supervised run with runtime
       session attachment, evidence, and task/run metadata.
 - [ ] Task 6.2: Represent Code relay fan-out as sibling supervised runs under
       one relay-round budget envelope, with per-agent evidence and convergence
@@ -703,3 +703,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 43: completed Phase 5 Task 5.3 by adding Work supervised-run `resume`, `retry`, and `cancel` route actions on top of the lifecycle service, including runtime session resume/cancel hooks and route coverage. |
 | 2026-04-28 | Implementation slice 44: started Phase 6 Task 6.1 by creating a real CoreRun for Code task execution, attaching the supervised runtime session to run metadata, and linking the Code task metadata to the latest supervised run/session. |
 | 2026-04-28 | Implementation slice 45: extended Phase 6 Task 6.1 by adding Code execution durable tool-boundary evidence for supervised runtime session creation and wiring the Code API dependency slice to persisted evidence storage. |
+| 2026-04-28 | Implementation slice 46: completed Phase 6 Task 6.1 by projecting Code task latest supervised run inspection and durable evidence through Code task detail responses without changing the entry flow. |

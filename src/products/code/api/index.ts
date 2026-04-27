@@ -64,9 +64,10 @@ export function createCodeTaskListPayload(
 export function createCodeTaskDetailPayload(
   core: Awaited<ReturnType<CoreStore['readCore']>>,
   taskId: string,
+  evidenceEvents: EvidenceEvent[] = [],
 ): CodeTaskDetailProjection | null {
   const task = core.tasks.find((candidate) => candidate.id === taskId) ?? null;
-  return task ? buildCodeTaskDetailProjection(core, task) : null;
+  return task ? buildCodeTaskDetailProjection(core, task, evidenceEvents) : null;
 }
 
 export function createCodeArtifactListPayload(
@@ -193,10 +194,14 @@ export async function routeCodeApi(
       return true;
     }
 
-    const payload = createCodeTaskDetailPayload(
-      await context.dependencies.coreStore.readCore(),
-      taskId,
-    );
+    const core = await context.dependencies.coreStore.readCore();
+    const task = core.tasks.find((candidate) => candidate.id === taskId) ?? null;
+    const evidenceEvents = task?.conversationId
+      ? context.dependencies.readEvidenceEvents?.(task.conversationId) ?? []
+      : [];
+    const payload = task
+      ? buildCodeTaskDetailProjection(core, task, evidenceEvents)
+      : null;
     if (!payload) {
       sendJson(context.response, 404, {
         error: { code: 'task_not_found', message: `No task found for id ${taskId}.` },

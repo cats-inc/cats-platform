@@ -15,12 +15,17 @@ import {
   type CoreTaskTimelineQuerySummary,
   type CoreTaskTimelineView,
 } from '../../../core/taskTimeline.js';
+import {
+  buildSupervisedRunInspectionProjection,
+  type SupervisedRunInspectionProjection,
+} from '../../../platform/supervision/index.js';
 import type {
   CatsCoreState,
   CoreArtifactKind,
   CoreArtifactRecord,
   CoreArtifactStatus,
   CoreConversationRecord,
+  EvidenceEvent,
   CoreProjectRecord,
   CoreTaskRecord,
   CoreTaskStatus,
@@ -142,6 +147,7 @@ export interface CodeTaskDetailProjection {
   effectiveStrategy: string | null;
   workspace: CodeWorkspaceSummary | null;
   inspection: CoreTaskInspectionView;
+  supervision: SupervisedRunInspectionProjection | null;
   controlPlane: CoreTaskControlPlaneView;
   recovery: CoreTaskRecoveryView;
   timeline: {
@@ -436,6 +442,7 @@ export function buildCodeArtifactListProjection(
 export function buildCodeTaskDetailProjection(
   core: CatsCoreState,
   task: CoreTaskRecord,
+  evidenceEvents: EvidenceEvent[] = [],
 ): CodeTaskDetailProjection {
   const conversation = resolveConversation(core, task.conversationId);
   const workItem = resolveTaskWorkItemRecord(core, task.id);
@@ -450,6 +457,7 @@ export function buildCodeTaskDetailProjection(
     linkedArtifacts,
   );
   const timeline = queryCoreTaskTimelineView(core, task, { limit: CODE_TIMELINE_PREVIEW_LIMIT });
+  const inspection = buildCoreTaskInspectionView(core, task);
 
   return {
     product: createCodeProductRef(),
@@ -459,7 +467,10 @@ export function buildCodeTaskDetailProjection(
     effectiveStrategy: resolveEffectiveTaskStrategy('code', readTaskPlanningMetadataFromTask(task)),
     workspace: readCodeWorkspaceSummaryFromTask(task),
     plan: readCodePlanFromTask(task),
-    inspection: buildCoreTaskInspectionView(core, task),
+    inspection,
+    supervision: inspection.latestRun
+      ? buildSupervisedRunInspectionProjection(core, inspection.latestRun.id, evidenceEvents)
+      : null,
     controlPlane: buildCoreTaskControlPlaneView(core, task),
     recovery: buildCoreTaskRecoveryView(core, task),
     timeline: {

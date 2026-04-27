@@ -1,9 +1,11 @@
 import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
+import { createServer } from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
+import { loadConfig } from '../src/config.ts';
 import { createDefaultCoreState } from '../src/core/model/index.ts';
 import { MemoryCoreStore } from '../src/core/store.ts';
 import type {
@@ -14,6 +16,7 @@ import {
   bridgeCodeTaskToRuntime,
   createCodeTask,
 } from '../src/products/code/state/taskExecution.ts';
+import { routeCodeApi } from '../src/products/code/api/index.ts';
 import { readEvidenceEvents } from '../src/platform/persistence/evidence.ts';
 
 function createRuntimeStub(): RuntimeClient & {
@@ -187,4 +190,81 @@ test('bridgeCodeTaskToRuntime creates a supervised run for Code task execution',
     ['cats.runtime.session.create'],
   );
   assert.equal(evidence[0]?.payload.runId, run.id);
+});
+
+test('GET /api/code/tasks/:taskId includes supervised run evidence', async (t) => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-code-route-supervision-'));
+  t.after(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  const created = createCodeTask(
+    createDefaultCoreState(),
+    {
+      title: 'Expose Code supervision',
+      summary: 'Make Code task detail inspectable.',
+      workspacePath: 'C:/repo/cats-platform',
+      workspaceKind: 'user_selected',
+      conversationId: 'conversation-code-route-supervision',
+    },
+    new Date('2026-04-28T02:00:00.000Z'),
+  );
+  const coreStore = new MemoryCoreStore(created.core);
+  const runtimeClient = createRuntimeStub();
+  const bridged = await bridgeCodeTaskToRuntime(
+    coreStore,
+    runtimeClient,
+    {
+      taskId: created.task.id,
+      workspacePath: 'C:/repo/cats-platform',
+      workspaceKind: 'user_selected',
+      provider: 'codex',
+      model: 'gpt-5.4',
+    },
+    new Date('2026-04-28T02:05:00.000Z'),
+    {
+      evidenceDataDir: tempDir,
+    },
+  );
+
+  let evidenceConversationId: string | null = null;
+  const server = createServer(async (request, response) => {
+    const url = new URL(request.url ?? '/', 'http://localhost');
+    const handled = await routeCodeApi({
+      request,
+      response,
+      url,
+      method: request.method ?? 'GET',
+      dependencies: {
+        coreStore,
+        runtimeClient,
+        config: loadConfig({ CATS_PLATFORM_DIR: tempDir }),
+        readEvidenceEvents(conversationId) {
+          evidenceConversationId = conversationId;
+          return readEvidenceEvents(tempDir, conversationId);
+        },
+      },
+    });
+
+    if (!handled) {
+      response.writeHead(404, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({ error: 'not found' }));
+    }
+  });
+
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  t.after(() => server.close());
+
+  const address = server.address();
+  assert.ok(address && typeof address === 'object');
+  const response = await fetch(
+    `http://127.0.0.1:${address.port}/api/code/tasks/${created.task.id}`,
+  );
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(evidenceConversationId, 'conversation-code-route-supervision');
+  assert.equal(payload.supervision.run.id, bridged.runId);
+  assert.equal(payload.supervision.counts.evidence, 1);
+  assert.equal(payload.supervision.evidence[0].toolName, 'cats.runtime.session.create');
 });
