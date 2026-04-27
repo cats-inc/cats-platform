@@ -200,17 +200,35 @@ async function awaitInflightCachePromisesWithBudget(
   runtimeClient: RuntimeClient,
   timeoutMs: number,
 ): Promise<void> {
-  const inflight = collectInflightCachePromises(runtimeClient);
-  if (inflight.length === 0) {
-    return;
+  const deadline = Date.now() + timeoutMs;
+
+  while (true) {
+    const inflight = collectInflightCachePromises(runtimeClient);
+    if (inflight.length === 0) {
+      return;
+    }
+
+    const remainingMs = deadline - Date.now();
+    if (remainingMs <= 0) {
+      return;
+    }
+
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+    const result = await Promise.race([
+      Promise.allSettled(inflight).then(() => 'settled' as const),
+      new Promise<'timeout'>((resolve) => {
+        timeout = setTimeout(() => resolve('timeout'), remainingMs);
+      }),
+    ]);
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+    if (result === 'timeout') {
+      return;
+    }
+
+    await Promise.resolve();
   }
-  // Bounded wait: a stuck probe (e.g. cats-runtime hanging) must not delay
-  // shutdown indefinitely. Whatever hasn't settled by the budget gets
-  // abandoned and the process moves on.
-  await Promise.race([
-    Promise.allSettled(inflight),
-    new Promise<void>((resolve) => setTimeout(resolve, timeoutMs)),
-  ]);
 }
 
 export async function flushProviderSnapshotPersistence(
@@ -904,7 +922,9 @@ async function refreshTruthfulProviderRegistry(
       // sees the freshest state instead of our older value.
       if (cacheState.inflight.get(cacheKey) !== refreshPromise) {
         const current = cacheState.entries.get(cacheKey);
-        return current ? current.value : value;
+        return current
+          ? readProviderCacheValue(current, appendTruthfulProviderRegistryWarning)
+          : value;
       }
 
       const now = Date.now();
@@ -925,17 +945,9 @@ async function refreshTruthfulProviderRegistry(
         return writeTruthfulProviderRegistryErrorBackoff(cacheState, cacheKey, cached, value);
       }
 
-      // No prior baseline and the probe failed. Cache the failure briefly so
-      // back-to-back probes within PROVIDER_CACHE_ERROR_BACKOFF_MS reuse the
-      // same response instead of all paying the diagnostics timeout. The TTL
-      // is short enough that a recovering runtime is re-probed promptly.
-      cacheState.entries.set(cacheKey, {
-        lifecycle: 'fresh',
-        value,
-        freshUntilMs: now + PROVIDER_CACHE_ERROR_BACKOFF_MS,
-        staleUntilMs: now + PROVIDER_CACHE_ERROR_BACKOFF_MS,
-        staleIfErrorUntilMs: now + PROVIDER_CACHE_ERROR_BACKOFF_MS,
-      });
+      // With no prior ready baseline, do not turn a cold runtime failure into
+      // a fresh cache entry. The next foreground or auto-recheck read should
+      // probe runtime again instead of being pinned behind a local backoff.
       return value;
     })
     .finally(() => {

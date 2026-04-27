@@ -280,29 +280,32 @@ test('seedProviderSelectorFromSnapshot makes the first /api/providers response s
   });
 });
 
-test('GET /api/providers?force=1 bypasses the failure backoff and re-probes the runtime', async () => {
+test('GET /api/providers re-probes after a cold runtime failure instead of caching it', async () => {
   await withTempDir(async (directory) => {
     const snapshotPath = path.join(directory, 'provider-snapshot.json');
     let diagnosticsCalls = 0;
-    const runtimeClient = createUnreachableRuntimeStub();
-    runtimeClient.getProviderDiagnostics = async () => {
+    const runtimeClient = createReachableRuntimeStub();
+    const originalDiagnostics = runtimeClient.getProviderDiagnostics;
+    runtimeClient.getProviderDiagnostics = async (query = {}) => {
       diagnosticsCalls += 1;
-      throw new Error('The operation was aborted due to timeout');
+      if (diagnosticsCalls === 1) {
+        throw new Error('The operation was aborted due to timeout');
+      }
+      return originalDiagnostics.call(runtimeClient, query);
     };
 
     await withSeededServer(runtimeClient, snapshotPath, async (baseUrl) => {
       const initial = await fetch(`${baseUrl}/api/providers`);
       assert.equal(initial.status, 200);
+      const initialPayload = await initial.json();
+      assert.equal(initialPayload.state, 'runtime_unreachable');
       assert.equal(diagnosticsCalls, 1);
 
-      // Without force=1 the failure backoff should reuse the cached failure.
-      const cached = await fetch(`${baseUrl}/api/providers`);
-      assert.equal(cached.status, 200);
-      assert.equal(diagnosticsCalls, 1, 'cached failure must be reused without force');
-
-      const forced = await fetch(`${baseUrl}/api/providers?force=1`);
-      assert.equal(forced.status, 200);
-      assert.equal(diagnosticsCalls, 2, 'force=1 must re-probe the runtime');
+      const recovered = await fetch(`${baseUrl}/api/providers`);
+      assert.equal(recovered.status, 200);
+      const recoveredPayload = await recovered.json();
+      assert.equal(recoveredPayload.state, 'ready');
+      assert.equal(diagnosticsCalls, 2, 'cold runtime failures must not be cached');
     });
   });
 });
@@ -481,6 +484,60 @@ test('a stale background probe cannot clobber a forced fresh ready result', asyn
   });
 });
 
+test('a stale forced probe returns the current error-backoff warning when a newer force preserves ready cache', async () => {
+  await withTempDir(async (directory) => {
+    const snapshotPath = path.join(directory, 'provider-snapshot.json');
+    const runtimeClient = createReachableRuntimeStub();
+    const persisted = new Promise((resolve) => {
+      bootstrapProviderSelector(runtimeClient, {
+        snapshotPath,
+        onSnapshotPersisted: () => resolve(),
+      }).catch((error) => {
+        throw error;
+      });
+    });
+    await persisted;
+
+    let diagnosticsCalls = 0;
+    let releaseFirstCall;
+    const firstCallReady = new Promise((resolve) => {
+      releaseFirstCall = resolve;
+    });
+    runtimeClient.getProviderDiagnostics = async () => {
+      diagnosticsCalls += 1;
+      if (diagnosticsCalls === 1) {
+        await firstCallReady;
+      }
+      return { probe: 'light', providers: [] };
+    };
+
+    await withSeededServer(runtimeClient, snapshotPath, async (baseUrl) => {
+      const staleForcedRequest = fetch(`${baseUrl}/api/providers?force=1`);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      assert.equal(diagnosticsCalls, 1, 'first forced probe should be in flight');
+
+      const newerForced = await fetch(`${baseUrl}/api/providers?force=1`);
+      assert.equal(newerForced.status, 200);
+      const newerPayload = await newerForced.json();
+      assert.equal(newerPayload.state, 'ready');
+      assert.ok(
+        newerPayload.warnings?.some((warning) => warning.toLowerCase().includes('no usable provider targets')),
+        'newer forced response should disclose the failed runtime refresh',
+      );
+
+      releaseFirstCall();
+      const staleForced = await staleForcedRequest;
+      assert.equal(staleForced.status, 200);
+      const stalePayload = await staleForced.json();
+      assert.equal(stalePayload.state, 'ready');
+      assert.ok(
+        stalePayload.warnings?.some((warning) => warning.toLowerCase().includes('no usable provider targets')),
+        'stale forced response should return the current cached warning too',
+      );
+    });
+  });
+});
+
 test('flushProviderSnapshotPersistence waits for an inflight warm probe to complete and persist', async () => {
   const { flushProviderSnapshotPersistence } = await import(
     '../build/server/server/routes/providers.js'
@@ -490,13 +547,27 @@ test('flushProviderSnapshotPersistence waits for an inflight warm probe to compl
     const snapshotPath = path.join(directory, 'provider-snapshot.json');
     const runtimeClient = createReachableRuntimeStub();
     let releaseProbe;
+    let releaseCatalogs;
     const probeReady = new Promise((resolve) => {
       releaseProbe = resolve;
     });
+    const catalogsReady = new Promise((resolve) => {
+      releaseCatalogs = resolve;
+    });
     const originalDiagnostics = runtimeClient.getProviderDiagnostics;
+    const originalModels = runtimeClient.getProviderModels;
+    const originalAdvanced = runtimeClient.getAdvancedProviderModels;
     runtimeClient.getProviderDiagnostics = async (query = {}) => {
       await probeReady;
       return originalDiagnostics.call(runtimeClient, query);
+    };
+    runtimeClient.getProviderModels = async (provider, instance) => {
+      await catalogsReady;
+      return originalModels.call(runtimeClient, provider, instance);
+    };
+    runtimeClient.getAdvancedProviderModels = async (provider, instance) => {
+      await catalogsReady;
+      return originalAdvanced.call(runtimeClient, provider, instance);
     };
 
     await seedProviderSelectorFromSnapshot(runtimeClient, snapshotPath);
@@ -512,11 +583,15 @@ test('flushProviderSnapshotPersistence waits for an inflight warm probe to compl
       inflightTimeoutMs: 5_000,
     });
     setTimeout(() => releaseProbe(), 60);
+    setTimeout(() => releaseCatalogs(), 120);
     await flushPromise;
 
     const reloaded = await loadProviderSnapshot(snapshotPath);
     assert.ok(reloaded, 'flush must persist the inflight probe result');
     assert.equal(reloaded.registry?.state, 'ready');
     assert.ok(reloaded.registry?.providers.some((provider) => provider.id === 'claude'));
+    const claudeCatalog = reloaded.catalogs.find((entry) => entry.provider === 'claude');
+    assert.ok(claudeCatalog?.models, 'flush must wait for model catalog warm-up before writing');
+    assert.ok(claudeCatalog?.advanced, 'flush must wait for advanced catalog warm-up before writing');
   });
 });
