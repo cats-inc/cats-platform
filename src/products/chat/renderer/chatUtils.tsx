@@ -269,6 +269,13 @@ export function isChatCat(cat: ChatCat): boolean {
   return isWorkspaceChatCat(cat);
 }
 
+export function hasCompanionSkill(cat: ChatCat | null | undefined): boolean {
+  if (!cat) {
+    return false;
+  }
+  return cat.skillProfile === 'companion' || cat.roles.includes('companion');
+}
+
 export function executionLabel(cat: ChatCat): string {
   return resolveWorkspaceExecutionLabel(cat);
 }

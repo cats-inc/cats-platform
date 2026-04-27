@@ -41,7 +41,6 @@ import type { ExecutionTargetValue } from "./components/ExecutionTarget.js";
 import type { NewChatDraftProps as ChatNewChatDraftProps } from "./components/ChatNewChatDraft.js";
 import type { ChatViewProps } from "./components/chat-view/ChatView.js";
 import {
-  activateChatChannel,
   relayParallelChatMessage,
   resetChannelContinuity,
   updateCatProfile,
@@ -82,7 +81,6 @@ import { useOperatorLoop } from "./hooks/useOperatorLoop.js";
 import {
   useWorkspaceDirectLaneModelSave,
   useWorkspaceResetChannelContinuity,
-  useWorkspaceResumeChannel,
 } from "./hooks/useWorkspaceAppShellChannelActions.js";
 import { useWorkspaceChannelParticipantUpdate } from "./hooks/useWorkspaceChannelParticipantUpdate.js";
 import { useWorkspaceCompareRelay } from "./hooks/useWorkspaceCompareRelay.js";
@@ -1482,12 +1480,6 @@ export function createWorkspaceProductApp({
       supportsStructuredDraftModes,
     ]);
 
-    const onResumeChannel = useWorkspaceResumeChannel<AppShellPayload>({
-      activateChatChannel,
-      publishReadyPayload,
-      setBusy,
-      setFeedback,
-    });
     const onStartFreshChannel = useWorkspaceResetChannelContinuity<AppShellPayload>({
       resetChannelContinuity,
       publishReadyPayload,
@@ -1637,9 +1629,6 @@ export function createWorkspaceProductApp({
                     onChannelFilesChange: setChannelFiles,
                     onApprovalDecision,
                     onChoiceSubmit,
-                    onResumeChannel: visibleChatChannelId
-                      ? () => onResumeChannel(visibleChatChannelId)
-                      : undefined,
                     onStartFresh:
                       visibleChatChannelId && visibleChannel?.composerMode === 'solo'
                         ? () => onStartFreshChannel(visibleChatChannelId)

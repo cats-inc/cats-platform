@@ -10,7 +10,7 @@ export type WorkspaceBusyState =
       scope: ComposerBusyScope;
     }
   | { kind: 'parallel-chat'; phase: 'ack' | 'dispatch' | 'relay' | 'stop' }
-  | { kind: 'channel'; action: 'resume' | 'reset' }
+  | { kind: 'channel'; action: 'reset' }
   | { kind: 'channel'; action: 'rename' | 'delete'; channelId: string }
   | { kind: 'channel-participant'; action: 'update'; participantId: string }
   | { kind: 'concurrent-group'; action: 'rename' | 'ungroup' | 'delete'; groupId: string }
@@ -73,16 +73,16 @@ export function createParallelChatBusyState(
   return { kind: 'parallel-chat', phase };
 }
 
-export function createChannelBusyState(action: 'resume' | 'reset'): WorkspaceBusyState;
+export function createChannelBusyState(action: 'reset'): WorkspaceBusyState;
 export function createChannelBusyState(
   action: 'rename' | 'delete',
   channelId: string,
 ): WorkspaceBusyState;
 export function createChannelBusyState(
-  action: 'resume' | 'reset' | 'rename' | 'delete',
+  action: 'reset' | 'rename' | 'delete',
   channelId?: string,
 ): WorkspaceBusyState {
-  if (action === 'resume' || action === 'reset') {
+  if (action === 'reset') {
     return { kind: 'channel', action };
   }
 
@@ -214,14 +214,14 @@ export function isParallelChatBusy(
 
 export function isChannelBusy(
   busy: WorkspaceBusyState | null | undefined,
-  action: 'resume' | 'reset' | 'rename' | 'delete',
+  action: 'reset' | 'rename' | 'delete',
   channelId?: string,
 ): boolean {
   if (busy?.kind !== 'channel' || busy.action !== action) {
     return false;
   }
 
-  if (action === 'resume' || action === 'reset') {
+  if (action === 'reset') {
     return true;
   }
 
@@ -352,7 +352,7 @@ export function describeBusyState(busy: WorkspaceBusyState | null | undefined): 
     case 'parallel-chat':
       return `parallel-chat:${busy.phase}`;
     case 'channel':
-      return busy.action === 'resume' || busy.action === 'reset'
+      return busy.action === 'reset'
         ? `channel:${busy.action}`
         : `channel:${busy.action}:${'channelId' in busy ? busy.channelId : ''}`;
     case 'channel-participant':

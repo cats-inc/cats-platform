@@ -1245,15 +1245,12 @@ test('chat and workspace apps consume shared app-shell channel action hooks', as
   );
 
   assert.match(chatAppSource, /useWorkspaceDirectLaneModelSave/u);
-  assert.match(chatAppSource, /useWorkspaceResumeChannel/u);
   assert.match(workspaceAppSource, /useWorkspaceDirectLaneModelSave/u);
-  assert.match(workspaceAppSource, /useWorkspaceResumeChannel/u);
-  assert.doesNotMatch(chatAppSource, /const onResumeChannel = useCallback/u);
-  assert.doesNotMatch(workspaceAppSource, /const onResumeChannel = useCallback/u);
   assert.match(hookSource, /export function useWorkspaceDirectLaneModelSave/u);
-  assert.match(hookSource, /export function useWorkspaceResumeChannel/u);
-  assert.match(hookSource, /activateChatChannel/u);
   assert.match(hookSource, /updateCatProfile/u);
+  assert.doesNotMatch(hookSource, /useWorkspaceResumeChannel/u);
+  assert.doesNotMatch(chatAppSource, /onResumeChannel/u);
+  assert.doesNotMatch(workspaceAppSource, /onResumeChannel/u);
 });
 
 test('chat and workspace apps consume a shared ready-payload publisher', async () => {
@@ -1807,7 +1804,8 @@ test('renderer styles compose a shared design layer with chat-owned companion ov
   assert.match(sharedStylesIndexSource, /@import '\.\/styles\/settings\.css';/u);
   assert.match(sharedStylesIndexSource, /@import '\.\/styles\/chat\.css';/u);
   assert.match(sharedStylesIndexSource, /@import '\.\/styles\/extras\.css';/u);
-  assert.match(chatCompanionStylesSource, /\.companionToggleButton/u);
+  assert.match(chatCompanionStylesSource, /\.companionModeToggle/u);
+  assert.doesNotMatch(chatCompanionStylesSource, /\.companionToggleButton/u);
   assert.match(sharedChatStylesSource, /@import '\.\/chat-workspace\.css';/u);
   assert.match(sharedChatStylesSource, /@import '\.\/chat-composer\.css';/u);
   assert.match(sharedChatStylesSource, /@import '\.\/chat-setup\.css';/u);

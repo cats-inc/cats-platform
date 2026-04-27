@@ -8,7 +8,6 @@ import {
   isComposerDispatchBusyForChannel,
 } from '../../../../../shared/composer.js';
 import {
-  isChannelBusy,
   isParallelChatBusy,
   type WorkspaceBusyState,
 } from '../../../../../shared/workspaceBusy.js';
@@ -506,7 +505,6 @@ export interface ChatComposerViewState {
   directLaneExcludedMentionNames: string[];
   composerBusy: boolean;
   composerAckBusy: boolean;
-  resumeBusy: boolean;
   showCancelComposerAction: boolean;
   showStopComposerAction: boolean;
   composerWorkspacePath: string | null;
@@ -534,7 +532,6 @@ export function resolveChatComposerViewState(input: {
   const composerBusy =
     composerAckBusy
     || composerDispatchBusy
-    || isChannelBusy(input.busy, 'resume')
     || compareBusy;
   const showCancelComposerAction = composerAckBusy && input.onCancelPendingSend != null;
   const canStopSingleChat =
@@ -565,7 +562,6 @@ export function resolveChatComposerViewState(input: {
       input.directLaneCat?.name ? [input.directLaneCat.name] : [],
     composerBusy,
     composerAckBusy,
-    resumeBusy: isChannelBusy(input.busy, 'resume'),
     showCancelComposerAction,
     showStopComposerAction:
       !showCancelComposerAction && (canStopSingleChat || canStopParallelChat),

@@ -77,7 +77,6 @@ import {
 import {
   useWorkspaceDirectLaneModelSave,
   useWorkspaceResetChannelContinuity,
-  useWorkspaceResumeChannel,
 } from '../../shared/renderer/hooks/useWorkspaceAppShellChannelActions.js';
 import {
   useWorkspaceExecutionTargetState,
@@ -114,7 +113,6 @@ import {
   peekCrossSurfaceNavigationSnapshot,
 } from '../../shared/renderer/crossSurfaceNavigationHandoff.js';
 import {
-  activateChatChannel,
   fetchAppShell,
   resetChannelContinuity,
   updateCatProfile,
@@ -1250,12 +1248,6 @@ export default function App() {
     state,
   ]);
 
-  const onResumeChannel = useWorkspaceResumeChannel<AppShellPayload>({
-    activateChatChannel,
-    publishReadyPayload,
-    setBusy,
-    setFeedback,
-  });
   const onStartFreshChannel = useWorkspaceResetChannelContinuity<AppShellPayload>({
     resetChannelContinuity,
     publishReadyPayload,
@@ -1407,9 +1399,6 @@ export default function App() {
                   onChannelFilesChange: setChannelFiles,
                   onApprovalDecision,
                   onChoiceSubmit,
-                  onResumeChannel: visibleChatChannelId
-                    ? () => onResumeChannel(visibleChatChannelId)
-                    : undefined,
                   onStartFresh:
                     visibleChatChannelId && selectedChannel?.composerMode === 'solo'
                       ? () => onStartFreshChannel(visibleChatChannelId)

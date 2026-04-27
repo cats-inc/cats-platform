@@ -7,7 +7,7 @@ import {
   resolveVisibleChatPath,
 } from '../shared/channelPaths.js';
 import { resolveCatStatusIndicator } from '../shared/catStatusResolution.js';
-import { BootShell, type SelectedChannelView } from './chatUtils.js';
+import { BootShell, hasCompanionSkill, type SelectedChannelView } from './chatUtils.js';
 import {
   AddCatPanel,
   type AddCatPanelProps,
@@ -24,6 +24,7 @@ import {
   type NewChatDraftProps,
 } from './components/NewChatDraft.js';
 import { ChatComposerTargetSlot } from '../../shared/renderer/components/chat-view/ChatComposerTargetSlot.js';
+import { CompanionModeToggleChip } from './components/companion/CompanionModeToggleChip.js';
 import {
   CompanionWorkspace,
 } from './components/companion/CompanionWorkspace.js';
@@ -162,7 +163,7 @@ export function AppRoutes({
         <Route
           path="my-cats/:catId"
           element={
-            companionMode && companionCat ? (
+            companionMode && companionCat && hasCompanionSkill(companionCat) ? (
               <CompanionWorkspace
                 payload={payload}
                 cat={companionCat}
@@ -199,16 +200,14 @@ export function AppRoutes({
                     onOpenSection={context.onOpenSection}
                   />
                 )}
-                renderTopBarExtraActions={(context) => context.isDirectLane ? (
-                  <button
-                    className="companionToggleButton"
-                    type="button"
-                    onClick={onToggleCompanionMode}
-                    title="Open companion workspace"
-                  >
-                    Companion
-                  </button>
-                ) : null}
+                renderTopBarExtraActions={(context) =>
+                  context.isDirectLane && hasCompanionSkill(context.directLaneCat) ? (
+                    <CompanionModeToggleChip
+                      companionMode={false}
+                      onToggle={onToggleCompanionMode}
+                    />
+                  ) : null
+                }
               />
             ) : (
               <NewChatDraft

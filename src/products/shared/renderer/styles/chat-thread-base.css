@@ -153,16 +153,6 @@
   flex: 0 0 auto;
 }
 
-@keyframes channelActionIconSpin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.channelActionIconGlyphSpinning {
-  animation: channelActionIconSpin 0.72s linear infinite;
-}
-
 .sidePanelBadge {
   position: absolute;
   top: -4px;

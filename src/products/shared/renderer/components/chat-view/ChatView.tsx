@@ -220,7 +220,6 @@ export interface ChatViewProps {
   onApprovalDecision: (taskId: string, action: 'approve' | 'reroute' | 'reject') => void;
   onChoiceSubmit: (input: MessageChoicesSubmitInput) => void;
   onRetryMessage?: (messageId: string) => Promise<void>;
-  onResumeChannel?: () => void;
   onStartFresh?: () => void;
   onOperatorAction: (input: {
     action: 'retry' | 'acknowledge';
@@ -298,7 +297,6 @@ export function ChatView({
   onApprovalDecision,
   onChoiceSubmit,
   onRetryMessage,
-  onResumeChannel,
   onStartFresh,
   onOperatorAction,
   autoResize,
@@ -833,7 +831,6 @@ export function ChatView({
     directLaneExecutionTarget,
     directLaneExcludedMentionNames,
     composerBusy,
-    resumeBusy,
     showCancelComposerAction,
     showStopComposerAction,
     composerWorkspacePath,
@@ -862,7 +859,6 @@ export function ChatView({
       selectedChannel.repoPath,
     ],
   );
-  const canResumeChannel = !composerBusy && !resumeBusy;
   const stopBusy = isParallelChatBusy(busy, 'stop');
   const { transcriptListRef, composerCardRef, bottomSentinelRef, isNearBottom, scrollToBottom } =
     useTranscriptAutoScroll({
@@ -1034,12 +1030,9 @@ export function ChatView({
           showRosterAvatars={showRosterAvatars}
           isDirectLane={isDirectLane}
           topBarTitle={topBarTitle}
-          canResumeChannel={canResumeChannel}
-          resumeBusy={resumeBusy}
           sidePanelOpen={sidePanelOpen}
           approvalCount={operatorView?.approvals.length ?? 0}
           extraActions={topBarExtraActions}
-          onResumeChannel={onResumeChannel}
           onToggleSidePanel={() => setSidePanelOpen(!sidePanelOpen)}
         />
       )}

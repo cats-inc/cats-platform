@@ -19,12 +19,9 @@ export interface ChatViewTopBarProps {
   showRosterAvatars: boolean;
   isDirectLane: boolean;
   topBarTitle: string;
-  canResumeChannel: boolean;
-  resumeBusy: boolean;
   sidePanelOpen: boolean;
   approvalCount: number;
   extraActions?: ReactNode;
-  onResumeChannel?: () => void;
   onToggleSidePanel: () => void;
 }
 
@@ -33,12 +30,9 @@ export function ChatViewTopBar({
   showRosterAvatars,
   isDirectLane,
   topBarTitle,
-  canResumeChannel,
-  resumeBusy,
   sidePanelOpen,
   approvalCount,
   extraActions,
-  onResumeChannel,
   onToggleSidePanel,
 }: ChatViewTopBarProps) {
   return (
@@ -57,7 +51,7 @@ export function ChatViewTopBar({
                   ].filter(Boolean).join(' ')}
                   data-tooltip={avatar.useNeutralAvatar
                     ? (avatar.executionLabel || avatar.label)
-                    : (avatar.executionLabel ? `${avatar.label} \u00b7 ${avatar.executionLabel}` : avatar.label)}
+                    : (avatar.executionLabel ? `${avatar.label} · ${avatar.executionLabel}` : avatar.label)}
                   style={avatar.avatarUrl
                     ? { backgroundImage: `url(${avatar.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
                     : !avatar.useNeutralAvatar && avatar.avatarColor
@@ -82,35 +76,6 @@ export function ChatViewTopBar({
       </div>
       <div className="channelTopBarEnd">
         {extraActions}
-        {onResumeChannel ? (
-          <button
-            className="channelActionIconButton"
-            type="button"
-            disabled={!canResumeChannel}
-            onClick={() => void onResumeChannel()}
-            aria-label={resumeBusy ? 'Resuming chat session' : 'Resume chat session'}
-            data-tooltip={resumeBusy ? 'Resuming chat session' : 'Resume chat session'}
-            aria-busy={resumeBusy}
-          >
-            <svg
-              className={resumeBusy
-                ? 'channelActionIconGlyph channelActionIconGlyphSpinning'
-                : 'channelActionIconGlyph'}
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <path d="M13 4v4H9" />
-              <path d="M12.35 8A5.35 5.35 0 1 1 10.7 4.15" />
-            </svg>
-          </button>
-        ) : null}
         <button
           className="sidePanelToggle"
           type="button"
