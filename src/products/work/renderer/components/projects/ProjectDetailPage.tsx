@@ -16,13 +16,14 @@ export function ProjectDetailPage(): JSX.Element {
   const { projectId } = useParams<{ projectId: string }>();
   const graph = MOCK_WORK_GRAPH;
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
-  const { deletedIds } = usePinnedProjects();
+  const { allProjects, deletedIds } = usePinnedProjects();
 
-  const project = projectId ? indexes.objectsById.get(projectId) : undefined;
+  const project = projectId
+    ? allProjects.find((p) => p.id === projectId)
+    : undefined;
 
   if (
     !project
-    || project.kind !== "project"
     || (projectId !== undefined && deletedIds.has(projectId))
   ) {
     return <ProjectNotFound projectId={projectId ?? null} />;

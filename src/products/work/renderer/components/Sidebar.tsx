@@ -7,7 +7,6 @@ import {
   type ConversationSidebarRecentEntry,
 } from '../../../../app/renderer/productShell/ConversationSidebar.js';
 import type { ConversationSidebarPinnedItem } from '../../../../app/renderer/productShell/ConversationSidebarPinned.js';
-import { MOCK_WORK_GRAPH } from './topdown/mock';
 import {
   pinnedProjectsStore,
   usePinnedProjects,
@@ -207,12 +206,7 @@ function createExtraActionGroups(
           ),
         },
       ],
-      pinnedItems: buildPinnedProjectItems(
-        props,
-        currentPath,
-        pinnedSnapshot.pinnedIds,
-        pinnedSnapshot.deletedIds,
-      ),
+      pinnedItems: buildPinnedProjectItems(props, currentPath, pinnedSnapshot),
     });
   }
 
@@ -341,13 +335,11 @@ function createExtraActionGroups(
 function buildPinnedProjectItems(
   props: SidebarProps,
   currentPath: string,
-  pinnedIds: ReadonlySet<string>,
-  deletedIds: ReadonlySet<string>,
+  snapshot: PinnedProjectsSnapshot,
 ): ConversationSidebarPinnedItem[] {
   if (!props.onOpenProject) return [];
-  return MOCK_WORK_GRAPH.objects
-    .filter((obj) => obj.kind === 'project')
-    .filter((project) => pinnedIds.has(project.id) && !deletedIds.has(project.id))
+  return snapshot.allProjects
+    .filter((project) => snapshot.pinnedIds.has(project.id) && !snapshot.deletedIds.has(project.id))
     .map((project) => ({
       id: project.id,
       label: project.title,

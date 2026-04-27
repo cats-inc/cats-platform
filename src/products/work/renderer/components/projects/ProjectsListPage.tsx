@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
 import { MOCK_WORK_GRAPH } from "../topdown/mock";
 import { formatRelative } from "../topdown/shared";
 import { usePinnedProjects } from "../../state/pinnedProjectsStore";
+import { NewProjectDialog } from "./NewProjectDialog";
 import "./projects.css";
 
 interface ProjectCounts {
@@ -16,14 +17,12 @@ interface ProjectCounts {
 
 export function ProjectsListPage(): JSX.Element {
   const graph = MOCK_WORK_GRAPH;
-  const { deletedIds } = usePinnedProjects();
+  const { allProjects, deletedIds } = usePinnedProjects();
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const projects = useMemo(
-    () =>
-      graph.objects.filter(
-        (o) => o.kind === "project" && !deletedIds.has(o.id),
-      ),
-    [graph, deletedIds],
+    () => allProjects.filter((p) => !deletedIds.has(p.id)),
+    [allProjects, deletedIds],
   );
 
   const countsById = useMemo(() => {
@@ -64,16 +63,12 @@ export function ProjectsListPage(): JSX.Element {
             {projects.length}
           </span>
         </div>
-        <div className="channelTopBarCenter projectsListTopBar__center">
-          <span className="projectsListTopBar__lede">
-            Pick a project to drill into its work items, tasks, and activity.
-          </span>
-        </div>
+        <div className="channelTopBarCenter projectsListTopBar__center" />
         <div className="channelTopBarEnd projectsListTopBar__end">
           <button
             type="button"
             className="projectsListTopBar__addBtn"
-            onClick={() => undefined}
+            onClick={() => setDialogOpen(true)}
             aria-label="Create new project"
           >
             <svg
@@ -166,6 +161,9 @@ export function ProjectsListPage(): JSX.Element {
           </ul>
         )}
       </main>
+      {dialogOpen ? (
+        <NewProjectDialog onClose={() => setDialogOpen(false)} />
+      ) : null}
     </div>
   );
 }
