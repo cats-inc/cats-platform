@@ -8,7 +8,7 @@ import {
   buildChannelView,
   resolveOrchestratorDisplayName,
 } from '../state/model/index.js';
-import { resumeStoredWorkflowContinuationDispatch } from '../state/orchestratorAdapter.js';
+import { resumeStoredWorkflowContinuationDispatch } from '../state/deterministicRouterAdapter.js';
 import { readWorkflowRecommendation } from '../state/room-routing/recommendations.js';
 import type { ChatStore } from '../state/store.js';
 import type { ChatApiRouteContext } from './routeSupport.js';

@@ -33,11 +33,11 @@ import {
 } from '../../products/chat/state/companion-box/index.js';
 import { createChatMemorySurface } from '../../products/chat/state/memoryAdapter.js';
 import {
-  createChatOrchestratorChannelRouter,
-  chatOrchestratorChannelRouter,
-  chatOrchestratorPlannerSurface,
+  createChatDeterministicChannelRouter,
+  chatDeterministicChannelRouter,
+  chatDeterministicPlannerSurface,
   resumeStoredWorkflowContinuationDispatch,
-} from '../../products/chat/state/orchestratorAdapter.js';
+} from '../../products/chat/state/deterministicRouterAdapter.js';
 import { createChatProviderAgentDecisionRequester } from '../../products/chat/state/providerAgentDecisionRequester.js';
 import { MemoryChatStore } from '../../products/chat/state/store.js';
 import { createAsyncKeyedGate } from '../../products/chat/shared/asyncControl.js';
@@ -150,8 +150,8 @@ export function resolveServerDependencies(
   const orchestratorChannelRouter = dependencies.chat.orchestratorChannelRouter
     ?? (
       dependencies.shared.config.runtimeStaleSessionRetryLimit === undefined
-        ? chatOrchestratorChannelRouter
-        : createChatOrchestratorChannelRouter({
+        ? chatDeterministicChannelRouter
+        : createChatDeterministicChannelRouter({
           runtimeRecovery: {
             staleSessionRetryLimit: dependencies.shared.config.runtimeStaleSessionRetryLimit,
           },
@@ -160,7 +160,7 @@ export function resolveServerDependencies(
         })
     );
   const orchestratorPlannerSurface = dependencies.chat.orchestratorPlannerSurface
-    ?? chatOrchestratorPlannerSurface;
+    ?? chatDeterministicPlannerSurface;
   const providerAgentDecisionRequester = dependencies.chat.providerAgentDecisionRequester
     ?? (
       dependencies.shared.config.chatProviderAgentDecisionEnabled === true

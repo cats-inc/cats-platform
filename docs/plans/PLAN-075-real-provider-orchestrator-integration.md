@@ -306,7 +306,7 @@ categories:
 | `src/products/chat/state/telegramBridgeAdapter.ts` | No longer builds a plan before Telegram-origin Chat dispatch. | Telegram-origin messages enter the same Chat dispatch routing path as web sends. |
 | `src/products/chat/api/orchestratorRoutes.ts` | Exposes legacy direct plan/dispatch surfaces for operator/debug flows. | Keep only if it delegates to the new provider-agent seam; otherwise retire after product routes stop depending on old plan output. |
 | `src/products/chat/state/runtime-dispatch/turn.ts` | Consumes a Chat-owned `DeterministicChatRoutingPlan` only to override initial deterministic target resolution. | Keep this input free of semantic-planning authority and platform old-plan types. |
-| `src/products/chat/state/runtime-dispatch/routing.ts` | Accepts only Chat-owned deterministic routing plans; legacy `OrchestratorTurnPlan` conversion is isolated to `orchestratorAdapter`. | Continue shrinking the old platform adapter boundary. |
+| `src/products/chat/state/runtime-dispatch/routing.ts` | Accepts only Chat-owned deterministic routing plans; legacy `OrchestratorTurnPlan` conversion is isolated to `deterministicRouterAdapter`. | Continue shrinking the old platform adapter boundary. |
 | `src/platform/orchestration/dispatch.ts` | Direct product API dispatch shell that couples plan build, approval persistence, and Chat routing. | Split approval/operator persistence from planning; Chat routes should call Chat deterministic routing plus provider-agent decision seams directly. |
 | `src/platform/orchestration/planner.ts` | Old mixed semantic/deterministic planner implementation. | Move deterministic Chat routing ownership to `src/products/chat/**`; delete or reduce platform exports once no product path imports them. |
 
@@ -409,7 +409,7 @@ categories:
 - [x] Task 3.5: Add targeted Chat probes for direct, solo, group, and parallel
       sends that assert session start, assistant progress, response, and no
       direct runtime calls.
-- [ ] Task 3.6: Rename or move retained deterministic Chat router code under
+- [x] Task 3.6: Rename or move retained deterministic Chat router code under
       Chat ownership once semantic-planning imports are gone.
 
 ### Phase 4: Durable Run Lifecycle Scheduler
@@ -681,9 +681,10 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 21: taught dispatch acknowledgement summaries to prefer provider-authored semantic plan ids when the provider-agent decision seam returns a decision. |
 | 2026-04-28 | Implementation slice 22: marked Phase 3 Task 3.1 complete after Chat dispatch gained the provider-agent decision requester seam while preserving UI and transcript contracts. |
 | 2026-04-28 | Implementation slice 23: removed the obsolete Chat plan-state adapter after product routes stopped using it, while preserving the still-current dispatch target cleanup coverage in the provider-agent observation tests. |
-| 2026-04-28 | Implementation slice 24: removed the old platform plan type from Chat runtime dispatch options; dispatch now accepts only Chat-owned deterministic routing plans, with legacy conversion isolated to `orchestratorAdapter`. |
+| 2026-04-28 | Implementation slice 24: removed the old platform plan type from Chat runtime dispatch options; dispatch now accepts only Chat-owned deterministic routing plans, with legacy conversion now isolated to `deterministicRouterAdapter`. |
 | 2026-04-28 | Implementation slice 25: upgraded direct, solo, group, and parallel Chat runtime probes to assert provider-agent dispatch metadata; fixed execution leases to preserve resolved `modelSelection` so stable solo sessions do not restart when the runtime omits that echo field. |
 | 2026-04-28 | Implementation slice 26: exposed the provider-agent decision requester through Chat API/server dependencies and passed it into channel send/retry dispatch, keeping the default path unchanged while allowing the live-provider requester to plug in at the product route seam. |
 | 2026-04-28 | Implementation slice 27: added a Chat provider-agent decision requester factory that calls the shared runtime adapter for execution-target observations and ignores non-execution targets, leaving default route behavior opt-in until live-provider enablement. |
 | 2026-04-28 | Implementation slice 28: added `CATS_CHAT_PROVIDER_AGENT_DECISION_ENABLED` as an explicit opt-in for wiring the Chat provider-agent requester by default, with config coverage and no behavior change when unset. |
 | 2026-04-28 | Implementation slice 29: made config-enabled Chat provider-agent decision requests fail open on invalid or failed provider decisions, preserving the existing dispatch path while still allowing valid provider-authored decisions to surface. |
+| 2026-04-28 | Implementation slice 30: renamed the retained Chat deterministic router adapter away from the old orchestrator adapter name and marked Phase 3 Task 3.6 complete, keeping legacy platform plan conversion isolated at the Chat-owned compatibility boundary. |

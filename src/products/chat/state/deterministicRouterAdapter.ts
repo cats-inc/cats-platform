@@ -59,7 +59,7 @@ function toDeterministicChatRoutingPlan(
   };
 }
 
-export function createChatOrchestratorChannelRouter(
+export function createChatDeterministicChannelRouter(
   options: {
     runtimeRecovery?: Partial<RuntimeDispatchRecoveryPolicy>;
     chatStatePath?: string;
@@ -93,9 +93,9 @@ export function createChatOrchestratorChannelRouter(
   };
 }
 
-export const chatOrchestratorChannelRouter = createChatOrchestratorChannelRouter();
+export const chatDeterministicChannelRouter = createChatDeterministicChannelRouter();
 
-export const chatOrchestratorPlannerSurface: OrchestratorPlannerSurface<ChatState> = {
+export const chatDeterministicPlannerSurface: OrchestratorPlannerSurface<ChatState> = {
   buildChannelView,
   resolveMentionRoute,
   resolveRoomRoutingState,

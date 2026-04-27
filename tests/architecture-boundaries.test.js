@@ -38,13 +38,13 @@ test('platform orchestrator dispatch stays behind an injected channel router sea
   );
 });
 
-test('app server dependency resolver wires the chat orchestrator adapter into platform orchestration', async () => {
+test('app server dependency resolver wires the chat deterministic router adapter into platform orchestration', async () => {
   const source = await readFile(
     new URL('../src/app/server/dependencies.ts', import.meta.url),
     'utf8',
   );
 
-  assert.match(source, /chatOrchestratorChannelRouter/u);
+  assert.match(source, /chatDeterministicChannelRouter/u);
   assert.match(source, /orchestratorChannelRouter/u);
 });
 
