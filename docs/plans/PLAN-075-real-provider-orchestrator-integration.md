@@ -109,9 +109,10 @@ This plan covers:
 - no deletion of deterministic Chat routing behavior. The target is not "no
   product path imports any router"; the target is "only Chat owns deterministic
   routing, and semantic planning no longer lives in the old core."
-- no eval-suite or session-history ingestion infrastructure. PLAN-075 lands the
-  schema seam for capability evidence sources but does not run evals or stream
-  session-history observations into capability profiles; eval-driven and
+- no eval-suite execution or live session-history ingestion infrastructure.
+  PLAN-075 lands schema/source fixtures for capability evidence source types,
+  but does not run evals, stream session-history observations, or read raw
+  transcript/history content into capability profiles; eval-driven and
   history-driven profile updates are tracked by a separate follow-up plan.
 - no per-session provider-mode enum or capability-tier control-flow branch.
   Capability is an input to `policyEngine.decide*(ctx)`; it does not select an
@@ -121,8 +122,8 @@ This plan covers:
 
 - Capability profiles for Claude, Codex, Ollama/local, and unknown providers
   exist before any live provider-agent autonomy is enabled. Bootstrap covers
-  catalog, eval/history placeholders, session-history observations, operator
-  overrides, and FR-19 override-floor enforcement.
+  catalog source evidence, schema-only eval/history source fixtures,
+  operator overrides, and FR-19 override-floor enforcement.
 - Chat direct, solo, group, and parallel send flows route semantic next-step
   choice through the new provider-agent decision seam where the task is
   agentic.
@@ -148,9 +149,11 @@ This plan covers:
   schema-required validation, every-step checkpointing, narrow tool surfaces,
   and deterministic retry/escalation.
 - Weak-model execution uses Cats-authored SOP tool internals rather than a
-  separate dispatcher: a strong driver may call tools such as `@ask-weak` or
-  `work.sop.*`, and weak drivers may request only policy-allowed single-step
-  SOP/tool actions.
+  separate dispatcher: a strong driver may call canonical tools such as
+  `work.sop.ask_weak` or existing `work.sop.*` tools, and weak drivers may
+  request only policy-allowed single-step SOP/tool actions. User-facing aliases
+  such as `@ask-weak` must resolve to canonical tool ids before entering
+  `toolRegistry`.
 - A weak model attempting autonomous delegation, broad-write access, or an
   unsupported next-step decision is rejected or escalated before execution.
 - Tests demonstrate the same high-level request entering the same
@@ -158,28 +161,30 @@ This plan covers:
   expected difference is policy dial output and allowed tool surface, not a
   second orchestration path.
 - Provider-agent recovery happens within platform-selected
-  `SupervisionPolicy.fallbackPolicy` options. The agent may reason about which
-  allowed fallback to use, but it does not bypass validation, retry shaping,
-  escalation policy, or approval gates.
+  `SupervisionPolicy.fallbackPolicy` options. The agent may propose which
+  allowed fallback to use and provide corrected semantic input; the platform
+  validates the proposal and still owns retry envelopes, escalation targets,
+  approval gates, state transitions, and rejection.
 - Code relay fan-out uses sibling supervised runs under one relay-round budget
   envelope by default. Child runs are reserved for delegation initiated by one
   running agent.
 - Static tests fail any new product-layer direct runtime create/send calls.
 - Non-Chat product trees cannot import the old Chat planner/dispatcher modules.
-  Remaining Chat routing code is either renamed/moved into Chat ownership or
-  kept as deterministic router code with semantic-planning responsibilities
-  removed.
+  Remaining Chat deterministic routing code is renamed/moved into a
+  Chat-owned router path; old planner/dispatcher modules become un-importable
+  from product trees once Phase 8 Task 8.1 lands.
 
 ## Phase Gates
 
 | Gate | Required Evidence |
 |------|-------------------|
 | Do not broaden provider tool access until FR-19 override-floor tests stay green. | `supervision-policy-engine.test.ts` and `supervision-tool-boundary.test.ts` cover denial and evaluated/observed positive paths. |
-| Do not start live provider-agent autonomy before capability profile bootstrap lands. | Capability tests cover catalog/eval/history/operator sources, conservative unknown defaults, operator override ceilings, and FR-19 override floor. |
+| Do not start live provider-agent autonomy before capability profile bootstrap lands. | Capability tests cover catalog source evidence, eval/history source fixtures without ingestion, conservative unknown defaults, operator override ceilings, and FR-19 override floor. |
 | Do not wire live provider-agent autonomy before fake driving-agent recovery tests are green. | `supervision-fake-driving-agent.test.tsx` and `work-supervised-run.test.tsx` pass. |
 | Do not change Chat visible UI while cutting the decision core. | Targeted Chat smoke/probe tests prove direct, solo, group, and parallel runtime handoff. |
 | Do not add direct runtime create/send calls in product code. | `supervision-runtime-boundary.test.tsx` and `rg runtimeClient.createSession/sendMessage` show only `runtimeBoundary.ts` calls runtime directly. |
 | Do not retire old semantic planner paths before Chat deterministic routing is carved out. | Static import test proves non-Chat product trees cannot import old Chat planner/dispatcher modules; Chat router tests prove deterministic behavior remains. |
+| Do not add weak-model tools that bypass the provider-agent seam. | Static/contract tests prove weak-model calls enter through registered supervised tools and `toolBoundary`; no Phase 7 routing entrypoint may invoke a weak provider directly. |
 
 ## Chat Deterministic Routing Carve-Out
 
@@ -258,20 +263,21 @@ LLM-backed participant semantics.
 - [ ] Task 1.1: Bootstrap provider capability profiles for Claude, Codex,
       Ollama/local, and unknown providers using conservative defaults before
       any live provider-agent autonomy is enabled.
-- [ ] Task 1.2: Define source-of-truth ingestion paths for capability evidence:
-      provider catalog, eval suite/eval run, session-history observation, and
-      operator override. PLAN-075 only lands the schema seam for these sources;
-      live eval/history ingestion is a follow-up plan.
+- [ ] Task 1.2: Define source-of-truth schema fixtures for capability evidence:
+      provider catalog, eval suite/eval run reference, session-history summary
+      reference, and operator override. PLAN-075 only lands the schema seam for
+      these source types; live eval/history ingestion is a follow-up plan.
 - [ ] Task 1.3: Enforce operator override ceilings and FR-19 override floor:
       overrides may change effective policy within evidence limits, but cannot
       create broad-write or unrestricted outcome delegation under
       unknown/catalog-only confidence.
 - [ ] Task 1.4: Wire the capability profile as a per-action input to
       `policyEngine.decide*(ctx)` so dial output reflects provider capability
-      together with task profile, session history, and invariants. Do not
-      introduce a per-session provider-mode enum or branch the orchestration
-      path on capability tier; capability is a vector input, not a control-flow
-      switch.
+      together with task profile, bounded run/history metadata summaries, and
+      invariants. Do not pass raw transcript/message/history content into
+      `policyEngine.decide*(ctx)`, introduce a per-session provider-mode enum,
+      or branch the orchestration path on capability tier; capability is a
+      vector input, not a control-flow switch.
 - [ ] Task 1.5: Add tests for capability conflicts, source metadata, override
       floor/ceiling, conservative unknown defaults, and how capability profiles
       shift `policyEngine.decide*(ctx)` dial output for the same task input
@@ -309,13 +315,13 @@ LLM-backed participant semantics.
 - [ ] Task 3.3: Preserve direct-cat, solo, group, and parallel semantics:
       participants, lanes, audience, runtime session metadata, typing handoff,
       and recents origin must not regress.
-- [ ] Task 3.4: Split recovery ownership. Choosing whether to retry, abort, or
-      escalate, and the retry envelope/escalation target/approval gate, is
-      platform policy via `SupervisionPolicy.fallbackPolicy`. Choosing the
-      corrected semantic input for a retry the policy already allows is
-      provider-agent reasoning. The agent must not override the platform
-      decision on which fallback option is permitted, and the platform must not
-      synthesize the corrected semantic content on the agent's behalf.
+- [ ] Task 3.4: Split recovery ownership. `SupervisionPolicy.fallbackPolicy`
+      defines the allowed fallback set, retry envelope, escalation targets,
+      approval gates, and state transitions. The provider agent may propose
+      which allowed fallback to use and provide corrected semantic input for
+      that fallback. The platform validates the proposal, rejects disallowed
+      fallback choices, and must not synthesize corrected semantic content on
+      the agent's behalf.
 - [ ] Task 3.5: Add targeted Chat probes for direct, solo, group, and parallel
       sends that assert session start, assistant progress, response, and no
       direct runtime calls.
@@ -372,11 +378,15 @@ LLM-backed participant semantics.
 ### Phase 7: Weak-Worker Tools and SOP Pipelines
 
 - [ ] Task 7.1: Extend the PLAN-074 `toolRegistry` (which already seeds
-      `work.sop.classify_text_batch` as the first weak-worker SOP tool) with
-      the rest of the set: `@ask-weak`, classifier, extraction, summarization,
-      translation, schema-fill, and additional `work.sop.*` tools. Each
-      manifest declares narrow input schemas, side-effect class, approval
-      behavior, and capability floor, following the PLAN-074 manifest shape.
+      `work.sop.classify_text_batch` as the first weak-worker SOP tool) only
+      with the smallest additional first-slice tool needed to exercise weak
+      provider calls, such as canonical `work.sop.ask_weak`. Each manifest
+      declares narrow input schemas, side-effect class, approval behavior, and
+      capability floor, following the PLAN-074 manifest shape. User-facing
+      aliases such as `@ask-weak` must map to canonical dotted tool ids before
+      registry lookup; extraction, summarization, translation, schema-fill, and
+      broader `work.sop.*` catalog expansion are follow-up scope unless needed
+      by the first live slice.
 - [ ] Task 7.2: Implement deterministic SOP scaffolding inside the individual
       weak-worker tools, reusing the PLAN-074 supervised-tool pattern. SOP
       tools own prompt templates, expected schemas, retry limits, escalation
@@ -392,6 +402,10 @@ LLM-backed participant semantics.
 - [ ] Task 7.5: Add evidence tests proving weak-worker calls are attributed as
       tool executions under the parent run/driver, not as independent peer
       agent lifecycles by default.
+- [ ] Task 7.6: Add a static or contract test proving Phase 7 does not create
+      a weak-model routing entrypoint outside the provider-agent seam,
+      `toolRegistry`, and `toolBoundary`. Weak-provider calls must originate
+      from registered supervised tool executors, not ad hoc route helpers.
 
 ### Phase 8: Chat Router Ownership and Old Semantic Core Removal
 
@@ -427,6 +441,11 @@ line is:
   rejection, and evidence emission
 - each SOP tool owns its internal prompt scaffolding, expected output schema,
   bounded retry, confidence threshold, and escalation target
+
+Registered weak-worker tools use canonical dotted ids such as
+`work.sop.classify_text_batch` and `work.sop.ask_weak`. UI/composer aliases
+such as `@ask-weak` are not registry ids; they must be resolved before the
+tool request reaches `toolRegistry`.
 
 For weak providers, the default policy dial shape is:
 
@@ -473,9 +492,9 @@ execution. The difference is control density, not a boolean switch.
 - Unit tests for provider-agent contract parsing, validation, and rejection.
 - Static boundary tests for direct runtime calls, scheduler content blindness,
   and non-Chat imports of old Chat planner/dispatcher modules.
-- Capability profile tests for catalog, eval run, session-history observation,
-  operator override, conflict preservation, conservative unknown defaults, and
-  FR-19 override-floor enforcement.
+- Capability profile tests for catalog source evidence, eval/history source
+  fixtures without ingestion, operator override, conflict preservation,
+  conservative unknown defaults, and FR-19 override-floor enforcement.
 - Integration tests for Work and Code supervised run lifecycle with runtime
   stubs.
 - Targeted Chat runtime probes for direct, solo, group, and parallel handoff.
@@ -488,6 +507,8 @@ execution. The difference is control density, not a boolean switch.
   seam, receive stricter policy dials, can only access allowed weak-worker/SOP
   tools, validate required schemas, and persist evidence under the parent
   run/driver instead of creating peer driving-agent lifecycles.
+- Static/contract tests prove no Phase 7 weak-model routing entrypoint calls a
+  weak provider outside registered supervised tool executors and `toolBoundary`.
 
 ## Risks
 
@@ -499,7 +520,7 @@ execution. The difference is control density, not a boolean switch.
 | Old planner/dispatcher semantic behavior lingers indefinitely | High | Add non-Chat import tests and make old semantic-planning path removal a phase gate while preserving Chat deterministic routing. |
 | Weak models are treated like autonomous agents | Medium | Keep weak profiles on the same seam with stricter policy dials and expose weak-model calls only through supervised weak-worker/SOP tools by default. |
 | Capability profiles arrive after live provider autonomy | High | Phase 1 and phase gates require conservative profile bootstrap and FR-19 override-floor tests before live autonomy is wired. |
-| Phase 7 SOP work grows ad-hoc routing that bypasses the provider-agent seam | Medium | Do not introduce a standalone dispatcher; keep semantic choice in the provider-agent seam, supervision dials in `policyEngine`, enforcement in `toolBoundary`, and deterministic scaffolding inside individual SOP tools. |
+| Phase 7 SOP work grows ad-hoc routing that bypasses the provider-agent seam | Medium | Do not introduce a standalone dispatcher; keep semantic choice in the provider-agent seam, supervision dials in `policyEngine`, enforcement in `toolBoundary`, deterministic scaffolding inside individual SOP tools, and static/contract tests against direct weak-provider calls. |
 | Lifecycle scheduler starts reading transcript content | High | Static import tests enforce scheduler content blindness. |
 | Real provider smoke becomes flaky or expensive | Medium | Keep live-provider tests optional; CI uses deterministic runtime stubs. |
 
@@ -513,3 +534,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Removed the standalone weak-model dispatcher shape: weak-model control now stays on the same provider-agent seam and is expressed through policy dials, tool manifests, tool boundary enforcement, and individual SOP tool internals. |
 | 2026-04-28 | Closing pass: dropped the residual provider-mode enum from Phase 1 in favor of capability-as-policy-input, pinned the Work run loop to the Phase 2 provider-agent seam, scoped the temporary Chat planner import allowance to Phase 8 Task 8.1, split recovery ownership between platform `fallbackPolicy` and agent semantic reasoning, and recorded eval/history ingestion + provider-mode enum as Non-Goals. |
 | 2026-04-28 | Closing pass follow-up: anchored Phase 7 Task 7.1/7.2 to the existing PLAN-074 `toolRegistry` seed (`work.sop.classify_text_batch`) and supervised-tool pattern; renamed the SOP-control risk so it flags Phase 7 ad-hoc routing rather than a generic competing-planner concern. |
+| 2026-04-28 | Review close-out: scoped eval/history to schema fixtures, bounded session-history inputs to metadata summaries, restored recovery as agent proposals within platform fallback policy, made Chat router move/rename mandatory, canonicalized weak-worker tool ids, narrowed Phase 7 first-slice tools, and added a no-ad-hoc-weak-routing gate/test. |
