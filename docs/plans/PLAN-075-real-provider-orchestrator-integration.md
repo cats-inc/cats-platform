@@ -57,7 +57,11 @@ The target architecture is:
    persists evidence, traces, run state, and user-visible product projections.
 4. Weak providers can still participate through narrower SOP/classifier/worker
    modes without being treated as autonomous agents.
-5. Old planner/dispatcher paths are deleted after product routes no longer
+5. Cats keeps a first-class rule-based dispatcher for weak providers. It
+   selects safe task slices, SOP steps, schema checks, retry/escalation, and
+   tool scope before a weak model is called; the weak model does not own broad
+   delegation or semantic next-step planning by default.
+6. Old planner/dispatcher paths are deleted after product routes no longer
    reference them.
 
 ## Scope
@@ -67,6 +71,9 @@ This plan covers:
 - real Claude/Codex provider-agent integration through the supervision boundary
 - Ollama/local weak-model integration as SOP/worker/classifier support, not as
   default autonomous agent execution
+- Cats-owned rule-based dispatch for weak models, including task slicing,
+  SOP selection, schema validation, retry, escalation, and tool-surface
+  narrowing
 - Chat decision-core cutover while preserving visible Chat UI flows
 - Work supervised run lifecycle beyond one-shot runtime launch
 - Code task execute and relay fan-out convergence through the same run model
@@ -102,6 +109,15 @@ This plan covers:
   Work supervised run, and one Code task/relay path under supervision.
 - Ollama/local weak-model paths enter with restricted tool surface and SOP
   scaffolding unless a capability profile proves stronger autonomy.
+- Weak-model execution uses Cats-authored rule-based dispatch for work
+  allocation: the platform chooses the bounded step/SOP/tool surface, passes
+  only that slice to the weak model, validates the output schema, and escalates
+  or retries deterministically on failure.
+- A weak model attempting autonomous delegation, broad-write access, or an
+  unsupported next-step decision is rejected or escalated before execution.
+- Tests demonstrate the same high-level request taking the strong-provider
+  path through provider-agent semantic planning and the weak-provider path
+  through Cats rule-based dispatch/SOP execution.
 - Static tests fail any new product-layer direct runtime create/send calls.
 - Old planner/dispatcher implementation files are removed or reduced to
   compatibility-free wrappers only after no product path imports them.
@@ -141,6 +157,9 @@ This plan covers:
       approval, weak-model SOP selection, budget, retry, and rejection.
 - [ ] Task 1.4: Add tests proving the platform preserves agent semantic choices
       instead of substituting its own plan.
+- [ ] Task 1.5: Define the weak-model dispatch handoff: provider-agent semantic
+      planning is skipped when capability profile is too weak, and the platform
+      selects a bounded SOP step instead.
 
 ### Phase 2: Chat Decision-Core Cutover
 
@@ -196,10 +215,44 @@ This plan covers:
       Ollama/local, and unknown providers using conservative defaults.
 - [ ] Task 6.2: Map strong providers to higher autonomy only when capability
       evidence allows it.
-- [ ] Task 6.3: Map weak providers to SOP/classifier/worker modes with narrow
-      tool scope, schema-required validation, and explicit escalation.
-- [ ] Task 6.4: Add tests for capability conflicts, operator override ceilings,
+- [ ] Task 6.3: Implement the Cats rule-based weak-model dispatcher. It shall
+      choose task slice, SOP template, allowed tool surface, expected schema,
+      retry limit, escalation target, and confidence threshold before invoking
+      a weak provider.
+- [ ] Task 6.4: Map weak providers to SOP/classifier/worker modes with narrow
+      tool scope, schema-required validation, and explicit escalation. Weak
+      providers must not receive autonomous delegation, broad-write, or
+      open-ended recovery ownership by default.
+- [ ] Task 6.5: Add tests for capability conflicts, operator override ceilings,
       override floor, and weak-model route selection.
+- [ ] Task 6.6: Add a contrast test proving a strong provider receives the
+      semantic-planning contract while a weak provider receives only a
+      platform-selected SOP slice for the same high-level request.
+
+## Weak-Model Dispatch Contract
+
+Weak-model support is not a second personality mode for the Orchestrator. It is
+the same supervision system applying denser platform control when the worker is
+not capable enough to own the plan.
+
+For weak providers, Cats owns:
+
+- task decomposition into bounded slices
+- SOP/template selection
+- prompt scaffolding and required output schema
+- allowed tool surface and side-effect class
+- retry, fallback, escalation, and approval policy
+- progress checkpoints and evidence persistence
+
+The weak model owns only the bounded response for the assigned slice. It may
+classify, summarize, extract, rewrite, format, or complete a narrow SOP step.
+It does not own broad delegation, multi-step recovery, cross-product routing,
+or write-heavy tool choice unless capability evidence and policy explicitly
+grant that access.
+
+For strong providers, Cats can allow more semantic planning, but the same
+policy/invariant/tool boundary still validates every proposed action before
+execution. The difference is control density, not a boolean switch.
 
 ### Phase 7: Old Core Retirement
 
@@ -250,6 +303,7 @@ This plan covers:
 | Provider autonomy bypasses platform invariants | High | All provider outputs become proposed intents; platform validates and executes through supervised boundaries. |
 | Old planner/dispatcher semantics linger indefinitely | High | Add import retirement test and make deletion a phase gate. |
 | Weak models are treated like autonomous agents | Medium | Capability profile maps weak providers to SOP/classifier/worker modes by default. |
+| Rule-based weak-model dispatch grows into a competing semantic planner | Medium | Keep the dispatcher deterministic: it may slice, route, scaffold, validate, retry, and escalate, but not invent semantic strategy beyond explicit SOP rules. |
 | Lifecycle scheduler starts reading transcript content | High | Static import tests enforce scheduler content blindness. |
 | Real provider smoke becomes flaky or expensive | Medium | Keep live-provider tests optional; CI uses deterministic runtime stubs. |
 
@@ -258,3 +312,4 @@ This plan covers:
 | Date | Update |
 |------|--------|
 | 2026-04-27 | Plan opened after PLAN-074 fake-driving-agent and runtime-boundary cutover prerequisites were met. |
+| 2026-04-27 | Clarified weak-model final state: Cats retains rule-based dispatch/SOP control for weak providers, while strong providers may own more semantic planning under the same supervision boundary. |
