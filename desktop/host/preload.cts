@@ -1,14 +1,21 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-import {
-  DESKTOP_VOICE_CAPTURE_CANCEL_CHANNEL,
-  DESKTOP_VOICE_CAPTURE_EVENT_CHANNEL,
-  DESKTOP_VOICE_CAPTURE_START_CHANNEL,
-  DESKTOP_VOICE_CAPTURE_STOP_CHANNEL,
-  type DesktopScreenshotCaptureResult,
-  type VoiceCaptureEvent,
-  type VoiceCaptureStartOptions,
+import type {
+  DesktopScreenshotCaptureResult,
+  VoiceCaptureEvent,
+  VoiceCaptureStartOptions,
 } from './contracts.js';
+
+// Channel literals are inlined here because Electron's sandboxed preload
+// cannot require local modules — only `electron` and a small set of node
+// builtins. See tests/desktop-preload-sandbox-safety.test.js. The
+// authoritative copies live in contracts.ts; if these drift, the round-trip
+// test desktop-voice-capture-contract.test.js will fail because main and
+// preload won't agree on the channel name.
+const DESKTOP_VOICE_CAPTURE_START_CHANNEL = 'cats-host:voice-start';
+const DESKTOP_VOICE_CAPTURE_STOP_CHANNEL = 'cats-host:voice-stop';
+const DESKTOP_VOICE_CAPTURE_CANCEL_CHANNEL = 'cats-host:voice-cancel';
+const DESKTOP_VOICE_CAPTURE_EVENT_CHANNEL = 'cats-host:voice-event';
 
 type DesktopHostActionId =
   | 'retry'
