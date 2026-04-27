@@ -45,16 +45,22 @@ export function buildChannelDispatchOrchestratorSummaryFromBegun(
 ): ChannelDispatchOrchestratorSummary {
   const preparedTurn = begun.preparedTurn;
   const trigger = preparedTurn?.initialResolution.trigger ?? 'room_default';
+  const providerDecisionPlanId = begun.providerAgentDecision?.kind === 'semantic_plan'
+    ? begun.providerAgentDecision.planId
+    : begun.providerAgentDecision?.decisionId ?? null;
   return {
     planId:
-      preparedTurn?.providerAgentObservation?.observationId
+      providerDecisionPlanId
+      ?? preparedTurn?.providerAgentObservation?.observationId
       ?? (
         typeof begun.userMessage.metadata.orchestratorPlanId === 'string'
           ? begun.userMessage.metadata.orchestratorPlanId
           : `chat-deterministic:${channelId}:${begun.userMessage.id}`
       ),
     planner:
-      typeof begun.userMessage.metadata.orchestratorPlanner === 'string'
+      begun.providerAgentDecision
+        ? 'provider_agent_decision'
+        : typeof begun.userMessage.metadata.orchestratorPlanner === 'string'
         ? begun.userMessage.metadata.orchestratorPlanner
         : preparedTurn?.providerAgentObservation
           ? 'provider_agent_observation'

@@ -27,6 +27,9 @@ import {
 import { beginChannelMessageDispatch } from '../src/products/chat/state/runtime-dispatch/routing.ts';
 import type { ChatState } from '../src/products/chat/api/contracts.ts';
 import type { RuntimeClient } from '../src/platform/runtime/client.ts';
+import {
+  buildChannelDispatchOrchestratorSummaryFromBegun,
+} from '../src/products/chat/api/orchestratorDispatchResponse.ts';
 
 function policy(): SupervisionPolicy {
   return {
@@ -435,6 +438,12 @@ test('Chat dispatch can hand bounded observations to a provider-agent decision r
   );
 
   assert.equal(begun.providerAgentDecision?.kind, 'semantic_plan');
+  const dispatchSummary = buildChannelDispatchOrchestratorSummaryFromBegun(
+    state.selectedChannelId,
+    begun,
+  );
+  assert.equal(dispatchSummary.planId, 'provider-plan-chat-1');
+  assert.equal(dispatchSummary.planner, 'provider_agent_decision');
   assert.equal(capturedObservation?.task.kind, 'chat_turn');
   assert.equal(JSON.stringify(capturedObservation).includes(rawMessage), false);
   assert.equal(begun.userMessage.metadata.orchestratorPlanner, 'provider_agent_observation');
