@@ -52,11 +52,23 @@ engines**, accessed through the Electron host and preload bridge, with no
 cloud dependency and no bundled model artifacts:
 
 - **macOS desktop** uses a bundled Swift helper that drives
-  `SFSpeechRecognizer` against the renderer's microphone audio. Recognition
-  runs on-device when the user's installed locale supports it.
+  `SFSpeechRecognizer` against microphone audio captured by the helper.
+  The helper enforces on-device recognition by setting
+  `requiresOnDeviceRecognition = true` on every session. If the requested
+  locale is not on-device-supported, the helper fails closed with
+  `language_not_supported` rather than silently falling back to Apple's
+  servers. macOS audio is therefore guaranteed to stay on the user's
+  machine.
 - **Windows desktop** uses a bundled .NET / WinRT helper that drives
-  `Windows.Media.SpeechRecognition` against the renderer's microphone audio.
-  Recognition runs on-device using the user's installed speech packs.
+  `Windows.Media.SpeechRecognition`. The active recognition mode
+  (on-device speech pack vs Microsoft's online speech service) is governed
+  by the user's Windows Privacy → Speech "Online speech recognition"
+  setting and the installed speech pack; the WinRT API does **not** expose
+  a runtime flag to force on-device recognition for free-form dictation.
+  Windows audio therefore may or may not leave the machine depending on
+  the user's OS-level privacy choice. The host surfaces a per-session
+  privacy mode hint to the renderer (SPEC-084 Req 21) and the user-facing
+  documentation explains how to keep recognition fully local on Windows.
 - **Linux desktop and any non-Electron context** keep the current
   `useWebSpeechInput` path. That path will continue to surface
   "speech recognition unavailable" through the existing platform toast
@@ -94,9 +106,18 @@ but separate decisions, not made here:
 ### Positive
 
 - The voice button works on macOS and Windows without requiring the user
-  to provide any API key, sign in to a vendor, or trust a cloud round-trip.
-- Recognition happens on-device for supported locales — no audio leaves the
-  user's machine.
+  to provide any API key, sign in to a vendor, or sign up for an external
+  paid service.
+- macOS recognition is enforced to on-device mode and audio is guaranteed
+  not to leave the user's machine. Sessions for locales without on-device
+  support fail closed rather than silently routing through Apple's servers.
+- Windows recognition routes through the OS speech engine in whichever
+  mode the user has chosen via Windows Privacy settings. With "Online
+  speech recognition" disabled and a matching speech pack installed,
+  recognition stays fully local; otherwise audio is sent to Microsoft's
+  online dictation service. The slice cannot override this choice but
+  surfaces the active mode to the renderer per session and documents the
+  configuration required for fully-local recognition.
 - The renderer does not import Electron, native modules, or audio runtime
   APIs. The capture surface stays consistent with the screenshot precedent.
 - Accuracy and language coverage track each OS vendor's investment in their
@@ -110,9 +131,18 @@ but separate decisions, not made here:
 - Two native helper code paths must be maintained, plus their bundling and
   code-signing/notarization steps (Apple notarization for the macOS helper;
   Authenticode signing for the Windows helper).
-- Locale support is bounded by what the user has installed at the OS level.
-  Users on a fresh macOS install whose primary language has no on-device
-  pack installed will not get useful recognition until they enable it.
+- Locale support is bounded by what the user has installed at the OS
+  level. macOS users on a fresh install whose primary language has no
+  on-device pack installed will not get useful recognition until they
+  enable it; on macOS the session fails closed (we do not silently
+  degrade to network recognition).
+- Windows users who have not turned off "Online speech recognition" in
+  Privacy settings will have their captured audio routed to Microsoft's
+  online speech service, because the WinRT API does not expose a runtime
+  flag to force on-device for free-form dictation. This is an OS-level
+  user choice the app cannot override; the slice surfaces the active
+  privacy mode to the renderer per session and documents the
+  configuration requirement, but cannot prevent it programmatically.
 - Linux users continue to see a non-functional voice button that fails to
   a toast. This is an explicit, acknowledged gap, not a planning oversight.
 - Adding a new helper subprocess broadens the host's process supervision
@@ -177,6 +207,24 @@ but separate decisions, not made here:
 - **Why rejected**: The renderer cost is shared. Cutting one OS does not
   meaningfully reduce the slice; it just delays parity.
 
+### Alternative 5: Strict on-device-only on Windows (refuse to start when "Online speech recognition" is enabled)
+
+- **Pros**: Windows audio guaranteed not to leave the machine, matching
+  the macOS posture exactly.
+- **Cons**: There is no public WinRT API to read the "Online speech
+  recognition" privacy setting state, so the slice cannot reliably
+  detect it; refusing to start would have to rely on user-driven
+  configuration steps and best-effort heuristics. Users with online
+  speech enabled would see the button silently fail with no in-app
+  remedy. This trades a real working Windows feature for a hard
+  guarantee that we cannot enforce reliably from inside the app.
+- **Why rejected**: The cost (Windows feature broken for many default
+  user configurations with no programmatic recovery) outweighs the
+  privacy benefit. The chosen design (route per OS privacy choice,
+  surface the active mode in UI, document the requirement) puts the
+  privacy decision in the user's hands while keeping the feature usable
+  and honest about what is happening.
+
 ## References
 
 - [ADR-003: Electron host manages local services](./003-electron-host-manages-local-services.md)
@@ -191,4 +239,5 @@ but separate decisions, not made here:
 ---
 
 *Decision proposed: 2026-04-28*
+*Last revised: 2026-04-28 (review pass: clarified per-platform privacy posture; macOS enforces on-device with fail-closed when locale unsupported, Windows is honest that recognition routes per OS privacy setting and adds Alternative 5 explaining why strict on-device-only on Windows was rejected)*
 *Decision makers: Sammy, Claude*

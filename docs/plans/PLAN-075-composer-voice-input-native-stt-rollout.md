@@ -120,17 +120,37 @@ to a stub helper, and surfaces typed events. No real native helper yet.
 - [ ] Sign and notarize the helper as part of the existing macOS
       notarization step. Verify `codesign -dv --deep` reports the
       helper's signature post-build.
-- [ ] Implement the host preflight from SPEC-084 Req 13:
+- [ ] Implement helper-side preflight as the helper's first action
+      (SPEC-084 Req 13): query
       `SFSpeechRecognizer.authorizationStatus()` plus
-      `AVCaptureDevice.authorizationStatus(for: .audio)`. Map `.denied` /
-      `.restricted` to `permission_denied` before launching the helper.
+      `AVCaptureDevice.authorizationStatus(for: .audio)` before opening
+      any audio device; emit `permission_denied` and exit immediately on
+      `.denied` / `.restricted`; allow `.notDetermined` to proceed so
+      the OS prompt fires.
+- [ ] Wire optional host-side fast-fail via Electron
+      `systemPreferences.getMediaAccessStatus('microphone')` to
+      short-circuit before launching the helper when mic is denied.
+      The helper preflight remains the authoritative check because no
+      Electron API exposes Speech Recognition status.
+- [ ] Enforce `requiresOnDeviceRecognition = true` on every recognition
+      request in the macOS helper (SPEC-084 Req 4). Before opening the
+      audio device, check
+      `SFSpeechRecognizer.supportsOnDeviceRecognition` for the requested
+      locale; emit `language_not_supported` and exit when on-device
+      support is unavailable. Never fall back to network-mediated
+      recognition.
+- [ ] Emit `mode: 'on-device'` on the macOS `ready` event (SPEC-084
+      Req 21).
 - [ ] Add a host smoke test that spawns the helper with a recorded
       WAV fixture (helper accepts an `--input <wav>` flag for testing
       only) and asserts at least one partial and one final event.
 - [ ] Manually verify on a fresh macOS user profile: first-run
       permission prompts (Speech Recognition + Microphone), first-utterance
-      latency, on-device mode active, locale matches system language,
-      stop and cancel cleanup, and post-error microphone release.
+      latency, on-device mode active (assert `ready` event emits
+      `mode: 'on-device'`), `language_not_supported` fail-closed path
+      using a locale known to lack on-device support, locale matches
+      system language, stop and cancel cleanup, and post-error microphone
+      release.
 
 **Deliverables**: macOS Electron build produces real composer transcripts
 on a notarized installer.
@@ -154,16 +174,32 @@ on a notarized installer.
 - [ ] Authenticode-sign the helper as part of the existing Windows
       packaging signing step.
 - [ ] Map `UnauthorizedAccessException` and equivalent permission
-      errors to `permission_denied`. Map missing speech-pack errors to
-      `language_not_supported`. Map any other startup failure to
-      `engine_unavailable`.
+      errors to `permission_denied`. Map missing-speech-pack /
+      unsupported-language errors from the SpeechRecognizer's
+      compilation step to `language_not_supported`. Map any other
+      startup failure to `engine_unavailable`.
+- [ ] Emit `mode: 'unknown'` in the Windows `ready` event because the
+      WinRT API does not expose the user's "Online speech recognition"
+      privacy setting (SPEC-084 Req 21). Do not attempt to detect or
+      override the user's OS privacy choice from inside the helper.
+- [ ] Document, alongside the Phase 5 validation steps, the user-facing
+      requirement to disable "Online speech recognition" in Windows
+      Settings → Privacy → Speech and verify the speech pack for their
+      locale is installed in order to keep recognition fully local on
+      Windows.
 - [ ] Add a host smoke test that spawns the helper with a recorded
       WAV fixture (helper accepts an `--input <wav>` flag for testing
       only) and asserts at least one partial and one final event.
 - [ ] Manually verify on a fresh Windows 10 / 11 user profile: first-run
       microphone consent, first-utterance latency, locale matches
-      installed speech pack, stop and cancel cleanup, and post-error
-      microphone release.
+      installed speech pack, stop and cancel cleanup, post-error
+      microphone release, AND both privacy postures: (a) "Online speech
+      recognition" enabled (recognition succeeds, audio leaves the
+      machine via Microsoft online dictation); (b) "Online speech
+      recognition" disabled with a matching speech pack installed
+      (recognition succeeds locally). Both should report
+      `mode: 'unknown'` in the `ready` event per Req 21 unless future
+      detection is added.
 
 **Deliverables**: Windows Electron build produces real composer
 transcripts on a signed installer.
@@ -188,7 +224,12 @@ transcripts on a signed installer.
 - [ ] Document macOS Speech Recognition and Microphone permission
       behavior in `docs/setup-guide.md` (or the closest existing
       permission-docs file) after macOS validation lands.
-- [ ] Document Windows microphone permission behavior in the same place.
+- [ ] Document Windows microphone permission AND speech privacy behavior
+      in the same place: the `mode: 'unknown'` posture, the requirement
+      to disable "Online speech recognition" in Windows Settings →
+      Privacy → Speech for fully-local recognition, the speech-pack
+      install path, and how the renderer privacy-mode indicator
+      surfaces the active mode per session.
 - [ ] Document the explicit Linux limitation: the composer voice button
       is non-functional on Linux for v1, by design, with a toast on
       click. Reference ADR-079.
@@ -280,6 +321,8 @@ when Phase 3 lands; existing packaging scripts are the source of truth.)
 | Linux users perceive the feature as "broken on Linux" rather than "intentionally deferred" | Low | Document the limitation in `docs/setup-guide.md` and reference ADR-079; consider a future Linux toast copy refresh, but not in v1 |
 | Cross-talk between rapid start/stop cycles | Medium | Session-id filtering on every event in the orchestrator; renderer ignores events for unknown session ids |
 | Future renderer change accidentally introduces `getUserMedia({ audio })` and bypasses the native helper | Medium | Phase 2 permission handler explicitly denies `media`; host contract test asserts the deny path so any future renderer code that tries to capture audio through Chromium fails loudly during tests rather than silently succeeding |
+| macOS user with an unsupported on-device locale is silently routed to Apple's servers under the helper's default settings | High | Helper sets `requiresOnDeviceRecognition = true` and fails closed with `language_not_supported` rather than network-fallback (SPEC-084 Req 4); helper smoke test asserts the closed-fail path with a known-unsupported locale fixture |
+| Windows users believe audio is local because the button label says "voice input", but Microsoft's online dictation is silently in use (privacy mismatch) | High | Renderer surfaces a per-session privacy-mode chip when `mode !== 'on-device'` (SPEC-084 Req 21); user-facing documentation explains the Windows privacy-setting requirement; Phase 4 manual validation exercises both privacy postures so we can speak to behavior on each |
 
 ## Progress Log
 
@@ -287,6 +330,7 @@ when Phase 3 lands; existing packaging scripts are the source of truth.)
 |------|--------|
 | 2026-04-28 | Plan created from ADR-079 / SPEC-084. Awaiting Sammy review before Phase 1 start. |
 | 2026-04-28 | Added Phase 2 task to install the Electron renderer permission allowlist (`display-capture` allowed, `media` denied) per SPEC-084 Req 20, plus corresponding host contract test coverage and a risk entry guarding against future renderer drift back into `getUserMedia`. |
+| 2026-04-28 | Review-pass follow-up: macOS path now strict on-device with fail-closed (`requiresOnDeviceRecognition = true`, `language_not_supported` when locale unsupported); Windows path made honest about OS privacy routing (no API to force on-device, `mode: 'unknown'` emitted, documentation requirement added); helper-side preflight replaces the unworkable host-side preflight (host is Node, no Speech.framework binding); finals-only insertion in v1 with partials reserved for follow-up; Linux button-visibility / toast contract made explicit per the existing 55c15f5a behavior. |
 
 ---
 

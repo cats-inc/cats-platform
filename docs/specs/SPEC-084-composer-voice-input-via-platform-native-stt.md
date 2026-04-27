@@ -15,23 +15,35 @@ relies on `webkitSpeechRecognition`. In Electron Chromium that API never
 returns a transcript because the build does not carry Google's private
 speech-service key, so the button is broken on Windows, macOS, and Linux. This
 spec defines a replacement: composer voice input is captured through the
-Electron host using each desktop OS's free, on-device speech engine —
+Electron host using each desktop OS's free, system-native speech engine —
 `SFSpeechRecognizer` on macOS and `Windows.Media.SpeechRecognition` on
-Windows — exposed to the renderer through a typed preload bridge. Linux and
-non-Electron contexts continue to use the existing path and surface failure
+Windows — exposed to the renderer through a typed preload bridge. The
+privacy posture is per-platform and surfaced to the renderer per session:
+macOS enforces on-device recognition (audio stays on the machine), while
+Windows routes through whichever path the user's Windows speech privacy
+setting permits and the slice surfaces the active mode rather than
+overriding the user's OS-level choice. Linux and non-Electron contexts
+continue to use the existing `useWebSpeechInput` path and surface failure
 through the existing platform toast pattern.
 
 ## Goals
 
-- Make the composer microphone button produce real, on-device transcripts on
-  macOS and Windows desktop builds.
+- Make the composer microphone button produce real transcripts on
+  macOS and Windows desktop builds, using each platform's system-native
+  speech engine and without requiring any third-party API key.
+- Enforce on-device recognition on macOS so captured audio is guaranteed
+  not to leave the user's machine; fail closed when the locale lacks
+  on-device support rather than silently routing through Apple's servers.
+- Be honest about the Windows privacy posture: the chosen WinRT API does
+  not expose a runtime flag to force on-device recognition for free-form
+  dictation, so the active mode is governed by the user's OS-level
+  privacy setting; surface the active mode to the renderer per session
+  and explain the configuration requirement in user-facing docs.
 - Reuse the existing voice-input composer hook surface
   (`useVoiceInputComposer`) so callers do not change.
 - Keep all OS audio capture, helper-process lifecycle, and permission state
-  inside the Electron host.
-- Surface partial transcripts to the composer cursor as soon as they are
-  available, matching the existing UX expectation that voice text appears
-  while speaking.
+  inside the Electron host (or the helper subprocess) — never in the
+  renderer.
 - Provide truthful, actionable failure feedback through the platform toast
   pattern when capture cannot proceed.
 - Keep the user-facing button in a single shape across platforms — the user
@@ -64,9 +76,14 @@ through the existing platform toast pattern.
 - As a Windows desktop user, I want the same dictation experience in the
   composer using my installed Windows speech packs, so I do not need to
   configure any vendor key.
-- As a Linux desktop user, I want the microphone button to clearly tell me
-  it is unavailable on my platform when I click it, so I do not get stuck
-  wondering whether my microphone is broken.
+- As a Linux desktop user, I want the microphone button to remain
+  visible and clickable on my platform and to surface a clear toast when
+  recognition cannot proceed, so I do not get stuck wondering whether my
+  microphone is broken.
+- As a privacy-sensitive Windows user, I want the renderer to clearly
+  show me when audio is leaving my machine (because my Windows privacy
+  settings allow Microsoft online dictation), so I am not misled by a
+  generic "voice input" indicator into believing recognition is local.
 - As a user whose OS-level microphone permission is denied, I want a
   recovery toast that points me at the right system settings panel, so I
   can grant permission without leaving the app to search.
@@ -87,26 +104,54 @@ through the existing platform toast pattern.
    `event.sender` is not the main Cats window's `webContents`, matching
    the screenshot bridge precedent.
 4. On macOS, the host shall drive `SFSpeechRecognizer` via a bundled
-   helper. The helper shall request on-device recognition
-   (`requiresOnDeviceRecognition = true`) when the recognizer reports
-   on-device support for the requested locale, and shall fall back to the
-   recognizer's default mode when on-device support is unavailable.
+   helper. The helper shall enforce on-device recognition by setting
+   `requiresOnDeviceRecognition = true` on every recognition request.
+   If `SFSpeechRecognizer.supportsOnDeviceRecognition` is false for the
+   requested locale, the helper shall emit `language_not_supported` and
+   exit before opening any audio device. The helper shall **never** fall
+   back to network-mediated recognition; macOS audio is guaranteed to
+   stay on the user's machine.
 5. On Windows, the host shall drive `Windows.Media.SpeechRecognition` via
-   a bundled helper. The helper shall use a `ContinuousRecognitionSession`
-   with the user's installed speech pack for the requested locale.
-6. On Linux Electron and any non-Electron renderer (web app, mobile shell),
-   the host bridge method shall be absent. The renderer shall fall through
-   to the existing `useWebSpeechInput` path with no behavior change. Linux
-   failures shall surface through the existing platform toast pattern; no
-   new toast or copy is required for v1.
-7. The renderer shall stream partial transcript chunks to the composer
-   text input as they arrive, inserting at the current cursor position
-   using the same selection-trust rules already present in
-   `useVoiceInputComposer` (selection-update events from the user
-   invalidate cached selection, blocking accidental overwrites).
-8. The renderer shall finalize the transcript when the host emits a
-   `final` event for the session. A final event without preceding partials
-   shall be inserted whole at the cached cursor position.
+   a bundled helper using `ContinuousRecognitionSession` with the user's
+   configured `SystemSpeechLanguage`. The WinRT API does not expose a
+   runtime flag to force on-device recognition for free-form dictation;
+   the active mode (on-device speech pack vs Microsoft's online speech
+   service) is governed by the user's Windows Privacy → Speech "Online
+   speech recognition" setting and the installed speech pack. The helper
+   shall not attempt to override or work around the user's OS-level
+   choice. The user-facing documentation shall explain that, to keep
+   audio fully local, the user must disable "Online speech recognition"
+   in Windows Settings and verify the speech pack for their locale is
+   installed.
+6. On Linux Electron and any non-Electron renderer (web app, mobile
+   shell), the host bridge method shall be absent. The renderer's
+   `useVoiceInputComposer` shall fall through to `useWebSpeechInput`.
+   The microphone button shall remain visible (gated only on the
+   `SpeechRecognition` constructor presence, which is true in Electron's
+   Chromium build), so the user can always click and receive feedback;
+   `start()` shall succeed-to-begin and subsequent failures
+   (`network`, `service-not-allowed`, etc.) shall surface through the
+   toast wiring established in commit 55c15f5a (`fix(chat-view): keep
+   mic button and surface errors via toast instead of disabling`). No
+   new code path or toast copy is required for Linux in v1; the
+   contract is that the existing path remains reachable rather than the
+   button silently disappearing on first failure.
+7. The renderer shall insert finalized transcripts at the cached cursor
+   position when the host emits a `final` event, using the same
+   selection-trust rules already present in `useVoiceInputComposer`
+   (selection-update events from the user invalidate cached selection,
+   blocking accidental overwrites). The host MAY emit `partial` events
+   for diagnostic or future-UI purposes, but in v1 the renderer SHALL
+   NOT modify the textarea on `partial` events. Live partial-driven UI
+   (e.g., a transient hint chip, underlined preview text) is reserved
+   for a follow-up slice; deferring it avoids the duplication risk that
+   arises when partials are inserted inline and a final later overwrites
+   them.
+8. The host shall emit a `final` event for each completed utterance the
+   recognizer produces during the session. Multiple `final` events may
+   occur within a single session (e.g., between pauses); each shall be
+   inserted at the current cursor position per Req 7. A session ends
+   only on `stop`, `cancel`, or `error` — not on the first `final`.
 9. The host shall emit `error` events with a typed reason from a closed
    set: `permission_denied`, `permission_not_determined`, `mic_unavailable`,
    `language_not_supported`, `engine_unavailable`, `helper_crashed`,
@@ -123,14 +168,21 @@ through the existing platform toast pattern.
     not be required for the renderer to consider the session ended — the
     renderer state transitions on the bridge `end` event, and host cleanup
     proceeds in the background.
-13. On macOS, before starting the helper, the host shall preflight
+13. On macOS, the helper shall preflight permission status as its first
+    action — before opening any audio device — by querying
     `SFSpeechRecognizer.authorizationStatus()` and
     `AVCaptureDevice.authorizationStatus(for: .audio)`. Status `.denied`
-    or `.restricted` for either shall short-circuit to a
-    `permission_denied` error with a toast pointing at the relevant
+    or `.restricted` for either shall cause the helper to emit
+    `permission_denied` and exit immediately. Status `.notDetermined`
+    shall be allowed to proceed so the first attempt triggers the OS
+    prompt for both Speech Recognition and Microphone. The host MAY
+    additionally fast-fail before launching the helper using Electron's
+    `systemPreferences.getMediaAccessStatus('microphone')` (Node-callable
+    on macOS), but the authoritative check lives in the helper because
+    no equivalent Electron API exists for Speech Recognition status.
+    The renderer toast for `permission_denied` points at the relevant
     System Settings pane (Privacy > Speech Recognition or Privacy >
-    Microphone). Status `.notDetermined` shall be allowed to proceed so
-    the first attempt triggers the OS prompt.
+    Microphone).
 14. On Windows, the helper shall handle `UnauthorizedAccessException` and
     similar permission errors by emitting `permission_denied` with a
     toast pointing at Settings > Privacy & Security > Microphone.
@@ -168,13 +220,31 @@ through the existing platform toast pattern.
     The handler applies to renderer-originated requests only; host-side
     `desktopCapturer`, native voice helpers, and other host-owned OS
     APIs remain unaffected.
+21. The host's `ready` event shall include a `mode` field describing the
+    active recognition path: `'on-device'`, `'cloud'`, or `'unknown'`.
+    macOS sessions shall always emit `mode: 'on-device'` (Req 4 makes
+    this enforceable). Windows sessions shall emit `mode: 'unknown'`
+    because the WinRT API does not expose the user's "Online speech
+    recognition" privacy setting; the renderer shall surface a
+    per-session indicator for non-`on-device` modes (e.g., a small chip
+    on the active microphone button) so privacy-sensitive users are not
+    misled into believing audio stays local. Helper implementations MAY
+    upgrade `unknown` to `'on-device'` or `'cloud'` in the future if a
+    reliable detection path is found.
 
 ### Non-Functional Requirements
 
-- **Privacy**: No audio shall leave the user's machine. macOS recognition
-  shall use on-device mode when supported; Windows recognition shall use
-  the system-installed speech pack. The host shall not write captured
-  audio to disk.
+- **Privacy**: The privacy guarantee is per-platform and is surfaced to
+  the renderer per session via the `mode` field of the `ready` event
+  (Req 21). On macOS, audio shall not leave the user's machine; the
+  helper enforces on-device recognition (Req 4) and fails closed when
+  the locale is unsupported. On Windows, audio routing follows the
+  user's OS-level "Online speech recognition" privacy choice; the slice
+  cannot override this from inside the app and surfaces
+  `mode: 'unknown'` so the renderer can warn privacy-sensitive users
+  per session. The host shall not write captured audio to disk on any
+  platform. Documentation shall explain the Windows configuration
+  required for fully-local recognition.
 - **Security**: OS audio capture and helper-process control stay in the
   Electron host. Renderer access is limited to the typed bridge methods.
   The host shall additionally lock the renderer out of Chromium-mediated
@@ -204,16 +274,20 @@ Composer microphone button
     -> useNativeVoiceInput (new) detects bridge availability
        -> bridge present (macOS / Windows Electron)
             -> window.catsDesktopHost.startVoiceCapture({ locale, sessionId })
-            -> host preflights permission status
+            -> host fast-fails on systemPreferences.getMediaAccessStatus('microphone') if denied (macOS only)
             -> host spawns platform helper subprocess
-            -> helper acquires mic, starts recognizer, emits `ready`
-            -> helper streams `partial` and `final` JSON events
-            -> renderer inserts text at cursor honoring selection-trust rules
+            -> helper preflights authorization (Speech + Microphone) as its first action
+            -> on denied: helper emits `permission_denied` and exits
+            -> macOS helper checks supportsOnDeviceRecognition; emits language_not_supported and exits if false
+            -> helper acquires mic, starts recognizer, emits `ready` with privacy `mode`
+            -> helper streams `final` JSON events as utterances complete (partials may also be emitted but are not consumed by renderer in v1)
+            -> renderer inserts each `final` at cursor honoring selection-trust rules
             -> user clicks button again → bridge.stop(sessionId)
             -> helper finalizes, exits, host releases mic, emits `end`
        -> bridge absent (Linux Electron, web)
             -> falls through to existing useWebSpeechInput
-            -> failures continue to surface as the existing toast
+            -> button stays visible (constructor-presence gate)
+            -> click invokes start(); subsequent failures surface via existing toast wiring (commit 55c15f5a)
 ```
 
 ### Bridge Contract Sketch
@@ -293,18 +367,30 @@ behind one interface. Renderer code never branches on `process.platform`.
       arrive in a follow-up if users complain.
 - [ ] On Windows, should the helper be C# (.NET 8 self-contained) or
       C++ /WinRT? C# is faster to write and ship; C++ /WinRT avoids the
-      .NET runtime size. Decision needed before PLAN-075 Phase 3.
-- [ ] Should partial transcripts replace the previous partial in-place
-      (overwrite) or accumulate? `useVoiceInputComposer` today inserts
-      finals only. The transition should keep the existing insertion
-      contract for finals and treat partials as a transient hint that
-      gets replaced by the final on session end. Confirm during Phase 1
-      design.
+      .NET runtime size. Decision needed before PLAN-075 Phase 4.
 - [ ] What happens when the user starts typing while a capture session
       is active? The selection-trust rules already protect against
-      partial-overwrite; but should typing implicitly cancel the session,
-      or coexist? Default proposal: typing leaves the session active,
-      partials still arrive at the (now-moved) cursor. Confirm with UX.
+      mid-utterance overwrite; but should typing implicitly cancel the
+      session, or coexist? Default proposal: typing leaves the session
+      active and the next `final` lands at the (now-moved) cursor.
+      Confirm with UX.
+- [ ] Is the Windows `mode: 'unknown'` posture acceptable for v1, or
+      should we attempt programmatic detection of the "Online speech
+      recognition" privacy setting? No public WinRT API exists for the
+      former, but a UWP app capability or undocumented registry probe
+      may be possible. v1 default: emit `unknown` and document the
+      requirement to users.
+
+Resolved and promoted to Requirements:
+
+- Partial-vs-final insertion contract → finals only in v1; partials
+  reserved for a follow-up slice (Req 7).
+- macOS on-device-only enforcement → fail closed when locale is not
+  on-device-supported, no silent network fallback (Req 4).
+- Permission preflight execution boundary → first action of the helper,
+  with optional host fast-fail via Electron `systemPreferences` (Req 13).
+- Per-session privacy mode reporting → `ready` event carries `mode`
+  field; renderer surfaces non-`on-device` modes in UI (Req 21).
 
 ## References
 
@@ -318,5 +404,6 @@ behind one interface. Renderer code never branches on `process.platform`.
 ---
 
 *Created: 2026-04-28*
+*Last revised: 2026-04-28 (review pass: macOS strict on-device with fail-closed; Windows mode honest about OS privacy routing; finals-only insertion in v1; helper-side preflight replaces host-side preflight; Linux toast contract made explicit; Req 21 runtime privacy mode reporting added)*
 *Author: Claude*
 *Related Plan: [PLAN-075](../plans/PLAN-075-composer-voice-input-native-stt-rollout.md)*
