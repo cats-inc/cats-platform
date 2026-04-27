@@ -12,9 +12,17 @@ import {
   type SupervisionPolicy,
 } from '../src/platform/supervision/index.ts';
 import { createDefaultChatState } from '../src/products/chat/state/defaults.ts';
-import { appendMessage, createChannel } from '../src/products/chat/state/model/index.ts';
+import {
+  appendMessage,
+  createChannel,
+  createParallelChatGroup,
+} from '../src/products/chat/state/model/index.ts';
 import { buildChatProviderAgentObservation } from '../src/products/chat/state/providerAgentObservation.ts';
-import { prepareDispatchTurn } from '../src/products/chat/state/runtime-dispatch/turn.ts';
+import {
+  prepareDispatchTurn,
+  type PreparedDispatchTurn,
+} from '../src/products/chat/state/runtime-dispatch/turn.ts';
+import type { ChatState } from '../src/products/chat/api/contracts.ts';
 
 function policy(): SupervisionPolicy {
   return {
@@ -53,6 +61,51 @@ function manifest(name: string): SupervisedToolManifest {
       format: 'json_schema',
     },
   };
+}
+
+function appendAndPrepare(input: {
+  state: ChatState;
+  channelId: string;
+  body: string;
+  now?: Date;
+  messageMetadata?: {
+    recipientParticipantIds?: string[];
+    workflowShape?: 'sequential' | 'concurrent' | 'converge' | 'parallel' | null;
+  };
+}): { state: ChatState; prepared: PreparedDispatchTurn } {
+  const now = input.now ?? new Date('2026-04-28T00:01:00.000Z');
+  const appended = appendMessage(
+    input.state,
+    input.channelId,
+    {
+      senderKind: 'user',
+      senderName: 'User',
+      body: input.body,
+    },
+    now,
+  );
+  const prepared = prepareDispatchTurn(
+    appended.state,
+    input.channelId,
+    {
+      body: input.body,
+      ...(input.messageMetadata ? { messageMetadata: input.messageMetadata } : {}),
+    },
+    now,
+  );
+  return {
+    state: appended.state,
+    prepared,
+  };
+}
+
+function summaryValue(prepared: PreparedDispatchTurn, key: string): unknown {
+  return prepared.providerAgentObservation?.summaries.find((summary) => summary.key === key)?.value;
+}
+
+function actorProvider(prepared: PreparedDispatchTurn): string | null {
+  const target = prepared.providerAgentObservation?.actor.target;
+  return target?.kind === 'execution_target' ? target.provider : null;
 }
 
 test('Chat provider-agent observation carries routing metadata without raw message content', () => {
@@ -167,4 +220,165 @@ test('Chat dispatch preparation builds a provider-agent observation for the user
     true,
   );
   assert.equal(JSON.stringify(prepared.providerAgentObservation).includes(rawMessage), false);
+});
+
+test('Chat direct-cat turns keep deterministic target selection before provider-agent observation', () => {
+  const now = new Date('2026-04-28T00:00:00.000Z');
+  const state = createChannel(
+    createDefaultChatState(),
+    {
+      title: '',
+      topic: 'Direct review',
+      originSurface: 'chat',
+      entryKind: 'direct',
+      roomMode: 'direct_cat_chat',
+      cats: [
+        {
+          name: 'DirectReviewer',
+          provider: 'claude',
+          instance: 'native',
+          model: 'claude-sonnet',
+        },
+      ],
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  const directCatId = state.cats[0]?.id;
+  if (!directCatId) {
+    throw new Error('Expected direct cat id.');
+  }
+
+  const { prepared } = appendAndPrepare({
+    state,
+    channelId,
+    body: 'Check this direct lane.',
+  });
+
+  assert.equal(prepared.initialResolution.trigger, 'room_default');
+  assert.deepEqual(
+    prepared.initialResolution.targets.map((target) => target.participantId),
+    [directCatId],
+  );
+  assert.equal(summaryValue(prepared, 'routing_target_count'), 1);
+  assert.equal(summaryValue(prepared, 'routing_selection_kind'), 'default_target');
+  assert.equal(
+    prepared.providerAgentObservation?.contextRefs.includes(`chat-room-mode:direct_cat_chat`),
+    true,
+  );
+});
+
+test('Chat solo turns bind provider-agent observation to the selected execution target', () => {
+  const state = createChannel(
+    createDefaultChatState(),
+    {
+      title: 'Solo model room',
+      topic: 'Solo',
+      originSurface: 'chat',
+      entryKind: 'solo',
+      pendingProvider: 'claude',
+      pendingInstance: 'native',
+      pendingModel: 'claude-sonnet',
+    },
+    new Date('2026-04-28T00:00:00.000Z'),
+  );
+
+  const { prepared } = appendAndPrepare({
+    state,
+    channelId: state.selectedChannelId,
+    body: 'Use the selected solo model.',
+  });
+
+  assert.equal(prepared.initialResolution.targets[0]?.participantKind, 'orchestrator');
+  assert.equal(actorProvider(prepared), 'claude');
+  assert.equal(
+    prepared.providerAgentObservation?.contextRefs.includes('chat-composer-mode:solo'),
+    true,
+  );
+});
+
+test('Chat group explicit mentions become bounded provider-agent routing summaries', () => {
+  const state = createChannel(
+    createDefaultChatState(),
+    {
+      title: 'Group agent room',
+      topic: 'Group',
+      originSurface: 'chat',
+      entryKind: 'group',
+      temporaryParticipants: [
+        {
+          participantId: 'participant-reviewer',
+          name: 'RuntimeReviewer',
+          provider: 'claude',
+          instance: 'native',
+          model: 'claude-sonnet',
+        },
+        {
+          participantId: 'participant-verifier',
+          name: 'RuntimeVerifier',
+          provider: 'codex',
+          instance: 'default',
+          model: 'gpt-5.4',
+        },
+      ],
+    },
+    new Date('2026-04-28T00:00:00.000Z'),
+  );
+
+  const { prepared } = appendAndPrepare({
+    state,
+    channelId: state.selectedChannelId,
+    body: '@RuntimeVerifier verify the proposal.',
+  });
+
+  assert.equal(prepared.initialResolution.trigger, 'explicit_mention');
+  assert.deepEqual(
+    prepared.initialResolution.targets.map((target) => target.participantId),
+    ['participant-verifier'],
+  );
+  assert.equal(summaryValue(prepared, 'routing_target_count'), 1);
+  assert.equal(summaryValue(prepared, 'routing_mention_count'), 1);
+  assert.equal(summaryValue(prepared, 'routing_selection_kind'), 'explicit_mentions');
+});
+
+test('Chat parallel member turns keep solo execution targets inside the provider-agent seam', () => {
+  const state = createParallelChatGroup(
+    createDefaultChatState(),
+    {
+      title: 'Parallel implementation',
+      originSurface: 'chat',
+      targets: [
+        {
+          provider: 'claude',
+          instance: 'native',
+          model: 'claude-sonnet',
+        },
+        {
+          provider: 'codex',
+          instance: 'default',
+          model: 'gpt-5.4',
+        },
+      ],
+    },
+    new Date('2026-04-28T00:00:00.000Z'),
+  );
+  const codexMember = state.channels.find((channel) => channel.pendingProvider === 'codex');
+  if (!codexMember) {
+    throw new Error('Expected Codex parallel member channel.');
+  }
+
+  const { prepared } = appendAndPrepare({
+    state,
+    channelId: codexMember.id,
+    body: 'Handle your branch of the parallel run.',
+  });
+
+  assert.equal(codexMember.composerMode, 'solo');
+  assert.equal(actorProvider(prepared), 'codex');
+  assert.equal(prepared.initialResolution.targets[0]?.participantKind, 'orchestrator');
+  assert.equal(summaryValue(prepared, 'routing_target_count'), 1);
+  assert.equal(
+    prepared.providerAgentObservation?.contextRefs.includes('chat-composer-mode:solo'),
+    true,
+  );
 });
