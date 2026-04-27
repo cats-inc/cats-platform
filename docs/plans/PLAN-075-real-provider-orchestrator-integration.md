@@ -422,7 +422,7 @@ categories:
       failure when no `fallbackPolicy` option is allowed.
 - [x] Task 4.3: Add child-run delegation with budget inheritance, parent/child
       scope narrowing, and deadlock/cycle detection.
-- [ ] Task 4.4: Keep semantic decisions outside the scheduler; static tests must
+- [x] Task 4.4: Keep semantic decisions outside the scheduler; static tests must
       prevent scheduler imports of transcript/message content readers.
 - [ ] Task 4.5: Define the run-loop decision handoff: after each provider
       response, semantic next-step choice returns to the provider-agent seam or
@@ -694,3 +694,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 34: added content-blind timeout, resume, and retry lifecycle helpers, including soft-timeout blockers, hard-timeout terminal failure, blocker clearing on resume/retry, and retry reason metadata without semantic recovery. |
 | 2026-04-28 | Implementation slice 35: completed Phase 4 Task 4.2 by recording cancellation request state, deriving late-finishing `CancellationContext` from tool manifests, rejecting terminal-run cancellation, and preserving content-blind lifecycle boundaries. |
 | 2026-04-28 | Implementation slice 36: completed Phase 4 Task 4.3 by tightening supervised child-run spawn with parent-budget caps, tool-scope narrowing metadata, run-tree parent validation, existing ancestry cycle rejection, and Work fake-run coverage. |
+| 2026-04-28 | Implementation slice 37: completed Phase 4 Task 4.4 by strengthening supervision static boundaries so lifecycle/scheduler modules cannot import content readers or contain provider-agent semantic planning entrypoints. |

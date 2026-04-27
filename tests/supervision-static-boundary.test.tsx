@@ -38,6 +38,19 @@ test('run-state and scheduler supervision modules stay content-blind', () => {
   });
 
   assert.deepEqual(violations, []);
+
+  const semanticDecisionViolations = collectTextViolations({
+    files: lifecycleFiles,
+    forbidden: [
+      'requestProviderAgentDecision',
+      'ProviderAgentDecision',
+      'SemanticPlan',
+      'rawMessage',
+      'transcriptText',
+    ],
+  });
+
+  assert.deepEqual(semanticDecisionViolations, []);
 });
 
 test('product code calls runtime create/send only through supervision runtime boundary', () => {
