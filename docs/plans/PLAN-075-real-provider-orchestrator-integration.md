@@ -455,7 +455,7 @@ categories:
 - [x] Task 6.2: Represent Code relay fan-out as sibling supervised runs under
       one relay-round budget envelope, with per-agent evidence and convergence
       records. Child runs are used only when a running relay agent delegates.
-- [ ] Task 6.3: Keep `+New code`, `+Team code`, and `+Peer code` entry flows
+- [x] Task 6.3: Keep `+New code`, `+Team code`, and `+Peer code` entry flows
       stable while moving execution behind the run lifecycle.
 - [ ] Task 6.4: Verify Claude/Codex can drive one Code task execute and one
       relay fan-out path under supervision.
@@ -705,3 +705,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 45: extended Phase 6 Task 6.1 by adding Code execution durable tool-boundary evidence for supervised runtime session creation and wiring the Code API dependency slice to persisted evidence storage. |
 | 2026-04-28 | Implementation slice 46: completed Phase 6 Task 6.1 by projecting Code task latest supervised run inspection and durable evidence through Code task detail responses without changing the entry flow. |
 | 2026-04-28 | Implementation slice 47: completed Phase 6 Task 6.2 by assigning each Code relay fan-out dispatch a sibling supervised run, shared relay-round budget envelope metadata, convergence metadata, and durable runtime-boundary evidence. |
+| 2026-04-28 | Implementation slice 48: completed Phase 6 Task 6.3 by locking the `+New code` execute response shape under supervision and exposing Code relay dispatch run ids through the renderer API contract without changing entry routes. |

@@ -268,3 +268,78 @@ test('GET /api/code/tasks/:taskId includes supervised run evidence', async (t) =
   assert.equal(payload.supervision.counts.evidence, 1);
   assert.equal(payload.supervision.evidence[0].toolName, 'cats.runtime.session.create');
 });
+
+test('POST /api/code/tasks/:taskId/execute keeps +New code entry shape under supervision', async (t) => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-code-entry-supervision-'));
+  t.after(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  const created = createCodeTask(
+    createDefaultCoreState(),
+    {
+      title: 'Execute New Code',
+      summary: 'Keep the entry response stable.',
+      workspacePath: 'C:/repo/cats-platform',
+      workspaceKind: 'user_selected',
+      conversationId: 'conversation-code-entry-supervision',
+    },
+    new Date('2026-04-28T02:10:00.000Z'),
+  );
+  const coreStore = new MemoryCoreStore(created.core);
+  const runtimeClient = createRuntimeStub();
+  const server = createServer(async (request, response) => {
+    const url = new URL(request.url ?? '/', 'http://localhost');
+    const handled = await routeCodeApi({
+      request,
+      response,
+      url,
+      method: request.method ?? 'GET',
+      dependencies: {
+        coreStore,
+        runtimeClient,
+        config: loadConfig({ CATS_PLATFORM_DIR: tempDir }),
+        evidenceDataDir: tempDir,
+        readEvidenceEvents(conversationId) {
+          return readEvidenceEvents(tempDir, conversationId);
+        },
+        now: () => new Date('2026-04-28T02:15:00.000Z'),
+      },
+    });
+
+    if (!handled) {
+      response.writeHead(404, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({ error: 'not found' }));
+    }
+  });
+
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  t.after(() => server.close());
+
+  const address = server.address();
+  assert.ok(address && typeof address === 'object');
+  const response = await fetch(
+    `http://127.0.0.1:${address.port}/api/code/tasks/${created.task.id}/execute`,
+    {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        workspacePath: 'C:/repo/cats-platform',
+        workspaceKind: 'user_selected',
+        provider: 'codex',
+        instance: 'native',
+        model: 'gpt-5.4',
+      }),
+    },
+  );
+  const payload = await response.json();
+  const evidence = readEvidenceEvents(tempDir, 'conversation-code-entry-supervision');
+
+  assert.equal(response.status, 200);
+  assert.equal(typeof payload.runId, 'string');
+  assert.equal(payload.sessionId, 'runtime-session-code-1');
+  assert.equal(payload.task.task.id, created.task.id);
+  assert.equal(payload.task.supervision.run.id, payload.runId);
+  assert.equal(payload.task.supervision.counts.evidence, 1);
+  assert.deepEqual(evidence.map((event) => event.payload.runId), [payload.runId]);
+});

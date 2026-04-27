@@ -36,6 +36,7 @@ export interface CodeRelayMessagePayload {
 export interface CodeRelayDispatchPayload {
   id: string;
   agentId: string;
+  runId: string | null;
   source: 'fan_out' | 'relay';
   status: 'requested' | 'running' | 'completed' | 'failed';
   prompt: string;
