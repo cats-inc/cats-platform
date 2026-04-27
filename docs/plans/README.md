@@ -46,7 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
-| [PLAN-078](./PLAN-078-linux-composer-voice-input-whisper-cpp-rollout.md) | Linux Composer Voice Input whisper.cpp Rollout | Draft | [SPEC-087](../specs/SPEC-087-linux-composer-voice-input-via-bundled-whisper-cpp.md), [ADR-085](../decisions/085-bundle-whisper-cpp-on-linux-for-composer-voice-input.md) |
+| [PLAN-078](./PLAN-078-linux-composer-voice-input-whisper-cpp-rollout.md) | Linux Composer Voice Input whisper.cpp Rollout | Cancelled (not adopted) | [SPEC-087](../specs/SPEC-087-linux-composer-voice-input-via-bundled-whisper-cpp.md), [ADR-085](../decisions/085-bundle-whisper-cpp-on-linux-for-composer-voice-input.md) |
 | [PLAN-077](./PLAN-077-companion-profile-and-share-preview-rollout.md) | Companion Profile and Share Preview Rollout | Draft | [SPEC-085](../specs/SPEC-085-companion-profile-feed-and-library-ia.md), [SPEC-086](../specs/SPEC-086-shareable-companion-content-links-and-chat-previews.md), [ADR-084](../decisions/084-adopt-companion-profile-ia-and-shareable-content-references.md) |
 | [PLAN-076](./PLAN-076-composer-voice-input-native-stt-rollout.md) | Composer Voice Input Native STT Rollout | Draft | [SPEC-084](../specs/SPEC-084-composer-voice-input-via-platform-native-stt.md), [ADR-079](../decisions/079-use-platform-native-stt-with-linux-toast-fallback.md) |
 | [PLAN-075](./PLAN-075-real-provider-orchestrator-integration.md) | Real Provider Orchestrator Integration | Draft | [PLAN-074](./PLAN-074-cats-work-agent-supervision-rollout.md), [SPEC-082](../specs/SPEC-082-cats-work-agent-supervision-and-tool-boundary.md), [ADR-082](../decisions/082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md) |
@@ -131,6 +131,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-04-28 (PLAN-078 added: Linux whisper.cpp composer voice input rollout)*
+*Last updated: 2026-04-28 (PLAN-078 marked Cancelled alongside ADR-085 rejection; the implementation commits 7bf53024 + f31ed25d were reverted in 1f559db9.)*
 
 *See also: [specs/](../specs/) for feature specifications*

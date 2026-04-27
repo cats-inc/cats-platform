@@ -1,8 +1,38 @@
 # ADR-085: Bundle whisper.cpp with Linux Desktop Builds for Composer Voice Input
 
+> **Status: Rejected — not adopted.** This ADR is preserved as a historical
+> record. The Linux deferral established by [ADR-079](./079-use-platform-native-stt-with-linux-toast-fallback.md)
+> remains in effect. Do not implement this design without a successor ADR.
+
 ## Status
 
-Proposed
+Rejected (2026-04-28). Superseded by no replacement; see Rejection Rationale.
+
+## Rejection Rationale
+
+The maintainer rejected this ADR after the initial implementation slice
+(commits 7bf53024, f31ed25d) because the chosen build pipeline required a
+git submodule for whisper.cpp source. The maintainer does not want to
+introduce git submodule prerequisites into the cats-platform repo —
+specifically:
+
+- the additional `git submodule update --init` ceremony every contributor
+  must perform after clone or branch switch
+- the implicit external trust boundary that submodules represent (an
+  embedded pointer to a third-party repo whose history the maintainer
+  does not control)
+- the opaqueness of submodule pointers for code review (a single SHA bump
+  in `.gitmodules` can pull in arbitrary upstream changes)
+
+The implementation commits were reverted; the helper source, CMakeLists,
+build script extension, host-side wiring, and tests are gone from the
+working tree as of 2026-04-28.
+
+If Linux composer voice input is revived later, the successor ADR must
+use a non-submodule vendoring path (e.g. plain source vendoring with a
+documented update procedure, or a build-time fetch with checksum
+verification). Anything in the rest of this ADR that assumes the
+submodule pipeline should be re-evaluated against the chosen path.
 
 ## Context
 

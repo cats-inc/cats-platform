@@ -1,10 +1,17 @@
 # SPEC-087: Linux Composer Voice Input via Bundled whisper.cpp
 
+> **Status: Cancelled — not adopted.** This SPEC is preserved as a
+> historical record alongside [ADR-085](../decisions/085-bundle-whisper-cpp-on-linux-for-composer-voice-input.md)
+> and [PLAN-078](../plans/PLAN-078-linux-composer-voice-input-whisper-cpp-rollout.md).
+> The Linux deferral from [ADR-079](../decisions/079-use-platform-native-stt-with-linux-toast-fallback.md)
+> remains in effect. Do not implement these requirements without a
+> successor ADR / SPEC.
+
 ## Metadata
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Cancelled (not adopted; see ADR-085 Rejection Rationale) |
 | **Owner** | Claude |
 | **Reviewer** | Sammy |
 

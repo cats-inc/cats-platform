@@ -39,7 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
-| [085-bundle-whisper-cpp-on-linux-for-composer-voice-input](./085-bundle-whisper-cpp-on-linux-for-composer-voice-input.md) | Bundle whisper.cpp with Linux Desktop Builds for Composer Voice Input | Proposed | 2026-04-28 |
+| [085-bundle-whisper-cpp-on-linux-for-composer-voice-input](./085-bundle-whisper-cpp-on-linux-for-composer-voice-input.md) | Bundle whisper.cpp with Linux Desktop Builds for Composer Voice Input | Rejected (not adopted) | 2026-04-28 |
 | [084-adopt-companion-profile-ia-and-shareable-content-references](./084-adopt-companion-profile-ia-and-shareable-content-references.md) | Adopt Companion Profile IA and Shareable Content References | Proposed | 2026-04-28 |
 | [083-adopt-work-graph-projections-for-system-map-and-cockpit](./083-adopt-work-graph-projections-for-system-map-and-cockpit.md) | Adopt Work Graph projections for System Map and Cockpit | Proposed | 2026-04-25 |
 | [082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision](./082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md) | Recast the orchestrator as a capability shell with policy-dial supervision | Proposed | 2026-04-25 |
@@ -127,6 +127,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-04-28 (ADR-085 added: Linux whisper.cpp bundling supersedes the ADR-079 Linux deferral)*
+*Last updated: 2026-04-28 (ADR-085 marked Rejected; maintainer declined the git submodule prerequisite. ADR-079's Linux deferral remains in effect.)*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*

@@ -1,10 +1,17 @@
 # PLAN-078: Linux Composer Voice Input whisper.cpp Rollout
 
+> **Status: Cancelled — not adopted.** Preserved alongside
+> [ADR-085](../decisions/085-bundle-whisper-cpp-on-linux-for-composer-voice-input.md)
+> (rejected) and [SPEC-087](../specs/SPEC-087-linux-composer-voice-input-via-bundled-whisper-cpp.md)
+> (cancelled). The implementation commits that this plan covered (7bf53024,
+> f31ed25d) were reverted on 2026-04-28. Do not begin Phase 1 without a
+> successor ADR / SPEC.
+
 ## Metadata
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Cancelled (not adopted; see ADR-085 Rejection Rationale) |
 | **Owner** | Claude |
 | **Reviewer** | Sammy |
 
