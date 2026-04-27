@@ -63,6 +63,22 @@ storybook, or tests. It should not claim that the final post model is complete.
 - [ ] Render header-level `Share` as a disabled button with an explanatory
       tooltip until a companion profile reference type or concrete selected-item
       target exists.
+- [ ] Introduce an app-shell feature-flags channel. Today neither
+      `PlatformHostEnvelope` (`src/shared/platform-contract.ts`) nor
+      `AppShellPayload` (`src/products/shared/api/workspaceContracts.ts`)
+      carries a flags map; this phase shall add a `featureFlags` channel to
+      both shapes (e.g., `featureFlags: Readonly<Record<string, boolean>>` on
+      `PlatformHostEnvelope`, surfaced unchanged on `AppShellPayload`) plus
+      the platform-host wiring that populates it.
+- [ ] Persist `cats.chat.companionProfileIA` as a host-owned flag (default
+      `false`) next to the durable product data root, broadcast updates over
+      the existing app-shell refresh path so renderers pick up new values
+      without restart, and gate every Phase 1 main-surface and side-panel
+      change on the flag at both renderer and product-API entry points.
+- [ ] Add a developer toggle (CLI / settings page is fine; not a public UI in
+      v1) that flips the flag for local builds, and document that toggling it
+      to `true` in production without Phase 2 guards is explicitly
+      unsupported.
 
 **Deliverables**: companion UI language and navigation match ADR-084.
 
@@ -72,9 +88,14 @@ requires the Phase 2 read-model guards for Posts, classifier behavior,
 Inspector lifecycle, and Activity aggregation. If Phase 1 is merged earlier, it
 shall remain behind the runtime-checked feature flag
 `cats.chat.companionProfileIA` (default `false`), surfaced through the
-existing app-shell feature-flags channel. Both renderer and server entry points
-gate the new IA on this flag; production toggling Phase 1 on without Phase 2
-guards is explicitly disallowed by the flag-handler contract. Compile-time
+app-shell feature-flags channel introduced as part of this phase (see Phase 1
+tasks below). The platform host (the cats-platform process owning the durable
+product data root, i.e. the desktop main process for local-first installs)
+shall persist the flag value next to the data root, expose it through
+`AppShellPayload` / `PlatformHostEnvelope`, and broadcast updates so renderers
+re-evaluate without restart. Both renderer and server entry points gate the
+new IA on this flag; production toggling Phase 1 on without Phase 2 guards is
+explicitly disallowed by the flag-handler contract. Compile-time
 `import.meta.env.DEV` paths and `vite` dev-only branches do not satisfy this
 release rule.
 
@@ -171,9 +192,12 @@ finalizing post storage.
       app-shell record (the same payload that already carries cats, cat
       bindings, and channel state).
 - [ ] Add parser/recognition helpers that apply checks in this fixed order:
-      scheme → host → version (short-circuit `unsupported_version` here) →
-      percent-decoding → segment count → target type. Each rejected check
-      returns the matching `CompanionReferenceParseInvalidReason`.
+      scheme → host → percent-decoding → version (short-circuit
+      `unsupported_version` here) → segment count → target type. Each rejected
+      check returns the matching `CompanionReferenceParseInvalidReason`.
+      Percent-decoding runs before the version check so malformed references
+      such as `cats://companion/v2/%ZZ/...` return
+      `invalid: malformed_percent_encoding`, not `unsupported_version`.
 - [ ] Resolve `scopeId` mismatches as `inaccessible`, not as malformed
       references.
 - [ ] Return a distinct `unsupported_version` parser result for syntactically
@@ -235,7 +259,10 @@ finalizing post storage.
 - [ ] Add parser fuzz coverage for `cats://` references, including wrong
       scheme, wrong host, extra segments, missing segments, unknown version,
       unsupported version, unknown type, malformed percent-encoding, and
-      `scopeId` mismatch.
+      `scopeId` mismatch. Include the
+      `cats://companion/v2/%ZZ/...` case to verify
+      `invalid: malformed_percent_encoding` short-circuits ahead of any
+      `unsupported_version` decision.
 - [ ] Add coverage that item-level `Share` is not an enabled inert button, and
       header-level `Share` plus `Subscribe` are disabled with explanatory
       tooltips in v1.
@@ -265,6 +292,9 @@ the post model is finalized.
 | `src/products/chat/api/*` | Modify/Create | Preview/reference resolver routes if needed |
 | `src/products/chat/state/*` | Modify | Message storage/read models for reference snapshots if needed |
 | `src/products/shared/renderer/components/*` | Modify/Create | Shared preview card primitives only if used by more than companion |
+| `src/shared/platform-contract.ts` | Modify | Add `featureFlags` channel to `PlatformHostEnvelope` for the Phase 1 release-flag mechanism |
+| `src/products/shared/api/workspaceContracts.ts` | Modify | Surface `featureFlags` from `AppShellPayload` so renderers can gate Phase 1 IA at runtime |
+| `src/app/server/**` | Modify | Platform-host wiring that populates and broadcasts `featureFlags` (integration-owned; coordinate before editing) |
 | `tests/**` | Modify/Create | Reference resolver, snapshot fallback, and renderer-adjacent regression tests |
 | `docs/specs/*` | Modify/Create | Follow-up post model spec when post semantics are ready |
 
