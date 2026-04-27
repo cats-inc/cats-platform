@@ -132,8 +132,8 @@ to a stub helper, and surfaces typed events. No real native helper yet.
       `SFSpeechRecognizer.authorizationStatus()` plus
       `AVCaptureDevice.authorizationStatus(for: .audio)` before opening
       any audio device; emit `permission_denied` and exit immediately on
-      `.denied` / `.restricted`; allow `.notDetermined` to proceed so
-      the OS prompt fires.
+      `.denied` / `.restricted`; request OS authorization when status is
+      `.notDetermined`, then fail closed unless the user grants access.
 - [ ] Wire optional host-side fast-fail via Electron
       `systemPreferences.getMediaAccessStatus('microphone')` to
       short-circuit before launching the helper when mic is denied.
@@ -159,18 +159,18 @@ to a stub helper, and surfaces typed events. No real native helper yet.
       `mode: 'on-device'`), `language_not_supported` fail-closed path
       using a locale known to lack on-device support, locale matches
       system language, stop and cancel cleanup, and post-error microphone
-      release.
+      release. This validation must explicitly confirm TCC attribution for
+      the spawned helper binary versus the parent Cats app bundle.
 
 **Deliverables**: macOS Electron build produces real composer transcripts
 on a notarized installer.
 
 ### Phase 4: Windows Native Helper (Windows.Media.SpeechRecognition)
 
-- [ ] Decide C# (.NET 8 self-contained) vs C++ /WinRT for the helper
-      (SPEC-084 Open Question). Default proposal: .NET 8 framework-dependent
-      to avoid bundling the .NET runtime, with a fallback to self-contained
-      if the targeted Windows 10 19041+ baseline does not include the
-      required .NET runtime version.
+- [x] Decide C# (.NET 8 self-contained) vs C++ /WinRT for the helper
+      (SPEC-084 Open Question). Decision: use the C# / WinRT helper and
+      publish it self-contained because Windows 10 19041+ does not guarantee
+      a .NET 8 runtime.
 - [ ] Create the helper source under `desktop/native/windows-stt/`.
       Single executable target `cats-stt-windows.exe`.
 - [ ] Implement `SpeechRecognizer` with `ContinuousRecognitionSession`,
@@ -333,7 +333,7 @@ when Phase 3 lands; existing packaging scripts are the source of truth.)
 | Microphone is held after error or unexpected helper exit | High | All session teardown paths route through the orchestrator's `finally` block; verify via a Phase 2 host-test that simulates each error path and asserts the helper is killed |
 | Selection-trust race overwrites user-typed text with transcripts | Medium | Reuse the existing `useVoiceInputComposer` selection-trust rules; add a renderer test that types into the composer mid-session and asserts ignored partials and later finals do not overwrite typed text |
 | Locale request is unsupported (no installed speech pack) | Medium | Map to `language_not_supported` with a toast; do not silently fall back to a different locale because the user's draft would silently change language |
-| .NET runtime version mismatch on user's Windows install | Medium | Default to framework-dependent .NET 8; fall back to self-contained publish if the Windows 10 19041+ baseline does not guarantee .NET 8; decision before Phase 4 build step |
+| .NET runtime version mismatch on user's Windows install | Medium | Publish the Windows helper self-contained so the installer does not depend on a preinstalled .NET 8 runtime |
 | First utterance feels slow on target hardware | Medium | Measure startup, first final, and host forwarding latency during Phase 3/4 validation; if OS engine warm-up dominates, investigate prewarming after the user explicitly starts capture or defer live partial preview to the follow-up slice |
 | New helper subprocess broadens the host attack surface | Medium | Renderer access stays behind sender-validated IPC (Phase 2); helper accepts only line-delimited JSON commands; no shell, no eval |
 | Linux users perceive the feature as "broken on Linux" rather than "intentionally deferred" | Low | Document the limitation in `docs/setup-guide.md` and reference ADR-079; consider a future Linux toast copy refresh, but not in v1 |
@@ -352,6 +352,7 @@ when Phase 3 lands; existing packaging scripts are the source of truth.)
 | 2026-04-28 | Contract cleanup: `ready.mode` is now an explicit bridge field via `VoiceCaptureMode`; Windows `unknown` is treated as a conservative "may use Microsoft online speech" posture rather than an active-mode claim; renderer/helper tests no longer require optional partial events for the v1 textarea contract. |
 | 2026-04-28 | Phase 1 renderer bridge slice landed: added the shared `VoiceCaptureBridge` / `VoiceCaptureMode` contract, optional desktop bridge methods, native renderer hook selection ahead of the Web Speech fallback, finals-only transcript insertion, Escape cancellation, non-`on-device` privacy badge plumbing, and focused source-contract coverage. Host IPC and native helpers remain Phase 2+. |
 | 2026-04-28 | Host/native slice landed: added Electron IPC channels, main-window sender validation, renderer permission allowlist (`display-capture` only), voice helper subprocess orchestration with ready timeout / stale-session filtering / stop-cancel cleanup, platform-gated preload methods, macOS Swift helper source, Windows WinRT helper source, native helper installer staging, macOS speech/microphone plist copy, and focused host/helper contract coverage. |
+| 2026-04-28 | Review follow-up hardening: macOS stop now ends audio and waits for a final/natural recognizer callback instead of immediately cancelling the task; Windows helper packaging switched to self-contained .NET publish; helper stdin commands parse JSON with session id matching; ready-timeout and finals-only regression coverage tightened; setup docs now call out the required fresh-profile macOS TCC validation before release. |
 
 ---
 

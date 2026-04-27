@@ -166,6 +166,12 @@ test('useNativeVoiceInput inserts finals only and waits for ready before active 
   assert.match(source, /case 'ready':\s*setStatus\('ready'\);\s*setPrivacyMode\(event\.mode\);/u);
   assert.match(source, /case 'partial':\s*break;/u);
   assert.match(source, /case 'final':\s*onTranscriptRef\.current\(event\.text\);/u);
+  const partialStart = source.indexOf("case 'partial':");
+  const finalStart = source.indexOf("case 'final':");
+  assert.notEqual(partialStart, -1);
+  assert.notEqual(finalStart, -1);
+  const partialBlock = source.slice(partialStart, finalStart);
+  assert.doesNotMatch(partialBlock, /onTranscriptRef\.current/u);
   assert.match(source, /listening: status === 'ready'/u);
   assert.match(source, /active: status !== 'idle'/u);
 });

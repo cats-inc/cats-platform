@@ -161,6 +161,37 @@ test('desktop voice capture reports unavailable when the helper is missing', asy
   ]);
 });
 
+test('desktop voice capture ready timeout reports unavailable and kills the helper', async () => {
+  const workingDir = await mkdtemp(join(tmpdir(), 'cats-voice-helper-'));
+  const helperPath = join(workingDir, 'helper');
+  await writeFile(helperPath, '#!/bin/sh\n', 'utf8');
+  const events = [];
+  const child = createFakeChildProcess();
+  const controller = new DesktopVoiceCaptureController({
+    config: {
+      packaged: false,
+      packageRoot: workingDir,
+    },
+    platform: 'darwin',
+    env: { CATS_VOICE_CAPTURE_HELPER: helperPath },
+    sendEvent: (event) => events.push(event),
+    spawnProcess: () => child,
+    readyTimeoutMs: 5,
+    logLine: () => {},
+  });
+
+  await controller.startVoiceCapture({ sessionId: 's1', locale: 'en-US' });
+  await new Promise((resolve) => {
+    setTimeout(resolve, 25);
+  });
+
+  assert.deepEqual(events, [
+    { type: 'error', sessionId: 's1', reason: 'engine_unavailable' },
+    { type: 'end', sessionId: 's1' },
+  ]);
+  assert.equal(child.killed, true);
+});
+
 test('desktop voice capture forwards current-session helper events and stop commands', async () => {
   const workingDir = await mkdtemp(join(tmpdir(), 'cats-voice-helper-'));
   const helperPath = join(workingDir, 'helper');

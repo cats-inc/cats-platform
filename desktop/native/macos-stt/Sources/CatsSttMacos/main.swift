@@ -9,6 +9,11 @@ struct CliOptions {
   let inputPath: String?
 }
 
+struct ControlCommand: Decodable {
+  let type: String
+  let sessionId: String?
+}
+
 final class JsonEmitter {
   private let sessionId: String
   private let lock = NSLock()
@@ -71,7 +76,14 @@ final class JsonEmitter {
   }
 }
 
-func parseOptions(_ args: [String]) -> CliOptions? {
+func fixtureInputIsEnabled() -> Bool {
+  return ProcessInfo.processInfo.environment["CATS_STT_ENABLE_FIXTURE_INPUT"] == "1"
+}
+
+func parseOptions(
+  _ args: [String],
+  fixtureInputEnabled: Bool = fixtureInputIsEnabled()
+) -> CliOptions? {
   var sessionId: String?
   var locale: String?
   var inputPath: String?
@@ -87,6 +99,9 @@ func parseOptions(_ args: [String]) -> CliOptions? {
       locale = index + 1 < args.count ? args[index + 1] : nil
       index += 2
     case "--input":
+      guard fixtureInputEnabled else {
+        return nil
+      }
       inputPath = index + 1 < args.count ? args[index + 1] : nil
       index += 2
     default:
@@ -103,6 +118,26 @@ func parseOptions(_ args: [String]) -> CliOptions? {
     locale: locale ?? Locale.current.identifier.replacingOccurrences(of: "_", with: "-"),
     inputPath: inputPath
   )
+}
+
+func parseControlCommand(_ line: String, sessionId: String) -> String? {
+  guard
+    let data = line.data(using: .utf8),
+    let command = try? JSONDecoder().decode(ControlCommand.self, from: data),
+    command.sessionId == sessionId,
+    command.type == "stop" || command.type == "cancel"
+  else {
+    return nil
+  }
+  return command.type
+}
+
+func mapRecognitionError(_ error: Error) -> String {
+  let nsError = error as NSError
+  if nsError.domain == AVFoundationErrorDomain {
+    return "mic_unavailable"
+  }
+  return "engine_unavailable"
 }
 
 func awaitSpeechAuthorization() -> SFSpeechRecognizerAuthorizationStatus {
@@ -215,8 +250,8 @@ func runFileRecognition(
       }
       return
     }
-    if error != nil {
-      emitter.error("engine_unavailable")
+    if let error {
+      emitter.error(mapRecognitionError(error))
       emitter.end()
       semaphore.signal()
     }
@@ -238,9 +273,26 @@ func runMicrophoneRecognition(
   let semaphore = DispatchSemaphore(value: 0)
   var task: SFSpeechRecognitionTask?
   var ended = false
+  var audioEnded = false
   let endLock = NSLock()
 
-  func endSession(sendEnd: Bool = true) {
+  func stopAudioInput() {
+    endLock.lock()
+    if audioEnded {
+      endLock.unlock()
+      return
+    }
+    audioEnded = true
+    endLock.unlock()
+
+    if audioEngine.isRunning {
+      audioEngine.stop()
+    }
+    audioEngine.inputNode.removeTap(onBus: 0)
+    request.endAudio()
+  }
+
+  func finishSession(sendEnd: Bool = true, cancelTask: Bool) {
     endLock.lock()
     if ended {
       endLock.unlock()
@@ -249,12 +301,10 @@ func runMicrophoneRecognition(
     ended = true
     endLock.unlock()
 
-    if audioEngine.isRunning {
-      audioEngine.stop()
-      audioEngine.inputNode.removeTap(onBus: 0)
+    stopAudioInput()
+    if cancelTask {
+      task?.cancel()
     }
-    request.endAudio()
-    task?.cancel()
     if sendEnd {
       emitter.end()
     }
@@ -266,13 +316,15 @@ func runMicrophoneRecognition(
       let text = result.bestTranscription.formattedString
       if result.isFinal {
         emitter.final(text)
+        finishSession(cancelTask: false)
+        return
       } else {
         emitter.partial(text)
       }
     }
-    if error != nil {
-      emitter.error("engine_unavailable")
-      endSession()
+    if let error {
+      emitter.error(mapRecognitionError(error))
+      finishSession(cancelTask: true)
     }
   }
 
@@ -287,7 +339,7 @@ func runMicrophoneRecognition(
     try audioEngine.start()
   } catch {
     emitter.error("mic_unavailable")
-    endSession()
+    finishSession(cancelTask: true)
     return
   }
 
@@ -295,17 +347,18 @@ func runMicrophoneRecognition(
 
   DispatchQueue.global(qos: .userInitiated).async {
     while let line = readLine() {
-      if line.contains("\"type\":\"cancel\"") || line.contains("\"type\": \"cancel\"") {
+      let command = parseControlCommand(line, sessionId: options.sessionId)
+      if command == "cancel" {
         emitter.error("cancelled")
-        endSession()
+        finishSession(cancelTask: true)
         return
       }
-      if line.contains("\"type\":\"stop\"") || line.contains("\"type\": \"stop\"") {
-        endSession()
+      if command == "stop" {
+        stopAudioInput()
         return
       }
     }
-    endSession()
+    finishSession(cancelTask: true)
   }
 
   semaphore.wait()

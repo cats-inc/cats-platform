@@ -6,6 +6,8 @@ namespace Cats.Stt.Windows;
 
 internal sealed record CliOptions(string SessionId, string? Locale, string? InputPath);
 
+internal sealed record ControlCommand(string? Type, string? SessionId);
+
 internal static class Program
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
@@ -41,8 +43,9 @@ internal static class Program
 
         try
         {
-            recognizer.Constraints.Add(
-                new SpeechRecognitionTopicConstraint(SpeechRecognitionScenario.Dictation, "dictation"));
+            recognizer.Constraints.Add(new SpeechRecognitionTopicConstraint(
+                SpeechRecognitionScenario.Dictation,
+                "dictation"));
             var compilation = await recognizer.CompileConstraintsAsync();
             if (compilation.Status != SpeechRecognitionResultStatus.Success)
             {
@@ -51,7 +54,8 @@ internal static class Program
                 return 0;
             }
 
-            var stopped = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+            var stopped = new TaskCompletionSource(
+                TaskCreationOptions.RunContinuationsAsynchronously);
             recognizer.HypothesisGenerated += (_, eventArgs) =>
             {
                 if (!string.IsNullOrWhiteSpace(eventArgs.Hypothesis.Text))
@@ -81,14 +85,15 @@ internal static class Program
             {
                 while (await Console.In.ReadLineAsync() is { } line)
                 {
-                    if (IsCommand(line, "cancel"))
+                    var command = ParseCommand(line, options.SessionId);
+                    if (command == "cancel")
                     {
                         emitter.Error("cancelled");
                         await recognizer.ContinuousRecognitionSession.CancelAsync();
                         stopped.TrySetResult();
                         return;
                     }
-                    if (IsCommand(line, "stop"))
+                    if (command == "stop")
                     {
                         await recognizer.ContinuousRecognitionSession.StopAsync();
                         stopped.TrySetResult();
@@ -148,7 +153,10 @@ internal static class Program
 
         return string.IsNullOrWhiteSpace(sessionId)
             ? null
-            : new CliOptions(sessionId.Trim(), string.IsNullOrWhiteSpace(locale) ? null : locale.Trim(), inputPath);
+            : new CliOptions(
+                sessionId.Trim(),
+                string.IsNullOrWhiteSpace(locale) ? null : locale.Trim(),
+                inputPath);
     }
 
     private static SpeechRecognizer? CreateRecognizer(string? locale)
@@ -168,10 +176,21 @@ internal static class Program
         }
     }
 
-    private static bool IsCommand(string line, string type)
+    private static string? ParseCommand(string line, string sessionId)
     {
-        return line.Contains($"\"type\":\"{type}\"", StringComparison.Ordinal)
-            || line.Contains($"\"type\": \"{type}\"", StringComparison.Ordinal);
+        try
+        {
+            var command = JsonSerializer.Deserialize<ControlCommand>(line, JsonOptions);
+            if (command?.SessionId != sessionId || command.Type is not ("cancel" or "stop"))
+            {
+                return null;
+            }
+            return command.Type;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private sealed class JsonEmitter

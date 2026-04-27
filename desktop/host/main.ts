@@ -1403,7 +1403,11 @@ async function main(): Promise<void> {
     packaged: app.isPackaged,
     resourcesPath: nodeProcess.resourcesPath,
   });
-  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
+  session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+    if (!mainWindow || webContents !== mainWindow.webContents) {
+      callback(false);
+      return;
+    }
     callback(shouldAllowDesktopRendererPermission(permission));
   });
   latestDesktopStartupPreferences = await readDesktopStartupPreferences(hostConfig.paths.appStatePath);

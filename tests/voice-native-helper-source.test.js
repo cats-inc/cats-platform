@@ -27,6 +27,13 @@ test('macOS STT helper enforces on-device recognition and typed bridge events', 
   assert.match(source, /SFSpeechURLRecognitionRequest/u);
   assert.match(source, /SFSpeechAudioBufferRecognitionRequest/u);
   assert.match(source, /options\.inputPath == nil/u);
+  assert.match(source, /CATS_STT_ENABLE_FIXTURE_INPUT/u);
+  assert.match(source, /JSONDecoder\(\)\.decode\(ControlCommand\.self/u);
+  assert.match(source, /parseControlCommand\(line, sessionId: options\.sessionId\)/u);
+  assert.match(source, /stopAudioInput\(\)[\s\S]*return/u);
+  assert.match(source, /finishSession\(cancelTask: false\)/u);
+  assert.match(source, /if cancelTask \{\s*task\?\.cancel\(\)/u);
+  assert.doesNotMatch(source, /line\.contains/u);
 });
 
 test('Windows STT helper uses WinRT speech and reports unknown locality', async () => {
@@ -49,4 +56,7 @@ test('Windows STT helper uses WinRT speech and reports unknown locality', async 
   assert.match(source, /"permission_denied"/u);
   assert.match(source, /"language_not_supported"/u);
   assert.match(source, /"engine_unavailable"/u);
+  assert.match(source, /JsonSerializer\.Deserialize<ControlCommand>/u);
+  assert.match(source, /command\?\.SessionId != sessionId/u);
+  assert.doesNotMatch(source, /line\.Contains/u);
 });

@@ -556,7 +556,11 @@ recognition where Cats has a host-owned helper:
   on-device recognition, and fails closed when the requested locale does not
   support on-device recognition. If dictation does not start, check System
   Settings > Privacy & Security > Speech Recognition and Microphone for Cats.
+  Fresh-profile validation must confirm whether macOS TCC attributes those
+  prompts to the app bundle or the spawned helper binary before release.
 - Windows uses the bundled WinRT helper under `resources/native/windows-stt/`.
+  The installer publishes this helper self-contained, so users do not need to
+  install the .NET 8 runtime separately.
   Windows decides whether free-form dictation uses an installed local speech
   pack or Microsoft online speech based on Settings > Privacy & Security >
   Speech > Online speech recognition and the installed language speech pack.

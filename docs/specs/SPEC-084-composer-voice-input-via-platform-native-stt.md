@@ -170,18 +170,23 @@ through the existing platform toast pattern.
     `Escape` while focus is on the composer textarea. Cancellation shall
     discard any unfinalized partials and not insert text.
 12. The host shall always tear down the helper subprocess and release the
-    microphone within 1 second of `stop` or `cancel`. Helper exit shall
-    not be required for the renderer to consider the session ended — the
-    renderer state transitions on the bridge `end` event, and host cleanup
-    proceeds in the background.
+    microphone within 1 second of `cancel`. For `stop`, helpers shall stop
+    audio input and release the microphone immediately, then may keep the
+    recognition task alive for a bounded cleanup window to deliver buffered
+    final results before the host kills the helper. Helper exit shall not be
+    required for the renderer to consider the session ended — the renderer
+    state transitions on the bridge `end` event, and host cleanup proceeds in
+    the background.
 13. On macOS, the helper shall preflight permission status as its first
     action — before opening any audio device — by querying
     `SFSpeechRecognizer.authorizationStatus()` and
     `AVCaptureDevice.authorizationStatus(for: .audio)`. Status `.denied`
     or `.restricted` for either shall cause the helper to emit
     `permission_denied` and exit immediately. Status `.notDetermined`
-    shall be allowed to proceed so the first attempt triggers the OS
-    prompt for both Speech Recognition and Microphone. The host MAY
+    shall cause the helper to request OS authorization for Speech Recognition
+    and Microphone before opening audio; if the user still has not granted
+    access, the helper emits `permission_not_determined` or
+    `permission_denied` and exits fail-closed. The host MAY
     additionally fast-fail before launching the helper using Electron's
     `systemPreferences.getMediaAccessStatus('microphone')` (Node-callable
     on macOS), but the authoritative check lives in the helper because
@@ -353,11 +358,10 @@ the legacy path.
 
 - **macOS helper**: a small Swift CLI (single binary) bundled in
   `app.asar.unpacked/native/macos-stt/cats-stt-macos` and launched with
-  `--locale <bcp47> --on-device <bool>`. It opens an `AVAudioEngine` tap,
+  `--session-id <id> [--locale <bcp47>]`. It opens an `AVAudioEngine` tap,
   feeds buffers into `SFSpeechAudioBufferRecognitionRequest`, and prints
   one JSON event per line to stdout.
-- **Windows helper**: a small .NET CLI (framework-dependent or
-  self-contained, decided in PLAN-076 Phase 3) bundled in
+- **Windows helper**: a small self-contained .NET CLI bundled in
   `app.asar.unpacked/native/windows-stt/cats-stt-windows.exe` and launched
   with the same CLI shape. It uses `SpeechRecognizer.ContinuousRecognitionSession`
   and prints JSON events.
@@ -383,9 +387,10 @@ behind one interface. Renderer code never branches on `process.platform`.
 - [ ] Should the renderer expose a locale picker in v1, or always use the
       host default? Leaning toward host default for v1; locale picker can
       arrive in a follow-up if users complain.
-- [ ] On Windows, should the helper be C# (.NET 8 self-contained) or
+- [x] On Windows, should the helper be C# (.NET 8 self-contained) or
       C++ /WinRT? C# is faster to write and ship; C++ /WinRT avoids the
-      .NET runtime size. Decision needed before PLAN-076 Phase 4.
+      .NET runtime size. Decision: ship the C# helper as self-contained so
+      users do not need a separate .NET 8 runtime install.
 - [ ] What happens when the user starts typing while a capture session
       is active? The selection-trust rules already protect against
       mid-utterance overwrite; but should typing implicitly cancel the
@@ -424,6 +429,6 @@ Resolved and promoted to Requirements:
 ---
 
 *Created: 2026-04-28*
-*Last revised: 2026-04-28 (review pass: macOS strict on-device with fail-closed; Windows privacy posture is conservative `unknown` with a may-use-online-speech warning; finals-only insertion in v1; helper-side preflight replaces host-side preflight; Linux toast contract made explicit; Req 21 runtime privacy mode reporting added and reflected in the bridge contract)*
+*Last revised: 2026-04-28 (review follow-up: macOS stop waits for buffered finals before ending; Windows helper is self-contained; helper command JSON/session matching and ready-timeout/finals-only coverage tightened; macOS TCC helper attribution remains a required fresh-profile validation item.)*
 *Author: Claude*
 *Related Plan: [PLAN-076](../plans/PLAN-076-composer-voice-input-native-stt-rollout.md)*

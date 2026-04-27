@@ -199,7 +199,7 @@ async function buildWindowsVoiceHelper(archOverride) {
       '-r',
       runtime,
       '--self-contained',
-      'false',
+      'true',
       '-o',
       outputDir,
     ],

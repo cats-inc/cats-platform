@@ -202,6 +202,7 @@ export const VOICE_CAPTURE_ERROR_REASONS = [
   'engine_unavailable',
   'helper_crashed',
   'cancelled',
+  // Reserved for helper/OS aborts where the user did not request cancellation.
   'aborted',
 ] as const;
 

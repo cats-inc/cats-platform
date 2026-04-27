@@ -833,6 +833,7 @@ test('build-desktop-installer script avoids shell execution on Windows', async (
   assert.match(script, /buildNativeVoiceHelpers\(resolvedTarget, parsed\.arch\)/);
   assert.match(script, /swift', \['build', '-c', 'release'/);
   assert.match(script, /dotnet',\s*\[\s*'publish'/);
+  assert.match(script, /'--self-contained',\s*'true'/);
   assert.match(linuxWrapper, /build-desktop-installer\.mjs --target linux/);
   assert.match(macosWrapper, /build-desktop-installer\.mjs --target macos/);
 });

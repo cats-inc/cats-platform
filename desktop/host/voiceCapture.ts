@@ -26,7 +26,8 @@ export {
 };
 
 const DEFAULT_READY_TIMEOUT_MS = 3_000;
-const DEFAULT_CLEANUP_TIMEOUT_MS = 1_000;
+const DEFAULT_CANCEL_CLEANUP_TIMEOUT_MS = 1_000;
+const DEFAULT_STOP_CLEANUP_TIMEOUT_MS = 5_000;
 const MAX_HELPER_STDERR_LINE_LENGTH = 500;
 
 const VOICE_CAPTURE_MODE_SET = new Set<string>(VOICE_CAPTURE_MODES);
@@ -60,6 +61,8 @@ export interface DesktopVoiceCaptureControllerOptions {
   spawnProcess?: VoiceCaptureSpawn;
   readyTimeoutMs?: number;
   cleanupTimeoutMs?: number;
+  stopCleanupTimeoutMs?: number;
+  cancelCleanupTimeoutMs?: number;
   logLine?: (line: string) => void;
 }
 
@@ -291,7 +294,8 @@ export class DesktopVoiceCaptureController {
   private readonly resourcesPath?: string;
   private readonly spawnProcess: VoiceCaptureSpawn;
   private readonly readyTimeoutMs: number;
-  private readonly cleanupTimeoutMs: number;
+  private readonly stopCleanupTimeoutMs: number;
+  private readonly cancelCleanupTimeoutMs: number;
   private readonly logLine: (line: string) => void;
 
   constructor(options: DesktopVoiceCaptureControllerOptions) {
@@ -302,7 +306,12 @@ export class DesktopVoiceCaptureController {
     this.resourcesPath = options.resourcesPath;
     this.spawnProcess = options.spawnProcess ?? spawn;
     this.readyTimeoutMs = options.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS;
-    this.cleanupTimeoutMs = options.cleanupTimeoutMs ?? DEFAULT_CLEANUP_TIMEOUT_MS;
+    this.stopCleanupTimeoutMs = options.stopCleanupTimeoutMs
+      ?? options.cleanupTimeoutMs
+      ?? DEFAULT_STOP_CLEANUP_TIMEOUT_MS;
+    this.cancelCleanupTimeoutMs = options.cancelCleanupTimeoutMs
+      ?? options.cleanupTimeoutMs
+      ?? DEFAULT_CANCEL_CLEANUP_TIMEOUT_MS;
     this.logLine = options.logLine ?? ((line) => {
       process.stderr.write(`${line}\n`);
     });
@@ -463,12 +472,15 @@ export class DesktopVoiceCaptureController {
     if (session.cleanupTimer) {
       clearTimeout(session.cleanupTimer);
     }
+    const cleanupTimeoutMs = type === 'stop'
+      ? this.stopCleanupTimeoutMs
+      : this.cancelCleanupTimeoutMs;
     session.cleanupTimer = setTimeout(() => {
       if (this.activeSession !== session) {
         return;
       }
       this.finishSession(session, { emitEnd: true, kill: true });
-    }, this.cleanupTimeoutMs);
+    }, cleanupTimeoutMs);
   }
 
   private emitErrorAndEnd(sessionId: string, reason: VoiceCaptureErrorReason): void {
