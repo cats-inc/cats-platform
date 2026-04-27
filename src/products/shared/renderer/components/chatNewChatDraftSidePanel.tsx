@@ -1,6 +1,7 @@
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import type { BrowseDirectoryEntry } from '../api/index.js';
 import {
+  buildDraftParticipantCapabilityReview,
   buildDraftParticipantExecutionLabel,
   createDraftTemporaryParticipantFromAssistantPreset,
   draftHasAssistantPresetParticipant,
@@ -188,6 +189,17 @@ export function buildChatNewChatDraftSidePanelSections(
                     input.draftTemporaryParticipants,
                     assistantPreset.id,
                   );
+                  const capabilityReview = buildDraftParticipantCapabilityReview({
+                    provider: assistantPreset.executionTarget.provider,
+                    instance: assistantPreset.executionTarget.instance,
+                    model: assistantPreset.executionTarget.model,
+                  });
+                  let addButtonLabel = 'Add';
+                  if (capabilityReview.requiresActivationReview) {
+                    addButtonLabel = 'Review';
+                  } else if (alreadyAdded) {
+                    addButtonLabel = 'Added';
+                  }
                   return (
                     <div key={assistantPreset.id} className="addCatItem">
                       <div>
@@ -197,22 +209,31 @@ export function buildChatNewChatDraftSidePanelSections(
                           instance: assistantPreset.executionTarget.instance,
                           model: assistantPreset.executionTarget.model,
                         })}</p>
+                        <p>
+                          {capabilityReview.capabilityLabel}
+                          {' | '}
+                          {capabilityReview.policySummary}
+                          {' | '}
+                          {capabilityReview.toolGrantSummary}
+                        </p>
                         {assistantPreset.roleHint ? <p>{assistantPreset.roleHint}</p> : null}
                       </div>
                       <button
                         className="addCatAssignButton"
                         type="button"
+                        title={capabilityReview.reviewReasons.join(', ') || undefined}
                         disabled={
                           input.isSubmittingFirstTurn
                           || alreadyAdded
                           || input.hasReachedGroupParticipantLimit
+                          || capabilityReview.requiresActivationReview
                         }
                         onClick={() =>
                           input.onAddDraftTemporaryParticipant(
                             createDraftTemporaryParticipantFromAssistantPreset(assistantPreset),
                           )}
                       >
-                        {alreadyAdded ? 'Added' : 'Add'}
+                        {addButtonLabel}
                       </button>
                     </div>
                   );

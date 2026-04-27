@@ -27,6 +27,11 @@ import {
 } from '../shared/channelEntry';
 import type { ExecutionTargetValue } from '../../shared/renderer/components/ExecutionTarget.js';
 import {
+  buildDraftParticipantCapabilityReview as buildWorkspaceDraftParticipantCapabilityReview,
+  type DraftParticipantCapabilityReview,
+  type DraftParticipantPolicyDials,
+} from '../../shared/renderer/draftChatUtils.js';
+import {
   emptyCatForm as emptyWorkspaceCatForm,
   isChatCat as isWorkspaceChatCat,
   executionLabel as resolveWorkspaceExecutionLabel,
@@ -384,6 +389,22 @@ export function buildDraftParticipantExecutionLabel(participant: {
     instance: participant.instance ?? null,
     model: participant.model ?? null,
   });
+}
+
+export type {
+  DraftParticipantCapabilityReview,
+  DraftParticipantPolicyDials,
+};
+
+export function buildDraftParticipantCapabilityReview(
+  participant: {
+    provider: string;
+    instance?: string | null;
+    model?: string | null;
+  },
+  policyDials: DraftParticipantPolicyDials = {},
+): DraftParticipantCapabilityReview {
+  return buildWorkspaceDraftParticipantCapabilityReview(participant, policyDials);
 }
 
 function applyDraftAudienceLimit(

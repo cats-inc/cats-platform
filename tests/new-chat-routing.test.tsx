@@ -8,6 +8,7 @@ import type {
 import {
   applyPendingExecutionTargetPreview,
   buildAttachedFilesMessageBody,
+  buildDraftParticipantCapabilityReview,
   buildNewChatChannelInput,
   createDraftTemporaryParticipant,
   createInitialGroupParticipants,
@@ -323,6 +324,44 @@ test('assistant presets can be instantiated as draft temporary participants with
     draftHasAssistantPresetParticipant([participant], 'assistant-reviewer'),
     true,
   );
+});
+
+test('assistant preset capability review surfaces policy summary before activation', () => {
+  const review = buildDraftParticipantCapabilityReview({
+    provider: 'codex',
+    instance: null,
+    model: 'gpt-5.4',
+  });
+
+  assert.equal(review.capabilityLabel, 'Strong agent');
+  assert.match(review.executionLabel, /Codex-CLI/u);
+  assert.match(review.executionLabel, /gpt-5\.4/u);
+  assert.equal(review.policySummary, 'milestone_plan; low approval');
+  assert.equal(review.toolGrantSummary, 'read_only tools');
+  assert.equal(review.requiresActivationReview, false);
+  assert.deepEqual(review.reviewReasons, []);
+});
+
+test('assistant preset capability review gates high-risk policy grants before activation', () => {
+  const review = buildDraftParticipantCapabilityReview(
+    {
+      provider: 'codex',
+      instance: null,
+      model: 'gpt-5.4',
+    },
+    {
+      autonomy: 'outcome_delegation',
+      toolScope: 'broad_write',
+      approvalThreshold: 'high',
+    },
+  );
+
+  assert.equal(review.requiresActivationReview, true);
+  assert.deepEqual(review.reviewReasons, [
+    'broad-write tool grants',
+    'outcome delegation',
+    'high approval threshold',
+  ]);
 });
 
 test('draft temporary participants auto-name from provider and avoid collisions', () => {
@@ -743,11 +782,13 @@ test('resolveDraftRoutePath keeps generic, lead-scoped, and direct draft entries
 test('resolveMissingDraftDefaultRecipientPath falls back to visible chats only for direct-lane drafts', () => {
   const visibleThread = {
     id: 'visible-thread',
+    originSurface: 'chat',
     roomMode: 'boss_chat',
     channelKind: 'boss_thread',
   } as const;
   const hiddenDirectLane = {
     id: 'hidden-direct',
+    originSurface: 'chat',
     roomMode: 'direct_cat_chat',
     channelKind: 'direct_lane',
   } as const;

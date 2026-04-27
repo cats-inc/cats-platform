@@ -25,6 +25,21 @@ export interface DraftTemporaryParticipant {
   roleHint?: string;
 }
 
+export interface DraftParticipantPolicyDials {
+  autonomy?: 'none' | 'single_step' | 'milestone_plan' | 'outcome_delegation';
+  toolScope?: 'none' | 'read_only' | 'narrow_write' | 'broad_write';
+  approvalThreshold?: 'low' | 'medium' | 'high';
+}
+
+export interface DraftParticipantCapabilityReview {
+  capabilityLabel: 'Strong agent' | 'Conservative agent';
+  executionLabel: string;
+  policySummary: string;
+  toolGrantSummary: string;
+  requiresActivationReview: boolean;
+  reviewReasons: string[];
+}
+
 export const DEFAULT_GROUP_DRAFT_PARTICIPANT_COUNT = 2;
 
 type DraftParticipantTarget = {
@@ -33,6 +48,14 @@ type DraftParticipantTarget = {
   instance?: string | null;
   modelSelection?: ProviderModelSelection | null;
 };
+
+const STRONG_DRAFT_PROVIDER_IDS = new Set([
+  'anthropic',
+  'claude',
+  'codex',
+  'gemini',
+  'openai',
+]);
 
 function toDraftTemporaryParticipantTarget(input: DraftParticipantTarget): {
   provider: string;
@@ -63,6 +86,57 @@ export function buildDraftParticipantExecutionLabel(participant: {
     instance: participant.instance ?? null,
     model: participant.model ?? null,
   });
+}
+
+function normalizeDraftProviderId(provider: string): string {
+  return provider.trim().toLowerCase();
+}
+
+function resolveDraftCapabilityLabel(provider: string): DraftParticipantCapabilityReview['capabilityLabel'] {
+  return STRONG_DRAFT_PROVIDER_IDS.has(normalizeDraftProviderId(provider))
+    ? 'Strong agent'
+    : 'Conservative agent';
+}
+
+function buildReviewReasons(policyDials: Required<DraftParticipantPolicyDials>): string[] {
+  const reasons: string[] = [];
+  if (policyDials.toolScope === 'broad_write') {
+    reasons.push('broad-write tool grants');
+  }
+  if (policyDials.autonomy === 'outcome_delegation') {
+    reasons.push('outcome delegation');
+  }
+  if (policyDials.approvalThreshold === 'high') {
+    reasons.push('high approval threshold');
+  }
+  return reasons;
+}
+
+export function buildDraftParticipantCapabilityReview(
+  participant: {
+    provider: string;
+    instance?: string | null;
+    model?: string | null;
+  },
+  policyDials: DraftParticipantPolicyDials = {},
+): DraftParticipantCapabilityReview {
+  const capabilityLabel = resolveDraftCapabilityLabel(participant.provider);
+  const resolvedPolicyDials: Required<DraftParticipantPolicyDials> = {
+    autonomy: policyDials.autonomy
+      ?? (capabilityLabel === 'Strong agent' ? 'milestone_plan' : 'single_step'),
+    toolScope: policyDials.toolScope ?? 'read_only',
+    approvalThreshold: policyDials.approvalThreshold ?? 'low',
+  };
+  const reviewReasons = buildReviewReasons(resolvedPolicyDials);
+
+  return {
+    capabilityLabel,
+    executionLabel: buildDraftParticipantExecutionLabel(participant),
+    policySummary: `${resolvedPolicyDials.autonomy}; ${resolvedPolicyDials.approvalThreshold} approval`,
+    toolGrantSummary: `${resolvedPolicyDials.toolScope} tools`,
+    requiresActivationReview: reviewReasons.length > 0,
+    reviewReasons,
+  };
 }
 
 export function createDraftTemporaryParticipantFromAssistantPreset(
