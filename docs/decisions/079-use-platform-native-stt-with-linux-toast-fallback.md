@@ -240,7 +240,7 @@ but separate decisions, not made here:
 - [ADR-046: Drive packaged setup through runtime bootstrap APIs](./046-drive-packaged-setup-through-runtime-bootstrap-apis.md)
 - [ADR-078: Use Electron-Native Region Screenshot with Web Fallback](./078-use-electron-native-region-screenshot-with-web-fallback.md)
 - [SPEC-084: Composer Voice Input via Platform-Native STT](../specs/SPEC-084-composer-voice-input-via-platform-native-stt.md)
-- [PLAN-075: Composer Voice Input Native STT Rollout](../plans/PLAN-075-composer-voice-input-native-stt-rollout.md)
+- [PLAN-076: Composer Voice Input Native STT Rollout](../plans/PLAN-076-composer-voice-input-native-stt-rollout.md)
 - Apple `SFSpeechRecognizer`: https://developer.apple.com/documentation/speech/sfspeechrecognizer
 - Microsoft `Windows.Media.SpeechRecognition`: https://learn.microsoft.com/uwp/api/windows.media.speechrecognition
 

@@ -48,7 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
-| [SPEC-084](./SPEC-084-composer-voice-input-via-platform-native-stt.md) | Composer Voice Input via Platform-Native STT | Draft | [PLAN-075](../plans/PLAN-075-composer-voice-input-native-stt-rollout.md), [ADR-079](../decisions/079-use-platform-native-stt-with-linux-toast-fallback.md) |
+| [SPEC-084](./SPEC-084-composer-voice-input-via-platform-native-stt.md) | Composer Voice Input via Platform-Native STT | Draft | [PLAN-076](../plans/PLAN-076-composer-voice-input-native-stt-rollout.md), [ADR-079](../decisions/079-use-platform-native-stt-with-linux-toast-fallback.md) |
 | [SPEC-083](./SPEC-083-work-system-map-and-cockpit-projections.md) | Work System Map and Cockpit Projections | Draft | TBD, [ADR-083](../decisions/083-adopt-work-graph-projections-for-system-map-and-cockpit.md) |
 | [SPEC-082](./SPEC-082-cats-work-agent-supervision-and-tool-boundary.md) | Cats Work Agent Supervision and Tool Boundary | Draft | [PLAN-074](../plans/PLAN-074-cats-work-agent-supervision-rollout.md), [ADR-082](../decisions/082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md) |
 | [SPEC-081](./SPEC-081-transport-fanout-for-web-originated-messages.md) | Transport Fanout for Web-Originated Messages | Draft | [PLAN-073](../plans/PLAN-073-transport-fanout-rollout.md), [ADR-080](../decisions/080-fan-out-web-originated-messages-to-bound-transports.md) |

@@ -357,7 +357,7 @@ the legacy path.
   feeds buffers into `SFSpeechAudioBufferRecognitionRequest`, and prints
   one JSON event per line to stdout.
 - **Windows helper**: a small .NET CLI (framework-dependent or
-  self-contained, decided in PLAN-075 Phase 3) bundled in
+  self-contained, decided in PLAN-076 Phase 3) bundled in
   `app.asar.unpacked/native/windows-stt/cats-stt-windows.exe` and launched
   with the same CLI shape. It uses `SpeechRecognizer.ContinuousRecognitionSession`
   and prints JSON events.
@@ -385,7 +385,7 @@ behind one interface. Renderer code never branches on `process.platform`.
       arrive in a follow-up if users complain.
 - [ ] On Windows, should the helper be C# (.NET 8 self-contained) or
       C++ /WinRT? C# is faster to write and ship; C++ /WinRT avoids the
-      .NET runtime size. Decision needed before PLAN-075 Phase 4.
+      .NET runtime size. Decision needed before PLAN-076 Phase 4.
 - [ ] What happens when the user starts typing while a capture session
       is active? The selection-trust rules already protect against
       mid-utterance overwrite; but should typing implicitly cancel the
@@ -415,7 +415,7 @@ Resolved and promoted to Requirements:
 ## References
 
 - [ADR-079: Use Platform-Native STT for Composer Voice Input with Linux Toast Fallback](../decisions/079-use-platform-native-stt-with-linux-toast-fallback.md)
-- [PLAN-075: Composer Voice Input Native STT Rollout](../plans/PLAN-075-composer-voice-input-native-stt-rollout.md)
+- [PLAN-076: Composer Voice Input Native STT Rollout](../plans/PLAN-076-composer-voice-input-native-stt-rollout.md)
 - [ADR-078: Use Electron-Native Region Screenshot with Web Fallback](../decisions/078-use-electron-native-region-screenshot-with-web-fallback.md)
   (precedent for host-owned native capabilities)
 - Apple `SFSpeechRecognizer`: https://developer.apple.com/documentation/speech/sfspeechrecognizer
@@ -426,4 +426,4 @@ Resolved and promoted to Requirements:
 *Created: 2026-04-28*
 *Last revised: 2026-04-28 (review pass: macOS strict on-device with fail-closed; Windows privacy posture is conservative `unknown` with a may-use-online-speech warning; finals-only insertion in v1; helper-side preflight replaces host-side preflight; Linux toast contract made explicit; Req 21 runtime privacy mode reporting added and reflected in the bridge contract)*
 *Author: Claude*
-*Related Plan: [PLAN-075](../plans/PLAN-075-composer-voice-input-native-stt-rollout.md)*
+*Related Plan: [PLAN-076](../plans/PLAN-076-composer-voice-input-native-stt-rollout.md)*
