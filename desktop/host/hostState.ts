@@ -25,10 +25,10 @@ import type {
 import {
   DESKTOP_BOOTSTRAP_PHASES,
   DESKTOP_HOST_NAME,
-  DESKTOP_HOST_VERSION,
   DESKTOP_UPDATE_CHANNELS,
   DESKTOP_UPDATE_STATUSES,
 } from './contracts.js';
+import { DESKTOP_HOST_VERSION } from './hostVersion.js';
 import type { DesktopHostConfig } from './config.js';
 import { createEmptyDesktopDiagnosticsState } from './bootstrapDiagnostics.js';
 

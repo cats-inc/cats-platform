@@ -11,10 +11,8 @@ import {
   createDesktopBootstrapEvent,
   createEmptyDesktopDiagnosticsState,
 } from '../build/desktop/bootstrapDiagnostics.js';
-import {
-  DESKTOP_HOST_NAME,
-  DESKTOP_HOST_VERSION,
-} from '../build/desktop/contracts.js';
+import { DESKTOP_HOST_NAME } from '../build/desktop/contracts.js';
+import { DESKTOP_HOST_VERSION } from '../build/desktop/hostVersion.js';
 import { createDesktopBackgroundState, DesktopHostStateStore } from '../build/desktop/hostState.js';
 import { buildDesktopBootstrapSnapshot } from '../build/desktop/readiness.js';
 import { createDesktopPackagingPlan } from '../build/desktop/packaging.js';

@@ -12,7 +12,8 @@ import type {
   DesktopUpdateState,
   ManagedServiceSnapshot,
 } from './contracts.js';
-import { DESKTOP_HOST_NAME, DESKTOP_HOST_VERSION } from './contracts.js';
+import { DESKTOP_HOST_NAME } from './contracts.js';
+import { DESKTOP_HOST_VERSION } from './hostVersion.js';
 import type { DesktopHealthStatus } from './contracts.js';
 import type { DesktopHostConfig } from './config.js';
 import { createDesktopBackgroundState } from './hostState.js';

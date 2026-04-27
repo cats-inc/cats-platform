@@ -1,5 +1,5 @@
 import type { DesktopUpdateChannel, DesktopUpdateState } from './contracts.js';
-import { DESKTOP_HOST_VERSION } from './contracts.js';
+import { DESKTOP_HOST_VERSION } from './hostVersion.js';
 import { parseDesktopBoolean } from './env.js';
 import { parseDesktopAllowedHosts, validateDesktopUrl } from './security.js';
 
