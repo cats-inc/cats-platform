@@ -4,8 +4,12 @@ import { peekProviderRegistryClientCache } from '../../app/renderer/providerRegi
 import type { ProductProviderRegistryReadModel } from '../../shared/providerCatalog.js';
 import {
   createDefaultProviderRegistryReadModel,
+  createStaticProviderRegistryReadModel,
   sanitizeProviderRegistryReadModel,
 } from './providerModelFieldsSupport.js';
+
+const INITIAL_PROVIDER_REGISTRY_WARNING =
+  'Using the product provider catalog while cats-runtime provider targets are checked.';
 
 export function useProviderRegistryState(input: {
   fetchProviderRegistry: (options?: { force?: boolean }) => Promise<ProductProviderRegistryReadModel>;
@@ -14,18 +18,21 @@ export function useProviderRegistryState(input: {
   const initialCached = peekProviderRegistryClientCache();
   const initialRegistry = initialCached
     ? sanitizeProviderRegistryReadModel(initialCached)
-    : null;
+    : createStaticProviderRegistryReadModel([INITIAL_PROVIDER_REGISTRY_WARNING]);
   const [providers, setProviders] = useState<ProductProviderRegistryReadModel['providers']>(
-    initialRegistry?.providers ?? [],
+    initialRegistry.providers,
   );
   const [providerRegistry, setProviderRegistry] = useState<ProductProviderRegistryReadModel>(
     () => initialRegistry ?? createDefaultProviderRegistryReadModel(),
   );
-  const [providersLoaded, setProvidersLoaded] = useState(Boolean(initialRegistry));
+  const [providersLoaded, setProvidersLoaded] = useState(true);
   const [providerRegistryReloadToken, setProviderRegistryReloadToken] = useState(0);
   const [lastAutoProviderRegistryRecheckAt, setLastAutoProviderRegistryRecheckAt] = useState(0);
   const onProviderRegistryChangeRef = useRef(input.onProviderRegistryChange);
   const providerRegistryRequestIdRef = useRef(0);
+  const providersRef = useRef<ProductProviderRegistryReadModel['providers']>(
+    initialRegistry.providers,
+  );
 
   useEffect(() => {
     onProviderRegistryChangeRef.current = input.onProviderRegistryChange;
@@ -38,7 +45,16 @@ export function useProviderRegistryState(input: {
     if (requestId !== providerRegistryRequestIdRef.current) {
       return;
     }
-    const nextRegistry = sanitizeProviderRegistryReadModel(nextRegistryResult);
+    const sanitizedRegistry = sanitizeProviderRegistryReadModel(nextRegistryResult);
+    const nextRegistry = sanitizedRegistry.state === 'runtime_unreachable'
+      && sanitizedRegistry.providers.length === 0
+      && providersRef.current.length > 0
+      ? {
+          ...sanitizedRegistry,
+          providers: providersRef.current,
+        }
+      : sanitizedRegistry;
+    providersRef.current = nextRegistry.providers;
     setProviders(nextRegistry.providers);
     setProviderRegistry(nextRegistry);
     setProvidersLoaded(true);
@@ -68,6 +84,7 @@ export function useProviderRegistryState(input: {
         },
         warnings: [...baseWarnings, errorMessage],
       };
+      providersRef.current = nextRegistry.providers;
       onProviderRegistryChangeRef.current?.(nextRegistry);
       return nextRegistry;
     });

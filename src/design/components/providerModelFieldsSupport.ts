@@ -1,5 +1,6 @@
 import {
   createProviderAdvancedCatalogFromModelCatalog,
+  listProductProviders,
   type ProductProviderEventCapabilities,
   type ProductProviderInstanceDescriptor,
   type ProductProviderRegistryReadModel,
@@ -77,6 +78,16 @@ export function createDefaultProviderRegistryReadModel(): ProductProviderRegistr
   };
 }
 
+export function createStaticProviderRegistryReadModel(
+  warnings: string[] = [],
+): ProductProviderRegistryReadModel {
+  return {
+    state: 'ready',
+    providers: listProductProviders(),
+    ...(warnings.length > 0 ? { warnings } : {}),
+  };
+}
+
 export function sanitizeProviderRegistryReadModel(
   value: ProductProviderRegistryReadModel,
 ): ProductProviderRegistryReadModel {
@@ -151,7 +162,11 @@ export function resolveProviderRegistryAutoRecheckDelayMs(input: {
     return null;
   }
 
-  if (input.providerCount > 0 || input.registryState === 'ready') {
+  if (input.providerCount > 0 && input.registryState !== 'runtime_unreachable') {
+    return null;
+  }
+
+  if (input.registryState === 'ready') {
     return null;
   }
 

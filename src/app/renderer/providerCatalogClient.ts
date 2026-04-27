@@ -1,6 +1,7 @@
 import {
   normalizeProviderAdvancedModelCatalog,
   normalizeProviderModelCatalog,
+  type ProductProviderRegistryReadModel,
   type ProviderAdvancedModelCatalog,
   type ProviderModelCatalog,
 } from '../../shared/providerCatalog.js';
@@ -239,4 +240,36 @@ export async function fetchProviderAdvancedCatalogFromClientCache(options: {
       );
     },
   });
+}
+
+export function prefetchProviderCatalogPairFromClientCache(options: {
+  provider: string;
+  instance?: string | null;
+  fetchImpl?: ProviderCatalogFetch;
+}): Promise<void> {
+  return Promise.allSettled([
+    fetchProviderModelCatalogFromClientCache(options),
+    fetchProviderAdvancedCatalogFromClientCache(options),
+  ]).then(() => undefined);
+}
+
+export function prefetchProviderCatalogsForRegistryFromClientCache(
+  registry: ProductProviderRegistryReadModel,
+  options: {
+    fetchImpl?: ProviderCatalogFetch;
+  } = {},
+): Promise<void> {
+  return Promise.allSettled(
+    registry.providers.map((provider) => {
+      const instance = provider.defaultInstance
+        ?? provider.instances.find((candidate) => candidate.default)?.id
+        ?? provider.instances[0]?.id
+        ?? null;
+      return prefetchProviderCatalogPairFromClientCache({
+        provider: provider.id,
+        instance,
+        fetchImpl: options.fetchImpl,
+      });
+    }),
+  ).then(() => undefined);
 }

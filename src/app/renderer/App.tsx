@@ -32,7 +32,8 @@ import { useGuideCatUiPrefs } from './guideCatUiPrefsStore.js';
 import { PLATFORM_ENVELOPE_REFRESH_EVENT } from './platformEnvelopeEvents.js';
 import { PlatformSetupWizard } from './setup';
 import { fetchPlatformEnvelope } from './setup/api';
-import { prefetchProviderRegistryFromClientCache } from './providerRegistryClient.js';
+import { prefetchProviderCatalogsForRegistryFromClientCache } from './providerCatalogClient.js';
+import { fetchProviderRegistryFromClientCache } from './providerRegistryClient.js';
 import { recordSettingsRouteTransition } from './settings/settingsExitMemory.js';
 import { isGuideCatEnabledStatus } from '../../shared/guideCatIdentity.js';
 import { isSettingsPath } from '../../shared/settingsRoute.js';
@@ -350,7 +351,9 @@ export default function PlatformApp() {
     if (state.status !== 'ready' || !setupComplete) {
       return;
     }
-    void prefetchProviderRegistryFromClientCache();
+    void fetchProviderRegistryFromClientCache()
+      .then((registry) => prefetchProviderCatalogsForRegistryFromClientCache(registry))
+      .catch(() => {});
   }, [setupComplete, state.status]);
 
   useEffect(() => {

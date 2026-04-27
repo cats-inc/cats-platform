@@ -9,11 +9,47 @@ import type {
   ProviderModelCatalog,
 } from '../../shared/providerCatalog.js';
 import {
+  createStaticProviderAdvancedModelCatalog,
+  createStaticProviderModelCatalog,
+} from '../../shared/providerCatalog.js';
+import {
   catalogMatchesTarget,
   createEmptyProviderAdvancedModelCatalog,
   createEmptyProviderModelCatalog,
   resolveAdvancedCatalogFallback,
 } from './providerModelFieldsSupport.js';
+
+function readCatalogFailureMessage(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function createWarmProviderModelCatalog(
+  provider: string,
+  instance: string | null,
+  warning?: string,
+): ProviderModelCatalog {
+  return createStaticProviderModelCatalog(provider, {
+    instance,
+    ...(warning ? { warnings: [warning] } : {}),
+  });
+}
+
+function createWarmProviderAdvancedModelCatalog(
+  provider: string,
+  instance: string | null,
+  warning?: string,
+): ProviderAdvancedModelCatalog {
+  return createStaticProviderAdvancedModelCatalog(provider, {
+    instance,
+    ...(warning ? { warnings: [warning] } : {}),
+  });
+}
+
+function createRuntimeCatalogUnavailableWarning(error: unknown, catalogKind: string): string {
+  return `Using the product ${catalogKind} catalog while cats-runtime refreshes: ${
+    readCatalogFailureMessage(error, `Runtime ${catalogKind} catalog unavailable.`)
+  }`;
+}
 
 function peekCachedCatalogPair(
   provider: string,
@@ -58,11 +94,19 @@ export function useProviderCatalogState(input: {
   );
   const [catalog, setCatalog] = useState<ProviderModelCatalog>(() =>
     initialPeek?.models
-      ?? createEmptyProviderModelCatalog(input.provider, input.resolvedInstance || null),
+      ?? (
+        input.hasSelectedProvider && input.provider
+          ? createWarmProviderModelCatalog(input.provider, input.resolvedInstance || null)
+          : createEmptyProviderModelCatalog(input.provider, input.resolvedInstance || null)
+      ),
   );
   const [advancedCatalog, setAdvancedCatalog] = useState<ProviderAdvancedModelCatalog>(() =>
     initialPeek?.advanced
-      ?? createEmptyProviderAdvancedModelCatalog(input.provider, input.resolvedInstance || null),
+      ?? (
+        input.hasSelectedProvider && input.provider
+          ? createWarmProviderAdvancedModelCatalog(input.provider, input.resolvedInstance || null)
+          : createEmptyProviderAdvancedModelCatalog(input.provider, input.resolvedInstance || null)
+      ),
   );
 
   useEffect(() => {
@@ -89,10 +133,11 @@ export function useProviderCatalogState(input: {
       setAdvancedCatalog(peek.advanced);
       setCatalogLoading(false);
     } else {
-      setCatalog(createEmptyProviderModelCatalog(input.provider, input.resolvedInstance || null));
-      setAdvancedCatalog(
-        createEmptyProviderAdvancedModelCatalog(input.provider, input.resolvedInstance || null),
-      );
+      setCatalog(createWarmProviderModelCatalog(input.provider, input.resolvedInstance || null));
+      setAdvancedCatalog(createWarmProviderAdvancedModelCatalog(
+        input.provider,
+        input.resolvedInstance || null,
+      ));
       setCatalogLoading(true);
     }
 
@@ -106,22 +151,28 @@ export function useProviderCatalogState(input: {
 
       const nextCatalog = modelsResult.status === 'fulfilled'
         ? modelsResult.value
-        : createEmptyProviderModelCatalog(
+        : createWarmProviderModelCatalog(
             input.provider,
             input.resolvedInstance || null,
-            modelsResult.reason instanceof Error
-              ? modelsResult.reason.message
-              : 'Runtime model catalog unavailable.',
+            createRuntimeCatalogUnavailableWarning(modelsResult.reason, 'model'),
           );
       setCatalog(nextCatalog);
 
-      setAdvancedCatalog(resolveAdvancedCatalogFallback({
-        provider: input.provider,
-        instance: input.resolvedInstance || null,
-        catalog: nextCatalog,
-        advancedCatalogResult: advancedResult,
-        modelsResult,
-      }));
+      if (advancedResult.status === 'fulfilled' || modelsResult.status === 'fulfilled') {
+        setAdvancedCatalog(resolveAdvancedCatalogFallback({
+          provider: input.provider,
+          instance: input.resolvedInstance || null,
+          catalog: nextCatalog,
+          advancedCatalogResult: advancedResult,
+          modelsResult,
+        }));
+      } else {
+        setAdvancedCatalog(createWarmProviderAdvancedModelCatalog(
+          input.provider,
+          input.resolvedInstance || null,
+          createRuntimeCatalogUnavailableWarning(advancedResult.reason, 'advanced model'),
+        ));
+      }
 
       setCatalogLoading(false);
     });

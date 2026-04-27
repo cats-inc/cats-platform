@@ -5,6 +5,7 @@ import {
   clearProviderCatalogClientCache,
   fetchProviderAdvancedCatalogFromClientCache,
   fetchProviderModelCatalogFromClientCache,
+  prefetchProviderCatalogsForRegistryFromClientCache,
   PROVIDER_CATALOG_CLIENT_CACHE_TTL_MS,
 } from '../src/app/renderer/providerCatalogClient.ts';
 
@@ -212,4 +213,58 @@ test('client provider catalog cache does not cache failed catalog reads', async 
   });
   assert.equal(calls, 2);
   assert.equal(recovered.models[0]?.id, 'haiku');
+});
+
+test('client provider catalog prefetch warms model and advanced catalogs for registry defaults', async () => {
+  clearProviderCatalogClientCache();
+  const paths: string[] = [];
+  const fetchImpl: typeof fetch = async (input) => {
+    const path = String(input);
+    paths.push(path);
+    return path.includes('/advanced')
+      ? createAdvancedCatalogResponse('opus')
+      : createModelCatalogResponse('opus');
+  };
+
+  await prefetchProviderCatalogsForRegistryFromClientCache({
+    state: 'ready',
+    providers: [{
+      id: 'claude',
+      label: 'Claude',
+      defaultModel: 'opus',
+      defaultInstance: 'native',
+      defaultBackend: 'cli',
+      instances: [{
+        id: 'native',
+        label: 'cli/native',
+        target: 'cli/native',
+        backend: 'cli',
+        default: true,
+      }],
+      modelsPath: '/api/providers/claude/models',
+    }],
+  }, { fetchImpl });
+
+  assert.deepEqual(paths, [
+    '/api/providers/claude/models?instance=native',
+    '/api/providers/claude/models/advanced?instance=native',
+  ]);
+
+  const modelCatalog = await fetchProviderModelCatalogFromClientCache({
+    provider: 'claude',
+    instance: 'native',
+    fetchImpl: async () => {
+      throw new Error('cache miss');
+    },
+  });
+  const advancedCatalog = await fetchProviderAdvancedCatalogFromClientCache({
+    provider: 'claude',
+    instance: 'native',
+    fetchImpl: async () => {
+      throw new Error('cache miss');
+    },
+  });
+
+  assert.equal(modelCatalog.models[0]?.id, 'opus');
+  assert.equal(advancedCatalog.entries[0]?.id, 'opus');
 });

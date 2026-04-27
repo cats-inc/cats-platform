@@ -5,6 +5,7 @@ import {
   attachExecutionLabelToProviderTarget,
   catalogMatchesTarget,
   countRequestScopedControls,
+  createStaticProviderRegistryReadModel,
   filterPersistentControlValues,
   formatCatalogEntryLabel,
   hasExplicitDefaultEnumOption,
@@ -479,7 +480,16 @@ test('provider registry empty states distinguish runtime failure from no usable 
   );
 });
 
-test('provider registry auto-recheck only triggers for empty truthful states after returning to a visible window', () => {
+test('static provider registry fallback gives selectors immediate provider options', () => {
+  const registry = createStaticProviderRegistryReadModel(['warming runtime']);
+
+  assert.equal(registry.state, 'ready');
+  assert.ok(registry.providers.some((provider) => provider.id === 'claude'));
+  assert.ok(registry.providers.some((provider) => provider.id === 'codex'));
+  assert.deepEqual(registry.warnings, ['warming runtime']);
+});
+
+test('provider registry auto-recheck continues while static fallback providers are shown', () => {
   assert.equal(shouldAutoRecheckProviderRegistry({
     providersLoaded: false,
     providerCount: 0,
@@ -500,7 +510,7 @@ test('provider registry auto-recheck only triggers for empty truthful states aft
     documentVisible: true,
     lastAutoRecheckAt: 0,
     now: PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
-  }), false);
+  }), true);
 
   assert.equal(shouldAutoRecheckProviderRegistry({
     providersLoaded: true,
@@ -581,7 +591,7 @@ test('provider registry auto-recheck delay schedules retry instead of waiting fo
     documentVisible: true,
     lastAutoRecheckAt: 10_000,
     now: 20_000,
-  }), null);
+  }), PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS - 10_000);
 });
 
 test('static fallback catalogs do not classify unknown persisted models as legacy before runtime data arrives', () => {

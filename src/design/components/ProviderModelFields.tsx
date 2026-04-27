@@ -37,6 +37,7 @@ export {
   PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
   catalogMatchesTarget,
   countRequestScopedControls,
+  createStaticProviderRegistryReadModel,
   filterPersistentControlValues,
   formatCatalogEntryLabel,
   hasExplicitDefaultEnumOption,

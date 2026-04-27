@@ -40,6 +40,10 @@ export const PROVIDER_TARGETS_CACHE_REFRESH_WARNING_PREFIX =
   'Using cached provider targets because runtime refresh failed:';
 export const MODEL_CATALOG_CACHE_REFRESH_WARNING_PREFIX =
   'Using cached model catalog because runtime refresh failed:';
+export const PROVIDER_TARGETS_CACHE_REVALIDATION_WARNING =
+  'Using cached provider targets while refreshing cats-runtime in the background.';
+export const MODEL_CATALOG_CACHE_REVALIDATION_WARNING =
+  'Using cached model catalog while refreshing cats-runtime in the background.';
 
 interface ProviderTimedCacheEntryBase<TValue> {
   value: TValue;
@@ -582,6 +586,14 @@ async function readTruthfulProviderRegistry(
     return project(readProviderCacheValue(cached, appendTruthfulProviderRegistryWarning));
   }
 
+  if (cached && cached.staleIfErrorUntilMs > now) {
+    void refreshTruthfulProviderRegistry(dependencies, cacheState).catch(() => {});
+    return project(appendTruthfulProviderRegistryWarning(
+      readProviderCacheValue(cached, appendTruthfulProviderRegistryWarning),
+      PROVIDER_TARGETS_CACHE_REVALIDATION_WARNING,
+    ));
+  }
+
   if (requestedProvider) {
     // Cold scoped: ask runtime with the provider filter so it can serve a
     // narrow probe instead of waiting on unrelated targets. Defer the
@@ -754,6 +766,14 @@ async function readProviderCatalogCached<TCatalog extends { warnings?: string[] 
   if (cached && cached.staleUntilMs > now) {
     void refreshProviderCatalogCacheEntry(input.cacheState, cacheKey, input.load).catch(() => {});
     return readProviderCacheValue(cached, appendProviderCatalogWarning);
+  }
+
+  if (cached && cached.staleIfErrorUntilMs > now) {
+    void refreshProviderCatalogCacheEntry(input.cacheState, cacheKey, input.load).catch(() => {});
+    return appendProviderCatalogWarning(
+      readProviderCacheValue(cached, appendProviderCatalogWarning),
+      MODEL_CATALOG_CACHE_REVALIDATION_WARNING,
+    );
   }
 
   return refreshProviderCatalogCacheEntry(input.cacheState, cacheKey, input.load);
