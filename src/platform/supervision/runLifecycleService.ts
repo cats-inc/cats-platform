@@ -1,11 +1,16 @@
 import type {
+  CancellationReasonCode,
   RunBlocker,
+  SupervisionFallbackPolicy,
 } from './contracts.js';
 import {
+  applyApprovalDenied,
+  applyOperatorCancellation,
   deriveRunState,
   writeRunStateMetadata,
   type RunApprovalRequestState,
   type RunLifecycleState,
+  type OperatorCancellationResult,
   type RunStateEvaluation,
 } from './runState.js';
 
@@ -16,6 +21,7 @@ export interface SupervisedRunLifecycleRecord {
   approvalRequests: RunApprovalRequestState[];
   primaryState: RunStateEvaluation['primaryState'];
   terminalCause?: string;
+  cancelAudit?: OperatorCancellationResult['cancelAudit'];
   createdAt: string;
   updatedAt: string;
   metadata: Record<string, unknown>;
@@ -37,11 +43,30 @@ export interface TransitionSupervisedRunLifecycleInput {
   metadata?: Record<string, unknown> | null;
 }
 
+export interface DenySupervisedRunApprovalInput {
+  requestId: string;
+  fallbackPolicy: SupervisionFallbackPolicy;
+}
+
+export interface CancelSupervisedRunInput {
+  requestedBy: string;
+  reasonCode: CancellationReasonCode;
+  reasonNote?: string;
+}
+
 export interface SupervisedRunLifecycleService {
   create(input: CreateSupervisedRunLifecycleInput): SupervisedRunLifecycleRecord;
   transition(
     current: SupervisedRunLifecycleRecord,
     input: TransitionSupervisedRunLifecycleInput,
+  ): SupervisedRunLifecycleRecord;
+  denyApproval(
+    current: SupervisedRunLifecycleRecord,
+    input: DenySupervisedRunApprovalInput,
+  ): SupervisedRunLifecycleRecord;
+  cancel(
+    current: SupervisedRunLifecycleRecord,
+    input: CancelSupervisedRunInput,
   ): SupervisedRunLifecycleRecord;
 }
 
@@ -59,10 +84,12 @@ export function createSupervisedRunLifecycleService(options: {
     createdAt: string;
     updatedAt: string;
     metadata?: Record<string, unknown> | null;
+    evaluation?: RunStateEvaluation;
+    cancelAudit?: OperatorCancellationResult['cancelAudit'];
   }): SupervisedRunLifecycleRecord {
     const blockers = input.blockers ?? [];
     const approvalRequests = input.approvalRequests ?? [];
-    const evaluation = deriveRunState({
+    const evaluation = input.evaluation ?? deriveRunState({
       lifecycle: input.lifecycle,
       blockers,
       approvalRequests,
@@ -76,6 +103,7 @@ export function createSupervisedRunLifecycleService(options: {
       approvalRequests,
       primaryState: evaluation.primaryState,
       terminalCause: evaluation.terminalCause,
+      cancelAudit: input.cancelAudit,
       createdAt: input.createdAt,
       updatedAt: input.updatedAt,
       metadata: writeRunStateMetadata({
@@ -109,6 +137,59 @@ export function createSupervisedRunLifecycleService(options: {
         createdAt: current.createdAt,
         updatedAt: now(),
         metadata: input.metadata ?? current.metadata,
+      });
+    },
+    denyApproval(current, input) {
+      const timestamp = now();
+      const evaluation = applyApprovalDenied({
+        current: {
+          lifecycle: current.lifecycle,
+          blockers: current.blockers,
+          approvalRequests: current.approvalRequests,
+          terminalCause: current.terminalCause,
+        },
+        requestId: input.requestId,
+        fallbackPolicy: input.fallbackPolicy,
+      });
+
+      return materialize({
+        runId: current.runId,
+        lifecycle: evaluation.primaryState === 'failed' ? 'failed' : current.lifecycle,
+        blockers: evaluation.blockers,
+        approvalRequests: evaluation.approvalRequests,
+        terminalCause: evaluation.terminalCause,
+        createdAt: current.createdAt,
+        updatedAt: timestamp,
+        metadata: current.metadata,
+        evaluation,
+      });
+    },
+    cancel(current, input) {
+      const timestamp = now();
+      const evaluation = applyOperatorCancellation({
+        current: {
+          lifecycle: current.lifecycle,
+          blockers: current.blockers,
+          approvalRequests: current.approvalRequests,
+          terminalCause: current.terminalCause,
+        },
+        requestedAt: timestamp,
+        requestedBy: input.requestedBy,
+        reasonCode: input.reasonCode,
+        reasonNote: input.reasonNote,
+      });
+
+      return materialize({
+        runId: current.runId,
+        lifecycle: 'cancelled',
+        blockers: evaluation.blockers,
+        approvalRequests: evaluation.approvalRequests,
+        terminalCause: evaluation.terminalCause,
+        createdAt: current.createdAt,
+        updatedAt: timestamp,
+        metadata: current.metadata,
+        evaluation,
+        cancelAudit: evaluation.cancelAudit,
       });
     },
   };

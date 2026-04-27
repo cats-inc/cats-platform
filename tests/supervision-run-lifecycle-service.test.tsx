@@ -71,3 +71,74 @@ test('supervised run lifecycle service persists terminal state snapshots', () =>
   assert.equal(runState.primaryState, 'failed');
   assert.equal(runState.terminalCause, 'no fallback policy option remains');
 });
+
+test('supervised run lifecycle service applies approval denial through fallback policy', () => {
+  const service = createSupervisedRunLifecycleService({ now: createClock() });
+  const waiting = service.create({
+    runId: 'run-4',
+    lifecycle: 'active',
+    approvalRequests: [
+      {
+        requestId: 'approval-1',
+        state: 'pending',
+        gating: true,
+      },
+    ],
+  });
+  const failed = service.denyApproval(waiting, {
+    requestId: 'approval-1',
+    fallbackPolicy: 'ask_human',
+  });
+
+  assert.equal(failed.lifecycle, 'failed');
+  assert.equal(failed.primaryState, 'failed');
+  assert.equal(failed.approvalRequests[0]?.state, 'denied');
+  assert.equal(failed.terminalCause, 'approval denied: approval-1');
+
+  const retryWaiting = service.create({
+    runId: 'run-5',
+    lifecycle: 'active',
+    approvalRequests: [
+      {
+        requestId: 'approval-1',
+        state: 'pending',
+        gating: true,
+      },
+    ],
+  });
+  const running = service.denyApproval(retryWaiting, {
+    requestId: 'approval-1',
+    fallbackPolicy: 'retry',
+  });
+
+  assert.equal(running.lifecycle, 'active');
+  assert.equal(running.primaryState, 'running');
+  assert.equal(running.approvalRequests[0]?.state, 'denied');
+});
+
+test('supervised run lifecycle service cancels pending approvals with audit metadata', () => {
+  const service = createSupervisedRunLifecycleService({ now: createClock() });
+  const waiting = service.create({
+    runId: 'run-6',
+    lifecycle: 'active',
+    approvalRequests: [
+      {
+        requestId: 'approval-1',
+        state: 'pending',
+        gating: true,
+      },
+    ],
+  });
+  const cancelled = service.cancel(waiting, {
+    requestedBy: 'operator:owner',
+    reasonCode: 'operator_decision',
+    reasonNote: 'No longer needed.',
+  });
+
+  assert.equal(cancelled.lifecycle, 'cancelled');
+  assert.equal(cancelled.primaryState, 'cancelled');
+  assert.equal(cancelled.approvalRequests[0]?.state, 'cancelled');
+  assert.equal(cancelled.cancelAudit?.requestedAt, '2026-04-28T00:00:01.000Z');
+  assert.equal(cancelled.cancelAudit?.requestedBy, 'operator:owner');
+  assert.equal(cancelled.cancelAudit?.reasonCode, 'operator_decision');
+});
