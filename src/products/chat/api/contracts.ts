@@ -425,6 +425,24 @@ export interface ParallelChatGroupSummary {
   members: ParallelChatGroupMemberSummary[];
 }
 
+export interface GlobalOrchestratorRouterConfig {
+  kind: 'chat_deterministic_router';
+  participantKind: 'orchestrator';
+  participantId: 'orchestrator';
+  defaultDispatch: 'room_default';
+  mentionAliases: string[];
+  audiencePolicy: 'chat_capabilities';
+}
+
+export interface GlobalOrchestratorVisibleParticipant {
+  kind: 'visible_orchestrator_participant';
+  participantKind: 'orchestrator';
+  participantId: 'orchestrator';
+  displayName: string;
+  executionTarget: ExecutionTargetSummary;
+  executionModelSelection?: ProviderModelSelection | null;
+}
+
 export interface GlobalOrchestratorSummary {
   mode: 'global';
   status: 'warming' | 'ready';
@@ -432,6 +450,8 @@ export interface GlobalOrchestratorSummary {
   entrypoints: string[];
   referenceProjects: string[];
   notes: string[];
+  routerConfig?: GlobalOrchestratorRouterConfig;
+  visibleParticipant?: GlobalOrchestratorVisibleParticipant;
   executionTarget: ExecutionTargetSummary;
   executionModelSelection?: ProviderModelSelection | null;
   systemPrompt: string;

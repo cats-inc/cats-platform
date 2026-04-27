@@ -7,6 +7,7 @@ import {
   writePlatformPreferences,
 } from '../../../shared/platformPreferences.js';
 import { createDefaultChatState } from '../state/defaults.js';
+import { createGlobalOrchestratorVisibleParticipant } from '../state/orchestratorHats.js';
 import { createCat } from '../state/model/index.js';
 import type { SetupCompleteInput } from './contracts.js';
 import { waitForGuideCatAssistRefreshIdle } from './guideCatAssist.js';
@@ -66,16 +67,23 @@ async function handleSetupComplete(
       ...chatState,
       bossCatId: bossCat.id,
     };
+    const orchestratorExecutionTarget = {
+      provider: body.bossCatProvider,
+      instance: body.bossCatInstance?.trim() || null,
+      model: body.bossCatModel ?? null,
+    };
+    const orchestratorExecutionModelSelection = body.bossCatModelSelection ?? null;
     chatState = {
       ...chatState,
       globalOrchestrator: {
         ...chatState.globalOrchestrator,
-        executionTarget: {
-          provider: body.bossCatProvider,
-          instance: body.bossCatInstance?.trim() || null,
-          model: body.bossCatModel ?? null,
-        },
-        executionModelSelection: body.bossCatModelSelection ?? null,
+        visibleParticipant: createGlobalOrchestratorVisibleParticipant({
+          displayName: bossCat.name,
+          executionTarget: orchestratorExecutionTarget,
+          executionModelSelection: orchestratorExecutionModelSelection,
+        }),
+        executionTarget: orchestratorExecutionTarget,
+        executionModelSelection: orchestratorExecutionModelSelection,
       },
     };
 

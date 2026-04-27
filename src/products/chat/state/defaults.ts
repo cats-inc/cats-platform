@@ -15,6 +15,10 @@ import { listEnabledPlatformSurfaces } from '../../../shared/platformSurfaces.js
 import { createDefaultAdvancedDraftControlsPreferences } from '../../shared/advancedDraftControls.js';
 import { createDefaultConversationBehaviorPreferences } from '../../shared/conversationBehavior.js';
 import { createDefaultFolderBrowsePreferences } from '../../shared/folderBrowsePreferences.js';
+import {
+  createGlobalOrchestratorRouterConfig,
+  createGlobalOrchestratorVisibleParticipant,
+} from './orchestratorHats.js';
 export { createEmptyMemoryCheckpoint };
 
 function isoNow(): string {
@@ -37,6 +41,12 @@ export function createEmptyExecutionLease(): ParticipantExecutionLease {
 }
 
 function createDefaultOrchestrator(updatedAt: string): GlobalOrchestratorSummary {
+  const executionTarget = {
+    provider: 'claude',
+    instance: null,
+    model: null,
+  };
+
   return {
     mode: 'global',
     status: 'warming',
@@ -48,11 +58,12 @@ function createDefaultOrchestrator(updatedAt: string): GlobalOrchestratorSummary
       'Chat setup should stay lightweight and explicit.',
       'Messages, cats, memory checkpoints, and exports should be first-class local data.',
     ],
-    executionTarget: {
-      provider: 'claude',
-      instance: null,
-      model: null,
-    },
+    routerConfig: createGlobalOrchestratorRouterConfig(),
+    visibleParticipant: createGlobalOrchestratorVisibleParticipant({
+      executionTarget,
+      executionModelSelection: null,
+    }),
+    executionTarget,
     executionModelSelection: null,
     systemPrompt:
       'You are the global coordinator for Cats Inc. This conversation happens in the Chat ' +

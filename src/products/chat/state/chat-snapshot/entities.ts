@@ -41,6 +41,10 @@ import {
   isRuntimeWorkspaceKind,
   resolveCreateRuntimeSessionPolicy,
 } from '../../../../shared/runtimeSessionPolicy.js';
+import {
+  createGlobalOrchestratorRouterConfig,
+  createGlobalOrchestratorVisibleParticipant,
+} from '../orchestratorHats.js';
 import { normalizeRoomRouting } from '../room-routing/snapshot.js';
 import {
   asRecord,
@@ -430,9 +434,19 @@ export function normalizeCapabilities(rawCapabilities: unknown): ChatCapabilitie
 export function normalizeGlobalOrchestrator(rawOrchestrator: unknown): GlobalOrchestratorSummary {
   const fallback = createDefaultChatState().globalOrchestrator;
   const orchestratorRecord = asRecord(rawOrchestrator);
+  const visibleParticipantRecord = asRecord(orchestratorRecord?.visibleParticipant);
   const executionTarget = normalizeExecutionTarget(
-    orchestratorRecord?.executionTarget,
+    visibleParticipantRecord?.executionTarget ?? orchestratorRecord?.executionTarget,
     fallback.executionTarget,
+  );
+  const executionModelSelection = parseProviderModelSelection(
+    visibleParticipantRecord?.executionModelSelection ?? orchestratorRecord?.executionModelSelection,
+  );
+  const routerConfigRecord = asRecord(orchestratorRecord?.routerConfig);
+  const routerConfig = createGlobalOrchestratorRouterConfig(
+    readStringArray(routerConfigRecord?.mentionAliases).length > 0
+      ? readStringArray(routerConfigRecord?.mentionAliases)
+      : fallback.routerConfig?.mentionAliases,
   );
 
   return {
@@ -448,8 +462,14 @@ export function normalizeGlobalOrchestrator(rawOrchestrator: unknown): GlobalOrc
     notes: readStringArray(orchestratorRecord?.notes).length > 0
       ? readStringArray(orchestratorRecord?.notes)
       : fallback.notes,
+    routerConfig,
+    visibleParticipant: createGlobalOrchestratorVisibleParticipant({
+      displayName: readNullableString(visibleParticipantRecord?.displayName),
+      executionTarget,
+      executionModelSelection,
+    }),
     executionTarget,
-    executionModelSelection: parseProviderModelSelection(orchestratorRecord?.executionModelSelection),
+    executionModelSelection,
     systemPrompt: readString(orchestratorRecord?.systemPrompt, fallback.systemPrompt),
     skillProfile: readNullableString(orchestratorRecord?.skillProfile) ?? fallback.skillProfile,
     mcpProfile: readNullableString(orchestratorRecord?.mcpProfile) ?? fallback.mcpProfile,

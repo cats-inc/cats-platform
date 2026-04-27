@@ -128,6 +128,45 @@ function normalizeAssistantPresets(nextPayload: AppShellPayload & Record<string,
   }) as unknown as AppShellPayload['assistantPresets'];
 }
 
+function normalizeGlobalOrchestrator(chatState: Record<string, unknown>): void {
+  const orchestrator = asRecord(chatState.globalOrchestrator);
+  if (!orchestrator) {
+    return;
+  }
+
+  const visibleParticipant = asRecord(orchestrator.visibleParticipant) ?? {};
+  const executionTarget = asRecord(visibleParticipant.executionTarget)
+    ?? asRecord(orchestrator.executionTarget)
+    ?? {
+      provider: 'claude',
+      instance: null,
+      model: null,
+    };
+  const executionModelSelection =
+    visibleParticipant.executionModelSelection ?? orchestrator.executionModelSelection ?? null;
+
+  orchestrator.routerConfig = {
+    kind: 'chat_deterministic_router',
+    participantKind: 'orchestrator',
+    participantId: 'orchestrator',
+    defaultDispatch: 'room_default',
+    mentionAliases: readStringArray(asRecord(orchestrator.routerConfig)?.mentionAliases).length > 0
+      ? readStringArray(asRecord(orchestrator.routerConfig)?.mentionAliases)
+      : ['Orchestrator'],
+    audiencePolicy: 'chat_capabilities',
+  };
+  orchestrator.visibleParticipant = {
+    kind: 'visible_orchestrator_participant',
+    participantKind: 'orchestrator',
+    participantId: 'orchestrator',
+    displayName: readString(visibleParticipant.displayName, 'Orchestrator'),
+    executionTarget,
+    executionModelSelection,
+  };
+  orchestrator.executionTarget = executionTarget;
+  orchestrator.executionModelSelection = executionModelSelection;
+}
+
 function normalizeSelectedChannel(
   chatState: Record<string, unknown>,
   catsById: Map<string, Record<string, unknown>>,
@@ -281,6 +320,7 @@ export function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayl
   const catsById = new Map(cats.map((cat) => [readString(cat.id), cat]));
 
   normalizeSelectedChannel(chatState, catsById);
+  normalizeGlobalOrchestrator(chatState);
   normalizeGuideCat(nextPayload);
   normalizeAssistantPresets(nextPayload);
   normalizeChannelSummaries(chatState);

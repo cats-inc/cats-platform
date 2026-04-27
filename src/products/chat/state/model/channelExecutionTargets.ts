@@ -19,6 +19,10 @@ import {
   createEmptyExecutionLease,
 } from '../defaults.js';
 import {
+  createGlobalOrchestratorVisibleParticipant,
+  resolveGlobalOrchestratorVisibleParticipant,
+} from '../orchestratorHats.js';
+import {
   applyMessageToChannel,
   createMessageRecord,
 } from './recordBuilders.js';
@@ -35,21 +39,31 @@ export function updateGlobalOrchestrator(
   now: Date = new Date(),
 ): ChatState {
   const nextState = cloneState(state);
+  const currentParticipant = resolveGlobalOrchestratorVisibleParticipant(
+    nextState.globalOrchestrator,
+  );
+  const executionTarget = {
+    provider: input.provider.trim() || currentParticipant.executionTarget.provider,
+    instance:
+      normalizeOptionalText(input.instance)
+      ?? currentParticipant.executionTarget.instance,
+    model:
+      input.model === undefined
+        ? currentParticipant.executionTarget.model
+        : normalizeOptionalText(input.model),
+  };
+  const executionModelSelection = input.modelSelection === undefined
+    ? cloneProviderModelSelection(currentParticipant.executionModelSelection ?? null)
+    : cloneProviderModelSelection(input.modelSelection);
   nextState.globalOrchestrator = {
     ...nextState.globalOrchestrator,
-    executionTarget: {
-      provider: input.provider.trim() || nextState.globalOrchestrator.executionTarget.provider,
-      instance:
-        normalizeOptionalText(input.instance)
-        ?? nextState.globalOrchestrator.executionTarget.instance,
-      model:
-        input.model === undefined
-          ? nextState.globalOrchestrator.executionTarget.model
-          : normalizeOptionalText(input.model),
-    },
-    executionModelSelection: input.modelSelection === undefined
-      ? cloneProviderModelSelection(nextState.globalOrchestrator.executionModelSelection)
-      : cloneProviderModelSelection(input.modelSelection),
+    visibleParticipant: createGlobalOrchestratorVisibleParticipant({
+      displayName: currentParticipant.displayName,
+      executionTarget,
+      executionModelSelection,
+    }),
+    executionTarget,
+    executionModelSelection,
     systemPrompt:
       input.systemPrompt?.trim() || nextState.globalOrchestrator.systemPrompt,
     skillProfile: normalizeOptionalText(input.skillProfile),
@@ -71,22 +85,32 @@ export function setGlobalOrchestratorExecutionTarget(
   now: Date = new Date(),
 ): ChatState {
   const nextState = cloneState(state);
+  const currentParticipant = resolveGlobalOrchestratorVisibleParticipant(
+    nextState.globalOrchestrator,
+  );
+  const executionTarget = {
+    provider: input.provider?.trim() || currentParticipant.executionTarget.provider,
+    instance:
+      input.instance === undefined
+        ? currentParticipant.executionTarget.instance
+        : normalizeOptionalText(input.instance),
+    model:
+      input.model === undefined
+        ? currentParticipant.executionTarget.model
+        : normalizeOptionalText(input.model),
+  };
+  const executionModelSelection = input.modelSelection === undefined
+    ? cloneProviderModelSelection(currentParticipant.executionModelSelection ?? null)
+    : cloneProviderModelSelection(input.modelSelection);
   nextState.globalOrchestrator = {
     ...nextState.globalOrchestrator,
-    executionTarget: {
-      provider: input.provider?.trim() || nextState.globalOrchestrator.executionTarget.provider,
-      instance:
-        input.instance === undefined
-          ? nextState.globalOrchestrator.executionTarget.instance
-          : normalizeOptionalText(input.instance),
-      model:
-        input.model === undefined
-          ? nextState.globalOrchestrator.executionTarget.model
-          : normalizeOptionalText(input.model),
-    },
-    executionModelSelection: input.modelSelection === undefined
-      ? cloneProviderModelSelection(nextState.globalOrchestrator.executionModelSelection)
-      : cloneProviderModelSelection(input.modelSelection),
+    visibleParticipant: createGlobalOrchestratorVisibleParticipant({
+      displayName: currentParticipant.displayName,
+      executionTarget,
+      executionModelSelection,
+    }),
+    executionTarget,
+    executionModelSelection,
     updatedAt: isoAt(now),
   };
   return nextState;

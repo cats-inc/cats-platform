@@ -357,7 +357,7 @@ restating it.
       granularity, `sop_template` scaffolding, schema-required validation,
       every-step checkpointing, narrow tool surfaces, and deterministic
       retry/escalation.
-- [ ] Task 2.6: Split `globalOrchestrator.executionTarget` into deterministic
+- [x] Task 2.6: Split `globalOrchestrator.executionTarget` into deterministic
       router configuration and visible orchestrator participant execution
       target. Renderers must receive projections that distinguish both hats.
 
@@ -648,3 +648,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 4: added a deterministic provider-agent policy gate over policy dials, parent/tool-scope intersection, schema-required validation, single-step weak-profile limits, delegation autonomy, and allowed recovery fallback choices. |
 | 2026-04-28 | Implementation slice 5: added contract coverage proving the provider-agent adapter preserves the provider-authored semantic plan and does not import the old platform planner/dispatcher path. |
 | 2026-04-28 | Implementation slice 6: pinned Ollama/local weak-provider policy output to the same provider-agent seam with single-step autonomy, tiny granularity, read-only tool scope, SOP scaffolding, schema-required validation, every-step checkpoints, and human escalation by default. |
+| 2026-04-28 | Implementation slice 7: split Chat global orchestrator projection into deterministic `routerConfig` and visible `visibleParticipant` execution hats, with normalization/update/runtime-targeting tests while mirroring legacy execution fields for existing product paths. |

@@ -23,6 +23,7 @@ import {
 } from '../shared/channelParticipants.js';
 import { resolveSkillProfileManifest } from '../../../shared/skillProfiles.js';
 import { isDirectLaneChannel } from '../shared/channelTopology.js';
+import { resolveGlobalOrchestratorVisibleParticipant } from './orchestratorHats.js';
 import {
   buildDirectLaneTransportBindingId,
 } from '../../../shared/chatCoreIds.js';
@@ -92,11 +93,12 @@ export function resolveOrchestratorExecutionTarget(
     };
   }
 
+  const participant = resolveGlobalOrchestratorVisibleParticipant(state.globalOrchestrator);
   return {
-    provider: state.globalOrchestrator.executionTarget.provider,
-    instance: state.globalOrchestrator.executionTarget.instance,
-    model: state.globalOrchestrator.executionTarget.model,
-    modelSelection: state.globalOrchestrator.executionModelSelection ?? null,
+    provider: participant.executionTarget.provider,
+    instance: participant.executionTarget.instance,
+    model: participant.executionTarget.model,
+    modelSelection: participant.executionModelSelection ?? null,
   };
 }
 
