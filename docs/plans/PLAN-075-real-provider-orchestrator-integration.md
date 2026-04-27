@@ -512,7 +512,9 @@ categories:
       ownership is retired. Second slice: legacy orchestrator dispatch moved
       to Chat ownership in `src/products/chat/api/orchestratorDispatch.ts`,
       while the old platform dispatcher is no longer imported by product or app
-      routes.
+      routes. Third slice: legacy Chat plan/execution-loop response builders
+      moved to `src/products/chat/api/orchestratorPlan.ts`, leaving the old
+      platform planner unimported by product routes.
 - [ ] Task 8.3: Add/keep static tests proving non-Chat product trees cannot
       import old planner/dispatcher modules. Chat may import the new
       deterministic router path because that routing is still a product

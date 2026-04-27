@@ -179,6 +179,22 @@ test('Chat owns legacy orchestrator dispatch while old platform dispatcher is no
   assert.equal(appDependencySource.includes('products/chat/api/orchestratorDispatch'), true);
 });
 
+test('Chat owns legacy orchestrator plan building while old platform planner is not imported', () => {
+  const chatRouteSource = readFileSync(
+    path.join(process.cwd(), 'src/products/chat/api/orchestratorRoutes.ts'),
+    'utf8',
+  );
+  const chatDispatchSource = readFileSync(
+    path.join(process.cwd(), 'src/products/chat/api/orchestratorDispatch.ts'),
+    'utf8',
+  );
+
+  assert.equal(chatRouteSource.includes('platform/orchestration/planner'), false);
+  assert.equal(chatDispatchSource.includes('platform/orchestration/planner'), false);
+  assert.equal(chatRouteSource.includes('./orchestratorPlan.js'), true);
+  assert.equal(chatDispatchSource.includes('./orchestratorPlan.js'), true);
+});
+
 test('Chat runtime dispatch API no longer accepts old platform plans', () => {
   const source = readFileSync(
     path.join(process.cwd(), 'src/products/chat/state/runtime-dispatch/routing.ts'),

@@ -2,7 +2,7 @@ import { sendMethodNotAllowed, matchRoute, readJsonBody, sendJson } from '../../
 import {
   buildOrchestratorExecutionLoopResponse,
   buildOrchestratorPlanResponse,
-} from '../../../platform/orchestration/planner.js';
+} from './orchestratorPlan.js';
 import {
   dispatchOrchestratorTurn,
 } from './orchestratorDispatch.js';

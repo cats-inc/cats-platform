@@ -29,7 +29,7 @@ import {
   buildOrchestratorExecutionLoopResponse,
   buildOrchestratorTurnPlan,
   resolveOrchestratorOperatorSeams,
-} from '../../../platform/orchestration/planner.js';
+} from './orchestratorPlan.js';
 
 interface DispatchOrchestratorTurnInput<
   TCompanionStore = unknown,
