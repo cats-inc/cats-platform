@@ -414,7 +414,7 @@ categories:
 
 ### Phase 4: Durable Run Lifecycle Scheduler
 
-- [ ] Task 4.1: Introduce a content-blind run lifecycle service for queued,
+- [x] Task 4.1: Introduce a content-blind run lifecycle service for queued,
       running, waiting-for-approval, blocked, completed, failed, and cancelled
       supervised runs.
 - [ ] Task 4.2: Support cooperative cancellation, timeout, retry, resume,
@@ -689,3 +689,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 29: made config-enabled Chat provider-agent decision requests fail open on invalid or failed provider decisions, preserving the existing dispatch path while still allowing valid provider-authored decisions to surface. |
 | 2026-04-28 | Implementation slice 30: renamed the retained Chat deterministic router adapter away from the old orchestrator adapter name and marked Phase 3 Task 3.6 complete, keeping legacy platform plan conversion isolated at the Chat-owned compatibility boundary. |
 | 2026-04-28 | Implementation slice 31: completed Phase 3 Task 3.3 by surfacing capability/policy summaries for assistant-preset temporary participants, gating high-risk draft policy grants before activation, and tightening the visible-chat fallback test fixture to include product origin. |
+| 2026-04-28 | Implementation slice 32: introduced the content-blind supervised run lifecycle service for queued/running/waiting/blocked/terminal state derivation, metadata snapshot persistence, and static scheduler boundary coverage; marked Phase 4 Task 4.1 complete. |
