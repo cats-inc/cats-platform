@@ -1,8 +1,15 @@
 import type {
   CancellationReasonCode,
   RunBlocker,
+  RunPrimaryState,
   SupervisionFallbackPolicy,
+  SupervisedToolManifest,
+  CancellationEffectLanded,
+  CancellationContext,
 } from './contracts.js';
+import {
+  buildCancellationContext as buildToolCancellationContext,
+} from './cancellation.js';
 import {
   applyApprovalDenied,
   applyOperatorCancellation,
@@ -22,6 +29,7 @@ export interface SupervisedRunLifecycleRecord {
   primaryState: RunStateEvaluation['primaryState'];
   terminalCause?: string;
   cancelAudit?: OperatorCancellationResult['cancelAudit'];
+  cancellationRequest?: SupervisedRunCancellationRequest;
   createdAt: string;
   updatedAt: string;
   metadata: Record<string, unknown>;
@@ -54,6 +62,14 @@ export interface CancelSupervisedRunInput {
   reasonNote?: string;
 }
 
+export interface SupervisedRunCancellationRequest {
+  requestedAt: string;
+  requestedBy: string;
+  reasonCode: CancellationReasonCode;
+  runStateAtRequest: Exclude<RunPrimaryState, 'completed' | 'failed' | 'cancelled'>;
+  reasonNote?: string;
+}
+
 export interface TimeoutSupervisedRunInput {
   timeoutId: string;
   hardStop?: boolean;
@@ -67,6 +83,11 @@ export interface ResumeSupervisedRunInput {
 export interface RetrySupervisedRunInput {
   reason: string;
   approvalRequests?: RunApprovalRequestState[];
+}
+
+export interface BuildLifecycleCancellationContextInput {
+  manifest: Pick<SupervisedToolManifest, 'cancellation'>;
+  effectLanded?: CancellationEffectLanded;
 }
 
 export interface SupervisedRunLifecycleService {
@@ -95,6 +116,10 @@ export interface SupervisedRunLifecycleService {
     current: SupervisedRunLifecycleRecord,
     input: RetrySupervisedRunInput,
   ): SupervisedRunLifecycleRecord;
+  buildCancellationContext(
+    current: SupervisedRunLifecycleRecord,
+    input: BuildLifecycleCancellationContextInput,
+  ): CancellationContext;
 }
 
 export function createSupervisedRunLifecycleService(options: {
@@ -113,6 +138,7 @@ export function createSupervisedRunLifecycleService(options: {
     metadata?: Record<string, unknown> | null;
     evaluation?: RunStateEvaluation;
     cancelAudit?: OperatorCancellationResult['cancelAudit'];
+    cancellationRequest?: SupervisedRunCancellationRequest;
   }): SupervisedRunLifecycleRecord {
     const blockers = input.blockers ?? [];
     const approvalRequests = input.approvalRequests ?? [];
@@ -131,6 +157,7 @@ export function createSupervisedRunLifecycleService(options: {
       primaryState: evaluation.primaryState,
       terminalCause: evaluation.terminalCause,
       cancelAudit: input.cancelAudit,
+      cancellationRequest: input.cancellationRequest,
       createdAt: input.createdAt,
       updatedAt: input.updatedAt,
       metadata: writeRunStateMetadata({
@@ -193,6 +220,10 @@ export function createSupervisedRunLifecycleService(options: {
     },
     cancel(current, input) {
       const timestamp = now();
+      const runStateAtRequest = toCancellablePrimaryState(current.primaryState);
+      if (!runStateAtRequest) {
+        throw new Error(`Cannot cancel terminal run ${current.runId}.`);
+      }
       const evaluation = applyOperatorCancellation({
         current: {
           lifecycle: current.lifecycle,
@@ -217,6 +248,13 @@ export function createSupervisedRunLifecycleService(options: {
         metadata: current.metadata,
         evaluation,
         cancelAudit: evaluation.cancelAudit,
+        cancellationRequest: {
+          requestedAt: timestamp,
+          requestedBy: input.requestedBy,
+          reasonCode: input.reasonCode,
+          runStateAtRequest,
+          reasonNote: input.reasonNote,
+        },
       });
     },
     timeout(current, input) {
@@ -273,7 +311,31 @@ export function createSupervisedRunLifecycleService(options: {
         metadata: writeRetryMetadata(current.metadata, input.reason),
       });
     },
+    buildCancellationContext(current, input) {
+      const cancellationRequest = current.cancellationRequest;
+      if (!cancellationRequest) {
+        throw new Error(`Run ${current.runId} has no cancellation request.`);
+      }
+
+      return buildToolCancellationContext({
+        manifest: input.manifest,
+        requestedAt: cancellationRequest.requestedAt,
+        requestedBy: cancellationRequest.requestedBy,
+        runStateAtRequest: cancellationRequest.runStateAtRequest,
+        reasonCode: cancellationRequest.reasonCode,
+        reasonNote: cancellationRequest.reasonNote,
+        effectLanded: input.effectLanded,
+      });
+    },
   };
+}
+
+function toCancellablePrimaryState(
+  state: RunPrimaryState,
+): Exclude<RunPrimaryState, 'completed' | 'failed' | 'cancelled'> | null {
+  return state === 'completed' || state === 'failed' || state === 'cancelled'
+    ? null
+    : state;
 }
 
 function writeRetryMetadata(

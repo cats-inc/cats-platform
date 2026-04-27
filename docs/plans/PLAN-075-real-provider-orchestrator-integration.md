@@ -417,7 +417,7 @@ categories:
 - [x] Task 4.1: Introduce a content-blind run lifecycle service for queued,
       running, waiting-for-approval, blocked, completed, failed, and cancelled
       supervised runs.
-- [ ] Task 4.2: Support cooperative cancellation, timeout, retry, resume,
+- [x] Task 4.2: Support cooperative cancellation, timeout, retry, resume,
       pending approval cleanup, late-finishing action evidence, and terminal
       failure when no `fallbackPolicy` option is allowed.
 - [ ] Task 4.3: Add child-run delegation with budget inheritance, parent/child
@@ -692,3 +692,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 32: introduced the content-blind supervised run lifecycle service for queued/running/waiting/blocked/terminal state derivation, metadata snapshot persistence, and static scheduler boundary coverage; marked Phase 4 Task 4.1 complete. |
 | 2026-04-28 | Implementation slice 33: extended the run lifecycle service with approval-denial and operator-cancellation transitions, including fallback-policy failure/running outcomes, pending approval cleanup, cancellation audit metadata, and content-blind boundary coverage. |
 | 2026-04-28 | Implementation slice 34: added content-blind timeout, resume, and retry lifecycle helpers, including soft-timeout blockers, hard-timeout terminal failure, blocker clearing on resume/retry, and retry reason metadata without semantic recovery. |
+| 2026-04-28 | Implementation slice 35: completed Phase 4 Task 4.2 by recording cancellation request state, deriving late-finishing `CancellationContext` from tool manifests, rejecting terminal-run cancellation, and preserving content-blind lifecycle boundaries. |

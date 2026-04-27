@@ -141,6 +141,7 @@ test('supervised run lifecycle service cancels pending approvals with audit meta
   assert.equal(cancelled.cancelAudit?.requestedAt, '2026-04-28T00:00:01.000Z');
   assert.equal(cancelled.cancelAudit?.requestedBy, 'operator:owner');
   assert.equal(cancelled.cancelAudit?.reasonCode, 'operator_decision');
+  assert.equal(cancelled.cancellationRequest?.runStateAtRequest, 'waiting_for_approval');
 });
 
 test('supervised run lifecycle service handles soft and hard timeouts', () => {
@@ -181,4 +182,40 @@ test('supervised run lifecycle service resumes and retries without semantic reco
   assert.deepEqual(retryMetadata.lifecycleRetry, {
     reason: 'operator requested retry',
   });
+});
+
+test('supervised run lifecycle service builds late-finishing cancellation context from manifest', () => {
+  const service = createSupervisedRunLifecycleService({ now: createClock() });
+  const running = service.create({ runId: 'run-9', lifecycle: 'active' });
+  const cancelled = service.cancel(running, {
+    requestedBy: 'operator:owner',
+    reasonCode: 'operator_decision',
+  });
+  const context = service.buildCancellationContext(cancelled, {
+    manifest: { cancellation: 'cooperative' },
+    effectLanded: 'after_cancel_request',
+  });
+
+  assert.deepEqual(context, {
+    requestedAt: '2026-04-28T00:00:01.000Z',
+    requestedBy: 'operator:owner',
+    runStateAtRequest: 'running',
+    toolCancellation: 'cooperative_requested',
+    effectLanded: 'after_cancel_request',
+    reasonCode: 'operator_decision',
+  });
+});
+
+test('supervised run lifecycle service rejects cancellation after terminal state', () => {
+  const service = createSupervisedRunLifecycleService({ now: createClock() });
+  const completed = service.create({ runId: 'run-10', lifecycle: 'active' });
+  const terminal = service.transition(completed, { lifecycle: 'completed' });
+
+  assert.throws(
+    () => service.cancel(terminal, {
+      requestedBy: 'operator:owner',
+      reasonCode: 'operator_decision',
+    }),
+    /Cannot cancel terminal run run-10/u,
+  );
 });
