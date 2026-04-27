@@ -29,6 +29,8 @@ export const WORK_API_PROJECT_DETAIL_PATH_TEMPLATE = `${WORK_API_PROJECTS_PATH}/
 export const WORK_API_TASK_DETAIL_PATH_TEMPLATE = `${WORK_API_TASKS_PATH}/:taskId`;
 export const WORK_API_TASK_SUPERVISED_RUN_PATH_TEMPLATE =
   `${WORK_API_TASK_DETAIL_PATH_TEMPLATE}/supervised-run`;
+export const WORK_API_TASK_SUPERVISED_RUN_ACTION_PATH_TEMPLATE =
+  `${WORK_API_TASK_SUPERVISED_RUN_PATH_TEMPLATE}/:action`;
 export const WORK_API_WORK_ITEM_DETAIL_PATH_TEMPLATE = `${WORK_API_WORK_ITEMS_PATH}/:workItemId`;
 export const WORK_API_INTAKE_PLAN_PATH_TEMPLATE = `${WORK_API_INTAKE_PATH}/:projectId/plan`;
 export const WORK_API_INTAKE_APPROVE_PATH_TEMPLATE = `${WORK_API_INTAKE_PATH}/:projectId/approve`;
@@ -38,6 +40,8 @@ export const WORK_API_PROJECT_DETAIL_PATTERN = /^\/api\/work\/projects\/([^/]+)$
 export const WORK_API_TASK_DETAIL_PATTERN = /^\/api\/work\/tasks\/([^/]+)$/u;
 export const WORK_API_TASK_SUPERVISED_RUN_PATTERN =
   /^\/api\/work\/tasks\/([^/]+)\/supervised-run$/u;
+export const WORK_API_TASK_SUPERVISED_RUN_ACTION_PATTERN =
+  /^\/api\/work\/tasks\/([^/]+)\/supervised-run\/(resume|retry|cancel)$/u;
 export const WORK_API_WORK_ITEM_DETAIL_PATTERN = /^\/api\/work\/work-items\/([^/]+)$/u;
 export const WORK_API_INTAKE_PLAN_PATTERN = /^\/api\/work\/intake\/([^/]+)\/plan$/u;
 export const WORK_API_INTAKE_APPROVE_PATTERN = /^\/api\/work\/intake\/([^/]+)\/approve$/u;
@@ -53,6 +57,13 @@ export function buildWorkApiTaskPath(taskId?: string | null): string {
 
 export function buildWorkApiTaskSupervisedRunPath(taskId: string): string {
   return `${buildWorkApiTaskPath(taskId)}/supervised-run`;
+}
+
+export function buildWorkApiTaskSupervisedRunActionPath(
+  taskId: string,
+  action: 'resume' | 'retry' | 'cancel',
+): string {
+  return `${buildWorkApiTaskSupervisedRunPath(taskId)}/${action}`;
 }
 
 export function buildWorkApiWorkItemPath(workItemId?: string | null): string {

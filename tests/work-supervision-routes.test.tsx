@@ -67,10 +67,14 @@ function evidenceEvent(): EvidenceEvent {
 function createRuntimeStub(): RuntimeClient & {
   createdSessions: unknown[];
   sentMessages: Array<{ sessionId: string; content: string; input?: unknown }>;
+  resumedSessions: string[];
+  canceledSessions: string[];
 } {
   return {
     createdSessions: [],
     sentMessages: [],
+    resumedSessions: [],
+    canceledSessions: [],
     async getHealth() {
       return {
         baseUrl: 'http://127.0.0.1:3110',
@@ -146,6 +150,16 @@ function createRuntimeStub(): RuntimeClient & {
       return { session: {} };
     },
     async streamSession() {},
+    async resumeSession(sessionId) {
+      this.resumedSessions.push(sessionId);
+      return {
+        id: sessionId,
+        provider: 'codex',
+        model: 'gpt-5.4',
+        status: 'ready',
+        cwd: null,
+      };
+    },
     async createWakeup() {
       return {
         request: { id: 'wakeup-work-1' },
@@ -155,7 +169,9 @@ function createRuntimeStub(): RuntimeClient & {
     async callMcp() {
       return null;
     },
-    async cancelSession() {},
+    async cancelSession(sessionId) {
+      this.canceledSessions.push(sessionId);
+    },
     async closeSession() {},
     async deleteSession(sessionId) {
       return {
@@ -164,6 +180,39 @@ function createRuntimeStub(): RuntimeClient & {
       };
     },
   };
+}
+
+async function writeBlockedSupervisedRun(coreStore: MemoryCoreStore): Promise<void> {
+  const core = await coreStore.readCore();
+  await coreStore.writeCore(
+    upsertCoreRun(
+      core,
+      {
+        id: 'run-supervision-route',
+        title: 'Route supervised run',
+        status: 'blocked',
+        summary: 'Blocked for lifecycle action test.',
+        metadata: {
+          supervision: {
+            source: 'work_supervised_run_launcher',
+            runtimeBridge: {
+              status: 'started',
+              sessionId: 'runtime-session-existing',
+            },
+            runState: {
+              blockers: [
+                {
+                  code: 'TEST_BLOCKER',
+                  message: 'Blocked before operator action.',
+                },
+              ],
+            },
+          },
+        },
+      },
+      new Date('2026-04-25T12:04:00.000Z'),
+    ).core,
+  );
 }
 
 test('GET /api/work/tasks/:taskId includes supervision evidence from route dependency', async (t) => {
@@ -426,4 +475,88 @@ test('POST /api/work/tasks/:taskId/supervised-run starts supervised runtime sess
   assert.equal(secondPayload.run.id, payload.run.id);
   assert.equal(runtimeClient.createdSessions.length, 1);
   assert.equal(runtimeClient.sentMessages.length, 1);
+});
+
+test('POST /api/work/tasks/:taskId/supervised-run/:action applies lifecycle actions', async (t) => {
+  const coreStore = createCoreStore();
+  await writeBlockedSupervisedRun(coreStore);
+  const runtimeClient = createRuntimeStub();
+  const server = createServer(async (request, response) => {
+    const url = new URL(request.url ?? '/', 'http://localhost');
+    const handled = await routeWorkApi({
+      request,
+      response,
+      url,
+      method: request.method ?? 'GET',
+      dependencies: {
+        coreStore,
+        runtimeClient,
+        now: () => new Date('2026-04-25T12:06:00.000Z'),
+      },
+    });
+
+    if (!handled) {
+      response.writeHead(404, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({ error: 'not found' }));
+    }
+  });
+
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  t.after(() => server.close());
+
+  const address = server.address();
+  assert.ok(address && typeof address === 'object');
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+  const resumeResponse = await fetch(
+    `${baseUrl}/api/work/tasks/task-supervision-route/supervised-run/resume`,
+    { method: 'POST' },
+  );
+  const resumePayload = await resumeResponse.json();
+
+  assert.equal(resumeResponse.status, 200);
+  assert.equal(resumePayload.run.status, 'running');
+  assert.equal(resumePayload.supervision.primaryState, 'running');
+  assert.deepEqual(resumePayload.supervision.blockers, []);
+  assert.deepEqual(runtimeClient.resumedSessions, ['runtime-session-existing']);
+  assert.equal(
+    resumePayload.run.metadata.supervision.lifecycleAction.action,
+    'resume',
+  );
+
+  await writeBlockedSupervisedRun(coreStore);
+  const retryResponse = await fetch(
+    `${baseUrl}/api/work/tasks/task-supervision-route/supervised-run/retry`,
+    { method: 'POST' },
+  );
+  const retryPayload = await retryResponse.json();
+
+  assert.equal(retryResponse.status, 200);
+  assert.equal(retryPayload.run.status, 'running');
+  assert.equal(retryPayload.supervision.primaryState, 'running');
+  assert.deepEqual(retryPayload.run.metadata.supervision.lifecycleRetry, {
+    reason: 'operator requested retry',
+  });
+  assert.equal(
+    retryPayload.run.metadata.supervision.lifecycleAction.action,
+    'retry',
+  );
+
+  const cancelResponse = await fetch(
+    `${baseUrl}/api/work/tasks/task-supervision-route/supervised-run/cancel`,
+    { method: 'POST' },
+  );
+  const cancelPayload = await cancelResponse.json();
+
+  assert.equal(cancelResponse.status, 200);
+  assert.equal(cancelPayload.run.status, 'cancelled');
+  assert.equal(cancelPayload.supervision.primaryState, 'cancelled');
+  assert.deepEqual(runtimeClient.canceledSessions, ['runtime-session-existing']);
+  assert.equal(
+    cancelPayload.run.metadata.supervision.runtimeBridge.status,
+    'cancel_requested',
+  );
+  assert.equal(
+    cancelPayload.run.metadata.supervision.lifecycleAction.action,
+    'cancel',
+  );
 });

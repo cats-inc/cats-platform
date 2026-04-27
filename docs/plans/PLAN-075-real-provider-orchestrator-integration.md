@@ -443,7 +443,7 @@ categories:
       action.
 - [ ] Task 5.2: Persist provider-agent observations, plans, tool requests,
       approvals, and outcomes into task timeline, evidence, and run metadata.
-- [ ] Task 5.3: Implement Work resume/retry/cancel endpoints or actions using
+- [x] Task 5.3: Implement Work resume/retry/cancel endpoints or actions using
       the lifecycle service.
 - [ ] Task 5.4: Verify Claude/Codex can drive a Work supervised run from task
       detail without changing the Work UI flow.
@@ -700,3 +700,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 40: completed Phase 5 Task 5.1 by moving Work runtime session/message startup behind the shared provider-agent run-loop starter, persisting the first-response handoff back to the provider-agent seam, and adding a boundary test that prevents Work API from calling runtime create/send directly. |
 | 2026-04-28 | Implementation slice 41: started Phase 5 Task 5.2 by persisting Work first-response provider-agent observation/outcome records into run metadata and projecting them through supervised run inspection; provider-authored plans, tool requests, and approvals remain in Task 5.2 follow-up slices. |
 | 2026-04-28 | Implementation slice 42: extended Phase 5 Task 5.2 evidence coverage by writing provider-agent run-loop outcome evidence for Work first responses and projecting it alongside tool-boundary evidence in supervised run inspection. |
+| 2026-04-28 | Implementation slice 43: completed Phase 5 Task 5.3 by adding Work supervised-run `resume`, `retry`, and `cancel` route actions on top of the lifecycle service, including runtime session resume/cancel hooks and route coverage. |

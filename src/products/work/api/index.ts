@@ -7,7 +7,10 @@ import type {
   EvidenceEvent,
   ExecutionTargetSummary,
 } from '../../../core/types.js';
-import { CoreNotFoundError } from '../../../core/errors.js';
+import {
+  CoreConflictError,
+  CoreNotFoundError,
+} from '../../../core/errors.js';
 import { appendCoreTrace, upsertCoreRun } from '../../../core/model/index.js';
 import { handleCoreError } from '../../../core/api/shared.js';
 import { appendEvidenceEvent } from '../../../platform/persistence/evidence.js';
@@ -20,12 +23,15 @@ import {
 import {
   buildSupervisedRunInspectionProjection,
   createDurableToolEvidenceSink,
+  createSupervisedRunLifecycleService,
   deriveChildBudgetEnvelope,
   deriveRunState,
   writeRunStateMetadata,
   type BudgetEnvelope,
+  type RunLifecycleState,
   type ProviderAgentRunLoopRecord,
   type RunLoopDecisionHandoff,
+  type SupervisedRunLifecycleRecord,
 } from '../../../platform/supervision/index.js';
 import { startProviderAgentRunLoop } from '../../../platform/orchestration/index.js';
 import { buildWorkTaskRuntimeExecutionRequest } from '../state/taskExecutionRequest.js';
@@ -59,6 +65,7 @@ import {
   WORK_API_PROJECT_DETAIL_PATTERN,
   WORK_API_PROJECTS_PATH,
   WORK_API_TASK_DETAIL_PATTERN,
+  WORK_API_TASK_SUPERVISED_RUN_ACTION_PATTERN,
   WORK_API_TASK_SUPERVISED_RUN_PATTERN,
   WORK_API_TASKS_PATH,
   WORK_API_WORK_ITEM_DETAIL_PATTERN,
@@ -96,6 +103,7 @@ export interface WorkApiDependencies {
 }
 
 export type WorkApiRouteContext = RouteContext<WorkApiDependencies>;
+export type WorkSupervisedRunLifecycleAction = 'resume' | 'retry' | 'cancel';
 
 export function createWorkDashboardPayload(
   core: Awaited<ReturnType<CoreStore['readCore']>>,
@@ -205,6 +213,89 @@ export async function createWorkSupervisedRunPayload(
     run,
     created: next.created,
     supervision: buildSupervisedRunInspectionProjection(persisted, run.id),
+  };
+}
+
+export async function createWorkSupervisedRunLifecycleActionPayload(
+  dependencies: WorkApiDependencies,
+  taskId: string,
+  action: WorkSupervisedRunLifecycleAction,
+): Promise<WorkSupervisedRunLaunchProjection> {
+  const now = dependencies.now?.() ?? new Date();
+  const evaluatedAt = now.toISOString();
+  const core = await dependencies.coreStore.readCore();
+  const task = core.tasks.find((candidate) => candidate.id === taskId) ?? null;
+
+  if (!task) {
+    throw new CoreNotFoundError(`No task found for id ${taskId}.`, 'task_not_found');
+  }
+
+  const run = findActiveWorkSupervisedRun(core.runs, task.id);
+  if (!run) {
+    throw new CoreNotFoundError(
+      `No active supervised Work run found for task ${taskId}.`,
+      'supervised_run_not_found',
+    );
+  }
+
+  const service = createSupervisedRunLifecycleService({
+    now: () => now,
+  });
+  const current = toSupervisedRunLifecycleRecord(core, run);
+  const lifecycle = applyWorkSupervisedRunLifecycleAction(service, current, action);
+  if (action === 'cancel') {
+    await requestRuntimeCancellationForRun(dependencies, run);
+  } else if (action === 'resume') {
+    await requestRuntimeResumeForRun(dependencies, run);
+  }
+
+  const next = upsertCoreRun(
+    core,
+    {
+      id: run.id,
+      title: run.title,
+      status: action === 'cancel' ? 'cancelled' : 'running',
+      startedAt: run.startedAt ?? evaluatedAt,
+      completedAt: action === 'cancel' ? evaluatedAt : null,
+      summary: buildLifecycleActionRunSummary(action),
+      metadata: writeWorkLifecycleActionMetadata(lifecycle.metadata, {
+        action,
+        occurredAt: evaluatedAt,
+        sessionId: readRuntimeBridgeSessionId(run),
+      }),
+    },
+    now,
+  );
+  const traced = appendCoreTrace(
+    next.core,
+    {
+      id: `${run.id}:lifecycle-${action}`,
+      traceId: run.traceId ?? `trace-${run.id}`,
+      kind: action === 'cancel' ? 'outcome' : 'status',
+      conversationId: run.conversationId,
+      runId: run.id,
+      taskId: task.id,
+      actorId: run.orchestratorActorId ?? 'operator:owner',
+      message: buildLifecycleActionTraceMessage(action),
+      metadata: {
+        source: 'work_supervised_run_lifecycle_action',
+        action,
+        primaryState: lifecycle.primaryState,
+      },
+    },
+    now,
+  );
+  const persisted = await dependencies.coreStore.writeCore(traced.core);
+  const persistedRun = persisted.runs.find((candidate) => candidate.id === run.id) ?? next.run;
+  const evidenceEvents = task.conversationId
+    ? dependencies.readEvidenceEvents?.(task.conversationId) ?? []
+    : [];
+
+  return {
+    task,
+    run: persistedRun,
+    created: false,
+    supervision: buildSupervisedRunInspectionProjection(persisted, persistedRun.id, evidenceEvents),
   };
 }
 
@@ -352,6 +443,41 @@ export async function routeWorkApi(
     return true;
   }
 
+  const supervisedRunActionMatch = matchRoute(
+    context.url.pathname,
+    WORK_API_TASK_SUPERVISED_RUN_ACTION_PATTERN,
+  );
+  if (supervisedRunActionMatch) {
+    if (context.method !== 'POST') {
+      sendMethodNotAllowed(context.response, ['POST']);
+      return true;
+    }
+
+    const taskId = supervisedRunActionMatch[0];
+    const action = supervisedRunActionMatch[1] as WorkSupervisedRunLifecycleAction | undefined;
+    if (!taskId || !action) {
+      sendJson(context.response, 400, {
+        error: {
+          code: 'invalid_supervised_run_action',
+          message: 'Task id and action are required.',
+        },
+      });
+      return true;
+    }
+
+    try {
+      const payload = await createWorkSupervisedRunLifecycleActionPayload(
+        context.dependencies,
+        taskId,
+        action,
+      );
+      sendJson(context.response, 200, payload);
+    } catch (error) {
+      handleCoreError(context, error);
+    }
+    return true;
+  }
+
   const supervisedRunMatch = matchRoute(
     context.url.pathname,
     WORK_API_TASK_SUPERVISED_RUN_PATTERN,
@@ -448,6 +574,78 @@ function findActiveWorkSupervisedRun(
 
 function isActiveRunStatus(status: CoreRunRecord['status']): boolean {
   return status === 'queued' || status === 'running' || status === 'blocked';
+}
+
+function toSupervisedRunLifecycleRecord(
+  core: CatsCoreState,
+  run: CoreRunRecord,
+): SupervisedRunLifecycleRecord {
+  const projection = buildSupervisedRunInspectionProjection(core, run.id);
+  if (!projection) {
+    throw new CoreConflictError(
+      `Run ${run.id} cannot be projected for lifecycle action.`,
+      'supervised_run_projection_unavailable',
+    );
+  }
+
+  return {
+    runId: run.id,
+    lifecycle: toRunLifecycleState(run.status),
+    blockers: projection.blockers,
+    approvalRequests: projection.approvalRequests,
+    primaryState: projection.primaryState,
+    terminalCause: projection.terminalCause ?? undefined,
+    createdAt: run.createdAt,
+    updatedAt: run.updatedAt,
+    metadata: run.metadata,
+  };
+}
+
+function applyWorkSupervisedRunLifecycleAction(
+  service: ReturnType<typeof createSupervisedRunLifecycleService>,
+  current: SupervisedRunLifecycleRecord,
+  action: WorkSupervisedRunLifecycleAction,
+): SupervisedRunLifecycleRecord {
+  try {
+    switch (action) {
+      case 'resume':
+        return service.resume(current);
+      case 'retry':
+        return service.retry(current, { reason: 'operator requested retry' });
+      case 'cancel':
+        return service.cancel(current, {
+          requestedBy: 'operator:owner',
+          reasonCode: 'operator_decision',
+        });
+      default: {
+        const exhaustive: never = action;
+        return exhaustive;
+      }
+    }
+  } catch (error) {
+    throw new CoreConflictError(
+      error instanceof Error ? error.message : 'Supervised run lifecycle action failed.',
+      'supervised_run_lifecycle_action_failed',
+    );
+  }
+}
+
+function toRunLifecycleState(status: CoreRunRecord['status']): RunLifecycleState {
+  switch (status) {
+    case 'queued':
+      return 'queued';
+    case 'running':
+    case 'blocked':
+      return 'active';
+    case 'completed':
+    case 'failed':
+    case 'cancelled':
+      return status;
+    default: {
+      const exhaustive: never = status;
+      return exhaustive;
+    }
+  }
 }
 
 async function launchRuntimeForWorkSupervisedRun(input: {
@@ -912,6 +1110,110 @@ function appendRuntimeRunLoopEvidence(input: {
       },
     },
   );
+}
+
+async function requestRuntimeCancellationForRun(
+  dependencies: WorkApiDependencies,
+  run: CoreRunRecord,
+): Promise<void> {
+  const sessionId = readRuntimeBridgeSessionId(run);
+  if (!sessionId || !dependencies.runtimeClient) {
+    return;
+  }
+
+  await dependencies.runtimeClient.cancelSession(sessionId);
+}
+
+async function requestRuntimeResumeForRun(
+  dependencies: WorkApiDependencies,
+  run: CoreRunRecord,
+): Promise<void> {
+  const sessionId = readRuntimeBridgeSessionId(run);
+  if (!sessionId || !dependencies.runtimeClient?.resumeSession) {
+    return;
+  }
+
+  await dependencies.runtimeClient.resumeSession(sessionId);
+}
+
+function writeWorkLifecycleActionMetadata(
+  metadata: Record<string, unknown>,
+  update: {
+    action: WorkSupervisedRunLifecycleAction;
+    occurredAt: string;
+    sessionId: string | null;
+  },
+): Record<string, unknown> {
+  const supervision = asRecord(metadata.supervision) ?? {};
+  const existingBridge = asRecord(supervision.runtimeBridge);
+  const runtimeBridge = update.sessionId
+    ? {
+        ...(existingBridge ?? {}),
+        sessionId: update.sessionId,
+        status: update.action === 'cancel' ? 'cancel_requested' : 'started',
+        ...(update.action === 'cancel'
+          ? { cancelRequestedAt: update.occurredAt }
+          : {}),
+        ...(update.action === 'resume'
+          ? { resumedAt: update.occurredAt }
+          : {}),
+        ...(update.action === 'retry'
+          ? { retriedAt: update.occurredAt }
+          : {}),
+      }
+    : existingBridge;
+
+  return {
+    ...metadata,
+    supervision: {
+      ...supervision,
+      lifecycleAction: {
+        source: 'work_supervised_run_lifecycle_action',
+        action: update.action,
+        occurredAt: update.occurredAt,
+      },
+      ...(runtimeBridge ? { runtimeBridge } : {}),
+    },
+  };
+}
+
+function readRuntimeBridgeSessionId(run: CoreRunRecord): string | null {
+  const supervision = asRecord(run.metadata.supervision);
+  const runtimeBridge = asRecord(supervision?.runtimeBridge);
+  const sessionId = runtimeBridge?.sessionId;
+  return typeof sessionId === 'string' && sessionId.trim().length > 0
+    ? sessionId
+    : null;
+}
+
+function buildLifecycleActionRunSummary(action: WorkSupervisedRunLifecycleAction): string {
+  switch (action) {
+    case 'resume':
+      return 'Resumed supervised Work run.';
+    case 'retry':
+      return 'Retrying supervised Work run.';
+    case 'cancel':
+      return 'Cancelled supervised Work run.';
+    default: {
+      const exhaustive: never = action;
+      return exhaustive;
+    }
+  }
+}
+
+function buildLifecycleActionTraceMessage(action: WorkSupervisedRunLifecycleAction): string {
+  switch (action) {
+    case 'resume':
+      return 'Supervised Work run resumed by operator.';
+    case 'retry':
+      return 'Supervised Work run retry requested by operator.';
+    case 'cancel':
+      return 'Supervised Work run cancellation requested by operator.';
+    default: {
+      const exhaustive: never = action;
+      return exhaustive;
+    }
+  }
 }
 
 function buildRuntimeResponseTraceMessage(
