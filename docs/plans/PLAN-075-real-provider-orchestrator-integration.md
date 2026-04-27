@@ -621,7 +621,9 @@ execution. The difference is control density, not a boolean switch.
   explicit developer environment flags, but PLAN completion requires recorded
   local/manual evidence for one Chat turn, one Work supervised run, and one
   Code task/relay path. If credentials are unavailable, this plan remains
-  blocked rather than silently complete.
+  blocked rather than silently complete. `code-live-provider-smoke.test.tsx`
+  provides the gated Code task/relay smoke harness when
+  `CATS_CODE_LIVE_PROVIDER_SMOKE=1`.
 - Weak-model tests prove Ollama/local capability profiles use the same decision
   seam, receive stricter policy dials, can only access allowed weak-worker/SOP
   tool(s), validate required schemas, and persist evidence under the parent
@@ -706,3 +708,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 46: completed Phase 6 Task 6.1 by projecting Code task latest supervised run inspection and durable evidence through Code task detail responses without changing the entry flow. |
 | 2026-04-28 | Implementation slice 47: completed Phase 6 Task 6.2 by assigning each Code relay fan-out dispatch a sibling supervised run, shared relay-round budget envelope metadata, convergence metadata, and durable runtime-boundary evidence. |
 | 2026-04-28 | Implementation slice 48: completed Phase 6 Task 6.3 by locking the `+New code` execute response shape under supervision and exposing Code relay dispatch run ids through the renderer API contract without changing entry routes. |
+| 2026-04-28 | Implementation slice 49: added the gated `code-live-provider-smoke.test.tsx` harness for Phase 6 Task 6.4 so Claude/Codex Code task execute and relay fan-out can be manually verified through the supervised runtime boundary when live credentials are available. |
