@@ -25,13 +25,16 @@ test('desktop screenshot permission allows granted macOS screen access', () => {
   );
 });
 
-test('desktop screenshot permission allows first macOS screen access attempt', () => {
-  assert.equal(
+test('desktop screenshot permission maps not-determined macOS screen access to contract outcome', () => {
+  assert.deepEqual(
     resolveDesktopScreenshotPermissionResult({
       platform: 'darwin',
       mediaAccessStatus: 'not-determined',
     }),
-    null,
+    {
+      outcome: 'permission_denied',
+      message: 'Screen Recording permission is required to capture a screenshot. Grant Cats screen access in macOS System Settings, then restart Cats.',
+    },
   );
 });
 

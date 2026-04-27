@@ -20,15 +20,13 @@ export function resolveDesktopScreenshotPermissionResult(input: {
     return null;
   }
 
-  if (
-    input.mediaAccessStatus === 'granted'
-    || input.mediaAccessStatus === 'not-determined'
-  ) {
+  if (input.mediaAccessStatus === 'granted') {
     return null;
   }
 
   if (
-    input.mediaAccessStatus === 'denied'
+    input.mediaAccessStatus === 'not-determined'
+    || input.mediaAccessStatus === 'denied'
     || input.mediaAccessStatus === 'restricted'
   ) {
     return {
