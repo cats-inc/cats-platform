@@ -22,12 +22,9 @@
   position: relative;
 }
 
-.paperclipProjectsTopBar,
-.paperclipProjectTopBar {
-  margin: 0;
-  padding: 0 28px;
-  width: 100%;
-}
+/* Use .channelTopBar's bleed-out trick as-is so the bar extends to the canvas
+ * edges (main.canvas has padding: 0 28px and overflow-x: hidden — exactly
+ * what the bleed assumes). No margin/width override here. */
 
 /* ------------- List page top bar ------------- */
 
