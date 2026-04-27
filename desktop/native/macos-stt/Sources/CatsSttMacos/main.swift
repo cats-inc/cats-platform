@@ -355,6 +355,13 @@ func runMicrophoneRecognition(
       }
       if command == "stop" {
         stopAudioInput()
+        // SFSpeechRecognizer does not always deliver an `isFinal` callback after
+        // endAudio() — empty buffers and very short utterances can leave the
+        // task silent. Schedule a bounded fallback so the helper still finishes
+        // promptly instead of waiting the full host-side stop cleanup window.
+        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.8) {
+          finishSession(cancelTask: true)
+        }
         return
       }
     }

@@ -33,6 +33,9 @@ test('macOS STT helper enforces on-device recognition and typed bridge events', 
   assert.match(source, /stopAudioInput\(\)[\s\S]*return/u);
   assert.match(source, /finishSession\(cancelTask: false\)/u);
   assert.match(source, /if cancelTask \{\s*task\?\.cancel\(\)/u);
+  // Bounded fallback so an empty audio buffer cannot leave the helper waiting
+  // for an `isFinal` callback that SFSpeechRecognizer may never deliver.
+  assert.match(source, /asyncAfter\(deadline: \.now\(\) \+ 0\.8\)/u);
   assert.doesNotMatch(source, /line\.contains/u);
 });
 

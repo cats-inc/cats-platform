@@ -170,13 +170,22 @@ through the existing platform toast pattern.
     `Escape` while focus is on the composer textarea. Cancellation shall
     discard any unfinalized partials and not insert text.
 12. The host shall always tear down the helper subprocess and release the
-    microphone within 1 second of `cancel`. For `stop`, helpers shall stop
-    audio input and release the microphone immediately, then may keep the
-    recognition task alive for a bounded cleanup window to deliver buffered
-    final results before the host kills the helper. Helper exit shall not be
+    microphone within 1 second of `cancel`. For `stop`, the helper shall
+    release the microphone as fast as the platform speech API allows: on
+    macOS the helper stops `AVAudioEngine` and removes the input tap
+    synchronously, while on Windows the helper relies on WinRT `StopAsync`,
+    which gracefully ends the recognition session and releases the
+    microphone when the session completes (typically within hundreds of
+    milliseconds; the WinRT API does not separate audio capture from
+    session lifetime). After audio capture has ended, the helper may keep
+    the recognition task alive for a bounded cleanup window to deliver
+    buffered final results before the host kills the helper. The macOS
+    helper additionally schedules a bounded fallback so empty or very short
+    utterances cannot leave the helper waiting for an `isFinal` callback
+    that `SFSpeechRecognizer` may never deliver. Helper exit shall not be
     required for the renderer to consider the session ended — the renderer
-    state transitions on the bridge `end` event, and host cleanup proceeds in
-    the background.
+    state transitions on the bridge `end` event, and host cleanup proceeds
+    in the background.
 13. On macOS, the helper shall preflight permission status as its first
     action — before opening any audio device — by querying
     `SFSpeechRecognizer.authorizationStatus()` and
@@ -429,6 +438,6 @@ Resolved and promoted to Requirements:
 ---
 
 *Created: 2026-04-28*
-*Last revised: 2026-04-28 (review follow-up: macOS stop waits for buffered finals before ending; Windows helper is self-contained; helper command JSON/session matching and ready-timeout/finals-only coverage tightened; macOS TCC helper attribution remains a required fresh-profile validation item.)*
+*Last revised: 2026-04-28 (review follow-up #2: macOS now schedules a bounded `isFinal` fallback so empty/short utterances do not stall the host stop cleanup window; Req 12 wording aligned with Windows WinRT graceful-stop reality so the spec no longer claims an immediate microphone release the API cannot guarantee; cleanup-timeout split has dedicated contract test coverage; macOS TCC helper attribution remains a required fresh-profile validation item.)*
 *Author: Claude*
 *Related Plan: [PLAN-076](../plans/PLAN-076-composer-voice-input-native-stt-rollout.md)*

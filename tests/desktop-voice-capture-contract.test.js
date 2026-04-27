@@ -240,6 +240,70 @@ test('desktop voice capture forwards current-session helper events and stop comm
   ]);
 });
 
+test('desktop voice capture uses different cleanup windows for stop vs cancel', async () => {
+  const workingDir = await mkdtemp(join(tmpdir(), 'cats-voice-helper-'));
+  const helperPath = join(workingDir, 'helper');
+  await writeFile(helperPath, '#!/bin/sh\n', 'utf8');
+
+  async function startReadySession({ stopCleanupTimeoutMs, cancelCleanupTimeoutMs, sessionId }) {
+    const events = [];
+    const child = createFakeChildProcess();
+    const controller = new DesktopVoiceCaptureController({
+      config: { packaged: false, packageRoot: workingDir },
+      platform: 'darwin',
+      env: { CATS_VOICE_CAPTURE_HELPER: helperPath },
+      sendEvent: (event) => events.push(event),
+      spawnProcess: () => child,
+      stopCleanupTimeoutMs,
+      cancelCleanupTimeoutMs,
+      logLine: () => {},
+    });
+    await controller.startVoiceCapture({ sessionId });
+    child.stdout.emit('data', Buffer.from(`${JSON.stringify({
+      type: 'ready',
+      sessionId,
+      locale: 'en-US',
+      mode: 'on-device',
+    })}\n`));
+    return { child, controller, events };
+  }
+
+  // Cancel honors the short cleanup window and kills the helper inside it.
+  const cancelRun = await startReadySession({
+    stopCleanupTimeoutMs: 1_000,
+    cancelCleanupTimeoutMs: 10,
+    sessionId: 'cancel-window',
+  });
+  await cancelRun.controller.cancelVoiceCapture('cancel-window');
+  await new Promise((resolve) => { setTimeout(resolve, 60); });
+  assert.equal(
+    cancelRun.child.killed,
+    true,
+    'cancel should kill the helper within cancelCleanupTimeoutMs',
+  );
+
+  // Stop uses the longer cleanup window — the helper must still be alive past
+  // the cancel window so buffered finals can flush.
+  const stopRun = await startReadySession({
+    stopCleanupTimeoutMs: 200,
+    cancelCleanupTimeoutMs: 10,
+    sessionId: 'stop-window',
+  });
+  await stopRun.controller.stopVoiceCapture('stop-window');
+  await new Promise((resolve) => { setTimeout(resolve, 60); });
+  assert.equal(
+    stopRun.child.killed,
+    false,
+    'stop should still be inside its cleanup window after the cancel window has elapsed',
+  );
+  await new Promise((resolve) => { setTimeout(resolve, 200); });
+  assert.equal(
+    stopRun.child.killed,
+    true,
+    'stop should eventually kill the helper after stopCleanupTimeoutMs',
+  );
+});
+
 function createFakeChildProcess() {
   const child = new EventEmitter();
   child.stdout = new EventEmitter();
