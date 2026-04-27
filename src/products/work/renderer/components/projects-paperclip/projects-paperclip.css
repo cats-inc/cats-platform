@@ -15,6 +15,7 @@
 .paperclipProject {
   display: flex;
   flex-direction: column;
+  width: 100%;
   height: 100vh;
   min-height: 0;
   background: var(--canvas-bg);
@@ -22,17 +23,26 @@
   position: relative;
 }
 
-/* main.canvas (.claudeShell > .canvas) has padding: 0 28px AND
- * scrollbar-gutter: stable, which reserves an extra 15px gutter on the
- * right. The default .channelTopBar bleed only escapes the 28px padding,
- * so the bar's right edge stops 15px short of the canvas. We bleed
- * further on the right to swallow the gutter, so the bottom border
- * runs from sidebar-right (canvas-left) to viewport-right (canvas-right)
- * with no visible gaps on either side. */
-.channelTopBar.paperclipProjectsTopBar,
-.channelTopBar.paperclipProjectTopBar {
-  margin: 0 -43px 0 -28px;
-  width: calc(100% + 71px);
+/* main.canvas reserves a scrollbar gutter via `scrollbar-gutter: stable`
+ * (chat-shell-base.css). That gutter width comes from the OS scrollbar
+ * in DEVICE pixels, so under browser zoom the CSS-pixel width drifts —
+ * any hardcoded compensation breaks the bar's edge alignment.
+ *
+ * For our two pages we don't need the gutter at all (the inner page
+ * wrapper has its own height: 100vh and scrolls internally). Drop the
+ * gutter and reset the grid template column to a plain 1fr so the page
+ * wrapper fills main.canvas's content area cleanly; then the default
+ * .channelTopBar bleed (-28px each side) lands exactly on canvas edges
+ * regardless of zoom. */
+main.canvas:has(> .paperclipProjects),
+main.canvas:has(> .paperclipProject) {
+  grid-template-columns: minmax(0, 1fr);
+  scrollbar-gutter: auto;
+  /* main.canvas defaults to `justify-items: center`, which centres our
+   * intrinsic-sized wrapper within the grid column and re-creates the
+   * left/right gaps under wider viewports. Stretch so wrap fills the
+   * full column. */
+  justify-items: stretch;
 }
 
 /* ------------- List page top bar ------------- */
