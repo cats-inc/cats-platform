@@ -406,7 +406,7 @@ categories:
       complete before Phase 4 Task 4.2 lands the lifecycle service's
       terminal-failure behavior; the rest of Phase 3 may proceed in parallel
       with Phase 4.
-- [ ] Task 3.5: Add targeted Chat probes for direct, solo, group, and parallel
+- [x] Task 3.5: Add targeted Chat probes for direct, solo, group, and parallel
       sends that assert session start, assistant progress, response, and no
       direct runtime calls.
 - [ ] Task 3.6: Rename or move retained deterministic Chat router code under
@@ -682,3 +682,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 22: marked Phase 3 Task 3.1 complete after Chat dispatch gained the provider-agent decision requester seam while preserving UI and transcript contracts. |
 | 2026-04-28 | Implementation slice 23: removed the obsolete Chat plan-state adapter after product routes stopped using it, while preserving the still-current dispatch target cleanup coverage in the provider-agent observation tests. |
 | 2026-04-28 | Implementation slice 24: removed the old platform plan type from Chat runtime dispatch options; dispatch now accepts only Chat-owned deterministic routing plans, with legacy conversion isolated to `orchestratorAdapter`. |
+| 2026-04-28 | Implementation slice 25: upgraded direct, solo, group, and parallel Chat runtime probes to assert provider-agent dispatch metadata; fixed execution leases to preserve resolved `modelSelection` so stable solo sessions do not restart when the runtime omits that echo field. |

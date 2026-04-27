@@ -13,6 +13,7 @@ import {
   resolveChannelKind,
   resolveDirectLaneRecipientId,
 } from '../../shared/channelTopology.js';
+import { cloneProviderModelSelection } from '../../../../shared/providerSelection.js';
 import { resolveChannelParticipantAssignments } from '../../shared/channelParticipants.js';
 import { createEmptyExecutionLease } from '../defaults.js';
 import { resolveRoomRoutingState } from '../room-routing/index.js';
@@ -128,6 +129,13 @@ export function updateExecutionLease(
   const nextInstance = input.instance === undefined
     ? (current.instance === undefined ? undefined : current.instance)
     : normalizeOptionalText(input.instance);
+  const nextModelSelection = input.modelSelection === undefined
+    ? (
+        current.modelSelection === undefined
+          ? undefined
+          : cloneProviderModelSelection(current.modelSelection)
+      )
+    : cloneProviderModelSelection(input.modelSelection);
 
   return {
     sessionId:
@@ -143,6 +151,7 @@ export function updateExecutionLease(
     ...(nextInstance !== undefined ? { instance: nextInstance } : {}),
     model:
       input.model === undefined ? current.model : normalizeOptionalText(input.model),
+    ...(nextModelSelection !== undefined ? { modelSelection: nextModelSelection } : {}),
     startedAt:
       input.startedAt === undefined ? current.startedAt : input.startedAt,
     lastUsedAt:

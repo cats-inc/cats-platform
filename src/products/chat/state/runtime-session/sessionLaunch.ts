@@ -258,7 +258,12 @@ export async function startAttachedTargetSession(input: {
       state: nextState,
       channelId,
       target: attachedTarget,
-      session: createdTargetSession.session,
+      session: {
+        ...createdTargetSession.session,
+        provider: createdExecutionTarget.provider,
+        model: createdExecutionTarget.model,
+        modelSelection: createdExecutionTarget.modelSelection,
+      },
       targetLabelProvider: createdExecutionTarget.provider,
       targetLabelInstance: createdExecutionTarget.instance,
       spawnCwd: sessionPolicy.spawnCwd,

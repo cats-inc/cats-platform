@@ -134,6 +134,18 @@ function usage(content) {
   };
 }
 
+function assertProviderAgentDispatchMetadata(channel, body) {
+  const userMessage = channel.messages.find((message) =>
+    message.senderKind === 'user' && message.body === body);
+  assert.ok(userMessage, `Expected user message for body: ${body}`);
+  assert.equal(userMessage.metadata?.orchestratorBoundary, 'chat_message_dispatch');
+  assert.match(userMessage.metadata?.orchestratorPlanId ?? '', /^chat-provider-agent:/u);
+  assert.equal(userMessage.metadata?.orchestratorPlanner, 'provider_agent_observation');
+  assert.equal(userMessage.metadata?.orchestratorLoopMode, 'agent_driven');
+  assert.equal(userMessage.metadata?.orchestratorDispatchBoundary, 'supervised_runtime_boundary');
+  assert.equal(userMessage.metadata?.orchestratorRuntimeToolBoundary, 'runtime_mcp_facade');
+}
+
 function createDeferred() {
   let resolve;
   const promise = new Promise((nextResolve) => {
@@ -2672,6 +2684,7 @@ test('solo composer mode sends raw user text without default instructions on a s
   );
 
   assert.equal(runtimeClient.sentMessages.length, 2);
+  assert.equal(runtimeClient.createdSessions.length, 1);
   assert.equal(runtimeClient.sentMessages[0]?.content, 'Hi');
   assert.equal(runtimeClient.sentMessages[0]?.input?.instructions, undefined);
   assert.equal(
@@ -2700,6 +2713,8 @@ test('solo composer mode sends raw user text without default instructions on a s
     runtimeClient.sentMessages[1]?.input?.context?.metadata?.continuityDeliveryMode,
     'none',
   );
+  const channel = buildChannelView(firstDispatch.state, channelId);
+  assertProviderAgentDispatchMetadata(channel, 'Hi');
 });
 
 test('solo composer mode honors pending runtime memory flush hooks before restarting the session', async () => {
@@ -3008,6 +3023,7 @@ test('parallel member channels inherit solo continuity transplant rules on retar
   assert.equal(activeChannel.pendingProvider, 'gemini');
   assert.equal(passiveChannel.pendingProvider, 'codex');
   assert.equal(passiveChannel.orchestratorLease.sessionId, null);
+  assertProviderAgentDispatchMetadata(activeChannel, 'Switch turn');
 });
 
 test('cat-led room routing continues across agent mentions and auto-wakes targeted participants', async () => {
@@ -3063,6 +3079,7 @@ test('cat-led room routing continues across agent mentions and auto-wakes target
   assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.continuationCount, 1);
   assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.workflowShape, 'sequential');
   assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.stageId, 'turn_completed');
+  assertProviderAgentDispatchMetadata(channel, 'Kick off the work.');
   assert.ok(
     channel.roomRouting?.workflow.turnHistory[0]?.events.some(
       (event) => event.kind === 'target_running',
@@ -3423,6 +3440,7 @@ test('direct cat chat routes unmentioned turns to the lead cat without waking Bo
   assert.equal(channel.roomRouting?.wakeHistory[0]?.participant.participantId, companionId);
   assert.equal(channel.messages.at(-1)?.senderName, 'Companion');
   assert.equal(channel.status, 'active');
+  assertProviderAgentDispatchMetadata(channel, 'Handle this directly.');
 });
 
 test('direct cat chat records targetStateId on real session_started messages', async () => {
