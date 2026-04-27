@@ -337,3 +337,29 @@ test('strong and weak profiles use the same provider-agent seam with different d
   assert.ok(weakObservation.availableTools.some((tool) =>
     tool.manifest.name === 'work.sop.ask_weak'));
 });
+
+test('weak-worker evidence is attributed to the parent run and driver actor', async () => {
+  const { boundary, tools, evidenceSink } = createHarness();
+
+  const result = await boundary.invoke({
+    toolName: 'work.sop.ask_weak',
+    input: askWeakInput(),
+    actionId: 'action-weak-evidence',
+    runId: 'run-parent-driver',
+    actorRef: 'agent:strong-driver',
+    grant: {
+      parentToolScope: 'read_only',
+      policyToolScope: 'read_only',
+    },
+    execute: tools.executors['work.sop.ask_weak'],
+  });
+  const events = evidenceSink.read();
+
+  assert.equal(result.status, 'applied');
+  assert.equal(events.length, 1);
+  assert.equal(events[0]?.runId, 'run-parent-driver');
+  assert.equal(events[0]?.actorRef, 'agent:strong-driver');
+  assert.equal(events[0]?.toolName, 'work.sop.ask_weak');
+  assert.equal(events[0]?.status, 'applied');
+  assert.equal('workerRunId' in (events[0] as Record<string, unknown>), false);
+});
