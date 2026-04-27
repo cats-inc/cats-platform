@@ -175,11 +175,56 @@ function buildProviderSnapshotForRuntime(
   return snapshot;
 }
 
+export async function flushProviderSnapshotPersistence(
+  runtimeClient: RuntimeClient,
+): Promise<void> {
+  const state = providerSnapshotPersistence.get(runtimeClient);
+  if (!state) {
+    return;
+  }
+
+  if (state.pendingTimer) {
+    clearTimeout(state.pendingTimer);
+    state.pendingTimer = null;
+    const registryCacheState = truthfulProviderRegistryCache.get(runtimeClient);
+    const registryEntry = registryCacheState?.entries.get(TRUTHFUL_PROVIDER_REGISTRY_CACHE_KEY);
+    // Mirror notifyProviderCacheUpdated: only flush a write if the in-memory
+    // registry is ready, so we never replace the last good disk snapshot with
+    // a null-registry one on the way out.
+    if (registryEntry && registryEntry.value.state === 'ready') {
+      const snapshot = buildProviderSnapshotForRuntime(runtimeClient);
+      state.writing = writeProviderSnapshot(state.snapshotPath, snapshot)
+        .catch(() => {})
+        .finally(() => {
+          state.writing = null;
+          state.writeNotifier?.();
+        });
+    }
+  }
+
+  if (state.writing) {
+    await state.writing;
+  }
+}
+
 function notifyProviderCacheUpdated(runtimeClient: RuntimeClient): void {
   const state = providerSnapshotPersistence.get(runtimeClient);
   if (!state) {
     return;
   }
+
+  // Skip the write entirely when the in-memory registry isn't currently
+  // 'ready'. Otherwise a transient no_usable_targets / runtime_unreachable
+  // refresh — or a catalog notify firing while the registry is degraded —
+  // would rebuild the snapshot with registry=null and clobber the last good
+  // baseline on disk. We only persist when the cache reflects a usable
+  // selector.
+  const registryCacheState = truthfulProviderRegistryCache.get(runtimeClient);
+  const registryEntry = registryCacheState?.entries.get(TRUTHFUL_PROVIDER_REGISTRY_CACHE_KEY);
+  if (!registryEntry || registryEntry.value.state !== 'ready') {
+    return;
+  }
+
   if (state.pendingTimer) {
     clearTimeout(state.pendingTimer);
   }
@@ -778,14 +823,18 @@ async function loadTruthfulProviderRegistryFromRuntime(
 async function refreshTruthfulProviderRegistry(
   dependencies: ProviderRouteDependencies,
   cacheState: TruthfulProviderRegistryCacheState,
+  options: { force?: boolean } = {},
 ): Promise<TruthfulProviderRegistryReadModel> {
   const cacheKey = TRUTHFUL_PROVIDER_REGISTRY_CACHE_KEY;
-  const inflight = cacheState.inflight.get(cacheKey);
-  if (inflight) {
-    return inflight;
+  if (!options.force) {
+    const inflight = cacheState.inflight.get(cacheKey);
+    if (inflight) {
+      return inflight;
+    }
   }
 
-  const refreshPromise = loadTruthfulProviderRegistryFromRuntime(dependencies)
+  let refreshPromise!: Promise<TruthfulProviderRegistryReadModel>;
+  refreshPromise = loadTruthfulProviderRegistryFromRuntime(dependencies)
     .then((value) => {
       const now = Date.now();
       if (shouldCacheTruthfulProviderRegistry(value)) {
@@ -819,7 +868,12 @@ async function refreshTruthfulProviderRegistry(
       return value;
     })
     .finally(() => {
-      cacheState.inflight.delete(cacheKey);
+      // Identity check: a parallel forced refresh may have replaced us in the
+      // inflight map, and we must not delete its entry. Only clear the slot
+      // when it still points to this promise.
+      if (cacheState.inflight.get(cacheKey) === refreshPromise) {
+        cacheState.inflight.delete(cacheKey);
+      }
     });
 
   cacheState.inflight.set(cacheKey, refreshPromise);
@@ -1097,7 +1151,11 @@ export async function handleProviderRegistry(
 ): Promise<void> {
   if (options.force) {
     const cacheState = getTruthfulProviderRegistryCacheState(dependencies.runtimeClient);
-    sendJson(response, 200, await refreshTruthfulProviderRegistry(dependencies, cacheState));
+    sendJson(response, 200, await refreshTruthfulProviderRegistry(
+      dependencies,
+      cacheState,
+      { force: true },
+    ));
     return;
   }
   sendJson(response, 200, await readTruthfulProviderRegistry(dependencies));

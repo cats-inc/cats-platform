@@ -305,3 +305,113 @@ test('GET /api/providers?force=1 bypasses the failure backoff and re-probes the 
     });
   });
 });
+
+test('GET /api/providers?force=1 bypasses a stuck inflight probe instead of joining it', async () => {
+  await withTempDir(async (directory) => {
+    const snapshotPath = path.join(directory, 'provider-snapshot.json');
+    const runtimeClient = createReachableRuntimeStub();
+    let diagnosticsCalls = 0;
+    let releaseFirstCall;
+    const firstCallReady = new Promise((resolve) => {
+      releaseFirstCall = resolve;
+    });
+    const originalDiagnostics = runtimeClient.getProviderDiagnostics;
+    runtimeClient.getProviderDiagnostics = async (query = {}) => {
+      diagnosticsCalls += 1;
+      if (diagnosticsCalls === 1) {
+        await firstCallReady;
+      }
+      return originalDiagnostics.call(runtimeClient, query);
+    };
+
+    await withSeededServer(runtimeClient, snapshotPath, async (baseUrl) => {
+      // Kick off a request that gets stuck waiting for the first probe.
+      const stuckRequest = fetch(`${baseUrl}/api/providers`);
+      // Give the route handler time to install the inflight promise.
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      assert.equal(diagnosticsCalls, 1, 'first probe should have started');
+
+      const forced = await fetch(`${baseUrl}/api/providers?force=1`);
+      assert.equal(forced.status, 200);
+      const payload = await forced.json();
+      assert.equal(payload.state, 'ready');
+      assert.equal(diagnosticsCalls, 2, 'force=1 must spawn a new probe instead of joining the stuck one');
+
+      // Release the stuck probe so the original request can settle before the
+      // server is closed; otherwise node:test will hang on the open socket.
+      releaseFirstCall();
+      const stuck = await stuckRequest;
+      assert.equal(stuck.status, 200);
+    });
+  });
+});
+
+test('a no_usable_targets refresh after a successful warm leaves the disk snapshot intact', async () => {
+  await withTempDir(async (directory) => {
+    const snapshotPath = path.join(directory, 'provider-snapshot.json');
+    const runtimeClient = createReachableRuntimeStub();
+    let suppressProviders = false;
+    const originalDiagnostics = runtimeClient.getProviderDiagnostics;
+    runtimeClient.getProviderDiagnostics = async (query = {}) => {
+      if (suppressProviders) {
+        return { probe: 'light', providers: [] };
+      }
+      return originalDiagnostics.call(runtimeClient, query);
+    };
+
+    const persisted = new Promise((resolve) => {
+      bootstrapProviderSelector(runtimeClient, {
+        snapshotPath,
+        onSnapshotPersisted: () => resolve(),
+      }).catch((error) => {
+        throw error;
+      });
+    });
+    await persisted;
+
+    const baseline = await loadProviderSnapshot(snapshotPath);
+    assert.ok(baseline?.registry?.providers.some((provider) => provider.id === 'claude'));
+
+    // Now flip the runtime to report no_usable_targets and trigger a refresh.
+    suppressProviders = true;
+    await withSeededServer(runtimeClient, snapshotPath, async (baseUrl) => {
+      const forced = await fetch(`${baseUrl}/api/providers?force=1`);
+      assert.equal(forced.status, 200);
+      const payload = await forced.json();
+      assert.equal(payload.state, 'no_usable_targets');
+
+      // Wait past the snapshot debounce window so any (incorrect) write would
+      // have landed by now.
+      await new Promise((resolve) => setTimeout(resolve, 1_300));
+
+      const reloaded = await loadProviderSnapshot(snapshotPath);
+      assert.equal(
+        reloaded?.registry?.state,
+        'ready',
+        'no_usable_targets refresh must not overwrite a previously good registry on disk',
+      );
+      assert.ok(reloaded?.registry?.providers.some((provider) => provider.id === 'claude'));
+    });
+  });
+});
+
+test('flushProviderSnapshotPersistence drains a pending debounced write', async () => {
+  const { flushProviderSnapshotPersistence } = await import(
+    '../build/server/server/routes/providers.js'
+  );
+
+  await withTempDir(async (directory) => {
+    const snapshotPath = path.join(directory, 'provider-snapshot.json');
+    const runtimeClient = createReachableRuntimeStub();
+
+    await bootstrapProviderSelector(runtimeClient, { snapshotPath });
+    // bootstrapProviderSelector schedules the persist via 1s debounce; do NOT
+    // wait for it. Flush should perform the write synchronously.
+    await flushProviderSnapshotPersistence(runtimeClient);
+
+    const reloaded = await loadProviderSnapshot(snapshotPath);
+    assert.ok(reloaded, 'flush must persist the pending snapshot');
+    assert.equal(reloaded.registry?.state, 'ready');
+    assert.ok(reloaded.registry?.providers.some((provider) => provider.id === 'claude'));
+  });
+});

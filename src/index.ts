@@ -23,6 +23,7 @@ import { CatsRuntimeClient } from './platform/runtime/client.js';
 import { FileChatStore } from './products/chat/state/store.js';
 import { isDirectCliEntrypoint } from './shared/cliEntrypoint.js';
 import {
+  flushProviderSnapshotPersistence,
   seedProviderSelectorFromSnapshot,
   warmProviderSelectorCache,
 } from './server/routes/providers.js';
@@ -72,8 +73,7 @@ async function main(): Promise<void> {
   // Seed provider/catalog caches from disk before we start accepting requests
   // so the first /api/providers (or /api/providers/:id/models*) call lands on
   // the snapshot SWR path instead of paying the cold-runtime diagnostics
-  // timeout. The runtime probe itself runs in the background as part of the
-  // startup recovery passes once createServer's recovery pipeline kicks in.
+  // timeout.
   try {
     await seedProviderSelectorFromSnapshot(
       runtimeClient,
@@ -85,6 +85,13 @@ async function main(): Promise<void> {
       message: error instanceof Error ? error.message : String(error),
     });
   }
+
+  // Kick off the runtime warm-up *before* server.listen so a first-launch user
+  // request — which lands without a disk snapshot — joins the inflight probe
+  // instead of triggering its own. With a snapshot, this just refreshes the
+  // SWR baseline in the background. Errors are swallowed: the on-demand
+  // request path will retry as usual.
+  void warmProviderSelectorCache(runtimeClient).catch(() => {});
   let shutdownPromise: Promise<void> | null = null;
 
   const writeLifecycle = (line: string | null) => {
@@ -102,7 +109,11 @@ async function main(): Promise<void> {
     writeLifecycle(formatAppStoppingMessage(startup, reason));
 
     shutdownPromise = closeAppServerGracefully(server)
-      .then(() => {
+      .then(async () => {
+        // Flush any pending provider snapshot before exiting so a recent
+        // successful refresh isn't lost when the debounce timer hadn't fired
+        // yet. Best-effort: failures must not block the lifecycle event.
+        await flushProviderSnapshotPersistence(runtimeClient).catch(() => {});
         markAppStopped(startup, reason);
         writeLifecycle(formatAppStoppedMessage(startup, reason));
       })
@@ -171,11 +182,6 @@ async function main(): Promise<void> {
   writeLifecycle(
     formatAppReadyMessage(startup, listeningAddress),
   );
-
-  // Run the runtime probe + per-provider catalog warm-up in the background so
-  // the first user request lands on warm caches even without a prior snapshot.
-  // Errors are swallowed: the on-demand request path will retry as usual.
-  void warmProviderSelectorCache(runtimeClient).catch(() => {});
 }
 
 if (isDirectCliEntrypoint(import.meta.url, process.argv[1])) {
