@@ -10,7 +10,10 @@ import {
   decideRunLoopHandoff,
   sendSupervisedRuntimeMessage,
   type BudgetEnvelope,
+  type ProviderAgentRunLoopRecord,
   type RunLoopDecisionHandoff,
+  type RunLoopObservationRecord,
+  type RunLoopOutcomeRecord,
   type ToolBoundaryEvidenceSink,
 } from '../supervision/index.js';
 
@@ -29,12 +32,16 @@ export interface StartProviderAgentRunLoopInput {
   messageReason: string;
   messageContent: string;
   messageInput?: RuntimeSendMessageInput | ((session: RuntimeSessionInfo) => RuntimeSendMessageInput);
+  recordedAt: string;
 }
 
 export interface ProviderAgentRunLoopStartResult {
   session: RuntimeSessionInfo;
   message: RuntimeMessageResult;
   handoff: RunLoopDecisionHandoff;
+  observation: RunLoopObservationRecord;
+  outcome: RunLoopOutcomeRecord;
+  record: ProviderAgentRunLoopRecord;
 }
 
 export async function startProviderAgentRunLoop(
@@ -74,19 +81,46 @@ export async function startProviderAgentRunLoop(
     },
   });
 
+  const observationRef = {
+    refId: `${input.messageActionId}:provider-response`,
+    source: 'provider_response' as const,
+    resultStatus: 'applied' as const,
+  };
+  const handoff = decideRunLoopHandoff({
+    runId: input.runId,
+    actionId: input.messageActionId,
+    primaryState: 'running',
+    nextTarget: 'provider_agent_seam',
+    observationRef,
+  });
+  const observation: RunLoopObservationRecord = {
+    observationId: `${input.messageActionId}:observation`,
+    actionId: input.messageActionId,
+    observedAt: input.recordedAt,
+    ...observationRef,
+  };
+  const outcome: RunLoopOutcomeRecord = {
+    outcomeId: `${input.messageActionId}:outcome`,
+    actionId: input.messageActionId,
+    kind: 'runtime_message',
+    status: 'applied',
+    sessionId: session.id,
+    ...(message.tokensUsed === undefined ? {} : { tokensUsed: message.tokensUsed }),
+    recordedAt: input.recordedAt,
+    handoff,
+  };
+  const record: ProviderAgentRunLoopRecord = {
+    observations: [observation],
+    outcomes: [outcome],
+    latestHandoff: handoff,
+  };
+
   return {
     session,
     message,
-    handoff: decideRunLoopHandoff({
-      runId: input.runId,
-      actionId: input.messageActionId,
-      primaryState: 'running',
-      nextTarget: 'provider_agent_seam',
-      observationRef: {
-        refId: `${input.messageActionId}:provider-response`,
-        source: 'provider_response',
-        resultStatus: 'applied',
-      },
-    }),
+    handoff,
+    observation,
+    outcome,
+    record,
   };
 }

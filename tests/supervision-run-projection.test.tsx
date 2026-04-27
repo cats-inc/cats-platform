@@ -72,6 +72,49 @@ async function createFixtureCore() {
       createdAt: '2026-04-25T10:55:00.000Z',
       metadata: {
         supervision: {
+          providerAgentRunLoop: {
+            observations: [
+              {
+                observationId: 'action-supervised-1:observation',
+                actionId: 'action-supervised-1',
+                observedAt: '2026-04-25T11:02:30.000Z',
+                refId: 'action-supervised-1:provider-response',
+                source: 'provider_response',
+                resultStatus: 'applied',
+              },
+            ],
+            outcomes: [
+              {
+                outcomeId: 'action-supervised-1:outcome',
+                actionId: 'action-supervised-1',
+                kind: 'runtime_message',
+                status: 'applied',
+                sessionId: 'runtime-session-supervised-1',
+                tokensUsed: 12,
+                recordedAt: '2026-04-25T11:02:30.000Z',
+                handoff: {
+                  kind: 'provider_agent_seam',
+                  runId: 'run-supervised-1',
+                  actionId: 'action-supervised-1',
+                  observationRef: {
+                    refId: 'action-supervised-1:provider-response',
+                    source: 'provider_response',
+                    resultStatus: 'applied',
+                  },
+                },
+              },
+            ],
+            latestHandoff: {
+              kind: 'provider_agent_seam',
+              runId: 'run-supervised-1',
+              actionId: 'action-supervised-1',
+              observationRef: {
+                refId: 'action-supervised-1:provider-response',
+                source: 'provider_response',
+                resultStatus: 'applied',
+              },
+            },
+          },
           runState: {
             blockers: [
               {
@@ -145,6 +188,12 @@ test('supervised run projection combines run state, policy snapshots, and eviden
   assert.deepEqual(projection.blockers.map((blocker) => blocker.code), ['BUDGET_SOFT_LIMIT']);
   assert.equal(projection.approvalRequests[0]?.requestId, 'approval-supervised-1');
   assert.equal(projection.latestPolicySnapshot?.snapshot.actionId, 'action-supervised-1');
+  assert.equal(projection.providerAgentRunLoop?.observations[0]?.source, 'provider_response');
+  assert.equal(
+    projection.providerAgentRunLoop?.outcomes[0]?.sessionId,
+    'runtime-session-supervised-1',
+  );
+  assert.equal(projection.providerAgentRunLoop?.latestHandoff?.kind, 'provider_agent_seam');
   assert.deepEqual(
     projection.latestPolicySnapshot?.snapshotRef,
     createSupervisionPolicySnapshotRef(snapshot),
@@ -175,5 +224,6 @@ test('Work task detail projection exposes supervised latest-run inspection', asy
   assert.equal(detail.supervision?.primaryState, 'waiting_for_approval');
   assert.equal(detail.supervision?.counts.policySnapshots, 1);
   assert.equal(detail.supervision?.counts.evidence, 1);
+  assert.equal(detail.supervision?.providerAgentRunLoop?.latestHandoff?.kind, 'provider_agent_seam');
   assert.equal(payload?.supervision?.evidence[0]?.eventId, 'evidence-supervised-1');
 });

@@ -23,6 +23,7 @@ import {
   deriveRunState,
   writeRunStateMetadata,
   type BudgetEnvelope,
+  type ProviderAgentRunLoopRecord,
   type RunLoopDecisionHandoff,
 } from '../../../platform/supervision/index.js';
 import { startProviderAgentRunLoop } from '../../../platform/orchestration/index.js';
@@ -488,6 +489,7 @@ async function launchRuntimeForWorkSupervisedRun(input: {
         startedAt: evaluatedAt,
         messageSentAt: evaluatedAt,
         handoff: runtime.handoff,
+        runLoop: runtime.runLoop,
       }),
       evaluation: activeRunState,
       evaluatedAt,
@@ -588,6 +590,7 @@ async function startWorkSupervisedRuntime(input: {
   target: ResolvedWorkRuntimeTarget;
   actorRef: string;
   handoff: RunLoopDecisionHandoff;
+  runLoop: ProviderAgentRunLoopRecord;
 }> {
   const drivingActor = resolveDrivingActor(input.core, input.task, input.run);
   const target = resolveWorkRuntimeTarget(input.core, input.task, drivingActor, input.dependencies);
@@ -651,6 +654,7 @@ async function startWorkSupervisedRuntime(input: {
     messageActionId: `${input.run.id}:runtime-message`,
     messageReason: 'work_supervised_run_prompt',
     messageContent: buildWorkSupervisedRunPrompt(input.core, input.task, input.run),
+    recordedAt: input.evaluatedAt,
     messageInput: (session) => ({
       instructions: WORK_SUPERVISED_RUNTIME_INSTRUCTIONS,
       context: {
@@ -670,6 +674,7 @@ async function startWorkSupervisedRuntime(input: {
     target,
     actorRef,
     handoff: loop.handoff,
+    runLoop: loop.record,
   };
 }
 
@@ -786,6 +791,7 @@ function writeRuntimeBridgeMetadata(
     startedAt: string;
     messageSentAt: string;
     handoff: RunLoopDecisionHandoff;
+    runLoop: ProviderAgentRunLoopRecord;
   } | {
     status: 'failed';
     error: string;
@@ -794,11 +800,15 @@ function writeRuntimeBridgeMetadata(
 ): Record<string, unknown> {
   const supervision = asRecord(metadata.supervision) ?? {};
   const existingBridge = asRecord(supervision.runtimeBridge) ?? {};
+  const providerAgentRunLoop = update.status === 'started'
+    ? mergeProviderAgentRunLoopRecord(supervision.providerAgentRunLoop, update.runLoop)
+    : supervision.providerAgentRunLoop;
 
   return {
     ...metadata,
     supervision: {
       ...supervision,
+      ...(providerAgentRunLoop === undefined ? {} : { providerAgentRunLoop }),
       runtimeBridge: update.status === 'started'
         ? {
             ...existingBridge,
@@ -823,6 +833,31 @@ function writeRuntimeBridgeMetadata(
             lastError: update.error,
           },
     },
+  };
+}
+
+function mergeProviderAgentRunLoopRecord(
+  existing: unknown,
+  update: ProviderAgentRunLoopRecord,
+): ProviderAgentRunLoopRecord {
+  const current = asRecord(existing);
+  const observations = Array.isArray(current?.observations)
+    ? current.observations.filter(isRunLoopObservationRecord)
+    : [];
+  const outcomes = Array.isArray(current?.outcomes)
+    ? current.outcomes.filter(isRunLoopOutcomeRecord)
+    : [];
+
+  return {
+    observations: [
+      ...observations,
+      ...update.observations,
+    ],
+    outcomes: [
+      ...outcomes,
+      ...update.outcomes,
+    ],
+    latestHandoff: update.latestHandoff,
   };
 }
 
@@ -885,4 +920,29 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? value as Record<string, unknown>
     : null;
+}
+
+function isRunLoopObservationRecord(
+  value: unknown,
+): value is ProviderAgentRunLoopRecord['observations'][number] {
+  const record = asRecord(value);
+  return record !== null &&
+    typeof record.observationId === 'string' &&
+    typeof record.actionId === 'string' &&
+    typeof record.observedAt === 'string' &&
+    typeof record.refId === 'string' &&
+    typeof record.source === 'string';
+}
+
+function isRunLoopOutcomeRecord(
+  value: unknown,
+): value is ProviderAgentRunLoopRecord['outcomes'][number] {
+  const record = asRecord(value);
+  return record !== null &&
+    typeof record.outcomeId === 'string' &&
+    typeof record.actionId === 'string' &&
+    record.kind === 'runtime_message' &&
+    typeof record.status === 'string' &&
+    typeof record.sessionId === 'string' &&
+    typeof record.recordedAt === 'string';
 }

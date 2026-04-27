@@ -28,6 +28,29 @@ export interface RunLoopObservationRef {
   errorCode?: SupervisionRejectionCode;
 }
 
+export interface RunLoopObservationRecord extends RunLoopObservationRef {
+  observationId: string;
+  actionId: string;
+  observedAt: string;
+}
+
+export interface RunLoopOutcomeRecord {
+  outcomeId: string;
+  actionId: string;
+  kind: 'runtime_message';
+  status: ToolResultStatus;
+  sessionId: string;
+  tokensUsed?: number;
+  recordedAt: string;
+  handoff: RunLoopDecisionHandoff;
+}
+
+export interface ProviderAgentRunLoopRecord {
+  observations: RunLoopObservationRecord[];
+  outcomes: RunLoopOutcomeRecord[];
+  latestHandoff: RunLoopDecisionHandoff | null;
+}
+
 export interface DecideRunLoopHandoffInput {
   runId: string;
   actionId: string;

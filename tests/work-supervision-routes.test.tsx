@@ -325,6 +325,11 @@ test('POST /api/work/tasks/:taskId/supervised-run starts supervised runtime sess
   const persistedRun = core.runs.find((candidate) => candidate.id === payload.run.id);
   const supervision = persistedRun?.metadata.supervision as Record<string, unknown> | undefined;
   const runtimeBridge = supervision?.runtimeBridge as Record<string, unknown> | undefined;
+  const providerAgentRunLoop = supervision?.providerAgentRunLoop as
+    | Record<string, unknown>
+    | undefined;
+  const observations = providerAgentRunLoop?.observations as Record<string, unknown>[] | undefined;
+  const outcomes = providerAgentRunLoop?.outcomes as Record<string, unknown>[] | undefined;
   const evidence = readEvidenceEvents(tempDir, 'conversation-supervision-route');
 
   assert.equal(response.status, 201);
@@ -348,6 +353,29 @@ test('POST /api/work/tasks/:taskId/supervised-run starts supervised runtime sess
       resultStatus: 'applied',
     },
   });
+  assert.deepEqual(providerAgentRunLoop?.latestHandoff, runtimeBridge?.runLoopHandoff);
+  assert.deepEqual(observations?.[0], {
+    observationId: `${payload.run.id}:runtime-message:observation`,
+    actionId: `${payload.run.id}:runtime-message`,
+    observedAt: '2026-04-25T12:05:00.000Z',
+    refId: `${payload.run.id}:runtime-message:provider-response`,
+    source: 'provider_response',
+    resultStatus: 'applied',
+  });
+  assert.deepEqual(outcomes?.[0], {
+    outcomeId: `${payload.run.id}:runtime-message:outcome`,
+    actionId: `${payload.run.id}:runtime-message`,
+    kind: 'runtime_message',
+    status: 'applied',
+    sessionId: 'runtime-session-work-1',
+    tokensUsed: 15,
+    recordedAt: '2026-04-25T12:05:00.000Z',
+    handoff: runtimeBridge?.runLoopHandoff,
+  });
+  assert.deepEqual(
+    payload.supervision.providerAgentRunLoop.latestHandoff,
+    runtimeBridge?.runLoopHandoff,
+  );
   assert.equal(runtimeClient.sentMessages[0]?.sessionId, 'runtime-session-work-1');
   assert.match(runtimeClient.sentMessages[0]?.content ?? '', /Work task: Route supervised task/u);
   assert.deepEqual(
@@ -366,6 +394,10 @@ test('POST /api/work/tasks/:taskId/supervised-run starts supervised runtime sess
 
   assert.equal(detailResponse.status, 200);
   assert.ok(runtimeTrace, 'expected Work task timeline to include the runtime response');
+  assert.deepEqual(
+    detailPayload.supervision.providerAgentRunLoop.outcomes[0],
+    outcomes?.[0],
+  );
 
   const secondResponse = await fetch(
     `http://127.0.0.1:${address.port}/api/work/tasks/task-supervision-route/supervised-run`,
