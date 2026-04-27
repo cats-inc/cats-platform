@@ -89,10 +89,11 @@ Completed:
 - `/api/core/approvals` recognizes supervised approval bindings and applies
   owner approval/rejection decisions back to the supervised run state
 
-Remaining before real provider-agent integration:
+Follow-up:
 
-- open the separate real-provider integration PLAN only after this fake-agent
-  contract path is accepted
+- [PLAN-075: Real Provider Orchestrator Integration](./PLAN-075-real-provider-orchestrator-integration.md)
+  now owns real Claude/Codex/provider-agent integration, Chat decision-core
+  cutover, durable provider run lifecycle, and old planner/dispatcher cleanup.
 
 ## Non-Goals
 
@@ -102,9 +103,8 @@ Remaining before real provider-agent integration:
 - no new top-level canonical record family outside ADR-081 execution records
 - no promotion of weak workers into durable Cats or operational agents
 - no broad tool catalog; first slice uses a small testable tool set
-- no real provider integration. Real Claude/Codex/provider-agent integration
-  requires a separate follow-up PLAN opened only after Phase 5 contract tests
-  are green.
+- no real provider integration inside PLAN-074. Real Claude/Codex/provider-agent
+  integration is tracked by [PLAN-075](./PLAN-075-real-provider-orchestrator-integration.md).
 
 ## Implementation Phases
 
@@ -557,6 +557,7 @@ artifact exists.
 | 2026-04-25 | Follow-up review pass: added recovery-capable fake-agent harness, schema-version shape, phase-gate enforcement, real-provider follow-up boundary, and stricter minimal Work status surface. |
 | 2026-04-25 | Implementation pass: added Work supervised-run launch, bounded budgets, durable policy/evidence lineage, lifecycle child-run spawn, Work renderer launch action, idempotent active-run reuse, approval queue persistence/decision sync helpers, `/api/core/approvals` sync, and product-level fake-agent vertical coverage. |
 | 2026-04-25 | Verification pass: `npm run build`, PLAN-074 targeted supervision/Work tests, `work-war-room.test.js`, and `architecture-boundaries.test.js` passed locally. |
+| 2026-04-27 | Opened [PLAN-075](./PLAN-075-real-provider-orchestrator-integration.md) as the follow-up for real provider-agent integration and old planner/dispatcher retirement. |
 
 ---
 
