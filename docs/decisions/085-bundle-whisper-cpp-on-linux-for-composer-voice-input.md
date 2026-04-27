@@ -30,10 +30,10 @@ and is kept toggleable for the other two platforms via a build flag, so a
 future opt-in (e.g. as a fallback when `language_not_supported` fires on
 macOS) is a config change rather than a code restructure.
 
-The Linux desktop build is currently distributed as `.deb` only, but the
-team expects to add AppImage and `.rpm` later. Any solution must work
-across electron-builder's Linux installer formats without per-format
-branching.
+The Linux desktop build currently targets AppImage, `.deb`, and
+`.tar.gz` (x64 and arm64 each) per `package.json`'s `build.linux.target`.
+Future formats (`.rpm`, Snap) are expected. Any solution must work across
+electron-builder's Linux installer formats without per-format branching.
 
 ## Decision
 
@@ -70,6 +70,15 @@ runs entirely on-device.
   follow-up decision will choose between "replace native", "fallback
   after native errors", or "user-selectable". The default behavior keeps
   macOS and Windows on their native helpers.
+- **Linux per-platform stop cleanup window**: 60 seconds, vs the
+  5-second default applied to the macOS / Windows native helpers.
+  whisper.cpp inference runs synchronously after recording stops and on
+  the slowest supported CPU can take roughly 1.5x real-time per second
+  of audio. Combined with a 30-second utterance recording cap (helper
+  auto-stops; SPEC-087 Req 16) this gives a comfortable budget without
+  leaving long inference jobs to be killed before a final can land.
+  Hardware below the supported baseline that exceeds the 60-second
+  budget surfaces `engine_unavailable` to the renderer toast.
 
 The macOS / Windows decision tree from ADR-079 is unchanged. Linux moves
 from "deferred / toast on click" to "first-class on-device STT".
@@ -129,6 +138,12 @@ scope:
   dictation, small is too slow on the same low-end hardware.
 - Snap and Flatpak sandboxes will need explicit audio capture permission
   declarations when those formats are added; this is deferred but real.
+- v1 caps utterance recording at 30 seconds (helper auto-stops on
+  reaching the cap and emits a final transcript). Power users dictating
+  long paragraphs (e.g. 60+ seconds) must speak in shorter sessions or
+  wait for a follow-up SPEC introducing streaming inference. macOS and
+  Windows do not have this cap because their native engines stream
+  finals as the user speaks rather than batch-transcribing on stop.
 
 ### Neutral
 
@@ -219,4 +234,5 @@ scope:
 ---
 
 *Decision proposed: 2026-04-28*
+*Last revised: 2026-04-28 (review pass: Linux distribution facts in Context corrected to reflect the AppImage / deb / tar.gz targets already in `package.json`; added a Linux per-platform stop cleanup window of 60 seconds and a 30-second utterance recording cap to the Decision; added a corresponding negative consequence for the cap.)*
 *Decision makers: Sammy, Claude*

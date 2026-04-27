@@ -92,10 +92,14 @@ platform gate to include Linux.
    whisper.cpp's standard inference pipeline expects — via
    `libpulse-simple` (`pa_simple_new` / `pa_simple_read`).
 5. The helper buffers captured audio in memory until `stop` is received
-   on stdin. On `stop`, the helper closes the PulseAudio stream
-   (releasing the microphone), runs `whisper_full(...)` over the buffer
-   with the bundled `ggml-base.bin` model, emits a single `final` event
-   with the concatenated transcript, then `end`, then exits.
+   on stdin or the v1 utterance cap (Req 16) is reached. When either
+   condition triggers, the helper closes the PulseAudio stream first
+   (releasing the microphone within milliseconds), then runs
+   `whisper_full(...)` synchronously over the buffered audio with the
+   bundled `ggml-base.bin` model, emits a single `final` event with the
+   concatenated transcript, then `end`, then exits. Inference time can
+   exceed the audio duration on slower hardware; Req 14 budgets a
+   per-platform stop cleanup window long enough to cover this.
 6. On `cancel`, the helper discards the buffered audio, emits
    `error: cancelled`, then `end`, then exits.
 7. The helper emits `ready` immediately after the audio capture stream is
@@ -113,20 +117,32 @@ platform gate to include Linux.
    with the Linux helper without changes. Because the Linux helper emits
    `mode: 'on-device'`, the renderer privacy badge / chip is hidden,
    matching the macOS path.
-10. The Linux installer (`.deb` today, future AppImage / `.rpm` / Snap)
-    places the helper binary and model file under
-    `app.asar.unpacked/native/linux-stt/` via electron-builder's
+10. The Linux installer (currently AppImage / deb / tar.gz for x64 and
+    arm64 per `package.json`; future rpm / Snap as new formats are
+    added) places the helper binary and model file under
+    `<process.resourcesPath>/native/linux-stt/` via electron-builder's
     `extraResources` mechanism. The helper resolves the model path
     relative to its own location, so it works identically across all
-    Linux installer formats with no per-format code.
+    Linux installer formats with no per-format code. (Note: this is the
+    `extraResources` location — `<resourcesPath>/native/...` — not the
+    `app.asar.unpacked/...` path that applies to `asarUnpack` entries.)
 11. The build flag `CATS_BUNDLE_WHISPER_PLATFORMS` controls which
     platforms include the whisper helper. Its default value is `linux`.
     When set to a comma-separated list such as `linux,darwin,win32`,
     the whisper helper is also staged for those platforms. Empty value
-    (`CATS_BUNDLE_WHISPER_PLATFORMS=`) skips the whisper bundle entirely
-    (Linux falls back to the broken Web Speech path). Runtime selection
-    logic on macOS / Windows when whisper is staged alongside the native
-    helper is **explicitly out of scope** for this slice.
+    (`CATS_BUNDLE_WHISPER_PLATFORMS=`) skips the whisper bundle entirely.
+    When the bundle is skipped on Linux, the host's helper-path
+    resolution finds nothing on disk, the orchestrator emits
+    `engine_unavailable`, and the renderer surfaces the existing toast.
+    The bridge methods remain exposed because the preload's platform
+    gate is `process.platform`-only and does not check the helper file
+    at preload time — the renderer therefore does **not** fall through
+    to `useWebSpeechInput` on a missing-helper Linux build. Restoring
+    Web Speech fallthrough would require gating the preload's bridge
+    exposure on helper presence; that is out of scope for this slice
+    and tracked as an open question. Runtime selection logic on macOS /
+    Windows when whisper is staged alongside the native helper is
+    **explicitly out of scope** for this slice.
 12. License obligations: the Linux installer ships whisper.cpp's MIT
     NOTICE and the OpenAI ggml-base model card under
     `resources/native/linux-stt/NOTICE`. The build script copies these
@@ -135,18 +151,33 @@ platform gate to include Linux.
     Linux helper does its own audio capture via libpulse and never goes
     through Chromium `getUserMedia`. The renderer remains denied for
     `media`.
-14. The Linux helper's stop cleanup follows the macOS pattern: closing
-    the libpulse stream returns immediately (microphone released);
-    whisper.cpp inference may run for several hundred milliseconds; the
-    host's existing 5-second stop cleanup window is sufficient for
-    typical 30-second utterances on the base model. If inference exceeds
-    the host cleanup window the helper is killed and the user sees no
-    final event for that session — surface as `engine_unavailable` to
-    the renderer toast.
+14. The Linux helper releases the microphone immediately on `stop` or
+    on auto-stop (Req 16): closing the libpulse stream returns within
+    milliseconds. whisper.cpp inference then runs synchronously over
+    the buffered audio. Because the base model runs at roughly 0.3-1.5x
+    real-time depending on CPU, inference for the 30-second utterance
+    cap (Req 16) can take from ~9 seconds on a fast Intel i5 to
+    ~45 seconds on the slowest supported hardware. The host therefore
+    uses a per-platform stop cleanup window of 60 seconds for Linux
+    helpers (vs the 5-second default applied to macOS / Windows native
+    helpers), so finals have time to land. If inference exceeds 60
+    seconds (very rare; only on hardware below the supported baseline),
+    the host kills the helper and the user sees `engine_unavailable`
+    for that session; the setup-guide documents this as a known
+    limitation on underpowered hardware.
 15. The helper preloads the whisper model on `ready` rather than lazily
     on `stop`, so first-utterance latency is dominated by inference
     time rather than model load. The helper exits if model load fails
     with `engine_unavailable`.
+16. The helper bounds total recording duration to 30 seconds (16 kHz
+    mono S16LE × 30 s = ~960 KB buffer). On reaching the cap, the
+    helper auto-stops as if the user had clicked stop: it closes the
+    PulseAudio stream, runs inference, emits `final`, emits `end`, and
+    exits. The renderer is unaware the auto-stop occurred — it sees the
+    same `final` → `end` sequence as a user-initiated stop. The
+    30-second cap is a v1 trade-off chosen so worst-case inference time
+    stays inside the 60-second Linux stop cleanup window (Req 14); a
+    follow-up SPEC may introduce streaming inference to lift this cap.
 
 ### Non-Functional Requirements
 
@@ -162,8 +193,14 @@ platform gate to include Linux.
   degrades but stays usable for short utterances.
 - **Installer size**: the Linux installer delta from this slice is
   ~140-150 MB. Documented in the setup-guide.
-- **Reliability**: the helper terminates within the host stop cleanup
-  window even if libpulse stalls. libpulse reads use bounded timeouts.
+- **Reliability**: the helper terminates within the platform-specific
+  stop cleanup window (60 seconds on Linux, 5 seconds on macOS /
+  Windows) even if libpulse stalls. Audio capture uses small chunked
+  synchronous `pa_simple_read` calls (~20 ms / 320 samples each) and a
+  shared stop / cancel atomic flag checked between iterations; closing
+  the stream from the command thread interrupts the in-flight read.
+  `pa_simple` is intentionally not used in a "non-blocking with
+  timeout" mode because the API does not support that pattern.
 - **Compatibility**: target Ubuntu 22.04 LTS, Debian 12, and Fedora 40
   for the v1 deb. PipeWire-pulse compatibility is required (default on
   Ubuntu 22.10+ and Fedora 35+). Pure ALSA-only systems surface
@@ -191,7 +228,11 @@ Linux composer microphone button
             -> helper runs whisper.cpp inference on the audio buffer
             -> helper emits `final` with the transcript, then `end`
             -> helper exits; host emits `end` to renderer; cleanup timer no-op
-       -> bridge absent (e.g. browser deployment, or whisper helper missing on Linux)
+       -> bridge present but Linux helper missing (build flag empty / file absent)
+            -> startVoiceCapture() returns engine_unavailable from the host
+            -> renderer surfaces the existing "Voice input is not available
+               on this device" toast; useWebSpeechInput is NOT consulted
+       -> bridge absent (browser deployment / non-Electron renderer)
             -> falls through to existing useWebSpeechInput
             -> button stays visible; click invokes start(); failure surfaces
                via the existing toast wiring (commit 55c15f5a)
@@ -260,6 +301,20 @@ CATS_BUNDLE_WHISPER_PLATFORMS=
       preflight? On Linux the OS does not gate mic per app (the desktop
       session-level permission is just "user is in the `audio` group" or
       similar). Confirm during Phase 6 manual validation.
+- [ ] Should the preload also gate bridge exposure on whisper-helper
+      file presence so that Linux builds without the bundled helper
+      fall through cleanly to `useWebSpeechInput`? Currently the
+      platform gate is `process.platform`-only and a missing helper
+      surfaces as `engine_unavailable`. Implementing the file gate is
+      straightforward (`existsSync` against the resolved packaged path
+      from preload) but adds a Node `fs` import in preload that the
+      current code avoids. v1 default is no file gate; revisit if the
+      `CATS_BUNDLE_WHISPER_PLATFORMS=` empty path becomes a real
+      production scenario.
+- [ ] Should the renderer add a "30-second cap approaching" warning
+      chip in the last 5 seconds before auto-stop (Req 16) so users
+      are not surprised when long utterances cut off mid-sentence?
+      v1 default: no chip; manual surfacing only via the setup-guide.
 
 ## References
 
@@ -273,5 +328,6 @@ CATS_BUNDLE_WHISPER_PLATFORMS=
 ---
 
 *Created: 2026-04-28*
+*Last revised: 2026-04-28 (review pass: Req 14 corrected from the wrong "5-second cleanup is sufficient" claim to a Linux per-platform 60-second window; new Req 16 caps utterance recording at 30 seconds with auto-stop; Req 10 packaged path corrected from `app.asar.unpacked/...` to `<resourcesPath>/...`; Req 11 fallback contract reflects the actual `engine_unavailable` outcome rather than a non-existent Web Speech fallthrough; Reliability NFR rewritten to describe the real chunked synchronous `pa_simple_read` pattern instead of the impossible non-blocking timeout; design overview branches updated; preload-gate and 30-second-warning chip added as open questions.)*
 *Author: Claude*
 *Related Plan: [PLAN-078](../plans/PLAN-078-linux-composer-voice-input-whisper-cpp-rollout.md)*

@@ -48,16 +48,26 @@ toggleable via a build flag (`CATS_BUNDLE_WHISPER_PLATFORMS`).
     `CATS_STT_ENABLE_FIXTURE_INPUT=1` env gate, mirroring the macOS
     helper).
   - libpulse-simple capture: open a record stream at 16 kHz mono S16LE
-    against the default source; non-blocking reads with bounded
-    timeout.
+    against the default source. Use small chunked synchronous
+    `pa_simple_read` calls (~20 ms / 320 samples per call) and check a
+    shared stop / cancel atomic flag between iterations. Do not pretend
+    `pa_simple` has non-blocking semantics — the API does not provide
+    them. To break out of an in-flight read on stop / cancel, the
+    command thread closes the `pa_simple` handle which causes the
+    pending `pa_simple_read` to return an error, ending the loop.
   - JSON event emission: `ready { mode: 'on-device' }`, `final`,
     `error`, `end`. No `partial` events in v1.
   - stdin command parsing using a real JSON parser (e.g. nlohmann/json
     header-only) with `sessionId` matching, mirroring the macOS /
     Windows helper pattern.
   - Capture buffer: append libpulse reads to an `std::vector<int16_t>`
-    until stop or cancel. Bound the buffer to a maximum size
-    (e.g. 5 minutes of audio) to prevent runaway memory.
+    until stop, cancel, or the v1 utterance cap (SPEC-087 Req 16:
+    30 seconds = ~960 KB at 16 kHz S16LE) is reached. Reaching the cap
+    triggers the same auto-stop path as a user-initiated stop (close
+    stream → run inference → emit `final` → emit `end` → exit). The
+    cap exists so worst-case whisper inference time stays inside the
+    60-second Linux stop cleanup window; future streaming-inference
+    work can lift it.
   - On stop: close the libpulse stream first (microphone released),
     convert S16LE samples to float32, run `whisper_full(...)` with
     the loaded model context, walk segments, concatenate text, emit
@@ -106,6 +116,16 @@ toggleable via a build flag (`CATS_BUNDLE_WHISPER_PLATFORMS`).
       the packaged path (`<resourcesPath>/native/linux-stt/cats-stt-linux`)
       and the dev path (`<packageRoot>/desktop/native/linux-stt/build/cats-stt-linux`),
       mirroring the macOS / Windows resolution logic.
+- [ ] Add per-platform stop cleanup window selection to
+      `desktop/host/voiceCapture.ts`: introduce
+      `LINUX_STOP_CLEANUP_TIMEOUT_MS = 60_000` (vs the existing
+      `DEFAULT_STOP_CLEANUP_TIMEOUT_MS = 5_000`) and have the
+      controller pick the Linux value when the active session targets
+      the Linux helper, so whisper inference time after stop has room
+      to land before the host kills the helper. macOS / Windows
+      defaults are unchanged. Add a contract test that asserts the
+      correct timeout is selected per platform (mirroring the existing
+      stop-vs-cancel cleanup window test added in commit f271e7a8).
 - [ ] No changes required in `useNativeVoiceInput.ts`, the renderer
       hook, or the privacy badge logic. The Linux helper's
       `mode: 'on-device'` event is handled by the existing code path.
@@ -165,7 +185,7 @@ toggleable via a build flag (`CATS_BUNDLE_WHISPER_PLATFORMS`).
 | `desktop/native/linux-stt/src/main.cpp` | Create | Helper source: libpulse capture + whisper inference + JSON event protocol |
 | `desktop/native/linux-stt/scripts/fetch-model.sh` | Create | Downloads `ggml-base.bin` and verifies SHA256 |
 | `desktop/native/linux-stt/NOTICE` | Create | whisper.cpp + ggml-base license obligations |
-| `desktop/host/voiceCapture.ts` | Modify | Add `linux` branch in `resolveVoiceCaptureHelperPath` |
+| `desktop/host/voiceCapture.ts` | Modify | Add `linux` branch in `resolveVoiceCaptureHelperPath`; add a per-platform stop cleanup window with `LINUX_STOP_CLEANUP_TIMEOUT_MS = 60_000` so whisper inference has room to deliver finals before the host kills the helper |
 | `desktop/host/preload.cts` | Modify | Extend platform gate to include `linux` |
 | `scripts/build-desktop-installer.mjs` | Modify | Build whisper helper + stage model for the platforms in `CATS_BUNDLE_WHISPER_PLATFORMS` (default `linux`) |
 | `package.json` | Modify if needed | Confirm `extraResources` covers `build/native/linux-stt`; add deb `dependencies` for `libpulse0` |
@@ -236,13 +256,15 @@ toggleable via a build flag (`CATS_BUNDLE_WHISPER_PLATFORMS`).
 | Multi-display / multi-microphone systems pick the wrong PulseAudio source | Low | Use PA's default source (`NULL` device argument). Future ADR can add a device picker if requested |
 | OpenAI ggml model license obligations missed in the installer | High | Phase 1 includes a NOTICE file alongside the model; deb's `copyright` file references both whisper.cpp and ggml-base; packaging test asserts the NOTICE is staged |
 | Helper accidentally pulls in network deps via whisper.cpp's optional features | High | CMake build explicitly disables whisper.cpp's optional `WHISPER_CURL` / equivalent flags; build assertion checks the helper binary does not link `libcurl` / `libssl` |
-| Inference exceeds host's 5 s stop cleanup window on long utterances | Medium | Helper closes libpulse stream early so microphone is released; if inference times out, host kills helper and renderer surfaces `engine_unavailable`. Future tuning option: bound buffer size and run inference in chunks |
+| Inference exceeds host stop cleanup window on long utterances | High | Linux uses a 60-second per-platform stop cleanup window (vs the 5-second default) and the helper auto-stops recording at 30 seconds (SPEC-087 Req 16). Combined this gives a worst-case inference budget of ~60 s for a 30-second utterance at 2x real-time, which covers all supported hardware. Below-baseline hardware that exceeds this window surfaces `engine_unavailable` to the renderer toast |
+| Users dictating utterances longer than 30 seconds get auto-stopped mid-sentence | Medium | Document the v1 cap in setup-guide; consider a 25-second pre-cap warning chip in a follow-up (tracked as a SPEC open question); future SPEC adds streaming inference to lift the cap |
 
 ## Progress Log
 
 | Date | Update |
 |------|--------|
 | 2026-04-28 | Plan created from ADR-085 / SPEC-087. Awaiting Sammy review before Phase 1 start. |
+| 2026-04-28 | Review follow-up: SPEC-087 Req 14 + new Req 16 fix the previously incorrect claim that the host's default 5-second stop cleanup window covers whisper inference. Linux now uses a 60-second per-platform stop cleanup with a 30-second utterance cap. PLAN Phase 2 audio-capture bullet replaced the impossible "non-blocking with bounded timeout" wording with the actual chunked synchronous `pa_simple_read` pattern. Phase 4 gains a `LINUX_STOP_CLEANUP_TIMEOUT_MS` task. Risks updated: inference vs cleanup risk now High and explicitly mitigated; new utterance-cap risk added. Packaged path claim corrected in SPEC Req 10 from `app.asar.unpacked/...` to `<resourcesPath>/...`. SPEC Req 11 fallback wording aligned with the actual `engine_unavailable` outcome. |
 
 ---
 
