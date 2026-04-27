@@ -147,5 +147,16 @@ test('parallel chat dispatch derives summaries from Chat dispatch state, not old
 
   assert.equal(source.includes('buildOrchestratorTurnPlan'), false);
   assert.equal(source.includes('orchestratorPlannerSurface'), false);
-  assert.equal(source.includes('buildParallelDispatchOrchestratorSummary'), true);
+  assert.equal(source.includes('buildChannelDispatchOrchestratorSummaryFromBegun'), true);
+});
+
+test('channel message routes acknowledge Chat dispatch without building old platform plans', () => {
+  const source = readFileSync(
+    path.join(process.cwd(), 'src/products/chat/api/resources/channelRoutes.ts'),
+    'utf8',
+  );
+
+  assert.equal(source.includes('buildOrchestratorTurnPlan'), false);
+  assert.equal(source.includes('buildChannelMessageOrchestratorPlanState'), false);
+  assert.equal(source.includes('buildChannelDispatchAcknowledgementFromBegun'), true);
 });

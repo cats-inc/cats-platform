@@ -53,6 +53,7 @@ import {
 import {
   buildDeterministicRoutingPlanMessageMetadata,
   toDeterministicChatRoutingPlan,
+  type DeterministicChatRoutingPlan,
 } from './deterministicPlan.js';
 import type {
   ChannelDispatchCancellationRegistry,
@@ -173,7 +174,7 @@ function applyDeterministicPlanMetadataToExistingUserMessage(
   state: ChatState,
   channelId: string,
   messageId: string,
-  plan: ReturnType<typeof toDeterministicChatRoutingPlan>,
+  plan: DeterministicChatRoutingPlan | null,
   now: Date,
 ): {
   state: ChatState;
@@ -204,6 +205,47 @@ function applyDeterministicPlanMetadataToExistingUserMessage(
   return {
     state: refreshDerivedMemoryLayers(nextState, channelId, now),
     userMessage: nextMessage,
+  };
+}
+
+function buildPreparedTurnDeterministicRoutingPlan(
+  channelId: string,
+  preparedTurn: import('./turn.js').PreparedDispatchTurn,
+): DeterministicChatRoutingPlan {
+  return {
+    planId:
+      preparedTurn.providerAgentObservation?.observationId
+      ?? `chat-deterministic:${channelId}:${preparedTurn.userMessage.id}`,
+    channelId,
+    metadata: {
+      planner: preparedTurn.providerAgentObservation
+        ? 'provider_agent_observation'
+        : 'chat_deterministic_router',
+      loopMode: 'agent_driven',
+      dispatchBoundary: 'supervised_runtime_boundary',
+      runtimeToolBoundary: 'runtime_mcp_facade',
+    },
+    routing: {
+      trigger: preparedTurn.initialResolution.trigger,
+      resolution: structuredClone(preparedTurn.initialResolution.resolution),
+      mentionNames: [...preparedTurn.initialResolution.mentionNames],
+      unresolvedMentions: [...preparedTurn.initialResolution.unresolved],
+      initialTargets: preparedTurn.initialResolution.targets.map((target) => {
+        const targetStatus = preparedTurn.activeTurn.targetStatuses.find((candidate) =>
+          candidate.participant.participantKind === target.participantKind
+          && candidate.participant.participantId === target.participantId
+          && candidate.laneId === (target.laneId ?? null));
+        return {
+          participantKind: target.participantKind,
+          participantId: target.participantId,
+          participantName: target.participantName,
+          laneId: target.laneId,
+          sessionId: target.sessionId,
+          trigger: targetStatus?.trigger ?? preparedTurn.initialResolution.trigger,
+          plannedDepth: targetStatus?.depth ?? 0,
+        };
+      }),
+    },
   };
 }
 
@@ -341,6 +383,19 @@ export async function beginChannelMessageDispatch(
       deterministicRoutingPlan,
     },
   );
+  const effectiveDeterministicRoutingPlan =
+    deterministicRoutingPlan ?? buildPreparedTurnDeterministicRoutingPlan(channelId, preparedTurn);
+  const metadataApplied = applyDeterministicPlanMetadataToExistingUserMessage(
+    preparedTurn.state,
+    channelId,
+    preparedTurn.userMessage.id,
+    effectiveDeterministicRoutingPlan,
+    now,
+  );
+  if (metadataApplied.userMessage) {
+    preparedTurn.state = metadataApplied.state;
+    preparedTurn.userMessage = metadataApplied.userMessage;
+  }
   nextState = materializeInFlightDispatchState(
     preparedTurn.state,
     channelId,
@@ -414,6 +469,20 @@ export async function beginChannelMessageRetryDispatch(
       deterministicRoutingPlan,
     },
   );
+  const effectiveDeterministicRoutingPlan =
+    deterministicRoutingPlan ?? buildPreparedTurnDeterministicRoutingPlan(channelId, preparedTurn);
+  const preparedMetadataApplied = applyDeterministicPlanMetadataToExistingUserMessage(
+    preparedTurn.state,
+    channelId,
+    preparedTurn.userMessage.id,
+    effectiveDeterministicRoutingPlan,
+    now,
+  );
+  if (preparedMetadataApplied.userMessage) {
+    preparedTurn.state = preparedMetadataApplied.state;
+    preparedTurn.userMessage = preparedMetadataApplied.userMessage;
+    sourceMessage = preparedMetadataApplied.userMessage;
+  }
   nextState = await persistInFlightDispatchState(
     options.chatStore,
     materializeInFlightDispatchState(

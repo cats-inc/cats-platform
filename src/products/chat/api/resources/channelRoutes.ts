@@ -48,11 +48,9 @@ import { routeChatChannelAttachmentResourceApi } from './channelAttachmentRoutes
 import { routeChatChannelRuntimeResourceApi } from './channelRuntimeRoutes.js';
 import type { CatsCoreState, TurnRecord } from '../../../../core/types.js';
 import { bestEffortFlushRuntimeSessionMemory } from '../../../../platform/memory/runtimeMaintenance.js';
-import { buildOrchestratorTurnPlan } from '../../../../platform/orchestration/index.js';
 import {
-  buildChannelMessageOrchestratorPlanState,
-} from '../orchestratorPlanState.js';
-import { buildChannelDispatchAcknowledgement } from '../orchestratorDispatchResponse.js';
+  buildChannelDispatchAcknowledgementFromBegun,
+} from '../orchestratorDispatchResponse.js';
 import {
   buildCanonicalChatUserMessage,
   readChatCoreTurnMetadataString,
@@ -546,19 +544,7 @@ async function handleRestSendMessage(
 
     await context.dependencies.mutationGate.run(channelId, async () => {
       const stateBefore = await context.dependencies.chatStore.read();
-      const coreBefore = await context.dependencies.chatStore.readCore();
       const now = nowFrom(context.dependencies);
-      const orchestratorPlan = buildOrchestratorTurnPlan(
-        buildChannelMessageOrchestratorPlanState(stateBefore, channelId, body, now),
-        coreBefore,
-        {
-          channelId,
-          body: body.body,
-          senderName: body.senderName,
-          transport: 'web',
-        },
-        context.dependencies.orchestratorPlannerSurface,
-      );
       begunDispatch = await beginChannelMessageDispatch(
         stateBefore,
         channelId,
@@ -576,7 +562,6 @@ async function handleRestSendMessage(
           },
           cancellationRegistry: channelDispatchCancellationRegistry,
           onStateWritten: notifyStreamTargetChanged,
-          orchestratorPlan,
         },
       );
       const appShell = await buildAppShellPayload(
@@ -589,10 +574,9 @@ async function handleRestSendMessage(
         phase: 'acknowledged',
         message: begunDispatch.userMessage,
         results: begunDispatch.results,
-        dispatch: buildChannelDispatchAcknowledgement({
+        dispatch: buildChannelDispatchAcknowledgementFromBegun({
           channelId,
-          results: begunDispatch.results,
-          plan: orchestratorPlan,
+          begun: begunDispatch,
         }),
       });
     });
@@ -699,17 +683,6 @@ async function handleRestRetryMessage(
         return;
       }
 
-      const orchestratorPlan = buildOrchestratorTurnPlan(
-        state,
-        core,
-        {
-          channelId,
-          body: retryMessage.body,
-          senderName: retryMessage.senderName,
-          transport: 'web',
-        },
-        context.dependencies.orchestratorPlannerSurface,
-      );
       acknowledgedDispatch = await beginChannelMessageRetryDispatch(
         state,
         channelId,
@@ -727,7 +700,6 @@ async function handleRestRetryMessage(
           },
           cancellationRegistry: channelDispatchCancellationRegistry,
           onStateWritten: notifyStreamTargetChanged,
-          orchestratorPlan,
         },
       );
       const appShell = await buildAppShellPayload(
@@ -739,10 +711,9 @@ async function handleRestRetryMessage(
         phase: 'acknowledged',
         message: acknowledgedDispatch.userMessage,
         results: acknowledgedDispatch.results,
-        dispatch: buildChannelDispatchAcknowledgement({
+        dispatch: buildChannelDispatchAcknowledgementFromBegun({
           channelId,
-          results: acknowledgedDispatch.results,
-          plan: orchestratorPlan,
+          begun: acknowledgedDispatch,
         }),
       });
     });
