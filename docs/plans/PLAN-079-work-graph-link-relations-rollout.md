@@ -48,6 +48,12 @@ sequences delivery.
   map is sparse (only endpoints that have at least one view appear
   as keys). Consumers MUST treat absence of a key as `[]`; do not
   rely on every endpoint key existing.
+- Extend `WorkGraphProjection.diagnostics` to the SPEC-090 §FR7
+  discriminated union: existing SPEC-083 base diagnostic rows remain
+  valid, while `orphan_link` and `link_cycle` rows use the
+  `WorkGraphLinkOrphanDiagnostic` / `WorkGraphLinkCycleDiagnostic`
+  payloads defined in SPEC-090 §Suggested Record Shape. Add the
+  `WorkGraphLinkDiagnostic` union type for those two rows.
 - Confirm `WorkGraphObjectSummary` carries `sourceRecordFamily` and
   `sourceRecordId` for every Project / Work Item / Task object, per
   SPEC-083 §Suggested Work Graph Shape. The summary field type stays
@@ -63,7 +69,9 @@ sequences delivery.
   projection MUST use the composite key form
   `${recordFamily}:${recordId}` (the `WorkGraphEndpointKey` type)
   when building `linksByEndpoint`.
-- Extend `WorkGraphDiagnosticKind` with `orphan_link` and `link_cycle`.
+- Extend `WorkGraphDiagnosticKind` with `orphan_link` and `link_cycle`;
+  do not leave the payload as the generic SPEC-083 diagnostic shape for
+  those two kinds.
 - Update mock fixture under
   `src/products/work/renderer/components/topdown/mock.ts` to seed one
   or more rows of every **stored** kind only (`blocks`, `related_to`,
@@ -171,15 +179,19 @@ sequences delivery.
   renderer MUST resolve link endpoints to graph object summaries
   (where they still exist) for display, and render an explicit
   "(deleted)" marker on the unresolved side of an `orphan_link`.
-- A "Remove this link" affordance per row stays disabled until
-  Phase 5 lands the producer-pipeline write path.
+- A "Remove this link" affordance stays disabled until Phase 5 lands
+  the producer-pipeline write path. Orphan rows have one affordance for
+  their single `linkId`; cycle rows expose one disabled affordance per
+  `cycleLinkIds` entry rather than pretending the cycle diagnostic has
+  a single canonical link.
 - No new page; reuse existing diagnostic styling.
 
 **Done when.**
 - Seeded orphan / cycle fixtures show on Broken Links with both ends
   identified (one end may show "(deleted)").
-- Each row carries the `linkId` so Phase 5 can wire the
-  "Remove this link" button without re-deriving from raw `links`.
+- Orphan rows carry `linkId`, and cycle rows carry `cycleLinkIds`, so
+  Phase 5 can wire remove affordances without re-deriving from raw
+  `links`.
 - Resolving the underlying issue (i.e. removing the offending link
   once Phase 5 ships writes) clears the diagnostic on next projection
   rebuild.

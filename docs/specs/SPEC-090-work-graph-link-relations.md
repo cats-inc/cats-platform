@@ -169,7 +169,9 @@ read or write links at v1.
    For both kinds, the diagnostic payload MUST be actionable (so
    Phase 5's "remove offending link" affordance has the data it
    needs) — see the extended diagnostic shape in §Suggested Record
-   Shape below.
+   Shape below. `WorkGraphProjection.diagnostics` MUST therefore be a
+   discriminated union of the existing SPEC-083 base diagnostic rows and
+   the two SPEC-090 link-specific diagnostic rows defined below.
 8. Cycle detection MUST run on the **well-resolved** `blocks`
    subgraph only — i.e. only over rows that survived the orphan
    filter in §FR5. A row whose endpoint cannot be resolved is
@@ -178,7 +180,7 @@ read or write links at v1.
    a meaningless `link_cycle` diagnostic for the same broken row.
 9. `duplicate_of` and `follows` cycles are not flagged at v1.
    `related_to` is symmetric and so cannot cycle.
-9. The renderer MUST surface links in two places at v1, both reading
+10. The renderer MUST surface links in two places at v1, both reading
    from `WorkGraphProjection.linksByEndpoint` (NOT from `links`
    directly — the renderer must not re-derive `blocked_by` or
    symmetric `related_to`):
@@ -190,11 +192,11 @@ read or write links at v1.
    - **Cockpit** gains a derived "Blockers" projection that, for
      items in the operator's current attention set, lists the
      upstream `blocks` chain.
-10. The renderer MUST NOT surface links inside System Map's structural
+11. The renderer MUST NOT surface links inside System Map's structural
     tier-nesting view at v1. System Map remains the structural-anchor
     conformance surface; linkage is layered on per-object detail pages
     only.
-11. The "+ New work item" / "+ New project" / "+ New task" dialogs MAY
+12. The "+ New work item" / "+ New project" / "+ New task" dialogs MAY
     accept an optional initial linkage (e.g. "blocks: <existing
     record>") at v1 but are not required to.
 
@@ -313,11 +315,17 @@ export interface WorkGraphProjection {
   // existing Core record) are EXCLUDED from this map. They appear
   // only as `orphan_link` diagnostics — see §FR5 / §FR7 / §FR8.
   linksByEndpoint: Partial<Record<WorkGraphEndpointKey, WorkGraphLinkView[]>>;
+  // Existing SPEC-083 diagnostic rows remain valid. The two link
+  // diagnostic kinds added by SPEC-090 MUST use the extended payloads
+  // below, so renderers can act on them without re-deriving from raw
+  // `links`.
+  diagnostics: Array<WorkGraphDiagnostic | WorkGraphLinkDiagnostic>;
 }
 
 // Link-specific diagnostic payloads. SPEC-083 §Suggested Work Graph
-// Shape publishes a diagnostic shape with `objectId` and `message`
-// only; SPEC-090 mandates that diagnostics whose `kind` is
+// Shape publishes a generic diagnostic shape with
+// `id` / `severity` / `category` / `kind` / `objectId` / `message`;
+// SPEC-090 mandates that diagnostics whose `kind` is
 // `orphan_link` or `link_cycle` carry the additional fields below so
 // Broken Links can render an actionable row and Phase 5's
 // "remove offending link" affordance has the data it needs without
@@ -327,6 +335,7 @@ export interface WorkGraphLinkOrphanDiagnostic {
   // Inherited fields (from SPEC-083 base diagnostic shape):
   id: string;
   severity: "info" | "warning" | "error";
+  category: WorkGraphDiagnosticCategory;
   kind: "orphan_link";
   objectId: string | null;
   message: string;
@@ -340,6 +349,7 @@ export interface WorkGraphLinkOrphanDiagnostic {
 export interface WorkGraphLinkCycleDiagnostic {
   id: string;
   severity: "info" | "warning" | "error";
+  category: WorkGraphDiagnosticCategory;
   kind: "link_cycle";
   objectId: string | null;
   message: string;
@@ -350,6 +360,10 @@ export interface WorkGraphLinkCycleDiagnostic {
   // "remove this link" affordance per row.
   cycleLinkIds: string[];
 }
+
+export type WorkGraphLinkDiagnostic =
+  | WorkGraphLinkOrphanDiagnostic
+  | WorkGraphLinkCycleDiagnostic;
 ```
 
 `WorkGraphObjectSummary` already exposes `sourceRecordFamily` /
@@ -453,7 +467,7 @@ A v1 slice is acceptable when:
 1. The Work Graph projection includes `links: WorkGraphLink[]`,
    `linksByEndpoint: Partial<Record<WorkGraphEndpointKey,
    WorkGraphLinkView[]>>` (sparse — see §FR6), and the two new
-   diagnostic kinds.
+   diagnostic kinds with the extended payloads required by §FR7.
 2. The mock fixture under
    `src/products/work/renderer/components/topdown/mock.ts` (or the next
    producer source of truth) includes representative examples of every
