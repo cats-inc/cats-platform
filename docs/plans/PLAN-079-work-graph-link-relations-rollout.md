@@ -83,7 +83,12 @@ sequences delivery.
     `linksByEndpoint` see resolved views only.
   - Raw `links` keeps the orphaned rows so Broken Links can iterate
     them.
-- Add cycle detection for the stored `blocks` subgraph.
+- Add cycle detection for the **well-resolved** stored `blocks`
+  subgraph only, per SPEC-090 §FR8. Rows whose endpoint did not
+  resolve (and were therefore filtered out of `linksByEndpoint`) are
+  also excluded from cycle detection — they are already represented
+  as `orphan_link` diagnostics. Avoid emitting both `orphan_link`
+  and `link_cycle` for the same broken row.
 
 **Done when.**
 - `tsc --noEmit` passes.
@@ -121,7 +126,7 @@ sequences delivery.
   (the map is sparse per SPEC-090 §FR6 — fall back to empty array
   when the key is absent) and groups the returned
   `WorkGraphLinkView[]` by `kind` (Blocking / Blocked by / Related /
-  Duplicate of / Follows). Per SPEC-090 §FR9, the renderer MUST
+  Duplicate of / Follows). Per SPEC-090 §FR10, the renderer MUST
   consume `linksByEndpoint`, not raw `links`, so derived `blocked_by`
   and symmetric `related_to` views show up without the renderer
   re-deriving them. Orphan rows do not appear here — they are
@@ -159,10 +164,22 @@ sequences delivery.
 **Scope.**
 - Extend the existing Broken Links page renderer to display
   `orphan_link` and `link_cycle` rows under its existing list contract.
+- Consume the extended diagnostic payload from SPEC-090 §Suggested
+  Record Shape (`linkId`, `sourceEndpoint`, `targetEndpoint`,
+  `unresolvedSide` for `orphan_link`; `cycleEndpoints`, `cycleLinkIds`
+  for `link_cycle`) so each row is independently actionable. The
+  renderer MUST resolve link endpoints to graph object summaries
+  (where they still exist) for display, and render an explicit
+  "(deleted)" marker on the unresolved side of an `orphan_link`.
+- A "Remove this link" affordance per row stays disabled until
+  Phase 5 lands the producer-pipeline write path.
 - No new page; reuse existing diagnostic styling.
 
 **Done when.**
-- Seeded orphan / cycle fixtures show on Broken Links.
+- Seeded orphan / cycle fixtures show on Broken Links with both ends
+  identified (one end may show "(deleted)").
+- Each row carries the `linkId` so Phase 5 can wire the
+  "Remove this link" button without re-deriving from raw `links`.
 - Resolving the underlying issue (i.e. removing the offending link
   once Phase 5 ships writes) clears the diagnostic on next projection
   rebuild.

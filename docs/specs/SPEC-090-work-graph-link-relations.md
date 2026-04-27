@@ -165,9 +165,18 @@ read or write links at v1.
      or `(targetRecordFamily, targetRecordId)` does not resolve to an
      existing Core record (e.g., the underlying record was deleted).
    - `link_cycle`: at least one cycle exists in the directed `blocks`
-     subgraph. Diagnostics MUST include the participating record
-     identities.
-8. `duplicate_of` and `follows` cycles are not flagged at v1.
+     subgraph.
+   For both kinds, the diagnostic payload MUST be actionable (so
+   Phase 5's "remove offending link" affordance has the data it
+   needs) — see the extended diagnostic shape in §Suggested Record
+   Shape below.
+8. Cycle detection MUST run on the **well-resolved** `blocks`
+   subgraph only — i.e. only over rows that survived the orphan
+   filter in §FR5. A row whose endpoint cannot be resolved is
+   already flagged as `orphan_link` and does not contribute to
+   cycle detection. This avoids producing both an `orphan_link` and
+   a meaningless `link_cycle` diagnostic for the same broken row.
+9. `duplicate_of` and `follows` cycles are not flagged at v1.
    `related_to` is symmetric and so cannot cycle.
 9. The renderer MUST surface links in two places at v1, both reading
    from `WorkGraphProjection.linksByEndpoint` (NOT from `links`
@@ -302,23 +311,63 @@ export interface WorkGraphProjection {
   //
   // Orphan links (rows where source or target does not resolve to an
   // existing Core record) are EXCLUDED from this map. They appear
-  // only as `orphan_link` diagnostics — see §FR5–§FR8.
+  // only as `orphan_link` diagnostics — see §FR5 / §FR7 / §FR8.
   linksByEndpoint: Partial<Record<WorkGraphEndpointKey, WorkGraphLinkView[]>>;
+}
+
+// Link-specific diagnostic payloads. SPEC-083 §Suggested Work Graph
+// Shape publishes a diagnostic shape with `objectId` and `message`
+// only; SPEC-090 mandates that diagnostics whose `kind` is
+// `orphan_link` or `link_cycle` carry the additional fields below so
+// Broken Links can render an actionable row and Phase 5's
+// "remove offending link" affordance has the data it needs without
+// re-deriving from raw `links`.
+
+export interface WorkGraphLinkOrphanDiagnostic {
+  // Inherited fields (from SPEC-083 base diagnostic shape):
+  id: string;
+  severity: "info" | "warning" | "error";
+  kind: "orphan_link";
+  objectId: string | null;
+  message: string;
+  // SPEC-090 additions:
+  linkId: string;
+  sourceEndpoint: WorkGraphLinkEndpointRef;
+  targetEndpoint: WorkGraphLinkEndpointRef;
+  unresolvedSide: "source" | "target" | "both";
+}
+
+export interface WorkGraphLinkCycleDiagnostic {
+  id: string;
+  severity: "info" | "warning" | "error";
+  kind: "link_cycle";
+  objectId: string | null;
+  message: string;
+  // SPEC-090 additions:
+  cycleEndpoints: WorkGraphLinkEndpointRef[];
+  // Stored `blocks` rows that participate in the cycle, in cycle
+  // traversal order, so Broken Links can offer a one-click
+  // "remove this link" affordance per row.
+  cycleLinkIds: string[];
 }
 ```
 
 `WorkGraphObjectSummary` already exposes `sourceRecordFamily` /
-`sourceRecordId` per SPEC-083 §Suggested Work Graph Shape, where the
-field type is the wider `WorkGraphObjectKind` enum (covering
-conversation / run / artifact / approval and other non-PWT objects).
-SPEC-090 narrows the value space to `WorkGraphLinkEndpointKind` only
-on the link record itself; on `WorkGraphObjectSummary` the field
-keeps its wider type. The renderer resolves a link endpoint to its
-graph object by matching the link's narrow `recordFamily` /
-`recordId` against the summary's wider `sourceRecordFamily` /
-`sourceRecordId`. No separate map is required as long as the
-projection populates those summary fields for every Project / Work
-Item / Task object.
+`sourceRecordId` per SPEC-083 §Suggested Work Graph Shape. SPEC-083
+publishes the field type as `string`; SPEC-090 mandates that, for
+SPEC-090 endpoints, the value space is `WorkGraphLinkEndpointKind`
+(`project | work_item | task`) only. SPEC-090 does NOT amend SPEC-083;
+implementations MAY tighten the local TypeScript type to
+`WorkGraphObjectKind` in `types.ts` (which is product-owned), but the
+spec-level contract for SPEC-083 stays `string`. A future SPEC-083
+amendment is recommended to align the published shape with the
+narrower enum already used by SPEC-083's `kind` field.
+
+The renderer resolves a link endpoint to its graph object by matching
+the link's narrow `recordFamily` / `recordId` against the summary's
+`sourceRecordFamily` / `sourceRecordId`. No separate map is required
+as long as the projection populates those summary fields for every
+Project / Work Item / Task object.
 
 ## Producer Interface
 
@@ -352,8 +401,18 @@ For Project / Work Item / Task detail pages:
 
 - Add a `Linkage` section after the existing structural sections
   (Overview / Tasks / Activity).
-- Group by `kind`: Blockers (incoming `blocks`), Blocking (outgoing
-  `blocks`), Related, Duplicate of, Follows.
+- Read `linksByEndpoint[selfEndpointKey] ?? []` and group the
+  resulting `WorkGraphLinkView[]` by `view.kind` (the
+  `WorkGraphLinkViewKind` enum, NOT the raw stored kind).
+  Display labels:
+  - `blocks` view → "Blocking"
+  - `blocked_by` view → "Blocked by"
+  - `related_to` view → "Related"
+  - `duplicate_of` view → "Duplicate of"
+  - `follows` view → "Follows"
+  The renderer MUST NOT re-derive these groupings by scanning raw
+  `links` (the raw rows only carry the canonical stored kind, so
+  `blocked_by` and the inverse half of `related_to` would be missing).
 - Each entry renders title + status dot + a link to the related
   object's detail page.
 - An "Add link" affordance opens a small dialog: pick relation kind,
