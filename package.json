@@ -147,6 +147,13 @@
       {
         "from": "build/desktop-packaging/desktop-package-plan.json",
         "to": "desktop-package-plan.json"
+      },
+      {
+        "from": "build/native",
+        "to": "native",
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "win": {
@@ -189,6 +196,7 @@
       "hardenedRuntime": false,
       "gatekeeperAssess": false,
       "extendInfo": {
+        "NSSpeechRecognitionUsageDescription": "Cats uses speech recognition for voice input in the chat composer.",
         "NSMicrophoneUsageDescription": "Cats uses the microphone for voice input in the chat composer."
       }
     },

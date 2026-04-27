@@ -1,6 +1,6 @@
 import { dirname, join } from 'node:path';
 
-import { app, BrowserWindow, ipcMain, shell, systemPreferences } from 'electron';
+import { app, BrowserWindow, ipcMain, session, shell, systemPreferences } from 'electron';
 
 import { buildDesktopBootstrapPage } from './bootstrapPage.js';
 import {
@@ -148,6 +148,17 @@ import {
   captureWlrootsNativeScreenshotRegion,
   isLikelyWlrootsScreenshotSession,
 } from './screenshotWlrootsCapture.js';
+import {
+  assertMainWindowVoiceCaptureIpcSender,
+  DESKTOP_VOICE_CAPTURE_CANCEL_CHANNEL,
+  DESKTOP_VOICE_CAPTURE_EVENT_CHANNEL,
+  DESKTOP_VOICE_CAPTURE_START_CHANNEL,
+  DESKTOP_VOICE_CAPTURE_STOP_CHANNEL,
+  DesktopVoiceCaptureController,
+  parseVoiceCaptureSessionId,
+  parseVoiceCaptureStartOptions,
+  shouldAllowDesktopRendererPermission,
+} from './voiceCapture.js';
 
 let mainWindow: BrowserWindow | null = null;
 let hostConfig: DesktopHostConfig | null = null;
@@ -181,6 +192,7 @@ let latestDesktopStartupPreferences: DesktopStartupPreferences = {
   systemTrayEnabled: true,
 };
 let activeScreenshotOverlaySession: DesktopScreenshotOverlaySession | null = null;
+let voiceCaptureController: DesktopVoiceCaptureController | null = null;
 
 interface ProductBootstrapDiagnosticsPayload {
   generatedAt?: string;
@@ -1361,6 +1373,8 @@ async function shutdownHost(): Promise<void> {
   }
   shuttingDown = true;
   try {
+    voiceCaptureController?.dispose();
+    voiceCaptureController = null;
     const activeTrayController = trayController;
     trayController = null;
     activeTrayController?.dispose();
@@ -1388,6 +1402,9 @@ async function main(): Promise<void> {
     catsHomeDir: resolveCatsHomeDir(),
     packaged: app.isPackaged,
     resourcesPath: nodeProcess.resourcesPath,
+  });
+  session.defaultSession.setPermissionRequestHandler((_webContents, permission, callback) => {
+    callback(shouldAllowDesktopRendererPermission(permission));
   });
   latestDesktopStartupPreferences = await readDesktopStartupPreferences(hostConfig.paths.appStatePath);
   await syncDesktopStartupPreferences(app, latestDesktopStartupPreferences);
@@ -1448,6 +1465,13 @@ async function main(): Promise<void> {
     },
   });
   latestSnapshot = buildSnapshot(null);
+  voiceCaptureController = new DesktopVoiceCaptureController({
+    config: hostConfig,
+    resourcesPath: nodeProcess.resourcesPath,
+    sendEvent: (event) => {
+      mainWindow?.webContents.send(DESKTOP_VOICE_CAPTURE_EVENT_CHANNEL, event);
+    },
+  });
 
   ipcMain.handle('cats-host:get-snapshot', async () => {
     return latestSnapshot ?? buildSnapshot(null);
@@ -1485,6 +1509,27 @@ async function main(): Promise<void> {
       mainWindow,
       captureNativeRegion: captureNativeScreenshotRegion,
     });
+  });
+  ipcMain.handle(DESKTOP_VOICE_CAPTURE_START_CHANNEL, async (event, payload: unknown) => {
+    assertMainWindowVoiceCaptureIpcSender(event, mainWindow);
+    if (!voiceCaptureController) {
+      throw new Error('Desktop voice capture is not initialized.');
+    }
+    await voiceCaptureController.startVoiceCapture(parseVoiceCaptureStartOptions(payload));
+  });
+  ipcMain.handle(DESKTOP_VOICE_CAPTURE_STOP_CHANNEL, async (event, sessionId: unknown) => {
+    assertMainWindowVoiceCaptureIpcSender(event, mainWindow);
+    if (!voiceCaptureController) {
+      throw new Error('Desktop voice capture is not initialized.');
+    }
+    await voiceCaptureController.stopVoiceCapture(parseVoiceCaptureSessionId(sessionId));
+  });
+  ipcMain.handle(DESKTOP_VOICE_CAPTURE_CANCEL_CHANNEL, async (event, sessionId: unknown) => {
+    assertMainWindowVoiceCaptureIpcSender(event, mainWindow);
+    if (!voiceCaptureController) {
+      throw new Error('Desktop voice capture is not initialized.');
+    }
+    await voiceCaptureController.cancelVoiceCapture(parseVoiceCaptureSessionId(sessionId));
   });
   ipcMain.handle(
     DESKTOP_SCREENSHOT_OVERLAY_GET_SNAPSHOT_CHANNEL,

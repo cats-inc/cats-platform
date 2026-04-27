@@ -173,6 +173,10 @@ export const DESKTOP_SETUP_INTERRUPTION_KINDS = [
 export const DESKTOP_SCREENSHOT_CAPTURE_SOURCES = [
   'composer',
 ] as const;
+export const DESKTOP_VOICE_CAPTURE_START_CHANNEL = 'cats-host:voice-start';
+export const DESKTOP_VOICE_CAPTURE_STOP_CHANNEL = 'cats-host:voice-stop';
+export const DESKTOP_VOICE_CAPTURE_CANCEL_CHANNEL = 'cats-host:voice-cancel';
+export const DESKTOP_VOICE_CAPTURE_EVENT_CHANNEL = 'cats-host:voice-event';
 export const DESKTOP_SCREENSHOT_CAPTURE_OUTCOMES = [
   'ok',
   'cancelled',
@@ -184,6 +188,21 @@ export const DESKTOP_SCREENSHOT_CANCEL_REASONS = [
   'user_cancel',
   'too_small',
   'unknown_display',
+] as const;
+export const VOICE_CAPTURE_MODES = [
+  'on-device',
+  'cloud',
+  'unknown',
+] as const;
+export const VOICE_CAPTURE_ERROR_REASONS = [
+  'permission_denied',
+  'permission_not_determined',
+  'mic_unavailable',
+  'language_not_supported',
+  'engine_unavailable',
+  'helper_crashed',
+  'cancelled',
+  'aborted',
 ] as const;
 
 export type DesktopBootstrapPhase = typeof DESKTOP_BOOTSTRAP_PHASES[number];
@@ -217,6 +236,9 @@ export type DesktopSetupInterruptionKind = typeof DESKTOP_SETUP_INTERRUPTION_KIN
 export type DesktopScreenshotCaptureSource = typeof DESKTOP_SCREENSHOT_CAPTURE_SOURCES[number];
 export type DesktopScreenshotCaptureOutcome = typeof DESKTOP_SCREENSHOT_CAPTURE_OUTCOMES[number];
 export type DesktopScreenshotCancelReason = typeof DESKTOP_SCREENSHOT_CANCEL_REASONS[number];
+export type VoiceCaptureSessionId = string;
+export type VoiceCaptureMode = typeof VOICE_CAPTURE_MODES[number];
+export type VoiceCaptureErrorReason = typeof VOICE_CAPTURE_ERROR_REASONS[number];
 
 export interface DesktopScreenshotCaptureRequest {
   source: DesktopScreenshotCaptureSource;
@@ -238,6 +260,38 @@ export type DesktopScreenshotCaptureResult =
   | {
       outcome: 'permission_denied' | 'platform_unsupported' | 'error';
       message?: string;
+    };
+
+export interface VoiceCaptureStartOptions {
+  sessionId: VoiceCaptureSessionId;
+  locale?: string;
+}
+
+export type VoiceCaptureEvent =
+  | {
+      type: 'ready';
+      sessionId: VoiceCaptureSessionId;
+      locale: string;
+      mode: VoiceCaptureMode;
+    }
+  | {
+      type: 'partial';
+      sessionId: VoiceCaptureSessionId;
+      text: string;
+    }
+  | {
+      type: 'final';
+      sessionId: VoiceCaptureSessionId;
+      text: string;
+    }
+  | {
+      type: 'error';
+      sessionId: VoiceCaptureSessionId;
+      reason: VoiceCaptureErrorReason;
+    }
+  | {
+      type: 'end';
+      sessionId: VoiceCaptureSessionId;
     };
 
 export interface DesktopBootstrapEventReference {

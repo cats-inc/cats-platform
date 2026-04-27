@@ -546,6 +546,26 @@ Those validate the unpacked `electron-builder` outputs:
 - bundled sidecars, packaged setup assets, and platform-scoped installer
   contract truth
 
+### Composer Voice Input Permissions
+
+The packaged desktop composer microphone button uses platform-native speech
+recognition where Cats has a host-owned helper:
+
+- macOS uses the bundled Swift helper under `resources/native/macos-stt/`.
+  The helper requests Speech Recognition and Microphone permission, enforces
+  on-device recognition, and fails closed when the requested locale does not
+  support on-device recognition. If dictation does not start, check System
+  Settings > Privacy & Security > Speech Recognition and Microphone for Cats.
+- Windows uses the bundled WinRT helper under `resources/native/windows-stt/`.
+  Windows decides whether free-form dictation uses an installed local speech
+  pack or Microsoft online speech based on Settings > Privacy & Security >
+  Speech > Online speech recognition and the installed language speech pack.
+  Cats reports this as `mode: 'unknown'` and shows the conservative in-app
+  privacy badge because the WinRT API does not expose the active route.
+- Linux has no v1 native STT helper. The Electron renderer keeps the existing
+  Web Speech fallback reachable so the microphone button can show the existing
+  unavailable/error toast instead of silently disappearing.
+
 ### Windows Post-Install Smoke Check
 
 After running the installer on a Windows machine, validate the installed app

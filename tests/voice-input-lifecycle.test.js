@@ -27,8 +27,9 @@ test('useVoiceInputComposer cancels recognition when disabled flips true', async
   );
 
   assert.match(source, /disabled\?:\s*boolean/u);
-  assert.match(source, /if \(disabled && listening\) cancel\(\);/u);
+  assert.match(source, /if \(disabled && voiceInputActive\) cancel\(\);/u);
   assert.doesNotMatch(source, /if \(disabled && listening\) stop\(\);/u);
+  assert.match(source, /useNativeVoiceInput\(/u);
   assert.match(source, /useWebSpeechInput\(/u);
 });
 
@@ -85,6 +86,16 @@ test('composer entry points route voice input through useVoiceInputComposer', as
       /<ToastContainer toasts=\{voiceInputToasts\}/u,
       `${path.basename(file)} must render voice-input toasts`,
     );
+    assert.match(
+      source,
+      /privacyMessage: voiceInputPrivacyMessage/u,
+      `${path.basename(file)} must read voice-input privacy message`,
+    );
+    assert.match(
+      source,
+      /composerVoicePrivacyBadge/u,
+      `${path.basename(file)} must surface the privacy badge when needed`,
+    );
   }
 });
 
@@ -107,5 +118,81 @@ test('useVoiceInputComposer surfaces recognition errors via toast', async () => 
 
   assert.match(source, /useToast/u);
   assert.match(source, /showToast\(resolveVoiceErrorMessage\(kind\)\)/u);
-  assert.match(source, /return \{ supported, listening, toggle, textareaRef, toasts \};/u);
+  assert.match(source, /permission_denied/u);
+  assert.match(source, /permission_not_determined/u);
+  assert.match(source, /mic_unavailable/u);
+  assert.match(source, /language_not_supported/u);
+  assert.match(source, /engine_unavailable/u);
+  assert.match(source, /helper_crashed/u);
+  assert.match(source, /return \{\s*supported,\s*listening,\s*toggle,\s*textareaRef,\s*toasts,/u);
+});
+
+test('voice capture bridge contract carries typed ready mode and closed errors', async () => {
+  const source = await readFile(
+    path.join(process.cwd(), 'src', 'shared', 'voiceCaptureBridge.ts'),
+    'utf8',
+  );
+  const desktopBridgeSource = await readFile(
+    path.join(process.cwd(), 'src', 'shared', 'desktopRecoveryBridge.ts'),
+    'utf8',
+  );
+
+  assert.match(source, /VoiceCaptureMode = 'on-device' \| 'cloud' \| 'unknown'/u);
+  assert.match(source, /type: 'ready'/u);
+  assert.match(source, /mode: VoiceCaptureMode/u);
+  assert.match(source, /VOICE_CAPTURE_ERROR_REASONS/u);
+  assert.match(source, /'permission_denied'/u);
+  assert.match(source, /'permission_not_determined'/u);
+  assert.match(source, /'mic_unavailable'/u);
+  assert.match(source, /'language_not_supported'/u);
+  assert.match(source, /'engine_unavailable'/u);
+  assert.match(source, /'helper_crashed'/u);
+  assert.match(source, /'cancelled'/u);
+  assert.match(source, /'aborted'/u);
+  assert.match(desktopBridgeSource, /startVoiceCapture\?: VoiceCaptureBridge/u);
+  assert.match(desktopBridgeSource, /stopVoiceCapture\?: VoiceCaptureBridge/u);
+  assert.match(desktopBridgeSource, /cancelVoiceCapture\?: VoiceCaptureBridge/u);
+  assert.match(desktopBridgeSource, /onVoiceCaptureEvent\?: VoiceCaptureBridge/u);
+});
+
+test('useNativeVoiceInput inserts finals only and waits for ready before active listening', async () => {
+  const source = await readFile(
+    path.join(HOOKS_DIR, 'useNativeVoiceInput.ts'),
+    'utf8',
+  );
+
+  assert.match(source, /resolveDesktopHostBridge/u);
+  assert.match(source, /startVoiceCapture\(\{ sessionId, locale: lang \}\)/u);
+  assert.match(source, /case 'ready':\s*setStatus\('ready'\);\s*setPrivacyMode\(event\.mode\);/u);
+  assert.match(source, /case 'partial':\s*break;/u);
+  assert.match(source, /case 'final':\s*onTranscriptRef\.current\(event\.text\);/u);
+  assert.match(source, /listening: status === 'ready'/u);
+  assert.match(source, /active: status !== 'idle'/u);
+});
+
+test('useVoiceInputComposer prefers native bridge and routes privacy mode warnings', async () => {
+  const source = await readFile(
+    path.join(HOOKS_DIR, 'useVoiceInputComposer.ts'),
+    'utf8',
+  );
+
+  assert.match(source, /nativeVoiceInput\.supported \? nativeVoiceInput : webSpeechInput/u);
+  assert.match(source, /resolveVoicePrivacyMessage/u);
+  assert.match(source, /mode === 'unknown'/u);
+  assert.match(source, /may use Microsoft online speech/u);
+  assert.match(source, /mode === 'cloud'/u);
+  assert.match(source, /privacyMode = nativeVoiceInput\.supported \? nativeVoiceInput\.privacyMode : null/u);
+  assert.match(source, /privacyMessage = resolveVoicePrivacyMessage\(privacyMode\)/u);
+});
+
+test('useVoiceInputComposer cancels active voice input on Escape', async () => {
+  const source = await readFile(
+    path.join(HOOKS_DIR, 'useVoiceInputComposer.ts'),
+    'utf8',
+  );
+
+  assert.match(source, /event\.key !== 'Escape'/u);
+  assert.match(source, /!voiceInputActive/u);
+  assert.match(source, /event\.preventDefault\(\);/u);
+  assert.match(source, /cancel\(\);/u);
 });

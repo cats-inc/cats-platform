@@ -614,6 +614,18 @@ test('package.json wires Windows, macOS, and Linux installer targets through ele
     (entry) => entry.from === 'build/desktop-packaging/shared/cats-runtime/node_modules'
       && entry.to === 'cats-runtime/node_modules',
   ), true);
+  assert.equal(packageJson.build.extraResources.some(
+    (entry) => entry.from === 'build/native'
+      && entry.to === 'native',
+  ), true);
+  assert.equal(
+    packageJson.build.mac.extendInfo.NSSpeechRecognitionUsageDescription,
+    'Cats uses speech recognition for voice input in the chat composer.',
+  );
+  assert.equal(
+    packageJson.build.mac.extendInfo.NSMicrophoneUsageDescription,
+    'Cats uses the microphone for voice input in the chat composer.',
+  );
 });
 
 test('resolveDesktopWindowIconPath finds packaged window icons for supported desktop platforms', async () => {
@@ -818,6 +830,9 @@ test('build-desktop-installer script avoids shell execution on Windows', async (
   assert.match(script, /'--platform'/);
   assert.match(script, /resolvedTarget/);
   assert.match(script, /'--sidecar-layout',\s*parsed\.sidecarLayout/);
+  assert.match(script, /buildNativeVoiceHelpers\(resolvedTarget, parsed\.arch\)/);
+  assert.match(script, /swift', \['build', '-c', 'release'/);
+  assert.match(script, /dotnet',\s*\[\s*'publish'/);
   assert.match(linuxWrapper, /build-desktop-installer\.mjs --target linux/);
   assert.match(macosWrapper, /build-desktop-installer\.mjs --target macos/);
 });

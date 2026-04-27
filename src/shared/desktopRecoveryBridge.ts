@@ -7,6 +7,8 @@
  * (e.g. non-desktop environments).
  */
 
+import type { VoiceCaptureBridge } from './voiceCaptureBridge.js';
+
 interface DesktopSetupResumeAction {
   helperId: string;
   reason: string;
@@ -55,6 +57,10 @@ export interface DesktopHostBridge {
   resumeSetup?: () => Promise<DesktopSetupSnapshot>;
   screenshotRegionCaptureAvailable?: boolean;
   captureScreenshotRegion?: () => Promise<DesktopScreenshotCaptureResult>;
+  startVoiceCapture?: VoiceCaptureBridge['startVoiceCapture'];
+  stopVoiceCapture?: VoiceCaptureBridge['stopVoiceCapture'];
+  cancelVoiceCapture?: VoiceCaptureBridge['cancelVoiceCapture'];
+  onVoiceCaptureEvent?: VoiceCaptureBridge['onVoiceCaptureEvent'];
 }
 
 export function resolveDesktopHostBridge(): DesktopHostBridge | null {

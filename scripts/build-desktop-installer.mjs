@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import process from 'node:process';
-import { access } from 'node:fs/promises';
+import { access, copyFile, mkdir, rm, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
@@ -9,6 +9,7 @@ import { spawn } from 'node:child_process';
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const PROJECT_ROOT = resolve(dirname(SCRIPT_PATH), '..');
 const RUNTIME_ROOT = resolve(PROJECT_ROOT, '..', 'cats-runtime');
+const NATIVE_BUILD_ROOT = resolve(PROJECT_ROOT, 'build', 'native');
 
 function printHelp() {
   process.stdout.write(`Usage: node scripts/build-desktop-installer.mjs [options]
@@ -154,6 +155,69 @@ async function runCommand(command, args, cwd, envOverrides = {}) {
   });
 }
 
+async function prepareNativeBuildRoot() {
+  await rm(NATIVE_BUILD_ROOT, { recursive: true, force: true });
+  await mkdir(NATIVE_BUILD_ROOT, { recursive: true });
+  await writeFile(
+    resolve(NATIVE_BUILD_ROOT, 'README.txt'),
+    'Native helper binaries staged for the Cats desktop installer.\n',
+    'utf8',
+  );
+}
+
+async function buildMacosVoiceHelper() {
+  if (process.platform !== 'darwin') {
+    throw new Error('The macOS voice helper must be built on macOS.');
+  }
+
+  const packageRoot = resolve(PROJECT_ROOT, 'desktop', 'native', 'macos-stt');
+  await runCommand('swift', ['build', '-c', 'release', '--package-path', packageRoot], PROJECT_ROOT);
+
+  const outputDir = resolve(NATIVE_BUILD_ROOT, 'macos-stt');
+  await mkdir(outputDir, { recursive: true });
+  await copyFile(
+    resolve(packageRoot, '.build', 'release', 'cats-stt-macos'),
+    resolve(outputDir, 'cats-stt-macos'),
+  );
+}
+
+async function buildWindowsVoiceHelper(archOverride) {
+  if (process.platform !== 'win32') {
+    throw new Error('The Windows voice helper must be built on Windows.');
+  }
+
+  const runtime = archOverride === 'arm64' ? 'win-arm64' : 'win-x64';
+  const outputDir = resolve(NATIVE_BUILD_ROOT, 'windows-stt');
+  await mkdir(outputDir, { recursive: true });
+  await runCommand(
+    'dotnet',
+    [
+      'publish',
+      resolve(PROJECT_ROOT, 'desktop', 'native', 'windows-stt', 'CatsSttWindows.csproj'),
+      '-c',
+      'Release',
+      '-r',
+      runtime,
+      '--self-contained',
+      'false',
+      '-o',
+      outputDir,
+    ],
+    PROJECT_ROOT,
+  );
+}
+
+async function buildNativeVoiceHelpers(target, archOverride) {
+  await prepareNativeBuildRoot();
+  if (target === 'macos') {
+    await buildMacosVoiceHelper();
+    return;
+  }
+  if (target === 'windows') {
+    await buildWindowsVoiceHelper(archOverride);
+  }
+}
+
 function resolveBuilderTarget(target) {
   if (target === 'current') {
     switch (process.platform) {
@@ -247,6 +311,7 @@ async function main() {
   };
   await runCommand('npm', ['run', 'build'], RUNTIME_ROOT, sidecarBuildEnv);
   await runCommand('npm', ['run', 'build'], PROJECT_ROOT, sidecarBuildEnv);
+  await buildNativeVoiceHelpers(resolvedTarget, parsed.arch);
   await runCommand(
     'node',
     [

@@ -1,6 +1,14 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-import type { DesktopScreenshotCaptureResult } from './contracts.js';
+import {
+  DESKTOP_VOICE_CAPTURE_CANCEL_CHANNEL,
+  DESKTOP_VOICE_CAPTURE_EVENT_CHANNEL,
+  DESKTOP_VOICE_CAPTURE_START_CHANNEL,
+  DESKTOP_VOICE_CAPTURE_STOP_CHANNEL,
+  type DesktopScreenshotCaptureResult,
+  type VoiceCaptureEvent,
+  type VoiceCaptureStartOptions,
+} from './contracts.js';
 
 type DesktopHostActionId =
   | 'retry'
@@ -97,6 +105,34 @@ function assertDesktopSetupHelperMode(value: unknown): DesktopSetupHelperMode {
   return value as DesktopSetupHelperMode;
 }
 
+function assertVoiceCaptureStartOptions(value: unknown): VoiceCaptureStartOptions {
+  if (
+    typeof value !== 'object'
+    || value === null
+    || typeof (value as { sessionId?: unknown }).sessionId !== 'string'
+    || (value as { sessionId: string }).sessionId.trim().length === 0
+  ) {
+    throw new Error('Invalid voice capture start payload.');
+  }
+
+  const locale = (value as { locale?: unknown }).locale;
+  if (locale !== undefined && (typeof locale !== 'string' || locale.trim().length === 0)) {
+    throw new Error('Invalid voice capture locale.');
+  }
+
+  return {
+    sessionId: (value as { sessionId: string }).sessionId.trim(),
+    ...(typeof locale === 'string' ? { locale: locale.trim() } : {}),
+  };
+}
+
+function assertVoiceCaptureSessionId(value: unknown): string {
+  if (typeof value !== 'string' || value.trim().length === 0) {
+    throw new Error('Invalid voice capture session id.');
+  }
+  return value.trim();
+}
+
 const bridge = {
   screenshotRegionCaptureAvailable: true,
   getSnapshot(): Promise<DesktopBootstrapSnapshot> {
@@ -157,5 +193,37 @@ const bridge = {
     };
   },
 };
+
+if (process.platform === 'darwin' || process.platform === 'win32') {
+  Object.assign(bridge, {
+    startVoiceCapture(options: VoiceCaptureStartOptions): Promise<void> {
+      return ipcRenderer.invoke(
+        DESKTOP_VOICE_CAPTURE_START_CHANNEL,
+        assertVoiceCaptureStartOptions(options),
+      );
+    },
+    stopVoiceCapture(sessionId: string): Promise<void> {
+      return ipcRenderer.invoke(
+        DESKTOP_VOICE_CAPTURE_STOP_CHANNEL,
+        assertVoiceCaptureSessionId(sessionId),
+      );
+    },
+    cancelVoiceCapture(sessionId: string): Promise<void> {
+      return ipcRenderer.invoke(
+        DESKTOP_VOICE_CAPTURE_CANCEL_CHANNEL,
+        assertVoiceCaptureSessionId(sessionId),
+      );
+    },
+    onVoiceCaptureEvent(listener: (event: VoiceCaptureEvent) => void): () => void {
+      const handler = (_event: Electron.IpcRendererEvent, payload: VoiceCaptureEvent) => {
+        listener(payload);
+      };
+      ipcRenderer.on(DESKTOP_VOICE_CAPTURE_EVENT_CHANNEL, handler);
+      return () => {
+        ipcRenderer.off(DESKTOP_VOICE_CAPTURE_EVENT_CHANNEL, handler);
+      };
+    },
+  });
+}
 
 contextBridge.exposeInMainWorld('catsDesktopHost', bridge);

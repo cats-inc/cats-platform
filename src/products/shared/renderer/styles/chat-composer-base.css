@@ -14,6 +14,7 @@
 
 .composerPlusButton {
   display: grid;
+  position: relative;
   width: 28px;
   height: 28px;
   place-items: center;
@@ -33,6 +34,23 @@
 .composerPlusButton:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.composerVoicePrivacyBadge {
+  position: absolute;
+  top: -3px;
+  right: -3px;
+  display: grid;
+  width: 11px;
+  height: 11px;
+  place-items: center;
+  border: 1px solid var(--panel);
+  border-radius: 50%;
+  background: #f59e0b;
+  color: #111827;
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .composerVoiceButtonActive,

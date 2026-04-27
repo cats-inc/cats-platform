@@ -356,6 +356,7 @@ export function WorkspaceNewChatDraft({
     toggle: toggleVoiceInput,
     textareaRef,
     toasts: voiceInputToasts,
+    privacyMessage: voiceInputPrivacyMessage,
   } = useVoiceInputComposer({
     value: composerDraft,
     onChange: onComposerChange,
@@ -575,8 +576,13 @@ export function WorkspaceNewChatDraft({
                   <button
                     className={`composerPlusButton composerVoiceButton${voiceInputListening ? ' composerVoiceButtonActive' : ''}`}
                     type="button"
-                    aria-label={voiceInputListening ? 'Stop voice input' : 'Start voice input'}
+                    aria-label={
+                      voiceInputListening
+                        ? `Stop voice input${voiceInputPrivacyMessage ? `. ${voiceInputPrivacyMessage}` : ''}`
+                        : 'Start voice input'
+                    }
                     aria-pressed={voiceInputListening}
+                    title={voiceInputPrivacyMessage ?? undefined}
                     disabled={isSubmittingFirstTurn}
                     onClick={toggleVoiceInput}
                   >
@@ -586,6 +592,9 @@ export function WorkspaceNewChatDraft({
                       <path d="M8 13v2" />
                       <path d="M6 15h4" />
                     </svg>
+                    {voiceInputPrivacyMessage ? (
+                      <span className="composerVoicePrivacyBadge" aria-hidden="true">!</span>
+                    ) : null}
                   </button>
                 ) : null}
                 <button

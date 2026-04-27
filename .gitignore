@@ -20,6 +20,7 @@ build/
 !assets/build/icons/
 !assets/build/icons/**
 release/
+desktop/native/**/.build/
 config/*
 !config/.gitkeep
 !config/*.example

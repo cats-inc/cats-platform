@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, type RefObject } from 'react';
 
 import { useToast } from '../../../../design/components/Toast.js';
+import type { VoiceCaptureMode } from '../../../../shared/voiceCaptureBridge.js';
+import { useNativeVoiceInput } from './useNativeVoiceInput.js';
 import { useWebSpeechInput } from './useWebSpeechInput.js';
 
 export interface UseVoiceInputComposerOptions {
@@ -17,6 +19,8 @@ export interface UseVoiceInputComposerResult {
   toggle: () => void;
   textareaRef: RefObject<HTMLTextAreaElement>;
   toasts: ReturnType<typeof useToast>['toasts'];
+  privacyMode: VoiceCaptureMode | null;
+  privacyMessage: string | null;
 }
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -25,10 +29,26 @@ const ERROR_MESSAGES: Record<string, string> = {
   'audio-capture': 'No microphone was detected.',
   'network': 'Voice input could not reach the recognition service.',
   'language-not-supported': 'Voice input does not support the current language.',
+  permission_denied: 'Microphone access was denied. Check your system voice permissions.',
+  permission_not_determined: 'Voice input needs system microphone and speech permissions.',
+  mic_unavailable: 'No microphone was detected.',
+  language_not_supported: 'Voice input does not support the current language.',
+  engine_unavailable: 'Voice input is not available on this device.',
+  helper_crashed: 'Voice input stopped unexpectedly.',
 };
 
 function resolveVoiceErrorMessage(kind: string): string {
   return ERROR_MESSAGES[kind] ?? `Voice input failed (${kind}).`;
+}
+
+function resolveVoicePrivacyMessage(mode: VoiceCaptureMode | null): string | null {
+  if (mode === 'unknown') {
+    return 'Voice input may use Microsoft online speech depending on Windows privacy settings.';
+  }
+  if (mode === 'cloud') {
+    return 'Voice input is using an online speech service.';
+  }
+  return null;
 }
 
 export function useVoiceInputComposer({
@@ -128,20 +148,55 @@ export function useVoiceInputComposer({
     [showToast],
   );
 
-  const { supported, listening, start, stop, cancel } = useWebSpeechInput({
+  const nativeVoiceInput = useNativeVoiceInput({
     onTranscript: handleTranscript,
     onError: handleRecognitionError,
     lang,
   });
+  const webSpeechInput = useWebSpeechInput({
+    onTranscript: handleTranscript,
+    onError: handleRecognitionError,
+    lang,
+  });
+  const voiceInput = nativeVoiceInput.supported ? nativeVoiceInput : webSpeechInput;
+  const voiceInputActive = nativeVoiceInput.supported
+    ? nativeVoiceInput.active
+    : webSpeechInput.listening;
+  const { supported, listening, start, stop, cancel } = voiceInput;
 
   const toggle = useCallback(() => {
-    if (listening) stop();
+    if (voiceInputActive) stop();
     else start();
-  }, [listening, start, stop]);
+  }, [voiceInputActive, start, stop]);
 
   useEffect(() => {
-    if (disabled && listening) cancel();
-  }, [disabled, listening, cancel]);
+    if (disabled && voiceInputActive) cancel();
+  }, [disabled, voiceInputActive, cancel]);
 
-  return { supported, listening, toggle, textareaRef, toasts };
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el) return;
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || !voiceInputActive) return;
+      event.preventDefault();
+      cancel();
+    };
+    el.addEventListener('keydown', handleKeyDown);
+    return () => {
+      el.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [voiceInputActive, cancel]);
+
+  const privacyMode = nativeVoiceInput.supported ? nativeVoiceInput.privacyMode : null;
+  const privacyMessage = resolveVoicePrivacyMessage(privacyMode);
+
+  return {
+    supported,
+    listening,
+    toggle,
+    textareaRef,
+    toasts,
+    privacyMode,
+    privacyMessage,
+  };
 }
