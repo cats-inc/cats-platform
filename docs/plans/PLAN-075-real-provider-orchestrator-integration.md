@@ -327,7 +327,7 @@ categories:
       un-importable from any product tree.
 - [ ] Task 0.4: Record baseline targeted tests for Chat, Work, and Code runtime
       paths before cutover.
-- [ ] Task 0.5: Inventory `cats-runtime` client/server capabilities required
+- [x] Task 0.5: Inventory `cats-runtime` client/server capabilities required
       for lifecycle work: resume, cancel, observe, stream, close, delete, and
       session metadata persistence.
 
@@ -428,7 +428,7 @@ categories:
       response, semantic next-step choice returns to the provider-agent seam or
       the weak-worker tool boundary; the scheduler never reads response text to
       decide the next semantic action.
-- [ ] Task 4.6: Update `cats-runtime` client/server contracts only where needed
+- [x] Task 4.6: Update `cats-runtime` client/server contracts only where needed
       for lifecycle operations. If no runtime change is required, record why in
       the progress log.
 
@@ -696,3 +696,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 36: completed Phase 4 Task 4.3 by tightening supervised child-run spawn with parent-budget caps, tool-scope narrowing metadata, run-tree parent validation, existing ancestry cycle rejection, and Work fake-run coverage. |
 | 2026-04-28 | Implementation slice 37: completed Phase 4 Task 4.4 by strengthening supervision static boundaries so lifecycle/scheduler modules cannot import content readers or contain provider-agent semantic planning entrypoints. |
 | 2026-04-28 | Implementation slice 38: completed Phase 4 Task 4.5 by adding a metadata-only run-loop handoff contract that returns provider responses to the provider-agent seam, weak-worker results to the tool boundary, and terminal runs to terminal state without scheduler text inspection. |
+| 2026-04-28 | Implementation slice 39: completed Phase 4 Task 4.6 and Phase 0 Task 0.5 by inventorying lifecycle runtime needs, adding the missing platform client wrapper for the existing `cats-runtime` `/sessions/:id/resume` route, and recording that no `cats-runtime` server contract change is required because resume, cancel, observe, stream, close, delete, and invocation metadata already exist server-side. |

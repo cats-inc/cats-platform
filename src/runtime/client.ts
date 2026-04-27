@@ -300,6 +300,7 @@ export interface RuntimeClient {
     onEvent: (event: RuntimeSessionStreamEvent) => void | Promise<void>,
     options?: RuntimeSessionStreamOptions,
   ): Promise<void>;
+  resumeSession?(sessionId: string): Promise<RuntimeSessionInfo>;
   createWakeup(input: RuntimeWakeupCreateInput): Promise<RuntimeWakeupCreateResult>;
   callMcp(request: unknown): Promise<Record<string, unknown> | null>;
   cancelSession(sessionId: string): Promise<void>;
@@ -326,6 +327,33 @@ export class RuntimeRequestError extends Error {
     super(message);
     this.name = 'RuntimeRequestError';
   }
+}
+
+function readRuntimeSessionInfo(
+  data: Record<string, unknown>,
+  fallback: {
+    provider: string;
+    model: string | null;
+    modelSelection: ProviderModelSelection | null;
+    cwd: string | null;
+  },
+): RuntimeSessionInfo {
+  return {
+    id: String(data.id ?? ''),
+    provider: String(data.providerName ?? data.provider ?? fallback.provider),
+    model: typeof data.model === 'string' ? data.model : fallback.model,
+    modelSelection:
+      parseProviderModelSelection(data.modelSelection)
+      ?? fallback.modelSelection,
+    modelResolution:
+      parseProviderModelResolution(data.modelResolution)
+      ?? null,
+    status: typeof data.status === 'string' ? data.status : 'initializing',
+    cwd: typeof data.cwd === 'string' ? data.cwd : fallback.cwd,
+    skills: data.skills && typeof data.skills === 'object'
+      ? data.skills as RuntimeSessionSkillState
+      : undefined,
+  };
 }
 
 export class CatsRuntimeClient implements RuntimeClient {
@@ -609,23 +637,12 @@ export class CatsRuntimeClient implements RuntimeClient {
     }
 
     const data = (await response.json()) as Record<string, unknown>;
-    return {
-      id: String(data.id ?? ''),
-      provider: String(data.providerName ?? input.provider),
-      model: typeof data.model === 'string' ? data.model : input.model?.trim() || null,
-      modelSelection:
-        parseProviderModelSelection(data.modelSelection)
-        ?? input.modelSelection
-        ?? null,
-      modelResolution:
-        parseProviderModelResolution(data.modelResolution)
-        ?? null,
-      status: typeof data.status === 'string' ? data.status : 'initializing',
-      cwd: typeof data.cwd === 'string' ? data.cwd : input.cwd?.trim() || null,
-      skills: data.skills && typeof data.skills === 'object'
-        ? data.skills as RuntimeSessionSkillState
-        : undefined,
-    };
+    return readRuntimeSessionInfo(data, {
+      provider: input.provider,
+      model: input.model?.trim() || null,
+      modelSelection: input.modelSelection ?? null,
+      cwd: input.cwd?.trim() || null,
+    });
   }
 
   async sendMessage(
@@ -705,6 +722,33 @@ export class CatsRuntimeClient implements RuntimeClient {
     }
 
     await readRuntimeSseResponse(response, onEvent);
+  }
+
+  async resumeSession(sessionId: string): Promise<RuntimeSessionInfo> {
+    const response = await fetch(`${this.baseUrl}/sessions/${sessionId}/resume`, {
+      method: 'POST',
+      headers: {
+        ...this.authHeaders(),
+        Accept: 'application/json',
+      },
+      signal: AbortSignal.timeout(this.timeoutMs),
+    });
+
+    if (!response.ok) {
+      const rawBody = await response.text();
+      throw new RuntimeRequestError(
+        readRuntimeErrorText(rawBody, `Failed to resume session (${response.status})`),
+        response.status,
+      );
+    }
+
+    const data = (await response.json()) as Record<string, unknown>;
+    return readRuntimeSessionInfo(data, {
+      provider: '',
+      model: null,
+      modelSelection: null,
+      cwd: null,
+    });
   }
 
   async createWakeup(input: RuntimeWakeupCreateInput): Promise<RuntimeWakeupCreateResult> {
