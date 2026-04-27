@@ -1,11 +1,12 @@
 # PLAN-025: Companion Workspace, Presence, and Settings
 
-> **2026-04-28 IA revision**: This plan's first-class companion workspace
-> direction remains useful historical context, but the visible dashboard and
-> companion-local `Settings` direction is superseded by
+> **2026-04-28 amendment**: This plan is amended in part by
 > [PLAN-077](./PLAN-077-companion-profile-and-share-preview-rollout.md),
 > [SPEC-085](../specs/SPEC-085-companion-profile-feed-and-library-ia.md), and
 > [SPEC-086](../specs/SPEC-086-shareable-companion-content-links-and-chat-previews.md).
+> Still useful: companion workspace/presence/read-model substrate work.
+> Amended: the visible dashboard labels, companion-local `Settings` direction,
+> transport-management placement, and share/preview rollout path.
 
 > Implement the next visible companion slice in `cats` by building a
 > companion-first workspace above the existing companion-box, memory, and
@@ -15,7 +16,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Superseded in part by PLAN-077 |
+| **Status** | Amended in part by PLAN-077 |
 | **Owner** | Codex |
 | **Assigned To** | Codex |
 | **Reviewer** | User |

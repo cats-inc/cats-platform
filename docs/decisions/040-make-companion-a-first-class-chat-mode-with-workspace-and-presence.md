@@ -1,11 +1,13 @@
 # ADR-040: Make Companion a First-Class Chat Mode with Workspace and Presence
 
-> **2026-04-28 amendment**: The first-class companion decision remains active,
-> but the visible companion IA in this ADR is amended by
+> **2026-04-28 amendment**: This ADR is amended in part by
 > [ADR-084](./084-adopt-companion-profile-ia-and-shareable-content-references.md).
-> Companion no longer uses a primary `Overview / Resources / Creations /
-> Settings` dashboard model; the revised profile/feed/library IA and shareable
-> content reference direction are documented in ADR-084.
+> Still binding: companion as a first-class `Cats Chat` mode, product-owned
+> presence, long-lived companion state, and the `cats -> cats-runtime`
+> execution boundary. Amended: the visible `Overview / Resources / Creations /
+> Settings` dashboard IA and companion-local transport/settings ownership.
+> ADR-084 defines the revised profile/feed/library IA, canonical
+> `Settings > My Cats` ownership, and shareable companion content references.
 
 > Treat companion as a first-class `Cats Chat` mode above direct Cat chat by
 > giving it a product-owned workspace, presence model, settings surface, and

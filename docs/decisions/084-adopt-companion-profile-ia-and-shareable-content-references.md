@@ -36,6 +36,12 @@ The older section labels also create product ownership problems:
   not always the right user-facing tabs for a profile surface.
 - `Files` should be visible as first-class browsable content, not hidden in a
   side panel.
+- `Sources` and `Files` need a projection rule. A single owner-uploaded PDF
+  should not force implementation to guess whether it appears in provenance
+  management, the user-facing file library, or both.
+- Companion memory already has two nearby schemas: `CompanionMemoryRecord` in
+  the companion box and `DurableMemoryItem` in `Settings > My Cats`. The
+  companion side panel must not expose both as competing memory ledgers.
 - Posts are not defined yet. The UI may show posts, but the product should not
   prematurely freeze the full post content model, authoring workflow, reaction
   semantics, or public sharing model.
@@ -73,7 +79,12 @@ cover, avatar, visible actions, and later optional profile metadata.
 this ADR.
 
 For now, a post is only a companion content projection that may be previewed,
-linked, and displayed in a feed card. The following remain open:
+linked, and displayed in a feed card. The first production slice shall use
+explicit profile-post projections backed by `CompanionDerivedRecord`, such as
+records with `metadata.profileSurface === 'post'`. Mock posts are allowed only
+in dev fixtures, storybook, and tests.
+
+The following remain open:
 
 - whether posts are owner-authored, Cat-authored, system-generated, or all of
   those
@@ -90,6 +101,11 @@ attachments, documents, generated artifacts, and imported file-like resources.
 used to feed or curate the companion. `Files` is the content library users
 inspect, insert into chat, and share.
 
+The same underlying object may project into both surfaces. For example, an
+owner-uploaded PDF appears in `Sources` for provenance and ingestion management
+and in `Files` for browsing, opening, insertion, and sharing. The projection
+must preserve the same source id rather than creating duplicate storage.
+
 ### 4. The side panel is control and inspection, not duplicate settings
 
 The companion side panel shall use operational labels and must not present a
@@ -99,7 +115,7 @@ The accepted side-panel sections are:
 
 - `Status` - presence, wake/sleep, runtime/session health, recent errors
 - `Sources` - raw owner-given materials and ingestion substrate
-- `Memory` - private durable memory ledger and owner edits
+- `Memory` - companion-box memory ledger and owner edits
 - `Behavior` - response style/profile controls local to the companion
 - `Inspector` - contextual provenance/actions for a selected post, media item,
   file, or activity entry
@@ -107,6 +123,12 @@ The accepted side-panel sections are:
 `Profile` is not used as a side-panel section because the whole page is the
 profile surface. `Configuration` is too broad and risks sounding like canonical
 settings.
+
+The `Memory` side panel is backed by `CompanionMemoryRecord` in v1 because that
+schema carries source lineage, curation state, lifecycle state, and replacement
+links. `Settings > My Cats` may continue to use `DurableMemoryItem`, but the
+companion page shall not render that as a second memory ledger. Any future
+merge or synchronization between those schemas needs a separate bridge contract.
 
 ### 5. Transport bindings stay canonical in Settings > My Cats
 
@@ -122,11 +144,22 @@ management UI or create a second source of truth.
 Posts, photos, videos, music, and files exposed by the companion profile shall
 have product-owned share references that can be inserted into chat.
 
+The first local serialized reference form is
+`cats://companion/{catId}/{type}/{targetId}` for target types `post`, `photo`,
+`video`, `music`, and `file`.
+
 When a reference is inserted or pasted into a chat composer, the transcript
 should render a preview card rather than showing only a raw string.
 
 This is a product-owned content reference and preview problem. It is related to,
 but distinct from, runtime-owned preview surfaces for services and artifacts.
+
+Visible `Share` actions are enabled only when they can insert the reference
+into chat or copy this local form. Header-level `Share` is hidden or visibly
+disabled with an explanatory tooltip until it has a concrete companion profile
+reference type or selected content target. `Subscribe` is reserved for a future
+model and should be hidden or visibly disabled with an explanatory tooltip in
+v1.
 
 ## Consequences
 
@@ -137,6 +170,10 @@ but distinct from, runtime-owned preview surfaces for services and artifacts.
 - `Files` becomes discoverable and reusable.
 - Side panel scope becomes clearer: control, source management, memory,
   behavior, and contextual inspection.
+- Memory has one companion-side source of truth in v1 instead of competing
+  `CompanionMemoryRecord` and `DurableMemoryItem` lists.
+- `Sources` and `Files` can share one underlying object identity without making
+  implementation invent projection rules.
 - Share links and chat previews become first-class requirements instead of an
   afterthought.
 
@@ -147,6 +184,8 @@ but distinct from, runtime-owned preview surfaces for services and artifacts.
 - The product needs a separate content-reference contract before share previews
   are implemented.
 - Posts cannot be fully implemented until the post model is specified.
+- The product needs a later memory bridge decision if `DurableMemoryItem` and
+  `CompanionMemoryRecord` should converge.
 
 ### Neutral
 

@@ -1,12 +1,15 @@
 # SPEC-036: Companion Workspace, Presence, and Settings
 
-> **2026-04-28 IA revision**: This spec's first-class companion direction
-> remains relevant, but its visible `Overview / Resources / Creations /
-> Settings` dashboard IA is superseded by
-> [SPEC-085](./SPEC-085-companion-profile-feed-and-library-ia.md) and
+> **2026-04-28 amendment**: This spec is amended in part by
+> [SPEC-085](./SPEC-085-companion-profile-feed-and-library-ia.md),
+> [SPEC-086](./SPEC-086-shareable-companion-content-links-and-chat-previews.md),
+> and
 > [ADR-084](../decisions/084-adopt-companion-profile-ia-and-shareable-content-references.md).
-> Shareable companion content references and chat previews are specified in
-> [SPEC-086](./SPEC-086-shareable-companion-content-links-and-chat-previews.md).
+> Still binding: first-class companion mode, presence and reply-style
+> direction, companion boxes, long-lived memory direction, response profiles,
+> and the `cats -> cats-runtime` boundary. Amended: the visible
+> `Overview / Resources / Creations / Settings` dashboard IA, companion-local
+> transport/settings ownership, and shareable content behavior.
 
 > Turn companion from a thin direct-chat variant into a first-class `Cats Chat`
 > product mode with a dedicated workspace, presence state, resource and
@@ -16,7 +19,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Superseded in part by SPEC-085/SPEC-086 |
+| **Status** | Amended in part by SPEC-085/SPEC-086 |
 | **Owner** | Codex |
 | **Reviewer** | User |
 

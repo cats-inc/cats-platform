@@ -97,7 +97,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 | [SPEC-039](./SPEC-039-cats-chat-v1-priority-items.md) | Cats Chat v1 Priority Items | Draft | [PLAN-027](../plans/PLAN-027-cats-chat-v1-priority-items.md) |
 | [SPEC-038](./SPEC-038-telegram-bot-commands-and-transport-control-surface.md) | Telegram Bot Commands and Transport Control Surface | Draft | TBD |
 | [SPEC-037](./SPEC-037-transport-driven-live-chat-updates-and-private-lane-transition.md) | Transport-Driven Live Chat Updates and Private-Lane Transition | Draft | [PLAN-026](../plans/PLAN-026-transport-live-updates-and-private-lane-transition.md) |
-| [SPEC-036](./SPEC-036-companion-workspace-presence-and-settings.md) | Companion Workspace, Presence, and Settings | Superseded in part by SPEC-085/SPEC-086 | [PLAN-025](../plans/PLAN-025-companion-workspace-presence-and-settings.md), [PLAN-077](../plans/PLAN-077-companion-profile-and-share-preview-rollout.md) |
+| [SPEC-036](./SPEC-036-companion-workspace-presence-and-settings.md) | Companion Workspace, Presence, and Settings | Amended in part by SPEC-085/SPEC-086 | [PLAN-025](../plans/PLAN-025-companion-workspace-presence-and-settings.md), [PLAN-077](../plans/PLAN-077-companion-profile-and-share-preview-rollout.md) |
 | [SPEC-035](./SPEC-035-cross-product-task-strategy-handoff-and-runtime-bridge.md) | Cross-Product Task Strategy Handoff and Runtime Bridge | Draft | TBD |
 | [SPEC-034](./SPEC-034-room-owned-workspace-bootstrap-and-ownership.md) | Room-Owned Workspace Bootstrap and Ownership Semantics | Draft (Pending Review) | - |
 | [SPEC-031](./SPEC-031-built-in-memory-extraction-durable-sync-and-retrieval-context.md) | Built-In Memory Extraction, Durable Sync, and Retrieval Context | Draft (Pending Review) | - |

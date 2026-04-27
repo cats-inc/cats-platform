@@ -82,9 +82,19 @@ minimum preview contract in this slice.
    - owning product surface (`companion`)
 3. References shall be local product objects first. Public web URLs are out of
    scope for this spec.
-4. References may have a human-readable route or copied text form, but the
-   renderer must resolve them through product-owned metadata rather than parsing
-   arbitrary prose.
+4. The first copied/inserted serialized form shall be:
+   `cats://companion/{catId}/{type}/{targetId}`.
+
+   Recognition is limited to this exact local app-link shape:
+   - scheme: `cats`
+   - host: `companion`
+   - path segment 1: owning Cat id
+   - path segment 2: target type in `post`, `photo`, `video`, `music`, `file`
+   - path segment 3: target id
+
+   The parser shall percent-decode path segments, reject unknown target types,
+   reject missing segments, and resolve through product-owned metadata rather
+   than parsing arbitrary prose.
 
 #### Minimum preview model
 
@@ -99,6 +109,20 @@ minimum preview contract in this slice.
    - owning Cat id and display name
    - source route or open action
    - availability state
+
+Availability states are defined as:
+
+- `available`: the target resolves and the current context may open or preview
+  it.
+- `missing`: the reference is well-formed, but no live target or deletion
+  tombstone is currently available. This may be a race, stale local index, or
+  not-yet-synced object, so retry may recover it.
+- `deleted`: the product has an explicit deletion/tombstone record for the
+  target. The same id is not expected to recover, but snapshot metadata may
+  keep the transcript understandable.
+- `inaccessible`: the target appears to exist, but the current context lacks
+  permission, scope, or safe-path access to open or preview it.
+
 6. A post preview shall require only:
    - title or fallback label
    - excerpt/body preview
@@ -117,11 +141,13 @@ minimum preview contract in this slice.
 #### Composer insertion
 
 12. A companion content item shall expose an insert/share action from the
-    companion profile surface.
+    companion profile surface only when that action can insert the reference
+    into chat or copy the local serialized form.
 13. The action shall be able to insert the reference into the active chat
     composer when a target chat context exists.
-14. If no active chat context exists, the product may copy a local app link or
-    ask the user to pick a destination in a later slice.
+14. If no active chat context exists, the first slice shall copy the local
+    `cats://companion/{catId}/{type}/{targetId}` reference. A later slice may
+    add destination picking.
 15. Pasting or typing a recognized companion content reference into the composer
     should resolve to a preview before send when possible.
 16. The composer shall retain an editable textual representation so the user can
@@ -192,6 +218,12 @@ interface CompanionContentReference {
   surface: 'companion';
 }
 
+type CompanionContentAvailability =
+  | 'available'
+  | 'missing'
+  | 'deleted'
+  | 'inaccessible';
+
 interface CompanionContentPreview {
   reference: CompanionContentReference;
   title: string;
@@ -201,13 +233,15 @@ interface CompanionContentPreview {
   icon?: string | null;
   catName: string;
   openRoute?: string | null;
-  availability: 'available' | 'missing' | 'deleted' | 'inaccessible';
+  availability: CompanionContentAvailability;
   snapshot?: Record<string, unknown>;
 }
 ```
 
-The exact serialized URL/path form is left to the implementation plan. The
-contract requirement is the product-owned reference and preview envelope.
+The canonical local text form for `CompanionContentReference` is
+`cats://companion/{catId}/{type}/{targetId}`. UI routes may use a different
+internal route, but copy/paste recognition and chat insertion shall normalize to
+this product-owned reference shape.
 
 ## Dependencies
 
@@ -219,7 +253,6 @@ contract requirement is the product-owned reference and preview envelope.
 
 ## Open Questions
 
-- [ ] What exact local app-link format should be used for copied references?
 - [ ] Should references use the same message attachment pipeline or a separate
       `embeddedReference` field?
 - [ ] Should the first slice support multiple references in one message?
