@@ -166,8 +166,8 @@ test('POST /api/channels/:id/messages/:messageId/retry replays the same acknowle
       firstSendPayload.message.metadata.orchestratorPlanId,
       firstSendPayload.dispatch.orchestrator.planId,
     );
-    assert.equal(firstSendPayload.dispatch.orchestrator.planner, 'dynamic_room_workflow');
-    assert.equal(firstSendPayload.dispatch.orchestrator.loopMode, 'checkpoint_driven');
+    assert.equal(firstSendPayload.dispatch.orchestrator.planner, 'provider_agent_observation');
+    assert.equal(firstSendPayload.dispatch.orchestrator.loopMode, 'agent_driven');
     assert.equal(
       firstSendPayload.dispatch.orchestrator.dispatchBoundary,
       'supervised_runtime_boundary',
