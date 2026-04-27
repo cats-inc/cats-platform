@@ -1,4 +1,11 @@
 import {
+  upsertCoreRun,
+} from '../../../core/model/index.js';
+import type {
+  CatsCoreState,
+  CoreRunStatus,
+} from '../../../core/types.js';
+import {
   matchRoute,
   readJsonBody,
   sendJson,
@@ -8,6 +15,7 @@ import { listProductProviders } from '../../../shared/providerCatalog.js';
 import { parseProviderModelSelection } from '../../../shared/providerSelection.js';
 import { resolveFullResponseText, type RuntimeProviderConfigRegistry } from '../../../runtime/client.js';
 import {
+  createDurableToolEvidenceSink,
   createSupervisedRuntimeSession,
   sendSupervisedRuntimeMessage,
 } from '../../../platform/supervision/index.js';
@@ -15,6 +23,7 @@ import type { CodeApiRouteContext } from './index.js';
 import {
   applyCodeRelayRosterProbe,
   createCodeRelayThread,
+  createCodeRelayDispatchRunId,
   createDefaultCodeRelayRoster,
   finishCodeRelayFanOut,
   listCodeRelayProjects,
@@ -25,6 +34,7 @@ import {
 } from '../state/relayState.js';
 import type {
   CodeRelayMode,
+  CodeRelayRoundRecord,
   CodeRelayRecentRole,
   CodeRelayRosterEntry,
   CodeRelayThreadRecord,
@@ -178,6 +188,138 @@ function buildThreadProjection(
   };
 }
 
+function createRelayEvidenceConversationId(threadId: string): string {
+  return `code-relay-${threadId}`;
+}
+
+function createRelayRoundBudgetEnvelopeId(threadId: string, roundId: string): string {
+  return `code-relay-budget:${threadId}:${roundId}`;
+}
+
+function createRelayEvidenceSink(
+  context: CodeApiRouteContext,
+  threadId: string,
+  sessionId: string | null = null,
+) {
+  return context.dependencies.evidenceDataDir
+    ? createDurableToolEvidenceSink({
+        dataDir: context.dependencies.evidenceDataDir,
+        conversationId: createRelayEvidenceConversationId(threadId),
+        sessionId,
+      })
+    : undefined;
+}
+
+function upsertRelayDispatchRun(
+  core: CatsCoreState,
+  input: {
+    threadId: string;
+    roundId: string;
+    dispatchId: string | null;
+    entry: CodeRelayRosterEntry;
+    prompt: string;
+    repoPath: string | null;
+    siblingRunIds: string[];
+    status: CoreRunStatus;
+    sessionId?: string | null;
+    responseExcerpt?: string | null;
+    error?: string | null;
+    now: Date;
+  },
+): CatsCoreState {
+  const runId = createCodeRelayDispatchRunId(input.threadId, input.roundId, input.entry.id);
+  const terminal = input.status === 'completed'
+    || input.status === 'failed'
+    || input.status === 'cancelled';
+  const runtimeBridgeStatus = input.status === 'failed'
+    ? 'failed'
+    : input.sessionId
+      ? 'started'
+      : 'pending';
+  return upsertCoreRun(
+    core,
+    {
+      id: runId,
+      title: `${input.entry.label} relay dispatch`,
+      status: input.status,
+      conversationId: null,
+      taskId: null,
+      parentRunId: null,
+      orchestratorActorId: input.entry.id,
+      traceId: `trace-${runId}`,
+      summary: input.error
+        ?? input.responseExcerpt
+        ?? `Relay fan-out dispatch for ${input.entry.label}.`,
+      ...(input.status === 'running' ? { startedAt: input.now.toISOString() } : {}),
+      ...(terminal ? { completedAt: input.now.toISOString() } : {}),
+      metadata: {
+        supervision: {
+          source: 'code_relay_fan_out',
+          runtimeBridge: {
+            status: runtimeBridgeStatus,
+            sessionId: input.sessionId ?? null,
+            provider: input.entry.provider,
+            model: input.entry.model,
+            modelSelection: input.entry.modelSelection,
+            requestedInstance: input.entry.instance,
+            workspacePath: input.repoPath,
+          },
+          relay: {
+            threadId: input.threadId,
+            roundId: input.roundId,
+            dispatchId: input.dispatchId,
+            agentId: input.entry.id,
+            mode: 'fan_out',
+          },
+          budgetEnvelope: {
+            id: createRelayRoundBudgetEnvelopeId(input.threadId, input.roundId),
+            scope: 'code_relay_round',
+            siblingRunIds: input.siblingRunIds,
+          },
+          convergence: {
+            roundId: input.roundId,
+            status: terminal ? 'reported_to_round' : 'awaiting_agent_response',
+          },
+          prompt: {
+            length: input.prompt.length,
+          },
+        },
+      },
+    },
+    input.now,
+  ).core;
+}
+
+function upsertRelayDispatchRuns(
+  core: CatsCoreState,
+  input: {
+    threadId: string;
+    roundId: string;
+    round: CodeRelayRoundRecord;
+    prompt: string;
+    repoPath: string | null;
+    targetEntries: CodeRelayRosterEntry[];
+    now: Date;
+  },
+): CatsCoreState {
+  const siblingRunIds = input.targetEntries.map((entry) =>
+    createCodeRelayDispatchRunId(input.threadId, input.roundId, entry.id));
+  return input.targetEntries.reduce((nextCore, entry) => {
+    const dispatch = input.round.dispatches.find((candidate) => candidate.agentId === entry.id) ?? null;
+    return upsertRelayDispatchRun(nextCore, {
+      threadId: input.threadId,
+      roundId: input.roundId,
+      dispatchId: dispatch?.id ?? null,
+      entry,
+      prompt: input.prompt,
+      repoPath: input.repoPath,
+      siblingRunIds,
+      status: 'running',
+      now: input.now,
+    });
+  }, core);
+}
+
 async function buildRelayThreadsPayload(
   context: CodeApiRouteContext,
   options: {
@@ -221,6 +363,7 @@ async function completeFanOutInBackground(
   input: {
     threadId: string;
     roundId: string;
+    round: CodeRelayRoundRecord;
     prompt: string;
     repoPath: string | null;
     targetEntries: CodeRelayThreadRecord['roster'];
@@ -228,7 +371,7 @@ async function completeFanOutInBackground(
 ): Promise<void> {
   const dispatchResults = await Promise.all(input.targetEntries.map(async (entry) => {
     let sessionId: string | null = null;
-    const runId = `code-relay:${input.threadId}:${input.roundId}:${entry.id}`;
+    const runId = createCodeRelayDispatchRunId(input.threadId, input.roundId, entry.id);
     const supervision = {
       product: 'cats-code',
       surface: 'code-relay-fan-out',
@@ -236,6 +379,7 @@ async function completeFanOutInBackground(
       actionId: `${runId}:runtime-session`,
       actorRef: entry.id,
       reason: 'code_relay_fan_out',
+      evidenceSink: createRelayEvidenceSink(context, input.threadId),
     };
     try {
       const session = await createSupervisedRuntimeSession({
@@ -278,10 +422,13 @@ async function completeFanOutInBackground(
           ...supervision,
           actionId: `${runId}:runtime-message`,
           reason: 'code_relay_fan_out_prompt',
+          evidenceSink: createRelayEvidenceSink(context, input.threadId, session.id),
         },
       });
       return {
         entryId: entry.id,
+        runId,
+        sessionId,
         content: resolveFullResponseText(result.segments).trim(),
         stdoutExcerpt: null,
         stderrExcerpt: null,
@@ -289,6 +436,8 @@ async function completeFanOutInBackground(
     } catch (error) {
       return {
         entryId: entry.id,
+        runId,
+        sessionId,
         error: error instanceof Error ? error.message : 'Relay dispatch failed.',
       };
     } finally {
@@ -314,7 +463,33 @@ async function completeFanOutInBackground(
     return;
   }
 
-  await context.dependencies.coreStore.writeCore(finished.core);
+  const completedAt = context.dependencies.now?.() ?? new Date();
+  const siblingRunIds = input.targetEntries.map((entry) =>
+    createCodeRelayDispatchRunId(input.threadId, input.roundId, entry.id));
+  let completedCore = finished.core;
+  for (const result of dispatchResults) {
+    const entry = input.targetEntries.find((candidate) => candidate.id === result.entryId) ?? null;
+    if (!entry) {
+      continue;
+    }
+    const dispatch = input.round.dispatches.find((candidate) => candidate.agentId === entry.id) ?? null;
+    completedCore = upsertRelayDispatchRun(completedCore, {
+      threadId: input.threadId,
+      roundId: input.roundId,
+      dispatchId: dispatch?.id ?? null,
+      entry,
+      prompt: input.prompt,
+      repoPath: input.repoPath,
+      siblingRunIds,
+      status: 'error' in result ? 'failed' : 'completed',
+      sessionId: result.sessionId,
+      responseExcerpt: 'error' in result ? null : result.content.slice(0, 240),
+      error: 'error' in result ? result.error : null,
+      now: completedAt,
+    });
+  }
+
+  await context.dependencies.coreStore.writeCore(completedCore);
 }
 
 export async function routeCodeRelayApi(
@@ -514,7 +689,15 @@ export async function routeCodeRelayApi(
       return true;
     }
 
-    core = running.core;
+    core = upsertRelayDispatchRuns(running.core, {
+      threadId,
+      roundId: started.round.id,
+      round: started.round,
+      prompt,
+      repoPath: started.project.repoPath,
+      targetEntries: started.targetEntries,
+      now,
+    });
     await context.dependencies.coreStore.writeCore(core);
     sendJson(context.response, 202, await buildRelayThreadsPayload(context, {
       selectedThreadId: threadId,
@@ -522,6 +705,7 @@ export async function routeCodeRelayApi(
     void completeFanOutInBackground(context, {
       threadId,
       roundId: started.round.id,
+      round: started.round,
       prompt,
       repoPath: started.project.repoPath,
       targetEntries: started.targetEntries,

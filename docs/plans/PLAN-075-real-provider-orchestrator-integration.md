@@ -452,7 +452,7 @@ categories:
 
 - [x] Task 6.1: Represent Code task execute as a supervised run with runtime
       session attachment, evidence, and task/run metadata.
-- [ ] Task 6.2: Represent Code relay fan-out as sibling supervised runs under
+- [x] Task 6.2: Represent Code relay fan-out as sibling supervised runs under
       one relay-round budget envelope, with per-agent evidence and convergence
       records. Child runs are used only when a running relay agent delegates.
 - [ ] Task 6.3: Keep `+New code`, `+Team code`, and `+Peer code` entry flows
@@ -704,3 +704,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 44: started Phase 6 Task 6.1 by creating a real CoreRun for Code task execution, attaching the supervised runtime session to run metadata, and linking the Code task metadata to the latest supervised run/session. |
 | 2026-04-28 | Implementation slice 45: extended Phase 6 Task 6.1 by adding Code execution durable tool-boundary evidence for supervised runtime session creation and wiring the Code API dependency slice to persisted evidence storage. |
 | 2026-04-28 | Implementation slice 46: completed Phase 6 Task 6.1 by projecting Code task latest supervised run inspection and durable evidence through Code task detail responses without changing the entry flow. |
+| 2026-04-28 | Implementation slice 47: completed Phase 6 Task 6.2 by assigning each Code relay fan-out dispatch a sibling supervised run, shared relay-round budget envelope metadata, convergence metadata, and durable runtime-boundary evidence. |

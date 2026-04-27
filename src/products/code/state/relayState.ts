@@ -26,6 +26,14 @@ import type {
 const CODE_RELAY_METADATA_KEY = 'codeRelay';
 const DEFAULT_RELAY_PROVIDER = listProductProviders()[0]?.id ?? 'claude';
 
+export function createCodeRelayDispatchRunId(
+  threadId: string,
+  roundId: string,
+  agentId: string,
+): string {
+  return `code-relay:${threadId}:${roundId}:${agentId}`;
+}
+
 function asRecord(value: unknown): Record<string, unknown> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) {
     return null;
@@ -228,6 +236,7 @@ export function readCodeRelayThread(project: CoreProjectRecord): CodeRelayThread
           .map((dispatch, dispatchIndex) => ({
             id: readString(dispatch.id) ?? fallbackRecordId(project.id, 'dispatch', resolvedRoundId, dispatchIndex),
             agentId: readString(dispatch.agentId) ?? 'unknown',
+            runId: readString(dispatch.runId),
             source: dispatch.source === 'relay' ? 'relay' : 'fan_out',
             status: readDispatchStatus(dispatch.status),
             prompt: readString(dispatch.prompt) ?? '',
@@ -479,6 +488,7 @@ export function startCodeRelayFanOut(
     dispatches: targetEntries.map((entry) => ({
       id: `dispatch-${randomUUID()}`,
       agentId: entry.id,
+      runId: createCodeRelayDispatchRunId(threadId, roundId, entry.id),
       source: 'fan_out',
       status: 'requested',
       prompt: input.prompt,

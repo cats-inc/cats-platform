@@ -67,6 +67,7 @@ export interface CodeRelayRosterEntry {
 export interface CodeRelayDispatchRecord {
   id: string;
   agentId: string;
+  runId: string | null;
   source: 'fan_out' | 'relay';
   status: CodeRelayDispatchStatus;
   prompt: string;
