@@ -49,6 +49,17 @@ export {
 } from './planner.js';
 export { dispatchOrchestratorTurn } from './dispatch.js';
 export {
+  PROVIDER_AGENT_ADAPTER_VERSION,
+  PROVIDER_AGENT_DECISION_PROMPT_SCHEMA,
+  ProviderAgentAdapterError,
+  buildProviderAgentDecisionPrompt,
+  requestProviderAgentDecision,
+  type ProviderAgentAdapterErrorCode,
+  type ProviderAgentAdapterInput,
+  type ProviderAgentAdapterResult,
+  type ProviderAgentRuntimeTarget,
+} from './providerAgentAdapter.js';
+export {
   PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
   PROVIDER_AGENT_MAX_GOAL_LENGTH,
   PROVIDER_AGENT_MAX_SUMMARY_TEXT_LENGTH,

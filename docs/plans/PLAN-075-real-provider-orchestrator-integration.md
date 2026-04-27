@@ -345,7 +345,7 @@ restating it.
 - [x] Task 2.1: Define a provider-agent decision contract under
       `src/platform/orchestration/` for bounded observations, semantic plans,
       recovery decisions, tool/delegation requests, and confidence.
-- [ ] Task 2.2: Implement a provider-agent adapter that calls runtime through
+- [x] Task 2.2: Implement a provider-agent adapter that calls runtime through
       the supervised runtime boundary, not directly.
 - [ ] Task 2.3: Make policy validation own deterministic routing, invariants,
       approval, weak-model policy dial tightening, budget, retry, and
@@ -644,3 +644,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Temporary participant precision: cross-referenced SPEC-050, assigned preset-created temporary participant cutover to Phase 3 Task 3.3, added `temp-participant-strong-agent.test.tsx`, recorded preset capability-review risk, and pinned capability-profile resolution to the bound execution target. |
 | 2026-04-28 | Implementation slice 1: landed provider capability profile bootstrap for Claude, Codex, Ollama/local, and unknown providers; added eval/history schema fixtures, policy dial tests for strong vs weak profiles, and static guardrails for direct runtime calls plus non-Chat planner/dispatcher imports. |
 | 2026-04-28 | Implementation slice 2: added the provider-agent decision contract for bounded observations, semantic plans, tool/delegation requests, and recovery decisions, with validation that raw-content summaries and out-of-surface tools are rejected. |
+| 2026-04-28 | Implementation slice 3: added the provider-agent runtime adapter, keeping create/send calls behind `platform/supervision/runtimeBoundary`, validating bounded observations before runtime calls, and rejecting provider decisions that exceed the bounded tool surface. |
