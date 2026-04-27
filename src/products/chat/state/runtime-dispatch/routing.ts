@@ -8,6 +8,7 @@ import type {
   MessageOrigin,
 } from '../../api/contracts.js';
 import type { CatsCoreState } from '../../../../core/types.js';
+import type { ProviderAgentDecision } from '../../../../platform/orchestration/index.js';
 import type { OrchestratorTurnPlan } from '../../../../platform/orchestration/contracts.js';
 import type {
   RoomRoutingGuardReason,
@@ -89,6 +90,14 @@ interface RouteChannelMessageOptions {
   cancellationRegistry?: ChannelDispatchCancellationRegistry;
   onStateWritten?: (channelId: string) => void;
   orchestratorPlan?: OrchestratorTurnPlan | null;
+  providerAgentDecisionRequester?: (input: {
+    state: ChatState;
+    channelId: string;
+    payload: SendChannelMessageInput;
+    observation: NonNullable<import('./turn.js').PreparedDispatchTurn['providerAgentObservation']>;
+    runtimeClient: RuntimeClient;
+    now: Date;
+  }) => Promise<ProviderAgentDecision | null>;
 }
 
 function readMessageRetryMetadata(
@@ -269,6 +278,7 @@ export interface BegunChannelMessageDispatch {
   results: ChannelDispatchResult[];
   preparedTurn: import('./turn.js').PreparedDispatchTurn | null;
   userMessage: ChatMessage;
+  providerAgentDecision: ProviderAgentDecision | null;
 }
 
 export async function beginChannelMessageDispatch(
@@ -396,6 +406,17 @@ export async function beginChannelMessageDispatch(
     preparedTurn.state = metadataApplied.state;
     preparedTurn.userMessage = metadataApplied.userMessage;
   }
+  const providerAgentDecision = preparedTurn.providerAgentObservation
+    && options.providerAgentDecisionRequester
+    ? await options.providerAgentDecisionRequester({
+        state: preparedTurn.state,
+        channelId,
+        payload,
+        observation: preparedTurn.providerAgentObservation,
+        runtimeClient,
+        now,
+      })
+    : null;
   nextState = materializeInFlightDispatchState(
     preparedTurn.state,
     channelId,
@@ -413,6 +434,7 @@ export async function beginChannelMessageDispatch(
     results: preparedTurn.results,
     preparedTurn: preparedTurn.terminalResult ? null : preparedTurn,
     userMessage: preparedTurn.userMessage,
+    providerAgentDecision,
   };
 }
 
@@ -483,6 +505,17 @@ export async function beginChannelMessageRetryDispatch(
     preparedTurn.userMessage = preparedMetadataApplied.userMessage;
     sourceMessage = preparedMetadataApplied.userMessage;
   }
+  const providerAgentDecision = preparedTurn.providerAgentObservation
+    && options.providerAgentDecisionRequester
+    ? await options.providerAgentDecisionRequester({
+        state: preparedTurn.state,
+        channelId,
+        payload: buildRetrySendPayload(sourceMessage),
+        observation: preparedTurn.providerAgentObservation,
+        runtimeClient: _runtimeClient,
+        now,
+      })
+    : null;
   nextState = await persistInFlightDispatchState(
     options.chatStore,
     materializeInFlightDispatchState(
@@ -502,6 +535,7 @@ export async function beginChannelMessageRetryDispatch(
     results: preparedTurn.results,
     preparedTurn: preparedTurn.terminalResult ? null : preparedTurn,
     userMessage: sourceMessage,
+    providerAgentDecision,
   };
 }
 

@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
   validateProviderAgentBoundedObservation,
+  type ProviderAgentBoundedObservation,
   type ProviderAgentToolDescriptor,
 } from '../src/platform/orchestration/index.ts';
 import {
@@ -22,7 +24,9 @@ import {
   prepareDispatchTurn,
   type PreparedDispatchTurn,
 } from '../src/products/chat/state/runtime-dispatch/turn.ts';
+import { beginChannelMessageDispatch } from '../src/products/chat/state/runtime-dispatch/routing.ts';
 import type { ChatState } from '../src/products/chat/api/contracts.ts';
+import type { RuntimeClient } from '../src/platform/runtime/client.ts';
 
 function policy(): SupervisionPolicy {
   return {
@@ -381,4 +385,58 @@ test('Chat parallel member turns keep solo execution targets inside the provider
     prepared.providerAgentObservation?.contextRefs.includes('chat-composer-mode:solo'),
     true,
   );
+});
+
+test('Chat dispatch can hand bounded observations to a provider-agent decision requester', async () => {
+  const rawMessage = 'decide next step without leaking this raw text';
+  let capturedObservation: ProviderAgentBoundedObservation | null = null;
+  const state = createChannel(
+    createDefaultChatState(),
+    {
+      title: 'Provider decision room',
+      topic: 'Decision seam',
+      originSurface: 'chat',
+      entryKind: 'solo',
+      pendingProvider: 'claude',
+      pendingInstance: 'native',
+      pendingModel: 'claude-sonnet',
+    },
+    new Date('2026-04-28T00:00:00.000Z'),
+  );
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    state.selectedChannelId,
+    {
+      body: rawMessage,
+    },
+    {} as RuntimeClient,
+    new Date('2026-04-28T00:01:00.000Z'),
+    {
+      providerAgentDecisionRequester: async ({ observation }) => {
+        capturedObservation = observation;
+        return {
+          contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+          kind: 'semantic_plan',
+          decisionId: 'decision-chat-1',
+          planId: 'provider-plan-chat-1',
+          confidence: 'medium',
+          rationaleSummary: 'Use the bounded Chat turn metadata.',
+          steps: [
+            {
+              stepId: 'respond',
+              summary: 'Respond to the routed Chat turn.',
+              action: 'respond',
+            },
+          ],
+        };
+      },
+    },
+  );
+
+  assert.equal(begun.providerAgentDecision?.kind, 'semantic_plan');
+  assert.equal(capturedObservation?.task.kind, 'chat_turn');
+  assert.equal(JSON.stringify(capturedObservation).includes(rawMessage), false);
+  assert.equal(begun.userMessage.metadata.orchestratorPlanner, 'provider_agent_observation');
+  assert.equal(begun.preparedTurn?.initialResolution.targets[0]?.participantKind, 'orchestrator');
 });
