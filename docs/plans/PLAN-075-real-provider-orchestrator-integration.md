@@ -652,3 +652,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 8: added the Chat provider-agent bounded-observation builder so deterministic routing metadata can enter the Phase 2 seam without passing raw message or transcript content. |
 | 2026-04-28 | Implementation slice 9: wired Chat dispatch preparation to build a provider-agent bounded observation for each user turn while leaving deterministic routing, UI, transcript body, and runtime dispatch behavior unchanged. |
 | 2026-04-28 | Implementation slice 10: added Chat deterministic-routing boundary tests for explicit mentions, current-turn audience caps, and no provider-agent runtime adapter calls inside routing modules. |
+| 2026-04-28 | Implementation slice 11: added `temp-participant-strong-agent.test.tsx` proving preset/ad hoc temporary participants can resolve strong-provider capability profiles and provider-agent observations without durable Cat promotion. |
