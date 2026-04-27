@@ -330,6 +330,18 @@ categories:
 | `src/products/chat/api/orchestratorDispatch.ts` | Chat-owned legacy dispatch shell for direct operator/debug dispatch and pending approval replay. | Keep approval/operator persistence product-owned until the debug surface is retired. |
 | `src/products/chat/api/orchestratorPlan.ts` | Chat-owned legacy plan/execution-loop response builder. | Keep only as a Chat debug/operator projection; it must not become platform semantic planning again. |
 
+## Baseline Targeted Test Record
+
+The baseline targeted suite for this cutover is:
+
+- Chat: `npx tsx --test tests/chat-deterministic-routing-boundary.test.tsx tests/chat-provider-agent-observation.test.tsx tests/temp-participant-strong-agent.test.tsx`
+- Work/provider-agent: `npx tsx --test tests/work-supervised-run.test.tsx tests/supervision-run-lifecycle-service.test.tsx tests/provider-agent-runtime-adapter.test.tsx`
+- Code: `npx tsx --test tests/code-task-supervision.test.tsx tests/code-relay-supervision.test.tsx tests/code-live-provider-smoke.test.tsx`
+
+Latest local run on 2026-04-28: Chat 23 pass; Work/provider-agent 16 pass;
+Code 4 pass and 1 gated live smoke skipped unless
+`CATS_CODE_LIVE_PROVIDER_SMOKE=1` is set.
+
 ## Implementation Phases
 
 ### Phase 0: Inventory and Guardrails
@@ -343,8 +355,11 @@ categories:
       product trees must not import the retired platform modules. Chat owns
       retained deterministic routing and debug projections under
       `src/products/chat/**`.
-- [ ] Task 0.4: Record baseline targeted tests for Chat, Work, and Code runtime
+- [x] Task 0.4: Record baseline targeted tests for Chat, Work, and Code runtime
       paths before cutover.
+      See `Baseline Targeted Test Record`; the current baseline includes Chat
+      deterministic/provider-agent handoff, Work supervised run lifecycle, Code
+      task/relay supervision, and the gated live-provider smoke skip path.
 - [x] Task 0.5: Inventory `cats-runtime` client/server capabilities required
       for lifecycle work: resume, cancel, observe, stream, close, delete, and
       session metadata persistence.
@@ -757,3 +772,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 54: completed Phase 7 Task 7.5 by proving `work.sop.ask_weak` evidence is recorded as a tool-boundary event on the parent driver run and actor, without introducing a peer worker run id. |
 | 2026-04-28 | Implementation slice 55: completed Phase 7 Task 7.6 with `weak-worker-no-ad-hoc-routing.test.ts`, guarding against product/orchestration weak-provider runtime entrypoints, `ask_weak` runtime bypasses, and standalone weak dispatcher modules. |
 | 2026-04-28 | Implementation slice 56: completed Phase 8 by moving legacy Chat plan/dispatch shells under Chat ownership, retiring `src/platform/orchestration/planner.ts` and `dispatch.ts`, strengthening static import guards, and documenting the canonical split among Chat routing, provider-agent semantics, and supervision policy. |
+| 2026-04-28 | Implementation slice 57: completed Task 0.4 by recording and running baseline targeted tests for Chat, Work/provider-agent, and Code supervision paths; Code live provider smoke remains gated behind `CATS_CODE_LIVE_PROVIDER_SMOKE=1`. |
