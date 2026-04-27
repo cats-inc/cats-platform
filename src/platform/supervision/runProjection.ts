@@ -35,6 +35,7 @@ export interface SupervisionPolicySnapshotProjection {
 
 export interface SupervisionEvidenceProjection {
   eventId: string;
+  source: 'supervision_tool_boundary' | 'provider_agent_run_loop';
   actionId: string | null;
   toolName: string | null;
   status: ToolResultStatus | null;
@@ -315,12 +316,33 @@ function readSupervisionEvidenceProjection(
   runId: string,
 ): SupervisionEvidenceProjection | null {
   const payload = event.payload;
-  if (payload.source !== 'supervision_tool_boundary' || payload.runId !== runId) {
+  if (payload.runId !== runId) {
+    return null;
+  }
+
+  if (payload.source === 'provider_agent_run_loop') {
+    return {
+      eventId: event.id,
+      source: 'provider_agent_run_loop',
+      actionId: readString(payload.actionId),
+      toolName: null,
+      status: readToolResultStatus(payload.status),
+      occurredAt: event.timestamp,
+      actorRef: event.actorId,
+      policySnapshotRef: null,
+      rejectionCode: readString(payload.rejectionCode),
+      approvalRequestId: null,
+      summary: readString(payload.summary),
+    };
+  }
+
+  if (payload.source !== 'supervision_tool_boundary') {
     return null;
   }
 
   return {
     eventId: event.id,
+    source: 'supervision_tool_boundary',
     actionId: readString(payload.actionId),
     toolName: readString(payload.toolName),
     status: readToolResultStatus(payload.status),

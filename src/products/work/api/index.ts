@@ -10,6 +10,7 @@ import type {
 import { CoreNotFoundError } from '../../../core/errors.js';
 import { appendCoreTrace, upsertCoreRun } from '../../../core/model/index.js';
 import { handleCoreError } from '../../../core/api/shared.js';
+import { appendEvidenceEvent } from '../../../platform/persistence/evidence.js';
 import {
   resolveFullResponseText,
   type RuntimeClient,
@@ -527,6 +528,13 @@ async function launchRuntimeForWorkSupervisedRun(input: {
       },
       now,
     );
+    appendRuntimeRunLoopEvidence({
+      dependencies,
+      run: input.run,
+      actorRef: runtime.actorRef,
+      runLoop: runtime.runLoop,
+      occurredAt: evaluatedAt,
+    });
     const persisted = await dependencies.coreStore.writeCore(traced.core);
     const run = persisted.runs.find((candidate) => candidate.id === input.run.id) ?? next.run;
 
@@ -859,6 +867,51 @@ function mergeProviderAgentRunLoopRecord(
     ],
     latestHandoff: update.latestHandoff,
   };
+}
+
+function appendRuntimeRunLoopEvidence(input: {
+  dependencies: WorkApiDependencies;
+  run: CoreRunRecord;
+  actorRef: string;
+  runLoop: ProviderAgentRunLoopRecord;
+  occurredAt: string;
+}): void {
+  const dataDir = input.dependencies.evidenceDataDir;
+  if (!dataDir || !input.run.conversationId) {
+    return;
+  }
+
+  const outcome = input.runLoop.outcomes[0];
+  const observation = input.runLoop.observations[0];
+  if (!outcome || !observation) {
+    return;
+  }
+
+  appendEvidenceEvent(
+    dataDir,
+    input.run.conversationId,
+    {
+      id: `${input.run.id}:${outcome.outcomeId}:provider-agent-run-loop`,
+      conversationId: input.run.conversationId,
+      sessionId: outcome.sessionId,
+      layer: 'evidence',
+      actorId: input.actorRef,
+      kind: 'system_event',
+      timestamp: input.occurredAt,
+      payload: {
+        source: 'provider_agent_run_loop',
+        runId: input.run.id,
+        actionId: outcome.actionId,
+        observationId: observation.observationId,
+        outcomeId: outcome.outcomeId,
+        status: outcome.status,
+        sessionId: outcome.sessionId,
+        ...(outcome.tokensUsed === undefined ? {} : { tokensUsed: outcome.tokensUsed }),
+        handoff: outcome.handoff,
+        summary: 'Provider-agent runtime message completed.',
+      },
+    },
+  );
 }
 
 function buildRuntimeResponseTraceMessage(

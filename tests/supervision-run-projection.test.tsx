@@ -174,13 +174,35 @@ function evidenceEvent(snapshot: SupervisionPolicySnapshot): EvidenceEvent {
   };
 }
 
+function providerRunLoopEvidenceEvent(): EvidenceEvent {
+  return {
+    id: 'evidence-provider-run-loop-1',
+    conversationId: 'conversation-supervised-1',
+    sessionId: 'runtime-session-supervised-1',
+    layer: 'evidence',
+    actorId: 'agent:boss',
+    kind: 'system_event',
+    timestamp: '2026-04-25T11:02:30.000Z',
+    payload: {
+      source: 'provider_agent_run_loop',
+      runId: 'run-supervised-1',
+      actionId: 'action-supervised-1',
+      observationId: 'action-supervised-1:observation',
+      outcomeId: 'action-supervised-1:outcome',
+      status: 'applied',
+      sessionId: 'runtime-session-supervised-1',
+      summary: 'Provider-agent runtime message completed.',
+    },
+  };
+}
+
 test('supervised run projection combines run state, policy snapshots, and evidence', async () => {
   const { core, snapshot } = await createFixtureCore();
 
   const projection = buildSupervisedRunInspectionProjection(
     core,
     'run-supervised-1',
-    [evidenceEvent(snapshot)],
+    [evidenceEvent(snapshot), providerRunLoopEvidenceEvent()],
   );
 
   assert.ok(projection);
@@ -198,11 +220,19 @@ test('supervised run projection combines run state, policy snapshots, and eviden
     projection.latestPolicySnapshot?.snapshotRef,
     createSupervisionPolicySnapshotRef(snapshot),
   );
-  assert.equal(projection.evidence[0]?.toolName, 'work.approval_gated.apply');
-  assert.equal(projection.evidence[0]?.status, 'pending_approval');
+  const toolEvidence = projection.evidence.find(
+    (event) => event.source === 'supervision_tool_boundary',
+  );
+  const providerEvidence = projection.evidence.find(
+    (event) => event.source === 'provider_agent_run_loop',
+  );
+  assert.equal(toolEvidence?.toolName, 'work.approval_gated.apply');
+  assert.equal(toolEvidence?.status, 'pending_approval');
+  assert.equal(providerEvidence?.status, 'applied');
+  assert.equal(providerEvidence?.summary, 'Provider-agent runtime message completed.');
   assert.deepEqual(projection.counts, {
     policySnapshots: 1,
-    evidence: 1,
+    evidence: 2,
     pendingApprovals: 1,
     rejectedActions: 0,
   });
@@ -213,17 +243,23 @@ test('Work task detail projection exposes supervised latest-run inspection', asy
   const task = core.tasks.find((candidate) => candidate.id === 'task-supervised-1');
   assert.ok(task);
 
-  const detail = buildWorkTaskDetailProjection(core, task, [evidenceEvent(snapshot)]);
+  const evidence = [evidenceEvent(snapshot), providerRunLoopEvidenceEvent()];
+  const detail = buildWorkTaskDetailProjection(core, task, evidence);
   const payload = createWorkTaskDetailPayload(
     core,
     'task-supervised-1',
-    [evidenceEvent(snapshot)],
+    evidence,
   );
 
   assert.equal(detail.supervision?.run.id, 'run-supervised-1');
   assert.equal(detail.supervision?.primaryState, 'waiting_for_approval');
   assert.equal(detail.supervision?.counts.policySnapshots, 1);
-  assert.equal(detail.supervision?.counts.evidence, 1);
+  assert.equal(detail.supervision?.counts.evidence, 2);
   assert.equal(detail.supervision?.providerAgentRunLoop?.latestHandoff?.kind, 'provider_agent_seam');
-  assert.equal(payload?.supervision?.evidence[0]?.eventId, 'evidence-supervised-1');
+  assert.equal(
+    payload?.supervision?.evidence.find(
+      (event) => event.source === 'supervision_tool_boundary',
+    )?.eventId,
+    'evidence-supervised-1',
+  );
 });

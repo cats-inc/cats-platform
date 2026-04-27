@@ -331,6 +331,12 @@ test('POST /api/work/tasks/:taskId/supervised-run starts supervised runtime sess
   const observations = providerAgentRunLoop?.observations as Record<string, unknown>[] | undefined;
   const outcomes = providerAgentRunLoop?.outcomes as Record<string, unknown>[] | undefined;
   const evidence = readEvidenceEvents(tempDir, 'conversation-supervision-route');
+  const toolBoundaryEvidence = evidence.filter(
+    (event) => event.payload.source === 'supervision_tool_boundary',
+  );
+  const runLoopEvidence = evidence.find(
+    (event) => event.payload.source === 'provider_agent_run_loop',
+  );
 
   assert.equal(response.status, 201);
   assert.equal(payload.created, true);
@@ -379,9 +385,12 @@ test('POST /api/work/tasks/:taskId/supervised-run starts supervised runtime sess
   assert.equal(runtimeClient.sentMessages[0]?.sessionId, 'runtime-session-work-1');
   assert.match(runtimeClient.sentMessages[0]?.content ?? '', /Work task: Route supervised task/u);
   assert.deepEqual(
-    evidence.map((event) => event.payload.toolName),
+    toolBoundaryEvidence.map((event) => event.payload.toolName),
     ['cats.runtime.session.create', 'cats.runtime.message.send'],
   );
+  assert.equal(runLoopEvidence?.payload.actionId, `${payload.run.id}:runtime-message`);
+  assert.equal(runLoopEvidence?.payload.status, 'applied');
+  assert.equal(runLoopEvidence?.payload.sessionId, 'runtime-session-work-1');
 
   const detailResponse = await fetch(
     `http://127.0.0.1:${address.port}/api/work/tasks/task-supervision-route`,
@@ -394,6 +403,13 @@ test('POST /api/work/tasks/:taskId/supervised-run starts supervised runtime sess
 
   assert.equal(detailResponse.status, 200);
   assert.ok(runtimeTrace, 'expected Work task timeline to include the runtime response');
+  assert.equal(detailPayload.supervision.counts.evidence, 3);
+  assert.equal(
+    detailPayload.supervision.evidence.find(
+      (event: { source: string }) => event.source === 'provider_agent_run_loop',
+    )?.actionId,
+    `${payload.run.id}:runtime-message`,
+  );
   assert.deepEqual(
     detailPayload.supervision.providerAgentRunLoop.outcomes[0],
     outcomes?.[0],
