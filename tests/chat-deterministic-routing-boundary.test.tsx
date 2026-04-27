@@ -161,6 +161,7 @@ test('platform orchestration barrel does not export old semantic plan entrypoint
   assert.equal(source.includes('dispatchOrchestratorTurn'), false);
   assert.equal(source.includes('OrchestratorTurnPlan'), false);
   assert.equal(source.includes('OrchestratorPlanResponse'), false);
+  assert.equal(source.includes('./planner.js'), false);
 });
 
 test('Chat owns legacy orchestrator dispatch while old platform dispatcher is not imported', () => {

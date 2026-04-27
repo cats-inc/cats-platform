@@ -21,9 +21,9 @@ async function* walkSourceFiles(rootDirectory) {
   }
 }
 
-test('platform orchestrator dispatch stays behind an injected channel router seam', async () => {
+test('Chat orchestrator dispatch stays behind an injected channel router seam', async () => {
   const source = await readFile(
-    new URL('../src/platform/orchestration/dispatch.ts', import.meta.url),
+    new URL('../src/products/chat/api/orchestratorDispatch.ts', import.meta.url),
     'utf8',
   );
 
@@ -105,9 +105,9 @@ test('app server dependency resolver wires the chat task-execution locator into 
   assert.match(source, /taskExecutionLocator/u);
 });
 
-test('platform orchestrator planner stays behind an injected planner surface seam', async () => {
+test('Chat orchestrator plan builder stays behind an injected planner surface seam', async () => {
   const source = await readFile(
-    new URL('../src/platform/orchestration/planner.ts', import.meta.url),
+    new URL('../src/products/chat/api/orchestratorPlan.ts', import.meta.url),
     'utf8',
   );
 

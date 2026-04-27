@@ -304,11 +304,11 @@ categories:
 | `src/products/chat/api/resources/channelRoutes.ts` | No longer builds `OrchestratorTurnPlan`; send/retry acknowledgements derive from begun Chat dispatch state plus provider-agent observation/decision metadata. | Keep UI acknowledgement shape stable while continuing to remove old semantic-planner entrypoints. |
 | `src/products/chat/api/resources/parallelChatGroupDispatch.ts` | No longer builds one plan per parallel member; member summaries derive from Chat dispatch prepared-turn state and provider-agent observations. | Each member remains a solo execution target inside the provider-agent seam. |
 | `src/products/chat/state/telegramBridgeAdapter.ts` | No longer builds a plan before Telegram-origin Chat dispatch. | Telegram-origin messages enter the same Chat dispatch routing path as web sends. |
-| `src/products/chat/api/orchestratorRoutes.ts` | Exposes legacy direct plan/dispatch surfaces for operator/debug flows. | Keep only if it delegates to the new provider-agent seam; otherwise retire after product routes stop depending on old plan output. |
+| `src/products/chat/api/orchestratorRoutes.ts` | Exposes legacy direct plan/dispatch surfaces for operator/debug flows. | Delegates to Chat-owned plan/dispatch shells and the provider-agent seam; retire the debug surface separately if no operator workflow still needs it. |
 | `src/products/chat/state/runtime-dispatch/turn.ts` | Consumes a Chat-owned `DeterministicChatRoutingPlan` only to override initial deterministic target resolution. | Keep this input free of semantic-planning authority and platform old-plan types. |
-| `src/products/chat/state/runtime-dispatch/routing.ts` | Accepts only Chat-owned deterministic routing plans; legacy `OrchestratorTurnPlan` conversion is isolated to `deterministicRouterAdapter`. | Continue shrinking the old platform adapter boundary. |
-| `src/platform/orchestration/dispatch.ts` | Direct product API dispatch shell that couples plan build, approval persistence, and Chat routing. | Split approval/operator persistence from planning; Chat routes should call Chat deterministic routing plus provider-agent decision seams directly. |
-| `src/platform/orchestration/planner.ts` | Old mixed semantic/deterministic planner implementation. | Move deterministic Chat routing ownership to `src/products/chat/**`; delete or reduce platform exports once no product path imports them. |
+| `src/products/chat/state/runtime-dispatch/routing.ts` | Accepts only Chat-owned deterministic routing plans. | Keep this path on the Chat deterministic routing contract and provider-agent decision requester seam. |
+| `src/products/chat/api/orchestratorDispatch.ts` | Chat-owned legacy dispatch shell for direct operator/debug dispatch and pending approval replay. | Keep approval/operator persistence product-owned until the debug surface is retired. |
+| `src/products/chat/api/orchestratorPlan.ts` | Chat-owned legacy plan/execution-loop response builder. | Keep only as a Chat debug/operator projection; it must not become platform semantic planning again. |
 
 ## Implementation Phases
 
@@ -503,7 +503,7 @@ categories:
       `deterministicRouterAdapter` no longer consumes old platform
       `OrchestratorTurnPlan` payloads; Chat dispatch acknowledgements use the
       Chat-owned `DeterministicChatRoutingPlan` projection.
-- [ ] Task 8.2: Remove semantic-planning exports from the old
+- [x] Task 8.2: Remove semantic-planning exports from the old
       planner/dispatcher modules after Chat, Work, and Code semantic paths use
       the provider-agent seam.
       First slice: the public `platform/orchestration/index.ts` barrel no
@@ -514,7 +514,10 @@ categories:
       while the old platform dispatcher is no longer imported by product or app
       routes. Third slice: legacy Chat plan/execution-loop response builders
       moved to `src/products/chat/api/orchestratorPlan.ts`, leaving the old
-      platform planner unimported by product routes.
+      platform planner unimported by product routes. Final slice: retired the
+      old `src/platform/orchestration/planner.ts` and
+      `src/platform/orchestration/dispatch.ts` files; retained code now lives
+      under Chat ownership.
 - [ ] Task 8.3: Add/keep static tests proving non-Chat product trees cannot
       import old planner/dispatcher modules. Chat may import the new
       deterministic router path because that routing is still a product
