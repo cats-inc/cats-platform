@@ -106,6 +106,19 @@ function createRunSpawnExecutor(input: {
     if (!parentRun) {
       return rejected('E_PRECHECK_FAILED', `Parent run not found: ${parentRunId}`);
     }
+    if (!isSameOrDescendantRun(core.runs, parentRun.id, context.runId)) {
+      return rejected(
+        'E_PRECHECK_FAILED',
+        `Parent run ${parentRun.id} is outside the delegating run tree: ${context.runId}`,
+      );
+    }
+    const ancestry = resolveRunAncestry(core.runs, parentRun.id);
+    if (ancestry.hasCycle) {
+      return rejected(
+        'E_PRECHECK_FAILED',
+        `Run delegation cycle detected at parent run: ${parentRun.id}`,
+      );
+    }
 
     const parentBudget = readRunBudget(parentRun);
     if (!parentBudget) {
@@ -143,6 +156,16 @@ function createRunSpawnExecutor(input: {
               target: toolInput.target,
               budget,
               budgetSource: 'parent_run_cap',
+              delegation: {
+                requestedByRunId: context.runId,
+                parentRunId: parentRun.id,
+                ancestryDepth: ancestry.ancestorIds.length,
+              },
+              toolScope: {
+                parentToolScope: context.grant.parentToolScope,
+                policyToolScope: context.grant.policyToolScope,
+                effectiveToolScope: context.effectiveToolScope,
+              },
             },
           },
           evaluation: runState,
@@ -221,6 +244,39 @@ function isAddressableTarget(value: unknown): value is AddressableTarget {
   return record !== null &&
     typeof record.kind === 'string' &&
     ADDRESSABLE_TARGET_KIND_VALUES.includes(record.kind as AddressableTarget['kind']);
+}
+
+function isSameOrDescendantRun(
+  runs: CoreRunRecord[],
+  candidateRunId: string,
+  rootRunId: string,
+): boolean {
+  if (candidateRunId === rootRunId) {
+    return true;
+  }
+
+  return resolveRunAncestry(runs, candidateRunId).ancestorIds.includes(rootRunId);
+}
+
+function resolveRunAncestry(
+  runs: CoreRunRecord[],
+  runId: string,
+): { ancestorIds: string[]; hasCycle: boolean } {
+  const runsById = new Map(runs.map((run) => [run.id, run]));
+  const ancestorIds: string[] = [];
+  const seen = new Set([runId]);
+  let current = runsById.get(runId)?.parentRunId ?? null;
+
+  while (current) {
+    if (seen.has(current)) {
+      return { ancestorIds, hasCycle: true };
+    }
+    seen.add(current);
+    ancestorIds.push(current);
+    current = runsById.get(current)?.parentRunId ?? null;
+  }
+
+  return { ancestorIds, hasCycle: false };
 }
 
 function rejected(

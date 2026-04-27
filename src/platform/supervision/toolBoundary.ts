@@ -9,7 +9,11 @@ import type {
 import { createSupervisionPolicySnapshotRef } from './policySnapshots.js';
 import type {
   SupervisedToolRegistry,
+  ToolSurfaceDecision,
   ToolSurfaceGrant,
+} from './toolRegistry.js';
+import {
+  evaluateToolSurface,
 } from './toolRegistry.js';
 
 export interface ToolBoundaryEvidenceEvent {
@@ -44,6 +48,8 @@ export interface ToolBoundaryExecutionContext {
   runId: string;
   actorRef: string;
   manifest: SupervisedToolManifest;
+  grant: ToolSurfaceGrant;
+  effectiveToolScope: ToolSurfaceDecision['effectiveToolScope'];
 }
 
 export type SupervisedToolExecutor<TInput, TOutput> = (
@@ -101,6 +107,7 @@ export function createToolBoundary(options: ToolBoundaryOptions): ToolBoundary {
       }
 
       const manifest = authorization.result;
+      const toolSurface = evaluateToolSurface(manifest, invocation.grant);
 
       try {
         const result = await invocation.execute(invocation.input, {
@@ -108,6 +115,8 @@ export function createToolBoundary(options: ToolBoundaryOptions): ToolBoundary {
           runId: invocation.runId,
           actorRef: invocation.actorRef,
           manifest,
+          grant: invocation.grant,
+          effectiveToolScope: toolSurface.effectiveToolScope,
         });
         appendBoundaryEvidence(options.evidenceSink, now, invocation, result, manifest);
         return result;
