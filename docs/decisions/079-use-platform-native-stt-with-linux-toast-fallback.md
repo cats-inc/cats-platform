@@ -18,26 +18,32 @@ delivers a result). The button is non-functional on every desktop target.
 The team has explicitly ruled out two otherwise viable repair paths for this
 slice:
 
-- **Cloud STT vendors** (OpenAI Whisper, Deepgram, Azure Speech, Google STT,
-  etc.) are out of scope. Voice input must not depend on a cloud key, paid
-  service, or external network round-trip.
+- **App-managed cloud STT vendors** (OpenAI Whisper, Deepgram, Azure Speech,
+  Google STT, etc.) are out of scope. Voice input must not depend on a
+  Cats-owned cloud key, paid service, or app-managed vendor route. The one
+  exception is the Windows OS speech stack itself: if the user's Windows
+  privacy settings allow Microsoft online dictation, Cats does not override
+  that OS-level choice and must surface a conservative privacy warning instead
+  of claiming the session is local.
 - **Bundled local STT engines** (whisper.cpp, faster-whisper, Vosk,
   sherpa-onnx, Whisper WASM) are out of scope. The team does not want to ship
   model artifacts, native runtime binaries, or download-on-first-use flows
   inside the Electron app at this stage.
 
-Both desktop OS vendors expose a free, system-native, on-device STT engine
-that Electron can drive through the existing host/preload boundary established
-by ADR-003 and ADR-078:
+Both desktop OS vendors expose a free, system-native speech capability that
+Electron can drive through the existing host/preload boundary established by
+ADR-003 and ADR-078:
 
 - macOS provides `SFSpeechRecognizer` (Speech.framework) with on-device
   recognition supported on macOS 10.15+ for the languages the user has
   installed for Siri / system dictation. It requires
   `NSSpeechRecognitionUsageDescription` and `NSMicrophoneUsageDescription`
   in the bundled Info.plist and a one-time user permission grant.
-- Windows provides `Windows.Media.SpeechRecognition` (WinRT) with on-device
-  recognition for installed speech packs. The microphone permission flow is
-  governed by Windows Settings > Privacy > Microphone for desktop apps.
+- Windows provides `Windows.Media.SpeechRecognition` (WinRT). It can use
+  installed speech packs, but free-form dictation may route through Microsoft's
+  online speech service depending on the user's Windows Privacy → Speech
+  setting. The microphone permission flow is governed by Windows Settings >
+  Privacy > Microphone for desktop apps.
 - Linux has **no** equivalent OS-provided STT engine. There is no
   cross-distribution native API to fall back to.
 
@@ -49,7 +55,7 @@ acceptable Linux behavior.
 
 The composer voice input button will be powered by **platform-native STT
 engines**, accessed through the Electron host and preload bridge, with no
-cloud dependency and no bundled model artifacts:
+app-managed cloud dependency and no bundled model artifacts:
 
 - **macOS desktop** uses a bundled Swift helper that drives
   `SFSpeechRecognizer` against microphone audio captured by the helper.
@@ -60,15 +66,16 @@ cloud dependency and no bundled model artifacts:
   servers. macOS audio is therefore guaranteed to stay on the user's
   machine.
 - **Windows desktop** uses a bundled .NET / WinRT helper that drives
-  `Windows.Media.SpeechRecognition`. The active recognition mode
+  `Windows.Media.SpeechRecognition`. The actual recognition route
   (on-device speech pack vs Microsoft's online speech service) is governed
   by the user's Windows Privacy → Speech "Online speech recognition"
   setting and the installed speech pack; the WinRT API does **not** expose
   a runtime flag to force on-device recognition for free-form dictation.
   Windows audio therefore may or may not leave the machine depending on
-  the user's OS-level privacy choice. The host surfaces a per-session
-  privacy mode hint to the renderer (SPEC-084 Req 21) and the user-facing
-  documentation explains how to keep recognition fully local on Windows.
+  the user's OS-level privacy choice. The host surfaces
+  `mode: 'unknown'` to the renderer as a conservative privacy posture
+  (SPEC-084 Req 21), and the user-facing documentation explains how to
+  keep recognition fully local on Windows.
 - **Linux desktop and any non-Electron context** keep the current
   `useWebSpeechInput` path. That path will continue to surface
   "speech recognition unavailable" through the existing platform toast
@@ -116,8 +123,9 @@ but separate decisions, not made here:
   speech recognition" disabled and a matching speech pack installed,
   recognition stays fully local; otherwise audio is sent to Microsoft's
   online dictation service. The slice cannot override this choice but
-  surfaces the active mode to the renderer per session and documents the
-  configuration required for fully-local recognition.
+  surfaces a conservative `unknown` privacy posture to the renderer per
+  session and documents the configuration required for fully-local
+  recognition.
 - The renderer does not import Electron, native modules, or audio runtime
   APIs. The capture surface stays consistent with the screenshot precedent.
 - Accuracy and language coverage track each OS vendor's investment in their
@@ -140,8 +148,8 @@ but separate decisions, not made here:
   Privacy settings will have their captured audio routed to Microsoft's
   online speech service, because the WinRT API does not expose a runtime
   flag to force on-device for free-form dictation. This is an OS-level
-  user choice the app cannot override; the slice surfaces the active
-  privacy mode to the renderer per session and documents the
+  user choice the app cannot override; the slice surfaces a conservative
+  privacy warning to the renderer per session and documents the
   configuration requirement, but cannot prevent it programmatically.
 - Linux users continue to see a non-functional voice button that fails to
   a toast. This is an explicit, acknowledged gap, not a planning oversight.
@@ -221,9 +229,9 @@ but separate decisions, not made here:
 - **Why rejected**: The cost (Windows feature broken for many default
   user configurations with no programmatic recovery) outweighs the
   privacy benefit. The chosen design (route per OS privacy choice,
-  surface the active mode in UI, document the requirement) puts the
-  privacy decision in the user's hands while keeping the feature usable
-  and honest about what is happening.
+  surface a conservative `mode: 'unknown'` warning in UI, document the
+  requirement) puts the privacy decision in the user's hands while keeping
+  the feature usable and honest about what the app can and cannot prove.
 
 ## References
 
@@ -239,5 +247,5 @@ but separate decisions, not made here:
 ---
 
 *Decision proposed: 2026-04-28*
-*Last revised: 2026-04-28 (review pass: clarified per-platform privacy posture; macOS enforces on-device with fail-closed when locale unsupported, Windows is honest that recognition routes per OS privacy setting and adds Alternative 5 explaining why strict on-device-only on Windows was rejected)*
+*Last revised: 2026-04-28 (review pass: clarified per-platform privacy posture; macOS enforces on-device with fail-closed when locale unsupported, Windows is honest that recognition routes per OS privacy setting and surfaces conservative `mode: 'unknown'` rather than claiming active-mode detection; Alternative 5 explains why strict on-device-only on Windows was rejected)*
 *Decision makers: Sammy, Claude*

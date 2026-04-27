@@ -21,8 +21,8 @@ Windows — exposed to the renderer through a typed preload bridge. The
 privacy posture is per-platform and surfaced to the renderer per session:
 macOS enforces on-device recognition (audio stays on the machine), while
 Windows routes through whichever path the user's Windows speech privacy
-setting permits and the slice surfaces the active mode rather than
-overriding the user's OS-level choice. Linux and non-Electron contexts
+setting permits and the slice surfaces a conservative privacy warning
+because the WinRT API cannot prove the active path. Linux and non-Electron contexts
 continue to use the existing `useWebSpeechInput` path and surface failure
 through the existing platform toast pattern.
 
@@ -36,9 +36,10 @@ through the existing platform toast pattern.
   on-device support rather than silently routing through Apple's servers.
 - Be honest about the Windows privacy posture: the chosen WinRT API does
   not expose a runtime flag to force on-device recognition for free-form
-  dictation, so the active mode is governed by the user's OS-level
-  privacy setting; surface the active mode to the renderer per session
-  and explain the configuration requirement in user-facing docs.
+  dictation, so the actual route is governed by the user's OS-level
+  privacy setting; surface that Cats cannot prove the session is local
+  (`mode: 'unknown'`) and explain the configuration requirement in
+  user-facing docs.
 - Reuse the existing voice-input composer hook surface
   (`useVoiceInputComposer`) so callers do not change.
 - Keep all OS audio capture, helper-process lifecycle, and permission state
@@ -51,8 +52,12 @@ through the existing platform toast pattern.
 
 ## Non-Goals
 
-- Do not introduce any cloud STT vendor (OpenAI Whisper, Deepgram, Azure,
-  Google STT, etc.). Voice input must not depend on a cloud key.
+- Do not introduce any app-managed cloud STT vendor (OpenAI Whisper,
+  Deepgram, Azure Speech, Google STT, etc.) or any Cats-owned cloud STT
+  key. The Windows OS speech service is not configured by Cats; when the
+  user's Windows privacy setting allows Microsoft online dictation, Cats
+  must surface that the session's locality cannot be proven rather than
+  presenting it as local.
 - Do not bundle a local STT model or runtime (whisper.cpp, faster-whisper,
   Vosk, sherpa-onnx, WASM Whisper). No model artifacts in this slice.
 - Do not integrate with `voice-gateway` or any other monorepo subproject's
@@ -81,9 +86,10 @@ through the existing platform toast pattern.
   recognition cannot proceed, so I do not get stuck wondering whether my
   microphone is broken.
 - As a privacy-sensitive Windows user, I want the renderer to clearly
-  show me when audio is leaving my machine (because my Windows privacy
-  settings allow Microsoft online dictation), so I am not misled by a
-  generic "voice input" indicator into believing recognition is local.
+  show when Cats cannot prove audio stays on my machine, because Windows
+  may route free-form dictation through Microsoft online speech depending
+  on OS privacy settings, so I am not misled by a generic "voice input"
+  indicator into believing recognition is local.
 - As a user whose OS-level microphone permission is denied, I want a
   recovery toast that points me at the right system settings panel, so I
   can grant permission without leaving the app to search.
@@ -115,7 +121,7 @@ through the existing platform toast pattern.
    a bundled helper using `ContinuousRecognitionSession` with the user's
    configured `SystemSpeechLanguage`. The WinRT API does not expose a
    runtime flag to force on-device recognition for free-form dictation;
-   the active mode (on-device speech pack vs Microsoft's online speech
+   the actual route (on-device speech pack vs Microsoft's online speech
    service) is governed by the user's Windows Privacy → Speech "Online
    speech recognition" setting and the installed speech pack. The helper
    shall not attempt to override or work around the user's OS-level
@@ -221,16 +227,19 @@ through the existing platform toast pattern.
     `desktopCapturer`, native voice helpers, and other host-owned OS
     APIs remain unaffected.
 21. The host's `ready` event shall include a `mode` field describing the
-    active recognition path: `'on-device'`, `'cloud'`, or `'unknown'`.
-    macOS sessions shall always emit `mode: 'on-device'` (Req 4 makes
-    this enforceable). Windows sessions shall emit `mode: 'unknown'`
-    because the WinRT API does not expose the user's "Online speech
-    recognition" privacy setting; the renderer shall surface a
+    recognition locality known to the app: `'on-device'`, `'cloud'`, or
+    `'unknown'`. `unknown` means the app cannot prove whether audio stays
+    local; it is not an assertion that the session is local. macOS
+    sessions shall always emit `mode: 'on-device'` (Req 4 makes this
+    enforceable). Windows sessions shall emit `mode: 'unknown'` because
+    the WinRT API does not expose the user's "Online speech recognition"
+    privacy setting; the renderer shall surface a conservative
     per-session indicator for non-`on-device` modes (e.g., a small chip
-    on the active microphone button) so privacy-sensitive users are not
-    misled into believing audio stays local. Helper implementations MAY
-    upgrade `unknown` to `'on-device'` or `'cloud'` in the future if a
-    reliable detection path is found.
+    on the active microphone button saying the session may use Microsoft
+    online speech) so privacy-sensitive users are not misled into
+    believing audio stays local. Helper implementations MAY upgrade
+    `unknown` to `'on-device'` or `'cloud'` in the future if a reliable
+    detection path is found.
 
 ### Non-Functional Requirements
 
@@ -242,9 +251,9 @@ through the existing platform toast pattern.
   user's OS-level "Online speech recognition" privacy choice; the slice
   cannot override this from inside the app and surfaces
   `mode: 'unknown'` so the renderer can warn privacy-sensitive users
-  per session. The host shall not write captured audio to disk on any
-  platform. Documentation shall explain the Windows configuration
-  required for fully-local recognition.
+  that Cats cannot prove locality for the session. The host shall not
+  write captured audio to disk on any platform. Documentation shall
+  explain the Windows configuration required for fully-local recognition.
 - **Security**: OS audio capture and helper-process control stay in the
   Electron host. Renderer access is limited to the typed bridge methods.
   The host shall additionally lock the renderer out of Chromium-mediated
@@ -256,15 +265,17 @@ through the existing platform toast pattern.
 - **Reliability**: Cancellation, error, or unexpected helper exit shall
   always release the microphone within 1 second and shall return the
   composer to a clean idle state.
-- **Performance**: First partial transcript shall arrive within 800 ms of
-  the user beginning to speak on the primary macOS and Windows targets,
-  measured from the `ready` event.
+- **Performance**: The host shall forward each helper `final` event to the
+  renderer without material delay (target: under 100 ms of helper emission).
+  Startup readiness is governed by Req 17. Live partial-latency targets are
+  deferred with the partial-driven UI follow-up.
 - **Accessibility**: The microphone button shall remain keyboard
   reachable. The active recording state shall be conveyed via
   `aria-pressed` and visible label change, not by color alone.
-- **Compatibility**: Targets macOS 10.15+ and Windows 10 19041+ for the
-  on-device recognition guarantees. Older OS versions fall through to the
-  unsupported path with a toast.
+- **Compatibility**: Targets macOS 10.15+ for strict on-device recognition
+  and Windows 10 19041+ for the WinRT speech helper. Windows locality remains
+  governed by OS speech privacy settings (Req 5 / Req 21). Older OS versions
+  fall through to the unsupported path with a toast.
 
 ## Design Overview
 
@@ -280,7 +291,8 @@ Composer microphone button
             -> on denied: helper emits `permission_denied` and exits
             -> macOS helper checks supportsOnDeviceRecognition; emits language_not_supported and exits if false
             -> helper acquires mic, starts recognizer, emits `ready` with privacy `mode`
-            -> helper streams `final` JSON events as utterances complete (partials may also be emitted but are not consumed by renderer in v1)
+            -> helper streams `final` JSON events as utterances complete
+               (partials may also be emitted but are not consumed by renderer in v1)
             -> renderer inserts each `final` at cursor honoring selection-trust rules
             -> user clicks button again → bridge.stop(sessionId)
             -> helper finalizes, exits, host releases mic, emits `end`
@@ -295,6 +307,7 @@ Composer microphone button
 ```ts
 // src/shared/voiceCaptureBridge.ts
 type VoiceCaptureSessionId = string;
+type VoiceCaptureMode = 'on-device' | 'cloud' | 'unknown';
 
 interface VoiceCaptureStartOptions {
   sessionId: VoiceCaptureSessionId;
@@ -302,7 +315,12 @@ interface VoiceCaptureStartOptions {
 }
 
 type VoiceCaptureEvent =
-  | { type: 'ready'; sessionId: VoiceCaptureSessionId; locale: string }
+  | {
+      type: 'ready';
+      sessionId: VoiceCaptureSessionId;
+      locale: string;
+      mode: VoiceCaptureMode;
+    }
   | { type: 'partial'; sessionId: VoiceCaptureSessionId; text: string }
   | { type: 'final'; sessionId: VoiceCaptureSessionId; text: string }
   | { type: 'error'; sessionId: VoiceCaptureSessionId; reason: VoiceCaptureErrorReason }
@@ -378,7 +396,8 @@ behind one interface. Renderer code never branches on `process.platform`.
       should we attempt programmatic detection of the "Online speech
       recognition" privacy setting? No public WinRT API exists for the
       former, but a UWP app capability or undocumented registry probe
-      may be possible. v1 default: emit `unknown` and document the
+      may be possible. v1 default: emit `unknown`, show a conservative
+      "may use Microsoft online speech" indicator, and document the
       requirement to users.
 
 Resolved and promoted to Requirements:
@@ -389,8 +408,9 @@ Resolved and promoted to Requirements:
   on-device-supported, no silent network fallback (Req 4).
 - Permission preflight execution boundary → first action of the helper,
   with optional host fast-fail via Electron `systemPreferences` (Req 13).
-- Per-session privacy mode reporting → `ready` event carries `mode`
-  field; renderer surfaces non-`on-device` modes in UI (Req 21).
+- Per-session privacy posture reporting → `ready` event carries `mode`
+  field; renderer surfaces a conservative warning for non-`on-device`
+  modes in UI (Req 21).
 
 ## References
 
@@ -404,6 +424,6 @@ Resolved and promoted to Requirements:
 ---
 
 *Created: 2026-04-28*
-*Last revised: 2026-04-28 (review pass: macOS strict on-device with fail-closed; Windows mode honest about OS privacy routing; finals-only insertion in v1; helper-side preflight replaces host-side preflight; Linux toast contract made explicit; Req 21 runtime privacy mode reporting added)*
+*Last revised: 2026-04-28 (review pass: macOS strict on-device with fail-closed; Windows privacy posture is conservative `unknown` with a may-use-online-speech warning; finals-only insertion in v1; helper-side preflight replaces host-side preflight; Linux toast contract made explicit; Req 21 runtime privacy mode reporting added and reflected in the bridge contract)*
 *Author: Claude*
 *Related Plan: [PLAN-075](../plans/PLAN-075-composer-voice-input-native-stt-rollout.md)*

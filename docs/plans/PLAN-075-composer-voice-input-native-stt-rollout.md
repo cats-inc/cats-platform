@@ -19,7 +19,9 @@ microphone button with a host-owned native STT bridge. macOS uses a bundled
 Swift helper that drives `SFSpeechRecognizer`. Windows uses a bundled .NET /
 WinRT helper that drives `Windows.Media.SpeechRecognition`. Linux and the web
 renderer fall through to the existing path and continue to surface failure
-through the existing toast pattern. No cloud STT, no bundled local model.
+through the existing toast pattern. No app-managed cloud STT, no bundled
+local model; Windows follows the user's OS speech privacy settings and
+surfaces `mode: 'unknown'` until a reliable locality detector exists.
 
 ## Implementation Phases
 
@@ -38,8 +40,10 @@ through the existing toast pattern. No cloud STT, no bundled local model.
       property presence.
 - [ ] Create `src/products/shared/renderer/hooks/useNativeVoiceInput.ts`
       that drives the bridge methods, manages session ids, surfaces
-      `ready` / `partial` / `final` / `end` / `error` events as a stable
-      hook surface, and degrades gracefully when the bridge is absent.
+      `ready` (including `mode`) / `partial` / `final` / `end` /
+      `error` events as a stable hook surface, treats partials as
+      non-textarea diagnostic events in v1, and degrades gracefully when
+      the bridge is absent.
 - [ ] Refactor
       `src/products/shared/renderer/hooks/useVoiceInputComposer.ts` to
       pick `useNativeVoiceInput` when the bridge is present and otherwise
@@ -49,8 +53,10 @@ through the existing toast pattern. No cloud STT, no bundled local model.
       copy. `cancelled` and `aborted` shall be silent (no toast). Add
       one new toast string per remaining reason.
 - [ ] Add targeted renderer tests for: bridge present vs absent
-      detection, partial/final dispatch ordering, click-to-stop behavior,
-      Escape-to-cancel behavior, and toast routing for each error reason.
+      detection, finals-only textarea insertion, ignored partial events
+      in v1, `ready.mode` privacy-indicator routing (`on-device` vs
+      `unknown`), click-to-stop behavior, Escape-to-cancel behavior, and
+      toast routing for each error reason.
 - [ ] Confirm composer mic button visibility logic continues to gate on
       `voiceInputSupported` and that supported = true whenever either
       path can run, so the button is never silently hidden when the
@@ -63,7 +69,8 @@ the composer; legacy path continues to work unchanged on Linux and web.
 
 - [ ] Define the IPC contract in `desktop/host/contracts.ts`: request
       shapes (`voice:start`, `voice:stop`, `voice:cancel`), event shape
-      (`voice:event`), and the typed `VoiceCaptureEvent` payload.
+      (`voice:event`), the typed `VoiceCaptureEvent` payload, and the
+      `VoiceCaptureMode` union carried by `ready.mode`.
 - [ ] Extend `desktop/host/preload.cts` with the four bridge methods on
       `catsDesktopHost`. Subscribe-style `onVoiceCaptureEvent` shall
       return an unsubscribe function and shall not leak listeners across
@@ -143,7 +150,9 @@ to a stub helper, and surfaces typed events. No real native helper yet.
       Req 21).
 - [ ] Add a host smoke test that spawns the helper with a recorded
       WAV fixture (helper accepts an `--input <wav>` flag for testing
-      only) and asserts at least one partial and one final event.
+      only) and asserts `ready.mode === 'on-device'` plus at least one
+      final event. Partial events may be asserted only if the helper
+      emits them; they are not required for the v1 textarea contract.
 - [ ] Manually verify on a fresh macOS user profile: first-run
       permission prompts (Speech Recognition + Microphone), first-utterance
       latency, on-device mode active (assert `ready` event emits
@@ -182,6 +191,10 @@ on a notarized installer.
       WinRT API does not expose the user's "Online speech recognition"
       privacy setting (SPEC-084 Req 21). Do not attempt to detect or
       override the user's OS privacy choice from inside the helper.
+- [ ] Route `mode: 'unknown'` to conservative renderer copy indicating
+      the session may use Microsoft online speech. Do not label it as
+      "cloud" or "local" unless future detection makes that assertion
+      reliable.
 - [ ] Document, alongside the Phase 5 validation steps, the user-facing
       requirement to disable "Online speech recognition" in Windows
       Settings → Privacy → Speech and verify the speech pack for their
@@ -189,7 +202,9 @@ on a notarized installer.
       Windows.
 - [ ] Add a host smoke test that spawns the helper with a recorded
       WAV fixture (helper accepts an `--input <wav>` flag for testing
-      only) and asserts at least one partial and one final event.
+      only) and asserts `ready.mode === 'unknown'` plus at least one
+      final event. Partial events may be asserted only if the helper
+      emits them; they are not required for the v1 textarea contract.
 - [ ] Manually verify on a fresh Windows 10 / 11 user profile: first-run
       microphone consent, first-utterance latency, locale matches
       installed speech pack, stop and cancel cleanup, post-error
@@ -225,11 +240,11 @@ transcripts on a signed installer.
       behavior in `docs/setup-guide.md` (or the closest existing
       permission-docs file) after macOS validation lands.
 - [ ] Document Windows microphone permission AND speech privacy behavior
-      in the same place: the `mode: 'unknown'` posture, the requirement
-      to disable "Online speech recognition" in Windows Settings →
-      Privacy → Speech for fully-local recognition, the speech-pack
-      install path, and how the renderer privacy-mode indicator
-      surfaces the active mode per session.
+      in the same place: the `mode: 'unknown'` posture, the conservative
+      "may use Microsoft online speech" renderer indicator, the
+      requirement to disable "Online speech recognition" in Windows
+      Settings → Privacy → Speech for fully-local recognition, and the
+      speech-pack install path.
 - [ ] Document the explicit Linux limitation: the composer voice button
       is non-functional on Linux for v1, by design, with a toast on
       click. Reference ADR-079.
@@ -243,7 +258,7 @@ macOS and Windows.
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/shared/voiceCaptureBridge.ts` | Create | Typed bridge contract: events, error reasons, session ids |
+| `src/shared/voiceCaptureBridge.ts` | Create | Typed bridge contract: events, error reasons, session ids, `VoiceCaptureMode` |
 | `src/shared/desktopRecoveryBridge.ts` | Modify | Add optional `startVoiceCapture` / `stopVoiceCapture` / `cancelVoiceCapture` / `onVoiceCaptureEvent` to `DesktopHostBridge` |
 | `src/products/shared/renderer/hooks/useNativeVoiceInput.ts` | Create | New hook driving the desktop bridge with the same shape as `useWebSpeechInput` |
 | `src/products/shared/renderer/hooks/useVoiceInputComposer.ts` | Modify | Pick native bridge when present, fall back to web speech otherwise |
@@ -257,7 +272,7 @@ macOS and Windows.
 | `desktop/native/windows-stt/Program.cs` | Create | Windows helper using `Windows.Media.SpeechRecognition` |
 | `scripts/build-desktop-installer.mjs` | Modify | Build native helpers into `app.asar.unpacked/native/<platform>-stt/` and include in signing/notarization |
 | `assets/info.plist.template` (or equivalent macOS plist source) | Modify | Add `NSSpeechRecognitionUsageDescription` and `NSMicrophoneUsageDescription` |
-| `tests/voice-input-composer.test.tsx` | Create | Renderer tests for bridge-vs-web fall-through, partial/final ordering, error toast routing |
+| `tests/voice-input-composer.test.tsx` | Create | Renderer tests for bridge-vs-web fall-through, finals-only insertion, ignored partial events, privacy-mode indicator routing, error toast routing |
 | `tests/desktop-voice-capture-contract.test.js` | Create | Host contract tests for IPC shape, sender check, event dispatch, ready timeout |
 | `tests/macos-stt-helper.test.swift` | Create | Helper smoke test against a WAV fixture (Phase 3) |
 | `tests/windows-stt-helper.test.cs` | Create | Helper smoke test against a WAV fixture (Phase 4) |
@@ -268,8 +283,10 @@ when Phase 3 lands; existing packaging scripts are the source of truth.)
 
 ## Technical Decisions
 
-- **Native engines only, no cloud and no bundled model.** Drives the
-  whole architecture; explicitly rules out alternatives in ADR-079.
+- **Native engines only, no Cats-owned cloud STT and no bundled model.**
+  Drives the whole architecture; explicitly rules out app-managed cloud
+  vendors while documenting that Windows may use Microsoft's OS speech
+  service according to the user's privacy settings.
 - **Helper subprocess per session, not a long-lived helper.** Simpler
   lifetime model; matches the screenshot precedent of bounded host-owned
   capabilities. Cold-start cost is dominated by engine warm-up, not
@@ -288,8 +305,9 @@ when Phase 3 lands; existing packaging scripts are the source of truth.)
 ## Testing Strategy
 
 - **Unit Tests** (renderer): bridge availability detection,
-  partial/final insertion ordering, click-to-stop, Escape-to-cancel,
-  selection-trust preservation, error reason → toast mapping.
+  finals-only insertion, ignored partial events, `ready.mode` indicator
+  routing, click-to-stop, Escape-to-cancel, selection-trust preservation,
+  error reason → toast mapping.
 - **Unit Tests** (host): IPC sender validation, session-id filtering,
   ready-timeout fallback, helper-crash translation.
 - **Helper smoke tests**: each native helper accepts a `--input <wav>`
@@ -313,16 +331,16 @@ when Phase 3 lands; existing packaging scripts are the source of truth.)
 | Windows installer is flagged by SmartScreen due to new helper exe | Medium | Authenticode-sign the helper with the existing publisher cert as part of Phase 4; do not introduce an unsigned secondary binary |
 | Helper subprocess hangs and never emits `ready` | High | Enforce the 3-second `ready` timeout in Phase 2; map to `engine_unavailable`; helper supervisor force-kills after timeout |
 | Microphone is held after error or unexpected helper exit | High | All session teardown paths route through the orchestrator's `finally` block; verify via a Phase 2 host-test that simulates each error path and asserts the helper is killed |
-| Selection-trust race overwrites user-typed text with partials | Medium | Reuse the existing `useVoiceInputComposer` selection-trust rules; add a renderer test that types into the composer mid-session and asserts no partial overwrites typed text |
+| Selection-trust race overwrites user-typed text with transcripts | Medium | Reuse the existing `useVoiceInputComposer` selection-trust rules; add a renderer test that types into the composer mid-session and asserts ignored partials and later finals do not overwrite typed text |
 | Locale request is unsupported (no installed speech pack) | Medium | Map to `language_not_supported` with a toast; do not silently fall back to a different locale because the user's draft would silently change language |
 | .NET runtime version mismatch on user's Windows install | Medium | Default to framework-dependent .NET 8; fall back to self-contained publish if the Windows 10 19041+ baseline does not guarantee .NET 8; decision before Phase 4 build step |
-| First-utterance latency exceeds 800 ms target | Medium | Measure on the primary target hardware during Phase 3/4 validation; if exceeded, investigate engine warm-up via a silent `start` shortly before the user's actual `ready` UX exposure (post-v1 follow-up) |
+| First utterance feels slow on target hardware | Medium | Measure startup, first final, and host forwarding latency during Phase 3/4 validation; if OS engine warm-up dominates, investigate prewarming after the user explicitly starts capture or defer live partial preview to the follow-up slice |
 | New helper subprocess broadens the host attack surface | Medium | Renderer access stays behind sender-validated IPC (Phase 2); helper accepts only line-delimited JSON commands; no shell, no eval |
 | Linux users perceive the feature as "broken on Linux" rather than "intentionally deferred" | Low | Document the limitation in `docs/setup-guide.md` and reference ADR-079; consider a future Linux toast copy refresh, but not in v1 |
 | Cross-talk between rapid start/stop cycles | Medium | Session-id filtering on every event in the orchestrator; renderer ignores events for unknown session ids |
 | Future renderer change accidentally introduces `getUserMedia({ audio })` and bypasses the native helper | Medium | Phase 2 permission handler explicitly denies `media`; host contract test asserts the deny path so any future renderer code that tries to capture audio through Chromium fails loudly during tests rather than silently succeeding |
 | macOS user with an unsupported on-device locale is silently routed to Apple's servers under the helper's default settings | High | Helper sets `requiresOnDeviceRecognition = true` and fails closed with `language_not_supported` rather than network-fallback (SPEC-084 Req 4); helper smoke test asserts the closed-fail path with a known-unsupported locale fixture |
-| Windows users believe audio is local because the button label says "voice input", but Microsoft's online dictation is silently in use (privacy mismatch) | High | Renderer surfaces a per-session privacy-mode chip when `mode !== 'on-device'` (SPEC-084 Req 21); user-facing documentation explains the Windows privacy-setting requirement; Phase 4 manual validation exercises both privacy postures so we can speak to behavior on each |
+| Windows users believe audio is local because the button label says "voice input", but Microsoft's online dictation may be in use (privacy mismatch) | High | Renderer surfaces a per-session privacy-mode chip when `mode !== 'on-device'`; Windows `mode: 'unknown'` copy must conservatively say the session may use Microsoft online speech rather than claiming a detected cloud/local path; user-facing documentation explains the Windows privacy-setting requirement; Phase 4 manual validation exercises both privacy postures |
 
 ## Progress Log
 
@@ -331,6 +349,7 @@ when Phase 3 lands; existing packaging scripts are the source of truth.)
 | 2026-04-28 | Plan created from ADR-079 / SPEC-084. Awaiting Sammy review before Phase 1 start. |
 | 2026-04-28 | Added Phase 2 task to install the Electron renderer permission allowlist (`display-capture` allowed, `media` denied) per SPEC-084 Req 20, plus corresponding host contract test coverage and a risk entry guarding against future renderer drift back into `getUserMedia`. |
 | 2026-04-28 | Review-pass follow-up: macOS path now strict on-device with fail-closed (`requiresOnDeviceRecognition = true`, `language_not_supported` when locale unsupported); Windows path made honest about OS privacy routing (no API to force on-device, `mode: 'unknown'` emitted, documentation requirement added); helper-side preflight replaces the unworkable host-side preflight (host is Node, no Speech.framework binding); finals-only insertion in v1 with partials reserved for follow-up; Linux button-visibility / toast contract made explicit per the existing 55c15f5a behavior. |
+| 2026-04-28 | Contract cleanup: `ready.mode` is now an explicit bridge field via `VoiceCaptureMode`; Windows `unknown` is treated as a conservative "may use Microsoft online speech" posture rather than an active-mode claim; renderer/helper tests no longer require optional partial events for the v1 textarea contract. |
 
 ---
 
