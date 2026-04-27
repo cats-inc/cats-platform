@@ -1,8 +1,11 @@
 import {
   DEFAULT_SUPERVISION_SCHEMA_VERSION,
+  type BudgetEnvelope,
+  type SchemaRef,
   type SupervisedToolManifest,
   type ToolResult,
 } from './contracts.js';
+import type { SupervisionRejectionCode } from './errors.js';
 import type {
   SupervisedToolExecutor,
   ToolBoundaryExecutionContext,
@@ -55,8 +58,31 @@ export interface WorkSopClassifyTextBatchResult {
   }>;
 }
 
+export interface WorkSopAskWeakInput {
+  question: string;
+  expectedOutputSchemaRef: SchemaRef;
+  allowedToolNames: string[];
+  budget: BudgetEnvelope & {
+    hardStop: true;
+  };
+}
+
+export interface WorkSopAskWeakResult {
+  schemaRef: SchemaRef;
+  answer: {
+    summary: string;
+  };
+  allowedToolNames: [];
+  suggestedToolNames: [];
+  confidence: number;
+  escalation: {
+    required: boolean;
+    reason: string | null;
+  };
+}
+
 export interface WorkSopWorkerProfile {
-  toolName: 'work.sop.classify_text_batch';
+  toolName: 'work.sop.classify_text_batch' | 'work.sop.ask_weak';
   toolScope: 'none';
   budget: {
     maxDurationMs: number;
@@ -101,6 +127,10 @@ export interface WorkSupervisedTools {
       WorkSopClassifyTextBatchInput,
       WorkSopClassifyTextBatchResult
     >;
+    'work.sop.ask_weak': SupervisedToolExecutor<
+      WorkSopAskWeakInput,
+      WorkSopAskWeakResult
+    >;
   };
   sopWorkerProfile: WorkSopWorkerProfile;
   register(registry: SupervisedToolRegistry): void;
@@ -129,6 +159,7 @@ export function createInMemoryWorkSupervisedTools(input: {
       'work.local_note.apply': createLocalNoteApplyExecutor(state),
       'work.approval_gated.apply': createApprovalGatedApplyExecutor(state),
       'work.sop.classify_text_batch': createSopClassifyTextBatchExecutor(),
+      'work.sop.ask_weak': createSopAskWeakExecutor(),
     },
     sopWorkerProfile: {
       toolName: 'work.sop.classify_text_batch',
@@ -192,6 +223,19 @@ export function createWorkSupervisedToolManifests(): SupervisedToolManifest[] {
       maxBudgetHint: {
         maxDurationMs: 1000,
         maxTokens: 1024,
+        hardStop: true,
+      },
+    }),
+    createManifest({
+      name: 'work.sop.ask_weak',
+      description: 'Ask a weak worker through a strict SOP shell with schema-required output.',
+      sideEffect: 'none',
+      preflight: 'required',
+      approval: 'never',
+      failureCodes: ['E_SCHEMA_INVALID', 'E_TOOL_SCOPE_DENIED', 'E_BUDGET_EXCEEDED'],
+      maxBudgetHint: {
+        maxDurationMs: 5000,
+        maxTokens: 2048,
         hardStop: true,
       },
     }),
@@ -331,6 +375,49 @@ function createSopClassifyTextBatchExecutor(): SupervisedToolExecutor<
   };
 }
 
+function createSopAskWeakExecutor(): SupervisedToolExecutor<
+  WorkSopAskWeakInput,
+  WorkSopAskWeakResult
+> {
+  return (input) => {
+    if (!isSopAskWeakInput(input)) {
+      return rejected('E_SCHEMA_INVALID', 'Invalid work.sop.ask_weak input schema.');
+    }
+    if (!isSopAskWeakBudgetWithinFirstSlice(input.budget)) {
+      return rejected('E_BUDGET_EXCEEDED', 'work.sop.ask_weak budget exceeds first-slice limits.');
+    }
+    if (input.allowedToolNames.length > 0) {
+      return rejected(
+        'E_TOOL_SCOPE_DENIED',
+        'work.sop.ask_weak first slice forces allowedToolNames to an empty list.',
+      );
+    }
+
+    const result: WorkSopAskWeakResult = {
+      schemaRef: input.expectedOutputSchemaRef,
+      answer: {
+        summary: input.question,
+      },
+      allowedToolNames: [],
+      suggestedToolNames: [],
+      confidence: 0.5,
+      escalation: {
+        required: false,
+        reason: null,
+      },
+    };
+
+    if (!isSopAskWeakResult(result, input.expectedOutputSchemaRef)) {
+      return rejected('E_SCHEMA_INVALID', 'Invalid work.sop.ask_weak output schema.');
+    }
+
+    return {
+      status: 'applied',
+      result,
+    };
+  };
+}
+
 function createManifest(input: Pick<
   SupervisedToolManifest,
   'name' | 'description' | 'sideEffect' | 'preflight' | 'approval' | 'failureCodes'
@@ -408,6 +495,78 @@ function isClassifyTextBatchResult(input: unknown): input is WorkSopClassifyText
     );
 }
 
+function isSopAskWeakInput(input: unknown): input is WorkSopAskWeakInput {
+  if (!isRecord(input)) {
+    return false;
+  }
+  if (
+    typeof input.question !== 'string' ||
+    input.question.trim() === '' ||
+    input.question.length > 2000
+  ) {
+    return false;
+  }
+  if (!isSchemaRef(input.expectedOutputSchemaRef)) {
+    return false;
+  }
+  if (!Array.isArray(input.allowedToolNames) ||
+    !input.allowedToolNames.every((toolName) => typeof toolName === 'string')) {
+    return false;
+  }
+  if (!isRecord(input.budget) || input.budget.hardStop !== true) {
+    return false;
+  }
+
+  return true;
+}
+
+function isSopAskWeakBudgetWithinFirstSlice(input: WorkSopAskWeakInput['budget']): boolean {
+  const maxDurationMs = typeof input.maxDurationMs === 'number' ? input.maxDurationMs : 0;
+  const maxTokens = typeof input.maxTokens === 'number' ? input.maxTokens : 0;
+  return maxDurationMs > 0 &&
+    maxDurationMs <= 5000 &&
+    maxTokens > 0 &&
+    maxTokens <= 2048;
+}
+
+function isSopAskWeakResult(
+  input: unknown,
+  expectedOutputSchemaRef: SchemaRef,
+): input is WorkSopAskWeakResult {
+  return isRecord(input) &&
+    isSameSchemaRef(input.schemaRef, expectedOutputSchemaRef) &&
+    isRecord(input.answer) &&
+    typeof input.answer.summary === 'string' &&
+    Array.isArray(input.allowedToolNames) &&
+    input.allowedToolNames.length === 0 &&
+    Array.isArray(input.suggestedToolNames) &&
+    input.suggestedToolNames.length === 0 &&
+    typeof input.confidence === 'number' &&
+    input.confidence >= 0 &&
+    input.confidence <= 1 &&
+    isRecord(input.escalation) &&
+    typeof input.escalation.required === 'boolean' &&
+    (input.escalation.reason === null || typeof input.escalation.reason === 'string');
+}
+
+function isSchemaRef(input: unknown): input is SchemaRef {
+  return isRecord(input) &&
+    typeof input.id === 'string' &&
+    input.id.trim() !== '' &&
+    typeof input.version === 'string' &&
+    input.version.trim() !== '' &&
+    input.format === 'json_schema' &&
+    (input.uri === undefined || typeof input.uri === 'string');
+}
+
+function isSameSchemaRef(left: unknown, right: SchemaRef): left is SchemaRef {
+  return isSchemaRef(left) &&
+    left.id === right.id &&
+    left.version === right.version &&
+    left.format === right.format &&
+    (left.uri ?? null) === (right.uri ?? null);
+}
+
 function classifyText(text: string, labels: string[]): string {
   const normalizedText = text.toLowerCase();
   const matchingLabel = labels.find((label) => normalizedText.includes(label.toLowerCase()));
@@ -420,7 +579,7 @@ function isRecord(input: unknown): input is Record<string, unknown> {
 }
 
 function rejected<T>(
-  code: 'E_APPROVAL_DENIED' | 'E_RUN_CANCELLED',
+  code: SupervisionRejectionCode,
   message: string,
 ): ToolResult<T> {
   return {
