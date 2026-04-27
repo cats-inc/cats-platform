@@ -18,6 +18,8 @@ import {
   appendMessage,
   createChannel,
   createParallelChatGroup,
+  requireChannel,
+  setChannelOrchestratorLease,
 } from '../src/products/chat/state/model/index.ts';
 import { buildChatProviderAgentObservation } from '../src/products/chat/state/providerAgentObservation.ts';
 import {
@@ -113,6 +115,12 @@ function summaryValue(prepared: PreparedDispatchTurn, key: string): unknown {
 function actorProvider(prepared: PreparedDispatchTurn): string | null {
   const target = prepared.providerAgentObservation?.actor.target;
   return target?.kind === 'execution_target' ? target.provider : null;
+}
+
+function runtimeStub(): RuntimeClient {
+  return {
+    async closeSession() {},
+  } as RuntimeClient;
 }
 
 test('Chat provider-agent observation carries routing metadata without raw message content', () => {
@@ -448,4 +456,50 @@ test('Chat dispatch can hand bounded observations to a provider-agent decision r
   assert.equal(JSON.stringify(capturedObservation).includes(rawMessage), false);
   assert.equal(begun.userMessage.metadata.orchestratorPlanner, 'provider_agent_observation');
   assert.equal(begun.preparedTurn?.initialResolution.targets[0]?.participantKind, 'orchestrator');
+});
+
+test('Chat dispatch clears stale explicit model selections with the pending model', async () => {
+  const now = new Date('2026-04-25T01:45:00.000Z');
+  let state = createChannel(
+    createDefaultChatState(),
+    {
+      title: 'Solo dispatch target clear',
+      topic: 'Dispatch should clear the old explicit model selection.',
+      originSurface: 'code',
+      entryKind: 'solo',
+      pendingProvider: 'openai',
+      pendingModel: 'gpt-5.4',
+      pendingModelSelection: { entryId: 'gpt-5.4', entryMode: 'explicit' },
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  state = setChannelOrchestratorLease(state, channelId, {
+    sessionId: 'session-dispatch-old-selection',
+    status: 'running',
+    provider: 'openai',
+    model: 'gpt-5.4',
+    modelSelection: { entryId: 'gpt-5.4', entryMode: 'explicit' },
+    startedAt: now.toISOString(),
+    lastError: null,
+  }, now);
+
+  const begun = await beginChannelMessageDispatch(
+    state,
+    channelId,
+    {
+      body: 'Use the provider default for this turn.',
+      pendingModel: null,
+      pendingModelSelection: null,
+    },
+    runtimeStub(),
+    now,
+  );
+
+  const dispatchedChannel = requireChannel(begun.state, channelId);
+  assert.equal(dispatchedChannel.pendingModel, null);
+  assert.equal(dispatchedChannel.pendingModelSelection, null);
+  assert.equal(dispatchedChannel.orchestratorLease.model, null);
+  assert.equal(dispatchedChannel.orchestratorLease.modelSelection ?? null, null);
 });
