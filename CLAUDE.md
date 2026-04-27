@@ -118,10 +118,37 @@ Rules:
 - Do not run the full `npm test` suite unless the user explicitly asks. Only run targeted test files when needed.
 - For the full protocol, see `docs/product-integration-guide.md` and `docs/plans/PLAN-014-parallel-workstream-ownership-and-integration-seams.md`.
 
+#### Canvas Top Bar Edge Alignment
+
+When a product page mounts a `<header className="channelTopBar …">` inside `main.canvas`, the bar **will visually inset from canvas edges** unless three platform-shell rules from `src/products/shared/renderer/styles/chat-shell-base.css` are countered. They compose silently and bite at different viewports / zoom levels.
+
+The three layers on `.claudeShell > .canvas`:
+
+1. **`padding: 0 28px`** — horizontal gutter. `.channelTopBar`'s default `margin: 0 -28px; width: calc(100% + 56px)` already escapes this.
+2. **`scrollbar-gutter: stable`** — reserves space on the right equal to the OS scrollbar width. **Do not hardcode `-15px` to compensate** — scrollbar width is in *device* pixels, so the CSS-px equivalent drifts under browser zoom and the bar realigns wrong at non-100%.
+3. **`justify-items: center`** on the grid — a page wrapper at intrinsic content width (no explicit `width: 100%`) gets centred within the grid column, creating new gaps as viewport widens (clearly visible at 1600px+).
+
+Fix pattern (canonical reference: `src/products/work/renderer/components/projects-paperclip/projects-paperclip.css`):
+
+```css
+main.canvas:has(> .myPageWrapper) {
+  grid-template-columns: minmax(0, 1fr);
+  scrollbar-gutter: auto;
+  justify-items: stretch;
+}
+
+.myPageWrapper {
+  width: 100%;
+  /* … */
+}
+```
+
+The bar then uses `.channelTopBar`'s default `-28px` bleed — no per-viewport math needed. **Verify** any new top-bar-bearing surface with Playwright at viewports 1024 / 1249 / 1600 / 1920 — `bar.left === main.left && bar.right === main.right` at every size.
+
 ---
 
 ## Maintenance
 
 This file is maintained by Claude only. Other agents should not modify this file.
 
-Last updated: 2026-04-21
+Last updated: 2026-04-28
