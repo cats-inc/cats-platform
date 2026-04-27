@@ -301,11 +301,12 @@ categories:
 
 | Path | Current Use | Replacement Direction |
 |------|-------------|-----------------------|
-| `src/products/chat/api/resources/channelRoutes.ts` | Builds `OrchestratorTurnPlan` for send/retry acknowledgement metadata and initial routing injection. | Replace with Chat-owned deterministic routing summary plus provider-agent observation/decision metadata; keep UI acknowledgement shape stable. |
-| `src/products/chat/api/resources/parallelChatGroupDispatch.ts` | Builds one plan per parallel member dispatch for acknowledgement metadata and member routing. | Replace with per-member Chat deterministic routing summary; each member remains a solo execution target inside the provider-agent seam. |
-| `src/products/chat/state/telegramBridgeAdapter.ts` | Builds a plan before Telegram-origin Chat dispatch. | Route Telegram through the same Chat-owned deterministic routing summary and provider-agent observation path as web sends. |
+| `src/products/chat/api/resources/channelRoutes.ts` | No longer builds `OrchestratorTurnPlan`; send/retry acknowledgements derive from begun Chat dispatch state plus provider-agent observation/decision metadata. | Keep UI acknowledgement shape stable while continuing to remove old semantic-planner entrypoints. |
+| `src/products/chat/api/resources/parallelChatGroupDispatch.ts` | No longer builds one plan per parallel member; member summaries derive from Chat dispatch prepared-turn state and provider-agent observations. | Each member remains a solo execution target inside the provider-agent seam. |
+| `src/products/chat/state/telegramBridgeAdapter.ts` | No longer builds a plan before Telegram-origin Chat dispatch. | Telegram-origin messages enter the same Chat dispatch routing path as web sends. |
 | `src/products/chat/api/orchestratorRoutes.ts` | Exposes legacy direct plan/dispatch surfaces for operator/debug flows. | Keep only if it delegates to the new provider-agent seam; otherwise retire after product routes stop depending on old plan output. |
-| `src/products/chat/state/runtime-dispatch/turn.ts` | Accepts an `OrchestratorTurnPlan` only to override initial target resolution. | Replace the platform plan type with a Chat-owned deterministic routing input that contains no semantic planning authority. |
+| `src/products/chat/state/runtime-dispatch/turn.ts` | Consumes a Chat-owned `DeterministicChatRoutingPlan` only to override initial deterministic target resolution. | Keep this input free of semantic-planning authority and platform old-plan types. |
+| `src/products/chat/state/runtime-dispatch/routing.ts` | Accepts only Chat-owned deterministic routing plans; legacy `OrchestratorTurnPlan` conversion is isolated to `orchestratorAdapter`. | Continue shrinking the old platform adapter boundary. |
 | `src/platform/orchestration/dispatch.ts` | Direct product API dispatch shell that couples plan build, approval persistence, and Chat routing. | Split approval/operator persistence from planning; Chat routes should call Chat deterministic routing plus provider-agent decision seams directly. |
 | `src/platform/orchestration/planner.ts` | Old mixed semantic/deterministic planner implementation. | Move deterministic Chat routing ownership to `src/products/chat/**`; delete or reduce platform exports once no product path imports them. |
 
@@ -380,7 +381,7 @@ categories:
 
 - [x] Task 3.1: Route Chat semantic planning through the new provider-agent
       decision seam while preserving existing Chat UI and transcript contracts.
-- [ ] Task 3.2: Carve deterministic routing out of the old planner/dispatcher:
+- [x] Task 3.2: Carve deterministic routing out of the old planner/dispatcher:
       explicit mentions, direct lanes, room-default dispatch, audience limits,
       lane/container addressing, and origin-surface recents remain Chat-owned
       deterministic behavior.
@@ -679,3 +680,5 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 20: added the Chat dispatch provider-agent decision requester seam so bounded observations can be handed to a provider-authored semantic decision before dispatch materialization, without changing Chat UI or transcript flow. |
 | 2026-04-28 | Implementation slice 21: taught dispatch acknowledgement summaries to prefer provider-authored semantic plan ids when the provider-agent decision seam returns a decision. |
 | 2026-04-28 | Implementation slice 22: marked Phase 3 Task 3.1 complete after Chat dispatch gained the provider-agent decision requester seam while preserving UI and transcript contracts. |
+| 2026-04-28 | Implementation slice 23: removed the obsolete Chat plan-state adapter after product routes stopped using it, while preserving the still-current dispatch target cleanup coverage in the provider-agent observation tests. |
+| 2026-04-28 | Implementation slice 24: removed the old platform plan type from Chat runtime dispatch options; dispatch now accepts only Chat-owned deterministic routing plans, with legacy conversion isolated to `orchestratorAdapter`. |
