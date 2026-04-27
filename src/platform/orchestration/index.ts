@@ -22,14 +22,12 @@ export {
   type OrchestratorOperatorSeams,
   type OrchestratorOperatorActionContract,
   type OrchestratorPlanRequest,
-  type OrchestratorPlanResponse,
   type OrchestratorRecoveryLoop,
   type OrchestratorRuntimeDeliveryIntentView,
   type OrchestratorWorkflowContinuationView,
   type OrchestratorWorkflowRecommendationView,
   type OrchestratorRuntimeToolPlane,
   type OrchestratorTransportContext,
-  type OrchestratorTurnPlan,
   type RuntimeDeliveryContentBlock,
   type ToolIntentManifest,
 } from './contracts.js';
@@ -44,10 +42,7 @@ export {
 export {
   buildOrchestratorExecutionLoopResponse,
   buildOrchestratorExecutionLoopSnapshot,
-  buildOrchestratorPlanResponse,
-  buildOrchestratorTurnPlan,
 } from './planner.js';
-export { dispatchOrchestratorTurn } from './dispatch.js';
 export {
   PROVIDER_AGENT_ADAPTER_VERSION,
   PROVIDER_AGENT_DECISION_PROMPT_SCHEMA,

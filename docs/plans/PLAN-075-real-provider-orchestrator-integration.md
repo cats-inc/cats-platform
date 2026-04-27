@@ -506,6 +506,10 @@ categories:
 - [ ] Task 8.2: Remove semantic-planning exports from the old
       planner/dispatcher modules after Chat, Work, and Code semantic paths use
       the provider-agent seam.
+      First slice: the public `platform/orchestration/index.ts` barrel no
+      longer exports old turn-plan builders or `dispatchOrchestratorTurn`;
+      remaining legacy debug routes import them directly until their product
+      ownership is retired.
 - [ ] Task 8.3: Add/keep static tests proving non-Chat product trees cannot
       import old planner/dispatcher modules. Chat may import the new
       deterministic router path because that routing is still a product

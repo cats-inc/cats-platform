@@ -2,9 +2,11 @@ import { sendMethodNotAllowed, matchRoute, readJsonBody, sendJson } from '../../
 import {
   buildOrchestratorExecutionLoopResponse,
   buildOrchestratorPlanResponse,
+} from '../../../platform/orchestration/planner.js';
+import {
   dispatchOrchestratorTurn,
-  type OrchestratorPlanRequest,
-} from '../../../platform/orchestration/index.js';
+} from '../../../platform/orchestration/dispatch.js';
+import type { OrchestratorPlanRequest } from '../../../platform/orchestration/contracts.js';
 import type { ChatApiRouteContext } from './routeSupport.js';
 import { handleRestError } from './routeSupport.js';
 

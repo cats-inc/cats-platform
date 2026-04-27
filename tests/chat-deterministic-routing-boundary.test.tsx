@@ -150,6 +150,19 @@ test('Chat dispatch acknowledgement summaries use Chat-owned deterministic plans
   assert.equal(source.includes('DeterministicChatRoutingPlan'), true);
 });
 
+test('platform orchestration barrel does not export old semantic plan entrypoints', () => {
+  const source = readFileSync(
+    path.join(process.cwd(), 'src/platform/orchestration/index.ts'),
+    'utf8',
+  );
+
+  assert.equal(source.includes('buildOrchestratorTurnPlan'), false);
+  assert.equal(source.includes('buildOrchestratorPlanResponse'), false);
+  assert.equal(source.includes('dispatchOrchestratorTurn'), false);
+  assert.equal(source.includes('OrchestratorTurnPlan'), false);
+  assert.equal(source.includes('OrchestratorPlanResponse'), false);
+});
+
 test('Chat runtime dispatch API no longer accepts old platform plans', () => {
   const source = readFileSync(
     path.join(process.cwd(), 'src/products/chat/state/runtime-dispatch/routing.ts'),
