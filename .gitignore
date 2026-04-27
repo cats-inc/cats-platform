@@ -21,6 +21,8 @@ build/
 !assets/build/icons/**
 release/
 desktop/native/**/.build/
+desktop/native/**/bin/
+desktop/native/**/obj/
 config/*
 !config/.gitkeep
 !config/*.example
