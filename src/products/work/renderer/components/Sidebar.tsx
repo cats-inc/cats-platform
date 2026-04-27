@@ -113,70 +113,6 @@ function createExtraActionGroups(
   const currentPath = globalThis.location?.pathname ?? WORK_ROUTE_PREFIX;
   const groups: ConversationSidebarActionGroup[] = [];
 
-  if (props.onOpenWarRoom) {
-    groups.push({
-      key: 'war-room',
-      ariaLabel: 'Operations',
-      items: [
-        {
-          key: 'war-room',
-          label: 'War Room',
-          onClick: props.onOpenWarRoom,
-          active: isWorkWarRoomPath(currentPath),
-          icon: (
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect x="2.5" y="2.5" width="11" height="11" rx="2" />
-              <path d="M4 5h8" />
-              <path d="M4 8h8" />
-              <path d="M6 11h4" />
-            </svg>
-          ),
-        },
-      ],
-    });
-  }
-
-  if (props.onOpenTasks) {
-    groups.push({
-      key: 'tasks',
-      ariaLabel: 'Execution',
-      items: [
-        {
-          key: 'tasks',
-          label: 'Tasks',
-          onClick: props.onOpenTasks,
-          active: isWorkTasksPath(currentPath),
-          icon: (
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect x="2.5" y="2.5" width="11" height="11" rx="2" />
-              <path d="M5 5.5h6" />
-              <path d="M5 8h6" />
-              <path d="M5 10.5h4" />
-            </svg>
-          ),
-        },
-      ],
-    });
-  }
-
   if (props.onOpenProjects) {
     groups.push({
       key: 'projects',
@@ -235,6 +171,70 @@ function createExtraActionGroups(
               <path d="M5 6h6" />
               <path d="M5 8.5h6" />
               <path d="M5 11h3.5" />
+            </svg>
+          ),
+        },
+      ],
+    });
+  }
+
+  if (props.onOpenWarRoom) {
+    groups.push({
+      key: 'war-room',
+      ariaLabel: 'Operations',
+      items: [
+        {
+          key: 'war-room',
+          label: 'War Room',
+          onClick: props.onOpenWarRoom,
+          active: isWorkWarRoomPath(currentPath),
+          icon: (
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="2.5" y="2.5" width="11" height="11" rx="2" />
+              <path d="M4 5h8" />
+              <path d="M4 8h8" />
+              <path d="M6 11h4" />
+            </svg>
+          ),
+        },
+      ],
+    });
+  }
+
+  if (props.onOpenTasks) {
+    groups.push({
+      key: 'tasks',
+      ariaLabel: 'Execution',
+      items: [
+        {
+          key: 'tasks',
+          label: 'Tasks',
+          onClick: props.onOpenTasks,
+          active: isWorkTasksPath(currentPath),
+          icon: (
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="2.5" y="2.5" width="11" height="11" rx="2" />
+              <path d="M5 5.5h6" />
+              <path d="M5 8h6" />
+              <path d="M5 10.5h4" />
             </svg>
           ),
         },
