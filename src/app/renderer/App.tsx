@@ -53,11 +53,6 @@ const ChatApp = createLazyProductSurface('chat');
 const WorkApp = createLazyProductSurface('work');
 const CodeApp = createLazyProductSurface('code');
 
-function resolveLoadingTitleForPath(pathname: string): string {
-  const surface = resolvePlatformSurfaceForPath(pathname);
-  return surface ? `Loading ${platformSurfaceLabel(surface)}` : 'Loading';
-}
-
 export function shouldRenderGuideCatSidecar(input: {
   guideCat: PlatformHostEnvelope['guideCat'] | null | undefined;
   productSurfaceFallbackActive: boolean;
@@ -439,7 +434,7 @@ export default function PlatformApp() {
       <div className="screen screenCentered">
         <div className="loadingPanel">
           <p className="eyebrow">CATS INC</p>
-          <h1>{resolveLoadingTitleForPath(location.pathname)}</h1>
+          <h1>Loading&hellip;</h1>
         </div>
       </div>
     );
