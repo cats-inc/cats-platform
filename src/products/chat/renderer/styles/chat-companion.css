@@ -62,7 +62,7 @@
 .companionContent {
   flex: 1;
   overflow-y: auto;
-  padding: 24px clamp(24px, 5vw, 64px);
+  padding: 0;
 }
 
 /* Section */

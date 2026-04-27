@@ -6,6 +6,7 @@ import {
   type CompanionWorkspaceTab,
 } from '../../companionViewTypes.js';
 import { SidePanel } from '../../../../../design/components/SidePanel.js';
+import { DraftHeader } from '../../../../shared/renderer/components/DraftHeader.js';
 import { catInitials } from '../../chatUtils.js';
 import { useCompanionPresence } from '../../hooks/useCompanionPresence.js';
 import { useCompanionWorkspace } from '../../hooks/useCompanionWorkspace.js';
@@ -22,6 +23,7 @@ export interface CompanionWorkspaceProps {
   onBackToChat: () => void;
   onWake: (catId: string) => void;
   onSleep: (catId: string) => void;
+  onCatAvatarSave?: (catId: string, dataUrl: string) => void;
 }
 
 export function CompanionWorkspace({
@@ -30,6 +32,7 @@ export function CompanionWorkspace({
   onBackToChat,
   onWake,
   onSleep,
+  onCatAvatarSave,
 }: CompanionWorkspaceProps) {
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<CompanionWorkspaceTab | null>('overview');
@@ -195,7 +198,22 @@ export function CompanionWorkspace({
             </button>
           </div>
         </header>
-        <div className="companionContent" />
+        <div className="companionContent">
+          <DraftHeader
+            variant="profile"
+            title={cat.name}
+            avatarName={cat.name}
+            avatarUrl={cat.avatarUrl}
+            avatarColor={cat.avatarColor}
+            coverStorageKey={cat.id}
+            onAvatarSave={
+              onCatAvatarSave
+                ? (dataUrl) => onCatAvatarSave(cat.id, dataUrl)
+                : undefined
+            }
+            alwaysEditable
+          />
+        </div>
       </div>
       {sidePanelOpen ? (
         <SidePanel

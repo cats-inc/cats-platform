@@ -61,6 +61,7 @@ export interface AppRoutesProps {
   onToggleCompanionMode: () => void;
   onCompanionWake: (catId: string) => void;
   onCompanionSleep: (catId: string) => void;
+  onCatAvatarSave?: (catId: string, dataUrl: string) => void;
 }
 
 export function AppRoutes({
@@ -84,6 +85,7 @@ export function AppRoutes({
   onToggleCompanionMode,
   onCompanionWake,
   onCompanionSleep,
+  onCatAvatarSave,
 }: AppRoutesProps) {
   const folderBrowserSurfaceProps = folderBrowserProps;
 
@@ -170,6 +172,7 @@ export function AppRoutes({
                 onBackToChat={onToggleCompanionMode}
                 onWake={onCompanionWake}
                 onSleep={onCompanionSleep}
+                onCatAvatarSave={onCatAvatarSave}
               />
             ) : showDirectLaneBoot ? (
               <BootShell />

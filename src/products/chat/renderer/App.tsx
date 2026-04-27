@@ -1581,6 +1581,7 @@ export default function App() {
                 onToggleCompanionMode={onToggleCompanionMode}
                 onCompanionWake={onCompanionWake}
                 onCompanionSleep={onCompanionSleep}
+                onCatAvatarSave={onCatAvatarSave}
               />
             )}
             confirmDialog={appDialog}

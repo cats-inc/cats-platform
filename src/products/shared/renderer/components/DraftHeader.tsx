@@ -28,6 +28,7 @@ export interface DraftHeaderProps {
   avatarColor?: string | null;
   coverStorageKey?: string | null;
   onAvatarSave?: (dataUrl: string) => void;
+  alwaysEditable?: boolean;
 }
 
 function buildAvatarStyle(input: {
@@ -78,6 +79,7 @@ export function DraftHeader({
   avatarColor,
   coverStorageKey,
   onAvatarSave,
+  alwaysEditable = false,
 }: DraftHeaderProps) {
   const hasAvatar = variant === 'profile' && Boolean(avatarName);
   const hasCover = variant === 'profile' && Boolean(coverStorageKey);
@@ -124,8 +126,13 @@ export function DraftHeader({
     .filter(Boolean)
     .join(' ');
 
-  const avatarIsEditable = hasAvatar && !avatarUrl && typeof onAvatarSave === 'function';
-  const coverIsEditable = hasCover && !coverUrl;
+  const avatarIsEditable =
+    hasAvatar
+    && typeof onAvatarSave === 'function'
+    && (alwaysEditable || !avatarUrl);
+  const coverIsEditable = hasCover && (alwaysEditable || !coverUrl);
+  const coverButtonLabel = coverUrl ? 'Change cover photo' : 'Add cover photo';
+  const avatarButtonLabel = avatarUrl ? 'Change avatar' : 'Add avatar';
 
   return (
     <div className={headerClassName}>
@@ -139,10 +146,10 @@ export function DraftHeader({
               type="button"
               className="draftHeaderCoverAddButton"
               onClick={() => setCoverDialogOpen(true)}
-              aria-label="Add cover photo"
+              aria-label={coverButtonLabel}
             >
               <CameraIcon />
-              <span>Add cover photo</span>
+              <span>{coverButtonLabel}</span>
             </button>
           ) : null}
         </div>
@@ -155,11 +162,13 @@ export function DraftHeader({
               className="draftHeaderAvatar draftHeaderAvatarEditable"
               style={buildAvatarStyle({ avatarUrl, avatarColor })}
               onClick={() => setAvatarDialogOpen(true)}
-              aria-label="Add avatar"
+              aria-label={avatarButtonLabel}
             >
-              <span className="draftHeaderAvatarInitials" aria-hidden="true">
-                {nameInitials(avatarName ?? '')}
-              </span>
+              {avatarUrl ? null : (
+                <span className="draftHeaderAvatarInitials" aria-hidden="true">
+                  {nameInitials(avatarName ?? '')}
+                </span>
+              )}
               <span className="draftHeaderAvatarCameraBadge" aria-hidden="true">
                 <CameraIcon />
               </span>
@@ -190,12 +199,14 @@ export function DraftHeader({
         <CoverCropDialog
           onSave={handleCoverSave}
           onClose={() => setCoverDialogOpen(false)}
+          initialDataUrl={coverUrl}
         />
       ) : null}
       {avatarDialogOpen ? (
         <AvatarCropDialog
           onSave={handleAvatarSave}
           onClose={() => setAvatarDialogOpen(false)}
+          initialDataUrl={avatarUrl}
         />
       ) : null}
     </div>
