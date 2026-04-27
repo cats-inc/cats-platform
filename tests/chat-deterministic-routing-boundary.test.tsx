@@ -129,6 +129,18 @@ test('dispatch turn consumes a Chat-owned deterministic routing plan shape', () 
   assert.equal(source.includes('DeterministicChatRoutingPlan'), true);
 });
 
+test('Chat runtime dispatch API no longer accepts old platform plans', () => {
+  const source = readFileSync(
+    path.join(process.cwd(), 'src/products/chat/state/runtime-dispatch/routing.ts'),
+    'utf8',
+  );
+
+  assert.equal(source.includes('OrchestratorTurnPlan'), false);
+  assert.equal(source.includes('platform/orchestration/contracts'), false);
+  assert.equal(source.includes('orchestratorPlan?:'), false);
+  assert.equal(source.includes('deterministicRoutingPlan?: DeterministicChatRoutingPlan'), true);
+});
+
 test('Telegram bridge routes through Chat dispatch without building old platform plans', () => {
   const source = readFileSync(
     path.join(process.cwd(), 'src/products/chat/state/telegramBridgeAdapter.ts'),

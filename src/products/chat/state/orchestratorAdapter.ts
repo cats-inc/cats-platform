@@ -1,6 +1,7 @@
 import type {
   OrchestratorChannelRouter,
   OrchestratorPlannerSurface,
+  OrchestratorTurnPlan,
 } from '../../../platform/orchestration/contracts.js';
 import type { RuntimeClient } from '../../../platform/runtime/client.js';
 import type { CatsMemoryService } from '../../../platform/memory/index.js';
@@ -17,11 +18,46 @@ import {
   resumeWorkflowContinuationReplay,
   routeChannelMessage,
 } from './runtimeActions.js';
+import type { DeterministicChatRoutingPlan } from './runtime-dispatch/deterministicPlan.js';
 import {
   buildChatOperatorView,
   buildRunInspectorView,
   resolveChatConversationId,
 } from '../shared/operator-loop/index.js';
+
+function toDeterministicChatRoutingPlan(
+  plan: OrchestratorTurnPlan | null | undefined,
+): DeterministicChatRoutingPlan | null {
+  if (!plan) {
+    return null;
+  }
+
+  return {
+    planId: plan.planId,
+    channelId: plan.channelId,
+    metadata: {
+      planner: plan.execution.planner,
+      loopMode: plan.execution.loopMode,
+      dispatchBoundary: plan.executionLoop.dispatchBoundary,
+      runtimeToolBoundary: plan.runtimeToolPlane.boundary,
+    },
+    routing: {
+      trigger: plan.routing.trigger,
+      resolution: structuredClone(plan.routing.resolution),
+      mentionNames: [...plan.routing.mentionNames],
+      unresolvedMentions: [...plan.routing.unresolvedMentions],
+      initialTargets: plan.routing.initialTargets.map((target) => ({
+        participantKind: target.targetKind,
+        participantId: target.targetId,
+        participantName: target.targetName,
+        laneId: target.laneId,
+        sessionId: target.sessionId,
+        trigger: target.trigger,
+        plannedDepth: target.plannedDepth,
+      })),
+    },
+  };
+}
 
 export function createChatOrchestratorChannelRouter(
   options: {
@@ -50,7 +86,7 @@ export function createChatOrchestratorChannelRouter(
           runtimeRecovery: options.runtimeRecovery,
           chatStatePath: options.chatStatePath,
           runtimeDataDir: options.runtimeDataDir,
-          orchestratorPlan: input.orchestratorPlan,
+          deterministicRoutingPlan: toDeterministicChatRoutingPlan(input.orchestratorPlan),
         },
       );
     },

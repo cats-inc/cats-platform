@@ -73,7 +73,49 @@ function buildPlanTargetingParticipant(channelId, participant) {
   };
 }
 
-test('Chat dispatch consumes orchestrator plan targets instead of recomputing defaults', async () => {
+function buildDeterministicPlanTargetingParticipant(channelId, participant) {
+  return {
+    planId: 'chat-plan-test',
+    channelId,
+    metadata: {
+      planner: 'chat_deterministic_router',
+      loopMode: 'agent_driven',
+      dispatchBoundary: 'supervised_runtime_boundary',
+      runtimeToolBoundary: 'runtime_mcp_facade',
+    },
+    routing: {
+      trigger: 'room_default',
+      unresolvedMentions: [],
+      mentionNames: [],
+      resolution: {
+        routingMode: 'room_default',
+        selectionKind: 'default_target',
+        defaultTarget: {
+          participantKind: 'cat',
+          participantId: participant.participantId,
+          participantName: participant.name,
+        },
+        defaultTargetReason: 'boss_chat_default',
+        fallbackTarget: null,
+        blockedReason: null,
+        note: null,
+      },
+      initialTargets: [
+        {
+          participantKind: 'cat',
+          participantId: participant.participantId,
+          participantName: participant.name,
+          laneId: null,
+          sessionId: null,
+          trigger: 'room_default',
+          plannedDepth: 0,
+        },
+      ],
+    },
+  };
+}
+
+test('Chat dispatch consumes Chat-owned deterministic plan targets instead of recomputing defaults', async () => {
   const now = new Date('2026-04-25T00:00:00.000Z');
   let state = createDefaultChatState();
   state = createCat(state, {
@@ -105,7 +147,7 @@ test('Chat dispatch consumes orchestrator plan targets instead of recomputing de
     createRuntimeStub(),
     now,
     {
-      orchestratorPlan: buildPlanTargetingParticipant(channelId, participant),
+      deterministicRoutingPlan: buildDeterministicPlanTargetingParticipant(channelId, participant),
     },
   );
 
@@ -118,7 +160,7 @@ test('Chat dispatch consumes orchestrator plan targets instead of recomputing de
     begun.preparedTurn?.activeTurn.targetStatuses[0]?.participant.participantId,
     participant.participantId,
   );
-  assert.equal(begun.userMessage.metadata.orchestratorPlanId, 'orch-plan-test');
+  assert.equal(begun.userMessage.metadata.orchestratorPlanId, 'chat-plan-test');
   assert.equal(begun.userMessage.metadata.orchestratorDispatchBoundary, 'supervised_runtime_boundary');
 });
 

@@ -9,7 +9,6 @@ import type {
 } from '../../api/contracts.js';
 import type { CatsCoreState } from '../../../../core/types.js';
 import type { ProviderAgentDecision } from '../../../../platform/orchestration/index.js';
-import type { OrchestratorTurnPlan } from '../../../../platform/orchestration/contracts.js';
 import type {
   RoomRoutingGuardReason,
 } from '../../../../shared/roomRouting.js';
@@ -53,7 +52,6 @@ import {
 } from './turn.js';
 import {
   buildDeterministicRoutingPlanMessageMetadata,
-  toDeterministicChatRoutingPlan,
   type DeterministicChatRoutingPlan,
 } from './deterministicPlan.js';
 import type {
@@ -89,7 +87,7 @@ interface RouteChannelMessageOptions {
   runtimeDataDir?: string;
   cancellationRegistry?: ChannelDispatchCancellationRegistry;
   onStateWritten?: (channelId: string) => void;
-  orchestratorPlan?: OrchestratorTurnPlan | null;
+  deterministicRoutingPlan?: DeterministicChatRoutingPlan | null;
   providerAgentDecisionRequester?: (input: {
     state: ChatState;
     channelId: string;
@@ -304,7 +302,7 @@ export async function beginChannelMessageDispatch(
     );
   const orchestratorSessionAttachment = resolveOrchestratorLeaseAttachment(channelBeforeMessage);
   const orchestratorSessionId = orchestratorSessionAttachment?.sessionId ?? null;
-  const deterministicRoutingPlan = toDeterministicChatRoutingPlan(options.orchestratorPlan);
+  const deterministicRoutingPlan = options.deterministicRoutingPlan ?? null;
 
   if (
     pendingTargetChanged
@@ -468,7 +466,7 @@ export async function beginChannelMessageRetryDispatch(
   if (sourceWasMissingFromTranscript) {
     nextState = restoreMissingTranscriptMessage(nextState, channelId, sourceMessage, now);
   }
-  const deterministicRoutingPlan = toDeterministicChatRoutingPlan(options.orchestratorPlan);
+  const deterministicRoutingPlan = options.deterministicRoutingPlan ?? null;
   const metadataApplied = applyDeterministicPlanMetadataToExistingUserMessage(
     nextState,
     channelId,
