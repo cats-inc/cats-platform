@@ -44,16 +44,25 @@ sequences delivery.
   `WorkGraphLink`, and `WorkGraphLinkView`.
 - Extend `WorkGraphProjection` with the two new fields per SPEC-090
   §FR6: `links: WorkGraphLink[]` and `linksByEndpoint:
-  Record<WorkGraphEndpointKey, WorkGraphLinkView[]>`.
-- Confirm `WorkGraphObjectSummary` carries `sourceRecordFamily:
-  WorkGraphLinkEndpointKind` and `sourceRecordId: string` for every
-  Project / Work Item / Task object, per SPEC-083 §Suggested Work
-  Graph Shape. If today's `types.ts` (which predates the SPEC-083
-  shape) does not yet carry those fields, this phase adds them. The
-  renderer resolves a link endpoint (`recordFamily`, `recordId`) to
-  its graph object by matching those fields directly. The projection
-  MUST use the composite key form `${recordFamily}:${recordId}` (the
-  `WorkGraphEndpointKey` type) when building `linksByEndpoint`.
+  Partial<Record<WorkGraphEndpointKey, WorkGraphLinkView[]>>`. The
+  map is sparse (only endpoints that have at least one view appear
+  as keys). Consumers MUST treat absence of a key as `[]`; do not
+  rely on every endpoint key existing.
+- Confirm `WorkGraphObjectSummary` carries `sourceRecordFamily` and
+  `sourceRecordId` for every Project / Work Item / Task object, per
+  SPEC-083 §Suggested Work Graph Shape. The summary field type stays
+  the wider `WorkGraphObjectKind` (since the same summary covers
+  conversation / run / artifact / approval and other non-PWT
+  objects); only the link-record field type narrows to
+  `WorkGraphLinkEndpointKind`. If today's `types.ts` (which predates
+  SPEC-083 §Suggested Work Graph Shape) does not yet carry those
+  fields, this phase adds them — typed as the wider
+  `WorkGraphObjectKind`. The renderer resolves a link endpoint
+  (`recordFamily`, `recordId`) to its graph object by matching the
+  link's narrow value against the summary's wider field. The
+  projection MUST use the composite key form
+  `${recordFamily}:${recordId}` (the `WorkGraphEndpointKey` type)
+  when building `linksByEndpoint`.
 - Extend `WorkGraphDiagnosticKind` with `orphan_link` and `link_cycle`.
 - Update mock fixture under
   `src/products/work/renderer/components/topdown/mock.ts` to seed one
@@ -63,9 +72,17 @@ sequences delivery.
   example and one cycle for the diagnostics surface.
 - Update `buildIndexes` / projection helpers (in
   `components/topdown/shared.ts`) to populate `linksByEndpoint` per
-  SPEC-090 §FR5: every stored row produces views on the endpoints
-  enumerated there (both sides of `blocks` and `related_to`;
-  source-side only for `duplicate_of` / `follows` at v1).
+  SPEC-090 §FR5:
+  - Every well-resolved stored row produces views on the endpoints
+    SPEC-090 §FR5 enumerates (both sides of `blocks` and
+    `related_to`; source-side only for `duplicate_of` / `follows` at
+    v1).
+  - Orphan rows (source or target endpoint does not resolve to an
+    existing Core record) are EXCLUDED from `linksByEndpoint` and
+    surfaced via the `orphan_link` diagnostic only. Renderers reading
+    `linksByEndpoint` see resolved views only.
+  - Raw `links` keeps the orphaned rows so Broken Links can iterate
+    them.
 - Add cycle detection for the stored `blocks` subgraph.
 
 **Done when.**
@@ -100,12 +117,15 @@ sequences delivery.
 **Scope.**
 - Add a "Linkage" section to `ProjectDetailPage`, `WorkItemDetailPage`,
   and (later) `TaskDetailPage` that reads
-  `WorkGraphProjection.linksByEndpoint[<self endpoint key>]` and
-  groups the returned `WorkGraphLinkView[]` by `kind` (Blocking /
-  Blocked by / Related / Duplicate of / Follows). Per SPEC-090 §FR9,
-  the renderer MUST consume `linksByEndpoint`, not raw `links`, so
-  derived `blocked_by` and symmetric `related_to` views show up
-  without the renderer re-deriving them.
+  `WorkGraphProjection.linksByEndpoint[<self endpoint key>] ?? []`
+  (the map is sparse per SPEC-090 §FR6 — fall back to empty array
+  when the key is absent) and groups the returned
+  `WorkGraphLinkView[]` by `kind` (Blocking / Blocked by / Related /
+  Duplicate of / Follows). Per SPEC-090 §FR9, the renderer MUST
+  consume `linksByEndpoint`, not raw `links`, so derived `blocked_by`
+  and symmetric `related_to` views show up without the renderer
+  re-deriving them. Orphan rows do not appear here — they are
+  surfaced exclusively in Broken Links per SPEC-090 §FR5.
 - Each entry renders status dot + title + relation badge using the
   graph object resolved from `view.otherEndpoint` against
   `WorkGraphObjectSummary.sourceRecordFamily` /

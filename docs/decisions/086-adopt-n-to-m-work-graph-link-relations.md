@@ -84,12 +84,17 @@ following minimum shape (Core identity, not projection identity):
   - `follows` (directed; the source supersedes the target)
   - `blocked_by` is **not** stored — it is a projection-derived
     inverse of `blocks`. See §3 for canonicalization rules.
-- `sourceRecordFamily` / `sourceRecordId` — the Core record family and
-  id this relation originates from. At v1, `sourceRecordFamily` is
-  restricted to `project | work_item | task`. (This is the endpoint
-  family restriction, not the relation `kind` enum above.)
-- `targetRecordFamily` / `targetRecordId` — same shape; `targetRecordFamily`
-  is restricted to the same set.
+- `sourceRecordFamily` / `sourceRecordId` — Core record identity of
+  the source. At v1, `sourceRecordFamily` MUST be one of the lowercase
+  WorkGraph object-kind values `project | work_item | task` (this is
+  the endpoint-kind restriction, NOT the relation `kind` enum above,
+  and NOT a Core record-class name like `CoreWorkItemRecord` /
+  `ManagedWorkRecord`). The field name reuses SPEC-083's
+  `sourceRecordFamily` on `WorkGraphObjectSummary` (typed wider there
+  to cover non-PWT objects); SPEC-090 narrows the value space on the
+  link record itself.
+- `targetRecordFamily` / `targetRecordId` — same shape; same value
+  space restriction at v1.
 - `createdAt`, optional `createdByActorId`, optional `note`.
 
 `WorkGraphLink` is a Core record family, not a renderer-only construct.

@@ -89,10 +89,18 @@ read or write links at v1.
      set is `blocks`, `related_to`, `duplicate_of`, `follows`.
      `blocked_by` is **not** stored — it is a projection-derived
      inverse of `blocks` (see §4 below).
-   - `sourceRecordFamily`: Core record family of the source. Restricted
-     to `project | work_item | task` at v1.
+   - `sourceRecordFamily`: lowercase WorkGraph object-kind value
+     identifying the source's record family. The valid value space at
+     v1 is exactly `project | work_item | task` (i.e. the
+     `WorkGraphLinkEndpointKind` enum). This reuses the field name
+     SPEC-083 §Suggested Work Graph Shape introduced on
+     `WorkGraphObjectSummary` (where the type is the wider
+     `WorkGraphObjectKind`); link endpoints constrain it to the v1
+     subset above. Producers MUST NOT use Core record-class names like
+     `CoreWorkItemRecord` / `ManagedWorkRecord` here — only the
+     lowercase WorkGraph kind values are accepted.
    - `sourceRecordId`: Core record id within that family.
-   - `targetRecordFamily`: same shape, same restriction.
+   - `targetRecordFamily`: same shape, same value space.
    - `targetRecordId`: same shape, same restriction.
    - `createdAt`: ISO-8601 timestamp.
    - `createdByActorId` (optional).
@@ -121,23 +129,36 @@ read or write links at v1.
    - `duplicate_of` and `follows` are directional and stored as
      written.
 5. The projection layer MUST derive read-time views from the stored
-   rows and expose them per-endpoint. Specifically, each stored row
-   contributes the following entries to
-   `WorkGraphProjection.linksByEndpoint`:
+   rows and expose them per-endpoint. For each stored row, the
+   projection first checks that BOTH endpoints resolve to an existing
+   Core record. If both resolve, the row contributes the following
+   entries to `WorkGraphProjection.linksByEndpoint`:
    - `A blocks B` → a `blocks` view on A and a `blocked_by` view on B.
    - canonical `related_to` between A and B → a `related_to` view on
      both A and B (each with the other as `otherEndpoint`).
    - `A duplicate_of B` → a `duplicate_of` view on A only at v1
-     (the canonical side renders no entry; revisit if user demand
-     emerges).
+     (the canonical / target side renders no entry; revisit if user
+     demand emerges).
    - `A follows B` → a `follows` view on A only at v1 (mirror of the
      `duplicate_of` rule).
+   If either endpoint does NOT resolve, the row is treated as
+   orphaned: it is **excluded** from `linksByEndpoint` (so the
+   detail-page Linkage section does not show broken rows), and the
+   projection emits an `orphan_link` diagnostic instead. Surfacing
+   broken links is the Broken Links page's job, not the per-object
+   Linkage section's. (Revisit if user feedback shows the
+   exclusion hides too much context — the orientation can flip to
+   "include with `unresolvedEndpoint: true` flag" without breaking
+   producers.)
 6. `WorkGraphProjection` gains two new fields per the shape in §
    Suggested Record Shape:
-   - `links: WorkGraphLink[]` — raw stored rows.
-   - `linksByEndpoint: Record<WorkGraphEndpointKey, WorkGraphLinkView[]>`
-     — per-endpoint derived views including all inverse / symmetric
-     entries called out in §5.
+   - `links: WorkGraphLink[]` — raw stored rows (includes orphaned
+     rows so Broken Links can iterate them; the projection layer is
+     authoritative on which subset feeds `linksByEndpoint`).
+   - `linksByEndpoint: Partial<Record<WorkGraphEndpointKey,
+     WorkGraphLinkView[]>>` — per-endpoint derived views, sparse map
+     of well-resolved rows only. Consumers MUST treat absence of a
+     key as the empty array `[]`.
 7. `WorkGraphProjection.diagnostics` gains two new
    `WorkGraphDiagnosticKind` values:
    - `orphan_link`: a link whose `(sourceRecordFamily, sourceRecordId)`
@@ -222,10 +243,17 @@ export interface WorkGraphLink {
 }
 
 // Read-side view kinds the projection synthesizes per object. Includes
-// the derived `blocked_by` view that does not appear in storage. Each
-// stored `blocks` row produces a `blocks` view on the source endpoint
-// AND a `blocked_by` view on the target endpoint. Each stored
-// `related_to` row produces a `related_to` view on both endpoints.
+// the derived `blocked_by` view that does not appear in storage.
+// Derivation rules per stored row (must match §FR5 exactly):
+//   blocks       → blocks view on source endpoint, blocked_by view
+//                  on target endpoint
+//   related_to   → related_to view on both endpoints (canonical row
+//                  is symmetric, so each side sees the other as
+//                  otherEndpoint)
+//   duplicate_of → duplicate_of view on source endpoint only at v1
+//                  (target / canonical side gets no view)
+//   follows      → follows view on source endpoint only at v1
+//                  (target / superseded side gets no view)
 export type WorkGraphLinkViewKind =
   | "blocks"
   | "blocked_by"
@@ -264,19 +292,33 @@ export type WorkGraphEndpointKey = `${WorkGraphLinkEndpointKind}:${string}`;
 export interface WorkGraphProjection {
   // existing fields …
   links: WorkGraphLink[];
-  // Per-endpoint read-side views the renderer consumes directly. Both
-  // sides of every stored row appear here — see view-kind comment
-  // above.
-  linksByEndpoint: Record<WorkGraphEndpointKey, WorkGraphLinkView[]>;
+  // Per-endpoint read-side views the renderer consumes directly.
+  //
+  // Sparse map: only endpoints that have at least one view appear as
+  // keys; consumers MUST fall back to `[]` when a key is absent.
+  // `WorkGraphEndpointKey` is a template-literal type with an
+  // unbounded `${string}` half, so every concrete `Record<...>` is
+  // structurally partial — `Partial<>` makes that explicit.
+  //
+  // Orphan links (rows where source or target does not resolve to an
+  // existing Core record) are EXCLUDED from this map. They appear
+  // only as `orphan_link` diagnostics — see §FR5–§FR8.
+  linksByEndpoint: Partial<Record<WorkGraphEndpointKey, WorkGraphLinkView[]>>;
 }
 ```
 
 `WorkGraphObjectSummary` already exposes `sourceRecordFamily` /
-`sourceRecordId` per SPEC-083 §Suggested Work Graph Shape. The renderer
-resolves a link endpoint to its graph object by matching those fields
-against `WorkGraphLinkEndpointRef`; no separate map is required as
-long as the projection populates those summary fields for every
-Project / Work Item / Task object.
+`sourceRecordId` per SPEC-083 §Suggested Work Graph Shape, where the
+field type is the wider `WorkGraphObjectKind` enum (covering
+conversation / run / artifact / approval and other non-PWT objects).
+SPEC-090 narrows the value space to `WorkGraphLinkEndpointKind` only
+on the link record itself; on `WorkGraphObjectSummary` the field
+keeps its wider type. The renderer resolves a link endpoint to its
+graph object by matching the link's narrow `recordFamily` /
+`recordId` against the summary's wider `sourceRecordFamily` /
+`sourceRecordId`. No separate map is required as long as the
+projection populates those summary fields for every Project / Work
+Item / Task object.
 
 ## Producer Interface
 
@@ -350,8 +392,9 @@ For Project / Work Item / Task detail pages:
 A v1 slice is acceptable when:
 
 1. The Work Graph projection includes `links: WorkGraphLink[]`,
-   `linksByEndpoint: Record<WorkGraphEndpointKey,
-   WorkGraphLinkView[]>`, and the two new diagnostic kinds.
+   `linksByEndpoint: Partial<Record<WorkGraphEndpointKey,
+   WorkGraphLinkView[]>>` (sparse — see §FR6), and the two new
+   diagnostic kinds.
 2. The mock fixture under
    `src/products/work/renderer/components/topdown/mock.ts` (or the next
    producer source of truth) includes representative examples of every
