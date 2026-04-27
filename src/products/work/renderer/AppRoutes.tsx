@@ -31,6 +31,8 @@ import { WorkItemListView } from './components/WorkItemListView.js';
 import { WorkItemDetailView } from './components/WorkItemDetailView.js';
 import { ProjectDetailPage } from './components/projects/ProjectDetailPage.js';
 import { ProjectsListPage } from './components/projects/ProjectsListPage.js';
+import { WorkItemDetailPage } from './components/work-items/WorkItemDetailPage.js';
+import { WorkItemsListPage } from './components/work-items/WorkItemsListPage.js';
 import { BrokenLinksPage } from './components/topdown/BrokenLinksPage.js';
 import { CockpitPage } from './components/topdown/CockpitPage.js';
 import { SystemMapPage } from './components/topdown/SystemMapPage.js';
@@ -103,8 +105,10 @@ export function AppRoutes({
       <Route key="project-detail-legacy" path="projects-legacy/:projectId" element={<ProjectDetailView />} />,
       <Route key="task-list" path="tasks" element={<WorkTaskListView />} />,
       <Route key="task-detail" path="tasks/:taskId" element={<TaskDetailView />} />,
-      <Route key="work-item-list" path="work-items" element={<WorkItemListView />} />,
-      <Route key="work-item-detail" path="work-items/:workItemId" element={<WorkItemDetailView />} />,
+      <Route key="work-item-list" path="work-items" element={<WorkItemsListPage />} />,
+      <Route key="work-item-detail" path="work-items/:workItemId" element={<WorkItemDetailPage />} />,
+      <Route key="work-item-list-legacy" path="work-items-legacy" element={<WorkItemListView />} />,
+      <Route key="work-item-detail-legacy" path="work-items-legacy/:workItemId" element={<WorkItemDetailView />} />,
       <Route key="system-map" path="system-map" element={<SystemMapPage />} />,
       <Route key="cockpit" path="cockpit" element={<CockpitPage />} />,
       <Route key="broken-links" path="broken-links" element={<BrokenLinksPage />} />,
