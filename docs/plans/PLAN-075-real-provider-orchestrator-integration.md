@@ -412,7 +412,7 @@ categories:
       to prove strong preset-created participants are supervised agents without
       Cat-registry promotion. Preset application must surface a concise
       capability/policy summary and gate high-risk grants before activation.
-- [ ] Task 3.4: Split recovery ownership. `SupervisionPolicy.fallbackPolicy`
+- [x] Task 3.4: Split recovery ownership. `SupervisionPolicy.fallbackPolicy`
       defines the allowed fallback set, retry envelope, escalation targets,
       approval gates, and state transitions. The provider agent may propose
       which allowed fallback to use and provide corrected semantic input for
@@ -424,6 +424,9 @@ categories:
       complete before Phase 4 Task 4.2 lands the lifecycle service's
       terminal-failure behavior; the rest of Phase 3 may proceed in parallel
       with Phase 4.
+      `provider-agent-policy-gate.test.tsx` rejects recovery choices outside
+      `allowedFallbacks` and proves the gate preserves or omits
+      `correctedInput` exactly as authored by the provider agent.
 - [x] Task 3.5: Add targeted Chat probes for direct, solo, group, and parallel
       sends that assert session start, assistant progress, response, and no
       direct runtime calls.

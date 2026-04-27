@@ -242,3 +242,76 @@ test('policy gate rejects delegation without outcome-delegation autonomy', () =>
     'Provider-agent decision exceeded deterministic policy gates.',
   );
 });
+
+test('policy gate rejects recovery choices outside platform fallback policy', () => {
+  const decision: ProviderAgentDecision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'recovery_decision',
+    decisionId: 'decision-recover-denied',
+    confidence: 'low',
+    rejectedActionId: 'tool-call-1',
+    selectedFallback: 'delegate_other',
+    correctedInput: {
+      goal: 'Delegate this elsewhere.',
+    },
+    rationaleSummary: 'Try delegating after rejection.',
+  };
+
+  const result = applyProviderAgentPolicyGate({
+    observation: observation(),
+    decision,
+  });
+
+  assert.equal(result.status, 'rejected');
+  assert.deepEqual(
+    result.status === 'rejected'
+      ? (result.error.details as { errors?: string[] }).errors
+      : [],
+    ['recovery selectedFallback delegate_other is outside allowedFallbacks'],
+  );
+});
+
+test('policy gate preserves recovery proposals without synthesizing corrected input', () => {
+  const decisionWithoutCorrection: ProviderAgentDecision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'recovery_decision',
+    decisionId: 'decision-recover-allowed',
+    confidence: 'medium',
+    rejectedActionId: 'tool-call-1',
+    selectedFallback: 'retry',
+    rationaleSummary: 'Retry the denied step within the allowed retry envelope.',
+  };
+  const decisionWithCorrection: ProviderAgentDecision = {
+    ...decisionWithoutCorrection,
+    decisionId: 'decision-recover-corrected',
+    correctedInput: {
+      target: 'bounded retry input from agent',
+    },
+  };
+
+  const withoutCorrection = applyProviderAgentPolicyGate({
+    observation: observation(),
+    decision: decisionWithoutCorrection,
+  });
+  const withCorrection = applyProviderAgentPolicyGate({
+    observation: observation(),
+    decision: decisionWithCorrection,
+  });
+
+  assert.equal(withoutCorrection.status, 'applied');
+  assert.equal(withCorrection.status, 'applied');
+  assert.equal(
+    withoutCorrection.status === 'applied'
+      ? 'correctedInput' in withoutCorrection.result
+      : true,
+    false,
+  );
+  assert.deepEqual(
+    withCorrection.status === 'applied'
+      ? withCorrection.result.correctedInput
+      : null,
+    {
+      target: 'bounded retry input from agent',
+    },
+  );
+});
