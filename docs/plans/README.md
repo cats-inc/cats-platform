@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-077](./PLAN-077-companion-profile-and-share-preview-rollout.md) | Companion Profile and Share Preview Rollout | Draft | [SPEC-085](../specs/SPEC-085-companion-profile-feed-and-library-ia.md), [SPEC-086](../specs/SPEC-086-shareable-companion-content-links-and-chat-previews.md), [ADR-084](../decisions/084-adopt-companion-profile-ia-and-shareable-content-references.md) |
 | [PLAN-076](./PLAN-076-composer-voice-input-native-stt-rollout.md) | Composer Voice Input Native STT Rollout | Draft | [SPEC-084](../specs/SPEC-084-composer-voice-input-via-platform-native-stt.md), [ADR-079](../decisions/079-use-platform-native-stt-with-linux-toast-fallback.md) |
 | [PLAN-075](./PLAN-075-real-provider-orchestrator-integration.md) | Real Provider Orchestrator Integration | Draft | [PLAN-074](./PLAN-074-cats-work-agent-supervision-rollout.md), [SPEC-082](../specs/SPEC-082-cats-work-agent-supervision-and-tool-boundary.md), [ADR-082](../decisions/082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md) |
 | [PLAN-074](./PLAN-074-cats-work-agent-supervision-rollout.md) | Cats Work Agent Supervision Rollout | Ready for Review | [SPEC-082](../specs/SPEC-082-cats-work-agent-supervision-and-tool-boundary.md), [ADR-082](../decisions/082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md) |
@@ -95,7 +96,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 | [PLAN-028](./PLAN-028-cats-work-team-templates-and-work-intake.md) | Cats Work Team Templates and Work Intake | Draft | [SPEC-040](../specs/SPEC-040-cats-work-team-templates-and-work-intake.md) |
 | [PLAN-027](./PLAN-027-cats-chat-v1-priority-items.md) | Cats Chat v1 Priority Items | Draft | [SPEC-039](../specs/SPEC-039-cats-chat-v1-priority-items.md) |
 | [PLAN-026](./PLAN-026-transport-live-updates-and-private-lane-transition.md) | Transport Live Updates and Private-Lane Transition | Draft | [SPEC-037](../specs/SPEC-037-transport-driven-live-chat-updates-and-private-lane-transition.md), [ADR-041](../decisions/041-push-transport-and-chat-invalidations-over-sse.md) |
-| [PLAN-025](./PLAN-025-companion-workspace-presence-and-settings.md) | Companion Workspace, Presence, and Settings | Draft | [SPEC-036](../specs/SPEC-036-companion-workspace-presence-and-settings.md), [ADR-040](../decisions/040-make-companion-a-first-class-chat-mode-with-workspace-and-presence.md) |
+| [PLAN-025](./PLAN-025-companion-workspace-presence-and-settings.md) | Companion Workspace, Presence, and Settings | Superseded in part by PLAN-077 | [SPEC-036](../specs/SPEC-036-companion-workspace-presence-and-settings.md), [ADR-040](../decisions/040-make-companion-a-first-class-chat-mode-with-workspace-and-presence.md), [PLAN-077](./PLAN-077-companion-profile-and-share-preview-rollout.md) |
 | [PLAN-021](./PLAN-021-cross-product-task-strategy-handoff-and-runtime-bridge.md) | Cross-Product Task Strategy Handoff and Runtime Bridge | Draft | [SPEC-035](../specs/SPEC-035-cross-product-task-strategy-handoff-and-runtime-bridge.md), [ADR-039](../decisions/039-use-core-task-metadata-as-cross-product-plan-exchange.md) |
 | [PLAN-023](./PLAN-023-orchestrator-execution-loop-and-recovery.md) | Orchestrator Execution Loop and Recovery Contract | In Progress (First Slice Landed) | [SPEC-011](../specs/SPEC-011-primary-orchestrator-chat-entry-and-trace-separation.md), [SPEC-015](../specs/SPEC-015-cat-capability-registry-and-runtime-skill-mcp-mapping.md), [SPEC-021](../specs/SPEC-021-contextual-mcp-profiles-and-lazy-tool-activation.md), [SPEC-026](../specs/SPEC-026-explicit-mentions-and-dynamic-room-workflow-orchestration.md) |
 | [PLAN-020](./PLAN-020-cats-memory-retrieval-and-flush-substrate.md) | Cats Memory Retrieval and Flush Substrate | In Progress (First Slice Landed) | [SPEC-022](../specs/SPEC-022-cats-memory-layering-and-ownership.md), [SPEC-029](../specs/SPEC-029-companion-boxes-ingestion-and-response-profiles.md) |
@@ -129,6 +130,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-04-28 (PLAN-076 added; PLAN-075 real provider orchestrator retained)*
+*Last updated: 2026-04-28 (PLAN-077 added; companion profile/share preview rollout documented)*
 
 *See also: [specs/](../specs/) for feature specifications*

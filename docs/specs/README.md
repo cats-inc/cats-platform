@@ -48,6 +48,8 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-086](./SPEC-086-shareable-companion-content-links-and-chat-previews.md) | Shareable Companion Content Links and Chat Previews | Draft | [PLAN-077](../plans/PLAN-077-companion-profile-and-share-preview-rollout.md), [ADR-084](../decisions/084-adopt-companion-profile-ia-and-shareable-content-references.md) |
+| [SPEC-085](./SPEC-085-companion-profile-feed-and-library-ia.md) | Companion Profile, Feed, and Library IA | Draft | [PLAN-077](../plans/PLAN-077-companion-profile-and-share-preview-rollout.md), [ADR-084](../decisions/084-adopt-companion-profile-ia-and-shareable-content-references.md) |
 | [SPEC-084](./SPEC-084-composer-voice-input-via-platform-native-stt.md) | Composer Voice Input via Platform-Native STT | Draft | [PLAN-076](../plans/PLAN-076-composer-voice-input-native-stt-rollout.md), [ADR-079](../decisions/079-use-platform-native-stt-with-linux-toast-fallback.md) |
 | [SPEC-083](./SPEC-083-work-system-map-and-cockpit-projections.md) | Work System Map and Cockpit Projections | Draft | TBD, [ADR-083](../decisions/083-adopt-work-graph-projections-for-system-map-and-cockpit.md) |
 | [SPEC-082](./SPEC-082-cats-work-agent-supervision-and-tool-boundary.md) | Cats Work Agent Supervision and Tool Boundary | Draft | [PLAN-074](../plans/PLAN-074-cats-work-agent-supervision-rollout.md), [ADR-082](../decisions/082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md) |
@@ -94,7 +96,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 | [SPEC-039](./SPEC-039-cats-chat-v1-priority-items.md) | Cats Chat v1 Priority Items | Draft | [PLAN-027](../plans/PLAN-027-cats-chat-v1-priority-items.md) |
 | [SPEC-038](./SPEC-038-telegram-bot-commands-and-transport-control-surface.md) | Telegram Bot Commands and Transport Control Surface | Draft | TBD |
 | [SPEC-037](./SPEC-037-transport-driven-live-chat-updates-and-private-lane-transition.md) | Transport-Driven Live Chat Updates and Private-Lane Transition | Draft | [PLAN-026](../plans/PLAN-026-transport-live-updates-and-private-lane-transition.md) |
-| [SPEC-036](./SPEC-036-companion-workspace-presence-and-settings.md) | Companion Workspace, Presence, and Settings | Draft | [PLAN-025](../plans/PLAN-025-companion-workspace-presence-and-settings.md) |
+| [SPEC-036](./SPEC-036-companion-workspace-presence-and-settings.md) | Companion Workspace, Presence, and Settings | Superseded in part by SPEC-085/SPEC-086 | [PLAN-025](../plans/PLAN-025-companion-workspace-presence-and-settings.md), [PLAN-077](../plans/PLAN-077-companion-profile-and-share-preview-rollout.md) |
 | [SPEC-035](./SPEC-035-cross-product-task-strategy-handoff-and-runtime-bridge.md) | Cross-Product Task Strategy Handoff and Runtime Bridge | Draft | TBD |
 | [SPEC-034](./SPEC-034-room-owned-workspace-bootstrap-and-ownership.md) | Room-Owned Workspace Bootstrap and Ownership Semantics | Draft (Pending Review) | - |
 | [SPEC-031](./SPEC-031-built-in-memory-extraction-durable-sync-and-retrieval-context.md) | Built-In Memory Extraction, Durable Sync, and Retrieval Context | Draft (Pending Review) | - |
@@ -139,6 +141,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-04-28 (SPEC-084 added)*
+*Last updated: 2026-04-28 (SPEC-085 and SPEC-086 added)*
 
 *See also: [plans/](../plans/) for implementation plans*

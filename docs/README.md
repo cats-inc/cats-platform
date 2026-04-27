@@ -55,6 +55,10 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [PLAN-077](./plans/PLAN-077-companion-profile-and-share-preview-rollout.md)
+- [SPEC-086](./specs/SPEC-086-shareable-companion-content-links-and-chat-previews.md)
+- [SPEC-085](./specs/SPEC-085-companion-profile-feed-and-library-ia.md)
+- [ADR-084](./decisions/084-adopt-companion-profile-ia-and-shareable-content-references.md)
 - [PLAN-075](./plans/PLAN-075-real-provider-orchestrator-integration.md)
 - [SPEC-083](./specs/SPEC-083-work-system-map-and-cockpit-projections.md)
 - [ADR-083](./decisions/083-adopt-work-graph-projections-for-system-map-and-cockpit.md)

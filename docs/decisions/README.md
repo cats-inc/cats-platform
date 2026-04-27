@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [084-adopt-companion-profile-ia-and-shareable-content-references](./084-adopt-companion-profile-ia-and-shareable-content-references.md) | Adopt Companion Profile IA and Shareable Content References | Proposed | 2026-04-28 |
 | [083-adopt-work-graph-projections-for-system-map-and-cockpit](./083-adopt-work-graph-projections-for-system-map-and-cockpit.md) | Adopt Work Graph projections for System Map and Cockpit | Proposed | 2026-04-25 |
 | [082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision](./082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md) | Recast the orchestrator as a capability shell with policy-dial supervision | Proposed | 2026-04-25 |
 | [081-canonicalize-three-tier-core-record-taxonomy](./081-canonicalize-three-tier-core-record-taxonomy.md) | Canonicalize the Core record taxonomy as Interaction / Planning / Execution | Proposed | 2026-04-22 |
@@ -80,7 +81,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | [043-keep-platform-renderer-entry-bounded-with-route-level-lazy-loading](./043-keep-platform-renderer-entry-bounded-with-route-level-lazy-loading.md) | Keep platform renderer entry bounded with route-level lazy loading | Proposed | 2026-03-30 |
 | [042-separate-channel-topology-from-routing-mode](./042-separate-channel-topology-from-routing-mode.md) | Separate channel topology from routing mode | Accepted | 2026-03-28 |
 | [041-push-transport-and-chat-invalidations-over-sse](./041-push-transport-and-chat-invalidations-over-sse.md) | Push transport and chat invalidations over SSE | Proposed | 2026-03-27 |
-| [040-make-companion-a-first-class-chat-mode-with-workspace-and-presence](./040-make-companion-a-first-class-chat-mode-with-workspace-and-presence.md) | Make companion a first-class Chat mode with workspace and presence | Proposed | 2026-03-26 |
+| [040-make-companion-a-first-class-chat-mode-with-workspace-and-presence](./040-make-companion-a-first-class-chat-mode-with-workspace-and-presence.md) | Make companion a first-class Chat mode with workspace and presence | Proposed (Amended by ADR-084) | 2026-03-26 |
 | [039-use-core-task-metadata-as-cross-product-plan-exchange](./039-use-core-task-metadata-as-cross-product-plan-exchange.md) | Use Core task metadata as the cross-product plan exchange surface | Proposed | 2026-03-26 |
 | [038-separate-room-owned-workspaces-from-session-owned-sandboxes](./038-separate-room-owned-workspaces-from-session-owned-sandboxes.md) | Separate room-owned workspaces from session-owned sandboxes | Proposed | 2026-03-25 |
 | [031-separate-composer-lead-control-from-boss-orchestration-authority](./031-separate-composer-lead-control-from-boss-orchestration-authority.md) | Separate composer lead control from Boss orchestration authority | Superseded by ADR-055 | 2026-03-23 |
@@ -125,6 +126,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-04-28 (ADR-079 added)*
+*Last updated: 2026-04-28 (ADR-084 added)*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*
