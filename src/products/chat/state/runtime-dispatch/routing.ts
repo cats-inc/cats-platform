@@ -51,6 +51,7 @@ import {
   prepareDispatchTurnForExistingUserMessage,
 } from './turn.js';
 import {
+  buildDeterministicRoutingPlanMessageMetadata,
   toDeterministicChatRoutingPlan,
 } from './deterministicPlan.js';
 import type {
@@ -87,33 +88,6 @@ interface RouteChannelMessageOptions {
   cancellationRegistry?: ChannelDispatchCancellationRegistry;
   onStateWritten?: (channelId: string) => void;
   orchestratorPlan?: OrchestratorTurnPlan | null;
-}
-
-function buildOrchestratorPlanMessageMetadata(
-  plan: OrchestratorTurnPlan | null | undefined,
-  channelId: string,
-): NonNullable<SendChannelMessageInput['messageMetadata']> {
-  if (!plan || plan.channelId !== channelId) {
-    return {};
-  }
-
-  return {
-    orchestratorBoundary: 'chat_message_dispatch',
-    orchestratorPlanId: plan.planId,
-    orchestratorPlanner: plan.execution.planner,
-    orchestratorLoopMode: plan.execution.loopMode,
-    orchestratorDispatchBoundary: plan.executionLoop.dispatchBoundary,
-    orchestratorRuntimeToolBoundary: plan.runtimeToolPlane.boundary,
-    orchestratorRoutingTrigger: plan.routing.trigger,
-    orchestratorRoutingSelectionKind: plan.routing.resolution.selectionKind,
-    orchestratorInitialTargets: plan.routing.initialTargets.map((target) => ({
-      targetKind: target.targetKind,
-      targetId: target.targetId,
-      targetName: target.targetName,
-      trigger: target.trigger,
-      plannedDepth: target.plannedDepth,
-    })),
-  };
 }
 
 function readMessageRetryMetadata(
@@ -195,17 +169,21 @@ function restoreMissingTranscriptMessage(
   return refreshDerivedMemoryLayers(nextState, channelId, now);
 }
 
-function applyOrchestratorPlanMetadataToExistingUserMessage(
+function applyDeterministicPlanMetadataToExistingUserMessage(
   state: ChatState,
   channelId: string,
   messageId: string,
-  plan: OrchestratorTurnPlan | null | undefined,
+  plan: ReturnType<typeof toDeterministicChatRoutingPlan>,
   now: Date,
 ): {
   state: ChatState;
   userMessage: ChatMessage | null;
 } {
-  const planMetadata = buildOrchestratorPlanMessageMetadata(plan, channelId);
+  if (plan && plan.channelId !== channelId) {
+    return { state, userMessage: null };
+  }
+
+  const planMetadata = buildDeterministicRoutingPlanMessageMetadata(plan);
   if (Object.keys(planMetadata).length === 0) {
     return { state, userMessage: null };
   }
@@ -274,6 +252,7 @@ export async function beginChannelMessageDispatch(
     );
   const orchestratorSessionAttachment = resolveOrchestratorLeaseAttachment(channelBeforeMessage);
   const orchestratorSessionId = orchestratorSessionAttachment?.sessionId ?? null;
+  const deterministicRoutingPlan = toDeterministicChatRoutingPlan(options.orchestratorPlan);
 
   if (
     pendingTargetChanged
@@ -329,7 +308,9 @@ export async function beginChannelMessageDispatch(
     {
       metadata: {
         ...(payload.messageMetadata ?? {}),
-        ...buildOrchestratorPlanMessageMetadata(options.orchestratorPlan, channelId),
+        ...buildDeterministicRoutingPlanMessageMetadata(
+          deterministicRoutingPlan?.channelId === channelId ? deterministicRoutingPlan : null,
+        ),
         ...(options.transportBindingId ? { transportBindingId: options.transportBindingId } : {}),
         ...(payload.choiceResponse
           ? {
@@ -357,7 +338,7 @@ export async function beginChannelMessageDispatch(
     now,
     choiceResponseCore,
     {
-      deterministicRoutingPlan: toDeterministicChatRoutingPlan(options.orchestratorPlan),
+      deterministicRoutingPlan,
     },
   );
   nextState = materializeInFlightDispatchState(
@@ -410,11 +391,12 @@ export async function beginChannelMessageRetryDispatch(
   if (sourceWasMissingFromTranscript) {
     nextState = restoreMissingTranscriptMessage(nextState, channelId, sourceMessage, now);
   }
-  const metadataApplied = applyOrchestratorPlanMetadataToExistingUserMessage(
+  const deterministicRoutingPlan = toDeterministicChatRoutingPlan(options.orchestratorPlan);
+  const metadataApplied = applyDeterministicPlanMetadataToExistingUserMessage(
     nextState,
     channelId,
     sourceMessageId,
-    options.orchestratorPlan,
+    deterministicRoutingPlan,
     now,
   );
   nextState = metadataApplied.state;
@@ -429,7 +411,7 @@ export async function beginChannelMessageRetryDispatch(
     now,
     choiceResponseCore,
     {
-      deterministicRoutingPlan: toDeterministicChatRoutingPlan(options.orchestratorPlan),
+      deterministicRoutingPlan,
     },
   );
   nextState = await persistInFlightDispatchState(
