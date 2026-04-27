@@ -518,10 +518,13 @@ categories:
       old `src/platform/orchestration/planner.ts` and
       `src/platform/orchestration/dispatch.ts` files; retained code now lives
       under Chat ownership.
-- [ ] Task 8.3: Add/keep static tests proving non-Chat product trees cannot
+- [x] Task 8.3: Add/keep static tests proving non-Chat product trees cannot
       import old planner/dispatcher modules. Chat may import the new
       deterministic router path because that routing is still a product
       contract.
+      `supervision-static-boundary.test.tsx` now asserts the old platform
+      planner/dispatcher files are absent and no product tree imports those
+      retired module paths.
 - [ ] Task 8.4: Update docs and tests so the canonical split is explicit:
       Chat deterministic router owns routing; provider-agent seam owns
       agentic semantic planning; supervision policy owns validation, fallback,

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
@@ -68,15 +68,18 @@ test('product code calls runtime create/send only through supervision runtime bo
   assert.deepEqual(violations, []);
 });
 
-test('non-Chat product trees do not import old orchestration planner or dispatcher modules', () => {
-  const nonChatProductRoots = ['code', 'shared', 'work']
-    .map((product) => path.join(PRODUCTS_ROOT, product));
-  const files = nonChatProductRoots.flatMap((root) => collectSourceFiles(root));
+test('product trees cannot import retired platform planner or dispatcher modules', () => {
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'platform', 'orchestration', 'planner.ts')), false);
+  assert.equal(existsSync(path.join(SOURCE_ROOT, 'platform', 'orchestration', 'dispatch.ts')), false);
+
+  const files = collectSourceFiles(PRODUCTS_ROOT);
   const violations = collectImportViolations({
     files,
-    forbidden: (resolvedSpecifier) =>
-      includesPathSegment(resolvedSpecifier, ['src', 'platform', 'orchestration'])
-      && /(?:planner|dispatch)/i.test(path.basename(resolvedSpecifier)),
+    forbidden: (resolvedSpecifier) => {
+      const moduleName = path.basename(resolvedSpecifier).replace(/\.(?:js|ts|tsx)$/u, '');
+      return includesPathSegment(resolvedSpecifier, ['src', 'platform', 'orchestration'])
+        && (moduleName === 'planner' || moduleName === 'dispatch');
+    },
   });
 
   assert.deepEqual(violations, []);
