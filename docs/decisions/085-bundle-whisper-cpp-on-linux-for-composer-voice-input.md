@@ -40,12 +40,12 @@ electron-builder's Linux installer formats without per-format branching.
 The Linux desktop build will bundle a whisper.cpp helper plus the
 multilingual `ggml-base.bin` model (~140 MB) inside the desktop installer.
 The helper integrates with the existing voice capture bridge contract from
-SPEC-084, emits the same JSON events as the macOS / Windows helpers, and
+SPEC-084, extends it with Linux recording-limit / processing events, and
 runs entirely on-device.
 
 - **Helper binary**: `cats-stt-linux`, a small native CLI built from a
-  vendored whisper.cpp submodule plus a `libpulse-simple` audio capture
-  wrapper. It accepts the same CLI shape (`--session-id`, optional
+  vendored whisper.cpp submodule plus a PulseAudio async capture wrapper.
+  It accepts the same CLI shape (`--session-id`, optional
   `--locale`, gated `--input` for tests) and emits the same JSON event
   protocol (`ready` with `mode: 'on-device'`, `final`, `error`, `end`)
   used by the macOS Swift and Windows .NET helpers.
@@ -58,10 +58,10 @@ runs entirely on-device.
   directory into the unpacked app for every Linux installer format
   (deb today, AppImage / rpm / snap / tar.gz when added later), so the
   staging path does not change per format.
-- **Audio capture**: `libpulse-simple` (PulseAudio API). PipeWire's
-  PulseAudio compatibility shim covers the modern PipeWire-default
-  distros (Ubuntu 22.10+, Fedora 35+). Pure ALSA-only environments are
-  unsupported in v1 and surface `mic_unavailable`.
+- **Audio capture**: PulseAudio async API with `pa_threaded_mainloop`.
+  PipeWire's PulseAudio compatibility shim covers the modern
+  PipeWire-default distros (Ubuntu 22.10+, Fedora 35+). Pure ALSA-only
+  environments are unsupported in v1 and surface `mic_unavailable`.
 - **Build flag**: `CATS_BUNDLE_WHISPER_PLATFORMS` (comma-separated
   platform list). Default value: `linux`. Setting it to a list such as
   `linux,darwin,win32` also stages the whisper helper on those platforms.
@@ -74,11 +74,12 @@ runs entirely on-device.
   5-second default applied to the macOS / Windows native helpers.
   whisper.cpp inference runs synchronously after recording stops and on
   the slowest supported CPU can take roughly 1.5x real-time per second
-  of audio. Combined with a 30-second utterance recording cap (helper
-  auto-stops; SPEC-087 Req 16) this gives a comfortable budget without
-  leaving long inference jobs to be killed before a final can land.
-  Hardware below the supported baseline that exceeds the 60-second
-  budget surfaces `engine_unavailable` to the renderer toast.
+  of audio. The host owns a 30-second recording cap (SPEC-087 Req 16):
+  it emits `limit_warning` at 25 seconds, emits `processing` and sends
+  the normal `stop` command at 30 seconds, then starts the same Linux
+  60-second stop cleanup timer used for user-initiated stop. Hardware
+  below the supported baseline that exceeds the 60-second budget
+  surfaces `engine_unavailable` to the renderer toast.
 
 The macOS / Windows decision tree from ADR-079 is unchanged. Linux moves
 from "deferred / toast on click" to "first-class on-device STT".
@@ -138,21 +139,25 @@ scope:
   dictation, small is too slow on the same low-end hardware.
 - Snap and Flatpak sandboxes will need explicit audio capture permission
   declarations when those formats are added; this is deferred but real.
-- v1 caps utterance recording at 30 seconds (helper auto-stops on
-  reaching the cap and emits a final transcript). Power users dictating
-  long paragraphs (e.g. 60+ seconds) must speak in shorter sessions or
-  wait for a follow-up SPEC introducing streaming inference. macOS and
-  Windows do not have this cap because their native engines stream
-  finals as the user speaks rather than batch-transcribing on stop.
+- v1 caps utterance recording at 30 seconds. The host warns at
+  25 seconds and switches the renderer into a processing state when it
+  stops capture at 30 seconds, so the cap is visible rather than a
+  silent helper-side cutoff. Power users dictating long paragraphs
+  (e.g. 60+ seconds) must speak in shorter sessions or wait for a
+  follow-up SPEC introducing streaming inference. macOS and Windows do
+  not have this cap because their native engines stream finals as the
+  user speaks rather than batch-transcribing on stop.
 
 ### Neutral
 
-- The renderer-side `useNativeVoiceInput` hook needs no behavioral change.
-  The bridge contract is platform-agnostic; the only renderer-touching
-  change is extending the preload `process.platform` gate from
-  `darwin || win32` to `darwin || win32 || linux`.
-- The IPC contract (`ready` / `partial` / `final` / `error` / `end` with
-  `mode`) is unchanged. The Linux helper emits `mode: 'on-device'`.
+- The renderer-side `useNativeVoiceInput` hook remains shared, but it
+  must handle Linux `limit_warning` and `processing` events so the
+  recording cap is visible and the UI does not claim it is still
+  listening while whisper.cpp inference runs.
+- The IPC contract keeps the existing `ready` / `partial` / `final` /
+  `error` / `end` events with `mode`, and adds `limit_warning` /
+  `processing` for host-owned Linux cap handling. The Linux helper emits
+  `mode: 'on-device'`.
 - The slice does not enable streaming partials. whisper.cpp's batch-mode
   inference (transcribe on stop) is a natural fit for v1 finals-only.
 - Helper inference cost lives in the helper subprocess, not the Electron
@@ -234,5 +239,5 @@ scope:
 ---
 
 *Decision proposed: 2026-04-28*
-*Last revised: 2026-04-28 (review pass: Linux distribution facts in Context corrected to reflect the AppImage / deb / tar.gz targets already in `package.json`; added a Linux per-platform stop cleanup window of 60 seconds and a 30-second utterance recording cap to the Decision; added a corresponding negative consequence for the cap.)*
+*Last revised: 2026-04-28 (review follow-up: Linux cap is host-owned with visible `limit_warning` / `processing` events and the normal stop cleanup timer; PulseAudio capture uses async `pa_threaded_mainloop` ownership instead of unsafe cross-thread simple-API closure; Linux distribution facts remain aligned to package.json.)*
 *Decision makers: Sammy, Claude*

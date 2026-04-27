@@ -14,11 +14,12 @@ The composer microphone button on Linux Electron currently falls through to a
 broken `webkitSpeechRecognition` path and surfaces a `network` toast on click.
 This spec defines a Linux-specific replacement: a bundled whisper.cpp helper
 with the multilingual `ggml-base.bin` model performs on-device speech
-recognition and emits the same JSON event protocol used by the macOS / Windows
-native helpers from SPEC-084. Audio stays on the user's machine; the helper
-emits `mode: 'on-device'` per session; the renderer wiring established in
-SPEC-084 needs no behavioral changes other than extending the preload
-platform gate to include Linux.
+recognition and extends the JSON event protocol used by the macOS / Windows
+native helpers from SPEC-084 with Linux-only recording-limit and processing
+events. Audio stays on the user's machine; the helper emits
+`mode: 'on-device'` per session; renderer wiring remains shared but must learn
+the Linux cap warning / processing states so long utterances are not silently
+truncated.
 
 ## Goals
 
@@ -30,8 +31,8 @@ platform gate to include Linux.
 - Stage helper assets in a way that works for `.deb` today and for
   AppImage / `.rpm` / Snap when those formats are added, with no per-format
   code branching.
-- Reuse the existing voice capture bridge contract (`ready` / `partial` /
-  `final` / `error` / `end` with `mode`) from SPEC-084.
+- Reuse the existing voice capture bridge contract from SPEC-084 and extend
+  it with `limit_warning` / `processing` events for the Linux recording cap.
 - Keep macOS / Windows behavior unchanged by default; allow opt-in
   cross-platform whisper bundling via a build flag for future flexibility.
 
@@ -84,17 +85,21 @@ platform gate to include Linux.
    `CATS_STT_ENABLE_FIXTURE_INPUT=1`) `--input <wav>`, matching the macOS
    helper's CLI surface.
 3. The helper preflights its environment as its first action — before
-   opening any audio device — by attempting to construct a libpulse-simple
+   opening any audio device — by attempting to construct a PulseAudio
    recording stream against the default source. If construction fails
    (no PulseAudio / PipeWire-pulse server, denied by the OS, no input
    device), the helper emits `mic_unavailable` and exits.
 4. The helper captures microphone audio at 16 kHz mono S16LE — the format
-   whisper.cpp's standard inference pipeline expects — via
-   `libpulse-simple` (`pa_simple_new` / `pa_simple_read`).
+   whisper.cpp's standard inference pipeline expects — through PulseAudio's
+   asynchronous API with `pa_threaded_mainloop` / `pa_stream_readable_size`
+   / `pa_stream_peek` / `pa_stream_drop`. The audio thread owns the
+   PulseAudio context and stream for their entire lifetime. The stdin command
+   thread must not close or free PulseAudio objects directly while the audio
+   thread may be inside PulseAudio; it requests stop/cancel via an atomic
+   flag plus a wakeup primitive that the audio thread observes.
 5. The helper buffers captured audio in memory until `stop` is received
-   on stdin or the v1 utterance cap (Req 16) is reached. When either
-   condition triggers, the helper closes the PulseAudio stream first
-   (releasing the microphone within milliseconds), then runs
+   on stdin. When stop triggers, the audio thread closes the PulseAudio
+   stream first (releasing the microphone within milliseconds), then runs
    `whisper_full(...)` synchronously over the buffered audio with the
    bundled `ggml-base.bin` model, emits a single `final` event with the
    concatenated transcript, then `end`, then exits. Inference time can
@@ -113,10 +118,15 @@ platform gate to include Linux.
    (multilingual, 99 languages, ~140 MB). When the helper receives a
    `--locale`, it sets whisper.cpp's `language` parameter to bias
    detection. When unset, whisper.cpp auto-detects from the audio.
-9. The renderer's `useNativeVoiceInput` is platform-agnostic and works
-   with the Linux helper without changes. Because the Linux helper emits
-   `mode: 'on-device'`, the renderer privacy badge / chip is hidden,
-   matching the macOS path.
+9. The renderer's `useNativeVoiceInput` stays platform-agnostic for
+   transcripts and privacy mode, but it must handle two bridge events added
+   for this Linux slice: `limit_warning` and `processing`. `limit_warning`
+   tells the composer to surface that recording is about to stop at the
+   configured cap. `processing` switches the composer out of its recording
+   state after the host sends the cap-triggered stop command, so the user
+   can see that audio capture is finished and local transcription is running.
+   Because the Linux helper emits `mode: 'on-device'`, the renderer privacy
+   badge / chip is hidden, matching the macOS path.
 10. The Linux installer (currently AppImage / deb / tar.gz for x64 and
     arm64 per `package.json`; future rpm / Snap as new formats are
     added) places the helper binary and model file under
@@ -151,33 +161,36 @@ platform gate to include Linux.
     Linux helper does its own audio capture via libpulse and never goes
     through Chromium `getUserMedia`. The renderer remains denied for
     `media`.
-14. The Linux helper releases the microphone immediately on `stop` or
-    on auto-stop (Req 16): closing the libpulse stream returns within
-    milliseconds. whisper.cpp inference then runs synchronously over
-    the buffered audio. Because the base model runs at roughly 0.3-1.5x
-    real-time depending on CPU, inference for the 30-second utterance
-    cap (Req 16) can take from ~9 seconds on a fast Intel i5 to
-    ~45 seconds on the slowest supported hardware. The host therefore
-    uses a per-platform stop cleanup window of 60 seconds for Linux
-    helpers (vs the 5-second default applied to macOS / Windows native
-    helpers), so finals have time to land. If inference exceeds 60
-    seconds (very rare; only on hardware below the supported baseline),
-    the host kills the helper and the user sees `engine_unavailable`
-    for that session; the setup-guide documents this as a known
-    limitation on underpowered hardware.
+14. The Linux helper releases the microphone immediately after the host sends
+    `stop`: closing the PulseAudio stream returns within milliseconds.
+    whisper.cpp inference then runs synchronously over the buffered audio.
+    Because the base model runs at roughly 0.3-1.5x real-time depending on
+    CPU, inference for the 30-second host-owned recording cap (Req 16) can
+    take from ~9 seconds on a fast Intel i5 to ~45 seconds on the slowest
+    supported hardware. The host therefore uses a per-platform stop cleanup
+    window of 60 seconds for Linux helpers (vs the 5-second default applied to
+    macOS / Windows native helpers), and this cleanup timer starts whenever
+    the host sends `stop`, whether the stop was user-initiated or triggered by
+    the host recording cap. If inference exceeds 60 seconds (very rare; only
+    on hardware below the supported baseline), the host kills the helper and
+    the user sees `engine_unavailable` for that session; the setup-guide
+    documents this as a known limitation on underpowered hardware.
 15. The helper preloads the whisper model on `ready` rather than lazily
     on `stop`, so first-utterance latency is dominated by inference
     time rather than model load. The helper exits if model load fails
     with `engine_unavailable`.
-16. The helper bounds total recording duration to 30 seconds (16 kHz
-    mono S16LE × 30 s = ~960 KB buffer). On reaching the cap, the
-    helper auto-stops as if the user had clicked stop: it closes the
-    PulseAudio stream, runs inference, emits `final`, emits `end`, and
-    exits. The renderer is unaware the auto-stop occurred — it sees the
-    same `final` → `end` sequence as a user-initiated stop. The
-    30-second cap is a v1 trade-off chosen so worst-case inference time
-    stays inside the 60-second Linux stop cleanup window (Req 14); a
-    follow-up SPEC may introduce streaming inference to lift this cap.
+16. The host bounds Linux recording duration to 30 seconds (16 kHz mono S16LE
+    × 30 s = ~960 KB buffer). At 25 seconds, the host emits
+    `limit_warning { secondsRemaining: 5 }` to the renderer. At 30 seconds,
+    the host emits `processing`, sends the normal `stop` control message to
+    the helper, and starts the same 60-second Linux stop cleanup timer used
+    for a user-initiated stop. The helper may keep a defensive buffer cap at
+    31 seconds to avoid unbounded memory if the host timer fails, but that
+    path must emit `error: aborted` rather than silently pretending a normal
+    stop occurred. The 30-second cap is a v1 trade-off chosen so worst-case
+    inference time stays inside the 60-second Linux stop cleanup window
+    (Req 14); a follow-up SPEC may introduce streaming inference to lift this
+    cap.
 
 ### Non-Functional Requirements
 
@@ -195,12 +208,12 @@ platform gate to include Linux.
   ~140-150 MB. Documented in the setup-guide.
 - **Reliability**: the helper terminates within the platform-specific
   stop cleanup window (60 seconds on Linux, 5 seconds on macOS /
-  Windows) even if libpulse stalls. Audio capture uses small chunked
-  synchronous `pa_simple_read` calls (~20 ms / 320 samples each) and a
-  shared stop / cancel atomic flag checked between iterations; closing
-  the stream from the command thread interrupts the in-flight read.
-  `pa_simple` is intentionally not used in a "non-blocking with
-  timeout" mode because the API does not support that pattern.
+  Windows) even if PulseAudio stalls. Linux audio capture uses
+  PulseAudio's asynchronous API under `pa_threaded_mainloop`; all
+  PulseAudio context/stream operations are owned by the audio thread and
+  guarded by the threaded-mainloop lock. The stdin command thread only
+  flips stop/cancel state and wakes the audio thread; it never frees or
+  closes a PulseAudio stream/context handle that another thread may be using.
 - **Compatibility**: target Ubuntu 22.04 LTS, Debian 12, and Fedora 40
   for the v1 deb. PipeWire-pulse compatibility is required (default on
   Ubuntu 22.10+ and Fedora 35+). Pure ALSA-only systems surface
@@ -217,13 +230,16 @@ Linux composer microphone button
        -> bridge present (linux Electron)
             -> window.catsDesktopHost.startVoiceCapture({ locale, sessionId })
             -> host spawns cats-stt-linux helper
-            -> helper preflights pa_simple_new; on failure emits mic_unavailable
-            -> helper opens 16 kHz S16LE mono PA stream
+            -> helper preflights a PulseAudio recording stream; on failure emits mic_unavailable
+            -> helper opens 16 kHz S16LE mono PA stream on the audio thread
             -> helper preloads ggml-base.bin model
             -> on success: helper emits `ready` with mode: 'on-device'
             -> user speaks; helper buffers PCM samples in memory
             -> renderer ignores partial events (helper emits none in v1)
-            -> user clicks stop (or Escape, which routes to cancel)
+            -> at 25 s host emits `limit_warning { secondsRemaining: 5 }`
+            -> user clicks stop, host cap reaches 30 s, or Escape routes to cancel
+            -> host emits `processing` for stop/cap paths and sends stop
+            -> host starts the Linux 60 s stop cleanup timer
             -> helper closes PA stream (microphone released immediately)
             -> helper runs whisper.cpp inference on the audio buffer
             -> helper emits `final` with the transcript, then `end`
@@ -246,7 +262,7 @@ Linux composer microphone button
 - `desktop/native/linux-stt/whisper.cpp/`: git submodule pinned to a
   whisper.cpp release tag (avoid floating `master`).
 - `desktop/native/linux-stt/src/main.cpp`: ~300 lines of C++ wrapping
-  whisper.cpp + libpulse-simple + JSON event emission.
+  whisper.cpp + PulseAudio async capture + JSON event emission.
 - `desktop/native/linux-stt/scripts/fetch-model.sh`: downloads
   `ggml-base.bin` from the official whisper.cpp distribution, verifies
   SHA256, writes to a build cache.
@@ -261,7 +277,7 @@ CATS_BUNDLE_WHISPER_PLATFORMS=linux
 # by a separate, future ADR).
 CATS_BUNDLE_WHISPER_PLATFORMS=linux,darwin,win32
 
-# Disable entirely (Linux falls back to the broken Web Speech path).
+# Disable entirely (Linux bridge stays exposed and start surfaces engine_unavailable).
 CATS_BUNDLE_WHISPER_PLATFORMS=
 ```
 
@@ -270,8 +286,9 @@ CATS_BUNDLE_WHISPER_PLATFORMS=
 - whisper.cpp (MIT, https://github.com/ggerganov/whisper.cpp) as a
   build-time git submodule pinned to a release tag.
 - `ggml-base.bin` model file (~140 MB, multilingual).
-- libpulse-simple (system library, available on every desktop Linux
-  distribution that ships PulseAudio or PipeWire-pulse).
+- libpulse (system library, available on every desktop Linux distribution
+  that ships PulseAudio or PipeWire-pulse). The helper uses the async API
+  with `pa_threaded_mainloop`, not PulseAudio's simple API.
 - CMake ≥ 3.16 and a C++17 compiler (g++ or clang) on the Linux build
   host.
 - electron-builder's `extraResources` mechanism for cross-format
@@ -311,10 +328,11 @@ CATS_BUNDLE_WHISPER_PLATFORMS=
       current code avoids. v1 default is no file gate; revisit if the
       `CATS_BUNDLE_WHISPER_PLATFORMS=` empty path becomes a real
       production scenario.
-- [ ] Should the renderer add a "30-second cap approaching" warning
-      chip in the last 5 seconds before auto-stop (Req 16) so users
-      are not surprised when long utterances cut off mid-sentence?
-      v1 default: no chip; manual surfacing only via the setup-guide.
+- [x] Should the renderer add a "30-second cap approaching" warning
+      chip in the last 5 seconds before the host stops recording
+      (Req 16) so users are not surprised when long utterances end?
+      Decision: yes. The host emits `limit_warning` at 25 seconds and
+      `processing` at 30 seconds before it sends stop.
 
 ## References
 
@@ -328,6 +346,6 @@ CATS_BUNDLE_WHISPER_PLATFORMS=
 ---
 
 *Created: 2026-04-28*
-*Last revised: 2026-04-28 (review pass: Req 14 corrected from the wrong "5-second cleanup is sufficient" claim to a Linux per-platform 60-second window; new Req 16 caps utterance recording at 30 seconds with auto-stop; Req 10 packaged path corrected from `app.asar.unpacked/...` to `<resourcesPath>/...`; Req 11 fallback contract reflects the actual `engine_unavailable` outcome rather than a non-existent Web Speech fallthrough; Reliability NFR rewritten to describe the real chunked synchronous `pa_simple_read` pattern instead of the impossible non-blocking timeout; design overview branches updated; preload-gate and 30-second-warning chip added as open questions.)*
+*Last revised: 2026-04-28 (review follow-up: the 30-second cap is now host-owned, starts the Linux stop cleanup timer, and emits renderer-visible `limit_warning` / `processing` events; PulseAudio capture uses the async API with a single audio-thread owner instead of unsafe cross-thread simple-API handle closure; Req 10/11 remain aligned to extraResources and the actual missing-helper outcome.)*
 *Author: Claude*
 *Related Plan: [PLAN-078](../plans/PLAN-078-linux-composer-voice-input-whisper-cpp-rollout.md)*
