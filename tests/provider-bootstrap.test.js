@@ -10,6 +10,7 @@ import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import {
   bootstrapProviderSelector,
   seedProviderSelectorFromSnapshot,
+  warmProviderSelectorCache,
 } from '../build/server/server/routes/providers.js';
 import {
   loadProviderSnapshot,
@@ -346,7 +347,7 @@ test('GET /api/providers?force=1 bypasses a stuck inflight probe instead of join
   });
 });
 
-test('a no_usable_targets refresh after a successful warm leaves the disk snapshot intact', async () => {
+test('a no_usable_targets refresh after a successful warm preserves the prior ready cache and disk snapshot', async () => {
   await withTempDir(async (directory) => {
     const snapshotPath = path.join(directory, 'provider-snapshot.json');
     const runtimeClient = createReachableRuntimeStub();
@@ -375,10 +376,25 @@ test('a no_usable_targets refresh after a successful warm leaves the disk snapsh
     // Now flip the runtime to report no_usable_targets and trigger a refresh.
     suppressProviders = true;
     await withSeededServer(runtimeClient, snapshotPath, async (baseUrl) => {
+      // The forced refresh hits a no_usable_targets runtime, but because we
+      // already have a recent 'ready' baseline in the cache, the route falls
+      // through to the stale-fallback path and returns the prior ready
+      // registry (with a runtime-warning prefix).
       const forced = await fetch(`${baseUrl}/api/providers?force=1`);
       assert.equal(forced.status, 200);
       const payload = await forced.json();
-      assert.equal(payload.state, 'no_usable_targets');
+      assert.equal(payload.state, 'ready');
+      assert.ok(payload.providers.some((provider) => provider.id === 'claude'));
+      assert.ok(
+        payload.warnings?.some((warning) => warning.toLowerCase().includes('no usable provider targets')),
+        'response should disclose that the latest runtime probe reported no usable targets',
+      );
+
+      // A subsequent non-forced read inside the cache window still returns
+      // the preserved ready snapshot, not the stale no_usable_targets value.
+      const followUp = await fetch(`${baseUrl}/api/providers`);
+      const followUpPayload = await followUp.json();
+      assert.equal(followUpPayload.state, 'ready');
 
       // Wait past the snapshot debounce window so any (incorrect) write would
       // have landed by now.
@@ -411,6 +427,95 @@ test('flushProviderSnapshotPersistence drains a pending debounced write', async 
 
     const reloaded = await loadProviderSnapshot(snapshotPath);
     assert.ok(reloaded, 'flush must persist the pending snapshot');
+    assert.equal(reloaded.registry?.state, 'ready');
+    assert.ok(reloaded.registry?.providers.some((provider) => provider.id === 'claude'));
+  });
+});
+
+test('a stale background probe cannot clobber a forced fresh ready result', async () => {
+  await withTempDir(async (directory) => {
+    const snapshotPath = path.join(directory, 'provider-snapshot.json');
+    const runtimeClient = createReachableRuntimeStub();
+    let diagnosticsCalls = 0;
+    let releaseFirstCall;
+    const firstCallReady = new Promise((resolve) => {
+      releaseFirstCall = resolve;
+    });
+    const originalDiagnostics = runtimeClient.getProviderDiagnostics;
+    runtimeClient.getProviderDiagnostics = async (query = {}) => {
+      diagnosticsCalls += 1;
+      if (diagnosticsCalls === 1) {
+        await firstCallReady;
+        // First probe resolves *after* the forced one, with an empty
+        // provider list — i.e. no_usable_targets. Without the identity
+        // guard this would clobber the forced ready result.
+        return { probe: 'light', providers: [] };
+      }
+      return originalDiagnostics.call(runtimeClient, query);
+    };
+
+    await withSeededServer(runtimeClient, snapshotPath, async (baseUrl) => {
+      const stuckRequest = fetch(`${baseUrl}/api/providers`);
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      assert.equal(diagnosticsCalls, 1, 'first probe should be in flight');
+
+      const forced = await fetch(`${baseUrl}/api/providers?force=1`);
+      assert.equal(forced.status, 200);
+      const forcedPayload = await forced.json();
+      assert.equal(forcedPayload.state, 'ready');
+      assert.equal(diagnosticsCalls, 2);
+
+      // Release the now-stale first probe and let it resolve.
+      releaseFirstCall();
+      const stuck = await stuckRequest;
+      assert.equal(stuck.status, 200);
+      // Give the late probe's microtasks a beat to propagate.
+      await new Promise((resolve) => setTimeout(resolve, 50));
+
+      // A subsequent read must still return the forced ready state, not the
+      // stale no_usable_targets value the late probe carried.
+      const followUp = await fetch(`${baseUrl}/api/providers`);
+      const followUpPayload = await followUp.json();
+      assert.equal(followUpPayload.state, 'ready');
+    });
+  });
+});
+
+test('flushProviderSnapshotPersistence waits for an inflight warm probe to complete and persist', async () => {
+  const { flushProviderSnapshotPersistence } = await import(
+    '../build/server/server/routes/providers.js'
+  );
+
+  await withTempDir(async (directory) => {
+    const snapshotPath = path.join(directory, 'provider-snapshot.json');
+    const runtimeClient = createReachableRuntimeStub();
+    let releaseProbe;
+    const probeReady = new Promise((resolve) => {
+      releaseProbe = resolve;
+    });
+    const originalDiagnostics = runtimeClient.getProviderDiagnostics;
+    runtimeClient.getProviderDiagnostics = async (query = {}) => {
+      await probeReady;
+      return originalDiagnostics.call(runtimeClient, query);
+    };
+
+    await seedProviderSelectorFromSnapshot(runtimeClient, snapshotPath);
+
+    // Kick off warm without awaiting — probe is now stuck in flight.
+    void warmProviderSelectorCache(runtimeClient).catch(() => {});
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    // Start the flush and release the probe shortly after. flush must wait
+    // until the probe lands in cache, schedules the debounce, and gets
+    // drained — before resolving.
+    const flushPromise = flushProviderSnapshotPersistence(runtimeClient, {
+      inflightTimeoutMs: 5_000,
+    });
+    setTimeout(() => releaseProbe(), 60);
+    await flushPromise;
+
+    const reloaded = await loadProviderSnapshot(snapshotPath);
+    assert.ok(reloaded, 'flush must persist the inflight probe result');
     assert.equal(reloaded.registry?.state, 'ready');
     assert.ok(reloaded.registry?.providers.some((provider) => provider.id === 'claude'));
   });

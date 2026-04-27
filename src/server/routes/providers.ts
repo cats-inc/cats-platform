@@ -28,6 +28,7 @@ interface ProviderRouteDependencies {
 }
 
 const PROVIDER_SNAPSHOT_DEBOUNCE_MS = 1_000;
+const PROVIDER_SNAPSHOT_FLUSH_INFLIGHT_TIMEOUT_MS = 2_000;
 
 type ProviderRegistryState = 'ready' | 'no_usable_targets' | 'runtime_unreachable';
 const PROVIDER_CACHE_STALE_IF_ERROR_MS = 10 * 60_000;
@@ -175,13 +176,61 @@ function buildProviderSnapshotForRuntime(
   return snapshot;
 }
 
+function collectInflightCachePromises(runtimeClient: RuntimeClient): Promise<unknown>[] {
+  const promises: Promise<unknown>[] = [];
+  const registryCacheState = truthfulProviderRegistryCache.get(runtimeClient);
+  if (registryCacheState) {
+    for (const promise of registryCacheState.inflight.values()) {
+      promises.push(promise);
+    }
+  }
+  const catalogCacheState = providerCatalogCache.get(runtimeClient);
+  if (catalogCacheState) {
+    for (const promise of catalogCacheState.models.inflight.values()) {
+      promises.push(promise);
+    }
+    for (const promise of catalogCacheState.advanced.inflight.values()) {
+      promises.push(promise);
+    }
+  }
+  return promises;
+}
+
+async function awaitInflightCachePromisesWithBudget(
+  runtimeClient: RuntimeClient,
+  timeoutMs: number,
+): Promise<void> {
+  const inflight = collectInflightCachePromises(runtimeClient);
+  if (inflight.length === 0) {
+    return;
+  }
+  // Bounded wait: a stuck probe (e.g. cats-runtime hanging) must not delay
+  // shutdown indefinitely. Whatever hasn't settled by the budget gets
+  // abandoned and the process moves on.
+  await Promise.race([
+    Promise.allSettled(inflight),
+    new Promise<void>((resolve) => setTimeout(resolve, timeoutMs)),
+  ]);
+}
+
 export async function flushProviderSnapshotPersistence(
   runtimeClient: RuntimeClient,
+  options: { inflightTimeoutMs?: number } = {},
 ): Promise<void> {
   const state = providerSnapshotPersistence.get(runtimeClient);
   if (!state) {
     return;
   }
+
+  // First wait (with a budget) for any in-flight registry/catalog refresh to
+  // settle so its successful result schedules a notify before we drain. A
+  // probe that hasn't yet resolved at shutdown would otherwise leave us with
+  // no pending timer to drain — and the process.exit afterwards would kill
+  // the probe mid-flight, losing the snapshot.
+  await awaitInflightCachePromisesWithBudget(
+    runtimeClient,
+    options.inflightTimeoutMs ?? PROVIDER_SNAPSHOT_FLUSH_INFLIGHT_TIMEOUT_MS,
+  );
 
   if (state.pendingTimer) {
     clearTimeout(state.pendingTimer);
@@ -599,7 +648,12 @@ const TRUTHFUL_PROVIDER_REGISTRY_CACHE_KEY = '*';
 function shouldCacheTruthfulProviderRegistry(
   value: TruthfulProviderRegistryReadModel,
 ): boolean {
-  return value.state !== 'runtime_unreachable';
+  // Only 'ready' is authoritative enough for the full TTL+stale window.
+  // 'no_usable_targets' might be transient (e.g. runtime config reload mid-
+  // probe) — we don't want it to displace a recently-good baseline for 30s.
+  // 'runtime_unreachable' is the explicit failure state. Both fall through
+  // to the stale-fallback / short-backoff path below.
+  return value.state === 'ready';
 }
 
 function appendProviderCacheWarning(
@@ -681,7 +735,13 @@ function shouldServeStaleProviderCatalogForError(error: unknown): boolean {
 function readTruthfulProviderRegistryFailureMessage(
   value: TruthfulProviderRegistryReadModel,
 ): string {
-  return value.warnings?.[0] ?? 'cats-runtime is unavailable.';
+  if (value.warnings?.[0]) {
+    return value.warnings[0];
+  }
+  if (value.state === 'no_usable_targets') {
+    return 'cats-runtime reported no usable provider targets.';
+  }
+  return 'cats-runtime is unavailable.';
 }
 
 function deriveTruthfulProviderRegistryForProvider(
@@ -836,6 +896,17 @@ async function refreshTruthfulProviderRegistry(
   let refreshPromise!: Promise<TruthfulProviderRegistryReadModel>;
   refreshPromise = loadTruthfulProviderRegistryFromRuntime(dependencies)
     .then((value) => {
+      // Stale-probe guard: if a parallel forced refresh has replaced us as
+      // the current inflight probe (or already finished and cleaned up), our
+      // value is stale by definition. Don't write it to the cache — that
+      // would clobber the newer, presumably better, result. Return whatever
+      // the cache currently holds so any caller still awaiting our promise
+      // sees the freshest state instead of our older value.
+      if (cacheState.inflight.get(cacheKey) !== refreshPromise) {
+        const current = cacheState.entries.get(cacheKey);
+        return current ? current.value : value;
+      }
+
       const now = Date.now();
       if (shouldCacheTruthfulProviderRegistry(value)) {
         cacheState.entries.set(cacheKey, {
