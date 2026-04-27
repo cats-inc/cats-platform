@@ -75,3 +75,10 @@ export function resolveGuideCatAssistCachePathFromChatState(
   const layout = resolvePlatformStorageLayout(chatStatePath);
   return path.join(layout.stateDir, 'guide-cat-assist-cache.local.json');
 }
+
+export function resolveProviderSnapshotPathFromChatState(
+  chatStatePath: string,
+): string {
+  const layout = resolvePlatformStorageLayout(chatStatePath);
+  return path.join(layout.stateDir, 'provider-snapshot.local.json');
+}

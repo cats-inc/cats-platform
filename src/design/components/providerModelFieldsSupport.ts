@@ -71,13 +71,6 @@ export function createEmptyProviderAdvancedModelCatalog(
   };
 }
 
-export function createDefaultProviderRegistryReadModel(): ProductProviderRegistryReadModel {
-  return {
-    state: 'ready',
-    providers: [],
-  };
-}
-
 export function createStaticProviderRegistryReadModel(
   warnings: string[] = [],
 ): ProductProviderRegistryReadModel {
@@ -102,9 +95,14 @@ export function sanitizeProviderRegistryReadModel(
 export function resolveProviderRegistryPlaceholder(input: {
   providersLoaded: boolean;
   registryState: ProductProviderRegistryState;
+  providerCount?: number;
 }): string {
   if (!input.providersLoaded) {
     return 'Loading available providers...';
+  }
+
+  if ((input.providerCount ?? 0) > 0) {
+    return 'Select an available provider';
   }
 
   return input.registryState === 'runtime_unreachable'
@@ -118,6 +116,11 @@ export function resolveProviderRegistryHint(input: {
 }): string {
   if (!input.providersLoaded) {
     return 'Checking cats-runtime for usable provider targets.';
+  }
+
+  if (input.registry.providers.length > 0) {
+    return input.registry.warnings?.[0]
+      ?? 'Showing last known provider targets while cats-runtime reconnects.';
   }
 
   if (input.registry.state === 'runtime_unreachable') {
@@ -841,10 +844,12 @@ export function resolveProviderModelFieldsViewState(input: {
   const providerPlaceholder = resolveProviderRegistryPlaceholder({
     providersLoaded,
     registryState: providerRegistry.state,
+    providerCount: providerRegistry.providers.length,
   });
+  const hasProviderOptions = providerRegistry.providers.length > 0;
   const modelPlaceholder = !selectedProvider
     ? (providersLoaded
-        ? providerRegistry.state === 'runtime_unreachable'
+        ? providerRegistry.state === 'runtime_unreachable' && !hasProviderOptions
           ? 'Retry loading providers first'
           : 'Select an available provider first'
         : 'Waiting for available providers...')

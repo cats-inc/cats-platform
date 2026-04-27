@@ -508,3 +508,37 @@ test('GET /api/providers/:provider/models serves stale immediately while revalid
     });
   });
 });
+
+test('GET /api/providers caches a first-time failure briefly so back-to-back probes share one timeout', {
+  concurrency: false,
+}, async (t) => {
+  const runtimeClient = createRuntimeStub();
+  const initialNowMs = Date.parse('2026-04-21T06:30:00.000Z');
+  let diagnosticsCalls = 0;
+
+  runtimeClient.getProviderDiagnostics = async () => {
+    diagnosticsCalls += 1;
+    throw new Error('The operation was aborted due to timeout');
+  };
+
+  await withMockedDateNow(t, initialNowMs, async (clock) => {
+    await withServer(runtimeClient, async (baseUrl) => {
+      const first = await fetch(`${baseUrl}/api/providers`);
+      assert.equal(first.status, 200);
+      const firstPayload = await first.json();
+      assert.equal(firstPayload.state, 'runtime_unreachable');
+      assert.equal(diagnosticsCalls, 1);
+
+      const second = await fetch(`${baseUrl}/api/providers`);
+      assert.equal(second.status, 200);
+      const secondPayload = await second.json();
+      assert.equal(secondPayload.state, 'runtime_unreachable');
+      assert.equal(diagnosticsCalls, 1, 'cached failure must be served without re-probing within the backoff window');
+
+      clock.advance(30_001);
+      const third = await fetch(`${baseUrl}/api/providers`);
+      assert.equal(third.status, 200);
+      assert.equal(diagnosticsCalls, 2, 'after the backoff expires we re-probe');
+    });
+  });
+});

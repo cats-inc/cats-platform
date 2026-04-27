@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from 'react';
 import { peekProviderRegistryClientCache } from '../../app/renderer/providerRegistryClient.js';
 import type { ProductProviderRegistryReadModel } from '../../shared/providerCatalog.js';
 import {
-  createDefaultProviderRegistryReadModel,
   createStaticProviderRegistryReadModel,
   sanitizeProviderRegistryReadModel,
 } from './providerModelFieldsSupport.js';
@@ -23,7 +22,7 @@ export function useProviderRegistryState(input: {
     initialRegistry.providers,
   );
   const [providerRegistry, setProviderRegistry] = useState<ProductProviderRegistryReadModel>(
-    () => initialRegistry ?? createDefaultProviderRegistryReadModel(),
+    () => initialRegistry,
   );
   const [providersLoaded, setProvidersLoaded] = useState(true);
   const [providerRegistryReloadToken, setProviderRegistryReloadToken] = useState(0);

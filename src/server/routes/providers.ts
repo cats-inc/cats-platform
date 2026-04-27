@@ -15,10 +15,19 @@ import type {
   RuntimeRequestError,
   RuntimeClient,
 } from '../../platform/runtime/client.js';
+import {
+  createEmptyProviderSnapshot,
+  loadProviderSnapshot,
+  writeProviderSnapshot,
+  type ProviderSnapshot,
+  type ProviderSnapshotCatalogEntry,
+} from './providerSnapshotStore.js';
 
 interface ProviderRouteDependencies {
   runtimeClient: RuntimeClient;
 }
+
+const PROVIDER_SNAPSHOT_DEBOUNCE_MS = 1_000;
 
 type ProviderRegistryState = 'ready' | 'no_usable_targets' | 'runtime_unreachable';
 const PROVIDER_CACHE_STALE_IF_ERROR_MS = 10 * 60_000;
@@ -99,6 +108,229 @@ interface ProviderCatalogCacheState {
 }
 
 const providerCatalogCache = new WeakMap<RuntimeClient, ProviderCatalogCacheState>();
+
+interface ProviderSnapshotPersistenceState {
+  snapshotPath: string;
+  pendingTimer: ReturnType<typeof setTimeout> | null;
+  writing: Promise<void> | null;
+  writeNotifier?: () => void;
+}
+
+const providerSnapshotPersistence = new WeakMap<RuntimeClient, ProviderSnapshotPersistenceState>();
+
+function configureProviderSnapshotPersistence(
+  runtimeClient: RuntimeClient,
+  snapshotPath: string,
+  options: { writeNotifier?: () => void } = {},
+): void {
+  providerSnapshotPersistence.set(runtimeClient, {
+    snapshotPath,
+    pendingTimer: null,
+    writing: null,
+    writeNotifier: options.writeNotifier,
+  });
+}
+
+function buildProviderSnapshotForRuntime(
+  runtimeClient: RuntimeClient,
+): ProviderSnapshot {
+  const snapshot = createEmptyProviderSnapshot();
+  const registryCacheState = truthfulProviderRegistryCache.get(runtimeClient);
+  const registryEntry = registryCacheState?.entries.get(TRUTHFUL_PROVIDER_REGISTRY_CACHE_KEY);
+  if (registryEntry && shouldCacheTruthfulProviderRegistry(registryEntry.value)) {
+    snapshot.registry = {
+      state: registryEntry.value.state,
+      providers: registryEntry.value.providers,
+      ...(registryEntry.value.warnings ? { warnings: registryEntry.value.warnings } : {}),
+    };
+  }
+
+  const catalogCacheState = providerCatalogCache.get(runtimeClient);
+  if (catalogCacheState) {
+    const catalogEntries = new Map<string, ProviderSnapshotCatalogEntry>();
+    for (const [cacheKey, entry] of catalogCacheState.models.entries) {
+      catalogEntries.set(cacheKey, {
+        provider: entry.value.provider,
+        instance: entry.value.instance ?? null,
+        models: entry.value,
+        advanced: catalogEntries.get(cacheKey)?.advanced ?? null,
+      });
+    }
+    for (const [cacheKey, entry] of catalogCacheState.advanced.entries) {
+      const existing = catalogEntries.get(cacheKey);
+      catalogEntries.set(cacheKey, {
+        provider: entry.value.provider,
+        instance: entry.value.instance ?? null,
+        models: existing?.models ?? null,
+        advanced: entry.value,
+      });
+    }
+    snapshot.catalogs = [...catalogEntries.values()];
+  }
+
+  return snapshot;
+}
+
+function notifyProviderCacheUpdated(runtimeClient: RuntimeClient): void {
+  const state = providerSnapshotPersistence.get(runtimeClient);
+  if (!state) {
+    return;
+  }
+  if (state.pendingTimer) {
+    clearTimeout(state.pendingTimer);
+  }
+  state.pendingTimer = setTimeout(() => {
+    state.pendingTimer = null;
+    const snapshot = buildProviderSnapshotForRuntime(runtimeClient);
+    state.writing = writeProviderSnapshot(state.snapshotPath, snapshot)
+      .catch(() => {
+        // Snapshot persistence is best-effort; failures here should not break
+        // the request path. The next successful cache write will retry.
+      })
+      .finally(() => {
+        state.writing = null;
+        state.writeNotifier?.();
+      });
+  }, PROVIDER_SNAPSHOT_DEBOUNCE_MS);
+}
+
+function seedTruthfulProviderRegistryFromSnapshot(
+  runtimeClient: RuntimeClient,
+  snapshot: ProviderSnapshot,
+): void {
+  if (!snapshot.registry || !shouldCacheTruthfulProviderRegistry(snapshot.registry)) {
+    return;
+  }
+  const cacheState = getTruthfulProviderRegistryCacheState(runtimeClient);
+  const cacheKey = TRUTHFUL_PROVIDER_REGISTRY_CACHE_KEY;
+  if (cacheState.entries.has(cacheKey)) {
+    return;
+  }
+  const now = Date.now();
+  cacheState.entries.set(cacheKey, {
+    lifecycle: 'error_backoff',
+    value: snapshot.registry,
+    freshUntilMs: 0,
+    staleUntilMs: 0,
+    staleIfErrorUntilMs: now + PROVIDER_CACHE_STALE_IF_ERROR_MS,
+    cacheRefreshWarning: {
+      kind: 'provider-targets',
+      message: 'Using last saved provider targets while cats-runtime reconnects.',
+    },
+  });
+}
+
+function seedProviderCatalogsFromSnapshot(
+  runtimeClient: RuntimeClient,
+  snapshot: ProviderSnapshot,
+): void {
+  if (snapshot.catalogs.length === 0) {
+    return;
+  }
+  const cacheState = getProviderCatalogCacheState(runtimeClient);
+  const now = Date.now();
+  for (const entry of snapshot.catalogs) {
+    const cacheKey = buildProviderCatalogCacheKey({
+      provider: entry.provider,
+      instance: entry.instance,
+    });
+    if (entry.models && !cacheState.models.entries.has(cacheKey)) {
+      cacheState.models.entries.set(cacheKey, {
+        lifecycle: 'error_backoff',
+        value: entry.models,
+        freshUntilMs: 0,
+        staleUntilMs: 0,
+        staleIfErrorUntilMs: now + PROVIDER_CACHE_STALE_IF_ERROR_MS,
+        cacheRefreshWarning: {
+          kind: 'model-catalog',
+          message: 'Using last saved model catalog while cats-runtime reconnects.',
+        },
+      });
+    }
+    if (entry.advanced && !cacheState.advanced.entries.has(cacheKey)) {
+      cacheState.advanced.entries.set(cacheKey, {
+        lifecycle: 'error_backoff',
+        value: entry.advanced,
+        freshUntilMs: 0,
+        staleUntilMs: 0,
+        staleIfErrorUntilMs: now + PROVIDER_CACHE_STALE_IF_ERROR_MS,
+        cacheRefreshWarning: {
+          kind: 'model-catalog',
+          message: 'Using last saved model catalog while cats-runtime reconnects.',
+        },
+      });
+    }
+  }
+}
+
+export async function bootstrapProviderSelector(
+  runtimeClient: RuntimeClient,
+  options: {
+    snapshotPath?: string | null;
+    onSnapshotPersisted?: () => void;
+  } = {},
+): Promise<void> {
+  const snapshotPath = options.snapshotPath?.trim() || null;
+  if (snapshotPath) {
+    const snapshot = await loadProviderSnapshot(snapshotPath);
+    if (snapshot) {
+      seedTruthfulProviderRegistryFromSnapshot(runtimeClient, snapshot);
+      seedProviderCatalogsFromSnapshot(runtimeClient, snapshot);
+    }
+    configureProviderSnapshotPersistence(runtimeClient, snapshotPath, {
+      writeNotifier: options.onSnapshotPersisted,
+    });
+  }
+
+  await warmProviderSelectorCache({ runtimeClient });
+}
+
+async function warmProviderSelectorCache(
+  dependencies: ProviderRouteDependencies,
+): Promise<void> {
+  const cacheState = getTruthfulProviderRegistryCacheState(dependencies.runtimeClient);
+  let registry: TruthfulProviderRegistryReadModel;
+  try {
+    registry = await refreshTruthfulProviderRegistry(dependencies, cacheState);
+  } catch {
+    return;
+  }
+  if (registry.state !== 'ready') {
+    return;
+  }
+
+  const catalogCacheState = getProviderCatalogCacheState(dependencies.runtimeClient);
+  await Promise.allSettled(
+    registry.providers.map(async (provider) => {
+      const defaultInstanceId = provider.defaultInstance
+        ?? provider.instances.find((candidate) => candidate.default)?.id
+        ?? provider.instances[0]?.id
+        ?? null;
+      if (!defaultInstanceId) {
+        return;
+      }
+      await Promise.allSettled([
+        readProviderCatalogCached({
+          cacheState: catalogCacheState.models,
+          provider: provider.id,
+          instance: defaultInstanceId,
+          load: () => dependencies.runtimeClient.getProviderModels(provider.id, defaultInstanceId),
+          runtimeClient: dependencies.runtimeClient,
+        }),
+        readProviderCatalogCached({
+          cacheState: catalogCacheState.advanced,
+          provider: provider.id,
+          instance: defaultInstanceId,
+          load: () => dependencies.runtimeClient.getAdvancedProviderModels(
+            provider.id,
+            defaultInstanceId,
+          ),
+          runtimeClient: dependencies.runtimeClient,
+        }),
+      ]);
+    }),
+  );
+}
 
 function isSelectableAvailabilityStatus(status: string | null | undefined): boolean {
   return status === 'ok' || status === 'degraded';
@@ -534,8 +766,8 @@ async function refreshTruthfulProviderRegistry(
 
   const refreshPromise = loadTruthfulProviderRegistryFromRuntime(dependencies)
     .then((value) => {
+      const now = Date.now();
       if (shouldCacheTruthfulProviderRegistry(value)) {
-        const now = Date.now();
         cacheState.entries.set(cacheKey, {
           lifecycle: 'fresh',
           value,
@@ -543,13 +775,26 @@ async function refreshTruthfulProviderRegistry(
           staleUntilMs: now + TRUTHFUL_SELECTOR_CACHE_TTL_MS + TRUTHFUL_SELECTOR_STALE_WINDOW_MS,
           staleIfErrorUntilMs: now + PROVIDER_CACHE_STALE_IF_ERROR_MS,
         });
+        notifyProviderCacheUpdated(dependencies.runtimeClient);
         return value;
       }
 
       const cached = cacheState.entries.get(cacheKey);
-      if (cached && cached.staleIfErrorUntilMs > Date.now()) {
+      if (cached && cached.staleIfErrorUntilMs > now) {
         return writeTruthfulProviderRegistryErrorBackoff(cacheState, cacheKey, cached, value);
       }
+
+      // No prior baseline and the probe failed. Cache the failure briefly so
+      // back-to-back probes within PROVIDER_CACHE_ERROR_BACKOFF_MS reuse the
+      // same response instead of all paying the diagnostics timeout. The TTL
+      // is short enough that a recovering runtime is re-probed promptly.
+      cacheState.entries.set(cacheKey, {
+        lifecycle: 'fresh',
+        value,
+        freshUntilMs: now + PROVIDER_CACHE_ERROR_BACKOFF_MS,
+        staleUntilMs: now + PROVIDER_CACHE_ERROR_BACKOFF_MS,
+        staleIfErrorUntilMs: now + PROVIDER_CACHE_ERROR_BACKOFF_MS,
+      });
       return value;
     })
     .finally(() => {
@@ -718,6 +963,7 @@ function refreshProviderCatalogCacheEntry<TCatalog extends { warnings?: string[]
   cacheState: ProviderCatalogTypedCacheState<TCatalog>,
   cacheKey: string,
   load: () => Promise<TCatalog>,
+  runtimeClient?: RuntimeClient,
 ): Promise<TCatalog> {
   const inflight = cacheState.inflight.get(cacheKey);
   if (inflight) {
@@ -727,6 +973,9 @@ function refreshProviderCatalogCacheEntry<TCatalog extends { warnings?: string[]
   const refreshPromise = load()
     .then((value) => {
       writeProviderCatalogCacheEntry(cacheState, cacheKey, value);
+      if (runtimeClient) {
+        notifyProviderCacheUpdated(runtimeClient);
+      }
       return value;
     })
     .catch((error) => {
@@ -753,6 +1002,7 @@ async function readProviderCatalogCached<TCatalog extends { warnings?: string[] 
   provider: string;
   instance?: string | null;
   load: () => Promise<TCatalog>;
+  runtimeClient?: RuntimeClient;
 }): Promise<TCatalog> {
   const cacheKey = buildProviderCatalogCacheKey(input);
   const now = Date.now();
@@ -764,19 +1014,34 @@ async function readProviderCatalogCached<TCatalog extends { warnings?: string[] 
   }
 
   if (cached && cached.staleUntilMs > now) {
-    void refreshProviderCatalogCacheEntry(input.cacheState, cacheKey, input.load).catch(() => {});
+    void refreshProviderCatalogCacheEntry(
+      input.cacheState,
+      cacheKey,
+      input.load,
+      input.runtimeClient,
+    ).catch(() => {});
     return readProviderCacheValue(cached, appendProviderCatalogWarning);
   }
 
   if (cached && cached.staleIfErrorUntilMs > now) {
-    void refreshProviderCatalogCacheEntry(input.cacheState, cacheKey, input.load).catch(() => {});
+    void refreshProviderCatalogCacheEntry(
+      input.cacheState,
+      cacheKey,
+      input.load,
+      input.runtimeClient,
+    ).catch(() => {});
     return appendProviderCatalogWarning(
       readProviderCacheValue(cached, appendProviderCatalogWarning),
       MODEL_CATALOG_CACHE_REVALIDATION_WARNING,
     );
   }
 
-  return refreshProviderCatalogCacheEntry(input.cacheState, cacheKey, input.load);
+  return refreshProviderCatalogCacheEntry(
+    input.cacheState,
+    cacheKey,
+    input.load,
+    input.runtimeClient,
+  );
 }
 
 function sendJson(response: ServerResponse, statusCode: number, payload: unknown): void {
@@ -865,6 +1130,7 @@ export async function handleProviderModels(
       provider,
       instance: normalizedInstance,
       load: () => dependencies.runtimeClient.getProviderModels(provider, normalizedInstance),
+      runtimeClient: dependencies.runtimeClient,
     });
     sendJson(response, 200, { catalog });
   } catch (error) {
@@ -944,6 +1210,7 @@ export async function handleAdvancedProviderModels(
       provider,
       instance: normalizedInstance,
       load: () => dependencies.runtimeClient.getAdvancedProviderModels(provider, normalizedInstance),
+      runtimeClient: dependencies.runtimeClient,
     });
     sendJson(response, 200, { catalog });
   } catch (error) {
@@ -1000,6 +1267,7 @@ async function refreshProviderCatalogsInternal(
           const cacheKey = buildProviderCatalogCacheKey({ provider: provider.id, instance: instance.id });
           writeProviderCatalogCacheEntry(cacheState.models, cacheKey, models);
           writeProviderCatalogCacheEntry(cacheState.advanced, cacheKey, advanced);
+          notifyProviderCacheUpdated(dependencies.runtimeClient);
           refreshed += 1;
         } catch (error) {
           failures.push({

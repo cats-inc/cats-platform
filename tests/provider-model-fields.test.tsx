@@ -438,6 +438,14 @@ test('provider registry empty states distinguish runtime failure from no usable 
     'Could not load runtime-backed providers',
   );
   assert.equal(
+    resolveProviderRegistryPlaceholder({
+      providersLoaded: true,
+      registryState: 'runtime_unreachable',
+      providerCount: 2,
+    }),
+    'Select an available provider',
+  );
+  assert.equal(
     resolveProviderRegistryHint({
       providersLoaded: true,
       registry: {
@@ -447,6 +455,26 @@ test('provider registry empty states distinguish runtime failure from no usable 
       },
     }),
     'Runtime provider registry timed out.',
+  );
+  assert.equal(
+    resolveProviderRegistryHint({
+      providersLoaded: true,
+      registry: {
+        state: 'runtime_unreachable',
+        providers: [
+          {
+            id: 'claude',
+            label: 'Claude',
+            defaultModel: null,
+            defaultInstance: null,
+            defaultBackend: null,
+            instances: [],
+            modelsPath: '/api/providers/claude/models',
+          },
+        ],
+      },
+    }),
+    'Showing last known provider targets while cats-runtime reconnects.',
   );
   assert.equal(
     resolveProviderRegistryHint({
@@ -1309,6 +1337,69 @@ test('provider model field view state derives instance, entry, and catalog warni
   assert.equal(viewState.primaryCatalogWarning, 'Advanced catalog unavailable.');
   assert.equal(viewState.providerRegistrySetupHref, '/runtime/setup');
   assert.equal(viewState.canRetryProviderRegistry, false);
+});
+
+test('model placeholder asks user to pick a provider first when runtime is unreachable but providers were preserved', () => {
+  const preservedProvider = {
+    id: 'claude',
+    label: 'Claude',
+    defaultModel: 'claude-sonnet-4-6',
+    defaultInstance: 'native',
+    defaultBackend: 'cli',
+    instances: [
+      {
+        id: 'native',
+        label: 'cli/native',
+        target: 'cli/native',
+        backend: 'cli',
+      },
+    ],
+    modelsPath: '/api/providers/claude/models',
+  };
+
+  const viewState = resolveProviderModelFieldsViewState({
+    selectedProvider: null,
+    provider: '',
+    instance: '',
+    model: '',
+    modelSelection: null,
+    catalogLoading: false,
+    providersLoaded: true,
+    providerRegistry: {
+      state: 'runtime_unreachable',
+      providers: [preservedProvider],
+      recovery: { retryable: true },
+      warnings: ['The operation was aborted due to timeout'],
+    },
+    effectiveCatalog: {
+      provider: '',
+      backend: null,
+      instance: null,
+      defaultModel: null,
+      source: 'config',
+      cache: null,
+      models: [],
+      warnings: [],
+    },
+    effectiveAdvancedCatalog: {
+      provider: '',
+      backend: null,
+      instance: null,
+      defaultModel: null,
+      source: 'config',
+      cache: null,
+      entries: [],
+      presets: [],
+      controls: [],
+      defaultSelection: null,
+      support: { tier: 'entry_only', notes: [] },
+      warnings: [],
+    },
+    isLegacyModelTarget: false,
+  });
+
+  assert.equal(viewState.modelPlaceholder, 'Select an available provider first');
+  assert.equal(viewState.providerPlaceholder, 'Select an available provider');
 });
 
 test('updating persistent control values adds, updates, and removes keyed control state', () => {
