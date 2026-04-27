@@ -113,6 +113,7 @@ export interface CreateCodeTaskResponse {
 
 export interface ExecuteCodeTaskResponse {
   task: CodeTaskBuilderDetailSummary;
+  runId: string;
   sessionId: string;
 }
 
@@ -190,12 +191,13 @@ export async function executeCodeTask(
   taskId: string,
   input: ExecuteCodeTaskInput,
 ): Promise<ExecuteCodeTaskResponse> {
-  const response = await postJson<{ task: unknown; sessionId: string }>(
+  const response = await postJson<{ task: unknown; runId: string; sessionId: string }>(
     buildCodeApiTaskExecutePath(taskId),
     input,
   );
   return {
     task: readCodeTaskBuilderDetail(response.task),
+    runId: response.runId,
     sessionId: response.sessionId,
   };
 }

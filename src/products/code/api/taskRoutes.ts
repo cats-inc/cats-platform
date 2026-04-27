@@ -100,6 +100,7 @@ export async function routeCodeTaskMutationApi(
       const taskDetail = buildCodeTaskDetailProjection(result.core, result.task);
       sendJson(context.response, 200, {
         task: taskDetail,
+        runId: result.runId,
         sessionId: result.sessionId,
       });
     } catch (error) {
