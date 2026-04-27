@@ -20,6 +20,7 @@
 - [ADR-082: Recast the Orchestrator as a Capability Shell with Policy-Dial Supervision](../decisions/082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md)
 - [PLAN-023: Orchestrator Execution Loop and Recovery](./PLAN-023-orchestrator-execution-loop-and-recovery.md)
 - [SPEC-011: Primary Orchestrator Chat Entry and Trace Separation](../specs/SPEC-011-primary-orchestrator-chat-entry-and-trace-separation.md)
+- [SPEC-050: Group Chat Temporary Participants and Reusable Lightweight Presets](../specs/SPEC-050-group-chat-temporary-participants-and-reusable-lightweight-presets.md)
 - [SPEC-061: Concurrent, Parallel, Code Entry Presets, and Chat Continuity Follow-Through](../specs/SPEC-061-concurrent-parallel-semantics-and-code-entry-presets.md)
 - [SPEC-062: Agent Missions, Managed Work, and Transport Bindings](../specs/SPEC-062-agent-missions-and-transport-bindings.md)
 - [SPEC-063: Conversational vs Operational Agents and Surface Projections](../specs/SPEC-063-conversational-vs-operational-agents-and-surface-projections.md)
@@ -88,10 +89,10 @@ This plan covers:
   tool-surface narrowing without introducing a separate dispatcher component
 - Chat semantic decision-core cutover while preserving deterministic Chat
   routing behavior and visible Chat UI flows
-- `+Group chat` and similar preset-created temporary participants with strong
-  provider/model/control targets enter the same provider-agent decision seam
-  under capability profile and policy supervision; their temporary lifecycle
-  does not cap agency or tool eligibility
+- `+Group chat` and similar SPEC-050 preset-created temporary participants
+  with strong provider/model/control targets enter the same provider-agent
+  decision seam under capability profile and policy supervision; their
+  temporary lifecycle does not cap agency or tool eligibility
 - Work supervised run lifecycle beyond one-shot runtime launch
 - Code task execute and relay fan-out convergence through the same run model
 - lifecycle scheduler and run-loop ownership needed to keep provider agents
@@ -138,7 +139,9 @@ This plan covers:
   agentic.
 - Temporary participants created by Chat, Work, or Code presets can be strong
   provider-agent participants under supervision without being promoted to
-  durable Cats.
+  durable Cats; `temp-participant-strong-agent.test.tsx` covers SPEC-050
+  preset application, capability-profile resolution through the bound
+  execution target, and the absence of Cat-registry promotion.
 - Chat deterministic routing is explicitly carved out and remains product-owned:
   `@mention` resolution, room-default dispatch, audience / participant limits,
   lane/container addressing, and product recents/origin rules stay
@@ -368,7 +371,13 @@ restating it.
       deterministic behavior.
 - [ ] Task 3.3: Preserve direct-cat, solo, group, and parallel semantics:
       participants, lanes, audience, runtime session metadata, typing handoff,
-      and recents origin must not regress.
+      and recents origin must not regress. Wire SPEC-050 channel participants
+      and preset/ad hoc temporary participants into the provider-agent decision
+      seam by resolving `participantId -> execution target -> capability
+      profile -> policy dials`; add `temp-participant-strong-agent.test.tsx`
+      to prove strong preset-created participants are supervised agents without
+      Cat-registry promotion. Preset application must surface a concise
+      capability/policy summary and gate high-risk grants before activation.
 - [ ] Task 3.4: Split recovery ownership. `SupervisionPolicy.fallbackPolicy`
       defines the allowed fallback set, retry envelope, escalation targets,
       approval gates, and state transitions. The provider agent may propose
@@ -561,6 +570,8 @@ execution. The difference is control density, not a boolean switch.
 | `src/platform/supervision/**` | Modify | Runtime boundary, lifecycle hooks, scheduler integration, static guardrails. |
 | `src/products/chat/state/**` | Modify | Route Chat orchestrator planning/recovery through the new seam and split two-hat orchestrator state. |
 | `src/products/chat/routing/**` | Create/Modify | Product-owned deterministic Chat router if retained code is moved/renamed. |
+| `src/products/shared/renderer/components/ChatNewChatDraft*.tsx` | Modify | SPEC-050 group/preset temporary participant apply surfaces capability/policy summaries before activation. |
+| `src/products/chat/state/model/**` | Modify | Resolve preset-created temporary participants to execution targets and capability profiles without promoting them to Cats. |
 | `src/products/chat/api/**` | Modify | Preserve runtime route support while cutting decision logic. |
 | `src/products/work/api/**` | Modify | Work provider-agent lifecycle endpoints and projections. |
 | `src/products/work/renderer/**` | Modify minimally | Only product-owned run actions/status surfaces; no UI redesign. |
@@ -569,6 +580,7 @@ execution. The difference is control density, not a boolean switch.
 | `../cats-runtime/**` | Inspect/Modify if needed | Lifecycle operations such as resume, cancel, observe, stream, close/delete, and session metadata persistence. |
 | `tests/supervision-*.test.*` | Modify/Create | Boundary, provider-agent, lifecycle, and capability tests. |
 | `tests/chat-*.test.*` | Modify/Create | Chat decision-core cutover probes. |
+| `tests/temp-participant-strong-agent.test.tsx` | Create | SPEC-050 preset-created temporary participants resolve to strong provider-agent supervision without durable Cat promotion. |
 | `tests/work-*.test.*` | Modify/Create | Work real-provider run lifecycle coverage. |
 | `tests/code-*.test.*` | Modify/Create | Code task/relay supervised run coverage. |
 | `tests/weak-worker-no-ad-hoc-routing.test.ts` | Create | Static/contract guard that forbids weak-provider calls outside registered supervised tool executors and `toolBoundary`. |
@@ -585,6 +597,10 @@ execution. The difference is control density, not a boolean switch.
 - Integration tests for Work and Code supervised run lifecycle with runtime
   stubs.
 - Targeted Chat runtime probes for direct, solo, group, and parallel handoff.
+- `temp-participant-strong-agent.test.tsx` covers SPEC-050 preset-created
+  temporary participants as strong provider-agent participants under
+  supervision, including execution-target capability profile resolution and no
+  durable Cat promotion.
 - Live-provider smoke tests for Claude/Codex are optional in CI and gated behind
   explicit developer environment flags, but PLAN completion requires recorded
   local/manual evidence for one Chat turn, one Work supervised run, and one
@@ -606,6 +622,7 @@ execution. The difference is control density, not a boolean switch.
 | Old planner/dispatcher semantic behavior lingers indefinitely | High | Add non-Chat import tests and make old semantic-planning path removal a phase gate while preserving Chat deterministic routing. |
 | Weak models are treated like autonomous agents | Medium | Keep weak profiles on the same seam with stricter policy dials and expose weak-model calls only through supervised weak-worker/SOP tools by default. |
 | Capability profiles arrive after live provider autonomy | High | Phase 1 and phase gates require conservative profile bootstrap and FR-19 override-floor tests before live autonomy is wired. |
+| Preset application surfaces ambient agent capability without explicit operator review | High | SPEC-050 preset apply shows a concise capability/policy summary, including dial profile and tool grants; broad-write, outcome-delegation, or high-risk presets require approval before activation. |
 | Weak-provider routing grows ad-hoc paths that bypass the provider-agent seam | Medium | Do not introduce a standalone dispatcher; keep semantic choice in the provider-agent seam, supervision dials in `policyEngine`, enforcement in `toolBoundary`, deterministic scaffolding inside individual SOP tools, and `weak-worker-no-ad-hoc-routing.test.ts` enforcing the Anti-Bypass Invariant. |
 | Lifecycle scheduler starts reading transcript content | High | Static import tests enforce scheduler content blindness. |
 | Real provider smoke becomes flaky or expensive | Medium | Keep live-provider tests optional; CI uses deterministic runtime stubs. |
@@ -624,3 +641,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Precision close-out: defined bounded capability summaries, made the schema seam type-plus-fixture only, committed Phase 7's first weak-provider slice to non-passthrough `work.sop.ask_weak`, assigned alias resolution to the product command resolver, and unified the anti-bypass guard under `weak-worker-no-ad-hoc-routing.test.ts`. |
 | 2026-04-28 | Precision follow-up: kept `work.sop.ask_weak` schema in the Weak-Model Control Contract only, defined `allowedToolNames` as a policy-bounded subgrant with `toolBoundary` revalidation, tied `expectedOutputSchemaRef` to PLAN-074 `SchemaRef`, assigned no-fallback terminal failure to lifecycle service behavior, and scoped session-history summary production/storage to follow-up work. |
 | 2026-04-28 | Final closing pass: extracted the Anti-Bypass Invariant into a single section that Phase Gate / Task 7.6 / Testing Strategy / Risk now reference instead of restating; added `allowedToolNames` rationale plus first-slice empty-list constraint; declared Task 3.4 dependency on Phase 4 Task 4.2; pointed Tasks 7.3-7.5 at `weak-worker-tool-contracts.test.ts`; dropped the producer/storage hedge; noted live runs initially lack session-history evidence; broadened the SOP-routing risk title to weak-provider routing in general. |
+| 2026-04-28 | Temporary participant precision: cross-referenced SPEC-050, assigned preset-created temporary participant cutover to Phase 3 Task 3.3, added `temp-participant-strong-agent.test.tsx`, recorded preset capability-review risk, and pinned capability-profile resolution to the bound execution target. |

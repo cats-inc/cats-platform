@@ -375,8 +375,9 @@ delete / archive).
 That registry separation does not cap agency. A room-scoped temporary
 participant created from a strong provider preset can still run under
 provider-agent supervision, tool grants, budgets, and approvals for that
-room. The temporary part is its identity / lifecycle, not its capability
-ceiling.
+room. Per ADR-004's identity / execution split and SPEC-050's channel
+participant model, the temporary part is its identity / lifecycle, not its
+capability ceiling.
 
 ## Scope — what this ADR does not do
 
@@ -548,6 +549,7 @@ ceiling.
 - [ADR-055: Retire lead semantics and separate composer recipients from dispatch policy](./055-retire-lead-and-separate-composer-recipients-from-dispatch-policy.md)
 - [ADR-063: Separate managed work, agent missions, execution runs, and transport bindings](./063-agent-missions-and-transport-bindings.md)
 - [ADR-081: Canonicalize the Core Record Taxonomy as Interaction / Planning / Execution](./081-canonicalize-three-tier-core-record-taxonomy.md)
+- [SPEC-050: Group Chat Temporary Participants and Reusable Lightweight Presets](../specs/SPEC-050-group-chat-temporary-participants-and-reusable-lightweight-presets.md)
 - [Research: Orchestrator as a capability shell (Claude)](../research/2026-04-23-claude-orchestrator-as-capability-shell.md)
 - [Research: Cats Work Agent Supervision Model (Codex)](../research/2026-04-23-codex-cats-work-agent-supervision-model.md)
 - `cats-platform/src/platform/orchestration/` — current orchestrator subsystem (planner, dispatcher, execution workflow)

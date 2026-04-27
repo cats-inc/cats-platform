@@ -56,6 +56,7 @@
 | Current-turn recipient | The participant or implicit model target that the next outgoing message is addressed to. The composer slot next to Send should represent current-turn recipient(s), not the whole room roster. |
 | Implicit recipient | A provider/model-backed execution target shown in the composer when the next turn is aimed at pending provider/model selection rather than at a named participant. |
 | Temporary participant | A channel-scoped participant created from a preset, runtime lease, or room action without becoming a durable Cat registry entry. Temporary participants may still be backed by strong provider/model/control targets and may act as supervised provider-agent participants when policy allows; "temporary" only limits identity lifecycle, direct-lane, memory, transport, and roster semantics. |
+| Runtime lease | The channel-scoped attachment between a participant or implicit execution target and a runtime session. It records that the execution target is currently usable for the room without turning that participant into a durable Cat identity. |
 | Dispatch policy | The per-turn rule that decides whether the selected recipients should reply `sequentially` or `concurrently`. Dispatch policy is separate from recipient selection and from later workflow continuation. |
 | Parallel Chat | The Cats Chat product mode that binds multiple isolated child chats into one comparison container. `Parallel Chat` is distinct from thread-internal concurrent dispatch inside one chat thread. |
 | Conversation topology | The stable shape of a conversation such as direct lane, single-counterpart thread, or team room. Topology answers "what kind of room is this?" rather than "who should answer the next turn?" or "how should that turn dispatch?" |
@@ -178,6 +179,7 @@ Note: `AgentRecord`, `ParticipantRecord`, and `TransportBindingRecord` are also 
 - Source: https://agents.md
 - Source: https://modelcontextprotocol.io
 - Source: https://github.com/a2aproject/A2A
+- Source: [SPEC-050: Group Chat Temporary Participants and Reusable Lightweight Presets](./specs/SPEC-050-group-chat-temporary-participants-and-reusable-lightweight-presets.md)
 
 ---
 

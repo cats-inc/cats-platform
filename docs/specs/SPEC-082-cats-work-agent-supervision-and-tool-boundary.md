@@ -14,6 +14,7 @@
 | **Owner** | Codex |
 | **Reviewer** | User |
 | **Related ADR** | [ADR-082](../decisions/082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md) |
+| **Related Spec** | [SPEC-050](./SPEC-050-group-chat-temporary-participants-and-reusable-lightweight-presets.md) |
 | **Follow-up plan** | [PLAN-074](../plans/PLAN-074-cats-work-agent-supervision-rollout.md) |
 
 ## Summary
@@ -557,6 +558,15 @@ invocations are tools unless explicitly promoted by a later feature.
     events sufficient for Work to show current phase, last meaningful action,
     waiting state, and next expected checkpoint.
 
+Strong-provider dials are still computed per action. A strong provider/model
+baseline may allow broader semantic planning than a weak worker, but policy
+shall still combine capability profile, task risk, tool manifest, budget,
+approval posture, and product invariants before granting broad-write tools or
+outcome delegation. Temporary participants backed by a strong provider use the
+same execution-target capability baseline as durable Cats with that provider,
+then may receive stricter channel-scoped budget, time, or checkpoint limits;
+their temporary lifecycle must not relax any dial.
+
 #### Weak-model and SOP path
 
 44. **FR-44 (Worker invocation as tool).** Weak models shall enter this spec's
@@ -601,14 +611,19 @@ invocations are tools unless explicitly promoted by a later feature.
     `execution_target`. Changing its provider/model changes execution, not a
     durable identity record.
 53. **FR-53 (Temporary participant semantics).** A temporary participant maps
-    to `temporary_participant`. This kind describes channel-scoped identity
-    and lifecycle only; it is not a capability tier and does not imply
-    non-agentic or weak execution. A temporary participant may resolve to a
-    strong provider/model execution target, capability profile, and
-    `SupervisionPolicy` for a room turn, including provider-agent semantic
-    planning and supervised tool access when policy allows. Role hints,
-    display names, or avatar hints are presentation/runtime hints, not
-    durable Cat identity fields.
+    to `temporary_participant`. Per
+    [SPEC-050](./SPEC-050-group-chat-temporary-participants-and-reusable-lightweight-presets.md),
+    this kind describes channel-scoped identity and lifecycle only; it is not
+    a capability tier and does not imply non-agentic or weak execution. A
+    temporary participant may resolve to a strong provider/model execution
+    target and `SupervisionPolicy` for a room turn, including provider-agent
+    semantic planning and supervised tool access when policy allows. Its
+    capability profile resolves through the bound `execution_target`
+    provider/model/control selection; if that binding is missing or unknown,
+    policy uses the conservative unknown-provider profile. Role hints, display
+    names, or avatar hints are presentation/runtime hints, not durable Cat
+    identity fields. The room/channel binding is product-owned state from the
+    participant system, not a field on `AddressableTarget`.
 54. **FR-54 (Worker semantics).** A weak worker maps to `worker_tool` unless a
     later spec explicitly promotes it into a durable operational agent.
 55. **FR-55 (Registry separation).** `AddressableTarget` shall not imply direct
@@ -793,6 +808,7 @@ the parent action's fallback policy.
 - [ADR-063](../decisions/063-agent-missions-and-transport-bindings.md)
 - [ADR-081](../decisions/081-canonicalize-three-tier-core-record-taxonomy.md)
 - [ADR-082](../decisions/082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md)
+- [SPEC-050](./SPEC-050-group-chat-temporary-participants-and-reusable-lightweight-presets.md)
 - [SPEC-040](./SPEC-040-cats-work-team-templates-and-work-intake.md)
 - [SPEC-062](./SPEC-062-agent-missions-and-transport-bindings.md)
 - [SPEC-063](./SPEC-063-conversational-vs-operational-agents-and-surface-projections.md)
@@ -824,6 +840,7 @@ the parent action's fallback policy.
 - [ADR-082: Recast the Orchestrator as a Capability Shell with Policy-Dial Supervision](../decisions/082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md)
 - [ADR-081: Canonicalize the Core Record Taxonomy as Interaction / Planning / Execution](../decisions/081-canonicalize-three-tier-core-record-taxonomy.md)
 - [SPEC-062: Agent Missions, Managed Work, and Transport Bindings](./SPEC-062-agent-missions-and-transport-bindings.md)
+- [SPEC-050: Group Chat Temporary Participants and Reusable Lightweight Presets](./SPEC-050-group-chat-temporary-participants-and-reusable-lightweight-presets.md)
 - [SPEC-040: Cats Work Team Templates and Work Intake](./SPEC-040-cats-work-team-templates-and-work-intake.md)
 - [Research: 2026-04-23 Codex Cats Work Agent Supervision Model](../research/2026-04-23-codex-cats-work-agent-supervision-model.md)
 
