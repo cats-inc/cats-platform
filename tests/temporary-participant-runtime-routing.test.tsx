@@ -30,6 +30,7 @@ function createTemporaryParticipantState() {
     {
       title: 'Runtime review room',
       topic: 'Check temporary participants',
+      originSurface: 'chat',
       entryKind: 'group',
       temporaryParticipants: [
         {
