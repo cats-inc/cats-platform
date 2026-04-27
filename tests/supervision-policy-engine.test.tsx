@@ -77,6 +77,13 @@ function evaluatedAssessment(): CapabilityAssessment {
   });
 }
 
+function unknownAssessment(): CapabilityAssessment {
+  return buildCapabilityAssessment({
+    assessedAt: '2026-04-25T01:00:00.000Z',
+    confidenceSources: [],
+  });
+}
+
 function baseContext(input: {
   capabilityAssessment: CapabilityAssessment;
   toolManifest: SupervisedToolManifest;
@@ -110,6 +117,19 @@ test('unknown and catalog-only profiles stay conservative by default', () => {
   assert.equal(result.result.policy.autonomy, 'single_step');
   assert.equal(result.result.policy.toolScope, 'read_only');
   assert.equal(result.result.policy.approvalThreshold, 'high');
+});
+
+test('unknown profiles clamp task granularity and validation more tightly than catalog-only', () => {
+  const result = decideSupervisionPolicy(baseContext({
+    capabilityAssessment: unknownAssessment(),
+    toolManifest: fixtureManifest('external_visible'),
+  }));
+
+  assert.equal(result.status, 'applied');
+  assert.equal(result.result.policy.autonomy, 'single_step');
+  assert.equal(result.result.policy.taskGranularity, 'tiny');
+  assert.equal(result.result.policy.validation, 'schema_required');
+  assert.equal(result.result.policy.checkpointCadence, 'every_step');
 });
 
 test('operator override metadata appears in snapshot reasons', () => {

@@ -9,6 +9,7 @@ export * from './lifecycleTools.js';
 export * from './policyEngine.js';
 export * from './policySnapshots.js';
 export * from './policyVersions.js';
+export * from './providerCapabilityProfiles.js';
 export * from './runProjection.js';
 export * from './runState.js';
 export * from './runtimeBoundary.js';

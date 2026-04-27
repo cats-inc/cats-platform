@@ -301,9 +301,9 @@ restating it.
 - [ ] Task 0.1: Inventory current Chat planner/dispatcher imports and classify
       each path as decision, routing, transcript projection, runtime dispatch,
       or recovery.
-- [ ] Task 0.2: Add a static boundary test that records the allowed direct
+- [x] Task 0.2: Add a static boundary test that records the allowed direct
       runtime call location as only `src/platform/supervision/runtimeBoundary.ts`.
-- [ ] Task 0.3: Add a static rescope test for old planner/dispatcher imports:
+- [x] Task 0.3: Add a static rescope test for old planner/dispatcher imports:
       non-Chat product trees must not import them. Chat imports are temporarily
       allowed only for deterministic routing until deterministic Chat routing
       lands in a Chat-owned router path; once it lands, the allowlist drops to
@@ -317,10 +317,10 @@ restating it.
 
 ### Phase 1: Capability Profiles and Per-Action Policy Inputs
 
-- [ ] Task 1.1: Bootstrap provider capability profiles for Claude, Codex,
+- [x] Task 1.1: Bootstrap provider capability profiles for Claude, Codex,
       Ollama/local, and unknown providers using conservative defaults before
       any live provider-agent autonomy is enabled.
-- [ ] Task 1.2: Define source-of-truth schema fixtures for capability evidence:
+- [x] Task 1.2: Define source-of-truth schema fixtures for capability evidence:
       provider catalog, eval suite/eval run reference, session-history summary
       reference, and operator override. PLAN-075 only lands the schema seam for
       these source types; live eval/history ingestion is a follow-up plan.
@@ -328,14 +328,14 @@ restating it.
       overrides may change effective policy within evidence limits, but cannot
       create broad-write or unrestricted outcome delegation under
       unknown/catalog-only confidence.
-- [ ] Task 1.4: Wire the capability profile as a per-action input to
+- [x] Task 1.4: Wire the capability profile as a per-action input to
       `policyEngine.decide*(ctx)` so dial output reflects provider capability
       together with task profile, bounded run/history metadata summaries, and
       invariants. Do not pass raw transcript/message/history content into
       `policyEngine.decide*(ctx)`, introduce a per-session provider-mode enum,
       or branch the orchestration path on capability tier; capability is a
       vector input, not a control-flow switch.
-- [ ] Task 1.5: Add tests for capability conflicts, source metadata, override
+- [x] Task 1.5: Add tests for capability conflicts, source metadata, override
       floor/ceiling, conservative unknown defaults, and how capability profiles
       shift `policyEngine.decide*(ctx)` dial output for the same task input
       across strong and weak providers.
@@ -642,3 +642,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Precision follow-up: kept `work.sop.ask_weak` schema in the Weak-Model Control Contract only, defined `allowedToolNames` as a policy-bounded subgrant with `toolBoundary` revalidation, tied `expectedOutputSchemaRef` to PLAN-074 `SchemaRef`, assigned no-fallback terminal failure to lifecycle service behavior, and scoped session-history summary production/storage to follow-up work. |
 | 2026-04-28 | Final closing pass: extracted the Anti-Bypass Invariant into a single section that Phase Gate / Task 7.6 / Testing Strategy / Risk now reference instead of restating; added `allowedToolNames` rationale plus first-slice empty-list constraint; declared Task 3.4 dependency on Phase 4 Task 4.2; pointed Tasks 7.3-7.5 at `weak-worker-tool-contracts.test.ts`; dropped the producer/storage hedge; noted live runs initially lack session-history evidence; broadened the SOP-routing risk title to weak-provider routing in general. |
 | 2026-04-28 | Temporary participant precision: cross-referenced SPEC-050, assigned preset-created temporary participant cutover to Phase 3 Task 3.3, added `temp-participant-strong-agent.test.tsx`, recorded preset capability-review risk, and pinned capability-profile resolution to the bound execution target. |
+| 2026-04-28 | Implementation slice 1: landed provider capability profile bootstrap for Claude, Codex, Ollama/local, and unknown providers; added eval/history schema fixtures, policy dial tests for strong vs weak profiles, and static guardrails for direct runtime calls plus non-Chat planner/dispatcher imports. |

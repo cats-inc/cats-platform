@@ -4,6 +4,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 const SOURCE_ROOT = path.join(process.cwd(), 'src');
+const PRODUCTS_ROOT = path.join(SOURCE_ROOT, 'products');
 const SUPERVISION_ROOT = path.join(SOURCE_ROOT, 'platform', 'supervision');
 
 const STATIC_IMPORT_PATTERN =
@@ -39,6 +40,35 @@ test('run-state and scheduler supervision modules stay content-blind', () => {
   assert.deepEqual(violations, []);
 });
 
+test('product code calls runtime create/send only through supervision runtime boundary', () => {
+  const files = collectSourceFiles(PRODUCTS_ROOT);
+  const violations = collectTextViolations({
+    files,
+    forbidden: [
+      'runtimeClient.createSession(',
+      'runtimeClient.sendMessage(',
+      'context.dependencies.runtimeClient.createSession(',
+      'context.dependencies.runtimeClient.sendMessage(',
+    ],
+  });
+
+  assert.deepEqual(violations, []);
+});
+
+test('non-Chat product trees do not import old orchestration planner or dispatcher modules', () => {
+  const nonChatProductRoots = ['code', 'shared', 'work']
+    .map((product) => path.join(PRODUCTS_ROOT, product));
+  const files = nonChatProductRoots.flatMap((root) => collectSourceFiles(root));
+  const violations = collectImportViolations({
+    files,
+    forbidden: (resolvedSpecifier) =>
+      includesPathSegment(resolvedSpecifier, ['src', 'platform', 'orchestration'])
+      && /(?:planner|dispatch)/i.test(path.basename(resolvedSpecifier)),
+  });
+
+  assert.deepEqual(violations, []);
+});
+
 function collectSourceFiles(root: string): string[] {
   const entries = readdirSync(root);
   const files: string[] = [];
@@ -55,6 +85,24 @@ function collectSourceFiles(root: string): string[] {
   }
 
   return files.sort();
+}
+
+function collectTextViolations(input: {
+  files: string[];
+  forbidden: string[];
+}): string[] {
+  const violations: string[] = [];
+
+  for (const filePath of input.files) {
+    const source = readFileSync(filePath, 'utf8');
+    for (const forbidden of input.forbidden) {
+      if (source.includes(forbidden)) {
+        violations.push(`${path.relative(process.cwd(), filePath)} contains ${forbidden}`);
+      }
+    }
+  }
+
+  return violations.sort();
 }
 
 function collectImportViolations(input: {

@@ -28,10 +28,15 @@ export interface SupervisionPolicyContext {
   runId: string;
   actorRef: string;
   targetRef: string;
+  providerRef?: string;
   actionType: string;
   evaluatedAt: string;
   capabilityAssessment: CapabilityAssessment;
   toolManifest: SupervisedToolManifest;
+  deliveryObservability?: string;
+  budgetState?: string;
+  approvalState?: string;
+  recentReliability?: string;
   requestedPolicy?: Partial<SupervisionPolicy>;
   operatorOverride?: SupervisionPolicyOverride;
   experimentId?: string;
@@ -135,19 +140,20 @@ export function decideDefaultApprovalThreshold(
 
 function buildBasePolicy(context: SupervisionPolicyContext): SupervisionPolicy {
   const capabilityConfidence = context.capabilityAssessment.confidenceLevel;
+  const isUnknown = capabilityConfidence === 'unknown';
   const isEvaluatedOrBetter = compareCapabilityConfidence(capabilityConfidence, 'evaluated') >= 0;
   const approvalThreshold = decideDefaultApprovalThreshold(context.toolManifest.sideEffect);
 
   return {
     autonomy: isEvaluatedOrBetter ? 'milestone_plan' : 'single_step',
-    taskGranularity: isEvaluatedOrBetter ? 'milestone' : 'step',
+    taskGranularity: isEvaluatedOrBetter ? 'milestone' : isUnknown ? 'tiny' : 'step',
     toolScope: decideDefaultToolScope({
       confidenceLevel: capabilityConfidence,
       sideEffect: context.toolManifest.sideEffect,
     }),
     scaffolding: isEvaluatedOrBetter ? 'few_shot' : 'sop_template',
-    validation: approvalThreshold === 'low' ? 'schema_required' : 'semantic_check',
-    checkpointCadence: approvalThreshold === 'low' ? 'milestone' : 'every_step',
+    validation: isUnknown || approvalThreshold === 'low' ? 'schema_required' : 'semantic_check',
+    checkpointCadence: isUnknown || approvalThreshold !== 'low' ? 'every_step' : 'milestone',
     approvalThreshold,
     fallbackPolicy: isEvaluatedOrBetter ? 'retry' : 'ask_human',
   };
@@ -207,9 +213,14 @@ function buildPolicySnapshot(
     contextSummary: {
       actorRef: context.actorRef,
       targetRef: context.targetRef,
+      providerRef: context.providerRef,
       actionType: context.actionType,
       sideEffect: context.toolManifest.sideEffect,
       capabilityConfidence: context.capabilityAssessment.confidenceLevel,
+      deliveryObservability: context.deliveryObservability,
+      budgetState: context.budgetState,
+      approvalState: context.approvalState,
+      recentReliability: context.recentReliability,
     },
     reasons: [...reasons],
   };
