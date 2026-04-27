@@ -76,6 +76,8 @@ minimum preview contract in this slice.
    - `music`
    - `file`
 2. Each reference shall identify at least:
+   - reference schema version
+   - product namespace/scope id
    - target type
    - target id
    - owning Cat id
@@ -83,22 +85,34 @@ minimum preview contract in this slice.
 3. References shall be local product objects first. Public web URLs are out of
    scope for this spec.
 4. The first copied/inserted serialized form shall be:
-   `cats://companion/{catId}/{type}/{targetId}`.
+   `cats://companion/v1/{scopeId}/{catId}/{type}/{targetId}`.
 
    Recognition is limited to this exact local app-link shape:
    - scheme: `cats`
    - host: `companion`
-   - path segment 1: owning Cat id
-   - path segment 2: target type in `post`, `photo`, `video`, `music`, `file`
-   - path segment 3: target id
+   - path segment 1: version, currently `v1`
+   - path segment 2: product scope id
+   - path segment 3: owning Cat id
+   - path segment 4: target type in `post`, `photo`, `video`, `music`, `file`
+   - path segment 5: target id
 
    The parser shall percent-decode path segments, reject unknown target types,
-   reject missing segments, and resolve through product-owned metadata rather
-   than parsing arbitrary prose.
+   reject unknown versions, reject missing or extra path segments, reject
+   malformed percent-encoding, and resolve through product-owned metadata
+   rather than parsing arbitrary prose.
+5. The v1 `scopeId` shall namespace local references to the product
+   installation or account context. A reference whose `scopeId` does not match
+   the current local product scope shall resolve as `inaccessible` unless a
+   future cross-device/public sharing spec defines an import or handoff path.
+6. The v1 implementation layer is the chat renderer/composer parser and
+   product-owned resolver. It shall not register `cats://` as a global
+   operating-system protocol handler in Phase 3. If external app-link opening is
+   added later, Electron main process shall own the handler and route only into
+   the matching product scope.
 
 #### Minimum preview model
 
-5. Every resolved companion content reference shall provide a preview envelope
+7. Every resolved companion content reference shall provide a preview envelope
    with at least:
    - reference id
    - type
@@ -123,75 +137,75 @@ Availability states are defined as:
 - `inaccessible`: the target appears to exist, but the current context lacks
   permission, scope, or safe-path access to open or preview it.
 
-6. A post preview shall require only:
+8. A post preview shall require only:
    - title or fallback label
    - excerpt/body preview
    - owning Cat
    - optional media thumbnail
    - optional created/updated timestamp
-7. The post preview envelope shall not imply final post storage, authoring, or
+9. The post preview envelope shall not imply final post storage, authoring, or
    public visibility semantics.
-8. Photo previews should prioritize an image thumbnail.
-9. Video previews should prioritize a thumbnail plus duration when available.
-10. Music previews should prioritize title, artist/source label when available,
+10. Photo previews should prioritize an image thumbnail.
+11. Video previews should prioritize a thumbnail plus duration when available.
+12. Music previews should prioritize title, artist/source label when available,
     and duration when available.
-11. File previews should prioritize filename, kind/media type, size when
+13. File previews should prioritize filename, kind/media type, size when
     available, and updated timestamp when available.
 
 #### Composer insertion
 
-12. A companion content item shall expose an insert/share action from the
+14. A companion content item shall expose an insert/share action from the
     companion profile surface only when that action can insert the reference
     into chat or copy the local serialized form.
-13. The action shall be able to insert the reference into the active chat
+15. The action shall be able to insert the reference into the active chat
     composer when a target chat context exists.
-14. If no active chat context exists, the first slice shall copy the local
-    `cats://companion/{catId}/{type}/{targetId}` reference. A later slice may
-    add destination picking.
-15. Pasting or typing a recognized companion content reference into the composer
+16. If no active chat context exists, the first slice shall copy the local
+    `cats://companion/v1/{scopeId}/{catId}/{type}/{targetId}` reference. A
+    later slice may add destination picking.
+17. Pasting or typing a recognized companion content reference into the composer
     should resolve to a preview before send when possible.
-16. The composer shall retain an editable textual representation so the user can
+18. The composer shall retain an editable textual representation so the user can
     remove or move the reference before sending.
 
 #### Transcript rendering
 
-17. Sent messages containing companion content references shall render preview
+19. Sent messages containing companion content references shall render preview
     cards in the transcript.
-18. Preview cards shall be visually distinct from plain attachments and from
+20. Preview cards shall be visually distinct from plain attachments and from
     runtime iframe/service previews.
-19. Preview cards shall provide an open action that navigates to the companion
+21. Preview cards shall provide an open action that navigates to the companion
     content item when available.
-20. If the content is missing, deleted, or inaccessible, the transcript shall
+22. If the content is missing, deleted, or inaccessible, the transcript shall
     render a stable fallback card instead of losing the reference.
-21. Fallback cards shall preserve at least the original type, title/fallback
+23. Fallback cards shall preserve at least the original type, title/fallback
     label, and Cat identity when that metadata was captured at send time.
 
 #### Storage and snapshots
 
-22. Messages shall store enough snapshot metadata to keep old transcripts
+24. Messages shall store enough snapshot metadata to keep old transcripts
     understandable if the referenced object changes.
-23. Snapshot metadata should include title, type, Cat label, and thumbnail/icon
+25. Snapshot metadata should include title, type, Cat label, and thumbnail/icon
     hints when available.
-24. The product may re-resolve a reference for fresh metadata, but transcript
+26. The product may re-resolve a reference for fresh metadata, but transcript
     rendering must not depend exclusively on live lookup.
 
 #### Scope and safety
 
-25. Companion content references shall not grant new filesystem or transport
+27. Companion content references shall not grant new filesystem or transport
     permissions.
-26. A preview shall not expose raw local filesystem paths unless the product UI
+28. A preview shall not expose raw local filesystem paths unless the product UI
     already has permission to show that path.
-27. A reference to a linked file shall resolve through product-owned routes or
+29. A reference to a linked file shall resolve through product-owned routes or
     safe open actions.
-28. External share links, public access tokens, and cross-device permission
+30. External share links, public access tokens, and cross-device permission
     grants require a future spec.
 
 #### Relationship to runtime preview surfaces
 
-29. Companion content references are product-owned object previews.
-30. SPEC-020 runtime preview surfaces remain the contract for runtime services,
+31. Companion content references are product-owned object previews.
+32. SPEC-020 runtime preview surfaces remain the contract for runtime services,
     HTML artifacts, and embed-capable outputs.
-31. A companion file may point at a runtime-produced artifact, but chat preview
+33. A companion file may point at a runtime-produced artifact, but chat preview
     rendering shall still go through the companion content reference envelope.
 
 ### Non-Functional Requirements
@@ -210,8 +224,11 @@ Illustrative product-side shape:
 
 ```ts
 type CompanionContentType = 'post' | 'photo' | 'video' | 'music' | 'file';
+type CompanionContentReferenceVersion = 'v1';
 
 interface CompanionContentReference {
+  version: CompanionContentReferenceVersion;
+  scopeId: string;
   type: CompanionContentType;
   targetId: string;
   catId: string;
@@ -239,9 +256,13 @@ interface CompanionContentPreview {
 ```
 
 The canonical local text form for `CompanionContentReference` is
-`cats://companion/{catId}/{type}/{targetId}`. UI routes may use a different
-internal route, but copy/paste recognition and chat insertion shall normalize to
-this product-owned reference shape.
+`cats://companion/v1/{scopeId}/{catId}/{type}/{targetId}`. UI routes may use a
+different internal route, but copy/paste recognition and chat insertion shall
+normalize to this product-owned reference shape.
+
+The version segment is mandatory. Future incompatible fields such as revision
+ids, text selection ranges, public-share tokens, or cross-device account scopes
+shall use a new versioned form rather than changing v1 parsing rules.
 
 ## Dependencies
 
@@ -261,6 +282,8 @@ this product-owned reference shape.
 - [ ] Which post fields are required once the durable post model is specified?
 - [ ] Should a future public share route reuse the same reference ids or issue
       separate share tokens?
+- [ ] Which later spec owns external OS protocol registration for `cats://`
+      links if the product wants clickable links outside the app?
 
 ## References
 

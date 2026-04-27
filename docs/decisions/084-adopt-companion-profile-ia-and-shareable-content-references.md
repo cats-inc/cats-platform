@@ -81,8 +81,11 @@ this ADR.
 For now, a post is only a companion content projection that may be previewed,
 linked, and displayed in a feed card. The first production slice shall use
 explicit profile-post projections backed by `CompanionDerivedRecord`, such as
-records with `metadata.profileSurface === 'post'`. Mock posts are allowed only
-in dev fixtures, storybook, and tests.
+records with `metadata.profileSurface === 'post'`. The producer for these
+records is an explicit owner `Promote to post` action in the companion-box
+profile projection layer; raw ingestion does not automatically promote every
+summary, caption, memory highlight, or event into the feed. Mock posts are
+allowed only in dev fixtures, storybook, and tests.
 
 The following remain open:
 
@@ -104,7 +107,11 @@ inspect, insert into chat, and share.
 The same underlying object may project into both surfaces. For example, an
 owner-uploaded PDF appears in `Sources` for provenance and ingestion management
 and in `Files` for browsing, opening, insertion, and sharing. The projection
-must preserve the same source id rather than creating duplicate storage.
+must preserve the same source id rather than creating duplicate storage. The v1
+classifier is a shared helper keyed by source kind, MIME type, and file
+extension. Media projects to Photos, Videos, or Music; document/archive/text
+and unknown linked files project to Files; all raw owner-provided material
+remains visible in Sources.
 
 ### 4. The side panel is control and inspection, not duplicate settings
 
@@ -128,7 +135,7 @@ The `Memory` side panel is backed by `CompanionMemoryRecord` in v1 because that
 schema carries source lineage, curation state, lifecycle state, and replacement
 links. `Settings > My Cats` may continue to use `DurableMemoryItem`, but the
 companion page shall not render that as a second memory ledger. Any future
-merge or synchronization between those schemas needs a separate bridge contract.
+merge or synchronization between those schemas is tracked by SPEC-088.
 
 ### 5. Transport bindings stay canonical in Settings > My Cats
 
@@ -145,8 +152,10 @@ Posts, photos, videos, music, and files exposed by the companion profile shall
 have product-owned share references that can be inserted into chat.
 
 The first local serialized reference form is
-`cats://companion/{catId}/{type}/{targetId}` for target types `post`, `photo`,
-`video`, `music`, and `file`.
+`cats://companion/v1/{scopeId}/{catId}/{type}/{targetId}` for target types
+`post`, `photo`, `video`, `music`, and `file`. The `v1` segment gives the
+parser a stable version boundary, and `scopeId` namespaces the reference to the
+local product installation or account context.
 
 When a reference is inserted or pasted into a chat composer, the transcript
 should render a preview card rather than showing only a raw string.
@@ -155,11 +164,11 @@ This is a product-owned content reference and preview problem. It is related to,
 but distinct from, runtime-owned preview surfaces for services and artifacts.
 
 Visible `Share` actions are enabled only when they can insert the reference
-into chat or copy this local form. Header-level `Share` is hidden or visibly
-disabled with an explanatory tooltip until it has a concrete companion profile
-reference type or selected content target. `Subscribe` is reserved for a future
-model and should be hidden or visibly disabled with an explanatory tooltip in
-v1.
+into chat or copy this local form. Header-level `Share` shall be rendered as a
+disabled button with an explanatory tooltip until it has a concrete companion
+profile reference type or selected content target. `Subscribe` is reserved for a
+future model and shall be rendered as a disabled button with an explanatory
+tooltip in v1.
 
 ## Consequences
 
@@ -186,6 +195,8 @@ v1.
 - Posts cannot be fully implemented until the post model is specified.
 - The product needs a later memory bridge decision if `DurableMemoryItem` and
   `CompanionMemoryRecord` should converge.
+- A cross-type `All content` browsing/filter surface remains outside this ADR
+  and is tracked by SPEC-089.
 
 ### Neutral
 
@@ -223,6 +234,8 @@ v1.
 - [PLAN-025](../plans/PLAN-025-companion-workspace-presence-and-settings.md)
 - [SPEC-085](../specs/SPEC-085-companion-profile-feed-and-library-ia.md)
 - [SPEC-086](../specs/SPEC-086-shareable-companion-content-links-and-chat-previews.md)
+- [SPEC-088](../specs/SPEC-088-companion-memory-bridge-contract-placeholder.md)
+- [SPEC-089](../specs/SPEC-089-companion-all-content-library-placeholder.md)
 - [SPEC-020](../specs/SPEC-020-embedded-preview-surfaces-for-runtime-artifacts-and-services.md)
 
 ---

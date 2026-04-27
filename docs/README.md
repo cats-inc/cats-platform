@@ -55,6 +55,8 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [SPEC-089](./specs/SPEC-089-companion-all-content-library-placeholder.md)
+- [SPEC-088](./specs/SPEC-088-companion-memory-bridge-contract-placeholder.md)
 - [PLAN-077](./plans/PLAN-077-companion-profile-and-share-preview-rollout.md)
 - [SPEC-086](./specs/SPEC-086-shareable-companion-content-links-and-chat-previews.md)
 - [SPEC-085](./specs/SPEC-085-companion-profile-feed-and-library-ia.md)
@@ -194,4 +196,4 @@ The main platform-foundation docs are current, but these areas still need dedica
 
 ---
 
-*Last updated: 2026-04-25*
+*Last updated: 2026-04-28*
