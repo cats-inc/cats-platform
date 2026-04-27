@@ -378,7 +378,7 @@ categories:
 
 ### Phase 3: Chat Semantic Cutover and Router Rescope
 
-- [ ] Task 3.1: Route Chat semantic planning through the new provider-agent
+- [x] Task 3.1: Route Chat semantic planning through the new provider-agent
       decision seam while preserving existing Chat UI and transcript contracts.
 - [ ] Task 3.2: Carve deterministic routing out of the old planner/dispatcher:
       explicit mentions, direct lanes, room-default dispatch, audience limits,
@@ -678,3 +678,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 19: removed channel send/retry dependency on `buildOrchestratorTurnPlan`; acknowledgement summaries and user-message routing metadata now derive from begun Chat dispatch state when no legacy plan is supplied. |
 | 2026-04-28 | Implementation slice 20: added the Chat dispatch provider-agent decision requester seam so bounded observations can be handed to a provider-authored semantic decision before dispatch materialization, without changing Chat UI or transcript flow. |
 | 2026-04-28 | Implementation slice 21: taught dispatch acknowledgement summaries to prefer provider-authored semantic plan ids when the provider-agent decision seam returns a decision. |
+| 2026-04-28 | Implementation slice 22: marked Phase 3 Task 3.1 complete after Chat dispatch gained the provider-agent decision requester seam while preserving UI and transcript contracts. |
