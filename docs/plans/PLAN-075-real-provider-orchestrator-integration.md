@@ -371,14 +371,17 @@ LLM-backed participant semantics.
 
 ### Phase 7: Weak-Worker Tools and SOP Pipelines
 
-- [ ] Task 7.1: Extend `toolRegistry` with weak-worker/SOP tools, for example
-      `@ask-weak`, classifier, extraction, summarization, translation,
-      schema-fill, and `work.sop.*` tools. Each manifest declares narrow input
-      schemas, side-effect class, approval behavior, and capability floor.
+- [ ] Task 7.1: Extend the PLAN-074 `toolRegistry` (which already seeds
+      `work.sop.classify_text_batch` as the first weak-worker SOP tool) with
+      the rest of the set: `@ask-weak`, classifier, extraction, summarization,
+      translation, schema-fill, and additional `work.sop.*` tools. Each
+      manifest declares narrow input schemas, side-effect class, approval
+      behavior, and capability floor, following the PLAN-074 manifest shape.
 - [ ] Task 7.2: Implement deterministic SOP scaffolding inside the individual
-      weak-worker tools. SOP tools own prompt templates, expected schemas,
-      retry limits, escalation targets, and confidence thresholds for their
-      bounded operation.
+      weak-worker tools, reusing the PLAN-074 supervised-tool pattern. SOP
+      tools own prompt templates, expected schemas, retry limits, escalation
+      targets, and confidence thresholds for their bounded operation; they do
+      not introduce a parallel dispatcher layer above the tool boundary.
 - [ ] Task 7.3: Enforce weak-capability dials through `policyEngine` and
       `toolBoundary`: no autonomous delegation, broad-write, unrestricted
       outcome delegation, or open-ended recovery ownership unless capability
@@ -496,7 +499,7 @@ execution. The difference is control density, not a boolean switch.
 | Old planner/dispatcher semantic behavior lingers indefinitely | High | Add non-Chat import tests and make old semantic-planning path removal a phase gate while preserving Chat deterministic routing. |
 | Weak models are treated like autonomous agents | Medium | Keep weak profiles on the same seam with stricter policy dials and expose weak-model calls only through supervised weak-worker/SOP tools by default. |
 | Capability profiles arrive after live provider autonomy | High | Phase 1 and phase gates require conservative profile bootstrap and FR-19 override-floor tests before live autonomy is wired. |
-| Weak-model SOP control grows into a competing semantic planner | Medium | Do not introduce a standalone dispatcher; keep semantic choice in the provider-agent seam, supervision dials in `policyEngine`, enforcement in `toolBoundary`, and deterministic scaffolding inside individual SOP tools. |
+| Phase 7 SOP work grows ad-hoc routing that bypasses the provider-agent seam | Medium | Do not introduce a standalone dispatcher; keep semantic choice in the provider-agent seam, supervision dials in `policyEngine`, enforcement in `toolBoundary`, and deterministic scaffolding inside individual SOP tools. |
 | Lifecycle scheduler starts reading transcript content | High | Static import tests enforce scheduler content blindness. |
 | Real provider smoke becomes flaky or expensive | Medium | Keep live-provider tests optional; CI uses deterministic runtime stubs. |
 
@@ -509,3 +512,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Aligned phases with ADR-082: capability profiles move before live autonomy, weak providers default to tool-internal SOP workers, Chat deterministic routing is carved out as a retained product contract, and old core cleanup targets semantic-planning paths only. |
 | 2026-04-28 | Removed the standalone weak-model dispatcher shape: weak-model control now stays on the same provider-agent seam and is expressed through policy dials, tool manifests, tool boundary enforcement, and individual SOP tool internals. |
 | 2026-04-28 | Closing pass: dropped the residual provider-mode enum from Phase 1 in favor of capability-as-policy-input, pinned the Work run loop to the Phase 2 provider-agent seam, scoped the temporary Chat planner import allowance to Phase 8 Task 8.1, split recovery ownership between platform `fallbackPolicy` and agent semantic reasoning, and recorded eval/history ingestion + provider-mode enum as Non-Goals. |
+| 2026-04-28 | Closing pass follow-up: anchored Phase 7 Task 7.1/7.2 to the existing PLAN-074 `toolRegistry` seed (`work.sop.classify_text_batch`) and supervised-tool pattern; renamed the SOP-control risk so it flags Phase 7 ad-hoc routing rather than a generic competing-planner concern. |
