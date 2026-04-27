@@ -74,6 +74,16 @@ storybook, or tests. It should not claim that the final post model is complete.
       constant that the host derives from the cats-platform build pipeline (not
       from runtime input), so the production guard below cannot be defeated by
       patching flag state.
+- [ ] Define the `buildChannel` source of truth in the build pipeline. Repo-run
+      development commands (`npm run dev`, `npm run dev:web`,
+      `npm run dev:server`, `npm run start:server`, `npm run desktop:host`,
+      `npm run desktop:start`, and `npm run preview:bootstrap`) produce
+      `development`. Staged or installer artifacts produced by
+      `npm run desktop:stage*` and `npm run desktop:package*` bake
+      `production` into both the Electron host and the app-sidecar server
+      bundle. `buildChannel` shall not be inferred from `NODE_ENV`,
+      `import.meta.env.DEV`, command-line input, persisted flag state, or
+      renderer-provided data.
 - [ ] Persist `cats.chat.companionProfileIA` as a host-owned flag (default
       `false`) next to the durable product data root, broadcast updates over
       the existing app-shell refresh path so renderers pick up new values
@@ -85,7 +95,8 @@ storybook, or tests. It should not claim that the final post model is complete.
       - resolve the flag definition from a host-owned registry; unknown names
         return `unknown_flag`
       - for `cats.chat.companionProfileIA`: when `buildChannel === 'production'`
-        and `value === true`, return the typed error
+        and `value === true` and the registry entry has
+        `productionUnlockState === 'locked'`, return the typed error
         `feature_flag_blocked: phase2_unlocked_required` and refuse to write
       - return `ok` for all other accepted writes and broadcast the new value
       Both the renderer-facing API endpoint and any CLI / settings UI that
@@ -93,13 +104,26 @@ storybook, or tests. It should not claim that the final post model is complete.
       state directly.
 - [ ] Implement the read-side guard: when reading the persisted
       `cats.chat.companionProfileIA` value on a `production` build, the host
-      shall coerce a stored `true` to `false` until the future Phase 2 unlock
-      flips the gate. Renderers shall always observe the coerced value, never
-      the raw persisted bit.
-- [ ] Add the Phase 2 unlock procedure as a documented spec hook (a follow-up
-      commit during Phase 2 lifts both the write block and the read coercion
-      together; the procedure is documented but the unlock itself is not part
-      of Phase 1).
+      shall coerce a stored `true` to `false` while the registry entry has
+      `productionUnlockState === 'locked'`. Renderers shall always observe the
+      coerced value, never the raw persisted bit.
+- [ ] Add the Phase 2 unlock seam as a registry-owned field, not as ad hoc
+      guard deletion. The Phase 1 registry entry for
+      `cats.chat.companionProfileIA` shall include
+      `productionUnlockState: 'locked'` and
+      `unlockRequirement: 'phase2_profile_read_model_guards'`; the future Phase
+      2 unlock changes that field to `'unlocked'`, which atomically disables
+      both the production write block and the production read coercion. The
+      unlock itself is not part of Phase 1.
+- [ ] Wire feature flags with one owner per runtime mode. In local-first
+      desktop mode, desktop main process code is the sole owner of the durable
+      product data root, persisted flag file, build channel, IPC write path,
+      and preload bridge. The app-sidecar HTTP route shall either expose only
+      the coerced read model from desktop host state or delegate writes back to
+      desktop host through an explicit host bridge; it shall not maintain an
+      independent feature-flag registry or storage file. In standalone server
+      mode, the server may own the same `setFeatureFlag` contract against its
+      own server-owned product data root.
 - [ ] Add a developer flag-toggle entry point (CLI subcommand or settings-page
       action; not a public UI) that calls `setFeatureFlag` so dev builds can
       enable Phase 1 IA without bypassing the production guard above.
@@ -123,17 +147,24 @@ The "production toggling is disallowed" rule is enforced by code, not by
 documentation:
 
 - `PlatformHostEnvelope` carries a build-baked `buildChannel` constant.
-- All flag writes (HTTP, IPC, CLI, settings UI) route through one
-  `setFeatureFlag` host-side function.
+- Build scripts bake `development` for repo-run development commands and
+  `production` for staged/installer desktop artifacts; runtime inputs cannot
+  override the channel.
+- All flag writes route through the active runtime-mode owner: desktop IPC /
+  preload / settings / CLI paths call desktop host ownership in local-first
+  mode, while standalone server HTTP paths call the server-owned implementation
+  of the same `setFeatureFlag` contract.
 - That function rejects `cats.chat.companionProfileIA = true` writes when
-  `buildChannel === 'production'`, returning
+  `buildChannel === 'production'` and the flag registry marks the production
+  unlock as locked, returning
   `feature_flag_blocked: phase2_unlocked_required`.
 - Reads coerce a persisted `true` back to `false` on production builds, so a
   data root carried over from a dev install cannot inadvertently flip the IA
   on in production.
-- Phase 2 lifts both the write block and the read coercion as one commit when
-  the read-model guards land; until that lift ships, production cannot run
-  Phase 1 IA.
+- Phase 2 flips the flag registry's `productionUnlockState` from `locked` to
+  `unlocked` when the read-model guards land; that one field controls both the
+  write block and read coercion, so production cannot run Phase 1 IA until the
+  unlock ships.
 
 Compile-time `import.meta.env.DEV` paths and `vite` dev-only branches do not
 satisfy this release rule because they cannot be enforced from server-side or
@@ -316,8 +347,18 @@ finalizing post storage.
       same call returns `ok` and broadcasts the new value; reads on a
       production build coerce a persisted `true` to `false`; reads on a
       development build return the persisted value verbatim. Include a guard
-      that the Phase 2 unlock path lifts both the write block and the read
-      coercion atomically.
+      that flipping the registry entry's `productionUnlockState` to `unlocked`
+      lifts both the write block and the read coercion atomically.
+- [ ] Add build-channel matrix coverage: repo-run commands and preview builds
+      resolve to `development`, while `desktop:stage*` and `desktop:package*`
+      outputs bake `production` into both the Electron host and app-sidecar
+      server bundle. Tests shall fail if `buildChannel` can be overridden by
+      persisted flag state, renderer input, or a request body.
+- [ ] Add desktop-host integration coverage that IPC, preload/settings UI, CLI,
+      and any HTTP write path either call the desktop-owned `setFeatureFlag`
+      owner or are disabled/read-only in local-first mode; no writer may
+      persist directly to an independent flag file. Add standalone-server
+      coverage for the same contract when the server owns the product data root.
 - [ ] Add a build-time lint/test guard, not a runtime throw, that production
       companion feed code cannot import `MOCK_POSTS` or fixture-only post data.
 - [ ] Add parser fuzz coverage for `cats://` references, including wrong
@@ -358,7 +399,13 @@ the post model is finalized.
 | `src/products/shared/renderer/components/*` | Modify/Create | Shared preview card primitives only if used by more than companion |
 | `src/shared/platform-contract.ts` | Modify | Add `featureFlags` channel and build-baked `buildChannel` constant to `PlatformHostEnvelope` for the Phase 1 release-flag mechanism |
 | `src/products/shared/api/workspaceContracts.ts` | Modify | Surface `featureFlags` (and `buildChannel` if renderers need it) from `AppShellPayload` so renderers can gate Phase 1 IA at runtime |
-| `src/app/server/**` | Modify | Platform-host wiring that populates and broadcasts `featureFlags`, hosts the single `setFeatureFlag` write entry point with the production guard, and exposes the read-side coercion (integration-owned; coordinate before editing) |
+| `desktop/host/featureFlags.ts` | Create | Local-first desktop owner for the feature flag registry, `setFeatureFlag`, read-side coercion, Phase 2 unlock seam, and persisted flag file |
+| `desktop/host/**` | Modify | Local-first platform host wiring for build channel, IPC writer, app-shell refresh broadcast, and desktop preload bridge |
+| `src/app/server/**` | Modify | App-sidecar/standalone server route that exposes the coerced read model, delegates local-first writes to desktop ownership or disables them, and owns writes only in standalone server mode (integration-owned; coordinate before editing) |
+| `src/app/renderer/settings/**` | Modify | Optional developer settings-page toggle wired through toast-based feedback and the shared flag writer |
+| `scripts/build-server-artifacts.mjs` | Modify | Bake/propagate the app-sidecar build channel into server artifacts |
+| `scripts/package-desktop.mjs` | Modify | Stage desktop artifacts with production build-channel metadata |
+| `scripts/build-desktop-installer.mjs` | Modify | Ensure installer packaging preserves production build-channel metadata in both Electron host and app sidecar |
 | `tests/**` | Modify/Create | Reference resolver, snapshot fallback, and renderer-adjacent regression tests |
 | `docs/specs/*` | Modify/Create | Follow-up post model spec when post semantics are ready |
 
@@ -388,12 +435,12 @@ the post model is finalized.
   host. `scopeId` is not an auth account id, browser storage value, or
   workspace id.
 - Phase 1 release rule is enforced by code: a host-baked `buildChannel`
-  constant on `PlatformHostEnvelope`, a single `setFeatureFlag` write
-  function that rejects `cats.chat.companionProfileIA = true` on production
-  builds with `feature_flag_blocked: phase2_unlocked_required`, and a
-  read-side coercion that forces persisted `true` back to `false` on
-  production. Build-time `import.meta.env.DEV` paths do not count because
-  they cannot be enforced from server-side write paths.
+  constant on `PlatformHostEnvelope`, one active `setFeatureFlag` owner per
+  runtime mode, and a flag-registry `productionUnlockState` field that gates
+  both production writes and production read coercion. Repo-run development
+  commands bake `development`; staged and packaged desktop artifacts bake
+  `production`. Build-time `import.meta.env.DEV` paths do not count because
+  they cannot be enforced from server-side or host-side write paths.
 - Promoted-post media inclusion persists in
   `metadata.profilePostMediaRefs` as an ordered
   `Array<{ kind: 'source' | 'derived' | 'artifact'; id }>`; the post-card
