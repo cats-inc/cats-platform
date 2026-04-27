@@ -10,6 +10,7 @@ import { DraftHeader } from '../../../../shared/renderer/components/DraftHeader.
 import { catInitials } from '../../chatUtils.js';
 import { useCompanionPresence } from '../../hooks/useCompanionPresence.js';
 import { useCompanionWorkspace } from '../../hooks/useCompanionWorkspace.js';
+import { CompanionFeed } from './CompanionFeed.js';
 import { CompanionModeToggleChip } from './CompanionModeToggleChip.js';
 import { CompanionOverviewSection } from './CompanionOverviewSection.js';
 import { CompanionResourcesSection } from './CompanionResourcesSection.js';
@@ -212,7 +213,24 @@ export function CompanionWorkspace({
                 : undefined
             }
             alwaysEditable
+            actions={(
+              <>
+                <button
+                  type="button"
+                  className="companionHeaderAction companionHeaderActionPrimary"
+                >
+                  Subscribe
+                </button>
+                <button
+                  type="button"
+                  className="companionHeaderAction"
+                >
+                  Share
+                </button>
+              </>
+            )}
           />
+          <CompanionFeed cat={cat} />
         </div>
       </div>
       {sidePanelOpen ? (
