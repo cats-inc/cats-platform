@@ -434,7 +434,7 @@ export default function PlatformApp() {
       <div className="screen screenCentered">
         <div className="loadingPanel">
           <p className="eyebrow">CATS INC</p>
-          <h1>Loading&hellip;</h1>
+          <h1>Loading &hellip;</h1>
         </div>
       </div>
     );
