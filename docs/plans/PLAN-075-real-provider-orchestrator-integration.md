@@ -342,7 +342,7 @@ restating it.
 
 ### Phase 2: Provider-Agent Decision Seam
 
-- [ ] Task 2.1: Define a provider-agent decision contract under
+- [x] Task 2.1: Define a provider-agent decision contract under
       `src/platform/orchestration/` for bounded observations, semantic plans,
       recovery decisions, tool/delegation requests, and confidence.
 - [ ] Task 2.2: Implement a provider-agent adapter that calls runtime through
@@ -643,3 +643,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Final closing pass: extracted the Anti-Bypass Invariant into a single section that Phase Gate / Task 7.6 / Testing Strategy / Risk now reference instead of restating; added `allowedToolNames` rationale plus first-slice empty-list constraint; declared Task 3.4 dependency on Phase 4 Task 4.2; pointed Tasks 7.3-7.5 at `weak-worker-tool-contracts.test.ts`; dropped the producer/storage hedge; noted live runs initially lack session-history evidence; broadened the SOP-routing risk title to weak-provider routing in general. |
 | 2026-04-28 | Temporary participant precision: cross-referenced SPEC-050, assigned preset-created temporary participant cutover to Phase 3 Task 3.3, added `temp-participant-strong-agent.test.tsx`, recorded preset capability-review risk, and pinned capability-profile resolution to the bound execution target. |
 | 2026-04-28 | Implementation slice 1: landed provider capability profile bootstrap for Claude, Codex, Ollama/local, and unknown providers; added eval/history schema fixtures, policy dial tests for strong vs weak profiles, and static guardrails for direct runtime calls plus non-Chat planner/dispatcher imports. |
+| 2026-04-28 | Implementation slice 2: added the provider-agent decision contract for bounded observations, semantic plans, tool/delegation requests, and recovery decisions, with validation that raw-content summaries and out-of-surface tools are rejected. |

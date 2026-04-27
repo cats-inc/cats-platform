@@ -48,3 +48,25 @@ export {
   buildOrchestratorTurnPlan,
 } from './planner.js';
 export { dispatchOrchestratorTurn } from './dispatch.js';
+export {
+  PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+  PROVIDER_AGENT_MAX_GOAL_LENGTH,
+  PROVIDER_AGENT_MAX_SUMMARY_TEXT_LENGTH,
+  validateProviderAgentBoundedObservation,
+  validateProviderAgentDecision,
+  type ProviderAgentBoundedObservation,
+  type ProviderAgentDecision,
+  type ProviderAgentDecisionConfidence,
+  type ProviderAgentDecisionKind,
+  type ProviderAgentDecisionValidationInput,
+  type ProviderAgentDelegationRequestDecision,
+  type ProviderAgentObservationSummary,
+  type ProviderAgentRecoveryDecision,
+  type ProviderAgentSemanticPlanDecision,
+  type ProviderAgentSemanticPlanStep,
+  type ProviderAgentSummaryKind,
+  type ProviderAgentTaskKind,
+  type ProviderAgentTaskRisk,
+  type ProviderAgentToolDescriptor,
+  type ProviderAgentToolRequestDecision,
+} from './providerAgentDecision.js';
