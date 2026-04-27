@@ -102,9 +102,11 @@ but separate decisions, not made here:
 - **Mid-utterance language switching** — v1 uses a single language per
   capture session, derived from the host's STT default locale.
 - **Push-to-talk vs always-listening UX** — UX semantics live in SPEC-084.
-- **Linux native STT** — explicitly deferred. If a future cross-distribution
-  approach (e.g., bundled local model, distro-provided service) is approved,
-  it will get its own ADR.
+- **Linux native STT** — was explicitly deferred at the time of this ADR.
+  This deferral has since been superseded for Linux by
+  [ADR-085](./085-bundle-whisper-cpp-on-linux-for-composer-voice-input.md),
+  which bundles whisper.cpp with the Linux desktop build. The macOS and
+  Windows decisions in this ADR remain authoritative.
 - **Cross-product reuse** — voice capture stays composer-scoped for v1.
   Platform-wide voice features remain a separate question.
 

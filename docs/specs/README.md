@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-087](./SPEC-087-linux-composer-voice-input-via-bundled-whisper-cpp.md) | Linux Composer Voice Input via Bundled whisper.cpp | Draft | [PLAN-078](../plans/PLAN-078-linux-composer-voice-input-whisper-cpp-rollout.md), [ADR-085](../decisions/085-bundle-whisper-cpp-on-linux-for-composer-voice-input.md) |
 | [SPEC-086](./SPEC-086-shareable-companion-content-links-and-chat-previews.md) | Shareable Companion Content Links and Chat Previews | Draft | [PLAN-077](../plans/PLAN-077-companion-profile-and-share-preview-rollout.md), [ADR-084](../decisions/084-adopt-companion-profile-ia-and-shareable-content-references.md) |
 | [SPEC-085](./SPEC-085-companion-profile-feed-and-library-ia.md) | Companion Profile, Feed, and Library IA | Draft | [PLAN-077](../plans/PLAN-077-companion-profile-and-share-preview-rollout.md), [ADR-084](../decisions/084-adopt-companion-profile-ia-and-shareable-content-references.md) |
 | [SPEC-084](./SPEC-084-composer-voice-input-via-platform-native-stt.md) | Composer Voice Input via Platform-Native STT | Draft | [PLAN-076](../plans/PLAN-076-composer-voice-input-native-stt-rollout.md), [ADR-079](../decisions/079-use-platform-native-stt-with-linux-toast-fallback.md) |
@@ -141,6 +142,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-04-28 (SPEC-085 and SPEC-086 added)*
+*Last updated: 2026-04-28 (SPEC-087 added: Linux whisper.cpp composer voice input)*
 
 *See also: [plans/](../plans/) for implementation plans*
