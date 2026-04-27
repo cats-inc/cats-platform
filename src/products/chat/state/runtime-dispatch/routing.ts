@@ -50,6 +50,9 @@ import {
   prepareDispatchTurn,
   prepareDispatchTurnForExistingUserMessage,
 } from './turn.js';
+import {
+  toDeterministicChatRoutingPlan,
+} from './deterministicPlan.js';
 import type {
   ChannelDispatchCancellationRegistry,
 } from './cancellation.js';
@@ -354,7 +357,7 @@ export async function beginChannelMessageDispatch(
     now,
     choiceResponseCore,
     {
-      orchestratorPlan: options.orchestratorPlan,
+      deterministicRoutingPlan: toDeterministicChatRoutingPlan(options.orchestratorPlan),
     },
   );
   nextState = materializeInFlightDispatchState(
@@ -426,7 +429,7 @@ export async function beginChannelMessageRetryDispatch(
     now,
     choiceResponseCore,
     {
-      orchestratorPlan: options.orchestratorPlan,
+      deterministicRoutingPlan: toDeterministicChatRoutingPlan(options.orchestratorPlan),
     },
   );
   nextState = await persistInFlightDispatchState(

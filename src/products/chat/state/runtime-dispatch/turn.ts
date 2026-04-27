@@ -8,7 +8,6 @@ import type {
 } from '../../api/contracts.js';
 import type { CatsCoreState } from '../../../../core/types.js';
 import type { ProviderAgentBoundedObservation } from '../../../../platform/orchestration/index.js';
-import type { OrchestratorTurnPlan } from '../../../../platform/orchestration/contracts.js';
 import {
   decideSupervisionPolicy,
   resolveProviderCapabilityProfile,
@@ -68,6 +67,7 @@ import {
   toParticipantRef,
 } from '../runtime-session/state.js';
 import { resolveCurrentTurnRecipientTargets } from '../mentionRouter.js';
+import type { DeterministicChatRoutingPlan } from './deterministicPlan.js';
 
 function readRequestedWorkflowShape(
   payload: SendChannelMessageInput,
@@ -113,11 +113,11 @@ export interface PreparedDispatchTurn {
 }
 
 export interface PrepareDispatchTurnOptions {
-  orchestratorPlan?: OrchestratorTurnPlan | null;
+  deterministicRoutingPlan?: DeterministicChatRoutingPlan | null;
 }
 
-function resolveOrchestratorPlanInitialResolution(
-  plan: OrchestratorTurnPlan | null | undefined,
+function resolveDeterministicPlanInitialResolution(
+  plan: DeterministicChatRoutingPlan | null | undefined,
   channelId: string,
 ): TargetResolution | null {
   if (!plan || plan.channelId !== channelId) {
@@ -126,9 +126,9 @@ function resolveOrchestratorPlanInitialResolution(
 
   return {
     targets: plan.routing.initialTargets.map((target) => ({
-      participantKind: target.targetKind,
-      participantId: target.targetId,
-      participantName: target.targetName,
+      participantKind: target.participantKind,
+      participantId: target.participantId,
+      participantName: target.participantName,
       laneId: target.laneId,
       sessionId: target.sessionId,
     })),
@@ -158,8 +158,8 @@ export function prepareDispatchTurnForUserMessage(
         core,
       )
     : null;
-  const orchestratorPlanResolution = !choiceResponseTarget
-    ? resolveOrchestratorPlanInitialResolution(options.orchestratorPlan, channelId)
+  const deterministicPlanResolution = !choiceResponseTarget
+    ? resolveDeterministicPlanInitialResolution(options.deterministicRoutingPlan, channelId)
     : null;
   let initialResolution = choiceResponseTarget
     ? {
@@ -177,7 +177,7 @@ export function prepareDispatchTurnForUserMessage(
           note: 'Structured choice response routed back to the originating participant.',
         },
       }
-    : orchestratorPlanResolution ?? resolveTargets(nextState, channelId, payload.body, {
+    : deterministicPlanResolution ?? resolveTargets(nextState, channelId, payload.body, {
         allowDefaultTarget: true,
         explicitTrigger: 'explicit_mention',
       });

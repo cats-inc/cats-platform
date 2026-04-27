@@ -117,3 +117,14 @@ test('deterministic routing modules do not call provider-agent runtime adapters'
     assert.equal(source.includes('runtimeClient.'), false, file);
   }
 });
+
+test('dispatch turn consumes a Chat-owned deterministic routing plan shape', () => {
+  const source = readFileSync(
+    path.join(process.cwd(), 'src/products/chat/state/runtime-dispatch/turn.ts'),
+    'utf8',
+  );
+
+  assert.equal(source.includes('OrchestratorTurnPlan'), false);
+  assert.equal(source.includes('platform/orchestration/contracts'), false);
+  assert.equal(source.includes('DeterministicChatRoutingPlan'), true);
+});
