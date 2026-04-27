@@ -22,6 +22,11 @@ import { closeAppServerGracefully } from './app/server/shutdown.js';
 import { CatsRuntimeClient } from './platform/runtime/client.js';
 import { FileChatStore } from './products/chat/state/store.js';
 import { isDirectCliEntrypoint } from './shared/cliEntrypoint.js';
+import {
+  seedProviderSelectorFromSnapshot,
+  warmProviderSelectorCache,
+} from './server/routes/providers.js';
+import { resolveProviderSnapshotPathFromChatState } from './shared/platformPaths.js';
 
 let startup = createAppStartupState();
 
@@ -63,6 +68,23 @@ async function main(): Promise<void> {
     chat: { chatStore },
   });
   startupTrace.trace('server.created');
+
+  // Seed provider/catalog caches from disk before we start accepting requests
+  // so the first /api/providers (or /api/providers/:id/models*) call lands on
+  // the snapshot SWR path instead of paying the cold-runtime diagnostics
+  // timeout. The runtime probe itself runs in the background as part of the
+  // startup recovery passes once createServer's recovery pipeline kicks in.
+  try {
+    await seedProviderSelectorFromSnapshot(
+      runtimeClient,
+      resolveProviderSnapshotPathFromChatState(config.chatStatePath),
+    );
+    startupTrace.trace('provider.selector.snapshot.seeded');
+  } catch (error) {
+    startupTrace.trace('provider.selector.snapshot.seed_failed', {
+      message: error instanceof Error ? error.message : String(error),
+    });
+  }
   let shutdownPromise: Promise<void> | null = null;
 
   const writeLifecycle = (line: string | null) => {
@@ -149,6 +171,11 @@ async function main(): Promise<void> {
   writeLifecycle(
     formatAppReadyMessage(startup, listeningAddress),
   );
+
+  // Run the runtime probe + per-provider catalog warm-up in the background so
+  // the first user request lands on warm caches even without a prior snapshot.
+  // Errors are swallowed: the on-demand request path will retry as usual.
+  void warmProviderSelectorCache(runtimeClient).catch(() => {});
 }
 
 if (isDirectCliEntrypoint(import.meta.url, process.argv[1])) {

@@ -122,9 +122,11 @@ function clearExpiredProviderRegistryClientCache(): void {
 
 async function loadProviderRegistry(
   fetchImpl: ProviderRegistryFetch,
+  options: { force?: boolean } = {},
 ): Promise<ProductProviderRegistryReadModel> {
   try {
-    const response = await fetchImpl('/api/providers');
+    const url = options.force ? '/api/providers?force=1' : '/api/providers';
+    const response = await fetchImpl(url);
     if (!response.ok) {
       return createRuntimeUnreachableRegistry(
         await readProviderRegistryErrorMessage(response, 'Failed to load providers.'),
@@ -175,7 +177,7 @@ export async function fetchProviderRegistryFromClientCache(options: {
     return providerRegistryClientCache.inflight;
   }
 
-  const request = loadProviderRegistry(options.fetchImpl ?? fetch)
+  const request = loadProviderRegistry(options.fetchImpl ?? fetch, { force: options.force })
     .then((value) => {
       if (shouldCacheProviderRegistryValue(value)) {
         writeProviderRegistryClientCache(value);

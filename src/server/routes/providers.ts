@@ -137,7 +137,11 @@ function buildProviderSnapshotForRuntime(
   const snapshot = createEmptyProviderSnapshot();
   const registryCacheState = truthfulProviderRegistryCache.get(runtimeClient);
   const registryEntry = registryCacheState?.entries.get(TRUTHFUL_PROVIDER_REGISTRY_CACHE_KEY);
-  if (registryEntry && shouldCacheTruthfulProviderRegistry(registryEntry.value)) {
+  // Only persist a 'ready' registry. 'no_usable_targets' would mislead the
+  // next boot into seeding an empty (but seemingly truthful) selector even if
+  // the user fixed their runtime config in the meantime; 'runtime_unreachable'
+  // is the failure state itself.
+  if (registryEntry && registryEntry.value.state === 'ready') {
     snapshot.registry = {
       state: registryEntry.value.state,
       providers: registryEntry.value.providers,
@@ -198,7 +202,13 @@ function seedTruthfulProviderRegistryFromSnapshot(
   runtimeClient: RuntimeClient,
   snapshot: ProviderSnapshot,
 ): void {
-  if (!snapshot.registry || !shouldCacheTruthfulProviderRegistry(snapshot.registry)) {
+  // Symmetric with buildProviderSnapshotForRuntime: never seed
+  // 'no_usable_targets' or 'runtime_unreachable' from disk. Only known-good
+  // ready registries are worth surfacing during the warm-up gap.
+  if (!snapshot.registry || snapshot.registry.state !== 'ready') {
+    return;
+  }
+  if (snapshot.registry.providers.length === 0) {
     return;
   }
   const cacheState = getTruthfulProviderRegistryCacheState(runtimeClient);
@@ -263,35 +273,30 @@ function seedProviderCatalogsFromSnapshot(
   }
 }
 
-export async function bootstrapProviderSelector(
+export async function seedProviderSelectorFromSnapshot(
   runtimeClient: RuntimeClient,
+  snapshotPath: string,
   options: {
-    snapshotPath?: string | null;
     onSnapshotPersisted?: () => void;
   } = {},
 ): Promise<void> {
-  const snapshotPath = options.snapshotPath?.trim() || null;
-  if (snapshotPath) {
-    const snapshot = await loadProviderSnapshot(snapshotPath);
-    if (snapshot) {
-      seedTruthfulProviderRegistryFromSnapshot(runtimeClient, snapshot);
-      seedProviderCatalogsFromSnapshot(runtimeClient, snapshot);
-    }
-    configureProviderSnapshotPersistence(runtimeClient, snapshotPath, {
-      writeNotifier: options.onSnapshotPersisted,
-    });
+  const snapshot = await loadProviderSnapshot(snapshotPath);
+  if (snapshot) {
+    seedTruthfulProviderRegistryFromSnapshot(runtimeClient, snapshot);
+    seedProviderCatalogsFromSnapshot(runtimeClient, snapshot);
   }
-
-  await warmProviderSelectorCache({ runtimeClient });
+  configureProviderSnapshotPersistence(runtimeClient, snapshotPath, {
+    writeNotifier: options.onSnapshotPersisted,
+  });
 }
 
-async function warmProviderSelectorCache(
-  dependencies: ProviderRouteDependencies,
+export async function warmProviderSelectorCache(
+  runtimeClient: RuntimeClient,
 ): Promise<void> {
-  const cacheState = getTruthfulProviderRegistryCacheState(dependencies.runtimeClient);
+  const cacheState = getTruthfulProviderRegistryCacheState(runtimeClient);
   let registry: TruthfulProviderRegistryReadModel;
   try {
-    registry = await refreshTruthfulProviderRegistry(dependencies, cacheState);
+    registry = await refreshTruthfulProviderRegistry({ runtimeClient }, cacheState);
   } catch {
     return;
   }
@@ -299,7 +304,7 @@ async function warmProviderSelectorCache(
     return;
   }
 
-  const catalogCacheState = getProviderCatalogCacheState(dependencies.runtimeClient);
+  const catalogCacheState = getProviderCatalogCacheState(runtimeClient);
   await Promise.allSettled(
     registry.providers.map(async (provider) => {
       const defaultInstanceId = provider.defaultInstance
@@ -314,22 +319,38 @@ async function warmProviderSelectorCache(
           cacheState: catalogCacheState.models,
           provider: provider.id,
           instance: defaultInstanceId,
-          load: () => dependencies.runtimeClient.getProviderModels(provider.id, defaultInstanceId),
-          runtimeClient: dependencies.runtimeClient,
+          load: () => runtimeClient.getProviderModels(provider.id, defaultInstanceId),
+          runtimeClient,
         }),
         readProviderCatalogCached({
           cacheState: catalogCacheState.advanced,
           provider: provider.id,
           instance: defaultInstanceId,
-          load: () => dependencies.runtimeClient.getAdvancedProviderModels(
+          load: () => runtimeClient.getAdvancedProviderModels(
             provider.id,
             defaultInstanceId,
           ),
-          runtimeClient: dependencies.runtimeClient,
+          runtimeClient,
         }),
       ]);
     }),
   );
+}
+
+export async function bootstrapProviderSelector(
+  runtimeClient: RuntimeClient,
+  options: {
+    snapshotPath?: string | null;
+    onSnapshotPersisted?: () => void;
+  } = {},
+): Promise<void> {
+  const snapshotPath = options.snapshotPath?.trim() || null;
+  if (snapshotPath) {
+    await seedProviderSelectorFromSnapshot(runtimeClient, snapshotPath, {
+      onSnapshotPersisted: options.onSnapshotPersisted,
+    });
+  }
+  await warmProviderSelectorCache(runtimeClient);
 }
 
 function isSelectableAvailabilityStatus(status: string | null | undefined): boolean {
@@ -1072,7 +1093,13 @@ function sendRestError(
 export async function handleProviderRegistry(
   dependencies: ProviderRouteDependencies,
   response: ServerResponse,
+  options: { force?: boolean } = {},
 ): Promise<void> {
+  if (options.force) {
+    const cacheState = getTruthfulProviderRegistryCacheState(dependencies.runtimeClient);
+    sendJson(response, 200, await refreshTruthfulProviderRegistry(dependencies, cacheState));
+    return;
+  }
   sendJson(response, 200, await readTruthfulProviderRegistry(dependencies));
 }
 

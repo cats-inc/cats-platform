@@ -1,15 +1,53 @@
 import assert from 'node:assert/strict';
+import { once } from 'node:events';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { bootstrapProviderSelector } from '../build/server/server/routes/providers.js';
+import { createServer } from '../build/server/app/server/index.js';
+import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import {
+  bootstrapProviderSelector,
+  seedProviderSelectorFromSnapshot,
+} from '../build/server/server/routes/providers.js';
 import {
   loadProviderSnapshot,
   writeProviderSnapshot,
   PROVIDER_SNAPSHOT_SCHEMA_VERSION,
 } from '../build/server/server/routes/providerSnapshotStore.js';
+
+async function withSeededServer(runtimeClient, snapshotPath, callback) {
+  await seedProviderSelectorFromSnapshot(runtimeClient, snapshotPath);
+  const server = createServer({
+    shared: {
+      config: {
+        host: '127.0.0.1',
+        port: 0,
+        runtimeBaseUrl: 'http://127.0.0.1:3110',
+        runtimeApiKey: '',
+        chatStatePath: 'unused-for-tests',
+      },
+      runtimeClient,
+      now: () => new Date('2026-04-28T00:00:00.000Z'),
+    },
+    chat: {
+      chatStore: new MemoryChatStore(),
+    },
+  });
+  server.listen(0, '127.0.0.1');
+  await once(server, 'listening');
+  const address = server.address();
+  if (!address || typeof address === 'string') {
+    throw new Error('Failed to resolve test server address');
+  }
+  try {
+    await callback(`http://127.0.0.1:${address.port}`);
+  } finally {
+    server.close();
+    await once(server, 'close');
+  }
+}
 
 async function withTempDir(callback) {
   const directory = await mkdtemp(path.join(tmpdir(), 'cats-platform-bootstrap-'));
@@ -165,7 +203,7 @@ test('bootstrapProviderSelector tolerates an unreachable runtime without writing
   });
 });
 
-test('bootstrapProviderSelector seeds caches from disk so the first /api/providers response uses the cached snapshot', async () => {
+test('seedProviderSelectorFromSnapshot makes the first /api/providers response serve the cached snapshot', async () => {
   await withTempDir(async (directory) => {
     const snapshotPath = path.join(directory, 'provider-snapshot.json');
     await writeProviderSnapshot(snapshotPath, {
@@ -193,16 +231,77 @@ test('bootstrapProviderSelector seeds caches from disk so the first /api/provide
           },
         ],
       },
-      catalogs: [],
+      catalogs: [
+        {
+          provider: 'claude',
+          instance: 'native',
+          models: {
+            provider: 'claude',
+            backend: 'cli',
+            instance: 'native',
+            defaultModel: 'claude-default',
+            source: 'config',
+            cache: null,
+            models: [{ id: 'claude-default', label: 'Claude default', default: true }],
+            warnings: [],
+          },
+          advanced: null,
+        },
+      ],
     });
 
+    let diagnosticsCalls = 0;
     const runtimeClient = createUnreachableRuntimeStub();
-    await bootstrapProviderSelector(runtimeClient, { snapshotPath });
+    const wrappedDiagnostics = runtimeClient.getProviderDiagnostics;
+    runtimeClient.getProviderDiagnostics = async (...args) => {
+      diagnosticsCalls += 1;
+      return wrappedDiagnostics.apply(runtimeClient, args);
+    };
 
-    // The first request after bootstrap should see the snapshot-seeded cache.
-    // Since we cannot easily reach into private cache state from tests, we
-    // verify the on-disk artifact is unchanged when the runtime is offline.
-    const reloaded = await loadProviderSnapshot(snapshotPath);
-    assert.ok(reloaded?.registry?.providers.some((provider) => provider.id === 'claude'));
+    await withSeededServer(runtimeClient, snapshotPath, async (baseUrl) => {
+      const response = await fetch(`${baseUrl}/api/providers`);
+      assert.equal(response.status, 200);
+      const payload = await response.json();
+      assert.equal(payload.state, 'ready');
+      assert.ok(
+        payload.providers.some((provider) => provider.id === 'claude'),
+        'snapshot providers should appear in the first response',
+      );
+      assert.ok(
+        payload.warnings?.some((warning) => warning.toLowerCase().includes('last saved')),
+        'response should disclose that providers came from the on-disk snapshot',
+      );
+    });
+
+    // Background SWR refresh fires once after the initial response; we don't
+    // care whether it completed, only that the snapshot served the foreground.
+    assert.ok(diagnosticsCalls <= 1, `expected at most 1 background probe, got ${diagnosticsCalls}`);
+  });
+});
+
+test('GET /api/providers?force=1 bypasses the failure backoff and re-probes the runtime', async () => {
+  await withTempDir(async (directory) => {
+    const snapshotPath = path.join(directory, 'provider-snapshot.json');
+    let diagnosticsCalls = 0;
+    const runtimeClient = createUnreachableRuntimeStub();
+    runtimeClient.getProviderDiagnostics = async () => {
+      diagnosticsCalls += 1;
+      throw new Error('The operation was aborted due to timeout');
+    };
+
+    await withSeededServer(runtimeClient, snapshotPath, async (baseUrl) => {
+      const initial = await fetch(`${baseUrl}/api/providers`);
+      assert.equal(initial.status, 200);
+      assert.equal(diagnosticsCalls, 1);
+
+      // Without force=1 the failure backoff should reuse the cached failure.
+      const cached = await fetch(`${baseUrl}/api/providers`);
+      assert.equal(cached.status, 200);
+      assert.equal(diagnosticsCalls, 1, 'cached failure must be reused without force');
+
+      const forced = await fetch(`${baseUrl}/api/providers?force=1`);
+      assert.equal(forced.status, 200);
+      assert.equal(diagnosticsCalls, 2, 'force=1 must re-probe the runtime');
+    });
   });
 });

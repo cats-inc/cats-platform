@@ -423,9 +423,12 @@ export async function routeRequest(
       sendMethodNotAllowed(response, ['GET']);
       return;
     }
-    await handleProviderRegistry({
-      runtimeClient: dependencies.shared.runtimeClient,
-    }, response);
+    const force = url.searchParams.get('force') === '1';
+    await handleProviderRegistry(
+      { runtimeClient: dependencies.shared.runtimeClient },
+      response,
+      { force },
+    );
     return;
   }
 

@@ -9,6 +9,12 @@ import type {
 
 export const PROVIDER_SNAPSHOT_SCHEMA_VERSION = 1;
 
+const VALID_REGISTRY_STATES: ReadonlySet<ProviderSnapshotRegistryReadModel['state']> = new Set([
+  'ready',
+  'no_usable_targets',
+  'runtime_unreachable',
+]);
+
 export interface ProviderSnapshotRegistryReadModel {
   state: 'ready' | 'no_usable_targets' | 'runtime_unreachable';
   providers: ProductProviderDescriptor[];
@@ -38,16 +44,78 @@ export function createEmptyProviderSnapshot(): ProviderSnapshot {
   };
 }
 
+function isProviderInstanceShape(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false;
+  const instance = value as Record<string, unknown>;
+  if (typeof instance.id !== 'string' || !instance.id) return false;
+  if (typeof instance.label !== 'string') return false;
+  return true;
+}
+
+function isProviderDescriptorShape(value: unknown): value is ProductProviderDescriptor {
+  if (!value || typeof value !== 'object') return false;
+  const descriptor = value as Record<string, unknown>;
+  if (typeof descriptor.id !== 'string' || !descriptor.id) return false;
+  if (typeof descriptor.label !== 'string') return false;
+  if (!Array.isArray(descriptor.instances)) return false;
+  return descriptor.instances.every(isProviderInstanceShape);
+}
+
+function isValidRegistry(value: unknown): value is ProviderSnapshotRegistryReadModel {
+  if (!value || typeof value !== 'object') return false;
+  const registry = value as Record<string, unknown>;
+  if (typeof registry.state !== 'string') return false;
+  if (!VALID_REGISTRY_STATES.has(registry.state as ProviderSnapshotRegistryReadModel['state'])) {
+    return false;
+  }
+  if (!Array.isArray(registry.providers)) return false;
+  if (!registry.providers.every(isProviderDescriptorShape)) return false;
+  if (
+    registry.warnings !== undefined
+    && !(Array.isArray(registry.warnings) && registry.warnings.every((entry) => typeof entry === 'string'))
+  ) {
+    return false;
+  }
+  return true;
+}
+
+function catalogBodyMatchesEntry(
+  body: unknown,
+  provider: string,
+  instance: string | null,
+): boolean {
+  if (!body || typeof body !== 'object') return false;
+  const candidate = body as { provider?: unknown; instance?: unknown };
+  if (candidate.provider !== provider) return false;
+  const bodyInstance = typeof candidate.instance === 'string' ? candidate.instance : null;
+  return bodyInstance === instance;
+}
+
+function isValidCatalogEntry(value: unknown): value is ProviderSnapshotCatalogEntry {
+  if (!value || typeof value !== 'object') return false;
+  const entry = value as Record<string, unknown>;
+  if (typeof entry.provider !== 'string' || !entry.provider) return false;
+  const instance = entry.instance === null
+    ? null
+    : typeof entry.instance === 'string' ? entry.instance : undefined;
+  if (instance === undefined) return false;
+  if (entry.models !== null && !catalogBodyMatchesEntry(entry.models, entry.provider, instance)) {
+    return false;
+  }
+  if (entry.advanced !== null && !catalogBodyMatchesEntry(entry.advanced, entry.provider, instance)) {
+    return false;
+  }
+  // At least one catalog body must be present; otherwise the entry is useless.
+  return entry.models !== null || entry.advanced !== null;
+}
+
 export async function loadProviderSnapshot(
   filePath: string,
 ): Promise<ProviderSnapshot | null> {
   let raw: string;
   try {
     raw = await readFile(filePath, 'utf8');
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
-      return null;
-    }
+  } catch {
     return null;
   }
 
@@ -70,14 +138,9 @@ export async function loadProviderSnapshot(
   const savedAt = typeof candidate.savedAt === 'string'
     ? candidate.savedAt
     : new Date(0).toISOString();
-  const registry = candidate.registry && typeof candidate.registry === 'object'
-    ? candidate.registry as ProviderSnapshotRegistryReadModel
-    : null;
+  const registry = isValidRegistry(candidate.registry) ? candidate.registry : null;
   const catalogs = Array.isArray(candidate.catalogs)
-    ? candidate.catalogs.filter((entry): entry is ProviderSnapshotCatalogEntry =>
-        Boolean(entry)
-        && typeof entry === 'object'
-        && typeof (entry as ProviderSnapshotCatalogEntry).provider === 'string')
+    ? candidate.catalogs.filter(isValidCatalogEntry)
     : [];
 
   return {

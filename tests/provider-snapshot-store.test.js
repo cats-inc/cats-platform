@@ -129,3 +129,135 @@ test('loadProviderSnapshot returns null on malformed JSON', async () => {
     assert.equal(loaded, null);
   });
 });
+
+test('loadProviderSnapshot rejects registries with unknown state values', async () => {
+  await withTempDir(async (directory) => {
+    const snapshotPath = path.join(directory, 'snapshot.json');
+    await writeFile(
+      snapshotPath,
+      JSON.stringify({
+        schemaVersion: PROVIDER_SNAPSHOT_SCHEMA_VERSION,
+        savedAt: new Date().toISOString(),
+        registry: { state: 'mystery-state', providers: [] },
+        catalogs: [],
+      }),
+      'utf8',
+    );
+    const loaded = await loadProviderSnapshot(snapshotPath);
+    assert.ok(loaded, 'top-level snapshot is still loaded');
+    assert.equal(loaded.registry, null, 'invalid registry shape must be dropped');
+  });
+});
+
+test('loadProviderSnapshot rejects registries whose provider entries are malformed', async () => {
+  await withTempDir(async (directory) => {
+    const snapshotPath = path.join(directory, 'snapshot.json');
+    await writeFile(
+      snapshotPath,
+      JSON.stringify({
+        schemaVersion: PROVIDER_SNAPSHOT_SCHEMA_VERSION,
+        savedAt: new Date().toISOString(),
+        registry: {
+          state: 'ready',
+          providers: [{ label: 'Missing id', instances: [] }],
+        },
+        catalogs: [],
+      }),
+      'utf8',
+    );
+    const loaded = await loadProviderSnapshot(snapshotPath);
+    assert.equal(loaded?.registry, null);
+  });
+});
+
+test('loadProviderSnapshot drops catalog entries whose body provider does not match the entry', async () => {
+  await withTempDir(async (directory) => {
+    const snapshotPath = path.join(directory, 'snapshot.json');
+    await writeFile(
+      snapshotPath,
+      JSON.stringify({
+        schemaVersion: PROVIDER_SNAPSHOT_SCHEMA_VERSION,
+        savedAt: new Date().toISOString(),
+        registry: null,
+        catalogs: [
+          {
+            provider: 'claude',
+            instance: 'native',
+            models: {
+              provider: 'codex',
+              backend: 'cli',
+              instance: 'native',
+              defaultModel: 'codex-default',
+              source: 'config',
+              cache: null,
+              models: [],
+              warnings: [],
+            },
+            advanced: null,
+          },
+        ],
+      }),
+      'utf8',
+    );
+    const loaded = await loadProviderSnapshot(snapshotPath);
+    assert.deepEqual(loaded?.catalogs, []);
+  });
+});
+
+test('loadProviderSnapshot drops catalog entries whose instance does not match the body', async () => {
+  await withTempDir(async (directory) => {
+    const snapshotPath = path.join(directory, 'snapshot.json');
+    await writeFile(
+      snapshotPath,
+      JSON.stringify({
+        schemaVersion: PROVIDER_SNAPSHOT_SCHEMA_VERSION,
+        savedAt: new Date().toISOString(),
+        registry: null,
+        catalogs: [
+          {
+            provider: 'claude',
+            instance: 'native',
+            models: null,
+            advanced: {
+              provider: 'claude',
+              backend: 'cli',
+              instance: 'secondary',
+              defaultModel: null,
+              source: 'config',
+              cache: null,
+              entries: [],
+              presets: [],
+              controls: [],
+              defaultSelection: null,
+              support: { tier: 'entry_only', notes: [] },
+              warnings: [],
+            },
+          },
+        ],
+      }),
+      'utf8',
+    );
+    const loaded = await loadProviderSnapshot(snapshotPath);
+    assert.deepEqual(loaded?.catalogs, []);
+  });
+});
+
+test('loadProviderSnapshot drops catalog entries with neither models nor advanced bodies', async () => {
+  await withTempDir(async (directory) => {
+    const snapshotPath = path.join(directory, 'snapshot.json');
+    await writeFile(
+      snapshotPath,
+      JSON.stringify({
+        schemaVersion: PROVIDER_SNAPSHOT_SCHEMA_VERSION,
+        savedAt: new Date().toISOString(),
+        registry: null,
+        catalogs: [
+          { provider: 'claude', instance: 'native', models: null, advanced: null },
+        ],
+      }),
+      'utf8',
+    );
+    const loaded = await loadProviderSnapshot(snapshotPath);
+    assert.deepEqual(loaded?.catalogs, []);
+  });
+});
