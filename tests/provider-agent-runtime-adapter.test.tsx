@@ -300,6 +300,54 @@ test('provider-agent adapter can use an existing runtime session', async () => {
   assert.equal(runtimeClient.sentMessages[0]?.sessionId, 'existing-session');
 });
 
+test('provider-agent adapter preserves the provider-authored semantic plan', async () => {
+  const providerAuthoredDecision: ProviderAgentDecision = {
+    ...semanticPlanDecision(),
+    decisionId: 'decision-provider-authored',
+    planId: 'plan-provider-authored',
+    rationaleSummary: 'Provider chose to look up scoped context before responding.',
+    steps: [
+      {
+        stepId: 'provider-step-lookup',
+        summary: 'Provider-selected lookup.',
+        action: 'call_tool',
+        toolName: 'work.context.lookup',
+        input: {
+          selectedBy: 'provider-agent',
+          detailLevel: 'brief',
+        },
+      },
+      {
+        stepId: 'provider-step-respond',
+        summary: 'Provider-selected response.',
+        action: 'respond',
+        dependsOn: ['provider-step-lookup'],
+      },
+    ],
+  };
+  const runtimeClient = createRuntimeStub(providerAuthoredDecision);
+
+  const result = await requestProviderAgentDecision({
+    runtimeClient,
+    target: {
+      provider: 'codex',
+      model: 'gpt-5.4',
+      sessionId: 'existing-session',
+    },
+    observation: observation(),
+    supervision: {
+      product: 'cats-work',
+      surface: 'provider-agent',
+      runId: 'run-1',
+      actionId: 'action-1',
+      actorRef: 'agent:codex',
+      reason: 'semantic_decision',
+    },
+  });
+
+  assert.deepEqual(result.decision, providerAuthoredDecision);
+});
+
 test('provider-agent adapter rejects invalid bounded observations before runtime calls', async () => {
   const runtimeClient = createRuntimeStub(semanticPlanDecision());
   const invalidObservation = observation();
@@ -379,6 +427,9 @@ test('provider-agent adapter keeps direct runtime calls inside the supervision b
 
   assert.equal(source.includes('runtimeClient.createSession('), false);
   assert.equal(source.includes('runtimeClient.sendMessage('), false);
+  assert.equal(source.includes('./planner'), false);
+  assert.equal(source.includes('./dispatch'), false);
+  assert.equal(source.includes('buildOrchestratorTurnPlan'), false);
   assert.equal(source.includes('createSupervisedRuntimeSession'), true);
   assert.equal(source.includes('sendSupervisedRuntimeMessage'), true);
   assert.equal(buildProviderAgentDecisionPrompt(observation()).includes('raw_message_body'), false);

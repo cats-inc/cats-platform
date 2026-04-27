@@ -350,7 +350,7 @@ restating it.
 - [x] Task 2.3: Make policy validation own deterministic routing, invariants,
       approval, weak-model policy dial tightening, budget, retry, and
       rejection.
-- [ ] Task 2.4: Add tests proving the platform preserves agent semantic choices
+- [x] Task 2.4: Add tests proving the platform preserves agent semantic choices
       instead of substituting its own plan.
 - [ ] Task 2.5: Define weak-capability policy dials without bypassing the
       provider-agent seam: autonomy no higher than `single_step`, tiny task
@@ -646,3 +646,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 2: added the provider-agent decision contract for bounded observations, semantic plans, tool/delegation requests, and recovery decisions, with validation that raw-content summaries and out-of-surface tools are rejected. |
 | 2026-04-28 | Implementation slice 3: added the provider-agent runtime adapter, keeping create/send calls behind `platform/supervision/runtimeBoundary`, validating bounded observations before runtime calls, and rejecting provider decisions that exceed the bounded tool surface. |
 | 2026-04-28 | Implementation slice 4: added a deterministic provider-agent policy gate over policy dials, parent/tool-scope intersection, schema-required validation, single-step weak-profile limits, delegation autonomy, and allowed recovery fallback choices. |
+| 2026-04-28 | Implementation slice 5: added contract coverage proving the provider-agent adapter preserves the provider-authored semantic plan and does not import the old platform planner/dispatcher path. |
