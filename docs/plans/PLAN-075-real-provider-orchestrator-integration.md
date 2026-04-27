@@ -193,7 +193,7 @@ This plan covers:
 
 | Gate | Required Evidence |
 |------|-------------------|
-| Do not broaden provider tool access until FR-19 override-floor tests stay green. | `supervision-policy-engine.test.ts` and `supervision-tool-boundary.test.ts` cover denial and evaluated/observed positive paths. |
+| Do not broaden provider tool access until FR-19 override-floor tests stay green. | `supervision-policy-engine.test.tsx` and `supervision-tool-boundary.test.tsx` cover denial and evaluated/observed positive paths. |
 | Do not start live provider-agent autonomy before capability profile bootstrap lands. | Capability tests cover catalog source evidence, eval/history source fixtures without ingestion, conservative unknown defaults, operator override ceilings, and FR-19 override floor. |
 | Do not wire live provider-agent autonomy before fake driving-agent recovery tests are green. | `supervision-fake-driving-agent.test.tsx` and `work-supervised-run.test.tsx` pass. |
 | Do not change Chat visible UI while cutting the decision core. | Targeted Chat smoke/probe tests prove direct, solo, group, and parallel runtime handoff. |
@@ -324,7 +324,7 @@ restating it.
       provider catalog, eval suite/eval run reference, session-history summary
       reference, and operator override. PLAN-075 only lands the schema seam for
       these source types; live eval/history ingestion is a follow-up plan.
-- [ ] Task 1.3: Enforce operator override ceilings and FR-19 override floor:
+- [x] Task 1.3: Enforce operator override ceilings and FR-19 override floor:
       overrides may change effective policy within evidence limits, but cannot
       create broad-write or unrestricted outcome delegation under
       unknown/catalog-only confidence.
@@ -654,3 +654,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 10: added Chat deterministic-routing boundary tests for explicit mentions, current-turn audience caps, and no provider-agent runtime adapter calls inside routing modules. |
 | 2026-04-28 | Implementation slice 11: added `temp-participant-strong-agent.test.tsx` proving preset/ad hoc temporary participants can resolve strong-provider capability profiles and provider-agent observations without durable Cat promotion. |
 | 2026-04-28 | Implementation slice 12: expanded `chat-provider-agent-observation.test.tsx` with direct-cat, solo, group explicit-mention, and parallel-member probes so Chat routing semantics enter the provider-agent seam as bounded metadata without changing UI or transcript behavior. |
+| 2026-04-28 | Implementation slice 13: reconciled Phase 1 Task 1.3 with the already-landed FR-19 operator-override floor implementation and corrected the policy test filenames referenced by the phase gate. |
