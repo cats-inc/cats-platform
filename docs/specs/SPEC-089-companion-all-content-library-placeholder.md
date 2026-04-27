@@ -44,6 +44,23 @@ SPEC-085 remains authoritative for v1:
 - `Files` contains file-like browsing/insertion projections, not every uploaded
   image, video, audio clip, note, or source.
 
+## Expansion Triggers
+
+This placeholder must be expanded before any of these changes ship:
+
+- The product adds an `All`, `All Content`, `Library`, or all-uploads browsing
+  surface.
+- Files gains an all-files filter that includes image, video, or audio sources.
+- Search/filter UI needs to browse raw sources, generated artifacts, media,
+  files, and posts in one mixed result set.
+- Share/insert actions are added to raw `Sources` records that are not already
+  projected into Photos, Videos, Music, Files, or Posts.
+- PLAN-077 Phase 2 usability testing shows owners cannot answer where all
+  uploaded companion material lives.
+
+Target phase: revisit after PLAN-077 Phase 2 classifier/read-model work lands
+and before Phase 4 share insertion broadens beyond media and Files.
+
 ## Dependencies
 
 - [SPEC-085](./SPEC-085-companion-profile-feed-and-library-ia.md)

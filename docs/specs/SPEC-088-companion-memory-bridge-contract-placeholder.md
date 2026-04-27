@@ -43,6 +43,21 @@ The companion profile shall not render `CompanionMemoryRecord` and
 authoritative for v1: companion side-panel `Memory` uses `CompanionMemoryRecord`
 only.
 
+## Expansion Triggers
+
+This placeholder must be expanded before any of these changes ship:
+
+- Companion UI reads from or writes to `DurableMemoryItem`.
+- `Settings > My Cats` shows, edits, deletes, or deep-links into
+  `CompanionMemoryRecord`.
+- Memory sync/import/export crosses product data scopes or devices.
+- Retrieval starts treating `DurableMemoryItem` and `CompanionMemoryRecord` as
+  one merged corpus.
+- Either schema changes in a way that requires cross-ledger mapping.
+
+Target phase: revisit immediately after PLAN-077 Phase 2 read-model work lands,
+and before any Settings/companion memory sync work begins.
+
 ## Dependencies
 
 - [SPEC-022](./SPEC-022-cats-memory-layering-and-ownership.md)

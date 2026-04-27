@@ -82,10 +82,13 @@ For now, a post is only a companion content projection that may be previewed,
 linked, and displayed in a feed card. The first production slice shall use
 explicit profile-post projections backed by `CompanionDerivedRecord`, such as
 records with `metadata.profileSurface === 'post'`. The producer for these
-records is an explicit owner `Promote to post` action in the companion-box
-profile projection layer; raw ingestion does not automatically promote every
-summary, caption, memory highlight, or event into the feed. Mock posts are
-allowed only in dev fixtures, storybook, and tests.
+records is an item-level owner `Promote to post` action in the companion-box
+profile projection layer. It opens a lightweight edit/review dialog from
+Sources, media tiles, Files, or Inspector before writing the derived record.
+The derived record uses top-level `sourceIds` as authoritative source lineage
+and metadata only for post status/producer/origin. Raw ingestion does not
+automatically promote every summary, caption, memory highlight, or event into
+the feed. Mock posts are allowed only in dev fixtures, storybook, and tests.
 
 The following remain open:
 
@@ -108,10 +111,12 @@ The same underlying object may project into both surfaces. For example, an
 owner-uploaded PDF appears in `Sources` for provenance and ingestion management
 and in `Files` for browsing, opening, insertion, and sharing. The projection
 must preserve the same source id rather than creating duplicate storage. The v1
-classifier is a shared helper keyed by source kind, MIME type, and file
-extension. Media projects to Photos, Videos, or Music; document/archive/text
-and unknown linked files project to Files; all raw owner-provided material
-remains visible in Sources.
+classifier is one shared helper keyed by source kind, lowercased MIME type, and
+lowercased file extension. Media projects to Photos, Videos, or Music;
+document/archive/text and unknown linked files project to Files; SVG is treated
+as a file by default; `application/octet-stream` is classified by extension
+when possible and otherwise as an unknown binary file. All raw owner-provided
+material remains visible in Sources.
 
 ### 4. The side panel is control and inspection, not duplicate settings
 
@@ -154,8 +159,9 @@ have product-owned share references that can be inserted into chat.
 The first local serialized reference form is
 `cats://companion/v1/{scopeId}/{catId}/{type}/{targetId}` for target types
 `post`, `photo`, `video`, `music`, and `file`. The `v1` segment gives the
-parser a stable version boundary, and `scopeId` namespaces the reference to the
-local product installation or account context.
+parser a stable version boundary. `scopeId` is the host-owned product data
+scope UUID for the current durable Cats product data root, shared by Chat,
+Work, Settings, and companion surfaces in that data root.
 
 When a reference is inserted or pasted into a chat composer, the transcript
 should render a preview card rather than showing only a raw string.

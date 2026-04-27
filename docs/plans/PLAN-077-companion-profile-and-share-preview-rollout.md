@@ -66,6 +66,13 @@ storybook, or tests. It should not claim that the final post model is complete.
 
 **Deliverables**: companion UI language and navigation match ADR-084.
 
+**Release rule**: Phase 1 is an internal alignment slice, not an independent
+production ship point. A production release of the revised companion profile
+requires the Phase 2 read-model guards for Posts, classifier behavior,
+Inspector lifecycle, and Activity aggregation. If Phase 1 is merged earlier, it
+shall remain behind a companion-profile IA feature flag or equivalent
+development-only path.
+
 ### Phase 2: Companion Content Projection Read Model
 
 - [ ] Define product-owned read-model helpers for companion profile items:
@@ -78,15 +85,27 @@ storybook, or tests. It should not claim that the final post model is complete.
 - [ ] Add the v1 profile-post producer as an explicit owner `Promote to post`
       action that creates/updates a `CompanionDerivedRecord` with
       `metadata.profileSurface === 'post'`,
+      `metadata.profilePostStatus === 'active'`,
       `metadata.profilePostProducer === 'owner_promotion_v1'`, and preserved
       source/derived provenance.
+- [ ] Expose `Promote to post` as an item-level overflow action from Sources
+      rows, media tiles, Files rows, and eligible Inspector selections.
+- [ ] Add the promotion dialog with editable title, body/excerpt, tags, media
+      inclusion, `Cancel`, and `Promote`.
+- [ ] Add `Edit post` and `Remove from Posts`; removal sets
+      `metadata.profilePostStatus === 'removed'` rather than deleting the
+      original source.
+- [ ] Treat top-level `sourceIds` as authoritative source lineage for promoted
+      posts; do not introduce `metadata.profilePostSourceId`.
 - [ ] Do not auto-promote every source summary, caption, event, memory
       highlight, or derived record into `Posts`.
 - [ ] Keep mock posts out of production runtime and use an empty state when no
       eligible profile-post projection exists.
 - [ ] Implement the shared source-surface classifier from SPEC-085 for MIME and
       extension cases, including HEIC images, Markdown/text files, CSV/JSON,
-      ZIP variants, unknown linked files, and source-only notes.
+      ZIP variants, SVG-as-file, case-insensitive extensions, octet-stream with
+      and without recognized extensions, path refs with media extensions,
+      unknown linked files, and source-only notes.
 - [ ] Implement the `Sources`/`Files` projection rule:
       owner-uploaded file-like sources, including PDFs, appear in `Sources` for
       provenance/ingestion management and in `Files` for browsing/opening/chat
@@ -97,14 +116,20 @@ storybook, or tests. It should not claim that the final post model is complete.
 - [ ] Keep companion `Memory` as one side-panel surface backed by
       `CompanionMemoryRecord`; do not render the `Settings > My Cats`
       `DurableMemoryItem` list as a second companion memory ledger.
-- [ ] Add a small activity vocabulary for first-slice events.
+- [ ] Implement the first Activity vocabulary from SPEC-085.
 - [ ] Add Activity aggregation: coalesce high-frequency source/memory/derived
-      writes by object type and day, with burst aggregation for one
-      ingestion/import operation.
+      writes by object type and local day, with burst aggregation keyed by
+      `{catId, correlationId || minuteBucket, eventGroup, targetKind}` where
+      `minuteBucket` is a 60-second local-time bucket.
+- [ ] Keep Activity v1 capped to 100 rendered entries or 30 days with no `Load
+      more`; show a bounded older-activity-hidden indicator when relevant.
 - [ ] Add Inspector selection lifecycle behavior: preserve selection across tab
       switches within the same Cat, clear on Cat/route change, and preserve
       deleted/unavailable selections as snapshot fallback until user clears or
       selects another item.
+- [ ] Freeze Inspector snapshot state at the last successful resolve of the
+      selected item, updating it after successful edits and before any later
+      deleted/missing/inaccessible transition.
 
 **Deliverables**: renderer can read a coherent companion profile model without
 finalizing post storage.
@@ -117,10 +142,18 @@ finalizing post storage.
       metadata.
 - [ ] Implement the first local serialized form:
       `cats://companion/v1/{scopeId}/{catId}/{type}/{targetId}`.
+- [ ] Add the host-owned product data `scopeId`: generate a UUIDv4 once per
+      durable Cats product data root, persist it server-side with that data
+      root, and expose it to all renderer surfaces through one product API or
+      shared app-shell record.
 - [ ] Add parser/recognition helpers for the canonical local form and reject
-      wrong schemes, wrong hosts, unknown versions, scope mismatches, unknown
-      target types, missing segments, extra segments, and malformed
-      percent-encoding.
+      wrong schemes, wrong hosts, unknown target types, missing segments, extra
+      segments, and malformed percent-encoding.
+- [ ] Resolve `scopeId` mismatches as `inaccessible`, not as malformed
+      references.
+- [ ] Return a distinct `unsupported_version` parser result for syntactically
+      valid `cats://companion/...` references with unsupported versions; preserve
+      raw text and show a non-blocking unsupported-reference affordance.
 - [ ] Keep Phase 3 to in-app parser/resolver behavior; do not register a global
       OS-level `cats://` protocol handler in this rollout.
 - [ ] Ensure `available`, `missing`, `deleted`, and `inaccessible` states follow
@@ -158,25 +191,30 @@ finalizing post storage.
 - [ ] Add coverage for the owner-uploaded PDF rule: same source projects into
       both `Sources` and `Files` with one preserved source identity.
 - [ ] Add coverage for MIME/extension classifier edge cases: `.heic`,
-      extension-only linked paths, `.md`, `.txt`, `application/json`,
-      `text/csv`, `application/octet-stream`, `application/zip`, and
+      uppercase extensions such as `.JPG` and `.PDF`, extension-only linked
+      paths, path refs with media extensions, `.svg`, `.md`, `.txt`,
+      `application/json`, `text/csv`, `application/octet-stream` with and
+      without recognized extensions, `application/zip`, and
       `application/x-zip-compressed`.
 - [ ] Add coverage that companion `Memory` does not render a duplicate
       `DurableMemoryItem` ledger.
 - [ ] Add coverage that the profile-post producer creates
       `metadata.profileSurface === 'post'`, and that missing producer metadata
       yields an empty state rather than falling back to production mock posts.
-- [ ] Add a lint/runtime guard that production companion feed code cannot
-      import `MOCK_POSTS` or fixture-only post data.
+- [ ] Add a build-time lint/test guard, not a runtime throw, that production
+      companion feed code cannot import `MOCK_POSTS` or fixture-only post data.
 - [ ] Add parser fuzz coverage for `cats://` references, including wrong
       scheme, wrong host, extra segments, missing segments, unknown version,
-      unknown type, and malformed percent-encoding.
+      unsupported version, unknown type, malformed percent-encoding, and
+      `scopeId` mismatch.
 - [ ] Add coverage that item-level `Share` is not an enabled inert button, and
       header-level `Share` plus `Subscribe` are disabled with explanatory
       tooltips in v1.
 - [ ] Add coverage for Inspector empty state and unavailable-item fallback.
 - [ ] Add coverage for Inspector selection lifecycle across tab change, Cat
       change, deletion, and reload-without-selection.
+- [ ] Add coverage for reload-with-valid-selection-param restore and
+      reload-with-malformed-selection-param clear behavior.
 - [ ] Add coverage for Activity aggregation so high-frequency memory/source
       writes do not render as a raw write log.
 - [ ] Add smoke coverage for inserting a file reference into chat and rendering
@@ -211,21 +249,29 @@ the post model is finalized.
   automatic source ingestion.
 - Keep mock posts out of production runtime.
 - Use one shared MIME/extension classifier for Sources, Files, Photos, Videos,
-  and Music.
+  and Music. The classifier is case-insensitive, treats SVG as file by default,
+  handles `application/octet-stream` by extension first, and lets `path_ref`
+  classify as media when its linked path/source URL has a media extension.
 - Treat `Sources` as raw `CompanionSourceRecord` management and `Files` as
   file-like browsing/insertion projections; the same PDF can appear in both.
 - Treat companion side-panel `Memory` as `CompanionMemoryRecord` in v1 and do
   not duplicate the `DurableMemoryItem` Settings ledger.
-- Use `cats://companion/v1/{scopeId}/{catId}/{type}/{targetId}` as the first local
-  serialized reference form.
+- Use `cats://companion/v1/{scopeId}/{catId}/{type}/{targetId}` as the first
+  local serialized reference form.
+- Define `scopeId` as the host-owned product data scope UUID, generated once
+  per durable Cats product data root and shared across all renderer surfaces for
+  that root.
 - Keep `cats://` resolution in-app in this rollout; do not register a global OS
   protocol handler yet.
+- Treat unsupported `cats://companion` versions as `unsupported_version`, not as
+  `missing` or `inaccessible`.
 - Render `Subscribe` disabled in v1 with an explanatory tooltip; enable item
   `Share` only when it performs insertion or copy.
 - Render header-level `Share` disabled with an explanatory tooltip until it has
   a concrete supported reference target.
 - Aggregate Activity entries rather than rendering a raw source/memory write
-  log.
+  log, using a 60-second burst bucket when no operation correlation id exists.
+- Freeze Inspector unavailable snapshots at the last successful resolve.
 - Treat companion content previews as product-owned object previews, separate
   from SPEC-020 runtime preview surfaces.
 - Preserve snapshot metadata in chat messages so old transcripts remain useful.
