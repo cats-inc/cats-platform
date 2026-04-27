@@ -28,6 +28,12 @@ export {
 const DEFAULT_READY_TIMEOUT_MS = 3_000;
 const DEFAULT_CANCEL_CLEANUP_TIMEOUT_MS = 1_000;
 const DEFAULT_STOP_CLEANUP_TIMEOUT_MS = 5_000;
+// Linux uses bundled whisper.cpp which runs synchronous batch inference on
+// stop. Worst-case for a 30-second utterance cap (SPEC-087 Req 16) at the
+// supported hardware floor is ~45 s; 60 s gives a safety margin. macOS /
+// Windows native engines stream finals during recording, so the 5-second
+// default is fine there.
+export const LINUX_STOP_CLEANUP_TIMEOUT_MS = 60_000;
 const MAX_HELPER_STDERR_LINE_LENGTH = 500;
 
 const VOICE_CAPTURE_MODE_SET = new Set<string>(VOICE_CAPTURE_MODES);
@@ -244,6 +250,24 @@ export function resolveVoiceCaptureHelperPath(input: {
     );
   }
 
+  if (platform === 'linux') {
+    const linuxOverride = env.CATS_STT_LINUX_HELPER?.trim();
+    if (linuxOverride) {
+      return linuxOverride;
+    }
+    if (input.config.packaged && input.resourcesPath) {
+      return join(input.resourcesPath, 'native', 'linux-stt', 'cats-stt-linux');
+    }
+    return join(
+      input.config.packageRoot,
+      'desktop',
+      'native',
+      'linux-stt',
+      'build',
+      'cats-stt-linux',
+    );
+  }
+
   return null;
 }
 
@@ -294,8 +318,8 @@ export class DesktopVoiceCaptureController {
   private readonly resourcesPath?: string;
   private readonly spawnProcess: VoiceCaptureSpawn;
   private readonly readyTimeoutMs: number;
-  private readonly stopCleanupTimeoutMs: number;
-  private readonly cancelCleanupTimeoutMs: number;
+  public readonly stopCleanupTimeoutMs: number;
+  public readonly cancelCleanupTimeoutMs: number;
   private readonly logLine: (line: string) => void;
 
   constructor(options: DesktopVoiceCaptureControllerOptions) {
@@ -306,9 +330,12 @@ export class DesktopVoiceCaptureController {
     this.resourcesPath = options.resourcesPath;
     this.spawnProcess = options.spawnProcess ?? spawn;
     this.readyTimeoutMs = options.readyTimeoutMs ?? DEFAULT_READY_TIMEOUT_MS;
+    const platformStopDefault = this.platform === 'linux'
+      ? LINUX_STOP_CLEANUP_TIMEOUT_MS
+      : DEFAULT_STOP_CLEANUP_TIMEOUT_MS;
     this.stopCleanupTimeoutMs = options.stopCleanupTimeoutMs
       ?? options.cleanupTimeoutMs
-      ?? DEFAULT_STOP_CLEANUP_TIMEOUT_MS;
+      ?? platformStopDefault;
     this.cancelCleanupTimeoutMs = options.cancelCleanupTimeoutMs
       ?? options.cleanupTimeoutMs
       ?? DEFAULT_CANCEL_CLEANUP_TIMEOUT_MS;
