@@ -77,6 +77,13 @@ test('work.sop.ask_weak applies structured output without downstream tool autono
 
   assert.equal(result.status, 'applied');
   assert.deepEqual(result.result.schemaRef, EXPECTED_OUTPUT_SCHEMA);
+  assert.deepEqual(result.result.scaffold, {
+    templateId: 'work.sop.ask_weak.v1',
+    retryLimit: 0,
+    confidenceThreshold: 0.4,
+    escalationTarget: 'strong_driver',
+    expectedOutputSchemaRef: EXPECTED_OUTPUT_SCHEMA,
+  });
   assert.deepEqual(result.result.allowedToolNames, []);
   assert.deepEqual(result.result.suggestedToolNames, []);
   assert.equal(evidenceSink.read()[0]?.toolName, 'work.sop.ask_weak');

@@ -69,6 +69,13 @@ export interface WorkSopAskWeakInput {
 
 export interface WorkSopAskWeakResult {
   schemaRef: SchemaRef;
+  scaffold: {
+    templateId: 'work.sop.ask_weak.v1';
+    retryLimit: 0;
+    confidenceThreshold: 0.4;
+    escalationTarget: 'strong_driver';
+    expectedOutputSchemaRef: SchemaRef;
+  };
   answer: {
     summary: string;
   };
@@ -395,6 +402,13 @@ function createSopAskWeakExecutor(): SupervisedToolExecutor<
 
     const result: WorkSopAskWeakResult = {
       schemaRef: input.expectedOutputSchemaRef,
+      scaffold: {
+        templateId: 'work.sop.ask_weak.v1',
+        retryLimit: 0,
+        confidenceThreshold: 0.4,
+        escalationTarget: 'strong_driver',
+        expectedOutputSchemaRef: input.expectedOutputSchemaRef,
+      },
       answer: {
         summary: input.question,
       },
@@ -535,6 +549,12 @@ function isSopAskWeakResult(
 ): input is WorkSopAskWeakResult {
   return isRecord(input) &&
     isSameSchemaRef(input.schemaRef, expectedOutputSchemaRef) &&
+    isRecord(input.scaffold) &&
+    input.scaffold.templateId === 'work.sop.ask_weak.v1' &&
+    input.scaffold.retryLimit === 0 &&
+    input.scaffold.confidenceThreshold === 0.4 &&
+    input.scaffold.escalationTarget === 'strong_driver' &&
+    isSameSchemaRef(input.scaffold.expectedOutputSchemaRef, expectedOutputSchemaRef) &&
     isRecord(input.answer) &&
     typeof input.answer.summary === 'string' &&
     Array.isArray(input.allowedToolNames) &&
