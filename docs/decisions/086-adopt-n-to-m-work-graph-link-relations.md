@@ -1,10 +1,11 @@
 # ADR-086: Adopt N:M Work Graph Link Relations for Cross-Tier Item Linkage
 
 > Add a typed N:M link relation primitive (`blocks`, `blocked_by`, `related_to`,
-> `duplicate_of`, `follows`) between Work Graph objects. Reject recursive sub-
-> Work-Item parenting and reject further expansion of single-parent
-> `linkedXxxId` fields on `WorkGraphObjectSummary`. Linkage is orthogonal to the
-> ADR-081 three-tier hierarchy and does not change it.
+> `duplicate_of`, `follows`) between Work Graph objects, anchored on canonical
+> Core record identity. Linkage is *lateral* — orthogonal to the ADR-081
+> three-tier hierarchy and to the existing Core single-parent FKs (including
+> `WorkItem.parentWorkItemId`, which already exists in Core and is not changed
+> here).
 
 ## Status
 
@@ -19,11 +20,14 @@ those records, with System Map as the production default and Cockpit as
 the opt-in operational view.
 
 That structure is strict by design: every object sits in exactly one
-tier, and every parent relation goes through the fixed
-`linkedConversationId / linkedProjectId / linkedWorkItemId / linkedTaskId
-/ linkedRunId` fields on `WorkGraphObjectSummary`. The fields capture
-single-parent containment: a Task points to its Work Item, a Work Item
-points to its Project, a Run points to its Task, etc.
+tier, and every parent relation goes through frozen Core foreign keys
+listed in ADR-081 §4 — `WorkItem.projectId`, `WorkItem.taskId` (the
+Planning → Execution bridge), `WorkItem.parentWorkItemId` (Work Item
+self-nest already in Core), `Task.parentTaskId`, `Run.taskId`,
+`Run.parentRunId`, etc. The fields on `WorkGraphObjectSummary`
+(`linkedConversationId / linkedProjectId / linkedWorkItemId /
+linkedTaskId / linkedRunId`) are the *projection* surface over those
+Core FKs and reverse lookups, not separate truth.
 
 Real Cats Work usage already shows two structural needs that this
 single-parent model does not cover:
@@ -50,88 +54,128 @@ relations cover the same two needs above through two distinct
 mechanisms: a recursive parent pointer for the structural decomposition
 side, and a typed relation table for the lateral side.
 
-We have already considered, and rejected in this ADR, copying the
-recursive-parent half of that mechanism. Adding `parent_work_item_id`
-or treating Work Items as recursive would re-introduce the same
-"is this decomposition a Sub-Work-Item or a Task?" decision point that
-ADR-081 explicitly closed by giving Task its own tier. Recursive Work
-Items would dilute the three-tier semantic contract that System Map,
-Cockpit, query layers, and producer documentation are built on.
+The recursive-parent half of that mechanism (Sub-Work-Item nesting
+via `WorkItem.parentWorkItemId`) is **already part of the frozen Core
+contract** — ADR-081 §4 lists `WorkItem.parentWorkItemId → WorkItem`,
+and `CoreWorkItemRecord.parentWorkItemId` is present in
+`src/core/types.ts`. ADR-086 does **not** introduce, change, or
+remove that FK, and does not take a position on whether Work UI v1
+exposes a Sub-Work-Item creation surface. (As of this writing, Work
+v1 does not — see SPEC-083 — but that is a UI scope decision, not a
+schema rejection.)
 
-The remaining gap is the lateral half: typed N:M relations.
+The lateral half is the actual gap: typed N:M relations are not
+represented anywhere in the current Core schema.
 
 ## Decision
 
 ### 1. Add `WorkGraphLink` as a typed N:M relation primitive
 
 Cats Core gains one additive record family, `WorkGraphLink`, with the
-following minimum shape:
+following minimum shape (Core identity, not projection identity):
 
 - `id` — stable identity for the link itself.
-- `kind` — relation kind. The supported kinds at v1 are:
+- `kind` — canonical relation kind stored in Core. The canonical set
+  is:
   - `blocks` (directed, asymmetric)
-  - `blocked_by` (inverse of `blocks`; producers MAY write either side
-    and the projection MUST materialize the inverse)
-  - `related_to` (symmetric, undirected semantically)
+  - `related_to` (symmetric)
   - `duplicate_of` (directed; the source is the duplicate, the target
     is the canonical)
   - `follows` (directed; the source supersedes the target)
-- `sourceObjectId` — Work Graph object the relation originates from.
-- `targetObjectId` — Work Graph object the relation points to.
-- `createdAt`, optional `createdByCatId`, optional `note`.
+  - `blocked_by` is **not** stored — it is a projection-derived
+    inverse of `blocks`. See §3 for canonicalization rules.
+- `sourceRecordKind` / `sourceRecordId` — the Core record family and
+  id this relation originates from. At v1, `kind` is restricted to
+  `project | work_item | task`.
+- `targetRecordKind` / `targetRecordId` — same shape, same restriction.
+- `createdAt`, optional `createdByActorId`, optional `note`.
 
-`WorkGraphLink` is a Core record family, not a renderer-only construct,
-so producers (chat, code, runtime) and projections (System Map,
-Cockpit) read and write the same source of truth.
+`WorkGraphLink` is a Core record family, not a renderer-only construct.
+Producers (chat, code, runtime) write Core identity; the Work Graph
+projection layer maps `(recordKind, recordId)` to graph object id at
+read time. This means renaming or rebuilding the projection cannot
+orphan a link, and links written by one producer are immediately
+visible to any other.
 
-### 2. Allowed object kinds at both ends of a link
+### 2. Allowed record families at both ends of a link
 
-- Both `sourceObjectId` and `targetObjectId` MUST point at a
-  `WorkGraphObjectKind` of `project`, `work_item`, or `task`.
-- Cross-tier links between those kinds are allowed (e.g. a Task can
+- Both ends MUST be a Core record whose family is `project`,
+  `work_item`, or `task`.
+- Cross-tier links across those families are allowed (e.g. a Task can
   block a Work Item).
 - Conversation, Turn, Lane, Run, Artifact, Activity, Outcome,
-  ApprovalBinding, Agent, and Container objects are **out of scope** at
-  v1; they continue to be linked via existing single-parent and
-  evidence-attachment mechanisms.
-- Self-links (source equals target) are rejected at write time.
+  ApprovalBinding, Agent, and Container records are **out of scope**
+  at v1; they continue to participate in the graph via existing Core
+  single-parent FKs and the evidence-attachment mechanism.
+- Self-links (same family AND same id at both ends) are rejected at
+  write time.
 
-### 3. Linkage is orthogonal to hierarchy, not a replacement
+### 3. Canonicalization rules
 
-`WorkGraphLink` does not subsume or replace any existing `linkedXxxId`
-field. A Task still records its parent Work Item via `linkedWorkItemId`,
-a Work Item still records its Project via `linkedProjectId`, and so on.
+To keep the link table free of duplicate-but-equivalent rows:
 
+- `blocks` is the only directional-blocker kind that is stored.
+  Producers that detect a `B blocked_by A` relation MUST write it as
+  `A blocks B` (i.e. swap source and target). The projection derives
+  `blocked_by` for read.
+- `related_to` is symmetric. Storage canonicalizes the pair by sorting
+  `(sourceRecordKind, sourceRecordId)` and `(targetRecordKind,
+  targetRecordId)` lexicographically; the smaller tuple is always the
+  source. Producers MAY submit either order; the canonicalization
+  happens at the write API boundary. The projection presents the
+  relation on both ends.
+- `duplicate_of` and `follows` are directional and stored as written
+  (no canonicalization).
+
+Idempotency is on the canonical form: writing the same
+`(kind, sourceRecordKind, sourceRecordId, targetRecordKind,
+targetRecordId)` after canonicalization is a no-op.
+
+### 4. Linkage is orthogonal to hierarchy, not a replacement
+
+`WorkGraphLink` does not subsume or replace any existing Core single-
+parent FK or Work Graph projection field. Containment FKs
+(`WorkItem.projectId`, `WorkItem.taskId`, `WorkItem.parentWorkItemId`,
+`Task.parentTaskId`, `Run.taskId`, etc.) keep their meaning unchanged.
 `WorkGraphLink` only carries relations that are **not** single-parent
-containment. The Work Graph projection layer renders both, but it MUST
-NOT collapse them into one structure: hierarchy is rendered as
-containment in System Map / Cockpit; linkage is rendered as side-pane
-or chip-level annotations on the relevant object.
+containment.
 
-### 4. We reject the alternatives
+The Work Graph projection layer renders both, but it MUST NOT collapse
+them into one structure: hierarchy is rendered as containment in
+System Map / Cockpit; linkage is rendered as side-pane or chip-level
+annotations on the relevant object.
 
-- **Recursive Work Items via `parent_work_item_id`**: rejected. Re-
-  introduces "Sub-WI vs Task" decision point and weakens the ADR-081
-  three-tier contract that downstream queries, projections, and
-  producer documentation depend on.
-- **Adding more single-parent `linkedXxxId` fields per relation type**
-  (e.g. `blockedByWorkItemId`): rejected. Linear scaling per relation
-  kind, no support for N:M (multiple blockers), and conflates relation
-  semantics with parent containment.
+### 5. We reject the alternatives
+
+- **Re-purposing `WorkItem.parentWorkItemId` (or any other Core
+  containment FK) for lateral relations**: rejected. The FK already
+  exists in Core for hierarchical Sub-Work-Item nesting; reusing it
+  for `blocks` / `related_to` would conflate containment with lateral
+  relations and break ADR-081 §4. ADR-086 leaves that FK alone.
+- **Adding more single-parent fields per relation kind** (e.g. a
+  `blockedByWorkItemId` column on `CoreWorkItemRecord`): rejected.
+  Linear scaling per relation kind, no support for N:M (multiple
+  blockers), conflates relation semantics with parent containment, and
+  cannot represent cross-family relations (e.g. Task blocks Project).
 - **Folding linkage into existing evidence attachments**: rejected.
   Evidence attachments already mean "this object is supporting material
   for that anchor object." Repurposing them for `blocks` / `related_to`
   loses that semantic and breaks the System Map evidence-rendering
   contract.
+- **Writing links keyed on Work Graph projection object id**:
+  rejected. Graph object id is a projection identity that may change
+  with renderer or projection refactors; durable records must key on
+  Core identity.
 
-### 5. Diagnostics responsibilities
+### 6. Diagnostics responsibilities
 
 The Work Graph projection diagnostics layer already enumerates classes
 like `broken_fk`, `unanchored_run`, etc.. Linkage adds two new
 diagnostic kinds at v1:
 
-- `orphan_link` — `sourceObjectId` or `targetObjectId` does not
-  resolve to a known object.
+- `orphan_link` — `(sourceRecordKind, sourceRecordId)` or
+  `(targetRecordKind, targetRecordId)` does not resolve to a known
+  Core record.
 - `link_cycle` — a chain of `blocks` links forms a cycle.
 
 `duplicate_of` cycles, `follows` cycles, and `related_to` are not
@@ -148,13 +192,13 @@ flagged at v1.
   first-class projections rather than ad-hoc filters.
 - Producers (chat / code / runtime) get one explicit shape to write
   when they detect a relation; readers get one explicit shape to query.
-- The ADR-081 three-tier hierarchy stays intact — nothing about
-  Project / Work Item / Task / Run changes.
-- Existing `linkedWorkItemId` field on `WorkGraphObjectSummary`, which
-  was reserved for a possible future Sub-WI direction, is **not**
-  repurposed here. Its presence does not become a contradiction with
-  this ADR; it stays available for ADR-081's existing single-parent
-  semantics if a later spec ever needs it.
+- The ADR-081 three-tier hierarchy and frozen Core FK contract stay
+  intact — nothing about `WorkItem.projectId`, `WorkItem.taskId`,
+  `WorkItem.parentWorkItemId`, `Task.parentTaskId`, `Run.taskId`, or
+  any other ADR-081 §4 FK changes.
+- Anchoring on Core record identity (`recordKind`, `recordId`)
+  instead of Work Graph projection object id keeps the link table
+  durable across renderer or projection refactors.
 
 ### Negative
 
@@ -172,8 +216,10 @@ flagged at v1.
 
 - Paperclip remains a useful comparison point, but Cats Work is no
   longer attempting to mimic Paperclip feature-for-feature. We adopt
-  the lateral-relation half of their model and explicitly reject the
-  recursive-parent half.
+  the lateral-relation half of their model. Sub-Work-Item nesting is
+  already covered by `WorkItem.parentWorkItemId` in Core; whether and
+  when Work UI v1 surfaces a Sub-Work-Item create affordance is a
+  separate UI scope decision, out of scope for this ADR.
 
 ## Related Documents
 

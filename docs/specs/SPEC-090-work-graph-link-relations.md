@@ -80,56 +80,87 @@ read or write links at v1.
 
 1. Cats Core gains a new record family `WorkGraphLink` with the
    following minimum durable fields:
-   - `id`: stable identity for the link.
-   - `kind`: one of `blocks`, `blocked_by`, `related_to`,
-     `duplicate_of`, `follows`.
-   - `sourceObjectId`: object the relation originates from.
-   - `targetObjectId`: object the relation points to.
+   - `id`: stable identity for the link itself.
+   - `kind`: canonical relation kind stored in Core. The canonical
+     set is `blocks`, `related_to`, `duplicate_of`, `follows`.
+     `blocked_by` is **not** stored — it is a projection-derived
+     inverse of `blocks` (see §4 below).
+   - `sourceRecordKind`: Core record family of the source. Restricted
+     to `project | work_item | task` at v1.
+   - `sourceRecordId`: Core record id within that family.
+   - `targetRecordKind`: same shape, same restriction.
+   - `targetRecordId`: same shape, same restriction.
    - `createdAt`: ISO-8601 timestamp.
-   - `createdByCatId` (optional).
+   - `createdByActorId` (optional).
    - `note` (optional, ≤ 280 chars).
-2. Both `sourceObjectId` and `targetObjectId` MUST resolve to a Work
-   Graph object whose `kind` is `project`, `work_item`, or `task`.
-3. The projection layer MUST reject self-links (source equals target)
-   at write time with a structured error.
-4. The projection layer MUST materialize the inverse for
-   `blocks` / `blocked_by`. Producers MAY write either side; readers
-   see both sides.
-5. `WorkGraphProjection` (see ADR-083 §2 / SPEC-083 §Suggested Work
+2. Both `(sourceRecordKind, sourceRecordId)` and `(targetRecordKind,
+   targetRecordId)` MUST resolve to an existing Core record at write
+   time. Otherwise the write fails with a structured error.
+3. The projection layer MUST reject self-links — defined as
+   `sourceRecordKind == targetRecordKind && sourceRecordId ==
+   targetRecordId` — at write time.
+4. **Canonicalization at write time** (per ADR-086 §3):
+   - `blocks` is the only blocker kind stored. A producer that detects
+     `B blocked_by A` MUST write `A blocks B` (swap source / target).
+     The write API SHOULD coerce `blocked_by` submissions by swapping
+     before insert, but MUST NOT store both directions.
+   - `related_to` is symmetric. Storage canonicalizes the pair by
+     ordering `(sourceRecordKind, sourceRecordId)` and
+     `(targetRecordKind, targetRecordId)` lexicographically; the
+     smaller tuple is always the source. Producers MAY submit either
+     order.
+   - `duplicate_of` and `follows` are directional and stored as
+     written.
+5. The projection layer MUST derive read-time views for the operator:
+   - For each `A blocks B` row, render `A blocks B` on A's detail
+     page and `B blocked_by A` on B's detail page.
+   - For each canonical `related_to` row, render the relation on both
+     ends.
+6. `WorkGraphProjection` (see ADR-083 §2 / SPEC-083 §Suggested Work
    Graph Shape) gains a new field `links: WorkGraphLink[]`.
-6. `WorkGraphProjection.diagnostics` gains two new
+7. `WorkGraphProjection.diagnostics` gains two new
    `WorkGraphDiagnosticKind` values:
-   - `orphan_link`: a link whose `sourceObjectId` or `targetObjectId`
-     does not resolve to a known graph object.
+   - `orphan_link`: a link whose `(sourceRecordKind, sourceRecordId)`
+     or `(targetRecordKind, targetRecordId)` does not resolve to an
+     existing Core record (e.g., the underlying record was deleted).
    - `link_cycle`: at least one cycle exists in the directed `blocks`
-     subgraph. Diagnostics MUST include the participating object ids.
-7. `duplicate_of` and `follows` cycles are not flagged at v1.
+     subgraph. Diagnostics MUST include the participating record
+     identities.
+8. `duplicate_of` and `follows` cycles are not flagged at v1.
    `related_to` is symmetric and so cannot cycle.
-8. The renderer MUST surface links in two places at v1:
+9. The renderer MUST surface links in two places at v1:
    - **Per-object detail pages** (Project, Work Item, Task) gain a
-     "Linkage" section listing each relation grouped by `kind`, with a
-     click target navigating to the linked object's detail page.
-   - **Cockpit** gains a derived "Blockers" projection that, for items
-     in the operator's current attention set, lists the upstream
-     `blocks` chain.
-9. The renderer MUST NOT surface links inside System Map's structural
-   tier-nesting view at v1. System Map remains the structural-anchor
-   conformance surface; linkage is layered on per-object detail pages
-   only.
-10. The "+ New work item" / "+ New project" / "+ New task" dialogs MAY
-    accept an optional initial linkage (e.g. "blocks: <existing object>")
-    at v1 but are not required to.
+     "Linkage" section listing each relation grouped by displayed
+     kind (Blocking / Blocked by / Related / Duplicate of / Follows),
+     with a click target navigating to the linked record's detail
+     page.
+   - **Cockpit** gains a derived "Blockers" projection that, for
+     items in the operator's current attention set, lists the
+     upstream `blocks` chain.
+10. The renderer MUST NOT surface links inside System Map's structural
+    tier-nesting view at v1. System Map remains the structural-anchor
+    conformance surface; linkage is layered on per-object detail pages
+    only.
+11. The "+ New work item" / "+ New project" / "+ New task" dialogs MAY
+    accept an optional initial linkage (e.g. "blocks: <existing
+    record>") at v1 but are not required to.
 
 ### Non-Functional Requirements
 
-- The link write API MUST be idempotent on `(kind, sourceObjectId,
-  targetObjectId)` triples. Re-writing the same triple does not
-  duplicate.
+- The link write API MUST be idempotent on the canonical form. After
+  applying §4 canonicalization, writing the same `(kind,
+  sourceRecordKind, sourceRecordId, targetRecordKind, targetRecordId)`
+  is a no-op (no duplicate row, same `id` returned).
 - The projection MUST keep cycle-detection cost bounded by the count of
-  `blocks` links, not the count of all graph objects.
+  `blocks` rows, not the count of all graph objects.
 - All link reads MUST be available through the same `WorkGraphProjection`
   read model that today drives System Map and Cockpit, so the renderer
   does not open a second data path.
+- Writes MUST go through the canonical Core record family; no surface
+  (renderer or producer) is permitted to maintain a separate
+  client-side or projection-only writable link store. This is the
+  ADR-086 single-source-of-truth requirement; PLAN-079 sequences
+  delivery so no phase ever ships a producer-invisible writable store.
 
 ## Suggested Record Shape
 
@@ -139,22 +170,37 @@ Core record shape is the producer pipeline's responsibility; this spec
 defines the projection contract and renderer expectations.
 
 ```ts
+// Stored kinds (Core). `blocked_by` is NOT a stored kind — it is a
+// projection-derived view of `blocks`.
 export type WorkGraphLinkKind =
+  | "blocks"
+  | "related_to"
+  | "duplicate_of"
+  | "follows";
+
+// Endpoint identity is canonical Core identity, NOT projection object id.
+export type WorkGraphLinkEndpointKind = "project" | "work_item" | "task";
+
+export interface WorkGraphLink {
+  id: string;
+  kind: WorkGraphLinkKind;
+  sourceRecordKind: WorkGraphLinkEndpointKind;
+  sourceRecordId: string;
+  targetRecordKind: WorkGraphLinkEndpointKind;
+  targetRecordId: string;
+  createdAt: string;
+  createdByActorId: string | null;
+  note: string | null;
+}
+
+// Read-side view kinds the projection synthesizes per object — includes
+// the derived `blocked_by` view that does not appear in storage.
+export type WorkGraphLinkViewKind =
   | "blocks"
   | "blocked_by"
   | "related_to"
   | "duplicate_of"
   | "follows";
-
-export interface WorkGraphLink {
-  id: string;
-  kind: WorkGraphLinkKind;
-  sourceObjectId: string;
-  targetObjectId: string;
-  createdAt: string;
-  createdByCatId: string | null;
-  note: string | null;
-}
 
 export interface WorkGraphProjection {
   // existing fields …
@@ -165,11 +211,22 @@ export interface WorkGraphProjection {
 ## Producer Interface
 
 Producers (chat, code, runtime) interact with links through a single
-write API:
+write API. All endpoints use canonical Core record identity — never
+Work Graph projection object id:
 
-- `createLink(kind, sourceObjectId, targetObjectId, note?) → WorkGraphLink`
+- `createLink({
+    kind,
+    source: { recordKind, recordId },
+    target: { recordKind, recordId },
+    note?
+  }) → WorkGraphLink`
 - `removeLink(linkId) → void`
-- `listLinks({ objectId? , kind? }) → WorkGraphLink[]`
+- `listLinks({ recordKind?, recordId?, kind? }) → WorkGraphLink[]`
+
+`createLink` MUST apply §4 canonicalization before insert and MUST
+behave idempotently on the canonical form. Submitting `blocked_by` is
+allowed at the API surface; the implementation rewrites it as `blocks`
+with source / target swapped.
 
 The transport binding (REST endpoint, RPC method, in-process call) is
 out of scope for this spec; it follows the existing producer-pipeline

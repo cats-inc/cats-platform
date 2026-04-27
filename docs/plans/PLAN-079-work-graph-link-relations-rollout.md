@@ -70,29 +70,7 @@ mock fixtures first.
   outgoing links and let the user navigate to each related object.
 - No regressions on the existing Overview / Tasks / Activity sections.
 
-## Phase 3 — Add-link affordance and dialog
-
-**Scope.**
-- A new shared dialog `NewLinkDialog` (parallel to `NewProjectDialog` /
-  `NewWorkItemDialog`).
-- The dialog exposes: kind picker, target picker (typeahead across
-  Projects / Work Items / Tasks, filtered to non-deleted), optional
-  note.
-- Each detail page's Linkage section gains an "Add link" button that
-  opens the dialog with `sourceObjectId` already filled.
-- Wires through to a renderer-side store (`workLinksStore`) that
-  mirrors the `pinnedProjectsStore` / `workItemsStore` patterns:
-  in-memory `createdLinks[]`, localStorage-backed, exposes
-  `useWorkLinks()` and `createLink` / `removeLink`.
-
-**Done when.**
-- The user can add a link of every v1 kind from any of the three
-  detail pages.
-- Self-link attempts are rejected before submission.
-- Created links survive page refresh through localStorage and
-  immediately appear in the Linkage section.
-
-## Phase 4 — Cockpit Blockers rail
+## Phase 3 — Cockpit Blockers rail
 
 **Scope.**
 - Add a "Blockers" rail to `CockpitPage` that, for each row in the
@@ -106,7 +84,7 @@ mock fixtures first.
 - The rail honors the existing System Map / Cockpit shared
   detail-drawer click pattern.
 
-## Phase 5 — Diagnostics in Broken Links page
+## Phase 4 — Diagnostics in Broken Links page
 
 **Scope.**
 - Extend the existing Broken Links page renderer to display
@@ -115,42 +93,65 @@ mock fixtures first.
 
 **Done when.**
 - Seeded orphan / cycle fixtures show on Broken Links.
-- Resolving the underlying issue (e.g. removing the offending link via
-  Phase 3 affordance, once that lands) clears the diagnostic on next
-  projection rebuild.
+- Resolving the underlying issue (i.e. removing the offending link
+  once Phase 5 ships writes) clears the diagnostic on next projection
+  rebuild.
 
-## Phase 6 — Producer pipeline wiring (server-side)
+## Phase 5 — Producer pipeline wiring + Add-link affordance
+
+This is the **first** phase that introduces user-writable links. Per
+ADR-086 and SPEC-090, no earlier phase ships a renderer-side or
+projection-only writable store; user-visible link creation is gated on
+producer-pipeline support so that writes always land in the canonical
+Core record family from day one.
 
 **Scope.**
-- Replace the renderer-side `workLinksStore` with reads / writes
-  against the canonical producer pipeline (chat, code, runtime).
-- Idempotency on `(kind, sourceObjectId, targetObjectId)` is enforced
-  server-side.
-- Inverse materialization (`blocks ↔ blocked_by`) happens server-side;
-  the renderer drops its client-side mirroring helper.
+- Producer pipeline gains read / write support for the canonical
+  `WorkGraphLink` record family per SPEC-090's producer interface
+  (`createLink` / `removeLink` / `listLinks` keyed on canonical Core
+  record identity).
+- The producer pipeline owns canonicalization (`blocks` swap when a
+  caller submits `blocked_by`; lexicographic sort for `related_to`)
+  and idempotency on the canonical form.
+- A new shared dialog `NewLinkDialog` (parallel to `NewProjectDialog` /
+  `NewWorkItemDialog`) exposes: kind picker, target picker (typeahead
+  across Projects / Work Items / Tasks, filtered to non-deleted),
+  optional note. Submission calls the producer-pipeline `createLink`
+  endpoint; there is **no** renderer-side persistence layer.
+- Each detail page's Linkage section gains an "Add link" button that
+  opens the dialog with the source record's `(recordKind, recordId)`
+  already filled.
 
 **Done when.**
-- Chat / code / runtime can write links and they appear in the
-  projection without renderer-side caching.
-- localStorage fallback is removed.
-- SPEC-090 producer-interface acceptance criteria pass.
+- Chat / code / runtime / the renderer can all write links and the
+  result is visible to the others through the projection without any
+  renderer-side caching.
+- The dialog can write each canonical kind (`blocks`, `related_to`,
+  `duplicate_of`, `follows`) and `blocked_by` submissions are coerced
+  into `blocks` per SPEC-090 §4.
+- Self-link attempts are rejected at the dialog and again at the
+  producer API.
+- The orphan / cycle diagnostics from Phase 4 clear when the user
+  removes the offending link.
+- SPEC-090's acceptance criteria pass end-to-end.
 
 ## Cross-cutting
 
 - All phases are gated by ADR-086 staying Accepted; if the ADR is
-  revised back to recursive Sub-WI, this plan is superseded.
+  revised away from N:M lateral linkage, this plan is superseded.
 - Each phase ships in its own commit and is independently revertible.
-- No phase changes the existing `linkedXxxId` parent fields or the
-  ADR-081 tier contract.
+- No phase changes the existing Core single-parent FKs from ADR-081 §4
+  (`WorkItem.projectId`, `WorkItem.taskId`, `WorkItem.parentWorkItemId`,
+  `Task.parentTaskId`, `Run.taskId`, etc.).
+- No phase ships a renderer-side or projection-only writable link
+  store. User-visible link creation is gated on Phase 5 producer-
+  pipeline support so links always live in the canonical Core record
+  family.
 
 ## Open Items
 
-- Phase 6's producer-side schema (Core record family vs derived
-  projection) is the producer pipeline owner's call. SPEC-090 only
-  defines the read shape and the renderer-facing write API; the actual
-  storage is producer-pipeline territory.
 - Whether to expose linkage-aware filters in System Map or keep them
-  Cockpit-only is a Phase 7 question; deferred.
+  Cockpit-only is a Phase 6 question; deferred.
 
 ## Related Documents
 
