@@ -47,6 +47,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
 | [PLAN-075](./PLAN-075-real-provider-orchestrator-integration.md) | Real Provider Orchestrator Integration | Draft | [PLAN-074](./PLAN-074-cats-work-agent-supervision-rollout.md), [SPEC-082](../specs/SPEC-082-cats-work-agent-supervision-and-tool-boundary.md), [ADR-082](../decisions/082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md) |
+| [PLAN-075](./PLAN-075-composer-voice-input-native-stt-rollout.md) | Composer Voice Input Native STT Rollout | Draft | [SPEC-084](../specs/SPEC-084-composer-voice-input-via-platform-native-stt.md), [ADR-079](../decisions/079-use-platform-native-stt-with-linux-toast-fallback.md) |
 | [PLAN-074](./PLAN-074-cats-work-agent-supervision-rollout.md) | Cats Work Agent Supervision Rollout | Ready for Review | [SPEC-082](../specs/SPEC-082-cats-work-agent-supervision-and-tool-boundary.md), [ADR-082](../decisions/082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md) |
 | [PLAN-073](./PLAN-073-transport-fanout-rollout.md) | Transport Fanout Rollout | Draft | [SPEC-081](../specs/SPEC-081-transport-fanout-for-web-originated-messages.md), [ADR-080](../decisions/080-fan-out-web-originated-messages-to-bound-transports.md) |
 | [PLAN-071](./PLAN-071-region-screenshot-composer-rollout.md) | Region Screenshot Composer Rollout | Draft | [SPEC-079](../specs/SPEC-079-region-screenshot-composer-attachments.md), [ADR-078](../decisions/078-use-electron-native-region-screenshot-with-web-fallback.md) |
@@ -128,6 +129,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-04-27 (PLAN-075 added)*
+*Last updated: 2026-04-28 (PLAN-075 entries added)*
 
 *See also: [specs/](../specs/) for feature specifications*

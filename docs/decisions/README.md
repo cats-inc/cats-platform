@@ -43,6 +43,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | [082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision](./082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md) | Recast the orchestrator as a capability shell with policy-dial supervision | Proposed | 2026-04-25 |
 | [081-canonicalize-three-tier-core-record-taxonomy](./081-canonicalize-three-tier-core-record-taxonomy.md) | Canonicalize the Core record taxonomy as Interaction / Planning / Execution | Proposed | 2026-04-22 |
 | [080-fan-out-web-originated-messages-to-bound-transports](./080-fan-out-web-originated-messages-to-bound-transports.md) | Fan Out Web-Originated Messages to Bound Transports | Proposed | 2026-04-22 |
+| [079-use-platform-native-stt-with-linux-toast-fallback](./079-use-platform-native-stt-with-linux-toast-fallback.md) | Use Platform-Native STT for Composer Voice Input with Linux Toast Fallback | Proposed | 2026-04-28 |
 | [078-use-electron-native-region-screenshot-with-web-fallback](./078-use-electron-native-region-screenshot-with-web-fallback.md) | Use Electron-native region screenshot with web fallback | Proposed | 2026-04-21 |
 | [077-make-parallel-draft-state-per-branch-addressable-for-orchestrator-composition](./077-make-parallel-draft-state-per-branch-addressable-for-orchestrator-composition.md) | Make parallel draft state per-branch-addressable so orchestrators can compose M×N team plans | Proposed | 2026-04-21 |
 | [076-lay-parallel-draft-branches-in-a-3d-compare-carousel](./076-lay-parallel-draft-branches-in-a-3d-compare-carousel.md) | Lay parallel-draft branches out as a bounded 3D compare carousel with per-card chrome | Proposed | 2026-04-21 |
@@ -124,6 +125,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-04-25 (ADR-083 added)*
+*Last updated: 2026-04-28 (ADR-079 added)*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*
