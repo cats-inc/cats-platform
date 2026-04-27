@@ -352,7 +352,7 @@ restating it.
       rejection.
 - [x] Task 2.4: Add tests proving the platform preserves agent semantic choices
       instead of substituting its own plan.
-- [ ] Task 2.5: Define weak-capability policy dials without bypassing the
+- [x] Task 2.5: Define weak-capability policy dials without bypassing the
       provider-agent seam: autonomy no higher than `single_step`, tiny task
       granularity, `sop_template` scaffolding, schema-required validation,
       every-step checkpointing, narrow tool surfaces, and deterministic
@@ -647,3 +647,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 3: added the provider-agent runtime adapter, keeping create/send calls behind `platform/supervision/runtimeBoundary`, validating bounded observations before runtime calls, and rejecting provider decisions that exceed the bounded tool surface. |
 | 2026-04-28 | Implementation slice 4: added a deterministic provider-agent policy gate over policy dials, parent/tool-scope intersection, schema-required validation, single-step weak-profile limits, delegation autonomy, and allowed recovery fallback choices. |
 | 2026-04-28 | Implementation slice 5: added contract coverage proving the provider-agent adapter preserves the provider-authored semantic plan and does not import the old platform planner/dispatcher path. |
+| 2026-04-28 | Implementation slice 6: pinned Ollama/local weak-provider policy output to the same provider-agent seam with single-step autonomy, tiny granularity, read-only tool scope, SOP scaffolding, schema-required validation, every-step checkpoints, and human escalation by default. |
