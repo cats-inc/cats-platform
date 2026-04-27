@@ -142,3 +142,43 @@ test('supervised run lifecycle service cancels pending approvals with audit meta
   assert.equal(cancelled.cancelAudit?.requestedBy, 'operator:owner');
   assert.equal(cancelled.cancelAudit?.reasonCode, 'operator_decision');
 });
+
+test('supervised run lifecycle service handles soft and hard timeouts', () => {
+  const service = createSupervisedRunLifecycleService({ now: createClock() });
+  const running = service.create({ runId: 'run-7', lifecycle: 'active' });
+  const softTimedOut = service.timeout(running, {
+    timeoutId: 'first-response',
+    message: 'First response timed out.',
+  });
+  const hardTimedOut = service.timeout(running, {
+    timeoutId: 'hard-stop',
+    hardStop: true,
+  });
+
+  assert.equal(softTimedOut.lifecycle, 'active');
+  assert.equal(softTimedOut.primaryState, 'blocked');
+  assert.equal(softTimedOut.blockers[0]?.code, 'TIMEOUT');
+  assert.deepEqual(softTimedOut.blockers[0]?.details, { timeoutId: 'first-response' });
+  assert.equal(hardTimedOut.lifecycle, 'failed');
+  assert.equal(hardTimedOut.primaryState, 'failed');
+  assert.equal(hardTimedOut.terminalCause, 'timeout: hard-stop');
+});
+
+test('supervised run lifecycle service resumes and retries without semantic recovery', () => {
+  const service = createSupervisedRunLifecycleService({ now: createClock() });
+  const running = service.create({ runId: 'run-8', lifecycle: 'active' });
+  const blocked = service.timeout(running, { timeoutId: 'first-response' });
+  const resumed = service.resume(blocked);
+  const retried = service.retry(blocked, { reason: 'operator requested retry' });
+  const retryMetadata = retried.metadata.supervision as Record<string, unknown>;
+
+  assert.equal(resumed.lifecycle, 'active');
+  assert.equal(resumed.primaryState, 'running');
+  assert.deepEqual(resumed.blockers, []);
+  assert.equal(retried.lifecycle, 'active');
+  assert.equal(retried.primaryState, 'running');
+  assert.deepEqual(retried.blockers, []);
+  assert.deepEqual(retryMetadata.lifecycleRetry, {
+    reason: 'operator requested retry',
+  });
+});

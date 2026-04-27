@@ -54,6 +54,21 @@ export interface CancelSupervisedRunInput {
   reasonNote?: string;
 }
 
+export interface TimeoutSupervisedRunInput {
+  timeoutId: string;
+  hardStop?: boolean;
+  message?: string;
+}
+
+export interface ResumeSupervisedRunInput {
+  approvalRequests?: RunApprovalRequestState[];
+}
+
+export interface RetrySupervisedRunInput {
+  reason: string;
+  approvalRequests?: RunApprovalRequestState[];
+}
+
 export interface SupervisedRunLifecycleService {
   create(input: CreateSupervisedRunLifecycleInput): SupervisedRunLifecycleRecord;
   transition(
@@ -67,6 +82,18 @@ export interface SupervisedRunLifecycleService {
   cancel(
     current: SupervisedRunLifecycleRecord,
     input: CancelSupervisedRunInput,
+  ): SupervisedRunLifecycleRecord;
+  timeout(
+    current: SupervisedRunLifecycleRecord,
+    input: TimeoutSupervisedRunInput,
+  ): SupervisedRunLifecycleRecord;
+  resume(
+    current: SupervisedRunLifecycleRecord,
+    input?: ResumeSupervisedRunInput,
+  ): SupervisedRunLifecycleRecord;
+  retry(
+    current: SupervisedRunLifecycleRecord,
+    input: RetrySupervisedRunInput,
   ): SupervisedRunLifecycleRecord;
 }
 
@@ -191,6 +218,81 @@ export function createSupervisedRunLifecycleService(options: {
         evaluation,
         cancelAudit: evaluation.cancelAudit,
       });
+    },
+    timeout(current, input) {
+      const timestamp = now();
+      if (input.hardStop === true) {
+        return materialize({
+          runId: current.runId,
+          lifecycle: 'failed',
+          blockers: current.blockers,
+          approvalRequests: current.approvalRequests,
+          terminalCause: `timeout: ${input.timeoutId}`,
+          createdAt: current.createdAt,
+          updatedAt: timestamp,
+          metadata: current.metadata,
+        });
+      }
+
+      return materialize({
+        runId: current.runId,
+        lifecycle: current.lifecycle,
+        blockers: [
+          ...current.blockers,
+          {
+            code: 'TIMEOUT',
+            message: input.message ?? 'Run timed out waiting for progress.',
+            details: { timeoutId: input.timeoutId },
+          },
+        ],
+        approvalRequests: current.approvalRequests,
+        createdAt: current.createdAt,
+        updatedAt: timestamp,
+        metadata: current.metadata,
+      });
+    },
+    resume(current, input = {}) {
+      return materialize({
+        runId: current.runId,
+        lifecycle: 'active',
+        blockers: [],
+        approvalRequests: input.approvalRequests ?? current.approvalRequests,
+        createdAt: current.createdAt,
+        updatedAt: now(),
+        metadata: current.metadata,
+      });
+    },
+    retry(current, input) {
+      return materialize({
+        runId: current.runId,
+        lifecycle: 'active',
+        blockers: [],
+        approvalRequests: input.approvalRequests ?? current.approvalRequests,
+        createdAt: current.createdAt,
+        updatedAt: now(),
+        metadata: writeRetryMetadata(current.metadata, input.reason),
+      });
+    },
+  };
+}
+
+function writeRetryMetadata(
+  metadata: Record<string, unknown>,
+  reason: string,
+): Record<string, unknown> {
+  const supervision = metadata.supervision &&
+    typeof metadata.supervision === 'object' &&
+    !Array.isArray(metadata.supervision)
+    ? metadata.supervision as Record<string, unknown>
+    : {};
+
+  return {
+    ...metadata,
+    supervision: {
+      ...supervision,
+      lifecycleRetry: {
+        reason,
+      },
     },
   };
 }
