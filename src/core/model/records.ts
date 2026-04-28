@@ -1,5 +1,7 @@
 export { upsertCoreActor } from './actorRecords.js';
 export {
+  removeCoreProject,
+  removeCoreWorkItem,
   upsertCoreArtifact,
   upsertCoreProject,
   upsertCoreWorkItem,
@@ -25,6 +27,7 @@ export {
   upsertCoreTurn,
 } from './interactionRecords.js';
 export { upsertCoreApprovalBinding } from './governanceRecords.js';
+export { removeCoreTask } from './taskControls.js';
 export {
   listCoreWorkGraphLinks,
   removeCoreWorkGraphLink,

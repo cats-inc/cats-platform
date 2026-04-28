@@ -114,6 +114,27 @@ export function upsertCoreTask(
   };
 }
 
+/**
+ * Hard-delete a task. Runs / approvals / work items anchored on this
+ * task retain their FKs; the projection layer surfaces dangling
+ * references through existing diagnostic kinds.
+ */
+export function removeCoreTask(
+  core: CatsCoreState,
+  taskId: string,
+  now: Date = new Date(),
+): { core: CatsCoreState; removed: boolean } {
+  const nowIso = now.toISOString();
+  const next = core.tasks.filter((task) => task.id !== taskId);
+  if (next.length === core.tasks.length) {
+    return { core, removed: false };
+  }
+  return {
+    core: touchCoreState({ ...core, tasks: next }, nowIso),
+    removed: true,
+  };
+}
+
 export function patchOwnerProfile(
   core: CatsCoreState,
   patch: OwnerProfilePatchInput,

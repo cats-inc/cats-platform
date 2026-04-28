@@ -51,6 +51,7 @@ import {
   type WorkWorkItemDetailProjection,
 } from './projection.js';
 import { routeWorkLinksApi } from './linksRoutes.js';
+import { routeWorkProductCrudApi } from './productCrudRoutes.js';
 import {
   matchRoute,
   sendJson,
@@ -338,6 +339,13 @@ export async function routeWorkApi(
 ): Promise<boolean> {
   // SPEC-090 link routes (createLink / removeLink / listLinks)
   if (await routeWorkLinksApi(context)) {
+    return true;
+  }
+
+  // CRUD writes for projects / work items / tasks (POST + DELETE).
+  // Runs BEFORE the existing GET-only handlers so DELETE doesn't fall
+  // through to the 405 branch in the GET dispatch.
+  if (await routeWorkProductCrudApi(context)) {
     return true;
   }
 

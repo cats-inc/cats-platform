@@ -227,3 +227,44 @@ export function upsertCoreArtifact(
     created,
   };
 }
+
+/**
+ * Hard-delete a project. Work items / tasks pointing at the deleted
+ * project keep their FK; the projection layer surfaces the dangling
+ * reference as a missing_project_anchor diagnostic.
+ */
+export function removeCoreProject(
+  core: CatsCoreState,
+  projectId: string,
+  now: Date = new Date(),
+): { core: CatsCoreState; removed: boolean } {
+  const nowIso = now.toISOString();
+  const next = core.projects.filter((project) => project.id !== projectId);
+  if (next.length === core.projects.length) {
+    return { core, removed: false };
+  }
+  return {
+    core: touchCoreState({ ...core, projects: next }, nowIso),
+    removed: true,
+  };
+}
+
+/**
+ * Hard-delete a work item. Tasks anchored on the work item via
+ * `WorkItem.taskId` remain in Core; only the work item row is removed.
+ */
+export function removeCoreWorkItem(
+  core: CatsCoreState,
+  workItemId: string,
+  now: Date = new Date(),
+): { core: CatsCoreState; removed: boolean } {
+  const nowIso = now.toISOString();
+  const next = core.workItems.filter((workItem) => workItem.id !== workItemId);
+  if (next.length === core.workItems.length) {
+    return { core, removed: false };
+  }
+  return {
+    core: touchCoreState({ ...core, workItems: next }, nowIso),
+    removed: true,
+  };
+}
