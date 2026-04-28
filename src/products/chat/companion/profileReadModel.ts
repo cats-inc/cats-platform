@@ -1,50 +1,15 @@
-import type {
-  CompanionDerivedRecord,
-  CompanionSourceRecord,
-} from './contracts.js';
-import {
-  classifyCompanionSourceRecord,
-  type CompanionSourceSurface,
-} from './sourceClassifier.js';
+import type { CompanionDerivedRecord } from './contracts.js';
 
 /**
- * SPEC-085 §profile read model — projections the companion main surface
- * tabs render. Each tile shape is intentionally flat: it carries the
- * source/derived id, the surface label, and only the fields the renderer
- * needs. Render-side widgets resolve thumbnails/links from the underlying
- * source on demand.
+ * Companion profile read model — projections the companion main surface
+ * tabs render. The model is intentionally agent-only: posts, photos, videos,
+ * music, and files all come from `CompanionDerivedRecord` entries that the
+ * Cat (or future agent producers) wrote with `metadata.profileSurface` set
+ * to one of `post` / `photo` / `video` / `music` / `file`. Owner-supplied
+ * `CompanionSourceRecord` data is NOT projected into these tabs — sources
+ * are the ingredients the Cat reads from, never auto-published material on
+ * the profile surface.
  */
-
-export type CompanionProfileFileTileOrigin = 'source' | 'artifact';
-
-export interface CompanionProfileFileTile {
-  id: string;
-  origin: CompanionProfileFileTileOrigin;
-  sourceId: string;
-  title: string;
-  mimeType: string | null;
-  storedPath: string | null;
-  linkedPath: string | null;
-  sourceUrl: string | null;
-  updatedAt: string;
-}
-
-export type CompanionProfileMediaSurface = Extract<
-  CompanionSourceSurface,
-  'photo' | 'video' | 'music'
->;
-
-export interface CompanionProfileMediaTile {
-  id: string;
-  surface: CompanionProfileMediaSurface;
-  sourceId: string;
-  title: string;
-  storedPath: string | null;
-  linkedPath: string | null;
-  sourceUrl: string | null;
-  mimeType: string | null;
-  updatedAt: string;
-}
 
 export type CompanionProfilePostStatus = 'active' | 'removed';
 
@@ -63,11 +28,32 @@ export interface CompanionProfilePost {
   body: string;
   tags: string[];
   status: CompanionProfilePostStatus;
-  originType: string | null;
-  originId: string | null;
   mediaRefs: CompanionProfilePostMediaRef[];
   sourceIds: string[];
-  promotedAt: string;
+  publishedAt: string;
+  updatedAt: string;
+}
+
+export type CompanionProfileMediaSurface = 'photo' | 'video' | 'music';
+
+export interface CompanionProfileMediaTile {
+  id: string;
+  surface: CompanionProfileMediaSurface;
+  derivedId: string;
+  title: string;
+  mimeType: string | null;
+  storedPath: string | null;
+  publishedAt: string;
+  updatedAt: string;
+}
+
+export interface CompanionProfileFileTile {
+  id: string;
+  derivedId: string;
+  title: string;
+  mimeType: string | null;
+  storedPath: string | null;
+  publishedAt: string;
   updatedAt: string;
 }
 
@@ -79,90 +65,80 @@ export interface CompanionProfileReadModel {
   files: CompanionProfileFileTile[];
 }
 
-const PROFILE_POST_PRODUCER = 'owner_promotion_v1';
+const PROFILE_SURFACE_KEY = 'profileSurface';
 const PROFILE_POST_SURFACE = 'post';
+const PROFILE_PHOTO_SURFACE = 'photo';
+const PROFILE_VIDEO_SURFACE = 'video';
+const PROFILE_MUSIC_SURFACE = 'music';
+const PROFILE_FILE_SURFACE = 'file';
+
+const PROFILE_POST_STATUS_KEY = 'profilePostStatus';
+const PROFILE_PUBLISHED_AT_KEY = 'profilePublishedAt';
+const PROFILE_MEDIA_REFS_KEY = 'profilePostMediaRefs';
+const PROFILE_MEDIA_STORED_PATH_KEY = 'profileMediaStoredPath';
+const PROFILE_MEDIA_MIME_TYPE_KEY = 'profileMediaMimeType';
 
 export interface ProjectCompanionProfileInput {
-  sources: readonly CompanionSourceRecord[];
   derived: readonly CompanionDerivedRecord[];
 }
 
 export function projectCompanionProfile(
   input: ProjectCompanionProfileInput,
 ): CompanionProfileReadModel {
-  const sourcesById = new Map<string, CompanionSourceRecord>();
-  for (const source of input.sources) {
-    sourcesById.set(source.id, source);
-  }
-
+  const posts: CompanionProfilePost[] = [];
   const photos: CompanionProfileMediaTile[] = [];
   const videos: CompanionProfileMediaTile[] = [];
   const music: CompanionProfileMediaTile[] = [];
   const files: CompanionProfileFileTile[] = [];
 
-  for (const source of input.sources) {
-    const surface = classifyCompanionSourceRecord(source);
-    if (surface === 'photo') {
-      photos.push(buildMediaTile(source, 'photo'));
+  for (const record of input.derived) {
+    const surface = readSurface(record);
+    if (surface === PROFILE_POST_SURFACE) {
+      posts.push(buildPost(record));
       continue;
     }
-    if (surface === 'video') {
-      videos.push(buildMediaTile(source, 'video'));
+    if (surface === PROFILE_PHOTO_SURFACE) {
+      photos.push(buildMediaTile(record, 'photo'));
       continue;
     }
-    if (surface === 'music') {
-      music.push(buildMediaTile(source, 'music'));
+    if (surface === PROFILE_VIDEO_SURFACE) {
+      videos.push(buildMediaTile(record, 'video'));
       continue;
     }
-    if (surface === 'file') {
-      files.push(buildFileTile(source));
-      // SPEC-085 rule 32: an owner-uploaded PDF projects into BOTH
-      // Sources (provenance) and Files (browsing). The Sources tab
-      // continues to read from the raw source list directly, so this
-      // append is the only thing needed to satisfy the dual-projection
-      // contract.
+    if (surface === PROFILE_MUSIC_SURFACE) {
+      music.push(buildMediaTile(record, 'music'));
       continue;
     }
-    // 'source_only' stays in Sources (raw source list) and does not
-    // project into the media or files tabs.
+    if (surface === PROFILE_FILE_SURFACE) {
+      files.push(buildFileTile(record));
+      continue;
+    }
   }
 
-  const posts = projectCompanionPosts(input.derived, sourcesById);
+  posts.sort((left, right) => right.publishedAt.localeCompare(left.publishedAt));
+  photos.sort((left, right) => right.publishedAt.localeCompare(left.publishedAt));
+  videos.sort((left, right) => right.publishedAt.localeCompare(left.publishedAt));
+  music.sort((left, right) => right.publishedAt.localeCompare(left.publishedAt));
+  files.sort((left, right) => right.publishedAt.localeCompare(left.publishedAt));
 
   return { posts, photos, videos, music, files };
 }
 
-export function projectCompanionPosts(
-  derived: readonly CompanionDerivedRecord[],
-  _sourcesById?: ReadonlyMap<string, CompanionSourceRecord>,
-): CompanionProfilePost[] {
-  const posts: CompanionProfilePost[] = [];
-  for (const record of derived) {
-    if (!isProfilePostRecord(record)) {
-      continue;
-    }
-    posts.push(buildProfilePost(record));
-  }
-  posts.sort((left, right) => right.promotedAt.localeCompare(left.promotedAt));
-  return posts;
+function readSurface(record: CompanionDerivedRecord): string | null {
+  const metadata = record.metadata ?? {};
+  const value = metadata[PROFILE_SURFACE_KEY];
+  return typeof value === 'string' ? value : null;
 }
 
-function isProfilePostRecord(record: CompanionDerivedRecord): boolean {
+function readPublishedAt(record: CompanionDerivedRecord): string {
   const metadata = record.metadata ?? {};
-  return (
-    typeof metadata.profileSurface === 'string'
-    && metadata.profileSurface === PROFILE_POST_SURFACE
-  );
+  const value = metadata[PROFILE_PUBLISHED_AT_KEY];
+  return typeof value === 'string' ? value : record.createdAt;
 }
 
-function buildProfilePost(record: CompanionDerivedRecord): CompanionProfilePost {
+function buildPost(record: CompanionDerivedRecord): CompanionProfilePost {
   const metadata = record.metadata ?? {};
-  const status = metadata.profilePostStatus === 'removed' ? 'removed' : 'active';
-  const mediaRefs = readMediaRefs(metadata.profilePostMediaRefs);
-  const promotedAt =
-    typeof metadata.profilePostPromotedAt === 'string'
-      ? metadata.profilePostPromotedAt
-      : record.createdAt;
+  const status = metadata[PROFILE_POST_STATUS_KEY] === 'removed' ? 'removed' : 'active';
   return {
     id: `post:${record.id}`,
     derivedId: record.id,
@@ -171,17 +147,47 @@ function buildProfilePost(record: CompanionDerivedRecord): CompanionProfilePost 
     body: record.content,
     tags: [...record.tags],
     status,
-    originType:
-      typeof metadata.profilePostOriginType === 'string'
-        ? metadata.profilePostOriginType
-        : null,
-    originId:
-      typeof metadata.profilePostOriginId === 'string'
-        ? metadata.profilePostOriginId
-        : null,
-    mediaRefs,
+    mediaRefs: readMediaRefs(metadata[PROFILE_MEDIA_REFS_KEY]),
     sourceIds: [...record.sourceIds],
-    promotedAt,
+    publishedAt: readPublishedAt(record),
+    updatedAt: record.updatedAt,
+  };
+}
+
+function buildMediaTile(
+  record: CompanionDerivedRecord,
+  surface: CompanionProfileMediaSurface,
+): CompanionProfileMediaTile {
+  const metadata = record.metadata ?? {};
+  return {
+    id: `${surface}:${record.id}`,
+    surface,
+    derivedId: record.id,
+    title: record.title ?? '(Untitled)',
+    mimeType: typeof metadata[PROFILE_MEDIA_MIME_TYPE_KEY] === 'string'
+      ? (metadata[PROFILE_MEDIA_MIME_TYPE_KEY] as string)
+      : null,
+    storedPath: typeof metadata[PROFILE_MEDIA_STORED_PATH_KEY] === 'string'
+      ? (metadata[PROFILE_MEDIA_STORED_PATH_KEY] as string)
+      : null,
+    publishedAt: readPublishedAt(record),
+    updatedAt: record.updatedAt,
+  };
+}
+
+function buildFileTile(record: CompanionDerivedRecord): CompanionProfileFileTile {
+  const metadata = record.metadata ?? {};
+  return {
+    id: `file:${record.id}`,
+    derivedId: record.id,
+    title: record.title ?? '(Untitled file)',
+    mimeType: typeof metadata[PROFILE_MEDIA_MIME_TYPE_KEY] === 'string'
+      ? (metadata[PROFILE_MEDIA_MIME_TYPE_KEY] as string)
+      : null,
+    storedPath: typeof metadata[PROFILE_MEDIA_STORED_PATH_KEY] === 'string'
+      ? (metadata[PROFILE_MEDIA_STORED_PATH_KEY] as string)
+      : null,
+    publishedAt: readPublishedAt(record),
     updatedAt: record.updatedAt,
   };
 }
@@ -206,53 +212,20 @@ function readMediaRefs(value: unknown): CompanionProfilePostMediaRef[] {
   return refs;
 }
 
-function buildMediaTile(
-  source: CompanionSourceRecord,
-  surface: CompanionProfileMediaSurface,
-): CompanionProfileMediaTile {
-  return {
-    id: `${surface}:${source.id}`,
-    surface,
-    sourceId: source.id,
-    title: source.title ?? source.originalFileName ?? '(Untitled)',
-    storedPath: source.storedPath,
-    linkedPath: source.linkedPath,
-    sourceUrl: source.sourceUrl,
-    mimeType: source.mimeType,
-    updatedAt: source.updatedAt,
-  };
-}
-
-function buildFileTile(source: CompanionSourceRecord): CompanionProfileFileTile {
-  return {
-    id: `file:${source.id}`,
-    origin: 'source',
-    sourceId: source.id,
-    title: source.title ?? source.originalFileName ?? '(Untitled file)',
-    mimeType: source.mimeType,
-    storedPath: source.storedPath,
-    linkedPath: source.linkedPath,
-    sourceUrl: source.sourceUrl,
-    updatedAt: source.updatedAt,
-  };
-}
-
 function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return (
-    typeof value === 'object'
-    && value !== null
-    && !Array.isArray(value)
-  );
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-export const COMPANION_PROFILE_POST_METADATA_KEYS = {
-  surface: 'profileSurface',
-  surfaceValue: PROFILE_POST_SURFACE,
-  status: 'profilePostStatus',
-  producer: 'profilePostProducer',
-  producerValue: PROFILE_POST_PRODUCER,
-  originType: 'profilePostOriginType',
-  originId: 'profilePostOriginId',
-  mediaRefs: 'profilePostMediaRefs',
-  promotedAt: 'profilePostPromotedAt',
+export const COMPANION_PROFILE_METADATA_KEYS = {
+  surface: PROFILE_SURFACE_KEY,
+  postSurface: PROFILE_POST_SURFACE,
+  photoSurface: PROFILE_PHOTO_SURFACE,
+  videoSurface: PROFILE_VIDEO_SURFACE,
+  musicSurface: PROFILE_MUSIC_SURFACE,
+  fileSurface: PROFILE_FILE_SURFACE,
+  postStatus: PROFILE_POST_STATUS_KEY,
+  publishedAt: PROFILE_PUBLISHED_AT_KEY,
+  mediaRefs: PROFILE_MEDIA_REFS_KEY,
+  mediaStoredPath: PROFILE_MEDIA_STORED_PATH_KEY,
+  mediaMimeType: PROFILE_MEDIA_MIME_TYPE_KEY,
 } as const;

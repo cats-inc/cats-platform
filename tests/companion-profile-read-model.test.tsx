@@ -1,42 +1,14 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import type {
-  CompanionDerivedRecord,
-  CompanionSourceRecord,
-} from '../src/products/chat/companion/contracts.ts';
+import type { CompanionDerivedRecord } from '../src/products/chat/companion/contracts.ts';
 import {
-  COMPANION_PROFILE_POST_METADATA_KEYS,
-  projectCompanionPosts,
+  COMPANION_PROFILE_METADATA_KEYS,
   projectCompanionProfile,
 } from '../src/products/chat/companion/profileReadModel.ts';
 
 const CAT_ID = 'cat-fixture';
 const BOX_ID = 'box-fixture';
-
-function makeSource(
-  overrides: Partial<CompanionSourceRecord> & Pick<CompanionSourceRecord, 'id' | 'kind'>,
-): CompanionSourceRecord {
-  return {
-    id: overrides.id,
-    boxId: BOX_ID,
-    catId: CAT_ID,
-    kind: overrides.kind,
-    storageMode: overrides.storageMode ?? 'uploaded_copy',
-    title: overrides.title ?? null,
-    ownerNote: overrides.ownerNote ?? null,
-    sourceText: overrides.sourceText ?? null,
-    textExcerpt: overrides.textExcerpt ?? null,
-    linkedPath: overrides.linkedPath ?? null,
-    storedPath: overrides.storedPath ?? null,
-    sourceUrl: overrides.sourceUrl ?? null,
-    mimeType: overrides.mimeType ?? null,
-    originalFileName: overrides.originalFileName ?? null,
-    metadata: overrides.metadata ?? {},
-    createdAt: overrides.createdAt ?? '2026-04-28T00:00:00.000Z',
-    updatedAt: overrides.updatedAt ?? '2026-04-28T00:00:00.000Z',
-  };
-}
 
 function makeDerived(
   overrides: Partial<CompanionDerivedRecord> & Pick<CompanionDerivedRecord, 'id'>,
@@ -56,171 +28,8 @@ function makeDerived(
   };
 }
 
-test('projectCompanionProfile routes sources into the matching media tabs', () => {
-  const result = projectCompanionProfile({
-    sources: [
-      makeSource({ id: 's-photo', kind: 'image', mimeType: 'image/jpeg' }),
-      makeSource({ id: 's-video', kind: 'video', mimeType: 'video/mp4' }),
-      makeSource({ id: 's-music', kind: 'audio', mimeType: 'audio/mpeg' }),
-      makeSource({ id: 's-pdf', kind: 'note', mimeType: 'application/pdf' }),
-      makeSource({ id: 's-note', kind: 'note', sourceText: 'a thought' }),
-    ],
-    derived: [],
-  });
-  assert.deepEqual(
-    result.photos.map((p) => p.sourceId),
-    ['s-photo'],
-  );
-  assert.deepEqual(
-    result.videos.map((v) => v.sourceId),
-    ['s-video'],
-  );
-  assert.deepEqual(
-    result.music.map((m) => m.sourceId),
-    ['s-music'],
-  );
-  assert.deepEqual(
-    result.files.map((f) => f.sourceId),
-    ['s-pdf'],
-  );
-  // The bare note is source_only and stays in the raw Sources list (which
-  // is read directly from the input — not re-projected by this helper).
-});
-
-test('projectCompanionProfile leaves source_only records out of every projection', () => {
-  const result = projectCompanionProfile({
-    sources: [makeSource({ id: 's-note', kind: 'note', sourceText: 'thought' })],
-    derived: [],
-  });
-  assert.deepEqual(result.photos, []);
-  assert.deepEqual(result.videos, []);
-  assert.deepEqual(result.music, []);
-  assert.deepEqual(result.files, []);
-  assert.deepEqual(result.posts, []);
-});
-
-test('a single PDF source projects only into Files (Sources is the raw read)', () => {
-  const result = projectCompanionProfile({
-    sources: [
-      makeSource({
-        id: 's-pdf',
-        kind: 'note',
-        mimeType: 'application/pdf',
-        originalFileName: 'reading-list.pdf',
-        title: 'Reading list',
-      }),
-    ],
-    derived: [],
-  });
-  assert.equal(result.files.length, 1);
-  assert.equal(result.files[0]?.title, 'Reading list');
-  assert.equal(result.files[0]?.sourceId, 's-pdf');
-});
-
-test('projectCompanionPosts surfaces derived records with profileSurface=post', () => {
-  const posts = projectCompanionPosts([
-    makeDerived({
-      id: 'd-post-1',
-      title: 'Two days at the dome',
-      content: 'concert recap body',
-      tags: ['#concert'],
-      metadata: {
-        [COMPANION_PROFILE_POST_METADATA_KEYS.surface]:
-          COMPANION_PROFILE_POST_METADATA_KEYS.surfaceValue,
-        [COMPANION_PROFILE_POST_METADATA_KEYS.status]: 'active',
-        [COMPANION_PROFILE_POST_METADATA_KEYS.producer]:
-          COMPANION_PROFILE_POST_METADATA_KEYS.producerValue,
-        [COMPANION_PROFILE_POST_METADATA_KEYS.originType]: 'source',
-        [COMPANION_PROFILE_POST_METADATA_KEYS.originId]: 's-photo',
-        [COMPANION_PROFILE_POST_METADATA_KEYS.mediaRefs]: [
-          { kind: 'source', id: 's-photo' },
-        ],
-        [COMPANION_PROFILE_POST_METADATA_KEYS.promotedAt]:
-          '2026-04-28T01:00:00.000Z',
-      },
-      sourceIds: ['s-photo'],
-    }),
-    makeDerived({ id: 'd-summary', kind: 'summary' }),
-  ]);
-  assert.equal(posts.length, 1);
-  assert.equal(posts[0]?.derivedId, 'd-post-1');
-  assert.equal(posts[0]?.title, 'Two days at the dome');
-  assert.equal(posts[0]?.status, 'active');
-  assert.deepEqual(posts[0]?.mediaRefs, [{ kind: 'source', id: 's-photo' }]);
-  assert.deepEqual(posts[0]?.sourceIds, ['s-photo']);
-  assert.equal(posts[0]?.promotedAt, '2026-04-28T01:00:00.000Z');
-});
-
-test('projectCompanionPosts sorts newest promotions first', () => {
-  const posts = projectCompanionPosts([
-    makeDerived({
-      id: 'd-old',
-      title: 'Older',
-      content: '',
-      metadata: {
-        [COMPANION_PROFILE_POST_METADATA_KEYS.surface]:
-          COMPANION_PROFILE_POST_METADATA_KEYS.surfaceValue,
-        [COMPANION_PROFILE_POST_METADATA_KEYS.promotedAt]:
-          '2026-04-26T00:00:00.000Z',
-      },
-    }),
-    makeDerived({
-      id: 'd-new',
-      title: 'Newer',
-      content: '',
-      metadata: {
-        [COMPANION_PROFILE_POST_METADATA_KEYS.surface]:
-          COMPANION_PROFILE_POST_METADATA_KEYS.surfaceValue,
-        [COMPANION_PROFILE_POST_METADATA_KEYS.promotedAt]:
-          '2026-04-28T00:00:00.000Z',
-      },
-    }),
-  ]);
-  assert.deepEqual(
-    posts.map((p) => p.derivedId),
-    ['d-new', 'd-old'],
-  );
-});
-
-test('projectCompanionPosts marks a removed post as removed and keeps it in the projection', () => {
-  const posts = projectCompanionPosts([
-    makeDerived({
-      id: 'd-removed',
-      title: 'Deleted post',
-      metadata: {
-        [COMPANION_PROFILE_POST_METADATA_KEYS.surface]:
-          COMPANION_PROFILE_POST_METADATA_KEYS.surfaceValue,
-        [COMPANION_PROFILE_POST_METADATA_KEYS.status]: 'removed',
-      },
-    }),
-  ]);
-  assert.equal(posts.length, 1);
-  assert.equal(posts[0]?.status, 'removed');
-});
-
-test('projectCompanionPosts drops malformed media refs silently', () => {
-  const posts = projectCompanionPosts([
-    makeDerived({
-      id: 'd-post',
-      title: 'Has bad refs',
-      metadata: {
-        [COMPANION_PROFILE_POST_METADATA_KEYS.surface]:
-          COMPANION_PROFILE_POST_METADATA_KEYS.surfaceValue,
-        [COMPANION_PROFILE_POST_METADATA_KEYS.mediaRefs]: [
-          { kind: 'source', id: 's-real' },
-          { kind: 'mystery', id: 's-bad-kind' },
-          { kind: 'source', id: '' },
-          'not-an-object',
-          null,
-        ],
-      },
-    }),
-  ]);
-  assert.deepEqual(posts[0]?.mediaRefs, [{ kind: 'source', id: 's-real' }]);
-});
-
-test('projectCompanionProfile yields empty arrays for an empty workspace', () => {
-  const result = projectCompanionProfile({ sources: [], derived: [] });
+test('projectCompanionProfile yields empty arrays when there are no derived records', () => {
+  const result = projectCompanionProfile({ derived: [] });
   assert.deepEqual(result, {
     posts: [],
     photos: [],
@@ -228,4 +37,152 @@ test('projectCompanionProfile yields empty arrays for an empty workspace', () =>
     music: [],
     files: [],
   });
+});
+
+test('projectCompanionProfile routes derived records into the matching surface tab', () => {
+  const result = projectCompanionProfile({
+    derived: [
+      makeDerived({
+        id: 'd-post',
+        title: 'A cat post',
+        content: 'hello world',
+        metadata: {
+          [COMPANION_PROFILE_METADATA_KEYS.surface]:
+            COMPANION_PROFILE_METADATA_KEYS.postSurface,
+        },
+      }),
+      makeDerived({
+        id: 'd-photo',
+        title: 'snap.png',
+        metadata: {
+          [COMPANION_PROFILE_METADATA_KEYS.surface]:
+            COMPANION_PROFILE_METADATA_KEYS.photoSurface,
+          [COMPANION_PROFILE_METADATA_KEYS.mediaMimeType]: 'image/png',
+          [COMPANION_PROFILE_METADATA_KEYS.mediaStoredPath]: '/agent/photos/snap.png',
+        },
+      }),
+      makeDerived({
+        id: 'd-video',
+        title: 'clip.mp4',
+        metadata: {
+          [COMPANION_PROFILE_METADATA_KEYS.surface]:
+            COMPANION_PROFILE_METADATA_KEYS.videoSurface,
+          [COMPANION_PROFILE_METADATA_KEYS.mediaMimeType]: 'video/mp4',
+        },
+      }),
+      makeDerived({
+        id: 'd-music',
+        title: 'song.mp3',
+        metadata: {
+          [COMPANION_PROFILE_METADATA_KEYS.surface]:
+            COMPANION_PROFILE_METADATA_KEYS.musicSurface,
+        },
+      }),
+      makeDerived({
+        id: 'd-file',
+        title: 'notes.md',
+        metadata: {
+          [COMPANION_PROFILE_METADATA_KEYS.surface]:
+            COMPANION_PROFILE_METADATA_KEYS.fileSurface,
+        },
+      }),
+      makeDerived({
+        id: 'd-untagged',
+        title: 'plain summary, no surface',
+      }),
+    ],
+  });
+
+  assert.deepEqual(result.posts.map((p) => p.derivedId), ['d-post']);
+  assert.deepEqual(result.photos.map((p) => p.derivedId), ['d-photo']);
+  assert.deepEqual(result.videos.map((v) => v.derivedId), ['d-video']);
+  assert.deepEqual(result.music.map((m) => m.derivedId), ['d-music']);
+  assert.deepEqual(result.files.map((f) => f.derivedId), ['d-file']);
+  assert.equal(result.photos[0]?.mimeType, 'image/png');
+  assert.equal(result.photos[0]?.storedPath, '/agent/photos/snap.png');
+});
+
+test('a removed post stays in the projection but flagged as removed', () => {
+  const result = projectCompanionProfile({
+    derived: [
+      makeDerived({
+        id: 'd-removed',
+        title: 'gone',
+        metadata: {
+          [COMPANION_PROFILE_METADATA_KEYS.surface]:
+            COMPANION_PROFILE_METADATA_KEYS.postSurface,
+          [COMPANION_PROFILE_METADATA_KEYS.postStatus]: 'removed',
+        },
+      }),
+    ],
+  });
+  assert.equal(result.posts.length, 1);
+  assert.equal(result.posts[0]?.status, 'removed');
+});
+
+test('posts sort newest publishedAt first; falls back to createdAt when missing', () => {
+  const result = projectCompanionProfile({
+    derived: [
+      makeDerived({
+        id: 'd-old',
+        metadata: {
+          [COMPANION_PROFILE_METADATA_KEYS.surface]:
+            COMPANION_PROFILE_METADATA_KEYS.postSurface,
+          [COMPANION_PROFILE_METADATA_KEYS.publishedAt]:
+            '2026-04-26T00:00:00.000Z',
+        },
+      }),
+      makeDerived({
+        id: 'd-new',
+        metadata: {
+          [COMPANION_PROFILE_METADATA_KEYS.surface]:
+            COMPANION_PROFILE_METADATA_KEYS.postSurface,
+          [COMPANION_PROFILE_METADATA_KEYS.publishedAt]:
+            '2026-04-28T00:00:00.000Z',
+        },
+      }),
+      makeDerived({
+        id: 'd-fallback',
+        createdAt: '2026-04-27T00:00:00.000Z',
+        metadata: {
+          [COMPANION_PROFILE_METADATA_KEYS.surface]:
+            COMPANION_PROFILE_METADATA_KEYS.postSurface,
+        },
+      }),
+    ],
+  });
+  assert.deepEqual(
+    result.posts.map((p) => p.derivedId),
+    ['d-new', 'd-fallback', 'd-old'],
+  );
+});
+
+test('malformed mediaRefs are dropped silently while other refs survive', () => {
+  const result = projectCompanionProfile({
+    derived: [
+      makeDerived({
+        id: 'd-post',
+        metadata: {
+          [COMPANION_PROFILE_METADATA_KEYS.surface]:
+            COMPANION_PROFILE_METADATA_KEYS.postSurface,
+          [COMPANION_PROFILE_METADATA_KEYS.mediaRefs]: [
+            { kind: 'source', id: 's-real' },
+            { kind: 'mystery', id: 's-bad-kind' },
+            { kind: 'source', id: '' },
+            'not-an-object',
+            null,
+          ],
+        },
+      }),
+    ],
+  });
+  assert.deepEqual(result.posts[0]?.mediaRefs, [{ kind: 'source', id: 's-real' }]);
+});
+
+test('owner-supplied sources are NOT projected into media tabs (input no longer accepts sources)', () => {
+  const result = projectCompanionProfile({ derived: [] });
+  assert.deepEqual(result.photos, []);
+  assert.deepEqual(result.videos, []);
+  assert.deepEqual(result.music, []);
+  assert.deepEqual(result.files, []);
 });

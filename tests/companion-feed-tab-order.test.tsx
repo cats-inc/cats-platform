@@ -51,15 +51,13 @@ test('populated profile renders posts from the projection', () => {
             id: 'post:p-1',
             derivedId: 'd-1',
             catId: 'cat-fixture',
-            title: 'Real promoted post',
+            title: 'Agent-published post',
             body: 'projection-driven body',
             tags: [],
             status: 'active',
-            originType: 'source',
-            originId: 's-1',
             mediaRefs: [],
             sourceIds: ['s-1'],
-            promotedAt: '2026-04-28T01:00:00.000Z',
+            publishedAt: '2026-04-28T01:00:00.000Z',
             updatedAt: '2026-04-28T01:00:00.000Z',
           },
         ],
@@ -70,16 +68,17 @@ test('populated profile renders posts from the projection', () => {
       },
     }),
   );
-  assert.match(markup, /Real promoted post/u);
-  assert.doesNotMatch(markup, /No posts yet\./u);
+  assert.match(markup, /Agent-published post/u);
+  assert.doesNotMatch(markup, /hasn(?:&#x27;|')t posted anything yet/u);
 });
 
-test('empty profile shows the empty-state hint', () => {
+test('empty profile renders agent-driven empty-state copy on Posts', () => {
   const markup = renderToStaticMarkup(
     React.createElement(CompanionFeed, {
       cat: fixtureCat(),
       profile: { posts: [], photos: [], videos: [], music: [], files: [] },
     }),
   );
-  assert.match(markup, /No posts yet\./u);
+  assert.match(markup, /Fixture hasn(?:&#x27;|')t posted anything yet/u);
+  assert.doesNotMatch(markup, /Promote a source/u);
 });

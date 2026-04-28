@@ -16,11 +16,6 @@ import type {
   UpdateCompanionResponseProfileInput,
 } from '../companion/contracts.js';
 import { projectCompanionProfile } from '../companion/profileReadModel.js';
-import {
-  CompanionProfilePostValidationError,
-  promoteCompanionProfilePost,
-  setCompanionProfilePostStatus,
-} from '../companion/profilePostProducer.js';
 import { parseCompanionContentReference } from '../companion/contentReference.js';
 import {
   resolveCompanionContentReference,
@@ -281,145 +276,9 @@ async function handleGetCompanionProfileReadModel(
 ): Promise<void> {
   try {
     await resolveCatContext(context, catId);
-    const [sources, derived] = await Promise.all([
-      context.dependencies.companionStore.listSources(catId),
-      context.dependencies.companionStore.listDerived(catId),
-    ]);
-    const profile = projectCompanionProfile({ sources, derived });
-    sendJson(context.response, 200, { profile });
-  } catch (error) {
-    handleCanonicalCatError(context, error);
-  }
-}
-
-async function handlePromoteCompanionProfilePost(
-  context: ChatApiRouteContext,
-  catId: string,
-): Promise<void> {
-  try {
-    await resolveCatContext(context, catId);
-    const body = await readJsonBody<{
-      origin?: { type?: unknown; id?: unknown };
-      title?: unknown;
-      body?: unknown;
-      tags?: unknown;
-      mediaRefs?: unknown;
-      promotedAt?: unknown;
-    }>(context.request);
-
-    if (!isPlainObject(body.origin)) {
-      sendRestError(context, 400, 'invalid_origin', '`origin` must be an object.');
-      return;
-    }
-    const originType = body.origin.type;
-    if (originType !== 'source' && originType !== 'derived' && originType !== 'artifact') {
-      sendRestError(
-        context,
-        400,
-        'invalid_origin_type',
-        '`origin.type` must be one of "source", "derived", "artifact".',
-      );
-      return;
-    }
-    if (typeof body.origin.id !== 'string' || body.origin.id.trim().length === 0) {
-      sendRestError(context, 400, 'invalid_origin_id', '`origin.id` must be a non-empty string.');
-      return;
-    }
-    if (typeof body.title !== 'string') {
-      sendRestError(context, 400, 'invalid_title', '`title` must be a string.');
-      return;
-    }
-
-    const box = await context.dependencies.companionStore.getBox(catId);
-    const existing = await context.dependencies.companionStore.listDerived(catId);
-    const promotedAt = typeof body.promotedAt === 'string'
-      ? body.promotedAt
-      : new Date().toISOString();
-
-    let result;
-    try {
-      result = promoteCompanionProfilePost(
-        {
-          catId,
-          boxId: box.id,
-          origin: {
-            type: originType,
-            id: body.origin.id,
-          },
-          title: body.title,
-          body: typeof body.body === 'string' ? body.body : undefined,
-          tags: Array.isArray(body.tags)
-            ? body.tags.filter((entry): entry is string => typeof entry === 'string')
-            : [],
-          mediaRefs: Array.isArray(body.mediaRefs)
-            ? (body.mediaRefs as Array<{ kind: 'source' | 'derived' | 'artifact'; id: string }>)
-            : [],
-          promotedAt,
-        },
-        { existingDerived: existing },
-      );
-    } catch (cause) {
-      if (cause instanceof CompanionProfilePostValidationError) {
-        sendRestError(context, 400, cause.code, cause.message);
-        return;
-      }
-      throw cause;
-    }
-
-    const stored = await context.dependencies.companionStore.upsertDerived(catId, result.derived);
-    sendJson(context.response, result.updated ? 200 : 201, {
-      derived: stored,
-      updated: result.updated,
-      dedupKey: result.dedupKey,
-    });
-  } catch (error) {
-    handleCanonicalCatError(context, error);
-  }
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-async function handleUpdateCompanionProfilePostStatus(
-  context: ChatApiRouteContext,
-  catId: string,
-  postId: string,
-): Promise<void> {
-  try {
-    await resolveCatContext(context, catId);
-    const body = await readJsonBody<{ status?: unknown }>(context.request);
-    if (body.status !== 'active' && body.status !== 'removed') {
-      sendRestError(
-        context,
-        400,
-        'invalid_post_status',
-        '`status` must be one of "active" or "removed".',
-      );
-      return;
-    }
     const derived = await context.dependencies.companionStore.listDerived(catId);
-    const existing = derived.find((entry) => entry.id === postId);
-    if (!existing) {
-      sendRestError(context, 404, 'profile_post_not_found', `Post ${postId} not found.`);
-      return;
-    }
-    let next;
-    try {
-      next = setCompanionProfilePostStatus({
-        record: existing,
-        status: body.status,
-        now: new Date().toISOString(),
-      });
-    } catch (cause) {
-      if (cause instanceof CompanionProfilePostValidationError) {
-        sendRestError(context, 400, cause.code, cause.message);
-        return;
-      }
-      throw cause;
-    }
-    const stored = await context.dependencies.companionStore.upsertDerived(catId, next);
-    sendJson(context.response, 200, { derived: stored });
+    const profile = projectCompanionProfile({ derived });
+    sendJson(context.response, 200, { profile });
   } catch (error) {
     handleCanonicalCatError(context, error);
   }
@@ -775,19 +634,6 @@ export async function routeCompanionBoxApi(
     return true;
   }
 
-  const postsMatch = matchRoute(
-    context.url.pathname,
-    /^\/api\/cats\/([^/]+)\/companion-box\/posts$/u,
-  );
-  if (postsMatch) {
-    if (context.method !== 'POST') {
-      sendMethodNotAllowed(context.response, ['POST']);
-      return true;
-    }
-    await handlePromoteCompanionProfilePost(context, postsMatch[0]!);
-    return true;
-  }
-
   const resolveMatch = matchRoute(
     context.url.pathname,
     /^\/api\/cats\/([^/]+)\/companion-box\/resolve-reference$/u,
@@ -798,23 +644,6 @@ export async function routeCompanionBoxApi(
       return true;
     }
     await handleResolveCompanionContentReference(context, resolveMatch[0]!);
-    return true;
-  }
-
-  const postStatusMatch = matchRoute(
-    context.url.pathname,
-    /^\/api\/cats\/([^/]+)\/companion-box\/posts\/([^/]+)\/status$/u,
-  );
-  if (postStatusMatch) {
-    if (context.method !== 'PATCH') {
-      sendMethodNotAllowed(context.response, ['PATCH']);
-      return true;
-    }
-    await handleUpdateCompanionProfilePostStatus(
-      context,
-      postStatusMatch[0]!,
-      postStatusMatch[1]!,
-    );
     return true;
   }
 

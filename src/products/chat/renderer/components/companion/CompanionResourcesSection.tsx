@@ -12,15 +12,6 @@ export interface CompanionResourcesSectionProps {
   loading: boolean;
   onAddSource: (input: CreateCompanionSourceInput) => Promise<void>;
   onDeleteSource: (sourceId: string) => Promise<void>;
-  /**
-   * When provided, each source row gets a "Promote to post" affordance
-   * that opens the SPEC-085 promotion dialog (Title / Body / Tags /
-   * per-media checkboxes). The handler receives the full source record
-   * so the dialog can prefill from `title` / `originalFileName` and
-   * decide whether to default-check the source as a media inclusion
-   * candidate (image / video / audio MIMEs only).
-   */
-  onPromoteSourceToPost?: (source: CompanionSourceRecord) => void;
 }
 
 function formatDate(iso: string): string {
@@ -52,12 +43,7 @@ export function CompanionResourcesSection({
   loading,
   onAddSource,
   onDeleteSource,
-  onPromoteSourceToPost,
 }: CompanionResourcesSectionProps) {
-  function handlePromote(source: CompanionSourceRecord): void {
-    if (!onPromoteSourceToPost) return;
-    onPromoteSourceToPost(source);
-  }
   const [showForm, setShowForm] = useState(false);
   const [formTitle, setFormTitle] = useState('');
   const [formNote, setFormNote] = useState('');
@@ -157,15 +143,6 @@ export function CompanionResourcesSection({
                 <span className="companionSourcePath">{source.linkedPath}</span>
               )}
               <div className="companionSourceActions">
-                {onPromoteSourceToPost ? (
-                  <button
-                    type="button"
-                    className="companionActionButton"
-                    onClick={() => handlePromote(source)}
-                  >
-                    Promote to post
-                  </button>
-                ) : null}
                 <button
                   type="button"
                   className="companionDangerButton"

@@ -14,35 +14,20 @@ const FEED_TABS: ReadonlyArray<{ id: FeedTab; label: string }> = [
   { id: 'activity', label: 'Activity' },
 ];
 
-function CompanionActivityPlaceholder() {
-  return (
-    <div className="companionEmptyState">
-      <p>Activity is empty.</p>
-      <p className="companionEmptyStateHint">
-        PLAN-077 Phase 2 will populate this with aggregated source / memory /
-        derived activity.
-      </p>
-    </div>
-  );
-}
-
-function CompanionPostsEmptyState() {
-  return (
-    <div className="companionEmptyState">
-      <p>No posts yet.</p>
-      <p className="companionEmptyStateHint">
-        Promote a source, file, or media tile to feature it here.
-      </p>
-    </div>
-  );
-}
-
-const MEDIA_SURFACE_LABELS: Record<'photo' | 'video' | 'music' | 'file', string> = {
+const SURFACE_LABELS: Record<'photo' | 'video' | 'music' | 'file', string> = {
   photo: 'photos',
   video: 'videos',
   music: 'music',
   file: 'files',
 };
+
+function CompanionPostsEmptyState({ catName }: { catName: string }) {
+  return (
+    <div className="companionEmptyState">
+      <p>{catName} hasn't posted anything yet.</p>
+    </div>
+  );
+}
 
 function CompanionMediaEmptyState({
   surface,
@@ -51,22 +36,27 @@ function CompanionMediaEmptyState({
 }) {
   return (
     <div className="companionEmptyState">
-      <p>No {MEDIA_SURFACE_LABELS[surface]} yet.</p>
-      <p className="companionEmptyStateHint">
-        Add a source through Sources to see it here.
-      </p>
+      <p>No {SURFACE_LABELS[surface]} yet.</p>
+    </div>
+  );
+}
+
+function CompanionActivityEmptyState() {
+  return (
+    <div className="companionEmptyState">
+      <p>Nothing recent.</p>
     </div>
   );
 }
 
 function renderProfilePosts(
   profile: CompanionProfileReadModel | null | undefined,
-  onRemovePost?: (derivedId: string) => Promise<void>,
+  catName: string,
 ): ReactNode {
   const posts = profile?.posts ?? [];
   const active = posts.filter((post) => post.status === 'active');
   if (active.length === 0) {
-    return <CompanionPostsEmptyState />;
+    return <CompanionPostsEmptyState catName={catName} />;
   }
   return (
     <div className="companionProfilePostList">
@@ -74,8 +64,8 @@ function renderProfilePosts(
         <article key={post.id} className="companionProfilePostCard">
           <header className="companionProfilePostHeader">
             <h3 className="companionProfilePostTitle">{post.title}</h3>
-            <time className="companionProfilePostTimestamp" dateTime={post.promotedAt}>
-              {post.promotedAt}
+            <time className="companionProfilePostTimestamp" dateTime={post.publishedAt}>
+              {post.publishedAt}
             </time>
           </header>
           {post.body ? <p className="companionProfilePostBody">{post.body}</p> : null}
@@ -101,17 +91,6 @@ function renderProfilePosts(
               ))}
             </div>
           ) : null}
-          {onRemovePost ? (
-            <button
-              type="button"
-              className="companionDangerButton"
-              onClick={() => {
-                void onRemovePost(post.derivedId);
-              }}
-            >
-              Remove from Posts
-            </button>
-          ) : null}
         </article>
       ))}
     </div>
@@ -129,7 +108,7 @@ function renderProfileMedia(
   return (
     <ul
       className={`companionProfileMediaList companionProfileMediaList--${surface}`}
-      aria-label={`${items.length} ${MEDIA_SURFACE_LABELS[surface]}`}
+      aria-label={`${items.length} ${SURFACE_LABELS[surface]}`}
     >
       {items.map((tile) => (
         <li key={tile.id} className="companionProfileMediaTile">
@@ -174,14 +153,9 @@ export interface CompanionFeedProps {
    * fetch) the empty-state placeholders render so the layout stays stable.
    */
   profile?: CompanionProfileReadModel | null;
-  /**
-   * When provided, post cards render a Remove affordance that calls this
-   * handler with the underlying derived record id.
-   */
-  onRemovePost?: (derivedId: string) => Promise<void>;
 }
 
-export function CompanionFeed({ cat: _cat, profile = null, onRemovePost }: CompanionFeedProps) {
+export function CompanionFeed({ cat, profile = null }: CompanionFeedProps) {
   const [activeTab, setActiveTab] = useState<FeedTab>('posts');
 
   useEffect(() => {
@@ -193,7 +167,7 @@ export function CompanionFeed({ cat: _cat, profile = null, onRemovePost }: Compa
   let content: ReactNode;
   switch (activeTab) {
     case 'posts':
-      content = renderProfilePosts(profile, onRemovePost);
+      content = renderProfilePosts(profile, cat.name);
       break;
     case 'photos':
       content = renderProfileMedia(profile?.photos, 'photo');
@@ -208,7 +182,7 @@ export function CompanionFeed({ cat: _cat, profile = null, onRemovePost }: Compa
       content = renderProfileFiles(profile?.files);
       break;
     case 'activity':
-      content = <CompanionActivityPlaceholder />;
+      content = <CompanionActivityEmptyState />;
       break;
   }
 

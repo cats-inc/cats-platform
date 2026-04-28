@@ -9,21 +9,12 @@ import {
 import { SidePanel } from '../../../../../design/components/SidePanel.js';
 import { DraftHeader } from '../../../../shared/renderer/components/DraftHeader.js';
 import { catInitials } from '../../chatUtils.js';
-import {
-  promoteCompanionProfilePost as promoteCompanionProfilePostApi,
-  setCompanionProfilePostStatus as setCompanionProfilePostStatusApi,
-} from '../../api/companion.js';
 import { useCompanionPresence } from '../../hooks/useCompanionPresence.js';
 import { useCompanionProfile } from '../../hooks/useCompanionProfile.js';
 import { useCompanionWorkspace } from '../../hooks/useCompanionWorkspace.js';
 import { CompanionFeed } from './CompanionFeed.js';
 import { CompanionModeToggleChip } from './CompanionModeToggleChip.js';
 import { CompanionOverviewSection } from './CompanionOverviewSection.js';
-import {
-  CompanionPromoteDialog,
-  type CompanionPromoteDialogMediaCandidate,
-  type CompanionPromoteDialogSubmit,
-} from './CompanionPromoteDialog.js';
 import { CompanionResourcesSection } from './CompanionResourcesSection.js';
 import { CompanionMemorySection } from './CompanionMemorySection.js';
 import { CompanionSettingsSection } from './CompanionSettingsSection.js';
@@ -54,90 +45,6 @@ export function CompanionWorkspace({
     catId: cat.id,
     enabled: true,
   });
-
-  const [promoteState, setPromoteState] = useState<
-    | null
-    | {
-        sourceId: string;
-        defaultTitle: string;
-        defaultBody: string;
-        defaultTags: string[];
-        mediaCandidates: CompanionPromoteDialogMediaCandidate[];
-      }
-  >(null);
-  const [promoteBusy, setPromoteBusy] = useState(false);
-  const [promoteError, setPromoteError] = useState<string | null>(null);
-
-  const handlePromoteSourceToPost = useCallback(
-    async (source: { id: string; title: string | null; originalFileName: string | null; mimeType: string | null }) => {
-      const fallbackTitle =
-        source.title?.trim()
-        || source.originalFileName?.replace(/\.[^/.]+$/u, '')
-        || 'Untitled post';
-      // Default-check the source itself when its mimeType suggests media so
-      // the dialog matches SPEC-085 §"default-checked from the selection's
-      // natural media set." Files / source_only items show no candidate.
-      const isMedia = typeof source.mimeType === 'string'
-        && /^(image|video|audio)\//iu.test(source.mimeType);
-      const mediaCandidates: CompanionPromoteDialogMediaCandidate[] = isMedia
-        ? [
-            {
-              ref: { kind: 'source', id: source.id },
-              label: source.title || source.originalFileName || source.id,
-              defaultChecked: true,
-            },
-          ]
-        : [];
-      setPromoteState({
-        sourceId: source.id,
-        defaultTitle: fallbackTitle,
-        defaultBody: '',
-        defaultTags: [],
-        mediaCandidates,
-      });
-      setPromoteError(null);
-    },
-    [],
-  );
-
-  const handlePromoteSubmit = useCallback(
-    async (input: CompanionPromoteDialogSubmit) => {
-      if (!promoteState) return;
-      setPromoteBusy(true);
-      setPromoteError(null);
-      try {
-        await promoteCompanionProfilePostApi(cat.id, {
-          origin: { type: 'source', id: promoteState.sourceId },
-          title: input.title,
-          body: input.body || undefined,
-          tags: input.tags,
-          mediaRefs: input.mediaRefs,
-        });
-        profile.refresh();
-        workspace.refreshTab();
-        setPromoteState(null);
-      } catch (cause) {
-        setPromoteError(cause instanceof Error ? cause.message : 'Promote failed.');
-      } finally {
-        setPromoteBusy(false);
-      }
-    },
-    [cat.id, promoteState, profile, workspace],
-  );
-
-  const handlePromoteClose = useCallback(() => {
-    if (promoteBusy) return;
-    setPromoteState(null);
-    setPromoteError(null);
-  }, [promoteBusy]);
-
-  const handleRemovePost = useCallback(
-    async (derivedId: string) => {
-      await setCompanionProfilePostStatusApi(cat.id, derivedId, 'removed');
-      profile.refresh();
-    },
-    [cat.id, profile],
-  );
 
   const handleWake = useCallback(() => {
     onWake(cat.id);
@@ -195,7 +102,6 @@ export function CompanionWorkspace({
         loading={workspace.loading}
         onAddSource={workspace.addSource}
         onDeleteSource={workspace.removeSource}
-        onPromoteSourceToPost={handlePromoteSourceToPost}
       />,
     ),
     memory: wrapSection(
@@ -218,10 +124,6 @@ export function CompanionWorkspace({
     inspector: wrapSection(
       <div className="companionEmptyState">
         <p>No selection.</p>
-        <p className="companionEmptyStateHint">
-          PLAN-077 Phase 2 will surface contextual details for the
-          currently-selected source / file / post here.
-        </p>
       </div>,
     ),
   };
@@ -331,11 +233,7 @@ export function CompanionWorkspace({
               </>
             )}
           />
-          <CompanionFeed
-            cat={cat}
-            profile={profile.profile}
-            onRemovePost={handleRemovePost}
-          />
+          <CompanionFeed cat={cat} profile={profile.profile} />
         </div>
       </div>
       {sidePanelOpen ? (
@@ -347,19 +245,6 @@ export function CompanionWorkspace({
           position="side"
           className="chatPaneSidePanel chatPaneSidePanelBelowBar"
           sections={sidePanelSections}
-        />
-      ) : null}
-      {promoteState ? (
-        <CompanionPromoteDialog
-          open
-          defaultTitle={promoteState.defaultTitle}
-          defaultBody={promoteState.defaultBody}
-          defaultTags={promoteState.defaultTags}
-          mediaCandidates={promoteState.mediaCandidates}
-          busy={promoteBusy}
-          errorMessage={promoteError}
-          onClose={handlePromoteClose}
-          onSubmit={handlePromoteSubmit}
         />
       ) : null}
     </>

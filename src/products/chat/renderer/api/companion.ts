@@ -134,41 +134,6 @@ export async function getCompanionProfile(
   return data.profile;
 }
 
-export interface PromoteCompanionProfilePostInput {
-  origin: { type: 'source' | 'derived' | 'artifact'; id: string };
-  title: string;
-  body?: string;
-  tags?: string[];
-  mediaRefs?: Array<{ kind: 'source' | 'derived' | 'artifact'; id: string }>;
-  promotedAt?: string;
-}
-
-export interface PromoteCompanionProfilePostResult {
-  derived: CompanionDerivedRecord;
-  updated: boolean;
-  dedupKey: string;
-}
-
-export async function promoteCompanionProfilePost(
-  catId: string,
-  input: PromoteCompanionProfilePostInput,
-  signal?: AbortSignal,
-): Promise<PromoteCompanionProfilePostResult> {
-  const response = await fetch(`${catPath(catId)}/posts`, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'content-type': 'application/json',
-    },
-    body: JSON.stringify(input),
-    signal,
-  });
-  return expectJson<PromoteCompanionProfilePostResult>(
-    response,
-    `companion promote-post returned ${response.status}`,
-  );
-}
-
 export interface CompanionResolveReferenceResult {
   parse: CompanionReferenceParseResult;
   preview?: CompanionContentPreview;
@@ -242,30 +207,6 @@ export async function captureCompanionReferenceSnapshots(
     }
   }
   return snapshots;
-}
-
-export async function setCompanionProfilePostStatus(
-  catId: string,
-  postId: string,
-  status: 'active' | 'removed',
-  signal?: AbortSignal,
-): Promise<{ derived: CompanionDerivedRecord }> {
-  const response = await fetch(
-    `${catPath(catId)}/posts/${encodeURIComponent(postId)}/status`,
-    {
-      method: 'PATCH',
-      headers: {
-        Accept: 'application/json',
-        'content-type': 'application/json',
-      },
-      body: JSON.stringify({ status }),
-      signal,
-    },
-  );
-  return expectJson<{ derived: CompanionDerivedRecord }>(
-    response,
-    `companion post status returned ${response.status}`,
-  );
 }
 
 export async function listCompanionMemory(
