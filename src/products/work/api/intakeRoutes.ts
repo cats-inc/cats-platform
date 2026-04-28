@@ -12,7 +12,10 @@ import {
 } from '../../../core/model/taskControls.js';
 import { appendCoreActivity } from '../../../core/model/executionRecords.js';
 import { readTaskPlanningMetadata } from '../../../shared/taskPlanning.js';
-import { generateWorkIntakePlan } from '../intake/index.js';
+import {
+  WORK_INTAKE_PRIORITIES,
+  generateWorkIntakePlan,
+} from '../intake/index.js';
 import { getWorkTemplate, listWorkTemplates } from '../templates/index.js';
 import {
   buildWorkIntakePlanProjection,
@@ -28,6 +31,8 @@ import {
   WORK_API_TEMPLATES_PATH,
 } from '../shared/apiPaths.js';
 import { createWorkProductRef } from '../shared/productMetadata.js';
+
+const WORK_INTAKE_PRIORITY_SET = new Set<string>(WORK_INTAKE_PRIORITIES);
 
 function readNonEmptyString(value: unknown): string | null {
   if (typeof value !== 'string') {
@@ -62,7 +67,7 @@ function validateIntakeInput(
   }
 
   const priority = readNonEmptyString(body.priority);
-  if (priority && priority !== 'low' && priority !== 'medium' && priority !== 'high') {
+  if (priority && !WORK_INTAKE_PRIORITY_SET.has(priority)) {
     return { input: null, error: 'priority must be low, medium, or high' };
   }
 

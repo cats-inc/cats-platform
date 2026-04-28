@@ -7,7 +7,24 @@ import type {
 } from '../../../core/types.js';
 import type { WorkTemplate } from '../templates/types.js';
 
-export type WorkIntakePriority = 'low' | 'medium' | 'high';
+export const WORK_INTAKE_REQUIRED_FIELDS = [
+  'title',
+  'brief',
+  'desiredOutcome',
+  'templateId',
+] as const;
+
+export const WORK_INTAKE_OPTIONAL_FIELDS = [
+  'repoPath',
+  'deadline',
+  'priority',
+] as const;
+
+export const WORK_INTAKE_PRIORITIES = ['low', 'medium', 'high'] as const;
+
+export type WorkIntakeRequiredField = typeof WORK_INTAKE_REQUIRED_FIELDS[number];
+export type WorkIntakeOptionalField = typeof WORK_INTAKE_OPTIONAL_FIELDS[number];
+export type WorkIntakePriority = typeof WORK_INTAKE_PRIORITIES[number];
 
 export interface WorkIntakeInput {
   title: string;
