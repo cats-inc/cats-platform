@@ -272,7 +272,7 @@ the YAML explicitly grants it.
       as a weak-worker candidate.
 - [ ] Task 3.3: Update Chat/Work/Code preset capability-review tests to use
       explicit fixture config when they need a strong or weak demo path.
-- [ ] Task 3.4: Verify temp participants resolve capability through their bound
+- [x] Task 3.4: Verify temp participants resolve capability through their bound
       execution target plus YAML rule without promotion to durable Cats.
 - [ ] Task 3.5: Re-run PLAN-075 live Claude/Codex smoke under the PLAN-080
       YAML fixture for **all three** product paths covered by PLAN-075
@@ -314,6 +314,9 @@ initial treatment even without an editor.
 | `src/platform/supervision/providerCapabilityControlKey.ts` | Create | Canonicalize reconciled `modelSelection.controls` into the selector `control` key. |
 | `src/platform/supervision/providerCapabilityBootstrapDiagnostics.ts` | Create | Persist `SupervisionDiagnosticRecord` records and mirror them to structured platform logs. |
 | `package.json` / `package-lock.json` | Modify if needed | Add a real YAML parser dependency and add `smoke:live:chat`; update `smoke:live:providers` to include Chat/Work/Code. |
+| `src/config.ts` | Modify | Add active provider capability bootstrap config path and env override. |
+| `src/app/server/dependencies.ts` / `src/app/server/contracts.ts` | Modify | Load active YAML once at server startup and retain diagnostics. |
+| `src/products/chat/state/runtime-dispatch/**` / `src/products/chat/api/**` | Modify | Pass the active bootstrap config into Chat provider-agent observation construction. |
 | `tests/supervision-provider-capability-profiles.test.tsx` | Modify | Default-neutral and fixture-backed strong/weak tests. |
 | `tests/provider-capability-bootstrap-config.test.tsx` | Create | YAML validation, fatal duplicate ids, control key normalization, and fail-closed behavior. |
 | `tests/fixtures/provider-capability-bootstrap.yaml` | Create | Checked-in inactive fixture covering Claude / Codex / Ollama for tests and rollout examples. |
@@ -379,6 +382,7 @@ initial treatment even without an editor.
 | 2026-04-28 | Review follow-up: extended Task 3.5 to require a Chat live smoke gate alongside Work/Code re-runs (PLAN-075 acceptance covers Chat turn too); split `bootstrap_config` evidence kind from `operator_override` while keeping the FR-19 authorization ceiling shared; rewrote selector precedence to count narrowing keys so non-linear combos (`provider+model`, `provider+control`, etc.) get a defined ordering; added a Diagnostic Destination sub-section pinning diagnostics to log + supervision diagnostic records (never `confidenceSources`); added migration deliverables (example YAML, first-run warning entry, PROGRESS.md callout) to Files Likely; updated `plans/README.md` PLAN-075 status. |
 | 2026-04-28 | Review close-out: removed `default` / `unknown` from valid YAML grants so only explicit `strong_agent` / `weak_worker` rules create startup treatment; added Claude to the example fixture; defined canonical `control` selector serialization from reconciled controls; made duplicate rule ids fatal; replaced vague supervision evidence reuse with a concrete `SupervisionDiagnosticRecord` owner; added Chat live smoke files/scripts to the delivery list; added tests and risks for duplicate ids, forbidden YAML defaults, live Chat smoke, and control-key drift. |
 | 2026-04-28 | Implementation slice 1: added `bootstrap_config` evidence metadata, `SupervisionDiagnosticRecord`, canonical control-key helper, YAML parser/validator, explicit-config resolver, fatal duplicate-id handling, and tests proving no-config default/unknown plus configured strong/weak behavior. Validation: targeted supervision tests and `npm run typecheck` passed. |
+| 2026-04-28 | Implementation slice 2: added active config path resolution, server startup YAML loading, retained bootstrap diagnostics, and Chat dispatch plumbing so provider-agent observations receive the active config. Validation: Chat/config targeted tests, `npm run typecheck`, `npm run build:server`, and `node --test tests/config.test.js` passed. |
 
 ---
 

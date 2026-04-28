@@ -343,6 +343,7 @@ export async function routeRequest(
       memoryService: dependencies.chat.memoryService,
       eventHub: dependencies.chat.eventHub,
       providerAgentDecisionRequester: dependencies.chat.providerAgentDecisionRequester,
+      providerCapabilityBootstrapConfig: dependencies.shared.providerCapabilityBootstrapConfig,
       now: dependencies.shared.now,
     },
   };

@@ -9,6 +9,7 @@ import type {
 } from '../../api/contracts.js';
 import type { CatsCoreState } from '../../../../core/types.js';
 import type { ProviderAgentDecision } from '../../../../platform/orchestration/index.js';
+import type { ProviderCapabilityBootstrapConfig } from '../../../../platform/supervision/index.js';
 import type {
   RoomRoutingGuardReason,
 } from '../../../../shared/roomRouting.js';
@@ -98,6 +99,7 @@ interface RouteChannelMessageOptions {
   onStateWritten?: (channelId: string) => void;
   deterministicRoutingPlan?: DeterministicChatRoutingPlan | null;
   providerAgentDecisionRequester?: ProviderAgentDecisionRequester;
+  providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
 }
 
 function readMessageRetryMetadata(
@@ -391,6 +393,7 @@ export async function beginChannelMessageDispatch(
     choiceResponseCore,
     {
       deterministicRoutingPlan,
+      providerCapabilityBootstrapConfig: options.providerCapabilityBootstrapConfig,
     },
   );
   const effectiveDeterministicRoutingPlan =
@@ -489,6 +492,7 @@ export async function beginChannelMessageRetryDispatch(
     choiceResponseCore,
     {
       deterministicRoutingPlan,
+      providerCapabilityBootstrapConfig: options.providerCapabilityBootstrapConfig,
     },
   );
   const effectiveDeterministicRoutingPlan =

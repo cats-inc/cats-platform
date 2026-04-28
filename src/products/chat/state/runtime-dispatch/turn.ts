@@ -11,6 +11,7 @@ import type { ProviderAgentBoundedObservation } from '../../../../platform/orche
 import {
   decideSupervisionPolicy,
   resolveProviderCapabilityProfile,
+  type ProviderCapabilityBootstrapConfig,
 } from '../../../../platform/supervision/index.js';
 import type {
   RoomRoutingCheckpoint,
@@ -114,6 +115,7 @@ export interface PreparedDispatchTurn {
 
 export interface PrepareDispatchTurnOptions {
   deterministicRoutingPlan?: DeterministicChatRoutingPlan | null;
+  providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
 }
 
 function resolveDeterministicPlanInitialResolution(
@@ -208,6 +210,7 @@ export function prepareDispatchTurnForUserMessage(
     userMessage,
     initialResolution,
     nowIso,
+    providerCapabilityBootstrapConfig: options.providerCapabilityBootstrapConfig,
   });
   const channelRouting = requireChannel(nextState, channelId).roomRouting;
   const baseRoomRouting = resolveRoomRoutingState(channelRouting);
@@ -454,6 +457,7 @@ function buildProviderAgentObservationForTurn(input: {
   userMessage: ChatMessage;
   initialResolution: TargetResolution;
   nowIso: string;
+  providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
 }): ProviderAgentBoundedObservation | null {
   const channel = requireChannel(input.state, input.channelId);
   const executionTarget = resolveOrchestratorExecutionTarget(input.state, channel);
@@ -466,6 +470,7 @@ function buildProviderAgentObservationForTurn(input: {
     },
     {
       assessedAt: input.nowIso,
+      bootstrapConfig: input.providerCapabilityBootstrapConfig,
     },
   );
   const policyDecision = decideSupervisionPolicy({

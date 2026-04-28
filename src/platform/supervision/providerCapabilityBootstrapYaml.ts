@@ -1,4 +1,5 @@
 import { createRequire } from 'node:module';
+import { existsSync, readFileSync } from 'node:fs';
 
 import {
   parseProviderCapabilityBootstrapConfigDocument,
@@ -35,6 +36,39 @@ export function parseProviderCapabilityBootstrapConfigYaml(
       ],
     };
   }
+}
+
+export function loadProviderCapabilityBootstrapConfigFromFile(input: {
+  configPath: string;
+  observedAt: string;
+}): ProviderCapabilityBootstrapConfigResult {
+  if (!existsSync(input.configPath)) {
+    return {
+      config: null,
+      diagnostics: [
+        {
+          id:
+            'provider-capability-bootstrap:missing-config:' +
+            sanitizeDiagnosticIdPart(input.observedAt),
+          kind: 'provider_capability_bootstrap_config',
+          severity: 'warning',
+          code: 'missing_config',
+          observedAt: input.observedAt,
+          configPath: input.configPath,
+          message:
+            'No provider capability bootstrap config was found; all providers start default/unknown.',
+        },
+      ],
+    };
+  }
+
+  return parseProviderCapabilityBootstrapConfigYaml(
+    readFileSync(input.configPath, 'utf8'),
+    {
+      observedAt: input.observedAt,
+      configPath: input.configPath,
+    },
+  );
 }
 
 function createParseFailureDiagnostic(input: {

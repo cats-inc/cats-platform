@@ -8,6 +8,7 @@ import type { RuntimeClient } from '../../../platform/runtime/client.js';
 import {
   createSupervisedRuntimeSession,
 } from '../../../platform/supervision/runtimeBoundary.js';
+import type { ProviderCapabilityBootstrapConfig } from '../../../platform/supervision/index.js';
 import type { CatsMemoryService } from '../../../platform/memory/index.js';
 import type { ChatEventHub } from './chatEventHub.js';
 import type { ProviderAgentDecisionRequester } from '../state/runtime-dispatch/routing.js';
@@ -152,6 +153,7 @@ export interface ChatApiDependencies {
   memoryService: CatsMemoryService;
   eventHub?: ChatEventHub;
   providerAgentDecisionRequester?: ProviderAgentDecisionRequester;
+  providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
   now?: () => Date;
 }
 

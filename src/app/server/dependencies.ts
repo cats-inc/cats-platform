@@ -39,6 +39,7 @@ import {
   resumeStoredWorkflowContinuationDispatch,
 } from '../../products/chat/state/deterministicRouterAdapter.js';
 import { createChatProviderAgentDecisionRequester } from '../../products/chat/state/providerAgentDecisionRequester.js';
+import { loadProviderCapabilityBootstrapConfigFromFile } from '../../platform/supervision/providerCapabilityBootstrapYaml.js';
 import { MemoryChatStore } from '../../products/chat/state/store.js';
 import { createAsyncKeyedGate } from '../../products/chat/shared/asyncControl.js';
 import { createChatTaskExecutionLocator } from '../../products/chat/state/taskExecutionLocator.js';
@@ -111,6 +112,16 @@ export function resolveServerDependencies(
   const pollingSupervisor = dependencies.chat.pollingSupervisor
     ?? createTelegramPollingSupervisor({ now: dependencies.shared.now });
   const mutationGate = dependencies.chat.mutationGate ?? createAsyncKeyedGate();
+  const capabilityBootstrapLoaded =
+    dependencies.shared.providerCapabilityBootstrapConfig !== undefined
+      ? {
+          config: dependencies.shared.providerCapabilityBootstrapConfig,
+          diagnostics: dependencies.shared.providerCapabilityBootstrapDiagnostics ?? [],
+        }
+      : loadProviderCapabilityBootstrapConfigFromFile({
+          configPath: dependencies.shared.config.providerCapabilityBootstrapConfigPath,
+          observedAt: (dependencies.shared.now?.() ?? new Date()).toISOString(),
+        });
   const defaultTelegramBotToken = process.env.CATS_TELEGRAM_BOT_TOKEN?.trim() || null;
   const deliveryClientCache = new Map<string, ReturnType<typeof createTelegramBotApiDeliveryClient>>();
   const resolveTelegramBotApiClient = (botToken: string) => {
@@ -219,6 +230,8 @@ export function resolveServerDependencies(
       startup,
       resumePendingOrchestratorDispatch,
       resumeWorkflowContinuationDispatch,
+      providerCapabilityBootstrapConfig: capabilityBootstrapLoaded.config,
+      providerCapabilityBootstrapDiagnostics: capabilityBootstrapLoaded.diagnostics,
     },
     chat: {
       ...dependencies.chat,

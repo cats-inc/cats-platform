@@ -254,6 +254,8 @@ async function stageParallelChatBodies(
           runtimeRecovery: {
             staleSessionRetryLimit: context.dependencies.config.runtimeStaleSessionRetryLimit,
           },
+          providerCapabilityBootstrapConfig:
+            context.dependencies.providerCapabilityBootstrapConfig,
           cancellationRegistry: channelDispatchCancellationRegistry,
           onStateWritten: notifyStreamTargetChanged,
         },

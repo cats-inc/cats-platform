@@ -9,7 +9,9 @@ import {
 } from '../src/platform/orchestration/index.ts';
 import {
   DEFAULT_SUPERVISION_SCHEMA_VERSION,
+  parseProviderCapabilityBootstrapConfigDocument,
   resolveProviderCapabilityProfile,
+  type ProviderCapabilityBootstrapConfig,
   type SupervisedToolManifest,
   type SupervisionPolicy,
 } from '../src/platform/supervision/index.ts';
@@ -72,6 +74,35 @@ function manifest(name: string): SupervisedToolManifest {
   };
 }
 
+function fixtureBootstrapConfig(): ProviderCapabilityBootstrapConfig {
+  const parsed = parseProviderCapabilityBootstrapConfigDocument(
+    {
+      version: 1,
+      profiles: [
+        {
+          id: 'claude-native-sonnet-strong-candidate',
+          selector: {
+            provider: 'claude',
+            instance: 'native',
+            model: 'sonnet',
+            control: 'default',
+          },
+          initialTreatment: 'strong_agent',
+          confidenceLevel: 'catalog_only',
+          reason: 'Operator-approved strong Chat candidate.',
+        },
+      ],
+    },
+    { observedAt: '2026-04-28T00:00:00.000Z' },
+  );
+
+  if (!parsed.config) {
+    throw new Error('Expected fixture bootstrap config to parse.');
+  }
+
+  return parsed.config;
+}
+
 function appendAndPrepare(input: {
   state: ChatState;
   channelId: string;
@@ -81,6 +112,7 @@ function appendAndPrepare(input: {
     recipientParticipantIds?: string[];
     workflowShape?: 'sequential' | 'concurrent' | 'converge' | 'parallel' | null;
   };
+  providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
 }): { state: ChatState; prepared: PreparedDispatchTurn } {
   const now = input.now ?? new Date('2026-04-28T00:01:00.000Z');
   const appended = appendMessage(
@@ -101,6 +133,10 @@ function appendAndPrepare(input: {
       ...(input.messageMetadata ? { messageMetadata: input.messageMetadata } : {}),
     },
     now,
+    undefined,
+    {
+      providerCapabilityBootstrapConfig: input.providerCapabilityBootstrapConfig,
+    },
   );
   return {
     state: appended.state,
@@ -293,7 +329,7 @@ test('Chat solo turns bind provider-agent observation to the selected execution 
       entryKind: 'solo',
       pendingProvider: 'claude',
       pendingInstance: 'native',
-      pendingModel: 'claude-sonnet',
+      pendingModel: 'sonnet',
     },
     new Date('2026-04-28T00:00:00.000Z'),
   );
@@ -310,6 +346,36 @@ test('Chat solo turns bind provider-agent observation to the selected execution 
     prepared.providerAgentObservation?.contextRefs.includes('chat-composer-mode:solo'),
     true,
   );
+});
+
+test('Chat provider-agent observation applies explicit capability bootstrap config', () => {
+  const state = createChannel(
+    createDefaultChatState(),
+    {
+      title: 'Configured solo model room',
+      topic: 'Solo',
+      originSurface: 'chat',
+      entryKind: 'solo',
+      pendingProvider: 'claude',
+      pendingInstance: 'native',
+      pendingModel: 'sonnet',
+    },
+    new Date('2026-04-28T00:00:00.000Z'),
+  );
+
+  const { prepared } = appendAndPrepare({
+    state,
+    channelId: state.selectedChannelId,
+    body: 'Use the configured solo model.',
+    providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+  });
+
+  assert.equal(actorProvider(prepared), 'claude');
+  assert.equal(
+    prepared.providerAgentObservation?.actor.capabilityProfileRef,
+    'provider-capability:claude:native:sonnet:default',
+  );
+  assert.equal(prepared.providerAgentObservation?.policy.dials.taskGranularity, 'step');
 });
 
 test('Chat group explicit mentions become bounded provider-agent routing summaries', () => {

@@ -561,6 +561,8 @@ async function handleRestSendMessage(
             staleSessionRetryLimit: context.dependencies.config.runtimeStaleSessionRetryLimit,
           },
           providerAgentDecisionRequester: context.dependencies.providerAgentDecisionRequester,
+          providerCapabilityBootstrapConfig:
+            context.dependencies.providerCapabilityBootstrapConfig,
           cancellationRegistry: channelDispatchCancellationRegistry,
           onStateWritten: notifyStreamTargetChanged,
         },

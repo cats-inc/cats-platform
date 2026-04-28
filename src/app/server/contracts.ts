@@ -13,6 +13,10 @@ import type {
   WorkflowContinuationReplaySnapshot,
 } from '../../platform/orchestration/workflowContinuationReplay.js';
 import type { RuntimeClient } from '../../platform/runtime/client.js';
+import type {
+  ProviderCapabilityBootstrapConfig,
+  SupervisionDiagnosticRecord,
+} from '../../platform/supervision/index.js';
 import type { TelegramPollingSupervisor } from '../../platform/transports/telegram/polling.js';
 import type { TelegramRelay } from '../../platform/transports/telegram/relay/index.js';
 import type { TelegramRoomBridge } from '../../platform/transports/telegram/bridge.js';
@@ -54,6 +58,8 @@ export interface SharedServerDependencies {
   now?: () => Date;
   resumePendingOrchestratorDispatch?: ResumePendingOrchestratorDispatch;
   resumeWorkflowContinuationDispatch?: ResumeWorkflowContinuationDispatch;
+  providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
+  providerCapabilityBootstrapDiagnostics?: SupervisionDiagnosticRecord[];
 }
 
 export interface ChatServerDependencies {
@@ -89,6 +95,8 @@ export interface ResolvedSharedServerDependencies extends SharedServerDependenci
   startup: AppStartupState;
   resumePendingOrchestratorDispatch: ResumePendingOrchestratorDispatch;
   resumeWorkflowContinuationDispatch: ResumeWorkflowContinuationDispatch;
+  providerCapabilityBootstrapConfig: ProviderCapabilityBootstrapConfig | null;
+  providerCapabilityBootstrapDiagnostics: SupervisionDiagnosticRecord[];
 }
 
 export interface ResolvedChatServerDependencies extends ChatServerDependencies {

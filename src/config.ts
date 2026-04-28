@@ -26,6 +26,7 @@ export interface AppConfig {
   platformDir: string;
   platformStateDir: string;
   platformConfigDir: string;
+  providerCapabilityBootstrapConfigPath: string;
   chatStatePath: string;
   maxBossCats: number;
   maxCats: number;
@@ -152,6 +153,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     platformDir,
     platformStateDir,
     platformConfigDir,
+    providerCapabilityBootstrapConfigPath:
+      env.CATS_PROVIDER_CAPABILITY_BOOTSTRAP_CONFIG?.trim()
+      || path.join(platformConfigDir, 'provider-capability-bootstrap.yaml'),
     chatStatePath: resolvePlatformStatePath(platformDir),
     maxBossCats: parsePositiveInt(env.CATS_MAX_BOSS_CATS, DEFAULT_MAX_BOSS_CATS),
     maxCats: parsePositiveInt(env.CATS_MAX_CATS, DEFAULT_MAX_CATS),

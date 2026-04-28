@@ -17,6 +17,7 @@ test('loadConfig derives storage paths from canonical root directories', () => {
     CATS_RUNTIME_API_KEY: 'token',
     CATS_RUNTIME_SETUP_PROXY_TIMEOUT_MS: '12345',
     CATS_RUNTIME_STALE_SESSION_RETRY_LIMIT: '3',
+    CATS_PROVIDER_CAPABILITY_BOOTSTRAP_CONFIG: 'C:/Users/test/bootstrap.yaml',
     CATS_MAX_CHAT_PARTICIPANTS: '7',
     CATS_MAX_AUDIENCE_PARTICIPANTS: '2',
   });
@@ -40,6 +41,7 @@ test('loadConfig derives storage paths from canonical root directories', () => {
   assert.equal(config.runtimeSetupProxyTimeoutMs, 12345);
   assert.equal(config.runtimeSetupScanProxyTimeoutMs, 12345);
   assert.equal(config.runtimeSetupApplyProxyTimeoutMs, 12345);
+  assert.equal(config.providerCapabilityBootstrapConfigPath, 'C:/Users/test/bootstrap.yaml');
   assert.equal(config.debugLiveTrace, false);
   assert.equal(config.debugKeepRuntimeSessionsOnProductDelete, false);
   assert.equal(config.chatProviderAgentDecisionEnabled, false);
@@ -80,6 +82,10 @@ test('loadConfig derives the default chat-state path from CATS_PLATFORM_DIR', ()
   assert.equal(
     config.chatStatePath,
     path.join('C:/Users/test/.cats/platform', 'state', 'chat-state.local.json'),
+  );
+  assert.equal(
+    config.providerCapabilityBootstrapConfigPath,
+    path.join('C:/Users/test/.cats/platform', 'config', 'provider-capability-bootstrap.yaml'),
   );
 });
 
