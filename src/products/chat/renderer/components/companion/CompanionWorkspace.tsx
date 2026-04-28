@@ -15,7 +15,10 @@ import {
 import { SidePanel } from '../../../../../design/components/SidePanel.js';
 import { DraftHeader } from '../../../../shared/renderer/components/DraftHeader.js';
 import { catInitials } from '../../chatUtils.js';
-import { promoteCompanionProfilePost as promoteCompanionProfilePostApi } from '../../api/companion.js';
+import {
+  promoteCompanionProfilePost as promoteCompanionProfilePostApi,
+  setCompanionProfilePostStatus as setCompanionProfilePostStatusApi,
+} from '../../api/companion.js';
 import { useCompanionPresence } from '../../hooks/useCompanionPresence.js';
 import { useCompanionProfile } from '../../hooks/useCompanionProfile.js';
 import { useCompanionWorkspace } from '../../hooks/useCompanionWorkspace.js';
@@ -80,6 +83,15 @@ export function CompanionWorkspace({
       workspace.refreshTab();
     },
     [cat.id, companionProfileIaEnabled, profile, workspace],
+  );
+
+  const handleRemovePost = useCallback(
+    async (derivedId: string) => {
+      if (!companionProfileIaEnabled) return;
+      await setCompanionProfilePostStatusApi(cat.id, derivedId, 'removed');
+      profile.refresh();
+    },
+    [cat.id, companionProfileIaEnabled, profile],
   );
 
   const handleWake = useCallback(() => {
@@ -304,6 +316,9 @@ export function CompanionWorkspace({
             cat={cat}
             companionProfileIaEnabled={companionProfileIaEnabled}
             profile={profile.profile}
+            onRemovePost={
+              companionProfileIaEnabled ? handleRemovePost : undefined
+            }
           />
         </div>
       </div>

@@ -19,6 +19,7 @@ import { projectCompanionProfile } from '../companion/profileReadModel.js';
 import {
   CompanionProfilePostValidationError,
   promoteCompanionProfilePost,
+  setCompanionProfilePostStatus,
 } from '../companion/profilePostProducer.js';
 import { parseCompanionContentReference } from '../companion/contentReference.js';
 import {
@@ -391,6 +392,50 @@ async function handlePromoteCompanionProfilePost(
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+async function handleUpdateCompanionProfilePostStatus(
+  context: ChatApiRouteContext,
+  catId: string,
+  postId: string,
+): Promise<void> {
+  try {
+    await resolveCatContext(context, catId);
+    const body = await readJsonBody<{ status?: unknown }>(context.request);
+    if (body.status !== 'active' && body.status !== 'removed') {
+      sendRestError(
+        context,
+        400,
+        'invalid_post_status',
+        '`status` must be one of "active" or "removed".',
+      );
+      return;
+    }
+    const derived = await context.dependencies.companionStore.listDerived(catId);
+    const existing = derived.find((entry) => entry.id === postId);
+    if (!existing) {
+      sendRestError(context, 404, 'profile_post_not_found', `Post ${postId} not found.`);
+      return;
+    }
+    let next;
+    try {
+      next = setCompanionProfilePostStatus({
+        record: existing,
+        status: body.status,
+        now: new Date().toISOString(),
+      });
+    } catch (cause) {
+      if (cause instanceof CompanionProfilePostValidationError) {
+        sendRestError(context, 400, cause.code, cause.message);
+        return;
+      }
+      throw cause;
+    }
+    const stored = await context.dependencies.companionStore.upsertDerived(catId, next);
+    sendJson(context.response, 200, { derived: stored });
+  } catch (error) {
+    handleCanonicalCatError(context, error);
+  }
 }
 
 async function handleResolveCompanionContentReference(
@@ -766,6 +811,23 @@ export async function routeCompanionBoxApi(
       return true;
     }
     await handleResolveCompanionContentReference(context, resolveMatch[0]!);
+    return true;
+  }
+
+  const postStatusMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/cats\/([^/]+)\/companion-box\/posts\/([^/]+)\/status$/u,
+  );
+  if (postStatusMatch) {
+    if (context.method !== 'PATCH') {
+      sendMethodNotAllowed(context.response, ['PATCH']);
+      return true;
+    }
+    await handleUpdateCompanionProfilePostStatus(
+      context,
+      postStatusMatch[0]!,
+      postStatusMatch[1]!,
+    );
     return true;
   }
 

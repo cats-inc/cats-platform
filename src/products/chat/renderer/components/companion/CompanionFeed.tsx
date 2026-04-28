@@ -406,6 +406,12 @@ export interface CompanionFeedProps {
    * stays stable.
    */
   profile?: CompanionProfileReadModel | null;
+  /**
+   * When provided and the IA flag is on, post cards render a Remove
+   * affordance that calls this handler with the underlying derived
+   * record id.
+   */
+  onRemovePost?: (derivedId: string) => Promise<void>;
 }
 
 function CompanionActivityPlaceholder() {
@@ -455,6 +461,7 @@ function CompanionMediaEmptyState({
 
 function renderProfilePosts(
   profile: CompanionProfileReadModel | null | undefined,
+  onRemovePost?: (derivedId: string) => Promise<void>,
 ): ReactNode {
   const posts = profile?.posts ?? [];
   const active = posts.filter((post) => post.status === 'active');
@@ -493,6 +500,17 @@ function renderProfilePosts(
                 />
               ))}
             </div>
+          ) : null}
+          {onRemovePost ? (
+            <button
+              type="button"
+              className="companionDangerButton"
+              onClick={() => {
+                void onRemovePost(post.derivedId);
+              }}
+            >
+              Remove from Posts
+            </button>
           ) : null}
         </article>
       ))}
@@ -553,6 +571,7 @@ export function CompanionFeed({
   cat,
   companionProfileIaEnabled = false,
   profile = null,
+  onRemovePost,
 }: CompanionFeedProps) {
   const tabs = companionProfileIaEnabled ? PROFILE_IA_FEED_TABS : LEGACY_FEED_TABS;
   const [activeTab, setActiveTab] = useState<FeedTab>('posts');
@@ -576,7 +595,7 @@ export function CompanionFeed({
   switch (activeTab) {
     case 'posts':
       content = companionProfileIaEnabled
-        ? renderProfilePosts(profile)
+        ? renderProfilePosts(profile, onRemovePost)
         : (
           <div className="companionPostList">
             {MOCK_POSTS.map((post) => (
