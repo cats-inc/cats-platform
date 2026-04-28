@@ -24,6 +24,8 @@ export default createWorkspaceProductApp({
   renderSidebar: (props) => (
     <Sidebar
       {...props}
+      onStartNewGroupChat={props.onStartNewGroupChat}
+      onStartNewParallelChat={props.onStartNewParallelChat}
       onOpenWarRoom={() => props.navigate(WORK_WAR_ROOM_PATH)}
       onOpenProjects={() => props.navigate(WORK_PROJECTS_PATH)}
       onOpenProject={(projectId) => props.navigate(`${WORK_PROJECTS_PATH}/${projectId}`)}

@@ -59,6 +59,8 @@ export interface SidebarProps {
   onCollapsedSidebarClick: (event: ReactMouseEvent<HTMLElement>) => void;
   onOpenChatsOverview: () => void;
   onStartNewChat: () => void;
+  onStartNewGroupChat?: () => void;
+  onStartNewParallelChat?: () => void;
   onOpenWarRoom?: () => void;
   onOpenProjects?: () => void;
   onOpenProject?: (projectId: string) => void;
@@ -108,6 +110,55 @@ function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] 
       ),
     },
   ];
+
+  if (props.onStartNewGroupChat) {
+    actions.push({
+      key: 'new-team-work',
+      label: 'Team work',
+      onClick: props.onStartNewGroupChat,
+      icon: (
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="5" cy="6" r="2.25" />
+          <circle cx="11" cy="6" r="2.25" />
+          <path d="M2.75 12c.35-1.85 1.6-2.85 3.75-2.85S9.9 10.15 10.25 12" />
+          <path d="M8.6 12c.28-1.48 1.26-2.28 2.9-2.28 1.56 0 2.46.7 2.75 2.28" />
+        </svg>
+      ),
+    });
+  }
+
+  if (props.onStartNewParallelChat) {
+    actions.push({
+      key: 'new-parallel-work',
+      label: 'Parallel work',
+      onClick: props.onStartNewParallelChat,
+      icon: (
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M2 13V3h12v10H2z" />
+          <path d="M7 3v10" />
+          <path d="M11 3v10" />
+        </svg>
+      ),
+    });
+  }
 
   return actions;
 }
