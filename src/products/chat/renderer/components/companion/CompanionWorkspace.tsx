@@ -16,6 +16,7 @@ import { SidePanel } from '../../../../../design/components/SidePanel.js';
 import { DraftHeader } from '../../../../shared/renderer/components/DraftHeader.js';
 import { catInitials } from '../../chatUtils.js';
 import { useCompanionPresence } from '../../hooks/useCompanionPresence.js';
+import { useCompanionProfile } from '../../hooks/useCompanionProfile.js';
 import { useCompanionWorkspace } from '../../hooks/useCompanionWorkspace.js';
 import { CompanionFeed } from './CompanionFeed.js';
 import { CompanionModeToggleChip } from './CompanionModeToggleChip.js';
@@ -56,6 +57,11 @@ export function CompanionWorkspace({
       }),
     [payload.featureFlags, payload.buildChannel],
   );
+
+  const profile = useCompanionProfile({
+    catId: cat.id,
+    enabled: companionProfileIaEnabled,
+  });
 
   const handleWake = useCallback(() => {
     onWake(cat.id);
@@ -275,6 +281,7 @@ export function CompanionWorkspace({
           <CompanionFeed
             cat={cat}
             companionProfileIaEnabled={companionProfileIaEnabled}
+            profile={profile.profile}
           />
         </div>
       </div>

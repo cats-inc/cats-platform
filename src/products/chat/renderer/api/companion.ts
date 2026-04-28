@@ -13,6 +13,7 @@ import type {
   UpdateCompanionResponseProfileInput,
   UpdateCompanionSourceInput,
 } from '../../companion/contracts.js';
+import type { CompanionProfileReadModel } from '../../companion/profileReadModel.js';
 
 function catPath(catId: string): string {
   return `/api/cats/${encodeURIComponent(catId)}/companion-box`;
@@ -117,6 +118,21 @@ export async function listCompanionDerived(
     `companion derived list returned ${response.status}`,
   );
   return data.derived ?? [];
+}
+
+export async function getCompanionProfile(
+  catId: string,
+  signal?: AbortSignal,
+): Promise<CompanionProfileReadModel> {
+  const response = await fetch(`${catPath(catId)}/profile`, {
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+  const data = await expectJson<{ profile: CompanionProfileReadModel }>(
+    response,
+    `companion profile read-model returned ${response.status}`,
+  );
+  return data.profile;
 }
 
 export async function listCompanionMemory(

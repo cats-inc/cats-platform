@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 
 import type { ChatCat } from '../../../api/contracts.js';
+import type { CompanionProfileReadModel } from '../../../companion/profileReadModel.js';
 import { catInitials } from '../../chatUtils.js';
 
 type FeedTab = 'posts' | 'videos' | 'photos' | 'music' | 'files' | 'activity';
@@ -398,6 +399,13 @@ export interface CompanionFeedProps {
    * so callers that have not yet plumbed the flag through stay on legacy.
    */
   companionProfileIaEnabled?: boolean;
+  /**
+   * Projection data fetched via `useCompanionProfile`. Only consulted
+   * when `companionProfileIaEnabled` is true. When `null` (initial fetch),
+   * the IA path renders the empty-state placeholders so the layout
+   * stays stable.
+   */
+  profile?: CompanionProfileReadModel | null;
 }
 
 function CompanionActivityPlaceholder() {
@@ -445,9 +453,106 @@ function CompanionMediaEmptyState({
   );
 }
 
+function renderProfilePosts(
+  profile: CompanionProfileReadModel | null | undefined,
+): ReactNode {
+  const posts = profile?.posts ?? [];
+  const active = posts.filter((post) => post.status === 'active');
+  if (active.length === 0) {
+    return <CompanionPostsEmptyState />;
+  }
+  return (
+    <div className="companionProfilePostList">
+      {active.map((post) => (
+        <article key={post.id} className="companionProfilePostCard">
+          <header className="companionProfilePostHeader">
+            <h3 className="companionProfilePostTitle">{post.title}</h3>
+            <time className="companionProfilePostTimestamp" dateTime={post.promotedAt}>
+              {post.promotedAt}
+            </time>
+          </header>
+          {post.body ? <p className="companionProfilePostBody">{post.body}</p> : null}
+          {post.tags.length > 0 ? (
+            <ul className="companionProfilePostTags">
+              {post.tags.map((tag) => (
+                <li key={tag}>{tag}</li>
+              ))}
+            </ul>
+          ) : null}
+          {post.mediaRefs.length > 0 ? (
+            <div
+              className="companionProfilePostMediaGrid"
+              aria-label={`${post.mediaRefs.length} media items`}
+            >
+              {post.mediaRefs.map((ref) => (
+                <span
+                  key={`${ref.kind}:${ref.id}`}
+                  className="companionProfilePostMediaTile"
+                  data-kind={ref.kind}
+                  data-id={ref.id}
+                />
+              ))}
+            </div>
+          ) : null}
+        </article>
+      ))}
+    </div>
+  );
+}
+
+function renderProfileMedia(
+  tiles: CompanionProfileReadModel['photos'] | undefined,
+  surface: 'photo' | 'video' | 'music',
+): ReactNode {
+  const items = tiles ?? [];
+  if (items.length === 0) {
+    return <CompanionMediaEmptyState surface={surface} />;
+  }
+  return (
+    <ul
+      className={`companionProfileMediaList companionProfileMediaList--${surface}`}
+      aria-label={`${items.length} ${MEDIA_SURFACE_LABELS[surface]}`}
+    >
+      {items.map((tile) => (
+        <li key={tile.id} className="companionProfileMediaTile">
+          <span className="companionProfileMediaTitle">{tile.title}</span>
+          {tile.mimeType ? (
+            <span className="companionProfileMediaMime">{tile.mimeType}</span>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function renderProfileFiles(
+  tiles: CompanionProfileReadModel['files'] | undefined,
+): ReactNode {
+  const items = tiles ?? [];
+  if (items.length === 0) {
+    return <CompanionMediaEmptyState surface="file" />;
+  }
+  return (
+    <ul
+      className="companionProfileFileList"
+      aria-label={`${items.length} files`}
+    >
+      {items.map((tile) => (
+        <li key={tile.id} className="companionProfileFileRow">
+          <span className="companionProfileFileTitle">{tile.title}</span>
+          {tile.mimeType ? (
+            <span className="companionProfileFileMime">{tile.mimeType}</span>
+          ) : null}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 export function CompanionFeed({
   cat,
   companionProfileIaEnabled = false,
+  profile = null,
 }: CompanionFeedProps) {
   const tabs = companionProfileIaEnabled ? PROFILE_IA_FEED_TABS : LEGACY_FEED_TABS;
   const [activeTab, setActiveTab] = useState<FeedTab>('posts');
@@ -463,50 +568,42 @@ export function CompanionFeed({
 
   // PLAN-077 §"Keep mock posts out of production runtime and use an empty
   // state when no eligible profile-post projection exists." When the
-  // profile-IA flag is on, every media tab renders the empty-state hint
-  // instead of the local fixtures. The actual projection-driven render
-  // arrives in the renderer-integration follow-up; this slice ensures
-  // the production path can't accidentally ship mock content.
+  // profile-IA flag is on, the renderer reads from the projection
+  // `profile` prop (fetched by `useCompanionProfile`); when the
+  // projection is absent or empty, the matching empty-state card
+  // renders instead of any mock fixture.
   let content: ReactNode;
   switch (activeTab) {
     case 'posts':
-      content = companionProfileIaEnabled ? (
-        <CompanionPostsEmptyState />
-      ) : (
-        <div className="companionPostList">
-          {MOCK_POSTS.map((post) => (
-            <CompanionPostCard key={post.id} post={post} cat={cat} />
-          ))}
-        </div>
-      );
+      content = companionProfileIaEnabled
+        ? renderProfilePosts(profile)
+        : (
+          <div className="companionPostList">
+            {MOCK_POSTS.map((post) => (
+              <CompanionPostCard key={post.id} post={post} cat={cat} />
+            ))}
+          </div>
+        );
       break;
     case 'videos':
-      content = companionProfileIaEnabled ? (
-        <CompanionMediaEmptyState surface="video" />
-      ) : (
-        <CompanionVideoGrid />
-      );
+      content = companionProfileIaEnabled
+        ? renderProfileMedia(profile?.videos, 'video')
+        : <CompanionVideoGrid />;
       break;
     case 'photos':
-      content = companionProfileIaEnabled ? (
-        <CompanionMediaEmptyState surface="photo" />
-      ) : (
-        <CompanionPhotoGrid />
-      );
+      content = companionProfileIaEnabled
+        ? renderProfileMedia(profile?.photos, 'photo')
+        : <CompanionPhotoGrid />;
       break;
     case 'music':
-      content = companionProfileIaEnabled ? (
-        <CompanionMediaEmptyState surface="music" />
-      ) : (
-        <CompanionMusicList />
-      );
+      content = companionProfileIaEnabled
+        ? renderProfileMedia(profile?.music, 'music')
+        : <CompanionMusicList />;
       break;
     case 'files':
-      content = companionProfileIaEnabled ? (
-        <CompanionMediaEmptyState surface="file" />
-      ) : (
-        <CompanionFileList />
-      );
+      content = companionProfileIaEnabled
+        ? renderProfileFiles(profile?.files)
+        : <CompanionFileList />;
       break;
     case 'activity':
       content = <CompanionActivityPlaceholder />;

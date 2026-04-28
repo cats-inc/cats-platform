@@ -66,3 +66,48 @@ test('default props (no flag passed) keep the legacy tab order', () => {
     ['Posts', 'Videos', 'Photos', 'Music', 'Files'],
   );
 });
+
+test('IA path with a populated profile renders posts from the projection rather than the empty state', () => {
+  const markup = renderToStaticMarkup(
+    React.createElement(CompanionFeed, {
+      cat: fixtureCat(),
+      companionProfileIaEnabled: true,
+      profile: {
+        posts: [
+          {
+            id: 'post:p-1',
+            derivedId: 'd-1',
+            catId: 'cat-fixture',
+            title: 'Real promoted post',
+            body: 'projection-driven body',
+            tags: [],
+            status: 'active',
+            originType: 'source',
+            originId: 's-1',
+            mediaRefs: [],
+            sourceIds: ['s-1'],
+            promotedAt: '2026-04-28T01:00:00.000Z',
+            updatedAt: '2026-04-28T01:00:00.000Z',
+          },
+        ],
+        photos: [],
+        videos: [],
+        music: [],
+        files: [],
+      },
+    }),
+  );
+  assert.match(markup, /Real promoted post/u);
+  assert.doesNotMatch(markup, /No posts yet\./u);
+});
+
+test('IA path with an empty profile shows the empty-state hint instead of mock posts', () => {
+  const markup = renderToStaticMarkup(
+    React.createElement(CompanionFeed, {
+      cat: fixtureCat(),
+      companionProfileIaEnabled: true,
+      profile: { posts: [], photos: [], videos: [], music: [], files: [] },
+    }),
+  );
+  assert.match(markup, /No posts yet\./u);
+});
