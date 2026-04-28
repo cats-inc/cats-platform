@@ -16,6 +16,10 @@ import type {
   UpdateCompanionResponseProfileInput,
 } from '../companion/contracts.js';
 import { projectCompanionProfile } from '../companion/profileReadModel.js';
+import {
+  CompanionProfilePostValidationError,
+  promoteCompanionProfilePost,
+} from '../companion/profilePostProducer.js';
 import { syncCanonicalCompanionMemoryBestEffort } from '../../../platform/memory/maintenance.js';
 import {
   type CanonicalSyncAwareCompanionBoxStore,
@@ -291,6 +295,95 @@ async function handleGetCompanionProfileReadModel(
   }
 }
 
+async function handlePromoteCompanionProfilePost(
+  context: ChatApiRouteContext,
+  catId: string,
+): Promise<void> {
+  try {
+    await resolveCatContext(context, catId);
+    const body = await readJsonBody<{
+      origin?: { type?: unknown; id?: unknown };
+      title?: unknown;
+      body?: unknown;
+      tags?: unknown;
+      mediaRefs?: unknown;
+      promotedAt?: unknown;
+    }>(context.request);
+
+    if (!isPlainObject(body.origin)) {
+      sendRestError(context, 400, 'invalid_origin', '`origin` must be an object.');
+      return;
+    }
+    const originType = body.origin.type;
+    if (originType !== 'source' && originType !== 'derived' && originType !== 'artifact') {
+      sendRestError(
+        context,
+        400,
+        'invalid_origin_type',
+        '`origin.type` must be one of "source", "derived", "artifact".',
+      );
+      return;
+    }
+    if (typeof body.origin.id !== 'string' || body.origin.id.trim().length === 0) {
+      sendRestError(context, 400, 'invalid_origin_id', '`origin.id` must be a non-empty string.');
+      return;
+    }
+    if (typeof body.title !== 'string') {
+      sendRestError(context, 400, 'invalid_title', '`title` must be a string.');
+      return;
+    }
+
+    const box = await context.dependencies.companionStore.getBox(catId);
+    const existing = await context.dependencies.companionStore.listDerived(catId);
+    const promotedAt = typeof body.promotedAt === 'string'
+      ? body.promotedAt
+      : new Date().toISOString();
+
+    let result;
+    try {
+      result = promoteCompanionProfilePost(
+        {
+          catId,
+          boxId: box.id,
+          origin: {
+            type: originType,
+            id: body.origin.id,
+          },
+          title: body.title,
+          body: typeof body.body === 'string' ? body.body : undefined,
+          tags: Array.isArray(body.tags)
+            ? body.tags.filter((entry): entry is string => typeof entry === 'string')
+            : [],
+          mediaRefs: Array.isArray(body.mediaRefs)
+            ? (body.mediaRefs as Array<{ kind: 'source' | 'derived' | 'artifact'; id: string }>)
+            : [],
+          promotedAt,
+        },
+        { existingDerived: existing },
+      );
+    } catch (cause) {
+      if (cause instanceof CompanionProfilePostValidationError) {
+        sendRestError(context, 400, cause.code, cause.message);
+        return;
+      }
+      throw cause;
+    }
+
+    const stored = await context.dependencies.companionStore.upsertDerived(catId, result.derived);
+    sendJson(context.response, result.updated ? 200 : 201, {
+      derived: stored,
+      updated: result.updated,
+      dedupKey: result.dedupKey,
+    });
+  } catch (error) {
+    handleCanonicalCatError(context, error);
+  }
+}
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 async function handleListCompanionMemory(
   context: ChatApiRouteContext,
   catId: string,
@@ -550,6 +643,19 @@ export async function routeCompanionBoxApi(
       return true;
     }
     await handleGetCompanionProfileReadModel(context, profileMatch[0]!);
+    return true;
+  }
+
+  const postsMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/cats\/([^/]+)\/companion-box\/posts$/u,
+  );
+  if (postsMatch) {
+    if (context.method !== 'POST') {
+      sendMethodNotAllowed(context.response, ['POST']);
+      return true;
+    }
+    await handlePromoteCompanionProfilePost(context, postsMatch[0]!);
     return true;
   }
 

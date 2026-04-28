@@ -20,6 +20,7 @@ import {
   ensureCompanionBox,
   ingestCompanionSource,
   listCompanionBoxDerived,
+  upsertCompanionBoxDerived,
   listCompanionBoxMemory,
   listCompanionBoxSources,
   summarizeCompanionBox,
@@ -116,6 +117,17 @@ export class MemoryCompanionBoxStore implements CompanionBoxStore {
   async listDerived(catId: string, now: Date = new Date()): Promise<CompanionDerivedRecord[]> {
     const { box } = ensureCompanionBox(this.snapshot, catId, isoAt(now));
     return structuredClone(listCompanionBoxDerived(this.snapshot, box));
+  }
+
+  async upsertDerived(
+    catId: string,
+    record: CompanionDerivedRecord,
+    now: Date = new Date(),
+  ): Promise<CompanionDerivedRecord> {
+    const nowIso = isoAt(now);
+    const { box } = ensureCompanionBox(this.snapshot, catId, nowIso);
+    const stored = upsertCompanionBoxDerived(this.snapshot, box, record, nowIso);
+    return structuredClone(stored);
   }
 
   async listMemory(catId: string, now: Date = new Date()): Promise<CompanionMemoryRecord[]> {

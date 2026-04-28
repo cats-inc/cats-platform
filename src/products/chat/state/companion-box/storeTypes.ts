@@ -53,6 +53,11 @@ export interface CompanionBoxStore {
     now?: Date,
   ): Promise<CompanionSourceDeleteResult>;
   listDerived(catId: string, now?: Date): Promise<CompanionDerivedRecord[]>;
+  upsertDerived(
+    catId: string,
+    record: CompanionDerivedRecord,
+    now?: Date,
+  ): Promise<CompanionDerivedRecord>;
   listMemory(catId: string, now?: Date): Promise<CompanionMemoryRecord[]>;
   createMemory(
     catId: string,

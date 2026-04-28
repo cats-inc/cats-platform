@@ -263,6 +263,38 @@ export function appendCompanionBoxMemory(
   return record;
 }
 
+/**
+ * PLAN-077 Phase 2 promote-to-post landing point. Inserts a new
+ * derived record or replaces an existing one matched by `id`. The
+ * companion-box `derivedIds` list is kept newest-first, mirroring
+ * the behaviour of the source-ingest derived-record append.
+ */
+export function upsertCompanionBoxDerived(
+  snapshot: CompanionSnapshot,
+  box: CompanionBox,
+  record: CompanionDerivedRecord,
+  nowIso: string,
+): CompanionDerivedRecord {
+  if (record.boxId !== box.id) {
+    throw new Error(
+      `Companion derived record boxId ${record.boxId} does not match target box ${box.id}.`,
+    );
+  }
+  const stored: CompanionDerivedRecord = { ...record, updatedAt: nowIso };
+  const existingIndex = snapshot.derived.findIndex((entry) => entry.id === stored.id);
+  if (existingIndex >= 0) {
+    snapshot.derived[existingIndex] = stored;
+  } else {
+    snapshot.derived.unshift(stored);
+  }
+  if (!box.derivedIds.includes(stored.id)) {
+    box.derivedIds.unshift(stored.id);
+  }
+  box.updatedAt = nowIso;
+  snapshot.updatedAt = nowIso;
+  return stored;
+}
+
 export function deleteCompanionBoxMemory(
   snapshot: CompanionSnapshot,
   box: CompanionBox,
