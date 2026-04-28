@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import { createDefaultCoreState } from '../build/server/core/model/index.js';
@@ -23,6 +24,22 @@ function createIntakeFixture() {
 
   return { now, core, template };
 }
+
+test('work intake generator stays on Core records and planning metadata', async () => {
+  const source = await readFile(
+    new URL('../src/products/work/intake/planGenerator.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(source, /upsertCoreProject/u);
+  assert.match(source, /upsertCoreWorkItem/u);
+  assert.match(source, /upsertCoreTask/u);
+  assert.match(source, /writeTaskPlanningMetadata/u);
+  assert.doesNotMatch(
+    source,
+    /runtime|CatsRuntimeClient|createSession|sendMessage|runtimeBoundary/u,
+  );
+});
 
 test('work template registry exposes a deterministic extension seam', () => {
   const template = getWorkTemplate('software_delivery');
