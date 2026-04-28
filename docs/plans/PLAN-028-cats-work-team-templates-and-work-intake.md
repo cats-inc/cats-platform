@@ -63,7 +63,7 @@ mechanics do not become the Work UI.
       - approval expectations
 - [x] Add normalization helpers so template defaults and intake overrides merge
       deterministically
-- [ ] Keep the first catalog file-backed or product-config-backed, not runtime-
+- [x] Keep the first catalog file-backed or product-config-backed, not runtime-
       owned
 - [ ] Define the minimum intake payload fields from SPEC-040:
       title, brief, desired outcome, optional repo/workspace context, optional
@@ -221,6 +221,7 @@ template packs.
 | 2026-03-29 | Plan created to add the first Work-native intake, team-template, review, approval, and cross-product handoff loop |
 | 2026-04-28 | Implementation follow-up: `generateWorkIntakePlan` now normalizes direct product-layer intake input before writing Core project, work-item, conversation, and metadata fields; route-level validation is no longer the only trimming boundary. |
 | 2026-04-28 | Implementation follow-up: added an explicit Work template registry constructor with duplicate-id rejection and deterministic list ordering, giving later templates a bounded extension seam beyond `software_delivery`. |
+| 2026-04-28 | Implementation follow-up: added a focused Work template boundary test proving the built-in catalog remains product-owned and runtime/config-loader-free. |
 | 2026-03-29 | Claude: All 6 phases implemented on branch `claude/spec-040-work-intake`. Templates, plan generation, API routes, handoff-readiness transitions, dashboard, and renderer surfaces landed. 29 tests pass. Work no longer owns runtime dispatch or shared server dependency wiring. |
 | 2026-03-30 | Codex: Refined Work intake projection and review UI so each generated task now exposes a product-facing handoff state (`pending_review`, `active_here`, `ready_for_pickup`, `stopped`, `completed`) plus the next expected owner action. Approved-plan messaging now distinguishes Work-owned follow-through from Chat/Code pickup instead of implying direct dispatch. |
 | 2026-03-30 | Codex: Moved the underlying handoff state machine into `src/core/taskHandoff.ts` so Work no longer owns cross-product task-state semantics; the Work review UI now only owns product-local wording and badges. |

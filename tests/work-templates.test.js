@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 
 import {
@@ -21,6 +22,30 @@ test('getWorkTemplate returns software_delivery', () => {
 test('getWorkTemplate returns null for unknown id', () => {
   const template = getWorkTemplate('nonexistent');
   assert.equal(template, null);
+});
+
+test('work template catalog stays product-owned and runtime-free', async () => {
+  const sources = await Promise.all([
+    readFile(
+      new URL('../src/products/work/templates/index.ts', import.meta.url),
+      'utf8',
+    ),
+    readFile(
+      new URL('../src/products/work/templates/softwareDelivery.ts', import.meta.url),
+      'utf8',
+    ),
+    readFile(
+      new URL('../src/products/work/templates/types.ts', import.meta.url),
+      'utf8',
+    ),
+  ]);
+  const combinedSource = sources.join('\n');
+
+  assert.doesNotMatch(
+    combinedSource,
+    /from ['"][^'"]*(?:runtime|platform\/orchestration|platform\/supervision)/u,
+  );
+  assert.doesNotMatch(combinedSource, /CATS_|process\.env|loadServerConfig/u);
 });
 
 test('software_delivery template has required structure', () => {
@@ -125,4 +150,3 @@ test('software_delivery blueprints have valid productHint values', () => {
     );
   }
 });
-
