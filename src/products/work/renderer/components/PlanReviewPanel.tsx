@@ -243,7 +243,83 @@ export function PlanReviewPanel() {
       {plan.template ? (
         <div className="work-plan-template-info">
           Template: <strong>{plan.template.label}</strong>
+          {plan.template.description ? (
+            <span className="work-plan-template-description"> — {plan.template.description}</span>
+          ) : null}
         </div>
+      ) : null}
+
+      {plan.intent ? (
+        <section className="work-plan-intent" aria-label="Planning intent">
+          <h3 className="work-plan-section-title">Planning intent</h3>
+          {plan.intent.desiredOutcome ? (
+            <p className="work-plan-intent-outcome">
+              <strong>Desired outcome:</strong> {plan.intent.desiredOutcome}
+            </p>
+          ) : null}
+          {plan.intent.brief ? (
+            <p className="work-plan-intent-brief">
+              <strong>Context:</strong> {plan.intent.brief}
+            </p>
+          ) : null}
+          {(plan.intent.deadline || plan.intent.priority) ? (
+            <ul className="work-plan-intent-meta">
+              {plan.intent.deadline ? (
+                <li><strong>Deadline:</strong> {plan.intent.deadline}</li>
+              ) : null}
+              {plan.intent.priority ? (
+                <li><strong>Priority:</strong> {plan.intent.priority}</li>
+              ) : null}
+            </ul>
+          ) : null}
+        </section>
+      ) : null}
+
+      {plan.roles.length > 0 ? (
+        <section className="work-plan-roles" aria-label="Roles and product routing">
+          <h3 className="work-plan-section-title">Roles &amp; product routing</h3>
+          <p className="work-plan-roles-intro">
+            Each task is owned by a template role and routed to the product where the role's
+            work happens. You can override product routing per task below.
+          </p>
+          <ul className="work-plan-role-list">
+            {plan.roles.map((role) => (
+              <li
+                key={role.key}
+                className={`work-plan-role work-plan-role--${role.required ? 'required' : 'optional'}`}
+              >
+                <div className="work-plan-role-header">
+                  <span className="work-plan-role-label">{role.label}</span>
+                  {role.required ? null : (
+                    <span className="work-plan-role-flag">optional</span>
+                  )}
+                  {role.defaultProductHint ? (
+                    <ProductBadge product={role.defaultProductHint} />
+                  ) : null}
+                  {role.defaultStrategyHint ? (
+                    <StrategyBadge strategy={role.defaultStrategyHint} />
+                  ) : null}
+                </div>
+                {role.tasks.length > 0 ? (
+                  <ul className="work-plan-role-tasks">
+                    {role.tasks.map((task) => (
+                      <li key={task.taskId} className="work-plan-role-task">
+                        {task.title}
+                        <span className="work-plan-role-task-target">
+                          → {formatWorkExecutionProduct(task.targetProduct)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="work-plan-role-empty">
+                    No tasks assigned to this role in the generated plan.
+                  </p>
+                )}
+              </li>
+            ))}
+          </ul>
+        </section>
       ) : null}
 
       <div className="work-plan-task-list">
@@ -362,14 +438,25 @@ export function PlanReviewPanel() {
         ))}
       </div>
 
-      {plan.activity.latestMessages.length > 0 ? (
+      {plan.activity.latestMessages.length > 0 || plan.activity.backgroundCount > 0 ? (
         <div className="work-plan-activity">
           <h3 className="work-plan-section-title">Activity</h3>
-          <ul className="work-plan-activity-list">
-            {plan.activity.latestMessages.map((msg, i) => (
-              <li key={i} className="work-plan-activity-item">{msg}</li>
-            ))}
-          </ul>
+          {plan.activity.latestMessages.length > 0 ? (
+            <ul className="work-plan-activity-list">
+              {plan.activity.latestMessages.map((msg, i) => (
+                <li key={i} className="work-plan-activity-item">{msg}</li>
+              ))}
+            </ul>
+          ) : (
+            <p className="work-plan-activity-empty">
+              No operator-facing activity yet for this plan.
+            </p>
+          )}
+          {plan.activity.backgroundCount > 0 ? (
+            <p className="work-plan-activity-background-note">
+              {plan.activity.backgroundCount} background activity entr{plan.activity.backgroundCount === 1 ? 'y' : 'ies'} hidden (template/agent plumbing).
+            </p>
+          ) : null}
         </div>
       ) : null}
 

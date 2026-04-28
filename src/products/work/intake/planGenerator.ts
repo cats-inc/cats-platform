@@ -23,6 +23,7 @@ import type {
   GenerateWorkIntakePlanResult,
   WorkIntakeInput,
 } from './types.js';
+import { withBackgroundActivitySurface } from './activitySurface.js';
 
 function buildIntakeMetadata(
   input: WorkIntakeInput,
@@ -114,12 +115,16 @@ export function generateWorkIntakePlan(
   const linkedProject = projectLinkResult.project;
 
   // 4. Create activity for project creation
+  // PLAN-028 Phase 4: tag intake plumbing activity as background so the
+  // operator-facing Plan Review timeline stays focused on decisions and
+  // status changes rather than template setup noise.
   const projectActivityResult = appendCoreActivity(nextCore, {
     kind: 'note',
     projectId: project.id,
     workItemId: workItem.id,
     conversationId,
     message: `Work intake created: "${normalizedInput.title}" using template "${template.label}".`,
+    metadata: withBackgroundActivitySurface(null),
   }, now);
   nextCore = projectActivityResult.core;
 
@@ -215,7 +220,10 @@ export function generateWorkIntakePlan(
     workItem = linkResult.workItem;
   }
 
-  // 7. Create activity records for each task
+  // 7. Create activity records for each task.
+  // PLAN-028 Phase 4: per-task draft-creation activities are also background
+  // template plumbing — the operator already sees the tasks themselves in the
+  // Plan Review surface and does not need a "Draft task created" line per task.
   const activities = [projectActivityResult.activity];
   for (const task of finalTasks) {
     const activityResult = appendCoreActivity(nextCore, {
@@ -224,6 +232,7 @@ export function generateWorkIntakePlan(
       workItemId: workItem.id,
       taskId: task.id,
       message: `Draft task created: "${task.title}".`,
+      metadata: withBackgroundActivitySurface(null),
     }, now);
     nextCore = activityResult.core;
     activities.push(activityResult.activity);

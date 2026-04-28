@@ -100,7 +100,7 @@ shared Core contracts.
       - template selection
       - generated plan review
       - editable acceptance criteria and routing hints before approval
-- [ ] Present planning intent, roles, and product-target choices in
+- [x] Present planning intent, roles, and product-target choices in
       human-readable language before any raw trace detail
 - [x] Keep the first slice transcript-free and dashboard-native rather than
       redirecting the user into Chat to start work
@@ -117,7 +117,7 @@ shared Core contracts.
       strategy hints, and acceptance criteria
 - [x] Keep Work-targeted tasks visible in Work while Chat/Code-targeted tasks
       become handoff-ready for downstream pickup
-- [ ] Keep background template or agent activity out of Work by default unless
+- [x] Keep background template or agent activity out of Work by default unless
       it needs durable operator-visible tracking, approval, or reprioritization
 - [x] Keep Work above the existing product-to-runtime bridge instead of sending
       `CoreTaskRecord` directly to `cats-runtime`
@@ -232,6 +232,7 @@ template packs.
 | 2026-04-28 | Implementation follow-up: added a Work intake generator boundary test proving template expansion writes Core records with `task.metadata.planning` and does not call runtime/provider bridge code directly. |
 | 2026-04-28 | Implementation follow-up: added approval regression coverage proving edited product routing, strategy hints, and acceptance criteria survive the transition to `in_progress` and still drive Work/Chat/Code handoff state. |
 | 2026-04-28 | Status sync: marked existing tested behavior for draft plan generation, Work shell intake entry, focused `/work/intake/:projectId` review routing, Core approval decisions, downstream handoff readiness, and regression coverage. |
+| 2026-04-28 | Phase 3 / Phase 4 close-out: Plan Review now leads with a `Planning intent` section (desired outcome / context / deadline / priority pulled from `project.metadata.intake`) and a `Roles & product routing` section that groups generated tasks under their template role with the resolved target product, before the raw task list. Plan-generator activities (`Work intake created` and per-task `Draft task created`) now carry `metadata.surface = 'background'` via a new Work-owned `activitySurface` helper; `intakeProjection` filters background activities out of the operator-facing timeline by default and reports the hidden count separately so audit/replay still keep the records. |
 | 2026-03-29 | Claude: All 6 phases implemented on branch `claude/spec-040-work-intake`. Templates, plan generation, API routes, handoff-readiness transitions, dashboard, and renderer surfaces landed. 29 tests pass. Work no longer owns runtime dispatch or shared server dependency wiring. |
 | 2026-03-30 | Codex: Refined Work intake projection and review UI so each generated task now exposes a product-facing handoff state (`pending_review`, `active_here`, `ready_for_pickup`, `stopped`, `completed`) plus the next expected owner action. Approved-plan messaging now distinguishes Work-owned follow-through from Chat/Code pickup instead of implying direct dispatch. |
 | 2026-03-30 | Codex: Moved the underlying handoff state machine into `src/core/taskHandoff.ts` so Work no longer owns cross-product task-state semantics; the Work review UI now only owns product-local wording and badges. |
