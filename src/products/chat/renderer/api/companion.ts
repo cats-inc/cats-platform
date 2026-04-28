@@ -135,6 +135,41 @@ export async function getCompanionProfile(
   return data.profile;
 }
 
+export interface PromoteCompanionProfilePostInput {
+  origin: { type: 'source' | 'derived' | 'artifact'; id: string };
+  title: string;
+  body?: string;
+  tags?: string[];
+  mediaRefs?: Array<{ kind: 'source' | 'derived' | 'artifact'; id: string }>;
+  promotedAt?: string;
+}
+
+export interface PromoteCompanionProfilePostResult {
+  derived: CompanionDerivedRecord;
+  updated: boolean;
+  dedupKey: string;
+}
+
+export async function promoteCompanionProfilePost(
+  catId: string,
+  input: PromoteCompanionProfilePostInput,
+  signal?: AbortSignal,
+): Promise<PromoteCompanionProfilePostResult> {
+  const response = await fetch(`${catPath(catId)}/posts`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(input),
+    signal,
+  });
+  return expectJson<PromoteCompanionProfilePostResult>(
+    response,
+    `companion promote-post returned ${response.status}`,
+  );
+}
+
 export async function listCompanionMemory(
   catId: string,
   signal?: AbortSignal,

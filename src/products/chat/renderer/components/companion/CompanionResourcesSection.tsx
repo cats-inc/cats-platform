@@ -12,6 +12,14 @@ export interface CompanionResourcesSectionProps {
   loading: boolean;
   onAddSource: (input: CreateCompanionSourceInput) => Promise<void>;
   onDeleteSource: (sourceId: string) => Promise<void>;
+  /**
+   * When provided, each source row gets a "Promote to post" affordance
+   * that calls this handler. The renderer dialog (later slice) will
+   * supersede this minimal entry point with the full Title / Body /
+   * Tags / per-media-checkbox flow; the current button promotes the
+   * source directly with the source's title and an empty media list.
+   */
+  onPromoteSourceToPost?: (source: CompanionSourceRecord) => Promise<void>;
 }
 
 function formatDate(iso: string): string {
@@ -43,7 +51,19 @@ export function CompanionResourcesSection({
   loading,
   onAddSource,
   onDeleteSource,
+  onPromoteSourceToPost,
 }: CompanionResourcesSectionProps) {
+  const [promotingId, setPromotingId] = useState<string | null>(null);
+
+  async function handlePromote(source: CompanionSourceRecord): Promise<void> {
+    if (!onPromoteSourceToPost) return;
+    setPromotingId(source.id);
+    try {
+      await onPromoteSourceToPost(source);
+    } finally {
+      setPromotingId(null);
+    }
+  }
   const [showForm, setShowForm] = useState(false);
   const [formTitle, setFormTitle] = useState('');
   const [formNote, setFormNote] = useState('');
@@ -142,13 +162,25 @@ export function CompanionResourcesSection({
               {source.linkedPath && (
                 <span className="companionSourcePath">{source.linkedPath}</span>
               )}
-              <button
-                type="button"
-                className="companionDangerButton"
-                onClick={() => onDeleteSource(source.id)}
-              >
-                Remove
-              </button>
+              <div className="companionSourceActions">
+                {onPromoteSourceToPost ? (
+                  <button
+                    type="button"
+                    className="companionActionButton"
+                    onClick={() => handlePromote(source)}
+                    disabled={promotingId === source.id}
+                  >
+                    {promotingId === source.id ? 'Promoting...' : 'Promote to post'}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="companionDangerButton"
+                  onClick={() => onDeleteSource(source.id)}
+                >
+                  Remove
+                </button>
+              </div>
             </li>
           ))}
         </ul>

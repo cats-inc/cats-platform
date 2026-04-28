@@ -15,6 +15,7 @@ import {
 import { SidePanel } from '../../../../../design/components/SidePanel.js';
 import { DraftHeader } from '../../../../shared/renderer/components/DraftHeader.js';
 import { catInitials } from '../../chatUtils.js';
+import { promoteCompanionProfilePost as promoteCompanionProfilePostApi } from '../../api/companion.js';
 import { useCompanionPresence } from '../../hooks/useCompanionPresence.js';
 import { useCompanionProfile } from '../../hooks/useCompanionProfile.js';
 import { useCompanionWorkspace } from '../../hooks/useCompanionWorkspace.js';
@@ -62,6 +63,24 @@ export function CompanionWorkspace({
     catId: cat.id,
     enabled: companionProfileIaEnabled,
   });
+
+  const handlePromoteSourceToPost = useCallback(
+    async (source: { id: string; title: string | null; originalFileName: string | null }) => {
+      if (!companionProfileIaEnabled) return;
+      const fallbackTitle =
+        source.title?.trim()
+        || source.originalFileName?.replace(/\.[^/.]+$/u, '')
+        || 'Untitled post';
+      await promoteCompanionProfilePostApi(cat.id, {
+        origin: { type: 'source', id: source.id },
+        title: fallbackTitle,
+        mediaRefs: [],
+      });
+      profile.refresh();
+      workspace.refreshTab();
+    },
+    [cat.id, companionProfileIaEnabled, profile, workspace],
+  );
 
   const handleWake = useCallback(() => {
     onWake(cat.id);
@@ -119,6 +138,9 @@ export function CompanionWorkspace({
         loading={workspace.loading}
         onAddSource={workspace.addSource}
         onDeleteSource={workspace.removeSource}
+        onPromoteSourceToPost={
+          companionProfileIaEnabled ? handlePromoteSourceToPost : undefined
+        }
       />,
     ),
     creations: wrapSection(
