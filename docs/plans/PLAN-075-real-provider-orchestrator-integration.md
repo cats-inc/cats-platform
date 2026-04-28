@@ -678,8 +678,10 @@ execution. The difference is control density, not a boolean switch.
   explicit developer environment flags, but PLAN completion requires recorded
   local/manual evidence for one Chat turn, one Work supervised run, and one
   Code task/relay path. If credentials are unavailable, this plan remains
-  blocked rather than silently complete. `code-live-provider-smoke.test.tsx`
-  provides the gated Code task/relay smoke harness when
+  blocked rather than silently complete. `npm run smoke:live:work`,
+  `npm run smoke:live:code`, and `npm run smoke:live:providers` provide the
+  gated harness entrypoints. Work live smoke runs when
+  `CATS_WORK_LIVE_PROVIDER_SMOKE=1`; Code live smoke runs when
   `CATS_CODE_LIVE_PROVIDER_SMOKE=1`.
 - Weak-model tests prove Ollama/local capability profiles use the same decision
   seam, receive stricter policy dials, can only access allowed weak-worker/SOP
@@ -779,3 +781,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 60: added provider-agent run-record helpers and used them in the Work fake-run vertical slice so semantic plans, tool requests, and approval requests are written back to supervised run metadata from actual tool-boundary evidence. |
 | 2026-04-28 | Implementation slice 61: completed Phase 5 Task 5.2 by projecting provider-agent semantic plan metadata into Work task timelines alongside evidence-backed tool requests, approvals, observations, and outcomes. |
 | 2026-04-28 | Implementation slice 62: added the gated `work-live-provider-smoke.test.tsx` harness for Phase 5 Task 5.4 so Claude/Codex Work supervised runs can be manually verified from the existing task detail supervised-run API without changing the Work UI flow. |
+| 2026-04-28 | Implementation slice 63: added npm script entrypoints for Work, Code, and combined live-provider smoke verification so Phase 5.4 and Phase 6.4 manual evidence can be collected from stable commands while remaining gated by explicit environment flags. |
