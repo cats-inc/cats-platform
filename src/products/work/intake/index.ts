@@ -1,4 +1,4 @@
-export { generateWorkIntakePlan } from './planGenerator.js';
+export { generateWorkIntakePlan, normalizeWorkIntakeInput } from './planGenerator.js';
 export type {
   GenerateWorkIntakePlanResult,
   WorkIntakeInput,

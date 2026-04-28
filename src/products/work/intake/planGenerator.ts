@@ -38,6 +38,18 @@ function buildIntakeMetadata(
   };
 }
 
+export function normalizeWorkIntakeInput(input: WorkIntakeInput): WorkIntakeInput {
+  return {
+    title: input.title.trim(),
+    brief: input.brief.trim(),
+    desiredOutcome: input.desiredOutcome.trim(),
+    repoPath: input.repoPath?.trim() || null,
+    deadline: input.deadline?.trim() || null,
+    priority: input.priority ?? null,
+    templateId: input.templateId.trim(),
+  };
+}
+
 export function generateWorkIntakePlan(
   core: CatsCoreState,
   input: WorkIntakeInput,
@@ -45,24 +57,26 @@ export function generateWorkIntakePlan(
   now: Date = new Date(),
 ): GenerateWorkIntakePlanResult {
   let nextCore = core;
+  const normalizedInput = normalizeWorkIntakeInput(input);
+  const normalizedRepoPath = normalizedInput.repoPath ?? null;
 
   // 1. Create project
   const projectResult = upsertCoreProject(nextCore, {
-    title: input.title,
+    title: normalizedInput.title,
     status: 'planned',
-    summary: input.brief,
-    repoPath: input.repoPath ?? null,
-    metadata: buildIntakeMetadata(input),
+    summary: normalizedInput.brief,
+    repoPath: normalizedRepoPath,
+    metadata: buildIntakeMetadata(normalizedInput),
   }, now);
   nextCore = projectResult.core;
   const project = projectResult.project;
 
   // 2. Create top-level work item
   const workItemResult = upsertCoreWorkItem(nextCore, {
-    title: input.title,
+    title: normalizedInput.title,
     status: 'draft',
     projectId: project.id,
-    summary: input.desiredOutcome,
+    summary: normalizedInput.desiredOutcome,
   }, now);
   nextCore = workItemResult.core;
   const workItem = workItemResult.workItem;
@@ -72,13 +86,13 @@ export function generateWorkIntakePlan(
   const conversationId = `conv-work-${randomUUID()}`;
   const conversation: CoreConversationRecord = {
     id: conversationId,
-    title: input.title,
+    title: normalizedInput.title,
     kind: 'work_thread',
     status: 'planned',
     containerId: null,
     participantActorIds: [ownerActorId],
     sourceChannelId: null,
-    repoPath: input.repoPath ?? null,
+    repoPath: normalizedRepoPath,
     responseLanguage: 'en',
     createdAt: now.toISOString(),
     updatedAt: now.toISOString(),
@@ -105,7 +119,7 @@ export function generateWorkIntakePlan(
     projectId: project.id,
     workItemId: workItem.id,
     conversationId,
-    message: `Work intake created: "${input.title}" using template "${template.label}".`,
+    message: `Work intake created: "${normalizedInput.title}" using template "${template.label}".`,
   }, now);
   nextCore = projectActivityResult.core;
 

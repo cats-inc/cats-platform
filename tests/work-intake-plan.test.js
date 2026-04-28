@@ -10,6 +10,7 @@ import {
 } from '../build/server/products/work/templates/index.js';
 import {
   generateWorkIntakePlan,
+  normalizeWorkIntakeInput,
 } from '../build/server/products/work/intake/index.js';
 
 function createIntakeFixture() {
@@ -48,6 +49,55 @@ test('generateWorkIntakePlan creates project with correct fields', () => {
   assert.equal(intakeMetadata.templateId, 'software_delivery');
   assert.equal(intakeMetadata.brief, 'Add OAuth2 login support');
   assert.equal(intakeMetadata.desiredOutcome, 'Users can log in with Google');
+});
+
+test('normalizeWorkIntakeInput trims optional and required fields before Core writes', () => {
+  assert.deepEqual(
+    normalizeWorkIntakeInput({
+      title: '  Implement auth  ',
+      brief: '  Add OAuth2 login support  ',
+      desiredOutcome: '  Users can log in with Google  ',
+      repoPath: '  /path/to/repo  ',
+      deadline: '  2026-05-01  ',
+      priority: 'high',
+      templateId: '  software_delivery  ',
+    }),
+    {
+      title: 'Implement auth',
+      brief: 'Add OAuth2 login support',
+      desiredOutcome: 'Users can log in with Google',
+      repoPath: '/path/to/repo',
+      deadline: '2026-05-01',
+      priority: 'high',
+      templateId: 'software_delivery',
+    },
+  );
+});
+
+test('generateWorkIntakePlan normalizes direct product-layer intake input', () => {
+  const { now, core, template } = createIntakeFixture();
+
+  const result = generateWorkIntakePlan(
+    core,
+    {
+      title: '  Implement auth  ',
+      brief: '  Add OAuth2 login support  ',
+      desiredOutcome: '  Users can log in with Google  ',
+      repoPath: '  /path/to/repo  ',
+      templateId: '  software_delivery  ',
+    },
+    template,
+    now,
+  );
+
+  assert.equal(result.plan.project.title, 'Implement auth');
+  assert.equal(result.plan.project.summary, 'Add OAuth2 login support');
+  assert.equal(result.plan.project.repoPath, '/path/to/repo');
+  assert.equal(result.plan.workItem.title, 'Implement auth');
+  assert.equal(result.plan.workItem.summary, 'Users can log in with Google');
+  assert.equal(result.core.conversations.find((c) =>
+    c.id === result.plan.project.primaryConversationId)?.title, 'Implement auth');
+  assert.equal(result.plan.project.metadata?.intake?.templateId, 'software_delivery');
 });
 
 test('generateWorkIntakePlan creates work item linked to project', () => {
@@ -302,4 +352,3 @@ test('generateWorkIntakePlan handles optional fields', () => {
   assert.equal(intake.deadline, undefined);
   assert.equal(intake.priority, undefined);
 });
-
