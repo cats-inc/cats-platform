@@ -1018,6 +1018,144 @@
   font-style: italic;
 }
 
+/* SPEC-090 link diagnostic body (orphan_link / link_cycle) */
+
+.brokenLinks__linkBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.brokenLinks__endpoints {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.brokenLinks__endpointPill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--canvas-bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 0.72rem;
+}
+
+.brokenLinks__endpointPill--unresolved {
+  border-style: dashed;
+  border-color: var(--danger, #c0382b);
+  background: transparent;
+  color: var(--danger, #c0382b);
+}
+
+.brokenLinks__endpointFamily {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.brokenLinks__endpointPill--unresolved .brokenLinks__endpointFamily {
+  color: var(--danger, #c0382b);
+}
+
+.brokenLinks__endpointTitle {
+  font-weight: 500;
+}
+
+.brokenLinks__endpointTitle code {
+  font-family: var(--font-mono, "SFMono-Regular", Consolas, monospace);
+  font-size: 0.68rem;
+  background: rgba(0, 0, 0, 0.04);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.brokenLinks__deletedMark {
+  font-size: 0.62rem;
+  font-style: italic;
+  color: var(--danger, #c0382b);
+}
+
+.brokenLinks__arrow {
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.brokenLinks__arrow--loop {
+  color: var(--danger, #c0382b);
+  font-weight: 700;
+}
+
+.brokenLinks__cycle {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.brokenLinks__cycleStep {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.brokenLinks__rowFoot--cycle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.brokenLinks__cycleActionsLabel {
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.brokenLinks__cycleActions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.brokenLinks__removeLink {
+  font: inherit;
+  font-size: 0.7rem;
+  background: var(--canvas-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 4px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+.brokenLinks__removeLink:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.brokenLinks__removeLink code {
+  font-family: var(--font-mono, "SFMono-Regular", Consolas, monospace);
+  font-size: 0.66rem;
+}
+
+.brokenLinks__pendingNote {
+  font-size: 0.66rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
 /* =========================================================
  * Drawer overrides on top of design SidePanel
  * ========================================================= */

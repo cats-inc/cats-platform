@@ -2,14 +2,28 @@ import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { MOCK_WORK_GRAPH } from "./mock";
-import { buildIndexes } from "./shared";
-import type { WorkGraphDiagnosticSeverity } from "./types";
+import {
+  buildIndexes,
+  endpointKey,
+  KIND_LABEL,
+  type WorkGraphIndexes,
+} from "./shared";
+import type {
+  WorkGraphDiagnostic,
+  WorkGraphDiagnosticSeverity,
+  WorkGraphLinkCycleDiagnostic,
+  WorkGraphLinkDiagnostic,
+  WorkGraphLinkEndpointRef,
+  WorkGraphLinkOrphanDiagnostic,
+} from "./types";
 import { WorkObjectDrawer } from "./WorkObjectDrawer";
 import "./topdown.css";
 
 type SeverityFilter = "all" | WorkGraphDiagnosticSeverity;
 
 const SEVERITY_ORDER: WorkGraphDiagnosticSeverity[] = ["error", "warning", "info"];
+
+type Diagnostic = WorkGraphDiagnostic | WorkGraphLinkDiagnostic;
 
 export function BrokenLinksPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -66,7 +80,8 @@ export function BrokenLinksPage(): JSX.Element {
         <div className="channelTopBarCenter topDownTopBar__center">
           <p className="topDownTopBar__lede">
             Diagnostics from the projection layer when producer writes don't
-            satisfy <code>SPEC-083 §Minimum Anchor Sets</code>.
+            satisfy <code>SPEC-083 §Minimum Anchor Sets</code> or SPEC-090 link
+            integrity.
           </p>
         </div>
         <div className="channelTopBarEnd topDownTopBar__end">
@@ -126,53 +141,14 @@ export function BrokenLinksPage(): JSX.Element {
             No diagnostics under the active filter.
           </p>
         ) : (
-          filtered.map((d) => {
-            const target = d.objectId
-              ? indexes.objectsById.get(d.objectId)
-              : undefined;
-            return (
-              <article
-                key={d.id}
-                className={`brokenLinks__row brokenLinks__row--${d.severity}`}
-              >
-                <header className="brokenLinks__rowHead">
-                  <span
-                    className={`brokenLinks__sev brokenLinks__sev--${d.severity}`}
-                  >
-                    {d.severity.toUpperCase()}
-                  </span>
-                  <code className="brokenLinks__kind">{d.kind}</code>
-                  {target ? (
-                    <span className="brokenLinks__rowSubject">
-                      on <strong>{target.title}</strong>
-                    </span>
-                  ) : null}
-                </header>
-                <p className="brokenLinks__msg">{d.message}</p>
-                <footer className="brokenLinks__rowFoot">
-                  {d.objectId ? (
-                    target ? (
-                      <button
-                        type="button"
-                        className="brokenLinks__open"
-                        onClick={() => setSelectedId(d.objectId)}
-                      >
-                        Open in drawer →
-                      </button>
-                    ) : (
-                      <span className="brokenLinks__broken">
-                        object id <code>{d.objectId}</code> not in projection
-                      </span>
-                    )
-                  ) : (
-                    <span className="brokenLinks__system">
-                      systemic — no specific object
-                    </span>
-                  )}
-                </footer>
-              </article>
-            );
-          })
+          filtered.map((d) => (
+            <DiagnosticRow
+              key={d.id}
+              diagnostic={d}
+              indexes={indexes}
+              onOpenObject={setSelectedId}
+            />
+          ))
         )}
       </div>
       <WorkObjectDrawer
@@ -185,6 +161,251 @@ export function BrokenLinksPage(): JSX.Element {
         }
       />
     </div>
+  );
+}
+
+interface DiagnosticRowProps {
+  diagnostic: Diagnostic;
+  indexes: WorkGraphIndexes;
+  onOpenObject: (id: string | null) => void;
+}
+
+function DiagnosticRow({
+  diagnostic,
+  indexes,
+  onOpenObject,
+}: DiagnosticRowProps): JSX.Element {
+  return (
+    <article
+      className={`brokenLinks__row brokenLinks__row--${diagnostic.severity}`}
+    >
+      <header className="brokenLinks__rowHead">
+        <span
+          className={`brokenLinks__sev brokenLinks__sev--${diagnostic.severity}`}
+        >
+          {diagnostic.severity.toUpperCase()}
+        </span>
+        <code className="brokenLinks__kind">{diagnostic.kind}</code>
+        <RowSubject diagnostic={diagnostic} indexes={indexes} />
+      </header>
+      <p className="brokenLinks__msg">{diagnostic.message}</p>
+      <DiagnosticBody
+        diagnostic={diagnostic}
+        indexes={indexes}
+        onOpenObject={onOpenObject}
+      />
+    </article>
+  );
+}
+
+function RowSubject({
+  diagnostic,
+  indexes,
+}: {
+  diagnostic: Diagnostic;
+  indexes: WorkGraphIndexes;
+}): JSX.Element | null {
+  if (diagnostic.kind === "orphan_link" || diagnostic.kind === "link_cycle") {
+    return null;
+  }
+  if (!diagnostic.objectId) return null;
+  const target = indexes.objectsById.get(diagnostic.objectId);
+  if (!target) return null;
+  return (
+    <span className="brokenLinks__rowSubject">
+      on <strong>{target.title}</strong>
+    </span>
+  );
+}
+
+function DiagnosticBody({
+  diagnostic,
+  indexes,
+  onOpenObject,
+}: DiagnosticRowProps): JSX.Element {
+  switch (diagnostic.kind) {
+    case "orphan_link":
+      return <OrphanLinkBody diagnostic={diagnostic} indexes={indexes} />;
+    case "link_cycle":
+      return <CycleLinkBody diagnostic={diagnostic} indexes={indexes} />;
+    default:
+      return (
+        <BaseDiagnosticBody
+          diagnostic={diagnostic}
+          indexes={indexes}
+          onOpenObject={onOpenObject}
+        />
+      );
+  }
+}
+
+function BaseDiagnosticBody({
+  diagnostic,
+  indexes,
+  onOpenObject,
+}: {
+  diagnostic: WorkGraphDiagnostic;
+  indexes: WorkGraphIndexes;
+  onOpenObject: (id: string | null) => void;
+}): JSX.Element {
+  const target = diagnostic.objectId
+    ? indexes.objectsById.get(diagnostic.objectId)
+    : undefined;
+  return (
+    <footer className="brokenLinks__rowFoot">
+      {diagnostic.objectId ? (
+        target ? (
+          <button
+            type="button"
+            className="brokenLinks__open"
+            onClick={() => onOpenObject(diagnostic.objectId)}
+          >
+            Open in drawer →
+          </button>
+        ) : (
+          <span className="brokenLinks__broken">
+            object id <code>{diagnostic.objectId}</code> not in projection
+          </span>
+        )
+      ) : (
+        <span className="brokenLinks__system">
+          systemic — no specific object
+        </span>
+      )}
+    </footer>
+  );
+}
+
+function OrphanLinkBody({
+  diagnostic,
+  indexes,
+}: {
+  diagnostic: WorkGraphLinkOrphanDiagnostic;
+  indexes: WorkGraphIndexes;
+}): JSX.Element {
+  const sourceUnresolved =
+    diagnostic.unresolvedSide === "source" ||
+    diagnostic.unresolvedSide === "both";
+  const targetUnresolved =
+    diagnostic.unresolvedSide === "target" ||
+    diagnostic.unresolvedSide === "both";
+  return (
+    <div className="brokenLinks__linkBody">
+      <div className="brokenLinks__endpoints">
+        <EndpointPill
+          endpoint={diagnostic.sourceEndpoint}
+          indexes={indexes}
+          unresolved={sourceUnresolved}
+        />
+        <span className="brokenLinks__arrow" aria-hidden="true">→</span>
+        <EndpointPill
+          endpoint={diagnostic.targetEndpoint}
+          indexes={indexes}
+          unresolved={targetUnresolved}
+        />
+      </div>
+      <footer className="brokenLinks__rowFoot">
+        <button
+          type="button"
+          className="brokenLinks__removeLink"
+          disabled
+          title="Disabled until Phase 5 wires the producer-pipeline removeLink call."
+        >
+          Remove this link
+        </button>
+        <span className="brokenLinks__pendingNote">
+          Phase 5 enables write actions.
+        </span>
+      </footer>
+    </div>
+  );
+}
+
+function CycleLinkBody({
+  diagnostic,
+  indexes,
+}: {
+  diagnostic: WorkGraphLinkCycleDiagnostic;
+  indexes: WorkGraphIndexes;
+}): JSX.Element {
+  return (
+    <div className="brokenLinks__linkBody">
+      <ol className="brokenLinks__cycle">
+        {diagnostic.cycleEndpoints.map((endpoint, i) => (
+          <li
+            key={`${endpoint.recordFamily}:${endpoint.recordId}:${i}`}
+            className="brokenLinks__cycleStep"
+          >
+            <EndpointPill
+              endpoint={endpoint}
+              indexes={indexes}
+              unresolved={false}
+            />
+            <span
+              className={
+                "brokenLinks__arrow" +
+                (i === diagnostic.cycleEndpoints.length - 1
+                  ? " brokenLinks__arrow--loop"
+                  : "")
+              }
+              aria-hidden="true"
+            >
+              {i === diagnostic.cycleEndpoints.length - 1 ? "↺" : "→"}
+            </span>
+          </li>
+        ))}
+      </ol>
+      <footer className="brokenLinks__rowFoot brokenLinks__rowFoot--cycle">
+        <span className="brokenLinks__cycleActionsLabel">
+          Removable rows ({diagnostic.cycleLinkIds.length}):
+        </span>
+        <ul className="brokenLinks__cycleActions">
+          {diagnostic.cycleLinkIds.map((linkId) => (
+            <li key={linkId}>
+              <button
+                type="button"
+                className="brokenLinks__removeLink"
+                disabled
+                title="Disabled until Phase 5 wires the producer-pipeline removeLink call."
+              >
+                Remove <code>{linkId}</code>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </footer>
+    </div>
+  );
+}
+
+interface EndpointPillProps {
+  endpoint: WorkGraphLinkEndpointRef;
+  indexes: WorkGraphIndexes;
+  unresolved: boolean;
+}
+
+function EndpointPill({
+  endpoint,
+  indexes,
+  unresolved,
+}: EndpointPillProps): JSX.Element {
+  const summary = indexes.objectsByCoreRef.get(endpointKey(endpoint));
+  const familyLabel = KIND_LABEL[endpoint.recordFamily];
+  return (
+    <span
+      className={
+        "brokenLinks__endpointPill" +
+        (unresolved ? " brokenLinks__endpointPill--unresolved" : "")
+      }
+    >
+      <span className="brokenLinks__endpointFamily">{familyLabel}</span>
+      <span className="brokenLinks__endpointTitle">
+        {summary ? summary.title : <code>{endpoint.recordId}</code>}
+      </span>
+      {unresolved ? (
+        <span className="brokenLinks__deletedMark">(deleted)</span>
+      ) : null}
+    </span>
   );
 }
 
