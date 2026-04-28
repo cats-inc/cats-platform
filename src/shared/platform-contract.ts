@@ -146,6 +146,15 @@ export interface PlatformHostEnvelope extends PlatformOwnerContext {
    * `featureFlags['cats.chat.companionProfileIA']`.
    */
   featureFlags: PlatformFeatureFlags;
+  /**
+   * SPEC-086 platform-host product data scope id. UUIDv4 generated once
+   * per durable Cats product data root and persisted next to it. The
+   * companion `cats://companion/v1/<scopeId>/...` reference resolver
+   * uses this to reject references whose scope does not match the
+   * current data root (mismatches resolve as `inaccessible`, not as
+   * malformed references).
+   */
+  scopeId: string;
 }
 
 export interface PlatformSetupCompleteInput {

@@ -31,6 +31,10 @@ import { BUILD_CHANNEL } from '../../../shared/buildChannel.js';
 import { coerceFeatureFlagsForRead } from '../../../shared/featureFlags.js';
 import { readPersistedPlatformFeatureFlags } from '../../../shared/featureFlagsStore.js';
 import { resolvePlatformFeatureFlagsPathFromChatState } from '../../../shared/platformPaths.js';
+import {
+  ensurePlatformScopeId,
+  resolvePlatformScopeIdPathFromChatState,
+} from '../../../shared/platformScopeId.js';
 import { parseRuntimeSessionPolicyCreateInput } from '../../../shared/runtimeSessionPolicy.js';
 import {
   publishTelegramBridgeResult,
@@ -313,6 +317,13 @@ export async function buildAppShellPayload(
     raw: persistedFeatureFlags,
     buildChannel: BUILD_CHANNEL,
   });
+  // PLAN-077 Slice 17: ensure the platform-host product data scope id
+  // exists, generating a fresh UUIDv4 on first launch. The same id flows
+  // to renderers via the app-shell envelope and into the
+  // `cats://companion/v1/<scopeId>/...` reference resolver.
+  const scopeId = await ensurePlatformScopeId({
+    filePath: resolvePlatformScopeIdPathFromChatState(dependencies.config.chatStatePath),
+  });
   const guideCatAssist = await resolveChatGuideCatAssistReadModel({
     chatStatePath: dependencies.config.chatStatePath,
     guideCat: core.guideCat,
@@ -356,6 +367,7 @@ export async function buildAppShellPayload(
       codeGuideCatAssist: guideCatAssist.newCode,
       runtimeSetup,
       featureFlags,
+      scopeId,
     },
   );
 }

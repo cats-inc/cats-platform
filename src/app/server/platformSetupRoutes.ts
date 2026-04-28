@@ -259,6 +259,7 @@ async function handlePlatformSetupComplete(
         bootstrapAttemptId: attemptId,
         buildChannel: BUILD_CHANNEL,
         featureFlags: EMPTY_PLATFORM_FEATURE_FLAGS,
+        scopeId: '',
         setupCompleteAt: core.setupCompleteAt,
         ownerDisplayName: core.ownerProfile.displayName,
         ownerAvatarColor: core.ownerProfile.avatarColor,

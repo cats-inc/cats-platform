@@ -80,6 +80,7 @@ export function createAppShell(
     codeGuideCatAssist?: GuideCatAssistSurfaceReadModel | null;
     buildChannel?: PlatformBuildChannel;
     featureFlags?: PlatformFeatureFlags;
+    scopeId?: string;
   },
 ): AppShellPayload {
   const summary = summarizeState(chat);
@@ -151,6 +152,7 @@ export function createAppShell(
     bootstrapAttemptId: setup?.bootstrapAttemptId ?? null,
     buildChannel: setup?.buildChannel ?? BUILD_CHANNEL,
     featureFlags: setup?.featureFlags ?? EMPTY_PLATFORM_FEATURE_FLAGS,
+    scopeId: setup?.scopeId ?? '',
     setupCompleteAt: resolvedSetupCompleteAt,
     ownerDisplayName: setup?.ownerDisplayName ?? 'Owner',
     ownerAvatarColor: setup?.ownerAvatarColor ?? null,
