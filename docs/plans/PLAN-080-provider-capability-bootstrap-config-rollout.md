@@ -118,24 +118,34 @@ Rules:
   `claude`, `codex`, `ollama`, `local`, or future providers by name.
 - each matching rule creates `bootstrap_config` evidence with rule id, config
   version/path, timestamp, and reason.
-- invalid config fails closed to default/unknown and emits a diagnostic; it must
-  not silently grant strong/weak treatment.
-- a YAML rule with `confidenceLevel: catalog_only` is operator attestation,
-  equivalent to ADR-082 §3 evidence source #4 (operator override). It is
-  bounded by the FR-19 floor: it cannot grant `broad_write` or unrestricted
-  `outcome_delegation`. `evaluated` and `observed` confidence still require
-  real eval/history evidence and may not be set in this YAML.
+- invalid config fails closed to default/unknown and emits a diagnostic event
+  (see Diagnostic Destination below); it must not silently grant strong/weak
+  treatment.
+- a YAML rule's authorization weight is operator-attestation-equivalent: it
+  shall be bounded by the same FR-19 floor that ADR-082 §3 evidence source #4
+  (operator override) enforces — it cannot grant `broad_write` or unrestricted
+  `outcome_delegation`, and `evaluated` / `observed` confidence still require
+  real eval/history evidence and may not be set in this YAML. However, the
+  evidence source kind recorded on the resolved profile and in policy
+  snapshots is `bootstrap_config` (a startup attestation kind), distinct from
+  `operator_override` (a runtime override event). Source-conflict resolution
+  and FR-19 audit logic must treat the two kinds as different sources that
+  share an authorization ceiling, not as the same source.
 - implementation may add a small YAML parser dependency if none exists; do not
   silently downgrade this contract to JSON or an ad hoc line parser.
 
 ### Selector Precedence
 
 When multiple rules match a target, the most-specific selector wins.
-Specificity counts the number of explicit selector keys, ordered as
-`provider` < `provider + instance` < `provider + instance + model` <
-`provider + instance + model + control`. Ties are broken by file order
-(later rule wins). Diagnostics emit both the matched rule id and any rules
-that lost the tie, so operators can spot accidental shadowing.
+Specificity is the count of explicit narrowing keys among `instance`,
+`model`, and `control` (since `provider` is required by every rule, it does
+not contribute to the count). Any rule with N narrowing keys beats any rule
+with N-1 narrowing keys regardless of which combination is used; for example
+`provider + model` (1 narrowing key) and `provider + control` (1 narrowing
+key) are tied with each other but both lose to `provider + instance + model`
+(2 narrowing keys). Ties at the same count are broken by file order (later
+rule wins). Diagnostics emit the matched rule id and any rules that lost a
+tie, so operators can spot accidental shadowing.
 
 ### Reload Behavior
 
@@ -145,6 +155,19 @@ provider treatment deterministic across a session and avoids mid-run policy
 drift. A future plan may add file-watch reload, but only after a structured
 audit-log entry pattern is in place to record every reload event with its
 matched-rule diff.
+
+### Diagnostic Destination
+
+Diagnostics from this resolver — missing config, parse failure, invalid
+treatment, invalid confidence, ambiguous matches, losing tie rules, matched
+rule id / treatment / confidence / reason — are recorded as **structured
+platform log events plus supervision diagnostic records**. They are
+explicitly **not** capability evidence: the resolved profile's
+`confidenceSources` array stays empty for default/unknown resolutions and
+contains only the matched rule's `bootstrap_config` evidence for resolved
+strong/weak treatment. No diagnostic event ever appears in
+`confidenceSources`, and no diagnostic-only path ever upgrades a profile
+above default/unknown.
 
 ## Implementation Phases
 
@@ -186,12 +209,17 @@ the YAML explicitly grants it.
       explicit fixture config when they need a strong or weak demo path.
 - [ ] Task 3.4: Verify temp participants resolve capability through their bound
       execution target plus YAML rule without promotion to durable Cats.
-- [ ] Task 3.5: Re-run PLAN-075 Phase 5.4 (Work) and Phase 6.4 (Code) live
-      Claude/Codex smoke under the PLAN-080 YAML fixture. Slices 64 / 65
-      passed against the old hard-coded bootstrap; PLAN-080 closure requires
-      proving the same paths still work when strong-agent treatment comes from
-      explicit YAML rather than provider-name special-casing. Record the
-      re-run in the PLAN-075 progress log.
+- [ ] Task 3.5: Re-run PLAN-075 live Claude/Codex smoke under the PLAN-080
+      YAML fixture for **all three** product paths covered by PLAN-075
+      acceptance: one Chat turn, one Work supervised run (Phase 5.4), and one
+      Code task/relay (Phase 6.4). Slices 64 / 65 covered Work and Code under
+      the old hard-coded bootstrap; the Chat live path was never gated by a
+      `CATS_*_LIVE_PROVIDER_SMOKE` env var, so PLAN-080 closure must add a
+      `CATS_CHAT_LIVE_PROVIDER_SMOKE` gate (or equivalent) and exercise it
+      under the YAML fixture. PLAN-080 closure requires proving every product
+      path still works when strong-agent treatment comes from explicit YAML
+      rather than provider-name special-casing. Record each re-run in the
+      PLAN-075 progress log.
 
 **Deliverables**: Product demos become deterministic because the fixture says
 who is strong/weak; defaults remain neutral.
@@ -223,6 +251,9 @@ initial treatment even without an editor.
 | `docs/deployment.md` | Modify | Document config path and environment override. |
 | `docs/specs/SPEC-082-cats-work-agent-supervision-and-tool-boundary.md` | Modify | Keep normative bootstrap contract aligned. |
 | `docs/plans/PLAN-075-real-provider-orchestrator-integration.md` | Modify | Mark hard-coded bootstrap as superseded by this rollout. |
+| `docs/examples/provider-capability-bootstrap.example.yaml` | Create | Operator-ready example covering Claude / Codex / Ollama with the same treatment the hard-coded bootstrap produced; not auto-loaded; opt-in by copying to the active config path. |
+| `src/shared/bootstrapDiagnostics.ts` (or equivalent first-run/upgrade entry) | Modify | Emit a structured warning event when no provider capability bootstrap config is found, pointing at the example fixture. |
+| `cats-platform/PROGRESS.md` | Modify | Add a release-notes-style migration callout for operators who relied on the implicit Claude/Codex strong-agent bootstrap. |
 
 ## Testing Strategy
 
@@ -230,8 +261,9 @@ initial treatment even without an editor.
   `confidenceLevel: 'unknown'`.
 - Valid config: only exact/broad YAML matches receive `strong_agent` or
   `weak_worker` treatment.
-- Invalid config: resolver fails closed to default/unknown and emits diagnostic
-  evidence, never a strong/weak grant.
+- Invalid config: resolver fails closed to default/unknown (empty
+  `confidenceSources`) and emits a structured diagnostic event per Diagnostic
+  Destination, never a strong/weak grant.
 - Provider catalog/runtime delivery tests prove rich delivery does not classify
   capability.
 - Policy tests prove configured weak-worker profiles clamp dials and configured
@@ -261,6 +293,7 @@ initial treatment even without an editor.
 |------|--------|
 | 2026-04-28 | Plan opened after review found hard-coded strong/weak provider bootstrap unacceptable; target changed to explicit YAML-only initial treatment. |
 | 2026-04-28 | Review close-out: added `instance` to selector axes, declared YAML attestation as ADR-082 §3 evidence source #4 under FR-19 floor, defined selector precedence and process-restart reload behavior, scoped a Migration section with example fixture + release-notes guidance, scheduled re-run of PLAN-075 Phase 5.4 / 6.4 live smoke under YAML config (Task 3.5), bound Phase 4 diagnostic surface to logs + supervision evidence rather than a new UI panel, and added attestation-boundary + selector-precedence test categories. |
+| 2026-04-28 | Review follow-up: extended Task 3.5 to require a Chat live smoke gate alongside Work/Code re-runs (PLAN-075 acceptance covers Chat turn too); split `bootstrap_config` evidence kind from `operator_override` while keeping the FR-19 authorization ceiling shared; rewrote selector precedence to count narrowing keys so non-linear combos (`provider+model`, `provider+control`, etc.) get a defined ordering; added a Diagnostic Destination sub-section pinning diagnostics to log + supervision diagnostic records (never `confidenceSources`); added migration deliverables (example YAML, first-run warning entry, PROGRESS.md callout) to Files Likely; updated `plans/README.md` PLAN-075 status. |
 
 ---
 
