@@ -45,6 +45,7 @@ function createHarness() {
 function catalogOnlyAssessment(): CapabilityAssessment {
   return buildCapabilityAssessment({
     assessedAt: '2026-04-28T04:00:00.000Z',
+    bootstrapTreatment: 'weak_worker',
     confidenceSources: [
       createProviderCatalogEvidence({
         providerId: 'ollama',
@@ -287,7 +288,7 @@ test('strong and weak profiles use the same provider-agent seam with different d
     taskGranularity: 'milestone',
     toolScope: 'narrow_write',
     scaffolding: 'few_shot',
-    validation: 'semantic_check',
+    validation: 'schema_required',
     checkpointCadence: 'milestone',
     approvalThreshold: 'medium',
     fallbackPolicy: 'retry',

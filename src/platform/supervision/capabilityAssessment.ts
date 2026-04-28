@@ -2,6 +2,7 @@ import {
   CAPABILITY_AGGREGATE_METHOD,
   DEFAULT_SUPERVISION_SCHEMA_VERSION,
   type CapabilityAssessment,
+  type CapabilityBootstrapTreatment,
   type CapabilityClaim,
   type CapabilityConfidenceLevel,
   type CapabilityConflict,
@@ -39,6 +40,7 @@ export interface ProductProviderEventCapabilities {
 export interface BuildCapabilityAssessmentInput {
   assessedAt: string;
   confidenceSources: CapabilitySourceEvidence[];
+  bootstrapTreatment?: CapabilityBootstrapTreatment;
   schemaVersion?: SupervisionSchemaVersion;
   deliveryCapabilities?: ProductProviderEventCapabilities;
 }
@@ -82,6 +84,7 @@ export function buildCapabilityAssessment(
   return {
     schemaVersion: input.schemaVersion ?? DEFAULT_SUPERVISION_SCHEMA_VERSION,
     assessedAt: input.assessedAt,
+    bootstrapTreatment: input.bootstrapTreatment ?? 'default',
     confidenceLevel: selectAssessmentConfidence(normalizedSources),
     confidenceSources: normalizedSources,
     aggregateMethod: CAPABILITY_AGGREGATE_METHOD,
@@ -106,6 +109,7 @@ export function upsertCapabilityEvidence(input: {
   return buildCapabilityAssessment({
     schemaVersion: input.previous.schemaVersion,
     assessedAt: input.assessedAt,
+    bootstrapTreatment: input.previous.bootstrapTreatment,
     confidenceSources: Array.from(byId.values()),
   });
 }

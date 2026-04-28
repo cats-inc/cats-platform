@@ -211,6 +211,31 @@ test('policy gate rejects schema-required tool requests without an expected outp
   );
 });
 
+test('policy gate keeps the schema-ref requirement under semantic_check', () => {
+  const decision: ProviderAgentDecision = {
+    contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,
+    kind: 'tool_request',
+    decisionId: 'decision-tool-semantic-check',
+    confidence: 'medium',
+    toolName: 'work.context.lookup',
+    target: { kind: 'worker_tool', toolName: 'work.context.lookup' },
+    input: {},
+    rationaleSummary: 'Call a scoped read tool.',
+  };
+
+  assert.deepEqual(
+    validateProviderAgentPolicyGate({
+      observation: observation({
+        policy: {
+          validation: 'semantic_check',
+        },
+      }),
+      decision,
+    }),
+    ['tool_request.expectedOutputSchemaRef is required by semantic_check validation'],
+  );
+});
+
 test('policy gate rejects delegation without outcome-delegation autonomy', () => {
   const decision: ProviderAgentDecision = {
     contractVersion: PROVIDER_AGENT_DECISION_CONTRACT_VERSION,

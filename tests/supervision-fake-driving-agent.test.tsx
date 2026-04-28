@@ -82,6 +82,7 @@ function fakePolicySnapshot(): SupervisionPolicySnapshot {
       targetRef: 'work-1',
       actionType: 'fake_run',
       sideEffect: 'none',
+      bootstrapTreatment: 'default',
       capabilityConfidence: 'evaluated',
     },
     reasons: ['test fixture'],

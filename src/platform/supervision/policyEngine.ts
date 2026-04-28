@@ -10,11 +10,144 @@ import type {
   SupervisedToolManifest,
   SupervisedToolSideEffect,
   SupervisionApprovalThreshold,
+  SupervisionAutonomy,
+  SupervisionCheckpointCadence,
+  SupervisionFallbackPolicy,
   SupervisionPolicy,
   SupervisionPolicySnapshot,
+  SupervisionScaffolding,
+  SupervisionTaskGranularity,
   SupervisionToolScope,
+  SupervisionValidation,
   ToolResult,
 } from './contracts.js';
+
+const AUTONOMY_LOOSENESS: Record<SupervisionAutonomy, number> = {
+  none: 0,
+  single_step: 1,
+  milestone_plan: 2,
+  outcome_delegation: 3,
+};
+
+const TASK_GRANULARITY_LOOSENESS: Record<SupervisionTaskGranularity, number> = {
+  tiny: 0,
+  step: 1,
+  milestone: 2,
+  outcome: 3,
+};
+
+const TOOL_SCOPE_LOOSENESS: Record<SupervisionToolScope, number> = {
+  none: 0,
+  read_only: 1,
+  narrow_write: 2,
+  broad_write: 3,
+};
+
+const SCAFFOLDING_LOOSENESS: Record<SupervisionScaffolding, number> = {
+  sop_template: 0,
+  grammar_forced: 1,
+  few_shot: 2,
+  none: 3,
+};
+
+// semantic_check keeps the provider-agent schema-ref gate, but does not
+// yet run an additional semantic validator. Until that lands, treat it
+// as looser than schema_required for weak_worker ceiling purposes.
+const VALIDATION_LOOSENESS: Record<SupervisionValidation, number> = {
+  schema_required: 0,
+  semantic_check: 1,
+  best_effort: 2,
+};
+
+const CHECKPOINT_CADENCE_LOOSENESS: Record<SupervisionCheckpointCadence, number> = {
+  every_step: 0,
+  milestone: 1,
+  on_risk: 2,
+  final: 3,
+};
+
+const APPROVAL_THRESHOLD_LOOSENESS: Record<SupervisionApprovalThreshold, number> = {
+  high: 0,
+  medium: 1,
+  low: 2,
+};
+
+const FALLBACK_POLICY_LOOSENESS: Record<SupervisionFallbackPolicy, number> = {
+  ask_human: 0,
+  retry: 1,
+  escalate_model: 2,
+  delegate_other: 3,
+};
+
+interface WeakCeilingViolation {
+  dial: keyof SupervisionPolicy;
+  value: SupervisionPolicy[keyof SupervisionPolicy];
+  ceiling: SupervisionPolicy[keyof SupervisionPolicy];
+}
+
+function findWeakWorkerCeilingViolations(
+  policy: SupervisionPolicy,
+  ceiling: SupervisionPolicy,
+): WeakCeilingViolation[] {
+  const violations: WeakCeilingViolation[] = [];
+  if (AUTONOMY_LOOSENESS[policy.autonomy] > AUTONOMY_LOOSENESS[ceiling.autonomy]) {
+    violations.push({ dial: 'autonomy', value: policy.autonomy, ceiling: ceiling.autonomy });
+  }
+  if (
+    TASK_GRANULARITY_LOOSENESS[policy.taskGranularity]
+    > TASK_GRANULARITY_LOOSENESS[ceiling.taskGranularity]
+  ) {
+    violations.push({
+      dial: 'taskGranularity',
+      value: policy.taskGranularity,
+      ceiling: ceiling.taskGranularity,
+    });
+  }
+  if (TOOL_SCOPE_LOOSENESS[policy.toolScope] > TOOL_SCOPE_LOOSENESS[ceiling.toolScope]) {
+    violations.push({ dial: 'toolScope', value: policy.toolScope, ceiling: ceiling.toolScope });
+  }
+  if (SCAFFOLDING_LOOSENESS[policy.scaffolding] > SCAFFOLDING_LOOSENESS[ceiling.scaffolding]) {
+    violations.push({
+      dial: 'scaffolding',
+      value: policy.scaffolding,
+      ceiling: ceiling.scaffolding,
+    });
+  }
+  if (VALIDATION_LOOSENESS[policy.validation] > VALIDATION_LOOSENESS[ceiling.validation]) {
+    violations.push({ dial: 'validation', value: policy.validation, ceiling: ceiling.validation });
+  }
+  if (
+    CHECKPOINT_CADENCE_LOOSENESS[policy.checkpointCadence]
+    > CHECKPOINT_CADENCE_LOOSENESS[ceiling.checkpointCadence]
+  ) {
+    violations.push({
+      dial: 'checkpointCadence',
+      value: policy.checkpointCadence,
+      ceiling: ceiling.checkpointCadence,
+    });
+  }
+  if (
+    APPROVAL_THRESHOLD_LOOSENESS[policy.approvalThreshold]
+    > APPROVAL_THRESHOLD_LOOSENESS[ceiling.approvalThreshold]
+  ) {
+    violations.push({
+      dial: 'approvalThreshold',
+      value: policy.approvalThreshold,
+      ceiling: ceiling.approvalThreshold,
+    });
+  }
+  if (
+    FALLBACK_POLICY_LOOSENESS[policy.fallbackPolicy]
+    > FALLBACK_POLICY_LOOSENESS[ceiling.fallbackPolicy]
+  ) {
+    violations.push({
+      dial: 'fallbackPolicy',
+      value: policy.fallbackPolicy,
+      ceiling: ceiling.fallbackPolicy,
+    });
+  }
+  return violations;
+}
 
 export interface SupervisionPolicyOverride {
   overrideId: string;
@@ -58,6 +191,7 @@ export function decideSupervisionPolicy(
 ): SupervisionPolicyDecisionResult {
   const reasons: string[] = [
     `policy bundle ${SUPERVISION_POLICY_BUNDLE_VERSION} evaluated ${context.actionType}`,
+    `bootstrap treatment ${context.capabilityAssessment.bootstrapTreatment}`,
     `capability confidence ${context.capabilityAssessment.confidenceLevel}`,
     `tool ${context.toolManifest.name} sideEffect ${context.toolManifest.sideEffect}`,
   ];
@@ -80,7 +214,7 @@ export function decideSupervisionPolicy(
     );
   }
 
-  const rejectionReason = validatePolicy(context, policy, reasons);
+  const rejectionReason = validatePolicy(context, basePolicy, policy, reasons);
   const snapshot = buildPolicySnapshot(context, policy, reasons);
 
   if (rejectionReason !== undefined) {
@@ -104,17 +238,14 @@ export function decideSupervisionPolicy(
 }
 
 export function decideDefaultToolScope(input: {
-  confidenceLevel: CapabilityAssessment['confidenceLevel'];
+  bootstrapTreatment: CapabilityAssessment['bootstrapTreatment'];
   sideEffect: SupervisedToolSideEffect;
 }): SupervisionToolScope {
   if (input.sideEffect === 'none') {
     return 'read_only';
   }
-  if (compareCapabilityConfidence(input.confidenceLevel, 'evaluated') < 0) {
+  if (input.bootstrapTreatment === 'weak_worker') {
     return 'read_only';
-  }
-  if (input.sideEffect === 'local_state') {
-    return 'narrow_write';
   }
   return 'narrow_write';
 }
@@ -139,33 +270,56 @@ export function decideDefaultApprovalThreshold(
 }
 
 function buildBasePolicy(context: SupervisionPolicyContext): SupervisionPolicy {
-  const capabilityConfidence = context.capabilityAssessment.confidenceLevel;
-  const isUnknown = capabilityConfidence === 'unknown';
-  const isEvaluatedOrBetter = compareCapabilityConfidence(capabilityConfidence, 'evaluated') >= 0;
+  const treatment = context.capabilityAssessment.bootstrapTreatment;
+  const confidence = context.capabilityAssessment.confidenceLevel;
   const approvalThreshold = decideDefaultApprovalThreshold(context.toolManifest.sideEffect);
 
+  // weak_worker is a blacklist label that stays clamped regardless of
+  // evidence — evaluated/observed evidence must NOT loosen any dial.
+  if (treatment === 'weak_worker') {
+    return {
+      autonomy: 'single_step',
+      taskGranularity: 'tiny',
+      toolScope: 'read_only',
+      scaffolding: 'sop_template',
+      validation: 'schema_required',
+      checkpointCadence: 'every_step',
+      approvalThreshold,
+      fallbackPolicy: 'ask_human',
+    };
+  }
+
+  const isEvaluatedOrBetter = compareCapabilityConfidence(confidence, 'evaluated') >= 0;
+  const isStrongOrBetter = treatment === 'strong_agent' || isEvaluatedOrBetter;
+
   return {
-    autonomy: isEvaluatedOrBetter ? 'milestone_plan' : 'single_step',
-    taskGranularity: isEvaluatedOrBetter ? 'milestone' : isUnknown ? 'tiny' : 'step',
+    autonomy: isStrongOrBetter ? 'milestone_plan' : 'single_step',
+    taskGranularity: isEvaluatedOrBetter ? 'milestone' : 'step',
     toolScope: decideDefaultToolScope({
-      confidenceLevel: capabilityConfidence,
+      bootstrapTreatment: treatment,
       sideEffect: context.toolManifest.sideEffect,
     }),
-    scaffolding: isEvaluatedOrBetter ? 'few_shot' : 'sop_template',
-    validation: isUnknown || approvalThreshold === 'low' ? 'schema_required' : 'semantic_check',
-    checkpointCadence: isUnknown || approvalThreshold !== 'low' ? 'every_step' : 'milestone',
+    scaffolding: isStrongOrBetter ? 'few_shot' : 'sop_template',
+    // Stay on schema_required until semantic_check ships an additional
+    // semantic validator. The gate preserves the schema-ref requirement
+    // for semantic_check, but it does not add semantic validation yet.
+    validation: 'schema_required',
+    checkpointCadence: isStrongOrBetter ? 'milestone' : 'every_step',
     approvalThreshold,
-    fallbackPolicy: isEvaluatedOrBetter ? 'retry' : 'ask_human',
+    fallbackPolicy: isStrongOrBetter ? 'retry' : 'ask_human',
   };
 }
 
 function validatePolicy(
   context: SupervisionPolicyContext,
+  basePolicy: SupervisionPolicy,
   policy: SupervisionPolicy,
   reasons: string[],
 ): string | undefined {
   const confidence = context.capabilityAssessment.confidenceLevel;
+  const treatment = context.capabilityAssessment.bootstrapTreatment;
   const constrainedByFloor = confidence === 'unknown' || confidence === 'catalog_only';
+  const isWeak = treatment === 'weak_worker';
 
   if (constrainedByFloor && policy.toolScope === 'broad_write') {
     const message =
@@ -173,15 +327,25 @@ function validatePolicy(
     reasons.push(message);
     return message;
   }
-  if (
-    constrainedByFloor &&
-    (policy.autonomy === 'milestone_plan' || policy.autonomy === 'outcome_delegation')
-  ) {
+  if (constrainedByFloor && policy.autonomy === 'outcome_delegation') {
     const message =
-      `FR-19 rejected ${policy.autonomy} under ${confidence} confidence with ` +
+      `FR-19 rejected outcome_delegation under ${confidence} confidence with ` +
       'E_TOOL_SCOPE_DENIED.';
     reasons.push(message);
     return message;
+  }
+  if (isWeak) {
+    const violations = findWeakWorkerCeilingViolations(policy, basePolicy);
+    if (violations.length > 0) {
+      const detail = violations
+        .map((violation) =>
+          `${violation.dial}=${violation.value} (ceiling ${violation.ceiling})`)
+        .join(', ');
+      const message =
+        `weak_worker treatment cannot loosen ${detail} with E_TOOL_SCOPE_DENIED.`;
+      reasons.push(message);
+      return message;
+    }
   }
   if (constrainedByFloor && policy.fallbackPolicy === 'delegate_other') {
     const message =
@@ -226,6 +390,7 @@ function buildPolicySnapshot(
       providerRef: context.providerRef,
       actionType: context.actionType,
       sideEffect: context.toolManifest.sideEffect,
+      bootstrapTreatment: context.capabilityAssessment.bootstrapTreatment,
       capabilityConfidence: context.capabilityAssessment.confidenceLevel,
       deliveryObservability: context.deliveryObservability,
       budgetState: context.budgetState,

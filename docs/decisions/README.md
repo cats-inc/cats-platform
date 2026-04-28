@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [087-open-default-bootstrap-treatment-with-evidence-floor](./087-open-default-bootstrap-treatment-with-evidence-floor.md) | Open default bootstrap treatment, bounded by an evidence floor | Accepted | 2026-04-28 |
 | [086-adopt-n-to-m-work-graph-link-relations](./086-adopt-n-to-m-work-graph-link-relations.md) | Adopt N:M Work Graph Link Relations for Cross-Tier Item Linkage | Draft | 2026-04-28 |
 | [085-bundle-whisper-cpp-on-linux-for-composer-voice-input](./085-bundle-whisper-cpp-on-linux-for-composer-voice-input.md) | Bundle whisper.cpp with Linux Desktop Builds for Composer Voice Input | Rejected (not adopted) | 2026-04-28 |
 | [084-adopt-companion-profile-ia-and-shareable-content-references](./084-adopt-companion-profile-ia-and-shareable-content-references.md) | Adopt Companion Profile IA and Shareable Content References | Proposed | 2026-04-28 |
@@ -128,6 +129,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-04-28 (ADR-086 added for N:M Work Graph link relations; ADR-085 marked Rejected after maintainer declined the git submodule prerequisite.)*
+*Last updated: 2026-04-28 (ADR-087 added: open default bootstrap treatment with evidence floor; ADR-086 added for N:M Work Graph link relations; ADR-085 marked Rejected after maintainer declined the git submodule prerequisite.)*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*

@@ -90,6 +90,7 @@ export interface PolicyContextSummary {
   providerRef?: string;
   actionType: string;
   sideEffect: SupervisedToolSideEffect;
+  bootstrapTreatment: CapabilityBootstrapTreatment;
   capabilityConfidence: CapabilityConfidenceLevel;
   deliveryObservability?: string;
   budgetState?: string;
@@ -183,9 +184,12 @@ export interface CapabilityConflict {
   reason: string;
 }
 
+export type CapabilityBootstrapTreatment = 'default' | 'strong_agent' | 'weak_worker';
+
 export interface CapabilityAssessment {
   schemaVersion: SupervisionSchemaVersion;
   assessedAt: string;
+  bootstrapTreatment: CapabilityBootstrapTreatment;
   confidenceLevel: CapabilityConfidenceLevel;
   confidenceSources: CapabilitySourceEvidence[];
   aggregateMethod: CapabilityAggregateMethod;

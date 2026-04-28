@@ -121,12 +121,13 @@ export function resolveProviderCapabilityProfile(
       bootstrapTreatment: 'default',
       assessment: buildCapabilityAssessment({
         assessedAt: options.assessedAt,
+        bootstrapTreatment: 'default',
         confidenceSources: [],
       }),
       sourceFixtures,
       diagnostics: bootstrapResolution.diagnostics,
       notes: [
-        'No provider capability bootstrap rule matched; policy must use conservative unknown dials.',
+        'No provider capability bootstrap rule matched; default treatment grants narrow_write + step + schema_required.',
       ],
     };
   }
@@ -154,6 +155,7 @@ export function resolveProviderCapabilityProfile(
     bootstrapTreatment: kind,
     assessment: buildCapabilityAssessment({
       assessedAt: options.assessedAt,
+      bootstrapTreatment: kind,
       confidenceSources: [bootstrapEvidence],
     }),
     sourceFixtures,

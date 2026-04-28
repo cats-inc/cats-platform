@@ -40,9 +40,12 @@ function fixtureManifest(sideEffect: SupervisedToolManifest['sideEffect']): Supe
   };
 }
 
-function catalogOnlyAssessment(): CapabilityAssessment {
+function catalogOnlyAssessment(
+  bootstrapTreatment: CapabilityAssessment['bootstrapTreatment'] = 'default',
+): CapabilityAssessment {
   return buildCapabilityAssessment({
     assessedAt: '2026-04-25T01:00:00.000Z',
+    bootstrapTreatment,
     confidenceSources: [
       createProviderCatalogEvidence({
         providerId: 'openai',
@@ -54,7 +57,9 @@ function catalogOnlyAssessment(): CapabilityAssessment {
   });
 }
 
-function evaluatedAssessment(): CapabilityAssessment {
+function evaluatedAssessment(
+  bootstrapTreatment: CapabilityAssessment['bootstrapTreatment'] = 'default',
+): CapabilityAssessment {
   const evalEvidence: CapabilitySourceEvidence = {
     evidenceId: 'eval_suite:tool-use:run-1',
     source: 'eval_suite',
@@ -73,13 +78,17 @@ function evaluatedAssessment(): CapabilityAssessment {
 
   return buildCapabilityAssessment({
     assessedAt: '2026-04-25T01:00:00.000Z',
+    bootstrapTreatment,
     confidenceSources: [evalEvidence],
   });
 }
 
-function unknownAssessment(): CapabilityAssessment {
+function unknownAssessment(
+  bootstrapTreatment: CapabilityAssessment['bootstrapTreatment'] = 'default',
+): CapabilityAssessment {
   return buildCapabilityAssessment({
     assessedAt: '2026-04-25T01:00:00.000Z',
+    bootstrapTreatment,
     confidenceSources: [],
   });
 }
@@ -107,29 +116,201 @@ function rejectionDetails(
   return result.error.details as SupervisionPolicyRejectionDetails;
 }
 
-test('unknown and catalog-only profiles stay conservative by default', () => {
+test('default treatment grants narrow_write + step + schema_required (open middle tier)', () => {
   const result = decideSupervisionPolicy(baseContext({
-    capabilityAssessment: catalogOnlyAssessment(),
-    toolManifest: fixtureManifest('external_visible'),
+    capabilityAssessment: catalogOnlyAssessment('default'),
+    toolManifest: fixtureManifest('local_state'),
+  }));
+
+  assert.equal(result.status, 'applied');
+  assert.equal(result.result.policy.autonomy, 'single_step');
+  assert.equal(result.result.policy.toolScope, 'narrow_write');
+  assert.equal(result.result.policy.taskGranularity, 'step');
+  assert.equal(result.result.policy.scaffolding, 'sop_template');
+  assert.equal(result.result.policy.validation, 'schema_required');
+  assert.equal(result.result.policy.checkpointCadence, 'every_step');
+  assert.equal(result.result.policy.fallbackPolicy, 'ask_human');
+});
+
+test('weak_worker treatment clamps to read_only + tiny + schema_required (narrowest tier)', () => {
+  const result = decideSupervisionPolicy(baseContext({
+    capabilityAssessment: catalogOnlyAssessment('weak_worker'),
+    toolManifest: fixtureManifest('local_state'),
   }));
 
   assert.equal(result.status, 'applied');
   assert.equal(result.result.policy.autonomy, 'single_step');
   assert.equal(result.result.policy.toolScope, 'read_only');
+  assert.equal(result.result.policy.taskGranularity, 'tiny');
+  assert.equal(result.result.policy.scaffolding, 'sop_template');
+  assert.equal(result.result.policy.validation, 'schema_required');
+  assert.equal(result.result.policy.checkpointCadence, 'every_step');
+  assert.equal(result.result.policy.fallbackPolicy, 'ask_human');
+});
+
+test('strong_agent treatment unlocks milestone_plan + few_shot + retry (without eval)', () => {
+  const result = decideSupervisionPolicy(baseContext({
+    capabilityAssessment: catalogOnlyAssessment('strong_agent'),
+    toolManifest: fixtureManifest('local_state'),
+  }));
+
+  assert.equal(result.status, 'applied');
+  assert.equal(result.result.policy.autonomy, 'milestone_plan');
+  assert.equal(result.result.policy.toolScope, 'narrow_write');
+  assert.equal(result.result.policy.taskGranularity, 'step');
+  assert.equal(result.result.policy.scaffolding, 'few_shot');
+  assert.equal(result.result.policy.checkpointCadence, 'milestone');
+  assert.equal(result.result.policy.fallbackPolicy, 'retry');
+});
+
+test('unknown confidence keeps the default treatment open-middle dials', () => {
+  const result = decideSupervisionPolicy(baseContext({
+    capabilityAssessment: unknownAssessment('default'),
+    toolManifest: fixtureManifest('local_state'),
+  }));
+
+  assert.equal(result.status, 'applied');
+  assert.equal(result.result.policy.toolScope, 'narrow_write');
+  assert.equal(result.result.policy.taskGranularity, 'step');
+  assert.equal(result.result.policy.validation, 'schema_required');
+});
+
+test('weak_worker explicitly rejects requested milestone_plan with E_TOOL_SCOPE_DENIED', () => {
+  const result = decideSupervisionPolicy({
+    ...baseContext({
+      capabilityAssessment: catalogOnlyAssessment('weak_worker'),
+      toolManifest: fixtureManifest('local_state'),
+    }),
+    requestedPolicy: {
+      autonomy: 'milestone_plan',
+    },
+  });
+  const details = rejectionDetails(result);
+
+  assert.equal(result.error.code, 'E_TOOL_SCOPE_DENIED');
+  assert.equal(
+    details.snapshot.reasons.some((reason) =>
+      reason.includes('weak_worker treatment cannot loosen')
+      && reason.includes('autonomy=milestone_plan')),
+    true,
+  );
+});
+
+test('weak_worker rejects every dial loosening attempt across the policy surface', () => {
+  const looseRequest = {
+    autonomy: 'milestone_plan' as const,
+    taskGranularity: 'outcome' as const,
+    scaffolding: 'none' as const,
+    validation: 'best_effort' as const,
+    checkpointCadence: 'final' as const,
+    fallbackPolicy: 'retry' as const,
+  };
+  const result = decideSupervisionPolicy({
+    ...baseContext({
+      capabilityAssessment: catalogOnlyAssessment('weak_worker'),
+      toolManifest: fixtureManifest('none'),
+    }),
+    requestedPolicy: looseRequest,
+  });
+  const details = rejectionDetails(result);
+
+  assert.equal(result.error.code, 'E_TOOL_SCOPE_DENIED');
+  for (const dial of [
+    'autonomy=milestone_plan',
+    'taskGranularity=outcome',
+    'scaffolding=none',
+    'validation=best_effort',
+    'checkpointCadence=final',
+    'fallbackPolicy=retry',
+  ]) {
+    assert.equal(
+      details.snapshot.reasons.some((reason) => reason.includes(dial)),
+      true,
+      `expected reason to call out ${dial}`,
+    );
+  }
+});
+
+test('weak_worker accepts overrides that tighten beyond the ceiling', () => {
+  const result = decideSupervisionPolicy({
+    ...baseContext({
+      capabilityAssessment: catalogOnlyAssessment('weak_worker'),
+      toolManifest: fixtureManifest('local_state'),
+    }),
+    requestedPolicy: {
+      autonomy: 'none',
+      toolScope: 'none',
+      approvalThreshold: 'high',
+    },
+  });
+
+  assert.equal(result.status, 'applied');
+  assert.equal(result.result.policy.autonomy, 'none');
+  assert.equal(result.result.policy.toolScope, 'none');
   assert.equal(result.result.policy.approvalThreshold, 'high');
 });
 
-test('unknown profiles clamp task granularity and validation more tightly than catalog-only', () => {
+test('weak_worker rejects validation override to semantic_check until semantic validation ships', () => {
+  const result = decideSupervisionPolicy({
+    ...baseContext({
+      capabilityAssessment: catalogOnlyAssessment('weak_worker'),
+      toolManifest: fixtureManifest('local_state'),
+    }),
+    requestedPolicy: {
+      validation: 'semantic_check',
+    },
+  });
+  const details = rejectionDetails(result);
+
+  assert.equal(result.error.code, 'E_TOOL_SCOPE_DENIED');
+  assert.equal(
+    details.snapshot.reasons.some((reason) =>
+      reason.includes('weak_worker treatment cannot loosen')
+      && reason.includes('validation=semantic_check')),
+    true,
+  );
+});
+
+test('weak_worker stays clamped even when evaluated evidence is present', () => {
   const result = decideSupervisionPolicy(baseContext({
-    capabilityAssessment: unknownAssessment(),
-    toolManifest: fixtureManifest('external_visible'),
+    capabilityAssessment: evaluatedAssessment('weak_worker'),
+    toolManifest: fixtureManifest('local_state'),
   }));
 
   assert.equal(result.status, 'applied');
   assert.equal(result.result.policy.autonomy, 'single_step');
   assert.equal(result.result.policy.taskGranularity, 'tiny');
+  assert.equal(result.result.policy.toolScope, 'read_only');
+  assert.equal(result.result.policy.scaffolding, 'sop_template');
   assert.equal(result.result.policy.validation, 'schema_required');
   assert.equal(result.result.policy.checkpointCadence, 'every_step');
+  assert.equal(result.result.policy.fallbackPolicy, 'ask_human');
+});
+
+test('weak_worker + evaluated evidence still rejects override to broad_write via the ceiling check', () => {
+  const result = decideSupervisionPolicy({
+    ...baseContext({
+      capabilityAssessment: evaluatedAssessment('weak_worker'),
+      toolManifest: fixtureManifest('local_state'),
+    }),
+    operatorOverride: {
+      overrideId: 'force-broad-on-weak',
+      operatorRef: 'operator:owner',
+      reason: 'Try to lift weak ceiling under evaluated evidence.',
+      policy: {
+        toolScope: 'broad_write',
+      },
+    },
+  });
+  const details = rejectionDetails(result);
+
+  assert.equal(result.error.code, 'E_TOOL_SCOPE_DENIED');
+  assert.equal(
+    details.snapshot.reasons.some((reason) =>
+      reason.includes('weak_worker treatment cannot loosen')
+      && reason.includes('toolScope=broad_write')),
+    true,
+  );
 });
 
 test('operator override metadata appears in snapshot reasons', () => {
@@ -264,7 +445,7 @@ test('policy snapshots include bundle and dial versions for replay', () => {
 
   assert.equal(result.status, 'applied');
   assert.equal(result.result.snapshot.policyBundleVersion, SUPERVISION_POLICY_BUNDLE_VERSION);
-  assert.equal(result.result.snapshot.dialVersions?.toolScope, 'tool-scope@1');
+  assert.equal(result.result.snapshot.dialVersions?.toolScope, 'tool-scope@2');
   assert.equal(result.result.snapshot.dialVersions?.approvalThreshold, 'approval-threshold@1');
   assert.equal(result.result.snapshot.experimentId, 'supervision-ab-1');
 });
