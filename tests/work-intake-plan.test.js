@@ -329,6 +329,31 @@ test('generateWorkIntakePlan creates activity records', () => {
   );
 });
 
+test('generateWorkIntakePlan persists initial approval placeholders on Core tasks', () => {
+  const { now, core, template } = createIntakeFixture();
+
+  const result = generateWorkIntakePlan(
+    core,
+    {
+      title: 'Approval placeholders',
+      brief: 'Brief',
+      desiredOutcome: 'Outcome',
+      templateId: 'software_delivery',
+    },
+    template,
+    now,
+  );
+
+  for (const task of result.plan.tasks) {
+    assert.equal(task.approval.status, 'not_requested');
+    assert.equal(task.approval.requestedAt, null);
+    assert.equal(task.approval.decidedAt, null);
+    assert.equal(task.approval.decidedByActorId, null);
+    assert.equal(task.approval.decisionAction, null);
+    assert.equal(task.approval.notes, null);
+  }
+});
+
 test('generateWorkIntakePlan updates core state correctly', () => {
   const { now, core, template } = createIntakeFixture();
   const originalProjectCount = core.projects.length;
