@@ -152,11 +152,10 @@ function submitScreenshotOverlaySelection(
   }
 }
 
-function shouldKeepOverlayOpenAfterBufferedSelection(
+function shouldRetryAfterBufferedTinySelection(
   selection: DesktopScreenshotOverlaySelectionState,
 ): boolean {
-  return selection.phase === 'cancelled'
-    && (selection.reason === 'too_small' || selection.reason === 'no_drag');
+  return selection.phase === 'cancelled' && selection.reason === 'too_small';
 }
 
 function ScreenshotOverlay() {
@@ -223,7 +222,7 @@ function ScreenshotOverlay() {
     if (pending.released) {
       pendingDragRef.current = null;
       const nextSelection = completePendingDragSelection(pending, pending.released, payload);
-      if (shouldKeepOverlayOpenAfterBufferedSelection(nextSelection)) {
+      if (shouldRetryAfterBufferedTinySelection(nextSelection)) {
         applySelection(createIdleScreenshotOverlaySelection());
         return;
       }
@@ -308,7 +307,7 @@ function ScreenshotOverlay() {
           }
           pendingDragRef.current = null;
           const nextSelection = completePendingDragSelection(pending, releasePoint, payload);
-          if (shouldKeepOverlayOpenAfterBufferedSelection(nextSelection)) {
+          if (shouldRetryAfterBufferedTinySelection(nextSelection)) {
             applySelection(createIdleScreenshotOverlaySelection());
             return;
           }
@@ -332,6 +331,8 @@ function ScreenshotOverlay() {
         submitScreenshotOverlaySelection(bridge, payload, nextSelection);
       }}
       onPointerCancel={() => {
+        // Pointer cancellation aborts only the active gesture. Keep the
+        // overlay session open so users can start a fresh drag.
         pendingDragRef.current = null;
         applySelection(createIdleScreenshotOverlaySelection());
       }}
