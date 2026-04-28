@@ -255,6 +255,39 @@
   font-size: 13px;
 }
 
+.work-plan-task-edit-btn {
+  padding: 3px 8px;
+  border: 1px solid var(--border-primary, #333);
+  border-radius: 4px;
+  background: var(--bg-secondary, #1a1a1a);
+  color: var(--text-secondary, #888);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.work-plan-task-edit-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.work-plan-task-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.work-plan-task-editor-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(160px, 2fr);
+  gap: 10px;
+}
+
+.work-plan-task-editor-actions {
+  display: flex;
+  gap: 8px;
+}
+
 .work-plan-badge {
   font-size: 10px;
   font-weight: 600;

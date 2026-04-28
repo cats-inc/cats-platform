@@ -5,7 +5,9 @@ import type { WorkIntakePlanProjection } from '../../api/intakeProjection.js';
 import {
   approveIntakePlan,
   fetchIntakePlan,
+  patchIntakePlanTask,
   rejectIntakePlan,
+  type WorkIntakePlanTaskPatch,
 } from '../api/intake.js';
 import {
   formatWorkExecutionProduct,
@@ -50,6 +52,14 @@ function HandoffBadge({
   );
 }
 
+type WorkPlanTaskProduct = NonNullable<WorkIntakePlanTaskPatch['productHint']>;
+
+interface WorkPlanTaskEditorDraft {
+  acceptanceCriteria: string;
+  productHint: WorkPlanTaskProduct;
+  strategyHint: string;
+}
+
 export function PlanReviewPanel() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
@@ -59,6 +69,12 @@ export function PlanReviewPanel() {
   const [busy, setBusy] = useState('');
   const [rejectNotes, setRejectNotes] = useState('');
   const [showRejectForm, setShowRejectForm] = useState(false);
+  const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
+  const [taskDraft, setTaskDraft] = useState<WorkPlanTaskEditorDraft>({
+    acceptanceCriteria: '',
+    productHint: 'work',
+    strategyHint: '',
+  });
 
   useEffect(() => {
     if (!projectId) {
@@ -83,7 +99,7 @@ export function PlanReviewPanel() {
   }, [projectId]);
 
   const handleApprove = useCallback(() => {
-    if (!projectId || busy) {
+    if (!projectId || busy || editingTaskId) {
       return;
     }
 
@@ -98,7 +114,52 @@ export function PlanReviewPanel() {
         setError(err instanceof Error ? err.message : 'Failed to approve');
         setBusy('');
       });
-  }, [projectId, busy]);
+  }, [projectId, busy, editingTaskId]);
+
+  const handleStartTaskEdit = useCallback((
+    task: WorkIntakePlanProjection['tasks'][number],
+  ) => {
+    setEditingTaskId(task.id);
+    setTaskDraft({
+      acceptanceCriteria: task.acceptanceCriteria ?? '',
+      productHint: task.productHint ?? task.handoff.targetProduct,
+      strategyHint: task.strategyHint ?? '',
+    });
+    setError(null);
+  }, []);
+
+  const handleCancelTaskEdit = useCallback(() => {
+    setEditingTaskId(null);
+    setTaskDraft({
+      acceptanceCriteria: '',
+      productHint: 'work',
+      strategyHint: '',
+    });
+    setError(null);
+  }, []);
+
+  const handleSaveTaskEdit = useCallback(() => {
+    if (!projectId || !editingTaskId || busy) {
+      return;
+    }
+
+    setBusy(`saving:${editingTaskId}`);
+    setError(null);
+    patchIntakePlanTask(projectId, editingTaskId, {
+      acceptanceCriteria: taskDraft.acceptanceCriteria.trim() || null,
+      productHint: taskDraft.productHint,
+      strategyHint: taskDraft.strategyHint.trim() || null,
+    })
+      .then((updated) => {
+        setPlan(updated);
+        setEditingTaskId(null);
+        setBusy('');
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : 'Failed to update task');
+        setBusy('');
+      });
+  }, [projectId, editingTaskId, busy, taskDraft]);
 
   const handleReject = useCallback(() => {
     if (!projectId || busy) {
@@ -195,15 +256,97 @@ export function PlanReviewPanel() {
               <ProductBadge product={task.productHint} />
               <StrategyBadge strategy={task.strategyHint} />
               <HandoffBadge state={task.handoff.state} label={task.handoff.label} />
+              {isDraft ? (
+                <button
+                  type="button"
+                  className="work-plan-task-edit-btn"
+                  onClick={() => handleStartTaskEdit(task)}
+                  disabled={Boolean(busy)}
+                >
+                  Edit
+                </button>
+              ) : null}
             </div>
             {task.summary ? (
               <p className="work-plan-task-summary">{task.summary}</p>
             ) : null}
-            {task.acceptanceCriteria ? (
-              <p className="work-plan-task-criteria">
-                <strong>Acceptance:</strong> {task.acceptanceCriteria}
-              </p>
-            ) : null}
+            {isDraft && editingTaskId === task.id ? (
+              <div className="work-plan-task-editor">
+                <label className="work-intake-label" htmlFor={`task-${task.id}-acceptance`}>
+                  Acceptance
+                </label>
+                <textarea
+                  id={`task-${task.id}-acceptance`}
+                  className="work-intake-textarea"
+                  rows={3}
+                  value={taskDraft.acceptanceCriteria}
+                  onChange={(e) =>
+                    setTaskDraft((draft) => ({
+                      ...draft,
+                      acceptanceCriteria: e.target.value,
+                    }))}
+                  disabled={Boolean(busy)}
+                />
+                <div className="work-plan-task-editor-row">
+                  <label className="work-intake-label" htmlFor={`task-${task.id}-product`}>
+                    Product
+                    <select
+                      id={`task-${task.id}-product`}
+                      className="work-intake-select"
+                      value={taskDraft.productHint ?? 'work'}
+                      onChange={(e) =>
+                        setTaskDraft((draft) => ({
+                          ...draft,
+                          productHint: e.target.value as WorkPlanTaskProduct,
+                        }))}
+                      disabled={Boolean(busy)}
+                    >
+                      <option value="work">Work</option>
+                      <option value="chat">Chat</option>
+                      <option value="code">Code</option>
+                    </select>
+                  </label>
+                  <label className="work-intake-label" htmlFor={`task-${task.id}-strategy`}>
+                    Strategy
+                    <input
+                      id={`task-${task.id}-strategy`}
+                      className="work-intake-input"
+                      value={taskDraft.strategyHint ?? ''}
+                      onChange={(e) =>
+                        setTaskDraft((draft) => ({
+                          ...draft,
+                          strategyHint: e.target.value,
+                        }))}
+                      disabled={Boolean(busy)}
+                    />
+                  </label>
+                </div>
+                <div className="work-plan-task-editor-actions">
+                  <button
+                    type="button"
+                    className="work-intake-btn work-intake-btn--primary"
+                    onClick={handleSaveTaskEdit}
+                    disabled={Boolean(busy)}
+                  >
+                    {busy === `saving:${task.id}` ? 'Saving...' : 'Save Task'}
+                  </button>
+                  <button
+                    type="button"
+                    className="work-intake-btn work-intake-btn--secondary"
+                    onClick={handleCancelTaskEdit}
+                    disabled={Boolean(busy)}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              task.acceptanceCriteria ? (
+                <p className="work-plan-task-criteria">
+                  <strong>Acceptance:</strong> {task.acceptanceCriteria}
+                </p>
+              ) : null
+            )}
             {task.dependsOnTaskIds.length > 0 ? (
               <p className="work-plan-task-deps">
                 Depends on: {task.dependsOnTaskIds.length} task(s)
@@ -240,7 +383,7 @@ export function PlanReviewPanel() {
             type="button"
             className="work-intake-btn work-intake-btn--primary"
             onClick={handleApprove}
-            disabled={Boolean(busy)}
+            disabled={Boolean(busy) || Boolean(editingTaskId)}
           >
             {busy === 'approving' ? 'Approving...' : 'Approve Plan'}
           </button>

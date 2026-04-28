@@ -95,7 +95,7 @@ shared Core contracts.
 ### Phase 3: Intake UI and Plan Review Surface
 
 - [ ] Add a `Start Work` entry point in the existing `/work` shell
-- [ ] Build the first intake flow with:
+- [x] Build the first intake flow with:
       - intake form
       - template selection
       - generated plan review
@@ -228,6 +228,7 @@ template packs.
 | 2026-04-28 | Implementation follow-up: fixed generated Work intake plans to return the task-linked `CoreWorkItemRecord` after the Core update, with regression coverage proving returned plan state and Core state match. |
 | 2026-04-28 | Implementation follow-up: added regression coverage proving generated Work intake tasks persist Core-owned initial approval placeholders alongside activity records. |
 | 2026-04-28 | Implementation follow-up: added a draft-only Work intake plan-task PATCH route plus renderer API client for editing acceptance criteria, product routing hints, and strategy hints before plan approval. |
+| 2026-04-28 | Implementation follow-up: wired the Plan Review UI to edit draft task acceptance criteria, product routing, and strategy hints in place before approval, using the Work-owned plan-task PATCH route. |
 | 2026-03-29 | Claude: All 6 phases implemented on branch `claude/spec-040-work-intake`. Templates, plan generation, API routes, handoff-readiness transitions, dashboard, and renderer surfaces landed. 29 tests pass. Work no longer owns runtime dispatch or shared server dependency wiring. |
 | 2026-03-30 | Codex: Refined Work intake projection and review UI so each generated task now exposes a product-facing handoff state (`pending_review`, `active_here`, `ready_for_pickup`, `stopped`, `completed`) plus the next expected owner action. Approved-plan messaging now distinguishes Work-owned follow-through from Chat/Code pickup instead of implying direct dispatch. |
 | 2026-03-30 | Codex: Moved the underlying handoff state machine into `src/core/taskHandoff.ts` so Work no longer owns cross-product task-state semantics; the Work review UI now only owns product-local wording and badges. |
