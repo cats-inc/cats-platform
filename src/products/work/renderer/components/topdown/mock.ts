@@ -1,9 +1,11 @@
+import { projectLinks } from "./shared";
 import type {
   WorkGraphBaseDiagnosticKind,
   WorkGraphDiagnostic,
   WorkGraphDiagnosticCategory,
   WorkGraphEvidenceAttachment,
   WorkGraphGateDecorator,
+  WorkGraphLink,
   WorkGraphObjectSummary,
   WorkGraphProjection,
 } from "./types";
@@ -566,16 +568,111 @@ const rawDiagnostics: DiagnosticFixture[] = [
   },
 ];
 
-const diagnostics: WorkGraphDiagnostic[] = rawDiagnostics.map((d) => ({
+const baseDiagnostics: WorkGraphDiagnostic[] = rawDiagnostics.map((d) => ({
   ...d,
   category: diagnosticCategoryFor(d.kind),
 }));
+
+// SPEC-090 stored link rows. Stored kinds only — no `blocked_by` rows.
+const links: WorkGraphLink[] = [
+  {
+    id: "link-block-1",
+    kind: "blocks",
+    sourceRecordFamily: "task",
+    sourceRecordId: "task-hero-copy",
+    targetRecordFamily: "task",
+    targetRecordId: "task-deploy",
+    createdAt: HOURS_AGO(5),
+    createdByActorId: "actor-marketing",
+    note: "Deploy waits on approved hero copy.",
+  },
+  {
+    id: "link-related-1",
+    // related_to is symmetric; stored canonical with smaller (family, id) tuple as source.
+    kind: "related_to",
+    sourceRecordFamily: "project",
+    sourceRecordId: "proj-bf",
+    targetRecordFamily: "project",
+    targetRecordId: "proj-cs",
+    createdAt: HOURS_AGO(20),
+    createdByActorId: null,
+    note: null,
+  },
+  {
+    id: "link-duplicate-1",
+    kind: "duplicate_of",
+    sourceRecordFamily: "task",
+    sourceRecordId: "task-read-transcripts",
+    targetRecordFamily: "task",
+    targetRecordId: "task-write-spec",
+    createdAt: HOURS_AGO(30),
+    createdByActorId: null,
+    note: "Same effort drafted twice; canonical is the role-spec write task.",
+  },
+  {
+    id: "link-follows-1",
+    kind: "follows",
+    sourceRecordFamily: "project",
+    sourceRecordId: "proj-rd-hire",
+    targetRecordFamily: "project",
+    targetRecordId: "proj-bf",
+    createdAt: HOURS_AGO(36),
+    createdByActorId: null,
+    note: "RD hire planning supersedes the BF retro initiative.",
+  },
+  // Cycle: wi-bottleneck blocks wi-orphan AND wi-orphan blocks wi-bottleneck
+  {
+    id: "link-cycle-a",
+    kind: "blocks",
+    sourceRecordFamily: "work_item",
+    sourceRecordId: "wi-bottleneck",
+    targetRecordFamily: "work_item",
+    targetRecordId: "wi-orphan",
+    createdAt: HOURS_AGO(50),
+    createdByActorId: null,
+    note: null,
+  },
+  {
+    id: "link-cycle-b",
+    kind: "blocks",
+    sourceRecordFamily: "work_item",
+    sourceRecordId: "wi-orphan",
+    targetRecordFamily: "work_item",
+    targetRecordId: "wi-bottleneck",
+    createdAt: HOURS_AGO(48),
+    createdByActorId: null,
+    note: null,
+  },
+  // Orphan: target points at a record that no longer exists.
+  {
+    id: "link-orphan-1",
+    kind: "blocks",
+    sourceRecordFamily: "work_item",
+    sourceRecordId: "wi-landing",
+    targetRecordFamily: "task",
+    targetRecordId: "task-deleted-fixture",
+    createdAt: HOURS_AGO(60),
+    createdByActorId: null,
+    note: null,
+  },
+];
+
+const objectsByCoreRef = new Map<string, WorkGraphObjectSummary>(
+  objects.map((o) => [`${o.sourceRecordFamily}:${o.sourceRecordId}`, o]),
+);
+
+const linkProjection = projectLinks(links, objectsByCoreRef);
+
+const diagnostics: WorkGraphProjection["diagnostics"] = [
+  ...baseDiagnostics,
+  ...linkProjection.diagnostics,
+];
 
 export const MOCK_WORK_GRAPH: WorkGraphProjection = {
   objects,
   evidenceAttachments,
   gateDecorators,
-  links: [],
-  linksByEndpoint: {},
+  links,
+  linksByEndpoint: linkProjection.linksByEndpoint,
   diagnostics,
 };
