@@ -412,6 +412,39 @@ function CompanionActivityPlaceholder() {
   );
 }
 
+function CompanionPostsEmptyState() {
+  return (
+    <div className="companionEmptyState">
+      <p>No posts yet.</p>
+      <p className="companionEmptyStateHint">
+        Promote a source, file, or media tile to feature it here.
+      </p>
+    </div>
+  );
+}
+
+const MEDIA_SURFACE_LABELS: Record<'photo' | 'video' | 'music' | 'file', string> = {
+  photo: 'photos',
+  video: 'videos',
+  music: 'music',
+  file: 'files',
+};
+
+function CompanionMediaEmptyState({
+  surface,
+}: {
+  surface: 'photo' | 'video' | 'music' | 'file';
+}) {
+  return (
+    <div className="companionEmptyState">
+      <p>No {MEDIA_SURFACE_LABELS[surface]} yet.</p>
+      <p className="companionEmptyStateHint">
+        Add a source through Sources to see it here.
+      </p>
+    </div>
+  );
+}
+
 export function CompanionFeed({
   cat,
   companionProfileIaEnabled = false,
@@ -428,10 +461,18 @@ export function CompanionFeed({
     }
   }, [tabs, activeTab]);
 
+  // PLAN-077 §"Keep mock posts out of production runtime and use an empty
+  // state when no eligible profile-post projection exists." When the
+  // profile-IA flag is on, every media tab renders the empty-state hint
+  // instead of the local fixtures. The actual projection-driven render
+  // arrives in the renderer-integration follow-up; this slice ensures
+  // the production path can't accidentally ship mock content.
   let content: ReactNode;
   switch (activeTab) {
     case 'posts':
-      content = (
+      content = companionProfileIaEnabled ? (
+        <CompanionPostsEmptyState />
+      ) : (
         <div className="companionPostList">
           {MOCK_POSTS.map((post) => (
             <CompanionPostCard key={post.id} post={post} cat={cat} />
@@ -440,16 +481,32 @@ export function CompanionFeed({
       );
       break;
     case 'videos':
-      content = <CompanionVideoGrid />;
+      content = companionProfileIaEnabled ? (
+        <CompanionMediaEmptyState surface="video" />
+      ) : (
+        <CompanionVideoGrid />
+      );
       break;
     case 'photos':
-      content = <CompanionPhotoGrid />;
+      content = companionProfileIaEnabled ? (
+        <CompanionMediaEmptyState surface="photo" />
+      ) : (
+        <CompanionPhotoGrid />
+      );
       break;
     case 'music':
-      content = <CompanionMusicList />;
+      content = companionProfileIaEnabled ? (
+        <CompanionMediaEmptyState surface="music" />
+      ) : (
+        <CompanionMusicList />
+      );
       break;
     case 'files':
-      content = <CompanionFileList />;
+      content = companionProfileIaEnabled ? (
+        <CompanionMediaEmptyState surface="file" />
+      ) : (
+        <CompanionFileList />
+      );
       break;
     case 'activity':
       content = <CompanionActivityPlaceholder />;
