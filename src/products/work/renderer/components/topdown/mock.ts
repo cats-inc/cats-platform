@@ -1,7 +1,7 @@
 import type {
+  WorkGraphBaseDiagnosticKind,
   WorkGraphDiagnostic,
   WorkGraphDiagnosticCategory,
-  WorkGraphDiagnosticKind,
   WorkGraphEvidenceAttachment,
   WorkGraphGateDecorator,
   WorkGraphObjectSummary,
@@ -22,7 +22,7 @@ function withCoreRef(o: ObjectFixture): WorkGraphObjectSummary {
 }
 
 function diagnosticCategoryFor(
-  kind: WorkGraphDiagnosticKind,
+  kind: WorkGraphBaseDiagnosticKind,
 ): WorkGraphDiagnosticCategory {
   switch (kind) {
     case "broken_fk":
@@ -575,5 +575,7 @@ export const MOCK_WORK_GRAPH: WorkGraphProjection = {
   objects,
   evidenceAttachments,
   gateDecorators,
+  links: [],
+  linksByEndpoint: {},
   diagnostics,
 };

@@ -47,7 +47,83 @@ export type WorkGraphDiagnosticKind =
   | "missing_planning_execution_bridge"
   | "unanchored_run"
   | "unanchored_evidence"
-  | "missing_gate_subject";
+  | "missing_gate_subject"
+  | "orphan_link"
+  | "link_cycle";
+
+/**
+ * SPEC-083 base diagnostic kinds — i.e. every diagnostic kind that uses
+ * the plain `WorkGraphDiagnostic` shape. SPEC-090 link diagnostics
+ * (`orphan_link`, `link_cycle`) carry extra payload fields and use
+ * dedicated shapes (`WorkGraphLinkOrphanDiagnostic` /
+ * `WorkGraphLinkCycleDiagnostic`).
+ */
+export type WorkGraphBaseDiagnosticKind = Exclude<
+  WorkGraphDiagnosticKind,
+  "orphan_link" | "link_cycle"
+>;
+
+/**
+ * SPEC-090 stored link kinds. `blocked_by` is NOT stored — it is a
+ * projection-derived inverse of `blocks` (see SPEC-090 §FR5).
+ */
+export type WorkGraphLinkKind =
+  | "blocks"
+  | "related_to"
+  | "duplicate_of"
+  | "follows";
+
+/**
+ * Read-side view kinds the projection synthesizes per object. Includes
+ * the derived `blocked_by` view that does not appear in storage.
+ */
+export type WorkGraphLinkViewKind = WorkGraphLinkKind | "blocked_by";
+
+/**
+ * SPEC-090 v1 limits link endpoints to Project / Work Item / Task. The
+ * matching `sourceRecordFamily` field on `WorkGraphObjectSummary` is
+ * typed wider (`WorkGraphObjectKind`) because a summary can also cover
+ * non-PWT objects like Conversation / Run / Artifact.
+ */
+export type WorkGraphLinkEndpointKind = "project" | "work_item" | "task";
+
+export interface WorkGraphLinkEndpointRef {
+  recordFamily: WorkGraphLinkEndpointKind;
+  recordId: string;
+}
+
+/**
+ * Serializable composite key form: `${recordFamily}:${recordId}`.
+ * Stable across projection rebuilds because Core identity drives it.
+ */
+export type WorkGraphEndpointKey = `${WorkGraphLinkEndpointKind}:${string}`;
+
+/** SPEC-090 stored link row. Endpoints reference canonical Core identity. */
+export interface WorkGraphLink {
+  id: string;
+  kind: WorkGraphLinkKind;
+  sourceRecordFamily: WorkGraphLinkEndpointKind;
+  sourceRecordId: string;
+  targetRecordFamily: WorkGraphLinkEndpointKind;
+  targetRecordId: string;
+  createdAt: string;
+  createdByActorId: string | null;
+  note: string | null;
+}
+
+/**
+ * Per-endpoint read-side projection of a link, oriented "from this
+ * endpoint's perspective". `kind` may be `blocked_by` even though no
+ * stored row has that kind — see SPEC-090 §FR5.
+ */
+export interface WorkGraphLinkView {
+  linkId: string;
+  kind: WorkGraphLinkViewKind;
+  selfEndpoint: WorkGraphLinkEndpointRef;
+  otherEndpoint: WorkGraphLinkEndpointRef;
+  note: string | null;
+  createdAt: string;
+}
 
 export interface WorkGraphObjectSummary {
   id: string;
@@ -96,14 +172,55 @@ export interface WorkGraphDiagnostic {
   id: string;
   severity: WorkGraphDiagnosticSeverity;
   category: WorkGraphDiagnosticCategory;
-  kind: WorkGraphDiagnosticKind;
+  kind: WorkGraphBaseDiagnosticKind;
   objectId: string | null;
   message: string;
 }
+
+export interface WorkGraphLinkOrphanDiagnostic {
+  id: string;
+  severity: WorkGraphDiagnosticSeverity;
+  category: WorkGraphDiagnosticCategory;
+  kind: "orphan_link";
+  objectId: string | null;
+  message: string;
+  linkId: string;
+  sourceEndpoint: WorkGraphLinkEndpointRef;
+  targetEndpoint: WorkGraphLinkEndpointRef;
+  unresolvedSide: "source" | "target" | "both";
+}
+
+export interface WorkGraphLinkCycleDiagnostic {
+  id: string;
+  severity: WorkGraphDiagnosticSeverity;
+  category: WorkGraphDiagnosticCategory;
+  kind: "link_cycle";
+  objectId: string | null;
+  message: string;
+  cycleEndpoints: WorkGraphLinkEndpointRef[];
+  /**
+   * Stored `blocks` rows that participate in the cycle, in cycle
+   * traversal order. Lets Broken Links offer a one-click
+   * "remove this link" affordance per row.
+   */
+  cycleLinkIds: string[];
+}
+
+export type WorkGraphLinkDiagnostic =
+  | WorkGraphLinkOrphanDiagnostic
+  | WorkGraphLinkCycleDiagnostic;
 
 export interface WorkGraphProjection {
   objects: WorkGraphObjectSummary[];
   evidenceAttachments: WorkGraphEvidenceAttachment[];
   gateDecorators: WorkGraphGateDecorator[];
-  diagnostics: WorkGraphDiagnostic[];
+  /** Raw stored link rows, including orphans (so Broken Links can iterate them). */
+  links: WorkGraphLink[];
+  /**
+   * Per-endpoint derived link views (sparse map). Orphan rows are
+   * EXCLUDED — they appear only as `orphan_link` diagnostics. Consumers
+   * MUST treat absence of a key as `[]`.
+   */
+  linksByEndpoint: Partial<Record<WorkGraphEndpointKey, WorkGraphLinkView[]>>;
+  diagnostics: Array<WorkGraphDiagnostic | WorkGraphLinkDiagnostic>;
 }
