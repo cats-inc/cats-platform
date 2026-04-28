@@ -250,7 +250,7 @@ test('weak_worker accepts overrides that tighten beyond the ceiling', () => {
   assert.equal(result.result.policy.approvalThreshold, 'high');
 });
 
-test('weak_worker accepts validation upgraded to semantic_check (more rigorous than schema_required)', () => {
+test('weak_worker rejects validation override to semantic_check because the schema gate would be bypassed', () => {
   const result = decideSupervisionPolicy({
     ...baseContext({
       capabilityAssessment: catalogOnlyAssessment('weak_worker'),
@@ -260,9 +260,57 @@ test('weak_worker accepts validation upgraded to semantic_check (more rigorous t
       validation: 'semantic_check',
     },
   });
+  const details = rejectionDetails(result);
+
+  assert.equal(result.error.code, 'E_TOOL_SCOPE_DENIED');
+  assert.equal(
+    details.snapshot.reasons.some((reason) =>
+      reason.includes('weak_worker treatment cannot loosen')
+      && reason.includes('validation=semantic_check')),
+    true,
+  );
+});
+
+test('weak_worker stays clamped even when evaluated evidence is present', () => {
+  const result = decideSupervisionPolicy(baseContext({
+    capabilityAssessment: evaluatedAssessment('weak_worker'),
+    toolManifest: fixtureManifest('local_state'),
+  }));
 
   assert.equal(result.status, 'applied');
-  assert.equal(result.result.policy.validation, 'semantic_check');
+  assert.equal(result.result.policy.autonomy, 'single_step');
+  assert.equal(result.result.policy.taskGranularity, 'tiny');
+  assert.equal(result.result.policy.toolScope, 'read_only');
+  assert.equal(result.result.policy.scaffolding, 'sop_template');
+  assert.equal(result.result.policy.validation, 'schema_required');
+  assert.equal(result.result.policy.checkpointCadence, 'every_step');
+  assert.equal(result.result.policy.fallbackPolicy, 'ask_human');
+});
+
+test('weak_worker + evaluated evidence still rejects override to broad_write via the ceiling check', () => {
+  const result = decideSupervisionPolicy({
+    ...baseContext({
+      capabilityAssessment: evaluatedAssessment('weak_worker'),
+      toolManifest: fixtureManifest('local_state'),
+    }),
+    operatorOverride: {
+      overrideId: 'force-broad-on-weak',
+      operatorRef: 'operator:owner',
+      reason: 'Try to lift weak ceiling under evaluated evidence.',
+      policy: {
+        toolScope: 'broad_write',
+      },
+    },
+  });
+  const details = rejectionDetails(result);
+
+  assert.equal(result.error.code, 'E_TOOL_SCOPE_DENIED');
+  assert.equal(
+    details.snapshot.reasons.some((reason) =>
+      reason.includes('weak_worker treatment cannot loosen')
+      && reason.includes('toolScope=broad_write')),
+    true,
+  );
 });
 
 test('operator override metadata appears in snapshot reasons', () => {

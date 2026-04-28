@@ -50,9 +50,17 @@ const SCAFFOLDING_LOOSENESS: Record<SupervisionScaffolding, number> = {
   none: 3,
 };
 
+// schema_required is currently the only validation level that the
+// providerAgentPolicyGate (see providerAgentPolicyGate.ts:146) actually
+// enforces (it requires expectedOutputSchemaRef on each request).
+// semantic_check is not yet implemented as a superset, so allowing
+// weak_worker to "upgrade" from schema_required to semantic_check would
+// silently bypass the schema gate. Until semantic_check enforces the
+// same schema requirement plus an additional semantic check, treat it
+// as looser than schema_required for ceiling purposes.
 const VALIDATION_LOOSENESS: Record<SupervisionValidation, number> = {
-  semantic_check: 0,
-  schema_required: 1,
+  schema_required: 0,
+  semantic_check: 1,
   best_effort: 2,
 };
 
@@ -269,20 +277,35 @@ export function decideDefaultApprovalThreshold(
 function buildBasePolicy(context: SupervisionPolicyContext): SupervisionPolicy {
   const treatment = context.capabilityAssessment.bootstrapTreatment;
   const confidence = context.capabilityAssessment.confidenceLevel;
-  const isEvaluatedOrBetter = compareCapabilityConfidence(confidence, 'evaluated') >= 0;
-  const isWeak = treatment === 'weak_worker';
-  const isStrongOrBetter = treatment === 'strong_agent' || isEvaluatedOrBetter;
   const approvalThreshold = decideDefaultApprovalThreshold(context.toolManifest.sideEffect);
 
+  // weak_worker is a blacklist label that stays clamped regardless of
+  // evidence — evaluated/observed evidence must NOT loosen any dial.
+  if (treatment === 'weak_worker') {
+    return {
+      autonomy: 'single_step',
+      taskGranularity: 'tiny',
+      toolScope: 'read_only',
+      scaffolding: 'sop_template',
+      validation: 'schema_required',
+      checkpointCadence: 'every_step',
+      approvalThreshold,
+      fallbackPolicy: 'ask_human',
+    };
+  }
+
+  const isEvaluatedOrBetter = compareCapabilityConfidence(confidence, 'evaluated') >= 0;
+  const isStrongOrBetter = treatment === 'strong_agent' || isEvaluatedOrBetter;
+
   return {
-    autonomy: isWeak ? 'single_step' : isStrongOrBetter ? 'milestone_plan' : 'single_step',
-    taskGranularity: isWeak ? 'tiny' : isEvaluatedOrBetter ? 'milestone' : 'step',
+    autonomy: isStrongOrBetter ? 'milestone_plan' : 'single_step',
+    taskGranularity: isEvaluatedOrBetter ? 'milestone' : 'step',
     toolScope: decideDefaultToolScope({
       bootstrapTreatment: treatment,
       sideEffect: context.toolManifest.sideEffect,
     }),
     scaffolding: isStrongOrBetter ? 'few_shot' : 'sop_template',
-    validation: isWeak ? 'schema_required' : 'semantic_check',
+    validation: 'semantic_check',
     checkpointCadence: isStrongOrBetter ? 'milestone' : 'every_step',
     approvalThreshold,
     fallbackPolicy: isStrongOrBetter ? 'retry' : 'ask_human',

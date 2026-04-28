@@ -139,6 +139,28 @@ real safety boundary.
   explain when to add a rule (rare — only for explicit
   allow/denylist) versus when to leave default (the norm).
 
+### Implementation caveats
+
+- `weak_worker` is enforced as a **ceiling across all eight policy
+  dials**, not just `autonomy` and `toolScope`. The base dials shown
+  in the table above are the most-permissive values a `weak_worker`
+  target may receive; requested or operator-override policies may
+  tighten further (e.g. `autonomy: 'none'`, `toolScope: 'none'`) but
+  may not loosen. `weak_worker` short-circuits in `buildBasePolicy`
+  before any evaluated/observed evidence is considered, so a
+  blacklisted target stays clamped even when eval evidence arrives.
+- `validation: 'semantic_check'` is currently treated as **looser**
+  than `validation: 'schema_required'` by the `weak_worker` ceiling
+  check. The reason is that the only validation level the
+  `providerAgentPolicyGate` actually enforces today is
+  `schema_required` (it requires `expectedOutputSchemaRef` on each
+  request); `semantic_check` is not yet implemented as a superset,
+  so allowing a `weak_worker` to "upgrade" to it would silently
+  bypass the schema gate. Once `semantic_check` is implemented as a
+  true superset of `schema_required` (i.e. it also enforces the
+  schema-ref requirement plus an additional semantic check), the
+  ordering should flip again.
+
 ### Mitigations
 
 - Release notes and `docs/deployment.md` call out the dial table
