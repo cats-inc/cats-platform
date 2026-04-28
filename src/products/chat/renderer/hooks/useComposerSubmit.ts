@@ -40,6 +40,7 @@ import {
   updateSelectedChannel,
   uploadChannelAttachments,
 } from '../api';
+import { captureCompanionReferenceSnapshots } from '../api/companion.js';
 import {
   captureManagedComposerLocation,
   clearManagedComposerLocation,
@@ -592,7 +593,24 @@ export function useComposerSubmit(options: {
             workflowShape: activeWorkflowShape,
           })
         : null;
-      const messageMetadata = draftMessageMetadata ?? activeChannelMessageMetadata;
+      const baseMessageMetadata = draftMessageMetadata ?? activeChannelMessageMetadata;
+      // PLAN-077 Phase 5 send-time snapshot capture: resolve every
+      // `cats://companion/v1/...` reference in the body and persist the
+      // available previews on the outgoing message. The transcript
+      // hydrator (next slice) feeds these snapshots into the resolver's
+      // fallback slot when the live preview is missing / deleted /
+      // inaccessible, so old messages keep showing meaningful titles.
+      const companionReferenceSnapshots = await captureCompanionReferenceSnapshots(
+        messageBody,
+        { signal: ackController.signal },
+      );
+      const messageMetadata =
+        companionReferenceSnapshots.length > 0
+          ? {
+              ...(baseMessageMetadata ?? {}),
+              companionReferenceSnapshots,
+            }
+          : baseMessageMetadata;
 
       if (soloDispatchTarget) {
         payload = applyPendingExecutionTargetPreview(payload, channelId, soloDispatchTarget);

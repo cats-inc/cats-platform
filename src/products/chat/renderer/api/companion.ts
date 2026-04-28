@@ -13,6 +13,20 @@ import type {
   UpdateCompanionResponseProfileInput,
   UpdateCompanionSourceInput,
 } from '../../companion/contracts.js';
+import type {
+  CompanionContentReference,
+  CompanionReferenceParseResult,
+} from '../../companion/contentReference.js';
+import type {
+  CompanionContentPreview,
+} from '../../companion/contentResolver.js';
+import {
+  buildCompanionMessageReferenceSnapshot,
+  type CompanionMessageReferenceSnapshot,
+} from '../../companion/messageReferenceSnapshot.js';
+import {
+  detectCompanionReferences,
+} from '../../companion/composerReferenceDetector.js';
 import type { CompanionProfileReadModel } from '../../companion/profileReadModel.js';
 
 function catPath(catId: string): string {
@@ -168,6 +182,81 @@ export async function promoteCompanionProfilePost(
     response,
     `companion promote-post returned ${response.status}`,
   );
+}
+
+export interface CompanionResolveReferenceResult {
+  parse: CompanionReferenceParseResult;
+  preview?: CompanionContentPreview;
+}
+
+export async function resolveCompanionContentReference(
+  catId: string,
+  referenceText: string,
+  signal?: AbortSignal,
+): Promise<CompanionResolveReferenceResult> {
+  const response = await fetch(`${catPath(catId)}/resolve-reference`, {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ referenceText }),
+    signal,
+  });
+  return expectJson<CompanionResolveReferenceResult>(
+    response,
+    `companion resolve-reference returned ${response.status}`,
+  );
+}
+
+/**
+ * Phase 5 send-time capture: scan `body` for `cats://companion/v1/...`
+ * occurrences, resolve each one against its target cat, and build the
+ * persistable snapshot for every reference whose live target was
+ * `available`. References that resolved as `missing` / `deleted` /
+ * `inaccessible` are silently skipped (they would only persist a
+ * generic-fallback snapshot, which the transcript hydrator can produce
+ * itself from the raw reference text).
+ *
+ * Errors per reference are swallowed so a transient resolver failure
+ * never blocks the user from sending the message.
+ */
+export async function captureCompanionReferenceSnapshots(
+  body: string,
+  options: { capturedAt?: string; signal?: AbortSignal } = {},
+): Promise<CompanionMessageReferenceSnapshot[]> {
+  const matches = detectCompanionReferences(body);
+  const parsed: CompanionContentReference[] = [];
+  for (const match of matches) {
+    if (match.parseResult.status === 'parsed') {
+      parsed.push(match.parseResult.reference);
+    }
+  }
+  if (parsed.length === 0) {
+    return [];
+  }
+  const capturedAt = options.capturedAt ?? new Date().toISOString();
+  const snapshots: CompanionMessageReferenceSnapshot[] = [];
+  for (const reference of parsed) {
+    try {
+      const result = await resolveCompanionContentReference(
+        reference.catId,
+        // re-serialize from the parsed reference so the URL path is
+        // canonical (the original raw substring may carry trailing
+        // characters or encoding the parser already normalised).
+        `cats://companion/v1/${reference.scopeId}/${reference.catId}/${reference.type}/${reference.targetId}`,
+        options.signal,
+      );
+      if (result.preview && result.preview.availability === 'available') {
+        snapshots.push(
+          buildCompanionMessageReferenceSnapshot(result.preview, { capturedAt }),
+        );
+      }
+    } catch {
+      // Silently skip — transient resolver errors should never block send.
+    }
+  }
+  return snapshots;
 }
 
 export async function setCompanionProfilePostStatus(
