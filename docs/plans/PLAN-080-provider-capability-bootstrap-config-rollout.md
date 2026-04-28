@@ -388,6 +388,7 @@ initial treatment even without an editor.
 | 2026-04-28 | Implementation slice 5: removed provider-name hard-coding from shared Chat/Work/Code draft preset capability review; default targets now show conservative policy unless the review is given an explicit PLAN-080 bootstrap treatment fixture. |
 | 2026-04-28 | Implementation slice 6: added a provider capability bootstrap diagnostic sink that emits structured platform log events, persists `SupervisionDiagnosticRecord` records, and receives Chat matched-rule diagnostics during provider-agent observation preparation. |
 | 2026-04-28 | Implementation slice 7: documented that a UI/admin editor for provider capability bootstrap is follow-up scope; PLAN-080 keeps YAML as the operator surface and diagnostics as the audit trail. |
+| 2026-04-28 | Implementation slice 8: wired Chat, Work, and Code live provider smoke gates to the same PLAN-080 YAML fixture path; default smoke execution still skips live providers unless each `CATS_*_LIVE_PROVIDER_SMOKE=1` gate is explicitly enabled. |
 
 ---
 

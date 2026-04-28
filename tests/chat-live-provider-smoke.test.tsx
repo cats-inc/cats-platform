@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import { loadConfig } from '../src/config.ts';
 import { CatsRuntimeClient } from '../src/platform/runtime/client.ts';
@@ -31,6 +32,9 @@ const LIVE_TARGETS: Record<string, { instance: string | null; model: string | nu
   claude: { instance: 'native', model: 'sonnet' },
   codex: { instance: 'cloud', model: 'gpt-5.4' },
 };
+const PLAN_080_BOOTSTRAP_FIXTURE_URL =
+  new URL('./fixtures/provider-capability-bootstrap.yaml', import.meta.url);
+const PLAN_080_BOOTSTRAP_FIXTURE_PATH = fileURLToPath(PLAN_080_BOOTSTRAP_FIXTURE_URL);
 
 test(
   'live Claude/Codex Chat turns run through provider-agent supervision',
@@ -53,21 +57,25 @@ test(
     });
 
     const config = {
-      ...loadConfig(process.env),
+      ...loadConfig({
+        ...process.env,
+        CATS_PROVIDER_CAPABILITY_BOOTSTRAP_CONFIG: PLAN_080_BOOTSTRAP_FIXTURE_PATH,
+      }),
       chatStatePath: tempDir,
       runtimeDataDir: tempDir,
     };
     const bootstrapResult = parseProviderCapabilityBootstrapConfigYaml(
-      readFileSync(new URL('./fixtures/provider-capability-bootstrap.yaml', import.meta.url), 'utf8'),
+      readFileSync(PLAN_080_BOOTSTRAP_FIXTURE_PATH, 'utf8'),
       {
         observedAt: new Date().toISOString(),
-        configPath: 'tests/fixtures/provider-capability-bootstrap.yaml',
+        configPath: PLAN_080_BOOTSTRAP_FIXTURE_PATH,
       },
     );
     assert.ok(
       bootstrapResult.config,
       bootstrapResult.diagnostics.map((diagnostic) => diagnostic.message).join('; '),
     );
+    assert.equal(config.providerCapabilityBootstrapConfigPath, PLAN_080_BOOTSTRAP_FIXTURE_PATH);
 
     runtimeClient = new CatsRuntimeClient(config.runtimeBaseUrl, {
       apiKey: config.runtimeApiKey,

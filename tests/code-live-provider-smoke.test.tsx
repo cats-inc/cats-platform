@@ -1,15 +1,20 @@
 import assert from 'node:assert/strict';
 import { mkdtemp, rm } from 'node:fs/promises';
+import { readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import { loadConfig } from '../src/config.ts';
 import { createDefaultCoreState } from '../src/core/model/index.ts';
 import { MemoryCoreStore } from '../src/core/store.ts';
 import { readEvidenceEvents } from '../src/platform/persistence/evidence.ts';
 import { CatsRuntimeClient } from '../src/platform/runtime/client.ts';
+import {
+  parseProviderCapabilityBootstrapConfigYaml,
+} from '../src/platform/supervision/providerCapabilityBootstrapYaml.ts';
 import { routeCodeApi } from '../src/products/code/api/index.ts';
 
 const RUN_LIVE_PROVIDER_SMOKE = process.env.CATS_CODE_LIVE_PROVIDER_SMOKE === '1';
@@ -17,6 +22,9 @@ const LIVE_PROVIDER_IDS = (process.env.CATS_CODE_LIVE_PROVIDERS ?? 'claude,codex
   .split(',')
   .map((provider) => provider.trim())
   .filter((provider) => provider.length > 0);
+const PLAN_080_BOOTSTRAP_FIXTURE_URL =
+  new URL('./fixtures/provider-capability-bootstrap.yaml', import.meta.url);
+const PLAN_080_BOOTSTRAP_FIXTURE_PATH = fileURLToPath(PLAN_080_BOOTSTRAP_FIXTURE_URL);
 
 test(
   'live Claude/Codex Code paths run through supervision',
@@ -34,9 +42,24 @@ test(
     });
 
     const config = {
-      ...loadConfig(process.env),
+      ...loadConfig({
+        ...process.env,
+        CATS_PROVIDER_CAPABILITY_BOOTSTRAP_CONFIG: PLAN_080_BOOTSTRAP_FIXTURE_PATH,
+      }),
       chatStatePath: tempDir,
     };
+    const bootstrapResult = parseProviderCapabilityBootstrapConfigYaml(
+      readFileSync(PLAN_080_BOOTSTRAP_FIXTURE_PATH, 'utf8'),
+      {
+        observedAt: new Date().toISOString(),
+        configPath: PLAN_080_BOOTSTRAP_FIXTURE_PATH,
+      },
+    );
+    assert.ok(
+      bootstrapResult.config,
+      bootstrapResult.diagnostics.map((diagnostic) => diagnostic.message).join('; '),
+    );
+    assert.equal(config.providerCapabilityBootstrapConfigPath, PLAN_080_BOOTSTRAP_FIXTURE_PATH);
     const runtimeClient = new CatsRuntimeClient(config.runtimeBaseUrl, {
       apiKey: config.runtimeApiKey,
       timeoutMs: 120_000,
