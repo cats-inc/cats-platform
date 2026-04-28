@@ -20,6 +20,15 @@ import {
   CompanionProfilePostValidationError,
   promoteCompanionProfilePost,
 } from '../companion/profilePostProducer.js';
+import { parseCompanionContentReference } from '../companion/contentReference.js';
+import {
+  resolveCompanionContentReference,
+  type CompanionContentLookupResult,
+} from '../companion/contentResolver.js';
+import {
+  ensurePlatformScopeId,
+  resolvePlatformScopeIdPathFromChatState,
+} from '../../../shared/platformScopeId.js';
 import { syncCanonicalCompanionMemoryBestEffort } from '../../../platform/memory/maintenance.js';
 import {
   type CanonicalSyncAwareCompanionBoxStore,
@@ -384,6 +393,94 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+async function handleResolveCompanionContentReference(
+  context: ChatApiRouteContext,
+  catId: string,
+): Promise<void> {
+  try {
+    const { cat } = await resolveCatContext(context, catId);
+    const body = await readJsonBody<{ referenceText?: unknown }>(context.request);
+    if (typeof body.referenceText !== 'string' || body.referenceText.trim().length === 0) {
+      sendRestError(
+        context,
+        400,
+        'invalid_reference_text',
+        '`referenceText` must be a non-empty string.',
+      );
+      return;
+    }
+
+    const parsed = parseCompanionContentReference(body.referenceText);
+    if (parsed.status !== 'parsed') {
+      sendJson(context.response, 200, { parse: parsed });
+      return;
+    }
+
+    if (parsed.reference.catId !== catId) {
+      sendRestError(
+        context,
+        400,
+        'reference_cat_mismatch',
+        'Reference catId does not match the route cat.',
+      );
+      return;
+    }
+
+    const currentScopeId = await ensurePlatformScopeId({
+      filePath: resolvePlatformScopeIdPathFromChatState(
+        context.dependencies.config.chatStatePath,
+      ),
+    });
+
+    const preview = await resolveCompanionContentReference({
+      reference: parsed.reference,
+      currentScopeId,
+      lookup: async (reference): Promise<CompanionContentLookupResult> => {
+        if (reference.type === 'post') {
+          const derived = await context.dependencies.companionStore.listDerived(catId);
+          const match = derived.find((entry) => entry.id === reference.targetId);
+          if (!match) return { status: 'missing' };
+          return {
+            status: 'available',
+            preview: {
+              title: match.title ?? '(Untitled post)',
+              subtitle: null,
+              description: match.content || null,
+              thumbnailUrl: null,
+              icon: null,
+              catName: cat.name,
+              openRoute: `/chat/cats/${encodeURIComponent(catId)}/companion/posts/${encodeURIComponent(match.id)}`,
+            },
+          };
+        }
+        // photo / video / music / file all read from the source list.
+        const sources = await context.dependencies.companionStore.listSources(catId);
+        const match = sources.find((entry) => entry.id === reference.targetId);
+        if (!match) return { status: 'missing' };
+        return {
+          status: 'available',
+          preview: {
+            title: match.title ?? match.originalFileName ?? '(Untitled)',
+            subtitle: null,
+            description: match.ownerNote ?? match.textExcerpt ?? null,
+            thumbnailUrl: null,
+            icon: reference.type,
+            catName: cat.name,
+            openRoute:
+              `/chat/cats/${encodeURIComponent(catId)}/companion/`
+              + `${reference.type === 'file' ? 'files' : `${reference.type}s`}`
+              + `/${encodeURIComponent(match.id)}`,
+          },
+        };
+      },
+    });
+
+    sendJson(context.response, 200, { parse: parsed, preview });
+  } catch (error) {
+    handleCanonicalCatError(context, error);
+  }
+}
+
 async function handleListCompanionMemory(
   context: ChatApiRouteContext,
   catId: string,
@@ -656,6 +753,19 @@ export async function routeCompanionBoxApi(
       return true;
     }
     await handlePromoteCompanionProfilePost(context, postsMatch[0]!);
+    return true;
+  }
+
+  const resolveMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/cats\/([^/]+)\/companion-box\/resolve-reference$/u,
+  );
+  if (resolveMatch) {
+    if (context.method !== 'POST') {
+      sendMethodNotAllowed(context.response, ['POST']);
+      return true;
+    }
+    await handleResolveCompanionContentReference(context, resolveMatch[0]!);
     return true;
   }
 
