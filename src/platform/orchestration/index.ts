@@ -56,6 +56,14 @@ export {
   type StartProviderAgentRunLoopInput,
 } from './providerAgentRunLoop.js';
 export {
+  createProviderAgentRunLoopPlanRecord,
+  createProviderAgentRunLoopPlanRecordFromDecision,
+  createRunLoopApprovalRecordFromEvidence,
+  createRunLoopToolRequestRecordFromEvidence,
+  type CreateProviderAgentRunLoopPlanRecordInput,
+  type ProviderAgentPlanRecordStepInput,
+} from './providerAgentRunRecords.js';
+export {
   applyProviderAgentPolicyGate,
   validateProviderAgentPolicyGate,
   type ProviderAgentPolicyGateInput,

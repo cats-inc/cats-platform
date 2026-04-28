@@ -25,8 +25,14 @@ import {
   persistSupervisionApprovalRequest,
   persistSupervisionPolicySnapshot,
   type BudgetEnvelope,
+  type ProviderAgentRunLoopRecord,
   type SupervisionPolicySnapshot,
 } from '../src/platform/supervision/index.ts';
+import {
+  createProviderAgentRunLoopPlanRecord,
+  createRunLoopApprovalRecordFromEvidence,
+  createRunLoopToolRequestRecordFromEvidence,
+} from '../src/platform/orchestration/index.ts';
 import { readEvidenceEvents } from '../src/platform/persistence/evidence.ts';
 import { routeWorkApi } from '../src/products/work/api/index.ts';
 import {
@@ -106,12 +112,13 @@ test('Work supervised run launch can be driven by a fake agent and inspected fro
   const registry = createSupervisedToolRegistry();
   lifecycleTools.register(registry);
   tools.register(registry);
+  const evidenceSink = createDurableToolEvidenceSink({
+    dataDir: tempDir,
+    conversationId: 'conversation-fake-agent',
+  });
   const boundary = createToolBoundary({
     registry,
-    evidenceSink: createDurableToolEvidenceSink({
-      dataDir: tempDir,
-      conversationId: 'conversation-fake-agent',
-    }),
+    evidenceSink,
     now: () => '2026-04-25T13:01:00.000Z',
   });
   const executors: Record<string, UnknownToolExecutor> = {
@@ -227,6 +234,54 @@ test('Work supervised run launch can be driven by a fake agent and inspected fro
   const approvalRequestId = approvalCall?.requestId;
   assert.ok(approvalRequestId);
 
+  const runLoopMetadata: ProviderAgentRunLoopRecord = {
+    observations: [],
+    plans: [
+      createProviderAgentRunLoopPlanRecord({
+        planId: plan.planId,
+        decisionId: 'work-agent-decision',
+        actionId: 'work-agent-plan',
+        confidence: 'medium',
+        recordedAt: '2026-04-25T13:01:00.000Z',
+        steps: plan.steps.map((step) => ({
+          stepId: step.stepId,
+          action: 'call_tool',
+          toolName: step.toolName,
+          requiresApproval: step.expectation === 'pending_approval',
+        })),
+      }),
+    ],
+    toolRequests: evidenceSink.read().map(createRunLoopToolRequestRecordFromEvidence),
+    approvals: evidenceSink.read().flatMap((event) => {
+      const approvalRecord = createRunLoopApprovalRecordFromEvidence(event);
+      return approvalRecord ? [approvalRecord] : [];
+    }),
+    outcomes: [],
+    latestHandoff: null,
+  };
+  const coreBeforeApprovalPersistence = await coreStore.readCore();
+  const runBeforeApprovalPersistence = coreBeforeApprovalPersistence.runs.find((candidate) =>
+    candidate.id === runId);
+  assert.ok(runBeforeApprovalPersistence);
+  await coreStore.writeCore(
+    upsertCoreRun(
+      coreBeforeApprovalPersistence,
+      {
+        id: runBeforeApprovalPersistence.id,
+        title: runBeforeApprovalPersistence.title,
+        status: runBeforeApprovalPersistence.status,
+        metadata: {
+          ...runBeforeApprovalPersistence.metadata,
+          supervision: {
+            ...(asRecord(runBeforeApprovalPersistence.metadata.supervision) ?? {}),
+            providerAgentRunLoop: runLoopMetadata,
+          },
+        },
+      },
+      new Date('2026-04-25T13:01:30.000Z'),
+    ).core,
+  );
+
   const approvalPersistence = persistSupervisionApprovalRequest({
     core: await coreStore.readCore(),
     runId,
@@ -289,6 +344,22 @@ test('Work supervised run launch can be driven by a fake agent and inspected fro
     ['applied', 'applied', 'applied', 'pending_approval'],
   );
   assert.equal(detailPayload.supervision.evidence[3]?.approvalRequestId !== undefined, true);
+  assert.equal(detailPayload.supervision.providerAgentRunLoop.plans[0]?.planId, plan.planId);
+  assert.deepEqual(
+    detailPayload.supervision.providerAgentRunLoop.toolRequests.map(
+      (request: { toolName: string; status: string }) => [request.toolName, request.status],
+    ),
+    [
+      ['work.context.lookup', 'applied'],
+      ['work.local_note.apply', 'applied'],
+      [SUPERVISED_LIFECYCLE_RUN_SPAWN_TOOL, 'applied'],
+      ['work.approval_gated.apply', 'pending_approval'],
+    ],
+  );
+  assert.equal(
+    detailPayload.supervision.providerAgentRunLoop.approvals[0]?.approvalRequestId,
+    approvalRequestId,
+  );
   assert.equal(
     detailPayload.timeline.view.items.some(
       (item: {
