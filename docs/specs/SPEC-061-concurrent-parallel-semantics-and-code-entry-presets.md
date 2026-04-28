@@ -35,6 +35,13 @@ handoffs, relay provenance, and convergence policies, but those behaviors must
 live inside the three Code presets and their task/artifact projections. Do not
 add new requirements that complete or restore `/code/build` or `/code/relay`.
 
+The Code sidebar may add `Workspaces` and `Artifacts` as first-class
+navigation entries. These entries are execution-context and evidence indexes,
+not new workflow engines and not Work Planning containers. Projects, Work
+Items, Tasks, Runs, and Missions remain the `Cats Work` management sidebar
+vocabulary; Code task/run state may be shown inside Code recents, workspace
+detail, artifact detail, and task detail.
+
 ## Why
 
 Without these distinctions:
@@ -208,6 +215,10 @@ Initial preset inputs should include:
 - worktree policy
 - permission profile
 - bound skill/tool/memory profile when applicable
+
+Workspace state created or resolved by the preset should feed the Code
+`Workspaces` sidebar when available, but it must not become a Work `Project` or
+`WorkItem` unless an explicit Work promotion/linking action occurs.
 
 ### +Team code
 

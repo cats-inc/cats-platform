@@ -55,6 +55,7 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [SPEC-091](./specs/SPEC-091-cats-code-workspace-and-artifact-sidebar.md)
 - [PLAN-080](./plans/PLAN-080-provider-capability-bootstrap-config-rollout.md)
 - [SPEC-089](./specs/SPEC-089-companion-all-content-library-placeholder.md)
 - [SPEC-088](./specs/SPEC-088-companion-memory-bridge-contract-placeholder.md)

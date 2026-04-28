@@ -66,6 +66,15 @@ Entry materialization is intentionally product-specific:
   because an entry was created. For Code this can happen during the first-send
   submit flow when an agent is auto-dispatched.
 
+Sidebar ownership follows the same split. `Cats Work` owns the management
+sidebar for Projects, Work Items, Tasks, Runs, and Missions. `Cats Code` may
+project task/run state inside Code recents, task detail, workspace detail, and
+artifact detail, but it should not duplicate Work's canonical management
+sidebar. The first Code-owned sidebar additions are `Workspaces` and
+`Artifacts`: Workspaces group code work by repo/folder/worktree/managed-room
+execution context, while Artifacts index durable Code outputs. Neither entry
+creates a `Project` / `WorkItem` fallback or a new Core record family.
+
 Task projection is shared across products. Work Graph surfaces render every
 Core `Task` they know about and label task rows with a product binding:
 `work`, `code`, `chat`, or `unbound`. `work` is derived only from a
@@ -142,8 +151,8 @@ The practical ownership split is:
 - `Work`
   - canonical managed-work records and planning hierarchy
 - `Code`
-  - implementation artifacts, execution profiles, previews, reviews, and other
-    code-adjacent resources
+  - implementation workspaces, artifacts, execution profiles, previews,
+    reviews, and other code-adjacent resources
 - shared platform/core layers
   - mission, run, schedule, provenance, and transport-binding seams
 
@@ -179,8 +188,8 @@ The current direction is therefore:
   - the place where users manage assignments, missions, schedules, approvals,
     and follow-up
 - `Cats Code`
-  - the execution home for code-oriented missions, runs, artifacts, previews,
-    and review loops
+  - the execution home for code-oriented workspaces, artifacts, previews,
+    reviews, and task-adjacent run histories
 - platform/core layers
   - the canonical agent/entity registry beneath all projections
 

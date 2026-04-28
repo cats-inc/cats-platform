@@ -205,27 +205,33 @@ Tables and Task Hub remain later projections over the same graph.
 38. Existing Work renderer routes and UI components shall be isolated or
     disabled before new Work shell implementation starts. The new shell shall
     not keep a hybrid fallback to the rejected prototype.
-39. `+New work` shall materialize enough canonical state for all three primary
+39. Work-owned sidebar navigation may expose Projects, Work Items, Tasks, Runs,
+    and Missions as management entries over the Work Graph.
+40. Work-owned sidebar navigation shall not expose Code Workspaces or Code
+    Artifacts as peer Work management entries. Code artifacts may still render
+    as anchored evidence, and Code-origin tasks may still appear in Work Tasks
+    / `No project` according to task product binding rules.
+41. `+New work` shall materialize enough canonical state for all three primary
     System Map panes at entry creation time:
     - one primary `Conversation` in Interaction
     - one `Project` in Planning
     - one `WorkItem` in Planning
     - one primary `Task` in Execution, linked from the `WorkItem` via
       `WorkItem.taskId`
-40. `+New work` shall not create a `Run` merely because the entry exists. The
+42. `+New work` shall not create a `Run` merely because the entry exists. The
     first `Run` shall appear only when a supervised execution attempt, tool
     batch, continuation, or delegated operation is admitted by the execution
     dispatcher / runtime bridge.
-41. `+New chat` and `+New code` remain different producer contracts:
+43. `+New chat` and `+New code` remain different producer contracts:
     `+New chat` may produce only Interaction records, while `+New code`
     produces Interaction plus a Code-owned `Task` without forcing Work
     `Project` / `WorkItem` anchors.
-42. Work Graph shall include every Core task in the graph projection, not only
+44. Work Graph shall include every Core task in the graph projection, not only
     Work-bound tasks. Each task summary shall expose a task product binding:
     `work`, `code`, `chat`, or `unbound`.
-43. System Map, Cockpit, and the Work Tasks list shall render task product
+45. System Map, Cockpit, and the Work Tasks list shall render task product
     binding as product attribution, not as a new canonical record family.
-44. Task product binding shall be derived, not stored. The derivation order is:
+46. Task product binding shall be derived, not stored. The derivation order is:
     `WorkItem.taskId` linkage -> `work`; `build` / `preview` artifact -> `code`;
     explicit planning provenance (`planning.productHint` or
     `planning.transfer.suggestedProduct`) -> that product, with explicit
@@ -235,12 +241,12 @@ Tables and Task Hub remain later projections over the same graph.
     alone shall **not** bind: `chat` requires explicit chat planning provenance
     per the deliberate-only Chat Task producer rule (R14), and `work` requires
     the structural `WorkItem.taskId` bridge.
-45. Work-flavored task metadata, `planning.productHint = 'work'`,
+47. Work-flavored task metadata, `planning.productHint = 'work'`,
     `planning.transfer.suggestedProduct = 'work'`, or a `work_thread`
     conversation shall not produce `productBinding = work` without a
     `WorkItem.taskId` bridge. That state shall project as an incomplete Work
     claim diagnostic and remain outside managed Work until repaired.
-46. When a Code-origin or Chat-origin task is later linked by `WorkItem.taskId`,
+48. When a Code-origin or Chat-origin task is later linked by `WorkItem.taskId`,
     the current Work Graph binding shall become `work`. Every signal that put
     the task in its pre-promotion binding still persists on the underlying
     records and is therefore the lineage source: explicit
@@ -258,18 +264,18 @@ Tables and Task Hub remain later projections over the same graph.
     sufficient for artifact-driven or conversation-fallback Code tasks.
     Introducing a dedicated projection field is an explicit follow-on
     decision, not implied by this spec.
-47. Tasks with no resolved Project / WorkItem lineage shall appear under a
+49. Tasks with no resolved Project / WorkItem lineage shall appear under a
     `No project` grouping. The grouping may be sub-grouped or filtered by task
     product binding, for example `No project / code`, `No project / chat`, and
     `No project / unbound`.
-48. Work shall not auto-create fallback `Project` or `WorkItem` records for
+50. Work shall not auto-create fallback `Project` or `WorkItem` records for
     Code-bound, Chat-bound, or unbound tasks solely to remove them from the
     `No project` grouping. An inbox-style project may be created only by an
     explicit Work entry or Work object creation flow.
-49. Entry creation shall not create an `Artifact` merely because an entry was
+51. Entry creation shall not create an `Artifact` merely because an entry was
     opened or submitted. Artifacts shall be produced by attachments, imports,
     execution outputs, or explicit document/report creation.
-50. Entry-created `Activity` is an audit/feed event, not a structural anchor.
+52. Entry-created `Activity` is an audit/feed event, not a structural anchor.
     If an entry producer writes one, it shall be written after the durable
     entry records exist, use `operator_action` or another existing
     `CoreActivityRecord.kind`, carry the relevant `conversationId`, `taskId`,
@@ -342,7 +348,7 @@ Tables and Task Hub remain later projections over the same graph.
     Interaction / Task state and shall not first create a Chat-bound task.
 17. A Chat draft submitted with `targetSurface = 'work'` shall activate
     directly into the Work producer contract; it shall create the full Work
-    anchor set required by R39 (`Conversation + Project + WorkItem + primary
+    anchor set required by R41 (`Conversation + Project + WorkItem + primary
     Task` with the `WorkItem.taskId` bridge) and shall not first create a
     Chat-bound task or a Code-bound task as an intermediate step. The same
     identity-at-activation rule applies to any future
@@ -570,7 +576,12 @@ Work Product Shell
     View mode: System Map | Cockpit
 
   Work-owned sidebar
-    Generated from selected view mode
+    Projects
+    Work Items
+    Tasks
+    Runs
+    Missions
+    View-mode filters / groupings
 
   Main content
     Generated from selected view mode
@@ -628,6 +639,7 @@ behind the new graph and shell contracts.
 - [SPEC-058](./SPEC-058-interaction-core-and-domain-materialization.md)
 - [SPEC-062](./SPEC-062-agent-missions-and-transport-bindings.md)
 - [SPEC-040](./SPEC-040-cats-work-team-templates-and-work-intake.md)
+- [SPEC-091](./SPEC-091-cats-code-workspace-and-artifact-sidebar.md)
 - [2026-04-25 AOS reference system deep-research update](../research/2026-04-25-deep-research-report.md)
 
 ## Open Questions

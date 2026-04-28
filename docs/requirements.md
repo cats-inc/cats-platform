@@ -379,6 +379,15 @@ can be reused by `Cats Chat`, `Cats Work`, and `Cats Code`.
 - **Priority**: Medium
 - **Status**: Planned
 
+### FR-048: Code Workspace and Artifact Navigation
+
+- **Description**: `Cats Code` shall expose Code-owned `Workspaces` and
+  `Artifacts` sidebar entries for execution-context navigation and durable
+  output inspection, while `Cats Work` remains the canonical sidebar home for
+  Projects, Work Items, Tasks, Runs, and Missions.
+- **Priority**: High
+- **Status**: Planned
+
 ## Non-Functional Requirements
 
 ### NFR-001: Explicit Boundaries

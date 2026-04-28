@@ -18,6 +18,7 @@
 - [SPEC-041: Cats Code v1 Local Builder Loop](../specs/SPEC-041-cats-code-v1-local-builder-loop.md) (stopped; historical context only)
 - [SPEC-061: Concurrent vs Parallel Semantics and Code Entry Presets](../specs/SPEC-061-concurrent-parallel-semantics-and-code-entry-presets.md)
 - [SPEC-058: Interaction Core and Domain Materialization](../specs/SPEC-058-interaction-core-and-domain-materialization.md)
+- [SPEC-091: Cats Code Workspace and Artifact Sidebar](../specs/SPEC-091-cats-code-workspace-and-artifact-sidebar.md)
 - [ADR-063: Separate Managed Work, Agent Missions, Execution Runs, and Transport Bindings](../decisions/063-agent-missions-and-transport-bindings.md)
 - [PLAN-029: Cats Code v1 Local Builder Loop](./PLAN-029-cats-code-v1-local-builder-loop.md) (stopped; do not complete `/code/build`)
 - [PLAN-032: Cats Code MVP Fan-Out, Relay, and Convergence](./PLAN-032-cats-code-mvp-fan-out-relay-and-convergence.md) (stopped; do not complete `/code/relay`)
@@ -26,9 +27,12 @@
 
 `PLAN-064` remains active only for `+New code` task/run/artifact
 materialization. It must not be used to finish or restore standalone sidebar
-`Build` or `Relay` surfaces. Any useful run, artifact, preview, or
-collaboration semantics from the retired plans must be folded into Code entry
-presets, task detail, or artifact detail.
+`Build` or `Relay` surfaces. The active Code sidebar may add `Workspaces` and
+`Artifacts`; those are execution-context and evidence indexes over Code
+entries, not restored Build / Relay workflow surfaces. Any useful run,
+artifact, preview, or collaboration semantics from the retired plans must be
+folded into Code entry presets, task detail, workspace detail, or artifact
+detail.
 
 ## Overview
 
@@ -71,8 +75,8 @@ The implementation thesis is:
 - first run creation and repeat-run semantics
 - direct `Task -> Run` linkage for the MVP, without a required Mission layer
 - task/run/artifact linkage and Code-only projection rules
-- Code recents, task detail, artifact, and run-history presentation for this
-  slice
+- Code recents, workspace, artifact, task detail, and run-history presentation
+  for this slice
 - Code-product-only visibility for the first `code_thread` entry/resume path
 
 ### Explicitly deferred after PLAN-064
@@ -157,6 +161,24 @@ attempt.
 **Deliverables**: one evidence path where Code outputs remain attached to the
 same durable task and execution history.
 
+### Phase 3A: Code Workspace Navigation
+
+- [ ] Define the first workspace-linking rule set for Code:
+      - workspace context may come from Code task metadata, `Conversation.repoPath`,
+        execution profile `cwd` / worktree policy, or run/runtime metadata
+      - workspace context does not create or imply a Work `Project`
+      - entries with no resolved workspace remain visible through Code Recents
+        and may group under `No workspace`
+- [ ] Add a Code-owned `Workspaces` sidebar projection that groups code work by
+      execution context rather than by Work Planning hierarchy
+- [ ] Ensure workspace detail links back to relevant conversations, tasks,
+      latest run / run history, and artifacts
+- [ ] Keep workspace routing compatible with future repo/worktree filters
+      without blocking the first mockup or MVP on a full repository model
+
+**Deliverables**: one Code workspace index that helps users resume local
+execution context without forcing Work planning records.
+
 ### Phase 4: Code UI Entry and Projection
 
 - [ ] Make `+New code` create flow visible in the Code UI with a stable landing
@@ -174,6 +196,8 @@ same durable task and execution history.
       - workspace summary when known
 - [ ] Keep run history inside task detail for MVP instead of blocking on a
       top-level run page
+- [ ] Add `Workspaces` and `Artifacts` as Code sidebar entries while keeping
+      Projects / Work Items / Tasks / Runs / Missions in the Work sidebar
 - [ ] Ensure artifact views and task-detail execution surfaces deep-link back
       to the same task and conversation context
 
@@ -191,8 +215,11 @@ and evidence all point back to one task/conversation anchor.
 | `src/products/code/api/projection.ts` | Modify | Add Code recents/task-detail projections for task/run/artifact lineage |
 | `src/products/code/state/taskExecution.ts` | Modify | Align run creation, retry, restart, and takeover semantics with the new contract |
 | `src/products/code/shared/taskDetailSummary.ts` | Modify | Surface primary-task, latest-run, and artifact linkage for renderer use |
+| `src/products/code/shared/workspaceSummary.ts` | Modify | Keep workspace summary semantics aligned with the Code Workspaces sidebar |
 | `src/products/code/renderer/components/NewChatDraft.tsx` | Modify | Route `+New code` entry into the new create flow |
 | `src/products/code/renderer/components/ChatView.tsx` | Modify | Keep conversation-led recents and thread resume behavior aligned |
+| `src/products/code/renderer/components/WorkspaceListView.tsx` | Create | Show Code workspace groups without turning them into Work Projects |
+| `src/products/code/renderer/components/WorkspaceDetailView.tsx` | Create | Show workspace-linked conversations, tasks, latest runs, and artifacts |
 | `src/products/code/renderer/components/CodeBuilderView.tsx` | Do not extend | Retired Build-surface code may be removed or mined only to migrate useful semantics into active entry/task surfaces |
 | `src/products/code/renderer/components/RunInspector.tsx` | Modify | Render task-adjacent run history without elevating runs above tasks |
 | `src/products/code/renderer/components/ArtifactDetailView.tsx` | Modify | Show artifact provenance back to task and producing run |
@@ -223,6 +250,13 @@ and evidence all point back to one task/conversation anchor.
   deduplication or idempotency is deferred.
 - Keep Code recents conversation-led while making task and latest-run state easy
   to resume from the same surface.
+- Add Code `Workspaces` as a first-class sidebar index over repo/folder/worktree
+  or managed-room execution contexts, but do not model those workspaces as Work
+  `Project` or `WorkItem` records.
+- Add Code `Artifacts` as a first-class sidebar index over durable
+  `CoreArtifactRecord` outputs, but keep creation tied to attachments, imports,
+  execution outputs, or explicit document/report creation rather than sidebar
+  entry opening.
 - Keep `code_thread` visibility scoped to Code product entry points in this
   slice; Chat-product projection is deferred.
 - Let Work Graph project Code tasks with `productBinding = code` and place
@@ -287,6 +321,7 @@ and evidence all point back to one task/conversation anchor.
 | 2026-04-28 | Clarified orphan-task home: Code tasks without Project / WorkItem anchors project into Work Graph as `productBinding = code` under `No project`, rather than receiving fallback Work records. |
 | 2026-04-28 | Follow-up amendment: first Run starts at dispatcher/runtime admission; a first user send can create it immediately when Code auto-dispatches. Work linkage through `WorkItem.taskId` flips current Work Graph binding to `work` without erasing Code origin lineage. |
 | 2026-04-28 | Lineage / projection contract correction: clarified that "Code origin remains" lives on raw `CoreTaskRecord.metadata.planning`, NOT as a separate projection field. `WorkGraphObjectSummary` exposes only the *current* `productBinding`. Adding a `productLineage` / `originBinding` projection field is a deliberate follow-on, not implied by this slice. |
+| 2026-04-28 | Added `SPEC-091` alignment: Code sidebar may add `Workspaces` and `Artifacts` as execution-context / evidence indexes while Work remains the sidebar home for Projects, Work Items, Tasks, Runs, and Missions. |
 
 ---
 

@@ -30,6 +30,12 @@ artifact inspection must be implemented inside those entry flows and their
 task/detail projections rather than through separate Build or Relay
 workspaces.
 
+The Code sidebar may still grow Code-owned navigation entries for
+`Workspaces` and `Artifacts`. `Workspaces` means repo/folder/worktree or
+managed-room execution context, not a Work `Project`. `Artifacts` means durable
+outputs and evidence, not a replacement for the Work Tasks/Runs/Missions
+management sidebar.
+
 ## Summary
 
 The current real-world `Cats Code` workflow is not:
@@ -392,54 +398,58 @@ Implementation note for the `+New code` MVP:
     as the drafting author for a formal artifact.
 25. Drafted artifacts shall remain linked to the discussion and evidence that
     produced them.
+26. Artifact navigation shall be available from Code as a durable output index,
+    not only as inline transcript content.
+27. Workspace navigation shall be available from Code as an execution-context
+    index for repo/folder/worktree or managed-room contexts.
 
 #### Implementation and review loop
 
-26. The MVP shall support selecting one primary coder for an implementation
+28. The MVP shall support selecting one primary coder for an implementation
     round and one or more secondary reviewers.
-27. Primary-coder selection may consider at least:
+29. Primary-coder selection may consider at least:
     - user preference
     - perceived agent strength for the task
     - current subscription or quota context
-28. The thread-wide agent roster and quota context may also inform routing
+30. The thread-wide agent roster and quota context may also inform routing
     during discovery, shaping, document drafting, and review, not only during
     primary-coder selection.
-29. The product shall support the user's current loop where one agent writes,
+31. The product shall support the user's current loop where one agent writes,
     other agents review, and feedback is routed back to the writer without
     manual copy/paste.
-30. Reviewer output shall be captured as structured review artifacts with at
+32. Reviewer output shall be captured as structured review artifacts with at
     least:
     - blocking findings
     - non-blocking suggestions
     - open questions
     - recommended next step
-31. Historical `SPEC-041` builder-loop work may be mined for build/run
+33. Historical `SPEC-041` builder-loop work may be mined for build/run
     semantics inside active Code entry flows, but standalone `/code/build`
     development is stopped and shall not define the product identity of
     `Cats Code`.
 
 #### Human verification and repair
 
-32. `human_verify` shall be a first-class working mode rather than a hidden
+34. `human_verify` shall be a first-class working mode rather than a hidden
     afterthought.
-33. The MVP shall support capturing manual-testing feedback as structured
+35. The MVP shall support capturing manual-testing feedback as structured
     project input, including at least:
     - expected behavior
     - actual behavior
     - reproduction notes
     - severity
     - optional screenshot or visual annotation
-34. Human verification may happen multiple times across the life of one
+36. Human verification may happen multiple times across the life of one
     project thread.
-35. Manual feedback shall be routable into a repair round without requiring the
+37. Manual feedback shall be routable into a repair round without requiring the
     user to rewrite it as a new free-form prompt.
 
 #### Evidence contract
 
-36. Because the MVP does not expose a visible code editor as the primary
+38. Because the MVP does not expose a visible code editor as the primary
     surface, it shall provide a usable evidence contract for trust and
     arbitration.
-37. The first evidence contract shall support at least these outputs:
+39. The first evidence contract shall support at least these outputs:
     - wireframe or visual-direction artifacts
     - preview or runnable local output when available
     - changed-files summary
@@ -447,19 +457,19 @@ Implementation note for the `+New code` MVP:
     - review summaries
     - identified risks or blockers
     - implementation status
-38. The evidence contract shall help the user decide what to do next without
+40. The evidence contract shall help the user decide what to do next without
     requiring direct code editing.
 
 #### Waiting, resume, and arbitration
 
-39. The product shall support explicit waiting states for:
+41. The product shall support explicit waiting states for:
     - agent work in progress
     - review pending
     - human testing pending
     - user arbitration pending
-40. The product shall support resuming a thread after these waiting states
+42. The product shall support resuming a thread after these waiting states
     without losing context.
-41. The user shall remain able to overrule convergence, pick a different main
+43. The user shall remain able to overrule convergence, pick a different main
     coder, request another debate round, or redirect the work into a different
     mode.
 
@@ -531,6 +541,9 @@ user starts with vague or concrete app intent
 - In product terms, build/run behavior belongs inside `+New code`, `+Team
   code`, `+Peer code`, task detail, and artifact detail, not a separate
   sidebar Build workspace.
+- [SPEC-091](./SPEC-091-cats-code-workspace-and-artifact-sidebar.md) defines
+  the Code-owned `Workspaces` and `Artifacts` sidebar entries for mockup and
+  implementation planning.
 
 ## Open Questions
 

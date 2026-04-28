@@ -37,6 +37,7 @@ Use this guide together with:
 - [SPEC-064](./specs/SPEC-064-my-cats-platform-home-and-lens-projections.md)
 - [ADR-069](./decisions/069-scope-recents-to-channel-origin-surface-by-default.md)
 - [SPEC-070](./specs/SPEC-070-product-scoped-recents-and-channel-origin-surfaces.md)
+- [SPEC-091](./specs/SPEC-091-cats-code-workspace-and-artifact-sidebar.md)
 
 ## Foundational Integration Rules
 
@@ -65,6 +66,8 @@ All product teams must treat these as frozen architectural rules:
     `originSurface` metadata, not renderer heuristics.
 13. `Conversation` remains the canonical cross-product interaction term;
     `thread` is UI/informal language only.
+14. `Cats Code` workspace and artifact navigation must stay execution-oriented
+    and must not duplicate the managed-work sidebar owned by `Cats Work`.
 
 ## Frozen Shared Contracts
 
@@ -165,8 +168,8 @@ Rules:
   projection of `MY CATS`.
 - `Cats Work` may show assignment/workload subsets, but those remain a
   projection of `MY CATS`.
-- `Cats Code` may show repo/worktree/review subsets, but those remain a
-  projection of `MY CATS`.
+- `Cats Code` may show workspace, repo/worktree, artifact, and review subsets,
+  but agent identity in those subsets remains a projection of `MY CATS`.
 - Product-local subsets should deep-link back into the canonical `MY CATS`
   home with a selected lens and agent where appropriate.
 
@@ -222,6 +225,37 @@ Rules:
 - Companion and other background agent capabilities should default to missions
   and runs, promoting into Work only when operator-visible tracking or approval
   is needed.
+
+## Code Workspace and Artifact Navigation
+
+All product teams must preserve this sidebar split:
+
+- `Cats Work`
+  - canonical management navigation for Projects, Work Items, Tasks, Runs, and
+    Missions
+- `Cats Code`
+  - execution workspace navigation and artifact inspection for Code-owned work
+
+Rules:
+
+- `Workspaces` is a Code-owned sidebar entry. It groups Code work by execution
+  context such as owner-selected folders, room-owned managed workspaces,
+  conversation-bound repos, worktree policy, and runtime cwd.
+- A Code workspace is not a Work `Project`, not a `WorkItem`, and not a Core
+  record family. It is a projection over Code metadata and execution-profile
+  signals.
+- `Artifacts` is a Code-owned sidebar entry. It indexes durable
+  `CoreArtifactRecord` rows that are relevant to Code through task, run,
+  conversation, or workspace provenance.
+- Opening `Workspaces` or `Artifacts` must not create fallback Work Planning
+  records. Projectless Code tasks remain Code-owned until explicit Work
+  promotion or `WorkItem.taskId` linkage.
+- Code may show task state, latest run, run history, and Work links inside
+  workspace / artifact / task-detail surfaces, but top-level Work accountability
+  remains in Work.
+- Work may render Code artifacts as evidence when those artifacts are anchored
+  to Work-visible objects, but that evidence placement does not make
+  `Artifacts` a Work-owned sidebar category.
 
 ## Transport Bindings and External Entry
 
