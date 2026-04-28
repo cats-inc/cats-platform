@@ -270,7 +270,7 @@ the YAML explicitly grants it.
 - [x] Task 3.2: Add fixture-backed tests proving configured `claude` / `codex`
       can appear as strong-agent candidates and configured `ollama` can appear
       as a weak-worker candidate.
-- [ ] Task 3.3: Update Chat/Work/Code preset capability-review tests to use
+- [x] Task 3.3: Update Chat/Work/Code preset capability-review tests to use
       explicit fixture config when they need a strong or weak demo path.
 - [x] Task 3.4: Verify temp participants resolve capability through their bound
       execution target plus YAML rule without promotion to durable Cats.
@@ -385,6 +385,7 @@ initial treatment even without an editor.
 | 2026-04-28 | Implementation slice 2: added active config path resolution, server startup YAML loading, retained bootstrap diagnostics, and Chat dispatch plumbing so provider-agent observations receive the active config. Validation: Chat/config targeted tests, `npm run typecheck`, `npm run build:server`, and `node --test tests/config.test.js` passed. |
 | 2026-04-28 | Implementation slice 3: added operator-facing example YAML, deployment guidance for `CATS_PROVIDER_CAPABILITY_BOOTSTRAP_CONFIG`, YAML validity/fail-closed rules, and a PROGRESS migration callout. |
 | 2026-04-28 | Implementation slice 4: added a gated Chat live provider smoke (`CATS_CHAT_LIVE_PROVIDER_SMOKE=1 npm run smoke:live:chat`) and included it in `npm run smoke:live:providers`; default execution loads and skips the gate unless the live runtime/provider environment is explicitly enabled. |
+| 2026-04-28 | Implementation slice 5: removed provider-name hard-coding from shared Chat/Work/Code draft preset capability review; default targets now show conservative policy unless the review is given an explicit PLAN-080 bootstrap treatment fixture. |
 
 ---
 

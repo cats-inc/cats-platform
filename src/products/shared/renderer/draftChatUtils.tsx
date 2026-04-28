@@ -29,6 +29,7 @@ export interface DraftParticipantPolicyDials {
   autonomy?: 'none' | 'single_step' | 'milestone_plan' | 'outcome_delegation';
   toolScope?: 'none' | 'read_only' | 'narrow_write' | 'broad_write';
   approvalThreshold?: 'low' | 'medium' | 'high';
+  bootstrapTreatment?: 'default' | 'strong_agent' | 'weak_worker' | null;
 }
 
 export interface DraftParticipantCapabilityReview {
@@ -40,6 +41,10 @@ export interface DraftParticipantCapabilityReview {
   reviewReasons: string[];
 }
 
+type ResolvedDraftParticipantPolicyDials = Required<
+  Pick<DraftParticipantPolicyDials, 'autonomy' | 'toolScope' | 'approvalThreshold'>
+>;
+
 export const DEFAULT_GROUP_DRAFT_PARTICIPANT_COUNT = 2;
 
 type DraftParticipantTarget = {
@@ -48,14 +53,6 @@ type DraftParticipantTarget = {
   instance?: string | null;
   modelSelection?: ProviderModelSelection | null;
 };
-
-const STRONG_DRAFT_PROVIDER_IDS = new Set([
-  'anthropic',
-  'claude',
-  'codex',
-  'gemini',
-  'openai',
-]);
 
 function toDraftTemporaryParticipantTarget(input: DraftParticipantTarget): {
   provider: string;
@@ -88,17 +85,15 @@ export function buildDraftParticipantExecutionLabel(participant: {
   });
 }
 
-function normalizeDraftProviderId(provider: string): string {
-  return provider.trim().toLowerCase();
-}
-
-function resolveDraftCapabilityLabel(provider: string): DraftParticipantCapabilityReview['capabilityLabel'] {
-  return STRONG_DRAFT_PROVIDER_IDS.has(normalizeDraftProviderId(provider))
+function resolveDraftCapabilityLabel(
+  bootstrapTreatment: DraftParticipantPolicyDials['bootstrapTreatment'],
+): DraftParticipantCapabilityReview['capabilityLabel'] {
+  return bootstrapTreatment === 'strong_agent'
     ? 'Strong agent'
     : 'Conservative agent';
 }
 
-function buildReviewReasons(policyDials: Required<DraftParticipantPolicyDials>): string[] {
+function buildReviewReasons(policyDials: ResolvedDraftParticipantPolicyDials): string[] {
   const reasons: string[] = [];
   if (policyDials.toolScope === 'broad_write') {
     reasons.push('broad-write tool grants');
@@ -120,8 +115,8 @@ export function buildDraftParticipantCapabilityReview(
   },
   policyDials: DraftParticipantPolicyDials = {},
 ): DraftParticipantCapabilityReview {
-  const capabilityLabel = resolveDraftCapabilityLabel(participant.provider);
-  const resolvedPolicyDials: Required<DraftParticipantPolicyDials> = {
+  const capabilityLabel = resolveDraftCapabilityLabel(policyDials.bootstrapTreatment);
+  const resolvedPolicyDials: ResolvedDraftParticipantPolicyDials = {
     autonomy: policyDials.autonomy
       ?? (capabilityLabel === 'Strong agent' ? 'milestone_plan' : 'single_step'),
     toolScope: policyDials.toolScope ?? 'read_only',

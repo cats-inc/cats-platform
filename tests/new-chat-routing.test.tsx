@@ -35,6 +35,49 @@ import {
   buildNewChatPath,
   isOptimisticDraftChannelId,
 } from '../src/products/chat/shared/channelPaths.ts';
+import {
+  resolveProviderCapabilityProfile,
+  type ProviderCapabilityBootstrapConfig,
+  type ProviderCapabilityBootstrapResolutionTreatment,
+} from '../src/platform/supervision/index.ts';
+
+const PLAN_080_BOOTSTRAP_CONFIG: ProviderCapabilityBootstrapConfig = {
+  version: 1,
+  configPath: 'tests/fixtures/provider-capability-bootstrap.yaml',
+  profiles: [
+    {
+      id: 'codex-cloud-gpt-5-4-strong-candidate',
+      selector: {
+        provider: 'codex',
+        instance: 'cloud',
+        model: 'gpt-5.4',
+        control: 'default',
+      },
+      initialTreatment: 'strong_agent',
+      confidenceLevel: 'catalog_only',
+      reason: 'Operator-approved strong-agent candidate for supervised coding demos.',
+    },
+  ],
+};
+
+function resolveFixtureBootstrapTreatment(input: {
+  provider: string;
+  instance?: string | null;
+  model?: string | null;
+}): ProviderCapabilityBootstrapResolutionTreatment {
+  return resolveProviderCapabilityProfile(
+    {
+      provider: input.provider,
+      instance: input.instance ?? null,
+      model: input.model ?? null,
+      modelSelection: null,
+    },
+    {
+      assessedAt: '2026-04-28T00:00:00.000Z',
+      bootstrapConfig: PLAN_080_BOOTSTRAP_CONFIG,
+    },
+  ).bootstrapTreatment;
+}
 
 function createPayload(): AppShellPayload {
   return {
@@ -326,15 +369,34 @@ test('assistant presets can be instantiated as draft temporary participants with
   );
 });
 
-test('assistant preset capability review surfaces policy summary before activation', () => {
+test('assistant preset capability review defaults to conservative without bootstrap treatment', () => {
   const review = buildDraftParticipantCapabilityReview({
     provider: 'codex',
-    instance: null,
+    instance: 'cloud',
     model: 'gpt-5.4',
   });
 
+  assert.equal(review.capabilityLabel, 'Conservative agent');
+  assert.match(review.executionLabel, /Codex/u);
+  assert.match(review.executionLabel, /gpt-5\.4/u);
+  assert.equal(review.policySummary, 'single_step; low approval');
+  assert.equal(review.toolGrantSummary, 'read_only tools');
+  assert.equal(review.requiresActivationReview, false);
+  assert.deepEqual(review.reviewReasons, []);
+});
+
+test('assistant preset capability review uses PLAN-080 fixture treatment for strong demos', () => {
+  const target = {
+    provider: 'codex',
+    instance: 'cloud',
+    model: 'gpt-5.4',
+  };
+  const review = buildDraftParticipantCapabilityReview(target, {
+    bootstrapTreatment: resolveFixtureBootstrapTreatment(target),
+  });
+
   assert.equal(review.capabilityLabel, 'Strong agent');
-  assert.match(review.executionLabel, /Codex-CLI/u);
+  assert.match(review.executionLabel, /Codex/u);
   assert.match(review.executionLabel, /gpt-5\.4/u);
   assert.equal(review.policySummary, 'milestone_plan; low approval');
   assert.equal(review.toolGrantSummary, 'read_only tools');
