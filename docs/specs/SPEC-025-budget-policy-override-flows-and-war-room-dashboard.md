@@ -4,14 +4,25 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft (Pending Review) |
+| **Status** | Not Planned (War Room dashboard retired) |
 | **Owner** | Codex |
 | **Reviewer** | User / cost-control workstream |
+
+## Retired Direction
+
+The Cats Work War Room dashboard direction in this specification is no longer
+being developed. Future budget, quota, approval, and recovery visibility must
+land in narrower Work surfaces such as task detail, Cockpit, Broken Links, or a
+new explicitly scoped operator surface. Do not add new War Room dashboard
+requirements, UI panels, or follow-up implementation tasks from this spec.
 
 ## Summary
 
 Cats needs a product-owned budget and cost-control model that sits above
 runtime telemetry.
+
+> Historical note: the budget-policy model remains useful background, but the
+> War Room dashboard surface described below is retired.
 
 `cats-runtime` should report usage, rate-limit incidents, and guardrail states.
 `cats` should decide how those facts turn into owner policy:
@@ -23,15 +34,16 @@ runtime telemetry.
 - budget override decisions
 - operator-facing dashboard views
 
-This should support both the current chat-first product and a future Cats Work
-war-room dashboard.
+This should support current chat-first and Work task/detail control surfaces
+without reviving the retired War Room dashboard.
 
 ## Goals
 
 - define explicit budget policy above runtime telemetry
 - support soft and hard limits across multiple scopes
 - support approval and override flows when costs or quotas become risky
-- make war-room cost and rate-limit visibility possible in future Cats Work UI
+- make cost and rate-limit visibility possible in focused Cats Work UI surfaces
+  without a War Room dashboard
 
 ## Non-Goals
 
@@ -45,8 +57,8 @@ war-room dashboard.
 - As an owner, I want to set spending or quota guardrails for a chat, Cat,
   provider, or overall environment.
 - As a Boss Cat, I want warnings before dispatching expensive or risky work.
-- As an operator, I want a war-room view that shows current burn, alerts, and
-  blocked states across active Cats and chats.
+- As an operator, I want focused Work views that show current burn, alerts,
+  and blocked states without requiring a War Room dashboard.
 - As a specialist Cat, I want policy outcomes to be clear when a task is paused
   or requires approval due to budget or quota.
 
@@ -92,8 +104,10 @@ war-room dashboard.
     - provider usage distribution
     - rate-limit / cooldown alerts
     - blocked or approval-pending states
-12. Cats Work or later operator surfaces may render these reads as a war-room
-    dashboard without changing the runtime boundary.
+12. Cats Work or later operator surfaces may render these reads in focused
+    task/detail, Cockpit, Broken Links, or other explicitly scoped operator
+    views without changing the runtime boundary. They shall not revive the
+    retired War Room dashboard without a new spec.
 13. Budget policy should integrate with existing or planned approval,
     escalation, and takeover flows.
 14. Budget policy should remain compatible with artifact-only and low-governance
@@ -176,12 +190,11 @@ interface BudgetOverride {
 }
 ```
 
-## War-Room Direction
+## Retired War-Room Direction
 
-The long-term Cats Work surface may present budget and quota information as a
-war-room dashboard.
+The long-term Cats Work War Room dashboard is retired.
 
-The dashboard should be able to show:
+The historical dashboard idea would have shown:
 
 - current total spend or usage
 - active burn rate and recent trend
@@ -189,8 +202,9 @@ The dashboard should be able to show:
 - provider mix and cooldown/rate-limit incidents
 - hard-limit blocks, approval queues, and active overrides
 
-This is a product-owned read model. It should be hydrated from runtime
-telemetry and product approval records rather than from direct provider APIs.
+Any future product-owned read model should be hydrated from runtime telemetry
+and product approval records rather than from direct provider APIs, but it must
+be scoped outside the retired War Room dashboard.
 
 ## Dependencies
 
@@ -205,8 +219,8 @@ telemetry and product approval records rather than from direct provider APIs.
       chat only, or chat plus provider and Cat?
 - [ ] Should provider downgrade behavior be part of first-slice policy, or
       should the first slice limit itself to warnings, blocking, and override?
-- [ ] How much of the first war-room view should live in chat-adjacent surfaces
-      before Cats Work is a fuller product line?
+- [x] War Room dashboard is no longer pursued; future budget visibility must
+      use narrower surfaces or a new spec.
 
 ## References
 
@@ -218,7 +232,6 @@ telemetry and product approval records rather than from direct provider APIs.
 
 *Created: 2026-03-20*
 *Author: Codex*
-*Related Plan: TBD*
-
+*Related Plan: Not planned; War Room dashboard development retired.*
 
 

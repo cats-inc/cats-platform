@@ -109,7 +109,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 | [SPEC-028](./SPEC-028-automated-tunnel-and-telegram-webhook-lifecycle.md) | Telegram Polling-First Setup and Optional Webhook Ingress | In Progress (Polling-first slice landed) | - |
 | [SPEC-027](./SPEC-027-chat-first-information-architecture-and-default-boss-cat.md) | Chat-First Information Architecture and Default Boss Cat | Approved | - |
 | [SPEC-026](./SPEC-026-explicit-mentions-and-dynamic-room-workflow-orchestration.md) | Explicit Mentions and Dynamic Room Workflow Orchestration | Draft (Pending Review) | [PLAN-016](../plans/PLAN-016-dynamic-room-workflow-orchestration.md) |
-| [SPEC-025](./SPEC-025-budget-policy-override-flows-and-war-room-dashboard.md) | Budget Policy, Override Flows, and War-Room Dashboard | Draft (Pending Review) | - |
+| [SPEC-025](./SPEC-025-budget-policy-override-flows-and-war-room-dashboard.md) | Budget Policy, Override Flows, and War-Room Dashboard | Not Planned (War Room dashboard retired) | - |
 | [SPEC-024](./SPEC-024-chat-delivery-policy-and-governance-levels.md) | Chat Delivery Policy and Governance Levels | Draft (Pending Review) | - |
 | [SPEC-023](./SPEC-023-packaged-setup-wizard-and-provider-installation.md) | Packaged Setup Wizard and Provider Installation | In Progress (First Host Slice Landed) | [PLAN-030](../plans/PLAN-030-packaged-setup-wizard-and-provider-installation.md) |
 | [SPEC-022](./SPEC-022-cats-memory-layering-and-ownership.md) | Cats Memory Layering and Ownership | Draft (Pending Review) | - |

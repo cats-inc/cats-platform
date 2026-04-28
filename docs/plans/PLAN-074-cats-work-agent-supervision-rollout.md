@@ -100,6 +100,10 @@ Follow-up:
 - no Chat routing refactor and no deletion of `planner.ts` / `dispatcher.ts`
 - no final Work supervision UI beyond existing/projection-compatible run
   inspection surfaces
+- no new War Room surface development. Existing War Room mentions in this plan
+  are historical verification context only; follow-up Work supervision UI
+  should use task detail, Cockpit, Broken Links, or a new explicitly scoped
+  surface instead.
 - no new top-level canonical record family outside ADR-081 execution records
 - no promotion of weak workers into durable Cats or operational agents
 - no broad tool catalog; first slice uses a small testable tool set
@@ -560,7 +564,8 @@ artifact exists.
 | 2026-04-25 | Follow-up review pass: added override-floor coverage, fake driving-agent harness shape, cancellation reason mapping, phase dependency notes, and static boundary enforcement. |
 | 2026-04-25 | Follow-up review pass: added recovery-capable fake-agent harness, schema-version shape, phase-gate enforcement, real-provider follow-up boundary, and stricter minimal Work status surface. |
 | 2026-04-25 | Implementation pass: added Work supervised-run launch, bounded budgets, durable policy/evidence lineage, lifecycle child-run spawn, Work renderer launch action, idempotent active-run reuse, approval queue persistence/decision sync helpers, `/api/core/approvals` sync, and product-level fake-agent vertical coverage. |
-| 2026-04-25 | Verification pass: `npm run build`, PLAN-074 targeted supervision/Work tests, `work-war-room.test.js`, and `architecture-boundaries.test.js` passed locally. |
+| 2026-04-25 | Historical verification pass: `npm run build`, PLAN-074 targeted supervision/Work tests, `work-war-room.test.js`, and `architecture-boundaries.test.js` passed locally. War Room is no longer a follow-up UI development target. |
+| 2026-04-28 | Scope update: War Room surface development retired; future supervision visibility belongs in task detail, Cockpit, Broken Links, or a newly scoped operator surface, not a War Room expansion. |
 | 2026-04-27 | Opened [PLAN-075](./PLAN-075-real-provider-orchestrator-integration.md) as the follow-up for real provider-agent integration and old planner/dispatcher retirement. |
 
 ---

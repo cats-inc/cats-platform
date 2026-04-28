@@ -180,38 +180,6 @@ function createExtraActionGroups(
     });
   }
 
-  if (props.onOpenWarRoom) {
-    groups.push({
-      key: 'war-room',
-      ariaLabel: 'Operations',
-      items: [
-        {
-          key: 'war-room',
-          label: 'War Room',
-          onClick: props.onOpenWarRoom,
-          active: isWorkWarRoomPath(currentPath),
-          icon: (
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect x="2.5" y="2.5" width="11" height="11" rx="2" />
-              <path d="M4 5h8" />
-              <path d="M4 8h8" />
-              <path d="M6 11h4" />
-            </svg>
-          ),
-        },
-      ],
-    });
-  }
-
   if (props.onOpenTasks) {
     groups.push({
       key: 'tasks',
@@ -319,6 +287,31 @@ function createExtraActionGroups(
           <path d="M6 6.5L4 8.5a2.12 2.12 0 0 0 3 3l1-1" />
           <path d="M10 9.5l2-2a2.12 2.12 0 0 0-3-3l-1 1" />
           <path d="M5.5 10.5l5-5" strokeDasharray="1.5 1.5" />
+        </svg>
+      ),
+    });
+  }
+  if (props.onOpenWarRoom) {
+    topDownItems.push({
+      key: 'war-room',
+      label: 'War Room',
+      onClick: props.onOpenWarRoom,
+      active: isWorkWarRoomPath(currentPath),
+      icon: (
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <rect x="2.5" y="2.5" width="11" height="11" rx="2" />
+          <path d="M4 5h8" />
+          <path d="M4 8h8" />
+          <path d="M6 11h4" />
         </svg>
       ),
     });
