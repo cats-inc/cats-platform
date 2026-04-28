@@ -80,6 +80,59 @@ export function endpointKey(ref: WorkGraphLinkEndpointRef): WorkGraphEndpointKey
   return `${ref.recordFamily}:${ref.recordId}`;
 }
 
+/**
+ * Walk the transitive upstream `blocks` chain from `ref`. "Upstream"
+ * means: if `A blocks B` is stored, B's upstream blocker is A. We keep
+ * walking until either `maxDepth` is reached or no further incoming
+ * `blocks` rows exist.
+ *
+ * Cycles are bounded by the `visited` set so a cycle of length N
+ * contributes at most N entries (and never infinite-loops). This helper
+ * does NOT report cycle diagnostics — those are surfaced through
+ * `projectLinks` and Broken Links.
+ *
+ * Returns ordered by proximity (closest blocker first), deduplicated by
+ * Core endpoint key.
+ */
+export function walkUpstreamBlockers(
+  ref: WorkGraphLinkEndpointRef,
+  links: readonly WorkGraphLink[],
+  objectsByCoreRef: ReadonlyMap<string, WorkGraphObjectSummary>,
+  maxDepth: number,
+): WorkGraphObjectSummary[] {
+  if (maxDepth <= 0) return [];
+  const start = endpointKey(ref);
+  const visited = new Set<string>([start]);
+  const result: WorkGraphObjectSummary[] = [];
+  const queue: Array<{ key: string; depth: number }> = [{ key: start, depth: 0 }];
+
+  const incomingByTarget = new Map<string, WorkGraphLink[]>();
+  for (const link of links) {
+    if (link.kind !== "blocks") continue;
+    const targetKey = `${link.targetRecordFamily}:${link.targetRecordId}`;
+    const list = incomingByTarget.get(targetKey) ?? [];
+    list.push(link);
+    incomingByTarget.set(targetKey, list);
+  }
+
+  while (queue.length > 0) {
+    const { key, depth } = queue.shift()!;
+    if (depth >= maxDepth) continue;
+    const incoming = incomingByTarget.get(key) ?? [];
+    for (const link of incoming) {
+      const sourceKey = `${link.sourceRecordFamily}:${link.sourceRecordId}`;
+      if (visited.has(sourceKey)) continue;
+      visited.add(sourceKey);
+      const summary = objectsByCoreRef.get(sourceKey);
+      if (summary) {
+        result.push(summary);
+        queue.push({ key: sourceKey, depth: depth + 1 });
+      }
+    }
+  }
+  return result;
+}
+
 export interface LinkProjectionResult {
   linksByEndpoint: Partial<Record<WorkGraphEndpointKey, WorkGraphLinkView[]>>;
   diagnostics: WorkGraphLinkDiagnostic[];

@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
+import { BlockersRail } from "./BlockersRail";
 import { MOCK_WORK_GRAPH } from "./mock";
 import { buildIndexes, formatRelative } from "./shared";
 import type {
@@ -195,6 +196,7 @@ export function CockpitPage(): JSX.Element {
             label={TABS.find((t) => t.id === tab)?.label ?? ""}
             sub={TABS.find((t) => t.id === tab)?.sub ?? ""}
             objects={buckets[tab as BucketId]}
+            graph={graph}
             indexes={indexes}
             selectedId={selectedId}
             onSelect={setSelectedId}
@@ -319,6 +321,7 @@ function BucketDetail({
   label,
   sub,
   objects,
+  graph,
   indexes,
   selectedId,
   onSelect,
@@ -326,6 +329,7 @@ function BucketDetail({
   label: string;
   sub: string;
   objects: WorkGraphObjectSummary[];
+  graph: typeof MOCK_WORK_GRAPH;
   indexes: ReturnType<typeof buildIndexes>;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
@@ -339,17 +343,30 @@ function BucketDetail({
       {objects.length === 0 ? (
         <p className="bucketDetail__empty">Nothing in this bucket right now.</p>
       ) : (
-        <div className="bucketDetail__list">
-          {objects.map((o) => (
-            <WorkObjectCard
-              key={o.id}
-              object={o}
-              evidence={pickEvidence(indexes, o.id)}
-              gates={indexes.gatesBySubject.get(o.id) ?? []}
-              selected={selectedId === o.id}
-              onSelect={(next) => onSelect(selectedId === next ? null : next)}
-            />
-          ))}
+        <div className="bucketDetail__body">
+          <div className="bucketDetail__main">
+            <div className="bucketDetail__list">
+              {objects.map((o) => (
+                <WorkObjectCard
+                  key={o.id}
+                  object={o}
+                  evidence={pickEvidence(indexes, o.id)}
+                  gates={indexes.gatesBySubject.get(o.id) ?? []}
+                  selected={selectedId === o.id}
+                  onSelect={(next) =>
+                    onSelect(selectedId === next ? null : next)
+                  }
+                />
+              ))}
+            </div>
+          </div>
+          <BlockersRail
+            rows={objects}
+            links={graph.links}
+            indexes={indexes}
+            selectedId={selectedId}
+            onSelect={onSelect}
+          />
         </div>
       )}
     </section>

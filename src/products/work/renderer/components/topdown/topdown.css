@@ -631,6 +631,152 @@
   font-style: italic;
 }
 
+.bucketDetail__body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  min-height: 0;
+  overflow: hidden;
+  border-top: 0;
+}
+
+.bucketDetail__main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Blockers rail (SPEC-090 §UI Surfaces) */
+
+.blockersRail {
+  display: flex;
+  flex-direction: column;
+  background: var(--canvas-bg);
+  border-left: 1px solid var(--border);
+  min-height: 0;
+  overflow: hidden;
+}
+
+.blockersRail__head {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.blockersRail__head h3 {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.blockersRail__head p {
+  margin: 4px 0 0;
+  font-size: 0.66rem;
+  color: var(--muted);
+}
+
+.blockersRail__head code {
+  font-family: var(--font-mono, "SFMono-Regular", Consolas, monospace);
+  font-size: 0.62rem;
+  background: var(--canvas-bg);
+  padding: 0 4px;
+  border-radius: 3px;
+}
+
+.blockersRail__empty {
+  margin: 0;
+  padding: 24px 16px;
+  font-size: 0.74rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.blockersRail__sections {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.blockersRail__section {
+  border-bottom: 1px solid var(--border);
+  padding: 10px 16px;
+}
+
+.blockersRail__rowHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.74rem;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.blockersRail__rowTitle {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.blockersRail__chain {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.blockersRail__chainItem {
+  margin: 0;
+}
+
+.blockersRail__btn {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 6px 8px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.blockersRail__btn:hover {
+  background: var(--panel-hover);
+  border-color: var(--border);
+}
+
+.blockersRail__btn--selected {
+  background: var(--panel-hover);
+  border-color: var(--accent, var(--text));
+}
+
+.blockersRail__btnTitle {
+  font-size: 0.74rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.blockersRail__btnTier {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  color: var(--muted);
+  background: var(--canvas-bg);
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
 /* Teams lanes */
 
 .teamsLanes {
