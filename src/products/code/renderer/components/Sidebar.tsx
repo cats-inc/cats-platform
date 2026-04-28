@@ -6,6 +6,13 @@ import {
   type ConversationSidebarActionGroup,
   type ConversationSidebarRecentEntry,
 } from '../../../../app/renderer/productShell/ConversationSidebar.js';
+import type { ConversationSidebarPinnedItem } from '../../../../app/renderer/productShell/ConversationSidebarPinned.js';
+import {
+  workspacesMockStore,
+  useWorkspacesMock,
+  type WorkspacesMockSnapshot,
+} from '../state/workspacesMockStore';
+import './workspaces/workspaces.css';
 import { buildConversationSidebarRecentEntries } from '../../../../app/renderer/productShell/conversationSidebarRecentEntries.js';
 import type { AppShellPayload } from '../../api/contracts.js';
 import type { ChatChannelSummary } from '../../../shared/api/workspaceContracts.js';
@@ -27,8 +34,11 @@ import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js'
 import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
 import {
   CODE_ROUTE_PREFIX,
+  buildCodeWorkspacePath,
+  isCodeArtifactsPath,
   isCodeBuildPath,
   isCodeRelayPath,
+  isCodeWorkspacesPath,
 } from '../codePaths.js';
 
 export interface SidebarProps {
@@ -63,6 +73,9 @@ export interface SidebarProps {
   onDirectChatCat: (catId: string) => void;
   onOpenBuild?: () => void;
   onOpenRelay?: () => void;
+  onOpenWorkspaces?: () => void;
+  onOpenWorkspace?: (workspaceId: string) => void;
+  onOpenArtifacts?: () => void;
 }
 
 function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] {
@@ -142,9 +155,74 @@ function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] 
   return actions;
 }
 
-function createExtraActionGroups(props: SidebarProps): ConversationSidebarActionGroup[] {
+function createExtraActionGroups(
+  props: SidebarProps,
+  workspacesSnapshot: WorkspacesMockSnapshot,
+): ConversationSidebarActionGroup[] {
   const currentPath = globalThis.location?.pathname ?? CODE_ROUTE_PREFIX;
   const groups: ConversationSidebarActionGroup[] = [];
+
+  if (props.onOpenWorkspaces) {
+    groups.push({
+      key: 'workspaces',
+      ariaLabel: 'Workspaces',
+      items: [
+        {
+          key: 'workspaces',
+          label: 'Workspaces',
+          onClick: props.onOpenWorkspaces,
+          active: isCodeWorkspacesPath(currentPath),
+          icon: (
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M2 5.5a1.5 1.5 0 0 1 1.5-1.5h2.25l1.25 1.5H12.5A1.5 1.5 0 0 1 14 7v4.5A1.5 1.5 0 0 1 12.5 13h-9A1.5 1.5 0 0 1 2 11.5z" />
+              <path d="M2 7.75h12" />
+            </svg>
+          ),
+        },
+      ],
+      pinnedItems: buildPinnedWorkspaceItems(props, currentPath, workspacesSnapshot),
+    });
+  }
+
+  if (props.onOpenArtifacts) {
+    groups.push({
+      key: 'artifacts',
+      ariaLabel: 'Artifacts',
+      items: [
+        {
+          key: 'artifacts',
+          label: 'Artifacts',
+          onClick: props.onOpenArtifacts,
+          active: isCodeArtifactsPath(currentPath),
+          icon: (
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M3 4.5l5-2.5 5 2.5v6.5l-5 2.5-5-2.5z" />
+              <path d="M3 4.5l5 2.5 5-2.5" />
+              <path d="M8 7v6.5" />
+            </svg>
+          ),
+        },
+      ],
+    });
+  }
 
   if (props.onOpenRelay) {
     groups.push({
@@ -215,6 +293,47 @@ function createExtraActionGroups(props: SidebarProps): ConversationSidebarAction
   return groups;
 }
 
+function buildPinnedWorkspaceItems(
+  props: SidebarProps,
+  currentPath: string,
+  snapshot: WorkspacesMockSnapshot,
+): ConversationSidebarPinnedItem[] {
+  if (!props.onOpenWorkspace) return [];
+  return snapshot.workspaces
+    .filter(
+      (ws) => snapshot.pinnedIds.has(ws.id) && !snapshot.deletedIds.has(ws.id),
+    )
+    .map((ws) => ({
+      id: ws.id,
+      label: ws.title,
+      isActive: currentPath === buildCodeWorkspacePath(ws.id),
+      onClick: () => props.onOpenWorkspace?.(ws.id),
+      statusDot: {
+        className: `codeWorkspacesList__dot codeWorkspacesList__dot--small codeWorkspacesList__dot--${ws.status}`,
+        title: ws.status,
+      },
+      overflowActions: [
+        {
+          key: 'unpin',
+          label: 'Unpin',
+          onClick: () => {
+            props.onOverflowMenuToggle(null);
+            workspacesMockStore.unpin(ws.id);
+          },
+        },
+        {
+          key: 'remove',
+          label: 'Remove',
+          destructive: true,
+          onClick: () => {
+            props.onOverflowMenuToggle(null);
+            workspacesMockStore.remove(ws.id);
+          },
+        },
+      ],
+    }));
+}
+
 function buildRecentEntries(props: SidebarProps): ConversationSidebarRecentEntry<ChatChannelSummary>[] {
   return buildConversationSidebarRecentEntries({
     channels: props.payload.chat.channels,
@@ -231,6 +350,7 @@ function buildRecentEntries(props: SidebarProps): ConversationSidebarRecentEntry
 }
 
 export function Sidebar(props: SidebarProps) {
+  const workspacesSnapshot = useWorkspacesMock();
   return ConversationSidebar({
     payload: props.payload,
     sidebarOpen: props.sidebarOpen,
@@ -242,7 +362,7 @@ export function Sidebar(props: SidebarProps) {
     routeChannelId: props.routeChannelId,
     accountMenuRef: props.accountMenuRef,
     primaryActions: createPrimaryActions(props),
-    extraActionGroups: createExtraActionGroups(props),
+    extraActionGroups: createExtraActionGroups(props, workspacesSnapshot),
     recentEntries: buildRecentEntries(props),
     recentEmptyStateLabel: 'No codes yet',
     myCatsSectionLabel: 'My Clowders',

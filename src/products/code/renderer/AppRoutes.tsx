@@ -17,9 +17,12 @@ import {
 import { ActiveCodeComposerChips } from './components/ActiveCodeComposerChips.js';
 import { CodeTaskPillsBar } from './components/CodeTaskPillsBar.js';
 import { ComposerSurfaceChip } from '../../shared/renderer/components/ComposerSurfaceChip.js';
-import { ArtifactDetailView } from './components/ArtifactDetailView.js';
+import { ArtifactDetailRouter } from './components/artifacts/ArtifactDetailRouter.js';
+import { ArtifactsListPage } from './components/artifacts/ArtifactsListPage.js';
 import { CodeBuilderView } from './components/CodeBuilderView.js';
 import { CodeRelayView } from './components/CodeRelayView.js';
+import { WorkspaceDetailPage } from './components/workspaces/WorkspaceDetailPage.js';
+import { WorkspacesListPage } from './components/workspaces/WorkspacesListPage.js';
 import {
   NewChatDraft,
   type NewChatDraftProps,
@@ -92,6 +95,21 @@ export function AppRoutes({
     chatsPath: resolveVisibleChatPath(payload.chat.channels, payload.chat.selectedChannelId),
     extraRoutes: [
       <Route
+        key="workspaces"
+        path="workspaces"
+        element={<WorkspacesListPage />}
+      />,
+      <Route
+        key="workspace-detail"
+        path="workspaces/:workspaceId"
+        element={<WorkspaceDetailPage />}
+      />,
+      <Route
+        key="artifacts-list"
+        path="artifacts"
+        element={<ArtifactsListPage />}
+      />,
+      <Route
         key="relay"
         path="relay"
         element={<CodeRelayView selectedChannelContext={selectedChannelContext} />}
@@ -104,7 +122,7 @@ export function AppRoutes({
       <Route
         key="artifact-detail"
         path="artifacts/:artifactId"
-        element={<ArtifactDetailView />}
+        element={<ArtifactDetailRouter />}
       />,
     ],
     renderBootShell: () => <BootShell />,
