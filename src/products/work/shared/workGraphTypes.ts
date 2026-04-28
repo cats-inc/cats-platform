@@ -235,6 +235,15 @@ export interface WorkGraphObjectSummary {
    * `linkedTaskTitle`.
    */
   linkedWorkItemTitle?: string | null;
+  /**
+   * Denormalized title of `linkedConversationId` (when present and
+   * resolvable in the projection). Populated for any kind whose Core
+   * record has a `conversationId` foreign key (project / work_item /
+   * task / mission / run / artifact / activity / outcome /
+   * approval_binding). Lets detail pages show "Conversation: <title>"
+   * without each consumer building its own conversation lookup.
+   */
+  linkedConversationTitle?: string | null;
 }
 
 export interface WorkGraphEvidenceAttachment {

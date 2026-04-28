@@ -122,9 +122,11 @@ export function MissionDetailPage(): JSX.Element {
               <div className="missionDetail__summaryRow">
                 <dt>Conversation</dt>
                 <dd>
-                  <code className="missionDetail__monoId">
-                    {mission.linkedConversationId}
-                  </code>
+                  {mission.linkedConversationTitle ?? (
+                    <code className="missionDetail__monoId">
+                      {mission.linkedConversationId}
+                    </code>
+                  )}
                 </dd>
               </div>
             ) : null}

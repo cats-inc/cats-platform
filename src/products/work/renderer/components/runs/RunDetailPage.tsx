@@ -245,6 +245,16 @@ export function RunDetailPage(): JSX.Element {
                 </dd>
               </div>
             ) : null}
+            {run.linkedConversationId ? (
+              <div className="runDetail__summaryRow">
+                <dt>Conversation</dt>
+                <dd>
+                  {run.linkedConversationTitle ?? (
+                    <code>{run.linkedConversationId}</code>
+                  )}
+                </dd>
+              </div>
+            ) : null}
           </dl>
           {run.summary ? (
             <p className="runDetail__summaryBody">{run.summary}</p>
