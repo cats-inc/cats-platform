@@ -9,9 +9,22 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Stopped (Relay sidebar surface retired) |
 | **Owner** | Codex |
 | **Reviewer** | User |
+
+## Development Stop Notice
+
+This plan is stopped as a standalone `Cats Code` sidebar surface. The
+`/code/relay` route, sidebar `Relay` entry, relay-thread UI, and follow-on
+relay/convergence implementation tasks in this document must not be extended
+or completed.
+
+The durable direction is to express strong-agent collaboration through
+`+Team code` and `+Peer code` presets above the shared interaction engine.
+Relay-like provenance, critique, and convergence may still exist inside those
+presets, but this plan no longer authorizes a separate Relay navigation item
+or a separate Code relay workspace.
 
 ## Related Spec / Dependencies
 
@@ -78,7 +91,7 @@ therefore starts with a runtime-bridge spike before broader fan-out work.
 - manual testing ingestion
 - full UI polish for the long-term `Cats Code` workspace
 
-## Implementation Phases
+## Historical Implementation Phases (Do Not Complete)
 
 ### Phase 0: Runtime Bridge Spike and Round-Trip Proof
 
@@ -289,6 +302,7 @@ follow-on seams.
 | Date | Update |
 |------|--------|
 | 2026-03-30 | Plan created as the first narrow execution slice for `SPEC-043`, focusing on project thread, agent roster, fan-out relay, and convergence summary rather than the whole `Cats Code` MVP |
+| 2026-04-28 | Relay sidebar development stopped. Future multi-agent Code collaboration must live under `+Team code` / `+Peer code` preset flows instead of completing `/code/relay`. |
 
 ---
 

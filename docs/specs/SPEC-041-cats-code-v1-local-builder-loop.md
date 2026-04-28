@@ -8,9 +8,21 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Not Planned (Build sidebar surface retired) |
 | **Owner** | Codex |
 | **Reviewer** | User |
+
+## Retirement Notice
+
+This specification is no longer active as a standalone `Cats Code` Build
+surface. The `/code/build` route, sidebar `Build` navigation item, and
+builder-loop completion work are stopped and are expected to be removed.
+
+Build, preview, run-history, repo follow-through, and artifact concepts may
+still be used by active Code entry flows, but they must be owned by
+`+New code`, `+Team code`, `+Peer code`, task detail, or artifact detail. This
+spec must not be used to justify restoring or completing the standalone Build
+sidebar route.
 
 ## Summary
 
@@ -364,4 +376,4 @@ first serious builder slice:
 *Created: 2026-03-29*
 *Author: Codex*
 *Related Plan: [PLAN-029](../plans/PLAN-029-cats-code-v1-local-builder-loop.md)*
-*Updated: 2026-04-19*
+*Updated: 2026-04-28*

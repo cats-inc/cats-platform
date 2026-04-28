@@ -8,9 +8,27 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Amended (standalone Build/Relay surfaces retired) |
 | **Owner** | Codex |
 | **Reviewer** | User |
+
+## Current Direction Notice
+
+This spec remains useful for the `Cats Code` product model, but standalone
+sidebar `Build` and `Relay` surfaces are stopped and are expected to be
+removed. Future contributors must not complete `/code/build`, `/code/relay`,
+or their sidebar navigation items as a way to satisfy this spec.
+
+The active Code entry model is:
+
+- `+New code`
+- `+Team code`
+- `+Peer code`
+
+Multi-agent critique, relay provenance, convergence, build/run attempts, and
+artifact inspection must be implemented inside those entry flows and their
+task/detail projections rather than through separate Build or Relay
+workspaces.
 
 ## Summary
 
@@ -289,11 +307,12 @@ Implementation note for the `+New code` MVP:
 #### Multi-agent discussion and relay
 
 5. The MVP shall support sending the same prompt or problem statement to
-   multiple configured coding agents in parallel through the product-owned
-   multi-agent relay surface.
-6. The product shall support a one-click relay flow so one agent's answer can
-   be forwarded to one or more other agents for critique, rebuttal, or
-   refinement without manual copy/paste.
+   multiple configured coding agents in parallel through `+Team code` or
+   `+Peer code` preset flows, not through a standalone sidebar Relay
+   workspace.
+6. The product shall support structured cross-agent handoff so one agent's
+   answer can be forwarded to one or more other agents for critique, rebuttal,
+   or refinement without manual copy/paste.
 7. The first discussion slice should support both:
    - independent first-pass answers
    - critique after another agent's answer is visible
@@ -394,9 +413,10 @@ Implementation note for the `+New code` MVP:
     - non-blocking suggestions
     - open questions
     - recommended next step
-31. `SPEC-041` builder-loop execution may serve as the build/run substrate
-    inside this broader workflow, but it shall not define the entire product
-    identity of `Cats Code`.
+31. Historical `SPEC-041` builder-loop work may be mined for build/run
+    semantics inside active Code entry flows, but standalone `/code/build`
+    development is stopped and shall not define the product identity of
+    `Cats Code`.
 
 #### Human verification and repair
 
@@ -499,17 +519,18 @@ user starts with vague or concrete app intent
 
 ## Relationship to Existing Specs
 
-- [SPEC-041](./SPEC-041-cats-code-v1-local-builder-loop.md) defines the first
-  code-task execution and preview/delivery loop above `cats-runtime`.
+- [SPEC-041](./SPEC-041-cats-code-v1-local-builder-loop.md) is now historical:
+  the standalone Build surface is stopped, though its execution/artifact
+  semantics may be migrated into active Code entry flows.
 - This spec defines the broader `Cats Code` MVP workflow around discovery,
   shaping, fit, documentation, implementation relay, review, and human
   verification.
 - [SPEC-061](./SPEC-061-concurrent-parallel-semantics-and-code-entry-presets.md)
   defines how `+New code`, `+Team code`, and `+Peer code` map onto the shared
   interaction engine.
-- In product terms, `SPEC-041` should be treated as one important build/run
-  subsystem inside the larger `Cats Code` workflow rather than the whole
-  product promise.
+- In product terms, build/run behavior belongs inside `+New code`, `+Team
+  code`, `+Peer code`, task detail, and artifact detail, not a separate
+  sidebar Build workspace.
 
 ## Open Questions
 
@@ -539,4 +560,4 @@ user starts with vague or concrete app intent
 
 *Created: 2026-04-14*
 *Author: Codex*
-*Updated: 2026-04-19*
+*Updated: 2026-04-28*

@@ -4,7 +4,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Draft (Build/Relay sidebar surfaces retired) |
 | **Owner** | Codex |
 | **Reviewer** | User |
 | **Related ADRs** | [ADR-059](../decisions/059-adopt-a-unified-conversation-turn-lane-engine.md), [ADR-062](../decisions/062-separate-concurrent-turn-fan-out-from-parallel-container-composition.md) |
@@ -23,6 +23,17 @@ This spec defines:
 - explicit convergence policies for concurrent fan-out
 - `+New code`, `+Team code`, and `+Peer code` as `Cats Code` product presets
   above the same shared engine
+
+## Current Direction Notice
+
+`+New code`, `+Team code`, and `+Peer code` are the active `Cats Code` entry
+surfaces. Standalone sidebar `Build` and `Relay` entries are stopped and are
+expected to be removed.
+
+Future Code work may still include build activities, run attempts, peer-review
+handoffs, relay provenance, and convergence policies, but those behaviors must
+live inside the three Code presets and their task/artifact projections. Do not
+add new requirements that complete or restore `/code/build` or `/code/relay`.
 
 ## Why
 
@@ -295,4 +306,4 @@ Typical first-slice roles include:
 
 *Created: 2026-04-14*
 *Author: Codex*
-*Updated: 2026-04-19*
+*Updated: 2026-04-28*

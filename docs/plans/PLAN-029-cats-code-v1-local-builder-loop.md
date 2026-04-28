@@ -9,10 +9,23 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | In Progress |
+| **Status** | Stopped (Build sidebar surface retired) |
 | **Owner** | Codex |
 | **Assigned To** | Claude |
 | **Reviewer** | User |
+
+## Development Stop Notice
+
+This plan is stopped as a standalone `Cats Code` sidebar surface. The
+`/code/build` route, sidebar `Build` entry, `CodeBuilderView` completion work,
+and follow-on implementation tasks in this document must not be extended or
+"finished" by future contributors.
+
+The durable direction is to carry useful Code execution, artifact, preview,
+run-history, and follow-through semantics through `+New code`, `+Team code`,
+`+Peer code`, task detail, and artifact detail surfaces. Historical Build
+implementation may be mined during removal or migration work, but this plan no
+longer authorizes new Build sidebar development.
 
 ## Related Spec / Dependencies
 
@@ -51,7 +64,7 @@ This plan keeps Code local-first and workspace-first. It borrows lightweight
 step tracking and re-plan value from OpenManus, but not its runtime-owned
 planning or sandbox model.
 
-## Implementation Phases
+## Historical Implementation Phases (Do Not Complete)
 
 ### Phase 1: Workspace Entry and Binding Contracts
 
@@ -227,6 +240,7 @@ later review automation.
 | 2026-03-30 | Codex: Bound `/code/build` to the shared workspace-resolution contract instead of treating workspace as a raw string. Builder now resolves explicit folders or selected-chat repo / managed-room fallbacks, writes the resulting workspace summary into task metadata, and surfaces ownership state in Code task detail and builder UI. |
 | 2026-03-30 | Codex: Added a dedicated execution summary panel in `/code/build` so the focused task id, task status, runtime session state, provider/model target, and effective strategy stay visible beside the plan/output loop. |
 | 2026-03-30 | Codex: Moved runtime-preview and artifact-fallback target resolution into `src/core/previewSurfaces.ts` so Code builder polling and artifact detail now consume the same preview-selection contract instead of keeping preview parsing logic inside `CodeBuilderView`. |
+| 2026-04-28 | Build sidebar development stopped. Future Code execution/artifact/run work must move through `+New code`, `+Team code`, `+Peer code`, task detail, or artifact detail instead of completing `/code/build`. |
 
 ---
 

@@ -75,7 +75,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 | [SPEC-064](./SPEC-064-my-cats-platform-home-and-lens-projections.md) | MY CATS Platform Home and Lens Projections | Draft | [PLAN-056](../plans/PLAN-056-my-cats-platform-home-and-lens-projections.md), [ADR-065](../decisions/065-keep-my-cats-as-one-platform-agent-home-with-lenses.md) |
 | [SPEC-063](./SPEC-063-conversational-vs-operational-agents-and-surface-projections.md) | Conversational vs Operational Agents and Surface Projections | Draft | [PLAN-055](../plans/PLAN-055-conversational-and-operational-agent-projections.md), [ADR-064](../decisions/064-project-conversational-agents-into-chat-and-operational-agents-into-work.md) |
 | [SPEC-062](./SPEC-062-agent-missions-and-transport-bindings.md) | Agent Missions, Managed Work, and Transport Bindings | Draft | [PLAN-054](../plans/PLAN-054-agent-missions-managed-work-and-transport-bindings.md), [ADR-063](../decisions/063-agent-missions-and-transport-bindings.md) |
-| [SPEC-061](./SPEC-061-concurrent-parallel-semantics-and-code-entry-presets.md) | Concurrent vs Parallel Semantics and Code Entry Presets | Draft | [PLAN-053](../plans/PLAN-053-concurrent-parallel-semantics-and-code-entry-presets.md), [ADR-062](../decisions/062-separate-concurrent-turn-fan-out-from-parallel-container-composition.md) |
+| [SPEC-061](./SPEC-061-concurrent-parallel-semantics-and-code-entry-presets.md) | Concurrent vs Parallel Semantics and Code Entry Presets | Draft (Build/Relay sidebar surfaces retired) | [PLAN-053](../plans/PLAN-053-concurrent-parallel-semantics-and-code-entry-presets.md), [ADR-062](../decisions/062-separate-concurrent-turn-fan-out-from-parallel-container-composition.md) |
 | [SPEC-060](./SPEC-060-guide-cat-optional-surface-assist-capability.md) | Guide Cat Optional Surface-Assist Capability | Draft | [PLAN-052](../plans/PLAN-052-guide-cat-optional-surface-assist-capability.md), [ADR-061](../decisions/061-treat-guide-cat-as-an-optional-surface-assist-capability.md) |
 | [SPEC-059](./SPEC-059-heterogeneous-runtime-delivery-normalization.md) | Heterogeneous Runtime Delivery Normalization | Draft | [PLAN-051](../plans/PLAN-051-heterogeneous-runtime-delivery-normalization.md), [ADR-060](../decisions/060-normalize-heterogeneous-runtime-delivery-into-product-events.md) |
 | [SPEC-058](./SPEC-058-interaction-core-and-domain-materialization.md) | Interaction Core and Domain Materialization | Draft | [PLAN-050](../plans/PLAN-050-interaction-core-and-domain-materialization.md), [ADR-059](../decisions/059-adopt-a-unified-conversation-turn-lane-engine.md) |
@@ -93,9 +93,9 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 | [SPEC-046](./SPEC-046-platform-product-landing-and-installed-apps.md) | Platform Product Landing and Installed Apps | Draft | [PLAN-035](../plans/PLAN-035-platform-product-landing-and-installed-apps.md) |
 | [SPEC-045](./SPEC-045-cross-layer-bootstrap-and-onboarding-diagnostics.md) | Cross-Layer Bootstrap and Onboarding Diagnostics | Approved | [PLAN-034](../plans/PLAN-034-cross-layer-bootstrap-and-onboarding-diagnostics.md) |
 | [SPEC-044](./SPEC-044-integrate-packaged-setup-with-runtime-bootstrap.md) | Integrate Packaged Setup with Runtime Bootstrap | Approved | [PLAN-033](../plans/PLAN-033-integrate-packaged-setup-with-runtime-bootstrap.md) |
-| [SPEC-043](./SPEC-043-cats-code-mvp-multi-agent-local-app-workflow.md) | Cats Code MVP Multi-Agent Local-App Workflow | Draft | [PLAN-032](../plans/PLAN-032-cats-code-mvp-fan-out-relay-and-convergence.md) |
+| [SPEC-043](./SPEC-043-cats-code-mvp-multi-agent-local-app-workflow.md) | Cats Code MVP Multi-Agent Local-App Workflow | Amended (standalone Build/Relay surfaces retired) | [PLAN-032](../plans/PLAN-032-cats-code-mvp-fan-out-relay-and-convergence.md) |
 | [SPEC-042](./SPEC-042-platform-renderer-route-level-chunking-and-lazy-entry.md) | Platform Renderer Route-Level Chunking and Lazy Entry | Draft | TBD |
-| [SPEC-041](./SPEC-041-cats-code-v1-local-builder-loop.md) | Cats Code v1 Local Builder Loop | Draft | [PLAN-029](../plans/PLAN-029-cats-code-v1-local-builder-loop.md) |
+| [SPEC-041](./SPEC-041-cats-code-v1-local-builder-loop.md) | Cats Code v1 Local Builder Loop | Not Planned (Build sidebar surface retired) | [PLAN-029](../plans/PLAN-029-cats-code-v1-local-builder-loop.md) |
 | [SPEC-040](./SPEC-040-cats-work-team-templates-and-work-intake.md) | Cats Work Team Templates and Work Intake | Superseded | [PLAN-028](../plans/PLAN-028-cats-work-team-templates-and-work-intake.md) |
 | [SPEC-039](./SPEC-039-cats-chat-v1-priority-items.md) | Cats Chat v1 Priority Items | Draft | [PLAN-027](../plans/PLAN-027-cats-chat-v1-priority-items.md) |
 | [SPEC-038](./SPEC-038-telegram-bot-commands-and-transport-control-surface.md) | Telegram Bot Commands and Transport Control Surface | Draft | TBD |
@@ -145,7 +145,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-04-28 (SPEC-087 marked Cancelled alongside ADR-085 rejection; SPEC-088/SPEC-089 companion placeholders unchanged.)*
-*Last updated: 2026-04-28 (SPEC-090 added for Work Graph link relations; SPEC-087 marked Cancelled alongside ADR-085 rejection.)*
+*Last updated: 2026-04-28 (Build/Relay sidebar specs marked retired; SPEC-090 added for Work Graph link relations; SPEC-087 marked Cancelled alongside ADR-085 rejection; SPEC-088/SPEC-089 companion placeholders unchanged.)*
 
 *See also: [plans/](../plans/) for implementation plans*

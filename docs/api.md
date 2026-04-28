@@ -593,10 +593,12 @@ GET /api/code/previews
   view, including linked task/work-item/project references plus related output
   siblings.
 - `GET /api/code/builds` and `GET /api/code/previews` provide dedicated filtered
-  output read models for later builder-loop surfaces.
+  output read models for artifact inspection only. They must not be used as a
+  reason to complete or restore the retired sidebar `Build` surface.
 - This slice intentionally keeps `Cats Code` above `Cats Core v1` rather than
   creating a second code-specific task or artifact schema. Richer project and
-  live preview/build workspaces remain future Code slices.
+  live preview/build behavior should land through active Code entry/task
+  surfaces, not through standalone sidebar Build or Relay workspaces.
 
 ### Shell Helpers
 

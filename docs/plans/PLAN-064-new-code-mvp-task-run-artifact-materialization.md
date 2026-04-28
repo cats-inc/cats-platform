@@ -8,19 +8,27 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Draft (Build/Relay sidebar dependencies retired) |
 | **Owner** | Codex |
 | **Reviewer** | middl |
 
 ## Related Spec / Dependencies
 
 - [SPEC-043: Cats Code MVP Multi-Agent Local-App Workflow](../specs/SPEC-043-cats-code-mvp-multi-agent-local-app-workflow.md)
-- [SPEC-041: Cats Code v1 Local Builder Loop](../specs/SPEC-041-cats-code-v1-local-builder-loop.md)
+- [SPEC-041: Cats Code v1 Local Builder Loop](../specs/SPEC-041-cats-code-v1-local-builder-loop.md) (stopped; historical context only)
 - [SPEC-061: Concurrent vs Parallel Semantics and Code Entry Presets](../specs/SPEC-061-concurrent-parallel-semantics-and-code-entry-presets.md)
 - [SPEC-058: Interaction Core and Domain Materialization](../specs/SPEC-058-interaction-core-and-domain-materialization.md)
 - [ADR-063: Separate Managed Work, Agent Missions, Execution Runs, and Transport Bindings](../decisions/063-agent-missions-and-transport-bindings.md)
-- [PLAN-029: Cats Code v1 Local Builder Loop](./PLAN-029-cats-code-v1-local-builder-loop.md)
-- [PLAN-032: Cats Code MVP Fan-Out, Relay, and Convergence](./PLAN-032-cats-code-mvp-fan-out-relay-and-convergence.md)
+- [PLAN-029: Cats Code v1 Local Builder Loop](./PLAN-029-cats-code-v1-local-builder-loop.md) (stopped; do not complete `/code/build`)
+- [PLAN-032: Cats Code MVP Fan-Out, Relay, and Convergence](./PLAN-032-cats-code-mvp-fan-out-relay-and-convergence.md) (stopped; do not complete `/code/relay`)
+
+## Current Direction Notice
+
+`PLAN-064` remains active only for `+New code` task/run/artifact
+materialization. It must not be used to finish or restore standalone sidebar
+`Build` or `Relay` surfaces. Any useful run, artifact, preview, or
+collaboration semantics from the retired plans must be folded into Code entry
+presets, task detail, or artifact detail.
 
 ## Overview
 
@@ -103,7 +111,8 @@ conversation anchors.
 ### Phase 2: Land Task-Bound Run Semantics
 
 - [ ] Define exactly when the first `Run` is created:
-      - first explicit execute/build/continue attempt
+      - first explicit execute/build/continue attempt from a Code entry or
+        task-detail surface
       - not at thread creation time
 - [ ] Define run-boundary rules for this slice:
       - retry creates a new run
@@ -117,8 +126,8 @@ conversation anchors.
       session/execution identifiers for observability
 - [ ] Expose run history as task-adjacent observability rather than a
       replacement for task identity
-- [ ] Align builder-loop execution helpers so run creation, resume, and history
-      follow the same semantics across `+New code` and `/code/build`
+- [ ] Fold any still-useful builder-loop execution helper semantics into
+      `+New code` and task detail; do not extend `/code/build`
 
 **Deliverables**: one coherent meaning of `Run` as a task-bound execution
 attempt.
@@ -129,7 +138,7 @@ attempt.
       - artifacts belong to the task
       - artifacts may also reference the producing run
       - artifact lists must stay readable even when many runs exist
-- [ ] Ensure builder outputs such as preview/build/test/report artifacts can be
+- [ ] Ensure runtime outputs such as preview/build/test/report artifacts can be
       projected back into the same task detail flow
 - [ ] Keep artifact provenance visible enough that the operator can tell which
       run produced the output without opening raw records
@@ -158,8 +167,8 @@ same durable task and execution history.
       - workspace summary when known
 - [ ] Keep run history inside task detail for MVP instead of blocking on a
       top-level run page
-- [ ] Ensure artifact views and builder surfaces deep-link back to the same task
-      and conversation context
+- [ ] Ensure artifact views and task-detail execution surfaces deep-link back
+      to the same task and conversation context
 
 **Deliverables**: a usable `+New code` UI path where entry, resume, execution,
 and evidence all point back to one task/conversation anchor.
@@ -177,7 +186,7 @@ and evidence all point back to one task/conversation anchor.
 | `src/products/code/shared/taskDetailSummary.ts` | Modify | Surface primary-task, latest-run, and artifact linkage for renderer use |
 | `src/products/code/renderer/components/NewChatDraft.tsx` | Modify | Route `+New code` entry into the new create flow |
 | `src/products/code/renderer/components/ChatView.tsx` | Modify | Keep conversation-led recents and thread resume behavior aligned |
-| `src/products/code/renderer/components/CodeBuilderView.tsx` | Modify | Reuse the same primary task and run semantics from the entry slice |
+| `src/products/code/renderer/components/CodeBuilderView.tsx` | Do not extend | Retired Build-surface code may be removed or mined only to migrate useful semantics into active entry/task surfaces |
 | `src/products/code/renderer/components/RunInspector.tsx` | Modify | Render task-adjacent run history without elevating runs above tasks |
 | `src/products/code/renderer/components/ArtifactDetailView.tsx` | Modify | Show artifact provenance back to task and producing run |
 | `src/products/code/renderer/api/codeTask.ts` | Modify | Normalize primary task, run history, and artifact-lineage data for the UI |
@@ -185,7 +194,7 @@ and evidence all point back to one task/conversation anchor.
 | `src/core/executionRecordLists.ts` | Modify | Provide additive run-history queries needed by Code detail |
 | `tests/code-new-chat-draft-entry-copy.test.tsx` | Modify | Verify `+New code` entry copy and Code-only entry visibility remain correct |
 | `tests/code-task-execution.test.js` | Modify | Cover first-run creation timing plus retry/restart boundaries |
-| `tests/code-builder-resume.test.js` | Modify | Keep builder resume behavior aligned with task-bound run semantics |
+| `tests/code-builder-resume.test.js` | Retire/replace | Replace Build-route resume coverage with active entry/task-detail run semantics |
 | `tests/code-routing.test.tsx` | Modify | Ensure Code entry, builder, and artifact-detail surfaces stay reachable from Code |
 | `tests/execution-record-lists.test.js` | Modify | Validate run-history queries for one task with many runs |
 | `tests/code-task-detail-projection.test.js` | Create | Cover latest-run and artifact-lineage projection in Code task detail |
@@ -225,9 +234,10 @@ and evidence all point back to one task/conversation anchor.
   `tests/code-routing.test.tsx`
 - **Manual Testing**:
   create a fresh `+New code` thread, confirm the primary task exists before
-  execution, start one build/continue attempt, verify the first run appears,
-  retry once, inspect artifacts from Code detail, and confirm the thread stays
-  resumable from Code recents only
+  execution, start one execute/build/continue attempt from the active Code
+  entry or task-detail surface, verify the first run appears, retry once,
+  inspect artifacts from Code detail, and confirm the thread stays resumable
+  from Code recents only
 
 ## Risks & Mitigations
 
@@ -244,6 +254,7 @@ and evidence all point back to one task/conversation anchor.
 |------|--------|
 | 2026-04-19 | Plan created to implement the first narrow `+New code` materialization slice around `Conversation + primary code Task + Run* + Artifact*` with Code-owned-by-default behavior |
 | 2026-04-19 | Follow-up trim: deferred Work promotion and Chat projection, removed create-time idempotency from MVP scope, and made the MVP `Task -> Run` rule explicit |
+| 2026-04-28 | Amended scope after Build/Relay sidebar retirement: `PLAN-064` remains active for `+New code`, but it no longer depends on completing `/code/build` or `/code/relay`. |
 
 ---
 

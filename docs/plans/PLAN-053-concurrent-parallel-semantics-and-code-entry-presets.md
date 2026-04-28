@@ -37,6 +37,12 @@ This plan turns the semantic split into implementation guidance:
 The goal is to keep Chat and Code on the same engine while still giving Code
 product surfaces first-class entry points and automation hooks.
 
+Standalone Code sidebar `Build` and `Relay` entries are no longer active
+product direction. This plan's Code work is limited to `+New code`, `+Team
+code`, and `+Peer code` entry presets plus their shared-engine semantics.
+Build/run and relay-like behaviors may exist inside those presets, but this
+plan must not be used to restore `/code/build` or `/code/relay`.
+
 This plan also carries the first continuity follow-through for Chat rather than
 opening a separate continuity plan. In this plan's scope:
 
@@ -190,7 +196,8 @@ group-join modes.
 
 ### Phase 4: Code Surface Rollout
 
-- [ ] Task 4.1: Update Code sidebar/entry UX around the three presets
+- [ ] Task 4.1: Update Code sidebar/entry UX around the three presets only;
+      do not restore standalone `Build` or `Relay` sidebar entries
 - [ ] Task 4.2: Ensure `+New code` creation captures execution-profile inputs
       - first slice: move default `+New code` draft ownership into
         `products/code/*` while reusing shared draft primitives
@@ -290,9 +297,10 @@ notes.
 | 2026-04-17 | Left Task 1B.6 open: preceding tool labels and structured choice responses are now carried, but tool-result/file-preview first-slice packaging still needs a final contract |
 | 2026-04-17 | Follow-up slice added token-budgeted semantic transplant fallback, explicit targeted handoff packaging, and fresh-start pre-reset memory flush; Task 1B.5 was corrected back to open because prior regressions only covered current child-local isolation, not an explicit production guard or source-seed rule |
 | 2026-04-20 | Removed the shared draft header-accessory seam after deciding it duplicated existing draft context controls and created a second, misleading summary lane above the composer |
+| 2026-04-28 | Clarified that `+New code`, `+Team code`, and `+Peer code` are the only active Code entry surfaces; standalone Build/Relay sidebar routes are stopped. |
 
 ---
 
 *Created: 2026-04-14*
 *Author: Codex*
-*Updated: 2026-04-20*
+*Updated: 2026-04-28*
