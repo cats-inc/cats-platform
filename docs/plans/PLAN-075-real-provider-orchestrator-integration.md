@@ -339,8 +339,8 @@ The baseline targeted suite for this cutover is:
 - Code: `npx tsx --test tests/code-task-supervision.test.tsx tests/code-relay-supervision.test.tsx tests/code-live-provider-smoke.test.tsx`
 
 Latest local run on 2026-04-28: Chat 23 pass; Work/provider-agent 16 pass
-and 1 gated live smoke skipped unless `CATS_WORK_LIVE_PROVIDER_SMOKE=1` is
-set; Code 4 pass and 1 gated live smoke skipped unless
+and 1 live Work provider smoke pass with `CATS_WORK_LIVE_PROVIDER_SMOKE=1`;
+Code 4 pass and 1 gated live smoke skipped unless
 `CATS_CODE_LIVE_PROVIDER_SMOKE=1` is set.
 
 ## Implementation Phases
@@ -482,7 +482,7 @@ set; Code 4 pass and 1 gated live smoke skipped unless
       approvals, and outcomes into task timeline, evidence, and run metadata.
 - [x] Task 5.3: Implement Work resume/retry/cancel endpoints or actions using
       the lifecycle service.
-- [ ] Task 5.4: Verify Claude/Codex can drive a Work supervised run from task
+- [x] Task 5.4: Verify Claude/Codex can drive a Work supervised run from task
       detail without changing the Work UI flow.
 
 ### Phase 6: Code Real Provider Runs
@@ -782,3 +782,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 61: completed Phase 5 Task 5.2 by projecting provider-agent semantic plan metadata into Work task timelines alongside evidence-backed tool requests, approvals, observations, and outcomes. |
 | 2026-04-28 | Implementation slice 62: added the gated `work-live-provider-smoke.test.tsx` harness for Phase 5 Task 5.4 so Claude/Codex Work supervised runs can be manually verified from the existing task detail supervised-run API without changing the Work UI flow. |
 | 2026-04-28 | Implementation slice 63: added npm script entrypoints for Work, Code, and combined live-provider smoke verification so Phase 5.4 and Phase 6.4 manual evidence can be collected from stable commands while remaining gated by explicit environment flags. |
+| 2026-04-28 | Implementation slice 64: completed Phase 5 Task 5.4 by running `CATS_WORK_LIVE_PROVIDER_SMOKE=1 npm run smoke:live:work`; Claude/Codex Work supervised runs both started from the existing task detail supervised-run API, returned to the provider-agent seam, projected evidence in task detail, and required no Work UI flow change. |

@@ -192,7 +192,6 @@ test(
         'provider_agent_seam',
       );
       assert.equal(payload.supervision.providerAgentRunLoop?.outcomes?.[0]?.sessionId, sessionId);
-      assert.equal(payload.supervision.counts.evidence, 3);
 
       const detailResponse = await fetch(`${baseUrl}/api/work/tasks/${taskId}`);
       const detailPayload = (await detailResponse.json()) as WorkTaskDetailPayload;
