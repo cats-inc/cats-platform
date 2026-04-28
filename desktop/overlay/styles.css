@@ -16,7 +16,7 @@ body {
 .screenshotOverlay {
   position: fixed;
   inset: 0;
-  background-color: #000000;
+  background-color: rgba(0, 0, 0, 0.2);
   background-position: top left;
   background-repeat: no-repeat;
   font-family:

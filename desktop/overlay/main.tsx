@@ -124,6 +124,17 @@ function ScreenshotOverlay() {
     () => payload ? resolveSelectionRect(selection, payload) : null,
     [payload, selection],
   );
+  // Hold the multi-MB data URL string outside the per-render inline style so
+  // pointermove re-renders don't rebuild and re-diff it on every drag tick.
+  const overlayBackgroundStyle = useMemo<React.CSSProperties | undefined>(() => {
+    if (!payload) {
+      return undefined;
+    }
+    return {
+      backgroundImage: `url("${payload.imageDataUrl}")`,
+      backgroundSize: `${payload.bounds.width}px ${payload.bounds.height}px`,
+    };
+  }, [payload]);
 
   if (!payload) {
     return <div className="screenshotOverlay" />;
@@ -132,10 +143,7 @@ function ScreenshotOverlay() {
   return (
     <div
       className="screenshotOverlay"
-      style={{
-        backgroundImage: `url("${payload.imageDataUrl}")`,
-        backgroundSize: `${payload.bounds.width}px ${payload.bounds.height}px`,
-      }}
+      style={overlayBackgroundStyle}
       onContextMenu={(event) => {
         event.preventDefault();
         setSelection(cancelScreenshotOverlaySelection('right_click'));
