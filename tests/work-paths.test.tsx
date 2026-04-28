@@ -2,7 +2,6 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  buildWorkIntakePath,
   buildWorkProjectPath,
   buildWorkTaskPath,
   buildWorkWorkItemPath,
@@ -10,7 +9,6 @@ import {
   isWorkTasksPath,
   isWorkWarRoomPath,
   isWorkWorkItemsPath,
-  WORK_INTAKE_PATH,
   WORK_PROJECTS_PATH,
   WORK_ROUTE_PREFIX,
   WORK_TASKS_PATH,
@@ -21,12 +19,9 @@ import {
 test('work route helpers build stable list and detail paths', () => {
   assert.equal(WORK_ROUTE_PREFIX, '/work');
   assert.equal(WORK_WAR_ROOM_PATH, '/work/war-room');
-  assert.equal(WORK_INTAKE_PATH, '/work/intake');
   assert.equal(WORK_PROJECTS_PATH, '/work/projects');
   assert.equal(WORK_TASKS_PATH, '/work/tasks');
   assert.equal(WORK_WORK_ITEMS_PATH, '/work/work-items');
-  assert.equal(buildWorkIntakePath(), '/work/intake');
-  assert.equal(buildWorkIntakePath('project/1'), '/work/intake/project%2F1');
   assert.equal(buildWorkProjectPath(), '/work/projects');
   assert.equal(buildWorkProjectPath('project/1'), '/work/projects/project%2F1');
   assert.equal(buildWorkTaskPath(), '/work/tasks');

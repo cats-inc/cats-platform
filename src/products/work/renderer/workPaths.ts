@@ -2,20 +2,12 @@ import { resolvePlatformSurfaceRoutePrefix } from '../../../shared/platformProdu
 
 export const WORK_ROUTE_PREFIX = resolvePlatformSurfaceRoutePrefix('work');
 export const WORK_WAR_ROOM_PATH = `${WORK_ROUTE_PREFIX}/war-room`;
-export const WORK_INTAKE_PATH = `${WORK_ROUTE_PREFIX}/intake`;
 export const WORK_PROJECTS_PATH = `${WORK_ROUTE_PREFIX}/projects`;
 export const WORK_TASKS_PATH = `${WORK_ROUTE_PREFIX}/tasks`;
 export const WORK_WORK_ITEMS_PATH = `${WORK_ROUTE_PREFIX}/work-items`;
 export const WORK_SYSTEM_MAP_PATH = `${WORK_ROUTE_PREFIX}/system-map`;
 export const WORK_COCKPIT_PATH = `${WORK_ROUTE_PREFIX}/cockpit`;
 export const WORK_BROKEN_LINKS_PATH = `${WORK_ROUTE_PREFIX}/broken-links`;
-
-export function buildWorkIntakePath(projectId?: string | null): string {
-  const normalized = projectId?.trim();
-  return normalized
-    ? `${WORK_INTAKE_PATH}/${encodeURIComponent(normalized)}`
-    : WORK_INTAKE_PATH;
-}
 
 export function buildWorkProjectPath(projectId?: string | null): string {
   const normalized = projectId?.trim();
@@ -64,8 +56,4 @@ export function isWorkCockpitPath(pathname: string): boolean {
 
 export function isWorkBrokenLinksPath(pathname: string): boolean {
   return pathname.startsWith(WORK_BROKEN_LINKS_PATH);
-}
-
-export function isWorkIntakePath(pathname: string): boolean {
-  return pathname === WORK_INTAKE_PATH || pathname.startsWith(`${WORK_INTAKE_PATH}/`);
 }

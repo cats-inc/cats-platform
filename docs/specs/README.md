@@ -96,7 +96,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 | [SPEC-043](./SPEC-043-cats-code-mvp-multi-agent-local-app-workflow.md) | Cats Code MVP Multi-Agent Local-App Workflow | Draft | [PLAN-032](../plans/PLAN-032-cats-code-mvp-fan-out-relay-and-convergence.md) |
 | [SPEC-042](./SPEC-042-platform-renderer-route-level-chunking-and-lazy-entry.md) | Platform Renderer Route-Level Chunking and Lazy Entry | Draft | TBD |
 | [SPEC-041](./SPEC-041-cats-code-v1-local-builder-loop.md) | Cats Code v1 Local Builder Loop | Draft | [PLAN-029](../plans/PLAN-029-cats-code-v1-local-builder-loop.md) |
-| [SPEC-040](./SPEC-040-cats-work-team-templates-and-work-intake.md) | Cats Work Team Templates and Work Intake | Draft | [PLAN-028](../plans/PLAN-028-cats-work-team-templates-and-work-intake.md) |
+| [SPEC-040](./SPEC-040-cats-work-team-templates-and-work-intake.md) | Cats Work Team Templates and Work Intake | Superseded | [PLAN-028](../plans/PLAN-028-cats-work-team-templates-and-work-intake.md) |
 | [SPEC-039](./SPEC-039-cats-chat-v1-priority-items.md) | Cats Chat v1 Priority Items | Draft | [PLAN-027](../plans/PLAN-027-cats-chat-v1-priority-items.md) |
 | [SPEC-038](./SPEC-038-telegram-bot-commands-and-transport-control-surface.md) | Telegram Bot Commands and Transport Control Surface | Draft | TBD |
 | [SPEC-037](./SPEC-037-transport-driven-live-chat-updates-and-private-lane-transition.md) | Transport-Driven Live Chat Updates and Private-Lane Transition | Draft | [PLAN-026](../plans/PLAN-026-transport-live-updates-and-private-lane-transition.md) |

@@ -9,10 +9,28 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | In Progress |
+| **Status** | Superseded |
 | **Owner** | Codex |
 | **Assigned To** | Claude |
 | **Reviewer** | User |
+
+## Superseded Direction
+
+This plan is superseded and must not drive new implementation.
+
+The product premise was wrong: Cats Work does not have a separate
+`Start Work` / `/work/intake` product entry. Work creation is allowed through
+only two product paths:
+
+- `+New work`, which uses the Work chat-style creation flow.
+- Manual Work object creation, such as `+Project`, `+Work Item`, and `+Task`.
+
+The old intake route family (`/work/intake`, `/work/intake/:projectId`) and the
+matching `/api/work/intake*` endpoints are obsolete. Team-template expansion and
+plan review from this document are historical implementation residue, not a
+current Work product surface. If future `+New work` needs planning assistance,
+it must be specified under the chat-style Work creation model rather than
+reviving this intake flow.
 
 ## Related Spec / Dependencies
 
@@ -35,6 +53,9 @@
 - recovery and activity/timeline surfaces
 
 What it still lacks is a product-owned creation loop.
+
+> Historical note: the creation-loop premise below has been rejected. It is
+> preserved only to explain the obsolete implementation that was removed.
 
 This plan adds that first loop:
 
@@ -233,6 +254,7 @@ template packs.
 | 2026-04-28 | Implementation follow-up: added approval regression coverage proving edited product routing, strategy hints, and acceptance criteria survive the transition to `in_progress` and still drive Work/Chat/Code handoff state. |
 | 2026-04-28 | Status sync: marked existing tested behavior for draft plan generation, Work shell intake entry, focused `/work/intake/:projectId` review routing, Core approval decisions, downstream handoff readiness, and regression coverage. |
 | 2026-04-28 | Phase 3 / Phase 4 close-out: Plan Review now leads with a `Planning intent` section (desired outcome / context / deadline / priority pulled from `project.metadata.intake`) and a `Roles & product routing` section that groups generated tasks under their template role with the resolved target product, before the raw task list. Plan-generator activities (`Work intake created` and per-task `Draft task created`) now carry `metadata.surface = 'background'` via a new Work-owned `activitySurface` helper; `intakeProjection` filters background activities out of the operator-facing timeline by default and reports the hidden count separately so audit/replay still keep the records. |
+| 2026-04-28 | Superseded: product direction removed the standalone `Start Work` / `/work/intake` route family. Cats Work creation now enters through `+New work` chat-style creation or manual `+Project` / `+Work Item` / `+Task`; the intake UI/API/template implementation was removed instead of retained as compatibility surface. |
 | 2026-03-29 | Claude: All 6 phases implemented on branch `claude/spec-040-work-intake`. Templates, plan generation, API routes, handoff-readiness transitions, dashboard, and renderer surfaces landed. 29 tests pass. Work no longer owns runtime dispatch or shared server dependency wiring. |
 | 2026-03-30 | Codex: Refined Work intake projection and review UI so each generated task now exposes a product-facing handoff state (`pending_review`, `active_here`, `ready_for_pickup`, `stopped`, `completed`) plus the next expected owner action. Approved-plan messaging now distinguishes Work-owned follow-through from Chat/Code pickup instead of implying direct dispatch. |
 | 2026-03-30 | Codex: Moved the underlying handoff state machine into `src/core/taskHandoff.ts` so Work no longer owns cross-product task-state semantics; the Work review UI now only owns product-local wording and badges. |

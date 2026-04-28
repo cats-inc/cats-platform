@@ -16,12 +16,10 @@ import {
 } from './components/ChatView.js';
 import { ActiveSessionPermissionChip } from '../../shared/renderer/components/ActiveSessionPermissionChip.js';
 import { ComposerSurfaceChip } from '../../shared/renderer/components/ComposerSurfaceChip.js';
-import { IntakeForm } from './components/IntakeForm.js';
 import {
   NewChatDraft,
   type NewChatDraftProps,
 } from './components/NewChatDraft.js';
-import { PlanReviewPanel } from './components/PlanReviewPanel.js';
 import { ProjectListView } from './components/ProjectListView.js';
 import { ProjectDetailView } from './components/ProjectDetailView.js';
 import { WorkTaskListView } from './components/WorkTaskListView.js';
@@ -97,8 +95,6 @@ export function AppRoutes({
     chatsPath: resolveVisibleChatPath(payload.chat.channels, payload.chat.selectedChannelId),
     extraRoutes: [
       <Route key="war-room" path="war-room" element={<WarRoomView />} />,
-      <Route key="intake" path="intake" element={<IntakeForm />} />,
-      <Route key="intake-project" path="intake/:projectId" element={<PlanReviewPanel />} />,
       <Route key="project-list" path="projects" element={<ProjectsListPage />} />,
       <Route key="project-detail" path="projects/:projectId" element={<ProjectDetailPage />} />,
       <Route key="project-list-legacy" path="projects-legacy" element={<ProjectListView />} />,

@@ -4,14 +4,34 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Superseded |
 | **Owner** | Codex |
 | **Reviewer** | User |
+
+## Superseded Direction
+
+This specification is superseded. Cats Work no longer has a standalone
+product-owned `Start Work` / `/work/intake` creation flow.
+
+The current Work creation model has only these entry classes:
+
+- `+New work`, implemented as a Work chat-style creation flow.
+- Manual creation of durable Work objects: `+Project`, `+Work Item`, and
+  `+Task`.
+
+The old intake form, team-template picker, generated-plan review route, and
+`/api/work/intake*` endpoints must not be revived as product surfaces. Any
+future planning assistance for `+New work` needs a new spec rooted in the
+chat-style Work creation model.
 
 ## Summary
 
 `Cats Work` already has a first shared-core dashboard and task/project/work-item
 detail reads, but it is still mostly a read-model viewer above `Cats Core v1`.
+
+> Historical note: the proposed standalone Work intake flow below has been
+> rejected. It remains only as context for the superseded PLAN-028 route.
+
 The next priority slice should turn Work into a product-owned operating surface:
 the owner can start a piece of work from `/work`, choose a team template,
 generate a first plan, review it, and mark follow-up tasks handoff-ready for

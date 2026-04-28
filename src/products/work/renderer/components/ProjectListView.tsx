@@ -10,7 +10,6 @@ import type { WorkProjectListProjection } from '../../api/projection.js';
 import { buildChannelPath } from '../../shared/channelPaths.js';
 import { fetchWorkProjectList } from '../api/dashboard.js';
 import {
-  buildWorkIntakePath,
   buildWorkProjectPath,
   WORK_WAR_ROOM_PATH,
 } from '../workPaths.js';
@@ -130,17 +129,6 @@ export function ProjectListView() {
           >
             Refresh
           </button>
-          <button
-            type="button"
-            className="operatorActionButton operatorActionButtonPrimary"
-            onClick={() => {
-              startTransition(() => {
-                navigate(buildWorkIntakePath());
-              });
-            }}
-          >
-            Start intake
-          </button>
         </div>
       </div>
 
@@ -213,7 +201,7 @@ export function ProjectListView() {
                   <strong>No projects recorded yet.</strong>
                   <span className="operatorStatusBadge isMuted">empty</span>
                 </div>
-                <p>Projects created from intake or work planning will appear here.</p>
+                <p>Projects created manually or from the New work chat flow will appear here.</p>
               </article>
             ) : (
               <div className="workWarRoomTaskGrid">

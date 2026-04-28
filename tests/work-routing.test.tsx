@@ -57,20 +57,18 @@ function createProps(): AppRoutesProps {
   };
 }
 
-test('Work AppRoutes keeps operational and intake surfaces reachable', () => {
+test('Work AppRoutes keeps operational and manual Work surfaces reachable', () => {
   const routes = collectRoutes(AppRoutes(createProps()));
 
   const warRoomRoute = routes.find((entry) => entry.path === 'war-room');
   assert.ok(warRoomRoute, 'expected /work/war-room route');
   assert.ok(isValidElement(warRoomRoute?.element));
 
-  const intakeRoute = routes.find((entry) => entry.path === 'intake');
-  assert.ok(intakeRoute, 'expected /work/intake route');
-  assert.ok(isValidElement(intakeRoute?.element));
-
-  const planRoute = routes.find((entry) => entry.path === 'intake/:projectId');
-  assert.ok(planRoute, 'expected /work/intake/:projectId route');
-  assert.ok(isValidElement(planRoute?.element));
+  assert.equal(
+    routes.some((entry) => entry.path === 'intake' || entry.path === 'intake/:projectId'),
+    false,
+    'obsolete /work/intake routes must not be registered',
+  );
 
   const projectListRoute = routes.find((entry) => entry.path === 'projects');
   assert.ok(projectListRoute, 'expected /work/projects route');

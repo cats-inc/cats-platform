@@ -205,7 +205,7 @@ export function WorkTaskListView() {
                   <strong>No tasks recorded yet.</strong>
                   <span className="operatorStatusBadge isMuted">empty</span>
                 </div>
-                <p>Tasks created from work intake or manual planning will appear here.</p>
+                <p>Tasks created manually or from the New work chat flow will appear here.</p>
               </article>
             ) : (
               <div className="workWarRoomTaskGrid">

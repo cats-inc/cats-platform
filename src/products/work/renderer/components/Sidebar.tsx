@@ -36,7 +36,6 @@ import {
   WORK_ROUTE_PREFIX,
   isWorkBrokenLinksPath,
   isWorkCockpitPath,
-  isWorkIntakePath,
   isWorkProjectsPath,
   isWorkSystemMapPath,
   isWorkTasksPath,
@@ -58,7 +57,6 @@ export interface SidebarProps {
   onCollapsedSidebarClick: (event: ReactMouseEvent<HTMLElement>) => void;
   onOpenChatsOverview: () => void;
   onStartNewChat: () => void;
-  onStartIntake?: () => void;
   onOpenWarRoom?: () => void;
   onOpenProjects?: () => void;
   onOpenProject?: (projectId: string) => void;
@@ -84,7 +82,6 @@ export interface SidebarProps {
 }
 
 function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] {
-  const currentPath = globalThis.location?.pathname ?? WORK_ROUTE_PREFIX;
   const actions: ConversationSidebarAction[] = [
     {
       key: 'new-work',
@@ -107,31 +104,6 @@ function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] 
       ),
     },
   ];
-
-  if (props.onStartIntake) {
-    actions.push({
-      key: 'start-work',
-      label: 'Start work',
-      onClick: props.onStartIntake,
-      active: isWorkIntakePath(currentPath),
-      icon: (
-        <svg
-          width="16"
-          height="16"
-          viewBox="0 0 16 16"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <rect x="3" y="2.5" width="10" height="11" rx="1.5" />
-          <path d="M5.5 2.5v-1h5v1" />
-          <path d="M5.5 7l1.5 1.5L10.5 5.5" />
-        </svg>
-      ),
-    });
-  }
 
   return actions;
 }

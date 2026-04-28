@@ -16,7 +16,6 @@ import {
   formatWorkExecutionStrategy,
   formatWorkTokenList,
 } from '../workExecutionPresentation.js';
-import { IntakeStatusCard } from './IntakeStatusCard.js';
 
 type WorkOperatorInboxItem = WorkDashboardProjection['sections']['operatorInbox']['items'][number];
 type WorkControlPlaneItem = WorkDashboardProjection['sections']['controlPlane']['items'][number];
@@ -670,17 +669,6 @@ export function WarRoomView() {
           >
             Refresh
           </button>
-          <button
-            type="button"
-            className="operatorActionButton operatorActionButtonPrimary"
-            onClick={() => {
-              startTransition(() => {
-                navigate('/work/intake');
-              });
-            }}
-          >
-            Start intake
-          </button>
         </div>
       </div>
 
@@ -696,7 +684,7 @@ export function WarRoomView() {
               <strong>Loading operational dashboard...</strong>
               <span className="operatorStatusBadge isProgress">loading</span>
             </div>
-            <p>Collecting intake, operator, control-plane, and recovery sections from Cats Core.</p>
+            <p>Collecting operator, control-plane, and recovery sections from Cats Core.</p>
           </article>
         </section>
       ) : null}
@@ -713,7 +701,7 @@ export function WarRoomView() {
               <WorkSummaryCard
                 label="Projects"
                 value={payload.summary.projectCount}
-                helper={`${payload.sections.pendingPlans.summary.totalAvailable} planned initiatives awaiting review.`}
+                helper={`${payload.summary.inProgressCount} in progress, ${payload.summary.blockedCount} blocked.`}
               />
               <WorkSummaryCard
                 label="Tasks"
@@ -731,28 +719,6 @@ export function WarRoomView() {
                 helper={`${payload.sections.recovery.summary.returned} retry or replay queues are visible.`}
               />
             </div>
-          </section>
-
-          <section className="operatorPanel">
-            <WorkSectionHeader
-              eyebrow="Plan"
-              title="Intake & Pending Review"
-              summary={`${payload.sections.intake.summary.returned} active`}
-            />
-            <IntakeStatusCard
-              intakeItems={payload.sections.intake.items}
-              pendingPlans={payload.sections.pendingPlans.items}
-              onViewPlan={(projectId) => {
-                startTransition(() => {
-                  navigate(`/work/intake/${encodeURIComponent(projectId)}`);
-                });
-              }}
-              onStartIntake={() => {
-                startTransition(() => {
-                  navigate('/work/intake');
-                });
-              }}
-            />
           </section>
 
           <ProjectsSection

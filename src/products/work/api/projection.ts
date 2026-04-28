@@ -51,13 +51,10 @@ import {
   isWorkTask,
   resolveActorName,
 } from './projectionSupport.js';
-import { getWorkTemplate } from '../templates/index.js';
 import {
-  WORK_API_INTAKE_PATH,
   WORK_API_PREFIX,
   WORK_API_PROJECTS_PATH,
   WORK_API_TASKS_PATH,
-  WORK_API_TEMPLATES_PATH,
   WORK_API_WAR_ROOM_PATH,
   WORK_API_WORK_ITEMS_PATH,
 } from '../shared/apiPaths.js';
@@ -67,8 +64,6 @@ import {
   WORK_PRODUCT_NAME,
 } from '../shared/productMetadata.js';
 
-const WORK_DASHBOARD_INTAKE_LIMIT = 8;
-const WORK_DASHBOARD_PENDING_PLAN_LIMIT = 8;
 const WORK_DASHBOARD_INBOX_LIMIT = 10;
 const WORK_DASHBOARD_CONTROL_PLANE_LIMIT = 12;
 const WORK_DASHBOARD_RECOVERY_LIMIT = 10;
@@ -273,34 +268,6 @@ export interface WorkTaskListProjection {
   summary: WorkTaskListSummary;
 }
 
-export interface WorkIntakeSummaryItem {
-  projectId: string;
-  projectTitle: string;
-  templateId: string | null;
-  templateLabel: string | null;
-  status: CoreProjectStatus;
-  taskCount: number;
-  createdAt: string;
-}
-
-export interface WorkIntakeSummary {
-  totalAvailable: number;
-  returned: number;
-}
-
-export interface WorkPendingPlanItem {
-  projectId: string;
-  projectTitle: string;
-  draftTaskCount: number;
-  pendingApprovalCount: number;
-  createdAt: string;
-}
-
-export interface WorkPendingPlanSummary {
-  totalAvailable: number;
-  returned: number;
-}
-
 export interface WorkTaskActionContext {
   conversationTitle: string | null;
   conversationSourceChannelId: string | null;
@@ -336,8 +303,6 @@ export interface WorkDashboardProjection {
   };
   summary: WorkDashboardSummary;
   sections: {
-    intake: WorkDashboardSection<WorkIntakeSummaryItem, WorkIntakeSummary>;
-    pendingPlans: WorkDashboardSection<WorkPendingPlanItem, WorkPendingPlanSummary>;
     projects: WorkDashboardSection<WorkProjectListItem, WorkProjectListSummary>;
     workItems: WorkDashboardSection<WorkWorkItemListItem, WorkWorkItemListSummary>;
     operatorInbox: WorkDashboardSection<WorkOperatorInboxItem, CoreOperatorInboxSummary>;
@@ -575,82 +540,6 @@ function resolveDefaultTaskId(
     ?? null;
 }
 
-function resolveIntakeTemplateId(
-  project: CoreProjectRecord,
-): string | null {
-  const intake = project.metadata?.intake;
-  if (!intake || typeof intake !== 'object' || Array.isArray(intake)) {
-    return null;
-  }
-
-  const templateId = (intake as Record<string, unknown>).templateId;
-  return typeof templateId === 'string' ? templateId : null;
-}
-
-function isIntakeProject(project: CoreProjectRecord): boolean {
-  return resolveIntakeTemplateId(project) !== null;
-}
-
-function resolveIntakeTasksForProject(
-  core: CatsCoreState,
-  projectId: string,
-): CoreTaskRecord[] {
-  return core.tasks.filter((task) => {
-    const workIntake = task.metadata?.workIntake;
-    if (!workIntake || typeof workIntake !== 'object' || Array.isArray(workIntake)) {
-      return false;
-    }
-
-    return (workIntake as Record<string, unknown>).projectId === projectId;
-  });
-}
-
-function buildIntakeSummaryItems(
-  core: CatsCoreState,
-  limit = WORK_DASHBOARD_INTAKE_LIMIT,
-): WorkIntakeSummaryItem[] {
-  return core.projects
-    .filter(isIntakeProject)
-    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
-    .slice(0, limit)
-    .map((project) => {
-      const templateId = resolveIntakeTemplateId(project);
-      const template = templateId ? getWorkTemplate(templateId) : null;
-      const tasks = resolveIntakeTasksForProject(core, project.id);
-
-      return {
-        projectId: project.id,
-        projectTitle: project.title,
-        templateId,
-        templateLabel: template?.label ?? null,
-        status: project.status,
-        taskCount: tasks.length,
-        createdAt: project.createdAt,
-      };
-    });
-}
-
-function buildPendingPlanItems(
-  core: CatsCoreState,
-  limit = WORK_DASHBOARD_PENDING_PLAN_LIMIT,
-): WorkPendingPlanItem[] {
-  return core.projects
-    .filter((project) => isIntakeProject(project) && project.status === 'planned')
-    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
-    .slice(0, limit)
-    .map((project) => {
-      const tasks = resolveIntakeTasksForProject(core, project.id);
-
-      return {
-        projectId: project.id,
-        projectTitle: project.title,
-        draftTaskCount: tasks.filter((t) => t.status === 'draft').length,
-        pendingApprovalCount: tasks.filter((t) => t.status === 'pending_approval').length,
-        createdAt: project.createdAt,
-      };
-    });
-}
-
 function buildWorkTaskActionContext(
   core: CatsCoreState,
   taskId: string,
@@ -728,8 +617,6 @@ export function buildWorkDashboardProjection(core: CatsCoreState): WorkDashboard
       recoveries: recoveryTaskItems,
     }),
   };
-  const intakeItems = buildIntakeSummaryItems(core);
-  const pendingPlanItems = buildPendingPlanItems(core);
   const projectItems = buildProjectListItems(core);
   const workItemItems = buildWorkItemListItems(core);
   const taskStatusCounts = buildTaskStatusCounts(workTasks);
@@ -751,26 +638,6 @@ export function buildWorkDashboardProjection(core: CatsCoreState): WorkDashboard
       recoveryCount: recovery.summary.matching,
     },
     sections: {
-      intake: {
-        title: 'Work Intake',
-        emptyState: 'No work intake items. Start a new initiative from the intake form.',
-        items: intakeItems,
-        summary: {
-          totalAvailable: core.projects.filter(isIntakeProject).length,
-          returned: intakeItems.length,
-        },
-      },
-      pendingPlans: {
-        title: 'Pending Plans',
-        emptyState: 'No plans are waiting for review.',
-        items: pendingPlanItems,
-        summary: {
-          totalAvailable: core.projects.filter(
-            (p) => isIntakeProject(p) && p.status === 'planned',
-          ).length,
-          returned: pendingPlanItems.length,
-        },
-      },
       projects: {
         title: 'Projects',
         emptyState: 'No projects have been recorded in Cats Core yet.',
@@ -818,8 +685,6 @@ export function buildWorkDashboardProjection(core: CatsCoreState): WorkDashboard
         WORK_API_PROJECTS_PATH,
         WORK_API_TASKS_PATH,
         WORK_API_WORK_ITEMS_PATH,
-        WORK_API_INTAKE_PATH,
-        WORK_API_TEMPLATES_PATH,
         WORK_API_WAR_ROOM_PATH,
       ],
     },
