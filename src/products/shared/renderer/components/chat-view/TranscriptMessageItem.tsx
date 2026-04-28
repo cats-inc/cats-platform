@@ -12,6 +12,7 @@ import {
   type SelectedChannelView,
 } from '../../workspaceChatUtils.js';
 import { MessageBody } from '../MessageBody.js';
+import { CompanionMessageReferencePreviews } from './CompanionMessageReferencePreviews.js';
 import {
   MessageChoices,
   type MessageChoicesSubmitInput,
@@ -216,6 +217,10 @@ export function TranscriptMessageItem({
             disabledMentionNames={disabledMentionNames}
           />
         ) : null}
+        <CompanionMessageReferencePreviews
+          body={message.body}
+          metadata={message.metadata}
+        />
         {message.senderKind === 'user' && userTurnStatus === 'failed' ? (
           <div className="userTurnStatus userTurnStatusFailed">Response failed</div>
         ) : null}

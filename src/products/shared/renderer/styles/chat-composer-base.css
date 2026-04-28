@@ -1247,6 +1247,100 @@
   text-decoration: line-through;
 }
 
+.companionMessageReferenceList {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.companionReferenceCard {
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: var(--surface-soft, rgba(0, 0, 0, 0.02));
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+}
+
+.companionReferenceCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.companionReferenceCardTitle {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.companionReferenceCardCat {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.companionReferenceCardSubtitle {
+  color: var(--muted);
+}
+
+.companionReferenceCardDescription {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+.companionReferenceCardOpen {
+  align-self: flex-start;
+  font-size: 11px;
+  color: var(--accent, #2563eb);
+}
+
+.companionReferenceCardAvailability {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.companionReferenceCard[data-availability="missing"],
+.companionReferenceCard[data-availability="deleted"] {
+  border-style: dashed;
+  opacity: 0.85;
+}
+
+.companionReferenceCard[data-availability="inaccessible"] {
+  background: rgba(150, 120, 40, 0.08);
+}
+
+.companionReferenceCardUnsupported {
+  background: rgba(150, 120, 40, 0.08);
+  color: var(--warm, #92400e);
+  font-style: italic;
+}
+
+.companionReferenceCardInvalid {
+  background: rgba(220, 38, 38, 0.08);
+  color: var(--danger, #b91c1c);
+}
+
+.companionReferenceCardLoading {
+  color: var(--muted);
+}
+
+.companionReferenceCardLabel {
+  font-weight: 500;
+}
+
+.companionReferenceCardSubtle {
+  color: var(--muted);
+  font-size: 11px;
+  margin-left: 4px;
+}
+
 .composerInputOverlay {
   position: relative;
   color: transparent;
