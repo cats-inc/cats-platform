@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 
+import { LinkageSection } from "../topdown/LinkageSection";
 import { MOCK_WORK_GRAPH } from "../topdown/mock";
 import {
   ATTENTION_LABEL,
@@ -167,6 +168,12 @@ export function WorkItemDetailPage(): JSX.Element {
           title="Tasks"
           items={tasks}
           emptyLabel="No tasks under this work item yet."
+        />
+
+        <LinkageSection
+          selfRef={{ recordFamily: "work_item", recordId: workItem.sourceRecordId }}
+          graph={graph}
+          indexes={indexes}
         />
 
         <section className="workItemDetail__section">

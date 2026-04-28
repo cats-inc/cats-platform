@@ -1,0 +1,132 @@
+.linkageSection {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.linkageSection__header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-subtle);
+}
+
+.linkageSection__header h2 {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: -0.005em;
+}
+
+.linkageSection__count {
+  font-size: 0.7rem;
+  color: var(--muted);
+  background: var(--canvas-bg);
+  border: 1px solid var(--border);
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-weight: 500;
+}
+
+.linkageSection__empty {
+  margin: 0;
+  padding: 24px 18px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-style: italic;
+  text-align: center;
+}
+
+.linkageSection__group {
+  border-bottom: 1px solid var(--border);
+}
+
+.linkageSection__group:last-child {
+  border-bottom: none;
+}
+
+.linkageSection__groupLabel {
+  margin: 0;
+  padding: 10px 18px 6px;
+  font-size: 0.66rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.linkageSection__groupEmpty {
+  margin: 0;
+  padding: 0 18px 10px;
+  font-size: 0.74rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.linkageSection__list {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 6px;
+}
+
+.linkageSection__row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  column-gap: 10px;
+  row-gap: 2px;
+  padding: 8px 18px;
+  font-size: 0.8rem;
+  border-top: 1px solid var(--border-subtle, var(--border));
+}
+
+.linkageSection__row:first-child {
+  border-top: none;
+}
+
+.linkageSection__row:hover {
+  background: var(--panel-hover);
+}
+
+.linkageSection__title {
+  color: var(--text);
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.linkageSection__title:hover {
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.linkageSection__kindBadge {
+  font-size: 0.66rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  background: var(--canvas-bg);
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.linkageSection__note {
+  grid-column: 2 / -1;
+  font-size: 0.72rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.linkageSection__group--blocks .linkageSection__groupLabel {
+  color: var(--warning, #b86f1c);
+}
+
+.linkageSection__group--blocked_by .linkageSection__groupLabel {
+  color: var(--danger, #b13b3b);
+}
