@@ -41,6 +41,7 @@
     "desktop:start": "npm run build && npm run desktop:host",
     "dev": "npm run dev:web",
     "dev:server": "tsx watch src/index.ts",
+    "dev:toggle-flag": "tsx scripts/dev-toggle-feature-flag.mts",
     "dev:web": "vite",
     "ingress:smoke": "node scripts/testing/check-platform-ingress.mjs",
     "preview:bootstrap": "npm run build:host && node scripts/preview-bootstrap.mjs",
