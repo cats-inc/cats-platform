@@ -120,6 +120,14 @@ export function WorkItemsListPage(): JSX.Element {
                           orphan
                         </span>
                       )}
+                      {wi.linkedWorkItemTitle ? (
+                        <span
+                          className="workItemsList__projectChip workItemsList__projectChip--parent"
+                          title={`Parent work item: ${wi.linkedWorkItemTitle}`}
+                        >
+                          ↳ {wi.linkedWorkItemTitle}
+                        </span>
+                      ) : null}
                       {wi.attention === "decision_needed" ? (
                         <span className="workItemsList__pip workItemsList__pip--decision">
                           decision
