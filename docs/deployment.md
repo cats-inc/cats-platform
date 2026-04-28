@@ -357,6 +357,12 @@ Rules using `initialTreatment: default`, `confidenceLevel: unknown`,
 `evaluated`, or `observed` are invalid and fail closed. Duplicate rule ids also
 fail the whole config closed because the id is part of the audit identity.
 
+This rollout does not ship a UI/admin editor for the bootstrap file. Operators
+edit YAML directly, and Cats emits structured startup/dispatch diagnostics plus
+`provider-capability-bootstrap-diagnostics.local.json` records so a future
+admin editor can read the same audit trail instead of creating a separate
+source of truth.
+
 ### Secrets Management
 
 - Keep `.env` local and uncommitted

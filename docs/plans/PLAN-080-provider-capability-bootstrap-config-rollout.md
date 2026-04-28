@@ -298,7 +298,7 @@ who is strong/weak; defaults remain neutral.
       `SupervisionDiagnosticRecord` persistence (no new UI panel, and no
       evidence/snapshot record reuse). A future plan may add an admin UI editor
       that consumes the same diagnostic records.
-- [ ] Task 4.3: Record that a UI/admin editor is follow-up scope, not part of
+- [x] Task 4.3: Record that a UI/admin editor is follow-up scope, not part of
       this rollout.
 
 **Deliverables**: Operators can see why a provider/model/control target received
@@ -387,6 +387,7 @@ initial treatment even without an editor.
 | 2026-04-28 | Implementation slice 4: added a gated Chat live provider smoke (`CATS_CHAT_LIVE_PROVIDER_SMOKE=1 npm run smoke:live:chat`) and included it in `npm run smoke:live:providers`; default execution loads and skips the gate unless the live runtime/provider environment is explicitly enabled. |
 | 2026-04-28 | Implementation slice 5: removed provider-name hard-coding from shared Chat/Work/Code draft preset capability review; default targets now show conservative policy unless the review is given an explicit PLAN-080 bootstrap treatment fixture. |
 | 2026-04-28 | Implementation slice 6: added a provider capability bootstrap diagnostic sink that emits structured platform log events, persists `SupervisionDiagnosticRecord` records, and receives Chat matched-rule diagnostics during provider-agent observation preparation. |
+| 2026-04-28 | Implementation slice 7: documented that a UI/admin editor for provider capability bootstrap is follow-up scope; PLAN-080 keeps YAML as the operator surface and diagnostics as the audit trail. |
 
 ---
 
