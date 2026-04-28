@@ -8,8 +8,8 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
-| **Owner** | Codex |
+| **Status** | Active — Phase 1 complete behind flag, Phase 2–5 logic landed pending renderer wiring |
+| **Owner** | Codex (drafted) / Claude (implementation) |
 | **Reviewer** | User |
 
 ## Related Specs
@@ -507,6 +507,7 @@ the post model is finalized.
 | Date | Update |
 |------|--------|
 | 2026-04-28 | Plan created for revised companion profile IA and shareable chat previews |
+| 2026-04-28 | Implementation slices 1–22 landed in commits `bc86f65b..36dfc5ff`. Phase 1 ships behind `cats.chat.companionProfileIA` (default `false`, productionUnlockState `locked`): featureFlags+buildChannel envelope channel, registry+production-guard logic, BUILD_CHANNEL constant + bake helper for `desktop:stage*` / `desktop:package*`, persisted feature flags + HTTP writer + dev CLI, companion tab order rename, side panel rename (Status/Sources/Memory/Behavior/Inspector), header Subscribe/Share disabled, Telegram deep link, and the legacy mock fixtures gated off the production path with a boundary test. Phase 2 logic is in place: shared MIME/extension classifier, profile read-model projection, owner-promotion `Promote to post` producer (dedup by `(catId, originType, originId)`, status flip, sanitised mediaRefs), Activity vocabulary + burst aggregation + 100-entry / 30-day caps, Inspector selection lifecycle helpers (URL `?inspector=type:id`, freeze-on-non-available snapshot rule). Phase 3 logic: `cats://companion/v1/{scopeId}/{catId}/{type}/{targetId}` parser/serializer with the strict check ordering, scopeId persistence + envelope surface, resolver returning the available/missing/deleted/inaccessible envelope. Phase 4 logic: composer reference detector (multi-match, terminator scan, replace helper). Phase 5 logic: send-time snapshot capture + strict re-hydration + fallback-preview shape. Phase 6: SPEC-085 classifier edge cases, profile-post projection round-trip, Activity caps, Inspector lifecycle, parser fuzz coverage, FR-19 production guard, mock-fixture boundary guard. New HTTP endpoint `GET /api/cats/:catId/companion-box/profile` surfaces the projection. Renderer wiring (replace empty states with projection data, wire composer detector + chip render, capture+hydrate snapshots on chat send/transcript), promote-to-post HTTP route + dialog, and desktop-host IPC ownership for the writer remain pending. |
 
 ---
 
