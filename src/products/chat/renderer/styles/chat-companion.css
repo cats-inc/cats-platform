@@ -1,3 +1,11 @@
+/* Companion view scrolls on main.canvas, not on .companionContent itself.
+ * Canvas has `scrollbar-gutter: stable`, which renders the scrollbar at the
+ * canvas's outer edge (= viewport right edge). Giving .companionContent its
+ * own `overflow-y: auto` instead places an inner scrollbar at the padded
+ * inner edge — 28px in from viewport right — which doesn't match chat view.
+ * Keep the canvas as the single scroll container so the scrollbar lands in
+ * the same place chat view's does. */
+
 /* Direct-lane chat/companion toggle — matches channelActionIconButton / sidePanelToggle */
 .companionModeToggle {
   display: inline-flex;
@@ -58,10 +66,11 @@
   font-weight: 500;
 }
 
-/* Content area */
+/* Content area — let main.canvas scroll instead of carrying an inner
+ * scrollbar (so the scrollbar lives in the canvas's reserved gutter at the
+ * viewport right edge, matching chat view). */
 .companionContent {
   flex: 1;
-  overflow-y: auto;
   padding: 0;
 }
 
