@@ -1,5 +1,8 @@
 import { readJsonBody, sendJson, sendMethodNotAllowed } from '../../shared/http.js';
-import type { PlatformSetupCompleteInput } from '../../shared/platform-contract.js';
+import {
+  EMPTY_PLATFORM_FEATURE_FLAGS,
+  type PlatformSetupCompleteInput,
+} from '../../shared/platform-contract.js';
 import type { ProviderModelSelection } from '../../shared/providerSelection.js';
 import { toBootstrapEventError } from '../../shared/bootstrapDiagnostics.js';
 import {
@@ -252,6 +255,8 @@ async function handlePlatformSetupComplete(
           port: context.dependencies.config.port,
         }),
         bootstrapAttemptId: attemptId,
+        buildChannel: 'development',
+        featureFlags: EMPTY_PLATFORM_FEATURE_FLAGS,
         setupCompleteAt: core.setupCompleteAt,
         ownerDisplayName: core.ownerProfile.displayName,
         ownerAvatarColor: core.ownerProfile.avatarColor,

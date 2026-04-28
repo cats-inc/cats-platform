@@ -2,11 +2,14 @@ import type { AppConfig } from '../../../config.js';
 import type { AssistantPresetRecord, GuideCatRecord } from '../../../core/types.js';
 import type { RuntimeStatusSummary } from '../../../platform/runtime/client.js';
 import type { GuideCatAssistSurfaceReadModel } from '../../../shared/guideCatAssist.js';
-import type {
-  PlatformDesktopPreferences,
-  PlatformLobbyCatSummary,
-  PlatformLobbyPreferences,
-  PlatformSurfaceId,
+import {
+  EMPTY_PLATFORM_FEATURE_FLAGS,
+  type PlatformBuildChannel,
+  type PlatformDesktopPreferences,
+  type PlatformFeatureFlags,
+  type PlatformLobbyCatSummary,
+  type PlatformLobbyPreferences,
+  type PlatformSurfaceId,
 } from '../../../shared/platform-contract.js';
 import {
   cloneProviderModelSelection,
@@ -74,6 +77,8 @@ export function createAppShell(
     lobbyGuideCatAssist?: GuideCatAssistSurfaceReadModel | null;
     newChatAssist?: AppShellPayload['chat']['newChatAssist'];
     codeGuideCatAssist?: GuideCatAssistSurfaceReadModel | null;
+    buildChannel?: PlatformBuildChannel;
+    featureFlags?: PlatformFeatureFlags;
   },
 ): AppShellPayload {
   const summary = summarizeState(chat);
@@ -143,6 +148,8 @@ export function createAppShell(
       port: config.port,
     }),
     bootstrapAttemptId: setup?.bootstrapAttemptId ?? null,
+    buildChannel: setup?.buildChannel ?? 'development',
+    featureFlags: setup?.featureFlags ?? EMPTY_PLATFORM_FEATURE_FLAGS,
     setupCompleteAt: resolvedSetupCompleteAt,
     ownerDisplayName: setup?.ownerDisplayName ?? 'Owner',
     ownerAvatarColor: setup?.ownerAvatarColor ?? null,

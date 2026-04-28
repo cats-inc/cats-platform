@@ -76,6 +76,8 @@ function createEnvelope(
       port: 8484,
     },
     bootstrapAttemptId: null,
+    buildChannel: 'development',
+    featureFlags: {},
     setupCompleteAt: '2026-04-08T00:00:00.000Z',
     ownerDisplayName: 'Ken',
     ownerAvatarColor: null,
