@@ -56,9 +56,8 @@ export function TaskDetailPage(): JSX.Element {
       (o) => o.kind === "activity" && o.linkedTaskId === task.id,
     )
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  const conversation = task.linkedConversationId
-    ? indexes.objectsById.get(task.linkedConversationId)
-    : undefined;
+  // Conversation title resolves through projection's
+  // `linkedConversationTitle` now — no per-page indexes lookup.
 
   return (
     <div className="taskDetail">
@@ -200,12 +199,13 @@ export function TaskDetailPage(): JSX.Element {
                 <dd>{task.acceptanceCriteria}</dd>
               </>
             ) : null}
-            {conversation ? (
+            {task.linkedConversationId ? (
               <>
                 <dt>Conversation</dt>
                 <dd>
                   <span className="taskDetail__convoTitle">
-                    {conversation.title}
+                    {task.linkedConversationTitle ??
+                      task.linkedConversationId}
                   </span>
                 </dd>
               </>
