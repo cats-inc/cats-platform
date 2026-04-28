@@ -18,6 +18,7 @@ export type CoreTaskTimelineItemKind =
   | 'trace'
   | 'checkpoint'
   | 'outcome'
+  | 'evidence'
   | 'activity';
 
 export type CoreTaskTimelineCategory =
@@ -35,6 +36,7 @@ export const CORE_TASK_TIMELINE_ITEM_KINDS = [
   'trace',
   'checkpoint',
   'outcome',
+  'evidence',
   'activity',
 ] as const satisfies readonly CoreTaskTimelineItemKind[];
 
@@ -116,6 +118,8 @@ function compareTimelineItems(left: CoreTaskTimelineItem, right: CoreTaskTimelin
   const kindRank = (value: CoreTaskTimelineItemKind): number => {
     switch (value) {
       case 'activity':
+        return 7;
+      case 'evidence':
         return 6;
       case 'outcome':
         return 5;

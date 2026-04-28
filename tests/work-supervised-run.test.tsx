@@ -289,6 +289,23 @@ test('Work supervised run launch can be driven by a fake agent and inspected fro
     ['applied', 'applied', 'applied', 'pending_approval'],
   );
   assert.equal(detailPayload.supervision.evidence[3]?.approvalRequestId !== undefined, true);
+  assert.equal(
+    detailPayload.timeline.view.items.some(
+      (item: {
+        kind: string;
+        category: string;
+        title: string;
+        status: string | null;
+        runId: string | null;
+      }) =>
+        item.kind === 'evidence' &&
+        item.category === 'governance' &&
+        item.title === 'Evidence: work.approval_gated.apply' &&
+        item.status === 'pending_approval' &&
+        item.runId === runId,
+    ),
+    true,
+  );
 });
 
 function createWorkCoreStore() {

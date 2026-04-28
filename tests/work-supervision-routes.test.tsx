@@ -449,9 +449,39 @@ test('POST /api/work/tasks/:taskId/supervised-run starts supervised runtime sess
     (item: { kind: string; summary: string | null }) =>
       item.kind === 'trace' && item.summary?.includes('work runtime ok'),
   );
+  const evidenceTimelineItems = detailPayload.timeline.view.items.filter(
+    (item: { kind: string }) => item.kind === 'evidence',
+  );
 
   assert.equal(detailResponse.status, 200);
   assert.ok(runtimeTrace, 'expected Work task timeline to include the runtime response');
+  assert.equal(
+    evidenceTimelineItems.some(
+      (item: { title: string; status: string | null; runId: string | null }) =>
+        item.title === 'Evidence: cats.runtime.session.create' &&
+        item.status === 'applied' &&
+        item.runId === payload.run.id,
+    ),
+    true,
+  );
+  assert.equal(
+    evidenceTimelineItems.some(
+      (item: { title: string; status: string | null; runId: string | null }) =>
+        item.title === 'Evidence: cats.runtime.message.send' &&
+        item.status === 'applied' &&
+        item.runId === payload.run.id,
+    ),
+    true,
+  );
+  assert.equal(
+    evidenceTimelineItems.some(
+      (item: { title: string; status: string | null; runId: string | null }) =>
+        item.title === 'Evidence: provider-agent run loop' &&
+        item.status === 'applied' &&
+        item.runId === payload.run.id,
+    ),
+    true,
+  );
   assert.equal(detailPayload.supervision.counts.evidence, 3);
   assert.equal(
     detailPayload.supervision.evidence.find(

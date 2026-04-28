@@ -25,6 +25,7 @@ import {
 import {
   queryCoreTaskTimelineView,
   type CoreTaskTimelineQuerySummary,
+  type CoreTaskTimelineItem,
   type CoreTaskTimelineView,
 } from '../../../core/taskTimeline.js';
 import {
@@ -970,9 +971,7 @@ export function buildWorkTaskDetailProjection(
   task: CoreTaskRecord,
   evidenceEvents: EvidenceEvent[] = [],
 ): WorkTaskDetailProjection {
-  const timeline = queryCoreTaskTimelineView(core, task, {
-    limit: WORK_TIMELINE_PREVIEW_LIMIT,
-  });
+  const timeline = buildWorkTaskTimelineProjection(core, task, evidenceEvents);
   const inspection = buildCoreTaskInspectionView(core, task);
   const linkedWorkItem = core.workItems.find((candidate) => candidate.taskId === task.id) ?? null;
   const project = linkedWorkItem?.projectId
@@ -1020,7 +1019,159 @@ export function buildWorkTaskDetailProjection(
     recovery: buildCoreTaskRecoveryView(core, task),
     timeline: {
       summary: timeline.summary,
-      view: timeline.timeline,
+      view: timeline.view,
     },
   };
+}
+
+function buildWorkTaskTimelineProjection(
+  core: CatsCoreState,
+  task: CoreTaskRecord,
+  evidenceEvents: EvidenceEvent[],
+): {
+  summary: CoreTaskTimelineQuerySummary;
+  view: CoreTaskTimelineView;
+} {
+  const base = queryCoreTaskTimelineView(core, task, {
+    limit: null,
+  }).timeline;
+  const evidenceItems = buildSupervisionEvidenceTimelineItems(core, task, evidenceEvents);
+  const matching = [
+    ...base.items,
+    ...evidenceItems,
+  ].sort(compareWorkTimelineItems);
+  const returned = matching.slice(0, WORK_TIMELINE_PREVIEW_LIMIT);
+
+  return {
+    summary: {
+      totalAvailable: matching.length,
+      matching: matching.length,
+      returned: returned.length,
+    },
+    view: {
+      taskId: task.id,
+      conversationId: task.conversationId,
+      latestTimestamp: returned[0]?.timestamp ?? null,
+      counts: {
+        total: returned.length,
+        taskLifecycle: returned.filter((item) => item.category === 'task_lifecycle').length,
+        governance: returned.filter((item) => item.category === 'governance').length,
+        execution: returned.filter((item) => item.category === 'execution').length,
+        workflow: returned.filter((item) => item.category === 'workflow').length,
+        recovery: returned.filter((item) => item.category === 'recovery').length,
+        operator: returned.filter((item) => item.category === 'operator').length,
+      },
+      items: returned,
+    },
+  };
+}
+
+function buildSupervisionEvidenceTimelineItems(
+  core: CatsCoreState,
+  task: CoreTaskRecord,
+  evidenceEvents: EvidenceEvent[],
+): CoreTaskTimelineItem[] {
+  const taskRunIds = new Set(
+    core.runs
+      .filter((run) => run.taskId === task.id)
+      .map((run) => run.id),
+  );
+
+  return evidenceEvents.flatMap((event) => {
+    const payload = asRecord(event.payload);
+    const runId = readString(payload?.runId);
+    if (!runId || !taskRunIds.has(runId)) {
+      return [];
+    }
+
+    return [{
+      timelineId: `evidence:${event.id}`,
+      kind: 'evidence' as const,
+      category: readEvidenceTimelineCategory(payload),
+      recordId: event.id,
+      timestamp: event.timestamp,
+      status: readString(payload?.status),
+      title: buildEvidenceTimelineTitle(payload),
+      summary: readString(payload?.summary) ?? readString(payload?.source),
+      taskId: task.id,
+      conversationId: event.conversationId ?? task.conversationId,
+      runId,
+      traceId: null,
+      actorId: event.actorId,
+    }];
+  });
+}
+
+function readEvidenceTimelineCategory(
+  payload: Record<string, unknown> | null,
+): CoreTaskTimelineItem['category'] {
+  const status = readString(payload?.status);
+  if (status === 'pending_approval') {
+    return 'governance';
+  }
+  if (status === 'rejected') {
+    return 'recovery';
+  }
+  return 'execution';
+}
+
+function buildEvidenceTimelineTitle(payload: Record<string, unknown> | null): string {
+  const source = readString(payload?.source) ?? 'supervision evidence';
+  const toolName = readString(payload?.toolName);
+  if (toolName) {
+    return `Evidence: ${toolName}`;
+  }
+  if (source === 'provider_agent_run_loop') {
+    return 'Evidence: provider-agent run loop';
+  }
+  return `Evidence: ${source}`;
+}
+
+function compareWorkTimelineItems(
+  left: CoreTaskTimelineItem,
+  right: CoreTaskTimelineItem,
+): number {
+  const timestampDiff = right.timestamp.localeCompare(left.timestamp);
+  if (timestampDiff !== 0) {
+    return timestampDiff;
+  }
+
+  const kindRank = (value: CoreTaskTimelineItem['kind']): number => {
+    switch (value) {
+      case 'activity':
+        return 7;
+      case 'evidence':
+        return 6;
+      case 'outcome':
+        return 5;
+      case 'checkpoint':
+        return 4;
+      case 'trace':
+        return 3;
+      case 'run':
+        return 2;
+      case 'approval_binding':
+        return 1;
+      case 'task':
+      default:
+        return 0;
+    }
+  };
+
+  const rankDiff = kindRank(right.kind) - kindRank(left.kind);
+  if (rankDiff !== 0) {
+    return rankDiff;
+  }
+
+  return right.recordId.localeCompare(left.recordId);
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function readString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0 ? value : null;
 }
