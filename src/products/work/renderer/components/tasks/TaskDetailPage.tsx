@@ -111,6 +111,14 @@ export function TaskDetailPage(): JSX.Element {
               {task.priority}
             </span>
           ) : null}
+          {task.productBinding ? (
+            <span
+              className={`tasksList__binding tasksList__binding--${task.productBinding}`}
+              title={`Task product binding: ${task.productBinding}`}
+            >
+              {task.productBinding}
+            </span>
+          ) : null}
           <span
             className={`tasksList__statusPill tasksList__statusPill--${task.status}`}
           >
