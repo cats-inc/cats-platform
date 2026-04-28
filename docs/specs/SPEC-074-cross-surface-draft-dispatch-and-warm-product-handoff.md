@@ -131,26 +131,30 @@ The platform therefore needs both:
 13. For new conversations/groups created from a cross-surface submit,
     `originSurface` shall be written from `targetSurface`, not from the source
     route.
-14. The first slice shall not require a new persisted `sourceSurface` field.
-15. Cross-surface draft dispatch and warm-navigation handoff shall not be
+14. A draft submitted with `targetSurface = 'code'` shall run the Code entry
+    materialization contract at activation time. It creates Code-owned
+    Interaction / Task records directly and shall not first create a
+    Chat-owned conversation or Chat-bound Task.
+15. The first slice shall not require a new persisted `sourceSurface` field.
+16. Cross-surface draft dispatch and warm-navigation handoff shall not be
     implemented by one product importing another product's renderer-local
     submit logic or local state stores.
-16. Shared create boundaries may remain:
+17. Shared create boundaries may remain:
     - `POST /api/channels`
     - `POST /api/parallel-chat-groups`
-17. Product-specific routing and warm-navigation-handoff behavior shall be
+18. Product-specific routing and warm-navigation-handoff behavior shall be
     coordinated by a platform/shared renderer seam above those create
     boundaries.
 
 ### Warm Navigation Handoff Requirements
 
-18. Before navigating across products, the platform shall be able to store an
+19. Before navigating across products, the platform shall be able to store an
     ephemeral warm navigation handoff bundle for the destination surface when
     the transition crosses a `React.lazy` product boundary or when optimistic
     continuity is needed on first render.
-19. The handoff bundle shall be in-memory only and shall not be treated as
+20. The handoff bundle shall be in-memory only and shall not be treated as
     durable persisted product state or canonical route truth.
-20. The handoff bundle shall be sufficient to render immediate continuity on
+21. The handoff bundle shall be sufficient to render immediate continuity on
     the destination surface, including:
     - handoff kind / destination entity kind
     - route target
@@ -163,38 +167,40 @@ The platform therefore needs both:
     - reserved future examples may include `navigate-conversation`,
       `navigate-artifact`, `navigate-task`, and `navigate-run`, but those are
       not required to ship in this first slice
-21. The destination product shall attempt to consume a matching handoff bundle
+22. The destination product shall attempt to consume a matching handoff bundle
     immediately on mount or route activation.
-22. After consuming the bundle, the destination product shall refresh
+23. After consuming the bundle, the destination product shall refresh
     `/api/app-shell` in the background and reconcile back to server truth.
-23. If the handoff bundle is missing, stale, or incompatible, the destination
+24. If the handoff bundle is missing, stale, or incompatible, the destination
     product may fall back to the current cold boot behavior without corrupting
     state or changing the route-derived destination truth.
 
 ### Performance Requirements
 
-24. When `targetSurface !== currentSurface`, or when another supported
+25. When `targetSurface !== currentSurface`, or when another supported
     cross-surface navigation has already resolved a destination product/route,
     the platform should begin prefetching the destination product bundle before
     or during transition.
-25. The common happy path should avoid dropping into a visible cold loading
+26. The common happy path should avoid dropping into a visible cold loading
     panel for the full duration of the cross-surface handoff.
-26. The current route-level lazy-loading split shall remain intact; this feature
+27. The current route-level lazy-loading split shall remain intact; this feature
     shall optimize around it rather than remove it.
 
 ### Product Behavior Requirements
 
-27. The current Chat draft helper that flips into Code shall create a Code-owned
-    conversation and land in the Code active route when submitted.
-28. Future Chat -> Work or other surface switches shall use the same shared
+28. The current Chat draft helper that flips into Code shall create a Code-owned
+    conversation, create the Code primary task required by `+New code`, and
+    land in the Code active route when submitted. The identity decision happens
+    at draft activation / first submit, not through a later promote action.
+29. Future Chat -> Work or other surface switches shall use the same shared
     contract rather than bespoke one-off flows.
-29. Later supported cross-surface navigation targets, such as existing
+30. Later supported cross-surface navigation targets, such as existing
     conversations, artifacts, tasks, or runs, should layer onto the same
     registry/store seam when continuity optimization is needed instead of
     introducing a second product-to-product handoff stack.
-30. Dismissing a surface switch shall restore the draft back to the current
+31. Dismissing a surface switch shall restore the draft back to the current
     surface semantics without forcing a new route.
-31. Product-scoped recents shall continue to rely on `originSurface`; no
+32. Product-scoped recents shall continue to rely on `originSurface`; no
     renderer-side heuristic may override that rule during cross-surface submit.
 
 ## Design Overview

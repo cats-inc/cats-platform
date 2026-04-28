@@ -133,7 +133,7 @@ and code comments:
 - `Goal`, `Requirement`, `Backlog Item`, `Issue`, `Defect`,
   `Story`, `Epic` → **`WorkItem` with a `kind` discriminator**.
   None of these gets its own record.
-- `Work Task`, `Code Task` → **`Task`**. There is no separate
+- `Work Task`, `Code Task`, `Chat Task` → **`Task`**. There is no separate
   record type. Whether a given `Task` surfaces in the Code
   product is resolved at projection time by `isCodeTask`
   (`src/products/code/api/projection.ts`) in priority order:
@@ -180,9 +180,13 @@ time. They do not redefine the record taxonomy:
 - `Cats Chat +New chat` is **conversation-first**. It creates or
   resumes the required Interaction Core records, especially a
   `Conversation`, and must not force an immediate `Task`, `Run`,
-  `Project`, or `WorkItem`. Chat may later promote or hand off a
-  conversation into Code or Work, but that is an explicit
-  materialization step, not the default chat-entry contract.
+  `Project`, or `WorkItem`. A draft that starts on the Chat route but
+  is submitted with `targetSurface = 'code'` or `targetSurface =
+  'work'` is not first materialized as Chat and then promoted; at
+  activation / first submit time it materializes directly under the
+  target product's entry contract. Chat promotion / handoff applies
+  only after an already-active Chat conversation is explicitly moved
+  or linked into Code or Work.
 - `Cats Code +New code` is **task-first conversation**. It must
   create one primary `Conversation` plus one primary `Task` with
   Code ownership / planning metadata and a link back to the
@@ -196,8 +200,16 @@ time. They do not redefine the record taxonomy:
   durable records must exist for the entry to count as Work.
 - `Run` is never required at entry creation time for Chat, Code, or
   Work. A `Run` means one concrete execution attempt and is created
-  lazily when an execute / build / review / supervised-action /
-  continuation attempt actually starts.
+  when the execution dispatcher / runtime bridge admits an executable
+  attempt for a `Task` or `Mission`. That boundary is the first
+  accepted agent/tool/build/review/continue/supervised-action dispatch,
+  not the draft shell opening and not the `Task` row creation. For
+  Code, the first user send commonly auto-dispatches a coding agent, so
+  the first `Run` may be emitted during the same submit flow as that
+  first message. For Work, the first `Run` usually waits for a later
+  supervised execute / continue action. If a first turn is only stored
+  as conversation text and no executable dispatch is admitted, no
+  `Run` exists yet.
 
 These rules preserve a clean distinction: `Conversation` is the
 interaction container, `Task` is the durable objective, `Run` is the
@@ -207,32 +219,50 @@ anchors.
 ### 2B. Product task binding and orphan-task home
 
 `Task` is shared Execution-layer state, so not every task belongs to
-Work Planning. A task may be:
+Work Planning. `work | code | chat | unbound` is a derived projection
+binding, not a stored source of truth and not a new record family. It is
+the correct home for "chat task" and "code task" concepts: both are
+`Task` records with product binding, not new table types and not
+automatically managed-work records.
 
-- `work` — it is linked from a `WorkItem` through `WorkItem.taskId`,
-  or it otherwise carries Work execution-product metadata.
-- `code` — it is owned by Code through planning handoff metadata,
-  Code artifacts, or a Code conversation fallback.
-- `chat` — it is owned by Chat through chat-side planning /
-  conversation provenance.
-- `unbound` — it has no trustworthy product signal yet.
+The derivation order is binding for Work Graph projections:
 
-`work | code | chat | unbound` is a projection binding, not a new
-record family. It is the correct home for "chat task" and "code task"
-concepts: both are `Task` records with product binding, not new table
-types and not automatically managed-work records.
+1. `work` — a `WorkItem` links to the task through `WorkItem.taskId`.
+   This structural Planning -> Execution bridge wins over prior Code /
+   Chat lineage. If a Code-origin task is linked into Work, the current
+   Work Graph binding becomes `work`; its Code origin remains lineage
+   metadata, not the projection binding.
+2. `code` — no `WorkItem` links to the task, and the task has a
+   `build` / `preview` `Artifact`, Code planning handoff metadata, or a
+   Code conversation fallback.
+3. `chat` — no `WorkItem` links to the task, and the task has explicit
+   Chat planning provenance or a Chat conversation fallback.
+4. `unbound` — no trustworthy non-Work product signal exists yet.
+
+Work execution-product metadata by itself does **not** make
+`productBinding = work`. A task with `planning.productHint = 'work'`,
+`planning.transfer.suggestedProduct = 'work'`, or a `work_thread`
+conversation but no `WorkItem.taskId` bridge is an incomplete Work claim
+to diagnose or repair, not managed Work. It must remain outside the
+`work` binding until a real `WorkItem` links to it.
 
 Non-Work tasks must not force Planning anchors. In particular:
 
 - Code-created tasks may live without `Project` / `WorkItem` until
   an explicit Work promotion or linking action happens.
-- Chat-created tasks may live without `Project` / `WorkItem` until
-  the conversation is explicitly materialized into managed work.
+- Chat-bound tasks may exist only when Chat deliberately creates a
+  task-like follow-up / action item from chat-side planning,
+  assistant-generated planning, or user intent inside an already-active
+  Chat conversation. A normal `+New chat` entry does not create one.
+  These tasks may live without `Project` / `WorkItem` until explicitly
+  linked into managed work.
 - The Work product must not silently create a fallback Project or
   WorkItem just to make non-Work tasks fit the Work hierarchy.
 - Work Graph / Cockpit / Tasks views should group tasks with no
   project lineage under an honest `No project` bucket and label or
-  sub-group them by product binding (`code`, `chat`, `unbound`).
+  sub-group them by product binding (`code`, `chat`, `unbound`). There
+  is no `No project / work` bucket: a task is `work` only after the
+  Planning bridge exists.
 - A real inbox-style Project is allowed only when the user or Work
   entry flow is actually creating Work-owned managed work; it is not
   a generic fallback for orphan Code / Chat tasks.
@@ -487,3 +517,4 @@ way `Artifact` already carries `projectId` / `workItemId` /
 *Amended: 2026-04-25 — §4 completed with `Mission.sourceTurnId` / `sourceLaneId` / `assignedAgentId`; gap discovered during SPEC-082 review*
 *Amended: 2026-04-28 — §2A added product entry materialization rules for Chat / Code / Work and lazy Run creation*
 *Amended: 2026-04-28 — §2B added task product-binding rules and the `No project` home for non-Work / orphan tasks*
+*Amended: 2026-04-28 — §2A/§2B tightened dispatcher-time Run creation, draft target-surface activation, structural Work binding, and Chat Task producer semantics*

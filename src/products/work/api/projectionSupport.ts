@@ -33,7 +33,16 @@ export function resolveTaskProductBinding(
   if (core.workItems.some((workItem) => workItem.taskId === task.id)) {
     return 'work';
   }
-  return resolveTaskExecutionProduct({ core, task }) ?? 'unbound';
+  if (core.artifacts.some((artifact) => artifact.taskId === task.id && (
+    artifact.kind === 'build' || artifact.kind === 'preview'
+  ))) {
+    return 'code';
+  }
+
+  const executionProduct = resolveTaskExecutionProduct({ core, task });
+  return executionProduct === 'work'
+    ? 'unbound'
+    : executionProduct ?? 'unbound';
 }
 
 export function isWorkTask(core: CatsCoreState, task: CoreTaskRecord): boolean {

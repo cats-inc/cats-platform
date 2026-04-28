@@ -177,7 +177,8 @@ Baseline contract:
 - one workspace intent when known
 - one execution profile chosen at creation or updated later
 - zero `Run`s at creation time
-- zero or more `Run`s later, as concrete execution attempts occur
+- zero or more `Run`s later, as concrete execution attempts are admitted by
+  the execution dispatcher / runtime bridge
 - zero or more `Artifact`s linked to the task and, when applicable, the
   producing run
 
@@ -195,8 +196,11 @@ should not be the preset's default creation behavior.
 time. Code may carry repo/workspace metadata, and it may later promote the
 same task into Work, but Work Planning anchors are explicit follow-on state.
 The first `Run` is created only when an execute / build / review / continue
-attempt starts; opening the code conversation and seeding the primary task is
-not itself an execution attempt.
+attempt is admitted by the execution dispatcher / runtime bridge. Opening the
+code conversation and seeding the primary task is not itself an execution
+attempt. Sending the first user message can still create the first `Run` in the
+same submit flow when Code immediately dispatches a coding agent; the emitter
+is the dispatcher, not the draft/create API.
 
 Initial preset inputs should include:
 
@@ -231,6 +235,11 @@ Like `+New code`, `+Team code` is Code-owned by default and does not require
 promotes the work into `Cats Work`. Runs remain lazy execution attempts, not
 entry-created records.
 
+For Code presets, a task family means one primary/root Code `Task` plus child
+tasks connected through `Task.parentTaskId` for explicit sub-objectives. It is
+not a separate container record and does not imply Work `Project` / `WorkItem`
+creation.
+
 ### +Peer code
 
 `+Peer code` is the branch-and-review container.
@@ -255,7 +264,7 @@ Typical first-slice roles include:
 independent review or implementation objectives, but those identities are still
 Code tasks. It must not imply Work `Project` / `WorkItem` creation by default,
 and review/build/relay runs are created only when those attempts actually
-start.
+start through the execution dispatcher / runtime bridge.
 
 ## Execution Profile Requirements
 

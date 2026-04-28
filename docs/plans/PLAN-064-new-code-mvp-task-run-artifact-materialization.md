@@ -97,7 +97,8 @@ The implementation thesis is:
       action always yields:
       - one `Conversation(kind = 'code_thread')`
       - one primary code `Task`
-      - no `Run` until execution actually starts
+      - no `Run` until the execution dispatcher / runtime bridge admits an
+        executable attempt
 - [ ] Define the minimum metadata written at creation time, including at least:
       - product hint / origin surface
       - linked conversation id
@@ -210,7 +211,9 @@ and evidence all point back to one task/conversation anchor.
 - Treat `Conversation + primary code Task` as the durable `+New code` anchor.
 - Do not create a `Project` or `WorkItem` for `+New code` unless an explicit
   Work-promotion or linking action asks for it.
-- Create `Run` lazily at execution time, not at entry time.
+- Create `Run` at execution-dispatch admission, not at entry time. For Code,
+  first send may immediately admit the first executable attempt and therefore
+  create the first Run in the same submit flow.
 - For this MVP, `+New code` uses direct `Task -> Run` linkage and does not
   require a first-class Mission record.
 - Keep one task identity across retries, restarts, takeovers, and repair loops
@@ -225,6 +228,9 @@ and evidence all point back to one task/conversation anchor.
 - Let Work Graph project Code tasks with `productBinding = code` and place
   projectless Code tasks under `No project`; do not create fallback
   `Project` / `WorkItem` records just to house them.
+- If a Code-origin task is later linked through `WorkItem.taskId`, Work Graph
+  projects the current task binding as `work`; Code origin remains lineage
+  metadata rather than the binding value.
 - Defer Work promotion from this slice; Code-origin tasks stay Code-owned by
   default.
 - Preserve `job` only as an external-system boundary term; do not reintroduce
@@ -266,8 +272,9 @@ and evidence all point back to one task/conversation anchor.
 | 2026-04-19 | Plan created to implement the first narrow `+New code` materialization slice around `Conversation + primary code Task + Run* + Artifact*` with Code-owned-by-default behavior |
 | 2026-04-19 | Follow-up trim: deferred Work promotion and Chat projection, removed create-time idempotency from MVP scope, and made the MVP `Task -> Run` rule explicit |
 | 2026-04-28 | Amended scope after Build/Relay sidebar retirement: `PLAN-064` remains active for `+New code`, but it no longer depends on completing `/code/build` or `/code/relay`. |
-| 2026-04-28 | Clarified entry materialization: `+New code` creates `Conversation + primary Task`, does not require `Project` / `WorkItem`, and creates the first `Run` only when execution starts. |
+| 2026-04-28 | Clarified entry materialization: `+New code` creates `Conversation + primary Task`, does not require `Project` / `WorkItem`, and creates the first `Run` only when an execution attempt is admitted. |
 | 2026-04-28 | Clarified orphan-task home: Code tasks without Project / WorkItem anchors project into Work Graph as `productBinding = code` under `No project`, rather than receiving fallback Work records. |
+| 2026-04-28 | Follow-up amendment: first Run starts at dispatcher/runtime admission; a first user send can create it immediately when Code auto-dispatches. Work linkage through `WorkItem.taskId` flips current Work Graph binding to `work` without erasing Code origin lineage. |
 
 ---
 

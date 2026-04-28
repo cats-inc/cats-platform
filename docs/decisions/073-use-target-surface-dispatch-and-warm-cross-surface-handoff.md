@@ -63,6 +63,9 @@ Rules:
   directly
 - when a new conversation/group is created from a cross-surface submit,
   `originSurface` must be written as `targetSurface`
+- a Chat-route draft submitted with `targetSurface = 'code'` activates directly
+  into the Code entry contract. It creates Code-owned records and appears in
+  Code recents; it is not a Chat conversation that later promotes to Code.
 - the first slice does **not** add a new persisted `sourceSurface` or
   `launchSurface` field
 

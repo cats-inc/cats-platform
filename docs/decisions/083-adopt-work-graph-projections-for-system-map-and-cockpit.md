@@ -184,9 +184,10 @@ a Work entry.
 
 `Run` remains lazy. A Work entry does not create a `Run` until a
 supervised execution attempt, tool batch, continuation, or delegated
-operation actually starts. This keeps System Map honest: Planning
-shows the durable work to be done; Execution shows the primary task
-immediately and the attempt ledger only after work starts.
+operation is admitted by the execution dispatcher / runtime bridge.
+This keeps System Map honest: Planning shows the durable work to be
+done; Execution shows the primary task immediately and the attempt
+ledger only after work starts.
 
 ### 6. Non-Work tasks live in `No project`, not hidden fallback projects
 
@@ -207,9 +208,19 @@ System Map, Cockpit, and the Tasks list to show Code tasks and Chat
 tasks as tasks, while still making clear that they are not managed
 Work unless a `WorkItem` links to them.
 
+The `work` binding is intentionally structural: `WorkItem.taskId`
+linkage is the only source that makes a task `productBinding = work`.
+Work-flavored task metadata or a `work_thread` conversation without
+that bridge is an incomplete Work claim, not managed Work. The Work
+Graph should surface it as a diagnostic and group it as `unbound` until
+the producer repairs it by linking a `WorkItem` or retags it as Code /
+Chat.
+
 Tasks with no Project / WorkItem lineage are grouped under an honest
 `No project` bucket. The bucket may group or filter by product binding
-so the owner can distinguish `code`, `chat`, and `unbound` tasks.
+so the owner can distinguish `code`, `chat`, and `unbound` tasks. There
+is no `No project / work` subgroup because `work` requires the Planning
+bridge that gives it project / work-item lineage.
 The product must not silently create an inbox-style Project to hide
 that absence. Auto-created inbox / untriaged Projects are allowed only
 when the Work entry itself is creating real managed work.

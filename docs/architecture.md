@@ -51,7 +51,9 @@ Entry materialization is intentionally product-specific:
 
 - `Cats Chat +New chat` is conversation-first. It creates the Interaction Core
   records needed for the chat and does not force a `Task`, `Run`, `Project`, or
-  `WorkItem` at entry time.
+  `WorkItem` at entry time. If the draft is submitted with a Code or Work
+  `targetSurface`, it activates directly into that target product rather than
+  creating a Chat-owned conversation first.
 - `Cats Code +New code` is task-first conversation. It creates one primary
   coding `Conversation` and one primary Code-owned `Task`, but does not force
   `Project` / `WorkItem` planning anchors.
@@ -59,16 +61,21 @@ Entry materialization is intentionally product-specific:
   primary `Conversation`, `Project`, `WorkItem`, and `Task` linked through
   `WorkItem.taskId` so the Work Graph has Interaction, Planning, and Execution
   anchors from the start.
-- `Run` is lazy for all three surfaces: it is created when a concrete execution
-  attempt starts, not merely because an entry was created.
+- `Run` is lazy for all three surfaces: it is created when the execution
+  dispatcher / runtime bridge admits a concrete execution attempt, not merely
+  because an entry was created. For Code this can happen during the first-send
+  submit flow when an agent is auto-dispatched.
 
 Task projection is shared across products. Work Graph surfaces render every
 Core `Task` they know about and label task rows with a product binding:
-`work`, `code`, `chat`, or `unbound`. Code and Chat tasks do not receive fake
-Project / WorkItem anchors just to make the Work UI tidy. When they have no
-project lineage, Work groups them under `No project` and may sub-group by
-product binding. A real inbox-style project is reserved for actual Work
-creation, not as a silent fallback for orphan Code / Chat tasks.
+`work`, `code`, `chat`, or `unbound`. `work` is derived only from a
+`WorkItem.taskId` bridge; Work-flavored metadata without that bridge is an
+incomplete Work claim, not managed Work. Code and Chat tasks do not receive
+fake Project / WorkItem anchors just to make the Work UI tidy. When they have
+no project lineage, Work groups them under `No project` and may sub-group by
+product binding (`code`, `chat`, `unbound`). A real inbox-style project is
+reserved for actual Work creation, not as a silent fallback for orphan Code /
+Chat tasks.
 
 Terminology rule:
 
@@ -215,7 +222,8 @@ This distinction also drives the first `Cats Code` entry presets:
 - `+New code`
   - one primary coding conversation
   - one primary Code-owned task
-  - no required Project / WorkItem / Run at creation time
+  - no required Project / WorkItem / Run at creation time; first send may
+    immediately dispatch and emit the first Run
 - `+Team code`
   - one shared multi-participant coding conversation
 - `+Peer code`

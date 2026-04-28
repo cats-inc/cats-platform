@@ -15,13 +15,15 @@ export type WorkGraphLayer = "interaction" | "planning" | "execution";
  * which product owns / executes each task. Computed by
  * `resolveTaskProductBinding`:
  *
- *   - 'work'    — task has a Work Item linking to it, OR planning hint
- *                 says work, OR conversation kind is `work_thread`.
- *   - 'code'    — planning hint says code, OR conversation is
- *                 `code_thread`.
+ *   - 'work'    — task has a Work Item linking to it through
+ *                 `WorkItem.taskId`; this structural bridge wins over
+ *                 Code / Chat lineage metadata.
+ *   - 'code'    — task has a build / preview artifact, planning hint says
+ *                 code, OR conversation is `code_thread`.
  *   - 'chat'    — conversation is a chat channel / DM / external
  *                 transport / private escalation.
- *   - 'unbound' — no signal at all. Orphan Core task.
+ *   - 'unbound' — no usable signal, or a Work hint / `work_thread`
+ *                 fallback exists without the required WorkItem bridge.
  *
  * Set only on `kind === 'task'` summaries; undefined elsewhere.
  */

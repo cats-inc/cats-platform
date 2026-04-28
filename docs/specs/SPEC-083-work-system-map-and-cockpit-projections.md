@@ -214,7 +214,8 @@ Tables and Task Hub remain later projections over the same graph.
       `WorkItem.taskId`
 40. `+New work` shall not create a `Run` merely because the entry exists. The
     first `Run` shall appear only when a supervised execution attempt, tool
-    batch, continuation, or delegated operation actually starts.
+    batch, continuation, or delegated operation is admitted by the execution
+    dispatcher / runtime bridge.
 41. `+New chat` and `+New code` remain different producer contracts:
     `+New chat` may produce only Interaction records, while `+New code`
     produces Interaction plus a Code-owned `Task` without forcing Work
@@ -224,14 +225,37 @@ Tables and Task Hub remain later projections over the same graph.
     `work`, `code`, `chat`, or `unbound`.
 43. System Map, Cockpit, and the Work Tasks list shall render task product
     binding as product attribution, not as a new canonical record family.
-44. Tasks with no resolved Project / WorkItem lineage shall appear under a
+44. Task product binding shall be derived, not stored. The derivation order is:
+    `WorkItem.taskId` linkage -> `work`; build / preview artifact or Code
+    planning / conversation provenance -> `code`; Chat planning / conversation
+    provenance -> `chat`; otherwise `unbound`.
+45. Work-flavored task metadata, `planning.productHint = 'work'`,
+    `planning.transfer.suggestedProduct = 'work'`, or a `work_thread`
+    conversation shall not produce `productBinding = work` without a
+    `WorkItem.taskId` bridge. That state shall project as an incomplete Work
+    claim diagnostic and remain outside managed Work until repaired.
+46. When a Code-origin or Chat-origin task is later linked by `WorkItem.taskId`,
+    the current Work Graph binding shall become `work`. The original product
+    origin may remain visible as lineage metadata, but it shall not override
+    the structural Work binding.
+47. Tasks with no resolved Project / WorkItem lineage shall appear under a
     `No project` grouping. The grouping may be sub-grouped or filtered by task
     product binding, for example `No project / code`, `No project / chat`, and
     `No project / unbound`.
-45. Work shall not auto-create fallback `Project` or `WorkItem` records for
+48. Work shall not auto-create fallback `Project` or `WorkItem` records for
     Code-bound, Chat-bound, or unbound tasks solely to remove them from the
     `No project` grouping. An inbox-style project may be created only by an
     explicit Work entry or Work object creation flow.
+49. Entry creation shall not create an `Artifact` merely because an entry was
+    opened or submitted. Artifacts shall be produced by attachments, imports,
+    execution outputs, or explicit document/report creation.
+50. Entry-created `Activity` is an audit/feed event, not a structural anchor.
+    If an entry producer writes one, it shall be written after the durable
+    entry records exist, use `operator_action` or another existing
+    `CoreActivityRecord.kind`, carry the relevant `conversationId`, `taskId`,
+    `projectId`, and/or `workItemId` anchors, and render in background/system
+    timeline surfaces rather than as a transcript message. Entry correctness
+    shall never depend on an Activity row.
 
 ### Producer Slot Contract
 
@@ -274,13 +298,19 @@ Tables and Task Hub remain later projections over the same graph.
     anchors. Such records still project through Work Graph when queried, but
     they must not be diagnosed as malformed Work entries unless they explicitly
     claim Work ownership.
-14. Chat entry or planning producers may write Chat-bound tasks without Work
-    Planning anchors. Such records project as `productBinding = chat` and use
-    the same `No project` home until explicitly promoted into Work.
+14. Chat entry producers shall not create tasks by default. Chat-bound tasks
+    may be written only by explicit chat-side planning, a user action that
+    turns chat content into a follow-up / action item, or an assistant planning
+    step that deliberately materializes a Task from an already-active Chat
+    conversation. Such records project as `productBinding = chat` and use the
+    same `No project` home until explicitly linked into Work.
 15. Unbound tasks shall project as `productBinding = unbound` and use the `No
     project` home until a later producer writes product attribution or Planning
     linkage. They should be visible as cleanup / triage candidates, not silently
     discarded.
+16. A Chat draft submitted with `targetSurface = 'code'` shall activate
+    directly into the Code producer contract; it shall create Code-owned
+    Interaction / Task state and shall not first create a Chat-bound task.
 
 #### Minimum Anchor Sets
 
@@ -303,10 +333,10 @@ Tables and Task Hub remain later projections over the same graph.
   - Slot minimum: record id.
   - Diagnostic minimum: present `parentTaskId` and `conversationId` must
     resolve. If a WorkItem points at this task, that `WorkItem.taskId` must
-    resolve back to this task. If the task is Work-bound, the projection should
-    surface a missing-planning-bridge diagnostic when no WorkItem links it.
-    Code-bound, Chat-bound, and unbound tasks without Project / WorkItem
-    lineage are not broken; they belong in `No project`.
+    resolve back to this task. A task with Work-flavored metadata but no
+    `WorkItem.taskId` bridge should surface an incomplete-Work-claim diagnostic
+    and project as `unbound`. Code-bound, Chat-bound, and unbound tasks without
+    Project / WorkItem lineage are not broken; they belong in `No project`.
   - Optional context: `ownerActorId`, `assignedActorIds`,
     `orchestratorActorId`, planning metadata, task product binding.
 - **Mission / Execution**
