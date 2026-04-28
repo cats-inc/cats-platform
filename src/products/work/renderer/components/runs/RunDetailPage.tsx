@@ -237,10 +237,12 @@ export function RunDetailPage(): JSX.Element {
                       to={buildWorkRunPath(parentTask.id, run.parentRunId)}
                       className="runDetail__crumbLink"
                     >
-                      {run.parentRunId}
+                      {run.linkedRunTitle ?? run.parentRunId}
                     </Link>
                   ) : (
-                    <code>{run.parentRunId}</code>
+                    <span title={run.parentRunId}>
+                      {run.linkedRunTitle ?? <code>{run.parentRunId}</code>}
+                    </span>
                   )}
                 </dd>
               </div>

@@ -254,6 +254,13 @@ export interface WorkGraphObjectSummary {
    * means the record has the field but no actors are assigned.
    */
   assignedActorTitles?: string[];
+  /**
+   * Denormalized title of `linkedRunId` (when present and resolvable).
+   * Set on `kind === 'run'` (parent run via parentRunId); undefined
+   * for other kinds. Symmetric to `linkedTaskTitle` /
+   * `linkedWorkItemTitle`.
+   */
+  linkedRunTitle?: string | null;
 }
 
 export interface WorkGraphEvidenceAttachment {

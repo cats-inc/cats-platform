@@ -63,6 +63,10 @@ export function buildWorkGraphProjection(core: CatsCoreState): WorkGraphProjecti
       core.ownerProfile.displayName || core.ownerProfile.actorId,
     );
   }
+  const runTitleById = new Map<string, string>();
+  for (const run of core.runs) {
+    runTitleById.set(run.id, run.title);
+  }
 
   const objects: WorkGraphObjectSummary[] = [
     ...core.projects.map((p) => projectToSummary(p, conversationTitleById)),
@@ -86,7 +90,7 @@ export function buildWorkGraphProjection(core: CatsCoreState): WorkGraphProjecti
       missionToSummary(m, conversationTitleById, actorTitleById),
     ),
     ...core.runs.map((run) =>
-      runToSummary(run, taskTitleById, conversationTitleById),
+      runToSummary(run, taskTitleById, conversationTitleById, runTitleById),
     ),
     ...core.artifacts.map((a) => artifactToSummary(a, conversationTitleById)),
     ...core.activities.map((a) => activityToSummary(a, conversationTitleById)),
@@ -367,6 +371,7 @@ function runToSummary(
   r: CoreRunRecord,
   taskTitleById: Map<string, string>,
   conversationTitleById: Map<string, string>,
+  runTitleById: Map<string, string>,
 ): WorkGraphObjectSummary {
   return {
     id: r.id,
@@ -391,6 +396,9 @@ function runToSummary(
     linkedTaskTitle: r.taskId ? taskTitleById.get(r.taskId) ?? null : null,
     linkedConversationTitle: r.conversationId
       ? conversationTitleById.get(r.conversationId) ?? null
+      : null,
+    linkedRunTitle: r.parentRunId
+      ? runTitleById.get(r.parentRunId) ?? null
       : null,
   };
 }
