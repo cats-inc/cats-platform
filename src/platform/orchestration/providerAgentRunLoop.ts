@@ -111,6 +111,9 @@ export async function startProviderAgentRunLoop(
   };
   const record: ProviderAgentRunLoopRecord = {
     observations: [observation],
+    plans: [],
+    toolRequests: [],
+    approvals: [],
     outcomes: [outcome],
     latestHandoff: handoff,
   };

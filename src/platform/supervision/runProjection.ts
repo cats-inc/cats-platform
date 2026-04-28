@@ -22,9 +22,14 @@ import {
 import {
   RUN_LOOP_OBSERVATION_SOURCE_VALUES,
   type ProviderAgentRunLoopRecord,
+  type RunLoopApprovalState,
+  type RunLoopDecisionConfidence,
   type RunLoopDecisionHandoff,
   type RunLoopObservationRef,
 } from './runLoopHandoff.js';
+
+const RUN_LOOP_DECISION_CONFIDENCE_VALUES = ['low', 'medium', 'high'] as const;
+const RUN_LOOP_APPROVAL_STATE_VALUES = ['pending', 'approved', 'denied', 'cancelled'] as const;
 
 export interface SupervisionPolicySnapshotProjection {
   snapshotRef: SupervisionPolicySnapshotRef;
@@ -119,14 +124,27 @@ function readProviderAgentRunLoop(run: CoreRunRecord): ProviderAgentRunLoopRecor
   }
 
   const observations = readRunLoopObservations(runLoop.observations);
+  const plans = readRunLoopPlans(runLoop.plans);
+  const toolRequests = readRunLoopToolRequests(runLoop.toolRequests);
+  const approvals = readRunLoopApprovals(runLoop.approvals);
   const outcomes = readRunLoopOutcomes(runLoop.outcomes);
   const latestHandoff = readRunLoopDecisionHandoff(runLoop.latestHandoff);
-  if (observations.length === 0 && outcomes.length === 0 && !latestHandoff) {
+  if (
+    observations.length === 0 &&
+    plans.length === 0 &&
+    toolRequests.length === 0 &&
+    approvals.length === 0 &&
+    outcomes.length === 0 &&
+    !latestHandoff
+  ) {
     return null;
   }
 
   return {
     observations,
+    plans,
+    toolRequests,
+    approvals,
     outcomes,
     latestHandoff,
   };
@@ -152,6 +170,100 @@ function readRunLoopObservations(
           actionId,
           observedAt,
           ...observationRef,
+        }]
+      : [];
+  });
+}
+
+function readRunLoopPlans(value: unknown): ProviderAgentRunLoopRecord['plans'] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((item) => {
+    const record = asRecord(item);
+    const planId = readString(record?.planId);
+    const decisionId = readString(record?.decisionId);
+    const actionId = readString(record?.actionId);
+    const confidence = readRunLoopDecisionConfidence(record?.confidence);
+    const recordedAt = readString(record?.recordedAt);
+    const stepCount = readFiniteNumber(record?.stepCount);
+    const executableStepCount = readFiniteNumber(record?.executableStepCount);
+    const toolNames = readStringArray(record?.toolNames);
+    const approvalStepIds = readStringArray(record?.approvalStepIds);
+
+    return planId &&
+      decisionId &&
+      actionId &&
+      confidence &&
+      recordedAt &&
+      stepCount !== null &&
+      executableStepCount !== null
+      ? [{
+          planId,
+          decisionId,
+          actionId,
+          confidence,
+          recordedAt,
+          stepCount,
+          executableStepCount,
+          toolNames,
+          approvalStepIds,
+        }]
+      : [];
+  });
+}
+
+function readRunLoopToolRequests(
+  value: unknown,
+): ProviderAgentRunLoopRecord['toolRequests'] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((item) => {
+    const record = asRecord(item);
+    const requestId = readString(record?.requestId);
+    const actionId = readString(record?.actionId);
+    const toolName = readString(record?.toolName);
+    const status = readToolResultStatus(record?.status);
+    const recordedAt = readString(record?.recordedAt);
+
+    return requestId && actionId && toolName && status && recordedAt
+      ? [{
+          requestId,
+          actionId,
+          toolName,
+          status,
+          recordedAt,
+          ...readOptionalRunLoopStringProperty(record, 'approvalRequestId'),
+          ...readOptionalRunLoopStringProperty(record, 'evidenceRef'),
+        }]
+      : [];
+  });
+}
+
+function readRunLoopApprovals(value: unknown): ProviderAgentRunLoopRecord['approvals'] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.flatMap((item) => {
+    const record = asRecord(item);
+    const approvalRequestId = readString(record?.approvalRequestId);
+    const actionId = readString(record?.actionId);
+    const toolName = readString(record?.toolName);
+    const state = readRunLoopApprovalState(record?.state);
+    const recordedAt = readString(record?.recordedAt);
+
+    return approvalRequestId && actionId && toolName && state && recordedAt
+      ? [{
+          approvalRequestId,
+          actionId,
+          toolName,
+          state,
+          recordedAt,
+          ...readOptionalRunLoopStringProperty(record, 'evidenceRef'),
         }]
       : [];
   });
@@ -515,12 +627,33 @@ function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value : null;
 }
 
+function readStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((item): item is string =>
+    typeof item === 'string' && item.trim().length > 0);
+}
+
+function readFiniteNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
 function readOptionalRunLoopRefStringProperty<K extends 'evidenceRef' | 'summaryRef'>(
   record: Record<string, unknown> | null,
   key: K,
 ): Pick<RunLoopObservationRef, K> | Record<string, never> {
   const value = readString(record?.[key]);
   return value ? { [key]: value } as Pick<RunLoopObservationRef, K> : {};
+}
+
+function readOptionalRunLoopStringProperty<K extends 'approvalRequestId' | 'evidenceRef'>(
+  record: Record<string, unknown> | null,
+  key: K,
+): Record<K, string> | Record<string, never> {
+  const value = readString(record?.[key]);
+  return value ? { [key]: value } as Record<K, string> : {};
 }
 
 function readOptionalRunLoopErrorCode(
@@ -536,4 +669,18 @@ function readOptionalToolResultStatusProperty(
 ): Pick<RunLoopObservationRef, 'resultStatus'> {
   const value = readToolResultStatus(record?.[key]);
   return value ? { resultStatus: value } : {};
+}
+
+function readRunLoopDecisionConfidence(value: unknown): RunLoopDecisionConfidence | null {
+  return typeof value === 'string' &&
+    RUN_LOOP_DECISION_CONFIDENCE_VALUES.includes(value as RunLoopDecisionConfidence)
+    ? value as RunLoopDecisionConfidence
+    : null;
+}
+
+function readRunLoopApprovalState(value: unknown): RunLoopApprovalState | null {
+  return typeof value === 'string' &&
+    RUN_LOOP_APPROVAL_STATE_VALUES.includes(value as RunLoopApprovalState)
+    ? value as RunLoopApprovalState
+    : null;
 }

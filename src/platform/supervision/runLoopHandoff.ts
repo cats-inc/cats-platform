@@ -45,8 +45,46 @@ export interface RunLoopOutcomeRecord {
   handoff: RunLoopDecisionHandoff;
 }
 
+export type RunLoopDecisionConfidence = 'low' | 'medium' | 'high';
+
+export interface RunLoopPlanRecord {
+  planId: string;
+  decisionId: string;
+  actionId: string;
+  confidence: RunLoopDecisionConfidence;
+  recordedAt: string;
+  stepCount: number;
+  executableStepCount: number;
+  toolNames: string[];
+  approvalStepIds: string[];
+}
+
+export interface RunLoopToolRequestRecord {
+  requestId: string;
+  actionId: string;
+  toolName: string;
+  status: ToolResultStatus;
+  recordedAt: string;
+  approvalRequestId?: string;
+  evidenceRef?: string;
+}
+
+export type RunLoopApprovalState = 'pending' | 'approved' | 'denied' | 'cancelled';
+
+export interface RunLoopApprovalRecord {
+  approvalRequestId: string;
+  actionId: string;
+  toolName: string;
+  state: RunLoopApprovalState;
+  recordedAt: string;
+  evidenceRef?: string;
+}
+
 export interface ProviderAgentRunLoopRecord {
   observations: RunLoopObservationRecord[];
+  plans: RunLoopPlanRecord[];
+  toolRequests: RunLoopToolRequestRecord[];
+  approvals: RunLoopApprovalRecord[];
   outcomes: RunLoopOutcomeRecord[];
   latestHandoff: RunLoopDecisionHandoff | null;
 }

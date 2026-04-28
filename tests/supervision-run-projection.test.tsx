@@ -83,6 +83,40 @@ async function createFixtureCore() {
                 resultStatus: 'applied',
               },
             ],
+            plans: [
+              {
+                planId: 'plan-supervised-1',
+                decisionId: 'decision-supervised-1',
+                actionId: 'action-supervised-1',
+                confidence: 'high',
+                recordedAt: '2026-04-25T11:01:30.000Z',
+                stepCount: 2,
+                executableStepCount: 1,
+                toolNames: ['work.approval_gated.apply'],
+                approvalStepIds: ['step-approval'],
+              },
+            ],
+            toolRequests: [
+              {
+                requestId: 'tool-request-supervised-1',
+                actionId: 'step-approval',
+                toolName: 'work.approval_gated.apply',
+                status: 'pending_approval',
+                approvalRequestId: 'approval-supervised-1',
+                evidenceRef: 'evidence-supervised-1',
+                recordedAt: '2026-04-25T11:02:00.000Z',
+              },
+            ],
+            approvals: [
+              {
+                approvalRequestId: 'approval-supervised-1',
+                actionId: 'step-approval',
+                toolName: 'work.approval_gated.apply',
+                state: 'pending',
+                evidenceRef: 'evidence-supervised-1',
+                recordedAt: '2026-04-25T11:02:00.000Z',
+              },
+            ],
             outcomes: [
               {
                 outcomeId: 'action-supervised-1:outcome',
@@ -211,6 +245,16 @@ test('supervised run projection combines run state, policy snapshots, and eviden
   assert.equal(projection.approvalRequests[0]?.requestId, 'approval-supervised-1');
   assert.equal(projection.latestPolicySnapshot?.snapshot.actionId, 'action-supervised-1');
   assert.equal(projection.providerAgentRunLoop?.observations[0]?.source, 'provider_response');
+  assert.equal(projection.providerAgentRunLoop?.plans[0]?.planId, 'plan-supervised-1');
+  assert.deepEqual(
+    projection.providerAgentRunLoop?.plans[0]?.toolNames,
+    ['work.approval_gated.apply'],
+  );
+  assert.equal(
+    projection.providerAgentRunLoop?.toolRequests[0]?.approvalRequestId,
+    'approval-supervised-1',
+  );
+  assert.equal(projection.providerAgentRunLoop?.approvals[0]?.state, 'pending');
   assert.equal(
     projection.providerAgentRunLoop?.outcomes[0]?.sessionId,
     'runtime-session-supervised-1',

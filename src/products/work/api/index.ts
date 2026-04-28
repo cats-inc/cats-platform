@@ -1050,6 +1050,15 @@ function mergeProviderAgentRunLoopRecord(
   const observations = Array.isArray(current?.observations)
     ? current.observations.filter(isRunLoopObservationRecord)
     : [];
+  const plans = Array.isArray(current?.plans)
+    ? current.plans.filter(isRunLoopPlanRecord)
+    : [];
+  const toolRequests = Array.isArray(current?.toolRequests)
+    ? current.toolRequests.filter(isRunLoopToolRequestRecord)
+    : [];
+  const approvals = Array.isArray(current?.approvals)
+    ? current.approvals.filter(isRunLoopApprovalRecord)
+    : [];
   const outcomes = Array.isArray(current?.outcomes)
     ? current.outcomes.filter(isRunLoopOutcomeRecord)
     : [];
@@ -1058,6 +1067,18 @@ function mergeProviderAgentRunLoopRecord(
     observations: [
       ...observations,
       ...update.observations,
+    ],
+    plans: [
+      ...plans,
+      ...update.plans,
+    ],
+    toolRequests: [
+      ...toolRequests,
+      ...update.toolRequests,
+    ],
+    approvals: [
+      ...approvals,
+      ...update.approvals,
     ],
     outcomes: [
       ...outcomes,
@@ -1287,6 +1308,46 @@ function isRunLoopObservationRecord(
     typeof record.observedAt === 'string' &&
     typeof record.refId === 'string' &&
     typeof record.source === 'string';
+}
+
+function isRunLoopPlanRecord(
+  value: unknown,
+): value is ProviderAgentRunLoopRecord['plans'][number] {
+  const record = asRecord(value);
+  return record !== null &&
+    typeof record.planId === 'string' &&
+    typeof record.decisionId === 'string' &&
+    typeof record.actionId === 'string' &&
+    typeof record.confidence === 'string' &&
+    typeof record.recordedAt === 'string' &&
+    typeof record.stepCount === 'number' &&
+    typeof record.executableStepCount === 'number' &&
+    Array.isArray(record.toolNames) &&
+    Array.isArray(record.approvalStepIds);
+}
+
+function isRunLoopToolRequestRecord(
+  value: unknown,
+): value is ProviderAgentRunLoopRecord['toolRequests'][number] {
+  const record = asRecord(value);
+  return record !== null &&
+    typeof record.requestId === 'string' &&
+    typeof record.actionId === 'string' &&
+    typeof record.toolName === 'string' &&
+    typeof record.status === 'string' &&
+    typeof record.recordedAt === 'string';
+}
+
+function isRunLoopApprovalRecord(
+  value: unknown,
+): value is ProviderAgentRunLoopRecord['approvals'][number] {
+  const record = asRecord(value);
+  return record !== null &&
+    typeof record.approvalRequestId === 'string' &&
+    typeof record.actionId === 'string' &&
+    typeof record.toolName === 'string' &&
+    typeof record.state === 'string' &&
+    typeof record.recordedAt === 'string';
 }
 
 function isRunLoopOutcomeRecord(
