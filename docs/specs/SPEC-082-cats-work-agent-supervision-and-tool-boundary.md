@@ -151,6 +151,10 @@ invocations are tools unless explicitly promoted by a later feature.
 
 1. **FR-1 (Work run launch).** A supervised Work run shall start from a
    managed-work or mission context, not from an untracked provider session.
+   `+New work` may create the primary `Conversation`, `Project`, `WorkItem`,
+   and `Task` linked through `WorkItem.taskId` that define that context, but
+   it shall not create a run by itself. The run begins only when the operator
+   or workflow starts supervised execution.
 2. **FR-2 (Run state model).** The first slice shall represent a primary run
    state with explicit blocker reasons. Primary run states are:
    - `queued`

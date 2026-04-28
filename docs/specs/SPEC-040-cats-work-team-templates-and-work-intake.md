@@ -19,6 +19,17 @@ The current Work creation model has only these entry classes:
 - Manual creation of durable Work objects: `+Project`, `+Work Item`, and
   `+Task`.
 
+`+New work` is still materially different from `+New chat`. Even though its UI
+is chat-style, it must create the Work-owned durable anchor set immediately:
+one primary `Conversation`, one `Project`, one `WorkItem`, and one primary
+`Task` linked through `WorkItem.taskId`. It must not create a `Run` at entry
+time; the first run is created only when supervised execution, tool work,
+continuation, or delegation actually starts.
+
+This also differs from `+New code`: Code creates a conversation plus primary
+task without forcing `Project` / `WorkItem` anchors, while Work creates all
+three structural Work Graph layers from the start.
+
 The old intake form, team-template picker, generated-plan review route, and
 `/api/work/intake*` endpoints must not be revived as product surfaces. Any
 future planning assistance for `+New work` needs a new spec rooted in the
@@ -291,5 +302,6 @@ useful.
 ---
 
 *Created: 2026-03-29*
+*Revised: 2026-04-28*
 *Author: Codex*
 *Related Plan: [PLAN-028](../plans/PLAN-028-cats-work-team-templates-and-work-intake.md)*

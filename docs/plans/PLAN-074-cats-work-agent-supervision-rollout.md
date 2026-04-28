@@ -46,6 +46,13 @@ The rollout target is:
   verify the platform enforces boundaries without replacing the plan
 - one weak-worker/SOP sample path that is schema-validated and budget-limited
 
+This plan starts after Work entry materialization. `+New work` creates the
+managed-work context (`Conversation + Project + WorkItem + primary Task`,
+linked through `WorkItem.taskId`), but PLAN-074 run creation begins only when
+supervised execution actually starts. The Work run is therefore an
+execution-attempt ledger for an existing managed objective, not the act of
+opening a Work conversation.
+
 ## Implementation Status
 
 As of 2026-04-25, the local implementation has completed the supervision

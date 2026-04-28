@@ -52,10 +52,12 @@ The implementation thesis is:
 1. `+New code` should immediately create a durable Code anchor, not just a
    transient draft conversation
 2. the durable anchor should be `Conversation + primary code Task`
-3. `Run` should appear only when a concrete execution attempt starts
-4. `Artifact` should remain traceable to the task and, when available, the
+3. `Project` / `WorkItem` should not be required at creation time; Work
+   promotion remains explicit follow-on state
+4. `Run` should appear only when a concrete execution attempt starts
+5. `Artifact` should remain traceable to the task and, when available, the
    producing run
-5. Code-origin work should remain Code-owned in this MVP slice; Work promotion
+6. Code-origin work should remain Code-owned in this MVP slice; Work promotion
    stays deferred
 
 ## Slice Boundary
@@ -65,6 +67,7 @@ The implementation thesis is:
 - `+New code` entry materialization contract
 - primary `code_thread` conversation creation
 - primary code-task seeding
+- no required `Project` / `WorkItem` creation for Code-owned entries
 - first run creation and repeat-run semantics
 - direct `Task -> Run` linkage for the MVP, without a required Mission layer
 - task/run/artifact linkage and Code-only projection rules
@@ -100,6 +103,9 @@ The implementation thesis is:
       - linked conversation id
       - workspace hint when already known
       - initial Code-owned visibility state
+- [ ] Make Project / WorkItem absence explicit in the create contract so
+      Code-owned entries do not accidentally become Work entries before a
+      deliberate promotion / linking step
 - [ ] Make the no-`job` rule explicit in create-boundary helpers and contracts
       so internal APIs do not reintroduce mixed terminology
 - [ ] Reuse shared Core records and existing Code task helpers instead of
@@ -202,6 +208,8 @@ and evidence all point back to one task/conversation anchor.
 ## Technical Decisions
 
 - Treat `Conversation + primary code Task` as the durable `+New code` anchor.
+- Do not create a `Project` or `WorkItem` for `+New code` unless an explicit
+  Work-promotion or linking action asks for it.
 - Create `Run` lazily at execution time, not at entry time.
 - For this MVP, `+New code` uses direct `Task -> Run` linkage and does not
   require a first-class Mission record.
@@ -255,6 +263,7 @@ and evidence all point back to one task/conversation anchor.
 | 2026-04-19 | Plan created to implement the first narrow `+New code` materialization slice around `Conversation + primary code Task + Run* + Artifact*` with Code-owned-by-default behavior |
 | 2026-04-19 | Follow-up trim: deferred Work promotion and Chat projection, removed create-time idempotency from MVP scope, and made the MVP `Task -> Run` rule explicit |
 | 2026-04-28 | Amended scope after Build/Relay sidebar retirement: `PLAN-064` remains active for `+New code`, but it no longer depends on completing `/code/build` or `/code/relay`. |
+| 2026-04-28 | Clarified entry materialization: `+New code` creates `Conversation + primary Task`, does not require `Project` / `WorkItem`, and creates the first `Run` only when execution starts. |
 
 ---
 

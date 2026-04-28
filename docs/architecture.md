@@ -47,6 +47,21 @@ This means:
 - structured product state is materialized beside the transcript, not scraped
   back out of it later
 
+Entry materialization is intentionally product-specific:
+
+- `Cats Chat +New chat` is conversation-first. It creates the Interaction Core
+  records needed for the chat and does not force a `Task`, `Run`, `Project`, or
+  `WorkItem` at entry time.
+- `Cats Code +New code` is task-first conversation. It creates one primary
+  coding `Conversation` and one primary Code-owned `Task`, but does not force
+  `Project` / `WorkItem` planning anchors.
+- `Cats Work +New work` is managed-work-first conversation. It creates one
+  primary `Conversation`, `Project`, `WorkItem`, and `Task` linked through
+  `WorkItem.taskId` so the Work Graph has Interaction, Planning, and Execution
+  anchors from the start.
+- `Run` is lazy for all three surfaces: it is created when a concrete execution
+  attempt starts, not merely because an entry was created.
+
 Terminology rule:
 
 - shared technical contracts should say `Conversation`, not `thread`
@@ -191,6 +206,8 @@ This distinction also drives the first `Cats Code` entry presets:
 
 - `+New code`
   - one primary coding conversation
+  - one primary Code-owned task
+  - no required Project / WorkItem / Run at creation time
 - `+Team code`
   - one shared multi-participant coding conversation
 - `+Peer code`

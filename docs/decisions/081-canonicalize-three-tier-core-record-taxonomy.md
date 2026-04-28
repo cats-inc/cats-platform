@@ -172,6 +172,38 @@ and code comments:
 - `Job` → avoid. Use `Mission` (delegation) or `Run` (execution
   attempt) per ADR-063.
 
+### 2A. Product entry materialization rules
+
+Product entries decide which canonical records must exist at creation
+time. They do not redefine the record taxonomy:
+
+- `Cats Chat +New chat` is **conversation-first**. It creates or
+  resumes the required Interaction Core records, especially a
+  `Conversation`, and must not force an immediate `Task`, `Run`,
+  `Project`, or `WorkItem`. Chat may later promote or hand off a
+  conversation into Code or Work, but that is an explicit
+  materialization step, not the default chat-entry contract.
+- `Cats Code +New code` is **task-first conversation**. It must
+  create one primary `Conversation` plus one primary `Task` with
+  Code ownership / planning metadata and a link back to the
+  conversation. It must not require a `Project` or `WorkItem` at
+  creation time; Work promotion remains explicit follow-on work.
+- `Cats Work +New work` is **managed-work-first conversation**. It
+  must create one primary `Conversation`, one `Project`, one
+  `WorkItem`, and one primary `Task` linked through the Planning →
+  Execution bridge. The UI may reduce friction with default
+  containers such as an inbox project or untriaged work item, but the
+  durable records must exist for the entry to count as Work.
+- `Run` is never required at entry creation time for Chat, Code, or
+  Work. A `Run` means one concrete execution attempt and is created
+  lazily when an execute / build / review / supervised-action /
+  continuation attempt actually starts.
+
+These rules preserve a clean distinction: `Conversation` is the
+interaction container, `Task` is the durable objective, `Run` is the
+attempt ledger, and `Project` / `WorkItem` are Work's Planning
+anchors.
+
 ### 3. Rules vs. entities vs. materialization records
 
 Three structural distinctions that must survive in every future
@@ -414,3 +446,4 @@ way `Artifact` already carries `projectId` / `workItemId` /
 *Proposed: 2026-04-22*
 *Proposed by: Claude under user-directed investigation (三套心智模型 去重討論)*
 *Amended: 2026-04-25 — §4 completed with `Mission.sourceTurnId` / `sourceLaneId` / `assignedAgentId`; gap discovered during SPEC-082 review*
+*Amended: 2026-04-28 — §2A added product entry materialization rules for Chat / Code / Work and lazy Run creation*

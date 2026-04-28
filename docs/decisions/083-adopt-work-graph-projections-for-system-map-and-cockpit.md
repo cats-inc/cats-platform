@@ -164,7 +164,31 @@ from those records. If a producer claims Work ownership but omits the
 anchors required to locate the object, System Map must surface that as
 a broken-slot diagnostic.
 
-### 5. Defer Tables and Task Hub
+### 5. Work entry materializes all three structural layers
+
+`Cats Work +New work` is the product-owned Work entry. It is not a
+plain chat with a Work badge. It must materialize enough canonical
+Core state for the Work Graph to show an Interaction anchor, Planning
+anchors, and an Execution objective immediately:
+
+- one primary `Conversation`;
+- one `Project`;
+- one `WorkItem`; and
+- one primary `Task` linked from the `WorkItem` through the
+  `WorkItem.taskId` Planning -> Execution bridge.
+
+The product may auto-create low-friction defaults such as an inbox
+project or untriaged work item, but it must still write durable Work
+records. Otherwise the entry is a Chat conversation or Code task, not
+a Work entry.
+
+`Run` remains lazy. A Work entry does not create a `Run` until a
+supervised execution attempt, tool batch, continuation, or delegated
+operation actually starts. This keeps System Map honest: Planning
+shows the durable work to be done; Execution shows the primary task
+immediately and the attempt ledger only after work starts.
+
+### 6. Defer Tables and Task Hub
 
 Tables and Task Hub are useful but not on the first production path.
 
@@ -177,7 +201,7 @@ Tables and Task Hub are useful but not on the first production path.
 
 Neither should block System Map or Cockpit.
 
-### 6. Work view mode owns Work navigation
+### 7. Work view mode owns Work navigation
 
 Work has two navigation layers:
 
@@ -192,7 +216,7 @@ main content layout, grouping, sorting, empty states, and CTAs. It
 does not change the underlying object identities, selection intent,
 filters that still apply, or the shared detail drawer.
 
-### 7. Old Work renderer UI must be isolated before the new shell starts
+### 8. Old Work renderer UI must be isolated before the new shell starts
 
 The existing Work renderer components may be mined for useful API
 clients, projection helpers, or tests, but they do not define the new
@@ -297,5 +321,5 @@ are implementation history, not compatibility targets.
 ---
 
 *Decision made: 2026-04-25*
-*Decision revised: 2026-04-25*
+*Decision revised: 2026-04-28*
 *Decision makers: User + Codex*

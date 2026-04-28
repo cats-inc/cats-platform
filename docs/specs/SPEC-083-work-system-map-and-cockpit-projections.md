@@ -205,6 +205,20 @@ Tables and Task Hub remain later projections over the same graph.
 38. Existing Work renderer routes and UI components shall be isolated or
     disabled before new Work shell implementation starts. The new shell shall
     not keep a hybrid fallback to the rejected prototype.
+39. `+New work` shall materialize enough canonical state for all three primary
+    System Map panes at entry creation time:
+    - one primary `Conversation` in Interaction
+    - one `Project` in Planning
+    - one `WorkItem` in Planning
+    - one primary `Task` in Execution, linked from the `WorkItem` via
+      `WorkItem.taskId`
+40. `+New work` shall not create a `Run` merely because the entry exists. The
+    first `Run` shall appear only when a supervised execution attempt, tool
+    batch, continuation, or delegated operation actually starts.
+41. `+New chat` and `+New code` remain different producer contracts:
+    `+New chat` may produce only Interaction records, while `+New code`
+    produces Interaction plus a Code-owned `Task` without forcing Work
+    `Project` / `WorkItem` anchors.
 
 ### Producer Slot Contract
 
@@ -237,6 +251,16 @@ Tables and Task Hub remain later projections over the same graph.
 11. A producer that creates Work-owned data without the required anchors below,
     or with present anchors that do not resolve, shall cause a deterministic
     System Map diagnostic.
+12. A Work entry producer shall write the `+New work` entry set as one
+    coherent materialization: `Conversation + Project + WorkItem + primary
+    Task`, with the `WorkItem.taskId` bridge pointing at the primary task. If
+    any one of those records or that Planning -> Execution bridge is absent
+    after creation, System Map shall classify the entry as incomplete Work
+    materialization rather than hiding it behind Cockpit grouping.
+13. Code entry producers may write Code-owned tasks without Work Planning
+    anchors. Such records still project through Work Graph when queried, but
+    they must not be diagnosed as malformed Work entries unless they explicitly
+    claim Work ownership.
 
 #### Minimum Anchor Sets
 
@@ -543,6 +567,6 @@ behind the new graph and shell contracts.
 ---
 
 *Created: 2026-04-25*
-*Revised: 2026-04-25*
+*Revised: 2026-04-28*
 *Author: Codex*
 *Related Plan: TBD*

@@ -174,9 +174,10 @@ Baseline contract:
 - one `Conversation`
 - one primary code `Task` linked to that conversation
 - one primary coding participant or implicit runtime target
-- one project/workspace intent
+- one workspace intent when known
 - one execution profile chosen at creation or updated later
-- zero or more `Run`s as concrete execution attempts occur
+- zero `Run`s at creation time
+- zero or more `Run`s later, as concrete execution attempts occur
 - zero or more `Artifact`s linked to the task and, when applicable, the
   producing run
 
@@ -189,6 +190,13 @@ The first slice should treat:
 `+New code` should remain Code-owned by default. It may later project into
 `Cats Work` through managed-work promotion or a linked `WorkItem`, but that
 should not be the preset's default creation behavior.
+
+`+New code` must therefore not require a `Project` or `WorkItem` at creation
+time. Code may carry repo/workspace metadata, and it may later promote the
+same task into Work, but Work Planning anchors are explicit follow-on state.
+The first `Run` is created only when an execute / build / review / continue
+attempt starts; opening the code conversation and seeding the primary task is
+not itself an execution attempt.
 
 Initial preset inputs should include:
 
@@ -204,6 +212,8 @@ Initial preset inputs should include:
 Baseline contract:
 
 - one shared `Conversation`
+- one primary code `Task` or an explicitly defined task family rooted in the
+  shared coding objective
 - multiple participants
 - configurable workflow/coordinator policy such as PDCA or
   plan-build-test-review
@@ -216,6 +226,11 @@ Baseline contract:
 
 but remains one shared conversation.
 
+Like `+New code`, `+Team code` is Code-owned by default and does not require
+`Project` / `WorkItem` Planning anchors unless the user or workflow explicitly
+promotes the work into `Cats Work`. Runs remain lazy execution attempts, not
+entry-created records.
+
 ### +Peer code
 
 `+Peer code` is the branch-and-review container.
@@ -224,6 +239,8 @@ Baseline contract:
 
 - one `Container`
 - multiple child code conversations
+- a primary code task or task family whose branch/review task identities are
+  explicit in the preset contract
 - each child may bind a different execution profile and worktree
 - one or more automation/convergence policies define result flow between
   branches
@@ -233,6 +250,12 @@ Typical first-slice roles include:
 - main coder
 - reviewer 1
 - reviewer 2
+
+`+Peer code` may create branch-local task identities when the preset needs
+independent review or implementation objectives, but those identities are still
+Code tasks. It must not imply Work `Project` / `WorkItem` creation by default,
+and review/build/relay runs are created only when those attempts actually
+start.
 
 ## Execution Profile Requirements
 
