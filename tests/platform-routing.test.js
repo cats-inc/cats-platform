@@ -33,6 +33,7 @@ import {
 } from '../build/server/products/work/api/projection.js';
 import {
   buildCodeDashboardProjection,
+  buildCodeArtifactListProjection,
 } from '../build/server/products/code/api/projection.js';
 
 test('resolvePlatformSurfaceForPath routes work and code prefixes to their dedicated platform surfaces', () => {
@@ -157,6 +158,99 @@ test('Work and Code dashboard projections stay core-backed without inventing new
   assert.ok(code.extensionPoints.futureRoutes.includes('/api/code/tasks'));
   assert.ok(code.extensionPoints.futureRoutes.includes('/api/code/artifacts'));
   assert.ok(code.extensionPoints.futureRoutes.includes('/api/code/previews'));
+});
+
+test('Code dashboard selects the latest ready output as the default artifact focus', () => {
+  const core = createDefaultCoreState();
+  const taskId = 'task-code-ready-focus';
+  core.tasks.push({
+    id: taskId,
+    title: 'Render the latest preview',
+    status: 'in_progress',
+    conversationId: null,
+    parentTaskId: null,
+    ownerActorId: core.ownerProfile.actorId,
+    orchestratorActorId: null,
+    assignedActorIds: [],
+    summary: 'Keep Code focused on the latest usable output.',
+    approval: {
+      status: 'not_required',
+      requestedAt: null,
+      decidedAt: null,
+      decidedByActorId: null,
+      decisionAction: null,
+      notes: null,
+    },
+    createdAt: '2026-04-28T05:00:00.000Z',
+    updatedAt: '2026-04-28T05:05:00.000Z',
+    metadata: {
+      planning: {
+        productHint: 'code',
+      },
+    },
+  });
+  core.artifacts.push(
+    {
+      id: 'artifact-code-draft-newer',
+      title: 'Draft preview',
+      kind: 'preview',
+      status: 'draft',
+      projectId: null,
+      workItemId: null,
+      conversationId: null,
+      taskId,
+      runId: null,
+      path: '/preview/draft',
+      mimeType: 'text/html',
+      sizeBytes: null,
+      summary: 'Newest but not ready.',
+      createdAt: '2026-04-28T05:01:00.000Z',
+      updatedAt: '2026-04-28T05:20:00.000Z',
+      metadata: {},
+    },
+    {
+      id: 'artifact-code-ready-older',
+      title: 'Older ready preview',
+      kind: 'preview',
+      status: 'ready',
+      projectId: null,
+      workItemId: null,
+      conversationId: null,
+      taskId,
+      runId: null,
+      path: '/preview/older',
+      mimeType: 'text/html',
+      sizeBytes: null,
+      summary: 'Ready but superseded.',
+      createdAt: '2026-04-28T05:02:00.000Z',
+      updatedAt: '2026-04-28T05:10:00.000Z',
+      metadata: {},
+    },
+    {
+      id: 'artifact-code-ready-newer',
+      title: 'Latest ready build',
+      kind: 'build',
+      status: 'ready',
+      projectId: null,
+      workItemId: null,
+      conversationId: null,
+      taskId,
+      runId: null,
+      path: '/build/latest',
+      mimeType: 'application/zip',
+      sizeBytes: null,
+      summary: 'Latest usable output.',
+      createdAt: '2026-04-28T05:03:00.000Z',
+      updatedAt: '2026-04-28T05:15:00.000Z',
+      metadata: {},
+    },
+  );
+
+  const artifactList = buildCodeArtifactListProjection(core);
+  const dashboard = buildCodeDashboardProjection(core);
+
+  assert.equal(artifactList.artifacts[0].id, 'artifact-code-draft-newer');
+  assert.equal(dashboard.selection.defaultArtifactId, 'artifact-code-ready-newer');
 });
 
 test('Work projections preserve briefing-thread channel links from shared conversations', () => {

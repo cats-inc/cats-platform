@@ -112,7 +112,7 @@ legible.
       when normalized preview surfaces are available
 - [x] Fall back cleanly to artifact detail, open-link, or download flows when
       inline rendering is unavailable
-- [ ] Prioritize the latest ready output as the default visual focus when
+- [x] Prioritize the latest ready output as the default visual focus when
       multiple results exist
 - [ ] Keep preview and artifact changes tied to the same task context so the
       owner never loses orientation
@@ -218,6 +218,7 @@ later review automation.
 | 2026-03-29 | Plan created to deliver the first local-first `Cats Code` builder loop above shared Core tasks and runtime workspace/preview primitives |
 | 2026-03-29 | Claude assigned. Branch `claude/spec-041-code-builder-loop` created. Starting implementation Phase 1→7. Shared file changes: `src/app/server/dependencies.ts` (wire runtimeClient), `src/products/code/api/index.ts` (expand deps + routes). |
 | 2026-03-29 | Phase 1–5 (backend): complete. 12 new API routes, 4 state modules, 27 tests. |
+| 2026-04-28 | Implementation follow-up: Code dashboard artifact selection now prefers the latest `ready` build/preview as the default visual focus, while preserving normal updated-time artifact list ordering. |
 | 2026-03-29 | Phase 6 (renderer): `CodeBuilderView` wired at `/code/build` route with sidebar "Build" entry. PlanPanel, BuildPreviewPanel, DeliveryPanel mounted inside builder. Full workspace → task → execute → plan/delivery loop reachable from UI. CSS added in `styles/code-builder.css`. |
 | 2026-03-29 | Phase 7 (tests): current platform is green after later regressions were fixed separately. Server and web builds remain clean. |
 | 2026-03-29 | Follow-up hardening slice: preview rendering now resolves through shared Core preview-surface policy instead of treating artifact paths as raw iframe URLs. `/code/artifacts/:artifactId` now exists as the clean fallback surface, and builder-local CSS now extends existing operator chrome instead of redefining pseudo-shared operator classes. |

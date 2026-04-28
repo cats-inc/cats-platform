@@ -408,6 +408,14 @@ function buildCodeArtifactListSummary(
   });
 }
 
+function selectDefaultCodeArtifactId(artifacts: readonly CodeArtifactListItem[]): string | null {
+  const latestReadyArtifact = artifacts
+    .filter((artifact) => artifact.status === 'ready')
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))[0] ?? null;
+
+  return latestReadyArtifact?.id ?? artifacts[0]?.id ?? null;
+}
+
 export function buildCodeTaskListProjection(core: CatsCoreState): CodeTaskListProjection {
   const allTasks = listCodeTasks(core);
   const tasks = allTasks
@@ -573,7 +581,7 @@ export function buildCodeDashboardProjection(core: CatsCoreState): CodeDashboard
     },
     selection: {
       defaultTaskId: taskList.tasks[0]?.id ?? null,
-      defaultArtifactId: artifactList.artifacts[0]?.id ?? null,
+      defaultArtifactId: selectDefaultCodeArtifactId(artifactList.artifacts),
     },
     extensionPoints: {
       projectionSource: 'cats-core',
