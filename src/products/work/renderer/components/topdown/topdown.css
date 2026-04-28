@@ -1156,6 +1156,15 @@
   font-style: italic;
 }
 
+.brokenLinks__removeError {
+  margin: 0 0 12px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: rgba(192, 56, 43, 0.08);
+  color: var(--danger, #c0382b);
+  font-size: 0.74rem;
+}
+
 /* =========================================================
  * Drawer overrides on top of design SidePanel
  * ========================================================= */

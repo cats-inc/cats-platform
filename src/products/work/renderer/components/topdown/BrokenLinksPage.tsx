@@ -1,6 +1,7 @@
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
+import { removeWorkLink } from "../../api/links.js";
 import { useWorkGraphLinks } from "../../state/workGraphLinksStore";
 import { mergeWorkGraphLinks } from "./mergeLinks";
 import { MOCK_WORK_GRAPH } from "./mock";
@@ -32,12 +33,34 @@ export function BrokenLinksPage(): JSX.Element {
   const severityFilter =
     (searchParams.get("severity") as SeverityFilter | null) ?? "all";
   const selectedId = searchParams.get("selectedId");
-  const { fetchedLinks } = useWorkGraphLinks();
+  const { fetchedLinks, refresh } = useWorkGraphLinks();
   const graph = useMemo(
     () => mergeWorkGraphLinks(MOCK_WORK_GRAPH, fetchedLinks),
     [fetchedLinks],
   );
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
+  const fetchedLinkIds = useMemo(
+    () => new Set(fetchedLinks.map((l) => l.id)),
+    [fetchedLinks],
+  );
+  const [removeError, setRemoveError] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
+
+  const handleRemoveLink = useCallback(
+    async (linkId: string): Promise<void> => {
+      setRemovingId(linkId);
+      setRemoveError(null);
+      try {
+        await removeWorkLink(linkId);
+        await refresh();
+      } catch (err) {
+        setRemoveError(err instanceof Error ? err.message : "Failed to remove link.");
+      } finally {
+        setRemovingId(null);
+      }
+    },
+    [refresh],
+  );
 
   const counts = useMemo(() => {
     const c: Record<WorkGraphDiagnosticSeverity, number> = {
@@ -142,6 +165,11 @@ export function BrokenLinksPage(): JSX.Element {
         />
       </nav>
       <div className="brokenLinks__list">
+        {removeError ? (
+          <p className="brokenLinks__removeError" role="alert">
+            {removeError}
+          </p>
+        ) : null}
         {filtered.length === 0 ? (
           <p className="brokenLinks__empty">
             No diagnostics under the active filter.
@@ -153,6 +181,9 @@ export function BrokenLinksPage(): JSX.Element {
               diagnostic={d}
               indexes={indexes}
               onOpenObject={setSelectedId}
+              fetchedLinkIds={fetchedLinkIds}
+              onRemoveLink={handleRemoveLink}
+              removingId={removingId}
             />
           ))
         )}
@@ -174,12 +205,18 @@ interface DiagnosticRowProps {
   diagnostic: Diagnostic;
   indexes: WorkGraphIndexes;
   onOpenObject: (id: string | null) => void;
+  fetchedLinkIds: ReadonlySet<string>;
+  onRemoveLink: (linkId: string) => Promise<void>;
+  removingId: string | null;
 }
 
 function DiagnosticRow({
   diagnostic,
   indexes,
   onOpenObject,
+  fetchedLinkIds,
+  onRemoveLink,
+  removingId,
 }: DiagnosticRowProps): JSX.Element {
   return (
     <article
@@ -199,6 +236,9 @@ function DiagnosticRow({
         diagnostic={diagnostic}
         indexes={indexes}
         onOpenObject={onOpenObject}
+        fetchedLinkIds={fetchedLinkIds}
+        onRemoveLink={onRemoveLink}
+        removingId={removingId}
       />
     </article>
   );
@@ -228,12 +268,31 @@ function DiagnosticBody({
   diagnostic,
   indexes,
   onOpenObject,
+  fetchedLinkIds,
+  onRemoveLink,
+  removingId,
 }: DiagnosticRowProps): JSX.Element {
   switch (diagnostic.kind) {
     case "orphan_link":
-      return <OrphanLinkBody diagnostic={diagnostic} indexes={indexes} />;
+      return (
+        <OrphanLinkBody
+          diagnostic={diagnostic}
+          indexes={indexes}
+          removable={fetchedLinkIds.has(diagnostic.linkId)}
+          onRemove={onRemoveLink}
+          removing={removingId === diagnostic.linkId}
+        />
+      );
     case "link_cycle":
-      return <CycleLinkBody diagnostic={diagnostic} indexes={indexes} />;
+      return (
+        <CycleLinkBody
+          diagnostic={diagnostic}
+          indexes={indexes}
+          fetchedLinkIds={fetchedLinkIds}
+          onRemove={onRemoveLink}
+          removingId={removingId}
+        />
+      );
     default:
       return (
         <BaseDiagnosticBody
@@ -285,9 +344,15 @@ function BaseDiagnosticBody({
 function OrphanLinkBody({
   diagnostic,
   indexes,
+  removable,
+  onRemove,
+  removing,
 }: {
   diagnostic: WorkGraphLinkOrphanDiagnostic;
   indexes: WorkGraphIndexes;
+  removable: boolean;
+  onRemove: (linkId: string) => Promise<void>;
+  removing: boolean;
 }): JSX.Element {
   const sourceUnresolved =
     diagnostic.unresolvedSide === "source" ||
@@ -314,14 +379,23 @@ function OrphanLinkBody({
         <button
           type="button"
           className="brokenLinks__removeLink"
-          disabled
-          title="Disabled until Phase 5 wires the producer-pipeline removeLink call."
+          disabled={!removable || removing}
+          onClick={() => {
+            if (removable && !removing) void onRemove(diagnostic.linkId);
+          }}
+          title={
+            removable
+              ? "Remove this link via the producer pipeline."
+              : "Demo seed — restart the renderer to clear, or write through the producer pipeline first."
+          }
         >
-          Remove this link
+          {removing ? "Removing…" : "Remove this link"}
         </button>
-        <span className="brokenLinks__pendingNote">
-          Phase 5 enables write actions.
-        </span>
+        {!removable ? (
+          <span className="brokenLinks__pendingNote">
+            Demo fixture — only producer-stored links can be removed via API.
+          </span>
+        ) : null}
       </footer>
     </div>
   );
@@ -330,9 +404,15 @@ function OrphanLinkBody({
 function CycleLinkBody({
   diagnostic,
   indexes,
+  fetchedLinkIds,
+  onRemove,
+  removingId,
 }: {
   diagnostic: WorkGraphLinkCycleDiagnostic;
   indexes: WorkGraphIndexes;
+  fetchedLinkIds: ReadonlySet<string>;
+  onRemove: (linkId: string) => Promise<void>;
+  removingId: string | null;
 }): JSX.Element {
   return (
     <div className="brokenLinks__linkBody">
@@ -366,18 +446,30 @@ function CycleLinkBody({
           Removable rows ({diagnostic.cycleLinkIds.length}):
         </span>
         <ul className="brokenLinks__cycleActions">
-          {diagnostic.cycleLinkIds.map((linkId) => (
-            <li key={linkId}>
-              <button
-                type="button"
-                className="brokenLinks__removeLink"
-                disabled
-                title="Disabled until Phase 5 wires the producer-pipeline removeLink call."
-              >
-                Remove <code>{linkId}</code>
-              </button>
-            </li>
-          ))}
+          {diagnostic.cycleLinkIds.map((linkId) => {
+            const removable = fetchedLinkIds.has(linkId);
+            const removing = removingId === linkId;
+            return (
+              <li key={linkId}>
+                <button
+                  type="button"
+                  className="brokenLinks__removeLink"
+                  disabled={!removable || removing}
+                  onClick={() => {
+                    if (removable && !removing) void onRemove(linkId);
+                  }}
+                  title={
+                    removable
+                      ? "Remove this link via the producer pipeline."
+                      : "Demo seed — only producer-stored links can be removed via API."
+                  }
+                >
+                  {removing ? "Removing…" : `Remove `}
+                  {!removing ? <code>{linkId}</code> : null}
+                </button>
+              </li>
+            );
+          })}
         </ul>
       </footer>
     </div>

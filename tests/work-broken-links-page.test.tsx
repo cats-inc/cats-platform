@@ -26,12 +26,13 @@ test('BrokenLinksPage renders an orphan_link row with both endpoints and a delet
   assert.match(markup, /\(deleted\)/u);
 });
 
-test('BrokenLinksPage renders the orphan_link Remove affordance disabled', () => {
+test('BrokenLinksPage renders the orphan_link Remove affordance disabled for demo-seed links', () => {
   const markup = renderPage();
   // The disabled remove button is the actionable affordance per
-  // SPEC-090 §FR7. Phase 5 enables it.
+  // SPEC-090 §FR7. With Slice 5.5 it's enabled for producer-stored
+  // links and disabled for renderer-only demo seeds.
   assert.match(markup, /<button[^>]*type="button"[^>]*class="brokenLinks__removeLink"[^>]*disabled/u);
-  assert.match(markup, /Phase 5 enables write actions/u);
+  assert.match(markup, /Demo fixture — only producer-stored links can be removed via API/u);
 });
 
 test('BrokenLinksPage renders a link_cycle row with cycle endpoints in traversal order', () => {
