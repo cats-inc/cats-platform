@@ -31,6 +31,7 @@ import { routePlatformAssistantPresetApi } from './platformSetupAssistantRoutes.
 import { routePlatformSetupDiagnosticsApi } from './platformSetupDiagnosticsRoutes.js';
 import { routePlatformGuideCatApi } from './platformSetupGuideCatRoutes.js';
 import { routePlatformPreferenceApi } from './platformSetupPreferenceRoutes.js';
+import { routePlatformFeatureFlagApi } from './platformFeatureFlagRoutes.js';
 import { resolveGuideCatSystemName } from '../../shared/guideCatIdentity.js';
 
 export type PlatformSetupContext = RouteContext<ChatApiDependencies>;
@@ -331,6 +332,10 @@ export async function routePlatformSetupApi(
   }
 
   if (await routePlatformPreferenceApi(context)) {
+    return true;
+  }
+
+  if (await routePlatformFeatureFlagApi(context)) {
     return true;
   }
 
