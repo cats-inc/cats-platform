@@ -173,9 +173,23 @@ test(
     }
 
     const settledRound = relayPayload.threads[0].rounds[0];
+    const dispatchSummary = settledRound.dispatches.map((dispatch) => ({
+      agentId: dispatch.agentId,
+      runId: dispatch.runId,
+      status: dispatch.status,
+      error: dispatch.error,
+    }));
     assert.equal(relayPayload.threads[0].thread.status, 'waiting_for_user');
     assert.equal(settledRound.dispatches.length, LIVE_PROVIDER_IDS.length);
-    assert.ok(settledRound.dispatches.every((dispatch) => dispatch.status === 'completed'));
-    assert.ok(settledRound.dispatches.every((dispatch) => typeof dispatch.runId === 'string'));
+    assert.equal(
+      settledRound.dispatches.every((dispatch) => dispatch.status === 'completed'),
+      true,
+      JSON.stringify(dispatchSummary, null, 2),
+    );
+    assert.equal(
+      settledRound.dispatches.every((dispatch) => typeof dispatch.runId === 'string'),
+      true,
+      JSON.stringify(dispatchSummary, null, 2),
+    );
   },
 );
