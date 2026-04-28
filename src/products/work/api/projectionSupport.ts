@@ -85,6 +85,43 @@ export function isWorkTask(core: CatsCoreState, task: CoreTaskRecord): boolean {
   return resolveTaskProductBinding(core, task) === 'work';
 }
 
+/**
+ * Detect a task that carries Work-flavoured signal (explicit `'work'`
+ * planning hint, `'work'` transfer suggestion, or `work_thread`
+ * conversation) but lacks the structural `WorkItem.taskId` bridge
+ * required by ADR-081 §2B / SPEC-083 R45 to project as `'work'`.
+ *
+ * `resolveTaskProductBinding` demotes such tasks to `'unbound'` so the
+ * claim is not silently admitted as managed Work; this helper preserves
+ * the original signal so the projection can emit a
+ * `missing_planning_execution_bridge` diagnostic alongside the demoted
+ * binding.
+ */
+export function detectIncompleteWorkClaim(
+  core: CatsCoreState,
+  task: CoreTaskRecord,
+): boolean {
+  if (core.workItems.some((workItem) => workItem.taskId === task.id)) {
+    return false;
+  }
+  const planning = readTaskPlanningMetadataFromTask(task);
+  if (
+    planning.productHint === 'work'
+    || planning.transfer?.suggestedProduct === 'work'
+  ) {
+    return true;
+  }
+  if (task.conversationId) {
+    const conversation = core.conversations.find(
+      (candidate) => candidate.id === task.conversationId,
+    );
+    if (conversation?.kind === 'work_thread') {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function buildProjectStatusCounts(core: CatsCoreState): Record<CoreProjectStatus, number> {
   return core.projects.reduce<Record<CoreProjectStatus, number>>(
     (counts, project) => {

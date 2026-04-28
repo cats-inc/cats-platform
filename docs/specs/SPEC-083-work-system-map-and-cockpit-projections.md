@@ -241,15 +241,23 @@ Tables and Task Hub remain later projections over the same graph.
     `WorkItem.taskId` bridge. That state shall project as an incomplete Work
     claim diagnostic and remain outside managed Work until repaired.
 46. When a Code-origin or Chat-origin task is later linked by `WorkItem.taskId`,
-    the current Work Graph binding shall become `work`. The original product
-    origin is preserved on the underlying `CoreTaskRecord.metadata.planning`
-    (`productHint`, `transfer.suggestedProduct`) for diagnostic and audit. The
+    the current Work Graph binding shall become `work`. Every signal that put
+    the task in its pre-promotion binding still persists on the underlying
+    records and is therefore the lineage source: explicit
+    `planning.productHint` / `planning.transfer.suggestedProduct` when origin
+    came from a planning hint; the linked `code_thread` (or chat-* family)
+    `Conversation.kind` when origin came from conversation fallback; and any
+    `build` / `preview` `Artifact` attached to the task when origin came from
+    artifact precedence. None of these is rewritten by Work promotion. The
     Work Graph projection shall expose only the *current* binding through
     `WorkGraphObjectSummary.productBinding` and shall **not** carry a separate
-    `productLineage` or `originBinding` projection field in this slice. Surfaces
-    that need to display "promoted from Code" must read planning metadata
-    directly from the underlying task; introducing a dedicated projection
-    field is an explicit follow-on decision, not implied by this spec.
+    `productLineage` or `originBinding` projection field in this slice.
+    Surfaces that need to display "promoted from Code" must read those
+    underlying signals directly from `CoreTaskRecord` and its related
+    `Artifact` / `Conversation` records — `planning` metadata alone is not
+    sufficient for artifact-driven or conversation-fallback Code tasks.
+    Introducing a dedicated projection field is an explicit follow-on
+    decision, not implied by this spec.
 47. Tasks with no resolved Project / WorkItem lineage shall appear under a
     `No project` grouping. The grouping may be sub-grouped or filtered by task
     product binding, for example `No project / code`, `No project / chat`, and

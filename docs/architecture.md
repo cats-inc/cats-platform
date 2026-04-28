@@ -77,8 +77,13 @@ Work. `chat` is derived only from explicit chat planning provenance
 external-transport / private-escalation conversation alone does not bind, in
 keeping with the deliberate-only Chat Task producer rule. The projection
 exposes only the *current* binding; if a Code-origin task is later linked
-into Work, Code lineage is preserved on raw `CoreTaskRecord.metadata.planning`
-but is not surfaced as a separate projection field. Code and Chat tasks do
+into Work, every Code-origin signal that put the task in `code` before
+promotion still persists on the underlying records — explicit
+`planning.productHint` / `planning.transfer.suggestedProduct` if the
+origin was a planning hint, the `code_thread` conversation kind if it
+was a conversation fallback, and any `build` / `preview` `Artifact`
+attached to the task if it was Code-bound through artifact precedence —
+but the projection does not surface that lineage as a separate field. Code and Chat tasks do
 not receive fake Project / WorkItem anchors just to make the Work UI tidy.
 When they have no project lineage, Work groups them under `No project` and
 may sub-group by product binding (`code`, `chat`, `unbound`); there is no

@@ -229,14 +229,19 @@ both refuse to admit a task as `chat` purely from conversation kind.
 
 When a Code-origin or Chat-origin task is later promoted into Work
 through `WorkItem.taskId`, the projection emits `work` for the *current*
-binding. The originating product signal (`planning.productHint`,
-`planning.transfer.suggestedProduct`) is preserved on the underlying
-`CoreTaskRecord.metadata.planning` for diagnostic and audit, but the
-Work Graph projection does not surface it as a separate
-`productLineage` / `originBinding` field in this slice. Adding such a
-field is an explicit follow-on decision, not implied by this ADR;
-surfaces that need to display "promoted from Code" must read raw
-planning metadata directly from the underlying task.
+binding. Every signal that put the task in its pre-promotion binding
+still persists on the underlying records — explicit
+`planning.productHint` / `planning.transfer.suggestedProduct` when
+origin came from a planning hint; the linked `code_thread` / chat-*
+family `Conversation.kind` when origin came from conversation fallback;
+and any `build` / `preview` `Artifact` attached to the task when origin
+came from artifact precedence — none of which is rewritten by
+promotion. The Work Graph projection does not surface that lineage as a
+separate `productLineage` / `originBinding` field in this slice. Adding
+such a field is an explicit follow-on decision, not implied by this ADR;
+surfaces that need to display "promoted from Code" must read those
+underlying signals directly from `CoreTaskRecord` and its related
+`Artifact` / `Conversation` records.
 
 Tasks with no Project / WorkItem lineage are grouped under an honest
 `No project` bucket. The bucket may group or filter by product binding

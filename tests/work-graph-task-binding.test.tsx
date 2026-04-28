@@ -154,8 +154,9 @@ test('Work Graph task product binding precedence: WorkItem > artifact > explicit
     NOW,
   ).core;
 
+  const projection = buildWorkGraphProjection(core);
   const tasks = new Map(
-    buildWorkGraphProjection(core)
+    projection
       .objects
       .filter((object) => object.kind === 'task')
       .map((object) => [object.id, object]),
@@ -168,4 +169,59 @@ test('Work Graph task product binding precedence: WorkItem > artifact > explicit
   assert.equal(tasks.get('task-work-transfer-only')?.productBinding, 'unbound');
   assert.equal(tasks.get('task-artifact-code')?.productBinding, 'code');
   assert.equal(tasks.get('task-artifact-with-chat-conversation')?.productBinding, 'code');
+
+  // SPEC-083 R45: incomplete Work claims must surface a
+  // missing_planning_execution_bridge diagnostic alongside the
+  // 'unbound' demotion. The chat-conversation-only task and explicit
+  // chat task must NOT trigger this diagnostic — only Work-flavoured
+  // signals do.
+  const incompleteWorkClaimTaskIds = new Set(
+    projection.diagnostics
+      .filter((diagnostic) => diagnostic.kind === 'missing_planning_execution_bridge')
+      .map((diagnostic) => diagnostic.objectId),
+  );
+  assert.ok(incompleteWorkClaimTaskIds.has('task-work-hint-only'));
+  assert.ok(incompleteWorkClaimTaskIds.has('task-work-transfer-only'));
+  assert.ok(!incompleteWorkClaimTaskIds.has('task-chat-conversation-only'));
+  assert.ok(!incompleteWorkClaimTaskIds.has('task-chat-explicit'));
+  assert.ok(!incompleteWorkClaimTaskIds.has('task-code-promoted'));
+});
+
+test('Work-thread conversation alone (no planning, no WorkItem) also surfaces incomplete-Work-claim diagnostic', () => {
+  let core = createDefaultCoreState();
+
+  core = upsertCoreConversation(
+    core,
+    {
+      id: 'conversation-work-thread',
+      title: 'Work conversation without anchors',
+      kind: 'work_thread',
+      status: 'active',
+    },
+    NOW,
+  ).core;
+  core = upsertCoreTask(
+    core,
+    {
+      id: 'task-work-thread-only',
+      title: 'Task with work_thread conversation only',
+      conversationId: 'conversation-work-thread',
+    },
+    NOW,
+  ).core;
+
+  const projection = buildWorkGraphProjection(core);
+  const taskSummary = projection.objects.find(
+    (object) => object.kind === 'task' && object.id === 'task-work-thread-only',
+  );
+  assert.equal(taskSummary?.productBinding, 'unbound');
+
+  const diagnostic = projection.diagnostics.find(
+    (entry) =>
+      entry.kind === 'missing_planning_execution_bridge'
+      && entry.objectId === 'task-work-thread-only',
+  );
+  assert.ok(diagnostic, 'expected incomplete-Work-claim diagnostic for work_thread-only task');
+  assert.equal(diagnostic?.severity, 'warning');
+  assert.equal(diagnostic?.category, 'anchor');
 });

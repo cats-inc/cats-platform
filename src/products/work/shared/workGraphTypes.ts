@@ -18,9 +18,15 @@ export type WorkGraphLayer = "interaction" | "planning" | "execution";
  *   - 'work'    — task has a Work Item linking to it through
  *                 `WorkItem.taskId`; this structural bridge is the only
  *                 way to qualify as `work`. Code / Chat lineage on the
- *                 same task is preserved on the underlying
- *                 `CoreTaskRecord.metadata.planning` for diagnostic /
- *                 audit, but is NOT exposed via this projection field.
+ *                 same task is preserved on the underlying records
+ *                 across promotion: explicit `planning.productHint` /
+ *                 `planning.transfer.suggestedProduct` if the origin
+ *                 was a planning hint, the linked `code_thread` (or
+ *                 chat-*) `Conversation.kind` if it was a conversation
+ *                 fallback, and any `build` / `preview` `Artifact`
+ *                 attached to the task if it was an artifact-driven
+ *                 binding. None of these is rewritten by promotion;
+ *                 they are NOT exposed via this projection field.
  *   - 'code'    — task has a build / preview artifact, OR explicit Code
  *                 planning provenance (`productHint = 'code'` /
  *                 `transfer.suggestedProduct = 'code'`), OR legacy

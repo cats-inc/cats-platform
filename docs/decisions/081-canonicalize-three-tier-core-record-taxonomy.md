@@ -230,14 +230,21 @@ The derivation order is binding for Work Graph projections:
 1. `work` — a `WorkItem` links to the task through `WorkItem.taskId`.
    This structural Planning -> Execution bridge wins over prior Code /
    Chat lineage. If a Code-origin task is linked into Work, the current
-   Work Graph binding becomes `work`. The Code lineage signal is
-   preserved on the underlying `CoreTaskRecord.metadata.planning`
-   (`productHint`, `transfer.suggestedProduct`) for diagnostic and
-   audit; the Work Graph projection exposes only the *current* binding
-   as `WorkGraphObjectSummary.productBinding` and does **not** carry a
-   separate `productLineage` / `originBinding` field. UIs that want to
-   display "promoted from Code" must read planning metadata directly
-   from the underlying task.
+   Work Graph binding becomes `work`. Every signal that put the task in
+   its pre-promotion binding still persists on the underlying records
+   and is therefore the lineage source: explicit
+   `planning.productHint` / `planning.transfer.suggestedProduct` when
+   origin came from a planning hint; the linked `code_thread` (or
+   chat-* family) `Conversation.kind` when origin came from conversation
+   fallback; and any `build` / `preview` `Artifact` attached to the
+   task when origin came from artifact precedence. None of these is
+   rewritten by Work promotion. The Work Graph projection exposes only
+   the *current* binding as `WorkGraphObjectSummary.productBinding` and
+   does **not** carry a separate `productLineage` / `originBinding`
+   field. UIs that want to display "promoted from Code" must read those
+   underlying signals from `CoreTaskRecord` and its related `Artifact`
+   / `Conversation` records — `planning` metadata alone is not
+   sufficient for artifact-driven or conversation-fallback Code tasks.
 2. `code` — no `WorkItem` links to the task, and the task has a
    `build` / `preview` `Artifact`, explicit Code planning provenance
    (`planning.productHint = 'code'` or
@@ -526,10 +533,15 @@ way `Artifact` already carries `projectId` / `workItemId` /
 - `cats-platform/src/core/types.ts` — canonical record declarations
 - `cats-platform/src/core/types.ts:21` — `CORE_CANONICAL_RECORD_FAMILIES` (the authoritative record set this ADR groups into layers)
 - `cats-platform/src/products/code/api/projection.ts` — `isCodeTask` routing (artifact kind + `resolveTaskExecutionProduct`)
-- `cats-platform/src/products/work/api/projectionSupport.ts` — `resolveTaskProductBinding` precedence (Work bridge → artifact → explicit planning → `code_thread` legacy fallback; chat-* conversation alone does not bind)
+- `cats-platform/src/products/work/api/projectionSupport.ts` — `resolveTaskProductBinding` precedence (Work bridge → artifact → explicit planning → `code_thread` legacy fallback; chat-* conversation alone does not bind) + `detectIncompleteWorkClaim` (Work-flavoured signal without `WorkItem.taskId` bridge)
+- `cats-platform/src/products/work/api/workGraphProjection.ts` — emits `missing_planning_execution_bridge` diagnostic for incomplete Work claims so the `'unbound'` demotion is visible as repair candidate
 - `cats-platform/src/shared/taskExecutionBridge.ts` — `resolveTaskExecutionProduct` priority (planning handoff authoritative, conversation kind is fallback). Note: this helper still admits chat-* conversation as `'chat'` for the runtime-correlation path; the projection-side `resolveTaskProductBinding` deliberately diverges to enforce the Chat Task deliberate-only producer rule.
-- `cats-platform/src/core/taskLifecycle.ts` + `cats-platform/src/runtime/client.ts` — assignment-driven dispatcher (`applyTaskAssignmentLifecycle` + `RuntimeClient.createWakeup`)
-- `cats-platform/src/products/<product>/state/runtime-session/taskExecution.ts` + `cats-platform/src/products/<product>/state/taskExecutionRequest.ts` — interactive-submit dispatcher (`RuntimeClient.sendMessage` path)
+- `cats-platform/src/core/model/executionRecords.ts` — `upsertCoreRun`, the canonical Run admission primitive. A Run exists from the moment this writes; `RuntimeClient.*` calls are downstream / asynchronous-trigger, not the admission boundary.
+- `cats-platform/src/core/taskLifecycle.ts:checkoutTaskExecution` — synchronous Run admission on actor checkout
+- `cats-platform/src/core/taskLifecycleWatchers.ts` — runtime-feedback Run state transitions (the boundary that materializes the first `running` Run for assignment-driven wakeups)
+- `cats-platform/src/products/code/state/taskExecution.ts:bridgeCodeTaskToRuntime` — Code interactive-execute Run admission (writes `running` Run before `createSupervisedRuntimeSession`)
+- `cats-platform/src/products/work/api/index.ts:launchWorkSupervisedRun` — Work supervised-run launcher (writes `queued` Run before runtime takeoff)
+- `cats-platform/src/core/taskLifecycle.ts:applyTaskAssignmentLifecycle` + `cats-platform/src/runtime/client.ts:createWakeup` — assignment-driven wakeup queue (no Run write here; Run materializes downstream in the watcher or on checkout)
 - `cats-platform/docs/terminology.md` — updated in the same change set (Run, Execution dispatcher / runtime bridge, Task product binding, Chat Task)
 
 ---
@@ -541,3 +553,4 @@ way `Artifact` already carries `projectId` / `workItemId` /
 *Amended: 2026-04-28 — §2B added task product-binding rules and the `No project` home for non-Work / orphan tasks*
 *Amended: 2026-04-28 — §2A/§2B tightened dispatcher-time Run creation, draft target-surface activation, structural Work binding, and Chat Task producer semantics*
 *Amended: 2026-04-28 — §2B chat producer rule now also tightens the projection: chat-* conversation alone does not bind `chat`, only explicit chat planning provenance does (closes producer/projection contradiction); §2B(1) `productBinding` clarified as exposing only the *current* binding — Code-origin lineage stays on raw planning metadata, not as a projection field. References block now points at `resolveTaskProductBinding` and the dispatcher modules so the rule's load-bearing terms map to concrete code.*
+*Amended: 2026-04-28 — §2B(1) lineage source list broadened to enumerate all three persisting signals (planning metadata, `Conversation.kind`, attached `Artifact`); planning metadata alone is insufficient for artifact-driven / conversation-fallback Code tasks. References block corrected — Run admission boundary is `upsertCoreRun` (`src/core/model/executionRecords.ts`), NOT a `RuntimeClient` call; principal sync / watcher / supervision call sites enumerated, and the assignment-driven path's lack of inline `upsertCoreRun` is called out explicitly. Companion implementation: `detectIncompleteWorkClaim` + `missing_planning_execution_bridge` diagnostic emission in `buildWorkGraphProjection` so the §2B(3) "incomplete Work claim diagnostic" promise is real, not spec-only.*

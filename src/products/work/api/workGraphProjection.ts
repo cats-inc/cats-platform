@@ -19,13 +19,17 @@ import {
 } from '../shared/workGraphProjection.js';
 import type {
   WorkAttentionState,
+  WorkGraphDiagnostic,
   WorkGraphEvidenceAttachment,
   WorkGraphGateDecorator,
   WorkGraphLink,
   WorkGraphObjectSummary,
   WorkGraphProjection,
 } from '../shared/workGraphTypes.js';
-import { resolveTaskProductBinding } from './projectionSupport.js';
+import {
+  detectIncompleteWorkClaim,
+  resolveTaskProductBinding,
+} from './projectionSupport.js';
 
 /**
  * Build a complete `WorkGraphProjection` from canonical Core state.
@@ -113,13 +117,34 @@ export function buildWorkGraphProjection(core: CatsCoreState): WorkGraphProjecti
   }
   const linkProjection = projectLinks(links, objectsByCoreRef);
 
+  // ADR-081 §2B / SPEC-083 R45: a task carrying Work-flavoured signal
+  // (`planning.productHint = 'work'`, `planning.transfer.suggestedProduct
+  // = 'work'`, or a `work_thread` conversation) without a `WorkItem.taskId`
+  // bridge is an incomplete Work claim. `resolveTaskProductBinding`
+  // demotes it to `'unbound'`; the projection emits a parallel
+  // `missing_planning_execution_bridge` diagnostic so the demotion is
+  // not silent and the task surfaces as repair candidate rather than
+  // anonymous orphan triage.
+  const incompleteWorkClaimDiagnostics: WorkGraphDiagnostic[] = core.tasks
+    .filter((task) => detectIncompleteWorkClaim(core, task))
+    .map((task) => ({
+      id: `incomplete-work-claim:${task.id}`,
+      severity: 'warning',
+      category: 'anchor',
+      kind: 'missing_planning_execution_bridge',
+      objectId: task.id,
+      message: `Task "${task.title}" carries Work-flavoured signal but no `
+        + `WorkItem.taskId bridge; projecting as 'unbound' until a `
+        + `WorkItem links to this task or the Work claim is retracted.`,
+    }));
+
   return {
     objects,
     evidenceAttachments,
     gateDecorators,
     links,
     linksByEndpoint: linkProjection.linksByEndpoint,
-    diagnostics: linkProjection.diagnostics,
+    diagnostics: [...linkProjection.diagnostics, ...incompleteWorkClaimDiagnostics],
   };
 }
 

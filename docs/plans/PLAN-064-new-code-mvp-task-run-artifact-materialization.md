@@ -229,13 +229,19 @@ and evidence all point back to one task/conversation anchor.
   projectless Code tasks under `No project`; do not create fallback
   `Project` / `WorkItem` records just to house them.
 - If a Code-origin task is later linked through `WorkItem.taskId`, Work Graph
-  projects the current task binding as `work`. The Code lineage signal stays
-  on the underlying `CoreTaskRecord.metadata.planning` (`productHint`,
-  `transfer.suggestedProduct`) for diagnostic / audit; the projection exposes
-  only the *current* binding via `WorkGraphObjectSummary.productBinding` and
-  does not carry a separate `productLineage` / `originBinding` field in this
-  slice. Surfaces that need to display "promoted from Code" must read raw
-  planning metadata directly from the underlying task.
+  projects the current task binding as `work`. The lineage signals that put
+  the task in `code` before promotion still persist on the underlying records
+  — explicit `planning.productHint` / `planning.transfer.suggestedProduct`
+  when origin came from a planning hint, the `code_thread` `Conversation.kind`
+  when origin came from conversation fallback, and any `build` / `preview`
+  `Artifact` attached to the task when origin came from artifact precedence —
+  none of which is rewritten by promotion. The projection exposes only the
+  *current* binding via `WorkGraphObjectSummary.productBinding` and does not
+  carry a separate `productLineage` / `originBinding` field in this slice.
+  Surfaces that need to display "promoted from Code" must read those
+  underlying signals directly from `CoreTaskRecord` and its related `Artifact`
+  / `Conversation` records — `planning` metadata alone is not sufficient
+  for artifact-driven or conversation-fallback Code tasks.
 - Defer Work promotion from this slice; Code-origin tasks stay Code-owned by
   default.
 - Preserve `job` only as an external-system boundary term; do not reintroduce
