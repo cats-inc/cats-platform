@@ -1,23 +1,12 @@
-import { useMemo } from "react";
 import { Link } from "react-router-dom";
 
 import { formatRelative } from "../topdown/shared";
 import { useRuns } from "../../state/runsStore";
-import { useTasks } from "../../state/tasksStore";
 import { buildWorkRunPath } from "../../workPaths.js";
 import "./runs.css";
 
 export function RunsListPage(): JSX.Element {
   const { allRuns } = useRuns();
-  const { allTasks } = useTasks();
-
-  const taskTitleById = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const task of allTasks) {
-      map.set(task.id, task.title);
-    }
-    return map;
-  }, [allTasks]);
 
   return (
     <div className="runsList">
@@ -47,9 +36,7 @@ export function RunsListPage(): JSX.Element {
               .slice()
               .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
               .map((run) => {
-                const taskTitle = run.linkedTaskId
-                  ? taskTitleById.get(run.linkedTaskId) ?? null
-                  : null;
+                const taskTitle = run.linkedTaskTitle ?? null;
                 const taskId = run.linkedTaskId ?? "orphan";
                 return (
                   <li key={run.id} className="runsList__row">
