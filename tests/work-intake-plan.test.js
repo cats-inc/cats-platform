@@ -6,7 +6,9 @@ import {
   readTaskPlanningMetadata,
 } from '../build/server/shared/taskPlanning.js';
 import {
+  createWorkTemplateRegistry,
   getWorkTemplate,
+  listWorkTemplates,
 } from '../build/server/products/work/templates/index.js';
 import {
   generateWorkIntakePlan,
@@ -21,6 +23,29 @@ function createIntakeFixture() {
 
   return { now, core, template };
 }
+
+test('work template registry exposes a deterministic extension seam', () => {
+  const template = getWorkTemplate('software_delivery');
+  assert.ok(template);
+
+  const extensionTemplate = {
+    ...template,
+    id: 'research_spike',
+    label: 'Research Spike',
+  };
+  const registry = createWorkTemplateRegistry([extensionTemplate, template]);
+
+  assert.equal(registry.get('software_delivery')?.label, 'Software Delivery');
+  assert.equal(registry.get('research_spike')?.label, 'Research Spike');
+  assert.deepEqual(
+    listWorkTemplates().map((candidate) => candidate.id),
+    ['software_delivery'],
+  );
+  assert.throws(
+    () => createWorkTemplateRegistry([template, template]),
+    /Duplicate Work template id/u,
+  );
+});
 
 test('generateWorkIntakePlan creates project with correct fields', () => {
   const { now, core, template } = createIntakeFixture();
