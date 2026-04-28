@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import {
@@ -5,6 +6,7 @@ import {
   buildWorkTaskPath,
   buildWorkWorkItemPath,
 } from "../../workPaths.js";
+import { NewLinkDialog } from "./NewLinkDialog";
 import {
   endpointKey,
   KIND_LABEL,
@@ -17,6 +19,7 @@ import type {
   WorkGraphProjection,
 } from "./types";
 import "./linkage-section.css";
+import "./new-link-dialog.css";
 
 interface LinkageSectionProps {
   selfRef: WorkGraphLinkEndpointRef;
@@ -64,6 +67,7 @@ export function LinkageSection({
   graph,
   indexes,
 }: LinkageSectionProps): JSX.Element {
+  const [dialogOpen, setDialogOpen] = useState(false);
   const selfKey = endpointKey(selfRef);
   const views = graph.linksByEndpoint[selfKey] ?? [];
 
@@ -80,11 +84,18 @@ export function LinkageSection({
       <header className="linkageSection__header">
         <h2>Linkage</h2>
         <span className="linkageSection__count">{views.length}</span>
+        <button
+          type="button"
+          className="linkageSection__addBtn"
+          onClick={() => setDialogOpen(true)}
+        >
+          + Add link
+        </button>
       </header>
       {views.length === 0 ? (
         <p className="linkageSection__empty">
-          No links yet — Project / Work Item / Task can be linked once the
-          producer pipeline supports the Add link affordance.
+          No links yet — use <strong>Add link</strong> to connect this to a
+          Project, Work Item, or Task.
         </p>
       ) : (
         presentKinds.map((kind) => (
@@ -97,6 +108,13 @@ export function LinkageSection({
           />
         ))
       )}
+      {dialogOpen ? (
+        <NewLinkDialog
+          selfRef={selfRef}
+          graph={graph}
+          onClose={() => setDialogOpen(false)}
+        />
+      ) : null}
     </section>
   );
 }

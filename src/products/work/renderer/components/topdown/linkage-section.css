@@ -31,6 +31,22 @@
   font-weight: 500;
 }
 
+.linkageSection__addBtn {
+  margin-left: auto;
+  font: inherit;
+  font-size: 0.72rem;
+  color: var(--text);
+  background: var(--canvas-bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.linkageSection__addBtn:hover {
+  background: var(--panel-hover);
+}
+
 .linkageSection__empty {
   margin: 0;
   padding: 24px 18px;

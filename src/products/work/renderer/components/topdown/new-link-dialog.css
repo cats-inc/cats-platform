@@ -1,0 +1,234 @@
+.newLinkDialog__backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 24px;
+}
+
+.newLinkDialog__panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: min(560px, 100%);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+}
+
+.newLinkDialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-subtle);
+}
+
+.newLinkDialog__heading {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.newLinkDialog__close {
+  font-size: 1.2rem;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  padding: 0 6px;
+}
+
+.newLinkDialog__close:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.newLinkDialog__close:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.newLinkDialog__form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 18px;
+  overflow-y: auto;
+}
+
+.newLinkDialog__sourceLine {
+  margin: 0;
+  font-size: 0.74rem;
+  color: var(--muted);
+}
+
+.newLinkDialog__sourceLine code {
+  font-family: var(--font-mono, "SFMono-Regular", Consolas, monospace);
+  font-size: 0.72rem;
+  background: var(--canvas-bg);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--text);
+}
+
+.newLinkDialog__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.newLinkDialog__label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.newLinkDialog__input,
+.newLinkDialog__select,
+.newLinkDialog__textarea {
+  font: inherit;
+  font-size: 0.84rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px;
+  background: var(--canvas-bg);
+  color: var(--text);
+}
+
+.newLinkDialog__textarea {
+  resize: vertical;
+  min-height: 48px;
+}
+
+.newLinkDialog__hint {
+  font-size: 0.68rem;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.newLinkDialog__candidates {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+  background: var(--canvas-bg);
+}
+
+.newLinkDialog__candidates li {
+  border-bottom: 1px solid var(--border);
+}
+
+.newLinkDialog__candidates li:last-child {
+  border-bottom: none;
+}
+
+.newLinkDialog__candidate {
+  width: 100%;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+  color: var(--text);
+}
+
+.newLinkDialog__candidate:hover {
+  background: var(--panel-hover);
+}
+
+.newLinkDialog__candidate--selected {
+  background: var(--panel-hover);
+  outline: 1px solid var(--accent, var(--text));
+}
+
+.newLinkDialog__candidateKind {
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.newLinkDialog__candidateTitle {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.newLinkDialog__empty {
+  margin: 6px 0 0;
+  padding: 10px;
+  font-size: 0.74rem;
+  color: var(--muted);
+  font-style: italic;
+  text-align: center;
+  background: var(--canvas-bg);
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+}
+
+.newLinkDialog__charCount {
+  align-self: flex-end;
+  font-size: 0.66rem;
+  color: var(--muted);
+}
+
+.newLinkDialog__error {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(192, 56, 43, 0.08);
+  color: var(--danger, #c0382b);
+  font-size: 0.74rem;
+}
+
+.newLinkDialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.newLinkDialog__cancelBtn,
+.newLinkDialog__submitBtn {
+  font: inherit;
+  font-size: 0.76rem;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.newLinkDialog__cancelBtn {
+  background: var(--canvas-bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+.newLinkDialog__submitBtn {
+  background: var(--accent, var(--text));
+  border: 1px solid var(--accent, var(--text));
+  color: var(--panel);
+}
+
+.newLinkDialog__submitBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
