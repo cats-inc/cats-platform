@@ -216,6 +216,28 @@ Graph should surface it as a diagnostic and group it as `unbound` until
 the producer repairs it by linking a `WorkItem` or retags it as Code /
 Chat.
 
+The `chat` binding is symmetrically tightened: a chat-* / DM /
+external-transport / private-escalation conversation alone does **not**
+make a task `productBinding = chat`. The deliberate-only Chat Task
+producer rule (§ Chat Task in `terminology.md`, SPEC-083 R14) requires
+explicit chat planning provenance — `planning.productHint = 'chat'` or
+`planning.transfer.suggestedProduct = 'chat'` — on the task. Without
+that, the projection emits `unbound` so accidentally chat-linked tasks
+surface as orphan triage rather than being silently admitted as Chat
+Tasks. The projection-side and producer-side rules therefore agree:
+both refuse to admit a task as `chat` purely from conversation kind.
+
+When a Code-origin or Chat-origin task is later promoted into Work
+through `WorkItem.taskId`, the projection emits `work` for the *current*
+binding. The originating product signal (`planning.productHint`,
+`planning.transfer.suggestedProduct`) is preserved on the underlying
+`CoreTaskRecord.metadata.planning` for diagnostic and audit, but the
+Work Graph projection does not surface it as a separate
+`productLineage` / `originBinding` field in this slice. Adding such a
+field is an explicit follow-on decision, not implied by this ADR;
+surfaces that need to display "promoted from Code" must read raw
+planning metadata directly from the underlying task.
+
 Tasks with no Project / WorkItem lineage are grouped under an honest
 `No project` bucket. The bucket may group or filter by product binding
 so the owner can distinguish `code`, `chat`, and `unbound` tasks. There
@@ -363,4 +385,5 @@ are implementation history, not compatibility targets.
 
 *Decision made: 2026-04-25*
 *Decision revised: 2026-04-28*
+*Decision revised: 2026-04-28 — §6 tightened: chat-* conversation alone no longer projects as `productBinding = chat` (must have explicit chat planning provenance, matching the deliberate-only producer rule); Code-origin lineage on Work-promoted tasks stays on raw planning metadata, not as a separate projection field.*
 *Decision makers: User + Codex*

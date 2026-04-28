@@ -229,8 +229,13 @@ and evidence all point back to one task/conversation anchor.
   projectless Code tasks under `No project`; do not create fallback
   `Project` / `WorkItem` records just to house them.
 - If a Code-origin task is later linked through `WorkItem.taskId`, Work Graph
-  projects the current task binding as `work`; Code origin remains lineage
-  metadata rather than the binding value.
+  projects the current task binding as `work`. The Code lineage signal stays
+  on the underlying `CoreTaskRecord.metadata.planning` (`productHint`,
+  `transfer.suggestedProduct`) for diagnostic / audit; the projection exposes
+  only the *current* binding via `WorkGraphObjectSummary.productBinding` and
+  does not carry a separate `productLineage` / `originBinding` field in this
+  slice. Surfaces that need to display "promoted from Code" must read raw
+  planning metadata directly from the underlying task.
 - Defer Work promotion from this slice; Code-origin tasks stay Code-owned by
   default.
 - Preserve `job` only as an external-system boundary term; do not reintroduce
@@ -275,6 +280,7 @@ and evidence all point back to one task/conversation anchor.
 | 2026-04-28 | Clarified entry materialization: `+New code` creates `Conversation + primary Task`, does not require `Project` / `WorkItem`, and creates the first `Run` only when an execution attempt is admitted. |
 | 2026-04-28 | Clarified orphan-task home: Code tasks without Project / WorkItem anchors project into Work Graph as `productBinding = code` under `No project`, rather than receiving fallback Work records. |
 | 2026-04-28 | Follow-up amendment: first Run starts at dispatcher/runtime admission; a first user send can create it immediately when Code auto-dispatches. Work linkage through `WorkItem.taskId` flips current Work Graph binding to `work` without erasing Code origin lineage. |
+| 2026-04-28 | Lineage / projection contract correction: clarified that "Code origin remains" lives on raw `CoreTaskRecord.metadata.planning`, NOT as a separate projection field. `WorkGraphObjectSummary` exposes only the *current* `productBinding`. Adding a `productLineage` / `originBinding` projection field is a deliberate follow-on, not implied by this slice. |
 
 ---
 

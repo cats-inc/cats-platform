@@ -69,13 +69,22 @@ Entry materialization is intentionally product-specific:
 Task projection is shared across products. Work Graph surfaces render every
 Core `Task` they know about and label task rows with a product binding:
 `work`, `code`, `chat`, or `unbound`. `work` is derived only from a
-`WorkItem.taskId` bridge; Work-flavored metadata without that bridge is an
-incomplete Work claim, not managed Work. Code and Chat tasks do not receive
-fake Project / WorkItem anchors just to make the Work UI tidy. When they have
-no project lineage, Work groups them under `No project` and may sub-group by
-product binding (`code`, `chat`, `unbound`). A real inbox-style project is
-reserved for actual Work creation, not as a silent fallback for orphan Code /
-Chat tasks.
+`WorkItem.taskId` bridge; Work-flavored metadata or a `work_thread`
+conversation without that bridge is an incomplete Work claim, not managed
+Work. `chat` is derived only from explicit chat planning provenance
+(`planning.productHint = 'chat'` or
+`planning.transfer.suggestedProduct = 'chat'`); a chat-* / DM /
+external-transport / private-escalation conversation alone does not bind, in
+keeping with the deliberate-only Chat Task producer rule. The projection
+exposes only the *current* binding; if a Code-origin task is later linked
+into Work, Code lineage is preserved on raw `CoreTaskRecord.metadata.planning`
+but is not surfaced as a separate projection field. Code and Chat tasks do
+not receive fake Project / WorkItem anchors just to make the Work UI tidy.
+When they have no project lineage, Work groups them under `No project` and
+may sub-group by product binding (`code`, `chat`, `unbound`); there is no
+`No project / work` subgroup because `work` requires the Planning bridge. A
+real inbox-style project is reserved for actual Work creation, not as a
+silent fallback for orphan Code / Chat / unbound tasks.
 
 Terminology rule:
 

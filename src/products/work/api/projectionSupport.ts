@@ -1,4 +1,4 @@
-import { resolveTaskExecutionProduct } from '../../../shared/taskExecutionBridge.js';
+import { readTaskPlanningMetadataFromTask } from '../../../shared/taskPlanning.js';
 import type {
   CatsCoreState,
   CoreProjectStatus,
@@ -30,6 +30,21 @@ export function resolveTaskProductBinding(
   core: CatsCoreState,
   task: CoreTaskRecord,
 ): WorkTaskProductBinding {
+  // Precedence (mirrors `isCodeTask` artifact-first composite + ADR-081 §2B):
+  //   1. structural Work bridge (`WorkItem.taskId`) → 'work'
+  //   2. Code-owned artifact (`build` | `preview`) → 'code'
+  //   3. explicit planning provenance (`productHint` or
+  //      `transfer.suggestedProduct`) → that product
+  //      ('work' explicit hint without bridge → 'unbound' incomplete-claim)
+  //   4. legacy conversation-kind fallback for `code_thread` only;
+  //      chat-* / work_thread conversations alone do NOT bind, per the
+  //      deliberate-only producer rule for Chat Tasks and the structural
+  //      requirement for Work binding.
+  // We deliberately do not call `resolveTaskExecutionProduct` here because
+  // its conversation-kind fallback would admit chat-* conversations as
+  // 'chat', which contradicts the producer rule; this routine encodes the
+  // projection-side rules end-to-end so the precedence stays auditable in
+  // one place.
   if (core.workItems.some((workItem) => workItem.taskId === task.id)) {
     return 'work';
   }
@@ -39,10 +54,31 @@ export function resolveTaskProductBinding(
     return 'code';
   }
 
-  const executionProduct = resolveTaskExecutionProduct({ core, task });
-  return executionProduct === 'work'
-    ? 'unbound'
-    : executionProduct ?? 'unbound';
+  const planning = readTaskPlanningMetadataFromTask(task);
+  const explicit = planning.productHint ?? planning.transfer?.suggestedProduct ?? null;
+  if (explicit === 'code') {
+    return 'code';
+  }
+  if (explicit === 'chat') {
+    return 'chat';
+  }
+  if (explicit === 'work') {
+    // Work-flavoured metadata without `WorkItem.taskId` is an incomplete
+    // Work claim — surfaced separately as a diagnostic (see SPEC-083 §
+    // Diagnostic minimum), not admitted as managed Work.
+    return 'unbound';
+  }
+
+  if (task.conversationId) {
+    const conversation = core.conversations.find(
+      (candidate) => candidate.id === task.conversationId,
+    );
+    if (conversation?.kind === 'code_thread') {
+      return 'code';
+    }
+  }
+
+  return 'unbound';
 }
 
 export function isWorkTask(core: CatsCoreState, task: CoreTaskRecord): boolean {

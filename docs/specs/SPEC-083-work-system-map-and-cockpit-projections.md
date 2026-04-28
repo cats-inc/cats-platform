@@ -226,9 +226,15 @@ Tables and Task Hub remain later projections over the same graph.
 43. System Map, Cockpit, and the Work Tasks list shall render task product
     binding as product attribution, not as a new canonical record family.
 44. Task product binding shall be derived, not stored. The derivation order is:
-    `WorkItem.taskId` linkage -> `work`; build / preview artifact or Code
-    planning / conversation provenance -> `code`; Chat planning / conversation
-    provenance -> `chat`; otherwise `unbound`.
+    `WorkItem.taskId` linkage -> `work`; `build` / `preview` artifact -> `code`;
+    explicit planning provenance (`planning.productHint` or
+    `planning.transfer.suggestedProduct`) -> that product, with explicit
+    `'work'` without a `WorkItem.taskId` bridge demoted to `unbound`;
+    `Conversation.kind === 'code_thread'` legacy fallback -> `code`. Chat-* /
+    DM / external-transport / private-escalation / `work_thread` conversations
+    alone shall **not** bind: `chat` requires explicit chat planning provenance
+    per the deliberate-only Chat Task producer rule (R14), and `work` requires
+    the structural `WorkItem.taskId` bridge.
 45. Work-flavored task metadata, `planning.productHint = 'work'`,
     `planning.transfer.suggestedProduct = 'work'`, or a `work_thread`
     conversation shall not produce `productBinding = work` without a
@@ -236,8 +242,14 @@ Tables and Task Hub remain later projections over the same graph.
     claim diagnostic and remain outside managed Work until repaired.
 46. When a Code-origin or Chat-origin task is later linked by `WorkItem.taskId`,
     the current Work Graph binding shall become `work`. The original product
-    origin may remain visible as lineage metadata, but it shall not override
-    the structural Work binding.
+    origin is preserved on the underlying `CoreTaskRecord.metadata.planning`
+    (`productHint`, `transfer.suggestedProduct`) for diagnostic and audit. The
+    Work Graph projection shall expose only the *current* binding through
+    `WorkGraphObjectSummary.productBinding` and shall **not** carry a separate
+    `productLineage` or `originBinding` projection field in this slice. Surfaces
+    that need to display "promoted from Code" must read planning metadata
+    directly from the underlying task; introducing a dedicated projection
+    field is an explicit follow-on decision, not implied by this spec.
 47. Tasks with no resolved Project / WorkItem lineage shall appear under a
     `No project` grouping. The grouping may be sub-grouped or filtered by task
     product binding, for example `No project / code`, `No project / chat`, and
@@ -302,8 +314,17 @@ Tables and Task Hub remain later projections over the same graph.
     may be written only by explicit chat-side planning, a user action that
     turns chat content into a follow-up / action item, or an assistant planning
     step that deliberately materializes a Task from an already-active Chat
-    conversation. Such records project as `productBinding = chat` and use the
-    same `No project` home until explicitly linked into Work.
+    conversation. Producers that materialize a Chat-bound task shall write
+    explicit chat planning provenance (`planning.productHint = 'chat'` or
+    `planning.transfer.suggestedProduct = 'chat'`) on the task. The projection
+    enforces this contract: chat-* / DM / external-transport /
+    private-escalation conversation kinds alone shall **not** project as
+    `productBinding = chat`. A task linked to a chat-* conversation but
+    without explicit chat planning provenance shall project as `unbound`,
+    making accidental "chat fallback" tasks visible as orphan triage rather
+    than silently admitted as Chat Tasks. Properly materialized Chat Tasks
+    project as `productBinding = chat` and use the `No project` home until
+    explicitly linked into Work.
 15. Unbound tasks shall project as `productBinding = unbound` and use the `No
     project` home until a later producer writes product attribution or Planning
     linkage. They should be visible as cleanup / triage candidates, not silently
@@ -311,6 +332,14 @@ Tables and Task Hub remain later projections over the same graph.
 16. A Chat draft submitted with `targetSurface = 'code'` shall activate
     directly into the Code producer contract; it shall create Code-owned
     Interaction / Task state and shall not first create a Chat-bound task.
+17. A Chat draft submitted with `targetSurface = 'work'` shall activate
+    directly into the Work producer contract; it shall create the full Work
+    anchor set required by R39 (`Conversation + Project + WorkItem + primary
+    Task` with the `WorkItem.taskId` bridge) and shall not first create a
+    Chat-bound task or a Code-bound task as an intermediate step. The same
+    identity-at-activation rule applies to any future
+    `currentSurface -> targetSurface` switch admitted by the platform draft
+    dispatcher (e.g. `Code -> Work`).
 
 #### Minimum Anchor Sets
 

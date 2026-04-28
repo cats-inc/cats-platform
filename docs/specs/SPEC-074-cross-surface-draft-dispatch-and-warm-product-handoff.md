@@ -135,6 +135,22 @@ The platform therefore needs both:
     materialization contract at activation time. It creates Code-owned
     Interaction / Task records directly and shall not first create a
     Chat-owned conversation or Chat-bound Task.
+14a. A draft submitted with `targetSurface = 'work'` shall run the Work entry
+    materialization contract at activation time. It creates the full Work
+    anchor set required by `+New work` — one primary `Conversation`, one
+    `Project`, one `WorkItem`, and one primary `Task` linked through
+    `WorkItem.taskId` — directly. It shall not first create a Chat-owned
+    conversation, a Chat-bound Task, or a Code-owned conversation / Task.
+    The same identity-at-activation rule applies to any other
+    `currentSurface -> targetSurface` switch (e.g. `Code -> Work`): the
+    destination product's entry contract runs at first submit / activation,
+    not via a later promote step on an already-active conversation.
+14b. The platform-shared draft dispatcher shall enforce R14 / R14a uniformly:
+    no product-specific renderer shall bypass `targetSurface` and admit a
+    surface switch through its own create path. Adding a new
+    `currentSurface -> targetSurface` pair (e.g. `Work -> Code`) shall
+    require an entry-contract rule covering it before that switch is enabled
+    in product UI.
 15. The first slice shall not require a new persisted `sourceSurface` field.
 16. Cross-surface draft dispatch and warm-navigation handoff shall not be
     implemented by one product importing another product's renderer-local
@@ -192,8 +208,12 @@ The platform therefore needs both:
     conversation, create the Code primary task required by `+New code`, and
     land in the Code active route when submitted. The identity decision happens
     at draft activation / first submit, not through a later promote action.
-29. Future Chat -> Work or other surface switches shall use the same shared
-    contract rather than bespoke one-off flows.
+29. The Chat -> Work draft helper, when shipped, shall similarly create a
+    Work-owned anchor set (`Conversation + Project + WorkItem + primary
+    Task` with the `WorkItem.taskId` bridge) and land in the Work active
+    route. It shall not stage a Chat-bound Task or a Code-bound Task as an
+    intermediate step. Other future cross-surface switches shall use the
+    same shared contract rather than bespoke one-off flows.
 30. Later supported cross-surface navigation targets, such as existing
     conversations, artifacts, tasks, or runs, should layer onto the same
     registry/store seam when continuity optimization is needed instead of

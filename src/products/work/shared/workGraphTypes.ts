@@ -16,14 +16,25 @@ export type WorkGraphLayer = "interaction" | "planning" | "execution";
  * `resolveTaskProductBinding`:
  *
  *   - 'work'    — task has a Work Item linking to it through
- *                 `WorkItem.taskId`; this structural bridge wins over
- *                 Code / Chat lineage metadata.
- *   - 'code'    — task has a build / preview artifact, planning hint says
- *                 code, OR conversation is `code_thread`.
- *   - 'chat'    — conversation is a chat channel / DM / external
- *                 transport / private escalation.
- *   - 'unbound' — no usable signal, or a Work hint / `work_thread`
- *                 fallback exists without the required WorkItem bridge.
+ *                 `WorkItem.taskId`; this structural bridge is the only
+ *                 way to qualify as `work`. Code / Chat lineage on the
+ *                 same task is preserved on the underlying
+ *                 `CoreTaskRecord.metadata.planning` for diagnostic /
+ *                 audit, but is NOT exposed via this projection field.
+ *   - 'code'    — task has a build / preview artifact, OR explicit Code
+ *                 planning provenance (`productHint = 'code'` /
+ *                 `transfer.suggestedProduct = 'code'`), OR legacy
+ *                 `code_thread` conversation fallback (no planning).
+ *   - 'chat'    — explicit Chat planning provenance only. Chat-*
+ *                 conversation kind alone does NOT qualify, per the
+ *                 deliberate-only producer rule (Chat Tasks must be
+ *                 explicitly materialized from an active Chat
+ *                 conversation, not auto-bound by conversation kind).
+ *   - 'unbound' — no usable signal; Work-flavoured hint / `work_thread`
+ *                 fallback without the required `WorkItem.taskId`
+ *                 bridge (incomplete Work claim, surfaces as a
+ *                 diagnostic); chat-* conversation without explicit
+ *                 chat provenance.
  *
  * Set only on `kind === 'task'` summaries; undefined elsewhere.
  */

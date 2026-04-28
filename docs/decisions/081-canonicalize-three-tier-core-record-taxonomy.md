@@ -230,14 +230,33 @@ The derivation order is binding for Work Graph projections:
 1. `work` — a `WorkItem` links to the task through `WorkItem.taskId`.
    This structural Planning -> Execution bridge wins over prior Code /
    Chat lineage. If a Code-origin task is linked into Work, the current
-   Work Graph binding becomes `work`; its Code origin remains lineage
-   metadata, not the projection binding.
+   Work Graph binding becomes `work`. The Code lineage signal is
+   preserved on the underlying `CoreTaskRecord.metadata.planning`
+   (`productHint`, `transfer.suggestedProduct`) for diagnostic and
+   audit; the Work Graph projection exposes only the *current* binding
+   as `WorkGraphObjectSummary.productBinding` and does **not** carry a
+   separate `productLineage` / `originBinding` field. UIs that want to
+   display "promoted from Code" must read planning metadata directly
+   from the underlying task.
 2. `code` — no `WorkItem` links to the task, and the task has a
-   `build` / `preview` `Artifact`, Code planning handoff metadata, or a
-   Code conversation fallback.
-3. `chat` — no `WorkItem` links to the task, and the task has explicit
-   Chat planning provenance or a Chat conversation fallback.
-4. `unbound` — no trustworthy non-Work product signal exists yet.
+   `build` / `preview` `Artifact`, explicit Code planning provenance
+   (`planning.productHint = 'code'` or
+   `planning.transfer.suggestedProduct = 'code'`), or a `code_thread`
+   conversation as a legacy / no-planning fallback.
+3. `chat` — no `WorkItem` links to the task, and the task has
+   **explicit** Chat planning provenance (`planning.productHint =
+   'chat'` or `planning.transfer.suggestedProduct = 'chat'`). A
+   chat-* / DM / external-transport / private-escalation conversation
+   alone does **not** qualify, per the deliberate-only Chat Task
+   producer rule (§2B "Non-Work tasks must not force Planning anchors"
+   and the Chat Task row of `terminology.md`); such a task projects
+   as `unbound` until explicit chat planning provenance is written or
+   the task is promoted into Work.
+4. `unbound` — no trustworthy non-Work product signal exists yet, or
+   the only signal is Work-flavoured metadata / `work_thread` /
+   chat-* conversation kind without the structural / explicit
+   provenance required above. Work-flavoured signals also project as
+   `unbound` and surface a separate incomplete-Work-claim diagnostic.
 
 Work execution-product metadata by itself does **not** make
 `productBinding = work`. A task with `planning.productHint = 'work'`,
@@ -507,8 +526,11 @@ way `Artifact` already carries `projectId` / `workItemId` /
 - `cats-platform/src/core/types.ts` — canonical record declarations
 - `cats-platform/src/core/types.ts:21` — `CORE_CANONICAL_RECORD_FAMILIES` (the authoritative record set this ADR groups into layers)
 - `cats-platform/src/products/code/api/projection.ts` — `isCodeTask` routing (artifact kind + `resolveTaskExecutionProduct`)
-- `cats-platform/src/shared/taskExecutionBridge.ts` — `resolveTaskExecutionProduct` priority (planning handoff authoritative, conversation kind is fallback)
-- `cats-platform/docs/terminology.md` — updated in the same change set
+- `cats-platform/src/products/work/api/projectionSupport.ts` — `resolveTaskProductBinding` precedence (Work bridge → artifact → explicit planning → `code_thread` legacy fallback; chat-* conversation alone does not bind)
+- `cats-platform/src/shared/taskExecutionBridge.ts` — `resolveTaskExecutionProduct` priority (planning handoff authoritative, conversation kind is fallback). Note: this helper still admits chat-* conversation as `'chat'` for the runtime-correlation path; the projection-side `resolveTaskProductBinding` deliberately diverges to enforce the Chat Task deliberate-only producer rule.
+- `cats-platform/src/core/taskLifecycle.ts` + `cats-platform/src/runtime/client.ts` — assignment-driven dispatcher (`applyTaskAssignmentLifecycle` + `RuntimeClient.createWakeup`)
+- `cats-platform/src/products/<product>/state/runtime-session/taskExecution.ts` + `cats-platform/src/products/<product>/state/taskExecutionRequest.ts` — interactive-submit dispatcher (`RuntimeClient.sendMessage` path)
+- `cats-platform/docs/terminology.md` — updated in the same change set (Run, Execution dispatcher / runtime bridge, Task product binding, Chat Task)
 
 ---
 
@@ -518,3 +540,4 @@ way `Artifact` already carries `projectId` / `workItemId` /
 *Amended: 2026-04-28 — §2A added product entry materialization rules for Chat / Code / Work and lazy Run creation*
 *Amended: 2026-04-28 — §2B added task product-binding rules and the `No project` home for non-Work / orphan tasks*
 *Amended: 2026-04-28 — §2A/§2B tightened dispatcher-time Run creation, draft target-surface activation, structural Work binding, and Chat Task producer semantics*
+*Amended: 2026-04-28 — §2B chat producer rule now also tightens the projection: chat-* conversation alone does not bind `chat`, only explicit chat planning provenance does (closes producer/projection contradiction); §2B(1) `productBinding` clarified as exposing only the *current* binding — Code-origin lineage stays on raw planning metadata, not as a projection field. References block now points at `resolveTaskProductBinding` and the dispatcher modules so the rule's load-bearing terms map to concrete code.*

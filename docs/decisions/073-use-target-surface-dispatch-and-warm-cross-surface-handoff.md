@@ -66,6 +66,15 @@ Rules:
 - a Chat-route draft submitted with `targetSurface = 'code'` activates directly
   into the Code entry contract. It creates Code-owned records and appears in
   Code recents; it is not a Chat conversation that later promotes to Code.
+- a Chat-route draft submitted with `targetSurface = 'work'` activates directly
+  into the Work entry contract. It creates the full Work-owned anchor set
+  required by `+New work` (one primary `Conversation`, one `Project`, one
+  `WorkItem`, one primary `Task` linked through `WorkItem.taskId`) and appears
+  in Work recents; it is not a Chat conversation that later promotes to Work,
+  and it is not a Chat-bound or Code-bound task that Work later adopts. The
+  same applies to any other `currentSurface -> targetSurface` switch (e.g.
+  `Code -> Work`): the destination product's entry contract runs at
+  activation, not after a separate promote step.
 - the first slice does **not** add a new persisted `sourceSurface` or
   `launchSurface` field
 
