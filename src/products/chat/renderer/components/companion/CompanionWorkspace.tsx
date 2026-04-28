@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 
 import type { AppShellPayload, ChatCat } from '../../../api/contracts.js';
 import {
@@ -6,6 +6,9 @@ import {
   readCoercedFeatureFlag,
 } from '../../../../../shared/featureFlags.js';
 import {
+  LEGACY_COMPANION_SIDE_PANEL_SECTION_IDS,
+  PROFILE_IA_COMPANION_SIDE_PANEL_SECTION_IDS,
+  companionProfileIaTabLabel,
   companionTabLabel,
   type CompanionWorkspaceTab,
 } from '../../companionViewTypes.js';
@@ -93,69 +96,79 @@ export function CompanionWorkspace({
     );
   }
 
-  const sidePanelSections = [
-    {
-      id: 'overview' satisfies CompanionWorkspaceTab,
-      title: companionTabLabel('overview'),
-      children: wrapSection(
-        <CompanionOverviewSection
-          summary={workspace.summary}
-          recentMemory={workspace.memory}
-          presence={presence}
-          onWake={handleWake}
-          onSleep={handleSleep}
-          loading={workspace.loading}
-        />,
-      ),
-    },
-    {
-      id: 'resources' satisfies CompanionWorkspaceTab,
-      title: companionTabLabel('resources'),
-      children: wrapSection(
-        <CompanionResourcesSection
-          sources={workspace.sources}
-          loading={workspace.loading}
-          onAddSource={workspace.addSource}
-          onDeleteSource={workspace.removeSource}
-        />,
-      ),
-    },
-    {
-      id: 'creations' satisfies CompanionWorkspaceTab,
-      title: companionTabLabel('creations'),
-      children: wrapSection(
-        <CompanionCreationsSection
-          derived={workspace.derived}
-          loading={workspace.loading}
-        />,
-      ),
-    },
-    {
-      id: 'memory' satisfies CompanionWorkspaceTab,
-      title: companionTabLabel('memory'),
-      children: wrapSection(
-        <CompanionMemorySection
-          memory={workspace.memory}
-          loading={workspace.loading}
-          onAddMemory={workspace.addMemory}
-          onDeleteMemory={workspace.removeMemory}
-        />,
-      ),
-    },
-    {
-      id: 'settings' satisfies CompanionWorkspaceTab,
-      title: companionTabLabel('settings'),
-      children: wrapSection(
-        <CompanionSettingsSection
-          catId={cat.id}
-          responseProfile={workspace.responseProfile}
-          payload={payload}
-          loading={workspace.loading}
-          onUpdateResponseProfile={workspace.editResponseProfile}
-        />,
-      ),
-    },
-  ];
+  const sectionContentById: Record<CompanionWorkspaceTab, ReactNode> = {
+    overview: wrapSection(
+      <CompanionOverviewSection
+        summary={workspace.summary}
+        recentMemory={workspace.memory}
+        presence={presence}
+        onWake={handleWake}
+        onSleep={handleSleep}
+        loading={workspace.loading}
+      />,
+    ),
+    resources: wrapSection(
+      <CompanionResourcesSection
+        sources={workspace.sources}
+        loading={workspace.loading}
+        onAddSource={workspace.addSource}
+        onDeleteSource={workspace.removeSource}
+      />,
+    ),
+    creations: wrapSection(
+      <CompanionCreationsSection
+        derived={workspace.derived}
+        loading={workspace.loading}
+      />,
+    ),
+    memory: wrapSection(
+      <CompanionMemorySection
+        memory={workspace.memory}
+        loading={workspace.loading}
+        onAddMemory={workspace.addMemory}
+        onDeleteMemory={workspace.removeMemory}
+      />,
+    ),
+    settings: wrapSection(
+      <CompanionSettingsSection
+        catId={cat.id}
+        responseProfile={workspace.responseProfile}
+        payload={payload}
+        loading={workspace.loading}
+        onUpdateResponseProfile={workspace.editResponseProfile}
+      />,
+    ),
+    inspector: wrapSection(
+      <div className="companionEmptyState">
+        <p>No selection.</p>
+        <p className="companionEmptyStateHint">
+          PLAN-077 Phase 2 will surface contextual details for the
+          currently-selected source / file / post here.
+        </p>
+      </div>,
+    ),
+  };
+
+  const sectionLabel = companionProfileIaEnabled
+    ? companionProfileIaTabLabel
+    : companionTabLabel;
+  const sectionIds = companionProfileIaEnabled
+    ? PROFILE_IA_COMPANION_SIDE_PANEL_SECTION_IDS
+    : LEGACY_COMPANION_SIDE_PANEL_SECTION_IDS;
+  const sidePanelSections = sectionIds.map((id) => ({
+    id,
+    title: sectionLabel(id),
+    children: sectionContentById[id],
+  }));
+
+  // If the active tab is no longer in the visible section set after a flag
+  // flip (e.g., user was on `creations` and PLAN-077 IA enabled removed it),
+  // fall back to the first section so the panel never renders an empty body.
+  useEffect(() => {
+    if (activeTab !== null && !sectionIds.includes(activeTab)) {
+      setActiveTab(sectionIds[0] ?? null);
+    }
+  }, [activeTab, sectionIds]);
 
   function onSidePanelSectionToggle(id: string): void {
     setActiveTab((prev) => (prev === id ? null : (id as CompanionWorkspaceTab)));

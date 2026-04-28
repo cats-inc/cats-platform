@@ -14,7 +14,8 @@ export type CompanionWorkspaceTab =
   | 'resources'
   | 'creations'
   | 'memory'
-  | 'settings';
+  | 'settings'
+  | 'inspector';
 
 export function companionTabLabel(tab: CompanionWorkspaceTab): string {
   switch (tab) {
@@ -28,8 +29,58 @@ export function companionTabLabel(tab: CompanionWorkspaceTab): string {
       return 'Memory';
     case 'settings':
       return 'Settings';
+    case 'inspector':
+      return 'Inspector';
   }
 }
+
+/**
+ * Label override for the PLAN-077 / SPEC-085 companion side-panel rename.
+ * Used when `cats.chat.companionProfileIA` resolves true.
+ *
+ * Mapping:
+ * - `overview` reads as `Status`
+ * - `resources` reads as `Sources`
+ * - `memory` keeps the same label
+ * - `settings` reads as `Behavior` (the response/profile controls move here)
+ * - `inspector` is the new contextual-detail section
+ *
+ * `creations` is intentionally absent — the new IA projects derived
+ * records back into Posts / Photos / Videos / Music / Files / Activity on
+ * the main surface, not into a side-panel section.
+ */
+export function companionProfileIaTabLabel(tab: CompanionWorkspaceTab): string {
+  switch (tab) {
+    case 'overview':
+      return 'Status';
+    case 'resources':
+      return 'Sources';
+    case 'creations':
+      return 'Creations';
+    case 'memory':
+      return 'Memory';
+    case 'settings':
+      return 'Behavior';
+    case 'inspector':
+      return 'Inspector';
+  }
+}
+
+export const LEGACY_COMPANION_SIDE_PANEL_SECTION_IDS: ReadonlyArray<CompanionWorkspaceTab> = [
+  'overview',
+  'resources',
+  'creations',
+  'memory',
+  'settings',
+];
+
+export const PROFILE_IA_COMPANION_SIDE_PANEL_SECTION_IDS: ReadonlyArray<CompanionWorkspaceTab> = [
+  'overview',
+  'resources',
+  'memory',
+  'settings',
+  'inspector',
+];
 
 export interface CompanionOverviewData {
   summary: CompanionBoxSummary | null;
