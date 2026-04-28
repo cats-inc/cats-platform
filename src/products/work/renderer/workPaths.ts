@@ -65,3 +65,7 @@ export function isWorkCockpitPath(pathname: string): boolean {
 export function isWorkBrokenLinksPath(pathname: string): boolean {
   return pathname.startsWith(WORK_BROKEN_LINKS_PATH);
 }
+
+export function isWorkIntakePath(pathname: string): boolean {
+  return pathname === WORK_INTAKE_PATH || pathname.startsWith(`${WORK_INTAKE_PATH}/`);
+}
