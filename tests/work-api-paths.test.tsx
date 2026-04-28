@@ -5,6 +5,7 @@ import {
   buildWorkApiIntakeApprovePath,
   buildWorkApiIntakePath,
   buildWorkApiIntakePlanPath,
+  buildWorkApiIntakePlanTaskPath,
   buildWorkApiIntakeRejectPath,
   buildWorkApiProjectPath,
   buildWorkApiTaskPath,
@@ -13,6 +14,7 @@ import {
   WORK_API_INTAKE_APPROVE_PATH_TEMPLATE,
   WORK_API_INTAKE_PATH,
   WORK_API_INTAKE_PLAN_PATH_TEMPLATE,
+  WORK_API_INTAKE_PLAN_TASK_PATH_TEMPLATE,
   WORK_API_INTAKE_REJECT_PATH_TEMPLATE,
   WORK_API_PREFIX,
   WORK_API_PROJECT_DETAIL_PATH_TEMPLATE,
@@ -42,6 +44,10 @@ test('work api path helpers build stable collection and detail paths', () => {
   );
   assert.equal(WORK_API_WORK_ITEM_DETAIL_PATH_TEMPLATE, '/api/work/work-items/:workItemId');
   assert.equal(WORK_API_INTAKE_PLAN_PATH_TEMPLATE, '/api/work/intake/:projectId/plan');
+  assert.equal(
+    WORK_API_INTAKE_PLAN_TASK_PATH_TEMPLATE,
+    '/api/work/intake/:projectId/plan/tasks/:taskId',
+  );
   assert.equal(WORK_API_INTAKE_APPROVE_PATH_TEMPLATE, '/api/work/intake/:projectId/approve');
   assert.equal(WORK_API_INTAKE_REJECT_PATH_TEMPLATE, '/api/work/intake/:projectId/reject');
   assert.equal(buildWorkApiProjectPath(), '/api/work/projects');
@@ -57,6 +63,10 @@ test('work api path helpers build stable collection and detail paths', () => {
   assert.equal(buildWorkApiIntakePath(), '/api/work/intake');
   assert.equal(buildWorkApiIntakePath('project/1'), '/api/work/intake/project%2F1');
   assert.equal(buildWorkApiIntakePlanPath('project/1'), '/api/work/intake/project%2F1/plan');
+  assert.equal(
+    buildWorkApiIntakePlanTaskPath('project/1', 'task/1'),
+    '/api/work/intake/project%2F1/plan/tasks/task%2F1',
+  );
   assert.equal(buildWorkApiIntakeApprovePath('project/1'), '/api/work/intake/project%2F1/approve');
   assert.equal(buildWorkApiIntakeRejectPath('project/1'), '/api/work/intake/project%2F1/reject');
 });

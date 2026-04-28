@@ -6,6 +6,7 @@ import type { WorkIntakeInput } from '../../intake/types.js';
 import {
   buildWorkApiIntakeApprovePath,
   buildWorkApiIntakePlanPath,
+  buildWorkApiIntakePlanTaskPath,
   buildWorkApiIntakeRejectPath,
   WORK_API_INTAKE_PATH,
   WORK_API_TEMPLATES_PATH,
@@ -14,6 +15,12 @@ import {
 export interface WorkTemplateListResponse {
   product: { id: string; name: string };
   templates: WorkTemplate[];
+}
+
+export interface WorkIntakePlanTaskPatch {
+  acceptanceCriteria?: string | null;
+  productHint?: 'chat' | 'work' | 'code' | null;
+  strategyHint?: string | null;
 }
 
 export async function fetchWorkTemplates(
@@ -59,6 +66,24 @@ export async function approveIntakePlan(
     { method: 'POST', signal },
   );
   return expectJson<WorkIntakePlanProjection>(response, 'Failed to approve plan');
+}
+
+export async function patchIntakePlanTask(
+  projectId: string,
+  taskId: string,
+  patch: WorkIntakePlanTaskPatch,
+  signal?: AbortSignal,
+): Promise<WorkIntakePlanProjection> {
+  const response = await fetch(
+    buildWorkApiIntakePlanTaskPath(projectId, taskId),
+    {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(patch),
+      signal,
+    },
+  );
+  return expectJson<WorkIntakePlanProjection>(response, 'Failed to update plan task');
 }
 
 export async function rejectIntakePlan(

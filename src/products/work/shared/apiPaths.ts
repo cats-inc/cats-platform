@@ -33,6 +33,8 @@ export const WORK_API_TASK_SUPERVISED_RUN_ACTION_PATH_TEMPLATE =
   `${WORK_API_TASK_SUPERVISED_RUN_PATH_TEMPLATE}/:action`;
 export const WORK_API_WORK_ITEM_DETAIL_PATH_TEMPLATE = `${WORK_API_WORK_ITEMS_PATH}/:workItemId`;
 export const WORK_API_INTAKE_PLAN_PATH_TEMPLATE = `${WORK_API_INTAKE_PATH}/:projectId/plan`;
+export const WORK_API_INTAKE_PLAN_TASK_PATH_TEMPLATE =
+  `${WORK_API_INTAKE_PLAN_PATH_TEMPLATE}/tasks/:taskId`;
 export const WORK_API_INTAKE_APPROVE_PATH_TEMPLATE = `${WORK_API_INTAKE_PATH}/:projectId/approve`;
 export const WORK_API_INTAKE_REJECT_PATH_TEMPLATE = `${WORK_API_INTAKE_PATH}/:projectId/reject`;
 
@@ -44,6 +46,8 @@ export const WORK_API_TASK_SUPERVISED_RUN_ACTION_PATTERN =
   /^\/api\/work\/tasks\/([^/]+)\/supervised-run\/(resume|retry|cancel)$/u;
 export const WORK_API_WORK_ITEM_DETAIL_PATTERN = /^\/api\/work\/work-items\/([^/]+)$/u;
 export const WORK_API_INTAKE_PLAN_PATTERN = /^\/api\/work\/intake\/([^/]+)\/plan$/u;
+export const WORK_API_INTAKE_PLAN_TASK_PATTERN =
+  /^\/api\/work\/intake\/([^/]+)\/plan\/tasks\/([^/]+)$/u;
 export const WORK_API_INTAKE_APPROVE_PATTERN = /^\/api\/work\/intake\/([^/]+)\/approve$/u;
 export const WORK_API_INTAKE_REJECT_PATTERN = /^\/api\/work\/intake\/([^/]+)\/reject$/u;
 
@@ -76,6 +80,10 @@ export function buildWorkApiIntakePath(projectId?: string | null): string {
 
 export function buildWorkApiIntakePlanPath(projectId: string): string {
   return `${buildWorkApiIntakePath(projectId)}/plan`;
+}
+
+export function buildWorkApiIntakePlanTaskPath(projectId: string, taskId: string): string {
+  return `${buildWorkApiIntakePlanPath(projectId)}/tasks/${encodeURIComponent(taskId)}`;
 }
 
 export function buildWorkApiIntakeApprovePath(projectId: string): string {

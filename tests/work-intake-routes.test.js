@@ -171,6 +171,78 @@ test('GET /api/work/intake/:projectId/plan returns plan projection', async (t) =
   assert.ok(payload.tasks.length > 0);
 });
 
+test('PATCH /api/work/intake/:projectId/plan/tasks/:taskId updates draft planning hints', async (t) => {
+  const store = createMemoryStore();
+  const server = createTestServer(store);
+
+  await new Promise((resolve) => server.listen(0, resolve));
+  t.after(() => server.close());
+
+  const create = await request(server, 'POST', '/api/work/intake', {
+    title: 'Patch plan task',
+    brief: 'Brief',
+    desiredOutcome: 'Outcome',
+    templateId: 'software_delivery',
+  });
+  const projectId = create.payload.project.id;
+  const taskId = create.payload.tasks[0].id;
+
+  const { status, payload } = await request(
+    server,
+    'PATCH',
+    `/api/work/intake/${projectId}/plan/tasks/${taskId}`,
+    {
+      acceptanceCriteria: ' Updated criteria ',
+      productHint: 'chat',
+      strategyHint: 'react',
+    },
+  );
+
+  assert.equal(status, 200);
+  const updatedTask = payload.tasks.find((task) => task.id === taskId);
+  assert.ok(updatedTask);
+  assert.equal(updatedTask.acceptanceCriteria, 'Updated criteria');
+  assert.equal(updatedTask.productHint, 'chat');
+  assert.equal(updatedTask.strategyHint, 'react');
+  assert.equal(updatedTask.handoff.targetProduct, 'chat');
+  assert.ok(
+    store.current.activities.some((activity) =>
+      activity.projectId === projectId
+      && activity.taskId === taskId
+      && /Plan task updated before approval/u.test(activity.message),
+    ),
+    'should record a plan task update activity',
+  );
+});
+
+test('PATCH /api/work/intake/:projectId/plan/tasks/:taskId rejects approved plans', async (t) => {
+  const store = createMemoryStore();
+  const server = createTestServer(store);
+
+  await new Promise((resolve) => server.listen(0, resolve));
+  t.after(() => server.close());
+
+  const create = await request(server, 'POST', '/api/work/intake', {
+    title: 'Patch approved plan',
+    brief: 'Brief',
+    desiredOutcome: 'Outcome',
+    templateId: 'software_delivery',
+  });
+  const projectId = create.payload.project.id;
+  const taskId = create.payload.tasks[0].id;
+
+  await request(server, 'POST', `/api/work/intake/${projectId}/approve`);
+  const { status, payload } = await request(
+    server,
+    'PATCH',
+    `/api/work/intake/${projectId}/plan/tasks/${taskId}`,
+    { productHint: 'work' },
+  );
+
+  assert.equal(status, 409);
+  assert.equal(payload.error.code, 'plan_not_editable');
+});
+
 test('POST /api/work/intake/:projectId/approve transitions tasks to in_progress with downstream handoff metadata', async (t) => {
   const store = createMemoryStore();
   const server = createTestServer(store);
@@ -360,4 +432,3 @@ test('GET /api/work/intake/:projectId/plan returns 404 for unknown project', asy
   );
   assert.equal(status, 404);
 });
-

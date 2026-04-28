@@ -11,7 +11,11 @@ import {
   writeApprovalDecision,
 } from '../../../core/model/taskControls.js';
 import { appendCoreActivity } from '../../../core/model/executionRecords.js';
-import { readTaskPlanningMetadata } from '../../../shared/taskPlanning.js';
+import {
+  patchTaskPlanningMetadata,
+  readTaskPlanningMetadata,
+  type TaskExecutionProduct,
+} from '../../../shared/taskPlanning.js';
 import {
   WORK_INTAKE_PRIORITIES,
   generateWorkIntakePlan,
@@ -27,12 +31,20 @@ import {
   WORK_API_INTAKE_APPROVE_PATTERN,
   WORK_API_INTAKE_PATH,
   WORK_API_INTAKE_PLAN_PATTERN,
+  WORK_API_INTAKE_PLAN_TASK_PATTERN,
   WORK_API_INTAKE_REJECT_PATTERN,
   WORK_API_TEMPLATES_PATH,
 } from '../shared/apiPaths.js';
 import { createWorkProductRef } from '../shared/productMetadata.js';
 
 const WORK_INTAKE_PRIORITY_SET = new Set<string>(WORK_INTAKE_PRIORITIES);
+const WORK_PLAN_PRODUCTS = new Set<string>(['chat', 'work', 'code']);
+
+interface WorkIntakePlanTaskPatch {
+  acceptanceCriteria?: string | null;
+  productHint?: TaskExecutionProduct | null;
+  strategyHint?: string | null;
+}
 
 function readNonEmptyString(value: unknown): string | null {
   if (typeof value !== 'string') {
@@ -83,6 +95,63 @@ function validateIntakeInput(
     },
     error: null,
   };
+}
+
+function readPatchString(
+  body: Record<string, unknown>,
+  key: string,
+): { value: string | null | undefined; error: string | null } {
+  if (!Object.hasOwn(body, key)) {
+    return { value: undefined, error: null };
+  }
+
+  const raw = body[key];
+  if (raw === null) {
+    return { value: null, error: null };
+  }
+  if (typeof raw !== 'string') {
+    return { value: undefined, error: `${key} must be a string or null` };
+  }
+
+  return { value: raw.trim() || null, error: null };
+}
+
+function validatePlanTaskPatch(
+  body: Record<string, unknown>,
+): { patch: WorkIntakePlanTaskPatch; error: null } | { patch: null; error: string } {
+  const acceptanceCriteria = readPatchString(body, 'acceptanceCriteria');
+  if (acceptanceCriteria.error) {
+    return { patch: null, error: acceptanceCriteria.error };
+  }
+
+  const strategyHint = readPatchString(body, 'strategyHint');
+  if (strategyHint.error) {
+    return { patch: null, error: strategyHint.error };
+  }
+
+  const productHint = readPatchString(body, 'productHint');
+  if (productHint.error) {
+    return { patch: null, error: productHint.error };
+  }
+  if (productHint.value && !WORK_PLAN_PRODUCTS.has(productHint.value)) {
+    return { patch: null, error: 'productHint must be chat, work, code, or null' };
+  }
+
+  const patch: WorkIntakePlanTaskPatch = {};
+  if (acceptanceCriteria.value !== undefined) {
+    patch.acceptanceCriteria = acceptanceCriteria.value;
+  }
+  if (strategyHint.value !== undefined) {
+    patch.strategyHint = strategyHint.value;
+  }
+  if (productHint.value !== undefined) {
+    patch.productHint = productHint.value as TaskExecutionProduct | null;
+  }
+  if (Object.keys(patch).length === 0) {
+    return { patch: null, error: 'At least one plan task field is required' };
+  }
+
+  return { patch, error: null };
 }
 
 export async function routeWorkIntakeApi(
@@ -141,6 +210,92 @@ export async function routeWorkIntakeApi(
     );
 
     sendJson(context.response, 201, projection);
+    return true;
+  }
+
+  // PATCH /api/work/intake/:projectId/plan/tasks/:taskId
+  const planTaskMatch = matchRoute(
+    context.url.pathname,
+    WORK_API_INTAKE_PLAN_TASK_PATTERN,
+  );
+  if (planTaskMatch) {
+    if (context.method !== 'PATCH') {
+      sendMethodNotAllowed(context.response, ['PATCH']);
+      return true;
+    }
+
+    const projectId = planTaskMatch[0];
+    const taskId = planTaskMatch[1];
+    if (!projectId || !taskId) {
+      sendJson(context.response, 400, {
+        error: { code: 'invalid_plan_task_id', message: 'Project id and task id are required.' },
+      });
+      return true;
+    }
+
+    const body = await readJsonBody<Record<string, unknown>>(context.request);
+    const validation = validatePlanTaskPatch(body);
+    if (validation.error !== null || validation.patch === null) {
+      sendJson(context.response, 400, {
+        error: { code: 'invalid_plan_task_patch', message: validation.error ?? 'Invalid patch' },
+      });
+      return true;
+    }
+
+    const now = context.dependencies.now?.() ?? new Date();
+    let core = await context.dependencies.coreStore.readCore();
+    const project = core.projects.find((p) => p.id === projectId);
+    if (!project) {
+      sendJson(context.response, 404, {
+        error: { code: 'project_not_found', message: `No project found for id ${projectId}.` },
+      });
+      return true;
+    }
+
+    const tasks = findIntakeProjectTasks(core, projectId);
+    const task = tasks.find((candidate) => candidate.id === taskId);
+    if (!task) {
+      sendJson(context.response, 404, {
+        error: { code: 'task_not_found', message: `No intake task found for id ${taskId}.` },
+      });
+      return true;
+    }
+
+    const isDraftPlan = tasks.every(
+      (candidate) => candidate.status === 'draft'
+        && candidate.approval.status === 'not_requested',
+    );
+    if (!isDraftPlan) {
+      sendJson(context.response, 409, {
+        error: {
+          code: 'plan_not_editable',
+          message: 'Only draft intake plans can be edited.',
+        },
+      });
+      return true;
+    }
+
+    const taskResult = upsertCoreTask(core, {
+      id: task.id,
+      title: task.title,
+      metadata: patchTaskPlanningMetadata(task.metadata, validation.patch),
+    }, now);
+    core = taskResult.core;
+
+    const workItem = core.workItems.find((candidate) => candidate.projectId === projectId) ?? null;
+    const activityResult = appendCoreActivity(core, {
+      kind: 'work_item_updated',
+      projectId,
+      workItemId: workItem?.id ?? null,
+      taskId: task.id,
+      message: `Plan task updated before approval: "${task.title}".`,
+    }, now);
+    core = activityResult.core;
+
+    await context.dependencies.coreStore.writeCore(core);
+
+    const projection = buildWorkIntakePlanProjection(core, project);
+    sendJson(context.response, 200, projection);
     return true;
   }
 
