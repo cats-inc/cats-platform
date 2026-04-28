@@ -41,6 +41,7 @@ function policySnapshot(): SupervisionPolicySnapshot {
       targetRef: 'work-item:supervised',
       actionType: 'tool_call',
       sideEffect: 'external_visible',
+      bootstrapTreatment: 'default',
       capabilityConfidence: 'evaluated',
     },
     reasons: ['external_visible tool requires approval'],

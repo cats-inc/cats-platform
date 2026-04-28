@@ -40,9 +40,12 @@ function fixtureManifest(sideEffect: SupervisedToolManifest['sideEffect']): Supe
   };
 }
 
-function catalogOnlyAssessment(): CapabilityAssessment {
+function catalogOnlyAssessment(
+  bootstrapTreatment: CapabilityAssessment['bootstrapTreatment'] = 'default',
+): CapabilityAssessment {
   return buildCapabilityAssessment({
     assessedAt: '2026-04-25T01:00:00.000Z',
+    bootstrapTreatment,
     confidenceSources: [
       createProviderCatalogEvidence({
         providerId: 'openai',
@@ -54,7 +57,9 @@ function catalogOnlyAssessment(): CapabilityAssessment {
   });
 }
 
-function evaluatedAssessment(): CapabilityAssessment {
+function evaluatedAssessment(
+  bootstrapTreatment: CapabilityAssessment['bootstrapTreatment'] = 'default',
+): CapabilityAssessment {
   const evalEvidence: CapabilitySourceEvidence = {
     evidenceId: 'eval_suite:tool-use:run-1',
     source: 'eval_suite',
@@ -73,13 +78,17 @@ function evaluatedAssessment(): CapabilityAssessment {
 
   return buildCapabilityAssessment({
     assessedAt: '2026-04-25T01:00:00.000Z',
+    bootstrapTreatment,
     confidenceSources: [evalEvidence],
   });
 }
 
-function unknownAssessment(): CapabilityAssessment {
+function unknownAssessment(
+  bootstrapTreatment: CapabilityAssessment['bootstrapTreatment'] = 'default',
+): CapabilityAssessment {
   return buildCapabilityAssessment({
     assessedAt: '2026-04-25T01:00:00.000Z',
+    bootstrapTreatment,
     confidenceSources: [],
   });
 }
@@ -107,29 +116,83 @@ function rejectionDetails(
   return result.error.details as SupervisionPolicyRejectionDetails;
 }
 
-test('unknown and catalog-only profiles stay conservative by default', () => {
+test('default treatment grants narrow_write + step + semantic_check (open middle tier)', () => {
   const result = decideSupervisionPolicy(baseContext({
-    capabilityAssessment: catalogOnlyAssessment(),
-    toolManifest: fixtureManifest('external_visible'),
+    capabilityAssessment: catalogOnlyAssessment('default'),
+    toolManifest: fixtureManifest('local_state'),
+  }));
+
+  assert.equal(result.status, 'applied');
+  assert.equal(result.result.policy.autonomy, 'single_step');
+  assert.equal(result.result.policy.toolScope, 'narrow_write');
+  assert.equal(result.result.policy.taskGranularity, 'step');
+  assert.equal(result.result.policy.scaffolding, 'sop_template');
+  assert.equal(result.result.policy.validation, 'semantic_check');
+  assert.equal(result.result.policy.checkpointCadence, 'every_step');
+  assert.equal(result.result.policy.fallbackPolicy, 'ask_human');
+});
+
+test('weak_worker treatment clamps to read_only + tiny + schema_required (narrowest tier)', () => {
+  const result = decideSupervisionPolicy(baseContext({
+    capabilityAssessment: catalogOnlyAssessment('weak_worker'),
+    toolManifest: fixtureManifest('local_state'),
   }));
 
   assert.equal(result.status, 'applied');
   assert.equal(result.result.policy.autonomy, 'single_step');
   assert.equal(result.result.policy.toolScope, 'read_only');
-  assert.equal(result.result.policy.approvalThreshold, 'high');
+  assert.equal(result.result.policy.taskGranularity, 'tiny');
+  assert.equal(result.result.policy.scaffolding, 'sop_template');
+  assert.equal(result.result.policy.validation, 'schema_required');
+  assert.equal(result.result.policy.checkpointCadence, 'every_step');
+  assert.equal(result.result.policy.fallbackPolicy, 'ask_human');
 });
 
-test('unknown profiles clamp task granularity and validation more tightly than catalog-only', () => {
+test('strong_agent treatment unlocks milestone_plan + few_shot + retry (without eval)', () => {
   const result = decideSupervisionPolicy(baseContext({
-    capabilityAssessment: unknownAssessment(),
-    toolManifest: fixtureManifest('external_visible'),
+    capabilityAssessment: catalogOnlyAssessment('strong_agent'),
+    toolManifest: fixtureManifest('local_state'),
   }));
 
   assert.equal(result.status, 'applied');
-  assert.equal(result.result.policy.autonomy, 'single_step');
-  assert.equal(result.result.policy.taskGranularity, 'tiny');
-  assert.equal(result.result.policy.validation, 'schema_required');
-  assert.equal(result.result.policy.checkpointCadence, 'every_step');
+  assert.equal(result.result.policy.autonomy, 'milestone_plan');
+  assert.equal(result.result.policy.toolScope, 'narrow_write');
+  assert.equal(result.result.policy.taskGranularity, 'step');
+  assert.equal(result.result.policy.scaffolding, 'few_shot');
+  assert.equal(result.result.policy.checkpointCadence, 'milestone');
+  assert.equal(result.result.policy.fallbackPolicy, 'retry');
+});
+
+test('unknown confidence keeps the default treatment open-middle dials', () => {
+  const result = decideSupervisionPolicy(baseContext({
+    capabilityAssessment: unknownAssessment('default'),
+    toolManifest: fixtureManifest('local_state'),
+  }));
+
+  assert.equal(result.status, 'applied');
+  assert.equal(result.result.policy.toolScope, 'narrow_write');
+  assert.equal(result.result.policy.taskGranularity, 'step');
+  assert.equal(result.result.policy.validation, 'semantic_check');
+});
+
+test('weak_worker explicitly rejects requested milestone_plan with E_TOOL_SCOPE_DENIED', () => {
+  const result = decideSupervisionPolicy({
+    ...baseContext({
+      capabilityAssessment: catalogOnlyAssessment('weak_worker'),
+      toolManifest: fixtureManifest('local_state'),
+    }),
+    requestedPolicy: {
+      autonomy: 'milestone_plan',
+    },
+  });
+  const details = rejectionDetails(result);
+
+  assert.equal(result.error.code, 'E_TOOL_SCOPE_DENIED');
+  assert.equal(
+    details.snapshot.reasons.some((reason) =>
+      reason.includes('weak_worker treatment rejected milestone_plan')),
+    true,
+  );
 });
 
 test('operator override metadata appears in snapshot reasons', () => {
@@ -264,7 +327,7 @@ test('policy snapshots include bundle and dial versions for replay', () => {
 
   assert.equal(result.status, 'applied');
   assert.equal(result.result.snapshot.policyBundleVersion, SUPERVISION_POLICY_BUNDLE_VERSION);
-  assert.equal(result.result.snapshot.dialVersions?.toolScope, 'tool-scope@1');
+  assert.equal(result.result.snapshot.dialVersions?.toolScope, 'tool-scope@2');
   assert.equal(result.result.snapshot.dialVersions?.approvalThreshold, 'approval-threshold@1');
   assert.equal(result.result.snapshot.experimentId, 'supervision-ab-1');
 });

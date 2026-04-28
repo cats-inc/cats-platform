@@ -329,16 +329,25 @@ invocations are tools unless explicitly promoted by a later feature.
 17. **FR-17 (Capability profile source split).** The capability profile shall
     not be sourced from `ProductProviderEventCapabilities`. Provider delivery
     observability and model intelligence/tool skill are separate axes.
-18. **FR-18 (Config-gated bootstrap confidence).** A provider/model/control
-    target with no evals, no session history, and no explicit entry in the
-    operator-owned capability bootstrap YAML shall start as the default
-    conservative profile: `bootstrapTreatment: 'default'`,
-    `confidenceLevel: 'unknown'`, and no initial strong/weak treatment. Cats
-    shall not infer `strong_agent` or `weak_worker` from provider names,
-    runtime availability, runtime delivery richness, static provider catalogs,
-    or model labels. A target may receive initial strong/weak treatment only
-    when a validated capability bootstrap YAML rule explicitly matches that
-    provider/model/control target.
+18. **FR-18 (Config-gated bootstrap treatment, three open tiers).** Bootstrap
+    treatment is a three-way label — `weak_worker`, `default`, or
+    `strong_agent` — sourced only from the operator-owned capability
+    bootstrap YAML. A target with no matching YAML rule starts as
+    `bootstrapTreatment: 'default'` with `confidenceLevel: 'unknown'`.
+    `default` is the open middle tier: the operator implicitly trusted the
+    model by selecting it, so the policy engine grants `narrow_write`
+    toolScope, `step` task granularity, and `semantic_check` validation.
+    Operators tighten by listing the model under `weak_worker` (clamped to
+    `read_only` / `single_step` / `tiny` / `sop_template` / `schema_required`
+    / `every_step` / `ask_human`) or loosen by listing it under
+    `strong_agent` (additionally unlocks `milestone_plan` autonomy,
+    `few_shot` scaffolding, `milestone` checkpoint cadence, and `retry`
+    recovery). Cats shall not infer `strong_agent` or `weak_worker` from
+    provider names, runtime availability, runtime delivery richness, static
+    provider catalogs, or model labels — those facts may inform the YAML
+    rules but never short-circuit them. The FR-19 evidence floor still
+    bounds `broad_write` and unrestricted `outcome_delegation` for every
+    treatment until `evaluated`/`observed` evidence arrives.
 
     The assessment shape separates the bootstrap treatment from confidence
     level and source evidence:
@@ -419,18 +428,23 @@ invocations are tools unless explicitly promoted by a later feature.
     effective-policy floor defined in FR-19. Conflicting source claims shall be
     preserved in `conflicts[]` rather than overwritten.
 
-19. **FR-19 (Conservative unknown default).** When `confidenceLevel` is
-    `unknown` or `catalog_only`, the effective policy shall not grant
+19. **FR-19 (Evidence floor for high-impact dials).** When `confidenceLevel`
+    is `unknown` or `catalog_only`, the effective policy shall not grant
     `toolScope: 'broad_write'` or unrestricted `autonomy:
-    'outcome_delegation'` **regardless of operator override**. An operator
-    override may raise or lower other dials (such as `toolScope: 'narrow_write'`,
-    `autonomy: 'milestone_plan'`, or `approvalThreshold`), but it shall not
-    remove this floor. Any override attempting to reach `broad_write` or
-    unrestricted `outcome_delegation` under `unknown` / `catalog_only`
-    shall be rejected with `E_TOOL_SCOPE_DENIED`, and the override attempt
-    shall appear in the policy snapshot reasons. This is the combined
-    invariant across FR-18 (override cannot raise `confidenceLevel` above
-    non-override evidence) and FR-19 (effective policy floor).
+    'outcome_delegation'` **regardless of operator override or bootstrap
+    treatment**. These two dials require `evaluated`/`observed` evidence
+    even when the YAML labels the target as `strong_agent`. Other dials
+    (such as `toolScope: 'narrow_write'`, `autonomy: 'milestone_plan'`,
+    `taskGranularity`, `scaffolding`, `validation`, `checkpointCadence`,
+    `approvalThreshold`, `fallbackPolicy`) are **not** floored by FR-19; an
+    operator override or the bootstrap treatment may set them at any tier
+    consistent with the FR-18 mapping. Any override attempting to reach
+    `broad_write` or unrestricted `outcome_delegation` under `unknown` /
+    `catalog_only` shall be rejected with `E_TOOL_SCOPE_DENIED`, and the
+    override attempt shall appear in the policy snapshot reasons. This is
+    the combined invariant across FR-18 (override cannot raise
+    `confidenceLevel` above non-override evidence) and FR-19 (effective
+    policy floor for the two high-impact dials).
 20. **FR-20 (Observed hot-start).** Session/run history such as JSON failures,
     tool misuse, repeated retries, or successful validated outputs shall be
     allowed to tighten or loosen policy within the same run.
@@ -645,7 +659,8 @@ any dial.
     semantic planning and supervised tool access when policy allows. Its
     capability profile resolves through the bound `execution_target`
     provider/model/control selection; if that binding is missing or unknown,
-    policy uses the conservative unknown-provider profile. Role hints, display
+    policy falls back to the `default` open-middle bootstrap treatment per
+    FR-18. Role hints, display
     names, or avatar hints are presentation/runtime hints, not durable Cat
     identity fields. The room/channel binding is product-owned state from the
     participant system, not a field on `AddressableTarget`.

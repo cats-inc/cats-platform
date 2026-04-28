@@ -434,6 +434,7 @@ function fakePolicySnapshot(runId: string): SupervisionPolicySnapshot {
       targetRef: 'task-fake-agent',
       actionType: 'work_fake_run',
       sideEffect: 'local_state',
+      bootstrapTreatment: 'default',
       capabilityConfidence: 'evaluated',
     },
     reasons: ['work fake-agent vertical slice'],

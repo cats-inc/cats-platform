@@ -45,6 +45,7 @@ function createHarness() {
 function catalogOnlyAssessment(): CapabilityAssessment {
   return buildCapabilityAssessment({
     assessedAt: '2026-04-28T04:00:00.000Z',
+    bootstrapTreatment: 'weak_worker',
     confidenceSources: [
       createProviderCatalogEvidence({
         providerId: 'ollama',

@@ -79,6 +79,7 @@ function policySnapshot(): SupervisionPolicySnapshot {
       targetRef: 'tool:lookup',
       actionType: 'tool_call',
       sideEffect: 'none',
+      bootstrapTreatment: 'default',
       capabilityConfidence: 'catalog_only',
     },
     reasons: ['test policy'],

@@ -58,6 +58,7 @@ export function decideSupervisionPolicy(
 ): SupervisionPolicyDecisionResult {
   const reasons: string[] = [
     `policy bundle ${SUPERVISION_POLICY_BUNDLE_VERSION} evaluated ${context.actionType}`,
+    `bootstrap treatment ${context.capabilityAssessment.bootstrapTreatment}`,
     `capability confidence ${context.capabilityAssessment.confidenceLevel}`,
     `tool ${context.toolManifest.name} sideEffect ${context.toolManifest.sideEffect}`,
   ];
@@ -104,17 +105,14 @@ export function decideSupervisionPolicy(
 }
 
 export function decideDefaultToolScope(input: {
-  confidenceLevel: CapabilityAssessment['confidenceLevel'];
+  bootstrapTreatment: CapabilityAssessment['bootstrapTreatment'];
   sideEffect: SupervisedToolSideEffect;
 }): SupervisionToolScope {
   if (input.sideEffect === 'none') {
     return 'read_only';
   }
-  if (compareCapabilityConfidence(input.confidenceLevel, 'evaluated') < 0) {
+  if (input.bootstrapTreatment === 'weak_worker') {
     return 'read_only';
-  }
-  if (input.sideEffect === 'local_state') {
-    return 'narrow_write';
   }
   return 'narrow_write';
 }
@@ -139,23 +137,25 @@ export function decideDefaultApprovalThreshold(
 }
 
 function buildBasePolicy(context: SupervisionPolicyContext): SupervisionPolicy {
-  const capabilityConfidence = context.capabilityAssessment.confidenceLevel;
-  const isUnknown = capabilityConfidence === 'unknown';
-  const isEvaluatedOrBetter = compareCapabilityConfidence(capabilityConfidence, 'evaluated') >= 0;
+  const treatment = context.capabilityAssessment.bootstrapTreatment;
+  const confidence = context.capabilityAssessment.confidenceLevel;
+  const isEvaluatedOrBetter = compareCapabilityConfidence(confidence, 'evaluated') >= 0;
+  const isWeak = treatment === 'weak_worker';
+  const isStrongOrBetter = treatment === 'strong_agent' || isEvaluatedOrBetter;
   const approvalThreshold = decideDefaultApprovalThreshold(context.toolManifest.sideEffect);
 
   return {
-    autonomy: isEvaluatedOrBetter ? 'milestone_plan' : 'single_step',
-    taskGranularity: isEvaluatedOrBetter ? 'milestone' : isUnknown ? 'tiny' : 'step',
+    autonomy: isWeak ? 'single_step' : isStrongOrBetter ? 'milestone_plan' : 'single_step',
+    taskGranularity: isWeak ? 'tiny' : isEvaluatedOrBetter ? 'milestone' : 'step',
     toolScope: decideDefaultToolScope({
-      confidenceLevel: capabilityConfidence,
+      bootstrapTreatment: treatment,
       sideEffect: context.toolManifest.sideEffect,
     }),
-    scaffolding: isEvaluatedOrBetter ? 'few_shot' : 'sop_template',
-    validation: isUnknown || approvalThreshold === 'low' ? 'schema_required' : 'semantic_check',
-    checkpointCadence: isUnknown || approvalThreshold !== 'low' ? 'every_step' : 'milestone',
+    scaffolding: isStrongOrBetter ? 'few_shot' : 'sop_template',
+    validation: isWeak ? 'schema_required' : 'semantic_check',
+    checkpointCadence: isStrongOrBetter ? 'milestone' : 'every_step',
     approvalThreshold,
-    fallbackPolicy: isEvaluatedOrBetter ? 'retry' : 'ask_human',
+    fallbackPolicy: isStrongOrBetter ? 'retry' : 'ask_human',
   };
 }
 
@@ -165,7 +165,9 @@ function validatePolicy(
   reasons: string[],
 ): string | undefined {
   const confidence = context.capabilityAssessment.confidenceLevel;
+  const treatment = context.capabilityAssessment.bootstrapTreatment;
   const constrainedByFloor = confidence === 'unknown' || confidence === 'catalog_only';
+  const isWeak = treatment === 'weak_worker';
 
   if (constrainedByFloor && policy.toolScope === 'broad_write') {
     const message =
@@ -173,13 +175,22 @@ function validatePolicy(
     reasons.push(message);
     return message;
   }
-  if (
-    constrainedByFloor &&
-    (policy.autonomy === 'milestone_plan' || policy.autonomy === 'outcome_delegation')
-  ) {
+  if (constrainedByFloor && policy.autonomy === 'outcome_delegation') {
     const message =
-      `FR-19 rejected ${policy.autonomy} under ${confidence} confidence with ` +
+      `FR-19 rejected outcome_delegation under ${confidence} confidence with ` +
       'E_TOOL_SCOPE_DENIED.';
+    reasons.push(message);
+    return message;
+  }
+  if (isWeak && policy.autonomy !== 'single_step') {
+    const message =
+      `weak_worker treatment rejected ${policy.autonomy} autonomy with E_TOOL_SCOPE_DENIED.`;
+    reasons.push(message);
+    return message;
+  }
+  if (isWeak && policy.toolScope !== 'read_only') {
+    const message =
+      `weak_worker treatment rejected ${policy.toolScope} toolScope with E_TOOL_SCOPE_DENIED.`;
     reasons.push(message);
     return message;
   }
@@ -226,6 +237,7 @@ function buildPolicySnapshot(
       providerRef: context.providerRef,
       actionType: context.actionType,
       sideEffect: context.toolManifest.sideEffect,
+      bootstrapTreatment: context.capabilityAssessment.bootstrapTreatment,
       capabilityConfidence: context.capabilityAssessment.confidenceLevel,
       deliveryObservability: context.deliveryObservability,
       budgetState: context.budgetState,

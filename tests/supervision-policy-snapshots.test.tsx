@@ -35,6 +35,7 @@ function policySnapshot(): SupervisionPolicySnapshot {
       targetRef: 'work-item:1',
       actionType: 'tool_call',
       sideEffect: 'none',
+      bootstrapTreatment: 'default',
       capabilityConfidence: 'catalog_only',
     },
     reasons: ['catalog_only capability starts conservative'],

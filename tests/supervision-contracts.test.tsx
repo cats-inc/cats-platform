@@ -183,6 +183,7 @@ test('policy snapshots carry bundle version and schema version', () => {
       targetRef: 'worker:context',
       actionType: 'lookup',
       sideEffect: 'none',
+      bootstrapTreatment: 'default',
       capabilityConfidence: 'catalog_only',
     },
     reasons: ['catalog_only capability starts conservative'],
@@ -197,6 +198,7 @@ test('capability assessments tie aggregate method to schema version', () => {
   const assessment: CapabilityAssessment = {
     schemaVersion: DEFAULT_SUPERVISION_SCHEMA_VERSION,
     assessedAt: '2026-04-25T00:00:00.000Z',
+    bootstrapTreatment: 'default',
     confidenceLevel: 'catalog_only',
     confidenceSources: [
       {
