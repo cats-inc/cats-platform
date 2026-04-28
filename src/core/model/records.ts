@@ -25,3 +25,9 @@ export {
   upsertCoreTurn,
 } from './interactionRecords.js';
 export { upsertCoreApprovalBinding } from './governanceRecords.js';
+export {
+  listCoreWorkGraphLinks,
+  removeCoreWorkGraphLink,
+  upsertCoreWorkGraphLink,
+} from './linkRecords.js';
+export type { CoreWorkGraphLinkListQuery } from './linkRecords.js';

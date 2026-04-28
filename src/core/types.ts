@@ -310,6 +310,39 @@ export interface CoreConversationRecord {
   lastMessageAt: string | null;
 }
 
+/**
+ * SPEC-090 typed N:M link relations between Project / Work Item / Task
+ * objects. `blocked_by` is intentionally absent from the stored kinds —
+ * the projection layer derives it as the inverse of `blocks` per
+ * SPEC-090 §FR5.
+ */
+export type CoreWorkGraphLinkKind =
+  | 'blocks'
+  | 'related_to'
+  | 'duplicate_of'
+  | 'follows';
+
+/**
+ * SPEC-090 v1 limits link endpoints to the three Planning / Execution
+ * record families. The endpoint kind enum is intentionally narrower
+ * than the wider `WorkGraphObjectKind` carried elsewhere on the graph.
+ */
+export type CoreWorkGraphLinkEndpointKind = 'project' | 'work_item' | 'task';
+
+export interface CoreWorkGraphLinkRecord {
+  id: string;
+  kind: CoreWorkGraphLinkKind;
+  sourceRecordFamily: CoreWorkGraphLinkEndpointKind;
+  sourceRecordId: string;
+  targetRecordFamily: CoreWorkGraphLinkEndpointKind;
+  targetRecordId: string;
+  createdAt: string;
+  updatedAt: string;
+  createdByActorId: string | null;
+  note: string | null;
+  metadata: CoreRecordMetadata;
+}
+
 export type CoreProjectStatus = 'planned' | 'active' | 'paused' | 'archived';
 
 export interface CoreProjectRecord {
@@ -790,4 +823,5 @@ export interface CatsCoreState {
   botBindings: BotBindingRecord[];
   archives: ArchiveMetadataRecord[];
   durableMemory: DurableMemoryRecord[];
+  workGraphLinks: CoreWorkGraphLinkRecord[];
 }

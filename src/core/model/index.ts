@@ -8,6 +8,8 @@ import {
 import {
   appendCoreActivity,
   appendCoreTrace,
+  listCoreWorkGraphLinks,
+  removeCoreWorkGraphLink,
   upsertCoreActor,
   upsertCoreApprovalBinding,
   upsertCoreArtifact,
@@ -24,8 +26,10 @@ import {
   upsertCoreSession,
   upsertCoreTransportBinding,
   upsertCoreTurn,
+  upsertCoreWorkGraphLink,
   upsertCoreWorkItem,
 } from './records.js';
+import type { CoreWorkGraphLinkListQuery } from './records.js';
 import {
   addDurableMemory,
   createBotBinding,
@@ -74,6 +78,7 @@ import type {
   CoreTaskWriteInput,
   CoreTraceWriteInput,
   CoreTurnWriteInput,
+  CoreWorkGraphLinkWriteInput,
   CoreWorkItemWriteInput,
   OwnerProfilePatchInput,
 } from './inputs.js';
@@ -87,10 +92,12 @@ export {
   createDefaultOwnerProfile,
   createEmptyMemoryCheckpoint,
   GLOBAL_ORCHESTRATOR_ACTOR_ID,
+  listCoreWorkGraphLinks,
   listDurableMemoryBySubject,
   OWNER_ACTOR_ID,
   patchOwnerProfile,
   removeBotBinding,
+  removeCoreWorkGraphLink,
   removeDurableMemory,
   updateDurableMemory,
   upsertCoreActor,
@@ -110,6 +117,7 @@ export {
   upsertCoreTask,
   upsertCoreTransportBinding,
   upsertCoreTurn,
+  upsertCoreWorkGraphLink,
   upsertCoreWorkItem,
   writeApprovalDecision,
 };
@@ -136,6 +144,8 @@ export type {
   CoreTaskWriteInput,
   CoreTraceWriteInput,
   CoreTurnWriteInput,
+  CoreWorkGraphLinkListQuery,
+  CoreWorkGraphLinkWriteInput,
   CoreWorkItemWriteInput,
   DurableMemoryRecord,
   DurableMemorySubjectType,
@@ -181,5 +191,6 @@ export function createDefaultCoreState(): CatsCoreState {
     botBindings: [],
     archives: [],
     durableMemory: [],
+    workGraphLinks: [],
   };
 }

@@ -250,6 +250,7 @@ export function syncCoreStateWithChatState(
     botBindings,
     archives: [...archives, ...preservedArchives],
     durableMemory: structuredClone(existingCore.durableMemory ?? []),
+    workGraphLinks: structuredClone(existingCore.workGraphLinks ?? []),
   }, chat, new Date(updatedAt));
 
   return nextCore;

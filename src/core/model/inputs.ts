@@ -33,6 +33,8 @@ import type {
   MissionRecordStatus,
   TurnRecordKind,
   TurnRecordStatus,
+  CoreWorkGraphLinkEndpointKind,
+  CoreWorkGraphLinkKind,
   CoreWorkItemStatus,
 } from '../types.js';
 
@@ -340,5 +342,23 @@ export interface CoreApprovalBindingWriteInput {
   requestedByActorId?: string | null;
   requestedForActorId?: string;
   createdAt?: string;
+  metadata?: CoreRecordMetadata;
+}
+
+/**
+ * SPEC-090 link write input. The producer pipeline accepts `blocked_by`
+ * at the API surface; canonicalization swaps it to `blocks` with
+ * source / target reversed before insert.
+ */
+export interface CoreWorkGraphLinkWriteInput {
+  id?: string;
+  kind: CoreWorkGraphLinkKind | 'blocked_by';
+  sourceRecordFamily: CoreWorkGraphLinkEndpointKind;
+  sourceRecordId: string;
+  targetRecordFamily: CoreWorkGraphLinkEndpointKind;
+  targetRecordId: string;
+  createdAt?: string;
+  createdByActorId?: string | null;
+  note?: string | null;
   metadata?: CoreRecordMetadata;
 }
