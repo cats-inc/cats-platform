@@ -51,6 +51,7 @@ import {
   type WorkWorkItemDetailProjection,
 } from './projection.js';
 import { routeWorkIntakeApi } from './intakeRoutes.js';
+import { routeWorkLinksApi } from './linksRoutes.js';
 import {
   matchRoute,
   sendJson,
@@ -338,6 +339,11 @@ export async function routeWorkApi(
 ): Promise<boolean> {
   // Intake routes (templates, intake submit, plan review, approve/reject)
   if (await routeWorkIntakeApi(context)) {
+    return true;
+  }
+
+  // SPEC-090 link routes (createLink / removeLink / listLinks)
+  if (await routeWorkLinksApi(context)) {
     return true;
   }
 
