@@ -9,7 +9,10 @@ import type {
 } from '../../api/contracts.js';
 import type { CatsCoreState } from '../../../../core/types.js';
 import type { ProviderAgentDecision } from '../../../../platform/orchestration/index.js';
-import type { ProviderCapabilityBootstrapConfig } from '../../../../platform/supervision/index.js';
+import type {
+  ProviderCapabilityBootstrapConfig,
+  ProviderCapabilityBootstrapDiagnosticSink,
+} from '../../../../platform/supervision/index.js';
 import type {
   RoomRoutingGuardReason,
 } from '../../../../shared/roomRouting.js';
@@ -100,6 +103,7 @@ interface RouteChannelMessageOptions {
   deterministicRoutingPlan?: DeterministicChatRoutingPlan | null;
   providerAgentDecisionRequester?: ProviderAgentDecisionRequester;
   providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
+  providerCapabilityBootstrapDiagnosticSink?: ProviderCapabilityBootstrapDiagnosticSink;
 }
 
 function readMessageRetryMetadata(
@@ -394,6 +398,8 @@ export async function beginChannelMessageDispatch(
     {
       deterministicRoutingPlan,
       providerCapabilityBootstrapConfig: options.providerCapabilityBootstrapConfig,
+      providerCapabilityBootstrapDiagnosticSink:
+        options.providerCapabilityBootstrapDiagnosticSink,
     },
   );
   const effectiveDeterministicRoutingPlan =
@@ -493,6 +499,8 @@ export async function beginChannelMessageRetryDispatch(
     {
       deterministicRoutingPlan,
       providerCapabilityBootstrapConfig: options.providerCapabilityBootstrapConfig,
+      providerCapabilityBootstrapDiagnosticSink:
+        options.providerCapabilityBootstrapDiagnosticSink,
     },
   );
   const effectiveDeterministicRoutingPlan =

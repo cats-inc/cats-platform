@@ -292,7 +292,7 @@ who is strong/weak; defaults remain neutral.
 ### Phase 4: Documentation and operator surface
 
 - [x] Task 4.1: Document the YAML path and schema in setup/deployment docs.
-- [ ] Task 4.2: Emit operator-facing diagnostic events covering matched rule
+- [x] Task 4.2: Emit operator-facing diagnostic events covering matched rule
       id, treatment, confidence, reason, and any losing tie rules. In this
       slice the surface is the structured platform log plus
       `SupervisionDiagnosticRecord` persistence (no new UI panel, and no
@@ -386,6 +386,7 @@ initial treatment even without an editor.
 | 2026-04-28 | Implementation slice 3: added operator-facing example YAML, deployment guidance for `CATS_PROVIDER_CAPABILITY_BOOTSTRAP_CONFIG`, YAML validity/fail-closed rules, and a PROGRESS migration callout. |
 | 2026-04-28 | Implementation slice 4: added a gated Chat live provider smoke (`CATS_CHAT_LIVE_PROVIDER_SMOKE=1 npm run smoke:live:chat`) and included it in `npm run smoke:live:providers`; default execution loads and skips the gate unless the live runtime/provider environment is explicitly enabled. |
 | 2026-04-28 | Implementation slice 5: removed provider-name hard-coding from shared Chat/Work/Code draft preset capability review; default targets now show conservative policy unless the review is given an explicit PLAN-080 bootstrap treatment fixture. |
+| 2026-04-28 | Implementation slice 6: added a provider capability bootstrap diagnostic sink that emits structured platform log events, persists `SupervisionDiagnosticRecord` records, and receives Chat matched-rule diagnostics during provider-agent observation preparation. |
 
 ---
 

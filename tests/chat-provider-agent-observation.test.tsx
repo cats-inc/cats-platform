@@ -9,9 +9,11 @@ import {
 } from '../src/platform/orchestration/index.ts';
 import {
   DEFAULT_SUPERVISION_SCHEMA_VERSION,
+  createProviderCapabilityBootstrapDiagnosticSink,
   parseProviderCapabilityBootstrapConfigDocument,
   resolveProviderCapabilityProfile,
   type ProviderCapabilityBootstrapConfig,
+  type ProviderCapabilityBootstrapDiagnosticSink,
   type SupervisedToolManifest,
   type SupervisionPolicy,
 } from '../src/platform/supervision/index.ts';
@@ -113,6 +115,7 @@ function appendAndPrepare(input: {
     workflowShape?: 'sequential' | 'concurrent' | 'converge' | 'parallel' | null;
   };
   providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
+  providerCapabilityBootstrapDiagnosticSink?: ProviderCapabilityBootstrapDiagnosticSink;
 }): { state: ChatState; prepared: PreparedDispatchTurn } {
   const now = input.now ?? new Date('2026-04-28T00:01:00.000Z');
   const appended = appendMessage(
@@ -136,6 +139,7 @@ function appendAndPrepare(input: {
     undefined,
     {
       providerCapabilityBootstrapConfig: input.providerCapabilityBootstrapConfig,
+      providerCapabilityBootstrapDiagnosticSink: input.providerCapabilityBootstrapDiagnosticSink,
     },
   );
   return {
@@ -376,6 +380,37 @@ test('Chat provider-agent observation applies explicit capability bootstrap conf
     'provider-capability:claude:native:sonnet:default',
   );
   assert.equal(prepared.providerAgentObservation?.policy.dials.taskGranularity, 'step');
+});
+
+test('Chat provider-agent observation emits bootstrap matched-rule diagnostics', () => {
+  const state = createChannel(
+    createDefaultChatState(),
+    {
+      title: 'Diagnostic solo model room',
+      topic: 'Solo',
+      originSurface: 'chat',
+      entryKind: 'solo',
+      pendingProvider: 'claude',
+      pendingInstance: 'native',
+      pendingModel: 'sonnet',
+    },
+    new Date('2026-04-28T00:00:00.000Z'),
+  );
+  const sink = createProviderCapabilityBootstrapDiagnosticSink();
+
+  appendAndPrepare({
+    state,
+    channelId: state.selectedChannelId,
+    body: 'Record the bootstrap rule used for this turn.',
+    providerCapabilityBootstrapConfig: fixtureBootstrapConfig(),
+    providerCapabilityBootstrapDiagnosticSink: sink,
+  });
+
+  const records = sink.list();
+  assert.equal(records.some((record) => record.code === 'matched_rule'), true);
+  assert.deepEqual(records[0]?.ruleIds, ['claude-native-sonnet-strong-candidate']);
+  assert.equal(records[0]?.target?.provider, 'claude');
+  assert.equal(records[0]?.target?.model, 'sonnet');
 });
 
 test('Chat group explicit mentions become bounded provider-agent routing summaries', () => {

@@ -39,6 +39,11 @@ import {
   resumeStoredWorkflowContinuationDispatch,
 } from '../../products/chat/state/deterministicRouterAdapter.js';
 import { createChatProviderAgentDecisionRequester } from '../../products/chat/state/providerAgentDecisionRequester.js';
+import {
+  createProviderCapabilityBootstrapDiagnosticSink,
+  resolveProviderCapabilityBootstrapDiagnosticsPath,
+  type ProviderCapabilityBootstrapDiagnosticLogEvent,
+} from '../../platform/supervision/providerCapabilityBootstrapDiagnostics.js';
 import { loadProviderCapabilityBootstrapConfigFromFile } from '../../platform/supervision/providerCapabilityBootstrapYaml.js';
 import { MemoryChatStore } from '../../products/chat/state/store.js';
 import { createAsyncKeyedGate } from '../../products/chat/shared/asyncControl.js';
@@ -96,6 +101,12 @@ function createDefaultTelegramRelay(
   });
 }
 
+function writeProviderCapabilityBootstrapDiagnosticLog(
+  event: ProviderCapabilityBootstrapDiagnosticLogEvent,
+): void {
+  process.stderr.write(`[cats-supervision] ${JSON.stringify(event)}\n`);
+}
+
 export function resolveServerDependencies(
   dependencies: ServerDependencies,
 ): ResolvedServerDependencies {
@@ -122,6 +133,15 @@ export function resolveServerDependencies(
           configPath: dependencies.shared.config.providerCapabilityBootstrapConfigPath,
           observedAt: (dependencies.shared.now?.() ?? new Date()).toISOString(),
         });
+  const providerCapabilityBootstrapDiagnosticSink =
+    dependencies.shared.providerCapabilityBootstrapDiagnosticSink
+    ?? createProviderCapabilityBootstrapDiagnosticSink({
+      initialRecords: capabilityBootstrapLoaded.diagnostics,
+      persistPath: resolveProviderCapabilityBootstrapDiagnosticsPath(
+        dependencies.shared.config.chatStatePath,
+      ),
+      logEvent: writeProviderCapabilityBootstrapDiagnosticLog,
+    });
   const defaultTelegramBotToken = process.env.CATS_TELEGRAM_BOT_TOKEN?.trim() || null;
   const deliveryClientCache = new Map<string, ReturnType<typeof createTelegramBotApiDeliveryClient>>();
   const resolveTelegramBotApiClient = (botToken: string) => {
@@ -231,7 +251,8 @@ export function resolveServerDependencies(
       resumePendingOrchestratorDispatch,
       resumeWorkflowContinuationDispatch,
       providerCapabilityBootstrapConfig: capabilityBootstrapLoaded.config,
-      providerCapabilityBootstrapDiagnostics: capabilityBootstrapLoaded.diagnostics,
+      providerCapabilityBootstrapDiagnostics: providerCapabilityBootstrapDiagnosticSink.list(),
+      providerCapabilityBootstrapDiagnosticSink,
     },
     chat: {
       ...dependencies.chat,

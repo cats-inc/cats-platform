@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import test from 'node:test';
 
 import {
@@ -8,6 +11,7 @@ import {
   DEFAULT_SUPERVISION_SCHEMA_VERSION,
   SUPERVISED_TOOL_CANCELLATION_VALUES,
   TOOL_RESULT_STATUS_VALUES,
+  createProviderCapabilityBootstrapDiagnosticSink,
   type AddressableTarget,
   type AsyncLifecycleRequestResult,
   type CancellationContext,
@@ -235,6 +239,46 @@ test('supervision diagnostic records carry provider bootstrap diagnostics outsid
 
   assert.equal(diagnostic.kind, 'provider_capability_bootstrap_config');
   assert.equal(diagnostic.code, 'missing_config');
+});
+
+test('provider bootstrap diagnostic sink emits structured logs and persists records', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-supervision-diagnostics-'));
+  const persistPath = path.join(tempDir, 'diagnostics.json');
+  const logEvents: unknown[] = [];
+  const diagnostic: SupervisionDiagnosticRecord = {
+    id: 'provider-capability-bootstrap:matched-rule:rule-a:2026-04-28',
+    kind: 'provider_capability_bootstrap_config',
+    severity: 'info',
+    code: 'matched_rule',
+    observedAt: '2026-04-28T00:00:00.000Z',
+    configPath: 'config/provider-capability-bootstrap.yaml',
+    ruleIds: ['rule-a'],
+    target: {
+      provider: 'claude',
+      instance: 'native',
+      model: 'sonnet',
+      control: 'default',
+    },
+    message: 'Matched provider capability bootstrap rule rule-a as strong_agent.',
+  };
+
+  try {
+    const sink = createProviderCapabilityBootstrapDiagnosticSink({
+      persistPath,
+      logEvent: (event) => logEvents.push(event),
+    });
+    sink.emit(diagnostic);
+
+    const persisted = JSON.parse(await readFile(persistPath, 'utf8')) as {
+      records: SupervisionDiagnosticRecord[];
+    };
+    assert.equal(logEvents.length, 1);
+    assert.equal((logEvents[0] as { code?: string }).code, 'matched_rule');
+    assert.deepEqual(sink.list(), [diagnostic]);
+    assert.deepEqual(persisted.records, [diagnostic]);
+  } finally {
+    await rm(tempDir, { recursive: true, force: true });
+  }
 });
 
 test('stable supervision rejection codes include approval, cancellation, and scope failures', () => {

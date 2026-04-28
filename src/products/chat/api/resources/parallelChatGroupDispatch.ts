@@ -256,6 +256,8 @@ async function stageParallelChatBodies(
           },
           providerCapabilityBootstrapConfig:
             context.dependencies.providerCapabilityBootstrapConfig,
+          providerCapabilityBootstrapDiagnosticSink:
+            context.dependencies.providerCapabilityBootstrapDiagnosticSink,
           cancellationRegistry: channelDispatchCancellationRegistry,
           onStateWritten: notifyStreamTargetChanged,
         },

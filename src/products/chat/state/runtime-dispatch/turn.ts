@@ -12,6 +12,7 @@ import {
   decideSupervisionPolicy,
   resolveProviderCapabilityProfile,
   type ProviderCapabilityBootstrapConfig,
+  type ProviderCapabilityBootstrapDiagnosticSink,
 } from '../../../../platform/supervision/index.js';
 import type {
   RoomRoutingCheckpoint,
@@ -116,6 +117,7 @@ export interface PreparedDispatchTurn {
 export interface PrepareDispatchTurnOptions {
   deterministicRoutingPlan?: DeterministicChatRoutingPlan | null;
   providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
+  providerCapabilityBootstrapDiagnosticSink?: ProviderCapabilityBootstrapDiagnosticSink;
 }
 
 function resolveDeterministicPlanInitialResolution(
@@ -211,6 +213,7 @@ export function prepareDispatchTurnForUserMessage(
     initialResolution,
     nowIso,
     providerCapabilityBootstrapConfig: options.providerCapabilityBootstrapConfig,
+    providerCapabilityBootstrapDiagnosticSink: options.providerCapabilityBootstrapDiagnosticSink,
   });
   const channelRouting = requireChannel(nextState, channelId).roomRouting;
   const baseRoomRouting = resolveRoomRoutingState(channelRouting);
@@ -458,6 +461,7 @@ function buildProviderAgentObservationForTurn(input: {
   initialResolution: TargetResolution;
   nowIso: string;
   providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
+  providerCapabilityBootstrapDiagnosticSink?: ProviderCapabilityBootstrapDiagnosticSink;
 }): ProviderAgentBoundedObservation | null {
   const channel = requireChannel(input.state, input.channelId);
   const executionTarget = resolveOrchestratorExecutionTarget(input.state, channel);
@@ -473,6 +477,7 @@ function buildProviderAgentObservationForTurn(input: {
       bootstrapConfig: input.providerCapabilityBootstrapConfig,
     },
   );
+  input.providerCapabilityBootstrapDiagnosticSink?.emitMany(capabilityProfile.diagnostics);
   const policyDecision = decideSupervisionPolicy({
     actionId: `${input.userMessage.id}:provider-agent-observation`,
     runId: `chat:${input.channelId}`,

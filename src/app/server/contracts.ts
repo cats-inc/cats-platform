@@ -14,6 +14,7 @@ import type {
 } from '../../platform/orchestration/workflowContinuationReplay.js';
 import type { RuntimeClient } from '../../platform/runtime/client.js';
 import type {
+  ProviderCapabilityBootstrapDiagnosticSink,
   ProviderCapabilityBootstrapConfig,
   SupervisionDiagnosticRecord,
 } from '../../platform/supervision/index.js';
@@ -60,6 +61,7 @@ export interface SharedServerDependencies {
   resumeWorkflowContinuationDispatch?: ResumeWorkflowContinuationDispatch;
   providerCapabilityBootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
   providerCapabilityBootstrapDiagnostics?: SupervisionDiagnosticRecord[];
+  providerCapabilityBootstrapDiagnosticSink?: ProviderCapabilityBootstrapDiagnosticSink;
 }
 
 export interface ChatServerDependencies {
@@ -97,6 +99,7 @@ export interface ResolvedSharedServerDependencies extends SharedServerDependenci
   resumeWorkflowContinuationDispatch: ResumeWorkflowContinuationDispatch;
   providerCapabilityBootstrapConfig: ProviderCapabilityBootstrapConfig | null;
   providerCapabilityBootstrapDiagnostics: SupervisionDiagnosticRecord[];
+  providerCapabilityBootstrapDiagnosticSink: ProviderCapabilityBootstrapDiagnosticSink;
 }
 
 export interface ResolvedChatServerDependencies extends ChatServerDependencies {

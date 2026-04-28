@@ -563,6 +563,8 @@ async function handleRestSendMessage(
           providerAgentDecisionRequester: context.dependencies.providerAgentDecisionRequester,
           providerCapabilityBootstrapConfig:
             context.dependencies.providerCapabilityBootstrapConfig,
+          providerCapabilityBootstrapDiagnosticSink:
+            context.dependencies.providerCapabilityBootstrapDiagnosticSink,
           cancellationRegistry: channelDispatchCancellationRegistry,
           onStateWritten: notifyStreamTargetChanged,
         },

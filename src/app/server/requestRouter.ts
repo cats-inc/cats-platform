@@ -344,6 +344,8 @@ export async function routeRequest(
       eventHub: dependencies.chat.eventHub,
       providerAgentDecisionRequester: dependencies.chat.providerAgentDecisionRequester,
       providerCapabilityBootstrapConfig: dependencies.shared.providerCapabilityBootstrapConfig,
+      providerCapabilityBootstrapDiagnosticSink:
+        dependencies.shared.providerCapabilityBootstrapDiagnosticSink,
       now: dependencies.shared.now,
     },
   };
