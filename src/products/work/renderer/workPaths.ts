@@ -80,7 +80,16 @@ export function isWorkBrokenLinksPath(pathname: string): boolean {
 }
 
 export function isWorkRunsPath(pathname: string): boolean {
-  return pathname === WORK_RUNS_PATH || pathname.startsWith(`${WORK_RUNS_PATH}/`);
+  if (pathname === WORK_RUNS_PATH || pathname.startsWith(`${WORK_RUNS_PATH}/`)) {
+    return true;
+  }
+  // Run detail nests under its task — `/work/tasks/:taskId/runs/:runId`.
+  // Treat that path as a Run-context location so the Runs sidebar entry
+  // highlights (and Tasks de-highlights via its own exclusion) when
+  // drilling into a run.
+  return (
+    pathname.startsWith(`${WORK_TASKS_PATH}/`) && /\/runs\//.test(pathname)
+  );
 }
 
 export function isWorkMissionsPath(pathname: string): boolean {
