@@ -41,20 +41,63 @@ import {
  * empty state in that case.
  */
 export function buildWorkGraphProjection(core: CatsCoreState): WorkGraphProjection {
+  const taskTitleById = new Map<string, string>();
+  for (const task of core.tasks) {
+    taskTitleById.set(task.id, task.title);
+  }
+  const workItemTitleById = new Map<string, string>();
+  for (const workItem of core.workItems) {
+    workItemTitleById.set(workItem.id, workItem.title);
+  }
+  const conversationTitleById = new Map<string, string>();
+  for (const conversation of core.conversations) {
+    conversationTitleById.set(conversation.id, conversation.title || conversation.id);
+  }
+  const actorTitleById = new Map<string, string>();
+  for (const actor of core.actors) {
+    actorTitleById.set(actor.id, actor.name || actor.id);
+  }
+  if (core.ownerProfile?.actorId) {
+    actorTitleById.set(
+      core.ownerProfile.actorId,
+      core.ownerProfile.displayName || core.ownerProfile.actorId,
+    );
+  }
+  const runTitleById = new Map<string, string>();
+  for (const run of core.runs) {
+    runTitleById.set(run.id, run.title);
+  }
+
   const objects: WorkGraphObjectSummary[] = [
-    ...core.projects.map(projectToSummary),
-    ...core.workItems.map(workItemToSummary),
-    ...core.tasks.map((task) => taskToSummary(task, core)),
+    ...core.projects.map((p) => projectToSummary(p, conversationTitleById)),
+    ...core.workItems.map((wi) =>
+      workItemToSummary(wi, workItemTitleById, conversationTitleById),
+    ),
+    ...core.tasks.map((task) =>
+      taskToSummary(
+        task,
+        core,
+        taskTitleById,
+        conversationTitleById,
+        actorTitleById,
+      ),
+    ),
     ...core.conversations.map(conversationToSummary),
     ...core.actors
       .filter((actor) => actor.kind !== 'owner' && actor.status === 'active')
       .map(actorToSummary),
-    ...core.missions.map(missionToSummary),
-    ...core.runs.map(runToSummary),
-    ...core.artifacts.map(artifactToSummary),
-    ...core.activities.map(activityToSummary),
-    ...core.outcomes.map(outcomeToSummary),
-    ...core.approvalBindings.map(approvalBindingToSummary),
+    ...core.missions.map((m) =>
+      missionToSummary(m, conversationTitleById, actorTitleById),
+    ),
+    ...core.runs.map((run) =>
+      runToSummary(run, taskTitleById, conversationTitleById, runTitleById),
+    ),
+    ...core.artifacts.map((a) => artifactToSummary(a, conversationTitleById)),
+    ...core.activities.map((a) => activityToSummary(a, conversationTitleById)),
+    ...core.outcomes.map((o) => outcomeToSummary(o, conversationTitleById)),
+    ...core.approvalBindings.map((b) =>
+      approvalBindingToSummary(b, conversationTitleById),
+    ),
   ];
 
   const evidenceAttachments: WorkGraphEvidenceAttachment[] = [
@@ -148,7 +191,10 @@ export function buildWorkGraphProjection(core: CatsCoreState): WorkGraphProjecti
   };
 }
 
-function projectToSummary(p: CoreProjectRecord): WorkGraphObjectSummary {
+function projectToSummary(
+  p: CoreProjectRecord,
+  conversationTitleById: Map<string, string>,
+): WorkGraphObjectSummary {
   return {
     id: p.id,
     kind: 'project',
@@ -167,10 +213,17 @@ function projectToSummary(p: CoreProjectRecord): WorkGraphObjectSummary {
     linkedTaskId: null,
     linkedRunId: null,
     updatedAt: p.updatedAt,
+    linkedConversationTitle: p.primaryConversationId
+      ? conversationTitleById.get(p.primaryConversationId) ?? null
+      : null,
   };
 }
 
-function workItemToSummary(w: CoreWorkItemRecord): WorkGraphObjectSummary {
+function workItemToSummary(
+  w: CoreWorkItemRecord,
+  workItemTitleById: Map<string, string>,
+  conversationTitleById: Map<string, string>,
+): WorkGraphObjectSummary {
   return {
     id: w.id,
     kind: 'work_item',
@@ -189,10 +242,25 @@ function workItemToSummary(w: CoreWorkItemRecord): WorkGraphObjectSummary {
     linkedTaskId: w.taskId,
     linkedRunId: null,
     updatedAt: w.updatedAt,
+    linkedWorkItemTitle: w.parentWorkItemId
+      ? workItemTitleById.get(w.parentWorkItemId) ?? null
+      : null,
+    linkedConversationTitle: w.conversationId
+      ? conversationTitleById.get(w.conversationId) ?? null
+      : null,
   };
 }
 
-function taskToSummary(t: CoreTaskRecord, core: CatsCoreState): WorkGraphObjectSummary {
+function taskToSummary(
+  t: CoreTaskRecord,
+  core: CatsCoreState,
+  taskTitleById: Map<string, string>,
+  conversationTitleById: Map<string, string>,
+  actorTitleById: Map<string, string>,
+): WorkGraphObjectSummary {
+  const parentTaskTitle = t.parentTaskId
+    ? taskTitleById.get(t.parentTaskId) ?? null
+    : null;
   return {
     id: t.id,
     kind: 'task',
@@ -213,6 +281,13 @@ function taskToSummary(t: CoreTaskRecord, core: CatsCoreState): WorkGraphObjectS
     updatedAt: t.updatedAt,
     metadata: t.metadata ?? null,
     productBinding: resolveTaskProductBinding(core, t),
+    linkedTaskTitle: parentTaskTitle,
+    linkedConversationTitle: t.conversationId
+      ? conversationTitleById.get(t.conversationId) ?? null
+      : null,
+    assignedActorTitles: t.assignedActorIds.map(
+      (id) => actorTitleById.get(id) ?? id,
+    ),
   };
 }
 
@@ -260,7 +335,11 @@ function actorToSummary(actor: CoreActorRecord): WorkGraphObjectSummary {
   };
 }
 
-function missionToSummary(m: MissionRecord): WorkGraphObjectSummary {
+function missionToSummary(
+  m: MissionRecord,
+  conversationTitleById: Map<string, string>,
+  actorTitleById: Map<string, string>,
+): WorkGraphObjectSummary {
   return {
     id: m.id,
     kind: 'mission',
@@ -279,10 +358,21 @@ function missionToSummary(m: MissionRecord): WorkGraphObjectSummary {
     linkedTaskId: null,
     linkedRunId: null,
     updatedAt: m.updatedAt,
+    linkedConversationTitle: m.conversationId
+      ? conversationTitleById.get(m.conversationId) ?? null
+      : null,
+    assignedActorTitles: m.assignedAgentId
+      ? [actorTitleById.get(m.assignedAgentId) ?? m.assignedAgentId]
+      : [],
   };
 }
 
-function runToSummary(r: CoreRunRecord): WorkGraphObjectSummary {
+function runToSummary(
+  r: CoreRunRecord,
+  taskTitleById: Map<string, string>,
+  conversationTitleById: Map<string, string>,
+  runTitleById: Map<string, string>,
+): WorkGraphObjectSummary {
   return {
     id: r.id,
     kind: 'run',
@@ -301,10 +391,22 @@ function runToSummary(r: CoreRunRecord): WorkGraphObjectSummary {
     linkedTaskId: r.taskId,
     linkedRunId: r.parentRunId,
     updatedAt: r.updatedAt,
+    startedAt: r.startedAt,
+    completedAt: r.completedAt,
+    linkedTaskTitle: r.taskId ? taskTitleById.get(r.taskId) ?? null : null,
+    linkedConversationTitle: r.conversationId
+      ? conversationTitleById.get(r.conversationId) ?? null
+      : null,
+    linkedRunTitle: r.parentRunId
+      ? runTitleById.get(r.parentRunId) ?? null
+      : null,
   };
 }
 
-function artifactToSummary(a: CoreArtifactRecord): WorkGraphObjectSummary {
+function artifactToSummary(
+  a: CoreArtifactRecord,
+  conversationTitleById: Map<string, string>,
+): WorkGraphObjectSummary {
   return {
     id: a.id,
     kind: 'artifact',
@@ -323,10 +425,16 @@ function artifactToSummary(a: CoreArtifactRecord): WorkGraphObjectSummary {
     linkedTaskId: a.taskId,
     linkedRunId: a.runId,
     updatedAt: a.updatedAt,
+    linkedConversationTitle: a.conversationId
+      ? conversationTitleById.get(a.conversationId) ?? null
+      : null,
   };
 }
 
-function activityToSummary(a: CoreActivityRecord): WorkGraphObjectSummary {
+function activityToSummary(
+  a: CoreActivityRecord,
+  conversationTitleById: Map<string, string>,
+): WorkGraphObjectSummary {
   return {
     id: a.id,
     kind: 'activity',
@@ -345,10 +453,16 @@ function activityToSummary(a: CoreActivityRecord): WorkGraphObjectSummary {
     linkedTaskId: a.taskId,
     linkedRunId: a.runId,
     updatedAt: a.createdAt,
+    linkedConversationTitle: a.conversationId
+      ? conversationTitleById.get(a.conversationId) ?? null
+      : null,
   };
 }
 
-function outcomeToSummary(o: CoreOrchestrationOutcomeRecord): WorkGraphObjectSummary {
+function outcomeToSummary(
+  o: CoreOrchestrationOutcomeRecord,
+  conversationTitleById: Map<string, string>,
+): WorkGraphObjectSummary {
   return {
     id: o.id,
     kind: 'outcome',
@@ -367,10 +481,16 @@ function outcomeToSummary(o: CoreOrchestrationOutcomeRecord): WorkGraphObjectSum
     linkedTaskId: o.taskId,
     linkedRunId: o.runId,
     updatedAt: o.updatedAt,
+    linkedConversationTitle: o.conversationId
+      ? conversationTitleById.get(o.conversationId) ?? null
+      : null,
   };
 }
 
-function approvalBindingToSummary(b: CoreApprovalBindingRecord): WorkGraphObjectSummary {
+function approvalBindingToSummary(
+  b: CoreApprovalBindingRecord,
+  conversationTitleById: Map<string, string>,
+): WorkGraphObjectSummary {
   return {
     id: b.id,
     kind: 'approval_binding',
@@ -389,6 +509,9 @@ function approvalBindingToSummary(b: CoreApprovalBindingRecord): WorkGraphObject
     linkedTaskId: b.approvalTaskId,
     linkedRunId: null,
     updatedAt: b.updatedAt,
+    linkedConversationTitle: b.conversationId
+      ? conversationTitleById.get(b.conversationId) ?? null
+      : null,
   };
 }
 

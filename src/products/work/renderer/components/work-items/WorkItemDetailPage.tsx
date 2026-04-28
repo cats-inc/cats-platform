@@ -9,10 +9,15 @@ import {
   KIND_LABEL,
 } from "../topdown/shared";
 import type { WorkGraphObjectSummary } from "../topdown/types";
+import { useMissions, type MissionItem } from "../../state/missionsStore";
 import { usePinnedProjects } from "../../state/pinnedProjectsStore";
 import { useWorkGraph } from "../../state/workGraphStore";
 import { useWorkItems } from "../../state/workItemsStore";
-import { WORK_PROJECTS_PATH } from "../../workPaths.js";
+import {
+  WORK_PROJECTS_PATH,
+  buildWorkMissionPath,
+  buildWorkWorkItemPath,
+} from "../../workPaths.js";
 import "./work-items.css";
 
 export function WorkItemDetailPage(): JSX.Element {
@@ -21,6 +26,7 @@ export function WorkItemDetailPage(): JSX.Element {
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
   const { allWorkItems, deletedIds } = useWorkItems();
   const { allProjects } = usePinnedProjects();
+  const { allMissions } = useMissions();
 
   const workItem = workItemId
     ? allWorkItems.find((wi) => wi.id === workItemId)
@@ -36,6 +42,13 @@ export function WorkItemDetailPage(): JSX.Element {
   const linkedProject = workItem.linkedProjectId
     ? allProjects.find((p) => p.id === workItem.linkedProjectId)
     : undefined;
+  const parentWorkItem = workItem.linkedWorkItemId
+    ? allWorkItems.find((wi) => wi.id === workItem.linkedWorkItemId)
+    : undefined;
+  const subWorkItems = allWorkItems.filter(
+    (wi) =>
+      wi.linkedWorkItemId === workItem.id && !deletedIds.has(wi.id),
+  );
   const tasks = graph.objects.filter(
     (o) => o.kind === "task" && o.linkedWorkItemId === workItem.id,
   );
@@ -44,9 +57,8 @@ export function WorkItemDetailPage(): JSX.Element {
       (o) => o.kind === "activity" && o.linkedWorkItemId === workItem.id,
     )
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  const conversation = workItem.linkedConversationId
-    ? indexes.objectsById.get(workItem.linkedConversationId)
-    : undefined;
+  // Conversation title comes through the projection now via
+  // `linkedConversationTitle` — no need for a per-page indexes lookup.
 
   return (
     <div className="workItemDetail">
@@ -147,16 +159,30 @@ export function WorkItemDetailPage(): JSX.Element {
                 <em>(orphan — no project linked)</em>
               )}
             </dd>
+            {parentWorkItem ? (
+              <>
+                <dt>Parent work item</dt>
+                <dd>
+                  <Link
+                    className="workItemDetail__projectLink"
+                    to={buildWorkWorkItemPath(parentWorkItem.id)}
+                  >
+                    {parentWorkItem.title}
+                  </Link>
+                </dd>
+              </>
+            ) : null}
             <dt>Owner role</dt>
             <dd>{workItem.ownerRole ?? <em>(not assigned)</em>}</dd>
             <dt>Next action</dt>
             <dd>{workItem.nextAction ?? <em>(none recorded)</em>}</dd>
-            {conversation ? (
+            {workItem.linkedConversationId ? (
               <>
                 <dt>Conversation</dt>
                 <dd>
                   <span className="workItemDetail__convoTitle">
-                    {conversation.title}
+                    {workItem.linkedConversationTitle ??
+                      workItem.linkedConversationId}
                   </span>
                 </dd>
               </>
@@ -164,10 +190,18 @@ export function WorkItemDetailPage(): JSX.Element {
           </dl>
         </section>
 
+        <SubWorkItemsSection items={subWorkItems} />
+
         <ItemsSection
           title="Tasks"
           items={tasks}
           emptyLabel="No tasks under this work item yet."
+        />
+
+        <MissionsSection
+          missions={allMissions.filter(
+            (m) => m.linkedWorkItemId === workItem.id,
+          )}
         />
 
         <LinkageSection
@@ -258,6 +292,90 @@ function ItemsSection({
                   {item.ownerRole}
                 </span>
               ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+interface SubWorkItemsSectionProps {
+  items: readonly WorkGraphObjectSummary[];
+}
+
+function SubWorkItemsSection({
+  items,
+}: SubWorkItemsSectionProps): JSX.Element {
+  return (
+    <section className="workItemDetail__section">
+      <header className="workItemDetail__sectionHeader">
+        <h2>Sub-work-items</h2>
+        <span className="workItemDetail__sectionCount">{items.length}</span>
+      </header>
+      {items.length === 0 ? (
+        <p className="workItemDetail__empty">
+          No sub-work-items.
+        </p>
+      ) : (
+        <ul className="workItemDetail__items">
+          {items.map((item) => (
+            <li key={item.id} className="workItemDetail__item">
+              <span
+                className={`projectsList__dot projectsList__dot--small projectsList__dot--${item.status}`}
+                aria-hidden="true"
+              />
+              <Link
+                to={buildWorkWorkItemPath(item.id)}
+                className="workItemDetail__itemTitle"
+              >
+                {item.title}
+              </Link>
+              <span className="workItemDetail__itemStatus">
+                {item.status.replace(/_/g, " ")}
+              </span>
+              <span className="workItemDetail__itemOwner">
+                {formatRelative(item.updatedAt)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+interface MissionsSectionProps {
+  missions: readonly MissionItem[];
+}
+
+function MissionsSection({ missions }: MissionsSectionProps): JSX.Element {
+  return (
+    <section className="workItemDetail__section">
+      <header className="workItemDetail__sectionHeader">
+        <h2>Missions</h2>
+        <span className="workItemDetail__sectionCount">{missions.length}</span>
+      </header>
+      {missions.length === 0 ? (
+        <p className="workItemDetail__empty">
+          No missions for this work item.
+        </p>
+      ) : (
+        <ul className="workItemDetail__items">
+          {missions.map((mission) => (
+            <li key={mission.id} className="workItemDetail__item">
+              <Link
+                to={buildWorkMissionPath(mission.id)}
+                className="workItemDetail__itemTitle"
+              >
+                {mission.title}
+              </Link>
+              <span className="workItemDetail__itemStatus">
+                {mission.status.replace(/_/g, " ")}
+              </span>
+              <span className="workItemDetail__itemOwner">
+                {formatRelative(mission.updatedAt)}
+              </span>
             </li>
           ))}
         </ul>

@@ -211,6 +211,11 @@ main.canvas:has(> .workItemDetail) {
   font-style: italic;
 }
 
+.workItemsList__projectChip--parent {
+  border-style: dashed;
+  font-style: italic;
+}
+
 .workItemsList__pip {
   font-size: 0.66rem;
   font-weight: 600;

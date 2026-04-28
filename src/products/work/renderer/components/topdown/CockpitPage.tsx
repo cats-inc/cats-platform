@@ -18,6 +18,7 @@ type CockpitTab =
   | "command"
   | "needs-decision"
   | "active"
+  | "active-runs"
   | "blocked"
   | "shipped"
   | "teams";
@@ -25,7 +26,8 @@ type CockpitTab =
 const TABS: Array<{ id: CockpitTab; label: string; sub: string }> = [
   { id: "command", label: "Command Center", sub: "All buckets at a glance" },
   { id: "needs-decision", label: "Needs Decision", sub: "Owner action required" },
-  { id: "active", label: "Active", sub: "In progress, on track" },
+  { id: "active", label: "Active", sub: "Tasks in progress, on track" },
+  { id: "active-runs", label: "Active Runs", sub: "Runs currently executing" },
   { id: "blocked", label: "Blocked", sub: "Stalled or failed" },
   { id: "shipped", label: "Shipped", sub: "Recently completed" },
   { id: "teams", label: "Teams · Roles", sub: "Grouped by resolved actor role" },
@@ -47,7 +49,12 @@ const ATTENTION_TO_BUCKET: Partial<Record<WorkAttentionState, BucketId>> = {
   recently_shipped: "shipped",
 };
 
-type BucketId = "needs-decision" | "active" | "blocked" | "shipped";
+type BucketId =
+  | "needs-decision"
+  | "active"
+  | "active-runs"
+  | "blocked"
+  | "shipped";
 
 export function CockpitPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -60,11 +67,20 @@ export function CockpitPage(): JSX.Element {
     const out: Record<BucketId, WorkGraphObjectSummary[]> = {
       "needs-decision": [],
       active: [],
+      "active-runs": [],
       blocked: [],
       shipped: [],
     };
     for (const o of graph.objects) {
       if (!OPERATIONAL_KINDS.includes(o.kind)) continue;
+      // Active Runs: dedicated bucket so executing runs are visible
+      // alongside (not buried inside) task-level Active. Runs that
+      // are blocked / failed / completed still flow to attention-derived
+      // buckets via ATTENTION_TO_BUCKET below.
+      if (o.kind === "run" && o.status === "running") {
+        out["active-runs"].push(o);
+        continue;
+      }
       const target = ATTENTION_TO_BUCKET[o.attention];
       if (target) {
         out[target].push(o);
@@ -109,6 +125,7 @@ export function CockpitPage(): JSX.Element {
   const counts = {
     "needs-decision": buckets["needs-decision"].length,
     active: buckets.active.length,
+    "active-runs": buckets["active-runs"].length,
     blocked: buckets.blocked.length,
     shipped: buckets.shipped.length,
     teams: teamLanes.length,
@@ -230,7 +247,13 @@ function CommandCenter({
   onSelect: (id: string | null) => void;
   onJump: (id: CockpitTab) => void;
 }): JSX.Element {
-  const ORDER: BucketId[] = ["needs-decision", "blocked", "active", "shipped"];
+  const ORDER: BucketId[] = [
+    "needs-decision",
+    "blocked",
+    "active",
+    "active-runs",
+    "shipped",
+  ];
   const recentActivity = graph.objects
     .filter((o) => o.kind === "activity")
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))

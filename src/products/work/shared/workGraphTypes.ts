@@ -208,6 +208,59 @@ export interface WorkGraphObjectSummary {
    * out at the API boundary.
    */
   productBinding?: WorkTaskProductBinding;
+  /**
+   * Run-only: lifecycle timestamps. Set on `kind === 'run'` summaries;
+   * undefined elsewhere. `startedAt` is null while queued, set when
+   * the run picks up. `completedAt` is null while running / blocked,
+   * set when the run reaches a terminal status (completed / failed /
+   * cancelled). Lets Run drill-downs render duration without a
+   * second fetch.
+   */
+  startedAt?: string | null;
+  completedAt?: string | null;
+  /**
+   * Denormalized title of `linkedTaskId` (when present and resolvable
+   * in the same projection). Set on `kind === 'task'` (parent of a
+   * sub-task) and `kind === 'run'` (the task that owns this run);
+   * undefined for other kinds. Lets Cockpit / System Map / list cards
+   * render a "belongs to" chip without each consumer building its own
+   * task lookup map.
+   */
+  linkedTaskTitle?: string | null;
+  /**
+   * Denormalized title of `linkedWorkItemId` (when present and
+   * resolvable). Set on `kind === 'work_item'` (parent of a
+   * sub-work-item — `linkedWorkItemId` aliases `parentWorkItemId` on
+   * work-item summaries); undefined for other kinds. Symmetric to
+   * `linkedTaskTitle`.
+   */
+  linkedWorkItemTitle?: string | null;
+  /**
+   * Denormalized title of `linkedConversationId` (when present and
+   * resolvable in the projection). Populated for any kind whose Core
+   * record has a `conversationId` foreign key (project / work_item /
+   * task / mission / run / artifact / activity / outcome /
+   * approval_binding). Lets detail pages show "Conversation: <title>"
+   * without each consumer building its own conversation lookup.
+   */
+  linkedConversationTitle?: string | null;
+  /**
+   * Resolved actor titles (display names) for the Core record's
+   * canonical assignment list. Set on `kind === 'task'` from
+   * `task.assignedActorIds`; on `kind === 'mission'` from the single
+   * `mission.assignedAgentId` (one-element array). Undefined for
+   * other kinds. Each entry is a name resolved against `core.actors`,
+   * falling back to the actor id when not resolvable. Empty array
+   * means the record has the field but no actors are assigned.
+   */
+  assignedActorTitles?: string[];
+  /**
+   * Denormalized title of `linkedRunId` (when present and resolvable).
+   * Set on `kind === 'run'` (parent run via parentRunId); undefined
+   * for other kinds. Symmetric to `linkedTaskTitle` /
+   * `linkedWorkItemTitle`.
+   */
+  linkedRunTitle?: string | null;
 }
 
 export interface WorkGraphEvidenceAttachment {

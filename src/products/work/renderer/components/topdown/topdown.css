@@ -294,6 +294,16 @@
   color: var(--danger, #c0382b);
 }
 
+.topDownCard__chip--parentTask {
+  background: var(--canvas-bg);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  font-style: italic;
+  max-width: 24ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 /* Color stripe per kind family on the card's left edge */
 
 .topDownCard--conversation,
@@ -478,7 +488,7 @@
 
 .commandCenter__grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   grid-template-rows: 1fr 1fr;
   gap: 1px;
   background: var(--border);
