@@ -127,7 +127,7 @@ export function resolveProviderCapabilityProfile(
       sourceFixtures,
       diagnostics: bootstrapResolution.diagnostics,
       notes: [
-        'No provider capability bootstrap rule matched; default treatment grants narrow_write + step + semantic_check.',
+        'No provider capability bootstrap rule matched; default treatment grants narrow_write + step + schema_required.',
       ],
     };
   }

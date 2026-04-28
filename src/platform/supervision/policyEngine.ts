@@ -50,14 +50,9 @@ const SCAFFOLDING_LOOSENESS: Record<SupervisionScaffolding, number> = {
   none: 3,
 };
 
-// schema_required is currently the only validation level that the
-// providerAgentPolicyGate (see providerAgentPolicyGate.ts:146) actually
-// enforces (it requires expectedOutputSchemaRef on each request).
-// semantic_check is not yet implemented as a superset, so allowing
-// weak_worker to "upgrade" from schema_required to semantic_check would
-// silently bypass the schema gate. Until semantic_check enforces the
-// same schema requirement plus an additional semantic check, treat it
-// as looser than schema_required for ceiling purposes.
+// semantic_check keeps the provider-agent schema-ref gate, but does not
+// yet run an additional semantic validator. Until that lands, treat it
+// as looser than schema_required for weak_worker ceiling purposes.
 const VALIDATION_LOOSENESS: Record<SupervisionValidation, number> = {
   schema_required: 0,
   semantic_check: 1,
@@ -305,11 +300,9 @@ function buildBasePolicy(context: SupervisionPolicyContext): SupervisionPolicy {
       sideEffect: context.toolManifest.sideEffect,
     }),
     scaffolding: isStrongOrBetter ? 'few_shot' : 'sop_template',
-    // Stay on schema_required (the only validation level the
-    // providerAgentPolicyGate currently enforces, see
-    // providerAgentPolicyGate.ts:146) until semantic_check ships as a
-    // true superset. Otherwise default/strong tiers would silently lose
-    // the expectedOutputSchemaRef gate.
+    // Stay on schema_required until semantic_check ships an additional
+    // semantic validator. The gate preserves the schema-ref requirement
+    // for semantic_check, but it does not add semantic validation yet.
     validation: 'schema_required',
     checkpointCadence: isStrongOrBetter ? 'milestone' : 'every_step',
     approvalThreshold,

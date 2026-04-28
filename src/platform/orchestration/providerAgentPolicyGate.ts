@@ -99,7 +99,7 @@ function validateSemanticPlanPolicy(
   for (const step of decision.steps) {
     if (step.action === 'call_tool') {
       validateToolPolicy(errors, observation, step.toolName, `step ${step.stepId}`);
-      validateSchemaRequired(errors, policy, step, `step ${step.stepId}`);
+      validateExpectedOutputSchemaRef(errors, policy, step, `step ${step.stepId}`);
     }
   }
 }
@@ -114,7 +114,7 @@ function validateToolRequestPolicy(
     errors.push('tool_request is disallowed when policy autonomy is none');
   }
   validateToolPolicy(errors, observation, decision.toolName, 'tool_request');
-  validateSchemaRequired(errors, policy, decision, 'tool_request');
+  validateExpectedOutputSchemaRef(errors, policy, decision, 'tool_request');
 }
 
 function validateToolPolicy(
@@ -137,14 +137,17 @@ function validateToolPolicy(
   }
 }
 
-function validateSchemaRequired(
+function validateExpectedOutputSchemaRef(
   errors: string[],
   policy: SupervisionPolicy,
   request: Pick<ProviderAgentSemanticPlanStep, 'expectedOutputSchemaRef'>,
   field: string,
 ): void {
-  if (policy.validation === 'schema_required' && !request.expectedOutputSchemaRef) {
-    errors.push(`${field}.expectedOutputSchemaRef is required by schema_required validation`);
+  if (
+    (policy.validation === 'schema_required' || policy.validation === 'semantic_check') &&
+    !request.expectedOutputSchemaRef
+  ) {
+    errors.push(`${field}.expectedOutputSchemaRef is required by ${policy.validation} validation`);
   }
 }
 

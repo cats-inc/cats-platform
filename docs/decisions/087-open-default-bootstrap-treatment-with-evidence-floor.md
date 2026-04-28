@@ -68,7 +68,7 @@ of bootstrap treatment.
   models, or anything the operator wants to fence off.
 - **`default`** = no YAML rule matched. The operator implicitly
   trusted the model by selecting it; the policy grants the open
-  middle tier (narrow writes, step planning, semantic validation).
+  middle tier (narrow writes, step planning, schema-required validation).
   Still keeps `single_step` autonomy and `every_step` checkpoints
   because we have no signal beyond the user's pick.
 - **`strong_agent`** = explicit operator allowlist. Unlocks
@@ -90,7 +90,7 @@ under `strong_agent` YAML and even with operator override. These are
 the two dials whose worst-case blast radius (rm -rf, unbounded
 external mutations, irreversible delegation) is too large to grant on
 trust alone. Every other dial (`milestone_plan`, `narrow_write`,
-`step`, `few_shot`, `semantic_check`, `milestone` checkpoints,
+`step`, `few_shot`, `schema_required`, `milestone` checkpoints,
 `retry`) is **not** floored by FR-19; treatment + override compose
 freely under the evidence ceiling.
 
@@ -112,8 +112,8 @@ real safety boundary.
 
 - A fresh install pointed at Claude / OpenAI / Gemini / GPT-4 can
   immediately write narrow scopes, do step-sized tasks, and use
-  semantic validation. Operators no longer need to write a YAML rule
-  to make the system useful.
+  schema-required validation. Operators no longer need to write a YAML
+  rule to make the system useful.
 - Operators retain explicit control via `weak_worker` (denylist) and
   `strong_agent` (allowlist) YAML rules. Each tier has a distinct
   dial signature so the choice is visible and meaningful.
@@ -150,23 +150,18 @@ real safety boundary.
   before any evaluated/observed evidence is considered, so a
   blacklisted target stays clamped even when eval evidence arrives.
 - All four tiers currently emit `validation: 'schema_required'` as
-  their base. The reason is that the only validation level the
-  `providerAgentPolicyGate` actually enforces today is
-  `schema_required` (it requires `expectedOutputSchemaRef` on each
-  request); `semantic_check` is not yet implemented as a superset,
-  so emitting `semantic_check` as a base for default/strong/evaluated
-  tiers would silently leave them with **no** validation enforcement
-  at all. Until `semantic_check` is implemented as a true superset of
-  `schema_required` (i.e. it also enforces the schema-ref requirement
-  plus an additional semantic check), all tiers route through the
-  same enforced gate. The `validation` dial keeps three enum values
-  (`best_effort`, `schema_required`, `semantic_check`) so the future
-  implementation can flip the base for non-weak tiers without a
-  schema migration.
+  their base. The `providerAgentPolicyGate` also preserves the
+  `expectedOutputSchemaRef` requirement when an override explicitly
+  requests `semantic_check`, but `semantic_check` does not yet add its
+  own semantic validator. Until that validator ships, all base tiers
+  route through the same enforced schema gate. The `validation` dial
+  keeps three enum values (`best_effort`, `schema_required`,
+  `semantic_check`) so the future implementation can flip the base for
+  non-weak tiers without a schema migration.
 - `validation: 'semantic_check'` is consequently treated as **looser**
   than `validation: 'schema_required'` by the `weak_worker` ceiling
   check, so `weak_worker` cannot "upgrade" to `semantic_check` and
-  silently bypass the schema gate.
+  claim a semantic validator that has not shipped yet.
 
 ### Mitigations
 

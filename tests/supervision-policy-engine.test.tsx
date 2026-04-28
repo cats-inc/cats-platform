@@ -250,7 +250,7 @@ test('weak_worker accepts overrides that tighten beyond the ceiling', () => {
   assert.equal(result.result.policy.approvalThreshold, 'high');
 });
 
-test('weak_worker rejects validation override to semantic_check because the schema gate would be bypassed', () => {
+test('weak_worker rejects validation override to semantic_check until semantic validation ships', () => {
   const result = decideSupervisionPolicy({
     ...baseContext({
       capabilityAssessment: catalogOnlyAssessment('weak_worker'),
