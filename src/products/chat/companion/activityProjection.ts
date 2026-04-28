@@ -78,9 +78,9 @@ export interface CompanionActivityRenderEntry {
 }
 
 export interface CompanionActivityProjectionOptions {
-  /** Defaults to 100 per SPEC-085 §40. */
+  /** Defaults to 100 per SPEC-085 §31. */
   maxEntries?: number;
-  /** Defaults to 30 days per SPEC-085 §40. */
+  /** Defaults to 30 days per SPEC-085 §31. */
   maxWindowDays?: number;
   /**
    * Reference "now" for window calculation. Defaults to a `Date` derived

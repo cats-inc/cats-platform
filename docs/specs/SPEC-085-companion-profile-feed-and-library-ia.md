@@ -119,45 +119,26 @@ tab.
 9. `Posts` shall be a visible feed surface.
 10. A post shall be treated as a companion content projection until a later spec
     defines the durable post model.
-11. The first production implementation shall render `Posts` from
-    product-owned profile-post projections backed by `CompanionDerivedRecord`
-    records explicitly marked for the profile feed, for example
-    `metadata.profileSurface === 'post'`. Production runtime shall not use
-    open-ended `MOCK_POSTS`, shall not silently promote all memory highlights,
-    and shall show an empty state when no eligible post projection exists.
-12. The v1 producer for these records shall be a product-owned companion
-    profile-post projection command in the companion-box ingestion/update
-    layer. It may be implemented near `createDerivedRecordsForSource`, but it
-    must be callable as an item-level overflow action named `Promote to post`
-    from:
-    - a `Sources` row
-    - a Photos/Videos/Music tile
-    - a `Files` row
-    - a selected source, media item, file, or derived record in `Inspector`
-13. `Promote to post` shall open a lightweight dialog before writing. The
-    dialog shall expose:
-    - **Title** (required, non-empty after trim) — pre-filled from the
-      selected item's title, derived-record title, filename without extension,
-      or the first 60 characters of the body excerpt, in that order
-    - **Body/excerpt** (optional) — pre-filled from any existing summary,
-      excerpt, or transcript; empty is allowed
-    - **Tags** (optional) — pre-filled from the selected item's tags when
-      present
-    - **Media inclusion** (optional) — checkbox per attachable media item
-      surfaced from the selection; defaults match the selection's natural
-      media set
-    - **Cancel** closes without writing
-    - **Promote** is disabled until Title is non-empty
-14. The v1 producer shall create or update a `CompanionDerivedRecord` with:
+11. **Authorship is agent-only.** Posts shall come exclusively from the Cat
+    (or future agent producers). The owner shall not have a UI affordance
+    to publish, promote, edit, or remove posts. The companion profile is the
+    Cat's surface — the owner views it as a passive observer. There is no
+    `Promote to post` action, no promote dialog, and no
+    `Remove from Posts` button in v1.
+12. Posts shall render from `CompanionDerivedRecord` entries the Cat (or
+    future agent producer) wrote with `metadata.profileSurface === 'post'`.
+    Until an agent producer ships, the Posts tab will render an empty state
+    on a fresh install — that is correct, not a bug. Production runtime
+    shall not use mock fixtures.
+13. Post records shall set:
     - `metadata.profileSurface === 'post'`
-    - `metadata.profilePostStatus === 'active'`
-    - `metadata.profilePostProducer === 'owner_promotion_v1'`
-    - `metadata.profilePostOriginType` in `source`, `derived`, or `artifact`
-    - `metadata.profilePostOriginId` set to the promoted item id
-    - `metadata.profilePostMediaRefs` set to the ordered list of media items
-      the owner kept selected in the dialog (may be empty)
-    - `sourceIds` preserving the underlying source lineage when available
-15. `metadata.profilePostMediaRefs` shall be an ordered array of
+    - `metadata.profilePostStatus === 'active'` or `'removed'`
+    - `metadata.profilePublishedAt` (ISO timestamp; falls back to
+      `record.createdAt` if absent)
+    - `metadata.profilePostMediaRefs` (optional ordered array; see rule 14)
+    - `sourceIds` preserving the underlying source lineage when the agent
+      published from owner-provided material
+14. `metadata.profilePostMediaRefs` shall be an ordered array of
     `{ kind: 'source' | 'derived' | 'artifact'; id: string }` entries naming
     the media items rendered by the post card's optional media grid. It is a
     curated rendering subset and is decoupled from `sourceIds` (which records
@@ -165,98 +146,50 @@ tab.
     renders no media grid even when the underlying source has media. The
     helper that reads post cards shall ignore entries whose targets cannot be
     resolved rather than dropping the whole post.
-16. `metadata.profilePostOriginId` is the provenance pointer for the promoted
-    item itself, not source lineage; for `originType === 'derived'` or
-    `'artifact'` it points at a derived/artifact id and does not duplicate
-    `sourceIds`. `sourceIds` remains the authoritative source-lineage field.
-    For `originType === 'source'`, the `originId` will overlap with
-    `sourceIds`; if any future metadata field claims source lineage that
-    disagrees with `sourceIds`, `sourceIds` wins. The product shall not
-    introduce a `metadata.profilePostSourceId` field.
-17. Promoted post identity is keyed by
-    `(catId, profilePostOriginType, profilePostOriginId)`. Promote-to-post on
-    the same item shall update an existing derived record rather than create a
-    duplicate. If a record with that identity exists with
-    `profilePostStatus === 'removed'`, re-promoting shall flip its status back
-    to `active` and apply the new dialog values.
-18. Once an item is promoted, the item-level action shall become `Edit post`
-    and `Remove from Posts`. `Edit post` reopens the same dialog populated
-    from the existing record and updates it; it shall not mutate the original
-    source record. `Remove from Posts` shall set
-    `metadata.profilePostStatus === 'removed'`, keep the record (no GC), and
-    leave the corresponding `post_removed` Activity entry intact. `Posts`
-    readers shall only include records whose status is `active`.
-19. Source ingestion shall not automatically promote every summary, caption,
-    note, event, or memory highlight into `Posts`. Automatic post producers
-    require a later post-model decision.
-20. Post cards should support at least:
+15. The agent-driven producer is out of scope for v1; it shall land in a
+    follow-up spec/plan once the post model is decided. Until then the read
+    model exists, the schema is fixed, and the projection sorts by
+    `metadata.profilePublishedAt` (falling back to `createdAt`).
+16. Post cards should support at least:
     - author Cat identity
     - time or relative timestamp
     - body/excerpt
     - optional hashtags or tags
     - optional media grid
     - optional item-level share action
-21. The product shall not add comment input to companion posts by default.
+17. The product shall not add comment input to companion posts by default.
 
 #### Photos, videos, and music
 
-22. `Photos` shall show image-like companion content from product-owned sources,
-    derived records, or artifact projections.
-23. `Videos` shall show video-like companion content from product-owned sources,
-    derived records, or artifact projections.
-24. `Music` shall show audio/music-like companion content from product-owned
-    sources, derived records, or artifact projections.
-25. These tabs may use placeholder/mock projections in early UI slices, but the
-    IA shall keep their labels distinct.
-26. Media records whose source substrate is also owner-provided material shall
-    still appear in `Sources`; their media-tab appearance is a browsing
-    projection, not a second stored object.
+18. `Photos` / `Videos` / `Music` shall surface only **agent-published** media:
+    `CompanionDerivedRecord` entries the Cat (or future agent producer)
+    wrote with `metadata.profileSurface === 'photo' | 'video' | 'music'`.
+19. **Owner-supplied sources shall NOT be projected into these tabs.** When
+    the owner adds a source to the Cat — including a file, folder reference,
+    or path that contains photos, videos, or audio inside — the source goes
+    only to the side-panel `Sources` section. The agent reads from those
+    sources but decides for itself whether to surface anything publicly.
+    Files that the agent designates as published media may live in a
+    separate agent-controlled directory.
+20. These tabs may render empty states on a fresh install (no agent producer
+    has published yet). Production runtime shall not use mock fixtures.
 
 #### Files
 
-27. `Files` shall be a primary main-surface tab.
-28. `Files` shall show document/file-like companion content that can be opened,
-    referenced, or inserted into chat.
-29. `Files` shall not be hidden inside the side panel.
-30. `Files` may include imported resources, linked files, and generated
-    artifacts when they are file-like and user-browsable.
-31. A source shall project into `Files` only when the shared classifier marks it
-    as `file`. The classifier shall use `kind`, normalized `mimeType`, and the
-    extension from `originalFileName`, `linkedPath`, or `sourceUrl`;
-    `storedPath` alone is not enough because imported notes may also have
-    materialized storage.
-32. The same owner-uploaded PDF shall appear in both `Sources` and `Files`:
-    `Sources` is provenance and ingestion management; `Files` is browsing,
-    opening, insertion, and sharing. This is one underlying object with two
-    UI projections, not duplicate storage.
-33. The v1 `Files` tab is not the all-uploads view. All raw owner-provided
-    material remains visible in `Sources`; a cross-type `All content` or
-    `All uploads` browsing/filter surface is tracked separately in SPEC-089.
-34. A source classified as `source_only` shall remain visible in `Sources` and
-    shall not project into Posts, Photos, Videos, Music, or Files. It can be
-    promoted into a post via the `Promote to post` action just like any other
-    source.
-
-The v1 source classifier shall normalize `mimeType` and file extension to
-lowercase before comparison and shall follow this precedence:
-
-| Signal | Surface classification |
-|--------|------------------------|
-| `mimeType === "image/svg+xml"` or extension is `.svg` | `file` |
-| `kind === "image"` or `mimeType` starts with `image/` or extension is `.jpg`, `.jpeg`, `.png`, `.gif`, `.webp`, `.heic`, `.heif`, `.bmp`, `.tif`, `.tiff` | `photo` |
-| `kind === "video"` or `mimeType` starts with `video/` or extension is `.mp4`, `.mov`, `.m4v`, `.webm`, `.mkv`, `.avi` | `video` |
-| `kind === "audio"` or `mimeType` starts with `audio/` or extension is `.mp3`, `.wav`, `.m4a`, `.aac`, `.flac`, `.ogg`, `.opus` | `music` |
-| `mimeType` is `application/pdf`, `application/json`, `application/x-ndjson`, `application/xml`, `text/xml`, `text/plain`, `text/markdown`, `text/csv`, `text/tab-separated-values`, `application/zip`, `application/x-zip-compressed`, `application/x-tar`, `application/gzip`, `application/msword`, `application/vnd.openxmlformats-officedocument.wordprocessingml.document`, `application/vnd.ms-excel`, `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`, `application/vnd.ms-powerpoint`, `application/vnd.openxmlformats-officedocument.presentationml.presentation`, `application/vnd.oasis.opendocument.text`, `application/vnd.oasis.opendocument.spreadsheet`, or `application/vnd.oasis.opendocument.presentation` | `file` |
-| extension is `.pdf`, `.md`, `.markdown`, `.txt`, `.csv`, `.tsv`, `.json`, `.jsonl`, `.xml`, `.yaml`, `.yml`, `.zip`, `.tar`, `.gz`, `.doc`, `.docx`, `.xls`, `.xlsx`, `.ppt`, `.pptx`, `.odt`, `.ods`, `.odp` | `file` |
-| `mimeType === "application/octet-stream"` with a recognized extension | re-run the classifier from the top with `mimeType` ignored, using the recognized extension; if no row above this one matches, fall through to the unknown-binary row below |
-| `mimeType === "application/octet-stream"` without a recognized extension | `file` as unknown binary |
-| `kind === "path_ref"` with a recognized media or file extension in `linkedPath` or `sourceUrl` | re-run the classifier from the top using that extension; if no row above matches, fall through to the unknown-linked-file row below |
-| `kind === "path_ref"` with no recognized media/file extension or MIME | `file` as unknown linked file |
-| `kind === "note"`, `kind === "article"`, or `kind === "conversation_log"` with no file name/path and no file MIME | `source_only` |
-
-The classifier shall be implemented as one shared helper for profile read-model
-assembly. Individual tabs shall not duplicate their own MIME or extension
-tables.
+21. `Files` shall be a primary main-surface tab.
+22. `Files` shall show **agent-published** document/file-like content:
+    `CompanionDerivedRecord` entries the Cat wrote with
+    `metadata.profileSurface === 'file'`. The agent decides what to surface;
+    the owner does not upload directly into this tab.
+23. `Files` shall not be hidden inside the side panel.
+24. **Owner-supplied source files shall NOT auto-project into `Files`.** The
+    same rule as Photos / Videos / Music applies: a source the owner
+    provides goes to `Sources` only. The agent may choose to publish a
+    derived file record that points back to that source via `sourceIds`.
+25. The v1 `Files` tab is not the all-uploads view. All raw owner-provided
+    material remains visible in `Sources` only; a cross-type `All content`
+    or `All uploads` browsing/filter surface is tracked separately in
+    SPEC-089.
 
 #### Activity
 
@@ -275,105 +208,118 @@ tables.
     Generic derived-record creation events shall not render unless they fall
     under one of the listed groups. Adding a new group requires amending this
     list.
-37. Activity shall not be treated as the default tab unless a later user
+28. Activity shall not be treated as the default tab unless a later user
     direction changes the IA.
-38. Activity is not a raw write log. The first implementation shall coalesce
+29. Activity is not a raw write log. The first implementation shall coalesce
     high-frequency source, memory, and derived-record writes by object type and
     local day.
-39. Burst aggregation shall use this key:
+30. Burst aggregation shall use this key:
     `{catId, correlationId || minuteBucket, eventGroup, targetKind}`.
     `minuteBucket` is the event timestamp rounded down to a 60-second local
     window. Import/ingestion commands should pass a stable `correlationId` so
     one operation becomes one rendered activity group even if it emits many
     writes.
-40. The first implementation shall cap the visible Activity feed to the most
+31. The first implementation shall cap the visible Activity feed to the most
     recent 100 rendered entries or the most recent 30 days, whichever is
     smaller. v1 shall not expose `Load more`; when older matching activity is
     hidden, the UI should show a bounded "Older activity is hidden" indicator
     instead of pretending the feed is complete.
-41. Selecting an Activity entry shall open that activity entry in `Inspector`.
+32. Selecting an Activity entry shall open that activity entry in `Inspector`.
     If the entry has a primary target, the entry shall expose a separate `Open`
     action that navigates to the target item.
-42. Activity entries should be concise and scan-friendly.
+33. Activity entries should be concise and scan-friendly.
 
 #### Side panel
 
-43. The companion side panel shall not expose a section named `Settings`.
-44. The companion side panel shall use these sections:
+34. The companion side panel shall not expose a section named `Settings`.
+35. The companion side panel shall use these sections:
     - `Status`
     - `Sources`
     - `Memory`
     - `Behavior`
     - `Inspector`
-45. `Status` shall include presence, wake/sleep, runtime/session health, and
+36. `Status` shall include presence, wake/sleep, runtime/session health, and
     recent errors.
-46. `Sources` shall manage raw owner-provided material used to feed or curate
-    the companion.
-47. `Sources` shall list raw `CompanionSourceRecord` inputs and their ingestion
-    controls, including records that also project into Photos, Videos, Music,
-    or Files.
-48. `Sources` shall not be treated as the same user-facing surface as `Files`.
-49. `Memory` shall expose one companion-scoped memory surface backed by
+37. `Sources` shall manage raw owner-provided material the owner gives the Cat
+    to read from. Sources are the Cat's ingredients, not the Cat's published
+    output.
+38. `Sources` shall list raw `CompanionSourceRecord` inputs and their
+    ingestion controls. **`Sources` shall NOT be auto-projected into Posts /
+    Photos / Videos / Music / Files** — those tabs are agent-published only
+    (rules 11, 18, 22).
+39. `Sources` shall not be treated as the same user-facing surface as `Files`.
+40. `Memory` shall expose one companion-scoped memory surface backed by
     `CompanionMemoryRecord` in v1. The companion side panel shall not render
     the `Settings > My Cats` `DurableMemoryItem` list as a second ledger.
-50. `CompanionMemoryRecord` remains the side-panel source of truth because it
+41. `CompanionMemoryRecord` remains the side-panel source of truth because it
     carries companion-box lineage (`sourceIds`), curation state (`curatedBy`),
     lifecycle state (`status`), and replacement linkage (`replacedById`).
-51. Any future merge or synchronization between `DurableMemoryItem` and
+42. Any future merge or synchronization between `DurableMemoryItem` and
     `CompanionMemoryRecord` requires the bridge contract tracked in SPEC-088.
     Until that exists, the UI shall label this as companion memory rather than
     implying it is the canonical Settings memory registry.
-52. `Behavior` shall expose response style/profile controls that are directly
+43. `Behavior` shall expose response style/profile controls that are directly
     relevant to this companion.
-53. `Inspector` shall show contextual details only after the user selects a
+44. `Inspector` shall show contextual details only after the user selects a
     concrete post, photo, video, music item, file, source, memory record, or
     activity entry.
-54. When no item is selected, `Inspector` shall show an empty state equivalent
-    to "Select an item to inspect."
-55. If the selected item becomes unavailable, `Inspector` shall show captured
+45. When no item is selected, `Inspector` shall show an empty state equivalent
+    to "No selection."
+46. If the selected item becomes unavailable, `Inspector` shall show captured
     snapshot metadata plus the appropriate unavailable state instead of
     becoming a miscellaneous fallback container.
-56. `Inspector` shall not host global transport, behavior, or memory controls;
+47. `Inspector` shall not host global transport, behavior, or memory controls;
     those controls belong to their named side-panel sections.
-57. Inspector selection shall be scoped to the current companion Cat. Changing
+48. Inspector selection shall be scoped to the current companion Cat. Changing
     Cat, leaving the companion profile route, or full page reload without an
     explicit inspector selection parameter shall clear the selection.
-58. Switching main tabs within the same companion Cat shall not clear the
+49. Switching main tabs within the same companion Cat shall not clear the
     selection. If the selected item is deleted or becomes unavailable while the
     user remains on the same Cat, `Inspector` shall keep the selection and show
     the snapshot/unavailable state until the user selects another item or
     clears the Inspector.
-59. Inspector snapshots shall freeze at the last successful resolve of the
+50. Inspector snapshots shall freeze at the last successful resolve of the
     selected item. If the item is edited while selected and the edit resolves
     successfully, the snapshot updates to the edited state. If the next resolve
     returns deleted, missing, or inaccessible, the snapshot freezes at the last
     successful resolved state before that unavailable transition.
-60. A full reload with a valid explicit inspector selection parameter shall
+51. A full reload with a valid explicit inspector selection parameter shall
     attempt to restore the selection by resolving the parameter. If it resolves,
     `Inspector` shows the item; if it resolves unavailable, `Inspector` shows
     the unavailable fallback; if the parameter is malformed, selection clears.
-61. The word `Profile` shall refer to the whole companion page, not a side-panel
+52. The word `Profile` shall refer to the whole companion page, not a side-panel
     section.
 
 #### Transport binding visibility
 
-62. Telegram, LINE, and other transport binding management shall remain
+53. Telegram, LINE, and other transport binding management shall remain
     canonical in `Settings > My Cats`.
-63. The companion profile may show read-only badges such as `Telegram
+54. The companion profile may show read-only badges such as `Telegram
     connected` or `Available on Telegram`.
-64. When management is needed, the companion surface shall deep-link to the
+55. When management is needed, the companion surface shall deep-link to the
     canonical settings route rather than duplicating controls.
+
+#### Header actions
+
+56. The header shall expose two reserved-button stubs whose v1 semantics are
+    deliberately deferred:
+    - `Subscribe` — reserved for a future audience/notification model
+    - `Share` — reserved for a future "share this profile" reference type
+    Both shall render as visible buttons. Their behavior is TBD; do not
+    delete them while the open questions in §"Open Questions" are still open,
+    and do not design new behavior into them without amending this section
+    plus a new ADR.
 
 #### Content references
 
-65. Every main content tab shall be able to expose items that can later become
+57. Every main content tab shall be able to expose items that can later become
     shareable companion content references.
-66. Item-level `Share` belongs to concrete post cards, media tiles, file rows,
+58. Item-level `Share` belongs to concrete post cards, media tiles, file rows,
     and activity entries with a primary shareable target. It may be enabled
     only when that concrete item can produce a SPEC-086 reference. Header-level
-    `Share` remains separate and disabled in v1 unless a companion profile
-    reference type is later specified.
-67. Chat insertion and preview behavior is specified separately in SPEC-086.
+    `Share` is the stub described in rule 56 and shall not be wired to a
+    real reference until the open question resolves.
+59. Chat insertion and preview behavior is specified separately in SPEC-086.
 
 ### Non-Functional Requirements
 
@@ -409,25 +355,26 @@ Companion profile
 
 ### Data projection guidance
 
-The UI labels do not have to mirror storage labels one-to-one.
+The UI labels do not have to mirror storage labels one-to-one. The main tabs
+and `Sources` are deliberately separate spaces with separate authors:
 
-| UI surface | Likely inputs |
-|------------|---------------|
-| Posts | explicit owner-promoted profile-post projections from `CompanionDerivedRecord`; future durable post records |
-| Photos | image sources, image artifacts, image derived records |
-| Videos | video sources, video artifacts, video derived records |
-| Music | audio/music sources, audio artifacts, music derived records |
-| Files | document/file-like sources, generated file artifacts, linked paths |
-| Activity | aggregated companion events, source/memory/artifact lifecycle records |
-| Sources side panel | all raw `CompanionSourceRecord` inputs and ingestion controls |
-| Memory side panel | `CompanionMemoryRecord` companion-box memory records |
-| Behavior side panel | response profile and companion behavior controls |
+| UI surface | Author | Inputs |
+|------------|--------|--------|
+| Posts | Cat / agent producer | `CompanionDerivedRecord` with `metadata.profileSurface === 'post'` |
+| Photos | Cat / agent producer | `CompanionDerivedRecord` with `metadata.profileSurface === 'photo'` |
+| Videos | Cat / agent producer | `CompanionDerivedRecord` with `metadata.profileSurface === 'video'` |
+| Music | Cat / agent producer | `CompanionDerivedRecord` with `metadata.profileSurface === 'music'` |
+| Files | Cat / agent producer | `CompanionDerivedRecord` with `metadata.profileSurface === 'file'` |
+| Activity | system | aggregated `CompanionActivityEvent` log (source/memory lifecycle, presence, share, transport) |
+| Sources side panel | owner | raw `CompanionSourceRecord` inputs and ingestion controls — never auto-projected into the agent-published tabs |
+| Memory side panel | shared | `CompanionMemoryRecord` companion-box memory records |
+| Behavior side panel | owner | response profile and companion behavior controls |
 
-A single underlying object may appear in more than one UI surface when the user
-jobs differ. For example, an owner-uploaded PDF appears in `Sources` for
-provenance/ingestion management and in `Files` for browsing, insertion, and
-sharing. The projection must preserve the original object id/source id so
-actions do not fork state.
+A `CompanionSourceRecord` and its derived agent-published media remain
+**separate stored objects** linked by `sourceIds`. The agent decides which (if
+any) source material to surface publicly; nothing is auto-projected. Files the
+agent designates as published may live in a separate agent-controlled
+directory.
 
 ### Relationship to SPEC-036
 
@@ -435,14 +382,15 @@ SPEC-036 remains binding for first-class companion mode, presence, reply style,
 companion boxes, long-lived memory direction, response profiles, and the
 `cats -> cats-runtime` boundary.
 
-SPEC-085 amends SPEC-036 only for visible IA labels and ownership:
+SPEC-085 amends SPEC-036 for visible IA labels, ownership, and authorship:
 
 - `Overview / Resources / Creations / Settings` no longer define the primary
   companion dashboard sections.
 - `Settings` and transport management move out of the companion side panel and
   remain canonical under `Settings > My Cats`.
-- `Resources` becomes `Sources` in the side panel, while user-browsable content
-  projects into Posts, Photos, Videos, Music, Files, and Activity.
+- `Resources` becomes `Sources` in the side panel. `Sources` is owner input
+  only; it is **not** auto-projected into the agent-published tabs (Posts /
+  Photos / Videos / Music / Files).
 - `Creations` is not a side-panel section in this IA; companion-produced
   outputs project into the relevant main tab or Activity.
 
@@ -458,16 +406,27 @@ SPEC-085 amends SPEC-036 only for visible IA labels and ownership:
 
 ## Open Questions
 
-- [ ] What is the durable post model?
-- [ ] Who can author posts: owner, Cat, system, or all three?
-- [ ] What are the eventual subscription semantics behind the reserved
-      `Subscribe` action?
+- [ ] What is the durable post model? (Posts are agent-only; the question is
+      now about durable storage shape, not authorship.)
+- [ ] Which agent producers ship in v1? (Cat-driven post / photo / video /
+      music / file producers are out of scope here; they need a follow-up
+      spec/plan.)
+- [ ] What are the eventual semantics behind the reserved header `Subscribe`
+      action? (It exists as a stub per rule 56; do not delete.)
+- [ ] What are the eventual semantics behind the reserved header `Share`
+      action? (Same: stub per rule 56.)
 - [ ] Should companion profile visibility have public/private states, or is
       everything local/private until a future public sharing spec?
-- [ ] Which automatic post producers, if any, should supplement the explicit
-      owner-promotion producer?
 - [ ] Which future Activity event groups should be added beyond the first
       source/memory/profile-post/share/transport groups?
+
+Resolved:
+- ~~Who can author posts: owner, Cat, system, or all three?~~ → Cat / agent
+  producer only. Owner has no UI affordance to publish, promote, or remove
+  posts. (Rule 11.)
+- ~~Which automatic post producers should supplement the explicit
+  owner-promotion producer?~~ → There is no owner-promotion producer.
+  All producers are agent-driven; the producer set is open.
 
 ## References
 

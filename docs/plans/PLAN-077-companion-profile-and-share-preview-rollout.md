@@ -85,88 +85,60 @@ storybook, or tests. It should not claim that the final post model is complete.
 
 - [ ] Define product-owned read-model helpers for companion profile items:
       posts, photos, videos, music, files, and activity.
-- [ ] Map existing companion-box sources and derived records into the new UI
-      surfaces without collapsing raw `Sources` and user-facing `Files`.
-- [ ] Implement `Posts` as explicit profile-post projections backed by
-      `CompanionDerivedRecord` records, such as records with
-      `metadata.profileSurface === 'post'`.
-- [ ] Add the v1 profile-post producer as an explicit owner `Promote to post`
-      action that creates or updates a `CompanionDerivedRecord` with
-      `metadata.profileSurface === 'post'`,
-      `metadata.profilePostStatus === 'active'`,
-      `metadata.profilePostProducer === 'owner_promotion_v1'`,
-      `metadata.profilePostOriginType` and `metadata.profilePostOriginId`
-      pointing at the promoted item,
-      `metadata.profilePostMediaRefs` set to the dialog's checked-media list
-      as an ordered `Array<{ kind: 'source' | 'derived' | 'artifact'; id }>`
-      (empty array when nothing is checked, never `undefined` on write), and
-      preserved source lineage in top-level `sourceIds`.
-- [ ] Expose `Promote to post` as an item-level overflow action from Sources
-      rows, media tiles, Files rows, and eligible Inspector selections.
-- [ ] Add the promotion dialog with required Title (auto-prefilled from
-      selection title / derived title / filename without extension / first 60
-      chars of body, in that order), optional Body/excerpt, optional Tags,
-      optional per-media-item inclusion checkboxes (default-checked from the
-      selection's natural media set, fed back into
-      `metadata.profilePostMediaRefs` on `Promote`), `Cancel`, and `Promote`
-      (disabled until Title is non-empty).
-- [ ] Implement the post-card media-grid reader: render the entries listed in
-      `metadata.profilePostMediaRefs` in order, resolving each `{kind, id}`
-      to the matching source/derived/artifact thumbnail, and silently drop
-      entries that no longer resolve rather than blocking the post.
-- [ ] Add `Edit post` and `Remove from Posts`. `Remove` flips
-      `metadata.profilePostStatus` to `removed` (no GC, leave the matching
-      `post_removed` Activity entry) and re-promoting the same item flips it
-      back to `active`.
-- [ ] Use `(catId, profilePostOriginType, profilePostOriginId)` as the
-      promoted-post dedup key so re-promote updates the existing record.
-- [ ] Treat top-level `sourceIds` as authoritative source lineage for promoted
-      posts; treat `metadata.profilePostOriginId` as a provenance pointer for
-      the promoted item itself (overlapping `sourceIds` only when
-      `originType === 'source'`); do not introduce
-      `metadata.profilePostSourceId`.
-- [ ] Do not auto-promote every source summary, caption, event, memory
-      highlight, or derived record into `Posts`.
-- [ ] Keep mock posts out of production runtime and use an empty state when no
-      eligible profile-post projection exists.
-- [ ] Implement the shared source-surface classifier from SPEC-085 for MIME and
-      extension cases, including HEIC images, Markdown/text files, CSV/JSON,
-      ZIP variants, SVG-as-file, case-insensitive extensions, octet-stream with
-      and without recognized extensions, path refs with media extensions,
-      unknown linked files, and source-only notes.
-- [ ] Implement the `Sources`/`Files` projection rule:
-      owner-uploaded file-like sources, including PDFs, appear in `Sources` for
-      provenance/ingestion management and in `Files` for browsing/opening/chat
-      insertion.
-- [ ] Keep `Sources` keyed to raw `CompanionSourceRecord` inputs.
-- [ ] Keep `Files` keyed to file-like projections that preserve their source id
-      or artifact id.
+- [ ] Project Posts / Photos / Videos / Music / Files **only** from
+      `CompanionDerivedRecord` entries with the matching
+      `metadata.profileSurface` (`post` / `photo` / `video` / `music` /
+      `file`). Owner-supplied sources are NOT walked into these tabs (per
+      SPEC-085 rules 11, 18, 22, 38).
+- [ ] Sort each surface by `metadata.profilePublishedAt`, falling back to
+      `record.createdAt` when absent.
+- [ ] Keep `Sources` keyed to raw `CompanionSourceRecord` inputs only — they
+      remain the Cat's ingredients, not auto-published material.
+- [ ] Keep mock posts / photos / videos / music / files out of production
+      runtime; empty state on a fresh install is correct.
 - [ ] Keep companion `Memory` as one side-panel surface backed by
       `CompanionMemoryRecord`; do not render the `Settings > My Cats`
       `DurableMemoryItem` list as a second companion memory ledger.
 - [ ] Implement the first Activity vocabulary from SPEC-085.
+- [ ] Wire an append-only `CompanionActivityStore` (memory + file backends)
+      and have source / memory CRUD route handlers emit the matching
+      `source_added` / `source_removed` / `memory_added` / `memory_updated`
+      / `memory_removed` events on success. Activity write failures must
+      never affect the user's primary action.
+- [ ] Add `GET /api/cats/:catId/companion-box/activity` returning the
+      projection from `projectCompanionActivity(events)`.
 - [ ] Add Activity aggregation: coalesce high-frequency source/memory/derived
       writes by object type and local day, with burst aggregation keyed by
       `{catId, correlationId || minuteBucket, eventGroup, targetKind}` where
       `minuteBucket` is a 60-second local-time bucket.
-- [ ] Keep Activity v1 capped to 100 rendered entries or 30 days with no `Load
-      more`; show a bounded older-activity-hidden indicator when relevant.
-- [ ] Add Inspector selection lifecycle behavior: preserve selection across tab
-      switches within the same Cat, clear on Cat/route change, and preserve
-      deleted/unavailable selections as snapshot fallback until user clears or
-      selects another item.
+- [ ] Keep Activity v1 capped to 100 rendered entries or 30 days with no
+      `Load more`; show a bounded older-activity-hidden indicator when
+      relevant.
+- [ ] Add Inspector selection lifecycle behavior: preserve selection across
+      tab switches within the same Cat, clear on Cat/route change, and
+      preserve deleted/unavailable selections as snapshot fallback until
+      user clears or selects another item.
 - [ ] Freeze Inspector snapshot state at the last successful resolve of the
       selected item, updating it after successful edits and before any later
       deleted/missing/inaccessible transition.
 - [ ] Add a URL/route parameter for Inspector selection (e.g.,
       `?inspector={type}:{id}` on the companion route). Reload with a valid
-      parameter restores selection by re-resolving; reload without it clears
-      selection; malformed parameters clear selection per SPEC-085.
-- [ ] Project `source_only` classifier results as Sources-only (no Posts,
-      Photos, Videos, Music, or Files projection); they remain promotable.
+      parameter restores selection by re-resolving; reload without it
+      clears selection; malformed parameters clear selection per SPEC-085.
 
-**Deliverables**: renderer can read a coherent companion profile model without
-finalizing post storage.
+> **No `Promote to post` action.** Posts (and Photos / Videos / Music /
+> Files) are agent-published only; the owner has no UI affordance to
+> publish, promote, edit, or remove them. Earlier drafts of this phase
+> shipped a `Promote to post` button + dialog + `POST/PATCH
+> /api/cats/:id/companion-box/posts` routes + `owner_promotion_v1`
+> producer + a shared MIME/extension classifier that auto-projected
+> sources into Photos/Videos/Music/Files. All of that was implemented and
+> then ripped because it contradicts the agent-driven authorship model
+> the cat companion is built around. If a future agent producer ships,
+> design it through a fresh ADR, not by re-introducing owner promotion.
+
+**Deliverables**: renderer can read a coherent companion profile model
+fed only by agent-published derived records, plus a wired Activity feed.
 
 ### Phase 3: Share Reference Contract
 
@@ -385,6 +357,7 @@ the post model is finalized.
 | 2026-04-28 | Implementation slices 30–34 landed in commits `666760df..ad583684`, closing every pending wiring item. Slice 30: full `CompanionPromoteDialog` (Title required + auto-prefilled, Body / Tags / per-media checkboxes default-checked from the source's MIME, busy + error surface). Slice 31: composer reference chip render — `ComposerHighlight` interleaves the slice-19 detector's ranges with mention ranges and renders parsed / unsupported_version / invalid chip variants in-place. Slice 32: chat-send snapshot capture — `useComposerSubmit` calls `captureCompanionReferenceSnapshots(body)` before posting, attaching `companionReferenceSnapshots` to outgoing message metadata for every reference that resolved as `available`. Slice 33: transcript hydration — `CompanionMessageReferencePreviews` mounted inside `TranscriptMessageItem` reads detected references + persisted snapshots, calls the resolver per reference, and renders preview cards. When the live resolve returns missing / deleted / inaccessible AND a matching snapshot exists, `applySnapshotFallback` threads the snapshot's title / catName / subtitle through so old messages keep meaningful previews. |
 | 2026-04-28 | Production-guard apparatus stripped. The original Phase 1 plan called for a `productionUnlockState: 'locked'` registry field, a baked `BUILD_CHANNEL` constant, build-pipeline bake/restore for `desktop:stage*` / `desktop:package*`, a read-side coercion (force `false` for locked entries on production builds), a write-side `feature_flag_blocked` rejection, a `CATS_PLATFORM_HOST_OWNS_FEATURE_FLAGS` env var disabling the sidecar writer, and a desktop-main IPC writer (`cats-host:set-feature-flag`). All of that violated `cats-platform/AGENTS.md` §"Pre-Release Compatibility Policy" ("This product has never had a public or stable release. ... remove the obsolete path in the same change instead of preserving adapters, aliases, fallback branches, or compatibility shims that only support unreleased behavior") — there is no production audience to protect, so the guard is dead weight. Removed: `src/shared/buildChannel.ts`, `scripts/shared/bake-build-channel.mjs`, `desktop/host/featureFlagWriter.ts`, the production-guard branch in `setFeatureFlag`, `coerceFeatureFlagsForRead` / `readCoercedFeatureFlag`, the `buildChannel` field on `PlatformHostEnvelope`, the bake invocations in `package.json` + `build-desktop-installer.mjs`, the desktop env-var disable on the sidecar route, the desktop ipcMain `cats-host:set-feature-flag` handler + preload bridge, and the matching tests (`bake-build-channel`, `desktop-feature-flag-writer`, `platform-feature-flag-route-host-disable`). |
 | 2026-04-28 | `cats.chat.companionProfileIA` flag and the legacy IA path stripped. The previous slice kept the new tabs / side panel / mock-fixture rip / Promote dialog / share previews behind a `false`-default flag, so the running app still rendered the old UI (Posts/Videos/Photos/Music/Files tab order, Overview/Resources/Creations/Memory/Settings side panel). Same AGENTS.md pre-release-policy rationale as the production-guard rip: "no public release" means there is no audience the flag protects, and the legacy IA is the obsolete path that must be removed in the same change as the new IA. Removed: `src/shared/featureFlags.ts`, `src/shared/featureFlagsStore.ts`, `src/app/server/platformFeatureFlagRoutes.ts`, `scripts/dev-toggle-feature-flag.mts`, the `featureFlags` channel on `PlatformHostEnvelope` / `AppShellPayload`, `resolvePlatformFeatureFlagsPathFromChatState` in `platformPaths.ts`, the dual `companionTabLabel` (legacy) + `companionProfileIaTabLabel` (IA) split, `LEGACY_COMPANION_SIDE_PANEL_SECTION_IDS` + `LEGACY_FEED_TABS`, the `companionProfileIaEnabled` prop on every consumer, all `MOCK_POSTS` / `MOCK_VIDEOS` / `MOCK_PHOTO_HUES` / `MOCK_TRACKS` / `MOCK_FILES` fixtures + their renderers in `CompanionFeed.tsx`, `CompanionCreationsSection.tsx` (the dropped `creations` side-panel section), `listCompanionDerived` + the `/api/cats/:id/companion-box/derived` route + its handler, and the now-irrelevant `feature-flags.test.tsx` / `feature-flags-store.test.tsx` / `platform-feature-flag-route.test.tsx` / `companion-mock-fixture-boundary.test.tsx`. `companionProfileIaTabLabel` was renamed to `companionTabLabel` and `PROFILE_IA_COMPANION_SIDE_PANEL_SECTION_IDS` to `COMPANION_SIDE_PANEL_SECTION_IDS`. Result: the SPEC-085 IA (Posts / Photos / Videos / Music / Files / Activity tabs; Status / Sources / Memory / Behavior / Inspector side panel; promote-to-post + share previews + transcript hydration) is now the only IA, no toggle needed. |
+| 2026-04-28 | Companion profile pivoted to **agent-only authorship**. The previous slice still rendered SPEC-085 v1's owner-promotion model — `Promote to post` button on Sources rows, `CompanionPromoteDialog`, `POST/PATCH /api/cats/:id/companion-box/posts` routes, `owner_promotion_v1` producer, plus a shared MIME/extension classifier that auto-projected sources into Photos/Videos/Music/Files (so the same PDF appeared in both Sources and Files). The user's stated model is the opposite: the cat companion is the cat's surface, not the owner's; posts/photos/videos/music/files are exclusively published by the agent, and owner-supplied sources go only to the side-panel `Sources`. Removed: `src/products/chat/companion/profilePostProducer.ts`, `src/products/chat/companion/sourceClassifier.ts`, `CompanionPromoteDialog.tsx`, the `POST` and `PATCH /api/cats/:id/companion-box/posts*` routes + handlers, the `promoteCompanionProfilePost` / `setCompanionProfilePostStatus` renderer helpers, the "Promote to post" button on Sources rows, the "Remove from Posts" button on profile post cards, the `promoteState/promoteBusy/promoteError` lifecycle in `CompanionWorkspace`, the source→tab projection in `projectCompanionProfile`, and the related tests (`companion-profile-post-producer`, `companion-promote-dialog`, `companion-promote-post-route`, `companion-post-status-route`, `companion-source-classifier`). Rebuilt: `CompanionProfileReadModel` projects all five surfaces (`post` / `photo` / `video` / `music` / `file`) from `CompanionDerivedRecord.metadata.profileSurface`; sources are no longer walked; sort key is `metadata.profilePublishedAt` falling back to `createdAt`. Activity tab wired end-to-end (was a hard-coded "Phase 2 will populate" placeholder): new `CompanionActivityStore` (memory + file backends), source/memory CRUD route handlers emit `source_added` / `source_removed` / `memory_added` / `memory_updated` / `memory_removed` events, new `GET /api/cats/:catId/companion-box/activity` endpoint runs `projectCompanionActivity` and the renderer reads via `useCompanionActivity`. Subscribe / header-Share remain as visible-disabled stubs per the user's directive (semantics still TBD). SPEC-085 §"Posts" / §"Photos, videos, and music" / §"Files" / §"Side panel - Sources" rules rewritten to enforce agent-only authorship; the MIME/extension classifier table removed; data projection guidance table now lists `Author` per surface; Open Questions closes "Who can author posts" and the owner-promotion follow-up. |
 
 ---
 
