@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { LinkageSection } from "../topdown/LinkageSection";
+import { mergeWorkGraphLinks } from "../topdown/mergeLinks";
 import { MOCK_WORK_GRAPH } from "../topdown/mock";
 import {
   ATTENTION_LABEL,
@@ -11,11 +12,16 @@ import {
 } from "../topdown/shared";
 import type { WorkGraphObjectSummary } from "../topdown/types";
 import { usePinnedProjects } from "../../state/pinnedProjectsStore";
+import { useWorkGraphLinks } from "../../state/workGraphLinksStore";
 import "./projects.css";
 
 export function ProjectDetailPage(): JSX.Element {
   const { projectId } = useParams<{ projectId: string }>();
-  const graph = MOCK_WORK_GRAPH;
+  const { fetchedLinks } = useWorkGraphLinks();
+  const graph = useMemo(
+    () => mergeWorkGraphLinks(MOCK_WORK_GRAPH, fetchedLinks),
+    [fetchedLinks],
+  );
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
   const { allProjects, deletedIds } = usePinnedProjects();
 

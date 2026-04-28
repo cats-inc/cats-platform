@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
+import { useWorkGraphLinks } from "../../state/workGraphLinksStore";
+import { mergeWorkGraphLinks } from "./mergeLinks";
 import { MOCK_WORK_GRAPH } from "./mock";
 import {
   buildIndexes,
@@ -30,7 +32,11 @@ export function BrokenLinksPage(): JSX.Element {
   const severityFilter =
     (searchParams.get("severity") as SeverityFilter | null) ?? "all";
   const selectedId = searchParams.get("selectedId");
-  const graph = MOCK_WORK_GRAPH;
+  const { fetchedLinks } = useWorkGraphLinks();
+  const graph = useMemo(
+    () => mergeWorkGraphLinks(MOCK_WORK_GRAPH, fetchedLinks),
+    [fetchedLinks],
+  );
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
 
   const counts = useMemo(() => {

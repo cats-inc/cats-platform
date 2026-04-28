@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
+import { useWorkGraphLinks } from "../../state/workGraphLinksStore";
 import { BlockersRail } from "./BlockersRail";
+import { mergeWorkGraphLinks } from "./mergeLinks";
 import { MOCK_WORK_GRAPH } from "./mock";
 import { buildIndexes, formatRelative } from "./shared";
 import type {
@@ -52,7 +54,11 @@ export function CockpitPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = (searchParams.get("tab") as CockpitTab | null) ?? "command";
   const selectedId = searchParams.get("selectedId");
-  const graph = MOCK_WORK_GRAPH;
+  const { fetchedLinks } = useWorkGraphLinks();
+  const graph = useMemo(
+    () => mergeWorkGraphLinks(MOCK_WORK_GRAPH, fetchedLinks),
+    [fetchedLinks],
+  );
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
 
   const buckets = useMemo(() => {
