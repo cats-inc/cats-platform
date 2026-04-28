@@ -12,51 +12,27 @@ export type CompanionPresenceState = 'sleeping' | 'waking_up' | 'awake' | 'error
 export type CompanionWorkspaceTab =
   | 'overview'
   | 'resources'
-  | 'creations'
   | 'memory'
   | 'settings'
   | 'inspector';
 
-export function companionTabLabel(tab: CompanionWorkspaceTab): string {
-  switch (tab) {
-    case 'overview':
-      return 'Overview';
-    case 'resources':
-      return 'Resources';
-    case 'creations':
-      return 'Creations';
-    case 'memory':
-      return 'Memory';
-    case 'settings':
-      return 'Settings';
-    case 'inspector':
-      return 'Inspector';
-  }
-}
-
 /**
- * Label override for the PLAN-077 / SPEC-085 companion side-panel rename.
- * Used when `cats.chat.companionProfileIA` resolves true.
+ * SPEC-085 / PLAN-077 companion side-panel labels.
  *
- * Mapping:
- * - `overview` reads as `Status`
- * - `resources` reads as `Sources`
- * - `memory` keeps the same label
- * - `settings` reads as `Behavior` (the response/profile controls move here)
- * - `inspector` is the new contextual-detail section
- *
- * `creations` is intentionally absent — the new IA projects derived
- * records back into Posts / Photos / Videos / Music / Files / Activity on
- * the main surface, not into a side-panel section.
+ * Mapping (kept stable so cross-cutting code can index by id while the
+ * surface labels evolve):
+ * - `overview`  → `Status`
+ * - `resources` → `Sources`
+ * - `memory`    → `Memory`
+ * - `settings`  → `Behavior` (response/profile controls live here)
+ * - `inspector` → `Inspector`
  */
-export function companionProfileIaTabLabel(tab: CompanionWorkspaceTab): string {
+export function companionTabLabel(tab: CompanionWorkspaceTab): string {
   switch (tab) {
     case 'overview':
       return 'Status';
     case 'resources':
       return 'Sources';
-    case 'creations':
-      return 'Creations';
     case 'memory':
       return 'Memory';
     case 'settings':
@@ -66,15 +42,7 @@ export function companionProfileIaTabLabel(tab: CompanionWorkspaceTab): string {
   }
 }
 
-export const LEGACY_COMPANION_SIDE_PANEL_SECTION_IDS: ReadonlyArray<CompanionWorkspaceTab> = [
-  'overview',
-  'resources',
-  'creations',
-  'memory',
-  'settings',
-];
-
-export const PROFILE_IA_COMPANION_SIDE_PANEL_SECTION_IDS: ReadonlyArray<CompanionWorkspaceTab> = [
+export const COMPANION_SIDE_PANEL_SECTION_IDS: ReadonlyArray<CompanionWorkspaceTab> = [
   'overview',
   'resources',
   'memory',
@@ -110,7 +78,6 @@ export interface CompanionWorkspaceState {
   presence: CompanionPresenceState;
   overview: CompanionOverviewData;
   resources: CompanionResourcesData;
-  creations: CompanionCreationsData;
   memory: CompanionMemoryData;
   settings: CompanionSettingsData;
   loading: boolean;
@@ -125,7 +92,6 @@ export function createEmptyWorkspaceState(catId: string): CompanionWorkspaceStat
     presence: 'sleeping',
     overview: { summary: null, recentMemory: [] },
     resources: { sources: [] },
-    creations: { derived: [] },
     memory: { memory: [] },
     settings: { responseProfile: null },
     loading: false,

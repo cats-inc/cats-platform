@@ -83,15 +83,3 @@ export function resolveProviderSnapshotPathFromChatState(
   return path.join(layout.stateDir, 'provider-snapshot.local.json');
 }
 
-/**
- * PLAN-077 host-owned feature flag persistence (`feature-flags.json`).
- * Lives next to the durable product data root (i.e., the platform state
- * directory) so the desktop main process and the standalone server resolve
- * the same path when given the same `chatStatePath`.
- */
-export function resolvePlatformFeatureFlagsPathFromChatState(
-  chatStatePath: string,
-): string {
-  const layout = resolvePlatformStorageLayout(chatStatePath);
-  return path.join(layout.stateDir, 'feature-flags.json');
-}

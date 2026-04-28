@@ -106,16 +106,6 @@ export interface PlatformOwnerContext {
   assistantPresets?: AssistantPresetRecord[];
 }
 
-/**
- * Read-only feature-flag map carried on the platform host envelope. Renderers
- * consume this through the app-shell payload to gate UI behavior at runtime.
- * Cats has never shipped publicly, so there is no production-vs-development
- * coercion: renderers read the persisted boolean verbatim.
- */
-export type PlatformFeatureFlags = Readonly<Record<string, boolean>>;
-
-export const EMPTY_PLATFORM_FEATURE_FLAGS: PlatformFeatureFlags = Object.freeze({});
-
 export interface PlatformHostEnvelope extends PlatformOwnerContext {
   app: PlatformAppDescriptor;
   products: PlatformProductDescriptor[];
@@ -126,8 +116,6 @@ export interface PlatformHostEnvelope extends PlatformOwnerContext {
   runtimeSetup: RuntimeSetupSummary;
   metadata: PlatformResponseMetadata;
   bootstrapAttemptId: string | null;
-  /** Host-owned feature flag map. */
-  featureFlags: PlatformFeatureFlags;
   /**
    * SPEC-086 platform-host product data scope id. UUIDv4 generated once
    * per durable Cats product data root and persisted next to it. The

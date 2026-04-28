@@ -2,53 +2,34 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
-  LEGACY_COMPANION_SIDE_PANEL_SECTION_IDS,
-  PROFILE_IA_COMPANION_SIDE_PANEL_SECTION_IDS,
-  companionProfileIaTabLabel,
+  COMPANION_SIDE_PANEL_SECTION_IDS,
   companionTabLabel,
 } from '../src/products/chat/renderer/companionViewTypes.ts';
 
-test('legacy side panel keeps the original five-section order', () => {
+test('companion side panel ships the SPEC-085 labels in the new order', () => {
   assert.deepEqual(
-    LEGACY_COMPANION_SIDE_PANEL_SECTION_IDS.map((id) => companionTabLabel(id)),
-    ['Overview', 'Resources', 'Creations', 'Memory', 'Settings'],
-  );
-});
-
-test('profile-IA side panel ships the SPEC-085 labels in the new order', () => {
-  assert.deepEqual(
-    PROFILE_IA_COMPANION_SIDE_PANEL_SECTION_IDS.map((id) =>
-      companionProfileIaTabLabel(id),
-    ),
+    COMPANION_SIDE_PANEL_SECTION_IDS.map((id) => companionTabLabel(id)),
     ['Status', 'Sources', 'Memory', 'Behavior', 'Inspector'],
   );
 });
 
-test('profile-IA side panel drops the Creations section from the side surface', () => {
+test('companion side panel does not include the dropped Creations section', () => {
   assert.equal(
-    PROFILE_IA_COMPANION_SIDE_PANEL_SECTION_IDS.includes('creations'),
+    COMPANION_SIDE_PANEL_SECTION_IDS.includes('creations' as never),
     false,
   );
 });
 
-test('profile-IA side panel introduces the Inspector section as the last entry', () => {
+test('Inspector is the last side-panel entry', () => {
   const lastId =
-    PROFILE_IA_COMPANION_SIDE_PANEL_SECTION_IDS[
-      PROFILE_IA_COMPANION_SIDE_PANEL_SECTION_IDS.length - 1
-    ];
+    COMPANION_SIDE_PANEL_SECTION_IDS[COMPANION_SIDE_PANEL_SECTION_IDS.length - 1];
   assert.equal(lastId, 'inspector');
 });
 
-test('legacy and profile-IA labels diverge for overview / resources / settings; memory stays', () => {
-  assert.equal(companionTabLabel('overview'), 'Overview');
-  assert.equal(companionProfileIaTabLabel('overview'), 'Status');
-
-  assert.equal(companionTabLabel('resources'), 'Resources');
-  assert.equal(companionProfileIaTabLabel('resources'), 'Sources');
-
-  assert.equal(companionTabLabel('settings'), 'Settings');
-  assert.equal(companionProfileIaTabLabel('settings'), 'Behavior');
-
+test('label mapping covers every side-panel id', () => {
+  assert.equal(companionTabLabel('overview'), 'Status');
+  assert.equal(companionTabLabel('resources'), 'Sources');
   assert.equal(companionTabLabel('memory'), 'Memory');
-  assert.equal(companionProfileIaTabLabel('memory'), 'Memory');
+  assert.equal(companionTabLabel('settings'), 'Behavior');
+  assert.equal(companionTabLabel('inspector'), 'Inspector');
 });

@@ -1,14 +1,8 @@
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 
 import type { AppShellPayload, ChatCat } from '../../../api/contracts.js';
 import {
-  COMPANION_PROFILE_IA_FLAG,
-  readFeatureFlag,
-} from '../../../../../shared/featureFlags.js';
-import {
-  LEGACY_COMPANION_SIDE_PANEL_SECTION_IDS,
-  PROFILE_IA_COMPANION_SIDE_PANEL_SECTION_IDS,
-  companionProfileIaTabLabel,
+  COMPANION_SIDE_PANEL_SECTION_IDS,
   companionTabLabel,
   type CompanionWorkspaceTab,
 } from '../../companionViewTypes.js';
@@ -31,7 +25,6 @@ import {
   type CompanionPromoteDialogSubmit,
 } from './CompanionPromoteDialog.js';
 import { CompanionResourcesSection } from './CompanionResourcesSection.js';
-import { CompanionCreationsSection } from './CompanionCreationsSection.js';
 import { CompanionMemorySection } from './CompanionMemorySection.js';
 import { CompanionSettingsSection } from './CompanionSettingsSection.js';
 
@@ -57,18 +50,9 @@ export function CompanionWorkspace({
   const presence = useCompanionPresence(cat.id, payload);
   const workspace = useCompanionWorkspace(cat.id, activeTab ?? 'overview');
 
-  const companionProfileIaEnabled = useMemo(
-    () =>
-      readFeatureFlag({
-        name: COMPANION_PROFILE_IA_FLAG,
-        raw: payload.featureFlags,
-      }),
-    [payload.featureFlags],
-  );
-
   const profile = useCompanionProfile({
     catId: cat.id,
-    enabled: companionProfileIaEnabled,
+    enabled: true,
   });
 
   const [promoteState, setPromoteState] = useState<
@@ -86,7 +70,6 @@ export function CompanionWorkspace({
 
   const handlePromoteSourceToPost = useCallback(
     async (source: { id: string; title: string | null; originalFileName: string | null; mimeType: string | null }) => {
-      if (!companionProfileIaEnabled) return;
       const fallbackTitle =
         source.title?.trim()
         || source.originalFileName?.replace(/\.[^/.]+$/u, '')
@@ -114,7 +97,7 @@ export function CompanionWorkspace({
       });
       setPromoteError(null);
     },
-    [companionProfileIaEnabled],
+    [],
   );
 
   const handlePromoteSubmit = useCallback(
@@ -150,11 +133,10 @@ export function CompanionWorkspace({
 
   const handleRemovePost = useCallback(
     async (derivedId: string) => {
-      if (!companionProfileIaEnabled) return;
       await setCompanionProfilePostStatusApi(cat.id, derivedId, 'removed');
       profile.refresh();
     },
-    [cat.id, companionProfileIaEnabled, profile],
+    [cat.id, profile],
   );
 
   const handleWake = useCallback(() => {
@@ -213,15 +195,7 @@ export function CompanionWorkspace({
         loading={workspace.loading}
         onAddSource={workspace.addSource}
         onDeleteSource={workspace.removeSource}
-        onPromoteSourceToPost={
-          companionProfileIaEnabled ? handlePromoteSourceToPost : undefined
-        }
-      />,
-    ),
-    creations: wrapSection(
-      <CompanionCreationsSection
-        derived={workspace.derived}
-        loading={workspace.loading}
+        onPromoteSourceToPost={handlePromoteSourceToPost}
       />,
     ),
     memory: wrapSection(
@@ -239,7 +213,6 @@ export function CompanionWorkspace({
         payload={payload}
         loading={workspace.loading}
         onUpdateResponseProfile={workspace.editResponseProfile}
-        companionProfileIaEnabled={companionProfileIaEnabled}
       />,
     ),
     inspector: wrapSection(
@@ -253,26 +226,17 @@ export function CompanionWorkspace({
     ),
   };
 
-  const sectionLabel = companionProfileIaEnabled
-    ? companionProfileIaTabLabel
-    : companionTabLabel;
-  const sectionIds = companionProfileIaEnabled
-    ? PROFILE_IA_COMPANION_SIDE_PANEL_SECTION_IDS
-    : LEGACY_COMPANION_SIDE_PANEL_SECTION_IDS;
-  const sidePanelSections = sectionIds.map((id) => ({
+  const sidePanelSections = COMPANION_SIDE_PANEL_SECTION_IDS.map((id) => ({
     id,
-    title: sectionLabel(id),
+    title: companionTabLabel(id),
     children: sectionContentById[id],
   }));
 
-  // If the active tab is no longer in the visible section set after a flag
-  // flip (e.g., user was on `creations` and PLAN-077 IA enabled removed it),
-  // fall back to the first section so the panel never renders an empty body.
   useEffect(() => {
-    if (activeTab !== null && !sectionIds.includes(activeTab)) {
-      setActiveTab(sectionIds[0] ?? null);
+    if (activeTab !== null && !COMPANION_SIDE_PANEL_SECTION_IDS.includes(activeTab)) {
+      setActiveTab(COMPANION_SIDE_PANEL_SECTION_IDS[0] ?? null);
     }
-  }, [activeTab, sectionIds]);
+  }, [activeTab]);
 
   function onSidePanelSectionToggle(id: string): void {
     setActiveTab((prev) => (prev === id ? null : (id as CompanionWorkspaceTab)));
@@ -349,26 +313,18 @@ export function CompanionWorkspace({
                 <button
                   type="button"
                   className="companionHeaderAction companionHeaderActionPrimary"
-                  disabled={companionProfileIaEnabled}
-                  title={
-                    companionProfileIaEnabled
-                      ? 'Companion subscriptions are not available yet.'
-                      : undefined
-                  }
-                  aria-disabled={companionProfileIaEnabled || undefined}
+                  disabled
+                  title="Companion subscriptions are not available yet."
+                  aria-disabled
                 >
                   Subscribe
                 </button>
                 <button
                   type="button"
                   className="companionHeaderAction"
-                  disabled={companionProfileIaEnabled}
-                  title={
-                    companionProfileIaEnabled
-                      ? 'Select a post, photo, video, music track, or file before sharing.'
-                      : undefined
-                  }
-                  aria-disabled={companionProfileIaEnabled || undefined}
+                  disabled
+                  title="Select a post, photo, video, music track, or file before sharing."
+                  aria-disabled
                 >
                   Share
                 </button>
@@ -377,11 +333,8 @@ export function CompanionWorkspace({
           />
           <CompanionFeed
             cat={cat}
-            companionProfileIaEnabled={companionProfileIaEnabled}
             profile={profile.profile}
-            onRemovePost={
-              companionProfileIaEnabled ? handleRemovePost : undefined
-            }
+            onRemovePost={handleRemovePost}
           />
         </div>
       </div>

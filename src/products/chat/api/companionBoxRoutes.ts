@@ -275,19 +275,6 @@ async function handleDeleteCompanionSource(
   }
 }
 
-async function handleListCompanionDerived(
-  context: ChatApiRouteContext,
-  catId: string,
-): Promise<void> {
-  try {
-    await resolveCatContext(context, catId);
-    const derived = await context.dependencies.companionStore.listDerived(catId);
-    sendJson(context.response, 200, { derived });
-  } catch (error) {
-    handleCanonicalCatError(context, error);
-  }
-}
-
 async function handleGetCompanionProfileReadModel(
   context: ChatApiRouteContext,
   catId: string,
@@ -828,19 +815,6 @@ export async function routeCompanionBoxApi(
       postStatusMatch[0]!,
       postStatusMatch[1]!,
     );
-    return true;
-  }
-
-  const derivedMatch = matchRoute(
-    context.url.pathname,
-    /^\/api\/cats\/([^/]+)\/companion-box\/derived$/u,
-  );
-  if (derivedMatch) {
-    if (context.method !== 'GET') {
-      sendMethodNotAllowed(context.response, ['GET']);
-      return true;
-    }
-    await handleListCompanionDerived(context, derivedMatch[0]!);
     return true;
   }
 

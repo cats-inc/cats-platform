@@ -1,8 +1,5 @@
 import { readJsonBody, sendJson, sendMethodNotAllowed } from '../../shared/http.js';
-import {
-  EMPTY_PLATFORM_FEATURE_FLAGS,
-  type PlatformSetupCompleteInput,
-} from '../../shared/platform-contract.js';
+import type { PlatformSetupCompleteInput } from '../../shared/platform-contract.js';
 import type { ProviderModelSelection } from '../../shared/providerSelection.js';
 import { toBootstrapEventError } from '../../shared/bootstrapDiagnostics.js';
 import {
@@ -30,7 +27,6 @@ import { routePlatformAssistantPresetApi } from './platformSetupAssistantRoutes.
 import { routePlatformSetupDiagnosticsApi } from './platformSetupDiagnosticsRoutes.js';
 import { routePlatformGuideCatApi } from './platformSetupGuideCatRoutes.js';
 import { routePlatformPreferenceApi } from './platformSetupPreferenceRoutes.js';
-import { routePlatformFeatureFlagApi } from './platformFeatureFlagRoutes.js';
 import { resolveGuideCatSystemName } from '../../shared/guideCatIdentity.js';
 
 export type PlatformSetupContext = RouteContext<ChatApiDependencies>;
@@ -256,7 +252,6 @@ async function handlePlatformSetupComplete(
           port: context.dependencies.config.port,
         }),
         bootstrapAttemptId: attemptId,
-        featureFlags: EMPTY_PLATFORM_FEATURE_FLAGS,
         scopeId: '',
         setupCompleteAt: core.setupCompleteAt,
         ownerDisplayName: core.ownerProfile.displayName,
@@ -331,10 +326,6 @@ export async function routePlatformSetupApi(
   }
 
   if (await routePlatformPreferenceApi(context)) {
-    return true;
-  }
-
-  if (await routePlatformFeatureFlagApi(context)) {
     return true;
   }
 

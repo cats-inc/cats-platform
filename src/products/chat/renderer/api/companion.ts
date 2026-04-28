@@ -119,21 +119,6 @@ export async function deleteCompanionSource(
   );
 }
 
-export async function listCompanionDerived(
-  catId: string,
-  signal?: AbortSignal,
-): Promise<CompanionDerivedRecord[]> {
-  const response = await fetch(`${catPath(catId)}/derived`, {
-    headers: { Accept: 'application/json' },
-    signal,
-  });
-  const data = await expectJson<{ derived: CompanionDerivedRecord[] }>(
-    response,
-    `companion derived list returned ${response.status}`,
-  );
-  return data.derived ?? [];
-}
-
 export async function getCompanionProfile(
   catId: string,
   signal?: AbortSignal,

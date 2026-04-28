@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type {
   CompanionBoxSummary,
-  CompanionDerivedRecord,
   CompanionMemoryRecord,
   CompanionResponseProfile,
   CompanionSourceRecord,
@@ -19,7 +18,6 @@ import {
   deleteCompanionSource,
   getCompanionBoxSummary,
   getCompanionResponseProfile,
-  listCompanionDerived,
   listCompanionMemory,
   listCompanionSources,
   updateCompanionResponseProfile,
@@ -29,7 +27,6 @@ import {
 export interface CompanionWorkspaceData {
   summary: CompanionBoxSummary | null;
   sources: CompanionSourceRecord[];
-  derived: CompanionDerivedRecord[];
   memory: CompanionMemoryRecord[];
   responseProfile: CompanionResponseProfile | null;
   loading: boolean;
@@ -52,7 +49,6 @@ export function useCompanionWorkspace(
 ): CompanionWorkspaceData & CompanionWorkspaceActions {
   const [summary, setSummary] = useState<CompanionBoxSummary | null>(null);
   const [sources, setSources] = useState<CompanionSourceRecord[]>([]);
-  const [derived, setDerived] = useState<CompanionDerivedRecord[]>([]);
   const [memory, setMemory] = useState<CompanionMemoryRecord[]>([]);
   const [responseProfile, setResponseProfile] = useState<CompanionResponseProfile | null>(null);
   const [loading, setLoading] = useState(false);
@@ -86,13 +82,6 @@ export function useCompanionWorkspace(
           const sourceList = await listCompanionSources(catId, signal);
           if (!signal.aborted) {
             setSources(sourceList);
-          }
-          break;
-        }
-        case 'creations': {
-          const derivedList = await listCompanionDerived(catId, signal);
-          if (!signal.aborted) {
-            setDerived(derivedList);
           }
           break;
         }
@@ -167,7 +156,6 @@ export function useCompanionWorkspace(
   return {
     summary,
     sources,
-    derived,
     memory,
     responseProfile,
     loading,

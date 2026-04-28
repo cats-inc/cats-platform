@@ -93,7 +93,6 @@ export {
   deleteCompanionSource,
   getCompanionBoxSummary,
   getCompanionResponseProfile,
-  listCompanionDerived,
   listCompanionMemory,
   listCompanionSources,
   updateCompanionResponseProfile,

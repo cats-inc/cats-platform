@@ -31,25 +31,9 @@ function tabLabelOrder(markup: string): string[] {
   return labels;
 }
 
-test('legacy tab order ships when the companion-profile IA flag is off', () => {
+test('companion feed renders SPEC-085 tab order with Activity last', () => {
   const markup = renderToStaticMarkup(
-    React.createElement(CompanionFeed, {
-      cat: fixtureCat(),
-      companionProfileIaEnabled: false,
-    }),
-  );
-  assert.deepEqual(
-    tabLabelOrder(markup),
-    ['Posts', 'Videos', 'Photos', 'Music', 'Files'],
-  );
-});
-
-test('PLAN-077 tab order ships when the companion-profile IA flag is on', () => {
-  const markup = renderToStaticMarkup(
-    React.createElement(CompanionFeed, {
-      cat: fixtureCat(),
-      companionProfileIaEnabled: true,
-    }),
+    React.createElement(CompanionFeed, { cat: fixtureCat() }),
   );
   assert.deepEqual(
     tabLabelOrder(markup),
@@ -57,21 +41,10 @@ test('PLAN-077 tab order ships when the companion-profile IA flag is on', () => 
   );
 });
 
-test('default props (no flag passed) keep the legacy tab order', () => {
-  const markup = renderToStaticMarkup(
-    React.createElement(CompanionFeed, { cat: fixtureCat() }),
-  );
-  assert.deepEqual(
-    tabLabelOrder(markup),
-    ['Posts', 'Videos', 'Photos', 'Music', 'Files'],
-  );
-});
-
-test('IA path with a populated profile renders posts from the projection rather than the empty state', () => {
+test('populated profile renders posts from the projection', () => {
   const markup = renderToStaticMarkup(
     React.createElement(CompanionFeed, {
       cat: fixtureCat(),
-      companionProfileIaEnabled: true,
       profile: {
         posts: [
           {
@@ -101,11 +74,10 @@ test('IA path with a populated profile renders posts from the projection rather 
   assert.doesNotMatch(markup, /No posts yet\./u);
 });
 
-test('IA path with an empty profile shows the empty-state hint instead of mock posts', () => {
+test('empty profile shows the empty-state hint', () => {
   const markup = renderToStaticMarkup(
     React.createElement(CompanionFeed, {
       cat: fixtureCat(),
-      companionProfileIaEnabled: true,
       profile: { posts: [], photos: [], videos: [], music: [], files: [] },
     }),
   );

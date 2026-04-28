@@ -8,7 +8,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Implementation complete behind plain feature flag (no production guard — Cats has not shipped publicly per AGENTS.md pre-release policy) |
+| **Status** | Implementation complete; new IA is the only IA (no flag, no production guard — Cats has not shipped publicly per AGENTS.md pre-release policy) |
 | **Owner** | Codex (drafted) / Claude (implementation) |
 | **Reviewer** | User |
 
@@ -63,28 +63,21 @@ storybook, or tests. It should not claim that the final post model is complete.
 - [ ] Render header-level `Share` as a disabled button with an explanatory
       tooltip until a companion profile reference type or concrete selected-item
       target exists.
-- [ ] Add a `featureFlags: Readonly<Record<string, boolean>>` channel on
-      `PlatformHostEnvelope` (`src/shared/platform-contract.ts`) and surface it
-      unchanged on `AppShellPayload`. Persist `cats.chat.companionProfileIA`
-      as a host-owned flag (default `false`) next to the durable product data
-      root, expose a `setFeatureFlag(name, value)` writer over the existing
-      sidecar HTTP route, and gate every Phase 1 main-surface and side-panel
-      change on the flag at the renderer.
-- [ ] Add a developer flag-toggle entry point (CLI subcommand) so local dev
-      builds can enable Phase 1 IA without manually editing the flag file.
-
-> **Do NOT add a production-vs-development guard**. Cats has never shipped
+> **Do NOT add a feature flag, production-vs-development guard, or any
+> mechanism that gates the new IA off by default.** Cats has never shipped
 > publicly (see `cats-platform/AGENTS.md` §"Pre-Release Compatibility Policy"
 > — adapters / fallback branches / shims that only support unreleased
 > behavior MUST be removed in the same change). An earlier draft of this
-> phase specified a baked `buildChannel` constant, a `productionUnlockState`
-> registry field, a write-side `feature_flag_blocked` rejection, a read-side
-> coercion that forces locked entries to `false` on packaged builds, and a
-> desktop-main-vs-sidecar writer split — all of which were implemented and
-> then ripped (commit `82d7d853`) because there is no production audience to
-> protect. Future work on this plan must not reintroduce that apparatus; if
-> a real production audience appears, gate that addition through a fresh
-> ADR rather than re-using this section's history.
+> phase specified a `cats.chat.companionProfileIA` runtime flag plus a
+> baked `buildChannel` constant, `productionUnlockState` registry field,
+> write-side `feature_flag_blocked` rejection, read-side coercion, and a
+> desktop-main-vs-sidecar writer split. The full apparatus was implemented
+> and then ripped (production guard in commit `82d7d853`; flag itself in a
+> later strip) because there is no production audience to protect — leaving
+> the new IA gated off only kept the legacy UI alive. Future work on this
+> plan must not reintroduce that gating; if a real production audience
+> appears, gate that addition through a fresh ADR rather than re-using this
+> section's history. The new IA ships as the only IA.
 
 **Deliverables**: companion UI language and navigation match ADR-084.
 
@@ -257,13 +250,6 @@ finalizing post storage.
       reader renders the listed media items in order, an entry whose target
       no longer resolves is silently skipped, and an empty array renders no
       media grid even when the underlying source has media.
-- [ ] Add coverage that `setFeatureFlag` returns `unknown_flag` for names not
-      in the registry and `ok` (with the previous value reported) for
-      registered names, and that `readFeatureFlag` only returns `true` for an
-      exact persisted `true`.
-- [ ] Add a build-time lint/test guard, not a runtime throw, that companion
-      feed code cannot import `MOCK_POSTS` or fixture-only post data on the
-      production-projection path.
 - [ ] Add parser fuzz coverage for `cats://` references, including wrong
       scheme, wrong host, extra segments, missing segments, unknown version,
       unsupported version, unknown type, malformed percent-encoding, and
@@ -300,11 +286,6 @@ the post model is finalized.
 | `src/products/chat/api/*` | Modify/Create | Preview/reference resolver routes if needed |
 | `src/products/chat/state/*` | Modify | Message storage/read models for reference snapshots if needed |
 | `src/products/shared/renderer/components/*` | Modify/Create | Shared preview card primitives only if used by more than companion |
-| `src/shared/platform-contract.ts` | Modify | Add `featureFlags` channel to `PlatformHostEnvelope` for the Phase 1 IA flag |
-| `src/products/shared/api/workspaceContracts.ts` | Modify | Surface `featureFlags` from `AppShellPayload` so renderers can gate Phase 1 IA at runtime |
-| `src/shared/featureFlags.ts` | Create | Plain registry of known flag names + `setFeatureFlag(name, value)` writer + `readFeatureFlag(name, raw)` reader |
-| `src/app/server/**` | Modify | Sidecar HTTP route that reads/writes the persisted flag file (integration-owned; coordinate before editing) |
-| `src/app/renderer/settings/**` | Modify | Optional developer settings-page toggle wired through the shared flag writer |
 | `tests/**` | Modify/Create | Reference resolver, snapshot fallback, and renderer-adjacent regression tests |
 | `docs/specs/*` | Modify/Create | Follow-up post model spec when post semantics are ready |
 
@@ -402,7 +383,8 @@ the post model is finalized.
 | 2026-04-28 | Implementation slices 1–22 landed in commits `bc86f65b..36dfc5ff`. Phase 1 ships behind `cats.chat.companionProfileIA` (default `false`): featureFlags envelope channel, registry, persisted feature flags + HTTP writer + dev CLI, companion tab order rename, side panel rename (Status/Sources/Memory/Behavior/Inspector), header Subscribe/Share disabled, Telegram deep link, and the legacy mock fixtures gated off the live runtime path with a boundary test. Phase 2 logic is in place: shared MIME/extension classifier, profile read-model projection, owner-promotion `Promote to post` producer (dedup by `(catId, originType, originId)`, status flip, sanitised mediaRefs), Activity vocabulary + burst aggregation + 100-entry / 30-day caps, Inspector selection lifecycle helpers (URL `?inspector=type:id`, freeze-on-non-available snapshot rule). Phase 3 logic: `cats://companion/v1/{scopeId}/{catId}/{type}/{targetId}` parser/serializer with the strict check ordering, scopeId persistence + envelope surface, resolver returning the available/missing/deleted/inaccessible envelope. Phase 4 logic: composer reference detector (multi-match, terminator scan, replace helper). Phase 5 logic: send-time snapshot capture + strict re-hydration + fallback-preview shape. Phase 6: SPEC-085 classifier edge cases, profile-post projection round-trip, Activity caps, Inspector lifecycle, parser fuzz coverage, mock-fixture boundary guard. New HTTP endpoint `GET /api/cats/:catId/companion-box/profile` surfaces the projection. Renderer wiring (replace empty states with projection data, wire composer detector + chip render, capture+hydrate snapshots on chat send/transcript) and promote-to-post HTTP route + dialog remain pending. (Note: an early draft of this slice also baked a production-guard apparatus — `BUILD_CHANNEL` constant, `productionUnlockState` registry field, build-pipeline bake/restore, read-side coercion, write-side `feature_flag_blocked` rejection, desktop-host IPC writer split — which was ripped wholesale in commit `82d7d853`; see the strip entry below.) |
 | 2026-04-28 | Implementation slices 24–28 landed in commits `2d23760d..eac191d6`. Phase 2 wiring: `useCompanionProfile` hook fetches `GET /api/cats/:id/companion-box/profile` and feeds the projection into `CompanionFeed`, replacing the empty-state placeholders with real Posts / Photos / Videos / Music / Files data when the IA flag is on (mock fixtures still ship verbatim under the legacy path). Companion-store gains `upsertDerived` (memory + file implementations) and a new `POST /api/cats/:id/companion-box/posts` route runs the slice-14 producer end-to-end, persisting the resulting derived record. Source rows now carry a "Promote to post" button gated on the IA flag. `PATCH /api/cats/:id/companion-box/posts/:postId/status` flips a post between `active` and `removed`; profile post cards render a "Remove from Posts" button when the IA flag is on. Phase 3 wiring: `POST /api/cats/:id/companion-box/resolve-reference` runs the slice-18 resolver against the live source / derived list and returns the parse + preview envelope, with route-cat-vs-reference-cat mismatch + `unsupported_version` short-circuit + `inaccessible` scope-mismatch coverage. Pending: full Promote dialog UI (Title / Body / Tags / per-media checkboxes), composer detector chip render and chat-send snapshot capture, transcript renderer hydrate. |
 | 2026-04-28 | Implementation slices 30–34 landed in commits `666760df..ad583684`, closing every pending wiring item. Slice 30: full `CompanionPromoteDialog` (Title required + auto-prefilled, Body / Tags / per-media checkboxes default-checked from the source's MIME, busy + error surface). Slice 31: composer reference chip render — `ComposerHighlight` interleaves the slice-19 detector's ranges with mention ranges and renders parsed / unsupported_version / invalid chip variants in-place. Slice 32: chat-send snapshot capture — `useComposerSubmit` calls `captureCompanionReferenceSnapshots(body)` before posting, attaching `companionReferenceSnapshots` to outgoing message metadata for every reference that resolved as `available`. Slice 33: transcript hydration — `CompanionMessageReferencePreviews` mounted inside `TranscriptMessageItem` reads detected references + persisted snapshots, calls the resolver per reference, and renders preview cards. When the live resolve returns missing / deleted / inaccessible AND a matching snapshot exists, `applySnapshotFallback` threads the snapshot's title / catName / subtitle through so old messages keep meaningful previews. |
-| 2026-04-28 | Production-guard apparatus stripped. The original Phase 1 plan called for a `productionUnlockState: 'locked'` registry field, a baked `BUILD_CHANNEL` constant, build-pipeline bake/restore for `desktop:stage*` / `desktop:package*`, a read-side coercion (force `false` for locked entries on production builds), a write-side `feature_flag_blocked` rejection, a `CATS_PLATFORM_HOST_OWNS_FEATURE_FLAGS` env var disabling the sidecar writer, and a desktop-main IPC writer (`cats-host:set-feature-flag`). All of that violated `cats-platform/AGENTS.md` §"Pre-Release Compatibility Policy" ("This product has never had a public or stable release. ... remove the obsolete path in the same change instead of preserving adapters, aliases, fallback branches, or compatibility shims that only support unreleased behavior") — there is no production audience to protect, so the guard is dead weight. Removed: `src/shared/buildChannel.ts`, `scripts/shared/bake-build-channel.mjs`, `desktop/host/featureFlagWriter.ts`, the production-guard branch in `setFeatureFlag`, `coerceFeatureFlagsForRead` / `readCoercedFeatureFlag`, the `buildChannel` field on `PlatformHostEnvelope`, the bake invocations in `package.json` + `build-desktop-installer.mjs`, the desktop env-var disable on the sidecar route, the desktop ipcMain `cats-host:set-feature-flag` handler + preload bridge, and the matching tests (`bake-build-channel`, `desktop-feature-flag-writer`, `platform-feature-flag-route-host-disable`). Result: a plain feature flag (registry of known names + persistence + sidecar HTTP writer + dev CLI + renderer read-through). The flag is still useful for gating Phase 1 IA off by default; it just doesn't pretend to be a production safety net. |
+| 2026-04-28 | Production-guard apparatus stripped. The original Phase 1 plan called for a `productionUnlockState: 'locked'` registry field, a baked `BUILD_CHANNEL` constant, build-pipeline bake/restore for `desktop:stage*` / `desktop:package*`, a read-side coercion (force `false` for locked entries on production builds), a write-side `feature_flag_blocked` rejection, a `CATS_PLATFORM_HOST_OWNS_FEATURE_FLAGS` env var disabling the sidecar writer, and a desktop-main IPC writer (`cats-host:set-feature-flag`). All of that violated `cats-platform/AGENTS.md` §"Pre-Release Compatibility Policy" ("This product has never had a public or stable release. ... remove the obsolete path in the same change instead of preserving adapters, aliases, fallback branches, or compatibility shims that only support unreleased behavior") — there is no production audience to protect, so the guard is dead weight. Removed: `src/shared/buildChannel.ts`, `scripts/shared/bake-build-channel.mjs`, `desktop/host/featureFlagWriter.ts`, the production-guard branch in `setFeatureFlag`, `coerceFeatureFlagsForRead` / `readCoercedFeatureFlag`, the `buildChannel` field on `PlatformHostEnvelope`, the bake invocations in `package.json` + `build-desktop-installer.mjs`, the desktop env-var disable on the sidecar route, the desktop ipcMain `cats-host:set-feature-flag` handler + preload bridge, and the matching tests (`bake-build-channel`, `desktop-feature-flag-writer`, `platform-feature-flag-route-host-disable`). |
+| 2026-04-28 | `cats.chat.companionProfileIA` flag and the legacy IA path stripped. The previous slice kept the new tabs / side panel / mock-fixture rip / Promote dialog / share previews behind a `false`-default flag, so the running app still rendered the old UI (Posts/Videos/Photos/Music/Files tab order, Overview/Resources/Creations/Memory/Settings side panel). Same AGENTS.md pre-release-policy rationale as the production-guard rip: "no public release" means there is no audience the flag protects, and the legacy IA is the obsolete path that must be removed in the same change as the new IA. Removed: `src/shared/featureFlags.ts`, `src/shared/featureFlagsStore.ts`, `src/app/server/platformFeatureFlagRoutes.ts`, `scripts/dev-toggle-feature-flag.mts`, the `featureFlags` channel on `PlatformHostEnvelope` / `AppShellPayload`, `resolvePlatformFeatureFlagsPathFromChatState` in `platformPaths.ts`, the dual `companionTabLabel` (legacy) + `companionProfileIaTabLabel` (IA) split, `LEGACY_COMPANION_SIDE_PANEL_SECTION_IDS` + `LEGACY_FEED_TABS`, the `companionProfileIaEnabled` prop on every consumer, all `MOCK_POSTS` / `MOCK_VIDEOS` / `MOCK_PHOTO_HUES` / `MOCK_TRACKS` / `MOCK_FILES` fixtures + their renderers in `CompanionFeed.tsx`, `CompanionCreationsSection.tsx` (the dropped `creations` side-panel section), `listCompanionDerived` + the `/api/cats/:id/companion-box/derived` route + its handler, and the now-irrelevant `feature-flags.test.tsx` / `feature-flags-store.test.tsx` / `platform-feature-flag-route.test.tsx` / `companion-mock-fixture-boundary.test.tsx`. `companionProfileIaTabLabel` was renamed to `companionTabLabel` and `PROFILE_IA_COMPANION_SIDE_PANEL_SECTION_IDS` to `COMPANION_SIDE_PANEL_SECTION_IDS`. Result: the SPEC-085 IA (Posts / Photos / Videos / Music / Files / Activity tabs; Status / Sources / Memory / Behavior / Inspector side panel; promote-to-post + share previews + transcript hydration) is now the only IA, no toggle needed. |
 
 ---
 

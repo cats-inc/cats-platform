@@ -76,7 +76,6 @@ function createEnvelope(
       port: 8484,
     },
     bootstrapAttemptId: null,
-    featureFlags: {},
     scopeId: 'scope-fixture',
     setupCompleteAt: '2026-04-08T00:00:00.000Z',
     ownerDisplayName: 'Ken',

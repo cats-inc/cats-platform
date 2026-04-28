@@ -2,13 +2,11 @@ import type { AppConfig } from '../../../config.js';
 import type { AssistantPresetRecord, GuideCatRecord } from '../../../core/types.js';
 import type { RuntimeStatusSummary } from '../../../platform/runtime/client.js';
 import type { GuideCatAssistSurfaceReadModel } from '../../../shared/guideCatAssist.js';
-import {
-  EMPTY_PLATFORM_FEATURE_FLAGS,
-  type PlatformDesktopPreferences,
-  type PlatformFeatureFlags,
-  type PlatformLobbyCatSummary,
-  type PlatformLobbyPreferences,
-  type PlatformSurfaceId,
+import type {
+  PlatformDesktopPreferences,
+  PlatformLobbyCatSummary,
+  PlatformLobbyPreferences,
+  PlatformSurfaceId,
 } from '../../../shared/platform-contract.js';
 import {
   cloneProviderModelSelection,
@@ -76,7 +74,6 @@ export function createAppShell(
     lobbyGuideCatAssist?: GuideCatAssistSurfaceReadModel | null;
     newChatAssist?: AppShellPayload['chat']['newChatAssist'];
     codeGuideCatAssist?: GuideCatAssistSurfaceReadModel | null;
-    featureFlags?: PlatformFeatureFlags;
     scopeId?: string;
   },
 ): AppShellPayload {
@@ -147,7 +144,6 @@ export function createAppShell(
       port: config.port,
     }),
     bootstrapAttemptId: setup?.bootstrapAttemptId ?? null,
-    featureFlags: setup?.featureFlags ?? EMPTY_PLATFORM_FEATURE_FLAGS,
     scopeId: setup?.scopeId ?? '',
     setupCompleteAt: resolvedSetupCompleteAt,
     ownerDisplayName: setup?.ownerDisplayName ?? 'Owner',
