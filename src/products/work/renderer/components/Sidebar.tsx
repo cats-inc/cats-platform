@@ -359,7 +359,7 @@ function buildPinnedProjectItems(
           destructive: true,
           onClick: () => {
             props.onOverflowMenuToggle(null);
-            pinnedProjectsStore.remove(project.id);
+            void pinnedProjectsStore.remove(project.id);
           },
         },
       ],

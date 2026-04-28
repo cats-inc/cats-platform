@@ -25,6 +25,9 @@ import { handleCoreError } from '../../../core/api/shared.js';
 import {
   WORK_API_PROJECT_DETAIL_PATTERN,
   WORK_API_PROJECTS_PATH,
+  WORK_API_RAW_PROJECTS_PATH,
+  WORK_API_RAW_TASKS_PATH,
+  WORK_API_RAW_WORK_ITEMS_PATH,
   WORK_API_TASK_DETAIL_PATTERN,
   WORK_API_TASKS_PATH,
   WORK_API_WORK_ITEM_DETAIL_PATTERN,
@@ -98,6 +101,27 @@ interface CreateTaskPayload {
 export async function routeWorkProductCrudApi(
   context: RouteContext<WorkApiDependencies>,
 ): Promise<boolean> {
+  // GET /api/work/raw/{projects,work-items,tasks} — full record arrays
+  if (context.method === 'GET') {
+    if (context.url.pathname === WORK_API_RAW_PROJECTS_PATH) {
+      const core = await context.dependencies.coreStore.readCore();
+      sendJson(context.response, 200, { projects: core.projects });
+      return true;
+    }
+    if (context.url.pathname === WORK_API_RAW_WORK_ITEMS_PATH) {
+      const core = await context.dependencies.coreStore.readCore();
+      sendJson(context.response, 200, { workItems: core.workItems });
+      return true;
+    }
+    if (context.url.pathname === WORK_API_RAW_TASKS_PATH) {
+      const core = await context.dependencies.coreStore.readCore();
+      sendJson(context.response, 200, { tasks: core.tasks });
+      return true;
+    }
+  }
+  // GET on these paths with non-GET method → fall through to allow
+  // POST/DELETE handlers below.
+
   // POST /api/work/projects
   if (context.url.pathname === WORK_API_PROJECTS_PATH && context.method === 'POST') {
     return handleCreateProject(context);

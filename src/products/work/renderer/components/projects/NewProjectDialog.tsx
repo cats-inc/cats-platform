@@ -8,6 +8,7 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 
+import type { CoreProjectStatus } from "../../api/workRecords.js";
 import { WORK_PROJECTS_PATH } from "../../workPaths.js";
 import { pinnedProjectsStore } from "../../state/pinnedProjectsStore";
 
@@ -15,12 +16,11 @@ interface NewProjectDialogProps {
   onClose: () => void;
 }
 
-const STATUS_OPTIONS: { value: string; label: string }[] = [
+const STATUS_OPTIONS: { value: CoreProjectStatus; label: string }[] = [
   { value: "planned", label: "Planned" },
   { value: "active", label: "Active" },
   { value: "paused", label: "Paused" },
-  { value: "blocked", label: "Blocked" },
-  { value: "completed", label: "Completed" },
+  { value: "archived", label: "Archived" },
 ];
 
 export function NewProjectDialog({ onClose }: NewProjectDialogProps): JSX.Element {
@@ -35,8 +35,10 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps): JSX.Elemen
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [ownerRole, setOwnerRole] = useState("");
-  const [status, setStatus] = useState("planned");
+  const [status, setStatus] = useState<CoreProjectStatus>("planned");
   const [nextAction, setNextAction] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     titleInputRef.current?.focus();
@@ -59,19 +61,27 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps): JSX.Elemen
     }
   }
 
-  function onSubmit(event: FormEvent<HTMLFormElement>): void {
+  async function onSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     const trimmed = title.trim();
-    if (!trimmed) return;
-    const project = pinnedProjectsStore.createProject({
-      title: trimmed,
-      summary: summary || null,
-      ownerRole: ownerRole || null,
-      status,
-      nextAction: nextAction || null,
-    });
-    onClose();
-    navigate(`${WORK_PROJECTS_PATH}/${project.id}`);
+    if (!trimmed || submitting) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const project = await pinnedProjectsStore.createProject({
+        title: trimmed,
+        summary: summary || null,
+        ownerRole: ownerRole || null,
+        status,
+        nextAction: nextAction || null,
+      });
+      onClose();
+      navigate(`${WORK_PROJECTS_PATH}/${project.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create project.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   return (
@@ -150,7 +160,9 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps): JSX.Elemen
                 id={statusId}
                 className="newProjectDialog__select"
                 value={status}
-                onChange={(event) => setStatus(event.target.value)}
+                onChange={(event) =>
+                  setStatus(event.target.value as CoreProjectStatus)
+                }
               >
                 {STATUS_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -174,20 +186,26 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps): JSX.Elemen
             />
           </label>
 
+          {error ? (
+            <p className="newProjectDialog__error" role="alert">
+              {error}
+            </p>
+          ) : null}
           <footer className="newProjectDialog__footer">
             <button
               type="button"
               className="newProjectDialog__cancelBtn"
               onClick={onClose}
+              disabled={submitting}
             >
               Cancel
             </button>
             <button
               type="submit"
               className="newProjectDialog__submitBtn"
-              disabled={title.trim().length === 0}
+              disabled={title.trim().length === 0 || submitting}
             >
-              Create project
+              {submitting ? "Creating…" : "Create project"}
             </button>
           </footer>
         </form>

@@ -8,6 +8,7 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 
+import type { CoreWorkItemStatus } from "../../api/workRecords.js";
 import { WORK_WORK_ITEMS_PATH } from "../../workPaths.js";
 import { usePinnedProjects } from "../../state/pinnedProjectsStore";
 import { workItemsStore } from "../../state/workItemsStore";
@@ -17,12 +18,14 @@ interface NewWorkItemDialogProps {
   defaultProjectId?: string | null;
 }
 
-const STATUS_OPTIONS: { value: string; label: string }[] = [
+const STATUS_OPTIONS: { value: CoreWorkItemStatus; label: string }[] = [
+  { value: "draft", label: "Draft" },
   { value: "planned", label: "Planned" },
+  { value: "ready", label: "Ready" },
   { value: "in_progress", label: "In progress" },
   { value: "blocked", label: "Blocked" },
-  { value: "paused", label: "Paused" },
   { value: "completed", label: "Completed" },
+  { value: "cancelled", label: "Cancelled" },
 ];
 
 export function NewWorkItemDialog({
@@ -43,8 +46,10 @@ export function NewWorkItemDialog({
   const [summary, setSummary] = useState("");
   const [linkedProject, setLinkedProject] = useState(defaultProjectId ?? "");
   const [ownerRole, setOwnerRole] = useState("");
-  const [status, setStatus] = useState("planned");
+  const [status, setStatus] = useState<CoreWorkItemStatus>("draft");
   const [nextAction, setNextAction] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     titleInputRef.current?.focus();
@@ -67,20 +72,28 @@ export function NewWorkItemDialog({
     }
   }
 
-  function onSubmit(event: FormEvent<HTMLFormElement>): void {
+  async function onSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     const trimmed = title.trim();
-    if (!trimmed) return;
-    const workItem = workItemsStore.createWorkItem({
-      title: trimmed,
-      summary: summary || null,
-      linkedProjectId: linkedProject || null,
-      ownerRole: ownerRole || null,
-      status,
-      nextAction: nextAction || null,
-    });
-    onClose();
-    navigate(`${WORK_WORK_ITEMS_PATH}/${workItem.id}`);
+    if (!trimmed || submitting) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const workItem = await workItemsStore.createWorkItem({
+        title: trimmed,
+        summary: summary || null,
+        linkedProjectId: linkedProject || null,
+        ownerRole: ownerRole || null,
+        status,
+        nextAction: nextAction || null,
+      });
+      onClose();
+      navigate(`${WORK_WORK_ITEMS_PATH}/${workItem.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create work item.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const projectOptions = allProjects.filter((p) => !deletedIds.has(p.id));
@@ -178,7 +191,9 @@ export function NewWorkItemDialog({
                 id={statusId}
                 className="newProjectDialog__select"
                 value={status}
-                onChange={(event) => setStatus(event.target.value)}
+                onChange={(event) =>
+                  setStatus(event.target.value as CoreWorkItemStatus)
+                }
               >
                 {STATUS_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -202,20 +217,26 @@ export function NewWorkItemDialog({
             />
           </label>
 
+          {error ? (
+            <p className="newProjectDialog__error" role="alert">
+              {error}
+            </p>
+          ) : null}
           <footer className="newProjectDialog__footer">
             <button
               type="button"
               className="newProjectDialog__cancelBtn"
               onClick={onClose}
+              disabled={submitting}
             >
               Cancel
             </button>
             <button
               type="submit"
               className="newProjectDialog__submitBtn"
-              disabled={title.trim().length === 0}
+              disabled={title.trim().length === 0 || submitting}
             >
-              Create work item
+              {submitting ? "Creating…" : "Create work item"}
             </button>
           </footer>
         </form>

@@ -1,15 +1,28 @@
-import { useSyncExternalStore } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 
+import {
+  createWorkProject,
+  listWorkProjects,
+  removeWorkProject,
+  type CoreProjectRecord,
+  type CoreProjectStatus,
+} from "../api/workRecords.js";
 import { MOCK_WORK_GRAPH } from "../components/topdown/mock";
 import type { WorkGraphObjectSummary } from "../components/topdown/types";
 
 const STORAGE_KEY_DELETED = "cats-work:deleted-projects";
 const STORAGE_KEY_UNPINNED = "cats-work:unpinned-projects";
-const STORAGE_KEY_CREATED = "cats-work:created-projects";
+
+type FetchStatus = "idle" | "loading" | "ready" | "error";
 
 const unpinned = new Set<string>(loadStringSet(STORAGE_KEY_UNPINNED));
-const deleted = new Set<string>(loadStringSet(STORAGE_KEY_DELETED));
-const createdProjects: WorkGraphObjectSummary[] = loadCreatedProjects();
+const rendererHidden = new Set<string>(loadStringSet(STORAGE_KEY_DELETED));
+
+let coreProjects: WorkGraphObjectSummary[] = [];
+let fetchStatus: FetchStatus = "idle";
+let fetchError: string | null = null;
+let inflight: Promise<void> | null = null;
+
 const listeners = new Set<() => void>();
 let snapshotVersion = 0;
 let cachedSnapshot: PinnedProjectsSnapshot | null = null;
@@ -29,29 +42,6 @@ function saveStringSet(key: string, set: Set<string>): void {
   try {
     globalThis.localStorage?.setItem(key, JSON.stringify([...set]));
   } catch {
-    // ignore storage errors (private mode, quota, etc.)
-  }
-}
-
-function loadCreatedProjects(): WorkGraphObjectSummary[] {
-  try {
-    const raw = globalThis.localStorage?.getItem(STORAGE_KEY_CREATED);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed as WorkGraphObjectSummary[];
-  } catch {
-    return [];
-  }
-}
-
-function saveCreatedProjects(): void {
-  try {
-    globalThis.localStorage?.setItem(
-      STORAGE_KEY_CREATED,
-      JSON.stringify(createdProjects),
-    );
-  } catch {
     // ignore
   }
 }
@@ -67,6 +57,30 @@ export interface PinnedProjectsSnapshot {
   allProjects: readonly WorkGraphObjectSummary[];
   pinnedIds: ReadonlySet<string>;
   deletedIds: ReadonlySet<string>;
+  status: FetchStatus;
+  error: string | null;
+}
+
+function projectRecordToSummary(p: CoreProjectRecord): WorkGraphObjectSummary {
+  return {
+    id: p.id,
+    kind: "project",
+    structuralLayer: "planning",
+    sourceRecordFamily: "project",
+    sourceRecordId: p.id,
+    title: p.title,
+    status: p.status,
+    summary: p.summary,
+    attention: "none",
+    ownerRole: null,
+    nextAction: null,
+    linkedConversationId: p.primaryConversationId,
+    linkedProjectId: null,
+    linkedWorkItemId: null,
+    linkedTaskId: null,
+    linkedRunId: null,
+    updatedAt: p.updatedAt,
+  };
 }
 
 function buildSnapshot(): PinnedProjectsSnapshot {
@@ -74,10 +88,15 @@ function buildSnapshot(): PinnedProjectsSnapshot {
   const mockProjects = MOCK_WORK_GRAPH.objects.filter(
     (obj): obj is WorkGraphObjectSummary => obj.kind === "project",
   );
-  const allProjects = [...mockProjects, ...createdProjects];
+  // Core wins on id collision (post-migration source of truth).
+  const byId = new Map<string, WorkGraphObjectSummary>();
+  for (const project of mockProjects) byId.set(project.id, project);
+  for (const project of coreProjects) byId.set(project.id, project);
+  const allProjects = Array.from(byId.values());
+
   const pinnedIds = new Set<string>();
   for (const project of allProjects) {
-    if (deleted.has(project.id)) continue;
+    if (rendererHidden.has(project.id)) continue;
     if (unpinned.has(project.id)) continue;
     pinnedIds.add(project.id);
   }
@@ -85,23 +104,41 @@ function buildSnapshot(): PinnedProjectsSnapshot {
     version: snapshotVersion,
     allProjects,
     pinnedIds,
-    deletedIds: new Set(deleted),
+    deletedIds: new Set(rendererHidden),
+    status: fetchStatus,
+    error: fetchError,
   };
   return cachedSnapshot;
+}
+
+async function fetchOnce(): Promise<void> {
+  if (inflight) return inflight;
+  fetchStatus = "loading";
+  fetchError = null;
+  notify();
+  inflight = (async () => {
+    try {
+      const records = await listWorkProjects();
+      coreProjects = records.map(projectRecordToSummary);
+      fetchStatus = "ready";
+      fetchError = null;
+    } catch (err) {
+      fetchStatus = "error";
+      fetchError = err instanceof Error ? err.message : "Failed to load projects.";
+    } finally {
+      inflight = null;
+      notify();
+    }
+  })();
+  return inflight;
 }
 
 export interface CreateProjectInput {
   title: string;
   summary?: string | null;
-  status?: string;
+  status?: CoreProjectStatus;
   ownerRole?: string | null;
   nextAction?: string | null;
-}
-
-function generateProjectId(): string {
-  const stamp = Date.now().toString(36);
-  const random = Math.random().toString(36).slice(2, 8);
-  return `proj-${stamp}-${random}`;
 }
 
 export const pinnedProjectsStore = {
@@ -114,11 +151,16 @@ export const pinnedProjectsStore = {
   getSnapshot(): PinnedProjectsSnapshot {
     return buildSnapshot();
   },
+  refresh(): Promise<void> {
+    fetchStatus = "idle";
+    notify();
+    return fetchOnce();
+  },
   isPinned(id: string): boolean {
-    return !unpinned.has(id) && !deleted.has(id);
+    return !unpinned.has(id) && !rendererHidden.has(id);
   },
   isDeleted(id: string): boolean {
-    return deleted.has(id);
+    return rendererHidden.has(id);
   },
   pin(id: string): void {
     if (!unpinned.has(id)) return;
@@ -132,45 +174,60 @@ export const pinnedProjectsStore = {
     saveStringSet(STORAGE_KEY_UNPINNED, unpinned);
     notify();
   },
-  remove(id: string): void {
-    if (deleted.has(id)) return;
-    deleted.add(id);
-    saveStringSet(STORAGE_KEY_DELETED, deleted);
+  async remove(id: string): Promise<void> {
+    if (rendererHidden.has(id)) return;
+    const isCoreRecord = coreProjects.some((p) => p.id === id);
+    if (isCoreRecord) {
+      try {
+        await removeWorkProject(id);
+        coreProjects = coreProjects.filter((p) => p.id !== id);
+      } catch {
+        // If the server delete failed, fall back to renderer-side hide
+        // so the UI still feels responsive.
+        rendererHidden.add(id);
+        saveStringSet(STORAGE_KEY_DELETED, rendererHidden);
+      }
+    } else {
+      // Mock-seeded record — hide via renderer-only set.
+      rendererHidden.add(id);
+      saveStringSet(STORAGE_KEY_DELETED, rendererHidden);
+    }
     notify();
   },
-  createProject(input: CreateProjectInput): WorkGraphObjectSummary {
-    const now = new Date().toISOString();
-    const id = generateProjectId();
-    const project: WorkGraphObjectSummary = {
-      id,
-      kind: "project",
-      structuralLayer: "planning",
-      sourceRecordFamily: "project",
-      sourceRecordId: id,
+  async createProject(input: CreateProjectInput): Promise<WorkGraphObjectSummary> {
+    const result = await createWorkProject({
       title: input.title.trim(),
-      status: input.status ?? "planned",
       summary: input.summary?.trim() || null,
-      attention: "none",
-      ownerRole: input.ownerRole?.trim() || null,
-      nextAction: input.nextAction?.trim() || null,
-      linkedConversationId: null,
-      linkedProjectId: null,
-      linkedWorkItemId: null,
-      linkedTaskId: null,
-      linkedRunId: null,
-      updatedAt: now,
-    };
-    createdProjects.push(project);
-    saveCreatedProjects();
+      status: input.status,
+    });
+    const summary = projectRecordToSummary(result.project);
+    coreProjects = [...coreProjects.filter((p) => p.id !== summary.id), summary];
     notify();
-    return project;
+    return summary;
   },
 };
 
 export function usePinnedProjects(): PinnedProjectsSnapshot {
-  return useSyncExternalStore(
+  const snapshot = useSyncExternalStore(
     pinnedProjectsStore.subscribe,
     pinnedProjectsStore.getSnapshot,
     pinnedProjectsStore.getSnapshot,
   );
+  useEffect(() => {
+    if (snapshot.status === "idle") {
+      void fetchOnce();
+    }
+  }, [snapshot.status]);
+  return snapshot;
+}
+
+/** Test-only escape hatch — resets the singleton state. */
+export function __resetPinnedProjectsStoreForTest(): void {
+  coreProjects = [];
+  fetchStatus = "idle";
+  fetchError = null;
+  inflight = null;
+  rendererHidden.clear();
+  unpinned.clear();
+  notify();
 }

@@ -825,6 +825,15 @@ main.canvas:has(> .projectDetail) {
   padding-top: 4px;
 }
 
+.newProjectDialog__error {
+  margin: 0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: rgba(192, 56, 43, 0.08);
+  color: var(--danger, #c0382b);
+  font-size: 0.78rem;
+}
+
 .newProjectDialog__cancelBtn {
   appearance: none;
   padding: 8px 14px;

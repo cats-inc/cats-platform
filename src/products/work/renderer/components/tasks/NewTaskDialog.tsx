@@ -8,6 +8,7 @@ import {
 } from "react";
 import { useNavigate } from "react-router-dom";
 
+import type { CoreTaskStatus } from "../../api/workRecords.js";
 import { WORK_TASKS_PATH } from "../../workPaths.js";
 import { usePinnedProjects } from "../../state/pinnedProjectsStore";
 import { tasksStore, useTasks, type TaskPriority } from "../../state/tasksStore";
@@ -20,7 +21,7 @@ interface NewTaskDialogProps {
   defaultParentTaskId?: string | null;
 }
 
-const STATUS_OPTIONS: { value: string; label: string }[] = [
+const STATUS_OPTIONS: { value: CoreTaskStatus; label: string }[] = [
   { value: "draft", label: "Draft" },
   { value: "pending_approval", label: "Pending approval" },
   { value: "approved", label: "Approved" },
@@ -67,10 +68,12 @@ export function NewTaskDialog({
   const [parentTask, setParentTask] = useState(defaultParentTaskId ?? "");
   const [ownerRole, setOwnerRole] = useState("");
   const [assigneeName, setAssigneeName] = useState("");
-  const [status, setStatus] = useState("draft");
+  const [status, setStatus] = useState<CoreTaskStatus>("draft");
   const [priority, setPriority] = useState<TaskPriority | "">("");
   const [nextAction, setNextAction] = useState("");
   const [acceptanceCriteria, setAcceptanceCriteria] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     titleInputRef.current?.focus();
@@ -93,25 +96,33 @@ export function NewTaskDialog({
     }
   }
 
-  function onSubmit(event: FormEvent<HTMLFormElement>): void {
+  async function onSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
     const trimmed = title.trim();
-    if (!trimmed) return;
-    const task = tasksStore.createTask({
-      title: trimmed,
-      summary: summary || null,
-      linkedProjectId: linkedProject || null,
-      linkedWorkItemId: linkedWorkItem || null,
-      parentTaskId: parentTask || null,
-      ownerRole: ownerRole || null,
-      assigneeName: assigneeName || null,
-      status,
-      priority: priority || null,
-      nextAction: nextAction || null,
-      acceptanceCriteria: acceptanceCriteria || null,
-    });
-    onClose();
-    navigate(`${WORK_TASKS_PATH}/${task.id}`);
+    if (!trimmed || submitting) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const task = await tasksStore.createTask({
+        title: trimmed,
+        summary: summary || null,
+        linkedProjectId: linkedProject || null,
+        linkedWorkItemId: linkedWorkItem || null,
+        parentTaskId: parentTask || null,
+        ownerRole: ownerRole || null,
+        assigneeName: assigneeName || null,
+        status,
+        priority: priority || null,
+        nextAction: nextAction || null,
+        acceptanceCriteria: acceptanceCriteria || null,
+      });
+      onClose();
+      navigate(`${WORK_TASKS_PATH}/${task.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create task.");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
   const projectOptions = allProjects.filter((p) => !deletedProjectIds.has(p.id));
@@ -269,7 +280,7 @@ export function NewTaskDialog({
                 id={statusId}
                 className="newProjectDialog__select"
                 value={status}
-                onChange={(event) => setStatus(event.target.value)}
+                onChange={(event) => setStatus(event.target.value as CoreTaskStatus)}
               >
                 {STATUS_OPTIONS.map((option) => (
                   <option key={option.value} value={option.value}>
@@ -324,20 +335,26 @@ export function NewTaskDialog({
             />
           </label>
 
+          {error ? (
+            <p className="newProjectDialog__error" role="alert">
+              {error}
+            </p>
+          ) : null}
           <footer className="newProjectDialog__footer">
             <button
               type="button"
               className="newProjectDialog__cancelBtn"
               onClick={onClose}
+              disabled={submitting}
             >
               Cancel
             </button>
             <button
               type="submit"
               className="newProjectDialog__submitBtn"
-              disabled={title.trim().length === 0}
+              disabled={title.trim().length === 0 || submitting}
             >
-              Create task
+              {submitting ? "Creating…" : "Create task"}
             </button>
           </footer>
         </form>
