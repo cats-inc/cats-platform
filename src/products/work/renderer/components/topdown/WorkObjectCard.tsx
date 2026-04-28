@@ -42,6 +42,14 @@ export function WorkObjectCard({
     >
       <header className="topDownCard__head">
         <span className="topDownCard__kind">{KIND_LABEL[object.kind]}</span>
+        {object.kind === "task" && object.productBinding ? (
+          <span
+            className={`topDownCard__binding topDownCard__binding--${object.productBinding}`}
+            title={`Task product binding: ${object.productBinding}`}
+          >
+            {object.productBinding}
+          </span>
+        ) : null}
         {attentionTag ? (
           <span
             className={`topDownCard__attention topDownCard__attention--${object.attention}`}

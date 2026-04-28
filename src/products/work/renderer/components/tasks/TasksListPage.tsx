@@ -111,6 +111,14 @@ export function TasksListPage(): JSX.Element {
                       </div>
                     </div>
                     <div className="tasksList__rowMeta">
+                      {task.productBinding ? (
+                        <span
+                          className={`tasksList__binding tasksList__binding--${task.productBinding}`}
+                          title={`Task product binding: ${task.productBinding}`}
+                        >
+                          {task.productBinding}
+                        </span>
+                      ) : null}
                       {projectTitle ? (
                         <span className="tasksList__chip tasksList__chip--project">
                           {projectTitle}

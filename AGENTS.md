@@ -38,6 +38,9 @@ When instructions appear to conflict, follow this priority order (highest to low
 - Commit without updating related documentation
 - Mix multiple unrelated changes in one commit
 - Modify core architecture without documenting in ADR
+- **Write demo / test / smoke / "verification" records into the user's
+  dev disk state** — see `## State Hygiene Policy` below for the full
+  rule and the narrow set of allowed alternatives.
 
 **DO:**
 - Read AGENTS.md and your agent-specific file at the start of every session
@@ -167,6 +170,96 @@ for shared `Cats Core v1` contracts that `Cats Chat`, `Cats Work`, and
 - Keep the architecture correct and lean. Update tests and documentation to the
   current contract instead of layering support for old flows or unnecessary
   aliases.
+
+---
+
+## State Hygiene Policy
+
+Cats dev runs against the user's **real persisted state** (disk file
+`~/.cats/platform/state/chat-state.local.json` via `FileChatStore`).
+Anything the dev server writes shows up in the user's UI as if the user
+wrote it, and persists across sessions and across agent handoffs.
+
+### MUST NOT — agents do not write demo / verification data to dev state
+
+Agents (Claude, Codex, Gemini, et al.) MUST NOT POST, PUT, or otherwise
+write **demo / smoke / "let me just test the chip" / "verification"
+records** to:
+
+- `~/.cats/platform/state/chat-state.local.json` (or any backup /
+  alternate path resolved by `resolvePlatformStatePath`)
+- Any persisted Core record (Project / WorkItem / Task / Run / Activity
+  / Artifact / Outcome / Approval / WorkGraphLink / Conversation /
+  etc.) created via `/api/...` endpoints, runtime calls, or direct file
+  edits, while operating against the user's running dev server.
+
+Historical incidents this rule responds to:
+- A prior session left an orphan task titled "Real-data smoke test".
+- A subsequent session left another orphan task titled
+  "PRODUCT-BINDING demo task".
+
+Both were written intending to verify a UI surface and were forgotten /
+mis-attributed in a later session, polluting the user's data.
+
+### Why writes are forbidden by default
+
+1. **Indistinguishable from real work.** `ownerActorId` is always
+   `actor-owner` in single-tenant dev — agent writes look like user
+   writes in every audit field.
+2. **Cross-session persistence.** Disk state survives restarts. The
+   next agent session sees the residue and may treat it as canonical
+   data.
+3. **No audit trail.** There is no per-record provenance field naming
+   the writing agent. Once written, the residue is undebuggable.
+4. **Verification rationale is weak.** UI rendering can almost always
+   be verified without writing — see allowed alternatives below.
+
+### Allowed alternatives — verify without polluting
+
+When an agent thinks "I need to write a record to verify something,"
+the answer is almost always one of:
+
+- **Read existing state** (`GET /api/work/graph`, `GET /api/core`,
+  etc.) and confirm projection-level fields are present in the
+  response. Most verifications are about *whether the projection adds
+  the field*, not *what the UI does with one*.
+- **Read the source / diff** to confirm the data path. If the change
+  is purely additive (new optional field), code review is the
+  verification.
+- **Wait for the user to create a record organically** during their
+  next interaction, then verify against that.
+- **Use the test-only fixtures in `cats-platform/tests/fixtures/`**
+  (e.g. `sampleWorkGraph.ts`) — these build their own
+  `MemoryCoreStore` and never touch user disk.
+- **Run a targeted node:test file** that builds an isolated
+  `MemoryCoreStore`, exercises the projection, and asserts the field
+  shape. Tests do not write to user disk.
+
+### Narrow exception — explicit user approval per write
+
+If, after considering all alternatives, an agent still believes a
+write to user dev state is necessary, the agent MUST:
+
+1. **Tell the user before writing**, including the exact title /
+   payload it will create.
+2. **Wait for explicit approval** in chat (a message from the user;
+   not inference from an earlier turn).
+3. **Delete the record immediately after verification, in the same
+   turn**, AND verify the delete by reading the persisted file (not
+   only the API).
+4. **Report the cleanup explicitly**, including the file-level
+   evidence ("disk file no longer contains the id").
+5. **If interrupted, stop and report the residue**. Do not continue
+   the original task while leaving residue.
+
+### Severity
+
+A violation that leaves residue counts the same as committing
+unrelated dummy code into a release branch. Required response on
+discovery: stop, apologise, clean up, log the incident in the
+Claude-specific memory (or equivalent agent memory) so the next
+session does not repeat the pattern, and consider whether the
+pattern needs a code-level guardrail (e.g. dev-server seal mode).
 
 ---
 

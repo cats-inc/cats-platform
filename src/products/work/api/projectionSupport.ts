@@ -5,6 +5,7 @@ import type {
   CoreTaskRecord,
   CoreWorkItemStatus,
 } from '../../../core/types.js';
+import type { WorkTaskProductBinding } from '../shared/workGraphTypes.js';
 
 export function buildTaskStatusCounts(tasks: CoreTaskRecord[]): Record<CoreTaskRecord['status'], number> {
   return tasks.reduce<Record<CoreTaskRecord['status'], number>>(
@@ -25,12 +26,18 @@ export function buildTaskStatusCounts(tasks: CoreTaskRecord[]): Record<CoreTaskR
   );
 }
 
-export function isWorkTask(core: CatsCoreState, task: CoreTaskRecord): boolean {
+export function resolveTaskProductBinding(
+  core: CatsCoreState,
+  task: CoreTaskRecord,
+): WorkTaskProductBinding {
   if (core.workItems.some((workItem) => workItem.taskId === task.id)) {
-    return true;
+    return 'work';
   }
+  return resolveTaskExecutionProduct({ core, task }) ?? 'unbound';
+}
 
-  return resolveTaskExecutionProduct({ core, task }) === 'work';
+export function isWorkTask(core: CatsCoreState, task: CoreTaskRecord): boolean {
+  return resolveTaskProductBinding(core, task) === 'work';
 }
 
 export function buildProjectStatusCounts(core: CatsCoreState): Record<CoreProjectStatus, number> {

@@ -164,6 +164,41 @@
   border-radius: 4px;
 }
 
+.topDownCard__binding {
+  font-size: 0.6rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+}
+
+.topDownCard__binding--work {
+  background: rgba(74, 108, 247, 0.14);
+  color: var(--accent);
+  border-color: rgba(74, 108, 247, 0.28);
+}
+
+.topDownCard__binding--code {
+  background: rgba(56, 156, 96, 0.16);
+  color: var(--success, #389c60);
+  border-color: rgba(56, 156, 96, 0.3);
+}
+
+.topDownCard__binding--chat {
+  background: rgba(160, 96, 200, 0.16);
+  color: #8a4fb6;
+  border-color: rgba(160, 96, 200, 0.3);
+}
+
+.topDownCard__binding--unbound {
+  background: transparent;
+  color: var(--muted);
+  border-color: var(--border);
+  border-style: dashed;
+}
+
 .topDownCard__attention--decision_needed {
   background: rgba(74, 108, 247, 0.18);
   color: var(--accent);

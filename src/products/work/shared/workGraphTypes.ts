@@ -9,6 +9,24 @@
 
 export type WorkGraphLayer = "interaction" | "planning" | "execution";
 
+/**
+ * Per-task product attribution surfaced in the projection so Work-product
+ * surfaces can show the *full* Core task graph while still labelling
+ * which product owns / executes each task. Computed by
+ * `resolveTaskProductBinding`:
+ *
+ *   - 'work'    — task has a Work Item linking to it, OR planning hint
+ *                 says work, OR conversation kind is `work_thread`.
+ *   - 'code'    — planning hint says code, OR conversation is
+ *                 `code_thread`.
+ *   - 'chat'    — conversation is a chat channel / DM / external
+ *                 transport / private escalation.
+ *   - 'unbound' — no signal at all. Orphan Core task.
+ *
+ * Set only on `kind === 'task'` summaries; undefined elsewhere.
+ */
+export type WorkTaskProductBinding = "work" | "code" | "chat" | "unbound";
+
 export type WorkGraphObjectKind =
   | "agent"
   | "container"
@@ -161,6 +179,16 @@ export interface WorkGraphObjectSummary {
    * Optional: omitted for record families without a metadata field.
    */
   metadata?: Record<string, unknown> | null;
+  /**
+   * Task-only: which product owns / executes this task. See
+   * `WorkTaskProductBinding`. Set on `kind === 'task'` summaries;
+   * undefined for projects, work items, runs, agents, etc. Lets
+   * UI surfaces (System Map, Tasks list, Cockpit) display the
+   * full Core task graph and still label each task by product
+   * — a graph-projection-level alternative to filtering tasks
+   * out at the API boundary.
+   */
+  productBinding?: WorkTaskProductBinding;
 }
 
 export interface WorkGraphEvidenceAttachment {

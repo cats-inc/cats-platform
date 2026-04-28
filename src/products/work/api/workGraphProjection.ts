@@ -25,6 +25,7 @@ import type {
   WorkGraphObjectSummary,
   WorkGraphProjection,
 } from '../shared/workGraphTypes.js';
+import { resolveTaskProductBinding } from './projectionSupport.js';
 
 /**
  * Build a complete `WorkGraphProjection` from canonical Core state.
@@ -39,7 +40,7 @@ export function buildWorkGraphProjection(core: CatsCoreState): WorkGraphProjecti
   const objects: WorkGraphObjectSummary[] = [
     ...core.projects.map(projectToSummary),
     ...core.workItems.map(workItemToSummary),
-    ...core.tasks.map(taskToSummary),
+    ...core.tasks.map((task) => taskToSummary(task, core)),
     ...core.conversations.map(conversationToSummary),
     ...core.actors
       .filter((actor) => actor.kind !== 'owner' && actor.status === 'active')
@@ -166,7 +167,7 @@ function workItemToSummary(w: CoreWorkItemRecord): WorkGraphObjectSummary {
   };
 }
 
-function taskToSummary(t: CoreTaskRecord): WorkGraphObjectSummary {
+function taskToSummary(t: CoreTaskRecord, core: CatsCoreState): WorkGraphObjectSummary {
   return {
     id: t.id,
     kind: 'task',
@@ -186,6 +187,7 @@ function taskToSummary(t: CoreTaskRecord): WorkGraphObjectSummary {
     linkedRunId: null,
     updatedAt: t.updatedAt,
     metadata: t.metadata ?? null,
+    productBinding: resolveTaskProductBinding(core, t),
   };
 }
 
