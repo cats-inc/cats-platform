@@ -1035,9 +1035,11 @@ function buildWorkTaskTimelineProjection(
   const base = queryCoreTaskTimelineView(core, task, {
     limit: null,
   }).timeline;
+  const planItems = buildProviderAgentPlanTimelineItems(core, task);
   const evidenceItems = buildSupervisionEvidenceTimelineItems(core, task, evidenceEvents);
   const matching = [
     ...base.items,
+    ...planItems,
     ...evidenceItems,
   ].sort(compareWorkTimelineItems);
   const returned = matching.slice(0, WORK_TIMELINE_PREVIEW_LIMIT);
@@ -1064,6 +1066,69 @@ function buildWorkTaskTimelineProjection(
       items: returned,
     },
   };
+}
+
+function buildProviderAgentPlanTimelineItems(
+  core: CatsCoreState,
+  task: CoreTaskRecord,
+): CoreTaskTimelineItem[] {
+  const runs = core.runs.filter((run) => run.taskId === task.id);
+
+  return runs.flatMap((run) => {
+    const supervision = asRecord(run.metadata.supervision);
+    const runLoop = asRecord(supervision?.providerAgentRunLoop);
+    const plans = Array.isArray(runLoop?.plans) ? runLoop.plans : [];
+
+    return plans.flatMap((item) => {
+      const record = asRecord(item);
+      const planId = readString(record?.planId);
+      const decisionId = readString(record?.decisionId);
+      const recordedAt = readString(record?.recordedAt);
+      const confidence = readString(record?.confidence);
+      const stepCount = readFiniteNumber(record?.stepCount);
+      const executableStepCount = readFiniteNumber(record?.executableStepCount);
+      const toolNames = readStringArray(record?.toolNames);
+
+      return planId &&
+        decisionId &&
+        recordedAt &&
+        confidence &&
+        stepCount !== null &&
+        executableStepCount !== null
+        ? [{
+            timelineId: `provider_agent_plan:${run.id}:${planId}`,
+            kind: 'plan' as const,
+            category: 'workflow' as const,
+            recordId: planId,
+            timestamp: recordedAt,
+            status: confidence,
+            title: `Provider-agent plan: ${planId}`,
+            summary: buildProviderAgentPlanTimelineSummary({
+              decisionId,
+              stepCount,
+              executableStepCount,
+              toolNames,
+            }),
+            taskId: task.id,
+            conversationId: run.conversationId ?? task.conversationId,
+            runId: run.id,
+            traceId: run.traceId,
+            actorId: run.orchestratorActorId,
+          }]
+        : [];
+    });
+  });
+}
+
+function buildProviderAgentPlanTimelineSummary(input: {
+  decisionId: string;
+  stepCount: number;
+  executableStepCount: number;
+  toolNames: string[];
+}): string {
+  const tools = input.toolNames.length > 0 ? `; tools: ${input.toolNames.join(', ')}` : '';
+  return `${input.decisionId}: ${input.stepCount} step(s), ` +
+    `${input.executableStepCount} executable${tools}`;
 }
 
 function buildSupervisionEvidenceTimelineItems(
@@ -1139,10 +1204,12 @@ function compareWorkTimelineItems(
   const kindRank = (value: CoreTaskTimelineItem['kind']): number => {
     switch (value) {
       case 'activity':
-        return 7;
+        return 8;
       case 'evidence':
-        return 6;
+        return 7;
       case 'outcome':
+        return 6;
+      case 'plan':
         return 5;
       case 'checkpoint':
         return 4;
@@ -1174,4 +1241,17 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 function readString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value : null;
+}
+
+function readStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.filter((item): item is string =>
+    typeof item === 'string' && item.trim().length > 0);
+}
+
+function readFiniteNumber(value: unknown): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }

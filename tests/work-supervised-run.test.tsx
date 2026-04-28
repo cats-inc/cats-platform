@@ -364,6 +364,21 @@ test('Work supervised run launch can be driven by a fake agent and inspected fro
     detailPayload.timeline.view.items.some(
       (item: {
         kind: string;
+        title: string;
+        status: string | null;
+        runId: string | null;
+      }) =>
+        item.kind === 'plan' &&
+        item.title === `Provider-agent plan: ${plan.planId}` &&
+        item.status === 'medium' &&
+        item.runId === runId,
+    ),
+    true,
+  );
+  assert.equal(
+    detailPayload.timeline.view.items.some(
+      (item: {
+        kind: string;
         category: string;
         title: string;
         status: string | null;

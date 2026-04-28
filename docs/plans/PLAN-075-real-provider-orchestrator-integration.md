@@ -477,7 +477,7 @@ Code 4 pass and 1 gated live smoke skipped unless
       scheduler only manages run-state transitions and budget/cancellation
       bookkeeping and never reads response content to decide the next semantic
       action.
-- [ ] Task 5.2: Persist provider-agent observations, plans, tool requests,
+- [x] Task 5.2: Persist provider-agent observations, plans, tool requests,
       approvals, and outcomes into task timeline, evidence, and run metadata.
 - [x] Task 5.3: Implement Work resume/retry/cancel endpoints or actions using
       the lifecycle service.
@@ -776,3 +776,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 58: continued Phase 5 Task 5.2 by projecting Work supervision evidence into task detail timelines, so runtime-boundary tool requests, provider-agent run-loop outcomes, and pending approval evidence appear alongside Core run/trace records while remaining backed by durable evidence events. |
 | 2026-04-28 | Implementation slice 59: extended provider-agent run-loop metadata to carry semantic plan, tool request, and approval request records, with supervised run projection tests proving those records survive run metadata parsing alongside observations and outcomes. |
 | 2026-04-28 | Implementation slice 60: added provider-agent run-record helpers and used them in the Work fake-run vertical slice so semantic plans, tool requests, and approval requests are written back to supervised run metadata from actual tool-boundary evidence. |
+| 2026-04-28 | Implementation slice 61: completed Phase 5 Task 5.2 by projecting provider-agent semantic plan metadata into Work task timelines alongside evidence-backed tool requests, approvals, observations, and outcomes. |
