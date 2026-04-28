@@ -284,7 +284,7 @@ export function RunDetailPage(): JSX.Element {
               Failed to load trace: {traceState.error}
             </p>
           ) : traceState.traces.length === 0 ? (
-            <p className="runDetail__empty">No trace records.</p>
+            <p className="runDetail__empty">{emptyTraceMessage(run.status)}</p>
           ) : (
             <ol className="runDetail__trace">
               {traceState.traces
@@ -379,6 +379,25 @@ function countTree(nodes: RunTreeNode[]): number {
     count += 1 + countTree(n.children);
   }
   return count;
+}
+
+function emptyTraceMessage(status: string): string {
+  switch (status) {
+    case "queued":
+      return "Run is queued — trace records appear once the orchestrator dispatches.";
+    case "running":
+      return "Run is executing but has not emitted any trace records yet.";
+    case "blocked":
+      return "Run is blocked and emitted no trace before stalling.";
+    case "completed":
+      return "Run completed without emitting trace records.";
+    case "failed":
+      return "Run failed before emitting any trace.";
+    case "cancelled":
+      return "Run was cancelled before emitting any trace.";
+    default:
+      return "No trace records.";
+  }
 }
 
 interface SubRunTreeProps {
