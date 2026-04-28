@@ -243,6 +243,50 @@ test('PATCH /api/work/intake/:projectId/plan/tasks/:taskId rejects approved plan
   assert.equal(payload.error.code, 'plan_not_editable');
 });
 
+test('POST /api/work/intake/:projectId/approve preserves edited planning hints', async (t) => {
+  const store = createMemoryStore();
+  const server = createTestServer(store);
+
+  await new Promise((resolve) => server.listen(0, resolve));
+  t.after(() => server.close());
+
+  const create = await request(server, 'POST', '/api/work/intake', {
+    title: 'Approve patched plan',
+    brief: 'Brief',
+    desiredOutcome: 'Outcome',
+    templateId: 'software_delivery',
+  });
+  const projectId = create.payload.project.id;
+  const taskId = create.payload.tasks[0].id;
+
+  await request(
+    server,
+    'PATCH',
+    `/api/work/intake/${projectId}/plan/tasks/${taskId}`,
+    {
+      acceptanceCriteria: 'Owner-edited acceptance',
+      productHint: 'chat',
+      strategyHint: 'react',
+    },
+  );
+
+  const { status, payload } = await request(
+    server,
+    'POST',
+    `/api/work/intake/${projectId}/approve`,
+  );
+
+  assert.equal(status, 200);
+  const approvedTask = payload.tasks.find((task) => task.id === taskId);
+  assert.ok(approvedTask);
+  assert.equal(approvedTask.status, 'in_progress');
+  assert.equal(approvedTask.acceptanceCriteria, 'Owner-edited acceptance');
+  assert.equal(approvedTask.productHint, 'chat');
+  assert.equal(approvedTask.strategyHint, 'react');
+  assert.equal(approvedTask.handoff.state, 'ready_for_pickup');
+  assert.equal(approvedTask.handoff.targetProduct, 'chat');
+});
+
 test('POST /api/work/intake/:projectId/approve transitions tasks to in_progress with downstream handoff metadata', async (t) => {
   const store = createMemoryStore();
   const server = createTestServer(store);

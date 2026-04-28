@@ -113,7 +113,7 @@ shared Core contracts.
 
 - [ ] Record explicit approve/reject decisions through Core approval/activity
       records
-- [ ] Mark approved tasks `in_progress` while preserving product target intent,
+- [x] Mark approved tasks `in_progress` while preserving product target intent,
       strategy hints, and acceptance criteria
 - [ ] Keep Work-targeted tasks visible in Work while Chat/Code-targeted tasks
       become handoff-ready for downstream pickup
@@ -230,6 +230,7 @@ template packs.
 | 2026-04-28 | Implementation follow-up: added a draft-only Work intake plan-task PATCH route plus renderer API client for editing acceptance criteria, product routing hints, and strategy hints before plan approval. |
 | 2026-04-28 | Implementation follow-up: wired the Plan Review UI to edit draft task acceptance criteria, product routing, and strategy hints in place before approval, using the Work-owned plan-task PATCH route. |
 | 2026-04-28 | Implementation follow-up: added a Work intake generator boundary test proving template expansion writes Core records with `task.metadata.planning` and does not call runtime/provider bridge code directly. |
+| 2026-04-28 | Implementation follow-up: added approval regression coverage proving edited product routing, strategy hints, and acceptance criteria survive the transition to `in_progress` and still drive Work/Chat/Code handoff state. |
 | 2026-03-29 | Claude: All 6 phases implemented on branch `claude/spec-040-work-intake`. Templates, plan generation, API routes, handoff-readiness transitions, dashboard, and renderer surfaces landed. 29 tests pass. Work no longer owns runtime dispatch or shared server dependency wiring. |
 | 2026-03-30 | Codex: Refined Work intake projection and review UI so each generated task now exposes a product-facing handoff state (`pending_review`, `active_here`, `ready_for_pickup`, `stopped`, `completed`) plus the next expected owner action. Approved-plan messaging now distinguishes Work-owned follow-through from Chat/Code pickup instead of implying direct dispatch. |
 | 2026-03-30 | Codex: Moved the underlying handoff state machine into `src/core/taskHandoff.ts` so Work no longer owns cross-product task-state semantics; the Work review UI now only owns product-local wording and badges. |
