@@ -188,7 +188,37 @@ operation actually starts. This keeps System Map honest: Planning
 shows the durable work to be done; Execution shows the primary task
 immediately and the attempt ledger only after work starts.
 
-### 6. Defer Tables and Task Hub
+### 6. Non-Work tasks live in `No project`, not hidden fallback projects
+
+The Work Graph must show the full Core task graph, including tasks
+owned by Chat or Code and tasks whose product owner is not known yet.
+It must not filter those tasks out simply because `/api/work/tasks`
+still exposes only Work-bound tasks in legacy list routes.
+
+Every task summary carries a task product binding:
+
+- `work`
+- `code`
+- `chat`
+- `unbound`
+
+The binding is projection metadata, not a new entity type. It allows
+System Map, Cockpit, and the Tasks list to show Code tasks and Chat
+tasks as tasks, while still making clear that they are not managed
+Work unless a `WorkItem` links to them.
+
+Tasks with no Project / WorkItem lineage are grouped under an honest
+`No project` bucket. The bucket may group or filter by product binding
+so the owner can distinguish `code`, `chat`, and `unbound` tasks.
+The product must not silently create an inbox-style Project to hide
+that absence. Auto-created inbox / untriaged Projects are allowed only
+when the Work entry itself is creating real managed work.
+
+Only a Work-bound task missing its expected Planning bridge is a
+broken-slot condition. A Code-bound or Chat-bound task with no Project
+is normal, visible, and explicitly labelled.
+
+### 7. Defer Tables and Task Hub
 
 Tables and Task Hub are useful but not on the first production path.
 
@@ -201,7 +231,7 @@ Tables and Task Hub are useful but not on the first production path.
 
 Neither should block System Map or Cockpit.
 
-### 7. Work view mode owns Work navigation
+### 8. Work view mode owns Work navigation
 
 Work has two navigation layers:
 
@@ -216,7 +246,7 @@ main content layout, grouping, sorting, empty states, and CTAs. It
 does not change the underlying object identities, selection intent,
 filters that still apply, or the shared detail drawer.
 
-### 8. Old Work renderer UI must be isolated before the new shell starts
+### 9. Old Work renderer UI must be isolated before the new shell starts
 
 The existing Work renderer components may be mined for useful API
 clients, projection helpers, or tests, but they do not define the new

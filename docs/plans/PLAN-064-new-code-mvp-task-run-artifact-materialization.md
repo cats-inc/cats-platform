@@ -222,6 +222,9 @@ and evidence all point back to one task/conversation anchor.
   to resume from the same surface.
 - Keep `code_thread` visibility scoped to Code product entry points in this
   slice; Chat-product projection is deferred.
+- Let Work Graph project Code tasks with `productBinding = code` and place
+  projectless Code tasks under `No project`; do not create fallback
+  `Project` / `WorkItem` records just to house them.
 - Defer Work promotion from this slice; Code-origin tasks stay Code-owned by
   default.
 - Preserve `job` only as an external-system boundary term; do not reintroduce
@@ -264,6 +267,7 @@ and evidence all point back to one task/conversation anchor.
 | 2026-04-19 | Follow-up trim: deferred Work promotion and Chat projection, removed create-time idempotency from MVP scope, and made the MVP `Task -> Run` rule explicit |
 | 2026-04-28 | Amended scope after Build/Relay sidebar retirement: `PLAN-064` remains active for `+New code`, but it no longer depends on completing `/code/build` or `/code/relay`. |
 | 2026-04-28 | Clarified entry materialization: `+New code` creates `Conversation + primary Task`, does not require `Project` / `WorkItem`, and creates the first `Run` only when execution starts. |
+| 2026-04-28 | Clarified orphan-task home: Code tasks without Project / WorkItem anchors project into Work Graph as `productBinding = code` under `No project`, rather than receiving fallback Work records. |
 
 ---
 

@@ -62,6 +62,14 @@ Entry materialization is intentionally product-specific:
 - `Run` is lazy for all three surfaces: it is created when a concrete execution
   attempt starts, not merely because an entry was created.
 
+Task projection is shared across products. Work Graph surfaces render every
+Core `Task` they know about and label task rows with a product binding:
+`work`, `code`, `chat`, or `unbound`. Code and Chat tasks do not receive fake
+Project / WorkItem anchors just to make the Work UI tidy. When they have no
+project lineage, Work groups them under `No project` and may sub-group by
+product binding. A real inbox-style project is reserved for actual Work
+creation, not as a silent fallback for orphan Code / Chat tasks.
+
 Terminology rule:
 
 - shared technical contracts should say `Conversation`, not `thread`

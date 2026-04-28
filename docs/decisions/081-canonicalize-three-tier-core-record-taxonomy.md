@@ -204,6 +204,45 @@ interaction container, `Task` is the durable objective, `Run` is the
 attempt ledger, and `Project` / `WorkItem` are Work's Planning
 anchors.
 
+### 2B. Product task binding and orphan-task home
+
+`Task` is shared Execution-layer state, so not every task belongs to
+Work Planning. A task may be:
+
+- `work` — it is linked from a `WorkItem` through `WorkItem.taskId`,
+  or it otherwise carries Work execution-product metadata.
+- `code` — it is owned by Code through planning handoff metadata,
+  Code artifacts, or a Code conversation fallback.
+- `chat` — it is owned by Chat through chat-side planning /
+  conversation provenance.
+- `unbound` — it has no trustworthy product signal yet.
+
+`work | code | chat | unbound` is a projection binding, not a new
+record family. It is the correct home for "chat task" and "code task"
+concepts: both are `Task` records with product binding, not new table
+types and not automatically managed-work records.
+
+Non-Work tasks must not force Planning anchors. In particular:
+
+- Code-created tasks may live without `Project` / `WorkItem` until
+  an explicit Work promotion or linking action happens.
+- Chat-created tasks may live without `Project` / `WorkItem` until
+  the conversation is explicitly materialized into managed work.
+- The Work product must not silently create a fallback Project or
+  WorkItem just to make non-Work tasks fit the Work hierarchy.
+- Work Graph / Cockpit / Tasks views should group tasks with no
+  project lineage under an honest `No project` bucket and label or
+  sub-group them by product binding (`code`, `chat`, `unbound`).
+- A real inbox-style Project is allowed only when the user or Work
+  entry flow is actually creating Work-owned managed work; it is not
+  a generic fallback for orphan Code / Chat tasks.
+
+Only tasks that claim Work ownership are expected to have a Work
+Planning bridge. A Work-bound task missing the expected `WorkItem`
+link is a diagnostic; a Code-bound or Chat-bound task without a
+Project is normal and should stay visible rather than being repaired
+into fake managed work.
+
 ### 3. Rules vs. entities vs. materialization records
 
 Three structural distinctions that must survive in every future
@@ -447,3 +486,4 @@ way `Artifact` already carries `projectId` / `workItemId` /
 *Proposed by: Claude under user-directed investigation (三套心智模型 去重討論)*
 *Amended: 2026-04-25 — §4 completed with `Mission.sourceTurnId` / `sourceLaneId` / `assignedAgentId`; gap discovered during SPEC-082 review*
 *Amended: 2026-04-28 — §2A added product entry materialization rules for Chat / Code / Work and lazy Run creation*
+*Amended: 2026-04-28 — §2B added task product-binding rules and the `No project` home for non-Work / orphan tasks*

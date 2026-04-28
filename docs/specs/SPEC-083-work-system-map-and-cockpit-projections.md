@@ -219,6 +219,19 @@ Tables and Task Hub remain later projections over the same graph.
     `+New chat` may produce only Interaction records, while `+New code`
     produces Interaction plus a Code-owned `Task` without forcing Work
     `Project` / `WorkItem` anchors.
+42. Work Graph shall include every Core task in the graph projection, not only
+    Work-bound tasks. Each task summary shall expose a task product binding:
+    `work`, `code`, `chat`, or `unbound`.
+43. System Map, Cockpit, and the Work Tasks list shall render task product
+    binding as product attribution, not as a new canonical record family.
+44. Tasks with no resolved Project / WorkItem lineage shall appear under a
+    `No project` grouping. The grouping may be sub-grouped or filtered by task
+    product binding, for example `No project / code`, `No project / chat`, and
+    `No project / unbound`.
+45. Work shall not auto-create fallback `Project` or `WorkItem` records for
+    Code-bound, Chat-bound, or unbound tasks solely to remove them from the
+    `No project` grouping. An inbox-style project may be created only by an
+    explicit Work entry or Work object creation flow.
 
 ### Producer Slot Contract
 
@@ -261,6 +274,13 @@ Tables and Task Hub remain later projections over the same graph.
     anchors. Such records still project through Work Graph when queried, but
     they must not be diagnosed as malformed Work entries unless they explicitly
     claim Work ownership.
+14. Chat entry or planning producers may write Chat-bound tasks without Work
+    Planning anchors. Such records project as `productBinding = chat` and use
+    the same `No project` home until explicitly promoted into Work.
+15. Unbound tasks shall project as `productBinding = unbound` and use the `No
+    project` home until a later producer writes product attribution or Planning
+    linkage. They should be visible as cleanup / triage candidates, not silently
+    discarded.
 
 #### Minimum Anchor Sets
 
@@ -283,9 +303,12 @@ Tables and Task Hub remain later projections over the same graph.
   - Slot minimum: record id.
   - Diagnostic minimum: present `parentTaskId` and `conversationId` must
     resolve. If a WorkItem points at this task, that `WorkItem.taskId` must
-    resolve back to this task.
+    resolve back to this task. If the task is Work-bound, the projection should
+    surface a missing-planning-bridge diagnostic when no WorkItem links it.
+    Code-bound, Chat-bound, and unbound tasks without Project / WorkItem
+    lineage are not broken; they belong in `No project`.
   - Optional context: `ownerActorId`, `assignedActorIds`,
-    `orchestratorActorId`, planning metadata.
+    `orchestratorActorId`, planning metadata, task product binding.
 - **Mission / Execution**
   - Slot minimum: record id.
   - Diagnostic minimum: present `managedWorkId`, `conversationId`,
