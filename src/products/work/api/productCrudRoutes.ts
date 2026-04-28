@@ -23,6 +23,7 @@ import type {
 } from '../../../core/types.js';
 import { handleCoreError } from '../../../core/api/shared.js';
 import {
+  WORK_API_GRAPH_PATH,
   WORK_API_PROJECT_DETAIL_PATTERN,
   WORK_API_PROJECTS_PATH,
   WORK_API_RAW_PROJECTS_PATH,
@@ -33,6 +34,7 @@ import {
   WORK_API_WORK_ITEM_DETAIL_PATTERN,
   WORK_API_WORK_ITEMS_PATH,
 } from '../shared/apiPaths.js';
+import { buildWorkGraphProjection } from './workGraphProjection.js';
 import type { WorkApiDependencies } from './index.js';
 
 const PROJECT_STATUSES: ReadonlyArray<CoreProjectStatus> = [
@@ -101,6 +103,13 @@ interface CreateTaskPayload {
 export async function routeWorkProductCrudApi(
   context: RouteContext<WorkApiDependencies>,
 ): Promise<boolean> {
+  // GET /api/work/graph — full WorkGraphProjection (System Map / Cockpit /
+  // Broken Links / detail page consumer).
+  if (context.method === 'GET' && context.url.pathname === WORK_API_GRAPH_PATH) {
+    const core = await context.dependencies.coreStore.readCore();
+    sendJson(context.response, 200, buildWorkGraphProjection(core));
+    return true;
+  }
   // GET /api/work/raw/{projects,work-items,tasks} — full record arrays
   if (context.method === 'GET') {
     if (context.url.pathname === WORK_API_RAW_PROJECTS_PATH) {
