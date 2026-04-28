@@ -2,10 +2,8 @@ import type { AppConfig } from '../../../config.js';
 import type { AssistantPresetRecord, GuideCatRecord } from '../../../core/types.js';
 import type { RuntimeStatusSummary } from '../../../platform/runtime/client.js';
 import type { GuideCatAssistSurfaceReadModel } from '../../../shared/guideCatAssist.js';
-import { BUILD_CHANNEL } from '../../../shared/buildChannel.js';
 import {
   EMPTY_PLATFORM_FEATURE_FLAGS,
-  type PlatformBuildChannel,
   type PlatformDesktopPreferences,
   type PlatformFeatureFlags,
   type PlatformLobbyCatSummary,
@@ -78,7 +76,6 @@ export function createAppShell(
     lobbyGuideCatAssist?: GuideCatAssistSurfaceReadModel | null;
     newChatAssist?: AppShellPayload['chat']['newChatAssist'];
     codeGuideCatAssist?: GuideCatAssistSurfaceReadModel | null;
-    buildChannel?: PlatformBuildChannel;
     featureFlags?: PlatformFeatureFlags;
     scopeId?: string;
   },
@@ -150,7 +147,6 @@ export function createAppShell(
       port: config.port,
     }),
     bootstrapAttemptId: setup?.bootstrapAttemptId ?? null,
-    buildChannel: setup?.buildChannel ?? BUILD_CHANNEL,
     featureFlags: setup?.featureFlags ?? EMPTY_PLATFORM_FEATURE_FLAGS,
     scopeId: setup?.scopeId ?? '',
     setupCompleteAt: resolvedSetupCompleteAt,

@@ -84,11 +84,6 @@ import {
 } from './platformShellUpdate.js';
 import { checkForDesktopUpdates, createDefaultDesktopUpdateState } from './update.js';
 import {
-  applyDesktopFeatureFlagWrite,
-  type DesktopFeatureFlagBuildChannel,
-} from './featureFlagWriter.js';
-import { resolvePlatformFeatureFlagsPathFromChatState } from './platformPaths.js';
-import {
   applyDesktopWindowChrome,
   resolveDesktopWindowChromeOptions,
 } from './windowChrome.js';
@@ -1510,30 +1505,6 @@ async function main(): Promise<void> {
   });
   ipcMain.handle('cats-host:resume-setup', async () => {
     return await resumeSetupAction();
-  });
-  ipcMain.handle('cats-host:set-feature-flag', async (_event, payload: unknown) => {
-    if (
-      typeof payload !== 'object'
-      || payload === null
-      || typeof (payload as { name?: unknown }).name !== 'string'
-      || typeof (payload as { value?: unknown }).value !== 'boolean'
-    ) {
-      throw new Error('Invalid feature-flag write payload.');
-    }
-    if (!hostConfig) {
-      throw new Error('Desktop host config is not initialized.');
-    }
-    const buildChannel: DesktopFeatureFlagBuildChannel = app.isPackaged
-      ? 'production'
-      : 'development';
-    return await applyDesktopFeatureFlagWrite({
-      filePath: resolvePlatformFeatureFlagsPathFromChatState(
-        hostConfig.paths.appStatePath,
-      ),
-      name: (payload as { name: string }).name,
-      value: (payload as { value: boolean }).value,
-      buildChannel,
-    });
   });
   ipcMain.handle(DESKTOP_SCREENSHOT_IPC_CHANNEL, async (event, payload: unknown) => {
     assertMainWindowScreenshotIpcSender(event, mainWindow);

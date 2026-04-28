@@ -27,8 +27,6 @@ import { readPlatformPreferences } from '../../../shared/platformPreferences.js'
 import { normalizePlatformSurface } from '../../../shared/platformSurfaces.js';
 import { createExplicitProviderModelSelection } from '../../../shared/providerSelection.js';
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
-import { BUILD_CHANNEL } from '../../../shared/buildChannel.js';
-import { coerceFeatureFlagsForRead } from '../../../shared/featureFlags.js';
 import { readPersistedPlatformFeatureFlags } from '../../../shared/featureFlagsStore.js';
 import { resolvePlatformFeatureFlagsPathFromChatState } from '../../../shared/platformPaths.js';
 import {
@@ -306,17 +304,9 @@ export async function buildAppShellPayload(
   const bootstrapAttemptId = await readDesktopHostBootstrapAttemptId(
     dependencies.config.desktopHostStatePath,
   );
-  const persistedFeatureFlags = await readPersistedPlatformFeatureFlags(
+  const featureFlags = await readPersistedPlatformFeatureFlags(
     resolvePlatformFeatureFlagsPathFromChatState(dependencies.config.chatStatePath),
   );
-  // PLAN-077 Slice 8: every read of the persisted flags goes through the
-  // production guard before reaching the renderer. A production build
-  // observes `false` for any locked entry, regardless of what is stored
-  // on disk.
-  const featureFlags = coerceFeatureFlagsForRead({
-    raw: persistedFeatureFlags,
-    buildChannel: BUILD_CHANNEL,
-  });
   // PLAN-077 Slice 17: ensure the platform-host product data scope id
   // exists, generating a fresh UUIDv4 on first launch. The same id flows
   // to renderers via the app-shell envelope and into the

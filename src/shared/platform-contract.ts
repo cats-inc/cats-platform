@@ -106,18 +106,11 @@ export interface PlatformOwnerContext {
   assistantPresets?: AssistantPresetRecord[];
 }
 
-export const PLATFORM_BUILD_CHANNEL_VALUES = ['development', 'production'] as const;
-
-export type PlatformBuildChannel = typeof PLATFORM_BUILD_CHANNEL_VALUES[number];
-
 /**
  * Read-only feature-flag map carried on the platform host envelope. Renderers
  * consume this through the app-shell payload to gate UI behavior at runtime.
- *
- * Values are coerced by the host-owned read path (see PLAN-077 Phase 1) — a
- * `production` build observes `false` for any flag whose registry entry has
- * `productionUnlockState === 'locked'`, regardless of what is persisted on
- * disk. Renderers therefore always read the post-coercion value here.
+ * Cats has never shipped publicly, so there is no production-vs-development
+ * coercion: renderers read the persisted boolean verbatim.
  */
 export type PlatformFeatureFlags = Readonly<Record<string, boolean>>;
 
@@ -133,18 +126,7 @@ export interface PlatformHostEnvelope extends PlatformOwnerContext {
   runtimeSetup: RuntimeSetupSummary;
   metadata: PlatformResponseMetadata;
   bootstrapAttemptId: string | null;
-  /**
-   * Build channel baked at build time, not derived from runtime input. The
-   * Phase 1 release-flag mechanism in PLAN-077 relies on this being a
-   * compile-time constant the host has already resolved, so renderer or
-   * persisted flag state cannot defeat the production guard.
-   */
-  buildChannel: PlatformBuildChannel;
-  /**
-   * Host-owned feature flag map. Defaults to {} until Slice 4 wires
-   * persistence; Slice 5+ gates the companion-profile IA on
-   * `featureFlags['cats.chat.companionProfileIA']`.
-   */
+  /** Host-owned feature flag map. */
   featureFlags: PlatformFeatureFlags;
   /**
    * SPEC-086 platform-host product data scope id. UUIDv4 generated once

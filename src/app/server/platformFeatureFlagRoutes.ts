@@ -1,9 +1,5 @@
 import { readJsonBody, sendJson, sendMethodNotAllowed, type RouteContext } from '../../shared/http.js';
-import { BUILD_CHANNEL } from '../../shared/buildChannel.js';
-import {
-  coerceFeatureFlagsForRead,
-  setFeatureFlag,
-} from '../../shared/featureFlags.js';
+import { setFeatureFlag } from '../../shared/featureFlags.js';
 import {
   readPersistedPlatformFeatureFlags,
   writePersistedPlatformFeatureFlags,
@@ -13,20 +9,6 @@ import type { ChatApiDependencies } from '../../products/chat/api/routeSupport.j
 
 type PlatformFeatureFlagContext = RouteContext<ChatApiDependencies>;
 
-/**
- * Local-first desktop ownership signal. The desktop main process sets
- * `CATS_PLATFORM_HOST_OWNS_FEATURE_FLAGS=1` on the sidecar's environment
- * so the sidecar's HTTP writer here returns 410 Gone with a pointer back
- * to the desktop IPC writer; renderers in packaged Electron must call
- * the desktop preload bridge instead.
- *
- * In standalone server mode this env var is unset and the sidecar (which
- * is the only owner) keeps writing directly.
- */
-function isPlatformHostOwnsFeatureFlags(): boolean {
-  return process.env.CATS_PLATFORM_HOST_OWNS_FEATURE_FLAGS === '1';
-}
-
 interface FeatureFlagWriteBody {
   name?: unknown;
   value?: unknown;
@@ -35,18 +17,6 @@ interface FeatureFlagWriteBody {
 async function handleFeatureFlagWrite(
   context: PlatformFeatureFlagContext,
 ): Promise<void> {
-  if (isPlatformHostOwnsFeatureFlags()) {
-    sendJson(context.response, 410, {
-      error: {
-        code: 'feature_flag_writer_disabled',
-        message:
-          'Feature flag writes are owned by the desktop host process. '
-          + 'Use the desktop preload bridge or `npm run dev:toggle-flag` '
-          + '(local dev) instead of this HTTP route.',
-      },
-    });
-    return;
-  }
   let body: FeatureFlagWriteBody;
   try {
     body = await readJsonBody<FeatureFlagWriteBody>(context.request);
@@ -81,7 +51,6 @@ async function handleFeatureFlagWrite(
   const result = setFeatureFlag({
     name: body.name,
     value: body.value,
-    buildChannel: BUILD_CHANNEL,
     current,
   });
 
@@ -92,31 +61,14 @@ async function handleFeatureFlagWrite(
     return;
   }
 
-  if (result.status === 'feature_flag_blocked') {
-    sendJson(context.response, 409, {
-      error: {
-        code: 'feature_flag_blocked',
-        message: result.reason,
-        ...(result.unlockRequirement
-          ? { unlockRequirement: result.unlockRequirement }
-          : {}),
-      },
-    });
-    return;
-  }
-
   const next = { ...current, [body.name]: result.nextValue };
   await writePersistedPlatformFeatureFlags(flagsPath, next);
-  const coerced = coerceFeatureFlagsForRead({
-    raw: next,
-    buildChannel: BUILD_CHANNEL,
-  });
 
   sendJson(context.response, 200, {
     name: body.name,
     previousValue: result.previousValue,
     nextValue: result.nextValue,
-    featureFlags: coerced,
+    featureFlags: next,
   });
 }
 

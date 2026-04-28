@@ -1,12 +1,8 @@
 #!/usr/bin/env -S npx tsx
 
 /**
- * PLAN-077 Phase 1 developer flag-toggle entry point.
- *
- * Routes through the same `setFeatureFlag` contract the HTTP writer
- * uses, so a `production` build still rejects locked-entry `true`
- * writes (`feature_flag_blocked: phase2_profile_read_model_guards`).
- * Persists via the same atomic write helper.
+ * Developer feature-flag toggle entry point. Routes through the same
+ * `setFeatureFlag` + persistence helpers the HTTP writer uses.
  *
  * Usage:
  *   npm run dev:toggle-flag -- <flag-name> <true|false> [--chat-state <path>]
@@ -22,7 +18,6 @@ import process from 'node:process';
 import { resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { BUILD_CHANNEL } from '../src/shared/buildChannel.js';
 import { setFeatureFlag } from '../src/shared/featureFlags.js';
 import {
   readPersistedPlatformFeatureFlags,
@@ -101,7 +96,6 @@ async function main(): Promise<void> {
   const result = setFeatureFlag({
     name: parsed.name,
     value,
-    buildChannel: BUILD_CHANNEL,
     current,
   });
 
@@ -109,21 +103,13 @@ async function main(): Promise<void> {
     process.stderr.write(`unknown_flag: ${result.name}\n`);
     process.exit(2);
   }
-  if (result.status === 'feature_flag_blocked') {
-    process.stderr.write(`${result.reason}\n`);
-    process.stderr.write(
-      `(buildChannel=${BUILD_CHANNEL}; rebuild without `
-        + `production bake or wait for the unlock condition.)\n`,
-    );
-    process.exit(3);
-  }
 
   const next = { ...current, [parsed.name]: result.nextValue };
   await writePersistedPlatformFeatureFlags(flagsPath, next);
 
   process.stdout.write(
     `ok: ${parsed.name} ${result.previousValue ?? 'null'} -> ${result.nextValue} `
-      + `(buildChannel=${BUILD_CHANNEL}, persisted at ${flagsPath})\n`,
+      + `(persisted at ${flagsPath})\n`,
   );
 }
 

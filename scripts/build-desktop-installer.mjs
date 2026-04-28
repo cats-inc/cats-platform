@@ -6,8 +6,6 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawn } from 'node:child_process';
 
-import { bakeBuildChannel } from './shared/bake-build-channel.mjs';
-
 const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const PROJECT_ROOT = resolve(dirname(SCRIPT_PATH), '..');
 const RUNTIME_ROOT = resolve(PROJECT_ROOT, '..', 'cats-runtime');
@@ -311,42 +309,26 @@ async function main() {
   const sidecarBuildEnv = {
     CATS_DESKTOP_SIDECAR_LAYOUT: parsed.sidecarLayout,
   };
-  // PLAN-077 Slice 7: bake `production` into BUILD_CHANNEL before any
-  // compile step so the packaged Electron host and the bundled
-  // app-sidecar server both ship with the production constant. Restore
-  // `development` in finally so a failed build does not leave the source
-  // tree in production-mode for subsequent dev runs.
-  const bakeResult = await bakeBuildChannel('production');
-  process.stdout.write(
-    `[build-desktop-installer] BUILD_CHANNEL: ${bakeResult.previousChannel} -> production\n`,
+  await runCommand('npm', ['run', 'build'], RUNTIME_ROOT, sidecarBuildEnv);
+  await runCommand('npm', ['run', 'build'], PROJECT_ROOT, sidecarBuildEnv);
+  await buildNativeVoiceHelpers(resolvedTarget, parsed.arch);
+  await runCommand(
+    'node',
+    [
+      'scripts/package-desktop.mjs',
+      '--platform',
+      resolvedTarget,
+      '--sidecar-layout',
+      parsed.sidecarLayout,
+    ],
+    PROJECT_ROOT,
+    sidecarBuildEnv,
   );
-  try {
-    await runCommand('npm', ['run', 'build'], RUNTIME_ROOT, sidecarBuildEnv);
-    await runCommand('npm', ['run', 'build'], PROJECT_ROOT, sidecarBuildEnv);
-    await buildNativeVoiceHelpers(resolvedTarget, parsed.arch);
-    await runCommand(
-      'node',
-      [
-        'scripts/package-desktop.mjs',
-        '--platform',
-        resolvedTarget,
-        '--sidecar-layout',
-        parsed.sidecarLayout,
-      ],
-      PROJECT_ROOT,
-      sidecarBuildEnv,
-    );
-    await runCommand(
-      'npx',
-      electronBuilderArgs(resolvedTarget, parsed.arch, parsed.format),
-      PROJECT_ROOT,
-    );
-  } finally {
-    await bakeBuildChannel(bakeResult.previousChannel);
-    process.stdout.write(
-      `[build-desktop-installer] BUILD_CHANNEL restored to ${bakeResult.previousChannel}\n`,
-    );
-  }
+  await runCommand(
+    'npx',
+    electronBuilderArgs(resolvedTarget, parsed.arch, parsed.format),
+    PROJECT_ROOT,
+  );
 }
 
 if (resolve(process.argv[1] ?? '') === SCRIPT_PATH) {

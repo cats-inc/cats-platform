@@ -166,25 +166,6 @@ const bridge = {
   resumeSetup(): Promise<DesktopSetupSnapshot> {
     return ipcRenderer.invoke('cats-host:resume-setup');
   },
-  setFeatureFlag(
-    name: string,
-    value: boolean,
-  ): Promise<{
-    status: 'ok' | 'unknown_flag' | 'feature_flag_blocked';
-    name?: string;
-    previousValue?: boolean | null;
-    nextValue?: boolean;
-    reason?: string;
-    unlockRequirement?: string;
-  }> {
-    if (typeof name !== 'string' || name.trim().length === 0) {
-      throw new Error('Invalid feature-flag name.');
-    }
-    if (typeof value !== 'boolean') {
-      throw new Error('Invalid feature-flag value.');
-    }
-    return ipcRenderer.invoke('cats-host:set-feature-flag', { name, value });
-  },
   captureScreenshotRegion(): Promise<DesktopScreenshotCaptureResult> {
     return ipcRenderer.invoke('cats-host:capture-screenshot-region', {
       source: 'composer',

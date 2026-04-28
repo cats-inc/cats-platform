@@ -1,5 +1,4 @@
 import { readJsonBody, sendJson, sendMethodNotAllowed } from '../../shared/http.js';
-import { BUILD_CHANNEL } from '../../shared/buildChannel.js';
 import {
   EMPTY_PLATFORM_FEATURE_FLAGS,
   type PlatformSetupCompleteInput,
@@ -257,7 +256,6 @@ async function handlePlatformSetupComplete(
           port: context.dependencies.config.port,
         }),
         bootstrapAttemptId: attemptId,
-        buildChannel: BUILD_CHANNEL,
         featureFlags: EMPTY_PLATFORM_FEATURE_FLAGS,
         scopeId: '',
         setupCompleteAt: core.setupCompleteAt,

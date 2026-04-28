@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import type { AppShellPayload, ChatCat } from '../../../api/contracts.js';
 import {
   COMPANION_PROFILE_IA_FLAG,
-  readCoercedFeatureFlag,
+  readFeatureFlag,
 } from '../../../../../shared/featureFlags.js';
 import {
   LEGACY_COMPANION_SIDE_PANEL_SECTION_IDS,
@@ -59,12 +59,11 @@ export function CompanionWorkspace({
 
   const companionProfileIaEnabled = useMemo(
     () =>
-      readCoercedFeatureFlag({
+      readFeatureFlag({
         name: COMPANION_PROFILE_IA_FLAG,
         raw: payload.featureFlags,
-        buildChannel: payload.buildChannel,
       }),
-    [payload.featureFlags, payload.buildChannel],
+    [payload.featureFlags],
   );
 
   const profile = useCompanionProfile({
