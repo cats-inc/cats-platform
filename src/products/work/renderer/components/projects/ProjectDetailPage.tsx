@@ -41,9 +41,8 @@ export function ProjectDetailPage(): JSX.Element {
       (o) => o.kind === "activity" && o.linkedProjectId === project.id,
     )
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  const conversation = project.linkedConversationId
-    ? indexes.objectsById.get(project.linkedConversationId)
-    : undefined;
+  // Conversation title resolves through projection's
+  // `linkedConversationTitle` now — no per-page indexes lookup.
 
   return (
     <div className="projectDetail">
@@ -135,12 +134,13 @@ export function ProjectDetailPage(): JSX.Element {
             <dd>{project.ownerRole ?? <em>(not assigned)</em>}</dd>
             <dt>Next action</dt>
             <dd>{project.nextAction ?? <em>(none recorded)</em>}</dd>
-            {conversation ? (
+            {project.linkedConversationId ? (
               <>
                 <dt>Conversation</dt>
                 <dd>
                   <span className="projectDetail__convoTitle">
-                    {conversation.title}
+                    {project.linkedConversationTitle ??
+                      project.linkedConversationId}
                   </span>
                 </dd>
               </>
