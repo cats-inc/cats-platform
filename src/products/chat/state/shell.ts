@@ -2,6 +2,7 @@ import type { AppConfig } from '../../../config.js';
 import type { AssistantPresetRecord, GuideCatRecord } from '../../../core/types.js';
 import type { RuntimeStatusSummary } from '../../../platform/runtime/client.js';
 import type { GuideCatAssistSurfaceReadModel } from '../../../shared/guideCatAssist.js';
+import { BUILD_CHANNEL } from '../../../shared/buildChannel.js';
 import {
   EMPTY_PLATFORM_FEATURE_FLAGS,
   type PlatformBuildChannel,
@@ -148,7 +149,7 @@ export function createAppShell(
       port: config.port,
     }),
     bootstrapAttemptId: setup?.bootstrapAttemptId ?? null,
-    buildChannel: setup?.buildChannel ?? 'development',
+    buildChannel: setup?.buildChannel ?? BUILD_CHANNEL,
     featureFlags: setup?.featureFlags ?? EMPTY_PLATFORM_FEATURE_FLAGS,
     setupCompleteAt: resolvedSetupCompleteAt,
     ownerDisplayName: setup?.ownerDisplayName ?? 'Owner',
