@@ -3,6 +3,7 @@ export type {
   WorkTemplateApprovalExpectation,
   WorkTemplateRole,
   WorkTemplateTaskBlueprint,
+  WorkTeamTemplate,
 } from './types.js';
 
 import type { WorkTemplate } from './types.js';

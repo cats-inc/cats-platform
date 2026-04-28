@@ -33,3 +33,5 @@ export interface WorkTemplate {
   taskBlueprints: WorkTemplateTaskBlueprint[];
   approval: WorkTemplateApprovalExpectation;
 }
+
+export type WorkTeamTemplate = WorkTemplate;

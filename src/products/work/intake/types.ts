@@ -19,6 +19,8 @@ export interface WorkIntakeInput {
   templateId: string;
 }
 
+export type WorkIntakeDraft = WorkIntakeInput;
+
 export interface WorkIntakePlanResult {
   project: CoreProjectRecord;
   workItem: CoreWorkItemRecord;
@@ -26,6 +28,8 @@ export interface WorkIntakePlanResult {
   activities: CoreActivityRecord[];
   template: WorkTemplate;
 }
+
+export type GeneratedWorkPlan = WorkIntakePlanResult;
 
 export interface GenerateWorkIntakePlanResult {
   core: CatsCoreState;
