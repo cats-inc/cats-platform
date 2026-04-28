@@ -5,7 +5,9 @@ import { BootShell } from "./chatUtils";
 import {
   WORK_BROKEN_LINKS_PATH,
   WORK_COCKPIT_PATH,
+  WORK_MISSIONS_PATH,
   WORK_PROJECTS_PATH,
+  WORK_RUNS_PATH,
   WORK_SYSTEM_MAP_PATH,
   WORK_TASKS_PATH,
   WORK_WAR_ROOM_PATH,
@@ -26,6 +28,8 @@ export default createWorkspaceProductApp({
       onOpenProjects={() => props.navigate(WORK_PROJECTS_PATH)}
       onOpenProject={(projectId) => props.navigate(`${WORK_PROJECTS_PATH}/${projectId}`)}
       onOpenTasks={() => props.navigate(WORK_TASKS_PATH)}
+      onOpenRuns={() => props.navigate(WORK_RUNS_PATH)}
+      onOpenMissions={() => props.navigate(WORK_MISSIONS_PATH)}
       onOpenWorkItems={() => props.navigate(WORK_WORK_ITEMS_PATH)}
       onOpenSystemMap={() => props.navigate(WORK_SYSTEM_MAP_PATH)}
       onOpenCockpit={() => props.navigate(WORK_COCKPIT_PATH)}

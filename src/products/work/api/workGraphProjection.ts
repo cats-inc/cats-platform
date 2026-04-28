@@ -301,6 +301,8 @@ function runToSummary(r: CoreRunRecord): WorkGraphObjectSummary {
     linkedTaskId: r.taskId,
     linkedRunId: r.parentRunId,
     updatedAt: r.updatedAt,
+    startedAt: r.startedAt,
+    completedAt: r.completedAt,
   };
 }
 

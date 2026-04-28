@@ -36,7 +36,9 @@ import {
   WORK_ROUTE_PREFIX,
   isWorkBrokenLinksPath,
   isWorkCockpitPath,
+  isWorkMissionsPath,
   isWorkProjectsPath,
+  isWorkRunsPath,
   isWorkSystemMapPath,
   isWorkTasksPath,
   isWorkWarRoomPath,
@@ -61,6 +63,8 @@ export interface SidebarProps {
   onOpenProjects?: () => void;
   onOpenProject?: (projectId: string) => void;
   onOpenTasks?: () => void;
+  onOpenRuns?: () => void;
+  onOpenMissions?: () => void;
   onOpenWorkItems?: () => void;
   onOpenSystemMap?: () => void;
   onOpenCockpit?: () => void;
@@ -180,35 +184,86 @@ function createExtraActionGroups(
     });
   }
 
-  if (props.onOpenTasks) {
+  if (props.onOpenTasks || props.onOpenRuns || props.onOpenMissions) {
+    const executionItems: ConversationSidebarAction[] = [];
+    if (props.onOpenTasks) {
+      executionItems.push({
+        key: 'tasks',
+        label: 'Tasks',
+        onClick: props.onOpenTasks,
+        active: isWorkTasksPath(currentPath) && !isWorkRunsPath(currentPath),
+        icon: (
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="2.5" y="2.5" width="11" height="11" rx="2" />
+            <path d="M5 5.5h6" />
+            <path d="M5 8h6" />
+            <path d="M5 10.5h4" />
+          </svg>
+        ),
+      });
+    }
+    if (props.onOpenRuns) {
+      executionItems.push({
+        key: 'runs',
+        label: 'Runs',
+        onClick: props.onOpenRuns,
+        active: isWorkRunsPath(currentPath),
+        icon: (
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polygon points="5,3 12.5,8 5,13" />
+          </svg>
+        ),
+      });
+    }
+    if (props.onOpenMissions) {
+      executionItems.push({
+        key: 'missions',
+        label: 'Missions',
+        onClick: props.onOpenMissions,
+        active: isWorkMissionsPath(currentPath),
+        icon: (
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="8" cy="8" r="5" />
+            <circle cx="8" cy="8" r="2" />
+            <path d="M8 1.5v2" />
+            <path d="M8 12.5v2" />
+            <path d="M1.5 8h2" />
+            <path d="M12.5 8h2" />
+          </svg>
+        ),
+      });
+    }
     groups.push({
-      key: 'tasks',
+      key: 'execution',
       ariaLabel: 'Execution',
-      items: [
-        {
-          key: 'tasks',
-          label: 'Tasks',
-          onClick: props.onOpenTasks,
-          active: isWorkTasksPath(currentPath),
-          icon: (
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 16 16"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect x="2.5" y="2.5" width="11" height="11" rx="2" />
-              <path d="M5 5.5h6" />
-              <path d="M5 8h6" />
-              <path d="M5 10.5h4" />
-            </svg>
-          ),
-        },
-      ],
+      items: executionItems,
     });
   }
 

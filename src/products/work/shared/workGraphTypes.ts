@@ -208,6 +208,16 @@ export interface WorkGraphObjectSummary {
    * out at the API boundary.
    */
   productBinding?: WorkTaskProductBinding;
+  /**
+   * Run-only: lifecycle timestamps. Set on `kind === 'run'` summaries;
+   * undefined elsewhere. `startedAt` is null while queued, set when
+   * the run picks up. `completedAt` is null while running / blocked,
+   * set when the run reaches a terminal status (completed / failed /
+   * cancelled). Lets Run drill-downs render duration without a
+   * second fetch.
+   */
+  startedAt?: string | null;
+  completedAt?: string | null;
 }
 
 export interface WorkGraphEvidenceAttachment {

@@ -9,10 +9,14 @@ import {
   KIND_LABEL,
 } from "../topdown/shared";
 import type { WorkGraphObjectSummary } from "../topdown/types";
+import { useMissions, type MissionItem } from "../../state/missionsStore";
 import { usePinnedProjects } from "../../state/pinnedProjectsStore";
 import { useWorkGraph } from "../../state/workGraphStore";
 import { useWorkItems } from "../../state/workItemsStore";
-import { WORK_PROJECTS_PATH } from "../../workPaths.js";
+import {
+  WORK_PROJECTS_PATH,
+  buildWorkMissionPath,
+} from "../../workPaths.js";
 import "./work-items.css";
 
 export function WorkItemDetailPage(): JSX.Element {
@@ -21,6 +25,7 @@ export function WorkItemDetailPage(): JSX.Element {
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
   const { allWorkItems, deletedIds } = useWorkItems();
   const { allProjects } = usePinnedProjects();
+  const { allMissions } = useMissions();
 
   const workItem = workItemId
     ? allWorkItems.find((wi) => wi.id === workItemId)
@@ -170,6 +175,12 @@ export function WorkItemDetailPage(): JSX.Element {
           emptyLabel="No tasks under this work item yet."
         />
 
+        <MissionsSection
+          missions={allMissions.filter(
+            (m) => m.linkedWorkItemId === workItem.id,
+          )}
+        />
+
         <LinkageSection
           selfRef={{ recordFamily: "work_item", recordId: workItem.sourceRecordId }}
           graph={graph}
@@ -258,6 +269,45 @@ function ItemsSection({
                   {item.ownerRole}
                 </span>
               ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+interface MissionsSectionProps {
+  missions: readonly MissionItem[];
+}
+
+function MissionsSection({ missions }: MissionsSectionProps): JSX.Element {
+  return (
+    <section className="workItemDetail__section">
+      <header className="workItemDetail__sectionHeader">
+        <h2>Missions</h2>
+        <span className="workItemDetail__sectionCount">{missions.length}</span>
+      </header>
+      {missions.length === 0 ? (
+        <p className="workItemDetail__empty">
+          No missions for this work item.
+        </p>
+      ) : (
+        <ul className="workItemDetail__items">
+          {missions.map((mission) => (
+            <li key={mission.id} className="workItemDetail__item">
+              <Link
+                to={buildWorkMissionPath(mission.id)}
+                className="workItemDetail__itemTitle"
+              >
+                {mission.title}
+              </Link>
+              <span className="workItemDetail__itemStatus">
+                {mission.status.replace(/_/g, " ")}
+              </span>
+              <span className="workItemDetail__itemOwner">
+                {formatRelative(mission.updatedAt)}
+              </span>
             </li>
           ))}
         </ul>

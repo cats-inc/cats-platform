@@ -1,0 +1,504 @@
+/* =========================================================
+ * Work — Runs (list + drill-down detail)
+ *
+ * Visual idiom mirrors tasks.css; specific bits added for the
+ * sub-run tree and trace timeline. Reuses .projectsList__dot--*
+ * skins from projects.css (loaded eagerly via Sidebar.tsx).
+ * ========================================================= */
+
+.runsList,
+.runDetail {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+  min-height: 0;
+  background: var(--canvas-bg);
+  color: var(--text);
+  position: relative;
+}
+
+main.canvas:has(> .runsList),
+main.canvas:has(> .runDetail) {
+  grid-template-columns: minmax(0, 1fr);
+  scrollbar-gutter: auto;
+  justify-items: stretch;
+}
+
+/* ------------- List page ------------- */
+
+.runsListTopBar__start {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.runsListTopBar__title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.runsListTopBar__count {
+  font-size: 0.74rem;
+  color: var(--muted);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  padding: 1px 10px;
+  border-radius: 999px;
+  font-weight: 500;
+}
+
+.runsListTopBar__lede {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-align: center;
+  max-width: 640px;
+}
+
+.runsList__main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 28px 28px;
+}
+
+.runsList__empty {
+  margin: 30px auto 0;
+  max-width: 480px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.runsList__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.runsList__row {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.runsList__rowLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.runsList__rowLink:hover {
+  background: var(--canvas-bg);
+}
+
+.runsList__rowMain {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  flex: 1;
+}
+
+.runsList__rowText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.runsList__rowTitle {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runsList__rowSummary {
+  font-size: 0.76rem;
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+.runsList__rowMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.runsList__chip {
+  font-size: 0.7rem;
+  color: var(--muted);
+  background: var(--canvas-bg);
+  border: 1px solid var(--border);
+  padding: 2px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.runsList__chip--parentRun {
+  border-style: dashed;
+}
+
+.runsList__metric--muted {
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+
+.runsList__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--muted);
+  flex-shrink: 0;
+}
+
+.runsList__dot--queued { background: #b0a99e; }
+.runsList__dot--running { background: var(--accent); }
+.runsList__dot--blocked { background: #c08038; }
+.runsList__dot--completed { background: #389c60; }
+.runsList__dot--failed { background: #c0382b; }
+.runsList__dot--cancelled { background: #908070; }
+
+.runsList__statusPill,
+.runDetail__statusPill {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--canvas-bg);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.runsList__statusPill--running,
+.runDetail__statusPill--running {
+  background: rgba(74, 108, 247, 0.14);
+  color: var(--accent);
+  border-color: rgba(74, 108, 247, 0.3);
+}
+
+.runsList__statusPill--completed,
+.runDetail__statusPill--completed {
+  background: rgba(56, 156, 96, 0.14);
+  color: #389c60;
+  border-color: rgba(56, 156, 96, 0.3);
+}
+
+.runsList__statusPill--failed,
+.runDetail__statusPill--failed,
+.runsList__statusPill--cancelled,
+.runDetail__statusPill--cancelled {
+  background: rgba(192, 56, 43, 0.14);
+  color: #c0382b;
+  border-color: rgba(192, 56, 43, 0.3);
+}
+
+.runsList__statusPill--blocked,
+.runDetail__statusPill--blocked {
+  background: rgba(192, 128, 56, 0.14);
+  color: #c08038;
+  border-color: rgba(192, 128, 56, 0.3);
+}
+
+/* ------------- Detail page ------------- */
+
+.runDetailTopBar__start {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.runDetailTopBar__back,
+.runDetailTopBar__crumb {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.runDetailTopBar__back:hover,
+.runDetailTopBar__crumb:hover {
+  color: var(--text);
+}
+
+.runDetailTopBar__sep {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.runDetailTopBar__title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  flex-basis: 100%;
+}
+
+.runDetail__main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 28px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.runDetail__section {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 18px;
+}
+
+.runDetail__sectionHeading {
+  margin: 0 0 12px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.runDetail__count {
+  font-size: 0.74rem;
+  color: var(--muted);
+  background: var(--canvas-bg);
+  border: 1px solid var(--border);
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-weight: 500;
+}
+
+.runDetail__empty {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.runDetail__error {
+  margin: 0;
+  color: #c0382b;
+  font-size: 0.82rem;
+}
+
+.runDetail__summary {
+  margin: 0;
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 14px;
+  font-size: 0.84rem;
+}
+
+.runDetail__summaryRow {
+  display: contents;
+}
+
+.runDetail__summaryRow > dt {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.runDetail__summaryRow > dd {
+  margin: 0;
+  color: var(--text);
+}
+
+.runDetail__summaryBody {
+  margin: 12px 0 0;
+  font-size: 0.82rem;
+  color: var(--text);
+  line-height: 1.45;
+}
+
+.runDetail__crumbLink {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.runDetail__crumbLink:hover {
+  text-decoration: underline;
+}
+
+/* ------------- Sub-run tree ------------- */
+
+.runDetail__subTree {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.runDetail__subTree--nested {
+  margin-left: 18px;
+  padding-left: 10px;
+  border-left: 1px dashed var(--border);
+  margin-top: 4px;
+}
+
+.runDetail__subTreeNode {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.runDetail__subTreeLink {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--canvas-bg);
+  text-decoration: none;
+  color: inherit;
+  font-size: 0.82rem;
+}
+
+.runDetail__subTreeLink:hover {
+  background: var(--panel);
+}
+
+.runDetail__subTreeDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.runDetail__subTreeDot--queued { background: #b0a99e; }
+.runDetail__subTreeDot--running { background: var(--accent); }
+.runDetail__subTreeDot--blocked { background: #c08038; }
+.runDetail__subTreeDot--completed { background: #389c60; }
+.runDetail__subTreeDot--failed { background: #c0382b; }
+.runDetail__subTreeDot--cancelled { background: #908070; }
+
+.runDetail__subTreeTitle {
+  flex: 1;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.runDetail__subTreeStatus {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.runDetail__subTreeStatus--running { color: var(--accent); }
+.runDetail__subTreeStatus--failed,
+.runDetail__subTreeStatus--cancelled { color: #c0382b; }
+.runDetail__subTreeStatus--completed { color: #389c60; }
+.runDetail__subTreeStatus--blocked { color: #c08038; }
+
+.runDetail__subTreeTime {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+
+/* ------------- Trace timeline ------------- */
+
+.runDetail__trace {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.runDetail__traceRow {
+  display: grid;
+  grid-template-columns: 80px 1fr 80px;
+  gap: 10px;
+  align-items: baseline;
+  padding: 6px 10px;
+  border-left: 2px solid transparent;
+  font-size: 0.8rem;
+}
+
+.runDetail__traceRow--note { border-left-color: var(--border); }
+.runDetail__traceRow--status { border-left-color: var(--accent); }
+.runDetail__traceRow--dispatch { border-left-color: #6b8eff; }
+.runDetail__traceRow--approval { border-left-color: #c08038; }
+.runDetail__traceRow--checkpoint { border-left-color: #389c60; }
+.runDetail__traceRow--outcome { border-left-color: #389c60; }
+.runDetail__traceRow--error { border-left-color: #c0382b; }
+
+.runDetail__traceKind {
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.runDetail__traceMessage {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+.runDetail__traceTime {
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-align: right;
+}
+
+/* ------------- Simple anchored lists ------------- */
+
+.runDetail__simpleList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.runDetail__simpleRow {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 5px 10px;
+  font-size: 0.82rem;
+}
+
+.runDetail__simpleTitle {
+  flex: 1;
+  color: var(--text);
+}
+
+.runDetail__simpleStatus,
+.runDetail__simpleTime {
+  color: var(--muted);
+  font-size: 0.72rem;
+}

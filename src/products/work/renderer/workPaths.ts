@@ -6,6 +6,8 @@ export const WORK_PROJECTS_PATH = `${WORK_ROUTE_PREFIX}/projects`;
 export const WORK_TASKS_PATH = `${WORK_ROUTE_PREFIX}/tasks`;
 export const WORK_TASKS_LEGACY_PATH = `${WORK_ROUTE_PREFIX}/tasks-legacy`;
 export const WORK_WORK_ITEMS_PATH = `${WORK_ROUTE_PREFIX}/work-items`;
+export const WORK_RUNS_PATH = `${WORK_ROUTE_PREFIX}/runs`;
+export const WORK_MISSIONS_PATH = `${WORK_ROUTE_PREFIX}/missions`;
 export const WORK_SYSTEM_MAP_PATH = `${WORK_ROUTE_PREFIX}/system-map`;
 export const WORK_COCKPIT_PATH = `${WORK_ROUTE_PREFIX}/cockpit`;
 export const WORK_BROKEN_LINKS_PATH = `${WORK_ROUTE_PREFIX}/broken-links`;
@@ -29,6 +31,24 @@ export function buildWorkWorkItemPath(workItemId?: string | null): string {
   return normalized
     ? `${WORK_WORK_ITEMS_PATH}/${encodeURIComponent(normalized)}`
     : WORK_WORK_ITEMS_PATH;
+}
+
+/**
+ * Run drill-down lives nested under its task — the natural anchor.
+ * For a run with no task (rare; only via direct Core write), the
+ * caller falls back to passing taskId="orphan".
+ */
+export function buildWorkRunPath(taskId: string, runId: string): string {
+  const t = taskId.trim() || 'orphan';
+  const r = runId.trim();
+  return `${WORK_TASKS_PATH}/${encodeURIComponent(t)}/runs/${encodeURIComponent(r)}`;
+}
+
+export function buildWorkMissionPath(missionId?: string | null): string {
+  const normalized = missionId?.trim();
+  return normalized
+    ? `${WORK_MISSIONS_PATH}/${encodeURIComponent(normalized)}`
+    : WORK_MISSIONS_PATH;
 }
 
 export function isWorkWarRoomPath(pathname: string): boolean {
@@ -57,4 +77,12 @@ export function isWorkCockpitPath(pathname: string): boolean {
 
 export function isWorkBrokenLinksPath(pathname: string): boolean {
   return pathname.startsWith(WORK_BROKEN_LINKS_PATH);
+}
+
+export function isWorkRunsPath(pathname: string): boolean {
+  return pathname === WORK_RUNS_PATH || pathname.startsWith(`${WORK_RUNS_PATH}/`);
+}
+
+export function isWorkMissionsPath(pathname: string): boolean {
+  return pathname === WORK_MISSIONS_PATH || pathname.startsWith(`${WORK_MISSIONS_PATH}/`);
 }

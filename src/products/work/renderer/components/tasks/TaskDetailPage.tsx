@@ -8,6 +8,7 @@ import {
   formatRelative,
 } from "../topdown/shared";
 import { usePinnedProjects } from "../../state/pinnedProjectsStore";
+import { useRuns, type RunItem } from "../../state/runsStore";
 import { useTasks, type TaskItem } from "../../state/tasksStore";
 import { useWorkGraph } from "../../state/workGraphStore";
 import { useWorkItems } from "../../state/workItemsStore";
@@ -15,6 +16,7 @@ import {
   WORK_PROJECTS_PATH,
   WORK_TASKS_PATH,
   WORK_WORK_ITEMS_PATH,
+  buildWorkRunPath,
 } from "../../workPaths.js";
 import "./tasks.css";
 
@@ -25,6 +27,7 @@ export function TaskDetailPage(): JSX.Element {
   const { allTasks, deletedIds } = useTasks();
   const { allProjects } = usePinnedProjects();
   const { allWorkItems } = useWorkItems();
+  const { allRuns } = useRuns();
 
   const task = taskId ? allTasks.find((t) => t.id === taskId) : undefined;
 
@@ -44,6 +47,9 @@ export function TaskDetailPage(): JSX.Element {
   const subTasks = allTasks.filter(
     (t) => t.parentTaskId === task.id && !deletedIds.has(t.id),
   );
+  const taskRuns = allRuns
+    .filter((r) => r.linkedTaskId === task.id)
+    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
   const activities = graph.objects
     .filter(
@@ -193,6 +199,8 @@ export function TaskDetailPage(): JSX.Element {
 
         <SubTasksSection subTasks={subTasks} />
 
+        <RunsSection taskId={task.id} runs={taskRuns} />
+
         <LinkageSection
           selfRef={{ recordFamily: "task", recordId: task.sourceRecordId }}
           graph={graph}
@@ -264,6 +272,53 @@ function SubTasksSection({ subTasks }: { subTasks: TaskItem[] }): JSX.Element {
                 className={`tasksList__statusPill tasksList__statusPill--${sub.status}`}
               >
                 {sub.status.replace(/_/g, " ")}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+interface RunsSectionProps {
+  taskId: string;
+  runs: readonly RunItem[];
+}
+
+function RunsSection({ taskId, runs }: RunsSectionProps): JSX.Element {
+  return (
+    <section className="taskDetail__section">
+      <header className="taskDetail__sectionHeader">
+        <h2>Runs</h2>
+        <span className="taskDetail__sectionCount">{runs.length}</span>
+      </header>
+      {runs.length === 0 ? (
+        <p className="taskDetail__empty">
+          No runs dispatched. Use <strong>Start supervised run</strong> to
+          dispatch.
+        </p>
+      ) : (
+        <ul className="taskDetail__subTasks">
+          {runs.map((run) => (
+            <li key={run.id} className="taskDetail__subTaskRow">
+              <span
+                className={`projectsList__dot projectsList__dot--small projectsList__dot--${run.status}`}
+                aria-hidden="true"
+              />
+              <Link
+                to={buildWorkRunPath(taskId, run.id)}
+                className="taskDetail__subTaskTitle"
+              >
+                {run.title}
+              </Link>
+              <span
+                className={`tasksList__statusPill tasksList__statusPill--${run.status}`}
+              >
+                {run.status.replace(/_/g, " ")}
+              </span>
+              <span className="taskDetail__activityWhen">
+                {formatRelative(run.updatedAt)}
               </span>
             </li>
           ))}
