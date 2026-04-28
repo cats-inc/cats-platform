@@ -86,6 +86,15 @@ YAML schema:
 ```yaml
 version: 1
 profiles:
+  - id: claude-native-sonnet-strong-candidate
+    selector:
+      provider: claude
+      instance: native
+      model: sonnet
+      control: default
+    initialTreatment: strong_agent
+    confidenceLevel: catalog_only
+    reason: Operator-approved strong-agent candidate for supervised chat/work demos.
   - id: codex-cloud-gpt-5-4-strong-candidate
     selector:
       provider: codex
@@ -105,10 +114,14 @@ profiles:
 
 Rules:
 
-- `initialTreatment` is exactly one of `default`, `strong_agent`, or
-  `weak_worker`.
-- `confidenceLevel` may be only `unknown` or `catalog_only` in this bootstrap
-  file; `evaluated` and `observed` require eval/history evidence.
+- YAML profiles are treatment grants. `initialTreatment` is exactly one of
+  `strong_agent` or `weak_worker`. A target that needs no differential
+  treatment must omit the profile; YAML must not encode
+  `initialTreatment: default`.
+- YAML treatment grants always use `confidenceLevel: catalog_only`.
+  `unknown` is the resolver output for absent, invalid, or unmatched config;
+  `evaluated` and `observed` require eval/history evidence. YAML must not
+  encode any of those levels.
 - `provider` is required. `instance`, `model`, and `control` are each optional
   and act as additional explicit narrowing of the rule. Selectors must use the
   same `ProviderCapabilityTarget` axes (`provider`, `instance`, `model`,
@@ -118,9 +131,14 @@ Rules:
   `claude`, `codex`, `ollama`, `local`, or future providers by name.
 - each matching rule creates `bootstrap_config` evidence with rule id, config
   version/path, timestamp, and reason.
+- default/unknown resolutions never create capability evidence and always keep
+  `confidenceSources: []`.
 - invalid config fails closed to default/unknown and emits a diagnostic event
   (see Diagnostic Destination below); it must not silently grant strong/weak
   treatment.
+- duplicate rule ids are a validation error because rule id is the stable audit
+  identity for `bootstrap_config` evidence. Duplicate ids make the entire config
+  fail closed; there is no last-wins behavior for ids.
 - a YAML rule's authorization weight is operator-attestation-equivalent: it
   shall be bounded by the same FR-19 floor that ADR-082 §3 evidence source #4
   (operator override) enforces — it cannot grant `broad_write` or unrestricted
@@ -133,6 +151,22 @@ Rules:
   share an authorization ceiling, not as the same source.
 - implementation may add a small YAML parser dependency if none exists; do not
   silently downgrade this contract to JSON or an ad hoc line parser.
+
+### Control Selector Canonicalization
+
+The `control` selector is a normalized control-profile key derived from
+`ProviderCapabilityTarget.modelSelection` after runtime reconciliation and
+unsupported-control filtering:
+
+- `control: default` matches only targets with no persistent control overrides.
+- non-default control keys serialize persistent key/value pairs in stable key
+  order, for example `reasoning_effort=high;tool_mode=plan`. Product labels and
+  display text are never part of the key.
+- request-scoped controls, transient UI state, unsupported controls, and values
+  rejected by the provider adapter are excluded before key generation.
+- the resolver compares only this canonical string. Implementations should keep
+  canonicalization in a small helper so Chat, Work, Code, tests, and operator
+  examples cannot drift.
 
 ### Selector Precedence
 
@@ -158,11 +192,36 @@ matched-rule diff.
 
 ### Diagnostic Destination
 
-Diagnostics from this resolver — missing config, parse failure, invalid
-treatment, invalid confidence, ambiguous matches, losing tie rules, matched
-rule id / treatment / confidence / reason — are recorded as **structured
-platform log events plus supervision diagnostic records**. They are
-explicitly **not** capability evidence: the resolved profile's
+Diagnostics from this resolver — missing config, parse failure, duplicate rule
+id, invalid treatment, invalid confidence, ambiguous matches, losing tie rules,
+matched rule id / treatment / confidence / reason — are recorded as
+**structured platform log events plus `SupervisionDiagnosticRecord` records**.
+The minimum record shape is:
+
+```ts
+interface SupervisionDiagnosticRecord {
+  id: string;
+  kind: 'provider_capability_bootstrap_config';
+  severity: 'info' | 'warning' | 'error';
+  code:
+    | 'missing_config'
+    | 'parse_failed'
+    | 'duplicate_rule_id'
+    | 'invalid_treatment'
+    | 'invalid_confidence'
+    | 'ambiguous_match'
+    | 'losing_tie_rule'
+    | 'matched_rule';
+  observedAt: string;
+  configPath?: string;
+  ruleIds?: string[];
+  target?: ProviderCapabilityTarget;
+  message: string;
+}
+```
+
+These diagnostics are explicitly **not** capability evidence: the resolved
+profile's
 `confidenceSources` array stays empty for default/unknown resolutions and
 contains only the matched rule's `bootstrap_config` evidence for resolved
 strong/weak treatment. No diagnostic event ever appears in
@@ -174,12 +233,16 @@ above default/unknown.
 ### Phase 1: Contract and fixture
 
 - [ ] Task 1.1: Extend supervision contracts with
-      `bootstrapTreatment` and `bootstrap_config` source metadata.
+      `bootstrapTreatment`, `bootstrap_config` source metadata, and
+      `SupervisionDiagnosticRecord`.
 - [ ] Task 1.2: Add a checked-in example fixture for
       `provider-capability-bootstrap.yaml` under tests or docs; do not ship it
       as an active default config.
 - [ ] Task 1.3: Add parser/validator tests proving absent config, invalid
       config, and unmatched targets all resolve to default/unknown.
+- [ ] Task 1.4: Define and test the canonical control key helper that turns
+      reconciled `modelSelection.controls` into `default` or a stable
+      non-default control string before YAML matching.
 
 **Deliverables**: Contract shape and failing-closed config validation are
 defined before resolver behavior changes.
@@ -193,6 +256,8 @@ defined before resolver behavior changes.
       without a matched YAML rule.
 - [ ] Task 2.3: Add diagnostics for missing config, parse failure, duplicate
       rule id, invalid treatment, invalid confidence, and ambiguous matches.
+      Duplicate rule id is a fatal validation error for the whole config, not a
+      warning or last-wins case.
 
 **Deliverables**: No provider receives initial differential treatment unless
 the YAML explicitly grants it.
@@ -202,9 +267,9 @@ the YAML explicitly grants it.
 - [ ] Task 3.1: Update capability profile tests so `claude`, `codex`,
       `ollama`, and unknown providers all resolve default/unknown without test
       config.
-- [ ] Task 3.2: Add fixture-backed tests proving configured `codex` can appear
-      as a strong-agent candidate and configured `ollama` can appear as a
-      weak-worker candidate.
+- [ ] Task 3.2: Add fixture-backed tests proving configured `claude` / `codex`
+      can appear as strong-agent candidates and configured `ollama` can appear
+      as a weak-worker candidate.
 - [ ] Task 3.3: Update Chat/Work/Code preset capability-review tests to use
       explicit fixture config when they need a strong or weak demo path.
 - [ ] Task 3.4: Verify temp participants resolve capability through their bound
@@ -229,9 +294,10 @@ who is strong/weak; defaults remain neutral.
 - [ ] Task 4.1: Document the YAML path and schema in setup/deployment docs.
 - [ ] Task 4.2: Emit operator-facing diagnostic events covering matched rule
       id, treatment, confidence, reason, and any losing tie rules. In this
-      slice the surface is the structured platform log plus existing
-      supervision evidence/snapshot records (no new UI panel). A future plan
-      may add an admin UI editor that consumes the same diagnostic events.
+      slice the surface is the structured platform log plus
+      `SupervisionDiagnosticRecord` persistence (no new UI panel, and no
+      evidence/snapshot record reuse). A future plan may add an admin UI editor
+      that consumes the same diagnostic records.
 - [ ] Task 4.3: Record that a UI/admin editor is follow-up scope, not part of
       this rollout.
 
@@ -242,12 +308,15 @@ initial treatment even without an editor.
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/platform/supervision/contracts.ts` | Modify | Add `bootstrapTreatment` and `bootstrap_config` metadata. |
+| `src/platform/supervision/contracts.ts` | Modify | Add `bootstrapTreatment`, `bootstrap_config` metadata, and `SupervisionDiagnosticRecord`. |
 | `src/platform/supervision/providerCapabilityProfiles.ts` | Modify | Replace provider-name hard-coding with config-backed resolution. |
 | `src/platform/supervision/providerCapabilityBootstrapConfig.ts` | Create | Parse, validate, normalize, and diagnose YAML config. |
-| `package.json` / `package-lock.json` | Modify if needed | Add a real YAML parser dependency rather than inventing ad hoc parsing. |
+| `src/platform/supervision/providerCapabilityControlKey.ts` | Create | Canonicalize reconciled `modelSelection.controls` into the selector `control` key. |
+| `src/platform/supervision/providerCapabilityBootstrapDiagnostics.ts` | Create | Persist `SupervisionDiagnosticRecord` records and mirror them to structured platform logs. |
+| `package.json` / `package-lock.json` | Modify if needed | Add a real YAML parser dependency and add `smoke:live:chat`; update `smoke:live:providers` to include Chat/Work/Code. |
 | `tests/supervision-provider-capability-profiles.test.tsx` | Modify | Default-neutral and fixture-backed strong/weak tests. |
-| `tests/provider-capability-bootstrap-config.test.tsx` | Create | YAML validation and fail-closed behavior. |
+| `tests/provider-capability-bootstrap-config.test.tsx` | Create | YAML validation, fatal duplicate ids, control key normalization, and fail-closed behavior. |
+| `tests/chat-live-provider-smoke.test.tsx` | Create | Chat live provider smoke gated by `CATS_CHAT_LIVE_PROVIDER_SMOKE` and PLAN-080 YAML fixture. |
 | `docs/deployment.md` | Modify | Document config path and environment override. |
 | `docs/specs/SPEC-082-cats-work-agent-supervision-and-tool-boundary.md` | Modify | Keep normative bootstrap contract aligned. |
 | `docs/plans/PLAN-075-real-provider-orchestrator-integration.md` | Modify | Mark hard-coded bootstrap as superseded by this rollout. |
@@ -264,6 +333,11 @@ initial treatment even without an editor.
 - Invalid config: resolver fails closed to default/unknown (empty
   `confidenceSources`) and emits a structured diagnostic event per Diagnostic
   Destination, never a strong/weak grant.
+- Invalid config with duplicate rule ids fails closed for the whole config and
+  emits `duplicate_rule_id`; it does not choose first-wins or last-wins.
+- YAML rules using `initialTreatment: default` or `confidenceLevel: unknown`
+  are invalid. Default/unknown is only a resolver result for absent, invalid, or
+  unmatched config.
 - Provider catalog/runtime delivery tests prove rich delivery does not classify
   capability.
 - Policy tests prove configured weak-worker profiles clamp dials and configured
@@ -271,21 +345,29 @@ initial treatment even without an editor.
   exists.
 - Preset/temp-participant tests prove demo flows depend on explicit fixture
   config, not provider-name assumptions.
+- Live smoke tests include `CATS_CHAT_LIVE_PROVIDER_SMOKE=1 npm run
+  smoke:live:chat`, plus Work/Code live provider smokes, all using the same
+  PLAN-080 YAML fixture.
 - Attestation-boundary tests prove a `catalog_only` YAML rule can grant
   `strong_agent` or `weak_worker` initial treatment but cannot bypass the
   FR-19 floor on `broad_write` or unrestricted `outcome_delegation`, and that
   attempts to set `evaluated` or `observed` in YAML are rejected.
 - Selector-precedence tests prove most-specific match wins, ties broken by
   file order, and diagnostics record losing tie rules.
+- Control-key tests prove `default` means no persistent overrides, non-default
+  keys are stable sorted serializations of reconciled supported controls, and
+  unsupported/transient controls do not affect matching.
 
 ## Risks & Mitigations
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
 | YAML becomes a hidden privilege escalation surface | High | Fail closed, validate allowed fields, expose matched rule id/reason, and keep FR-19 floors. |
+| YAML reintroduces a third "catalog default" tier | High | Forbid `initialTreatment: default` and `confidenceLevel: unknown` inside YAML profiles; only absent/invalid/unmatched targets resolve default/unknown. |
 | Tests accidentally depend on developer-local config | High | Unit tests pass fixture config explicitly and run absent-config cases first. |
 | Provider catalog facts creep back into capability treatment | Medium | Static/test coverage forbids provider-name classification and verifies delivery/capability split. |
 | Broad provider-only rules classify too much | Medium | Treat omitted model/control as explicit broad rules, show that breadth in diagnostics, and require reason text. |
+| Control selector strings drift across products | Medium | Centralize canonical key generation and require tests for Chat/Work/Code selector fixtures. |
 
 ## Progress Log
 
@@ -294,6 +376,7 @@ initial treatment even without an editor.
 | 2026-04-28 | Plan opened after review found hard-coded strong/weak provider bootstrap unacceptable; target changed to explicit YAML-only initial treatment. |
 | 2026-04-28 | Review close-out: added `instance` to selector axes, declared YAML attestation as ADR-082 §3 evidence source #4 under FR-19 floor, defined selector precedence and process-restart reload behavior, scoped a Migration section with example fixture + release-notes guidance, scheduled re-run of PLAN-075 Phase 5.4 / 6.4 live smoke under YAML config (Task 3.5), bound Phase 4 diagnostic surface to logs + supervision evidence rather than a new UI panel, and added attestation-boundary + selector-precedence test categories. |
 | 2026-04-28 | Review follow-up: extended Task 3.5 to require a Chat live smoke gate alongside Work/Code re-runs (PLAN-075 acceptance covers Chat turn too); split `bootstrap_config` evidence kind from `operator_override` while keeping the FR-19 authorization ceiling shared; rewrote selector precedence to count narrowing keys so non-linear combos (`provider+model`, `provider+control`, etc.) get a defined ordering; added a Diagnostic Destination sub-section pinning diagnostics to log + supervision diagnostic records (never `confidenceSources`); added migration deliverables (example YAML, first-run warning entry, PROGRESS.md callout) to Files Likely; updated `plans/README.md` PLAN-075 status. |
+| 2026-04-28 | Review close-out: removed `default` / `unknown` from valid YAML grants so only explicit `strong_agent` / `weak_worker` rules create startup treatment; added Claude to the example fixture; defined canonical `control` selector serialization from reconciled controls; made duplicate rule ids fatal; replaced vague supervision evidence reuse with a concrete `SupervisionDiagnosticRecord` owner; added Chat live smoke files/scripts to the delivery list; added tests and risks for duplicate ids, forbidden YAML defaults, live Chat smoke, and control-key drift. |
 
 ---
 
