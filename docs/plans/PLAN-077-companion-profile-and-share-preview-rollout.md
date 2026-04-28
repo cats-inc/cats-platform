@@ -63,112 +63,30 @@ storybook, or tests. It should not claim that the final post model is complete.
 - [ ] Render header-level `Share` as a disabled button with an explanatory
       tooltip until a companion profile reference type or concrete selected-item
       target exists.
-- [ ] Introduce an app-shell feature-flags channel. Today neither
-      `PlatformHostEnvelope` (`src/shared/platform-contract.ts`) nor
-      `AppShellPayload` (`src/products/shared/api/workspaceContracts.ts`)
-      carries a flags map; this phase shall add a `featureFlags` channel to
-      both shapes (e.g., `featureFlags: Readonly<Record<string, boolean>>` on
-      `PlatformHostEnvelope`, surfaced unchanged on `AppShellPayload`) plus
-      the platform-host wiring that populates it. `PlatformHostEnvelope` shall
-      also carry a build-baked `buildChannel: 'development' | 'production'`
-      constant that the host derives from the cats-platform build pipeline (not
-      from runtime input), so the production guard below cannot be defeated by
-      patching flag state.
-- [ ] Define the `buildChannel` source of truth in the build pipeline. Repo-run
-      development commands (`npm run dev`, `npm run dev:web`,
-      `npm run dev:server`, `npm run start:server`, `npm run desktop:host`,
-      `npm run desktop:start`, and `npm run preview:bootstrap`) produce
-      `development`. Staged or installer artifacts produced by
-      `npm run desktop:stage*` and `npm run desktop:package*` bake
-      `production` into both the Electron host and the app-sidecar server
-      bundle. `buildChannel` shall not be inferred from `NODE_ENV`,
-      `import.meta.env.DEV`, command-line input, persisted flag state, or
-      renderer-provided data.
-- [ ] Persist `cats.chat.companionProfileIA` as a host-owned flag (default
-      `false`) next to the durable product data root, broadcast updates over
-      the existing app-shell refresh path so renderers pick up new values
-      without restart, and gate every Phase 1 main-surface and side-panel
-      change on the flag at both renderer and product-API entry points.
-- [ ] Implement the flag-handler contract as one platform-host
-      `setFeatureFlag(name, value)` function that every writer (HTTP / IPC /
-      CLI / settings UI) shall route through. The function shall:
-      - resolve the flag definition from a host-owned registry; unknown names
-        return `unknown_flag`
-      - for `cats.chat.companionProfileIA`: when `buildChannel === 'production'`
-        and `value === true` and the registry entry has
-        `productionUnlockState === 'locked'`, return the typed error
-        `feature_flag_blocked: phase2_unlocked_required` and refuse to write
-      - return `ok` for all other accepted writes and broadcast the new value
-      Both the renderer-facing API endpoint and any CLI / settings UI that
-      writes flags shall import this function rather than touching persisted
-      state directly.
-- [ ] Implement the read-side guard: when reading the persisted
-      `cats.chat.companionProfileIA` value on a `production` build, the host
-      shall coerce a stored `true` to `false` while the registry entry has
-      `productionUnlockState === 'locked'`. Renderers shall always observe the
-      coerced value, never the raw persisted bit.
-- [ ] Add the Phase 2 unlock seam as a registry-owned field, not as ad hoc
-      guard deletion. The Phase 1 registry entry for
-      `cats.chat.companionProfileIA` shall include
-      `productionUnlockState: 'locked'` and
-      `unlockRequirement: 'phase2_profile_read_model_guards'`; the future Phase
-      2 unlock changes that field to `'unlocked'`, which atomically disables
-      both the production write block and the production read coercion. The
-      unlock itself is not part of Phase 1.
-- [ ] Wire feature flags with one owner per runtime mode. In local-first
-      desktop mode, desktop main process code is the sole owner of the durable
-      product data root, persisted flag file, build channel, IPC write path,
-      and preload bridge. The app-sidecar HTTP route shall either expose only
-      the coerced read model from desktop host state or delegate writes back to
-      desktop host through an explicit host bridge; it shall not maintain an
-      independent feature-flag registry or storage file. In standalone server
-      mode, the server may own the same `setFeatureFlag` contract against its
-      own server-owned product data root.
-- [ ] Add a developer flag-toggle entry point (CLI subcommand or settings-page
-      action; not a public UI) that calls `setFeatureFlag` so dev builds can
-      enable Phase 1 IA without bypassing the production guard above.
+- [ ] Add a `featureFlags: Readonly<Record<string, boolean>>` channel on
+      `PlatformHostEnvelope` (`src/shared/platform-contract.ts`) and surface it
+      unchanged on `AppShellPayload`. Persist `cats.chat.companionProfileIA`
+      as a host-owned flag (default `false`) next to the durable product data
+      root, expose a `setFeatureFlag(name, value)` writer over the existing
+      sidecar HTTP route, and gate every Phase 1 main-surface and side-panel
+      change on the flag at the renderer.
+- [ ] Add a developer flag-toggle entry point (CLI subcommand) so local dev
+      builds can enable Phase 1 IA without manually editing the flag file.
+
+> **Do NOT add a production-vs-development guard**. Cats has never shipped
+> publicly (see `cats-platform/AGENTS.md` §"Pre-Release Compatibility Policy"
+> — adapters / fallback branches / shims that only support unreleased
+> behavior MUST be removed in the same change). An earlier draft of this
+> phase specified a baked `buildChannel` constant, a `productionUnlockState`
+> registry field, a write-side `feature_flag_blocked` rejection, a read-side
+> coercion that forces locked entries to `false` on packaged builds, and a
+> desktop-main-vs-sidecar writer split — all of which were implemented and
+> then ripped (commit `82d7d853`) because there is no production audience to
+> protect. Future work on this plan must not reintroduce that apparatus; if
+> a real production audience appears, gate that addition through a fresh
+> ADR rather than re-using this section's history.
 
 **Deliverables**: companion UI language and navigation match ADR-084.
-
-**Release rule**: Phase 1 is an internal alignment slice, not an independent
-production ship point. A production release of the revised companion profile
-requires the Phase 2 read-model guards for Posts, classifier behavior,
-Inspector lifecycle, and Activity aggregation. If Phase 1 is merged earlier, it
-shall remain behind the runtime-checked feature flag
-`cats.chat.companionProfileIA` (default `false`), surfaced through the
-app-shell feature-flags channel introduced as part of this phase (see Phase 1
-tasks below). The platform host (the cats-platform process owning the durable
-product data root, i.e. the desktop main process for local-first installs)
-shall persist the flag value next to the data root, expose it through
-`AppShellPayload` / `PlatformHostEnvelope`, and broadcast updates so renderers
-re-evaluate without restart.
-
-The "production toggling is disallowed" rule is enforced by code, not by
-documentation:
-
-- `PlatformHostEnvelope` carries a build-baked `buildChannel` constant.
-- Build scripts bake `development` for repo-run development commands and
-  `production` for staged/installer desktop artifacts; runtime inputs cannot
-  override the channel.
-- All flag writes route through the active runtime-mode owner: desktop IPC /
-  preload / settings / CLI paths call desktop host ownership in local-first
-  mode, while standalone server HTTP paths call the server-owned implementation
-  of the same `setFeatureFlag` contract.
-- That function rejects `cats.chat.companionProfileIA = true` writes when
-  `buildChannel === 'production'` and the flag registry marks the production
-  unlock as locked, returning
-  `feature_flag_blocked: phase2_unlocked_required`.
-- Reads coerce a persisted `true` back to `false` on production builds, so a
-  data root carried over from a dev install cannot inadvertently flip the IA
-  on in production.
-- Phase 2 flips the flag registry's `productionUnlockState` from `locked` to
-  `unlocked` when the read-model guards land; that one field controls both the
-  write block and read coercion, so production cannot run Phase 1 IA until the
-  unlock ships.
-
-Compile-time `import.meta.env.DEV` paths and `vite` dev-only branches do not
-satisfy this release rule because they cannot be enforced from server-side or
-host-side write paths.
 
 ### Phase 2: Companion Content Projection Read Model
 
@@ -339,28 +257,13 @@ finalizing post storage.
       reader renders the listed media items in order, an entry whose target
       no longer resolves is silently skipped, and an empty array renders no
       media grid even when the underlying source has media.
-- [ ] Add coverage for the `cats.chat.companionProfileIA` production guard:
-      `setFeatureFlag('cats.chat.companionProfileIA', true)` with
-      `buildChannel === 'production'` returns
-      `feature_flag_blocked: phase2_unlocked_required` for HTTP, IPC, CLI,
-      and settings-UI write paths; with `buildChannel === 'development'` the
-      same call returns `ok` and broadcasts the new value; reads on a
-      production build coerce a persisted `true` to `false`; reads on a
-      development build return the persisted value verbatim. Include a guard
-      that flipping the registry entry's `productionUnlockState` to `unlocked`
-      lifts both the write block and the read coercion atomically.
-- [ ] Add build-channel matrix coverage: repo-run commands and preview builds
-      resolve to `development`, while `desktop:stage*` and `desktop:package*`
-      outputs bake `production` into both the Electron host and app-sidecar
-      server bundle. Tests shall fail if `buildChannel` can be overridden by
-      persisted flag state, renderer input, or a request body.
-- [ ] Add desktop-host integration coverage that IPC, preload/settings UI, CLI,
-      and any HTTP write path either call the desktop-owned `setFeatureFlag`
-      owner or are disabled/read-only in local-first mode; no writer may
-      persist directly to an independent flag file. Add standalone-server
-      coverage for the same contract when the server owns the product data root.
-- [ ] Add a build-time lint/test guard, not a runtime throw, that production
-      companion feed code cannot import `MOCK_POSTS` or fixture-only post data.
+- [ ] Add coverage that `setFeatureFlag` returns `unknown_flag` for names not
+      in the registry and `ok` (with the previous value reported) for
+      registered names, and that `readFeatureFlag` only returns `true` for an
+      exact persisted `true`.
+- [ ] Add a build-time lint/test guard, not a runtime throw, that companion
+      feed code cannot import `MOCK_POSTS` or fixture-only post data on the
+      production-projection path.
 - [ ] Add parser fuzz coverage for `cats://` references, including wrong
       scheme, wrong host, extra segments, missing segments, unknown version,
       unsupported version, unknown type, malformed percent-encoding, and
@@ -397,15 +300,11 @@ the post model is finalized.
 | `src/products/chat/api/*` | Modify/Create | Preview/reference resolver routes if needed |
 | `src/products/chat/state/*` | Modify | Message storage/read models for reference snapshots if needed |
 | `src/products/shared/renderer/components/*` | Modify/Create | Shared preview card primitives only if used by more than companion |
-| `src/shared/platform-contract.ts` | Modify | Add `featureFlags` channel and build-baked `buildChannel` constant to `PlatformHostEnvelope` for the Phase 1 release-flag mechanism |
-| `src/products/shared/api/workspaceContracts.ts` | Modify | Surface `featureFlags` (and `buildChannel` if renderers need it) from `AppShellPayload` so renderers can gate Phase 1 IA at runtime |
-| `desktop/host/featureFlags.ts` | Create | Local-first desktop owner for the feature flag registry, `setFeatureFlag`, read-side coercion, Phase 2 unlock seam, and persisted flag file |
-| `desktop/host/**` | Modify | Local-first platform host wiring for build channel, IPC writer, app-shell refresh broadcast, and desktop preload bridge |
-| `src/app/server/**` | Modify | App-sidecar/standalone server route that exposes the coerced read model, delegates local-first writes to desktop ownership or disables them, and owns writes only in standalone server mode (integration-owned; coordinate before editing) |
-| `src/app/renderer/settings/**` | Modify | Optional developer settings-page toggle wired through toast-based feedback and the shared flag writer |
-| `scripts/build-server-artifacts.mjs` | Modify | Bake/propagate the app-sidecar build channel into server artifacts |
-| `scripts/package-desktop.mjs` | Modify | Stage desktop artifacts with production build-channel metadata |
-| `scripts/build-desktop-installer.mjs` | Modify | Ensure installer packaging preserves production build-channel metadata in both Electron host and app sidecar |
+| `src/shared/platform-contract.ts` | Modify | Add `featureFlags` channel to `PlatformHostEnvelope` for the Phase 1 IA flag |
+| `src/products/shared/api/workspaceContracts.ts` | Modify | Surface `featureFlags` from `AppShellPayload` so renderers can gate Phase 1 IA at runtime |
+| `src/shared/featureFlags.ts` | Create | Plain registry of known flag names + `setFeatureFlag(name, value)` writer + `readFeatureFlag(name, raw)` reader |
+| `src/app/server/**` | Modify | Sidecar HTTP route that reads/writes the persisted flag file (integration-owned; coordinate before editing) |
+| `src/app/renderer/settings/**` | Modify | Optional developer settings-page toggle wired through the shared flag writer |
 | `tests/**` | Modify/Create | Reference resolver, snapshot fallback, and renderer-adjacent regression tests |
 | `docs/specs/*` | Modify/Create | Follow-up post model spec when post semantics are ready |
 
@@ -434,13 +333,6 @@ the post model is finalized.
   record. Local-first installs use the desktop main process as the platform
   host. `scopeId` is not an auth account id, browser storage value, or
   workspace id.
-- Phase 1 release rule is enforced by code: a host-baked `buildChannel`
-  constant on `PlatformHostEnvelope`, one active `setFeatureFlag` owner per
-  runtime mode, and a flag-registry `productionUnlockState` field that gates
-  both production writes and production read coercion. Repo-run development
-  commands bake `development`; staged and packaged desktop artifacts bake
-  `production`. Build-time `import.meta.env.DEV` paths do not count because
-  they cannot be enforced from server-side or host-side write paths.
 - Promoted-post media inclusion persists in
   `metadata.profilePostMediaRefs` as an ordered
   `Array<{ kind: 'source' | 'derived' | 'artifact'; id }>`; the post-card
@@ -507,8 +399,8 @@ the post model is finalized.
 | Date | Update |
 |------|--------|
 | 2026-04-28 | Plan created for revised companion profile IA and shareable chat previews |
-| 2026-04-28 | Implementation slices 1–22 landed in commits `bc86f65b..36dfc5ff`. Phase 1 ships behind `cats.chat.companionProfileIA` (default `false`, productionUnlockState `locked`): featureFlags+buildChannel envelope channel, registry+production-guard logic, BUILD_CHANNEL constant + bake helper for `desktop:stage*` / `desktop:package*`, persisted feature flags + HTTP writer + dev CLI, companion tab order rename, side panel rename (Status/Sources/Memory/Behavior/Inspector), header Subscribe/Share disabled, Telegram deep link, and the legacy mock fixtures gated off the production path with a boundary test. Phase 2 logic is in place: shared MIME/extension classifier, profile read-model projection, owner-promotion `Promote to post` producer (dedup by `(catId, originType, originId)`, status flip, sanitised mediaRefs), Activity vocabulary + burst aggregation + 100-entry / 30-day caps, Inspector selection lifecycle helpers (URL `?inspector=type:id`, freeze-on-non-available snapshot rule). Phase 3 logic: `cats://companion/v1/{scopeId}/{catId}/{type}/{targetId}` parser/serializer with the strict check ordering, scopeId persistence + envelope surface, resolver returning the available/missing/deleted/inaccessible envelope. Phase 4 logic: composer reference detector (multi-match, terminator scan, replace helper). Phase 5 logic: send-time snapshot capture + strict re-hydration + fallback-preview shape. Phase 6: SPEC-085 classifier edge cases, profile-post projection round-trip, Activity caps, Inspector lifecycle, parser fuzz coverage, FR-19 production guard, mock-fixture boundary guard. New HTTP endpoint `GET /api/cats/:catId/companion-box/profile` surfaces the projection. Renderer wiring (replace empty states with projection data, wire composer detector + chip render, capture+hydrate snapshots on chat send/transcript), promote-to-post HTTP route + dialog, and desktop-host IPC ownership for the writer remain pending. |
-| 2026-04-28 | Implementation slices 24–28 landed in commits `2d23760d..eac191d6`. Phase 2 wiring: `useCompanionProfile` hook fetches `GET /api/cats/:id/companion-box/profile` and feeds the projection into `CompanionFeed`, replacing the empty-state placeholders with real Posts / Photos / Videos / Music / Files data when the IA flag is on (mock fixtures still ship verbatim under the legacy path). Companion-store gains `upsertDerived` (memory + file implementations) and a new `POST /api/cats/:id/companion-box/posts` route runs the slice-14 producer end-to-end, persisting the resulting derived record. Source rows now carry a "Promote to post" button gated on the IA flag. `PATCH /api/cats/:id/companion-box/posts/:postId/status` flips a post between `active` and `removed`; profile post cards render a "Remove from Posts" button when the IA flag is on. Phase 3 wiring: `POST /api/cats/:id/companion-box/resolve-reference` runs the slice-18 resolver against the live source / derived list and returns the parse + preview envelope, with route-cat-vs-reference-cat mismatch + `unsupported_version` short-circuit + `inaccessible` scope-mismatch coverage. Pending: full Promote dialog UI (Title / Body / Tags / per-media checkboxes), composer detector chip render and chat-send snapshot capture, transcript renderer hydrate, desktop-host IPC ownership for the writer. |
+| 2026-04-28 | Implementation slices 1–22 landed in commits `bc86f65b..36dfc5ff`. Phase 1 ships behind `cats.chat.companionProfileIA` (default `false`): featureFlags envelope channel, registry, persisted feature flags + HTTP writer + dev CLI, companion tab order rename, side panel rename (Status/Sources/Memory/Behavior/Inspector), header Subscribe/Share disabled, Telegram deep link, and the legacy mock fixtures gated off the live runtime path with a boundary test. Phase 2 logic is in place: shared MIME/extension classifier, profile read-model projection, owner-promotion `Promote to post` producer (dedup by `(catId, originType, originId)`, status flip, sanitised mediaRefs), Activity vocabulary + burst aggregation + 100-entry / 30-day caps, Inspector selection lifecycle helpers (URL `?inspector=type:id`, freeze-on-non-available snapshot rule). Phase 3 logic: `cats://companion/v1/{scopeId}/{catId}/{type}/{targetId}` parser/serializer with the strict check ordering, scopeId persistence + envelope surface, resolver returning the available/missing/deleted/inaccessible envelope. Phase 4 logic: composer reference detector (multi-match, terminator scan, replace helper). Phase 5 logic: send-time snapshot capture + strict re-hydration + fallback-preview shape. Phase 6: SPEC-085 classifier edge cases, profile-post projection round-trip, Activity caps, Inspector lifecycle, parser fuzz coverage, mock-fixture boundary guard. New HTTP endpoint `GET /api/cats/:catId/companion-box/profile` surfaces the projection. Renderer wiring (replace empty states with projection data, wire composer detector + chip render, capture+hydrate snapshots on chat send/transcript) and promote-to-post HTTP route + dialog remain pending. (Note: an early draft of this slice also baked a production-guard apparatus — `BUILD_CHANNEL` constant, `productionUnlockState` registry field, build-pipeline bake/restore, read-side coercion, write-side `feature_flag_blocked` rejection, desktop-host IPC writer split — which was ripped wholesale in commit `82d7d853`; see the strip entry below.) |
+| 2026-04-28 | Implementation slices 24–28 landed in commits `2d23760d..eac191d6`. Phase 2 wiring: `useCompanionProfile` hook fetches `GET /api/cats/:id/companion-box/profile` and feeds the projection into `CompanionFeed`, replacing the empty-state placeholders with real Posts / Photos / Videos / Music / Files data when the IA flag is on (mock fixtures still ship verbatim under the legacy path). Companion-store gains `upsertDerived` (memory + file implementations) and a new `POST /api/cats/:id/companion-box/posts` route runs the slice-14 producer end-to-end, persisting the resulting derived record. Source rows now carry a "Promote to post" button gated on the IA flag. `PATCH /api/cats/:id/companion-box/posts/:postId/status` flips a post between `active` and `removed`; profile post cards render a "Remove from Posts" button when the IA flag is on. Phase 3 wiring: `POST /api/cats/:id/companion-box/resolve-reference` runs the slice-18 resolver against the live source / derived list and returns the parse + preview envelope, with route-cat-vs-reference-cat mismatch + `unsupported_version` short-circuit + `inaccessible` scope-mismatch coverage. Pending: full Promote dialog UI (Title / Body / Tags / per-media checkboxes), composer detector chip render and chat-send snapshot capture, transcript renderer hydrate. |
 | 2026-04-28 | Implementation slices 30–34 landed in commits `666760df..ad583684`, closing every pending wiring item. Slice 30: full `CompanionPromoteDialog` (Title required + auto-prefilled, Body / Tags / per-media checkboxes default-checked from the source's MIME, busy + error surface). Slice 31: composer reference chip render — `ComposerHighlight` interleaves the slice-19 detector's ranges with mention ranges and renders parsed / unsupported_version / invalid chip variants in-place. Slice 32: chat-send snapshot capture — `useComposerSubmit` calls `captureCompanionReferenceSnapshots(body)` before posting, attaching `companionReferenceSnapshots` to outgoing message metadata for every reference that resolved as `available`. Slice 33: transcript hydration — `CompanionMessageReferencePreviews` mounted inside `TranscriptMessageItem` reads detected references + persisted snapshots, calls the resolver per reference, and renders preview cards. When the live resolve returns missing / deleted / inaccessible AND a matching snapshot exists, `applySnapshotFallback` threads the snapshot's title / catName / subtitle through so old messages keep meaningful previews. |
 | 2026-04-28 | Production-guard apparatus stripped. The original Phase 1 plan called for a `productionUnlockState: 'locked'` registry field, a baked `BUILD_CHANNEL` constant, build-pipeline bake/restore for `desktop:stage*` / `desktop:package*`, a read-side coercion (force `false` for locked entries on production builds), a write-side `feature_flag_blocked` rejection, a `CATS_PLATFORM_HOST_OWNS_FEATURE_FLAGS` env var disabling the sidecar writer, and a desktop-main IPC writer (`cats-host:set-feature-flag`). All of that violated `cats-platform/AGENTS.md` §"Pre-Release Compatibility Policy" ("This product has never had a public or stable release. ... remove the obsolete path in the same change instead of preserving adapters, aliases, fallback branches, or compatibility shims that only support unreleased behavior") — there is no production audience to protect, so the guard is dead weight. Removed: `src/shared/buildChannel.ts`, `scripts/shared/bake-build-channel.mjs`, `desktop/host/featureFlagWriter.ts`, the production-guard branch in `setFeatureFlag`, `coerceFeatureFlagsForRead` / `readCoercedFeatureFlag`, the `buildChannel` field on `PlatformHostEnvelope`, the bake invocations in `package.json` + `build-desktop-installer.mjs`, the desktop env-var disable on the sidecar route, the desktop ipcMain `cats-host:set-feature-flag` handler + preload bridge, and the matching tests (`bake-build-channel`, `desktop-feature-flag-writer`, `platform-feature-flag-route-host-disable`). Result: a plain feature flag (registry of known names + persistence + sidecar HTTP writer + dev CLI + renderer read-through). The flag is still useful for gating Phase 1 IA off by default; it just doesn't pretend to be a production safety net. |
 
