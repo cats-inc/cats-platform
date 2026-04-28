@@ -41,16 +41,21 @@ import {
  * empty state in that case.
  */
 export function buildWorkGraphProjection(core: CatsCoreState): WorkGraphProjection {
+  const taskTitleById = new Map<string, string>();
+  for (const task of core.tasks) {
+    taskTitleById.set(task.id, task.title);
+  }
+
   const objects: WorkGraphObjectSummary[] = [
     ...core.projects.map(projectToSummary),
     ...core.workItems.map(workItemToSummary),
-    ...core.tasks.map((task) => taskToSummary(task, core)),
+    ...core.tasks.map((task) => taskToSummary(task, core, taskTitleById)),
     ...core.conversations.map(conversationToSummary),
     ...core.actors
       .filter((actor) => actor.kind !== 'owner' && actor.status === 'active')
       .map(actorToSummary),
     ...core.missions.map(missionToSummary),
-    ...core.runs.map(runToSummary),
+    ...core.runs.map((run) => runToSummary(run, taskTitleById)),
     ...core.artifacts.map(artifactToSummary),
     ...core.activities.map(activityToSummary),
     ...core.outcomes.map(outcomeToSummary),
@@ -192,7 +197,14 @@ function workItemToSummary(w: CoreWorkItemRecord): WorkGraphObjectSummary {
   };
 }
 
-function taskToSummary(t: CoreTaskRecord, core: CatsCoreState): WorkGraphObjectSummary {
+function taskToSummary(
+  t: CoreTaskRecord,
+  core: CatsCoreState,
+  taskTitleById: Map<string, string>,
+): WorkGraphObjectSummary {
+  const parentTaskTitle = t.parentTaskId
+    ? taskTitleById.get(t.parentTaskId) ?? null
+    : null;
   return {
     id: t.id,
     kind: 'task',
@@ -213,6 +225,7 @@ function taskToSummary(t: CoreTaskRecord, core: CatsCoreState): WorkGraphObjectS
     updatedAt: t.updatedAt,
     metadata: t.metadata ?? null,
     productBinding: resolveTaskProductBinding(core, t),
+    linkedTaskTitle: parentTaskTitle,
   };
 }
 
@@ -282,7 +295,10 @@ function missionToSummary(m: MissionRecord): WorkGraphObjectSummary {
   };
 }
 
-function runToSummary(r: CoreRunRecord): WorkGraphObjectSummary {
+function runToSummary(
+  r: CoreRunRecord,
+  taskTitleById: Map<string, string>,
+): WorkGraphObjectSummary {
   return {
     id: r.id,
     kind: 'run',
@@ -303,6 +319,7 @@ function runToSummary(r: CoreRunRecord): WorkGraphObjectSummary {
     updatedAt: r.updatedAt,
     startedAt: r.startedAt,
     completedAt: r.completedAt,
+    linkedTaskTitle: r.taskId ? taskTitleById.get(r.taskId) ?? null : null,
   };
 }
 

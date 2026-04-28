@@ -66,10 +66,23 @@ export function WorkObjectCard({
       {object.nextAction ? (
         <p className="topDownCard__next">→ {object.nextAction}</p>
       ) : null}
-      {evidence.total > 0 || gates.length > 0 || object.ownerRole ? (
+      {evidence.total > 0 ||
+      gates.length > 0 ||
+      object.ownerRole ||
+      ((object.kind === "run" || object.kind === "task") &&
+        object.linkedTaskTitle) ? (
         <footer className="topDownCard__foot">
           {object.ownerRole ? (
             <span className="topDownCard__role">{object.ownerRole}</span>
+          ) : null}
+          {(object.kind === "run" || object.kind === "task") &&
+          object.linkedTaskTitle ? (
+            <span
+              className="topDownCard__chip topDownCard__chip--parentTask"
+              title={`${object.kind === "run" ? "Owning" : "Parent"} task: ${object.linkedTaskTitle}`}
+            >
+              ↳ {object.linkedTaskTitle}
+            </span>
           ) : null}
           {evidence.artifact > 0 ? (
             <span className="topDownCard__chip topDownCard__chip--artifact">

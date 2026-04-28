@@ -218,6 +218,15 @@ export interface WorkGraphObjectSummary {
    */
   startedAt?: string | null;
   completedAt?: string | null;
+  /**
+   * Denormalized title of `linkedTaskId` (when present and resolvable
+   * in the same projection). Set on `kind === 'task'` (parent of a
+   * sub-task) and `kind === 'run'` (the task that owns this run);
+   * undefined for other kinds. Lets Cockpit / System Map / list cards
+   * render a "belongs to" chip without each consumer building its own
+   * task lookup map.
+   */
+  linkedTaskTitle?: string | null;
 }
 
 export interface WorkGraphEvidenceAttachment {
