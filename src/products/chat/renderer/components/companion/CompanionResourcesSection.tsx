@@ -14,12 +14,13 @@ export interface CompanionResourcesSectionProps {
   onDeleteSource: (sourceId: string) => Promise<void>;
   /**
    * When provided, each source row gets a "Promote to post" affordance
-   * that calls this handler. The renderer dialog (later slice) will
-   * supersede this minimal entry point with the full Title / Body /
-   * Tags / per-media-checkbox flow; the current button promotes the
-   * source directly with the source's title and an empty media list.
+   * that opens the SPEC-085 promotion dialog (Title / Body / Tags /
+   * per-media checkboxes). The handler receives the full source record
+   * so the dialog can prefill from `title` / `originalFileName` and
+   * decide whether to default-check the source as a media inclusion
+   * candidate (image / video / audio MIMEs only).
    */
-  onPromoteSourceToPost?: (source: CompanionSourceRecord) => Promise<void>;
+  onPromoteSourceToPost?: (source: CompanionSourceRecord) => void;
 }
 
 function formatDate(iso: string): string {
@@ -53,16 +54,9 @@ export function CompanionResourcesSection({
   onDeleteSource,
   onPromoteSourceToPost,
 }: CompanionResourcesSectionProps) {
-  const [promotingId, setPromotingId] = useState<string | null>(null);
-
-  async function handlePromote(source: CompanionSourceRecord): Promise<void> {
+  function handlePromote(source: CompanionSourceRecord): void {
     if (!onPromoteSourceToPost) return;
-    setPromotingId(source.id);
-    try {
-      await onPromoteSourceToPost(source);
-    } finally {
-      setPromotingId(null);
-    }
+    onPromoteSourceToPost(source);
   }
   const [showForm, setShowForm] = useState(false);
   const [formTitle, setFormTitle] = useState('');
@@ -168,9 +162,8 @@ export function CompanionResourcesSection({
                     type="button"
                     className="companionActionButton"
                     onClick={() => handlePromote(source)}
-                    disabled={promotingId === source.id}
                   >
-                    {promotingId === source.id ? 'Promoting...' : 'Promote to post'}
+                    Promote to post
                   </button>
                 ) : null}
                 <button

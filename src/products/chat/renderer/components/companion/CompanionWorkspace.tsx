@@ -25,6 +25,11 @@ import { useCompanionWorkspace } from '../../hooks/useCompanionWorkspace.js';
 import { CompanionFeed } from './CompanionFeed.js';
 import { CompanionModeToggleChip } from './CompanionModeToggleChip.js';
 import { CompanionOverviewSection } from './CompanionOverviewSection.js';
+import {
+  CompanionPromoteDialog,
+  type CompanionPromoteDialogMediaCandidate,
+  type CompanionPromoteDialogSubmit,
+} from './CompanionPromoteDialog.js';
 import { CompanionResourcesSection } from './CompanionResourcesSection.js';
 import { CompanionCreationsSection } from './CompanionCreationsSection.js';
 import { CompanionMemorySection } from './CompanionMemorySection.js';
@@ -67,23 +72,82 @@ export function CompanionWorkspace({
     enabled: companionProfileIaEnabled,
   });
 
+  const [promoteState, setPromoteState] = useState<
+    | null
+    | {
+        sourceId: string;
+        defaultTitle: string;
+        defaultBody: string;
+        defaultTags: string[];
+        mediaCandidates: CompanionPromoteDialogMediaCandidate[];
+      }
+  >(null);
+  const [promoteBusy, setPromoteBusy] = useState(false);
+  const [promoteError, setPromoteError] = useState<string | null>(null);
+
   const handlePromoteSourceToPost = useCallback(
-    async (source: { id: string; title: string | null; originalFileName: string | null }) => {
+    async (source: { id: string; title: string | null; originalFileName: string | null; mimeType: string | null }) => {
       if (!companionProfileIaEnabled) return;
       const fallbackTitle =
         source.title?.trim()
         || source.originalFileName?.replace(/\.[^/.]+$/u, '')
         || 'Untitled post';
-      await promoteCompanionProfilePostApi(cat.id, {
-        origin: { type: 'source', id: source.id },
-        title: fallbackTitle,
-        mediaRefs: [],
+      // Default-check the source itself when its mimeType suggests media so
+      // the dialog matches SPEC-085 §"default-checked from the selection's
+      // natural media set." Files / source_only items show no candidate.
+      const isMedia = typeof source.mimeType === 'string'
+        && /^(image|video|audio)\//iu.test(source.mimeType);
+      const mediaCandidates: CompanionPromoteDialogMediaCandidate[] = isMedia
+        ? [
+            {
+              ref: { kind: 'source', id: source.id },
+              label: source.title || source.originalFileName || source.id,
+              defaultChecked: true,
+            },
+          ]
+        : [];
+      setPromoteState({
+        sourceId: source.id,
+        defaultTitle: fallbackTitle,
+        defaultBody: '',
+        defaultTags: [],
+        mediaCandidates,
       });
-      profile.refresh();
-      workspace.refreshTab();
+      setPromoteError(null);
     },
-    [cat.id, companionProfileIaEnabled, profile, workspace],
+    [companionProfileIaEnabled],
   );
+
+  const handlePromoteSubmit = useCallback(
+    async (input: CompanionPromoteDialogSubmit) => {
+      if (!promoteState) return;
+      setPromoteBusy(true);
+      setPromoteError(null);
+      try {
+        await promoteCompanionProfilePostApi(cat.id, {
+          origin: { type: 'source', id: promoteState.sourceId },
+          title: input.title,
+          body: input.body || undefined,
+          tags: input.tags,
+          mediaRefs: input.mediaRefs,
+        });
+        profile.refresh();
+        workspace.refreshTab();
+        setPromoteState(null);
+      } catch (cause) {
+        setPromoteError(cause instanceof Error ? cause.message : 'Promote failed.');
+      } finally {
+        setPromoteBusy(false);
+      }
+    },
+    [cat.id, promoteState, profile, workspace],
+  );
+
+  const handlePromoteClose = useCallback(() => {
+    if (promoteBusy) return;
+    setPromoteState(null);
+    setPromoteError(null);
+  }, [promoteBusy]);
 
   const handleRemovePost = useCallback(
     async (derivedId: string) => {
@@ -331,6 +395,19 @@ export function CompanionWorkspace({
           position="side"
           className="chatPaneSidePanel chatPaneSidePanelBelowBar"
           sections={sidePanelSections}
+        />
+      ) : null}
+      {promoteState ? (
+        <CompanionPromoteDialog
+          open
+          defaultTitle={promoteState.defaultTitle}
+          defaultBody={promoteState.defaultBody}
+          defaultTags={promoteState.defaultTags}
+          mediaCandidates={promoteState.mediaCandidates}
+          busy={promoteBusy}
+          errorMessage={promoteError}
+          onClose={handlePromoteClose}
+          onSubmit={handlePromoteSubmit}
         />
       ) : null}
     </>
