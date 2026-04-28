@@ -53,6 +53,16 @@ export function buildWorkGraphProjection(core: CatsCoreState): WorkGraphProjecti
   for (const conversation of core.conversations) {
     conversationTitleById.set(conversation.id, conversation.title || conversation.id);
   }
+  const actorTitleById = new Map<string, string>();
+  for (const actor of core.actors) {
+    actorTitleById.set(actor.id, actor.name || actor.id);
+  }
+  if (core.ownerProfile?.actorId) {
+    actorTitleById.set(
+      core.ownerProfile.actorId,
+      core.ownerProfile.displayName || core.ownerProfile.actorId,
+    );
+  }
 
   const objects: WorkGraphObjectSummary[] = [
     ...core.projects.map((p) => projectToSummary(p, conversationTitleById)),
@@ -60,13 +70,21 @@ export function buildWorkGraphProjection(core: CatsCoreState): WorkGraphProjecti
       workItemToSummary(wi, workItemTitleById, conversationTitleById),
     ),
     ...core.tasks.map((task) =>
-      taskToSummary(task, core, taskTitleById, conversationTitleById),
+      taskToSummary(
+        task,
+        core,
+        taskTitleById,
+        conversationTitleById,
+        actorTitleById,
+      ),
     ),
     ...core.conversations.map(conversationToSummary),
     ...core.actors
       .filter((actor) => actor.kind !== 'owner' && actor.status === 'active')
       .map(actorToSummary),
-    ...core.missions.map((m) => missionToSummary(m, conversationTitleById)),
+    ...core.missions.map((m) =>
+      missionToSummary(m, conversationTitleById, actorTitleById),
+    ),
     ...core.runs.map((run) =>
       runToSummary(run, taskTitleById, conversationTitleById),
     ),
@@ -234,6 +252,7 @@ function taskToSummary(
   core: CatsCoreState,
   taskTitleById: Map<string, string>,
   conversationTitleById: Map<string, string>,
+  actorTitleById: Map<string, string>,
 ): WorkGraphObjectSummary {
   const parentTaskTitle = t.parentTaskId
     ? taskTitleById.get(t.parentTaskId) ?? null
@@ -262,6 +281,9 @@ function taskToSummary(
     linkedConversationTitle: t.conversationId
       ? conversationTitleById.get(t.conversationId) ?? null
       : null,
+    assignedActorTitles: t.assignedActorIds.map(
+      (id) => actorTitleById.get(id) ?? id,
+    ),
   };
 }
 
@@ -312,6 +334,7 @@ function actorToSummary(actor: CoreActorRecord): WorkGraphObjectSummary {
 function missionToSummary(
   m: MissionRecord,
   conversationTitleById: Map<string, string>,
+  actorTitleById: Map<string, string>,
 ): WorkGraphObjectSummary {
   return {
     id: m.id,
@@ -334,6 +357,9 @@ function missionToSummary(
     linkedConversationTitle: m.conversationId
       ? conversationTitleById.get(m.conversationId) ?? null
       : null,
+    assignedActorTitles: m.assignedAgentId
+      ? [actorTitleById.get(m.assignedAgentId) ?? m.assignedAgentId]
+      : [],
   };
 }
 

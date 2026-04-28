@@ -244,6 +244,16 @@ export interface WorkGraphObjectSummary {
    * without each consumer building its own conversation lookup.
    */
   linkedConversationTitle?: string | null;
+  /**
+   * Resolved actor titles (display names) for the Core record's
+   * canonical assignment list. Set on `kind === 'task'` from
+   * `task.assignedActorIds`; on `kind === 'mission'` from the single
+   * `mission.assignedAgentId` (one-element array). Undefined for
+   * other kinds. Each entry is a name resolved against `core.actors`,
+   * falling back to the actor id when not resolvable. Empty array
+   * means the record has the field but no actors are assigned.
+   */
+  assignedActorTitles?: string[];
 }
 
 export interface WorkGraphEvidenceAttachment {

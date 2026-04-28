@@ -184,6 +184,14 @@ export function TaskDetailPage(): JSX.Element {
             <dd>{task.ownerRole ?? <em>(not assigned)</em>}</dd>
             <dt>Assignee</dt>
             <dd>{task.assigneeName ?? <em>(unassigned)</em>}</dd>
+            <dt>Assigned actors</dt>
+            <dd>
+              {task.assignedActorTitles && task.assignedActorTitles.length > 0 ? (
+                task.assignedActorTitles.join(", ")
+              ) : (
+                <em>(no Core actors assigned)</em>
+              )}
+            </dd>
             <dt>Next action</dt>
             <dd>{task.nextAction ?? <em>(none recorded)</em>}</dd>
             {task.acceptanceCriteria ? (

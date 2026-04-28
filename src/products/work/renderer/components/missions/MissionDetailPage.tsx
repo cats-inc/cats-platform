@@ -95,9 +95,15 @@ export function MissionDetailPage(): JSX.Element {
               <dt>Status</dt>
               <dd>{mission.status.replace(/_/g, " ")}</dd>
             </div>
-            {mission.ownerRole ? (
+            {mission.assignedActorTitles &&
+            mission.assignedActorTitles.length > 0 ? (
               <div className="missionDetail__summaryRow">
-                <dt>Assigned</dt>
+                <dt>Assigned agent</dt>
+                <dd>{mission.assignedActorTitles.join(", ")}</dd>
+              </div>
+            ) : mission.ownerRole ? (
+              <div className="missionDetail__summaryRow">
+                <dt>Owner role</dt>
                 <dd>{mission.ownerRole}</dd>
               </div>
             ) : null}
