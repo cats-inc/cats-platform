@@ -1,10 +1,15 @@
+import { useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { formatRelative } from "../topdown/shared";
 import { useMissions } from "../../state/missionsStore";
+import { useRuns } from "../../state/runsStore";
+import { useTasks } from "../../state/tasksStore";
 import { useWorkItems } from "../../state/workItemsStore";
 import {
   WORK_MISSIONS_PATH,
+  buildWorkRunPath,
+  buildWorkTaskPath,
   buildWorkWorkItemPath,
 } from "../../workPaths.js";
 import "./missions.css";
@@ -13,18 +18,35 @@ export function MissionDetailPage(): JSX.Element {
   const { missionId } = useParams<{ missionId: string }>();
   const { allMissions } = useMissions();
   const { allWorkItems } = useWorkItems();
+  const { allTasks } = useTasks();
+  const { allRuns } = useRuns();
 
   const mission = missionId
     ? allMissions.find((m) => m.id === missionId)
     : undefined;
 
+  const linkedWorkItem = mission?.linkedWorkItemId
+    ? allWorkItems.find((wi) => wi.id === mission.linkedWorkItemId)
+    : undefined;
+
+  const transitiveTasks = useMemo(() => {
+    if (!linkedWorkItem) return [];
+    return allTasks
+      .filter((t) => t.linkedWorkItemId === linkedWorkItem.id)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }, [allTasks, linkedWorkItem]);
+
+  const transitiveRuns = useMemo(() => {
+    if (transitiveTasks.length === 0) return [];
+    const taskIds = new Set(transitiveTasks.map((t) => t.id));
+    return allRuns
+      .filter((r) => r.linkedTaskId && taskIds.has(r.linkedTaskId))
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  }, [allRuns, transitiveTasks]);
+
   if (!mission) {
     return <MissionNotFound missionId={missionId ?? null} />;
   }
-
-  const linkedWorkItem = mission.linkedWorkItemId
-    ? allWorkItems.find((wi) => wi.id === mission.linkedWorkItemId)
-    : undefined;
 
   return (
     <div className="missionDetail">
@@ -110,6 +132,89 @@ export function MissionDetailPage(): JSX.Element {
           {mission.summary ? (
             <p className="missionDetail__summaryBody">{mission.summary}</p>
           ) : null}
+        </section>
+
+        <section className="missionDetail__section">
+          <h2 className="missionDetail__sectionHeading">
+            Tasks under this work item{" "}
+            <span className="missionDetail__count">{transitiveTasks.length}</span>
+          </h2>
+          {!linkedWorkItem ? (
+            <p className="missionDetail__empty">
+              Mission is ad-hoc — no work item to scope tasks against.
+            </p>
+          ) : transitiveTasks.length === 0 ? (
+            <p className="missionDetail__empty">
+              The linked work item has no tasks yet.
+            </p>
+          ) : (
+            <ul className="missionDetail__transitiveList">
+              {transitiveTasks.map((task) => (
+                <li key={task.id} className="missionDetail__transitiveRow">
+                  <Link
+                    to={buildWorkTaskPath(task.id)}
+                    className="missionDetail__transitiveLink"
+                  >
+                    <span className="missionDetail__transitiveTitle">
+                      {task.title}
+                    </span>
+                    <span
+                      className={`missionDetail__transitiveStatus missionDetail__transitiveStatus--${task.status}`}
+                    >
+                      {task.status.replace(/_/g, " ")}
+                    </span>
+                    <span className="missionDetail__transitiveTime">
+                      {formatRelative(task.updatedAt)}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="missionDetail__section">
+          <h2 className="missionDetail__sectionHeading">
+            Runs from those tasks{" "}
+            <span className="missionDetail__count">{transitiveRuns.length}</span>
+          </h2>
+          {!linkedWorkItem ? (
+            <p className="missionDetail__empty">
+              Mission is ad-hoc — no transitive runs.
+            </p>
+          ) : transitiveRuns.length === 0 ? (
+            <p className="missionDetail__empty">
+              No runs dispatched from these tasks yet.
+            </p>
+          ) : (
+            <ul className="missionDetail__transitiveList">
+              {transitiveRuns.map((run) => (
+                <li key={run.id} className="missionDetail__transitiveRow">
+                  <Link
+                    to={buildWorkRunPath(run.linkedTaskId ?? "orphan", run.id)}
+                    className="missionDetail__transitiveLink"
+                  >
+                    <span className="missionDetail__transitiveTitle">
+                      {run.title}
+                    </span>
+                    {run.linkedTaskTitle ? (
+                      <span className="missionDetail__transitiveParent">
+                        ↳ {run.linkedTaskTitle}
+                      </span>
+                    ) : null}
+                    <span
+                      className={`missionDetail__transitiveStatus missionDetail__transitiveStatus--${run.status}`}
+                    >
+                      {run.status.replace(/_/g, " ")}
+                    </span>
+                    <span className="missionDetail__transitiveTime">
+                      {formatRelative(run.updatedAt)}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       </main>
     </div>

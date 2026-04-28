@@ -323,3 +323,87 @@ main.canvas:has(> .missionDetail) {
   font-size: 0.78rem;
   color: var(--muted);
 }
+
+.missionDetail__count {
+  font-size: 0.74rem;
+  color: var(--muted);
+  background: var(--canvas-bg);
+  border: 1px solid var(--border);
+  padding: 1px 8px;
+  border-radius: 999px;
+  font-weight: 500;
+  margin-left: 6px;
+}
+
+.missionDetail__transitiveList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.missionDetail__transitiveRow {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--canvas-bg);
+}
+
+.missionDetail__transitiveLink {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 6px 10px;
+  text-decoration: none;
+  color: inherit;
+  font-size: 0.82rem;
+}
+
+.missionDetail__transitiveLink:hover {
+  background: var(--panel);
+}
+
+.missionDetail__transitiveTitle {
+  flex: 1;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.missionDetail__transitiveParent {
+  color: var(--muted);
+  font-style: italic;
+  font-size: 0.74rem;
+  max-width: 22ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.missionDetail__transitiveStatus {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.missionDetail__transitiveStatus--running {
+  color: var(--accent);
+}
+.missionDetail__transitiveStatus--completed {
+  color: #389c60;
+}
+.missionDetail__transitiveStatus--failed,
+.missionDetail__transitiveStatus--cancelled {
+  color: #c0382b;
+}
+.missionDetail__transitiveStatus--blocked {
+  color: #c08038;
+}
+
+.missionDetail__transitiveTime {
+  color: var(--muted);
+  font-size: 0.72rem;
+}
