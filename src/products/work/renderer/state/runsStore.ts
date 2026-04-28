@@ -69,7 +69,9 @@ export function buildSubRunTree(
     const children = byParent.get(parentId) ?? [];
     return children
       .filter((r) => !visited.has(r.id))
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+      .sort((a, b) =>
+        (a.startedAt ?? a.updatedAt).localeCompare(b.startedAt ?? b.updatedAt),
+      )
       .map((run) => {
         const nextVisited = new Set(visited);
         nextVisited.add(run.id);
