@@ -5,13 +5,23 @@ import {
 import type { ProviderModelSelection } from '../../shared/providerSelection.js';
 import {
   buildCapabilityAssessment,
-  createProviderCatalogEvidence,
 } from './capabilityAssessment.js';
+import {
+  resolveProviderCapabilityBootstrapRule,
+  type ProviderCapabilityBootstrapConfig,
+  type ProviderCapabilityBootstrapTreatment,
+} from './providerCapabilityBootstrapConfig.js';
+import {
+  DEFAULT_PROVIDER_CAPABILITY_CONTROL_KEY,
+  createProviderCapabilityControlKey,
+} from './providerCapabilityControlKey.js';
 import type {
   CapabilityAssessment,
   CapabilityClaim,
   CapabilityDimension,
   CapabilitySource,
+  CapabilitySourceEvidence,
+  SupervisionDiagnosticRecord,
 } from './contracts.js';
 
 export const PROVIDER_CAPABILITY_CATALOG_VERSION =
@@ -41,8 +51,10 @@ export interface ProviderCapabilityProfile {
   model: string;
   control: string | null;
   kind: ProviderCapabilityProfileKind;
+  bootstrapTreatment: 'default' | ProviderCapabilityBootstrapTreatment;
   assessment: CapabilityAssessment;
   sourceFixtures: CapabilityEvidenceSourceFixture[];
+  diagnostics: SupervisionDiagnosticRecord[];
   notes: string[];
 }
 
@@ -50,9 +62,13 @@ const BOOTSTRAP_PROVIDER_IDS = ['claude', 'codex', 'ollama', 'unknown'] as const
 
 export function buildBootstrapProviderCapabilityProfiles(input: {
   assessedAt: string;
+  bootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
 }): ProviderCapabilityProfile[] {
   return BOOTSTRAP_PROVIDER_IDS.map((provider) =>
-    resolveProviderCapabilityProfile({ provider }, { assessedAt: input.assessedAt }),
+    resolveProviderCapabilityProfile(
+      { provider },
+      { assessedAt: input.assessedAt, bootstrapConfig: input.bootstrapConfig },
+    ),
   );
 }
 
@@ -60,17 +76,38 @@ export function resolveProviderCapabilityProfile(
   target: ProviderCapabilityTarget,
   options: {
     assessedAt: string;
+    bootstrapConfig?: ProviderCapabilityBootstrapConfig | null;
   },
 ): ProviderCapabilityProfile {
   const provider = normalizeProviderId(target.provider);
   const model = normalizeCapabilityModel(provider, target.model);
-  const kind = classifyProviderCapability(provider);
+  const controlKey = createProviderCapabilityControlKey({
+    control: target.control,
+    modelSelection: target.modelSelection,
+  });
+  const profileControl = controlKey === DEFAULT_PROVIDER_CAPABILITY_CONTROL_KEY ? null : controlKey;
+  const bootstrapResolution = resolveProviderCapabilityBootstrapRule(
+    options.bootstrapConfig,
+    {
+      provider,
+      instance: target.instance ?? null,
+      model,
+      control: controlKey,
+    },
+    {
+      observedAt: options.assessedAt,
+      configPath: options.bootstrapConfig?.configPath ?? null,
+    },
+  );
+  const kind = bootstrapResolution.treatment === 'default'
+    ? 'unknown'
+    : bootstrapResolution.treatment;
   const sourceFixtures = createSourceFixtures(provider, model);
   const profileId = createProviderCapabilityProfileId({
     provider,
     instance: target.instance ?? null,
     model,
-    control: target.control ?? null,
+    control: profileControl,
   });
 
   if (kind === 'unknown') {
@@ -79,27 +116,32 @@ export function resolveProviderCapabilityProfile(
       provider,
       instance: target.instance ?? null,
       model,
-      control: target.control ?? null,
+      control: profileControl,
       kind,
+      bootstrapTreatment: 'default',
       assessment: buildCapabilityAssessment({
         assessedAt: options.assessedAt,
         confidenceSources: [],
       }),
       sourceFixtures,
+      diagnostics: bootstrapResolution.diagnostics,
       notes: [
-        'No provider catalog evidence exists yet; policy must use conservative unknown dials.',
+        'No provider capability bootstrap rule matched; policy must use conservative unknown dials.',
       ],
     };
   }
 
-  const catalogEvidence = createProviderCatalogEvidence({
+  const bootstrapEvidence = createBootstrapConfigEvidence({
     providerId: provider,
     modelId: model,
-    catalogVersion: PROVIDER_CAPABILITY_CATALOG_VERSION,
+    ruleId: bootstrapResolution.rule?.id ?? 'unknown-rule',
+    configVersion: String(options.bootstrapConfig?.version ?? 1),
+    configPath: options.bootstrapConfig?.configPath ?? null,
+    reason: bootstrapResolution.rule?.reason ?? 'Provider capability bootstrap rule matched.',
     observedAt: options.assessedAt,
     claims: kind === 'weak_worker'
-      ? createWeakProviderCatalogClaims(provider)
-      : createStrongProviderCatalogClaims(provider),
+      ? createWeakProviderBootstrapClaims(provider)
+      : createStrongProviderBootstrapClaims(provider),
   });
 
   return {
@@ -107,19 +149,21 @@ export function resolveProviderCapabilityProfile(
     provider,
     instance: target.instance ?? null,
     model,
-    control: target.control ?? null,
+    control: profileControl,
     kind,
+    bootstrapTreatment: kind,
     assessment: buildCapabilityAssessment({
       assessedAt: options.assessedAt,
-      confidenceSources: [catalogEvidence],
+      confidenceSources: [bootstrapEvidence],
     }),
     sourceFixtures,
+    diagnostics: bootstrapResolution.diagnostics,
     notes: kind === 'weak_worker'
       ? [
-          'Local/weak provider starts as SOP/worker-capable only; policy should clamp dials.',
+          'Configured weak provider starts as SOP/worker-capable only; policy should clamp dials.',
         ]
       : [
-          'Strong provider starts from catalog evidence only; eval/history evidence is ' +
+          'Configured strong provider starts from bootstrap config evidence only; eval/history evidence is ' +
             'still required for broad autonomy.',
         ],
   };
@@ -139,17 +183,33 @@ function normalizeCapabilityModel(provider: string, model: string | null | undef
   return getDefaultModel(provider) || 'unknown-model';
 }
 
-function classifyProviderCapability(provider: string): ProviderCapabilityProfileKind {
-  if (provider === 'claude' || provider === 'codex') {
-    return 'strong_agent';
-  }
-  if (provider === 'ollama') {
-    return 'weak_worker';
-  }
-  return 'unknown';
+function createBootstrapConfigEvidence(input: {
+  providerId: string;
+  modelId: string;
+  ruleId: string;
+  configVersion: string;
+  configPath: string | null;
+  reason: string;
+  observedAt: string;
+  claims: Partial<Record<CapabilityDimension, CapabilityClaim>>;
+}): CapabilitySourceEvidence {
+  return {
+    evidenceId:
+      `bootstrap_config:${sanitizeProfilePart(input.ruleId)}:` +
+      `${sanitizeProfilePart(input.providerId)}:${sanitizeProfilePart(input.modelId)}`,
+    source: 'bootstrap_config',
+    observedAt: input.observedAt,
+    claims: input.claims,
+    metadata: {
+      bootstrapConfigRuleId: input.ruleId,
+      bootstrapConfigVersion: input.configVersion,
+      bootstrapConfigPath: input.configPath ?? undefined,
+      bootstrapConfigReason: input.reason,
+    },
+  };
 }
 
-function createStrongProviderCatalogClaims(
+function createStrongProviderBootstrapClaims(
   provider: string,
 ): Partial<Record<CapabilityDimension, CapabilityClaim>> {
   return {
@@ -159,20 +219,20 @@ function createStrongProviderCatalogClaims(
     },
     json_fidelity: {
       level: 'catalog_only',
-      summary: `${provider} catalog profile advertises structured output support; eval pending.`,
+      summary: `${provider} bootstrap config attests structured output candidacy; eval pending.`,
     },
     reasoning_depth: {
       level: 'catalog_only',
-      summary: `${provider} catalog profile is treated as a strong reasoning candidate; eval pending.`,
+      summary: `${provider} bootstrap config marks a strong reasoning candidate; eval pending.`,
     },
     recovery_reliability: {
       level: 'catalog_only',
-      summary: `${provider} catalog profile can attempt recovery, but history is not observed yet.`,
+      summary: `${provider} bootstrap config allows recovery attempts, but history is not observed yet.`,
     },
   };
 }
 
-function createWeakProviderCatalogClaims(
+function createWeakProviderBootstrapClaims(
   provider: string,
 ): Partial<Record<CapabilityDimension, CapabilityClaim>> {
   return {

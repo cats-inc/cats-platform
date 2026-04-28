@@ -1,0 +1,26 @@
+version: 1
+profiles:
+  - id: claude-native-sonnet-strong-candidate
+    selector:
+      provider: claude
+      instance: native
+      model: sonnet
+      control: default
+    initialTreatment: strong_agent
+    confidenceLevel: catalog_only
+    reason: Operator-approved strong-agent candidate for supervised chat/work demos.
+  - id: codex-cloud-gpt-5-4-strong-candidate
+    selector:
+      provider: codex
+      instance: cloud
+      model: gpt-5.4
+      control: default
+    initialTreatment: strong_agent
+    confidenceLevel: catalog_only
+    reason: Operator-approved strong-agent candidate for supervised coding demos.
+  - id: ollama-local-worker
+    selector:
+      provider: ollama
+    initialTreatment: weak_worker
+    confidenceLevel: catalog_only
+    reason: Local Ollama targets start as SOP workers unless evals say otherwise.

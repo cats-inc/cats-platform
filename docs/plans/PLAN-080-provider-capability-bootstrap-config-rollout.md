@@ -232,15 +232,15 @@ above default/unknown.
 
 ### Phase 1: Contract and fixture
 
-- [ ] Task 1.1: Extend supervision contracts with
+- [x] Task 1.1: Extend supervision contracts with
       `bootstrapTreatment`, `bootstrap_config` source metadata, and
       `SupervisionDiagnosticRecord`.
-- [ ] Task 1.2: Add a checked-in example fixture for
+- [x] Task 1.2: Add a checked-in example fixture for
       `provider-capability-bootstrap.yaml` under tests or docs; do not ship it
       as an active default config.
-- [ ] Task 1.3: Add parser/validator tests proving absent config, invalid
+- [x] Task 1.3: Add parser/validator tests proving absent config, invalid
       config, and unmatched targets all resolve to default/unknown.
-- [ ] Task 1.4: Define and test the canonical control key helper that turns
+- [x] Task 1.4: Define and test the canonical control key helper that turns
       reconciled `modelSelection.controls` into `default` or a stable
       non-default control string before YAML matching.
 
@@ -249,12 +249,12 @@ defined before resolver behavior changes.
 
 ### Phase 2: Resolver replacement
 
-- [ ] Task 2.1: Replace the hard-coded `classifyProviderCapability(provider)`
+- [x] Task 2.1: Replace the hard-coded `classifyProviderCapability(provider)`
       mapping with a YAML-backed resolver.
-- [ ] Task 2.2: Keep provider/model catalogs available for display and adapter
+- [x] Task 2.2: Keep provider/model catalogs available for display and adapter
       inventory, but prevent catalog facts from assigning strong/weak treatment
       without a matched YAML rule.
-- [ ] Task 2.3: Add diagnostics for missing config, parse failure, duplicate
+- [x] Task 2.3: Add diagnostics for missing config, parse failure, duplicate
       rule id, invalid treatment, invalid confidence, and ambiguous matches.
       Duplicate rule id is a fatal validation error for the whole config, not a
       warning or last-wins case.
@@ -264,10 +264,10 @@ the YAML explicitly grants it.
 
 ### Phase 3: Policy and product verification
 
-- [ ] Task 3.1: Update capability profile tests so `claude`, `codex`,
+- [x] Task 3.1: Update capability profile tests so `claude`, `codex`,
       `ollama`, and unknown providers all resolve default/unknown without test
       config.
-- [ ] Task 3.2: Add fixture-backed tests proving configured `claude` / `codex`
+- [x] Task 3.2: Add fixture-backed tests proving configured `claude` / `codex`
       can appear as strong-agent candidates and configured `ollama` can appear
       as a weak-worker candidate.
 - [ ] Task 3.3: Update Chat/Work/Code preset capability-review tests to use
@@ -316,6 +316,7 @@ initial treatment even without an editor.
 | `package.json` / `package-lock.json` | Modify if needed | Add a real YAML parser dependency and add `smoke:live:chat`; update `smoke:live:providers` to include Chat/Work/Code. |
 | `tests/supervision-provider-capability-profiles.test.tsx` | Modify | Default-neutral and fixture-backed strong/weak tests. |
 | `tests/provider-capability-bootstrap-config.test.tsx` | Create | YAML validation, fatal duplicate ids, control key normalization, and fail-closed behavior. |
+| `tests/fixtures/provider-capability-bootstrap.yaml` | Create | Checked-in inactive fixture covering Claude / Codex / Ollama for tests and rollout examples. |
 | `tests/chat-live-provider-smoke.test.tsx` | Create | Chat live provider smoke gated by `CATS_CHAT_LIVE_PROVIDER_SMOKE` and PLAN-080 YAML fixture. |
 | `docs/deployment.md` | Modify | Document config path and environment override. |
 | `docs/specs/SPEC-082-cats-work-agent-supervision-and-tool-boundary.md` | Modify | Keep normative bootstrap contract aligned. |
@@ -377,6 +378,7 @@ initial treatment even without an editor.
 | 2026-04-28 | Review close-out: added `instance` to selector axes, declared YAML attestation as ADR-082 §3 evidence source #4 under FR-19 floor, defined selector precedence and process-restart reload behavior, scoped a Migration section with example fixture + release-notes guidance, scheduled re-run of PLAN-075 Phase 5.4 / 6.4 live smoke under YAML config (Task 3.5), bound Phase 4 diagnostic surface to logs + supervision evidence rather than a new UI panel, and added attestation-boundary + selector-precedence test categories. |
 | 2026-04-28 | Review follow-up: extended Task 3.5 to require a Chat live smoke gate alongside Work/Code re-runs (PLAN-075 acceptance covers Chat turn too); split `bootstrap_config` evidence kind from `operator_override` while keeping the FR-19 authorization ceiling shared; rewrote selector precedence to count narrowing keys so non-linear combos (`provider+model`, `provider+control`, etc.) get a defined ordering; added a Diagnostic Destination sub-section pinning diagnostics to log + supervision diagnostic records (never `confidenceSources`); added migration deliverables (example YAML, first-run warning entry, PROGRESS.md callout) to Files Likely; updated `plans/README.md` PLAN-075 status. |
 | 2026-04-28 | Review close-out: removed `default` / `unknown` from valid YAML grants so only explicit `strong_agent` / `weak_worker` rules create startup treatment; added Claude to the example fixture; defined canonical `control` selector serialization from reconciled controls; made duplicate rule ids fatal; replaced vague supervision evidence reuse with a concrete `SupervisionDiagnosticRecord` owner; added Chat live smoke files/scripts to the delivery list; added tests and risks for duplicate ids, forbidden YAML defaults, live Chat smoke, and control-key drift. |
+| 2026-04-28 | Implementation slice 1: added `bootstrap_config` evidence metadata, `SupervisionDiagnosticRecord`, canonical control-key helper, YAML parser/validator, explicit-config resolver, fatal duplicate-id handling, and tests proving no-config default/unknown plus configured strong/weak behavior. Validation: targeted supervision tests and `npm run typecheck` passed. |
 
 ---
 

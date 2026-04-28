@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   ADDRESSABLE_TARGET_KIND_VALUES,
   CAPABILITY_AGGREGATE_METHOD,
+  CAPABILITY_SOURCE_VALUES,
   DEFAULT_SUPERVISION_SCHEMA_VERSION,
   SUPERVISED_TOOL_CANCELLATION_VALUES,
   TOOL_RESULT_STATUS_VALUES,
@@ -13,6 +14,7 @@ import {
   type CapabilityAssessment,
   type RunRef,
   type SupervisedToolManifest,
+  type SupervisionDiagnosticRecord,
   type SupervisionPolicySnapshot,
   type ToolResult,
 } from '../src/platform/supervision/index.ts';
@@ -214,6 +216,25 @@ test('capability assessments tie aggregate method to schema version', () => {
 
   assert.equal(assessment.aggregateMethod, 'conservative_per_dimension');
   assert.deepEqual(assessment.schemaVersion, { major: 1, minor: 0 });
+});
+
+test('capability sources include bootstrap config as startup attestation', () => {
+  assert.equal(CAPABILITY_SOURCE_VALUES.includes('bootstrap_config'), true);
+});
+
+test('supervision diagnostic records carry provider bootstrap diagnostics outside evidence', () => {
+  const diagnostic: SupervisionDiagnosticRecord = {
+    id: 'provider-capability-bootstrap:missing-config:config:2026-04-28',
+    kind: 'provider_capability_bootstrap_config',
+    severity: 'warning',
+    code: 'missing_config',
+    observedAt: '2026-04-28T00:00:00.000Z',
+    configPath: 'config/provider-capability-bootstrap.yaml',
+    message: 'No provider capability bootstrap config was found.',
+  };
+
+  assert.equal(diagnostic.kind, 'provider_capability_bootstrap_config');
+  assert.equal(diagnostic.code, 'missing_config');
 });
 
 test('stable supervision rejection codes include approval, cancellation, and scope failures', () => {

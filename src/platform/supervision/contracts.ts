@@ -143,6 +143,7 @@ export interface CapabilityClaim {
 }
 
 export const CAPABILITY_SOURCE_VALUES = [
+  'bootstrap_config',
   'provider_catalog',
   'operator_override',
   'eval_suite',
@@ -158,6 +159,10 @@ export interface CapabilitySourceEvidence {
   claims: Partial<Record<CapabilityDimension, CapabilityClaim>>;
   metadata?: {
     catalogVersion?: string;
+    bootstrapConfigRuleId?: string;
+    bootstrapConfigVersion?: string;
+    bootstrapConfigPath?: string;
+    bootstrapConfigReason?: string;
     evalSuiteId?: string;
     evalRunId?: string;
     historyWindow?: { startedAt: string; endedAt: string; runIds: string[] };
@@ -185,6 +190,35 @@ export interface CapabilityAssessment {
   confidenceSources: CapabilitySourceEvidence[];
   aggregateMethod: CapabilityAggregateMethod;
   conflicts: CapabilityConflict[];
+}
+
+export type SupervisionDiagnosticSeverity = 'info' | 'warning' | 'error';
+
+export type SupervisionDiagnosticCode =
+  | 'missing_config'
+  | 'parse_failed'
+  | 'duplicate_rule_id'
+  | 'invalid_treatment'
+  | 'invalid_confidence'
+  | 'ambiguous_match'
+  | 'losing_tie_rule'
+  | 'matched_rule';
+
+export interface SupervisionDiagnosticRecord {
+  id: string;
+  kind: 'provider_capability_bootstrap_config';
+  severity: SupervisionDiagnosticSeverity;
+  code: SupervisionDiagnosticCode;
+  observedAt: string;
+  configPath?: string;
+  ruleIds?: string[];
+  target?: {
+    provider: string;
+    instance?: string | null;
+    model?: string | null;
+    control?: string | null;
+  };
+  message: string;
 }
 
 export const TOOL_RESULT_STATUS_VALUES = [

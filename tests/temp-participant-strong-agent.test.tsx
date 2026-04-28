@@ -5,7 +5,9 @@ import {
   validateProviderAgentBoundedObservation,
 } from '../src/platform/orchestration/index.ts';
 import {
+  parseProviderCapabilityBootstrapConfigDocument,
   resolveProviderCapabilityProfile,
+  type ProviderCapabilityBootstrapConfig,
   type SupervisionPolicy,
 } from '../src/platform/supervision/index.ts';
 import { createDefaultChatState } from '../src/products/chat/state/defaults.ts';
@@ -24,6 +26,34 @@ function strongPolicy(): SupervisionPolicy {
     approvalThreshold: 'low',
     fallbackPolicy: 'retry',
   };
+}
+
+function fixtureBootstrapConfig(): ProviderCapabilityBootstrapConfig {
+  const result = parseProviderCapabilityBootstrapConfigDocument(
+    {
+      version: 1,
+      profiles: [
+        {
+          id: 'codex-cloud-gpt-5-4-strong-candidate',
+          selector: {
+            provider: 'codex',
+            model: 'gpt-5.4',
+            control: 'default',
+          },
+          initialTreatment: 'strong_agent',
+          confidenceLevel: 'catalog_only',
+          reason: 'Operator-approved strong temporary participant demo.',
+        },
+      ],
+    },
+    { observedAt: '2026-04-28T00:00:00.000Z' },
+  );
+
+  if (!result.config) {
+    throw new Error('Expected fixture bootstrap config to parse.');
+  }
+
+  return result.config;
 }
 
 test('preset-created temporary participant can be a strong provider-agent without Cat promotion', () => {
@@ -75,6 +105,7 @@ test('preset-created temporary participant can be a strong provider-agent withou
     },
     {
       assessedAt: '2026-04-28T00:00:00.000Z',
+      bootstrapConfig: fixtureBootstrapConfig(),
     },
   );
 
