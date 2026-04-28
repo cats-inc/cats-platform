@@ -436,12 +436,20 @@ main.canvas:has(> .runDetail) {
 
 .runDetail__traceRow {
   display: grid;
-  grid-template-columns: 80px 1fr 80px;
+  grid-template-columns: 70px 110px 1fr 80px;
   gap: 10px;
   align-items: baseline;
   padding: 6px 10px;
   border-left: 2px solid transparent;
   font-size: 0.8rem;
+}
+
+.runDetail__traceActor {
+  color: var(--muted);
+  font-size: 0.74rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .runDetail__traceRow--note { border-left-color: var(--border); }

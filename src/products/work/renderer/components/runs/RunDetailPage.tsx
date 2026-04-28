@@ -69,6 +69,15 @@ export function RunDetailPage(): JSX.Element {
         .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
     [graph.objects, runId],
   );
+  const actorTitleById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const o of graph.objects) {
+      if (o.kind === "agent") {
+        map.set(o.id, o.title);
+      }
+    }
+    return map;
+  }, [graph.objects]);
   const outcomes = useMemo(
     () =>
       graph.objects
@@ -271,18 +280,31 @@ export function RunDetailPage(): JSX.Element {
               {traceState.traces
                 .slice()
                 .sort((a, b) => a.createdAt.localeCompare(b.createdAt))
-                .map((trace) => (
-                  <li
-                    key={trace.id}
-                    className={`runDetail__traceRow runDetail__traceRow--${trace.kind}`}
-                  >
-                    <span className="runDetail__traceKind">{trace.kind}</span>
-                    <p className="runDetail__traceMessage">{trace.message}</p>
-                    <span className="runDetail__traceTime">
-                      {formatRelative(trace.createdAt)}
-                    </span>
-                  </li>
-                ))}
+                .map((trace) => {
+                  const actorLabel = trace.actorId
+                    ? actorTitleById.get(trace.actorId) ?? trace.actorId
+                    : null;
+                  return (
+                    <li
+                      key={trace.id}
+                      className={`runDetail__traceRow runDetail__traceRow--${trace.kind}`}
+                    >
+                      <span className="runDetail__traceKind">
+                        {trace.kind}
+                      </span>
+                      <span
+                        className="runDetail__traceActor"
+                        title={trace.actorId ?? "no actor recorded"}
+                      >
+                        {actorLabel ?? "—"}
+                      </span>
+                      <p className="runDetail__traceMessage">{trace.message}</p>
+                      <span className="runDetail__traceTime">
+                        {formatRelative(trace.createdAt)}
+                      </span>
+                    </li>
+                  );
+                })}
             </ol>
           )}
         </section>
