@@ -596,6 +596,13 @@ export function buildManagedServiceSpecs(
         CATS_DESKTOP_DIR: pathModule.dirname(config.paths.hostStatePath),
         CATS_RUNTIME_DIR: config.paths.runtimeRootDir,
         CATS_RUNTIME_BASE_URL: config.runtimeBaseUrl,
+        // PLAN-077 §"One owner per runtime mode": when the desktop main
+        // process spawns the cats-platform sidecar, the sidecar must NOT
+        // own feature-flag writes — desktop main is the sole writer via
+        // the `cats-host:set-feature-flag` IPC channel. The sidecar's
+        // HTTP route checks this env var and returns 410 with a pointer
+        // back to the desktop bridge.
+        CATS_PLATFORM_HOST_OWNS_FEATURE_FLAGS: '1',
       },
       healthUrl: `${config.appBaseUrl}/health`,
       logPath: join(config.paths.hostLogsDir, 'cats.log'),

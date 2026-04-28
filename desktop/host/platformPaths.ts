@@ -42,3 +42,12 @@ export function resolvePlatformOnboardingHistoryPathFromChatState(
     'platform-onboarding-history.json',
   );
 }
+
+export function resolvePlatformFeatureFlagsPathFromChatState(
+  chatStatePath: string,
+): string {
+  return path.join(
+    resolvePlatformStorageLayout(chatStatePath).stateDir,
+    'feature-flags.json',
+  );
+}
