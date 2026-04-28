@@ -1222,6 +1222,31 @@
   box-decoration-break: clone;
 }
 
+.composerHighlightReference {
+  border-radius: 6px;
+  padding: 0 2px;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.composerHighlightReferenceParsed {
+  background: rgba(37, 99, 235, 0.16);
+  color: var(--accent, #2563eb);
+  font-weight: 500;
+}
+
+.composerHighlightReferenceUnsupportedVersion {
+  background: rgba(150, 120, 40, 0.18);
+  color: var(--warm, #92400e);
+  font-style: italic;
+}
+
+.composerHighlightReferenceInvalid {
+  background: rgba(220, 38, 38, 0.14);
+  color: var(--danger, #b91c1c);
+  text-decoration: line-through;
+}
+
 .composerInputOverlay {
   position: relative;
   color: transparent;
