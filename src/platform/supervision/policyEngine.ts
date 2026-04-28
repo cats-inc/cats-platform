@@ -305,7 +305,12 @@ function buildBasePolicy(context: SupervisionPolicyContext): SupervisionPolicy {
       sideEffect: context.toolManifest.sideEffect,
     }),
     scaffolding: isStrongOrBetter ? 'few_shot' : 'sop_template',
-    validation: 'semantic_check',
+    // Stay on schema_required (the only validation level the
+    // providerAgentPolicyGate currently enforces, see
+    // providerAgentPolicyGate.ts:146) until semantic_check ships as a
+    // true superset. Otherwise default/strong tiers would silently lose
+    // the expectedOutputSchemaRef gate.
+    validation: 'schema_required',
     checkpointCadence: isStrongOrBetter ? 'milestone' : 'every_step',
     approvalThreshold,
     fallbackPolicy: isStrongOrBetter ? 'retry' : 'ask_human',

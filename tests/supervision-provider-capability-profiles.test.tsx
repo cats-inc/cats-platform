@@ -188,7 +188,7 @@ test('policy dials shift from configured strong profile to configured weak profi
   assert.equal(weakDecision.result.policy.taskGranularity, 'tiny');
   assert.equal(weakDecision.result.policy.toolScope, 'read_only');
   assert.equal(weakDecision.result.policy.scaffolding, 'sop_template');
-  assert.equal(strongDecision.result.policy.validation, 'semantic_check');
+  assert.equal(strongDecision.result.policy.validation, 'schema_required');
   assert.equal(weakDecision.result.policy.validation, 'schema_required');
   assert.equal(weakDecision.result.policy.checkpointCadence, 'every_step');
   assert.equal(weakDecision.result.policy.fallbackPolicy, 'ask_human');

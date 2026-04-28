@@ -116,7 +116,7 @@ function rejectionDetails(
   return result.error.details as SupervisionPolicyRejectionDetails;
 }
 
-test('default treatment grants narrow_write + step + semantic_check (open middle tier)', () => {
+test('default treatment grants narrow_write + step + schema_required (open middle tier)', () => {
   const result = decideSupervisionPolicy(baseContext({
     capabilityAssessment: catalogOnlyAssessment('default'),
     toolManifest: fixtureManifest('local_state'),
@@ -127,7 +127,7 @@ test('default treatment grants narrow_write + step + semantic_check (open middle
   assert.equal(result.result.policy.toolScope, 'narrow_write');
   assert.equal(result.result.policy.taskGranularity, 'step');
   assert.equal(result.result.policy.scaffolding, 'sop_template');
-  assert.equal(result.result.policy.validation, 'semantic_check');
+  assert.equal(result.result.policy.validation, 'schema_required');
   assert.equal(result.result.policy.checkpointCadence, 'every_step');
   assert.equal(result.result.policy.fallbackPolicy, 'ask_human');
 });
@@ -172,7 +172,7 @@ test('unknown confidence keeps the default treatment open-middle dials', () => {
   assert.equal(result.status, 'applied');
   assert.equal(result.result.policy.toolScope, 'narrow_write');
   assert.equal(result.result.policy.taskGranularity, 'step');
-  assert.equal(result.result.policy.validation, 'semantic_check');
+  assert.equal(result.result.policy.validation, 'schema_required');
 });
 
 test('weak_worker explicitly rejects requested milestone_plan with E_TOOL_SCOPE_DENIED', () => {

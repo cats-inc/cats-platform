@@ -53,7 +53,7 @@ the two highest-impact dials.
 | toolScope | read_only | narrow_write | narrow_write | narrow_write / broad_write* |
 | taskGranularity | tiny | step | step | milestone |
 | scaffolding | sop_template | sop_template | few_shot | few_shot |
-| validation | schema_required | semantic_check | semantic_check | semantic_check |
+| validation | schema_required | schema_required | schema_required | schema_required |
 | checkpointCadence | every_step | every_step | milestone | milestone |
 | fallbackPolicy | ask_human | ask_human | retry | retry |
 
@@ -149,17 +149,24 @@ real safety boundary.
   may not loosen. `weak_worker` short-circuits in `buildBasePolicy`
   before any evaluated/observed evidence is considered, so a
   blacklisted target stays clamped even when eval evidence arrives.
-- `validation: 'semantic_check'` is currently treated as **looser**
-  than `validation: 'schema_required'` by the `weak_worker` ceiling
-  check. The reason is that the only validation level the
+- All four tiers currently emit `validation: 'schema_required'` as
+  their base. The reason is that the only validation level the
   `providerAgentPolicyGate` actually enforces today is
   `schema_required` (it requires `expectedOutputSchemaRef` on each
   request); `semantic_check` is not yet implemented as a superset,
-  so allowing a `weak_worker` to "upgrade" to it would silently
-  bypass the schema gate. Once `semantic_check` is implemented as a
-  true superset of `schema_required` (i.e. it also enforces the
-  schema-ref requirement plus an additional semantic check), the
-  ordering should flip again.
+  so emitting `semantic_check` as a base for default/strong/evaluated
+  tiers would silently leave them with **no** validation enforcement
+  at all. Until `semantic_check` is implemented as a true superset of
+  `schema_required` (i.e. it also enforces the schema-ref requirement
+  plus an additional semantic check), all tiers route through the
+  same enforced gate. The `validation` dial keeps three enum values
+  (`best_effort`, `schema_required`, `semantic_check`) so the future
+  implementation can flip the base for non-weak tiers without a
+  schema migration.
+- `validation: 'semantic_check'` is consequently treated as **looser**
+  than `validation: 'schema_required'` by the `weak_worker` ceiling
+  check, so `weak_worker` cannot "upgrade" to `semantic_check` and
+  silently bypass the schema gate.
 
 ### Mitigations
 

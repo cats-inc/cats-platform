@@ -336,7 +336,10 @@ invocations are tools unless explicitly promoted by a later feature.
     `bootstrapTreatment: 'default'` with `confidenceLevel: 'unknown'`.
     `default` is the open middle tier: the operator implicitly trusted the
     model by selecting it, so the policy engine grants `narrow_write`
-    toolScope, `step` task granularity, and `semantic_check` validation.
+    toolScope, `step` task granularity, and `schema_required` validation
+    (the only validation level the provider-agent gate currently enforces;
+    `semantic_check` is reserved for a future implementation that wraps
+    the schema-ref gate with an additional semantic check).
     Operators tighten by listing the model under `weak_worker` (clamped to
     `read_only` / `single_step` / `tiny` / `sop_template` / `schema_required`
     / `every_step` / `ask_human`) or loosen by listing it under

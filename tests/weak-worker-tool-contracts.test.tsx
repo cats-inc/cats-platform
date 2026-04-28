@@ -288,7 +288,7 @@ test('strong and weak profiles use the same provider-agent seam with different d
     taskGranularity: 'milestone',
     toolScope: 'narrow_write',
     scaffolding: 'few_shot',
-    validation: 'semantic_check',
+    validation: 'schema_required',
     checkpointCadence: 'milestone',
     approvalThreshold: 'medium',
     fallbackPolicy: 'retry',
