@@ -10,11 +10,141 @@ import type {
   SupervisedToolManifest,
   SupervisedToolSideEffect,
   SupervisionApprovalThreshold,
+  SupervisionAutonomy,
+  SupervisionCheckpointCadence,
+  SupervisionFallbackPolicy,
   SupervisionPolicy,
   SupervisionPolicySnapshot,
+  SupervisionScaffolding,
+  SupervisionTaskGranularity,
   SupervisionToolScope,
+  SupervisionValidation,
   ToolResult,
 } from './contracts.js';
+
+const AUTONOMY_LOOSENESS: Record<SupervisionAutonomy, number> = {
+  none: 0,
+  single_step: 1,
+  milestone_plan: 2,
+  outcome_delegation: 3,
+};
+
+const TASK_GRANULARITY_LOOSENESS: Record<SupervisionTaskGranularity, number> = {
+  tiny: 0,
+  step: 1,
+  milestone: 2,
+  outcome: 3,
+};
+
+const TOOL_SCOPE_LOOSENESS: Record<SupervisionToolScope, number> = {
+  none: 0,
+  read_only: 1,
+  narrow_write: 2,
+  broad_write: 3,
+};
+
+const SCAFFOLDING_LOOSENESS: Record<SupervisionScaffolding, number> = {
+  sop_template: 0,
+  grammar_forced: 1,
+  few_shot: 2,
+  none: 3,
+};
+
+const VALIDATION_LOOSENESS: Record<SupervisionValidation, number> = {
+  semantic_check: 0,
+  schema_required: 1,
+  best_effort: 2,
+};
+
+const CHECKPOINT_CADENCE_LOOSENESS: Record<SupervisionCheckpointCadence, number> = {
+  every_step: 0,
+  milestone: 1,
+  on_risk: 2,
+  final: 3,
+};
+
+const APPROVAL_THRESHOLD_LOOSENESS: Record<SupervisionApprovalThreshold, number> = {
+  high: 0,
+  medium: 1,
+  low: 2,
+};
+
+const FALLBACK_POLICY_LOOSENESS: Record<SupervisionFallbackPolicy, number> = {
+  ask_human: 0,
+  retry: 1,
+  escalate_model: 2,
+  delegate_other: 3,
+};
+
+interface WeakCeilingViolation {
+  dial: keyof SupervisionPolicy;
+  value: SupervisionPolicy[keyof SupervisionPolicy];
+  ceiling: SupervisionPolicy[keyof SupervisionPolicy];
+}
+
+function findWeakWorkerCeilingViolations(
+  policy: SupervisionPolicy,
+  ceiling: SupervisionPolicy,
+): WeakCeilingViolation[] {
+  const violations: WeakCeilingViolation[] = [];
+  if (AUTONOMY_LOOSENESS[policy.autonomy] > AUTONOMY_LOOSENESS[ceiling.autonomy]) {
+    violations.push({ dial: 'autonomy', value: policy.autonomy, ceiling: ceiling.autonomy });
+  }
+  if (
+    TASK_GRANULARITY_LOOSENESS[policy.taskGranularity]
+    > TASK_GRANULARITY_LOOSENESS[ceiling.taskGranularity]
+  ) {
+    violations.push({
+      dial: 'taskGranularity',
+      value: policy.taskGranularity,
+      ceiling: ceiling.taskGranularity,
+    });
+  }
+  if (TOOL_SCOPE_LOOSENESS[policy.toolScope] > TOOL_SCOPE_LOOSENESS[ceiling.toolScope]) {
+    violations.push({ dial: 'toolScope', value: policy.toolScope, ceiling: ceiling.toolScope });
+  }
+  if (SCAFFOLDING_LOOSENESS[policy.scaffolding] > SCAFFOLDING_LOOSENESS[ceiling.scaffolding]) {
+    violations.push({
+      dial: 'scaffolding',
+      value: policy.scaffolding,
+      ceiling: ceiling.scaffolding,
+    });
+  }
+  if (VALIDATION_LOOSENESS[policy.validation] > VALIDATION_LOOSENESS[ceiling.validation]) {
+    violations.push({ dial: 'validation', value: policy.validation, ceiling: ceiling.validation });
+  }
+  if (
+    CHECKPOINT_CADENCE_LOOSENESS[policy.checkpointCadence]
+    > CHECKPOINT_CADENCE_LOOSENESS[ceiling.checkpointCadence]
+  ) {
+    violations.push({
+      dial: 'checkpointCadence',
+      value: policy.checkpointCadence,
+      ceiling: ceiling.checkpointCadence,
+    });
+  }
+  if (
+    APPROVAL_THRESHOLD_LOOSENESS[policy.approvalThreshold]
+    > APPROVAL_THRESHOLD_LOOSENESS[ceiling.approvalThreshold]
+  ) {
+    violations.push({
+      dial: 'approvalThreshold',
+      value: policy.approvalThreshold,
+      ceiling: ceiling.approvalThreshold,
+    });
+  }
+  if (
+    FALLBACK_POLICY_LOOSENESS[policy.fallbackPolicy]
+    > FALLBACK_POLICY_LOOSENESS[ceiling.fallbackPolicy]
+  ) {
+    violations.push({
+      dial: 'fallbackPolicy',
+      value: policy.fallbackPolicy,
+      ceiling: ceiling.fallbackPolicy,
+    });
+  }
+  return violations;
+}
 
 export interface SupervisionPolicyOverride {
   overrideId: string;
@@ -81,7 +211,7 @@ export function decideSupervisionPolicy(
     );
   }
 
-  const rejectionReason = validatePolicy(context, policy, reasons);
+  const rejectionReason = validatePolicy(context, basePolicy, policy, reasons);
   const snapshot = buildPolicySnapshot(context, policy, reasons);
 
   if (rejectionReason !== undefined) {
@@ -161,6 +291,7 @@ function buildBasePolicy(context: SupervisionPolicyContext): SupervisionPolicy {
 
 function validatePolicy(
   context: SupervisionPolicyContext,
+  basePolicy: SupervisionPolicy,
   policy: SupervisionPolicy,
   reasons: string[],
 ): string | undefined {
@@ -182,17 +313,18 @@ function validatePolicy(
     reasons.push(message);
     return message;
   }
-  if (isWeak && policy.autonomy !== 'single_step') {
-    const message =
-      `weak_worker treatment rejected ${policy.autonomy} autonomy with E_TOOL_SCOPE_DENIED.`;
-    reasons.push(message);
-    return message;
-  }
-  if (isWeak && policy.toolScope !== 'read_only') {
-    const message =
-      `weak_worker treatment rejected ${policy.toolScope} toolScope with E_TOOL_SCOPE_DENIED.`;
-    reasons.push(message);
-    return message;
+  if (isWeak) {
+    const violations = findWeakWorkerCeilingViolations(policy, basePolicy);
+    if (violations.length > 0) {
+      const detail = violations
+        .map((violation) =>
+          `${violation.dial}=${violation.value} (ceiling ${violation.ceiling})`)
+        .join(', ');
+      const message =
+        `weak_worker treatment cannot loosen ${detail} with E_TOOL_SCOPE_DENIED.`;
+      reasons.push(message);
+      return message;
+    }
   }
   if (constrainedByFloor && policy.fallbackPolicy === 'delegate_other') {
     const message =

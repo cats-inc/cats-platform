@@ -190,9 +190,79 @@ test('weak_worker explicitly rejects requested milestone_plan with E_TOOL_SCOPE_
   assert.equal(result.error.code, 'E_TOOL_SCOPE_DENIED');
   assert.equal(
     details.snapshot.reasons.some((reason) =>
-      reason.includes('weak_worker treatment rejected milestone_plan')),
+      reason.includes('weak_worker treatment cannot loosen')
+      && reason.includes('autonomy=milestone_plan')),
     true,
   );
+});
+
+test('weak_worker rejects every dial loosening attempt across the policy surface', () => {
+  const looseRequest = {
+    autonomy: 'milestone_plan' as const,
+    taskGranularity: 'outcome' as const,
+    scaffolding: 'none' as const,
+    validation: 'best_effort' as const,
+    checkpointCadence: 'final' as const,
+    fallbackPolicy: 'retry' as const,
+  };
+  const result = decideSupervisionPolicy({
+    ...baseContext({
+      capabilityAssessment: catalogOnlyAssessment('weak_worker'),
+      toolManifest: fixtureManifest('none'),
+    }),
+    requestedPolicy: looseRequest,
+  });
+  const details = rejectionDetails(result);
+
+  assert.equal(result.error.code, 'E_TOOL_SCOPE_DENIED');
+  for (const dial of [
+    'autonomy=milestone_plan',
+    'taskGranularity=outcome',
+    'scaffolding=none',
+    'validation=best_effort',
+    'checkpointCadence=final',
+    'fallbackPolicy=retry',
+  ]) {
+    assert.equal(
+      details.snapshot.reasons.some((reason) => reason.includes(dial)),
+      true,
+      `expected reason to call out ${dial}`,
+    );
+  }
+});
+
+test('weak_worker accepts overrides that tighten beyond the ceiling', () => {
+  const result = decideSupervisionPolicy({
+    ...baseContext({
+      capabilityAssessment: catalogOnlyAssessment('weak_worker'),
+      toolManifest: fixtureManifest('local_state'),
+    }),
+    requestedPolicy: {
+      autonomy: 'none',
+      toolScope: 'none',
+      approvalThreshold: 'high',
+    },
+  });
+
+  assert.equal(result.status, 'applied');
+  assert.equal(result.result.policy.autonomy, 'none');
+  assert.equal(result.result.policy.toolScope, 'none');
+  assert.equal(result.result.policy.approvalThreshold, 'high');
+});
+
+test('weak_worker accepts validation upgraded to semantic_check (more rigorous than schema_required)', () => {
+  const result = decideSupervisionPolicy({
+    ...baseContext({
+      capabilityAssessment: catalogOnlyAssessment('weak_worker'),
+      toolManifest: fixtureManifest('local_state'),
+    }),
+    requestedPolicy: {
+      validation: 'semantic_check',
+    },
+  });
+
+  assert.equal(result.status, 'applied');
+  assert.equal(result.result.policy.validation, 'semantic_check');
 });
 
 test('operator override metadata appears in snapshot reasons', () => {
