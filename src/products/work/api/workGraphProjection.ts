@@ -185,6 +185,7 @@ function taskToSummary(t: CoreTaskRecord): WorkGraphObjectSummary {
     linkedTaskId: t.parentTaskId ?? null,
     linkedRunId: null,
     updatedAt: t.updatedAt,
+    metadata: t.metadata ?? null,
   };
 }
 

@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { MOCK_WORK_GRAPH } from "./mock";
+import { useWorkGraph } from "../../state/workGraphStore";
 import { buildIndexes } from "./shared";
 import type { WorkGraphLayer, WorkGraphObjectSummary } from "./types";
 import { WorkObjectCard, pickEvidence } from "./WorkObjectCard";
@@ -30,7 +30,7 @@ export function SystemMapPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedId = searchParams.get("selectedId");
 
-  const graph = MOCK_WORK_GRAPH;
+  const { graph } = useWorkGraph();
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
 
   const byLayer = useMemo(() => {

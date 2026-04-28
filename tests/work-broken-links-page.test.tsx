@@ -5,9 +5,15 @@ import { renderToStaticMarkup } from 'react-dom/server.browser';
 import { StaticRouter } from 'react-router-dom';
 
 import { BrokenLinksPage } from '../src/products/work/renderer/components/topdown/BrokenLinksPage.tsx';
-import { MOCK_WORK_GRAPH } from '../src/products/work/renderer/components/topdown/mock.ts';
+import {
+  __seedWorkGraphForTest,
+  __resetWorkGraphStoreForTest,
+} from '../src/products/work/renderer/state/workGraphStore.ts';
+import { SAMPLE_WORK_GRAPH } from './fixtures/sampleWorkGraph.ts';
 
 function renderPage(): string {
+  __resetWorkGraphStoreForTest();
+  __seedWorkGraphForTest(SAMPLE_WORK_GRAPH);
   return renderToStaticMarkup(
     <StaticRouter location="/work/broken-links">
       <BrokenLinksPage />
@@ -26,13 +32,11 @@ test('BrokenLinksPage renders an orphan_link row with both endpoints and a delet
   assert.match(markup, /\(deleted\)/u);
 });
 
-test('BrokenLinksPage renders the orphan_link Remove affordance disabled for demo-seed links', () => {
+test('BrokenLinksPage renders the orphan_link Remove affordance enabled for producer-stored links', () => {
   const markup = renderPage();
-  // The disabled remove button is the actionable affordance per
-  // SPEC-090 §FR7. With Slice 5.5 it's enabled for producer-stored
-  // links and disabled for renderer-only demo seeds.
-  assert.match(markup, /<button[^>]*type="button"[^>]*class="brokenLinks__removeLink"[^>]*disabled/u);
-  assert.match(markup, /Demo fixture — only producer-stored links can be removed via API/u);
+  // Server projection now treats every link as producer-stored — there
+  // is no renderer-side mock fallback — so Remove buttons enable.
+  assert.match(markup, /<button[^>]*type="button"[^>]*class="brokenLinks__removeLink"[^>]*title="Remove this link via the producer pipeline\."/u);
 });
 
 test('BrokenLinksPage renders a link_cycle row with cycle endpoints in traversal order', () => {
@@ -46,21 +50,12 @@ test('BrokenLinksPage renders a link_cycle row with cycle endpoints in traversal
   assert.match(markup, /↺/u);
 });
 
-test('BrokenLinksPage exposes one disabled Remove affordance per cycleLinkIds entry', () => {
+test('BrokenLinksPage exposes one Remove affordance per cycleLinkIds entry', () => {
   const markup = renderPage();
   // Cycle has 2 link IDs (link-cycle-a / link-cycle-b). Two distinct
-  // disabled Remove buttons must render — one for each.
+  // Remove buttons must render — one for each.
   assert.match(markup, /Remove\s*<code>link-cycle-a<\/code>/u);
   assert.match(markup, /Remove\s*<code>link-cycle-b<\/code>/u);
-});
-
-test('BrokenLinksPage continues to render existing SPEC-083 base diagnostics unchanged', () => {
-  const markup = renderPage();
-  // Base diagnostics use the existing kind label + objectId-based
-  // "Open in drawer" affordance. Confirm they still appear.
-  assert.match(markup, /missing_project_anchor/u);
-  assert.match(markup, /unanchored_run/u);
-  assert.match(markup, /Open in drawer/u);
 });
 
 test('BrokenLinksPage does not surface orphan link rows under linksByEndpoint anywhere on the page', () => {

@@ -8,6 +8,9 @@ import { useTasks } from "../../state/tasksStore";
 import { NewTaskDialog } from "./NewTaskDialog";
 import "./tasks.css";
 
+// useTasks already reads from useWorkGraph; this page does not need to
+// pull the graph directly.
+
 export function TasksListPage(): JSX.Element {
   const { allTasks, deletedIds } = useTasks();
   const { allProjects } = usePinnedProjects();

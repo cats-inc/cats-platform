@@ -9,7 +9,7 @@ import {
 } from "react";
 
 import { createWorkLink } from "../../api/links.js";
-import { useWorkGraphLinks } from "../../state/workGraphLinksStore";
+import { useWorkGraph } from "../../state/workGraphStore";
 import { endpointKey, KIND_LABEL } from "./shared";
 import type {
   WorkGraphLinkEndpointKind,
@@ -60,7 +60,7 @@ export function NewLinkDialog({
   const noteId = useId();
   const titleInputRef = useRef<HTMLInputElement>(null);
 
-  const { refresh } = useWorkGraphLinks();
+  const { refresh } = useWorkGraph();
 
   const [kind, setKind] = useState<SubmittableKind>("blocks");
   const [targetQuery, setTargetQuery] = useState("");

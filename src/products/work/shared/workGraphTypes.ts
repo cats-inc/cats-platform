@@ -154,6 +154,13 @@ export interface WorkGraphObjectSummary {
   linkedTaskId: string | null;
   linkedRunId: string | null;
   updatedAt: string;
+  /**
+   * Pass-through of the Core record's metadata bag. Renderer-only
+   * extras (e.g. tasks' `workRenderer.priority` / `assigneeName` /
+   * `acceptanceCriteria`) ride through here so they survive a refresh.
+   * Optional: omitted for record families without a metadata field.
+   */
+  metadata?: Record<string, unknown> | null;
 }
 
 export interface WorkGraphEvidenceAttachment {

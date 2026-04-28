@@ -1,15 +1,15 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { MOCK_WORK_GRAPH } from "../topdown/mock";
 import { formatRelative } from "../topdown/shared";
 import { usePinnedProjects } from "../../state/pinnedProjectsStore";
+import { useWorkGraph } from "../../state/workGraphStore";
 import { useWorkItems } from "../../state/workItemsStore";
 import { NewWorkItemDialog } from "./NewWorkItemDialog";
 import "./work-items.css";
 
 export function WorkItemsListPage(): JSX.Element {
-  const graph = MOCK_WORK_GRAPH;
+  const { graph } = useWorkGraph();
   const { allWorkItems, deletedIds } = useWorkItems();
   const { allProjects } = usePinnedProjects();
   const [dialogOpen, setDialogOpen] = useState(false);

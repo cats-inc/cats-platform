@@ -2,9 +2,7 @@ import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 
 import { removeWorkLink } from "../../api/links.js";
-import { useWorkGraphLinks } from "../../state/workGraphLinksStore";
-import { mergeWorkGraphLinks } from "./mergeLinks";
-import { MOCK_WORK_GRAPH } from "./mock";
+import { useWorkGraph } from "../../state/workGraphStore";
 import {
   buildIndexes,
   endpointKey,
@@ -33,15 +31,13 @@ export function BrokenLinksPage(): JSX.Element {
   const severityFilter =
     (searchParams.get("severity") as SeverityFilter | null) ?? "all";
   const selectedId = searchParams.get("selectedId");
-  const { fetchedLinks, refresh } = useWorkGraphLinks();
-  const graph = useMemo(
-    () => mergeWorkGraphLinks(MOCK_WORK_GRAPH, fetchedLinks),
-    [fetchedLinks],
-  );
+  const { graph, refresh } = useWorkGraph();
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
+  // Every link in the graph is producer-stored (no mock fallback), so
+  // every Remove affordance is enabled.
   const fetchedLinkIds = useMemo(
-    () => new Set(fetchedLinks.map((l) => l.id)),
-    [fetchedLinks],
+    () => new Set(graph.links.map((l) => l.id)),
+    [graph.links],
   );
   const [removeError, setRemoveError] = useState<string | null>(null);
   const [removingId, setRemovingId] = useState<string | null>(null);

@@ -110,9 +110,36 @@ export function useWorkGraph(): UseWorkGraphResult {
   };
 }
 
+/**
+ * Force a refresh of the cached graph from the producer pipeline.
+ * Callers that mutate Core (createWorkProject / removeWorkLink / ...)
+ * await this so the next render reflects the post-mutation state.
+ */
+export function triggerWorkGraphRefresh(): Promise<void> {
+  setState({ ...state, status: "idle" });
+  return fetchOnce();
+}
+
 /** Test-only escape hatch — resets the singleton state. */
 export function __resetWorkGraphStoreForTest(): void {
   state = INITIAL_STATE;
+  inflight = null;
+  notify();
+}
+
+/**
+ * Test-only: prime the cached graph so server-side rendered tests
+ * (renderToStaticMarkup, which never runs useEffect) see populated
+ * data instead of the idle empty projection. Production callers
+ * should never reach for this — they wait for the fetch effect.
+ */
+export function __seedWorkGraphForTest(graph: WorkGraphProjection): void {
+  state = {
+    graph,
+    status: "ready",
+    error: null,
+    revision: state.revision + 1,
+  };
   inflight = null;
   notify();
 }

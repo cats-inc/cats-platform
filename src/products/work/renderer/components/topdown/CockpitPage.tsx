@@ -1,15 +1,14 @@
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { useWorkGraphLinks } from "../../state/workGraphLinksStore";
+import { useWorkGraph } from "../../state/workGraphStore";
 import { BlockersRail } from "./BlockersRail";
-import { mergeWorkGraphLinks } from "./mergeLinks";
-import { MOCK_WORK_GRAPH } from "./mock";
 import { buildIndexes, formatRelative } from "./shared";
 import type {
   WorkAttentionState,
   WorkGraphObjectKind,
   WorkGraphObjectSummary,
+  WorkGraphProjection,
 } from "./types";
 import { WorkObjectCard, pickEvidence } from "./WorkObjectCard";
 import { WorkObjectDrawer } from "./WorkObjectDrawer";
@@ -54,11 +53,7 @@ export function CockpitPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = (searchParams.get("tab") as CockpitTab | null) ?? "command";
   const selectedId = searchParams.get("selectedId");
-  const { fetchedLinks } = useWorkGraphLinks();
-  const graph = useMemo(
-    () => mergeWorkGraphLinks(MOCK_WORK_GRAPH, fetchedLinks),
-    [fetchedLinks],
-  );
+  const { graph } = useWorkGraph();
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
 
   const buckets = useMemo(() => {
@@ -228,7 +223,7 @@ function CommandCenter({
   onSelect,
   onJump,
 }: {
-  graph: typeof MOCK_WORK_GRAPH;
+  graph: WorkGraphProjection;
   buckets: Record<BucketId, WorkGraphObjectSummary[]>;
   indexes: ReturnType<typeof buildIndexes>;
   selectedId: string | null;
@@ -335,7 +330,7 @@ function BucketDetail({
   label: string;
   sub: string;
   objects: WorkGraphObjectSummary[];
-  graph: typeof MOCK_WORK_GRAPH;
+  graph: WorkGraphProjection;
   indexes: ReturnType<typeof buildIndexes>;
   selectedId: string | null;
   onSelect: (id: string | null) => void;

@@ -6,8 +6,8 @@ import { StaticRouter } from 'react-router-dom';
 
 import { LinkageSection } from '../src/products/work/renderer/components/topdown/LinkageSection.tsx';
 import { NewLinkDialog } from '../src/products/work/renderer/components/topdown/NewLinkDialog.tsx';
-import { MOCK_WORK_GRAPH } from '../src/products/work/renderer/components/topdown/mock.ts';
 import { buildIndexes } from '../src/products/work/renderer/components/topdown/shared.ts';
+import { SAMPLE_WORK_GRAPH as MOCK_WORK_GRAPH } from './fixtures/sampleWorkGraph.ts';
 
 const indexes = buildIndexes(MOCK_WORK_GRAPH);
 

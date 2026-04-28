@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { MOCK_WORK_GRAPH } from '../src/products/work/renderer/components/topdown/mock.ts';
+import { SAMPLE_WORK_GRAPH as MOCK_WORK_GRAPH } from './fixtures/sampleWorkGraph.ts';
 import {
   buildIndexes,
   endpointKey,

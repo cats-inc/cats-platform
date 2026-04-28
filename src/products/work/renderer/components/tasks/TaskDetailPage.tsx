@@ -2,16 +2,14 @@ import { useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { LinkageSection } from "../topdown/LinkageSection";
-import { mergeWorkGraphLinks } from "../topdown/mergeLinks";
-import { MOCK_WORK_GRAPH } from "../topdown/mock";
 import {
   ATTENTION_LABEL,
   buildIndexes,
   formatRelative,
 } from "../topdown/shared";
-import { useWorkGraphLinks } from "../../state/workGraphLinksStore";
 import { usePinnedProjects } from "../../state/pinnedProjectsStore";
 import { useTasks, type TaskItem } from "../../state/tasksStore";
+import { useWorkGraph } from "../../state/workGraphStore";
 import { useWorkItems } from "../../state/workItemsStore";
 import {
   WORK_PROJECTS_PATH,
@@ -22,11 +20,7 @@ import "./tasks.css";
 
 export function TaskDetailPage(): JSX.Element {
   const { taskId } = useParams<{ taskId: string }>();
-  const { fetchedLinks } = useWorkGraphLinks();
-  const graph = useMemo(
-    () => mergeWorkGraphLinks(MOCK_WORK_GRAPH, fetchedLinks),
-    [fetchedLinks],
-  );
+  const { graph } = useWorkGraph();
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
   const { allTasks, deletedIds } = useTasks();
   const { allProjects } = usePinnedProjects();

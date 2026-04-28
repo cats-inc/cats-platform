@@ -1,122 +1,18 @@
-import { useEffect, useSyncExternalStore } from "react";
+import { useMemo } from "react";
 
 import {
   createWorkItem as apiCreateWorkItem,
-  listWorkItems,
   removeWorkItem as apiRemoveWorkItem,
-  type CoreWorkItemRecord,
   type CoreWorkItemStatus,
 } from "../api/workRecords.js";
-import { MOCK_WORK_GRAPH } from "../components/topdown/mock";
 import type { WorkGraphObjectSummary } from "../components/topdown/types";
-
-const STORAGE_KEY_DELETED = "cats-work:deleted-work-items";
-
-type FetchStatus = "idle" | "loading" | "ready" | "error";
-
-const rendererHidden = new Set<string>(loadStringSet(STORAGE_KEY_DELETED));
-let coreWorkItems: WorkGraphObjectSummary[] = [];
-let fetchStatus: FetchStatus = "idle";
-let fetchError: string | null = null;
-let inflight: Promise<void> | null = null;
-
-const listeners = new Set<() => void>();
-let snapshotVersion = 0;
-let cachedSnapshot: WorkItemsSnapshot | null = null;
-
-function loadStringSet(key: string): string[] {
-  try {
-    const raw = globalThis.localStorage?.getItem(key);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
-    return Array.isArray(parsed) ? (parsed as string[]) : [];
-  } catch {
-    return [];
-  }
-}
-
-function saveStringSet(key: string, set: Set<string>): void {
-  try {
-    globalThis.localStorage?.setItem(key, JSON.stringify([...set]));
-  } catch {
-    // ignore
-  }
-}
-
-function notify(): void {
-  snapshotVersion += 1;
-  cachedSnapshot = null;
-  for (const l of listeners) l();
-}
+import { triggerWorkGraphRefresh, useWorkGraph } from "./workGraphStore";
 
 export interface WorkItemsSnapshot {
-  version: number;
   allWorkItems: readonly WorkGraphObjectSummary[];
   deletedIds: ReadonlySet<string>;
-  status: FetchStatus;
+  status: "idle" | "loading" | "ready" | "error";
   error: string | null;
-}
-
-function workItemRecordToSummary(w: CoreWorkItemRecord): WorkGraphObjectSummary {
-  return {
-    id: w.id,
-    kind: "work_item",
-    structuralLayer: "planning",
-    sourceRecordFamily: "work_item",
-    sourceRecordId: w.id,
-    title: w.title,
-    status: w.status,
-    summary: w.summary,
-    attention: "none",
-    ownerRole: null,
-    nextAction: null,
-    linkedConversationId: w.conversationId,
-    linkedProjectId: w.projectId,
-    linkedWorkItemId: w.parentWorkItemId,
-    linkedTaskId: w.taskId,
-    linkedRunId: null,
-    updatedAt: w.updatedAt,
-  };
-}
-
-function buildSnapshot(): WorkItemsSnapshot {
-  if (cachedSnapshot) return cachedSnapshot;
-  const mockWorkItems = MOCK_WORK_GRAPH.objects.filter(
-    (obj): obj is WorkGraphObjectSummary => obj.kind === "work_item",
-  );
-  const byId = new Map<string, WorkGraphObjectSummary>();
-  for (const wi of mockWorkItems) byId.set(wi.id, wi);
-  for (const wi of coreWorkItems) byId.set(wi.id, wi);
-  cachedSnapshot = {
-    version: snapshotVersion,
-    allWorkItems: Array.from(byId.values()),
-    deletedIds: new Set(rendererHidden),
-    status: fetchStatus,
-    error: fetchError,
-  };
-  return cachedSnapshot;
-}
-
-async function fetchOnce(): Promise<void> {
-  if (inflight) return inflight;
-  fetchStatus = "loading";
-  fetchError = null;
-  notify();
-  inflight = (async () => {
-    try {
-      const records = await listWorkItems();
-      coreWorkItems = records.map(workItemRecordToSummary);
-      fetchStatus = "ready";
-      fetchError = null;
-    } catch (err) {
-      fetchStatus = "error";
-      fetchError = err instanceof Error ? err.message : "Failed to load work items.";
-    } finally {
-      inflight = null;
-      notify();
-    }
-  })();
-  return inflight;
 }
 
 export interface CreateWorkItemInput {
@@ -129,39 +25,9 @@ export interface CreateWorkItemInput {
 }
 
 export const workItemsStore = {
-  subscribe(listener: () => void): () => void {
-    listeners.add(listener);
-    return () => {
-      listeners.delete(listener);
-    };
-  },
-  getSnapshot(): WorkItemsSnapshot {
-    return buildSnapshot();
-  },
-  refresh(): Promise<void> {
-    fetchStatus = "idle";
-    notify();
-    return fetchOnce();
-  },
-  isDeleted(id: string): boolean {
-    return rendererHidden.has(id);
-  },
   async remove(id: string): Promise<void> {
-    if (rendererHidden.has(id)) return;
-    const isCoreRecord = coreWorkItems.some((w) => w.id === id);
-    if (isCoreRecord) {
-      try {
-        await apiRemoveWorkItem(id);
-        coreWorkItems = coreWorkItems.filter((w) => w.id !== id);
-      } catch {
-        rendererHidden.add(id);
-        saveStringSet(STORAGE_KEY_DELETED, rendererHidden);
-      }
-    } else {
-      rendererHidden.add(id);
-      saveStringSet(STORAGE_KEY_DELETED, rendererHidden);
-    }
-    notify();
+    await apiRemoveWorkItem(id);
+    await triggerWorkGraphRefresh();
   },
   async createWorkItem(input: CreateWorkItemInput): Promise<WorkGraphObjectSummary> {
     const result = await apiCreateWorkItem({
@@ -170,33 +36,40 @@ export const workItemsStore = {
       status: input.status,
       projectId: input.linkedProjectId || null,
     });
-    const summary = workItemRecordToSummary(result.workItem);
-    coreWorkItems = [...coreWorkItems.filter((w) => w.id !== summary.id), summary];
-    notify();
-    return summary;
+    await triggerWorkGraphRefresh();
+    return {
+      id: result.workItem.id,
+      kind: "work_item",
+      structuralLayer: "planning",
+      sourceRecordFamily: "work_item",
+      sourceRecordId: result.workItem.id,
+      title: result.workItem.title,
+      status: result.workItem.status,
+      summary: result.workItem.summary,
+      attention: "none",
+      ownerRole: null,
+      nextAction: null,
+      linkedConversationId: result.workItem.conversationId,
+      linkedProjectId: result.workItem.projectId,
+      linkedWorkItemId: result.workItem.parentWorkItemId,
+      linkedTaskId: result.workItem.taskId,
+      linkedRunId: null,
+      updatedAt: result.workItem.updatedAt,
+    };
   },
 };
 
 export function useWorkItems(): WorkItemsSnapshot {
-  const snapshot = useSyncExternalStore(
-    workItemsStore.subscribe,
-    workItemsStore.getSnapshot,
-    workItemsStore.getSnapshot,
-  );
-  useEffect(() => {
-    if (snapshot.status === "idle") {
-      void fetchOnce();
-    }
-  }, [snapshot.status]);
-  return snapshot;
-}
-
-/** Test-only escape hatch — resets the singleton state. */
-export function __resetWorkItemsStoreForTest(): void {
-  coreWorkItems = [];
-  fetchStatus = "idle";
-  fetchError = null;
-  inflight = null;
-  rendererHidden.clear();
-  notify();
+  const { graph, status, error } = useWorkGraph();
+  return useMemo(() => {
+    const allWorkItems = graph.objects.filter(
+      (obj): obj is WorkGraphObjectSummary => obj.kind === "work_item",
+    );
+    return {
+      allWorkItems,
+      deletedIds: new Set<string>(),
+      status,
+      error,
+    };
+  }, [graph, status, error]);
 }

@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 
-import { MOCK_WORK_GRAPH } from "../topdown/mock";
 import { formatRelative } from "../topdown/shared";
 import { usePinnedProjects } from "../../state/pinnedProjectsStore";
+import { useWorkGraph } from "../../state/workGraphStore";
 import { NewProjectDialog } from "./NewProjectDialog";
 import "./projects.css";
 
@@ -16,7 +16,7 @@ interface ProjectCounts {
 }
 
 export function ProjectsListPage(): JSX.Element {
-  const graph = MOCK_WORK_GRAPH;
+  const { graph } = useWorkGraph();
   const { allProjects, deletedIds } = usePinnedProjects();
   const [dialogOpen, setDialogOpen] = useState(false);
 

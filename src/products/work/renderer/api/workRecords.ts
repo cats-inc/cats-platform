@@ -58,6 +58,7 @@ export interface CreateTaskInput {
   conversationId?: string | null;
   parentTaskId?: string | null;
   summary?: string | null;
+  metadata?: Record<string, unknown>;
 }
 
 export async function listWorkProjects(signal?: AbortSignal): Promise<CoreProjectRecord[]> {

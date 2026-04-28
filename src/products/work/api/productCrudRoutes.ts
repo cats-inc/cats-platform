@@ -98,6 +98,7 @@ interface CreateTaskPayload {
   parentTaskId?: string | null;
   summary?: string | null;
   assignedActorIds?: string[];
+  metadata?: Record<string, unknown>;
 }
 
 export async function routeWorkProductCrudApi(
@@ -334,6 +335,7 @@ async function handleCreateTask(
         parentTaskId: validation.payload.parentTaskId ?? null,
         summary: validation.payload.summary ?? null,
         assignedActorIds: validation.payload.assignedActorIds,
+        metadata: validation.payload.metadata,
       },
       now,
     );
@@ -470,6 +472,8 @@ function validateCreateTask(
   if (summary.error) return { payload: null, error: summary.error };
   const assignedActorIds = readStringArray(body.assignedActorIds, 'assignedActorIds');
   if (assignedActorIds.error) return { payload: null, error: assignedActorIds.error };
+  const metadata = readMetadata(body.metadata);
+  if (metadata.error) return { payload: null, error: metadata.error };
   return {
     payload: {
       title,
@@ -480,9 +484,22 @@ function validateCreateTask(
       parentTaskId: parentTaskId.value,
       summary: summary.value,
       assignedActorIds: assignedActorIds.value,
+      metadata: metadata.value,
     },
     error: null,
   };
+}
+
+function readMetadata(
+  value: unknown,
+):
+  | { value: Record<string, unknown> | undefined; error: null }
+  | { value: undefined; error: string } {
+  if (value === undefined || value === null) return { value: undefined, error: null };
+  if (typeof value !== 'object' || Array.isArray(value)) {
+    return { value: undefined, error: 'metadata must be an object when provided.' };
+  }
+  return { value: value as Record<string, unknown>, error: null };
 }
 
 function readNonEmptyString(value: unknown): string | null {

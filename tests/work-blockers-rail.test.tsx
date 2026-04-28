@@ -4,11 +4,11 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
 
 import { BlockersRail } from '../src/products/work/renderer/components/topdown/BlockersRail.tsx';
-import { MOCK_WORK_GRAPH } from '../src/products/work/renderer/components/topdown/mock.ts';
 import {
   buildIndexes,
   walkUpstreamBlockers,
 } from '../src/products/work/renderer/components/topdown/shared.ts';
+import { SAMPLE_WORK_GRAPH as MOCK_WORK_GRAPH } from './fixtures/sampleWorkGraph.ts';
 
 const indexes = buildIndexes(MOCK_WORK_GRAPH);
 
@@ -89,12 +89,32 @@ test('BlockersRail renders the empty state when no row has upstream blockers', (
 });
 
 test('BlockersRail skips rows that are not project / work_item / task', () => {
-  // Pass a conversation row through; the rail should just render empty.
-  const conv = MOCK_WORK_GRAPH.objects.find((o) => o.kind === 'conversation');
-  assert.ok(conv, 'fixture should include a conversation');
+  // Synthesize a non-PWT row inline (the fixture is PWT-only since the
+  // server projection only emits non-PWT rows when the underlying Core
+  // populates them). The rail must filter it out and render the empty
+  // state.
+  const fakeConversation = {
+    id: 'conv-fake',
+    kind: 'conversation' as const,
+    structuralLayer: 'interaction' as const,
+    sourceRecordFamily: 'conversation' as const,
+    sourceRecordId: 'conv-fake',
+    title: 'Fake conversation row',
+    status: 'active',
+    summary: null,
+    attention: 'none' as const,
+    ownerRole: null,
+    nextAction: null,
+    linkedConversationId: null,
+    linkedProjectId: null,
+    linkedWorkItemId: null,
+    linkedTaskId: null,
+    linkedRunId: null,
+    updatedAt: '2026-04-25T03:55:00Z',
+  };
   const markup = renderToStaticMarkup(
     <BlockersRail
-      rows={[conv]}
+      rows={[fakeConversation]}
       links={MOCK_WORK_GRAPH.links}
       indexes={indexes}
       selectedId={null}
@@ -102,6 +122,5 @@ test('BlockersRail skips rows that are not project / work_item / task', () => {
     />,
   );
   assert.match(markup, /Nothing in this list has upstream blockers/u);
-  // Conversation title should not appear as a section row.
-  assert.doesNotMatch(markup, new RegExp(`<span class="blockersRail__rowTitle">${conv.title}`));
+  assert.doesNotMatch(markup, /Fake conversation row/u);
 });
