@@ -340,6 +340,7 @@ export async function routeRequest(
       pollingSupervisor: dependencies.chat.pollingSupervisor,
       telegramCommandSurfaceSync: dependencies.chat.telegramCommandSurfaceSync,
       companionStore: dependencies.chat.companionStore,
+      companionActivityStore: dependencies.chat.companionActivityStore,
       memoryService: dependencies.chat.memoryService,
       eventHub: dependencies.chat.eventHub,
       providerAgentDecisionRequester: dependencies.chat.providerAgentDecisionRequester,

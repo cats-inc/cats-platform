@@ -9,6 +9,7 @@ import {
 import { SidePanel } from '../../../../../design/components/SidePanel.js';
 import { DraftHeader } from '../../../../shared/renderer/components/DraftHeader.js';
 import { catInitials } from '../../chatUtils.js';
+import { useCompanionActivity } from '../../hooks/useCompanionActivity.js';
 import { useCompanionPresence } from '../../hooks/useCompanionPresence.js';
 import { useCompanionProfile } from '../../hooks/useCompanionProfile.js';
 import { useCompanionWorkspace } from '../../hooks/useCompanionWorkspace.js';
@@ -42,6 +43,11 @@ export function CompanionWorkspace({
   const workspace = useCompanionWorkspace(cat.id, activeTab ?? 'overview');
 
   const profile = useCompanionProfile({
+    catId: cat.id,
+    enabled: true,
+  });
+
+  const activity = useCompanionActivity({
     catId: cat.id,
     enabled: true,
   });
@@ -233,7 +239,11 @@ export function CompanionWorkspace({
               </>
             )}
           />
-          <CompanionFeed cat={cat} profile={profile.profile} />
+          <CompanionFeed
+            cat={cat}
+            profile={profile.profile}
+            activity={activity.projection}
+          />
         </div>
       </div>
       {sidePanelOpen ? (

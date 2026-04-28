@@ -55,6 +55,13 @@ export function resolvePlatformOnboardingHistoryPathFromChatState(
   return path.join(layout.stateDir, 'platform-onboarding-history.json');
 }
 
+export function resolveCompanionActivityPathFromChatState(
+  chatStatePath: string,
+): string {
+  const layout = resolvePlatformStorageLayout(chatStatePath);
+  return path.join(layout.stateDir, 'companion-activity.json');
+}
+
 export function resolvePlatformPreferencesPathFromChatState(
   chatStatePath: string,
 ): string {

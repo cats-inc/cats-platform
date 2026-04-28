@@ -68,6 +68,7 @@ import {
 import { repairChannelReadState } from './channelRepair.js';
 import { createAppShell } from '../state/shell.js';
 import type { CompanionBoxStore } from '../state/companion-box/index.js';
+import type { CompanionActivityStore } from '../companion/activityStore.js';
 import type { ChatStore } from '../state/store.js';
 import type { AsyncKeyedGate } from '../shared/asyncControl.js';
 import { resolveEffectiveBotBindingRoomMode } from '../state/botBindings.js';
@@ -157,6 +158,7 @@ export interface ChatApiDependencies {
     }): Promise<void>;
   };
   companionStore: CompanionBoxStore;
+  companionActivityStore: CompanionActivityStore;
   memoryService: CatsMemoryService;
   eventHub?: ChatEventHub;
   providerAgentDecisionRequester?: ProviderAgentDecisionRequester;

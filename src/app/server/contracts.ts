@@ -26,6 +26,7 @@ import type {
   CatsMemoryService,
 } from '../../platform/memory/index.js';
 import type { ChatState } from '../../products/chat/api/contracts.js';
+import type { CompanionActivityStore } from '../../products/chat/companion/activityStore.js';
 import type { CompanionBoxStore } from '../../products/chat/state/companion-box/index.js';
 import type { ChatStore } from '../../products/chat/state/store.js';
 import type { ChatEventHub } from '../../products/chat/api/chatEventHub.js';
@@ -68,6 +69,7 @@ export interface ChatServerDependencies {
   chatStore: ChatStore;
   mutationGate?: AsyncKeyedGate;
   companionStore?: CompanionBoxStore;
+  companionActivityStore?: CompanionActivityStore;
   orchestratorChannelRouter?: OrchestratorChannelRouter<CompanionBoxStore, ChatState>;
   orchestratorPlannerSurface?: OrchestratorPlannerSurface<ChatState>;
   taskExecutionLocator?: TaskExecutionLocator;
@@ -105,6 +107,7 @@ export interface ResolvedSharedServerDependencies extends SharedServerDependenci
 export interface ResolvedChatServerDependencies extends ChatServerDependencies {
   mutationGate: AsyncKeyedGate;
   companionStore: CompanionBoxStore;
+  companionActivityStore: CompanionActivityStore;
   orchestratorChannelRouter: OrchestratorChannelRouter<CompanionBoxStore, ChatState>;
   orchestratorPlannerSurface: OrchestratorPlannerSurface<ChatState>;
   taskExecutionLocator: TaskExecutionLocator;

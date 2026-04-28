@@ -2,6 +2,10 @@ import { useEffect, useState, type ReactNode } from 'react';
 
 import type { ChatCat } from '../../../api/contracts.js';
 import type { CompanionProfileReadModel } from '../../../companion/profileReadModel.js';
+import type {
+  CompanionActivityProjection,
+  CompanionActivityRenderEntry,
+} from '../../../companion/activityProjection.js';
 
 type FeedTab = 'posts' | 'photos' | 'videos' | 'music' | 'files' | 'activity';
 
@@ -45,6 +49,46 @@ function CompanionActivityEmptyState() {
   return (
     <div className="companionEmptyState">
       <p>Nothing recent.</p>
+    </div>
+  );
+}
+
+function formatActivityTimestamp(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString(undefined, {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  } catch {
+    return iso;
+  }
+}
+
+function renderActivity(projection: CompanionActivityProjection | null | undefined): ReactNode {
+  const entries = projection?.entries ?? [];
+  if (entries.length === 0) {
+    return <CompanionActivityEmptyState />;
+  }
+  return (
+    <div className="companionActivityList">
+      <ul>
+        {entries.map((entry: CompanionActivityRenderEntry) => (
+          <li key={entry.id} className="companionActivityEntry" data-group={entry.group}>
+            <time className="companionActivityTimestamp" dateTime={entry.occurredAt}>
+              {formatActivityTimestamp(entry.occurredAt)}
+            </time>
+            <span className="companionActivitySummary">{entry.summary}</span>
+            {entry.count > 1 ? (
+              <span className="companionActivityCount">×{entry.count}</span>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+      {projection?.olderHidden ? (
+        <p className="companionActivityHidden">Older activity is hidden.</p>
+      ) : null}
     </div>
   );
 }
@@ -153,9 +197,15 @@ export interface CompanionFeedProps {
    * fetch) the empty-state placeholders render so the layout stays stable.
    */
   profile?: CompanionProfileReadModel | null;
+  /**
+   * Aggregated activity projection fetched via `useCompanionActivity`.
+   * When `null` (initial fetch) the empty state renders so the layout stays
+   * stable.
+   */
+  activity?: CompanionActivityProjection | null;
 }
 
-export function CompanionFeed({ cat, profile = null }: CompanionFeedProps) {
+export function CompanionFeed({ cat, profile = null, activity = null }: CompanionFeedProps) {
   const [activeTab, setActiveTab] = useState<FeedTab>('posts');
 
   useEffect(() => {
@@ -182,7 +232,7 @@ export function CompanionFeed({ cat, profile = null }: CompanionFeedProps) {
       content = renderProfileFiles(profile?.files);
       break;
     case 'activity':
-      content = <CompanionActivityEmptyState />;
+      content = renderActivity(activity);
       break;
   }
 

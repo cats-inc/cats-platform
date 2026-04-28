@@ -16,6 +16,12 @@ import type {
   UpdateCompanionResponseProfileInput,
 } from '../companion/contracts.js';
 import { projectCompanionProfile } from '../companion/profileReadModel.js';
+import {
+  projectCompanionActivity,
+  type CompanionActivityEvent,
+  type CompanionActivityGroup,
+  type CompanionActivityTargetKind,
+} from '../companion/activityProjection.js';
 import { parseCompanionContentReference } from '../companion/contentReference.js';
 import {
   resolveCompanionContentReference,
@@ -67,6 +73,35 @@ async function syncCanonicalCompanionMemory(
     now: context.dependencies.now?.(),
     coreStore: context.dependencies.chatStore,
   });
+}
+
+async function recordCompanionActivity(
+  context: ChatApiRouteContext,
+  input: {
+    catId: string;
+    group: CompanionActivityGroup;
+    targetKind: CompanionActivityTargetKind;
+    targetId: string;
+    summary?: string;
+    correlationId?: string;
+  },
+): Promise<void> {
+  const event: CompanionActivityEvent = {
+    id: `act-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+    catId: input.catId,
+    group: input.group,
+    targetKind: input.targetKind,
+    targetId: input.targetId,
+    occurredAt: (context.dependencies.now?.() ?? new Date()).toISOString(),
+    correlationId: input.correlationId ?? null,
+    summary: input.summary ?? null,
+  };
+  try {
+    await context.dependencies.companionActivityStore.append(event);
+  } catch {
+    // Activity is a derived audit trail; never let a write error affect
+    // the user's primary action.
+  }
 }
 
 async function handleGetCompanionBox(
@@ -155,6 +190,13 @@ async function handleCreateCompanionSource(
     }
     const result = await context.dependencies.companionStore.ingestSource(catId, body);
     const canonicalSync = await syncCanonicalCompanionMemory(context, catId);
+    await recordCompanionActivity(context, {
+      catId,
+      group: 'source_added',
+      targetKind: 'source',
+      targetId: result.source.id,
+      summary: result.source.title ?? result.source.originalFileName ?? undefined,
+    });
     sendJson(context.response, 201, {
       box: result.box,
       source: result.source,
@@ -258,6 +300,12 @@ async function handleDeleteCompanionSource(
     }
     const result = await context.dependencies.companionStore.deleteSource(catId, sourceId);
     const canonicalSync = await syncCanonicalCompanionMemory(context, catId);
+    await recordCompanionActivity(context, {
+      catId,
+      group: 'source_removed',
+      targetKind: 'source',
+      targetId: result.sourceId,
+    });
     sendJson(context.response, 200, {
       deleted: true,
       sourceId: result.sourceId,
@@ -279,6 +327,20 @@ async function handleGetCompanionProfileReadModel(
     const derived = await context.dependencies.companionStore.listDerived(catId);
     const profile = projectCompanionProfile({ derived });
     sendJson(context.response, 200, { profile });
+  } catch (error) {
+    handleCanonicalCatError(context, error);
+  }
+}
+
+async function handleGetCompanionActivity(
+  context: ChatApiRouteContext,
+  catId: string,
+): Promise<void> {
+  try {
+    await resolveCatContext(context, catId);
+    const events = await context.dependencies.companionActivityStore.list(catId);
+    const projection = projectCompanionActivity(events);
+    sendJson(context.response, 200, { activity: projection });
   } catch (error) {
     handleCanonicalCatError(context, error);
   }
@@ -418,6 +480,13 @@ async function handleCreateCompanionMemory(
       metadata: body.metadata ?? {},
     });
     const canonicalSync = await syncCanonicalCompanionMemory(context, catId);
+    await recordCompanionActivity(context, {
+      catId,
+      group: 'memory_added',
+      targetKind: 'memory',
+      targetId: memory.id,
+      summary: memory.summary ?? undefined,
+    });
     sendJson(context.response, 201, { memory, canonicalSync });
   } catch (error) {
     handleCanonicalCatError(context, error);
@@ -436,6 +505,12 @@ async function handleDeleteCompanionMemory(
       sendRestError(context, 404, 'companion_memory_not_found', `Companion memory not found: ${memoryId}`);
       return;
     }
+    await recordCompanionActivity(context, {
+      catId,
+      group: 'memory_removed',
+      targetKind: 'memory',
+      targetId: memoryId,
+    });
     sendJson(context.response, 200, { deleted: true, memoryId });
   } catch (error) {
     handleCanonicalCatError(context, error);
@@ -455,6 +530,13 @@ async function handleUpdateCompanionMemoryStatus(
       return;
     }
     const memory = await context.dependencies.companionStore.updateMemoryStatus(catId, memoryId, body.status);
+    await recordCompanionActivity(context, {
+      catId,
+      group: 'memory_updated',
+      targetKind: 'memory',
+      targetId: memory.id,
+      summary: `status:${memory.status}`,
+    });
     sendJson(context.response, 200, { memory });
   } catch (error) {
     handleCanonicalCatError(context, error);
@@ -631,6 +713,19 @@ export async function routeCompanionBoxApi(
       return true;
     }
     await handleGetCompanionProfileReadModel(context, profileMatch[0]!);
+    return true;
+  }
+
+  const activityMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/cats\/([^/]+)\/companion-box\/activity$/u,
+  );
+  if (activityMatch) {
+    if (context.method !== 'GET') {
+      sendMethodNotAllowed(context.response, ['GET']);
+      return true;
+    }
+    await handleGetCompanionActivity(context, activityMatch[0]!);
     return true;
   }
 

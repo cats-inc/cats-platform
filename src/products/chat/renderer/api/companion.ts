@@ -134,6 +134,23 @@ export async function getCompanionProfile(
   return data.profile;
 }
 
+import type { CompanionActivityProjection } from '../../companion/activityProjection.js';
+
+export async function getCompanionActivity(
+  catId: string,
+  signal?: AbortSignal,
+): Promise<CompanionActivityProjection> {
+  const response = await fetch(`${catPath(catId)}/activity`, {
+    headers: { Accept: 'application/json' },
+    signal,
+  });
+  const data = await expectJson<{ activity: CompanionActivityProjection }>(
+    response,
+    `companion activity returned ${response.status}`,
+  );
+  return data.activity;
+}
+
 export interface CompanionResolveReferenceResult {
   parse: CompanionReferenceParseResult;
   preview?: CompanionContentPreview;

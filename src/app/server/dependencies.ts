@@ -31,6 +31,12 @@ import {
   MemoryCompanionBoxStore,
   type CompanionBoxStore,
 } from '../../products/chat/state/companion-box/index.js';
+import {
+  createFileCompanionActivityStore,
+  createMemoryCompanionActivityStore,
+  type CompanionActivityStore,
+} from '../../products/chat/companion/activityStore.js';
+import { resolveCompanionActivityPathFromChatState } from '../../shared/platformPaths.js';
 import { createChatMemorySurface } from '../../products/chat/state/memoryAdapter.js';
 import {
   createChatDeterministicChannelRouter,
@@ -57,6 +63,17 @@ function createDefaultCompanionStore(
   return chat.chatStore instanceof MemoryChatStore
     ? new MemoryCompanionBoxStore()
     : createFileBackedCompanionBoxStore(shared.config.chatStatePath);
+}
+
+function createDefaultCompanionActivityStore(
+  shared: SharedServerDependencies,
+  chat: ChatServerDependencies,
+): CompanionActivityStore {
+  return chat.chatStore instanceof MemoryChatStore
+    ? createMemoryCompanionActivityStore()
+    : createFileCompanionActivityStore(
+      resolveCompanionActivityPathFromChatState(shared.config.chatStatePath),
+    );
 }
 
 function createDefaultMemoryStore(
@@ -178,6 +195,8 @@ export function resolveServerDependencies(
     memoryService,
     dependencies.chat.chatStore,
   );
+  const companionActivityStore = dependencies.chat.companionActivityStore
+    ?? createDefaultCompanionActivityStore(dependencies.shared, dependencies.chat);
   const orchestratorChannelRouter = dependencies.chat.orchestratorChannelRouter
     ?? (
       dependencies.shared.config.runtimeStaleSessionRetryLimit === undefined
@@ -258,6 +277,7 @@ export function resolveServerDependencies(
       ...dependencies.chat,
       mutationGate,
       companionStore,
+      companionActivityStore,
       orchestratorChannelRouter,
       orchestratorPlannerSurface,
       taskExecutionLocator,
