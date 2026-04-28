@@ -143,6 +143,14 @@ test('generateWorkIntakePlan creates work item linked to project', () => {
   assert.ok(result.plan.workItem);
   assert.equal(result.plan.workItem.projectId, result.plan.project.id);
   assert.equal(result.plan.workItem.status, 'draft');
+  assert.equal(result.plan.workItem.taskId, result.plan.tasks[0].id);
+  const coreWorkItem = result.core.workItems.find(
+    (workItem) => workItem.id === result.plan.workItem.id,
+  );
+  assert.equal(
+    coreWorkItem?.taskId,
+    result.plan.tasks[0].id,
+  );
 });
 
 test('generateWorkIntakePlan creates work_thread conversation and assigns owner', () => {

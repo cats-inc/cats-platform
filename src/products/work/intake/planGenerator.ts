@@ -79,7 +79,7 @@ export function generateWorkIntakePlan(
     summary: normalizedInput.desiredOutcome,
   }, now);
   nextCore = workItemResult.core;
-  const workItem = workItemResult.workItem;
+  let workItem = workItemResult.workItem;
 
   // 3. Create a work_thread conversation for this project
   const ownerActorId = nextCore.ownerProfile.actorId;
@@ -212,6 +212,7 @@ export function generateWorkIntakePlan(
       taskId: firstTask.id,
     }, now);
     nextCore = linkResult.core;
+    workItem = linkResult.workItem;
   }
 
   // 7. Create activity records for each task
