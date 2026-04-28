@@ -15,6 +15,7 @@ import type {
   UpdateCompanionSourceInput,
   UpdateCompanionResponseProfileInput,
 } from '../companion/contracts.js';
+import { projectCompanionProfile } from '../companion/profileReadModel.js';
 import { syncCanonicalCompanionMemoryBestEffort } from '../../../platform/memory/maintenance.js';
 import {
   type CanonicalSyncAwareCompanionBoxStore,
@@ -273,6 +274,23 @@ async function handleListCompanionDerived(
   }
 }
 
+async function handleGetCompanionProfileReadModel(
+  context: ChatApiRouteContext,
+  catId: string,
+): Promise<void> {
+  try {
+    await resolveCatContext(context, catId);
+    const [sources, derived] = await Promise.all([
+      context.dependencies.companionStore.listSources(catId),
+      context.dependencies.companionStore.listDerived(catId),
+    ]);
+    const profile = projectCompanionProfile({ sources, derived });
+    sendJson(context.response, 200, { profile });
+  } catch (error) {
+    handleCanonicalCatError(context, error);
+  }
+}
+
 async function handleListCompanionMemory(
   context: ChatApiRouteContext,
   catId: string,
@@ -519,6 +537,19 @@ export async function routeCompanionBoxApi(
       return true;
     }
     sendMethodNotAllowed(context.response, ['GET', 'POST']);
+    return true;
+  }
+
+  const profileMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/cats\/([^/]+)\/companion-box\/profile$/u,
+  );
+  if (profileMatch) {
+    if (context.method !== 'GET') {
+      sendMethodNotAllowed(context.response, ['GET']);
+      return true;
+    }
+    await handleGetCompanionProfileReadModel(context, profileMatch[0]!);
     return true;
   }
 
