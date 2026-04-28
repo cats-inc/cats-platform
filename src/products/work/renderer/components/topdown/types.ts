@@ -35,6 +35,12 @@ export type WorkAttentionState =
 
 export type WorkGraphDiagnosticSeverity = "info" | "warning" | "error";
 
+export type WorkGraphDiagnosticCategory =
+  | "anchor"
+  | "lineage"
+  | "projection"
+  | "policy";
+
 export type WorkGraphDiagnosticKind =
   | "broken_fk"
   | "missing_project_anchor"
@@ -48,6 +54,18 @@ export interface WorkGraphObjectSummary {
   kind: WorkGraphObjectKind;
   /** null for cross-cutting evidence and gate objects. */
   structuralLayer: WorkGraphLayer | null;
+  /**
+   * Canonical Core record family this summary projects from. SPEC-083 §
+   * Suggested Work Graph Shape publishes this as `string` so non-PWT
+   * objects can carry their own family (`conversation`, `run`, `artifact`,
+   * etc.); SPEC-090 narrows the value space on link endpoints to
+   * `project | work_item | task` only — the link record's
+   * `sourceRecordFamily` / `targetRecordFamily` fields use the narrower
+   * `WorkGraphLinkEndpointKind` enum.
+   */
+  sourceRecordFamily: WorkGraphObjectKind;
+  /** Canonical Core record id within `sourceRecordFamily`. */
+  sourceRecordId: string;
   title: string;
   status: string;
   summary: string | null;
@@ -77,6 +95,7 @@ export interface WorkGraphGateDecorator {
 export interface WorkGraphDiagnostic {
   id: string;
   severity: WorkGraphDiagnosticSeverity;
+  category: WorkGraphDiagnosticCategory;
   kind: WorkGraphDiagnosticKind;
   objectId: string | null;
   message: string;

@@ -1,5 +1,7 @@
 import type {
   WorkGraphDiagnostic,
+  WorkGraphDiagnosticCategory,
+  WorkGraphDiagnosticKind,
   WorkGraphEvidenceAttachment,
   WorkGraphGateDecorator,
   WorkGraphObjectSummary,
@@ -10,7 +12,34 @@ const NOW = "2026-04-25T03:55:00Z";
 const HOURS_AGO = (h: number): string =>
   new Date(Date.parse(NOW) - h * 60 * 60 * 1000).toISOString();
 
-const objects: WorkGraphObjectSummary[] = [
+type ObjectFixture = Omit<
+  WorkGraphObjectSummary,
+  "sourceRecordFamily" | "sourceRecordId"
+>;
+
+function withCoreRef(o: ObjectFixture): WorkGraphObjectSummary {
+  return { ...o, sourceRecordFamily: o.kind, sourceRecordId: o.id };
+}
+
+function diagnosticCategoryFor(
+  kind: WorkGraphDiagnosticKind,
+): WorkGraphDiagnosticCategory {
+  switch (kind) {
+    case "broken_fk":
+      return "policy";
+    case "missing_project_anchor":
+    case "missing_planning_execution_bridge":
+    case "missing_gate_subject":
+      return "anchor";
+    case "unanchored_run":
+    case "unanchored_evidence":
+      return "lineage";
+  }
+}
+
+type DiagnosticFixture = Omit<WorkGraphDiagnostic, "category">;
+
+const rawObjects: ObjectFixture[] = [
   // Interaction
   {
     id: "conv-marketing",
@@ -497,7 +526,9 @@ const gateDecorators: WorkGraphGateDecorator[] = [
   { gateObjectId: "ab-deploy", subjectObjectId: "task-deploy", state: "pending" },
 ];
 
-const diagnostics: WorkGraphDiagnostic[] = [
+const objects: WorkGraphObjectSummary[] = rawObjects.map(withCoreRef);
+
+const rawDiagnostics: DiagnosticFixture[] = [
   {
     id: "diag-1",
     severity: "warning",
@@ -534,6 +565,11 @@ const diagnostics: WorkGraphDiagnostic[] = [
     message: "1 historical gate binding (archived) lost its subject; cleanup recommended.",
   },
 ];
+
+const diagnostics: WorkGraphDiagnostic[] = rawDiagnostics.map((d) => ({
+  ...d,
+  category: diagnosticCategoryFor(d.kind),
+}));
 
 export const MOCK_WORK_GRAPH: WorkGraphProjection = {
   objects,

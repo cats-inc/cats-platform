@@ -115,10 +115,13 @@ export const workItemsStore = {
   },
   createWorkItem(input: CreateWorkItemInput): WorkGraphObjectSummary {
     const now = new Date().toISOString();
+    const id = generateWorkItemId();
     const workItem: WorkGraphObjectSummary = {
-      id: generateWorkItemId(),
+      id,
       kind: "work_item",
       structuralLayer: "planning",
+      sourceRecordFamily: "work_item",
+      sourceRecordId: id,
       title: input.title.trim(),
       status: input.status ?? "planned",
       summary: input.summary?.trim() || null,

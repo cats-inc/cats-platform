@@ -140,10 +140,13 @@ export const pinnedProjectsStore = {
   },
   createProject(input: CreateProjectInput): WorkGraphObjectSummary {
     const now = new Date().toISOString();
+    const id = generateProjectId();
     const project: WorkGraphObjectSummary = {
-      id: generateProjectId(),
+      id,
       kind: "project",
       structuralLayer: "planning",
+      sourceRecordFamily: "project",
+      sourceRecordId: id,
       title: input.title.trim(),
       status: input.status ?? "planned",
       summary: input.summary?.trim() || null,
