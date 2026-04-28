@@ -303,6 +303,7 @@ for the planned desktop host model.
 | `CATS_PLATFORM_DIR` | No | Override the platform root used for `state/chat-state.local.json`, `state/platform-onboarding-history.json`, and `config/platform-preferences.json` |
 | `CATS_DESKTOP_DIR` | No | Override the desktop root used for `state.json` and `logs/` |
 | `CATS_RUNTIME_DIR` | No | Override the runtime root used for `config/`, `data/`, and `sessions/` |
+| `CATS_PROVIDER_CAPABILITY_BOOTSTRAP_CONFIG` | No | Override the provider capability bootstrap YAML path. Defaults to `<platform config dir>/provider-capability-bootstrap.yaml` |
 | `CATS_RUNTIME_BASE_URL` | Yes | Upstream runtime URL |
 | `CATS_RUNTIME_API_KEY` | No | Optional bearer token for `cats-runtime` |
 
@@ -329,6 +330,32 @@ services. The desktop host preserves the inherited `PATH`, appends common
 system and user bin directories, and on macOS/Linux also checks standard nvm
 hints (`NVM_BIN`, `NVM_DIR`, and `~/.nvm/alias/default`) so npm-installed CLI
 providers remain discoverable without requiring a login-shell bootstrap step.
+
+### Provider Capability Bootstrap
+
+Provider capability treatment is opt-in. At startup, Cats reads:
+
+```text
+<platform config dir>/provider-capability-bootstrap.yaml
+```
+
+or the path in `CATS_PROVIDER_CAPABILITY_BOOTSTRAP_CONFIG`.
+
+Unlisted provider/model/control targets start as `default` / `unknown`.
+Provider catalog entries and runtime delivery richness do not grant
+`strong_agent` or `weak_worker` treatment by themselves. Copy
+`docs/examples/provider-capability-bootstrap.example.yaml` to the active config
+path and edit it when an operator wants an initial strong/weak bootstrap.
+
+Valid YAML rules use only:
+
+- `initialTreatment: strong_agent` or `initialTreatment: weak_worker`
+- `confidenceLevel: catalog_only`
+- a non-empty `reason`
+
+Rules using `initialTreatment: default`, `confidenceLevel: unknown`,
+`evaluated`, or `observed` are invalid and fail closed. Duplicate rule ids also
+fail the whole config closed because the id is part of the audit identity.
 
 ### Secrets Management
 

@@ -291,7 +291,7 @@ who is strong/weak; defaults remain neutral.
 
 ### Phase 4: Documentation and operator surface
 
-- [ ] Task 4.1: Document the YAML path and schema in setup/deployment docs.
+- [x] Task 4.1: Document the YAML path and schema in setup/deployment docs.
 - [ ] Task 4.2: Emit operator-facing diagnostic events covering matched rule
       id, treatment, confidence, reason, and any losing tie rules. In this
       slice the surface is the structured platform log plus
@@ -383,6 +383,7 @@ initial treatment even without an editor.
 | 2026-04-28 | Review close-out: removed `default` / `unknown` from valid YAML grants so only explicit `strong_agent` / `weak_worker` rules create startup treatment; added Claude to the example fixture; defined canonical `control` selector serialization from reconciled controls; made duplicate rule ids fatal; replaced vague supervision evidence reuse with a concrete `SupervisionDiagnosticRecord` owner; added Chat live smoke files/scripts to the delivery list; added tests and risks for duplicate ids, forbidden YAML defaults, live Chat smoke, and control-key drift. |
 | 2026-04-28 | Implementation slice 1: added `bootstrap_config` evidence metadata, `SupervisionDiagnosticRecord`, canonical control-key helper, YAML parser/validator, explicit-config resolver, fatal duplicate-id handling, and tests proving no-config default/unknown plus configured strong/weak behavior. Validation: targeted supervision tests and `npm run typecheck` passed. |
 | 2026-04-28 | Implementation slice 2: added active config path resolution, server startup YAML loading, retained bootstrap diagnostics, and Chat dispatch plumbing so provider-agent observations receive the active config. Validation: Chat/config targeted tests, `npm run typecheck`, `npm run build:server`, and `node --test tests/config.test.js` passed. |
+| 2026-04-28 | Implementation slice 3: added operator-facing example YAML, deployment guidance for `CATS_PROVIDER_CAPABILITY_BOOTSTRAP_CONFIG`, YAML validity/fail-closed rules, and a PROGRESS migration callout. |
 
 ---
 

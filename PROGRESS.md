@@ -4,15 +4,13 @@
 
 ## Current Status
 
-Latest update (2026-04-28): PLAN-080 opened the follow-up correction for
-provider capability bootstrap. PLAN-075 landed all phase code for the
-Chat/Work/Code supervision cutover, but is **not closed**: Phase 1's
-hard-coded Claude/Codex/Ollama strong/weak bootstrap is superseded by
-PLAN-080, and the Phase 5.4 / 6.4 live Claude/Codex smoke runs must be
-re-verified under PLAN-080's YAML config because they were validated against
-the now-superseded bootstrap. Unlisted provider/model/control targets must
-default to unknown, and only explicit YAML rules may receive initial
-strong/weak treatment.
+Latest update (2026-04-28): PLAN-080 is now in implementation. The
+hard-coded Claude/Codex/Ollama strong/weak bootstrap has been replaced by an
+operator-owned provider capability bootstrap YAML path. Unlisted
+provider/model/control targets default to unknown, and only explicit YAML rules
+may receive initial strong/weak treatment. Chat provider-agent observations now
+receive the active startup config, while PLAN-075 Phase 5.4 / 6.4 live
+Claude/Codex smoke runs still need re-verification under that YAML fixture.
 
 | Component | Status | Description |
 |-----------|--------|-------------|
