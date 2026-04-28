@@ -27,6 +27,10 @@ import { readPlatformPreferences } from '../../../shared/platformPreferences.js'
 import { normalizePlatformSurface } from '../../../shared/platformSurfaces.js';
 import { createExplicitProviderModelSelection } from '../../../shared/providerSelection.js';
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
+import { BUILD_CHANNEL } from '../../../shared/buildChannel.js';
+import { coerceFeatureFlagsForRead } from '../../../shared/featureFlags.js';
+import { readPersistedPlatformFeatureFlags } from '../../../shared/featureFlagsStore.js';
+import { resolvePlatformFeatureFlagsPathFromChatState } from '../../../shared/platformPaths.js';
 import { parseRuntimeSessionPolicyCreateInput } from '../../../shared/runtimeSessionPolicy.js';
 import {
   publishTelegramBridgeResult,
@@ -298,6 +302,17 @@ export async function buildAppShellPayload(
   const bootstrapAttemptId = await readDesktopHostBootstrapAttemptId(
     dependencies.config.desktopHostStatePath,
   );
+  const persistedFeatureFlags = await readPersistedPlatformFeatureFlags(
+    resolvePlatformFeatureFlagsPathFromChatState(dependencies.config.chatStatePath),
+  );
+  // PLAN-077 Slice 8: every read of the persisted flags goes through the
+  // production guard before reaching the renderer. A production build
+  // observes `false` for any locked entry, regardless of what is stored
+  // on disk.
+  const featureFlags = coerceFeatureFlagsForRead({
+    raw: persistedFeatureFlags,
+    buildChannel: BUILD_CHANNEL,
+  });
   const guideCatAssist = await resolveChatGuideCatAssistReadModel({
     chatStatePath: dependencies.config.chatStatePath,
     guideCat: core.guideCat,
@@ -340,6 +355,7 @@ export async function buildAppShellPayload(
       newChatAssist: guideCatAssist.newChatByMode,
       codeGuideCatAssist: guideCatAssist.newCode,
       runtimeSetup,
+      featureFlags,
     },
   );
 }
