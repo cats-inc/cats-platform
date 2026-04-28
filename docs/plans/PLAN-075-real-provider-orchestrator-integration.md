@@ -16,6 +16,7 @@
 ## Related Spec / Dependencies
 
 - [PLAN-074: Cats Work Agent Supervision Rollout](./PLAN-074-cats-work-agent-supervision-rollout.md)
+- [PLAN-080: Provider Capability Bootstrap Config Rollout](./PLAN-080-provider-capability-bootstrap-config-rollout.md)
 - [SPEC-082: Cats Work Agent Supervision and Tool Boundary](../specs/SPEC-082-cats-work-agent-supervision-and-tool-boundary.md)
 - [ADR-082: Recast the Orchestrator as a Capability Shell with Policy-Dial Supervision](../decisions/082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md)
 - [PLAN-023: Orchestrator Execution Loop and Recovery](./PLAN-023-orchestrator-execution-loop-and-recovery.md)
@@ -81,9 +82,13 @@ The target architecture is:
 This plan covers:
 
 - real Claude/Codex provider-agent integration through the supervision boundary
-- capability profile bootstrap before live provider autonomy is enabled
+- capability profile bootstrap before live provider autonomy is enabled. The
+  corrected target is config-gated bootstrap: provider/model/control targets
+  default to unknown unless an operator-owned YAML entry explicitly marks them
+  as `strong_agent` or `weak_worker` (implementation follow-up: PLAN-080)
 - Ollama/local weak-model integration as tool-internal SOP/worker/classifier
-  support, not as default autonomous agent execution
+  support only when configured or evidenced as weak-worker-capable, not as
+  hard-coded default autonomous agent execution
 - weak-model policy dials and SOP tool internals, including tiny task
   granularity, SOP scaffolding, schema validation, retry, escalation, and
   tool-surface narrowing without introducing a separate dispatcher component
@@ -127,11 +132,12 @@ This plan covers:
 
 ## Acceptance Criteria
 
-- Capability profiles for Claude, Codex, Ollama/local, and unknown providers
-  exist before any live provider-agent autonomy is enabled. Bootstrap covers
-  catalog source evidence, schema-only eval/history source fixtures,
-  operator overrides, and FR-19 override-floor enforcement. Live runs initially
-  see catalog and operator override evidence only; session-history summaries
+- Capability profiles exist before any live provider-agent autonomy is enabled,
+  but provider/model/control targets with no matching capability bootstrap YAML
+  rule remain default/unknown. Bootstrap covers explicit YAML source evidence,
+  schema-only eval/history source fixtures, operator overrides, and FR-19
+  override-floor enforcement. Live runs initially see only YAML-configured
+  bootstrap evidence and operator override evidence; session-history summaries
   default to a conservative empty fixture until the follow-up producer plan
   ships.
 - Chat direct, solo, group, and parallel send flows route semantic next-step
@@ -157,12 +163,16 @@ This plan covers:
 - Code `+New code`, `+Team code`, and `+Peer code` paths continue to work while
   task execute and relay fan-out are represented as supervised runs.
 - Claude and Codex live provider paths can drive at least one Chat turn, one
-  Work supervised run, and one Code task/relay path under supervision.
+  Work supervised run, and one Code task/relay path under supervision when the
+  developer/operator config explicitly treats those targets as strong-agent
+  candidates or later evidence supports that policy.
 - Ollama/local weak-model paths use the same provider-agent decision seam and
-  supervision lifecycle, but capability policy clamps their per-action dials:
-  autonomy no higher than `single_step`, tiny task granularity, SOP scaffolding,
-  schema-required validation, every-step checkpointing, narrow tool surfaces,
-  and deterministic retry/escalation.
+  supervision lifecycle when the developer/operator config explicitly treats
+  those targets as weak-worker candidates or later evidence supports that
+  policy. Their per-action dials are clamped: autonomy no higher than
+  `single_step`, tiny task granularity, SOP scaffolding, schema-required
+  validation, every-step checkpointing, narrow tool surfaces, and deterministic
+  retry/escalation.
 - Weak-model execution uses Cats-authored SOP tool internals rather than a
   separate dispatcher: a strong driver may call canonical tools such as
   `work.sop.ask_weak` or existing `work.sop.*` tools, and weak drivers may
@@ -193,7 +203,7 @@ This plan covers:
 | Gate | Required Evidence |
 |------|-------------------|
 | Do not broaden provider tool access until FR-19 override-floor tests stay green. | `supervision-policy-engine.test.tsx` and `supervision-tool-boundary.test.tsx` cover denial and evaluated/observed positive paths. |
-| Do not start live provider-agent autonomy before capability profile bootstrap lands. | Capability tests cover catalog source evidence, eval/history source fixtures without ingestion, conservative unknown defaults, operator override ceilings, and FR-19 override floor. |
+| Do not start live provider-agent autonomy before capability profile bootstrap lands. | Capability tests cover config-gated YAML source evidence, eval/history source fixtures without ingestion, conservative unknown defaults for unlisted targets, operator override ceilings, and FR-19 override floor. PLAN-080 replaces the current hard-coded bootstrap. |
 | Do not wire live provider-agent autonomy before fake driving-agent recovery tests are green. | `supervision-fake-driving-agent.test.tsx` and `work-supervised-run.test.tsx` pass. |
 | Do not change Chat visible UI while cutting the decision core. | Targeted Chat smoke/probe tests prove direct, solo, group, and parallel runtime handoff. |
 | Do not add direct runtime create/send calls in product code. | `supervision-runtime-boundary.test.tsx` and `rg runtimeClient.createSession/sendMessage` show only `runtimeBoundary.ts` calls runtime directly. |
@@ -368,9 +378,11 @@ Code 4 pass and 1 live Code provider smoke pass with
 
 ### Phase 1: Capability Profiles and Per-Action Policy Inputs
 
-- [x] Task 1.1: Bootstrap provider capability profiles for Claude, Codex,
-      Ollama/local, and unknown providers using conservative defaults before
-      any live provider-agent autonomy is enabled.
+- [x] Task 1.1: Bootstrap provider capability profiles before any live
+      provider-agent autonomy is enabled. This slice landed hard-coded
+      Claude/Codex/Ollama bootstrap fixtures; the corrected requirement is
+      config-gated YAML bootstrap with all unlisted targets defaulting to
+      unknown, tracked by PLAN-080.
 - [x] Task 1.2: Define source-of-truth schema fixtures for capability evidence:
       provider catalog, eval suite/eval run reference, session-history summary
       reference, and operator override. PLAN-075 only lands the schema seam for
@@ -387,9 +399,9 @@ Code 4 pass and 1 live Code provider smoke pass with
       or branch the orchestration path on capability tier; capability is a
       vector input, not a control-flow switch.
 - [x] Task 1.5: Add tests for capability conflicts, source metadata, override
-      floor/ceiling, conservative unknown defaults, and how capability profiles
-      shift `policyEngine.decide*(ctx)` dial output for the same task input
-      across strong and weak providers.
+      floor/ceiling, conservative unknown defaults, and how explicitly
+      configured capability profiles shift `policyEngine.decide*(ctx)` dial
+      output for the same task input across strong and weak provider targets.
 
 ### Phase 2: Provider-Agent Decision Seam
 
@@ -665,9 +677,10 @@ execution. The difference is control density, not a boolean switch.
 - Unit tests for provider-agent contract parsing, validation, and rejection.
 - Static boundary tests for direct runtime calls, scheduler content blindness,
   and product imports of retired platform planner/dispatcher modules.
-- Capability profile tests for catalog source evidence, eval/history source
-  fixtures without ingestion, operator override, conflict preservation,
-  conservative unknown defaults, and FR-19 override-floor enforcement.
+- Capability profile tests for config-gated YAML source evidence,
+  eval/history source fixtures without ingestion, operator override, conflict
+  preservation, conservative unknown defaults for unlisted
+  provider/model/control targets, and FR-19 override-floor enforcement.
 - Integration tests for Work and Code supervised run lifecycle with runtime
   stubs.
 - Targeted Chat runtime probes for direct, solo, group, and parallel handoff.
@@ -684,10 +697,10 @@ execution. The difference is control density, not a boolean switch.
   gated harness entrypoints. Work live smoke runs when
   `CATS_WORK_LIVE_PROVIDER_SMOKE=1`; Code live smoke runs when
   `CATS_CODE_LIVE_PROVIDER_SMOKE=1`.
-- Weak-model tests prove Ollama/local capability profiles use the same decision
-  seam, receive stricter policy dials, can only access allowed weak-worker/SOP
-  tool(s), validate required schemas, and persist evidence under the parent
-  run/driver instead of creating peer driving-agent lifecycles.
+- Weak-model tests prove YAML-configured weak-worker capability profiles use the
+  same decision seam, receive stricter policy dials, can only access allowed
+  weak-worker/SOP tool(s), validate required schemas, and persist evidence under
+  the parent run/driver instead of creating peer driving-agent lifecycles.
 - `weak-worker-no-ad-hoc-routing.test.ts` enforces the Anti-Bypass Invariant.
 
 ## Risks
@@ -786,3 +799,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 64: completed Phase 5 Task 5.4 by running `CATS_WORK_LIVE_PROVIDER_SMOKE=1 npm run smoke:live:work`; Claude/Codex Work supervised runs both started from the existing task detail supervised-run API, returned to the provider-agent seam, projected evidence in task detail, and required no Work UI flow change. |
 | 2026-04-28 | Implementation slice 65: completed Phase 6 Task 6.4 by running `CATS_CODE_LIVE_PROVIDER_SMOKE=1 npm run smoke:live:code`; Claude/Codex Code task execute and relay fan-out both ran under supervision after `cats-runtime` Codex read-only approval policy mapping was updated to the current Codex JSON-RPC contract. |
 | 2026-04-28 | Implementation slice 66: closed PLAN-075 status in `PROGRESS.md`, recording that Chat/Work/Code supervision cutover scope is complete and Work/Code live Claude/Codex verification passed through the supervised provider-agent seam. |
+| 2026-04-28 | Post-close correction: hard-coded Claude/Codex/Ollama strong/weak bootstrap is not the accepted target. PLAN-080 owns the config-gated replacement: unlisted provider/model/control targets default to unknown, and only explicit YAML rules receive initial strong/weak treatment. |

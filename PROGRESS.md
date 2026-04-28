@@ -4,10 +4,11 @@
 
 ## Current Status
 
-Latest update (2026-04-28): PLAN-075 real-provider orchestrator integration
-is complete for Chat/Work/Code supervision cutover scope. Work and Code live
-Claude/Codex smoke verification passed through the supervised provider-agent
-seam, with Code relay fan-out also validating the sibling-run supervision path.
+Latest update (2026-04-28): PLAN-080 opened the follow-up correction for
+provider capability bootstrap. PLAN-075's Chat/Work/Code supervision cutover is
+complete, but the hard-coded Claude/Codex/Ollama strong/weak bootstrap is
+superseded: unlisted provider/model/control targets must default to unknown,
+and only explicit YAML rules may receive initial strong/weak treatment.
 
 | Component | Status | Description |
 |-----------|--------|-------------|

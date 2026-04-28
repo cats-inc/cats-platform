@@ -218,10 +218,14 @@ a vector, not a scalar tier label, at minimum:
 
 - **Capability profile** — tool-use accuracy, JSON fidelity,
   reasoning depth, context length. Sources are a combination of
-  (1) provider / model catalog limits (e.g., declared context
-  window, declared tool-use support), (2) eval results run against
-  the provider / model, (3) accumulated task history per provider
-  / model, and (4) operator overrides. **Not sourced from
+  (1) explicit provider/model/control entries in the operator-owned
+  capability bootstrap YAML, (2) eval results run against the
+  provider / model, (3) accumulated task history per provider /
+  model, and (4) operator overrides. Provider/model catalogs may
+  supply inventory facts such as context window and declared tool
+  support, but those facts do **not** classify a provider/model as
+  strong or weak unless the capability bootstrap YAML explicitly
+  lists that target. **Not sourced from
   `ProductProviderEventCapabilities`** — that signal describes
   delivery / observability (whether we can observe incremental
   text, tool_use events, tool_result events, progress, reasoning
@@ -401,10 +405,12 @@ capability ceiling.
   or the managed-work / mission / run separation of ADR-063.
 - It does **not** decide `@ask-weak` / `@spawn-subcat` naming,
   signatures, or MCP transport. Those belong to a later SPEC.
-- It does **not** commit a capability-profile source of truth — how
-  `decide*(ctx)` reads tool-use accuracy and JSON fidelity is an
-  open question tracked for follow-up (see Claude research note
-  section 12).
+- It commits only the bootstrap source of truth: absent explicit
+  provider/model/control entries in the operator-owned capability
+  bootstrap YAML, every execution target starts as the default
+  unknown capability profile. Eval results, session history, and
+  operator overrides remain separate evidence sources that can refine
+  policy after bootstrap.
 
 ## Consequences
 
@@ -549,6 +555,7 @@ capability ceiling.
 - [ADR-063: Separate managed work, agent missions, execution runs, and transport bindings](./063-agent-missions-and-transport-bindings.md)
 - [ADR-081: Canonicalize the Core Record Taxonomy as Interaction / Planning / Execution](./081-canonicalize-three-tier-core-record-taxonomy.md)
 - [SPEC-050: Group Chat Temporary Participants and Reusable Lightweight Presets](../specs/SPEC-050-group-chat-temporary-participants-and-reusable-lightweight-presets.md)
+- [PLAN-080: Provider Capability Bootstrap Config Rollout](../plans/PLAN-080-provider-capability-bootstrap-config-rollout.md)
 - [Research: Orchestrator as a capability shell (Claude)](../research/2026-04-23-claude-orchestrator-as-capability-shell.md)
 - [Research: Cats Work Agent Supervision Model (Codex)](../research/2026-04-23-codex-cats-work-agent-supervision-model.md)
 - `cats-platform/src/platform/orchestration/` — current orchestrator subsystem (planner, dispatcher, execution workflow)
@@ -558,4 +565,5 @@ capability ceiling.
 ---
 
 *Proposed: 2026-04-25*
+*Amended: 2026-04-28 — capability bootstrap source of truth is explicit YAML; unlisted provider/model/control targets default to unknown.*
 *Proposed by: Claude, drawing on the 2026-04-23 owner × Claude discussion and the parallel Codex research note*

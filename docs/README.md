@@ -47,7 +47,7 @@ The `scripts/` directory contains platform-specific scripts for this project:
 | Document | Status | Description |
 |----------|--------|-------------|
 | [AGENT-GUIDE.md](./AGENT-GUIDE.md) | Complete | Agent collaboration guide with current platform-foundation context plus the same-environment CLI collaboration contract |
-| [terminology.md](./terminology.md) | Complete | Product, engine, and protocol terms including `Container`, `Turn`, `Lane`, `Segment`, `Session`, `Mission`, `Run`, `Schedule`, `Transport Binding`, conversational/operational/hybrid agent projections, `MY CATS` lenses, Guide/Boss capability language, materialization, scheduler policy, and runtime capability profiles |
+| [terminology.md](./terminology.md) | Complete | Product, engine, and protocol terms including `Container`, `Turn`, `Lane`, `Segment`, `Session`, `Mission`, `Run`, `Schedule`, `Transport Binding`, conversational/operational/hybrid agent projections, `MY CATS` lenses, Guide/Boss capability language, materialization, scheduler policy, runtime capability profiles, and provider capability bootstrap config |
 | [a2a/](./a2a/) | Complete | Pilot-owned A2A v1.0 example set for future platform-host/orchestrator adapter work; standards-aligned docs, not a claim of a live A2A endpoint today |
 | [specs/](./specs/) | Complete | Feature specifications covering the unified conversation-turn-lane engine, interaction/materialization split, heterogeneous runtime delivery normalization, runtime session policy boundary validation, chat continuity semantics/context transplant, product-scoped recents/origin-surface ownership, Guide Cat optional assist capability, Guide Cat placement/shared-chrome docking, concurrent transcript delivery, browser-ingress LAN/tunnel phasing, Cats Work agent supervision/tool-boundary contracts, and the linked Chat/Work/Code product slices |
 | [plans/](./plans/) | Complete | Implementation plans covering the unified engine rollout, interaction/materialization seam, runtime normalization, runtime session policy boundary hardening, Cats Work agent supervision rollout, real provider orchestrator integration, product-scoped recents/origin-surface rollout, chat continuity follow-through, Guide Cat capability rollout, Guide Cat placement/shared-chrome docking, concurrent transcript delivery, browser-ingress LAN/tunnel rollout, and the linked Chat/Work/Code product slices |
@@ -55,6 +55,7 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [PLAN-080](./plans/PLAN-080-provider-capability-bootstrap-config-rollout.md)
 - [SPEC-089](./specs/SPEC-089-companion-all-content-library-placeholder.md)
 - [SPEC-088](./specs/SPEC-088-companion-memory-bridge-contract-placeholder.md)
 - [PLAN-077](./plans/PLAN-077-companion-profile-and-share-preview-rollout.md)

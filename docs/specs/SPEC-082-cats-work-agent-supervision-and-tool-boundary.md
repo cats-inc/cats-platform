@@ -15,7 +15,7 @@
 | **Reviewer** | User |
 | **Related ADR** | [ADR-082](../decisions/082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md) |
 | **Related Spec** | [SPEC-050](./SPEC-050-group-chat-temporary-participants-and-reusable-lightweight-presets.md) |
-| **Follow-up plan** | [PLAN-074](../plans/PLAN-074-cats-work-agent-supervision-rollout.md) |
+| **Follow-up plan** | [PLAN-074](../plans/PLAN-074-cats-work-agent-supervision-rollout.md), [PLAN-080](../plans/PLAN-080-provider-capability-bootstrap-config-rollout.md) |
 
 ## Summary
 
@@ -325,9 +325,19 @@ invocations are tools unless explicitly promoted by a later feature.
 17. **FR-17 (Capability profile source split).** The capability profile shall
     not be sourced from `ProductProviderEventCapabilities`. Provider delivery
     observability and model intelligence/tool skill are separate axes.
-18. **FR-18 (Bootstrap confidence).** A provider/model with no evals and no
-    session history shall start with a conservative bootstrap assessment that
-    separates confidence level from source evidence:
+18. **FR-18 (Config-gated bootstrap confidence).** A provider/model/control
+    target with no evals, no session history, and no explicit entry in the
+    operator-owned capability bootstrap YAML shall start as the default
+    conservative profile: `bootstrapTreatment: 'default'`,
+    `confidenceLevel: 'unknown'`, and no initial strong/weak treatment. Cats
+    shall not infer `strong_agent` or `weak_worker` from provider names,
+    runtime availability, runtime delivery richness, static provider catalogs,
+    or model labels. A target may receive initial strong/weak treatment only
+    when a validated capability bootstrap YAML rule explicitly matches that
+    provider/model/control target.
+
+    The assessment shape separates the bootstrap treatment from confidence
+    level and source evidence:
 
     ```ts
     type CapabilityDimension =
@@ -345,6 +355,7 @@ invocations are tools unless explicitly promoted by a later feature.
     interface CapabilitySourceEvidence {
       evidenceId: string;
       source:
+        | 'bootstrap_config'
         | 'provider_catalog'
         | 'operator_override'
         | 'eval_suite'
@@ -352,6 +363,9 @@ invocations are tools unless explicitly promoted by a later feature.
       observedAt: string;
       claims: Partial<Record<CapabilityDimension, CapabilityClaim>>;
       metadata?: {
+        bootstrapConfigVersion?: string;
+        bootstrapRuleId?: string;
+        bootstrapConfigPath?: string;
         catalogVersion?: string;
         evalSuiteId?: string;
         evalRunId?: string;
@@ -364,6 +378,7 @@ invocations are tools unless explicitly promoted by a later feature.
 
     interface CapabilityAssessment {
       assessedAt: string;
+      bootstrapTreatment: 'default' | 'strong_agent' | 'weak_worker';
       confidenceLevel: 'unknown' | 'catalog_only' | 'evaluated' | 'observed';
       confidenceSources: CapabilitySourceEvidence[];
       aggregateMethod: 'conservative_per_dimension';
@@ -380,9 +395,12 @@ invocations are tools unless explicitly promoted by a later feature.
     the assessment and is the value referenced by `conflicts[].evidenceIds`;
     source-specific machine identifiers live in `metadata` and are the
     authoritative join keys. Aggregation shall be per capability dimension.
-    Eval-suite and session-history evidence may downgrade provider-catalog
-    claims; positive catalog facts alone shall not upgrade a profile above
-    `catalog_only`. Adding a new evidence item shall update top-level
+    Eval-suite and session-history evidence may downgrade bootstrap-config or
+    provider-catalog claims; positive bootstrap/catalog facts alone shall not
+    upgrade a profile above `catalog_only`. Provider catalogs are inventory
+    sources only unless referenced by a matching bootstrap YAML rule; product
+    code shall not create strong/weak bootstrap treatment from a built-in
+    provider-name allowlist. Adding a new evidence item shall update top-level
     `assessedAt` while preserving older source `observedAt` values. A conflict
     exists when two or more evidence items make claims for the same dimension
     with different `level` values; same-level claims with different summaries
@@ -559,13 +577,16 @@ invocations are tools unless explicitly promoted by a later feature.
     waiting state, and next expected checkpoint.
 
 Strong-provider dials are still computed per action. A strong provider/model
-baseline may allow broader semantic planning than a weak worker, but policy
-shall still combine capability profile, task risk, tool manifest, budget,
-approval posture, and product invariants before granting broad-write tools or
-outcome delegation. Temporary participants backed by a strong provider use the
-same execution-target capability baseline as durable Cats with that provider,
-then may receive stricter channel-scoped budget, time, or checkpoint limits;
-their temporary lifecycle must not relax any dial.
+baseline exists only when the capability bootstrap YAML explicitly marks the
+provider/model/control target as `strong_agent`, or when later eval/history
+evidence earns that effective policy. That baseline may allow broader semantic
+planning than a weak worker, but policy shall still combine capability profile,
+task risk, tool manifest, budget, approval posture, and product invariants
+before granting broad-write tools or outcome delegation. Temporary participants
+backed by a strong provider use the same execution-target capability baseline
+as durable Cats with that provider, then may receive stricter channel-scoped
+budget, time, or checkpoint limits; their temporary lifecycle must not relax
+any dial.
 
 #### Weak-model and SOP path
 
@@ -703,21 +724,57 @@ Action request
 
 ### Capability Bootstrap
 
-For a new provider/model:
+For a new provider/model/control target:
 
-1. Start with provider catalog facts only: context window, declared tool-use
-   support, streaming/event support, pricing or local cost class.
-2. Mark `confidenceLevel` as `catalog_only` and add one
-   `provider_catalog` source evidence item with `evidenceId`, catalog version,
-   timestamp, and per-dimension claims. If an operator override exists, add a
-   separate `operator_override` source evidence item with its own `evidenceId`,
-   override id, reason, and optional expiry, but do not treat the override
-   itself as a confidence level.
-3. Use conservative policy: narrow or read-only tools, schema-required output,
-   frequent checkpoints, and approval for higher-risk side effects.
-4. Promote confidence only after evals or observed run history demonstrate
+1. Load the operator-owned capability bootstrap YAML from platform config
+   (planned path: `config/provider-capability-bootstrap.yaml`, with a developer
+   override env var allowed by implementation plan). If the file is absent,
+   invalid, or has no matching rule, the target starts as
+   `bootstrapTreatment: 'default'` and `confidenceLevel: 'unknown'`.
+2. Match rules by normalized provider/model/control selector. A rule may omit
+   model or control only to intentionally apply to every model/control under
+   the listed provider; product code shall not add implicit provider-name
+   fallbacks outside the YAML.
+3. A matching YAML rule may set only one initial treatment:
+   `default`, `strong_agent`, or `weak_worker`. Strong/weak treatment is a
+   bootstrap policy hint, not a durable identity kind and not proof of
+   evaluated capability.
+4. A matching YAML rule may add one `bootstrap_config` source evidence item
+   with `evidenceId`, rule id, config version/path, timestamp, operator reason,
+   and per-dimension claims. That evidence may raise confidence only to
+   `catalog_only`; eval-suite or session-history evidence is still required for
+   `evaluated` or `observed`.
+5. Provider catalog facts such as context window, declared tool-use support,
+   streaming/event support, pricing, or local cost class may be recorded for
+   display and adapter compatibility, but shall not by themselves assign
+   strong/weak treatment or loosen policy dials.
+6. Use conservative policy by default: narrow or read-only tools,
+   schema-required output, frequent checkpoints, and approval for higher-risk
+   side effects.
+7. Promote confidence only after evals or observed run history demonstrate
    specific abilities such as JSON fidelity, tool-call accuracy, or reliable
    long-context behavior.
+
+Example bootstrap YAML:
+
+```yaml
+version: 1
+profiles:
+  - id: codex-gpt-5-4-strong-candidate
+    selector:
+      provider: codex
+      model: gpt-5.4
+      control: default
+    initialTreatment: strong_agent
+    confidenceLevel: catalog_only
+    reason: Operator-approved strong-agent candidate for supervised coding demos.
+  - id: ollama-local-worker
+    selector:
+      provider: ollama
+    initialTreatment: weak_worker
+    confidenceLevel: catalog_only
+    reason: Local Ollama targets start as SOP workers unless evals say otherwise.
+```
 
 Provider delivery capabilities can influence observability and fallback, but
 they do not prove reasoning quality.
@@ -777,10 +834,16 @@ the parent action's fallback policy.
 - A weak-worker invocation uses a narrow policy, schema validation, and an
   explicit budget envelope, and its tool surface is a subset of both parent
   run grants and worker-action policy.
-- Unknown provider/model capability bootstrap starts conservative and records
-  unordered per-source evidence metadata, including timestamp, source
-  evidence id, per-dimension claims, source-specific metadata, and conflict
-  resolution.
+- Provider/model/control targets with no matching capability bootstrap YAML
+  rule start as `bootstrapTreatment: 'default'` and `confidenceLevel:
+  'unknown'`, regardless of provider name, model label, runtime availability,
+  or provider delivery richness.
+- Capability bootstrap config tests prove only YAML-listed targets receive
+  initial `strong_agent` or `weak_worker` treatment, matching is
+  provider/model/control-scoped, invalid config fails closed to default
+  unknown, and unordered per-source evidence metadata records timestamp,
+  source evidence id, per-dimension claims, source-specific metadata, and
+  conflict resolution.
 - Capability conflict tests prove different levels for the same dimension
   produce `conflicts[]`, same-level summary differences do not, and
   `selectedLevel` follows the conservative-per-dimension rule.

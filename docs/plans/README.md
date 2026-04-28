@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-080](./PLAN-080-provider-capability-bootstrap-config-rollout.md) | Provider Capability Bootstrap Config Rollout | Draft | [SPEC-082](../specs/SPEC-082-cats-work-agent-supervision-and-tool-boundary.md), [ADR-082](../decisions/082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md), [PLAN-075](./PLAN-075-real-provider-orchestrator-integration.md) |
 | [PLAN-079](./PLAN-079-work-graph-link-relations-rollout.md) | Work Graph Link Relations Rollout | Draft | [SPEC-090](../specs/SPEC-090-work-graph-link-relations.md), [ADR-086](../decisions/086-adopt-n-to-m-work-graph-link-relations.md) |
 | [PLAN-078](./PLAN-078-linux-composer-voice-input-whisper-cpp-rollout.md) | Linux Composer Voice Input whisper.cpp Rollout | Cancelled (not adopted) | [SPEC-087](../specs/SPEC-087-linux-composer-voice-input-via-bundled-whisper-cpp.md), [ADR-085](../decisions/085-bundle-whisper-cpp-on-linux-for-composer-voice-input.md) |
 | [PLAN-077](./PLAN-077-companion-profile-and-share-preview-rollout.md) | Companion Profile and Share Preview Rollout | Draft | [SPEC-085](../specs/SPEC-085-companion-profile-feed-and-library-ia.md), [SPEC-086](../specs/SPEC-086-shareable-companion-content-links-and-chat-previews.md), [ADR-084](../decisions/084-adopt-companion-profile-ia-and-shareable-content-references.md) |

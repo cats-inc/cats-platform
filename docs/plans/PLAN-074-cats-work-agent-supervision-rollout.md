@@ -170,7 +170,11 @@ behavior change.
 
 - [ ] Task 2.1: Create `src/platform/supervision/capabilityAssessment.ts`
       implementing conservative bootstrap:
-  - provider catalog source evidence produces `catalog_only`
+  - absent an explicit capability bootstrap YAML rule, provider/model/control
+    targets produce default/unknown bootstrap treatment
+  - matching bootstrap config source evidence may produce `catalog_only`
+    initial treatment, but provider catalogs alone do not assign strong/weak
+    treatment
   - delivery/observability capabilities do not raise model confidence
   - source evidence is unordered and keyed by `evidenceId`
   - `assessedAt` updates when evidence changes; old `observedAt` values remain
