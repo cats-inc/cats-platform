@@ -1,6 +1,10 @@
-import { useCallback, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState, type ReactNode } from 'react';
 
 import type { AppShellPayload, ChatCat } from '../../../api/contracts.js';
+import {
+  COMPANION_PROFILE_IA_FLAG,
+  readCoercedFeatureFlag,
+} from '../../../../../shared/featureFlags.js';
 import {
   companionTabLabel,
   type CompanionWorkspaceTab,
@@ -39,6 +43,16 @@ export function CompanionWorkspace({
   const [activeTab, setActiveTab] = useState<CompanionWorkspaceTab | null>('overview');
   const presence = useCompanionPresence(cat.id, payload);
   const workspace = useCompanionWorkspace(cat.id, activeTab ?? 'overview');
+
+  const companionProfileIaEnabled = useMemo(
+    () =>
+      readCoercedFeatureFlag({
+        name: COMPANION_PROFILE_IA_FLAG,
+        raw: payload.featureFlags,
+        buildChannel: payload.buildChannel,
+      }),
+    [payload.featureFlags, payload.buildChannel],
+  );
 
   const handleWake = useCallback(() => {
     onWake(cat.id);
@@ -230,7 +244,10 @@ export function CompanionWorkspace({
               </>
             )}
           />
-          <CompanionFeed cat={cat} />
+          <CompanionFeed
+            cat={cat}
+            companionProfileIaEnabled={companionProfileIaEnabled}
+          />
         </div>
       </div>
       {sidePanelOpen ? (

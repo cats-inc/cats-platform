@@ -1,16 +1,29 @@
-import { useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 
 import type { ChatCat } from '../../../api/contracts.js';
 import { catInitials } from '../../chatUtils.js';
 
-type FeedTab = 'posts' | 'videos' | 'photos' | 'music' | 'files';
+type FeedTab = 'posts' | 'videos' | 'photos' | 'music' | 'files' | 'activity';
 
-const FEED_TABS: ReadonlyArray<{ id: FeedTab; label: string }> = [
+const LEGACY_FEED_TABS: ReadonlyArray<{ id: FeedTab; label: string }> = [
   { id: 'posts', label: 'Posts' },
   { id: 'videos', label: 'Videos' },
   { id: 'photos', label: 'Photos' },
   { id: 'music', label: 'Music' },
   { id: 'files', label: 'Files' },
+];
+
+// PLAN-077 Phase 1: when the companion-profile IA flag is on, surface the
+// new tab order (Posts / Photos / Videos / Music / Files / Activity) with
+// Activity pinned last. The legacy order ships when the flag is off so a
+// production build with no operator opt-in keeps the prior UI verbatim.
+const PROFILE_IA_FEED_TABS: ReadonlyArray<{ id: FeedTab; label: string }> = [
+  { id: 'posts', label: 'Posts' },
+  { id: 'photos', label: 'Photos' },
+  { id: 'videos', label: 'Videos' },
+  { id: 'music', label: 'Music' },
+  { id: 'files', label: 'Files' },
+  { id: 'activity', label: 'Activity' },
 ];
 
 interface MockPost {
@@ -377,10 +390,43 @@ function CompanionFileList() {
 
 export interface CompanionFeedProps {
   cat: ChatCat;
+  /**
+   * Coerced value of the `cats.chat.companionProfileIA` feature flag for
+   * the current build channel. When `true`, the companion feed renders
+   * the PLAN-077 tab order (Posts / Photos / Videos / Music / Files /
+   * Activity); otherwise it renders the legacy order. Defaults to `false`
+   * so callers that have not yet plumbed the flag through stay on legacy.
+   */
+  companionProfileIaEnabled?: boolean;
 }
 
-export function CompanionFeed({ cat }: CompanionFeedProps) {
+function CompanionActivityPlaceholder() {
+  return (
+    <div className="companionEmptyState">
+      <p>Activity is empty.</p>
+      <p className="companionEmptyStateHint">
+        PLAN-077 Phase 2 will populate this with aggregated source / memory /
+        derived activity.
+      </p>
+    </div>
+  );
+}
+
+export function CompanionFeed({
+  cat,
+  companionProfileIaEnabled = false,
+}: CompanionFeedProps) {
+  const tabs = companionProfileIaEnabled ? PROFILE_IA_FEED_TABS : LEGACY_FEED_TABS;
   const [activeTab, setActiveTab] = useState<FeedTab>('posts');
+
+  // If the flag flips off (or the active tab is no longer in the visible
+  // set after a tab-order change), fall back to Posts so the user never
+  // lands on a hidden tab.
+  useEffect(() => {
+    if (!tabs.some((tab) => tab.id === activeTab)) {
+      setActiveTab('posts');
+    }
+  }, [tabs, activeTab]);
 
   let content: ReactNode;
   switch (activeTab) {
@@ -405,12 +451,15 @@ export function CompanionFeed({ cat }: CompanionFeedProps) {
     case 'files':
       content = <CompanionFileList />;
       break;
+    case 'activity':
+      content = <CompanionActivityPlaceholder />;
+      break;
   }
 
   return (
     <div className="companionFeed">
       <nav className="companionFeedTabs" role="tablist" aria-label="Companion feed">
-        {FEED_TABS.map((tab) => (
+        {tabs.map((tab) => (
           <button
             key={tab.id}
             type="button"
