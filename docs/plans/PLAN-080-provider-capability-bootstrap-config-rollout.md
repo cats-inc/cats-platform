@@ -37,6 +37,25 @@ This corrects the PLAN-075 first slice that classified `claude` / `codex` as
 - no automatic promotion based on provider id, model name, runtime availability,
   or `ProductProviderEventCapabilities`
 
+## Migration
+
+Existing deployments that ran on the hard-coded PLAN-075 bootstrap will see all
+provider/model/control targets default to unknown after PLAN-080 lands unless
+they ship a YAML config. To avoid silent regression:
+
+- Ship a checked-in `provider-capability-bootstrap.example.yaml` covering
+  Claude / Codex / Ollama with the same treatment the hard-coded bootstrap
+  produced today, plus a clear comment that operators MUST opt in by copying
+  it to the active config path (it is not loaded automatically).
+- The first-run / upgrade flow logs a structured warning when no config is
+  found and points at the example file. The warning is a diagnostic event, not
+  a UI prompt; the host or a future onboarding wizard can surface it.
+- Releases shipping PLAN-080 must call out in release notes that operators who
+  relied on the implicit Claude/Codex strong-agent bootstrap need to copy and
+  edit the example file before live runs resume.
+- A UI/admin editor for this YAML is explicit follow-up scope, not part of
+  PLAN-080.
+
 ## Config Contract
 
 The first implementation shall read an operator-owned YAML file from the
@@ -67,9 +86,10 @@ YAML schema:
 ```yaml
 version: 1
 profiles:
-  - id: codex-gpt-5-4-strong-candidate
+  - id: codex-cloud-gpt-5-4-strong-candidate
     selector:
       provider: codex
+      instance: cloud
       model: gpt-5.4
       control: default
     initialTreatment: strong_agent
@@ -89,16 +109,42 @@ Rules:
   `weak_worker`.
 - `confidenceLevel` may be only `unknown` or `catalog_only` in this bootstrap
   file; `evaluated` and `observed` require eval/history evidence.
-- `provider` is required. `model` and `control` are optional only as explicit
-  broad rules for that provider.
+- `provider` is required. `instance`, `model`, and `control` are each optional
+  and act as additional explicit narrowing of the rule. Selectors must use the
+  same `ProviderCapabilityTarget` axes (`provider`, `instance`, `model`,
+  `control`) that `providerCapabilityProfiles.ts` already declares; PLAN-080
+  must not invent a parallel axis set.
 - matching is normalized but not inferred. No code path may special-case
   `claude`, `codex`, `ollama`, `local`, or future providers by name.
 - each matching rule creates `bootstrap_config` evidence with rule id, config
   version/path, timestamp, and reason.
 - invalid config fails closed to default/unknown and emits a diagnostic; it must
   not silently grant strong/weak treatment.
+- a YAML rule with `confidenceLevel: catalog_only` is operator attestation,
+  equivalent to ADR-082 §3 evidence source #4 (operator override). It is
+  bounded by the FR-19 floor: it cannot grant `broad_write` or unrestricted
+  `outcome_delegation`. `evaluated` and `observed` confidence still require
+  real eval/history evidence and may not be set in this YAML.
 - implementation may add a small YAML parser dependency if none exists; do not
   silently downgrade this contract to JSON or an ad hoc line parser.
+
+### Selector Precedence
+
+When multiple rules match a target, the most-specific selector wins.
+Specificity counts the number of explicit selector keys, ordered as
+`provider` < `provider + instance` < `provider + instance + model` <
+`provider + instance + model + control`. Ties are broken by file order
+(later rule wins). Diagnostics emit both the matched rule id and any rules
+that lost the tie, so operators can spot accidental shadowing.
+
+### Reload Behavior
+
+The resolver reads YAML once at process startup and caches the parsed config.
+Live edits do not take effect until the platform process restarts. This keeps
+provider treatment deterministic across a session and avoids mid-run policy
+drift. A future plan may add file-watch reload, but only after a structured
+audit-log entry pattern is in place to record every reload event with its
+matched-rule diff.
 
 ## Implementation Phases
 
@@ -140,6 +186,12 @@ the YAML explicitly grants it.
       explicit fixture config when they need a strong or weak demo path.
 - [ ] Task 3.4: Verify temp participants resolve capability through their bound
       execution target plus YAML rule without promotion to durable Cats.
+- [ ] Task 3.5: Re-run PLAN-075 Phase 5.4 (Work) and Phase 6.4 (Code) live
+      Claude/Codex smoke under the PLAN-080 YAML fixture. Slices 64 / 65
+      passed against the old hard-coded bootstrap; PLAN-080 closure requires
+      proving the same paths still work when strong-agent treatment comes from
+      explicit YAML rather than provider-name special-casing. Record the
+      re-run in the PLAN-075 progress log.
 
 **Deliverables**: Product demos become deterministic because the fixture says
 who is strong/weak; defaults remain neutral.
@@ -147,9 +199,11 @@ who is strong/weak; defaults remain neutral.
 ### Phase 4: Documentation and operator surface
 
 - [ ] Task 4.1: Document the YAML path and schema in setup/deployment docs.
-- [ ] Task 4.2: Add an operator-facing diagnostic summary to existing provider
-      capability review surfaces: matched rule id, treatment, confidence, and
-      reason.
+- [ ] Task 4.2: Emit operator-facing diagnostic events covering matched rule
+      id, treatment, confidence, reason, and any losing tie rules. In this
+      slice the surface is the structured platform log plus existing
+      supervision evidence/snapshot records (no new UI panel). A future plan
+      may add an admin UI editor that consumes the same diagnostic events.
 - [ ] Task 4.3: Record that a UI/admin editor is follow-up scope, not part of
       this rollout.
 
@@ -185,6 +239,12 @@ initial treatment even without an editor.
   exists.
 - Preset/temp-participant tests prove demo flows depend on explicit fixture
   config, not provider-name assumptions.
+- Attestation-boundary tests prove a `catalog_only` YAML rule can grant
+  `strong_agent` or `weak_worker` initial treatment but cannot bypass the
+  FR-19 floor on `broad_write` or unrestricted `outcome_delegation`, and that
+  attempts to set `evaluated` or `observed` in YAML are rejected.
+- Selector-precedence tests prove most-specific match wins, ties broken by
+  file order, and diagnostics record losing tie rules.
 
 ## Risks & Mitigations
 
@@ -200,6 +260,7 @@ initial treatment even without an editor.
 | Date | Update |
 |------|--------|
 | 2026-04-28 | Plan opened after review found hard-coded strong/weak provider bootstrap unacceptable; target changed to explicit YAML-only initial treatment. |
+| 2026-04-28 | Review close-out: added `instance` to selector axes, declared YAML attestation as ADR-082 §3 evidence source #4 under FR-19 floor, defined selector precedence and process-restart reload behavior, scoped a Migration section with example fixture + release-notes guidance, scheduled re-run of PLAN-075 Phase 5.4 / 6.4 live smoke under YAML config (Task 3.5), bound Phase 4 diagnostic surface to logs + supervision evidence rather than a new UI panel, and added attestation-boundary + selector-precedence test categories. |
 
 ---
 

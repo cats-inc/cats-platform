@@ -9,7 +9,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Complete pending PLAN-080 (Phase 1 bootstrap superseded; Phase 5.4 / 6.4 live smoke awaiting re-run under YAML config) |
 | **Owner** | Codex |
 | **Reviewer** | User |
 
@@ -800,3 +800,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 65: completed Phase 6 Task 6.4 by running `CATS_CODE_LIVE_PROVIDER_SMOKE=1 npm run smoke:live:code`; Claude/Codex Code task execute and relay fan-out both ran under supervision after `cats-runtime` Codex read-only approval policy mapping was updated to the current Codex JSON-RPC contract. |
 | 2026-04-28 | Implementation slice 66: closed PLAN-075 status in `PROGRESS.md`, recording that Chat/Work/Code supervision cutover scope is complete and Work/Code live Claude/Codex verification passed through the supervised provider-agent seam. |
 | 2026-04-28 | Post-close correction: hard-coded Claude/Codex/Ollama strong/weak bootstrap is not the accepted target. PLAN-080 owns the config-gated replacement: unlisted provider/model/control targets default to unknown, and only explicit YAML rules receive initial strong/weak treatment. |
+| 2026-04-28 | Closure pending PLAN-080: Phase 1 task code remains [x] but the acceptance criterion is rewritten and tracked by PLAN-080; PLAN-075 status moves to Complete pending PLAN-080. Phase 5.4 / 6.4 live Claude/Codex smoke results landed under the old hard-coded bootstrap and must be re-verified under PLAN-080 YAML fixture (tracked by PLAN-080 Task 3.5). |
