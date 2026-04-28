@@ -18,6 +18,15 @@ profiles:
     initialTreatment: strong_agent
     confidenceLevel: catalog_only
     reason: Operator-approved strong-agent candidate for supervised coding demos.
+  - id: codex-native-gpt-5-4-strong-candidate
+    selector:
+      provider: codex
+      instance: native
+      model: gpt-5.4
+      control: default
+    initialTreatment: strong_agent
+    confidenceLevel: catalog_only
+    reason: Operator-approved strong-agent candidate for native Codex CLI demos.
   - id: ollama-local-worker
     selector:
       provider: ollama

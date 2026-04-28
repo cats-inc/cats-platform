@@ -22,6 +22,10 @@ const LIVE_PROVIDER_IDS = (process.env.CATS_CODE_LIVE_PROVIDERS ?? 'claude,codex
   .split(',')
   .map((provider) => provider.trim())
   .filter((provider) => provider.length > 0);
+const LIVE_TARGETS: Record<string, { instance: string | null; model: string | null }> = {
+  claude: { instance: 'native', model: 'sonnet' },
+  codex: { instance: 'native', model: 'gpt-5.4' },
+};
 const PLAN_080_BOOTSTRAP_FIXTURE_URL =
   new URL('./fixtures/provider-capability-bootstrap.yaml', import.meta.url);
 const PLAN_080_BOOTSTRAP_FIXTURE_PATH = fileURLToPath(PLAN_080_BOOTSTRAP_FIXTURE_URL);
@@ -101,6 +105,7 @@ test(
     const baseUrl = `http://127.0.0.1:${address.port}`;
 
     for (const provider of LIVE_PROVIDER_IDS) {
+      const target = liveTargetForProvider(provider);
       const createTaskResponse = await fetch(`${baseUrl}/api/code/tasks`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -123,6 +128,8 @@ test(
           workspacePath: process.cwd(),
           workspaceKind: 'user_selected',
           provider,
+          instance: target.instance,
+          model: target.model,
         }),
       });
       const executePayload = await executeResponse.json();
@@ -150,6 +157,7 @@ test(
     const targetRoster = thread.roster.slice(0, LIVE_PROVIDER_IDS.length);
 
     for (const [index, provider] of LIVE_PROVIDER_IDS.entries()) {
+      const target = liveTargetForProvider(provider);
       const rosterEntry = targetRoster[index];
       assert.ok(rosterEntry, `missing relay roster entry for ${provider}`);
       const patchResponse = await fetch(
@@ -159,8 +167,8 @@ test(
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({
             provider,
-            instance: null,
-            model: null,
+            instance: target.instance,
+            model: target.model,
           }),
         },
       );
@@ -216,3 +224,7 @@ test(
     );
   },
 );
+
+function liveTargetForProvider(provider: string): { instance: string | null; model: string | null } {
+  return LIVE_TARGETS[provider] ?? { instance: null, model: null };
+}

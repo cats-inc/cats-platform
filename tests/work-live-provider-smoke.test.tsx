@@ -22,6 +22,10 @@ const LIVE_PROVIDER_IDS = (process.env.CATS_WORK_LIVE_PROVIDERS ?? 'claude,codex
   .split(',')
   .map((provider) => provider.trim())
   .filter((provider) => provider.length > 0);
+const LIVE_TARGETS: Record<string, { instance: string | null; model: string | null }> = {
+  claude: { instance: 'native', model: 'sonnet' },
+  codex: { instance: 'native', model: 'gpt-5.4' },
+};
 const PLAN_080_BOOTSTRAP_FIXTURE_URL =
   new URL('./fixtures/provider-capability-bootstrap.yaml', import.meta.url);
 const PLAN_080_BOOTSTRAP_FIXTURE_PATH = fileURLToPath(PLAN_080_BOOTSTRAP_FIXTURE_URL);
@@ -151,10 +155,11 @@ test(
     }
 
     const coreStore = new MemoryCoreStore(core);
+    const firstTarget = liveTargetForProvider(LIVE_PROVIDER_IDS[0]);
     const runtimeTarget: WorkRuntimeTargetOverride = {
       provider: LIVE_PROVIDER_IDS[0],
-      instance: null,
-      model: null,
+      instance: firstTarget.instance,
+      model: firstTarget.model,
       cwd: process.cwd(),
     };
     const server = createServer(async (request, response) => {
@@ -189,9 +194,10 @@ test(
     const baseUrl = `http://127.0.0.1:${address.port}`;
 
     for (const provider of LIVE_PROVIDER_IDS) {
+      const target = liveTargetForProvider(provider);
       runtimeTarget.provider = provider;
-      runtimeTarget.instance = null;
-      runtimeTarget.model = null;
+      runtimeTarget.instance = target.instance;
+      runtimeTarget.model = target.model;
       runtimeTarget.cwd = process.cwd();
 
       const taskId = taskIdForProvider(provider);
@@ -264,4 +270,8 @@ function conversationIdForProvider(provider: string): string {
 
 function slugForProvider(provider: string): string {
   return provider.replace(/[^a-z0-9_-]+/giu, '-').replace(/^-+|-+$/gu, '').toLowerCase();
+}
+
+function liveTargetForProvider(provider: string): { instance: string | null; model: string | null } {
+  return LIVE_TARGETS[provider] ?? { instance: null, model: null };
 }

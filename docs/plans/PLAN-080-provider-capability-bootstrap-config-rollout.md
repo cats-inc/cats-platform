@@ -389,6 +389,7 @@ initial treatment even without an editor.
 | 2026-04-28 | Implementation slice 6: added a provider capability bootstrap diagnostic sink that emits structured platform log events, persists `SupervisionDiagnosticRecord` records, and receives Chat matched-rule diagnostics during provider-agent observation preparation. |
 | 2026-04-28 | Implementation slice 7: documented that a UI/admin editor for provider capability bootstrap is follow-up scope; PLAN-080 keeps YAML as the operator surface and diagnostics as the audit trail. |
 | 2026-04-28 | Implementation slice 8: wired Chat, Work, and Code live provider smoke gates to the same PLAN-080 YAML fixture path; default smoke execution still skips live providers unless each `CATS_*_LIVE_PROVIDER_SMOKE=1` gate is explicitly enabled. |
+| 2026-04-28 | Implementation slice 9: aligned live smoke targets with available runtime targets (`claude/native/sonnet`, `codex/native/gpt-5.4`) and re-ran live gates. `CATS_CHAT_LIVE_PROVIDER_SMOKE=1 npm run smoke:live:chat` passed for Claude+Codex; `CATS_CODE_LIVE_PROVIDER_SMOKE=1 npm run smoke:live:code` passed for Claude+Codex; `CATS_WORK_LIVE_PROVIDER_SMOKE=1 CATS_WORK_LIVE_PROVIDERS=claude npm run smoke:live:work` passed; Work+Codex still times out and remains the Task 3.5 blocker. |
 
 ---
 

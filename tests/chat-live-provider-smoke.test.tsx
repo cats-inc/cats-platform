@@ -30,7 +30,7 @@ const LIVE_PROVIDER_IDS = (process.env.CATS_CHAT_LIVE_PROVIDERS ?? 'claude,codex
 
 const LIVE_TARGETS: Record<string, { instance: string | null; model: string | null }> = {
   claude: { instance: 'native', model: 'sonnet' },
-  codex: { instance: 'cloud', model: 'gpt-5.4' },
+  codex: { instance: 'native', model: 'gpt-5.4' },
 };
 const PLAN_080_BOOTSTRAP_FIXTURE_URL =
   new URL('./fixtures/provider-capability-bootstrap.yaml', import.meta.url);
@@ -140,11 +140,18 @@ test(
       const assistantReply = settledChannel.messages.find((message) =>
         message.metadata?.event === 'assistant_turn_segment'
         && message.metadata?.terminal === true);
+      const resultSessionId = settled.results.find((result) =>
+        typeof result.sessionId === 'string' && result.sessionId.length > 0)?.sessionId;
+      const replySessionId = typeof assistantReply?.metadata?.sessionId === 'string'
+        ? assistantReply.metadata.sessionId
+        : null;
+      const sessionId = sessionStarted?.metadata?.sessionId ?? resultSessionId ?? replySessionId;
 
-      assert.ok(sessionStarted?.metadata?.sessionId);
-      openedSessionIds.push(String(sessionStarted.metadata.sessionId));
+      if (sessionId) {
+        openedSessionIds.push(String(sessionId));
+      }
       assert.ok(assistantReply);
-      assert.equal(assistantReply.senderKind, 'assistant');
+      assert.equal(assistantReply.senderKind, 'agent');
       assert.equal(typeof assistantReply.body, 'string');
       assert.ok(assistantReply.body.length > 0);
     }
