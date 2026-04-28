@@ -70,7 +70,8 @@ export function WorkObjectCard({
       gates.length > 0 ||
       object.ownerRole ||
       ((object.kind === "run" || object.kind === "task") &&
-        object.linkedTaskTitle) ? (
+        object.linkedTaskTitle) ||
+      (object.kind === "work_item" && object.linkedWorkItemTitle) ? (
         <footer className="topDownCard__foot">
           {object.ownerRole ? (
             <span className="topDownCard__role">{object.ownerRole}</span>
@@ -82,6 +83,14 @@ export function WorkObjectCard({
               title={`${object.kind === "run" ? "Owning" : "Parent"} task: ${object.linkedTaskTitle}`}
             >
               ↳ {object.linkedTaskTitle}
+            </span>
+          ) : null}
+          {object.kind === "work_item" && object.linkedWorkItemTitle ? (
+            <span
+              className="topDownCard__chip topDownCard__chip--parentTask"
+              title={`Parent work item: ${object.linkedWorkItemTitle}`}
+            >
+              ↳ {object.linkedWorkItemTitle}
             </span>
           ) : null}
           {evidence.artifact > 0 ? (

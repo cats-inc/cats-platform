@@ -227,6 +227,14 @@ export interface WorkGraphObjectSummary {
    * task lookup map.
    */
   linkedTaskTitle?: string | null;
+  /**
+   * Denormalized title of `linkedWorkItemId` (when present and
+   * resolvable). Set on `kind === 'work_item'` (parent of a
+   * sub-work-item — `linkedWorkItemId` aliases `parentWorkItemId` on
+   * work-item summaries); undefined for other kinds. Symmetric to
+   * `linkedTaskTitle`.
+   */
+  linkedWorkItemTitle?: string | null;
 }
 
 export interface WorkGraphEvidenceAttachment {

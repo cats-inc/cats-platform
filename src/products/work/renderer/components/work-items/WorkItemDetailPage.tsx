@@ -16,6 +16,7 @@ import { useWorkItems } from "../../state/workItemsStore";
 import {
   WORK_PROJECTS_PATH,
   buildWorkMissionPath,
+  buildWorkWorkItemPath,
 } from "../../workPaths.js";
 import "./work-items.css";
 
@@ -41,6 +42,13 @@ export function WorkItemDetailPage(): JSX.Element {
   const linkedProject = workItem.linkedProjectId
     ? allProjects.find((p) => p.id === workItem.linkedProjectId)
     : undefined;
+  const parentWorkItem = workItem.linkedWorkItemId
+    ? allWorkItems.find((wi) => wi.id === workItem.linkedWorkItemId)
+    : undefined;
+  const subWorkItems = allWorkItems.filter(
+    (wi) =>
+      wi.linkedWorkItemId === workItem.id && !deletedIds.has(wi.id),
+  );
   const tasks = graph.objects.filter(
     (o) => o.kind === "task" && o.linkedWorkItemId === workItem.id,
   );
@@ -152,6 +160,19 @@ export function WorkItemDetailPage(): JSX.Element {
                 <em>(orphan — no project linked)</em>
               )}
             </dd>
+            {parentWorkItem ? (
+              <>
+                <dt>Parent work item</dt>
+                <dd>
+                  <Link
+                    className="workItemDetail__projectLink"
+                    to={buildWorkWorkItemPath(parentWorkItem.id)}
+                  >
+                    {parentWorkItem.title}
+                  </Link>
+                </dd>
+              </>
+            ) : null}
             <dt>Owner role</dt>
             <dd>{workItem.ownerRole ?? <em>(not assigned)</em>}</dd>
             <dt>Next action</dt>
@@ -168,6 +189,8 @@ export function WorkItemDetailPage(): JSX.Element {
             ) : null}
           </dl>
         </section>
+
+        <SubWorkItemsSection items={subWorkItems} />
 
         <ItemsSection
           title="Tasks"
@@ -269,6 +292,51 @@ function ItemsSection({
                   {item.ownerRole}
                 </span>
               ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+interface SubWorkItemsSectionProps {
+  items: readonly WorkGraphObjectSummary[];
+}
+
+function SubWorkItemsSection({
+  items,
+}: SubWorkItemsSectionProps): JSX.Element {
+  return (
+    <section className="workItemDetail__section">
+      <header className="workItemDetail__sectionHeader">
+        <h2>Sub-work-items</h2>
+        <span className="workItemDetail__sectionCount">{items.length}</span>
+      </header>
+      {items.length === 0 ? (
+        <p className="workItemDetail__empty">
+          No sub-work-items.
+        </p>
+      ) : (
+        <ul className="workItemDetail__items">
+          {items.map((item) => (
+            <li key={item.id} className="workItemDetail__item">
+              <span
+                className={`projectsList__dot projectsList__dot--small projectsList__dot--${item.status}`}
+                aria-hidden="true"
+              />
+              <Link
+                to={buildWorkWorkItemPath(item.id)}
+                className="workItemDetail__itemTitle"
+              >
+                {item.title}
+              </Link>
+              <span className="workItemDetail__itemStatus">
+                {item.status.replace(/_/g, " ")}
+              </span>
+              <span className="workItemDetail__itemOwner">
+                {formatRelative(item.updatedAt)}
+              </span>
             </li>
           ))}
         </ul>

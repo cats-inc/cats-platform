@@ -45,10 +45,14 @@ export function buildWorkGraphProjection(core: CatsCoreState): WorkGraphProjecti
   for (const task of core.tasks) {
     taskTitleById.set(task.id, task.title);
   }
+  const workItemTitleById = new Map<string, string>();
+  for (const workItem of core.workItems) {
+    workItemTitleById.set(workItem.id, workItem.title);
+  }
 
   const objects: WorkGraphObjectSummary[] = [
     ...core.projects.map(projectToSummary),
-    ...core.workItems.map(workItemToSummary),
+    ...core.workItems.map((wi) => workItemToSummary(wi, workItemTitleById)),
     ...core.tasks.map((task) => taskToSummary(task, core, taskTitleById)),
     ...core.conversations.map(conversationToSummary),
     ...core.actors
@@ -175,7 +179,10 @@ function projectToSummary(p: CoreProjectRecord): WorkGraphObjectSummary {
   };
 }
 
-function workItemToSummary(w: CoreWorkItemRecord): WorkGraphObjectSummary {
+function workItemToSummary(
+  w: CoreWorkItemRecord,
+  workItemTitleById: Map<string, string>,
+): WorkGraphObjectSummary {
   return {
     id: w.id,
     kind: 'work_item',
@@ -194,6 +201,9 @@ function workItemToSummary(w: CoreWorkItemRecord): WorkGraphObjectSummary {
     linkedTaskId: w.taskId,
     linkedRunId: null,
     updatedAt: w.updatedAt,
+    linkedWorkItemTitle: w.parentWorkItemId
+      ? workItemTitleById.get(w.parentWorkItemId) ?? null
+      : null,
   };
 }
 
