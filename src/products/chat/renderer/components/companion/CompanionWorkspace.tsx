@@ -136,6 +136,7 @@ export function CompanionWorkspace({
         payload={payload}
         loading={workspace.loading}
         onUpdateResponseProfile={workspace.editResponseProfile}
+        companionProfileIaEnabled={companionProfileIaEnabled}
       />,
     ),
     inspector: wrapSection(
@@ -245,12 +246,26 @@ export function CompanionWorkspace({
                 <button
                   type="button"
                   className="companionHeaderAction companionHeaderActionPrimary"
+                  disabled={companionProfileIaEnabled}
+                  title={
+                    companionProfileIaEnabled
+                      ? 'Companion subscriptions are not available yet.'
+                      : undefined
+                  }
+                  aria-disabled={companionProfileIaEnabled || undefined}
                 >
                   Subscribe
                 </button>
                 <button
                   type="button"
                   className="companionHeaderAction"
+                  disabled={companionProfileIaEnabled}
+                  title={
+                    companionProfileIaEnabled
+                      ? 'Select a post, photo, video, music track, or file before sharing.'
+                      : undefined
+                  }
+                  aria-disabled={companionProfileIaEnabled || undefined}
                 >
                   Share
                 </button>

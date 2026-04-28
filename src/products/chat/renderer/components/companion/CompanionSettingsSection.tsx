@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import type {
   CompanionExpressionMode,
@@ -14,6 +15,13 @@ export interface CompanionSettingsSectionProps {
   payload: AppShellPayload;
   loading: boolean;
   onUpdateResponseProfile: (input: UpdateCompanionResponseProfileInput) => Promise<void>;
+  /**
+   * When true, render the PLAN-077 Phase 1 Telegram binding view: read-only
+   * with a real deep link to canonical `/settings/cats` (the "My Cats"
+   * page). Defaults to `false` so callers that have not plumbed the flag
+   * through keep the legacy plaintext "Settings > Cats" hint.
+   */
+  companionProfileIaEnabled?: boolean;
 }
 
 const EXPRESSION_MODES: readonly { value: CompanionExpressionMode; label: string }[] = [
@@ -35,6 +43,7 @@ export function CompanionSettingsSection({
   payload,
   loading,
   onUpdateResponseProfile,
+  companionProfileIaEnabled = false,
 }: CompanionSettingsSectionProps) {
   const [notes, setNotes] = useState(responseProfile?.notes ?? '');
   const [saving, setSaving] = useState(false);
@@ -144,12 +153,26 @@ export function CompanionSettingsSection({
               <strong>Mode:</strong> {binding.inboundMode ?? 'default'}
             </p>
             <p className="companionMuted">
-              Manage Telegram binding in Settings &gt; Cats.
+              {companionProfileIaEnabled ? (
+                <>
+                  Manage Telegram binding in{' '}
+                  <Link to="/settings/cats">Settings &gt; My Cats</Link>.
+                </>
+              ) : (
+                'Manage Telegram binding in Settings > Cats.'
+              )}
             </p>
           </div>
         ) : (
           <p className="companionEmpty">
-            No Telegram binding. Configure one in Settings &gt; Cats.
+            {companionProfileIaEnabled ? (
+              <>
+                No Telegram binding. Configure one in{' '}
+                <Link to="/settings/cats">Settings &gt; My Cats</Link>.
+              </>
+            ) : (
+              'No Telegram binding. Configure one in Settings > Cats.'
+            )}
           </p>
         )}
       </div>
