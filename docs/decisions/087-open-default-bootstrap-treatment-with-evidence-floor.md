@@ -172,9 +172,11 @@ real safety boundary.
   `autonomy@2`, `tool-scope@2`) makes the change visible in every
   policy snapshot — replay tools can detect the cutover instead of
   silently re-deciding old runs.
-- The `missing_config` diagnostic still points at the bundled
+- The `missing_config` diagnostic record still points at the bundled
   example file, so operators who want to author rules have a clear
-  starting point.
+  starting point. The record is **persisted** (queryable via the
+  diagnostic sink) — it is **not** mirrored to stdout/stderr. See
+  PLAN-080 Diagnostic Destination for the rationale.
 
 ## References
 

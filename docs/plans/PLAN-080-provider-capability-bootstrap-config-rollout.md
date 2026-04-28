@@ -47,9 +47,11 @@ they ship a YAML config. To avoid silent regression:
   covering Claude / Codex / Ollama with the same treatment the hard-coded
   bootstrap produced today, plus a clear comment that operators MUST opt in by
   copying it to the active config path (it is not loaded automatically).
-- The first-run / upgrade flow logs a structured warning when no config is
-  found and points at the example file. The warning is a diagnostic event, not
-  a UI prompt; the host or a future onboarding wizard can surface it.
+- A `missing_config` `SupervisionDiagnosticRecord` is persisted (and queryable
+  via the diagnostic sink) when no config is found, pointing at the example
+  file. The record is **not** mirrored to stdout/stderr — operators surface it
+  via the persistence file or a future onboarding wizard / admin UI; spamming
+  startup logs with a "copy this file" warning is explicitly out of scope.
 - Releases shipping PLAN-080 must call out in release notes that operators who
   relied on the implicit Claude/Codex strong-agent bootstrap need to copy and
   edit the example file before live runs resume.
@@ -195,8 +197,10 @@ matched-rule diff.
 Diagnostics from this resolver — missing config, parse failure, duplicate rule
 id, invalid treatment, invalid confidence, ambiguous matches, losing tie rules,
 matched rule id / treatment / confidence / reason — are recorded as
-**structured platform log events plus `SupervisionDiagnosticRecord` records**.
-The minimum record shape is:
+**`SupervisionDiagnosticRecord` records persisted by the diagnostic sink**.
+The records are **not** mirrored to stdout/stderr; the sink's `list()` plus the
+on-disk JSON file are the operator surface, and a future admin UI may render
+them. The minimum record shape is:
 
 ```ts
 interface SupervisionDiagnosticRecord {
@@ -294,9 +298,9 @@ who is strong/weak; defaults remain neutral.
 - [x] Task 4.1: Document the YAML path and schema in setup/deployment docs.
 - [x] Task 4.2: Emit operator-facing diagnostic events covering matched rule
       id, treatment, confidence, reason, and any losing tie rules. In this
-      slice the surface is the structured platform log plus
-      `SupervisionDiagnosticRecord` persistence (no new UI panel, and no
-      evidence/snapshot record reuse). A future plan may add an admin UI editor
+      slice the surface is `SupervisionDiagnosticRecord` persistence only (no
+      stdout/stderr mirroring, no new UI panel, and no evidence/snapshot record
+      reuse). A future plan may add an admin UI editor
       that consumes the same diagnostic records.
 - [x] Task 4.3: Record that a UI/admin editor is follow-up scope, not part of
       this rollout.
@@ -312,7 +316,7 @@ initial treatment even without an editor.
 | `src/platform/supervision/providerCapabilityProfiles.ts` | Modify | Replace provider-name hard-coding with config-backed resolution. |
 | `src/platform/supervision/providerCapabilityBootstrapConfig.ts` | Create | Parse, validate, normalize, and diagnose YAML config. |
 | `src/platform/supervision/providerCapabilityControlKey.ts` | Create | Canonicalize reconciled `modelSelection.controls` into the selector `control` key. |
-| `src/platform/supervision/providerCapabilityBootstrapDiagnostics.ts` | Create | Persist `SupervisionDiagnosticRecord` records and mirror them to structured platform logs. |
+| `src/platform/supervision/providerCapabilityBootstrapDiagnostics.ts` | Create | Persist `SupervisionDiagnosticRecord` records to disk and expose them via the sink's `list()`. Records must NOT be mirrored to stdout/stderr — startup log noise is out of scope. |
 | `package.json` / `package-lock.json` | Modify if needed | Add a real YAML parser dependency and add `smoke:live:chat`; update `smoke:live:providers` to include Chat/Work/Code. |
 | `src/config.ts` | Modify | Add active provider capability bootstrap config path and env override. |
 | `src/app/server/dependencies.ts` / `src/app/server/contracts.ts` | Modify | Load active YAML once at server startup and retain diagnostics. |
@@ -325,7 +329,6 @@ initial treatment even without an editor.
 | `docs/specs/SPEC-082-cats-work-agent-supervision-and-tool-boundary.md` | Modify | Keep normative bootstrap contract aligned. |
 | `docs/plans/PLAN-075-real-provider-orchestrator-integration.md` | Modify | Mark hard-coded bootstrap as superseded by this rollout. |
 | `config/provider-capability-bootstrap.yaml.example` | Create | Operator-ready example covering Claude / Codex / Ollama with the same treatment the hard-coded bootstrap produced; not auto-loaded; opt-in by copying to the active config path. Bundled with the cats-platform package and staged into the packaged Electron host at `<resources>/cats-platform/config/`. |
-| `src/shared/bootstrapDiagnostics.ts` (or equivalent first-run/upgrade entry) | Modify | Emit a structured warning event when no provider capability bootstrap config is found, pointing at the example fixture. |
 | `cats-platform/PROGRESS.md` | Modify | Add a release-notes-style migration callout for operators who relied on the implicit Claude/Codex strong-agent bootstrap. |
 
 ## Testing Strategy
@@ -391,6 +394,7 @@ initial treatment even without an editor.
 | 2026-04-28 | Implementation slice 8: wired Chat, Work, and Code live provider smoke gates to the same PLAN-080 YAML fixture path; default smoke execution still skips live providers unless each `CATS_*_LIVE_PROVIDER_SMOKE=1` gate is explicitly enabled. |
 | 2026-04-28 | Implementation slice 9: aligned live smoke targets with available runtime targets (`claude/native/sonnet`, `codex/native/gpt-5.4`) and re-ran live gates. Chat and Code passed with Claude+Codex. Work passed with Codex+Claude after the Codex target was run in sandbox/no-cwd mode and the Work live smoke order was set to run Codex first. |
 | 2026-04-28 | Implementation slice 10: completed Task 3.5 by running `CATS_CHAT_LIVE_PROVIDER_SMOKE=1 CATS_WORK_LIVE_PROVIDER_SMOKE=1 CATS_CODE_LIVE_PROVIDER_SMOKE=1 npm run smoke:live:providers`; Chat, Work, and Code all passed under the PLAN-080 YAML fixture with Claude/Codex live targets, and runtime sessions were closed after the run. |
+| 2026-04-28 | Post-rollout correction: removed the stdout/stderr mirroring of `SupervisionDiagnosticRecord` events from `src/app/server/dependencies.ts`. The sink still persists records to disk and exposes them via `list()`, but startup no longer prints `[cats-supervision] {…missing_config…}` to the console. Diagnostic Destination, Migration, Task 4.2, and the Files table were updated to reflect that stdout/stderr mirroring is explicitly out of scope (a noisy "copy this file" warning at every boot is not the operator surface we want). |
 
 ---
 

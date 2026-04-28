@@ -48,7 +48,6 @@ import { createChatProviderAgentDecisionRequester } from '../../products/chat/st
 import {
   createProviderCapabilityBootstrapDiagnosticSink,
   resolveProviderCapabilityBootstrapDiagnosticsPath,
-  type ProviderCapabilityBootstrapDiagnosticLogEvent,
 } from '../../platform/supervision/providerCapabilityBootstrapDiagnostics.js';
 import { loadProviderCapabilityBootstrapConfigFromFile } from '../../platform/supervision/providerCapabilityBootstrapYaml.js';
 import { MemoryChatStore } from '../../products/chat/state/store.js';
@@ -118,12 +117,6 @@ function createDefaultTelegramRelay(
   });
 }
 
-function writeProviderCapabilityBootstrapDiagnosticLog(
-  event: ProviderCapabilityBootstrapDiagnosticLogEvent,
-): void {
-  process.stderr.write(`[cats-supervision] ${JSON.stringify(event)}\n`);
-}
-
 export function resolveServerDependencies(
   dependencies: ServerDependencies,
 ): ResolvedServerDependencies {
@@ -159,7 +152,6 @@ export function resolveServerDependencies(
       persistPath: resolveProviderCapabilityBootstrapDiagnosticsPath(
         dependencies.shared.config.chatStatePath,
       ),
-      logEvent: writeProviderCapabilityBootstrapDiagnosticLog,
     });
   const defaultTelegramBotToken = process.env.CATS_TELEGRAM_BOT_TOKEN?.trim() || null;
   const deliveryClientCache = new Map<string, ReturnType<typeof createTelegramBotApiDeliveryClient>>();
