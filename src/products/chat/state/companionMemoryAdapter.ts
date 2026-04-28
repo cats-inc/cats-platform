@@ -84,6 +84,16 @@ export class MemoryAwareCompanionBoxStore implements CanonicalSyncAwareCompanion
     return this.delegate.listDerived(catId, now);
   }
 
+  async upsertDerived(
+    catId: string,
+    record: Parameters<CompanionBoxStore['upsertDerived']>[1],
+    now?: Date,
+  ) {
+    const result = await this.delegate.upsertDerived(catId, record, now);
+    await this.syncCanonicalCompanionMemory(catId, now);
+    return result;
+  }
+
   async listMemory(catId: string, now?: Date) {
     return this.delegate.listMemory(catId, now);
   }

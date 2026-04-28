@@ -405,6 +405,32 @@ test('memory-aware companion store auto-syncs direct source mutations without ro
   assert.equal(catRecords.some((record) => record.content.includes('feather wand warmups')), false);
   assert.ok(catRecords.some((record) => record.content.includes('laser pointer sprints')));
 
+  await companionStore.upsertDerived(
+    'cat-memory',
+    {
+      id: 'companion-derived-manual-event',
+      boxId: 'companion-box-cat-memory',
+      catId: 'cat-memory',
+      kind: 'event',
+      sourceIds: [],
+      title: 'Manual milestone',
+      content: 'Manual derived lifecycle milestone.',
+      tags: ['manual'],
+      metadata: {},
+      createdAt: '2026-03-23T18:07:00.000Z',
+      updatedAt: '2026-03-23T18:07:00.000Z',
+    },
+    new Date('2026-03-23T18:07:00.000Z'),
+  );
+  const derivedSync = companionStore.consumePendingCanonicalSync('cat-memory');
+  assert.equal(derivedSync?.status, 'synced');
+
+  catRecords = await memoryService.listCanonicalRecords({
+    subjectKind: 'cat',
+    subjectId: 'cat-memory',
+  });
+  assert.ok(catRecords.some((record) => record.content.includes('Manual derived lifecycle milestone')));
+
   await companionStore.deleteSource(
     'cat-memory',
     ingested.source.id,
@@ -822,4 +848,3 @@ test('buildMemoryFlushSummary deduplicates source scopes and replacement groups 
   assert.deepEqual(summary.sourceScopeKeys, ['cat:memory', 'channel:working-memory']);
   assert.deepEqual(summary.replacementGroups, ['cat:group-1', 'channel:group-1']);
 });
-
