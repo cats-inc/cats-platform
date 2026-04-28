@@ -55,7 +55,7 @@ mechanics do not become the Work UI.
 
 - [x] Define product-owned `WorkIntakeDraft`, `WorkTeamTemplate`, and
       `GeneratedWorkPlan` contracts
-- [ ] Seed the first built-in `software_delivery` template with:
+- [x] Seed the first built-in `software_delivery` template with:
       - role pack
       - workflow pack
       - product-routing defaults
@@ -223,6 +223,7 @@ template packs.
 | 2026-04-28 | Implementation follow-up: added an explicit Work template registry constructor with duplicate-id rejection and deterministic list ordering, giving later templates a bounded extension seam beyond `software_delivery`. |
 | 2026-04-28 | Implementation follow-up: added a focused Work template boundary test proving the built-in catalog remains product-owned and runtime/config-loader-free. |
 | 2026-04-28 | Implementation follow-up: exported the PLAN-028 contract names `WorkIntakeDraft`, `WorkTeamTemplate`, and `GeneratedWorkPlan`, with a type-backed contract test proving they map to the existing Work intake/template runtime path. |
+| 2026-04-28 | Implementation follow-up: added pack-level regression coverage for the built-in `software_delivery` template roles, workflow tasks, product routing, strategy defaults, and approval expectations. |
 | 2026-03-29 | Claude: All 6 phases implemented on branch `claude/spec-040-work-intake`. Templates, plan generation, API routes, handoff-readiness transitions, dashboard, and renderer surfaces landed. 29 tests pass. Work no longer owns runtime dispatch or shared server dependency wiring. |
 | 2026-03-30 | Codex: Refined Work intake projection and review UI so each generated task now exposes a product-facing handoff state (`pending_review`, `active_here`, `ready_for_pickup`, `stopped`, `completed`) plus the next expected owner action. Approved-plan messaging now distinguishes Work-owned follow-through from Chat/Code pickup instead of implying direct dispatch. |
 | 2026-03-30 | Codex: Moved the underlying handoff state machine into `src/core/taskHandoff.ts` so Work no longer owns cross-product task-state semantics; the Work review UI now only owns product-local wording and badges. |

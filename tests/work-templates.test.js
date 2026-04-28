@@ -56,6 +56,40 @@ test('software_delivery template has required structure', () => {
   assert.ok(template.approval.requiresPlanApproval, 'should require plan approval');
 });
 
+test('software_delivery seeds role, workflow, routing, strategy, and approval packs', () => {
+  const template = getWorkTemplate('software_delivery');
+  assert.ok(template);
+
+  assert.deepEqual(
+    template.roles.map((role) => role.key),
+    ['boss', 'pm', 'implementer', 'reviewer', 'qa'],
+  );
+  assert.deepEqual(
+    template.taskBlueprints.map((blueprint) => blueprint.key),
+    ['planning', 'implementation', 'review', 'validation', 'delivery'],
+  );
+  assert.deepEqual(
+    [
+      ...new Set(
+        template.taskBlueprints.map((blueprint) => blueprint.productHint),
+      ),
+    ],
+    ['work', 'code'],
+  );
+  assert.deepEqual(
+    [
+      ...new Set(
+        template.taskBlueprints.map((blueprint) => blueprint.strategyHint),
+      ),
+    ],
+    ['pdca', 'reflexion'],
+  );
+  assert.deepEqual(template.approval, {
+    requiresPlanApproval: true,
+    requiresDeliveryApproval: true,
+  });
+});
+
 test('software_delivery roles include required boss and pm', () => {
   const template = getWorkTemplate('software_delivery');
   assert.ok(template);
