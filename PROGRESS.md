@@ -4,13 +4,14 @@
 
 ## Current Status
 
-Latest update (2026-04-28): PLAN-080 is now in implementation. The
-hard-coded Claude/Codex/Ollama strong/weak bootstrap has been replaced by an
+Latest update (2026-04-28): PLAN-080 is complete. The hard-coded
+Claude/Codex/Ollama strong/weak bootstrap has been replaced by an
 operator-owned provider capability bootstrap YAML path. Unlisted
 provider/model/control targets default to unknown, and only explicit YAML rules
 may receive initial strong/weak treatment. Chat provider-agent observations now
-receive the active startup config, while PLAN-075 Phase 5.4 / 6.4 live
-Claude/Codex smoke runs still need re-verification under that YAML fixture.
+receive the active startup config, bootstrap diagnostics persist to structured
+supervision diagnostic records, and Chat/Work/Code live Claude/Codex smoke
+passed under the PLAN-080 YAML fixture.
 
 | Component | Status | Description |
 |-----------|--------|-------------|

@@ -676,6 +676,7 @@ export class CatsRuntimeClient implements RuntimeClient {
         Accept: 'application/x-ndjson',
       },
       body: JSON.stringify(payload),
+      signal: AbortSignal.timeout(this.timeoutMs),
     });
 
     if (!response.ok) {

@@ -148,7 +148,10 @@ test(
       const sessionId = sessionStarted?.metadata?.sessionId ?? resultSessionId ?? replySessionId;
 
       if (sessionId) {
-        openedSessionIds.push(String(sessionId));
+        const cleanupSessionId = String(sessionId);
+        openedSessionIds.push(cleanupSessionId);
+        await runtimeClient.closeSession(cleanupSessionId).catch(() => {});
+        openedSessionIds.splice(openedSessionIds.indexOf(cleanupSessionId), 1);
       }
       assert.ok(assistantReply);
       assert.equal(assistantReply.senderKind, 'agent');

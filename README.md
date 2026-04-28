@@ -116,6 +116,9 @@ The current slices are:
       progress, text, and tool milestones stay visible while runs are active
 - [x] Land runtime-backed provider capability hints in selection surfaces so
       Cats can read stepwise text/tool/progress truth from `cats-runtime`
+- [x] Land explicit provider capability bootstrap config so strong/weak startup
+      treatment only comes from operator YAML rules, with Chat/Work/Code live
+      Claude/Codex smoke verified under that fixture
 - [x] Land runtime-backed live content blocks in Chat, Work, and Code so the
       typing indicator can render stable block snapshots instead of only a
       flat event list

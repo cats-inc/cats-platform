@@ -168,6 +168,45 @@ test('runtime client synthesizes a text segment from coarse result-only delivery
   }
 });
 
+test('runtime client applies timeout budget to message sends', async () => {
+  const timeoutCalls = [];
+  const originalFetch = globalThis.fetch;
+  const originalAbortSignalTimeout = AbortSignal.timeout;
+
+  AbortSignal.timeout = (ms) => {
+    timeoutCalls.push(ms);
+    return new AbortController().signal;
+  };
+
+  globalThis.fetch = async (input, init = {}) => {
+    const url = String(input);
+    if (url.endsWith('/messages')) {
+      assert.ok(init.signal);
+      return new Response(
+        '{"type":"text","text":"ok"}\n{"type":"result","usage":{"inputTokens":1,"outputTokens":1}}\n',
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/x-ndjson',
+          },
+        },
+      );
+    }
+
+    throw new Error(`Unexpected runtime client request: ${url}`);
+  };
+
+  try {
+    const client = new CatsRuntimeClient('http://runtime.test', { timeoutMs: 12_345 });
+    await client.sendMessage('session-1', 'hello');
+  } finally {
+    globalThis.fetch = originalFetch;
+    AbortSignal.timeout = originalAbortSignalTimeout;
+  }
+
+  assert.deepEqual(timeoutCalls, [12_345]);
+});
+
 test('runtime client synthesizes a text segment from content-array result delivery', async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async (input) => {

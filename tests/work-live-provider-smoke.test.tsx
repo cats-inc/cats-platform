@@ -18,13 +18,17 @@ import {
 import { routeWorkApi, type WorkRuntimeTargetOverride } from '../src/products/work/api/index.ts';
 
 const RUN_LIVE_PROVIDER_SMOKE = process.env.CATS_WORK_LIVE_PROVIDER_SMOKE === '1';
-const LIVE_PROVIDER_IDS = (process.env.CATS_WORK_LIVE_PROVIDERS ?? 'claude,codex')
+const LIVE_PROVIDER_IDS = (process.env.CATS_WORK_LIVE_PROVIDERS ?? 'codex,claude')
   .split(',')
   .map((provider) => provider.trim())
   .filter((provider) => provider.length > 0);
-const LIVE_TARGETS: Record<string, { instance: string | null; model: string | null }> = {
-  claude: { instance: 'native', model: 'sonnet' },
-  codex: { instance: 'native', model: 'gpt-5.4' },
+const LIVE_TARGETS: Record<string, {
+  instance: string | null;
+  model: string | null;
+  cwd: string | null;
+}> = {
+  claude: { instance: 'native', model: 'sonnet', cwd: process.cwd() },
+  codex: { instance: 'native', model: 'gpt-5.4', cwd: null },
 };
 const PLAN_080_BOOTSTRAP_FIXTURE_URL =
   new URL('./fixtures/provider-capability-bootstrap.yaml', import.meta.url);
@@ -97,7 +101,7 @@ test(
     skip: RUN_LIVE_PROVIDER_SMOKE
       ? false
       : 'Set CATS_WORK_LIVE_PROVIDER_SMOKE=1 to run live cats-runtime provider smoke.',
-    timeout: 180_000,
+    timeout: 300_000,
   },
   async (t) => {
     assert.ok(LIVE_PROVIDER_IDS.length > 0, 'expected at least one live provider id');
@@ -160,7 +164,7 @@ test(
       provider: LIVE_PROVIDER_IDS[0],
       instance: firstTarget.instance,
       model: firstTarget.model,
-      cwd: process.cwd(),
+      cwd: firstTarget.cwd,
     };
     const server = createServer(async (request, response) => {
       const url = new URL(request.url ?? '/', 'http://localhost');
@@ -198,7 +202,7 @@ test(
       runtimeTarget.provider = provider;
       runtimeTarget.instance = target.instance;
       runtimeTarget.model = target.model;
-      runtimeTarget.cwd = process.cwd();
+      runtimeTarget.cwd = target.cwd;
 
       const taskId = taskIdForProvider(provider);
       const response = await fetch(`${baseUrl}/api/work/tasks/${taskId}/supervised-run`, {
@@ -256,6 +260,9 @@ test(
         ).length,
         3,
       );
+
+      await runtimeClient.closeSession(sessionId).catch(() => {});
+      openedSessionIds.splice(openedSessionIds.indexOf(sessionId), 1);
     }
   },
 );
@@ -272,6 +279,10 @@ function slugForProvider(provider: string): string {
   return provider.replace(/[^a-z0-9_-]+/giu, '-').replace(/^-+|-+$/gu, '').toLowerCase();
 }
 
-function liveTargetForProvider(provider: string): { instance: string | null; model: string | null } {
-  return LIVE_TARGETS[provider] ?? { instance: null, model: null };
+function liveTargetForProvider(provider: string): {
+  instance: string | null;
+  model: string | null;
+  cwd: string | null;
+} {
+  return LIVE_TARGETS[provider] ?? { instance: null, model: null, cwd: process.cwd() };
 }

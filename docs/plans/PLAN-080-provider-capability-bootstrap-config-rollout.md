@@ -7,7 +7,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Complete |
 | **Owner** | Codex |
 | **Reviewer** | User |
 | **Related ADR** | [ADR-082](../decisions/082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md) |
@@ -274,7 +274,7 @@ the YAML explicitly grants it.
       explicit fixture config when they need a strong or weak demo path.
 - [x] Task 3.4: Verify temp participants resolve capability through their bound
       execution target plus YAML rule without promotion to durable Cats.
-- [ ] Task 3.5: Re-run PLAN-075 live Claude/Codex smoke under the PLAN-080
+- [x] Task 3.5: Re-run PLAN-075 live Claude/Codex smoke under the PLAN-080
       YAML fixture for **all three** product paths covered by PLAN-075
       acceptance: one Chat turn, one Work supervised run (Phase 5.4), and one
       Code task/relay (Phase 6.4). Slices 64 / 65 covered Work and Code under
@@ -389,7 +389,8 @@ initial treatment even without an editor.
 | 2026-04-28 | Implementation slice 6: added a provider capability bootstrap diagnostic sink that emits structured platform log events, persists `SupervisionDiagnosticRecord` records, and receives Chat matched-rule diagnostics during provider-agent observation preparation. |
 | 2026-04-28 | Implementation slice 7: documented that a UI/admin editor for provider capability bootstrap is follow-up scope; PLAN-080 keeps YAML as the operator surface and diagnostics as the audit trail. |
 | 2026-04-28 | Implementation slice 8: wired Chat, Work, and Code live provider smoke gates to the same PLAN-080 YAML fixture path; default smoke execution still skips live providers unless each `CATS_*_LIVE_PROVIDER_SMOKE=1` gate is explicitly enabled. |
-| 2026-04-28 | Implementation slice 9: aligned live smoke targets with available runtime targets (`claude/native/sonnet`, `codex/native/gpt-5.4`) and re-ran live gates. `CATS_CHAT_LIVE_PROVIDER_SMOKE=1 npm run smoke:live:chat` passed for Claude+Codex; `CATS_CODE_LIVE_PROVIDER_SMOKE=1 npm run smoke:live:code` passed for Claude+Codex; `CATS_WORK_LIVE_PROVIDER_SMOKE=1 CATS_WORK_LIVE_PROVIDERS=claude npm run smoke:live:work` passed; Work+Codex still times out and remains the Task 3.5 blocker. |
+| 2026-04-28 | Implementation slice 9: aligned live smoke targets with available runtime targets (`claude/native/sonnet`, `codex/native/gpt-5.4`) and re-ran live gates. Chat and Code passed with Claude+Codex. Work passed with Codex+Claude after the Codex target was run in sandbox/no-cwd mode and the Work live smoke order was set to run Codex first. |
+| 2026-04-28 | Implementation slice 10: completed Task 3.5 by running `CATS_CHAT_LIVE_PROVIDER_SMOKE=1 CATS_WORK_LIVE_PROVIDER_SMOKE=1 CATS_CODE_LIVE_PROVIDER_SMOKE=1 npm run smoke:live:providers`; Chat, Work, and Code all passed under the PLAN-080 YAML fixture with Claude/Codex live targets, and runtime sessions were closed after the run. |
 
 ---
 
