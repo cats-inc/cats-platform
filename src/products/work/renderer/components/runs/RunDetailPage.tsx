@@ -51,7 +51,7 @@ export function RunDetailPage(): JSX.Element {
   const { taskId, runId } = useParams<{ taskId: string; runId: string }>();
   const { allRuns } = useRuns();
   const { allTasks } = useTasks();
-  const { graph } = useWorkGraph();
+  const { graph, refresh: refreshGraph } = useWorkGraph();
 
   const run = runId ? allRuns.find((r) => r.id === runId) : undefined;
   const parentTask = taskId
@@ -86,24 +86,60 @@ export function RunDetailPage(): JSX.Element {
 
   const [traceState, setTraceState] = useState<TraceState>(INITIAL_TRACE_STATE);
 
+  // Poll the trace timeline while the run is in a non-terminal state.
+  // The trace endpoint is cheap (filtered by runId at Core) so a 3 s
+  // cadence is fine; we drop the interval the moment the run reaches
+  // a terminal status. The first fetch runs synchronously on mount /
+  // run change so the UI doesn't wait the full interval to render.
   useEffect(() => {
     if (!runId) return;
+    const isLive = run?.status === "queued" || run?.status === "running";
+
     const controller = new AbortController();
-    setTraceState({ status: "loading", traces: [], error: null });
-    fetchTracesByRunId(runId, controller.signal)
-      .then((traces) => {
+    let cancelled = false;
+
+    async function loadOnce() {
+      try {
+        const traces = await fetchTracesByRunId(runId!, controller.signal);
+        if (cancelled) return;
         setTraceState({ status: "ready", traces, error: null });
-      })
-      .catch((err) => {
-        if (controller.signal.aborted) return;
-        setTraceState({
+      } catch (err) {
+        if (cancelled || controller.signal.aborted) return;
+        setTraceState((prev) => ({
           status: "error",
-          traces: [],
+          traces: prev.traces,
           error: err instanceof Error ? err.message : String(err),
-        });
-      });
-    return () => controller.abort();
-  }, [runId]);
+        }));
+      }
+    }
+
+    setTraceState((prev) => ({
+      status: prev.traces.length === 0 ? "loading" : "ready",
+      traces: prev.traces,
+      error: null,
+    }));
+    loadOnce();
+
+    if (!isLive) {
+      return () => {
+        cancelled = true;
+        controller.abort();
+      };
+    }
+
+    const interval = window.setInterval(() => {
+      // Refresh the graph too so run.status flips to a terminal state
+      // and breaks the polling loop. Trace fetch and graph refresh
+      // run in parallel — neither blocks the other.
+      void refreshGraph();
+      loadOnce();
+    }, 3000);
+    return () => {
+      cancelled = true;
+      controller.abort();
+      window.clearInterval(interval);
+    };
+  }, [runId, run?.status, refreshGraph]);
 
   if (!run) {
     return <RunNotFound runId={runId ?? null} />;
