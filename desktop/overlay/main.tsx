@@ -152,6 +152,13 @@ function submitScreenshotOverlaySelection(
   }
 }
 
+function shouldKeepOverlayOpenAfterBufferedSelection(
+  selection: DesktopScreenshotOverlaySelectionState,
+): boolean {
+  return selection.phase === 'cancelled'
+    && (selection.reason === 'too_small' || selection.reason === 'no_drag');
+}
+
 function ScreenshotOverlay() {
   const [payload, setPayload] = useState<DesktopScreenshotOverlaySnapshotPayload | null>(null);
   const [selection, setSelection] = useState<DesktopScreenshotOverlaySelectionState>(
@@ -160,12 +167,17 @@ function ScreenshotOverlay() {
   // Buffer a drag that starts before the snapshot payload has arrived so the
   // user's first drag is replayed, even if they release before the PNG paints.
   const pendingDragRef = useRef<PendingScreenshotOverlayDrag | null>(null);
+  const selectionRef = useRef<DesktopScreenshotOverlaySelectionState>(selection);
   const bridge = window.catsScreenshotOverlay;
   const displayId = useMemo(() => {
     const rawDisplayId = new URLSearchParams(window.location.search).get('displayId');
     const parsed = Number.parseInt(rawDisplayId ?? '', 10);
     return Number.isFinite(parsed) ? parsed : null;
   }, []);
+  const applySelection = (nextSelection: DesktopScreenshotOverlaySelectionState): void => {
+    selectionRef.current = nextSelection;
+    setSelection(nextSelection);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -188,7 +200,7 @@ function ScreenshotOverlay() {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         pendingDragRef.current = null;
-        setSelection(cancelScreenshotOverlaySelection('escape'));
+        applySelection(cancelScreenshotOverlaySelection('escape'));
         void bridge?.cancel('escape');
       }
     };
@@ -198,9 +210,8 @@ function ScreenshotOverlay() {
     };
   }, [bridge]);
 
-  // Promote any buffered pre-payload drag once the snapshot is available. Keep
-  // active drags in the ref until pointerup so release can complete even before
-  // React commits the replayed dragging state.
+  // Promote any buffered pre-payload drag once the snapshot is available, then
+  // clear the ref so normal pointermove/up paths own the active drag.
   useEffect(() => {
     if (!payload) {
       return;
@@ -212,11 +223,16 @@ function ScreenshotOverlay() {
     if (pending.released) {
       pendingDragRef.current = null;
       const nextSelection = completePendingDragSelection(pending, pending.released, payload);
-      setSelection(nextSelection);
+      if (shouldKeepOverlayOpenAfterBufferedSelection(nextSelection)) {
+        applySelection(createIdleScreenshotOverlaySelection());
+        return;
+      }
+      applySelection(nextSelection);
       submitScreenshotOverlaySelection(bridge, payload, nextSelection);
       return;
     }
-    setSelection(pendingDragToSelection(pending, payload));
+    pendingDragRef.current = null;
+    applySelection(pendingDragToSelection(pending, payload));
   }, [bridge, payload]);
 
   const activeSelection = useMemo(
@@ -243,7 +259,7 @@ function ScreenshotOverlay() {
         event.preventDefault();
         pendingDragRef.current = null;
         if (payload) {
-          setSelection(cancelScreenshotOverlaySelection('right_click'));
+          applySelection(cancelScreenshotOverlaySelection('right_click'));
         }
         void bridge?.cancel('right_click');
       }}
@@ -251,7 +267,7 @@ function ScreenshotOverlay() {
         if (event.button !== 0) {
           pendingDragRef.current = null;
           if (payload) {
-            setSelection(cancelScreenshotOverlaySelection('right_click'));
+            applySelection(cancelScreenshotOverlaySelection('right_click'));
           }
           void bridge?.cancel('right_click');
           return;
@@ -263,35 +279,40 @@ function ScreenshotOverlay() {
           return;
         }
         pendingDragRef.current = null;
-        setSelection(beginScreenshotOverlayDrag(toGlobalPoint(event.nativeEvent, payload)));
+        applySelection(beginScreenshotOverlayDrag(toGlobalPoint(event.nativeEvent, payload)));
       }}
       onPointerMove={(event) => {
         const pending = pendingDragRef.current;
         if (pending) {
           pending.current = toClientPoint(event.nativeEvent);
           if (payload) {
-            setSelection(pendingDragToSelection(pending, payload));
+            applySelection(pendingDragToSelection(pending, payload));
           }
           return;
         }
         if (!payload) {
           return;
         }
-        setSelection((current) =>
-          updateScreenshotOverlayDrag(current, toGlobalPoint(event.nativeEvent, payload)));
+        applySelection(updateScreenshotOverlayDrag(
+          selectionRef.current,
+          toGlobalPoint(event.nativeEvent, payload),
+        ));
       }}
       onPointerUp={(event) => {
         const pending = pendingDragRef.current;
         if (pending) {
           const releasePoint = toClientPoint(event.nativeEvent);
-          pending.current = releasePoint;
           pending.released = releasePoint;
           if (!payload) {
             return;
           }
           pendingDragRef.current = null;
           const nextSelection = completePendingDragSelection(pending, releasePoint, payload);
-          setSelection(nextSelection);
+          if (shouldKeepOverlayOpenAfterBufferedSelection(nextSelection)) {
+            applySelection(createIdleScreenshotOverlaySelection());
+            return;
+          }
+          applySelection(nextSelection);
           submitScreenshotOverlaySelection(bridge, payload, nextSelection);
           return;
         }
@@ -299,7 +320,7 @@ function ScreenshotOverlay() {
           return;
         }
         const nextSelection = completeScreenshotOverlaySelection(
-          selection,
+          selectionRef.current,
           toGlobalPoint(event.nativeEvent, payload),
           {
             bounds: payload.bounds,
@@ -307,8 +328,12 @@ function ScreenshotOverlay() {
             scaleFactor: payload.scaleFactor,
           },
         );
-        setSelection(nextSelection);
+        applySelection(nextSelection);
         submitScreenshotOverlaySelection(bridge, payload, nextSelection);
+      }}
+      onPointerCancel={() => {
+        pendingDragRef.current = null;
+        applySelection(createIdleScreenshotOverlaySelection());
       }}
     >
       {payload && activeSelection ? (
