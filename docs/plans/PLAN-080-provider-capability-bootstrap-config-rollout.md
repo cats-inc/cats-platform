@@ -384,6 +384,7 @@ initial treatment even without an editor.
 | 2026-04-28 | Implementation slice 1: added `bootstrap_config` evidence metadata, `SupervisionDiagnosticRecord`, canonical control-key helper, YAML parser/validator, explicit-config resolver, fatal duplicate-id handling, and tests proving no-config default/unknown plus configured strong/weak behavior. Validation: targeted supervision tests and `npm run typecheck` passed. |
 | 2026-04-28 | Implementation slice 2: added active config path resolution, server startup YAML loading, retained bootstrap diagnostics, and Chat dispatch plumbing so provider-agent observations receive the active config. Validation: Chat/config targeted tests, `npm run typecheck`, `npm run build:server`, and `node --test tests/config.test.js` passed. |
 | 2026-04-28 | Implementation slice 3: added operator-facing example YAML, deployment guidance for `CATS_PROVIDER_CAPABILITY_BOOTSTRAP_CONFIG`, YAML validity/fail-closed rules, and a PROGRESS migration callout. |
+| 2026-04-28 | Implementation slice 4: added a gated Chat live provider smoke (`CATS_CHAT_LIVE_PROVIDER_SMOKE=1 npm run smoke:live:chat`) and included it in `npm run smoke:live:providers`; default execution loads and skips the gate unless the live runtime/provider environment is explicitly enabled. |
 
 ---
 
