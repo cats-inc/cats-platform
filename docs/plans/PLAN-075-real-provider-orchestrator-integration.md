@@ -335,11 +335,12 @@ categories:
 The baseline targeted suite for this cutover is:
 
 - Chat: `npx tsx --test tests/chat-deterministic-routing-boundary.test.tsx tests/chat-provider-agent-observation.test.tsx tests/temp-participant-strong-agent.test.tsx`
-- Work/provider-agent: `npx tsx --test tests/work-supervised-run.test.tsx tests/supervision-run-lifecycle-service.test.tsx tests/provider-agent-runtime-adapter.test.tsx`
+- Work/provider-agent: `npx tsx --test tests/work-supervised-run.test.tsx tests/supervision-run-lifecycle-service.test.tsx tests/provider-agent-runtime-adapter.test.tsx tests/work-live-provider-smoke.test.tsx`
 - Code: `npx tsx --test tests/code-task-supervision.test.tsx tests/code-relay-supervision.test.tsx tests/code-live-provider-smoke.test.tsx`
 
-Latest local run on 2026-04-28: Chat 23 pass; Work/provider-agent 16 pass;
-Code 4 pass and 1 gated live smoke skipped unless
+Latest local run on 2026-04-28: Chat 23 pass; Work/provider-agent 16 pass
+and 1 gated live smoke skipped unless `CATS_WORK_LIVE_PROVIDER_SMOKE=1` is
+set; Code 4 pass and 1 gated live smoke skipped unless
 `CATS_CODE_LIVE_PROVIDER_SMOKE=1` is set.
 
 ## Implementation Phases
@@ -777,3 +778,4 @@ execution. The difference is control density, not a boolean switch.
 | 2026-04-28 | Implementation slice 59: extended provider-agent run-loop metadata to carry semantic plan, tool request, and approval request records, with supervised run projection tests proving those records survive run metadata parsing alongside observations and outcomes. |
 | 2026-04-28 | Implementation slice 60: added provider-agent run-record helpers and used them in the Work fake-run vertical slice so semantic plans, tool requests, and approval requests are written back to supervised run metadata from actual tool-boundary evidence. |
 | 2026-04-28 | Implementation slice 61: completed Phase 5 Task 5.2 by projecting provider-agent semantic plan metadata into Work task timelines alongside evidence-backed tool requests, approvals, observations, and outcomes. |
+| 2026-04-28 | Implementation slice 62: added the gated `work-live-provider-smoke.test.tsx` harness for Phase 5 Task 5.4 so Claude/Codex Work supervised runs can be manually verified from the existing task detail supervised-run API without changing the Work UI flow. |
