@@ -41,8 +41,12 @@ export function parseProviderCapabilityBootstrapConfigYaml(
 export function loadProviderCapabilityBootstrapConfigFromFile(input: {
   configPath: string;
   observedAt: string;
+  bundledExamplePath?: string | null;
 }): ProviderCapabilityBootstrapConfigResult {
   if (!existsSync(input.configPath)) {
+    const hint = input.bundledExamplePath
+      ? ` Copy ${input.bundledExamplePath} to ${input.configPath} to opt in.`
+      : '';
     return {
       config: null,
       diagnostics: [
@@ -56,7 +60,9 @@ export function loadProviderCapabilityBootstrapConfigFromFile(input: {
           observedAt: input.observedAt,
           configPath: input.configPath,
           message:
-            'No provider capability bootstrap config was found; all providers start default/unknown.',
+            `No provider capability bootstrap config was found at ${input.configPath}; ` +
+            'all providers start default/unknown.' +
+            hint,
         },
       ],
     };

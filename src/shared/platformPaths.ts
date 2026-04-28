@@ -1,10 +1,47 @@
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { homedir } from 'node:os';
+import { fileURLToPath } from 'node:url';
 
 export interface PlatformStorageLayout {
   platformDir: string;
   stateDir: string;
   configDir: string;
+}
+
+export function resolvePlatformPackageRoot(
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  const trimmedRoot = env.CATS_PLATFORM_PACKAGE_ROOT?.trim();
+  if (trimmedRoot) {
+    return path.isAbsolute(trimmedRoot)
+      ? trimmedRoot
+      : path.resolve(process.cwd(), trimmedRoot);
+  }
+
+  const moduleDir = path.dirname(fileURLToPath(import.meta.url));
+  const candidatePaths = [
+    path.resolve(moduleDir, '..', '..', 'package.json'),
+    path.resolve(moduleDir, '..', '..', '..', 'package.json'),
+    path.resolve(moduleDir, '..', '..', '..', '..', 'package.json'),
+  ];
+  const packageJsonPath = candidatePaths.find((candidate) => existsSync(candidate));
+  return packageJsonPath
+    ? path.dirname(packageJsonPath)
+    : path.resolve(moduleDir, '..', '..', '..');
+}
+
+export function resolveBundledPlatformConfigDir(
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  return path.join(resolvePlatformPackageRoot(env), 'config');
+}
+
+export function resolveBundledPlatformConfigExamplePath(
+  fileName: string,
+  env: NodeJS.ProcessEnv = process.env,
+): string {
+  return path.join(resolveBundledPlatformConfigDir(env), `${fileName}.example`);
 }
 
 export function resolveDefaultPlatformDir(

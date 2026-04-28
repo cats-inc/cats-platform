@@ -344,8 +344,10 @@ or the path in `CATS_PROVIDER_CAPABILITY_BOOTSTRAP_CONFIG`.
 Unlisted provider/model/control targets start as `default` / `unknown`.
 Provider catalog entries and runtime delivery richness do not grant
 `strong_agent` or `weak_worker` treatment by themselves. Copy
-`docs/examples/provider-capability-bootstrap.example.yaml` to the active config
-path and edit it when an operator wants an initial strong/weak bootstrap.
+`config/provider-capability-bootstrap.yaml.example` (bundled at
+`<platform package root>/config/` in dev and at
+`<resources>/cats-platform/config/` in the packaged Electron host) to the active
+config path and edit it when an operator wants an initial strong/weak bootstrap.
 
 Valid YAML rules use only:
 

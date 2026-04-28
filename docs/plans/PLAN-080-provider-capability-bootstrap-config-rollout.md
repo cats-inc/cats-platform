@@ -43,10 +43,10 @@ Existing deployments that ran on the hard-coded PLAN-075 bootstrap will see all
 provider/model/control targets default to unknown after PLAN-080 lands unless
 they ship a YAML config. To avoid silent regression:
 
-- Ship a checked-in `provider-capability-bootstrap.example.yaml` covering
-  Claude / Codex / Ollama with the same treatment the hard-coded bootstrap
-  produced today, plus a clear comment that operators MUST opt in by copying
-  it to the active config path (it is not loaded automatically).
+- Ship a checked-in `config/provider-capability-bootstrap.yaml.example`
+  covering Claude / Codex / Ollama with the same treatment the hard-coded
+  bootstrap produced today, plus a clear comment that operators MUST opt in by
+  copying it to the active config path (it is not loaded automatically).
 - The first-run / upgrade flow logs a structured warning when no config is
   found and points at the example file. The warning is a diagnostic event, not
   a UI prompt; the host or a future onboarding wizard can surface it.
@@ -324,7 +324,7 @@ initial treatment even without an editor.
 | `docs/deployment.md` | Modify | Document config path and environment override. |
 | `docs/specs/SPEC-082-cats-work-agent-supervision-and-tool-boundary.md` | Modify | Keep normative bootstrap contract aligned. |
 | `docs/plans/PLAN-075-real-provider-orchestrator-integration.md` | Modify | Mark hard-coded bootstrap as superseded by this rollout. |
-| `docs/examples/provider-capability-bootstrap.example.yaml` | Create | Operator-ready example covering Claude / Codex / Ollama with the same treatment the hard-coded bootstrap produced; not auto-loaded; opt-in by copying to the active config path. |
+| `config/provider-capability-bootstrap.yaml.example` | Create | Operator-ready example covering Claude / Codex / Ollama with the same treatment the hard-coded bootstrap produced; not auto-loaded; opt-in by copying to the active config path. Bundled with the cats-platform package and staged into the packaged Electron host at `<resources>/cats-platform/config/`. |
 | `src/shared/bootstrapDiagnostics.ts` (or equivalent first-run/upgrade entry) | Modify | Emit a structured warning event when no provider capability bootstrap config is found, pointing at the example fixture. |
 | `cats-platform/PROGRESS.md` | Modify | Add a release-notes-style migration callout for operators who relied on the implicit Claude/Codex strong-agent bootstrap. |
 

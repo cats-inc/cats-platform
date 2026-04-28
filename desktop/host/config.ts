@@ -16,6 +16,7 @@ export interface DesktopHostPaths {
   platformDir: string;
   platformStateDir: string;
   platformConfigDir: string;
+  platformBundledConfigDir: string;
   runtimeRootDir: string;
   runtimeConfigDir: string;
   appEntryScript: string;
@@ -134,12 +135,14 @@ function resolveHostRuntimeRoot(
   hostPackageRoot: string;
   appSidecarRoot: string;
   runtimePackageRoot: string;
+  platformBundledConfigDir: string;
 } {
   if (!packaged) {
     return {
       hostPackageRoot: currentPackageRoot,
       appSidecarRoot: currentPackageRoot,
       runtimePackageRoot: resolve(joinDesktopPath(currentPackageRoot, '..', 'cats-runtime')),
+      platformBundledConfigDir: resolveDesktopPath(joinDesktopPath(currentPackageRoot, 'config')),
     };
   }
 
@@ -150,6 +153,9 @@ function resolveHostRuntimeRoot(
     hostPackageRoot: resolveDesktopPath(joinDesktopPath(bundledResourcesRoot, 'app.asar')),
     appSidecarRoot: resolveDesktopPath(joinDesktopPath(bundledResourcesRoot, 'app-sidecar')),
     runtimePackageRoot: resolveDesktopPath(joinDesktopPath(bundledResourcesRoot, 'cats-runtime')),
+    platformBundledConfigDir: resolveDesktopPath(
+      joinDesktopPath(bundledResourcesRoot, 'cats-platform', 'config'),
+    ),
   };
 }
 
@@ -275,6 +281,7 @@ export function resolveDesktopHostConfig(
       platformDir,
       platformStateDir,
       platformConfigDir,
+      platformBundledConfigDir: layout.platformBundledConfigDir,
       runtimeRootDir,
       runtimeConfigDir,
       appEntryScript: resolveDesktopPath(

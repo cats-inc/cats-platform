@@ -101,6 +101,20 @@ const RUNTIME_PUBLIC_FILES = [
   'provider-setup.html',
 ] as const;
 
+interface PlatformSidecarAsset {
+  sourceRelativePath: string;
+  targetRelativePath: string;
+  directory: boolean;
+}
+
+const PLATFORM_OPTIONAL_ASSETS: PlatformSidecarAsset[] = [
+  {
+    sourceRelativePath: join('config', 'provider-capability-bootstrap.yaml.example'),
+    targetRelativePath: join('shared', 'cats-platform', 'config', 'provider-capability-bootstrap.yaml.example'),
+    directory: false,
+  },
+];
+
 const RUNTIME_OPTIONAL_ASSETS: RuntimeSidecarAsset[] = [
   {
     sourceRelativePath: 'public',
@@ -692,6 +706,11 @@ function buildPackagingTarget(
     { id: 'app-server', relativePath: 'shared/build/server/index.js', role: 'app_server' as const },
     { id: 'app-renderer', relativePath: 'shared/build/renderer/index.html', role: 'app_renderer' as const },
     { id: 'app-package-manifest', relativePath: 'shared/app-sidecar/package.json', role: 'app_server' as const },
+    {
+      id: 'platform-config-bootstrap-example',
+      relativePath: 'shared/cats-platform/config/provider-capability-bootstrap.yaml.example',
+      role: 'app_server' as const,
+    },
     { id: 'runtime-sidecar', relativePath: 'shared/cats-runtime/build/runtime/index.js', role: 'runtime_sidecar' as const },
     { id: 'runtime-package-manifest', relativePath: 'shared/cats-runtime/package.json', role: 'runtime_sidecar' as const },
     { id: 'runtime-setup-ui', relativePath: 'shared/cats-runtime/public/provider-setup.html', role: 'runtime_sidecar' as const },
@@ -777,6 +796,13 @@ async function ensureBuiltAssets(config: DesktopHostConfig): Promise<void> {
   await ensureRequiredFile(join(config.packageRoot, 'package.json'));
 }
 
+async function ensureBundledPlatformAssets(packageRoot: string): Promise<void> {
+  await Promise.all(
+    PLATFORM_OPTIONAL_ASSETS.map((asset) =>
+      ensureRequiredFile(join(packageRoot, asset.sourceRelativePath))),
+  );
+}
+
 async function copyDirectory(source: string, target: string): Promise<void> {
   await mkdir(target, { recursive: true });
   await cp(source, target, {
@@ -831,6 +857,7 @@ export async function stageDesktopPackagingOutputs(
   const allowedPlatforms = new Set(plan.targets.map((target) => target.platform));
 
   await ensureBuiltAssets(config);
+  await ensureBundledPlatformAssets(config.packageRoot);
   await rm(outputRoot, { recursive: true, force: true });
   await mkdir(join(outputRoot, 'shared'), { recursive: true });
 
@@ -842,6 +869,15 @@ export async function stageDesktopPackagingOutputs(
   await copyDirectory(join(config.packageRoot, 'build', 'renderer'), join(outputRoot, 'shared', 'build', 'renderer'));
   await copyDirectory(join(config.packageRoot, 'build', 'desktop'), join(outputRoot, 'shared', 'build', 'desktop'));
   await copyFile(join(config.packageRoot, 'package.json'), join(outputRoot, 'shared', 'app-sidecar', 'package.json'));
+  for (const asset of PLATFORM_OPTIONAL_ASSETS) {
+    const sourcePath = join(config.packageRoot, asset.sourceRelativePath);
+    const targetPath = join(outputRoot, asset.targetRelativePath);
+    if (asset.directory) {
+      await copyDirectory(sourcePath, targetPath);
+    } else {
+      await copyFile(sourcePath, targetPath);
+    }
+  }
   const setupAssets = await stageDesktopSetupAssets(
     config.packageRoot,
     outputRoot,
@@ -906,6 +942,10 @@ export async function stageDesktopPackagingOutputs(
         source: relative(outputRoot, join(config.packageRoot, 'package.json')),
         target: 'shared/app-sidecar/package.json',
       },
+      ...PLATFORM_OPTIONAL_ASSETS.map((asset) => ({
+        source: relative(outputRoot, join(config.packageRoot, asset.sourceRelativePath)),
+        target: asset.targetRelativePath,
+      })),
       {
         source: relative(outputRoot, join(config.packageRoot, 'build', 'desktop', 'main.js')),
         target: 'shared/build/desktop/main.js',

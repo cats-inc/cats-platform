@@ -148,6 +148,8 @@ export function resolveServerDependencies(
         }
       : loadProviderCapabilityBootstrapConfigFromFile({
           configPath: dependencies.shared.config.providerCapabilityBootstrapConfigPath,
+          bundledExamplePath:
+            dependencies.shared.config.providerCapabilityBootstrapBundledExamplePath,
           observedAt: (dependencies.shared.now?.() ?? new Date()).toISOString(),
         });
   const providerCapabilityBootstrapDiagnosticSink =

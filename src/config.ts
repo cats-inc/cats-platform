@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { DEFAULT_RUNTIME_STALE_SESSION_RETRY_LIMIT } from './shared/runtimeRecovery.js';
 import {
+  resolveBundledPlatformConfigExamplePath,
   resolveDefaultPlatformDir,
   resolvePlatformConfigDir,
   resolvePlatformStateDir,
@@ -27,6 +28,7 @@ export interface AppConfig {
   platformStateDir: string;
   platformConfigDir: string;
   providerCapabilityBootstrapConfigPath: string;
+  providerCapabilityBootstrapBundledExamplePath: string;
   chatStatePath: string;
   maxBossCats: number;
   maxCats: number;
@@ -156,6 +158,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     providerCapabilityBootstrapConfigPath:
       env.CATS_PROVIDER_CAPABILITY_BOOTSTRAP_CONFIG?.trim()
       || path.join(platformConfigDir, 'provider-capability-bootstrap.yaml'),
+    providerCapabilityBootstrapBundledExamplePath:
+      resolveBundledPlatformConfigExamplePath('provider-capability-bootstrap.yaml', env),
     chatStatePath: resolvePlatformStatePath(platformDir),
     maxBossCats: parsePositiveInt(env.CATS_MAX_BOSS_CATS, DEFAULT_MAX_BOSS_CATS),
     maxCats: parsePositiveInt(env.CATS_MAX_CATS, DEFAULT_MAX_CATS),

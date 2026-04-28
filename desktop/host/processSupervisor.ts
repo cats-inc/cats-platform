@@ -593,6 +593,7 @@ export function buildManagedServiceSpecs(
         CATS_HOST: config.appHost,
         CATS_PORT: String(config.appPort),
         CATS_PLATFORM_DIR: config.paths.platformDir,
+        CATS_PLATFORM_PACKAGE_ROOT: pathModule.dirname(config.paths.platformBundledConfigDir),
         CATS_DESKTOP_DIR: pathModule.dirname(config.paths.hostStatePath),
         CATS_RUNTIME_DIR: config.paths.runtimeRootDir,
         CATS_RUNTIME_BASE_URL: config.runtimeBaseUrl,
@@ -751,6 +752,7 @@ export class ManagedServiceSupervisor {
       CATS_RUNTIME_DIR: spec.env.CATS_RUNTIME_DIR,
       CATS_RUNTIME_PACKAGE_ROOT: spec.env.CATS_RUNTIME_PACKAGE_ROOT,
       CATS_PLATFORM_DIR: spec.env.CATS_PLATFORM_DIR,
+      CATS_PLATFORM_PACKAGE_ROOT: spec.env.CATS_PLATFORM_PACKAGE_ROOT,
     };
     this.queueLogWrite(
       spec.name,
