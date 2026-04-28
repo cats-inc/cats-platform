@@ -4,6 +4,11 @@
 
 ## Current Status
 
+Latest update (2026-04-28): PLAN-075 real-provider orchestrator integration
+is complete for Chat/Work/Code supervision cutover scope. Work and Code live
+Claude/Codex smoke verification passed through the supervised provider-agent
+seam, with Code relay fan-out also validating the sibling-run supervision path.
+
 | Component | Status | Description |
 |-----------|--------|-------------|
 | Bootstrap | Completed | Subproject created from `project-bootstrap` with Node.js preset |
