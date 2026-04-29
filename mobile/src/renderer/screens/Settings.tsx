@@ -15,9 +15,12 @@ import { ownerFixture } from '../../api/fixtures/owner';
 import {
   type ConnectionConfig,
   type ConnectionMode,
+  type NotificationPreferences,
   loadConnectionConfig,
+  loadNotificationPreferences,
   resolveWebDashboardUrl,
   saveConnectionConfig,
+  saveNotificationPreferences,
 } from '../../api/persistence';
 import { colors, radii, spacing, typography } from '../theme';
 
@@ -52,8 +55,11 @@ export function Settings() {
     pairingToken: null,
   });
   const [baseUrlDraft, setBaseUrlDraft] = useState('');
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
-  const [approvalsOnly, setApprovalsOnly] = useState(false);
+  const [notificationPrefs, setNotificationPrefs] =
+    useState<NotificationPreferences>({
+      enabled: true,
+      approvalsOnly: false,
+    });
 
   useEffect(() => {
     let active = true;
@@ -63,6 +69,12 @@ export function Settings() {
       }
       setConnectionConfig(loaded);
       setBaseUrlDraft(loaded.baseUrl ?? '');
+    });
+    void loadNotificationPreferences().then((loaded) => {
+      if (!active) {
+        return;
+      }
+      setNotificationPrefs(loaded);
     });
     return () => {
       active = false;
@@ -85,6 +97,11 @@ export function Settings() {
       return;
     }
     updateConnection({ ...connectionConfig, baseUrl: next });
+  };
+
+  const updateNotifications = (next: NotificationPreferences) => {
+    setNotificationPrefs(next);
+    void saveNotificationPreferences(next);
   };
 
   const webDashboardUrl = resolveWebDashboardUrl(connectionConfig);
@@ -142,16 +159,27 @@ export function Settings() {
         <ToggleRow
           label="Push notifications"
           description="Alerts when an approval, escalation, or task completion lands."
-          value={notificationsEnabled}
-          onValueChange={setNotificationsEnabled}
+          value={notificationPrefs.enabled}
+          onValueChange={(enabled) =>
+            updateNotifications({ ...notificationPrefs, enabled })
+          }
         />
         <ToggleRow
           label="Approvals only"
           description="Suppress task completion and informational pushes."
-          value={approvalsOnly}
-          onValueChange={setApprovalsOnly}
-          disabled={!notificationsEnabled}
+          value={notificationPrefs.approvalsOnly}
+          onValueChange={(approvalsOnly) =>
+            updateNotifications({ ...notificationPrefs, approvalsOnly })
+          }
+          disabled={!notificationPrefs.enabled}
         />
+        {__DEV__ ? (
+          <Text style={styles.scopeNote}>
+            Toggles persist locally. Actual delivery (APNs / FCM device-
+            token registration + server fan-out) lands in PLAN-084
+            Phase 7.
+          </Text>
+        ) : null}
       </Section>
 
       <Section label="Owner">

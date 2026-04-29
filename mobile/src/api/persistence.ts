@@ -73,3 +73,45 @@ export function resolveWebDashboardUrl(config: ConnectionConfig): string | null 
   }
   return `${trimmed}/`;
 }
+
+/**
+ * Persisted notification preferences. The toggles in Settings are
+ * stored locally so they survive restarts, but actual push delivery
+ * (APNs / FCM device-token registration, server-side fan-out) lands
+ * with Phase 7. Until then these are best-effort hints for any local
+ * notification fallback.
+ */
+export interface NotificationPreferences {
+  enabled: boolean;
+  approvalsOnly: boolean;
+}
+
+const NOTIFICATIONS_STORAGE_KEY = 'cats-mobile.notificationPreferences.v1';
+
+const DEFAULT_NOTIFICATIONS: NotificationPreferences = {
+  enabled: true,
+  approvalsOnly: false,
+};
+
+export async function loadNotificationPreferences(): Promise<NotificationPreferences> {
+  try {
+    const raw = await AsyncStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
+    if (raw === null) {
+      return DEFAULT_NOTIFICATIONS;
+    }
+    const parsed = JSON.parse(raw) as Partial<NotificationPreferences>;
+    return {
+      enabled: parsed.enabled ?? DEFAULT_NOTIFICATIONS.enabled,
+      approvalsOnly:
+        parsed.approvalsOnly ?? DEFAULT_NOTIFICATIONS.approvalsOnly,
+    };
+  } catch {
+    return DEFAULT_NOTIFICATIONS;
+  }
+}
+
+export async function saveNotificationPreferences(
+  prefs: NotificationPreferences,
+): Promise<void> {
+  await AsyncStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(prefs));
+}
