@@ -7,12 +7,17 @@ import {
   type MobileApiClient,
   MobileApiError,
 } from '../../api/client';
+import {
+  type ChatEventStreamHandle,
+  openChatEventStream,
+} from '../../api/eventStream';
 import { loadConnectionConfig } from '../../api/persistence';
 import type { ResolveAttachmentUrl } from '../MessageBody';
 import {
   type MobileAppShellPayload,
   type MobileChannelMessagesPayload,
   type MobileRenderedMessage,
+  type MobileRoomUpdatedDetail,
   selectMobileMessages,
 } from '../../../../src/mobile/index.js';
 
@@ -63,11 +68,6 @@ export interface ChannelMessagesHook {
 }
 
 const APP_SHELL_PATH = '/api/app-shell';
-
-/** Polling cadence while ChatView is focused. Replaces the periodic
- *  refetch with `/api/events/chat` SSE subscriptions once the mobile
- *  client gets an EventSource. */
-const CHAT_POLL_INTERVAL_MS = 5_000;
 
 function messagesPath(channelId: string): string {
   return `/api/channels/${encodeURIComponent(channelId)}/messages`;
@@ -167,17 +167,19 @@ export function useChannelMessages(channelId: string): ChannelMessagesHook {
     };
   }, [channelId, version]);
 
-  // While ChatView is the focused screen, refetch on focus and poll
-  // every CHAT_POLL_INTERVAL_MS so assistant replies arrive without a
-  // pull-to-refresh. The cleanup stops the interval on blur / unmount,
-  // so background tabs do not hammer the desktop.
+  // While ChatView is the focused screen, open an SSE subscription
+  // to `/api/events/chat` and refetch the conversation when the
+  // server emits a `room_updated` event for this channel — the
+  // mutation kinds covered are `message_added` (assistant reply
+  // arrived), `updated` (composer / cat assignments / etc.), and
+  // `created` (rare on a focused channel, but harmless to refetch).
   //
-  // This is the v1 stand-in for SSE / WebSocket streaming. The
-  // server's `/api/events/chat` endpoint already emits
-  // `message_added` events; once the mobile client gets a real
-  // EventSource (e.g. `react-native-sse`), this polling block goes
-  // away in favour of an event subscription that bumps `version`
-  // when the active `channelId` sees a `message_added` event.
+  // The stream opens on focus and closes on blur / unmount via the
+  // `useFocusEffect` cleanup, so background tabs do not hold a
+  // connection open to the desktop.
+  //
+  // We also bump version once on focus so coming back from another
+  // tab catches anything we missed while the stream was closed.
   useFocusEffect(
     useCallback(() => {
       if (initialFocusRef.current) {
@@ -185,13 +187,49 @@ export function useChannelMessages(channelId: string): ChannelMessagesHook {
       } else {
         setVersion((current) => current + 1);
       }
-      const interval = setInterval(() => {
-        setVersion((current) => current + 1);
-      }, CHAT_POLL_INTERVAL_MS);
+
+      let active = true;
+      let handle: ChatEventStreamHandle | null = null;
+
+      (async () => {
+        try {
+          const config = await loadConnectionConfig();
+          if (!active || !config.baseUrl) {
+            return;
+          }
+          handle = openChatEventStream(config, (event) => {
+            if (event.type !== 'room_updated') {
+              return;
+            }
+            if (event.channelId !== channelId) {
+              return;
+            }
+            const detail = event.detail as MobileRoomUpdatedDetail | null;
+            if (
+              detail !== null &&
+              detail !== undefined &&
+              typeof detail === 'object' &&
+              'mutation' in detail &&
+              (detail.mutation === 'message_added' ||
+                detail.mutation === 'updated' ||
+                detail.mutation === 'created')
+            ) {
+              setVersion((current) => current + 1);
+            }
+          });
+        } catch {
+          // SSE open failures degrade gracefully — focus refetch + the
+          // post-send refetch + pull-to-refresh still keep the
+          // conversation up to date.
+        }
+      })();
+
       return () => {
-        clearInterval(interval);
+        active = false;
+        handle?.close();
+        handle = null;
       };
-    }, []),
+    }, [channelId]),
   );
 
   const refetch = useCallback(() => {

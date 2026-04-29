@@ -95,3 +95,44 @@ export interface MobileCreatedChannel {
 export interface MobileCreateChannelResponse {
   channel: MobileCreatedChannel;
 }
+
+/**
+ * Server-Sent Event kinds emitted on `/api/events/chat`. Mirrors the
+ * server's `ChatEventKind` union from
+ * `src/products/chat/api/chatEventHub.ts` — kept inline here so the
+ * boundary does not import the server module (which would drag in
+ * `node:crypto` etc. through transitive contracts).
+ */
+export type MobileChatEventKind =
+  | 'room_updated'
+  | 'recents_changed'
+  | 'unread_changed'
+  | 'transport_ingress'
+  | 'transport_outbound'
+  | 'session_state_changed';
+
+/**
+ * Wire payload for one SSE frame on `/api/events/chat`. Mirrors the
+ * inline object literal in `eventRoutes.ts` (`writeSseFrame` call):
+ * `{ type, channelId, catId, timestamp, detail }`. `detail` is
+ * intentionally `unknown` — its shape varies per event kind. For
+ * `room_updated` events the detail contains
+ * `{ mutation: 'created' | 'updated' | 'message_added', ... }` per
+ * `transportEventPublisher.publishRoomMutation`.
+ */
+export interface MobileChatEvent {
+  type: MobileChatEventKind;
+  channelId: string | null;
+  catId: string | null;
+  timestamp: string;
+  detail: unknown;
+}
+
+/**
+ * Convenience type for inspecting `room_updated` event details.
+ * Callers narrow `MobileChatEvent.detail` against this when they need
+ * to react to specific mutation kinds (e.g. `message_added`).
+ */
+export interface MobileRoomUpdatedDetail {
+  mutation: 'created' | 'updated' | 'message_added';
+}
