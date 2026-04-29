@@ -64,6 +64,11 @@ export interface ChannelMessagesHook {
 
 const APP_SHELL_PATH = '/api/app-shell';
 
+/** Polling cadence while ChatView is focused. Replaces the periodic
+ *  refetch with `/api/events/chat` SSE subscriptions once the mobile
+ *  client gets an EventSource. */
+const CHAT_POLL_INTERVAL_MS = 5_000;
+
 function messagesPath(channelId: string): string {
   return `/api/channels/${encodeURIComponent(channelId)}/messages`;
 }
@@ -162,16 +167,30 @@ export function useChannelMessages(channelId: string): ChannelMessagesHook {
     };
   }, [channelId, version]);
 
-  // Refetch on each screen focus after the first mount, so returning
-  // from Settings or another tab picks up new messages without a
-  // manual pull-to-refresh.
+  // While ChatView is the focused screen, refetch on focus and poll
+  // every CHAT_POLL_INTERVAL_MS so assistant replies arrive without a
+  // pull-to-refresh. The cleanup stops the interval on blur / unmount,
+  // so background tabs do not hammer the desktop.
+  //
+  // This is the v1 stand-in for SSE / WebSocket streaming. The
+  // server's `/api/events/chat` endpoint already emits
+  // `message_added` events; once the mobile client gets a real
+  // EventSource (e.g. `react-native-sse`), this polling block goes
+  // away in favour of an event subscription that bumps `version`
+  // when the active `channelId` sees a `message_added` event.
   useFocusEffect(
     useCallback(() => {
       if (initialFocusRef.current) {
         initialFocusRef.current = false;
-        return;
+      } else {
+        setVersion((current) => current + 1);
       }
-      setVersion((current) => current + 1);
+      const interval = setInterval(() => {
+        setVersion((current) => current + 1);
+      }, CHAT_POLL_INTERVAL_MS);
+      return () => {
+        clearInterval(interval);
+      };
     }, []),
   );
 
