@@ -307,7 +307,8 @@ for the planned desktop host model.
 | `CATS_RUNTIME_BASE_URL` | Yes | Upstream runtime URL |
 | `CATS_RUNTIME_API_KEY` | No | Optional bearer token for `cats-runtime` |
 | `CATS_RUNTIME_SESSION_CREATE_TIMEOUT_MS` | No | Timeout budget for runtime session creation and provider/workspace startup. Defaults to `60000`. |
-| `CATS_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS` | No | Idle timeout for NDJSON message streams. Defaults to `120000` and resets whenever the runtime emits another chunk. |
+| `CATS_RUNTIME_SESSION_CREATE_SLOW_WARNING_MS` | No | Threshold above which a successful session create still emits a `slow_session_create` diagnostic. Defaults to `max(2000, sessionCreateTimeoutMs / 6)` so the threshold tracks the configured budget. |
+| `CATS_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS` | No | Idle timeout for NDJSON message streams. Defaults to `120000` and resets whenever the runtime emits another chunk. Relies on `cats-runtime` keeping the stream warm during long tool waits — see ADR-089. |
 
 Desktop-host specific overrides:
 

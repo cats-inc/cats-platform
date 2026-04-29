@@ -20,6 +20,10 @@ import {
 } from './app/server/startup.js';
 import { closeAppServerGracefully } from './app/server/shutdown.js';
 import { CatsRuntimeClient } from './platform/runtime/client.js';
+import {
+  createRuntimeClientDiagnosticSink,
+  resolveRuntimeClientDiagnosticsPath,
+} from './platform/runtime/clientDiagnostics.js';
 import { FileChatStore } from './products/chat/state/store.js';
 import { isDirectCliEntrypoint } from './shared/cliEntrypoint.js';
 import {
@@ -56,10 +60,28 @@ async function main(): Promise<void> {
     port: config.port,
     runtimeBaseUrl: config.runtimeBaseUrl,
   });
+  const runtimeClientDiagnosticSink = createRuntimeClientDiagnosticSink({
+    persistPath: resolveRuntimeClientDiagnosticsPath(config.chatStatePath),
+  });
   const runtimeClient = new CatsRuntimeClient(config.runtimeBaseUrl, {
     apiKey: config.runtimeApiKey,
     sessionCreateTimeoutMs: config.runtimeSessionCreateTimeoutMs,
+    sessionCreateSlowWarningMs: config.runtimeSessionCreateSlowWarningMs,
     messageIdleTimeoutMs: config.runtimeMessageIdleTimeoutMs,
+    onClientDiagnostic: (event) => {
+      runtimeClientDiagnosticSink.emit({
+        id: `runtime-client:${event.kind}:${event.observedAt.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
+        kind: 'runtime_client',
+        severity: 'warning',
+        code: event.kind,
+        observedAt: event.observedAt,
+        provider: event.provider,
+        sessionId: event.sessionId,
+        elapsedMs: event.elapsedMs,
+        thresholdMs: event.thresholdMs,
+        message: `cats-runtime ${event.kind} provider=${event.provider} sessionId=${event.sessionId} elapsedMs=${event.elapsedMs} thresholdMs=${event.thresholdMs}`,
+      });
+    },
   });
   startupTrace.trace('runtime.client.created');
   const chatStore = new FileChatStore(config.chatStatePath);

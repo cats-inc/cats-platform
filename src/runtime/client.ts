@@ -312,13 +312,25 @@ interface RuntimeClientOptions {
   apiKey?: string;
   timeoutMs?: number;
   sessionCreateTimeoutMs?: number;
+  sessionCreateSlowWarningMs?: number;
   messageIdleTimeoutMs?: number;
   providerRegistryTimeoutMs?: number;
   selectorConfigTimeoutMs?: number;
   selectorDiagnosticsTimeoutMs?: number;
   createTimeoutSignal?: RuntimeTimeoutSignalFactory;
   createIdleTimeoutController?: RuntimeIdleTimeoutControllerFactory;
+  onClientDiagnostic?: (event: RuntimeClientDiagnosticEvent) => void;
+  now?: () => Date;
 }
+
+export type RuntimeClientDiagnosticEvent = {
+  kind: 'slow_session_create';
+  observedAt: string;
+  provider: string;
+  sessionId: string;
+  elapsedMs: number;
+  thresholdMs: number;
+};
 
 const DEFAULT_RUNTIME_REQUEST_TIMEOUT_MS = 5_000;
 export const DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS = 60_000;
@@ -327,7 +339,15 @@ const DEFAULT_RUNTIME_PROVIDER_REGISTRY_TIMEOUT_MS = 10_000;
 const DEFAULT_RUNTIME_PROVIDER_CATALOG_REFRESH_TIMEOUT_MS = 60_000;
 const DEFAULT_RUNTIME_SELECTOR_CONFIG_TIMEOUT_MS = 5_000;
 const DEFAULT_RUNTIME_SELECTOR_DIAGNOSTICS_TIMEOUT_MS = 8_000;
-const DEFAULT_RUNTIME_SESSION_CREATE_SLOW_WARNING_MS = 10_000;
+const SESSION_CREATE_SLOW_WARNING_BUDGET_DIVISOR = 6;
+const SESSION_CREATE_SLOW_WARNING_MIN_MS = 2_000;
+
+export function resolveDefaultSessionCreateSlowWarningMs(sessionCreateBudgetMs: number): number {
+  return Math.max(
+    SESSION_CREATE_SLOW_WARNING_MIN_MS,
+    Math.floor(sessionCreateBudgetMs / SESSION_CREATE_SLOW_WARNING_BUDGET_DIVISOR),
+  );
+}
 
 type RuntimeTimeoutSignalFactory = (timeoutMs: number) => AbortSignal;
 
@@ -418,12 +438,15 @@ export class CatsRuntimeClient implements RuntimeClient {
   private readonly apiKey: string;
   private readonly timeoutMs: number;
   private readonly sessionCreateTimeoutMs: number;
+  private readonly sessionCreateSlowWarningMs: number;
   private readonly messageIdleTimeoutMs: number;
   private readonly providerRegistryTimeoutMs: number;
   private readonly selectorConfigTimeoutMs: number;
   private readonly selectorDiagnosticsTimeoutMs: number;
   private readonly createTimeoutSignal: RuntimeTimeoutSignalFactory;
   private readonly createIdleTimeoutController: RuntimeIdleTimeoutControllerFactory;
+  private readonly onClientDiagnostic?: (event: RuntimeClientDiagnosticEvent) => void;
+  private readonly now: () => Date;
 
   constructor(
     private readonly baseUrl: string,
@@ -433,6 +456,8 @@ export class CatsRuntimeClient implements RuntimeClient {
     this.timeoutMs = options.timeoutMs ?? DEFAULT_RUNTIME_REQUEST_TIMEOUT_MS;
     this.sessionCreateTimeoutMs = options.sessionCreateTimeoutMs
       ?? DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS;
+    this.sessionCreateSlowWarningMs = options.sessionCreateSlowWarningMs
+      ?? resolveDefaultSessionCreateSlowWarningMs(this.sessionCreateTimeoutMs);
     this.messageIdleTimeoutMs = options.messageIdleTimeoutMs
       ?? DEFAULT_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS;
     this.providerRegistryTimeoutMs = options.providerRegistryTimeoutMs
@@ -444,6 +469,8 @@ export class CatsRuntimeClient implements RuntimeClient {
     this.createTimeoutSignal = options.createTimeoutSignal ?? createDefaultTimeoutSignal;
     this.createIdleTimeoutController =
       options.createIdleTimeoutController ?? createDefaultIdleTimeoutController;
+    this.onClientDiagnostic = options.onClientDiagnostic;
+    this.now = options.now ?? (() => new Date());
   }
 
   async getHealth(): Promise<RuntimeStatusSummary> {
@@ -959,19 +986,18 @@ export class CatsRuntimeClient implements RuntimeClient {
 
   private warnOnSlowSessionCreate(startedAt: number, provider: string, sessionId: string): void {
     const elapsedMs = Date.now() - startedAt;
-    if (elapsedMs <= DEFAULT_RUNTIME_SESSION_CREATE_SLOW_WARNING_MS) {
+    if (elapsedMs <= this.sessionCreateSlowWarningMs) {
       return;
     }
 
-    console.warn(
-      [
-        'cats-runtime session creation was slow',
-        `provider=${provider}`,
-        `sessionId=${sessionId}`,
-        `elapsedMs=${elapsedMs}`,
-        `thresholdMs=${DEFAULT_RUNTIME_SESSION_CREATE_SLOW_WARNING_MS}`,
-      ].join(' '),
-    );
+    this.onClientDiagnostic?.({
+      kind: 'slow_session_create',
+      observedAt: this.now().toISOString(),
+      provider,
+      sessionId,
+      elapsedMs,
+      thresholdMs: this.sessionCreateSlowWarningMs,
+    });
   }
 
   private authHeaders(): Record<string, string> {

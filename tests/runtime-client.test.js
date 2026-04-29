@@ -5,6 +5,7 @@ import {
   CatsRuntimeClient,
   DEFAULT_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS,
   DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS,
+  resolveDefaultSessionCreateSlowWarningMs,
 } from '../build/server/runtime/client.js';
 
 function createTimeoutSignalRecorder() {
@@ -386,6 +387,93 @@ test('runtime client lets callers override the message stream idle timeout separ
 
   assert.deepEqual(idleTimeout.calls, [60_000]);
   assert.equal(idleTimeout.controllers[0]?.clearCalls, 1);
+});
+
+test('resolveDefaultSessionCreateSlowWarningMs scales with the session-create budget', () => {
+  assert.equal(resolveDefaultSessionCreateSlowWarningMs(60_000), 10_000);
+  assert.equal(resolveDefaultSessionCreateSlowWarningMs(180_000), 30_000);
+  assert.equal(resolveDefaultSessionCreateSlowWarningMs(6_000), 2_000);
+  assert.equal(resolveDefaultSessionCreateSlowWarningMs(12_000), 2_000);
+});
+
+test('runtime client emits slow-session diagnostic via DI hook instead of console.warn', async () => {
+  const diagnostics = [];
+  const originalFetch = globalThis.fetch;
+  let warnCalls = 0;
+  const originalWarn = console.warn;
+  console.warn = () => {
+    warnCalls += 1;
+  };
+
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url.endsWith('/sessions')) {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      return new Response(JSON.stringify({
+        id: 'session-slow',
+        providerName: 'claude',
+        status: 'ready',
+      }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+    throw new Error(`Unexpected runtime client request: ${url}`);
+  };
+
+  try {
+    const client = new CatsRuntimeClient('http://runtime.test', {
+      sessionCreateSlowWarningMs: 5,
+      onClientDiagnostic: (event) => diagnostics.push(event),
+      now: () => new Date('2026-04-29T10:00:00.000Z'),
+    });
+    await client.createSession({ provider: 'claude' });
+  } finally {
+    globalThis.fetch = originalFetch;
+    console.warn = originalWarn;
+  }
+
+  assert.equal(warnCalls, 0);
+  assert.equal(diagnostics.length, 1);
+  assert.equal(diagnostics[0]?.kind, 'slow_session_create');
+  assert.equal(diagnostics[0]?.provider, 'claude');
+  assert.equal(diagnostics[0]?.sessionId, 'session-slow');
+  assert.equal(diagnostics[0]?.thresholdMs, 5);
+  assert.equal(diagnostics[0]?.observedAt, '2026-04-29T10:00:00.000Z');
+  assert.equal(typeof diagnostics[0]?.elapsedMs, 'number');
+  assert.equal(diagnostics[0]?.elapsedMs >= 5, true);
+});
+
+test('runtime client does not emit slow-session diagnostic when create is fast', async () => {
+  const diagnostics = [];
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url.endsWith('/sessions')) {
+      return new Response(JSON.stringify({
+        id: 'session-fast',
+        providerName: 'claude',
+        status: 'ready',
+      }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+    throw new Error(`Unexpected runtime client request: ${url}`);
+  };
+
+  try {
+    const client = new CatsRuntimeClient('http://runtime.test', {
+      sessionCreateSlowWarningMs: 60_000,
+      onClientDiagnostic: (event) => diagnostics.push(event),
+    });
+    await client.createSession({ provider: 'claude' });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.deepEqual(diagnostics, []);
 });
 
 test('runtime client synthesizes a text segment from content-array result delivery', async () => {

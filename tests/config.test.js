@@ -6,6 +6,7 @@ import { loadConfig } from '../build/server/config.js';
 import {
   DEFAULT_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS,
   DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS,
+  resolveDefaultSessionCreateSlowWarningMs,
 } from '../build/server/runtime/client.js';
 
 test('loadConfig derives storage paths from canonical root directories', () => {
@@ -20,6 +21,7 @@ test('loadConfig derives storage paths from canonical root directories', () => {
     CATS_RUNTIME_BASE_URL: 'http://127.0.0.1:3110/',
     CATS_RUNTIME_API_KEY: 'token',
     CATS_RUNTIME_SESSION_CREATE_TIMEOUT_MS: '45000',
+    CATS_RUNTIME_SESSION_CREATE_SLOW_WARNING_MS: '6000',
     CATS_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS: '60000',
     CATS_RUNTIME_SETUP_PROXY_TIMEOUT_MS: '12345',
     CATS_RUNTIME_STALE_SESSION_RETRY_LIMIT: '3',
@@ -45,6 +47,7 @@ test('loadConfig derives storage paths from canonical root directories', () => {
   assert.equal(config.runtimeBaseUrl, 'http://127.0.0.1:3110');
   assert.equal(config.runtimeApiKey, 'token');
   assert.equal(config.runtimeSessionCreateTimeoutMs, 45000);
+  assert.equal(config.runtimeSessionCreateSlowWarningMs, 6000);
   assert.equal(config.runtimeMessageIdleTimeoutMs, 60000);
   assert.equal(config.runtimeSetupProxyTimeoutMs, 12345);
   assert.equal(config.runtimeSetupScanProxyTimeoutMs, 12345);
@@ -77,6 +80,10 @@ test('loadConfig falls back to CATS_INC_* compatibility aliases for host and por
   assert.equal(config.runtimeSetupScanProxyTimeoutMs, 120000);
   assert.equal(config.runtimeSetupApplyProxyTimeoutMs, 30000);
   assert.equal(config.runtimeSessionCreateTimeoutMs, DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS);
+  assert.equal(
+    config.runtimeSessionCreateSlowWarningMs,
+    resolveDefaultSessionCreateSlowWarningMs(DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS),
+  );
   assert.equal(config.runtimeMessageIdleTimeoutMs, DEFAULT_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS);
   assert.equal(config.runtimeStaleSessionRetryLimit, 1);
   assert.equal(config.maxChatParticipants, 5);
@@ -130,6 +137,18 @@ test('loadConfig enables runtime session retention override only when explicitly
   assert.equal(traced.debugLiveTrace, true);
   assert.equal(enabled.debugKeepRuntimeSessionsOnProductDelete, true);
   assert.equal(disabled.debugKeepRuntimeSessionsOnProductDelete, false);
+});
+
+test('loadConfig defaults runtimeSessionCreateSlowWarningMs to a fraction of the configured budget', () => {
+  const config = loadConfig({
+    CATS_RUNTIME_SESSION_CREATE_TIMEOUT_MS: '180000',
+  });
+
+  assert.equal(config.runtimeSessionCreateTimeoutMs, 180000);
+  assert.equal(
+    config.runtimeSessionCreateSlowWarningMs,
+    resolveDefaultSessionCreateSlowWarningMs(180000),
+  );
 });
 
 test('loadConfig enables Chat provider-agent decisions only when explicitly true', () => {

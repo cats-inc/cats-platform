@@ -40,7 +40,8 @@ Port numbers should be configurable via environment variables so developers can 
 | `CATS_RUNTIME_BASE_URL` | `http://127.0.0.1:3110` | Runtime client | Points to `cats-runtime` |
 | `CATS_RUNTIME_API_KEY` | empty | Runtime client | Optional bearer token for `cats-runtime` |
 | `CATS_RUNTIME_SESSION_CREATE_TIMEOUT_MS` | `60000` | Runtime client | Timeout budget for runtime session creation and provider/workspace startup |
-| `CATS_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS` | `120000` | Runtime client | Idle timeout for NDJSON message streams; reset whenever the runtime emits another chunk |
+| `CATS_RUNTIME_SESSION_CREATE_SLOW_WARNING_MS` | `max(2000, budget / 6)` | Runtime client | Threshold above which a successful session create still emits a `slow_session_create` diagnostic record (see ADR-089) |
+| `CATS_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS` | `120000` | Runtime client | Idle timeout for NDJSON message streams; reset whenever the runtime emits another chunk. Depends on the runtime keepalive contract documented in ADR-089 |
 
 ## Cross-Project Port Coordination
 

@@ -2,6 +2,7 @@ import path from 'node:path';
 import {
   DEFAULT_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS,
   DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS,
+  resolveDefaultSessionCreateSlowWarningMs,
 } from './runtime/client.js';
 import { DEFAULT_RUNTIME_STALE_SESSION_RETRY_LIMIT } from './shared/runtimeRecovery.js';
 import {
@@ -18,6 +19,7 @@ export interface AppConfig {
   runtimeBaseUrl: string;
   runtimeApiKey: string;
   runtimeSessionCreateTimeoutMs: number;
+  runtimeSessionCreateSlowWarningMs: number;
   runtimeMessageIdleTimeoutMs: number;
   runtimeSetupProxyTimeoutMs?: number;
   runtimeSetupScanProxyTimeoutMs?: number;
@@ -127,14 +129,19 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const legacySetupProxyTimeoutMs = parseOptionalPositiveInt(
     env.CATS_RUNTIME_SETUP_PROXY_TIMEOUT_MS,
   );
+  const runtimeSessionCreateTimeoutMs = parsePositiveInt(
+    env.CATS_RUNTIME_SESSION_CREATE_TIMEOUT_MS,
+    DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS,
+  );
   return {
     host: readFirstDefined(env, ['CATS_HOST', 'CATS_INC_HOST']) || DEFAULT_HOST,
     port: parsePort(readFirstDefined(env, ['CATS_PORT', 'CATS_INC_PORT']), DEFAULT_PORT),
     runtimeBaseUrl: (env.CATS_RUNTIME_BASE_URL || DEFAULT_RUNTIME_BASE_URL).replace(/\/+$/, ''),
     runtimeApiKey: env.CATS_RUNTIME_API_KEY?.trim() || '',
-    runtimeSessionCreateTimeoutMs: parsePositiveInt(
-      env.CATS_RUNTIME_SESSION_CREATE_TIMEOUT_MS,
-      DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS,
+    runtimeSessionCreateTimeoutMs,
+    runtimeSessionCreateSlowWarningMs: parsePositiveInt(
+      env.CATS_RUNTIME_SESSION_CREATE_SLOW_WARNING_MS,
+      resolveDefaultSessionCreateSlowWarningMs(runtimeSessionCreateTimeoutMs),
     ),
     runtimeMessageIdleTimeoutMs: parsePositiveInt(
       env.CATS_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS,

@@ -554,6 +554,7 @@ capability ceiling.
 - [ADR-055: Retire lead semantics and separate composer recipients from dispatch policy](./055-retire-lead-and-separate-composer-recipients-from-dispatch-policy.md)
 - [ADR-063: Separate managed work, agent missions, execution runs, and transport bindings](./063-agent-missions-and-transport-bindings.md)
 - [ADR-081: Canonicalize the Core Record Taxonomy as Interaction / Planning / Execution](./081-canonicalize-three-tier-core-record-taxonomy.md)
+- [ADR-089: Split Runtime Request and Stream Idle Timeouts](./089-split-runtime-request-and-stream-idle-timeouts.md) — runtime timeout policy that supports the supervised boundary established here
 - [SPEC-050: Group Chat Temporary Participants and Reusable Lightweight Presets](../specs/SPEC-050-group-chat-temporary-participants-and-reusable-lightweight-presets.md)
 - [PLAN-080: Provider Capability Bootstrap Config Rollout](../plans/PLAN-080-provider-capability-bootstrap-config-rollout.md)
 - [Research: Orchestrator as a capability shell (Claude)](../research/2026-04-23-claude-orchestrator-as-capability-shell.md)
@@ -566,4 +567,5 @@ capability ceiling.
 
 *Proposed: 2026-04-25*
 *Amended: 2026-04-28 — capability bootstrap source of truth is explicit YAML; unlisted provider/model/control targets default to unknown.*
+*Amended: 2026-04-29 — runtime timeout policy that backs the supervised boundary lives in ADR-089 (split request vs stream idle timeouts; runtime keepalive contract).*
 *Proposed by: Claude, drawing on the 2026-04-23 owner × Claude discussion and the parallel Codex research note*
