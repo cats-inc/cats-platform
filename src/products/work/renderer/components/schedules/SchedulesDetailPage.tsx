@@ -1,17 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Link, useParams } from 'react-router-dom';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
-import {
-  buildWorkApiSchedulePath,
-} from '../../../shared/apiPaths.js';
-import { expectJson } from '../../api/http.js';
 import {
   testFireWorkSchedule,
   updateWorkSchedule,
   type WorkScheduleRule,
-  type WorkScheduleRuleResponse,
-  type WorkScheduleTriggerReceipt,
 } from '../../api/schedules.js';
+import {
+  scheduleDetailQueryKey,
+  SCHEDULES_QUERY_KEY,
+  useScheduleDetailQuery,
+} from '../../state/queries/schedulesQuery.js';
 import { formatRelative } from '../topdown/shared';
 import { WORK_SCHEDULES_PATH } from '../../workPaths.js';
 import {
@@ -20,76 +20,36 @@ import {
 } from './scheduleUiSupport.js';
 import './schedules.css';
 
-type FetchStatus = 'idle' | 'loading' | 'ready' | 'error';
-
 export function SchedulesDetailPage(): JSX.Element {
   const { scheduleId } = useParams<{ scheduleId: string }>();
-  const [rule, setRule] = useState<WorkScheduleRule | null>(null);
-  const [triggerReceipts, setTriggerReceipts] = useState<WorkScheduleTriggerReceipt[]>([]);
-  const [status, setStatus] = useState<FetchStatus>('idle');
-  const [error, setError] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [busyAction, setBusyAction] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  const detailQuery = useScheduleDetailQuery(scheduleId);
+  const rule = detailQuery.data?.rule ?? null;
+  const triggerReceipts = detailQuery.data?.triggerReceipts ?? [];
 
-  const load = useCallback(async (signal?: AbortSignal): Promise<void> => {
-    if (!scheduleId) {
-      return;
-    }
-    setStatus('loading');
-    setError(null);
-    try {
-      const response = await fetch(buildWorkApiSchedulePath(scheduleId), { signal });
-      const payload = await expectJson<WorkScheduleRuleResponse>(
-        response,
-        'Failed to load schedule.',
-      );
-      setRule(payload.rule);
-      setTriggerReceipts(payload.triggerReceipts);
-      setStatus('ready');
-    } catch (err) {
-      if (signal?.aborted) {
-        return;
-      }
-      setStatus('error');
-      setError(err instanceof Error ? err.message : 'Failed to load schedule.');
-    }
-  }, [scheduleId]);
+  const invalidate = async () => {
+    if (!scheduleId) return;
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: scheduleDetailQueryKey(scheduleId) }),
+      queryClient.invalidateQueries({ queryKey: SCHEDULES_QUERY_KEY }),
+    ]);
+  };
 
-  useEffect(() => {
-    const controller = new AbortController();
-    void load(controller.signal);
-    return () => controller.abort();
-  }, [load]);
+  const toggleMutation = useMutation({
+    mutationFn: async (next: boolean) => {
+      if (!rule) throw new Error('Schedule rule not loaded.');
+      await updateWorkSchedule(rule.id, { enabled: next });
+    },
+    onSuccess: invalidate,
+  });
 
-  const runAction = useCallback(async (
-    key: string,
-    action: () => Promise<void>,
-  ): Promise<void> => {
-    setBusyAction(key);
-    setActionError(null);
-    try {
-      await action();
-      await load();
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Schedule action failed.');
-    } finally {
-      setBusyAction(null);
-    }
-  }, [load]);
-
-  const toggleRule = useCallback(() => {
-    if (!rule) return;
-    void runAction('toggle', async () => {
-      await updateWorkSchedule(rule.id, { enabled: !rule.enabled });
-    });
-  }, [runAction, rule]);
-
-  const testFireRule = useCallback(() => {
-    if (!rule) return;
-    void runAction('test', async () => {
+  const testFireMutation = useMutation({
+    mutationFn: async () => {
+      if (!rule) throw new Error('Schedule rule not loaded.');
       await testFireWorkSchedule(rule.id);
-    });
-  }, [runAction, rule]);
+    },
+    onSuccess: invalidate,
+  });
 
   const sortedReceipts = useMemo(
     () => triggerReceipts
@@ -99,18 +59,26 @@ export function SchedulesDetailPage(): JSX.Element {
     [triggerReceipts],
   );
 
+  const actionError = toggleMutation.error ?? testFireMutation.error;
+  const actionErrorMessage = actionError
+    ? actionError instanceof Error
+      ? actionError.message
+      : 'Schedule action failed.'
+    : null;
+
   if (!scheduleId) {
     return <ScheduleNotFound scheduleId={null} />;
   }
-  if (status === 'loading' && !rule) {
+  if (detailQuery.isPending) {
     return (
       <div className="scheduleDetail">
         <ScheduleDetailTopBar
           title="Loading…"
           rule={null}
-          busyAction={busyAction}
-          onToggle={toggleRule}
-          onTestFire={testFireRule}
+          togglePending={false}
+          testFirePending={false}
+          onToggle={() => undefined}
+          onTestFire={() => undefined}
         />
         <main className="scheduleDetail__main">
           <p className="scheduleDetail__empty">Loading schedule…</p>
@@ -118,8 +86,13 @@ export function SchedulesDetailPage(): JSX.Element {
       </div>
     );
   }
-  if (status === 'error' || !rule) {
-    return <ScheduleNotFound scheduleId={scheduleId} message={error} />;
+  if (detailQuery.isError || !rule) {
+    const detailErrorMessage = detailQuery.error
+      ? detailQuery.error instanceof Error
+        ? detailQuery.error.message
+        : 'Failed to load schedule.'
+      : null;
+    return <ScheduleNotFound scheduleId={scheduleId} message={detailErrorMessage} />;
   }
 
   return (
@@ -127,14 +100,15 @@ export function SchedulesDetailPage(): JSX.Element {
       <ScheduleDetailTopBar
         title={rule.title}
         rule={rule}
-        busyAction={busyAction}
-        onToggle={toggleRule}
-        onTestFire={testFireRule}
+        togglePending={toggleMutation.isPending}
+        testFirePending={testFireMutation.isPending}
+        onToggle={() => toggleMutation.mutate(!rule.enabled)}
+        onTestFire={() => testFireMutation.mutate()}
       />
       <main className="scheduleDetail__main">
-        {actionError ? (
+        {actionErrorMessage ? (
           <p className="scheduleDetail__error" role="alert">
-            {actionError}
+            {actionErrorMessage}
           </p>
         ) : null}
 
@@ -263,7 +237,8 @@ export function SchedulesDetailPage(): JSX.Element {
 interface ScheduleDetailTopBarProps {
   title: string;
   rule: WorkScheduleRule | null;
-  busyAction: string | null;
+  togglePending: boolean;
+  testFirePending: boolean;
   onToggle: () => void;
   onTestFire: () => void;
 }
@@ -271,10 +246,12 @@ interface ScheduleDetailTopBarProps {
 function ScheduleDetailTopBar({
   title,
   rule,
-  busyAction,
+  togglePending,
+  testFirePending,
   onToggle,
   onTestFire,
 }: ScheduleDetailTopBarProps): JSX.Element {
+  const busy = togglePending || testFirePending;
   return (
     <header className="channelTopBar scheduleDetailTopBar">
       <div className="channelTopBarStart scheduleDetailTopBar__start">
@@ -320,17 +297,17 @@ function ScheduleDetailTopBar({
               type="button"
               className="schedulesList__secondaryButton"
               onClick={onTestFire}
-              disabled={busyAction !== null}
+              disabled={busy}
             >
-              {busyAction === 'test' ? 'Firing…' : 'Test fire'}
+              {testFirePending ? 'Firing…' : 'Test fire'}
             </button>
             <button
               type="button"
               className="schedulesList__secondaryButton"
               onClick={onToggle}
-              disabled={busyAction !== null}
+              disabled={busy}
             >
-              {busyAction === 'toggle'
+              {togglePending
                 ? 'Updating…'
                 : rule.enabled
                   ? 'Disable'

@@ -1,15 +1,10 @@
-import {
-  startTransition,
-  useCallback,
-  useEffect,
-  useState,
-} from 'react';
+import { startTransition } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import type { WorkDashboardProjection } from '../../api/projection.js';
 import { buildChannelPath, buildMyCatPath } from '../../shared/channelPaths.js';
 import { listCatActorLinks } from '../actorLinks.js';
-import { fetchWorkDashboard } from '../api/dashboard.js';
+import { useWorkDashboardQuery } from '../state/queries/workDashboardQuery.js';
 import {
   formatWorkDeliveryMode,
   formatWorkExecutionProduct,
@@ -618,33 +613,13 @@ function WorkWarRoomOpenWorkItemButton({
 
 export function WarRoomView() {
   const navigate = useNavigate();
-  const [payload, setPayload] = useState<WorkDashboardProjection | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  const loadDashboard = useCallback(async (signal?: AbortSignal) => {
-    setError('');
-    const nextPayload = await fetchWorkDashboard(signal);
-    setPayload(nextPayload);
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    setLoading(true);
-    loadDashboard(controller.signal)
-      .catch((loadError) => {
-        if (!controller.signal.aborted) {
-          setError(loadError instanceof Error ? loadError.message : 'Failed to load war room.');
-        }
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setLoading(false);
-        }
-      });
-
-    return () => controller.abort();
-  }, [loadDashboard]);
+  const dashboardQuery = useWorkDashboardQuery();
+  const payload = dashboardQuery.data ?? null;
+  const error = dashboardQuery.error
+    ? dashboardQuery.error instanceof Error
+      ? dashboardQuery.error.message
+      : 'Failed to load war room.'
+    : '';
 
   return (
     <div className="workWarRoomView">
@@ -653,30 +628,13 @@ export function WarRoomView() {
           <p className="operatorEyebrow">Work</p>
           <h1 className="codeBuilderTitle">War Room</h1>
         </div>
-        <div className="workWarRoomHeaderActions">
-          <button
-            type="button"
-            className="operatorActionButton"
-            onClick={() => {
-              setLoading(true);
-              void loadDashboard()
-                .catch((loadError) => {
-                  setError(loadError instanceof Error ? loadError.message : 'Failed to refresh war room.');
-                })
-                .finally(() => setLoading(false));
-            }}
-            disabled={loading}
-          >
-            Refresh
-          </button>
-        </div>
       </div>
 
       {error ? (
         <div className="codeBuilderFeedback">{error}</div>
       ) : null}
 
-      {loading && !payload ? (
+      {dashboardQuery.isPending && !payload ? (
         <section className="operatorPanel">
           <WorkSectionHeader eyebrow="Loading" title="War Room" summary="pending" />
           <article className="operatorCard">

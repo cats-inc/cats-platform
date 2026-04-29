@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 
-import {
-  listWorkSchedules,
-  type WorkScheduleRule,
-  type WorkScheduleTriggerReceipt,
+import type {
+  WorkScheduleRule,
+  WorkScheduleTriggerReceipt,
 } from '../../api/schedules.js';
+import { useSchedulesQuery } from '../../state/queries/schedulesQuery.js';
 import { formatRelative } from '../topdown/shared';
 import { buildWorkSchedulePath } from '../../workPaths.js';
 import {
@@ -16,64 +16,27 @@ import {
 } from './scheduleUiSupport.js';
 import './schedules.css';
 
-type FetchStatus = 'idle' | 'loading' | 'ready' | 'error';
-
-interface ScheduleSnapshot {
-  rules: WorkScheduleRule[];
-  triggerReceipts: WorkScheduleTriggerReceipt[];
-}
-
-const EMPTY_SNAPSHOT: ScheduleSnapshot = {
-  rules: [],
-  triggerReceipts: [],
-};
-
 export function SchedulesListPage(): JSX.Element {
-  const [snapshot, setSnapshot] = useState<ScheduleSnapshot>(EMPTY_SNAPSHOT);
-  const [status, setStatus] = useState<FetchStatus>('idle');
-  const [error, setError] = useState<string | null>(null);
-
-  const load = useCallback(async (signal?: AbortSignal): Promise<void> => {
-    setStatus('loading');
-    setError(null);
-    try {
-      const next = await listWorkSchedules(signal);
-      setSnapshot({
-        rules: next.rules,
-        triggerReceipts: next.triggerReceipts,
-      });
-      setStatus('ready');
-    } catch (err) {
-      if (signal?.aborted) {
-        return;
-      }
-      setStatus('error');
-      setError(err instanceof Error ? err.message : 'Failed to load schedules.');
-    }
-  }, []);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    void load(controller.signal);
-    return () => controller.abort();
-  }, [load]);
+  const schedulesQuery = useSchedulesQuery();
+  const rules = schedulesQuery.data?.rules ?? [];
+  const triggerReceipts = schedulesQuery.data?.triggerReceipts ?? [];
 
   const latestReceiptByRule = useMemo(() => {
     const map = new Map<string, WorkScheduleTriggerReceipt>();
-    for (const receipt of snapshot.triggerReceipts) {
+    for (const receipt of triggerReceipts) {
       const existing = map.get(receipt.ruleId);
       if (!existing || receipt.actualFireAt.localeCompare(existing.actualFireAt) > 0) {
         map.set(receipt.ruleId, receipt);
       }
     }
     return map;
-  }, [snapshot.triggerReceipts]);
+  }, [triggerReceipts]);
 
   const exportAudit = useCallback(() => {
     const payload = buildScheduleAuditExport({
       exportedAt: new Date().toISOString(),
-      rules: snapshot.rules,
-      triggerReceipts: snapshot.triggerReceipts,
+      rules,
+      triggerReceipts,
     });
     const blob = new Blob([serializeScheduleAuditExport(payload)], {
       type: 'application/json',
@@ -84,12 +47,18 @@ export function SchedulesListPage(): JSX.Element {
     anchor.download = `cats-work-schedules-audit-${payload.exportedAt.slice(0, 10)}.json`;
     anchor.click();
     URL.revokeObjectURL(url);
-  }, [snapshot.rules, snapshot.triggerReceipts]);
+  }, [rules, triggerReceipts]);
 
   const sortedRules = useMemo(
-    () => snapshot.rules.slice().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
-    [snapshot.rules],
+    () => rules.slice().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+    [rules],
   );
+
+  const errorMessage = schedulesQuery.error
+    ? schedulesQuery.error instanceof Error
+      ? schedulesQuery.error.message
+      : 'Failed to load schedules.'
+    : null;
 
   return (
     <div className="schedulesList">
@@ -108,31 +77,21 @@ export function SchedulesListPage(): JSX.Element {
             type="button"
             className="schedulesList__secondaryButton"
             onClick={exportAudit}
-            disabled={
-              (snapshot.rules.length === 0 && snapshot.triggerReceipts.length === 0)
-            }
+            disabled={rules.length === 0 && triggerReceipts.length === 0}
           >
             Export
-          </button>
-          <button
-            type="button"
-            className="schedulesList__secondaryButton"
-            onClick={() => void load()}
-            disabled={status === 'loading'}
-          >
-            Refresh
           </button>
         </div>
       </header>
 
       <main className="schedulesList__main">
-        {status === 'error' && error ? (
+        {errorMessage ? (
           <p className="schedulesList__error" role="alert">
-            {error}
+            {errorMessage}
           </p>
         ) : null}
 
-        {status === 'loading' && sortedRules.length === 0 ? (
+        {schedulesQuery.isPending ? (
           <p className="schedulesList__empty">Loading schedules…</p>
         ) : sortedRules.length === 0 ? (
           <p className="schedulesList__empty">
