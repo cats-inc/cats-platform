@@ -152,6 +152,44 @@ test('Code artifact materialization is idempotent and records material changes',
   assert.equal(changed.core.activities.length, 2);
 });
 
+test('Code artifact materialization recovers frozen idempotency scope across retries', () => {
+  const core = createAnchoredCodeCore();
+  const first = materializeCodeArtifactDeclaration(
+    core,
+    createPreviewDeclaration(),
+    new Date('2026-04-30T10:00:00.000Z'),
+  );
+  const retryWithoutRun = materializeCodeArtifactDeclaration(
+    first.core,
+    createPreviewDeclaration({
+      anchors: {
+        conversationId: 'conversation-code-1',
+        taskId: 'task-code-1',
+        workspacePath: 'C:/repo/cats-platform',
+      },
+    }),
+    new Date('2026-04-30T10:01:00.000Z'),
+  );
+
+  assert.equal(retryWithoutRun.artifact.id, first.artifact.id);
+  assert.equal(retryWithoutRun.created, false);
+  assert.equal(retryWithoutRun.activityCreated, false);
+  assert.equal(retryWithoutRun.core.artifacts.length, 1);
+  assert.equal(retryWithoutRun.artifact.runId, 'run-code-1');
+
+  const declarationMetadata = retryWithoutRun.artifact.metadata.codeArtifactDeclaration as
+    | Record<string, unknown>
+    | undefined;
+  const idempotency = declarationMetadata?.idempotency as Record<string, unknown>;
+  assert.equal(idempotency.scopeKind, 'run');
+  assert.equal(idempotency.scopeId, 'run-code-1');
+  assert.equal(idempotency.recoveredFromFrozenScope, true);
+  assert.deepEqual(idempotency.retryScope, {
+    scopeKind: 'runtime',
+    scopeId: 'runtime-session-1',
+  });
+});
+
 test('Code artifact materialization stores candidate declarations as draft artifacts', () => {
   const core = createAnchoredCodeCore();
   const result = materializeCodeArtifactDeclaration(

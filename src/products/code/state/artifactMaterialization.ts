@@ -16,6 +16,7 @@ import {
   CodeArtifactDeclarationError,
   resolveCodeArtifactLabelMapping,
   type CodeArtifactDeclaration,
+  type CodeArtifactDeclarationAnchors,
   type CodeArtifactDeclarationErrorCode,
   type CodeArtifactDisposition,
   type CodeArtifactLocationNormalized,
@@ -50,6 +51,14 @@ interface ResolvedScope {
   id: string;
 }
 
+interface ResolvedIdempotency {
+  key: string;
+  scope: ResolvedScope;
+  artifactId: string;
+  existing: CoreArtifactRecord | null;
+  recoveredFromFrozenScope: boolean;
+}
+
 export function materializeCodeArtifactDeclaration(
   core: CatsCoreState,
   declaration: CodeArtifactDeclaration,
@@ -73,39 +82,54 @@ export function materializeCodeArtifactDeclaration(
     scope,
     declarationId: declaration.declarationId,
   });
+  const idempotency = resolveArtifactIdempotency(core, {
+    currentKey: idempotencyKey,
+    currentScope: scope,
+    producerKind: declaration.producer.kind,
+    producerIdentity: producerIdentity.encoded,
+    declarationId: declaration.declarationId,
+  });
+  const effectiveDeclaration: CodeArtifactDeclaration = {
+    ...declaration,
+    anchors: mergeDeclarationAnchors(declaration.anchors, idempotency.existing),
+  };
   const disposition = resolveMaterializationDisposition(declaration);
   const status = resolveMaterializationStatus(declaration, disposition, mapping.defaultStatus);
-  const location = normalizeMaterializedLocation(declaration.location, declaration.anchors?.workspacePath);
-  const artifactId = `artifact-${hashStableIdempotencyKey(idempotencyKey)}`;
+  const location = normalizeMaterializedLocation(
+    declaration.location,
+    effectiveDeclaration.anchors?.workspacePath,
+  );
   const materialChangeSignature = buildMaterialChangeSignature({
-    declaration,
-    kind: declaration.artifact.coreKind ?? mapping.coreKind,
+    declaration: effectiveDeclaration,
+    kind: effectiveDeclaration.artifact.coreKind ?? mapping.coreKind,
     status,
     disposition,
     location,
   });
-  const existing = core.artifacts.find((artifact) => artifact.id === artifactId) ?? null;
+  const existing = idempotency.existing;
   const existingSignature = readMaterialChangeSignature(existing);
   const shouldRecordActivity = existingSignature !== materialChangeSignature;
   const metadata = buildCoreArtifactMetadata({
-    declaration,
+    declaration: effectiveDeclaration,
     disposition,
     producerIdentity,
-    scope,
-    idempotencyKey,
+    scope: idempotency.scope,
+    idempotencyKey: idempotency.key,
+    recoveredFromFrozenScope: idempotency.recoveredFromFrozenScope,
+    retryScope: idempotency.recoveredFromFrozenScope ? scope : null,
     location,
     materialChangeSignature,
   });
   const result = upsertCoreArtifact(core, {
-    id: artifactId,
-    title: declaration.artifact.title,
-    kind: declaration.artifact.coreKind ?? mapping.coreKind,
+    id: idempotency.artifactId,
+    title: effectiveDeclaration.artifact.title,
+    kind: effectiveDeclaration.artifact.coreKind ?? mapping.coreKind,
     status,
-    projectId: declaration.anchors?.projectId ?? null,
-    workItemId: declaration.anchors?.workItemId ?? null,
-    conversationId: declaration.anchors?.conversationId ?? null,
-    taskId: declaration.anchors?.taskId ?? null,
-    runId: declaration.anchors?.runId ?? null,
+    projectId: effectiveDeclaration.anchors?.projectId ?? null,
+    workItemId: effectiveDeclaration.anchors?.workItemId ?? null,
+    conversationId: effectiveDeclaration.anchors?.conversationId ?? null,
+    taskId: effectiveDeclaration.anchors?.taskId ?? null,
+    runId: effectiveDeclaration.anchors?.runId ?? null,
     path: location.path,
     mimeType: declaration.artifact.mimeType ?? null,
     sizeBytes: declaration.artifact.sizeBytes ?? null,
@@ -114,7 +138,7 @@ export function materializeCodeArtifactDeclaration(
   }, now);
   const activityResult = shouldRecordActivity
     ? appendCoreActivity(result.core, {
-        id: `activity-${hashStableIdempotencyKey(`${artifactId}:${materialChangeSignature}`)}`,
+        id: `activity-${hashStableIdempotencyKey(`${result.artifact.id}:${materialChangeSignature}`)}`,
         kind: 'artifact_recorded',
         actorId: resolveActivityActorId(declaration.producer),
         projectId: result.artifact.projectId,
@@ -272,6 +296,79 @@ function hashStableIdempotencyKey(key: string): string {
   return createHash('sha256').update(key).digest('hex').slice(0, 24);
 }
 
+function resolveArtifactIdempotency(
+  core: CatsCoreState,
+  input: {
+    currentKey: string;
+    currentScope: ResolvedScope;
+    producerKind: CodeArtifactProducer['kind'];
+    producerIdentity: string;
+    declarationId: string;
+  },
+): ResolvedIdempotency {
+  const currentArtifactId = `artifact-${hashStableIdempotencyKey(input.currentKey)}`;
+  const currentExisting =
+    core.artifacts.find((artifact) => artifact.id === currentArtifactId) ?? null;
+  if (currentExisting) {
+    return {
+      key: input.currentKey,
+      scope: input.currentScope,
+      artifactId: currentArtifactId,
+      existing: currentExisting,
+      recoveredFromFrozenScope: false,
+    };
+  }
+
+  const compatibleArtifacts = core.artifacts.filter((artifact) => {
+    const idempotency = readArtifactIdempotency(artifact);
+    return idempotency?.producerKind === input.producerKind
+      && idempotency.producerIdentity === input.producerIdentity
+      && idempotency.declarationId === input.declarationId;
+  });
+
+  if (compatibleArtifacts.length > 1) {
+    throw new CodeArtifactDeclarationError(
+      'artifact_idempotency_ambiguous',
+      'Artifact declaration retry matched multiple frozen idempotency scopes.',
+      {
+        candidates: compatibleArtifacts.map((artifact) => {
+          const idempotency = readArtifactIdempotency(artifact);
+          return {
+            artifactId: artifact.id,
+            title: artifact.title,
+            status: artifact.status,
+            scopeKind: idempotency?.scopeKind ?? null,
+            scopeId: idempotency?.scopeId ?? null,
+          };
+        }),
+      },
+    );
+  }
+
+  const frozenArtifact = compatibleArtifacts[0] ?? null;
+  const frozenIdempotency = readArtifactIdempotency(frozenArtifact);
+  if (frozenArtifact && frozenIdempotency) {
+    return {
+      key: frozenIdempotency.key,
+      scope: {
+        kind: frozenIdempotency.scopeKind,
+        id: frozenIdempotency.scopeId,
+      },
+      artifactId: frozenArtifact.id,
+      existing: frozenArtifact,
+      recoveredFromFrozenScope: true,
+    };
+  }
+
+  return {
+    key: input.currentKey,
+    scope: input.currentScope,
+    artifactId: currentArtifactId,
+    existing: null,
+    recoveredFromFrozenScope: false,
+  };
+}
+
 function validateAnchors(core: CatsCoreState, declaration: CodeArtifactDeclaration): void {
   const anchors = declaration.anchors ?? {};
   if (anchors.conversationId && !core.conversations.some((record) => record.id === anchors.conversationId)) {
@@ -408,6 +505,8 @@ function buildCoreArtifactMetadata(input: {
   producerIdentity: ResolvedProducerIdentity;
   scope: ResolvedScope;
   idempotencyKey: string;
+  recoveredFromFrozenScope: boolean;
+  retryScope: ResolvedScope | null;
   materialChangeSignature: string;
   location: { metadataLocation: CodeArtifactLocationNormalized | null };
 }): CoreRecordMetadata {
@@ -431,6 +530,13 @@ function buildCoreArtifactMetadata(input: {
         scopeKind: input.scope.kind,
         scopeId: input.scope.id,
         declarationId: input.declaration.declarationId,
+        recoveredFromFrozenScope: input.recoveredFromFrozenScope,
+        retryScope: input.retryScope
+          ? {
+              scopeKind: input.retryScope.kind,
+              scopeId: input.retryScope.id,
+            }
+          : null,
       },
     },
   };
@@ -471,6 +577,73 @@ function readMaterialChangeSignature(artifact: CoreArtifactRecord | null): strin
   const declaration = asRecord(artifact?.metadata.codeArtifactDeclaration);
   const signature = declaration?.materialChangeSignature;
   return typeof signature === 'string' && signature.trim() ? signature : null;
+}
+
+function readArtifactIdempotency(artifact: CoreArtifactRecord | null): {
+  key: string;
+  producerKind: CodeArtifactProducer['kind'];
+  producerIdentity: string;
+  scopeKind: CodeArtifactMaterializationScopeKind;
+  scopeId: string;
+  declarationId: string;
+} | null {
+  const declaration = asRecord(artifact?.metadata.codeArtifactDeclaration);
+  const idempotency = asRecord(declaration?.idempotency);
+  const key = readNonEmptyString(idempotency?.key);
+  const producerKind = readNonEmptyString(idempotency?.producerKind);
+  const producerIdentity = readNonEmptyString(idempotency?.producerIdentity);
+  const scopeKind = readNonEmptyString(idempotency?.scopeKind);
+  const scopeId = readNonEmptyString(idempotency?.scopeId);
+  const declarationId = readNonEmptyString(idempotency?.declarationId);
+  if (
+    !key
+    || !isCodeArtifactProducerKind(producerKind)
+    || !producerIdentity
+    || !isCodeArtifactMaterializationScopeKind(scopeKind)
+    || !scopeId
+    || !declarationId
+  ) {
+    return null;
+  }
+
+  return {
+    key,
+    producerKind,
+    producerIdentity,
+    scopeKind,
+    scopeId,
+    declarationId,
+  };
+}
+
+function mergeDeclarationAnchors(
+  anchors: CodeArtifactDeclarationAnchors | undefined,
+  existing: CoreArtifactRecord | null,
+): CodeArtifactDeclarationAnchors {
+  const existingAnchors = readExistingDeclarationAnchors(existing);
+  return {
+    conversationId: anchors?.conversationId ?? existingAnchors.conversationId ?? null,
+    taskId: anchors?.taskId ?? existingAnchors.taskId ?? null,
+    runId: anchors?.runId ?? existingAnchors.runId ?? null,
+    projectId: anchors?.projectId ?? existingAnchors.projectId ?? null,
+    workItemId: anchors?.workItemId ?? existingAnchors.workItemId ?? null,
+    workspacePath: anchors?.workspacePath ?? existingAnchors.workspacePath ?? null,
+  };
+}
+
+function readExistingDeclarationAnchors(
+  existing: CoreArtifactRecord | null,
+): CodeArtifactDeclarationAnchors {
+  const declaration = asRecord(existing?.metadata.codeArtifactDeclaration);
+  const metadataAnchors = asRecord(declaration?.anchors);
+  return {
+    conversationId: existing?.conversationId ?? readNonEmptyString(metadataAnchors?.conversationId),
+    taskId: existing?.taskId ?? readNonEmptyString(metadataAnchors?.taskId),
+    runId: existing?.runId ?? readNonEmptyString(metadataAnchors?.runId),
+    projectId: existing?.projectId ?? readNonEmptyString(metadataAnchors?.projectId),
+    workItemId: existing?.workItemId ?? readNonEmptyString(metadataAnchors?.workItemId),
+    workspacePath: readNonEmptyString(metadataAnchors?.workspacePath),
+  };
 }
 
 function resolveActivityActorId(producer: CodeArtifactProducer): string | null {
@@ -537,6 +710,30 @@ function asRecord(value: unknown): Record<string, unknown> | null {
   return value && typeof value === 'object' && !Array.isArray(value)
     ? value as Record<string, unknown>
     : null;
+}
+
+function readNonEmptyString(value: unknown): string | null {
+  return typeof value === 'string' && value.trim().length > 0
+    ? value.trim()
+    : null;
+}
+
+function isCodeArtifactProducerKind(
+  value: string | null,
+): value is CodeArtifactProducer['kind'] {
+  return value === 'agent'
+    || value === 'tool'
+    || value === 'system'
+    || value === 'user';
+}
+
+function isCodeArtifactMaterializationScopeKind(
+  value: string | null,
+): value is CodeArtifactMaterializationScopeKind {
+  return value === 'run'
+    || value === 'runtime'
+    || value === 'conversation'
+    || value === 'workspace';
 }
 
 function normalizeRequiredString(
