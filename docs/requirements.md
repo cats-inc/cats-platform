@@ -388,6 +388,16 @@ can be reused by `Cats Chat`, `Cats Work`, and `Cats Code`.
 - **Priority**: High
 - **Status**: Planned
 
+### FR-049: Structured Code Artifact Declarations
+
+- **Description**: `Cats Code` shall materialize Code artifacts from structured
+  declarations submitted by agents, tools, system candidate detection, or user
+  imports. The product server shall validate, normalize, stamp provenance, and
+  write `CoreArtifactRecord` rows; cwd scanning and transcript JSON parsing
+  shall not be authoritative artifact producer paths.
+- **Priority**: High
+- **Status**: Planned
+
 ## Non-Functional Requirements
 
 ### NFR-001: Explicit Boundaries

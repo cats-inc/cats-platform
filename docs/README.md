@@ -55,6 +55,9 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [PLAN-081](./plans/PLAN-081-code-artifact-declaration-rollout.md)
+- [SPEC-092](./specs/SPEC-092-code-artifact-declaration-contract.md)
+- [ADR-088](./decisions/088-use-structured-artifact-declarations-for-code-materialization.md)
 - [SPEC-091](./specs/SPEC-091-cats-code-workspace-and-artifact-sidebar.md)
 - [PLAN-080](./plans/PLAN-080-provider-capability-bootstrap-config-rollout.md)
 - [SPEC-089](./specs/SPEC-089-companion-all-content-library-placeholder.md)

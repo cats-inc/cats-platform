@@ -74,6 +74,11 @@ sidebar. The first Code-owned sidebar additions are `Workspaces` and
 `Artifacts`: Workspaces group code work by repo/folder/worktree/managed-room
 execution context, while Artifacts index durable Code outputs. Neither entry
 creates a `Project` / `WorkItem` fallback or a new Core record family.
+Code artifacts are materialized through structured declarations from agents,
+tools, system candidate detection, or user imports; the product server
+validates and normalizes those declarations before writing
+`CoreArtifactRecord`. Workspace scanning and transcript JSON parsing are not
+authoritative artifact producer paths.
 
 Task projection is shared across products. Work Graph surfaces render every
 Core `Task` they know about and label task rows with a product binding:

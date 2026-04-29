@@ -274,7 +274,10 @@ Tables and Task Hub remain later projections over the same graph.
     explicit Work entry or Work object creation flow.
 51. Entry creation shall not create an `Artifact` merely because an entry was
     opened or submitted. Artifacts shall be produced by attachments, imports,
-    execution outputs, or explicit document/report creation.
+    execution outputs, or explicit document/report creation. Code-owned
+    artifacts shall reach Work Graph evidence through materialized
+    `CoreArtifactRecord` rows, not through cwd scanning or transcript JSON
+    parsing.
 52. Entry-created `Activity` is an audit/feed event, not a structural anchor.
     If an entry producer writes one, it shall be written after the durable
     entry records exist, use `operator_action` or another existing

@@ -10,7 +10,7 @@
 | **Status** | Draft |
 | **Owner** | Codex |
 | **Reviewer** | middl |
-| **Related Plan** | TBD |
+| **Related Plan** | TBD for full sidebar rollout; [PLAN-081](../plans/PLAN-081-code-artifact-declaration-rollout.md) covers artifact declarations |
 
 ## Summary
 
@@ -97,15 +97,20 @@ creation for `+New code`.
 12. Artifact creation shall not happen merely because a Code entry or sidebar
     entry is opened. Artifacts are produced by attachments, imports, execution
     outputs, or explicit document/report creation.
-13. Artifact rows shall preserve provenance back to the strongest available
+13. Code artifact materialization shall use the structured declaration contract
+    defined by SPEC-092. Agent declarations, tool declarations, system
+    candidates, and user imports are valid producer paths.
+14. Cwd scanning and transcript JSON parsing shall not be authoritative
+    producer paths for the Code `Artifacts` sidebar.
+15. Artifact rows shall preserve provenance back to the strongest available
     anchors: conversation, task, run, workspace, project, and work item.
-14. Artifact detail shall deep-link back to the relevant Code conversation,
+16. Artifact detail shall deep-link back to the relevant Code conversation,
     task detail, run history, workspace, and Work object when those anchors
     exist.
-15. A Code artifact may also appear in Work as evidence when it is anchored to
+17. A Code artifact may also appear in Work as evidence when it is anchored to
     a Work-visible object, but Work evidence placement does not make Artifacts
     a Work-owned sidebar category.
-16. If a Code-origin task is later linked into Work through `WorkItem.taskId`,
+18. If a Code-origin task is later linked into Work through `WorkItem.taskId`,
     Code workspace and artifact provenance remains available as Code execution
     context; Work current binding may still project as `work`.
 
@@ -196,7 +201,9 @@ context. Current Code metadata already distinguishes:
 - `managed_room`
 - `conversation_repo`
 
-`Artifacts` project from `CoreArtifactRecord`. Existing artifact kinds are:
+`Artifacts` project from `CoreArtifactRecord` rows that Cats Code
+materializes through the structured declaration contract in SPEC-092. Existing
+artifact kinds are:
 
 - `document`
 - `report`
@@ -215,8 +222,11 @@ slice. Adding more artifact kinds is a separate Core-contract decision.
 - [SPEC-043](./SPEC-043-cats-code-mvp-multi-agent-local-app-workflow.md)
 - [SPEC-061](./SPEC-061-concurrent-parallel-semantics-and-code-entry-presets.md)
 - [SPEC-083](./SPEC-083-work-system-map-and-cockpit-projections.md)
+- [SPEC-092](./SPEC-092-code-artifact-declaration-contract.md)
 - [PLAN-064](../plans/PLAN-064-new-code-mvp-task-run-artifact-materialization.md)
+- [PLAN-081](../plans/PLAN-081-code-artifact-declaration-rollout.md)
 - [ADR-081](../decisions/081-canonicalize-three-tier-core-record-taxonomy.md)
+- [ADR-088](../decisions/088-use-structured-artifact-declarations-for-code-materialization.md)
 
 ## Open Questions
 
@@ -233,4 +243,4 @@ slice. Adding more artifact kinds is a separate Core-contract decision.
 
 *Created: 2026-04-28*
 *Author: Codex*
-*Related Plan: TBD*
+*Related Plan: TBD for full sidebar rollout; [PLAN-081](../plans/PLAN-081-code-artifact-declaration-rollout.md) covers artifact declarations*

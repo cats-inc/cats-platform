@@ -19,7 +19,10 @@
 - [SPEC-061: Concurrent vs Parallel Semantics and Code Entry Presets](../specs/SPEC-061-concurrent-parallel-semantics-and-code-entry-presets.md)
 - [SPEC-058: Interaction Core and Domain Materialization](../specs/SPEC-058-interaction-core-and-domain-materialization.md)
 - [SPEC-091: Cats Code Workspace and Artifact Sidebar](../specs/SPEC-091-cats-code-workspace-and-artifact-sidebar.md)
+- [SPEC-092: Code Artifact Declaration Contract](../specs/SPEC-092-code-artifact-declaration-contract.md)
 - [ADR-063: Separate Managed Work, Agent Missions, Execution Runs, and Transport Bindings](../decisions/063-agent-missions-and-transport-bindings.md)
+- [ADR-088: Use Structured Artifact Declarations for Code Materialization](../decisions/088-use-structured-artifact-declarations-for-code-materialization.md)
+- [PLAN-081: Code Artifact Declaration Rollout](./PLAN-081-code-artifact-declaration-rollout.md)
 - [PLAN-029: Cats Code v1 Local Builder Loop](./PLAN-029-cats-code-v1-local-builder-loop.md) (stopped; do not complete `/code/build`)
 - [PLAN-032: Cats Code MVP Fan-Out, Relay, and Convergence](./PLAN-032-cats-code-mvp-fan-out-relay-and-convergence.md) (stopped; do not complete `/code/relay`)
 
@@ -149,6 +152,13 @@ attempt.
       - artifacts belong to the task
       - artifacts may also reference the producing run
       - artifact lists must stay readable even when many runs exist
+- [ ] Route artifact creation through the structured declaration contract:
+      - agent-declared artifacts
+      - tool-declared artifacts
+      - system-detected candidates
+      - user imports / attachments
+- [ ] Keep cwd scanning and transcript JSON parsing out of the authoritative
+      artifact materialization path
 - [ ] Ensure runtime outputs such as preview/build/test/report artifacts can be
       projected back into the same task detail flow
 - [ ] Keep artifact provenance visible enough that the operator can tell which
@@ -322,6 +332,7 @@ and evidence all point back to one task/conversation anchor.
 | 2026-04-28 | Follow-up amendment: first Run starts at dispatcher/runtime admission; a first user send can create it immediately when Code auto-dispatches. Work linkage through `WorkItem.taskId` flips current Work Graph binding to `work` without erasing Code origin lineage. |
 | 2026-04-28 | Lineage / projection contract correction: clarified that "Code origin remains" lives on raw `CoreTaskRecord.metadata.planning`, NOT as a separate projection field. `WorkGraphObjectSummary` exposes only the *current* `productBinding`. Adding a `productLineage` / `originBinding` projection field is a deliberate follow-on, not implied by this slice. |
 | 2026-04-28 | Added `SPEC-091` alignment: Code sidebar may add `Workspaces` and `Artifacts` as execution-context / evidence indexes while Work remains the sidebar home for Projects, Work Items, Tasks, Runs, and Missions. |
+| 2026-04-29 | Added `ADR-088` / `SPEC-092` / `PLAN-081` alignment: Code artifacts are materialized through structured declarations, not cwd scanning or transcript JSON parsing. |
 
 ---
 

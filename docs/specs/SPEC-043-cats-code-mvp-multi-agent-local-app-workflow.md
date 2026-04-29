@@ -400,56 +400,59 @@ Implementation note for the `+New code` MVP:
     produced them.
 26. Artifact navigation shall be available from Code as a durable output index,
     not only as inline transcript content.
-27. Workspace navigation shall be available from Code as an execution-context
+27. Artifact materialization shall use structured declarations from agents,
+    tools, system candidate detection, or user imports; transcript JSON parsing
+    and cwd scanning are not authoritative artifact producer paths.
+28. Workspace navigation shall be available from Code as an execution-context
     index for repo/folder/worktree or managed-room contexts.
 
 #### Implementation and review loop
 
-28. The MVP shall support selecting one primary coder for an implementation
+29. The MVP shall support selecting one primary coder for an implementation
     round and one or more secondary reviewers.
-29. Primary-coder selection may consider at least:
+30. Primary-coder selection may consider at least:
     - user preference
     - perceived agent strength for the task
     - current subscription or quota context
-30. The thread-wide agent roster and quota context may also inform routing
+31. The thread-wide agent roster and quota context may also inform routing
     during discovery, shaping, document drafting, and review, not only during
     primary-coder selection.
-31. The product shall support the user's current loop where one agent writes,
+32. The product shall support the user's current loop where one agent writes,
     other agents review, and feedback is routed back to the writer without
     manual copy/paste.
-32. Reviewer output shall be captured as structured review artifacts with at
+33. Reviewer output shall be captured as structured review artifacts with at
     least:
     - blocking findings
     - non-blocking suggestions
     - open questions
     - recommended next step
-33. Historical `SPEC-041` builder-loop work may be mined for build/run
+34. Historical `SPEC-041` builder-loop work may be mined for build/run
     semantics inside active Code entry flows, but standalone `/code/build`
     development is stopped and shall not define the product identity of
     `Cats Code`.
 
 #### Human verification and repair
 
-34. `human_verify` shall be a first-class working mode rather than a hidden
+35. `human_verify` shall be a first-class working mode rather than a hidden
     afterthought.
-35. The MVP shall support capturing manual-testing feedback as structured
+36. The MVP shall support capturing manual-testing feedback as structured
     project input, including at least:
     - expected behavior
     - actual behavior
     - reproduction notes
     - severity
     - optional screenshot or visual annotation
-36. Human verification may happen multiple times across the life of one
+37. Human verification may happen multiple times across the life of one
     project thread.
-37. Manual feedback shall be routable into a repair round without requiring the
+38. Manual feedback shall be routable into a repair round without requiring the
     user to rewrite it as a new free-form prompt.
 
 #### Evidence contract
 
-38. Because the MVP does not expose a visible code editor as the primary
+39. Because the MVP does not expose a visible code editor as the primary
     surface, it shall provide a usable evidence contract for trust and
     arbitration.
-39. The first evidence contract shall support at least these outputs:
+40. The first evidence contract shall support at least these outputs:
     - wireframe or visual-direction artifacts
     - preview or runnable local output when available
     - changed-files summary
@@ -457,19 +460,19 @@ Implementation note for the `+New code` MVP:
     - review summaries
     - identified risks or blockers
     - implementation status
-40. The evidence contract shall help the user decide what to do next without
+41. The evidence contract shall help the user decide what to do next without
     requiring direct code editing.
 
 #### Waiting, resume, and arbitration
 
-41. The product shall support explicit waiting states for:
+42. The product shall support explicit waiting states for:
     - agent work in progress
     - review pending
     - human testing pending
     - user arbitration pending
-42. The product shall support resuming a thread after these waiting states
+43. The product shall support resuming a thread after these waiting states
     without losing context.
-43. The user shall remain able to overrule convergence, pick a different main
+44. The user shall remain able to overrule convergence, pick a different main
     coder, request another debate round, or redirect the work into a different
     mode.
 
@@ -544,6 +547,8 @@ user starts with vague or concrete app intent
 - [SPEC-091](./SPEC-091-cats-code-workspace-and-artifact-sidebar.md) defines
   the Code-owned `Workspaces` and `Artifacts` sidebar entries for mockup and
   implementation planning.
+- [SPEC-092](./SPEC-092-code-artifact-declaration-contract.md) defines how
+  agents, tools, system candidates, and user imports declare Code artifacts.
 
 ## Open Questions
 

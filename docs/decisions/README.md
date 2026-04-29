@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [088-use-structured-artifact-declarations-for-code-materialization](./088-use-structured-artifact-declarations-for-code-materialization.md) | Use Structured Artifact Declarations for Code Materialization | Proposed | 2026-04-29 |
 | [087-open-default-bootstrap-treatment-with-evidence-floor](./087-open-default-bootstrap-treatment-with-evidence-floor.md) | Open default bootstrap treatment, bounded by an evidence floor | Accepted | 2026-04-28 |
 | [086-adopt-n-to-m-work-graph-link-relations](./086-adopt-n-to-m-work-graph-link-relations.md) | Adopt N:M Work Graph Link Relations for Cross-Tier Item Linkage | Draft | 2026-04-28 |
 | [085-bundle-whisper-cpp-on-linux-for-composer-voice-input](./085-bundle-whisper-cpp-on-linux-for-composer-voice-input.md) | Bundle whisper.cpp with Linux Desktop Builds for Composer Voice Input | Rejected (not adopted) | 2026-04-28 |

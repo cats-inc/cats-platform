@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-092](./SPEC-092-code-artifact-declaration-contract.md) | Code Artifact Declaration Contract | Draft | [PLAN-081](../plans/PLAN-081-code-artifact-declaration-rollout.md), [ADR-088](../decisions/088-use-structured-artifact-declarations-for-code-materialization.md) |
 | [SPEC-091](./SPEC-091-cats-code-workspace-and-artifact-sidebar.md) | Cats Code Workspace and Artifact Sidebar | Draft | TBD |
 | [SPEC-090](./SPEC-090-work-graph-link-relations.md) | Work Graph Link Relations | Draft | [PLAN-079](../plans/PLAN-079-work-graph-link-relations-rollout.md), [ADR-086](../decisions/086-adopt-n-to-m-work-graph-link-relations.md) |
 | [SPEC-089](./SPEC-089-companion-all-content-library-placeholder.md) | Companion All-Content Library Placeholder | Placeholder | [PLAN-077](../plans/PLAN-077-companion-profile-and-share-preview-rollout.md), [ADR-084](../decisions/084-adopt-companion-profile-ia-and-shareable-content-references.md) |

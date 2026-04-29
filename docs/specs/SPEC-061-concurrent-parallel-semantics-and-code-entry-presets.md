@@ -193,7 +193,9 @@ The first slice should treat:
 
 - `Task` as the durable coding objective
 - `Run` as one execution attempt against that task
-- `Artifact` as a durable output of the task or run
+- `Artifact` as a durable output of the task or run, materialized through the
+  structured artifact declaration contract rather than cwd scanning or
+  transcript JSON parsing
 
 `+New code` should remain Code-owned by default. It may later project into
 `Cats Work` through managed-work promotion or a linked `WorkItem`, but that

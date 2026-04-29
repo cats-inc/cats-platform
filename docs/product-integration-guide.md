@@ -38,6 +38,8 @@ Use this guide together with:
 - [ADR-069](./decisions/069-scope-recents-to-channel-origin-surface-by-default.md)
 - [SPEC-070](./specs/SPEC-070-product-scoped-recents-and-channel-origin-surfaces.md)
 - [SPEC-091](./specs/SPEC-091-cats-code-workspace-and-artifact-sidebar.md)
+- [ADR-088](./decisions/088-use-structured-artifact-declarations-for-code-materialization.md)
+- [SPEC-092](./specs/SPEC-092-code-artifact-declaration-contract.md)
 
 ## Foundational Integration Rules
 
@@ -247,6 +249,11 @@ Rules:
 - `Artifacts` is a Code-owned sidebar entry. It indexes durable
   `CoreArtifactRecord` rows that are relevant to Code through task, run,
   conversation, or workspace provenance.
+- Code artifact rows are materialized through structured declarations from
+  agents, tools, system candidates, or user imports. The product server
+  validates and normalizes declarations before writing Core artifacts.
+- Workspace scanning and transcript JSON parsing are not authoritative artifact
+  producer paths.
 - Opening `Workspaces` or `Artifacts` must not create fallback Work Planning
   records. Projectless Code tasks remain Code-owned until explicit Work
   promotion or `WorkItem.taskId` linkage.
