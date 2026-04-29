@@ -139,6 +139,44 @@ test('FileChatStore round-trips explicit solo continuity reset boundaries', asyn
   assert.equal(reloadedChannel?.messages.at(-1)?.metadata?.event, 'continuity_reset');
 });
 
+test('FileChatStore strips legacy composerMode from room-created metadata on reload', async () => {
+  const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
+  const statePath = path.join(tempDir, 'chat-state.json');
+  const store = new FileChatStore(statePath);
+  const now = new Date('2026-04-29T00:00:00.000Z');
+
+  let state = await store.read();
+  state = createChannel(
+    state,
+    {
+      title: 'Legacy Room Created',
+      topic: 'Normalize old room_created metadata.',
+      originSurface: 'chat',
+      skipBossCatGreeting: true,
+    },
+    now,
+  );
+  const channelId = state.selectedChannelId;
+  const roomCreated = state.channels
+    .find((channel) => channel.id === channelId)
+    ?.messages.find((message) => message.metadata?.event === 'room_created');
+  assert.ok(roomCreated);
+  roomCreated.metadata.composerMode = 'cat_led';
+  roomCreated.metadata.roomMode = 'boss_chat';
+
+  await store.write(state);
+
+  const reloadedStore = new FileChatStore(statePath);
+  const reloadedState = await reloadedStore.read();
+  const reloadedRoomCreated = reloadedState.channels
+    .find((channel) => channel.id === channelId)
+    ?.messages.find((message) => message.metadata?.event === 'room_created');
+
+  assert.ok(reloadedRoomCreated);
+  assert.equal('composerMode' in reloadedRoomCreated.metadata, false);
+  assert.equal(reloadedRoomCreated.metadata.roomMode, 'boss_chat');
+});
+
 test('resetSoloChannelContinuity is idempotent before the new branch starts', async () => {
   const now = new Date('2026-04-17T00:00:00.000Z');
   let state = createDefaultChatState();

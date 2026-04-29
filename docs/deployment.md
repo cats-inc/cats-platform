@@ -25,6 +25,15 @@ npm run build
 npm start
 ```
 
+### Chat State Behavior Notes
+
+ADR-091 changes existing non-direct participant rooms: a no-mention user turn
+now enters the orchestrator first instead of auto-dispatching to
+`defaultRecipientId`. Direct/private lanes still route unmentioned turns to the
+direct participant, and explicit `@mention` routing is unchanged. Operators with
+older local rooms should mention the intended participant or choose a per-turn
+audience when they want a specific Cat to answer first.
+
 ### Docker
 
 ```bash

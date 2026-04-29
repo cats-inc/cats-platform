@@ -535,6 +535,45 @@ test('POST /api/channels keeps the room_created system message when skipBossCatG
   });
 });
 
+test('POST /api/channels treats explicit solo entry as solo even with participants', async () => {
+  await withServer(createRuntimeStub(), async (baseUrl) => {
+    const setupResponse = await fetch(`${baseUrl}/api/setup/complete`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        ownerDisplayName: 'Kenny',
+        bossCatName: 'Smelly',
+        bossCatProvider: 'claude',
+      }),
+    });
+    assert.equal(setupResponse.status, 200);
+
+    const createResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        title: 'Solo With Participant',
+        topic: 'Contradictory creation input should stay solo for greetings.',
+        originSurface: 'chat',
+        entryKind: 'solo',
+        cats: [{ name: 'Custom-Agent', provider: 'gemini', roles: ['coder'] }],
+      }),
+    });
+    assert.equal(createResponse.status, 201);
+
+    const createPayload = await createResponse.json();
+    assert.equal(createPayload.channel.messages.length, 1);
+    assert.equal(createPayload.channel.messages[0]?.metadata?.event, 'room_created');
+    assert.equal(
+      createPayload.channel.messages.some(
+        (m) => m.senderKind === 'orchestrator' && m.senderName === 'Smelly',
+      ),
+      false,
+      'Explicit solo creation should not inject a Boss Cat greeting bubble',
+    );
+  });
+});
+
 test('POST /api/channels does NOT auto-assign when cats are explicitly provided', async () => {
   await withServer(createRuntimeStub(), async (baseUrl) => {
     // Complete setup first

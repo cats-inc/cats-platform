@@ -14,6 +14,14 @@ Accepted
 > routing is an orchestrator responsibility**, not a parallel branch in the
 > mention router.
 
+*Amended 2026-04-30*: corrected the legacy routing-result location: the
+`missing_cat_led_recipient` / `cat_led_recipient` aliases lived in the
+product-side room-routing normalizer, not in the frozen shared
+`src/shared/roomRouting.ts` contract. Also records that the implementation
+landed as one consolidated cleanup after the product surfaces no longer
+depended on `composerMode`; the slices below are dependency order, not a
+commit-splitting requirement.
+
 ## Context
 
 Two prior decisions left an unresolved seam:
@@ -37,10 +45,10 @@ Before this ADR, the result was a grey zone:
 - `src/products/chat/state/chat-snapshot/entities.ts:314-322` infers and
   persists the field at channel creation time, so every existing channel
   records one of `'solo'` or `'cat_led'` as a permanent routing decision.
-- `src/shared/roomRouting.ts:30,37` still defines
-  `'missing_cat_led_recipient'` and `'cat_led_recipient'` enum values; this
-  file is a frozen shared contract per `CLAUDE.md`, so the legacy values are
-  load-bearing across product code.
+- `src/products/chat/state/room-routing/index.ts` still carried product-side
+  normalizer aliases for `'missing_cat_led_recipient'` and
+  `'cat_led_recipient'`, keeping old routing-result names visible in product
+  code even after the shared recipient vocabulary had moved on.
 - The legacy term reached UI workflow-shape gates, session-launch branches,
   API/read-model contracts, tests, and Guide Cat assist scope tables.
 
@@ -102,8 +110,8 @@ It intentionally changes one behavior:
 - Group/parallel participant rooms no longer auto-dispatch a no-mention turn
   to `defaultRecipientId`. They route to the orchestrator first.
 
-The migration is staged as implementation slices, not as a compatibility
-window:
+The migration dependency order was staged as implementation slices, not as a
+compatibility window:
 
 1. **Slice 1 — channel-intent helpers.** Add derived predicates for provider
    solo, direct participant lane, participant room, and participant-audience
@@ -126,7 +134,10 @@ window:
 
 Slices 1-3 are behavior-preserving or behavior-changing UI/routing work.
 Slices 4-5 are the contract-breaking cleanup and must land only after product
-surfaces no longer depend on `composerMode`.
+surfaces no longer depend on `composerMode`. In practice, that dependency had
+already been satisfied when this ADR was implemented, so the cleanup landed as
+one consolidated change plus follow-up verification rather than five separate
+commits.
 
 ## Consequences
 
@@ -189,7 +200,8 @@ surfaces no longer depend on `composerMode`.
 - [ADR-042: Separate channel topology from routing mode](./042-separate-channel-topology-from-routing-mode.md)
 - `src/products/chat/state/mentionRouter.ts` — historical `cat_led` short-circuit
 - `src/products/chat/state/chat-snapshot/entities.ts` — historical `composerMode` inference + persistence
-- `src/shared/roomRouting.ts` — room-routing result values
+- `src/products/chat/state/room-routing/index.ts` — historical product-side legacy routing-result aliases
+- `src/shared/roomRouting.ts` — current shared room-routing result vocabulary
 
 ---
 

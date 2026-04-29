@@ -3015,6 +3015,64 @@ test('parallel member channels inherit solo continuity transplant rules on retar
   assertProviderAgentDispatchMetadata(activeChannel, 'Switch turn');
 });
 
+test(
+  'participant room no-mention turns route to orchestrator despite default recipient',
+  async () => {
+    const { state, channelId, agent1Id } = await createChannelState();
+    const runtimeClient = createRuntimeStub(async () =>
+      usage('Boss handled the default room turn.'),
+    );
+
+    const dispatched = await routeChannelMessage(
+      state,
+      channelId,
+      { body: 'Decide who should take this.' },
+      runtimeClient,
+      new Date('2026-03-21T00:00:00.000Z'),
+    );
+    const channel = buildChannelView(dispatched.state, channelId);
+    const routedReply = channel.messages.find(
+      (message) => message.metadata?.targetKind === 'orchestrator',
+    );
+
+    assert.equal(channel.roomRouting?.defaultRecipientId, agent1Id);
+    assert.equal(
+      channel.roomRouting?.lastOutcome?.resolution.defaultTargetReason,
+      'boss_chat_default',
+    );
+    assert.equal(
+      channel.roomRouting?.lastOutcome?.resolution.defaultTarget?.participantKind,
+      'orchestrator',
+    );
+    assert.equal(channel.roomRouting?.lastOutcome?.dispatches.length, 1);
+    assert.equal(runtimeClient.createdSessions.length, 1);
+    assert.equal(
+      runtimeClient.createdSessions[0]?.context?.metadata?.targetKind,
+      'orchestrator',
+    );
+    assert.equal(
+      runtimeClient.createdSessions[0]?.context?.metadata?.targetId,
+      'orchestrator',
+    );
+    assert.equal(runtimeClient.sentMessages.length, 1);
+    assert.equal(
+      runtimeClient.sentMessages[0]?.input?.context?.metadata?.targetKind,
+      'orchestrator',
+    );
+    assert.equal(
+      runtimeClient.sentMessages[0]?.input?.context?.metadata?.targetId,
+      'orchestrator',
+    );
+    assert.equal(
+      runtimeClient.sentMessages.some(
+        (message) => message.input?.context?.metadata?.targetId === agent1Id,
+      ),
+      false,
+    );
+    assert.ok(routedReply);
+  },
+);
+
 test('participant room routing continues across agent mentions and auto-wakes targeted participants', async () => {
   const { state, channelId } = await createChannelState();
   const runtimeClient = createRuntimeStub(async ({ content }) => {

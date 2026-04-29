@@ -403,6 +403,7 @@ export async function persistCreatedChannel(
 
   if (
     !input.skipBossCatGreeting
+    && input.entryKind !== 'solo'
     && requestedRoomMode !== 'direct_cat_chat'
     && requestedParticipantCount > 0
   ) {
