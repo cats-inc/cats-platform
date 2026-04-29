@@ -2933,6 +2933,9 @@ Team 2 and future Work/Code slices can import the same examples through
   MCP facade at `POST /mcp`.
 - MCP is therefore an additional runtime access mode, not a replacement for the
   app-facing API described in this document.
+- Agent/runtime tool call contracts are tracked in
+  [tool-calls.md](./tool-calls.md). They should not be documented as public
+  HTTP APIs here unless the same operation is also exposed as an HTTP route.
 
 ## Error Responses
 
@@ -2979,4 +2982,4 @@ Errors use a minimal payload:
 
 ---
 
-*Last updated: 2026-04-20*
+*Last updated: 2026-04-29*
