@@ -31,27 +31,22 @@ const INITIAL_STATE: WorkGraphState = {
   lastFetchedAt: null,
 };
 
-// Refresh policy:
+// Refresh policy (event-driven only — no polling). Polling was removed
+// in favour of React Query migration; until that lands, rely on:
 //  - On hook mount, if cache is older than MOUNT_REFRESH_MAX_AGE_MS (or
-//    never fetched), trigger a refresh. This is what catches "I created a
-//    Task in Code and now navigated to /work/tasks" because the Tasks page
+//    never fetched), trigger a refresh. Catches "I created a Task in
+//    Code and now navigated to /work/tasks" because the Tasks page
 //    component remounts.
-//  - On document visibility change (tab becomes visible / window focus),
-//    trigger a refresh if cache is older than VISIBILITY_REFRESH_MAX_AGE_MS.
-//    This catches "I was on Tasks page in another tab while Code created
-//    a task; coming back should reflect it."
-//  - While at least one subscriber is mounted AND the document is visible,
-//    poll every POLL_INTERVAL_MS. This catches "I'm staring at the Tasks
-//    page while Code creates a task in a side surface." Polling stops when
-//    last subscriber unmounts or tab goes hidden.
+//  - On document visibility change / window focus, trigger a refresh if
+//    cache is older than VISIBILITY_REFRESH_MAX_AGE_MS. Catches "I was
+//    on Tasks page in another tab while Code created a task; coming
+//    back should reflect it."
 const MOUNT_REFRESH_MAX_AGE_MS = 5_000;
 const VISIBILITY_REFRESH_MAX_AGE_MS = 2_000;
-const POLL_INTERVAL_MS = 5_000;
 
 let state: WorkGraphState = INITIAL_STATE;
 const listeners = new Set<() => void>();
 let inflight: Promise<void> | null = null;
-let pollHandle: ReturnType<typeof setInterval> | null = null;
 let crossSurfaceListenersInstalled = false;
 
 function notify(): void {
@@ -67,37 +62,15 @@ function isDocumentVisible(): boolean {
   return typeof document === "undefined" || document.visibilityState !== "hidden";
 }
 
-function startPolling(): void {
-  if (pollHandle !== null) return;
-  if (typeof setInterval === "undefined") return;
-  pollHandle = setInterval(() => {
-    if (listeners.size === 0 || !isDocumentVisible()) {
-      stopPolling();
-      return;
-    }
-    void fetchOnce();
-  }, POLL_INTERVAL_MS);
-}
-
-function stopPolling(): void {
-  if (pollHandle === null) return;
-  clearInterval(pollHandle);
-  pollHandle = null;
-}
-
 function handleVisibilityRefresh(): void {
   if (listeners.size === 0) return;
-  if (!isDocumentVisible()) {
-    stopPolling();
-    return;
-  }
+  if (!isDocumentVisible()) return;
   const age = state.lastFetchedAt === null
     ? Number.POSITIVE_INFINITY
     : Date.now() - state.lastFetchedAt;
   if (age > VISIBILITY_REFRESH_MAX_AGE_MS) {
     void fetchOnce();
   }
-  startPolling();
 }
 
 function ensureCrossSurfaceListenersInstalled(): void {
@@ -150,14 +123,8 @@ export function useWorkGraph(): UseWorkGraphResult {
   const subscribe = useCallback((listener: () => void) => {
     ensureCrossSurfaceListenersInstalled();
     listeners.add(listener);
-    if (isDocumentVisible()) {
-      startPolling();
-    }
     return () => {
       listeners.delete(listener);
-      if (listeners.size === 0) {
-        stopPolling();
-      }
     };
   }, []);
   const snapshot = useSyncExternalStore(
@@ -215,7 +182,6 @@ export function triggerWorkGraphRefresh(): Promise<void> {
 export function __resetWorkGraphStoreForTest(): void {
   state = INITIAL_STATE;
   inflight = null;
-  stopPolling();
   notify();
 }
 
