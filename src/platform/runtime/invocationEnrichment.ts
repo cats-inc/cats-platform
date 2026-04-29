@@ -1,4 +1,7 @@
 import type {
+  CatsCoreState,
+} from '../../core/types.js';
+import type {
   RuntimeMessageSegment,
   RuntimeSessionInvocationContext,
 } from './client.js';
@@ -80,6 +83,38 @@ export interface RuntimeInvocationEnricher {
   ): Record<string, unknown> | null;
 }
 
+export interface RuntimeInvocationAssistantEffectContext {
+  runtimeContext?: RuntimeSessionInvocationContext;
+  runtimeSessionId?: string | null;
+  actorId?: string | null;
+  now?: Date;
+}
+
+export interface RuntimeInvocationAssistantEffectInput {
+  core: CatsCoreState;
+  segments: readonly RuntimeMessageSegment[];
+}
+
+export interface RuntimeInvocationAssistantEffectContribution {
+  core: CatsCoreState;
+  metadata?: Record<string, unknown> | null;
+}
+
+export interface RuntimeInvocationAssistantEffectResult {
+  core: CatsCoreState;
+  metadata: Record<string, unknown>;
+}
+
+export interface RuntimeInvocationAssistantEffectProcessor {
+  id: string;
+  priority?: number;
+  applyAssistantEffects(
+    channel: RuntimeInvocationEnrichmentChannel,
+    input: RuntimeInvocationAssistantEffectInput,
+    context: RuntimeInvocationAssistantEffectContext,
+  ): RuntimeInvocationAssistantEffectContribution | null | undefined;
+}
+
 export class RuntimeEnrichmentCloneError extends Error {
   readonly scope: string;
   readonly enricherId: string | null;
@@ -96,6 +131,8 @@ export class RuntimeEnrichmentCloneError extends Error {
 }
 
 const runtimeInvocationEnrichers = new Map<string, RuntimeInvocationEnricher>();
+const runtimeInvocationAssistantEffectProcessors =
+  new Map<string, RuntimeInvocationAssistantEffectProcessor>();
 
 export function registerRuntimeInvocationEnricher(enricher: RuntimeInvocationEnricher): void {
   runtimeInvocationEnrichers.set(enricher.id, enricher);
@@ -103,10 +140,30 @@ export function registerRuntimeInvocationEnricher(enricher: RuntimeInvocationEnr
 
 export function clearRuntimeInvocationEnrichers(): void {
   runtimeInvocationEnrichers.clear();
+  runtimeInvocationAssistantEffectProcessors.clear();
+}
+
+export function registerRuntimeInvocationAssistantEffectProcessor(
+  processor: RuntimeInvocationAssistantEffectProcessor,
+): void {
+  runtimeInvocationAssistantEffectProcessors.set(processor.id, processor);
+}
+
+export function clearRuntimeInvocationAssistantEffectProcessors(): void {
+  runtimeInvocationAssistantEffectProcessors.clear();
 }
 
 function getOrderedRuntimeInvocationEnrichers(): RuntimeInvocationEnricher[] {
   return [...runtimeInvocationEnrichers.values()].sort((left, right) => {
+    const priorityDelta =
+      (left.priority ?? RuntimeEnricherPriority.NORMAL)
+      - (right.priority ?? RuntimeEnricherPriority.NORMAL);
+    return priorityDelta !== 0 ? priorityDelta : left.id.localeCompare(right.id);
+  });
+}
+
+function getOrderedRuntimeInvocationAssistantEffectProcessors(): RuntimeInvocationAssistantEffectProcessor[] {
+  return [...runtimeInvocationAssistantEffectProcessors.values()].sort((left, right) => {
     const priorityDelta =
       (left.priority ?? RuntimeEnricherPriority.NORMAL)
       - (right.priority ?? RuntimeEnricherPriority.NORMAL);
@@ -323,4 +380,36 @@ export function collectRuntimeInvocationAssistantMetadata(
   }
 
   return metadata;
+}
+
+export function applyRuntimeInvocationAssistantEffects(
+  channel: RuntimeInvocationEnrichmentChannel,
+  input: RuntimeInvocationAssistantEffectInput,
+  context: RuntimeInvocationAssistantEffectContext,
+): RuntimeInvocationAssistantEffectResult {
+  let currentCore = input.core;
+  const metadata: Record<string, unknown> = {};
+
+  for (const processor of getOrderedRuntimeInvocationAssistantEffectProcessors()) {
+    const contribution = processor.applyAssistantEffects(
+      channel,
+      {
+        core: currentCore,
+        segments: input.segments,
+      },
+      context,
+    );
+    if (!contribution) {
+      continue;
+    }
+    currentCore = contribution.core;
+    if (contribution.metadata) {
+      metadata[processor.id] = contribution.metadata;
+    }
+  }
+
+  return {
+    core: currentCore,
+    metadata,
+  };
 }

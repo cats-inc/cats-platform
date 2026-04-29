@@ -62,7 +62,7 @@ rather than duplicating every validation branch.
 | `work.approval_gated.apply` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / future `runtime_tool` | Work supervised agent | [Work Supervised Tools](#work-supervised-tools) |
 | `work.sop.classify_text_batch` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / worker tool | Work SOP worker | [Work Supervised Tools](#work-supervised-tools) |
 | `work.sop.ask_weak` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / worker tool | Work SOP worker | [Work Supervised Tools](#work-supervised-tools) |
-| `declare_artifact` | Cats Code | Active-session onboarding, submit route, materialization, activity, and runtime execution helper wired; live tool-result delivery pending | `runtime_tool` first; bridge/user delegates later | Code assistant / runtime bridge / Code UI import flow | [Declare Artifact](#declare_artifact) |
+| `declare_artifact` | Cats Code | Active-session onboarding, submit route, materialization, activity, runtime execution helper, and assistant-effect processor wired; live tool-result delivery pending | `runtime_tool` first; bridge/user delegates later | Code assistant / runtime bridge / Code UI import flow | [Declare Artifact](#declare_artifact) |
 
 ## Supervised Tool Contract
 
@@ -120,7 +120,7 @@ a transcript command and it is not a public HTTP route in the current scaffold.
 | Field | Value |
 |-------|-------|
 | Owning product | Cats Code |
-| Current status | Code-origin active sessions receive the onboarding block at session create and runtime context metadata at session create / message send; returned `declare_artifact` `tool_use` segments are observed as shape summaries. The Code product now has an authoritative submit route, materialization delegate, activity emission, and a runtime execution helper that can turn observed `tool_use` payloads into accepted / rejected declaration results. Live runtime-loop tool-result delivery and finalization enforcement remain pending. |
+| Current status | Code-origin active sessions receive the onboarding block at session create and runtime context metadata at session create / message send; returned `declare_artifact` `tool_use` segments are observed as shape summaries. The Code product now has an authoritative submit route, materialization delegate, activity emission, runtime execution helper, and platform-registered assistant-effect processor that can turn observed `tool_use` payloads into accepted / rejected declaration results. Live runtime-loop tool-result delivery and finalization enforcement remain pending. |
 | First channel | `runtime_tool` |
 | Tool name | `declare_artifact` |
 | Implementation entry point | `src/products/code/shared/artifactDeclaration.ts` |
@@ -218,10 +218,12 @@ runtime execution helper. Given Code-origin channel metadata, observed runtime
 segments, and server-resolved producer / anchor context, it executes
 `declare_artifact` calls through the same Code materialization delegate used by
 the HTTP submit route and returns `CodeArtifactToolResult` values. This helper
-is not yet connected to the live runtime loop, so tool results are not yet sent
-back to the assistant through the runtime tool-result channel. Until the
-finalization gate is wired, Cats Platform still accepts final visible responses
-that claim an artifact without an accepted same-turn declaration.
+is registered behind the platform assistant-effect processor registry, so
+runtime surfaces can apply artifact side effects without importing Code
+internals. The live dispatch loop still needs to call that registry and send
+tool results back to the assistant through the runtime tool-result channel.
+Until the finalization gate is wired, Cats Platform still accepts final visible
+responses that claim an artifact without an accepted same-turn declaration.
 
 ### Output Summary
 
@@ -319,16 +321,17 @@ The full materialized flow is defined by SPEC-092:
 
 The current implementation provides the tool contract classes, finalization
 gate helpers, the first Code-owned materialization delegate for normalized
-declarations, the Code product submit route, and a runtime execution helper for
-observed `declare_artifact` `tool_use` segments. The delegate writes accepted
-declarations into `CoreArtifactRecord` with canonical idempotency metadata and
-deterministic artifact ids. The Code product API exposes
+declarations, the Code product submit route, a runtime execution helper for
+observed `declare_artifact` `tool_use` segments, and a platform-registered
+assistant-effect processor. The delegate writes accepted declarations into
+`CoreArtifactRecord` with canonical idempotency metadata and deterministic
+artifact ids. The Code product API exposes
 `POST /api/code/artifacts/declarations` as the first authoritative submit route
 into that delegate. Materialized create/update operations emit idempotent
 background `artifact_recorded` activities keyed by the material-change
-signature; exact no-op replays do not duplicate activity. Live runtime-loop
-tool-result delivery and frozen-scope fallback recovery remain follow-up
-slices.
+signature; exact no-op replays do not duplicate activity. Live dispatch-loop
+registry invocation, tool-result delivery, and frozen-scope fallback recovery
+remain follow-up slices.
 
 ### Idempotency
 

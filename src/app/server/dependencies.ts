@@ -62,6 +62,9 @@ import { createChatTelegramRoomBridge } from '../../products/chat/state/telegram
 import {
   registerCodeArtifactRuntimeInvocationEnrichers,
 } from '../../products/code/state/runtimeArtifactTooling.js';
+import {
+  registerCodeArtifactRuntimeAssistantEffectProcessor,
+} from '../../products/code/state/runtimeArtifactExecution.js';
 
 function createDefaultCompanionStore(
   shared: SharedServerDependencies,
@@ -138,6 +141,7 @@ export function resolveServerDependencies(
   dependencies: ServerDependencies,
 ): ResolvedServerDependencies {
   registerCodeArtifactRuntimeInvocationEnrichers();
+  registerCodeArtifactRuntimeAssistantEffectProcessor();
 
   const sharedCoreStore = dependencies.shared.coreStore ?? dependencies.chat.chatStore;
   const startup = dependencies.shared.startup ?? createAppStartupState({
