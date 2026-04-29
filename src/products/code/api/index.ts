@@ -27,6 +27,7 @@ import {
   sendMethodNotAllowed,
   type RouteContext,
 } from '../../../shared/http.js';
+import type { PlatformApiLogger } from '../../../shared/platformApiLogger.js';
 import {
   CODE_API_ARTIFACT_DETAIL_PATTERN,
   CODE_API_ARTIFACTS_PATH,
@@ -39,15 +40,11 @@ import {
 
 export const CODE_API_SLICE = 'code';
 
-export interface CodeApiLogger {
-  error(message: string, context?: Record<string, unknown>): void;
-}
-
 export interface CodeApiDependencies {
   coreStore: CoreStore;
   runtimeClient: RuntimeClient;
   config: AppConfig;
-  logger?: CodeApiLogger;
+  logger?: PlatformApiLogger;
   evidenceDataDir?: string;
   readEvidenceEvents?: (conversationId: string) => EvidenceEvent[];
   now?: () => Date;

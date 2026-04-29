@@ -207,6 +207,7 @@ export const CODE_ARTIFACT_DECLARATION_ERROR_CODES = [
   'artifact_producer_field_not_allowed',
   'artifact_agent_actor_required',
   'artifact_agent_actor_mismatch',
+  'artifact_agent_runtime_session_required',
   'artifact_tool_not_allowed',
   'artifact_system_detector_not_allowed',
   'artifact_user_actor_required',

@@ -145,7 +145,7 @@ function normalizeSubmitProducer(input: unknown): CodeArtifactProducer {
   const runtimeSessionId = normalizeOptionalString(producer?.runtimeSessionId);
   if (kind === 'agent' && !runtimeSessionId) {
     throw new CodeArtifactDeclarationError(
-      'artifact_required_field_empty',
+      'artifact_agent_runtime_session_required',
       'Request body producer.runtimeSessionId is required for agent declarations.',
       { field: 'producer.runtimeSessionId', producerKind: kind },
     );

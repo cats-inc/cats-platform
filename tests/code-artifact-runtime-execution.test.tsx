@@ -353,6 +353,116 @@ test('Code runtime tool-result projection avoids ambiguous null identity pairing
   assert.equal(JSON.parse(projected[2]?.text ?? '{}').error.message, 'Second failed.');
 });
 
+test('Code runtime tool-result projection pairs the unique null-identity declaration', () => {
+  const projected = projectCodeArtifactToolResultsIntoSegments(
+    [
+      {
+        kind: 'tool_use',
+        toolName: 'declare_artifact',
+        toolId: null,
+        text: JSON.stringify({
+          label: 'preview_url',
+          title: 'Preview without ids',
+          location: { kind: 'url', value: 'http://127.0.0.1:5173' },
+        }),
+      },
+    ],
+    [
+      {
+        toolId: null,
+        declarationId: null,
+        result: {
+          status: 'rejected',
+          error: { code: 'artifact_metadata_invalid', message: 'Only failure.' },
+        },
+      },
+    ],
+  );
+
+  assert.equal(projected.length, 2);
+  assert.equal(projected[0]?.kind, 'tool_use');
+  assert.equal(projected[1]?.kind, 'tool_result');
+  assert.equal(JSON.parse(projected[1]?.text ?? '{}').error.message, 'Only failure.');
+});
+
+test('Code runtime tool-result projection pairs by declarationId when tool ids are absent', () => {
+  const projected = projectCodeArtifactToolResultsIntoSegments(
+    [
+      {
+        kind: 'tool_use',
+        toolName: 'declare_artifact',
+        toolId: null,
+        text: JSON.stringify({
+          declarationId: 'preview-by-name',
+          label: 'preview_url',
+          title: 'Preview',
+          location: { kind: 'url', value: 'http://127.0.0.1:5173' },
+        }),
+      },
+    ],
+    [
+      {
+        toolId: null,
+        declarationId: 'preview-by-name',
+        result: {
+          status: 'accepted',
+          declarationId: 'preview-by-name',
+          disposition: 'record',
+          artifactId: 'artifact-by-name',
+          artifactStatus: 'ready',
+        },
+      },
+    ],
+  );
+
+  assert.equal(projected.length, 2);
+  assert.equal(projected[0]?.kind, 'tool_use');
+  assert.equal(projected[1]?.kind, 'tool_result');
+  assert.equal(JSON.parse(projected[1]?.text ?? '{}').artifactId, 'artifact-by-name');
+});
+
+test('Code runtime tool-result projection refuses cross-pairing tool ids and declaration ids', () => {
+  // segment carries a toolId, declaration only carries a matching declarationId.
+  // findMatchingDeclarationResult must not fall back to declarationId when the
+  // segment toolId is non-null but no declaration toolId matches.
+  const projected = projectCodeArtifactToolResultsIntoSegments(
+    [
+      {
+        kind: 'tool_use',
+        toolName: 'declare_artifact',
+        toolId: 'tool-1',
+        text: JSON.stringify({
+          declarationId: 'preview-shared',
+          label: 'preview_url',
+          title: 'Preview',
+          location: { kind: 'url', value: 'http://127.0.0.1:5173' },
+        }),
+      },
+    ],
+    [
+      {
+        toolId: null,
+        declarationId: 'preview-shared',
+        result: {
+          status: 'accepted',
+          declarationId: 'preview-shared',
+          disposition: 'record',
+          artifactId: 'artifact-shared',
+          artifactStatus: 'ready',
+        },
+      },
+    ],
+  );
+
+  // Segment is unmatched, declaration is appended as orphan.
+  assert.equal(projected.length, 2);
+  assert.equal(projected[0]?.kind, 'tool_use');
+  assert.equal(projected[0]?.toolId, 'tool-1');
+  assert.equal(projected[1]?.kind, 'tool_result');
+  assert.equal(projected[1]?.toolId, null);
+  assert.equal(JSON.parse(projected[1]?.text ?? '{}').artifactId, 'artifact-shared');
+});
+
 test('Code runtime declaration execution is no-op outside Code-origin channels', () => {
   const core = createAnchoredCodeCore();
   const result = executeCodeArtifactRuntimeDeclarations({

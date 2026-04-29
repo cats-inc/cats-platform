@@ -219,7 +219,7 @@ Producer identity errors are deterministic:
 | Case | Error code |
 |------|------------|
 | `agent` has no server-bound actor | `artifact_agent_actor_required` |
-| `agent` has no runtime session id | `artifact_required_field_empty` |
+| `agent` has no runtime session id | `artifact_agent_runtime_session_required` |
 | `agent` supplies a mismatched `actorId` | `artifact_agent_actor_mismatch` |
 | `tool` has no resolvable registered tool | `artifact_tool_not_allowed` |
 | `tool` supplies non-null `actorId` | `artifact_producer_actor_not_allowed` |
@@ -268,6 +268,7 @@ these codes instead of inventing local aliases.
 |------------|---------|
 | `artifact_agent_actor_required` | An `agent` declaration has no server-bound actor. |
 | `artifact_agent_actor_mismatch` | An `agent` declaration supplies an `actorId` that conflicts with the server-bound actor. |
+| `artifact_agent_runtime_session_required` | An `agent` declaration has no resolved `producer.runtimeSessionId`; agents must run inside an active runtime session so same-actor declaration ids cannot fold across sessions. |
 | `artifact_tool_not_allowed` | A `tool` declaration has no resolvable registered tool or the tool is not authorized for the context. |
 | `artifact_system_detector_not_allowed` | A `system` declaration names a detector not in the Code built-in detector registry. |
 | `artifact_user_actor_required` | A `user` declaration has no authenticated owner actor. |

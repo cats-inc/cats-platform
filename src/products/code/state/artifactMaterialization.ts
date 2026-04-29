@@ -44,6 +44,7 @@ interface ResolvedProducerIdentity {
   kind: CodeArtifactProducer['kind'];
   value: string;
   encoded: string;
+  runtimeSessionId: string | null;
 }
 
 interface ResolvedScope {
@@ -86,7 +87,7 @@ export function materializeCodeArtifactDeclaration(
     currentScope: scope,
     producerKind: declaration.producer.kind,
     producerIdentity: producerIdentity.encoded,
-    producerRuntimeSessionId: readNonEmptyString(declaration.producer.runtimeSessionId),
+    producerRuntimeSessionId: producerIdentity.runtimeSessionId,
     declarationId: declaration.declarationId,
   });
   const effectiveDeclaration: CodeArtifactDeclaration = {
@@ -212,11 +213,14 @@ function resolveMaterializationStatus(
 function resolveProducerIdentity(producer: CodeArtifactProducer): ResolvedProducerIdentity {
   switch (producer.kind) {
     case 'agent': {
-      normalizeRequiredString(
-        producer.runtimeSessionId,
-        'artifact_required_field_empty',
-        'Agent artifact declarations require a resolved runtime session id.',
-      );
+      const runtimeSessionId = readNonEmptyString(producer.runtimeSessionId);
+      if (!runtimeSessionId) {
+        throw new CodeArtifactDeclarationError(
+          'artifact_agent_runtime_session_required',
+          'Agent artifact declarations require a resolved runtime session id.',
+          { field: 'producer.runtimeSessionId', producerKind: producer.kind },
+        );
+      }
       if (readNonEmptyString(producer.toolName)) {
         throw new CodeArtifactDeclarationError(
           'artifact_producer_tool_not_allowed',
@@ -233,6 +237,7 @@ function resolveProducerIdentity(producer: CodeArtifactProducer): ResolvedProduc
         kind: producer.kind,
         value: actorId,
         encoded: `actor:${actorId}`,
+        runtimeSessionId,
       };
     }
     case 'user': {
@@ -252,6 +257,7 @@ function resolveProducerIdentity(producer: CodeArtifactProducer): ResolvedProduc
         kind: producer.kind,
         value: actorId,
         encoded: `actor:${actorId}`,
+        runtimeSessionId: readNonEmptyString(producer.runtimeSessionId),
       };
     }
     case 'tool': {
@@ -270,6 +276,7 @@ function resolveProducerIdentity(producer: CodeArtifactProducer): ResolvedProduc
         kind: 'tool',
         value: toolName,
         encoded: `tool:${toolName}`,
+        runtimeSessionId: readNonEmptyString(producer.runtimeSessionId),
       };
     }
     case 'system': {
@@ -291,6 +298,7 @@ function resolveProducerIdentity(producer: CodeArtifactProducer): ResolvedProduc
         kind: 'system',
         value: detectorName,
         encoded: `system:${detectorName}`,
+        runtimeSessionId: readNonEmptyString(producer.runtimeSessionId),
       };
     }
     default: {
@@ -583,9 +591,7 @@ function buildCoreArtifactMetadata(input: {
         key: input.idempotencyKey,
         producerKind: input.declaration.producer.kind,
         producerIdentity: input.producerIdentity.encoded,
-        producerRuntimeSessionId: readNonEmptyString(
-          input.declaration.producer.runtimeSessionId,
-        ),
+        producerRuntimeSessionId: input.producerIdentity.runtimeSessionId,
         scopeKind: input.scope.kind,
         scopeId: input.scope.id,
         declarationId: input.declaration.declarationId,

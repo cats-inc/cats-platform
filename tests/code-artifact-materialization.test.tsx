@@ -323,7 +323,7 @@ test('Code artifact materialization rejects missing agent runtime sessions befor
     ),
     (error) =>
       error instanceof CodeArtifactDeclarationError &&
-      error.code === 'artifact_required_field_empty',
+      error.code === 'artifact_agent_runtime_session_required',
   );
 
   assert.equal(secondRunCore.artifacts.length, 1);

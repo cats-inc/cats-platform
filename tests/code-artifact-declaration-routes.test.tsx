@@ -228,7 +228,7 @@ test('POST /api/code/artifacts/declarations returns declaration errors', async (
   assert.equal(missingAgentSession.status, 400);
   assert.equal(
     (missingAgentSession.payload?.error as { code?: string }).code,
-    'artifact_required_field_empty',
+    'artifact_agent_runtime_session_required',
   );
 
   const unanchoredDeclaration = await request(server, 'POST', CODE_API_ARTIFACT_DECLARATIONS_PATH, {
