@@ -24,7 +24,7 @@ import { resolveScheduleStatePathFromChatState } from '../src/shared/platformPat
 
 function dailyScheduleInput() {
   return {
-    title: 'Daily greeting',
+    title: 'Daily scheduled work',
     timezone: 'Asia/Taipei',
     schedule: {
       kind: 'daily',
@@ -270,7 +270,7 @@ test('manual test fire admits a Mission and Run with scheduleTrigger originalTar
   assert.ok(admitted.run);
   assert.equal(admitted.mission.assignedAgentId, createCatActorId('companion'));
   assert.equal(admitted.mission.metadata.runId, admitted.run.id);
-  assert.equal(admitted.run.title, '[TEST] Scheduled run: Daily greeting');
+  assert.equal(admitted.run.title, '[TEST] Scheduled run: Daily scheduled work');
   const trigger = readScheduleTrigger(admitted.run);
   assert.equal(trigger.ruleId, rule.id);
   assert.equal(trigger.reason, 'manual_test');

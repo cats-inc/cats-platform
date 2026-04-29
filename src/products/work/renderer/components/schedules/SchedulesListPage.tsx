@@ -1,9 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import type { AppShellPayload } from '../../../api/contracts.js';
 import {
-  createWorkSchedule,
   listWorkSchedules,
   type WorkScheduleRule,
   type WorkScheduleTriggerReceipt,
@@ -14,15 +12,9 @@ import {
   buildScheduleAuditExport,
   formatDateTime,
   formatScheduleSummary,
-  resolveDailyMorningGreetingShortcut,
-  resolveLocalTimezone,
   serializeScheduleAuditExport,
 } from './scheduleUiSupport.js';
 import './schedules.css';
-
-interface SchedulesListPageProps {
-  payload: AppShellPayload;
-}
 
 type FetchStatus = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -36,12 +28,10 @@ const EMPTY_SNAPSHOT: ScheduleSnapshot = {
   triggerReceipts: [],
 };
 
-export function SchedulesListPage({ payload }: SchedulesListPageProps): JSX.Element {
+export function SchedulesListPage(): JSX.Element {
   const [snapshot, setSnapshot] = useState<ScheduleSnapshot>(EMPTY_SNAPSHOT);
   const [status, setStatus] = useState<FetchStatus>('idle');
   const [error, setError] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [busyAction, setBusyAction] = useState<string | null>(null);
 
   const load = useCallback(async (signal?: AbortSignal): Promise<void> => {
     setStatus('loading');
@@ -68,15 +58,6 @@ export function SchedulesListPage({ payload }: SchedulesListPageProps): JSX.Elem
     return () => controller.abort();
   }, [load]);
 
-  const timezone = useMemo(resolveLocalTimezone, []);
-  const shortcut = useMemo(() =>
-    resolveDailyMorningGreetingShortcut({
-      payload,
-      rules: snapshot.rules,
-      timezone,
-    }),
-  [payload, snapshot.rules, timezone]);
-
   const latestReceiptByRule = useMemo(() => {
     const map = new Map<string, WorkScheduleTriggerReceipt>();
     for (const receipt of snapshot.triggerReceipts) {
@@ -87,31 +68,6 @@ export function SchedulesListPage({ payload }: SchedulesListPageProps): JSX.Elem
     }
     return map;
   }, [snapshot.triggerReceipts]);
-
-  const runAction = useCallback(async (
-    key: string,
-    action: () => Promise<void>,
-  ): Promise<void> => {
-    setBusyAction(key);
-    setActionError(null);
-    try {
-      await action();
-      await load();
-    } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Schedule action failed.');
-    } finally {
-      setBusyAction(null);
-    }
-  }, [load]);
-
-  const createMorningGreeting = useCallback(() => {
-    if (!shortcut.available || shortcut.existingRule) {
-      return;
-    }
-    void runAction('create-morning-greeting', async () => {
-      await createWorkSchedule(shortcut.input);
-    });
-  }, [runAction, shortcut]);
 
   const exportAudit = useCallback(() => {
     const payload = buildScheduleAuditExport({
@@ -135,22 +91,6 @@ export function SchedulesListPage({ payload }: SchedulesListPageProps): JSX.Elem
     [snapshot.rules],
   );
 
-  const createButtonLabel = !shortcut.available
-    ? 'Daily greeting'
-    : shortcut.existingRule
-      ? 'Daily greeting exists'
-      : busyAction === 'create-morning-greeting'
-        ? 'Creating…'
-        : '+ Daily greeting';
-  const createDisabled =
-    !shortcut.available ||
-    Boolean(shortcut.available && shortcut.existingRule) ||
-    busyAction !== null;
-  const createTooltip =
-    shortcut.available
-      ? `${shortcut.catName} · ${shortcut.bindingName} · ${timezone}`
-      : shortcut.message;
-
   return (
     <div className="schedulesList">
       <header className="channelTopBar schedulesListTopBar">
@@ -169,7 +109,6 @@ export function SchedulesListPage({ payload }: SchedulesListPageProps): JSX.Elem
             className="schedulesList__secondaryButton"
             onClick={exportAudit}
             disabled={
-              busyAction !== null ||
               (snapshot.rules.length === 0 && snapshot.triggerReceipts.length === 0)
             }
           >
@@ -179,28 +118,14 @@ export function SchedulesListPage({ payload }: SchedulesListPageProps): JSX.Elem
             type="button"
             className="schedulesList__secondaryButton"
             onClick={() => void load()}
-            disabled={busyAction !== null || status === 'loading'}
+            disabled={status === 'loading'}
           >
             Refresh
-          </button>
-          <button
-            type="button"
-            className="schedulesList__primaryButton"
-            onClick={createMorningGreeting}
-            disabled={createDisabled}
-            title={createTooltip}
-          >
-            {createButtonLabel}
           </button>
         </div>
       </header>
 
       <main className="schedulesList__main">
-        {actionError ? (
-          <p className="schedulesList__error" role="alert">
-            {actionError}
-          </p>
-        ) : null}
         {status === 'error' && error ? (
           <p className="schedulesList__error" role="alert">
             {error}
@@ -211,8 +136,8 @@ export function SchedulesListPage({ payload }: SchedulesListPageProps): JSX.Elem
           <p className="schedulesList__empty">Loading schedules…</p>
         ) : sortedRules.length === 0 ? (
           <p className="schedulesList__empty">
-            No schedules yet. Click <strong>+ Daily greeting</strong> to add one,
-            or POST to <code>/api/work/schedules</code>.
+            No schedules yet. Product surfaces create schedule rules from their
+            own workflows; this page audits and operates existing rules.
           </p>
         ) : (
           <ul className="schedulesList__list">

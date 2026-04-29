@@ -192,14 +192,16 @@ creating a companion-specific mission class.
     ask for approval according to the rule's escalation policy; the scheduler
     shall not silently substitute deterministic behavior.
 
-#### Morning greeting example
+#### Companion greeting example
 
-29. The morning greeting schedule shall be representable without new model
-    types:
+29. A companion greeting schedule shall be representable without new model
+    types. This is an example of a product-owned shortcut payload, not a
+    requirement that the generic Cats Work schedule-management surface expose
+    a greeting button:
 
 ```ts
 interface MorningGreetingExample {
-  title: 'Daily morning greeting';
+  title: 'Daily companion greeting';
   timezone: 'Asia/Taipei';
   schedule: {
     kind: 'daily';
@@ -274,15 +276,19 @@ interface MorningGreetingExample {
     - last fire time
     - last run status
     - recent failures
-44. The first UI may be minimal but must allow:
+44. The first API/UI surface may be split across product-owned entry points and
+    a generic schedule-management page, but must allow:
     - list rules
-    - create/edit rule
+    - create/edit rule through the API or owning product surface
     - enable/disable rule
     - run a manual test fire
     - inspect recent trigger/run history
 45. Product-specific entry surfaces may deep-link into rule creation with a
     prefilled template. For example, a companion profile can offer "Add morning
     greeting" while still creating a generic `ScheduleRule`.
+    Generic schedule-management surfaces must not embed product-specific
+    templates that belong to Chat, Companion, Work, Code, memory, or transport
+    workflows.
 46. Rule history shall make clear whether a run was skipped because:
     - Cats was not running
     - concurrency policy skipped it

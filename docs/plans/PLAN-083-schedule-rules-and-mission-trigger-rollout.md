@@ -165,9 +165,10 @@ what to send and how to send it.
 - [x] Add a minimal schedule-management UI in the most appropriate surface:
       - platform Settings / Automations if available, or
       - a simple My Cats / Cat detail action for the first companion use case.
-- [x] Add product-specific creation shortcuts that still create generic rules:
-      - "Daily morning greeting" prefilled template from a Cat/companion view
-      - future Work/Code templates later
+- [x] Keep product-specific creation shortcuts out of the generic Cats Work
+      Schedules surface. Product-owned shortcuts, such as companion greetings,
+      must live in the product surface that owns that intent and create generic
+      rules through the schedule API.
 - [x] Show diagnostics:
       - next fire
       - last run
@@ -176,8 +177,9 @@ what to send and how to send it.
 - [x] Keep UI copy clear that scheduled execution only fires while Cats is
       running in v1.
 
-**Deliverables**: the owner can create and inspect the morning-greeting rule
-without hand-editing state.
+**Deliverables**: the owner can inspect and operate schedule rules without
+hand-editing state. Product-specific rule creation remains owned by the product
+surface that owns the workflow intent.
 
 ### Phase 6: Hardening and Follow-Ons
 
@@ -187,8 +189,8 @@ without hand-editing state.
       execution.
 - [x] Decide whether heartbeat/liveness monitoring is needed for scheduler
       health. Do not block Phase 1-5 on heartbeat.
-- [x] Expand rule templates for Work reviews, Code checks, memory flushes, and
-      transport digests.
+- [x] Defer Work review, Code check, memory flush, and transport digest
+      shortcuts until their owning product/resource/tool surfaces are ready.
 - [x] Revisit whether schedule rules should move from platform-owned config to
       shared Core once the mission/run storage model is stable.
 
@@ -230,9 +232,9 @@ the first companion/Telegram scenario.
   schedule queries, or cross-product ownership requires it.
 - Scheduler code never chooses content or calls runtime/transport APIs
   directly.
-- Work review, Code check, memory flush, and transport digest template builders
-  are generic `ScheduleRule` input builders only; UI exposure waits for the
-  matching resource/tool surfaces so the sidebar does not grow empty entries.
+- Product-specific schedule builders must not live under the generic Cats Work
+  schedule management page. Each product owns the shortcut that carries its
+  own semantics and may create a generic `ScheduleRule` through the API.
 
 ## Testing Strategy
 
@@ -255,12 +257,14 @@ the first companion/Telegram scenario.
 - **Static Boundary Tests**
   - scheduler modules do not import runtime client send/create APIs directly
   - scheduler modules do not import Telegram delivery clients directly
-  - product-specific schedule shortcuts create generic rules
+  - Cats Work schedule UI stays product-neutral and does not embed companion or
+    Telegram shortcut semantics
 - **Manual Validation**
-  - create a daily morning greeting rule
+  - inspect an existing schedule rule from Cats Work
   - run manual test fire
-  - verify the Cat chooses content and sends through Telegram
   - inspect run/trigger history and failure diagnostics
+  - verify product-specific shortcut creation only from the owning product
+    surface when that shortcut is implemented
 
 ## Risks & Mitigations
 
@@ -290,10 +294,11 @@ the first companion/Telegram scenario.
 | 2026-04-29 | Companion post slice: added `companion.content.post.create` as a supervised local-state tool that writes profile post derived records through `CompanionBoxStore.upsertDerived`, requires `narrow_write` scope, and rejects posts built from sources outside declared `companion_content` resource scopes. |
 | 2026-04-29 | Telegram media capability slice: added `transport.telegram.media.send` as a supervised external-visible tool for URL/file-id media delivery through declared Telegram bindings, extended the relay/Bot API client with `send_media`, and added tests for media delivery, approval gating, undeclared bindings, and local-path rejection. |
 | 2026-04-29 | Replace concurrency slice: enabled `concurrencyPolicy: replace` now that active scheduled runs cancel through the supervision runtime cancellation boundary, including runtime session cancellation, run/mission cancellation metadata, and replacement admission tests. |
-| 2026-04-29 | Schedule UI slice: added Cats Work `/work/schedules` route and sidebar entry, renderer schedule API helpers, a minimal schedule list with next-fire/last-run/failure/skipped diagnostics, and a Daily morning greeting shortcut that creates a generic schedule rule with declared companion content and Telegram delivery scopes. |
+| 2026-04-29 | Schedule UI slice: added Cats Work `/work/schedules` route and sidebar entry, renderer schedule API helpers, a minimal schedule list/detail flow with next-fire/last-run/failure/skipped diagnostics, manual test fire, enable/disable, and audit/export. Product-specific shortcut creation is intentionally not embedded in the generic Work schedule surface. |
 | 2026-04-29 | Retry hardening slice: added schedule retry state, retry-attempt idempotency keys/receipt metadata, bounded retry admission, and automatic pause after repeated failed scheduled fires, with Work schedule diagnostics surfacing pending retries and paused reasons. |
 | 2026-04-29 | Audit/export slice: extended the Work Schedules surface with a recent trigger audit panel and JSON export payload covering schedule rules, trigger receipts, retry attempts, skips, and admitted run ids. |
-| 2026-04-29 | Phase 6 closeout slice: recorded v1 decisions to defer OS wake, heartbeat/liveness, and Core storage migration, and added generic builders for Work review, Code check, memory flush, and transport digest schedule templates without exposing empty UI entries. |
+| 2026-04-29 | Phase 6 closeout slice: recorded v1 decisions to defer OS wake, heartbeat/liveness, Core storage migration, and product-specific Work/Code/memory/transport shortcuts until their owning surfaces and tool scopes are ready. |
+| 2026-04-29 | Design correction: removed the Daily morning greeting shortcut and follow-on product template builders from Cats Work. Work Schedules is now a product-neutral schedule governance surface; companion/transport shortcuts belong under their owning product surfaces. |
 
 ---
 

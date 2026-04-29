@@ -113,7 +113,7 @@ export function AppRoutes({
       <Route key="run-list" path="runs" element={<RunsListPage />} />,
       <Route key="mission-list" path="missions" element={<MissionsListPage />} />,
       <Route key="mission-detail" path="missions/:missionId" element={<MissionDetailPage />} />,
-      <Route key="schedule-list" path="schedules" element={<SchedulesListPage payload={payload} />} />,
+      <Route key="schedule-list" path="schedules" element={<SchedulesListPage />} />,
       <Route key="schedule-detail" path="schedules/:scheduleId" element={<SchedulesDetailPage />} />,
       <Route key="task-list-legacy" path="tasks-legacy" element={<WorkTaskListView />} />,
       <Route key="task-detail-legacy" path="tasks-legacy/:taskId" element={<TaskDetailView />} />,
