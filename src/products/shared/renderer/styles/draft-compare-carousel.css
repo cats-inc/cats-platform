@@ -61,16 +61,13 @@
   filter: saturate(0.82);
 }
 
-/* The composer's own header / footer rows live inside each card
- * wrapper; tighten their default margin so the three rows read as
- * one "travelling" unit during carousel rotation. */
-.draftCompareCarouselCard .composerHeaderRow {
-  margin-bottom: 10px;
-}
-
-.draftCompareCarouselCard .composerFooterRow {
-  margin-top: 10px;
-}
+/* Header / footer rows inside each card wrapper inherit the base
+ * `composerHeaderRow` / `composerFooterRow` 12px gaps. Earlier we
+ * tightened these to 10px so the three rows read as a single
+ * "travelling" unit during carousel rotation, but that 2px deviation
+ * shifts the composer card vertically when the user switches between
+ * the regular (Team / New) composer and the Parallel composer — a
+ * visible drift on preset toggle that outweighed the rotation feel. */
 
 .draftCompareCarouselNav {
   position: absolute;
