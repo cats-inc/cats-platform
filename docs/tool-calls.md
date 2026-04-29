@@ -310,8 +310,12 @@ The full materialized flow is defined by SPEC-092:
 - idempotent no-op retries do not emit duplicate activity
 - Artifacts sidebar projections read materialized Core artifact rows
 
-The current implementation only provides the tool contract classes and
-finalization gate helpers.
+The current implementation provides the tool contract classes, finalization
+gate helpers, and the first Code-owned materialization delegate for normalized
+declarations. The delegate writes accepted declarations into `CoreArtifactRecord`
+with canonical idempotency metadata and deterministic artifact ids. Runtime
+tool execution, public product routes, frozen-scope fallback recovery, and
+`artifact_recorded` activity emission are follow-up slices.
 
 ### Idempotency
 

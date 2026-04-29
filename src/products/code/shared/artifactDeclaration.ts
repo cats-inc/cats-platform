@@ -205,6 +205,19 @@ export const CODE_ARTIFACT_DECLARATION_ERROR_CODES = [
   'artifact_metadata_key_too_long',
   'artifact_metadata_reserved_key',
   'artifact_producer_field_not_allowed',
+  'artifact_agent_actor_required',
+  'artifact_agent_actor_mismatch',
+  'artifact_tool_not_allowed',
+  'artifact_system_detector_not_allowed',
+  'artifact_user_actor_required',
+  'artifact_user_actor_mismatch',
+  'artifact_producer_actor_not_allowed',
+  'artifact_producer_tool_not_allowed',
+  'artifact_anchor_required',
+  'artifact_idempotency_ambiguous',
+  'artifact_publish_requires_action',
+  'artifact_publish_transition_failed',
+  'artifact_claim_without_declaration',
 ] as const;
 
 export type CodeArtifactDeclarationErrorCode =
