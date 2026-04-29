@@ -58,9 +58,6 @@ export function openChatEventStream(
   const headers: Record<string, string> = {
     Accept: 'text/event-stream',
   };
-  if (config.pairingToken) {
-    headers.Authorization = `Bearer ${config.pairingToken}`;
-  }
 
   const source = new EventSource<MobileChatEventKind>(url, {
     headers,

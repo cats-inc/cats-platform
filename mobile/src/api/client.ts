@@ -64,9 +64,6 @@ export function createMobileApiClient(
     if (body !== undefined) {
       headers['Content-Type'] = 'application/json';
     }
-    if (config.pairingToken) {
-      headers.Authorization = `Bearer ${config.pairingToken}`;
-    }
     let response: Response;
     try {
       response = await fetch(url, {

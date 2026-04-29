@@ -11,10 +11,9 @@ import {
   View,
 } from 'react-native';
 
-import { buildAttachmentResolver, createMobileApiClient } from '../../api/client';
+import { createMobileApiClient } from '../../api/client';
 import {
   type ConnectionConfig,
-  type ConnectionMode,
   type NotificationPreferences,
   loadConnectionConfig,
   loadNotificationPreferences,
@@ -25,35 +24,9 @@ import {
 import { useMobileAppShell } from '../hooks/useMobileAppShell';
 import { colors, radii, spacing, typography } from '../theme';
 
-interface ConnectionOption {
-  id: ConnectionMode;
-  label: string;
-  description: string;
-}
-
-const CONNECTION_OPTIONS: ConnectionOption[] = [
-  {
-    id: 'relay',
-    label: 'Cloud relay (default)',
-    description: 'Push notifications + low-bandwidth control via the cats relay.',
-  },
-  {
-    id: 'tunnel',
-    label: 'Tunnel / WebSocket relay',
-    description: 'Direct interactive connection via Cloudflare Tunnel or self-hosted relay.',
-  },
-  {
-    id: 'tailscale',
-    label: 'Tailscale (power user)',
-    description: 'Mesh VPN. Requires the Tailscale app and a configured tailnet.',
-  },
-];
-
 export function Settings() {
   const [connectionConfig, setConnectionConfig] = useState<ConnectionConfig>({
-    mode: 'relay',
     baseUrl: null,
-    pairingToken: null,
   });
   const [baseUrlDraft, setBaseUrlDraft] = useState('');
   const [notificationPrefs, setNotificationPrefs] =
@@ -88,17 +61,13 @@ export function Settings() {
     void saveConnectionConfig(next);
   };
 
-  const handleSelectMode = (mode: ConnectionMode) => {
-    updateConnection({ ...connectionConfig, mode });
-  };
-
   const handleCommitBaseUrl = () => {
     const trimmed = baseUrlDraft.trim();
     const next = trimmed.length > 0 ? trimmed : null;
     if (next === connectionConfig.baseUrl) {
       return;
     }
-    updateConnection({ ...connectionConfig, baseUrl: next });
+    updateConnection({ baseUrl: next });
   };
 
   const updateNotifications = (next: NotificationPreferences) => {
@@ -136,17 +105,12 @@ export function Settings() {
         </View>
       </Section>
 
-      <Section label="Connection mode">
-        {CONNECTION_OPTIONS.map((option) => (
-          <ConnectionRow
-            key={option.id}
-            option={option}
-            selected={connectionConfig.mode === option.id}
-            onSelect={() => handleSelectMode(option.id)}
-          />
-        ))}
+      <Section
+        label="Desktop"
+        description="Where this device should reach your desktop cats."
+      >
         <View style={styles.baseUrlRow}>
-          <Text style={styles.baseUrlLabel}>Desktop base URL</Text>
+          <Text style={styles.baseUrlLabel}>Desktop URL</Text>
           <TextInput
             value={baseUrlDraft}
             onChangeText={setBaseUrlDraft}
@@ -160,8 +124,7 @@ export function Settings() {
             style={styles.baseUrlInput}
           />
           <Text style={styles.baseUrlHint}>
-            Where this device should reach your desktop cats. LAN, Tailscale,
-            or tunnel URL — saved on blur.
+            Use the LAN address of the machine running cats. Saves on blur.
           </Text>
         </View>
       </Section>
@@ -216,14 +179,13 @@ export function Settings() {
             </Text>
             <Text style={styles.linkRowDescription}>
               {webDashboardUrl === null
-                ? 'Set a desktop base URL above to enable the web dashboard link.'
+                ? 'Set the desktop URL above to enable this link.'
                 : `Opens ${webDashboardUrl}`}
             </Text>
           </View>
           <Text style={styles.linkRowChevron}>›</Text>
         </Pressable>
       </Section>
-
     </ScrollView>
   );
 }
@@ -275,18 +237,15 @@ function resolveAvatarAbsoluteUrl(
   avatarUrl: string,
   connectionConfig: ConnectionConfig,
 ): string | null {
-  // Already absolute (http(s) / data URI) — use as-is.
   if (/^[a-z][a-z0-9+\-.]*:\/\//i.test(avatarUrl) || avatarUrl.startsWith('data:')) {
     return avatarUrl;
   }
-  // Relative path — only meaningful when paired with the desktop's base URL.
   if (!connectionConfig.baseUrl) {
     return null;
   }
   try {
     const client = createMobileApiClient(connectionConfig);
-    const baseUrl = client.baseUrl;
-    return `${baseUrl}${avatarUrl.startsWith('/') ? avatarUrl : `/${avatarUrl}`}`;
+    return `${client.baseUrl}${avatarUrl.startsWith('/') ? avatarUrl : `/${avatarUrl}`}`;
   } catch {
     return null;
   }
@@ -333,37 +292,6 @@ function Section({ label, description, footer, children }: SectionProps) {
       <View style={styles.sectionBody}>{children}</View>
       {footer ? <Text style={styles.sectionFooter}>{footer}</Text> : null}
     </View>
-  );
-}
-
-interface ConnectionRowProps {
-  option: ConnectionOption;
-  selected: boolean;
-  onSelect: () => void;
-}
-
-function ConnectionRow({ option, selected, onSelect }: ConnectionRowProps) {
-  return (
-    <Pressable
-      onPress={onSelect}
-      style={({ pressed }) => [
-        styles.connectionRow,
-        pressed ? styles.connectionRowPressed : null,
-      ]}
-    >
-      <View
-        style={[
-          styles.connectionRadio,
-          selected ? styles.connectionRadioSelected : null,
-        ]}
-      >
-        {selected ? <View style={styles.connectionRadioDot} /> : null}
-      </View>
-      <View style={styles.connectionRowText}>
-        <Text style={styles.connectionLabel}>{option.label}</Text>
-        <Text style={styles.connectionDescription}>{option.description}</Text>
-      </View>
-    </Pressable>
   );
 }
 
@@ -472,54 +400,10 @@ const styles = StyleSheet.create({
     ...typography.title,
     fontWeight: '700',
   },
-  connectionRow: {
-    flexDirection: 'row',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    gap: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-  },
-  connectionRowPressed: {
-    backgroundColor: colors.bg.panelHover,
-  },
-  connectionRadio: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1.5,
-    borderColor: colors.border.strong,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 2,
-  },
-  connectionRadioSelected: {
-    borderColor: colors.accent.primary,
-  },
-  connectionRadioDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.accent.primary,
-  },
-  connectionRowText: {
-    flex: 1,
-    gap: 2,
-  },
-  connectionLabel: {
-    color: colors.fg.primary,
-    ...typography.bodyStrong,
-  },
-  connectionDescription: {
-    color: colors.fg.secondary,
-    ...typography.caption,
-  },
   baseUrlRow: {
     paddingVertical: spacing.md,
     paddingHorizontal: spacing.md,
     gap: spacing.xs,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
   },
   baseUrlLabel: {
     color: colors.fg.primary,
