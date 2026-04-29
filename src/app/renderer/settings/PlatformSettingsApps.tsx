@@ -1,4 +1,9 @@
+import { useState } from 'react';
+
+import { ConfirmDialog, useConfirmDialog } from '../../../design/components/ConfirmDialog.js';
+import { ToastContainer, useToast } from '../../../design/components/Toast.js';
 import {
+  SettingsActionBar,
   SettingsOptionRow,
   SettingsSection,
   SettingsSectionHeader,
@@ -8,9 +13,18 @@ import type {
   CatsAppInstallState,
   PlatformInstalledAppDescriptor,
 } from '../../../shared/catsAppManifest.js';
+import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
 
 export interface PlatformSettingsAppsProps {
   installedApps: readonly PlatformInstalledAppDescriptor[];
+  onInstalledAppsUpdate?: (installedApps: PlatformInstalledAppDescriptor[]) => void;
+}
+
+type AppPackageMutation = 'enable' | 'disable' | 'uninstall';
+
+interface AppPackageMutationResult {
+  app?: PlatformInstalledAppDescriptor;
+  appId?: string;
 }
 
 function formatCategory(category: PlatformInstalledAppDescriptor['category']): string {
@@ -66,64 +80,195 @@ function statusTone(state: CatsAppInstallState) {
   return 'muted';
 }
 
+async function readMutationError(response: Response, fallback: string): Promise<string> {
+  const payload = await response.json().catch(() => null) as {
+    error?: { message?: string };
+  } | null;
+  return payload?.error?.message ?? fallback;
+}
+
+function upsertInstalledApp(
+  installedApps: readonly PlatformInstalledAppDescriptor[],
+  app: PlatformInstalledAppDescriptor,
+): PlatformInstalledAppDescriptor[] {
+  const existingIndex = installedApps.findIndex((entry) => entry.id === app.id);
+  if (existingIndex < 0) {
+    return [...installedApps, app];
+  }
+  return installedApps.map((entry) => (entry.id === app.id ? app : entry));
+}
+
+function removeInstalledApp(
+  installedApps: readonly PlatformInstalledAppDescriptor[],
+  appId: string,
+): PlatformInstalledAppDescriptor[] {
+  return installedApps.filter((entry) => entry.id !== appId);
+}
+
 export function PlatformSettingsApps({
   installedApps,
+  onInstalledAppsUpdate,
 }: PlatformSettingsAppsProps) {
   const connectorCount = installedApps
     .filter((app) => app.category === 'capability-connector')
     .length;
+  const { toasts, showToast } = useToast();
+  const { dialog, confirm, handleClose } = useConfirmDialog();
+  const [busyAction, setBusyAction] = useState<string | null>(null);
+
+  async function mutateApp(app: PlatformInstalledAppDescriptor, mutation: AppPackageMutation) {
+    const confirmation = await confirm({
+      title: mutation === 'uninstall'
+        ? 'Uninstall app'
+        : mutation === 'enable'
+          ? 'Enable app'
+          : 'Disable app',
+      message: mutation === 'uninstall'
+        ? `Uninstall "${app.displayName}"? It will be removed from Cats without deleting package files.`
+        : mutation === 'enable'
+          ? `Enable "${app.displayName}"? It can appear in Cats wherever its permissions allow.`
+          : `Disable "${app.displayName}"? It will stop appearing in Lobby and scoped app routes.`,
+      confirmLabel: mutation === 'uninstall'
+        ? 'Uninstall'
+        : mutation === 'enable'
+          ? 'Enable'
+          : 'Disable',
+      defaultAction: 'cancel',
+    });
+    if (!confirmation) return;
+
+    const busyKey = `${app.id}:${mutation}`;
+    setBusyAction(busyKey);
+    try {
+      const response = await fetch(
+        mutation === 'uninstall'
+          ? `/api/apps/${encodeURIComponent(app.id)}`
+          : `/api/apps/${encodeURIComponent(app.id)}/${mutation}`,
+        {
+          method: mutation === 'uninstall' ? 'DELETE' : 'POST',
+          headers: { Accept: 'application/json' },
+        },
+      );
+      if (!response.ok) {
+        throw new Error(await readMutationError(
+          response,
+          `${mutation} failed (${response.status})`,
+        ));
+      }
+
+      const result = await response.json() as AppPackageMutationResult;
+      if (mutation === 'uninstall') {
+        onInstalledAppsUpdate?.(removeInstalledApp(installedApps, result.appId ?? app.id));
+      } else if (result.app) {
+        onInstalledAppsUpdate?.(upsertInstalledApp(installedApps, result.app));
+      }
+      dispatchPlatformEnvelopeRefresh();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : `${mutation} failed.`);
+    } finally {
+      setBusyAction(null);
+    }
+  }
 
   return (
-    <SettingsSection
-      header={
-        <SettingsSectionHeader
-          title="Apps"
-          description="Installed Cats apps, connector packages, and system modules."
-        />
-      }
-    >
-      <div className="settings-sub-card settingsAppsList">
-        <SettingsOptionRow
-          label="Installed packages"
-          description={`${connectorCount} connector package${connectorCount === 1 ? '' : 's'}`}
-          control={(
-            <SettingsStatusChip tone={installedApps.length > 0 ? 'ready' : 'muted'}>
-              {installedApps.length}
-            </SettingsStatusChip>
-          )}
-        />
-        {installedApps.length > 0 ? installedApps.map((app) => (
+    <>
+      <SettingsSection
+        header={
+          <SettingsSectionHeader
+            title="Apps"
+            description="Installed Cats apps, connector packages, and system modules."
+          />
+        }
+      >
+        <div className="settings-sub-card settingsAppsList">
           <SettingsOptionRow
-            key={app.id}
-            label={app.displayName}
-            description={(
-              <span className="settingsAppsMeta">
-                <span>{formatCategory(app.category)}</span>
-                <span>{formatTrustTier(app.trustTier)}</span>
-                <span>{app.version}</span>
-                <span>{app.publisher}</span>
-                <span>{formatPermissionCount(app.permissions.length)}</span>
-              </span>
-            )}
+            label="Installed packages"
+            description={`${connectorCount} connector package${connectorCount === 1 ? '' : 's'}`}
             control={(
-              <SettingsStatusChip tone={statusTone(app.installState)}>
-                {formatInstallState(app.installState)}
+              <SettingsStatusChip tone={installedApps.length > 0 ? 'ready' : 'muted'}>
+                {installedApps.length}
               </SettingsStatusChip>
             )}
           />
-        )) : (
+          {installedApps.length > 0 ? installedApps.map((app) => {
+            const primaryRoute = app.enabled ? app.lobbyEntries[0]?.routePath : undefined;
+            const canEnable = app.installState === 'installed' || app.installState === 'disabled';
+            const canDisable = app.installState === 'enabled';
+            const actionBusy = busyAction?.startsWith(`${app.id}:`) ?? false;
+            return (
+              <SettingsOptionRow
+                key={app.id}
+                label={app.displayName}
+                description={(
+                  <span className="settingsAppsMeta">
+                    <span>{formatCategory(app.category)}</span>
+                    <span>{formatTrustTier(app.trustTier)}</span>
+                    <span>{app.version}</span>
+                    <span>{app.publisher}</span>
+                    <span>{formatPermissionCount(app.permissions.length)}</span>
+                  </span>
+                )}
+                control={(
+                  <SettingsActionBar>
+                    {primaryRoute ? (
+                      <a
+                        className="secondaryButton settingsInlineLink"
+                        href={primaryRoute}
+                      >
+                        Open
+                      </a>
+                    ) : null}
+                    {canEnable ? (
+                      <button
+                        type="button"
+                        className="secondaryButton"
+                        disabled={actionBusy}
+                        onClick={() => void mutateApp(app, 'enable')}
+                      >
+                        Enable
+                      </button>
+                    ) : null}
+                    {canDisable ? (
+                      <button
+                        type="button"
+                        className="secondaryButton"
+                        disabled={actionBusy}
+                        onClick={() => void mutateApp(app, 'disable')}
+                      >
+                        Disable
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      className="dangerButton"
+                      disabled={actionBusy}
+                      onClick={() => void mutateApp(app, 'uninstall')}
+                    >
+                      Uninstall
+                    </button>
+                    <SettingsStatusChip tone={statusTone(app.installState)}>
+                      {formatInstallState(app.installState)}
+                    </SettingsStatusChip>
+                  </SettingsActionBar>
+                )}
+              />
+            );
+          }) : (
+            <SettingsOptionRow
+              label="Installed apps"
+              description="No installed apps are registered yet."
+              control={<SettingsStatusChip tone="muted">Empty</SettingsStatusChip>}
+            />
+          )}
           <SettingsOptionRow
-            label="Installed apps"
-            description="No installed apps are registered yet."
-            control={<SettingsStatusChip tone="muted">Empty</SettingsStatusChip>}
+            label="Local install"
+            description="Install review is pending."
+            control={<SettingsStatusChip tone="warm">Planned</SettingsStatusChip>}
           />
-        )}
-        <SettingsOptionRow
-          label="Local install"
-          description="Install review is pending."
-          control={<SettingsStatusChip tone="warm">Planned</SettingsStatusChip>}
-        />
-      </div>
-    </SettingsSection>
+        </div>
+      </SettingsSection>
+      <ConfirmDialog dialog={dialog} onClose={handleClose} />
+      <ToastContainer toasts={toasts} />
+    </>
   );
 }

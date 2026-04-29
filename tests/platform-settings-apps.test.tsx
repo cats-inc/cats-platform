@@ -37,7 +37,15 @@ test('PlatformSettingsApps renders installed app and connector package status', 
   const markup = renderToStaticMarkup(
     <PlatformSettingsApps
       installedApps={[
-        createInstalledApp(),
+        createInstalledApp({
+          lobbyEntries: [
+            {
+              id: 'timer',
+              title: 'Focus Timer',
+              routePath: '/apps/user.focus',
+            },
+          ],
+        }),
         createInstalledApp({
           id: 'connector.calendar',
           displayName: 'Calendar Connector',
@@ -51,10 +59,14 @@ test('PlatformSettingsApps renders installed app and connector package status', 
 
   assert.match(markup, />Focus Timer</u);
   assert.match(markup, />Enabled</u);
+  assert.match(markup, /href="\/apps\/user\.focus"[^>]*>Open</u);
+  assert.match(markup, />Disable</u);
+  assert.match(markup, />Uninstall</u);
   assert.match(markup, />Calendar Connector</u);
   assert.match(markup, />Connector</u);
   assert.match(markup, />Local user</u);
   assert.match(markup, />2 permissions</u);
   assert.match(markup, />Disabled</u);
+  assert.match(markup, />Enable</u);
   assert.match(markup, />1 connector package</u);
 });

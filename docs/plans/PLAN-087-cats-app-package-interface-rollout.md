@@ -193,10 +193,10 @@ standard without granting that privilege to local user apps.
       `Runtime`.
 - [x] Add installed app management under Settings.
 - [x] Show app identity, version, category, trust tier, permissions, and state.
-- [ ] Add enable, disable, uninstall, and open actions.
+- [x] Add enable, disable, uninstall, and open actions.
 - [ ] Add capability connector settings entries.
-- [ ] Use existing Settings toast conventions for save/error feedback.
-- [ ] Avoid inline settings feedback in violation of the settings UI rules.
+- [x] Use existing Settings toast conventions for save/error feedback.
+- [x] Avoid inline settings feedback in violation of the settings UI rules.
 
 **Deliverables**: owner-visible app lifecycle management.
 
@@ -278,6 +278,7 @@ The overnight implementation agent should aim for this first vertical slice:
 | 2026-04-29 | Connected Settings `Apps` to the platform envelope installed app descriptors as a read-only management view. |
 | 2026-04-29 | Added app inspect API output for full manifest and registry record review. |
 | 2026-04-29 | Closed remaining boundary notes, reserved scoped API routing, product/app separation tests, and Settings app identity details. |
+| 2026-04-30 | Added Settings Apps open, enable, disable, and uninstall actions with confirmation dialogs, toast-only error feedback, local payload updates, and envelope refresh. |
 
 ---
 

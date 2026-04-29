@@ -147,7 +147,14 @@ export function buildPlatformSettingsRouteTree<TPayload extends WorkspaceAppShel
       ) : null}
       <Route
         path="apps/*"
-        element={<PlatformSettingsApps installedApps={payload.installedApps ?? []} />}
+        element={(
+          <PlatformSettingsApps
+            installedApps={payload.installedApps ?? []}
+            onInstalledAppsUpdate={(installedApps) => {
+              onWorkspacePayloadUpdate({ ...payload, installedApps });
+            }}
+          />
+        )}
       />
       {showDesktop ? (
         <Route

@@ -141,12 +141,13 @@ test('POST /api/apps/install installs an enabled app into the registry', async (
   assert.equal(inspectRecord.packagePath, packagePath);
 });
 
-test('app package disable and uninstall update launch visibility', async () => {
+test('app package enable, disable, and uninstall update launch visibility', async () => {
   const platformDir = await createTempPlatformDir();
   const packagePath = await createPackage(platformDir);
 
   await routeJson(platformDir, 'POST', '/api/apps/install', { packagePath, enable: true });
   const disabled = await routeJson(platformDir, 'POST', '/api/apps/user.pomodoro/disable');
+  const enabled = await routeJson(platformDir, 'POST', '/api/apps/user.pomodoro/enable');
   const uninstalled = await routeJson(platformDir, 'DELETE', '/api/apps/user.pomodoro');
   const list = await routeJson(platformDir, 'GET', '/api/apps');
 
@@ -157,6 +158,20 @@ test('app package disable and uninstall update launch visibility', async () => {
   assert.equal(disabledApp.installState, 'disabled');
   assert.equal(disabledApp.enabled, false);
   assert.deepEqual(disabledApp.lobbyEntries, []);
+  assert.equal(enabled.statusCode, 200);
+  const enabledApp = (enabled.payload as {
+    app: { installState: string; enabled: boolean; lobbyEntries: unknown[] };
+  }).app;
+  assert.equal(enabledApp.installState, 'enabled');
+  assert.equal(enabledApp.enabled, true);
+  assert.deepEqual(enabledApp.lobbyEntries, [
+    {
+      id: 'timer',
+      title: 'Pomodoro',
+      subtitle: 'Focus timer',
+      routePath: '/apps/user.pomodoro',
+    },
+  ]);
   assert.equal(uninstalled.statusCode, 200);
   assert.deepEqual((list.payload as { apps: unknown[] }).apps, []);
 });
