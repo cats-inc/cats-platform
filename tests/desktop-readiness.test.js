@@ -321,14 +321,14 @@ test('desktop bootstrap surfaces packaged setup restart recovery as an install i
     setup: {
       updatedAt: '2026-03-30T12:15:00.000Z',
       lastAction: {
-        helperId: 'windows-wsl-environment-installer',
-        assetId: 'windows-wsl-environment-installer-script',
-        label: 'Windows WSL substrate and Ubuntu installer',
+        helperId: 'windows-kiro-native-installer',
+        assetId: 'windows-kiro-native-installer-script',
+        label: 'Windows native Kiro installer',
         mode: 'apply',
         runState: 'completed',
         status: 'restart_required',
-        summary: 'Restart Windows, then rerun the WSL helper.',
-        packagedRelativePath: 'desktop/setup-assets/windows/Install-WslUbuntuEnvironment.ps1',
+        summary: 'Restart Windows, then rerun the Kiro CLI helper.',
+        packagedRelativePath: 'desktop/setup-assets/windows/Install-KiroCli.ps1',
         scriptPath: null,
         requiresElevation: true,
         resumable: true,
@@ -336,12 +336,12 @@ test('desktop bootstrap surfaces packaged setup restart recovery as an install i
         startedAt: '2026-03-30T12:10:00.000Z',
         completedAt: '2026-03-30T12:15:00.000Z',
         warnings: [],
-        plannedActions: ['install_distro:Ubuntu'],
-        appliedChanges: ['enable_wsl_features'],
-        manualSteps: ['Restart Windows, then rerun this helper to register the Ubuntu distro.'],
+        plannedActions: ['install_kiro_cli'],
+        appliedChanges: [],
+        manualSteps: ['Restart Windows, then rerun this helper to finish Kiro CLI install.'],
         interruptions: [{
           kind: 'restart_required',
-          summary: 'Restart Windows, then rerun this helper to continue the WSL environment setup.',
+          summary: 'Restart Windows, then rerun this helper to finish Kiro CLI install.',
           resumable: true,
           requiresRestart: true,
           requiresElevation: false,
@@ -592,14 +592,14 @@ test('desktop bootstrap surfaces Docker Desktop elevation recovery as an install
     setup: {
       updatedAt: '2026-03-30T12:30:00.000Z',
       lastAction: {
-        helperId: 'windows-docker-desktop-installer',
-        assetId: 'windows-docker-desktop-installer-script',
-        label: 'Windows Docker Desktop installer',
+        helperId: 'windows-kiro-native-installer',
+        assetId: 'windows-kiro-native-installer-script',
+        label: 'Windows native Kiro installer',
         mode: 'apply',
         runState: 'completed',
         status: 'elevation_required',
-        summary: 'Windows Docker Desktop installer apply finished with elevation_required.',
-        packagedRelativePath: 'desktop/setup-assets/windows/Install-DockerDesktop.ps1',
+        summary: 'Windows native Kiro installer apply finished with elevation_required.',
+        packagedRelativePath: 'desktop/setup-assets/windows/Install-KiroCli.ps1',
         scriptPath: null,
         requiresElevation: true,
         resumable: true,
@@ -607,12 +607,12 @@ test('desktop bootstrap surfaces Docker Desktop elevation recovery as an install
         startedAt: '2026-03-30T12:29:00.000Z',
         completedAt: '2026-03-30T12:30:00.000Z',
         warnings: [],
-        plannedActions: ['install_docker_desktop'],
+        plannedActions: ['install_kiro_cli'],
         appliedChanges: [],
-        manualSteps: ['Resume packaged setup and accept the Windows UAC prompt to install Docker Desktop.'],
+        manualSteps: ['Resume packaged setup and accept the Windows UAC prompt to install Kiro CLI.'],
         interruptions: [{
           kind: 'elevation_required',
-          summary: 'Docker Desktop mutation requires elevation. Resume packaged setup and accept the Windows UAC prompt to install Docker Desktop.',
+          summary: 'Kiro CLI MSI install requires elevation. Resume packaged setup and accept the Windows UAC prompt.',
           resumable: true,
           requiresRestart: false,
           requiresElevation: true,
@@ -625,7 +625,7 @@ test('desktop bootstrap surfaces Docker Desktop elevation recovery as an install
   const installIssue = snapshot.issues.find((issue) => issue.id === 'setup-elevation-required');
   assert.ok(installIssue);
   assert.equal(installIssue?.remediation?.kind, 'resume_setup');
-  assert.match(installIssue?.detail ?? '', /Docker Desktop/i);
+  assert.match(installIssue?.detail ?? '', /Kiro/i);
 });
 
 test('desktop bootstrap surfaces provider remediation after setup if no provider is ready', () => {

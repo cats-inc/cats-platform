@@ -148,14 +148,14 @@ test('normalizePlatformShellSetupState preserves non-audit packaged setup follow
   const setupState = {
     updatedAt: '2026-04-06T07:59:00.000Z',
     lastAction: {
-      helperId: 'windows-wsl-environment-installer',
-      assetId: 'windows-wsl-environment-installer-script',
-      label: 'Windows WSL environment installer',
+      helperId: 'windows-kiro-native-installer',
+      assetId: 'windows-kiro-native-installer-script',
+      label: 'Windows native Kiro installer',
       mode: 'check',
       runState: 'completed',
       status: 'restart_required',
-      summary: 'Restart Windows, then rerun this helper to continue the WSL environment setup.',
-      packagedRelativePath: 'desktop/setup-assets/windows/Install-WslUbuntuEnvironment.ps1',
+      summary: 'Restart Windows, then rerun this helper to finish Kiro CLI install.',
+      packagedRelativePath: 'desktop/setup-assets/windows/Install-KiroCli.ps1',
       scriptPath: null,
       requiresElevation: false,
       resumable: true,
@@ -169,7 +169,7 @@ test('normalizePlatformShellSetupState preserves non-audit packaged setup follow
       manualSteps: ['Restart Windows.'],
       interruptions: [{
         kind: 'restart_required',
-        summary: 'Restart Windows, then rerun this helper to continue the WSL environment setup.',
+        summary: 'Restart Windows, then rerun this helper to finish Kiro CLI install.',
         resumable: true,
         requiresRestart: true,
         requiresElevation: false,

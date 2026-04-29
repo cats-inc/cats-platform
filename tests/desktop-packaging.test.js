@@ -120,10 +120,7 @@ async function seedWindowsSetupAssets(packageRoot) {
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-CursorAgent.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Goose.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Junie.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Check-WslPrerequisites.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-WslUbuntuEnvironment.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-KiroCli.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-DockerDesktop.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Ollama.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Check-WindowsSetupReadiness.ps1'), '# helper');
   await seedFile(join(packageRoot, 'config', 'provider-capability-bootstrap.yaml.example'), '# example\n');
@@ -312,29 +309,10 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   );
   assert.equal(
     plan.installer.providerSetup.helperCatalog.some(
-      (helper) => helper.id === 'windows-wsl-environment-installer'
-        && helper.assetId === 'windows-wsl-environment-installer-script'
-        && helper.supportsApply === true
-        && helper.supportsUpgrade === true
-        && helper.requiresElevation === true,
-    ),
-    true,
-  );
-  assert.equal(
-    plan.installer.providerSetup.helperCatalog.some(
       (helper) => helper.id === 'windows-kiro-native-installer'
         && helper.assetId === 'windows-kiro-native-installer-script'
         && helper.platform === 'windows'
         && helper.supportsForce === true,
-    ),
-    true,
-  );
-  assert.equal(
-    plan.installer.providerSetup.helperCatalog.some(
-      (helper) => helper.id === 'windows-docker-desktop-installer'
-        && helper.assetId === 'windows-docker-desktop-installer-script'
-        && helper.pack === 'local_model_pack'
-        && helper.requiresElevation === true,
     ),
     true,
   );
@@ -392,18 +370,6 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   );
   assert.equal(
     plan.installer.providerSetup.prioritizedAssets.some(
-      (asset) => asset.id === 'windows-wsl-prerequisite-preflight' && asset.status === 'ported',
-    ),
-    true,
-  );
-  assert.equal(
-    plan.installer.providerSetup.prioritizedAssets.some(
-      (asset) => asset.id === 'windows-wsl-environment-installer' && asset.status === 'ported',
-    ),
-    true,
-  );
-  assert.equal(
-    plan.installer.providerSetup.prioritizedAssets.some(
       (asset) => asset.id === 'windows-kiro-native-installer' && asset.status === 'ported',
     ),
     true,
@@ -411,12 +377,6 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   assert.equal(
     plan.installer.providerSetup.prioritizedAssets.some(
       (asset) => asset.id === 'windows-install-readiness-audit' && asset.status === 'ported',
-    ),
-    true,
-  );
-  assert.equal(
-    plan.installer.providerSetup.prioritizedAssets.some(
-      (asset) => asset.id === 'windows-docker-local-model-helper' && asset.status === 'ported',
     ),
     true,
   );
@@ -479,25 +439,7 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   );
   assert.equal(
     windowsTarget?.artifacts.some(
-      (artifact) => artifact.id === 'windows-wsl-prerequisite-preflight-script' && artifact.role === 'setup_asset',
-    ),
-    true,
-  );
-  assert.equal(
-    windowsTarget?.artifacts.some(
-      (artifact) => artifact.id === 'windows-wsl-environment-installer-script' && artifact.role === 'setup_asset',
-    ),
-    true,
-  );
-  assert.equal(
-    windowsTarget?.artifacts.some(
       (artifact) => artifact.id === 'windows-kiro-native-installer-script' && artifact.role === 'setup_asset',
-    ),
-    true,
-  );
-  assert.equal(
-    windowsTarget?.artifacts.some(
-      (artifact) => artifact.id === 'windows-docker-desktop-installer-script' && artifact.role === 'setup_asset',
     ),
     true,
   );
@@ -769,17 +711,13 @@ test('Windows installer smoke-check script validates bundled sidecars and host s
   assert.match(script, /desktop\\setup-assets\\windows\\Install-CursorAgent\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\Install-Goose\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\Install-Junie\.ps1/);
-  assert.match(script, /desktop\\setup-assets\\windows\\Check-WslPrerequisites\.ps1/);
-  assert.match(script, /desktop\\setup-assets\\windows\\Install-WslUbuntuEnvironment\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\Install-KiroCli\.ps1/);
-  assert.match(script, /desktop\\setup-assets\\windows\\Install-DockerDesktop\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\Install-Ollama\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\Check-WindowsSetupReadiness\.ps1/);
   assert.match(script, /providerSetup\.localProviders/);
   assert.match(script, /id -eq 'opencode'/);
   assert.match(script, /id -eq 'kilo'/);
   assert.match(script, /windows-ollama-local-model-installer/);
-  assert.match(script, /windows-docker-desktop-installer/);
   assert.match(script, /desktop\\setup-assets\\manifest\.json/);
   assert.match(script, /\.cats\\desktop\\state\.json/);
   assert.match(script, /electron-sidecar-bundle/);
@@ -1051,10 +989,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-CursorAgent.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Goose.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Junie.ps1'));
-  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Check-WslPrerequisites.ps1'));
-  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-WslUbuntuEnvironment.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-KiroCli.ps1'));
-  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-DockerDesktop.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Ollama.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Check-WindowsSetupReadiness.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', '_HiddenProcess.ps1'));
@@ -1217,25 +1152,9 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   );
   assert.equal(
     targetManifest.installer.providerSetup.helperCatalog.some(
-      (helper) => helper.id === 'windows-wsl-environment-installer'
-        && helper.packagedRelativePath === 'desktop/setup-assets/windows/Install-WslUbuntuEnvironment.ps1'
-        && helper.supportsForce === true,
-    ),
-    true,
-  );
-  assert.equal(
-    targetManifest.installer.providerSetup.helperCatalog.some(
       (helper) => helper.id === 'windows-kiro-native-installer'
         && helper.packagedRelativePath === 'desktop/setup-assets/windows/Install-KiroCli.ps1'
         && helper.platform === 'windows',
-    ),
-    true,
-  );
-  assert.equal(
-    targetManifest.installer.providerSetup.helperCatalog.some(
-      (helper) => helper.id === 'windows-docker-desktop-installer'
-        && helper.packagedRelativePath === 'desktop/setup-assets/windows/Install-DockerDesktop.ps1'
-        && helper.requiresElevation === true,
     ),
     true,
   );
@@ -1249,12 +1168,6 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   );
   assert.equal(
     targetManifest.installer.providerSetup.prioritizedAssets.some(
-      (asset) => asset.id === 'windows-wsl-environment-installer',
-    ),
-    true,
-  );
-  assert.equal(
-    targetManifest.installer.providerSetup.prioritizedAssets.some(
       (asset) => asset.id === 'windows-goose-native-installer',
     ),
     true,
@@ -1262,12 +1175,6 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   assert.equal(
     targetManifest.installer.providerSetup.prioritizedAssets.some(
       (asset) => asset.id === 'windows-junie-native-installer',
-    ),
-    true,
-  );
-  assert.equal(
-    targetManifest.installer.providerSetup.prioritizedAssets.some(
-      (asset) => asset.id === 'windows-docker-local-model-helper',
     ),
     true,
   );
@@ -1345,25 +1252,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   );
   assert.equal(
     targetManifest.artifacts.some(
-      (artifact) => artifact.id === 'windows-wsl-prerequisite-preflight-script' && artifact.role === 'setup_asset',
-    ),
-    true,
-  );
-  assert.equal(
-    targetManifest.artifacts.some(
-      (artifact) => artifact.id === 'windows-wsl-environment-installer-script' && artifact.role === 'setup_asset',
-    ),
-    true,
-  );
-  assert.equal(
-    targetManifest.artifacts.some(
       (artifact) => artifact.id === 'windows-kiro-native-installer-script' && artifact.role === 'setup_asset',
-    ),
-    true,
-  );
-  assert.equal(
-    targetManifest.artifacts.some(
-      (artifact) => artifact.id === 'windows-docker-desktop-installer-script' && artifact.role === 'setup_asset',
     ),
     true,
   );

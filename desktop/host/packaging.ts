@@ -340,9 +340,6 @@ function prioritizedTargetHome(
 }
 
 function prioritizedAssetId(helper: DesktopHelperCatalogEntry): string {
-  if (helper.id === 'windows-docker-desktop-installer') {
-    return 'windows-docker-local-model-helper';
-  }
   return helper.id;
 }
 

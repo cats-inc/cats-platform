@@ -571,11 +571,7 @@ function deriveLegacyInterruptions(
     candidates.push(status);
   }
   if (parsed?.restartRequired === true) {
-    candidates.push(
-      helper.id === 'windows-wsl-environment-installer'
-        ? 'restart_required'
-        : 'relaunch_required',
-    );
+    candidates.push('relaunch_required');
   }
 
   const seen = new Set<string>();

@@ -233,7 +233,7 @@ test('buildDesktopSetupSnapshot derives a resumable packaged setup next step', a
   const config = await createDesktopConfig();
   await mkdir(join(config.packageRoot, 'scripts', 'windows'), { recursive: true });
   await writeFile(
-    join(config.packageRoot, 'scripts', 'windows', 'Install-WslUbuntuEnvironment.ps1'),
+    join(config.packageRoot, 'scripts', 'windows', 'Install-KiroCli.ps1'),
     '# helper',
   );
 
@@ -246,14 +246,14 @@ test('buildDesktopSetupSnapshot derives a resumable packaged setup next step', a
     state: {
       updatedAt: '2026-03-30T11:03:00.000Z',
       lastAction: {
-        helperId: 'windows-wsl-environment-installer',
-        assetId: 'windows-wsl-environment-installer-script',
-        label: 'Windows WSL substrate and Ubuntu installer',
+        helperId: 'windows-kiro-native-installer',
+        assetId: 'windows-kiro-native-installer-script',
+        label: 'Windows native Kiro installer',
         mode: 'apply',
         runState: 'completed',
         status: 'restart_required',
-        summary: 'Restart Windows before rerunning the WSL helper.',
-        packagedRelativePath: 'desktop/setup-assets/windows/Install-WslUbuntuEnvironment.ps1',
+        summary: 'Restart Windows before rerunning the Kiro CLI helper.',
+        packagedRelativePath: 'desktop/setup-assets/windows/Install-KiroCli.ps1',
         scriptPath: null,
         requiresElevation: true,
         resumable: true,
@@ -261,12 +261,12 @@ test('buildDesktopSetupSnapshot derives a resumable packaged setup next step', a
         startedAt: '2026-03-30T11:01:00.000Z',
         completedAt: '2026-03-30T11:02:00.000Z',
         warnings: [],
-        plannedActions: ['install_distro:Ubuntu'],
-        appliedChanges: ['enable_wsl_features'],
-        manualSteps: ['Restart Windows, then rerun this helper to register the Ubuntu distro.'],
+        plannedActions: ['install_kiro_cli'],
+        appliedChanges: [],
+        manualSteps: ['Restart Windows, then rerun this helper to finish Kiro CLI install.'],
         interruptions: [{
           kind: 'restart_required',
-          summary: 'Restart Windows, then rerun this helper to continue the WSL environment setup.',
+          summary: 'Restart Windows, then rerun this helper to finish Kiro CLI install.',
           resumable: true,
           requiresRestart: true,
           requiresElevation: false,
@@ -278,7 +278,7 @@ test('buildDesktopSetupSnapshot derives a resumable packaged setup next step', a
     platform: 'win32',
   });
 
-  assert.equal(snapshot.resumeAction?.helperId, 'windows-wsl-environment-installer');
+  assert.equal(snapshot.resumeAction?.helperId, 'windows-kiro-native-installer');
   assert.equal(snapshot.resumeAction?.mode, 'check');
   assert.equal(snapshot.resumeAction?.reason, 'restart_required');
   assert.match(snapshot.resumeAction?.summary ?? '', /Restart Windows/i);
@@ -556,7 +556,7 @@ test('runDesktopSetupHelper executes packaged Unix helpers through bash', async 
   assert.equal(record.error, null);
 });
 
-test('runDesktopSetupHelper preserves elevation-required recovery from the Docker Desktop helper', async () => {
+test('runDesktopSetupHelper preserves elevation-required recovery from an admin-only helper', async () => {
   const config = await createDesktopConfig();
   const packaging = createDesktopPackagingPlan(config, {
     generatedAt: new Date('2026-03-30T11:09:00.000Z'),
@@ -566,7 +566,7 @@ test('runDesktopSetupHelper preserves elevation-required recovery from the Docke
     config,
     packaging,
     action: {
-      helperId: 'windows-docker-desktop-installer',
+      helperId: 'windows-kiro-native-installer',
       mode: 'apply',
     },
   }, {
@@ -574,15 +574,15 @@ test('runDesktopSetupHelper preserves elevation-required recovery from the Docke
     pathExists: async () => true,
     execFile: async () => ({
       stdout: JSON.stringify({
-        helper: 'windows-docker-desktop-installer',
+        helper: 'windows-kiro-native-installer',
         status: 'elevation_required',
-        plannedActions: ['install_docker_desktop'],
+        plannedActions: ['install_kiro_cli'],
         warnings: [],
         appliedChanges: [],
-        manualSteps: ['Resume packaged setup and accept the Windows UAC prompt to install Docker Desktop.'],
+        manualSteps: ['Resume packaged setup and accept the Windows UAC prompt to install Kiro CLI.'],
         interruptions: [{
           kind: 'elevation_required',
-          summary: 'Docker Desktop mutation requires elevation. Resume packaged setup and accept the Windows UAC prompt to install Docker Desktop.',
+          summary: 'Kiro CLI MSI install requires elevation. Resume packaged setup and accept the Windows UAC prompt.',
           resumable: true,
           requiresRestart: false,
           requiresElevation: true,
@@ -592,11 +592,11 @@ test('runDesktopSetupHelper preserves elevation-required recovery from the Docke
     }),
   });
 
-  assert.equal(record.helperId, 'windows-docker-desktop-installer');
+  assert.equal(record.helperId, 'windows-kiro-native-installer');
   assert.equal(record.mode, 'apply');
   assert.equal(record.status, 'elevation_required');
   assert.equal(record.requiresElevation, true);
-  assert.deepEqual(record.plannedActions, ['install_docker_desktop']);
+  assert.deepEqual(record.plannedActions, ['install_kiro_cli']);
   assert.deepEqual(record.interruptions.map((entry) => entry.kind), ['elevation_required']);
 });
 

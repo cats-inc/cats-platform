@@ -145,10 +145,7 @@ $requiredFiles = @(
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-CursorAgent.ps1'); Label = 'bundled Windows native Cursor installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-Goose.ps1'); Label = 'bundled Windows native Goose installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-Junie.ps1'); Label = 'bundled Windows native Junie installer helper' },
-  @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Check-WslPrerequisites.ps1'); Label = 'bundled Windows WSL prerequisite preflight helper' },
-  @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-WslUbuntuEnvironment.ps1'); Label = 'bundled Windows WSL substrate installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-KiroCli.ps1'); Label = 'bundled Windows native Kiro installer helper' },
-  @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-DockerDesktop.ps1'); Label = 'bundled Windows Docker Desktop installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-Ollama.ps1'); Label = 'bundled Windows Ollama installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Check-WindowsSetupReadiness.ps1'); Label = 'bundled Windows setup readiness audit helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\manifest.json'); Label = 'bundled setup-assets manifest' },
@@ -177,16 +174,12 @@ Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-claud
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-cursor-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Cursor installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-goose-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Goose installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-junie-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Junie installer asset'
-Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-wsl-prerequisite-preflight-script' }).Count -ge 1) 'Windows target includes the bundled WSL prerequisite preflight asset'
-Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-wsl-environment-installer-script' }).Count -ge 1) 'Windows target includes the bundled WSL substrate installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-kiro-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Kiro installer asset'
-Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-docker-desktop-installer-script' }).Count -ge 1) 'Windows target includes the bundled Docker Desktop installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-ollama-local-model-installer-script' }).Count -ge 1) 'Windows target includes the bundled Ollama installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-setup-readiness-audit-script' }).Count -ge 1) 'Windows target includes the bundled setup readiness audit asset'
 Assert-True (($packagingPlan.installer.providerSetup.localProviders | Where-Object { $_.id -eq 'opencode' -and $_.bundledInCurrentInstaller -eq $true }).Count -ge 1) 'installer contract keeps OpenCode in the bundled local-provider rollout'
 Assert-True (($packagingPlan.installer.providerSetup.localProviders | Where-Object { $_.id -eq 'kilo' -and $_.bundledInCurrentInstaller -eq $true }).Count -ge 1) 'installer contract keeps Kilo in the bundled local-provider rollout'
 Assert-True (($packagingPlan.installer.providerSetup.localProviders | Where-Object { $_.id -eq 'ollama' -and $_.bundledInCurrentInstaller -eq $true }).Count -ge 1) 'installer contract keeps Ollama in the bundled local-provider rollout'
-Assert-True (($packagingPlan.installer.providerSetup.helperCatalog | Where-Object { $_.id -eq 'windows-docker-desktop-installer' }).Count -ge 1) 'installer contract includes the bundled Docker Desktop helper metadata'
 Assert-True (($packagingPlan.installer.providerSetup.helperCatalog | Where-Object { $_.id -eq 'windows-ollama-local-model-installer' }).Count -ge 1) 'installer contract includes the bundled Ollama helper metadata'
 
 if ($SkipLaunch) {
