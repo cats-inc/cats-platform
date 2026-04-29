@@ -218,7 +218,7 @@ The overnight implementation agent should aim for this first vertical slice:
 
 1. Start from a Pomodoro app template in Cats Code.
 2. Export it as a folder containing `cats.app.json`, `package.json`, and
-   `dist/renderer/index.js`.
+   `dist/renderer/index.html`.
 3. Validate it through `POST /api/apps/validate`.
 4. Install it through `POST /api/apps/install` after user approval.
 5. Confirm it appears under Lobby `Apps`.
@@ -227,8 +227,13 @@ The overnight implementation agent should aim for this first vertical slice:
 
 Current handoff state:
 
-- Until the Cats Code export command exists, use
-  `tests/fixtures/cats-apps/pomodoro` as the package folder.
+- The code-side export helper is `exportCatsCodeUserAppPackage` in
+  `src/products/code/state/appExport.ts`. It copies the user-app template,
+  writes app-specific `cats.app.json`, writes `cats-code-export.json`, validates
+  the manifest, and runs `npm run build` to produce `dist/renderer/index.html`.
+- Until a Cats Code renderer action calls that helper directly, use either the
+  helper from a controlled test harness or `tests/fixtures/cats-apps/pomodoro`
+  as the package folder for host install validation.
 - Settings > Apps > Local install now supports the fixture path directly:
   enter the fixture folder, press `Review`, confirm the metadata, then
   `Install`.
@@ -237,8 +242,8 @@ Current handoff state:
 - The app host route is still a skeleton; successful navigation proves package
   registry, envelope refresh, Lobby entry projection, and route ownership, not
   real renderer execution.
-- Full manual E2E remains blocked on the Cats Code export command/action that
-  produces an app package from a Code artifact.
+- Full manual E2E remains pending because it should run against isolated
+  platform state, not the user's persisted dev app registry.
 
 Product integration notes:
 
@@ -250,6 +255,10 @@ Product integration notes:
 - Capability connector packages appear in Settings Apps even when they have no
   Lobby card; declared `setupPath` wins over app-level settings when choosing a
   Settings link.
+- Enabled app tool declarations are projected into the platform supervised tool
+  registry. `runtimeBridge: "cats-runtime"` tools execute through
+  `RuntimeClient.callMcp` with MCP `tools/call`, not through direct backend
+  imports.
 
 ## Technical Decisions
 
@@ -317,6 +326,7 @@ Product integration notes:
 | 2026-04-30 | Added Cats Code user-app package export orchestration that copies the template, writes manifest/export metadata, and runs the package build into `dist/renderer`. |
 | 2026-04-30 | Added app package tool registration projection into the platform supervised tool registry for enabled apps with `agent.tools.register`. |
 | 2026-04-30 | Added a platform-owned runtime app tool bridge that executes `runtimeBridge: "cats-runtime"` app tools through `RuntimeClient.callMcp` MCP `tools/call`. |
+| 2026-04-30 | Updated Cats Code export handoff docs and spec examples to match the implemented `dist/renderer/index.html` package renderer entrypoint. |
 
 ---
 

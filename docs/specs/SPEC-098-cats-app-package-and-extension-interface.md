@@ -159,7 +159,7 @@ worker code.
     "appSdk": "1.x"
   },
   "entrypoints": {
-    "renderer": "./dist/renderer/index.js",
+    "renderer": "dist/renderer/index.html",
     "server": "./dist/server/index.js"
   },
   "contributions": {
@@ -612,7 +612,8 @@ my-pomodoro.cats-app/
   README.md
   dist/
     renderer/
-      index.js
+      index.html
+      main.js
       assets/
     server/
       index.js
