@@ -6,9 +6,10 @@ import {
   type CoreTaskStatus,
 } from "../api/workRecords.js";
 import type { WorkGraphObjectSummary } from "../components/topdown/types";
+import type { TaskPriority } from "../../shared/workGraphTypes.js";
 import { triggerWorkGraphRefresh, useWorkGraph } from "./workGraphStore";
 
-export type TaskPriority = "urgent" | "high" | "medium" | "low";
+export type { TaskPriority } from "../../shared/workGraphTypes.js";
 
 const TASK_RENDERER_METADATA_KEY = "workRenderer";
 

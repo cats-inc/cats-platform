@@ -8393,14 +8393,23 @@ test('GET /api/work and /api/code expose shared-core product dashboards without 
     const workTasksResponse = await fetch(`${baseUrl}/api/work/tasks`);
     assert.equal(workTasksResponse.status, 200);
     const workTasksPayload = await workTasksResponse.json();
-    assert.equal(workTasksPayload.tasks.length, 1);
-    assert.equal(workTasksPayload.tasks[0].id, 'task-work-dashboard');
-    assert.equal(workTasksPayload.tasks[0].conversationSourceChannelId, sourceChannelId);
-    assert.equal(workTasksPayload.tasks[0].workItemId, 'work-item-work-dashboard');
-    assert.equal(workTasksPayload.tasks[0].projectId, 'project-work-dashboard');
-    assert.equal(workTasksPayload.tasks[0].controlPlane.taskId, 'task-work-dashboard');
-    assert.equal(workTasksPayload.tasks[0].recovery.taskId, 'task-work-dashboard');
-    assert.equal(workTasksPayload.summary.totalAvailable, 1);
+    assert.equal(workTasksPayload.tasks.length, 2);
+    const workTaskRow = workTasksPayload.tasks.find(
+      (task) => task.id === 'task-work-dashboard',
+    );
+    assert.ok(workTaskRow, 'expected task-work-dashboard in /api/work/tasks payload');
+    assert.equal(workTaskRow.conversationSourceChannelId, sourceChannelId);
+    assert.equal(workTaskRow.workItemId, 'work-item-work-dashboard');
+    assert.equal(workTaskRow.projectId, 'project-work-dashboard');
+    assert.equal(workTaskRow.productBinding, 'work');
+    assert.equal(workTaskRow.controlPlane.taskId, 'task-work-dashboard');
+    assert.equal(workTaskRow.recovery.taskId, 'task-work-dashboard');
+    const codeTaskRow = workTasksPayload.tasks.find(
+      (task) => task.id === 'task-code-dashboard',
+    );
+    assert.ok(codeTaskRow, 'expected task-code-dashboard in /api/work/tasks payload');
+    assert.equal(codeTaskRow.productBinding, 'code');
+    assert.equal(workTasksPayload.summary.totalAvailable, 2);
 
     const workItemsResponse = await fetch(`${baseUrl}/api/work/work-items`);
     assert.equal(workItemsResponse.status, 200);

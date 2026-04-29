@@ -10,6 +10,15 @@
 export type WorkGraphLayer = "interaction" | "planning" | "execution";
 
 /**
+ * Renderer-only urgency hint persisted under
+ * `task.metadata.workRenderer.priority` (Paperclip-inspired four-step
+ * scale). Defined here rather than next to a single store so the
+ * server-side projection (`/api/work/tasks`) and the renderer hook
+ * agree on the wire shape.
+ */
+export type TaskPriority = "urgent" | "high" | "medium" | "low";
+
+/**
  * Per-task product attribution surfaced in the projection so Work-product
  * surfaces can show the *full* Core task graph while still labelling
  * which product owns / executes each task. Computed by

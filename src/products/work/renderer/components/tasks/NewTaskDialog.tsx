@@ -7,10 +7,12 @@ import {
   useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 
 import type { CoreTaskStatus } from "../../api/workRecords.js";
 import { WORK_TASKS_PATH } from "../../workPaths.js";
 import { usePinnedProjects } from "../../state/pinnedProjectsStore";
+import { TASKS_QUERY_KEY } from "../../state/queries/tasksQuery.js";
 import { tasksStore, useTasks, type TaskPriority } from "../../state/tasksStore";
 import { useWorkItems } from "../../state/workItemsStore";
 
@@ -45,6 +47,7 @@ export function NewTaskDialog({
   defaultParentTaskId,
 }: NewTaskDialogProps): JSX.Element {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const titleId = useId();
   const summaryId = useId();
   const projectId = useId();
@@ -116,6 +119,7 @@ export function NewTaskDialog({
         nextAction: nextAction || null,
         acceptanceCriteria: acceptanceCriteria || null,
       });
+      await queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
       onClose();
       navigate(`${WORK_TASKS_PATH}/${task.id}`);
     } catch (err) {

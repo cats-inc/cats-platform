@@ -52,7 +52,13 @@ import {
   buildWorkItemStatusCounts,
   isWorkTask,
   resolveActorName,
+  resolveTaskProductBinding,
 } from './projectionSupport.js';
+import type {
+  TaskPriority,
+  WorkAttentionState,
+  WorkTaskProductBinding,
+} from '../shared/workGraphTypes.js';
 import {
   WORK_API_PREFIX,
   WORK_API_PROJECTS_PATH,
@@ -232,10 +238,12 @@ export interface WorkTaskListItem {
   title: string;
   status: CoreTaskStatus;
   summary: string | null;
+  conversationId: string | null;
   conversationTitle: string | null;
   conversationSourceChannelId: string | null;
   ownerActorId: string;
   ownerName: string;
+  ownerRole: string | null;
   assignedActors: Array<{
     actorId: string;
     displayName: string;
@@ -244,8 +252,14 @@ export interface WorkTaskListItem {
   projectTitle: string | null;
   workItemId: string | null;
   workItemTitle: string | null;
+  parentTaskId: string | null;
   controlPlane: CoreTaskControlPlaneView;
   recovery: CoreTaskRecoveryView;
+  attention: WorkAttentionState;
+  productBinding: WorkTaskProductBinding;
+  priority: TaskPriority | null;
+  assigneeName: string | null;
+  acceptanceCriteria: string | null;
   updatedAt: string;
 }
 
@@ -539,12 +553,65 @@ function buildWorkItemListSummary(
   };
 }
 
+const ATTENTION_BY_TASK_STATUS: Record<string, WorkAttentionState> = {
+  pending_approval: 'decision_needed',
+  blocked: 'blocked',
+  failed: 'failed',
+  cancelled: 'failed',
+  completed: 'recently_shipped',
+};
+
+function deriveTaskAttention(status: string): WorkAttentionState {
+  return ATTENTION_BY_TASK_STATUS[status] ?? 'none';
+}
+
+interface TaskRendererExtras {
+  priority: TaskPriority | null;
+  assigneeName: string | null;
+  acceptanceCriteria: string | null;
+}
+
+function readTaskRendererExtras(
+  metadata: Record<string, unknown> | null | undefined,
+): TaskRendererExtras {
+  const empty: TaskRendererExtras = {
+    priority: null,
+    assigneeName: null,
+    acceptanceCriteria: null,
+  };
+  if (!metadata) {
+    return empty;
+  }
+  const raw = metadata.workRenderer;
+  if (!raw || typeof raw !== 'object') {
+    return empty;
+  }
+  const record = raw as Record<string, unknown>;
+  const priority = record.priority;
+  const validPriority =
+    priority === 'urgent'
+    || priority === 'high'
+    || priority === 'medium'
+    || priority === 'low';
+  return {
+    priority: validPriority ? (priority as TaskPriority) : null,
+    assigneeName:
+      typeof record.assigneeName === 'string' && record.assigneeName.length > 0
+        ? record.assigneeName
+        : null,
+    acceptanceCriteria:
+      typeof record.acceptanceCriteria === 'string'
+        && record.acceptanceCriteria.length > 0
+        ? record.acceptanceCriteria
+        : null,
+  };
+}
+
 function buildTaskListItems(
   core: CatsCoreState,
   limit = Number.POSITIVE_INFINITY,
 ): WorkTaskListItem[] {
-  return core.tasks
-    .filter((task) => isWorkTask(core, task))
+  return [...core.tasks]
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
     .slice(0, limit)
     .map((task) => {
@@ -555,16 +622,19 @@ function buildTaskListItems(
       const project = workItem?.projectId
         ? core.projects.find((candidate) => candidate.id === workItem.projectId) ?? null
         : null;
+      const extras = readTaskRendererExtras(task.metadata);
 
       return {
         id: task.id,
         title: task.title,
         status: task.status,
         summary: task.summary,
+        conversationId: task.conversationId,
         conversationTitle: conversation?.title ?? null,
         conversationSourceChannelId: conversation?.sourceChannelId ?? null,
         ownerActorId: task.ownerActorId,
         ownerName: resolveActorName(core, task.ownerActorId),
+        ownerRole: null,
         assignedActors: task.assignedActorIds.map((actorId) => ({
           actorId,
           displayName: resolveActorName(core, actorId),
@@ -573,8 +643,14 @@ function buildTaskListItems(
         projectTitle: project?.title ?? null,
         workItemId: workItem?.id ?? null,
         workItemTitle: workItem?.title ?? null,
+        parentTaskId: task.parentTaskId ?? null,
         controlPlane: buildCoreTaskControlPlaneView(core, task),
         recovery: buildCoreTaskRecoveryView(core, task),
+        attention: deriveTaskAttention(task.status),
+        productBinding: resolveTaskProductBinding(core, task),
+        priority: extras.priority,
+        assigneeName: extras.assigneeName,
+        acceptanceCriteria: extras.acceptanceCriteria,
         updatedAt: task.updatedAt,
       };
     });
@@ -584,11 +660,10 @@ function buildTaskListSummary(
   items: WorkTaskListItem[],
   core: CatsCoreState,
 ): WorkTaskListSummary {
-  const workTasks = core.tasks.filter((task) => isWorkTask(core, task));
-  const taskStatusCounts = buildTaskStatusCounts(workTasks);
+  const taskStatusCounts = buildTaskStatusCounts(core.tasks);
 
   return {
-    totalAvailable: workTasks.length,
+    totalAvailable: core.tasks.length,
     returned: items.length,
     pendingApprovalCount: taskStatusCounts.pending_approval,
     inProgressCount: taskStatusCounts.in_progress,
