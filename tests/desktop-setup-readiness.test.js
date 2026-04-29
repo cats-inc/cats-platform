@@ -65,6 +65,8 @@ test('Check-WindowsSetupReadiness reports ready when prefix substrate and per-CL
     'authenticated',
     '-KiroInstallState',
     'installed',
+    '-NodeHostInstallState',
+    'installed',
   ]);
 
   const result = JSON.parse(stdout);
@@ -80,7 +82,7 @@ test('Check-WindowsSetupReadiness reports ready when prefix substrate and per-CL
   assert.deepEqual(result.plannedActions, []);
 });
 
-test('Check-WindowsSetupReadiness reports repair actions when prefix and per-CLI helpers are missing', skipUnlessWindows(), async () => {
+test('Check-WindowsSetupReadiness reports repair actions when prefix and per-CLI helpers are misconfigured but Node host is installed', skipUnlessWindows(), async () => {
   const workingDir = await mkdtemp(join(tmpdir(), 'cats-setup-readiness-missing-'));
   const desiredPrefix = join(workingDir, '.npm-global');
 
@@ -101,12 +103,46 @@ test('Check-WindowsSetupReadiness reports repair actions when prefix and per-CLI
     '-InstalledPackagesJson',
     JSON.stringify(['@openai/codex']),
     '-IncludeNativeProviders:$false',
+    '-NodeHostInstallState',
+    'installed',
   ]);
 
   const result = JSON.parse(stdout);
   assert.equal(result.plannedActions.includes('repair_native_cli_pack'), true);
   assert.equal(result.plannedActions.includes('repair_npm_prefix'), true);
+  assert.equal(result.plannedActions.includes('install_node_lts'), false);
   assert.equal(result.nativeCliPack.status === 'changes_required' || result.nativeCliPack.status === 'not_installed', true);
+});
+
+test('Check-WindowsSetupReadiness routes the user to the Node host installer when Node.js is missing', skipUnlessWindows(), async () => {
+  const workingDir = await mkdtemp(join(tmpdir(), 'cats-setup-readiness-no-node-'));
+  const desiredPrefix = join(workingDir, '.npm-global');
+
+  const { stdout } = await execFile('powershell.exe', [
+    '-NoProfile',
+    '-ExecutionPolicy',
+    'Bypass',
+    '-File',
+    helperPath,
+    '-Json',
+    '-SkipNodeCheck',
+    '-DesiredPrefix',
+    desiredPrefix,
+    '-CurrentPrefix',
+    '',
+    '-CurrentUserPath',
+    'C:\\Windows\\System32',
+    '-InstalledPackagesJson',
+    JSON.stringify([]),
+    '-IncludeNativeProviders:$false',
+    '-NodeHostInstallState',
+    'missing',
+  ]);
+
+  const result = JSON.parse(stdout);
+  assert.equal(result.nodeHost.status, 'changes_required');
+  assert.equal(result.plannedActions.includes('install_node_lts'), true);
+  assert.equal(result.plannedActions.includes('repair_npm_prefix'), false);
 });
 
 test('Check-WindowsSetupReadiness reports auth-required when native providers are installed but not yet signed in', skipUnlessWindows(), async () => {
@@ -147,6 +183,8 @@ test('Check-WindowsSetupReadiness reports auth-required when native providers ar
     '-JunieAuthState',
     'authenticated',
     '-KiroInstallState',
+    'installed',
+    '-NodeHostInstallState',
     'installed',
   ]);
 
@@ -295,6 +333,8 @@ test('Check-WindowsSetupReadiness can force serial collection for deterministic 
     '-JunieAuthState',
     'authenticated',
     '-KiroInstallState',
+    'installed',
+    '-NodeHostInstallState',
     'installed',
   ]);
 

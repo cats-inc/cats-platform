@@ -114,6 +114,8 @@ param(
   [ValidateSet('auto', 'installed', 'missing')]
   [string]$KiroInstallState = 'auto',
   [ValidateSet('auto', 'installed', 'missing')]
+  [string]$NodeHostInstallState = 'auto',
+  [ValidateSet('auto', 'installed', 'missing')]
   [string]$OllamaInstallState = 'auto',
   [ValidateSet('auto', 'reachable', 'unreachable')]
   [string]$OllamaApiState = 'auto'
@@ -329,6 +331,7 @@ function Resolve-NpmCliOutdatedState {
   return 'current'
 }
 
+$nodeHostHelperPath = Join-Path $PSScriptRoot 'Install-Node.ps1'
 $prefixHelperPath = Join-Path $PSScriptRoot 'Setup-NodeGlobalPrefix.ps1'
 $claudeHelperPath = Join-Path $PSScriptRoot 'Install-ClaudeCode.ps1'
 $cursorHelperPath = Join-Path $PSScriptRoot 'Install-CursorAgent.ps1'
@@ -361,7 +364,20 @@ if (-not [string]::IsNullOrWhiteSpace($CurrentUserPath)) {
   $prefixHelperArguments += @('-CurrentUserPath', $CurrentUserPath)
 }
 
+$nodeHostArguments = @('-CheckOnly', '-Json')
+if ($SkipNodeCheck) {
+  $nodeHostArguments += '-SkipNodeProbe'
+}
+if ($NodeHostInstallState -ne 'auto') {
+  $nodeHostArguments += @('-InstallState', $NodeHostInstallState)
+}
+
 $helperInvocations = [System.Collections.Generic.List[object]]::new()
+$helperInvocations.Add([pscustomobject]@{
+    Key = 'nodeHost'
+    ScriptPath = $nodeHostHelperPath
+    Arguments = $nodeHostArguments
+  })
 $helperInvocations.Add([pscustomobject]@{
     Key = 'prefixHelper'
     ScriptPath = $prefixHelperPath
@@ -468,6 +484,7 @@ $helperResults = if ($parallelChecksEnabled) {
 } else {
   Invoke-HelperJsonSequence -Helpers $helperInvocations.ToArray()
 }
+$nodeHostResult = $helperResults['nodeHost']
 $prefixHelper = $helperResults['prefixHelper']
 $claudeResult = if ($helperResults.ContainsKey('claude')) { $helperResults['claude'] } else { $null }
 $cursorResult = if ($helperResults.ContainsKey('cursor')) { $helperResults['cursor'] } else { $null }
@@ -546,7 +563,7 @@ $nativeCliPack = [pscustomobject]@{
 $warnings = [System.Collections.Generic.List[string]]::new()
 $plannedActions = [System.Collections.Generic.List[string]]::new()
 $interruptions = [System.Collections.Generic.List[object]]::new()
-$statuses = @($prefixHelper.status, $nativeCliPack.status)
+$statuses = @($nodeHostResult.status, $prefixHelper.status, $nativeCliPack.status)
 if ($null -ne $claudeResult) {
   $statuses += $claudeResult.status
 }
@@ -566,11 +583,18 @@ if ($null -ne $ollamaResult) {
   $statuses += $ollamaResult.status
 }
 
-if ($prefixHelper.status -ne 'ready') {
+$nodeMissing = ($nodeHostResult.status -ne 'ready') -or ($prefixHelper.status -eq 'not_installed')
+if ($nodeMissing) {
+  $plannedActions.Add('install_node_lts')
+}
+
+if (-not $nodeMissing -and $prefixHelper.status -ne 'ready') {
   $plannedActions.Add('repair_npm_prefix')
 }
 
-if ($nativeCliPack.status -ne 'ready') {
+if (-not $nodeMissing -and $nativeCliPack.status -ne 'ready') {
+  # Skip the per-CLI repair signal when Node itself is missing — the npm-global
+  # CLI helpers cannot run until the host installer finishes.
   $plannedActions.Add('repair_native_cli_pack')
 }
 
@@ -611,6 +635,9 @@ if ($null -ne $ollamaResult) {
   }
 }
 
+foreach ($warning in $nodeHostResult.warnings) {
+  $warnings.Add([string]$warning)
+}
 foreach ($warning in $prefixHelper.warnings) {
   $warnings.Add([string]$warning)
 }
@@ -672,6 +699,7 @@ function Add-InterruptionsFromResult {
   }
 }
 
+Add-InterruptionsFromResult -HelperResult $nodeHostResult
 Add-InterruptionsFromResult -HelperResult $nativeCliPack
 Add-InterruptionsFromResult -HelperResult $claudeResult
 Add-InterruptionsFromResult -HelperResult $cursorResult
@@ -715,6 +743,7 @@ $result = [pscustomobject]@{
   plannedActions = $plannedActions.ToArray()
   warnings = $warnings.ToArray()
   interruptions = $interruptions.ToArray()
+  nodeHost = $nodeHostResult
   prefixHelper = $prefixHelper
   nativeCliPack = $nativeCliPack
   nativeProviders = [pscustomobject]@{

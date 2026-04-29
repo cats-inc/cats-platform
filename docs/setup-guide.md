@@ -347,8 +347,15 @@ self-hosted provider baseline that used to live only in
 Linux:
 
 ```bash
+./scripts/linux/install-node.sh
 ./scripts/linux/setup-node-global-prefix.sh
-./scripts/linux/install-node-cli-tools.sh
+./scripts/linux/install-codex.sh
+./scripts/linux/install-gemini.sh
+./scripts/linux/install-copilot.sh
+./scripts/linux/install-opencode.sh
+./scripts/linux/install-kilo.sh
+./scripts/linux/install-auggie.sh
+./scripts/linux/install-pi.sh
 ./scripts/linux/install-claude-code.sh
 ./scripts/linux/install-cursor-agent.sh
 ./scripts/linux/install-goose.sh
@@ -361,8 +368,15 @@ Linux:
 macOS:
 
 ```bash
+./scripts/macos/install-node.sh
 ./scripts/macos/setup-node-global-prefix.sh
-./scripts/macos/install-node-cli-tools.sh
+./scripts/macos/install-codex.sh
+./scripts/macos/install-gemini.sh
+./scripts/macos/install-copilot.sh
+./scripts/macos/install-opencode.sh
+./scripts/macos/install-kilo.sh
+./scripts/macos/install-auggie.sh
+./scripts/macos/install-pi.sh
 ./scripts/macos/install-claude-code.sh
 ./scripts/macos/install-cursor-agent.sh
 ./scripts/macos/install-goose.sh
@@ -374,11 +388,13 @@ macOS:
 
 Coverage in this slice:
 
+- host substrate install and upgrade for Node.js LTS (via nvm) and GitHub
+  CLI (via Homebrew or a user-local tarball)
 - native CLI install and upgrade for Claude Code, Cursor Agent, Goose, Junie,
   and Kiro
 - npm global-prefix/PATH repair for user-scoped installs
-- npm CLI pack install and upgrade for Codex, Gemini, Copilot, OpenCode,
-  Kilo, Auggie, and Pi
+- per-CLI npm-global install and upgrade for Codex, Gemini, Copilot,
+  OpenCode, Kilo, Auggie, and Pi (one script per CLI, no bulk install)
 - self-hosted audit output for the same provider baseline, plus optional
   Ollama coverage when you pass `--include-local-models`, or serial collection
   when you pass `--serial`
@@ -391,45 +407,52 @@ desktop bootstrap/setup wizard.
 
 Cross-platform JSON audit core:
 
-- Unix `check-installation.sh --json` and Windows `Check-CLITools.ps1 -Json`
-  now share `helper`, `platform`, `status`, `ready`, `present`, `missing`,
-  `checks`, `phases`, and `warnings`
-- Windows keeps additional nested detail such as `distro`,
-  `dockerContainer`, WSL readiness, and Docker/Desktop follow-through payloads
+- Unix `check-installation.sh --json` and Windows
+  `Check-WindowsSetupReadiness.ps1 -Json` now share `helper`, `status`,
+  `plannedActions`, `warnings`, and `interruptions`
+- Windows additionally surfaces nested per-CLI detail under `nativeCliPack`
+  and the host-installer probe under `nodeHost`
 
-### Windows Operational Aggregates
+### Windows Host Substrate Helpers
 
-Windows now also ships the repo-owned aggregate helpers that used to live only
-in `environment-bootstrap` for non-wizard operational use:
+Windows ships repo-owned host substrate installers and per-CLI helpers for
+non-wizard operational use:
 
 ```powershell
-.\scripts\windows\Install-WSLCLITools.ps1 -CheckOnly -Json
-.\scripts\windows\Install-WSLCLITools.ps1 -Apply -Distro Ubuntu
-.\scripts\windows\Install-DockerCLITools.ps1 -CheckOnly -Container cats-cli-test -Json
-.\scripts\windows\Check-CLITools.ps1 -IncludeWsl -IncludeDocker -DockerContainer cats-cli-test -Json
-.\scripts\windows\Install-DockerCLITools.ps1 -Upgrade -Container cats-cli-test
-.\scripts\windows\Upgrade-CLITools.ps1 -Distro Ubuntu -DockerContainer cats-cli-test
+.\scripts\windows\Install-Node.ps1 -CheckOnly -Json
+.\scripts\windows\Install-Node.ps1 -Apply        # self-elevates through UAC
+.\scripts\windows\Install-GitHubCli.ps1 -Apply   # self-elevates through UAC
+.\scripts\windows\Install-Codex.ps1 -Apply
+.\scripts\windows\Install-Codex.ps1 -Upgrade
+.\scripts\windows\Install-ClaudeCode.ps1 -Apply
+.\scripts\windows\Check-WindowsSetupReadiness.ps1 -Json
 ```
 
 Coverage in this slice:
 
-- WSL-target install and upgrade for all 12 CLI providers
-- Docker-container install and upgrade for all 12 CLI providers
-- aggregate host/WSL/Docker detection for the same provider baseline
-- Windows host bulk-upgrade orchestration across native, WSL, and Docker paths
+- Node.js LTS and GitHub CLI host installers (winget primary, MSI fallback)
+- per-CLI npm-global helpers for Codex, Gemini, Copilot, OpenCode, Kilo,
+  Auggie, and Pi (one script per CLI, no bulk install/uninstall)
+- aggregate readiness audit composing the host installer, prefix helper,
+  per-CLI helpers, and native provider helpers
 
 These helpers are intentionally repo-owned script surfaces only. They are not
 yet wired into the packaged setup wizard/bootstrap flow.
 
 ### Manual Operator Matrix
 
-| Path | Install | Check | Upgrade |
-|------|---------|-------|---------|
-| Linux host | `./scripts/linux/install-node-cli-tools.sh` plus the native `install-*.sh` helpers you need | `./scripts/linux/check-installation.sh --json` | `./scripts/linux/upgrade-cli-tools.sh` |
-| macOS host | `./scripts/macos/install-node-cli-tools.sh` plus the native `install-*.sh` helpers you need | `./scripts/macos/check-installation.sh --json` | `./scripts/macos/upgrade-cli-tools.sh` |
-| Windows native host | `.\scripts\windows\Install-NodeCliPack.ps1 -Apply` plus the native provider helpers you need | `.\scripts\windows\Check-CLITools.ps1 -Json` | `.\scripts\windows\Upgrade-CLITools.ps1` |
-| Windows WSL target | `.\scripts\windows\Install-WSLCLITools.ps1 -Apply -Distro Ubuntu` | `.\scripts\windows\Check-CLITools.ps1 -IncludeWsl -Distro Ubuntu -Json` | `.\scripts\windows\Install-WSLCLITools.ps1 -Upgrade -Distro Ubuntu` |
-| Windows Docker target | `.\scripts\windows\Install-DockerCLITools.ps1 -Apply -Container cats-cli-test` | `.\scripts\windows\Check-CLITools.ps1 -IncludeDocker -DockerContainer cats-cli-test -Json` | `.\scripts\windows\Install-DockerCLITools.ps1 -Upgrade -Container cats-cli-test` |
+- **Linux host**
+  - Install: `./scripts/linux/install-node.sh` (when Node is missing) followed by per-CLI helpers like `./scripts/linux/install-codex.sh`, `./scripts/linux/install-claude-code.sh`, etc.
+  - Check: `./scripts/linux/check-installation.sh --json`
+  - Upgrade: `./scripts/linux/upgrade-cli-tools.sh`
+- **macOS host**
+  - Install: `./scripts/macos/install-node.sh` (when Node is missing) followed by per-CLI helpers like `./scripts/macos/install-codex.sh`, `./scripts/macos/install-claude-code.sh`, etc.
+  - Check: `./scripts/macos/check-installation.sh --json`
+  - Upgrade: `./scripts/macos/upgrade-cli-tools.sh`
+- **Windows native host**
+  - Install: `.\scripts\windows\Install-Node.ps1 -Apply` (when Node is missing) followed by per-CLI helpers like `.\scripts\windows\Install-Codex.ps1 -Apply`, `.\scripts\windows\Install-ClaudeCode.ps1 -Apply`, etc.
+  - Check: `.\scripts\windows\Check-WindowsSetupReadiness.ps1 -Json`
+  - Upgrade: invoke each per-CLI helper with `-Upgrade`
 
 ### Desktop Packaging Stage
 

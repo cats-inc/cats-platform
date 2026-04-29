@@ -258,11 +258,23 @@ function Invoke-PackagedNpmCliInstall {
   $installed = switch ($InstallState) {
     'installed' { $true }
     'missing'   { $false }
-    default     { Test-NpmCliPackageInstalled -PackageName $PackageName -CommandName $CommandName }
+    default {
+      if ($SkipNpmInvocation) {
+        # Without npm probing the helper cannot decide on its own; default to
+        # missing so callers must pass an explicit -InstallState override.
+        $false
+      } else {
+        Test-NpmCliPackageInstalled -PackageName $PackageName -CommandName $CommandName
+      }
+    }
   }
-  $detectedVersion = if ([string]::IsNullOrWhiteSpace($DetectedVersion)) {
-    if ($installed) { Get-NpmCliPackageVersion -PackageName $PackageName } else { $null }
-  } else { $DetectedVersion }
+  $detectedVersion = if (-not [string]::IsNullOrWhiteSpace($DetectedVersion)) {
+    $DetectedVersion
+  } elseif ($installed -and -not $SkipNpmInvocation) {
+    Get-NpmCliPackageVersion -PackageName $PackageName
+  } else {
+    $null
+  }
   $commandPath = if ($installed) { Resolve-NpmCliCommandPath -CommandName $CommandName } else { $null }
 
   $plannedActions = [System.Collections.Generic.List[string]]::new()
@@ -376,7 +388,13 @@ function Invoke-PackagedNpmCliInstall {
     switch ($OutdatedState) {
       'outdated' { $true }
       'current'  { $false }
-      default    { Test-NpmCliPackageOutdated -PackageName $PackageName }
+      default {
+        if ($SkipNpmInvocation) {
+          $false
+        } else {
+          Test-NpmCliPackageOutdated -PackageName $PackageName
+        }
+      }
     }
   }
 
