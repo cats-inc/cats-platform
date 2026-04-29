@@ -49,6 +49,7 @@ interface RecordedMessage {
 
 function createRuntimeStub(options: {
   messageSegments?: RuntimeMessageSegment[];
+  finalization?: Record<string, unknown> | null;
 } = {}) {
   const createdSessions: RecordedSession[] = [];
   const sentMessages: RecordedMessage[] = [];
@@ -123,6 +124,7 @@ function createRuntimeStub(options: {
             toolId: null,
           },
         ],
+        ...(options.finalization ? { finalization: options.finalization } : {}),
         inputTokens: 5,
         outputTokens: 5,
         tokensUsed: 10,
@@ -390,5 +392,98 @@ test('code-origin runtime declare_artifact calls persist artifacts during dispat
         },
       },
     ]);
+  });
+});
+
+test('code-origin finalization claims without accepted declarations are blocked', async () => {
+  const runtimeClient = createRuntimeStub({
+    messageSegments: [
+      {
+        kind: 'text',
+        text: 'I recorded the preview artifact.',
+        toolName: null,
+        toolId: null,
+      },
+    ],
+    finalization: {
+      artifactClaims: [{ declarationId: 'preview-localhost:preview_url' }],
+    },
+  });
+
+  const createInput = buildNewChatChannelInput({
+    body: 'Create a preview artifact',
+    existingCount: 0,
+    originSurface: 'code',
+    entryKind: 'solo',
+    repoPath: 'C:/repo/cats-platform',
+    draftSessionPolicy: {
+      workspaceKind: 'source',
+      workspaceAccess: 'read_write',
+      permissionMode: 'default',
+    },
+  });
+
+  await withServer(runtimeClient, async (baseUrl, chatStore) => {
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ...createInput, skipBossCatGreeting: true }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const createChannelPayload = await createChannelResponse.json();
+    const channelId = createChannelPayload.channel.id;
+
+    const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Finalization Cat',
+        provider: 'claude',
+        model: 'claude-opus-4-6',
+      }),
+    });
+    assert.equal(createCatResponse.status, 201);
+    const createCatPayload = await createCatResponse.json();
+
+    const assignResponse = await fetch(
+      `${baseUrl}/api/channels/${channelId}/cats/${createCatPayload.cat.id}`,
+      {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          provider: 'claude',
+          model: 'claude-opus-4-6',
+        }),
+      },
+    );
+    assert.equal(assignResponse.status, 201);
+
+    const sendMessageResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ body: 'Generate the preview.' }),
+    });
+    assert.equal(sendMessageResponse.status, 200, await sendMessageResponse.text());
+
+    await waitForCondition(async () => {
+      const state = await chatStore.read();
+      const channel = state.channels.find((candidate) => candidate.id === channelId);
+      return channel?.messages.some((message) =>
+        message.metadata.event === 'assistant_finalization_rejected') ?? false;
+    });
+
+    const state = await chatStore.read();
+    const channel = state.channels.find((candidate) => candidate.id === channelId);
+    assert.ok(channel);
+    assert.equal(
+      channel.messages.some((message) => message.body === 'I recorded the preview artifact.'),
+      false,
+    );
+    const blockedMessage = channel.messages.find((message) =>
+      message.metadata.event === 'assistant_finalization_rejected');
+    assert.ok(blockedMessage);
+    assert.match(blockedMessage.body, /Blocked .+ response/u);
+    assert.equal(blockedMessage.metadata.code, 'artifact_claim_without_declaration');
+    assert.equal((await chatStore.readCore()).artifacts.length, 0);
   });
 });
