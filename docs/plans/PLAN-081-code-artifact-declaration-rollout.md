@@ -242,8 +242,8 @@ and implementation review.
 | `src/runtime/client.ts` | Modify if needed | Add explicit observation fields only when runtime can produce verified output signals |
 | `src/core/planningRecordLists.ts` | Modify | Add additive query support only if Code projections need it |
 | `src/core/model/planningRecords.ts` | Modify | Avoid schema change unless idempotency metadata needs helper support |
-| `tests/code-artifact-declaration.test.js` | Create | Contract, mapping, validation, and idempotency tests |
-| `tests/code-artifact-finalization.test.js` | Create | Finalization-envelope gating tests for `artifactClaims[]` / same-turn accepted declarations |
+| `tests/code-artifact-declaration.test.tsx` | Create | Contract, mapping, validation, and idempotency tests |
+| `tests/code-artifact-finalization.test.tsx` | Create | Finalization-envelope gating tests for `artifactClaims[]` / same-turn accepted declarations |
 | `tests/code-artifact-projection.test.js` | Create | Sidebar/detail projection tests |
 | `tests/code-task-execution.test.js` | Modify | Cover runtime bridge artifact declaration side effects |
 | `docs/specs/SPEC-092-code-artifact-declaration-contract.md` | Maintain | Keep contract aligned with implementation |
@@ -363,6 +363,7 @@ and implementation review.
 | 2026-04-29 | Scaffolded no-flow implementation classes: `CodeArtifactDeclarationTool` / `declare_artifact` tool definition, label mapping + input normalization, and `CodeArtifactFinalizationGate` for structured `artifactClaims[]` validation. Added focused tests for the tool schema, server-field rejection, transcript / dataset labels, and same-turn finalization matching. No API route, runtime catalog registration, prompt injection, or session dispatch wiring is connected in this slice. |
 | 2026-04-29 | Added `docs/tool-calls.md` as the central registry for Cats-owned agent/runtime tool call contracts and registered `declare_artifact` there, so future tools are not discoverable only through per-feature SPEC files. |
 | 2026-04-29 | Follow-up hardening: split no-flow `shape_ok` from future server `accepted` tool results, aligned `tool-calls.md` with the TypeScript discriminated unions, added SPEC-092 § Error Code Registry, enforced context-free metadata/location limits in the helper, changed validation order to surface required-field errors before server-field misuse, moved artifact tests to `.tsx` source imports, and made label mapping exhaustive via `satisfies Record<CodeArtifactProducerLabel, ...>`. |
+| 2026-04-29 | Follow-up normalization fix: local paths now get lexical path normalization plus an internal `verification.workspaceContainment = 'unverified'` marker until server containment validation clears it; `inline_summary` and `external_ref` persist trimmed values; disallowed server-resolved fields follow the same empty-string-as-omitted normalization; tool-call docs now state URL canonicalization behavior. |
 
 ---
 

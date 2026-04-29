@@ -62,6 +62,7 @@ test('declare_artifact normalizes label-based input and rejects server fields', 
       location: { kind: 'url', value: 'http://127.0.0.1:5173' },
       kind: null,
       producer: undefined,
+      requestedStatus: '   ',
     }),
     {
       declarationId: 'preview-null-fields:preview_url',
@@ -104,6 +105,25 @@ test('declare_artifact validates required fields before disallowed server fields
 });
 
 test('declare_artifact validates location rules that do not need server context', () => {
+  assert.deepEqual(
+    CODE_ARTIFACT_DECLARATION_TOOL.normalizeInput({
+      declarationId: 'path:spec_document',
+      label: 'spec_document',
+      title: 'Normalized path',
+      location: { kind: 'local_path', value: 'reports\\..\\reports\\.\\summary.md' },
+    }),
+    {
+      declarationId: 'path:spec_document',
+      label: 'spec_document',
+      title: 'Normalized path',
+      location: {
+        kind: 'local_path',
+        value: 'reports/summary.md',
+        verification: { workspaceContainment: 'unverified' },
+      },
+    },
+  );
+
   assert.throws(
     () =>
       CODE_ARTIFACT_DECLARATION_TOOL.normalizeInput({
@@ -148,7 +168,7 @@ test('declare_artifact validates location rules that do not need server context'
       declarationId: 'inline:implementation_summary',
       label: 'implementation_summary',
       title: 'Inline summary',
-      location: { kind: 'inline_summary', value: 'Delivered summary' },
+      location: { kind: 'inline_summary', value: '  Delivered summary  ' },
     }),
     {
       declarationId: 'inline:implementation_summary',
@@ -156,6 +176,21 @@ test('declare_artifact validates location rules that do not need server context'
       title: 'Inline summary',
       location: { kind: 'inline_summary', value: 'Delivered summary' },
       summary: 'Delivered summary',
+    },
+  );
+
+  assert.deepEqual(
+    CODE_ARTIFACT_DECLARATION_TOOL.normalizeInput({
+      declarationId: 'external:dataset_file',
+      label: 'dataset_file',
+      title: 'External dataset',
+      location: { kind: 'external_ref', value: ' upload : dataset-1 ' },
+    }),
+    {
+      declarationId: 'external:dataset_file',
+      label: 'dataset_file',
+      title: 'External dataset',
+      location: { kind: 'external_ref', value: 'upload:dataset-1' },
     },
   );
 });

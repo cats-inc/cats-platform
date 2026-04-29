@@ -39,6 +39,14 @@ export type CodeArtifactProducerLabel = (typeof CODE_ARTIFACT_PRODUCER_LABELS)[n
 export interface CodeArtifactLocation {
   kind: CodeArtifactLocationKind;
   value?: string | null;
+  /**
+   * Internal normalized-output marker. The agent-visible tool schema never
+   * accepts this field; server materialization must clear it by validating the
+   * path against the resolved workspace.
+   */
+  verification?: {
+    workspaceContainment?: 'unverified';
+  };
 }
 
 export interface CodeArtifactToolInput {
@@ -433,7 +441,7 @@ export function normalizeCodeArtifactToolInput(input: unknown): CodeArtifactTool
 
   const disallowedFields = Object.entries(input)
     .filter(([key, value]) =>
-      !AGENT_VISIBLE_TOOL_FIELDS.has(key) && value !== null && value !== undefined)
+      !AGENT_VISIBLE_TOOL_FIELDS.has(key) && isMeaningfulDisallowedFieldValue(value))
     .map(([key]) => key);
   if (disallowedFields.length > 0) {
     throw new CodeArtifactDeclarationError(
@@ -498,10 +506,15 @@ function normalizeCodeArtifactLocation(input: unknown): CodeArtifactLocation {
     ? undefined
     : normalizeLocationValue(kind, value);
 
-  return {
+  const location: CodeArtifactLocation = {
     kind,
     ...(normalizedValue !== undefined ? { value: normalizedValue } : {}),
   };
+  if (kind === 'local_path') {
+    location.verification = { workspaceContainment: 'unverified' };
+  }
+
+  return location;
 }
 
 function normalizeCodeArtifactMetadata(input: unknown): CoreRecordMetadata | undefined {
@@ -629,7 +642,11 @@ function normalizeLocationValue(
 }
 
 function normalizeLocalPathLocationValue(value: string): string {
-  if (value.includes('\0') || /^[a-z][a-z0-9+.-]*:/i.test(value)) {
+  const separatorNormalizedValue = value.replaceAll('\\', '/');
+  if (
+    separatorNormalizedValue.includes('\0') ||
+    isUrlLikeLocalPath(separatorNormalizedValue)
+  ) {
     throw new CodeArtifactDeclarationError(
       'artifact_local_path_invalid',
       'declare_artifact local_path location must be a path, not a URL or unsafe string.',
@@ -637,7 +654,7 @@ function normalizeLocalPathLocationValue(value: string): string {
     );
   }
 
-  return value.replaceAll('\\', '/');
+  return collapseLexicalPath(separatorNormalizedValue);
 }
 
 function normalizeUrlLocationValue(value: string): string {
@@ -670,7 +687,8 @@ function normalizeUrlLocationValue(value: string): string {
 }
 
 function normalizeInlineSummaryLocationValue(value: string): string {
-  const bytes = Buffer.byteLength(value, 'utf8');
+  const normalizedValue = value.trim();
+  const bytes = Buffer.byteLength(normalizedValue, 'utf8');
   if (bytes > CODE_ARTIFACT_INLINE_SUMMARY_MAX_BYTES) {
     throw new CodeArtifactDeclarationError(
       'artifact_inline_summary_too_large',
@@ -682,7 +700,7 @@ function normalizeInlineSummaryLocationValue(value: string): string {
     );
   }
 
-  return value;
+  return normalizedValue;
 }
 
 function normalizeExternalRefLocationValue(value: string): string {
@@ -695,8 +713,8 @@ function normalizeExternalRefLocationValue(value: string): string {
     );
   }
 
-  const refKind = value.slice(0, separatorIndex);
-  const refId = value.slice(separatorIndex + 1);
+  const refKind = value.slice(0, separatorIndex).trim();
+  const refId = value.slice(separatorIndex + 1).trim();
   if (!CODE_ARTIFACT_EXTERNAL_REF_KINDS.includes(
     refKind as (typeof CODE_ARTIFACT_EXTERNAL_REF_KINDS)[number],
   )) {
@@ -718,6 +736,61 @@ function normalizeExternalRefLocationValue(value: string): string {
   }
 
   return `${refKind}:${refId}`;
+}
+
+function isMeaningfulDisallowedFieldValue(value: unknown): boolean {
+  if (value === null || value === undefined) {
+    return false;
+  }
+  if (typeof value === 'string') {
+    return normalizeOptionalString(value) !== undefined;
+  }
+  return true;
+}
+
+function isUrlLikeLocalPath(value: string): boolean {
+  if (/^[a-zA-Z]:\//.test(value)) {
+    return false;
+  }
+  return /^[a-z][a-z0-9+.-]*:/i.test(value);
+}
+
+function collapseLexicalPath(value: string): string {
+  const hasDrivePrefix = /^[a-zA-Z]:\//.test(value);
+  const isAbsolute = hasDrivePrefix || value.startsWith('/');
+  const drivePrefix = hasDrivePrefix ? value.slice(0, 2) : '';
+  const body = hasDrivePrefix
+    ? value.slice(2)
+    : value.startsWith('/')
+      ? value.slice(1)
+      : value;
+  const segments: string[] = [];
+
+  for (const segment of body.split('/')) {
+    if (segment === '' || segment === '.') {
+      continue;
+    }
+    if (segment === '..') {
+      const previous = segments.at(-1);
+      if (previous !== undefined && previous !== '..') {
+        segments.pop();
+      } else if (!isAbsolute) {
+        segments.push(segment);
+      }
+      continue;
+    }
+    segments.push(segment);
+  }
+
+  if (hasDrivePrefix) {
+    return segments.length > 0
+      ? `${drivePrefix}/${segments.join('/')}`
+      : `${drivePrefix}/`;
+  }
+  if (isAbsolute) {
+    return segments.length > 0 ? `/${segments.join('/')}` : '/';
+  }
+  return segments.length > 0 ? segments.join('/') : '.';
 }
 
 function assertLocationCrossFieldRules(

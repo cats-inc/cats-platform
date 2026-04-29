@@ -212,6 +212,16 @@ passed context-free checks such as required fields, location format, and
 metadata bounds. It does **not** mean anchors, workspace containment,
 idempotency, producer identity, policy, or Core persistence succeeded.
 
+For `local_path`, the current helper performs context-free lexical
+normalization only: separators are normalized, `.` / `..` segments are
+collapsed, and URL-like / null-byte values are rejected. The normalized output
+marks the location with
+`verification.workspaceContainment = 'unverified'`; this marker is internal,
+not caller-visible, and must be cleared only by the server materialization path
+after validating the path against the resolved workspace. URL values are
+canonicalized through the platform `URL` constructor, so agents should use the
+returned canonical form when composing related identifiers.
+
 `accepted` shall be returned only after the server-side declaration path has
 accepted the declaration. `disposition` reports whether the declaration became a
 `record` or `candidate`; `artifactStatus` reports the Core artifact status only

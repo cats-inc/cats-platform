@@ -877,6 +877,14 @@ Tool, system, and user producers do not use the agent system prompt:
 | `inline_summary` | Text summary content, not a file path | `null` | `value` is copied into `summary` when `summary` is empty; maximum 8 KiB after trimming. |
 | `external_ref` | Opaque reference to a known external object, such as an upload id, runtime artifact id, or storage key | normalized external reference string | The value must use `<refKind>:<refId>`, where `refKind` is allowlisted and `refId` is non-empty. |
 
+When implementation splits context-free shape normalization from server
+materialization, a normalized `local_path` is still untrusted. The helper may
+normalize separators and collapse `.` / `..` lexically, but it shall carry an
+internal `verification.workspaceContainment = 'unverified'` marker until the
+server has resolved the workspace and validated containment. That marker is
+not part of the agent-visible tool schema and shall not be treated as proof of
+containment.
+
 The first implementation shall maintain `external_ref` allowlist policy as one
 Code server configuration value, `codeArtifactDeclaration.externalRefKinds`.
 Per-workspace external-ref policy is a follow-up, not part of this spec. This
@@ -1108,3 +1116,4 @@ agent/tool/system/user output
 *Amended: 2026-04-29 — added § Workspace Key and Path Canonicalization (workspace key resolution, host-OS-aware lexical canonicalization, segment-based prefix matching), § Publish-Transition Failure Semantics (no rollback, `artifact_publish_transition_failed` partial-success contract, `tool_auto_publish_transition_failed` server log), `CodeArtifactImportAndPublishInput` payload shape and route, structured `policyDiagnostics` channel + `failBootOnInvalidEntry` opt-in, and string input normalization (empty / whitespace → null on optional fields, `artifact_required_field_empty` on required fields).*
 *Amended: 2026-04-29 — added § Producer Onboarding: agent system-prompt onboarding block (positive + negative artifact list, one-declaration-per-output rule, context-compression preservation), tool-catalog registration shape, agent-side `declarationId` composition guidance, and tool / system / user producer onboarding paths.*
 *Amended: 2026-04-29 — § Producer Onboarding tightened: agent-visible tool schema is **label-based** (`declarationId` + `label` + `title` + `location` + `summary` + `metadata`); `kind` / `coreKind` / `producer.*` / authoritative anchors removed from agent-facing schema and rejected with `artifact_producer_field_not_allowed` if supplied. Added explicit structured **final-response gating** via `CodeAssistantFinalization.artifactClaims[]`; each claim must match a same-turn accepted `declarationId`, unmatched claims block finalization with `artifact_claim_without_declaration`, and prose heuristics are telemetry only. Added `transcript_export` and `dataset_file` label mappings. Onboarding block carries `codeArtifactDeclaration.onboardingBlockVersion` stamp and runtime bridge re-injects before every assistant turn after session create / resume / context compaction / system-prompt rewrite, not only at first turn.*
+*Amended: 2026-04-29 — clarified split normalization semantics for `local_path`: context-free helpers may perform lexical path normalization but must mark workspace containment as `unverified` until server materialization validates it. `inline_summary` size checks and persisted values use trimmed content, `external_ref` trims both `refKind` and `refId`, and empty strings for agent-supplied server-resolved fields are treated as omitted.*
