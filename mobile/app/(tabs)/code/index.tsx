@@ -1,19 +1,27 @@
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { SafeAreaView, StyleSheet } from 'react-native';
 
-import { colors, spacing, typography } from '../../../src/renderer/theme';
+import { codeSidebarConfig } from '../../../src/api/fixtures/productSidebar';
+import { TrimmedProductSidebar } from '../../../src/renderer/sidebars/TrimmedProductSidebar';
+import { colors } from '../../../src/renderer/theme';
 
 export default function CodeSidebarScreen() {
+  const router = useRouter();
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.body}>
-        <Text style={styles.title}>Code</Text>
-        <Text style={styles.subtitle}>
-          +New code, +Team code, +Peer code, MY CODES, RECENTS.
-        </Text>
-        <Text style={styles.placeholder}>
-          Code sidebar lands in PLAN-084 Phase 5.
-        </Text>
-      </View>
+      <TrimmedProductSidebar
+        config={codeSidebarConfig}
+        onPrimaryAction={(actionId) => {
+          router.push(`/(tabs)/code/new-${actionId}`);
+        }}
+        onOpenMyLens={() => {
+          router.push('/(tabs)/code/my-codes');
+        }}
+        onOpenRecents={() => {
+          router.push('/(tabs)/code/recents');
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -22,23 +30,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg.canvas,
-  },
-  body: {
-    flex: 1,
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  title: {
-    color: colors.fg.primary,
-    ...typography.display,
-  },
-  subtitle: {
-    color: colors.fg.secondary,
-    ...typography.body,
-  },
-  placeholder: {
-    color: colors.fg.muted,
-    ...typography.caption,
-    marginTop: spacing.md,
   },
 });

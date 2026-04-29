@@ -1,19 +1,27 @@
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { SafeAreaView, StyleSheet } from 'react-native';
 
-import { colors, spacing, typography } from '../../../src/renderer/theme';
+import { workSidebarConfig } from '../../../src/api/fixtures/productSidebar';
+import { TrimmedProductSidebar } from '../../../src/renderer/sidebars/TrimmedProductSidebar';
+import { colors } from '../../../src/renderer/theme';
 
 export default function WorkSidebarScreen() {
+  const router = useRouter();
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.body}>
-        <Text style={styles.title}>Work</Text>
-        <Text style={styles.subtitle}>
-          +New work, two presets, MY WORKS, RECENTS.
-        </Text>
-        <Text style={styles.placeholder}>
-          Work sidebar lands in PLAN-084 Phase 5.
-        </Text>
-      </View>
+      <TrimmedProductSidebar
+        config={workSidebarConfig}
+        onPrimaryAction={(actionId) => {
+          router.push(`/(tabs)/work/new-${actionId}`);
+        }}
+        onOpenMyLens={() => {
+          router.push('/(tabs)/work/my-works');
+        }}
+        onOpenRecents={() => {
+          router.push('/(tabs)/work/recents');
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -22,23 +30,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg.canvas,
-  },
-  body: {
-    flex: 1,
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  title: {
-    color: colors.fg.primary,
-    ...typography.display,
-  },
-  subtitle: {
-    color: colors.fg.secondary,
-    ...typography.body,
-  },
-  placeholder: {
-    color: colors.fg.muted,
-    ...typography.caption,
-    marginTop: spacing.md,
   },
 });
