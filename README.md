@@ -147,6 +147,10 @@ several Phase 3 items remain:
 
 ## Quick Start
 
+Before upgrading an existing local workspace, review
+[docs/release-notes.md](./docs/release-notes.md) for behavior changes and
+migration notes.
+
 ```bash
 cd cats-platform
 cp .env.example .env
@@ -176,9 +180,6 @@ npm start
 ```
 
 The Node server will serve the built web UI from `build/renderer/` when available.
-
-Review [docs/release-notes.md](./docs/release-notes.md) before upgrading an
-existing local workspace.
 
 For the desktop-host slice:
 

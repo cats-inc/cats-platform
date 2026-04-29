@@ -26,6 +26,7 @@ import { routeChannelMessage } from '../build/server/products/chat/state/runtime
 import { createSharedCoreFixtureBundle } from '../build/server/shared/coreFixtures.js';
 import { UUID_PATTERN } from '../build/server/products/chat/shared/channelPaths.js';
 import { buildChatWorkItemId, CHAT_ROOT_CONTAINER_ID } from '../build/server/shared/chatCoreIds.js';
+import { normalizeMessage } from '../build/server/products/chat/state/chat-snapshot/entities.js';
 import { FileChatStore } from '../build/server/products/chat/state/store.js';
 
 test('FileChatStore persists configured channels, cats, assignments, and messages to disk', async () => {
@@ -199,6 +200,44 @@ test('FileChatStore strips legacy composerMode from message metadata on reload',
   assert.ok(reloadedParticipantAssigned);
   assert.equal('composerMode' in reloadedParticipantAssigned.metadata, false);
   assert.equal(reloadedParticipantAssigned.metadata.participantId, 'legacy-participant');
+});
+
+test('normalizeMessage returns owned metadata objects while stripping legacy fields', () => {
+  const rawMessage = {
+    id: 'message-1',
+    channelId: 'channel-1',
+    senderKind: 'system',
+    senderName: 'Chat',
+    body: 'Status changed.',
+    metadata: {
+      event: 'channel_status_changed',
+      status: 'active',
+    },
+  };
+  const normalized = normalizeMessage(rawMessage, 'channel-1');
+
+  assert.notEqual(normalized.metadata, rawMessage.metadata);
+  normalized.metadata.status = 'mutated';
+  assert.equal(rawMessage.metadata.status, 'active');
+
+  const legacyRawMessage = {
+    id: 'message-2',
+    channelId: 'channel-1',
+    senderKind: 'system',
+    senderName: 'Chat',
+    body: 'Participant assigned.',
+    metadata: {
+      event: 'participant_assigned',
+      composerMode: 'cat_led',
+      participantId: 'legacy-participant',
+    },
+  };
+  const normalizedLegacy = normalizeMessage(legacyRawMessage, 'channel-1');
+
+  assert.notEqual(normalizedLegacy.metadata, legacyRawMessage.metadata);
+  assert.equal('composerMode' in normalizedLegacy.metadata, false);
+  assert.equal('composerMode' in legacyRawMessage.metadata, true);
+  assert.equal(normalizedLegacy.metadata.participantId, 'legacy-participant');
 });
 
 test('resetSoloChannelContinuity is idempotent before the new branch starts', async () => {

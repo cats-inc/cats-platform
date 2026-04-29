@@ -84,7 +84,7 @@ export function normalizeMessage(rawMessage: unknown, channelId: string): ChatMe
           ([key]) => !LEGACY_MESSAGE_METADATA_FIELDS.has(key),
         ),
       )
-    : metadataRecord;
+    : { ...metadataRecord };
   const senderKind = (
     rawSenderKind === 'user'
     || rawSenderKind === 'agent'

@@ -58,7 +58,6 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
-- [Release Notes](./release-notes.md)
 - [PLAN-087](./plans/PLAN-087-cats-app-package-interface-rollout.md)
 - [SPEC-098](./specs/SPEC-098-cats-app-package-and-extension-interface.md)
 - [ADR-094](./decisions/094-adopt-cats-app-packages-as-extension-boundary.md)
