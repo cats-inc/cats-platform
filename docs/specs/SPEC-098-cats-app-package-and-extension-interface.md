@@ -320,6 +320,8 @@ Rules:
 - Product module settings may live under their product settings namespace only
   when the package is `system` trusted.
 - Settings saves must follow the existing Settings toast convention.
+- The host-level `Apps` settings entry appears after product settings entries
+  such as `Work` and before `Runtime` in the Settings sidebar.
 
 ### Agent Tools
 
@@ -695,6 +697,8 @@ renderer.
 - Empty or unavailable apps show a quiet empty state, not a mock Pomodoro card.
 - A Cats Code exported app appears with its display name, subtitle, publisher,
   and preview/active maturity.
+- App lifecycle management lives in Settings under `Apps`, positioned under
+  `Work` and above `Runtime`.
 - Apps with no main UI should be listed in Settings or Integrations, not forced
   into Lobby.
 - The install review screen must show permissions in plain language.

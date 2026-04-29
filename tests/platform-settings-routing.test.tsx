@@ -189,6 +189,7 @@ test('PlatformSettingsRoutes owns canonical platform settings routes', () => {
     assertConcreteRoute(routes, 'chat');
     assertConcreteRoute(routes, 'work');
     assertConcreteRoute(routes, 'code');
+    assertConcreteRoute(routes, 'apps/*');
     assertConcreteRoute(routes, 'desktop');
     assertNavigateRoute(routes, 'desktop-startup', '/settings/desktop');
     assertConcreteRoute(routes, 'runtime');

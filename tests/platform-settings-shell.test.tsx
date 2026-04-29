@@ -97,7 +97,7 @@ test('buildPlatformSettingsProductEntries flattens visible product settings entr
   ]);
 });
 
-test('PlatformSettingsShell places Desktop between Code and Runtime in desktop mode', () => {
+test('PlatformSettingsShell places Apps under Work and above Runtime', () => {
   const previousBridge = (globalThis as typeof globalThis & {
     catsDesktopHost?: object;
   }).catsDesktopHost;
@@ -136,6 +136,20 @@ test('PlatformSettingsShell places Desktop between Code and Runtime in desktop m
               },
             ],
           }),
+          createProduct({
+            id: 'work',
+            surface: 'work',
+            routePrefix: '/work',
+            productName: 'Cats Work',
+            group: 'office',
+            settings: [
+              {
+                id: 'work',
+                label: 'Work',
+                path: '/settings/work',
+              },
+            ],
+          }),
         ]}
       >
         <div>Desktop body</div>
@@ -145,12 +159,19 @@ test('PlatformSettingsShell places Desktop between Code and Runtime in desktop m
 
   try {
     const codeIndex = markup.indexOf('>Code<');
+    const workIndex = markup.indexOf('>Work<');
+    const appsIndex = markup.indexOf('>Apps<');
     const desktopIndex = markup.indexOf('>Desktop<');
     const runtimeIndex = markup.indexOf('>Runtime<');
     assert.ok(codeIndex >= 0, 'expected Code nav entry');
+    assert.ok(workIndex >= 0, 'expected Work nav entry');
+    assert.ok(appsIndex >= 0, 'expected Apps nav entry');
     assert.ok(desktopIndex >= 0, 'expected Desktop nav entry');
     assert.ok(runtimeIndex >= 0, 'expected Runtime nav entry');
-    assert.ok(codeIndex < desktopIndex, 'expected Desktop after Code');
+    assert.ok(codeIndex < workIndex, 'expected Work after Code');
+    assert.ok(workIndex < appsIndex, 'expected Apps after Work');
+    assert.ok(appsIndex < runtimeIndex, 'expected Apps before Runtime');
+    assert.ok(appsIndex < desktopIndex, 'expected Apps before Desktop in desktop mode');
     assert.ok(desktopIndex < runtimeIndex, 'expected Desktop before Runtime');
   } finally {
     if (previousBridge === undefined) {

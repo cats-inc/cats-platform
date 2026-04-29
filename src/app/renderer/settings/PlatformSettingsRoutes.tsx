@@ -6,6 +6,7 @@ import type { WorkspaceBusyState } from '../../../shared/workspaceBusy.js';
 import { WorkspaceSettingsCatsCanvas } from '../../../products/shared/renderer/components/settings-cats/SettingsCats.js';
 import { isDesktopEnvironment } from '../../../shared/desktopRecoveryBridge.js';
 import { SettingsAssistants } from './SettingsAssistants.js';
+import { PlatformSettingsApps } from './PlatformSettingsApps.js';
 import { PlatformSettingsChat } from './PlatformSettingsChat.js';
 import { PlatformSettingsCode } from './PlatformSettingsCode.js';
 import { PlatformSettingsData } from './PlatformSettingsData.js';
@@ -44,6 +45,9 @@ export function resolveSettingsSectionConfig(
   }
   if (pathname.startsWith('/settings/code')) {
     return { section: 'code', title: 'Code' };
+  }
+  if (pathname.startsWith('/settings/apps')) {
+    return { section: 'apps', title: 'Apps' };
   }
   if (pathname.startsWith('/settings/desktop')) {
     return { section: 'desktop', title: 'Desktop' };
@@ -141,6 +145,7 @@ export function buildPlatformSettingsRouteTree<TPayload extends WorkspaceAppShel
           )}
         />
       ) : null}
+      <Route path="apps/*" element={<PlatformSettingsApps />} />
       {showDesktop ? (
         <Route
           path="desktop"

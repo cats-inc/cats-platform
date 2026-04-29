@@ -13,6 +13,7 @@ type PlatformSettingsSection =
   | 'cats'
   | 'cats:my-cats'
   | 'cats:assistants'
+  | 'apps'
   | 'desktop'
   | 'runtime'
   | 'data'
@@ -106,6 +107,13 @@ export function PlatformSettingsShell({
             {entry.label}
           </button>
         ))}
+        <button
+          className={section === 'apps' ? 'settingsTab settingsTabActive' : 'settingsTab'}
+          type="button"
+          onClick={() => navigate('/settings/apps')}
+        >
+          Apps
+        </button>
         {showDesktop ? (
           <button
             className={section === 'desktop' ? 'settingsTab settingsTabActive' : 'settingsTab'}

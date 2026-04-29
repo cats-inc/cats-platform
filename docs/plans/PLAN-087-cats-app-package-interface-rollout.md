@@ -173,6 +173,8 @@ standard without granting that privilege to local user apps.
 
 ## Phase 8: App Management UI
 
+- [x] Add the host-level `Apps` settings entry under `Work` and above
+      `Runtime`.
 - [ ] Add installed app management under Settings.
 - [ ] Show app identity, version, category, trust tier, permissions, and state.
 - [ ] Add enable, disable, uninstall, and open actions.
@@ -250,6 +252,7 @@ The overnight implementation agent should aim for this first vertical slice:
 | Date | Update |
 |------|--------|
 | 2026-04-29 | Plan created from the OpenClaw/Paperclip hybrid architecture review and Cats Code user-app export requirement. |
+| 2026-04-29 | Added the first Settings `Apps` entry and placeholder route under `Work` and above `Runtime`; registry-backed management remains pending. |
 
 ---
 
