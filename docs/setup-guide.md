@@ -33,6 +33,33 @@ npm install
 npm test
 ```
 
+### Mobile bundle build
+
+Cats Mobile is an independent Expo package under `mobile/`, with its own
+`package-lock.json` and `node_modules/`. A clean desktop build installs those
+dependencies automatically:
+
+```bash
+npm run mobile:install
+npm run build:mobile
+```
+
+`npm run build` also invokes `build:mobile`, so a release build from a clean
+checkout produces `build/mobile/` without a manual `cd mobile && npm install`
+step. For CI or SDK-bump validation, run:
+
+```bash
+npm run build:mobile:check
+```
+
+That command installs mobile dependencies, runs the mobile boundary/typecheck
+validation, exports both iOS and Android bundles, and verifies that
+`build/mobile/metadata.json` plus Expo static bundle files exist. Expo SDK 54
+currently emits Hermes `.hbc` bundle files under `_expo/static/js/<platform>/`.
+When bumping `expo` in `mobile/package.json`, re-run `npm run build:mobile:check`
+and then run the real-device Mobile pairing smoke from PLAN-088 before shipping
+the desktop artifact.
+
 ## Running the Project
 
 ### Development

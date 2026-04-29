@@ -20,10 +20,12 @@
     "LICENSE"
   ],
   "scripts": {
-    "build": "npm run clean:build && node scripts/build-server-artifacts.mjs && npm run build:web && npm run build:host",
+    "build": "npm run clean:build && node scripts/build-server-artifacts.mjs && npm run build:web && npm run build:mobile && npm run build:host",
     "build:host": "tsc -p tsconfig.desktop.json",
     "build:server": "tsc -p tsconfig.server.json",
     "build:server-bundle": "node scripts/bundle-server.mjs",
+    "build:mobile": "npm run mobile:install && npm run mobile:export && node scripts/check-mobile-build.mjs",
+    "build:mobile:check": "npm run mobile:install && npm run mobile:typecheck && npm run mobile:export && node scripts/check-mobile-build.mjs",
     "build:web": "vite build",
     "build:test-ui": "esbuild tests/*.test.tsx --bundle --platform=node --format=esm --outdir=build/test",
     "clean:build": "node scripts/clean-build.mjs",
@@ -57,7 +59,9 @@
     "test": "npm run typecheck && npm run build:server && npm run build:host && npm run build:test-ui && node --test --test-isolation=none tests/**/*.test.js build/test/*.test.js",
     "typecheck": "tsc --noEmit -p tsconfig.server.json && tsc --noEmit -p tsconfig.desktop.json && tsc --noEmit -p tsconfig.json && npm run mobile:typecheck",
     "mobile:typecheck": "npm run mobile:boundary && npm run typecheck --prefix mobile",
-    "mobile:boundary": "node scripts/check-mobile-boundary.mjs"
+    "mobile:boundary": "node scripts/check-mobile-boundary.mjs",
+    "mobile:export": "cd mobile && npx expo export --platform all --output-dir ../build/mobile",
+    "mobile:install": "npm ci --prefix mobile"
   },
   "keywords": [
     "cats",
@@ -158,6 +162,13 @@
       {
         "from": "build/desktop-packaging/shared/setup-assets",
         "to": "desktop/setup-assets",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "build/mobile",
+        "to": "mobile",
         "filter": [
           "**/*"
         ]

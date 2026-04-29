@@ -80,12 +80,14 @@ Developer account.
     `expo-platform`, `expo-runtime-version`, and
     `expo-protocol-version` request headers and returns the
     manifest variant the client negotiates for.
-  - `GET /api/mobile/bundle/{platform}/{hash}.js` — returns the
-    JS bundle. URLs are content-hash addressed: the path encodes
-    the bundle hash so the same URL is bit-for-bit immutable. The
-    manifest's bundle-entry URL points at the current hash
-    (`launchAsset.url` for Updates v1 or `bundleUrl` for Classic,
-    depending on the Phase 1 schema decision).
+  - `GET /api/mobile/bundle/{platform}/{fileName}` — returns the
+    platform bundle file listed in `metadata.json`. Expo SDK 54's
+    export can emit Hermes `.hbc` bundle files, not only `.js`.
+    URLs are content-hash addressed: the file name encodes the
+    bundle hash so the same URL is bit-for-bit immutable. The
+    manifest's bundle-entry URL points at the current hash-addressed
+    file (`launchAsset.url` for Updates v1 or `bundleUrl` for
+    Classic, depending on the Phase 1 schema decision).
   - `GET /api/mobile/assets/{hash}` — returns the asset matching
     the hash. Same content-hash addressing.
 - **FR-5.** All routes serve from `<resources>/mobile/` at runtime
@@ -230,8 +232,8 @@ Developer account.
 ├── build/server/...                                │   Expo Go       │
 ├── build/desktop/...                               │                 │
 └── build/mobile/                                   │  scans QR ──┐   │
-    ├── _expo/static/js/ios/index-{hash}.js                        │   │
-    ├── _expo/static/js/android/index-{hash}.js                    │   │
+    ├── _expo/static/js/ios/entry-{hash}.hbc                       │   │
+    ├── _expo/static/js/android/entry-{hash}.hbc                   │   │
     ├── metadata.json                                              │   │
     └── assets/{hash}.{ext}                                        │   │
                                                                    ▼   │
@@ -243,7 +245,7 @@ HTTP server on CATS_HOST:CATS_PORT (LAN-bound)                         │
     (reads expo-platform / expo-runtime-version /
      expo-protocol-version request headers; emits the
      hash-addressed bundle-entry URL inside the body)
-  GET /api/mobile/bundle/{platform}/{hash}.js
+  GET /api/mobile/bundle/{platform}/{fileName}
   GET /api/mobile/assets/{hash}
                                                                        
 Renderer process (Settings → Desktop)

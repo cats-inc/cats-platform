@@ -64,26 +64,27 @@ The repo is **not an npm workspace**: `cats-platform/` and
 `node_modules/`. The build chain has to install mobile deps
 itself instead of assuming they exist.
 
-- [ ] Add a `mobile:install` script to `cats-platform/package.json`:
+- [x] Add a `mobile:install` script to `cats-platform/package.json`:
       `npm ci --prefix mobile` (or `npm install --prefix mobile`
       for first-time scaffolding). Document that this assumes
       Node + npm are already on the build machine.
-- [ ] Add a `build:mobile` script that depends on
+- [x] Add a `build:mobile` script that depends on
       `mobile:install` first, then runs
       `cd mobile && npx expo export --platform all --output-dir
       ../build/mobile` (exact flags subject to Phase 1 findings).
-- [ ] Hook `build:mobile` into `npm run build` (the existing
+- [x] Hook `build:mobile` into `npm run build` (the existing
       pre-package build pipeline) so a clean CI / fresh desktop
       build does not need a separate manual step.
-- [ ] Add a CI preflight check: `mobile:install` succeeds, the
+- [x] Add a CI preflight check: `mobile:install` succeeds, the
       mobile workspace's `npm run typecheck` is clean, and
       `build/mobile/` is non-empty after `build:mobile`.
-- [ ] Update `electron-builder` config to include `build/mobile/`
+- [x] Update `electron-builder` config to include `build/mobile/`
       in `extraResources`. Confirm path resolution at runtime
       (`process.resourcesPath/mobile/`).
-- [ ] Confirm bundle size impact on installer (.dmg / .exe / .deb)
-      and add an ADR amendment if it's > 50 MB.
-- [ ] Document the SDK-bump → re-export path in
+- [x] Confirm bundle size impact on installer (.dmg / .exe / .deb)
+      and add an ADR amendment if it's > 50 MB. The current SDK 54
+      export is 5.04 MB, so no ADR amendment is needed.
+- [x] Document the SDK-bump → re-export path in
       `cats-platform/docs/setup-guide.md`, including the
       `mobile:install` requirement on a clean machine.
 
@@ -100,7 +101,7 @@ Gated; default off.
 
 - [ ] Add `cats-platform/src/server/routes/mobileManifest.ts` (or
       similar) implementing the routes from SPEC-099 §FR-4
-      (`/api/mobile/manifest`, `/api/mobile/bundle/{platform}/{hash}.js`,
+      (`/api/mobile/manifest`, `/api/mobile/bundle/{platform}/{fileName}`,
       `/api/mobile/assets/{hash}`). `/api/mobile/manifest` is the
       canonical internal diagnostic endpoint until Phase 1 resolves
       the Expo-Go-facing manifest ingress URL/path in Q2; if Expo
