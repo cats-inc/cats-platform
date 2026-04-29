@@ -97,7 +97,21 @@ async function seedRuntimeBundle(runtimeRoot, contents = 'export const layout = 
   await seedFile(join(runtimeRoot, 'build', 'runtime-bundle', 'index.js.map'), '{"version":3}');
 }
 
+async function seedAppSidecarRuntimeDependencies(packageRoot) {
+  for (const dependency of ['js-yaml', 'argparse']) {
+    await seedFile(
+      join(packageRoot, 'node_modules', dependency, 'package.json'),
+      JSON.stringify({ name: dependency, version: '0.0.0-test', main: 'index.js' }, null, 2),
+    );
+    await seedFile(
+      join(packageRoot, 'node_modules', dependency, 'index.js'),
+      'module.exports = {};\n',
+    );
+  }
+}
+
 async function seedWindowsSetupAssets(packageRoot) {
+  await seedAppSidecarRuntimeDependencies(packageRoot);
   await seedFile(join(packageRoot, 'scripts', 'windows', '_HiddenProcess.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', '_PackagedUninstall.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Setup-NodeGlobalPrefix.ps1'), '# helper');

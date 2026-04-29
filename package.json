@@ -129,6 +129,14 @@
         "to": "app-sidecar/package.json"
       },
       {
+        "from": "build/desktop-packaging/shared/app-sidecar/node_modules",
+        "to": "app-sidecar/node_modules",
+        "filter": [
+          "**/*",
+          "!.bin{,/**/*}"
+        ]
+      },
+      {
         "from": "build/desktop-packaging/shared/cats-runtime",
         "to": "cats-runtime",
         "filter": [

@@ -115,6 +115,13 @@ const PLATFORM_OPTIONAL_ASSETS: PlatformSidecarAsset[] = [
   },
 ];
 
+// Server-side runtime dependencies that the cats-platform app sidecar requires
+// at process start (NOT renderer-only deps that Vite bundles into the renderer).
+// Each entry must appear at cats-platform/node_modules/<name> AND in the staging
+// output as shared/app-sidecar/node_modules/<name>. Transitive runtime deps must
+// be listed explicitly so packaging is deterministic.
+const APP_SIDECAR_RUNTIME_DEPENDENCIES = ['js-yaml', 'argparse'] as const;
+
 const RUNTIME_OPTIONAL_ASSETS: RuntimeSidecarAsset[] = [
   {
     sourceRelativePath: 'public',
@@ -798,10 +805,12 @@ async function ensureBuiltAssets(config: DesktopHostConfig): Promise<void> {
 }
 
 async function ensureBundledPlatformAssets(packageRoot: string): Promise<void> {
-  await Promise.all(
-    PLATFORM_OPTIONAL_ASSETS.map((asset) =>
+  await Promise.all([
+    ...PLATFORM_OPTIONAL_ASSETS.map((asset) =>
       ensureRequiredFile(join(packageRoot, asset.sourceRelativePath))),
-  );
+    ...APP_SIDECAR_RUNTIME_DEPENDENCIES.map((dependency) =>
+      ensureRequiredFile(join(packageRoot, 'node_modules', dependency, 'package.json'))),
+  ]);
 }
 
 async function copyDirectory(source: string, target: string): Promise<void> {
@@ -879,6 +888,12 @@ export async function stageDesktopPackagingOutputs(
       await copyFile(sourcePath, targetPath);
     }
   }
+  for (const dependency of APP_SIDECAR_RUNTIME_DEPENDENCIES) {
+    await copyDirectory(
+      join(config.packageRoot, 'node_modules', dependency),
+      join(outputRoot, 'shared', 'app-sidecar', 'node_modules', dependency),
+    );
+  }
   const setupAssets = await stageDesktopSetupAssets(
     config.packageRoot,
     outputRoot,
@@ -946,6 +961,10 @@ export async function stageDesktopPackagingOutputs(
       ...PLATFORM_OPTIONAL_ASSETS.map((asset) => ({
         source: relative(outputRoot, join(config.packageRoot, asset.sourceRelativePath)),
         target: asset.targetRelativePath,
+      })),
+      ...APP_SIDECAR_RUNTIME_DEPENDENCIES.map((dependency) => ({
+        source: relative(outputRoot, join(config.packageRoot, 'node_modules', dependency)),
+        target: join('shared', 'app-sidecar', 'node_modules', dependency).replace(/\\/g, '/'),
       })),
       {
         source: relative(outputRoot, join(config.packageRoot, 'build', 'desktop', 'main.js')),
