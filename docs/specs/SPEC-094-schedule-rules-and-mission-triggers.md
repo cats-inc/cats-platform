@@ -125,7 +125,10 @@ creating a companion-specific mission class.
    `AgentId` during scheduler admission, before writing
    `MissionRecord.assignedAgentId`. Unresolved or ambiguous Cat targets shall
    fail admission before Run creation. Runtime receives the resolved mission,
-   while the original target reference may remain in metadata for diagnostics.
+   while the original (pre-resolution) target reference shall be persisted on
+   the admitted run as `CoreRunRecord.metadata.scheduleTrigger.originalTargetRef`
+   so that diagnostics, retries, and history surfaces can recover the
+   rule-declared target without re-reading the rule.
 10. The mission template shall be generic. It must not encode product-specific
     subclasses such as `ScheduledCompanionMission`; ADR-090 owns the rejection
     rationale and this spec owns the concrete schedule contract.
@@ -153,14 +156,10 @@ creating a companion-specific mission class.
     platform-owned trigger receipt/idempotency ledger, but the canonical query
     contract for admitted scheduled runs shall be
     `CoreRunRecord.metadata.scheduleTrigger`.
-16. `CoreRunRecord.metadata.scheduleTrigger` shall include:
-    - rule id
-    - rule revision
-    - scheduled fire time
-    - actual fire time
-    - idempotency key
-    - reason (`due`, `manual_test`, `startup_misfire`, `retry`)
-    - optional trigger receipt id
+16. `CoreRunRecord.metadata.scheduleTrigger` shall mirror the trigger event
+    fields enumerated in #14, plus an optional `triggerReceiptId` linking back
+    to the platform-owned receipt ledger and an optional `originalTargetRef`
+    capturing the rule-declared target before Cat→Agent resolution.
 17. Downstream surfaces that need "all runs triggered by rule X" shall query
     the fixed `scheduleTrigger.ruleId` metadata shape rather than inferring from
     traces or activities.
@@ -317,8 +316,6 @@ type ScheduleKind = 'once' | 'daily';
 
 type ScheduleTriggerReason = 'due' | 'manual_test' | 'startup_misfire' | 'retry';
 
-type MissionOriginSurface = string;
-
 interface ScheduleRule {
   id: string;
   title: string;
@@ -343,10 +340,11 @@ type ScheduleDefinition =
 
 interface MissionTemplate {
   target: { kind: 'cat' | 'agent'; id: string };
-  // Schedule-created templates use the value `schedule` in v1. The field stays
-  // open because the shared MissionTemplate shape may later be reused by Chat,
-  // Work, Code, transport, or other origin surfaces.
-  originSurface: MissionOriginSurface;
+  // V1 only emits schedule-originated MissionTemplates. Widen this union
+  // when a concrete second origin surface (Chat/Work/Code/transport) needs
+  // to share the shape — pre-emptive widening to `string` would lose the
+  // type guard without a real caller.
+  originSurface: 'schedule';
   intent: string;
   conversationTarget?: { conversationId: string } | null;
   transportTargets?: Array<{ platform: string; bindingId: string }>;
@@ -366,9 +364,11 @@ interface ScheduleExecutionPolicy {
   };
 }
 
-// Stored under CoreRunRecord.metadata.scheduleTrigger for admitted scheduled runs.
+// Stored under CoreRunRecord.metadata.scheduleTrigger for admitted scheduled
+// runs. The dedicated `scheduleTrigger` key on `metadata` already disambiguates
+// schedule provenance from other metadata blocks, so no `kind` discriminant
+// is carried here.
 interface ScheduleTriggerMetadata {
-  kind: 'schedule';
   ruleId: string;
   ruleRevision: number;
   scheduledFireAt: string;
@@ -376,6 +376,7 @@ interface ScheduleTriggerMetadata {
   idempotencyKey: string;
   reason: ScheduleTriggerReason;
   triggerReceiptId?: string;
+  originalTargetRef?: { kind: 'cat' | 'agent'; id: string };
 }
 ```
 
@@ -399,8 +400,6 @@ launch generic missions/runs, write scheduled run provenance to
       configuration storage, or a dedicated scheduler store for the first
       implementation?
 - [ ] Which cron expression subset should be accepted in v2?
-- [ ] Should a later API allow disabled/draft cron rules before cron admission
-      is implemented, or reject cron shapes entirely until v2?
 - [ ] Which tool surface should expose companion resource selection to the
       agent?
 - [ ] Should a scheduled Telegram message create a hidden/visible Chat

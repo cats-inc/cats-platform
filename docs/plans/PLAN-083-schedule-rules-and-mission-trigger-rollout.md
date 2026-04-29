@@ -108,6 +108,9 @@ events without invoking runtime.
       - idempotency key
       - trigger reason
       - optional trigger receipt id
+      - optional `originalTargetRef` capturing the rule-declared target before
+        Cat→Agent resolution (so retries and history surfaces can recover it
+        without re-reading the rule)
 - [ ] Route scheduled runtime work through the supervision runtime boundary.
 - [ ] Add tests proving scheduler code does not call runtime client APIs
       directly.
@@ -223,6 +226,8 @@ the first companion/Telegram scenario.
   - scheduled execution enters supervision boundary
   - scheduled Run records include `metadata.scheduleTrigger`
   - Cat targets resolve to concrete Agent ids before Mission creation
+  - `metadata.scheduleTrigger.originalTargetRef` preserves the rule-declared
+    target (kind/id) for runs whose template used `kind: 'cat'`
   - Telegram target uses transport binding identity
 - **Static Boundary Tests**
   - scheduler modules do not import runtime client send/create APIs directly
@@ -251,6 +256,7 @@ the first companion/Telegram scenario.
 |------|--------|
 | 2026-04-29 | Plan created for generic schedule rules and mission-trigger rollout |
 | 2026-04-29 | Review follow-up: clarified v1 `once`/`daily` scope, rule revision semantics, Cat-to-Agent admission resolution, `CoreRunRecord.metadata.scheduleTrigger` provenance, and deferred `reuse_active`/cron follow-ups. |
+| 2026-04-29 | Polish pass: dropped redundant `kind: 'schedule'` discriminant on `ScheduleTriggerMetadata`, narrowed `MissionTemplate.originSurface` from `string` back to literal `'schedule'` until a second origin caller exists, consolidated SPEC #14/#16 prose, pinned `originalTargetRef` storage to `CoreRunRecord.metadata.scheduleTrigger`, and removed the cron-API Open Question already answered by req #4 + Phase 2. |
 
 ---
 
