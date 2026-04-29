@@ -90,7 +90,12 @@ function classifyImport(importPath, sourceFile) {
 
   if (importPath.startsWith('.')) {
     const resolved = path.resolve(path.dirname(sourceFile), importPath);
-    const projectRelative = path.relative(PROJECT_ROOT, resolved);
+    // Normalise to forward-slash so the substring blocklist matches on
+    // Windows (where `path.relative` returns backslashes).
+    const projectRelative = path
+      .relative(PROJECT_ROOT, resolved)
+      .split(path.sep)
+      .join('/');
     for (const fragment of FORBIDDEN_PROJECT_SUBSTRINGS) {
       if (projectRelative.includes(fragment)) {
         return {
