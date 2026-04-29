@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-088](./PLAN-088-mobile-pairing-manifest-server-rollout.md) | Mobile Pairing Manifest Server Rollout | Draft | [SPEC-099](../specs/SPEC-099-mobile-pairing-manifest-server.md), [ADR-095](../decisions/095-distribute-mobile-as-static-expo-go-bundle-served-by-desktop.md) |
 | [PLAN-087](./PLAN-087-cats-app-package-interface-rollout.md) | Cats App Package Interface Rollout | Draft | [SPEC-098](../specs/SPEC-098-cats-app-package-and-extension-interface.md), [ADR-094](../decisions/094-adopt-cats-app-packages-as-extension-boundary.md) |
 | [PLAN-086](./PLAN-086-platform-language-settings-and-ui-localization-rollout.md) | Platform Language Settings and UI Localization Rollout | Draft | [SPEC-097](../specs/SPEC-097-platform-language-settings-and-ui-localization.md), [ADR-093](../decisions/093-use-platform-language-preferences-for-assistant-and-ui-locales.md) |
 | [PLAN-085](./PLAN-085-mission-cancel-and-run-stop-rollout.md) | Mission Cancel and Run Stop Rollout | Draft | [SPEC-096](../specs/SPEC-096-mission-cancel-and-run-stop-contract.md), [ADR-082](../decisions/082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md) |
@@ -140,6 +141,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-04-29 (PLAN-087 added for Cats App Package interface rollout; PLAN-086 added for platform language settings and UI localization rollout; PLAN-085 added for Mission cancel and Run stop rollout.)*
+*Last updated: 2026-04-30 (PLAN-088 added for Mobile pairing manifest server rollout; PLAN-087 added for Cats App Package interface rollout; PLAN-086 added for platform language settings and UI localization rollout; PLAN-085 added for Mission cancel and Run stop rollout.)*
 
 *See also: [specs/](../specs/) for feature specifications*
