@@ -143,7 +143,7 @@ Inventory notes:
 ## Phase 5: Define the Cats Code Export Pipeline
 
 - [ ] Add a Cats Code user-app template with `cats.app.json`.
-- [ ] Add export metadata that maps Code artifacts to a Cats App Package.
+- [x] Add export metadata that maps Code artifacts to a Cats App Package.
 - [ ] Add an export command/action that builds `dist/renderer` and optional
       `dist/server`.
 - [x] Add validation before install handoff.
@@ -285,6 +285,7 @@ The overnight implementation agent should aim for this first vertical slice:
 | 2026-04-30 | Replaced the Local install placeholder with path validation, owner confirmation, install review metadata, install API handoff, local payload update, and envelope refresh. |
 | 2026-04-30 | Added post-install navigation to the installed app's first enabled Lobby route, with a pure launch-path resolver test. |
 | 2026-04-30 | Added connector settings entry resolution from connector `setupPath` or app settings contributions, with Settings Apps links and auth summary coverage. |
+| 2026-04-30 | Added Cats Code app export metadata types and helper coverage that maps manifest entrypoints to package artifacts. |
 
 ---
 
