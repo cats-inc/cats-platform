@@ -8,6 +8,7 @@ import {
   type ScheduleRuleUpdateInput,
 } from '../../../platform/scheduler/index.js';
 import {
+  cancelScheduledRunThroughSupervision,
   launchScheduledRunThroughSupervision,
 } from '../../../platform/supervision/scheduledRunExecution.js';
 import {
@@ -156,6 +157,20 @@ function createWorkSchedulerService(context: WorkApiRouteContext) {
     scheduleStore,
     coreStore: context.dependencies.coreStore,
     now: context.dependencies.now,
+    replaceActiveRun: async (request) => {
+      await cancelScheduledRunThroughSupervision({
+        coreStore: context.dependencies.coreStore,
+        runtimeClient: context.dependencies.runtimeClient,
+        evidenceDataDir: context.dependencies.evidenceDataDir,
+        now: () => new Date(request.requestedAt),
+      }, request.runId, {
+        requestedAt: request.requestedAt,
+        reasonNote: [
+          `Replaced by schedule rule ${request.ruleId}`,
+          `trigger ${request.triggerReceiptId}.`,
+        ].join(' '),
+      });
+    },
   });
 }
 

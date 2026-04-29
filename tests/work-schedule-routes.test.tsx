@@ -92,10 +92,12 @@ function createTestServer(input: {
 function createRuntimeStub(): RuntimeClient & {
   createdSessions: unknown[];
   sentMessages: Array<{ sessionId: string; content: string; input?: unknown }>;
+  canceledSessions: string[];
 } {
   return {
     createdSessions: [],
     sentMessages: [],
+    canceledSessions: [],
     async getHealth() {
       return {
         baseUrl: 'http://127.0.0.1:3110',
@@ -180,7 +182,9 @@ function createRuntimeStub(): RuntimeClient & {
     async callMcp() {
       return null;
     },
-    async cancelSession() {},
+    async cancelSession(sessionId) {
+      this.canceledSessions.push(sessionId);
+    },
     async closeSession() {},
     async deleteSession(sessionId) {
       return {
@@ -293,4 +297,52 @@ test('Work manual schedule test fire launches through supervision runtime bounda
   assert.equal(supervision?.runtimeBridge?.sessionId, 'runtime-session-schedule-route');
   assert.equal(Array.isArray(supervision?.providerAgentRunLoop?.outcomes), true);
   assert.equal(core.missions[0]?.status, 'running');
+});
+
+test('Work schedule replace cancels the previous supervised runtime run', async (t) => {
+  const coreStore = createCoreStoreWithCompanion();
+  const scheduleStore = new MemoryScheduleStore();
+  const runtimeClient = createRuntimeStub();
+  let now = new Date('2026-04-29T00:00:00.000Z');
+  const server = createTestServer({
+    coreStore,
+    scheduleStore,
+    runtimeClient,
+    now: () => now,
+  });
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  t.after(() => server.close());
+
+  const payload = schedulePayload();
+  const created = await request(server, 'POST', '/api/work/schedules', {
+    ...payload,
+    executionPolicy: {
+      ...payload.executionPolicy,
+      concurrencyPolicy: 'replace',
+    },
+  });
+  const rule = created.payload?.rule as { id: string } | undefined;
+  assert.ok(rule?.id);
+
+  now = new Date('2026-04-29T00:05:00.000Z');
+  const firstFire = await request(server, 'POST', `/api/work/schedules/${rule.id}/test-fire`);
+  assert.equal(firstFire.status, 201);
+
+  now = new Date('2026-04-29T00:06:00.000Z');
+  const secondFire = await request(server, 'POST', `/api/work/schedules/${rule.id}/test-fire`);
+  assert.equal(secondFire.status, 201);
+  assert.equal((secondFire.payload?.run as { status: string } | undefined)?.status, 'running');
+  assert.deepEqual(runtimeClient.canceledSessions, ['runtime-session-schedule-route']);
+  assert.equal(runtimeClient.createdSessions.length, 2);
+
+  const core = await coreStore.readCore();
+  const cancelledRuns = core.runs.filter((run) => run.status === 'cancelled');
+  const runningRuns = core.runs.filter((run) => run.status === 'running');
+  assert.equal(cancelledRuns.length, 1);
+  assert.equal(runningRuns.length, 1);
+  const cancelledBridge = cancelledRuns[0]?.metadata.supervision as {
+    runtimeBridge?: { status?: string; cancelRequestedAt?: string };
+  } | undefined;
+  assert.equal(cancelledBridge?.runtimeBridge?.status, 'cancel_requested');
+  assert.equal(cancelledBridge?.runtimeBridge?.cancelRequestedAt, '2026-04-29T00:06:00.000Z');
 });

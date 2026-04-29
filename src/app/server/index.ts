@@ -12,6 +12,7 @@ import {
   startSchedulerLoop,
 } from '../../platform/scheduler/index.js';
 import {
+  cancelScheduledRunThroughSupervision,
   launchScheduledRunThroughSupervision,
 } from '../../platform/supervision/scheduledRunExecution.js';
 
@@ -36,6 +37,20 @@ export function createServer(dependencies: ServerDependencies) {
           scheduleStore: resolvedDependencies.work.scheduleStore,
           coreStore: resolvedDependencies.work.coreStore,
           now: resolvedDependencies.work.now,
+          replaceActiveRun: async (request) => {
+            await cancelScheduledRunThroughSupervision({
+              coreStore: resolvedDependencies.work.coreStore,
+              runtimeClient: resolvedDependencies.work.runtimeClient,
+              evidenceDataDir: resolvedDependencies.work.evidenceDataDir,
+              now: () => new Date(request.requestedAt),
+            }, request.runId, {
+              requestedAt: request.requestedAt,
+              reasonNote: [
+                `Replaced by schedule rule ${request.ruleId}`,
+                `trigger ${request.triggerReceiptId}.`,
+              ].join(' '),
+            });
+          },
         }),
         async onTickResult(result) {
           for (const admission of result.results) {

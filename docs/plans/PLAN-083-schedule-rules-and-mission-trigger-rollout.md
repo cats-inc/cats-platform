@@ -84,7 +84,7 @@ stored without running them.
       - `skip`
       - `queue`
       - explicit `replace` rejection until supervised cancellation is ready
-- [ ] Implement `replace` by cancelling through the supervision runtime
+- [x] Implement `replace` by cancelling through the supervision runtime
       boundary rather than Core metadata only.
 - [x] Add tests for restart/misfire/idempotency behavior.
 
@@ -280,6 +280,7 @@ the first companion/Telegram scenario.
 | 2026-04-29 | Scheduler boundary hardening: extended the static scheduler boundary test so schedule modules may not import companion content stores/tools, preserving the rule that content selection happens through supervised resource tools rather than deterministic scheduler substitution. |
 | 2026-04-29 | Companion post slice: added `companion.content.post.create` as a supervised local-state tool that writes profile post derived records through `CompanionBoxStore.upsertDerived`, requires `narrow_write` scope, and rejects posts built from sources outside declared `companion_content` resource scopes. |
 | 2026-04-29 | Telegram media capability slice: added `transport.telegram.media.send` as a supervised external-visible tool for URL/file-id media delivery through declared Telegram bindings, extended the relay/Bot API client with `send_media`, and added tests for media delivery, approval gating, undeclared bindings, and local-path rejection. |
+| 2026-04-29 | Replace concurrency slice: enabled `concurrencyPolicy: replace` now that active scheduled runs cancel through the supervision runtime cancellation boundary, including runtime session cancellation, run/mission cancellation metadata, and replacement admission tests. |
 
 ---
 

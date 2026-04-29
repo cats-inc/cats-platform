@@ -230,10 +230,11 @@ interface MorningGreetingExample {
     - `queue`: queue one or more due fires behind the active run
     - `replace`: cancel or supersede the active run before starting the new one
 
-    V1 accepts `skip` and `queue`. `replace` is reserved until scheduled runs
-    can cancel through the supervision runtime boundary; V1 implementations
-    shall reject `replace` rather than marking Core metadata while the runtime
-    continues executing.
+    V1 accepts `skip`, `queue`, and `replace` only when the implementation can
+    cancel the active scheduled run through the supervision runtime boundary.
+    `replace` shall fail admission if the active run cannot be cancelled; it
+    shall not mark Core metadata as cancelled while the runtime continues
+    executing.
 33. The first implementation should default to `skip` for chat/transport
     greetings to avoid duplicate messages.
 34. A `ScheduleRule` shall have a `misfirePolicy`:

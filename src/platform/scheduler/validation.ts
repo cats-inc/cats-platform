@@ -253,16 +253,6 @@ export function normalizeScheduleExecutionPolicy(value: unknown): ScheduleExecut
       'schedule_concurrency_policy_invalid',
     );
   }
-  if (concurrencyPolicy === 'replace') {
-    throw new CoreValidationError(
-      [
-        'Schedule concurrencyPolicy replace is not supported until supervised',
-        'cancellation lands.',
-      ].join(' '),
-      'schedule_concurrency_replace_unsupported',
-    );
-  }
-
   const misfirePolicy = policy.misfirePolicy === undefined
     ? defaults.misfirePolicy
     : readRequiredString(policy.misfirePolicy, 'executionPolicy.misfirePolicy');

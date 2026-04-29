@@ -132,8 +132,8 @@ test('scheduler validates v1 schedule shape and computes timezone-aware daily ne
     ),
     /Cron schedule rules are not supported/u,
   );
-  assert.throws(
-    () => createScheduleRule(
+  assert.equal(
+    createScheduleRule(
       {
         ...dailyScheduleInput(),
         executionPolicy: {
@@ -142,8 +142,8 @@ test('scheduler validates v1 schedule shape and computes timezone-aware daily ne
         },
       },
       new Date('2026-04-29T00:00:00.000Z'),
-    ),
-    /replace is not supported until supervised cancellation lands/u,
+    ).executionPolicy.concurrencyPolicy,
+    'replace',
   );
 });
 
@@ -440,6 +440,117 @@ test('scheduler tick skips due fires while an active run exists for skip concurr
   assert.equal(result.results[0].status, 'skipped');
   assert.equal(after.runs.length, 1);
   assert.equal((await scheduleStore.listTriggerReceipts())[0]?.status, 'skipped');
+});
+
+test('scheduler tick replaces active scheduled runs through the cancellation boundary', async () => {
+  const scheduleStore = new MemoryScheduleStore();
+  let core = createDefaultCoreState();
+  core = upsertCoreActor(
+    core,
+    {
+      id: 'agent-scheduled',
+      name: 'Scheduled Agent',
+      kind: 'worker',
+      defaultExecutionTarget: {
+        provider: 'claude',
+        instance: null,
+        model: null,
+      },
+    },
+    new Date('2026-04-29T00:00:00.000Z'),
+  ).core;
+  core = upsertCoreRun(
+    core,
+    {
+      id: 'run-active-replace',
+      title: 'Active scheduled run',
+      status: 'running',
+      createdAt: '2026-04-29T00:00:00.000Z',
+      metadata: {
+        scheduleTrigger: {
+          ruleId: 'schedule-replace',
+          ruleRevision: 1,
+          scheduledFireAt: '2026-04-29T00:00:00.000Z',
+          actualFireAt: '2026-04-29T00:00:00.000Z',
+          idempotencyKey: 'schedule:schedule-replace:1:2026-04-29T00:00:00.000Z',
+          reason: 'due',
+        },
+      },
+    },
+    new Date('2026-04-29T00:00:00.000Z'),
+  ).core;
+  const coreStore = new MemoryCoreStore(core);
+  const replacedRunIds: string[] = [];
+  let now = new Date('2026-04-29T00:00:00.000Z');
+  const service = createSchedulerService({
+    scheduleStore,
+    coreStore,
+    now: () => now,
+    replaceActiveRun: async (request) => {
+      replacedRunIds.push(request.runId);
+      await coreStore.updateCore((current) => upsertCoreRun(
+        current,
+        {
+          id: request.runId,
+          title: 'Active scheduled run',
+          status: 'cancelled',
+          completedAt: request.requestedAt,
+          metadata: {
+            scheduleTrigger: {
+              ruleId: request.ruleId,
+              ruleRevision: 1,
+              scheduledFireAt: '2026-04-29T00:00:00.000Z',
+              actualFireAt: '2026-04-29T00:00:00.000Z',
+              idempotencyKey: 'schedule:schedule-replace:1:2026-04-29T00:00:00.000Z',
+              reason: 'due',
+            },
+            replacement: {
+              triggerReceiptId: request.triggerReceiptId,
+            },
+          },
+        },
+        new Date(request.requestedAt),
+      ).core);
+    },
+  });
+  await service.createRule({
+    id: 'schedule-replace',
+    title: 'Replace scheduled work',
+    enabled: true,
+    timezone: 'UTC',
+    schedule: {
+      kind: 'once',
+      fireAt: '2026-04-29T00:05:00.000Z',
+    },
+    missionTemplate: {
+      target: { kind: 'agent', id: 'agent-scheduled' },
+      originSurface: 'schedule',
+      intent: 'Run once.',
+    },
+    executionPolicy: {
+      missionPolicy: 'per_fire',
+      concurrencyPolicy: 'replace',
+      misfirePolicy: 'skip',
+      retryPolicy: {
+        maxAttempts: 0,
+        backoff: 'none',
+      },
+    },
+    createdByActorId: 'actor-owner',
+  });
+
+  now = new Date('2026-04-29T00:10:00.000Z');
+  const result = await service.tick();
+  const after = await coreStore.readCore();
+  const oldRun = after.runs.find((run) => run.id === 'run-active-replace');
+  const replacementRuns = after.runs.filter((run) =>
+    readScheduleTrigger(run).ruleId === 'schedule-replace' && run.id !== 'run-active-replace');
+
+  assert.deepEqual(replacedRunIds, ['run-active-replace']);
+  assert.equal(result.results[0]?.status, 'admitted');
+  assert.equal(oldRun?.status, 'cancelled');
+  assert.equal(replacementRuns.length, 1);
+  assert.equal((await scheduleStore.listTriggerReceipts())[0]?.status, 'admitted');
 });
 
 test('startup misfire policy skips or admits missed fires deterministically', async () => {

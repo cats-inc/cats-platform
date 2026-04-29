@@ -50,6 +50,14 @@ export interface SchedulerServiceDependencies {
   scheduleStore: ScheduleStore;
   coreStore: CoreStore;
   now?: () => Date;
+  replaceActiveRun?: (request: ScheduleReplaceActiveRunRequest) => Promise<void>;
+}
+
+export interface ScheduleReplaceActiveRunRequest {
+  runId: string;
+  ruleId: string;
+  triggerReceiptId: string;
+  requestedAt: string;
 }
 
 export type ScheduleAdmissionStatus = 'admitted' | 'duplicate' | 'skipped' | 'failed';
@@ -228,13 +236,7 @@ class DefaultSchedulerService implements SchedulerService {
 
     try {
       if (rule.executionPolicy.concurrencyPolicy === 'replace') {
-        throw new CoreValidationError(
-          [
-            'Schedule concurrencyPolicy replace is not supported until supervised',
-            'cancellation lands.',
-          ].join(' '),
-          'schedule_concurrency_replace_unsupported',
-        );
+        await this.cancelActiveRunsForReplace(rule, receiptClaim.receipt);
       }
 
       let skippedBecauseActive = false;
@@ -245,6 +247,12 @@ class DefaultSchedulerService implements SchedulerService {
         if (activeRuns.length > 0 && rule.executionPolicy.concurrencyPolicy === 'skip') {
           skippedBecauseActive = true;
           return core;
+        }
+        if (activeRuns.length > 0 && rule.executionPolicy.concurrencyPolicy === 'replace') {
+          throw new CoreValidationError(
+            'Schedule replace cancellation did not clear active runs.',
+            'schedule_concurrency_replace_active_runs_remaining',
+          );
         }
 
         const assignedAgent = resolveScheduleTargetAgent(core, rule.missionTemplate.target);
@@ -339,6 +347,32 @@ class DefaultSchedulerService implements SchedulerService {
         mission: null,
         run: null,
       };
+    }
+  }
+
+  private async cancelActiveRunsForReplace(
+    rule: ScheduleRule,
+    receipt: ScheduleTriggerReceipt,
+  ): Promise<void> {
+    const core = await this.dependencies.coreStore.readCore();
+    const activeRuns = findActiveScheduleRuns(core, rule.id);
+    if (activeRuns.length === 0) {
+      return;
+    }
+    if (!this.dependencies.replaceActiveRun) {
+      throw new CoreValidationError(
+        'Schedule concurrencyPolicy replace requires a supervised cancellation boundary.',
+        'schedule_concurrency_replace_unavailable',
+      );
+    }
+
+    for (const run of activeRuns) {
+      await this.dependencies.replaceActiveRun({
+        runId: run.id,
+        ruleId: rule.id,
+        triggerReceiptId: receipt.id,
+        requestedAt: receipt.actualFireAt,
+      });
     }
   }
 

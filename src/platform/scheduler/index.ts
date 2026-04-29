@@ -40,6 +40,7 @@ export {
   type ScheduleAdmissionStatus,
   type SchedulerService,
   type SchedulerServiceDependencies,
+  type ScheduleReplaceActiveRunRequest,
   type ScheduleTickResult,
 } from './service.js';
 export {
