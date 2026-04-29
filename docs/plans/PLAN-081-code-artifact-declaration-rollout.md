@@ -164,15 +164,17 @@ validation helpers with unit coverage.
       `artifact_producer_field_not_allowed`, etc.) so the agent can correct
       and re-call. Server shall not auto-retry on the agent's behalf.
 - [ ] Task 3.1d: Enforce the SPEC-092 final-response gating rule. The
-      runtime bridge / Code session loop shall detect when the assistant's
-      visible final response makes an artifact-claim sentence (e.g.
-      "produced", "you can find at", "exported to") without a same-turn
-      `declare_artifact` tool call that received an `accepted` result, and
-      shall surface a structured warning back to the agent (so it can
-      either declare or rephrase) before the response is shown to the
-      user. At minimum, the bridge shall emit a structured server log
-      `artifact_claim_without_declaration` for every detected case so
-      audit / supervision can flag prompt drift.
+      runtime bridge / Code session loop shall require a structured
+      finalization envelope before any final visible response is shown:
+      `assistantTurnId`, `bodyText`, and optional `artifactClaims[]`.
+      Each `artifactClaims[]` entry must reference the normalized
+      `declarationId` of a same-turn `declare_artifact` call that received
+      an `accepted` result under the same `assistantTurnId`. If a claim is
+      missing that declaration, block finalization and surface
+      `artifact_claim_without_declaration` back to the agent so it can
+      either declare or remove the claim. Streaming adapters must buffer or
+      defer artifact-claim rendering until this gate passes. Text heuristics
+      may produce telemetry only; they are not the normative gate.
 - [ ] Task 3.2: Define a Code-owned runtime artifact signal shape before
       auto-materializing bridge outputs. The first fields should cover preview
       URL, build output, test report, screenshot, patch bundle, and review
@@ -234,12 +236,14 @@ and implementation review.
 | `src/products/code/shared/artifactDeclaration.ts` | Create | Mapping, validation, and metadata helpers |
 | `src/products/code/shared/runtimeArtifactSignals.ts` | Create | Code-owned bridge signal shape for preview/build/test/screenshot/patch/report outputs |
 | `src/products/code/shared/workspaceSummary.ts` | Modify | Reuse workspace containment / summary semantics |
+| `src/products/code/state/sessionFinalization.ts` | Create | Validate Code assistant finalization envelopes and enforce `artifactClaims[]` gating before visible response commit |
 | `src/products/code/state/taskExecution.ts` | Modify | Submit declarations for runtime bridge outputs |
 | `src/products/code/state/deliveryProxy.ts` | Modify | Normalize delivery outputs into declarations where applicable |
 | `src/runtime/client.ts` | Modify if needed | Add explicit observation fields only when runtime can produce verified output signals |
 | `src/core/planningRecordLists.ts` | Modify | Add additive query support only if Code projections need it |
 | `src/core/model/planningRecords.ts` | Modify | Avoid schema change unless idempotency metadata needs helper support |
 | `tests/code-artifact-declaration.test.js` | Create | Contract, mapping, validation, and idempotency tests |
+| `tests/code-artifact-finalization.test.js` | Create | Finalization-envelope gating tests for `artifactClaims[]` / same-turn accepted declarations |
 | `tests/code-artifact-projection.test.js` | Create | Sidebar/detail projection tests |
 | `tests/code-task-execution.test.js` | Modify | Cover runtime bridge artifact declaration side effects |
 | `docs/specs/SPEC-092-code-artifact-declaration-contract.md` | Maintain | Keep contract aligned with implementation |
@@ -295,8 +299,10 @@ and implementation review.
   (only `declarationId` / `label` / `title` / `location` / `summary` /
   `metadata`; agent-supplied `kind` / `coreKind` / `producer.*` /
   authoritative anchors rejected with
-  `artifact_producer_field_not_allowed`), final-response gating audit
-  detection, and `declarationId` composition (label-suffixed,
+  `artifact_producer_field_not_allowed`), finalization-envelope gating
+  (claims match same-turn accepted `declarationId`; unmatched claims are
+  blocked with `artifact_claim_without_declaration`; text heuristics are
+  telemetry only), and `declarationId` composition (label-suffixed,
   random-nonce rejection / warning).
 - **Integration Tests**: declaration -> upsert Core artifact -> Code artifact
   projection, with agent/tool/system/user producer examples and idempotent
@@ -312,9 +318,9 @@ and implementation review.
   exposes `declare_artifact` with the exact agent-visible field set and
   no aliases; agent-supplied `kind` is rejected via tool-call-result;
   rejected `declare_artifact` calls surface SPEC-092 error codes
-  verbatim; final-response gating produces
-  `artifact_claim_without_declaration` log when the assistant claims an
-  artifact without a same-turn accepted declaration.
+  verbatim; finalization-envelope gating blocks an `artifactClaims[]`
+  entry without a same-turn accepted declaration and returns
+  `artifact_claim_without_declaration` before the response is shown.
 - **Manual Testing**: run a `+New code` execution that produces a preview/test
   report declaration, verify the artifact appears in the Code artifact list,
   opens detail, and deep-links back to the originating task/run/workspace.
@@ -340,7 +346,7 @@ and implementation review.
 | Invalid auto-publish config silently breaks publish surface | Medium | Drop invalid entries with structured server log + `/api/code/health` `codeArtifactDeclaration.policyDiagnostics`; operators may opt in to `failBootOnInvalidEntry = true` |
 | `user_publish_action` partial success leaves callers unsure of artifact state | Medium | Do not roll back materialization on transition failure; return `artifact_publish_transition_failed` with materialized artifact id + current status so callers can retry the transition |
 | Agent fills `coreKind` / `kind` directly instead of producer label | Medium | Tool catalog exposes only `label` (no `kind` / `coreKind`); server rejects agent-supplied `kind` with `artifact_producer_field_not_allowed`; SPEC-092 onboarding block uses label vocabulary throughout |
-| Final response claims an artifact without a successful declaration | High | Same-turn gating rule: artifact-claim sentence requires accepted `declare_artifact` first; runtime bridge emits `artifact_claim_without_declaration` log + structured warning back to the agent so it must declare or rephrase |
+| Final response claims an artifact without a successful declaration | High | Structured finalization envelope: every `artifactClaims[]` item must reference a same-turn accepted `declarationId`; unmatched claims block finalization with `artifact_claim_without_declaration`; prose heuristics are telemetry only |
 | Onboarding block lost across resume / context compaction | High | Runtime bridge re-injects the active onboarding block before every assistant turn after session create / resume / compaction / system-prompt rewrite; `codeArtifactDeclaration.onboardingBlockVersion` stamp lets bridge compare cheaply |
 
 ## Progress Log
@@ -353,7 +359,7 @@ and implementation review.
 | 2026-04-29 | Added tool auto-publish policy schema, user import-and-publish action split, producer field misuse validation, recursive volatile filtering, and ambiguous idempotency recovery requirements. |
 | 2026-04-29 | Pinned workspace key + path canonicalization rules, `CodeArtifactImportAndPublishInput` payload shape, publish-transition partial-success semantics, structured `policyDiagnostics` channel + `failBootOnInvalidEntry` opt-in, and string input normalization (empty → null) for declaration / import-and-publish optional fields. |
 | 2026-04-29 | Added § Producer Onboarding rollout: agent system-prompt onboarding block injection (Task 3.1a), `declare_artifact` tool-catalog registration with agent-visible-fields-only schema (Task 3.1b), and tool-call-result error surfacing for agent self-correction (Task 3.1c). |
-| 2026-04-29 | Producer-onboarding follow-up: agent-visible tool schema is label-based (`declarationId` + `label` + `title` + `location` + `summary` + `metadata`); agent-supplied `kind` / `coreKind` / `producer.*` / authoritative anchors rejected with `artifact_producer_field_not_allowed`. Onboarding block carries an explicit `codeArtifactDeclaration.onboardingBlockVersion` stamp and is re-injected before every assistant turn after session create / resume / compaction / system-prompt rewrite (Task 3.1a updated). Added Task 3.1d: final-response gating with `artifact_claim_without_declaration` log + structured warning back to the agent. Test strategy expanded to assert injection presence on resume / compaction, exact tool schema, no aliases, error result return, label-based declarationId composition. |
+| 2026-04-29 | Producer-onboarding follow-up: agent-visible tool schema is label-based (`declarationId` + `label` + `title` + `location` + `summary` + `metadata`); agent-supplied `kind` / `coreKind` / `producer.*` / authoritative anchors rejected with `artifact_producer_field_not_allowed`. Onboarding block carries an explicit `codeArtifactDeclaration.onboardingBlockVersion` stamp and is re-injected before every assistant turn after session create / resume / compaction / system-prompt rewrite (Task 3.1a updated). Added Task 3.1d: structured finalization-envelope gating with `artifactClaims[]` matched by same-turn accepted `declarationId`; unmatched claims block finalization with `artifact_claim_without_declaration`. Test strategy expanded to assert injection presence on resume / compaction, exact tool schema, no aliases, error result return, label-based declarationId composition. |
 
 ---
 

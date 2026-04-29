@@ -593,8 +593,9 @@ The block:
   `preview_url`, `test_report`, `review_report`,
   `implementation_summary`, `diff_summary`, `changed_files_summary`,
   `patch_bundle`, `screenshot`, `wireframe`, `spec_document`,
-  `plan_document`, plus future labels) — **not** the Core kind. The
-  Code product server maps label → coreKind per § Label Mapping;
+  `plan_document`, `transcript_export`, `dataset_file`, plus future
+  labels) — **not** the Core kind. The Code product server maps label →
+  coreKind per § Label Mapping;
 - shall include an explicit **negative** list (do **not** declare source
   edits, intermediate / scratch files, lockfiles, generated dependency
   manifests, files in `node_modules/` / `.cache/` / `__pycache__/` /
@@ -627,9 +628,8 @@ kind. The system maps the label to the underlying kind. Examples:
 - a long-form design doc, spec, plan, or README → label = "spec_document",
   "plan_document", or "wireframe"
 - a patch bundle or screenshot → label = "patch_bundle" or "screenshot"
-- an exported chat or transcript file → use the transcript-export label
-  the system advertises (do not invent one)
-- a generated dataset or fixture file → use the dataset label
+- an exported chat or transcript file → label = "transcript_export"
+- a generated dataset or fixture file → label = "dataset_file"
 
 Do NOT declare:
 
@@ -657,7 +657,7 @@ Each declaration must include:
 
 You shall NOT pass `kind`, `producer`, `anchors`, `runId`, `taskId`, or
 `conversationId` — those are filled server-side. If you pass them, the
-server ignores agent-supplied values for server-resolved fields.
+server rejects the declaration with `artifact_producer_field_not_allowed`.
 
 Final-response gating:
 
@@ -665,6 +665,8 @@ Final-response gating:
   been produced or "can be found at X", you must have completed a
   `declare_artifact` tool call for that artifact within the same turn
   AND received an `accepted` result before emitting the final response.
+  Use the accepted `declarationId` in the Code finalization artifact
+  claim metadata.
 - If `declare_artifact` was rejected, your final response shall not
   claim the artifact is recorded. State explicitly that the output
   exists in the workspace but was not recorded as an artifact (and
@@ -695,6 +697,48 @@ Implementation notes:
   of the SPEC-092 error codes, the rejection reason is surfaced to the
   agent through the same tool-call-result channel; the agent may correct
   and re-call. Server shall not auto-retry on the agent's behalf.
+
+#### Final-Response Gate
+
+The final-response gate is evaluated at the Code session finalization
+boundary, not by parsing transcript prose. Runtime/provider adapters shall
+expose a structured finalization envelope before any final visible response
+is shown:
+
+```ts
+interface CodeAssistantFinalization {
+  assistantTurnId: string;
+  bodyText: string;
+  artifactClaims?: Array<{
+    declarationId: string;
+    label?: string | null;
+    title?: string | null;
+  }>;
+}
+```
+
+Rules:
+
+- `assistantTurnId` is the product/session-loop id for one assistant turn
+  attempt. A same-turn declaration is one accepted `declare_artifact` tool
+  result emitted under the same `assistantTurnId`.
+- Every `artifactClaims[]` entry must include the normalized
+  `declarationId` of an accepted same-turn declaration. Matching by title,
+  label, location, or free text is not authoritative.
+- If any claim lacks an accepted same-turn declaration, the runtime bridge
+  shall block the finalization, surface a structured warning back to the
+  agent with code `artifact_claim_without_declaration`, and allow the agent
+  to either call `declare_artifact` or remove the claim. The ungated final
+  response shall not be shown to the user.
+- Streaming adapters shall buffer or defer artifact-claim rendering until
+  the finalization envelope has passed the gate. They may stream unrelated
+  body text only if doing so cannot reveal an artifact claim before the gate.
+- Renderers and projections shall use the structured `artifactClaims[]`
+  metadata for artifact claim affordances. They shall not parse transcript
+  prose as the normative declaration or gate input.
+- Best-effort text heuristics may emit telemetry for suspicious prose, but
+  they must not be the acceptance path for this gate and must not replace
+  the structured envelope.
 
 #### Tool Catalog Registration
 
@@ -727,9 +771,11 @@ of the agent's tools:
   `coreKind` derivation, `requestedDisposition`, `requestedStatus`)
   shall be **omitted from agent-visible parameters**. If a CLI
   provider's tool framework forces inclusion of those fields, the Code
-  product shall reject any agent-supplied value and use server-resolved
-  values instead, surfacing
-  `artifact_producer_field_not_allowed` through the tool-call-result.
+  product shall mark them optional and instruct the agent to leave them
+  unset. Any non-null agent-supplied value in those fields rejects the
+  entire declaration with `artifact_producer_field_not_allowed`; no
+  artifact is materialized from that call. When the fields are omitted or
+  null, Cats Code uses only server-resolved values.
 
 #### `declarationId` Composition Guidance for Agents
 
@@ -842,6 +888,8 @@ The first mapping table is:
 | `wireframe` | `document` | `draft` | `record` |
 | `spec_document` | `document` | `draft` | `record` |
 | `plan_document` | `document` | `draft` | `record` |
+| `transcript_export` | `transcript_export` | `ready` | `record` |
+| `dataset_file` | `dataset` | `ready` | `record` |
 
 Unknown labels default to `report` + `draft` + `candidate` unless product
 policy rejects them.
@@ -865,6 +913,12 @@ Cats Code shall validate:
 - the canonical idempotency key can be constructed,
 - metadata is JSON-serializable, stays within the exact bounds above, and does
   not use reserved Core field names.
+- agent-facing declarations do not supply server-resolved fields that are
+  omitted from the `declare_artifact` tool schema. Non-null values for
+  `kind`, `coreKind`, `producer.*`, `anchors.*`, `runId`, `taskId`,
+  `conversationId`, `workspaceKey`, `requestedDisposition`, or
+  `requestedStatus` are rejected with
+  `artifact_producer_field_not_allowed`.
 
 Cats Code shall reject declarations that attempt to:
 
@@ -999,4 +1053,4 @@ agent/tool/system/user output
 *Related Plan: [PLAN-081](../plans/PLAN-081-code-artifact-declaration-rollout.md)*
 *Amended: 2026-04-29 — added § Workspace Key and Path Canonicalization (workspace key resolution, host-OS-aware lexical canonicalization, segment-based prefix matching), § Publish-Transition Failure Semantics (no rollback, `artifact_publish_transition_failed` partial-success contract, `tool_auto_publish_transition_failed` server log), `CodeArtifactImportAndPublishInput` payload shape and route, structured `policyDiagnostics` channel + `failBootOnInvalidEntry` opt-in, and string input normalization (empty / whitespace → null on optional fields, `artifact_required_field_empty` on required fields).*
 *Amended: 2026-04-29 — added § Producer Onboarding: agent system-prompt onboarding block (positive + negative artifact list, one-declaration-per-output rule, context-compression preservation), tool-catalog registration shape, agent-side `declarationId` composition guidance, and tool / system / user producer onboarding paths.*
-*Amended: 2026-04-29 — § Producer Onboarding tightened: agent-visible tool schema is **label-based** (`declarationId` + `label` + `title` + `location` + `summary` + `metadata`); `kind` / `coreKind` / `producer.*` / authoritative anchors removed from agent-facing schema and rejected with `artifact_producer_field_not_allowed` if supplied. Added explicit **final-response gating** (artifact-claim sentence in same turn requires accepted `declare_artifact` first; rejected → cannot claim recorded; runtime emits `artifact_claim_without_declaration` log). Onboarding block carries `codeArtifactDeclaration.onboardingBlockVersion` stamp and runtime bridge re-injects before every assistant turn after session create / resume / context compaction / system-prompt rewrite, not only at first turn.*
+*Amended: 2026-04-29 — § Producer Onboarding tightened: agent-visible tool schema is **label-based** (`declarationId` + `label` + `title` + `location` + `summary` + `metadata`); `kind` / `coreKind` / `producer.*` / authoritative anchors removed from agent-facing schema and rejected with `artifact_producer_field_not_allowed` if supplied. Added explicit structured **final-response gating** via `CodeAssistantFinalization.artifactClaims[]`; each claim must match a same-turn accepted `declarationId`, unmatched claims block finalization with `artifact_claim_without_declaration`, and prose heuristics are telemetry only. Added `transcript_export` and `dataset_file` label mappings. Onboarding block carries `codeArtifactDeclaration.onboardingBlockVersion` stamp and runtime bridge re-injects before every assistant turn after session create / resume / context compaction / system-prompt rewrite, not only at first turn.*
