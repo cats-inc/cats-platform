@@ -4,14 +4,14 @@ import test, { afterEach, beforeEach } from 'node:test';
 import type { RuntimeMessageSegment } from '../src/platform/runtime/client.ts';
 import {
   applyRuntimeInvocationAssistantEffects,
-  clearRuntimeInvocationEnrichers,
+  clearRuntimeInvocationRegistries,
   hasRuntimeInvocationAssistantEffects,
 } from '../src/platform/runtime/invocationEnrichment.ts';
 import { createDefaultCoreState } from '../src/core/model/index.ts';
 import { upsertCoreRun } from '../src/core/model/executionRecords.ts';
 import { upsertCoreTask } from '../src/core/model/taskControls.ts';
 import { upsertCoreConversation } from '../src/core/model/structuralRecords.ts';
-import { CODE_ARTIFACT_RUNTIME_ENRICHER_ID } from '../src/products/code/state/runtimeArtifactTooling.ts';
+import { CODE_ARTIFACT_RUNTIME_HOOK_ID } from '../src/products/code/state/runtimeArtifactTooling.ts';
 import {
   registerCodeArtifactRuntimeAssistantEffectProcessor,
 } from '../src/products/code/state/runtimeArtifactExecution.ts';
@@ -63,11 +63,11 @@ function createPreviewToolUse(): RuntimeMessageSegment {
 }
 
 beforeEach(() => {
-  clearRuntimeInvocationEnrichers();
+  clearRuntimeInvocationRegistries();
 });
 
 afterEach(() => {
-  clearRuntimeInvocationEnrichers();
+  clearRuntimeInvocationRegistries();
 });
 
 test('runtime assistant effects materialize Code declare_artifact tool calls', () => {
@@ -100,7 +100,7 @@ test('runtime assistant effects materialize Code declare_artifact tool calls', (
   assert.equal(result.core.artifacts[0].runId, 'run-code-1');
   assert.equal(result.core.artifacts[0].path, 'http://127.0.0.1:5173/');
   assert.deepEqual(result.metadata, {
-    [CODE_ARTIFACT_RUNTIME_ENRICHER_ID]: {
+    [CODE_ARTIFACT_RUNTIME_HOOK_ID]: {
       codeArtifactToolResults: [
         {
           toolId: 'tool-1',

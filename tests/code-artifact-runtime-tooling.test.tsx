@@ -4,14 +4,14 @@ import test, { afterEach, beforeEach } from 'node:test';
 import {
   RuntimeEnricherPriority,
   RuntimeEnrichmentCloneError,
-  clearRuntimeInvocationEnrichers,
+  clearRuntimeInvocationRegistries,
   collectRuntimeInvocationAssistantMetadata,
   enrichRuntimeInvocation,
   registerRuntimeInvocationEnricher,
 } from '../src/platform/runtime/invocationEnrichment.ts';
 import {
   CODE_ARTIFACT_RUNTIME_CONTEXT_METADATA_KEY,
-  CODE_ARTIFACT_RUNTIME_ENRICHER_ID,
+  CODE_ARTIFACT_RUNTIME_HOOK_ID,
   collectCodeArtifactRuntimeToolCalls,
   createCodeArtifactRuntimeInvocationEnricher,
   enrichCodeArtifactRuntimeInvocation,
@@ -19,11 +19,11 @@ import {
 } from '../src/products/code/state/runtimeArtifactTooling.ts';
 
 beforeEach(() => {
-  clearRuntimeInvocationEnrichers();
+  clearRuntimeInvocationRegistries();
 });
 
 afterEach(() => {
-  clearRuntimeInvocationEnrichers();
+  clearRuntimeInvocationRegistries();
 });
 
 test('Code artifact runtime tooling attaches only to Code-origin active sessions', () => {
@@ -215,7 +215,7 @@ test('Code artifact runtime enricher returns assistant metadata without Chat cou
 });
 
 test('runtime invocation registry namespaces assistant metadata and can be reset', () => {
-  clearRuntimeInvocationEnrichers();
+  clearRuntimeInvocationRegistries();
   try {
     registerRuntimeInvocationEnricher(createCodeArtifactRuntimeInvocationEnricher());
     const metadata = collectRuntimeInvocationAssistantMetadata(
@@ -237,7 +237,7 @@ test('runtime invocation registry namespaces assistant metadata and can be reset
     );
 
     assert.deepEqual(metadata, {
-      [CODE_ARTIFACT_RUNTIME_ENRICHER_ID]: {
+      [CODE_ARTIFACT_RUNTIME_HOOK_ID]: {
         codeArtifactToolCalls: [
           {
             toolName: 'declare_artifact',
@@ -249,18 +249,18 @@ test('runtime invocation registry namespaces assistant metadata and can be reset
       },
     });
 
-    clearRuntimeInvocationEnrichers();
+    clearRuntimeInvocationRegistries();
     assert.deepEqual(
       collectRuntimeInvocationAssistantMetadata({ originSurface: 'code' }, []),
       {},
     );
   } finally {
-    clearRuntimeInvocationEnrichers();
+    clearRuntimeInvocationRegistries();
   }
 });
 
 test('runtime invocation registry applies deterministic priority order', () => {
-  clearRuntimeInvocationEnrichers();
+  clearRuntimeInvocationRegistries();
   try {
     registerRuntimeInvocationEnricher({
       id: 'z-enricher',
@@ -292,12 +292,12 @@ test('runtime invocation registry applies deterministic priority order', () => {
 
     assert.equal(enriched.instructions, 'FAZ');
   } finally {
-    clearRuntimeInvocationEnrichers();
+    clearRuntimeInvocationRegistries();
   }
 });
 
 test('runtime invocation registry preserves original payload fields when applying contributions', () => {
-  clearRuntimeInvocationEnrichers();
+  clearRuntimeInvocationRegistries();
   try {
     registerRuntimeInvocationEnricher({
       id: 'instructions-only-enricher',
@@ -324,12 +324,12 @@ test('runtime invocation registry preserves original payload fields when applyin
     assert.equal(enriched.workspaceAccess, 'read_only');
     assert.equal(enriched.instructions, 'Injected instructions.');
   } finally {
-    clearRuntimeInvocationEnrichers();
+    clearRuntimeInvocationRegistries();
   }
 });
 
 test('runtime invocation registry merges context labels and metadata by platform contract', () => {
-  clearRuntimeInvocationEnrichers();
+  clearRuntimeInvocationRegistries();
   try {
     registerRuntimeInvocationEnricher({
       id: 'code-context-enricher',
@@ -379,12 +379,12 @@ test('runtime invocation registry merges context labels and metadata by platform
       workWorkflow: 'review',
     });
   } finally {
-    clearRuntimeInvocationEnrichers();
+    clearRuntimeInvocationRegistries();
   }
 });
 
 test('runtime invocation registry replaces same-key metadata sub-objects by contract', () => {
-  clearRuntimeInvocationEnrichers();
+  clearRuntimeInvocationRegistries();
   try {
     registerRuntimeInvocationEnricher({
       id: 'base-artifact-metadata',
@@ -429,12 +429,12 @@ test('runtime invocation registry replaces same-key metadata sub-objects by cont
       codeArtifactDeclaration: { finalization: true },
     });
   } finally {
-    clearRuntimeInvocationEnrichers();
+    clearRuntimeInvocationRegistries();
   }
 });
 
 test('runtime invocation registry isolates enricher input mutations', () => {
-  clearRuntimeInvocationEnrichers();
+  clearRuntimeInvocationRegistries();
   try {
     registerRuntimeInvocationEnricher({
       id: 'mutating-enricher',
@@ -475,7 +475,7 @@ test('runtime invocation registry isolates enricher input mutations', () => {
       toolName: 'declare_artifact',
     });
   } finally {
-    clearRuntimeInvocationEnrichers();
+    clearRuntimeInvocationRegistries();
   }
 });
 
@@ -536,7 +536,7 @@ test('runtime invocation registry rejects non-structured-cloneable enricher cont
 });
 
 test('runtime invocation registry defines null and undefined contribution semantics', () => {
-  clearRuntimeInvocationEnrichers();
+  clearRuntimeInvocationRegistries();
   try {
     registerRuntimeInvocationEnricher({
       id: 'noop-undefined-enricher',
@@ -580,6 +580,6 @@ test('runtime invocation registry defines null and undefined contribution semant
       explicitNull: null,
     });
   } finally {
-    clearRuntimeInvocationEnrichers();
+    clearRuntimeInvocationRegistries();
   }
 });

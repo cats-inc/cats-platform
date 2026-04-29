@@ -71,8 +71,6 @@ export function materializeCodeArtifactDeclaration(
     );
   }
 
-  validateAnchors(core, declaration);
-
   const mapping = resolveCodeArtifactLabelMapping(declaration.artifact.label);
   const producerIdentity = resolveProducerIdentity(declaration.producer);
   const scope = resolveMaterializationScope(declaration);
@@ -87,12 +85,14 @@ export function materializeCodeArtifactDeclaration(
     currentScope: scope,
     producerKind: declaration.producer.kind,
     producerIdentity: producerIdentity.encoded,
+    producerRuntimeSessionId: normalizeNullableString(declaration.producer.runtimeSessionId),
     declarationId: declaration.declarationId,
   });
   const effectiveDeclaration: CodeArtifactDeclaration = {
     ...declaration,
     anchors: mergeDeclarationAnchors(declaration.anchors, idempotency.existing),
   };
+  validateAnchors(core, effectiveDeclaration);
   const disposition = resolveMaterializationDisposition(declaration);
   const status = resolveMaterializationStatus(declaration, disposition, mapping.defaultStatus);
   const location = normalizeMaterializedLocation(
@@ -212,6 +212,13 @@ function resolveProducerIdentity(producer: CodeArtifactProducer): ResolvedProduc
   switch (producer.kind) {
     case 'agent':
     case 'user': {
+      if (normalizeNullableString(producer.toolName)) {
+        throw new CodeArtifactDeclarationError(
+          'artifact_producer_tool_not_allowed',
+          `${producer.kind} artifact declarations must not supply a tool name.`,
+          { producerKind: producer.kind },
+        );
+      }
       const actorId = normalizeRequiredString(
         producer.actorId,
         producer.kind === 'agent'
@@ -226,6 +233,12 @@ function resolveProducerIdentity(producer: CodeArtifactProducer): ResolvedProduc
       };
     }
     case 'tool': {
+      if (normalizeNullableString(producer.actorId)) {
+        throw new CodeArtifactDeclarationError(
+          'artifact_producer_actor_not_allowed',
+          'Tool artifact declarations must not supply an actor id.',
+        );
+      }
       const toolName = normalizeRequiredString(
         producer.toolName,
         'artifact_tool_not_allowed',
@@ -238,6 +251,12 @@ function resolveProducerIdentity(producer: CodeArtifactProducer): ResolvedProduc
       };
     }
     case 'system': {
+      if (normalizeNullableString(producer.actorId)) {
+        throw new CodeArtifactDeclarationError(
+          'artifact_producer_actor_not_allowed',
+          'System artifact declarations must not supply an actor id.',
+        );
+      }
       const detectorName = producer.toolName?.trim() || 'code-bridge';
       if (detectorName !== 'code-bridge') {
         throw new CodeArtifactDeclarationError(
@@ -303,6 +322,7 @@ function resolveArtifactIdempotency(
     currentScope: ResolvedScope;
     producerKind: CodeArtifactProducer['kind'];
     producerIdentity: string;
+    producerRuntimeSessionId: string | null;
     declarationId: string;
   },
 ): ResolvedIdempotency {
@@ -323,6 +343,7 @@ function resolveArtifactIdempotency(
     const idempotency = readArtifactIdempotency(artifact);
     return idempotency?.producerKind === input.producerKind
       && idempotency.producerIdentity === input.producerIdentity
+      && isCompatibleFrozenRuntimeSession(idempotency, input)
       && idempotency.declarationId === input.declarationId;
   });
 
@@ -367,6 +388,19 @@ function resolveArtifactIdempotency(
     existing: null,
     recoveredFromFrozenScope: false,
   };
+}
+
+function isCompatibleFrozenRuntimeSession(
+  idempotency: NonNullable<ReturnType<typeof readArtifactIdempotency>>,
+  input: {
+    producerKind: CodeArtifactProducer['kind'];
+    producerRuntimeSessionId: string | null;
+  },
+): boolean {
+  if (input.producerKind === 'agent' && input.producerRuntimeSessionId) {
+    return idempotency.producerRuntimeSessionId === input.producerRuntimeSessionId;
+  }
+  return true;
 }
 
 function validateAnchors(core: CatsCoreState, declaration: CodeArtifactDeclaration): void {
@@ -527,6 +561,9 @@ function buildCoreArtifactMetadata(input: {
         key: input.idempotencyKey,
         producerKind: input.declaration.producer.kind,
         producerIdentity: input.producerIdentity.encoded,
+        producerRuntimeSessionId: normalizeNullableString(
+          input.declaration.producer.runtimeSessionId,
+        ),
         scopeKind: input.scope.kind,
         scopeId: input.scope.id,
         declarationId: input.declaration.declarationId,
@@ -583,6 +620,7 @@ function readArtifactIdempotency(artifact: CoreArtifactRecord | null): {
   key: string;
   producerKind: CodeArtifactProducer['kind'];
   producerIdentity: string;
+  producerRuntimeSessionId: string | null;
   scopeKind: CodeArtifactMaterializationScopeKind;
   scopeId: string;
   declarationId: string;
@@ -592,6 +630,7 @@ function readArtifactIdempotency(artifact: CoreArtifactRecord | null): {
   const key = readNonEmptyString(idempotency?.key);
   const producerKind = readNonEmptyString(idempotency?.producerKind);
   const producerIdentity = readNonEmptyString(idempotency?.producerIdentity);
+  const producerRuntimeSessionId = readNonEmptyString(idempotency?.producerRuntimeSessionId);
   const scopeKind = readNonEmptyString(idempotency?.scopeKind);
   const scopeId = readNonEmptyString(idempotency?.scopeId);
   const declarationId = readNonEmptyString(idempotency?.declarationId);
@@ -610,6 +649,7 @@ function readArtifactIdempotency(artifact: CoreArtifactRecord | null): {
     key,
     producerKind,
     producerIdentity,
+    producerRuntimeSessionId,
     scopeKind,
     scopeId,
     declarationId,
@@ -621,14 +661,64 @@ function mergeDeclarationAnchors(
   existing: CoreArtifactRecord | null,
 ): CodeArtifactDeclarationAnchors {
   const existingAnchors = readExistingDeclarationAnchors(existing);
+  assertNoAnchorConflicts(anchors, existingAnchors, existing);
   return {
-    conversationId: anchors?.conversationId ?? existingAnchors.conversationId ?? null,
-    taskId: anchors?.taskId ?? existingAnchors.taskId ?? null,
-    runId: anchors?.runId ?? existingAnchors.runId ?? null,
-    projectId: anchors?.projectId ?? existingAnchors.projectId ?? null,
-    workItemId: anchors?.workItemId ?? existingAnchors.workItemId ?? null,
-    workspacePath: anchors?.workspacePath ?? existingAnchors.workspacePath ?? null,
+    conversationId:
+      normalizeNullableString(anchors?.conversationId)
+      ?? existingAnchors.conversationId
+      ?? null,
+    taskId: normalizeNullableString(anchors?.taskId) ?? existingAnchors.taskId ?? null,
+    runId: normalizeNullableString(anchors?.runId) ?? existingAnchors.runId ?? null,
+    projectId: normalizeNullableString(anchors?.projectId) ?? existingAnchors.projectId ?? null,
+    workItemId:
+      normalizeNullableString(anchors?.workItemId)
+      ?? existingAnchors.workItemId
+      ?? null,
+    workspacePath:
+      normalizeNullableString(anchors?.workspacePath)
+      ?? existingAnchors.workspacePath
+      ?? null,
   };
+}
+
+function assertNoAnchorConflicts(
+  anchors: CodeArtifactDeclarationAnchors | undefined,
+  existingAnchors: CodeArtifactDeclarationAnchors,
+  existing: CoreArtifactRecord | null,
+): void {
+  if (!existing) {
+    return;
+  }
+
+  for (const field of [
+    'conversationId',
+    'taskId',
+    'runId',
+    'projectId',
+    'workItemId',
+    'workspacePath',
+  ] as const) {
+    const incoming = normalizeNullableString(anchors?.[field]);
+    const frozen = normalizeNullableString(existingAnchors[field]);
+    if (!incoming || !frozen) {
+      continue;
+    }
+    const matches = field === 'workspacePath'
+      ? normalizeWorkspaceKey(incoming) === normalizeWorkspaceKey(frozen)
+      : incoming === frozen;
+    if (!matches) {
+      throw new CodeArtifactDeclarationError(
+        'artifact_anchor_conflict',
+        'Artifact declaration retry conflicts with the frozen artifact anchor.',
+        {
+          artifactId: existing.id,
+          field,
+          incoming,
+          frozen,
+        },
+      );
+    }
+  }
 }
 
 function readExistingDeclarationAnchors(
@@ -716,6 +806,10 @@ function readNonEmptyString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0
     ? value.trim()
     : null;
+}
+
+function normalizeNullableString(value: unknown): string | null {
+  return readNonEmptyString(value);
 }
 
 function isCodeArtifactProducerKind(

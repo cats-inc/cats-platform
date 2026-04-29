@@ -25,7 +25,7 @@ import {
   type CodeArtifactToolInput,
 } from '../shared/artifactDeclaration.js';
 
-export const CODE_ARTIFACT_RUNTIME_ENRICHER_ID = 'cats-code.artifact-declaration' as const;
+export const CODE_ARTIFACT_RUNTIME_HOOK_ID = 'cats-code.artifact-declaration' as const;
 export const CODE_ARTIFACT_RUNTIME_CONTEXT_METADATA_KEY = 'codeArtifactDeclaration' as const;
 
 const AGENT_VISIBLE_DECLARATION_FIELDS = [
@@ -178,7 +178,7 @@ export function buildCodeArtifactOnboardingBlock(): string {
 
 export function createCodeArtifactRuntimeInvocationEnricher(): RuntimeInvocationEnricher {
   return {
-    id: CODE_ARTIFACT_RUNTIME_ENRICHER_ID,
+    id: CODE_ARTIFACT_RUNTIME_HOOK_ID,
     priority: RuntimeEnricherPriority.POST_PROCESS,
     enrich(channel, input, context) {
       return buildCodeArtifactRuntimeInvocationContribution(input, channel, context);

@@ -687,10 +687,15 @@ GET /api/code/previews
 - `GET /api/code/artifacts` returns the code-output list read model above all
   code-linked artifacts.
 - `POST /api/code/artifacts/declarations` is the first Code-owned artifact
-  declaration submit route. It accepts a structured Code artifact declaration,
-  validates it through the Code materialization delegate, writes or updates the
-  corresponding `CoreArtifactRecord`, and returns the artifact detail projection
-  plus the accepted tool-result shape.
+  declaration submit route. Its `declaration` field uses the same
+  agent-visible `declare_artifact` shape (`declarationId`, `label`, `title`,
+  `location`, optional `summary`, optional `metadata`) and is normalized before
+  materialization. Server/context-owned values such as `producer` and `anchors`
+  are wrapper fields, not fields inside `declaration`; raw declaration attempts
+  to set `producer.*`, `anchors.*`, `coreKind`, `requestedStatus`, or
+  `requestedDisposition` are rejected as shape errors. Accepted declarations
+  write or update the corresponding `CoreArtifactRecord` and return the
+  artifact detail projection plus the accepted tool-result shape.
 - `GET /api/code/artifacts/:artifactId` returns the focused code-output detail
   view, including linked task/work-item/project references plus related output
   siblings.

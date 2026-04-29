@@ -214,6 +214,7 @@ export const CODE_ARTIFACT_DECLARATION_ERROR_CODES = [
   'artifact_producer_actor_not_allowed',
   'artifact_producer_tool_not_allowed',
   'artifact_anchor_required',
+  'artifact_anchor_conflict',
   'artifact_idempotency_ambiguous',
   'artifact_publish_requires_action',
   'artifact_publish_transition_failed',

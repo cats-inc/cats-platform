@@ -98,6 +98,13 @@ export interface RuntimeInvocationAssistantEffectInput {
 
 export interface RuntimeInvocationAssistantEffectContribution {
   core: CatsCoreState;
+  /**
+   * Full replacement segment list. Processors receive the current segment list
+   * after earlier processors, so a processor that returns `segments` must
+   * preserve any prior processor edits it wants to keep. Ordering is
+   * deterministic by priority then id; segment replacement is not merged by
+   * the platform.
+   */
   segments?: readonly RuntimeMessageSegment[] | null;
   metadata?: Record<string, unknown> | null;
 }
@@ -153,8 +160,6 @@ export function registerRuntimeInvocationEnricher(enricher: RuntimeInvocationEnr
 
 export function clearRuntimeInvocationEnrichers(): void {
   runtimeInvocationEnrichers.clear();
-  runtimeInvocationAssistantEffectProcessors.clear();
-  clearRuntimeAssistantFinalizationGates();
 }
 
 export function registerRuntimeInvocationAssistantEffectProcessor(
@@ -165,6 +170,12 @@ export function registerRuntimeInvocationAssistantEffectProcessor(
 
 export function clearRuntimeInvocationAssistantEffectProcessors(): void {
   runtimeInvocationAssistantEffectProcessors.clear();
+}
+
+export function clearRuntimeInvocationRegistries(): void {
+  clearRuntimeInvocationEnrichers();
+  clearRuntimeInvocationAssistantEffectProcessors();
+  clearRuntimeAssistantFinalizationGates();
 }
 
 export function hasRuntimeInvocationAssistantEffectProcessors(): boolean {

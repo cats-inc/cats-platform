@@ -17,7 +17,7 @@ import {
 import { materializeCodeArtifactDeclaration } from './artifactMaterialization.js';
 import {
   CODE_ARTIFACT_RUNTIME_CONTEXT_METADATA_KEY,
-  CODE_ARTIFACT_RUNTIME_ENRICHER_ID,
+  CODE_ARTIFACT_RUNTIME_HOOK_ID,
   observeCodeArtifactRuntimeToolCall,
   shouldAttachCodeArtifactRuntimeTooling,
   type CodeArtifactRuntimeToolingChannel,
@@ -113,7 +113,7 @@ export function executeCodeArtifactRuntimeDeclarations(input: {
 
 export function createCodeArtifactRuntimeAssistantEffectProcessor(): RuntimeInvocationAssistantEffectProcessor {
   return {
-    id: CODE_ARTIFACT_RUNTIME_ENRICHER_ID,
+    id: CODE_ARTIFACT_RUNTIME_HOOK_ID,
     priority: RuntimeEnricherPriority.POST_PROCESS,
     shouldApplyAssistantEffects(channel, segments) {
       return shouldAttachCodeArtifactRuntimeTooling(channel)
@@ -168,7 +168,10 @@ export function projectCodeArtifactToolResultsIntoSegments(
   declarations: readonly CodeArtifactRuntimeDeclarationExecutionItem[],
 ): RuntimeMessageSegment[] {
   const projected: RuntimeMessageSegment[] = [];
-  let declarationIndex = 0;
+  const unusedDeclarations = declarations.map((declaration) => ({
+    declaration,
+    used: false,
+  }));
 
   for (const segment of segments) {
     projected.push(segment);
@@ -176,19 +179,46 @@ export function projectCodeArtifactToolResultsIntoSegments(
     if (!observation) {
       continue;
     }
-    const declaration = declarations[declarationIndex];
-    declarationIndex += 1;
+    const declaration = findMatchingDeclarationResult(
+      unusedDeclarations,
+      observation.toolId,
+      observation.declarationId,
+    );
     if (!declaration) {
       continue;
     }
     projected.push(buildCodeArtifactToolResultSegment(declaration));
   }
 
-  for (; declarationIndex < declarations.length; declarationIndex += 1) {
-    projected.push(buildCodeArtifactToolResultSegment(declarations[declarationIndex]!));
-  }
-
   return projected;
+}
+
+function findMatchingDeclarationResult(
+  declarations: Array<{ declaration: CodeArtifactRuntimeDeclarationExecutionItem; used: boolean }>,
+  toolId: string | null,
+  declarationId: string | null,
+): CodeArtifactRuntimeDeclarationExecutionItem | null {
+  const match = declarations.find((candidate) =>
+    !candidate.used
+    && (
+      (toolId !== null && candidate.declaration.toolId === toolId)
+      || (
+        toolId === null
+        && declarationId !== null
+        && candidate.declaration.toolId === null
+        && candidate.declaration.declarationId === declarationId
+      )
+      || (
+        toolId === null
+        && declarationId === null
+        && candidate.declaration.toolId === null
+      )
+    ));
+  if (!match) {
+    return null;
+  }
+  match.used = true;
+  return match.declaration;
 }
 
 function buildCodeArtifactToolResultSegment(

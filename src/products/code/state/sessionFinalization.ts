@@ -7,7 +7,7 @@ import {
   type RuntimeAssistantFinalizationGate,
 } from '../../../platform/runtime/assistantFinalization.js';
 import {
-  CODE_ARTIFACT_RUNTIME_ENRICHER_ID,
+  CODE_ARTIFACT_RUNTIME_HOOK_ID,
   shouldAttachCodeArtifactRuntimeTooling,
 } from './runtimeArtifactTooling.js';
 
@@ -83,18 +83,17 @@ export const CODE_ARTIFACT_FINALIZATION_GATE = new CodeArtifactFinalizationGate(
 
 export function createCodeArtifactRuntimeFinalizationGate(): RuntimeAssistantFinalizationGate {
   return {
-    id: CODE_ARTIFACT_RUNTIME_ENRICHER_ID,
+    id: CODE_ARTIFACT_RUNTIME_HOOK_ID,
     priority: RuntimeEnricherPriority.POST_PROCESS,
     shouldEvaluate(channel) {
       return shouldAttachCodeArtifactRuntimeTooling(channel);
     },
     evaluate(_channel, input) {
       const codeMetadata = asRecord(
-        input.runtimeAssistantMetadata?.[CODE_ARTIFACT_RUNTIME_ENRICHER_ID],
+        input.runtimeAssistantMetadata?.[CODE_ARTIFACT_RUNTIME_HOOK_ID],
       );
       const runtimeFinalization = asRecord(input.runtimeFinalization);
-      const codeFinalization = asRecord(runtimeFinalization?.codeArtifactFinalization)
-        ?? runtimeFinalization;
+      const codeFinalization = asRecord(runtimeFinalization?.codeArtifactFinalization);
       const decision = CODE_ARTIFACT_FINALIZATION_GATE.evaluate({
         finalization: {
           assistantTurnId: input.assistantTurnId,

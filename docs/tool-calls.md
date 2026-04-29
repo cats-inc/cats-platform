@@ -115,12 +115,14 @@ approval, cancellation, and weak-worker boundaries.
 ## `declare_artifact`
 
 Declares that a Code-session output is worth recording as an Artifact. It is not
-a transcript command and it is not a public HTTP route in the current scaffold.
+a transcript command; runtime tool calls are the primary path, and the Code API
+also exposes the authoritative declaration submit route for product-owned
+callers.
 
 | Field | Value |
 |-------|-------|
 | Owning product | Cats Code |
-| Current status | Code-origin active sessions receive the onboarding block at session create and runtime context metadata at session create / message send; returned `declare_artifact` `tool_use` segments are observed as shape summaries. The Code product now has an authoritative submit route, materialization delegate, activity emission, runtime execution helper, platform-registered assistant-effect processor, live dispatch persistence, local tool-result projection, and structured finalization enforcement for `artifactClaims[]`. Runtime tool-result delivery back to the assistant remains pending. |
+| Current status | Code-origin active sessions receive the onboarding block at session create and runtime context metadata at session create / message send. Returned `declare_artifact` `tool_use` segments are observed, materialized through the Code delegate, persisted to Core, projected into local `tool_result` segments, and checked by structured finalization enforcement for `artifactClaims[]`. Runtime tool-result delivery back to the assistant remains pending. |
 | First channel | `runtime_tool` |
 | Tool name | `declare_artifact` |
 | Implementation entry point | `src/products/code/shared/artifactDeclaration.ts` |
@@ -358,6 +360,10 @@ If an assistant final response claims that an artifact was produced or recorded,
 the finalization envelope must include an `artifactClaims[]` entry whose
 `declarationId` matches an accepted same-turn `declare_artifact` result.
 Unmatched claims are blocked with `artifact_claim_without_declaration`.
+Runtime finalization data is namespaced under
+`runtimeFinalization.codeArtifactFinalization`; flat `runtimeFinalization`
+payloads are ignored so future product gates can coexist without key
+collisions.
 
 ### Error Codes
 

@@ -190,6 +190,71 @@ test('Code artifact materialization recovers frozen idempotency scope across ret
   });
 });
 
+test('Code artifact materialization rejects retries with conflicting frozen anchors', () => {
+  const core = createAnchoredCodeCore();
+  const first = materializeCodeArtifactDeclaration(
+    core,
+    createPreviewDeclaration(),
+    new Date('2026-04-30T10:00:00.000Z'),
+  );
+
+  assert.throws(
+    () => materializeCodeArtifactDeclaration(
+      first.core,
+      createPreviewDeclaration({
+        anchors: {
+          conversationId: 'conversation-code-1',
+          taskId: 'task-code-1',
+          runId: 'run-code-conflict',
+          workspacePath: 'C:/repo/cats-platform',
+        },
+      }),
+      new Date('2026-04-30T10:01:00.000Z'),
+    ),
+    (error) =>
+      error instanceof CodeArtifactDeclarationError &&
+      error.code === 'artifact_anchor_conflict',
+  );
+});
+
+test('Code artifact materialization does not fold same agent declaration ids across sessions', () => {
+  const core = createAnchoredCodeCore();
+  const first = materializeCodeArtifactDeclaration(
+    core,
+    createPreviewDeclaration(),
+    new Date('2026-04-30T10:00:00.000Z'),
+  );
+  const secondRunCore = upsertCoreRun(first.core, {
+    id: 'run-code-2',
+    title: 'Second Code run',
+    status: 'running',
+    conversationId: 'conversation-code-1',
+    taskId: 'task-code-1',
+  }).core;
+
+  const second = materializeCodeArtifactDeclaration(
+    secondRunCore,
+    createPreviewDeclaration({
+      producer: {
+        kind: 'agent',
+        actorId: 'actor-code-agent',
+        runtimeSessionId: 'runtime-session-2',
+      },
+      anchors: {
+        conversationId: 'conversation-code-1',
+        taskId: 'task-code-1',
+        runId: 'run-code-2',
+        workspacePath: 'C:/repo/cats-platform',
+      },
+    }),
+    new Date('2026-04-30T10:01:00.000Z'),
+  );
+
+  assert.notEqual(second.artifact.id, first.artifact.id);
+  assert.equal(second.created, true);
+  assert.equal(second.core.artifacts.length, 2);
+});
+
 test('Code artifact materialization rejects ambiguous frozen-scope retries', () => {
   const core = createAnchoredCodeCore();
   const first = materializeCodeArtifactDeclaration(

@@ -1,6 +1,8 @@
 import type {
-  CodeArtifactDeclaration,
+  CodeArtifactDeclarationAnchors,
   CodeArtifactDisposition,
+  CodeArtifactProducer,
+  CodeArtifactToolInput,
   CodeArtifactToolResult,
 } from '../shared/artifactDeclaration.js';
 import type { CodeArtifactDetailProjection } from './projection.js';
@@ -8,7 +10,9 @@ import type { CodeArtifactDetailProjection } from './projection.js';
 export * from '../../shared/api/workspaceContracts.js';
 
 export interface CodeArtifactDeclarationSubmitRequest {
-  declaration: CodeArtifactDeclaration;
+  declaration: CodeArtifactToolInput;
+  producer: CodeArtifactProducer;
+  anchors?: CodeArtifactDeclarationAnchors;
 }
 
 export interface CodeArtifactDeclarationSubmitResponse {

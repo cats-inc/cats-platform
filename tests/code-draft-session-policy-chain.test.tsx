@@ -6,7 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { createServer } from '../src/app/server/index.ts';
-import { clearRuntimeInvocationEnrichers } from '../src/platform/runtime/invocationEnrichment.ts';
+import { clearRuntimeInvocationRegistries } from '../src/platform/runtime/invocationEnrichment.ts';
 import type { RuntimeMessageSegment } from '../src/platform/runtime/client.ts';
 import { buildChatConversationId } from '../src/shared/chatCoreIds.ts';
 import { MemoryChatStore } from '../src/products/chat/state/store.ts';
@@ -140,7 +140,7 @@ async function withServer(
 ): Promise<void> {
   const chatStore = new MemoryChatStore();
   const tempStateDir = await mkdtemp(path.join(os.tmpdir(), 'cats-code-session-policy-'));
-  clearRuntimeInvocationEnrichers();
+  clearRuntimeInvocationRegistries();
   const server = createServer({
     shared: {
       config: {
@@ -168,7 +168,7 @@ async function withServer(
     server.close();
     await once(server, 'close');
     await rm(tempStateDir, { recursive: true, force: true });
-    clearRuntimeInvocationEnrichers();
+    clearRuntimeInvocationRegistries();
   }
 }
 
@@ -299,7 +299,9 @@ test('code-origin runtime declare_artifact calls persist artifacts during dispat
       },
     ],
     finalization: {
-      artifactClaims: [{ declarationId: 'preview-localhost:preview_url' }],
+      codeArtifactFinalization: {
+        artifactClaims: [{ declarationId: 'preview-localhost:preview_url' }],
+      },
     },
   });
 
@@ -415,7 +417,9 @@ test('code-origin finalization claims without accepted declarations are blocked'
       },
     ],
     finalization: {
-      artifactClaims: [{ declarationId: 'preview-localhost:preview_url' }],
+      codeArtifactFinalization: {
+        artifactClaims: [{ declarationId: 'preview-localhost:preview_url' }],
+      },
     },
   });
 

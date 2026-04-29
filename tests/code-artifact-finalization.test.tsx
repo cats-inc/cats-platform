@@ -6,7 +6,7 @@ import {
   clearRuntimeAssistantFinalizationGates,
 } from '../src/platform/runtime/assistantFinalization.ts';
 import {
-  CODE_ARTIFACT_RUNTIME_ENRICHER_ID,
+  CODE_ARTIFACT_RUNTIME_HOOK_ID,
 } from '../src/products/code/state/runtimeArtifactTooling.ts';
 import {
   CODE_ARTIFACT_CLAIM_WITHOUT_DECLARATION,
@@ -122,7 +122,7 @@ test('Code runtime finalization gate rejects unmatched structured artifact claim
       assistantTurnId: 'turn-1',
       bodyText: 'I recorded the preview.',
       runtimeAssistantMetadata: {
-        [CODE_ARTIFACT_RUNTIME_ENRICHER_ID]: {
+        [CODE_ARTIFACT_RUNTIME_HOOK_ID]: {
           codeArtifactFinalization: {
             artifactClaims: [{ declarationId: 'preview-localhost:preview_url' }],
           },
@@ -133,7 +133,7 @@ test('Code runtime finalization gate rejects unmatched structured artifact claim
 
   assert.equal(decision.status, 'rejected');
   assert.equal(decision.code, CODE_ARTIFACT_CLAIM_WITHOUT_DECLARATION);
-  assert.equal(decision.gateId, CODE_ARTIFACT_RUNTIME_ENRICHER_ID);
+  assert.equal(decision.gateId, CODE_ARTIFACT_RUNTIME_HOOK_ID);
 });
 
 test('Code runtime finalization gate reads runtime finalization envelopes', () => {
@@ -144,10 +144,12 @@ test('Code runtime finalization gate reads runtime finalization envelopes', () =
       assistantTurnId: 'turn-1',
       bodyText: 'I recorded the preview.',
       runtimeFinalization: {
-        artifactClaims: [{ declarationId: 'preview-localhost:preview_url' }],
+        codeArtifactFinalization: {
+          artifactClaims: [{ declarationId: 'preview-localhost:preview_url' }],
+        },
       },
       runtimeAssistantMetadata: {
-        [CODE_ARTIFACT_RUNTIME_ENRICHER_ID]: {
+        [CODE_ARTIFACT_RUNTIME_HOOK_ID]: {
           codeArtifactToolResults: [
             {
               result: {
@@ -173,7 +175,7 @@ test('Code runtime finalization gate accepts same-turn artifact claims', () => {
       assistantTurnId: 'turn-1',
       bodyText: 'I recorded the preview.',
       runtimeAssistantMetadata: {
-        [CODE_ARTIFACT_RUNTIME_ENRICHER_ID]: {
+        [CODE_ARTIFACT_RUNTIME_HOOK_ID]: {
           codeArtifactFinalization: {
             artifactClaims: [{ declarationId: 'preview-localhost:preview_url' }],
           },
@@ -193,7 +195,7 @@ test('Code runtime finalization gate accepts same-turn artifact claims', () => {
 
   assert.equal(decision.status, 'accepted');
   assert.deepEqual(decision.metadata, {
-    [CODE_ARTIFACT_RUNTIME_ENRICHER_ID]: {
+    [CODE_ARTIFACT_RUNTIME_HOOK_ID]: {
       codeArtifactFinalization: {
         status: 'accepted',
         artifactClaims: [

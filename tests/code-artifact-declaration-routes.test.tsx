@@ -9,7 +9,11 @@ import { upsertCoreConversation } from '../src/core/model/structuralRecords.ts';
 import { MemoryCoreStore } from '../src/core/store.ts';
 import { routeCodeApi } from '../src/products/code/api/index.ts';
 import { CODE_API_ARTIFACT_DECLARATIONS_PATH } from '../src/products/code/shared/apiPaths.ts';
-import type { CodeArtifactDeclaration } from '../src/products/code/shared/artifactDeclaration.ts';
+import type {
+  CodeArtifactDeclarationAnchors,
+  CodeArtifactProducer,
+  CodeArtifactToolInput,
+} from '../src/products/code/shared/artifactDeclaration.ts';
 
 const NOW = new Date('2026-04-30T11:00:00.000Z');
 
@@ -37,32 +41,52 @@ function createAnchoredStore(): MemoryCoreStore {
   return new MemoryCoreStore(core);
 }
 
-function createDeclaration(
-  overrides: Partial<CodeArtifactDeclaration> = {},
-): CodeArtifactDeclaration {
+function createDeclarationInput(
+  overrides: Partial<CodeArtifactToolInput> = {},
+): CodeArtifactToolInput {
   return {
     declarationId: 'preview-route:preview_url',
-    producer: {
-      kind: 'agent',
-      actorId: 'actor-code-route',
-      runtimeSessionId: 'session-code-route',
-    },
-    artifact: {
-      title: 'Route preview',
-      label: 'preview_url',
-      summary: 'Preview from route.',
-    },
+    title: 'Route preview',
+    label: 'preview_url',
+    summary: 'Preview from route.',
     location: {
       kind: 'url',
       value: 'http://127.0.0.1:5173/',
     },
-    anchors: {
-      conversationId: 'conversation-code-route',
-      taskId: 'task-code-route',
-      runId: 'run-code-route',
-      workspacePath: 'C:/repo/cats-platform',
-    },
     ...overrides,
+  };
+}
+
+function createProducer(overrides: Partial<CodeArtifactProducer> = {}): CodeArtifactProducer {
+  return {
+    kind: 'agent',
+    actorId: 'actor-code-route',
+    runtimeSessionId: 'session-code-route',
+    ...overrides,
+  };
+}
+
+function createAnchors(
+  overrides: Partial<CodeArtifactDeclarationAnchors> = {},
+): CodeArtifactDeclarationAnchors {
+  return {
+    conversationId: 'conversation-code-route',
+    taskId: 'task-code-route',
+    runId: 'run-code-route',
+    workspacePath: 'C:/repo/cats-platform',
+    ...overrides,
+  };
+}
+
+function createSubmitBody(input: {
+  declaration?: Partial<CodeArtifactToolInput> & Record<string, unknown>;
+  producer?: Partial<CodeArtifactProducer>;
+  anchors?: Partial<CodeArtifactDeclarationAnchors>;
+} = {}) {
+  return {
+    declaration: createDeclarationInput(input.declaration),
+    producer: createProducer(input.producer),
+    anchors: createAnchors(input.anchors),
   };
 }
 
@@ -124,7 +148,7 @@ test('POST /api/code/artifacts/declarations materializes an artifact', async (t)
   t.after(() => server.close());
 
   const response = await request(server, 'POST', CODE_API_ARTIFACT_DECLARATIONS_PATH, {
-    declaration: createDeclaration(),
+    ...createSubmitBody(),
   });
 
   assert.equal(response.status, 201);
@@ -148,13 +172,11 @@ test('POST /api/code/artifacts/declarations reuses idempotent artifacts', async 
   t.after(() => server.close());
 
   const first = await request(server, 'POST', CODE_API_ARTIFACT_DECLARATIONS_PATH, {
-    declaration: createDeclaration(),
+    ...createSubmitBody(),
   });
   const second = await request(server, 'POST', CODE_API_ARTIFACT_DECLARATIONS_PATH, {
-    declaration: createDeclaration({
-      artifact: {
-        title: 'Route preview',
-        label: 'preview_url',
+    ...createSubmitBody({
+      declaration: {
         summary: 'Updated preview summary.',
       },
     }),
@@ -181,12 +203,26 @@ test('POST /api/code/artifacts/declarations returns declaration errors', async (
     'invalid_artifact_declaration',
   );
 
-  const invalidDeclaration = await request(server, 'POST', CODE_API_ARTIFACT_DECLARATIONS_PATH, {
-    declaration: createDeclaration({ requestedStatus: 'published' }),
+  const rawServerField = await request(server, 'POST', CODE_API_ARTIFACT_DECLARATIONS_PATH, {
+    ...createSubmitBody({
+      declaration: {
+        requestedStatus: 'published',
+      } as Partial<CodeArtifactToolInput> & Record<string, unknown>,
+    }),
   });
-  assert.equal(invalidDeclaration.status, 422);
+  assert.equal(rawServerField.status, 400);
   assert.equal(
-    (invalidDeclaration.payload?.error as { code?: string }).code,
-    'artifact_publish_requires_action',
+    (rawServerField.payload?.error as { code?: string }).code,
+    'artifact_producer_field_not_allowed',
+  );
+
+  const unanchoredDeclaration = await request(server, 'POST', CODE_API_ARTIFACT_DECLARATIONS_PATH, {
+    ...createSubmitBody({ producer: { runtimeSessionId: null }, anchors: {} }),
+    anchors: {},
+  });
+  assert.equal(unanchoredDeclaration.status, 422);
+  assert.equal(
+    (unanchoredDeclaration.payload?.error as { code?: string }).code,
+    'artifact_anchor_required',
   );
 });

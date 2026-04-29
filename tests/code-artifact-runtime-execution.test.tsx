@@ -6,7 +6,10 @@ import { createDefaultCoreState } from '../src/core/model/index.ts';
 import { upsertCoreRun } from '../src/core/model/executionRecords.ts';
 import { upsertCoreTask } from '../src/core/model/taskControls.ts';
 import { upsertCoreConversation } from '../src/core/model/structuralRecords.ts';
-import { executeCodeArtifactRuntimeDeclarations } from '../src/products/code/state/runtimeArtifactExecution.ts';
+import {
+  executeCodeArtifactRuntimeDeclarations,
+  projectCodeArtifactToolResultsIntoSegments,
+} from '../src/products/code/state/runtimeArtifactExecution.ts';
 
 function createAnchoredCodeCore() {
   let core = createDefaultCoreState();
@@ -163,6 +166,66 @@ test('Code runtime declaration execution returns rejected results without mutati
       },
     },
   ]);
+});
+
+test('Code runtime tool-result projection pairs declarations by tool id', () => {
+  const segments: RuntimeMessageSegment[] = [
+    {
+      kind: 'tool_use',
+      toolName: 'declare_artifact',
+      toolId: 'tool-a',
+      text: JSON.stringify({
+        declarationId: 'preview-a',
+        label: 'preview_url',
+        title: 'Preview A',
+        location: { kind: 'url', value: 'http://127.0.0.1:5173' },
+      }),
+    },
+    {
+      kind: 'tool_use',
+      toolName: 'declare_artifact',
+      toolId: 'tool-b',
+      text: JSON.stringify({
+        declarationId: 'preview-b',
+        label: 'preview_url',
+        title: 'Preview B',
+        location: { kind: 'url', value: 'http://127.0.0.1:5174' },
+      }),
+    },
+  ];
+
+  const projected = projectCodeArtifactToolResultsIntoSegments(segments, [
+    {
+      toolId: 'tool-b',
+      declarationId: 'preview-b',
+      result: {
+        status: 'accepted',
+        declarationId: 'preview-b',
+        disposition: 'record',
+        artifactId: 'artifact-b',
+        artifactStatus: 'ready',
+      },
+    },
+    {
+      toolId: 'tool-a',
+      declarationId: 'preview-a',
+      result: {
+        status: 'accepted',
+        declarationId: 'preview-a',
+        disposition: 'record',
+        artifactId: 'artifact-a',
+        artifactStatus: 'ready',
+      },
+    },
+  ]);
+
+  assert.equal(projected.length, 4);
+  assert.equal(projected[1]?.kind, 'tool_result');
+  assert.equal(projected[1]?.toolId, 'tool-a');
+  assert.equal(JSON.parse(projected[1]?.text ?? '{}').artifactId, 'artifact-a');
+  assert.equal(projected[3]?.kind, 'tool_result');
+  assert.equal(projected[3]?.toolId, 'tool-b');
+  assert.equal(JSON.parse(projected[3]?.text ?? '{}').artifactId, 'artifact-b');
 });
 
 test('Code runtime declaration execution is no-op outside Code-origin channels', () => {

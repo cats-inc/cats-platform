@@ -270,6 +270,7 @@ these codes instead of inventing local aliases.
 | `artifact_producer_actor_not_allowed` | A `tool` or `system` declaration supplies non-null `actorId`. |
 | `artifact_producer_tool_not_allowed` | An `agent` or `user` declaration supplies non-null `toolName`. |
 | `artifact_anchor_required` | No conversation, task, run, workspace, or verified detached-import anchor can be resolved. |
+| `artifact_anchor_conflict` | A retry supplies a non-null anchor value that conflicts with the frozen anchor on the idempotent artifact. |
 | `artifact_idempotency_ambiguous` | Frozen-scope retry fallback finds more than one compatible existing artifact/candidate. |
 | `artifact_publish_requires_action` | An ordinary declaration submit requests `published`. |
 | `artifact_publish_transition_failed` | Import-and-publish or standalone publish materialized an artifact but the publish transition failed. |
