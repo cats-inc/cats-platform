@@ -18,17 +18,13 @@ import {
   createDurableToolEvidenceSink,
 } from './evidenceSink.js';
 import {
+  cancelMission,
+  stopRun,
+} from './runCancellation.js';
+import {
   deriveRunState,
   writeRunStateMetadata,
-  type RunLifecycleState,
 } from './runState.js';
-import {
-  createSupervisedRunLifecycleService,
-  type SupervisedRunLifecycleRecord,
-} from './runLifecycleService.js';
-import {
-  buildSupervisedRunInspectionProjection,
-} from './runProjection.js';
 import type {
   ProviderAgentRunLoopRecord,
   RunLoopDecisionHandoff,
@@ -354,6 +350,16 @@ async function finishScheduledRunLaunch(input: {
   return result;
 }
 
+/**
+ * Schedule replacement now delegates to the generic Run stop boundary
+ * defined by SPEC-096 / PLAN-085. It still returns the legacy
+ * `'cancelled' | 'skipped'` shape so existing scheduler wiring keeps
+ * working while the canonical command lives in `runCancellation.ts`.
+ *
+ * Per-fire scheduled missions own exactly one run; after the run is
+ * stopped we cascade `cancelMission` so the mission record reaches its
+ * terminal state alongside the run, matching the prior behaviour.
+ */
 export async function cancelScheduledRunThroughSupervision(
   dependencies: ScheduledRunExecutionDependencies,
   runId: string,
@@ -362,168 +368,64 @@ export async function cancelScheduledRunThroughSupervision(
   const now = options.requestedAt
     ? new Date(options.requestedAt)
     : dependencies.now?.() ?? new Date();
-  const evaluatedAt = now.toISOString();
-  const target = await readScheduledRunCancellationTarget(dependencies.coreStore, runId);
-  if (!target) {
-    return null;
-  }
+  const requestedByActorId = options.requestedBy ?? 'scheduler:replace';
+  const reason = options.reasonNote;
 
-  if (target.sessionId) {
-    if (!dependencies.runtimeClient) {
-      throw new CoreConflictError(
-        `Cannot cancel scheduled runtime session for run ${runId}; runtime client is unavailable.`,
-        'scheduled_run_runtime_cancellation_unavailable',
-      );
-    }
-    await dependencies.runtimeClient.cancelSession(target.sessionId);
-  }
-
-  return persistScheduledRunCancellation({
-    coreStore: dependencies.coreStore,
+  const stopResult = await stopRun(
+    {
+      coreStore: dependencies.coreStore,
+      runtimeClient: dependencies.runtimeClient,
+      now: () => now,
+    },
     runId,
-    requestedBy: options.requestedBy ?? 'scheduler:replace',
-    reasonNote: options.reasonNote,
-    sessionId: target.sessionId,
-    now,
-    evaluatedAt,
-  });
-}
+    {
+      source: 'schedule_replace',
+      requestedByActorId,
+      reason,
+    },
+  );
 
-async function readScheduledRunCancellationTarget(
-  coreStore: CoreStore,
-  runId: string,
-): Promise<{
-  run: CoreRunRecord;
-  mission: MissionRecord | null;
-  sessionId: string | null;
-} | null> {
-  const core = await coreStore.readCore();
-  const run = core.runs.find((candidate) => candidate.id === runId) ?? null;
-  if (!run || !readScheduleTrigger(run) || !isActiveRunStatus(run.status)) {
+  if (!stopResult) {
     return null;
+  }
+
+  if (stopResult.status === 'not_stoppable') {
+    throw new CoreConflictError(
+      stopResult.message
+        ?? `Cannot cancel scheduled run ${runId}; runtime cancellation is unavailable.`,
+      'scheduled_run_runtime_cancellation_unavailable',
+    );
+  }
+
+  const missionId =
+    typeof stopResult.run.metadata.missionId === 'string'
+      ? stopResult.run.metadata.missionId
+      : null;
+  let finalMission = stopResult.mission;
+  if (missionId) {
+    const cancelMissionResult = await cancelMission(
+      {
+        coreStore: dependencies.coreStore,
+        runtimeClient: dependencies.runtimeClient,
+        now: () => now,
+      },
+      missionId,
+      {
+        requestedByActorId,
+        reason,
+      },
+    );
+    if (cancelMissionResult) {
+      finalMission = cancelMissionResult.mission;
+    }
   }
 
   return {
-    run,
-    mission: resolveRunMission(core, run),
-    sessionId: readRuntimeBridgeSessionId(run),
+    status: stopResult.status === 'stopped' ? 'cancelled' : 'skipped',
+    run: stopResult.run,
+    mission: finalMission,
+    message: stopResult.message,
   };
-}
-
-async function persistScheduledRunCancellation(input: {
-  coreStore: CoreStore;
-  runId: string;
-  requestedBy: string;
-  reasonNote?: string;
-  sessionId: string | null;
-  now: Date;
-  evaluatedAt: string;
-}): Promise<ScheduledRunCancellationResult | null> {
-  let result: ScheduledRunCancellationResult | null = null;
-  await input.coreStore.updateCore((core) => {
-    const run = core.runs.find((candidate) => candidate.id === input.runId) ?? null;
-    if (!run) {
-      return core;
-    }
-    const mission = resolveRunMission(core, run);
-    if (!readScheduleTrigger(run) || !isActiveRunStatus(run.status)) {
-      result = {
-        status: 'skipped',
-        run,
-        mission,
-        message: 'Scheduled run is no longer active.',
-      };
-      return core;
-    }
-
-    const lifecycleService = createSupervisedRunLifecycleService({
-      now: () => input.now,
-    });
-    const projection = buildSupervisedRunInspectionProjection(core, run.id);
-    const lifecycle = lifecycleService.cancel(
-      toScheduledRunLifecycleRecord(run, projection),
-      {
-        requestedBy: input.requestedBy,
-        reasonCode: 'external_event',
-        reasonNote: input.reasonNote,
-      },
-    );
-    const nextRun = upsertCoreRun(
-      core,
-      {
-        id: run.id,
-        title: run.title,
-        status: 'cancelled',
-        startedAt: run.startedAt,
-        completedAt: input.evaluatedAt,
-        summary: 'Cancelled scheduled run for replacement.',
-        metadata: writeRunStateMetadata({
-          metadata: writeRuntimeBridgeMetadata(lifecycle.metadata, {
-            status: 'cancel_requested',
-            sessionId: input.sessionId,
-            cancelRequestedAt: input.evaluatedAt,
-            reasonNote: input.reasonNote,
-          }),
-          evaluation: {
-            primaryState: lifecycle.primaryState,
-            blockers: lifecycle.blockers,
-            approvalRequests: lifecycle.approvalRequests,
-            terminalCause: lifecycle.terminalCause,
-          },
-          evaluatedAt: input.evaluatedAt,
-        }),
-      },
-      input.now,
-    );
-    const nextCore = mission
-      ? upsertCoreMission(
-          nextRun.core,
-          {
-            id: mission.id,
-            title: mission.title,
-            status: 'cancelled',
-            conversationId: mission.conversationId,
-            assignedAgentId: mission.assignedAgentId,
-            summary: 'Cancelled scheduled mission for replacement.',
-            createdAt: mission.createdAt,
-            metadata: mission.metadata,
-          },
-          input.now,
-        ).core
-      : nextRun.core;
-    const traced = appendCoreTrace(
-      nextCore,
-      {
-        id: `${run.id}:scheduled-runtime-cancel`,
-        traceId: run.traceId ?? `trace-${run.id}`,
-        kind: 'outcome',
-        conversationId: run.conversationId,
-        runId: run.id,
-        taskId: run.taskId,
-        actorId: run.orchestratorActorId ?? input.requestedBy,
-        message: 'Scheduled run cancellation requested for replacement.',
-        metadata: {
-          source: 'scheduled_supervised_runtime_cancellation',
-          requestedBy: input.requestedBy,
-          sessionId: input.sessionId,
-          reasonCode: 'external_event',
-          reasonNote: input.reasonNote ?? null,
-        },
-      },
-      input.now,
-    );
-    const persistedRun = traced.core.runs.find((candidate) => candidate.id === run.id)
-      ?? nextRun.run;
-    result = {
-      status: 'cancelled',
-      run: persistedRun,
-      mission: resolveRunMission(traced.core, persistedRun),
-      message: null,
-    };
-    return traced.core;
-  });
-
-  return result;
 }
 
 async function blockScheduledRunLaunch(input: {
@@ -644,61 +546,10 @@ function readScheduleTrigger(run: CoreRunRecord): ScheduleTriggerMetadata | null
   return trigger as unknown as ScheduleTriggerMetadata;
 }
 
-function toScheduledRunLifecycleRecord(
-  run: CoreRunRecord,
-  projection: ReturnType<typeof buildSupervisedRunInspectionProjection>,
-): SupervisedRunLifecycleRecord {
-  const runState = projection ?? {
-    primaryState: deriveRunState({ lifecycle: toRunLifecycleState(run.status) }).primaryState,
-    blockers: [],
-    approvalRequests: [],
-    terminalCause: null,
-  };
-
-  return {
-    runId: run.id,
-    lifecycle: toRunLifecycleState(run.status),
-    blockers: runState.blockers,
-    approvalRequests: runState.approvalRequests,
-    primaryState: runState.primaryState,
-    terminalCause: runState.terminalCause ?? undefined,
-    createdAt: run.createdAt,
-    updatedAt: run.updatedAt,
-    metadata: run.metadata,
-  };
-}
-
-function toRunLifecycleState(status: CoreRunRecord['status']): RunLifecycleState {
-  switch (status) {
-    case 'queued':
-      return 'queued';
-    case 'running':
-    case 'blocked':
-      return 'active';
-    case 'completed':
-    case 'failed':
-    case 'cancelled':
-      return status;
-    default: {
-      const exhaustive: never = status;
-      return exhaustive;
-    }
-  }
-}
-
-function isActiveRunStatus(status: CoreRunRecord['status']): boolean {
-  return status === 'queued' || status === 'running' || status === 'blocked';
-}
-
 function hasStartedRuntimeBridge(run: CoreRunRecord): boolean {
   const bridge = asRecord(asRecord(run.metadata.supervision)?.runtimeBridge);
   const status = typeof bridge?.status === 'string' ? bridge.status : null;
   return status === 'launching' || status === 'started';
-}
-
-function readRuntimeBridgeSessionId(run: CoreRunRecord): string | null {
-  const bridge = asRecord(asRecord(run.metadata.supervision)?.runtimeBridge);
-  return readNonEmptyString(bridge?.sessionId);
 }
 
 function resolveScheduledRuntimeTarget(actor: CoreActorRecord | null): ExecutionTargetSummary {
@@ -752,11 +603,6 @@ function writeRuntimeBridgeMetadata(
     status: 'failed';
     error: string;
     failedAt: string;
-  } | {
-    status: 'cancel_requested';
-    sessionId: string | null;
-    cancelRequestedAt: string;
-    reasonNote?: string;
   },
 ): Record<string, unknown> {
   const supervision = asRecord(metadata.supervision) ?? {};
@@ -799,16 +645,6 @@ function buildRuntimeBridge(
       lastError: update.error,
     };
   }
-  if (update.status === 'cancel_requested') {
-    return {
-      ...existingBridge,
-      status: 'cancel_requested',
-      sessionId: update.sessionId ?? readNonEmptyString(existingBridge.sessionId),
-      cancelRequestedAt: update.cancelRequestedAt,
-      cancelReason: update.reasonNote ?? null,
-    };
-  }
-
   return {
     ...existingBridge,
     status: 'started',
