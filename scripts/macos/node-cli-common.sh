@@ -1066,3 +1066,304 @@ EOF
 
   return 0
 }
+
+# run_npm_cli_provider <platform> <package> <command_name> <display_name>
+#
+# Single-package counterpart to run_node_cli_pack. Each thin per-provider
+# wrapper (install-codex.sh, install-gemini.sh, ...) calls this function
+# with its npm package id, command name on PATH, and display label so the
+# packaged-host helper bridge sees the same JSON shape as the native
+# installers.
+run_npm_cli_provider() {
+  local platform="$1"
+  local package_name="$2"
+  local command_name="$3"
+  local display_name="$4"
+  shift 4
+
+  local check_only='false'
+  local apply='false'
+  local upgrade='false'
+  local force='false'
+  local uninstall='false'
+  local dry_run='false'
+  local emit_json='false'
+  local helper_id="${platform}-${package_name##*/}-native-installer"
+
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      --check|-CheckOnly) check_only='true' ;;
+      -Apply) apply='true' ;;
+      -upgrade|-Upgrade) upgrade='true' ;;
+      -force|-Force) force='true' ;;
+      --uninstall|-Uninstall) uninstall='true' ;;
+      --dry-run|-DryRun) dry_run='true' ;;
+      --json|-Json) emit_json='true' ;;
+      -h|--help)
+        printf 'Usage: %s [--check] [-upgrade] [-force] [--uninstall] [--dry-run] [--json]\n' "$(basename "$0")"
+        return 0
+        ;;
+      *)
+        printf 'Unknown option: %s\n' "$1" >&2
+        return 1
+        ;;
+    esac
+    shift
+  done
+
+  if [ "$force" = 'true' ]; then
+    upgrade='false'
+  fi
+
+  local execution_mode='apply'
+  if [ "$uninstall" = 'true' ]; then
+    execution_mode='uninstall'
+  elif [ "$check_only" = 'true' ]; then
+    execution_mode='check'
+  elif [ "$force" = 'true' ]; then
+    execution_mode='force'
+  elif [ "$upgrade" = 'true' ]; then
+    execution_mode='upgrade'
+  fi
+
+  load_nvm_if_present
+  if ! ensure_node_and_npm; then
+    local missing_status missing_exit
+    if [ "$uninstall" = 'true' ] || [ "$check_only" = 'true' ]; then
+      missing_status='not_installed'
+      missing_exit=0
+    else
+      missing_status='failed'
+      missing_exit=1
+    fi
+    if [ "$emit_json" = 'true' ]; then
+      printf '{'
+      printf '"helper":"%s",' "$helper_id"
+      printf '"mode":"%s",' "$execution_mode"
+      printf '"status":"%s",' "$missing_status"
+      printf '"installed":false,'
+      printf '"commandPath":null,'
+      printf '"detectedVersion":null,'
+      printf '"plannedActions":[],'
+      printf '"appliedChanges":[],'
+      printf '"warnings":["Node.js and npm must be installed before %s can be installed."],' "$(json_escape "$display_name")"
+      printf '"manualSteps":[],'
+      printf '"interruptions":[]'
+      printf '}\n'
+    fi
+    return "$missing_exit"
+  fi
+
+  local installed='false'
+  local command_path=''
+  local detected_version=''
+  if command -v "$command_name" >/dev/null 2>&1 || npm list -g "$package_name" --depth=0 >/dev/null 2>&1; then
+    installed='true'
+    command_path="$(command -v "$command_name" 2>/dev/null || true)"
+    detected_version="$(npm list -g --depth=0 --json "$package_name" 2>/dev/null | sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' | head -1)"
+  fi
+
+  if [ "$execution_mode" = 'uninstall' ]; then
+    if [ "$installed" = 'false' ]; then
+      if [ "$emit_json" = 'true' ]; then
+        printf '{'
+        printf '"helper":"%s",' "$helper_id"
+        printf '"mode":"uninstall",'
+        printf '"status":"not_installed",'
+        printf '"installed":false,'
+        printf '"commandPath":null,'
+        printf '"detectedVersion":null,'
+        printf '"plannedActions":[],'
+        printf '"appliedChanges":[],'
+        printf '"warnings":[],'
+        printf '"manualSteps":[],'
+        printf '"interruptions":[]'
+        printf '}\n'
+      else
+        printf '%s is not installed; nothing to remove.\n' "$display_name"
+      fi
+      return 0
+    fi
+
+    local planned=("${package_name}:uninstall")
+    local applied=()
+    local warnings=()
+    local final_status
+
+    if [ "$dry_run" = 'true' ]; then
+      final_status='preview'
+    else
+      if npm uninstall -g "$package_name" >/dev/null 2>&1; then
+        applied+=("${package_name}:uninstalled")
+      else
+        warnings+=("${package_name}:uninstall_failed")
+      fi
+      if command -v "$command_name" >/dev/null 2>&1 || npm list -g "$package_name" --depth=0 >/dev/null 2>&1; then
+        warnings+=("${package_name}:still_installed_after_uninstall")
+        final_status='changes_required'
+      elif [ ${#warnings[@]} -gt 0 ]; then
+        final_status='changes_required'
+      else
+        final_status='uninstalled'
+      fi
+    fi
+
+    if [ "$emit_json" = 'true' ]; then
+      printf '{'
+      printf '"helper":"%s",' "$helper_id"
+      printf '"mode":"uninstall",'
+      printf '"status":"%s",' "$final_status"
+      printf '"installed":%s,' "$( [ "$dry_run" = 'true' ] && printf 'true' || printf 'false' )"
+      printf '"commandPath":null,'
+      printf '"detectedVersion":null,'
+      printf '"plannedActions":'
+      json_string_array "${planned[@]}"
+      printf ','
+      printf '"appliedChanges":'
+      json_string_array "${applied[@]}"
+      printf ','
+      printf '"warnings":'
+      json_string_array "${warnings[@]}"
+      printf ','
+      printf '"manualSteps":[],'
+      printf '"interruptions":[]'
+      printf '}\n'
+    else
+      printf '%s uninstall: %s\n' "$display_name" "$final_status"
+    fi
+    return 0
+  fi
+
+  local is_outdated='false'
+  if [ "$upgrade" = 'true' ] || [ "$force" = 'true' ]; then
+    if [ "$installed" = 'true' ]; then
+      if npm outdated -g "$package_name" --json 2>/dev/null | grep -q "\"$package_name\""; then
+        is_outdated='true'
+      fi
+    fi
+  fi
+
+  local planned_action='skip'
+  if [ "$force" = 'true' ]; then
+    planned_action='reinstall'
+  elif [ "$installed" = 'false' ]; then
+    planned_action='install'
+  elif [ "$upgrade" = 'true' ] && [ "$is_outdated" = 'true' ]; then
+    planned_action='upgrade'
+  fi
+
+  if [ "$execution_mode" = 'check' ]; then
+    local check_status='ready'
+    if [ "$installed" = 'false' ] || [ "$is_outdated" = 'true' ]; then
+      check_status='changes_required'
+    fi
+    if [ "$emit_json" = 'true' ]; then
+      printf '{'
+      printf '"helper":"%s",' "$helper_id"
+      printf '"mode":"check",'
+      printf '"status":"%s",' "$check_status"
+      printf '"installed":%s,' "$( [ "$installed" = 'true' ] && printf 'true' || printf 'false' )"
+      if [ -n "$command_path" ]; then
+        printf '"commandPath":"%s",' "$(json_escape "$command_path")"
+      else
+        printf '"commandPath":null,'
+      fi
+      if [ -n "$detected_version" ]; then
+        printf '"detectedVersion":"%s",' "$(json_escape "$detected_version")"
+      else
+        printf '"detectedVersion":null,'
+      fi
+      if [ "$planned_action" = 'skip' ]; then
+        printf '"plannedActions":[],'
+      else
+        printf '"plannedActions":["%s:%s"],' "$(json_escape "$package_name")" "$planned_action"
+      fi
+      printf '"appliedChanges":[],'
+      printf '"warnings":[],'
+      printf '"manualSteps":[],'
+      printf '"interruptions":[]'
+      printf '}\n'
+    else
+      printf '%s check: %s\n' "$display_name" "$check_status"
+    fi
+    return 0
+  fi
+
+  if [ "$planned_action" = 'skip' ]; then
+    if [ "$emit_json" = 'true' ]; then
+      printf '{'
+      printf '"helper":"%s",' "$helper_id"
+      printf '"mode":"%s",' "$execution_mode"
+      printf '"status":"ready",'
+      printf '"installed":true,'
+      if [ -n "$command_path" ]; then
+        printf '"commandPath":"%s",' "$(json_escape "$command_path")"
+      else
+        printf '"commandPath":null,'
+      fi
+      if [ -n "$detected_version" ]; then
+        printf '"detectedVersion":"%s",' "$(json_escape "$detected_version")"
+      else
+        printf '"detectedVersion":null,'
+      fi
+      printf '"plannedActions":[],'
+      printf '"appliedChanges":[],'
+      printf '"warnings":[],'
+      printf '"manualSteps":[],'
+      printf '"interruptions":[]'
+      printf '}\n'
+    else
+      printf '%s already up to date.\n' "$display_name"
+    fi
+    return 0
+  fi
+
+  local applied=()
+  case "$planned_action" in
+    install)
+      npm install -g "$package_name" >/dev/null
+      applied+=("${package_name}:install")
+      ;;
+    upgrade)
+      npm install -g "${package_name}@latest" >/dev/null
+      applied+=("${package_name}:upgrade")
+      ;;
+    reinstall)
+      npm install -g "$package_name" --force >/dev/null
+      applied+=("${package_name}:reinstall")
+      ;;
+  esac
+
+  local final_command_path
+  final_command_path="$(command -v "$command_name" 2>/dev/null || true)"
+  local final_version
+  final_version="$(npm list -g --depth=0 --json "$package_name" 2>/dev/null | sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' | head -1)"
+
+  if [ "$emit_json" = 'true' ]; then
+    printf '{'
+    printf '"helper":"%s",' "$helper_id"
+    printf '"mode":"%s",' "$execution_mode"
+    printf '"status":"ready",'
+    printf '"installed":true,'
+    if [ -n "$final_command_path" ]; then
+      printf '"commandPath":"%s",' "$(json_escape "$final_command_path")"
+    else
+      printf '"commandPath":null,'
+    fi
+    if [ -n "$final_version" ]; then
+      printf '"detectedVersion":"%s",' "$(json_escape "$final_version")"
+    else
+      printf '"detectedVersion":null,'
+    fi
+    printf '"plannedActions":["%s:%s"],' "$(json_escape "$package_name")" "$planned_action"
+    printf '"appliedChanges":'
+    json_string_array "${applied[@]}"
+    printf ','
+    printf '"warnings":[],'
+    printf '"manualSteps":[],'
+    printf '"interruptions":[]'
+    printf '}\n'
+  else
+    printf '%s %s complete.\n' "$display_name" "$planned_action"
+  fi
+}

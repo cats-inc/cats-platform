@@ -46,7 +46,13 @@ assert_file "${RESOURCES_ROOT}/cats-runtime/config/providers.yaml.example" 'bund
 assert_file "${RESOURCES_ROOT}/cats-runtime/config/curated-model-catalogs.yaml.example" 'bundled cats-runtime curated model catalog example'
 assert_file "${RESOURCES_ROOT}/cats-runtime/node_modules/yaml/package.json" 'bundled cats-runtime dependency marker'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/setup-node-global-prefix.sh" 'bundled macOS npm prefix helper'
-assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-node-cli-tools.sh" 'bundled macOS node CLI pack helper'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-codex.sh" 'bundled macOS OpenAI Codex installer helper'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-gemini.sh" 'bundled macOS Gemini installer helper'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-copilot.sh" 'bundled macOS GitHub Copilot installer helper'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-opencode.sh" 'bundled macOS OpenCode installer helper'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-kilo.sh" 'bundled macOS Kilo Code installer helper'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-auggie.sh" 'bundled macOS Auggie installer helper'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-pi.sh" 'bundled macOS Pi installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-claude-code.sh" 'bundled macOS Claude Code installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-cursor-agent.sh" 'bundled macOS Cursor Agent installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-goose.sh" 'bundled macOS Goose installer helper'
@@ -78,7 +84,8 @@ assert(plan.selfHostedNpmCompatible === true, 'installer keeps self-hosted npm c
 assert(Boolean(macTarget), 'installer packaging plan includes a macOS target');
 assert(macTarget.installerFormats.includes('dmg'), 'macOS target includes dmg packaging');
 assert(macTarget.installerFormats.includes('pkg'), 'macOS target includes pkg packaging');
-assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-node-cli-pack-script'), 'macOS target includes the bundled node CLI pack asset');
+assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-opencode-native-installer-script'), 'macOS target includes the bundled OpenCode installer asset');
+assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-codex-native-installer-script'), 'macOS target includes the bundled OpenAI Codex installer asset');
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-setup-readiness-audit-script'), 'macOS target includes the bundled readiness audit asset');
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-provider-cli-common-support-script'), 'macOS target includes the macOS provider helper asset');
 assert(macTarget.artifacts.some((artifact) => artifact.id === 'macos-node-cli-common-support-script'), 'macOS target includes the macOS npm helper asset');

@@ -140,7 +140,14 @@ $requiredFiles = @(
   @{ Path = (Join-Path $resourcesRoot 'cats-runtime\config\curated-model-catalogs.yaml.example'); Label = 'bundled cats-runtime curated model catalog example' },
   @{ Path = (Join-Path $resourcesRoot 'cats-runtime\node_modules\yaml\package.json'); Label = 'bundled cats-runtime runtime dependency marker' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Setup-NodeGlobalPrefix.ps1'); Label = 'bundled Windows npm prefix helper' },
-  @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-NodeCliPack.ps1'); Label = 'bundled Windows native CLI pack helper' },
+  @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\_NpmCliInstaller.ps1'); Label = 'bundled Windows shared npm CLI installer helper' },
+  @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-Codex.ps1'); Label = 'bundled Windows native OpenAI Codex installer helper' },
+  @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-Gemini.ps1'); Label = 'bundled Windows native Gemini installer helper' },
+  @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-Copilot.ps1'); Label = 'bundled Windows native GitHub Copilot installer helper' },
+  @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-OpenCode.ps1'); Label = 'bundled Windows native OpenCode installer helper' },
+  @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-KiloCli.ps1'); Label = 'bundled Windows native Kilo Code installer helper' },
+  @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-Auggie.ps1'); Label = 'bundled Windows native Auggie installer helper' },
+  @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-Pi.ps1'); Label = 'bundled Windows native Pi installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-ClaudeCode.ps1'); Label = 'bundled Windows native Claude Code installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-CursorAgent.ps1'); Label = 'bundled Windows native Cursor installer helper' },
   @{ Path = (Join-Path $resourcesRoot 'desktop\setup-assets\windows\Install-Goose.ps1'); Label = 'bundled Windows native Goose installer helper' },
@@ -169,7 +176,13 @@ Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'runtime-setup
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'runtime-skills' }).Count -ge 1) 'Windows target includes the bundled cats-runtime skills artifact'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'runtime-dependencies' }).Count -ge 1) 'Windows target includes the bundled cats-runtime dependency artifact'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-npm-prefix-helper-script' }).Count -ge 1) 'Windows target includes the bundled npm prefix setup asset'
-Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-node-cli-pack-script' }).Count -ge 1) 'Windows target includes the bundled native CLI pack setup asset'
+Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-codex-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native OpenAI Codex installer asset'
+Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-gemini-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Gemini installer asset'
+Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-copilot-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native GitHub Copilot installer asset'
+Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-opencode-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native OpenCode installer asset'
+Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-kilo-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Kilo installer asset'
+Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-auggie-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Auggie installer asset'
+Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-pi-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Pi installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-claude-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Claude installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-cursor-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Cursor installer asset'
 Assert-True (($windowsTarget.artifacts | Where-Object { $_.id -eq 'windows-goose-native-installer-script' }).Count -ge 1) 'Windows target includes the bundled native Goose installer asset'

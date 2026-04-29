@@ -114,13 +114,20 @@ async function seedWindowsSetupAssets(packageRoot) {
   await seedAppSidecarRuntimeDependencies(packageRoot);
   await seedFile(join(packageRoot, 'scripts', 'windows', '_HiddenProcess.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', '_PackagedUninstall.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', '_NpmCliInstaller.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Setup-NodeGlobalPrefix.ps1'), '# helper');
-  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-NodeCliPack.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-ClaudeCode.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-CursorAgent.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Goose.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Junie.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-KiroCli.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Codex.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Gemini.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Copilot.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-OpenCode.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-KiloCli.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Auggie.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Pi.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Ollama.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Check-WindowsSetupReadiness.ps1'), '# helper');
   await seedFile(join(packageRoot, 'config', 'provider-capability-bootstrap.yaml.example'), '# example\n');
@@ -130,12 +137,18 @@ async function seedUnixSetupAssets(packageRoot, platform) {
   await seedFile(join(packageRoot, 'scripts', platform, 'provider-cli-common.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'node-cli-common.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'setup-node-global-prefix.sh'), '#!/usr/bin/env bash\n');
-  await seedFile(join(packageRoot, 'scripts', platform, 'install-node-cli-tools.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'install-claude-code.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'install-cursor-agent.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'install-goose.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'install-junie.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'install-kiro-cli.sh'), '#!/usr/bin/env bash\n');
+  await seedFile(join(packageRoot, 'scripts', platform, 'install-codex.sh'), '#!/usr/bin/env bash\n');
+  await seedFile(join(packageRoot, 'scripts', platform, 'install-gemini.sh'), '#!/usr/bin/env bash\n');
+  await seedFile(join(packageRoot, 'scripts', platform, 'install-copilot.sh'), '#!/usr/bin/env bash\n');
+  await seedFile(join(packageRoot, 'scripts', platform, 'install-opencode.sh'), '#!/usr/bin/env bash\n');
+  await seedFile(join(packageRoot, 'scripts', platform, 'install-kilo.sh'), '#!/usr/bin/env bash\n');
+  await seedFile(join(packageRoot, 'scripts', platform, 'install-auggie.sh'), '#!/usr/bin/env bash\n');
+  await seedFile(join(packageRoot, 'scripts', platform, 'install-pi.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'check-installation.sh'), '#!/usr/bin/env bash\n');
 }
 
@@ -182,7 +195,7 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
         && provider.pack === 'native_cli_pack'
         && provider.deliveryPhase === 'initial_packaged_path'
         && provider.bundledInCurrentInstaller === true
-        && provider.helperIds.includes('windows-node-cli-pack'),
+        && provider.helperIds.includes('windows-opencode-native-installer'),
     ),
     true,
   );
@@ -192,7 +205,7 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
         && provider.pack === 'native_cli_pack'
         && provider.deliveryPhase === 'initial_packaged_path'
         && provider.bundledInCurrentInstaller === true
-        && provider.helperIds.includes('windows-node-cli-pack'),
+        && provider.helperIds.includes('windows-kilo-native-installer'),
     ),
     true,
   );
@@ -340,7 +353,7 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   );
   assert.equal(
     plan.installer.providerSetup.prioritizedAssets.some(
-      (asset) => asset.id === 'windows-node-cli-pack' && asset.status === 'ported',
+      (asset) => asset.id === 'windows-opencode-native-installer' && asset.status === 'ported',
     ),
     true,
   );
@@ -388,13 +401,13 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   );
   assert.equal(
     plan.installer.providerSetup.prioritizedAssets.some(
-      (asset) => asset.id === 'linux-node-cli-pack' && asset.status === 'ported',
+      (asset) => asset.id === 'linux-opencode-native-installer' && asset.status === 'ported',
     ),
     true,
   );
   assert.equal(
     plan.installer.providerSetup.prioritizedAssets.some(
-      (asset) => asset.id === 'macos-node-cli-pack' && asset.status === 'ported',
+      (asset) => asset.id === 'macos-opencode-native-installer' && asset.status === 'ported',
     ),
     true,
   );
@@ -409,7 +422,7 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   );
   assert.equal(
     windowsTarget?.artifacts.some(
-      (artifact) => artifact.id === 'windows-node-cli-pack-script' && artifact.role === 'setup_asset',
+      (artifact) => artifact.id === 'windows-opencode-native-installer-script' && artifact.role === 'setup_asset',
     ),
     true,
   );
@@ -469,7 +482,7 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   );
   assert.equal(
     linuxTarget?.artifacts.some(
-      (artifact) => artifact.id === 'linux-node-cli-pack-script' && artifact.role === 'setup_asset',
+      (artifact) => artifact.id === 'linux-opencode-native-installer-script' && artifact.role === 'setup_asset',
     ),
     true,
   );
@@ -499,7 +512,7 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   );
   assert.equal(
     macosTarget?.artifacts.some(
-      (artifact) => artifact.id === 'macos-node-cli-pack-script' && artifact.role === 'setup_asset',
+      (artifact) => artifact.id === 'macos-opencode-native-installer-script' && artifact.role === 'setup_asset',
     ),
     true,
   );
@@ -706,7 +719,14 @@ test('Windows installer smoke-check script validates bundled sidecars and host s
   assert.match(script, /cats-runtime\\config\\providers\.yaml\.example/);
   assert.match(script, /cats-runtime\\node_modules\\yaml\\package\.json/);
   assert.match(script, /desktop\\setup-assets\\windows\\Setup-NodeGlobalPrefix\.ps1/);
-  assert.match(script, /desktop\\setup-assets\\windows\\Install-NodeCliPack\.ps1/);
+  assert.match(script, /desktop\\setup-assets\\windows\\_NpmCliInstaller\.ps1/);
+  assert.match(script, /desktop\\setup-assets\\windows\\Install-Codex\.ps1/);
+  assert.match(script, /desktop\\setup-assets\\windows\\Install-Gemini\.ps1/);
+  assert.match(script, /desktop\\setup-assets\\windows\\Install-Copilot\.ps1/);
+  assert.match(script, /desktop\\setup-assets\\windows\\Install-OpenCode\.ps1/);
+  assert.match(script, /desktop\\setup-assets\\windows\\Install-KiloCli\.ps1/);
+  assert.match(script, /desktop\\setup-assets\\windows\\Install-Auggie\.ps1/);
+  assert.match(script, /desktop\\setup-assets\\windows\\Install-Pi\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\Install-ClaudeCode\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\Install-CursorAgent\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\Install-Goose\.ps1/);
@@ -743,12 +763,12 @@ test('macOS and Linux unpacked smoke-check scripts validate bundled sidecars and
   assert.match(linuxScript, /release\/linux-unpacked/);
   assert.match(linuxScript, /desktop\/setup-assets\/linux\/setup-node-global-prefix\.sh/);
   assert.match(linuxScript, /desktop\/setup-assets\/linux\/provider-cli-common\.sh/);
-  assert.match(linuxScript, /linux-node-cli-pack-script/);
+  assert.match(linuxScript, /linux-opencode-native-installer-script/);
   assert.match(linuxScript, /linux-install-readiness-audit/);
   assert.match(macosScript, /release\/mac-universal\/Cats\.app/);
   assert.match(macosScript, /desktop\/setup-assets\/macos\/setup-node-global-prefix\.sh/);
   assert.match(macosScript, /desktop\/setup-assets\/macos\/node-cli-common\.sh/);
-  assert.match(macosScript, /macos-node-cli-pack-script/);
+  assert.match(macosScript, /macos-opencode-native-installer-script/);
   assert.match(macosScript, /macos-install-readiness-audit/);
 });
 
@@ -984,7 +1004,14 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'config', 'curated-model-catalogs.yaml.example'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'node_modules', 'yaml', 'package.json'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Setup-NodeGlobalPrefix.ps1'));
-  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-NodeCliPack.ps1'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', '_NpmCliInstaller.ps1'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Codex.ps1'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Gemini.ps1'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Copilot.ps1'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-OpenCode.ps1'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-KiloCli.ps1'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Auggie.ps1'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Pi.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-ClaudeCode.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-CursorAgent.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Goose.ps1'));
@@ -994,7 +1021,13 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Check-WindowsSetupReadiness.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', '_HiddenProcess.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'setup-node-global-prefix.sh'));
-  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-node-cli-tools.sh'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-codex.sh'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-gemini.sh'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-copilot.sh'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-opencode.sh'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-kilo.sh'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-auggie.sh'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-pi.sh'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-claude-code.sh'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-cursor-agent.sh'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-goose.sh'));
@@ -1052,8 +1085,8 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
       (provider) => provider.id === 'opencode'
         && provider.deliveryPhase === 'initial_packaged_path'
         && provider.bundledInCurrentInstaller === true
-        && provider.helperIds.includes('windows-node-cli-pack')
-        && provider.currentHome.includes('Install-NodeCliPack'),
+        && provider.helperIds.includes('windows-opencode-native-installer')
+        && provider.currentHome.includes('Install-OpenCode'),
     ),
     true,
   );
@@ -1062,8 +1095,8 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
       (provider) => provider.id === 'kilo'
         && provider.deliveryPhase === 'initial_packaged_path'
         && provider.bundledInCurrentInstaller === true
-        && provider.helperIds.includes('windows-node-cli-pack')
-        && provider.currentHome.includes('Install-NodeCliPack'),
+        && provider.helperIds.includes('windows-kilo-native-installer')
+        && provider.currentHome.includes('Install-KiloCli'),
     ),
     true,
   );
@@ -1144,8 +1177,8 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   );
   assert.equal(
     targetManifest.installer.providerSetup.helperCatalog.some(
-      (helper) => helper.id === 'windows-node-cli-pack'
-        && helper.packagedRelativePath === 'desktop/setup-assets/windows/Install-NodeCliPack.ps1'
+      (helper) => helper.id === 'windows-opencode-native-installer'
+        && helper.packagedRelativePath === 'desktop/setup-assets/windows/Install-OpenCode.ps1'
         && helper.supportsUpgrade === true,
     ),
     true,
@@ -1222,7 +1255,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   );
   assert.equal(
     targetManifest.artifacts.some(
-      (artifact) => artifact.id === 'windows-node-cli-pack-script' && artifact.role === 'setup_asset',
+      (artifact) => artifact.id === 'windows-opencode-native-installer-script' && artifact.role === 'setup_asset',
     ),
     true,
   );
@@ -1284,7 +1317,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
     linuxTargetManifest.installer.providerSetup.localProviders.some(
       (provider) => provider.id === 'opencode'
         && provider.platform === 'linux'
-        && provider.helperIds.includes('linux-node-cli-pack'),
+        && provider.helperIds.includes('linux-opencode-native-installer'),
     ),
     true,
   );
@@ -1317,7 +1350,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   );
   assert.equal(
     linuxTargetManifest.artifacts.some(
-      (artifact) => artifact.id === 'linux-node-cli-pack-script' && artifact.role === 'setup_asset',
+      (artifact) => artifact.id === 'linux-opencode-native-installer-script' && artifact.role === 'setup_asset',
     ),
     true,
   );
@@ -1335,7 +1368,7 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   );
   assert.equal(
     linuxTargetManifest.artifacts.some(
-      (artifact) => artifact.id === 'windows-node-cli-pack-script' && artifact.role === 'setup_asset',
+      (artifact) => artifact.id === 'windows-opencode-native-installer-script' && artifact.role === 'setup_asset',
     ),
     false,
   );
