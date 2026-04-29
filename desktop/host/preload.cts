@@ -59,6 +59,15 @@ interface DesktopStartupPreferences {
   systemTrayEnabled: boolean;
 }
 
+interface DesktopMobilePairingEnvUpdateResult {
+  envPath: string;
+  restartRequired: true;
+  values: {
+    CATS_DESKTOP_MOBILE_PAIRING_ENABLED: 'true';
+    CATS_DESKTOP_APP_HOST: '0.0.0.0';
+  };
+}
+
 interface DesktopHostPlatformShellUpdate {
   bootstrapAttemptId: string | null;
   setupCompleteAt: string | null;
@@ -212,6 +221,9 @@ const bridge = {
       throw new Error('Invalid desktop startup preferences payload.');
     }
     return ipcRenderer.invoke('cats-host:update-desktop-preferences', prefs);
+  },
+  enableMobilePairing(): Promise<DesktopMobilePairingEnvUpdateResult> {
+    return ipcRenderer.invoke('cats-host:enable-mobile-pairing');
   },
   updatePlatformShell(
     payload: DesktopHostPlatformShellUpdate,

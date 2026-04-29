@@ -69,6 +69,15 @@ interface DesktopBootstrapSnapshot {
   summary: string;
 }
 
+export interface DesktopMobilePairingEnvUpdateResult {
+  envPath: string;
+  restartRequired: true;
+  values: {
+    CATS_DESKTOP_MOBILE_PAIRING_ENABLED: 'true';
+    CATS_DESKTOP_APP_HOST: '0.0.0.0';
+  };
+}
+
 export const DESKTOP_SCREENSHOT_CANCEL_REASONS = [
   'user_cancel',
   'too_small',
@@ -106,6 +115,7 @@ export interface DesktopHostBridge {
   resumeSetup?: () => Promise<DesktopSetupSnapshot>;
   screenshotRegionCaptureAvailable?: boolean;
   captureScreenshotRegion?: () => Promise<DesktopScreenshotCaptureResult>;
+  enableMobilePairing?: () => Promise<DesktopMobilePairingEnvUpdateResult>;
   startVoiceCapture?: VoiceCaptureBridge['startVoiceCapture'];
   stopVoiceCapture?: VoiceCaptureBridge['stopVoiceCapture'];
   cancelVoiceCapture?: VoiceCaptureBridge['cancelVoiceCapture'];

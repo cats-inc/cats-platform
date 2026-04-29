@@ -10,6 +10,7 @@ import {
   type SettingsStatusChipTone,
 } from '../../../design/components/settings/index.js';
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
+import type { DesktopMobilePairingEnvUpdateResult } from '../../../shared/desktopRecoveryBridge.js';
 
 export interface PlatformSettingsDesktopStartupProps {
   payload: AppShellPayload;
@@ -66,6 +67,7 @@ export function PlatformSettingsDesktopStartup({
   onPayloadUpdate,
 }: PlatformSettingsDesktopStartupProps) {
   const [savingDesktopPrefs, setSavingDesktopPrefs] = useState(false);
+  const [applyingMobilePairingEnv, setApplyingMobilePairingEnv] = useState(false);
   const desktopPrefs = payload.desktop ?? resolveDefaultDesktopPreferences();
   const mobilePairing = desktopPrefs.mobilePairing ?? DEFAULT_MOBILE_PAIRING;
   const mobilePairingStatus = resolveMobilePairingStatus(mobilePairing);
@@ -77,6 +79,32 @@ export function PlatformSettingsDesktopStartup({
       showToast(successMessage);
     } catch {
       showToast('Failed to copy to clipboard.');
+    }
+  }
+
+  async function enableMobilePairingEnv(): Promise<void> {
+    const envText = 'CATS_DESKTOP_MOBILE_PAIRING_ENABLED=true\nCATS_DESKTOP_APP_HOST=0.0.0.0';
+    const desktopHost = (
+      window as Window & {
+        catsDesktopHost?: {
+          enableMobilePairing?: () => Promise<DesktopMobilePairingEnvUpdateResult>;
+        };
+      }
+    ).catsDesktopHost;
+
+    if (!desktopHost?.enableMobilePairing) {
+      await copyToClipboard(envText, 'Copied mobile pairing env values.');
+      return;
+    }
+
+    setApplyingMobilePairingEnv(true);
+    try {
+      const result = await desktopHost.enableMobilePairing();
+      showToast(`Updated ${result.envPath}. Restart Cats Desktop to apply.`);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Failed to update desktop env.');
+    } finally {
+      setApplyingMobilePairingEnv(false);
     }
   }
 
@@ -140,40 +168,56 @@ export function PlatformSettingsDesktopStartup({
 
   return (
     <>
-      {mobilePairing.enabled ? (
-        <SettingsSection
-          className="settingsMobilePairing"
-          header={
-            <SettingsSectionHeader
-              title="Mobile pairing"
-              description="LAN readiness for the bundled Expo Go mobile shell."
-              status={(
-                <SettingsStatusChip tone={mobilePairingStatus.tone}>
-                  {mobilePairingStatus.label}
-                </SettingsStatusChip>
-              )}
-            />
-          }
-        >
-          <div className="settingsMobilePairingGrid">
-            <div className="settingsMobilePairingDetails">
-              <dl className="settingsMobilePairingFacts">
-                <div>
-                  <dt>Bind</dt>
-                  <dd>{mobilePairing.bindHost}:{mobilePairing.bindPort}</dd>
-                </div>
-                <div>
-                  <dt>Reachability</dt>
-                  <dd>{mobilePairing.bindReachability.replace('_', ' ')}</dd>
-                </div>
-                <div>
-                  <dt>LAN address</dt>
-                  <dd>{mobilePairing.selectedLanIp ?? 'None'}</dd>
-                </div>
-              </dl>
+      <SettingsSection
+        className="settingsMobilePairing"
+        header={
+          <SettingsSectionHeader
+            title="Mobile pairing"
+            description="LAN readiness for the bundled Expo Go mobile shell."
+            status={(
+              <SettingsStatusChip tone={mobilePairingStatus.tone}>
+                {mobilePairingStatus.label}
+              </SettingsStatusChip>
+            )}
+          />
+        }
+      >
+        <div className="settingsMobilePairingGrid">
+          <div className="settingsMobilePairingDetails">
+            {!mobilePairing.enabled ? (
+              <SettingsOptionRow
+                label="Enable mobile pairing"
+                description="Writes the desktop .env values needed for LAN access. Restart Cats Desktop after applying."
+                control={(
+                  <button
+                    type="button"
+                    className="secondaryButton"
+                    disabled={applyingMobilePairingEnv}
+                    onClick={() => void enableMobilePairingEnv()}
+                  >
+                    {applyingMobilePairingEnv ? 'Applying...' : 'Enable'}
+                  </button>
+                )}
+              />
+            ) : (
+              <>
+                <dl className="settingsMobilePairingFacts">
+                  <div>
+                    <dt>Bind</dt>
+                    <dd>{mobilePairing.bindHost}:{mobilePairing.bindPort}</dd>
+                  </div>
+                  <div>
+                    <dt>Reachability</dt>
+                    <dd>{mobilePairing.bindReachability.replace('_', ' ')}</dd>
+                  </div>
+                  <div>
+                    <dt>LAN address</dt>
+                    <dd>{mobilePairing.selectedLanIp ?? 'None'}</dd>
+                  </div>
+                </dl>
 
-              {mobilePairing.noLanCandidateReason === 'loopback_bound'
-                && mobilePairing.bindOverrideEnv ? (
+                {mobilePairing.noLanCandidateReason === 'loopback_bound'
+                  && mobilePairing.bindOverrideEnv ? (
                   <SettingsOptionRow
                     label="Allow LAN access"
                     description={(
@@ -187,30 +231,28 @@ export function PlatformSettingsDesktopStartup({
                       <button
                         type="button"
                         className="secondaryButton"
-                        onClick={() => void copyToClipboard(
-                          mobilePairing.bindOverrideEnv ?? '',
-                          'Copied bind override.',
-                        )}
+                        disabled={applyingMobilePairingEnv}
+                        onClick={() => void enableMobilePairingEnv()}
                       >
-                        Copy override
+                        {applyingMobilePairingEnv ? 'Applying...' : 'Apply and restart'}
                       </button>
                     )}
                   />
-                ) : null}
+                  ) : null}
 
-              {mobilePairing.noLanCandidateReason === 'no_lan_candidate' ? (
+                {mobilePairing.noLanCandidateReason === 'no_lan_candidate' ? (
                 <p className="settingsMobilePairingNote">
                   No non-loopback LAN IPv4 address was detected.
                 </p>
-              ) : null}
+                ) : null}
 
-              {mobilePairing.noLanCandidateReason === 'bind_host_not_lan_candidate' ? (
+                {mobilePairing.noLanCandidateReason === 'bind_host_not_lan_candidate' ? (
                 <p className="settingsMobilePairingNote">
                   The current bind host does not match a LAN IPv4 address.
                 </p>
-              ) : null}
+                ) : null}
 
-              {mobilePairing.diagnosticManifestUrl ? (
+                {mobilePairing.diagnosticManifestUrl ? (
                 <SettingsOptionRow
                   label="Diagnostic manifest"
                   description={mobilePairing.diagnosticManifestUrl}
@@ -228,26 +270,27 @@ export function PlatformSettingsDesktopStartup({
                   )}
                   layout="stack"
                 />
-              ) : null}
-            </div>
-
-            <div className="settingsMobilePairingQr" data-state={mobilePairing.pairingUrlStatus}>
-              {mobilePairing.pairingUrlStatus === 'ready' && mobilePairing.pairingUrl ? (
-                <a
-                  className="secondaryButton settingsInlineLink"
-                  href={mobilePairing.pairingUrl}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  Open pairing URL
-                </a>
-              ) : (
-                <span>QR pending</span>
-              )}
-            </div>
+                ) : null}
+              </>
+            )}
           </div>
-        </SettingsSection>
-      ) : null}
+
+          <div className="settingsMobilePairingQr" data-state={mobilePairing.pairingUrlStatus}>
+            {mobilePairing.pairingUrlStatus === 'ready' && mobilePairing.pairingUrl ? (
+              <a
+                className="secondaryButton settingsInlineLink"
+                href={mobilePairing.pairingUrl}
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open pairing URL
+              </a>
+            ) : (
+              <span>QR pending</span>
+            )}
+          </div>
+        </div>
+      </SettingsSection>
 
       <SettingsSection
         header={

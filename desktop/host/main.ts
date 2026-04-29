@@ -85,6 +85,7 @@ import {
   normalizePlatformShellSetupState,
   parseDesktopHostPlatformShellUpdate,
 } from './platformShellUpdate.js';
+import { enableDesktopMobilePairingEnv } from './mobilePairingEnv.js';
 import { checkForDesktopUpdates, createDefaultDesktopUpdateState } from './update.js';
 import {
   applyDesktopWindowChrome,
@@ -1704,6 +1705,12 @@ async function main(): Promise<void> {
       publishSnapshot(buildSnapshot(null));
     }
     return latestDesktopStartupPreferences;
+  });
+  ipcMain.handle('cats-host:enable-mobile-pairing', async () => {
+    if (!hostConfig) {
+      throw new Error('Desktop host is not initialized.');
+    }
+    return await enableDesktopMobilePairingEnv(hostConfig);
   });
   ipcMain.handle('cats-host:update-platform-shell', async (_event, payload: unknown) => {
     const nextState = applyDesktopHostPlatformShellUpdate({

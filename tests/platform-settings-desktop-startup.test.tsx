@@ -152,7 +152,7 @@ test('PlatformSettingsDesktopStartup renders desktop controls with system tray b
   }
 });
 
-test('PlatformSettingsDesktopStartup hides mobile pairing when the payload gate is disabled', () => {
+test('PlatformSettingsDesktopStartup can enable mobile pairing when the payload gate is disabled', () => {
   const markup = renderToStaticMarkup(
     <StaticRouter location="/settings/desktop">
       <PlatformSettingsDesktopStartup
@@ -162,7 +162,10 @@ test('PlatformSettingsDesktopStartup hides mobile pairing when the payload gate 
     </StaticRouter>,
   );
 
-  assert.doesNotMatch(markup, /Mobile pairing/u);
+  assert.match(markup, /Mobile pairing/u);
+  assert.match(markup, /Disabled/u);
+  assert.match(markup, /Enable mobile pairing/u);
+  assert.match(markup, /Restart Cats Desktop after applying/u);
 });
 
 test('PlatformSettingsDesktopStartup shows loopback-only mobile pairing recovery', () => {
@@ -183,7 +186,7 @@ test('PlatformSettingsDesktopStartup shows loopback-only mobile pairing recovery
 
   assert.match(markup, /Mobile pairing/u);
   assert.match(markup, /Loopback only/u);
-  assert.match(markup, /Copy override/u);
+  assert.match(markup, /Apply and restart/u);
   assert.match(markup, /CATS_DESKTOP_APP_HOST=0\.0\.0\.0/u);
   assert.doesNotMatch(markup, /Diagnostic manifest/u);
 });
@@ -215,5 +218,5 @@ test('PlatformSettingsDesktopStartup shows diagnostic manifest when LAN-ready', 
   assert.match(markup, /Diagnostic manifest/u);
   assert.match(markup, /http:\/\/192\.168\.1\.25:8181\/api\/mobile\/manifest/u);
   assert.match(markup, /QR pending/u);
-  assert.doesNotMatch(markup, /Copy override/u);
+  assert.doesNotMatch(markup, /Apply and restart/u);
 });
