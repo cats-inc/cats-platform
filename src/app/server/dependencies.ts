@@ -16,6 +16,11 @@ import {
   type CanonicalMemoryStore,
 } from '../../platform/memory/index.js';
 import { createTelegramBotApiDeliveryClient } from '../../platform/transports/telegram/delivery.js';
+import {
+  createFileBackedScheduleStore,
+  MemoryScheduleStore,
+  type ScheduleStore,
+} from '../../platform/scheduler/index.js';
 import { createTelegramPollingSupervisor } from '../../platform/transports/telegram/polling.js';
 import { createTelegramRelay } from '../../platform/transports/telegram/relay/index.js';
 import {
@@ -82,6 +87,15 @@ function createDefaultMemoryStore(
   return chat.chatStore instanceof MemoryChatStore
     ? new MemoryCanonicalMemoryStore()
     : createFileBackedCanonicalMemoryStore(shared.config.chatStatePath);
+}
+
+function createDefaultScheduleStore(
+  shared: SharedServerDependencies,
+  chat: ChatServerDependencies,
+): ScheduleStore {
+  return chat.chatStore instanceof MemoryChatStore
+    ? new MemoryScheduleStore()
+    : createFileBackedScheduleStore(shared.config.chatStatePath);
 }
 
 function createDefaultTelegramRelay(
@@ -288,6 +302,8 @@ export function resolveServerDependencies(
       coreStore: dependencies.work?.coreStore ?? sharedCoreStore,
       runtimeClient: dependencies.work?.runtimeClient ?? dependencies.shared.runtimeClient,
       runtimeTarget: dependencies.work?.runtimeTarget,
+      scheduleStore: dependencies.work?.scheduleStore
+        ?? createDefaultScheduleStore(dependencies.shared, dependencies.chat),
       evidenceDataDir: dependencies.work?.evidenceDataDir ?? dependencies.shared.config.chatStatePath,
       readEvidenceEvents: dependencies.work?.readEvidenceEvents
         ?? ((conversationId: string) =>

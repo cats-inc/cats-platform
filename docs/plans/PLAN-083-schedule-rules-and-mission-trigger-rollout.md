@@ -44,62 +44,62 @@ Telegram.
 
 ### Phase 1: Contract and Store Skeleton
 
-- [ ] Add platform-owned `ScheduleRule`, `ScheduleDefinition`,
+- [x] Add platform-owned `ScheduleRule`, `ScheduleDefinition`,
       `MissionTemplate`, `ScheduleExecutionPolicy`, and trigger-receipt types.
-- [ ] Choose the first persistence location:
+- [x] Choose the first persistence location:
       - platform-owned schedule store for v1, or
       - shared Core storage if mission/run records are ready to reference it.
-- [ ] Implement file-backed and in-memory stores following existing local-first
+- [x] Implement file-backed and in-memory stores following existing local-first
       state patterns.
-- [ ] Add validation for:
+- [x] Add validation for:
       - timezone
       - schedule kind
       - daily time
       - explicit cron rejection until a v2 subset is specified
       - target agent/Cat reference
       - concurrency/misfire/retry policies
-- [ ] Add deterministic id generation and rule revision tracking. Revisions
+- [x] Add deterministic id generation and rule revision tracking. Revisions
       start at `1` and increment on admission-affecting changes to schedule,
       mission template, execution policy, or related policy bounds.
-- [ ] Add narrow unit tests for validation and serialization.
+- [x] Add narrow unit tests for validation and serialization.
 
 **Deliverables**: rules can be created, read, updated, enabled/disabled, and
 stored without running them.
 
 ### Phase 2: Due-Time Evaluator and Scheduler Loop
 
-- [ ] Implement next-fire calculation for `once` and `daily`.
-- [ ] Keep cron out of v1 next-fire calculation and admission. Return explicit
+- [x] Implement next-fire calculation for `once` and `daily`.
+- [x] Keep cron out of v1 next-fire calculation and admission. Return explicit
       validation errors for cron shapes until SPEC-094 defines the v2 subset.
-- [ ] Add a scheduler service that:
+- [x] Add a scheduler service that:
       - loads enabled rules
       - computes due rules
       - writes trigger receipts/idempotency keys
       - updates `nextFireAt`, `lastFireAt`, and recent status
-- [ ] Implement startup misfire handling per rule:
+- [x] Implement startup misfire handling per rule:
       - `skip`
       - `fire_once`
       - `fire_all`
-- [ ] Implement concurrency policy:
+- [x] Implement concurrency policy:
       - `skip`
       - `queue`
       - `replace` as a later phase if cancellation is not ready
-- [ ] Add tests for restart/misfire/idempotency behavior.
+- [x] Add tests for restart/misfire/idempotency behavior.
 
 **Deliverables**: scheduler can detect due rules and record admissible trigger
 events without invoking runtime.
 
 ### Phase 3: Mission and Run Admission
 
-- [ ] Add an adapter that turns a trigger receipt plus `MissionTemplate` into a
+- [x] Add an adapter that turns a trigger receipt plus `MissionTemplate` into a
       generic Mission.
-- [ ] Resolve `MissionTemplate.target.kind = 'cat'` to a concrete `AgentId` in
+- [x] Resolve `MissionTemplate.target.kind = 'cat'` to a concrete `AgentId` in
       admission before writing `MissionRecord.assignedAgentId`; unresolved Cat
       targets fail before Run creation.
-- [ ] Create one mission per fire by default (`missionPolicy = per_fire`).
-- [ ] Admit a Run through the execution dispatcher/materialization path before
+- [x] Create one mission per fire by default (`missionPolicy = per_fire`).
+- [x] Admit a Run through the execution dispatcher/materialization path before
       any runtime work starts.
-- [ ] Write canonical trigger metadata to
+- [x] Write canonical trigger metadata to
       `CoreRunRecord.metadata.scheduleTrigger`:
       - rule id
       - rule revision
@@ -112,9 +112,9 @@ events without invoking runtime.
         Cat→Agent resolution (so retries and history surfaces can recover it
         without re-reading the rule)
 - [ ] Route scheduled runtime work through the supervision runtime boundary.
-- [ ] Add tests proving scheduler code does not call runtime client APIs
+- [x] Add tests proving scheduler code does not call runtime client APIs
       directly.
-- [ ] Add tests proving duplicate idempotency keys do not create duplicate
+- [x] Add tests proving duplicate idempotency keys do not create duplicate
       runs.
 
 **Deliverables**: a due schedule can create/activate Mission and Run records
@@ -141,7 +141,7 @@ what to send and how to send it.
 
 ### Phase 5: Minimal API and UI
 
-- [ ] Add schedule API endpoints for:
+- [x] Add schedule API endpoints for:
       - list rules
       - create rule
       - update rule
@@ -257,6 +257,7 @@ the first companion/Telegram scenario.
 | 2026-04-29 | Plan created for generic schedule rules and mission-trigger rollout |
 | 2026-04-29 | Review follow-up: clarified v1 `once`/`daily` scope, rule revision semantics, Cat-to-Agent admission resolution, `CoreRunRecord.metadata.scheduleTrigger` provenance, and deferred `reuse_active`/cron follow-ups. |
 | 2026-04-29 | Polish pass: dropped redundant `kind: 'schedule'` discriminant on `ScheduleTriggerMetadata`, narrowed `MissionTemplate.originSurface` from `string` back to literal `'schedule'` until a second origin caller exists, consolidated SPEC #14/#16 prose, pinned `originalTargetRef` storage to `CoreRunRecord.metadata.scheduleTrigger`, and removed the cron-API Open Question already answered by req #4 + Phase 2. |
+| 2026-04-29 | Implementation slice: added platform scheduler contracts, in-memory/file-backed schedule store, v1 validation, timezone-aware `once`/`daily` next-fire evaluation, trigger receipt/idempotency ledger, startup misfire and concurrency handling, server scheduler loop while Cats is running, Mission/Run admission with Cat→Agent resolution and `CoreRunRecord.metadata.scheduleTrigger.originalTargetRef`, minimal `/api/work/schedules` + `/test-fire` routes, and targeted scheduler/route/static-boundary tests. Runtime/Telegram execution remains deferred to Phase 4/5 capability work. |
 
 ---
 

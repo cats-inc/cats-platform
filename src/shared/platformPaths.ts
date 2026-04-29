@@ -99,6 +99,13 @@ export function resolveCompanionActivityPathFromChatState(
   return path.join(layout.stateDir, 'companion-activity.json');
 }
 
+export function resolveScheduleStatePathFromChatState(
+  chatStatePath: string,
+): string {
+  const layout = resolvePlatformStorageLayout(chatStatePath);
+  return path.join(layout.stateDir, 'scheduler-state.local.json');
+}
+
 export function resolvePlatformPreferencesPathFromChatState(
   chatStatePath: string,
 ): string {
@@ -126,4 +133,3 @@ export function resolveProviderSnapshotPathFromChatState(
   const layout = resolvePlatformStorageLayout(chatStatePath);
   return path.join(layout.stateDir, 'provider-snapshot.local.json');
 }
-

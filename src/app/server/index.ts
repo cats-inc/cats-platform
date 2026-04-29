@@ -7,6 +7,10 @@ import { resolveServerDependencies } from './dependencies.js';
 import { routeRequest } from './requestRouter.js';
 import { runServerStartupRecoveryPasses } from './startupRecovery.js';
 import { startTransportFanout } from '../../platform/transports/fanout/subscriber.js';
+import {
+  createSchedulerService,
+  startSchedulerLoop,
+} from '../../platform/scheduler/index.js';
 
 export type { ServerDependencies } from './contracts.js';
 
@@ -23,6 +27,15 @@ export function createServer(dependencies: ServerDependencies) {
     telegramRelay: resolvedDependencies.chat.telegramRelay,
     now: resolvedDependencies.shared.now,
   });
+  const stopSchedulerLoop = resolvedDependencies.work.scheduleStore
+    ? startSchedulerLoop({
+        service: createSchedulerService({
+          scheduleStore: resolvedDependencies.work.scheduleStore,
+          coreStore: resolvedDependencies.work.coreStore,
+          now: resolvedDependencies.work.now,
+        }),
+      })
+    : () => {};
 
   const server = createHttpServer((request, response) => {
     void routeRequest(request, response, resolvedDependencies).catch((error) => {
@@ -37,6 +50,7 @@ export function createServer(dependencies: ServerDependencies) {
   });
 
   server.on('close', () => {
+    stopSchedulerLoop();
     stopTransportFanout();
     resolvedDependencies.chat.pollingSupervisor.stopAll();
   });

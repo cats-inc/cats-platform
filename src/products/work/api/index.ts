@@ -20,6 +20,7 @@ import {
   type RuntimeMessageResult,
   type RuntimeSessionInfo,
 } from '../../../platform/runtime/client.js';
+import type { ScheduleStore } from '../../../platform/scheduler/index.js';
 import {
   buildSupervisedRunInspectionProjection,
   createDurableToolEvidenceSink,
@@ -52,6 +53,7 @@ import {
 } from './projection.js';
 import { routeWorkLinksApi } from './linksRoutes.js';
 import { routeWorkProductCrudApi } from './productCrudRoutes.js';
+import { routeWorkScheduleApi } from './scheduleRoutes.js';
 import {
   matchRoute,
   sendJson,
@@ -98,6 +100,7 @@ export interface WorkApiDependencies {
   coreStore: CoreStore;
   runtimeClient?: RuntimeClient;
   runtimeTarget?: WorkRuntimeTargetOverride;
+  scheduleStore?: ScheduleStore;
   evidenceDataDir?: string;
   readEvidenceEvents?: (conversationId: string) => EvidenceEvent[];
   now?: () => Date;
@@ -346,6 +349,10 @@ export async function routeWorkApi(
   // Runs BEFORE the existing GET-only handlers so DELETE doesn't fall
   // through to the 405 branch in the GET dispatch.
   if (await routeWorkProductCrudApi(context)) {
+    return true;
+  }
+
+  if (await routeWorkScheduleApi(context)) {
     return true;
   }
 
