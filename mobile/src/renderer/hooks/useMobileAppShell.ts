@@ -8,7 +8,7 @@ import type { MobileAppShellPayload } from '../../../../src/mobile/index.js';
 /**
  * Shared hook that fetches `/api/app-shell` and exposes the explicit
  * state machine the screens consume. Other hooks
- * (`useChatSidebarData`, `useMyCatsLens`, `useProductRecents`) compose
+ * (`useMyCatsLens`, `useProductRecents`, `useMobileLobby`) compose
  * this one so the desktop is hit at most once per screen mount, not
  * once per derived selector.
  *

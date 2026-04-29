@@ -5,7 +5,11 @@
  * shapes (function signatures the screens supply to the components)
  * stay mobile-local — they describe React Native behaviour, not data.
  *
- * Per the 2026-04-29 integrator review (PLAN-084 Phase 4b prep).
+ * Per the 2026-04-29 integrator review (PLAN-084 Phase 4b prep). The
+ * Chat tab also consumes `TrimmedProductSidebar` now (matching the
+ * Code / Work shape) — operator changed direction after seeing the
+ * full inline-recents layout on a small viewport. The full
+ * `ChatSidebar` component used during Phase 3 has been removed.
  */
 
 export type {
@@ -15,32 +19,25 @@ export type {
   MobileSidebarRecent as SidebarRecentEntry,
 } from '../../../../src/mobile/index.js';
 
-export interface ChatSidebarCallbacks {
-  onStartNewChat: () => void;
-  onStartNewGroupChat: () => void;
-  onStartNewParallelChat: () => void;
-  onSelectRecent: (channelId: string) => void;
-  onSelectCat: (catId: string) => void;
-  onCreateNewCat: () => void;
-}
-
 /**
- * Trimmed product sidebar (Code / Work) per SPEC-095 #10 / #13. Exactly
- * five entries: three primary actions, the product's MY-lens link, the
- * product's RECENTS link. Workspaces / Artifacts (Code) and Projects /
- * Work Items / Tasks / Runs / Missions (Work) are intentionally absent
- * on mobile.
+ * Trimmed product sidebar (Chat / Code / Work) per SPEC-095. All
+ * three product tabs now use the same five-entry shape: three
+ * primary actions, the product MY-lens row, the product Recents
+ * row. Code's Workspaces / Artifacts and Work's Projects / Work
+ * Items / Tasks / Runs / Missions remain explicitly out of scope
+ * for mobile.
  */
 export interface TrimmedSidebarPrimaryAction {
-  /** Stable identifier — `new`, `team`, `peer`, etc. */
+  /** Stable identifier — `new`, `team`, `peer`, `group`,
+   *  `parallel`, etc. */
   id: string;
   /** Visible chip label, e.g. `+ New code`. */
   label: string;
 }
 
 export interface TrimmedSidebarConfig {
-  product: 'code' | 'work';
-  /** Product wordmark for the eyebrow row, e.g. `CODE`, `WORK`. */
+  product: 'chat' | 'code' | 'work';
+  /** Product wordmark for the eyebrow row, e.g. `CHAT`, `CODE`, `WORK`. */
   productLabel: string;
   /** Three primary action chips. */
   primaryActions: [
@@ -48,7 +45,7 @@ export interface TrimmedSidebarConfig {
     TrimmedSidebarPrimaryAction,
     TrimmedSidebarPrimaryAction,
   ];
-  /** Label for the MY-lens row, e.g. `MY CODES` / `MY WORKS`. */
+  /** Label for the MY-lens row, e.g. `MY CATS` / `MY CODES` / `MY WORKS`. */
   myLensLabel: string;
   /** Label for the RECENTS row, e.g. `Recents (Code)`. */
   recentsLabel: string;
