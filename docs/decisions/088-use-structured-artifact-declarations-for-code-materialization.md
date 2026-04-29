@@ -62,15 +62,17 @@ The server must:
 4. stamp authoritative provenance from the current conversation, task, run,
    workspace, actor, and product context,
 5. build the canonical idempotency key from server-resolved producer identity,
-   execution scope, and declaration id,
+   execution scope, and declaration id, then freeze that scope for retries,
 6. resolve label defaults, producer-requested downgrades, and server policy in
    that order,
 7. decide whether the declaration becomes a `draft`, `ready`, or `published`
    `CoreArtifactRecord`,
-8. require explicit server-side publish capability before writing
-   `published`,
+8. reject ordinary declaration attempts to set `published`; publication is a
+   separate owner publish action or server-configured tool auto-publish policy
+   outcome,
 9. write the artifact and idempotent `artifact_recorded` activity through the
-   shared Core persistence path.
+   shared Core persistence path, suppressing duplicate activity with the
+   material-change signature.
 
 The first agent-facing channel is the Cats-native Code runtime action
 `declare_artifact`. MCP tools and runtime stream events may be adapters later,

@@ -45,18 +45,23 @@ or infer artifacts by scanning the workspace.
 - [ ] Task 1.3: Add the canonical idempotency key builder:
       producer kind + server-resolved producer identity + server-resolved
       run/runtime/conversation/workspace scope + normalized declaration id.
+      Freeze the resolved scope on first accepted materialization and support
+      compatible producer/declaration fallback lookup on later retries.
 - [ ] Task 1.4: Add label default, producer-requested downgrade, and server
       policy precedence helpers for disposition/status.
-- [ ] Task 1.5: Add publish-capability policy helpers. `user`, `tool`, and
-      `agent` can be publish-capable only through server-side grants;
-      `system` is never publish-capable.
+- [ ] Task 1.5: Add publishing policy helpers. Ordinary declarations cannot
+      set `published`; only owner publish actions and server-configured tool
+      auto-publish policy can transition artifacts to `published`.
 - [ ] Task 1.6: Add validation helpers for title, kind, status, anchor
       existence, idempotency key, producer identity, location kind, and
       metadata size/reserved keys.
 - [ ] Task 1.7: Add workspace-containment validation for local paths.
 - [ ] Task 1.8: Add validators for `none`, `url`, `inline_summary`, and
-      `external_ref` locations.
-- [ ] Task 1.9: Define first candidate storage strategy: draft Core artifact
+      `external_ref` locations, including the server-configured
+      `externalRefKinds` allowlist.
+- [ ] Task 1.9: Add the material-change signature helper used to suppress
+      duplicate `artifact_recorded` activity on no-op replay.
+- [ ] Task 1.10: Define first candidate storage strategy: draft Core artifact
       with candidate metadata, or product-local pending queue.
 
 **Deliverables**: shared Code artifact declaration parsing, mapping, and
@@ -73,9 +78,12 @@ validation helpers with unit coverage.
       selected workspace or anchor target before accepting the declaration.
 - [ ] Task 2.4: Write accepted declarations through `upsertCoreArtifact`.
 - [ ] Task 2.5: Add idempotent upsert behavior keyed by the SPEC-092 canonical
-      idempotency key, not by raw declaration id alone.
+      idempotency key, not by raw declaration id alone. Persist frozen scope
+      metadata and use the compatible producer/declaration fallback when retry
+      timing changes the active scope.
 - [ ] Task 2.6: Emit idempotent background `artifact_recorded` activity when a
-      declaration creates or materially updates a durable artifact.
+      declaration creates or materially updates a durable artifact, based on
+      the SPEC-092 material-change signature.
 
 **Deliverables**: one authoritative Code server path from declaration to
 `CoreArtifactRecord`.
@@ -122,7 +130,8 @@ contract and stays separate from workspace file browsing.
 
 - [ ] Task 5.1: Add unit tests for label mapping, path containment, anchor
       validation, idempotency, disposition/status precedence, publish
-      capability, metadata bounds, and candidate handling.
+      action gating, metadata bounds, external-ref allowlists, material-change
+      signatures, and candidate handling.
 - [ ] Task 5.2: Add integration tests for agent/tool/system/user declaration
       flows writing `CoreArtifactRecord` and idempotent activity.
 - [ ] Task 5.3: Update mockup notes so designers know which artifact states and
@@ -167,13 +176,20 @@ and implementation review.
   declarations. MCP and runtime stream events are follow-up adapters into the
   same Code product API.
 - Construct idempotency from server-resolved producer identity, execution
-  scope, and declaration id. Raw declaration id alone is not unique enough.
+  scope, and declaration id. Freeze the accepted scope and use compatible
+  producer/declaration fallback lookup for retry timing changes. Raw
+  declaration id alone is not unique enough.
 - Resolve label defaults first, producer-requested downgrades second, and
   server policy last.
 - Treat system declarations as candidate-only. Durable record-capable runtime
   outputs must come through tool declarations.
-- Require server-side publish capability before accepting `published`.
-- Emit `artifact_recorded` activity for non-noop durable materializations.
+- Treat `published` as a publish action / server auto-publish policy outcome,
+  not an ordinary declaration upgrade. Agent declarations cannot publish in
+  this spec.
+- Emit `artifact_recorded` activity for non-noop durable materializations using
+  the material-change signature, not a full-record hash.
+- Use one Code server-configured `externalRefKinds` allowlist for
+  `external_ref` locations in the first implementation.
 - Candidate handling must be explicit in implementation. The first slice may
   use `status = 'draft'` plus metadata, but this must be validated and
   documented.
@@ -198,16 +214,18 @@ and implementation review.
 | Artifact sidebar becomes a file explorer | High | Source edits are mutations; only declared/published outputs become artifacts |
 | Candidate artifacts pollute the durable list | Medium | Store candidates as draft with explicit metadata or keep them in a pending queue |
 | Runtime/tool producers drift into separate payload formats | Medium | Route all producer classes through one declaration normalizer |
-| Idempotency misses duplicate agent retries | Medium | Use the SPEC-092 canonical key from producer identity, execution scope, and declaration id |
+| Idempotency misses duplicate agent retries | Medium | Use the SPEC-092 canonical key from producer identity, execution scope, and declaration id, with frozen scope fallback lookup |
 | Runtime bridge work is underestimated | Medium | Split signal schema, preview, build/test, screenshot, patch, and report mapping into separate tasks |
-| Published status is granted accidentally | High | Reject `published` unless server-side publish capability is present |
+| Published status is granted accidentally | High | Reject `published` on ordinary declarations; allow only owner publish action or server-configured tool auto-publish |
+| Idempotent replays emit duplicate activity | Medium | Compare the SPEC-092 material-change signature instead of full record timestamps/metadata |
 
 ## Progress Log
 
 | Date | Update |
 |------|--------|
 | 2026-04-29 | Plan created for structured Code artifact declarations. |
-| 2026-04-29 | Tightened contract rollout around idempotency, precedence, publish capability, system candidate-only behavior, Phase 1 Cats-native action channel, and split runtime bridge signal tasks. |
+| 2026-04-29 | Tightened contract rollout around idempotency, precedence, publish-action gating, system candidate-only behavior, Phase 1 Cats-native action channel, and split runtime bridge signal tasks. |
+| 2026-04-29 | Clarified publication as an explicit publish action / tool auto-policy path, froze idempotency scope across retries, defined producer identity resolution, external-ref allowlist, and material-change activity suppression. |
 
 ---
 

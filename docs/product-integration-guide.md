@@ -257,6 +257,8 @@ Rules:
   stream events may be adapters later, but not alternate payload contracts.
 - System candidates are candidate-only. Record-capable runtime outputs must be
   represented as tool or agent declarations.
+- Ordinary artifact declarations cannot set `published`; publication requires
+  an owner publish action or server-configured tool auto-publish policy.
 - Workspace scanning and transcript JSON parsing are not authoritative artifact
   producer paths.
 - Opening `Workspaces` or `Artifacts` must not create fallback Work Planning

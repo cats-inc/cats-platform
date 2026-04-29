@@ -100,10 +100,11 @@ The contract supports four producer classes:
 15. Cats Code shall resolve disposition and status in this order:
     label defaults, producer-requested downgrade, then server policy override.
 16. A producer request shall not upgrade disposition or status beyond the label
-    default. Upgrade requests are ignored and normalized to the label default,
-    except `requestedStatus = 'published'` without publish capability, which is
-    rejected.
-17. `published` shall require a server-recognized publish-capable producer.
+    default. `requestedStatus = 'published'` is rejected in ordinary
+    declaration submits; `published` is set only by an explicit publish action
+    or server-configured auto-publish context.
+17. `published` shall require server-side publish context. It is not granted by
+    producer kind or by a raw declaration request.
 18. `system` producer declarations shall normalize to `candidate`; system
     detection is not a record-authoring path.
 19. Phase 1 agent declarations shall enter through the Cats-native Code runtime
@@ -178,6 +179,21 @@ Rules:
 - `metadata` may carry producer-specific details only under non-reserved keys.
   It must not override normalized Core fields.
 
+### Producer Identity Resolution
+
+Cats Code shall resolve producer identity from server-owned context before
+building idempotency keys or accepting a declaration:
+
+| Producer kind | Resolution source | Required validation |
+|---------------|-------------------|---------------------|
+| `agent` | Active Code runtime session participant / actor binding for the declaring assistant | The actor id resolves to a known agent/assistant actor in the current session, task, or run. A producer-supplied `actorId` is only a hint and must match the server binding when present. |
+| `tool` | Code tool execution context or tool bridge registration | `toolName` resolves to a server-registered tool that was invoked in, or is authorized for, the current workspace/run context. |
+| `system` | Code system detector registry | `toolName` is treated as detector name. When omitted it defaults to `code-bridge`; the detector must be in the Code server's built-in detector registry. |
+| `user` | Authenticated owner/user session | The resolved actor id is the authenticated owner profile actor for the current local user. Producer-supplied `actorId` is ignored unless it matches that actor. |
+
+If the producer identity cannot be resolved from these sources, Cats Code shall
+reject the declaration before idempotency lookup.
+
 ### Idempotency Key
 
 Cats Code shall construct one canonical declaration idempotency key before
@@ -215,10 +231,29 @@ Null fallback is explicit:
 - Producer-supplied runtime/session/anchor ids may fill a missing field only
   when the server can verify that id belongs to the active Code context.
 
-The server shall store the idempotency key in artifact metadata and shall use it
-to find the existing artifact before creating a new one. If the implementation
-derives the `CoreArtifactRecord.id` from the key, it shall use a stable hash of
-the full key rather than raw producer text.
+The server shall store the idempotency key and its resolved components in
+artifact metadata under `codeArtifactDeclaration.idempotency`, including:
+
+- `key`
+- `producerKind`
+- `producerIdentity`
+- `scopeKind`
+- `scopeId`
+- `declarationId`
+
+The chosen `scopeKind` and `scopeId` are frozen when the declaration first
+successfully materializes or is accepted as a stored candidate. Later retries
+must first search for an existing artifact or pending candidate by exact
+idempotency key. If the server cannot re-resolve the original scope during a
+retry, it shall search by frozen producer identity + normalized declaration id
+within compatible server-verified anchors before creating anything new. If that
+fallback finds exactly one existing artifact/candidate, Cats Code shall reuse
+its frozen idempotency key and update/no-op that record. If it finds more than
+one compatible record, Cats Code shall reject with
+`artifact_idempotency_ambiguous`.
+
+If the implementation derives the `CoreArtifactRecord.id` from the key, it
+shall use a stable hash of the frozen full key rather than raw producer text.
 
 ### Disposition and Status Precedence
 
@@ -228,17 +263,19 @@ Disposition and status resolve deterministically:
 2. Apply producer-requested downgrade only:
    - disposition may move from `record` to `candidate`
    - disposition may not move from `candidate` to `record`
-   - status may move from `published` to `ready` or `draft`
    - status may move from `ready` to `draft`
-   - status may not move from `draft` to `ready` or `published`
+   - if a future label default is `published`, status may move from
+     `published` to `ready` or `draft`
+   - status may not move from `draft` to `ready` or `published`, or from
+     `ready` to `published`
 3. Apply server policy last. Server policy may force `candidate`, force
-   `draft`, or reject the declaration when anchors, location, capability, or
-   safety checks fail.
+   `draft`, or reject the declaration when anchors, location, publishing
+   context, or safety checks fail.
 
 Producer requests that would upgrade beyond the label default are ignored and
-normalized back to the label default. The one exception is
-`requestedStatus = 'published'`: when publish capability is absent, the
-declaration is rejected rather than silently downgraded.
+normalized back to the label default, except `requestedStatus = 'published'`,
+which is always rejected for ordinary declaration submits. Publication is a
+separate server-side state transition described below.
 
 If the final disposition is `candidate`, the final Core status is `draft`
 whenever the candidate is represented as a `CoreArtifactRecord`.
@@ -247,21 +284,27 @@ whenever the candidate is represented as a `CoreArtifactRecord`.
 `requestedDisposition = 'record'` is normalized to `candidate`; record-capable
 runtime outputs must be submitted as `tool` declarations instead.
 
-### Publish Capability
+### Publishing
 
-`published` is not granted by producer kind alone. A declaration is
-publish-capable only when server-side context establishes one of these cases:
+Ordinary artifact declarations cannot directly set `published`. A declaration
+with `requestedStatus = 'published'` submitted through the normal declaration
+path shall be rejected with `artifact_publish_requires_action`.
 
-- `user`: the authenticated owner/user explicitly invoked a publish action for
-  the artifact.
-- `tool`: the tool is on a server-maintained publish-capable allowlist for the
-  current workspace/run and the artifact label is allowed for that tool.
-- `agent`: the task/run has an explicit approval or policy grant that permits
-  that agent actor to publish the artifact.
+Cats Code may write `CoreArtifactRecord.status = 'published'` only in one of
+these server-side publish contexts:
 
-`system` is never publish-capable. A declaration that requests `published`
-without one of the above server-side capabilities shall be rejected with
-`artifact_publish_not_allowed`; it shall not silently become published.
+- `user_publish_action`: the authenticated owner/user explicitly invoked a
+  publish action for an existing artifact or for a user-import flow that wraps a
+  declaration and publish action together.
+- `tool_auto_publish_policy`: the declaring tool is on the server-configured
+  publish-capable tool allowlist, the artifact label is allowed for that tool,
+  and the current workspace/run context satisfies that allowlist rule.
+
+Agent and system declarations are not publish-capable in this spec. Agents may
+declare `ready` artifacts, but publishing them requires a later owner publish
+action or a future explicit supervision/policy grant spec. Until that future
+spec exists, an agent declaration that requests `published` shall be rejected
+with `artifact_publish_requires_action`.
 
 ### Location Rules
 
@@ -273,7 +316,20 @@ without one of the above server-side capabilities shall be rejected with
 | `local_path` | Workspace-relative path, or an absolute path that canonicalizes inside the resolved workspace | normalized workspace-relative path | Absolute paths outside the workspace are rejected unless they are normalized through user import first. |
 | `url` | HTTP(S) URL for a preview or externally hosted output | normalized URL string | Credentials in URLs are rejected. Runtime-local URLs must be attached to known runtime/tool output or explicit user input. |
 | `inline_summary` | Text summary content, not a file path | `null` | `value` is copied into `summary` when `summary` is empty; maximum 8 KiB after trimming. |
-| `external_ref` | Opaque reference to a known external object, such as an upload id, runtime artifact id, or storage key | normalized external reference string | The reference kind must be allowlisted and recorded in metadata; arbitrary free-form refs are rejected. |
+| `external_ref` | Opaque reference to a known external object, such as an upload id, runtime artifact id, or storage key | normalized external reference string | The value must use `<refKind>:<refId>`, where `refKind` is allowlisted and `refId` is non-empty. |
+
+The first implementation shall maintain `external_ref` allowlist policy as one
+Code server configuration value, `codeArtifactDeclaration.externalRefKinds`.
+Per-workspace external-ref policy is a follow-up, not part of this spec. This
+allowlist is separate from the publish-capable tool allowlist. The default
+initial allowed kinds are:
+
+- `upload`
+- `runtime_artifact`
+- `storage_object`
+
+Unknown `refKind` values are rejected with
+`artifact_external_ref_kind_not_allowed`.
 
 User imports do not make arbitrary outside-workspace paths safe. A user import
 outside the workspace must first be normalized by the upload/import path into a
@@ -338,7 +394,7 @@ Cats Code shall validate:
 - title is non-empty,
 - mapped Core kind is allowed,
 - requested status is allowed,
-- producer identity is resolvable for the producer kind,
+- producer identity resolves through the producer identity table above,
 - at least one structural anchor or workspace context exists,
 - referenced conversation/task/run/project/work item ids resolve when present,
 - task/run anchors are compatible when both are present,
@@ -356,7 +412,7 @@ Cats Code shall reject declarations that attempt to:
 - write outside the workspace through path traversal,
 - claim a Work project/work item anchor that does not exist,
 - claim a run unrelated to the current task,
-- elevate status to `published` without an explicit publish-capable producer,
+- set `published` through an ordinary declaration submit,
 - bypass system-candidate normalization to materialize system output directly
   as `record`,
 - materialize unsupported executable payloads as trusted artifacts.
@@ -377,6 +433,33 @@ When a declaration is accepted as `record`, Cats Code shall upsert
 - metadata containing declaration provenance and producer label
 - metadata containing the canonical idempotency key
 
+Cats Code shall compute a material-change signature before writing
+`artifact_recorded` activity. The signature includes only normalized durable
+artifact fields:
+
+- `title`
+- `kind`
+- `status`
+- `projectId`
+- `workItemId`
+- `conversationId`
+- `taskId`
+- `runId`
+- `path`
+- `mimeType`
+- `sizeBytes`
+- `summary`
+- `codeArtifactDeclaration.producerLabel`
+- `codeArtifactDeclaration.disposition`
+- `codeArtifactDeclaration.location`
+- `codeArtifactDeclaration.candidate`
+- `producerDetails` after removing volatile keys
+
+The signature excludes `id`, `createdAt`, `updatedAt`, retry counters,
+observed timestamps, raw idempotency metadata, and any metadata key whose name
+ends with `At` or includes `timestamp`. If the signature is unchanged from the
+existing artifact, the upsert is a no-op replay for activity purposes.
+
 When a declaration is accepted as `candidate`, Cats Code may:
 
 - write `CoreArtifactRecord.status = 'draft'` with metadata indicating
@@ -392,8 +475,8 @@ chosen strategy must be documented in the implementing plan update.
 When a declaration creates or materially updates a durable
 `CoreArtifactRecord`, Cats Code shall write a background/system
 `CoreActivityRecord` of kind `artifact_recorded`. Idempotent retries that do
-not change the artifact shall not emit duplicate activity. Activity is
-audit/feed evidence, not the artifact itself.
+not change the material-change signature shall not emit duplicate activity.
+Activity is audit/feed evidence, not the artifact itself.
 
 ### Non-Functional Requirements
 
