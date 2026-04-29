@@ -27,6 +27,7 @@ These important documents live in the project root:
 | [testing.md](./testing.md) | Complete | Current testing strategy and coverage boundaries |
 | [deployment.md](./deployment.md) | Complete | Current local deployment plus planned desktop-first packaged topology and onboarding direction |
 | [product-integration-guide.md](./product-integration-guide.md) | Complete | Product registration plus unified engine, materialization, agent/transport vocabulary, conversational-vs-operational projection rules, `MY CATS` platform-home/subset rules, and optional-capability integration rules for parallel Chat/Work/Code delivery |
+| [agent-control-surfaces.md](./agent-control-surfaces.md) | Draft | Parent registry for mandatory structured agent/runtime control surfaces: decision envelopes, tool calls, finalization envelopes, lifecycle events, and evidence events |
 | [tool-calls.md](./tool-calls.md) | Draft | Central registry for Cats-owned agent/runtime tool call contracts, including `declare_artifact` |
 | [security-guidelines.md](./security-guidelines.md) | Template | Security policies placeholder inherited from bootstrap |
 | [mcp-config.md](./mcp-config.md) | Partial | Planning notes for the future `cats-runtime` MCP facade used by orchestrators |
@@ -56,6 +57,8 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [Agent Control Surfaces](./agent-control-surfaces.md)
+- [Tool Call Registry](./tool-calls.md)
 - [PLAN-083](./plans/PLAN-083-schedule-rules-and-mission-trigger-rollout.md)
 - [SPEC-094](./specs/SPEC-094-schedule-rules-and-mission-triggers.md)
 - [ADR-090](./decisions/090-adopt-generic-schedule-rules-for-mission-triggers.md)

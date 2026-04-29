@@ -5,10 +5,12 @@
 ## Purpose
 
 This document is the discoverability surface for tool calls exposed to agents,
-runtime bridges, or product-owned automation. A tool call must not live only in
-an individual SPEC file. Feature specs may explain why a tool exists and define
-deep domain behavior, but this registry owns the stable list of tool names,
-channels, caller visibility, implementation entry points, and schema summaries.
+runtime bridges, or product-owned automation. It is a child registry of
+[agent-control-surfaces.md](./agent-control-surfaces.md). A tool call must not
+live only in an individual SPEC file. Feature specs may explain why a tool
+exists and define deep domain behavior, but this registry owns the stable list
+of tool names, channels, caller visibility, implementation entry points, and
+schema summaries.
 
 `docs/api.md` remains the public HTTP API document. Tool calls belong here
 unless they are also exposed as HTTP routes; in that case the HTTP route must be
@@ -52,7 +54,63 @@ rather than duplicating every validation branch.
 
 | Tool | Owner | Status | Channel | Caller | Contract |
 |------|-------|--------|---------|--------|----------|
+| `cats.runtime.session.create` | Platform supervision | Implemented | `product_internal_delegate` | Platform runtime wrapper | [Runtime Supervision Tools](#runtime-supervision-tools) |
+| `cats.runtime.message.send` | Platform supervision | Implemented | `product_internal_delegate` | Platform runtime wrapper | [Runtime Supervision Tools](#runtime-supervision-tools) |
+| `cats.lifecycle.run.spawn` | Platform supervision | Implemented | `product_internal_delegate` / future `runtime_tool` | Supervised run agent / Work delegate | [Lifecycle Tools](#lifecycle-tools) |
+| `work.context.lookup` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / future `runtime_tool` | Work supervised agent | [Work Supervised Tools](#work-supervised-tools) |
+| `work.local_note.apply` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / future `runtime_tool` | Work supervised agent | [Work Supervised Tools](#work-supervised-tools) |
+| `work.approval_gated.apply` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / future `runtime_tool` | Work supervised agent | [Work Supervised Tools](#work-supervised-tools) |
+| `work.sop.classify_text_batch` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / worker tool | Work SOP worker | [Work Supervised Tools](#work-supervised-tools) |
+| `work.sop.ask_weak` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / worker tool | Work SOP worker | [Work Supervised Tools](#work-supervised-tools) |
 | `declare_artifact` | Cats Code | Scaffolded, not wired | `runtime_tool` first; bridge/user delegates later | Code assistant / runtime bridge / Code UI import flow | [Declare Artifact](#declare_artifact) |
+
+## Supervised Tool Contract
+
+Platform-supervised tools share the `SupervisedToolManifest` and
+`ToolResult<T>` contract from `src/platform/supervision/contracts.ts`.
+Invocation crosses `src/platform/supervision/toolBoundary.ts`, which applies
+manifest authorization, policy scope, approval, rejection, and evidence.
+
+Tool result statuses are:
+
+- `applied`
+- `pending_approval`
+- `rejected`
+
+These tools are part of the broader agent control surface registry described in
+[agent-control-surfaces.md](./agent-control-surfaces.md).
+
+## Runtime Supervision Tools
+
+| Tool | Implementation | Blocking | Side effect | Approval | Evidence | Notes |
+|------|----------------|----------|-------------|----------|----------|-------|
+| `cats.runtime.session.create` | `src/platform/supervision/runtimeBoundary.ts` | `blocking` | `expensive` | `policy` | `summary` | Creates a `cats-runtime` session through the supervised runtime wrapper. |
+| `cats.runtime.message.send` | `src/platform/supervision/runtimeBoundary.ts` | `blocking` | `expensive` | `policy` | `summary` | Sends a message to an existing `cats-runtime` session through the supervised runtime wrapper. |
+
+Both tools stamp `RuntimeSupervisionContext` metadata into the runtime request.
+They are implementation tools for platform runtime calls, not public HTTP APIs.
+
+## Lifecycle Tools
+
+| Tool | Implementation | Blocking | Side effect | Approval | Evidence | Notes |
+|------|----------------|----------|-------------|----------|----------|-------|
+| `cats.lifecycle.run.spawn` | `src/platform/supervision/lifecycleTools.ts` | `async` | `local_state` | `policy` | `summary` | Spawns a managed child run under parent-run ancestry and budget caps. |
+
+`status: 'applied'` for this async lifecycle tool means the child run or
+lifecycle request was created; it does not mean the child work completed.
+
+## Work Supervised Tools
+
+These are first-slice Work supervision tools used to prove policy, evidence,
+approval, cancellation, and weak-worker boundaries.
+
+| Tool | Implementation | Side effect | Approval | Evidence | Notes |
+|------|----------------|-------------|----------|----------|-------|
+| `work.context.lookup` | `src/platform/supervision/workSupervisedTools.ts` | `none` | `never` | `summary` | Reads Work context projection data. |
+| `work.local_note.apply` | `src/platform/supervision/workSupervisedTools.ts` | `local_state` | `policy` | `summary` | Applies a local draft note for a Work run. |
+| `work.approval_gated.apply` | `src/platform/supervision/workSupervisedTools.ts` | `external_visible` | `always` | `summary` | Applies a mutation only after operator approval. |
+| `work.sop.classify_text_batch` | `src/platform/supervision/workSupervisedTools.ts` | `none` | `never` | `summary` | Classifies a small text batch through a strict SOP worker shell. |
+| `work.sop.ask_weak` | `src/platform/supervision/workSupervisedTools.ts` | `none` | `never` | `summary` | Asks a weak worker through a schema-required SOP shell and bounded budget. |
 
 ## `declare_artifact`
 

@@ -2933,9 +2933,11 @@ Team 2 and future Work/Code slices can import the same examples through
   MCP facade at `POST /mcp`.
 - MCP is therefore an additional runtime access mode, not a replacement for the
   app-facing API described in this document.
-- Agent/runtime tool call contracts are tracked in
-  [tool-calls.md](./tool-calls.md). They should not be documented as public
-  HTTP APIs here unless the same operation is also exposed as an HTTP route.
+- Mandatory structured agent/runtime control surfaces are tracked in
+  [agent-control-surfaces.md](./agent-control-surfaces.md). Callable tool
+  contracts are tracked in [tool-calls.md](./tool-calls.md). They should not be
+  documented as public HTTP APIs here unless the same operation is also exposed
+  as an HTTP route.
 
 ## Error Responses
 
