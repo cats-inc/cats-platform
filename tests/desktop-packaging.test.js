@@ -1620,6 +1620,53 @@ test('NSIS customUnInstall keeps user-data removals inside the RemoveUserDataSta
   assert.equal(/RMDir \/r/.test(after), false, 'no RMDir outside the gate (after)');
 });
 
+test('NSIS user-data removal UI names both data roots Cats actually deletes', async () => {
+  const nsh = await readFile(
+    join(process.cwd(), 'assets', 'build', 'installer.nsh'),
+    'utf8',
+  );
+
+  const checkboxMatch = nsh.match(/NSD_CreateCheckbox[^"\n]*"([^"]+)"/);
+  assert.ok(checkboxMatch, 'NSD_CreateCheckbox must declare a label');
+  const checkboxLabel = checkboxMatch[1];
+  // Label must call out both roots so the user understands what they
+  // are agreeing to before they tick the box.
+  assert.match(checkboxLabel, /%APPDATA%\\Cats/);
+  assert.match(checkboxLabel, /%USERPROFILE%\\\.cats/);
+
+  // Description label that introduces the choice should explain both roots
+  // too, since the checkbox alone is too short to convey what each holds.
+  const descriptionMatch = nsh.match(/NSD_CreateLabel[^"\n]*"([^"]+)"/);
+  assert.ok(descriptionMatch, 'NSD_CreateLabel must declare description text');
+  const descriptionLabel = descriptionMatch[1];
+  assert.match(descriptionLabel, /%APPDATA%\\Cats/);
+  assert.match(descriptionLabel, /%USERPROFILE%\\\.cats/);
+});
+
+test('NSIS $APPDATA\\Cats path stays in sync with DESKTOP_USER_DATA_DIR_NAME', async () => {
+  const nsh = await readFile(
+    join(process.cwd(), 'assets', 'build', 'installer.nsh'),
+    'utf8',
+  );
+  const config = await readFile(
+    join(process.cwd(), 'desktop', 'host', 'config.ts'),
+    'utf8',
+  );
+
+  const constantMatch = config.match(
+    /export const DESKTOP_USER_DATA_DIR_NAME = '([^']+)'/,
+  );
+  assert.ok(constantMatch, 'DESKTOP_USER_DATA_DIR_NAME constant must exist');
+  const dirName = constantMatch[1];
+  assert.equal(dirName, 'Cats', 'guard against silent rename');
+
+  // Every NSIS reference to %APPDATA%\<dir> must use the same dir name as
+  // the constant Electron uses to derive userData via app.setPath.
+  const escaped = dirName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  assert.match(nsh, new RegExp(`\\$APPDATA\\\\${escaped}\\b`));
+  assert.match(nsh, new RegExp(`%APPDATA%\\\\${escaped}\\b`));
+});
+
 test('NSIS installer.nsh forces per-user install via customInstallMode so admin/all-users is not offered', async () => {
   const nsh = await readFile(
     join(process.cwd(), 'assets', 'build', 'installer.nsh'),

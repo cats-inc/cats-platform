@@ -38,10 +38,10 @@ Function un.UserDataRemovalPage
     Abort
   ${EndIf}
 
-  ${NSD_CreateLabel} 0 0 100% 40u "Cats will be uninstalled. You may also choose to remove all user data (settings, logs, and sessions)."
+  ${NSD_CreateLabel} 0 0 100% 40u "Cats will be uninstalled. You may also choose to remove all user data. Cats stores data in two locations: Electron UI state (window prefs, localStorage, IndexedDB) under %APPDATA%\Cats, and Cats runtime/platform state (settings, logs, sessions) under %USERPROFILE%\.cats."
   Pop $0
 
-  ${NSD_CreateCheckbox} 0 50u 100% 16u "Remove all user data ($PROFILE\.cats)"
+  ${NSD_CreateCheckbox} 0 60u 100% 16u "Remove all user data (%APPDATA%\Cats and %USERPROFILE%\.cats)"
   Pop $RemoveUserDataCheckbox
   ${NSD_SetState} $RemoveUserDataCheckbox ${BST_UNCHECKED}
 
