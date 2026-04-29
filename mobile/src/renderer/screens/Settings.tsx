@@ -1,4 +1,3 @@
-import { Link } from 'expo-router';
 import { type ReactNode, useEffect, useState } from 'react';
 import {
   Image,
@@ -225,13 +224,6 @@ export function Settings() {
         </Pressable>
       </Section>
 
-      {__DEV__ ? (
-        <Section label="Developer tools">
-          <Link href="/bubble-harness" style={styles.devLink}>
-            Bubble visual gate
-          </Link>
-        </Section>
-      ) : null}
     </ScrollView>
   );
 }
@@ -603,11 +595,5 @@ const styles = StyleSheet.create({
     color: colors.fg.muted,
     fontSize: 22,
     lineHeight: 22,
-  },
-  devLink: {
-    color: colors.accent.primary,
-    ...typography.body,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
   },
 });
