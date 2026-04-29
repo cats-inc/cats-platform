@@ -71,6 +71,50 @@ function Test-NpmCliInstallerAdminGuard {
   exit 1
 }
 
+function Test-NpmCliRuntimeAvailable {
+  return [bool](Get-Command npm -ErrorAction SilentlyContinue)
+}
+
+function Write-NpmCliMissingResult {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$HelperId,
+    [Parameter(Mandatory = $true)]
+    [string]$Mode,
+    [Parameter(Mandatory = $true)]
+    [string]$DisplayName,
+    [switch]$EmitJson
+  )
+
+  $isQuery = $Mode -in @('check', 'uninstall')
+  $status = if ($isQuery) { 'not_installed' } else { 'failed' }
+  $exitCode = if ($isQuery) { 0 } else { 1 }
+  $result = [pscustomobject]@{
+    helper = $HelperId
+    mode = $Mode
+    status = $status
+    installed = $false
+    detectedVersion = $null
+    commandPath = $null
+    restartRequired = $false
+    plannedActions = @()
+    warnings = @("Node.js and npm must be installed before $DisplayName can be installed.")
+    appliedChanges = @()
+    manualSteps = @('Run the Node.js host installer first to install Node.js LTS.')
+    interruptions = @()
+  }
+  if ($EmitJson) {
+    $result | ConvertTo-Json -Depth 10
+  } else {
+    Write-Host "Mode: $Mode"
+    Write-Host "Status: $status"
+    foreach ($warning in $result.warnings) {
+      Write-Host "Warning: $warning"
+    }
+  }
+  exit $exitCode
+}
+
 function Test-NpmCliPackageInstalled {
   param(
     [Parameter(Mandatory = $true)]
@@ -81,6 +125,9 @@ function Test-NpmCliPackageInstalled {
 
   if (Get-Command $CommandName -ErrorAction SilentlyContinue) {
     return $true
+  }
+  if (-not (Test-NpmCliRuntimeAvailable)) {
+    return $false
   }
   & npm list -g --depth=0 $PackageName 2>$null | Out-Null
   return ($LASTEXITCODE -eq 0)
@@ -203,6 +250,10 @@ function Invoke-PackagedNpmCliInstall {
 
   $env:Path = [System.Environment]::GetEnvironmentVariable('Path', 'User') + ';' +
     [System.Environment]::GetEnvironmentVariable('Path', 'Machine')
+
+  if (-not $SkipNpmInvocation -and -not (Test-NpmCliRuntimeAvailable)) {
+    Write-NpmCliMissingResult -HelperId $HelperId -Mode $mode -DisplayName $DisplayName -EmitJson:$Json
+  }
 
   $installed = switch ($InstallState) {
     'installed' { $true }

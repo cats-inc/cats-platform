@@ -25,11 +25,13 @@ param(
   [switch]$Upgrade,
   [switch]$Force,
   [switch]$Json,
+  [switch]$DryRun,
   [ValidateSet('auto', 'installed', 'missing')]
   [string]$InstallState = 'auto',
   [string]$DetectedVersion = '',
   [switch]$SkipNodeProbe,
-  [switch]$SkipElevation
+  [switch]$SkipElevation,
+  [string]$ResultRelayPath = ''
 )
 
 Set-StrictMode -Version Latest
@@ -48,8 +50,14 @@ function Write-StructuredResult {
     [int]$ExitCode
   )
 
+  $payload = $Result | ConvertTo-Json -Depth 10
+
+  if (-not [string]::IsNullOrEmpty($ResultRelayPath)) {
+    [System.IO.File]::WriteAllText($ResultRelayPath, $payload)
+  }
+
   if ($Json) {
-    $Result | ConvertTo-Json -Depth 10
+    $payload
   } else {
     Write-Host "Helper: $($Result.helper)"
     Write-Host "Mode: $($Result.mode)"
@@ -204,16 +212,24 @@ $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIden
   IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
 if (-not $isAdmin -and -not $SkipElevation) {
+  # Relay the elevated child's structured result through a temp file so the
+  # parent (which inherits the un-elevated stdout pipe) can re-emit the JSON
+  # without losing it to the elevated console window.
+  $relayPath = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(),
+    "cats-helper-relay-$([System.Guid]::NewGuid().ToString('N')).json")
+
   $relayArgs = @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $PSCommandPath)
   if ($CheckOnly) { $relayArgs += '-CheckOnly' }
   if ($Apply) { $relayArgs += '-Apply' }
   if ($Upgrade) { $relayArgs += '-Upgrade' }
   if ($Force) { $relayArgs += '-Force' }
+  if ($DryRun) { $relayArgs += '-DryRun' }
   if ($Json) { $relayArgs += '-Json' }
   if ($PSBoundParameters.ContainsKey('InstallState')) { $relayArgs += @('-InstallState', $InstallState) }
   if ($PSBoundParameters.ContainsKey('DetectedVersion')) { $relayArgs += @('-DetectedVersion', $DetectedVersion) }
   if ($SkipNodeProbe) { $relayArgs += '-SkipNodeProbe' }
   $relayArgs += '-SkipElevation'
+  $relayArgs += @('-ResultRelayPath', $relayPath)
 
   try {
     $process = Start-Process -FilePath 'powershell.exe' `
@@ -221,8 +237,27 @@ if (-not $isAdmin -and -not $SkipElevation) {
       -Verb RunAs `
       -Wait `
       -PassThru
+    if ([System.IO.File]::Exists($relayPath)) {
+      $relayed = [System.IO.File]::ReadAllText($relayPath)
+      [System.IO.File]::Delete($relayPath)
+      if ($Json -and -not [string]::IsNullOrWhiteSpace($relayed)) {
+        Write-Output $relayed
+      } elseif (-not $Json -and -not [string]::IsNullOrWhiteSpace($relayed)) {
+        try {
+          $relayedResult = $relayed | ConvertFrom-Json
+          Write-Host "Helper: $($relayedResult.helper)"
+          Write-Host "Mode: $($relayedResult.mode)"
+          Write-Host "Status: $($relayedResult.status)"
+        } catch {
+          # If the child crashed before writing, fall through to the synthesized failure result below.
+        }
+      }
+    }
     exit $process.ExitCode
   } catch {
+    if ([System.IO.File]::Exists($relayPath)) {
+      [System.IO.File]::Delete($relayPath)
+    }
     Write-StructuredResult -Result (New-Result `
       -Mode $mode `
       -Status 'changes_required' `

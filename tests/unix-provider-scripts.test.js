@@ -10,7 +10,15 @@ const rootDir = process.cwd();
 
 const linuxScripts = [
   'setup-node-global-prefix.sh',
-  'install-node-cli-tools.sh',
+  'install-node.sh',
+  'install-github-cli.sh',
+  'install-codex.sh',
+  'install-gemini.sh',
+  'install-copilot.sh',
+  'install-opencode.sh',
+  'install-kilo.sh',
+  'install-auggie.sh',
+  'install-pi.sh',
   'install-claude-code.sh',
   'install-cursor-agent.sh',
   'install-goose.sh',
@@ -22,7 +30,15 @@ const linuxScripts = [
 
 const macosScripts = [
   'setup-node-global-prefix.sh',
-  'install-node-cli-tools.sh',
+  'install-node.sh',
+  'install-github-cli.sh',
+  'install-codex.sh',
+  'install-gemini.sh',
+  'install-copilot.sh',
+  'install-opencode.sh',
+  'install-kilo.sh',
+  'install-auggie.sh',
+  'install-pi.sh',
   'install-claude-code.sh',
   'install-cursor-agent.sh',
   'install-goose.sh',
@@ -64,8 +80,8 @@ test('cats-platform ships repo-owned Unix self-hosted provider helpers', async (
   }
 
   const readme = await readFile(join(rootDir, 'scripts', 'README.md'), 'utf8');
-  assert.match(readme, /scripts\/linux\/install-node-cli-tools\.sh/u);
-  assert.match(readme, /scripts\/macos\/install-node-cli-tools\.sh/u);
+  assert.match(readme, /scripts\/linux\/install-codex\.sh/u);
+  assert.match(readme, /scripts\/macos\/install-codex\.sh/u);
   assert.match(readme, /scripts\/linux\/upgrade-cli-tools\.sh/u);
   assert.match(readme, /scripts\/macos\/upgrade-cli-tools\.sh/u);
 });
@@ -73,7 +89,6 @@ test('cats-platform ships repo-owned Unix self-hosted provider helpers', async (
 test('Unix self-hosted provider helpers expose help text without mutating the host', async () => {
   for (const platform of ['linux', 'macos']) {
     await assertHelp(join(rootDir, 'scripts', platform, 'setup-node-global-prefix.sh'));
-    await assertHelp(join(rootDir, 'scripts', platform, 'install-node-cli-tools.sh'));
     await assertHelp(join(rootDir, 'scripts', platform, 'install-claude-code.sh'));
     await assertHelp(join(rootDir, 'scripts', platform, 'install-cursor-agent.sh'));
     await assertHelp(join(rootDir, 'scripts', platform, 'install-goose.sh'));

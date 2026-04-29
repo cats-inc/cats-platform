@@ -1076,10 +1076,11 @@ EOF
 # installers.
 run_npm_cli_provider() {
   local platform="$1"
-  local package_name="$2"
-  local command_name="$3"
-  local display_name="$4"
-  shift 4
+  local provider_id="$2"
+  local package_name="$3"
+  local command_name="$4"
+  local display_name="$5"
+  shift 5
 
   local check_only='false'
   local apply='false'
@@ -1088,7 +1089,7 @@ run_npm_cli_provider() {
   local uninstall='false'
   local dry_run='false'
   local emit_json='false'
-  local helper_id="${platform}-${package_name##*/}-native-installer"
+  local helper_id="${platform}-${provider_id}-native-installer"
 
   while [ $# -gt 0 ]; do
     case "$1" in

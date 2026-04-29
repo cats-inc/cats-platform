@@ -5,4 +5,4 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=node-cli-common.sh
 . "$SCRIPT_DIR/node-cli-common.sh"
 
-run_npm_cli_provider 'macos' '@mariozechner/pi-coding-agent' 'pi' 'Pi Coding Agent' "$@"
+run_npm_cli_provider 'macos' 'pi' '@mariozechner/pi-coding-agent' 'pi' 'Pi Coding Agent' "$@"

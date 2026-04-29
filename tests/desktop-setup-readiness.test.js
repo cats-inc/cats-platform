@@ -26,7 +26,7 @@ const nativeCliPackages = JSON.stringify([
   '@mariozechner/pi-coding-agent',
 ]);
 
-test('Check-WindowsSetupReadiness reports ready when native CLI pack and WSL substrates are already ready', skipUnlessWindows(), async () => {
+test('Check-WindowsSetupReadiness reports ready when prefix substrate and per-CLI helpers are already ready', skipUnlessWindows(), async () => {
   const workingDir = await mkdtemp(join(tmpdir(), 'cats-setup-readiness-'));
   const desiredPrefix = join(workingDir, '.npm-global');
   await mkdir(desiredPrefix, { recursive: true });
@@ -47,12 +47,6 @@ test('Check-WindowsSetupReadiness reports ready when native CLI pack and WSL sub
     `${desiredPrefix};C:\\Windows\\System32`,
     '-InstalledPackagesJson',
     nativeCliPackages,
-    '-WindowsBuild',
-    '22621',
-    '-WslState',
-    'ready',
-    '-WslUserBootstrapState',
-    'completed',
     '-ClaudeInstallState',
     'installed',
     '-ClaudeAuthState',
@@ -78,7 +72,6 @@ test('Check-WindowsSetupReadiness reports ready when native CLI pack and WSL sub
   assert.equal(result.collectionMode, 'parallel');
   assert.equal(result.status, 'ready');
   assert.equal(result.nativeCliPack.status, 'ready');
-  assert.equal(result.wsl.status, 'ready');
   assert.equal(result.nativeProviders.claude.status, 'ready');
   assert.equal(result.nativeProviders.cursor.status, 'ready');
   assert.equal(result.nativeProviders.goose.status, 'ready');
@@ -87,7 +80,7 @@ test('Check-WindowsSetupReadiness reports ready when native CLI pack and WSL sub
   assert.deepEqual(result.plannedActions, []);
 });
 
-test('Check-WindowsSetupReadiness reports elevation-required repair actions when native CLI and WSL prerequisites are missing', skipUnlessWindows(), async () => {
+test('Check-WindowsSetupReadiness reports repair actions when prefix and per-CLI helpers are missing', skipUnlessWindows(), async () => {
   const workingDir = await mkdtemp(join(tmpdir(), 'cats-setup-readiness-missing-'));
   const desiredPrefix = join(workingDir, '.npm-global');
 
@@ -107,19 +100,13 @@ test('Check-WindowsSetupReadiness reports elevation-required repair actions when
     'C:\\Windows\\System32',
     '-InstalledPackagesJson',
     JSON.stringify(['@openai/codex']),
-    '-WindowsBuild',
-    '22621',
-    '-WslState',
-    'missing',
     '-IncludeNativeProviders:$false',
   ]);
 
   const result = JSON.parse(stdout);
-  assert.equal(result.status, 'elevation_required');
   assert.equal(result.plannedActions.includes('repair_native_cli_pack'), true);
-  assert.equal(result.plannedActions.includes('wsl:enable_wsl_features'), true);
-  assert.equal(result.plannedActions.includes('wsl:install_wsl_kernel'), true);
-  assert.equal(result.interruptions.some((entry) => entry.kind === 'elevation_required'), true);
+  assert.equal(result.plannedActions.includes('repair_npm_prefix'), true);
+  assert.equal(result.nativeCliPack.status === 'changes_required' || result.nativeCliPack.status === 'not_installed', true);
 });
 
 test('Check-WindowsSetupReadiness reports auth-required when native providers are installed but not yet signed in', skipUnlessWindows(), async () => {
@@ -143,12 +130,6 @@ test('Check-WindowsSetupReadiness reports auth-required when native providers ar
     `${desiredPrefix};C:\\Windows\\System32`,
     '-InstalledPackagesJson',
     nativeCliPackages,
-    '-WindowsBuild',
-    '22621',
-    '-WslState',
-    'ready',
-    '-WslUserBootstrapState',
-    'completed',
     '-ClaudeInstallState',
     'installed',
     '-ClaudeAuthState',
@@ -197,12 +178,6 @@ test('Check-WindowsSetupReadiness reports install follow-through when Kiro is mi
     `${desiredPrefix};C:\\Windows\\System32`,
     '-InstalledPackagesJson',
     nativeCliPackages,
-    '-WindowsBuild',
-    '22621',
-    '-WslState',
-    'ready',
-    '-WslUserBootstrapState',
-    'completed',
     '-ClaudeInstallState',
     'installed',
     '-ClaudeAuthState',
@@ -229,63 +204,6 @@ test('Check-WindowsSetupReadiness reports install follow-through when Kiro is mi
   assert.equal(result.plannedActions.includes('provider:install_kiro_native'), true);
 });
 
-test('Check-WindowsSetupReadiness reports docker warm-up when Docker Desktop is installed but the engine is not ready', skipUnlessWindows(), async () => {
-  const workingDir = await mkdtemp(join(tmpdir(), 'cats-setup-readiness-docker-'));
-  const desiredPrefix = join(workingDir, '.npm-global');
-  await mkdir(desiredPrefix, { recursive: true });
-
-  const { stdout } = await execFile('powershell.exe', [
-    '-NoProfile',
-    '-ExecutionPolicy',
-    'Bypass',
-    '-File',
-    helperPath,
-    '-Json',
-    '-SkipNodeCheck',
-    '-DesiredPrefix',
-    desiredPrefix,
-    '-CurrentPrefix',
-    desiredPrefix,
-    '-CurrentUserPath',
-    `${desiredPrefix};C:\\Windows\\System32`,
-    '-InstalledPackagesJson',
-    nativeCliPackages,
-    '-WindowsBuild',
-    '22621',
-    '-WslState',
-    'ready',
-    '-WslUserBootstrapState',
-    'completed',
-    '-ClaudeInstallState',
-    'installed',
-    '-ClaudeAuthState',
-    'authenticated',
-    '-CursorInstallState',
-    'installed',
-    '-CursorAuthState',
-    'authenticated',
-    '-GooseInstallState',
-    'installed',
-    '-GooseAuthState',
-    'authenticated',
-    '-JunieInstallState',
-    'installed',
-    '-JunieAuthState',
-    'authenticated',
-    '-KiroInstallState',
-    'installed',
-    '-IncludeDocker:$true',
-    '-DockerState',
-    'installed_engine_stopped',
-  ]);
-
-  const result = JSON.parse(stdout);
-  assert.equal(result.status, 'docker_warm_up_required');
-  assert.equal(result.docker.status, 'docker_warm_up_required');
-  assert.equal(result.plannedActions.includes('docker:start_docker_desktop'), true);
-  assert.equal(result.interruptions.some((entry) => entry.kind === 'docker_warm_up_required'), true);
-});
-
 test('Check-WindowsSetupReadiness reports Ollama follow-through when local-model helpers are included', skipUnlessWindows(), async () => {
   const workingDir = await mkdtemp(join(tmpdir(), 'cats-setup-readiness-ollama-'));
   const desiredPrefix = join(workingDir, '.npm-global');
@@ -307,12 +225,6 @@ test('Check-WindowsSetupReadiness reports Ollama follow-through when local-model
     `${desiredPrefix};C:\\Windows\\System32`,
     '-InstalledPackagesJson',
     nativeCliPackages,
-    '-WindowsBuild',
-    '22621',
-    '-WslState',
-    'ready',
-    '-WslUserBootstrapState',
-    'completed',
     '-ClaudeInstallState',
     'installed',
     '-ClaudeAuthState',
@@ -366,9 +278,6 @@ test('Check-WindowsSetupReadiness can force serial collection for deterministic 
     `${desiredPrefix};C:\\Windows\\System32`,
     '-InstalledPackagesJson',
     nativeCliPackages,
-    '-WindowsBuild',
-    '22621',
-    '-IncludeWsl:$false',
     '-ClaudeInstallState',
     'installed',
     '-ClaudeAuthState',

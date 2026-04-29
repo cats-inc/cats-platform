@@ -32,11 +32,12 @@ EOF
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --check) mode='check' ;;
-    --apply) mode='apply' ;;
-    -upgrade) mode='upgrade' ;;
-    -force) mode='force' ;;
-    --json) emit_json='true' ;;
+    --check|-CheckOnly) mode='check' ;;
+    --apply|-Apply) mode='apply' ;;
+    -upgrade|-Upgrade) mode='upgrade' ;;
+    -force|-Force) mode='force' ;;
+    --json|-Json) emit_json='true' ;;
+    --dry-run|-DryRun) ;;  # Accepted for parity with the Windows helper; not honored.
     --install-state)
       shift; install_state="${1:-auto}"
       ;;
@@ -92,6 +93,22 @@ is_node_installed() {
   command -v node >/dev/null 2>&1
 }
 
+json_array_from_lines() {
+  local arr_name="$1[@]"
+  local items=("${!arr_name:-}")
+  local out='['
+  local sep=''
+  for item in "${items[@]:-}"; do
+    [ -z "$item" ] && continue
+    local escaped
+    escaped="$(printf '%s' "$item" | sed 's/\\/\\\\/g; s/"/\\"/g')"
+    out="$out$sep\"$escaped\""
+    sep=','
+  done
+  out="$out]"
+  printf '%s' "$out"
+}
+
 emit_result() {
   local status="$1"
   local installed="$2"
@@ -102,24 +119,6 @@ emit_result() {
   detected="$(resolve_node_version)"
 
   if [ "$emit_json" = 'true' ]; then
-    local planned applied warns manuals
-    planned="$(printf '%s\n' "${planned_actions[@]:-}" | sed '/^$/d' | jq -Rsc 'split("\n") | map(select(length > 0))')"
-    applied="$(printf '%s\n' "${applied_changes[@]:-}" | sed '/^$/d' | jq -Rsc 'split("\n") | map(select(length > 0))')"
-    warns="$(printf '%s\n' "${warnings[@]:-}" | sed '/^$/d' | jq -Rsc 'split("\n") | map(select(length > 0))')"
-    manuals="$(printf '%s\n' "${manual_steps[@]:-}" | sed '/^$/d' | jq -Rsc 'split("\n") | map(select(length > 0))')"
-
-    if ! command -v jq >/dev/null 2>&1; then
-      # Fallback minimal JSON emission without jq
-      planned='[]'
-      applied='[]'
-      warns='[]'
-      manuals='[]'
-      for a in "${planned_actions[@]:-}"; do
-        [ -z "$a" ] && continue
-        planned="$(printf '%s' "$planned" | sed "s|\\]\$|,\"$a\"]|; s|^\\[,|[|")"
-      done
-    fi
-
     cat <<JSON
 {
   "helper": "$HELPER_ID",
@@ -129,10 +128,10 @@ emit_result() {
   "installed": $installed,
   "commandPath": "$cmd_path",
   "detectedVersion": "$detected",
-  "plannedActions": ${planned:-[]},
-  "appliedChanges": ${applied:-[]},
-  "warnings": ${warns:-[]},
-  "manualSteps": ${manuals:-[]},
+  "plannedActions": $(json_array_from_lines planned_actions),
+  "appliedChanges": $(json_array_from_lines applied_changes),
+  "warnings": $(json_array_from_lines warnings),
+  "manualSteps": $(json_array_from_lines manual_steps),
   "interruptions": []
 }
 JSON

@@ -4,56 +4,22 @@
 
 .DESCRIPTION
     Composes the repo-owned packaged setup helpers into one structured host-side
-    readiness audit. The helper is read-only and reports whether the native CLI
-    pack substrate and WSL prerequisite substrate are ready, missing, or still
-    require changes before deeper provider installation flows can proceed.
+    readiness audit. The helper is read-only and reports whether the npm prefix
+    substrate, the per-CLI npm-global helpers, and the bundled native provider
+    helpers are ready, missing, or still require changes before deeper provider
+    installation flows can proceed.
+
+    The audit talks only to helpers that ship in DESKTOP_SETUP_ASSETS. WSL and
+    Docker substrates were removed from the packaged path in earlier phases and
+    are no longer covered here.
 
 .PARAMETER Json
     Emit a structured JSON result.
-
-.PARAMETER IncludeWsl
-    Include WSL prerequisite checks. Enabled by default.
-
-.PARAMETER SkipNodeCheck
-    Skip probing node/npm binaries for deterministic tests.
-
-.PARAMETER InstalledPackagesJson
-    Override the installed npm package set as a JSON array for deterministic
-    tests.
-
-.PARAMETER OutdatedPackagesJson
-    Override the outdated npm package set as a JSON array for deterministic
-    tests.
-
-.PARAMETER DesiredPrefix
-    Override the desired npm prefix passed to the sibling prefix helper.
-
-.PARAMETER CurrentPrefix
-    Override the current npm prefix passed to the sibling prefix helper.
-
-.PARAMETER CurrentUserPath
-    Override the current user PATH passed to the sibling prefix helper.
-
-.PARAMETER WindowsBuild
-    Override the detected Windows build for deterministic tests.
-
-.PARAMETER WslState
-    Override WSL detection for deterministic tests.
-
-.PARAMETER InstalledDistrosJson
-    Override the detected distro list as a JSON array for deterministic tests.
-
-.PARAMETER WslUserBootstrapState
-    Override whether the target WSL distro has completed first-user bootstrap.
 
 .PARAMETER IncludeNativeProviders
     Include native Claude/Cursor/Goose/Junie/Kiro readiness checks plus
     authentication follow-through where the provider requires it. Enabled by
     default.
-
-.PARAMETER IncludeDocker
-    Include Docker Desktop warm-state checks. Disabled by default because the
-    first packaged baseline does not require Docker.
 
 .PARAMETER IncludeLocalModels
     Include local-model runtime checks such as the repo-owned Ollama helper.
@@ -65,8 +31,25 @@
     `$false` to force serial collection for debugging or deterministic audit
     tracing.
 
-.PARAMETER DockerState
-    Override Docker Desktop detection for deterministic tests.
+.PARAMETER SkipNodeCheck
+    Skip probing node/npm binaries for deterministic tests.
+
+.PARAMETER InstalledPackagesJson
+    Override the installed npm package set as a JSON array for deterministic
+    tests. Mapped onto each per-CLI helper's `-InstallState`.
+
+.PARAMETER OutdatedPackagesJson
+    Override the outdated npm package set as a JSON array for deterministic
+    tests. Mapped onto each per-CLI helper's `-OutdatedState`.
+
+.PARAMETER DesiredPrefix
+    Override the desired npm prefix passed to the sibling prefix helper.
+
+.PARAMETER CurrentPrefix
+    Override the current npm prefix passed to the sibling prefix helper.
+
+.PARAMETER CurrentUserPath
+    Override the current user PATH passed to the sibling prefix helper.
 
 .PARAMETER OllamaInstallState
     Override Ollama installation detection for deterministic tests.
@@ -103,9 +86,7 @@
 #>
 param(
   [switch]$Json,
-  [string]$IncludeWsl = 'true',
   [string]$IncludeNativeProviders = 'true',
-  [string]$IncludeDocker = 'false',
   [string]$IncludeLocalModels = 'false',
   [string]$Parallel = 'true',
   [switch]$SkipNodeCheck,
@@ -114,12 +95,6 @@ param(
   [string]$DesiredPrefix = '',
   [string]$CurrentPrefix = '',
   [string]$CurrentUserPath = '',
-  [int]$WindowsBuild = 0,
-  [ValidateSet('auto', 'missing', 'installed_no_distro', 'ready')]
-  [string]$WslState = 'auto',
-  [string]$InstalledDistrosJson = '',
-  [ValidateSet('auto', 'pending', 'completed')]
-  [string]$WslUserBootstrapState = 'auto',
   [ValidateSet('auto', 'installed', 'missing')]
   [string]$ClaudeInstallState = 'auto',
   [ValidateSet('auto', 'authenticated', 'auth_required')]
@@ -138,8 +113,6 @@ param(
   [string]$JunieAuthState = 'auto',
   [ValidateSet('auto', 'installed', 'missing')]
   [string]$KiroInstallState = 'auto',
-  [ValidateSet('auto', 'missing', 'installed_engine_stopped', 'ready')]
-  [string]$DockerState = 'auto',
   [ValidateSet('auto', 'installed', 'missing')]
   [string]$OllamaInstallState = 'auto',
   [ValidateSet('auto', 'reachable', 'unreachable')]
@@ -171,9 +144,7 @@ function Resolve-BoolArgument {
   }
 }
 
-$includeWslEnabled = Resolve-BoolArgument -Name 'IncludeWsl' -Value $IncludeWsl
 $includeNativeProvidersEnabled = Resolve-BoolArgument -Name 'IncludeNativeProviders' -Value $IncludeNativeProviders
-$includeDockerEnabled = Resolve-BoolArgument -Name 'IncludeDocker' -Value $IncludeDocker
 $includeLocalModelsEnabled = Resolve-BoolArgument -Name 'IncludeLocalModels' -Value $IncludeLocalModels
 $parallelChecksEnabled = Resolve-BoolArgument -Name 'Parallel' -Value $Parallel
 
@@ -188,9 +159,6 @@ function Write-StructuredResult {
     Write-Host "Status: $($Result.status)"
     Write-Host "Collection mode: $($Result.collectionMode)"
     Write-Host "Native CLI pack: $($Result.nativeCliPack.status)"
-    if ($null -ne $Result.wsl) {
-      Write-Host "WSL prerequisites: $($Result.wsl.status)"
-    }
     foreach ($action in $Result.plannedActions) {
       Write-Host "Planned action: $action"
     }
@@ -313,27 +281,71 @@ function Invoke-HelperJsonBatch {
   return $results
 }
 
+# Map InstalledPackagesJson / OutdatedPackagesJson onto per-CLI -InstallState /
+# -OutdatedState so the test fixtures stay deterministic without bulk-pack
+# arguments.
+$installedPackagesSet = @{}
+if (-not [string]::IsNullOrWhiteSpace($InstalledPackagesJson)) {
+  try {
+    $parsedInstalled = $InstalledPackagesJson | ConvertFrom-Json
+    foreach ($entry in $parsedInstalled) {
+      $installedPackagesSet[[string]$entry] = $true
+    }
+  } catch {
+    throw "Invalid -InstalledPackagesJson payload: $($_.Exception.Message)"
+  }
+}
+$outdatedPackagesSet = @{}
+if (-not [string]::IsNullOrWhiteSpace($OutdatedPackagesJson)) {
+  try {
+    $parsedOutdated = $OutdatedPackagesJson | ConvertFrom-Json
+    foreach ($entry in $parsedOutdated) {
+      $outdatedPackagesSet[[string]$entry] = $true
+    }
+  } catch {
+    throw "Invalid -OutdatedPackagesJson payload: $($_.Exception.Message)"
+  }
+}
+
+function Resolve-NpmCliInstallState {
+  param([string]$PackageName)
+  if ($installedPackagesSet.Count -eq 0) {
+    return 'auto'
+  }
+  if ($installedPackagesSet.ContainsKey($PackageName)) {
+    return 'installed'
+  }
+  return 'missing'
+}
+
+function Resolve-NpmCliOutdatedState {
+  param([string]$PackageName)
+  if ($outdatedPackagesSet.Count -eq 0) {
+    return 'auto'
+  }
+  if ($outdatedPackagesSet.ContainsKey($PackageName)) {
+    return 'outdated'
+  }
+  return 'current'
+}
+
 $prefixHelperPath = Join-Path $PSScriptRoot 'Setup-NodeGlobalPrefix.ps1'
-$nativeCliPackPath = Join-Path $PSScriptRoot 'Install-NodeCliPack.ps1'
-$wslPreflightPath = Join-Path $PSScriptRoot 'Check-WslPrerequisites.ps1'
 $claudeHelperPath = Join-Path $PSScriptRoot 'Install-ClaudeCode.ps1'
 $cursorHelperPath = Join-Path $PSScriptRoot 'Install-CursorAgent.ps1'
 $gooseHelperPath = Join-Path $PSScriptRoot 'Install-Goose.ps1'
 $junieHelperPath = Join-Path $PSScriptRoot 'Install-Junie.ps1'
 $kiroHelperPath = Join-Path $PSScriptRoot 'Install-KiroCli.ps1'
-$dockerHelperPath = Join-Path $PSScriptRoot 'Install-DockerDesktop.ps1'
 $ollamaHelperPath = Join-Path $PSScriptRoot 'Install-Ollama.ps1'
 
-$nativeCliArguments = @('-CheckOnly', '-Json', '-SkipPrefixHelper')
-if ($SkipNodeCheck) {
-  $nativeCliArguments += '-SkipNodeCheck'
-}
-if (-not [string]::IsNullOrWhiteSpace($InstalledPackagesJson)) {
-  $nativeCliArguments += @('-InstalledPackagesJson', $InstalledPackagesJson)
-}
-if (-not [string]::IsNullOrWhiteSpace($OutdatedPackagesJson)) {
-  $nativeCliArguments += @('-OutdatedPackagesJson', $OutdatedPackagesJson)
-}
+$NpmCliCatalog = @(
+  [pscustomobject]@{ Key = 'codex'; ScriptName = 'Install-Codex.ps1'; PackageName = '@openai/codex' },
+  [pscustomobject]@{ Key = 'gemini'; ScriptName = 'Install-Gemini.ps1'; PackageName = '@google/gemini-cli' },
+  [pscustomobject]@{ Key = 'copilot'; ScriptName = 'Install-Copilot.ps1'; PackageName = '@github/copilot' },
+  [pscustomobject]@{ Key = 'opencode'; ScriptName = 'Install-OpenCode.ps1'; PackageName = 'opencode-ai' },
+  [pscustomobject]@{ Key = 'kilo'; ScriptName = 'Install-KiloCli.ps1'; PackageName = '@kilocode/cli' },
+  [pscustomobject]@{ Key = 'auggie'; ScriptName = 'Install-Auggie.ps1'; PackageName = '@augmentcode/auggie' },
+  [pscustomobject]@{ Key = 'pi'; ScriptName = 'Install-Pi.ps1'; PackageName = '@mariozechner/pi-coding-agent' }
+)
 
 $prefixHelperArguments = @('-CheckOnly', '-Json')
 if ($SkipNodeCheck) {
@@ -348,36 +360,28 @@ if (-not [string]::IsNullOrWhiteSpace($CurrentPrefix)) {
 if (-not [string]::IsNullOrWhiteSpace($CurrentUserPath)) {
   $prefixHelperArguments += @('-CurrentUserPath', $CurrentUserPath)
 }
+
 $helperInvocations = [System.Collections.Generic.List[object]]::new()
-$helperInvocations.Add([pscustomobject]@{
-    Key = 'nativeCliPack'
-    ScriptPath = $nativeCliPackPath
-    Arguments = $nativeCliArguments
-  })
 $helperInvocations.Add([pscustomobject]@{
     Key = 'prefixHelper'
     ScriptPath = $prefixHelperPath
     Arguments = $prefixHelperArguments
   })
 
-if ($includeWslEnabled) {
-  $wslArguments = @('-Json')
-  if ($WindowsBuild -gt 0) {
-    $wslArguments += @('-WindowsBuild', $WindowsBuild.ToString())
+foreach ($entry in $NpmCliCatalog) {
+  $cliArguments = @('-CheckOnly', '-Json', '-SkipNpmInvocation')
+  $installState = Resolve-NpmCliInstallState -PackageName $entry.PackageName
+  if ($installState -ne 'auto') {
+    $cliArguments += @('-InstallState', $installState)
   }
-  if ($WslState -ne 'auto') {
-    $wslArguments += @('-WslState', $WslState)
-  }
-  if (-not [string]::IsNullOrWhiteSpace($InstalledDistrosJson)) {
-    $wslArguments += @('-InstalledDistrosJson', $InstalledDistrosJson)
-  }
-  if ($WslUserBootstrapState -ne 'auto') {
-    $wslArguments += @('-WslUserBootstrapState', $WslUserBootstrapState)
+  $outdatedState = Resolve-NpmCliOutdatedState -PackageName $entry.PackageName
+  if ($outdatedState -ne 'auto') {
+    $cliArguments += @('-OutdatedState', $outdatedState)
   }
   $helperInvocations.Add([pscustomobject]@{
-      Key = 'wsl'
-      ScriptPath = $wslPreflightPath
-      Arguments = $wslArguments
+      Key = "npm:$($entry.Key)"
+      ScriptPath = (Join-Path $PSScriptRoot $entry.ScriptName)
+      Arguments = $cliArguments
     })
 }
 
@@ -444,17 +448,6 @@ if ($includeNativeProvidersEnabled) {
       Arguments = $kiroArguments
     })
 }
-if ($includeDockerEnabled) {
-  $dockerArguments = @('-CheckOnly', '-Json')
-  if ($DockerState -ne 'auto') {
-    $dockerArguments += @('-DockerState', $DockerState)
-  }
-  $helperInvocations.Add([pscustomobject]@{
-      Key = 'docker'
-      ScriptPath = $dockerHelperPath
-      Arguments = $dockerArguments
-    })
-}
 if ($includeLocalModelsEnabled) {
   $ollamaArguments = @('-CheckOnly', '-Json')
   if ($OllamaInstallState -ne 'auto') {
@@ -475,24 +468,85 @@ $helperResults = if ($parallelChecksEnabled) {
 } else {
   Invoke-HelperJsonSequence -Helpers $helperInvocations.ToArray()
 }
-$nativeCliPack = $helperResults['nativeCliPack']
 $prefixHelper = $helperResults['prefixHelper']
-$wslResult = if ($helperResults.ContainsKey('wsl')) { $helperResults['wsl'] } else { $null }
 $claudeResult = if ($helperResults.ContainsKey('claude')) { $helperResults['claude'] } else { $null }
 $cursorResult = if ($helperResults.ContainsKey('cursor')) { $helperResults['cursor'] } else { $null }
 $gooseResult = if ($helperResults.ContainsKey('goose')) { $helperResults['goose'] } else { $null }
 $junieResult = if ($helperResults.ContainsKey('junie')) { $helperResults['junie'] } else { $null }
 $kiroResult = if ($helperResults.ContainsKey('kiro')) { $helperResults['kiro'] } else { $null }
-$dockerResult = if ($helperResults.ContainsKey('docker')) { $helperResults['docker'] } else { $null }
 $ollamaResult = if ($helperResults.ContainsKey('ollama')) { $helperResults['ollama'] } else { $null }
+
+# Aggregate the per-CLI npm helper results into a single nativeCliPack-shaped
+# object for downstream consumers (renderer, bridge tests) that still expect
+# a single status for the npm-global CLI substrate.
+$npmCliResults = [ordered]@{}
+$npmCliWarnings = [System.Collections.Generic.List[string]]::new()
+$npmCliPlanned = [System.Collections.Generic.List[string]]::new()
+$npmCliApplied = [System.Collections.Generic.List[string]]::new()
+$npmCliInterruptions = [System.Collections.Generic.List[object]]::new()
+$npmCliStatuses = [System.Collections.Generic.List[string]]::new()
+$npmCliInstalledCount = 0
+foreach ($entry in $NpmCliCatalog) {
+  $key = "npm:$($entry.Key)"
+  if (-not $helperResults.ContainsKey($key)) {
+    continue
+  }
+  $perCliResult = $helperResults[$key]
+  $npmCliResults[$entry.Key] = $perCliResult
+  $npmCliStatuses.Add([string]$perCliResult.status)
+  if ($perCliResult.installed) {
+    $npmCliInstalledCount++
+  }
+  foreach ($warning in @($perCliResult.warnings)) {
+    if (-not [string]::IsNullOrWhiteSpace([string]$warning)) {
+      $npmCliWarnings.Add([string]$warning)
+    }
+  }
+  foreach ($planned in @($perCliResult.plannedActions)) {
+    if (-not [string]::IsNullOrWhiteSpace([string]$planned)) {
+      $npmCliPlanned.Add([string]$planned)
+    }
+  }
+  foreach ($applied in @($perCliResult.appliedChanges)) {
+    if (-not [string]::IsNullOrWhiteSpace([string]$applied)) {
+      $npmCliApplied.Add([string]$applied)
+    }
+  }
+  if (@($perCliResult.PSObject.Properties.Match('interruptions')).Count -gt 0) {
+    foreach ($interruption in @($perCliResult.interruptions)) {
+      if ($null -ne $interruption) {
+        $npmCliInterruptions.Add($interruption)
+      }
+    }
+  }
+}
+$nativeCliPackStatus = if ($npmCliStatuses -contains 'failed') {
+  'failed'
+} elseif ($npmCliStatuses -contains 'changes_required') {
+  'changes_required'
+} elseif ($npmCliStatuses -contains 'not_installed') {
+  'not_installed'
+} elseif ($npmCliStatuses.Count -eq 0) {
+  'ready'
+} else {
+  'ready'
+}
+$nativeCliPack = [pscustomobject]@{
+  helper = 'windows-native-cli-pack-aggregate'
+  mode = 'check'
+  status = $nativeCliPackStatus
+  installed = ($npmCliInstalledCount -eq $NpmCliCatalog.Count)
+  packages = $npmCliResults
+  warnings = $npmCliWarnings.ToArray()
+  plannedActions = $npmCliPlanned.ToArray()
+  appliedChanges = $npmCliApplied.ToArray()
+  interruptions = $npmCliInterruptions.ToArray()
+}
 
 $warnings = [System.Collections.Generic.List[string]]::new()
 $plannedActions = [System.Collections.Generic.List[string]]::new()
 $interruptions = [System.Collections.Generic.List[object]]::new()
 $statuses = @($prefixHelper.status, $nativeCliPack.status)
-if ($null -ne $wslResult) {
-  $statuses += $wslResult.status
-}
 if ($null -ne $claudeResult) {
   $statuses += $claudeResult.status
 }
@@ -508,9 +562,6 @@ if ($null -ne $junieResult) {
 if ($null -ne $kiroResult) {
   $statuses += $kiroResult.status
 }
-if ($null -ne $dockerResult) {
-  $statuses += $dockerResult.status
-}
 if ($null -ne $ollamaResult) {
   $statuses += $ollamaResult.status
 }
@@ -523,11 +574,6 @@ if ($nativeCliPack.status -ne 'ready') {
   $plannedActions.Add('repair_native_cli_pack')
 }
 
-if ($null -ne $wslResult -and $wslResult.status -ne 'ready') {
-  foreach ($action in $wslResult.plannedActions) {
-    $plannedActions.Add("wsl:$action")
-  }
-}
 if ($null -ne $claudeResult) {
   if ($claudeResult.status -eq 'not_installed') {
     $plannedActions.Add('provider:install_claude_code_native')
@@ -559,11 +605,6 @@ if ($null -ne $junieResult) {
 if ($null -ne $kiroResult -and $kiroResult.status -eq 'not_installed') {
   $plannedActions.Add('provider:install_kiro_native')
 }
-if ($null -ne $dockerResult) {
-  foreach ($action in $dockerResult.plannedActions) {
-    $plannedActions.Add("docker:$action")
-  }
-}
 if ($null -ne $ollamaResult) {
   foreach ($action in $ollamaResult.plannedActions) {
     $plannedActions.Add("local_model:$action")
@@ -575,11 +616,6 @@ foreach ($warning in $prefixHelper.warnings) {
 }
 foreach ($warning in $nativeCliPack.warnings) {
   $warnings.Add([string]$warning)
-}
-if ($null -ne $wslResult) {
-  foreach ($warning in $wslResult.warnings) {
-    $warnings.Add([string]$warning)
-  }
 }
 if ($null -ne $claudeResult) {
   foreach ($warning in $claudeResult.warnings) {
@@ -603,11 +639,6 @@ if ($null -ne $junieResult) {
 }
 if ($null -ne $kiroResult) {
   foreach ($warning in $kiroResult.warnings) {
-    $warnings.Add([string]$warning)
-  }
-}
-if ($null -ne $dockerResult) {
-  foreach ($warning in $dockerResult.warnings) {
     $warnings.Add([string]$warning)
   }
 }
@@ -641,13 +672,12 @@ function Add-InterruptionsFromResult {
   }
 }
 
-Add-InterruptionsFromResult -HelperResult $wslResult
+Add-InterruptionsFromResult -HelperResult $nativeCliPack
 Add-InterruptionsFromResult -HelperResult $claudeResult
 Add-InterruptionsFromResult -HelperResult $cursorResult
 Add-InterruptionsFromResult -HelperResult $gooseResult
 Add-InterruptionsFromResult -HelperResult $junieResult
 Add-InterruptionsFromResult -HelperResult $kiroResult
-Add-InterruptionsFromResult -HelperResult $dockerResult
 Add-InterruptionsFromResult -HelperResult $ollamaResult
 
 function Test-InterruptionPresent {
@@ -668,10 +698,6 @@ $overallStatus = if ($statuses -contains 'failed') {
   'relaunch_required'
 } elseif (Test-InterruptionPresent -Kind 'elevation_required') {
   'elevation_required'
-} elseif (Test-InterruptionPresent -Kind 'first_wsl_boot_required') {
-  'first_wsl_boot_required'
-} elseif (Test-InterruptionPresent -Kind 'docker_warm_up_required') {
-  'docker_warm_up_required'
 } elseif (Test-InterruptionPresent -Kind 'auth_required') {
   'auth_required'
 } elseif ($statuses -contains 'not_installed') {
@@ -691,7 +717,6 @@ $result = [pscustomobject]@{
   interruptions = $interruptions.ToArray()
   prefixHelper = $prefixHelper
   nativeCliPack = $nativeCliPack
-  wsl = $wslResult
   nativeProviders = [pscustomobject]@{
     claude = $claudeResult
     cursor = $cursorResult
@@ -699,7 +724,6 @@ $result = [pscustomobject]@{
     junie = $junieResult
     kiro = $kiroResult
   }
-  docker = $dockerResult
   localModels = [pscustomobject]@{
     ollama = $ollamaResult
   }

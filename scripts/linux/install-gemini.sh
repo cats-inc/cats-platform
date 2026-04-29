@@ -5,4 +5,4 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=node-cli-common.sh
 . "$SCRIPT_DIR/node-cli-common.sh"
 
-run_npm_cli_provider 'linux' '@google/gemini-cli' 'gemini' 'Gemini CLI' "$@"
+run_npm_cli_provider 'linux' 'gemini' '@google/gemini-cli' 'gemini' 'Gemini CLI' "$@"

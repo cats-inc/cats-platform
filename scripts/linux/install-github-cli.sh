@@ -36,11 +36,12 @@ EOF
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --check) mode='check' ;;
-    --apply) mode='apply' ;;
-    -upgrade) mode='upgrade' ;;
-    -force) mode='force' ;;
-    --json) emit_json='true' ;;
+    --check|-CheckOnly) mode='check' ;;
+    --apply|-Apply) mode='apply' ;;
+    -upgrade|-Upgrade) mode='upgrade' ;;
+    -force|-Force) mode='force' ;;
+    --json|-Json) emit_json='true' ;;
+    --dry-run|-DryRun) ;;  # Accepted for parity with the Windows helper; not honored.
     --install-state)
       shift; install_state="${1:-auto}"
       ;;
