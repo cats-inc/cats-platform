@@ -149,7 +149,7 @@ Inventory notes:
 - [x] Add validation before install handoff.
 - [x] Add an install review screen showing display name, route, trust tier, and
       permissions.
-- [ ] After install, optionally navigate to the installed `/apps/:appId` route.
+- [x] After install, optionally navigate to the installed `/apps/:appId` route.
 - [x] Add a sample Pomodoro package fixture that can be exported and installed.
 
 **Likely files**:
@@ -283,6 +283,7 @@ The overnight implementation agent should aim for this first vertical slice:
 | 2026-04-30 | Exposed connector and tool declarations on installed app descriptors and surfaced connector service, auth, capability, and inert tool summaries in Settings Apps. |
 | 2026-04-30 | Added shared App SDK activation/renderer context types and a Pomodoro fixture package that validates through the app package API. |
 | 2026-04-30 | Replaced the Local install placeholder with path validation, owner confirmation, install review metadata, install API handoff, local payload update, and envelope refresh. |
+| 2026-04-30 | Added post-install navigation to the installed app's first enabled Lobby route, with a pure launch-path resolver test. |
 
 ---
 

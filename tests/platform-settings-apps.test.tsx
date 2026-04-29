@@ -2,8 +2,12 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
+import { StaticRouter } from 'react-router-dom';
 
-import { PlatformSettingsApps } from '../src/app/renderer/settings/PlatformSettingsApps.tsx';
+import {
+  PlatformSettingsApps,
+  resolveInstalledAppLaunchPath,
+} from '../src/app/renderer/settings/PlatformSettingsApps.tsx';
 import type { PlatformInstalledAppDescriptor } from '../src/shared/catsAppManifest.ts';
 
 function createInstalledApp(
@@ -26,8 +30,16 @@ function createInstalledApp(
   };
 }
 
+function renderSettingsApps(apps: readonly PlatformInstalledAppDescriptor[]): string {
+  return renderToStaticMarkup(
+    <StaticRouter location="/settings/apps">
+      <PlatformSettingsApps installedApps={apps} />
+    </StaticRouter>,
+  );
+}
+
 test('PlatformSettingsApps renders an empty installed app state', () => {
-  const markup = renderToStaticMarkup(<PlatformSettingsApps installedApps={[]} />);
+  const markup = renderSettingsApps([]);
 
   assert.match(markup, />Installed packages</u);
   assert.match(markup, />0</u);
@@ -38,45 +50,41 @@ test('PlatformSettingsApps renders an empty installed app state', () => {
 });
 
 test('PlatformSettingsApps renders installed app and connector package status', () => {
-  const markup = renderToStaticMarkup(
-    <PlatformSettingsApps
-      installedApps={[
-        createInstalledApp({
-          lobbyEntries: [
-            {
-              id: 'timer',
-              title: 'Focus Timer',
-              routePath: '/apps/user.focus',
-            },
-          ],
-        }),
-        createInstalledApp({
-          id: 'connector.calendar',
-          displayName: 'Calendar Connector',
-          category: 'capability-connector',
-          connectors: [
-            {
-              id: 'calendar',
-              service: 'calendar',
-              auth: { kind: 'oauth' },
-              capabilities: ['calendar.read', 'calendar.write'],
-            },
-          ],
-          tools: [
-            {
-              name: 'connector.calendar.search',
-              title: 'Search calendar',
-              description: 'Search calendar events.',
-              inputSchema: {},
-              runtimeBridge: 'cats-runtime',
-            },
-          ],
-          installState: 'disabled',
-          enabled: false,
-        }),
-      ]}
-    />,
-  );
+  const markup = renderSettingsApps([
+    createInstalledApp({
+      lobbyEntries: [
+        {
+          id: 'timer',
+          title: 'Focus Timer',
+          routePath: '/apps/user.focus',
+        },
+      ],
+    }),
+    createInstalledApp({
+      id: 'connector.calendar',
+      displayName: 'Calendar Connector',
+      category: 'capability-connector',
+      connectors: [
+        {
+          id: 'calendar',
+          service: 'calendar',
+          auth: { kind: 'oauth' },
+          capabilities: ['calendar.read', 'calendar.write'],
+        },
+      ],
+      tools: [
+        {
+          name: 'connector.calendar.search',
+          title: 'Search calendar',
+          description: 'Search calendar events.',
+          inputSchema: {},
+          runtimeBridge: 'cats-runtime',
+        },
+      ],
+      installState: 'disabled',
+      enabled: false,
+    }),
+  ]);
 
   assert.match(markup, />Focus Timer</u);
   assert.match(markup, />Enabled</u);
@@ -93,4 +101,23 @@ test('PlatformSettingsApps renders installed app and connector package status', 
   assert.match(markup, />Disabled</u);
   assert.match(markup, />Enable</u);
   assert.match(markup, />1 connector package</u);
+});
+
+test('resolveInstalledAppLaunchPath returns the first enabled Lobby route', () => {
+  assert.equal(resolveInstalledAppLaunchPath(createInstalledApp({
+    lobbyEntries: [
+      {
+        id: 'timer',
+        title: 'Focus Timer',
+        routePath: '/apps/user.focus',
+      },
+    ],
+  })), '/apps/user.focus');
+  assert.equal(resolveInstalledAppLaunchPath(createInstalledApp({
+    installState: 'disabled',
+    enabled: false,
+  })), null);
+  assert.equal(resolveInstalledAppLaunchPath(createInstalledApp({
+    lobbyEntries: [],
+  })), null);
 });

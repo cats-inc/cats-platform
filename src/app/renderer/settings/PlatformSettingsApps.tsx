@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import { ConfirmDialog, useConfirmDialog } from '../../../design/components/ConfirmDialog.js';
 import { ToastContainer, useToast } from '../../../design/components/Toast.js';
@@ -147,6 +148,15 @@ function removeInstalledApp(
   return installedApps.filter((entry) => entry.id !== appId);
 }
 
+export function resolveInstalledAppLaunchPath(
+  app: PlatformInstalledAppDescriptor,
+): `/apps/${string}` | null {
+  if (!app.enabled || app.installState !== 'enabled') {
+    return null;
+  }
+  return app.lobbyEntries[0]?.routePath ?? null;
+}
+
 function summarizeValidationIssues(
   issues: readonly CatsAppManifestValidationIssue[] = [],
 ): string {
@@ -157,6 +167,7 @@ export function PlatformSettingsApps({
   installedApps,
   onInstalledAppsUpdate,
 }: PlatformSettingsAppsProps) {
+  const navigate = useNavigate();
   const connectorCount = installedApps
     .filter((app) => app.category === 'capability-connector')
     .length;
@@ -293,6 +304,10 @@ export function PlatformSettingsApps({
       setLocalPackagePath('');
       setInstallReview(null);
       dispatchPlatformEnvelopeRefresh();
+      const launchPath = resolveInstalledAppLaunchPath(result.app);
+      if (launchPath) {
+        navigate(launchPath);
+      }
     } catch (error) {
       showToast(error instanceof Error ? error.message : 'Install failed.');
     } finally {
@@ -321,7 +336,7 @@ export function PlatformSettingsApps({
             )}
           />
           {installedApps.length > 0 ? installedApps.map((app) => {
-            const primaryRoute = app.enabled ? app.lobbyEntries[0]?.routePath : undefined;
+            const primaryRoute = resolveInstalledAppLaunchPath(app);
             const canEnable = app.installState === 'installed' || app.installState === 'disabled';
             const canDisable = app.installState === 'enabled';
             const actionBusy = busyAction?.startsWith(`${app.id}:`) ?? false;
