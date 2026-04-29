@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useCallback } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   SafeAreaView,
   StyleSheet,
@@ -25,20 +26,28 @@ export default function ChatSidebarScreen() {
   const createChannel = useCreateChannel();
 
   const startChat = useCallback(
-    async (
-      input: Parameters<CreateChannelHook['create']>[0],
-      directCatId?: string,
-    ) => {
+    async (input: Parameters<CreateChannelHook['create']>[0]) => {
       try {
-        const channelId = directCatId
-          ? `direct-${directCatId}`
-          : await createChannel.create(input);
+        const channelId = await createChannel.create(input);
         router.push(`/(tabs)/chat/${channelId}`);
       } catch {
         // hook state already carries the error; banner renders below.
       }
     },
     [createChannel, router],
+  );
+
+  const showDesktopOnly = useCallback(
+    (title: string, body: string) => {
+      Alert.alert(title, body, [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Open Settings',
+          onPress: () => router.push('/(tabs)/settings'),
+        },
+      ]);
+    },
+    [router],
   );
 
   const callbacks: ChatSidebarCallbacks = {
@@ -59,34 +68,40 @@ export default function ChatSidebarScreen() {
       });
     },
     onStartNewParallelChat: () => {
-      // POST /api/parallel-chats lands when parallel-chat creation
-      // is wired through the boundary. Until then surface a clear
-      // message rather than navigating into a dead route.
-      void startChat({
-        title: 'New parallel chat',
-        topic: '',
-        originSurface: 'chat',
-        entryKind: 'group',
-      });
+      // Parallel chat creation goes through a different server
+      // endpoint (`/api/parallel-chat-groups`) and requires a
+      // `targets` array of provider/instance/model triples that the
+      // mobile shell does not collect yet. Surface that honestly
+      // rather than POSTing a malformed request that the desktop
+      // would reject.
+      showDesktopOnly(
+        'Parallel chat — desktop only',
+        'Parallel chat creation is not yet wired on mobile. Use the desktop app to start a parallel conversation; it will appear in Recents here once created.',
+      );
     },
     onSelectRecent: (channelId: string) => {
       router.push(`/(tabs)/chat/${channelId}`);
     },
-    onSelectCat: (catId: string) => {
-      void startChat(
-        {
-          title: 'Direct chat',
-          topic: '',
-          originSurface: 'chat',
-          entryKind: 'direct',
-        },
-        catId,
+    onSelectCat: () => {
+      // Direct-lane resolution requires the desktop's
+      // `resolveMyCatNavigationTarget` (which finds or creates the
+      // direct-lane channel for that cat). Mobile does not host that
+      // resolver yet, so tapping a MY CATS row would currently land
+      // on a synthetic `direct-{catId}` channel that does not exist
+      // on the desktop. Surface the gap explicitly.
+      showDesktopOnly(
+        'Direct cat chat — desktop only',
+        'Tapping a cat to start a direct conversation is not yet wired on mobile. Start the direct lane on the desktop; it will appear in Recents here once created.',
       );
     },
     onCreateNewCat: () => {
-      // Cat creation lives on the desktop; route to the desktop
-      // dashboard via the configured URL (Settings → Advanced).
-      router.push('/(tabs)/settings');
+      // Cat creation only exists on the desktop. Route to Settings
+      // so the user can hop into the web dashboard via the
+      // Advanced → Open web dashboard entry.
+      showDesktopOnly(
+        'Create a cat — desktop only',
+        'Cat creation lives in the desktop app. Open Settings → Advanced → Open web dashboard.',
+      );
     },
   };
 

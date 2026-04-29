@@ -9,7 +9,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | In Progress (Phases 1–6 + 4b/4c live data path landed; mobile-safe boundary established; Phase 5 product modal panels and Phase 7/8 outstanding) |
+| **Status** | In Progress (Phases 1–6 + 4b/4c live data + SSE landed; mobile-safe boundary + import-guard; Phase 5 product modal panels and Phase 7/8 outstanding) |
 | **Owner** | TBD |
 | **Assigned To** | Unassigned |
 | **Reviewer** | Owner |
@@ -331,6 +331,9 @@ class shell scope.
 | 2026-04-29 | Mobile-safe boundary lands (`196c5bd9`): `src/mobile/**` skeleton, segmenter narrow (drops ChatCat dep), import-guard script, server-side alignment check. Mobile migrates to consume from the boundary (`31c4abc2`). Settings persistence + manual base URL ship (`3dfe889a`). |
 | 2026-04-29 | API client foundation (`012419dd`); boundary expansion with chat sidebar DTOs + selector (`3f7a1b9c`); ChatSidebar wired to live `/api/app-shell` (`8f061034`); ChatView wired to live `/api/channels/{id}/messages` (`0aba95c2`); composer wired to real `POST` send (`f9b73bc1`). Phase 4b/4c effectively complete on a poll-based read/write loop. |
 | 2026-04-29 | Live MY CODES / MY WORKS / Recents (Code) / Recents (Work) screens (`a87329e0`). `useMobileAppShell` shared base hook composes the shell fetch; `selectMobileMyCatsLens` and `selectMobileProductRecents` selectors filter by product. Boundary exposes `MobilePlatformSurfaceId` and `MobileChatChannelSummary.originSurface` for the recents filter. |
+| 2026-04-29 | Integrator review follow-ups (5 commits): cross-platform boundary path fix + Work preset finalisation (`0acd6fe0`); +New / +Team / +Peer actions now POST `/api/channels` and route to the real id (`84b9af8a`); `useMobileAppShell` and `useChannelMessages` refetch on tab focus (`f45e6c64`); push notification toggles persisted to AsyncStorage (`c3274529`); boundary check now also scans `mobile/app/**` and `mobile/src/**` for forbidden imports (`5b02abdb`). |
+| 2026-04-29 | Phase 4c real-time path lands. 5s polling on focused ChatView (`39bdbb22`) is replaced by an SSE subscription against `/api/events/chat` (`a107ad42`) using `react-native-sse`. Lobby derives stats / activity / today from `/api/app-shell` instead of the fixture (`62854294`). |
+| 2026-04-29 | Wrap-up: parallel chat / direct-cat tap / create-new-cat — three flows that cannot be honored on mobile yet (parallel needs `/api/parallel-chat-groups` with targets, direct-lane resolution lives in desktop renderer, cat creation is desktop-only) — replaced silently-broken behavior with explicit `Alert.alert` "desktop only for now" prompts plus a path back into Settings. Phase 5 product side-panel triggers in ChatView header marked with a TODO. |
 
 ---
 

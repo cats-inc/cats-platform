@@ -298,6 +298,12 @@ interface ChatViewHeaderProps {
 }
 
 function ChatViewHeader({ title, productMode }: ChatViewHeaderProps) {
+  // Phase 5 TODO: this header is where product-mode side-panel
+  // triggers will live (CodeBuilderView / ApprovalQueuePanel /
+  // ProjectDetailView / DeliveryPanel as bottom sheets per
+  // SPEC-095 #21). The mobile shell currently renders just the
+  // eyebrow + title — product-specific surfaces show up only via
+  // recents / lens screens, not as inline panels here.
   return (
     <View style={styles.header}>
       <Text style={styles.headerEyebrow}>{productLabel(productMode)}</Text>
