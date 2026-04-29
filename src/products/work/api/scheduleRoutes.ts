@@ -3,9 +3,13 @@ import { CoreConflictError, CoreNotFoundError } from '../../../core/errors.js';
 import { handleCoreError } from '../../../core/api/shared.js';
 import {
   createSchedulerService,
+  type ScheduleAdmissionResult,
   type ScheduleRuleCreateInput,
   type ScheduleRuleUpdateInput,
 } from '../../../platform/scheduler/index.js';
+import {
+  launchScheduledRunThroughSupervision,
+} from '../../../platform/supervision/scheduledRunExecution.js';
 import {
   matchRoute,
   readJsonBody,
@@ -38,7 +42,10 @@ export async function routeWorkScheduleApi(
 
     try {
       const service = createWorkSchedulerService(context);
-      const result = await service.manualTestFire(scheduleId);
+      const result = await launchAdmittedScheduleRun(
+        context,
+        await service.manualTestFire(scheduleId),
+      );
       sendJson(context.response, result.status === 'admitted' ? 201 : 200, result);
     } catch (error) {
       handleCoreError(context, error);
@@ -150,4 +157,29 @@ function createWorkSchedulerService(context: WorkApiRouteContext) {
     coreStore: context.dependencies.coreStore,
     now: context.dependencies.now,
   });
+}
+
+async function launchAdmittedScheduleRun(
+  context: WorkApiRouteContext,
+  result: ScheduleAdmissionResult,
+): Promise<ScheduleAdmissionResult> {
+  if (result.status !== 'admitted' || !result.run || !context.dependencies.runtimeClient) {
+    return result;
+  }
+
+  const launched = await launchScheduledRunThroughSupervision({
+    coreStore: context.dependencies.coreStore,
+    runtimeClient: context.dependencies.runtimeClient,
+    evidenceDataDir: context.dependencies.evidenceDataDir,
+    now: context.dependencies.now,
+  }, result.run.id);
+  if (!launched) {
+    return result;
+  }
+
+  return {
+    ...result,
+    run: launched.run,
+    mission: launched.mission ?? result.mission,
+  };
 }

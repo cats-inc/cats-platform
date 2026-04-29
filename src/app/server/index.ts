@@ -11,6 +11,9 @@ import {
   createSchedulerService,
   startSchedulerLoop,
 } from '../../platform/scheduler/index.js';
+import {
+  launchScheduledRunThroughSupervision,
+} from '../../platform/supervision/scheduledRunExecution.js';
 
 export type { ServerDependencies } from './contracts.js';
 
@@ -34,6 +37,19 @@ export function createServer(dependencies: ServerDependencies) {
           coreStore: resolvedDependencies.work.coreStore,
           now: resolvedDependencies.work.now,
         }),
+        async onTickResult(result) {
+          for (const admission of result.results) {
+            if (admission.status !== 'admitted' || !admission.run) {
+              continue;
+            }
+            await launchScheduledRunThroughSupervision({
+              coreStore: resolvedDependencies.work.coreStore,
+              runtimeClient: resolvedDependencies.work.runtimeClient,
+              evidenceDataDir: resolvedDependencies.work.evidenceDataDir,
+              now: resolvedDependencies.work.now,
+            }, admission.run.id);
+          }
+        },
       })
     : () => {};
 

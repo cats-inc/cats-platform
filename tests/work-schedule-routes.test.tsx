@@ -8,7 +8,11 @@ import {
   upsertCoreActor,
 } from '../src/core/model/index.ts';
 import { MemoryCoreStore } from '../src/core/store.ts';
-import { MemoryScheduleStore, type ScheduleTriggerMetadata } from '../src/platform/scheduler/index.ts';
+import type { RuntimeClient } from '../src/platform/runtime/client.ts';
+import {
+  MemoryScheduleStore,
+  type ScheduleTriggerMetadata,
+} from '../src/platform/scheduler/index.ts';
 import { routeWorkApi } from '../src/products/work/api/index.ts';
 
 function createCoreStoreWithCompanion() {
@@ -61,6 +65,7 @@ function schedulePayload() {
 function createTestServer(input: {
   coreStore: MemoryCoreStore;
   scheduleStore: MemoryScheduleStore;
+  runtimeClient?: RuntimeClient;
   now: () => Date;
 }) {
   return createServer(async (request, response) => {
@@ -73,6 +78,7 @@ function createTestServer(input: {
       dependencies: {
         coreStore: input.coreStore,
         scheduleStore: input.scheduleStore,
+        runtimeClient: input.runtimeClient,
         now: input.now,
       },
     });
@@ -83,7 +89,114 @@ function createTestServer(input: {
   });
 }
 
-async function request(server: ReturnType<typeof createServer>, method: string, path: string, body?: unknown) {
+function createRuntimeStub(): RuntimeClient & {
+  createdSessions: unknown[];
+  sentMessages: Array<{ sessionId: string; content: string; input?: unknown }>;
+} {
+  return {
+    createdSessions: [],
+    sentMessages: [],
+    async getHealth() {
+      return {
+        baseUrl: 'http://127.0.0.1:3110',
+        reachable: true,
+        status: 'ok',
+      };
+    },
+    async getSetupState() {
+      return {
+        status: 'ready',
+        providers: [],
+        availableCount: 0,
+        providerCount: 0,
+        providersReadyToApply: [],
+        providersNeedingAttention: [],
+      };
+    },
+    async getProviderConfig() {
+      return {};
+    },
+    async getProviderDiagnostics() {
+      return {
+        probe: 'light',
+        providers: [],
+      };
+    },
+    async getProviderModels(provider) {
+      return {
+        provider,
+        backend: 'cli',
+        instance: 'default',
+        defaultModel: null,
+        source: 'config',
+        cache: null,
+        models: [],
+        warnings: [],
+      };
+    },
+    async getAdvancedProviderModels(provider) {
+      return {
+        provider,
+        backend: 'cli',
+        instance: 'default',
+        defaultModel: null,
+        source: 'config',
+        cache: null,
+        models: [],
+        presets: [],
+        controls: [],
+        warnings: [],
+      };
+    },
+    async createSession(input) {
+      this.createdSessions.push(input);
+      return {
+        id: 'runtime-session-schedule-route',
+        provider: input.provider,
+        model: input.model ?? null,
+        status: 'ready',
+        cwd: input.cwd ?? null,
+      };
+    },
+    async sendMessage(sessionId, content, input) {
+      this.sentMessages.push({ sessionId, content, input });
+      return {
+        segments: [{ kind: 'text', text: 'scheduled runtime ok', toolName: null, toolId: null }],
+        inputTokens: 10,
+        outputTokens: 5,
+        tokensUsed: 15,
+      };
+    },
+    async observeSession() {
+      return { session: {} };
+    },
+    async streamSession() {},
+    async createWakeup() {
+      return {
+        request: { id: 'wakeup-schedule-route' },
+        coalesced: false,
+      };
+    },
+    async callMcp() {
+      return null;
+    },
+    async cancelSession() {},
+    async closeSession() {},
+    async deleteSession(sessionId) {
+      return {
+        sessionId,
+        status: 'deleted',
+      };
+    },
+  };
+}
+
+async function request(
+  server: ReturnType<typeof createServer>,
+  method: string,
+  path: string,
+  body?: unknown,
+) {
   const address = server.address();
   assert.ok(address && typeof address === 'object');
   const response = await fetch(`http://127.0.0.1:${address.port}${path}`, {
@@ -127,4 +240,57 @@ test('Work schedule routes create a generic rule and admit manual test fire', as
   const trigger = core.runs[0]?.metadata.scheduleTrigger as ScheduleTriggerMetadata | undefined;
   assert.equal(trigger?.ruleId, rule.id);
   assert.deepEqual(trigger?.originalTargetRef, { kind: 'cat', id: 'companion-route' });
+});
+
+test('Work manual schedule test fire launches through supervision runtime boundary', async (t) => {
+  const coreStore = createCoreStoreWithCompanion();
+  const scheduleStore = new MemoryScheduleStore();
+  const runtimeClient = createRuntimeStub();
+  let now = new Date('2026-04-29T00:00:00.000Z');
+  const server = createTestServer({
+    coreStore,
+    scheduleStore,
+    runtimeClient,
+    now: () => now,
+  });
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  t.after(() => server.close());
+
+  const created = await request(server, 'POST', '/api/work/schedules', schedulePayload());
+  const rule = created.payload?.rule as { id: string } | undefined;
+  assert.ok(rule?.id);
+
+  now = new Date('2026-04-29T00:05:00.000Z');
+  const fired = await request(server, 'POST', `/api/work/schedules/${rule.id}/test-fire`);
+  assert.equal(fired.status, 201);
+  assert.equal((fired.payload?.run as { status: string } | undefined)?.status, 'running');
+  assert.equal(runtimeClient.createdSessions.length, 1);
+  assert.equal(runtimeClient.sentMessages.length, 1);
+
+  const sessionInput = runtimeClient.createdSessions[0] as {
+    context?: { metadata?: Record<string, unknown> };
+  };
+  assert.equal(
+    sessionInput.context?.metadata?.supervisionBoundary,
+    'cats-supervision-runtime-boundary',
+  );
+  assert.equal(sessionInput.context?.metadata?.scheduleRuleId, rule.id);
+  assert.equal(sessionInput.context?.metadata?.supervisionSurface, 'schedule-rule-run-loop');
+  assert.match(
+    runtimeClient.sentMessages[0]?.content ?? '',
+    /Scheduled mission: Route daily greeting/u,
+  );
+
+  const core = await coreStore.readCore();
+  const run = core.runs[0];
+  assert.equal(run?.status, 'running');
+  assert.equal(run?.metadata.supervision && typeof run.metadata.supervision, 'object');
+  const supervision = run?.metadata.supervision as {
+    runtimeBridge?: { status?: string; sessionId?: string };
+    providerAgentRunLoop?: { outcomes?: unknown[] };
+  } | undefined;
+  assert.equal(supervision?.runtimeBridge?.status, 'started');
+  assert.equal(supervision?.runtimeBridge?.sessionId, 'runtime-session-schedule-route');
+  assert.equal(Array.isArray(supervision?.providerAgentRunLoop?.outcomes), true);
+  assert.equal(core.missions[0]?.status, 'running');
 });

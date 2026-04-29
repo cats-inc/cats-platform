@@ -3,6 +3,7 @@ import type { SchedulerService } from './service.js';
 export interface SchedulerLoopOptions {
   service: SchedulerService;
   intervalMs?: number;
+  onTickResult?: (result: Awaited<ReturnType<SchedulerService['tick']>>) => Promise<void>;
 }
 
 export type StopSchedulerLoop = () => void;
@@ -18,7 +19,8 @@ export function startSchedulerLoop(options: SchedulerLoopOptions): StopScheduler
     }
     ticking = true;
     try {
-      await options.service.tick({ startup });
+      const result = await options.service.tick({ startup });
+      await options.onTickResult?.(result);
     } catch (error) {
       const message = error instanceof Error ? error.stack ?? error.message : String(error);
       process.stderr.write(`[cats-platform-scheduler] tick_failed ${message}\n`);
