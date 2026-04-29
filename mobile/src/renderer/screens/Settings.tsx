@@ -1,5 +1,5 @@
 import { Link } from 'expo-router';
-import { type ReactNode, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import {
   Linking,
   Pressable,
@@ -7,13 +7,19 @@ import {
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 
 import { ownerFixture } from '../../api/fixtures/owner';
+import {
+  type ConnectionConfig,
+  type ConnectionMode,
+  loadConnectionConfig,
+  resolveWebDashboardUrl,
+  saveConnectionConfig,
+} from '../../api/persistence';
 import { colors, radii, spacing, typography } from '../theme';
-
-type ConnectionMode = 'relay' | 'tunnel' | 'tailscale';
 
 interface ConnectionOption {
   id: ConnectionMode;
@@ -39,19 +45,49 @@ const CONNECTION_OPTIONS: ConnectionOption[] = [
   },
 ];
 
-/**
- * The web dashboard URL is not knowable until pairing produces a host
- * URL. `127.0.0.1` resolves to the device itself on mobile, not the
- * desktop, so we cannot fall back to the desktop's local URL. Until
- * pairing exists, the entry is rendered disabled.
- */
-const PAIRED_WEB_DASHBOARD_URL: string | null = null;
-
 export function Settings() {
-  const [connection, setConnection] = useState<ConnectionMode>('relay');
+  const [connectionConfig, setConnectionConfig] = useState<ConnectionConfig>({
+    mode: 'relay',
+    baseUrl: null,
+    pairingToken: null,
+  });
+  const [baseUrlDraft, setBaseUrlDraft] = useState('');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [approvalsOnly, setApprovalsOnly] = useState(false);
-  const webDashboardUrl = PAIRED_WEB_DASHBOARD_URL;
+
+  useEffect(() => {
+    let active = true;
+    void loadConnectionConfig().then((loaded) => {
+      if (!active) {
+        return;
+      }
+      setConnectionConfig(loaded);
+      setBaseUrlDraft(loaded.baseUrl ?? '');
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const updateConnection = (next: ConnectionConfig) => {
+    setConnectionConfig(next);
+    void saveConnectionConfig(next);
+  };
+
+  const handleSelectMode = (mode: ConnectionMode) => {
+    updateConnection({ ...connectionConfig, mode });
+  };
+
+  const handleCommitBaseUrl = () => {
+    const trimmed = baseUrlDraft.trim();
+    const next = trimmed.length > 0 ? trimmed : null;
+    if (next === connectionConfig.baseUrl) {
+      return;
+    }
+    updateConnection({ ...connectionConfig, baseUrl: next });
+  };
+
+  const webDashboardUrl = resolveWebDashboardUrl(connectionConfig);
 
   return (
     <ScrollView
@@ -70,14 +106,34 @@ export function Settings() {
           <ConnectionRow
             key={option.id}
             option={option}
-            selected={connection === option.id}
-            onSelect={() => setConnection(option.id)}
+            selected={connectionConfig.mode === option.id}
+            onSelect={() => handleSelectMode(option.id)}
           />
         ))}
+        <View style={styles.baseUrlRow}>
+          <Text style={styles.baseUrlLabel}>Desktop base URL</Text>
+          <TextInput
+            value={baseUrlDraft}
+            onChangeText={setBaseUrlDraft}
+            onBlur={handleCommitBaseUrl}
+            onSubmitEditing={handleCommitBaseUrl}
+            placeholder="http://192.168.1.244:8181"
+            placeholderTextColor={colors.fg.muted}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="url"
+            style={styles.baseUrlInput}
+          />
+          <Text style={styles.baseUrlHint}>
+            Where this device should reach your desktop cats. LAN, Tailscale,
+            or tunnel URL — saved on blur.
+          </Text>
+        </View>
         {__DEV__ ? (
           <Text style={styles.scopeNote}>
-            Live pairing flow lands in PLAN-084 Phase 7. Selection here is
-            local state only for now.
+            Phase-7 pairing flow will replace this manual URL entry. The
+            persisted shape is forward-compatible: a `pairingToken` slot
+            already exists in the config.
           </Text>
         ) : null}
       </Section>
@@ -130,17 +186,17 @@ export function Settings() {
             </Text>
             <Text style={styles.linkRowDescription}>
               {webDashboardUrl === null
-                ? 'Pair this device with your desktop cats first to enable the web dashboard link.'
-                : 'Cats registry editor, transport bindings, and other desktop-owned settings.'}
+                ? 'Set a desktop base URL above to enable the web dashboard link.'
+                : `Opens ${webDashboardUrl}`}
             </Text>
           </View>
           <Text style={styles.linkRowChevron}>›</Text>
         </Pressable>
         {__DEV__ ? (
           <Text style={styles.scopeNote}>
-            Settings tab depth is an open SPEC-095 question. Companion
-            controls and Cats registry read-only browse may land here
-            pending owner decision.
+            Settings tab depth is locked per SPEC-095 — exactly the four
+            sections above. Companion controls and Cats registry browse
+            stay desktop-only.
           </Text>
         ) : null}
       </Section>
@@ -322,6 +378,31 @@ const styles = StyleSheet.create({
   },
   connectionDescription: {
     color: colors.fg.secondary,
+    ...typography.caption,
+  },
+  baseUrlRow: {
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.md,
+    gap: spacing.xs,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.subtle,
+  },
+  baseUrlLabel: {
+    color: colors.fg.primary,
+    ...typography.bodyStrong,
+  },
+  baseUrlInput: {
+    color: colors.fg.primary,
+    ...typography.body,
+    backgroundColor: colors.bg.panelSubtle,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.sm,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+  },
+  baseUrlHint: {
+    color: colors.fg.muted,
     ...typography.caption,
   },
   toggleRow: {
