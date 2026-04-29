@@ -77,8 +77,10 @@ creates a `Project` / `WorkItem` fallback or a new Core record family.
 Code artifacts are materialized through structured declarations from agents,
 tools, system candidate detection, or user imports; the product server
 validates and normalizes those declarations before writing
-`CoreArtifactRecord`. Workspace scanning and transcript JSON parsing are not
-authoritative artifact producer paths.
+`CoreArtifactRecord`. Phase 1 agent declarations use the Cats-native Code
+runtime action `declare_artifact`, while system detection is candidate-only.
+Workspace scanning and transcript JSON parsing are not authoritative artifact
+producer paths.
 
 Task projection is shared across products. Work Graph surfaces render every
 Core `Task` they know about and label task rows with a product binding:
@@ -1074,4 +1076,4 @@ intentionally deferred:
 
 ---
 
-*Last updated: 2026-04-19*
+*Last updated: 2026-04-29*

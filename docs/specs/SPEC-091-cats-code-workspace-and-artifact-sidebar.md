@@ -100,17 +100,20 @@ creation for `+New code`.
 13. Code artifact materialization shall use the structured declaration contract
     defined by SPEC-092. Agent declarations, tool declarations, system
     candidates, and user imports are valid producer paths.
-14. Cwd scanning and transcript JSON parsing shall not be authoritative
+14. Phase 1 agent declarations shall use the Cats-native Code runtime action
+    `declare_artifact` defined by SPEC-092. System candidates are
+    candidate-only, not a durable record-authoring path.
+15. Cwd scanning and transcript JSON parsing shall not be authoritative
     producer paths for the Code `Artifacts` sidebar.
-15. Artifact rows shall preserve provenance back to the strongest available
+16. Artifact rows shall preserve provenance back to the strongest available
     anchors: conversation, task, run, workspace, project, and work item.
-16. Artifact detail shall deep-link back to the relevant Code conversation,
+17. Artifact detail shall deep-link back to the relevant Code conversation,
     task detail, run history, workspace, and Work object when those anchors
     exist.
-17. A Code artifact may also appear in Work as evidence when it is anchored to
+18. A Code artifact may also appear in Work as evidence when it is anchored to
     a Work-visible object, but Work evidence placement does not make Artifacts
     a Work-owned sidebar category.
-18. If a Code-origin task is later linked into Work through `WorkItem.taskId`,
+19. If a Code-origin task is later linked into Work through `WorkItem.taskId`,
     Code workspace and artifact provenance remains available as Code execution
     context; Work current binding may still project as `work`.
 
@@ -202,8 +205,9 @@ context. Current Code metadata already distinguishes:
 - `conversation_repo`
 
 `Artifacts` project from `CoreArtifactRecord` rows that Cats Code
-materializes through the structured declaration contract in SPEC-092. Existing
-artifact kinds are:
+materializes through the structured declaration contract in SPEC-092. The
+Artifacts sidebar consumes only materialized rows; it does not consume raw
+declarations, runtime stdout, or workspace scans. Existing artifact kinds are:
 
 - `document`
 - `report`

@@ -252,6 +252,11 @@ Rules:
 - Code artifact rows are materialized through structured declarations from
   agents, tools, system candidates, or user imports. The product server
   validates and normalizes declarations before writing Core artifacts.
+- Phase 1 agent declarations use the Cats-native Code runtime action
+  `declare_artifact`, backed by the Code product API/delegate. MCP and runtime
+  stream events may be adapters later, but not alternate payload contracts.
+- System candidates are candidate-only. Record-capable runtime outputs must be
+  represented as tool or agent declarations.
 - Workspace scanning and transcript JSON parsing are not authoritative artifact
   producer paths.
 - Opening `Workspaces` or `Artifacts` must not create fallback Work Planning
@@ -463,4 +468,4 @@ When converging product work into the platform host:
 
 ---
 
-*Last updated: 2026-04-19*
+*Last updated: 2026-04-29*

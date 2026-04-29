@@ -393,8 +393,12 @@ can be reused by `Cats Chat`, `Cats Work`, and `Cats Code`.
 - **Description**: `Cats Code` shall materialize Code artifacts from structured
   declarations submitted by agents, tools, system candidate detection, or user
   imports. The product server shall validate, normalize, stamp provenance, and
-  write `CoreArtifactRecord` rows; cwd scanning and transcript JSON parsing
-  shall not be authoritative artifact producer paths.
+  write `CoreArtifactRecord` rows using the SPEC-092 idempotency,
+  disposition/status precedence, publish-capability, and activity rules. Phase
+  1 agent declarations shall use the Cats-native Code runtime action
+  `declare_artifact`; system detection shall be candidate-only. Cwd scanning
+  and transcript JSON parsing shall not be authoritative artifact producer
+  paths.
 - **Priority**: High
 - **Status**: Planned
 
@@ -845,4 +849,4 @@ hand after creation.
 
 ---
 
-*Last updated: 2026-04-14*
+*Last updated: 2026-04-29*

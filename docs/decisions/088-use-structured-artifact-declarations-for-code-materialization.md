@@ -39,15 +39,15 @@ contract.
 
 The accepted producer classes are:
 
-- **agent-declared artifact**: a coding assistant calls a product/tool/API
-  surface such as `record_artifact` or emits an equivalent structured runtime
-  event.
+- **agent-declared artifact**: a coding assistant calls the Cats-native Code
+  runtime action `declare_artifact`, backed by the Code product API/delegate.
 - **tool-declared artifact**: a tool returns structured output that is already
   an artifact candidate, such as a preview URL, build output, test report,
   screenshot, patch bundle, or review report.
 - **system candidate artifact**: the Code bridge derives a candidate from
-  execution context such as run diff summary, known output path, test result,
-  preview server, or delivery manifest.
+  execution context such as run diff summary or changed-files summary. System
+  detection is candidate-only; record-capable runtime outputs must come through
+  tool or agent declarations.
 - **user-imported artifact**: the user attaches, imports, uploads, or marks an
   object as an artifact.
 
@@ -61,9 +61,20 @@ The server must:
 3. verify path / URL / anchor safety,
 4. stamp authoritative provenance from the current conversation, task, run,
    workspace, actor, and product context,
-5. decide whether the declaration becomes a `draft`, `ready`, or `published`
+5. build the canonical idempotency key from server-resolved producer identity,
+   execution scope, and declaration id,
+6. resolve label defaults, producer-requested downgrades, and server policy in
+   that order,
+7. decide whether the declaration becomes a `draft`, `ready`, or `published`
    `CoreArtifactRecord`,
-6. write the artifact through the shared Core artifact persistence path.
+8. require explicit server-side publish capability before writing
+   `published`,
+9. write the artifact and idempotent `artifact_recorded` activity through the
+   shared Core persistence path.
+
+The first agent-facing channel is the Cats-native Code runtime action
+`declare_artifact`. MCP tools and runtime stream events may be adapters later,
+but they do not define a second payload shape or persistence authority.
 
 The product must not create a durable artifact merely because:
 
@@ -94,7 +105,8 @@ preview, build output, screenshot, or review report.
 
 ### Negative
 
-- Agents and runtime/tool bridges need a new structured declaration surface.
+- Agents and runtime/tool bridges need to integrate with the
+  `declare_artifact` runtime action / product API declaration surface.
 - Some useful outputs will not appear in Artifacts until the producer learns to
   declare them or the system adds candidate detection.
 - Candidate artifact handling needs product policy: some declarations can be
@@ -126,7 +138,9 @@ preview, build output, screenshot, or review report.
 - **Cons**: Brittle, user-visible, prompt-sensitive, hard to validate
   idempotently, and conflates conversation content with persistence commands.
 - **Why rejected**: Transcript prose is not an authority boundary. Structured
-  declarations must travel through a product/tool/API/event channel.
+  declarations must travel through the Code product API/delegate, with the
+  Phase 1 agent path exposed as the Cats-native Code runtime action
+  `declare_artifact`.
 
 ### Alternative 3: Trust agent declarations directly as Core artifacts
 
