@@ -125,7 +125,7 @@ Inventory notes:
 - [x] Add inspect endpoint.
 - [x] Add route serving for `/apps/:appId/*`.
 - [x] Add scoped app API route mounting under `/api/apps/:appId/*`.
-- [ ] Gate mutations behind owner-level confirmation in the UI flow.
+- [x] Gate mutations behind owner-level confirmation in the UI flow.
 - [x] Ensure app APIs cannot shadow core, product, setup, runtime, or settings
       endpoints.
 
@@ -146,8 +146,8 @@ Inventory notes:
 - [ ] Add export metadata that maps Code artifacts to a Cats App Package.
 - [ ] Add an export command/action that builds `dist/renderer` and optional
       `dist/server`.
-- [ ] Add validation before install handoff.
-- [ ] Add an install review screen showing display name, route, trust tier, and
+- [x] Add validation before install handoff.
+- [x] Add an install review screen showing display name, route, trust tier, and
       permissions.
 - [ ] After install, optionally navigate to the installed `/apps/:appId` route.
 - [x] Add a sample Pomodoro package fixture that can be exported and installed.
@@ -282,6 +282,7 @@ The overnight implementation agent should aim for this first vertical slice:
 | 2026-04-30 | Connected enabled system `product-module` packages to the host product envelope, kept user apps out of Products, added a Cats Learn fixture path, and kept first-party product packages mirrored in installed apps inventory. |
 | 2026-04-30 | Exposed connector and tool declarations on installed app descriptors and surfaced connector service, auth, capability, and inert tool summaries in Settings Apps. |
 | 2026-04-30 | Added shared App SDK activation/renderer context types and a Pomodoro fixture package that validates through the app package API. |
+| 2026-04-30 | Replaced the Local install placeholder with path validation, owner confirmation, install review metadata, install API handoff, local payload update, and envelope refresh. |
 
 ---
 

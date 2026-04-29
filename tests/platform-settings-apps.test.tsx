@@ -33,6 +33,8 @@ test('PlatformSettingsApps renders an empty installed app state', () => {
   assert.match(markup, />0</u);
   assert.match(markup, />No installed apps are registered yet\.</u);
   assert.match(markup, />Local install</u);
+  assert.match(markup, />Review</u);
+  assert.match(markup, />Needs review</u);
 });
 
 test('PlatformSettingsApps renders installed app and connector package status', () => {

@@ -10,9 +10,11 @@ import {
   SettingsStatusChip,
 } from '../../../design/components/settings/index.js';
 import type {
+  CatsAppManifestV1,
   CatsAppInstallState,
   PlatformInstalledAppDescriptor,
 } from '../../../shared/catsAppManifest.js';
+import type { CatsAppManifestValidationIssue } from '../../../shared/catsAppValidation.js';
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
 
 export interface PlatformSettingsAppsProps {
@@ -25,6 +27,20 @@ type AppPackageMutation = 'enable' | 'disable' | 'uninstall';
 interface AppPackageMutationResult {
   app?: PlatformInstalledAppDescriptor;
   appId?: string;
+}
+
+interface AppPackageValidationResult {
+  ok: boolean;
+  packagePath?: string;
+  manifestPath?: string;
+  manifest?: CatsAppManifestV1;
+  issues?: CatsAppManifestValidationIssue[];
+}
+
+interface LocalInstallReview {
+  packagePath: string;
+  manifestPath: string | null;
+  manifest: CatsAppManifestV1;
 }
 
 function formatCategory(category: PlatformInstalledAppDescriptor['category']): string {
@@ -131,6 +147,12 @@ function removeInstalledApp(
   return installedApps.filter((entry) => entry.id !== appId);
 }
 
+function summarizeValidationIssues(
+  issues: readonly CatsAppManifestValidationIssue[] = [],
+): string {
+  return issues[0]?.message ?? 'Package validation failed.';
+}
+
 export function PlatformSettingsApps({
   installedApps,
   onInstalledAppsUpdate,
@@ -141,6 +163,9 @@ export function PlatformSettingsApps({
   const { toasts, showToast } = useToast();
   const { dialog, confirm, handleClose } = useConfirmDialog();
   const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [localPackagePath, setLocalPackagePath] = useState('');
+  const [installReview, setInstallReview] = useState<LocalInstallReview | null>(null);
+  const [installBusy, setInstallBusy] = useState(false);
 
   async function mutateApp(app: PlatformInstalledAppDescriptor, mutation: AppPackageMutation) {
     const confirmation = await confirm({
@@ -193,6 +218,85 @@ export function PlatformSettingsApps({
       showToast(error instanceof Error ? error.message : `${mutation} failed.`);
     } finally {
       setBusyAction(null);
+    }
+  }
+
+  async function reviewLocalPackage() {
+    const packagePath = localPackagePath.trim();
+    if (!packagePath) {
+      showToast('Package path is required.');
+      return;
+    }
+
+    setInstallBusy(true);
+    try {
+      const response = await fetch('/api/apps/validate', {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ packagePath }),
+      });
+      const result = await response.json() as AppPackageValidationResult;
+      if (!response.ok || !result.ok || !result.manifest) {
+        throw new Error(summarizeValidationIssues(result.issues));
+      }
+      setInstallReview({
+        packagePath: result.packagePath ?? packagePath,
+        manifestPath: result.manifestPath ?? null,
+        manifest: result.manifest,
+      });
+    } catch (error) {
+      setInstallReview(null);
+      showToast(error instanceof Error ? error.message : 'Package validation failed.');
+    } finally {
+      setInstallBusy(false);
+    }
+  }
+
+  async function installReviewedPackage() {
+    if (!installReview) return;
+    const confirmation = await confirm({
+      title: 'Install app',
+      message: `Install "${installReview.manifest.displayName}"? It will be enabled after install.`,
+      confirmLabel: 'Install',
+      defaultAction: 'cancel',
+    });
+    if (!confirmation) return;
+
+    setInstallBusy(true);
+    try {
+      const response = await fetch('/api/apps/install', {
+        method: 'POST',
+        headers: {
+          Accept: 'application/json',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          packagePath: installReview.packagePath,
+          enable: true,
+        }),
+      });
+      const result = await response.json() as AppPackageMutationResult & {
+        ok?: boolean;
+        issues?: CatsAppManifestValidationIssue[];
+      };
+      if (!response.ok || !result.app) {
+        throw new Error(
+          result.issues
+            ? summarizeValidationIssues(result.issues)
+            : `Install failed (${response.status})`,
+        );
+      }
+      onInstalledAppsUpdate?.(upsertInstalledApp(installedApps, result.app));
+      setLocalPackagePath('');
+      setInstallReview(null);
+      dispatchPlatformEnvelopeRefresh();
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'Install failed.');
+    } finally {
+      setInstallBusy(false);
     }
   }
 
@@ -299,8 +403,61 @@ export function PlatformSettingsApps({
           )}
           <SettingsOptionRow
             label="Local install"
-            description="Install review is pending."
-            control={<SettingsStatusChip tone="warm">Planned</SettingsStatusChip>}
+            description="Review a local Cats app package before adding it to Cats."
+            layout="stack"
+            control={(
+              <div className="settingsAppsInstall">
+                <label className="fieldLabel">
+                  <span>Package path</span>
+                  <input
+                    className="textInput"
+                    value={localPackagePath}
+                    placeholder="/path/to/cats-app-package"
+                    disabled={installBusy}
+                    onChange={(event) => {
+                      setLocalPackagePath(event.target.value);
+                      setInstallReview(null);
+                    }}
+                  />
+                </label>
+                <SettingsActionBar>
+                  <button
+                    type="button"
+                    className="secondaryButton"
+                    disabled={installBusy}
+                    onClick={() => void reviewLocalPackage()}
+                  >
+                    Review
+                  </button>
+                  <SettingsStatusChip tone={installReview ? 'ready' : 'warm'}>
+                    {installReview ? 'Ready' : 'Needs review'}
+                  </SettingsStatusChip>
+                </SettingsActionBar>
+                {installReview ? (
+                  <div className="settingsAppsReview">
+                    <span>{installReview.manifest.displayName}</span>
+                    <span>{installReview.manifest.id}</span>
+                    <span>
+                      {installReview.manifest.contributions.lobbyApps?.[0]?.routePath
+                        ?? 'No Lobby route'}
+                    </span>
+                    <span>{formatCategory(installReview.manifest.category)}</span>
+                    <span>{formatTrustTier(installReview.manifest.trustTier)}</span>
+                    <span>{formatPermissionCount(installReview.manifest.permissions.length)}</span>
+                    <SettingsActionBar>
+                      <button
+                        type="button"
+                        className="primaryButton"
+                        disabled={installBusy}
+                        onClick={() => void installReviewedPackage()}
+                      >
+                        Install
+                      </button>
+                    </SettingsActionBar>
+                  </div>
+                ) : null}
+              </div>
+            )}
           />
         </div>
       </SettingsSection>
