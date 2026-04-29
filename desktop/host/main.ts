@@ -1228,6 +1228,7 @@ async function runSetupAction(
     helperId: string;
     mode: DesktopSetupHelperMode;
     extraArguments?: string[];
+    dryRun?: boolean;
   },
 ): Promise<DesktopSetupSnapshot> {
   if (!hostConfig) {
@@ -1498,18 +1499,22 @@ async function main(): Promise<void> {
     ) {
       throw new Error('Invalid packaged setup helper action payload.');
     }
-    const rawExtra = (payload as { extraArguments?: unknown }).extraArguments;
-    let extraArguments: string[] | undefined;
-    if (rawExtra !== undefined) {
-      if (!Array.isArray(rawExtra) || !rawExtra.every((entry): entry is string => typeof entry === 'string')) {
-        throw new Error('Invalid packaged setup helper extraArguments payload.');
+    const mode = (payload as { mode: DesktopSetupHelperMode }).mode;
+    const rawDryRun = (payload as { dryRun?: unknown }).dryRun;
+    let dryRun = false;
+    if (rawDryRun !== undefined) {
+      if (typeof rawDryRun !== 'boolean') {
+        throw new Error('Invalid packaged setup helper dryRun payload.');
       }
-      extraArguments = rawExtra;
+      if (rawDryRun && mode !== 'uninstall') {
+        throw new Error('dryRun is only allowed for uninstall mode.');
+      }
+      dryRun = rawDryRun;
     }
     return await runSetupAction({
       helperId: (payload as { helperId: string }).helperId,
-      mode: (payload as { mode: DesktopSetupHelperMode }).mode,
-      ...(extraArguments ? { extraArguments } : {}),
+      mode,
+      ...(dryRun ? { dryRun: true } : {}),
     });
   });
   ipcMain.handle('cats-host:resume-setup', async () => {

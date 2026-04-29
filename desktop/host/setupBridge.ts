@@ -41,6 +41,7 @@ interface RunDesktopSetupHelperInput {
   helperId: string;
   mode: DesktopSetupHelperMode;
   extraArguments?: string[];
+  dryRun?: boolean;
 }
 
 interface ExecFileLikeError {
@@ -486,12 +487,16 @@ function buildHelperExecution(
   scriptPath: string,
   mode: DesktopSetupHelperMode,
   extraArguments: string[] | undefined,
+  dryRun: boolean | undefined,
 ): {
   command: string;
   args: string[];
   windowsHide: boolean;
 } {
   const args = [modeFlag(mode), '-Json'];
+  if (dryRun) {
+    args.push('-DryRun');
+  }
   if (Array.isArray(extraArguments)) {
     for (const entry of extraArguments) {
       if (typeof entry === 'string' && entry.length > 0) {
@@ -727,7 +732,13 @@ export async function runDesktopSetupHelper(
       error: `${helper.label} does not support ${input.action.mode} mode.`,
     });
   }
-  const execution = buildHelperExecution(helper, scriptPath, input.action.mode, input.action.extraArguments);
+  const execution = buildHelperExecution(
+    helper,
+    scriptPath,
+    input.action.mode,
+    input.action.extraArguments,
+    input.action.dryRun,
+  );
 
   let output: ExecFileResult;
   let runState: DesktopSetupActionRecord['runState'] = 'completed';

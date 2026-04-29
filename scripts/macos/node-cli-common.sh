@@ -503,10 +503,10 @@ run_node_cli_pack() {
 $(node_cli_package_rows)
 EOF
 
-    if [ "$dry_run" = 'true' ]; then
-      uninstall_status='preview'
-    elif [ $installed_count -eq 0 ]; then
+    if [ $installed_count -eq 0 ]; then
       uninstall_status='not_installed'
+    elif [ "$dry_run" = 'true' ]; then
+      uninstall_status='preview'
     elif [ ${#warnings[@]} -gt 0 ]; then
       uninstall_status='changes_required'
     else

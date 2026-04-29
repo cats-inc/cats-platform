@@ -163,22 +163,32 @@ const bridge = {
   runSetupHelper(
     helperId: string,
     mode: DesktopSetupHelperMode,
-    extraArguments?: string[],
+    options?: { dryRun?: boolean },
   ): Promise<DesktopSetupSnapshot> {
     if (typeof helperId !== 'string' || helperId.trim().length === 0) {
       throw new Error(`Invalid desktop setup helper id: ${String(helperId)}`);
     }
-    let extras: string[] | undefined;
-    if (extraArguments !== undefined) {
-      if (!Array.isArray(extraArguments) || !extraArguments.every((entry) => typeof entry === 'string')) {
-        throw new Error('Invalid desktop setup helper extraArguments.');
+    const validatedMode = assertDesktopSetupHelperMode(mode);
+    let dryRun = false;
+    if (options !== undefined) {
+      if (typeof options !== 'object' || options === null) {
+        throw new Error('Invalid desktop setup helper options.');
       }
-      extras = extraArguments.slice();
+      const candidateDryRun = (options as { dryRun?: unknown }).dryRun;
+      if (candidateDryRun !== undefined) {
+        if (typeof candidateDryRun !== 'boolean') {
+          throw new Error('Invalid desktop setup helper dryRun option.');
+        }
+        if (candidateDryRun && validatedMode !== 'uninstall') {
+          throw new Error('dryRun is only allowed for uninstall mode.');
+        }
+        dryRun = candidateDryRun;
+      }
     }
     return ipcRenderer.invoke('cats-host:run-setup-helper', {
       helperId,
-      mode: assertDesktopSetupHelperMode(mode),
-      ...(extras ? { extraArguments: extras } : {}),
+      mode: validatedMode,
+      ...(dryRun ? { dryRun: true } : {}),
     });
   },
   resumeSetup(): Promise<DesktopSetupSnapshot> {

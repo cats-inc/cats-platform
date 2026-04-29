@@ -195,13 +195,13 @@ function buildOutcome(
 async function invokeHelper(
   helperId: string,
   mode: RuntimeLifecycleHelperMode,
-  extraArguments?: string[],
+  options?: { dryRun?: boolean },
 ): Promise<DesktopSetupSnapshot | undefined> {
   const bridge = resolveDesktopHostBridge();
   if (!bridge?.runSetupHelper) {
     return undefined;
   }
-  return await bridge.runSetupHelper(helperId, mode, extraArguments);
+  return await bridge.runSetupHelper(helperId, mode, options);
 }
 
 export async function runRuntimeLifecycleAction(
@@ -276,7 +276,7 @@ export async function previewRuntimeLifecycleUninstall(
   }
 
   try {
-    const snapshot = await invokeHelper(helper.id, 'uninstall', ['--dry-run']);
+    const snapshot = await invokeHelper(helper.id, 'uninstall', { dryRun: true });
     const lastAction = snapshot?.state?.lastAction ?? null;
     if (!lastAction || lastAction.helperId !== helper.id || lastAction.mode !== 'uninstall') {
       return {

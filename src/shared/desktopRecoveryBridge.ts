@@ -101,7 +101,7 @@ export interface DesktopHostBridge {
   runSetupHelper?: (
     helperId: string,
     mode: RuntimeLifecycleHelperMode,
-    extraArguments?: string[],
+    options?: { dryRun?: boolean },
   ) => Promise<DesktopSetupSnapshot>;
   resumeSetup?: () => Promise<DesktopSetupSnapshot>;
   screenshotRegionCaptureAvailable?: boolean;

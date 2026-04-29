@@ -547,17 +547,20 @@ run_native_provider_installer() {
     fi
 
     local uninstall_status
-    if [ "$dry_run" = 'true' ]; then
-      uninstall_status='preview'
-    elif [ ${#uninstall_planned[@]} -eq 0 ] && [ -z "$uninstall_remaining" ]; then
+    if [ ${#uninstall_planned[@]} -eq 0 ]; then
       uninstall_status='not_installed'
+    elif [ "$dry_run" = 'true' ]; then
+      uninstall_status='preview'
     elif [ -n "$uninstall_remaining" ]; then
       uninstall_status='changes_required'
-      uninstall_warnings+=("system_install_remains_at:$uninstall_remaining")
     elif [ ${#uninstall_warnings[@]} -gt 0 ]; then
       uninstall_status='changes_required'
     else
       uninstall_status='uninstalled'
+    fi
+
+    if [ -n "$uninstall_remaining" ]; then
+      uninstall_warnings+=("system_install_remains_at:$uninstall_remaining")
     fi
 
     local uninstall_installed='false'

@@ -340,10 +340,10 @@ if ($Uninstall) {
     }
   }
 
-  $uninstallStatus = if ($DryRun) {
-    'preview'
-  } elseif ($uninstallPlanned.Count -eq 0) {
+  $uninstallStatus = if ($uninstallPlanned.Count -eq 0) {
     'not_installed'
+  } elseif ($DryRun) {
+    'preview'
   } elseif ($uninstallWarnings.Count -gt 0) {
     'changes_required'
   } else {

@@ -76,6 +76,29 @@ interface BulkPrompt {
 
 type ConfirmationPrompt = SinglePrompt | BulkPrompt | null;
 
+function singlePromptIsActionable(prompt: SinglePrompt): boolean {
+  if (prompt.loading) return false;
+  if (!prompt.preview || !prompt.preview.available) return false;
+  return prompt.preview.plannedActions.length > 0;
+}
+
+function bulkPromptHasAnyActionable(prompt: BulkPrompt): boolean {
+  if (prompt.loading) return false;
+  if (prompt.previews.size === 0) return false;
+  for (const helper of prompt.helpers) {
+    const preview = prompt.previews.get(helper.id);
+    if (preview?.available && preview.plannedActions.length > 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function bulkPromptAllPreviewsResolved(prompt: BulkPrompt): boolean {
+  if (prompt.loading) return false;
+  return prompt.helpers.every((helper) => prompt.previews.has(helper.id));
+}
+
 export function PlatformSettingsRuntime({
   payload,
 }: {
@@ -426,36 +449,46 @@ export function PlatformSettingsRuntime({
         </SettingsDangerZone>
       ) : null}
 
-      {confirmation ? (
-        <div className="settingsRuntimeConfirmOverlay" role="dialog" aria-modal="true">
-          <div className="settingsRuntimeConfirmCard">
-            {confirmation.kind === 'single' ? (
-              <SingleUninstallConfirmBody prompt={confirmation} />
-            ) : (
-              <BulkUninstallConfirmBody prompt={confirmation} />
-            )}
-            <SettingsActionBar>
-              <button
-                type="button"
-                className="secondaryButton"
-                onClick={() => setConfirmation(null)}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className="dangerButton"
-                disabled={confirmation.loading}
-                onClick={() => void handleUninstallConfirmed()}
-              >
-                {confirmation.kind === 'single'
-                  ? 'Uninstall'
-                  : 'Uninstall all listed'}
-              </button>
-            </SettingsActionBar>
+      {confirmation ? (() => {
+        const canConfirm = confirmation.kind === 'single'
+          ? singlePromptIsActionable(confirmation)
+          : bulkPromptAllPreviewsResolved(confirmation) && bulkPromptHasAnyActionable(confirmation);
+        const cancelLabel = confirmation.kind === 'single'
+          ? confirmation.preview?.status === 'not_installed' || (!canConfirm && !confirmation.loading)
+            ? 'Close'
+            : 'Cancel'
+          : 'Cancel';
+        return (
+          <div className="settingsRuntimeConfirmOverlay" role="dialog" aria-modal="true">
+            <div className="settingsRuntimeConfirmCard">
+              {confirmation.kind === 'single' ? (
+                <SingleUninstallConfirmBody prompt={confirmation} />
+              ) : (
+                <BulkUninstallConfirmBody prompt={confirmation} />
+              )}
+              <SettingsActionBar>
+                <button
+                  type="button"
+                  className="secondaryButton"
+                  onClick={() => setConfirmation(null)}
+                >
+                  {cancelLabel}
+                </button>
+                <button
+                  type="button"
+                  className="dangerButton"
+                  disabled={!canConfirm}
+                  onClick={() => void handleUninstallConfirmed()}
+                >
+                  {confirmation.kind === 'single'
+                    ? 'Uninstall'
+                    : 'Uninstall all listed'}
+                </button>
+              </SettingsActionBar>
+            </div>
           </div>
-        </div>
-      ) : null}
+        );
+      })() : null}
 
       <ToastContainer toasts={toasts} />
     </>

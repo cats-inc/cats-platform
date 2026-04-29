@@ -27,6 +27,26 @@ function Test-PackagedProviderPathRemovable {
   return (Test-Path -LiteralPath $Path)
 }
 
+function Test-DetectedPathInPlannedRemovals {
+  param(
+    [string]$DetectedPath,
+    [string[]]$PlannedPaths
+  )
+  if ([string]::IsNullOrWhiteSpace($DetectedPath)) { return $false }
+  if (-not $PlannedPaths -or $PlannedPaths.Count -eq 0) { return $false }
+  $detectedNorm = $DetectedPath.TrimEnd([char]'\', [char]'/')
+  $cmp = [System.StringComparison]::OrdinalIgnoreCase
+  foreach ($planned in $PlannedPaths) {
+    if ([string]::IsNullOrWhiteSpace($planned)) { continue }
+    $plannedNorm = $planned.TrimEnd([char]'\', [char]'/')
+    if ([string]::Equals($detectedNorm, $plannedNorm, $cmp)) { return $true }
+    $startsBack = $detectedNorm.StartsWith("$plannedNorm\", $cmp)
+    $startsFwd = $detectedNorm.StartsWith("$plannedNorm/", $cmp)
+    if ($startsBack -or $startsFwd) { return $true }
+  }
+  return $false
+}
+
 function Remove-PackagedProviderPath {
   param(
     [string]$Path,
@@ -103,11 +123,18 @@ function Invoke-PackagedProviderUninstall {
   }
 
   if ($DryRun) {
+    $detectedIsExternal = $false
     if ($remainingInstalled -and $remainingCommandPath) {
-      $warnings.Add("system_install_remains_at:$remainingCommandPath") | Out-Null
-      $manualSteps.Add("System install at $remainingCommandPath cannot be removed by this helper; uninstall it through its installer.") | Out-Null
+      $detectedInPlanned = Test-DetectedPathInPlannedRemovals `
+        -DetectedPath $remainingCommandPath `
+        -PlannedPaths $allPaths.ToArray()
+      if (-not $detectedInPlanned) {
+        $detectedIsExternal = $true
+        $warnings.Add("system_install_remains_at:$remainingCommandPath") | Out-Null
+        $manualSteps.Add("System install at $remainingCommandPath cannot be removed by this helper; uninstall it through its installer.") | Out-Null
+      }
     }
-    $previewStatus = if ($allPaths.Count -eq 0 -and -not $remainingInstalled) {
+    $previewStatus = if ($allPaths.Count -eq 0 -and -not $detectedIsExternal) {
       'not_installed'
     } else {
       'preview'
