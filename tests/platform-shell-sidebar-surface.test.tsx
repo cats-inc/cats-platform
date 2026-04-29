@@ -7,8 +7,8 @@ import { ConversationSidebarFooter } from '../src/app/renderer/productShell/Conv
 import { ConversationSidebarMyCatsSection } from '../src/app/renderer/productShell/ConversationSidebarMyCats.tsx';
 import { ConversationSidebarNavigation } from '../src/app/renderer/productShell/ConversationSidebarNavigation.tsx';
 import { ConversationSidebarRecentsSection } from '../src/app/renderer/productShell/ConversationSidebarRecents.tsx';
-import { Sidebar as WorkSidebar } from '../src/products/work/renderer/components/Sidebar.tsx';
-import { Sidebar as CodeSidebar } from '../src/products/code/renderer/components/Sidebar.tsx';
+import { createWorkSidebarElement } from '../src/products/work/renderer/components/Sidebar.tsx';
+import { createCodeSidebarElement } from '../src/products/code/renderer/components/Sidebar.tsx';
 import type { AppShellPayload as WorkAppShellPayload } from '../src/products/work/api/contracts.ts';
 import type { AppShellPayload as CodeAppShellPayload } from '../src/products/code/api/contracts.ts';
 import type { PlatformSurfaceId } from '../src/shared/platform-contract.ts';
@@ -258,7 +258,7 @@ function withLocationPathname(pathname: string, run: () => void): void {
 
 test('Work sidebar keeps the Work product selected on platform settings routes', () => {
   withLocationPathname('/settings/general', () => {
-    const tree = WorkSidebar({
+    const tree = createWorkSidebarElement({
       payload: createPayload(),
       sidebarOpen: true,
       accountMenuOpen: false,
@@ -294,7 +294,7 @@ test('Work sidebar keeps the Work product selected on platform settings routes',
 
 test('Work sidebar marks War Room active for war-room routes', () => {
   withLocationPathname('/work/war-room', () => {
-    const tree = WorkSidebar({
+    const tree = createWorkSidebarElement({
       payload: createPayload(),
       sidebarOpen: true,
       accountMenuOpen: false,
@@ -330,7 +330,7 @@ test('Work sidebar marks War Room active for war-room routes', () => {
 
 test('Work sidebar marks Tasks active for task routes', () => {
   withLocationPathname('/work/tasks/task-123', () => {
-    const tree = WorkSidebar({
+    const tree = createWorkSidebarElement({
       payload: createPayload(),
       sidebarOpen: true,
       accountMenuOpen: false,
@@ -367,7 +367,7 @@ test('Work sidebar marks Tasks active for task routes', () => {
 
 test('Work sidebar marks Projects active for portfolio routes', () => {
   withLocationPathname('/work/projects/project-123', () => {
-    const tree = WorkSidebar({
+    const tree = createWorkSidebarElement({
       payload: createPayload(),
       sidebarOpen: true,
       accountMenuOpen: false,
@@ -403,7 +403,7 @@ test('Work sidebar marks Projects active for portfolio routes', () => {
 
 test('Work sidebar marks Work Items active for managed-work routes', () => {
   withLocationPathname('/work/work-items/work-item-123', () => {
-    const tree = WorkSidebar({
+    const tree = createWorkSidebarElement({
       payload: createPayload(),
       sidebarOpen: true,
       accountMenuOpen: false,
@@ -439,7 +439,7 @@ test('Work sidebar marks Work Items active for managed-work routes', () => {
 
 test('Code sidebar keeps the Code product selected on platform settings routes', () => {
   withLocationPathname('/settings/general', () => {
-    const tree = CodeSidebar({
+    const tree = createCodeSidebarElement({
       payload: createPayload() as unknown as CodeAppShellPayload,
       sidebarOpen: true,
       accountMenuOpen: false,
@@ -474,7 +474,7 @@ test('Code sidebar keeps the Code product selected on platform settings routes',
 
 test('Code sidebar exposes New Code, Team Code, and Peer Code actions', () => {
   const clicks: string[] = [];
-  const tree = CodeSidebar({
+  const tree = createCodeSidebarElement({
     payload: createPayload() as unknown as CodeAppShellPayload,
     sidebarOpen: true,
     accountMenuOpen: false,
@@ -521,8 +521,8 @@ test('Code sidebar exposes New Code, Team Code, and Peer Code actions', () => {
   assert.deepEqual(clicks, ['new', 'group', 'parallel']);
 });
 
-test('Code sidebar hides My Clowders until clowder groups are available', () => {
-  const tree = CodeSidebar({
+test('Code sidebar shows the My Clowders empty placeholder', () => {
+  const tree = createCodeSidebarElement({
     payload: createPayload() as unknown as CodeAppShellPayload,
     sidebarOpen: true,
     accountMenuOpen: false,
@@ -552,11 +552,14 @@ test('Code sidebar hides My Clowders until clowder groups are available', () => 
   });
 
   const myPridesSection = findElementByComponent(tree, ConversationSidebarMyCatsSection);
-  assert.equal(myPridesSection, null);
+  assert.notEqual(myPridesSection, null);
+  assert.equal(myPridesSection?.props.label, 'My Clowders');
+  assert.deepEqual(myPridesSection?.props.cats, []);
+  assert.equal(myPridesSection?.props.emptyStatePlaceholder?.label, 'New clowder');
 });
 
-test('Work sidebar hides My Catteries until organization groups are available', () => {
-  const tree = WorkSidebar({
+test('Work sidebar shows the My Catteries empty placeholder', () => {
+  const tree = createWorkSidebarElement({
     payload: createPayload(),
     sidebarOpen: true,
     accountMenuOpen: false,
@@ -587,11 +590,14 @@ test('Work sidebar hides My Catteries until organization groups are available', 
   });
 
   const myCatteriesSection = findElementByComponent(tree, ConversationSidebarMyCatsSection);
-  assert.equal(myCatteriesSection, null);
+  assert.notEqual(myCatteriesSection, null);
+  assert.equal(myCatteriesSection?.props.label, 'My Catteries');
+  assert.deepEqual(myCatteriesSection?.props.cats, []);
+  assert.equal(myCatteriesSection?.props.emptyStatePlaceholder?.label, 'New cattery');
 });
 
 test('Code sidebar clears chat recents and shows No codes yet', () => {
-  const tree = CodeSidebar({
+  const tree = createCodeSidebarElement({
     payload: createPayload() as unknown as CodeAppShellPayload,
     sidebarOpen: true,
     accountMenuOpen: false,
@@ -630,7 +636,7 @@ test('Code sidebar clears chat recents and shows No codes yet', () => {
 });
 
 test('Work sidebar surfaces work-origin recents while filtering out chat recents', () => {
-  const tree = WorkSidebar({
+  const tree = createWorkSidebarElement({
     payload: createPayload([
       {
         id: 'work-1',
@@ -705,7 +711,7 @@ test('Work sidebar surfaces work-origin recents while filtering out chat recents
 });
 
 test('Code sidebar surfaces code-origin recents once a +New code channel lands', () => {
-  const tree = CodeSidebar({
+  const tree = createCodeSidebarElement({
     payload: createPayload([
       {
         id: 'code-1',
@@ -888,7 +894,7 @@ test('Code sidebar groups code-origin compare recents while filtering chat group
   ];
   const actions: string[] = [];
 
-  const tree = CodeSidebar({
+  const tree = createCodeSidebarElement({
     payload,
     sidebarOpen: true,
     accountMenuOpen: false,
@@ -976,7 +982,7 @@ test('Work and Code sidebars wire split-click navigation through the shared foot
   let codeSettingsCount = 0;
   let codeRuntimeCount = 0;
 
-  const workTree = WorkSidebar({
+  const workTree = createWorkSidebarElement({
     payload: createPayload(),
     sidebarOpen: true,
     accountMenuOpen: true,
@@ -1010,7 +1016,7 @@ test('Work and Code sidebars wire split-click navigation through the shared foot
     onDirectChatCat: () => {},
   });
 
-  const codeTree = CodeSidebar({
+  const codeTree = createCodeSidebarElement({
     payload: createPayload() as unknown as CodeAppShellPayload,
     sidebarOpen: true,
     accountMenuOpen: true,

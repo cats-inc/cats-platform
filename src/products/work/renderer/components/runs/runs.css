@@ -3,7 +3,7 @@
  *
  * Visual idiom mirrors tasks.css; specific bits added for the
  * sub-run tree and trace timeline. Reuses .projectsList__dot--*
- * skins from projects.css (loaded eagerly via Sidebar.tsx).
+ * skins from projects.css (loaded through the Work renderer style entry).
  * ========================================================= */
 
 .runsList,

@@ -1,3 +1,4 @@
 @import '../../shared/renderer/styles.css';
+@import './components/workspaces/workspaces.css';
 @import './styles/code-builder.css';
 @import './styles/code-task-pills.css';

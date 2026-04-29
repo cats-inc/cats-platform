@@ -12,7 +12,6 @@ import {
   useWorkspacesMock,
   type WorkspacesMockSnapshot,
 } from '../state/workspacesMockStore';
-import './workspaces/workspaces.css';
 import { buildConversationSidebarRecentEntries } from '../../../../app/renderer/productShell/conversationSidebarRecentEntries.js';
 import type { AppShellPayload } from '../../api/contracts.js';
 import type { ChatChannelSummary } from '../../../shared/api/workspaceContracts.js';
@@ -349,8 +348,14 @@ function buildRecentEntries(props: SidebarProps): ConversationSidebarRecentEntry
   });
 }
 
-export function Sidebar(props: SidebarProps) {
-  const workspacesSnapshot = useWorkspacesMock();
+export function createCodeSidebarElement(
+  props: SidebarProps,
+  workspacesSnapshot: WorkspacesMockSnapshot = {
+    workspaces: [],
+    pinnedIds: new Set<string>(),
+    deletedIds: new Set<string>(),
+  },
+) {
   return ConversationSidebar({
     payload: props.payload,
     sidebarOpen: props.sidebarOpen,
@@ -398,4 +403,9 @@ export function Sidebar(props: SidebarProps) {
     activeMyCatId: props.activeMyCatId,
     onDirectChatCat: props.onDirectChatCat,
   });
+}
+
+export function Sidebar(props: SidebarProps) {
+  const workspacesSnapshot = useWorkspacesMock();
+  return createCodeSidebarElement(props, workspacesSnapshot);
 }

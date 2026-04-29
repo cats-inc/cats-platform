@@ -200,19 +200,6 @@
   line-height: 1.35;
 }
 
-.platformSurfaceMenuBadge {
-  display: inline-flex;
-  align-items: center;
-  height: 20px;
-  padding: 0 7px;
-  border-radius: 999px;
-  background: var(--muted-bg);
-  color: var(--muted-text);
-  font-size: 0.65rem;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-}
-
 .platformSurfaceMenuCheck {
   display: inline-flex;
   align-items: center;

@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { createPortal } from 'react-dom';
+import { createPortal, flushSync } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 
 import type { PlatformSurfaceId } from '../../shared/platform-contract.js';
@@ -115,7 +115,9 @@ export function PlatformSurfaceSwitcher({
               aria-checked={current}
               className={current ? 'platformSurfaceMenuItem isCurrent' : 'platformSurfaceMenuItem'}
               onClick={() => {
-                setOpen(false);
+                flushSync(() => {
+                  setOpen(false);
+                });
                 if (!current) {
                   onSelectSurface(descriptor.id);
                 }
@@ -125,9 +127,6 @@ export function PlatformSurfaceSwitcher({
               <span className="platformSurfaceMenuCopy">
                 <span className="platformSurfaceMenuTitleRow">
                   <span className="platformSurfaceMenuTitle">{descriptor.productName}</span>
-                  {descriptor.maturity === 'preview' ? (
-                    <span className="platformSurfaceMenuBadge">Preview</span>
-                  ) : null}
                 </span>
                 <span className="platformSurfaceMenuSubtitle">{descriptor.subtitle}</span>
               </span>
@@ -156,7 +155,9 @@ export function PlatformSurfaceSwitcher({
         type="button"
         className="platformSurfaceMenuAction"
         onClick={() => {
-          setOpen(false);
+          flushSync(() => {
+            setOpen(false);
+          });
           navigate('/lobby');
         }}
       >

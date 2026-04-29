@@ -18,7 +18,6 @@ import {
   type WorkProjectListItem,
 } from '../state/queries/projectsQuery.js';
 import { sharedQueryClient } from '../../../shared/renderer/queryClient.js';
-import './projects/projects.css';
 import { buildConversationSidebarRecentEntries } from '../../../../app/renderer/productShell/conversationSidebarRecentEntries.js';
 import type { AppShellPayload } from '../../api/contracts.js';
 import type { ChatChannelSummary } from '../../../shared/api/workspaceContracts.js';
@@ -526,12 +525,10 @@ function buildRecentEntries(props: SidebarProps): ConversationSidebarRecentEntry
   });
 }
 
-export function Sidebar(props: SidebarProps) {
-  const projectsQuery = useProjectsQuery();
-  const unpinnedIds = useUnpinnedProjectIds();
-  const pinnedProjects = (projectsQuery.data?.projects ?? []).filter(
-    (project) => !unpinnedIds.has(project.id),
-  );
+export function createWorkSidebarElement(
+  props: SidebarProps,
+  pinnedProjects: readonly WorkProjectListItem[] = [],
+) {
   return ConversationSidebar({
     payload: props.payload,
     sidebarOpen: props.sidebarOpen,
@@ -579,4 +576,13 @@ export function Sidebar(props: SidebarProps) {
     activeMyCatId: props.activeMyCatId,
     onDirectChatCat: props.onDirectChatCat,
   });
+}
+
+export function Sidebar(props: SidebarProps) {
+  const projectsQuery = useProjectsQuery();
+  const unpinnedIds = useUnpinnedProjectIds();
+  const pinnedProjects = (projectsQuery.data?.projects ?? []).filter(
+    (project) => !unpinnedIds.has(project.id),
+  );
+  return createWorkSidebarElement(props, pinnedProjects);
 }

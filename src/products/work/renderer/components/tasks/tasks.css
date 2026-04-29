@@ -4,7 +4,7 @@
  * Mirrors the visual identity of projects.css and work-items.css
  * (warm/light, --canvas-bg / --panel / --border / --accent tokens).
  * Reuses .projectsList__dot--*, .newProjectDialog__* skins from
- * projects.css (loaded eagerly via Sidebar.tsx).
+ * projects.css (loaded through the Work renderer style entry).
  *
  * Top bar uses .channelTopBar (chat-thread-base.css) for the same
  * 60px sticky height as active chat / projects / work items.

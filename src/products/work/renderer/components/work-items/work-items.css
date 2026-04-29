@@ -5,7 +5,7 @@
  * --canvas-bg / --panel / --border / --accent tokens). Status dots
  * and the create-dialog reuse `.projectsList__dot--*` and
  * `.newProjectDialog__*` classes from projects.css, which is loaded
- * eagerly via Sidebar.tsx.
+ * through the Work renderer style entry.
  *
  * Top bar uses .channelTopBar (chat-thread-base.css, 60px sticky)
  * so the height + grid layout match active chat exactly.
