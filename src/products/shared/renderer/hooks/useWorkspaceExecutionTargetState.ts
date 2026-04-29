@@ -68,7 +68,6 @@ export interface WorkspaceExecutionTargetChatLike {
 export interface WorkspaceExecutionTargetChannelLike {
   id: string;
   channelKind?: 'boss_thread' | 'direct_lane' | 'multi_cat_room' | null;
-  composerMode?: string | null;
   roomRouting?: {
     mode?: RoomRoutingMode | null;
   } | null;
@@ -622,7 +621,7 @@ export function useWorkspaceExecutionTargetState<
       mergeExecutionTargetValue(currentSoloChannelExecutionTarget, nextSoloChannelExecutionTarget));
   }, [
     readySelectedChannel?.id,
-    readySelectedChannel?.composerMode,
+    readySelectedChannel,
     readySelectedChannel?.pendingProvider,
     readySelectedChannel?.pendingModel,
     readySelectedChannel?.pendingInstance,
@@ -712,7 +711,7 @@ export function useWorkspaceExecutionTargetState<
       cancelled = true;
     };
   }, [
-    readySelectedChannel?.composerMode,
+    readySelectedChannel,
     soloChannelExecutionTargetReconcileSignature,
     state.status,
   ]);

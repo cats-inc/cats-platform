@@ -133,7 +133,6 @@ export type ChatChannelStatus =
   | 'archived';
 
 export type ChannelFormationMode = 'manual' | 'orchestrator_suggested';
-export type ComposerMode = 'solo' | 'cat_led';
 export type ChatChannelKind = 'boss_thread' | 'direct_lane' | 'multi_cat_room';
 // TODO: extend when branch/peer container modes land.
 export type ParallelChatMode = 'parallel';
@@ -312,7 +311,6 @@ export interface ChatChannelState {
   skillProfile: string | null;
   mcpProfile: string | null;
   orchestratorRoles: string[];
-  composerMode: ComposerMode;
   pendingProvider: string | null;
   pendingModel: string | null;
   pendingInstance: string | null;
@@ -354,7 +352,6 @@ export interface ChatChannelSummary {
   runtimePermissionMode?: RuntimePermissionMode | null;
   lastMessageAt: string | null;
   lastActivatedAt: string | null;
-  composerMode?: ComposerMode;
   pendingProvider?: string | null;
   pendingModel?: string | null;
   pendingModelSelection?: ProviderModelSelection | null;
@@ -566,7 +563,6 @@ interface CreateChatChannelInputBase {
   language?: string;
   responseLanguage?: string;
   formationMode?: ChannelFormationMode;
-  composerMode?: ComposerMode;
   roomMode?: RoomRoutingMode;
   defaultRecipientId?: string;
   pendingProvider?: string;

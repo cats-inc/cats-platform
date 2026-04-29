@@ -222,9 +222,6 @@ export function normalizeRoomRouteBlockedReason(
   value: unknown,
 ): RoomRouteBlockedReason | null {
   if (value === 'missing_direct_chat_lead') return 'missing_direct_chat_recipient';
-  if (value === 'missing_cat_led_lead' || value === 'missing_cat_led_recipient') {
-    return 'missing_default_recipient';
-  }
   return typeof value === 'string'
     && ROOM_ROUTE_BLOCKED_REASONS.has(value as RoomRouteBlockedReason)
     ? value as RoomRouteBlockedReason
@@ -235,9 +232,6 @@ export function normalizeRoomRouteDefaultTargetReason(
   value: unknown,
 ): RoomRouteDefaultTargetReason | null {
   if (value === 'direct_chat_lead') return 'direct_chat_recipient';
-  if (value === 'cat_led_lead' || value === 'cat_led_recipient') {
-    return 'default_recipient';
-  }
   return typeof value === 'string'
     && ROOM_ROUTE_DEFAULT_TARGET_REASONS.has(value as RoomRouteDefaultTargetReason)
     ? value as RoomRouteDefaultTargetReason

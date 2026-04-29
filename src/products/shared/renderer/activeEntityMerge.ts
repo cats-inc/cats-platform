@@ -190,7 +190,6 @@ export function mergeChannelSummaryWithChannelView(
     runtimePermissionMode: selectedChannel.runtimePermissionMode ?? null,
     lastMessageAt: selectedChannel.lastMessageAt,
     lastActivatedAt: selectedChannel.lastActivatedAt,
-    composerMode: selectedChannel.composerMode ?? currentSummary?.composerMode,
     pendingProvider: selectedChannel.pendingProvider ?? currentSummary?.pendingProvider,
     pendingModel: selectedChannel.pendingModel ?? currentSummary?.pendingModel,
     pendingModelSelection:

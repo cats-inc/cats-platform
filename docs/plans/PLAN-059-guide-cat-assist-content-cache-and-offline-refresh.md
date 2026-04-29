@@ -36,7 +36,7 @@ The first adopted surfaces are:
 
 - Lobby greeting
 - `+New chat` greeting
-- `+New chat` starter chips for `solo`, `cat_led`, `direct`, `group`, and
+- `+New chat` starter chips for `solo`, `participant`, `direct`, `group`, and
   `parallel`
 
 ## V1 Scope Freeze
@@ -77,7 +77,7 @@ part of this plan's implementation scope.
   runtime.
 - Lobby can render last-good cached assist content when cache exists and runtime
   is offline.
-- `+New chat` can render greeting plus starter chips for `solo`, `cat_led`,
+- `+New chat` can render greeting plus starter chips for `solo`, `participant`,
   `direct`, `group`, and `parallel` using the same baseline-or-cache
   resolution.
 - Adopted surfaces do not read local files from the renderer directly; the
@@ -102,7 +102,7 @@ part of this plan's implementation scope.
 - [ ] Task 1.4: Freeze the first cache-key fields and exact adopted keys:
       - `lobby:default:default`
       - `chat:new:solo:default`
-      - `chat:new:cat_led:default`
+      - `chat:new:participant:default`
       - `chat:new:direct:default`
       - `chat:new:group:default`
       - `chat:new:parallel:default`
@@ -149,7 +149,7 @@ baseline or cache through one shared read path
 - [ ] Task 3.2: Replace `+New chat` greeting ownership with the same shared
       resolution path.
 - [ ] Task 3.3: Replace direct starter-suggestion ownership for
-      `solo` / `cat_led` / `direct` / `group` / `parallel` with shared
+      `solo` / `participant` / `direct` / `group` / `parallel` with shared
       bundle-backed starter chips.
 - [ ] Task 3.4: Preserve today's user-visible fallback text and mode semantics
       when no cache exists.

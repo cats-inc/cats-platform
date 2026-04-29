@@ -25,7 +25,6 @@ function buildChannel(leaseStatus = 'ready') {
       },
     ],
     messages: [],
-    composerMode: 'cat_led',
     createdAt: '',
     updatedAt: '',
     lastMessageAt: null,

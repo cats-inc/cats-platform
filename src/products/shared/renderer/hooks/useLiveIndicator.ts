@@ -106,7 +106,6 @@ export interface LiveIndicatorSelectedChannelLike {
       } | null;
     };
   };
-  composerMode: string;
   pendingProvider: string | null;
   pendingInstance: string | null;
 }

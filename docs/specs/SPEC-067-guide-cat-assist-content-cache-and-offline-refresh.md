@@ -288,7 +288,7 @@ The first slice should freeze one cache-key shape:
   - later `chat:composer`
 - `surfaceMode`
   - `default` when the surface has no mode split
-  - `solo`, `cat_led`, `direct`, `group`, or `parallel` for `chat:new`
+  - `solo`, `participant`, `direct`, `group`, or `parallel` for `chat:new`
 - `audienceState`
   - `default` for current greeting/chip migration
   - later `first_run`, `returning`, or `recap_candidate` when those surfaces
@@ -306,10 +306,10 @@ stable mode-to-scope mapping:
 | Current source | Current mode split | V1 scope key(s) | Notes |
 |------|------|------|------|
 | `LOBBY_GREETING_LINES` | none | `lobby:default:default` | Lobby greeting baseline |
-| `DRAFT_GREETING_LINES` | none | `chat:new:solo:default`, `chat:new:cat_led:default`, `chat:new:direct:default`, `chat:new:group:default`, `chat:new:parallel:default` | Same greeting baseline reused across initial `+New chat` modes |
+| `DRAFT_GREETING_LINES` | none | `chat:new:solo:default`, `chat:new:participant:default`, `chat:new:direct:default`, `chat:new:group:default`, `chat:new:parallel:default` | Same greeting baseline reused across initial `+New chat` modes |
 | `CODE_DRAFT_GREETING_LINES` | none | `code:new:default:default` | `+New code` greeting baseline |
 | `resolveDraftStarterSuggestionsBaseline('solo')` | `solo` | `chat:new:solo:default` | Starter chips (baseline content; renderer only surfaces when `originMode === 'runtime'`) |
-| `resolveDraftStarterSuggestionsBaseline('cat_led')` | `cat_led` | `chat:new:cat_led:default` | Starter chips (baseline content; renderer only surfaces when `originMode === 'runtime'`) |
+| `resolveDraftStarterSuggestionsBaseline('participant')` | `participant` | `chat:new:participant:default` | Starter chips (baseline content; renderer only surfaces when `originMode === 'runtime'`) |
 | `resolveDraftStarterSuggestionsBaseline('direct')` | `direct` | `chat:new:direct:default` | Starter chips produced for the baseline; renderer suppresses them in direct lane regardless of origin (private chat rule) |
 | `resolveDraftStarterSuggestionsBaseline('group')` | `group` | `chat:new:group:default` | Starter chips (baseline content; renderer only surfaces when `originMode === 'runtime'`) |
 | `resolveDraftStarterSuggestionsBaseline('parallel')` | `parallel` | `chat:new:parallel:default` | Starter chips (baseline content; renderer only surfaces when `originMode === 'runtime'`) |

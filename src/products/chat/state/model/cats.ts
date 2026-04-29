@@ -13,7 +13,7 @@ import { createCatRecord } from './recordBuilders.js';
 import {
   cloneState,
   isoAt,
-  syncChannelDefaultRecipientAndComposerMode,
+  syncChannelDefaultRecipientAndTopology,
 } from './shared.js';
 import { isDirectLaneChannel } from '../../shared/channelTopology.js';
 
@@ -141,7 +141,7 @@ function restoreRecoverableDirectLane(
   if (channel.status === 'planned') {
     channel.status = 'configured';
   }
-  syncChannelDefaultRecipientAndComposerMode(channel);
+  syncChannelDefaultRecipientAndTopology(channel);
 }
 
 function detachCatFromChannels(
@@ -180,7 +180,7 @@ function detachCatFromChannels(
     updateDirectLaneAfterLeadingCatRemoval(channel, catId, {
       preserveRecoverableDirectLane: options.preserveRecoverableDirectLane,
     });
-    syncChannelDefaultRecipientAndComposerMode(channel);
+    syncChannelDefaultRecipientAndTopology(channel);
   }
 }
 

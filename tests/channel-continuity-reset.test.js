@@ -210,7 +210,6 @@ test('PATCH /api/channels/:channelId flushes pending runtime memory hooks before
         title: 'Solo Draft',
         topic: 'Flush memory before explicit fresh-start resets.',
         originSurface: 'chat',
-        composerMode: 'solo',
         pendingProvider: 'claude',
         pendingInstance: 'native',
         pendingModel: 'claude-opus-4-6',

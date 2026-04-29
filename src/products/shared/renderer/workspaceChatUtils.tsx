@@ -319,7 +319,6 @@ export function buildNewChatChannelInput(options: {
 
   return {
     ...baseInput,
-    composerMode: 'solo',
     pendingProvider: draftExecutionTarget?.provider,
     pendingModel: draftExecutionTarget?.model ?? undefined,
     pendingInstance: draftExecutionTarget?.instance ?? undefined,
@@ -511,7 +510,6 @@ export function insertCreatedChannelIntoPayload<TPayload extends AppShellPayload
     runtimePermissionMode: normalizedChannel.runtimePermissionMode ?? null,
     lastMessageAt: normalizedChannel.lastMessageAt,
     lastActivatedAt: normalizedChannel.lastActivatedAt,
-    composerMode: normalizedChannel.composerMode,
     pendingProvider: normalizedChannel.pendingProvider,
     pendingModel: normalizedChannel.pendingModel,
     pendingModelSelection: normalizedChannel.pendingModelSelection ?? null,

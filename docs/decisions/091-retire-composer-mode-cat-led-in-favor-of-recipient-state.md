@@ -7,7 +7,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 > Completes ADR-055 ("Retire lead semantics and separate composer recipients
 > from dispatch policy"). Restores the ADR-082 invariant that **deterministic
@@ -28,7 +28,7 @@ Two prior decisions left an unresolved seam:
   dispatch to a named target, and weak-model SOP fallback. It did not address
   the existing `cat_led` short-circuit in `mentionRouter`.
 
-The result is a grey zone:
+Before this ADR, the result was a grey zone:
 
 - `src/products/chat/state/mentionRouter.ts:178-207` short-circuits to the
   `defaultRecipientId` participant whenever `channel.composerMode === 'cat_led'`,
@@ -41,9 +41,8 @@ The result is a grey zone:
   `'missing_cat_led_recipient'` and `'cat_led_recipient'` enum values; this
   file is a frozen shared contract per `CLAUDE.md`, so the legacy values are
   load-bearing across product code.
-- 34 source files reference `cat_led` directly, including UI workflow-shape
-  gates in `WorkspaceProductApp.tsx`, session-launch branches, and Guide Cat
-  assist scope tables.
+- The legacy term reached UI workflow-shape gates, session-launch branches,
+  API/read-model contracts, tests, and Guide Cat assist scope tables.
 
 The split is a maintenance trap: every new routing rule has to choose
 between living in the orchestrator (ADR-082's home) or the mentionRouter
@@ -52,9 +51,14 @@ divergence is the bug.
 
 ## Decision
 
-Retire `cat_led` as a routing concept. `composerMode` may remain as a legacy
-wire/storage field during the migration, but no routing rule may depend on
-`composerMode === 'cat_led'`.
+Retire `cat_led` as a routing concept and remove `composerMode` from the
+Chat storage/API/read-model contract. No routing rule may depend on
+`composerMode === 'cat_led'`, and new channel records must not write
+`composerMode`.
+
+This product is pre-release, so the cleanup does **not** keep backward-
+compatibility shims for old prototype records. Persisted records are treated as
+mutable local development state; the current contract is the source of truth.
 
 - **Split channel intent into derived predicates** instead of overloading
   `composerMode`:
@@ -80,7 +84,7 @@ wire/storage field during the migration, but no routing rule may depend on
   first unless the operator explicitly mentions a participant or chooses a
   per-turn audience.
 - **Remove the legacy enum values** `'missing_cat_led_recipient'` and
-  `'cat_led_recipient'` from `src/shared/roomRouting.ts`. Replace call sites
+  `'cat_led_recipient'` from room-routing result contracts. Replace call sites
   with the recipient-state equivalents (`'missing_default_recipient'` /
   `'default_recipient'`).
 - **Replace UI gates** that key on `composerMode === 'cat_led'` with explicit
@@ -98,7 +102,8 @@ It intentionally changes one behavior:
 - Group/parallel participant rooms no longer auto-dispatch a no-mention turn
   to `defaultRecipientId`. They route to the orchestrator first.
 
-The migration is staged so persisted state stays valid throughout:
+The migration is staged as implementation slices, not as a compatibility
+window:
 
 1. **Slice 1 — channel-intent helpers.** Add derived predicates for provider
    solo, direct participant lane, participant room, and participant-audience
@@ -112,22 +117,16 @@ The migration is staged so persisted state stays valid throughout:
 3. **Slice 3 — UI gate cleanup.** Replace active audience/workflow-shape gates
    and conversation-mode naming with participant-room predicates and neutral
    labels.
-4. **Slice 4 — storage/contract cleanup.** Stop writing `composerMode`; keep
-   read-side compatibility for persisted records while API/read models migrate
-   to explicit derived fields.
-5. **Slice 5 — remove the type and the legacy enum values.** Delete
-   `ComposerMode` from chat contracts, delete
-   `'missing_cat_led_recipient'` and `'cat_led_recipient'` from
-   `src/shared/roomRouting.ts`, and rename remaining identifiers
-   (`composerMode`, `inferredComposerMode`, `cat_led_thread`) to recipient-
-   state language.
-6. **Slice 6 — drop read-side compatibility.** After one release
-   cycle the derivation function and the legacy persisted field are
-   removed.
+4. **Slice 4 — storage/contract cleanup.** Stop writing and exposing
+   `composerMode`; delete `ComposerMode` from chat/workspace contracts and
+   chat snapshots/read models.
+5. **Slice 5 — terminology cleanup.** Remove legacy room-routing enum values
+   and rename remaining current identifiers/scope keys from `cat_led` to
+   participant/default-recipient language.
 
-Slices 1-3 are reversible. Slice 4 starts the wire/storage migration. Slice 5
-is the contract-breaking cleanup and must land only after the product surfaces
-no longer depend on `composerMode`.
+Slices 1-3 are behavior-preserving or behavior-changing UI/routing work.
+Slices 4-5 are the contract-breaking cleanup and must land only after product
+surfaces no longer depend on `composerMode`.
 
 ## Consequences
 
@@ -144,20 +143,15 @@ no longer depend on `composerMode`.
 
 ### Negative
 
-- Touches 34 source files, the chat API contract, and the frozen shared
-  `src/shared/roomRouting.ts` enum. Slices 4 and 5 are coordinated edits
+- Touches many source files, the chat API contract, and the shared
+  room-routing result contract. Slices 4 and 5 are coordinated edits
   that cannot land independently without breaking the dispatch.
 - Non-direct participant rooms lose the old no-mention direct-to-default
   behavior. Users who want a specific participant to answer must mention that
   participant, choose a per-turn audience, or rely on the orchestrator to route
   the work.
-- One release cycle of read-side compatibility shim adds temporary
-  derivation logic. Slice 6 must follow within one release to avoid the
-  shim becoming permanent.
-- Existing channels do not get a behaviour change at slice 1; the
-  derivation produces the same value. But any test or product surface that
-  expected `composerMode` to be a *stable, persisted* field rather than a
-  *derived* one needs updating.
+- Local development state or tests that expected `composerMode` to be a stable,
+  persisted field need updating to explicit topology/recipient state.
 
 ### Neutral
 
@@ -193,11 +187,11 @@ no longer depend on `composerMode`.
 - [ADR-055: Retire lead semantics and separate composer recipients from dispatch policy](./055-retire-lead-and-separate-composer-recipients-from-dispatch-policy.md)
 - [ADR-082: Recast the orchestrator as a capability shell with policy-dial supervision](./082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md)
 - [ADR-042: Separate channel topology from routing mode](./042-separate-channel-topology-from-routing-mode.md)
-- `src/products/chat/state/mentionRouter.ts:178-207` — current `cat_led` short-circuit
-- `src/products/chat/state/chat-snapshot/entities.ts:314-322` — current `composerMode` inference + persistence
-- `src/shared/roomRouting.ts:30,37` — frozen enum values to remove
+- `src/products/chat/state/mentionRouter.ts` — historical `cat_led` short-circuit
+- `src/products/chat/state/chat-snapshot/entities.ts` — historical `composerMode` inference + persistence
+- `src/shared/roomRouting.ts` — room-routing result values
 
 ---
 
-*Proposed: 2026-04-29*
+*Accepted: 2026-04-29*
 *Proposed by: Claude, after the owner flagged that `cat_led` still bypasses the orchestrator's deterministic routing.*

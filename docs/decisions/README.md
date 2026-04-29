@@ -42,7 +42,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | [094-adopt-cats-app-packages-as-extension-boundary](./094-adopt-cats-app-packages-as-extension-boundary.md) | Adopt Cats App Packages as the Extension Boundary | Proposed | 2026-04-29 |
 | [093-use-platform-language-preferences-for-assistant-and-ui-locales](./093-use-platform-language-preferences-for-assistant-and-ui-locales.md) | Use Platform Language Preferences for Assistant Responses and UI Locales | Proposed | 2026-04-29 |
 | [092-reposition-cats-mobile-as-first-class-product-client](./092-reposition-cats-mobile-as-first-class-product-client.md) | Reposition Cats Mobile as a First-Class Product Client | Proposed | 2026-04-29 |
-| [091-retire-composer-mode-cat-led-in-favor-of-recipient-state](./091-retire-composer-mode-cat-led-in-favor-of-recipient-state.md) | Retire `composerMode = cat_led` in favor of channel intent | Proposed | 2026-04-29 |
+| [091-retire-composer-mode-cat-led-in-favor-of-recipient-state](./091-retire-composer-mode-cat-led-in-favor-of-recipient-state.md) | Retire `composerMode = cat_led` in favor of channel intent | Accepted | 2026-04-29 |
 | [090-adopt-generic-schedule-rules-for-mission-triggers](./090-adopt-generic-schedule-rules-for-mission-triggers.md) | Adopt Generic Schedule Rules for Mission Triggers | Proposed | 2026-04-29 |
 | [089-split-runtime-request-and-stream-idle-timeouts](./089-split-runtime-request-and-stream-idle-timeouts.md) | Split Runtime Request and Stream Idle Timeouts | Accepted | 2026-04-29 |
 | [088-use-structured-artifact-declarations-for-code-materialization](./088-use-structured-artifact-declarations-for-code-materialization.md) | Use Structured Artifact Declarations for Code Materialization | Proposed | 2026-04-29 |
@@ -136,6 +136,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-04-29 (ADR-094 added for Cats App Packages as the extension boundary; ADR-093 added for platform language preferences; ADR-092 proposed: reposition Cats Mobile as a first-class product client; ADR-091 proposed: retire `composerMode = cat_led` in favor of channel intent.)*
+*Last updated: 2026-04-29 (ADR-094 added for Cats App Packages as the extension boundary; ADR-093 added for platform language preferences; ADR-092 proposed: reposition Cats Mobile as a first-class product client; ADR-091 accepted: retire `composerMode = cat_led` in favor of channel intent; ADR-090 added: generic schedule rules trigger missions/runs; ADR-089 added: split runtime request and stream idle timeouts; ADR-088 added: structured artifact declarations for Code materialization.)*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*

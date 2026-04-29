@@ -311,15 +311,6 @@ export function normalizeChannel(
       roomRouting.defaultRecipientId,
     );
   }
-  const inferredComposerMode = channelRecord.composerMode === 'cat_led'
-    ? 'cat_led'
-    : channelRecord.composerMode === 'solo'
-      ? 'solo'
-      : channelKind === 'direct_lane'
-          || normalizedParticipantAssignments.some((assignment) => assignment.status === 'active')
-          || Boolean(roomRouting.defaultRecipientId)
-        ? 'cat_led'
-        : 'solo';
   const repoPath = readNullableString(channelRecord.repoPath);
   const rawRuntimeWorkspaceKind = readNullableString(channelRecord.runtimeWorkspaceKind);
   const rawRuntimeWorkspaceAccess = readNullableString(channelRecord.runtimeWorkspaceAccess);
@@ -359,7 +350,6 @@ export function normalizeChannel(
     skillProfile: readNullableString(channelRecord.skillProfile) ?? 'chat-default',
     mcpProfile: readNullableString(channelRecord.mcpProfile) ?? 'chat-memory',
     orchestratorRoles: readStringArray(channelRecord.orchestratorRoles),
-    composerMode: inferredComposerMode,
     pendingProvider: readNullableString(channelRecord.pendingProvider),
     pendingModel: readNullableString(channelRecord.pendingModel),
     pendingInstance: readNullableString(channelRecord.pendingInstance),

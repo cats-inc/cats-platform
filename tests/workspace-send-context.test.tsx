@@ -8,7 +8,6 @@ function createPayload(overrides: Record<string, unknown> = {}) {
     chat: {
       selectedChannel: {
         id: 'channel-1',
-        composerMode: 'solo',
         channelKind: 'boss_thread',
         roomRouting: {
           defaultRecipientId: null,
@@ -43,7 +42,6 @@ test('prepareWorkspaceSendContext composes solo dispatch target with attachment 
     participantCatIds: [],
     selectedChannel: {
       id: 'channel-1',
-      composerMode: 'solo',
     },
     soloChannelExecutionTarget: {
       provider: 'codex',
@@ -78,7 +76,6 @@ test('prepareWorkspaceSendContext composes solo dispatch target with attachment 
         chat: {
           selectedChannel: {
             id: 'channel-1',
-            composerMode: 'solo',
             channelKind: 'boss_thread',
             roomRouting: {
               defaultRecipientId: null,
@@ -160,7 +157,6 @@ test('prepareWorkspaceSendContext creates missing direct lanes, uses draft files
         ...payload.chat,
         selectedChannel: {
           id: createdChannel.id,
-          composerMode: 'direct',
           channelKind: 'direct_lane',
           roomRouting: {
             defaultRecipientId: 'cat-lead',

@@ -47,17 +47,7 @@ export function normalizeDefaultRecipientId(value: string | undefined): string |
   return normalized ? normalized : null;
 }
 
-export function inferChannelComposerMode(input: {
-  roomMode?: string;
-  activeParticipantIds: string[];
-}): 'solo' | 'cat_led' {
-  if (input.roomMode === 'direct_cat_chat') {
-    return 'cat_led';
-  }
-  return input.activeParticipantIds.length > 0 ? 'cat_led' : 'solo';
-}
-
-export function syncChannelDefaultRecipientAndComposerMode(channel: ChatChannelState): void {
+export function syncChannelDefaultRecipientAndTopology(channel: ChatChannelState): void {
   const roomRouting = resolveRoomRoutingState(channel.roomRouting);
   channel.participantAssignments = normalizeChannelAssignmentsForRoomMode(
     resolveChannelParticipantAssignments(channel),
@@ -79,11 +69,6 @@ export function syncChannelDefaultRecipientAndComposerMode(channel: ChatChannelS
     .map((assignment) => assignment.participantId);
   const currentLeadId = roomRouting.defaultRecipientId;
   const hasValidLead = Boolean(currentLeadId && activeParticipantIds.includes(currentLeadId));
-
-  channel.composerMode = inferChannelComposerMode({
-    roomMode: roomRouting.mode,
-    activeParticipantIds,
-  });
 
   if (channel.channelKind === 'direct_lane') {
     roomRouting.defaultRecipientId = resolveDirectLaneRecipientId(

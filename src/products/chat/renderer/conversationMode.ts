@@ -14,7 +14,7 @@ export type ChatConversationMode =
 export function resolveConversationMode(
   channel: Pick<
     ChatChannelView,
-    'assignedParticipants' | 'assignedCats' | 'channelKind' | 'composerMode' | 'roomRouting'
+    'assignedParticipants' | 'assignedCats' | 'channelKind' | 'pendingProvider' | 'roomRouting'
   >,
 ): ChatConversationMode {
   if (isDirectLaneChannel(channel)) {

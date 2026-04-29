@@ -81,7 +81,7 @@ function createProps(overrides: Partial<NewChatDraftProps> = {}): NewChatDraftPr
   };
 }
 
-test('lead-scoped new chat draft renders cat-led copy instead of private chat copy', () => {
+test('lead-scoped new chat draft renders participant copy instead of private chat copy', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
@@ -90,13 +90,13 @@ test('lead-scoped new chat draft renders cat-led copy instead of private chat co
     />,
   );
 
-  assert.match(markup, /Cat-led Chat/u);
+  assert.match(markup, /Participant Chat/u);
   assert.match(markup, /Start with Milo/u);
   assert.match(markup, /Ask Milo to take the first pass/u);
   assert.doesNotMatch(markup, /Private Chat/u);
 });
 
-test('generic new chat draft with one selected cat renders cat-led copy', () => {
+test('generic new chat draft with one selected cat renders participant copy', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
@@ -105,7 +105,7 @@ test('generic new chat draft with one selected cat renders cat-led copy', () => 
     />,
   );
 
-  assert.match(markup, /Cat-led Chat/u);
+  assert.match(markup, /Participant Chat/u);
   assert.match(markup, /Start with Milo/u);
   assert.doesNotMatch(markup, /Group Chat/u);
 });

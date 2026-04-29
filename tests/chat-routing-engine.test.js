@@ -1374,7 +1374,7 @@ test('routeChannelMessage forwards planning metadata into chat session creation 
   });
 });
 
-test('solo composer mode restarts orchestrator sessions when the pending model changes and records provenance', async () => {
+test('provider solo thread restarts orchestrator sessions when the pending model changes and records provenance', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
@@ -1384,7 +1384,6 @@ test('solo composer mode restarts orchestrator sessions when the pending model c
       title: 'Solo Thread',
       topic: 'Switch between providers per turn.',
       skipBossCatGreeting: true,
-      composerMode: 'solo',
       pendingProvider: 'claude',
       pendingModel: 'claude-default',
     },
@@ -1495,7 +1494,7 @@ test('solo composer mode restarts orchestrator sessions when the pending model c
   );
 });
 
-test('solo composer mode full-transplants earlier user-only context on replacement sessions', async () => {
+test('provider solo thread full-transplants earlier user-only context on replacement sessions', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
@@ -1505,7 +1504,6 @@ test('solo composer mode full-transplants earlier user-only context on replaceme
       title: 'Solo Thread',
       topic: 'Replacement sessions should not fall back to excerpt-only user context.',
       skipBossCatGreeting: true,
-      composerMode: 'solo',
       pendingProvider: 'claude',
       pendingModel: 'claude-default',
     },
@@ -1590,7 +1588,6 @@ test('solo replacement-session transplants preserve prior assistant tool labels'
       title: 'Solo Thread',
       topic: 'Carry tool context across a retargeted solo restart.',
       skipBossCatGreeting: true,
-      composerMode: 'solo',
       pendingProvider: 'claude',
       pendingModel: 'claude-default',
     },
@@ -1663,7 +1660,6 @@ test('solo replacement-session transplants fold segmented assistant turns into o
       title: 'Solo Thread',
       topic: 'Carry segmented assistant turns cleanly across a retarget.',
       skipBossCatGreeting: true,
-      composerMode: 'solo',
       pendingProvider: 'claude',
       pendingModel: 'claude-default',
     },
@@ -1744,7 +1740,6 @@ test('explicit solo start-fresh resets continuity before the next replacement se
       title: 'Solo Thread',
       topic: 'Explicit start-fresh must cut continuity instead of silently retransplanting.',
       skipBossCatGreeting: true,
-      composerMode: 'solo',
       pendingProvider: 'claude',
       pendingModel: 'claude-default',
     },
@@ -1817,7 +1812,6 @@ test('solo retarget after start-fresh only transplants the new continuity branch
       title: 'Solo Thread',
       topic: 'Retarget after a fresh start must ignore the older branch.',
       skipBossCatGreeting: true,
-      composerMode: 'solo',
       pendingProvider: 'claude',
       pendingModel: 'claude-default',
     },
@@ -1874,7 +1868,7 @@ test('solo retarget after start-fresh only transplants the new continuity branch
   assert.doesNotMatch(transplantInstructions, /\[agent:Orchestrator\] response from session-1/u);
 });
 
-test('solo composer mode restarts orchestrator sessions when the pending instance changes', async () => {
+test('provider solo thread restarts orchestrator sessions when the pending instance changes', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
@@ -1884,7 +1878,6 @@ test('solo composer mode restarts orchestrator sessions when the pending instanc
       title: 'Solo Thread',
       topic: 'Switch runtime instances per turn.',
       skipBossCatGreeting: true,
-      composerMode: 'solo',
       pendingProvider: 'claude',
       pendingInstance: 'native',
       pendingModel: 'claude-default',
@@ -1951,7 +1944,7 @@ test('solo composer mode restarts orchestrator sessions when the pending instanc
   );
 });
 
-test('solo composer mode restarts orchestrator sessions when the pending model selection changes', async () => {
+test('provider solo thread restarts orchestrator sessions when the pending model selection changes', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
@@ -1961,7 +1954,6 @@ test('solo composer mode restarts orchestrator sessions when the pending model s
       title: 'Solo Thread',
       topic: 'Switch reasoning effort without reusing the stale runtime session.',
       skipBossCatGreeting: true,
-      composerMode: 'solo',
       pendingProvider: 'codex',
       pendingModel: 'gpt-5.4',
       pendingModelSelection: {
@@ -2080,7 +2072,7 @@ test('participant sessions restart when a participant model selection changes', 
   state = createChannel(
     state,
     {
-      title: 'Cat-led Room',
+      title: 'Participant Room',
       topic: 'Cat session should restart when its model selection changes.',
       participantCatIds: [catId],
       defaultRecipientId: catId,
@@ -2639,7 +2631,7 @@ test('direct cat chat restarts the lead-cat session when the instance target cha
   );
 });
 
-test('solo composer mode sends raw user text without default instructions on a stable session', async () => {
+test('provider solo thread sends raw user text without default instructions on a stable session', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
@@ -2649,7 +2641,6 @@ test('solo composer mode sends raw user text without default instructions on a s
       title: 'Solo Thread',
       topic: 'Keep the runtime message raw.',
       skipBossCatGreeting: true,
-      composerMode: 'solo',
       pendingProvider: 'claude',
       pendingModel: 'claude-default',
     },
@@ -2717,7 +2708,7 @@ test('solo composer mode sends raw user text without default instructions on a s
   assertProviderAgentDispatchMetadata(channel, 'Hi');
 });
 
-test('solo composer mode honors pending runtime memory flush hooks before restarting the session', async () => {
+test('provider solo thread honors pending runtime memory flush hooks before restarting the session', async () => {
   const store = new MemoryChatStore();
   let state = await store.read();
   const now = new Date('2026-03-23T00:00:00.000Z');
@@ -2728,7 +2719,6 @@ test('solo composer mode honors pending runtime memory flush hooks before restar
       title: 'Solo thread',
       topic: 'Restart the solo session after switching models.',
       skipBossCatGreeting: true,
-      composerMode: 'solo',
       pendingProvider: 'claude',
       pendingModel: 'claude-default',
     },
@@ -2849,7 +2839,7 @@ test('solo composer mode honors pending runtime memory flush hooks before restar
   );
 });
 
-test('solo composer mode retransplants continuity after stale-session recovery creates a new runtime session', async () => {
+test('provider solo thread retransplants continuity after stale-session recovery creates a new runtime session', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
@@ -2859,7 +2849,6 @@ test('solo composer mode retransplants continuity after stale-session recovery c
       title: 'Solo Thread',
       topic: 'Recover stale sessions without losing continuity.',
       skipBossCatGreeting: true,
-      composerMode: 'solo',
       pendingProvider: 'claude',
       pendingModel: 'claude-default',
     },

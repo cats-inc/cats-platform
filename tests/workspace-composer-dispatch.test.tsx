@@ -77,7 +77,6 @@ test('buildSoloDispatchTarget only derives pending target for the active solo ro
       channelId: 'channel-solo',
       selectedChannel: {
         id: 'channel-solo',
-        composerMode: 'solo',
       },
       soloChannelExecutionTarget: executionTarget,
     }),
@@ -99,7 +98,6 @@ test('buildSoloDispatchTarget only derives pending target for the active solo ro
       channelId: 'channel-solo',
       selectedChannel: {
         id: 'channel-solo',
-        composerMode: 'solo',
       },
       soloChannelExecutionTarget: executionTarget,
     }),
@@ -112,7 +110,6 @@ test('buildSoloDispatchTarget only derives pending target for the active solo ro
       channelId: 'channel-solo',
       selectedChannel: {
         id: 'channel-solo',
-        composerMode: 'solo',
       },
       soloChannelExecutionTarget: executionTarget,
     }),
@@ -125,7 +122,6 @@ test('buildSoloDispatchTarget only derives pending target for the active solo ro
       channelId: 'channel-solo',
       selectedChannel: {
         id: 'channel-other',
-        composerMode: 'solo',
       },
       soloChannelExecutionTarget: executionTarget,
     }),
@@ -138,7 +134,6 @@ test('buildSoloDispatchTarget only derives pending target for the active solo ro
       channelId: 'channel-participant',
       selectedChannel: {
         id: 'channel-participant',
-        composerMode: 'cat_led',
         assignedCats: [{ catId: 'cat-1', status: 'active' }],
       },
       soloChannelExecutionTarget: executionTarget,

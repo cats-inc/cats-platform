@@ -520,7 +520,7 @@ export function NewChatDraft({
     selectedExecutionTarget,
     busy,
   });
-  const { isGroupDraft, isDirectLaneContext, isCatLedDraft } = draftSuggestionContext;
+  const { isGroupDraft, isDirectLaneContext, isParticipantDraft } = draftSuggestionContext;
   const {
     supported: voiceInputSupported,
     listening: voiceInputListening,
@@ -782,10 +782,10 @@ export function NewChatDraft({
           : undefined
       }
     />
-  ) : isCatLedDraft && effectiveDefaultRecipientCat ? (
+  ) : isParticipantDraft && effectiveDefaultRecipientCat ? (
     <DraftHeader
       variant="intro"
-      eyebrow="Cat-led Chat"
+      eyebrow="Participant Chat"
       title={`Start with ${effectiveDefaultRecipientCat.name}`}
       description={`Ask ${effectiveDefaultRecipientCat.name} to take the first pass. Add more Cats anytime, or keep the thread focused.`}
     />

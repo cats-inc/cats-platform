@@ -22,7 +22,6 @@ function createChannel(
     skillProfile: null,
     mcpProfile: null,
     orchestratorRoles: [],
-    composerMode: 'solo',
     pendingProvider: null,
     pendingModel: null,
     pendingInstance: null,
@@ -71,7 +70,6 @@ function createChannel(
 test('resolveConversationMode keeps direct lanes topology-first even when room mode is legacy-mismatched', () => {
   const channel = createChannel({
     channelKind: 'direct_lane',
-    composerMode: 'cat_led',
     roomRouting: {
       ...createChannel().roomRouting!,
       mode: 'boss_chat',
@@ -120,7 +118,6 @@ test('resolveConversationMode keeps direct lanes topology-first even when room m
 test('resolveConversationMode distinguishes solo, participant, and multi-participant thread semantics', () => {
   const soloThread = createChannel();
   const participantThread = createChannel({
-    composerMode: 'cat_led',
     assignedCats: [{
       catId: 'cat-1',
       name: 'Companion',
@@ -159,7 +156,6 @@ test('resolveConversationMode distinguishes solo, participant, and multi-partici
   });
   const multiCatRoom = createChannel({
     channelKind: 'multi_cat_room',
-    composerMode: 'cat_led',
     assignedCats: [
       {
         ...participantThread.assignedCats[0],
@@ -180,7 +176,6 @@ test('resolveConversationMode distinguishes solo, participant, and multi-partici
 
 test('resolveConversationMode treats temporary participants as multi-participant rooms', () => {
   const adhocRoom = createChannel({
-    composerMode: 'cat_led',
     assignedParticipants: [
       {
         participantId: 'participant-inline',

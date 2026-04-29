@@ -88,7 +88,6 @@ test('runtime targeting reads the visible participant execution target', () => {
   );
   const channel = {
     id: 'channel-1',
-    composerMode: 'boss',
     pendingProvider: null,
     pendingInstance: null,
     pendingModel: null,

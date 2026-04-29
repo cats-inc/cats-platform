@@ -51,14 +51,13 @@ import {
   cloneState,
   createChannelId,
   findChannelIndex,
-  inferChannelComposerMode,
   isoAt,
   normalizeDefaultRecipientId,
   normalizeList,
   normalizeOptionalText,
   requireCat,
   requireChannel,
-  syncChannelDefaultRecipientAndComposerMode,
+  syncChannelDefaultRecipientAndTopology,
 } from './shared.js';
 export {
   deleteChannel,
@@ -234,7 +233,6 @@ export function createParallelChatGroup(
         originSurface,
         repoPath: targetRepoPath,
         responseLanguage: input.responseLanguage,
-        composerMode: 'solo',
         pendingProvider: target.provider,
         pendingModel: target.model ?? undefined,
         pendingInstance: target.instance ?? undefined,
@@ -485,14 +483,6 @@ export function createChannel(
     skillProfile: normalizeOptionalText(input.skillProfile) ?? 'chat-default',
     mcpProfile: normalizeOptionalText(input.mcpProfile) ?? 'chat-memory',
     orchestratorRoles: normalizeList(input.orchestratorRoles),
-    composerMode: input.composerMode
-      ?? (input.entryKind === 'solo' ? 'solo' : undefined)
-      ?? inferChannelComposerMode({
-        roomMode: requestedRoomMode,
-        activeParticipantIds: normalizedParticipantAssignments
-          .filter((assignment) => assignment.status === 'active')
-          .map((assignment) => assignment.participantId),
-      }),
     pendingProvider: normalizeOptionalText(input.pendingProvider),
     pendingModel: normalizeOptionalText(input.pendingModel),
     pendingInstance: normalizeOptionalText(input.pendingInstance),
@@ -513,7 +503,7 @@ export function createChannel(
     workingMemory: createEmptyMemoryCheckpoint(),
   };
 
-  syncChannelDefaultRecipientAndComposerMode(channel);
+  syncChannelDefaultRecipientAndTopology(channel);
   nextState.channels.unshift(channel);
   nextState.selectedChannelId = channelId;
 
@@ -531,7 +521,6 @@ export function createChannel(
         event: 'room_created',
         verbosity: 'verbose',
         roomMode: resolveRoomRoutingState(channel.roomRouting).mode,
-        composerMode: channel.composerMode,
       },
       incrementUnread: false,
     },
@@ -599,7 +588,7 @@ export function assignCatToChannel(
       channel.status = 'configured';
     }
 
-    syncChannelDefaultRecipientAndComposerMode(channel);
+    syncChannelDefaultRecipientAndTopology(channel);
 
     applyMessageToChannel(
       channel,
@@ -652,7 +641,7 @@ export function assignCatToChannel(
     existing.execution.lease.status = 'not_started';
   }
 
-  syncChannelDefaultRecipientAndComposerMode(channel);
+  syncChannelDefaultRecipientAndTopology(channel);
 
   applyMessageToChannel(
     channel,
@@ -706,7 +695,7 @@ export function removeCatFromChannel(
     lastUsedAt: null,
   };
 
-  syncChannelDefaultRecipientAndComposerMode(channel);
+  syncChannelDefaultRecipientAndTopology(channel);
 
   const cat = requireCat(nextState, catId);
   applyMessageToChannel(

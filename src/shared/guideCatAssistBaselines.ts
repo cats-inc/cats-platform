@@ -154,10 +154,10 @@ export function resolveDraftStarterSuggestionsBaseline(input: {
           ),
         },
       ];
-    case 'cat_led':
+    case 'participant':
       return [
         {
-          id: 'cat-led-first-pass',
+          id: 'participant-first-pass',
           prompt: withCatName(
             'Ask {cat} to take the first pass, then tighten the plan together.',
             input.defaultRecipientName,
@@ -165,7 +165,7 @@ export function resolveDraftStarterSuggestionsBaseline(input: {
           ),
         },
         {
-          id: 'cat-led-review',
+          id: 'participant-review',
           prompt: withCatName(
             'Have {cat} review an idea and suggest the next concrete moves.',
             input.defaultRecipientName,
@@ -173,7 +173,7 @@ export function resolveDraftStarterSuggestionsBaseline(input: {
           ),
         },
         {
-          id: 'cat-led-brief',
+          id: 'participant-brief',
           prompt: withCatName(
             'Let {cat} turn a rough brief into a clear action plan.',
             input.defaultRecipientName,

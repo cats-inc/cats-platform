@@ -10,7 +10,6 @@ export type ChatConversationMode =
 type ConversationModeCarrier = {
   assignedCats: Array<{ status: string }>;
   channelKind?: ProductChannelKind | null;
-  composerMode?: string | null;
   roomRouting?: { mode?: RoomRoutingMode | null } | null;
 };
 

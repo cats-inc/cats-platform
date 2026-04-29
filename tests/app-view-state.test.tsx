@@ -89,7 +89,6 @@ function createChannel(overrides: Record<string, unknown> = {}) {
     skillProfile: null,
     mcpProfile: null,
     orchestratorRoles: [],
-    composerMode: 'cat_led',
     pendingProvider: null,
     pendingModel: null,
     pendingInstance: null,

@@ -107,7 +107,6 @@ function selectedChannel(input: {
     runtimePermissionMode: null,
     lastMessageAt: null,
     lastActivatedAt: null,
-    composerMode: 'solo' as const,
     pendingProvider: 'claude',
     pendingModel: null,
     pendingModelSelection: null,

@@ -115,8 +115,8 @@ test('FileChatStore round-trips explicit solo continuity reset boundaries', asyn
     {
       title: 'Solo Thread',
       topic: 'Persist explicit continuity resets.',
+      originSurface: 'chat',
       skipBossCatGreeting: true,
-      composerMode: 'solo',
       pendingProvider: 'claude',
       pendingModel: 'claude-default',
     },
@@ -148,8 +148,8 @@ test('resetSoloChannelContinuity is idempotent before the new branch starts', as
     {
       title: 'Solo Thread',
       topic: 'Do not append duplicate reset markers before any new branch activity.',
+      originSurface: 'chat',
       skipBossCatGreeting: true,
-      composerMode: 'solo',
       pendingProvider: 'claude',
       pendingModel: 'claude-default',
     },
@@ -173,7 +173,7 @@ test('resetSoloChannelContinuity is idempotent before the new branch starts', as
   assert.equal(resetMessages.length, 1);
 });
 
-test('assigning the first cat upgrades a solo chat into cat-led mode and removing the last cat returns it to solo', async () => {
+test('assigning and removing the first participant keeps default recipient topology consistent', async () => {
   const store = new FileChatStore(path.join(await mkdtemp(path.join(os.tmpdir(), 'cats-store-')), 'chat-state.json'));
   let state = await store.read();
   const now = new Date('2026-03-23T00:00:00.000Z');
@@ -194,8 +194,8 @@ test('assigning the first cat upgrades a solo chat into cat-led mode and removin
     {
       title: 'Solo Thread',
       topic: 'Starts without visible cats.',
+      originSurface: 'chat',
       skipBossCatGreeting: true,
-      composerMode: 'solo',
       pendingProvider: 'claude',
       pendingModel: 'claude-default',
     },
@@ -213,8 +213,8 @@ test('assigning the first cat upgrades a solo chat into cat-led mode and removin
     },
     now,
   );
-  assert.equal(state.channels[0].composerMode, 'cat_led');
   assert.equal(state.channels[0].roomRouting?.defaultRecipientId, catId);
+  assert.equal(state.channels[0].participantAssignments?.[0]?.participantId, catId);
 
   state = removeCatFromChannel(
     state,
@@ -222,8 +222,11 @@ test('assigning the first cat upgrades a solo chat into cat-led mode and removin
     catId,
     new Date('2026-03-23T00:05:00.000Z'),
   );
-  assert.equal(state.channels[0].composerMode, 'solo');
   assert.equal(state.channels[0].roomRouting?.defaultRecipientId, null);
+  assert.equal(
+    state.channels[0].participantAssignments?.some((assignment) => assignment.status === 'active'),
+    false,
+  );
 });
 
 test('channel topology infers direct lanes and multi-cat rooms independently from routing mode', () => {
@@ -449,7 +452,6 @@ test('archiving a direct-lane cat preserves private lane history without promoti
   assert.equal(channel.channelKind, 'direct_lane');
   assert.equal(channel.roomRouting?.mode, 'direct_cat_chat');
   assert.equal(channel.roomRouting?.defaultRecipientId, catId);
-  assert.equal(channel.composerMode, 'cat_led');
   assert.equal(channel.recoverableDirectLaneCatId, catId);
 });
 
@@ -501,7 +503,6 @@ test('unarchiving a cat restores its direct lane while keeping avatar metadata a
   assert.equal(channel.channelKind, 'direct_lane');
   assert.equal(channel.roomRouting?.mode, 'direct_cat_chat');
   assert.equal(channel.roomRouting?.defaultRecipientId, catId);
-  assert.equal(channel.composerMode, 'cat_led');
   assert.equal(channel.recoverableDirectLaneCatId ?? null, null);
 });
 
@@ -744,6 +745,7 @@ test('FileChatStore preserves first-class choices, embedded-json extraction, and
     {
       title: 'Choice Contract',
       topic: 'Persist structured choices in transcript history.',
+      originSurface: 'chat',
       skipBossCatGreeting: true,
     },
     now,

@@ -225,7 +225,7 @@ test('POST /api/channels/:id/deactivate closes the orchestrator runtime session 
   state = createChannel(state, {
     title: 'Solo room',
     topic: 'deactivate orchestrator session',
-    composerMode: 'solo',
+    originSurface: 'chat',
     pendingProvider: 'claude',
     skipBossCatGreeting: true,
   }, now);

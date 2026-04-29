@@ -311,7 +311,7 @@ test('after setup + activate, system messages stay generic and keep verbosity me
     const createResponse = await fetch(`${baseUrl}/api/channels`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ title: 'Test chat', topic: 'Test' }),
+      body: JSON.stringify({ title: 'Test chat', topic: 'Test', originSurface: 'chat' }),
     });
     assert.ok(createResponse.status === 200 || createResponse.status === 201);
     const createPayload = await createResponse.json();
@@ -410,7 +410,7 @@ test('orchestrator self-routing draft is rewritten before it reaches the transcr
     const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ title: 'Test chat', topic: 'Test' }),
+      body: JSON.stringify({ title: 'Test chat', topic: 'Test', originSurface: 'chat' }),
     });
     assert.ok(createChannelResponse.status === 200 || createChannelResponse.status === 201);
     const createChannelPayload = await createChannelResponse.json();
@@ -469,7 +469,7 @@ test('POST /api/channels creates a solo Boss Chat without assigning Boss Cat as 
     const createResponse = await fetch(`${baseUrl}/api/channels`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ title: 'Auto Chat', topic: 'Testing auto-assign' }),
+      body: JSON.stringify({ title: 'Auto Chat', topic: 'Testing auto-assign', originSurface: 'chat' }),
     });
     assert.equal(createResponse.status, 201);
     const createPayload = await createResponse.json();
@@ -488,7 +488,6 @@ test('POST /api/channels creates a solo Boss Chat without assigning Boss Cat as 
     assert.ok(roomCreated, 'Solo Boss Chat should seed a room_created system message');
     assert.equal(roomCreated.body, 'Room created: Boss Chat.');
     assert.equal(roomCreated.metadata.roomMode, 'boss_chat');
-    assert.equal(roomCreated.metadata.composerMode, 'solo');
     assert.equal(
       createPayload.channel.messages.some(
         (m) => m.senderKind === 'orchestrator' && m.senderName === 'Smelly',
@@ -518,6 +517,7 @@ test('POST /api/channels keeps the room_created system message when skipBossCatG
       body: JSON.stringify({
         title: 'First turn',
         topic: 'Send before any greeting',
+        originSurface: 'chat',
         skipBossCatGreeting: true,
       }),
     });
@@ -558,6 +558,7 @@ test('POST /api/channels does NOT auto-assign when cats are explicitly provided'
       body: JSON.stringify({
         title: 'Custom Chat',
         topic: 'Testing explicit cats',
+        originSurface: 'chat',
         cats: [{ name: 'Custom-Agent', provider: 'gemini', roles: ['coder'] }],
       }),
     });
@@ -601,7 +602,7 @@ test('Boss Cat cannot be assigned as a regular chat participant', async () => {
     const createResponse = await fetch(`${baseUrl}/api/channels`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ title: 'Manual Assign', topic: 'Should reject Boss Cat assignment' }),
+      body: JSON.stringify({ title: 'Manual Assign', topic: 'Should reject Boss Cat assignment', originSurface: 'chat' }),
     });
     assert.equal(createResponse.status, 201);
     const createPayload = await createResponse.json();

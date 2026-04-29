@@ -11,7 +11,6 @@ test('workspace metadata reuses the latest group audience metadata for cat-backe
   const metadata = resolveActiveChannelMessageMetadata({
     selectedChannel: {
       channelKind: 'multi_cat_room',
-      composerMode: 'cat_led',
       messages: [
         {
           id: 'message-user-1',
@@ -51,7 +50,6 @@ test('workspace metadata falls back to the active cat roster when the latest sen
   const metadata = resolveActiveChannelMessageMetadata({
     selectedChannel: {
       channelKind: 'multi_cat_room',
-      composerMode: 'cat_led',
       messages: [
         {
           id: 'message-user-1',
@@ -90,7 +88,6 @@ test('workspace metadata honors the current audience chip order and explicit con
   const metadata = resolveActiveChannelMessageMetadata({
     selectedChannel: {
       channelKind: 'multi_cat_room',
-      composerMode: 'cat_led',
       messages: [
         {
           id: 'message-user-1',
@@ -135,7 +132,6 @@ test('workspace audience state restores chip ordering while collapsing unsupport
   const audienceState = resolveActiveChannelAudienceState({
     selectedChannel: {
       channelKind: 'multi_cat_room',
-      composerMode: 'cat_led',
       messages: [
         {
           id: 'message-user-1',

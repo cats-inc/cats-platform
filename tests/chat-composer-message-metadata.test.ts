@@ -11,7 +11,6 @@ test('resolveActiveChannelMessageMetadata reuses the latest active group audienc
   const metadata = resolveActiveChannelMessageMetadata({
     selectedChannel: {
       channelKind: 'multi_cat_room',
-      composerMode: 'cat_led',
       messages: [
         {
           id: 'message-user-1',
@@ -52,7 +51,6 @@ test('resolveActiveChannelMessageMetadata falls back to all active room particip
   const metadata = resolveActiveChannelMessageMetadata({
     selectedChannel: {
       channelKind: 'multi_cat_room',
-      composerMode: 'cat_led',
       messages: [
         {
           id: 'message-user-1',
@@ -94,7 +92,6 @@ test('resolveActiveChannelMessageMetadata stays off for solo and direct lanes', 
   const soloMetadata = resolveActiveChannelMessageMetadata({
     selectedChannel: {
       channelKind: 'boss_thread',
-      composerMode: 'solo',
       messages: [],
       assignedParticipants: [],
       assignedCats: [],
@@ -110,7 +107,6 @@ test('resolveActiveChannelMessageMetadata stays off for solo and direct lanes', 
   const directMetadata = resolveActiveChannelMessageMetadata({
     selectedChannel: {
       channelKind: 'direct_lane',
-      composerMode: 'cat_led',
       messages: [],
       assignedParticipants: [
         {
@@ -137,7 +133,6 @@ test('resolveActiveChannelMessageMetadata honors the current active-room audienc
   const metadata = resolveActiveChannelMessageMetadata({
     selectedChannel: {
       channelKind: 'multi_cat_room',
-      composerMode: 'cat_led',
       messages: [
         {
           id: 'message-user-1',
@@ -183,7 +178,6 @@ test('resolveActiveChannelAudienceState restores the active-room chip order from
   const audienceState = resolveActiveChannelAudienceState({
     selectedChannel: {
       channelKind: 'multi_cat_room',
-      composerMode: 'cat_led',
       messages: [
         {
           id: 'message-user-1',

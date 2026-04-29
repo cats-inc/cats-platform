@@ -149,7 +149,6 @@ test('solo channel execution target falls back to the global orchestrator when p
       },
       {
         id: 'channel-participant',
-        composerMode: 'cat_led',
         assignedCats: [{ catId: 'cat-1', status: 'active' }],
         pendingProvider: 'codex',
         pendingModel: null,
@@ -178,7 +177,6 @@ test('solo channel execution target falls back to the global orchestrator when p
       },
       {
         id: 'channel-solo',
-        composerMode: 'solo',
         pendingProvider: null,
         pendingModel: null,
         pendingInstance: null,
@@ -212,7 +210,6 @@ test('solo channel execution target falls back to the global orchestrator when p
       },
       {
         id: 'channel-solo',
-        composerMode: 'solo',
         pendingProvider: 'codex',
         pendingModel: 'gpt-5.4',
         pendingInstance: 'default',

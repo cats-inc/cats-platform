@@ -70,6 +70,7 @@ test('removing chat from cat products detaches active chat participation and cle
   state = createChannel(state, {
     title: 'Operator Direct',
     topic: 'Dropping chat should detach the cat from active lanes.',
+    originSurface: 'chat',
     roomMode: 'direct_cat_chat',
     participantCatIds: [catId],
     defaultRecipientId: catId,
@@ -84,6 +85,4 @@ test('removing chat from cat products detaches active chat participation and cle
   assert.equal(assignment?.execution.lease.status, 'removed');
   assert.equal(state.channels[0].roomRouting?.mode, 'boss_chat');
   assert.equal(state.channels[0].roomRouting?.defaultRecipientId, null);
-  assert.equal(state.channels[0].composerMode, 'solo');
 });
-

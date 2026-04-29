@@ -19,7 +19,6 @@ function buildChannel(kind = 'direct_lane', topic = '', leaseStatuses = ['ready'
       },
     })),
     messages: [],
-    composerMode: 'cat_led',
     createdAt: '',
     updatedAt: '',
     lastMessageAt: null,

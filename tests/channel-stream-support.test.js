@@ -588,7 +588,6 @@ test('resolveChannelStreamTarget carries lane identity through participant lease
 
 test('resolveChannelStreamTarget carries the orchestrator lease lane id outside an active workflow turn', () => {
   const channel = {
-    composerMode: 'solo',
     pendingProvider: 'claude',
     pendingInstance: 'cli/native',
     orchestratorLease: {
@@ -622,7 +621,6 @@ test('resolveChannelStreamTarget carries the orchestrator lease lane id outside 
 
 test('resolveChannelStreamTarget does not leak the internal Chat placeholder for solo orchestrator turns', () => {
   const channel = {
-    composerMode: 'solo',
     pendingProvider: 'claude',
     pendingInstance: 'cli/native',
     orchestratorLease: {
@@ -670,7 +668,6 @@ test('resolveChannelStreamTarget does not leak the internal Chat placeholder for
 
 test('resolveChannelStreamTarget does not leak the internal Orchestrator placeholder for solo orchestrator turns', () => {
   const channel = {
-    composerMode: 'solo',
     pendingProvider: 'gemini',
     pendingInstance: 'cli/native',
     orchestratorLease: {
@@ -718,7 +715,6 @@ test('resolveChannelStreamTarget does not leak the internal Orchestrator placeho
 
 test('resolveChannelStreamTarget ignores stale orchestrator lease sessions from a different active workflow lane', () => {
   const channel = {
-    composerMode: 'solo',
     pendingProvider: 'claude',
     pendingInstance: 'cli/native',
     orchestratorLease: {
@@ -768,7 +764,6 @@ test('resolveChannelStreamTarget ignores stale orchestrator lease sessions from 
 
 test('resolveChannelStreamTarget keeps the orchestrator label from lease attachment metadata when no pending provider is set', () => {
   const channel = {
-    composerMode: 'solo',
     pendingProvider: null,
     pendingInstance: null,
     orchestratorLease: {

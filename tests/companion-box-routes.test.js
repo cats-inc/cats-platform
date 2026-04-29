@@ -1,18 +1,19 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
+import { mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
 import { createServer } from '../build/server/app/server/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
+import { waitForCondition } from './testUtils.js';
 
 const baseConfig = {
   host: '127.0.0.1',
   port: 8181,
   runtimeBaseUrl: 'http://127.0.0.1:3110',
   runtimeApiKey: '',
-  chatStatePath: 'unused-for-tests',
 };
 
 function createRuntimeStub() {
@@ -71,9 +72,13 @@ function createRuntimeStub() {
 }
 
 async function withServer(runtimeClient, callback, chatStore = new MemoryChatStore()) {
+  const workingDir = await mkdtemp(path.join(tmpdir(), 'cats-companion-routes-'));
   const server = createServer({
     shared: {
-      config: baseConfig,
+      config: {
+        ...baseConfig,
+        chatStatePath: path.join(workingDir, 'platform', 'state', 'chat-state.local.json'),
+      },
       runtimeClient,
       now: () => new Date('2026-03-23T12:00:00.000Z'),
     },
@@ -358,6 +363,7 @@ test('direct companion chat routes hydrated companion session context into runti
       body: JSON.stringify({
         title: '',
         topic: 'Private companion lane',
+        originSurface: 'chat',
         roomMode: 'direct_cat_chat',
         participantCatIds: [cat.id],
       }),
@@ -373,9 +379,10 @@ test('direct companion chat routes hydrated companion session context into runti
         body: 'How are you feeling today?',
       }),
     });
-    assert.equal(sendMessageResponse.status, 200);
+    assert.equal(sendMessageResponse.status, 200, await sendMessageResponse.clone().text());
+    const sendMessagePayload = await sendMessageResponse.json();
 
-    assert.equal(runtimeClient.createdSessions.length, 1);
+    assert.equal(runtimeClient.createdSessions.length, 1, JSON.stringify(sendMessagePayload));
     const createdSession = runtimeClient.createdSessions[0];
     assert.ok(createdSession.context.metadata.companionSession.retrieval);
     assert.ok(createdSession.context.metadata.companionSession.retrieval.hits.length > 0);
@@ -403,7 +410,10 @@ test('direct companion chat routes hydrated companion session context into runti
       ),
     );
 
-    assert.equal(runtimeClient.sentMessages.length, 1);
+    await waitForCondition(
+      () => runtimeClient.sentMessages.length === 1,
+      { timeoutMs: 1000 },
+    );
     const sentMessage = runtimeClient.sentMessages[0];
     assert.equal(
       sentMessage.input.context.metadata.companionSession.channelContext.channelId,
@@ -461,7 +471,7 @@ test('direct companion chat routes hydrated companion session context into runti
   });
 });
 
-test('adding the first companion cat to a Recents thread hydrates the cat-led runtime session', async () => {
+test('mentioning a companion in a Recents thread hydrates the participant runtime session', async () => {
   const runtimeClient = createRuntimeStub();
 
   await withServer(runtimeClient, async (baseUrl) => {
@@ -493,9 +503,9 @@ test('adding the first companion cat to a Recents thread hydrates the cat-led ru
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
         title: 'Solo thread',
-        topic: 'Start solo, then upgrade to a cat-led Recents chat.',
+        topic: 'Start solo, then bring a companion into the Recents chat.',
+        originSurface: 'chat',
         skipBossCatGreeting: true,
-        composerMode: 'solo',
         pendingProvider: 'gemini',
         pendingModel: 'gemini-default',
       }),
@@ -515,16 +525,15 @@ test('adding the first companion cat to a Recents thread hydrates the cat-led ru
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({
-        body: 'Tell me about your favorite toy.',
+        body: '@Companion Tell me about your favorite toy.',
       }),
     });
-    assert.equal(sendMessageResponse.status, 200);
+    assert.equal(sendMessageResponse.status, 200, await sendMessageResponse.text());
 
     const shellResponse = await fetch(`${baseUrl}/api/app-shell`);
     assert.equal(shellResponse.status, 200);
     const shellPayload = await shellResponse.json();
     const selectedChannel = shellPayload.chat.selectedChannel;
-    assert.equal(selectedChannel.composerMode, 'cat_led');
     assert.equal(selectedChannel.roomRouting.defaultRecipientId, cat.id);
 
     const createdSession = runtimeClient.createdSessions.at(-1);

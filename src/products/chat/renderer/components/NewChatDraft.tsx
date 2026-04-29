@@ -24,7 +24,7 @@ const POMODORO_PROMPT = 'Write a small pomodoro timer app.';
 export function NewChatDraft(props: NewChatDraftProps) {
   // Reset per-draft UI state (folder probe, starter visibility, ...) when the
   // route identity changes so switching between +New chat, +Group,
-  // +Parallel, cat-led, and direct-lane drafts does not leak across entries.
+  // +Parallel, participant, and direct-lane drafts does not leak across entries.
   const draftKey = [
     props.entryPreset ?? 'default',
     (props.allowAddCat ?? true) ? 'public' : 'direct',

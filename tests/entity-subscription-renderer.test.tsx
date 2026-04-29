@@ -302,7 +302,6 @@ test('channel subscription state keeps selected channel summary routing in sync'
       runtimePermissionMode: null,
       lastMessageAt: '2026-04-21T00:00:03.000Z',
       lastActivatedAt: null,
-      composerMode: 'solo',
       pendingProvider: 'claude',
       pendingModel: null,
       pendingModelSelection: null,

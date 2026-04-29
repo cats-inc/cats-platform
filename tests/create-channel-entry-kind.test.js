@@ -25,6 +25,7 @@ test('createChannel treats entryKind=direct as a direct lane when roomMode is om
   const next = createChannel(state, {
     title: '',
     topic: 'Wake up',
+    originSurface: 'chat',
     entryKind: 'direct',
     participantCatIds: [catId],
     skipBossCatGreeting: true,
@@ -34,20 +35,19 @@ test('createChannel treats entryKind=direct as a direct lane when roomMode is om
   assert.equal(channel?.roomRouting?.mode, 'direct_cat_chat');
   assert.equal(channel?.roomRouting?.defaultRecipientId, catId);
   assert.equal(channel?.channelKind, 'direct_lane');
-  assert.equal(channel?.composerMode, 'cat_led');
 });
 
-test('createChannel treats entryKind=solo as a solo thread when composerMode is omitted', () => {
+test('createChannel treats entryKind=solo as a provider solo thread when participants are omitted', () => {
   const next = createChannel(createDefaultChatState(), {
     title: 'New chat',
     topic: 'Draft next step',
+    originSurface: 'chat',
     entryKind: 'solo',
     skipBossCatGreeting: true,
   });
 
   const channel = next.channels[0];
   assert.equal(channel?.roomRouting?.mode, 'boss_chat');
-  assert.equal(channel?.composerMode, 'solo');
   assert.equal(channel?.channelKind, 'boss_thread');
+  assert.equal(channel?.participantAssignments?.length ?? 0, 0);
 });
-

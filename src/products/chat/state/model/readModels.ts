@@ -298,7 +298,6 @@ export function toChannelSummary(
     runtimePermissionMode: channel.runtimePermissionMode ?? null,
     lastMessageAt: channel.lastMessageAt,
     lastActivatedAt: channel.lastActivatedAt,
-    composerMode: channel.composerMode ?? 'solo',
     pendingProvider: channel.pendingProvider ?? null,
     pendingModel: channel.pendingModel ?? null,
     pendingModelSelection: structuredClone(channel.pendingModelSelection ?? null),

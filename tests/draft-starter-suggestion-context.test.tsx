@@ -3,7 +3,7 @@ import test from 'node:test';
 
 import { resolveDraftStarterSuggestionContext } from '../src/products/chat/renderer/draftStarterSuggestionContext.ts';
 
-test('starter suggestion context marks direct lanes separately from cat-led drafts', () => {
+test('starter suggestion context marks direct lanes separately from participant drafts', () => {
   assert.deepEqual(
     resolveDraftStarterSuggestionContext({
       allowAddCat: false,
@@ -17,7 +17,7 @@ test('starter suggestion context marks direct lanes separately from cat-led draf
       mode: 'direct',
       isGroupDraft: false,
       isDirectLaneContext: true,
-      isCatLedDraft: false,
+      isParticipantDraft: false,
     },
   );
 
@@ -31,10 +31,10 @@ test('starter suggestion context marks direct lanes separately from cat-led draf
       parallelTargetCount: 0,
     }),
     {
-      mode: 'cat_led',
+      mode: 'participant',
       isGroupDraft: false,
       isDirectLaneContext: false,
-      isCatLedDraft: true,
+      isParticipantDraft: true,
     },
   );
 });
@@ -53,7 +53,7 @@ test('starter suggestion context keeps group and parallel routes distinct', () =
       mode: 'group',
       isGroupDraft: true,
       isDirectLaneContext: false,
-      isCatLedDraft: false,
+      isParticipantDraft: false,
     },
   );
 
@@ -70,7 +70,7 @@ test('starter suggestion context keeps group and parallel routes distinct', () =
       mode: 'parallel',
       isGroupDraft: false,
       isDirectLaneContext: false,
-      isCatLedDraft: false,
+      isParticipantDraft: false,
     },
   );
 });
@@ -89,7 +89,7 @@ test('starter suggestion context falls back to solo when no cats are selected', 
       mode: 'solo',
       isGroupDraft: false,
       isDirectLaneContext: false,
-      isCatLedDraft: false,
+      isParticipantDraft: false,
     },
   );
 });

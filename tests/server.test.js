@@ -9409,7 +9409,7 @@ test('first send persists a runtime-sanitized solo model selection after droppin
       body: JSON.stringify({
         title: 'Sanitize Solo Preset',
         topic: 'Wake should clean stale presets from solo chats.',
-        composerMode: 'solo',
+        originSurface: 'chat',
         pendingProvider: 'codex',
         pendingModel: 'gpt-5.4',
         pendingModelSelection: {
@@ -9487,8 +9487,8 @@ test('first send on a selected solo chat accepts the user turn before starting t
       body: JSON.stringify({
         title: 'Race room',
         topic: 'Do not create two sessions during first send.',
+        originSurface: 'chat',
         skipBossCatGreeting: true,
-        composerMode: 'solo',
       }),
     });
     assert.equal(createChannelResponse.status, 201);
@@ -10468,7 +10468,7 @@ test('solo chats without a cwd create isolated runtime sessions', async () => {
       body: JSON.stringify({
         title: 'Solo Draft',
         topic: 'Start without a repo path.',
-        composerMode: 'solo',
+        originSurface: 'chat',
         pendingProvider: 'claude',
         pendingInstance: 'native',
         pendingModel: 'claude-opus-4-6',
@@ -10507,7 +10507,6 @@ test('solo chats without a cwd create isolated runtime sessions', async () => {
         : null;
     });
 
-    assert.equal(channelPayload.channel.composerMode, 'solo');
     assert.equal(channelPayload.channel.orchestratorLease.sessionId, 'session-1');
     assert.equal(channelPayload.channel.orchestratorLease.status, 'ready');
     assert.match(
@@ -10534,7 +10533,7 @@ test('PATCH /api/channels/:channelId can start a fresh solo continuity branch', 
       body: JSON.stringify({
         title: 'Solo Draft',
         topic: 'Reset continuity without leaving the chat.',
-        composerMode: 'solo',
+        originSurface: 'chat',
         pendingProvider: 'claude',
         pendingInstance: 'native',
         pendingModel: 'claude-opus-4-6',
@@ -10634,7 +10633,7 @@ test('PATCH /api/channels/:channelId keeps repeated solo continuity resets idemp
       body: JSON.stringify({
         title: 'Solo Draft',
         topic: 'Start fresh should not duplicate reset markers when pressed twice in a row.',
-        composerMode: 'solo',
+        originSurface: 'chat',
         pendingProvider: 'claude',
         pendingInstance: 'native',
         pendingModel: 'claude-opus-4-6',
@@ -10693,6 +10692,7 @@ test('PATCH /api/channels/:channelId rejects continuity reset for non-solo chats
       body: JSON.stringify({
         title: 'Group Room',
         topic: 'Start fresh should stay scoped to solo for now.',
+        originSurface: 'chat',
         temporaryParticipants: [
           {
             name: 'Room Cat',
@@ -10705,7 +10705,6 @@ test('PATCH /api/channels/:channelId rejects continuity reset for non-solo chats
     });
     assert.equal(createChannelResponse.status, 201);
     const { channel } = await createChannelResponse.json();
-    assert.notEqual(channel.composerMode, 'solo');
 
     const resetResponse = await fetch(`${baseUrl}/api/channels/${channel.id}`, {
       method: 'PATCH',
@@ -11173,7 +11172,6 @@ test('PATCH /api/cats/:id archive closes live direct-lane sessions without promo
     assert.equal(archivePayload.chat.selectedChannel.channelKind, 'direct_lane');
     assert.equal(archivePayload.chat.selectedChannel.roomRouting.mode, 'direct_cat_chat');
     assert.equal(archivePayload.chat.selectedChannel.roomRouting.defaultRecipientId, catId);
-    assert.equal(archivePayload.chat.selectedChannel.composerMode, 'cat_led');
     assert.equal(archivePayload.chat.selectedChannel.assignedCats[0]?.status, 'removed');
     assert.equal(archivePayload.chat.channels[0]?.channelKind, 'direct_lane');
     assert.equal(archivePayload.chat.channels[0]?.roomMode, 'direct_cat_chat');
@@ -11836,7 +11834,7 @@ test('attachment serving keeps no-repo chat files out of the state tree', async 
       body: JSON.stringify({
         title: 'Attachment Persistence',
         topic: 'Keep attachments stable across session restarts.',
-        composerMode: 'solo',
+        originSurface: 'chat',
         pendingProvider: 'claude',
         pendingInstance: 'native',
         pendingModel: 'claude-opus-4-6',

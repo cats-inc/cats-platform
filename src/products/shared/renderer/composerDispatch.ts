@@ -18,7 +18,6 @@ export interface ComposerModelValue {
 export interface ComposerSelectedChannelLike {
   id: string;
   channelKind?: 'boss_thread' | 'direct_lane' | 'multi_cat_room' | null;
-  composerMode?: string | null;
   pendingProvider?: string | null;
   roomRouting?: {
     mode?: RoomRoutingMode | null;

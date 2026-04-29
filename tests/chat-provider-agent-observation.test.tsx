@@ -489,7 +489,6 @@ test('Chat parallel member turns keep solo execution targets inside the provider
     body: 'Handle your branch of the parallel run.',
   });
 
-  assert.equal(codexMember.composerMode, 'solo');
   assert.equal(actorProvider(prepared), 'codex');
   assert.equal(prepared.initialResolution.targets[0]?.participantKind, 'orchestrator');
   assert.equal(summaryValue(prepared, 'routing_target_count'), 1);

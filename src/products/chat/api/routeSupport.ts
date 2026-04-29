@@ -385,7 +385,10 @@ export async function persistCreatedChannel(
 
   const now = nowFrom(context.dependencies);
   const requestedRoomMode = input.roomMode ?? (input.entryKind === 'direct' ? 'direct_cat_chat' : 'boss_chat');
-  const requestedComposerMode = input.composerMode ?? (input.entryKind === 'solo' ? 'solo' : null);
+  const requestedParticipantCount =
+    (input.cats?.length ?? 0)
+    + (input.participantCatIds?.length ?? 0)
+    + (input.temporaryParticipants?.length ?? 0);
   let nextState = createChannel(
     await context.dependencies.chatStore.read(),
     input,
@@ -396,7 +399,7 @@ export async function persistCreatedChannel(
   if (
     !input.skipBossCatGreeting
     && requestedRoomMode !== 'direct_cat_chat'
-    && requestedComposerMode !== 'solo'
+    && requestedParticipantCount > 0
   ) {
     nextState = seedBossCatGreeting(nextState, nextState.selectedChannelId, now);
   }

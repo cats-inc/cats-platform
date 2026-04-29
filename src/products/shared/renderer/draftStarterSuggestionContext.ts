@@ -1,7 +1,7 @@
 export type NewChatPreset = 'default' | 'group' | 'parallel';
 export type DraftStarterSuggestionMode =
   | 'solo'
-  | 'cat_led'
+  | 'participant'
   | 'group'
   | 'direct'
   | 'parallel';
@@ -10,7 +10,7 @@ export interface DraftStarterSuggestionContext {
   mode: DraftStarterSuggestionMode;
   isGroupDraft: boolean;
   isDirectLaneContext: boolean;
-  isCatLedDraft: boolean;
+  isParticipantDraft: boolean;
 }
 
 export function resolveDraftStarterSuggestionContext(input: {
@@ -27,21 +27,21 @@ export function resolveDraftStarterSuggestionContext(input: {
     !input.allowAddCat
     && Boolean(input.draftDefaultRecipientCatId)
     && input.hasDefaultRecipientCat;
-  const isCatLedDraft = !isDirectLaneContext && input.hasDefaultRecipientCat && !isGroupDraft;
+  const isParticipantDraft = !isDirectLaneContext && input.hasDefaultRecipientCat && !isGroupDraft;
   const mode: DraftStarterSuggestionMode = isParallelMode
     ? 'parallel'
     : isDirectLaneContext
       ? 'direct'
       : isGroupDraft
         ? 'group'
-        : isCatLedDraft
-          ? 'cat_led'
+        : isParticipantDraft
+          ? 'participant'
           : 'solo';
 
   return {
     mode,
     isGroupDraft,
     isDirectLaneContext,
-    isCatLedDraft,
+    isParticipantDraft,
   };
 }

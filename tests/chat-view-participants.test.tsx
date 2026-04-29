@@ -196,7 +196,6 @@ function createChannel(overrides: Partial<ChatChannelView> = {}): ChatChannelVie
     skillProfile: null,
     mcpProfile: null,
     orchestratorRoles: [],
-    composerMode: 'cat_led',
     pendingProvider: null,
     pendingModel: null,
     pendingInstance: null,
@@ -729,7 +728,6 @@ test('ChatView promotes solo orchestrator progress once the session_started syst
       {...createProps({
         selectedChannel: createChannel({
           title: 'Solo runtime chat',
-          composerMode: 'solo',
           pendingProvider: 'claude',
           pendingModel: 'opus',
           messages: [

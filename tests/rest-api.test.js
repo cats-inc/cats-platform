@@ -751,7 +751,7 @@ test('PATCH /api/channels/:channelId persists solo chat AI reply settings', asyn
       body: JSON.stringify({
         title: 'Solo',
         topic: 'Solo chat',
-        composerMode: 'solo',
+        originSurface: 'chat',
       }),
     });
     assert.equal(createChannelResponse.status, 201);

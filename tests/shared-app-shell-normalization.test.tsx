@@ -57,7 +57,6 @@ function createLegacyPayload() {
         messages: [],
         routingStatus: 'idle',
         channelKind: 'direct_lane',
-        composerMode: 'solo',
         roomRouting: {
           mode: 'direct_cat_chat',
           defaultRecipientId: 'cat-nova',
@@ -153,8 +152,8 @@ test('shared normalizer fills assignedCats and assignedParticipants from catAssi
 });
 
 test('resolveVisibleChatChannel picks the direct-lane channel when the chats route has no selection', () => {
-  const selectedChannel = { id: 'channel-a', composerMode: 'cat_led' } as const;
-  const directLaneChannel = { id: 'channel-direct', composerMode: 'solo' } as const;
+  const selectedChannel = { id: 'channel-a' } as const;
+  const directLaneChannel = { id: 'channel-direct' } as const;
 
   assert.equal(resolveVisibleChatChannel(selectedChannel, null), selectedChannel);
   assert.equal(resolveVisibleChatChannel(null, directLaneChannel), directLaneChannel);
@@ -162,7 +161,7 @@ test('resolveVisibleChatChannel picks the direct-lane channel when the chats rou
   assert.equal(resolveVisibleChatChannelId(null, directLaneChannel), 'channel-direct');
 });
 
-test('WorkspaceProductApp gates solo/cat_led chatSurfaceProps off visibleChannel so /my-cats/:catId keeps direct-lane controls', () => {
+test('WorkspaceProductApp gates solo and participant-room chatSurfaceProps off visibleChannel so /my-cats/:catId keeps direct-lane controls', () => {
   const source = readFileSync(
     resolveProjectPath(import.meta.url, 'src/products/shared/renderer/WorkspaceProductApp.tsx'),
     'utf8',
@@ -177,32 +176,32 @@ test('WorkspaceProductApp gates solo/cat_led chatSurfaceProps off visibleChannel
 
   assert.match(
     chatSurfaceRegion,
-    /onStartFresh:\s*\n?\s*visibleChatChannelId\s*&&\s*visibleChannel\?\.composerMode\s*===\s*['"]solo['"]/u,
+    /onStartFresh:\s*\n?\s*visibleChatChannelId\s*&&\s*visibleChannel\s*&&\s*isSoloThreadChannel\(visibleChannel\)/u,
     'onStartFresh should gate on visibleChannel so /my-cats/:catId inherits the solo control',
   );
   assert.match(
     chatSurfaceRegion,
-    /selectedExecutionTarget:\s*\n?\s*visibleChannel\?\.composerMode\s*===\s*["']solo["']/u,
+    /selectedExecutionTarget:\s*\n?\s*visibleChannel\s*&&\s*isSoloThreadChannel\(visibleChannel\)/u,
     'selectedExecutionTarget should gate on visibleChannel',
   );
   assert.match(
     chatSurfaceRegion,
-    /onExecutionTargetChange:\s*\n?\s*visibleChannel\?\.composerMode\s*===\s*["']solo["']/u,
+    /onExecutionTargetChange:\s*\n?\s*visibleChannel\s*&&\s*isSoloThreadChannel\(visibleChannel\)/u,
     'onExecutionTargetChange should gate on visibleChannel',
   );
   assert.match(
     chatSurfaceRegion,
-    /onToggleActiveWorkflowShape:\s*\n?\s*visibleChannel\?\.composerMode\s*===\s*["']cat_led["']/u,
+    /onToggleActiveWorkflowShape:\s*\n?\s*visibleChannel\s*&&\s*supportsParticipantAudienceSelection\(visibleChannel\)/u,
     'onToggleActiveWorkflowShape should gate on visibleChannel',
   );
   assert.match(
     chatSurfaceRegion,
-    /onSetActiveAudienceKeys:\s*\n?\s*visibleChannel\?\.composerMode\s*===\s*["']cat_led["']/u,
+    /onSetActiveAudienceKeys:\s*\n?\s*visibleChannel\s*&&\s*supportsParticipantAudienceSelection\(visibleChannel\)/u,
     'onSetActiveAudienceKeys should gate on visibleChannel',
   );
   assert.equal(
-    /selectedChannel\?\.composerMode/u.test(chatSurfaceRegion),
+    /selectedChannel\?\.composerMode|visibleChannel\?\.composerMode/u.test(chatSurfaceRegion),
     false,
-    'chatSurfaceProps must not regress to selectedChannel-scoped composerMode checks',
+    'chatSurfaceProps must not regress to composerMode checks',
   );
 });

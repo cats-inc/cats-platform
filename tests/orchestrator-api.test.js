@@ -2148,7 +2148,6 @@ test('startup-recovered continuation replay auto-resumes on server startup when 
   assert.ok(channelId);
   const seededChannel = chat.channels.find((candidate) => candidate.id === channelId);
   assert.ok(seededChannel);
-  seededChannel.composerMode = 'solo';
   seededChannel.roomRouting = createDefaultRoomRoutingState({
     mode: 'boss_chat',
     defaultRecipientId: null,
