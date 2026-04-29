@@ -170,8 +170,13 @@ Supplying a non-null server-resolved field rejects the call with
 Runtime invocation enrichment is registered through the platform runtime
 invocation-enricher registry. Chat calls the platform registry and does not
 import Code artifact tooling directly. Enrichers run in ascending `priority`
-order, with equal priorities ordered by id; assistant metadata contributions are
-stored under each enricher id rather than flattened into Chat metadata.
+order, with equal priorities ordered by id. Products should use the exported
+priority bands (`EARLY = -100`, `NORMAL = 0`, `POST_PROCESS = 100`) rather than
+inventing ad hoc values. Enrichers return partial contributions only; the
+platform merges those contributions onto the original runtime invocation so a
+product hook cannot accidentally drop provider/model/workspace fields. Assistant
+metadata contributions are stored under each enricher id rather than flattened
+into Chat metadata.
 
 When a chat/channel originates from Cats Code (`originSurface = "code"`),
 activation of `+New code`, `+Team code`, or a `+Peer code` member channel

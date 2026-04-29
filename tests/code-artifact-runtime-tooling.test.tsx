@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  RuntimeEnricherPriority,
   clearRuntimeInvocationEnrichers,
   collectRuntimeInvocationAssistantMetadata,
   enrichRuntimeInvocation,
@@ -52,6 +53,18 @@ test('Code artifact runtime tooling attaches only to Code-origin active sessions
   assert.equal(metadata?.toolName, 'declare_artifact');
   assert.equal(metadata?.sourceChannelId, 'channel-code');
   assert.equal(metadata?.workspacePath, 'C:/repo/cats-platform');
+
+  const typedInvocation = enrichCodeArtifactRuntimeInvocation(
+    {
+      provider: 'claude',
+      model: 'claude-opus-4-6',
+      instructions: 'Keep the answer concise.',
+    },
+    { originSurface: 'code', id: 'channel-code' },
+    { phase: 'session_create' },
+  );
+  assert.equal(typedInvocation.provider, 'claude');
+  assert.equal(typedInvocation.model, 'claude-opus-4-6');
 
   const chatInvocation = enrichCodeArtifactRuntimeInvocation(
     { instructions: 'No Code tooling.', context: { labels: ['existing'] } },
@@ -241,23 +254,23 @@ test('runtime invocation registry applies deterministic priority order', () => {
   try {
     registerRuntimeInvocationEnricher({
       id: 'z-enricher',
-      priority: 10,
+      priority: RuntimeEnricherPriority.NORMAL,
       enrich(_channel, input) {
-        return { ...input, instructions: `${input.instructions ?? ''}Z` };
+        return { instructions: `${input.instructions ?? ''}Z` };
       },
     });
     registerRuntimeInvocationEnricher({
       id: 'a-enricher',
-      priority: 10,
+      priority: RuntimeEnricherPriority.NORMAL,
       enrich(_channel, input) {
-        return { ...input, instructions: `${input.instructions ?? ''}A` };
+        return { instructions: `${input.instructions ?? ''}A` };
       },
     });
     registerRuntimeInvocationEnricher({
       id: 'first-enricher',
-      priority: -1,
+      priority: RuntimeEnricherPriority.EARLY,
       enrich(_channel, input) {
-        return { ...input, instructions: `${input.instructions ?? ''}F` };
+        return { instructions: `${input.instructions ?? ''}F` };
       },
     });
 
@@ -268,6 +281,38 @@ test('runtime invocation registry applies deterministic priority order', () => {
     );
 
     assert.equal(enriched.instructions, 'FAZ');
+  } finally {
+    clearRuntimeInvocationEnrichers();
+  }
+});
+
+test('runtime invocation registry preserves original payload fields when applying contributions', () => {
+  clearRuntimeInvocationEnrichers();
+  try {
+    registerRuntimeInvocationEnricher({
+      id: 'instructions-only-enricher',
+      enrich() {
+        return { instructions: 'Injected instructions.' };
+      },
+    });
+
+    const enriched = enrichRuntimeInvocation(
+      { originSurface: 'code' },
+      {
+        provider: 'claude',
+        instance: 'default',
+        model: 'claude-opus-4-6',
+        workspaceAccess: 'read_only' as const,
+        instructions: 'Original instructions.',
+      },
+      { phase: 'session_create' },
+    );
+
+    assert.equal(enriched.provider, 'claude');
+    assert.equal(enriched.instance, 'default');
+    assert.equal(enriched.model, 'claude-opus-4-6');
+    assert.equal(enriched.workspaceAccess, 'read_only');
+    assert.equal(enriched.instructions, 'Injected instructions.');
   } finally {
     clearRuntimeInvocationEnrichers();
   }

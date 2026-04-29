@@ -4,9 +4,11 @@ import type {
   RuntimeToolUseSegment,
 } from '../../../platform/runtime/client.js';
 import {
+  RuntimeEnricherPriority,
   registerRuntimeInvocationEnricher,
   type RuntimeInvocationEnricher,
   type RuntimeInvocationEnrichmentChannel,
+  type RuntimeInvocationEnrichmentContribution,
   type RuntimeInvocationEnrichmentContext,
   type RuntimeInvocationEnrichmentInput,
 } from '../../../platform/runtime/invocationEnrichment.js';
@@ -58,7 +60,10 @@ const NEGATIVE_ARTIFACT_EXAMPLES = [
 export type CodeArtifactRuntimeToolingChannel = RuntimeInvocationEnrichmentChannel;
 export type RuntimeInvocationWithCodeArtifactTooling = RuntimeInvocationEnrichmentInput;
 
-export type RuntimeInvocationWithCodeArtifactToolingResult = RuntimeInvocationEnrichmentInput;
+export type RuntimeInvocationWithCodeArtifactToolingResult<
+  TInput extends RuntimeInvocationWithCodeArtifactTooling =
+    RuntimeInvocationWithCodeArtifactTooling,
+> = TInput;
 
 export interface CodeArtifactRuntimeToolingMetadata {
   enabled: true;
@@ -162,9 +167,9 @@ export function buildCodeArtifactOnboardingBlock(): string {
 export function createCodeArtifactRuntimeInvocationEnricher(): RuntimeInvocationEnricher {
   return {
     id: CODE_ARTIFACT_RUNTIME_ENRICHER_ID,
-    priority: 100,
+    priority: RuntimeEnricherPriority.POST_PROCESS,
     enrich(channel, input, context) {
-      return enrichCodeArtifactRuntimeInvocation(input, channel, context);
+      return buildCodeArtifactRuntimeInvocationContribution(input, channel, context);
     },
     collectAssistantMetadata(channel, segments) {
       const calls = collectCodeArtifactRuntimeToolCalls(channel, segments);
@@ -177,13 +182,33 @@ export function registerCodeArtifactRuntimeInvocationEnrichers(): void {
   registerRuntimeInvocationEnricher(createCodeArtifactRuntimeInvocationEnricher());
 }
 
+export function enrichCodeArtifactRuntimeInvocation<
+  TInput extends RuntimeInvocationWithCodeArtifactTooling,
+>(
+  input: TInput,
+  channel: CodeArtifactRuntimeToolingChannel,
+  enrichmentContext: RuntimeInvocationEnrichmentContext,
+): RuntimeInvocationWithCodeArtifactToolingResult<TInput>;
 export function enrichCodeArtifactRuntimeInvocation(
   input: RuntimeInvocationWithCodeArtifactTooling,
   channel: CodeArtifactRuntimeToolingChannel,
   enrichmentContext: RuntimeInvocationEnrichmentContext,
 ): RuntimeInvocationWithCodeArtifactToolingResult {
+  const contribution = buildCodeArtifactRuntimeInvocationContribution(
+    input,
+    channel,
+    enrichmentContext,
+  );
+  return contribution ? { ...input, ...contribution } : { ...input };
+}
+
+function buildCodeArtifactRuntimeInvocationContribution(
+  input: RuntimeInvocationWithCodeArtifactTooling,
+  channel: CodeArtifactRuntimeToolingChannel,
+  enrichmentContext: RuntimeInvocationEnrichmentContext,
+): RuntimeInvocationEnrichmentContribution {
   if (!shouldAttachCodeArtifactRuntimeTooling(channel)) {
-    return { ...input };
+    return null;
   }
 
   const context = withCodeArtifactRuntimeContext(input.context, channel);
@@ -192,7 +217,6 @@ export function enrichCodeArtifactRuntimeInvocation(
     : input.instructions;
 
   return {
-    ...input,
     instructions,
     context,
   };
@@ -286,7 +310,8 @@ function appendCodeArtifactInstructions(
     'codeArtifactDeclaration.onboardingBlockVersion=' +
     CODE_ARTIFACT_DECLARATION_ONBOARDING_BLOCK_VERSION;
   // Kept for future resume/compaction re-injection paths; normal session
-  // creation sees this block once.
+  // creation sees this block once. Re-injection must strip any older
+  // cats-code:declare-artifact-onboarding block before appending a new version.
   if (existingText.includes(versionStamp)) {
     return existingText;
   }

@@ -6,6 +6,7 @@ import path from 'node:path';
 import test from 'node:test';
 
 import { createServer } from '../src/app/server/index.ts';
+import { clearRuntimeInvocationEnrichers } from '../src/platform/runtime/invocationEnrichment.ts';
 import { MemoryChatStore } from '../src/products/chat/state/store.ts';
 import { buildNewChatChannelInput } from '../src/products/shared/renderer/workspaceChatUtils.tsx';
 import { waitForCondition } from './testUtils.js';
@@ -133,6 +134,7 @@ async function withServer(
 ): Promise<void> {
   const chatStore = new MemoryChatStore();
   const tempStateDir = await mkdtemp(path.join(os.tmpdir(), 'cats-code-session-policy-'));
+  clearRuntimeInvocationEnrichers();
   const server = createServer({
     shared: {
       config: {
@@ -160,6 +162,7 @@ async function withServer(
     server.close();
     await once(server, 'close');
     await rm(tempStateDir, { recursive: true, force: true });
+    clearRuntimeInvocationEnrichers();
   }
 }
 

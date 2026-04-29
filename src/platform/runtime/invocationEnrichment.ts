@@ -17,20 +17,24 @@ export interface RuntimeInvocationEnrichmentInput {
   context?: RuntimeSessionInvocationContext;
 }
 
-type DistributiveOmit<TInput, TKey extends keyof any> = TInput extends unknown
-  ? Omit<TInput, TKey>
-  : never;
-
 export type RuntimeInvocationEnrichmentResult<
   TInput extends RuntimeInvocationEnrichmentInput,
-> = DistributiveOmit<TInput, 'instructions' | 'context'> & {
-  instructions?: string | null;
-  context?: RuntimeSessionInvocationContext;
-};
+> = TInput & RuntimeInvocationEnrichmentInput;
 
 export interface RuntimeInvocationEnrichmentContext {
   phase: RuntimeInvocationEnrichmentPhase;
 }
+
+export const RuntimeEnricherPriority = {
+  EARLY: -100,
+  NORMAL: 0,
+  POST_PROCESS: 100,
+} as const;
+
+export type RuntimeInvocationEnrichmentContribution =
+  | Partial<RuntimeInvocationEnrichmentInput>
+  | null
+  | undefined;
 
 export interface RuntimeInvocationEnricher {
   id: string;
@@ -41,9 +45,9 @@ export interface RuntimeInvocationEnricher {
   priority?: number;
   enrich(
     channel: RuntimeInvocationEnrichmentChannel,
-    input: RuntimeInvocationEnrichmentInput,
+    input: Readonly<RuntimeInvocationEnrichmentInput>,
     context: RuntimeInvocationEnrichmentContext,
-  ): RuntimeInvocationEnrichmentInput;
+  ): RuntimeInvocationEnrichmentContribution;
   collectAssistantMetadata?(
     channel: RuntimeInvocationEnrichmentChannel,
     segments: readonly RuntimeMessageSegment[],
@@ -62,9 +66,27 @@ export function clearRuntimeInvocationEnrichers(): void {
 
 function getOrderedRuntimeInvocationEnrichers(): RuntimeInvocationEnricher[] {
   return [...runtimeInvocationEnrichers.values()].sort((left, right) => {
-    const priorityDelta = (left.priority ?? 0) - (right.priority ?? 0);
+    const priorityDelta =
+      (left.priority ?? RuntimeEnricherPriority.NORMAL)
+      - (right.priority ?? RuntimeEnricherPriority.NORMAL);
     return priorityDelta !== 0 ? priorityDelta : left.id.localeCompare(right.id);
   });
+}
+
+function applyRuntimeInvocationEnrichmentContribution<
+  TInput extends RuntimeInvocationEnrichmentInput,
+>(
+  current: RuntimeInvocationEnrichmentResult<TInput>,
+  contribution: RuntimeInvocationEnrichmentContribution,
+): RuntimeInvocationEnrichmentResult<TInput> {
+  if (!contribution || Object.keys(contribution).length === 0) {
+    return current;
+  }
+
+  return {
+    ...current,
+    ...contribution,
+  };
 }
 
 export function enrichRuntimeInvocation<TInput extends RuntimeInvocationEnrichmentInput>(
@@ -72,13 +94,16 @@ export function enrichRuntimeInvocation<TInput extends RuntimeInvocationEnrichme
   input: TInput,
   context: RuntimeInvocationEnrichmentContext,
 ): RuntimeInvocationEnrichmentResult<TInput> {
-  let current: RuntimeInvocationEnrichmentInput = { ...input };
+  let current: RuntimeInvocationEnrichmentResult<TInput> = { ...input };
 
   for (const enricher of getOrderedRuntimeInvocationEnrichers()) {
-    current = enricher.enrich(channel, current, context);
+    current = applyRuntimeInvocationEnrichmentContribution(
+      current,
+      enricher.enrich(channel, current, context),
+    );
   }
 
-  return current as RuntimeInvocationEnrichmentResult<TInput>;
+  return current;
 }
 
 export function collectRuntimeInvocationAssistantMetadata(

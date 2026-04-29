@@ -882,6 +882,8 @@ test('chat runtime invocation enrichment stays behind the platform registry', as
     }
     assert.doesNotMatch(source, /from\s+['"][^'"]*products\/code\//u);
     assert.doesNotMatch(source, /from\s+['"][^'"]*(?:\.\.\/)+code\//u);
+    assert.doesNotMatch(source, /import\(\s*['"][^'"]*products\/code\//u);
+    assert.doesNotMatch(source, /import\(\s*['"][^'"]*(?:\.\.\/)+code\//u);
   }
 
   assert.equal(platformRegistryConsumerCount > 0, true);
