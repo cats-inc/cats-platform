@@ -39,14 +39,14 @@ third-party install, signing, and full sandboxing are explicitly later work.
 
 ## Phase 1: Define App Contracts and Validators
 
-- [ ] Add shared Cats app manifest types.
-- [ ] Add manifest validation with no remote code execution.
-- [ ] Add app contribution types for Lobby entries, product modules, settings,
+- [x] Add shared Cats app manifest types.
+- [x] Add manifest validation with no remote code execution.
+- [x] Add app contribution types for Lobby entries, product modules, settings,
       tools, connectors, scoped APIs, and jobs.
-- [ ] Add permission vocabulary and validation rules.
-- [ ] Add app ID and route collision validation.
+- [x] Add permission vocabulary and validation rules.
+- [x] Add app ID and route collision validation.
 - [ ] Add SDK surface types for activation and renderer contexts.
-- [ ] Add tests for valid and invalid manifests.
+- [x] Add tests for valid and invalid manifests.
 
 **Likely files**:
 
@@ -253,6 +253,7 @@ The overnight implementation agent should aim for this first vertical slice:
 |------|--------|
 | 2026-04-29 | Plan created from the OpenClaw/Paperclip hybrid architecture review and Cats Code user-app export requirement. |
 | 2026-04-29 | Added the first Settings `Apps` entry and placeholder route under `Work` and above `Runtime`; registry-backed management remains pending. |
+| 2026-04-29 | Added shared Cats App Package manifest contracts, contribution permissions, route/settings collision validation, and manifest tests. |
 
 ---
 

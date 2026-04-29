@@ -183,6 +183,7 @@ worker code.
   },
   "permissions": [
     "ui.route",
+    "ui.lobby",
     "storage.appData",
     "settings.app"
   ]
