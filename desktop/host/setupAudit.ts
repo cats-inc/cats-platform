@@ -11,7 +11,7 @@ export function resolveDefaultSetupAuditAction(
 ): DesktopSetupAuditAction | null {
   switch (platform) {
     case 'win32': {
-      const extraArguments = ['-IncludeWsl:$false', '-IncludeLocalModels:$true'];
+      const extraArguments = ['-IncludeLocalModels:$true'];
       if (!config.setupAudit.parallel) {
         extraArguments.push('-Parallel:$false');
       }

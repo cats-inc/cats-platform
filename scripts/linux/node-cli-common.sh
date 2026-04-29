@@ -737,6 +737,8 @@ run_self_hosted_installation_check() {
   local node_pack_missing=0
   local local_model_present=0
   local local_model_missing=0
+  local node_host_missing='false'
+  local npm_host_missing='false'
   local command_path=''
   local ollama_command=''
   local provider=''
@@ -889,12 +891,15 @@ EOF
   if command -v node >/dev/null 2>&1; then
     append_check_row 'node' 'Node.js' 'true' 'core' 'host' 'ready'
   else
+    node_host_missing='true'
     append_check_row 'node' 'Node.js' 'false' 'core' 'host' 'changes_required'
+    planned_actions+=('install_node_lts_via_nvm')
   fi
 
   if command -v npm >/dev/null 2>&1; then
     append_check_row 'npm' 'npm' 'true' 'core' 'host' 'ready'
   else
+    npm_host_missing='true'
     append_check_row 'npm' 'npm' 'false' 'core' 'host' 'changes_required'
   fi
 
@@ -908,7 +913,9 @@ EOF
     append_check_row 'node_prefix' 'npm global prefix' 'true' 'core' 'host' 'ready'
   else
     append_check_row 'node_prefix' 'npm global prefix' 'false' 'core' 'host' 'changes_required'
-    planned_actions+=('repair_npm_prefix')
+    if [ "$node_host_missing" = 'false' ] && [ "$npm_host_missing" = 'false' ]; then
+      planned_actions+=('repair_npm_prefix')
+    fi
   fi
 
   if [ "$collection_mode" = 'serial' ]; then
@@ -1010,7 +1017,7 @@ EOF
     done
   fi
 
-  if [ $node_pack_missing -gt 0 ]; then
+  if [ $node_pack_missing -gt 0 ] && [ "$node_host_missing" = 'false' ] && [ "$npm_host_missing" = 'false' ]; then
     planned_actions+=('repair_native_cli_pack')
   fi
 

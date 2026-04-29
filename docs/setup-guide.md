@@ -411,7 +411,7 @@ Cross-platform JSON audit core:
   `Check-WindowsSetupReadiness.ps1 -Json` now share `helper`, `status`,
   `plannedActions`, `warnings`, and `interruptions`
 - Windows additionally surfaces nested per-CLI detail under `nativeCliPack`
-  and the host-installer probe under `nodeHost`
+  and the host-installer probes under `nodeHost` and `githubCli`
 
 ### Windows Host Substrate Helpers
 

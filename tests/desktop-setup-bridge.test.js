@@ -387,6 +387,102 @@ test('buildDesktopSetupSnapshot routes install_node_lts to the Node host install
   assert.match(snapshot.resumeAction?.summary ?? '', /Node\.js LTS host installer/i);
 });
 
+test('buildDesktopSetupSnapshot routes Unix nvm Node planned action to the Node host installer', async () => {
+  const config = await createDesktopConfig();
+  const packaging = createDesktopPackagingPlan(config, {
+    generatedAt: new Date('2026-04-29T10:02:00.000Z'),
+    platforms: ['linux'],
+  });
+  const snapshot = await buildDesktopSetupSnapshot({
+    config,
+    packaging,
+    state: {
+      updatedAt: '2026-04-29T10:03:00.000Z',
+      lastAction: {
+        helperId: 'linux-install-readiness-audit',
+        assetId: 'linux-setup-readiness-audit-script',
+        label: 'Linux setup readiness audit',
+        mode: 'check',
+        runState: 'completed',
+        status: 'changes_required',
+        summary: 'Linux setup readiness audit check finished with changes_required.',
+        packagedRelativePath: 'desktop/setup-assets/linux/check-installation.sh',
+        scriptPath: null,
+        requiresElevation: false,
+        resumable: true,
+        restartRequired: false,
+        startedAt: '2026-04-29T10:02:00.000Z',
+        completedAt: '2026-04-29T10:03:00.000Z',
+        warnings: [],
+        plannedActions: ['install_node_lts_via_nvm'],
+        appliedChanges: [],
+        manualSteps: [],
+        interruptions: [],
+        error: null,
+      },
+    },
+  }, {
+    platform: 'linux',
+    pathExists: async () => true,
+  });
+
+  assert.equal(snapshot.resumeAction?.helperId, 'linux-node-host-installer');
+  assert.equal(snapshot.resumeAction?.mode, 'apply');
+  assert.equal(snapshot.resumeAction?.reason, 'changes_required');
+});
+
+test('buildDesktopSetupSnapshot routes install_github_cli to the GitHub CLI host installer', async () => {
+  const config = await createDesktopConfig();
+  await mkdir(join(config.packageRoot, 'scripts', 'windows'), { recursive: true });
+  await writeFile(
+    join(config.packageRoot, 'scripts', 'windows', 'Install-GitHubCli.ps1'),
+    '# helper',
+  );
+  await writeFile(
+    join(config.packageRoot, 'scripts', 'windows', 'Check-WindowsSetupReadiness.ps1'),
+    '# helper',
+  );
+
+  const packaging = createDesktopPackagingPlan(config, {
+    generatedAt: new Date('2026-04-29T10:04:00.000Z'),
+  });
+  const snapshot = await buildDesktopSetupSnapshot({
+    config,
+    packaging,
+    state: {
+      updatedAt: '2026-04-29T10:05:00.000Z',
+      lastAction: {
+        helperId: 'windows-install-readiness-audit',
+        assetId: 'windows-setup-readiness-audit-script',
+        label: 'Windows setup readiness audit',
+        mode: 'check',
+        runState: 'completed',
+        status: 'changes_required',
+        summary: 'Windows setup readiness audit check finished with changes_required.',
+        packagedRelativePath: 'desktop/setup-assets/windows/Check-WindowsSetupReadiness.ps1',
+        scriptPath: null,
+        requiresElevation: false,
+        resumable: true,
+        restartRequired: false,
+        startedAt: '2026-04-29T10:04:00.000Z',
+        completedAt: '2026-04-29T10:05:00.000Z',
+        warnings: [],
+        plannedActions: ['install_github_cli'],
+        appliedChanges: [],
+        manualSteps: [],
+        interruptions: [],
+        error: null,
+      },
+    },
+  }, {
+    platform: 'win32',
+  });
+
+  assert.equal(snapshot.resumeAction?.helperId, 'windows-github-cli-installer');
+  assert.equal(snapshot.resumeAction?.mode, 'apply');
+  assert.equal(snapshot.resumeAction?.requiresElevation, true);
+});
+
 test('runDesktopSetupHelper normalizes successful helper execution', async () => {
   const config = await createDesktopConfig();
   const packaging = createDesktopPackagingPlan(config, {
@@ -459,13 +555,12 @@ test('runDesktopSetupHelper forwards extra audit arguments when requested by the
     action: {
       helperId: 'windows-install-readiness-audit',
       mode: 'check',
-      extraArguments: ['-IncludeWsl:$false', '-IncludeLocalModels:$true'],
+      extraArguments: ['-IncludeLocalModels:$true'],
     },
   }, {
     platform: 'win32',
     pathExists: async () => true,
     execFile: async (_file, args) => {
-      assert.equal(args.includes('-IncludeWsl:$false'), true);
       assert.equal(args.includes('-IncludeLocalModels:$true'), true);
       return {
         stdout: JSON.stringify({

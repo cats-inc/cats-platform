@@ -83,6 +83,12 @@
 
 .PARAMETER KiroInstallState
     Override Kiro CLI installation detection for deterministic tests.
+
+.PARAMETER NodeHostInstallState
+    Override Node.js host installation detection for deterministic tests.
+
+.PARAMETER GitHubCliInstallState
+    Override GitHub CLI host installation detection for deterministic tests.
 #>
 param(
   [switch]$Json,
@@ -115,6 +121,8 @@ param(
   [string]$KiroInstallState = 'auto',
   [ValidateSet('auto', 'installed', 'missing')]
   [string]$NodeHostInstallState = 'auto',
+  [ValidateSet('auto', 'installed', 'missing')]
+  [string]$GitHubCliInstallState = 'auto',
   [ValidateSet('auto', 'installed', 'missing')]
   [string]$OllamaInstallState = 'auto',
   [ValidateSet('auto', 'reachable', 'unreachable')]
@@ -287,7 +295,8 @@ function Invoke-HelperJsonBatch {
 # -OutdatedState so the test fixtures stay deterministic without bulk-pack
 # arguments.
 $installedPackagesSet = @{}
-if (-not [string]::IsNullOrWhiteSpace($InstalledPackagesJson)) {
+$hasInstalledPackagesOverride = -not [string]::IsNullOrWhiteSpace($InstalledPackagesJson)
+if ($hasInstalledPackagesOverride) {
   try {
     $parsedInstalled = $InstalledPackagesJson | ConvertFrom-Json
     foreach ($entry in $parsedInstalled) {
@@ -298,7 +307,8 @@ if (-not [string]::IsNullOrWhiteSpace($InstalledPackagesJson)) {
   }
 }
 $outdatedPackagesSet = @{}
-if (-not [string]::IsNullOrWhiteSpace($OutdatedPackagesJson)) {
+$hasOutdatedPackagesOverride = -not [string]::IsNullOrWhiteSpace($OutdatedPackagesJson)
+if ($hasOutdatedPackagesOverride) {
   try {
     $parsedOutdated = $OutdatedPackagesJson | ConvertFrom-Json
     foreach ($entry in $parsedOutdated) {
@@ -311,7 +321,7 @@ if (-not [string]::IsNullOrWhiteSpace($OutdatedPackagesJson)) {
 
 function Resolve-NpmCliInstallState {
   param([string]$PackageName)
-  if ($installedPackagesSet.Count -eq 0) {
+  if (-not $hasInstalledPackagesOverride) {
     return 'auto'
   }
   if ($installedPackagesSet.ContainsKey($PackageName)) {
@@ -322,7 +332,7 @@ function Resolve-NpmCliInstallState {
 
 function Resolve-NpmCliOutdatedState {
   param([string]$PackageName)
-  if ($outdatedPackagesSet.Count -eq 0) {
+  if (-not $hasOutdatedPackagesOverride) {
     return 'auto'
   }
   if ($outdatedPackagesSet.ContainsKey($PackageName)) {
@@ -332,6 +342,7 @@ function Resolve-NpmCliOutdatedState {
 }
 
 $nodeHostHelperPath = Join-Path $PSScriptRoot 'Install-Node.ps1'
+$githubCliHelperPath = Join-Path $PSScriptRoot 'Install-GitHubCli.ps1'
 $prefixHelperPath = Join-Path $PSScriptRoot 'Setup-NodeGlobalPrefix.ps1'
 $claudeHelperPath = Join-Path $PSScriptRoot 'Install-ClaudeCode.ps1'
 $cursorHelperPath = Join-Path $PSScriptRoot 'Install-CursorAgent.ps1'
@@ -372,11 +383,24 @@ if ($NodeHostInstallState -ne 'auto') {
   $nodeHostArguments += @('-InstallState', $NodeHostInstallState)
 }
 
+$githubCliArguments = @('-CheckOnly', '-Json')
+if ($SkipNodeCheck) {
+  $githubCliArguments += '-SkipGhProbe'
+}
+if ($GitHubCliInstallState -ne 'auto') {
+  $githubCliArguments += @('-InstallState', $GitHubCliInstallState)
+}
+
 $helperInvocations = [System.Collections.Generic.List[object]]::new()
 $helperInvocations.Add([pscustomobject]@{
     Key = 'nodeHost'
     ScriptPath = $nodeHostHelperPath
     Arguments = $nodeHostArguments
+  })
+$helperInvocations.Add([pscustomobject]@{
+    Key = 'githubCli'
+    ScriptPath = $githubCliHelperPath
+    Arguments = $githubCliArguments
   })
 $helperInvocations.Add([pscustomobject]@{
     Key = 'prefixHelper'
@@ -385,7 +409,10 @@ $helperInvocations.Add([pscustomobject]@{
   })
 
 foreach ($entry in $NpmCliCatalog) {
-  $cliArguments = @('-CheckOnly', '-Json', '-SkipNpmInvocation')
+  $cliArguments = @('-CheckOnly', '-Json')
+  if ($hasInstalledPackagesOverride) {
+    $cliArguments += '-SkipNpmInvocation'
+  }
   $installState = Resolve-NpmCliInstallState -PackageName $entry.PackageName
   if ($installState -ne 'auto') {
     $cliArguments += @('-InstallState', $installState)
@@ -485,6 +512,7 @@ $helperResults = if ($parallelChecksEnabled) {
   Invoke-HelperJsonSequence -Helpers $helperInvocations.ToArray()
 }
 $nodeHostResult = $helperResults['nodeHost']
+$githubCliResult = $helperResults['githubCli']
 $prefixHelper = $helperResults['prefixHelper']
 $claudeResult = if ($helperResults.ContainsKey('claude')) { $helperResults['claude'] } else { $null }
 $cursorResult = if ($helperResults.ContainsKey('cursor')) { $helperResults['cursor'] } else { $null }
@@ -563,7 +591,7 @@ $nativeCliPack = [pscustomobject]@{
 $warnings = [System.Collections.Generic.List[string]]::new()
 $plannedActions = [System.Collections.Generic.List[string]]::new()
 $interruptions = [System.Collections.Generic.List[object]]::new()
-$statuses = @($nodeHostResult.status, $prefixHelper.status, $nativeCliPack.status)
+$statuses = @($nodeHostResult.status, $githubCliResult.status, $prefixHelper.status, $nativeCliPack.status)
 if ($null -ne $claudeResult) {
   $statuses += $claudeResult.status
 }
@@ -586,6 +614,10 @@ if ($null -ne $ollamaResult) {
 $nodeMissing = ($nodeHostResult.status -ne 'ready') -or ($prefixHelper.status -eq 'not_installed')
 if ($nodeMissing) {
   $plannedActions.Add('install_node_lts')
+}
+
+if ($githubCliResult.status -ne 'ready') {
+  $plannedActions.Add('install_github_cli')
 }
 
 if (-not $nodeMissing -and $prefixHelper.status -ne 'ready') {
@@ -636,6 +668,9 @@ if ($null -ne $ollamaResult) {
 }
 
 foreach ($warning in $nodeHostResult.warnings) {
+  $warnings.Add([string]$warning)
+}
+foreach ($warning in $githubCliResult.warnings) {
   $warnings.Add([string]$warning)
 }
 foreach ($warning in $prefixHelper.warnings) {
@@ -700,6 +735,7 @@ function Add-InterruptionsFromResult {
 }
 
 Add-InterruptionsFromResult -HelperResult $nodeHostResult
+Add-InterruptionsFromResult -HelperResult $githubCliResult
 Add-InterruptionsFromResult -HelperResult $nativeCliPack
 Add-InterruptionsFromResult -HelperResult $claudeResult
 Add-InterruptionsFromResult -HelperResult $cursorResult
@@ -744,6 +780,7 @@ $result = [pscustomobject]@{
   warnings = $warnings.ToArray()
   interruptions = $interruptions.ToArray()
   nodeHost = $nodeHostResult
+  githubCli = $githubCliResult
   prefixHelper = $prefixHelper
   nativeCliPack = $nativeCliPack
   nativeProviders = [pscustomobject]@{

@@ -242,6 +242,7 @@ function supportsMode(helper: DesktopSetupHelperSummary, mode: DesktopSetupHelpe
 // said to install.
 const PLANNED_ACTION_HELPER_SUFFIXES: Record<string, string> = {
   install_node_lts: '-node-host-installer',
+  install_node_lts_via_nvm: '-node-host-installer',
   install_github_cli: '-github-cli-installer',
 };
 

@@ -67,6 +67,8 @@ test('Check-WindowsSetupReadiness reports ready when prefix substrate and per-CL
     'installed',
     '-NodeHostInstallState',
     'installed',
+    '-GitHubCliInstallState',
+    'installed',
   ]);
 
   const result = JSON.parse(stdout);
@@ -105,6 +107,8 @@ test('Check-WindowsSetupReadiness reports repair actions when prefix and per-CLI
     '-IncludeNativeProviders:$false',
     '-NodeHostInstallState',
     'installed',
+    '-GitHubCliInstallState',
+    'installed',
   ]);
 
   const result = JSON.parse(stdout);
@@ -137,6 +141,8 @@ test('Check-WindowsSetupReadiness routes the user to the Node host installer whe
     '-IncludeNativeProviders:$false',
     '-NodeHostInstallState',
     'missing',
+    '-GitHubCliInstallState',
+    'installed',
   ]);
 
   const result = JSON.parse(stdout);
@@ -186,6 +192,8 @@ test('Check-WindowsSetupReadiness reports auth-required when native providers ar
     'installed',
     '-NodeHostInstallState',
     'installed',
+    '-GitHubCliInstallState',
+    'installed',
   ]);
 
   const result = JSON.parse(stdout);
@@ -234,6 +242,10 @@ test('Check-WindowsSetupReadiness reports install follow-through when Kiro is mi
     'authenticated',
     '-KiroInstallState',
     'missing',
+    '-NodeHostInstallState',
+    'installed',
+    '-GitHubCliInstallState',
+    'installed',
   ]);
 
   const result = JSON.parse(stdout);
@@ -280,6 +292,10 @@ test('Check-WindowsSetupReadiness reports Ollama follow-through when local-model
     '-JunieAuthState',
     'authenticated',
     '-KiroInstallState',
+    'installed',
+    '-NodeHostInstallState',
+    'installed',
+    '-GitHubCliInstallState',
     'installed',
     '-IncludeLocalModels:$true',
     '-OllamaInstallState',
@@ -335,6 +351,8 @@ test('Check-WindowsSetupReadiness can force serial collection for deterministic 
     '-KiroInstallState',
     'installed',
     '-NodeHostInstallState',
+    'installed',
+    '-GitHubCliInstallState',
     'installed',
   ]);
 

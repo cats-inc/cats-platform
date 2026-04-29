@@ -84,11 +84,11 @@ test('resolveDefaultSetupAuditAction maps setup audit parallel policy onto platf
 
   assert.deepEqual(resolveDefaultSetupAuditAction(defaultConfig, 'win32'), {
     helperId: 'windows-install-readiness-audit',
-    extraArguments: ['-IncludeWsl:$false', '-IncludeLocalModels:$true'],
+    extraArguments: ['-IncludeLocalModels:$true'],
   });
   assert.deepEqual(resolveDefaultSetupAuditAction(serialConfig, 'win32'), {
     helperId: 'windows-install-readiness-audit',
-    extraArguments: ['-IncludeWsl:$false', '-IncludeLocalModels:$true', '-Parallel:$false'],
+    extraArguments: ['-IncludeLocalModels:$true', '-Parallel:$false'],
   });
   assert.deepEqual(resolveDefaultSetupAuditAction(serialConfig, 'darwin'), {
     helperId: 'macos-install-readiness-audit',
