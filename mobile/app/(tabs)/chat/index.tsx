@@ -12,22 +12,21 @@ import {
 
 import { chatSidebarConfig } from '../../../src/api/fixtures/productSidebar';
 import { useCreateChannel } from '../../../src/renderer/hooks/useCreateChannel';
+import { useProductSidebarData } from '../../../src/renderer/hooks/useProductSidebarData';
 import { TrimmedProductSidebar } from '../../../src/renderer/sidebars/TrimmedProductSidebar';
 import { colors, spacing, typography } from '../../../src/renderer/theme';
 
 export default function ChatSidebarScreen() {
   const router = useRouter();
   const createChannel = useCreateChannel();
+  const { state } = useProductSidebarData('chat');
 
   const handlePrimaryAction = useCallback(
     async (actionId: string) => {
       if (actionId === 'parallel') {
-        // Parallel chat goes through `/api/parallel-chat-groups` and
-        // requires a `targets` array of provider/instance/model
-        // triples that the mobile shell does not collect yet.
         Alert.alert(
           'Parallel chat — desktop only',
-          'Parallel chat creation is not yet wired on mobile. Use the desktop app to start one; it will appear in Recents (Chat) here once created.',
+          'Parallel chat creation is not yet wired on mobile. Use the desktop app to start one; it will appear in RECENTS here once created.',
           [{ text: 'OK', style: 'cancel' }],
         );
         return;
@@ -45,6 +44,21 @@ export default function ChatSidebarScreen() {
       }
     },
     [createChannel, router],
+  );
+
+  const handleSelectCat = useCallback(() => {
+    Alert.alert(
+      'Direct cat chat — desktop only',
+      'Tapping a cat to start a direct conversation is not yet wired on mobile. Start the direct lane on the desktop; it will appear in RECENTS here once created.',
+      [{ text: 'OK', style: 'cancel' }],
+    );
+  }, []);
+
+  const handleSelectRecent = useCallback(
+    (channelId: string) => {
+      router.push(`/(tabs)/chat/${channelId}`);
+    },
+    [router],
   );
 
   return (
@@ -67,15 +81,15 @@ export default function ChatSidebarScreen() {
       ) : (
         <TrimmedProductSidebar
           config={chatSidebarConfig}
+          data={{
+            cats: state.kind === 'data' ? state.cats : [],
+            recents: state.kind === 'data' ? state.recents : [],
+          }}
           onPrimaryAction={(actionId) => {
             void handlePrimaryAction(actionId);
           }}
-          onOpenMyLens={() => {
-            router.push('/(tabs)/chat/my-cats');
-          }}
-          onOpenRecents={() => {
-            router.push('/(tabs)/chat/recents');
-          }}
+          onSelectCat={handleSelectCat}
+          onSelectRecent={handleSelectRecent}
         />
       )}
     </SafeAreaView>

@@ -7,36 +7,74 @@ import {
   View,
 } from 'react-native';
 
+import type {
+  MobileSidebarCat,
+  MobileSidebarCatStatus,
+  MobileSidebarRecent,
+} from '../../../../src/mobile/index.js';
 import { colors, radii, spacing, typography } from '../theme';
 import type {
-  TrimmedSidebarCallbacks,
   TrimmedSidebarConfig,
   TrimmedSidebarPrimaryAction,
 } from './types';
 
-export interface TrimmedProductSidebarProps extends TrimmedSidebarCallbacks {
+export interface TrimmedProductSidebarData {
+  cats: MobileSidebarCat[];
+  recents: MobileSidebarRecent[];
+}
+
+export interface TrimmedProductSidebarProps {
   config: TrimmedSidebarConfig;
+  data: TrimmedProductSidebarData;
+  onPrimaryAction: (actionId: string) => void;
+  onSelectCat: (catId: string) => void;
+  onSelectRecent: (channelId: string) => void;
 }
 
 type Row =
   | { kind: 'eyebrow'; label: string }
   | { kind: 'primary-actions'; actions: TrimmedSidebarPrimaryAction[] }
-  | { kind: 'nav-row'; key: 'my-lens' | 'recents'; label: string };
+  | { kind: 'section-header'; label: string }
+  | { kind: 'cat'; entry: MobileSidebarCat }
+  | { kind: 'recent'; entry: MobileSidebarRecent }
+  | { kind: 'empty'; label: string; sectionId: string };
 
-function buildRows(config: TrimmedSidebarConfig): Row[] {
+function buildRows(
+  config: TrimmedSidebarConfig,
+  data: TrimmedProductSidebarData,
+): Row[] {
+  const catRows: Row[] = data.cats.length > 0
+    ? data.cats.map<Row>((entry) => ({ kind: 'cat', entry }))
+    : [{
+        kind: 'empty' as const,
+        label: 'No cats yet.',
+        sectionId: 'my-lens',
+      }];
+  const recentRows: Row[] = data.recents.length > 0
+    ? data.recents.map<Row>((entry) => ({ kind: 'recent', entry }))
+    : [{
+        kind: 'empty' as const,
+        label: 'No recent conversations yet.',
+        sectionId: 'recents',
+      }];
   return [
     { kind: 'eyebrow', label: config.productLabel },
     { kind: 'primary-actions', actions: [...config.primaryActions] },
-    { kind: 'nav-row', key: 'my-lens', label: config.myLensLabel },
-    { kind: 'nav-row', key: 'recents', label: config.recentsLabel },
+    { kind: 'section-header', label: config.myLensLabel },
+    ...catRows,
+    { kind: 'section-header', label: config.recentsLabel },
+    ...recentRows,
   ];
 }
 
 export function TrimmedProductSidebar({
   config,
-  ...callbacks
+  data,
+  onPrimaryAction,
+  onSelectCat,
+  onSelectRecent,
 }: TrimmedProductSidebarProps) {
-  const rows = buildRows(config);
+  const rows = buildRows(config, data);
 
   return (
     <FlatList
@@ -44,7 +82,9 @@ export function TrimmedProductSidebar({
       contentContainerStyle={styles.listContent}
       data={rows}
       keyExtractor={rowKey}
-      renderItem={(info) => renderRow(info, callbacks)}
+      renderItem={(info) =>
+        renderRow(info, { onPrimaryAction, onSelectCat, onSelectRecent })
+      }
     />
   );
 }
@@ -55,16 +95,26 @@ function rowKey(row: Row, index: number): string {
       return 'eyebrow';
     case 'primary-actions':
       return 'primary-actions';
-    case 'nav-row':
-      return `nav:${row.key}`;
-    default:
-      return `row:${index}`;
+    case 'section-header':
+      return `section:${row.label}`;
+    case 'cat':
+      return `cat:${row.entry.id}`;
+    case 'recent':
+      return `recent:${row.entry.id}`;
+    case 'empty':
+      return `empty:${row.sectionId}:${index}`;
   }
 }
 
+interface RowCallbacks {
+  onPrimaryAction: (actionId: string) => void;
+  onSelectCat: (catId: string) => void;
+  onSelectRecent: (channelId: string) => void;
+}
+
 function renderRow(
-  { item, index }: ListRenderItemInfo<Row>,
-  callbacks: TrimmedSidebarCallbacks,
+  { item }: ListRenderItemInfo<Row>,
+  callbacks: RowCallbacks,
 ) {
   switch (item.kind) {
     case 'eyebrow':
@@ -85,19 +135,31 @@ function renderRow(
           ))}
         </View>
       );
-    case 'nav-row':
+    case 'section-header':
       return (
-        <NavRow
-          label={item.label}
-          onPress={
-            item.key === 'my-lens' ? callbacks.onOpenMyLens : callbacks.onOpenRecents
-          }
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionHeaderText}>{item.label}</Text>
+        </View>
+      );
+    case 'cat':
+      return (
+        <CatRow
+          entry={item.entry}
+          onPress={() => callbacks.onSelectCat(item.entry.id)}
         />
       );
+    case 'recent':
+      return (
+        <RecentRow
+          entry={item.entry}
+          onPress={() => callbacks.onSelectRecent(item.entry.id)}
+        />
+      );
+    case 'empty':
+      return <Text style={styles.emptyText}>{item.label}</Text>;
     default:
       return null;
   }
-  void index;
 }
 
 interface PrimaryActionButtonProps {
@@ -119,24 +181,105 @@ function PrimaryActionButton({ action, onPress }: PrimaryActionButtonProps) {
   );
 }
 
-interface NavRowProps {
-  label: string;
+interface CatRowProps {
+  entry: MobileSidebarCat;
   onPress: () => void;
 }
 
-function NavRow({ label, onPress }: NavRowProps) {
+function CatRow({ entry, onPress }: CatRowProps) {
+  const initials = entry.name
+    .split(/\s+/)
+    .map((part) => part[0] ?? '')
+    .slice(0, 2)
+    .join('')
+    .toUpperCase() || entry.name.slice(0, 2).toUpperCase();
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
-        styles.navRow,
-        pressed ? styles.navRowPressed : null,
+        styles.row,
+        pressed ? styles.rowPressed : null,
       ]}
     >
-      <Text style={styles.navRowLabel}>{label}</Text>
-      <Text style={styles.navRowChevron}>›</Text>
+      <View
+        style={[
+          styles.catAvatar,
+          { backgroundColor: entry.avatarColor ?? colors.bubble.mentionDefault },
+        ]}
+      >
+        <Text style={styles.catAvatarText}>{initials}</Text>
+      </View>
+      <View style={styles.rowText}>
+        <Text style={styles.rowTitle} numberOfLines={1}>
+          {entry.name}
+        </Text>
+        <View style={styles.catStatusInline}>
+          <StatusDot status={entry.status} />
+          <Text style={styles.catStatusText}>{statusLabel(entry.status)}</Text>
+        </View>
+      </View>
     </Pressable>
   );
+}
+
+interface RecentRowProps {
+  entry: MobileSidebarRecent;
+  onPress: () => void;
+}
+
+function RecentRow({ entry, onPress }: RecentRowProps) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.row,
+        pressed ? styles.rowPressed : null,
+      ]}
+    >
+      <View style={styles.recentIconBubble}>
+        <Text style={styles.recentIconBubbleText}>💬</Text>
+      </View>
+      <View style={styles.rowText}>
+        <Text style={styles.rowTitle} numberOfLines={1}>
+          {entry.title}
+        </Text>
+        {entry.subtitle ? (
+          <Text style={styles.rowSubtitle} numberOfLines={1}>
+            {entry.subtitle}
+          </Text>
+        ) : null}
+      </View>
+    </Pressable>
+  );
+}
+
+interface StatusDotProps {
+  status: MobileSidebarCatStatus;
+}
+
+function StatusDot({ status }: StatusDotProps) {
+  const dotColor = (() => {
+    switch (status) {
+      case 'ready':
+        return colors.status.readyText;
+      case 'warm':
+        return colors.status.warmText;
+      case 'sleeping':
+        return colors.status.mutedText;
+    }
+  })();
+  return <View style={[styles.statusDot, { backgroundColor: dotColor }]} />;
+}
+
+function statusLabel(status: MobileSidebarCatStatus): string {
+  switch (status) {
+    case 'ready':
+      return 'Ready';
+    case 'warm':
+      return 'Warm';
+    case 'sleeping':
+      return 'Sleeping';
+  }
 }
 
 const styles = StyleSheet.create({
@@ -178,27 +321,82 @@ const styles = StyleSheet.create({
     ...typography.body,
     fontWeight: '600',
   },
-  navRow: {
+  sectionHeader: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.lg,
+    paddingBottom: spacing.sm,
+  },
+  sectionHeaderText: {
+    color: colors.fg.muted,
+    ...typography.label,
+    letterSpacing: 1.0,
+  },
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.border.subtle,
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
   },
-  navRowPressed: {
+  rowPressed: {
     backgroundColor: colors.bg.panelHover,
   },
-  navRowLabel: {
-    color: colors.fg.primary,
-    ...typography.body,
-    fontWeight: '500',
-    letterSpacing: 0.4,
+  rowText: {
+    flex: 1,
+    gap: 2,
   },
-  navRowChevron: {
+  rowTitle: {
+    color: colors.fg.primary,
+    ...typography.bodyStrong,
+  },
+  rowSubtitle: {
+    color: colors.fg.secondary,
+    ...typography.caption,
+  },
+  recentIconBubble: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.bg.panel,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recentIconBubbleText: {
+    fontSize: 16,
+    lineHeight: 20,
+  },
+  catAvatar: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  catAvatarText: {
+    color: colors.bubble.mentionText,
+    ...typography.label,
+    fontWeight: '700',
+  },
+  catStatusInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xs,
+  },
+  catStatusText: {
     color: colors.fg.muted,
-    fontSize: 22,
-    lineHeight: 22,
+    ...typography.caption,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  emptyText: {
+    color: colors.fg.muted,
+    ...typography.caption,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.xs,
   },
 });

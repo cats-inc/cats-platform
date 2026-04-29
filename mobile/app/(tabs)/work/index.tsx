@@ -2,6 +2,7 @@ import { useRouter } from 'expo-router';
 import { useCallback } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   SafeAreaView,
   StyleSheet,
@@ -11,12 +12,14 @@ import {
 
 import { workSidebarConfig } from '../../../src/api/fixtures/productSidebar';
 import { useCreateChannel } from '../../../src/renderer/hooks/useCreateChannel';
+import { useProductSidebarData } from '../../../src/renderer/hooks/useProductSidebarData';
 import { TrimmedProductSidebar } from '../../../src/renderer/sidebars/TrimmedProductSidebar';
 import { colors, spacing, typography } from '../../../src/renderer/theme';
 
 export default function WorkSidebarScreen() {
   const router = useRouter();
   const createChannel = useCreateChannel();
+  const { state } = useProductSidebarData('work');
 
   const handlePrimaryAction = useCallback(
     async (actionId: string) => {
@@ -33,6 +36,21 @@ export default function WorkSidebarScreen() {
       }
     },
     [createChannel, router],
+  );
+
+  const handleSelectCat = useCallback(() => {
+    Alert.alert(
+      'Direct cat chat — desktop only',
+      'Tapping a cattery member to start a direct conversation is not yet wired on mobile. Start the direct lane on the desktop; it will appear in RECENTS here once created.',
+      [{ text: 'OK', style: 'cancel' }],
+    );
+  }, []);
+
+  const handleSelectRecent = useCallback(
+    (channelId: string) => {
+      router.push(`/(tabs)/work/${channelId}`);
+    },
+    [router],
   );
 
   return (
@@ -55,15 +73,15 @@ export default function WorkSidebarScreen() {
       ) : (
         <TrimmedProductSidebar
           config={workSidebarConfig}
+          data={{
+            cats: state.kind === 'data' ? state.cats : [],
+            recents: state.kind === 'data' ? state.recents : [],
+          }}
           onPrimaryAction={(actionId) => {
             void handlePrimaryAction(actionId);
           }}
-          onOpenMyLens={() => {
-            router.push('/(tabs)/work/my-catteries');
-          }}
-          onOpenRecents={() => {
-            router.push('/(tabs)/work/recents');
-          }}
+          onSelectCat={handleSelectCat}
+          onSelectRecent={handleSelectRecent}
         />
       )}
     </SafeAreaView>
