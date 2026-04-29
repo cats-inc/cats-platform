@@ -76,8 +76,8 @@ function titleForAction(actionId: string): string {
       return 'New work';
     case 'team':
       return 'New team work';
-    case 'peer':
-      return 'New peer work';
+    case 'parallel':
+      return 'New parallel work';
     default:
       return 'New work';
   }

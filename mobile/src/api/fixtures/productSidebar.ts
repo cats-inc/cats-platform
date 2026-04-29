@@ -26,7 +26,7 @@ export const chatSidebarConfig: TrimmedSidebarConfig = {
     { id: 'parallel', label: '+ Parallel chat' },
   ],
   myLensLabel: 'MY CATS',
-  recentsLabel: 'Recents (Chat)',
+  recentsLabel: 'RECENTS',
 };
 
 export const codeSidebarConfig: TrimmedSidebarConfig = {
@@ -38,7 +38,7 @@ export const codeSidebarConfig: TrimmedSidebarConfig = {
     { id: 'peer', label: '+ Peer code' },
   ],
   myLensLabel: 'MY CLOWDERS',
-  recentsLabel: 'Recents (Code)',
+  recentsLabel: 'RECENTS',
 };
 
 export const workSidebarConfig: TrimmedSidebarConfig = {
@@ -47,8 +47,11 @@ export const workSidebarConfig: TrimmedSidebarConfig = {
   primaryActions: [
     { id: 'new', label: '+ New work' },
     { id: 'team', label: '+ Team work' },
-    { id: 'peer', label: '+ Peer work' },
+    // The web Cats Work surface uses Parallel (not Peer) for the
+    // third entry — it mirrors the +Parallel chat shape rather
+    // than the +Peer code one. Mobile follows the web naming.
+    { id: 'parallel', label: '+ Parallel work' },
   ],
   myLensLabel: 'MY CATTERIES',
-  recentsLabel: 'Recents (Work)',
+  recentsLabel: 'RECENTS',
 };
