@@ -167,7 +167,7 @@ Inventory notes:
 
 - [x] Model `capability-connector` packages that have no Lobby route.
 - [x] Register declared tools through the platform tool boundary.
-- [ ] Route runtime-backed connector behavior through `cats-runtime` or a
+- [x] Route runtime-backed connector behavior through `cats-runtime` or a
       platform-owned runtime adapter, never direct `agent-fleet` imports.
 - [x] Add settings/auth contribution support for connectors.
 - [x] Add a local fixture connector with one inert tool for validation.
@@ -316,6 +316,7 @@ Product integration notes:
 | 2026-04-30 | Added the Cats Code user-app template folder and manifest helper for local-user app packages that install under Lobby. |
 | 2026-04-30 | Added Cats Code user-app package export orchestration that copies the template, writes manifest/export metadata, and runs the package build into `dist/renderer`. |
 | 2026-04-30 | Added app package tool registration projection into the platform supervised tool registry for enabled apps with `agent.tools.register`. |
+| 2026-04-30 | Added a platform-owned runtime app tool bridge that executes `runtimeBridge: "cats-runtime"` app tools through `RuntimeClient.callMcp` MCP `tools/call`. |
 
 ---
 
