@@ -33,3 +33,4 @@ export * from './messageBody.js';
 export * from './contracts.js';
 export * from './chat.js';
 export * from './messages.js';
+export * from './lobby.js';

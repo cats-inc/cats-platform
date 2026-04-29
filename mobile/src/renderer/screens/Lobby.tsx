@@ -1,5 +1,6 @@
 import { useRouter } from 'expo-router';
 import {
+  ActivityIndicator,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -7,74 +8,133 @@ import {
   View,
 } from 'react-native';
 
-import { lobbyFixture } from '../../api/fixtures/lobby';
-import type { LobbyActivityEntry } from '../../api/fixtures/lobby';
+import { useMobileLobby } from '../hooks/useMobileLobby';
+import type {
+  MobileLobbyActivityEntry,
+  MobileLobbyData,
+  MobileLobbyStat,
+} from '../../../../src/mobile/index.js';
 import { colors, radii, spacing, typography } from '../theme';
 
 export function Lobby() {
   const router = useRouter();
+  const { state } = useMobileLobby();
+
+  if (state.kind === 'loading') {
+    return (
+      <View style={styles.centered}>
+        <ActivityIndicator color={colors.accent.primary} />
+      </View>
+    );
+  }
+  if (state.kind === 'unconfigured') {
+    return (
+      <Panel
+        title="Connect to your desktop"
+        body="Set the desktop base URL in Settings to load your lobby."
+        actionLabel="Open Settings"
+        onAction={() => router.push('/(tabs)/settings')}
+      />
+    );
+  }
+  if (state.kind === 'error') {
+    return (
+      <Panel
+        title="Could not load lobby"
+        body={state.error.message}
+      />
+    );
+  }
 
   return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={styles.content}
-    >
+    <LobbyBody
+      data={state.data}
+      onSelectActivity={(entry) =>
+        router.push(`/(tabs)/chat/${entry.channelId}`)
+      }
+      onOpenChat={() => router.push('/(tabs)/chat')}
+      onOpenCode={() => router.push('/(tabs)/code')}
+      onOpenWork={() => router.push('/(tabs)/work')}
+    />
+  );
+}
+
+interface LobbyBodyProps {
+  data: MobileLobbyData;
+  onSelectActivity: (entry: MobileLobbyActivityEntry) => void;
+  onOpenChat: () => void;
+  onOpenCode: () => void;
+  onOpenWork: () => void;
+}
+
+function LobbyBody({
+  data,
+  onSelectActivity,
+  onOpenChat,
+  onOpenCode,
+  onOpenWork,
+}: LobbyBodyProps) {
+  return (
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={styles.eyebrow}>{lobbyFixture.todayLabel}</Text>
+        <Text style={styles.eyebrow}>{data.todayLabel}</Text>
         <Text style={styles.title}>Lobby</Text>
       </View>
 
       <View style={styles.statRow}>
-        {lobbyFixture.stats.map((stat) => (
-          <View key={stat.id} style={styles.statCard}>
-            <Text style={styles.statValue}>{stat.value}</Text>
-            <Text style={styles.statLabel}>{stat.label}</Text>
-            {stat.hint ? <Text style={styles.statHint}>{stat.hint}</Text> : null}
-          </View>
+        {data.stats.map((stat) => (
+          <StatCard key={stat.id} stat={stat} />
         ))}
-      </View>
-
-      <View style={styles.guideCard}>
-        <Text style={styles.guideEyebrow}>GUIDE CAT</Text>
-        <Text style={styles.guideGreeting}>{lobbyFixture.guideAssist.greeting}</Text>
-        <Text style={styles.guideSuggestion}>
-          {lobbyFixture.guideAssist.suggestion}
-        </Text>
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>Quick entry</Text>
         <View style={styles.quickEntryRow}>
-          <QuickEntryChip label="Chat" onPress={() => router.push('/(tabs)/chat')} />
-          <QuickEntryChip label="Code" onPress={() => router.push('/(tabs)/code')} />
-          <QuickEntryChip label="Work" onPress={() => router.push('/(tabs)/work')} />
+          <QuickEntryChip label="Chat" onPress={onOpenChat} />
+          <QuickEntryChip label="Code" onPress={onOpenCode} />
+          <QuickEntryChip label="Work" onPress={onOpenWork} />
         </View>
       </View>
 
       <View style={styles.section}>
         <Text style={styles.sectionLabel}>Recent activity</Text>
-        {lobbyFixture.recentActivity.map((entry) => (
-          <ActivityRow
-            key={entry.id}
-            entry={entry}
-            onPress={() => {
-              if (entry.channelId) {
-                router.push(`/(tabs)/chat/${entry.channelId}`);
-              }
-            }}
-          />
-        ))}
+        {data.recentActivity.length === 0 ? (
+          <Text style={styles.emptyActivity}>
+            No active conversations yet. Start one from the Chat tab.
+          </Text>
+        ) : (
+          data.recentActivity.map((entry) => (
+            <ActivityRow
+              key={entry.id}
+              entry={entry}
+              onPress={() => onSelectActivity(entry)}
+            />
+          ))
+        )}
       </View>
 
       {__DEV__ ? (
         <Text style={styles.scopeNote}>
-          Lobby content scoping is open per SPEC-095 — Phase 6 ships a
-          single-column mobile layout against fixture data; live `/lobby`
-          projection lands once the desktop / mobile content split is
-          decided.
+          Lobby derives stats + recent activity from `/api/app-shell` until a
+          dedicated mobile lobby projection lands. No separate
+          persistence schema (per SPEC-095 Open Question resolution).
         </Text>
       ) : null}
     </ScrollView>
+  );
+}
+
+interface StatCardProps {
+  stat: MobileLobbyStat;
+}
+
+function StatCard({ stat }: StatCardProps) {
+  return (
+    <View style={styles.statCard}>
+      <Text style={styles.statValue}>{stat.value}</Text>
+      <Text style={styles.statLabel}>{stat.label}</Text>
+      {stat.hint ? <Text style={styles.statHint}>{stat.hint}</Text> : null}
+    </View>
   );
 }
 
@@ -98,7 +158,7 @@ function QuickEntryChip({ label, onPress }: QuickEntryChipProps) {
 }
 
 interface ActivityRowProps {
-  entry: LobbyActivityEntry;
+  entry: MobileLobbyActivityEntry;
   onPress: () => void;
 }
 
@@ -108,7 +168,7 @@ function ActivityRow({ entry, onPress }: ActivityRowProps) {
       onPress={onPress}
       style={({ pressed }) => [
         styles.activityRow,
-        pressed && entry.channelId ? styles.activityRowPressed : null,
+        pressed ? styles.activityRowPressed : null,
       ]}
     >
       <View style={styles.activityRowText}>
@@ -117,14 +177,46 @@ function ActivityRow({ entry, onPress }: ActivityRowProps) {
         </Text>
         <Text style={styles.activityHint}>{entry.hint}</Text>
       </View>
-      {entry.channelId ? (
-        <Text style={styles.activityChevron}>›</Text>
-      ) : null}
+      <Text style={styles.activityChevron}>›</Text>
     </Pressable>
   );
 }
 
+interface PanelProps {
+  title: string;
+  body: string;
+  actionLabel?: string;
+  onAction?: () => void;
+}
+
+function Panel({ title, body, actionLabel, onAction }: PanelProps) {
+  return (
+    <View style={styles.panel}>
+      <Text style={styles.panelTitle}>{title}</Text>
+      <Text style={styles.panelBody}>{body}</Text>
+      {actionLabel && onAction ? (
+        <Pressable
+          accessibilityRole="button"
+          onPress={onAction}
+          style={({ pressed }) => [
+            styles.panelButton,
+            pressed ? styles.panelButtonPressed : null,
+          ]}
+        >
+          <Text style={styles.panelButtonLabel}>{actionLabel}</Text>
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.bg.canvas,
+  },
   scroll: {
     flex: 1,
     backgroundColor: colors.bg.canvas,
@@ -169,25 +261,6 @@ const styles = StyleSheet.create({
   statHint: {
     color: colors.fg.muted,
     ...typography.label,
-  },
-  guideCard: {
-    padding: spacing.md,
-    borderRadius: radii.md,
-    backgroundColor: colors.accent.soft,
-    gap: spacing.xs,
-  },
-  guideEyebrow: {
-    color: colors.accent.primary,
-    ...typography.label,
-    letterSpacing: 0.8,
-  },
-  guideGreeting: {
-    color: colors.fg.primary,
-    ...typography.bodyStrong,
-  },
-  guideSuggestion: {
-    color: colors.fg.secondary,
-    ...typography.body,
   },
   section: {
     gap: spacing.sm,
@@ -247,9 +320,45 @@ const styles = StyleSheet.create({
     fontSize: 22,
     lineHeight: 22,
   },
+  emptyActivity: {
+    color: colors.fg.muted,
+    ...typography.body,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
   scopeNote: {
     color: colors.fg.muted,
     ...typography.label,
     marginTop: spacing.md,
+  },
+  panel: {
+    flex: 1,
+    backgroundColor: colors.bg.canvas,
+    padding: spacing.xl,
+    gap: spacing.md,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  panelTitle: {
+    color: colors.fg.primary,
+    ...typography.title,
+  },
+  panelBody: {
+    color: colors.fg.secondary,
+    ...typography.body,
+  },
+  panelButton: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radii.md,
+    backgroundColor: colors.accent.primary,
+    marginTop: spacing.sm,
+  },
+  panelButtonPressed: {
+    opacity: 0.85,
+  },
+  panelButtonLabel: {
+    color: colors.fg.inverse,
+    ...typography.bodyStrong,
   },
 });
