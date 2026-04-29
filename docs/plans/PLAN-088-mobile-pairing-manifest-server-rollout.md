@@ -166,24 +166,30 @@ same flag, with a working QR.
 - [ ] Add the card component under
       `cats-platform/src/app/renderer/settings/PlatformSettingsDesktop.tsx`
       (or wherever the Desktop settings tab lives).
-- [ ] Pull the gate value through the existing `AppShellPayload`
+- [x] Pull the gate value through the existing `AppShellPayload`
       desktop-feature plumbing so the renderer knows whether to
       show the card without an extra fetch.
 - [ ] Add a small QR generator (renderer-side, pure JS — proposed
       `qrcode`).
-- [ ] Compute the LAN-facing host server-side per SPEC-099 FR-13:
-      the desktop main process calls `os.networkInterfaces()`,
-      filters to a non-loopback IPv4 candidate, and ships the gate
-      flag, effective bind host/reachability state, selected LAN IP
-      (if any), and no-candidate reason through the AppShell
-      payload. The renderer reads them from the payload only — it
-      never calls `os.networkInterfaces()` directly.
+- [x] Compute the LAN-facing host server-side per SPEC-099 FR-13:
+      the server-side payload builder calls `os.networkInterfaces()`
+      through the shared ingress summarizer, filters to a
+      non-loopback IPv4 candidate, and ships the gate flag,
+      effective bind host/reachability state, selected LAN IP (if
+      any), and no-candidate reason through the AppShell payload.
+      The renderer reads them from the payload only — it never calls
+      `os.networkInterfaces()` directly.
 - [ ] Implement the loopback-only-bind escape hatch (FR-13, FR-14):
       copy-button for `CATS_DESKTOP_APP_HOST=0.0.0.0` only when
       the payload says the server is loopback-bound. If the server
       is already LAN-bound but no LAN candidate exists, render a
       separate "no LAN address found" state instead of presenting
       the bind override as a fix.
+
+**Current implementation note**: Slice 3 publishes
+`desktop.mobilePairing` in `AppShellPayload`, including gate,
+bind host/port, reachability, selected LAN candidate, diagnostic
+manifest URL, and Phase 1 pending pairing-URL status.
 
 **Deliverable**: the card renders end-to-end with a working QR
 when both flags align.

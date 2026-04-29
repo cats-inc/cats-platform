@@ -67,10 +67,38 @@ export interface PlatformResponseMetadata {
   port: number;
 }
 
+export type PlatformMobilePairingBindReachability =
+  | 'loopback'
+  | 'lan'
+  | 'all_interfaces'
+  | 'other_interface';
+
+export type PlatformMobilePairingNoLanCandidateReason =
+  | 'feature_disabled'
+  | 'loopback_bound'
+  | 'no_lan_candidate'
+  | 'bind_host_not_lan_candidate';
+
+export interface PlatformMobilePairingReadiness {
+  enabled: boolean;
+  bindHost: string;
+  bindPort: number;
+  bindReachability: PlatformMobilePairingBindReachability;
+  canReachFromLan: boolean;
+  selectedLanIp: string | null;
+  selectedLanUrl: string | null;
+  diagnosticManifestUrl: string | null;
+  noLanCandidateReason: PlatformMobilePairingNoLanCandidateReason | null;
+  bindOverrideEnv: string | null;
+  pairingUrlStatus: 'phase1_pending' | 'ready';
+  pairingUrl: string | null;
+}
+
 export interface PlatformDesktopPreferences {
   startAtLogin: boolean;
   openWindowOnStartup: boolean;
   systemTrayEnabled: boolean;
+  mobilePairing: PlatformMobilePairingReadiness;
 }
 
 export interface PlatformLobbyCatSummary {

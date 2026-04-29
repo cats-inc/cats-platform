@@ -28,6 +28,49 @@ function readStringArray(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === 'string');
 }
 
+function readBoolean(value: unknown, fallback: boolean): boolean {
+  return typeof value === 'boolean' ? value : fallback;
+}
+
+function readNumber(value: unknown, fallback: number): number {
+  return typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+}
+
+function normalizeDesktopPayload(nextPayload: AppShellPayload & Record<string, unknown>): void {
+  const desktop = asRecord(nextPayload.desktop) ?? {};
+  nextPayload.desktop = desktop as unknown as AppShellPayload['desktop'];
+
+  const mobilePairing = asRecord(desktop.mobilePairing) ?? {};
+  desktop.mobilePairing = {
+    enabled: readBoolean(mobilePairing.enabled, false),
+    bindHost: readString(mobilePairing.bindHost, '127.0.0.1'),
+    bindPort: readNumber(mobilePairing.bindPort, 0),
+    bindReachability:
+      mobilePairing.bindReachability === 'lan'
+      || mobilePairing.bindReachability === 'all_interfaces'
+      || mobilePairing.bindReachability === 'other_interface'
+        ? mobilePairing.bindReachability
+        : 'loopback',
+    canReachFromLan: readBoolean(mobilePairing.canReachFromLan, false),
+    selectedLanIp: readNullableString(mobilePairing.selectedLanIp),
+    selectedLanUrl: readNullableString(mobilePairing.selectedLanUrl),
+    diagnosticManifestUrl: readNullableString(mobilePairing.diagnosticManifestUrl),
+    noLanCandidateReason:
+      mobilePairing.noLanCandidateReason === 'loopback_bound'
+      || mobilePairing.noLanCandidateReason === 'no_lan_candidate'
+      || mobilePairing.noLanCandidateReason === 'bind_host_not_lan_candidate'
+        ? mobilePairing.noLanCandidateReason
+        : readBoolean(mobilePairing.enabled, false)
+          ? null
+          : 'feature_disabled',
+    bindOverrideEnv: readNullableString(mobilePairing.bindOverrideEnv),
+    pairingUrlStatus: mobilePairing.pairingUrlStatus === 'ready'
+      ? 'ready'
+      : 'phase1_pending',
+    pairingUrl: readNullableString(mobilePairing.pairingUrl),
+  } satisfies AppShellPayload['desktop']['mobilePairing'];
+}
+
 function normalizeChannelKind(
   channel: Record<string, unknown>,
   roomMode: 'boss_chat' | 'direct_cat_chat',
@@ -64,6 +107,7 @@ function normalizeChannelKind(
 
 export function normalizeAppShellPayload(payload: AppShellPayload): AppShellPayload {
   const nextPayload = structuredClone(payload) as AppShellPayload & Record<string, unknown>;
+  normalizeDesktopPayload(nextPayload);
   const chatState = asRecord(nextPayload.chat) ?? {};
   nextPayload.chat = chatState as unknown as AppShellPayload['chat'];
   const globalOrchestrator = asRecord(chatState.globalOrchestrator);

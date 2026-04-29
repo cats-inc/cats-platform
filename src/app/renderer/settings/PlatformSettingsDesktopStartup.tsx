@@ -14,11 +14,27 @@ export interface PlatformSettingsDesktopStartupProps {
   onPayloadUpdate: (payload: AppShellPayload) => void;
 }
 
+const DEFAULT_MOBILE_PAIRING: AppShellPayload['desktop']['mobilePairing'] = {
+  enabled: false,
+  bindHost: '127.0.0.1',
+  bindPort: 0,
+  bindReachability: 'loopback',
+  canReachFromLan: false,
+  selectedLanIp: null,
+  selectedLanUrl: null,
+  diagnosticManifestUrl: null,
+  noLanCandidateReason: 'feature_disabled',
+  bindOverrideEnv: 'CATS_DESKTOP_APP_HOST=0.0.0.0',
+  pairingUrlStatus: 'phase1_pending',
+  pairingUrl: null,
+};
+
 function resolveDefaultDesktopPreferences(): AppShellPayload['desktop'] {
   return {
     startAtLogin: true,
     openWindowOnStartup: false,
     systemTrayEnabled: true,
+    mobilePairing: DEFAULT_MOBILE_PAIRING,
   };
 }
 
@@ -65,6 +81,7 @@ export function PlatformSettingsDesktopStartup({
         }
         const body = await response.json() as Partial<AppShellPayload['desktop']>;
         persistedPrefs = {
+          ...desktopPrefs,
           startAtLogin: body.startAtLogin !== false,
           openWindowOnStartup: body.openWindowOnStartup === true,
           systemTrayEnabled: body.systemTrayEnabled !== false,

@@ -20,6 +20,7 @@ import {
   createPlatformAppDescriptor,
   createPlatformResponseMetadata,
 } from '../../../shared/platformEnvelopeMetadata.js';
+import { buildMobilePairingReadiness } from '../../../shared/mobilePairing.js';
 import { listPlatformProductDescriptors } from '../../../shared/platformProducts.js';
 import { listEnabledPlatformSurfaces } from '../../../shared/platformSurfaces.js';
 import { cloneAdvancedDraftControlsPreferences } from '../../shared/advancedDraftControls.js';
@@ -29,6 +30,10 @@ import type { AppShellPayload, ChatBotBindingSummary, ChatState } from '../api/c
 import { createUnavailableRuntimeSetupSummary } from '../../../runtime/setup.js';
 import { summarizeState } from './model/index.js';
 import { resolveSetupCompletionTimestamp } from './setupCompletion.js';
+
+type PlatformDesktopPreferencesInput =
+  Omit<PlatformDesktopPreferences, 'mobilePairing'>
+  & Partial<Pick<PlatformDesktopPreferences, 'mobilePairing'>>;
 
 function resolveSetupCompleteAt(
   chat: ChatState,
@@ -41,7 +46,7 @@ function resolveSetupCompleteAt(
     ownerAvatarUrl?: string | null;
     botBindings?: ChatBotBindingSummary[];
     lastProductSurface?: PlatformSurfaceId | null;
-    desktop?: PlatformDesktopPreferences;
+    desktop?: PlatformDesktopPreferencesInput;
     lobby?: PlatformLobbyPreferences;
     guideCat?: GuideCatRecord | null;
   },
@@ -68,7 +73,7 @@ export function createAppShell(
     ownerAvatarUrl?: string | null;
     botBindings?: ChatBotBindingSummary[];
     lastProductSurface?: PlatformSurfaceId | null;
-    desktop?: PlatformDesktopPreferences;
+    desktop?: PlatformDesktopPreferencesInput;
     lobby?: PlatformLobbyPreferences;
     runtimeSetup?: RuntimeSetupSummary;
     guideCat?: GuideCatRecord | null;
@@ -94,6 +99,14 @@ export function createAppShell(
       startAtLogin: setup?.desktop?.startAtLogin ?? true,
       openWindowOnStartup: setup?.desktop?.openWindowOnStartup ?? false,
       systemTrayEnabled: setup?.desktop?.systemTrayEnabled !== false,
+      mobilePairing: structuredClone(
+        setup?.desktop?.mobilePairing
+        ?? buildMobilePairingReadiness({
+          enabled: config.mobilePairingEnabled,
+          host: config.host,
+          port: config.port,
+        }),
+      ),
     },
     lobby: {
       animationMode: setup?.lobby?.animationMode ?? 'reduced',
