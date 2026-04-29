@@ -3,7 +3,7 @@ import { Image, Linking, Pressable, Text, View } from 'react-native';
 import {
   type MessageBodyAttachment,
   type MessageBodySegment,
-} from './types/messageBody';
+} from '../../../src/mobile/index.js';
 import { messageBodyStyles as styles } from './styles/messageBody';
 
 /**

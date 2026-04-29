@@ -1,7 +1,7 @@
 import {
   type MessageBodyAttachment,
   type MessageBodySegment,
-} from './types/messageBody';
+} from '../../../src/mobile/index.js';
 
 /**
  * Fixed corpus for the Phase-2 visual gate. Each sample mirrors a

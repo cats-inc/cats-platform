@@ -1,7 +1,7 @@
 import type {
   MessageBodyAttachment,
   MessageBodySegment,
-} from '../../renderer/types/messageBody';
+} from '../../../../src/mobile/index.js';
 
 /**
  * Fixture conversation used by the Phase-4a ChatView shell. Three sample
