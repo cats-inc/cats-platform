@@ -65,25 +65,34 @@ Developer account.
 
 ### Server
 
-- **FR-4.** cats-platform server exposes routes under `/api/mobile/`:
+- **FR-4.** cats-platform server exposes a mobile bundle-serving
+  surface. `/api/mobile/` owns the canonical diagnostic and asset
+  routes; until Open Question Q2 is resolved, `/api/mobile/manifest`
+  is only the canonical internal diagnostic endpoint and shared
+  generator entrypoint. The actual Expo-Go-facing manifest ingress
+  path/URL form is chosen by the Phase 1 spike and may delegate to
+  the same generator.
   - `GET /api/mobile/manifest` — returns a manifest JSON for the
-    requesting client. The exact schema and the per-platform
-    discrimination mechanism are determined by Phase 1 spike (see
-    Open Questions). Likely shape: a single endpoint that reads
-    Expo Go's `expo-platform`, `expo-runtime-version`, and
+    requesting client when used as the canonical diagnostic
+    endpoint. The exact schema and the per-platform discrimination
+    mechanism are determined by Phase 1 spike (see Open Questions).
+    Likely shape: a single manifest ingress that reads Expo Go's
+    `expo-platform`, `expo-runtime-version`, and
     `expo-protocol-version` request headers and returns the
     manifest variant the client negotiates for.
   - `GET /api/mobile/bundle/{platform}/{hash}.js` — returns the
     JS bundle. URLs are content-hash addressed: the path encodes
     the bundle hash so the same URL is bit-for-bit immutable. The
-    manifest's launch-asset URL points at the current hash.
+    manifest's bundle-entry URL points at the current hash
+    (`launchAsset.url` for Updates v1 or `bundleUrl` for Classic,
+    depending on the Phase 1 schema decision).
   - `GET /api/mobile/assets/{hash}` — returns the asset matching
     the hash. Same content-hash addressing.
 - **FR-5.** All routes serve from `<resources>/mobile/` at runtime
   (or `cats-platform/build/mobile/` in dev). Routes 404 cleanly if
   the bundle is absent.
 - **FR-6.** Cache headers are aligned with content addressability:
-  - The `/api/mobile/manifest` response sets
+  - The manifest response sets
     `Cache-Control: no-store` because the manifest is computed per
     request (host echo in FR-9, platform discrimination in FR-8a).
   - The hash-addressed bundle and asset routes set
@@ -91,13 +100,15 @@ Developer account.
     URL itself changes whenever content changes.
   - There is no stable "current bundle" URL alongside the
     hash-addressed one — clients always reach the bundle through
-    the manifest's launch-asset URL, which the server rebuilds
-    per request from the on-disk metadata.
+    the manifest's schema-specific bundle-entry URL, which the
+    server rebuilds per request from the on-disk metadata.
 - **FR-7.** The server returns a manifest only when
-  `CATS_DESKTOP_MOBILE_PAIRING_ENABLED=true`. Otherwise all
-  `/api/mobile/*` routes return `404 Not Found`. Disabling the
-  feature must be sufficient to take it off the network surface,
-  not just hide the UI.
+  `CATS_DESKTOP_MOBILE_PAIRING_ENABLED=true`. Otherwise every
+  Mobile pairing route returns `404 Not Found`, including all
+  `/api/mobile/*` routes and the Phase 1-selected Expo-Go-facing
+  manifest ingress if that ingress is outside `/api/mobile/`.
+  Disabling the feature must be sufficient to take it off the
+  network surface, not just hide the UI.
 
 ### Manifest format
 
@@ -115,20 +126,22 @@ Developer account.
   negotiation, and replaces this FR-8 with a concrete schema
   example. Until then the implementation owner should treat
   schema choice as an Open Question.
-- **FR-8a.** *(Platform discrimination).* The manifest endpoint is
-  a single URL; per-platform variants come from request headers.
+- **FR-8a.** *(Platform discrimination).* The manifest ingress is a
+  single URL; per-platform variants come from request headers.
   Expo Go sends `expo-platform: ios` (or `android`) on its
   manifest fetch. The server reads this header and emits the
-  matching launch-asset URL inside the manifest body. Query-string
-  variants like `?platform=ios` are NOT used in the QR / pairing
-  URL — the QR encodes one host-only URL, and the platform is
-  resolved server-side per request.
-- **FR-9.** The manifest's launch-asset URL and asset URLs are
-  generated using the **incoming request's host header** so that
-  whether the request reached us via `localhost`, the LAN IP, or a
-  Tailscale/tunnel address, the manifest always points back to the
-  same origin. Without this, Expo Go fetches the manifest over LAN
-  but tries to fetch the bundle over `127.0.0.1` and fails.
+  matching schema-specific bundle-entry URL inside the manifest
+  body. Query-string variants like `?platform=ios` are NOT used in
+  the QR / pairing URL — the QR encodes one URL form chosen by Q2,
+  and the platform is resolved server-side per request.
+- **FR-9.** The manifest's schema-specific bundle-entry URL
+  (`launchAsset.url` for Updates v1 or `bundleUrl` for Classic)
+  and asset URLs are generated using the **incoming request's host
+  header** so that whether the request reached us via `localhost`,
+  the LAN IP, or a Tailscale/tunnel address, the manifest always
+  points back to the same origin. Without this, Expo Go fetches the
+  manifest over LAN but tries to fetch the bundle over `127.0.0.1`
+  and fails.
 - **FR-10.** The manifest format is versioned alongside the SDK.
   Bumping `expo` in `mobile/package.json` and re-running
   `npm run build:mobile` is the only step required to align with a
@@ -161,19 +174,25 @@ Developer account.
     QR with the Camera app or Expo Go's scanner."
 - **FR-13.** LAN IP detection happens server-side in the desktop
   host: the desktop main process calls `os.networkInterfaces()`,
-  filters to a non-loopback IPv4 candidate, and ships the result
-  to the renderer through the existing `AppShellPayload`
-  desktop-feature plumbing. The renderer never calls
-  `os.networkInterfaces()` directly. If no candidate is found,
-  the payload carries an explicit "no LAN candidate" signal and
-  the card shows a recoverable error explaining that the desktop
-  is bound to loopback only
-  (`CATS_DESKTOP_APP_HOST=127.0.0.1`).
+  filters to a non-loopback IPv4 candidate, and ships a Mobile
+  pairing readiness payload to the renderer through the existing
+  `AppShellPayload` desktop-feature plumbing. The renderer never
+  calls `os.networkInterfaces()` directly. That payload separates
+  the server bind state from LAN discovery:
+  - the configured/effective bind host, with an explicit
+    `loopback`, `lan`, or `all_interfaces` reachability state;
+  - the selected LAN IPv4 candidate, or `null` plus a reason when
+    no candidate exists.
+  A missing LAN candidate is not treated as proof that the server
+  is loopback-bound; the UI must render a distinct recoverable
+  "no LAN address found" state.
 - **FR-14.** The card surfaces the desktop bind state explicitly:
   if the server is loopback-only, the QR is hidden and the card
   shows a one-click button to copy the canonical override
   (`CATS_DESKTOP_APP_HOST=0.0.0.0`) to the user's clipboard with a
-  short note that they need to restart Cats Desktop.
+  short note that they need to restart Cats Desktop. If the server
+  is already LAN-bound but no LAN candidate is available, the card
+  must not present the bind override as a fix.
 
 ### Env / config
 
@@ -219,10 +238,11 @@ Developer account.
 [Cats Desktop runtime]                                                 │
                                                                        │
 HTTP server on CATS_HOST:CATS_PORT (LAN-bound)                         │
-  GET /api/mobile/manifest         ←──── from Expo Go ──────────────── ┘
+  GET <manifest ingress chosen by Q2> ← from Expo Go ───────────────── ┘
+    (may delegate to canonical /api/mobile/manifest diagnostics)
     (reads expo-platform / expo-runtime-version /
      expo-protocol-version request headers; emits the
-     hash-addressed launch-asset URL inside the body)
+     hash-addressed bundle-entry URL inside the body)
   GET /api/mobile/bundle/{platform}/{hash}.js
   GET /api/mobile/assets/{hash}
                                                                        

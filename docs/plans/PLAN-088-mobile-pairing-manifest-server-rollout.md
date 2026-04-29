@@ -25,7 +25,7 @@ Phase 6  End-to-end smoke on real iOS + Android Expo Go
 
 Phases 2-5 are mostly independent except Phase 5 depends on Phase 3
 shipping the server side. Phase 1 must come first because it
-resolves the four Open Questions in SPEC-099 that affect every
+resolves the five Open Questions in SPEC-099 that affect every
 later phase.
 
 ## Phase 1 — Manifest format and pairing-URL spike
@@ -101,9 +101,11 @@ Gated; default off.
 - [ ] Add `cats-platform/src/server/routes/mobileManifest.ts` (or
       similar) implementing the routes from SPEC-099 §FR-4
       (`/api/mobile/manifest`, `/api/mobile/bundle/{platform}/{hash}.js`,
-      `/api/mobile/assets/{hash}`). Exact route count and method
-      list follow whatever the §FR-4 amendment lands on; the plan
-      does not pin a number.
+      `/api/mobile/assets/{hash}`). `/api/mobile/manifest` is the
+      canonical internal diagnostic endpoint until Phase 1 resolves
+      the Expo-Go-facing manifest ingress URL/path in Q2; if Expo
+      Go requires a stock path outside `/api/mobile/manifest`, add
+      that ingress and route it to the same generator.
 - [ ] Resolve the on-disk path: dev mode reads
       `cats-platform/build/mobile/`; packaged mode reads
       `process.resourcesPath/mobile/` (or whatever electron-builder
@@ -112,39 +114,45 @@ Gated; default off.
       Phase 1 (FR-8). The generator reads `expo-platform`,
       `expo-runtime-version`, and `expo-protocol-version` headers
       (FR-8a) and uses the incoming request's host header (FR-9)
-      to build the **launch-asset URL** plus the asset URLs that
-      the manifest body returns. There is no separate "bundle URL"
-      concept outside that launch-asset URL.
+      to build the schema-specific bundle-entry URL
+      (`launchAsset.url` for Updates v1 or `bundleUrl` for
+      Classic) plus the asset URLs that the manifest body returns.
+      There is no separate stable "current bundle" URL outside the
+      manifest's schema-specific bundle entry.
 - [ ] Wire the gate: when
       `CATS_DESKTOP_MOBILE_PAIRING_ENABLED !== 'true'`, every
-      `/api/mobile/*` route returns 404 (FR-7).
+      `/api/mobile/*` route and the Phase 1-selected Expo-Go-facing
+      manifest ingress return 404 (FR-7).
 - [ ] Cache headers per FR-6 (manifest `no-store`, hash-addressed
       bundle/asset `public, max-age=31536000, immutable`).
 - [ ] Tests:
-      - [ ] Manifest fetched with `expo-platform: ios` returns
-            an iOS launch-asset URL; same request with
+      - [ ] Manifest fetched through the Phase 1-selected ingress
+            with `expo-platform: ios` returns an iOS
+            schema-specific bundle-entry URL; same request with
             `expo-platform: android` returns an Android
-            launch-asset URL.
+            schema-specific bundle-entry URL.
       - [ ] Missing or unsupported `expo-runtime-version` /
             `expo-protocol-version` headers are handled per the
             schema chosen in Phase 1 (e.g. negotiated default vs
             error).
-      - [ ] Every `/api/mobile/*` route returns 404 when the
+      - [ ] Every `/api/mobile/*` route and the Phase 1-selected
+            Expo-Go-facing manifest ingress return 404 when the
             flag is off.
-      - [ ] Launch-asset URL host matches the request host
+      - [ ] Bundle-entry URL host matches the request host
             (loopback vs LAN IP).
       - [ ] Hash-addressed bundle and asset URLs serve the
             corresponding file from `<resources>/mobile/`.
 
 **Deliverable**: a header-aware integration test (e.g. via
-`supertest` against the in-process Express app) that fetches
-`/api/mobile/manifest` with `expo-platform: ios` *and*
+`supertest` against the in-process Express app) that fetches the
+Phase 1-selected manifest ingress with `expo-platform: ios` *and*
 `expo-platform: android`, confirms the response body shape
 matches the Phase 1 schema, and successfully resolves the
-returned launch-asset URL plus one asset URL. A plain
-`curl /api/mobile/manifest` is **not** a valid deliverable
-because Expo Go's per-platform discrimination relies on
-request headers.
+returned schema-specific bundle-entry URL plus one asset URL.
+A plain `curl /api/mobile/manifest` without Expo request headers
+is **not** a valid deliverable, even if Q2 chooses that route as
+the actual Expo-Go-facing ingress; Expo Go's per-platform
+discrimination relies on request headers.
 
 ## Phase 4 — Settings → Desktop "Mobile pairing" card
 
@@ -161,14 +169,17 @@ same flag, with a working QR.
       `qrcode`).
 - [ ] Compute the LAN-facing host server-side per SPEC-099 FR-13:
       the desktop main process calls `os.networkInterfaces()`,
-      filters to a non-loopback IPv4 candidate, and ships both
-      the LAN IP and the gate flag through the AppShell payload.
-      The renderer reads them from the payload only — it never
-      calls `os.networkInterfaces()` directly. If no candidate
-      exists, the payload signals "no LAN candidate" so the card
-      can fall through to the FR-14 escape hatch.
+      filters to a non-loopback IPv4 candidate, and ships the gate
+      flag, effective bind host/reachability state, selected LAN IP
+      (if any), and no-candidate reason through the AppShell
+      payload. The renderer reads them from the payload only — it
+      never calls `os.networkInterfaces()` directly.
 - [ ] Implement the loopback-only-bind escape hatch (FR-13, FR-14):
-      copy-button for `CATS_DESKTOP_APP_HOST=0.0.0.0`.
+      copy-button for `CATS_DESKTOP_APP_HOST=0.0.0.0` only when
+      the payload says the server is loopback-bound. If the server
+      is already LAN-bound but no LAN candidate exists, render a
+      separate "no LAN address found" state instead of presenting
+      the bind override as a fix.
 
 **Deliverable**: the card renders end-to-end with a working QR
 when both flags align.
@@ -225,7 +236,7 @@ flip the env flag for the first internal-release artifact.
 | `cats-platform/src/server/routes/mobileManifest.ts` | new — manifest + bundle + assets routes |
 | `cats-platform/src/server/...` (route registration) | wire the new routes |
 | `cats-platform/src/config.ts` | parse `CATS_DESKTOP_MOBILE_PAIRING_ENABLED` |
-| `cats-platform/src/products/shared/api/workspaceContracts.ts` | extend `PlatformDesktopPreferences` (or similar) with the gate flag + detected LAN IP |
+| `cats-platform/src/shared/platform-contract.ts` | extend `PlatformDesktopPreferences` / `PlatformHostEnvelope` desktop payload with the gate flag, bind reachability state, detected LAN IP, and no-candidate reason |
 | `cats-platform/src/app/renderer/settings/PlatformSettingsDesktop.tsx` | new card |
 | `cats-platform/.env.example` | add the env var with comment |
 | `cats-platform/docs/setup-guide.md` | new "Mobile pairing" section |
@@ -247,11 +258,12 @@ flip the env flag for the first internal-release artifact.
   `CATS_DESKTOP_APP_HOST=127.0.0.1` keeps server loopback-only.
   *Mitigation*: card detects this state explicitly (FR-14) and
   guides the user.
-- **No auth on manifest**: anyone on the LAN can hit
-  `/api/mobile/manifest` and pull the bundle. *Mitigation*: the
-  bundle is the same artifact users would obtain from a public
-  installer. No PII / secrets in the bundle. Future hardening is a
-  separate spec.
+- **No auth on manifest**: anyone on the LAN can hit the
+  Phase 1-selected manifest ingress (or canonical
+  `/api/mobile/manifest` diagnostics, if enabled) and pull the
+  bundle. *Mitigation*: the bundle is the same artifact users
+  would obtain from a public installer. No PII / secrets in the
+  bundle. Future hardening is a separate spec.
 
 ## Out of scope
 
