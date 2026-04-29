@@ -6,6 +6,18 @@ import {
 } from './types/messageBody';
 import { messageBodyStyles as styles } from './styles/messageBody';
 
+/**
+ * Returns the absolute URL to fetch / open the named attachment, or
+ * `null` when the connection mode is not configured yet (Phase 7) and
+ * attachments cannot be addressed from the device. SPEC-095 Open
+ * Question on connection mode resolution drives the eventual concrete
+ * implementation.
+ */
+export type ResolveAttachmentUrl = (
+  channelId: string,
+  filename: string,
+) => string | null;
+
 export interface MessageBodyProps {
   /**
    * Pre-segmented body content. SPEC-095 NFR-001 requires the shared
@@ -17,33 +29,26 @@ export interface MessageBodyProps {
   attachments: MessageBodyAttachment[];
   /**
    * Channel id used to build attachment URLs. Web renderer points at the
-   * platform host's `/api/channels/{id}/attachments/...` endpoint; mobile
-   * resolves the same path through whatever connection mode is active
-   * (relay / tunnel / Tailscale, per the 2026-03-24 research note).
+   * platform host's `/api/channels/{id}/attachments/...` endpoint;
+   * mobile resolves the same path through whatever connection mode is
+   * active (relay / tunnel / Tailscale, per the 2026-03-24 research
+   * note).
    */
   channelId: string;
   /**
-   * Function that turns a relative attachment path into the URL the
-   * mobile client should fetch. Defaults to the same host shape the web
-   * renderer uses; the harness overrides this to point at fixture URLs.
+   * Required. Returning `null` indicates the device has no connection
+   * mode wired up yet — attachments are still rendered for context but
+   * remain non-interactive (no fetch, no `Linking.openURL`). Returning
+   * a string opens that URL on tap and uses it as the image source.
    */
-  resolveAttachmentUrl?: (channelId: string, filename: string) => string;
+  resolveAttachmentUrl: ResolveAttachmentUrl;
 }
-
-const DEFAULT_RESOLVE: NonNullable<MessageBodyProps['resolveAttachmentUrl']> = (
-  channelId,
-  filename,
-) => {
-  const encodedChannelId = encodeURIComponent(channelId);
-  const encodedFilename = encodeURIComponent(filename);
-  return `/api/channels/${encodedChannelId}/attachments/${encodedFilename}`;
-};
 
 export function MessageBody({
   segments,
   attachments,
   channelId,
-  resolveAttachmentUrl = DEFAULT_RESOLVE,
+  resolveAttachmentUrl,
 }: MessageBodyProps) {
   const imageAttachments = attachments.filter((attachment) => attachment.isImage);
   const fileAttachments = attachments.filter((attachment) => !attachment.isImage);
@@ -54,6 +59,19 @@ export function MessageBody({
         <View style={styles.images}>
           {imageAttachments.map((attachment) => {
             const url = resolveAttachmentUrl(channelId, attachment.filename);
+            if (!url) {
+              return (
+                <View
+                  key={attachment.relativePath}
+                  style={[styles.imageLink, styles.imagePlaceholder]}
+                  accessibilityLabel={attachment.filename}
+                >
+                  <Text style={styles.imagePlaceholderText} numberOfLines={2}>
+                    {attachment.filename}
+                  </Text>
+                </View>
+              );
+            }
             return (
               <Pressable
                 key={attachment.relativePath}
@@ -77,6 +95,23 @@ export function MessageBody({
         <View style={styles.files}>
           {fileAttachments.map((attachment) => {
             const url = resolveAttachmentUrl(channelId, attachment.filename);
+            if (!url) {
+              return (
+                <View
+                  key={attachment.relativePath}
+                  style={[styles.fileChip, styles.fileChipDisabled]}
+                  accessibilityState={{ disabled: true }}
+                >
+                  <FileGlyph />
+                  <Text
+                    style={[styles.fileChipText, styles.fileChipTextDisabled]}
+                    numberOfLines={1}
+                  >
+                    {attachment.filename}
+                  </Text>
+                </View>
+              );
+            }
             return (
               <Pressable
                 key={attachment.relativePath}

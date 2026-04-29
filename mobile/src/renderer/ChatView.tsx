@@ -13,9 +13,17 @@ import {
 
 import { getFixtureConversation } from '../api/fixtures/conversation';
 import type { FixtureMessage } from '../api/fixtures/conversation';
-import { MessageBody } from './MessageBody';
+import { MessageBody, type ResolveAttachmentUrl } from './MessageBody';
 import { MessageBubble } from './MessageBubble';
 import { colors, radii, spacing, typography } from './theme';
+
+/**
+ * Default resolver returns null so attachments render as non-interactive
+ * placeholders until the device has a paired desktop. Phase 7 replaces
+ * this with a connection-mode-aware resolver (cloud relay base URL,
+ * tunnel URL, or Tailscale IP) per ADR-092 / SPEC-095.
+ */
+const NO_CONNECTION_RESOLVER: ResolveAttachmentUrl = () => null;
 
 export type ChatViewProductMode = 'chat' | 'code' | 'work';
 
@@ -178,6 +186,7 @@ function MessageBubbleItem({ channelId, message }: MessageBubbleItemProps) {
           segments={message.segments}
           attachments={message.attachments}
           channelId={channelId}
+          resolveAttachmentUrl={NO_CONNECTION_RESOLVER}
         />
       </MessageBubble>
     </View>

@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 
+import { ownerFixture } from '../../api/fixtures/owner';
 import { colors, radii, spacing, typography } from '../theme';
 
 type ConnectionMode = 'relay' | 'tunnel' | 'tailscale';
@@ -38,12 +39,19 @@ const CONNECTION_OPTIONS: ConnectionOption[] = [
   },
 ];
 
-const WEB_DASHBOARD_URL = 'http://127.0.0.1:8181/';
+/**
+ * The web dashboard URL is not knowable until pairing produces a host
+ * URL. `127.0.0.1` resolves to the device itself on mobile, not the
+ * desktop, so we cannot fall back to the desktop's local URL. Until
+ * pairing exists, the entry is rendered disabled.
+ */
+const PAIRED_WEB_DASHBOARD_URL: string | null = null;
 
 export function Settings() {
   const [connection, setConnection] = useState<ConnectionMode>('relay');
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [approvalsOnly, setApprovalsOnly] = useState(false);
+  const webDashboardUrl = PAIRED_WEB_DASHBOARD_URL;
 
   return (
     <ScrollView
@@ -89,26 +97,39 @@ export function Settings() {
       </Section>
 
       <Section label="Owner">
-        <ReadOnlyRow label="Display name" value="Owner" />
-        <ReadOnlyRow label="Email" value="sammykenny2@gmail.com" />
+        <ReadOnlyRow label="Display name" value={ownerFixture.displayName} />
+        <ReadOnlyRow label="Email" value={ownerFixture.email} />
       </Section>
 
       <Section label="Advanced">
         <Pressable
           accessibilityRole="link"
+          accessibilityState={{ disabled: webDashboardUrl === null }}
+          disabled={webDashboardUrl === null}
           onPress={() => {
-            void Linking.openURL(WEB_DASHBOARD_URL);
+            if (webDashboardUrl !== null) {
+              void Linking.openURL(webDashboardUrl);
+            }
           }}
           style={({ pressed }) => [
             styles.linkRow,
-            pressed ? styles.linkRowPressed : null,
+            webDashboardUrl === null ? styles.linkRowDisabled : null,
+            pressed && webDashboardUrl !== null ? styles.linkRowPressed : null,
           ]}
         >
           <View style={styles.linkRowText}>
-            <Text style={styles.linkRowLabel}>Open web dashboard</Text>
+            <Text
+              style={[
+                styles.linkRowLabel,
+                webDashboardUrl === null ? styles.linkRowLabelDisabled : null,
+              ]}
+            >
+              Open web dashboard
+            </Text>
             <Text style={styles.linkRowDescription}>
-              Cats registry editor, transport bindings, and other desktop-owned
-              settings.
+              {webDashboardUrl === null
+                ? 'Pair this device with your desktop cats first to enable the web dashboard link.'
+                : 'Cats registry editor, transport bindings, and other desktop-owned settings.'}
             </Text>
           </View>
           <Text style={styles.linkRowChevron}>›</Text>
@@ -349,6 +370,9 @@ const styles = StyleSheet.create({
   linkRowPressed: {
     backgroundColor: colors.bg.panelHover,
   },
+  linkRowDisabled: {
+    opacity: 0.55,
+  },
   linkRowText: {
     flex: 1,
     gap: 2,
@@ -356,6 +380,9 @@ const styles = StyleSheet.create({
   linkRowLabel: {
     color: colors.accent.primary,
     ...typography.bodyStrong,
+  },
+  linkRowLabelDisabled: {
+    color: colors.fg.muted,
   },
   linkRowDescription: {
     color: colors.fg.secondary,

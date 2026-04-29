@@ -56,6 +56,22 @@ export const messageBodyStyles = StyleSheet.create({
     height: 180,
     borderRadius: 10,
   },
+  // Image-attachment placeholder when no resolveAttachmentUrl is wired
+  // (Phase-pre-7 — connection mode not yet configured).
+  imagePlaceholder: {
+    width: 240,
+    height: 180,
+    backgroundColor: colors.bg.panelHover,
+    borderWidth: 1,
+    borderColor: colors.border.subtle,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.md,
+  },
+  imagePlaceholderText: {
+    color: colors.fg.muted,
+    ...typography.caption,
+  },
   // .messageBodyFiles — flex-wrap row of file chips.
   files: {
     flexDirection: 'row',
@@ -76,6 +92,14 @@ export const messageBodyStyles = StyleSheet.create({
   fileChipText: {
     color: colors.fg.primary,
     ...typography.fileChip,
+  },
+  // File-chip disabled state when resolveAttachmentUrl returns null
+  // (Phase-pre-7 — connection mode not yet configured).
+  fileChipDisabled: {
+    opacity: 0.55,
+  },
+  fileChipTextDisabled: {
+    color: colors.fg.muted,
   },
 });
 
