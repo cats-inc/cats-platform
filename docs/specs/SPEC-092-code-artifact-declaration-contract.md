@@ -176,6 +176,11 @@ Rules:
 - `producer.toolName` is required for `tool` declarations and may name the
   server detector for `system` declarations. When omitted for `system`, the
   detector name is `code-bridge`.
+- `producer.toolName` is interpreted as tool name for `producer.kind = 'tool'`
+  and detector name for `producer.kind = 'system'`. It must be omitted or null
+  for `agent` and `user` declarations.
+- `producer.actorId` is only meaningful for `agent` and `user` declarations.
+  It must be omitted or null for `tool` and `system` declarations.
 - `metadata` may carry producer-specific details only under non-reserved keys.
   It must not override normalized Core fields.
 
@@ -189,10 +194,24 @@ building idempotency keys or accepting a declaration:
 | `agent` | Active Code runtime session participant / actor binding for the declaring assistant | The actor id resolves to a known agent/assistant actor in the current session, task, or run. A producer-supplied `actorId` is only a hint and must match the server binding when present. |
 | `tool` | Code tool execution context or tool bridge registration | `toolName` resolves to a server-registered tool that was invoked in, or is authorized for, the current workspace/run context. |
 | `system` | Code system detector registry | `toolName` is treated as detector name. When omitted it defaults to `code-bridge`; the detector must be in the Code server's built-in detector registry. |
-| `user` | Authenticated owner/user session | The resolved actor id is the authenticated owner profile actor for the current local user. Producer-supplied `actorId` is ignored unless it matches that actor. |
+| `user` | Authenticated owner/user session | The resolved actor id is the authenticated owner profile actor for the current local user. Producer-supplied `actorId` is only a hint and must match that actor when present. |
 
 If the producer identity cannot be resolved from these sources, Cats Code shall
 reject the declaration before idempotency lookup.
+
+Producer identity errors are deterministic:
+
+| Case | Error code |
+|------|------------|
+| `agent` has no server-bound actor | `artifact_agent_actor_required` |
+| `agent` supplies a mismatched `actorId` | `artifact_agent_actor_mismatch` |
+| `tool` has no resolvable registered tool | `artifact_tool_not_allowed` |
+| `tool` supplies non-null `actorId` | `artifact_producer_actor_not_allowed` |
+| `system` detector is not in the Code built-in detector registry | `artifact_system_detector_not_allowed` |
+| `system` supplies non-null `actorId` | `artifact_producer_actor_not_allowed` |
+| `user` has no authenticated owner actor | `artifact_user_actor_required` |
+| `user` supplies a mismatched `actorId` | `artifact_user_actor_mismatch` |
+| `agent` or `user` supplies non-null `toolName` | `artifact_producer_tool_not_allowed` |
 
 ### Idempotency Key
 
@@ -226,6 +245,8 @@ Null fallback is explicit:
 - `agent` and `user` declarations without a server-resolved actor id shall be
   rejected.
 - `tool` declarations without a server-resolved tool name shall be rejected.
+- `system` declarations whose detector is not in the Code built-in detector
+  registry shall be rejected.
 - Declarations without any scope candidate shall be rejected with
   `artifact_anchor_required`.
 - Producer-supplied runtime/session/anchor ids may fill a missing field only
@@ -254,6 +275,19 @@ one compatible record, Cats Code shall reject with
 
 If the implementation derives the `CoreArtifactRecord.id` from the key, it
 shall use a stable hash of the frozen full key rather than raw producer text.
+
+When Cats Code rejects a declaration with
+`artifact_idempotency_ambiguous`, the response shall include non-sensitive
+candidate references sufficient for a UI or agent to recover, such as artifact
+ids, titles, statuses, scope kinds, and scope ids. The client recovery path is:
+
+1. show or log the ambiguous candidates instead of silently retrying;
+2. let the user or calling agent pick an existing artifact when continuation is
+   intended; or
+3. require a new `declarationId` only when the producer truly intends to create
+   a distinct artifact.
+
+The server shall not auto-pick among ambiguous candidates.
 
 ### Disposition and Status Precedence
 
@@ -297,8 +331,60 @@ these server-side publish contexts:
   publish action for an existing artifact or for a user-import flow that wraps a
   declaration and publish action together.
 - `tool_auto_publish_policy`: the declaring tool is on the server-configured
-  publish-capable tool allowlist, the artifact label is allowed for that tool,
-  and the current workspace/run context satisfies that allowlist rule.
+  tool auto-publish policy list, the artifact label is allowed for that tool,
+  and the current workspace/run context satisfies that policy rule.
+
+User import-and-publish is a distinct product action, not a flag inside
+`CodeArtifactDeclaration`. Implementations may expose it as a route such as
+`POST /api/code/artifacts/import-and-publish` or as an equivalent internal
+delegate action, but it shall not reuse the normal declaration submit path. The
+action flow is:
+
+1. normalize the user import/upload into a `CodeArtifactDeclaration` with
+   `requestedStatus` omitted or set to `ready` / `draft`, never `published`;
+2. materialize or update the artifact through the normal declaration path;
+3. perform a `user_publish_action` transition in the same server-side action
+   after materialization succeeds.
+
+The normal declaration submit path shall reject `requestedStatus = 'published'`
+even when `producer.kind = 'user'`.
+
+Tool auto-publish policy is server configuration under
+`codeArtifactDeclaration.toolAutoPublishPolicies`:
+
+```ts
+interface CodeArtifactToolAutoPublishPolicy {
+  toolName: string;
+  labels: string[];
+  workspaceMatcher?: {
+    kind: 'any' | 'workspace_key' | 'path_prefix';
+    values?: string[];
+  };
+  runMatcher?: {
+    kind: 'any' | 'run_id' | 'task_id';
+    values?: string[];
+  };
+}
+```
+
+Rules:
+
+- `toolName` is an exact match against the server-resolved tool name.
+- `labels` is a non-empty set of producer labels allowed for that tool. No
+  wildcard labels are allowed in this spec.
+- `workspaceMatcher` is evaluated against the server-resolved workspace key and
+  canonical workspace path. Omitted matcher or `{ kind: 'any' }` means any
+  resolved workspace context. `workspace_key` requires exact key match.
+  `path_prefix` requires a canonical path-prefix match.
+- `runMatcher` is evaluated against server-resolved run/task anchors. Omitted
+  matcher or `{ kind: 'any' }` means any run context. `run_id` and `task_id`
+  require exact id match.
+- The first implementation uses this single server config list. Per-workspace
+  editable policy is a follow-up and must not introduce a second policy source
+  without updating this spec.
+- A policy entry with an unknown matcher kind, empty `toolName`, empty
+  `labels`, or empty `values` for non-`any` matchers is invalid server config
+  and shall be ignored with a startup/config diagnostic.
 
 Agent and system declarations are not publish-capable in this spec. Agents may
 declare `ready` artifacts, but publishing them requires a later owner publish
@@ -321,7 +407,7 @@ with `artifact_publish_requires_action`.
 The first implementation shall maintain `external_ref` allowlist policy as one
 Code server configuration value, `codeArtifactDeclaration.externalRefKinds`.
 Per-workspace external-ref policy is a follow-up, not part of this spec. This
-allowlist is separate from the publish-capable tool allowlist. The default
+allowlist is separate from `toolAutoPublishPolicies`. The default
 initial allowed kinds are:
 
 - `upload`
@@ -455,10 +541,15 @@ artifact fields:
 - `codeArtifactDeclaration.candidate`
 - `producerDetails` after removing volatile keys
 
-The signature excludes `id`, `createdAt`, `updatedAt`, retry counters,
-observed timestamps, raw idempotency metadata, and any metadata key whose name
-ends with `At` or includes `timestamp`. If the signature is unchanged from the
-existing artifact, the upsert is a no-op replay for activity purposes.
+Volatile-key removal is recursive for the entire `producerDetails` object. At
+every object depth, Cats Code shall remove keys whose normalized lowercase name
+ends with `at`, includes `timestamp`, or equals `retryCount`,
+`attemptCount`, `observedAt`, `receivedAt`, `updatedAt`, or `createdAt`.
+Arrays preserve order after recursively normalizing object elements. The
+signature also excludes top-level `id`, `createdAt`, `updatedAt`, retry
+counters, observed timestamps, and raw idempotency metadata. If the signature
+is unchanged from the existing artifact, the upsert is a no-op replay for
+activity purposes.
 
 When a declaration is accepted as `candidate`, Cats Code may:
 
