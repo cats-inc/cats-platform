@@ -7,6 +7,8 @@ import test from 'node:test';
 
 import { createServer } from '../src/app/server/index.ts';
 import { clearRuntimeInvocationEnrichers } from '../src/platform/runtime/invocationEnrichment.ts';
+import type { RuntimeMessageSegment } from '../src/platform/runtime/client.ts';
+import { buildChatConversationId } from '../src/shared/chatCoreIds.ts';
 import { MemoryChatStore } from '../src/products/chat/state/store.ts';
 import { buildNewChatChannelInput } from '../src/products/shared/renderer/workspaceChatUtils.tsx';
 import { waitForCondition } from './testUtils.js';
@@ -45,7 +47,9 @@ interface RecordedMessage {
   };
 }
 
-function createRuntimeStub() {
+function createRuntimeStub(options: {
+  messageSegments?: RuntimeMessageSegment[];
+} = {}) {
   const createdSessions: RecordedSession[] = [];
   const sentMessages: RecordedMessage[] = [];
   let nextSession = 1;
@@ -111,7 +115,7 @@ function createRuntimeStub() {
     async sendMessage(sessionId: string, content: string, input?: RecordedMessage['input']) {
       sentMessages.push({ sessionId, content, input });
       return {
-        segments: [
+        segments: options.messageSegments ?? [
           {
             kind: 'text',
             text: 'Chain Cat handled the request.',
@@ -130,7 +134,7 @@ function createRuntimeStub() {
 
 async function withServer(
   runtimeClient: ReturnType<typeof createRuntimeStub>,
-  callback: (baseUrl: string) => Promise<void>,
+  callback: (baseUrl: string, chatStore: MemoryChatStore) => Promise<void>,
 ): Promise<void> {
   const chatStore = new MemoryChatStore();
   const tempStateDir = await mkdtemp(path.join(os.tmpdir(), 'cats-code-session-policy-'));
@@ -157,7 +161,7 @@ async function withServer(
   }
 
   try {
-    await callback(`http://127.0.0.1:${address.port}`);
+    await callback(`http://127.0.0.1:${address.port}`, chatStore);
   } finally {
     server.close();
     await once(server, 'close');
@@ -263,5 +267,128 @@ test('code-draft session policy flows end-to-end from chip input to runtime sess
         | Record<string, unknown>
         | undefined;
     assert.equal(turnArtifactContext?.toolName, 'declare_artifact');
+  });
+});
+
+test('code-origin runtime declare_artifact calls persist artifacts during dispatch', async () => {
+  const runtimeClient = createRuntimeStub({
+    messageSegments: [
+      {
+        kind: 'tool_use',
+        toolName: 'declare_artifact',
+        toolId: 'tool-preview',
+        text: '',
+        toolArgs: {
+          declarationId: 'preview-localhost:preview_url',
+          label: 'preview_url',
+          title: 'Local preview',
+          location: {
+            kind: 'url',
+            value: 'http://127.0.0.1:5173',
+          },
+          summary: 'Preview is available.',
+        },
+      },
+      {
+        kind: 'text',
+        text: 'Preview is ready.',
+        toolName: null,
+        toolId: null,
+      },
+    ],
+  });
+
+  const createInput = buildNewChatChannelInput({
+    body: 'Create a preview artifact',
+    existingCount: 0,
+    originSurface: 'code',
+    entryKind: 'solo',
+    repoPath: 'C:/repo/cats-platform',
+    draftSessionPolicy: {
+      workspaceKind: 'source',
+      workspaceAccess: 'read_write',
+      permissionMode: 'default',
+    },
+  });
+
+  await withServer(runtimeClient, async (baseUrl, chatStore) => {
+    const createChannelResponse = await fetch(`${baseUrl}/api/channels`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ...createInput, skipBossCatGreeting: true }),
+    });
+    assert.equal(createChannelResponse.status, 201);
+    const createChannelPayload = await createChannelResponse.json();
+    const channelId = createChannelPayload.channel.id;
+
+    const createCatResponse = await fetch(`${baseUrl}/api/cats`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        name: 'Artifact Cat',
+        provider: 'claude',
+        model: 'claude-opus-4-6',
+      }),
+    });
+    assert.equal(createCatResponse.status, 201);
+    const createCatPayload = await createCatResponse.json();
+
+    const assignResponse = await fetch(
+      `${baseUrl}/api/channels/${channelId}/cats/${createCatPayload.cat.id}`,
+      {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          provider: 'claude',
+          model: 'claude-opus-4-6',
+        }),
+      },
+    );
+    assert.equal(assignResponse.status, 201);
+
+    const sendMessageResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ body: 'Generate the preview.' }),
+    });
+    const sendMessagePayload = await sendMessageResponse.text();
+    assert.equal(sendMessageResponse.status, 200, sendMessagePayload);
+
+    await waitForCondition(async () => (await chatStore.readCore()).artifacts.length > 0);
+
+    const core = await chatStore.readCore();
+    assert.equal(core.artifacts.length, 1);
+    assert.equal(core.artifacts[0]?.title, 'Local preview');
+    assert.equal(core.artifacts[0]?.kind, 'preview');
+    assert.equal(core.artifacts[0]?.status, 'ready');
+    assert.equal(core.artifacts[0]?.path, 'http://127.0.0.1:5173/');
+    assert.equal(core.artifacts[0]?.conversationId, buildChatConversationId(channelId));
+    assert.equal(core.activities.filter((activity) =>
+      activity.kind === 'artifact_recorded').length, 1);
+
+    const state = await chatStore.read();
+    const channel = state.channels.find((candidate) => candidate.id === channelId);
+    assert.ok(channel);
+    const assistantMessage = channel.messages.find((message) =>
+      message.body === 'Preview is ready.');
+    const runtimeMetadata = assistantMessage?.metadata.runtimeAssistantMetadata as
+      | Record<string, unknown>
+      | undefined;
+    const artifactMetadata = runtimeMetadata?.['cats-code.artifact-declaration'] as
+      | Record<string, unknown>
+      | undefined;
+    assert.deepEqual(artifactMetadata?.codeArtifactToolResults, [
+      {
+        toolId: 'tool-preview',
+        declarationId: 'preview-localhost:preview_url',
+        result: {
+          status: 'accepted',
+          declarationId: 'preview-localhost:preview_url',
+          disposition: 'record',
+          artifactId: core.artifacts[0]?.id,
+          artifactStatus: 'ready',
+        },
+      },
+    ]);
   });
 });

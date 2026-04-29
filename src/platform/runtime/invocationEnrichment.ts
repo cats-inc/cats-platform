@@ -153,6 +153,10 @@ export function clearRuntimeInvocationAssistantEffectProcessors(): void {
   runtimeInvocationAssistantEffectProcessors.clear();
 }
 
+export function hasRuntimeInvocationAssistantEffectProcessors(): boolean {
+  return runtimeInvocationAssistantEffectProcessors.size > 0;
+}
+
 function getOrderedRuntimeInvocationEnrichers(): RuntimeInvocationEnricher[] {
   return [...runtimeInvocationEnrichers.values()].sort((left, right) => {
     const priorityDelta =

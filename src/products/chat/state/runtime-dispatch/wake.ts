@@ -310,6 +310,7 @@ export async function executeDispatchWithRecovery(input: {
       input.transportBindingId,
       input.companionStore,
       core,
+      input.chatStore,
     );
 
     if (!execution.error) {

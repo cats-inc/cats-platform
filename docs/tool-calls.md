@@ -62,7 +62,7 @@ rather than duplicating every validation branch.
 | `work.approval_gated.apply` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / future `runtime_tool` | Work supervised agent | [Work Supervised Tools](#work-supervised-tools) |
 | `work.sop.classify_text_batch` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / worker tool | Work SOP worker | [Work Supervised Tools](#work-supervised-tools) |
 | `work.sop.ask_weak` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / worker tool | Work SOP worker | [Work Supervised Tools](#work-supervised-tools) |
-| `declare_artifact` | Cats Code | Active-session onboarding, submit route, materialization, activity, runtime execution helper, and assistant-effect processor wired; live tool-result delivery pending | `runtime_tool` first; bridge/user delegates later | Code assistant / runtime bridge / Code UI import flow | [Declare Artifact](#declare_artifact) |
+| `declare_artifact` | Cats Code | Active-session onboarding, submit route, materialization, activity, runtime execution helper, assistant-effect processor, and live dispatch persistence wired; tool-result delivery pending | `runtime_tool` first; bridge/user delegates later | Code assistant / runtime bridge / Code UI import flow | [Declare Artifact](#declare_artifact) |
 
 ## Supervised Tool Contract
 
@@ -120,7 +120,7 @@ a transcript command and it is not a public HTTP route in the current scaffold.
 | Field | Value |
 |-------|-------|
 | Owning product | Cats Code |
-| Current status | Code-origin active sessions receive the onboarding block at session create and runtime context metadata at session create / message send; returned `declare_artifact` `tool_use` segments are observed as shape summaries. The Code product now has an authoritative submit route, materialization delegate, activity emission, runtime execution helper, and platform-registered assistant-effect processor that can turn observed `tool_use` payloads into accepted / rejected declaration results. Live runtime-loop tool-result delivery and finalization enforcement remain pending. |
+| Current status | Code-origin active sessions receive the onboarding block at session create and runtime context metadata at session create / message send; returned `declare_artifact` `tool_use` segments are observed as shape summaries. The Code product now has an authoritative submit route, materialization delegate, activity emission, runtime execution helper, platform-registered assistant-effect processor, and live dispatch persistence for observed `tool_use` payloads. Runtime tool-result delivery back to the assistant and finalization enforcement remain pending. |
 | First channel | `runtime_tool` |
 | Tool name | `declare_artifact` |
 | Implementation entry point | `src/products/code/shared/artifactDeclaration.ts` |
@@ -220,10 +220,16 @@ segments, and server-resolved producer / anchor context, it executes
 the HTTP submit route and returns `CodeArtifactToolResult` values. This helper
 is registered behind the platform assistant-effect processor registry, so
 runtime surfaces can apply artifact side effects without importing Code
-internals. The live dispatch loop still needs to call that registry and send
-tool results back to the assistant through the runtime tool-result channel.
-Until the finalization gate is wired, Cats Platform still accepts final visible
-responses that claim an artifact without an accepted same-turn declaration.
+internals. The chat runtime dispatch loop invokes that registry after a runtime
+message result and applies artifact side effects with `coreStore.updateCore`,
+so concurrent dispatches operate on the latest Core snapshot instead of
+overwriting one another with stale snapshots. Accepted / rejected declaration
+results are recorded in assistant-message metadata under
+`runtimeAssistantMetadata["cats-code.artifact-declaration"].codeArtifactToolResults`.
+Tool results are not yet sent back to the assistant through the runtime
+tool-result channel. Until the finalization gate is wired, Cats Platform still
+accepts final visible responses that claim an artifact without an accepted
+same-turn declaration.
 
 ### Output Summary
 
@@ -330,8 +336,9 @@ artifact ids. The Code product API exposes
 into that delegate. Materialized create/update operations emit idempotent
 background `artifact_recorded` activities keyed by the material-change
 signature; exact no-op replays do not duplicate activity. Live dispatch-loop
-registry invocation, tool-result delivery, and frozen-scope fallback recovery
-remain follow-up slices.
+registry invocation now persists observed Code declarations. Tool-result
+delivery back into the runtime loop and frozen-scope fallback recovery remain
+follow-up slices.
 
 ### Idempotency
 

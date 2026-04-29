@@ -8,6 +8,7 @@ import type {
   RoomRoutingParticipantRef,
 } from '../../../../shared/roomRouting.js';
 import type { CompanionBoxStore } from '../companion-box/index.js';
+import type { ChatStore } from '../store.js';
 import type { CatsCoreState } from '../../../../core/types.js';
 import {
   resolveFullResponseText,
@@ -27,7 +28,10 @@ import {
   buildPromptForTarget,
   resolveRuntimeEnvelopeForTarget,
 } from '../runtimeTargeting.js';
-import { participantKey } from '../runtime-session/state.js';
+import {
+  participantKey,
+  resolveActorIdForTarget,
+} from '../runtime-session/state.js';
 import { shouldRewriteOrchestratorReply } from '../runtime-session/index.js';
 import type { DispatchLeasePatch } from './recovery.js';
 import {
@@ -35,8 +39,10 @@ import {
   mergeRuntimeInvocationContextMetadata,
 } from './context.js';
 import {
+  applyRuntimeInvocationAssistantEffects,
   collectRuntimeInvocationAssistantMetadata,
   enrichRuntimeInvocation,
+  hasRuntimeInvocationAssistantEffectProcessors,
 } from '../../../../platform/runtime/invocationEnrichment.js';
 
 export interface DispatchExecution extends DispatchRequest {
@@ -53,6 +59,8 @@ export interface DispatchExecution extends DispatchRequest {
   recoveredMessages?: ChatMessage[];
   runtimeAssistantMetadata?: Record<string, unknown>;
 }
+
+type RuntimeEffectCoreStore = Pick<ChatStore, 'updateCore'>;
 
 function readRuntimeEnvelopeMetadataString(
   envelope: Awaited<ReturnType<typeof resolveRuntimeEnvelopeForTarget>>,
@@ -74,6 +82,22 @@ function requireDispatchSessionId(target: RoutingTarget): string {
   throw new Error(`No runtime session attached to dispatch target lane: ${laneLabel}`);
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function mergeRuntimeAssistantMetadata(
+  target: Record<string, unknown>,
+  source: Record<string, unknown>,
+): void {
+  for (const [key, value] of Object.entries(source)) {
+    const existing = target[key];
+    target[key] = isRecord(existing) && isRecord(value)
+      ? { ...existing, ...value }
+      : value;
+  }
+}
+
 export async function executeDispatch(
   state: ChatState,
   channelId: string,
@@ -84,6 +108,7 @@ export async function executeDispatch(
   transportBindingId?: string | null,
   companionStore?: CompanionBoxStore,
   core?: CatsCoreState,
+  coreStore?: RuntimeEffectCoreStore,
 ): Promise<DispatchExecution> {
   let resolvedConversationId: string | null = null;
   let resolvedContainerId: string | null = null;
@@ -121,18 +146,19 @@ export async function executeDispatch(
       continuityDeliveryMode: dispatchPrompt.continuityDeliveryMode ?? null,
       continuityResetAt: dispatchPrompt.continuityResetAt ?? null,
     });
+    const runtimeInvocationInput = enrichRuntimeInvocation(channel, {
+      instructions: dispatchPrompt.instructions?.trim() || undefined,
+      context: mergeRuntimeInvocationContextMetadata(
+        runtimeEnvelope.context,
+        dispatchContextMetadata,
+      ),
+      skills: runtimeEnvelope.skills,
+    }, { phase: 'message_send' });
     const runtimeResult = await sendSupervisedRuntimeMessage({
       runtimeClient,
       sessionId,
       content: dispatchPrompt.message,
-      input: enrichRuntimeInvocation(channel, {
-        instructions: dispatchPrompt.instructions?.trim() || undefined,
-        context: mergeRuntimeInvocationContextMetadata(
-          runtimeEnvelope.context,
-          dispatchContextMetadata,
-        ),
-        skills: runtimeEnvelope.skills,
-      }, { phase: 'message_send' }),
+      input: runtimeInvocationInput,
       supervision: {
         product: 'cats-chat',
         surface: 'runtime-dispatch',
@@ -149,6 +175,31 @@ export async function executeDispatch(
       channel,
       runtimeResult.segments,
     );
+    if (
+      coreStore
+      && hasRuntimeInvocationAssistantEffectProcessors()
+      && runtimeResult.segments.length > 0
+    ) {
+      let effectsMetadata: Record<string, unknown> = {};
+      await coreStore.updateCore((latestCore) => {
+        const appliedEffects = applyRuntimeInvocationAssistantEffects(
+          channel,
+          {
+            core: latestCore,
+            segments: runtimeResult.segments,
+          },
+          {
+            actorId: resolveActorIdForTarget(request.target),
+            runtimeSessionId: sessionId,
+            runtimeContext: runtimeInvocationInput.context,
+            now,
+          },
+        );
+        effectsMetadata = appliedEffects.metadata;
+        return appliedEffects.core;
+      });
+      mergeRuntimeAssistantMetadata(runtimeAssistantMetadata, effectsMetadata);
+    }
     let usage: MessageUsageSummary | null = {
       inputTokens: runtimeResult.inputTokens,
       outputTokens: runtimeResult.outputTokens,
