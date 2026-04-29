@@ -113,13 +113,6 @@ function LobbyBody({
         )}
       </View>
 
-      {__DEV__ ? (
-        <Text style={styles.scopeNote}>
-          Lobby derives stats + recent activity from `/api/app-shell` until a
-          dedicated mobile lobby projection lands. No separate
-          persistence schema (per SPEC-095 Open Question resolution).
-        </Text>
-      ) : null}
     </ScrollView>
   );
 }
@@ -325,11 +318,6 @@ const styles = StyleSheet.create({
     ...typography.body,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-  },
-  scopeNote: {
-    color: colors.fg.muted,
-    ...typography.label,
-    marginTop: spacing.md,
   },
   panel: {
     flex: 1,

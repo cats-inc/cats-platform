@@ -122,6 +122,7 @@ export function Settings() {
       <Section
         label="Profile"
         description="Your platform-wide profile across Chat, Code, Work, and Lobby."
+        footer="Edit your avatar and name on the desktop."
       >
         <View style={styles.profileCard}>
           <ProfileAvatar
@@ -134,12 +135,6 @@ export function Settings() {
             <Text style={styles.profileName}>{profile.displayName}</Text>
           </View>
         </View>
-        {__DEV__ ? (
-          <Text style={styles.scopeNote}>
-            Read-only on mobile. Edit avatar / name on the desktop in
-            Settings → General.
-          </Text>
-        ) : null}
       </Section>
 
       <Section label="Connection mode">
@@ -170,16 +165,12 @@ export function Settings() {
             or tunnel URL — saved on blur.
           </Text>
         </View>
-        {__DEV__ ? (
-          <Text style={styles.scopeNote}>
-            Phase-7 pairing flow will replace this manual URL entry. The
-            persisted shape is forward-compatible: a `pairingToken` slot
-            already exists in the config.
-          </Text>
-        ) : null}
       </Section>
 
-      <Section label="Notifications">
+      <Section
+        label="Notifications"
+        footer="Notification delivery is not yet enabled. Your choices are saved on this device."
+      >
         <ToggleRow
           label="Push notifications"
           description="Alerts when an approval, escalation, or task completion lands."
@@ -197,13 +188,6 @@ export function Settings() {
           }
           disabled={!notificationPrefs.enabled}
         />
-        {__DEV__ ? (
-          <Text style={styles.scopeNote}>
-            Toggles persist locally. Actual delivery (APNs / FCM device-
-            token registration + server fan-out) lands in PLAN-084
-            Phase 7.
-          </Text>
-        ) : null}
       </Section>
 
       <Section label="Advanced">
@@ -239,12 +223,6 @@ export function Settings() {
           </View>
           <Text style={styles.linkRowChevron}>›</Text>
         </Pressable>
-        {__DEV__ ? (
-          <Text style={styles.scopeNote}>
-            Settings tab depth is locked per SPEC-095. Companion controls
-            and Cats registry browse stay desktop-only.
-          </Text>
-        ) : null}
       </Section>
 
       {__DEV__ ? (
@@ -349,10 +327,11 @@ function ProfileAvatar({ avatarUrl, avatarColor, initials }: ProfileAvatarProps)
 interface SectionProps {
   label: string;
   description?: string;
+  footer?: string;
   children: ReactNode;
 }
 
-function Section({ label, description, children }: SectionProps) {
+function Section({ label, description, footer, children }: SectionProps) {
   return (
     <View style={styles.section}>
       <Text style={styles.sectionLabel}>{label.toUpperCase()}</Text>
@@ -360,6 +339,7 @@ function Section({ label, description, children }: SectionProps) {
         <Text style={styles.sectionDescription}>{description}</Text>
       ) : null}
       <View style={styles.sectionBody}>{children}</View>
+      {footer ? <Text style={styles.sectionFooter}>{footer}</Text> : null}
     </View>
   );
 }
@@ -455,6 +435,12 @@ const styles = StyleSheet.create({
     color: colors.fg.secondary,
     ...typography.caption,
     paddingBottom: spacing.xs,
+  },
+  sectionFooter: {
+    color: colors.fg.muted,
+    ...typography.caption,
+    paddingTop: spacing.xs,
+    paddingHorizontal: spacing.md,
   },
   sectionBody: {
     backgroundColor: colors.bg.panel,
@@ -617,13 +603,6 @@ const styles = StyleSheet.create({
     color: colors.fg.muted,
     fontSize: 22,
     lineHeight: 22,
-  },
-  scopeNote: {
-    color: colors.fg.muted,
-    ...typography.label,
-    paddingHorizontal: spacing.md,
-    paddingTop: spacing.xs,
-    paddingBottom: spacing.md,
   },
   devLink: {
     color: colors.accent.primary,
