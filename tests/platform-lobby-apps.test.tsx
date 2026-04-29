@@ -102,6 +102,8 @@ test('buildPlatformLobbyAppEntries includes only enabled active app launch entri
         category: 'user-app',
         trustTier: 'local-user',
         permissions: ['ui.route', 'ui.lobby'],
+        connectors: [],
+        tools: [],
         installState: 'enabled',
         enabled: true,
         lobbyEntries: [
@@ -121,6 +123,8 @@ test('buildPlatformLobbyAppEntries includes only enabled active app launch entri
         category: 'user-app',
         trustTier: 'local-user',
         permissions: ['ui.route', 'ui.lobby'],
+        connectors: [],
+        tools: [],
         installState: 'disabled',
         enabled: false,
         lobbyEntries: [
@@ -139,6 +143,8 @@ test('buildPlatformLobbyAppEntries includes only enabled active app launch entri
         category: 'capability-connector',
         trustTier: 'local-user',
         permissions: [],
+        connectors: [],
+        tools: [],
         installState: 'enabled',
         enabled: true,
         lobbyEntries: [],
@@ -160,6 +166,8 @@ test('PlatformLobby renders installed Apps from the envelope and removes the Pom
         category: 'user-app',
         trustTier: 'local-user',
         permissions: ['ui.route', 'ui.lobby'],
+        connectors: [],
+        tools: [],
         installState: 'enabled',
         enabled: true,
         lobbyEntries: [
@@ -193,6 +201,8 @@ test('PlatformLobby renders a quiet Apps empty state when no app has a Lobby ent
         category: 'capability-connector',
         trustTier: 'local-user',
         permissions: [],
+        connectors: [],
+        tools: [],
         installState: 'enabled',
         enabled: true,
         lobbyEntries: [],
@@ -242,6 +252,8 @@ test('PlatformLobby keeps product cards separate from installed app cards', () =
         category: 'user-app',
         trustTier: 'local-user',
         permissions: ['ui.route', 'ui.lobby'],
+        connectors: [],
+        tools: [],
         installState: 'enabled',
         enabled: true,
         lobbyEntries: [

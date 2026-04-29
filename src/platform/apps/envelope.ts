@@ -36,6 +36,8 @@ export function toPlatformInstalledAppDescriptor(
     lobbyEntries: isLobbyLaunchEnabled(record)
       ? structuredClone(contributions.lobbyApps ?? [])
       : [],
+    connectors: structuredClone(contributions.connectors ?? []),
+    tools: structuredClone(contributions.tools ?? []),
     settings: contributions.settings ? structuredClone(contributions.settings) : undefined,
   };
 }

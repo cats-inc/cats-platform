@@ -216,8 +216,17 @@ test('readPlatformInstalledAppDescriptors reads the registry from the platform h
             capabilities: ['calendar.read'],
           },
         ],
+        tools: [
+          {
+            name: 'connector.calendar.search',
+            title: 'Search calendar',
+            description: 'Search calendar events.',
+            inputSchema: {},
+            runtimeBridge: 'cats-runtime',
+          },
+        ],
       },
-      permissions: [],
+      permissions: ['agent.tools.register'],
     },
     packagePath: resolveCatsAppPackageInstallDir(paths, 'connector.calendar', '0.1.0'),
     installState: 'enabled',
@@ -230,17 +239,23 @@ test('readPlatformInstalledAppDescriptors reads the registry from the platform h
       id: descriptor.id,
       displayName: descriptor.displayName,
       lobbyEntries: descriptor.lobbyEntries.map((entry) => entry.routePath),
+      connectors: descriptor.connectors.map((connector) => connector.service),
+      toolCount: descriptor.tools.length,
     })),
     [
       {
         id: 'connector.calendar',
         displayName: 'Calendar Connector',
         lobbyEntries: [],
+        connectors: ['calendar'],
+        toolCount: 1,
       },
       {
         id: 'user.zebra',
         displayName: 'Pomodoro',
         lobbyEntries: ['/apps/user.zebra'],
+        connectors: [],
+        toolCount: 0,
       },
     ],
   );

@@ -165,12 +165,12 @@ Inventory notes:
 
 ## Phase 6: Add Connector Capability Path
 
-- [ ] Model `capability-connector` packages that have no Lobby route.
+- [x] Model `capability-connector` packages that have no Lobby route.
 - [ ] Register declared tools through the platform tool boundary.
 - [ ] Route runtime-backed connector behavior through `cats-runtime` or a
       platform-owned runtime adapter, never direct `agent-fleet` imports.
 - [ ] Add settings/auth contribution support for connectors.
-- [ ] Add a local fixture connector with one inert tool for validation.
+- [x] Add a local fixture connector with one inert tool for validation.
 
 **Deliverables**: connector packages share the same manifest and registry
 without pretending to be UI apps.
@@ -280,6 +280,7 @@ The overnight implementation agent should aim for this first vertical slice:
 | 2026-04-29 | Closed remaining boundary notes, reserved scoped API routing, product/app separation tests, and Settings app identity details. |
 | 2026-04-30 | Added Settings Apps open, enable, disable, and uninstall actions with confirmation dialogs, toast-only error feedback, local payload updates, and envelope refresh. |
 | 2026-04-30 | Connected enabled system `product-module` packages to the host product envelope, kept user apps out of Products, added a Cats Learn fixture path, and kept first-party product packages mirrored in installed apps inventory. |
+| 2026-04-30 | Exposed connector and tool declarations on installed app descriptors and surfaced connector service, auth, capability, and inert tool summaries in Settings Apps. |
 
 ---
 

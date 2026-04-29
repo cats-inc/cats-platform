@@ -70,6 +70,32 @@ function formatPermissionCount(count: number): string {
   return `${count} permission${count === 1 ? '' : 's'}`;
 }
 
+function formatToolCount(count: number): string {
+  return `${count} tool${count === 1 ? '' : 's'}`;
+}
+
+function formatConnectorCapabilities(app: PlatformInstalledAppDescriptor): string | null {
+  if (app.connectors.length === 0) {
+    return null;
+  }
+  const capabilityCount = app.connectors
+    .reduce((total, connector) => total + connector.capabilities.length, 0);
+  const capabilityLabel = `capabilit${capabilityCount === 1 ? 'y' : 'ies'}`;
+  if (app.connectors.length === 1) {
+    return `${app.connectors[0].service}: ${capabilityCount} ${capabilityLabel}`;
+  }
+  return `${app.connectors.length} connectors, ${capabilityCount} ${capabilityLabel}`;
+}
+
+function formatConnectorAuth(app: PlatformInstalledAppDescriptor): string | null {
+  const authKinds = Array.from(new Set(
+    app.connectors
+      .map((connector) => connector.auth?.kind ?? 'none')
+      .filter((kind) => kind !== 'none'),
+  ));
+  return authKinds.length > 0 ? `Auth: ${authKinds.join(', ')}` : null;
+}
+
 function statusTone(state: CatsAppInstallState) {
   if (state === 'enabled') {
     return 'ready';
@@ -195,6 +221,8 @@ export function PlatformSettingsApps({
             const canEnable = app.installState === 'installed' || app.installState === 'disabled';
             const canDisable = app.installState === 'enabled';
             const actionBusy = busyAction?.startsWith(`${app.id}:`) ?? false;
+            const connectorCapabilities = formatConnectorCapabilities(app);
+            const connectorAuth = formatConnectorAuth(app);
             return (
               <SettingsOptionRow
                 key={app.id}
@@ -206,6 +234,15 @@ export function PlatformSettingsApps({
                     <span>{app.version}</span>
                     <span>{app.publisher}</span>
                     <span>{formatPermissionCount(app.permissions.length)}</span>
+                    {connectorCapabilities ? (
+                      <span>{connectorCapabilities}</span>
+                    ) : null}
+                    {connectorAuth ? (
+                      <span>{connectorAuth}</span>
+                    ) : null}
+                    {app.tools.length > 0 ? (
+                      <span>{formatToolCount(app.tools.length)}</span>
+                    ) : null}
                   </span>
                 )}
                 control={(

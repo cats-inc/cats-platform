@@ -17,6 +17,8 @@ function createInstalledApp(
     category: 'user-app',
     trustTier: 'local-user',
     permissions: ['ui.route', 'ui.lobby'],
+    connectors: [],
+    tools: [],
     installState: 'enabled',
     enabled: true,
     lobbyEntries: [],
@@ -50,6 +52,23 @@ test('PlatformSettingsApps renders installed app and connector package status', 
           id: 'connector.calendar',
           displayName: 'Calendar Connector',
           category: 'capability-connector',
+          connectors: [
+            {
+              id: 'calendar',
+              service: 'calendar',
+              auth: { kind: 'oauth' },
+              capabilities: ['calendar.read', 'calendar.write'],
+            },
+          ],
+          tools: [
+            {
+              name: 'connector.calendar.search',
+              title: 'Search calendar',
+              description: 'Search calendar events.',
+              inputSchema: {},
+              runtimeBridge: 'cats-runtime',
+            },
+          ],
           installState: 'disabled',
           enabled: false,
         }),
@@ -66,6 +85,9 @@ test('PlatformSettingsApps renders installed app and connector package status', 
   assert.match(markup, />Connector</u);
   assert.match(markup, />Local user</u);
   assert.match(markup, />2 permissions</u);
+  assert.match(markup, />calendar: 2 capabilities</u);
+  assert.match(markup, />Auth: oauth</u);
+  assert.match(markup, />1 tool</u);
   assert.match(markup, />Disabled</u);
   assert.match(markup, />Enable</u);
   assert.match(markup, />1 connector package</u);

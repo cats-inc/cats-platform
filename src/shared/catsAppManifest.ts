@@ -168,5 +168,7 @@ export interface PlatformInstalledAppDescriptor {
   installState: CatsAppInstallState;
   enabled: boolean;
   lobbyEntries: CatsLobbyAppContribution[];
+  connectors: CatsConnectorContribution[];
+  tools: CatsAgentToolContribution[];
   settings?: CatsAppSettingsContribution[];
 }

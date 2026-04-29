@@ -199,8 +199,17 @@ test('parseCatsAppManifestV1 accepts connector packages without Lobby routes', (
           capabilities: ['issues', 'pull-requests'],
         },
       ],
+      tools: [
+        {
+          name: 'connector.github.search',
+          title: 'Search GitHub',
+          description: 'Search GitHub issues and pull requests.',
+          inputSchema: {},
+          runtimeBridge: 'cats-runtime',
+        },
+      ],
     },
-    permissions: ['connector.auth'],
+    permissions: ['connector.auth', 'agent.tools.register'],
   }));
 
   assert.equal(result.ok, true);
