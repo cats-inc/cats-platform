@@ -59,13 +59,16 @@ The canonical flow is:
 ScheduleRule due time
   -> TriggerEvent with idempotency key
   -> Mission instance or existing mission activation
-  -> Run admitted by the execution dispatcher
+  -> Run admitted by the execution dispatcher with scheduleTrigger metadata
   -> supervised runtime/tool execution
   -> product/transport/materialization outcomes
 ```
 
-The trigger event may be recorded for audit/idempotency, but it is not a new
-Core object family beside Task/Mission/Run.
+The scheduler may record a platform-owned trigger receipt for audit and
+idempotency, but the trigger event is not a new Core object family beside
+Task/Mission/Run. The canonical Core-side provenance for an admitted scheduled
+run is `CoreRunRecord.metadata.scheduleTrigger`; SPEC-094 owns the concrete
+shape.
 
 ### 2. Use generic mission templates, not companion-specific mission classes
 

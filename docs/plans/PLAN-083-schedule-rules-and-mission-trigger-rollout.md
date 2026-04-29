@@ -55,10 +55,12 @@ Telegram.
       - timezone
       - schedule kind
       - daily time
-      - cron subset if enabled
+      - explicit cron rejection until a v2 subset is specified
       - target agent/Cat reference
       - concurrency/misfire/retry policies
-- [ ] Add deterministic id generation and rule revision tracking.
+- [ ] Add deterministic id generation and rule revision tracking. Revisions
+      start at `1` and increment on admission-affecting changes to schedule,
+      mission template, execution policy, or related policy bounds.
 - [ ] Add narrow unit tests for validation and serialization.
 
 **Deliverables**: rules can be created, read, updated, enabled/disabled, and
@@ -67,8 +69,8 @@ stored without running them.
 ### Phase 2: Due-Time Evaluator and Scheduler Loop
 
 - [ ] Implement next-fire calculation for `once` and `daily`.
-- [ ] Decide whether `cron` lands now or remains a stored/API-only future
-      shape.
+- [ ] Keep cron out of v1 next-fire calculation and admission. Return explicit
+      validation errors for cron shapes until SPEC-094 defines the v2 subset.
 - [ ] Add a scheduler service that:
       - loads enabled rules
       - computes due rules
@@ -91,16 +93,21 @@ events without invoking runtime.
 
 - [ ] Add an adapter that turns a trigger receipt plus `MissionTemplate` into a
       generic Mission.
+- [ ] Resolve `MissionTemplate.target.kind = 'cat'` to a concrete `AgentId` in
+      admission before writing `MissionRecord.assignedAgentId`; unresolved Cat
+      targets fail before Run creation.
 - [ ] Create one mission per fire by default (`missionPolicy = per_fire`).
 - [ ] Admit a Run through the execution dispatcher/materialization path before
       any runtime work starts.
-- [ ] Attach trigger metadata to the Mission/Run:
+- [ ] Write canonical trigger metadata to
+      `CoreRunRecord.metadata.scheduleTrigger`:
       - rule id
       - rule revision
       - scheduled fire time
       - actual fire time
       - idempotency key
       - trigger reason
+      - optional trigger receipt id
 - [ ] Route scheduled runtime work through the supervision runtime boundary.
 - [ ] Add tests proving scheduler code does not call runtime client APIs
       directly.
@@ -176,7 +183,7 @@ the first companion/Telegram scenario.
 | File | Action | Description |
 |------|--------|-------------|
 | `src/platform/scheduler/**` | Create | Schedule rule store, evaluator, scheduler service, trigger receipts |
-| `src/core/**` | Modify | Mission/run admission hooks or metadata once implementation lands |
+| `src/core/**` | Modify | Mission/run admission hooks and `metadata.scheduleTrigger` convention; do not add a TriggerEvent Core record family |
 | `src/platform/supervision/**` | Modify | Scheduled execution adapter into supervised runtime/tool boundary |
 | `src/platform/transports/telegram/**` | Modify | Bounded scheduled delivery capability if not already exposed |
 | `src/products/chat/**` | Modify | Chat/companion creation shortcut and transcript projection if needed |
@@ -187,7 +194,15 @@ the first companion/Telegram scenario.
 ## Technical Decisions
 
 - Schedule rules are launch configuration, not mission subclasses.
+- V1 supports `once` and `daily`; `cron` is deferred until SPEC-094 defines
+  the accepted v2 subset.
 - Default recurring user-visible rules use one mission per fire.
+- `reuse_active` standing missions are deferred until a follow-up reconciles
+  them with `MissionRecordStatus`.
+- Scheduler admission resolves Cat targets to concrete Agent ids before
+  Mission/Run creation.
+- Scheduled run provenance uses `CoreRunRecord.metadata.scheduleTrigger` as the
+  fixed query shape.
 - The first local scheduler only runs while Cats is running.
 - Heartbeat/liveness is a hardening follow-on, not a prerequisite.
 - Scheduler code never chooses content or calls runtime/transport APIs
@@ -200,11 +215,14 @@ the first companion/Telegram scenario.
   - next-fire calculation
   - timezone handling
   - idempotency key generation
+  - revision increment behavior
   - concurrency and misfire policy
 - **Integration Tests**
   - due rule creates one trigger and one mission/run
   - restart does not duplicate already-admitted fires
   - scheduled execution enters supervision boundary
+  - scheduled Run records include `metadata.scheduleTrigger`
+  - Cat targets resolve to concrete Agent ids before Mission creation
   - Telegram target uses transport binding identity
 - **Static Boundary Tests**
   - scheduler modules do not import runtime client send/create APIs directly
@@ -232,6 +250,7 @@ the first companion/Telegram scenario.
 | Date | Update |
 |------|--------|
 | 2026-04-29 | Plan created for generic schedule rules and mission-trigger rollout |
+| 2026-04-29 | Review follow-up: clarified v1 `once`/`daily` scope, rule revision semantics, Cat-to-Agent admission resolution, `CoreRunRecord.metadata.scheduleTrigger` provenance, and deferred `reuse_active`/cron follow-ups. |
 
 ---
 
