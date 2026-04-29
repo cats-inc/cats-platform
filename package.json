@@ -56,7 +56,8 @@
     "start:server": "node build/server/index.js",
     "test": "npm run typecheck && npm run build:server && npm run build:host && npm run build:test-ui && node --test --test-isolation=none tests/**/*.test.js build/test/*.test.js",
     "typecheck": "tsc --noEmit -p tsconfig.server.json && tsc --noEmit -p tsconfig.desktop.json && tsc --noEmit -p tsconfig.json && npm run mobile:typecheck",
-    "mobile:typecheck": "npm run typecheck --prefix mobile"
+    "mobile:typecheck": "npm run mobile:boundary && npm run typecheck --prefix mobile",
+    "mobile:boundary": "node scripts/check-mobile-boundary.mjs"
   },
   "keywords": [
     "cats",

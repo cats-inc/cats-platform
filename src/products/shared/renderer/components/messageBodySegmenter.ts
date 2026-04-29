@@ -1,5 +1,18 @@
-import type { ChatCat } from '../../api/workspaceContracts.js';
 import { parseMentionsWithPositions } from '../../../../core/mentionParsing.js';
+
+/**
+ * Minimum cat shape the segmenter needs in order to render mentions.
+ * Both the full `ChatCat` (`workspaceContracts.ts`) and any leaner
+ * mobile-safe cat reference satisfy this structurally — keeping the
+ * dependency surface narrow lets the mobile-safe boundary
+ * (`src/mobile/`) re-export the segmenter without dragging the whole
+ * `workspaceContracts` module (which transitively pulls Node-only
+ * imports through `guideCatAssist`).
+ */
+export interface MentionResolverCat {
+  name: string;
+  avatarColor?: string | null;
+}
 
 export interface MessageBodyAttachment {
   filename: string;
@@ -109,10 +122,10 @@ function rangesOverlap(
 
 export function segmentMessageBody(
   body: string,
-  cats: ChatCat[],
+  cats: MentionResolverCat[],
   disabledMentionNames: string[] = [],
 ): MessageBodySegment[] {
-  const catLookup = new Map<string, ChatCat>();
+  const catLookup = new Map<string, MentionResolverCat>();
   for (const cat of cats) {
     catLookup.set(cat.name.toLowerCase(), cat);
   }
