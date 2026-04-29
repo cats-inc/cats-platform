@@ -8,6 +8,7 @@ export const CATS_CODE_USER_APP_TEMPLATE_PACKAGE_PATH =
   'src/products/code/templates/user-app';
 export const CATS_CODE_USER_APP_TEMPLATE_RENDERER_ENTRYPOINT =
   'dist/renderer/index.html';
+export const CATS_CODE_APP_EXPORT_METADATA_FILE = 'cats-code-export.json';
 
 export type CatsCodeAppExportArtifactKind = 'manifest' | 'renderer' | 'server' | 'worker';
 

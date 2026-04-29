@@ -144,7 +144,7 @@ Inventory notes:
 
 - [x] Add a Cats Code user-app template with `cats.app.json`.
 - [x] Add export metadata that maps Code artifacts to a Cats App Package.
-- [ ] Add an export command/action that builds `dist/renderer` and optional
+- [x] Add an export command/action that builds `dist/renderer` and optional
       `dist/server`.
 - [x] Add validation before install handoff.
 - [x] Add an install review screen showing display name, route, trust tier, and
@@ -314,6 +314,7 @@ Product integration notes:
 | 2026-04-30 | Added Cats Code app export metadata types and helper coverage that maps manifest entrypoints to package artifacts. |
 | 2026-04-30 | Added current manual E2E handoff notes and product integration notes for fixture install, app route navigation, product modules, and connector Settings entries. |
 | 2026-04-30 | Added the Cats Code user-app template folder and manifest helper for local-user app packages that install under Lobby. |
+| 2026-04-30 | Added Cats Code user-app package export orchestration that copies the template, writes manifest/export metadata, and runs the package build into `dist/renderer`. |
 
 ---
 
