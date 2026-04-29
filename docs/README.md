@@ -57,6 +57,8 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [PLAN-085](./plans/PLAN-085-mission-cancel-and-run-stop-rollout.md)
+- [SPEC-096](./specs/SPEC-096-mission-cancel-and-run-stop-contract.md)
 - [Agent Control Surfaces](./agent-control-surfaces.md)
 - [Tool Call Registry](./tool-calls.md)
 - [PLAN-083](./plans/PLAN-083-schedule-rules-and-mission-trigger-rollout.md)

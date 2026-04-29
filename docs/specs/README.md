@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-096](./SPEC-096-mission-cancel-and-run-stop-contract.md) | Mission Cancel and Run Stop Contract | Draft | [PLAN-085](../plans/PLAN-085-mission-cancel-and-run-stop-rollout.md), [ADR-082](../decisions/082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md) |
 | [SPEC-095](./SPEC-095-cats-mobile-shell-five-tabs-and-product-sidebar-variants.md) | Cats Mobile Shell — Five Tabs and Product Sidebar Variants | Draft | [PLAN-084](../plans/PLAN-084-cats-mobile-shell-rollout.md), [ADR-092](../decisions/092-reposition-cats-mobile-as-first-class-product-client.md) |
 | [SPEC-094](./SPEC-094-schedule-rules-and-mission-triggers.md) | Schedule Rules and Mission Triggers | Implemented | [PLAN-083](../plans/PLAN-083-schedule-rules-and-mission-trigger-rollout.md), [ADR-090](../decisions/090-adopt-generic-schedule-rules-for-mission-triggers.md) |
 | [SPEC-093](./SPEC-093-settings-runtime-cli-provider-lifecycle.md) | Settings Runtime CLI Provider Lifecycle | Draft | [PLAN-082](../plans/PLAN-082-settings-runtime-cli-provider-lifecycle-rollout.md) |
@@ -150,6 +151,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-04-29 (SPEC-095 added: Cats Mobile shell with five tabs, full Chat sidebar, trimmed Code/Work sidebars, shared ChatView; SPEC-094 implemented for schedule rules and mission triggers; SPEC-093 added for Settings Runtime CLI provider lifecycle controls.)*
+*Last updated: 2026-04-29 (SPEC-096 added for Mission cancel and Run stop public cancellation contract; SPEC-095 added for Cats Mobile shell with five tabs; SPEC-094 implemented for schedule rules and mission triggers.)*
 
 *See also: [plans/](../plans/) for implementation plans*
