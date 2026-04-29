@@ -5,6 +5,7 @@ import type {
   RuntimeMessageSegment,
   RuntimeSessionInvocationContext,
 } from './client.js';
+import { clearRuntimeAssistantFinalizationGates } from './assistantFinalization.js';
 
 export type RuntimeInvocationEnrichmentPhase = 'session_create' | 'message_send';
 
@@ -153,6 +154,7 @@ export function registerRuntimeInvocationEnricher(enricher: RuntimeInvocationEnr
 export function clearRuntimeInvocationEnrichers(): void {
   runtimeInvocationEnrichers.clear();
   runtimeInvocationAssistantEffectProcessors.clear();
+  clearRuntimeAssistantFinalizationGates();
 }
 
 export function registerRuntimeInvocationAssistantEffectProcessor(

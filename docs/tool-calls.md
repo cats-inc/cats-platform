@@ -120,7 +120,7 @@ a transcript command and it is not a public HTTP route in the current scaffold.
 | Field | Value |
 |-------|-------|
 | Owning product | Cats Code |
-| Current status | Code-origin active sessions receive the onboarding block at session create and runtime context metadata at session create / message send; returned `declare_artifact` `tool_use` segments are observed as shape summaries. The Code product now has an authoritative submit route, materialization delegate, activity emission, runtime execution helper, platform-registered assistant-effect processor, and live dispatch persistence for observed `tool_use` payloads. Runtime tool-result delivery back to the assistant and finalization enforcement remain pending. |
+| Current status | Code-origin active sessions receive the onboarding block at session create and runtime context metadata at session create / message send; returned `declare_artifact` `tool_use` segments are observed as shape summaries. The Code product now has an authoritative submit route, materialization delegate, activity emission, runtime execution helper, platform-registered assistant-effect processor, live dispatch persistence, local tool-result projection, and structured finalization enforcement for `artifactClaims[]`. Runtime tool-result delivery back to the assistant remains pending. |
 | First channel | `runtime_tool` |
 | Tool name | `declare_artifact` |
 | Implementation entry point | `src/products/code/shared/artifactDeclaration.ts` |
@@ -231,9 +231,10 @@ results are recorded in assistant-message metadata under
 The same results are also projected into local runtime `tool_result` segments
 so the persisted turn has a `tool_use` -> `tool_result` trace. These projected
 segments are not yet sent back to the assistant through a live runtime
-tool-result loop. Until the finalization gate is wired, Cats Platform still
-accepts final visible responses that claim an artifact without an accepted
-same-turn declaration.
+tool-result loop. The Code finalization gate is now registered at visible
+response commit time for structured `artifactClaims[]`: unmatched claims block
+the assistant response before it is appended. Text heuristics are still not
+used.
 
 ### Output Summary
 

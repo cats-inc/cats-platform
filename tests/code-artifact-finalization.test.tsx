@@ -1,11 +1,27 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, { afterEach, beforeEach } from 'node:test';
 
+import {
+  applyRuntimeAssistantFinalizationGates,
+  clearRuntimeAssistantFinalizationGates,
+} from '../src/platform/runtime/assistantFinalization.ts';
+import {
+  CODE_ARTIFACT_RUNTIME_ENRICHER_ID,
+} from '../src/products/code/state/runtimeArtifactTooling.ts';
 import {
   CODE_ARTIFACT_CLAIM_WITHOUT_DECLARATION,
   CodeArtifactFinalizationGate,
   acceptedDeclarationRefFromToolResult,
+  registerCodeArtifactRuntimeFinalizationGate,
 } from '../src/products/code/state/sessionFinalization.ts';
+
+beforeEach(() => {
+  clearRuntimeAssistantFinalizationGates();
+});
+
+afterEach(() => {
+  clearRuntimeAssistantFinalizationGates();
+});
 
 test('artifact finalization gate accepts claims with same-turn accepted declarations', () => {
   const gate = new CodeArtifactFinalizationGate();
@@ -96,4 +112,65 @@ test('acceptedDeclarationRefFromToolResult ignores non-accepted tool results', (
     }),
     null,
   );
+});
+
+test('Code runtime finalization gate rejects unmatched structured artifact claims', () => {
+  registerCodeArtifactRuntimeFinalizationGate();
+  const decision = applyRuntimeAssistantFinalizationGates(
+    { originSurface: 'code', id: 'channel-code' },
+    {
+      assistantTurnId: 'turn-1',
+      bodyText: 'I recorded the preview.',
+      runtimeAssistantMetadata: {
+        [CODE_ARTIFACT_RUNTIME_ENRICHER_ID]: {
+          codeArtifactFinalization: {
+            artifactClaims: [{ declarationId: 'preview-localhost:preview_url' }],
+          },
+        },
+      },
+    },
+  );
+
+  assert.equal(decision.status, 'rejected');
+  assert.equal(decision.code, CODE_ARTIFACT_CLAIM_WITHOUT_DECLARATION);
+  assert.equal(decision.gateId, CODE_ARTIFACT_RUNTIME_ENRICHER_ID);
+});
+
+test('Code runtime finalization gate accepts same-turn artifact claims', () => {
+  registerCodeArtifactRuntimeFinalizationGate();
+  const decision = applyRuntimeAssistantFinalizationGates(
+    { originSurface: 'code', id: 'channel-code' },
+    {
+      assistantTurnId: 'turn-1',
+      bodyText: 'I recorded the preview.',
+      runtimeAssistantMetadata: {
+        [CODE_ARTIFACT_RUNTIME_ENRICHER_ID]: {
+          codeArtifactFinalization: {
+            artifactClaims: [{ declarationId: 'preview-localhost:preview_url' }],
+          },
+          codeArtifactToolResults: [
+            {
+              result: {
+                status: 'accepted',
+                declarationId: 'preview-localhost:preview_url',
+                artifactId: 'artifact-1',
+              },
+            },
+          ],
+        },
+      },
+    },
+  );
+
+  assert.equal(decision.status, 'accepted');
+  assert.deepEqual(decision.metadata, {
+    [CODE_ARTIFACT_RUNTIME_ENRICHER_ID]: {
+      codeArtifactFinalization: {
+        status: 'accepted',
+        artifactClaims: [
+          { declarationId: 'preview-localhost:preview_url', label: null, title: null },
+        ],
+      },
+    },
+  });
 });

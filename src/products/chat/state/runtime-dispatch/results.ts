@@ -62,6 +62,10 @@ import {
   applyDispatchChannelChatCwd,
   applyDispatchLeasePatch,
 } from './recovery.js';
+import {
+  applyRuntimeAssistantFinalizationGates,
+  hasRuntimeAssistantFinalizationGates,
+} from '../../../../platform/runtime/assistantFinalization.js';
 
 type ContinuationSource = 'explicit_mentions' | 'workflow_recommendation';
 
@@ -112,6 +116,34 @@ function buildPersistedTextSegments(
   }
 
   return persistedSegments;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+function mergeRuntimeAssistantMetadata(
+  target: Record<string, unknown>,
+  source: Record<string, unknown>,
+): void {
+  for (const [key, value] of Object.entries(source)) {
+    const existing = target[key];
+    target[key] = isRecord(existing) && isRecord(value)
+      ? { ...existing, ...value }
+      : value;
+  }
+}
+
+function mergeRuntimeAssistantMetadataIntoExecution(
+  execution: DispatchExecution,
+  source: Record<string, unknown>,
+): void {
+  if (Object.keys(source).length === 0) {
+    return;
+  }
+  const target = execution.runtimeAssistantMetadata ?? {};
+  mergeRuntimeAssistantMetadata(target, source);
+  execution.runtimeAssistantMetadata = target;
 }
 
 interface BlockedDispatchResolution {
@@ -662,6 +694,119 @@ export function applyDispatchExecutions(
       execution.targetStateId,
       execution.target.participantId,
     );
+    if (hasRuntimeAssistantFinalizationGates()) {
+      const finalizationDecision = applyRuntimeAssistantFinalizationGates(
+        channel,
+        {
+          assistantTurnId,
+          bodyText: fullResponseText,
+          runtimeAssistantMetadata: execution.runtimeAssistantMetadata,
+        },
+      );
+      mergeRuntimeAssistantMetadataIntoExecution(
+        execution,
+        finalizationDecision.metadata,
+      );
+      if (finalizationDecision.status === 'rejected') {
+        const errorMessage = finalizationDecision.message;
+        nextState = appendMessage(
+          nextState,
+          channelId,
+          {
+            senderKind: 'system',
+            senderName: 'Runtime',
+            body: `Blocked ${execution.target.participantName}'s response: ${errorMessage}`,
+          },
+          now,
+          {
+            metadata: {
+              event: 'assistant_finalization_rejected',
+              gateId: finalizationDecision.gateId,
+              code: finalizationDecision.code,
+              targetKind: execution.target.participantKind,
+              targetId: execution.target.participantId,
+              ...(execution.target.laneId ? { laneId: execution.target.laneId } : {}),
+              sessionId: execution.target.sessionId,
+              turnId: outcome.turnId,
+              sourceMessageId: execution.sourceMessage.id,
+              runtimeAssistantMetadata: finalizationDecision.metadata,
+            },
+          },
+        ).state;
+        updateDispatch(outcome, execution.dispatchId, {
+          laneId: execution.target.laneId ?? null,
+          sessionId: execution.target.sessionId ?? null,
+          status: 'error',
+          completedAt: nowIso,
+          error: errorMessage,
+        });
+        updateWorkflowTarget(activeTurn, execution.targetStateId, nowIso, {
+          laneId: execution.target.laneId ?? null,
+          sessionId: execution.target.sessionId ?? null,
+          status: 'failed',
+          completedAt: nowIso,
+          error: errorMessage,
+        });
+        appendWorkflowEvent(
+          workflow,
+          activeTurn,
+          createWorkflowEvent(
+            activeTurn.id,
+            'target_failed',
+            'failed',
+            `Runtime finalization for ${execution.target.participantName} failed: ${errorMessage}`,
+            nowIso,
+            execution.sourceParticipant,
+            execution.sourceMessage.id,
+            [toParticipantRef(execution.target)],
+            {
+              dispatchId: execution.dispatchId,
+              targetIdentities: [{
+                participantKind: execution.target.participantKind,
+                participantId: execution.target.participantId,
+                laneId: execution.target.laneId ?? null,
+                sessionId: execution.target.sessionId ?? null,
+              }],
+              metadata: {
+                phase: 'assistant_finalization',
+                gateId: finalizationDecision.gateId,
+                code: finalizationDecision.code,
+              },
+            },
+          ),
+        );
+        latestCheckpoint = addWorkflowCheckpoint(
+          outcome,
+          workflow,
+          activeTurn,
+          'runtime_error',
+          `Runtime finalization for ${execution.target.participantName} failed: ${errorMessage}`,
+          nowIso,
+          execution.sourceParticipant,
+          [toParticipantRef(execution.target)],
+          {
+            gateId: finalizationDecision.gateId,
+            code: finalizationDecision.code,
+          },
+        );
+        results.push({
+          targetKind: execution.target.participantKind,
+          targetId: execution.target.participantId,
+          targetName: execution.target.participantName,
+          laneId: execution.target.laneId,
+          sessionId: execution.target.sessionId,
+          status: 'error',
+          dispatchId: execution.dispatchId,
+          turnId: activeTurn.id,
+          targetStatus: 'failed',
+          error: errorMessage,
+          sourceMessageId: execution.sourceMessage.id,
+          trigger: execution.trigger,
+          dispatchDepth: execution.depth,
+        });
+        continue;
+      }
+    }
 
     const responseMessages: ChatMessage[] = [];
     for (let segmentIndex = 0; segmentIndex < persistedTextSegments.length; segmentIndex += 1) {

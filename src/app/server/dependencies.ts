@@ -65,6 +65,9 @@ import {
 import {
   registerCodeArtifactRuntimeAssistantEffectProcessor,
 } from '../../products/code/state/runtimeArtifactExecution.js';
+import {
+  registerCodeArtifactRuntimeFinalizationGate,
+} from '../../products/code/state/sessionFinalization.js';
 
 function createDefaultCompanionStore(
   shared: SharedServerDependencies,
@@ -142,6 +145,7 @@ export function resolveServerDependencies(
 ): ResolvedServerDependencies {
   registerCodeArtifactRuntimeInvocationEnrichers();
   registerCodeArtifactRuntimeAssistantEffectProcessor();
+  registerCodeArtifactRuntimeFinalizationGate();
 
   const sharedCoreStore = dependencies.shared.coreStore ?? dependencies.chat.chatStore;
   const startup = dependencies.shared.startup ?? createAppStartupState({
