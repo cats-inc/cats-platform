@@ -1,56 +1,15 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import { formatRelative } from "../topdown/shared";
-import { usePinnedProjects } from "../../state/pinnedProjectsStore";
-import { useWorkGraph } from "../../state/workGraphStore";
+import { useProjectsQuery } from "../../state/queries/projectsQuery.js";
 import { NewProjectDialog } from "./NewProjectDialog";
 import "./projects.css";
 
-interface ProjectCounts {
-  workItems: number;
-  tasks: number;
-  activities: number;
-  needsDecision: number;
-  blocked: number;
-}
-
 export function ProjectsListPage(): JSX.Element {
-  const { graph } = useWorkGraph();
-  const { allProjects, deletedIds } = usePinnedProjects();
+  const projectsQuery = useProjectsQuery();
+  const projects = projectsQuery.data?.projects ?? [];
   const [dialogOpen, setDialogOpen] = useState(false);
-
-  const projects = useMemo(
-    () => allProjects.filter((p) => !deletedIds.has(p.id)),
-    [allProjects, deletedIds],
-  );
-
-  const countsById = useMemo(() => {
-    const map = new Map<string, ProjectCounts>();
-    for (const project of projects) {
-      const workItems = graph.objects.filter(
-        (o) => o.kind === "work_item" && o.linkedProjectId === project.id,
-      );
-      const tasks = graph.objects.filter(
-        (o) => o.kind === "task" && o.linkedProjectId === project.id,
-      );
-      const activities = graph.objects.filter(
-        (o) => o.kind === "activity" && o.linkedProjectId === project.id,
-      );
-      const decisionPool = [...workItems, ...tasks];
-      map.set(project.id, {
-        workItems: workItems.length,
-        tasks: tasks.length,
-        activities: activities.length,
-        needsDecision: decisionPool.filter((o) => o.attention === "decision_needed")
-          .length,
-        blocked: decisionPool.filter(
-          (o) => o.attention === "blocked" || o.attention === "failed",
-        ).length,
-      });
-    }
-    return map;
-  }, [projects, graph]);
 
   return (
     <div className="projectsList">
@@ -90,74 +49,71 @@ export function ProjectsListPage(): JSX.Element {
         </div>
       </header>
       <main className="projectsList__main">
-        {projects.length === 0 ? (
+        {projectsQuery.isPending ? (
+          <p className="projectsList__empty">Loading projects…</p>
+        ) : projectsQuery.isError ? (
+          <p className="projectsList__empty">
+            Failed to load projects: {String((projectsQuery.error as Error).message)}
+          </p>
+        ) : projects.length === 0 ? (
           <p className="projectsList__empty">
             No projects yet. Click <strong>New project</strong> to start one.
           </p>
         ) : (
           <ul className="projectsList__list">
-            {projects.map((project) => {
-              const counts = countsById.get(project.id) ?? {
-                workItems: 0,
-                tasks: 0,
-                activities: 0,
-                needsDecision: 0,
-                blocked: 0,
-              };
-              return (
-                <li key={project.id} className="projectsList__row">
-                  <Link
-                    to={project.id}
-                    className="projectsList__rowLink"
-                    aria-label={`Open project ${project.title}`}
-                  >
-                    <div className="projectsList__rowMain">
-                      <span
-                        className={`projectsList__dot projectsList__dot--${project.status}`}
-                        aria-hidden="true"
-                      />
-                      <div className="projectsList__rowText">
-                        <span className="projectsList__rowTitle">
-                          {project.title}
-                        </span>
-                        {project.summary ? (
-                          <span className="projectsList__rowSummary">
-                            {project.summary}
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                    <div className="projectsList__rowMeta">
-                      {counts.needsDecision > 0 ? (
-                        <span className="projectsList__pip projectsList__pip--decision">
-                          {counts.needsDecision} decision
-                          {counts.needsDecision === 1 ? "" : "s"}
+            {projects.map((project) => (
+              <li key={project.id} className="projectsList__row">
+                <Link
+                  to={project.id}
+                  className="projectsList__rowLink"
+                  aria-label={`Open project ${project.title}`}
+                >
+                  <div className="projectsList__rowMain">
+                    <span
+                      className={`projectsList__dot projectsList__dot--${project.status}`}
+                      aria-hidden="true"
+                    />
+                    <div className="projectsList__rowText">
+                      <span className="projectsList__rowTitle">
+                        {project.title}
+                      </span>
+                      {project.summary ? (
+                        <span className="projectsList__rowSummary">
+                          {project.summary}
                         </span>
                       ) : null}
-                      {counts.blocked > 0 ? (
-                        <span className="projectsList__pip projectsList__pip--blocked">
-                          {counts.blocked} blocked
-                        </span>
-                      ) : null}
-                      <span className="projectsList__metric">
-                        <strong>{counts.workItems}</strong> WI
-                      </span>
-                      <span className="projectsList__metric">
-                        <strong>{counts.tasks}</strong> tasks
-                      </span>
-                      <span className="projectsList__metric projectsList__metric--muted">
-                        {formatRelative(project.updatedAt)}
-                      </span>
-                      <span
-                        className={`projectsList__statusPill projectsList__statusPill--${project.status}`}
-                      >
-                        {project.status.replace(/_/g, " ")}
-                      </span>
                     </div>
-                  </Link>
-                </li>
-              );
-            })}
+                  </div>
+                  <div className="projectsList__rowMeta">
+                    {project.attentionDecisionCount > 0 ? (
+                      <span className="projectsList__pip projectsList__pip--decision">
+                        {project.attentionDecisionCount} decision
+                        {project.attentionDecisionCount === 1 ? "" : "s"}
+                      </span>
+                    ) : null}
+                    {project.attentionBlockedCount > 0 ? (
+                      <span className="projectsList__pip projectsList__pip--blocked">
+                        {project.attentionBlockedCount} blocked
+                      </span>
+                    ) : null}
+                    <span className="projectsList__metric">
+                      <strong>{project.linkedWorkItemCount}</strong> WI
+                    </span>
+                    <span className="projectsList__metric">
+                      <strong>{project.linkedTaskCount}</strong> tasks
+                    </span>
+                    <span className="projectsList__metric projectsList__metric--muted">
+                      {formatRelative(project.updatedAt)}
+                    </span>
+                    <span
+                      className={`projectsList__statusPill projectsList__statusPill--${project.status}`}
+                    >
+                      {project.status.replace(/_/g, " ")}
+                    </span>
+                  </div>
+                </Link>
+              </li>
+            ))}
           </ul>
         )}
       </main>

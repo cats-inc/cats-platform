@@ -116,6 +116,9 @@ export interface WorkProjectListItem {
   linkedWorkItemCount: number;
   activeWorkItemCount: number;
   linkedTaskCount: number;
+  linkedActivityCount: number;
+  attentionDecisionCount: number;
+  attentionBlockedCount: number;
   updatedAt: string;
 }
 
@@ -454,11 +457,26 @@ function buildProjectListItems(
       const primaryConversation = project.primaryConversationId
         ? core.conversations.find((conversation) => conversation.id === project.primaryConversationId) ?? null
         : null;
-      const linkedTaskIds = new Set(
+      const linkedTaskIdSet = new Set(
         linkedWorkItems
           .map((workItem) => workItem.taskId)
           .filter((taskId): taskId is string => typeof taskId === 'string' && taskId.length > 0),
       );
+      const linkedTasks = core.tasks.filter((task) => linkedTaskIdSet.has(task.id));
+      const linkedActivities = core.activities.filter(
+        (activity) => activity.projectId === project.id,
+      );
+
+      const decisionPool: WorkAttentionState[] = [
+        ...linkedWorkItems.map((workItem) => deriveAttentionFromStatus(workItem.status)),
+        ...linkedTasks.map((task) => deriveAttentionFromStatus(task.status)),
+      ];
+      const attentionDecisionCount = decisionPool.filter(
+        (attention) => attention === 'decision_needed',
+      ).length;
+      const attentionBlockedCount = decisionPool.filter(
+        (attention) => attention === 'blocked' || attention === 'failed',
+      ).length;
 
       return {
         id: project.id,
@@ -473,7 +491,10 @@ function buildProjectListItems(
         ownerName: resolveActorName(core, project.ownerActorId),
         linkedWorkItemCount: linkedWorkItems.length,
         activeWorkItemCount: activeWorkItems.length,
-        linkedTaskCount: linkedTaskIds.size,
+        linkedTaskCount: linkedTaskIdSet.size,
+        linkedActivityCount: linkedActivities.length,
+        attentionDecisionCount,
+        attentionBlockedCount,
         updatedAt: project.updatedAt,
       };
     });
@@ -553,7 +574,7 @@ function buildWorkItemListSummary(
   };
 }
 
-const ATTENTION_BY_TASK_STATUS: Record<string, WorkAttentionState> = {
+const ATTENTION_BY_RECORD_STATUS: Record<string, WorkAttentionState> = {
   pending_approval: 'decision_needed',
   blocked: 'blocked',
   failed: 'failed',
@@ -561,8 +582,8 @@ const ATTENTION_BY_TASK_STATUS: Record<string, WorkAttentionState> = {
   completed: 'recently_shipped',
 };
 
-function deriveTaskAttention(status: string): WorkAttentionState {
-  return ATTENTION_BY_TASK_STATUS[status] ?? 'none';
+function deriveAttentionFromStatus(status: string): WorkAttentionState {
+  return ATTENTION_BY_RECORD_STATUS[status] ?? 'none';
 }
 
 interface TaskRendererExtras {
@@ -646,7 +667,7 @@ function buildTaskListItems(
         parentTaskId: task.parentTaskId ?? null,
         controlPlane: buildCoreTaskControlPlaneView(core, task),
         recovery: buildCoreTaskRecoveryView(core, task),
-        attention: deriveTaskAttention(task.status),
+        attention: deriveAttentionFromStatus(task.status),
         productBinding: resolveTaskProductBinding(core, task),
         priority: extras.priority,
         assigneeName: extras.assigneeName,

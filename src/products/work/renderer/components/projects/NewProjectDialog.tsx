@@ -7,9 +7,11 @@ import {
   useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 
 import type { CoreProjectStatus } from "../../api/workRecords.js";
 import { WORK_PROJECTS_PATH } from "../../workPaths.js";
+import { PROJECTS_QUERY_KEY } from "../../state/queries/projectsQuery.js";
 import { pinnedProjectsStore } from "../../state/pinnedProjectsStore";
 
 interface NewProjectDialogProps {
@@ -25,6 +27,7 @@ const STATUS_OPTIONS: { value: CoreProjectStatus; label: string }[] = [
 
 export function NewProjectDialog({ onClose }: NewProjectDialogProps): JSX.Element {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const titleId = useId();
   const summaryId = useId();
   const ownerId = useId();
@@ -75,6 +78,7 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps): JSX.Elemen
         status,
         nextAction: nextAction || null,
       });
+      await queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY });
       onClose();
       navigate(`${WORK_PROJECTS_PATH}/${project.id}`);
     } catch (err) {
