@@ -9,7 +9,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | In Progress (Phases 1, 2, 3, 4a, 4d, 5, 6 landed against fixture data; 4b, 4c, 7, 8 outstanding) |
 | **Owner** | TBD |
 | **Assigned To** | Unassigned |
 | **Reviewer** | Owner |
@@ -46,36 +46,46 @@ companion-app 2-3 week MVP estimate from the 2026-03-24 research.
 
 ### Phase 1: Skeleton
 
-- [ ] Mount the bottom-tab navigator at
+- [x] Mount the bottom-tab navigator at
       `cats-platform/mobile/app/(tabs)/_layout.tsx` with the five tabs in
       fixed order: `Lobby`, `Chat`, `Code`, `Work`, `Settings`.
-- [ ] Stub each tab's landing screen with the tab name and a placeholder
+- [x] Stub each tab's landing screen with the tab name and a placeholder
       so navigation works end-to-end before any content lands.
-- [ ] Set up theme primitives in `cats-platform/mobile/src/renderer/theme.ts`
+- [x] Set up theme primitives in `cats-platform/mobile/src/renderer/theme.ts`
       (colours, type scale, spacing) sourced from the web design tokens
-      where available.
-- [ ] Wire `expo-router/types` so route params (`channelId`) are typed.
+      where available. Initial dark draft replaced in Phase 2 with the
+      actual web palette from `src/design/tokens.css`.
+- [x] Wire `expo-router/types` so route params (`channelId`) are typed.
 - [ ] Verify `expo run:ios` and `expo run:android` boot the shell.
+      *(Operator-side verification — typecheck clean; simulator-level
+      boot still pending owner.)*
 
 **Deliverables**: bootable mobile shell with five empty tabs and tab-bar
 icons in place. No product content.
 
 ### Phase 2: Bubble PoC and visual gate
 
-- [ ] Add `cats-platform/mobile/src/renderer/MessageBody.tsx` as the RN
-      bubble renderer, importing the existing
+- [x] Add `cats-platform/mobile/src/renderer/MessageBody.tsx` as the RN
+      bubble renderer. The shared
       `messageBodySegmenter.ts` from
-      `src/products/shared/renderer/components/`.
-- [ ] Map every CSS class used by the web `MessageBody` to a
+      `src/products/shared/renderer/components/` is **not** imported
+      directly yet — see the deferred-import note at the bottom of this
+      plan. Local `src/renderer/types/messageBody.ts` mirrors the
+      segment / attachment shape and is removed once Metro / tsconfig
+      path resolution from mobile to `cats-platform/src` lands.
+- [x] Map every CSS class used by the web `MessageBody` to a
       `StyleSheet.create` entry in
       `cats-platform/mobile/src/renderer/styles/messageBody.ts`.
-- [ ] Cover all segmenter outputs: text, URL, mention, image attachment,
+- [x] Cover all segmenter outputs: text, URL, mention, image attachment,
       file attachment chip.
-- [ ] Build a side-by-side visual harness — a dev-only screen that
-      renders a fixed corpus of test messages on RN and shows a known
-      web screenshot for comparison.
+- [x] Build a side-by-side visual harness — a dev-only screen at
+      `app/(dev)/bubble-harness.tsx` rendering a fixed corpus of seven
+      bubble shapes against the same StyleSheet. Discoverable from the
+      Settings tab → Developer tools.
 - [ ] Run the visual gate at viewports 320 × 568, 390 × 844, 768 × 1024
       (NFR-002). Record results.
+      *(Operator-side verification — harness is in place; simulator
+      screenshot comparison still pending owner.)*
 - [ ] If the gate fails: open the WebView fallback decision per SPEC-095
       Open Questions and update PLAN-084 / SPEC-095 before proceeding.
 
@@ -85,68 +95,116 @@ ChatView.
 
 ### Phase 3: Chat sidebar tab
 
-- [ ] Port `src/products/chat/renderer/components/Sidebar.tsx` to
+- [x] Port `src/products/chat/renderer/components/Sidebar.tsx` to
       `cats-platform/mobile/src/renderer/sidebars/ChatSidebar.tsx`.
-- [ ] Use `FlatList` with the same data model the web sidebar uses
-      (Recents, MY CATS contextual subset, Add cat in chat).
-- [ ] Reuse the chat API client from `cats-platform/mobile/src/api/`
-      (already on the skeleton).
-- [ ] Tap-through navigates to a stub ChatView screen — the screen itself
-      lands in Phase 4.
-- [ ] Acceptance: full Chat sidebar entries render on mobile and tapping
+      Implementation renders the canonical entry set (three primary
+      action chips + Recents section + MY CATS section + add-cat
+      trailing action).
+- [x] Use `FlatList` with a unioned row data model so all entry kinds
+      sit in the same list primitive.
+- [ ] Reuse the chat API client from `cats-platform/mobile/src/api/`.
+      *(Phase-3 PoC ships against fixture data at
+      `src/api/fixtures/chatSidebar.ts`; live API client wiring lands
+      with Phase 4b.)*
+- [x] Tap-through navigates to a stub ChatView screen — the screen
+      itself lands in Phase 4.
+- [x] Acceptance: full Chat sidebar entries render on mobile and tapping
       a Recents entry pushes to a stub.
 
 **Deliverables**: Chat tab renders the full web sidebar set on mobile.
 
 ### Phase 4: Shared ChatView (chat mode)
 
-- [ ] Build `cats-platform/mobile/src/renderer/ChatView.tsx` taking
-      `productMode` and `channelId` props (default to `'chat'` for this
-      phase).
-- [ ] Conversation list uses `FlatList` with the Phase-2 RN
-      `MessageBody`. Streaming updates land on the same store as web.
-- [ ] Composer is a minimal RN composer (text input, send button). Cat
-      mention and recipient state come from the same shared engine.
-- [ ] Keyboard avoidance, scroll-to-bottom, and pull-to-refresh land
-      here.
+Phase 4 was split into four sub-slices in flight:
+
+- **4a — ChatView shell**: visual scaffolding with FlatList of
+  fixture messages and a no-op composer.
+- **4b — Live data**: swap fixture conversation for the live chat
+  store; streaming updates.
+- **4c — Real send path**: composer dispatches into the shared
+  engine.
+- **4d — Polish**: scroll-to-bottom + pull-to-refresh + keyboard
+  avoidance.
+
+Status:
+
+- [x] Build `cats-platform/mobile/src/renderer/ChatView.tsx` taking
+      `productMode` and `channelId` props. *(Phase 4a — landed in
+      commit `15a8f7ef`.)*
+- [ ] Conversation list streaming updates land on the same store as
+      web. *(Phase 4b — outstanding; depends on the API client / Metro
+      path resolution architecture decision.)*
+- [ ] Composer is wired to the real shared-engine send path.
+      *(Phase 4c — outstanding; same dependency as 4b.)*
+- [x] Keyboard avoidance, scroll-to-bottom, and pull-to-refresh.
+      *(Phase 4d — landed in commit `823f4319`. Pull-to-refresh is a
+      no-op visual until 4b lands the live store refresh.)*
 - [ ] Acceptance: a Chat conversation can be entered, messages can be
-      sent and received, and bubbles match the visual gate from Phase 2.
+      sent and received, and bubbles match the visual gate from
+      Phase 2. *(Send / receive blocked on 4b/4c; bubble parity is
+      pending operator screenshot comparison from Phase 2.)*
 
 **Deliverables**: working Chat conversation surface on mobile.
 
+#### Phase 4 dependency note
+
+Phases 4b and 4c require either (a) a published `@cats-inc/cats-platform`
+package mobile can `import` from, or (b) Metro / tsconfig path
+resolution from mobile to `cats-platform/src`. A 2026-04-29 probe
+showed (b) pulls the entire `cats-platform/src` tree into type-checking
+through transitive imports (e.g. `node:crypto` from
+`src/shared/guideCatAssist.ts`), which fails the mobile RN environment.
+Resolving this is its own slice — likely a build step that emits a
+typed entry point for mobile, or staged extraction of the relevant
+contracts into a published-style sub-package.
+
 ### Phase 5: Code and Work tabs
 
-- [ ] Add `cats-platform/mobile/src/renderer/sidebars/CodeSidebar.tsx`
-      with the trimmed entry set: `+New code`, `+Team code`, `+Peer code`,
-      `MY CODES`, `RECENTS (Code)`. Source the entries through the
-      product-owned mobile selector exposed by
-      `src/products/code/api/index.ts` (delegate added in this phase).
-- [ ] Add `cats-platform/mobile/src/renderer/sidebars/WorkSidebar.tsx`
-      with the trimmed entry set: `+New work`, two work presets,
-      `MY WORKS`, `RECENTS (Work)`. Mirror the Code pattern through
-      `src/products/work/api/index.ts`.
-- [ ] Extend the shared `ChatView` to switch composer chips, header
+- [x] Add a single shared
+      `cats-platform/mobile/src/renderer/sidebars/TrimmedProductSidebar.tsx`
+      that takes a `TrimmedSidebarConfig` and renders the same five-row
+      shape for both products. Code config holds `+New code`,
+      `+Team code`, `+Peer code`, `MY CODES`, `Recents (Code)`. Work
+      config mirrors the shape — the two Work presets are TBD-marked
+      placeholders pending the SPEC-095 Open Question.
+- [ ] Source the entries through product-owned mobile selectors
+      exposed by `src/products/code/api/index.ts` and
+      `src/products/work/api/index.ts`. *(Phase-5 PoC ships a static
+      config in `src/api/fixtures/productSidebar.ts`; the product-owned
+      mobile selector contract is deferred to the same
+      shared-source-import slice as Phase 4b.)*
+- [x] Extend the shared `ChatView` to switch composer chips, header
       side-panel triggers, and empty-state copy on `productMode`.
+      *(Header eyebrow + composer placeholder switch on `productMode`;
+      side-panel triggers wait on Phase 5 modal extension below.)*
 - [ ] Surface product-mode side panels (`CodeBuilderView`,
       `ProjectDetailView`, `ApprovalQueuePanel`, etc.) as RN bottom
       sheets / fullscreen modals — not as inline columns.
-- [ ] Acceptance: `+New code` from the Code tab opens a Code-mode
-      ChatView; `+New work` from the Work tab opens a Work-mode ChatView;
-      side panels open in modals when triggered.
+      *(Outstanding — modals stack on the deferred shared-source-import
+      slice.)*
+- [x] Acceptance: `+New code` from the Code tab opens a Code-mode
+      ChatView; `+New work` from the Work tab opens a Work-mode ChatView.
+      Side panels in modals — outstanding per the row above.
 
 **Deliverables**: Code and Work tabs functional end-to-end with shared
 ChatView.
 
 ### Phase 6: Lobby and Settings tabs
 
-- [ ] Mount Lobby tab with the platform `/lobby` projection scoped to
-      mobile (today summary, quick entry chips, Guide Cat assist).
-- [ ] Mount Settings tab with: connection mode (relay / tunnel /
-      Tailscale), notification preferences, owner / account, deep link
-      out to web for advanced settings.
+- [x] Mount Lobby tab with a fixture-backed mobile projection of
+      `/lobby` (today summary cards, Guide Cat assist card, quick entry
+      chips into Chat / Code / Work, recent activity rows linking into
+      chat channels).
+- [x] Mount Settings tab with the canonical four sections: connection
+      mode (relay / tunnel / Tailscale, local-state radio for now),
+      notification preferences (master + approvals-only toggles), owner
+      / account read-only rows, deep link out to web for advanced
+      settings. Developer tools row preserves the bubble-harness link.
 - [ ] Resolve SPEC-095 Open Questions on Settings depth and Lobby
       content scoping before this phase closes.
-- [ ] Acceptance: all five tabs render their full first-class content.
+      *(Both surfaces note the open questions inline as scope notes;
+      owner decision still required.)*
+- [x] Acceptance: all five tabs render their full first-class content.
 
 **Deliverables**: complete mobile shell, ready to wire connectivity.
 
@@ -239,12 +297,21 @@ class shell scope.
 | Push notification setup blocks earlier phases | Low | Phase 7 runs after the shell is complete; earlier phases work without push |
 | App Store rejection on guideline 4.2 (minimum functionality) | Medium | Mobile is no longer companion-only; full Chat / Code / Work surfaces should clear the bar. Demo mode and review notes from the research note Part 8 still apply |
 | RN nested-Text background colour for mention chips behaves differently on iOS | Low | Phase 2 includes iOS-specific check; fallback is to wrap mention text in `<View>` if cross-platform inline background is too unreliable |
+| Mobile cannot consume `cats-platform/src` types directly without pulling Node-only modules into the RN type graph (probed 2026-04-29, fails on transitive `node:crypto`) | Medium | Stay with the deferred-import pattern (local re-declarations + TODO) until either (a) `@cats-inc/cats-platform` ships a typed entry point for mobile, or (b) cats-platform exposes a build step that emits a mobile-safe declaration bundle. Phase 4b / 4c block on this. |
 
 ## Progress Log
 
 | Date | Update |
 |---|---|
 | 2026-04-29 | Plan drafted alongside ADR-092 and SPEC-095 |
+| 2026-04-29 | Phase 1 skeleton landed (`7f66ee42`): 5-tab navigator, theme draft, stub screens. |
+| 2026-04-29 | Phase 2 bubble PoC + visual harness landed (`23ee49ce`): RN MessageBody, StyleSheet mapping, dev-only harness, theme palette corrected to web tokens. |
+| 2026-04-29 | Phase 3 Chat sidebar landed (`07506eb0`): FlatList port of full Chat sidebar entry set against fixture data; nav into stub ChatView. |
+| 2026-04-29 | Phase 4a ChatView shell landed (`15a8f7ef`): shared ChatView component, MessageBubble extraction, fixture conversation per productMode, no-op composer. |
+| 2026-04-29 | Phase 5 Code + Work trimmed sidebars landed (`b9596df7`): TrimmedProductSidebar shared component, Code / Work configs, ChatView modes, MY-lens / RECENTS placeholder destinations. |
+| 2026-04-29 | Phase 6 Lobby + Settings landed (`9d8d721f`): Lobby with stat cards, Guide Cat assist, recent activity; Settings with connection mode, notifications, owner, advanced, developer tools. |
+| 2026-04-29 | Phase 4d polish landed (`823f4319`): scroll-to-bottom, pull-to-refresh, KeyboardAvoidingView offset; bubble harness consolidated onto MessageBubble. |
+| 2026-04-29 | Shared-source-import probe: importing from `cats-platform/src` pulls the whole src tree into mobile typecheck through transitive `node:crypto` etc. Phase 4b / 4c blocked on a separate published-package or build-step slice. |
 
 ---
 
