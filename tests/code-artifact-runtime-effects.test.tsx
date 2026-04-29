@@ -5,6 +5,7 @@ import type { RuntimeMessageSegment } from '../src/platform/runtime/client.ts';
 import {
   applyRuntimeInvocationAssistantEffects,
   clearRuntimeInvocationEnrichers,
+  hasRuntimeInvocationAssistantEffects,
 } from '../src/platform/runtime/invocationEnrichment.ts';
 import { createDefaultCoreState } from '../src/core/model/index.ts';
 import { upsertCoreRun } from '../src/core/model/executionRecords.ts';
@@ -135,4 +136,36 @@ test('runtime assistant effects skip non-Code channels', () => {
 
   assert.equal(result.core, core);
   assert.deepEqual(result.metadata, {});
+});
+
+test('runtime assistant effect predicate only matches Code artifact tool calls', () => {
+  registerCodeArtifactRuntimeAssistantEffectProcessor();
+  const textOnlySegment: RuntimeMessageSegment = {
+    kind: 'text',
+    text: 'No artifacts here.',
+    toolName: null,
+    toolId: null,
+  };
+
+  assert.equal(
+    hasRuntimeInvocationAssistantEffects(
+      { originSurface: 'code', id: 'channel-code' },
+      [textOnlySegment],
+    ),
+    false,
+  );
+  assert.equal(
+    hasRuntimeInvocationAssistantEffects(
+      { originSurface: 'chat', id: 'channel-chat' },
+      [createPreviewToolUse()],
+    ),
+    false,
+  );
+  assert.equal(
+    hasRuntimeInvocationAssistantEffects(
+      { originSurface: 'code', id: 'channel-code' },
+      [createPreviewToolUse()],
+    ),
+    true,
+  );
 });

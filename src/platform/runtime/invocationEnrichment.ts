@@ -108,6 +108,16 @@ export interface RuntimeInvocationAssistantEffectResult {
 export interface RuntimeInvocationAssistantEffectProcessor {
   id: string;
   priority?: number;
+  /**
+   * Return true only when this assistant turn may produce effects. Dispatchers
+   * use this predicate to avoid opening a core write for ordinary assistant
+   * replies. Processors without a predicate are treated as interested whenever
+   * the turn has at least one runtime segment.
+   */
+  shouldApplyAssistantEffects?(
+    channel: RuntimeInvocationEnrichmentChannel,
+    segments: readonly RuntimeMessageSegment[],
+  ): boolean;
   applyAssistantEffects(
     channel: RuntimeInvocationEnrichmentChannel,
     input: RuntimeInvocationAssistantEffectInput,
@@ -155,6 +165,17 @@ export function clearRuntimeInvocationAssistantEffectProcessors(): void {
 
 export function hasRuntimeInvocationAssistantEffectProcessors(): boolean {
   return runtimeInvocationAssistantEffectProcessors.size > 0;
+}
+
+export function hasRuntimeInvocationAssistantEffects(
+  channel: RuntimeInvocationEnrichmentChannel,
+  segments: readonly RuntimeMessageSegment[],
+): boolean {
+  return segments.length > 0
+    && getOrderedRuntimeInvocationAssistantEffectProcessors().some((processor) =>
+      processor.shouldApplyAssistantEffects
+        ? processor.shouldApplyAssistantEffects(channel, segments)
+        : true);
 }
 
 function getOrderedRuntimeInvocationEnrichers(): RuntimeInvocationEnricher[] {
@@ -395,6 +416,12 @@ export function applyRuntimeInvocationAssistantEffects(
   const metadata: Record<string, unknown> = {};
 
   for (const processor of getOrderedRuntimeInvocationAssistantEffectProcessors()) {
+    if (
+      processor.shouldApplyAssistantEffects
+      && !processor.shouldApplyAssistantEffects(channel, input.segments)
+    ) {
+      continue;
+    }
     const contribution = processor.applyAssistantEffects(
       channel,
       {

@@ -42,7 +42,7 @@ import {
   applyRuntimeInvocationAssistantEffects,
   collectRuntimeInvocationAssistantMetadata,
   enrichRuntimeInvocation,
-  hasRuntimeInvocationAssistantEffectProcessors,
+  hasRuntimeInvocationAssistantEffects,
 } from '../../../../platform/runtime/invocationEnrichment.js';
 
 export interface DispatchExecution extends DispatchRequest {
@@ -177,8 +177,7 @@ export async function executeDispatch(
     );
     if (
       coreStore
-      && hasRuntimeInvocationAssistantEffectProcessors()
-      && runtimeResult.segments.length > 0
+      && hasRuntimeInvocationAssistantEffects(channel, runtimeResult.segments)
     ) {
       let effectsMetadata: Record<string, unknown> = {};
       await coreStore.updateCore((latestCore) => {

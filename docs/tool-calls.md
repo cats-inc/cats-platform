@@ -223,7 +223,9 @@ runtime surfaces can apply artifact side effects without importing Code
 internals. The chat runtime dispatch loop invokes that registry after a runtime
 message result and applies artifact side effects with `coreStore.updateCore`,
 so concurrent dispatches operate on the latest Core snapshot instead of
-overwriting one another with stale snapshots. Accepted / rejected declaration
+overwriting one another with stale snapshots. Assistant-effect processors expose
+a turn predicate, so ordinary assistant text replies do not open a Core write
+when no product-owned tool call is present. Accepted / rejected declaration
 results are recorded in assistant-message metadata under
 `runtimeAssistantMetadata["cats-code.artifact-declaration"].codeArtifactToolResults`.
 Tool results are not yet sent back to the assistant through the runtime

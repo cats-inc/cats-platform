@@ -8,6 +8,7 @@ import {
 import type { CatsCoreState } from '../../../core/types.js';
 import {
   CODE_ARTIFACT_DECLARATION_TOOL,
+  CODE_ARTIFACT_DECLARATION_TOOL_NAME,
   CodeArtifactDeclarationError,
   type CodeArtifactDeclarationAnchors,
   type CodeArtifactProducer,
@@ -114,6 +115,12 @@ export function createCodeArtifactRuntimeAssistantEffectProcessor(): RuntimeInvo
   return {
     id: CODE_ARTIFACT_RUNTIME_ENRICHER_ID,
     priority: RuntimeEnricherPriority.POST_PROCESS,
+    shouldApplyAssistantEffects(channel, segments) {
+      return shouldAttachCodeArtifactRuntimeTooling(channel)
+        && segments.some((segment) =>
+          segment.kind === 'tool_use'
+          && segment.toolName === CODE_ARTIFACT_DECLARATION_TOOL_NAME);
+    },
     applyAssistantEffects(channel, input, context) {
       if (!shouldAttachCodeArtifactRuntimeTooling(channel)) {
         return null;
