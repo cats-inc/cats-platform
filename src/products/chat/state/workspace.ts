@@ -13,6 +13,23 @@ function normalizeWorkspacePath(value: string | null | undefined): string | null
   return trimmed ? trimmed : null;
 }
 
+function isForeignFilesystemPath(value: string): boolean {
+  if (process.platform === 'win32') {
+    return false;
+  }
+
+  return /^[a-zA-Z]:[\\/]/u.test(value) || /^[/\\]{2}[^/\\]/u.test(value);
+}
+
+function resolveLocalWorkspacePath(value: string | null | undefined): string | null {
+  const normalized = normalizeWorkspacePath(value);
+  if (!normalized || isForeignFilesystemPath(normalized)) {
+    return null;
+  }
+
+  return path.resolve(normalized);
+}
+
 function resolveRuntimeDataDir(runtimeDataDir: string | null | undefined): string | null {
   const configured = normalizeWorkspacePath(runtimeDataDir);
   if (configured) {
@@ -88,10 +105,9 @@ export async function ensureChannelAttachmentWorkspace(options: {
   chatCwd: string | null | undefined;
   runtimeDataDir?: string | null;
 }): Promise<string | null> {
-  const repoPath = normalizeWorkspacePath(options.repoPath);
+  const repoPath = resolveLocalWorkspacePath(options.repoPath);
   if (repoPath) {
-    await mkdir(repoPath, { recursive: true });
-    return path.resolve(repoPath);
+    return repoPath;
   }
 
   const resolvedRuntimeDataDir = resolveRuntimeDataDir(options.runtimeDataDir);
@@ -105,7 +121,7 @@ export async function ensureChannelAttachmentWorkspace(options: {
   );
   await mkdir(attachmentWorkspacePath, { recursive: true });
 
-  const currentChatCwd = normalizeWorkspacePath(options.chatCwd);
+  const currentChatCwd = resolveLocalWorkspacePath(options.chatCwd);
   if (currentChatCwd) {
     await copyAttachmentsDirectory(currentChatCwd, attachmentWorkspacePath);
   }
@@ -117,8 +133,8 @@ export async function syncChannelAttachmentsToWorkspace(options: {
   attachmentWorkspacePath: string | null | undefined;
   targetWorkspacePath: string | null | undefined;
 }): Promise<void> {
-  const attachmentWorkspacePath = normalizeWorkspacePath(options.attachmentWorkspacePath);
-  const targetWorkspacePath = normalizeWorkspacePath(options.targetWorkspacePath);
+  const attachmentWorkspacePath = resolveLocalWorkspacePath(options.attachmentWorkspacePath);
+  const targetWorkspacePath = resolveLocalWorkspacePath(options.targetWorkspacePath);
   if (!attachmentWorkspacePath || !targetWorkspacePath) {
     return;
   }

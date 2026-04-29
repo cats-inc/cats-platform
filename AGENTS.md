@@ -538,6 +538,25 @@ tests/
 4. **Mocking**: Prefer lightweight in-process stubs over heavy mocking frameworks
 5. **CI Requirement**: All tests must pass before merge
 
+### Cross-Platform Path Hygiene
+
+Tests MUST NOT pass foreign-OS absolute path fixtures into code paths that may
+touch the local filesystem. On macOS/Linux, strings such as
+`C:/repo/cats-platform` and `C:\repo\cats-platform` are relative paths, not
+absolute Windows paths, and filesystem calls can create stray directories like
+`./C:/repo/cats-platform` under the repository.
+
+- Use `mkdtemp(path.join(os.tmpdir(), ...))` or another real current-OS
+  absolute path for tests that call APIs/helpers which may `mkdir`, `writeFile`,
+  `cp`, `rename`, or otherwise touch disk.
+- Windows-style paths are allowed only as pure string-contract fixtures. Do not
+  send them through HTTP routes, runtime-session helpers, attachment helpers, or
+  workspace synchronization paths unless the test explicitly asserts that the
+  implementation treats them as foreign paths and does not write to them.
+- When adding cross-platform path regression tests, run them from an isolated
+  temporary `process.cwd()` and assert that no `C:` or drive-letter directory is
+  created.
+
 ### What to Test
 
 | Layer | Test Type | Coverage |
@@ -872,6 +891,7 @@ chore: maintenance tasks
 
 | Version | Date | Changes |
 |---------|------|---------|
+| 1.2.4 | 2026-04-29 | Add cross-platform path hygiene rules for tests |
 | 1.2.3 | 2026-04-22 | Add pre-release compatibility policy |
 | 1.2.2 | 2026-03-25 | Refresh current product direction, parallel delivery rules, and product integration references |
 | 1.2.1 | 2026-01-05 | Normalize compliance headings and template guidance |
