@@ -2,13 +2,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { formatRelative } from "../topdown/shared";
-import {
-  buildSubRunTree,
-  useRuns,
-  type RunItem,
-  type RunTreeNode,
-} from "../../state/runsStore";
-import { useTasks } from "../../state/tasksStore";
+import { useRunsQuery, type WorkRunListItem } from "../../state/queries/runsQuery.js";
+import { useTasksQuery } from "../../state/queries/tasksQuery.js";
 import { useWorkGraph } from "../../state/workGraphStore";
 import {
   WORK_TASKS_PATH,
@@ -33,6 +28,40 @@ const INITIAL_TRACE_STATE: TraceState = {
   error: null,
 };
 
+interface RunTreeNode {
+  run: WorkRunListItem;
+  children: RunTreeNode[];
+}
+
+function buildSubRunTree(
+  rootRunId: string,
+  allRuns: readonly WorkRunListItem[],
+): RunTreeNode[] {
+  const byParent = new Map<string, WorkRunListItem[]>();
+  for (const run of allRuns) {
+    const key = run.parentRunId ?? "";
+    const list = byParent.get(key) ?? [];
+    list.push(run);
+    byParent.set(key, list);
+  }
+
+  function walk(parentId: string, visited: ReadonlySet<string>): RunTreeNode[] {
+    const children = byParent.get(parentId) ?? [];
+    return children
+      .filter((r) => !visited.has(r.id))
+      .sort((a, b) =>
+        (a.startedAt ?? a.updatedAt).localeCompare(b.startedAt ?? b.updatedAt),
+      )
+      .map((run) => {
+        const nextVisited = new Set(visited);
+        nextVisited.add(run.id);
+        return { run, children: walk(run.id, nextVisited) };
+      });
+  }
+
+  return walk(rootRunId, new Set([rootRunId]));
+}
+
 function formatDuration(start: string | null, end: string | null): string | null {
   if (!start) return null;
   const startMs = Date.parse(start);
@@ -49,14 +78,15 @@ function formatDuration(start: string | null, end: string | null): string | null
 
 export function RunDetailPage(): JSX.Element {
   const { taskId, runId } = useParams<{ taskId: string; runId: string }>();
-  const { allRuns } = useRuns();
-  const { allTasks } = useTasks();
+  const runsQuery = useRunsQuery();
+  const tasksQuery = useTasksQuery();
   const { graph, refresh: refreshGraph } = useWorkGraph();
 
+  const allRuns = runsQuery.data?.runs ?? [];
+  const allTasks = tasksQuery.data?.tasks ?? [];
+
   const run = runId ? allRuns.find((r) => r.id === runId) : undefined;
-  const parentTask = taskId
-    ? allTasks.find((t) => t.id === taskId)
-    : undefined;
+  const parentTask = taskId ? allTasks.find((t) => t.id === taskId) : undefined;
   const subTree = useMemo<RunTreeNode[]>(
     () => (runId ? buildSubRunTree(runId, allRuns) : []),
     [runId, allRuns],
@@ -95,11 +125,6 @@ export function RunDetailPage(): JSX.Element {
 
   const [traceState, setTraceState] = useState<TraceState>(INITIAL_TRACE_STATE);
 
-  // Poll the trace timeline while the run is in a non-terminal state.
-  // The trace endpoint is cheap (filtered by runId at Core) so a 3 s
-  // cadence is fine; we drop the interval the moment the run reaches
-  // a terminal status. The first fetch runs synchronously on mount /
-  // run change so the UI doesn't wait the full interval to render.
   useEffect(() => {
     if (!runId) return;
     const isLive = run?.status === "queued" || run?.status === "running";
@@ -137,9 +162,6 @@ export function RunDetailPage(): JSX.Element {
     }
 
     const interval = window.setInterval(() => {
-      // Refresh the graph too so run.status flips to a terminal state
-      // and breaks the polling loop. Trace fetch and graph refresh
-      // run in parallel — neither blocks the other.
       void refreshGraph();
       loadOnce();
     }, 3000);
@@ -150,6 +172,9 @@ export function RunDetailPage(): JSX.Element {
     };
   }, [runId, run?.status, refreshGraph]);
 
+  if (runsQuery.isPending) {
+    return <RunDetailLoading />;
+  }
   if (!run) {
     return <RunNotFound runId={runId ?? null} />;
   }
@@ -212,12 +237,6 @@ export function RunDetailPage(): JSX.Element {
               <dt>Status</dt>
               <dd>{run.status.replace(/_/g, " ")}</dd>
             </div>
-            {run.ownerRole ? (
-              <div className="runDetail__summaryRow">
-                <dt>Orchestrator</dt>
-                <dd>{run.ownerRole}</dd>
-              </div>
-            ) : null}
             <div className="runDetail__summaryRow">
               <dt>Updated</dt>
               <dd>{formatRelative(run.updatedAt)}</dd>
@@ -237,22 +256,22 @@ export function RunDetailPage(): JSX.Element {
                       to={buildWorkRunPath(parentTask.id, run.parentRunId)}
                       className="runDetail__crumbLink"
                     >
-                      {run.linkedRunTitle ?? run.parentRunId}
+                      {run.parentRunTitle ?? run.parentRunId}
                     </Link>
                   ) : (
                     <span title={run.parentRunId}>
-                      {run.linkedRunTitle ?? <code>{run.parentRunId}</code>}
+                      {run.parentRunTitle ?? <code>{run.parentRunId}</code>}
                     </span>
                   )}
                 </dd>
               </div>
             ) : null}
-            {run.linkedConversationId ? (
+            {run.conversationId ? (
               <div className="runDetail__summaryRow">
                 <dt>Conversation</dt>
                 <dd>
-                  {run.linkedConversationTitle ?? (
-                    <code>{run.linkedConversationId}</code>
+                  {run.conversationTitle ?? (
+                    <code>{run.conversationId}</code>
                   )}
                 </dd>
               </div>
@@ -442,6 +461,23 @@ function SubRunTree({ nodes, taskId, depth }: SubRunTreeProps): JSX.Element {
         </li>
       ))}
     </ul>
+  );
+}
+
+function RunDetailLoading(): JSX.Element {
+  return (
+    <div className="runDetail">
+      <header className="channelTopBar runDetailTopBar">
+        <div className="channelTopBarStart runDetailTopBar__start">
+          <Link to={WORK_TASKS_PATH} className="runDetailTopBar__back">
+            <span>Tasks</span>
+          </Link>
+        </div>
+      </header>
+      <main className="runDetail__main">
+        <p className="runDetail__empty">Loading run…</p>
+      </main>
+    </div>
   );
 }
 
