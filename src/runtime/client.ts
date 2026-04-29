@@ -311,12 +311,16 @@ export interface RuntimeClient {
 interface RuntimeClientOptions {
   apiKey?: string;
   timeoutMs?: number;
+  sessionCreateTimeoutMs?: number;
+  messageTimeoutMs?: number;
   providerRegistryTimeoutMs?: number;
   selectorConfigTimeoutMs?: number;
   selectorDiagnosticsTimeoutMs?: number;
 }
 
 const DEFAULT_RUNTIME_REQUEST_TIMEOUT_MS = 5_000;
+export const DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS = 60_000;
+export const DEFAULT_RUNTIME_MESSAGE_TIMEOUT_MS = 120_000;
 const DEFAULT_RUNTIME_PROVIDER_REGISTRY_TIMEOUT_MS = 10_000;
 const DEFAULT_RUNTIME_PROVIDER_CATALOG_REFRESH_TIMEOUT_MS = 60_000;
 const DEFAULT_RUNTIME_SELECTOR_CONFIG_TIMEOUT_MS = 5_000;
@@ -359,6 +363,8 @@ function readRuntimeSessionInfo(
 export class CatsRuntimeClient implements RuntimeClient {
   private readonly apiKey: string;
   private readonly timeoutMs: number;
+  private readonly sessionCreateTimeoutMs: number;
+  private readonly messageTimeoutMs: number;
   private readonly providerRegistryTimeoutMs: number;
   private readonly selectorConfigTimeoutMs: number;
   private readonly selectorDiagnosticsTimeoutMs: number;
@@ -369,6 +375,12 @@ export class CatsRuntimeClient implements RuntimeClient {
   ) {
     this.apiKey = options.apiKey?.trim() || '';
     this.timeoutMs = options.timeoutMs ?? DEFAULT_RUNTIME_REQUEST_TIMEOUT_MS;
+    this.sessionCreateTimeoutMs = options.sessionCreateTimeoutMs
+      ?? options.timeoutMs
+      ?? DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS;
+    this.messageTimeoutMs = options.messageTimeoutMs
+      ?? options.timeoutMs
+      ?? DEFAULT_RUNTIME_MESSAGE_TIMEOUT_MS;
     this.providerRegistryTimeoutMs = options.providerRegistryTimeoutMs
       ?? Math.max(this.timeoutMs, DEFAULT_RUNTIME_PROVIDER_REGISTRY_TIMEOUT_MS);
     this.selectorConfigTimeoutMs = options.selectorConfigTimeoutMs
@@ -628,7 +640,7 @@ export class CatsRuntimeClient implements RuntimeClient {
         Accept: 'application/json',
       },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(this.timeoutMs),
+      signal: AbortSignal.timeout(this.sessionCreateTimeoutMs),
     });
 
     if (!response.ok) {
@@ -676,7 +688,7 @@ export class CatsRuntimeClient implements RuntimeClient {
         Accept: 'application/x-ndjson',
       },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(this.timeoutMs),
+      signal: AbortSignal.timeout(this.messageTimeoutMs),
     });
 
     if (!response.ok) {

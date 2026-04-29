@@ -306,6 +306,8 @@ for the planned desktop host model.
 | `CATS_PROVIDER_CAPABILITY_BOOTSTRAP_CONFIG` | No | Override the provider capability bootstrap YAML path. Defaults to `<platform config dir>/provider-capability-bootstrap.yaml` |
 | `CATS_RUNTIME_BASE_URL` | Yes | Upstream runtime URL |
 | `CATS_RUNTIME_API_KEY` | No | Optional bearer token for `cats-runtime` |
+| `CATS_RUNTIME_SESSION_CREATE_TIMEOUT_MS` | No | Timeout budget for runtime session creation and provider/workspace startup. Defaults to `60000`. |
+| `CATS_RUNTIME_MESSAGE_TIMEOUT_MS` | No | Timeout budget for long-running runtime message sends. Defaults to `120000`; short setup/provider calls keep their own request budgets. |
 
 Desktop-host specific overrides:
 

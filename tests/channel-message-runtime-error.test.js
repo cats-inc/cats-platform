@@ -163,7 +163,7 @@ test('posting a direct-lane message keeps canonical transport binding on runtime
     assert.equal(assignResponse.status, 201);
     assert.equal(
       runtimeClient.createdSessions[0]?.context?.metadata?.supervisionBoundary,
-      undefined,
+      'cats-supervision-runtime-boundary',
     );
 
     const sendResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
@@ -200,9 +200,9 @@ test('posting a direct-lane message keeps canonical transport binding on runtime
     assert.ok(runtimeError);
     assert.equal(
       runtimeClient.sentMessages[0]?.input?.context?.metadata?.supervisionBoundary,
-      undefined,
+      'cats-supervision-runtime-boundary',
     );
-    assert.equal(/cats\.runtime\.message\.send rejected/u.test(runtimeError.body), false);
+    assert.equal(/cats\.runtime\.message\.send rejected/u.test(runtimeError.body), true);
     assert.equal(runtimeError.metadata?.conversationId, buildChatConversationId(channelId));
     assert.equal(runtimeError.metadata?.containerId, CHAT_ROOT_CONTAINER_ID);
     assert.equal(
@@ -303,6 +303,10 @@ test('posting a direct-lane message keeps canonical transport binding on assista
       && message.metadata?.event === 'assistant_turn_segment',
     );
     assert.ok(assistantReply);
+    assert.equal(
+      runtimeClient.sentMessages[0]?.input?.context?.metadata?.supervisionBoundary,
+      'cats-supervision-runtime-boundary',
+    );
     assert.equal(assistantReply.metadata?.conversationId, buildChatConversationId(channelId));
     assert.equal(assistantReply.metadata?.containerId, CHAT_ROOT_CONTAINER_ID);
     assert.equal(

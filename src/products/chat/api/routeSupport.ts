@@ -5,6 +5,9 @@ import type { TelegramPollingSupervisor } from '../../../platform/transports/tel
 import type { TelegramRelay } from '../../../platform/transports/telegram/relay/index.js';
 import type { TelegramRoomBridge } from '../../../platform/transports/telegram/bridge.js';
 import type { RuntimeClient } from '../../../platform/runtime/client.js';
+import {
+  createSupervisedRuntimeSession,
+} from '../../../platform/supervision/runtimeBoundary.js';
 import type {
   ProviderCapabilityBootstrapConfig,
   ProviderCapabilityBootstrapDiagnosticSink,
@@ -747,18 +750,29 @@ export async function persistCatAssignmentUpdate(
       )
         ? 'source'
         : runtimePolicy.workspaceKind;
-      const session = await context.dependencies.runtimeClient.createSession({
-        provider: updatedCat.execution.target.provider,
-        instance: updatedCat.execution.target.instance,
-        model: updatedCat.execution.target.model,
-        modelSelection:
-          updatedCat.execution.modelSelection
-          ?? createExplicitProviderModelSelection(updatedCat.execution.target.model),
-        cwd: spawnCwd ?? sessionPolicySpawnCwd ?? undefined,
-        ...runtimePolicy,
-        workspaceKind: effectiveWorkspaceKind,
-        context: runtimeEnvelope.context,
-        skills: runtimeEnvelope.skills,
+      const session = await createSupervisedRuntimeSession({
+        runtimeClient: context.dependencies.runtimeClient,
+        input: {
+          provider: updatedCat.execution.target.provider,
+          instance: updatedCat.execution.target.instance,
+          model: updatedCat.execution.target.model,
+          modelSelection:
+            updatedCat.execution.modelSelection
+            ?? createExplicitProviderModelSelection(updatedCat.execution.target.model),
+          cwd: spawnCwd ?? sessionPolicySpawnCwd ?? undefined,
+          ...runtimePolicy,
+          workspaceKind: effectiveWorkspaceKind,
+          context: runtimeEnvelope.context,
+          skills: runtimeEnvelope.skills,
+        },
+        supervision: {
+          product: 'cats-chat',
+          surface: 'cat-assignment-session-start',
+          runId: channelId,
+          actionId: `${channelId}:${input.catId}:assignment-session-start`,
+          actorRef: input.catId,
+          reason: 'channel_cat_assignment',
+        },
       });
       const attachmentWorkspacePath = await ensureChannelAttachmentWorkspace({
         channelId,

@@ -1,4 +1,8 @@
 import path from 'node:path';
+import {
+  DEFAULT_RUNTIME_MESSAGE_TIMEOUT_MS,
+  DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS,
+} from './runtime/client.js';
 import { DEFAULT_RUNTIME_STALE_SESSION_RETRY_LIMIT } from './shared/runtimeRecovery.js';
 import {
   resolveBundledPlatformConfigExamplePath,
@@ -13,6 +17,8 @@ export interface AppConfig {
   port: number;
   runtimeBaseUrl: string;
   runtimeApiKey: string;
+  runtimeSessionCreateTimeoutMs: number;
+  runtimeMessageTimeoutMs: number;
   runtimeSetupProxyTimeoutMs?: number;
   runtimeSetupScanProxyTimeoutMs?: number;
   runtimeSetupApplyProxyTimeoutMs?: number;
@@ -126,6 +132,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     port: parsePort(readFirstDefined(env, ['CATS_PORT', 'CATS_INC_PORT']), DEFAULT_PORT),
     runtimeBaseUrl: (env.CATS_RUNTIME_BASE_URL || DEFAULT_RUNTIME_BASE_URL).replace(/\/+$/, ''),
     runtimeApiKey: env.CATS_RUNTIME_API_KEY?.trim() || '',
+    runtimeSessionCreateTimeoutMs: parsePositiveInt(
+      env.CATS_RUNTIME_SESSION_CREATE_TIMEOUT_MS,
+      DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS,
+    ),
+    runtimeMessageTimeoutMs: parsePositiveInt(
+      env.CATS_RUNTIME_MESSAGE_TIMEOUT_MS,
+      DEFAULT_RUNTIME_MESSAGE_TIMEOUT_MS,
+    ),
     runtimeSetupProxyTimeoutMs: legacySetupProxyTimeoutMs,
     runtimeSetupScanProxyTimeoutMs: parsePositiveInt(
       env.CATS_RUNTIME_SETUP_SCAN_PROXY_TIMEOUT_MS,

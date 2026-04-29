@@ -58,6 +58,8 @@ async function main(): Promise<void> {
   });
   const runtimeClient = new CatsRuntimeClient(config.runtimeBaseUrl, {
     apiKey: config.runtimeApiKey,
+    sessionCreateTimeoutMs: config.runtimeSessionCreateTimeoutMs,
+    messageTimeoutMs: config.runtimeMessageTimeoutMs,
   });
   startupTrace.trace('runtime.client.created');
   const chatStore = new FileChatStore(config.chatStatePath);

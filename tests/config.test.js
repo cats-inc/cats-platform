@@ -15,6 +15,8 @@ test('loadConfig derives storage paths from canonical root directories', () => {
     CATS_INC_PORT: '9292',
     CATS_RUNTIME_BASE_URL: 'http://127.0.0.1:3110/',
     CATS_RUNTIME_API_KEY: 'token',
+    CATS_RUNTIME_SESSION_CREATE_TIMEOUT_MS: '45000',
+    CATS_RUNTIME_MESSAGE_TIMEOUT_MS: '60000',
     CATS_RUNTIME_SETUP_PROXY_TIMEOUT_MS: '12345',
     CATS_RUNTIME_STALE_SESSION_RETRY_LIMIT: '3',
     CATS_PROVIDER_CAPABILITY_BOOTSTRAP_CONFIG: 'C:/Users/test/bootstrap.yaml',
@@ -38,6 +40,8 @@ test('loadConfig derives storage paths from canonical root directories', () => {
   );
   assert.equal(config.runtimeBaseUrl, 'http://127.0.0.1:3110');
   assert.equal(config.runtimeApiKey, 'token');
+  assert.equal(config.runtimeSessionCreateTimeoutMs, 45000);
+  assert.equal(config.runtimeMessageTimeoutMs, 60000);
   assert.equal(config.runtimeSetupProxyTimeoutMs, 12345);
   assert.equal(config.runtimeSetupScanProxyTimeoutMs, 12345);
   assert.equal(config.runtimeSetupApplyProxyTimeoutMs, 12345);
@@ -68,6 +72,8 @@ test('loadConfig falls back to CATS_INC_* compatibility aliases for host and por
   assert.equal(config.runtimeSetupProxyTimeoutMs, undefined);
   assert.equal(config.runtimeSetupScanProxyTimeoutMs, 120000);
   assert.equal(config.runtimeSetupApplyProxyTimeoutMs, 30000);
+  assert.equal(config.runtimeSessionCreateTimeoutMs, 60000);
+  assert.equal(config.runtimeMessageTimeoutMs, 120000);
   assert.equal(config.runtimeStaleSessionRetryLimit, 1);
   assert.equal(config.maxChatParticipants, 5);
   assert.equal(config.maxAudienceParticipants, 3);

@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { CatsRuntimeClient } from '../build/server/runtime/client.js';
+import {
+  CatsRuntimeClient,
+  DEFAULT_RUNTIME_MESSAGE_TIMEOUT_MS,
+  DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS,
+} from '../build/server/runtime/client.js';
 
 test('runtime client reuses the shared execution-request serializer for outbound payloads', async () => {
   const requests = [];
@@ -205,6 +209,166 @@ test('runtime client applies timeout budget to message sends', async () => {
   }
 
   assert.deepEqual(timeoutCalls, [12_345]);
+});
+
+test('runtime client uses an extended default timeout for session creation', async () => {
+  const timeoutCalls = [];
+  const originalFetch = globalThis.fetch;
+  const originalAbortSignalTimeout = AbortSignal.timeout;
+
+  AbortSignal.timeout = (ms) => {
+    timeoutCalls.push(ms);
+    return new AbortController().signal;
+  };
+
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url.endsWith('/sessions')) {
+      return new Response(JSON.stringify({
+        id: 'session-1',
+        providerName: 'claude',
+        status: 'ready',
+      }), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      });
+    }
+
+    throw new Error(`Unexpected runtime client request: ${url}`);
+  };
+
+  try {
+    const client = new CatsRuntimeClient('http://runtime.test');
+    await client.createSession({ provider: 'claude' });
+  } finally {
+    globalThis.fetch = originalFetch;
+    AbortSignal.timeout = originalAbortSignalTimeout;
+  }
+
+  assert.deepEqual(timeoutCalls, [DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS]);
+});
+
+test('runtime client lets callers override the session-create timeout separately', async () => {
+  const timeoutCalls = [];
+  const originalFetch = globalThis.fetch;
+  const originalAbortSignalTimeout = AbortSignal.timeout;
+
+  AbortSignal.timeout = (ms) => {
+    timeoutCalls.push(ms);
+    return new AbortController().signal;
+  };
+
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url.endsWith('/sessions')) {
+      return new Response(JSON.stringify({
+        id: 'session-1',
+        providerName: 'claude',
+        status: 'ready',
+      }), {
+        status: 200,
+        headers: {
+          'content-type': 'application/json',
+        },
+      });
+    }
+
+    throw new Error(`Unexpected runtime client request: ${url}`);
+  };
+
+  try {
+    const client = new CatsRuntimeClient('http://runtime.test', {
+      sessionCreateTimeoutMs: 45_000,
+      timeoutMs: 5_000,
+    });
+    await client.createSession({ provider: 'claude' });
+  } finally {
+    globalThis.fetch = originalFetch;
+    AbortSignal.timeout = originalAbortSignalTimeout;
+  }
+
+  assert.deepEqual(timeoutCalls, [45_000]);
+});
+
+test('runtime client uses an extended default timeout for message sends', async () => {
+  const timeoutCalls = [];
+  const originalFetch = globalThis.fetch;
+  const originalAbortSignalTimeout = AbortSignal.timeout;
+
+  AbortSignal.timeout = (ms) => {
+    timeoutCalls.push(ms);
+    return new AbortController().signal;
+  };
+
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url.endsWith('/messages')) {
+      return new Response(
+        '{"type":"text","text":"ok"}\n{"type":"result","usage":{"inputTokens":1,"outputTokens":1}}\n',
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/x-ndjson',
+          },
+        },
+      );
+    }
+
+    throw new Error(`Unexpected runtime client request: ${url}`);
+  };
+
+  try {
+    const client = new CatsRuntimeClient('http://runtime.test');
+    await client.sendMessage('session-1', 'hello');
+  } finally {
+    globalThis.fetch = originalFetch;
+    AbortSignal.timeout = originalAbortSignalTimeout;
+  }
+
+  assert.deepEqual(timeoutCalls, [DEFAULT_RUNTIME_MESSAGE_TIMEOUT_MS]);
+});
+
+test('runtime client lets callers override the message-send timeout separately', async () => {
+  const timeoutCalls = [];
+  const originalFetch = globalThis.fetch;
+  const originalAbortSignalTimeout = AbortSignal.timeout;
+
+  AbortSignal.timeout = (ms) => {
+    timeoutCalls.push(ms);
+    return new AbortController().signal;
+  };
+
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url.endsWith('/messages')) {
+      return new Response(
+        '{"type":"text","text":"ok"}\n{"type":"result","usage":{"inputTokens":1,"outputTokens":1}}\n',
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/x-ndjson',
+          },
+        },
+      );
+    }
+
+    throw new Error(`Unexpected runtime client request: ${url}`);
+  };
+
+  try {
+    const client = new CatsRuntimeClient('http://runtime.test', {
+      messageTimeoutMs: 60_000,
+      timeoutMs: 5_000,
+    });
+    await client.sendMessage('session-1', 'hello');
+  } finally {
+    globalThis.fetch = originalFetch;
+    AbortSignal.timeout = originalAbortSignalTimeout;
+  }
+
+  assert.deepEqual(timeoutCalls, [60_000]);
 });
 
 test('runtime client synthesizes a text segment from content-array result delivery', async () => {

@@ -6,23 +6,6 @@ import test from 'node:test';
 const SOURCE_ROOT = path.join(process.cwd(), 'src');
 const PRODUCTS_ROOT = path.join(SOURCE_ROOT, 'products');
 const SUPERVISION_ROOT = path.join(SOURCE_ROOT, 'platform', 'supervision');
-const CHAT_INTERACTIVE_RUNTIME_ALLOWLIST = new Set([
-  path.normalize(path.join(PRODUCTS_ROOT, 'chat', 'api', 'routeSupport.ts')),
-  path.normalize(path.join(
-    PRODUCTS_ROOT,
-    'chat',
-    'state',
-    'runtime-dispatch',
-    'execution.ts',
-  )),
-  path.normalize(path.join(
-    PRODUCTS_ROOT,
-    'chat',
-    'state',
-    'runtime-session',
-    'sessionStart.ts',
-  )),
-]);
 
 const STATIC_IMPORT_PATTERN =
   /\b(?:import|export)\s+(?:type\s+)?(?:[^'"]*?\s+from\s+)?['"]([^'"]+)['"]/g;
@@ -70,9 +53,8 @@ test('run-state and scheduler supervision modules stay content-blind', () => {
   assert.deepEqual(semanticDecisionViolations, []);
 });
 
-test('managed product execution uses supervised runtime boundary outside Chat interactive seams', () => {
-  const files = collectSourceFiles(PRODUCTS_ROOT)
-    .filter((filePath) => !CHAT_INTERACTIVE_RUNTIME_ALLOWLIST.has(path.normalize(filePath)));
+test('product code calls runtime create/send only through supervision runtime boundary', () => {
+  const files = collectSourceFiles(PRODUCTS_ROOT);
   const violations = collectTextViolations({
     files,
     forbidden: [
