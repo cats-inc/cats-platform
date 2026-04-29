@@ -224,6 +224,60 @@ Producer identity errors are deterministic:
 | `user` supplies a mismatched `actorId` | `artifact_user_actor_mismatch` |
 | `agent` or `user` supplies non-null `toolName` | `artifact_producer_tool_not_allowed` |
 
+### Error Code Registry
+
+This registry is the canonical source for Cats Code artifact declaration error
+codes. TypeScript helper unions and tool-call registry summaries shall reference
+these codes instead of inventing local aliases.
+
+#### Agent-Visible Shape and Field Errors
+
+| Error code | Trigger |
+|------------|---------|
+| `artifact_required_field_empty` | A required string field is missing, non-string, empty, or whitespace after normalization. |
+| `artifact_producer_field_not_allowed` | An agent-visible declaration supplies non-null server-resolved fields such as `producer.*`, `anchors.*`, `kind`, `coreKind`, `runId`, `taskId`, `conversationId`, `workspaceKey`, `requestedDisposition`, or `requestedStatus`. |
+| `artifact_location_required` | `location` is missing or is not an object. |
+| `artifact_location_kind_invalid` | `location.kind` is missing or not one of `none`, `local_path`, `url`, `inline_summary`, or `external_ref`. |
+| `artifact_location_value_required` | `location.value` is required for the selected location kind but is empty after normalization. |
+| `artifact_location_value_invalid` | `location.value` is syntactically invalid for the selected location kind. |
+| `artifact_location_evidence_required` | `location.kind = 'none'` is supplied without a non-empty `summary` or metadata evidence. |
+
+#### Location and Metadata Errors
+
+| Error code | Trigger |
+|------------|---------|
+| `artifact_local_path_invalid` | A `local_path` value is not a usable path string before workspace containment validation, such as a URL-like value or unsafe null byte. |
+| `artifact_url_credentials_not_allowed` | A `url` value contains username or password credentials. |
+| `artifact_inline_summary_too_large` | An `inline_summary` value exceeds 8 KiB after trimming. |
+| `artifact_external_ref_invalid` | An `external_ref` value does not use `<refKind>:<refId>` or has an empty ref id. |
+| `artifact_external_ref_kind_not_allowed` | An `external_ref` ref kind is not in `codeArtifactDeclaration.externalRefKinds`. |
+| `artifact_metadata_invalid` | Metadata is missing the required JSON-serializable object shape. |
+| `artifact_metadata_too_large` | Serialized metadata exceeds 16 KiB. |
+| `artifact_metadata_too_many_keys` | Producer-supplied metadata has more than 32 top-level keys. |
+| `artifact_metadata_key_too_long` | A top-level metadata key exceeds 64 characters. |
+| `artifact_metadata_reserved_key` | A top-level metadata key matches a normalized `CoreArtifactRecord` field. |
+
+#### Producer, Anchor, Idempotency, and Policy Errors
+
+| Error code | Trigger |
+|------------|---------|
+| `artifact_agent_actor_required` | An `agent` declaration has no server-bound actor. |
+| `artifact_agent_actor_mismatch` | An `agent` declaration supplies an `actorId` that conflicts with the server-bound actor. |
+| `artifact_tool_not_allowed` | A `tool` declaration has no resolvable registered tool or the tool is not authorized for the context. |
+| `artifact_system_detector_not_allowed` | A `system` declaration names a detector not in the Code built-in detector registry. |
+| `artifact_user_actor_required` | A `user` declaration has no authenticated owner actor. |
+| `artifact_user_actor_mismatch` | A `user` declaration supplies an `actorId` that conflicts with the authenticated owner actor. |
+| `artifact_producer_actor_not_allowed` | A `tool` or `system` declaration supplies non-null `actorId`. |
+| `artifact_producer_tool_not_allowed` | An `agent` or `user` declaration supplies non-null `toolName`. |
+| `artifact_anchor_required` | No conversation, task, run, workspace, or verified detached-import anchor can be resolved. |
+| `artifact_idempotency_ambiguous` | Frozen-scope retry fallback finds more than one compatible existing artifact/candidate. |
+| `artifact_publish_requires_action` | An ordinary declaration submit requests `published`. |
+| `artifact_publish_transition_failed` | Import-and-publish or standalone publish materialized an artifact but the publish transition failed. |
+| `artifact_claim_without_declaration` | Final-response `artifactClaims[]` references no accepted same-turn declaration. |
+
+Configuration diagnostics such as `tool_auto_publish_policy_invalid_entry` are
+server health / log diagnostics, not declaration response error codes.
+
 ### Idempotency Key
 
 Cats Code shall construct one canonical declaration idempotency key before

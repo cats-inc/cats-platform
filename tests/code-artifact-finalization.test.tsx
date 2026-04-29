@@ -5,7 +5,7 @@ import {
   CODE_ARTIFACT_CLAIM_WITHOUT_DECLARATION,
   CodeArtifactFinalizationGate,
   acceptedDeclarationRefFromToolResult,
-} from '../build/server/products/code/state/sessionFinalization.js';
+} from '../src/products/code/state/sessionFinalization.ts';
 
 test('artifact finalization gate accepts claims with same-turn accepted declarations', () => {
   const gate = new CodeArtifactFinalizationGate();
@@ -64,14 +64,16 @@ test('artifact finalization gate rejects claims without same-turn declarations',
   ]);
 });
 
-test('acceptedDeclarationRefFromToolResult ignores rejected tool results', () => {
+test('acceptedDeclarationRefFromToolResult ignores non-accepted tool results', () => {
   assert.deepEqual(
     acceptedDeclarationRefFromToolResult({
       assistantTurnId: 'turn-1',
       result: {
         status: 'accepted',
         declarationId: 'preview-localhost:preview_url',
+        disposition: 'record',
         artifactId: 'artifact-1',
+        artifactStatus: 'ready',
       },
     }),
     {

@@ -166,23 +166,56 @@ Supplying a non-null server-resolved field rejects the call with
 
 ### Output Summary
 
-The scaffolded tool result shape is:
+The scaffold exposes two related result shapes:
+
+- `CodeArtifactToolShapeResult` is used by the current no-flow helper after
+  local shape validation only. It never claims server acceptance.
+- `CodeArtifactToolResult` is reserved for the wired declaration path after
+  server validation / materialization has accepted or rejected the declaration.
 
 ```ts
-interface CodeArtifactToolResult {
-  status: 'accepted' | 'rejected';
-  declarationId: string;
-  artifactId?: string;
-  artifactStatus?: 'draft' | 'ready' | 'published';
-  errorCode?: string;
-  message?: string;
-}
+type CodeArtifactToolShapeResult =
+  | {
+      status: 'shape_ok';
+      declarationId: string;
+      input: CodeArtifactToolInput;
+    }
+  | {
+      status: 'rejected';
+      error: {
+        code: CodeArtifactDeclarationErrorCode;
+        message: string;
+        details?: unknown;
+      };
+    };
+
+type CodeArtifactToolResult =
+  | {
+      status: 'accepted';
+      declarationId: string;
+      disposition: 'record' | 'candidate';
+      artifactId?: string | null;
+      artifactStatus?: 'draft' | 'ready' | 'published' | null;
+    }
+  | {
+      status: 'rejected';
+      error: {
+        code: CodeArtifactDeclarationErrorCode;
+        message: string;
+        details?: unknown;
+      };
+    };
 ```
 
-An `accepted` result means the declaration was accepted by the tool contract for
-that call. In the current scaffold it does not imply a persisted
-`CoreArtifactRecord`, because the materialization flow is intentionally not
-wired yet.
+`shape_ok` means only that the agent-visible payload is locally normalized and
+passed context-free checks such as required fields, location format, and
+metadata bounds. It does **not** mean anchors, workspace containment,
+idempotency, producer identity, policy, or Core persistence succeeded.
+
+`accepted` shall be returned only after the server-side declaration path has
+accepted the declaration. `disposition` reports whether the declaration became a
+`record` or `candidate`; `artifactStatus` reports the Core artifact status only
+when a `CoreArtifactRecord` exists.
 
 ### Persistence and Activity
 
@@ -209,15 +242,12 @@ the finalization envelope must include an `artifactClaims[]` entry whose
 `declarationId` matches an accepted same-turn `declare_artifact` result.
 Unmatched claims are blocked with `artifact_claim_without_declaration`.
 
-### Notable Errors
+### Error Codes
 
-- `artifact_declaration_id_required`
-- `artifact_required_field_empty`
-- `artifact_invalid_label`
-- `artifact_invalid_location`
-- `artifact_invalid_metadata`
-- `artifact_producer_field_not_allowed`
-- `artifact_claim_without_declaration`
+The source of truth is [SPEC-092 § Error Code Registry](./specs/SPEC-092-code-artifact-declaration-contract.md#error-code-registry).
+The scaffolded TypeScript helper currently throws only the context-free
+shape/location/metadata subset from that registry, while finalization may return
+`artifact_claim_without_declaration`.
 
 ---
 
