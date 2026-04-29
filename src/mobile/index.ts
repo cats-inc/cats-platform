@@ -17,11 +17,10 @@
  *
  * Allowed exports:
  *
- *   - DTO / API response types (`contracts.ts` will house these as the
- *     API client matures)
- *   - Pure functions (`messageBody.ts` segmenter)
+ *   - DTO / API response types (`contracts.ts`)
+ *   - Pure functions (`messageBody.ts` segmenter, `chat.ts` selectors)
  *   - Mobile read-model selectors (pure projections over the live read
- *     model, surfaced once the API client lands in Phase 4b)
+ *     model)
  *
  * Per the 2026-04-29 integrator review: this is the boundary slice that
  * unblocks PLAN-084 Phases 4b / 4c and the Phase 5 product modal port.
@@ -31,3 +30,5 @@
  */
 
 export * from './messageBody.js';
+export * from './contracts.js';
+export * from './chat.js';
