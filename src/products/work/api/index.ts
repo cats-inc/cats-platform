@@ -57,6 +57,7 @@ import {
 } from './projection.js';
 import { routeWorkLinksApi } from './linksRoutes.js';
 import { routeWorkProductCrudApi } from './productCrudRoutes.js';
+import { routeWorkRunCancellationApi } from './runCancellationRoutes.js';
 import { routeWorkScheduleApi } from './scheduleRoutes.js';
 import {
   matchRoute,
@@ -371,6 +372,11 @@ export async function routeWorkApi(
   }
 
   if (await routeWorkScheduleApi(context)) {
+    return true;
+  }
+
+  // SPEC-096 canonical Run stop and Mission cancel commands.
+  if (await routeWorkRunCancellationApi(context)) {
     return true;
   }
 
