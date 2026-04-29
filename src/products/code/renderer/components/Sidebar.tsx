@@ -4,6 +4,7 @@ import {
   ConversationSidebar,
   type ConversationSidebarAction,
   type ConversationSidebarActionGroup,
+  type ConversationSidebarProps,
   type ConversationSidebarRecentEntry,
 } from '../../../../app/renderer/productShell/ConversationSidebar.js';
 import type { ConversationSidebarPinnedItem } from '../../../../app/renderer/productShell/ConversationSidebarPinned.js';
@@ -15,7 +16,7 @@ import {
 } from '../state/workspacesMockStore';
 import { buildConversationSidebarRecentEntries } from '../../../../app/renderer/productShell/conversationSidebarRecentEntries.js';
 import type { AppShellPayload } from '../../api/contracts.js';
-import type { ChatChannelSummary } from '../../../shared/api/workspaceContracts.js';
+import type { ChatCat, ChatChannelSummary } from '../../../shared/api/workspaceContracts.js';
 import {
   catInitials,
   isChatCat,
@@ -28,6 +29,7 @@ import {
   resolveMyCatStatusDot,
   statusDotClassName,
   statusDotLabel,
+  type MyCatStatusDot,
 } from '../myCatNavigation';
 import { isDirectLaneSummary } from '../../shared/channelTopology.js';
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
@@ -353,10 +355,17 @@ export interface CodeSidebarConversationPropsOptions {
   workspacesSnapshot?: WorkspacesMockSnapshot;
 }
 
+export type CodeSidebarConversationProps = ConversationSidebarProps<
+  ChatCat,
+  ChatChannelSummary,
+  AppShellPayload,
+  MyCatStatusDot
+>;
+
 export function createCodeSidebarConversationProps(
   props: SidebarProps,
   options: CodeSidebarConversationPropsOptions = {},
-) {
+): CodeSidebarConversationProps {
   const workspacesSnapshot = options.workspacesSnapshot ?? createEmptyWorkspacesMockSnapshot();
   return {
     payload: props.payload,

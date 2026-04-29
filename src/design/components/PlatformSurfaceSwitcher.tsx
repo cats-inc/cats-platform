@@ -17,15 +17,22 @@ interface PlatformSurfaceSwitcherProps {
   onSelectSurface: (surface: PlatformSurfaceId) => void;
 }
 
+/**
+ * Closes the platform surface menu, then runs the follow-up action.
+ *
+ * The close MUST commit through `flush` (defaults to React's `flushSync`)
+ * before `action` runs. Product switching navigates / unmounts immediately,
+ * and without a synchronous flush the portaled menu lingers above the loading
+ * surface during the route transition. The injectable `flush` parameter is
+ * exposed so tests can verify the close-inside-flush ordering without a full
+ * React renderer; production callers always inherit the `flushSync` default.
+ */
 export function runAfterClosingPlatformSurfaceMenu(
-  setOpen: (open: false) => void,
+  close: () => void,
   action: () => void,
+  flush: (callback: () => void) => void = flushSync,
 ): void {
-  // Product switching can navigate/unmount immediately. Flush the close first
-  // so the portaled menu cannot linger above the loading surface during transit.
-  flushSync(() => {
-    setOpen(false);
-  });
+  flush(close);
   action();
 }
 
@@ -127,11 +134,14 @@ export function PlatformSurfaceSwitcher({
               aria-checked={current}
               className={current ? 'platformSurfaceMenuItem isCurrent' : 'platformSurfaceMenuItem'}
               onClick={() => {
-                runAfterClosingPlatformSurfaceMenu(setOpen, () => {
-                  if (!current) {
-                    onSelectSurface(descriptor.id);
-                  }
-                });
+                runAfterClosingPlatformSurfaceMenu(
+                  () => setOpen(false),
+                  () => {
+                    if (!current) {
+                      onSelectSurface(descriptor.id);
+                    }
+                  },
+                );
               }}
             >
               <span className={swatchClassName} aria-hidden="true" />
@@ -166,9 +176,12 @@ export function PlatformSurfaceSwitcher({
         type="button"
         className="platformSurfaceMenuAction"
         onClick={() => {
-          runAfterClosingPlatformSurfaceMenu(setOpen, () => {
-            navigate('/lobby');
-          });
+          runAfterClosingPlatformSurfaceMenu(
+            () => setOpen(false),
+            () => {
+              navigate('/lobby');
+            },
+          );
         }}
       >
         Open Lobby

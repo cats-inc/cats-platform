@@ -161,12 +161,16 @@ export interface WorkspacesMockSnapshot {
   deletedIds: ReadonlySet<string>;
 }
 
+// Stable singleton so callers (fallback default, tests) share one reference and
+// downstream `useMemo` / ref-equality consumers do not invalidate per render.
+const EMPTY_WORKSPACES_MOCK_SNAPSHOT: WorkspacesMockSnapshot = Object.freeze({
+  workspaces: Object.freeze([]) as readonly CodeWorkspaceMock[],
+  pinnedIds: new Set<string>() as ReadonlySet<string>,
+  deletedIds: new Set<string>() as ReadonlySet<string>,
+}) as WorkspacesMockSnapshot;
+
 export function createEmptyWorkspacesMockSnapshot(): WorkspacesMockSnapshot {
-  return {
-    workspaces: [],
-    pinnedIds: new Set<string>(),
-    deletedIds: new Set<string>(),
-  };
+  return EMPTY_WORKSPACES_MOCK_SNAPSHOT;
 }
 
 let cachedSnapshot: WorkspacesMockSnapshot | null = null;

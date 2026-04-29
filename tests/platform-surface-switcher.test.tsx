@@ -66,17 +66,38 @@ test('platform surface menu positioning keeps the popup inside the viewport', ()
   );
 });
 
-test('platform surface menu closes before product actions run', () => {
+test('runAfterClosingPlatformSurfaceMenu runs close inside the flush wrapper, then the action', () => {
   const events: string[] = [];
+  const flush = (callback: () => void) => {
+    events.push('flush:start');
+    callback();
+    events.push('flush:end');
+  };
 
   runAfterClosingPlatformSurfaceMenu(
     () => {
       events.push('close');
     },
     () => {
-      events.push('select');
+      events.push('action');
     },
+    flush,
   );
 
-  assert.deepEqual(events, ['close', 'select']);
+  // The close callback must run inside the flush wrapper, and the action
+  // must wait until the flush has completed. A pure-sequential implementation
+  // (close(); action();) without any flush would produce ['close', 'action']
+  // and fail this assertion.
+  assert.deepEqual(events, ['flush:start', 'close', 'flush:end', 'action']);
+});
+
+test('runAfterClosingPlatformSurfaceMenu lets a synchronous default flush run close before action', () => {
+  // Sanity check: when caller provides no flush, the helper still runs close
+  // before action. Production wires React 18's flushSync as the default.
+  const events: string[] = [];
+  runAfterClosingPlatformSurfaceMenu(
+    () => events.push('close'),
+    () => events.push('action'),
+  );
+  assert.deepEqual(events, ['close', 'action']);
 });
