@@ -7,11 +7,11 @@ import {
   buildIndexes,
   formatRelative,
 } from "../topdown/shared";
-import { usePinnedProjects } from "../../state/pinnedProjectsStore";
-import { useRuns, type RunItem } from "../../state/runsStore";
-import { useTasks, type TaskItem } from "../../state/tasksStore";
+import { useProjectsQuery } from "../../state/queries/projectsQuery.js";
+import { useRunsQuery, type WorkRunListItem } from "../../state/queries/runsQuery.js";
+import { useTasksQuery, type WorkTaskListItem } from "../../state/queries/tasksQuery.js";
+import { useWorkItemsQuery } from "../../state/queries/workItemsQuery.js";
 import { useWorkGraph } from "../../state/workGraphStore";
-import { useWorkItems } from "../../state/workItemsStore";
 import {
   WORK_PROJECTS_PATH,
   WORK_TASKS_PATH,
@@ -24,31 +24,33 @@ export function TaskDetailPage(): JSX.Element {
   const { taskId } = useParams<{ taskId: string }>();
   const { graph } = useWorkGraph();
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
-  const { allTasks, deletedIds } = useTasks();
-  const { allProjects } = usePinnedProjects();
-  const { allWorkItems } = useWorkItems();
-  const { allRuns } = useRuns();
+  const tasksQuery = useTasksQuery();
+  const projectsQuery = useProjectsQuery();
+  const workItemsQuery = useWorkItemsQuery();
+  const runsQuery = useRunsQuery();
 
+  const allTasks = tasksQuery.data?.tasks ?? [];
   const task = taskId ? allTasks.find((t) => t.id === taskId) : undefined;
 
-  if (!task || (taskId !== undefined && deletedIds.has(taskId))) {
+  if (tasksQuery.isPending) {
+    return <TaskDetailLoading />;
+  }
+  if (!task) {
     return <TaskNotFound taskId={taskId ?? null} />;
   }
 
-  const linkedProject = task.linkedProjectId
-    ? allProjects.find((p) => p.id === task.linkedProjectId)
+  const linkedProject = task.projectId
+    ? projectsQuery.data?.projects.find((p) => p.id === task.projectId)
     : undefined;
-  const linkedWorkItem = task.linkedWorkItemId
-    ? allWorkItems.find((wi) => wi.id === task.linkedWorkItemId)
+  const linkedWorkItem = task.workItemId
+    ? workItemsQuery.data?.workItems.find((wi) => wi.id === task.workItemId)
     : undefined;
   const parentTask = task.parentTaskId
     ? allTasks.find((t) => t.id === task.parentTaskId)
     : undefined;
-  const subTasks = allTasks.filter(
-    (t) => t.parentTaskId === task.id && !deletedIds.has(t.id),
-  );
-  const taskRuns = allRuns
-    .filter((r) => r.linkedTaskId === task.id)
+  const subTasks = allTasks.filter((t) => t.parentTaskId === task.id);
+  const taskRuns = (runsQuery.data?.runs ?? [])
+    .filter((r) => r.taskId === task.id)
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
   const activities = graph.objects
@@ -56,8 +58,8 @@ export function TaskDetailPage(): JSX.Element {
       (o) => o.kind === "activity" && o.linkedTaskId === task.id,
     )
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  // Conversation title resolves through projection's
-  // `linkedConversationTitle` now — no per-page indexes lookup.
+
+  const assignedNames = task.assignedActors.map((actor) => actor.displayName);
 
   return (
     <div className="taskDetail">
@@ -149,6 +151,8 @@ export function TaskDetailPage(): JSX.Element {
                 >
                   {linkedProject.title}
                 </Link>
+              ) : task.projectTitle ? (
+                <span>{task.projectTitle}</span>
               ) : (
                 <em>(orphan — no project linked)</em>
               )}
@@ -162,6 +166,8 @@ export function TaskDetailPage(): JSX.Element {
                 >
                   {linkedWorkItem.title}
                 </Link>
+              ) : task.workItemTitle ? (
+                <span>{task.workItemTitle}</span>
               ) : (
                 <em>(no work item linked)</em>
               )}
@@ -179,33 +185,30 @@ export function TaskDetailPage(): JSX.Element {
                 </dd>
               </>
             ) : null}
-            <dt>Owner role</dt>
-            <dd>{task.ownerRole ?? <em>(not assigned)</em>}</dd>
+            <dt>Owner</dt>
+            <dd>{task.ownerName}</dd>
             <dt>Assignee</dt>
             <dd>{task.assigneeName ?? <em>(unassigned)</em>}</dd>
             <dt>Assigned actors</dt>
             <dd>
-              {task.assignedActorTitles && task.assignedActorTitles.length > 0 ? (
-                task.assignedActorTitles.join(", ")
+              {assignedNames.length > 0 ? (
+                assignedNames.join(", ")
               ) : (
                 <em>(no Core actors assigned)</em>
               )}
             </dd>
-            <dt>Next action</dt>
-            <dd>{task.nextAction ?? <em>(none recorded)</em>}</dd>
             {task.acceptanceCriteria ? (
               <>
                 <dt>Acceptance criteria</dt>
                 <dd>{task.acceptanceCriteria}</dd>
               </>
             ) : null}
-            {task.linkedConversationId ? (
+            {task.conversationId ? (
               <>
                 <dt>Conversation</dt>
                 <dd>
                   <span className="taskDetail__convoTitle">
-                    {task.linkedConversationTitle ??
-                      task.linkedConversationId}
+                    {task.conversationTitle ?? task.conversationId}
                   </span>
                 </dd>
               </>
@@ -218,7 +221,7 @@ export function TaskDetailPage(): JSX.Element {
         <RunsSection taskId={task.id} runs={taskRuns} />
 
         <LinkageSection
-          selfRef={{ recordFamily: "task", recordId: task.sourceRecordId }}
+          selfRef={{ recordFamily: "task", recordId: task.id }}
           graph={graph}
           indexes={indexes}
         />
@@ -259,7 +262,7 @@ export function TaskDetailPage(): JSX.Element {
   );
 }
 
-function SubTasksSection({ subTasks }: { subTasks: TaskItem[] }): JSX.Element {
+function SubTasksSection({ subTasks }: { subTasks: WorkTaskListItem[] }): JSX.Element {
   return (
     <section className="taskDetail__section">
       <header className="taskDetail__sectionHeader">
@@ -299,7 +302,7 @@ function SubTasksSection({ subTasks }: { subTasks: TaskItem[] }): JSX.Element {
 
 interface RunsSectionProps {
   taskId: string;
-  runs: readonly RunItem[];
+  runs: readonly WorkRunListItem[];
 }
 
 function RunsSection({ taskId, runs }: RunsSectionProps): JSX.Element {
@@ -341,6 +344,23 @@ function RunsSection({ taskId, runs }: RunsSectionProps): JSX.Element {
         </ul>
       )}
     </section>
+  );
+}
+
+function TaskDetailLoading(): JSX.Element {
+  return (
+    <div className="taskDetail">
+      <header className="channelTopBar taskDetailTopBar">
+        <div className="channelTopBarStart taskDetailTopBar__start">
+          <Link to=".." relative="path" className="taskDetailTopBar__back">
+            <span>← Tasks</span>
+          </Link>
+        </div>
+      </header>
+      <main className="taskDetail__main">
+        <p className="taskDetail__empty">Loading task…</p>
+      </main>
+    </div>
   );
 }
 
