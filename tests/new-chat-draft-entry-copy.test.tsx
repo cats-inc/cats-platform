@@ -122,6 +122,19 @@ test('generic new chat draft keeps only the product-owned starter chip out of th
   assert.doesNotMatch(markup, /Plan today's priorities/u);
 });
 
+test('code draft surface labels the folder picker as codespace', () => {
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        draftSurface: 'code',
+      })}
+    />,
+  );
+
+  assert.match(markup, /Choose codespace/u);
+  assert.doesNotMatch(markup, /Choose workspace/u);
+});
+
 test('generic new chat draft with multiple selected cats keeps a lightweight greeting without runtime helper chips', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft

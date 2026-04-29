@@ -167,11 +167,11 @@ function createExtraActionGroups(
   if (props.onOpenWorkspaces) {
     groups.push({
       key: 'workspaces',
-      ariaLabel: 'Workspaces',
+      ariaLabel: 'Codespaces',
       items: [
         {
           key: 'workspaces',
-          label: 'Workspaces',
+          label: 'Codespaces',
           onClick: props.onOpenWorkspaces,
           active: isCodeWorkspacesPath(currentPath),
           icon: (

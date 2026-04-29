@@ -199,7 +199,7 @@ can be reused by `Cats Chat`, `Cats Work`, and `Cats Code`.
   `+New X`, the product's two presets, `MY YYY`, and `RECENTS`. All three
   product sidebars route into one shared mobile `ChatView` keyed on
   `productMode`. User and assistant bubble visual fidelity with the web
-  renderer is required at canonical viewports. Code's `Workspaces` /
+  renderer is required at canonical viewports. Code's `Codespaces` /
   `Artifacts` and Work's Projects / Work Items / Tasks / Runs / Missions
   management surfaces are out of mobile scope.
 - **Priority**: Medium
@@ -390,9 +390,9 @@ can be reused by `Cats Chat`, `Cats Work`, and `Cats Code`.
 - **Priority**: Medium
 - **Status**: Planned
 
-### FR-048: Code Workspace and Artifact Navigation
+### FR-048: Codespace and Artifact Navigation
 
-- **Description**: `Cats Code` shall expose Code-owned `Workspaces` and
+- **Description**: `Cats Code` shall expose Code-owned `Codespaces` and
   `Artifacts` sidebar entries for execution-context navigation and durable
   output inspection, while `Cats Work` remains the canonical sidebar home for
   Projects, Work Items, Tasks, Runs, and Missions.

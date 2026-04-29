@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react';
+import React, { type ReactElement } from 'react';
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 
 import type { AppShellPayload as WorkspaceAppShellPayload } from '../../../products/shared/api/workspaceContracts.js';

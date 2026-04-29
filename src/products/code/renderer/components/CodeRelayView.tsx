@@ -365,7 +365,7 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
       {loading ? (
         <section className="operatorPanel">
           <div className="operatorPanelHeader">
-            <h2>Loading relay workspace...</h2>
+            <h2>Loading relay codespace...</h2>
           </div>
         </section>
       ) : null}

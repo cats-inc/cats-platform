@@ -5,7 +5,7 @@ import { useSyncExternalStore } from "react";
  *
  * Replace with `buildCodeArtifactListProjection` once the route is wired
  * end-to-end. The shape here is a renderer-only subset of
- * `CodeArtifactListItem` plus a workspace cross-link so the mock list
+ * `CodeArtifactListItem` plus a codespace cross-link so the mock list
  * page can show provenance.
  */
 
@@ -76,7 +76,7 @@ const SEED_ARTIFACTS: readonly CodeArtifactMock[] = [
     id: "art-report-paperclip-comparison",
     title: "Paperclip vs Cats Work feature gap",
     summary:
-      "Long-form comparison report drafted from the paperclip workspace conversation",
+      "Long-form comparison report drafted from the paperclip codespace conversation",
     kind: "report",
     status: "draft",
     path: "paperclip/reports/2026-04-feature-gap.md",
@@ -90,7 +90,7 @@ const SEED_ARTIFACTS: readonly CodeArtifactMock[] = [
   {
     id: "art-document-spec-091-draft",
     title: "SPEC-091 working draft",
-    summary: "Workspace + Artifact sidebar spec, not yet committed",
+    summary: "Codespace + Artifact sidebar spec, not yet committed",
     kind: "document",
     status: "draft",
     path: "cats-platform/docs/specs/SPEC-091-cats-code-workspace-and-artifact-sidebar.md",

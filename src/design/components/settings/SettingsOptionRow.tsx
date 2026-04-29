@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import React, { type ReactNode } from 'react';
 
 export interface SettingsOptionRowProps {
   label: ReactNode;

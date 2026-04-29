@@ -1,4 +1,4 @@
-import type { ReactElement, ReactNode } from 'react';
+import React, { type ReactElement, type ReactNode } from 'react';
 
 interface SettingsSubSectionCommonProps {
   children: ReactNode;

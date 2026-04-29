@@ -80,7 +80,7 @@ export function NewWorkspaceDialog({
       >
         <header className="newProjectDialog__header">
           <h2 id="newWorkspaceDialog__heading" className="newProjectDialog__heading">
-            New workspace
+            New codespace
           </h2>
           <button
             type="button"
@@ -136,7 +136,7 @@ export function NewWorkspaceDialog({
               rows={2}
               value={summary}
               onChange={(event) => setSummary(event.target.value)}
-              placeholder="Optional one-line note about this workspace."
+              placeholder="Optional one-line note about this codespace."
             />
           </div>
           <div className="newProjectDialog__row">
@@ -192,7 +192,7 @@ export function NewWorkspaceDialog({
               className="newProjectDialog__submitBtn"
               disabled={!title.trim() || !path.trim()}
             >
-              Create workspace
+              Create codespace
             </button>
           </div>
         </form>

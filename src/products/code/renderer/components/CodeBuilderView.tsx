@@ -75,7 +75,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
   const workspaceFallbackLabel = fallbackConversationRepoPath
     ? 'Leave this blank to use the selected chat repo.'
     : fallbackRoomWorkspacePath
-      ? 'Leave this blank to use the selected room workspace.'
+      ? 'Leave this blank to use the selected room codespace.'
       : null;
 
   const resolveWorkspaceBinding = useCallback(async (): Promise<CodeWorkspaceSummary | null> => {
@@ -87,7 +87,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
       });
 
       if (!result.workspace) {
-        setFeedback(result.error || 'Failed to resolve the workspace.');
+        setFeedback(result.error || 'Failed to resolve the codespace.');
         return null;
       }
 
@@ -95,7 +95,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
       setWorkspacePath(result.workspace.workspacePath);
       return result.workspace;
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to resolve the workspace.');
+      setFeedback(error instanceof Error ? error.message : 'Failed to resolve the codespace.');
       return null;
     }
   }, [fallbackConversationRepoPath, fallbackRoomWorkspacePath, workspacePath]);
@@ -282,7 +282,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
         const resolvedWorkspace = await resolveWorkspaceBinding();
         if (!resolvedWorkspace) {
           nextFeedback =
-            `Task ${resumedTaskId} is ready, but you still need to resolve a workspace `
+            `Task ${resumedTaskId} is ready, but you still need to resolve a codespace `
             + 'before continuing.';
         }
       }
@@ -405,7 +405,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
           <div className="operatorPanelHeader">
             <div>
               <p className="operatorEyebrow">Step 1</p>
-              <h2>Workspace</h2>
+              <h2>Codespace</h2>
             </div>
           </div>
           <div className="codeBuilderForm">
@@ -470,7 +470,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
                     {labelCodeWorkspaceKind(workspaceSummary.workspaceKind)}
                   </span>
                 </div>
-                <p>This will be the active builder workspace for the next task step.</p>
+                <p>This will be the active builder codespace for the next task step.</p>
               </article>
             ) : null}
           </div>

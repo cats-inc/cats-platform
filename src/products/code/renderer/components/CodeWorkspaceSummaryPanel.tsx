@@ -14,7 +14,7 @@ function describeWorkspaceBinding(summary: CodeWorkspaceSummary): string {
     case 'conversation_repo':
       return 'Builder loop is bound to the selected chat repo.';
     case 'managed_room':
-      return 'Builder loop is bound to the selected room-managed workspace.';
+      return 'Builder loop is bound to the selected room-managed codespace.';
     default:
       return 'Builder loop is bound to the owner-selected local folder.';
   }
@@ -28,7 +28,7 @@ export function CodeWorkspaceSummaryPanel({
     <section className="operatorPanel">
       <div className="operatorPanelHeader">
         <div>
-          <p className="operatorEyebrow">Workspace</p>
+          <p className="operatorEyebrow">Codespace</p>
           <h2>Binding</h2>
         </div>
         <span className="operatorStatusBadge isMuted">

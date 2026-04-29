@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import React, { type ReactNode } from 'react';
 
 import {
   SETTINGS_STATUS_CHIP_TONE_CLASS,

@@ -87,7 +87,7 @@ function NewChatDraftInner(props: NewChatDraftProps) {
     : buildChatPermissionChip(props);
   const composerHeaderWhereExtras = isCodeSurface ? codeChips.whereExtras : null;
   const chooseFolderPlacement = isCodeSurface ? 'header' : 'plusMenu';
-  const folderActionLabel = isCodeSurface ? 'Choose workspace' : 'Choose folder';
+  const folderActionLabel = isCodeSurface ? 'Choose codespace' : 'Choose folder';
 
   return (
     <SharedChatNewChatDraft

@@ -45,9 +45,9 @@ export const NEW_CODE_DRAFT_COPY: WorkspaceNewChatDraftCopy = {
     emptyState: 'No execution target set yet.',
   },
   folder: {
-    sectionTitle: 'Workspace',
-    actionLabel: 'Choose workspace',
-    emptyState: 'No workspace selected yet.',
+    sectionTitle: 'Codespace',
+    actionLabel: 'Choose codespace',
+    emptyState: 'No codespace selected yet.',
   },
 };
 

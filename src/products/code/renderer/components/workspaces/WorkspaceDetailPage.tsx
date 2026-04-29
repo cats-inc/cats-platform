@@ -59,7 +59,7 @@ export function WorkspaceDetailPage(): JSX.Element {
         <header className="channelTopBar codeWsDetailTopBar">
           <div className="channelTopBarStart codeWsDetailTopBar__start">
             <Link to={CODE_WORKSPACES_PATH} className="codeWsDetailTopBar__back">
-              ← Workspaces
+              ← Codespaces
             </Link>
           </div>
           <div className="channelTopBarCenter codeWsDetailTopBar__center" />
@@ -67,9 +67,9 @@ export function WorkspaceDetailPage(): JSX.Element {
         </header>
         <main className="codeWorkspaceDetail__main">
           <p className="codeWorkspaceDetail__missing">
-            Workspace not found. It may have been removed or the URL changed.
+            Codespace not found. It may have been removed or the URL changed.
             <br />
-            <Link to={CODE_WORKSPACES_PATH}>Back to all workspaces →</Link>
+            <Link to={CODE_WORKSPACES_PATH}>Back to all codespaces →</Link>
           </p>
         </main>
       </div>
@@ -81,7 +81,7 @@ export function WorkspaceDetailPage(): JSX.Element {
       <header className="channelTopBar codeWsDetailTopBar">
         <div className="channelTopBarStart codeWsDetailTopBar__start">
           <Link to={CODE_WORKSPACES_PATH} className="codeWsDetailTopBar__back">
-            ← Workspaces
+            ← Codespaces
           </Link>
           <span className="codeWsDetailTopBar__separator">/</span>
         </div>
@@ -159,7 +159,7 @@ export function WorkspaceDetailPage(): JSX.Element {
 
         <section className="codeWorkspaceDetail__section">
           <header className="codeWorkspaceDetail__sectionHeader">
-            <h2>Artifacts in this workspace</h2>
+            <h2>Artifacts in this codespace</h2>
             <span className="codeWorkspaceDetail__sectionCount">
               {linkedArtifacts.length}
             </span>
@@ -167,7 +167,7 @@ export function WorkspaceDetailPage(): JSX.Element {
           {linkedArtifacts.length === 0 ? (
             <p className="codeWorkspaceDetail__empty">
               No artifacts linked yet. Builds, previews, or documents produced
-              from this workspace will appear here.
+              from this codespace will appear here.
             </p>
           ) : (
             <ul className="codeWorkspaceDetail__items">

@@ -536,6 +536,42 @@ test('Code sidebar exposes New Code, Team Code, and Peer Code actions', () => {
   assert.deepEqual(clicks, ['new', 'group', 'parallel']);
 });
 
+test('Code sidebar labels execution-context navigation as Codespaces', () => {
+  const props = createCodeSidebarConversationProps({
+    payload: createPayload() as unknown as CodeAppShellPayload,
+    sidebarOpen: true,
+    accountMenuOpen: false,
+    overflowMenuOpenId: null,
+    busy: clearBusyState(),
+    surface: 'chats',
+    shellSurface: 'code',
+    routeChannelId: null,
+    accountMenuRef: { current: null } as RefObject<HTMLDivElement>,
+    onToggleSidebar: () => {},
+    onCollapsedSidebarClick: () => {},
+    onOpenChatsOverview: () => {},
+    onStartNewChat: () => {},
+    onSelect: () => {},
+    onDeleteChannel: () => {},
+    onRenameChannel: () => {},
+    onArchiveCat: () => {},
+    onAccountMenuToggle: () => {},
+    onOverflowMenuToggle: () => {},
+    onNavigateSettings: () => {},
+    onNavigateRuntime: () => {},
+    onSwitchProduct: () => {},
+    activeMyCatId: null,
+    onDirectChatCat: () => {},
+    onOpenWorkspaces: () => {},
+    onOpenWorkspace: () => {},
+    onOpenArtifacts: () => {},
+  });
+
+  const workspacesGroup = props.extraActionGroups?.find((group) => group.key === 'workspaces');
+  assert.equal(workspacesGroup?.ariaLabel, 'Codespaces');
+  assert.equal(workspacesGroup?.items[0]?.label, 'Codespaces');
+});
+
 test('Code sidebar shows the My Clowders empty placeholder', () => {
   const tree = createCodeSidebarElement({
     payload: createPayload() as unknown as CodeAppShellPayload,

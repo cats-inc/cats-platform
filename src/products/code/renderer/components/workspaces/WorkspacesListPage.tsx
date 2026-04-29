@@ -51,7 +51,7 @@ export function WorkspacesListPage(): JSX.Element {
       <header className="channelTopBar codeWsListTopBar">
         <div className="channelTopBarStart codeWsListTopBar__start">
           <h1 className="channelTopBarTitle codeWsListTopBar__title">
-            Workspaces
+            Codespaces
           </h1>
           <span className="codeWsListTopBar__count">{sorted.length}</span>
         </div>
@@ -61,7 +61,7 @@ export function WorkspacesListPage(): JSX.Element {
             type="button"
             className="codeWsListTopBar__addBtn"
             onClick={() => setDialogOpen(true)}
-            aria-label="Add workspace"
+            aria-label="Add codespace"
           >
             <svg
               width="14"
@@ -77,14 +77,14 @@ export function WorkspacesListPage(): JSX.Element {
               <path d="M7 2v10" />
               <path d="M2 7h10" />
             </svg>
-            <span>Add workspace</span>
+            <span>Add codespace</span>
           </button>
         </div>
       </header>
       <main className="codeWorkspacesList__main">
         {sorted.length === 0 ? (
           <p className="codeWorkspacesList__empty">
-            No workspaces yet. Start a code session that names a repo, folder,
+            No codespaces yet. Start a code session that names a repo, folder,
             worktree, or managed room and it will land here.
           </p>
         ) : (
@@ -95,7 +95,7 @@ export function WorkspacesListPage(): JSX.Element {
                   <Link
                     to={buildCodeWorkspacePath(ws.id)}
                     className="codeWorkspacesList__rowLink"
-                    aria-label={`Open workspace ${ws.title}`}
+                    aria-label={`Open codespace ${ws.title}`}
                   >
                     <div className="codeWorkspacesList__rowMain">
                       <span

@@ -76,7 +76,7 @@ test('platform surface descriptors expose product switcher metadata and stable r
       {
         id: 'code',
         routePrefix: '/code',
-        subtitle: 'Repos, runs, and coding workspace',
+        subtitle: 'Repos, runs, and codespaces',
       },
       {
         id: 'work',
@@ -96,7 +96,7 @@ test('platform surface descriptors expose product switcher metadata and stable r
   assert.equal(resolvePlatformSurfaceRoutePrefix('code'), '/code');
   assert.equal(
     platformSurfaceSubtitle('code'),
-    'Repos, runs, and coding workspace',
+    'Repos, runs, and codespaces',
   );
 });
 

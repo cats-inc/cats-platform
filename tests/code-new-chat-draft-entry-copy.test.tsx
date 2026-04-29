@@ -160,7 +160,7 @@ test('new code draft publishes code-specific copy overrides for the shared works
   assert.equal(NEW_CODE_DRAFT_COPY.execution?.sectionTitle, 'Execution');
   assert.equal(NEW_CODE_DRAFT_COPY.execution?.actionLabel, 'Choose execution target');
   assert.equal(NEW_CODE_DRAFT_COPY.execution?.emptyState, 'No execution target set yet.');
-  assert.equal(NEW_CODE_DRAFT_COPY.folder?.sectionTitle, 'Workspace');
+  assert.equal(NEW_CODE_DRAFT_COPY.folder?.sectionTitle, 'Codespace');
   assert.equal(NEW_CODE_DRAFT_COPY.participants?.emptyState, 'No participants available yet.');
   assert.equal(NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY.title, 'New Code Setup');
   assert.equal(
@@ -168,7 +168,7 @@ test('new code draft publishes code-specific copy overrides for the shared works
     'Participants',
   );
   assert.equal(NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY.execution?.sectionTitle, 'Execution');
-  assert.equal(NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY.folder?.sectionTitle, 'Workspace');
+  assert.equal(NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY.folder?.sectionTitle, 'Codespace');
 });
 
 test('new code draft resolves product-owned surfaces before shared primitive render', () => {
@@ -281,12 +281,12 @@ test('new code draft owns shared side panel sections through its product builder
     sections.find((section) => section.id === 'code:session-profile')?.title,
     'Session Profile',
   );
-  assert.equal(sections.find((section) => section.id === 'cwd')?.title, 'Workspace');
+  assert.equal(sections.find((section) => section.id === 'cwd')?.title, 'Codespace');
   assert.match(markup, /No participants available yet\./u);
   assert.match(markup, /No execution target set yet\./u);
   assert.match(markup, /Independent worktree/u);
   assert.match(markup, /Read only/u);
-  assert.match(markup, /No workspace selected yet\./u);
+  assert.match(markup, /No codespace selected yet\./u);
   assert.doesNotMatch(markup, /Chat participant fallback should not render\./u);
   assert.doesNotMatch(markup, /Chat execution fallback should not render\./u);
   assert.doesNotMatch(markup, /Chat workspace fallback should not render\./u);
@@ -308,7 +308,7 @@ test('new code default draft keeps the original shared composer structure withou
 
   assert.match(markup, /What should this code session build, fix, or investigate\?/u);
   assert.match(markup, /composerBottomRow[\s\S]*class="audienceChip"/u);
-  assert.match(markup, /Choose workspace/u);
+  assert.match(markup, /Choose codespace/u);
   assert.doesNotMatch(markup, /class="draftHeaderAccessory"/u);
   assert.doesNotMatch(markup, /How can I help you today\?/u);
   assert.doesNotMatch(markup, /class="composerRecipientChip"/u);
@@ -318,7 +318,7 @@ test('new code default draft keeps the original shared composer structure withou
 test('new code default draft does not render standalone setup chips between the greeting and composer', () => {
   const markup = renderToStaticMarkup(<NewChatDraft {...createProps()} />);
 
-  assert.match(markup, /Choose workspace/u);
+  assert.match(markup, /Choose codespace/u);
   assert.doesNotMatch(markup, /Choose execution target/u);
   assert.doesNotMatch(markup, /class="draftHeaderAccessory"/u);
   assert.doesNotMatch(markup, /class="draftPromptChip"/u);
@@ -340,7 +340,7 @@ test('new code default draft prefers payload-backed assist greeting and shows up
   assert.match(markup, />Refactor code</u);
   assert.doesNotMatch(markup, />Hidden helper</u);
   assert.doesNotMatch(markup, /Legacy code greeting\./u);
-  assert.match(markup, /Choose workspace/u);
+  assert.match(markup, /Choose codespace/u);
   assert.doesNotMatch(markup, /Choose execution target/u);
   assert.doesNotMatch(markup, /class="draftHeaderAccessory"/u);
 });
@@ -443,7 +443,7 @@ test('new code direct-lane drafts keep the participant stack in the composer row
 
   assert.match(markup, /draftHeaderProfile/u);
   assert.match(markup, /<h1 class="draftHeaderTitle">Milo<\/h1>/u);
-  assert.match(markup, /Choose workspace/u);
+  assert.match(markup, /Choose codespace/u);
   assert.match(markup, /class="composerCatStack"/u);
 });
 
@@ -471,7 +471,7 @@ test('new code direct-lane drafts keep the same profile header when the particip
 
   assert.match(markup, /draftHeaderProfile/u);
   assert.match(markup, /<h1 class="draftHeaderTitle">Milo<\/h1>/u);
-  assert.match(markup, /Choose workspace/u);
+  assert.match(markup, /Choose codespace/u);
   assert.doesNotMatch(markup, /Focused Code Session/u);
 });
 

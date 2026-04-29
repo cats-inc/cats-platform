@@ -115,7 +115,7 @@ export function ArtifactDetailMockPage(): JSX.Element {
           </dl>
           <div className="codeArtifactDetail__provenanceGrid">
             <div className="codeArtifactDetail__provenanceCell">
-              <span className="codeArtifactDetail__provenanceLabel">Workspace</span>
+              <span className="codeArtifactDetail__provenanceLabel">Codespace</span>
               <span className="codeArtifactDetail__provenanceValue">
                 {artifact.workspaceId && artifact.workspaceTitle ? (
                   <Link to={buildCodeWorkspacePath(artifact.workspaceId)}>

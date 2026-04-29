@@ -1,6 +1,6 @@
-# SPEC-091: Cats Code Workspace and Artifact Sidebar
+# SPEC-091: Cats Code Codespaces and Artifacts Sidebar
 
-> Add first-class `Workspaces` and `Artifacts` entries to the `Cats Code`
+> Add first-class `Codespaces` and `Artifacts` entries to the `Cats Code`
 > sidebar without duplicating the managed-work navigation owned by `Cats Work`.
 
 ## Metadata
@@ -21,7 +21,7 @@ is happening and what reusable output it produced.
 
 This spec adds two Code-owned sidebar entries:
 
-- `Workspaces`
+- `Codespaces`
 - `Artifacts`
 
 Both are projection surfaces over existing Core and Code metadata. They do not
@@ -38,7 +38,7 @@ creation for `+New code`.
   accountability-oriented.
 - Make the sidebar split clear enough for visual mockups and implementation
   planning.
-- Preserve provenance from every workspace or artifact back to conversation,
+- Preserve provenance from every codespace or artifact back to conversation,
   task, run, and Work linkage when those anchors exist.
 
 ## Non-Goals
@@ -53,21 +53,21 @@ creation for `+New code`.
 
 ## User Stories
 
-- As a Code user, I want to reopen a coding workspace by repo/folder/worktree
+- As a Code user, I want to reopen a codespace by repo/folder/worktree
   so I can resume the right local context without remembering which chat
   created it.
 - As a Code user, I want to inspect outputs across recent code work so I can
   find the latest preview, build result, test report, or draft document.
 - As a Work user, I want Projects, Work Items, Tasks, Runs, and Missions to
   stay in Work so Code does not become a second management cockpit.
-- As an implementer, I want a clear distinction between Code workspace
+- As an implementer, I want a clear distinction between Codespace
   navigation and Work project hierarchy.
 
 ## Requirements
 
 ### Functional Requirements
 
-1. `Cats Code` shall expose `Workspaces` as a Code-owned sidebar entry.
+1. `Cats Code` shall expose `Codespaces` as a Code-owned sidebar entry.
 2. `Cats Code` shall expose `Artifacts` as a Code-owned sidebar entry.
 3. `Cats Code` shall keep `Recents` / code conversations as the primary
    conversation-led entry surface.
@@ -75,17 +75,17 @@ creation for `+New code`.
    as peer top-level management entries in the Code sidebar for this slice.
 5. `Cats Work` remains the canonical sidebar home for Projects, Work Items,
    Tasks, Runs, and Missions.
-6. `Workspaces` shall group Code work by execution context, not by Work
+6. `Codespaces` shall group Code work by execution context, not by Work
    Planning hierarchy.
-7. A Code workspace may be resolved from one or more existing signals:
+7. A Codespace may be resolved from one or more existing signals:
    - Code task metadata under the `codeWorkspace` key
    - the `Conversation.repoPath` field when a conversation is repo-bound
    - execution profile inputs such as `cwd` and worktree policy
    - run/runtime metadata when an execution attempt has a concrete cwd
-8. A Code workspace shall not be treated as a `Project` or `WorkItem`.
-9. A `+New code` entry may start without a known workspace; such entries shall
-   remain visible in Code Recents and may appear in a `No workspace` grouping
-   if the Workspaces view needs to account for them.
+8. A Codespace shall not be treated as a `Project` or `WorkItem`.
+9. A `+New code` entry may start without a known codespace; such entries shall
+   remain visible in Code Recents and may appear in a `No codespace` grouping
+   if the Codespaces view needs to account for them.
 10. `Artifacts` shall list durable `CoreArtifactRecord` rows relevant to Code
     work.
 11. Artifact relevance for the Code sidebar shall be derived from anchors or
@@ -93,7 +93,7 @@ creation for `+New code`.
     - attached `taskId` for a Code task
     - attached `runId` for a Code run
     - attached `conversationId` for a `code_thread`
-    - artifact metadata that points at a Code workspace or execution profile
+    - artifact metadata that points at a Codespace or execution profile
 12. Artifact creation shall not happen merely because a Code entry or sidebar
     entry is opened. Artifacts are produced by attachments, imports, execution
     outputs, or explicit document/report creation.
@@ -106,15 +106,15 @@ creation for `+New code`.
 15. Cwd scanning and transcript JSON parsing shall not be authoritative
     producer paths for the Code `Artifacts` sidebar.
 16. Artifact rows shall preserve provenance back to the strongest available
-    anchors: conversation, task, run, workspace, project, and work item.
+    anchors: conversation, task, run, codespace/workspace provenance, project, and work item.
 17. Artifact detail shall deep-link back to the relevant Code conversation,
-    task detail, run history, workspace, and Work object when those anchors
+    task detail, run history, codespace, and Work object when those anchors
     exist.
 18. A Code artifact may also appear in Work as evidence when it is anchored to
     a Work-visible object, but Work evidence placement does not make Artifacts
     a Work-owned sidebar category.
 19. If a Code-origin task is later linked into Work through `WorkItem.taskId`,
-    Code workspace and artifact provenance remains available as Code execution
+    Codespace and artifact provenance remains available as Code execution
     context; Work current binding may still project as `work`.
 
 ### Sidebar IA Requirements
@@ -125,37 +125,37 @@ The first Code sidebar target shape is:
 Cats Code
   + New code / Team code / Peer code
   Recents
-  Workspaces
+  Codespaces
   Artifacts
 ```
 
-`Workspaces` should support at least these grouping concepts:
+`Codespaces` should support at least these grouping concepts:
 
-- recent workspace activity
+- recent codespace activity
 - owner-selected folders
-- room-owned managed workspaces
+- room-owned managed codespaces
 - conversation-bound repos
-- no workspace / unresolved context
+- no codespace / unresolved context
 
 `Artifacts` should support at least these grouping or filtering concepts:
 
 - recent artifacts
 - artifact kind
 - status
-- workspace
+- codespace
 - task
 - producing run
 
-Mockups should treat `Workspaces` and `Artifacts` as navigation and inspection
+Mockups should treat `Codespaces` and `Artifacts` as navigation and inspection
 surfaces. They are not forms that force the user to create Work planning
 records before coding.
 
 ### Non-Functional Requirements
 
 - **Traceability**: Every visible artifact should show enough provenance to
-  understand which conversation, task, run, or workspace produced it.
-- **Low friction**: Unknown workspace state must not block `+New code`.
-- **Boundary clarity**: Code workspace labels must not imply Work Project
+  understand which conversation, task, run, or codespace produced it.
+- **Low friction**: Unknown codespace state must not block `+New code`.
+- **Boundary clarity**: Codespace labels must not imply Work Project
   ownership.
 - **Extensibility**: The first UI should tolerate future artifact kinds without
   requiring a new sidebar category.
@@ -172,7 +172,7 @@ Cats Work sidebar
 
 Cats Code sidebar
   Recents
-  Workspaces
+  Codespaces
   Artifacts
 
 Shared Core records
@@ -197,7 +197,7 @@ The Work sidebar answers:
 
 No new Core record family is required for this spec.
 
-`Workspaces` initially project from existing Code metadata and execution
+`Codespaces` initially project from existing Code metadata and execution
 context. Current Code metadata already distinguishes:
 
 - `user_selected`
@@ -207,7 +207,7 @@ context. Current Code metadata already distinguishes:
 `Artifacts` project from `CoreArtifactRecord` rows that Cats Code
 materializes through the structured declaration contract in SPEC-092. The
 Artifacts sidebar consumes only materialized rows; it does not consume raw
-declarations, runtime stdout, or workspace scans. Existing artifact kinds are:
+declarations, runtime stdout, or codespace scans. Existing artifact kinds are:
 
 - `document`
 - `report`
@@ -234,8 +234,8 @@ slice. Adding more artifact kinds is a separate Core-contract decision.
 
 ## Open Questions
 
-- Should the UI label be `Workspaces`, `Repos`, or `Workspaces & Repos` for
-  the first mockup?
+- UI label is `Codespaces`; internal fields such as `codeWorkspace` may retain
+  the existing workspace term until a model-level rename is approved.
 - Should `Artifacts` default to all Code-relevant artifacts or only artifacts
   whose status is `ready` / `published`?
 - Which Code outputs deserve new Core artifact kinds later instead of metadata

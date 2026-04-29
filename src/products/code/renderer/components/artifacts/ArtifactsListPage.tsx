@@ -122,7 +122,7 @@ export function ArtifactsListPage(): JSX.Element {
                     <div className="codeArtifactsList__rowMeta">
                       {art.workspaceTitle ? (
                         <span className="codeArtifactsList__provenance">
-                          ws · <strong>{art.workspaceTitle}</strong>
+                          codespace · <strong>{art.workspaceTitle}</strong>
                         </span>
                       ) : null}
                       {art.taskTitle ? (

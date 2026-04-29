@@ -166,7 +166,7 @@ export function DeliveryPanel({
           </div>
         </div>
         <p className="operatorEmptyState">
-          No workspace bound. Resolve a workspace to see repo actions.
+          No codespace bound. Resolve a codespace to see repo actions.
         </p>
       </section>
     );

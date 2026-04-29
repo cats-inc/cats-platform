@@ -31,7 +31,7 @@ const PLATFORM_PRODUCT_DESCRIPTORS: readonly PlatformProductDescriptor[] = [
     surface: 'code',
     routePrefix: '/code',
     productName: 'Cats Code',
-    subtitle: 'Repos, runs, and coding workspace',
+    subtitle: 'Repos, runs, and codespaces',
     group: 'office',
     installPolicy: 'required',
     installState: 'installed',
