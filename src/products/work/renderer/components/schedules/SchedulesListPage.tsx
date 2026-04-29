@@ -11,11 +11,13 @@ import {
 } from '../../api/schedules.js';
 import { formatRelative } from '../topdown/shared';
 import {
+  buildScheduleAuditExport,
   formatDateTime,
   formatScheduleSummary,
   receiptsForRule,
   resolveDailyMorningGreetingShortcut,
   resolveLocalTimezone,
+  serializeScheduleAuditExport,
 } from './scheduleUiSupport.js';
 import './schedules.css';
 
@@ -121,6 +123,23 @@ export function SchedulesListPage({ payload }: SchedulesListPageProps): JSX.Elem
     });
   }, [runAction]);
 
+  const exportAudit = useCallback(() => {
+    const payload = buildScheduleAuditExport({
+      exportedAt: new Date().toISOString(),
+      rules: snapshot.rules,
+      triggerReceipts: snapshot.triggerReceipts,
+    });
+    const blob = new Blob([serializeScheduleAuditExport(payload)], {
+      type: 'application/json',
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = `cats-work-schedules-audit-${payload.exportedAt.slice(0, 10)}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }, [snapshot.rules, snapshot.triggerReceipts]);
+
   const createDisabled =
     !shortcut.available ||
     Boolean(shortcut.available && shortcut.existingRule) ||
@@ -214,8 +233,87 @@ export function SchedulesListPage({ payload }: SchedulesListPageProps): JSX.Elem
               ))}
           </ul>
         )}
+
+        <ScheduleAuditPanel
+          receipts={snapshot.triggerReceipts}
+          ruleById={new Map(snapshot.rules.map((rule) => [rule.id, rule]))}
+          onExport={exportAudit}
+          exportDisabled={snapshot.rules.length === 0 && snapshot.triggerReceipts.length === 0}
+        />
       </main>
     </div>
+  );
+}
+
+function ScheduleAuditPanel({
+  receipts,
+  ruleById,
+  onExport,
+  exportDisabled,
+}: {
+  receipts: readonly WorkScheduleTriggerReceipt[];
+  ruleById: ReadonlyMap<string, WorkScheduleRule>;
+  onExport: () => void;
+  exportDisabled: boolean;
+}): JSX.Element {
+  const recentReceipts = receipts
+    .slice()
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    .slice(0, 12);
+
+  return (
+    <section className="schedulesList__audit" aria-label="Recent schedule audit">
+      <header className="schedulesList__auditHead">
+        <div>
+          <h2 className="schedulesList__sectionTitle">Recent trigger audit</h2>
+          <p className="schedulesList__sectionCopy">
+            Trigger receipts, retry attempts, skips, and admitted runs.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="schedulesList__secondaryButton"
+          onClick={onExport}
+          disabled={exportDisabled}
+        >
+          Export JSON
+        </button>
+      </header>
+      {recentReceipts.length === 0 ? (
+        <p className="schedulesList__auditEmpty">No trigger receipts yet.</p>
+      ) : (
+        <ol className="schedulesList__auditRows">
+          {recentReceipts.map((receipt) => {
+            const rule = ruleById.get(receipt.ruleId) ?? null;
+            return (
+              <li key={receipt.id} className="schedulesList__auditRow">
+                <span
+                  className={`schedulesList__auditStatus schedulesList__auditStatus--${
+                    receipt.status
+                  }`}
+                >
+                  {receipt.status}
+                </span>
+                <span className="schedulesList__auditTitle">
+                  {rule?.title ?? receipt.ruleId}
+                </span>
+                <span className="schedulesList__auditMeta">
+                  {receipt.reason}
+                  {typeof receipt.metadata.retryAttempt === 'number'
+                    ? ` #${receipt.metadata.retryAttempt}`
+                    : ''}
+                  {' · '}
+                  {formatRelative(receipt.actualFireAt)}
+                </span>
+                {receipt.runId ? (
+                  <code className="schedulesList__auditRun">{receipt.runId}</code>
+                ) : null}
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </section>
   );
 }
 

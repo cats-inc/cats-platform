@@ -4,10 +4,15 @@ import test from 'node:test';
 import {
   DAILY_MORNING_GREETING_TITLE,
   buildDailyMorningGreetingScheduleInput,
+  buildScheduleAuditExport,
   findDailyMorningGreetingRule,
   resolveDailyMorningGreetingShortcut,
+  serializeScheduleAuditExport,
 } from '../src/products/work/renderer/components/schedules/scheduleUiSupport.ts';
-import type { WorkScheduleRule } from '../src/products/work/renderer/api/schedules.ts';
+import type {
+  WorkScheduleRule,
+  WorkScheduleTriggerReceipt,
+} from '../src/products/work/renderer/api/schedules.ts';
 
 test('daily morning greeting shortcut creates a generic schedule rule input', () => {
   const input = buildDailyMorningGreetingScheduleInput({
@@ -127,6 +132,39 @@ test('daily morning greeting shortcut detects an existing generic rule', () => {
     catId: 'cat-guide',
     bindingId: 'telegram-guide',
   })?.id, existingRule.id);
+});
+
+test('schedule audit export serializes rules and receipts without mutating inputs', () => {
+  const rule = createRuleFixture('cat-guide', 'telegram-guide');
+  const receipt: WorkScheduleTriggerReceipt = {
+    id: 'receipt-retry',
+    ruleId: rule.id,
+    ruleRevision: 1,
+    scheduledFireAt: '2026-04-29T00:00:00.000Z',
+    actualFireAt: '2026-04-29T00:05:00.000Z',
+    idempotencyKey: 'schedule-retry:schedule-daily-greeting:1:2026-04-29T00:00:00.000Z:1',
+    reason: 'retry',
+    status: 'admitted',
+    missionId: 'mission-retry',
+    runId: 'run-retry',
+    message: null,
+    createdAt: '2026-04-29T00:05:00.000Z',
+    updatedAt: '2026-04-29T00:05:00.000Z',
+    metadata: {
+      retryAttempt: 1,
+    },
+  };
+
+  const exported = buildScheduleAuditExport({
+    exportedAt: '2026-04-29T01:00:00.000Z',
+    rules: [rule],
+    triggerReceipts: [receipt],
+  });
+  rule.title = 'Changed after export';
+
+  assert.equal(exported.rules[0]?.title, DAILY_MORNING_GREETING_TITLE);
+  assert.equal(exported.triggerReceipts[0]?.metadata.retryAttempt, 1);
+  assert.match(serializeScheduleAuditExport(exported), /"exportedAt": "2026-04-29T01:00:00.000Z"/u);
 });
 
 function createRuleFixture(catId: string, bindingId: string): WorkScheduleRule {

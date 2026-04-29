@@ -182,7 +182,7 @@ without hand-editing state.
 ### Phase 6: Hardening and Follow-Ons
 
 - [x] Add bounded retries and pause-after-repeated-failures.
-- [ ] Add audit/export view for recent trigger receipts and runs.
+- [x] Add audit/export view for recent trigger receipts and runs.
 - [ ] Decide whether OS-level scheduled wake is needed for closed-app
       execution.
 - [ ] Decide whether heartbeat/liveness monitoring is needed for scheduler
@@ -283,6 +283,7 @@ the first companion/Telegram scenario.
 | 2026-04-29 | Replace concurrency slice: enabled `concurrencyPolicy: replace` now that active scheduled runs cancel through the supervision runtime cancellation boundary, including runtime session cancellation, run/mission cancellation metadata, and replacement admission tests. |
 | 2026-04-29 | Schedule UI slice: added Cats Work `/work/schedules` route and sidebar entry, renderer schedule API helpers, a minimal schedule list with next-fire/last-run/failure/skipped diagnostics, and a Daily morning greeting shortcut that creates a generic schedule rule with declared companion content and Telegram delivery scopes. |
 | 2026-04-29 | Retry hardening slice: added schedule retry state, retry-attempt idempotency keys/receipt metadata, bounded retry admission, and automatic pause after repeated failed scheduled fires, with Work schedule diagnostics surfacing pending retries and paused reasons. |
+| 2026-04-29 | Audit/export slice: extended the Work Schedules surface with a recent trigger audit panel and JSON export payload covering schedule rules, trigger receipts, retry attempts, skips, and admitted run ids. |
 
 ---
 

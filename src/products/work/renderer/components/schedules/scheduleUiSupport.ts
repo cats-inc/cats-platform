@@ -230,3 +230,25 @@ export function formatDateTime(value: string | null, timezone?: string | null): 
     timeZone: timezone?.trim() || undefined,
   }).format(date);
 }
+
+export interface ScheduleAuditExport {
+  exportedAt: string;
+  rules: ReadonlyArray<WorkScheduleRule>;
+  triggerReceipts: ReadonlyArray<WorkScheduleTriggerReceipt>;
+}
+
+export function buildScheduleAuditExport(input: {
+  exportedAt: string;
+  rules: ReadonlyArray<WorkScheduleRule>;
+  triggerReceipts: ReadonlyArray<WorkScheduleTriggerReceipt>;
+}): ScheduleAuditExport {
+  return {
+    exportedAt: input.exportedAt,
+    rules: input.rules.map((rule) => structuredClone(rule)),
+    triggerReceipts: input.triggerReceipts.map((receipt) => structuredClone(receipt)),
+  };
+}
+
+export function serializeScheduleAuditExport(exportPayload: ScheduleAuditExport): string {
+  return `${JSON.stringify(exportPayload, null, 2)}\n`;
+}
