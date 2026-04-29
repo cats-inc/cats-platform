@@ -40,12 +40,14 @@ import {
   buildWorkDashboardProjection,
   buildWorkProjectDetailProjection,
   buildWorkProjectListProjection,
+  buildWorkRunListProjection,
   buildWorkTaskListProjection,
   buildWorkTaskDetailProjection,
   buildWorkWorkItemDetailProjection,
   buildWorkWorkItemListProjection,
   type WorkDashboardProjection,
   type WorkProjectDetailProjection,
+  type WorkRunListProjection,
   type WorkSupervisedRunLaunchProjection,
   type WorkTaskListProjection,
   type WorkTaskDetailProjection,
@@ -67,6 +69,7 @@ import {
   WORK_API_PREFIX,
   WORK_API_PROJECT_DETAIL_PATTERN,
   WORK_API_PROJECTS_PATH,
+  WORK_API_RUNS_PATH,
   WORK_API_TASK_DETAIL_PATTERN,
   WORK_API_TASK_SUPERVISED_RUN_ACTION_PATTERN,
   WORK_API_TASK_SUPERVISED_RUN_PATTERN,
@@ -315,6 +318,12 @@ export function createWorkTaskListPayload(
   return buildWorkTaskListProjection(core);
 }
 
+export function createWorkRunListPayload(
+  core: Awaited<ReturnType<CoreStore['readCore']>>,
+): WorkRunListProjection {
+  return buildWorkRunListProjection(core);
+}
+
 export function createWorkProjectDetailPayload(
   core: Awaited<ReturnType<CoreStore['readCore']>>,
   projectId: string,
@@ -454,6 +463,20 @@ export async function routeWorkApi(
       context.response,
       200,
       createWorkTaskListPayload(await context.dependencies.coreStore.readCore()),
+    );
+    return true;
+  }
+
+  if (context.url.pathname === WORK_API_RUNS_PATH) {
+    if (context.method !== 'GET') {
+      sendMethodNotAllowed(context.response, ['GET']);
+      return true;
+    }
+
+    sendJson(
+      context.response,
+      200,
+      createWorkRunListPayload(await context.dependencies.coreStore.readCore()),
     );
     return true;
   }

@@ -39,6 +39,7 @@ import type {
   CoreProjectRecord,
   CoreProjectStatus,
   CoreRunRecord,
+  CoreRunStatus,
   CoreTaskRecord,
   CoreTaskStatus,
   CoreWorkItemRecord,
@@ -266,6 +267,42 @@ export interface WorkTaskListProjection {
   };
   tasks: WorkTaskListItem[];
   summary: WorkTaskListSummary;
+}
+
+export interface WorkRunListItem {
+  id: string;
+  title: string;
+  status: CoreRunStatus;
+  summary: string | null;
+  taskId: string | null;
+  taskTitle: string | null;
+  conversationId: string | null;
+  conversationTitle: string | null;
+  parentRunId: string | null;
+  parentRunTitle: string | null;
+  startedAt: string | null;
+  completedAt: string | null;
+  updatedAt: string;
+}
+
+export interface WorkRunListSummary {
+  totalAvailable: number;
+  returned: number;
+  queuedCount: number;
+  runningCount: number;
+  blockedCount: number;
+  completedCount: number;
+  failedCount: number;
+  cancelledCount: number;
+}
+
+export interface WorkRunListProjection {
+  product: {
+    id: 'work';
+    name: typeof WORK_PRODUCT_NAME;
+  };
+  runs: WorkRunListItem[];
+  summary: WorkRunListSummary;
 }
 
 export interface WorkTaskActionContext {
@@ -710,6 +747,95 @@ export function buildWorkTaskListProjection(
     product: createWorkProductRef(),
     tasks,
     summary: buildTaskListSummary(tasks, core),
+  };
+}
+
+function buildRunListSummary(runs: readonly WorkRunListItem[]): WorkRunListSummary {
+  const summary: WorkRunListSummary = {
+    totalAvailable: runs.length,
+    returned: runs.length,
+    queuedCount: 0,
+    runningCount: 0,
+    blockedCount: 0,
+    completedCount: 0,
+    failedCount: 0,
+    cancelledCount: 0,
+  };
+  for (const run of runs) {
+    switch (run.status) {
+      case 'queued':
+        summary.queuedCount += 1;
+        break;
+      case 'running':
+        summary.runningCount += 1;
+        break;
+      case 'blocked':
+        summary.blockedCount += 1;
+        break;
+      case 'completed':
+        summary.completedCount += 1;
+        break;
+      case 'failed':
+        summary.failedCount += 1;
+        break;
+      case 'cancelled':
+        summary.cancelledCount += 1;
+        break;
+      default: {
+        const exhaustive: never = run.status;
+        void exhaustive;
+      }
+    }
+  }
+  return summary;
+}
+
+export function buildWorkRunListProjection(
+  core: CatsCoreState,
+): WorkRunListProjection {
+  const taskTitleById = new Map<string, string>();
+  for (const task of core.tasks) {
+    taskTitleById.set(task.id, task.title);
+  }
+  const conversationTitleById = new Map<string, string>();
+  for (const conversation of core.conversations) {
+    conversationTitleById.set(conversation.id, conversation.title || conversation.id);
+  }
+  const runTitleById = new Map<string, string>();
+  for (const run of core.runs) {
+    runTitleById.set(run.id, run.title);
+  }
+
+  const runs: WorkRunListItem[] = [...core.runs]
+    .sort((left, right) => {
+      const leftKey = left.startedAt ?? left.updatedAt;
+      const rightKey = right.startedAt ?? right.updatedAt;
+      return rightKey.localeCompare(leftKey);
+    })
+    .map((run) => ({
+      id: run.id,
+      title: run.title,
+      status: run.status,
+      summary: run.summary,
+      taskId: run.taskId,
+      taskTitle: run.taskId ? taskTitleById.get(run.taskId) ?? null : null,
+      conversationId: run.conversationId,
+      conversationTitle: run.conversationId
+        ? conversationTitleById.get(run.conversationId) ?? null
+        : null,
+      parentRunId: run.parentRunId,
+      parentRunTitle: run.parentRunId
+        ? runTitleById.get(run.parentRunId) ?? null
+        : null,
+      startedAt: run.startedAt,
+      completedAt: run.completedAt,
+      updatedAt: run.updatedAt,
+    }));
+
+  return {
+    product: createWorkProductRef(),
+    runs,
+    summary: buildRunListSummary(runs),
   };
 }
 
