@@ -5,6 +5,7 @@ import path from 'node:path';
 import {
   resolvePlatformStorageLayout,
 } from '../shared/platformPaths.js';
+import type { RuntimeClientDiagnosticEvent } from './client.js';
 
 const DIAGNOSTIC_FILE_LIMIT = 200;
 
@@ -38,6 +39,29 @@ export interface RuntimeClientDiagnosticSink {
 
 export interface RuntimeClientDiagnosticSinkOptions {
   persistPath?: string | null;
+}
+
+export function createRuntimeClientDiagnosticRecord(
+  event: RuntimeClientDiagnosticEvent,
+): RuntimeClientDiagnosticRecord {
+  return {
+    id: [
+      'runtime-client',
+      event.kind,
+      normalizeDiagnosticIdPart(event.observedAt),
+      normalizeDiagnosticIdPart(event.sessionId),
+      String(Math.max(0, Math.round(event.elapsedMs))),
+    ].join(':'),
+    kind: 'runtime_client',
+    severity: 'warning',
+    code: event.kind,
+    observedAt: event.observedAt,
+    provider: event.provider,
+    sessionId: event.sessionId,
+    elapsedMs: event.elapsedMs,
+    thresholdMs: event.thresholdMs,
+    message: `cats-runtime ${event.kind} provider=${event.provider} sessionId=${event.sessionId} elapsedMs=${event.elapsedMs} thresholdMs=${event.thresholdMs}`,
+  };
 }
 
 export function resolveRuntimeClientDiagnosticsPath(chatStatePath: string): string {
@@ -117,6 +141,11 @@ function trimDiagnosticRecords(
   records: readonly RuntimeClientDiagnosticRecord[],
 ): RuntimeClientDiagnosticRecord[] {
   return records.slice(Math.max(0, records.length - DIAGNOSTIC_FILE_LIMIT));
+}
+
+function normalizeDiagnosticIdPart(value: string): string {
+  const normalized = value.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  return normalized || 'unknown';
 }
 
 function isRuntimeClientDiagnosticRecord(value: unknown): value is RuntimeClientDiagnosticRecord {

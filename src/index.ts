@@ -21,6 +21,7 @@ import {
 import { closeAppServerGracefully } from './app/server/shutdown.js';
 import { CatsRuntimeClient } from './platform/runtime/client.js';
 import {
+  createRuntimeClientDiagnosticRecord,
   createRuntimeClientDiagnosticSink,
   resolveRuntimeClientDiagnosticsPath,
 } from './platform/runtime/clientDiagnostics.js';
@@ -69,18 +70,7 @@ async function main(): Promise<void> {
     sessionCreateSlowWarningMs: config.runtimeSessionCreateSlowWarningMs,
     messageIdleTimeoutMs: config.runtimeMessageIdleTimeoutMs,
     onClientDiagnostic: (event) => {
-      runtimeClientDiagnosticSink.emit({
-        id: `runtime-client:${event.kind}:${event.observedAt.toLowerCase().replace(/[^a-z0-9]/g, '-')}`,
-        kind: 'runtime_client',
-        severity: 'warning',
-        code: event.kind,
-        observedAt: event.observedAt,
-        provider: event.provider,
-        sessionId: event.sessionId,
-        elapsedMs: event.elapsedMs,
-        thresholdMs: event.thresholdMs,
-        message: `cats-runtime ${event.kind} provider=${event.provider} sessionId=${event.sessionId} elapsedMs=${event.elapsedMs} thresholdMs=${event.thresholdMs}`,
-      });
+      runtimeClientDiagnosticSink.emit(createRuntimeClientDiagnosticRecord(event));
     },
   });
   startupTrace.trace('runtime.client.created');

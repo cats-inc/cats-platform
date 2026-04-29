@@ -740,7 +740,7 @@ export class CatsRuntimeClient implements RuntimeClient {
       modelSelection: input.modelSelection ?? null,
       cwd: input.cwd?.trim() || null,
     });
-    this.warnOnSlowSessionCreate(startedAt, input.provider, session.id);
+    this.warnOnSlowSessionCreate(startedAt, session.provider, session.id);
     return session;
   }
 
@@ -990,14 +990,18 @@ export class CatsRuntimeClient implements RuntimeClient {
       return;
     }
 
-    this.onClientDiagnostic?.({
-      kind: 'slow_session_create',
-      observedAt: this.now().toISOString(),
-      provider,
-      sessionId,
-      elapsedMs,
-      thresholdMs: this.sessionCreateSlowWarningMs,
-    });
+    try {
+      this.onClientDiagnostic?.({
+        kind: 'slow_session_create',
+        observedAt: this.now().toISOString(),
+        provider,
+        sessionId,
+        elapsedMs,
+        thresholdMs: this.sessionCreateSlowWarningMs,
+      });
+    } catch {
+      // Diagnostics must never turn a successful session create into a failure.
+    }
   }
 
   private authHeaders(): Record<string, string> {

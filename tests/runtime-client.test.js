@@ -7,6 +7,9 @@ import {
   DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS,
   resolveDefaultSessionCreateSlowWarningMs,
 } from '../build/server/runtime/client.js';
+import {
+  createRuntimeClientDiagnosticRecord,
+} from '../build/server/runtime/clientDiagnostics.js';
 
 function createTimeoutSignalRecorder() {
   const calls = [];
@@ -256,7 +259,7 @@ test('runtime client uses an extended default timeout for session creation', asy
     if (url.endsWith('/sessions')) {
       return new Response(JSON.stringify({
         id: 'session-1',
-        providerName: 'claude',
+        providerName: 'claude-runtime',
         status: 'ready',
       }), {
         status: 200,
@@ -274,7 +277,7 @@ test('runtime client uses an extended default timeout for session creation', asy
       timeoutMs: 12_345,
       createTimeoutSignal: timeoutSignals.createTimeoutSignal,
     });
-    await client.createSession({ provider: 'claude' });
+    await client.createSession({ provider: 'claude-requested' });
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -411,7 +414,7 @@ test('runtime client emits slow-session diagnostic via DI hook instead of consol
       await new Promise((resolve) => setTimeout(resolve, 30));
       return new Response(JSON.stringify({
         id: 'session-slow',
-        providerName: 'claude',
+        providerName: 'claude-runtime',
         status: 'ready',
       }), {
         status: 200,
@@ -427,7 +430,7 @@ test('runtime client emits slow-session diagnostic via DI hook instead of consol
       onClientDiagnostic: (event) => diagnostics.push(event),
       now: () => new Date('2026-04-29T10:00:00.000Z'),
     });
-    await client.createSession({ provider: 'claude' });
+    await client.createSession({ provider: 'claude-requested' });
   } finally {
     globalThis.fetch = originalFetch;
     console.warn = originalWarn;
@@ -436,12 +439,69 @@ test('runtime client emits slow-session diagnostic via DI hook instead of consol
   assert.equal(warnCalls, 0);
   assert.equal(diagnostics.length, 1);
   assert.equal(diagnostics[0]?.kind, 'slow_session_create');
-  assert.equal(diagnostics[0]?.provider, 'claude');
+  assert.equal(diagnostics[0]?.provider, 'claude-runtime');
   assert.equal(diagnostics[0]?.sessionId, 'session-slow');
   assert.equal(diagnostics[0]?.thresholdMs, 5);
   assert.equal(diagnostics[0]?.observedAt, '2026-04-29T10:00:00.000Z');
   assert.equal(typeof diagnostics[0]?.elapsedMs, 'number');
   assert.equal(diagnostics[0]?.elapsedMs >= 5, true);
+});
+
+test('runtime client ignores slow-session diagnostic hook failures after successful create', async () => {
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url.endsWith('/sessions')) {
+      await new Promise((resolve) => setTimeout(resolve, 30));
+      return new Response(JSON.stringify({
+        id: 'session-diagnostic-throws',
+        providerName: 'claude-runtime',
+        status: 'ready',
+      }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }
+    throw new Error(`Unexpected runtime client request: ${url}`);
+  };
+
+  try {
+    const client = new CatsRuntimeClient('http://runtime.test', {
+      sessionCreateSlowWarningMs: 5,
+      onClientDiagnostic: () => {
+        throw new Error('diagnostic sink unavailable');
+      },
+    });
+    const session = await client.createSession({ provider: 'claude-requested' });
+    assert.equal(session.id, 'session-diagnostic-throws');
+    assert.equal(session.provider, 'claude-runtime');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test('runtime client diagnostic records include session identity in ids', () => {
+  const first = createRuntimeClientDiagnosticRecord({
+    kind: 'slow_session_create',
+    observedAt: '2026-04-29T10:00:00.000Z',
+    provider: 'claude',
+    sessionId: 'session-one',
+    elapsedMs: 10001,
+    thresholdMs: 10000,
+  });
+  const second = createRuntimeClientDiagnosticRecord({
+    kind: 'slow_session_create',
+    observedAt: '2026-04-29T10:00:00.000Z',
+    provider: 'claude',
+    sessionId: 'session-two',
+    elapsedMs: 10001,
+    thresholdMs: 10000,
+  });
+
+  assert.notEqual(first.id, second.id);
+  assert.match(first.id, /session-one/u);
+  assert.match(second.id, /session-two/u);
 });
 
 test('runtime client does not emit slow-session diagnostic when create is fast', async () => {
