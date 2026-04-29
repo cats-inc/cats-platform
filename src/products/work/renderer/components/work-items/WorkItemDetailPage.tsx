@@ -9,10 +9,10 @@ import {
   KIND_LABEL,
 } from "../topdown/shared";
 import type { WorkGraphObjectSummary } from "../topdown/types";
-import { useMissions, type MissionItem } from "../../state/missionsStore";
-import { usePinnedProjects } from "../../state/pinnedProjectsStore";
+import { useMissionsQuery, type WorkMissionListItem } from "../../state/queries/missionsQuery.js";
+import { useProjectsQuery } from "../../state/queries/projectsQuery.js";
+import { useWorkItemsQuery } from "../../state/queries/workItemsQuery.js";
 import { useWorkGraph } from "../../state/workGraphStore";
-import { useWorkItems } from "../../state/workItemsStore";
 import {
   WORK_PROJECTS_PATH,
   buildWorkMissionPath,
@@ -24,30 +24,30 @@ export function WorkItemDetailPage(): JSX.Element {
   const { workItemId } = useParams<{ workItemId: string }>();
   const { graph } = useWorkGraph();
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
-  const { allWorkItems, deletedIds } = useWorkItems();
-  const { allProjects } = usePinnedProjects();
-  const { allMissions } = useMissions();
+  const workItemsQuery = useWorkItemsQuery();
+  const projectsQuery = useProjectsQuery();
+  const missionsQuery = useMissionsQuery();
 
+  const allWorkItems = workItemsQuery.data?.workItems ?? [];
   const workItem = workItemId
     ? allWorkItems.find((wi) => wi.id === workItemId)
     : undefined;
 
-  if (
-    !workItem
-    || (workItemId !== undefined && deletedIds.has(workItemId))
-  ) {
+  if (workItemsQuery.isPending) {
+    return <WorkItemDetailLoading />;
+  }
+  if (!workItem) {
     return <WorkItemNotFound workItemId={workItemId ?? null} />;
   }
 
-  const linkedProject = workItem.linkedProjectId
-    ? allProjects.find((p) => p.id === workItem.linkedProjectId)
+  const linkedProject = workItem.projectId
+    ? projectsQuery.data?.projects.find((p) => p.id === workItem.projectId)
     : undefined;
-  const parentWorkItem = workItem.linkedWorkItemId
-    ? allWorkItems.find((wi) => wi.id === workItem.linkedWorkItemId)
+  const parentWorkItem = workItem.parentWorkItemId
+    ? allWorkItems.find((wi) => wi.id === workItem.parentWorkItemId)
     : undefined;
   const subWorkItems = allWorkItems.filter(
-    (wi) =>
-      wi.linkedWorkItemId === workItem.id && !deletedIds.has(wi.id),
+    (wi) => wi.parentWorkItemId === workItem.id,
   );
   const tasks = graph.objects.filter(
     (o) => o.kind === "task" && o.linkedWorkItemId === workItem.id,
@@ -57,8 +57,9 @@ export function WorkItemDetailPage(): JSX.Element {
       (o) => o.kind === "activity" && o.linkedWorkItemId === workItem.id,
     )
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  // Conversation title comes through the projection now via
-  // `linkedConversationTitle` — no need for a per-page indexes lookup.
+  const linkedMissions = (missionsQuery.data?.missions ?? []).filter(
+    (m) => m.managedWorkId === workItem.id,
+  );
 
   return (
     <div className="workItemDetail">
@@ -172,17 +173,15 @@ export function WorkItemDetailPage(): JSX.Element {
                 </dd>
               </>
             ) : null}
-            <dt>Owner role</dt>
-            <dd>{workItem.ownerRole ?? <em>(not assigned)</em>}</dd>
-            <dt>Next action</dt>
-            <dd>{workItem.nextAction ?? <em>(none recorded)</em>}</dd>
-            {workItem.linkedConversationId ? (
+            <dt>Owner</dt>
+            <dd>{workItem.ownerName}</dd>
+            {workItem.conversationId ? (
               <>
                 <dt>Conversation</dt>
                 <dd>
                   <span className="workItemDetail__convoTitle">
-                    {workItem.linkedConversationTitle ??
-                      workItem.linkedConversationId}
+                    {workItem.conversationTitle ??
+                      workItem.conversationId}
                   </span>
                 </dd>
               </>
@@ -198,14 +197,10 @@ export function WorkItemDetailPage(): JSX.Element {
           emptyLabel="No tasks under this work item yet."
         />
 
-        <MissionsSection
-          missions={allMissions.filter(
-            (m) => m.linkedWorkItemId === workItem.id,
-          )}
-        />
+        <MissionsSection missions={linkedMissions} />
 
         <LinkageSection
-          selfRef={{ recordFamily: "work_item", recordId: workItem.sourceRecordId }}
+          selfRef={{ recordFamily: "work_item", recordId: workItem.id }}
           graph={graph}
           indexes={indexes}
         />
@@ -301,7 +296,12 @@ function ItemsSection({
 }
 
 interface SubWorkItemsSectionProps {
-  items: readonly WorkGraphObjectSummary[];
+  items: ReadonlyArray<{
+    id: string;
+    title: string;
+    status: string;
+    updatedAt: string;
+  }>;
 }
 
 function SubWorkItemsSection({
@@ -346,7 +346,7 @@ function SubWorkItemsSection({
 }
 
 interface MissionsSectionProps {
-  missions: readonly MissionItem[];
+  missions: readonly WorkMissionListItem[];
 }
 
 function MissionsSection({ missions }: MissionsSectionProps): JSX.Element {
@@ -381,6 +381,27 @@ function MissionsSection({ missions }: MissionsSectionProps): JSX.Element {
         </ul>
       )}
     </section>
+  );
+}
+
+function WorkItemDetailLoading(): JSX.Element {
+  return (
+    <div className="workItemDetail">
+      <header className="channelTopBar workItemDetailTopBar">
+        <div className="channelTopBarStart workItemDetailTopBar__start">
+          <Link
+            to=".."
+            relative="path"
+            className="workItemDetailTopBar__back"
+          >
+            <span>← Work items</span>
+          </Link>
+        </div>
+      </header>
+      <main className="workItemDetail__main">
+        <p className="workItemDetail__empty">Loading work item…</p>
+      </main>
+    </div>
   );
 }
 
