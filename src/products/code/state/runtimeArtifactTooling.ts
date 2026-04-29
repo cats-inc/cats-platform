@@ -22,6 +22,7 @@ import {
   CODE_ARTIFACT_PRODUCER_LABELS,
   CodeArtifactDeclarationError,
   type CodeArtifactDeclarationErrorCode,
+  type CodeArtifactToolInput,
 } from '../shared/artifactDeclaration.js';
 
 export const CODE_ARTIFACT_RUNTIME_ENRICHER_ID = 'cats-code.artifact-declaration' as const;
@@ -94,6 +95,15 @@ export interface CodeArtifactRuntimeToolCallSummary {
   errorCode?: CodeArtifactDeclarationErrorCode;
   message?: string;
 }
+
+export type CodeArtifactRuntimeToolCallObservation =
+  | (CodeArtifactRuntimeToolCallSummary & {
+      status: 'shape_ok';
+      input: CodeArtifactToolInput;
+    })
+  | (CodeArtifactRuntimeToolCallSummary & {
+      status: 'rejected';
+    });
 
 export function shouldAttachCodeArtifactRuntimeTooling(
   channel: CodeArtifactRuntimeToolingChannel,
@@ -236,53 +246,76 @@ export function collectCodeArtifactRuntimeToolCalls(
 
   const summaries: CodeArtifactRuntimeToolCallSummary[] = [];
   for (const segment of segments) {
-    if (
-      segment.kind !== 'tool_use'
-      || segment.toolName !== CODE_ARTIFACT_DECLARATION_TOOL_NAME
-    ) {
-      continue;
-    }
-
-    const toolArgs = readToolUseArguments(segment);
-    if (!toolArgs.ok) {
-      summaries.push({
-        toolName: CODE_ARTIFACT_DECLARATION_TOOL_NAME,
-        toolId: segment.toolId ?? null,
-        declarationId: null,
-        status: 'rejected',
-        errorCode: 'artifact_metadata_invalid',
-        message: toolArgs.message,
-      });
-      continue;
-    }
-
-    try {
-      const normalized = CODE_ARTIFACT_DECLARATION_TOOL.normalizeInput(toolArgs.value);
-      summaries.push({
-        toolName: CODE_ARTIFACT_DECLARATION_TOOL_NAME,
-        toolId: segment.toolId ?? null,
-        declarationId: normalized.declarationId,
-        status: 'shape_ok',
-      });
-    } catch (error) {
-      const declarationError = error instanceof CodeArtifactDeclarationError
-        ? error
-        : new CodeArtifactDeclarationError(
-          'artifact_metadata_invalid',
-          error instanceof Error ? error.message : String(error),
-        );
-      summaries.push({
-        toolName: CODE_ARTIFACT_DECLARATION_TOOL_NAME,
-        toolId: segment.toolId ?? null,
-        declarationId: readDeclarationId(toolArgs.value),
-        status: 'rejected',
-        errorCode: declarationError.code,
-        message: declarationError.message,
-      });
+    const observation = observeCodeArtifactRuntimeToolCall(segment);
+    if (observation) {
+      summaries.push(summarizeCodeArtifactRuntimeToolCallObservation(observation));
     }
   }
 
   return summaries;
+}
+
+export function observeCodeArtifactRuntimeToolCall(
+  segment: RuntimeMessageSegment,
+): CodeArtifactRuntimeToolCallObservation | null {
+  if (
+    segment.kind !== 'tool_use'
+    || segment.toolName !== CODE_ARTIFACT_DECLARATION_TOOL_NAME
+  ) {
+    return null;
+  }
+
+  const toolArgs = readToolUseArguments(segment);
+  if (!toolArgs.ok) {
+    return {
+      toolName: CODE_ARTIFACT_DECLARATION_TOOL_NAME,
+      toolId: segment.toolId ?? null,
+      declarationId: null,
+      status: 'rejected',
+      errorCode: 'artifact_metadata_invalid',
+      message: toolArgs.message,
+    };
+  }
+
+  try {
+    const normalized = CODE_ARTIFACT_DECLARATION_TOOL.normalizeInput(toolArgs.value);
+    return {
+      toolName: CODE_ARTIFACT_DECLARATION_TOOL_NAME,
+      toolId: segment.toolId ?? null,
+      declarationId: normalized.declarationId,
+      status: 'shape_ok',
+      input: normalized,
+    };
+  } catch (error) {
+    const declarationError = error instanceof CodeArtifactDeclarationError
+      ? error
+      : new CodeArtifactDeclarationError(
+        'artifact_metadata_invalid',
+        error instanceof Error ? error.message : String(error),
+      );
+    return {
+      toolName: CODE_ARTIFACT_DECLARATION_TOOL_NAME,
+      toolId: segment.toolId ?? null,
+      declarationId: readDeclarationId(toolArgs.value),
+      status: 'rejected',
+      errorCode: declarationError.code,
+      message: declarationError.message,
+    };
+  }
+}
+
+export function summarizeCodeArtifactRuntimeToolCallObservation(
+  observation: CodeArtifactRuntimeToolCallObservation,
+): CodeArtifactRuntimeToolCallSummary {
+  if (observation.status === 'shape_ok') {
+    return {
+      toolName: observation.toolName,
+      toolId: observation.toolId,
+      declarationId: observation.declarationId,
+      status: 'shape_ok',
+    };
+  }
+  return observation;
 }
 
 function withCodeArtifactRuntimeContext(
