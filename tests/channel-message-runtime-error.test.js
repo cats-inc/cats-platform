@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
+import { mkdtemp, rm } from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
@@ -17,7 +19,6 @@ const baseConfig = {
   port: 0,
   runtimeBaseUrl: 'http://127.0.0.1:3110',
   runtimeApiKey: '',
-  chatStatePath: 'unused-for-tests',
 };
 
 function createRuntimeStub(options = {}) {
@@ -65,9 +66,9 @@ function createRuntimeStub(options = {}) {
       this.createdSessions.push({ ...input, id: session.id });
       return session;
     },
-    async sendMessage(sessionId, input) {
-      this.sentMessages.push({ sessionId, input });
-      return sendMessageImpl(sessionId, input);
+    async sendMessage(sessionId, content, input) {
+      this.sentMessages.push({ sessionId, content, input });
+      return sendMessageImpl(sessionId, content, input);
     },
     async closeSession() {},
     async cancelSession() {},
@@ -78,9 +79,14 @@ function createRuntimeStub(options = {}) {
 }
 
 async function withServer(runtimeClient, callback, chatStore = new MemoryChatStore()) {
+  const tempStateDir = await mkdtemp(path.join(os.tmpdir(), 'cats-runtime-error-'));
   const server = createServer({
     shared: {
-      config: baseConfig,
+      config: {
+        ...baseConfig,
+        chatStatePath: path.join(tempStateDir, 'platform', 'state', 'chat-state.local.json'),
+        runtimeDataDir: path.join(tempStateDir, 'runtime-data'),
+      },
       runtimeClient,
       now: () => new Date('2026-04-15T00:00:00.000Z'),
     },
@@ -102,6 +108,7 @@ async function withServer(runtimeClient, callback, chatStore = new MemoryChatSto
   } finally {
     server.close();
     await once(server, 'close');
+    await rm(tempStateDir, { recursive: true, force: true });
   }
 }
 
@@ -132,6 +139,7 @@ test('posting a direct-lane message keeps canonical transport binding on runtime
       body: JSON.stringify({
         title: 'Direct lane runtime error',
         topic: 'Preserve canonical transport binding on runtime_error notices.',
+        originSurface: 'chat',
         roomMode: 'direct_cat_chat',
         defaultRecipientId: catId,
         repoPath: 'C:/repo/cats-platform',
@@ -153,6 +161,10 @@ test('posting a direct-lane message keeps canonical transport binding on runtime
       }),
     });
     assert.equal(assignResponse.status, 201);
+    assert.equal(
+      runtimeClient.createdSessions[0]?.context?.metadata?.supervisionBoundary,
+      undefined,
+    );
 
     const sendResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
       method: 'POST',
@@ -163,8 +175,8 @@ test('posting a direct-lane message keeps canonical transport binding on runtime
         body: 'Please fail this direct-lane dispatch.',
       }),
     });
-    assert.equal(sendResponse.status, 200);
     const sendPayload = await sendResponse.json();
+    assert.equal(sendResponse.status, 200, JSON.stringify(sendPayload));
     assert.equal(sendPayload.phase, 'acknowledged');
 
     const channelPayload = await waitForCondition(async () => {
@@ -186,6 +198,11 @@ test('posting a direct-lane message keeps canonical transport binding on runtime
       && /Injected runtime failure/u.test(message.body),
     );
     assert.ok(runtimeError);
+    assert.equal(
+      runtimeClient.sentMessages[0]?.input?.context?.metadata?.supervisionBoundary,
+      undefined,
+    );
+    assert.equal(/cats\.runtime\.message\.send rejected/u.test(runtimeError.body), false);
     assert.equal(runtimeError.metadata?.conversationId, buildChatConversationId(channelId));
     assert.equal(runtimeError.metadata?.containerId, CHAT_ROOT_CONTAINER_ID);
     assert.equal(
@@ -229,6 +246,7 @@ test('posting a direct-lane message keeps canonical transport binding on assista
       body: JSON.stringify({
         title: 'Direct lane assistant segment',
         topic: 'Preserve canonical transport binding on assistant_turn_segment replies.',
+        originSurface: 'chat',
         roomMode: 'direct_cat_chat',
         defaultRecipientId: catId,
         repoPath: 'C:/repo/cats-platform',
@@ -260,8 +278,8 @@ test('posting a direct-lane message keeps canonical transport binding on assista
         body: 'Please answer this direct-lane prompt.',
       }),
     });
-    assert.equal(sendResponse.status, 200);
     const sendPayload = await sendResponse.json();
+    assert.equal(sendResponse.status, 200, JSON.stringify(sendPayload));
     assert.equal(sendPayload.phase, 'acknowledged');
 
     const channelPayload = await waitForCondition(async () => {

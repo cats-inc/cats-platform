@@ -204,22 +204,22 @@ test('runtime supervision adapter wraps createSession and sendMessage calls', as
   ]);
 });
 
-test('Chat, Work, and Code runtime cutover points do not call runtime directly', () => {
+test('interactive Chat runtime calls stay outside supervised Work/Code boundaries', () => {
   const files = [
     {
       path: 'src/products/chat/state/runtime-dispatch/execution.ts',
-      forbidden: ['runtimeClient.sendMessage('],
-      required: ['sendSupervisedRuntimeMessage'],
+      forbidden: ['sendSupervisedRuntimeMessage', 'createSupervisedRuntimeSession'],
+      required: ['runtimeClient.sendMessage('],
     },
     {
       path: 'src/products/chat/state/runtime-session/sessionStart.ts',
-      forbidden: ['runtimeClient.createSession('],
-      required: ['createSupervisedRuntimeSession'],
+      forbidden: ['sendSupervisedRuntimeMessage', 'createSupervisedRuntimeSession'],
+      required: ['input.runtimeClient.createSession('],
     },
     {
       path: 'src/products/chat/api/routeSupport.ts',
-      forbidden: ['runtimeClient.createSession('],
-      required: ['createSupervisedRuntimeSession'],
+      forbidden: ['sendSupervisedRuntimeMessage', 'createSupervisedRuntimeSession'],
+      required: ['context.dependencies.runtimeClient.createSession('],
     },
     {
       path: 'src/products/code/state/taskExecution.ts',

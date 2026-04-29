@@ -1,8 +1,5 @@
 import type { ChatState } from '../../api/contracts.js';
 import type { RuntimeClient } from '../../../../platform/runtime/client.js';
-import {
-  createSupervisedRuntimeSession,
-} from '../../../../platform/supervision/runtimeBoundary.js';
 import type { RoutingTarget } from '../mentionRouter.js';
 import { createExplicitProviderModelSelection } from '../../../../shared/providerSelection.js';
 import { mergeRuntimeInvocationContextMetadata } from '../runtime-dispatch/context.js';
@@ -51,32 +48,21 @@ export async function createOrchestratorTargetRuntimeSession(input: {
     requireChannel(input.state, input.channelId),
   );
   const { spawnCwd, ...runtimePolicy } = input.sessionPolicy;
-  const session = await createSupervisedRuntimeSession({
-    runtimeClient: input.runtimeClient,
-    input: {
-      provider: sessionTarget.provider,
-      instance: sessionTarget.instance,
-      model: sessionTarget.model,
-      modelSelection:
-        sessionTarget.modelSelection
-        ?? createExplicitProviderModelSelection(sessionTarget.model),
-      cwd: spawnCwd,
-      ...runtimePolicy,
-      context: mergeRuntimeInvocationContextMetadata(
-        input.runtimeEnvelope.context,
-        input.dispatchContextMetadata ?? {},
-      ),
-      skills: input.runtimeEnvelope.skills,
-      ...(input.taskExecutionContext?.executionRequest ?? {}),
-    },
-    supervision: {
-      product: 'cats-chat',
-      surface: 'orchestrator-session-start',
-      runId: input.channelId,
-      actionId: `${input.channelId}:orchestrator-session-start`,
-      actorRef: 'orchestrator',
-      reason: 'chat_session_start',
-    },
+  const session = await input.runtimeClient.createSession({
+    provider: sessionTarget.provider,
+    instance: sessionTarget.instance,
+    model: sessionTarget.model,
+    modelSelection:
+      sessionTarget.modelSelection
+      ?? createExplicitProviderModelSelection(sessionTarget.model),
+    cwd: spawnCwd,
+    ...runtimePolicy,
+    context: mergeRuntimeInvocationContextMetadata(
+      input.runtimeEnvelope.context,
+      input.dispatchContextMetadata ?? {},
+    ),
+    skills: input.runtimeEnvelope.skills,
+    ...(input.taskExecutionContext?.executionRequest ?? {}),
   });
 
   return {
@@ -112,32 +98,21 @@ export async function createParticipantTargetRuntimeSession(input: {
   }
 
   const { spawnCwd, ...runtimePolicy } = input.sessionPolicy;
-  const session = await createSupervisedRuntimeSession({
-    runtimeClient: input.runtimeClient,
-    input: {
-      provider: participant.execution.target.provider,
-      instance: participant.execution.target.instance,
-      model: participant.execution.target.model,
-      modelSelection:
-        participant.execution.modelSelection
-        ?? createExplicitProviderModelSelection(participant.execution.target.model),
-      cwd: spawnCwd,
-      ...runtimePolicy,
-      context: mergeRuntimeInvocationContextMetadata(
-        input.runtimeEnvelope.context,
-        input.dispatchContextMetadata ?? {},
-      ),
-      skills: input.runtimeEnvelope.skills,
-      ...(input.taskExecutionContext?.executionRequest ?? {}),
-    },
-    supervision: {
-      product: 'cats-chat',
-      surface: 'participant-session-start',
-      runId: input.channelId,
-      actionId: `${input.channelId}:${input.target.participantId}:session-start`,
-      actorRef: input.target.participantId,
-      reason: 'chat_session_start',
-    },
+  const session = await input.runtimeClient.createSession({
+    provider: participant.execution.target.provider,
+    instance: participant.execution.target.instance,
+    model: participant.execution.target.model,
+    modelSelection:
+      participant.execution.modelSelection
+      ?? createExplicitProviderModelSelection(participant.execution.target.model),
+    cwd: spawnCwd,
+    ...runtimePolicy,
+    context: mergeRuntimeInvocationContextMetadata(
+      input.runtimeEnvelope.context,
+      input.dispatchContextMetadata ?? {},
+    ),
+    skills: input.runtimeEnvelope.skills,
+    ...(input.taskExecutionContext?.executionRequest ?? {}),
   });
 
   return {

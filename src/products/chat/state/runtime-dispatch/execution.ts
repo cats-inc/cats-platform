@@ -14,9 +14,6 @@ import {
   type RuntimeClient,
   type RuntimeMessageSegment,
 } from '../../../../platform/runtime/client.js';
-import {
-  sendSupervisedRuntimeMessage,
-} from '../../../../platform/supervision/runtimeBoundary.js';
 import { buildChannelView } from '../model/index.js';
 import { type RoutingTarget } from '../mentionRouter.js';
 import { buildOrchestratorRewritePrompt } from '../prompts.js';
@@ -113,11 +110,10 @@ export async function executeDispatch(
       continuityDeliveryMode: dispatchPrompt.continuityDeliveryMode ?? null,
       continuityResetAt: dispatchPrompt.continuityResetAt ?? null,
     });
-    const runtimeResult = await sendSupervisedRuntimeMessage({
-      runtimeClient,
+    const runtimeResult = await runtimeClient.sendMessage(
       sessionId,
-      content: dispatchPrompt.message,
-      input: {
+      dispatchPrompt.message,
+      {
         instructions: dispatchPrompt.instructions?.trim() || undefined,
         context: mergeRuntimeInvocationContextMetadata(
           runtimeEnvelope.context,
@@ -125,15 +121,7 @@ export async function executeDispatch(
         ),
         skills: runtimeEnvelope.skills,
       },
-      supervision: {
-        product: 'cats-chat',
-        surface: 'runtime-dispatch',
-        runId: channelId,
-        actionId: request.dispatchId,
-        actorRef: request.target.participantId,
-        reason: request.trigger,
-      },
-    });
+    );
     let responseSegments: RuntimeMessageSegment[] = runtimeResult.segments.length > 0
       ? runtimeResult.segments
       : [{ kind: 'text', text: `${request.target.participantName} completed the routed turn without text output.`, toolName: null, toolId: null }];
@@ -153,24 +141,15 @@ export async function executeDispatch(
       )
     ) {
       try {
-        const rewrite = await sendSupervisedRuntimeMessage({
-          runtimeClient,
+        const rewrite = await runtimeClient.sendMessage(
           sessionId,
-          content: buildOrchestratorRewritePrompt(
+          buildOrchestratorRewritePrompt(
             channel,
             request.sourceMessage,
             request.target.participantName,
             fullResponseText,
           ),
-          supervision: {
-            product: 'cats-chat',
-            surface: 'orchestrator-rewrite',
-            runId: channelId,
-            actionId: `${request.dispatchId}:rewrite`,
-            actorRef: request.target.participantId,
-            reason: 'orchestrator_rewrite',
-          },
-        });
+        );
         const rewriteText = resolveFullResponseText(rewrite.segments);
         if (rewriteText) {
           responseSegments = [{ kind: 'text', text: rewriteText, toolName: null, toolId: null }];
