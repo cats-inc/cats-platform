@@ -17,6 +17,7 @@ import {
 import type { MobileApiError } from '../api/client';
 import {
   type ChannelMessagesState,
+  type ChannelSendState,
   useChannelMessages,
 } from './hooks/useChannelMessages';
 import { MessageBody, type ResolveAttachmentUrl } from './MessageBody';
@@ -51,7 +52,7 @@ const STICKY_BOTTOM_THRESHOLD_PX = 80;
  * sheet / fullscreen modal).
  */
 export function ChatView({ channelId, productMode }: ChatViewProps) {
-  const { state, refetch } = useChannelMessages(channelId);
+  const { state, refetch, send, sendState } = useChannelMessages(channelId);
 
   return (
     <KeyboardAvoidingView
@@ -61,17 +62,28 @@ export function ChatView({ channelId, productMode }: ChatViewProps) {
         Platform.OS === 'ios' ? KEYBOARD_VERTICAL_OFFSET_IOS : 0
       }
     >
-      {renderBody(state, productMode, channelId, refetch)}
+      {renderBody({ state, productMode, channelId, refetch, send, sendState })}
     </KeyboardAvoidingView>
   );
 }
 
-function renderBody(
-  state: ChannelMessagesState,
-  productMode: ChatViewProductMode,
-  channelId: string,
-  onRetry: () => void,
-) {
+interface RenderBodyArgs {
+  state: ChannelMessagesState;
+  productMode: ChatViewProductMode;
+  channelId: string;
+  refetch: () => void;
+  send: (body: string) => Promise<void>;
+  sendState: ChannelSendState;
+}
+
+function renderBody({
+  state,
+  productMode,
+  channelId,
+  refetch,
+  send,
+  sendState,
+}: RenderBodyArgs) {
   switch (state.kind) {
     case 'loading':
       return (
@@ -90,17 +102,20 @@ function renderBody(
       return (
         <PanelView
           title="No conversation yet"
-          body={`Channel \`${channelId}\` was not found on the desktop. Sending the first message will create it (Phase 4c).`}
+          body={`Channel \`${channelId}\` was not found on the desktop. Sending the first message will create it once Phase 4c lands the new-chat creation flow.`}
         />
       );
     case 'error':
-      return <ErrorView error={state.error} onRetry={onRetry} />;
+      return <ErrorView error={state.error} onRetry={refetch} />;
     case 'data':
       return (
         <LiveConversation
           state={state}
           productMode={productMode}
           channelId={channelId}
+          refetch={refetch}
+          send={send}
+          sendState={sendState}
         />
       );
   }
@@ -110,18 +125,25 @@ interface LiveConversationProps {
   state: Extract<ChannelMessagesState, { kind: 'data' }>;
   productMode: ChatViewProductMode;
   channelId: string;
+  refetch: () => void;
+  send: (body: string) => Promise<void>;
+  sendState: ChannelSendState;
 }
 
 function LiveConversation({
   state,
   productMode,
   channelId,
+  refetch,
+  send,
+  sendState,
 }: LiveConversationProps) {
   const listRef = useRef<FlatList<MobileRenderedMessage>>(null);
   const isNearBottomRef = useRef<boolean>(true);
 
   const [draft, setDraft] = useState('');
-  const canSubmit = draft.trim().length > 0;
+  const sending = sendState.kind === 'sending';
+  const canSubmit = draft.trim().length > 0 && !sending;
 
   // Re-arm sticky-bottom whenever the channel switches.
   useEffect(() => {
@@ -141,12 +163,19 @@ function LiveConversation({
     }
   };
 
-  const handleSend = () => {
-    // Phase-4c will wire this to the real send path. Until then, just
-    // clear the draft so the composer feels responsive.
+  const handleSend = async () => {
+    const body = draft.trim();
+    if (body.length === 0 || sending) {
+      return;
+    }
+    // Clear the draft optimistically so the input is responsive even
+    // before the network round-trip completes; if the send fails the
+    // user can re-type. Phase 4c streaming will keep the optimistic
+    // user message visible during the round-trip itself.
     setDraft('');
     isNearBottomRef.current = true;
     listRef.current?.scrollToEnd({ animated: true });
+    await send(body);
   };
 
   return (
@@ -160,7 +189,13 @@ function LiveConversation({
         onScroll={handleScroll}
         onContentSizeChange={handleContentSizeChange}
         scrollEventThrottle={16}
-        refreshControl={<NoOpRefreshControl />}
+        refreshControl={
+          <RefreshControl
+            refreshing={false}
+            onRefresh={refetch}
+            tintColor={colors.accent.primary}
+          />
+        }
         renderItem={({ item }) => (
           <MessageBubbleItem
             channelId={channelId}
@@ -180,6 +215,13 @@ function LiveConversation({
           </Text>
         }
       />
+      {sendState.kind === 'error' ? (
+        <View style={styles.sendErrorBanner}>
+          <Text style={styles.sendErrorText} numberOfLines={2}>
+            {sendState.error.message}
+          </Text>
+        </View>
+      ) : null}
       <View style={styles.composer}>
         <TextInput
           value={draft}
@@ -187,36 +229,29 @@ function LiveConversation({
           placeholder={COMPOSER_PLACEHOLDER[productMode]}
           placeholderTextColor={colors.fg.muted}
           multiline
+          editable={!sending}
           style={styles.composerInput}
         />
         <Pressable
           accessibilityRole="button"
-          onPress={handleSend}
+          onPress={() => {
+            void handleSend();
+          }}
           disabled={!canSubmit}
           style={({ pressed }) => [
             styles.sendButton,
             !canSubmit ? styles.sendButtonDisabled : null,
-            pressed ? styles.sendButtonPressed : null,
+            pressed && canSubmit ? styles.sendButtonPressed : null,
           ]}
         >
-          <Text style={styles.sendButtonLabel}>Send</Text>
+          {sending ? (
+            <ActivityIndicator color={colors.fg.inverse} size="small" />
+          ) : (
+            <Text style={styles.sendButtonLabel}>Send</Text>
+          )}
         </Pressable>
       </View>
     </>
-  );
-}
-
-function NoOpRefreshControl() {
-  // RefreshControl placeholder for now; Phase 4c wires it to refetch
-  // via the hook's refetch callback once pull-to-refresh has a real
-  // backend interaction. Empty refresh keeps the gesture available
-  // visually.
-  return (
-    <RefreshControl
-      refreshing={false}
-      onRefresh={() => undefined}
-      tintColor={colors.accent.primary}
-    />
   );
 }
 
@@ -442,5 +477,16 @@ const styles = StyleSheet.create({
     color: colors.fg.inverse,
     ...typography.body,
     fontWeight: '600',
+  },
+  sendErrorBanner: {
+    backgroundColor: colors.accent.soft,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    borderTopWidth: 1,
+    borderTopColor: colors.border.subtle,
+  },
+  sendErrorText: {
+    color: colors.accent.danger,
+    ...typography.caption,
   },
 });
