@@ -698,8 +698,8 @@ export function applyDispatchExecutions(
             ...(segment.precedingTools.length > 0
               ? { precedingTools: segment.precedingTools }
               : {}),
-            ...(isLastSegment && execution.codeArtifactToolCalls?.length
-              ? { codeArtifactToolCalls: execution.codeArtifactToolCalls }
+            ...(isLastSegment && execution.runtimeAssistantMetadata
+              ? execution.runtimeAssistantMetadata
               : {}),
             ...(isLastSegment && serializedWorkflowRecommendation
               ? { workflowRecommendation: serializedWorkflowRecommendation }
@@ -750,8 +750,8 @@ export function applyDispatchExecutions(
             routingTrigger: execution.trigger,
             dispatchDepth: execution.depth,
             segmentIndex: 0,
-            ...(execution.codeArtifactToolCalls?.length
-              ? { codeArtifactToolCalls: execution.codeArtifactToolCalls }
+            ...(execution.runtimeAssistantMetadata
+              ? execution.runtimeAssistantMetadata
               : {}),
             ...(serializedWorkflowRecommendation
               ? { workflowRecommendation: serializedWorkflowRecommendation }

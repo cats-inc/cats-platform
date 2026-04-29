@@ -871,6 +871,21 @@ test('runtime dispatch execution consumes dedicated runtime targeting helpers in
   assert.match(targetingModule, /export async function resolveRuntimeEnvelopeForTarget/u);
 });
 
+test('chat runtime invocation enrichment stays behind the platform registry', async () => {
+  const sources = [
+    '../src/products/chat/api/routeSupport.ts',
+    '../src/products/chat/state/runtime-dispatch/execution.ts',
+    '../src/products/chat/state/runtime-session/sessionStart.ts',
+  ];
+
+  for (const sourcePath of sources) {
+    const source = await readFile(new URL(sourcePath, import.meta.url), 'utf8');
+    assert.match(source, /platform\/runtime\/invocationEnrichment\.js/u);
+    assert.doesNotMatch(source, /products\/code\/state\/runtimeArtifactTooling\.js/u);
+    assert.doesNotMatch(source, /code\/state\/runtimeArtifactTooling\.js/u);
+  }
+});
+
 test('runtime dispatch routing consumes dedicated runtime targeting helpers instead of defining choice resolution inline', async () => {
   const dispatchRouting = await readFile(
     new URL('../src/products/chat/state/runtime-dispatch/routing.ts', import.meta.url),

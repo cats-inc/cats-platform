@@ -35,10 +35,9 @@ import {
   mergeRuntimeInvocationContextMetadata,
 } from './context.js';
 import {
-  collectCodeArtifactRuntimeToolCalls,
-  type CodeArtifactRuntimeToolCallSummary,
-  withCodeArtifactRuntimeTooling,
-} from '../../../code/state/runtimeArtifactTooling.js';
+  collectRuntimeInvocationAssistantMetadata,
+  enrichRuntimeInvocation,
+} from '../../../../platform/runtime/invocationEnrichment.js';
 
 export interface DispatchExecution extends DispatchRequest {
   responseSegments: RuntimeMessageSegment[] | null;
@@ -52,7 +51,7 @@ export interface DispatchExecution extends DispatchRequest {
   leasePatch?: DispatchLeasePatch;
   channelChatCwd?: string;
   recoveredMessages?: ChatMessage[];
-  codeArtifactToolCalls?: CodeArtifactRuntimeToolCallSummary[];
+  runtimeAssistantMetadata?: Record<string, unknown>;
 }
 
 function readRuntimeEnvelopeMetadataString(
@@ -126,14 +125,14 @@ export async function executeDispatch(
       runtimeClient,
       sessionId,
       content: dispatchPrompt.message,
-      input: withCodeArtifactRuntimeTooling({
+      input: enrichRuntimeInvocation(channel, {
         instructions: dispatchPrompt.instructions?.trim() || undefined,
         context: mergeRuntimeInvocationContextMetadata(
           runtimeEnvelope.context,
           dispatchContextMetadata,
         ),
         skills: runtimeEnvelope.skills,
-      }, channel),
+      }, { phase: 'message_send' }),
       supervision: {
         product: 'cats-chat',
         surface: 'runtime-dispatch',
@@ -146,7 +145,7 @@ export async function executeDispatch(
     let responseSegments: RuntimeMessageSegment[] = runtimeResult.segments.length > 0
       ? runtimeResult.segments
       : [{ kind: 'text', text: `${request.target.participantName} completed the routed turn without text output.`, toolName: null, toolId: null }];
-    const codeArtifactToolCalls = collectCodeArtifactRuntimeToolCalls(
+    const runtimeAssistantMetadata = collectRuntimeInvocationAssistantMetadata(
       channel,
       runtimeResult.segments,
     );
@@ -206,7 +205,9 @@ export async function executeDispatch(
       conversationId: resolvedConversationId,
       containerId: resolvedContainerId,
       transportBindingId: resolvedTransportBindingId,
-      ...(codeArtifactToolCalls.length > 0 ? { codeArtifactToolCalls } : {}),
+      ...(Object.keys(runtimeAssistantMetadata).length > 0
+        ? { runtimeAssistantMetadata }
+        : {}),
     };
   } catch (error) {
     const supervisedRejection = error instanceof RuntimeSupervisionRejectedError

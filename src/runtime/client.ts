@@ -115,16 +115,35 @@ export interface RuntimeSessionInfo {
   skills?: RuntimeSessionSkillState;
 }
 
-export type RuntimeMessageSegmentKind = 'text' | 'tool_use' | 'tool_result';
+export interface RuntimeTextSegment {
+  kind: 'text';
+  text: string;
+  toolName: null;
+  toolId: null;
+}
 
-export interface RuntimeMessageSegment {
-  kind: RuntimeMessageSegmentKind;
+export interface RuntimeToolUseSegment {
+  kind: 'tool_use';
   text: string;
   toolName: string | null;
   toolId: string | null;
   toolArgs?: Record<string, unknown> | null;
+}
+
+export interface RuntimeToolResultSegment {
+  kind: 'tool_result';
+  text: string;
+  toolName: string | null;
+  toolId: string | null;
   isError?: boolean | null;
 }
+
+export type RuntimeMessageSegment =
+  | RuntimeTextSegment
+  | RuntimeToolUseSegment
+  | RuntimeToolResultSegment;
+
+export type RuntimeMessageSegmentKind = RuntimeMessageSegment['kind'];
 
 export interface RuntimeMessageResult {
   segments: RuntimeMessageSegment[];

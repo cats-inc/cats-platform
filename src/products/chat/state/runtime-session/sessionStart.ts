@@ -18,7 +18,7 @@ import {
 import type { RuntimeEnvelopeCanonicalMetadata } from './shared.js';
 import type { ChannelTaskExecutionContext } from './taskExecution.js';
 import type { ResolvedChannelRuntimeSessionPolicy } from './policy.js';
-import { withCodeArtifactRuntimeTooling } from '../../../code/state/runtimeArtifactTooling.js';
+import { enrichRuntimeInvocation } from '../../../../platform/runtime/invocationEnrichment.js';
 
 export interface RuntimeSessionExecutionTarget {
   provider: string;
@@ -55,7 +55,7 @@ export async function createOrchestratorTargetRuntimeSession(input: {
   const { spawnCwd, ...runtimePolicy } = input.sessionPolicy;
   const session = await createSupervisedRuntimeSession({
     runtimeClient: input.runtimeClient,
-    input: withCodeArtifactRuntimeTooling({
+    input: enrichRuntimeInvocation(channel, {
       provider: sessionTarget.provider,
       instance: sessionTarget.instance,
       model: sessionTarget.model,
@@ -70,7 +70,7 @@ export async function createOrchestratorTargetRuntimeSession(input: {
       ),
       skills: input.runtimeEnvelope.skills,
       ...(input.taskExecutionContext?.executionRequest ?? {}),
-    }, channel),
+    }, { phase: 'session_create' }),
     supervision: {
       product: 'cats-chat',
       surface: 'orchestrator-session-start',
@@ -117,7 +117,7 @@ export async function createParticipantTargetRuntimeSession(input: {
   const { spawnCwd, ...runtimePolicy } = input.sessionPolicy;
   const session = await createSupervisedRuntimeSession({
     runtimeClient: input.runtimeClient,
-    input: withCodeArtifactRuntimeTooling({
+    input: enrichRuntimeInvocation(channel, {
       provider: participant.execution.target.provider,
       instance: participant.execution.target.instance,
       model: participant.execution.target.model,
@@ -132,7 +132,7 @@ export async function createParticipantTargetRuntimeSession(input: {
       ),
       skills: input.runtimeEnvelope.skills,
       ...(input.taskExecutionContext?.executionRequest ?? {}),
-    }, channel),
+    }, { phase: 'session_create' }),
     supervision: {
       product: 'cats-chat',
       surface: 'participant-session-start',

@@ -120,7 +120,7 @@ a transcript command and it is not a public HTTP route in the current scaffold.
 | Field | Value |
 |-------|-------|
 | Owning product | Cats Code |
-| Current status | Code-origin active sessions receive the onboarding block and runtime context metadata; returned `declare_artifact` `tool_use` segments are observed as shape summaries. Native runtime tool execution, product route, and persistence remain pending. |
+| Current status | Code-origin active sessions receive the onboarding block at session create and runtime context metadata at session create / message send; returned `declare_artifact` `tool_use` segments are observed as shape summaries. Native runtime tool execution, product route, persistence, and finalization enforcement remain pending. |
 | First channel | `runtime_tool` |
 | Tool name | `declare_artifact` |
 | Implementation entry point | `src/products/code/shared/artifactDeclaration.ts` |
@@ -167,6 +167,10 @@ Supplying a non-null server-resolved field rejects the call with
 
 ### Active-Session Wiring
 
+Runtime invocation enrichment is registered through the platform runtime
+invocation-enricher registry. Chat calls the platform registry and does not
+import Code artifact tooling directly.
+
 When a chat/channel originates from Cats Code (`originSurface = "code"`),
 activation of `+New code`, `+Team code`, or a `+Peer code` member channel
 enriches the runtime session-create request with:
@@ -178,15 +182,19 @@ enriches the runtime session-create request with:
   producer labels, finalization envelope name, source channel id/title, and
   workspace path when known.
 
-The same enrichment is applied again to each runtime message send so resumed
-or long-lived Code sessions do not rely on the first activation turn retaining
-the tool contract.
+Each runtime message send repeats the lightweight context metadata so observers
+can identify the active Code artifact contract, but it does not resend the full
+onboarding block. The first implementation relies on the session-create system
+prompt retaining the onboarding block; resume / compaction re-injection remains
+the follow-up path from SPEC-092 / PLAN-081.
 
 The current Cats Platform receiver also preserves `toolArgs` on runtime
 `tool_use` segments and records same-turn `declare_artifact` observations as
 `codeArtifactToolCalls` metadata on the terminal assistant segment. These
 observations are shape summaries only. They do not replace the future
 server-side `accepted` result, Core artifact upsert, or finalization gate.
+Until the finalization gate is wired, Cats Platform still accepts final visible
+responses that claim an artifact without an accepted same-turn declaration.
 
 ### Output Summary
 

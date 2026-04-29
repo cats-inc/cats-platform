@@ -1,7 +1,16 @@
 import type {
   RuntimeMessageSegment,
   RuntimeSessionInvocationContext,
+  RuntimeToolUseSegment,
 } from '../../../platform/runtime/client.js';
+import {
+  registerRuntimeInvocationEnricher,
+  type RuntimeInvocationEnricher,
+  type RuntimeInvocationEnrichmentChannel,
+  type RuntimeInvocationEnrichmentContext,
+  type RuntimeInvocationEnrichmentInput,
+  type RuntimeInvocationEnrichmentResult,
+} from '../../../platform/runtime/invocationEnrichment.js';
 import {
   CODE_ARTIFACT_DECLARATION_ONBOARDING_BLOCK_VERSION,
   CODE_ARTIFACT_DECLARATION_SCHEMA_VERSION,
@@ -12,6 +21,7 @@ import {
   type CodeArtifactDeclarationErrorCode,
 } from '../shared/artifactDeclaration.js';
 
+export const CODE_ARTIFACT_RUNTIME_ENRICHER_ID = 'cats-code.artifact-declaration' as const;
 export const CODE_ARTIFACT_RUNTIME_CONTEXT_METADATA_KEY = 'codeArtifactDeclaration' as const;
 
 const AGENT_VISIBLE_DECLARATION_FIELDS = [
@@ -46,17 +56,14 @@ const NEGATIVE_ARTIFACT_EXAMPLES = [
   'plans or promises for work not produced yet',
 ] as const;
 
-export interface CodeArtifactRuntimeToolingChannel {
-  originSurface?: unknown;
-  id?: string | null;
-  title?: string | null;
-  chatCwd?: string | null;
-}
+export type CodeArtifactRuntimeToolingChannel = RuntimeInvocationEnrichmentChannel;
+export type RuntimeInvocationWithCodeArtifactTooling = RuntimeInvocationEnrichmentInput;
 
-export interface RuntimeInvocationWithCodeArtifactTooling {
-  instructions?: string | null;
-  context?: RuntimeSessionInvocationContext;
-}
+export type RuntimeInvocationWithCodeArtifactToolingResult<
+  TInput extends RuntimeInvocationWithCodeArtifactTooling,
+> = RuntimeInvocationEnrichmentResult<TInput> & {
+  context: RuntimeSessionInvocationContext;
+};
 
 export interface CodeArtifactRuntimeToolingMetadata {
   enabled: true;
@@ -157,24 +164,42 @@ export function buildCodeArtifactOnboardingBlock(): string {
   ].join('\n');
 }
 
-export function withCodeArtifactRuntimeTooling<
+export function createCodeArtifactRuntimeInvocationEnricher(): RuntimeInvocationEnricher {
+  return {
+    id: CODE_ARTIFACT_RUNTIME_ENRICHER_ID,
+    enrich(channel, input, context) {
+      return shouldAttachCodeArtifactRuntimeTooling(channel)
+        ? enrichCodeArtifactRuntimeInvocation(input, channel, context)
+        : input;
+    },
+    collectAssistantMetadata(channel, segments) {
+      const calls = collectCodeArtifactRuntimeToolCalls(channel, segments);
+      return calls.length > 0 ? { codeArtifactToolCalls: calls } : null;
+    },
+  };
+}
+
+export function registerCodeArtifactRuntimeInvocationEnrichers(): void {
+  registerRuntimeInvocationEnricher(createCodeArtifactRuntimeInvocationEnricher());
+}
+
+export function enrichCodeArtifactRuntimeInvocation<
   TInput extends RuntimeInvocationWithCodeArtifactTooling,
 >(
   input: TInput,
   channel: CodeArtifactRuntimeToolingChannel,
-): TInput {
-  if (!shouldAttachCodeArtifactRuntimeTooling(channel)) {
-    return input;
-  }
-
-  const onboardingBlock = buildCodeArtifactOnboardingBlock();
+  enrichmentContext: RuntimeInvocationEnrichmentContext,
+): RuntimeInvocationWithCodeArtifactToolingResult<TInput> {
   const context = withCodeArtifactRuntimeContext(input.context, channel);
+  const instructions = enrichmentContext.phase === 'session_create'
+    ? appendCodeArtifactInstructions(input.instructions, buildCodeArtifactOnboardingBlock())
+    : input.instructions;
 
   return {
     ...input,
-    instructions: appendCodeArtifactInstructions(input.instructions, onboardingBlock),
+    instructions,
     context,
-  };
+  } as unknown as RuntimeInvocationWithCodeArtifactToolingResult<TInput>;
 }
 
 export function collectCodeArtifactRuntimeToolCalls(
@@ -195,8 +220,20 @@ export function collectCodeArtifactRuntimeToolCalls(
     }
 
     const toolArgs = readToolUseArguments(segment);
+    if (!toolArgs.ok) {
+      summaries.push({
+        toolName: CODE_ARTIFACT_DECLARATION_TOOL_NAME,
+        toolId: segment.toolId ?? null,
+        declarationId: null,
+        status: 'rejected',
+        errorCode: 'artifact_metadata_invalid',
+        message: toolArgs.message,
+      });
+      continue;
+    }
+
     try {
-      const normalized = CODE_ARTIFACT_DECLARATION_TOOL.normalizeInput(toolArgs);
+      const normalized = CODE_ARTIFACT_DECLARATION_TOOL.normalizeInput(toolArgs.value);
       summaries.push({
         toolName: CODE_ARTIFACT_DECLARATION_TOOL_NAME,
         toolId: segment.toolId ?? null,
@@ -213,7 +250,7 @@ export function collectCodeArtifactRuntimeToolCalls(
       summaries.push({
         toolName: CODE_ARTIFACT_DECLARATION_TOOL_NAME,
         toolId: segment.toolId ?? null,
-        declarationId: readDeclarationId(toolArgs),
+        declarationId: readDeclarationId(toolArgs.value),
         status: 'rejected',
         errorCode: declarationError.code,
         message: declarationError.message,
@@ -261,23 +298,40 @@ function appendCodeArtifactInstructions(
   return `${existingText}\n\n${onboardingBlock}`;
 }
 
-function readToolUseArguments(segment: RuntimeMessageSegment): unknown {
+type ToolUseArgumentsReadResult =
+  | { ok: true; value: Record<string, unknown> }
+  | { ok: false; message: string };
+
+function readToolUseArguments(segment: RuntimeToolUseSegment): ToolUseArgumentsReadResult {
   if (
     segment.toolArgs
     && typeof segment.toolArgs === 'object'
     && !Array.isArray(segment.toolArgs)
   ) {
-    return segment.toolArgs;
+    return { ok: true, value: segment.toolArgs };
   }
 
   const raw = segment.text.trim();
   if (!raw) {
-    return {};
+    return {
+      ok: false,
+      message: 'declare_artifact tool arguments must be a structured JSON object.',
+    };
   }
   try {
-    return JSON.parse(raw) as unknown;
+    const parsed = JSON.parse(raw) as unknown;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return {
+        ok: false,
+        message: 'declare_artifact tool arguments must be a structured JSON object.',
+      };
+    }
+    return { ok: true, value: parsed as Record<string, unknown> };
   } catch {
-    return raw;
+    return {
+      ok: false,
+      message: 'declare_artifact tool arguments must be valid JSON.',
+    };
   }
 }
 

@@ -32,7 +32,7 @@ import {
   resolvePlatformScopeIdPathFromChatState,
 } from '../../../shared/platformScopeId.js';
 import { parseRuntimeSessionPolicyCreateInput } from '../../../shared/runtimeSessionPolicy.js';
-import { withCodeArtifactRuntimeTooling } from '../../code/state/runtimeArtifactTooling.js';
+import { enrichRuntimeInvocation } from '../../../platform/runtime/invocationEnrichment.js';
 import {
   publishTelegramBridgeResult,
   readTelegramPollingContext,
@@ -753,7 +753,7 @@ export async function persistCatAssignmentUpdate(
         : runtimePolicy.workspaceKind;
       const session = await createSupervisedRuntimeSession({
         runtimeClient: context.dependencies.runtimeClient,
-        input: withCodeArtifactRuntimeTooling({
+        input: enrichRuntimeInvocation(resolvedChannel, {
           provider: updatedCat.execution.target.provider,
           instance: updatedCat.execution.target.instance,
           model: updatedCat.execution.target.model,
@@ -765,7 +765,7 @@ export async function persistCatAssignmentUpdate(
           workspaceKind: effectiveWorkspaceKind,
           context: runtimeEnvelope.context,
           skills: runtimeEnvelope.skills,
-        }, resolvedChannel),
+        }, { phase: 'session_create' }),
         supervision: {
           product: 'cats-chat',
           surface: 'cat-assignment-session-start',

@@ -4,12 +4,13 @@ import test from 'node:test';
 import {
   CODE_ARTIFACT_RUNTIME_CONTEXT_METADATA_KEY,
   collectCodeArtifactRuntimeToolCalls,
+  createCodeArtifactRuntimeInvocationEnricher,
+  enrichCodeArtifactRuntimeInvocation,
   shouldAttachCodeArtifactRuntimeTooling,
-  withCodeArtifactRuntimeTooling,
 } from '../src/products/code/state/runtimeArtifactTooling.ts';
 
 test('Code artifact runtime tooling attaches only to Code-origin active sessions', () => {
-  const codeInvocation = withCodeArtifactRuntimeTooling(
+  const codeInvocation = enrichCodeArtifactRuntimeInvocation(
     {
       instructions: 'Keep the answer concise.',
       context: {
@@ -23,6 +24,7 @@ test('Code artifact runtime tooling attaches only to Code-origin active sessions
       title: 'Implement export flow',
       chatCwd: 'C:/repo/cats-platform',
     },
+    { phase: 'session_create' },
   );
 
   assert.equal(shouldAttachCodeArtifactRuntimeTooling({ originSurface: 'code' }), true);
@@ -43,11 +45,22 @@ test('Code artifact runtime tooling attaches only to Code-origin active sessions
   assert.equal(metadata?.toolName, 'declare_artifact');
   assert.equal(metadata?.sourceChannelId, 'channel-code');
   assert.equal(metadata?.workspacePath, 'C:/repo/cats-platform');
+});
 
-  const chatInvocation = { instructions: 'No Code tooling.', context: { metadata: {} } };
-  assert.strictEqual(
-    withCodeArtifactRuntimeTooling(chatInvocation, { originSurface: 'chat' }),
-    chatInvocation,
+test('Code artifact runtime tooling does not repeat onboarding on message sends', () => {
+  const codeInvocation = enrichCodeArtifactRuntimeInvocation(
+    {
+      instructions: 'Keep the answer concise.',
+      context: { metadata: { channelId: 'channel-code' } },
+    },
+    { originSurface: 'code', id: 'channel-code' },
+    { phase: 'message_send' },
+  );
+
+  assert.equal(codeInvocation.instructions, 'Keep the answer concise.');
+  assert.equal(
+    Boolean(codeInvocation.context?.metadata?.[CODE_ARTIFACT_RUNTIME_CONTEXT_METADATA_KEY]),
+    true,
   );
 });
 
@@ -81,6 +94,12 @@ test('Code artifact runtime tooling observes declare_artifact tool_use payloads'
           location: { kind: 'url', value: 'https://example.test/preview' },
         }),
       },
+      {
+        kind: 'tool_use',
+        toolName: 'declare_artifact',
+        toolId: 'tool-3',
+        text: 'not json',
+      },
     ],
   );
 
@@ -99,6 +118,14 @@ test('Code artifact runtime tooling observes declare_artifact tool_use payloads'
       errorCode: 'artifact_required_field_empty',
       message: 'declare_artifact title is required.',
     },
+    {
+      toolName: 'declare_artifact',
+      toolId: 'tool-3',
+      declarationId: null,
+      status: 'rejected',
+      errorCode: 'artifact_metadata_invalid',
+      message: 'declare_artifact tool arguments must be valid JSON.',
+    },
   ]);
   assert.deepEqual(
     collectCodeArtifactRuntimeToolCalls(
@@ -114,4 +141,36 @@ test('Code artifact runtime tooling observes declare_artifact tool_use payloads'
     ),
     [],
   );
+});
+
+test('Code artifact runtime enricher returns assistant metadata without Chat coupling', () => {
+  const enricher = createCodeArtifactRuntimeInvocationEnricher();
+  const metadata = enricher.collectAssistantMetadata?.(
+    { originSurface: 'code' },
+    [
+      {
+        kind: 'tool_use',
+        toolName: 'declare_artifact',
+        toolId: 'tool-1',
+        text: '',
+        toolArgs: {
+          declarationId: 'report-1',
+          label: 'test_report',
+          title: 'Test report',
+          location: { kind: 'inline_summary', value: 'All tests passed.' },
+        },
+      },
+    ],
+  );
+
+  assert.deepEqual(metadata, {
+    codeArtifactToolCalls: [
+      {
+        toolName: 'declare_artifact',
+        toolId: 'tool-1',
+        declarationId: 'report-1',
+        status: 'shape_ok',
+      },
+    ],
+  });
 });

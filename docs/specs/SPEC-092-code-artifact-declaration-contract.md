@@ -794,6 +794,12 @@ Rules:
   they must not be the acceptance path for this gate and must not replace
   the structured envelope.
 
+Implementation status note (2026-04-29): the first active-session wiring
+slice injects/advertises the artifact contract and observes
+`declare_artifact` tool-use shape, but does not yet enforce this final-response
+gate. Until Task 3.1d lands, Cats Platform may still show a final visible
+response that claims an artifact without an accepted same-turn declaration.
+
 #### Tool Catalog Registration
 
 `declare_artifact` shall be registered as a first-class Code-product tool

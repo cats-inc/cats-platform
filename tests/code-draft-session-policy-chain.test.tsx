@@ -250,12 +250,10 @@ test('code-draft session policy flows end-to-end from chip input to runtime sess
     const sendMessagePayload = await sendMessageResponse.text();
     assert.equal(sendMessageResponse.status, 200, sendMessagePayload);
 
-    await waitForCondition(async () => runtimeClient.sentMessages.length > 0
-      ? runtimeClient.sentMessages[0]
-      : null);
-    assert.match(
+    await waitForCondition(async () => runtimeClient.sentMessages.length > 0);
+    assert.equal(
       runtimeClient.sentMessages[0]?.input?.instructions ?? '',
-      /codeArtifactDeclaration\.onboardingBlockVersion=v1/u,
+      '',
     );
     const turnArtifactContext =
       runtimeClient.sentMessages[0]?.input?.context?.metadata?.codeArtifactDeclaration as

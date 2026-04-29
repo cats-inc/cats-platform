@@ -59,6 +59,9 @@ import { MemoryChatStore } from '../../products/chat/state/store.js';
 import { createAsyncKeyedGate } from '../../products/chat/shared/asyncControl.js';
 import { createChatTaskExecutionLocator } from '../../products/chat/state/taskExecutionLocator.js';
 import { createChatTelegramRoomBridge } from '../../products/chat/state/telegramBridgeAdapter.js';
+import {
+  registerCodeArtifactRuntimeInvocationEnrichers,
+} from '../../products/code/state/runtimeArtifactTooling.js';
 
 function createDefaultCompanionStore(
   shared: SharedServerDependencies,
@@ -134,6 +137,8 @@ function createDefaultTelegramRelay(
 export function resolveServerDependencies(
   dependencies: ServerDependencies,
 ): ResolvedServerDependencies {
+  registerCodeArtifactRuntimeInvocationEnrichers();
+
   const sharedCoreStore = dependencies.shared.coreStore ?? dependencies.chat.chatStore;
   const startup = dependencies.shared.startup ?? createAppStartupState({
     phase: 'ready',
