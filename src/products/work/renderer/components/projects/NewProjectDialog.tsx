@@ -7,12 +7,12 @@ import {
   useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import type { CoreProjectStatus } from "../../api/workRecords.js";
 import { WORK_PROJECTS_PATH } from "../../workPaths.js";
 import { PROJECTS_QUERY_KEY } from "../../state/queries/projectsQuery.js";
-import { pinnedProjectsStore } from "../../state/pinnedProjectsStore";
+import { pinnedProjectsStore, type CreateProjectInput } from "../../state/pinnedProjectsStore";
 
 interface NewProjectDialogProps {
   onClose: () => void;
@@ -40,8 +40,22 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps): JSX.Elemen
   const [ownerRole, setOwnerRole] = useState("");
   const [status, setStatus] = useState<CoreProjectStatus>("planned");
   const [nextAction, setNextAction] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  const createMutation = useMutation({
+    mutationFn: (input: CreateProjectInput) =>
+      pinnedProjectsStore.createProject(input),
+    onSuccess: async (project) => {
+      await queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY });
+      onClose();
+      navigate(`${WORK_PROJECTS_PATH}/${project.id}`);
+    },
+  });
+  const submitting = createMutation.isPending;
+  const error = createMutation.error
+    ? createMutation.error instanceof Error
+      ? createMutation.error.message
+      : "Failed to create project."
+    : null;
 
   useEffect(() => {
     titleInputRef.current?.focus();
@@ -64,28 +78,17 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps): JSX.Elemen
     }
   }
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
+  function onSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     const trimmed = title.trim();
     if (!trimmed || submitting) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      const project = await pinnedProjectsStore.createProject({
-        title: trimmed,
-        summary: summary || null,
-        ownerRole: ownerRole || null,
-        status,
-        nextAction: nextAction || null,
-      });
-      await queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY });
-      onClose();
-      navigate(`${WORK_PROJECTS_PATH}/${project.id}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create project.");
-    } finally {
-      setSubmitting(false);
-    }
+    createMutation.mutate({
+      title: trimmed,
+      summary: summary || null,
+      ownerRole: ownerRole || null,
+      status,
+      nextAction: nextAction || null,
+    });
   }
 
   return (

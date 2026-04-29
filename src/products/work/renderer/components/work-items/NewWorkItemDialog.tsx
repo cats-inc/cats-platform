@@ -7,13 +7,13 @@ import {
   useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import type { CoreWorkItemStatus } from "../../api/workRecords.js";
 import { WORK_WORK_ITEMS_PATH } from "../../workPaths.js";
 import { usePinnedProjects } from "../../state/pinnedProjectsStore";
 import { WORK_ITEMS_QUERY_KEY } from "../../state/queries/workItemsQuery.js";
-import { workItemsStore } from "../../state/workItemsStore";
+import { workItemsStore, type CreateWorkItemInput } from "../../state/workItemsStore";
 
 interface NewWorkItemDialogProps {
   onClose: () => void;
@@ -51,8 +51,22 @@ export function NewWorkItemDialog({
   const [ownerRole, setOwnerRole] = useState("");
   const [status, setStatus] = useState<CoreWorkItemStatus>("draft");
   const [nextAction, setNextAction] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  const createMutation = useMutation({
+    mutationFn: (input: CreateWorkItemInput) =>
+      workItemsStore.createWorkItem(input),
+    onSuccess: async (workItem) => {
+      await queryClient.invalidateQueries({ queryKey: WORK_ITEMS_QUERY_KEY });
+      onClose();
+      navigate(`${WORK_WORK_ITEMS_PATH}/${workItem.id}`);
+    },
+  });
+  const submitting = createMutation.isPending;
+  const error = createMutation.error
+    ? createMutation.error instanceof Error
+      ? createMutation.error.message
+      : "Failed to create work item."
+    : null;
 
   useEffect(() => {
     titleInputRef.current?.focus();
@@ -75,29 +89,18 @@ export function NewWorkItemDialog({
     }
   }
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
+  function onSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     const trimmed = title.trim();
     if (!trimmed || submitting) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      const workItem = await workItemsStore.createWorkItem({
-        title: trimmed,
-        summary: summary || null,
-        linkedProjectId: linkedProject || null,
-        ownerRole: ownerRole || null,
-        status,
-        nextAction: nextAction || null,
-      });
-      await queryClient.invalidateQueries({ queryKey: WORK_ITEMS_QUERY_KEY });
-      onClose();
-      navigate(`${WORK_WORK_ITEMS_PATH}/${workItem.id}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create work item.");
-    } finally {
-      setSubmitting(false);
-    }
+    createMutation.mutate({
+      title: trimmed,
+      summary: summary || null,
+      linkedProjectId: linkedProject || null,
+      ownerRole: ownerRole || null,
+      status,
+      nextAction: nextAction || null,
+    });
   }
 
   const projectOptions = allProjects.filter((p) => !deletedIds.has(p.id));

@@ -7,13 +7,18 @@ import {
   useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import type { CoreTaskStatus } from "../../api/workRecords.js";
 import { WORK_TASKS_PATH } from "../../workPaths.js";
 import { usePinnedProjects } from "../../state/pinnedProjectsStore";
 import { TASKS_QUERY_KEY } from "../../state/queries/tasksQuery.js";
-import { tasksStore, useTasks, type TaskPriority } from "../../state/tasksStore";
+import {
+  tasksStore,
+  useTasks,
+  type CreateTaskInput,
+  type TaskPriority,
+} from "../../state/tasksStore";
 import { useWorkItems } from "../../state/workItemsStore";
 
 interface NewTaskDialogProps {
@@ -75,8 +80,21 @@ export function NewTaskDialog({
   const [priority, setPriority] = useState<TaskPriority | "">("");
   const [nextAction, setNextAction] = useState("");
   const [acceptanceCriteria, setAcceptanceCriteria] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+
+  const createMutation = useMutation({
+    mutationFn: (input: CreateTaskInput) => tasksStore.createTask(input),
+    onSuccess: async (task) => {
+      await queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
+      onClose();
+      navigate(`${WORK_TASKS_PATH}/${task.id}`);
+    },
+  });
+  const submitting = createMutation.isPending;
+  const error = createMutation.error
+    ? createMutation.error instanceof Error
+      ? createMutation.error.message
+      : "Failed to create task."
+    : null;
 
   useEffect(() => {
     titleInputRef.current?.focus();
@@ -99,34 +117,23 @@ export function NewTaskDialog({
     }
   }
 
-  async function onSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
+  function onSubmit(event: FormEvent<HTMLFormElement>): void {
     event.preventDefault();
     const trimmed = title.trim();
     if (!trimmed || submitting) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      const task = await tasksStore.createTask({
-        title: trimmed,
-        summary: summary || null,
-        linkedProjectId: linkedProject || null,
-        linkedWorkItemId: linkedWorkItem || null,
-        parentTaskId: parentTask || null,
-        ownerRole: ownerRole || null,
-        assigneeName: assigneeName || null,
-        status,
-        priority: priority || null,
-        nextAction: nextAction || null,
-        acceptanceCriteria: acceptanceCriteria || null,
-      });
-      await queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
-      onClose();
-      navigate(`${WORK_TASKS_PATH}/${task.id}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create task.");
-    } finally {
-      setSubmitting(false);
-    }
+    createMutation.mutate({
+      title: trimmed,
+      summary: summary || null,
+      linkedProjectId: linkedProject || null,
+      linkedWorkItemId: linkedWorkItem || null,
+      parentTaskId: parentTask || null,
+      ownerRole: ownerRole || null,
+      assigneeName: assigneeName || null,
+      status,
+      priority: priority || null,
+      nextAction: nextAction || null,
+      acceptanceCriteria: acceptanceCriteria || null,
+    });
   }
 
   const projectOptions = allProjects.filter((p) => !deletedProjectIds.has(p.id));
