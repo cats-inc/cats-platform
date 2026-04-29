@@ -8,11 +8,15 @@ import {
   buildCodeDashboardProjection,
   buildCodeTaskDetailProjection,
   buildCodeTaskListProjection,
+  buildCodeWorkspaceDetailProjection,
+  buildCodeWorkspaceListProjection,
   type CodeArtifactDetailProjection,
   type CodeArtifactListProjection,
   type CodeDashboardProjection,
   type CodeTaskDetailProjection,
   type CodeTaskListProjection,
+  type CodeWorkspaceDetailProjection,
+  type CodeWorkspaceListProjection,
 } from './projection.js';
 import { routeCodeWorkspaceApi } from './workspaceRoutes.js';
 import { routeCodeTaskMutationApi } from './taskRoutes.js';
@@ -34,6 +38,8 @@ import {
   CODE_API_BUILDS_PATH,
   CODE_API_PREFIX,
   CODE_API_PREVIEWS_PATH,
+  CODE_API_WORKSPACE_DETAIL_PATTERN,
+  CODE_API_WORKSPACES_PATH,
   CODE_API_TASK_DETAIL_PATTERN,
   CODE_API_TASKS_PATH,
 } from '../shared/apiPaths.js';
@@ -62,6 +68,19 @@ export function createCodeTaskListPayload(
   core: Awaited<ReturnType<CoreStore['readCore']>>,
 ): CodeTaskListProjection {
   return buildCodeTaskListProjection(core);
+}
+
+export function createCodeWorkspaceListPayload(
+  core: Awaited<ReturnType<CoreStore['readCore']>>,
+): CodeWorkspaceListProjection {
+  return buildCodeWorkspaceListProjection(core);
+}
+
+export function createCodeWorkspaceDetailPayload(
+  core: Awaited<ReturnType<CoreStore['readCore']>>,
+  workspaceId: string,
+): CodeWorkspaceDetailProjection | null {
+  return buildCodeWorkspaceDetailProjection(core, workspaceId);
 }
 
 export function createCodeTaskDetailPayload(
@@ -110,6 +129,53 @@ export async function routeCodeApi(
     return true;
   }
   if (await routeCodeArtifactDeclarationApi(context)) {
+    return true;
+  }
+
+  const workspaceDetailMatch = matchRoute(context.url.pathname, CODE_API_WORKSPACE_DETAIL_PATTERN);
+  if (workspaceDetailMatch) {
+    if (context.method !== 'GET') {
+      sendMethodNotAllowed(context.response, ['GET']);
+      return true;
+    }
+
+    const workspaceId = workspaceDetailMatch[0];
+    if (!workspaceId) {
+      sendJson(context.response, 400, {
+        error: { code: 'invalid_workspace_id', message: 'Codespace id is required.' },
+      });
+      return true;
+    }
+
+    const payload = createCodeWorkspaceDetailPayload(
+      await context.dependencies.coreStore.readCore(),
+      workspaceId,
+    );
+    if (!payload) {
+      sendJson(context.response, 404, {
+        error: {
+          code: 'workspace_not_found',
+          message: `No codespace found for id ${workspaceId}.`,
+        },
+      });
+      return true;
+    }
+
+    sendJson(context.response, 200, payload);
+    return true;
+  }
+
+  if (context.url.pathname === CODE_API_WORKSPACES_PATH) {
+    if (context.method !== 'GET') {
+      sendMethodNotAllowed(context.response, ['GET']);
+      return true;
+    }
+
+    sendJson(
+      context.response,
+      200,
+      createCodeWorkspaceListPayload(await context.dependencies.coreStore.readCore()),
+    );
     return true;
   }
 

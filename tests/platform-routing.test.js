@@ -34,6 +34,7 @@ import {
 import {
   buildCodeDashboardProjection,
   buildCodeArtifactListProjection,
+  buildCodeWorkspaceListProjection,
 } from '../build/server/products/code/api/projection.js';
 
 test('resolvePlatformSurfaceForPath routes work and code prefixes to their dedicated platform surfaces', () => {
@@ -247,6 +248,87 @@ test('Code dashboard selects the latest ready output as the default artifact foc
 
   assert.equal(artifactList.artifacts[0].id, 'artifact-code-draft-newer');
   assert.equal(dashboard.selection.defaultArtifactId, 'artifact-code-ready-newer');
+});
+
+test('Code workspace projection derives codespaces from real Code task metadata', () => {
+  const core = createDefaultCoreState();
+  const conversationId = 'conversation-code-codespace';
+  const taskId = 'task-code-codespace';
+  const workspacePath = 'C:\\Users\\middl\\Source\\SK2\\one-man-digital-company\\cats-platform';
+
+  core.conversations.push({
+    id: conversationId,
+    title: 'Code task conversation',
+    kind: 'chat_channel',
+    status: 'active',
+    containerId: null,
+    participantActorIds: [core.ownerProfile.actorId],
+    sourceChannelId: 'channel-code-codespace',
+    repoPath: workspacePath,
+    responseLanguage: 'en',
+    createdAt: '2026-04-29T06:00:00.000Z',
+    updatedAt: '2026-04-29T06:05:00.000Z',
+    lastMessageAt: '2026-04-29T06:05:00.000Z',
+  });
+  core.tasks.push({
+    id: taskId,
+    title: 'Wire real Codespaces',
+    status: 'in_progress',
+    conversationId,
+    parentTaskId: null,
+    ownerActorId: core.ownerProfile.actorId,
+    orchestratorActorId: null,
+    assignedActorIds: [],
+    summary: 'Replace renderer mock rows with Core-derived codespace data.',
+    approval: {
+      status: 'not_required',
+      requestedAt: null,
+      decidedAt: null,
+      decidedByActorId: null,
+      decisionAction: null,
+      notes: null,
+    },
+    createdAt: '2026-04-29T06:00:00.000Z',
+    updatedAt: '2026-04-29T06:10:00.000Z',
+    metadata: {
+      planning: {
+        productHint: 'code',
+      },
+      codeWorkspace: {
+        workspacePath,
+        workspaceKind: 'user_selected',
+        ownershipState: 'owner_selected',
+      },
+    },
+  });
+  core.artifacts.push({
+    id: 'artifact-code-codespace',
+    title: 'Codespace projection report',
+    kind: 'report',
+    status: 'ready',
+    projectId: null,
+    workItemId: null,
+    conversationId,
+    taskId,
+    runId: 'run-code-codespace',
+    path: 'reports/codespace-projection.md',
+    mimeType: 'text/markdown',
+    sizeBytes: null,
+    summary: 'Real projection output.',
+    createdAt: '2026-04-29T06:11:00.000Z',
+    updatedAt: '2026-04-29T06:12:00.000Z',
+    metadata: {},
+  });
+
+  const projection = buildCodeWorkspaceListProjection(core);
+
+  assert.equal(projection.summary.totalAvailable, 1);
+  assert.equal(projection.workspaces[0]?.path, workspacePath);
+  assert.equal(projection.workspaces[0]?.source, 'task_workspace');
+  assert.equal(projection.workspaces[0]?.status, 'active');
+  assert.equal(projection.workspaces[0]?.conversationCount, 1);
+  assert.equal(projection.workspaces[0]?.taskCount, 1);
+  assert.equal(projection.workspaces[0]?.artifactCount, 1);
 });
 
 test('Work projections preserve briefing-thread channel links from shared conversations', () => {

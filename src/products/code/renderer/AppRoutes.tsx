@@ -17,7 +17,7 @@ import {
 import { ActiveCodeComposerChips } from './components/ActiveCodeComposerChips.js';
 import { CodeTaskPillsBar } from './components/CodeTaskPillsBar.js';
 import { ComposerSurfaceChip } from '../../shared/renderer/components/ComposerSurfaceChip.js';
-import { ArtifactDetailRouter } from './components/artifacts/ArtifactDetailRouter.js';
+import { ArtifactDetailView } from './components/ArtifactDetailView.js';
 import { ArtifactsListPage } from './components/artifacts/ArtifactsListPage.js';
 import { CodeBuilderView } from './components/CodeBuilderView.js';
 import { CodeRelayView } from './components/CodeRelayView.js';
@@ -122,7 +122,7 @@ export function AppRoutes({
       <Route
         key="artifact-detail"
         path="artifacts/:artifactId"
-        element={<ArtifactDetailRouter />}
+        element={<ArtifactDetailView />}
       />,
     ],
     renderBootShell: () => <BootShell />,

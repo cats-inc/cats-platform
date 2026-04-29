@@ -1,37 +1,62 @@
-import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 
-import { buildCodeArtifactPath } from "../../codePaths.js";
 import {
-  ARTIFACT_KIND_LABELS,
-  useArtifactsMock,
-  type CodeArtifactKind,
-  type CodeArtifactMock,
-} from "../../state/artifactsMockStore";
-import "./artifactsList.css";
+  fetchCodeArtifacts,
+  type CodeArtifactListItemSummary,
+} from '../../api/codeTask.js';
+import { buildCodeArtifactPath } from '../../codePaths.js';
+import './artifactsList.css';
 
-type KindFilter = "all" | CodeArtifactKind;
+type CodeArtifactKind =
+  | 'build'
+  | 'preview'
+  | 'document'
+  | 'report'
+  | 'attachment'
+  | 'transcript_export'
+  | 'dataset';
+
+type KindFilter = 'all' | CodeArtifactKind;
 
 const FILTER_ORDER: readonly KindFilter[] = [
-  "all",
-  "build",
-  "preview",
-  "document",
-  "report",
-  "attachment",
-  "transcript_export",
-  "dataset",
+  'all',
+  'build',
+  'preview',
+  'document',
+  'report',
+  'attachment',
+  'transcript_export',
+  'dataset',
 ];
+
+const ARTIFACT_KIND_LABELS: Record<CodeArtifactKind, string> = {
+  build: 'Build',
+  preview: 'Preview',
+  document: 'Document',
+  report: 'Report',
+  attachment: 'Attachment',
+  transcript_export: 'Transcript',
+  dataset: 'Dataset',
+};
+
+function isCodeArtifactKind(value: string): value is CodeArtifactKind {
+  return value in ARTIFACT_KIND_LABELS;
+}
+
+function labelArtifactKind(kind: string): string {
+  return isCodeArtifactKind(kind) ? ARTIFACT_KIND_LABELS[kind] : kind;
+}
 
 function formatRelative(iso: string): string {
   const then = new Date(iso).getTime();
   const now = Date.now();
   const delta = now - then;
-  if (Number.isNaN(delta)) return "";
+  if (Number.isNaN(delta)) return '';
   const minute = 60 * 1000;
   const hour = 60 * minute;
   const day = 24 * hour;
-  if (delta < minute) return "just now";
+  if (delta < minute) return 'just now';
   if (delta < hour) return `${Math.round(delta / minute)}m ago`;
   if (delta < day) return `${Math.round(delta / hour)}h ago`;
   if (delta < 7 * day) return `${Math.round(delta / day)}d ago`;
@@ -39,11 +64,38 @@ function formatRelative(iso: string): string {
 }
 
 export function ArtifactsListPage(): JSX.Element {
-  const { artifacts } = useArtifactsMock();
-  const [filter, setFilter] = useState<KindFilter>("all");
+  const [artifacts, setArtifacts] = useState<CodeArtifactListItemSummary[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [filter, setFilter] = useState<KindFilter>('all');
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    void fetchCodeArtifacts()
+      .then((payload) => {
+        if (cancelled) return;
+        setArtifacts(payload.artifacts);
+      })
+      .catch((fetchError: unknown) => {
+        if (cancelled) return;
+        setError(fetchError instanceof Error ? fetchError.message : 'Failed to load artifacts.');
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const visible = useMemo(() => {
-    const base = filter === "all"
+    const base = filter === 'all'
       ? artifacts
       : artifacts.filter((a) => a.kind === filter);
     return [...base].sort(
@@ -67,22 +119,26 @@ export function ArtifactsListPage(): JSX.Element {
               key={kind}
               type="button"
               className={[
-                "codeArtListTopBar__filterBtn",
-                filter === kind ? "codeArtListTopBar__filterBtn--active" : "",
+                'codeArtListTopBar__filterBtn',
+                filter === kind ? 'codeArtListTopBar__filterBtn--active' : '',
               ]
                 .filter(Boolean)
-                .join(" ")}
+                .join(' ')}
               onClick={() => setFilter(kind)}
               aria-pressed={filter === kind}
             >
-              {kind === "all" ? "All" : ARTIFACT_KIND_LABELS[kind]}
+              {kind === 'all' ? 'All' : ARTIFACT_KIND_LABELS[kind]}
             </button>
           ))}
         </div>
         <div className="channelTopBarEnd" />
       </header>
       <main className="codeArtifactsList__main">
-        {visible.length === 0 ? (
+        {loading && visible.length === 0 ? (
+          <p className="codeArtifactsList__empty">Loading artifacts...</p>
+        ) : error ? (
+          <p className="codeArtifactsList__empty">Artifacts could not be loaded: {error}</p>
+        ) : visible.length === 0 ? (
           <p className="codeArtifactsList__empty">
             No artifacts match this filter yet. Builds, previews, reports,
             attachments, and transcript exports will land here.
@@ -90,7 +146,7 @@ export function ArtifactsListPage(): JSX.Element {
         ) : (
           <>
             <ul className="codeArtifactsList__list">
-              {visible.map((art: CodeArtifactMock) => (
+              {visible.map((art) => (
                 <li key={art.id} className="codeArtifactsList__row">
                   <Link
                     to={buildCodeArtifactPath(art.id)}
@@ -101,7 +157,7 @@ export function ArtifactsListPage(): JSX.Element {
                       <span
                         className={`codeArtifactsList__kindPill codeArtifactsList__kindPill--${art.kind}`}
                       >
-                        {ARTIFACT_KIND_LABELS[art.kind]}
+                        {labelArtifactKind(art.kind)}
                       </span>
                       <div className="codeArtifactsList__rowText">
                         <span className="codeArtifactsList__rowTitle">
@@ -120,11 +176,6 @@ export function ArtifactsListPage(): JSX.Element {
                       </div>
                     </div>
                     <div className="codeArtifactsList__rowMeta">
-                      {art.workspaceTitle ? (
-                        <span className="codeArtifactsList__provenance">
-                          codespace · <strong>{art.workspaceTitle}</strong>
-                        </span>
-                      ) : null}
                       {art.taskTitle ? (
                         <span className="codeArtifactsList__provenance">
                           task · <strong>{art.taskTitle}</strong>
@@ -148,11 +199,6 @@ export function ArtifactsListPage(): JSX.Element {
                 </li>
               ))}
             </ul>
-            <p className="codeArtifactsList__hint">
-              Mock preview — once SPEC-091 lands, this list projects from
-              <code>CoreArtifactRecord</code> rows whose anchor task / run /
-              conversation resolves into Code (<code>buildCodeArtifactListProjection</code>).
-            </p>
           </>
         )}
       </main>

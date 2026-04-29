@@ -15,11 +15,14 @@ import {
   buildCodeApiTaskPlanPath,
   buildCodeApiTaskPlanStepPath,
   buildCodeApiTaskResumePath,
+  buildCodeApiWorkspacePath,
   CODE_API_DELIVERY_ARTIFACT_EXPORT_PATH,
   CODE_API_DELIVERY_REPO_COMMIT_PATH,
   CODE_API_DELIVERY_REPO_PUSH_PATH,
   CODE_API_DELIVERY_REPO_STATUS_PATH,
+  CODE_API_ARTIFACTS_PATH,
   CODE_API_TASKS_PATH,
+  CODE_API_WORKSPACES_PATH,
   CODE_API_WORKSPACE_RESOLVE_PATH,
 } from '../../shared/apiPaths.js';
 
@@ -140,6 +143,27 @@ export interface CodeArtifactSummary {
   updatedAt: string;
 }
 
+export interface CodeArtifactListItemSummary extends CodeArtifactSummary {
+  taskId: string | null;
+  taskTitle: string | null;
+  workItemId: string | null;
+  workItemTitle: string | null;
+  runId: string | null;
+}
+
+export interface CodeArtifactListResponse {
+  filter: 'all' | 'build' | 'preview';
+  artifacts: CodeArtifactListItemSummary[];
+  summary: {
+    totalAvailable: number;
+    returned: number;
+    buildCount: number;
+    previewCount: number;
+    readyCount: number;
+    publishedCount: number;
+  };
+}
+
 export interface CodeArtifactLinkSummary {
   id: string;
   title: string;
@@ -172,6 +196,54 @@ export interface CodeArtifactDetailResponse {
   conversation: CodeArtifactConversationSummary | null;
   relatedArtifacts: CodeArtifactRelatedSummary[];
   focus: CodeArtifactDetailFocus;
+}
+
+export type CodeWorkspaceStatus = 'active' | 'ready' | 'draft' | 'archived';
+export type CodeWorkspaceSource =
+  | 'task_workspace'
+  | 'conversation_repo'
+  | 'runtime_cwd'
+  | 'artifact_anchor';
+
+export interface CodeWorkspaceListItemSummary {
+  id: string;
+  title: string;
+  summary: string | null;
+  path: string;
+  status: CodeWorkspaceStatus;
+  source: CodeWorkspaceSource;
+  conversationCount: number;
+  taskCount: number;
+  artifactCount: number;
+  lastActiveAt: string;
+}
+
+export interface CodeWorkspaceConversationSummary {
+  id: string;
+  title: string;
+  kind: string;
+  status: string;
+  repoPath: string | null;
+  updatedAt: string;
+  lastMessageAt: string | null;
+}
+
+export interface CodeWorkspaceListResponse {
+  workspaces: CodeWorkspaceListItemSummary[];
+  summary: {
+    totalAvailable: number;
+    returned: number;
+    activeCount: number;
+    taskBackedCount: number;
+    artifactBackedCount: number;
+  };
+}
+
+export interface CodeWorkspaceDetailResponse {
+  workspace: CodeWorkspaceListItemSummary;
+  conversations: CodeWorkspaceConversationSummary[];
+  tasks: CodeArtifactLinkSummary[];
+  artifacts: CodeArtifactListItemSummary[];
 }
 
 export async function resolveWorkspace(
@@ -295,6 +367,22 @@ export async function fetchCodeArtifactDetail(
 ): Promise<CodeArtifactDetailResponse> {
   return fetchJson<CodeArtifactDetailResponse>(
     buildCodeApiArtifactPath(artifactId),
+  );
+}
+
+export async function fetchCodeArtifacts(): Promise<CodeArtifactListResponse> {
+  return fetchJson<CodeArtifactListResponse>(CODE_API_ARTIFACTS_PATH);
+}
+
+export async function fetchCodeWorkspaces(): Promise<CodeWorkspaceListResponse> {
+  return fetchJson<CodeWorkspaceListResponse>(CODE_API_WORKSPACES_PATH);
+}
+
+export async function fetchCodeWorkspaceDetail(
+  workspaceId: string,
+): Promise<CodeWorkspaceDetailResponse> {
+  return fetchJson<CodeWorkspaceDetailResponse>(
+    buildCodeApiWorkspacePath(workspaceId),
   );
 }
 

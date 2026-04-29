@@ -9,11 +9,10 @@ import {
 } from '../../../../app/renderer/productShell/ConversationSidebar.js';
 import type { ConversationSidebarPinnedItem } from '../../../../app/renderer/productShell/ConversationSidebarPinned.js';
 import {
-  createEmptyWorkspacesMockSnapshot,
-  workspacesMockStore,
-  useWorkspacesMock,
-  type WorkspacesMockSnapshot,
-} from '../state/workspacesMockStore';
+  createEmptyCodeWorkspacesSnapshot,
+  useCodeWorkspaces,
+  type CodeWorkspacesSnapshot,
+} from '../state/codeWorkspacesStore.js';
 import { buildConversationSidebarRecentEntries } from '../../../../app/renderer/productShell/conversationSidebarRecentEntries.js';
 import type { AppShellPayload } from '../../api/contracts.js';
 import type { ChatCat, ChatChannelSummary } from '../../../shared/api/workspaceContracts.js';
@@ -159,7 +158,7 @@ function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] 
 
 function createExtraActionGroups(
   props: SidebarProps,
-  workspacesSnapshot: WorkspacesMockSnapshot,
+  workspacesSnapshot: CodeWorkspacesSnapshot,
 ): ConversationSidebarActionGroup[] {
   const currentPath = globalThis.location?.pathname ?? CODE_ROUTE_PREFIX;
   const groups: ConversationSidebarActionGroup[] = [];
@@ -298,7 +297,7 @@ function createExtraActionGroups(
 function buildPinnedWorkspaceItems(
   props: SidebarProps,
   currentPath: string,
-  snapshot: WorkspacesMockSnapshot,
+  snapshot: CodeWorkspacesSnapshot,
 ): ConversationSidebarPinnedItem[] {
   if (!props.onOpenWorkspace) return [];
   return snapshot.workspaces
@@ -314,25 +313,6 @@ function buildPinnedWorkspaceItems(
         className: `codeWorkspacesList__dot codeWorkspacesList__dot--small codeWorkspacesList__dot--${ws.status}`,
         title: ws.status,
       },
-      overflowActions: [
-        {
-          key: 'unpin',
-          label: 'Unpin',
-          onClick: () => {
-            props.onOverflowMenuToggle(null);
-            workspacesMockStore.unpin(ws.id);
-          },
-        },
-        {
-          key: 'remove',
-          label: 'Remove',
-          destructive: true,
-          onClick: () => {
-            props.onOverflowMenuToggle(null);
-            workspacesMockStore.remove(ws.id);
-          },
-        },
-      ],
     }));
 }
 
@@ -352,7 +332,7 @@ function buildRecentEntries(props: SidebarProps): ConversationSidebarRecentEntry
 }
 
 export interface CodeSidebarConversationPropsOptions {
-  workspacesSnapshot?: WorkspacesMockSnapshot;
+  workspacesSnapshot?: CodeWorkspacesSnapshot;
 }
 
 export type CodeSidebarConversationProps = ConversationSidebarProps<
@@ -366,7 +346,7 @@ export function createCodeSidebarConversationProps(
   props: SidebarProps,
   options: CodeSidebarConversationPropsOptions = {},
 ): CodeSidebarConversationProps {
-  const workspacesSnapshot = options.workspacesSnapshot ?? createEmptyWorkspacesMockSnapshot();
+  const workspacesSnapshot = options.workspacesSnapshot ?? createEmptyCodeWorkspacesSnapshot();
   return {
     payload: props.payload,
     sidebarOpen: props.sidebarOpen,
@@ -417,7 +397,7 @@ export function createCodeSidebarConversationProps(
 }
 
 export function Sidebar(props: SidebarProps) {
-  const workspacesSnapshot = useWorkspacesMock();
+  const workspacesSnapshot = useCodeWorkspaces();
   return (
     <ConversationSidebar
       {...createCodeSidebarConversationProps(props, { workspacesSnapshot })}

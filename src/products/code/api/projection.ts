@@ -1,3 +1,5 @@
+import { createHash } from 'node:crypto';
+
 import {
   buildCoreTaskControlPlaneView,
   type CoreTaskControlPlaneView,
@@ -51,6 +53,8 @@ import {
   CODE_API_BUILDS_PATH,
   CODE_API_PREFIX,
   CODE_API_PREVIEWS_PATH,
+  CODE_API_WORKSPACE_DETAIL_PATH_TEMPLATE,
+  CODE_API_WORKSPACES_PATH,
   CODE_API_TASK_DETAIL_PATH_TEMPLATE,
   CODE_API_TASKS_PATH,
 } from '../shared/apiPaths.js';
@@ -64,6 +68,7 @@ const CODE_DASHBOARD_TASK_LIMIT = 16;
 const CODE_DASHBOARD_ARTIFACT_LIMIT = 18;
 const CODE_TIMELINE_PREVIEW_LIMIT = 12;
 const CODE_DETAIL_ARTIFACT_LIMIT = 12;
+const CODE_WORKSPACE_LIST_LIMIT = 48;
 
 export interface CodeDashboardSummary {
   ownerActorId: string;
@@ -117,6 +122,7 @@ export interface CodeArtifactListItem {
   taskTitle: string | null;
   workItemId: string | null;
   workItemTitle: string | null;
+  runId: string | null;
   updatedAt: string;
 }
 
@@ -200,6 +206,56 @@ export interface CodeArtifactListProjection {
   summary: CodeArtifactListSummary;
 }
 
+export type CodeWorkspaceListItemStatus = 'active' | 'ready' | 'draft' | 'archived';
+export type CodeWorkspaceListItemSource =
+  | 'task_workspace'
+  | 'conversation_repo'
+  | 'runtime_cwd'
+  | 'artifact_anchor';
+
+export interface CodeWorkspaceListItem {
+  id: string;
+  title: string;
+  summary: string | null;
+  path: string;
+  status: CodeWorkspaceListItemStatus;
+  source: CodeWorkspaceListItemSource;
+  conversationCount: number;
+  taskCount: number;
+  artifactCount: number;
+  lastActiveAt: string;
+}
+
+export interface CodeWorkspaceListSummary {
+  totalAvailable: number;
+  returned: number;
+  activeCount: number;
+  taskBackedCount: number;
+  artifactBackedCount: number;
+}
+
+export interface CodeWorkspaceConversationItem {
+  id: string;
+  title: string;
+  kind: CoreConversationRecord['kind'];
+  status: CoreConversationRecord['status'];
+  repoPath: string | null;
+  updatedAt: string;
+  lastMessageAt: string | null;
+}
+
+export interface CodeWorkspaceListProjection {
+  workspaces: CodeWorkspaceListItem[];
+  summary: CodeWorkspaceListSummary;
+}
+
+export interface CodeWorkspaceDetailProjection {
+  workspace: CodeWorkspaceListItem;
+  conversations: CodeWorkspaceConversationItem[];
+  tasks: CodeTaskListItem[];
+  artifacts: CodeArtifactListItem[];
+}
+
 export interface CodeDashboardProjection {
   product: {
     id: 'code';
@@ -233,6 +289,49 @@ function resolveConversation(core: CatsCoreState, conversationId: string | null)
   }
 
   return core.conversations.find((conversation) => conversation.id === conversationId) ?? null;
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function readNonEmptyString(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
+function normalizeWorkspacePathForComparison(value: string): string {
+  return value.trim().replace(/\\/g, '/');
+}
+
+function createCodeWorkspaceId(workspacePath: string): string {
+  const digest = createHash('sha256')
+    .update(normalizeWorkspacePathForComparison(workspacePath))
+    .digest('hex')
+    .slice(0, 16);
+  return `codespace-${digest}`;
+}
+
+function workspacePathMatches(left: string, right: string): boolean {
+  return normalizeWorkspacePathForComparison(left) === normalizeWorkspacePathForComparison(right);
+}
+
+function deriveWorkspaceTitle(workspacePath: string): string {
+  const normalized = normalizeWorkspacePathForComparison(workspacePath);
+  const parts = normalized.split('/').filter(Boolean);
+  return parts.at(-1) ?? normalized;
+}
+
+function readArtifactDeclarationWorkspacePath(artifact: CoreArtifactRecord): string | null {
+  const declaration = asRecord(artifact.metadata.codeArtifactDeclaration);
+  const anchors = asRecord(declaration?.anchors);
+  return readNonEmptyString(anchors?.workspacePath);
 }
 
 function resolveTaskWorkItemRecord(
@@ -339,6 +438,7 @@ function listCodeArtifacts(
   core: CatsCoreState,
   codeTasks: CoreTaskRecord[],
   filter: 'all' | 'build' | 'preview' = 'all',
+  options: { includeWorkspaceAnchored?: boolean } = {},
 ): CoreArtifactRecord[] {
   const allCodeTaskIds = new Set(codeTasks.map((task) => task.id));
   const allCodeWorkItemIds = new Set(
@@ -350,7 +450,10 @@ function listCodeArtifacts(
   return [...core.artifacts]
     .filter((artifact) =>
       ((artifact.taskId ? allCodeTaskIds.has(artifact.taskId) : false)
-      || (artifact.workItemId ? allCodeWorkItemIds.has(artifact.workItemId) : false))
+      || (artifact.workItemId ? allCodeWorkItemIds.has(artifact.workItemId) : false)
+      || (options.includeWorkspaceAnchored === true
+        ? readArtifactDeclarationWorkspacePath(artifact) !== null
+        : false))
       && (filter === 'all' || artifact.kind === filter))
     .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
 }
@@ -376,6 +479,7 @@ function buildCodeArtifactListItem(
     taskTitle: linkedTask?.title ?? null,
     workItemId: artifact.workItemId,
     workItemTitle: linkedWorkItem?.title ?? null,
+    runId: artifact.runId,
     updatedAt: artifact.updatedAt,
   };
 }
@@ -416,6 +520,238 @@ function selectDefaultCodeArtifactId(artifacts: readonly CodeArtifactListItem[])
   return latestReadyArtifact?.id ?? artifacts[0]?.id ?? null;
 }
 
+interface CodeWorkspaceAccumulator {
+  path: string;
+  source: CodeWorkspaceListItemSource;
+  conversationIds: Set<string>;
+  taskIds: Set<string>;
+  artifactIds: Set<string>;
+  taskStatuses: Set<CoreTaskStatus>;
+  conversationStatuses: Set<CoreConversationRecord['status']>;
+  lastActiveAt: string;
+}
+
+const WORKSPACE_SOURCE_PRIORITY: Record<CodeWorkspaceListItemSource, number> = {
+  task_workspace: 40,
+  conversation_repo: 30,
+  runtime_cwd: 20,
+  artifact_anchor: 10,
+};
+
+function upsertWorkspaceAccumulator(
+  accumulators: Map<string, CodeWorkspaceAccumulator>,
+  workspacePath: string,
+  source: CodeWorkspaceListItemSource,
+  updatedAt: string,
+): CodeWorkspaceAccumulator {
+  const normalizedPath = normalizeWorkspacePathForComparison(workspacePath);
+  const existing = accumulators.get(normalizedPath);
+  if (existing) {
+    if (WORKSPACE_SOURCE_PRIORITY[source] > WORKSPACE_SOURCE_PRIORITY[existing.source]) {
+      existing.source = source;
+    }
+    if (updatedAt.localeCompare(existing.lastActiveAt) > 0) {
+      existing.lastActiveAt = updatedAt;
+    }
+    return existing;
+  }
+
+  const accumulator: CodeWorkspaceAccumulator = {
+    path: workspacePath.trim(),
+    source,
+    conversationIds: new Set<string>(),
+    taskIds: new Set<string>(),
+    artifactIds: new Set<string>(),
+    taskStatuses: new Set<CoreTaskStatus>(),
+    conversationStatuses: new Set<CoreConversationRecord['status']>(),
+    lastActiveAt: updatedAt,
+  };
+  accumulators.set(normalizedPath, accumulator);
+  return accumulator;
+}
+
+function resolveArtifactWorkspacePath(
+  core: CatsCoreState,
+  artifact: CoreArtifactRecord,
+): string | null {
+  const declaredWorkspace = readArtifactDeclarationWorkspacePath(artifact);
+  if (declaredWorkspace) {
+    return declaredWorkspace;
+  }
+
+  const task = artifact.taskId
+    ? core.tasks.find((candidate) => candidate.id === artifact.taskId) ?? null
+    : null;
+  const taskWorkspace = task ? readCodeWorkspaceSummaryFromTask(task)?.workspacePath ?? null : null;
+  if (taskWorkspace) {
+    return taskWorkspace;
+  }
+
+  const conversation = resolveConversation(core, artifact.conversationId);
+  return conversation?.repoPath ?? null;
+}
+
+function resolveWorkspaceStatus(
+  accumulator: CodeWorkspaceAccumulator,
+): CodeWorkspaceListItemStatus {
+  if ([...accumulator.taskStatuses].some((status) =>
+    status === 'in_progress' || status === 'approved' || status === 'pending_approval')) {
+    return 'active';
+  }
+
+  if (accumulator.taskStatuses.has('draft')) {
+    return 'draft';
+  }
+
+  const hasTrackedRecords =
+    accumulator.conversationIds.size > 0
+    || accumulator.taskIds.size > 0
+    || accumulator.artifactIds.size > 0;
+  const allTasksTerminal =
+    accumulator.taskStatuses.size === 0
+    || [...accumulator.taskStatuses].every((status) =>
+      status === 'completed' || status === 'cancelled' || status === 'archived');
+  const allConversationsArchived =
+    accumulator.conversationStatuses.size === 0
+    || [...accumulator.conversationStatuses].every((status) => status === 'archived');
+
+  return hasTrackedRecords && allTasksTerminal && allConversationsArchived
+    ? 'archived'
+    : 'ready';
+}
+
+function buildCodeWorkspaceListItem(
+  accumulator: CodeWorkspaceAccumulator,
+): CodeWorkspaceListItem {
+  return {
+    id: createCodeWorkspaceId(accumulator.path),
+    title: deriveWorkspaceTitle(accumulator.path),
+    summary: null,
+    path: accumulator.path,
+    status: resolveWorkspaceStatus(accumulator),
+    source: accumulator.source,
+    conversationCount: accumulator.conversationIds.size,
+    taskCount: accumulator.taskIds.size,
+    artifactCount: accumulator.artifactIds.size,
+    lastActiveAt: accumulator.lastActiveAt,
+  };
+}
+
+function buildCodeWorkspaceListSummary(
+  allWorkspaces: readonly CodeWorkspaceListItem[],
+  returnedWorkspaces: readonly CodeWorkspaceListItem[],
+): CodeWorkspaceListSummary {
+  return allWorkspaces.reduce<CodeWorkspaceListSummary>((summary, workspace) => {
+    if (workspace.status === 'active') {
+      summary.activeCount += 1;
+    }
+    if (workspace.taskCount > 0) {
+      summary.taskBackedCount += 1;
+    }
+    if (workspace.artifactCount > 0) {
+      summary.artifactBackedCount += 1;
+    }
+    return summary;
+  }, {
+    totalAvailable: allWorkspaces.length,
+    returned: returnedWorkspaces.length,
+    activeCount: 0,
+    taskBackedCount: 0,
+    artifactBackedCount: 0,
+  });
+}
+
+function buildCodeWorkspaceConversationItem(
+  conversation: CoreConversationRecord,
+): CodeWorkspaceConversationItem {
+  return {
+    id: conversation.id,
+    title: conversation.title,
+    kind: conversation.kind,
+    status: conversation.status,
+    repoPath: conversation.repoPath,
+    updatedAt: conversation.updatedAt,
+    lastMessageAt: conversation.lastMessageAt,
+  };
+}
+
+function buildCodeWorkspaceItems(core: CatsCoreState): CodeWorkspaceListItem[] {
+  const codeTasks = listCodeTasks(core);
+  const codeConversationIds = new Set(
+    codeTasks.map((task) => task.conversationId).filter((id): id is string => !!id),
+  );
+  const accumulators = new Map<string, CodeWorkspaceAccumulator>();
+
+  for (const task of codeTasks) {
+    const workspace = readCodeWorkspaceSummaryFromTask(task);
+    if (!workspace) {
+      continue;
+    }
+    const accumulator = upsertWorkspaceAccumulator(
+      accumulators,
+      workspace.workspacePath,
+      'task_workspace',
+      task.updatedAt,
+    );
+    accumulator.taskIds.add(task.id);
+    accumulator.taskStatuses.add(task.status);
+    if (task.conversationId) {
+      accumulator.conversationIds.add(task.conversationId);
+    }
+  }
+
+  for (const conversation of core.conversations) {
+    if (!conversation.repoPath) {
+      continue;
+    }
+    if (conversation.kind !== 'code_thread' && !codeConversationIds.has(conversation.id)) {
+      continue;
+    }
+    const accumulator = upsertWorkspaceAccumulator(
+      accumulators,
+      conversation.repoPath,
+      'conversation_repo',
+      conversation.lastMessageAt ?? conversation.updatedAt,
+    );
+    accumulator.conversationIds.add(conversation.id);
+    accumulator.conversationStatuses.add(conversation.status);
+  }
+
+  for (const session of core.sessions) {
+    const leaseCwd = readNonEmptyString(session.metadata.leaseCwd);
+    if (!leaseCwd || !session.conversationId || !codeConversationIds.has(session.conversationId)) {
+      continue;
+    }
+    const accumulator = upsertWorkspaceAccumulator(
+      accumulators,
+      leaseCwd,
+      'runtime_cwd',
+      session.updatedAt,
+    );
+    accumulator.conversationIds.add(session.conversationId);
+  }
+
+  for (const artifact of listCodeArtifacts(core, codeTasks, 'all', {
+    includeWorkspaceAnchored: true,
+  })) {
+    const workspacePath = resolveArtifactWorkspacePath(core, artifact);
+    if (!workspacePath) {
+      continue;
+    }
+    const accumulator = upsertWorkspaceAccumulator(
+      accumulators,
+      workspacePath,
+      'artifact_anchor',
+      artifact.updatedAt,
+    );
+    accumulator.artifactIds.add(artifact.id);
+  }
+
+  return [...accumulators.values()]
+    .map((accumulator) => buildCodeWorkspaceListItem(accumulator))
+    .sort((left, right) => right.lastActiveAt.localeCompare(left.lastActiveAt));
+}
+
 export function buildCodeTaskListProjection(core: CatsCoreState): CodeTaskListProjection {
   const allTasks = listCodeTasks(core);
   const tasks = allTasks
@@ -428,6 +764,65 @@ export function buildCodeTaskListProjection(core: CatsCoreState): CodeTaskListPr
   };
 }
 
+export function buildCodeWorkspaceListProjection(core: CatsCoreState): CodeWorkspaceListProjection {
+  const allWorkspaces = buildCodeWorkspaceItems(core);
+  const workspaces = allWorkspaces.slice(0, CODE_WORKSPACE_LIST_LIMIT);
+
+  return {
+    workspaces,
+    summary: buildCodeWorkspaceListSummary(allWorkspaces, workspaces),
+  };
+}
+
+export function buildCodeWorkspaceDetailProjection(
+  core: CatsCoreState,
+  workspaceId: string,
+): CodeWorkspaceDetailProjection | null {
+  const workspace = buildCodeWorkspaceItems(core)
+    .find((candidate) => candidate.id === workspaceId) ?? null;
+  if (!workspace) {
+    return null;
+  }
+
+  const codeTasks = listCodeTasks(core);
+  const codeConversationIds = new Set(
+    codeTasks.map((task) => task.conversationId).filter((id): id is string => !!id),
+  );
+  const tasks = codeTasks
+    .filter((task) => {
+      const summary = readCodeWorkspaceSummaryFromTask(task);
+      return summary ? workspacePathMatches(summary.workspacePath, workspace.path) : false;
+    })
+    .map((task) => buildCodeTaskListItem(core, task));
+  const taskItemById = new Map(tasks.map((task) => [task.id, task]));
+
+  const conversations = core.conversations
+    .filter((conversation) =>
+      conversation.repoPath
+      && (conversation.kind === 'code_thread' || codeConversationIds.has(conversation.id))
+        ? workspacePathMatches(conversation.repoPath, workspace.path)
+        : false)
+    .sort((left, right) =>
+      (right.lastMessageAt ?? right.updatedAt).localeCompare(left.lastMessageAt ?? left.updatedAt))
+    .map((conversation) => buildCodeWorkspaceConversationItem(conversation));
+
+  const artifacts = listCodeArtifacts(core, codeTasks, 'all', {
+    includeWorkspaceAnchored: true,
+  })
+    .filter((artifact) => {
+      const workspacePath = resolveArtifactWorkspacePath(core, artifact);
+      return workspacePath ? workspacePathMatches(workspacePath, workspace.path) : false;
+    })
+    .map((artifact) => buildCodeArtifactListItem(core, artifact, taskItemById));
+
+  return {
+    workspace,
+    conversations,
+    tasks,
+    artifacts,
+  };
+}
+
 export function buildCodeArtifactListProjection(
   core: CatsCoreState,
   filter: 'all' | 'build' | 'preview' = 'all',
@@ -435,7 +830,9 @@ export function buildCodeArtifactListProjection(
   const allTasks = listCodeTasks(core);
   const taskItems = allTasks.map((task) => buildCodeTaskListItem(core, task));
   const taskItemById = new Map(taskItems.map((task) => [task.id, task]));
-  const allArtifacts = listCodeArtifacts(core, allTasks, filter);
+  const allArtifacts = listCodeArtifacts(core, allTasks, filter, {
+    includeWorkspaceAnchored: true,
+  });
   const artifacts = allArtifacts
     .slice(0, CODE_DASHBOARD_ARTIFACT_LIMIT)
     .map((artifact) => buildCodeArtifactListItem(core, artifact, taskItemById));
@@ -518,7 +915,9 @@ export function buildCodeArtifactDetailProjection(
   const codeTasks = listCodeTasks(core);
   const taskItems = codeTasks.map((candidate) => buildCodeTaskListItem(core, candidate));
   const taskItemById = new Map(taskItems.map((item) => [item.id, item]));
-  const relatedArtifacts = listCodeArtifacts(core, codeTasks)
+  const relatedArtifacts = listCodeArtifacts(core, codeTasks, 'all', {
+    includeWorkspaceAnchored: true,
+  })
     .filter((candidate) =>
       candidate.id !== artifact.id
       && (
@@ -588,6 +987,8 @@ export function buildCodeDashboardProjection(core: CatsCoreState): CodeDashboard
       futureRoutes: [
         CODE_API_TASKS_PATH,
         CODE_API_TASK_DETAIL_PATH_TEMPLATE,
+        CODE_API_WORKSPACES_PATH,
+        CODE_API_WORKSPACE_DETAIL_PATH_TEMPLATE,
         CODE_API_ARTIFACTS_PATH,
         CODE_API_ARTIFACT_DETAIL_PATH_TEMPLATE,
         CODE_API_BUILDS_PATH,

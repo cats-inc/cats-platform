@@ -204,6 +204,11 @@ context. Current Code metadata already distinguishes:
 - `managed_room`
 - `conversation_repo`
 
+The production renderer shall not seed Codespaces or Artifacts with local mock
+rows. If the Core projections return no rows, the sidebar surfaces show an
+empty state and wait for real Code sessions, tasks, runtime cwd records, or
+artifact declarations to create materialized data.
+
 `Artifacts` project from `CoreArtifactRecord` rows that Cats Code
 materializes through the structured declaration contract in SPEC-092. The
 Artifacts sidebar consumes only materialized rows; it does not consume raw

@@ -1,59 +1,151 @@
-import { useMemo } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
 
 import {
   CODE_WORKSPACES_PATH,
   buildCodeArtifactPath,
-} from "../../codePaths.js";
+} from '../../codePaths.js';
 import {
-  useArtifactsMock,
-  ARTIFACT_KIND_LABELS,
-} from "../../state/artifactsMockStore";
-import {
-  useWorkspacesMock,
-  type CodeWorkspaceMock,
+  fetchCodeWorkspaceDetail,
+  type CodeArtifactListItemSummary,
+  type CodeWorkspaceDetailResponse,
   type CodeWorkspaceSource,
-} from "../../state/workspacesMockStore";
-import "./workspaces.css";
+} from '../../api/codeTask.js';
+import './workspaces.css';
+
+type CodeArtifactKind =
+  | 'build'
+  | 'preview'
+  | 'document'
+  | 'report'
+  | 'attachment'
+  | 'transcript_export'
+  | 'dataset';
+
+const ARTIFACT_KIND_LABELS: Record<CodeArtifactKind, string> = {
+  build: 'Build',
+  preview: 'Preview',
+  document: 'Document',
+  report: 'Report',
+  attachment: 'Attachment',
+  transcript_export: 'Transcript',
+  dataset: 'Dataset',
+};
+
+function isCodeArtifactKind(value: string): value is CodeArtifactKind {
+  return value in ARTIFACT_KIND_LABELS;
+}
+
+function labelArtifactKind(kind: string): string {
+  return isCodeArtifactKind(kind) ? ARTIFACT_KIND_LABELS[kind] : kind;
+}
 
 const SOURCE_LABEL: Record<CodeWorkspaceSource, string> = {
-  managed_room: "Managed room",
-  owner_folder: "Owner folder",
-  conversation_repo: "Repo bind from conversation",
-  runtime_cwd: "Runtime cwd",
+  task_workspace: 'Code task',
+  conversation_repo: 'Repo bind from conversation',
+  runtime_cwd: 'Runtime cwd',
+  artifact_anchor: 'Artifact anchor',
 };
 
 function formatRelative(iso: string): string {
   const then = new Date(iso).getTime();
   const now = Date.now();
   const delta = now - then;
-  if (Number.isNaN(delta)) return "";
+  if (Number.isNaN(delta)) return '';
   const minute = 60 * 1000;
   const hour = 60 * minute;
   const day = 24 * hour;
-  if (delta < minute) return "just now";
+  if (delta < minute) return 'just now';
   if (delta < hour) return `${Math.round(delta / minute)}m ago`;
   if (delta < day) return `${Math.round(delta / hour)}h ago`;
   if (delta < 7 * day) return `${Math.round(delta / day)}d ago`;
   return new Date(iso).toLocaleDateString();
 }
 
+function renderArtifactItem(art: CodeArtifactListItemSummary): JSX.Element {
+  return (
+    <li key={art.id}>
+      <Link
+        to={buildCodeArtifactPath(art.id)}
+        className="codeWorkspaceDetail__item"
+      >
+        <span className="codeWorkspaceDetail__itemKind">
+          {labelArtifactKind(art.kind)}
+        </span>
+        <span className="codeWorkspaceDetail__itemTitle">
+          {art.title}
+        </span>
+        <span className="codeWorkspaceDetail__itemMeta">
+          {art.status}
+        </span>
+        <span className="codeWorkspaceDetail__itemUpdated">
+          {formatRelative(art.updatedAt)}
+        </span>
+      </Link>
+    </li>
+  );
+}
+
 export function WorkspaceDetailPage(): JSX.Element {
   const { workspaceId } = useParams<{ workspaceId: string }>();
-  const { workspaces } = useWorkspacesMock();
-  const { artifacts } = useArtifactsMock();
+  const [payload, setPayload] = useState<CodeWorkspaceDetailResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const workspace = useMemo<CodeWorkspaceMock | null>(() => {
-    if (!workspaceId) return null;
-    return workspaces.find((ws) => ws.id === workspaceId) ?? null;
-  }, [workspaceId, workspaces]);
+  useEffect(() => {
+    if (!workspaceId) {
+      setError('Codespace id is required.');
+      setLoading(false);
+      return;
+    }
 
-  const linkedArtifacts = useMemo(
-    () => artifacts.filter((art) => art.workspaceId === workspaceId),
-    [artifacts, workspaceId],
-  );
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    setPayload(null);
 
-  if (!workspace) {
+    void fetchCodeWorkspaceDetail(workspaceId)
+      .then((nextPayload) => {
+        if (!cancelled) {
+          setPayload(nextPayload);
+        }
+      })
+      .catch((fetchError: unknown) => {
+        if (!cancelled) {
+          setError(fetchError instanceof Error ? fetchError.message : 'Failed to load codespace.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [workspaceId]);
+
+  if (loading && !payload) {
+    return (
+      <div className="codeWorkspaceDetail">
+        <header className="channelTopBar codeWsDetailTopBar">
+          <div className="channelTopBarStart codeWsDetailTopBar__start">
+            <Link to={CODE_WORKSPACES_PATH} className="codeWsDetailTopBar__back">
+              ← Codespaces
+            </Link>
+          </div>
+          <div className="channelTopBarCenter codeWsDetailTopBar__center" />
+          <div className="channelTopBarEnd codeWsDetailTopBar__end" />
+        </header>
+        <main className="codeWorkspaceDetail__main">
+          <p className="codeWorkspaceDetail__missing">Loading codespace...</p>
+        </main>
+      </div>
+    );
+  }
+
+  if (error || !payload) {
     return (
       <div className="codeWorkspaceDetail">
         <header className="channelTopBar codeWsDetailTopBar">
@@ -67,7 +159,7 @@ export function WorkspaceDetailPage(): JSX.Element {
         </header>
         <main className="codeWorkspaceDetail__main">
           <p className="codeWorkspaceDetail__missing">
-            Codespace not found. It may have been removed or the URL changed.
+            {error ?? 'Codespace not found. It may have been removed or the URL changed.'}
             <br />
             <Link to={CODE_WORKSPACES_PATH}>Back to all codespaces →</Link>
           </p>
@@ -75,6 +167,8 @@ export function WorkspaceDetailPage(): JSX.Element {
       </div>
     );
   }
+
+  const { workspace, conversations, tasks, artifacts } = payload;
 
   return (
     <div className="codeWorkspaceDetail">
@@ -117,7 +211,7 @@ export function WorkspaceDetailPage(): JSX.Element {
             <dd>{workspace.status}</dd>
             <dt>Last active</dt>
             <dd>
-              {new Date(workspace.lastActiveAt).toLocaleString()}{" "}
+              {new Date(workspace.lastActiveAt).toLocaleString()}{' '}
               <em>({formatRelative(workspace.lastActiveAt)})</em>
             </dd>
             <dt>Summary</dt>
@@ -145,12 +239,12 @@ export function WorkspaceDetailPage(): JSX.Element {
             <div className="codeWorkspaceDetail__metricCell">
               <span className="codeWorkspaceDetail__metricLabel">Artifacts</span>
               <span className="codeWorkspaceDetail__metricValue">
-                {linkedArtifacts.length || workspace.artifactCount}
+                {artifacts.length}
               </span>
             </div>
             <div className="codeWorkspaceDetail__metricCell">
               <span className="codeWorkspaceDetail__metricLabel">ID</span>
-              <span className="codeWorkspaceDetail__metricValue" style={{ fontSize: "0.78rem" }}>
+              <span className="codeWorkspaceDetail__metricValue" style={{ fontSize: '0.78rem' }}>
                 <code>{workspace.id}</code>
               </span>
             </div>
@@ -161,37 +255,17 @@ export function WorkspaceDetailPage(): JSX.Element {
           <header className="codeWorkspaceDetail__sectionHeader">
             <h2>Artifacts in this codespace</h2>
             <span className="codeWorkspaceDetail__sectionCount">
-              {linkedArtifacts.length}
+              {artifacts.length}
             </span>
           </header>
-          {linkedArtifacts.length === 0 ? (
+          {artifacts.length === 0 ? (
             <p className="codeWorkspaceDetail__empty">
               No artifacts linked yet. Builds, previews, or documents produced
               from this codespace will appear here.
             </p>
           ) : (
             <ul className="codeWorkspaceDetail__items">
-              {linkedArtifacts.map((art) => (
-                <li key={art.id}>
-                  <Link
-                    to={buildCodeArtifactPath(art.id)}
-                    className="codeWorkspaceDetail__item"
-                  >
-                    <span className="codeWorkspaceDetail__itemKind">
-                      {ARTIFACT_KIND_LABELS[art.kind]}
-                    </span>
-                    <span className="codeWorkspaceDetail__itemTitle">
-                      {art.title}
-                    </span>
-                    <span className="codeWorkspaceDetail__itemMeta">
-                      {art.status}
-                    </span>
-                    <span className="codeWorkspaceDetail__itemUpdated">
-                      {formatRelative(art.updatedAt)}
-                    </span>
-                  </Link>
-                </li>
-              ))}
+              {artifacts.map((art) => renderArtifactItem(art))}
             </ul>
           )}
         </section>
@@ -200,27 +274,61 @@ export function WorkspaceDetailPage(): JSX.Element {
           <header className="codeWorkspaceDetail__sectionHeader">
             <h2>Conversations</h2>
             <span className="codeWorkspaceDetail__sectionCount">
-              {workspace.conversationCount}
+              {conversations.length}
             </span>
           </header>
-          <p className="codeWorkspaceDetail__empty">
-            Mock preview — conversation cross-links arrive once SPEC-091 wires
-            <code> Conversation.repoPath</code> /{" "}
-            <code>chatCwd</code> into the projection.
-          </p>
+          {conversations.length === 0 ? (
+            <p className="codeWorkspaceDetail__empty">
+              No conversations are currently linked to this codespace.
+            </p>
+          ) : (
+            <ul className="codeWorkspaceDetail__items">
+              {conversations.map((conversation) => (
+                <li key={conversation.id} className="codeWorkspaceDetail__item">
+                  <span className="codeWorkspaceDetail__itemKind">
+                    {conversation.kind}
+                  </span>
+                  <span className="codeWorkspaceDetail__itemTitle">
+                    {conversation.title}
+                  </span>
+                  <span className="codeWorkspaceDetail__itemMeta">
+                    {conversation.status}
+                  </span>
+                  <span className="codeWorkspaceDetail__itemUpdated">
+                    {formatRelative(conversation.lastMessageAt ?? conversation.updatedAt)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
 
         <section className="codeWorkspaceDetail__section">
           <header className="codeWorkspaceDetail__sectionHeader">
             <h2>Tasks</h2>
             <span className="codeWorkspaceDetail__sectionCount">
-              {workspace.taskCount}
+              {tasks.length}
             </span>
           </header>
-          <p className="codeWorkspaceDetail__empty">
-            Mock preview — task cross-links arrive once SPEC-091 reads{" "}
-            <code>codeWorkspace</code> on Code-bound tasks.
-          </p>
+          {tasks.length === 0 ? (
+            <p className="codeWorkspaceDetail__empty">
+              No Code tasks are currently linked to this codespace.
+            </p>
+          ) : (
+            <ul className="codeWorkspaceDetail__items">
+              {tasks.map((task) => (
+                <li key={task.id} className="codeWorkspaceDetail__item">
+                  <span className="codeWorkspaceDetail__itemKind">Task</span>
+                  <span className="codeWorkspaceDetail__itemTitle">
+                    {task.title}
+                  </span>
+                  <span className="codeWorkspaceDetail__itemMeta">
+                    {task.status}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       </main>
     </div>
