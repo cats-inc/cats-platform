@@ -183,6 +183,17 @@ Rules:
   It must be omitted or null for `tool` and `system` declarations.
 - `metadata` may carry producer-specific details only under non-reserved keys.
   It must not override normalized Core fields.
+- **String input normalization** (applied before validation, idempotency-key
+  construction, and any "must be omitted or null" check): all optional string
+  fields on `producer.*`, `artifact.*`, `location.value`, and `anchors.*` are
+  trimmed; if the trimmed result is empty, the field is treated as `null` /
+  omitted. This applies in particular to `producer.toolName`,
+  `producer.actorId`, `producer.runtimeSessionId`, `artifact.summary`,
+  `artifact.mimeType`, `location.value`, and any anchor id. A buggy producer
+  that emits `""` instead of omitting a field shall not be treated as having
+  set the field. `artifact.title` and `artifact.label` are required strings:
+  trimming applies, and an empty trimmed result is rejected with
+  `artifact_required_field_empty`.
 
 ### Producer Identity Resolution
 
@@ -335,19 +346,105 @@ these server-side publish contexts:
   and the current workspace/run context satisfies that policy rule.
 
 User import-and-publish is a distinct product action, not a flag inside
-`CodeArtifactDeclaration`. Implementations may expose it as a route such as
-`POST /api/code/artifacts/import-and-publish` or as an equivalent internal
-delegate action, but it shall not reuse the normal declaration submit path. The
-action flow is:
+`CodeArtifactDeclaration`. Implementations shall expose it as a separate
+Code-owned route or internal delegate (the canonical route shape is
+`POST /api/code/artifacts/import-and-publish`); it shall not reuse the normal
+declaration submit path.
 
-1. normalize the user import/upload into a `CodeArtifactDeclaration` with
-   `requestedStatus` omitted or set to `ready` / `draft`, never `published`;
-2. materialize or update the artifact through the normal declaration path;
-3. perform a `user_publish_action` transition in the same server-side action
-   after materialization succeeds.
+The request payload shape is:
+
+```ts
+interface CodeArtifactImportAndPublishInput {
+  importSource: {
+    kind: 'upload' | 'workspace_path' | 'attachment_ref';
+    value: string;        // upload id, canonicalized workspace-relative path, or attachment id
+    mimeType?: string | null;
+    sizeBytes?: number | null;
+  };
+  artifact: {
+    title: string;        // required, trimmed
+    label: string;        // required producer label
+    coreKind?: CodeArtifactDeclaration['artifact']['coreKind'];
+    summary?: string | null;
+  };
+  anchors?: {
+    conversationId?: string | null;
+    taskId?: string | null;
+    runId?: string | null;
+    projectId?: string | null;
+    workItemId?: string | null;
+    workspaceKey?: string | null;
+  };
+  metadata?: Record<string, unknown>;
+}
+```
+
+Notes:
+
+- `requestedStatus`, `requestedDisposition`, and `producer.*` fields are
+  **not** part of this payload. The wrapping action injects
+  `producer = { kind: 'user', actorId: <server-resolved owner actor> }`,
+  forces `requestedDisposition = 'record'`, and sets `requestedStatus`
+  unset (so the normal declaration path resolves status from the label
+  default).
+- `importSource.kind = 'upload'` references a previously uploaded blob in
+  the server's upload store. `importSource.kind = 'workspace_path'`
+  references an already-resolved workspace-relative path that is normalized
+  through the same path-canonicalization rules used elsewhere.
+  `importSource.kind = 'attachment_ref'` references a known attachment id.
+- `anchors.workspaceKey` follows the § Workspace Key and Path
+  Canonicalization rules. At least one of
+  `conversationId | taskId | runId | workspaceKey` must resolve, otherwise
+  the request is rejected with `artifact_anchor_required` (same rule as
+  declaration anchors).
+- String input normalization (trim → null) applies to every optional string
+  field, identical to the declaration shape rules.
+
+The action flow is:
+
+1. validate `CodeArtifactImportAndPublishInput`, normalize the import source
+   (upload blob copy, workspace path containment check, attachment lookup)
+   into a concrete `location` and any inferred `mimeType` / `sizeBytes`;
+2. construct the equivalent `CodeArtifactDeclaration` (with
+   `producer.kind = 'user'`, `requestedDisposition = 'record'`,
+   `requestedStatus` unset, and the resolved `location` / `anchors`) and
+   materialize it through the normal declaration path;
+3. perform a `user_publish_action` transition on the materialized artifact
+   in the same server-side action.
 
 The normal declaration submit path shall reject `requestedStatus = 'published'`
 even when `producer.kind = 'user'`.
+
+#### Publish-Transition Failure Semantics
+
+Step 3 (`user_publish_action` transition) runs after step 2 has already
+upserted a durable `CoreArtifactRecord`. The action shall **not roll back**
+the materialized artifact when only the publish transition fails:
+
+- if step 1 (input validation / import normalization) fails → no artifact is
+  created; return the corresponding validation error;
+- if step 2 (declaration materialization) fails → no artifact is created;
+  return the declaration-path error verbatim;
+- if step 3 (publish transition) fails after step 2 succeeded → return
+  `artifact_publish_transition_failed` with HTTP 502 (or the implementation's
+  equivalent partial-success status) and a body that includes the
+  materialized artifact id, its current `status` (typically `ready` or
+  `draft`), and the underlying transition error reason. The artifact remains
+  visible at its materialized status; the user / agent may retry the
+  transition or invoke the standalone publish action later.
+
+The same failure semantics apply when an existing-artifact publish action
+(no import) fails: the artifact remains at its current status, the action
+returns `artifact_publish_transition_failed`, and the caller may retry.
+
+`tool_auto_publish_policy` outcomes follow the same rule: if a tool
+declaration matches a publish policy and the publish transition fails after
+materialization, the artifact is left at its materialized status (typically
+`ready`), the upsert is reported as success, and a structured server log
+entry with reason `tool_auto_publish_transition_failed` is emitted. Activity
+emission still follows the material-change signature rules; one
+`artifact_recorded` activity is written for the materialization, but no
+`artifact_published` follow-on activity is emitted.
 
 Tool auto-publish policy is server configuration under
 `codeArtifactDeclaration.toolAutoPublishPolicies`:
@@ -372,10 +469,12 @@ Rules:
 - `toolName` is an exact match against the server-resolved tool name.
 - `labels` is a non-empty set of producer labels allowed for that tool. No
   wildcard labels are allowed in this spec.
-- `workspaceMatcher` is evaluated against the server-resolved workspace key and
-  canonical workspace path. Omitted matcher or `{ kind: 'any' }` means any
-  resolved workspace context. `workspace_key` requires exact key match.
-  `path_prefix` requires a canonical path-prefix match.
+- `workspaceMatcher` is evaluated against the **server-resolved workspace key
+  and canonical workspace path** (see § Workspace Key and Path
+  Canonicalization below). Omitted matcher or `{ kind: 'any' }` means any
+  resolved workspace context. `workspace_key` requires exact key match against
+  the resolved workspace key. `path_prefix` requires a canonical path-prefix
+  match against the resolved canonical workspace path.
 - `runMatcher` is evaluated against server-resolved run/task anchors. Omitted
   matcher or `{ kind: 'any' }` means any run context. `run_id` and `task_id`
   require exact id match.
@@ -383,8 +482,76 @@ Rules:
   editable policy is a follow-up and must not introduce a second policy source
   without updating this spec.
 - A policy entry with an unknown matcher kind, empty `toolName`, empty
-  `labels`, or empty `values` for non-`any` matchers is invalid server config
-  and shall be ignored with a startup/config diagnostic.
+  `labels`, or empty `values` for non-`any` matchers is invalid server config.
+  Cats Code shall:
+  - emit one structured server log entry at error level with category
+    `code-artifact-declaration` and reason
+    `tool_auto_publish_policy_invalid_entry`, including the offending entry
+    index and the failing field;
+  - surface the same diagnostics in `/api/code/health` under
+    `codeArtifactDeclaration.policyDiagnostics` as an array of
+    `{ category, reason, entryIndex, field }`;
+  - drop only the invalid entries from the active policy set; remaining valid
+    entries continue to apply.
+
+  Operators that prefer fail-loud behaviour may opt in via
+  `codeArtifactDeclaration.toolAutoPublishPolicies.failBootOnInvalidEntry =
+  true`; in that mode any invalid entry shall fail server boot instead of
+  being dropped silently. The default is to drop and report.
+
+#### Workspace Key and Path Canonicalization
+
+Code Workspace is a projection (terminology.md), not a Core record family,
+so the `workspace_key` matcher and `path_prefix` matcher must agree on a
+deterministic resolution rule.
+
+Server-resolved workspace key shall be:
+
+```text
+<workspace-source>:<workspace-identity>
+```
+
+Where `workspace-source` matches the existing Code Workspace source
+vocabulary and `workspace-identity` is:
+
+| `workspace-source` | `workspace-identity` |
+|--------------------|----------------------|
+| `owner_folder` | canonicalized absolute path of the owner-selected folder |
+| `conversation_repo` | canonicalized absolute path of the bound repo (`Conversation.repoPath`) |
+| `runtime_cwd` | canonicalized absolute path of the runtime session `cwd` |
+| `managed_room` | the managed room id verbatim (no path canonicalization) |
+
+Server-resolved canonical workspace path shall be the
+`workspace-identity` value above when the source is path-based
+(`owner_folder`, `conversation_repo`, `runtime_cwd`); for `managed_room` the
+canonical workspace path shall be `null` and `path_prefix` policies shall
+not match.
+
+Path canonicalization rules (apply to both the workspace identity above and
+to `path_prefix` matcher `values`):
+
+- normalize all path separators to forward slash (`/`);
+- collapse `.` and `..` lexically without touching the filesystem (no
+  symlink resolution, no `realpath`);
+- collapse repeated slashes (`//` → `/`);
+- normalize a trailing slash to no trailing slash;
+- on Windows hosts: lowercase the drive letter and the entire path for
+  comparison (case-insensitive); on Linux/macOS hosts: keep case
+  (case-sensitive);
+- absolute paths only — relative paths are rejected as policy `values`.
+
+`path_prefix` matching shall be **path-segment-based**: a configured value
+matches a candidate path only when, after canonicalization, the candidate is
+either equal to the value or has the value followed by `/` as a strict
+prefix. `/foo/bar` therefore matches `/foo/bar` and `/foo/bar/baz` but does
+not match `/foo/barbaz`.
+
+These rules apply uniformly to declaration validation, idempotency
+`workspace:` scope key construction, and tool auto-publish policy matching.
+Implementations shall reject policy entries whose canonicalized values are
+not absolute paths with reason
+`tool_auto_publish_policy_invalid_path_value` and surface them through the
+diagnostics channel above.
 
 Agent and system declarations are not publish-capable in this spec. Agents may
 declare `ready` artifacts, but publishing them requires a later owner publish
@@ -610,9 +777,13 @@ agent/tool/system/user output
   metadata sufficient?
 - Should generated source patches be `attachment`, `report`, or a future
   dedicated artifact kind?
+- Per-workspace editable `toolAutoPublishPolicies` overrides (vs. the current
+  single server config list) is deferred — when does that follow-up land, and
+  does it co-exist with the boot-time list or replace it?
 
 ---
 
 *Created: 2026-04-29*
 *Author: Codex*
 *Related Plan: [PLAN-081](../plans/PLAN-081-code-artifact-declaration-rollout.md)*
+*Amended: 2026-04-29 — added § Workspace Key and Path Canonicalization (workspace key resolution, host-OS-aware lexical canonicalization, segment-based prefix matching), § Publish-Transition Failure Semantics (no rollback, `artifact_publish_transition_failed` partial-success contract, `tool_auto_publish_transition_failed` server log), `CodeArtifactImportAndPublishInput` payload shape and route, structured `policyDiagnostics` channel + `failBootOnInvalidEntry` opt-in, and string input normalization (empty / whitespace → null on optional fields, `artifact_required_field_empty` on required fields).*

@@ -52,8 +52,24 @@ or infer artifacts by scanning the workspace.
 - [ ] Task 1.5: Add publishing policy helpers. Ordinary declarations cannot
       set `published`; only owner publish actions and server-configured tool
       auto-publish policy can transition artifacts to `published`. Include
-      the `codeArtifactDeclaration.toolAutoPublishPolicies` config schema and
-      matcher validation from SPEC-092.
+      the `codeArtifactDeclaration.toolAutoPublishPolicies` config schema,
+      matcher validation, the
+      `codeArtifactDeclaration.toolAutoPublishPolicies.failBootOnInvalidEntry`
+      opt-in flag, and the `/api/code/health`
+      `codeArtifactDeclaration.policyDiagnostics` reporting structure from
+      SPEC-092.
+- [ ] Task 1.5b: Add the SPEC-092 workspace-key resolver and path
+      canonicalization helper used by the `workspace_key` /
+      `path_prefix` matchers, idempotency `workspace:` scope key
+      construction, and declaration validation. Include the host-OS
+      case-sensitivity rule and the path-segment-prefix matching rule;
+      reject non-absolute policy values with
+      `tool_auto_publish_policy_invalid_path_value`.
+- [ ] Task 1.5c: Add the SPEC-092 string input normalization helper
+      (trim → null) used by all optional declaration string fields and the
+      import-and-publish payload before validation and idempotency-key
+      construction. Reject empty trimmed values for required fields with
+      `artifact_required_field_empty`.
 - [ ] Task 1.6: Add validation helpers for title, kind, status, anchor
       existence, idempotency key, producer identity, location kind, and
       metadata size/reserved keys.
@@ -80,10 +96,24 @@ validation helpers with unit coverage.
 - [ ] Task 2.3: Add detached user-import handling that requires an explicit
       selected workspace or anchor target before accepting the declaration.
 - [ ] Task 2.4: Write accepted declarations through `upsertCoreArtifact`.
-- [ ] Task 2.5: Add a distinct user import-and-publish product action. It must
-      wrap import normalization, normal declaration materialization, and the
-      owner publish transition without accepting `requestedStatus =
+- [ ] Task 2.5: Add a distinct user import-and-publish product action that
+      accepts the SPEC-092 `CodeArtifactImportAndPublishInput` payload at
+      `POST /api/code/artifacts/import-and-publish` (or the equivalent
+      product delegate). The action must (a) normalize the import source,
+      (b) construct the equivalent declaration with `producer.kind = 'user'`
+      and `requestedStatus` unset, (c) materialize through the normal
+      declaration path, and (d) perform the `user_publish_action` transition
+      after materialization. It must reject `requestedStatus =
       'published'` on the normal declaration path.
+- [ ] Task 2.5b: Implement the SPEC-092 publish-transition failure
+      semantics: do **not** roll back the materialized artifact when only
+      the publish transition fails. Return
+      `artifact_publish_transition_failed` (HTTP 502 or equivalent partial
+      status) with the materialized artifact id and current status; emit a
+      `tool_auto_publish_transition_failed` server log when the failing
+      path is `tool_auto_publish_policy`. Stand-alone publish-action
+      failures on existing artifacts follow the same partial-success
+      contract.
 - [ ] Task 2.6: Add idempotent upsert behavior keyed by the SPEC-092 canonical
       idempotency key, not by raw declaration id alone. Persist frozen scope
       metadata and use the compatible producer/declaration fallback when retry
@@ -215,10 +245,19 @@ and implementation review.
 - **Unit Tests**: label mapping, disposition/status precedence, publish action
   gating, tool auto-publish policy matchers, location validators, metadata
   bounds/reserved keys, workspace containment, idempotency key construction,
-  candidate metadata.
+  candidate metadata, workspace key / path canonicalization (Windows vs Linux
+  case rule, segment-prefix `/foo/bar` vs `/foo/barbaz`, trailing-slash and
+  `..` collapse), invalid `toolAutoPublishPolicies` entry handling
+  (drop-and-report vs `failBootOnInvalidEntry`), string input
+  normalization (empty / whitespace string → null on optional fields,
+  rejection on required fields).
 - **Integration Tests**: declaration -> upsert Core artifact -> Code artifact
   projection, with agent/tool/system/user producer examples and idempotent
-  replay that does not duplicate artifacts or activity.
+  replay that does not duplicate artifacts or activity. Plus
+  import-and-publish: success path through
+  `POST /api/code/artifacts/import-and-publish` and the partial-success
+  path where step 3 fails (artifact persists at `ready`,
+  `artifact_publish_transition_failed` is returned).
 - **Manual Testing**: run a `+New code` execution that produces a preview/test
   report declaration, verify the artifact appears in the Code artifact list,
   opens detail, and deep-links back to the originating task/run/workspace.
@@ -237,6 +276,9 @@ and implementation review.
 | Auto-publish config diverges across implementations | Medium | Use the SPEC-092 `toolAutoPublishPolicies` schema and matcher semantics |
 | Idempotent replays emit duplicate activity | Medium | Compare the SPEC-092 material-change signature instead of full record timestamps/metadata |
 | Ambiguous idempotency recovery stalls clients | Medium | Return candidate references and require explicit user/agent selection or a new declaration id |
+| Workspace key / path canonicalization diverges across hosts and matcher kinds | High | Single SPEC-092 helper (host-OS case rule, lexical canonicalization, path-segment prefix) used by `workspace_key` matcher, `path_prefix` matcher, idempotency `workspace:` scope, and declaration validation alike |
+| Invalid auto-publish config silently breaks publish surface | Medium | Drop invalid entries with structured server log + `/api/code/health` `codeArtifactDeclaration.policyDiagnostics`; operators may opt in to `failBootOnInvalidEntry = true` |
+| `user_publish_action` partial success leaves callers unsure of artifact state | Medium | Do not roll back materialization on transition failure; return `artifact_publish_transition_failed` with materialized artifact id + current status so callers can retry the transition |
 
 ## Progress Log
 
@@ -246,6 +288,7 @@ and implementation review.
 | 2026-04-29 | Tightened contract rollout around idempotency, precedence, publish-action gating, system candidate-only behavior, Phase 1 Cats-native action channel, and split runtime bridge signal tasks. |
 | 2026-04-29 | Clarified publication as an explicit publish action / tool auto-policy path, froze idempotency scope across retries, defined producer identity resolution, external-ref allowlist, and material-change activity suppression. |
 | 2026-04-29 | Added tool auto-publish policy schema, user import-and-publish action split, producer field misuse validation, recursive volatile filtering, and ambiguous idempotency recovery requirements. |
+| 2026-04-29 | Pinned workspace key + path canonicalization rules, `CodeArtifactImportAndPublishInput` payload shape, publish-transition partial-success semantics, structured `policyDiagnostics` channel + `failBootOnInvalidEntry` opt-in, and string input normalization (empty → null) for declaration / import-and-publish optional fields. |
 
 ---
 
