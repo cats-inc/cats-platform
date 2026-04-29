@@ -59,7 +59,7 @@ export default function CodeSidebarScreen() {
             void handlePrimaryAction(actionId);
           }}
           onOpenMyLens={() => {
-            router.push('/(tabs)/code/my-codes');
+            router.push('/(tabs)/code/my-clowders');
           }}
           onOpenRecents={() => {
             router.push('/(tabs)/code/recents');

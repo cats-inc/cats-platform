@@ -6,11 +6,16 @@ import type { TrimmedSidebarConfig } from '../../renderer/sidebars/types';
  * three primary action chips, the product MY-lens row, the product
  * Recents row.
  *
+ * MY-lens labels follow the cats-themed naming the platform already
+ * uses elsewhere:
+ *   • Chat → MY CATS (individual cats)
+ *   • Code → MY CLOWDERS (a clowder is a group of cats)
+ *   • Work → MY CATTERIES (a cattery is a place that houses cats)
+ *
  * Chat's three primary actions mirror the canonical web entry kinds
  * (+New chat / +Group chat / +Parallel chat). Code's match FR-038
  * (+New code / +Team code / +Peer code). Work mirrors the same
- * shape (+New work / +Team work / +Peer work) — names locked in
- * `536215df` per SPEC-095 Open Question resolution.
+ * shape (+New work / +Team work / +Peer work).
  */
 export const chatSidebarConfig: TrimmedSidebarConfig = {
   product: 'chat',
@@ -32,7 +37,7 @@ export const codeSidebarConfig: TrimmedSidebarConfig = {
     { id: 'team', label: '+ Team code' },
     { id: 'peer', label: '+ Peer code' },
   ],
-  myLensLabel: 'MY CODES',
+  myLensLabel: 'MY CLOWDERS',
   recentsLabel: 'Recents (Code)',
 };
 
@@ -44,6 +49,6 @@ export const workSidebarConfig: TrimmedSidebarConfig = {
     { id: 'team', label: '+ Team work' },
     { id: 'peer', label: '+ Peer work' },
   ],
-  myLensLabel: 'MY WORKS',
+  myLensLabel: 'MY CATTERIES',
   recentsLabel: 'Recents (Work)',
 };

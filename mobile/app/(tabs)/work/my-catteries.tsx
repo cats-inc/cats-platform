@@ -12,13 +12,13 @@ import {
 import { useMyCatsLens } from '../../../src/renderer/hooks/useMyCatsLens';
 import { colors, spacing, typography } from '../../../src/renderer/theme';
 
-export default function MyCodesScreen() {
+export default function MyCatteriesScreen() {
   const router = useRouter();
-  const { state } = useMyCatsLens('code');
+  const { state } = useMyCatsLens('work');
 
   return (
     <SafeAreaView style={styles.container}>
-      <Stack.Screen options={{ title: 'My Codes', headerShown: true }} />
+      <Stack.Screen options={{ title: 'My Catteries', headerShown: true }} />
       {state.kind === 'loading' ? (
         <View style={styles.centered}>
           <ActivityIndicator color={colors.accent.primary} />
@@ -26,14 +26,14 @@ export default function MyCodesScreen() {
       ) : state.kind === 'unconfigured' ? (
         <Panel
           title="Connect to your desktop"
-          body="Set the desktop base URL in Settings to load your Code cats."
+          body="Set the desktop base URL in Settings to load your Work catteries."
         />
       ) : state.kind === 'error' ? (
-        <Panel title="Could not load cats" body={state.error.message} />
+        <Panel title="Could not load catteries" body={state.error.message} />
       ) : state.cats.length === 0 ? (
         <Panel
-          title="No Code cats yet"
-          body="Create a cat assigned to the Code product on the desktop."
+          title="No catteries yet"
+          body="Create a cat assigned to the Work product on the desktop."
         />
       ) : (
         <FlatList
@@ -42,7 +42,7 @@ export default function MyCodesScreen() {
           contentContainerStyle={styles.listContent}
           renderItem={({ item }) => (
             <Pressable
-              onPress={() => router.push(`/(tabs)/code/direct-${item.id}`)}
+              onPress={() => router.push(`/(tabs)/work/direct-${item.id}`)}
               style={({ pressed }) => [
                 styles.row,
                 pressed ? styles.rowPressed : null,

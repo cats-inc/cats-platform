@@ -12,13 +12,13 @@ import {
 import { useMyCatsLens } from '../../../src/renderer/hooks/useMyCatsLens';
 import { colors, spacing, typography } from '../../../src/renderer/theme';
 
-export default function MyWorksScreen() {
+export default function MyClowdersScreen() {
   const router = useRouter();
-  const { state } = useMyCatsLens('work');
+  const { state } = useMyCatsLens('code');
 
   return (
     <SafeAreaView style={styles.container}>
-      <Stack.Screen options={{ title: 'My Works', headerShown: true }} />
+      <Stack.Screen options={{ title: 'My Clowders', headerShown: true }} />
       {state.kind === 'loading' ? (
         <View style={styles.centered}>
           <ActivityIndicator color={colors.accent.primary} />
@@ -26,14 +26,14 @@ export default function MyWorksScreen() {
       ) : state.kind === 'unconfigured' ? (
         <Panel
           title="Connect to your desktop"
-          body="Set the desktop base URL in Settings to load your Work cats."
+          body="Set the desktop base URL in Settings to load your Code clowders."
         />
       ) : state.kind === 'error' ? (
-        <Panel title="Could not load cats" body={state.error.message} />
+        <Panel title="Could not load clowders" body={state.error.message} />
       ) : state.cats.length === 0 ? (
         <Panel
-          title="No Work cats yet"
-          body="Create a cat assigned to the Work product on the desktop."
+          title="No clowders yet"
+          body="Create a cat assigned to the Code product on the desktop."
         />
       ) : (
         <FlatList
@@ -42,7 +42,7 @@ export default function MyWorksScreen() {
           contentContainerStyle={styles.listContent}
           renderItem={({ item }) => (
             <Pressable
-              onPress={() => router.push(`/(tabs)/work/direct-${item.id}`)}
+              onPress={() => router.push(`/(tabs)/code/direct-${item.id}`)}
               style={({ pressed }) => [
                 styles.row,
                 pressed ? styles.rowPressed : null,

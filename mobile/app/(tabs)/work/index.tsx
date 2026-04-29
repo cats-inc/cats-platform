@@ -59,7 +59,7 @@ export default function WorkSidebarScreen() {
             void handlePrimaryAction(actionId);
           }}
           onOpenMyLens={() => {
-            router.push('/(tabs)/work/my-works');
+            router.push('/(tabs)/work/my-catteries');
           }}
           onOpenRecents={() => {
             router.push('/(tabs)/work/recents');
