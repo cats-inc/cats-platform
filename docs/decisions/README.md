@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [090-adopt-generic-schedule-rules-for-mission-triggers](./090-adopt-generic-schedule-rules-for-mission-triggers.md) | Adopt Generic Schedule Rules for Mission Triggers | Proposed | 2026-04-29 |
 | [089-split-runtime-request-and-stream-idle-timeouts](./089-split-runtime-request-and-stream-idle-timeouts.md) | Split Runtime Request and Stream Idle Timeouts | Accepted | 2026-04-29 |
 | [088-use-structured-artifact-declarations-for-code-materialization](./088-use-structured-artifact-declarations-for-code-materialization.md) | Use Structured Artifact Declarations for Code Materialization | Proposed | 2026-04-29 |
 | [087-open-default-bootstrap-treatment-with-evidence-floor](./087-open-default-bootstrap-treatment-with-evidence-floor.md) | Open default bootstrap treatment, bounded by an evidence floor | Accepted | 2026-04-28 |
@@ -131,6 +132,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-04-29 (ADR-089 added: split runtime request and stream idle timeouts; ADR-088 added: structured artifact declarations for Code materialization.)*
+*Last updated: 2026-04-29 (ADR-090 added: generic schedule rules trigger missions/runs; ADR-089 added: split runtime request and stream idle timeouts; ADR-088 added: structured artifact declarations for Code materialization.)*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*

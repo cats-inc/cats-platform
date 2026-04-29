@@ -55,6 +55,9 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [PLAN-083](./plans/PLAN-083-schedule-rules-and-mission-trigger-rollout.md)
+- [SPEC-094](./specs/SPEC-094-schedule-rules-and-mission-triggers.md)
+- [ADR-090](./decisions/090-adopt-generic-schedule-rules-for-mission-triggers.md)
 - [ADR-089](./decisions/089-split-runtime-request-and-stream-idle-timeouts.md)
 - [PLAN-082](./plans/PLAN-082-settings-runtime-cli-provider-lifecycle-rollout.md)
 - [SPEC-093](./specs/SPEC-093-settings-runtime-cli-provider-lifecycle.md)
