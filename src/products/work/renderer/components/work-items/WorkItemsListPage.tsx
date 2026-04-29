@@ -1,42 +1,15 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import { formatRelative } from "../topdown/shared";
-import { usePinnedProjects } from "../../state/pinnedProjectsStore";
-import { useWorkGraph } from "../../state/workGraphStore";
-import { useWorkItems } from "../../state/workItemsStore";
+import { useWorkItemsQuery } from "../../state/queries/workItemsQuery.js";
 import { NewWorkItemDialog } from "./NewWorkItemDialog";
 import "./work-items.css";
 
 export function WorkItemsListPage(): JSX.Element {
-  const { graph } = useWorkGraph();
-  const { allWorkItems, deletedIds } = useWorkItems();
-  const { allProjects } = usePinnedProjects();
+  const workItemsQuery = useWorkItemsQuery();
+  const workItems = workItemsQuery.data?.workItems ?? [];
   const [dialogOpen, setDialogOpen] = useState(false);
-
-  const projectsById = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const project of allProjects) {
-      map.set(project.id, project.title);
-    }
-    return map;
-  }, [allProjects]);
-
-  const workItems = useMemo(
-    () => allWorkItems.filter((wi) => !deletedIds.has(wi.id)),
-    [allWorkItems, deletedIds],
-  );
-
-  const taskCountById = useMemo(() => {
-    const map = new Map<string, number>();
-    for (const wi of workItems) {
-      const count = graph.objects.filter(
-        (o) => o.kind === "task" && o.linkedWorkItemId === wi.id,
-      ).length;
-      map.set(wi.id, count);
-    }
-    return map;
-  }, [workItems, graph]);
 
   return (
     <div className="workItemsList">
@@ -76,84 +49,84 @@ export function WorkItemsListPage(): JSX.Element {
         </div>
       </header>
       <main className="workItemsList__main">
-        {workItems.length === 0 ? (
+        {workItemsQuery.isPending ? (
+          <p className="workItemsList__empty">Loading work items…</p>
+        ) : workItemsQuery.isError ? (
+          <p className="workItemsList__empty">
+            Failed to load work items: {String((workItemsQuery.error as Error).message)}
+          </p>
+        ) : workItems.length === 0 ? (
           <p className="workItemsList__empty">
             No work items yet. Click <strong>New work item</strong> to create one.
           </p>
         ) : (
           <ul className="workItemsList__list">
-            {workItems.map((wi) => {
-              const projectTitle = wi.linkedProjectId
-                ? projectsById.get(wi.linkedProjectId)
-                : null;
-              const taskCount = taskCountById.get(wi.id) ?? 0;
-              return (
-                <li key={wi.id} className="workItemsList__row">
-                  <Link
-                    to={wi.id}
-                    className="workItemsList__rowLink"
-                    aria-label={`Open work item ${wi.title}`}
-                  >
-                    <div className="workItemsList__rowMain">
-                      <span
-                        className={`projectsList__dot projectsList__dot--${wi.status}`}
-                        aria-hidden="true"
-                      />
-                      <div className="workItemsList__rowText">
-                        <span className="workItemsList__rowTitle">
-                          {wi.title}
+            {workItems.map((wi) => (
+              <li key={wi.id} className="workItemsList__row">
+                <Link
+                  to={wi.id}
+                  className="workItemsList__rowLink"
+                  aria-label={`Open work item ${wi.title}`}
+                >
+                  <div className="workItemsList__rowMain">
+                    <span
+                      className={`projectsList__dot projectsList__dot--${wi.status}`}
+                      aria-hidden="true"
+                    />
+                    <div className="workItemsList__rowText">
+                      <span className="workItemsList__rowTitle">
+                        {wi.title}
+                      </span>
+                      {wi.summary ? (
+                        <span className="workItemsList__rowSummary">
+                          {wi.summary}
                         </span>
-                        {wi.summary ? (
-                          <span className="workItemsList__rowSummary">
-                            {wi.summary}
-                          </span>
-                        ) : null}
-                      </div>
+                      ) : null}
                     </div>
-                    <div className="workItemsList__rowMeta">
-                      {projectTitle ? (
-                        <span className="workItemsList__projectChip">
-                          in {projectTitle}
-                        </span>
-                      ) : (
-                        <span className="workItemsList__projectChip workItemsList__projectChip--orphan">
-                          orphan
-                        </span>
-                      )}
-                      {wi.linkedWorkItemTitle ? (
-                        <span
-                          className="workItemsList__projectChip workItemsList__projectChip--parent"
-                          title={`Parent work item: ${wi.linkedWorkItemTitle}`}
-                        >
-                          ↳ {wi.linkedWorkItemTitle}
-                        </span>
-                      ) : null}
-                      {wi.attention === "decision_needed" ? (
-                        <span className="workItemsList__pip workItemsList__pip--decision">
-                          decision
-                        </span>
-                      ) : null}
-                      {wi.attention === "blocked" || wi.attention === "failed" ? (
-                        <span className="workItemsList__pip workItemsList__pip--blocked">
-                          blocked
-                        </span>
-                      ) : null}
-                      <span className="workItemsList__metric">
-                        <strong>{taskCount}</strong> tasks
+                  </div>
+                  <div className="workItemsList__rowMeta">
+                    {wi.projectTitle ? (
+                      <span className="workItemsList__projectChip">
+                        in {wi.projectTitle}
                       </span>
-                      <span className="workItemsList__metric workItemsList__metric--muted">
-                        {formatRelative(wi.updatedAt)}
+                    ) : (
+                      <span className="workItemsList__projectChip workItemsList__projectChip--orphan">
+                        orphan
                       </span>
+                    )}
+                    {wi.parentWorkItemTitle ? (
                       <span
-                        className={`workItemsList__statusPill workItemsList__statusPill--${wi.status}`}
+                        className="workItemsList__projectChip workItemsList__projectChip--parent"
+                        title={`Parent work item: ${wi.parentWorkItemTitle}`}
                       >
-                        {wi.status.replace(/_/g, " ")}
+                        ↳ {wi.parentWorkItemTitle}
                       </span>
-                    </div>
-                  </Link>
-                </li>
-              );
-            })}
+                    ) : null}
+                    {wi.attention === "decision_needed" ? (
+                      <span className="workItemsList__pip workItemsList__pip--decision">
+                        decision
+                      </span>
+                    ) : null}
+                    {wi.attention === "blocked" || wi.attention === "failed" ? (
+                      <span className="workItemsList__pip workItemsList__pip--blocked">
+                        blocked
+                      </span>
+                    ) : null}
+                    <span className="workItemsList__metric">
+                      <strong>{wi.linkedTaskCount}</strong> tasks
+                    </span>
+                    <span className="workItemsList__metric workItemsList__metric--muted">
+                      {formatRelative(wi.updatedAt)}
+                    </span>
+                    <span
+                      className={`workItemsList__statusPill workItemsList__statusPill--${wi.status}`}
+                    >
+                      {wi.status.replace(/_/g, " ")}
+                    </span>
+                  </div>
+                </Link>
+              </li>
+            ))}
           </ul>
         )}
       </main>

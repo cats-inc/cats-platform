@@ -7,10 +7,12 @@ import {
   useState,
 } from "react";
 import { useNavigate } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 
 import type { CoreWorkItemStatus } from "../../api/workRecords.js";
 import { WORK_WORK_ITEMS_PATH } from "../../workPaths.js";
 import { usePinnedProjects } from "../../state/pinnedProjectsStore";
+import { WORK_ITEMS_QUERY_KEY } from "../../state/queries/workItemsQuery.js";
 import { workItemsStore } from "../../state/workItemsStore";
 
 interface NewWorkItemDialogProps {
@@ -33,6 +35,7 @@ export function NewWorkItemDialog({
   defaultProjectId,
 }: NewWorkItemDialogProps): JSX.Element {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const titleId = useId();
   const summaryId = useId();
   const projectId = useId();
@@ -87,6 +90,7 @@ export function NewWorkItemDialog({
         status,
         nextAction: nextAction || null,
       });
+      await queryClient.invalidateQueries({ queryKey: WORK_ITEMS_QUERY_KEY });
       onClose();
       navigate(`${WORK_WORK_ITEMS_PATH}/${workItem.id}`);
     } catch (err) {

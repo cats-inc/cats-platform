@@ -184,12 +184,16 @@ export interface WorkWorkItemListItem {
   conversationSourceChannelId: string | null;
   taskId: string | null;
   taskTitle: string | null;
+  parentWorkItemId: string | null;
+  parentWorkItemTitle: string | null;
   ownerActorId: string;
   ownerName: string;
   assignedActors: Array<{
     actorId: string;
     displayName: string;
   }>;
+  attention: WorkAttentionState;
+  linkedTaskCount: number;
   updatedAt: string;
 }
 
@@ -517,6 +521,10 @@ function buildWorkItemListItems(
       const projectTitle = workItem.projectId
         ? core.projects.find((project) => project.id === workItem.projectId)?.title ?? null
         : null;
+      const parentWorkItemTitle = workItem.parentWorkItemId
+        ? core.workItems.find((candidate) => candidate.id === workItem.parentWorkItemId)?.title
+          ?? null
+        : null;
 
       return {
         id: workItem.id,
@@ -530,12 +538,16 @@ function buildWorkItemListItems(
         conversationSourceChannelId: conversation?.sourceChannelId ?? null,
         taskId: workItem.taskId,
         taskTitle: linkedTask?.title ?? null,
+        parentWorkItemId: workItem.parentWorkItemId ?? null,
+        parentWorkItemTitle,
         ownerActorId: workItem.ownerActorId,
         ownerName: resolveActorName(core, workItem.ownerActorId),
         assignedActors: workItem.assignedActorIds.map((actorId) => ({
           actorId,
           displayName: resolveActorName(core, actorId),
         })),
+        attention: deriveAttentionFromStatus(workItem.status),
+        linkedTaskCount: workItem.taskId ? 1 : 0,
         updatedAt: workItem.updatedAt,
       };
     });
