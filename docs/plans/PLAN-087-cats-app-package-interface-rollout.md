@@ -208,7 +208,7 @@ standard without granting that privilege to local user apps.
 - [x] Run Lobby model tests.
 - [ ] Manually validate a Cats Code exported Pomodoro package from export to
       install to Lobby launch.
-- [ ] Update documentation indexes and product integration notes.
+- [x] Update documentation indexes and product integration notes.
 
 **Deliverables**: end-to-end local user app flow ready for review.
 
@@ -224,6 +224,32 @@ The overnight implementation agent should aim for this first vertical slice:
 5. Confirm it appears under Lobby `Apps`.
 6. Click the card and open `/apps/user.pomodoro`.
 7. Disable it and confirm it no longer appears as an active Lobby launch entry.
+
+Current handoff state:
+
+- Until the Cats Code export command exists, use
+  `tests/fixtures/cats-apps/pomodoro` as the package folder.
+- Settings > Apps > Local install now supports the fixture path directly:
+  enter the fixture folder, press `Review`, confirm the metadata, then
+  `Install`.
+- Successful install navigates to the installed app route when the installed
+  package exposes an enabled Lobby entry.
+- The app host route is still a skeleton; successful navigation proves package
+  registry, envelope refresh, Lobby entry projection, and route ownership, not
+  real renderer execution.
+- Full manual E2E remains blocked on the Cats Code export command/action that
+  produces an app package from a Code artifact.
+
+Product integration notes:
+
+- First-party products remain `PlatformProductDescriptor` entries.
+- Enabled `system` `product-module` packages are projected into the same product
+  envelope with `surface: null`; local user apps stay excluded from Products.
+- Product module packages may still be mirrored in Settings Apps as the owning
+  installable package.
+- Capability connector packages appear in Settings Apps even when they have no
+  Lobby card; declared `setupPath` wins over app-level settings when choosing a
+  Settings link.
 
 ## Technical Decisions
 
@@ -286,6 +312,7 @@ The overnight implementation agent should aim for this first vertical slice:
 | 2026-04-30 | Added post-install navigation to the installed app's first enabled Lobby route, with a pure launch-path resolver test. |
 | 2026-04-30 | Added connector settings entry resolution from connector `setupPath` or app settings contributions, with Settings Apps links and auth summary coverage. |
 | 2026-04-30 | Added Cats Code app export metadata types and helper coverage that maps manifest entrypoints to package artifacts. |
+| 2026-04-30 | Added current manual E2E handoff notes and product integration notes for fixture install, app route navigation, product modules, and connector Settings entries. |
 
 ---
 
