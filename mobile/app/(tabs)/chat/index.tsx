@@ -1,19 +1,32 @@
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { useRouter } from 'expo-router';
+import { SafeAreaView, StyleSheet } from 'react-native';
 
-import { colors, spacing, typography } from '../../../src/renderer/theme';
+import { chatSidebarFixture } from '../../../src/api/fixtures/chatSidebar';
+import { ChatSidebar } from '../../../src/renderer/sidebars/ChatSidebar';
+import { colors } from '../../../src/renderer/theme';
+
+const NEW_CHAT_PLACEHOLDER_ID = 'new-chat';
+const NEW_GROUP_CHAT_PLACEHOLDER_ID = 'new-group-chat';
+const NEW_PARALLEL_CHAT_PLACEHOLDER_ID = 'new-parallel-chat';
 
 export default function ChatSidebarScreen() {
+  const router = useRouter();
+
+  const pushChat = (channelId: string) => {
+    router.push(`/(tabs)/chat/${channelId}`);
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.body}>
-        <Text style={styles.title}>Chat</Text>
-        <Text style={styles.subtitle}>
-          Recents, MY CATS, Add cat in chat.
-        </Text>
-        <Text style={styles.placeholder}>
-          Chat sidebar lands in PLAN-084 Phase 3.
-        </Text>
-      </View>
+      <ChatSidebar
+        data={chatSidebarFixture}
+        onStartNewChat={() => pushChat(NEW_CHAT_PLACEHOLDER_ID)}
+        onStartNewGroupChat={() => pushChat(NEW_GROUP_CHAT_PLACEHOLDER_ID)}
+        onStartNewParallelChat={() => pushChat(NEW_PARALLEL_CHAT_PLACEHOLDER_ID)}
+        onSelectRecent={(channelId) => pushChat(channelId)}
+        onSelectCat={(catId) => pushChat(`direct-${catId}`)}
+        onCreateNewCat={() => pushChat(NEW_CHAT_PLACEHOLDER_ID)}
+      />
     </SafeAreaView>
   );
 }
@@ -22,23 +35,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg.canvas,
-  },
-  body: {
-    flex: 1,
-    padding: spacing.lg,
-    gap: spacing.sm,
-  },
-  title: {
-    color: colors.fg.primary,
-    ...typography.display,
-  },
-  subtitle: {
-    color: colors.fg.secondary,
-    ...typography.body,
-  },
-  placeholder: {
-    color: colors.fg.muted,
-    ...typography.caption,
-    marginTop: spacing.md,
   },
 });
