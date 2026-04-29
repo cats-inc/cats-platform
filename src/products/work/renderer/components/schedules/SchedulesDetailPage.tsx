@@ -1,8 +1,9 @@
 import { useMemo } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import {
+  removeWorkSchedule,
   testFireWorkSchedule,
   updateWorkSchedule,
   type WorkScheduleRule,
@@ -22,6 +23,7 @@ import './schedules.css';
 
 export function SchedulesDetailPage(): JSX.Element {
   const { scheduleId } = useParams<{ scheduleId: string }>();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
   const detailQuery = useScheduleDetailQuery(scheduleId);
   const rule = detailQuery.data?.rule ?? null;
@@ -51,6 +53,32 @@ export function SchedulesDetailPage(): JSX.Element {
     onSuccess: invalidate,
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      if (!rule) throw new Error('Schedule rule not loaded.');
+      await removeWorkSchedule(rule.id);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: SCHEDULES_QUERY_KEY });
+      if (scheduleId) {
+        queryClient.removeQueries({ queryKey: scheduleDetailQueryKey(scheduleId) });
+      }
+      navigate(WORK_SCHEDULES_PATH);
+    },
+  });
+
+  const handleDelete = () => {
+    if (!rule) return;
+    if (
+      !window.confirm(
+        `Delete schedule "${rule.title}"?\n\nThis cannot be undone. Future fires stop and the rule's trigger history is removed; admitted Mission/Run records remain.`,
+      )
+    ) {
+      return;
+    }
+    deleteMutation.mutate();
+  };
+
   const sortedReceipts = useMemo(
     () => triggerReceipts
       .slice()
@@ -59,7 +87,8 @@ export function SchedulesDetailPage(): JSX.Element {
     [triggerReceipts],
   );
 
-  const actionError = toggleMutation.error ?? testFireMutation.error;
+  const actionError =
+    toggleMutation.error ?? testFireMutation.error ?? deleteMutation.error;
   const actionErrorMessage = actionError
     ? actionError instanceof Error
       ? actionError.message
@@ -77,8 +106,10 @@ export function SchedulesDetailPage(): JSX.Element {
           rule={null}
           togglePending={false}
           testFirePending={false}
+          deletePending={false}
           onToggle={() => undefined}
           onTestFire={() => undefined}
+          onDelete={() => undefined}
         />
         <main className="scheduleDetail__main">
           <p className="scheduleDetail__empty">Loading schedule…</p>
@@ -102,8 +133,10 @@ export function SchedulesDetailPage(): JSX.Element {
         rule={rule}
         togglePending={toggleMutation.isPending}
         testFirePending={testFireMutation.isPending}
+        deletePending={deleteMutation.isPending}
         onToggle={() => toggleMutation.mutate(!rule.enabled)}
         onTestFire={() => testFireMutation.mutate()}
+        onDelete={handleDelete}
       />
       <main className="scheduleDetail__main">
         {actionErrorMessage ? (
@@ -239,8 +272,10 @@ interface ScheduleDetailTopBarProps {
   rule: WorkScheduleRule | null;
   togglePending: boolean;
   testFirePending: boolean;
+  deletePending: boolean;
   onToggle: () => void;
   onTestFire: () => void;
+  onDelete: () => void;
 }
 
 function ScheduleDetailTopBar({
@@ -248,10 +283,12 @@ function ScheduleDetailTopBar({
   rule,
   togglePending,
   testFirePending,
+  deletePending,
   onToggle,
   onTestFire,
+  onDelete,
 }: ScheduleDetailTopBarProps): JSX.Element {
-  const busy = togglePending || testFirePending;
+  const busy = togglePending || testFirePending || deletePending;
   return (
     <header className="channelTopBar scheduleDetailTopBar">
       <div className="channelTopBarStart scheduleDetailTopBar__start">
@@ -312,6 +349,15 @@ function ScheduleDetailTopBar({
                 : rule.enabled
                   ? 'Disable'
                   : 'Enable'}
+            </button>
+            <button
+              type="button"
+              className="schedulesList__destructiveButton"
+              onClick={onDelete}
+              disabled={busy}
+              aria-label="Delete schedule"
+            >
+              {deletePending ? 'Deleting…' : 'Delete'}
             </button>
             <span
               className={

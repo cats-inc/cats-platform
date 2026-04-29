@@ -431,6 +431,47 @@ main.canvas:has(> .taskDetail) {
   color: var(--muted-soft);
 }
 
+.taskDetailTopBar__action {
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.taskDetailTopBar__action--destructive {
+  color: #c0382b;
+  border-color: rgba(192, 56, 43, 0.3);
+}
+
+.taskDetailTopBar__action--destructive:hover:not(:disabled) {
+  background: rgba(192, 56, 43, 0.08);
+}
+
+.taskDetailTopBar__action--destructive:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.taskDetail__error {
+  margin: 0 28px 16px;
+  padding: 8px 10px;
+  border: 1px solid rgba(192, 56, 43, 0.35);
+  border-radius: 6px;
+  background: rgba(192, 56, 43, 0.08);
+  color: #c0382b;
+  font-size: 0.8rem;
+}
+
 .taskDetail__attention {
   font-size: 0.66rem;
   font-weight: 600;

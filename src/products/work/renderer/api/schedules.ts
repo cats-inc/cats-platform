@@ -173,3 +173,15 @@ export async function testFireWorkSchedule(
   });
   return expectJson<WorkScheduleAdmissionResult>(response, 'Failed to test-fire schedule.');
 }
+
+export async function removeWorkSchedule(
+  scheduleId: string,
+): Promise<{ removed: boolean; ruleId: string }> {
+  const response = await fetch(buildWorkApiSchedulePath(scheduleId), {
+    method: 'DELETE',
+  });
+  return expectJson<{ removed: boolean; ruleId: string }>(
+    response,
+    'Failed to delete schedule.',
+  );
+}

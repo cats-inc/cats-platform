@@ -247,6 +247,32 @@ main.canvas:has(> .scheduleDetail) {
   color: #fff;
 }
 
+.schedulesList__destructiveButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(192, 56, 43, 0.3);
+  border-radius: 6px;
+  background: var(--panel);
+  color: #c0382b;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  min-height: 28px;
+  padding: 0 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.schedulesList__destructiveButton:hover:not(:disabled) {
+  background: rgba(192, 56, 43, 0.08);
+}
+
+.schedulesList__destructiveButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 .schedulesList__secondaryButton {
   background: var(--panel);
   color: var(--text);

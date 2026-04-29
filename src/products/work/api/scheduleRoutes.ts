@@ -99,7 +99,18 @@ export async function routeWorkScheduleApi(
       return true;
     }
 
-    sendMethodNotAllowed(context.response, ['GET', 'PATCH']);
+    if (context.method === 'DELETE') {
+      try {
+        const service = createWorkSchedulerService(context);
+        const result = await service.removeRule(scheduleId);
+        sendJson(context.response, 200, result);
+      } catch (error) {
+        handleCoreError(context, error);
+      }
+      return true;
+    }
+
+    sendMethodNotAllowed(context.response, ['GET', 'PATCH', 'DELETE']);
     return true;
   }
 

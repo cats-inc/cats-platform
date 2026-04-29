@@ -42,6 +42,7 @@ export interface SchedulerService {
   getRule(ruleId: string): Promise<ScheduleRule | null>;
   createRule(input: ScheduleRuleCreateInput): Promise<ScheduleRule>;
   updateRule(ruleId: string, input: ScheduleRuleUpdateInput): Promise<ScheduleRule>;
+  removeRule(ruleId: string): Promise<{ removed: boolean; ruleId: string }>;
   manualTestFire(ruleId: string): Promise<ScheduleAdmissionResult>;
   tick(options?: { startup?: boolean; maxFireAll?: number }): Promise<ScheduleTickResult>;
   listTriggerReceipts(filter?: {
@@ -118,6 +119,19 @@ class DefaultSchedulerService implements SchedulerService {
       nextFireAt: computeNextFireAt(updated, now),
     };
     return this.dependencies.scheduleStore.upsertRule(rule);
+  }
+
+  async removeRule(
+    ruleId: string,
+  ): Promise<{ removed: boolean; ruleId: string }> {
+    const existing = await this.dependencies.scheduleStore.getRule(ruleId);
+    if (!existing) {
+      throw new CoreNotFoundError(
+        `Schedule rule not found: ${ruleId}`,
+        'schedule_rule_not_found',
+      );
+    }
+    return this.dependencies.scheduleStore.removeRule(ruleId);
   }
 
   async manualTestFire(ruleId: string): Promise<ScheduleAdmissionResult> {

@@ -376,6 +376,36 @@ main.canvas:has(> .workItemDetail) {
   color: var(--text);
 }
 
+.workItemDetailTopBar__action--destructive {
+  width: auto;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #c0382b;
+  border-color: rgba(192, 56, 43, 0.3);
+}
+
+.workItemDetailTopBar__action--destructive:hover:not(:disabled) {
+  background: rgba(192, 56, 43, 0.08);
+  color: #c0382b;
+}
+
+.workItemDetailTopBar__action--destructive:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.workItemDetail__error {
+  margin: 0 28px 16px;
+  padding: 8px 10px;
+  border: 1px solid rgba(192, 56, 43, 0.35);
+  border-radius: 6px;
+  background: rgba(192, 56, 43, 0.08);
+  color: #c0382b;
+  font-size: 0.8rem;
+}
+
 .workItemDetail__main {
   flex: 1;
   min-height: 0;

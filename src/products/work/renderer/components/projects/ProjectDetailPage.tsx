@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { LinkageSection } from "../topdown/LinkageSection";
 import {
@@ -9,15 +10,22 @@ import {
   KIND_LABEL,
 } from "../topdown/shared";
 import type { WorkGraphObjectSummary } from "../topdown/types";
-import { useProjectsQuery } from "../../state/queries/projectsQuery.js";
+import { removeWorkProject } from "../../api/workRecords.js";
+import {
+  PROJECTS_QUERY_KEY,
+  useProjectsQuery,
+} from "../../state/queries/projectsQuery.js";
 import {
   EMPTY_WORK_GRAPH,
   useWorkGraphQuery,
 } from "../../state/queries/workGraphQuery.js";
+import { WORK_PROJECTS_PATH } from "../../workPaths.js";
 import "./projects.css";
 
 export function ProjectDetailPage(): JSX.Element {
   const { projectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const graph = useWorkGraphQuery().data ?? EMPTY_WORK_GRAPH;
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
   const projectsQuery = useProjectsQuery();
@@ -26,12 +34,40 @@ export function ProjectDetailPage(): JSX.Element {
     ? projectsQuery.data?.projects.find((p) => p.id === projectId)
     : undefined;
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await removeWorkProject(id);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY });
+      navigate(WORK_PROJECTS_PATH);
+    },
+  });
+
+  const handleDelete = () => {
+    if (!project) return;
+    if (
+      !window.confirm(
+        `Delete project "${project.title}"?\n\nThis cannot be undone. Linked work items, tasks, and runs are not removed.`,
+      )
+    ) {
+      return;
+    }
+    deleteMutation.mutate(project.id);
+  };
+
   if (projectsQuery.isPending) {
     return <ProjectDetailLoading />;
   }
   if (!project) {
     return <ProjectNotFound projectId={projectId ?? null} />;
   }
+
+  const deleteError = deleteMutation.error
+    ? deleteMutation.error instanceof Error
+      ? deleteMutation.error.message
+      : "Failed to delete project."
+    : null;
 
   const workItems = graph.objects.filter(
     (o) => o.kind === "work_item" && o.linkedProjectId === project.id,
@@ -98,28 +134,21 @@ export function ProjectDetailPage(): JSX.Element {
           </span>
           <button
             type="button"
-            className="projectDetailTopBar__action"
-            onClick={() => undefined}
-            aria-label="Project settings"
+            className="projectDetailTopBar__action projectDetailTopBar__action--destructive"
+            onClick={handleDelete}
+            disabled={deleteMutation.isPending}
+            aria-label="Delete project"
           >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 14 14"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <circle cx="7" cy="7" r="2" />
-              <path d="M11 7c0 .4-.04.8-.12 1.2l1.36.94-1.4 2.42-1.5-.6c-.6.5-1.3.86-2.1 1.04L7 13.4 4.76 11l-1.5.6-1.4-2.42 1.36-.94A6 6 0 0 1 3 7c0-.4.04-.8.12-1.2L1.76 4.86l1.4-2.42 1.5.6c.6-.5 1.3-.86 2.1-1.04L7 .6 9.24 3l1.5-.6 1.4 2.42-1.36.94c.08.4.12.8.12 1.24z" />
-            </svg>
+            {deleteMutation.isPending ? "Deleting…" : "Delete"}
           </button>
         </div>
       </header>
       <main className="projectDetail__main">
+        {deleteError ? (
+          <p className="projectDetail__error" role="alert">
+            {deleteError}
+          </p>
+        ) : null}
         <section className="projectDetail__section projectDetail__overview">
           <header className="projectDetail__sectionHeader">
             <h2>Overview</h2>

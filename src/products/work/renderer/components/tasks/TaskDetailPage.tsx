@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { LinkageSection } from "../topdown/LinkageSection";
 import {
@@ -7,9 +8,14 @@ import {
   buildIndexes,
   formatRelative,
 } from "../topdown/shared";
+import { removeWorkTask } from "../../api/workRecords.js";
 import { useProjectsQuery } from "../../state/queries/projectsQuery.js";
 import { useRunsQuery, type WorkRunListItem } from "../../state/queries/runsQuery.js";
-import { useTasksQuery, type WorkTaskListItem } from "../../state/queries/tasksQuery.js";
+import {
+  TASKS_QUERY_KEY,
+  useTasksQuery,
+  type WorkTaskListItem,
+} from "../../state/queries/tasksQuery.js";
 import { useWorkItemsQuery } from "../../state/queries/workItemsQuery.js";
 import {
   EMPTY_WORK_GRAPH,
@@ -25,6 +31,8 @@ import "./tasks.css";
 
 export function TaskDetailPage(): JSX.Element {
   const { taskId } = useParams<{ taskId: string }>();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const graph = useWorkGraphQuery().data ?? EMPTY_WORK_GRAPH;
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
   const tasksQuery = useTasksQuery();
@@ -35,12 +43,40 @@ export function TaskDetailPage(): JSX.Element {
   const allTasks = tasksQuery.data?.tasks ?? [];
   const task = taskId ? allTasks.find((t) => t.id === taskId) : undefined;
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await removeWorkTask(id);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
+      navigate(WORK_TASKS_PATH);
+    },
+  });
+
+  const handleDelete = () => {
+    if (!task) return;
+    if (
+      !window.confirm(
+        `Delete task "${task.title}"?\n\nThis cannot be undone. Linked runs are not removed.`,
+      )
+    ) {
+      return;
+    }
+    deleteMutation.mutate(task.id);
+  };
+
   if (tasksQuery.isPending) {
     return <TaskDetailLoading />;
   }
   if (!task) {
     return <TaskNotFound taskId={taskId ?? null} />;
   }
+
+  const deleteError = deleteMutation.error
+    ? deleteMutation.error instanceof Error
+      ? deleteMutation.error.message
+      : "Failed to delete task."
+    : null;
 
   const linkedProject = task.projectId
     ? projectsQuery.data?.projects.find((p) => p.id === task.projectId)
@@ -131,9 +167,23 @@ export function TaskDetailPage(): JSX.Element {
           <span className="taskDetailTopBar__updated">
             updated {formatRelative(task.updatedAt)}
           </span>
+          <button
+            type="button"
+            className="taskDetailTopBar__action taskDetailTopBar__action--destructive"
+            onClick={handleDelete}
+            disabled={deleteMutation.isPending}
+            aria-label="Delete task"
+          >
+            {deleteMutation.isPending ? "Deleting…" : "Delete"}
+          </button>
         </div>
       </header>
       <main className="taskDetail__main">
+        {deleteError ? (
+          <p className="taskDetail__error" role="alert">
+            {deleteError}
+          </p>
+        ) : null}
         <section className="taskDetail__section taskDetail__overview">
           <header className="taskDetail__sectionHeader">
             <h2>Overview</h2>

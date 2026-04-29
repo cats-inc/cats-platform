@@ -1,5 +1,6 @@
 import { useMemo } from "react";
-import { Link, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { LinkageSection } from "../topdown/LinkageSection";
 import {
@@ -9,15 +10,20 @@ import {
   KIND_LABEL,
 } from "../topdown/shared";
 import type { WorkGraphObjectSummary } from "../topdown/types";
+import { removeWorkItem } from "../../api/workRecords.js";
 import { useMissionsQuery, type WorkMissionListItem } from "../../state/queries/missionsQuery.js";
 import { useProjectsQuery } from "../../state/queries/projectsQuery.js";
-import { useWorkItemsQuery } from "../../state/queries/workItemsQuery.js";
+import {
+  WORK_ITEMS_QUERY_KEY,
+  useWorkItemsQuery,
+} from "../../state/queries/workItemsQuery.js";
 import {
   EMPTY_WORK_GRAPH,
   useWorkGraphQuery,
 } from "../../state/queries/workGraphQuery.js";
 import {
   WORK_PROJECTS_PATH,
+  WORK_WORK_ITEMS_PATH,
   buildWorkMissionPath,
   buildWorkWorkItemPath,
 } from "../../workPaths.js";
@@ -25,6 +31,8 @@ import "./work-items.css";
 
 export function WorkItemDetailPage(): JSX.Element {
   const { workItemId } = useParams<{ workItemId: string }>();
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const graph = useWorkGraphQuery().data ?? EMPTY_WORK_GRAPH;
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
   const workItemsQuery = useWorkItemsQuery();
@@ -36,12 +44,40 @@ export function WorkItemDetailPage(): JSX.Element {
     ? allWorkItems.find((wi) => wi.id === workItemId)
     : undefined;
 
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await removeWorkItem(id);
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: WORK_ITEMS_QUERY_KEY });
+      navigate(WORK_WORK_ITEMS_PATH);
+    },
+  });
+
+  const handleDelete = () => {
+    if (!workItem) return;
+    if (
+      !window.confirm(
+        `Delete work item "${workItem.title}"?\n\nThis cannot be undone. Linked tasks, runs, and missions are not removed.`,
+      )
+    ) {
+      return;
+    }
+    deleteMutation.mutate(workItem.id);
+  };
+
   if (workItemsQuery.isPending) {
     return <WorkItemDetailLoading />;
   }
   if (!workItem) {
     return <WorkItemNotFound workItemId={workItemId ?? null} />;
   }
+
+  const deleteError = deleteMutation.error
+    ? deleteMutation.error instanceof Error
+      ? deleteMutation.error.message
+      : "Failed to delete work item."
+    : null;
 
   const linkedProject = workItem.projectId
     ? projectsQuery.data?.projects.find((p) => p.id === workItem.projectId)
@@ -117,28 +153,21 @@ export function WorkItemDetailPage(): JSX.Element {
           </span>
           <button
             type="button"
-            className="workItemDetailTopBar__action"
-            onClick={() => undefined}
-            aria-label="Work item settings"
+            className="workItemDetailTopBar__action workItemDetailTopBar__action--destructive"
+            onClick={handleDelete}
+            disabled={deleteMutation.isPending}
+            aria-label="Delete work item"
           >
-            <svg
-              width="14"
-              height="14"
-              viewBox="0 0 14 14"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.6"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <circle cx="7" cy="7" r="2" />
-              <path d="M11 7c0 .4-.04.8-.12 1.2l1.36.94-1.4 2.42-1.5-.6c-.6.5-1.3.86-2.1 1.04L7 13.4 4.76 11l-1.5.6-1.4-2.42 1.36-.94A6 6 0 0 1 3 7c0-.4.04-.8.12-1.2L1.76 4.86l1.4-2.42 1.5.6c.6-.5 1.3-.86 2.1-1.04L7 .6 9.24 3l1.5-.6 1.4 2.42-1.36.94c.08.4.12.8.12 1.24z" />
-            </svg>
+            {deleteMutation.isPending ? "Deleting…" : "Delete"}
           </button>
         </div>
       </header>
       <main className="workItemDetail__main">
+        {deleteError ? (
+          <p className="workItemDetail__error" role="alert">
+            {deleteError}
+          </p>
+        ) : null}
         <section className="workItemDetail__section workItemDetail__overview">
           <header className="workItemDetail__sectionHeader">
             <h2>Overview</h2>

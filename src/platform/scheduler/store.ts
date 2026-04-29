@@ -21,6 +21,7 @@ export interface ScheduleStore {
   listRules(): Promise<ScheduleRule[]>;
   getRule(ruleId: string): Promise<ScheduleRule | null>;
   upsertRule(rule: ScheduleRule): Promise<ScheduleRule>;
+  removeRule(ruleId: string): Promise<{ removed: boolean; ruleId: string }>;
   claimTriggerReceipt(input: ScheduleTriggerClaimInput): Promise<{
     receipt: ScheduleTriggerReceipt;
     created: boolean;
@@ -101,6 +102,27 @@ abstract class BaseScheduleStore implements ScheduleStore {
       state.updatedAt = nextRule.updatedAt;
       await this.writeSnapshot(state);
       return structuredClone(nextRule);
+    });
+  }
+
+  async removeRule(
+    ruleId: string,
+  ): Promise<{ removed: boolean; ruleId: string }> {
+    return this.runExclusive(async () => {
+      const state = await this.readSnapshot();
+      const beforeCount = state.rules.length;
+      state.rules = state.rules.filter((candidate) => candidate.id !== ruleId);
+      const removed = state.rules.length < beforeCount;
+      if (removed) {
+        // Drop receipt history for the removed rule too — they no longer
+        // describe an admittable rule and would orphan the audit view.
+        state.triggerReceipts = state.triggerReceipts.filter(
+          (receipt) => receipt.ruleId !== ruleId,
+        );
+        state.updatedAt = this.now().toISOString();
+        await this.writeSnapshot(state);
+      }
+      return { removed, ruleId };
     });
   }
 
