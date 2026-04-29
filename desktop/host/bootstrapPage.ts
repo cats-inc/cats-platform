@@ -658,11 +658,15 @@ export function buildDesktopBootstrapPage(): string {
      * ================================================================ */
 
     function ExpandableSection(label, children) {
-      var body = el('div', { class: 'expand-body' }, children);
+      var initiallyOpen = sectionOpenState[label] === true;
+      var body = el('div', {
+        class: initiallyOpen ? 'expand-body open' : 'expand-body'
+      }, children);
       var trigger = el('button', {
-        class: 'expand-trigger',
+        class: initiallyOpen ? 'expand-trigger open' : 'expand-trigger',
         onclick: function () {
           var open = trigger.classList.toggle('open');
+          sectionOpenState[label] = open;
           if (open) { body.classList.add('open'); }
           else { body.classList.remove('open'); }
         }
@@ -923,6 +927,56 @@ export function buildDesktopBootstrapPage(): string {
     var snapshotListenerBound = false;
     var retryHandle = null;
     var showRecoveryDetails = false;
+    /* Recovery sections collapse on every doRender() because showRecovery
+     * rebuilds recoveryEl.innerHTML from scratch whenever a new snapshot
+     * arrives. Persist each ExpandableSection's open state by label so the
+     * user's manual expand survives the next snapshot push. */
+    var sectionOpenState = Object.create(null);
+    /* Snapshot publishes often (timestamp/heartbeat updates) carry no
+     * recovery-meaningful changes. Skip rebuilding the recovery DOM when
+     * the meaningful fields are byte-identical to last render so the page
+     * does not flicker every few seconds. */
+    var lastRecoverySignature = null;
+    function recoverySignature(snap, setupSnap) {
+      if (!snap) return '';
+      try {
+        return JSON.stringify({
+          phase: snap.phase,
+          status: snap.status,
+          summary: snap.summary,
+          actions: snap.actions || null,
+          services: (snap.services || []).map(function (s) {
+            return {
+              name: s.name,
+              status: s.status,
+              ready: s.ready,
+              exitCode: s.exitCode,
+              error: s.error,
+            };
+          }),
+          issues: snap.issues || null,
+          progress: snap.progress || null,
+          runtime: snap.runtime
+            ? {
+                status: snap.runtime.status,
+                summary: snap.runtime.summary,
+                providerSummary: snap.runtime.providerSummary || null,
+                issues: snap.runtime.issues || null,
+              }
+            : null,
+          app: snap.app || null,
+          setup: snap.setup || null,
+          setupSnap: setupSnap
+            ? {
+                resumeAction: setupSnap.resumeAction || null,
+                lastAction: setupSnap.state ? setupSnap.state.lastAction || null : null,
+              }
+            : null,
+        });
+      } catch (e) {
+        return '';
+      }
+    }
     var slowHintHandle = null;
     var slowHintStep = 0;
     var retryHintActive = false;
@@ -963,6 +1017,12 @@ export function buildDesktopBootstrapPage(): string {
     function showRecovery(snap) {
       splashEl.classList.add('hidden');
       recoveryEl.classList.remove('hidden');
+
+      var signature = recoverySignature(snap, currentSetupSnapshot);
+      if (recoveryEl.firstChild && signature && signature === lastRecoverySignature) {
+        return;
+      }
+      lastRecoverySignature = signature;
       recoveryEl.innerHTML = '';
 
       /* Back button */
