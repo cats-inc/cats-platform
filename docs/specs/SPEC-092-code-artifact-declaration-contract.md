@@ -567,14 +567,34 @@ particular need explicit instruction or they will under- or over-declare.
 
 #### Agent Onboarding
 
-When the Code product creates a runtime session for a `+New code` task (or
-resumes one), it shall inject a Code-owned **artifact-declaration onboarding
-block** into the agent's system prompt **before the agent's first turn**.
+The Code product is responsible for keeping the **artifact-declaration
+onboarding block** present in the agent's active system prompt **before
+every assistant turn**, not only at session create. Concretely, after
+each of these events the runtime bridge shall verify the current
+onboarding block (matching the active version stamp) is in the agent's
+visible context, and re-inject it if missing or stale:
+
+- session create (`+New code` first activation);
+- session resume (e.g. browser reload, runtime reconnect);
+- context compaction / summarization that rewrites history;
+- assistant role / system-prompt rewrite by any other product surface.
+
+The onboarding block carries an explicit version stamp at its top so
+runtime bridges can compare cheaply. The Code product shall publish the
+template version under
+`codeArtifactDeclaration.onboardingBlockVersion` (e.g. `"v1"`) and the
+runtime bridge shall re-inject any time the stamp differs from the
+published version.
+
 The block:
 
 - shall name the canonical tool: `declare_artifact`;
-- shall include the positive list of artifact kinds (`build`, `preview`,
-  `document`, `report`, `attachment`, `transcript_export`, `dataset`);
+- shall instruct the agent to use **producer label** (`build_output`,
+  `preview_url`, `test_report`, `review_report`,
+  `implementation_summary`, `diff_summary`, `changed_files_summary`,
+  `patch_bundle`, `screenshot`, `wireframe`, `spec_document`,
+  `plan_document`, plus future labels) — **not** the Core kind. The
+  Code product server maps label → coreKind per § Label Mapping;
 - shall include an explicit **negative** list (do **not** declare source
   edits, intermediate / scratch files, lockfiles, generated dependency
   manifests, files in `node_modules/` / `.cache/` / `__pycache__/` /
@@ -582,23 +602,34 @@ The block:
   the failure itself is the artifact);
 - shall instruct one declaration per durable output (no bundling) and
   remind the agent that source-file edits are workspace mutations, not
-  artifacts.
+  artifacts;
+- shall pin the **final-response gating rule** (below) so the agent
+  treats a declaration as a precondition for claiming the artifact in
+  visible text.
 
 The first canonical onboarding block text is:
 
 ```text
+<!-- cats-code:declare-artifact-onboarding:v1 -->
 You can record durable outputs the user will want to find later by calling
 the `declare_artifact` tool.
 
-Declare these (one tool call per output):
+Identify each output by its producer **label**, not by the Core artifact
+kind. The system maps the label to the underlying kind. Examples:
 
-- a successful build output (kind = "build")
-- a runnable preview URL or local server (kind = "preview")
-- a generated test report, code review, or implementation summary (kind = "report")
-- a long-form document you wrote — design doc, spec, plan, README — (kind = "document")
-- a patch bundle, screenshot, or other binary deliverable (kind = "attachment")
-- an exported chat or transcript file (kind = "transcript_export")
-- a generated dataset or fixture file (kind = "dataset")
+- a successful production build → label = "build_output"
+- a runnable preview URL or local server → label = "preview_url"
+- a generated test report → label = "test_report"
+- a code review or implementation summary → label = "review_report" or
+  "implementation_summary"
+- a diff summary or changed-files summary → label = "diff_summary" or
+  "changed_files_summary"
+- a long-form design doc, spec, plan, or README → label = "spec_document",
+  "plan_document", or "wireframe"
+- a patch bundle or screenshot → label = "patch_bundle" or "screenshot"
+- an exported chat or transcript file → use the transcript-export label
+  the system advertises (do not invent one)
+- a generated dataset or fixture file → use the dataset label
 
 Do NOT declare:
 
@@ -610,25 +641,56 @@ Do NOT declare:
 - partial outputs from a failed mid-stream run, unless the failure summary
   itself is the artifact the user wants to keep
 
-Each declaration must include `kind`, `title`, and a `location` (local
-path inside the workspace, URL, inline summary, or external ref). Add
-`summary` when the title alone does not explain why this output exists.
+Each declaration must include:
 
-Declare each artifact exactly once. Use the same `declarationId` for the
-same logical output across retries so the system can deduplicate.
+- `declarationId` — a stable, deterministic id per logical output;
+  reuse the same id across retries so the system can deduplicate
+- `label` — one of the labels above
+- `title` — short human-readable title
+- `location` — `{ kind: 'local_path' | 'url' | 'inline_summary' |
+  'external_ref' | 'none', value: ... }`
+- `summary` (optional) — one-line note when the title alone does not
+  explain why this output exists
+- `metadata` (optional) — producer-specific structured details under
+  non-reserved keys (the system reserves the canonical Core artifact
+  field names; see SPEC-092 § Metadata Rules)
+
+You shall NOT pass `kind`, `producer`, `anchors`, `runId`, `taskId`, or
+`conversationId` — those are filled server-side. If you pass them, the
+server ignores agent-supplied values for server-resolved fields.
+
+Final-response gating:
+
+- If your final visible response to the user claims that an artifact has
+  been produced or "can be found at X", you must have completed a
+  `declare_artifact` tool call for that artifact within the same turn
+  AND received an `accepted` result before emitting the final response.
+- If `declare_artifact` was rejected, your final response shall not
+  claim the artifact is recorded. State explicitly that the output
+  exists in the workspace but was not recorded as an artifact (and
+  briefly note the rejection reason if the user can act on it), or
+  re-call `declare_artifact` after correcting the input.
+- Streaming a final response before the tool call has resolved is not
+  allowed for artifact-claim sentences. If the runtime forces partial
+  streaming, do not include the artifact-claim sentence until the tool
+  call has resolved.
+
+Declare each artifact exactly once per logical output. Use the same
+`declarationId` across retries.
 ```
 
 Implementation notes:
 
-- The Code product owns the template text. CLI provider adapters
-  (claude-code / codex / cursor / opencode / etc.) shall not rewrite
-  positive / negative lists, only translate format if the underlying
-  provider does not accept the literal block.
-- The onboarding block shall be emitted as a stable system-prompt segment
-  separate from the user-authored `+New code` first message; it must
-  survive context compression / summarization unchanged. Implementations
-  that rewrite history mid-session shall preserve the onboarding block
-  verbatim or re-inject it.
+- The Code product owns the template text and version stamp. CLI
+  provider adapters (claude-code / codex / cursor / opencode / etc.)
+  shall not rewrite positive / negative lists or change the version
+  stamp; they may translate format only if the underlying provider does
+  not accept the literal block, but the version stamp must propagate.
+- The onboarding block shall be emitted as a stable system-prompt
+  segment separate from the user-authored `+New code` first message.
+  Implementations that rewrite history mid-session shall preserve the
+  onboarding block verbatim **or** re-inject the published version
+  before the next assistant turn.
 - When an agent declares an artifact and the server rejects it with one
   of the SPEC-092 error codes, the rejection reason is surfaced to the
   agent through the same tool-call-result channel; the agent may correct
@@ -641,14 +703,33 @@ in the catalog visible to the active runtime session, alongside the rest
 of the agent's tools:
 
 - the tool name shall be exactly `declare_artifact` (no aliases);
-- the tool's catalog description shall reproduce the positive list and a
-  short form of the negative list so an agent that does not see the full
-  onboarding block (e.g. tool-only listing) can still infer correct usage;
-- the tool's parameter schema shall mirror the `CodeArtifactDeclaration`
-  request shape for `kind` / `title` / `summary` / `location` / `metadata`,
-  with server-resolved fields (`producer.*`, `anchors.*` beyond hints,
-  authoritative `runId` / `taskId` / `conversationId`) **omitted from the
-  agent-visible parameters**. The Code product fills those server-side.
+- the tool's catalog description shall reproduce the positive label
+  examples and a short form of the negative list so an agent that does
+  not see the full onboarding block (e.g. tool-only listing) can still
+  infer correct usage;
+- the tool's parameter schema shall expose **only** these
+  agent-visible fields:
+
+  - `declarationId: string` (required, stable across retries)
+  - `label: string` (required producer label; server maps to
+    `coreKind` per § Label Mapping)
+  - `title: string` (required)
+  - `location: { kind: 'local_path' | 'url' | 'inline_summary' |
+    'external_ref' | 'none'; value?: string | null }` (required;
+    `kind = 'none'` requires a non-empty `summary` per § Location
+    Rules)
+  - `summary?: string | null` (optional)
+  - `metadata?: Record<string, unknown>` (optional, must obey
+    § Metadata Rules)
+
+  Server-resolved fields (`producer.*`, authoritative
+  `runId` / `taskId` / `conversationId` / `workspaceKey`,
+  `coreKind` derivation, `requestedDisposition`, `requestedStatus`)
+  shall be **omitted from agent-visible parameters**. If a CLI
+  provider's tool framework forces inclusion of those fields, the Code
+  product shall reject any agent-supplied value and use server-resolved
+  values instead, surfacing
+  `artifact_producer_field_not_allowed` through the tool-call-result.
 
 #### `declarationId` Composition Guidance for Agents
 
@@ -657,13 +738,14 @@ agents help by emitting a stable `declarationId` per logical output. The
 recommended composition for agent-emitted declarations is:
 
 ```text
-<short-stable-output-handle>:<artifact-kind>
+<short-stable-output-handle>:<producer-label>
 ```
 
-For example: `pomodoro-preview-localhost-5180:preview`,
-`spec-092-draft:document`. Agents shall not include random nonces in
-`declarationId` unless the underlying output truly is unique-per-call;
-random ids defeat idempotency on retries.
+For example: `pomodoro-preview-localhost-5180:preview_url`,
+`spec-092-draft:spec_document`,
+`build-284-success:build_output`. Agents shall not include random
+nonces in `declarationId` unless the underlying output truly is
+unique-per-call; random ids defeat idempotency on retries.
 
 #### Tool / System / User Onboarding
 
@@ -917,3 +999,4 @@ agent/tool/system/user output
 *Related Plan: [PLAN-081](../plans/PLAN-081-code-artifact-declaration-rollout.md)*
 *Amended: 2026-04-29 — added § Workspace Key and Path Canonicalization (workspace key resolution, host-OS-aware lexical canonicalization, segment-based prefix matching), § Publish-Transition Failure Semantics (no rollback, `artifact_publish_transition_failed` partial-success contract, `tool_auto_publish_transition_failed` server log), `CodeArtifactImportAndPublishInput` payload shape and route, structured `policyDiagnostics` channel + `failBootOnInvalidEntry` opt-in, and string input normalization (empty / whitespace → null on optional fields, `artifact_required_field_empty` on required fields).*
 *Amended: 2026-04-29 — added § Producer Onboarding: agent system-prompt onboarding block (positive + negative artifact list, one-declaration-per-output rule, context-compression preservation), tool-catalog registration shape, agent-side `declarationId` composition guidance, and tool / system / user producer onboarding paths.*
+*Amended: 2026-04-29 — § Producer Onboarding tightened: agent-visible tool schema is **label-based** (`declarationId` + `label` + `title` + `location` + `summary` + `metadata`); `kind` / `coreKind` / `producer.*` / authoritative anchors removed from agent-facing schema and rejected with `artifact_producer_field_not_allowed` if supplied. Added explicit **final-response gating** (artifact-claim sentence in same turn requires accepted `declare_artifact` first; rejected → cannot claim recorded; runtime emits `artifact_claim_without_declaration` log). Onboarding block carries `codeArtifactDeclaration.onboardingBlockVersion` stamp and runtime bridge re-injects before every assistant turn after session create / resume / context compaction / system-prompt rewrite, not only at first turn.*

@@ -133,26 +133,46 @@ validation helpers with unit coverage.
       runtime action named `declare_artifact` backed by the Code product
       API/delegate. Do not use transcript JSON as a fallback command channel.
 - [ ] Task 3.1a: Inject the SPEC-092 § Producer Onboarding agent
-      onboarding block into the system prompt of every Code runtime session
-      before the agent's first turn. The block carries the canonical
-      `declare_artifact` instruction with positive + negative lists. CLI
-      provider adapters may translate format but shall not rewrite the
-      content of the lists. The block must survive context compression /
-      summarization.
+      onboarding block (with the active version stamp from
+      `codeArtifactDeclaration.onboardingBlockVersion`) into the system
+      prompt of every Code runtime session **before every assistant turn**,
+      not only at session create. Runtime bridge shall verify presence +
+      version match after session create, session resume, context
+      compaction / summarization, and any other system-prompt rewrite
+      surface; if missing or stale, re-inject before the next assistant
+      turn. CLI provider adapters may translate format but shall not
+      rewrite the content of the positive / negative lists or change the
+      version stamp.
 - [ ] Task 3.1b: Register `declare_artifact` in the Code-product tool
-      catalog with a parameter schema that exposes only the agent-visible
-      `CodeArtifactDeclaration` fields (`kind`, `title`, `summary`,
-      `location`, `metadata`, `declarationId`). Server-resolved fields
-      (`producer.*`, authoritative anchors, `runId` / `taskId` /
-      `conversationId`) shall be omitted from agent-visible parameters.
-      Catalog description shall short-form the positive + negative list so
-      tool-only listings remain self-explanatory.
+      catalog with the SPEC-092 agent-visible parameter schema:
+      `declarationId`, `label`, `title`, `location`, `summary`, and
+      `metadata` only — **no `kind` / `coreKind` / `producer.*` /
+      `anchors.*` / `runId` / `taskId` / `conversationId` /
+      `requestedDisposition` / `requestedStatus` in the agent-facing
+      schema**. The Code product fills `coreKind` from `label` per
+      § Label Mapping and fills server-resolved fields itself. If a CLI
+      provider's tool framework forces inclusion of disallowed fields,
+      reject any agent-supplied value with
+      `artifact_producer_field_not_allowed` and use server-resolved
+      values. The tool name shall be exactly `declare_artifact` (no
+      aliases). Catalog description shall short-form the positive +
+      negative list so tool-only listings remain self-explanatory.
 - [ ] Task 3.1c: Surface server validation errors back to the agent through
       the tool-call-result channel verbatim (using the SPEC-092 error codes
       such as `artifact_required_field_empty`,
-      `artifact_publish_requires_action`, `artifact_idempotency_ambiguous`)
-      so the agent can correct and re-call. Server shall not auto-retry on
-      the agent's behalf.
+      `artifact_publish_requires_action`, `artifact_idempotency_ambiguous`,
+      `artifact_producer_field_not_allowed`, etc.) so the agent can correct
+      and re-call. Server shall not auto-retry on the agent's behalf.
+- [ ] Task 3.1d: Enforce the SPEC-092 final-response gating rule. The
+      runtime bridge / Code session loop shall detect when the assistant's
+      visible final response makes an artifact-claim sentence (e.g.
+      "produced", "you can find at", "exported to") without a same-turn
+      `declare_artifact` tool call that received an `accepted` result, and
+      shall surface a structured warning back to the agent (so it can
+      either declare or rephrase) before the response is shown to the
+      user. At minimum, the bridge shall emit a structured server log
+      `artifact_claim_without_declaration` for every detected case so
+      audit / supervision can flag prompt drift.
 - [ ] Task 3.2: Define a Code-owned runtime artifact signal shape before
       auto-materializing bridge outputs. The first fields should cover preview
       URL, build output, test report, screenshot, patch bundle, and review
@@ -271,17 +291,36 @@ and implementation review.
   `..` collapse), invalid `toolAutoPublishPolicies` entry handling
   (drop-and-report vs `failBootOnInvalidEntry`), string input
   normalization (empty / whitespace string → null on optional fields,
-  rejection on required fields).
+  rejection on required fields), agent-visible tool-schema field set
+  (only `declarationId` / `label` / `title` / `location` / `summary` /
+  `metadata`; agent-supplied `kind` / `coreKind` / `producer.*` /
+  authoritative anchors rejected with
+  `artifact_producer_field_not_allowed`), final-response gating audit
+  detection, and `declarationId` composition (label-suffixed,
+  random-nonce rejection / warning).
 - **Integration Tests**: declaration -> upsert Core artifact -> Code artifact
   projection, with agent/tool/system/user producer examples and idempotent
   replay that does not duplicate artifacts or activity. Plus
   import-and-publish: success path through
   `POST /api/code/artifacts/import-and-publish` and the partial-success
   path where step 3 fails (artifact persists at `ready`,
-  `artifact_publish_transition_failed` is returned).
+  `artifact_publish_transition_failed` is returned). Plus producer
+  onboarding integration: onboarding block injection asserted in the
+  active session prompt at session create, after a simulated resume, and
+  after a simulated context compaction (block present, version stamp
+  matches `codeArtifactDeclaration.onboardingBlockVersion`); tool catalog
+  exposes `declare_artifact` with the exact agent-visible field set and
+  no aliases; agent-supplied `kind` is rejected via tool-call-result;
+  rejected `declare_artifact` calls surface SPEC-092 error codes
+  verbatim; final-response gating produces
+  `artifact_claim_without_declaration` log when the assistant claims an
+  artifact without a same-turn accepted declaration.
 - **Manual Testing**: run a `+New code` execution that produces a preview/test
   report declaration, verify the artifact appears in the Code artifact list,
   opens detail, and deep-links back to the originating task/run/workspace.
+  Resume the same session in a new tab, trigger a context compaction, and
+  confirm the agent still declares artifacts correctly (onboarding block
+  re-injected, label-based; no `kind` field).
 
 ## Risks & Mitigations
 
@@ -300,6 +339,9 @@ and implementation review.
 | Workspace key / path canonicalization diverges across hosts and matcher kinds | High | Single SPEC-092 helper (host-OS case rule, lexical canonicalization, path-segment prefix) used by `workspace_key` matcher, `path_prefix` matcher, idempotency `workspace:` scope, and declaration validation alike |
 | Invalid auto-publish config silently breaks publish surface | Medium | Drop invalid entries with structured server log + `/api/code/health` `codeArtifactDeclaration.policyDiagnostics`; operators may opt in to `failBootOnInvalidEntry = true` |
 | `user_publish_action` partial success leaves callers unsure of artifact state | Medium | Do not roll back materialization on transition failure; return `artifact_publish_transition_failed` with materialized artifact id + current status so callers can retry the transition |
+| Agent fills `coreKind` / `kind` directly instead of producer label | Medium | Tool catalog exposes only `label` (no `kind` / `coreKind`); server rejects agent-supplied `kind` with `artifact_producer_field_not_allowed`; SPEC-092 onboarding block uses label vocabulary throughout |
+| Final response claims an artifact without a successful declaration | High | Same-turn gating rule: artifact-claim sentence requires accepted `declare_artifact` first; runtime bridge emits `artifact_claim_without_declaration` log + structured warning back to the agent so it must declare or rephrase |
+| Onboarding block lost across resume / context compaction | High | Runtime bridge re-injects the active onboarding block before every assistant turn after session create / resume / compaction / system-prompt rewrite; `codeArtifactDeclaration.onboardingBlockVersion` stamp lets bridge compare cheaply |
 
 ## Progress Log
 
@@ -311,6 +353,7 @@ and implementation review.
 | 2026-04-29 | Added tool auto-publish policy schema, user import-and-publish action split, producer field misuse validation, recursive volatile filtering, and ambiguous idempotency recovery requirements. |
 | 2026-04-29 | Pinned workspace key + path canonicalization rules, `CodeArtifactImportAndPublishInput` payload shape, publish-transition partial-success semantics, structured `policyDiagnostics` channel + `failBootOnInvalidEntry` opt-in, and string input normalization (empty → null) for declaration / import-and-publish optional fields. |
 | 2026-04-29 | Added § Producer Onboarding rollout: agent system-prompt onboarding block injection (Task 3.1a), `declare_artifact` tool-catalog registration with agent-visible-fields-only schema (Task 3.1b), and tool-call-result error surfacing for agent self-correction (Task 3.1c). |
+| 2026-04-29 | Producer-onboarding follow-up: agent-visible tool schema is label-based (`declarationId` + `label` + `title` + `location` + `summary` + `metadata`); agent-supplied `kind` / `coreKind` / `producer.*` / authoritative anchors rejected with `artifact_producer_field_not_allowed`. Onboarding block carries an explicit `codeArtifactDeclaration.onboardingBlockVersion` stamp and is re-injected before every assistant turn after session create / resume / compaction / system-prompt rewrite (Task 3.1a updated). Added Task 3.1d: final-response gating with `artifact_claim_without_declaration` log + structured warning back to the agent. Test strategy expanded to assert injection presence on resume / compaction, exact tool schema, no aliases, error result return, label-based declarationId composition. |
 
 ---
 
