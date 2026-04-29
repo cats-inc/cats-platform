@@ -30,7 +30,8 @@ export type TelegramAttachmentKind =
   | 'sticker'
   | 'location'
   | 'contact';
-export type TelegramDeliveryOperation = 'send' | 'reply' | 'edit' | 'delete';
+export type TelegramDeliveryMediaKind = 'photo' | 'document' | 'audio' | 'video' | 'animation';
+export type TelegramDeliveryOperation = 'send' | 'reply' | 'edit' | 'delete' | 'send_media';
 export type TelegramDeliveryStatus = 'configured' | 'not_configured';
 export type TelegramDeliveryResult = 'sent' | 'edited' | 'deleted' | 'failed';
 
@@ -284,6 +285,10 @@ export interface TelegramDeliveryRequest {
   messageId?: string | null;
   replyToMessageId?: string | null;
   text?: string | null;
+  mediaKind?: TelegramDeliveryMediaKind | null;
+  mediaUrl?: string | null;
+  fileId?: string | null;
+  caption?: string | null;
   parseMode?: 'HTML' | 'MarkdownV2' | null;
   disableLinkPreview?: boolean;
 }
@@ -298,6 +303,7 @@ export interface TelegramDeliveryReceipt {
   conversationId: string | null;
   messageId: string | null;
   replyToMessageId: string | null;
+  mediaKind?: TelegramDeliveryMediaKind | null;
   bindingId: string | null;
   botName: string | null;
   bossCatId: string | null;
@@ -311,6 +317,7 @@ export interface TelegramDeliveryReceipt {
     | 'chat_id_required'
     | 'message_id_required'
     | 'text_required'
+    | 'media_required'
     | 'telegram_api_error';
   errorMessage?: string | null;
 }

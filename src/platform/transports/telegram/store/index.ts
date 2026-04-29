@@ -188,7 +188,7 @@ class BaseTelegramRelayStore implements TelegramRelayStore {
       return;
     }
 
-    if (receipt.operation === 'send') {
+    if (receipt.operation === 'send' || receipt.operation === 'send_media') {
       this.deliverySentCount += 1;
     } else if (receipt.operation === 'reply') {
       this.deliveryRepliedCount += 1;

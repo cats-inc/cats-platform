@@ -14,14 +14,17 @@ import {
 } from '../transports/telegram/chunking.js';
 import type {
   TelegramConversationBinding,
+  TelegramDeliveryMediaKind,
   TelegramDeliveryReceipt,
   TelegramRelayContext,
 } from '../transports/telegram/contracts.js';
 import type { TelegramRelay } from '../transports/telegram/relay/index.js';
 
 export const SUPERVISED_TELEGRAM_TEXT_DELIVERY_TOOL = 'transport.telegram.text.send' as const;
+export const SUPERVISED_TELEGRAM_MEDIA_DELIVERY_TOOL = 'transport.telegram.media.send' as const;
 
 const TELEGRAM_TEXT_DELIVERY_MAX_CHUNKS = 8;
+const TELEGRAM_MEDIA_CAPTION_LIMIT = 1024;
 
 export interface SupervisedTransportTarget {
   platform: 'telegram';
@@ -55,6 +58,30 @@ export interface SupervisedTelegramTextDeliveryResult {
   textPreview: string;
 }
 
+export interface SupervisedTelegramMediaDeliveryInput {
+  bindingId: string;
+  mediaKind: TelegramDeliveryMediaKind;
+  mediaUrl?: string | null;
+  fileId?: string | null;
+  caption?: string | null;
+  roomId?: string | null;
+  conversationId?: string | null;
+  chatId?: string | null;
+}
+
+export interface SupervisedTelegramMediaDeliveryResult {
+  platform: 'telegram';
+  bindingId: string;
+  status: 'sent';
+  mediaKind: TelegramDeliveryMediaKind;
+  mediaRefType: 'url' | 'file_id';
+  conversationId: string | null;
+  chatId: string | null;
+  messageId: string | null;
+  deliveryId: string;
+  captionPreview: string | null;
+}
+
 export interface SupervisedTransportDeliveryToolOptions {
   coreStore: CoreStore;
   telegramRelay: TelegramRelay;
@@ -69,17 +96,32 @@ export interface SupervisedTransportDeliveryTools {
       SupervisedTelegramTextDeliveryInput,
       SupervisedTelegramTextDeliveryResult
     >;
+    [SUPERVISED_TELEGRAM_MEDIA_DELIVERY_TOOL]: SupervisedToolExecutor<
+      SupervisedTelegramMediaDeliveryInput,
+      SupervisedTelegramMediaDeliveryResult
+    >;
   };
   register(registry: SupervisedToolRegistry): void;
 }
 
-interface NormalizedTelegramTextDeliveryInput {
+interface NormalizedTelegramDestinationInput {
   bindingId: string;
-  text: string;
   roomId: string | null;
   conversationId: string | null;
   chatId: string | null;
+}
+
+interface NormalizedTelegramTextDeliveryInput extends NormalizedTelegramDestinationInput {
+  text: string;
   disableLinkPreview: boolean;
+}
+
+interface NormalizedTelegramMediaDeliveryInput extends NormalizedTelegramDestinationInput {
+  mediaKind: TelegramDeliveryMediaKind;
+  mediaUrl: string | null;
+  fileId: string | null;
+  caption: string | null;
+  mediaRefType: 'url' | 'file_id';
 }
 
 interface TelegramDeliveryDestination {
@@ -96,6 +138,7 @@ export function createSupervisedTransportDeliveryTools(
     manifests,
     executors: {
       [SUPERVISED_TELEGRAM_TEXT_DELIVERY_TOOL]: createTelegramTextDeliveryExecutor(options),
+      [SUPERVISED_TELEGRAM_MEDIA_DELIVERY_TOOL]: createTelegramMediaDeliveryExecutor(options),
     },
     register(registry) {
       for (const manifest of manifests) {
@@ -133,6 +176,37 @@ export function createSupervisedTransportDeliveryToolManifests(): SupervisedTool
       },
       outputSchema: {
         id: `${SUPERVISED_TELEGRAM_TEXT_DELIVERY_TOOL}.output`,
+        version: '1.0',
+        format: 'json_schema',
+      },
+    },
+    {
+      schemaVersion: DEFAULT_SUPERVISION_SCHEMA_VERSION,
+      name: SUPERVISED_TELEGRAM_MEDIA_DELIVERY_TOOL,
+      manifestVersion: '1.0',
+      description: [
+        'Send bounded media through a declared Telegram transport binding using a URL or',
+        'Telegram file id.',
+      ].join(' '),
+      sideEffect: 'external_visible',
+      preflight: 'required',
+      blocking: 'blocking',
+      cancellation: 'best_effort',
+      approval: 'policy',
+      evidence: 'summary',
+      failureCodes: [
+        'E_NOT_AUTHORIZED',
+        'E_PRECHECK_FAILED',
+        'E_SCHEMA_INVALID',
+        'E_TOOL_SCOPE_DENIED',
+      ],
+      inputSchema: {
+        id: `${SUPERVISED_TELEGRAM_MEDIA_DELIVERY_TOOL}.input`,
+        version: '1.0',
+        format: 'json_schema',
+      },
+      outputSchema: {
+        id: `${SUPERVISED_TELEGRAM_MEDIA_DELIVERY_TOOL}.output`,
         version: '1.0',
         format: 'json_schema',
       },
@@ -179,7 +253,7 @@ function createTelegramTextDeliveryExecutor(
       return destination;
     }
 
-    const approval = resolveDeliveryApproval(options.approval, binding, input);
+    const approval = resolveTextDeliveryApproval(options.approval, binding, input);
     if (approval) {
       return approval;
     }
@@ -230,7 +304,83 @@ function createTelegramTextDeliveryExecutor(
   };
 }
 
-function resolveDeliveryApproval(
+function createTelegramMediaDeliveryExecutor(
+  options: SupervisedTransportDeliveryToolOptions,
+): SupervisedToolExecutor<
+  SupervisedTelegramMediaDeliveryInput,
+  SupervisedTelegramMediaDeliveryResult
+> {
+  return async (rawInput) => {
+    const normalized = normalizeTelegramMediaDeliveryInput(rawInput);
+    if (normalized.status !== 'applied') {
+      return normalized;
+    }
+
+    const input = normalized.result;
+    if (!isAllowedTransportTarget(options.allowedTransportTargets, input.bindingId)) {
+      return rejected(
+        'E_NOT_AUTHORIZED',
+        `Telegram binding is outside the declared transport target surface: ${input.bindingId}`,
+      );
+    }
+
+    const core = await options.coreStore.readCore();
+    const binding = resolveTelegramBinding(core, input.bindingId);
+    if (!binding) {
+      return rejected('E_PRECHECK_FAILED', `Active Telegram binding not found: ${input.bindingId}`);
+    }
+
+    const destination = resolveTelegramDeliveryDestination(options.telegramRelay, binding, input);
+    if (destination.status !== 'applied') {
+      return destination;
+    }
+
+    const approval = resolveMediaDeliveryApproval(options.approval, binding, input);
+    if (approval) {
+      return approval;
+    }
+
+    const context = buildTelegramRelayContext(core, binding);
+    const receipt = await options.telegramRelay.deliver({
+      request: {
+        operation: 'send_media',
+        conversationId: destination.result.conversationId,
+        chatId: destination.result.chatId,
+        mediaKind: input.mediaKind,
+        mediaUrl: input.mediaUrl,
+        fileId: input.fileId,
+        caption: input.caption,
+      },
+      context,
+    });
+
+    if (receipt.status !== 'sent') {
+      return rejected(
+        'E_PRECHECK_FAILED',
+        'Telegram media delivery failed.',
+        { failedReceipt: receipt },
+      );
+    }
+
+    return {
+      status: 'applied',
+      result: {
+        platform: 'telegram',
+        bindingId: binding.id,
+        status: 'sent',
+        mediaKind: input.mediaKind,
+        mediaRefType: input.mediaRefType,
+        conversationId: receipt.conversationId ?? destination.result.conversationId,
+        chatId: receipt.chatId ?? destination.result.chatId,
+        messageId: receipt.messageId,
+        deliveryId: receipt.deliveryId,
+        captionPreview: input.caption ? createTextPreview(input.caption) : null,
+      },
+    };
+  };
+}
+
+function resolveTextDeliveryApproval(
   approval: SupervisedTransportDeliveryApprovalPolicy | undefined,
   binding: BotBindingRecord,
   input: NormalizedTelegramTextDeliveryInput,
@@ -246,6 +396,26 @@ function resolveDeliveryApproval(
       `Send Telegram text through ${binding.botName}`,
       `binding=${binding.id}`,
       `preview=${createTextPreview(input.text)}`,
+    ].join(' '),
+  };
+}
+
+function resolveMediaDeliveryApproval(
+  approval: SupervisedTransportDeliveryApprovalPolicy | undefined,
+  binding: BotBindingRecord,
+  input: NormalizedTelegramMediaDeliveryInput,
+): ToolResult<SupervisedTelegramMediaDeliveryResult> | null {
+  if (approval?.required !== true) {
+    return null;
+  }
+
+  return {
+    status: 'pending_approval',
+    requestId: approval.requestId ?? `telegram-media-delivery:${binding.id}`,
+    summary: approval.summary ?? [
+      `Send Telegram ${input.mediaKind} through ${binding.botName}`,
+      `binding=${binding.id}`,
+      `caption=${input.caption ? createTextPreview(input.caption) : '(none)'}`,
     ].join(' '),
   };
 }
@@ -280,6 +450,58 @@ function normalizeTelegramTextDeliveryInput(
   };
 }
 
+function normalizeTelegramMediaDeliveryInput(
+  input: SupervisedTelegramMediaDeliveryInput,
+): ToolResult<NormalizedTelegramMediaDeliveryInput> {
+  if (!isRecord(input)) {
+    return rejected('E_SCHEMA_INVALID', 'Telegram media delivery input must be an object.');
+  }
+
+  const bindingId = readNonEmptyString(input.bindingId);
+  if (!bindingId) {
+    return rejected('E_SCHEMA_INVALID', 'Telegram media delivery bindingId is required.');
+  }
+
+  const mediaKind = readTelegramMediaKind(input.mediaKind);
+  if (!mediaKind) {
+    return rejected('E_SCHEMA_INVALID', 'Telegram media delivery mediaKind is required.');
+  }
+
+  const rawMediaUrl = readNonEmptyString(input.mediaUrl);
+  const mediaUrl = readHttpUrl(rawMediaUrl);
+  if (rawMediaUrl && !mediaUrl) {
+    return rejected('E_SCHEMA_INVALID', 'Telegram media delivery mediaUrl must be an HTTP URL.');
+  }
+
+  const fileId = readNonEmptyString(input.fileId);
+  if ((mediaUrl === null && fileId === null) || (mediaUrl !== null && fileId !== null)) {
+    return rejected(
+      'E_SCHEMA_INVALID',
+      'Telegram media delivery requires exactly one of mediaUrl or fileId.',
+    );
+  }
+
+  const caption = readOptionalBoundedString(input.caption, TELEGRAM_MEDIA_CAPTION_LIMIT);
+  if (caption.status !== 'applied') {
+    return caption;
+  }
+
+  return {
+    status: 'applied',
+    result: {
+      bindingId,
+      mediaKind,
+      mediaUrl,
+      fileId,
+      caption: caption.result,
+      mediaRefType: mediaUrl ? 'url' : 'file_id',
+      roomId: readNonEmptyString(input.roomId),
+      conversationId: readNonEmptyString(input.conversationId),
+      chatId: readNonEmptyString(input.chatId),
+    },
+  };
+}
+
 function isAllowedTransportTarget(
   allowedTargets: SupervisedTransportTarget[] | undefined,
   bindingId: string,
@@ -303,7 +525,7 @@ function resolveTelegramBinding(
 function resolveTelegramDeliveryDestination(
   relay: TelegramRelay,
   binding: BotBindingRecord,
-  input: NormalizedTelegramTextDeliveryInput,
+  input: NormalizedTelegramDestinationInput,
 ): ToolResult<TelegramDeliveryDestination> {
   if (input.conversationId) {
     const linked = relay.resolveBinding({ conversationId: input.conversationId });
@@ -397,6 +619,56 @@ function linkedMatchesBinding(binding: TelegramConversationBinding, bindingId: s
 
 function readNonEmptyString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0 ? value.trim() : null;
+}
+
+function readTelegramMediaKind(value: unknown): TelegramDeliveryMediaKind | null {
+  if (
+    value === 'photo'
+    || value === 'document'
+    || value === 'audio'
+    || value === 'video'
+    || value === 'animation'
+  ) {
+    return value;
+  }
+  return null;
+}
+
+function readHttpUrl(value: unknown): string | null {
+  const text = readNonEmptyString(value);
+  if (!text) {
+    return null;
+  }
+
+  try {
+    const url = new URL(text);
+    return url.protocol === 'https:' || url.protocol === 'http:' ? url.toString() : null;
+  } catch {
+    return null;
+  }
+}
+
+function readOptionalBoundedString(
+  value: unknown,
+  maxLength: number,
+): ToolResult<string | null> {
+  if (value === undefined || value === null) {
+    return { status: 'applied', result: null };
+  }
+
+  const text = readNonEmptyString(value);
+  if (!text) {
+    return { status: 'applied', result: null };
+  }
+
+  if (text.length > maxLength) {
+    return rejected(
+      'E_SCHEMA_INVALID',
+      `Telegram media caption is limited to ${maxLength} characters.`,
+    );
+  }
+
+  return { status: 'applied', result: text };
 }
 
 function createTextPreview(text: string): string {

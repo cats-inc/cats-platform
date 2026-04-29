@@ -1,5 +1,5 @@
 import type {
-  TelegramDeliveryOperation,
+  TelegramDeliveryMediaKind,
   TelegramDeliveryRequest,
 } from './contracts.js';
 import {
@@ -103,12 +103,33 @@ async function parseApiResponse<T>(
   }
 }
 
-function resolveApiMethod(operation: TelegramDeliveryOperation): string {
-  if (operation === 'send' || operation === 'reply') {
+function resolveMediaApiSpec(
+  mediaKind: TelegramDeliveryMediaKind | null | undefined,
+): { method: string; payloadField: string } {
+  if (mediaKind === 'photo') {
+    return { method: 'sendPhoto', payloadField: 'photo' };
+  }
+  if (mediaKind === 'audio') {
+    return { method: 'sendAudio', payloadField: 'audio' };
+  }
+  if (mediaKind === 'video') {
+    return { method: 'sendVideo', payloadField: 'video' };
+  }
+  if (mediaKind === 'animation') {
+    return { method: 'sendAnimation', payloadField: 'animation' };
+  }
+  return { method: 'sendDocument', payloadField: 'document' };
+}
+
+function resolveApiMethod(request: TelegramDeliveryRequest): string {
+  if (request.operation === 'send' || request.operation === 'reply') {
     return 'sendMessage';
   }
-  if (operation === 'edit') {
+  if (request.operation === 'edit') {
     return 'editMessageText';
+  }
+  if (request.operation === 'send_media') {
+    return resolveMediaApiSpec(request.mediaKind).method;
   }
   return 'deleteMessage';
 }
@@ -143,6 +164,16 @@ function buildApiPayload(
       text: request.text,
       parse_mode: request.parseMode ?? undefined,
       disable_web_page_preview: request.disableLinkPreview === true,
+    };
+  }
+
+  if (request.operation === 'send_media') {
+    const mediaSpec = resolveMediaApiSpec(request.mediaKind);
+    return {
+      chat_id: request.chatId,
+      [mediaSpec.payloadField]: request.fileId ?? request.mediaUrl,
+      caption: request.caption ?? undefined,
+      parse_mode: request.parseMode ?? undefined,
     };
   }
 
@@ -190,7 +221,7 @@ export function createTelegramBotApiDeliveryClient(
     async deliver(
       request: TelegramDeliveryRequest & { chatId: string },
     ): Promise<TelegramDeliveryClientResult> {
-      const method = resolveApiMethod(request.operation);
+      const method = resolveApiMethod(request);
       const {
         response,
         payload,

@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { BotBindingRecord } from '../../../../core/types.js';
 import type {
   TelegramConversationBinding,
+  TelegramDeliveryMediaKind,
   TelegramDeliveryReceipt,
   TelegramDeliveryRequest,
   TelegramRelayContext,
@@ -46,6 +47,7 @@ interface TelegramDeliveryBaseReceipt {
   operation: TelegramDeliveryRequest['operation'];
   deliveredAt: string;
   deliveryId: string;
+  mediaKind: TelegramDeliveryMediaKind | null;
   bindingId: string | null;
   botName: string | null;
   bossCatId: string | null;
@@ -64,13 +66,31 @@ function buildTelegramDeliveryBaseReceipt(input: {
     operation: input.request.operation,
     deliveredAt: input.deliveredAt,
     deliveryId: randomUUID(),
+    mediaKind: input.request.operation === 'send_media'
+      ? input.request.mediaKind ?? null
+      : null,
     bindingId: null,
     botName: null,
     bossCatId: input.context.bossCatId,
     bossCatName: input.context.bossCatName,
     replyToMessageId: readTelegramString(input.request.replyToMessageId),
-    textPreview: normalizeTelegramDeliveryTextPreview(input.request.text),
+    textPreview: normalizeTelegramDeliveryTextPreview(input.request.text ?? input.request.caption),
   };
+}
+
+function isTelegramDeliveryMediaKind(
+  value: unknown,
+): value is TelegramDeliveryMediaKind {
+  return value === 'photo'
+    || value === 'document'
+    || value === 'audio'
+    || value === 'video'
+    || value === 'animation';
+}
+
+function hasMediaReference(request: TelegramDeliveryRequest): boolean {
+  return readTelegramString(request.fileId) !== null
+    || readTelegramString(request.mediaUrl) !== null;
 }
 
 function recordFailedTelegramDelivery(
@@ -172,6 +192,18 @@ export async function deliverTelegramRequest(
       baseReceipt,
       request: options.request,
       reason: 'text_required',
+    });
+  }
+
+  if (
+    options.request.operation === 'send_media'
+    && (!isTelegramDeliveryMediaKind(options.request.mediaKind)
+      || !hasMediaReference(options.request))
+  ) {
+    return recordFailedTelegramDelivery(options.store, {
+      baseReceipt,
+      request: options.request,
+      reason: 'media_required',
     });
   }
 

@@ -126,12 +126,12 @@ through the same platform execution admission path used by other agent work.
 
 ### Phase 4: Agent Resource, Content, and Transport Capabilities
 
-- [ ] Define the minimal tool/resource surface needed for the morning greeting:
+- [x] Define the minimal tool/resource surface needed for the morning greeting:
       - [x] list/read allowed companion content resources
       - [x] optionally create/post a companion content item
       - [x] send bounded text/link through Telegram delivery capability
-      - send media through Telegram delivery capability
-- [ ] Ensure these capabilities are exposed as supervised tools or bounded
+      - [x] send media through Telegram delivery capability
+- [x] Ensure these capabilities are exposed as supervised tools or bounded
       platform actions, not scheduler internals.
       - [x] Companion content list/read is exposed as
         `companion.content.list` and `companion.content.read`.
@@ -139,10 +139,12 @@ through the same platform execution admission path used by other agent work.
         `companion.content.post.create`.
       - [x] Telegram text/link delivery is exposed as
         `transport.telegram.text.send`.
+      - [x] Telegram media delivery is exposed as
+        `transport.telegram.media.send`.
 - [x] Pass rule-declared resource scopes and transport targets into the mission
       context.
 - [x] Preserve transport binding identity for Telegram text/link delivery.
-- [ ] Add tests for missing tool/resource behavior:
+- [x] Add tests for missing tool/resource behavior:
       - [x] fail visibly for undeclared companion resource scopes and
         Telegram transport targets
       - [x] request approval when Telegram delivery policy says so
@@ -277,6 +279,7 @@ the first companion/Telegram scenario.
 | 2026-04-29 | Approval behavior slice: Telegram supervised delivery now returns `pending_approval` without sending when the caller's evaluated delivery policy requires approval, with regression coverage proving no transport side effect occurs before approval. |
 | 2026-04-29 | Scheduler boundary hardening: extended the static scheduler boundary test so schedule modules may not import companion content stores/tools, preserving the rule that content selection happens through supervised resource tools rather than deterministic scheduler substitution. |
 | 2026-04-29 | Companion post slice: added `companion.content.post.create` as a supervised local-state tool that writes profile post derived records through `CompanionBoxStore.upsertDerived`, requires `narrow_write` scope, and rejects posts built from sources outside declared `companion_content` resource scopes. |
+| 2026-04-29 | Telegram media capability slice: added `transport.telegram.media.send` as a supervised external-visible tool for URL/file-id media delivery through declared Telegram bindings, extended the relay/Bot API client with `send_media`, and added tests for media delivery, approval gating, undeclared bindings, and local-path rejection. |
 
 ---
 
