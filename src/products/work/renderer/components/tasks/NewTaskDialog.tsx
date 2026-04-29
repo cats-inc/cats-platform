@@ -11,15 +11,14 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import type { CoreTaskStatus } from "../../api/workRecords.js";
 import { WORK_TASKS_PATH } from "../../workPaths.js";
-import { usePinnedProjects } from "../../state/pinnedProjectsStore";
-import { TASKS_QUERY_KEY } from "../../state/queries/tasksQuery.js";
+import { useProjectsQuery } from "../../state/queries/projectsQuery.js";
+import { TASKS_QUERY_KEY, useTasksQuery } from "../../state/queries/tasksQuery.js";
+import { useWorkItemsQuery } from "../../state/queries/workItemsQuery.js";
 import {
   tasksStore,
-  useTasks,
   type CreateTaskInput,
   type TaskPriority,
 } from "../../state/tasksStore";
-import { useWorkItems } from "../../state/workItemsStore";
 
 interface NewTaskDialogProps {
   onClose: () => void;
@@ -65,9 +64,9 @@ export function NewTaskDialog({
   const nextActionId = useId();
   const acceptanceId = useId();
   const titleInputRef = useRef<HTMLInputElement>(null);
-  const { allProjects, deletedIds: deletedProjectIds } = usePinnedProjects();
-  const { allWorkItems, deletedIds: deletedWorkItemIds } = useWorkItems();
-  const { allTasks, deletedIds: deletedTaskIds } = useTasks();
+  const projectsQuery = useProjectsQuery();
+  const workItemsQuery = useWorkItemsQuery();
+  const tasksQuery = useTasksQuery();
 
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
@@ -136,13 +135,11 @@ export function NewTaskDialog({
     });
   }
 
-  const projectOptions = allProjects.filter((p) => !deletedProjectIds.has(p.id));
-  const workItemOptions = allWorkItems
-    .filter((wi) => !deletedWorkItemIds.has(wi.id))
-    .filter((wi) =>
-      linkedProject ? wi.linkedProjectId === linkedProject : true,
-    );
-  const parentTaskOptions = allTasks.filter((t) => !deletedTaskIds.has(t.id));
+  const projectOptions = projectsQuery.data?.projects ?? [];
+  const workItemOptions = (workItemsQuery.data?.workItems ?? []).filter((wi) =>
+    linkedProject ? wi.projectId === linkedProject : true,
+  );
+  const parentTaskOptions = tasksQuery.data?.tasks ?? [];
 
   return (
     <div

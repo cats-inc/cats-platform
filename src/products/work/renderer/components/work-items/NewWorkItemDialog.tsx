@@ -11,7 +11,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import type { CoreWorkItemStatus } from "../../api/workRecords.js";
 import { WORK_WORK_ITEMS_PATH } from "../../workPaths.js";
-import { usePinnedProjects } from "../../state/pinnedProjectsStore";
+import { useProjectsQuery } from "../../state/queries/projectsQuery.js";
 import { WORK_ITEMS_QUERY_KEY } from "../../state/queries/workItemsQuery.js";
 import { workItemsStore, type CreateWorkItemInput } from "../../state/workItemsStore";
 
@@ -43,7 +43,7 @@ export function NewWorkItemDialog({
   const statusId = useId();
   const nextActionId = useId();
   const titleInputRef = useRef<HTMLInputElement>(null);
-  const { allProjects, deletedIds } = usePinnedProjects();
+  const projectsQuery = useProjectsQuery();
 
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
@@ -103,7 +103,7 @@ export function NewWorkItemDialog({
     });
   }
 
-  const projectOptions = allProjects.filter((p) => !deletedIds.has(p.id));
+  const projectOptions = projectsQuery.data?.projects ?? [];
 
   return (
     <div

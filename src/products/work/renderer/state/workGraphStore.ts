@@ -57,18 +57,6 @@ export function useWorkGraph(): UseWorkGraphResult {
   };
 }
 
-/**
- * Force a refresh of the cached graph from the producer pipeline.
- * Callers that mutate Core (createWorkProject / removeWorkLink / ...)
- * await this so the next render reflects the post-mutation state.
- *
- * Implemented in terms of the shared QueryClient so it works from
- * imperative paths (outside React components).
- */
-export async function triggerWorkGraphRefresh(): Promise<void> {
-  await sharedQueryClient.invalidateQueries({ queryKey: WORK_GRAPH_QUERY_KEY });
-}
-
 /** Test-only escape hatch — clears the cached graph from the shared QueryClient. */
 export function __resetWorkGraphStoreForTest(): void {
   sharedQueryClient.removeQueries({ queryKey: WORK_GRAPH_QUERY_KEY });

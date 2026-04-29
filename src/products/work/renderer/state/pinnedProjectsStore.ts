@@ -1,12 +1,12 @@
-import { useMemo } from "react";
+import { useSyncExternalStore } from "react";
 
+import { sharedQueryClient } from "../../../shared/renderer/queryClient.js";
 import {
   createWorkProject,
   removeWorkProject,
   type CoreProjectStatus,
 } from "../api/workRecords.js";
-import type { WorkGraphObjectSummary } from "../components/topdown/types";
-import { triggerWorkGraphRefresh, useWorkGraph } from "./workGraphStore";
+import { PROJECTS_QUERY_KEY } from "./queries/projectsQuery.js";
 
 const STORAGE_KEY_UNPINNED = "cats-work:unpinned-projects";
 
@@ -36,12 +36,15 @@ function notify(): void {
   for (const l of listeners) l();
 }
 
-export interface PinnedProjectsSnapshot {
-  allProjects: readonly WorkGraphObjectSummary[];
-  pinnedIds: ReadonlySet<string>;
-  deletedIds: ReadonlySet<string>;
-  status: "idle" | "loading" | "ready" | "error";
-  error: string | null;
+let pinSnapshot: ReadonlySet<string> = readPinnedSnapshot();
+
+function readPinnedSnapshot(): ReadonlySet<string> {
+  return new Set<string>(unpinned);
+}
+
+function refreshSnapshot(): void {
+  pinSnapshot = readPinnedSnapshot();
+  notify();
 }
 
 export interface CreateProjectInput {
@@ -60,64 +63,46 @@ export const pinnedProjectsStore = {
     if (!unpinned.has(id)) return;
     unpinned.delete(id);
     saveStringSet(STORAGE_KEY_UNPINNED, unpinned);
-    notify();
+    refreshSnapshot();
   },
   unpin(id: string): void {
     if (unpinned.has(id)) return;
     unpinned.add(id);
     saveStringSet(STORAGE_KEY_UNPINNED, unpinned);
-    notify();
+    refreshSnapshot();
   },
   async remove(id: string): Promise<void> {
     await removeWorkProject(id);
-    await triggerWorkGraphRefresh();
+    await sharedQueryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY });
   },
-  async createProject(input: CreateProjectInput): Promise<WorkGraphObjectSummary> {
+  async createProject(input: CreateProjectInput): Promise<{ id: string }> {
+    // The dialog wraps this call in useMutation; its onSuccess
+    // invalidates the projects query, so we don't double-invalidate
+    // here. `remove` keeps the call inline because it has no
+    // useMutation wrapper (it's invoked from a Sidebar overflow menu).
     const result = await createWorkProject({
       title: input.title.trim(),
       summary: input.summary?.trim() || null,
       status: input.status,
     });
-    await triggerWorkGraphRefresh();
-    return {
-      id: result.project.id,
-      kind: "project",
-      structuralLayer: "planning",
-      sourceRecordFamily: "project",
-      sourceRecordId: result.project.id,
-      title: result.project.title,
-      status: result.project.status,
-      summary: result.project.summary,
-      attention: "none",
-      ownerRole: null,
-      nextAction: null,
-      linkedConversationId: result.project.primaryConversationId,
-      linkedProjectId: null,
-      linkedWorkItemId: null,
-      linkedTaskId: null,
-      linkedRunId: null,
-      updatedAt: result.project.updatedAt,
-    };
+    return { id: result.project.id };
   },
 };
 
-export function usePinnedProjects(): PinnedProjectsSnapshot {
-  const { graph, status, error } = useWorkGraph();
-  return useMemo(() => {
-    const allProjects = graph.objects.filter(
-      (obj): obj is WorkGraphObjectSummary => obj.kind === "project",
-    );
-    const pinnedIds = new Set<string>();
-    for (const project of allProjects) {
-      if (unpinned.has(project.id)) continue;
-      pinnedIds.add(project.id);
-    }
-    return {
-      allProjects,
-      pinnedIds,
-      deletedIds: new Set<string>(),
-      status,
-      error,
-    };
-  }, [graph, status, error]);
+/**
+ * Subscribe to localStorage-backed unpinned-set changes. Returns a Set of
+ * project ids the user has explicitly unpinned. A project is pinned iff
+ * its id is NOT in this set; pin defaults to true for unknown ids.
+ */
+export function useUnpinnedIds(): ReadonlySet<string> {
+  return useSyncExternalStore(
+    (listener) => {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    () => pinSnapshot,
+    () => pinSnapshot,
+  );
 }

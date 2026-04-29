@@ -9,9 +9,12 @@ import {
 import type { ConversationSidebarPinnedItem } from '../../../../app/renderer/productShell/ConversationSidebarPinned.js';
 import {
   pinnedProjectsStore,
-  usePinnedProjects,
-  type PinnedProjectsSnapshot,
+  useUnpinnedIds,
 } from '../state/pinnedProjectsStore';
+import {
+  useProjectsQuery,
+  type WorkProjectListItem,
+} from '../state/queries/projectsQuery.js';
 import './projects/projects.css';
 import { buildConversationSidebarRecentEntries } from '../../../../app/renderer/productShell/conversationSidebarRecentEntries.js';
 import type { AppShellPayload } from '../../api/contracts.js';
@@ -167,7 +170,7 @@ function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] 
 
 function createExtraActionGroups(
   props: SidebarProps,
-  pinnedSnapshot: PinnedProjectsSnapshot,
+  pinnedProjects: readonly WorkProjectListItem[],
 ): ConversationSidebarActionGroup[] {
   const currentPath = globalThis.location?.pathname ?? WORK_ROUTE_PREFIX;
   const groups: ConversationSidebarActionGroup[] = [];
@@ -201,7 +204,7 @@ function createExtraActionGroups(
           ),
         },
       ],
-      pinnedItems: buildPinnedProjectItems(props, currentPath, pinnedSnapshot),
+      pinnedItems: buildPinnedProjectItems(props, currentPath, pinnedProjects),
     });
   }
 
@@ -468,11 +471,10 @@ function createExtraActionGroups(
 function buildPinnedProjectItems(
   props: SidebarProps,
   currentPath: string,
-  snapshot: PinnedProjectsSnapshot,
+  projects: readonly WorkProjectListItem[],
 ): ConversationSidebarPinnedItem[] {
   if (!props.onOpenProject) return [];
-  return snapshot.allProjects
-    .filter((project) => snapshot.pinnedIds.has(project.id) && !snapshot.deletedIds.has(project.id))
+  return projects
     .map((project) => ({
       id: project.id,
       label: project.title,
@@ -520,7 +522,11 @@ function buildRecentEntries(props: SidebarProps): ConversationSidebarRecentEntry
 }
 
 export function Sidebar(props: SidebarProps) {
-  const pinnedSnapshot = usePinnedProjects();
+  const projectsQuery = useProjectsQuery();
+  const unpinnedIds = useUnpinnedIds();
+  const pinnedProjects = (projectsQuery.data?.projects ?? []).filter(
+    (project) => !unpinnedIds.has(project.id),
+  );
   return ConversationSidebar({
     payload: props.payload,
     sidebarOpen: props.sidebarOpen,
@@ -532,7 +538,7 @@ export function Sidebar(props: SidebarProps) {
     routeChannelId: props.routeChannelId,
     accountMenuRef: props.accountMenuRef,
     primaryActions: createPrimaryActions(props),
-    extraActionGroups: createExtraActionGroups(props, pinnedSnapshot),
+    extraActionGroups: createExtraActionGroups(props, pinnedProjects),
     recentEntries: buildRecentEntries(props),
     recentEmptyStateLabel: 'No work yet',
     myCatsSectionLabel: 'My Catteries',
