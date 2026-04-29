@@ -122,6 +122,7 @@ test('package.json keeps the self-hosted npm executable contract aligned with pa
     'build/server',
     'build/desktop',
     'scripts',
+    'config/provider-capability-bootstrap.yaml.example',
     '.env.example',
     'README.md',
     'LICENSE',
