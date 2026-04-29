@@ -3214,12 +3214,13 @@ test('resolveLiveIndicatorSpeakerLabel uses the solo execution target label', ()
   assert.equal(label, 'Gemini-CLI');
 });
 
-test('resolveLiveIndicatorSpeakerLabel stays silent for cat-led chats', () => {
+test('resolveLiveIndicatorSpeakerLabel stays silent for participant rooms', () => {
   assert.equal(resolveLiveIndicatorSpeakerLabel({
     composerMode: 'cat_led',
     pendingProvider: 'gemini',
     pendingInstance: 'cli/native',
     pendingModel: 'gemini-3.1-pro',
+    assignedCats: [{ catId: 'cat-1', status: 'active' }],
     roomRouting: {
       defaultRecipientId: null,
     },

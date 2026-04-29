@@ -5,7 +5,10 @@ import type {
   RoomWorkflowBranchStrategy,
   RoomWorkflowShape,
 } from '../../../../shared/roomRouting.js';
-import { isDirectLaneChannel } from '../../shared/channelTopology.js';
+import {
+  isDirectLaneChannel,
+  isSoloThreadChannel,
+} from '../../shared/channelTopology.js';
 import {
   buildChannelView,
   ORCHESTRATOR_NAME,
@@ -255,8 +258,7 @@ export function extractWorkflowRecommendationFromBody(
 }
 
 function isSoloChatChannel(channel: ReturnType<typeof buildChannelView>): boolean {
-  return channel.composerMode === 'solo'
-    && !isDirectLaneChannel(channel);
+  return isSoloThreadChannel(channel);
 }
 
 function buildOrchestratorTarget(state: ChatState, channelId: string): RoutingTarget {

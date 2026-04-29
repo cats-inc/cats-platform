@@ -27,6 +27,7 @@ import {
   type WorkspaceBusyState,
 } from '../../../../shared/workspaceBusy.js';
 import { resolveChannelCanonicalIdentity } from '../../../chat/shared/channelCanonicalIdentity.js';
+import { isProviderSoloThreadChannel } from '../../../chat/shared/channelTopology.js';
 import { isOptimisticDraftChannelId } from '../../channelPaths.js';
 
 export type {
@@ -52,6 +53,7 @@ export interface LiveIndicatorSelectedChannelLike {
   } | null;
   assignedParticipants?: Array<{
     participantId: string;
+    status?: string | null;
     execution?: {
       lease?: {
         sessionId?: string | null;
@@ -60,6 +62,10 @@ export interface LiveIndicatorSelectedChannelLike {
         startedAt?: string | null;
       } | null;
     } | null;
+  }> | null;
+  assignedCats?: Array<{
+    catId: string;
+    status?: string | null;
   }> | null;
   messages?: Array<{
     id: string;
@@ -153,7 +159,7 @@ export function resolveLiveIndicatorSpeakerLabel(
     return null;
   }
 
-  if (selectedChannel.composerMode !== 'solo' || !selectedChannel.pendingProvider) {
+  if (!isProviderSoloThreadChannel(selectedChannel)) {
     return null;
   }
 

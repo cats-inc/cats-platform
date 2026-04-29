@@ -4,7 +4,7 @@ import type { ProductChannelKind } from './channelTopology.js';
 export type ChatConversationMode =
   | 'direct_lane'
   | 'solo_thread'
-  | 'cat_led_thread'
+  | 'participant_thread'
   | 'multi_cat_room';
 
 type ConversationModeCarrier = {
@@ -24,16 +24,16 @@ export function resolveConversationMode(
     return 'direct_lane';
   }
 
-  if (channel.composerMode === 'solo') {
+  const activeCatCount = channel.assignedCats.filter((cat) => cat.status === 'active').length;
+  if (activeCatCount === 0) {
     return 'solo_thread';
   }
 
-  const activeCatCount = channel.assignedCats.filter((cat) => cat.status === 'active').length;
   if (channel.channelKind === 'multi_cat_room' || activeCatCount > 1) {
     return 'multi_cat_room';
   }
 
-  return 'cat_led_thread';
+  return 'participant_thread';
 }
 
 export function isDirectConversationMode(

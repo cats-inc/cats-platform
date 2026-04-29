@@ -4,7 +4,10 @@ import type {
 } from '../api/contracts.js';
 import { activeAssignedParticipants } from '../shared/channelParticipants.js';
 import type { SelectedChannelView } from '../shared/channelEntry.js';
-import { isDirectLaneChannel } from '../shared/channelTopology.js';
+import {
+  isSoloThreadChannel,
+  supportsParticipantAudienceSelection,
+} from '../shared/channelTopology.js';
 
 export interface ActiveChannelAudienceState {
   audienceKeys: string[];
@@ -136,7 +139,10 @@ export function resolveActiveChannelMessageMetadata(options: {
     return null;
   }
 
-  if (selectedChannel.composerMode === 'solo' || isDirectLaneChannel(selectedChannel)) {
+  if (
+    isSoloThreadChannel(selectedChannel)
+    || !supportsParticipantAudienceSelection(selectedChannel)
+  ) {
     return null;
   }
 

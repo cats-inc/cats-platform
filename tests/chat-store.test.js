@@ -980,7 +980,7 @@ test('ChatStore projects room workflow runs, traces, checkpoints, and outcomes i
   assert.equal(reloadedChannel?.roomRouting?.lastOutcome?.resolution.selectionKind, 'explicit_mentions');
   assert.equal(
     reloadedChannel?.roomRouting?.lastOutcome?.resolution.defaultTargetReason,
-    'cat_led_recipient',
+    'boss_chat_default',
   );
   assert.deepEqual(
     reloadedChannel?.roomRouting?.wakeHistory.map((wake) => wake.reason),

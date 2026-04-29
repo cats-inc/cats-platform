@@ -22,7 +22,11 @@ import {
   resolveParticipantCatId,
 } from '../shared/channelParticipants.js';
 import { resolveSkillProfileManifest } from '../../../shared/skillProfiles.js';
-import { isDirectLaneChannel } from '../shared/channelTopology.js';
+import {
+  isDirectLaneChannel,
+  isProviderSoloThreadChannel,
+  isSoloThreadChannel,
+} from '../shared/channelTopology.js';
 import { resolveGlobalOrchestratorVisibleParticipant } from './orchestratorHats.js';
 import {
   buildDirectLaneTransportBindingId,
@@ -56,10 +60,15 @@ export type RuntimeTransportContext = 'telegram' | 'web';
 const MAX_RECENT_CONTEXT_MESSAGES = MAX_BOUNDED_RECENT_CONTEXT_MESSAGES;
 
 export function isSoloChatChannel(
-  channel: Pick<ChatChannelState | ChatChannelView, 'channelKind' | 'composerMode' | 'roomRouting'>,
+  channel: Pick<
+    ChatChannelState | ChatChannelView,
+    'channelKind' | 'roomRouting' | 'participantAssignments' | 'catAssignments'
+  > | Pick<
+    ChatChannelView,
+    'channelKind' | 'roomRouting' | 'assignedParticipants' | 'assignedCats'
+  >,
 ): boolean {
-  return channel.composerMode === 'solo'
-    && !isDirectLaneChannel(channel);
+  return isSoloThreadChannel(channel);
 }
 
 export function buildOrchestratorTarget(
@@ -84,7 +93,7 @@ export function resolveOrchestratorExecutionTarget(
   instance: string | null;
   modelSelection?: ProviderModelSelection | null;
 } {
-  if (channel.composerMode === 'solo' && channel.pendingProvider) {
+  if (isProviderSoloThreadChannel(channel) && channel.pendingProvider) {
     return {
       provider: channel.pendingProvider,
       instance: channel.pendingInstance ?? null,

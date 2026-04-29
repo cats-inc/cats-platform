@@ -80,12 +80,13 @@ function createTemporaryParticipantState() {
   };
 }
 
-test('temporary participants become routable default and explicit targets', () => {
+test('temporary participants remain explicit targets while room default goes to orchestrator', () => {
   const { state, channelId } = createTemporaryParticipantState();
 
   const defaultTarget = resolveRoomDefaultRoutingTarget(state, channelId);
-  assert.equal(defaultTarget.target?.participantId, 'participant-reviewer');
-  assert.equal(defaultTarget.target?.participantName, 'RuntimeReviewer');
+  assert.equal(defaultTarget.target?.participantKind, 'orchestrator');
+  assert.equal(defaultTarget.target?.participantId, 'orchestrator');
+  assert.equal(defaultTarget.defaultTargetReason, 'boss_chat_default');
 
   const mentionRoute = resolveMentionRoute(
     state,
@@ -103,15 +104,22 @@ test('temporary participants become routable default and explicit targets', () =
 
 test('temporary participants build prompts, choice routing, and suppress solo rewrite fallback', () => {
   const { state, channelId, userMessageId } = createTemporaryParticipantState();
-  const defaultTarget = resolveRoomDefaultRoutingTarget(state, channelId);
-  if (!defaultTarget.target) {
-    throw new Error('Expected a default routing target.');
-  }
-
   const channel = buildChannelView(state, channelId);
   const sourceMessage = channel.messages.find((message) => message.id === userMessageId);
   if (!sourceMessage) {
     throw new Error('Expected source message.');
+  }
+  const reviewerTarget = resolveMentionRoute(
+    state,
+    channelId,
+    '@RuntimeReviewer please review this plan.',
+    {
+      allowDefaultTarget: true,
+      explicitTrigger: 'explicit_mention',
+    },
+  ).targets[0];
+  if (!reviewerTarget) {
+    throw new Error('Expected RuntimeReviewer to resolve as an explicit target.');
   }
 
   const prompt = buildPromptForTarget(
@@ -120,15 +128,15 @@ test('temporary participants build prompts, choice routing, and suppress solo re
     {
       sourceMessage,
       sourceParticipant: null,
-      target: defaultTarget.target,
-      trigger: 'room_default',
+      target: reviewerTarget,
+      trigger: 'explicit_mention',
     },
   );
   assert.match(prompt.message, /temporary chat participant/i);
   assert.match(prompt.message, /RuntimeReviewer/);
   assert.match(prompt.message, /gemini/i);
 
-  const execution = resolveExecutionMetadataForTarget(state, channelId, defaultTarget.target);
+  const execution = resolveExecutionMetadataForTarget(state, channelId, reviewerTarget);
   assert.equal(execution.provider, 'gemini');
   assert.equal(execution.model, 'gemini-3.1-pro');
 

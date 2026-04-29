@@ -72,7 +72,7 @@ const ROOM_ROUTE_SELECTION_KINDS = new Set<RoomRouteSelectionKind>([
 
 const ROOM_ROUTE_BLOCKED_REASONS = new Set<RoomRouteBlockedReason>([
   'missing_direct_chat_recipient',
-  'missing_cat_led_recipient',
+  'missing_default_recipient',
   'no_valid_targets',
   'user_cancelled',
 ]);
@@ -80,7 +80,7 @@ const ROOM_ROUTE_BLOCKED_REASONS = new Set<RoomRouteBlockedReason>([
 const ROOM_ROUTE_DEFAULT_TARGET_REASONS = new Set<RoomRouteDefaultTargetReason>([
   'boss_chat_default',
   'direct_chat_recipient',
-  'cat_led_recipient',
+  'default_recipient',
 ]);
 
 const ROOM_ROUTING_TURN_STATUSES = new Set<RoomRoutingTurnStatus>([
@@ -222,7 +222,9 @@ export function normalizeRoomRouteBlockedReason(
   value: unknown,
 ): RoomRouteBlockedReason | null {
   if (value === 'missing_direct_chat_lead') return 'missing_direct_chat_recipient';
-  if (value === 'missing_cat_led_lead') return 'missing_cat_led_recipient';
+  if (value === 'missing_cat_led_lead' || value === 'missing_cat_led_recipient') {
+    return 'missing_default_recipient';
+  }
   return typeof value === 'string'
     && ROOM_ROUTE_BLOCKED_REASONS.has(value as RoomRouteBlockedReason)
     ? value as RoomRouteBlockedReason
@@ -233,7 +235,9 @@ export function normalizeRoomRouteDefaultTargetReason(
   value: unknown,
 ): RoomRouteDefaultTargetReason | null {
   if (value === 'direct_chat_lead') return 'direct_chat_recipient';
-  if (value === 'cat_led_lead') return 'cat_led_recipient';
+  if (value === 'cat_led_lead' || value === 'cat_led_recipient') {
+    return 'default_recipient';
+  }
   return typeof value === 'string'
     && ROOM_ROUTE_DEFAULT_TARGET_REASONS.has(value as RoomRouteDefaultTargetReason)
     ? value as RoomRouteDefaultTargetReason

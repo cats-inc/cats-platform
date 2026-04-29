@@ -2056,7 +2056,7 @@ test('solo composer mode restarts orchestrator sessions when the pending model s
   );
 });
 
-test('cat-led sessions restart when a participant model selection changes', async () => {
+test('participant sessions restart when a participant model selection changes', async () => {
   let state = await new MemoryChatStore().read();
   const now = new Date('2026-03-23T00:00:00.000Z');
 
@@ -2097,7 +2097,7 @@ test('cat-led sessions restart when a participant model selection changes', asyn
     state,
     channelId,
     {
-      body: 'First turn',
+      body: '@Reviewer First turn',
     },
     runtimeClient,
     now,
@@ -2121,7 +2121,7 @@ test('cat-led sessions restart when a participant model selection changes', asyn
     retargetedState,
     channelId,
     {
-      body: 'Second turn',
+      body: '@Reviewer Second turn',
     },
     runtimeClient,
     new Date('2026-03-23T00:01:00.000Z'),
@@ -2158,7 +2158,7 @@ test('cat-led sessions restart when a participant model selection changes', asyn
   );
   assert.match(
     runtimeClient.sentMessages[1]?.input?.instructions ?? '',
-    /\[user:User\] First turn/u,
+    /\[user:User\] @Reviewer First turn/u,
   );
   assert.match(
     runtimeClient.sentMessages[1]?.input?.instructions ?? '',
@@ -2229,7 +2229,7 @@ test('multi-cat rooms full-transplant continuity when an existing participant re
     state,
     channelId,
     {
-      body: 'First review turn',
+      body: '@Reviewer First review turn',
     },
     runtimeClient,
     now,
@@ -2253,7 +2253,7 @@ test('multi-cat rooms full-transplant continuity when an existing participant re
     retargetedState,
     channelId,
     {
-      body: 'Second review turn',
+      body: '@Reviewer Second review turn',
     },
     runtimeClient,
     new Date('2026-03-23T00:01:00.000Z'),
@@ -2271,7 +2271,7 @@ test('multi-cat rooms full-transplant continuity when an existing participant re
   );
   assert.match(
     runtimeClient.sentMessages[1]?.input?.instructions ?? '',
-    /\[user:User\] First review turn/u,
+    /\[user:User\] @Reviewer First review turn/u,
   );
   assert.match(
     runtimeClient.sentMessages[1]?.input?.instructions ?? '',
@@ -2330,7 +2330,7 @@ test('multi-cat rooms full-transplant continuity after stale-session recovery re
     state,
     channelId,
     {
-      body: 'First review turn',
+      body: '@Reviewer First review turn',
     },
     runtimeClient,
     now,
@@ -2339,7 +2339,7 @@ test('multi-cat rooms full-transplant continuity after stale-session recovery re
     firstDispatch.state,
     channelId,
     {
-      body: 'Recover the same participant context',
+      body: '@Reviewer Recover the same participant context',
     },
     runtimeClient,
     new Date('2026-03-23T00:01:00.000Z'),
@@ -2362,7 +2362,7 @@ test('multi-cat rooms full-transplant continuity after stale-session recovery re
   );
   assert.match(
     runtimeClient.sentMessages.at(-1)?.input?.instructions ?? '',
-    /\[user:User\] First review turn/u,
+    /\[user:User\] @Reviewer First review turn/u,
   );
   assert.match(
     runtimeClient.sentMessages.at(-1)?.input?.instructions ?? '',
@@ -3026,7 +3026,7 @@ test('parallel member channels inherit solo continuity transplant rules on retar
   assertProviderAgentDispatchMetadata(activeChannel, 'Switch turn');
 });
 
-test('cat-led room routing continues across agent mentions and auto-wakes targeted participants', async () => {
+test('participant room routing continues across agent mentions and auto-wakes targeted participants', async () => {
   const { state, channelId } = await createChannelState();
   const runtimeClient = createRuntimeStub(async ({ content }) => {
     if (content.includes('You are Agent-1')) {
@@ -3041,7 +3041,7 @@ test('cat-led room routing continues across agent mentions and auto-wakes target
   const dispatched = await routeChannelMessage(
     state,
     channelId,
-    { body: 'Kick off the work.' },
+    { body: '@Agent-1 Kick off the work.' },
     runtimeClient,
     new Date('2026-03-21T00:00:00.000Z'),
   );
@@ -3060,7 +3060,7 @@ test('cat-led room routing continues across agent mentions and auto-wakes target
   assert.equal(channel.roomRouting?.lastOutcome?.guard, null);
   assert.deepEqual(
     channel.roomRouting?.wakeHistory.map((wake) => wake.reason),
-    ['workflow_continuation', 'room_default'],
+    ['workflow_continuation', 'explicit_mention'],
   );
   assert.deepEqual(
     channel.roomRouting?.wakeHistory.map((wake) => wake.status),
@@ -3068,7 +3068,7 @@ test('cat-led room routing continues across agent mentions and auto-wakes target
   );
   assert.equal(
     channel.roomRouting?.lastOutcome?.resolution.defaultTargetReason,
-    'cat_led_recipient',
+    'boss_chat_default',
   );
   assert.ok(
     channel.roomRouting?.lastOutcome?.checkpoints.some(
@@ -3079,7 +3079,7 @@ test('cat-led room routing continues across agent mentions and auto-wakes target
   assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.continuationCount, 1);
   assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.workflowShape, 'sequential');
   assert.equal(channel.roomRouting?.workflow.turnHistory[0]?.stageId, 'turn_completed');
-  assertProviderAgentDispatchMetadata(channel, 'Kick off the work.');
+  assertProviderAgentDispatchMetadata(channel, '@Agent-1 Kick off the work.');
   assert.ok(
     channel.roomRouting?.workflow.turnHistory[0]?.events.some(
       (event) => event.kind === 'target_running',
@@ -3106,7 +3106,7 @@ test('cat-led room routing continues across agent mentions and auto-wakes target
   );
 });
 
-test('structured workflow recommendations drive continuation when no explicit @mention is present', async () => {
+test('structured workflow recommendations drive continuation from an explicit participant turn', async () => {
   const { state, channelId } = await createChannelState();
   const runtimeClient = createRuntimeStub(async ({ content }) => {
     if (content.includes('You are Agent-1')) {
@@ -3133,7 +3133,7 @@ test('structured workflow recommendations drive continuation when no explicit @m
   const dispatched = await routeChannelMessage(
     state,
     channelId,
-    { body: 'Kick off the work.' },
+    { body: '@Agent-1 Kick off the work.' },
     runtimeClient,
     new Date('2026-03-21T00:00:00.000Z'),
   );
@@ -3220,7 +3220,7 @@ test('segmented replies keep final-only completion semantics while workflow reco
   const dispatched = await routeChannelMessage(
     state,
     channelId,
-    { body: 'Kick off the work.' },
+    { body: '@Agent-1 Kick off the work.' },
     runtimeClient,
     new Date('2026-03-21T00:00:00.000Z'),
   );
@@ -3290,7 +3290,7 @@ test('explicit @mentions stay authoritative over structured workflow recommendat
   const dispatched = await routeChannelMessage(
     state,
     channelId,
-    { body: 'Kick off the work.' },
+    { body: '@Agent-1 Kick off the work.' },
     runtimeClient,
     new Date('2026-03-21T00:00:00.000Z'),
   );
@@ -4510,7 +4510,7 @@ test('anti-ping-pong blocks repeated back-and-forth and prompts only include per
   const dispatched = await routeChannelMessage(
     state,
     channelId,
-    { body: 'Start the routing loop.' },
+    { body: '@Agent-1 Start the routing loop.' },
     runtimeClient,
     new Date('2026-03-21T00:00:00.000Z'),
   );
@@ -4520,7 +4520,7 @@ test('anti-ping-pong blocks repeated back-and-forth and prompts only include per
   assert.equal(promptsByTarget['Agent-1'].length, 2);
   assert.ok(promptsByTarget['Agent-1'][1].includes('@Smelly please review.'));
   assert.ok(promptsByTarget['Agent-1'][1].includes('@Agent-1 take first pass.'));
-  assert.equal(promptsByTarget['Agent-1'][1].includes('[user:User] Start the routing loop.'), false);
+  assert.equal(promptsByTarget['Agent-1'][1].includes('[user:User] @Agent-1 Start the routing loop.'), false);
   assert.equal(channel.roomRouting?.lastOutcome?.guard, 'anti_ping_pong');
   assert.ok(
     channel.roomRouting?.lastOutcome?.checkpoints.some(

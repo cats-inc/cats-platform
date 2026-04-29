@@ -1,6 +1,8 @@
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
+import type { RoomRoutingMode } from '../../../shared/roomRouting.js';
 import type { RuntimeSessionPolicy } from '../../../shared/runtimeSessionPolicy.js';
+import { isSoloThreadChannel } from '../../chat/shared/channelTopology.js';
 import {
   buildAttachedFilesMessageBody,
   buildNewChatChannelInput,
@@ -15,11 +17,17 @@ export interface ComposerModelValue {
 
 export interface ComposerSelectedChannelLike {
   id: string;
-  channelKind?: string | null;
+  channelKind?: 'boss_thread' | 'direct_lane' | 'multi_cat_room' | null;
   composerMode?: string | null;
+  pendingProvider?: string | null;
   roomRouting?: {
+    mode?: RoomRoutingMode | null;
     defaultRecipientId?: string | null;
   };
+  assignedParticipants?: readonly Array<{ participantId: string; status: string }> | null;
+  assignedCats?: readonly Array<{ catId: string; status: string }> | null;
+  participantAssignments?: readonly Array<{ participantId: string; status: string }> | null;
+  catAssignments?: readonly Array<{ catId: string; status: string }> | null;
   repoPath?: string | null;
   chatCwd?: string | null;
 }
@@ -83,7 +91,7 @@ export function isDirectLaneSelectedForCat<
 
 export function buildSoloDispatchTarget<
   ModelValue extends ComposerModelValue,
-  TSelectedChannel extends Pick<ComposerSelectedChannelLike, 'id' | 'composerMode'>,
+  TSelectedChannel extends ComposerSelectedChannelLike,
 >(options: {
   wasDraftingNewChat: boolean;
   isCatScopedLaneRoute: boolean;
@@ -103,7 +111,7 @@ export function buildSoloDispatchTarget<
     wasDraftingNewChat
     || isCatScopedLaneRoute
     || selectedChannel?.id !== channelId
-    || selectedChannel.composerMode !== 'solo'
+    || !isSoloThreadChannel(selectedChannel)
   ) {
     return null;
   }
@@ -378,7 +386,7 @@ export async function prepareWorkspaceSendContext<
   temporaryParticipants?: ComposerTemporaryParticipantLike[];
   draftEntryKind?: 'solo' | 'group' | 'direct';
   draftExecutionTarget?: ModelValue;
-  selectedChannel: Pick<ComposerSelectedChannelLike, 'id' | 'composerMode'> | null;
+  selectedChannel: ComposerSelectedChannelLike | null;
   soloChannelExecutionTarget: ModelValue;
   draftFiles: File[];
   channelFiles: File[];

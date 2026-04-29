@@ -17,6 +17,12 @@ import type {
   RoomRoutingTrigger,
 } from '../../../shared/roomRouting.js';
 import { requireChannel } from './model/index.js';
+import {
+  isDirectLaneChannel,
+  isProviderSoloThreadChannel,
+  isSoloThreadChannel,
+  supportsParticipantAudienceSelection,
+} from '../shared/channelTopology.js';
 
 export interface ChatProviderAgentRoutingSummary {
   trigger: RoomRoutingTrigger;
@@ -24,6 +30,22 @@ export interface ChatProviderAgentRoutingSummary {
   targetCount: number;
   unresolvedCount: number;
   mentionCount: number;
+}
+
+function resolveChannelIntentRef(channel: ReturnType<typeof requireChannel>): string {
+  if (isDirectLaneChannel(channel)) {
+    return 'direct_participant_lane';
+  }
+  if (supportsParticipantAudienceSelection(channel)) {
+    return 'participant_room';
+  }
+  if (isProviderSoloThreadChannel(channel)) {
+    return 'provider_solo_thread';
+  }
+  if (isSoloThreadChannel(channel)) {
+    return 'solo_thread';
+  }
+  return 'unknown';
 }
 
 export interface BuildChatProviderAgentObservationInput {
@@ -101,7 +123,7 @@ export function buildChatProviderAgentObservation(
     contextRefs: [
       `chat-channel:${channel.id}`,
       `chat-room-mode:${channel.roomRouting?.mode ?? 'boss_chat'}`,
-      `chat-composer-mode:${channel.composerMode}`,
+      `chat-channel-intent:${resolveChannelIntentRef(channel)}`,
     ],
     summaries: buildRoutingSummaries(input),
     budget: {

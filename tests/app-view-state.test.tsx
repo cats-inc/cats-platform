@@ -280,7 +280,7 @@ test('deriveAppViewState does not auto-insert Boss Cat for multi-participant roo
   assert.equal(viewState.showBossCatAvatar, false);
 });
 
-test('deriveAppViewState still shows Boss Cat avatar for cat-led threads without Boss assigned', () => {
+test('deriveAppViewState still shows Boss Cat avatar for participant threads without Boss assigned', () => {
   const payload = createPayload();
   const selectedChannel = createChannel({
     channelKind: 'boss_thread',

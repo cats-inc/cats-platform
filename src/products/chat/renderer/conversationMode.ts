@@ -1,10 +1,14 @@
 import type { ChatChannelView } from '../api/contracts';
-import { isDirectLaneChannel } from '../shared/channelTopology';
+import {
+  countActiveChannelParticipants,
+  isDirectLaneChannel,
+  isSoloThreadChannel,
+} from '../shared/channelTopology';
 
 export type ChatConversationMode =
   | 'direct_lane'
   | 'solo_thread'
-  | 'cat_led_thread'
+  | 'participant_thread'
   | 'multi_cat_room';
 
 export function resolveConversationMode(
@@ -17,20 +21,15 @@ export function resolveConversationMode(
     return 'direct_lane';
   }
 
-  if (channel.composerMode === 'solo') {
+  if (isSoloThreadChannel(channel)) {
     return 'solo_thread';
   }
 
-  const activeParticipants = (
-    channel.assignedParticipants && channel.assignedParticipants.length > 0
-      ? channel.assignedParticipants
-      : channel.assignedCats
-  ).filter((participant) => participant.status === 'active');
-  if (channel.channelKind === 'multi_cat_room' || activeParticipants.length > 1) {
+  if (channel.channelKind === 'multi_cat_room' || countActiveChannelParticipants(channel) > 1) {
     return 'multi_cat_room';
   }
 
-  return 'cat_led_thread';
+  return 'participant_thread';
 }
 
 export function isDirectConversationMode(

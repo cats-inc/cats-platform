@@ -3,7 +3,10 @@ import type {
   ChatMessage,
 } from '../api/workspaceContracts.js';
 import type { SelectedChannelView } from '../channelEntry.js';
-import { isDirectLaneChannel } from '../channelTopology.js';
+import {
+  isSoloThreadChannel,
+  supportsParticipantAudienceSelection,
+} from '../../chat/shared/channelTopology.js';
 
 export interface ActiveChannelAudienceState {
   audienceKeys: string[];
@@ -140,7 +143,10 @@ export function resolveActiveChannelMessageMetadata(options: {
     return null;
   }
 
-  if (selectedChannel.composerMode === 'solo' || isDirectLaneChannel(selectedChannel)) {
+  if (
+    isSoloThreadChannel(selectedChannel)
+    || !supportsParticipantAudienceSelection(selectedChannel)
+  ) {
     return null;
   }
 

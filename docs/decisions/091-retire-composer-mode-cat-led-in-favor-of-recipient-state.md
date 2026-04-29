@@ -1,9 +1,9 @@
-# ADR-091: Retire `composerMode = cat_led` in Favor of Per-Turn Recipient State
+# ADR-091: Retire `composerMode = cat_led` in Favor of Channel Intent
 
-> Finish the retirement that ADR-055 began: remove the persisted `composerMode`
-> field and its `cat_led` value from Chat, and route every dispatch off
-> recipient state alone so the orchestrator stays the single deterministic
-> router that ADR-082 declared it would be.
+> Finish the retirement that ADR-055 began: remove the `cat_led` routing
+> shortcut from Chat, split channel intent into explicit derived predicates,
+> and keep the orchestrator as the single deterministic router that ADR-082
+> declared it would be.
 
 ## Status
 
@@ -52,64 +52,82 @@ divergence is the bug.
 
 ## Decision
 
-Retire the `composerMode` enum entirely. Specifically:
+Retire `cat_led` as a routing concept. `composerMode` may remain as a legacy
+wire/storage field during the migration, but no routing rule may depend on
+`composerMode === 'cat_led'`.
 
-- **Remove the type** `ComposerMode = 'solo' | 'cat_led'` from
-  `src/products/chat/api/contracts.ts` and the duplicate in
-  `src/products/shared/api/workspaceContracts.ts`.
-- **Stop persisting** `composerMode` on channel records. New channels do
-  not write the field; existing channels keep it as legacy data and the
-  read path ignores it.
-- **Rewrite mentionRouter** to derive routing solely from per-turn recipient
-  state plus the channel's `defaultRecipientId`:
+- **Split channel intent into derived predicates** instead of overloading
+  `composerMode`:
+  - provider solo thread: no active participants, not a direct lane, and an
+    optional pending provider/model target;
+  - direct participant lane: `roomMode === direct_cat_chat` / direct-lane
+    topology, always routed to the direct participant;
+  - participant room: non-direct room with active participants; supports
+    audience selection and workflow-shape controls, but does not own default
+    routing.
+- **Rewrite mentionRouter** so no non-direct participant room bypasses the
+  orchestrator:
   - Explicit `@mention` → that participant (unchanged).
-  - No `@mention` and `defaultRecipientId` is set → orchestrator decides
-    (it may still elect to route to the default recipient as a deterministic
-    rule, but the decision is owned by the orchestrator's routing, not by a
-    short-circuit in the mention router). This is the ADR-082 alignment.
+  - Direct lane with no `@mention` → direct participant (unchanged).
+  - Non-direct room with no `@mention`, even when `defaultRecipientId` is set
+    → orchestrator handles the turn first. The default recipient remains room
+    context the orchestrator may use, not an automatic target.
   - No `@mention` and no `defaultRecipientId` → orchestrator handles the
     turn directly (today's `solo` behaviour).
-- **Move the `defaultRecipientId` "speak first" rule** into the orchestrator
-  routing layer. The mention router stops reading `composerMode`.
+- **Treat this as an intentional product behavior change** for group and
+  parallel participant rooms. The old behavior made the default participant
+  speak first deterministically. The new behavior makes the orchestrator speak
+  first unless the operator explicitly mentions a participant or chooses a
+  per-turn audience.
 - **Remove the legacy enum values** `'missing_cat_led_recipient'` and
   `'cat_led_recipient'` from `src/shared/roomRouting.ts`. Replace call sites
   with the recipient-state equivalents (`'missing_default_recipient'` /
   `'default_recipient'`).
-- **Replace UI gates** that key on `composerMode === 'cat_led'` with checks
-  on the channel's `defaultRecipientId` plus its `roomMode` (whichever
-  combination expresses the same intent).
+- **Replace UI gates** that key on `composerMode === 'cat_led'` with explicit
+  channel-intent predicates such as `supportsParticipantAudienceSelection`.
+
+This preserves two existing behaviors:
+
+- Pure provider/model solo chats (`+ New chat` and pure provider branches in
+  `+ Parallel chat`) continue to send the operator's message directly to the
+  selected provider/model.
+- Direct/private lanes continue to route directly to the selected participant.
+
+It intentionally changes one behavior:
+
+- Group/parallel participant rooms no longer auto-dispatch a no-mention turn
+  to `defaultRecipientId`. They route to the orchestrator first.
 
 The migration is staged so persisted state stays valid throughout:
 
-1. **Slice 1 — read-side compatibility shim.** Add a derivation function
-   `deriveLegacyComposerMode(channel)` that returns `'cat_led'` if
-   `roomMode === 'direct_cat_chat'` or `defaultRecipientId` is set,
-   otherwise `'solo'`. Replace every existing read of
-   `channel.composerMode` with the derivation. Persisted reads still parse
-   the legacy field (forward-compatible) but no read site depends on the
-   field's presence.
-2. **Slice 2 — stop writing the field.** Channel creation no longer infers
-   or persists `composerMode`. The read derivation continues to produce the
-   same value for existing channels (because `roomMode` /
-   `defaultRecipientId` are still set).
-3. **Slice 3 — rewrite the routing branch.** Replace the
-   `composerMode === 'cat_led'` short-circuit in `mentionRouter` with a
-   call into the orchestrator routing layer that takes
-   `defaultRecipientId` as input. Tests pin the same dispatch decisions as
-   before for both `solo`-derived and `cat_led`-derived channels.
-4. **Slice 4 — remove the type and the legacy enum values.** Delete
+1. **Slice 1 — channel-intent helpers.** Add derived predicates for provider
+   solo, direct participant lane, participant room, and participant-audience
+   support. Replace routing/session reads that currently depend on
+   `composerMode === 'solo'` or `composerMode === 'cat_led'` with the derived
+   predicates.
+2. **Slice 2 — routing behavior change.** Remove the
+   `composerMode === 'cat_led'` short-circuit in `mentionRouter`. Direct lanes
+   still route directly to their participant; non-direct participant rooms
+   route no-mention turns to the orchestrator.
+3. **Slice 3 — UI gate cleanup.** Replace active audience/workflow-shape gates
+   and conversation-mode naming with participant-room predicates and neutral
+   labels.
+4. **Slice 4 — storage/contract cleanup.** Stop writing `composerMode`; keep
+   read-side compatibility for persisted records while API/read models migrate
+   to explicit derived fields.
+5. **Slice 5 — remove the type and the legacy enum values.** Delete
    `ComposerMode` from chat contracts, delete
    `'missing_cat_led_recipient'` and `'cat_led_recipient'` from
    `src/shared/roomRouting.ts`, and rename remaining identifiers
    (`composerMode`, `inferredComposerMode`, `cat_led_thread`) to recipient-
    state language.
-5. **Slice 5 — drop the read-side compatibility shim.** After one release
+6. **Slice 6 — drop read-side compatibility.** After one release
    cycle the derivation function and the legacy persisted field are
    removed.
 
-Slices 1-3 are reversible; slice 4 is the contract-breaking commit and
-must land together with slice 3's tests passing. Slice 5 is a separate
-follow-up.
+Slices 1-3 are reversible. Slice 4 starts the wire/storage migration. Slice 5
+is the contract-breaking cleanup and must land only after the product surfaces
+no longer depend on `composerMode`.
 
 ## Consequences
 
@@ -127,10 +145,14 @@ follow-up.
 ### Negative
 
 - Touches 34 source files, the chat API contract, and the frozen shared
-  `src/shared/roomRouting.ts` enum. Slices 3 and 4 are coordinated edits
+  `src/shared/roomRouting.ts` enum. Slices 4 and 5 are coordinated edits
   that cannot land independently without breaking the dispatch.
+- Non-direct participant rooms lose the old no-mention direct-to-default
+  behavior. Users who want a specific participant to answer must mention that
+  participant, choose a per-turn audience, or rely on the orchestrator to route
+  the work.
 - One release cycle of read-side compatibility shim adds temporary
-  derivation logic. Slice 5 must follow within one release to avoid the
+  derivation logic. Slice 6 must follow within one release to avoid the
   shim becoming permanent.
 - Existing channels do not get a behaviour change at slice 1; the
   derivation produces the same value. But any test or product surface that

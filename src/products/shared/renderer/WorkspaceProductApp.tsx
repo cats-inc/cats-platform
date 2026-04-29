@@ -88,6 +88,10 @@ import { usePublishReadyPayload } from "./hooks/usePublishReadyPayload.js";
 import { useWorkspaceAppDraftUiActions } from "./hooks/useWorkspaceAppDraftUiActions.js";
 import { useWorkspaceAppNavigationActions } from "./hooks/useWorkspaceAppNavigationActions.js";
 import { useWorkspaceAppShellRouting } from "./hooks/useWorkspaceAppShellRouting.js";
+import {
+  isSoloThreadChannel,
+  supportsParticipantAudienceSelection,
+} from "../../chat/shared/channelTopology.js";
 import { useWorkspaceChatEvents } from "./hooks/useWorkspaceChatEvents.js";
 import { useWorkspaceCatAssignmentActions } from "./hooks/useWorkspaceCatAssignmentActions.js";
 import { createUseComposerSubmit } from "./hooks/useWorkspaceComposerSubmit.js";
@@ -1630,7 +1634,7 @@ export function createWorkspaceProductApp({
                     onApprovalDecision,
                     onChoiceSubmit,
                     onStartFresh:
-                      visibleChatChannelId && visibleChannel?.composerMode === 'solo'
+                      visibleChatChannelId && visibleChannel && isSoloThreadChannel(visibleChannel)
                         ? () => onStartFreshChannel(visibleChatChannelId)
                         : undefined,
                     onRelayMessage: onRelayCompareMessage,
@@ -1641,24 +1645,24 @@ export function createWorkspaceProductApp({
                     onOperatorAction,
                     autoResize,
                     selectedExecutionTarget:
-                      visibleChannel?.composerMode === "solo"
+                      visibleChannel && isSoloThreadChannel(visibleChannel)
                         ? soloChannelExecutionTarget
                         : undefined,
                     onExecutionTargetChange:
-                      visibleChannel?.composerMode === "solo"
+                      visibleChannel && isSoloThreadChannel(visibleChannel)
                         ? setSoloChannelExecutionTarget
                         : undefined,
                     onDirectLaneExecutionTargetChange: onDirectLaneModelSave,
                     activeWorkflowShape,
                     onToggleActiveWorkflowShape:
-                      visibleChannel?.composerMode === "cat_led"
+                      visibleChannel && supportsParticipantAudienceSelection(visibleChannel)
                         ? () =>
                             setActiveWorkflowShape((prev) =>
                               prev === 'concurrent' ? 'sequential' : 'concurrent')
                         : undefined,
                     activeAudienceKeys,
                     onSetActiveAudienceKeys:
-                      visibleChannel?.composerMode === "cat_led"
+                      visibleChannel && supportsParticipantAudienceSelection(visibleChannel)
                         ? setActiveAudienceKeys
                         : undefined,
                     onSelect,

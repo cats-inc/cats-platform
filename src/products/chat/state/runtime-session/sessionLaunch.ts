@@ -5,6 +5,7 @@ import {
   buildChannelView,
   requireChannel,
 } from '../model/index.js';
+import { isSoloThreadChannel } from '../../shared/channelTopology.js';
 import type { RoutingTarget } from '../mentionRouter.js';
 import {
   buildSoloChatContinuityTransplantPackage,
@@ -63,7 +64,7 @@ function resolveNewSessionContinuityMetadata(input: {
 } | null {
   const channel = buildChannelView(input.state, input.channelId);
   const isSoloOrchestrator = input.target.participantKind === 'orchestrator'
-    && channel.composerMode === 'solo';
+    && isSoloThreadChannel(channel);
   const isParticipantTarget = input.target.participantKind === 'cat';
   if (!isSoloOrchestrator && !isParticipantTarget) {
     return null;

@@ -20,7 +20,10 @@ import type {
   RoomRoutingParticipantRef,
   RoomRoutingTrigger,
 } from '../../../shared/roomRouting.js';
-import { isDirectLaneChannel } from '../shared/channelTopology.js';
+import {
+  isDirectLaneChannel,
+  isSoloThreadChannel,
+} from '../shared/channelTopology.js';
 import {
   activeAssignedParticipants,
   findAssignedParticipant,
@@ -64,16 +67,11 @@ export interface MentionRouteResult {
 
 type AssignedParticipant = ChatChannelCat | ChatChannelParticipant;
 
-function isSoloChatChannel(channel: Pick<ChatChannelView, 'composerMode' | 'roomRouting'>): boolean {
-  return channel.composerMode === 'solo'
-    && !isDirectLaneChannel(channel);
-}
-
 function buildOrchestratorTarget(state: ChatState, channel: ChatChannelView): RoutingTarget {
   return {
     participantKind: 'orchestrator',
     participantId: 'orchestrator',
-    participantName: isSoloChatChannel(channel) ? ORCHESTRATOR_NAME : resolveOrchestratorDisplayName(state),
+    participantName: isSoloThreadChannel(channel) ? ORCHESTRATOR_NAME : resolveOrchestratorDisplayName(state),
     laneId: null,
     sessionId: null,
   };
@@ -175,37 +173,6 @@ export function resolveRoomDefaultRoutingTarget(
     };
   }
 
-  if (channel.composerMode === 'cat_led' && routing?.defaultRecipientId) {
-    const leadCat = activeParticipants
-      .find((participant) => participant.participantId === routing.defaultRecipientId);
-    if (leadCat) {
-      const target = buildCatTarget(leadCat);
-      return {
-        participant: toParticipantRef(target),
-        target,
-        defaultTargetReason: 'cat_led_recipient',
-        blockedReason: null,
-        note: null,
-      };
-    }
-
-    const leadCatName = activeParticipants
-      .find((participant) => participant.participantId === routing.defaultRecipientId)?.name
-      ?? state.cats.find((cat) => cat.id === routing.defaultRecipientId)?.name
-      ?? 'Lead Participant';
-    return {
-      participant: {
-        participantKind: 'cat',
-        participantId: routing.defaultRecipientId,
-        participantName: leadCatName,
-      },
-      target: null,
-      defaultTargetReason: 'cat_led_recipient',
-      blockedReason: 'missing_cat_led_recipient',
-      note: 'This chat no longer has an active lead Cat. Re-add the Cat or pick another lead before continuing.',
-    };
-  }
-
   const target = buildOrchestratorTarget(state, channel);
   return {
     participant: toParticipantRef(target),
@@ -243,8 +210,8 @@ function createRouteResolution(input: {
  *
  * Routing rules:
  * - No mentions + boss_chat → Boss Cat (orchestrator) via room_default
- * - No mentions + cat_led → lead Cat via room_default
  * - No mentions + direct_cat_chat → lead Cat via room_default
+ * - No mentions + participant room → Boss Cat (orchestrator) via room_default
  * - @Cat_A → Cat_A via explicit_single
  * - @Cat_A @Cat_B → both via explicit_multi
  * - @UnknownName → appears in unresolvedMentions

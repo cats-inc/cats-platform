@@ -347,7 +347,7 @@ test('Chat solo turns bind provider-agent observation to the selected execution 
   assert.equal(prepared.initialResolution.targets[0]?.participantKind, 'orchestrator');
   assert.equal(actorProvider(prepared), 'claude');
   assert.equal(
-    prepared.providerAgentObservation?.contextRefs.includes('chat-composer-mode:solo'),
+    prepared.providerAgentObservation?.contextRefs.includes('chat-channel-intent:provider_solo_thread'),
     true,
   );
 });
@@ -494,7 +494,7 @@ test('Chat parallel member turns keep solo execution targets inside the provider
   assert.equal(prepared.initialResolution.targets[0]?.participantKind, 'orchestrator');
   assert.equal(summaryValue(prepared, 'routing_target_count'), 1);
   assert.equal(
-    prepared.providerAgentObservation?.contextRefs.includes('chat-composer-mode:solo'),
+    prepared.providerAgentObservation?.contextRefs.includes('chat-channel-intent:provider_solo_thread'),
     true,
   );
 });

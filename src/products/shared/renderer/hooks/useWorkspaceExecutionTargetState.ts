@@ -32,9 +32,13 @@ import {
   fetchProviderRegistry,
 } from '../api/providers.js';
 import {
+  isSoloThreadChannel,
+} from '../../../chat/shared/channelTopology.js';
+import {
   createExecutionTargetValueFromProviderSelection,
   type ExecutionTargetValue,
 } from '../components/ExecutionTarget.js';
+import type { RoomRoutingMode } from '../../../../shared/roomRouting.js';
 
 export interface ExecutionTargetDefaultsLike {
   provider?: string | null;
@@ -63,7 +67,15 @@ export interface WorkspaceExecutionTargetChatLike {
 
 export interface WorkspaceExecutionTargetChannelLike {
   id: string;
+  channelKind?: 'boss_thread' | 'direct_lane' | 'multi_cat_room' | null;
   composerMode?: string | null;
+  roomRouting?: {
+    mode?: RoomRoutingMode | null;
+  } | null;
+  assignedParticipants?: readonly Array<{ participantId: string; status?: string | null }> | null;
+  assignedCats?: readonly Array<{ catId: string; status?: string | null }> | null;
+  participantAssignments?: readonly Array<{ participantId: string; status?: string | null }> | null;
+  catAssignments?: readonly Array<{ catId: string; status?: string | null }> | null;
   pendingProvider?: string | null;
   pendingModel?: string | null;
   pendingInstance?: string | null;
@@ -504,7 +516,7 @@ export function toSoloChannelExecutionTargetValue<
   readyChat: TChat | null,
   readySelectedChannel: TSelectedChannel | null,
 ): ExecutionTargetValue | null {
-  if (!readyChat || !readySelectedChannel || readySelectedChannel.composerMode !== 'solo') {
+  if (!readyChat || !readySelectedChannel || !isSoloThreadChannel(readySelectedChannel)) {
     return null;
   }
 
@@ -622,7 +634,7 @@ export function useWorkspaceExecutionTargetState<
   ]);
 
   useEffect(() => {
-    if (!readySelectedChannel || readySelectedChannel.composerMode !== 'solo') {
+    if (!readySelectedChannel || !isSoloThreadChannel(readySelectedChannel)) {
       return;
     }
 
@@ -674,7 +686,7 @@ export function useWorkspaceExecutionTargetState<
   ]);
 
   useEffect(() => {
-    if (state.status !== 'ready' || readySelectedChannel?.composerMode !== 'solo') {
+    if (state.status !== 'ready' || !readySelectedChannel || !isSoloThreadChannel(readySelectedChannel)) {
       return;
     }
 

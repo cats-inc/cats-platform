@@ -117,9 +117,9 @@ test('resolveConversationMode keeps direct lanes topology-first even when room m
   assert.equal(resolveConversationMode(channel), 'direct_lane');
 });
 
-test('resolveConversationMode distinguishes solo, cat-led, and multi-cat thread semantics', () => {
+test('resolveConversationMode distinguishes solo, participant, and multi-participant thread semantics', () => {
   const soloThread = createChannel();
-  const catLedThread = createChannel({
+  const participantThread = createChannel({
     composerMode: 'cat_led',
     assignedCats: [{
       catId: 'cat-1',
@@ -162,11 +162,11 @@ test('resolveConversationMode distinguishes solo, cat-led, and multi-cat thread 
     composerMode: 'cat_led',
     assignedCats: [
       {
-        ...catLedThread.assignedCats[0],
+        ...participantThread.assignedCats[0],
         catId: 'cat-1',
       },
       {
-        ...catLedThread.assignedCats[0],
+        ...participantThread.assignedCats[0],
         catId: 'cat-2',
         name: 'Reviewer',
       },
@@ -174,7 +174,7 @@ test('resolveConversationMode distinguishes solo, cat-led, and multi-cat thread 
   });
 
   assert.equal(resolveConversationMode(soloThread), 'solo_thread');
-  assert.equal(resolveConversationMode(catLedThread), 'cat_led_thread');
+  assert.equal(resolveConversationMode(participantThread), 'participant_thread');
   assert.equal(resolveConversationMode(multiCatRoom), 'multi_cat_room');
 });
 

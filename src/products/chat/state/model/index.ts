@@ -22,6 +22,7 @@ import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js'
 import { defaultCatProducts, hasPlatformSurface } from '../../../../shared/platformSurfaces.js';
 import {
   inferChannelKind,
+  isProviderSoloThreadChannel,
   normalizeChannelAssignmentsForRoomMode,
   resolveChannelKind,
   resolveDirectLaneRecipientId,
@@ -278,7 +279,7 @@ function describeCreatedRoom(
     return `direct chat with ${activeParticipantNames[0] ?? 'the selected participant'}`;
   }
 
-  if (channel.composerMode === 'solo' && channel.pendingProvider) {
+  if (isProviderSoloThreadChannel(channel) && channel.pendingProvider) {
     return `solo chat with ${buildParallelChatMemberLabel({
       provider: channel.pendingProvider,
       instance: channel.pendingInstance,

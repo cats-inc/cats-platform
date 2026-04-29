@@ -134,6 +134,31 @@ test('solo channel execution target falls back to the global orchestrator when p
     toSoloChannelExecutionTargetValue(null, null),
     null,
   );
+  assert.equal(
+    toSoloChannelExecutionTargetValue(
+      {
+        newChatDefaults: null,
+        globalOrchestrator: {
+          executionTarget: {
+            provider: 'claude',
+            model: 'opus',
+            instance: 'native',
+          },
+          executionModelSelection: null,
+        },
+      },
+      {
+        id: 'channel-participant',
+        composerMode: 'cat_led',
+        assignedCats: [{ catId: 'cat-1', status: 'active' }],
+        pendingProvider: 'codex',
+        pendingModel: null,
+        pendingInstance: null,
+        pendingModelSelection: null,
+      },
+    ),
+    null,
+  );
 
   assert.deepEqual(
     toSoloChannelExecutionTargetValue(

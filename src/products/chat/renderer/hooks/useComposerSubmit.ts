@@ -24,6 +24,7 @@ import type { AppShellPayload } from '../../api/contracts';
 import {
   normalizeSelectedChannelView,
 } from '../../shared/channelEntry';
+import { isSoloThreadChannel } from '../../shared/channelTopology.js';
 import {
   isDirectLaneSelectedForCat,
   prepareWorkspaceSendContext,
@@ -517,7 +518,7 @@ export function useComposerSubmit(options: {
         updateDraftExecutionTargetIfChanged(effectiveDraftExecutionTarget);
       } else if (
         initialSelectedChannel?.id === channelId
-        && initialSelectedChannel.composerMode === 'solo'
+        && isSoloThreadChannel(initialSelectedChannel)
       ) {
         effectiveSoloChannelExecutionTarget = await resolveDispatchExecutionTargetValue(
           soloChannelExecutionTarget,

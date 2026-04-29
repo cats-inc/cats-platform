@@ -47,6 +47,7 @@ import { refreshDerivedMemoryLayers } from '../memoryLayers.js';
 import {
   resolveNextPendingExecutionTarget,
 } from '../pendingExecutionTarget.js';
+import { isProviderSoloThreadChannel } from '../../shared/channelTopology.js';
 import {
   type RuntimeTransportContext,
 } from '../runtimeTargeting.js';
@@ -298,7 +299,7 @@ export async function beginChannelMessageDispatch(
   let nextState = state;
   const channelBeforeMessage = requireChannel(nextState, channelId);
   const nextTarget = resolveNextPendingExecutionTarget(channelBeforeMessage, payload);
-  const pendingTargetChanged = channelBeforeMessage.composerMode === 'solo'
+  const pendingTargetChanged = isProviderSoloThreadChannel(channelBeforeMessage)
     && (
       nextTarget.provider !== channelBeforeMessage.pendingProvider
       || nextTarget.model !== channelBeforeMessage.pendingModel

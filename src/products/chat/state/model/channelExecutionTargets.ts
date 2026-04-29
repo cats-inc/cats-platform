@@ -10,7 +10,7 @@ import {
   cloneProviderModelSelection,
   type ProviderModelSelection,
 } from '../../../../shared/providerSelection.js';
-import { isDirectLaneChannel } from '../../shared/channelTopology.js';
+import { isSoloThreadChannel } from '../../shared/channelTopology.js';
 import {
   resolveChannelParticipantAssignments,
   resolveParticipantExecutionAssignments,
@@ -176,7 +176,7 @@ export function resetSoloChannelContinuity(
 ): ChatState {
   const nextState = cloneState(state);
   const channel = requireChannel(nextState, channelId);
-  if (channel.composerMode !== 'solo' || isDirectLaneChannel(channel)) {
+  if (!isSoloThreadChannel(channel)) {
     throw new Error('Start fresh is currently only supported for solo chats.');
   }
 

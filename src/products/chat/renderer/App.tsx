@@ -78,6 +78,7 @@ import {
   useWorkspaceDirectLaneModelSave,
   useWorkspaceResetChannelContinuity,
 } from '../../shared/renderer/hooks/useWorkspaceAppShellChannelActions.js';
+import { isSoloThreadChannel } from '../shared/channelTopology.js';
 import {
   useWorkspaceExecutionTargetState,
 } from '../../shared/renderer/hooks/useWorkspaceExecutionTargetState.js';
@@ -1400,15 +1401,19 @@ export default function App() {
                   onApprovalDecision,
                   onChoiceSubmit,
                   onStartFresh:
-                    visibleChatChannelId && selectedChannel?.composerMode === 'solo'
+                    visibleChatChannelId && selectedChannel && isSoloThreadChannel(selectedChannel)
                       ? () => onStartFreshChannel(visibleChatChannelId)
                       : undefined,
                   onOperatorAction,
                   autoResize,
                   selectedExecutionTarget:
-                    selectedChannel?.composerMode === 'solo' ? soloChannelExecutionTarget : undefined,
+                    selectedChannel && isSoloThreadChannel(selectedChannel)
+                      ? soloChannelExecutionTarget
+                      : undefined,
                   onExecutionTargetChange:
-                    selectedChannel?.composerMode === 'solo' ? setSoloChannelExecutionTarget : undefined,
+                    selectedChannel && isSoloThreadChannel(selectedChannel)
+                      ? setSoloChannelExecutionTarget
+                      : undefined,
                   onDirectLaneExecutionTargetChange: onDirectLaneModelSave,
                   activeWorkflowShape,
                   onToggleActiveWorkflowShape: () =>

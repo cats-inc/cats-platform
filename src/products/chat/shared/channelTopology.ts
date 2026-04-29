@@ -8,9 +8,16 @@ import type { RoomRoutingMode } from '../../../shared/roomRouting.js';
 type ChannelParticipantTopologyRef = Pick<
   ChannelParticipantAssignment,
   'participantId' | 'status'
-> | Pick<ChannelCatAssignment, 'catId' | 'status'>;
+> | Pick<ChannelCatAssignment, 'catId' | 'status'> | {
+  participantId: string;
+  status?: string | null;
+} | {
+  catId: string;
+  status?: string | null;
+};
 type ChannelTopologyCarrier = {
   channelKind?: ChatChannelKind | null;
+  pendingProvider?: string | null;
   roomRouting?: { mode?: RoomRoutingMode | null } | null;
   participantAssignments?: readonly ChannelParticipantTopologyRef[] | null;
   catAssignments?: readonly ChannelParticipantTopologyRef[] | null;
@@ -100,6 +107,18 @@ function readChannelTopologyParticipants(
   return channel.catAssignments ?? [];
 }
 
+export function countActiveChannelParticipants(
+  channel: ChannelTopologyCarrier,
+): number {
+  return countActiveParticipants(readChannelTopologyParticipants(channel));
+}
+
+export function hasActiveChannelParticipants(
+  channel: ChannelTopologyCarrier,
+): boolean {
+  return countActiveChannelParticipants(channel) > 0;
+}
+
 export function resolveChannelKindForChannel(
   channel: ChannelTopologyCarrier,
 ): ChatChannelKind {
@@ -112,6 +131,26 @@ export function resolveChannelKindForChannel(
 
 export function isDirectLaneChannel(channel: ChannelTopologyCarrier): boolean {
   return resolveChannelKindForChannel(channel) === 'direct_lane';
+}
+
+export function isProviderSoloThreadChannel(channel: ChannelTopologyCarrier): boolean {
+  return !isDirectLaneChannel(channel)
+    && !hasActiveChannelParticipants(channel)
+    && Boolean(channel.pendingProvider?.trim());
+}
+
+export function isSoloThreadChannel(channel: ChannelTopologyCarrier): boolean {
+  return !isDirectLaneChannel(channel)
+    && !hasActiveChannelParticipants(channel);
+}
+
+export function isParticipantRoomChannel(channel: ChannelTopologyCarrier): boolean {
+  return !isDirectLaneChannel(channel)
+    && hasActiveChannelParticipants(channel);
+}
+
+export function supportsParticipantAudienceSelection(channel: ChannelTopologyCarrier): boolean {
+  return isParticipantRoomChannel(channel);
 }
 
 export function isDirectLaneSummary(

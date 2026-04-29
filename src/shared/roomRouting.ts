@@ -27,14 +27,14 @@ export type RoomRouteSelectionKind =
 
 export type RoomRouteBlockedReason =
   | 'missing_direct_chat_recipient'
-  | 'missing_cat_led_recipient'
+  | 'missing_default_recipient'
   | 'no_valid_targets'
   | 'user_cancelled';
 
 export type RoomRouteDefaultTargetReason =
   | 'boss_chat_default'
   | 'direct_chat_recipient'
-  | 'cat_led_recipient';
+  | 'default_recipient';
 
 export type RoomRoutingTurnStatus =
   | 'idle'

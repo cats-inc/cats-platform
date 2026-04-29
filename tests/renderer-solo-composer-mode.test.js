@@ -23,7 +23,7 @@ test('persisted chat view wires the solo audience chip and suppresses visible bo
   );
   assert.match(
     appSource,
-    /selectedChannel\?\.composerMode === 'solo'/,
+    /isSoloThreadChannel\(selectedChannel\)/,
     'App should pass solo execution-target state into the persisted chat view',
   );
   assert.match(
@@ -37,4 +37,3 @@ test('persisted chat view wires the solo audience chip and suppresses visible bo
     'ChatView should branch on the shared conversation-mode helper when rendering chat modes',
   );
 });
-
