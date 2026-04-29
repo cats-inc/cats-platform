@@ -198,5 +198,6 @@ commits.
 ---
 
 *Accepted: 2026-04-29*
-*Amended: 2026-04-30 — corrected the legacy routing-result location: `missing_cat_led_recipient` / `cat_led_recipient` lived in the product-side room-routing normalizer, not in the frozen shared `src/shared/roomRouting.ts` contract; also recorded that implementation landed as one consolidated cleanup after product surfaces no longer depended on `composerMode`, so the slices are dependency order rather than a commit-splitting requirement.*
+*Amended: 2026-04-30 — corrected the legacy routing-result location: `missing_cat_led_recipient` / `cat_led_recipient` lived in the product-side room-routing normalizer, not in the frozen shared `src/shared/roomRouting.ts` contract.*
+*Amended: 2026-04-30 — recorded that implementation landed as one consolidated cleanup after product surfaces no longer depended on `composerMode`, so the slices are dependency order rather than a commit-splitting requirement.*
 *Proposed by: Claude, after the owner flagged that `cat_led` still bypasses the orchestrator's deterministic routing.*

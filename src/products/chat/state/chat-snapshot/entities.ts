@@ -59,15 +59,32 @@ import {
   readStringArray,
 } from './shared.js';
 
+const LEGACY_MESSAGE_METADATA_FIELDS = new Set([
+  'composerMode',
+]);
+
+function hasLegacyMessageMetadata(metadataRecord: Record<string, unknown>): boolean {
+  for (const field of LEGACY_MESSAGE_METADATA_FIELDS) {
+    if (field in metadataRecord) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function normalizeMessage(rawMessage: unknown, channelId: string): ChatMessage {
   const messageRecord = asRecord(rawMessage);
   const usageRecord = asRecord(messageRecord?.usage);
   const rawSenderKind = readString(messageRecord?.senderKind, 'system');
   const normalizedChoiceResponse = normalizeChatMessageChoiceResponse(messageRecord?.choiceResponse);
   const metadataRecord = asRecord(messageRecord?.metadata) ?? {};
-  const normalizedMetadata = Object.fromEntries(
-    Object.entries(metadataRecord).filter(([key]) => key !== 'composerMode'),
-  );
+  const normalizedMetadata = hasLegacyMessageMetadata(metadataRecord)
+    ? Object.fromEntries(
+        Object.entries(metadataRecord).filter(
+          ([key]) => !LEGACY_MESSAGE_METADATA_FIELDS.has(key),
+        ),
+      )
+    : metadataRecord;
   const senderKind = (
     rawSenderKind === 'user'
     || rawSenderKind === 'agent'

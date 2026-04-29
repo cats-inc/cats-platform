@@ -26,6 +26,7 @@ These important documents live in the project root:
 | [setup-guide.md](./setup-guide.md) | Complete | Environment setup |
 | [testing.md](./testing.md) | Complete | Current testing strategy and coverage boundaries |
 | [deployment.md](./deployment.md) | Complete | Current local deployment plus planned desktop-first packaged topology and onboarding direction |
+| [release-notes.md](./release-notes.md) | Complete | Operator-facing behavior changes and migration notes |
 | [product-integration-guide.md](./product-integration-guide.md) | Complete | Product registration plus unified engine, materialization, agent/transport vocabulary, conversational-vs-operational projection rules, `MY CATS` platform-home/subset rules, and optional-capability integration rules for parallel Chat/Work/Code delivery |
 | [agent-control-surfaces.md](./agent-control-surfaces.md) | Draft | Parent registry for mandatory structured agent/runtime control surfaces: decision envelopes, tool calls, finalization envelopes, lifecycle events, and evidence events |
 | [tool-calls.md](./tool-calls.md) | Draft | Central registry for Cats-owned agent/runtime tool call contracts, including `declare_artifact` |
@@ -57,6 +58,7 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [Release Notes](./release-notes.md)
 - [PLAN-087](./plans/PLAN-087-cats-app-package-interface-rollout.md)
 - [SPEC-098](./specs/SPEC-098-cats-app-package-and-extension-interface.md)
 - [ADR-094](./decisions/094-adopt-cats-app-packages-as-extension-boundary.md)
