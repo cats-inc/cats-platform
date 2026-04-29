@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   KeyboardAvoidingView,
   Platform,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   TextInput,
@@ -29,39 +30,93 @@ const COMPOSER_PLACEHOLDER: Record<ChatViewProductMode, string> = {
   work: 'Describe the work item…',
 };
 
+const KEYBOARD_VERTICAL_OFFSET_IOS = 88;
+
 /**
  * Shared mobile ChatView. PLAN-084 Phase 4a builds the visual shell
- * (bubble list + composer) against fixture data. Phase 4b wires the
- * conversation list to the live chat store and Phase 4c wires the
- * composer to the real send path. The same component is consumed by
- * Phase-5 Code / Work tabs through `productMode`.
+ * against fixture data; Phase 4b will swap in live data; Phase 4c will
+ * wire the composer's send path. Phase 4d adds scroll-to-bottom and
+ * pull-to-refresh polish on top of the shell. The same component is
+ * consumed by the Phase-5 Code / Work tabs through `productMode`.
  */
 export function ChatView({ channelId, productMode }: ChatViewProps) {
   const conversation = useMemo(
     () => getFixtureConversation(channelId, productMode),
     [channelId, productMode],
   );
+  const messageCount = conversation.messages.length;
 
+  const listRef = useRef<FlatList<FixtureMessage>>(null);
   const [draft, setDraft] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
   const canSubmit = draft.trim().length > 0;
+
+  const scrollToBottom = (animated: boolean) => {
+    if (messageCount === 0) {
+      return;
+    }
+    listRef.current?.scrollToIndex({ index: messageCount - 1, animated });
+  };
+
+  useEffect(() => {
+    if (messageCount === 0) {
+      return;
+    }
+    // Defer one frame so the list has measured its content before we ask
+    // it to scroll. Without this, the initial scroll-to-bottom on a fresh
+    // mount no-ops because the list reports zero offset.
+    const timer = setTimeout(() => scrollToBottom(false), 0);
+    return () => clearTimeout(timer);
+  }, [channelId, messageCount]);
 
   const handleSend = () => {
     // Phase-4c will wire this to the real send path. Until then, just
     // clear the draft so the composer feels responsive in dev builds.
     setDraft('');
+    scrollToBottom(true);
+  };
+
+  const handleRefresh = () => {
+    // Phase-4b will refresh the conversation against the live store.
+    // For the fixture phase, simulate the refresh state for ~600 ms so
+    // the gesture is visible during dev.
+    setRefreshing(true);
+    const timer = setTimeout(() => setRefreshing(false), 600);
+    return () => clearTimeout(timer);
   };
 
   return (
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+      keyboardVerticalOffset={
+        Platform.OS === 'ios' ? KEYBOARD_VERTICAL_OFFSET_IOS : 0
+      }
     >
       <FlatList
+        ref={listRef}
         style={styles.list}
         contentContainerStyle={styles.listContent}
         data={conversation.messages}
         keyExtractor={messageKey}
+        onScrollToIndexFailed={({ index }) => {
+          // Falls back when the list cannot scroll precisely yet. Retry
+          // on the next frame after a soft offset settle.
+          const timer = setTimeout(() => {
+            listRef.current?.scrollToOffset({
+              offset: index * 80,
+              animated: false,
+            });
+          }, 50);
+          return () => clearTimeout(timer);
+        }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor={colors.accent.primary}
+          />
+        }
         renderItem={({ item }) => (
           <MessageBubbleItem channelId={channelId} message={item} />
         )}

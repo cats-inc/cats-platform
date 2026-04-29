@@ -9,10 +9,8 @@ import {
 } from 'react-native';
 
 import { MessageBody } from '../../src/renderer/MessageBody';
+import { MessageBubble } from '../../src/renderer/MessageBubble';
 import { sampleBubbles } from '../../src/renderer/sample-bubbles';
-import {
-  messageBubbleStyles as bubbleStyles,
-} from '../../src/renderer/styles/messageBody';
 import { colors, spacing, typography } from '../../src/renderer/theme';
 
 const HARNESS_CHANNEL_ID = 'harness-channel';
@@ -58,28 +56,14 @@ export default function BubbleHarnessScreen() {
         {sampleBubbles.map((sample) => (
           <View key={sample.id} style={styles.section}>
             <Text style={styles.sectionLabel}>{sample.description}</Text>
-            <View
-              style={[
-                bubbleStyles.row,
-                sample.role === 'user' ? bubbleStyles.rowUser : bubbleStyles.rowAssistant,
-              ]}
-            >
-              <View
-                style={[
-                  bubbleStyles.bubbleBase,
-                  sample.role === 'user'
-                    ? bubbleStyles.bubbleUser
-                    : bubbleStyles.bubbleAssistant,
-                ]}
-              >
-                <MessageBody
-                  segments={sample.segments}
-                  attachments={sample.attachments}
-                  channelId={HARNESS_CHANNEL_ID}
-                  resolveAttachmentUrl={FIXTURE_RESOLVER}
-                />
-              </View>
-            </View>
+            <MessageBubble role={sample.role}>
+              <MessageBody
+                segments={sample.segments}
+                attachments={sample.attachments}
+                channelId={HARNESS_CHANNEL_ID}
+                resolveAttachmentUrl={FIXTURE_RESOLVER}
+              />
+            </MessageBubble>
           </View>
         ))}
       </ScrollView>
