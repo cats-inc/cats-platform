@@ -17,9 +17,13 @@ export interface RuntimeInvocationEnrichmentInput {
   context?: RuntimeSessionInvocationContext;
 }
 
+type DistributiveOmit<TInput, TKey extends keyof any> = TInput extends unknown
+  ? Omit<TInput, TKey>
+  : never;
+
 export type RuntimeInvocationEnrichmentResult<
   TInput extends RuntimeInvocationEnrichmentInput,
-> = TInput & RuntimeInvocationEnrichmentInput;
+> = DistributiveOmit<TInput, 'instructions' | 'context'> & RuntimeInvocationEnrichmentInput;
 
 export interface RuntimeInvocationEnrichmentContext {
   phase: RuntimeInvocationEnrichmentPhase;
@@ -31,8 +35,29 @@ export const RuntimeEnricherPriority = {
   POST_PROCESS: 100,
 } as const;
 
+export interface RuntimeInvocationContextContribution
+  extends Omit<Partial<RuntimeSessionInvocationContext>, 'labels' | 'metadata' | 'workspace'> {
+  labels?: readonly string[] | null;
+  metadata?: Record<string, unknown> | null;
+  workspace?: RuntimeSessionInvocationContext['workspace'] | null;
+}
+
+export interface RuntimeInvocationEnrichmentContributionFields {
+  /**
+   * `undefined` means "leave unchanged"; `null` explicitly clears the
+   * instruction text for the outgoing runtime invocation.
+   */
+  instructions?: string | null;
+  /**
+   * Context contributions are merged by the platform. Labels are appended with
+   * de-duplication, metadata is merged by top-level key, and workspace fields
+   * are merged shallowly. `null` and `undefined` leave context unchanged.
+   */
+  context?: RuntimeInvocationContextContribution | null;
+}
+
 export type RuntimeInvocationEnrichmentContribution =
-  | Partial<RuntimeInvocationEnrichmentInput>
+  | RuntimeInvocationEnrichmentContributionFields
   | null
   | undefined;
 
@@ -45,7 +70,7 @@ export interface RuntimeInvocationEnricher {
   priority?: number;
   enrich(
     channel: RuntimeInvocationEnrichmentChannel,
-    input: Readonly<RuntimeInvocationEnrichmentInput>,
+    input: RuntimeInvocationEnrichmentInput,
     context: RuntimeInvocationEnrichmentContext,
   ): RuntimeInvocationEnrichmentContribution;
   collectAssistantMetadata?(
@@ -73,7 +98,104 @@ function getOrderedRuntimeInvocationEnrichers(): RuntimeInvocationEnricher[] {
   });
 }
 
-function applyRuntimeInvocationEnrichmentContribution<
+function cloneRuntimeSessionInvocationContext(
+  context: RuntimeSessionInvocationContext | undefined,
+): RuntimeSessionInvocationContext | undefined {
+  return context ? structuredClone(context) as RuntimeSessionInvocationContext : undefined;
+}
+
+function cloneRuntimeInvocationEnricherInput(
+  input: RuntimeInvocationEnrichmentInput,
+): RuntimeInvocationEnrichmentInput {
+  return {
+    ...(input.instructions !== undefined ? { instructions: input.instructions } : {}),
+    ...(input.context ? { context: cloneRuntimeSessionInvocationContext(input.context) } : {}),
+  };
+}
+
+function cloneRuntimeInvocationEnrichmentResult<
+  TInput extends RuntimeInvocationEnrichmentInput,
+>(
+  input: TInput,
+): RuntimeInvocationEnrichmentResult<TInput> {
+  return {
+    ...input,
+    ...(input.context ? { context: cloneRuntimeSessionInvocationContext(input.context) } : {}),
+  } as unknown as RuntimeInvocationEnrichmentResult<TInput>;
+}
+
+function mergeDefinedProperties<TRecord extends Record<string, unknown>>(
+  left: TRecord | undefined,
+  right: TRecord | undefined,
+): TRecord | undefined {
+  if (!right) {
+    return left ? ({ ...left } as TRecord) : undefined;
+  }
+
+  const merged: Record<string, unknown> = { ...(left ?? {}) };
+  for (const [key, value] of Object.entries(right)) {
+    if (value !== undefined) {
+      merged[key] = value;
+    }
+  }
+  return merged as TRecord;
+}
+
+function mergeRuntimeInvocationContextContribution(
+  current: RuntimeSessionInvocationContext | undefined,
+  contribution: RuntimeInvocationContextContribution | null | undefined,
+): RuntimeSessionInvocationContext | undefined {
+  if (!contribution) {
+    return current ? cloneRuntimeSessionInvocationContext(current) : undefined;
+  }
+
+  const merged: RuntimeSessionInvocationContext = {
+    ...(current ?? {}),
+  };
+  if (contribution.source !== undefined) {
+    merged.source = contribution.source;
+  }
+  if (contribution.reason !== undefined) {
+    merged.reason = contribution.reason;
+  }
+  if (contribution.taskId !== undefined) {
+    merged.taskId = contribution.taskId;
+  }
+  if (contribution.issueId !== undefined) {
+    merged.issueId = contribution.issueId;
+  }
+  if (contribution.commentId !== undefined) {
+    merged.commentId = contribution.commentId;
+  }
+  if (contribution.approvalId !== undefined) {
+    merged.approvalId = contribution.approvalId;
+  }
+
+  if (contribution.workspace) {
+    merged.workspace = mergeDefinedProperties(
+      current?.workspace,
+      contribution.workspace,
+    );
+  } else if (current?.workspace) {
+    merged.workspace = { ...current.workspace };
+  }
+
+  if (contribution.labels) {
+    merged.labels = [...new Set([...(current?.labels ?? []), ...contribution.labels])];
+  } else if (current?.labels) {
+    merged.labels = [...current.labels];
+  }
+
+  if (contribution.metadata) {
+    merged.metadata = mergeDefinedProperties(current?.metadata, contribution.metadata);
+  } else if (current?.metadata) {
+    merged.metadata = { ...current.metadata };
+  }
+
+  return merged;
+}
+
+export function mergeRuntimeInvocationEnrichmentContribution<
   TInput extends RuntimeInvocationEnrichmentInput,
 >(
   current: RuntimeInvocationEnrichmentResult<TInput>,
@@ -83,10 +205,20 @@ function applyRuntimeInvocationEnrichmentContribution<
     return current;
   }
 
-  return {
-    ...current,
-    ...contribution,
-  };
+  const next: RuntimeInvocationEnrichmentResult<TInput> = { ...current };
+  if (
+    Object.prototype.hasOwnProperty.call(contribution, 'instructions')
+    && contribution.instructions !== undefined
+  ) {
+    next.instructions = contribution.instructions;
+  }
+  if (
+    Object.prototype.hasOwnProperty.call(contribution, 'context')
+    && contribution.context
+  ) {
+    next.context = mergeRuntimeInvocationContextContribution(current.context, contribution.context);
+  }
+  return next;
 }
 
 export function enrichRuntimeInvocation<TInput extends RuntimeInvocationEnrichmentInput>(
@@ -94,12 +226,12 @@ export function enrichRuntimeInvocation<TInput extends RuntimeInvocationEnrichme
   input: TInput,
   context: RuntimeInvocationEnrichmentContext,
 ): RuntimeInvocationEnrichmentResult<TInput> {
-  let current: RuntimeInvocationEnrichmentResult<TInput> = { ...input };
+  let current = cloneRuntimeInvocationEnrichmentResult(input);
 
   for (const enricher of getOrderedRuntimeInvocationEnrichers()) {
-    current = applyRuntimeInvocationEnrichmentContribution(
+    current = mergeRuntimeInvocationEnrichmentContribution(
       current,
-      enricher.enrich(channel, current, context),
+      enricher.enrich(channel, cloneRuntimeInvocationEnricherInput(current), context),
     );
   }
 

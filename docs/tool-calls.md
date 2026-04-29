@@ -174,9 +174,14 @@ order, with equal priorities ordered by id. Products should use the exported
 priority bands (`EARLY = -100`, `NORMAL = 0`, `POST_PROCESS = 100`) rather than
 inventing ad hoc values. Enrichers return partial contributions only; the
 platform merges those contributions onto the original runtime invocation so a
-product hook cannot accidentally drop provider/model/workspace fields. Assistant
-metadata contributions are stored under each enricher id rather than flattened
-into Chat metadata.
+product hook cannot accidentally drop provider/model/workspace fields. Context
+contributions are merged by platform contract: labels append with
+de-duplication, metadata merges by top-level key, workspace fields merge
+shallowly, `undefined` means "leave unchanged", and `instructions: null`
+explicitly clears the outgoing instruction text. Each enricher receives a cloned
+view of the current invocation context, so accidental mutation cannot alter
+later enrichers or the final invocation. Assistant metadata contributions are
+stored under each enricher id rather than flattened into Chat metadata.
 
 When a chat/channel originates from Cats Code (`originSurface = "code"`),
 activation of `+New code`, `+Team code`, or a `+Peer code` member channel

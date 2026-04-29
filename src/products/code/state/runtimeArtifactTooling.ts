@@ -5,12 +5,14 @@ import type {
 } from '../../../platform/runtime/client.js';
 import {
   RuntimeEnricherPriority,
+  mergeRuntimeInvocationEnrichmentContribution,
   registerRuntimeInvocationEnricher,
   type RuntimeInvocationEnricher,
   type RuntimeInvocationEnrichmentChannel,
   type RuntimeInvocationEnrichmentContribution,
   type RuntimeInvocationEnrichmentContext,
   type RuntimeInvocationEnrichmentInput,
+  type RuntimeInvocationEnrichmentResult,
 } from '../../../platform/runtime/invocationEnrichment.js';
 import {
   CODE_ARTIFACT_DECLARATION_ONBOARDING_BLOCK_VERSION,
@@ -63,7 +65,7 @@ export type RuntimeInvocationWithCodeArtifactTooling = RuntimeInvocationEnrichme
 export type RuntimeInvocationWithCodeArtifactToolingResult<
   TInput extends RuntimeInvocationWithCodeArtifactTooling =
     RuntimeInvocationWithCodeArtifactTooling,
-> = TInput;
+> = RuntimeInvocationEnrichmentResult<TInput>;
 
 export interface CodeArtifactRuntimeToolingMetadata {
   enabled: true;
@@ -199,7 +201,7 @@ export function enrichCodeArtifactRuntimeInvocation(
     channel,
     enrichmentContext,
   );
-  return contribution ? { ...input, ...contribution } : { ...input };
+  return mergeRuntimeInvocationEnrichmentContribution(input, contribution);
 }
 
 function buildCodeArtifactRuntimeInvocationContribution(

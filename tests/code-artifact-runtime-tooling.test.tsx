@@ -53,6 +53,7 @@ test('Code artifact runtime tooling attaches only to Code-origin active sessions
   assert.equal(metadata?.toolName, 'declare_artifact');
   assert.equal(metadata?.sourceChannelId, 'channel-code');
   assert.equal(metadata?.workspacePath, 'C:/repo/cats-platform');
+  assert.equal(codeInvocation.context?.metadata?.channelId, 'channel-code');
 
   const typedInvocation = enrichCodeArtifactRuntimeInvocation(
     {
@@ -313,6 +314,156 @@ test('runtime invocation registry preserves original payload fields when applyin
     assert.equal(enriched.model, 'claude-opus-4-6');
     assert.equal(enriched.workspaceAccess, 'read_only');
     assert.equal(enriched.instructions, 'Injected instructions.');
+  } finally {
+    clearRuntimeInvocationEnrichers();
+  }
+});
+
+test('runtime invocation registry merges context labels and metadata by platform contract', () => {
+  clearRuntimeInvocationEnrichers();
+  try {
+    registerRuntimeInvocationEnricher({
+      id: 'code-context-enricher',
+      priority: RuntimeEnricherPriority.NORMAL,
+      enrich() {
+        return {
+          context: {
+            labels: ['product:code'],
+            metadata: {
+              codeArtifactDeclaration: { toolName: 'declare_artifact' },
+            },
+          },
+        };
+      },
+    });
+    registerRuntimeInvocationEnricher({
+      id: 'work-context-enricher',
+      priority: RuntimeEnricherPriority.POST_PROCESS,
+      enrich() {
+        return {
+          context: {
+            labels: ['product:work'],
+            metadata: {
+              workWorkflow: 'review',
+            },
+          },
+        };
+      },
+    });
+
+    const enriched = enrichRuntimeInvocation(
+      { originSurface: 'code' },
+      {
+        instructions: 'Original instructions.',
+        context: {
+          labels: ['existing'],
+          metadata: { channelId: 'channel-code' },
+        },
+      },
+      { phase: 'session_create' },
+    );
+
+    assert.deepEqual(enriched.context?.labels, ['existing', 'product:code', 'product:work']);
+    assert.deepEqual(enriched.context?.metadata, {
+      channelId: 'channel-code',
+      codeArtifactDeclaration: { toolName: 'declare_artifact' },
+      workWorkflow: 'review',
+    });
+  } finally {
+    clearRuntimeInvocationEnrichers();
+  }
+});
+
+test('runtime invocation registry isolates enricher input mutations', () => {
+  clearRuntimeInvocationEnrichers();
+  try {
+    registerRuntimeInvocationEnricher({
+      id: 'mutating-enricher',
+      enrich(_channel, input) {
+        const mutableInput = input as {
+          context?: {
+            labels?: string[];
+            metadata?: Record<string, unknown>;
+          };
+        };
+        mutableInput.context?.labels?.push('hijacked');
+        const declaration = mutableInput.context?.metadata?.codeArtifactDeclaration as
+          | { toolName?: string }
+          | undefined;
+        if (declaration) {
+          declaration.toolName = 'evil';
+        }
+        return null;
+      },
+    });
+
+    const enriched = enrichRuntimeInvocation(
+      { originSurface: 'code' },
+      {
+        instructions: 'Original instructions.',
+        context: {
+          labels: ['existing'],
+          metadata: {
+            codeArtifactDeclaration: { toolName: 'declare_artifact' },
+          },
+        },
+      },
+      { phase: 'session_create' },
+    );
+
+    assert.deepEqual(enriched.context?.labels, ['existing']);
+    assert.deepEqual(enriched.context?.metadata?.codeArtifactDeclaration, {
+      toolName: 'declare_artifact',
+    });
+  } finally {
+    clearRuntimeInvocationEnrichers();
+  }
+});
+
+test('runtime invocation registry defines null and undefined contribution semantics', () => {
+  clearRuntimeInvocationEnrichers();
+  try {
+    registerRuntimeInvocationEnricher({
+      id: 'noop-undefined-enricher',
+      enrich() {
+        return {
+          instructions: undefined,
+          context: undefined,
+        };
+      },
+    });
+    registerRuntimeInvocationEnricher({
+      id: 'clear-instructions-enricher',
+      priority: RuntimeEnricherPriority.POST_PROCESS,
+      enrich() {
+        return {
+          instructions: null,
+          context: {
+            metadata: {
+              ignored: undefined,
+              explicitNull: null,
+            },
+          },
+        };
+      },
+    });
+
+    const enriched = enrichRuntimeInvocation(
+      { originSurface: 'code' },
+      {
+        instructions: 'Original instructions.',
+        context: {
+          metadata: { channelId: 'channel-code' },
+        },
+      },
+      { phase: 'message_send' },
+    );
+
+    assert.equal(enriched.instructions, null);
+    assert.deepEqual(enriched.context?.metadata, {
+      channelId: 'channel-code',
+      explicitNull: null,
+    });
   } finally {
     clearRuntimeInvocationEnrichers();
   }
