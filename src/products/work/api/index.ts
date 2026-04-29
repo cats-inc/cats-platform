@@ -114,7 +114,7 @@ export interface WorkApiDependencies {
 }
 
 export type WorkApiRouteContext = RouteContext<WorkApiDependencies>;
-export type WorkSupervisedRunLifecycleAction = 'resume' | 'retry' | 'cancel';
+export type WorkSupervisedRunLifecycleAction = 'resume' | 'retry';
 
 export function createWorkDashboardPayload(
   core: Awaited<ReturnType<CoreStore['readCore']>>,
@@ -254,9 +254,7 @@ export async function createWorkSupervisedRunLifecycleActionPayload(
   });
   const current = toSupervisedRunLifecycleRecord(core, run);
   const lifecycle = applyWorkSupervisedRunLifecycleAction(service, current, action);
-  if (action === 'cancel') {
-    await requestRuntimeCancellationForRun(dependencies, run);
-  } else if (action === 'resume') {
+  if (action === 'resume') {
     await requestRuntimeResumeForRun(dependencies, run);
   }
 
@@ -265,9 +263,9 @@ export async function createWorkSupervisedRunLifecycleActionPayload(
     {
       id: run.id,
       title: run.title,
-      status: action === 'cancel' ? 'cancelled' : 'running',
+      status: 'running',
       startedAt: run.startedAt ?? evaluatedAt,
-      completedAt: action === 'cancel' ? evaluatedAt : null,
+      completedAt: null,
       summary: buildLifecycleActionRunSummary(action),
       metadata: writeWorkLifecycleActionMetadata(lifecycle.metadata, {
         action,
@@ -282,7 +280,7 @@ export async function createWorkSupervisedRunLifecycleActionPayload(
     {
       id: `${run.id}:lifecycle-${action}`,
       traceId: run.traceId ?? `trace-${run.id}`,
-      kind: action === 'cancel' ? 'outcome' : 'status',
+      kind: 'status',
       conversationId: run.conversationId,
       runId: run.id,
       taskId: task.id,
@@ -679,11 +677,6 @@ function applyWorkSupervisedRunLifecycleAction(
         return service.resume(current);
       case 'retry':
         return service.retry(current, { reason: 'operator requested retry' });
-      case 'cancel':
-        return service.cancel(current, {
-          requestedBy: 'operator:owner',
-          reasonCode: 'operator_decision',
-        });
       default: {
         const exhaustive: never = action;
         return exhaustive;
@@ -1200,18 +1193,6 @@ function appendRuntimeRunLoopEvidence(input: {
   );
 }
 
-async function requestRuntimeCancellationForRun(
-  dependencies: WorkApiDependencies,
-  run: CoreRunRecord,
-): Promise<void> {
-  const sessionId = readRuntimeBridgeSessionId(run);
-  if (!sessionId || !dependencies.runtimeClient) {
-    return;
-  }
-
-  await dependencies.runtimeClient.cancelSession(sessionId);
-}
-
 async function requestRuntimeResumeForRun(
   dependencies: WorkApiDependencies,
   run: CoreRunRecord,
@@ -1238,10 +1219,7 @@ function writeWorkLifecycleActionMetadata(
     ? {
         ...(existingBridge ?? {}),
         sessionId: update.sessionId,
-        status: update.action === 'cancel' ? 'cancel_requested' : 'started',
-        ...(update.action === 'cancel'
-          ? { cancelRequestedAt: update.occurredAt }
-          : {}),
+        status: 'started',
         ...(update.action === 'resume'
           ? { resumedAt: update.occurredAt }
           : {}),
@@ -1280,8 +1258,6 @@ function buildLifecycleActionRunSummary(action: WorkSupervisedRunLifecycleAction
       return 'Resumed supervised Work run.';
     case 'retry':
       return 'Retrying supervised Work run.';
-    case 'cancel':
-      return 'Cancelled supervised Work run.';
     default: {
       const exhaustive: never = action;
       return exhaustive;
@@ -1295,8 +1271,6 @@ function buildLifecycleActionTraceMessage(action: WorkSupervisedRunLifecycleActi
       return 'Supervised Work run resumed by operator.';
     case 'retry':
       return 'Supervised Work run retry requested by operator.';
-    case 'cancel':
-      return 'Supervised Work run cancellation requested by operator.';
     default: {
       const exhaustive: never = action;
       return exhaustive;

@@ -54,7 +54,7 @@ export const WORK_API_TASK_DETAIL_PATTERN = /^\/api\/work\/tasks\/([^/]+)$/u;
 export const WORK_API_TASK_SUPERVISED_RUN_PATTERN =
   /^\/api\/work\/tasks\/([^/]+)\/supervised-run$/u;
 export const WORK_API_TASK_SUPERVISED_RUN_ACTION_PATTERN =
-  /^\/api\/work\/tasks\/([^/]+)\/supervised-run\/(resume|retry|cancel)$/u;
+  /^\/api\/work\/tasks\/([^/]+)\/supervised-run\/(resume|retry)$/u;
 export const WORK_API_WORK_ITEM_DETAIL_PATTERN = /^\/api\/work\/work-items\/([^/]+)$/u;
 export const WORK_API_SCHEDULE_DETAIL_PATTERN = /^\/api\/work\/schedules\/([^/]+)$/u;
 export const WORK_API_SCHEDULE_TEST_FIRE_PATTERN =
@@ -84,7 +84,7 @@ export function buildWorkApiTaskSupervisedRunPath(taskId: string): string {
 
 export function buildWorkApiTaskSupervisedRunActionPath(
   taskId: string,
-  action: 'resume' | 'retry' | 'cancel',
+  action: 'resume' | 'retry',
 ): string {
   return `${buildWorkApiTaskSupervisedRunPath(taskId)}/${action}`;
 }

@@ -8,7 +8,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Phase 1–5 complete (legacy task supervised-run cancel cleanup deferred) |
+| **Status** | Complete |
 | **Owner** | Codex |
 | **Assigned To** | Unassigned |
 | **Reviewer** | User |
@@ -98,16 +98,18 @@ the old task-scoped route.
       - `200` for stopped/cancelled/already terminal
       - `404` for missing records
       - `409` for not-stoppable runs or blocked mission cancellation
-- [ ] Migrate `/api/work/tasks/:taskId/supervised-run/cancel`:
+- [x] Migrate `/api/work/tasks/:taskId/supervised-run/cancel`:
       - preferred: remove it after UI uses the canonical Run stop endpoint
       - temporary fallback: delegate to Run stop with
         `source: 'task_supervised_run_cancel'`
 
-      Carrying as Phase 5 follow-up — the renderer no longer calls the
-      task-scoped cancel after Phase 4, but the resume/retry actions
-      share the same handler so removing the route requires splitting
-      the cancel branch first.
-- [ ] Update `docs/api.md` only after endpoints are implemented.
+      Removed: the action regex narrowed to `(resume|retry)`, the
+      `'cancel'` arm of `WorkSupervisedRunLifecycleAction` and its
+      switch branches deleted, `requestRuntimeCancellationForRun`
+      removed. `tests/work-supervision-routes.test.tsx` migrates the
+      old cancel scenario onto `/api/work/runs/:runId/stop` and a
+      regression test asserts the legacy path falls through to 404.
+- [x] Update `docs/api.md` only after endpoints are implemented.
 - [x] Ensure route handlers never call `runtimeClient.cancelSession` directly;
       they should call the cancellation service.
 
@@ -141,9 +143,9 @@ making Task the only cancellation entrypoint.
       queued-without-runtime, running-without-bridge,
       runtime-client-unavailable, runtime-cancel-success, runtime-cancel-failure,
       and `scheduleTrigger` / `supervision.runtimeBridge` preservation.)
-- [ ] Add integration tests for the two REST endpoints.
-      (Deferred — service-level tests cover the contract; HTTP-layer
-      coverage can land alongside the legacy task-cancel cleanup.)
+- [x] Add integration tests for the two REST endpoints.
+      (`tests/work-run-cancellation-routes.test.tsx` — 9 / 9 passing,
+      covers 200 / 404 / 405 / 409 status mapping for both routes.)
 - [x] Add regression coverage proving scheduled `replace` uses the same Run
       stop boundary. (`tests/scheduler.test.tsx`'s
       "scheduler tick replaces active scheduled runs through the
@@ -151,8 +153,7 @@ making Task the only cancellation entrypoint.
 - [ ] Add route/static coverage proving Work UI calls canonical endpoints.
 - [x] Add tests for Mission cancel blocked by a non-supervised running run.
 - [x] Add tests for runtime cancellation failure not marking the run cancelled.
-- [ ] Remove the old task-scoped cancel route if no remaining caller needs it.
-      (Deferred — resume/retry share the same handler.)
+- [x] Remove the old task-scoped cancel route if no remaining caller needs it.
 - [x] Run targeted validation:
       - cancellation service tests (`tests/work-run-cancellation.test.tsx`,
         11 / 11 passing)
@@ -228,6 +229,7 @@ are removed or explicitly delegated only for the migration window.
 | 2026-04-29 | Phase 3 landed: `routeWorkRunCancellationApi` mounts the canonical `POST /api/work/runs/:runId/stop` and `POST /api/work/missions/:missionId/cancel` endpoints with 200 / 404 / 409 status mapping. Handlers are thin and never call `runtimeClient.cancelSession` directly. |
 | 2026-04-29 | Phase 4 landed: Mission detail and Run detail surfaces gain a destructive `Cancel` / `Stop` button in the top bar. Confirmation flows through `window.confirm`; blocked / not-stoppable / runtime-failed responses render as inline warnings rather than misleading "cancelled" copy. Runtime/abort messages distinguish "no supervised bridge" vs "cancelSession failed" vs "runtime client missing". |
 | 2026-04-29 | Phase 5 landed (mostly): `tests/work-run-cancellation.test.tsx` covers Run stop classification + metadata preservation + Mission cancel blocked / cancelled / already-terminal paths; `tests/scheduler.test.tsx` regressions for scheduled `replace` still pass through the canonical cancellation boundary. Deferred follow-ups: REST integration tests, renderer route coverage, and removing the legacy task-scoped supervised-run cancel route once resume/retry are split. |
+| 2026-04-29 | Phase 5 deferred items completed: added `tests/work-run-cancellation-routes.test.tsx` (9 / 9 passing) covering 200 / 404 / 405 / 409 status mapping for both endpoints; narrowed `WORK_API_TASK_SUPERVISED_RUN_ACTION_PATTERN` to `(resume\|retry)`, deleted the `'cancel'` action branch from `WorkSupervisedRunLifecycleAction` and `createWorkSupervisedRunLifecycleActionPayload`, removed `requestRuntimeCancellationForRun`, and updated `tests/work-supervision-routes.test.tsx` so the lifecycle scenario migrates onto the canonical Run stop endpoint plus a regression test for the legacy 404 fallthrough; documented Run stop / Mission cancel REST surface in `docs/api.md`. |
 
 ---
 

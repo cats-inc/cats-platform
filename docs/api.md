@@ -554,6 +554,102 @@ This first slice intentionally reuses `Cats Core v1` instead of inventing a
 separate Work schema. Broader team-operating-model surfaces and later Work
 boards still remain future product slices.
 
+#### Run stop and Mission cancel (SPEC-096)
+
+```text
+POST /api/work/runs/{runId}/stop
+POST /api/work/missions/{missionId}/cancel
+```
+
+These are the canonical commands for stopping operational work. Both
+accept an optional JSON body:
+
+```ts
+interface WorkCancellationRequest {
+  requestedByActorId?: string; // defaults to OWNER_ACTOR_ID when omitted
+  reason?: string;
+  idempotencyKey?: string;     // command id stored in audit metadata
+}
+```
+
+`POST /api/work/runs/{runId}/stop` stops one `CoreRunRecord`. The
+service classifies the run before persisting:
+
+- terminal (`completed` / `failed` / `cancelled`) → `200`,
+  `status: 'already_terminal'`
+- `queued` / `blocked` with no supervised runtime bridge → `200`,
+  `status: 'stopped'` (Core marked `cancelled`, no runtime call made)
+- `running` with `metadata.supervision.runtimeBridge.sessionId` →
+  `RuntimeClient.cancelSession` is called; on success → `200`,
+  `status: 'stopped'`, `runtimeAbort: { attempted: true,
+  status: 'requested', sessionId }`
+- `running` without a session id, or runtime client unavailable, or
+  `cancelSession` throws → `409`, `status: 'not_stoppable'`,
+  `runtimeAbort.status: 'failed' | 'not_applicable'`. The run remains
+  in its current state — Cats does not write metadata-only
+  cancellation that would imply a runtime abort that did not happen.
+- unknown run id → `404`, `error.code: 'run_not_found'`
+
+The response body is `WorkRunStopResponse`:
+
+```ts
+interface WorkRunStopResponse {
+  status: 'stopped' | 'already_terminal' | 'not_stoppable';
+  run: CoreRunRecord;
+  mission: MissionRecord | null;
+  runtimeAbort: {
+    attempted: boolean;
+    sessionId: string | null;
+    status: 'not_applicable' | 'requested' | 'failed';
+    error?: string;
+  };
+  message: string | null;
+}
+```
+
+`POST /api/work/missions/{missionId}/cancel` is the aggregate command.
+It collects every `CoreRunRecord` whose `metadata.missionId` matches
+the mission and is not in a terminal state, then calls Run stop per
+run with `source: 'mission_cancel'` and a shared command id. The
+mission is marked `cancelled` only when every active run is stopped
+or already terminal; otherwise the response is `409`,
+`status: 'blocked'`, with per-run `blockers` plus full
+`runResults`. Linked Tasks and Work Items are not changed.
+
+Response shape:
+
+```ts
+interface WorkMissionCancelResponse {
+  status: 'cancelled' | 'already_terminal' | 'blocked';
+  mission: MissionRecord;
+  runResults: WorkRunStopResponse[];
+  blockers: Array<{ runId: string; reason: string }>;
+  message: string | null;
+}
+```
+
+Both commands persist append-only audit metadata at
+`CoreRunRecord.metadata.cancellation` /
+`MissionRecord.metadata.cancellation` (an array of
+`CoreCancellationMetadata`) so repeated requests do not erase prior
+history. When a runtime cancel was requested, the matching
+`metadata.supervision.runtimeBridge.status` is updated to
+`cancel_requested` and previous bridge fields (sessionId, provider,
+model) are preserved. A cancellation trace row carries the same
+`commandId` as the metadata entry for audit correlation.
+
+The legacy task-scoped supervised-run cancel route
+(`POST /api/work/tasks/{taskId}/supervised-run/cancel`) has been
+removed in favour of the canonical Run stop endpoint above. The
+remaining supervised-run lifecycle action route still serves
+`resume` and `retry`:
+
+```text
+POST /api/work/tasks/{taskId}/supervised-run/{action}
+```
+
+with `action` narrowed to `resume | retry`.
+
 ### Cats Code
 
 ```text

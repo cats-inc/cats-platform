@@ -571,22 +571,67 @@ test('POST /api/work/tasks/:taskId/supervised-run/:action applies lifecycle acti
     'retry',
   );
 
+  // Cancellation now flows through the canonical Run stop endpoint
+  // (SPEC-096 / PLAN-085); the legacy task-scoped cancel branch has
+  // been removed.
+  const runId = retryPayload.run.id as string;
   const cancelResponse = await fetch(
-    `${baseUrl}/api/work/tasks/task-supervision-route/supervised-run/cancel`,
+    `${baseUrl}/api/work/runs/${runId}/stop`,
     { method: 'POST' },
   );
   const cancelPayload = await cancelResponse.json();
 
   assert.equal(cancelResponse.status, 200);
+  assert.equal(cancelPayload.status, 'stopped');
   assert.equal(cancelPayload.run.status, 'cancelled');
-  assert.equal(cancelPayload.supervision.primaryState, 'cancelled');
   assert.deepEqual(runtimeClient.canceledSessions, ['runtime-session-existing']);
   assert.equal(
     cancelPayload.run.metadata.supervision.runtimeBridge.status,
     'cancel_requested',
   );
-  assert.equal(
-    cancelPayload.run.metadata.supervision.lifecycleAction.action,
-    'cancel',
+  const cancellationEntries = cancelPayload.run.metadata.cancellation as Array<{
+    source: string;
+  }>;
+  assert.equal(cancellationEntries.length, 1);
+  assert.equal(cancellationEntries[0].source, 'run_stop');
+});
+
+test('legacy /api/work/tasks/:taskId/supervised-run/cancel route is no longer routable', async (t) => {
+  const coreStore = createCoreStore();
+  await writeBlockedSupervisedRun(coreStore);
+  const runtimeClient = createRuntimeStub();
+  const server = createServer(async (request, response) => {
+    const url = new URL(request.url ?? '/', 'http://localhost');
+    const handled = await routeWorkApi({
+      request,
+      response,
+      url,
+      method: request.method ?? 'GET',
+      dependencies: {
+        coreStore,
+        runtimeClient,
+        now: () => new Date('2026-04-25T12:06:00.000Z'),
+      },
+    });
+
+    if (!handled) {
+      response.writeHead(404, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({ error: 'not found' }));
+    }
+  });
+
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  t.after(() => server.close());
+
+  const address = server.address();
+  assert.ok(address && typeof address === 'object');
+  const baseUrl = `http://127.0.0.1:${address.port}`;
+  const response = await fetch(
+    `${baseUrl}/api/work/tasks/task-supervision-route/supervised-run/cancel`,
+    { method: 'POST' },
   );
+
+  // Falls through to the outer 404 handler because the action regex
+  // is now narrowed to `(resume|retry)`.
+  assert.equal(response.status, 404);
 });
