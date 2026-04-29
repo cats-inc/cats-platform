@@ -45,7 +45,7 @@ test('isDesktopHostActionId rejects unknown IPC action ids', () => {
 });
 
 test('desktop main process keeps Electron sandboxing enabled and validates IPC actions', async () => {
-  const source = await readFile(join(process.cwd(), 'electron', 'main.ts'), 'utf8');
+  const source = await readFile(join(process.cwd(), 'desktop', 'host', 'main.ts'), 'utf8');
 
   assert.match(source, /sandbox: true/);
   assert.match(source, /isDesktopHostActionId/);
@@ -56,12 +56,11 @@ test('desktop main process keeps Electron sandboxing enabled and validates IPC a
 });
 
 test('preload and contracts keep the same desktop host action ids', async () => {
-  const preloadSource = await readFile(join(process.cwd(), 'electron', 'preload.cts'), 'utf8');
-  const contractsSource = await readFile(join(process.cwd(), 'electron', 'contracts.ts'), 'utf8');
+  const preloadSource = await readFile(join(process.cwd(), 'desktop', 'host', 'preload.cts'), 'utf8');
+  const contractsSource = await readFile(join(process.cwd(), 'desktop', 'host', 'contracts.ts'), 'utf8');
 
   const preloadActions = extractActionIds(preloadSource, 'DESKTOP_HOST_ACTION_IDS');
   const contractActions = extractActionIds(contractsSource, 'DESKTOP_HOST_ACTION_IDS');
 
   assert.deepEqual(preloadActions, contractActions);
 });
-

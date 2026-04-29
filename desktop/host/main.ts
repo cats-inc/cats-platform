@@ -355,6 +355,11 @@ function reportExternalUrlOpenFailure(error: unknown): void {
   );
 }
 
+function resolveAllowedAppHosts(config: DesktopHostConfig): string[] {
+  const appBaseHost = new URL(config.appBaseUrl).hostname;
+  return Array.from(new Set([config.appHost, appBaseHost]));
+}
+
 function shouldAllowInAppNavigation(
   rawUrl: string,
   config: DesktopHostConfig,
@@ -362,7 +367,7 @@ function shouldAllowInAppNavigation(
   try {
     const currentAppUrl = new URL(config.appBaseUrl);
     const nextUrl = new URL(validateDesktopUrl(rawUrl, {
-      allowedHosts: [config.appHost],
+      allowedHosts: resolveAllowedAppHosts(config),
     }));
     return nextUrl.origin === currentAppUrl.origin;
   } catch {
@@ -834,7 +839,7 @@ async function showMainWindow(url?: string): Promise<void> {
   );
   if (nextUrl) {
     await mainWindow.loadURL(validateDesktopUrl(nextUrl, {
-      allowedHosts: hostConfig ? [hostConfig.appHost] : null,
+      allowedHosts: hostConfig ? resolveAllowedAppHosts(hostConfig) : null,
     }));
     bootstrapPageVisible = false;
     bootstrapWindowRevealRequested = false;

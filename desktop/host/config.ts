@@ -172,6 +172,16 @@ function parsePositiveInt(rawValue: string | undefined, fallback: number): numbe
   return parsed;
 }
 
+function resolveDesktopAppConnectHost(bindHost: string): string {
+  if (bindHost === '0.0.0.0') {
+    return DEFAULT_LOCAL_HOST;
+  }
+  if (bindHost === '[::]') {
+    return '[::1]';
+  }
+  return bindHost;
+}
+
 export function resolveDesktopHostConfig(
   options: ResolveDesktopHostConfigOptions,
 ): DesktopHostConfig {
@@ -200,6 +210,7 @@ export function resolveDesktopHostConfig(
     env.CATS_DESKTOP_APP_PORT || env.CATS_PORT,
     DEFAULT_APP_PORT,
   );
+  const appConnectHost = resolveDesktopAppConnectHost(appHost);
   const runtimeHost = normalizeDesktopHost(
     env.CATS_DESKTOP_RUNTIME_HOST || env.CATS_RUNTIME_HOST,
     DEFAULT_LOCAL_HOST,
@@ -268,7 +279,7 @@ export function resolveDesktopHostConfig(
     catsHomeDir,
     appHost,
     appPort,
-    appBaseUrl: `http://${appHost}:${appPort}`,
+    appBaseUrl: `http://${appConnectHost}:${appPort}`,
     runtimeHost,
     runtimePort,
     runtimeBaseUrl: `http://${runtimeHost}:${runtimePort}`,

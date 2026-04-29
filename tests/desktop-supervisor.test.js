@@ -171,6 +171,19 @@ test('desktop host config keeps Electron userData separate from cats home', () =
   assert.equal(config.paths.hostLogsDir, 'C:\\Users\\test\\.cats\\desktop\\logs');
 });
 
+test('desktop host keeps wildcard app binding off the Electron window URL', () => {
+  const config = resolveDesktopHostConfig({
+    env: {
+      CATS_DESKTOP_APP_HOST: '0.0.0.0',
+    },
+    userDataDir: 'C:/Users/test/AppData/Roaming/Cats',
+    catsHomeDir: 'C:/Users/test/.cats',
+  });
+
+  assert.equal(config.appHost, '0.0.0.0');
+  assert.equal(config.appBaseUrl, 'http://127.0.0.1:8181');
+});
+
 test('desktop host config supports force quit-on-close deployment override', () => {
   const config = resolveDesktopHostConfig({
     env: {
