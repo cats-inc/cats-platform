@@ -129,12 +129,15 @@ through the same platform execution admission path used by other agent work.
 - [ ] Define the minimal tool/resource surface needed for the morning greeting:
       - list/read allowed companion content resources
       - optionally create/post a companion content item
-      - send media or text/link through Telegram delivery capability
+      - [x] send bounded text/link through Telegram delivery capability
+      - send media through Telegram delivery capability
 - [ ] Ensure these capabilities are exposed as supervised tools or bounded
       platform actions, not scheduler internals.
+      - [x] Telegram text/link delivery is exposed as
+        `transport.telegram.text.send`.
 - [x] Pass rule-declared resource scopes and transport targets into the mission
       context.
-- [ ] Preserve transport binding identity for Telegram delivery.
+- [x] Preserve transport binding identity for Telegram text/link delivery.
 - [ ] Add tests for missing tool/resource behavior:
       - fail visibly
       - request approval when policy says so
@@ -264,6 +267,7 @@ the first companion/Telegram scenario.
 | 2026-04-29 | Implementation slice: added platform scheduler contracts, in-memory/file-backed schedule store, v1 validation, timezone-aware `once`/`daily` next-fire evaluation, trigger receipt/idempotency ledger, startup misfire and concurrency handling, server scheduler loop while Cats is running, Mission/Run admission with Cat→Agent resolution and `CoreRunRecord.metadata.scheduleTrigger.originalTargetRef`, minimal `/api/work/schedules` + `/test-fire` routes, and targeted scheduler/route/static-boundary tests. Runtime/Telegram execution remains deferred to Phase 4/5 capability work. |
 | 2026-04-29 | Review follow-up: scheduler admission now writes Core through an atomic update seam, v1 rejects `replace` until supervised cancellation lands, `originalTargetRef` is emitted only for Cat targets on run trigger metadata, manual test fires are visibly titled and no longer update scheduled last-run timing, scheduler store timestamps honor the injected clock, and DST gap/overlap tests cover local daily schedules. |
 | 2026-04-29 | Supervision boundary slice: added a scheduled-run runtime launcher under `platform/supervision` that starts admitted scheduled Mission/Run records through `startProviderAgentRunLoop`, records runtime bridge/run-loop supervision metadata, keeps the scheduler module free of runtime imports, and wires both background ticks and Work manual test fires to launch when a runtime client is configured. Rule-declared transport/resource/tool scopes are now carried into the runtime context and prompt for the scheduled agent. |
+| 2026-04-29 | Transport capability slice: added `transport.telegram.text.send` as a supervised external-visible tool that sends bounded text/link payloads through the existing Telegram relay, authorizes only rule-declared binding ids, preserves selected Telegram binding identity in relay receipts, and rejects ambiguous or undeclared delivery targets without scheduler fallback. |
 
 ---
 
