@@ -66,46 +66,76 @@ Developer account.
 ### Server
 
 - **FR-4.** cats-platform server exposes routes under `/api/mobile/`:
-  - `GET /api/mobile/manifest` — returns the Expo manifest JSON
-    (see Manifest format below).
-  - `GET /api/mobile/index.bundle?platform=ios` — returns the iOS
-    JS bundle.
-  - `GET /api/mobile/index.bundle?platform=android` — returns the
-    Android JS bundle.
-  - `GET /api/mobile/assets/:hash` — returns the asset matching the
-    hash.
+  - `GET /api/mobile/manifest` — returns a manifest JSON for the
+    requesting client. The exact schema and the per-platform
+    discrimination mechanism are determined by Phase 1 spike (see
+    Open Questions). Likely shape: a single endpoint that reads
+    Expo Go's `expo-platform`, `expo-runtime-version`, and
+    `expo-protocol-version` request headers and returns the
+    manifest variant the client negotiates for.
+  - `GET /api/mobile/bundle/{platform}/{hash}.js` — returns the
+    JS bundle. URLs are content-hash addressed: the path encodes
+    the bundle hash so the same URL is bit-for-bit immutable. The
+    manifest's launch-asset URL points at the current hash.
+  - `GET /api/mobile/assets/{hash}` — returns the asset matching
+    the hash. Same content-hash addressing.
 - **FR-5.** All routes serve from `<resources>/mobile/` at runtime
   (or `cats-platform/build/mobile/` in dev). Routes 404 cleanly if
   the bundle is absent.
-- **FR-6.** Routes set `Cache-Control: no-store` on the manifest
-  and `Cache-Control: public, max-age=31536000, immutable` on the
-  hash-named bundle / asset URLs.
+- **FR-6.** Cache headers are aligned with content addressability:
+  - The `/api/mobile/manifest` response sets
+    `Cache-Control: no-store` because the manifest is computed per
+    request (host echo in FR-9, platform discrimination in FR-8a).
+  - The hash-addressed bundle and asset routes set
+    `Cache-Control: public, max-age=31536000, immutable` since the
+    URL itself changes whenever content changes.
+  - There is no stable "current bundle" URL alongside the
+    hash-addressed one — clients always reach the bundle through
+    the manifest's launch-asset URL, which the server rebuilds
+    per request from the on-disk metadata.
 - **FR-7.** The server returns a manifest only when
-  `CATS_DESKTOP_MOBILE_PAIRING_ENABLED=true`. Otherwise the routes
-  return `404 Not Found`. Disabling the feature must be sufficient
-  to take it off the network surface, not just hide the UI.
+  `CATS_DESKTOP_MOBILE_PAIRING_ENABLED=true`. Otherwise all
+  `/api/mobile/*` routes return `404 Not Found`. Disabling the
+  feature must be sufficient to take it off the network surface,
+  not just hide the UI.
 
 ### Manifest format
 
-- **FR-8.** The manifest returned at
-  `GET /api/mobile/manifest?platform=ios|android` matches the
-  schema Expo Go SDK 54 expects from a self-hosted manifest:
-  - `name`, `slug`, `version` derived from `mobile/app.json`.
-  - `bundleUrl` absolute URL pointing at
-    `${baseUrl}/api/mobile/index.bundle?platform=${platform}`.
-  - `iconUrl` and `splash` if defined in `app.json`.
-  - `extra` carries arbitrary fields the bundle reads at runtime
-    (e.g. baseUrl pre-populated for the mobile API client).
-- **FR-9.** The manifest's `bundleUrl` and asset URLs are
+- **FR-8.** *(SCHEMA TBD — Phase 1 spike).* The manifest schema is
+  not pre-locked in this Draft. The Expo ecosystem has two extant
+  manifest formats:
+  - **Classic (legacy)** — the older Expo Go format
+    (`name` / `slug` / `version` / `bundleUrl` / `iconUrl` /
+    `splash` / `extra`).
+  - **Updates v1 (current)** — the modern self-hosted protocol
+    (`id` / `createdAt` / `runtimeVersion` / `launchAsset` /
+    `assets[]` / `metadata` / signed envelope).
+  Phase 1 spike confirms which one stock Expo Go SDK 54 actually
+  fetches against a non-EAS host, including any header/protocol
+  negotiation, and replaces this FR-8 with a concrete schema
+  example. Until then the implementation owner should treat
+  schema choice as an Open Question.
+- **FR-8a.** *(Platform discrimination).* The manifest endpoint is
+  a single URL; per-platform variants come from request headers.
+  Expo Go sends `expo-platform: ios` (or `android`) on its
+  manifest fetch. The server reads this header and emits the
+  matching launch-asset URL inside the manifest body. Query-string
+  variants like `?platform=ios` are NOT used in the QR / pairing
+  URL — the QR encodes one host-only URL, and the platform is
+  resolved server-side per request.
+- **FR-9.** The manifest's launch-asset URL and asset URLs are
   generated using the **incoming request's host header** so that
   whether the request reached us via `localhost`, the LAN IP, or a
   Tailscale/tunnel address, the manifest always points back to the
-  same origin. (Without this, Expo Go fetches the manifest over
-  LAN but tries to fetch the bundle over `127.0.0.1` and fails.)
+  same origin. Without this, Expo Go fetches the manifest over LAN
+  but tries to fetch the bundle over `127.0.0.1` and fails.
 - **FR-10.** The manifest format is versioned alongside the SDK.
   Bumping `expo` in `mobile/package.json` and re-running
   `npm run build:mobile` is the only step required to align with a
-  newer Expo Go runtime.
+  newer Expo Go runtime — assuming the manifest schema choice in
+  FR-8 stays valid for that SDK. SDK upgrades that change the
+  protocol require re-running the Phase 1 spike before the
+  artifact is shipped.
 
 ### Settings UI
 
@@ -115,8 +145,17 @@ Developer account.
   not hot-reloaded).
 - **FR-12.** When visible, the card shows:
   - Section title "Mobile pairing".
-  - The current LAN-facing pairing URL
-    (`exp://${LAN_IP}:${CATS_PORT}/--/api/mobile/manifest`).
+  - The current LAN-facing pairing URL. *(URL FORMAT TBD —
+    Phase 1 spike).* The earlier Draft used
+    `exp://${LAN_IP}:${CATS_PORT}/--/api/mobile/manifest`, but
+    `--/path` in `exp://` URLs is Expo's app-internal deep-link
+    path, not a manifest endpoint locator — Expo Go would treat
+    `/api/mobile/manifest` as a route to navigate to inside the
+    bundle, not as the manifest URL. The actual URL Expo Go
+    expects is determined by the Phase 1 spike (a likely
+    candidate is plain `exp://${LAN_IP}:${CATS_PORT}` with the
+    server serving the manifest at a stock-Expo-Go-compatible
+    path, but this needs to be confirmed against real devices).
   - A QR code rendered from that URL.
   - Step-by-step copy: "Install Expo Go on your phone, scan this
     QR with the Camera app or Expo Go's scanner."
@@ -146,16 +185,18 @@ Developer account.
   bundle is on disk, manifest is computed per request.
 - **NFR-2.** Manifest format must align with Expo Go SDK 54. SDK
   bumps require a re-export and a manual smoke test before
-  release.
+  release; protocol-changing SDK upgrades also require re-running
+  the Phase 1 spike (FR-8 / FR-12 URL form).
 - **NFR-3.** Off by default. Opt-in.
 - **NFR-4.** No new dependencies in the runtime cats-platform
   server. QR rendering happens in the renderer using a small
   pure-JS QR generator (e.g. `qrcode` or `qrcode-svg`).
-- **NFR-5.** Bundle assets must be content-addressable so an old
-  cached fetch from a previous Cats Desktop install of a bundle
-  with a different hash never gets returned for a new request.
-  Hash-named files satisfy this; manifest cache must be
-  `no-store`.
+- **NFR-5.** Bundle and asset URLs are content-hash addressed
+  (path includes hash); the manifest URL is no-cache. There is no
+  stable URL that returns mutating content — every URL is either
+  immutable-per-content or no-store. This avoids the
+  "stable URL + immutable cache" trap where a stale CDN / phone /
+  proxy cache pins a previous bundle byte stream.
 
 ## Design Overview
 
@@ -185,22 +226,38 @@ Renderer process (Settings → Desktop)
 
 ## Open Questions
 
-- **Q1.** Confirm exact manifest format Expo Go SDK 54 accepts when
-  served by a non-EAS host. Reference the runtime version field
-  matching constraints (`expo-runtime-version`).
-- **Q2.** Whether the manifest needs the
-  `expo-protocol-version: 0` and `expo-protocol-version: 1`
-  variants present (some Expo Go releases negotiate the protocol
-  version via headers).
-- **Q3.** Whether the bundled `app.json` needs `android.package`
+All four legacy questions plus three escalated by review on the
+2026-04-30 Draft. PLAN-088 Phase 1 owns triage; the spike
+deliverable is a concrete answer to each one before any code
+lands.
+
+- **Q1.** *(SCHEMA — escalated.)* Confirm which manifest format
+  stock Expo Go SDK 54 accepts when served by a non-EAS host:
+  legacy classic (`name`/`slug`/`version`/`bundleUrl`/...) or
+  Updates v1 (`id`/`createdAt`/`runtimeVersion`/`launchAsset`/
+  `assets`/...). The Expo Updates docs reference the latter; the
+  classic format may be deprecated for SDK 54 stock Expo Go.
+  Update FR-8 with the chosen schema + a concrete JSON example
+  before implementation.
+- **Q2.** *(QR URL FORM — escalated.)* Confirm the URL form Expo
+  Go expects in the QR. `exp://host:port/--/path` is Expo's
+  app-internal deep-link path syntax, not a manifest URL — the
+  earlier Draft mis-cited it. Likely correct forms include plain
+  `exp://host:port` (with the server serving manifest at a stock
+  path), or `exp+https://host:port/path` for self-hosted
+  Updates. Test against real iOS + Android Expo Go and update
+  FR-12.
+- **Q3.** Confirm whether the manifest needs
+  `expo-protocol-version: 0` vs `1` headers to be honoured (Expo
+  Go negotiates protocol version via request headers in some
+  releases).
+- **Q4.** Whether the bundled `app.json` needs `android.package`
   and `ios.bundleIdentifier` fields for stock Expo Go to load the
   bundle, or whether those are unused in stock-Expo-Go context.
-- **Q4.** Whether `extra.baseUrl` injection at manifest time
+- **Q5.** Whether `extra.baseUrl` injection at manifest time
   belongs in this spec or in a follow-up. Today the mobile client
   reads `baseUrl` from AsyncStorage; if the desktop knows its own
   baseUrl it can pre-populate that on first launch.
-
-These get triaged in PLAN-088 Phase 1.
 
 ## References
 

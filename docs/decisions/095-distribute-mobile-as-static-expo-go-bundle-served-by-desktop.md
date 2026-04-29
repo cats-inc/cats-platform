@@ -54,7 +54,12 @@ Concretely:
   + asset payloads. Call this surface `/api/mobile/`.
 - The Cats Desktop renderer adds a "Mobile pairing" card under
   `Settings → Desktop`. The card displays the LAN-facing pairing
-  URL plus a QR code that encodes `exp://${LAN_IP}:${CATS_PORT}/--/api/mobile/manifest`.
+  URL plus a QR code that encodes the URL Expo Go uses to
+  discover the manifest. The exact URL form is confirmed by the
+  Phase 1 spike (see SPEC-099 §Open Questions Q2) — the earlier
+  draft of this ADR cited `exp://${LAN_IP}:${CATS_PORT}/--/api/mobile/manifest`,
+  but `--/path` is Expo's app-internal deep-link path, not a
+  manifest URL, and the spec has been amended accordingly.
 - The card is **gated**: it only renders when
   `CATS_DESKTOP_MOBILE_PAIRING_ENABLED=true` is set in the env Cats
   Desktop loads (project `.env` for source builds, or a build-time

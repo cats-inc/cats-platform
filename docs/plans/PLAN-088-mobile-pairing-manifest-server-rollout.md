@@ -28,42 +28,69 @@ shipping the server side. Phase 1 must come first because it
 resolves the four Open Questions in SPEC-099 that affect every
 later phase.
 
-## Phase 1 — Manifest format spike
+## Phase 1 — Manifest format and pairing-URL spike
 
-**Goal**: confirm Expo Go SDK 54 accepts a self-hosted manifest in
-the format we plan to emit, before writing real code.
+**Goal**: confirm both the manifest schema AND the QR URL form
+Expo Go SDK 54 expects against a non-EAS host, before writing
+real code. The 2026-04-30 review escalated these from
+"single-file format question" to "blocker for the rest of the
+plan".
 
-- [ ] Stand up a throwaway HTTP server (e.g. node --experimental-bun-server,
-      or a 30-line Express stub) that serves a manifest stub plus a
-      hand-built bundle.
+- [ ] Stand up a throwaway HTTP server (~30-line Express or
+      Node http) that serves stub manifests under multiple
+      candidate schemas (classic + Updates v1) and hand-built
+      bundles.
 - [ ] Test scanning from physical iOS Expo Go and Android Expo Go.
-- [ ] Confirm SPEC-099 Q1-Q4 answers.
-- [ ] Document the exact manifest schema the production code will
-      emit. Update SPEC-099 in place.
+- [ ] For each scenario, capture the exact URL Expo Go fetched
+      manifest from, the request headers it sent
+      (`expo-platform`, `expo-runtime-version`,
+      `expo-protocol-version`), and the response shape it accepted.
+- [ ] Resolve SPEC-099 Open Questions Q1–Q5 with concrete answers.
+- [ ] Update SPEC-099 §FR-8 with the chosen schema (with a JSON
+      example), §FR-12 with the chosen QR URL form, and §Open
+      Questions to mark each one resolved.
 
-**Deliverable**: SPEC-099 Open Questions all resolved with concrete
-JSON examples.
+**Deliverable**: SPEC-099 Open Questions all resolved; a working
+proof-of-concept HTTP server + bundle that loads on real iOS and
+Android Expo Go via the chosen URL form.
 
 ## Phase 2 — Build chain
 
 **Goal**: produce `cats-platform/build/mobile/` as part of
 `npm run build`, and bundle it into the desktop installer.
 
-- [ ] Add `build:mobile` script to `cats-platform/package.json`:
+The repo is **not an npm workspace**: `cats-platform/` and
+`cats-platform/mobile/` are independent packages with separate
+`node_modules/`. The build chain has to install mobile deps
+itself instead of assuming they exist.
+
+- [ ] Add a `mobile:install` script to `cats-platform/package.json`:
+      `npm ci --prefix mobile` (or `npm install --prefix mobile`
+      for first-time scaffolding). Document that this assumes
+      Node + npm are already on the build machine.
+- [ ] Add a `build:mobile` script that depends on
+      `mobile:install` first, then runs
       `cd mobile && npx expo export --platform all --output-dir
-      ../build/mobile` (exact flags subject to spike findings).
+      ../build/mobile` (exact flags subject to Phase 1 findings).
 - [ ] Hook `build:mobile` into `npm run build` (the existing
-      pre-package build pipeline).
+      pre-package build pipeline) so a clean CI / fresh desktop
+      build does not need a separate manual step.
+- [ ] Add a CI preflight check: `mobile:install` succeeds, the
+      mobile workspace's `npm run typecheck` is clean, and
+      `build/mobile/` is non-empty after `build:mobile`.
 - [ ] Update `electron-builder` config to include `build/mobile/`
       in `extraResources`. Confirm path resolution at runtime
       (`process.resourcesPath/mobile/`).
 - [ ] Confirm bundle size impact on installer (.dmg / .exe / .deb)
       and add an ADR amendment if it's > 50 MB.
 - [ ] Document the SDK-bump → re-export path in
-      `cats-platform/docs/setup-guide.md`.
+      `cats-platform/docs/setup-guide.md`, including the
+      `mobile:install` requirement on a clean machine.
 
-**Deliverable**: `npm run build` produces an installer that has the
-mobile bundle on disk after install.
+**Deliverable**: `git clone <repo> && cd cats-platform && npm ci
+&& npm run build` (with no manual `cd mobile && npm install`
+step) produces an installer that has the mobile bundle on disk
+after install.
 
 ## Phase 3 — Server endpoints
 
