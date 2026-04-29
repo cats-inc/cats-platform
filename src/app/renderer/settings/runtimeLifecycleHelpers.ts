@@ -332,14 +332,6 @@ export async function fetchRuntimeLifecycleHelpers(): Promise<RuntimeLifecycleHe
   }
 }
 
-export function selectUninstallableHelpers(
-  helpers: RuntimeLifecycleHelperSummary[],
-): RuntimeLifecycleHelperSummary[] {
-  return helpers.filter(
-    (helper) => helper.supported && helper.available && helper.supportsUninstall,
-  );
-}
-
 export function selectLifecycleHelpers(
   helpers: RuntimeLifecycleHelperSummary[],
 ): RuntimeLifecycleHelperSummary[] {

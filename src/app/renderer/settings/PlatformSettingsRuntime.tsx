@@ -3,7 +3,6 @@ import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 
 import { ToastContainer, useToast } from '../../../design/components/Toast.js';
 import {
   SettingsActionBar,
-  SettingsDangerZone,
   SettingsSection,
   SettingsSectionHeader,
   SettingsStatusChip,
@@ -29,7 +28,6 @@ import {
   previewRuntimeLifecycleUninstall,
   runRuntimeLifecycleAction,
   selectLifecycleHelpers,
-  selectUninstallableHelpers,
   type RuntimeLifecycleAction,
   type RuntimeUninstallPreview,
 } from './runtimeLifecycleHelpers.js';
@@ -60,43 +58,16 @@ function resolveRuntimeStatusChip(
   }
 }
 
-interface SinglePrompt {
-  kind: 'single';
+interface UninstallPrompt {
   helper: RuntimeLifecycleHelperSummary;
   preview: RuntimeUninstallPreview | null;
   loading: boolean;
 }
 
-interface BulkPrompt {
-  kind: 'bulk';
-  helpers: RuntimeLifecycleHelperSummary[];
-  previews: Map<string, RuntimeUninstallPreview>;
-  loading: boolean;
-}
-
-type ConfirmationPrompt = SinglePrompt | BulkPrompt | null;
-
-function singlePromptIsActionable(prompt: SinglePrompt): boolean {
+function uninstallPromptIsActionable(prompt: UninstallPrompt): boolean {
   if (prompt.loading) return false;
   if (!prompt.preview || !prompt.preview.available) return false;
   return prompt.preview.plannedActions.length > 0;
-}
-
-function bulkPromptHasAnyActionable(prompt: BulkPrompt): boolean {
-  if (prompt.loading) return false;
-  if (prompt.previews.size === 0) return false;
-  for (const helper of prompt.helpers) {
-    const preview = prompt.previews.get(helper.id);
-    if (preview?.available && preview.plannedActions.length > 0) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function bulkPromptAllPreviewsResolved(prompt: BulkPrompt): boolean {
-  if (prompt.loading) return false;
-  return prompt.helpers.every((helper) => prompt.previews.has(helper.id));
 }
 
 export function PlatformSettingsRuntime({
@@ -117,8 +88,7 @@ export function PlatformSettingsRuntime({
   const [helpers, setHelpers] = useState<RuntimeLifecycleHelperSummary[]>([]);
   const [helpersLoading, setHelpersLoading] = useState(false);
   const [runningHelperId, setRunningHelperId] = useState<string | null>(null);
-  const [bulkRunning, setBulkRunning] = useState(false);
-  const [confirmation, setConfirmation] = useState<ConfirmationPrompt>(null);
+  const [confirmation, setConfirmation] = useState<UninstallPrompt | null>(null);
 
   const refreshHelpers = useCallback(async () => {
     if (!desktopEnvironment) return;
@@ -155,7 +125,6 @@ export function PlatformSettingsRuntime({
   };
 
   const lifecycleHelpers = useMemo(() => selectLifecycleHelpers(helpers), [helpers]);
-  const uninstallableHelpers = useMemo(() => selectUninstallableHelpers(helpers), [helpers]);
 
   const runAction = useCallback(async (
     helper: RuntimeLifecycleHelperSummary,
@@ -174,72 +143,23 @@ export function PlatformSettingsRuntime({
     }
   }, [refreshHelpers, showToast]);
 
-  const openSingleUninstallPrompt = useCallback(async (helper: RuntimeLifecycleHelperSummary) => {
-    setConfirmation({ kind: 'single', helper, preview: null, loading: true });
+  const openUninstallPrompt = useCallback(async (helper: RuntimeLifecycleHelperSummary) => {
+    setConfirmation({ helper, preview: null, loading: true });
     const preview = await previewRuntimeLifecycleUninstall(helper);
     setConfirmation((prev) => {
-      if (!prev || prev.kind !== 'single' || prev.helper.id !== helper.id) {
+      if (!prev || prev.helper.id !== helper.id) {
         return prev;
       }
-      return { kind: 'single', helper, preview, loading: false };
-    });
-  }, []);
-
-  const openBulkUninstallPrompt = useCallback(async (
-    targets: RuntimeLifecycleHelperSummary[],
-  ) => {
-    setConfirmation({
-      kind: 'bulk',
-      helpers: targets,
-      previews: new Map(),
-      loading: true,
-    });
-    const entries = await Promise.all(
-      targets.map(async (helper) => {
-        const preview = await previewRuntimeLifecycleUninstall(helper);
-        return [helper.id, preview] as const;
-      }),
-    );
-    const previews = new Map<string, RuntimeUninstallPreview>(entries);
-    setConfirmation((prev) => {
-      if (!prev || prev.kind !== 'bulk') {
-        return prev;
-      }
-      return { kind: 'bulk', helpers: targets, previews, loading: false };
+      return { helper, preview, loading: false };
     });
   }, []);
 
   const handleUninstallConfirmed = useCallback(async () => {
     if (!confirmation || confirmation.loading) return;
-    if (confirmation.kind === 'single') {
-      const helper = confirmation.helper;
-      setConfirmation(null);
-      await runAction(helper, 'uninstall');
-      return;
-    }
-
-    const targets = confirmation.helpers;
+    const helper = confirmation.helper;
     setConfirmation(null);
-    setBulkRunning(true);
-    let success = 0;
-    let partial = 0;
-    let failed = 0;
-    try {
-      for (const helper of targets) {
-        const outcome = await runAction(helper, 'uninstall');
-        if (outcome.kind === 'success') success += 1;
-        else if (outcome.kind === 'partial') partial += 1;
-        else failed += 1;
-      }
-      const summaryParts = [`${success} uninstalled`];
-      if (partial > 0) summaryParts.push(`${partial} partial`);
-      if (failed > 0) summaryParts.push(`${failed} failed`);
-      showToast(`Bulk uninstall: ${summaryParts.join(' · ')}.`);
-      await refreshHelpers();
-    } finally {
-      setBulkRunning(false);
-    }
-  }, [confirmation, refreshHelpers, runAction, showToast]);
+    await runAction(helper, 'uninstall');
+  }, [confirmation, runAction]);
 
   return (
     <>
@@ -272,26 +192,6 @@ export function PlatformSettingsRuntime({
         </div>
       </SettingsSection>
 
-      {payload.runtimeSetup.providersReadyToApply.length > 0 ? (
-        <SettingsSection
-          header={
-            <SettingsSectionHeader
-              title="Ready providers"
-              description="Providers detected on this machine that are ready to activate in the runtime."
-            />
-          }
-        >
-          <ul className="settingsRuntimeList">
-            {payload.runtimeSetup.providersReadyToApply.map((entry) => (
-              <li key={entry.provider}>
-                <strong>{entry.provider}</strong>
-                <span>{entry.family}</span>
-              </li>
-            ))}
-          </ul>
-        </SettingsSection>
-      ) : null}
-
       {payload.runtimeSetup.providersNeedingAttention.length > 0 ? (
         <SettingsSection
           header={
@@ -322,7 +222,7 @@ export function PlatformSettingsRuntime({
           header={
             <SettingsSectionHeader
               title="Provider helpers"
-              description="Run packaged installers to check, install, upgrade, repair, or rescan local CLI providers. Actions stream through the desktop host bridge; the renderer never executes scripts directly."
+              description="Run packaged installers to check, install, upgrade, repair, or uninstall each local CLI provider. Actions stream through the desktop host bridge; the renderer never executes scripts directly."
             />
           }
         >
@@ -351,7 +251,7 @@ export function PlatformSettingsRuntime({
                             key={entry.action}
                             type="button"
                             className="secondaryButton"
-                            disabled={isThisHelperRunning || bulkRunning}
+                            disabled={isThisHelperRunning}
                             onClick={() => void runAction(helper, entry.action)}
                           >
                             {isThisHelperRunning ? 'Working…' : entry.label}
@@ -361,8 +261,8 @@ export function PlatformSettingsRuntime({
                         <button
                           type="button"
                           className="dangerButton"
-                          disabled={isThisHelperRunning || bulkRunning}
-                          onClick={() => void openSingleUninstallPrompt(helper)}
+                          disabled={isThisHelperRunning}
+                          onClick={() => void openUninstallPrompt(helper)}
                         >
                           Uninstall
                         </button>
@@ -373,14 +273,6 @@ export function PlatformSettingsRuntime({
               })}
             </ul>
           )}
-          <button
-            type="button"
-            className="secondaryButton settingsRefreshButton"
-            disabled={helpersLoading || bulkRunning || runningHelperId !== null}
-            onClick={() => void refreshHelpers()}
-          >
-            Rescan
-          </button>
         </SettingsSection>
       ) : null}
 
@@ -427,45 +319,16 @@ export function PlatformSettingsRuntime({
         </a>
       </SettingsSection>
 
-      {desktopEnvironment && uninstallableHelpers.length > 0 ? (
-        <SettingsDangerZone
-          title="Bulk uninstall"
-          description={
-            <>
-              Removes the user-owned binaries for every uninstall-capable provider listed above.
-              Active sessions using a removed provider will fail until another provider is configured.
-              Auth files, API keys, and external configuration are left in place.
-            </>
-          }
-        >
-          <button
-            type="button"
-            className="dangerButton"
-            disabled={bulkRunning || runningHelperId !== null}
-            onClick={() => void openBulkUninstallPrompt(uninstallableHelpers)}
-          >
-            {bulkRunning ? 'Uninstalling…' : 'Uninstall local CLI providers'}
-          </button>
-        </SettingsDangerZone>
-      ) : null}
-
       {confirmation ? (() => {
-        const canConfirm = confirmation.kind === 'single'
-          ? singlePromptIsActionable(confirmation)
-          : bulkPromptAllPreviewsResolved(confirmation) && bulkPromptHasAnyActionable(confirmation);
-        const cancelLabel = confirmation.kind === 'single'
-          ? confirmation.preview?.status === 'not_installed' || (!canConfirm && !confirmation.loading)
+        const canConfirm = uninstallPromptIsActionable(confirmation);
+        const cancelLabel =
+          confirmation.preview?.status === 'not_installed' || (!canConfirm && !confirmation.loading)
             ? 'Close'
-            : 'Cancel'
-          : 'Cancel';
+            : 'Cancel';
         return (
           <div className="settingsRuntimeConfirmOverlay" role="dialog" aria-modal="true">
             <div className="settingsRuntimeConfirmCard">
-              {confirmation.kind === 'single' ? (
-                <SingleUninstallConfirmBody prompt={confirmation} />
-              ) : (
-                <BulkUninstallConfirmBody prompt={confirmation} />
-              )}
+              <UninstallConfirmBody prompt={confirmation} />
               <SettingsActionBar>
                 <button
                   type="button"
@@ -480,9 +343,7 @@ export function PlatformSettingsRuntime({
                   disabled={!canConfirm}
                   onClick={() => void handleUninstallConfirmed()}
                 >
-                  {confirmation.kind === 'single'
-                    ? 'Uninstall'
-                    : 'Uninstall all listed'}
+                  Uninstall
                 </button>
               </SettingsActionBar>
             </div>
@@ -495,7 +356,7 @@ export function PlatformSettingsRuntime({
   );
 }
 
-function SingleUninstallConfirmBody({ prompt }: { prompt: SinglePrompt }) {
+function UninstallConfirmBody({ prompt }: { prompt: UninstallPrompt }) {
   return (
     <>
       <h3>Uninstall {prompt.helper.label}?</h3>
@@ -514,46 +375,12 @@ function SingleUninstallConfirmBody({ prompt }: { prompt: SinglePrompt }) {
   );
 }
 
-function BulkUninstallConfirmBody({ prompt }: { prompt: BulkPrompt }) {
-  return (
-    <>
-      <h3>
-        Uninstall {prompt.helpers.length} provider{prompt.helpers.length === 1 ? '' : 's'}?
-      </h3>
-      <p>
-        This will run uninstall on every provider helper listed below.
-        Auth files, API keys, and external configuration are left in place.
-      </p>
-      {prompt.loading ? (
-        <p className="settingsRuntimeNote">Computing planned removals…</p>
-      ) : (
-        <ul className="settingsRuntimeList">
-          {prompt.helpers.map((helper) => {
-            const preview = prompt.previews.get(helper.id);
-            return (
-              <li key={helper.id}>
-                <strong>{helper.label}</strong>
-                <span>
-                  <code>{helper.id}</code>
-                </span>
-                <RemovalPreview preview={preview ?? null} loading={false} compact />
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </>
-  );
-}
-
 function RemovalPreview({
   preview,
   loading,
-  compact = false,
 }: {
   preview: RuntimeUninstallPreview | null;
   loading: boolean;
-  compact?: boolean;
 }) {
   if (loading) {
     return <p className="settingsRuntimeNote">Computing planned removals…</p>;
@@ -579,7 +406,7 @@ function RemovalPreview({
     );
   }
   return (
-    <div className={compact ? 'settingsRuntimePreviewCompact' : 'settingsRuntimePreview'}>
+    <div className="settingsRuntimePreview">
       <p className="settingsRuntimeNote">
         Will remove {preview.plannedActions.length} item{preview.plannedActions.length === 1 ? '' : 's'}:
       </p>
