@@ -1,24 +1,82 @@
-import { Stack } from 'expo-router';
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
+import { useProductRecents } from '../../../src/renderer/hooks/useProductRecents';
 import { colors, spacing, typography } from '../../../src/renderer/theme';
 
 export default function WorkRecentsScreen() {
+  const router = useRouter();
+  const { state } = useProductRecents('work');
+
   return (
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ title: 'Recents (Work)', headerShown: true }} />
-      <View style={styles.body}>
-        <Text style={styles.title}>Recents</Text>
-        <Text style={styles.subtitle}>Work-scoped recents.</Text>
-        <Text style={styles.empty}>Nothing here yet.</Text>
-        {__DEV__ ? (
-          <Text style={styles.devNote}>
-            Product-scoped recents (per SPEC-070) land alongside Phase 4b
-            live data. Until then this screen is a placeholder destination.
-          </Text>
-        ) : null}
-      </View>
+      {state.kind === 'loading' ? (
+        <View style={styles.centered}>
+          <ActivityIndicator color={colors.accent.primary} />
+        </View>
+      ) : state.kind === 'unconfigured' ? (
+        <Panel
+          title="Connect to your desktop"
+          body="Set the desktop base URL in Settings to load Work recents."
+        />
+      ) : state.kind === 'error' ? (
+        <Panel title="Could not load recents" body={state.error.message} />
+      ) : state.recents.length === 0 ? (
+        <Panel
+          title="Nothing here yet"
+          body="Recent Work conversations will appear here once you start one."
+        />
+      ) : (
+        <FlatList
+          data={state.recents}
+          keyExtractor={(entry) => entry.id}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => (
+            <Pressable
+              onPress={() => router.push(`/(tabs)/work/${item.id}`)}
+              style={({ pressed }) => [
+                styles.row,
+                pressed ? styles.rowPressed : null,
+              ]}
+            >
+              <View style={styles.rowText}>
+                <Text style={styles.rowTitle} numberOfLines={1}>
+                  {item.title}
+                </Text>
+                {item.subtitle ? (
+                  <Text style={styles.rowSubtitle} numberOfLines={1}>
+                    {item.subtitle}
+                  </Text>
+                ) : null}
+              </View>
+            </Pressable>
+          )}
+        />
+      )}
     </SafeAreaView>
+  );
+}
+
+interface PanelProps {
+  title: string;
+  body: string;
+}
+
+function Panel({ title, body }: PanelProps) {
+  return (
+    <View style={styles.panel}>
+      <Text style={styles.panelTitle}>{title}</Text>
+      <Text style={styles.panelBody}>{body}</Text>
+    </View>
   );
 }
 
@@ -27,27 +85,45 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg.canvas,
   },
-  body: {
+  centered: {
     flex: 1,
-    padding: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  panel: {
+    flex: 1,
+    padding: spacing.xl,
     gap: spacing.sm,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
   },
-  title: {
+  panelTitle: {
     color: colors.fg.primary,
-    ...typography.display,
+    ...typography.title,
   },
-  subtitle: {
+  panelBody: {
     color: colors.fg.secondary,
     ...typography.body,
   },
-  empty: {
-    color: colors.fg.muted,
-    ...typography.body,
-    marginTop: spacing.lg,
+  listContent: {
+    paddingVertical: spacing.sm,
   },
-  devNote: {
-    color: colors.fg.muted,
-    ...typography.label,
-    marginTop: spacing.md,
+  row: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  rowPressed: {
+    backgroundColor: colors.bg.panelHover,
+  },
+  rowText: {
+    gap: 2,
+  },
+  rowTitle: {
+    color: colors.fg.primary,
+    ...typography.bodyStrong,
+  },
+  rowSubtitle: {
+    color: colors.fg.secondary,
+    ...typography.caption,
   },
 });

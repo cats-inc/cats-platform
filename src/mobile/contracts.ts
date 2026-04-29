@@ -34,6 +34,8 @@ export type MobileChatChannelStatus =
   | 'watching'
   | 'archived';
 
+export type MobilePlatformSurfaceId = 'chat' | 'work' | 'code';
+
 export interface MobileChatChannelSummary {
   id: string;
   title: string;
@@ -42,6 +44,7 @@ export interface MobileChatChannelSummary {
   unreadCount: number;
   lastMessageAt: string | null;
   lastActivatedAt: string | null;
+  originSurface?: MobilePlatformSurfaceId | null;
 }
 
 export interface MobileChatShellState {

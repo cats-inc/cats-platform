@@ -61,6 +61,48 @@ export function selectMobileChatSidebar(
   return { recents, cats };
 }
 
+/**
+ * Returns the cats that belong to the given product, sorted by name.
+ * Drives the `MY CODES` / `MY WORKS` screens (PLAN-084 Phase 6
+ * placeholder destinations becoming live). Matches FR-046 / FR-047 —
+ * MY CATS is one platform-level home with lens projections.
+ */
+export function selectMobileMyCatsLens(
+  payload: MobileAppShellPayload,
+  product: 'chat' | 'code' | 'work',
+): MobileSidebarCat[] {
+  return payload.chat.cats
+    .filter((cat) => cat.products.includes(product))
+    .map(catToSidebarCat)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export interface SelectProductRecentsOptions {
+  recentLimit?: number;
+}
+
+/**
+ * Returns the channels whose `originSurface` matches the given product,
+ * filtered to active status, sorted desc by last activity. Drives the
+ * `Recents (Code)` / `Recents (Work)` screens. Matches the SPEC-070
+ * product-scoped recents pattern.
+ */
+export function selectMobileProductRecents(
+  payload: MobileAppShellPayload,
+  product: 'chat' | 'code' | 'work',
+  options: SelectProductRecentsOptions = {},
+): MobileSidebarRecent[] {
+  const recentLimit = options.recentLimit ?? 50;
+  return payload.chat.channels
+    .filter(
+      (channel) =>
+        channel.status === 'active' && channel.originSurface === product,
+    )
+    .map(channelToRecent)
+    .sort((a, b) => b.updatedAt - a.updatedAt)
+    .slice(0, recentLimit);
+}
+
 function channelToRecent(
   channel: MobileChatChannelSummary,
 ): MobileSidebarRecent {

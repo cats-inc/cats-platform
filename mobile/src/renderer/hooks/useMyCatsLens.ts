@@ -2,39 +2,35 @@ import { useMemo } from 'react';
 
 import type { MobileApiError } from '../../api/client';
 import {
-  type MobileChatSidebarData,
-  selectMobileChatSidebar,
+  type MobileSidebarCat,
+  selectMobileMyCatsLens,
 } from '../../../../src/mobile/index.js';
 import { useMobileAppShell } from './useMobileAppShell';
 
-export type ChatSidebarState =
+export type MyCatsLensState =
   | { kind: 'loading' }
   | { kind: 'unconfigured' }
   | { kind: 'error'; error: MobileApiError }
-  | { kind: 'data'; data: MobileChatSidebarData };
+  | { kind: 'data'; cats: MobileSidebarCat[] };
 
-export interface ChatSidebarHook {
-  state: ChatSidebarState;
+export interface MyCatsLensHook {
+  state: MyCatsLensState;
   refetch: () => void;
 }
 
-/**
- * Composes `useMobileAppShell` + `selectMobileChatSidebar` so the chat
- * tab consumes the same shared app-shell fetch as MY CATS / Recents
- * hooks. Memoizes the selector output so re-renders driven by other
- * state (e.g. tab focus) do not re-run the projection.
- */
-export function useChatSidebarData(): ChatSidebarHook {
+export function useMyCatsLens(
+  product: 'chat' | 'code' | 'work',
+): MyCatsLensHook {
   const { state: shellState, refetch } = useMobileAppShell();
-  const data = useMemo(
+  const cats = useMemo(
     () =>
       shellState.kind === 'data'
-        ? selectMobileChatSidebar(shellState.payload)
+        ? selectMobileMyCatsLens(shellState.payload, product)
         : null,
-    [shellState],
+    [shellState, product],
   );
 
-  let state: ChatSidebarState;
+  let state: MyCatsLensState;
   switch (shellState.kind) {
     case 'loading':
       state = { kind: 'loading' };
@@ -46,7 +42,7 @@ export function useChatSidebarData(): ChatSidebarHook {
       state = { kind: 'error', error: shellState.error };
       break;
     case 'data':
-      state = { kind: 'data', data: data! };
+      state = { kind: 'data', cats: cats! };
       break;
   }
 

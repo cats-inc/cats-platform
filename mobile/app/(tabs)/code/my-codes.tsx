@@ -1,24 +1,86 @@
-import { Stack } from 'expo-router';
-import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
+import { Stack, useRouter } from 'expo-router';
+import {
+  ActivityIndicator,
+  FlatList,
+  Pressable,
+  SafeAreaView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 
+import { useMyCatsLens } from '../../../src/renderer/hooks/useMyCatsLens';
 import { colors, spacing, typography } from '../../../src/renderer/theme';
 
 export default function MyCodesScreen() {
+  const router = useRouter();
+  const { state } = useMyCatsLens('code');
+
   return (
     <SafeAreaView style={styles.container}>
       <Stack.Screen options={{ title: 'My Codes', headerShown: true }} />
-      <View style={styles.body}>
-        <Text style={styles.title}>MY CODES</Text>
-        <Text style={styles.subtitle}>The Code lens of your cats.</Text>
-        <Text style={styles.empty}>Nothing here yet.</Text>
-        {__DEV__ ? (
-          <Text style={styles.devNote}>
-            MY CATS lens projections (FR-046, FR-047) land in PLAN-084
-            Phase 6 alongside the Lobby and Settings tab content.
-          </Text>
-        ) : null}
-      </View>
+      {state.kind === 'loading' ? (
+        <View style={styles.centered}>
+          <ActivityIndicator color={colors.accent.primary} />
+        </View>
+      ) : state.kind === 'unconfigured' ? (
+        <Panel
+          title="Connect to your desktop"
+          body="Set the desktop base URL in Settings to load your Code cats."
+        />
+      ) : state.kind === 'error' ? (
+        <Panel title="Could not load cats" body={state.error.message} />
+      ) : state.cats.length === 0 ? (
+        <Panel
+          title="No Code cats yet"
+          body="Create a cat assigned to the Code product on the desktop."
+        />
+      ) : (
+        <FlatList
+          data={state.cats}
+          keyExtractor={(cat) => cat.id}
+          contentContainerStyle={styles.listContent}
+          renderItem={({ item }) => (
+            <Pressable
+              onPress={() => router.push(`/(tabs)/code/direct-${item.id}`)}
+              style={({ pressed }) => [
+                styles.row,
+                pressed ? styles.rowPressed : null,
+              ]}
+            >
+              <View
+                style={[
+                  styles.avatar,
+                  { backgroundColor: item.avatarColor ?? colors.bubble.mentionDefault },
+                ]}
+              >
+                <Text style={styles.avatarText}>
+                  {item.name.slice(0, 2).toUpperCase()}
+                </Text>
+              </View>
+              <View style={styles.rowText}>
+                <Text style={styles.rowTitle}>{item.name}</Text>
+                <Text style={styles.rowStatus}>{item.status}</Text>
+              </View>
+            </Pressable>
+          )}
+        />
+      )}
     </SafeAreaView>
+  );
+}
+
+interface PanelProps {
+  title: string;
+  body: string;
+}
+
+function Panel({ title, body }: PanelProps) {
+  return (
+    <View style={styles.panel}>
+      <Text style={styles.panelTitle}>{title}</Text>
+      <Text style={styles.panelBody}>{body}</Text>
+    </View>
   );
 }
 
@@ -27,27 +89,61 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.bg.canvas,
   },
-  body: {
+  centered: {
     flex: 1,
-    padding: spacing.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  panel: {
+    flex: 1,
+    padding: spacing.xl,
     gap: spacing.sm,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
   },
-  title: {
+  panelTitle: {
     color: colors.fg.primary,
-    ...typography.display,
+    ...typography.title,
   },
-  subtitle: {
+  panelBody: {
     color: colors.fg.secondary,
     ...typography.body,
   },
-  empty: {
-    color: colors.fg.muted,
-    ...typography.body,
-    marginTop: spacing.lg,
+  listContent: {
+    paddingVertical: spacing.sm,
   },
-  devNote: {
-    color: colors.fg.muted,
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  rowPressed: {
+    backgroundColor: colors.bg.panelHover,
+  },
+  avatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    color: colors.bubble.mentionText,
     ...typography.label,
-    marginTop: spacing.md,
+    fontWeight: '700',
+  },
+  rowText: {
+    flex: 1,
+    gap: 2,
+  },
+  rowTitle: {
+    color: colors.fg.primary,
+    ...typography.bodyStrong,
+  },
+  rowStatus: {
+    color: colors.fg.muted,
+    ...typography.caption,
   },
 });
