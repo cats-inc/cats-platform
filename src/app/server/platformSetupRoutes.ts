@@ -244,6 +244,7 @@ async function handlePlatformSetupComplete(
       payload = {
         app: createPlatformAppDescriptor(),
         products: listPlatformProductDescriptors(),
+        installedApps: [],
         runtime: createPlatformWarmRuntimeSummary(),
         runtimeSetup: runtimeSetup ?? null,
         metadata: createPlatformResponseMetadata({

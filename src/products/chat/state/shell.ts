@@ -2,6 +2,7 @@ import type { AppConfig } from '../../../config.js';
 import type { AssistantPresetRecord, GuideCatRecord } from '../../../core/types.js';
 import type { RuntimeStatusSummary } from '../../../platform/runtime/client.js';
 import type { GuideCatAssistSurfaceReadModel } from '../../../shared/guideCatAssist.js';
+import type { PlatformInstalledAppDescriptor } from '../../../shared/catsAppManifest.js';
 import type {
   PlatformDesktopPreferences,
   PlatformLobbyCatSummary,
@@ -71,6 +72,7 @@ export function createAppShell(
     runtimeSetup?: RuntimeSetupSummary;
     guideCat?: GuideCatRecord | null;
     assistantPresets?: AssistantPresetRecord[];
+    installedApps?: PlatformInstalledAppDescriptor[];
     lobbyGuideCatAssist?: GuideCatAssistSurfaceReadModel | null;
     newChatAssist?: AppShellPayload['chat']['newChatAssist'];
     codeGuideCatAssist?: GuideCatAssistSurfaceReadModel | null;
@@ -85,6 +87,7 @@ export function createAppShell(
   return {
     app: createPlatformAppDescriptor(),
     products: listPlatformProductDescriptors(),
+    installedApps: structuredClone(setup?.installedApps ?? []),
     desktop: {
       startAtLogin: setup?.desktop?.startAtLogin ?? true,
       openWindowOnStartup: setup?.desktop?.openWindowOnStartup ?? false,

@@ -11,6 +11,10 @@ import {
   resolveCatsAppStoragePaths,
   resolveCatsAppStoragePathsFromChatState,
 } from '../src/platform/apps/paths.ts';
+import {
+  readPlatformInstalledAppDescriptors,
+  toPlatformInstalledAppDescriptor,
+} from '../src/platform/apps/envelope.ts';
 import { FileCatsAppRegistry } from '../src/platform/apps/registry.ts';
 
 function createManifest(id = 'user.pomodoro'): CatsAppManifestV1 {
@@ -28,8 +32,16 @@ function createManifest(id = 'user.pomodoro'): CatsAppManifestV1 {
       catsPlatform: '^0.1.0',
       appSdk: '1.x',
     },
-    contributions: {},
-    permissions: [],
+    contributions: {
+      lobbyApps: [
+        {
+          id: 'timer',
+          title: 'Pomodoro',
+          routePath: `/apps/${id}`,
+        },
+      ],
+    },
+    permissions: ['ui.route', 'ui.lobby'],
   };
 }
 
@@ -129,4 +141,80 @@ test('FileCatsAppRegistry purges app records when requested', async () => {
     schemaVersion: 1,
     apps: [],
   });
+});
+
+test('toPlatformInstalledAppDescriptor exposes active Lobby entries only for enabled apps', async () => {
+  const platformDir = await createTempPlatformDir();
+  const registry = new FileCatsAppRegistry({
+    registryPath: resolveCatsAppStoragePaths(platformDir).registryPath,
+  });
+  const enabled = await registry.installApp({
+    manifest: createManifest(),
+    packagePath: path.join(platformDir, 'apps', 'packages', 'user.pomodoro', '0.1.0'),
+    installState: 'enabled',
+  });
+  const disabled = await registry.installApp({
+    manifest: createManifest('user.pomodoro-disabled'),
+    packagePath: path.join(platformDir, 'apps', 'packages', 'user.pomodoro-disabled', '0.1.0'),
+    installState: 'disabled',
+  });
+
+  assert.equal(toPlatformInstalledAppDescriptor(enabled).lobbyEntries.length, 1);
+  assert.deepEqual(toPlatformInstalledAppDescriptor(disabled).lobbyEntries, []);
+});
+
+test('readPlatformInstalledAppDescriptors reads the registry from the platform host state path', async () => {
+  const platformDir = await createTempPlatformDir();
+  const chatStatePath = path.join(platformDir, 'state', 'chat-state.local.json');
+  const paths = resolveCatsAppStoragePathsFromChatState(chatStatePath);
+  const registry = new FileCatsAppRegistry({
+    registryPath: paths.registryPath,
+  });
+
+  await registry.installApp({
+    manifest: createManifest('user.zebra'),
+    packagePath: resolveCatsAppPackageInstallDir(paths, 'user.zebra', '0.1.0'),
+    installState: 'enabled',
+  });
+  await registry.installApp({
+    manifest: {
+      ...createManifest('connector.calendar'),
+      displayName: 'Calendar Connector',
+      category: 'capability-connector',
+      contributions: {
+        connectors: [
+          {
+            id: 'calendar',
+            service: 'calendar',
+            capabilities: ['calendar.read'],
+          },
+        ],
+      },
+      permissions: [],
+    },
+    packagePath: resolveCatsAppPackageInstallDir(paths, 'connector.calendar', '0.1.0'),
+    installState: 'enabled',
+  });
+
+  const descriptors = await readPlatformInstalledAppDescriptors(chatStatePath);
+
+  assert.deepEqual(
+    descriptors.map((descriptor) => ({
+      id: descriptor.id,
+      displayName: descriptor.displayName,
+      lobbyEntries: descriptor.lobbyEntries.map((entry) => entry.routePath),
+    })),
+    [
+      {
+        id: 'connector.calendar',
+        displayName: 'Calendar Connector',
+        lobbyEntries: [],
+      },
+      {
+        id: 'user.zebra',
+        displayName: 'Pomodoro',
+        lobbyEntries: ['/apps/user.zebra'],
+      },
+    ],
+  );
 });

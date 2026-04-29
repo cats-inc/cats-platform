@@ -108,6 +108,7 @@ import {
 } from './guideCatAssist.js';
 export { mapChannelCat } from './routeStateSupport.js';
 import { readRuntimeSetupSummary } from '../../../runtime/setup.js';
+import { readPlatformInstalledAppDescriptors } from '../../../platform/apps/envelope.js';
 export {
   ChatApiError,
   errorStatusCode,
@@ -274,6 +275,9 @@ export async function buildAppShellPayload(
   }
   const runtime = await dependencies.runtimeClient.getHealth();
   const runtimeSetup = await readRuntimeSetupSummary(dependencies.runtimeClient);
+  const installedApps = await readPlatformInstalledAppDescriptors(
+    dependencies.config.chatStatePath,
+  );
   const botBindings = core.botBindings.map((binding) => {
     const matchedCat = resolvedState.cats.find((cat) =>
       binding.catActorId
@@ -355,6 +359,7 @@ export async function buildAppShellPayload(
       codeGuideCatAssist: guideCatAssist.newCode,
       runtimeSetup,
       scopeId,
+      installedApps,
     },
   );
 }

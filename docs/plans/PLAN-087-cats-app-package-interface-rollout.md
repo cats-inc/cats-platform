@@ -66,8 +66,8 @@ third-party install, signing, and full sandboxing are explicitly later work.
 - [x] Support install states: `installed`, `enabled`, `disabled`, `error`,
       `upgrade-pending`, `uninstalled`.
 - [x] Support soft uninstall without purging app data.
-- [ ] Expose registry reads to the platform host envelope.
-- [ ] Keep all state writes out of user dev data during tests by using temp
+- [x] Expose registry reads to the platform host envelope.
+- [x] Keep all state writes out of user dev data during tests by using temp
       directories and isolated stores.
 
 **Likely files**:
@@ -84,7 +84,7 @@ third-party install, signing, and full sandboxing are explicitly later work.
 
 ## Phase 3: Replace Lobby Apps Mock with Registry Data
 
-- [ ] Add `PlatformInstalledAppDescriptor` to the host envelope.
+- [x] Add `PlatformInstalledAppDescriptor` to the host envelope.
 - [ ] Update Lobby model to build app cards from installed app descriptors.
 - [ ] Remove the hardcoded Pomodoro mock card.
 - [ ] Render a quiet empty state when no app has a Lobby contribution.
@@ -255,6 +255,7 @@ The overnight implementation agent should aim for this first vertical slice:
 | 2026-04-29 | Added the first Settings `Apps` entry and placeholder route under `Work` and above `Runtime`; registry-backed management remains pending. |
 | 2026-04-29 | Added shared Cats App Package manifest contracts, contribution permissions, route/settings collision validation, and manifest tests. |
 | 2026-04-29 | Added file-backed app registry paths and lifecycle storage tests using temporary platform data roots. |
+| 2026-04-29 | Wired registry reads into the platform host envelope as `installedApps` descriptors. |
 
 ---
 

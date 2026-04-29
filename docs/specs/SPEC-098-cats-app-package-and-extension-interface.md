@@ -570,6 +570,11 @@ remain clear.
 The platform host envelope must add installed app descriptors.
 
 ```ts
+export interface PlatformHostEnvelope {
+  // existing fields omitted
+  installedApps: PlatformInstalledAppDescriptor[];
+}
+
 export interface PlatformInstalledAppDescriptor {
   id: string;
   displayName: string;
