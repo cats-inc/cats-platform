@@ -582,6 +582,7 @@ export interface PlatformInstalledAppDescriptor {
   version: string;
   category: CatsAppCategory;
   trustTier: CatsAppTrustTier;
+  permissions: CatsAppPermission[];
   installState: CatsAppInstallState;
   enabled: boolean;
   lobbyEntries: CatsLobbyAppContribution[];

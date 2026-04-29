@@ -16,6 +16,7 @@ function createInstalledApp(
     version: '0.1.0',
     category: 'user-app',
     trustTier: 'local-user',
+    permissions: ['ui.route', 'ui.lobby'],
     installState: 'enabled',
     enabled: true,
     lobbyEntries: [],
@@ -52,6 +53,8 @@ test('PlatformSettingsApps renders installed app and connector package status', 
   assert.match(markup, />Enabled</u);
   assert.match(markup, />Calendar Connector</u);
   assert.match(markup, />Connector</u);
+  assert.match(markup, />Local user</u);
+  assert.match(markup, />2 permissions</u);
   assert.match(markup, />Disabled</u);
   assert.match(markup, />1 connector package</u);
 });

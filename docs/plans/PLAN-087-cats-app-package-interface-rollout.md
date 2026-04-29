@@ -25,17 +25,32 @@ third-party install, signing, and full sandboxing are explicitly later work.
 
 ## Phase 0: Inventory and Boundary Check
 
-- [ ] Confirm the current Lobby `Apps` Pomodoro card is only a mock and has no
+- [x] Confirm the current Lobby `Apps` Pomodoro card is only a mock and has no
       durable registry source.
-- [ ] Confirm existing `PlatformProductDescriptor` and `PlatformHostEnvelope`
+- [x] Confirm existing `PlatformProductDescriptor` and `PlatformHostEnvelope`
       shapes that must be extended, not replaced.
-- [ ] Confirm Cats Code export points that can produce package artifacts.
-- [ ] Confirm current tool registry and runtime bridge boundaries for
+- [x] Confirm Cats Code export points that can produce package artifacts.
+- [x] Confirm current tool registry and runtime bridge boundaries for
       connector-backed tools.
-- [ ] Record any direct `agent-fleet` dependencies that must stay outside the
+- [x] Record any direct `agent-fleet` dependencies that must stay outside the
       app package contract.
 
 **Deliverables**: implementation notes in this plan or follow-up progress log.
+
+Inventory notes:
+
+- The hardcoded Lobby Pomodoro card was removed; Lobby `Apps` now reads only
+  `PlatformHostEnvelope.installedApps`.
+- Existing `PlatformProductDescriptor` remains the Products source. App
+  packages extend the host envelope through `PlatformInstalledAppDescriptor`
+  instead of replacing product descriptors.
+- Cats Code export remains a later phase, but the host side now accepts a local
+  package folder containing `cats.app.json`.
+- Connector and scoped API declarations are manifest-visible, but execution is
+  not mounted yet. Runtime-backed behavior must remain behind platform-owned
+  tool/runtime boundaries and `cats-runtime`.
+- No app package contract imports `agent-fleet`; that boundary remains outside
+  this standard.
 
 ## Phase 1: Define App Contracts and Validators
 
@@ -88,7 +103,7 @@ third-party install, signing, and full sandboxing are explicitly later work.
 - [x] Update Lobby model to build app cards from installed app descriptors.
 - [x] Remove the hardcoded Pomodoro mock card.
 - [x] Render a quiet empty state when no app has a Lobby contribution.
-- [ ] Preserve existing Products behavior and product grouping.
+- [x] Preserve existing Products behavior and product grouping.
 - [x] Add tests for Lobby app entry normalization.
 
 **Likely files**:
@@ -109,9 +124,9 @@ third-party install, signing, and full sandboxing are explicitly later work.
 - [x] Add enable, disable, and uninstall endpoints.
 - [x] Add inspect endpoint.
 - [x] Add route serving for `/apps/:appId/*`.
-- [ ] Add scoped app API route mounting under `/api/apps/:appId/*`.
+- [x] Add scoped app API route mounting under `/api/apps/:appId/*`.
 - [ ] Gate mutations behind owner-level confirmation in the UI flow.
-- [ ] Ensure app APIs cannot shadow core, product, setup, runtime, or settings
+- [x] Ensure app APIs cannot shadow core, product, setup, runtime, or settings
       endpoints.
 
 **Likely files**:
@@ -162,7 +177,7 @@ without pretending to be UI apps.
 
 ## Phase 7: Add System Product Module Path
 
-- [ ] Allow `product-module` contributions only for `trustTier: "system"`.
+- [x] Allow `product-module` contributions only for `trustTier: "system"`.
 - [ ] Merge system product descriptors into the host product registry.
 - [ ] Keep user apps excluded from the Products section.
 - [ ] Add a system fixture or placeholder descriptor for future Cats Learn.
@@ -176,8 +191,8 @@ standard without granting that privilege to local user apps.
 
 - [x] Add the host-level `Apps` settings entry under `Work` and above
       `Runtime`.
-- [ ] Add installed app management under Settings.
-- [ ] Show app identity, version, category, trust tier, permissions, and state.
+- [x] Add installed app management under Settings.
+- [x] Show app identity, version, category, trust tier, permissions, and state.
 - [ ] Add enable, disable, uninstall, and open actions.
 - [ ] Add capability connector settings entries.
 - [ ] Use existing Settings toast conventions for save/error feedback.
@@ -187,10 +202,10 @@ standard without granting that privilege to local user apps.
 
 ## Phase 9: Validation and Handoff
 
-- [ ] Run manifest validator tests.
-- [ ] Run registry tests with temporary data roots.
-- [ ] Run app install route integration tests with fixture packages.
-- [ ] Run Lobby model tests.
+- [x] Run manifest validator tests.
+- [x] Run registry tests with temporary data roots.
+- [x] Run app install route integration tests with fixture packages.
+- [x] Run Lobby model tests.
 - [ ] Manually validate a Cats Code exported Pomodoro package from export to
       install to Lobby launch.
 - [ ] Update documentation indexes and product integration notes.
@@ -262,6 +277,7 @@ The overnight implementation agent should aim for this first vertical slice:
 | 2026-04-29 | Added the renderer `/apps/:appId/*` app host route skeleton for installed app packages. |
 | 2026-04-29 | Connected Settings `Apps` to the platform envelope installed app descriptors as a read-only management view. |
 | 2026-04-29 | Added app inspect API output for full manifest and registry record review. |
+| 2026-04-29 | Closed remaining boundary notes, reserved scoped API routing, product/app separation tests, and Settings app identity details. |
 
 ---
 

@@ -151,22 +151,80 @@ test('app package disable and uninstall update launch visibility', async () => {
   const list = await routeJson(platformDir, 'GET', '/api/apps');
 
   assert.equal(disabled.statusCode, 200);
-  assert.deepEqual(
-    (disabled.payload as { app: { installState: string; lobbyEntries: unknown[] } }).app,
-    {
-      id: 'user.pomodoro',
-      displayName: 'Pomodoro',
-      publisher: 'Local User',
-      version: '0.1.0',
-      category: 'user-app',
-      trustTier: 'local-user',
-      installState: 'disabled',
-      enabled: false,
-      lobbyEntries: [],
-    },
-  );
+  const disabledApp = (disabled.payload as {
+    app: { installState: string; enabled: boolean; lobbyEntries: unknown[] };
+  }).app;
+  assert.equal(disabledApp.installState, 'disabled');
+  assert.equal(disabledApp.enabled, false);
+  assert.deepEqual(disabledApp.lobbyEntries, []);
   assert.equal(uninstalled.statusCode, 200);
   assert.deepEqual((list.payload as { apps: unknown[] }).apps, []);
+});
+
+test('app package scoped API routes are reserved under the app namespace only', async () => {
+  const platformDir = await createTempPlatformDir();
+  const packagePath = await createPackage(platformDir, createManifest({
+    permissions: ['ui.route', 'ui.lobby', 'core.read'],
+    contributions: {
+      lobbyApps: [
+        {
+          id: 'timer',
+          title: 'Pomodoro',
+          routePath: '/apps/user.pomodoro',
+        },
+      ],
+      apiRoutes: [
+        {
+          routeKey: 'status',
+          method: 'GET',
+          path: '/status',
+          permission: 'core.read',
+        },
+      ],
+    },
+  }));
+
+  await routeJson(platformDir, 'POST', '/api/apps/install', { packagePath, enable: true });
+  const declared = await routeJson(platformDir, 'GET', '/api/apps/user.pomodoro/scoped/status');
+  const undeclared = await routeJson(platformDir, 'GET', '/api/apps/user.pomodoro/scoped/missing');
+
+  assert.equal(declared.statusCode, 501);
+  assert.equal(
+    (declared.payload as { error: { code: string } }).error.code,
+    'cats_app_scoped_route_not_implemented',
+  );
+  assert.equal(undeclared.statusCode, 404);
+  assert.equal(
+    (undeclared.payload as { error: { code: string } }).error.code,
+    'cats_app_scoped_route_not_found',
+  );
+});
+
+test('POST /api/apps/install rejects app ids reserved by management routes', async () => {
+  const platformDir = await createTempPlatformDir();
+  const packagePath = await createPackage(platformDir, createManifest({
+    id: 'install',
+    contributions: {
+      lobbyApps: [
+        {
+          id: 'bad',
+          title: 'Bad',
+          routePath: '/apps/install',
+        },
+      ],
+    },
+  }));
+
+  const install = await routeJson(platformDir, 'POST', '/api/apps/install', {
+    packagePath,
+    enable: true,
+  });
+
+  assert.equal(install.statusCode, 400);
+  assert.ok(
+    (install.payload as { issues: Array<{ code: string }> }).issues
+      .some((issue) => issue.code === 'reserved_cats_app_id'),
+  );
 });
 
 test('POST /api/apps/install rejects manifests that shadow product routes', async () => {

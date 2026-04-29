@@ -44,6 +44,7 @@ interface LocalManifestReadResult {
 }
 
 const CATS_APP_MANIFEST_FILE = 'cats.app.json';
+const RESERVED_APP_IDS = new Set(['install', 'validate']);
 
 const RESERVED_SETTINGS_PATHS = [
   '/settings',
@@ -75,6 +76,15 @@ function badRequestIssue(
     code: 'invalid_cats_app_package_request',
     message,
     path: pathName,
+  };
+}
+
+function reservedAppIdIssue(appId: string): CatsAppManifestValidationIssue {
+  return {
+    code: 'reserved_cats_app_id',
+    message: `Cats app id "${appId}" is reserved by the app management API.`,
+    path: 'id',
+    details: { appId },
   };
 }
 
@@ -155,6 +165,15 @@ async function validateLocalManifestPackage(
       packagePath: packageRead.value.packagePath,
       manifestPath: packageRead.value.manifestPath,
       issues: parsed.issues,
+    };
+  }
+
+  if (RESERVED_APP_IDS.has(parsed.manifest.id)) {
+    return {
+      ok: false,
+      packagePath: packageRead.value.packagePath,
+      manifestPath: packageRead.value.manifestPath,
+      issues: [reservedAppIdIssue(parsed.manifest.id)],
     };
   }
 
@@ -248,6 +267,54 @@ async function handleInspect(context: AppPackageRouteContext, appId: string): Pr
   });
 }
 
+function resolveScopedApiRoute(record: CatsAppManifestV1, method: string, scopedPath: string) {
+  return record.contributions.apiRoutes?.find((route) =>
+    route.method === method && route.path === scopedPath) ?? null;
+}
+
+async function handleScopedApiRoute(
+  context: AppPackageRouteContext,
+  appId: string,
+  scopedPath: string,
+): Promise<void> {
+  const registry = appRegistryFor(context);
+  const record = await registry.getInstalledApp(appId);
+  if (!record) {
+    sendJson(context.response, 404, {
+      error: { code: 'cats_app_not_found', message: `Cats app "${appId}" is not installed.` },
+    });
+    return;
+  }
+
+  if (!record.enabled || record.installState !== 'enabled') {
+    sendJson(context.response, 409, {
+      error: {
+        code: 'cats_app_not_enabled',
+        message: `Cats app "${appId}" is not enabled.`,
+      },
+    });
+    return;
+  }
+
+  const route = resolveScopedApiRoute(record.manifest, context.method, scopedPath);
+  if (!route) {
+    sendJson(context.response, 404, {
+      error: {
+        code: 'cats_app_scoped_route_not_found',
+        message: `Cats app "${appId}" does not declare ${context.method} ${scopedPath}.`,
+      },
+    });
+    return;
+  }
+
+  sendJson(context.response, 501, {
+    error: {
+      code: 'cats_app_scoped_route_not_implemented',
+      message: `Cats app scoped route "${route.routeKey}" is declared but no executor is mounted yet.`,
+    },
+  });
+}
+
 async function handleStateMutation(
   context: AppPackageRouteContext,
   appId: string,
@@ -334,6 +401,16 @@ export async function routeAppPackageApi(
       return true;
     }
     await handleInspect(context, inspectMatch[0]!);
+    return true;
+  }
+
+  const scopedMatch = matchRoute(
+    context.url.pathname,
+    /^\/api\/apps\/([^/]+)\/scoped(?:\/(.*))?$/u,
+  );
+  if (scopedMatch) {
+    const scopedPath = scopedMatch[1] ? `/${scopedMatch[1]}` : '/';
+    await handleScopedApiRoute(context, scopedMatch[0]!, scopedPath);
     return true;
   }
 

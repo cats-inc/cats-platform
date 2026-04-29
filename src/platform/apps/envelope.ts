@@ -20,6 +20,7 @@ export function toPlatformInstalledAppDescriptor(
     version: record.manifest.version,
     category: record.manifest.category,
     trustTier: record.manifest.trustTier,
+    permissions: structuredClone(record.manifest.permissions),
     installState: record.installState,
     enabled: record.enabled,
     lobbyEntries: isLobbyLaunchEnabled(record)

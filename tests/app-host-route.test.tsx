@@ -88,6 +88,7 @@ test('AppHostRoute renders installed app route metadata', () => {
         version: '0.1.0',
         category: 'user-app',
         trustTier: 'local-user',
+        permissions: ['ui.route', 'ui.lobby'],
         installState: 'enabled',
         enabled: true,
         lobbyEntries: [

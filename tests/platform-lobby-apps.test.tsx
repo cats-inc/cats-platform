@@ -101,6 +101,7 @@ test('buildPlatformLobbyAppEntries includes only enabled active app launch entri
         version: '0.1.0',
         category: 'user-app',
         trustTier: 'local-user',
+        permissions: ['ui.route', 'ui.lobby'],
         installState: 'enabled',
         enabled: true,
         lobbyEntries: [
@@ -119,6 +120,7 @@ test('buildPlatformLobbyAppEntries includes only enabled active app launch entri
         version: '0.1.0',
         category: 'user-app',
         trustTier: 'local-user',
+        permissions: ['ui.route', 'ui.lobby'],
         installState: 'disabled',
         enabled: false,
         lobbyEntries: [
@@ -136,6 +138,7 @@ test('buildPlatformLobbyAppEntries includes only enabled active app launch entri
         version: '0.1.0',
         category: 'capability-connector',
         trustTier: 'local-user',
+        permissions: [],
         installState: 'enabled',
         enabled: true,
         lobbyEntries: [],
@@ -156,6 +159,7 @@ test('PlatformLobby renders installed Apps from the envelope and removes the Pom
         version: '0.1.0',
         category: 'user-app',
         trustTier: 'local-user',
+        permissions: ['ui.route', 'ui.lobby'],
         installState: 'enabled',
         enabled: true,
         lobbyEntries: [
@@ -188,6 +192,7 @@ test('PlatformLobby renders a quiet Apps empty state when no app has a Lobby ent
         version: '0.1.0',
         category: 'capability-connector',
         trustTier: 'local-user',
+        permissions: [],
         installState: 'enabled',
         enabled: true,
         lobbyEntries: [],
@@ -197,4 +202,54 @@ test('PlatformLobby renders a quiet Apps empty state when no app has a Lobby ent
 
   assert.match(markup, />No apps yet</u);
   assert.doesNotMatch(markup, />Pomodoro</u);
+});
+
+test('PlatformLobby keeps product cards separate from installed app cards', () => {
+  const markup = renderLobby(createEnvelope({
+    products: [
+      {
+        id: 'chat',
+        surface: 'chat',
+        routePrefix: '/chat',
+        productName: 'Cats Chat',
+        subtitle: 'Conversations with companions',
+        group: 'home',
+        installPolicy: 'required',
+        installState: 'installed',
+        maturity: 'active',
+        setup: { selectable: true },
+      },
+    ],
+    lastProductSurface: 'chat',
+    installedApps: [
+      {
+        id: 'user.focus',
+        displayName: 'Focus Timer',
+        publisher: 'Local User',
+        version: '0.1.0',
+        category: 'user-app',
+        trustTier: 'local-user',
+        permissions: ['ui.route', 'ui.lobby'],
+        installState: 'enabled',
+        enabled: true,
+        lobbyEntries: [
+          {
+            id: 'timer',
+            title: 'Focus Timer',
+            routePath: '/apps/user.focus',
+          },
+        ],
+      },
+    ],
+  }));
+
+  const productsIndex = markup.indexOf('>Products<');
+  const chatIndex = markup.indexOf('>Cats Chat<');
+  const appsIndex = markup.indexOf('>Apps<');
+  const focusIndex = markup.indexOf('>Focus Timer<');
+  assert.ok(productsIndex >= 0);
+  assert.ok(chatIndex > productsIndex);
+  assert.ok(appsIndex > chatIndex);
+  assert.ok(focusIndex > appsIndex);
+  assert.match(markup, />Continue</u);
 });

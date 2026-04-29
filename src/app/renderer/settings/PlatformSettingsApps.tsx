@@ -41,6 +41,21 @@ function formatInstallState(state: CatsAppInstallState): string {
   }
 }
 
+function formatTrustTier(trustTier: PlatformInstalledAppDescriptor['trustTier']): string {
+  switch (trustTier) {
+    case 'local-user':
+      return 'Local user';
+    case 'system':
+      return 'System';
+    case 'third-party':
+      return 'Third party';
+  }
+}
+
+function formatPermissionCount(count: number): string {
+  return `${count} permission${count === 1 ? '' : 's'}`;
+}
+
 function statusTone(state: CatsAppInstallState) {
   if (state === 'enabled') {
     return 'ready';
@@ -84,8 +99,10 @@ export function PlatformSettingsApps({
             description={(
               <span className="settingsAppsMeta">
                 <span>{formatCategory(app.category)}</span>
+                <span>{formatTrustTier(app.trustTier)}</span>
                 <span>{app.version}</span>
                 <span>{app.publisher}</span>
+                <span>{formatPermissionCount(app.permissions.length)}</span>
               </span>
             )}
             control={(
