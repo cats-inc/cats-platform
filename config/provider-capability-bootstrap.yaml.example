@@ -5,21 +5,19 @@
 # start as default/unknown.
 version: 1
 profiles:
-  - id: claude-native-sonnet-strong-candidate
+  - id: claude-native-opus-strong-candidate
     selector:
       provider: claude
       instance: native
-      model: sonnet
-      control: default
+      model: opus
     initialTreatment: strong_agent
     confidenceLevel: catalog_only
     reason: Operator-approved strong-agent candidate for supervised chat/work demos.
-  - id: codex-cloud-gpt-5-4-strong-candidate
+  - id: codex-native-gpt-5-4-strong-candidate
     selector:
       provider: codex
-      instance: cloud
+      instance: native
       model: gpt-5.4
-      control: default
     initialTreatment: strong_agent
     confidenceLevel: catalog_only
     reason: Operator-approved strong-agent candidate for supervised coding demos.
