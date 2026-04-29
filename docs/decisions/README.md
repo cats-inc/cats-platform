@@ -39,6 +39,7 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
+| [093-use-platform-language-preferences-for-assistant-and-ui-locales](./093-use-platform-language-preferences-for-assistant-and-ui-locales.md) | Use Platform Language Preferences for Assistant Responses and UI Locales | Proposed | 2026-04-29 |
 | [092-reposition-cats-mobile-as-first-class-product-client](./092-reposition-cats-mobile-as-first-class-product-client.md) | Reposition Cats Mobile as a First-Class Product Client | Proposed | 2026-04-29 |
 | [091-retire-composer-mode-cat-led-in-favor-of-recipient-state](./091-retire-composer-mode-cat-led-in-favor-of-recipient-state.md) | Retire `composerMode = cat_led` in favor of per-turn recipient state | Proposed | 2026-04-29 |
 | [090-adopt-generic-schedule-rules-for-mission-triggers](./090-adopt-generic-schedule-rules-for-mission-triggers.md) | Adopt Generic Schedule Rules for Mission Triggers | Proposed | 2026-04-29 |

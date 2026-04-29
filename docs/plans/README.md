@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-086](./PLAN-086-platform-language-settings-and-ui-localization-rollout.md) | Platform Language Settings and UI Localization Rollout | Draft | [SPEC-097](../specs/SPEC-097-platform-language-settings-and-ui-localization.md), [ADR-093](../decisions/093-use-platform-language-preferences-for-assistant-and-ui-locales.md) |
 | [PLAN-085](./PLAN-085-mission-cancel-and-run-stop-rollout.md) | Mission Cancel and Run Stop Rollout | Draft | [SPEC-096](../specs/SPEC-096-mission-cancel-and-run-stop-contract.md), [ADR-082](../decisions/082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md) |
 | [PLAN-084](./PLAN-084-cats-mobile-shell-rollout.md) | Cats Mobile Shell Rollout | Draft | [SPEC-095](../specs/SPEC-095-cats-mobile-shell-five-tabs-and-product-sidebar-variants.md), [ADR-092](../decisions/092-reposition-cats-mobile-as-first-class-product-client.md) |
 | [PLAN-083](./PLAN-083-schedule-rules-and-mission-trigger-rollout.md) | Schedule Rules and Mission Trigger Rollout | Complete | [SPEC-094](../specs/SPEC-094-schedule-rules-and-mission-triggers.md), [ADR-090](../decisions/090-adopt-generic-schedule-rules-for-mission-triggers.md) |
@@ -138,6 +139,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-04-29 (PLAN-085 added for Mission cancel and Run stop rollout; PLAN-084 added for Cats Mobile shell rollout; PLAN-083 completed for schedule rules and mission-trigger rollout.)*
+*Last updated: 2026-04-29 (PLAN-086 added for platform language settings and UI localization rollout; PLAN-085 added for Mission cancel and Run stop rollout; PLAN-084 added for Cats Mobile shell rollout; PLAN-083 completed for schedule rules and mission-trigger rollout.)*
 
 *See also: [specs/](../specs/) for feature specifications*

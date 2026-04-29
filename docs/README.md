@@ -57,6 +57,9 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [PLAN-086](./plans/PLAN-086-platform-language-settings-and-ui-localization-rollout.md)
+- [SPEC-097](./specs/SPEC-097-platform-language-settings-and-ui-localization.md)
+- [ADR-093](./decisions/093-use-platform-language-preferences-for-assistant-and-ui-locales.md)
 - [PLAN-085](./plans/PLAN-085-mission-cancel-and-run-stop-rollout.md)
 - [SPEC-096](./specs/SPEC-096-mission-cancel-and-run-stop-contract.md)
 - [Agent Control Surfaces](./agent-control-surfaces.md)
