@@ -204,20 +204,23 @@ when both flags align.
 **Goal**: ship the env flag in `.env.example` plus the operator-
 facing documentation that explains the feature.
 
-- [ ] Add `CATS_DESKTOP_MOBILE_PAIRING_ENABLED=false` to
+- [x] Add `CATS_DESKTOP_MOBILE_PAIRING_ENABLED=false` to
       `.env.example` with a multi-line comment covering: what it
       enables, the LAN-bind requirement, the SDK alignment
       caveat.
-- [ ] Update `cats-platform/docs/setup-guide.md` with a new
-      "Mobile pairing" section covering: install Expo Go, enable
-      the flag, restart, scan the QR.
-- [ ] Update `cats-platform/mobile/` README (if any) cross-linking
+- [x] Update `cats-platform/docs/setup-guide.md` with a new
+      "Mobile pairing" section covering the flag, LAN-bind
+      requirement, restart requirement, diagnostic manifest URL,
+      and Phase 1 QR blocker.
+- [x] Update `cats-platform/mobile/` README (if any) cross-linking
       to this flow.
-- [ ] If `.env.example` is bundled into installers, confirm the
+- [x] If `.env.example` is bundled into installers, confirm the
       flag default reaches packaged builds.
 
-**Deliverable**: a new operator can enable the feature from a clean
-checkout without reading source.
+**Deliverable**: a new operator can enable the gated diagnostic
+surface from a clean checkout without reading source. The final
+Expo Go QR instructions remain blocked on Phase 1 because the
+pairing URL/schema is still unresolved.
 
 ## Phase 6 — End-to-end smoke
 

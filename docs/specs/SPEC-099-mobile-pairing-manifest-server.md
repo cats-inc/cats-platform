@@ -174,15 +174,17 @@ Developer account.
   - A QR code rendered from that URL.
   - Step-by-step copy: "Install Expo Go on your phone, scan this
     QR with the Camera app or Expo Go's scanner."
-- **FR-13.** LAN IP detection happens server-side in the desktop
-  host: the desktop main process calls `os.networkInterfaces()`,
-  filters to a non-loopback IPv4 candidate, and ships a Mobile
-  pairing readiness payload to the renderer through the existing
-  `AppShellPayload` desktop-feature plumbing. The renderer never
-  calls `os.networkInterfaces()` directly. That payload separates
-  the server bind state from LAN discovery:
+- **FR-13.** LAN IP detection happens server-side in the
+  desktop-hosted Cats process: the AppShell payload builder calls
+  `os.networkInterfaces()`, filters to a non-loopback IPv4
+  candidate, and ships a Mobile pairing readiness payload to the
+  renderer through the existing `AppShellPayload` desktop-feature
+  plumbing. The renderer never calls `os.networkInterfaces()`
+  directly. That payload separates the server bind state from LAN
+  discovery:
   - the configured/effective bind host, with an explicit
-    `loopback`, `lan`, or `all_interfaces` reachability state;
+    `loopback`, `lan`, `all_interfaces`, or `other_interface`
+    reachability state;
   - the selected LAN IPv4 candidate, or `null` plus a reason when
     no candidate exists.
   A missing LAN candidate is not treated as proof that the server

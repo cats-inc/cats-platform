@@ -60,6 +60,47 @@ When bumping `expo` in `mobile/package.json`, re-run `npm run build:mobile:check
 and then run the real-device Mobile pairing smoke from PLAN-088 before shipping
 the desktop artifact.
 
+### Mobile pairing (desktop)
+
+Mobile pairing is opt-in and LAN-scoped. Enable it only on a trusted network:
+
+```bash
+CATS_DESKTOP_MOBILE_PAIRING_ENABLED=true
+```
+
+For packaged desktop, the app sidecar must be reachable from the phone:
+
+```bash
+CATS_DESKTOP_APP_HOST=0.0.0.0
+```
+
+For a built Node run without Electron, use the app-server bind instead:
+
+```bash
+CATS_HOST=0.0.0.0
+```
+
+Restart Cats after changing the bind host. Then open
+`Settings -> Desktop -> Mobile pairing`. The card reports the effective bind
+host, selected LAN IPv4 candidate, and a recovery action when the server is
+still loopback-only.
+
+Current implementation status:
+
+- `CATS_DESKTOP_MOBILE_PAIRING_ENABLED=true` exposes the gated
+  `/api/mobile/*` bundle-serving routes.
+- the card shows the LAN-facing diagnostic manifest URL when a LAN candidate is
+  available.
+- the final Expo Go QR remains pending until PLAN-088 Phase 1 confirms the
+  stock Expo Go manifest schema and pairing URL form on real iOS and Android
+  devices. Do not treat the diagnostic manifest URL as the final scannable
+  Expo Go pairing URL.
+
+If the card reports no LAN address while the bind host is already
+LAN-visible, verify the machine has a non-loopback IPv4 address on the trusted
+network. Common virtual adapters such as WSL, Docker, Hyper-V, VirtualBox, and
+VMware are filtered out intentionally.
+
 ## Running the Project
 
 ### Development
@@ -755,4 +796,4 @@ or managed deployments that must always quit on close, set
 
 ---
 
-*Last updated: 2026-04-20*
+*Last updated: 2026-04-30*
