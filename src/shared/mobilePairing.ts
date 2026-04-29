@@ -102,7 +102,7 @@ export function buildMobilePairingReadiness(input: {
     bindOverrideEnv: ingress.binding.mode === 'loopback'
       ? MOBILE_PAIRING_BIND_OVERRIDE_ENV
       : null,
-    pairingUrlStatus: 'phase1_pending',
-    pairingUrl: null,
+    pairingUrlStatus: input.enabled && selectedLanUrl ? 'ready' : 'phase1_pending',
+    pairingUrl: input.enabled ? selectedLanUrl : null,
   };
 }

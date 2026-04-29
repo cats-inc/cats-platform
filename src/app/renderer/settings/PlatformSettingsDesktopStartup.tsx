@@ -11,6 +11,7 @@ import {
 } from '../../../design/components/settings/index.js';
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
 import type { DesktopMobilePairingEnvUpdateResult } from '../../../shared/desktopRecoveryBridge.js';
+import { createQrCodeMatrix } from './qrCode.js';
 
 export interface PlatformSettingsDesktopStartupProps {
   payload: AppShellPayload;
@@ -60,6 +61,39 @@ function resolveDefaultDesktopPreferences(): AppShellPayload['desktop'] {
     systemTrayEnabled: true,
     mobilePairing: DEFAULT_MOBILE_PAIRING,
   };
+}
+
+function MobilePairingQrCode({
+  url,
+}: {
+  url: string;
+}) {
+  const qr = createQrCodeMatrix(url);
+  if (!qr) {
+    return <span>URL too long</span>;
+  }
+
+  const modules = [];
+  for (let y = 0; y < qr.size; y += 1) {
+    for (let x = 0; x < qr.size; x += 1) {
+      if (qr.cells[y]?.[x]) {
+        modules.push(<rect key={`${x}:${y}`} x={x} y={y} width="1" height="1" />);
+      }
+    }
+  }
+
+  return (
+    <svg
+      className="settingsMobilePairingQrCode"
+      viewBox={`-4 -4 ${qr.size + 8} ${qr.size + 8}`}
+      role="img"
+      aria-label="Mobile pairing QR code"
+      shapeRendering="crispEdges"
+    >
+      <rect x="-4" y="-4" width={qr.size + 8} height={qr.size + 8} className="qrLight" />
+      <g className="qrDark">{modules}</g>
+    </svg>
+  );
 }
 
 export function PlatformSettingsDesktopStartup({
@@ -271,20 +305,33 @@ export function PlatformSettingsDesktopStartup({
                   layout="stack"
                 />
                 ) : null}
+
+                {mobilePairing.pairingUrlStatus === 'ready' && mobilePairing.pairingUrl ? (
+                <SettingsOptionRow
+                  label="Pairing URL"
+                  description={mobilePairing.pairingUrl}
+                  control={(
+                    <button
+                      type="button"
+                      className="secondaryButton"
+                      onClick={() => void copyToClipboard(
+                        mobilePairing.pairingUrl ?? '',
+                        'Copied pairing URL.',
+                      )}
+                    >
+                      Copy URL
+                    </button>
+                  )}
+                  layout="stack"
+                />
+                ) : null}
               </>
             )}
           </div>
 
           <div className="settingsMobilePairingQr" data-state={mobilePairing.pairingUrlStatus}>
             {mobilePairing.pairingUrlStatus === 'ready' && mobilePairing.pairingUrl ? (
-              <a
-                className="secondaryButton settingsInlineLink"
-                href={mobilePairing.pairingUrl}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Open pairing URL
-              </a>
+              <MobilePairingQrCode url={mobilePairing.pairingUrl} />
             ) : (
               <span>QR pending</span>
             )}

@@ -19,6 +19,7 @@ exports iOS + Android bundles into `build/mobile/`.
 Desktop pairing is documented in
 [`docs/setup-guide.md`](../docs/setup-guide.md#mobile-pairing-desktop).
 
-The current desktop card exposes LAN readiness and the diagnostic manifest URL.
-The final Expo Go QR remains blocked on PLAN-088 Phase 1 physical-device
-validation of the manifest schema and pairing URL form.
+The current desktop card exposes LAN readiness, the diagnostic manifest URL,
+and a QR for the LAN desktop base URL. The final Expo Go manifest URL remains
+blocked on PLAN-088 Phase 1 physical-device validation of the manifest schema
+and Expo Go URL form.

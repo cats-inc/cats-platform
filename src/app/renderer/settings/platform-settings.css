@@ -257,12 +257,32 @@
   display: grid;
   place-items: center;
   min-height: 168px;
-  border: 1px dashed var(--settings-border);
+  min-width: 168px;
+  border: 1px solid var(--settings-border);
   border-radius: var(--settings-radius-md);
-  background: var(--settings-surface-hover);
+  background: var(--settings-surface);
   color: var(--settings-text-muted);
   font-size: var(--settings-label-size);
   text-align: center;
+}
+
+.settingsMobilePairingQr[data-state="phase1_pending"] {
+  border-style: dashed;
+  background: var(--settings-surface-hover);
+}
+
+.settingsMobilePairingQrCode {
+  display: block;
+  width: 136px;
+  height: 136px;
+}
+
+.settingsMobilePairingQrCode .qrLight {
+  fill: #fff;
+}
+
+.settingsMobilePairingQrCode .qrDark {
+  fill: #111;
 }
 
 @media (max-width: 820px) {
@@ -294,5 +314,6 @@
 
   .settingsMobilePairingQr {
     min-height: 120px;
+    min-width: 120px;
   }
 }

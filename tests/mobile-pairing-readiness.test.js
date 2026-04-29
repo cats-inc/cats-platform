@@ -61,6 +61,8 @@ test('mobile pairing readiness selects the first LAN URL for wildcard binds', ()
   assert.equal(readiness.diagnosticManifestUrl, 'http://10.0.0.8:8181/api/mobile/manifest');
   assert.equal(readiness.noLanCandidateReason, null);
   assert.equal(readiness.bindOverrideEnv, null);
+  assert.equal(readiness.pairingUrlStatus, 'ready');
+  assert.equal(readiness.pairingUrl, 'http://10.0.0.8:8181');
 });
 
 test('mobile pairing readiness does not turn non-LAN specific binds into bind override prompts', () => {
