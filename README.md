@@ -147,9 +147,10 @@ several Phase 3 items remain:
 
 ## Quick Start
 
-Before upgrading an existing local workspace, review
-[docs/release-notes.md](./docs/release-notes.md) for behavior changes and
-migration notes.
+> [!NOTE]
+> Upgrading an existing local workspace? Review
+> [docs/release-notes.md](./docs/release-notes.md) for behavior changes and
+> migration notes before running the setup commands below.
 
 ```bash
 cd cats-platform

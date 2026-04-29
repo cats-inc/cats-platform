@@ -78,6 +78,7 @@ export function normalizeMessage(rawMessage: unknown, channelId: string): ChatMe
   const rawSenderKind = readString(messageRecord?.senderKind, 'system');
   const normalizedChoiceResponse = normalizeChatMessageChoiceResponse(messageRecord?.choiceResponse);
   const metadataRecord = asRecord(messageRecord?.metadata) ?? {};
+  // Always return owned metadata; callers may mutate normalized messages.
   const normalizedMetadata = hasLegacyMessageMetadata(metadataRecord)
     ? Object.fromEntries(
         Object.entries(metadataRecord).filter(
