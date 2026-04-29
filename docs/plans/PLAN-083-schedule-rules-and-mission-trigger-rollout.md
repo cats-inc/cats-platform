@@ -144,7 +144,7 @@ through the same platform execution admission path used by other agent work.
       - [x] fail visibly for undeclared companion resource scopes and
         Telegram transport targets
       - [x] request approval when Telegram delivery policy says so
-      - do not silently substitute app-selected content
+      - [x] do not silently substitute app-selected content
 
 **Deliverables**: the scheduled agent has enough bounded capability to decide
 what to send and how to send it.
@@ -273,6 +273,7 @@ the first companion/Telegram scenario.
 | 2026-04-29 | Transport capability slice: added `transport.telegram.text.send` as a supervised external-visible tool that sends bounded text/link payloads through the existing Telegram relay, authorizes only rule-declared binding ids, preserves selected Telegram binding identity in relay receipts, and rejects ambiguous or undeclared delivery targets without scheduler fallback. |
 | 2026-04-29 | Companion resource slice: added product-owned `companion.content.list` and `companion.content.read` supervised read tools that expose only declared `companion_content` resource scopes, bound list/read payloads, avoid raw filesystem scanning, and fail visibly when a Cat/source/kind is outside scope. |
 | 2026-04-29 | Approval behavior slice: Telegram supervised delivery now returns `pending_approval` without sending when the caller's evaluated delivery policy requires approval, with regression coverage proving no transport side effect occurs before approval. |
+| 2026-04-29 | Scheduler boundary hardening: extended the static scheduler boundary test so schedule modules may not import companion content stores/tools, preserving the rule that content selection happens through supervised resource tools rather than deterministic scheduler substitution. |
 
 ---
 

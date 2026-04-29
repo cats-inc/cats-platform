@@ -530,12 +530,13 @@ test('startup misfire policy skips or admits missed fires deterministically', as
   assert.equal(receipts.filter((receipt) => receipt.reason === 'startup_misfire').length, 2);
 });
 
-test('scheduler modules stay behind the supervision boundary and do not import runtime or Telegram', async () => {
+test('scheduler modules stay behind supervision and tool/content boundaries', async () => {
   const schedulerDir = path.resolve('src/platform/scheduler');
   const fileNames = await readdir(schedulerDir);
   for (const fileName of fileNames.filter((candidate) => candidate.endsWith('.ts'))) {
     const source = await readFile(path.join(schedulerDir, fileName), 'utf-8');
     assert.doesNotMatch(source, /platform\/runtime|RuntimeClient|runtimeClient/u);
     assert.doesNotMatch(source, /transports\/telegram|Telegram/u);
+    assert.doesNotMatch(source, /companion-box|products\/chat\/companion|CompanionBox/u);
   }
 });
