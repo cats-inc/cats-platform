@@ -3,16 +3,31 @@ import test from 'node:test';
 import { isValidElement, type ReactNode, type RefObject } from 'react';
 
 import { PlatformSurfaceSwitcher } from '../src/design/components/PlatformSurfaceSwitcher.tsx';
+import { ConversationSidebar } from '../src/app/renderer/productShell/ConversationSidebar.tsx';
 import { ConversationSidebarFooter } from '../src/app/renderer/productShell/ConversationSidebarFooter.tsx';
 import { ConversationSidebarMyCatsSection } from '../src/app/renderer/productShell/ConversationSidebarMyCats.tsx';
 import { ConversationSidebarNavigation } from '../src/app/renderer/productShell/ConversationSidebarNavigation.tsx';
 import { ConversationSidebarRecentsSection } from '../src/app/renderer/productShell/ConversationSidebarRecents.tsx';
-import { createWorkSidebarElement } from '../src/products/work/renderer/components/Sidebar.tsx';
-import { createCodeSidebarElement } from '../src/products/code/renderer/components/Sidebar.tsx';
+import { createWorkSidebarConversationProps } from '../src/products/work/renderer/components/Sidebar.tsx';
+import { createCodeSidebarConversationProps } from '../src/products/code/renderer/components/Sidebar.tsx';
 import type { AppShellPayload as WorkAppShellPayload } from '../src/products/work/api/contracts.ts';
 import type { AppShellPayload as CodeAppShellPayload } from '../src/products/code/api/contracts.ts';
 import type { PlatformSurfaceId } from '../src/shared/platform-contract.ts';
 import { clearBusyState } from '../src/shared/workspaceBusy.ts';
+
+function createWorkSidebarElement(
+  props: Parameters<typeof createWorkSidebarConversationProps>[0],
+  options?: Parameters<typeof createWorkSidebarConversationProps>[1],
+): ReactNode {
+  return ConversationSidebar(createWorkSidebarConversationProps(props, options));
+}
+
+function createCodeSidebarElement(
+  props: Parameters<typeof createCodeSidebarConversationProps>[0],
+  options?: Parameters<typeof createCodeSidebarConversationProps>[1],
+): ReactNode {
+  return ConversationSidebar(createCodeSidebarConversationProps(props, options));
+}
 
 function matchesComponent(
   node: ReactNode,

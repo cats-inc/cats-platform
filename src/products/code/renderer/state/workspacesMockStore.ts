@@ -161,6 +161,14 @@ export interface WorkspacesMockSnapshot {
   deletedIds: ReadonlySet<string>;
 }
 
+export function createEmptyWorkspacesMockSnapshot(): WorkspacesMockSnapshot {
+  return {
+    workspaces: [],
+    pinnedIds: new Set<string>(),
+    deletedIds: new Set<string>(),
+  };
+}
+
 let cachedSnapshot: WorkspacesMockSnapshot | null = null;
 
 function rebuildSnapshot(): WorkspacesMockSnapshot {

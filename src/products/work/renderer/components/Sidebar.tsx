@@ -525,11 +525,16 @@ function buildRecentEntries(props: SidebarProps): ConversationSidebarRecentEntry
   });
 }
 
-export function createWorkSidebarElement(
+export interface WorkSidebarConversationPropsOptions {
+  pinnedProjects?: readonly WorkProjectListItem[];
+}
+
+export function createWorkSidebarConversationProps(
   props: SidebarProps,
-  pinnedProjects: readonly WorkProjectListItem[] = [],
+  options: WorkSidebarConversationPropsOptions = {},
 ) {
-  return ConversationSidebar({
+  const pinnedProjects = options.pinnedProjects ?? [];
+  return {
     payload: props.payload,
     sidebarOpen: props.sidebarOpen,
     accountMenuOpen: props.accountMenuOpen,
@@ -575,7 +580,7 @@ export function createWorkSidebarElement(
     onSwitchProduct: props.onSwitchProduct,
     activeMyCatId: props.activeMyCatId,
     onDirectChatCat: props.onDirectChatCat,
-  });
+  };
 }
 
 export function Sidebar(props: SidebarProps) {
@@ -584,5 +589,9 @@ export function Sidebar(props: SidebarProps) {
   const pinnedProjects = (projectsQuery.data?.projects ?? []).filter(
     (project) => !unpinnedIds.has(project.id),
   );
-  return createWorkSidebarElement(props, pinnedProjects);
+  return (
+    <ConversationSidebar
+      {...createWorkSidebarConversationProps(props, { pinnedProjects })}
+    />
+  );
 }

@@ -1,4 +1,4 @@
-import type { PlatformProductMaturity, PlatformSurfaceId } from '../shared/platform-contract.js';
+import type { PlatformSurfaceId } from '../shared/platform-contract.js';
 import {
   listPlatformProductDescriptors,
   resolvePlatformSurfaceProductName,
@@ -11,7 +11,6 @@ interface PlatformSurfaceDescriptor {
   routePrefix: `/${string}`;
   productName: string;
   subtitle: string;
-  maturity: PlatformProductMaturity;
 }
 
 const PLATFORM_SURFACE_DESCRIPTORS: readonly PlatformSurfaceDescriptor[] = listPlatformProductDescriptors()
@@ -21,7 +20,6 @@ const PLATFORM_SURFACE_DESCRIPTORS: readonly PlatformSurfaceDescriptor[] = listP
     routePrefix: descriptor.routePrefix,
     productName: descriptor.productName,
     subtitle: descriptor.subtitle,
-    maturity: descriptor.maturity,
   }));
 
 const PLATFORM_SURFACE_DESCRIPTOR_BY_ID = new Map(

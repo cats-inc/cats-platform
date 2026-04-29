@@ -6,6 +6,9 @@ import {
   resolvePlatformSurfaceMenuStyle,
   resolvePlatformSurfaceMenuWidth,
 } from '../src/design/components/platformSurfaceMenuPosition.ts';
+import {
+  runAfterClosingPlatformSurfaceMenu,
+} from '../src/design/components/PlatformSurfaceSwitcher.tsx';
 
 test('pending platform surface menu style stays fixed and hidden before measurement', () => {
   assert.deepEqual(getPendingPlatformSurfaceMenuStyle(), {
@@ -61,4 +64,19 @@ test('platform surface menu positioning keeps the popup inside the viewport', ()
       width: 420,
     },
   );
+});
+
+test('platform surface menu closes before product actions run', () => {
+  const events: string[] = [];
+
+  runAfterClosingPlatformSurfaceMenu(
+    () => {
+      events.push('close');
+    },
+    () => {
+      events.push('select');
+    },
+  );
+
+  assert.deepEqual(events, ['close', 'select']);
 });

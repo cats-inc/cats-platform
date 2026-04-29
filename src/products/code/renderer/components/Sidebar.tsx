@@ -8,6 +8,7 @@ import {
 } from '../../../../app/renderer/productShell/ConversationSidebar.js';
 import type { ConversationSidebarPinnedItem } from '../../../../app/renderer/productShell/ConversationSidebarPinned.js';
 import {
+  createEmptyWorkspacesMockSnapshot,
   workspacesMockStore,
   useWorkspacesMock,
   type WorkspacesMockSnapshot,
@@ -348,15 +349,16 @@ function buildRecentEntries(props: SidebarProps): ConversationSidebarRecentEntry
   });
 }
 
-export function createCodeSidebarElement(
+export interface CodeSidebarConversationPropsOptions {
+  workspacesSnapshot?: WorkspacesMockSnapshot;
+}
+
+export function createCodeSidebarConversationProps(
   props: SidebarProps,
-  workspacesSnapshot: WorkspacesMockSnapshot = {
-    workspaces: [],
-    pinnedIds: new Set<string>(),
-    deletedIds: new Set<string>(),
-  },
+  options: CodeSidebarConversationPropsOptions = {},
 ) {
-  return ConversationSidebar({
+  const workspacesSnapshot = options.workspacesSnapshot ?? createEmptyWorkspacesMockSnapshot();
+  return {
     payload: props.payload,
     sidebarOpen: props.sidebarOpen,
     accountMenuOpen: props.accountMenuOpen,
@@ -402,10 +404,14 @@ export function createCodeSidebarElement(
     onSwitchProduct: props.onSwitchProduct,
     activeMyCatId: props.activeMyCatId,
     onDirectChatCat: props.onDirectChatCat,
-  });
+  };
 }
 
 export function Sidebar(props: SidebarProps) {
   const workspacesSnapshot = useWorkspacesMock();
-  return createCodeSidebarElement(props, workspacesSnapshot);
+  return (
+    <ConversationSidebar
+      {...createCodeSidebarConversationProps(props, { workspacesSnapshot })}
+    />
+  );
 }

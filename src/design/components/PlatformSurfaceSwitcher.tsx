@@ -17,6 +17,18 @@ interface PlatformSurfaceSwitcherProps {
   onSelectSurface: (surface: PlatformSurfaceId) => void;
 }
 
+export function runAfterClosingPlatformSurfaceMenu(
+  setOpen: (open: false) => void,
+  action: () => void,
+): void {
+  // Product switching can navigate/unmount immediately. Flush the close first
+  // so the portaled menu cannot linger above the loading surface during transit.
+  flushSync(() => {
+    setOpen(false);
+  });
+  action();
+}
+
 const useIsomorphicLayoutEffect = typeof window === 'undefined'
   ? useEffect
   : useLayoutEffect;
@@ -115,12 +127,11 @@ export function PlatformSurfaceSwitcher({
               aria-checked={current}
               className={current ? 'platformSurfaceMenuItem isCurrent' : 'platformSurfaceMenuItem'}
               onClick={() => {
-                flushSync(() => {
-                  setOpen(false);
+                runAfterClosingPlatformSurfaceMenu(setOpen, () => {
+                  if (!current) {
+                    onSelectSurface(descriptor.id);
+                  }
                 });
-                if (!current) {
-                  onSelectSurface(descriptor.id);
-                }
               }}
             >
               <span className={swatchClassName} aria-hidden="true" />
@@ -155,10 +166,9 @@ export function PlatformSurfaceSwitcher({
         type="button"
         className="platformSurfaceMenuAction"
         onClick={() => {
-          flushSync(() => {
-            setOpen(false);
+          runAfterClosingPlatformSurfaceMenu(setOpen, () => {
+            navigate('/lobby');
           });
-          navigate('/lobby');
         }}
       >
         Open Lobby
