@@ -65,11 +65,9 @@ export function normalizeMessage(rawMessage: unknown, channelId: string): ChatMe
   const rawSenderKind = readString(messageRecord?.senderKind, 'system');
   const normalizedChoiceResponse = normalizeChatMessageChoiceResponse(messageRecord?.choiceResponse);
   const metadataRecord = asRecord(messageRecord?.metadata) ?? {};
-  const normalizedMetadata = metadataRecord.event === 'room_created'
-    ? Object.fromEntries(
-        Object.entries(metadataRecord).filter(([key]) => key !== 'composerMode'),
-      )
-    : metadataRecord;
+  const normalizedMetadata = Object.fromEntries(
+    Object.entries(metadataRecord).filter(([key]) => key !== 'composerMode'),
+  );
   const senderKind = (
     rawSenderKind === 'user'
     || rawSenderKind === 'agent'

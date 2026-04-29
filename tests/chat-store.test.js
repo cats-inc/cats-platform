@@ -139,7 +139,7 @@ test('FileChatStore round-trips explicit solo continuity reset boundaries', asyn
   assert.equal(reloadedChannel?.messages.at(-1)?.metadata?.event, 'continuity_reset');
 });
 
-test('FileChatStore strips legacy composerMode from room-created metadata on reload', async () => {
+test('FileChatStore strips legacy composerMode from message metadata on reload', async () => {
   const tempDir = await mkdtemp(path.join(os.tmpdir(), 'cats-store-'));
   const statePath = path.join(tempDir, 'chat-state.json');
   const store = new FileChatStore(statePath);
@@ -163,6 +163,24 @@ test('FileChatStore strips legacy composerMode from room-created metadata on rel
   assert.ok(roomCreated);
   roomCreated.metadata.composerMode = 'cat_led';
   roomCreated.metadata.roomMode = 'boss_chat';
+  state = appendMessage(
+    state,
+    channelId,
+    {
+      senderKind: 'system',
+      senderName: 'Chat',
+      body: 'Participant assigned.',
+    },
+    now,
+    {
+      metadata: {
+        event: 'participant_assigned',
+        composerMode: 'cat_led',
+        participantId: 'legacy-participant',
+      },
+      incrementUnread: false,
+    },
+  ).state;
 
   await store.write(state);
 
@@ -171,10 +189,16 @@ test('FileChatStore strips legacy composerMode from room-created metadata on rel
   const reloadedRoomCreated = reloadedState.channels
     .find((channel) => channel.id === channelId)
     ?.messages.find((message) => message.metadata?.event === 'room_created');
+  const reloadedParticipantAssigned = reloadedState.channels
+    .find((channel) => channel.id === channelId)
+    ?.messages.find((message) => message.metadata?.event === 'participant_assigned');
 
   assert.ok(reloadedRoomCreated);
   assert.equal('composerMode' in reloadedRoomCreated.metadata, false);
   assert.equal(reloadedRoomCreated.metadata.roomMode, 'boss_chat');
+  assert.ok(reloadedParticipantAssigned);
+  assert.equal('composerMode' in reloadedParticipantAssigned.metadata, false);
+  assert.equal(reloadedParticipantAssigned.metadata.participantId, 'legacy-participant');
 });
 
 test('resetSoloChannelContinuity is idempotent before the new branch starts', async () => {

@@ -15,15 +15,7 @@
 | Production | TBD | Live environment |
 | Desktop distributable | Cross-platform packaging commands wired; Windows smoke path validated | Electron host starts local `cats-runtime` + `cats`, waits for readiness, persists bootstrap/remediation state, stages Windows/macOS/Linux packaging outputs, emits Windows NSIS installers plus unsigned/test macOS/Linux packages, and currently has real post-install smoke validation only on Windows |
 
-## Deployment Methods
-
-### Manual Deployment
-
-```bash
-npm install
-npm run build
-npm start
-```
+## Behavior Changes
 
 ### Chat State Behavior Notes
 
@@ -33,6 +25,16 @@ now enters the orchestrator first instead of auto-dispatching to
 direct participant, and explicit `@mention` routing is unchanged. Operators with
 older local rooms should mention the intended participant or choose a per-turn
 audience when they want a specific Cat to answer first.
+
+## Deployment Methods
+
+### Manual Deployment
+
+```bash
+npm install
+npm run build
+npm start
+```
 
 ### Docker
 

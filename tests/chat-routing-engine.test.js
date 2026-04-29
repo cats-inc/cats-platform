@@ -3073,6 +3073,94 @@ test(
   },
 );
 
+test(
+  'direct cat chat no-mention turns route to default recipient instead of orchestrator',
+  async () => {
+    let state = await new MemoryChatStore().read();
+    const now = new Date('2026-03-21T00:00:00.000Z');
+
+    state = createCat(
+      state,
+      {
+        name: 'Smelly',
+        provider: 'claude',
+        roles: ['boss'],
+      },
+      now,
+    );
+    state.bossCatId = state.cats[0].id;
+
+    state = createCat(
+      state,
+      {
+        name: 'Companion',
+        provider: 'claude',
+        roles: ['companion'],
+      },
+      now,
+    );
+    const companionId = state.cats[0].id;
+
+    state = createChannel(
+      state,
+      {
+        title: 'Companion lane',
+        topic: 'No-mention turns should stay on the direct lane.',
+        roomMode: 'direct_cat_chat',
+        participantCatIds: [companionId],
+        defaultRecipientId: companionId,
+        skipBossCatGreeting: true,
+      },
+      now,
+    );
+
+    const channelId = state.selectedChannelId;
+    const runtimeClient = createRuntimeStub(async ({ content }) => {
+      if (content.includes('You are Companion')) {
+        return usage('Companion handled the direct turn.');
+      }
+      throw new Error(`Unexpected prompt:\n${content}`);
+    });
+
+    const dispatched = await routeChannelMessage(
+      state,
+      channelId,
+      { body: 'Handle this directly.' },
+      runtimeClient,
+      now,
+    );
+    const channel = buildChannelView(dispatched.state, channelId);
+
+    assert.equal(channel.roomRouting?.defaultRecipientId, companionId);
+    assert.equal(
+      channel.roomRouting?.lastOutcome?.resolution.defaultTargetReason,
+      'direct_chat_recipient',
+    );
+    assert.equal(
+      channel.roomRouting?.lastOutcome?.resolution.defaultTarget?.participantKind,
+      'cat',
+    );
+    assert.equal(
+      channel.roomRouting?.lastOutcome?.resolution.defaultTarget?.participantId,
+      companionId,
+    );
+    assert.equal(runtimeClient.createdSessions.length, 1);
+    assert.equal(runtimeClient.createdSessions[0]?.context?.metadata?.targetKind, 'cat');
+    assert.equal(runtimeClient.createdSessions[0]?.context?.metadata?.targetId, companionId);
+    assert.equal(runtimeClient.sentMessages.length, 1);
+    assert.equal(runtimeClient.sentMessages[0]?.input?.context?.metadata?.targetKind, 'cat');
+    assert.equal(runtimeClient.sentMessages[0]?.input?.context?.metadata?.targetId, companionId);
+    assert.equal(
+      runtimeClient.sentMessages.some(
+        (message) => message.input?.context?.metadata?.targetId === 'orchestrator',
+      ),
+      false,
+    );
+    assert.equal(channel.orchestratorLease.sessionId, null);
+    assert.equal(channel.messages.at(-1)?.senderName, 'Companion');
+  },
+);
+
 test('participant room routing continues across agent mentions and auto-wakes targeted participants', async () => {
   const { state, channelId } = await createChannelState();
   const runtimeClient = createRuntimeStub(async ({ content }) => {
