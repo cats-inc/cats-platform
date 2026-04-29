@@ -48,7 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
-| [SPEC-094](./SPEC-094-schedule-rules-and-mission-triggers.md) | Schedule Rules and Mission Triggers | Draft | [PLAN-083](../plans/PLAN-083-schedule-rules-and-mission-trigger-rollout.md), [ADR-090](../decisions/090-adopt-generic-schedule-rules-for-mission-triggers.md) |
+| [SPEC-094](./SPEC-094-schedule-rules-and-mission-triggers.md) | Schedule Rules and Mission Triggers | Implemented | [PLAN-083](../plans/PLAN-083-schedule-rules-and-mission-trigger-rollout.md), [ADR-090](../decisions/090-adopt-generic-schedule-rules-for-mission-triggers.md) |
 | [SPEC-093](./SPEC-093-settings-runtime-cli-provider-lifecycle.md) | Settings Runtime CLI Provider Lifecycle | Draft | [PLAN-082](../plans/PLAN-082-settings-runtime-cli-provider-lifecycle-rollout.md) |
 | [SPEC-092](./SPEC-092-code-artifact-declaration-contract.md) | Code Artifact Declaration Contract | Draft | [PLAN-081](../plans/PLAN-081-code-artifact-declaration-rollout.md), [ADR-088](../decisions/088-use-structured-artifact-declarations-for-code-materialization.md) |
 | [SPEC-091](./SPEC-091-cats-code-workspace-and-artifact-sidebar.md) | Cats Code Workspace and Artifact Sidebar | Draft | TBD |
@@ -149,6 +149,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-04-29 (SPEC-094 added for schedule rules and mission triggers; SPEC-093 added for Settings Runtime CLI provider lifecycle controls.)*
+*Last updated: 2026-04-29 (SPEC-094 implemented for schedule rules and mission triggers; SPEC-093 added for Settings Runtime CLI provider lifecycle controls.)*
 
 *See also: [plans/](../plans/) for implementation plans*

@@ -8,7 +8,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Complete |
 | **Owner** | Codex |
 | **Assigned To** | Unassigned |
 | **Reviewer** | User |

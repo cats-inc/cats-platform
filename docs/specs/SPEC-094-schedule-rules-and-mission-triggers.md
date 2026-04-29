@@ -7,7 +7,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | Implemented |
 | **Owner** | Codex |
 | **Reviewer** | User |
 | **Related ADR** | [ADR-090](../decisions/090-adopt-generic-schedule-rules-for-mission-triggers.md) |
