@@ -128,13 +128,15 @@ through the same platform execution admission path used by other agent work.
 
 - [ ] Define the minimal tool/resource surface needed for the morning greeting:
       - [x] list/read allowed companion content resources
-      - optionally create/post a companion content item
+      - [x] optionally create/post a companion content item
       - [x] send bounded text/link through Telegram delivery capability
       - send media through Telegram delivery capability
 - [ ] Ensure these capabilities are exposed as supervised tools or bounded
       platform actions, not scheduler internals.
       - [x] Companion content list/read is exposed as
         `companion.content.list` and `companion.content.read`.
+      - [x] Companion profile post creation is exposed as
+        `companion.content.post.create`.
       - [x] Telegram text/link delivery is exposed as
         `transport.telegram.text.send`.
 - [x] Pass rule-declared resource scopes and transport targets into the mission
@@ -274,6 +276,7 @@ the first companion/Telegram scenario.
 | 2026-04-29 | Companion resource slice: added product-owned `companion.content.list` and `companion.content.read` supervised read tools that expose only declared `companion_content` resource scopes, bound list/read payloads, avoid raw filesystem scanning, and fail visibly when a Cat/source/kind is outside scope. |
 | 2026-04-29 | Approval behavior slice: Telegram supervised delivery now returns `pending_approval` without sending when the caller's evaluated delivery policy requires approval, with regression coverage proving no transport side effect occurs before approval. |
 | 2026-04-29 | Scheduler boundary hardening: extended the static scheduler boundary test so schedule modules may not import companion content stores/tools, preserving the rule that content selection happens through supervised resource tools rather than deterministic scheduler substitution. |
+| 2026-04-29 | Companion post slice: added `companion.content.post.create` as a supervised local-state tool that writes profile post derived records through `CompanionBoxStore.upsertDerived`, requires `narrow_write` scope, and rejects posts built from sources outside declared `companion_content` resource scopes. |
 
 ---
 

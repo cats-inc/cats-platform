@@ -3,13 +3,17 @@ import test from 'node:test';
 
 import {
   COMPANION_CONTENT_LIST_TOOL,
+  COMPANION_CONTENT_POST_CREATE_TOOL,
   COMPANION_CONTENT_READ_TOOL,
   createCompanionContentTools,
   type CompanionContentListInput,
   type CompanionContentListResult,
+  type CompanionContentPostCreateInput,
+  type CompanionContentPostCreateResult,
   type CompanionContentReadInput,
   type CompanionContentReadResult,
 } from '../src/products/chat/companion/supervisedContentTools.js';
+import { projectCompanionProfile } from '../src/products/chat/companion/profileReadModel.js';
 import { MemoryCompanionBoxStore } from '../src/products/chat/state/companion-box/index.js';
 import {
   createInMemoryToolEvidenceSink,
@@ -66,7 +70,10 @@ async function seedCompanionStore() {
 async function invokeCompanionContentTool<TInput, TOutput>(input: {
   companionStore: MemoryCompanionBoxStore;
   resourceScopes: Array<Record<string, unknown>>;
-  toolName: typeof COMPANION_CONTENT_LIST_TOOL | typeof COMPANION_CONTENT_READ_TOOL;
+  toolName:
+    | typeof COMPANION_CONTENT_LIST_TOOL
+    | typeof COMPANION_CONTENT_READ_TOOL
+    | typeof COMPANION_CONTENT_POST_CREATE_TOOL;
   toolInput: TInput;
   grant?: ToolSurfaceGrant;
 }) {
@@ -85,7 +92,9 @@ async function invokeCompanionContentTool<TInput, TOutput>(input: {
   });
   const executor = input.toolName === COMPANION_CONTENT_LIST_TOOL
     ? tools.executors[COMPANION_CONTENT_LIST_TOOL]
-    : tools.executors[COMPANION_CONTENT_READ_TOOL];
+    : input.toolName === COMPANION_CONTENT_READ_TOOL
+      ? tools.executors[COMPANION_CONTENT_READ_TOOL]
+      : tools.executors[COMPANION_CONTENT_POST_CREATE_TOOL];
 
   const result = await boundary.invoke<TInput, TOutput>({
     toolName: input.toolName,
@@ -195,4 +204,78 @@ test('companion content tools require an explicit companion content scope', asyn
 
   assert.equal(result.result.status, 'rejected');
   assert.equal(result.result.error.code, 'E_NOT_AUTHORIZED');
+});
+
+test('companion content post create writes a profile post from allowed sources', async () => {
+  const { companionStore, note } = await seedCompanionStore();
+
+  const result = await invokeCompanionContentTool<
+    CompanionContentPostCreateInput,
+    CompanionContentPostCreateResult
+  >({
+    companionStore,
+    resourceScopes: [{
+      kind: 'companion_content',
+      catId: 'cat-morning',
+      sourceIds: [note.id],
+    }],
+    toolName: COMPANION_CONTENT_POST_CREATE_TOOL,
+    toolInput: {
+      catId: 'cat-morning',
+      title: 'Morning post',
+      body: 'A small greeting generated from allowed content.',
+      sourceIds: [note.id],
+      tags: ['morning'],
+    },
+    grant: {
+      parentToolScope: 'narrow_write',
+      policyToolScope: 'narrow_write',
+    },
+  });
+
+  assert.equal(result.result.status, 'applied');
+  assert.equal(result.result.result.title, 'Morning post');
+  assert.deepEqual(result.result.result.sourceIds, [note.id]);
+  assert.equal(result.evidence[0].toolName, COMPANION_CONTENT_POST_CREATE_TOOL);
+  assert.equal(result.evidence[0].toolManifest?.sideEffect, 'local_state');
+
+  const derived = await companionStore.listDerived('cat-morning', new Date(NOW));
+  const profile = projectCompanionProfile({ derived });
+  assert.equal(profile.posts.length, 1);
+  assert.equal(profile.posts[0].derivedId, result.result.result.derivedId);
+  assert.equal(profile.posts[0].body, 'A small greeting generated from allowed content.');
+});
+
+test('companion content post create rejects sources outside scope', async () => {
+  const { companionStore, image, note } = await seedCompanionStore();
+
+  const result = await invokeCompanionContentTool<
+    CompanionContentPostCreateInput,
+    CompanionContentPostCreateResult
+  >({
+    companionStore,
+    resourceScopes: [{
+      kind: 'companion_content',
+      catId: 'cat-morning',
+      sourceIds: [note.id],
+    }],
+    toolName: COMPANION_CONTENT_POST_CREATE_TOOL,
+    toolInput: {
+      catId: 'cat-morning',
+      body: 'This should not publish.',
+      sourceIds: [image.id],
+    },
+    grant: {
+      parentToolScope: 'narrow_write',
+      policyToolScope: 'narrow_write',
+    },
+  });
+
+  assert.equal(result.result.status, 'rejected');
+  assert.equal(result.result.error.code, 'E_NOT_AUTHORIZED');
+
+  const profile = projectCompanionProfile({
+    derived: await companionStore.listDerived('cat-morning', new Date(NOW)),
+  });
+  assert.equal(profile.posts.length, 0);
 });
