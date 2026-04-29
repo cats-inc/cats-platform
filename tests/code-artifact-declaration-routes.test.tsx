@@ -6,7 +6,7 @@ import { createDefaultCoreState } from '../src/core/model/index.ts';
 import { upsertCoreRun } from '../src/core/model/executionRecords.ts';
 import { upsertCoreTask } from '../src/core/model/taskControls.ts';
 import { upsertCoreConversation } from '../src/core/model/structuralRecords.ts';
-import { MemoryCoreStore } from '../src/core/store.ts';
+import { MemoryCoreStore, type CoreStore } from '../src/core/store.ts';
 import { routeCodeApi } from '../src/products/code/api/index.ts';
 import { CODE_API_ARTIFACT_DECLARATIONS_PATH } from '../src/products/code/shared/apiPaths.ts';
 import type {
@@ -90,7 +90,12 @@ function createSubmitBody(input: {
   };
 }
 
-function createTestServer(store: MemoryCoreStore) {
+function createTestServer(
+  store: CoreStore,
+  options: {
+    logger?: { error(message: string, context?: Record<string, unknown>): void };
+  } = {},
+) {
   return createServer(async (request, response) => {
     try {
       const url = new URL(request.url ?? '/', 'http://localhost');
@@ -103,6 +108,7 @@ function createTestServer(store: MemoryCoreStore) {
           coreStore: store,
           runtimeClient: {} as never,
           config: {} as never,
+          ...(options.logger ? { logger: options.logger } : {}),
           now: () => NOW,
         },
       });
@@ -216,13 +222,65 @@ test('POST /api/code/artifacts/declarations returns declaration errors', async (
     'artifact_producer_field_not_allowed',
   );
 
+  const missingAgentSession = await request(server, 'POST', CODE_API_ARTIFACT_DECLARATIONS_PATH, {
+    ...createSubmitBody({ producer: { runtimeSessionId: null } }),
+  });
+  assert.equal(missingAgentSession.status, 400);
+  assert.equal(
+    (missingAgentSession.payload?.error as { code?: string }).code,
+    'artifact_required_field_empty',
+  );
+
   const unanchoredDeclaration = await request(server, 'POST', CODE_API_ARTIFACT_DECLARATIONS_PATH, {
-    ...createSubmitBody({ producer: { runtimeSessionId: null }, anchors: {} }),
+    ...createSubmitBody({ producer: { kind: 'user', runtimeSessionId: null }, anchors: {} }),
     anchors: {},
   });
   assert.equal(unanchoredDeclaration.status, 422);
   assert.equal(
     (unanchoredDeclaration.payload?.error as { code?: string }).code,
     'artifact_anchor_required',
+  );
+});
+
+test('POST /api/code/artifacts/declarations logs unexpected declaration failures', async (t) => {
+  const baseStore = createAnchoredStore();
+  const core = await baseStore.readCore();
+  const failingStore: CoreStore = {
+    async readCore() {
+      return core;
+    },
+    async writeCore() {
+      throw new Error('simulated write failure');
+    },
+    async updateCore() {
+      return core;
+    },
+  };
+  const logs: Array<{ message: string; context?: Record<string, unknown> }> = [];
+  const server = createTestServer(failingStore, {
+    logger: {
+      error(message, context) {
+        logs.push({ message, context });
+      },
+    },
+  });
+  await new Promise<void>((resolve) => server.listen(0, resolve));
+  t.after(() => server.close());
+
+  const response = await request(server, 'POST', CODE_API_ARTIFACT_DECLARATIONS_PATH, {
+    ...createSubmitBody(),
+  });
+
+  assert.equal(response.status, 422);
+  assert.deepEqual(response.payload?.error, {
+    code: 'artifact_declaration_failed',
+    message: 'Artifact declaration failed.',
+  });
+  assert.equal(logs.length, 1);
+  assert.equal(logs[0]?.message, 'Code artifact declaration failed.');
+  assert.equal(logs[0]?.context?.path, CODE_API_ARTIFACT_DECLARATIONS_PATH);
+  assert.equal(
+    (logs[0]?.context?.error as { message?: string } | undefined)?.message,
+    'simulated write failure',
   );
 });

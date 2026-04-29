@@ -105,6 +105,7 @@ export async function routeCodeArtifactDeclarationApi(
       sendCodeArtifactDeclarationError(context, 422, error);
       return true;
     }
+    logCodeArtifactDeclarationFailure(context, error);
     sendJson(context.response, 422, {
       error: {
         code: 'artifact_declaration_failed',
@@ -141,12 +142,45 @@ function normalizeSubmitProducer(input: unknown): CodeArtifactProducer {
     );
   }
 
+  const runtimeSessionId = normalizeOptionalString(producer?.runtimeSessionId);
+  if (kind === 'agent' && !runtimeSessionId) {
+    throw new CodeArtifactDeclarationError(
+      'artifact_required_field_empty',
+      'Request body producer.runtimeSessionId is required for agent declarations.',
+      { field: 'producer.runtimeSessionId', producerKind: kind },
+    );
+  }
+
+  // This route accepts server-resolved producer metadata from product-owned
+  // callers. It must not be exposed as a raw unauthenticated client endpoint.
   return {
     kind,
     actorId: normalizeOptionalString(producer?.actorId),
     toolName: normalizeOptionalString(producer?.toolName),
-    runtimeSessionId: normalizeOptionalString(producer?.runtimeSessionId),
+    runtimeSessionId,
   };
+}
+
+function logCodeArtifactDeclarationFailure(
+  context: CodeApiRouteContext,
+  error: unknown,
+): void {
+  context.dependencies.logger?.error('Code artifact declaration failed.', {
+    path: context.url.pathname,
+    method: context.method,
+    error: serializeError(error),
+  });
+}
+
+function serializeError(error: unknown): Record<string, unknown> {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: error.message,
+      stack: error.stack,
+    };
+  }
+  return { value: String(error) };
 }
 
 function normalizeSubmitAnchors(input: unknown): CodeArtifactDeclarationAnchors {

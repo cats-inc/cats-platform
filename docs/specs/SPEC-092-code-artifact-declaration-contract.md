@@ -202,19 +202,24 @@ building idempotency keys or accepting a declaration:
 
 | Producer kind | Resolution source | Required validation |
 |---------------|-------------------|---------------------|
-| `agent` | Active Code runtime session participant / actor binding for the declaring assistant | The actor id resolves to a known agent/assistant actor in the current session, task, or run. A producer-supplied `actorId` is only a hint and must match the server binding when present. |
+| `agent` | Active Code runtime session participant / actor binding for the declaring assistant | The actor id resolves to a known agent/assistant actor in the current session, task, or run, and `producer.runtimeSessionId` resolves to that active runtime session. A producer-supplied `actorId` is only a hint and must match the server binding when present. |
 | `tool` | Code tool execution context or tool bridge registration | `toolName` resolves to a server-registered tool that was invoked in, or is authorized for, the current workspace/run context. |
 | `system` | Code system detector registry | `toolName` is treated as detector name. When omitted it defaults to `code-bridge`; the detector must be in the Code server's built-in detector registry. |
 | `user` | Authenticated owner/user session | The resolved actor id is the authenticated owner profile actor for the current local user. Producer-supplied `actorId` is only a hint and must match that actor when present. |
 
 If the producer identity cannot be resolved from these sources, Cats Code shall
 reject the declaration before idempotency lookup.
+Declarations with `producer.kind = 'agent'` shall include the server-resolved
+`producer.runtimeSessionId`; missing agent runtime session context is rejected
+before idempotency lookup so same-actor declaration ids cannot fold across
+sessions.
 
 Producer identity errors are deterministic:
 
 | Case | Error code |
 |------|------------|
 | `agent` has no server-bound actor | `artifact_agent_actor_required` |
+| `agent` has no runtime session id | `artifact_required_field_empty` |
 | `agent` supplies a mismatched `actorId` | `artifact_agent_actor_mismatch` |
 | `tool` has no resolvable registered tool | `artifact_tool_not_allowed` |
 | `tool` supplies non-null `actorId` | `artifact_producer_actor_not_allowed` |

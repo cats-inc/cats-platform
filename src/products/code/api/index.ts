@@ -39,10 +39,15 @@ import {
 
 export const CODE_API_SLICE = 'code';
 
+export interface CodeApiLogger {
+  error(message: string, context?: Record<string, unknown>): void;
+}
+
 export interface CodeApiDependencies {
   coreStore: CoreStore;
   runtimeClient: RuntimeClient;
   config: AppConfig;
+  logger?: CodeApiLogger;
   evidenceDataDir?: string;
   readEvidenceEvents?: (conversationId: string) => EvidenceEvent[];
   now?: () => Date;

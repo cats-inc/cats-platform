@@ -693,7 +693,10 @@ GET /api/code/previews
   materialization. Server/context-owned values such as `producer` and `anchors`
   are wrapper fields, not fields inside `declaration`; raw declaration attempts
   to set `producer.*`, `anchors.*`, `coreKind`, `requestedStatus`, or
-  `requestedDisposition` are rejected as shape errors. Accepted declarations
+  `requestedDisposition` are rejected as shape errors. Agent producers must
+  include the server-resolved `producer.runtimeSessionId`; product-owned callers
+  are responsible for resolving and authorizing producer identity before using
+  this route. Accepted declarations
   write or update the corresponding `CoreArtifactRecord` and return the
   artifact detail projection plus the accepted tool-result shape.
 - `GET /api/code/artifacts/:artifactId` returns the focused code-output detail

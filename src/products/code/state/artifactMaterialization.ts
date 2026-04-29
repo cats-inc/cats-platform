@@ -73,6 +73,7 @@ export function materializeCodeArtifactDeclaration(
 
   const mapping = resolveCodeArtifactLabelMapping(declaration.artifact.label);
   const producerIdentity = resolveProducerIdentity(declaration.producer);
+  validateAnchors(core, declaration);
   const scope = resolveMaterializationScope(declaration);
   const idempotencyKey = buildCodeArtifactIdempotencyKey({
     producer: declaration.producer.kind,
@@ -85,7 +86,7 @@ export function materializeCodeArtifactDeclaration(
     currentScope: scope,
     producerKind: declaration.producer.kind,
     producerIdentity: producerIdentity.encoded,
-    producerRuntimeSessionId: normalizeNullableString(declaration.producer.runtimeSessionId),
+    producerRuntimeSessionId: readNonEmptyString(declaration.producer.runtimeSessionId),
     declarationId: declaration.declarationId,
   });
   const effectiveDeclaration: CodeArtifactDeclaration = {
@@ -210,9 +211,32 @@ function resolveMaterializationStatus(
 
 function resolveProducerIdentity(producer: CodeArtifactProducer): ResolvedProducerIdentity {
   switch (producer.kind) {
-    case 'agent':
+    case 'agent': {
+      normalizeRequiredString(
+        producer.runtimeSessionId,
+        'artifact_required_field_empty',
+        'Agent artifact declarations require a resolved runtime session id.',
+      );
+      if (readNonEmptyString(producer.toolName)) {
+        throw new CodeArtifactDeclarationError(
+          'artifact_producer_tool_not_allowed',
+          'agent artifact declarations must not supply a tool name.',
+          { producerKind: producer.kind },
+        );
+      }
+      const actorId = normalizeRequiredString(
+        producer.actorId,
+        'artifact_agent_actor_required',
+        'agent artifact declarations require a resolved actor id.',
+      );
+      return {
+        kind: producer.kind,
+        value: actorId,
+        encoded: `actor:${actorId}`,
+      };
+    }
     case 'user': {
-      if (normalizeNullableString(producer.toolName)) {
+      if (readNonEmptyString(producer.toolName)) {
         throw new CodeArtifactDeclarationError(
           'artifact_producer_tool_not_allowed',
           `${producer.kind} artifact declarations must not supply a tool name.`,
@@ -221,9 +245,7 @@ function resolveProducerIdentity(producer: CodeArtifactProducer): ResolvedProduc
       }
       const actorId = normalizeRequiredString(
         producer.actorId,
-        producer.kind === 'agent'
-          ? 'artifact_agent_actor_required'
-          : 'artifact_user_actor_required',
+        'artifact_user_actor_required',
         `${producer.kind} artifact declarations require a resolved actor id.`,
       );
       return {
@@ -233,7 +255,7 @@ function resolveProducerIdentity(producer: CodeArtifactProducer): ResolvedProduc
       };
     }
     case 'tool': {
-      if (normalizeNullableString(producer.actorId)) {
+      if (readNonEmptyString(producer.actorId)) {
         throw new CodeArtifactDeclarationError(
           'artifact_producer_actor_not_allowed',
           'Tool artifact declarations must not supply an actor id.',
@@ -251,7 +273,7 @@ function resolveProducerIdentity(producer: CodeArtifactProducer): ResolvedProduc
       };
     }
     case 'system': {
-      if (normalizeNullableString(producer.actorId)) {
+      if (readNonEmptyString(producer.actorId)) {
         throw new CodeArtifactDeclarationError(
           'artifact_producer_actor_not_allowed',
           'System artifact declarations must not supply an actor id.',
@@ -397,7 +419,7 @@ function isCompatibleFrozenRuntimeSession(
     producerRuntimeSessionId: string | null;
   },
 ): boolean {
-  if (input.producerKind === 'agent' && input.producerRuntimeSessionId) {
+  if (input.producerKind === 'agent') {
     return idempotency.producerRuntimeSessionId === input.producerRuntimeSessionId;
   }
   return true;
@@ -561,7 +583,7 @@ function buildCoreArtifactMetadata(input: {
         key: input.idempotencyKey,
         producerKind: input.declaration.producer.kind,
         producerIdentity: input.producerIdentity.encoded,
-        producerRuntimeSessionId: normalizeNullableString(
+        producerRuntimeSessionId: readNonEmptyString(
           input.declaration.producer.runtimeSessionId,
         ),
         scopeKind: input.scope.kind,
@@ -664,18 +686,18 @@ function mergeDeclarationAnchors(
   assertNoAnchorConflicts(anchors, existingAnchors, existing);
   return {
     conversationId:
-      normalizeNullableString(anchors?.conversationId)
+      readNonEmptyString(anchors?.conversationId)
       ?? existingAnchors.conversationId
       ?? null,
-    taskId: normalizeNullableString(anchors?.taskId) ?? existingAnchors.taskId ?? null,
-    runId: normalizeNullableString(anchors?.runId) ?? existingAnchors.runId ?? null,
-    projectId: normalizeNullableString(anchors?.projectId) ?? existingAnchors.projectId ?? null,
+    taskId: readNonEmptyString(anchors?.taskId) ?? existingAnchors.taskId ?? null,
+    runId: readNonEmptyString(anchors?.runId) ?? existingAnchors.runId ?? null,
+    projectId: readNonEmptyString(anchors?.projectId) ?? existingAnchors.projectId ?? null,
     workItemId:
-      normalizeNullableString(anchors?.workItemId)
+      readNonEmptyString(anchors?.workItemId)
       ?? existingAnchors.workItemId
       ?? null,
     workspacePath:
-      normalizeNullableString(anchors?.workspacePath)
+      readNonEmptyString(anchors?.workspacePath)
       ?? existingAnchors.workspacePath
       ?? null,
   };
@@ -698,11 +720,13 @@ function assertNoAnchorConflicts(
     'workItemId',
     'workspacePath',
   ] as const) {
-    const incoming = normalizeNullableString(anchors?.[field]);
-    const frozen = normalizeNullableString(existingAnchors[field]);
+    const incoming = readNonEmptyString(anchors?.[field]);
+    const frozen = readNonEmptyString(existingAnchors[field]);
     if (!incoming || !frozen) {
       continue;
     }
+    // Core ids are case-sensitive; callers must preserve id casing. Workspace
+    // paths are the only anchor field normalized through filesystem rules.
     const matches = field === 'workspacePath'
       ? normalizeWorkspaceKey(incoming) === normalizeWorkspaceKey(frozen)
       : incoming === frozen;
@@ -806,10 +830,6 @@ function readNonEmptyString(value: unknown): string | null {
   return typeof value === 'string' && value.trim().length > 0
     ? value.trim()
     : null;
-}
-
-function normalizeNullableString(value: unknown): string | null {
-  return readNonEmptyString(value);
 }
 
 function isCodeArtifactProducerKind(

@@ -190,6 +190,12 @@ export function projectCodeArtifactToolResultsIntoSegments(
     projected.push(buildCodeArtifactToolResultSegment(declaration));
   }
 
+  for (const entry of unusedDeclarations) {
+    if (!entry.used) {
+      projected.push(buildCodeArtifactToolResultSegment(entry.declaration));
+    }
+  }
+
   return projected;
 }
 
@@ -198,27 +204,28 @@ function findMatchingDeclarationResult(
   toolId: string | null,
   declarationId: string | null,
 ): CodeArtifactRuntimeDeclarationExecutionItem | null {
-  const match = declarations.find((candidate) =>
-    !candidate.used
-    && (
-      (toolId !== null && candidate.declaration.toolId === toolId)
-      || (
-        toolId === null
-        && declarationId !== null
-        && candidate.declaration.toolId === null
-        && candidate.declaration.declarationId === declarationId
-      )
-      || (
-        toolId === null
-        && declarationId === null
-        && candidate.declaration.toolId === null
-      )
-    ));
+  const unused = declarations.filter((candidate) => !candidate.used);
+  const match = toolId !== null
+    ? unused.find((candidate) => candidate.declaration.toolId === toolId)
+    : declarationId !== null
+      ? unused.find((candidate) =>
+          candidate.declaration.toolId === null
+          && candidate.declaration.declarationId === declarationId)
+      : findOnlyNullIdentityDeclaration(unused);
   if (!match) {
     return null;
   }
   match.used = true;
   return match.declaration;
+}
+
+function findOnlyNullIdentityDeclaration(
+  declarations: Array<{ declaration: CodeArtifactRuntimeDeclarationExecutionItem; used: boolean }>,
+): { declaration: CodeArtifactRuntimeDeclarationExecutionItem; used: boolean } | null {
+  const matches = declarations.filter((candidate) =>
+    candidate.declaration.toolId === null
+    && candidate.declaration.declarationId === null);
+  return matches.length === 1 ? matches[0]! : null;
 }
 
 function buildCodeArtifactToolResultSegment(

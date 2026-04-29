@@ -197,10 +197,17 @@ test('Code artifact materialization rejects retries with conflicting frozen anch
     createPreviewDeclaration(),
     new Date('2026-04-30T10:00:00.000Z'),
   );
+  const conflictRunCore = upsertCoreRun(first.core, {
+    id: 'run-code-conflict',
+    title: 'Conflicting Code run',
+    status: 'running',
+    conversationId: 'conversation-code-1',
+    taskId: 'task-code-1',
+  }).core;
 
   assert.throws(
     () => materializeCodeArtifactDeclaration(
-      first.core,
+      conflictRunCore,
       createPreviewDeclaration({
         anchors: {
           conversationId: 'conversation-code-1',
@@ -214,6 +221,33 @@ test('Code artifact materialization rejects retries with conflicting frozen anch
     (error) =>
       error instanceof CodeArtifactDeclarationError &&
       error.code === 'artifact_anchor_conflict',
+  );
+});
+
+test('Code artifact materialization validates raw anchors before frozen recovery', () => {
+  const core = createAnchoredCodeCore();
+  const first = materializeCodeArtifactDeclaration(
+    core,
+    createPreviewDeclaration(),
+    new Date('2026-04-30T10:00:00.000Z'),
+  );
+
+  assert.throws(
+    () => materializeCodeArtifactDeclaration(
+      first.core,
+      createPreviewDeclaration({
+        anchors: {
+          conversationId: 'conversation-code-1',
+          taskId: 'task-code-1',
+          runId: 'run-code-missing',
+          workspacePath: 'C:/repo/cats-platform',
+        },
+      }),
+      new Date('2026-04-30T10:01:00.000Z'),
+    ),
+    (error) =>
+      error instanceof CodeArtifactDeclarationError &&
+      error.code === 'artifact_anchor_required',
   );
 });
 
@@ -253,6 +287,47 @@ test('Code artifact materialization does not fold same agent declaration ids acr
   assert.notEqual(second.artifact.id, first.artifact.id);
   assert.equal(second.created, true);
   assert.equal(second.core.artifacts.length, 2);
+});
+
+test('Code artifact materialization rejects missing agent runtime sessions before recovery', () => {
+  const core = createAnchoredCodeCore();
+  const first = materializeCodeArtifactDeclaration(
+    core,
+    createPreviewDeclaration(),
+    new Date('2026-04-30T10:00:00.000Z'),
+  );
+  const secondRunCore = upsertCoreRun(first.core, {
+    id: 'run-code-2',
+    title: 'Second Code run',
+    status: 'running',
+    conversationId: 'conversation-code-1',
+    taskId: 'task-code-1',
+  }).core;
+
+  assert.throws(
+    () => materializeCodeArtifactDeclaration(
+      secondRunCore,
+      createPreviewDeclaration({
+        producer: {
+          kind: 'agent',
+          actorId: 'actor-code-agent',
+        },
+        anchors: {
+          conversationId: 'conversation-code-1',
+          taskId: 'task-code-1',
+          runId: 'run-code-2',
+          workspacePath: 'C:/repo/cats-platform',
+        },
+      }),
+      new Date('2026-04-30T10:01:00.000Z'),
+    ),
+    (error) =>
+      error instanceof CodeArtifactDeclarationError &&
+      error.code === 'artifact_required_field_empty',
+  );
+
+  assert.equal(secondRunCore.artifacts.length, 1);
+  assert.equal(secondRunCore.artifacts[0]?.id, first.artifact.id);
 });
 
 test('Code artifact materialization rejects ambiguous frozen-scope retries', () => {
@@ -361,7 +436,7 @@ test('Code artifact materialization rejects unpublishable and unanchored declara
     () => materializeCodeArtifactDeclaration(
       core,
       createPreviewDeclaration({
-        producer: { kind: 'agent', actorId: 'actor-code-agent' },
+        producer: { kind: 'user', actorId: 'actor-code-user' },
         anchors: {},
       }),
     ),
