@@ -354,6 +354,7 @@ function buildHelperCatalog(
     supportsApply: asset.supportsApply,
     supportsUpgrade: asset.supportsUpgrade,
     supportsForce: asset.supportsForce,
+    supportsUninstall: asset.supportsUninstall,
     requiresElevation: asset.requiresElevation,
     resumable: asset.resumable,
     notes: asset.notes,

@@ -46,6 +46,7 @@ param(
   [switch]$Apply,
   [switch]$Upgrade,
   [switch]$Force,
+  [switch]$Uninstall,
   [switch]$Json,
   [switch]$AllowAdmin,
   [switch]$SkipNodeCheck,
@@ -212,8 +213,12 @@ $packageCatalog = @(
   @{ id = 'pi'; packageName = '@mariozechner/pi-coding-agent'; label = 'Pi' }
 )
 
-if (-not $CheckOnly -and -not $Apply -and -not $Upgrade -and -not $Force) {
+if (-not $CheckOnly -and -not $Apply -and -not $Upgrade -and -not $Force -and -not $Uninstall) {
   $CheckOnly = $true
+}
+
+if ($Uninstall -and ($CheckOnly -or $Apply -or $Upgrade -or $Force)) {
+  throw 'Install-NodeCliPack.ps1 -Uninstall is mutually exclusive with other modes.'
 }
 
 if ($CheckOnly -and ($Apply -or $Upgrade -or $Force)) {
@@ -224,7 +229,9 @@ if ($Force -and $Upgrade) {
   $Upgrade = $false
 }
 
-$executionMode = if ($CheckOnly) {
+$executionMode = if ($Uninstall) {
+  'uninstall'
+} elseif ($CheckOnly) {
   'check'
 } elseif ($Force) {
   'force'
@@ -289,6 +296,71 @@ if (-not $CheckOnly -and $prefixHelperResult.status -eq 'changes_required') {
 
 $installedPackages = Get-InstalledPackages
 $outdatedPackages = Get-OutdatedPackages
+
+if ($Uninstall) {
+  $uninstallPlanned = [System.Collections.Generic.List[string]]::new()
+  $uninstallApplied = [System.Collections.Generic.List[string]]::new()
+  $uninstallWarnings = [System.Collections.Generic.List[string]]::new()
+
+  $uninstallPackages = foreach ($package in $packageCatalog) {
+    $isInstalled = $installedPackages -contains $package.packageName
+    $packageStatus = 'not_installed'
+    $plannedAction = 'skip'
+    if ($isInstalled) {
+      $plannedAction = 'uninstall'
+      $uninstallPlanned.Add("$($package.packageName): uninstall") | Out-Null
+      try {
+        & npm 'uninstall' '-g' $package.packageName | Out-Null
+        if ($LASTEXITCODE -eq 0) {
+          $uninstallApplied.Add("$($package.packageName): uninstalled") | Out-Null
+          $packageStatus = 'uninstalled'
+        } else {
+          $uninstallWarnings.Add("$($package.packageName): uninstall_failed_exit_$LASTEXITCODE") | Out-Null
+          $packageStatus = 'failed'
+        }
+      } catch {
+        $uninstallWarnings.Add("$($package.packageName): uninstall_failed") | Out-Null
+        $packageStatus = 'failed'
+      }
+    }
+
+    [pscustomobject]@{
+      id = $package.id
+      label = $package.label
+      packageName = $package.packageName
+      installed = $isInstalled
+      outdated = $false
+      plannedAction = $plannedAction
+      status = $packageStatus
+    }
+  }
+
+  $uninstallStatus = if ($uninstallPlanned.Count -eq 0) {
+    'not_installed'
+  } elseif ($uninstallWarnings.Count -gt 0) {
+    'changes_required'
+  } else {
+    'uninstalled'
+  }
+
+  $result = [pscustomobject]@{
+    helper = 'windows-node-cli-pack'
+    mode = 'uninstall'
+    status = $uninstallStatus
+    restartRequired = $false
+    prefixHelper = $null
+    nodeVersion = $nodeVersion
+    npmVersion = $npmVersion
+    packages = $uninstallPackages
+    plannedActions = $uninstallPlanned.ToArray()
+    warnings = $uninstallWarnings.ToArray()
+    appliedChanges = $uninstallApplied.ToArray()
+    manualSteps = @()
+    interruptions = @()
+  }
+  Write-StructuredResult -Result $result -ExitCode 0
+}
+
 $plannedPackageChanges = [System.Collections.Generic.List[string]]::new()
 $appliedChanges = [System.Collections.Generic.List[string]]::new()
 

@@ -121,6 +121,7 @@ export const DESKTOP_SETUP_HELPER_MODES = [
   'apply',
   'upgrade',
   'force',
+  'uninstall',
 ] as const;
 export const DESKTOP_SETUP_ACTION_RUN_STATES = [
   'completed',
@@ -522,6 +523,7 @@ export interface DesktopInstallerContract {
       supportsApply: boolean;
       supportsUpgrade: boolean;
       supportsForce: boolean;
+      supportsUninstall: boolean;
       requiresElevation: boolean;
       resumable: boolean;
       notes: string[];
@@ -572,6 +574,7 @@ export interface DesktopSetupHelperSummary {
   supportsApply: boolean;
   supportsUpgrade: boolean;
   supportsForce: boolean;
+  supportsUninstall: boolean;
   requiresElevation: boolean;
   resumable: boolean;
   notes: string[];

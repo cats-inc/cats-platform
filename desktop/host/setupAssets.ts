@@ -18,6 +18,7 @@ export interface DesktopSetupAsset {
   supportsApply: boolean;
   supportsUpgrade: boolean;
   supportsForce: boolean;
+  supportsUninstall: boolean;
   requiresElevation: boolean;
   resumable: boolean;
   notes: string[];
@@ -57,6 +58,7 @@ function createUnixSetupAssets(platform: UnixAssetPlatform): DesktopSetupAsset[]
       supportsApply: true,
       supportsUpgrade: true,
       supportsForce: true,
+      supportsUninstall: false,
       requiresElevation: false,
       resumable: true,
       notes: [
@@ -78,6 +80,7 @@ function createUnixSetupAssets(platform: UnixAssetPlatform): DesktopSetupAsset[]
       supportsApply: true,
       supportsUpgrade: true,
       supportsForce: true,
+      supportsUninstall: true,
       requiresElevation: false,
       resumable: true,
       notes: [
@@ -105,6 +108,7 @@ function createUnixSetupAssets(platform: UnixAssetPlatform): DesktopSetupAsset[]
       supportsApply: true,
       supportsUpgrade: true,
       supportsForce: true,
+      supportsUninstall: true,
       requiresElevation: false,
       resumable: true,
       notes: [
@@ -126,6 +130,7 @@ function createUnixSetupAssets(platform: UnixAssetPlatform): DesktopSetupAsset[]
       supportsApply: false,
       supportsUpgrade: false,
       supportsForce: false,
+      supportsUninstall: false,
       requiresElevation: false,
       resumable: true,
       notes: [
@@ -183,6 +188,7 @@ export const DESKTOP_SETUP_ASSETS: DesktopSetupAsset[] = [
     supportsApply: true,
     supportsUpgrade: false,
     supportsForce: false,
+    supportsUninstall: false,
     requiresElevation: false,
     resumable: true,
     notes: [
@@ -204,6 +210,7 @@ export const DESKTOP_SETUP_ASSETS: DesktopSetupAsset[] = [
     supportsApply: true,
     supportsUpgrade: true,
     supportsForce: true,
+    supportsUninstall: true,
     requiresElevation: false,
     resumable: true,
     notes: [
@@ -225,6 +232,7 @@ export const DESKTOP_SETUP_ASSETS: DesktopSetupAsset[] = [
     supportsApply: true,
     supportsUpgrade: true,
     supportsForce: true,
+    supportsUninstall: true,
     requiresElevation: false,
     resumable: true,
     notes: [
@@ -246,6 +254,7 @@ export const DESKTOP_SETUP_ASSETS: DesktopSetupAsset[] = [
     supportsApply: true,
     supportsUpgrade: true,
     supportsForce: true,
+    supportsUninstall: true,
     requiresElevation: false,
     resumable: true,
     notes: [
@@ -267,6 +276,7 @@ export const DESKTOP_SETUP_ASSETS: DesktopSetupAsset[] = [
     supportsApply: true,
     supportsUpgrade: true,
     supportsForce: true,
+    supportsUninstall: true,
     requiresElevation: false,
     resumable: true,
     notes: [
@@ -288,6 +298,7 @@ export const DESKTOP_SETUP_ASSETS: DesktopSetupAsset[] = [
     supportsApply: true,
     supportsUpgrade: true,
     supportsForce: true,
+    supportsUninstall: true,
     requiresElevation: false,
     resumable: true,
     notes: [
@@ -309,6 +320,7 @@ export const DESKTOP_SETUP_ASSETS: DesktopSetupAsset[] = [
     supportsApply: false,
     supportsUpgrade: false,
     supportsForce: false,
+    supportsUninstall: false,
     requiresElevation: true,
     resumable: true,
     notes: [
@@ -330,6 +342,7 @@ export const DESKTOP_SETUP_ASSETS: DesktopSetupAsset[] = [
     supportsApply: true,
     supportsUpgrade: true,
     supportsForce: true,
+    supportsUninstall: false,
     requiresElevation: true,
     resumable: true,
     notes: [
@@ -351,6 +364,7 @@ export const DESKTOP_SETUP_ASSETS: DesktopSetupAsset[] = [
     supportsApply: true,
     supportsUpgrade: true,
     supportsForce: true,
+    supportsUninstall: false,
     requiresElevation: true,
     resumable: true,
     notes: [
@@ -372,6 +386,7 @@ export const DESKTOP_SETUP_ASSETS: DesktopSetupAsset[] = [
     supportsApply: true,
     supportsUpgrade: true,
     supportsForce: true,
+    supportsUninstall: false,
     requiresElevation: true,
     resumable: true,
     notes: [
@@ -393,6 +408,7 @@ export const DESKTOP_SETUP_ASSETS: DesktopSetupAsset[] = [
     supportsApply: true,
     supportsUpgrade: true,
     supportsForce: true,
+    supportsUninstall: true,
     requiresElevation: false,
     resumable: true,
     notes: [
@@ -414,6 +430,7 @@ export const DESKTOP_SETUP_ASSETS: DesktopSetupAsset[] = [
     supportsApply: false,
     supportsUpgrade: false,
     supportsForce: false,
+    supportsUninstall: false,
     requiresElevation: false,
     resumable: true,
     notes: [
@@ -434,6 +451,17 @@ export const DESKTOP_SETUP_SUPPORT_ASSETS: DesktopSetupSupportAsset[] = [
     targetPlatforms: ['windows'],
     notes: [
       'Shared PowerShell helper used by Windows packaged setup flows that need a hidden background process wrapper.',
+    ],
+  },
+  {
+    id: 'windows-packaged-uninstall-support-script',
+    label: 'Windows packaged provider uninstall helper',
+    sourceRelativePath: 'scripts/windows/_PackagedUninstall.ps1',
+    stageRelativePath: 'shared/setup-assets/windows/_PackagedUninstall.ps1',
+    packagedRelativePath: 'desktop/setup-assets/windows/_PackagedUninstall.ps1',
+    targetPlatforms: ['windows'],
+    notes: [
+      'Shared PowerShell helper that emits the structured Uninstall result contract for native provider helpers.',
     ],
   },
   ...createUnixSetupSupportAssets('linux'),

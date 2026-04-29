@@ -15,8 +15,43 @@ interface DesktopSetupResumeAction {
   summary: string;
 }
 
+export type RuntimeLifecycleHelperMode =
+  | 'check'
+  | 'apply'
+  | 'upgrade'
+  | 'force'
+  | 'uninstall';
+
+export interface RuntimeLifecycleHelperSummary {
+  id: string;
+  label: string;
+  kind: 'prerequisite_helper' | 'cli_pack_installer' | 'provider_installer' | 'readiness_helper';
+  pack: 'native_cli_pack' | 'local_model_pack' | 'wsl_power_user_pack' | null;
+  platform: 'windows' | 'windows_wsl' | 'macos' | 'linux';
+  packagedRelativePath: string;
+  supportsCheckOnly: boolean;
+  supportsApply: boolean;
+  supportsUpgrade: boolean;
+  supportsForce: boolean;
+  supportsUninstall: boolean;
+  requiresElevation: boolean;
+  available: boolean;
+  supported: boolean;
+  unsupportedReason: string | null;
+}
+
 interface DesktopSetupSnapshot {
+  helpers?: RuntimeLifecycleHelperSummary[];
   resumeAction: DesktopSetupResumeAction | null;
+  state?: {
+    updatedAt: string | null;
+    lastAction: null | {
+      helperId: string;
+      mode: RuntimeLifecycleHelperMode;
+      runState: 'completed' | 'failed';
+      status: string | null;
+    };
+  };
 }
 
 interface DesktopBootstrapSnapshot {
@@ -54,6 +89,10 @@ export type DesktopScreenshotCaptureResult =
 export interface DesktopHostBridge {
   getSetupSnapshot?: () => Promise<DesktopSetupSnapshot>;
   runAction?: (actionId: string) => Promise<DesktopBootstrapSnapshot>;
+  runSetupHelper?: (
+    helperId: string,
+    mode: RuntimeLifecycleHelperMode,
+  ) => Promise<DesktopSetupSnapshot>;
   resumeSetup?: () => Promise<DesktopSetupSnapshot>;
   screenshotRegionCaptureAvailable?: boolean;
   captureScreenshotRegion?: () => Promise<DesktopScreenshotCaptureResult>;

@@ -43,6 +43,7 @@ param(
   [switch]$Apply,
   [switch]$Upgrade,
   [switch]$Force,
+  [switch]$Uninstall,
   [switch]$Json,
   [switch]$AllowAdmin,
   [ValidateSet('auto', 'installed', 'missing')]
@@ -57,6 +58,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot '_HiddenProcess.ps1')
+. (Join-Path $PSScriptRoot '_PackagedUninstall.ps1')
 
 function Write-StructuredResult {
   param(
@@ -208,8 +210,12 @@ function Invoke-GooseInstaller {
   }
 }
 
-if (-not $CheckOnly -and -not $Apply -and -not $Upgrade -and -not $Force) {
+if (-not $CheckOnly -and -not $Apply -and -not $Upgrade -and -not $Force -and -not $Uninstall) {
   $CheckOnly = $true
+}
+
+if ($Uninstall -and ($CheckOnly -or $Apply -or $Upgrade -or $Force)) {
+  throw 'Install-Goose.ps1 -Uninstall is mutually exclusive with other modes.'
 }
 
 if ($CheckOnly -and ($Apply -or $Upgrade -or $Force)) {
@@ -220,7 +226,9 @@ if ($Force -and $Upgrade) {
   $Upgrade = $false
 }
 
-$executionMode = if ($CheckOnly) {
+$executionMode = if ($Uninstall) {
+  'uninstall'
+} elseif ($CheckOnly) {
   'check'
 } elseif ($Force) {
   'force'
@@ -228,6 +236,14 @@ $executionMode = if ($CheckOnly) {
   'upgrade'
 } else {
   'apply'
+}
+
+if ($Uninstall) {
+  Invoke-PackagedProviderUninstall `
+    -HelperId 'windows-goose-native-installer' `
+    -UserBinaryPath (Resolve-GooseExecutablePath) `
+    -RedetectCommand { Detect-GooseInstall } `
+    -EmitJson:$Json
 }
 
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).

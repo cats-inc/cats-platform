@@ -355,16 +355,89 @@ provider_help() {
   local script_name="$1"
   local provider="$2"
   cat <<EOF
-Usage: $script_name [--check] [-upgrade] [-force] [--help]
+Usage: $script_name [--check] [-upgrade] [-force] [--uninstall] [--help]
 
 Repo-owned self-hosted helper for $(provider_display_name "$provider").
 
 Options:
-  --check    Verify whether the provider CLI is reachable on this host.
-  -upgrade   Upgrade the provider CLI if already installed, otherwise install it.
-  -force     Reinstall the provider CLI even when already present.
-  --help     Show this help text.
+  --check     Verify whether the provider CLI is reachable on this host.
+  -upgrade    Upgrade the provider CLI if already installed, otherwise install it.
+  -force      Reinstall the provider CLI even when already present.
+  --uninstall Remove the provider CLI binaries from user-owned install paths.
+  --help      Show this help text.
 EOF
+}
+
+uninstall_provider_native_paths() {
+  local platform="$1"
+  local provider="$2"
+  local -n out_planned="$3"
+  local -n out_applied="$4"
+  local -n out_warnings="$5"
+  local -n out_remaining_path="$6"
+
+  local primary_command primary_path candidate path extra existing already
+  local planned_paths=()
+
+  primary_command="$(provider_primary_command "$provider")"
+  if primary_path="$(command -v "$primary_command" 2>/dev/null)"; then
+    case "$primary_path" in
+      "$HOME"/*) planned_paths+=("$primary_path") ;;
+    esac
+  fi
+
+  while IFS= read -r candidate; do
+    [ -z "$candidate" ] && continue
+    case "$candidate" in
+      "$HOME"/*)
+        if [ -e "$candidate" ] || [ -L "$candidate" ]; then
+          already='false'
+          for existing in "${planned_paths[@]}"; do
+            [ "$existing" = "$candidate" ] && already='true' && break
+          done
+          [ "$already" = 'false' ] && planned_paths+=("$candidate")
+        fi
+        ;;
+    esac
+  done <<UPNP_EOF
+$(provider_binary_candidates "$platform" "$provider")
+UPNP_EOF
+
+  if [ "$provider" = 'kiro' ]; then
+    for extra in kiro-cli-chat kiro-cli-term; do
+      if [ -e "$HOME/.local/bin/$extra" ] || [ -L "$HOME/.local/bin/$extra" ]; then
+        planned_paths+=("$HOME/.local/bin/$extra")
+      fi
+    done
+    if [ "$platform" = 'macos' ] && [ -d '/Applications/Kiro CLI.app' ]; then
+      planned_paths+=('/Applications/Kiro CLI.app')
+    fi
+  fi
+
+  for path in "${planned_paths[@]}"; do
+    out_planned+=("remove:$path")
+  done
+
+  for path in "${planned_paths[@]}"; do
+    if [ -d "$path" ] && [ ! -L "$path" ]; then
+      if rm -rf "$path" 2>/dev/null; then
+        out_applied+=("removed:$path")
+      else
+        out_warnings+=("failed_to_remove:$path")
+      fi
+    elif [ -e "$path" ] || [ -L "$path" ]; then
+      if rm -f "$path" 2>/dev/null; then
+        out_applied+=("removed:$path")
+      else
+        out_warnings+=("failed_to_remove:$path")
+      fi
+    fi
+  done
+
+  out_remaining_path=''
+  if primary_path="$(detect_provider_command "$platform" "$provider")"; then
+    out_remaining_path="$primary_path"
+  fi
 }
 
 run_native_provider_installer() {
@@ -376,6 +449,7 @@ run_native_provider_installer() {
   local apply='false'
   local upgrade='false'
   local force='false'
+  local uninstall='false'
   local emit_json='false'
   local shell_rc
   local command_path=''
@@ -402,6 +476,9 @@ run_native_provider_installer() {
       -force|-Force)
         force='true'
         ;;
+      --uninstall|-Uninstall)
+        uninstall='true'
+        ;;
       --json|-Json)
         emit_json='true'
         ;;
@@ -422,7 +499,9 @@ run_native_provider_installer() {
     upgrade='false'
   fi
 
-  if [ "$check_only" = 'true' ]; then
+  if [ "$uninstall" = 'true' ]; then
+    execution_mode='uninstall'
+  elif [ "$check_only" = 'true' ]; then
     execution_mode='check'
   elif [ "$force" = 'true' ]; then
     execution_mode='force'
@@ -434,6 +513,98 @@ run_native_provider_installer() {
 
   display_name="$(provider_display_name "$provider")"
   shell_rc="$(detect_shell_rc)"
+
+  if [ "$execution_mode" = 'uninstall' ]; then
+    local uninstall_planned=()
+    local uninstall_applied=()
+    local uninstall_warnings=()
+    local uninstall_remaining=''
+    local alias_name
+
+    uninstall_provider_native_paths "$platform" "$provider" \
+      uninstall_planned uninstall_applied uninstall_warnings uninstall_remaining
+
+    alias_name="$(provider_alias_name "$provider")"
+    if [ -n "$alias_name" ] && [ -f "$shell_rc" ] && grep -Eq "^[[:space:]]*alias[[:space:]]+${alias_name}=" "$shell_rc" 2>/dev/null; then
+      uninstall_warnings+=("alias_${alias_name}_remains_in:$shell_rc")
+    fi
+
+    if [ ${#uninstall_planned[@]} -eq 0 ]; then
+      if [ "$emit_json" = 'true' ]; then
+        printf '{'
+        printf '"helper":"%s-%s-native-installer",' "$platform" "$provider"
+        printf '"mode":"uninstall",'
+        printf '"status":"not_installed",'
+        printf '"installed":false,'
+        printf '"commandPath":null,'
+        printf '"detectedVersion":null,'
+        printf '"plannedActions":[],'
+        printf '"appliedChanges":[],'
+        printf '"warnings":[],'
+        printf '"manualSteps":[],'
+        printf '"interruptions":[]'
+        printf '}\n'
+      else
+        printf '%s is not installed; nothing to remove.\n' "$display_name"
+      fi
+      return 0
+    fi
+
+    if [ -n "$uninstall_remaining" ]; then
+      uninstall_warnings+=("system_install_remains_at:$uninstall_remaining")
+      if [ "$emit_json" = 'true' ]; then
+        printf '{'
+        printf '"helper":"%s-%s-native-installer",' "$platform" "$provider"
+        printf '"mode":"uninstall",'
+        printf '"status":"changes_required",'
+        printf '"installed":true,'
+        printf '"commandPath":"%s",' "$(json_escape "$uninstall_remaining")"
+        printf '"detectedVersion":null,'
+        printf '"plannedActions":'
+        json_string_array "${uninstall_planned[@]}"
+        printf ','
+        printf '"appliedChanges":'
+        json_string_array "${uninstall_applied[@]}"
+        printf ','
+        printf '"warnings":'
+        json_string_array "${uninstall_warnings[@]}"
+        printf ','
+        printf '"manualSteps":["Remove the remaining %s install at %s using your package manager."],' \
+          "$(json_escape "$display_name")" "$(json_escape "$uninstall_remaining")"
+        printf '"interruptions":[]'
+        printf '}\n'
+      else
+        printf '%s removed from user-owned paths but a system install remains at %s.\n' \
+          "$display_name" "$uninstall_remaining"
+      fi
+      return 0
+    fi
+
+    if [ "$emit_json" = 'true' ]; then
+      printf '{'
+      printf '"helper":"%s-%s-native-installer",' "$platform" "$provider"
+      printf '"mode":"uninstall",'
+      printf '"status":"uninstalled",'
+      printf '"installed":false,'
+      printf '"commandPath":null,'
+      printf '"detectedVersion":null,'
+      printf '"plannedActions":'
+      json_string_array "${uninstall_planned[@]}"
+      printf ','
+      printf '"appliedChanges":'
+      json_string_array "${uninstall_applied[@]}"
+      printf ','
+      printf '"warnings":'
+      json_string_array "${uninstall_warnings[@]}"
+      printf ','
+      printf '"manualSteps":[],'
+      printf '"interruptions":[]'
+      printf '}\n'
+    else
+      printf '%s removed.\n' "$display_name"
+    fi
+    return 0
+  fi
 
   if command_path="$(detect_provider_command "$platform" "$provider")"; then
     initial_installed='true'

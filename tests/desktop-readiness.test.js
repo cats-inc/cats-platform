@@ -941,3 +941,108 @@ test('desktop bootstrap keeps optional local-model follow-through reachable afte
   assert.equal(snapshot.actions.some((action) => action.id === 'open_runtime_diagnostics'), false);
   assert.equal(snapshot.issues.some((issue) => issue.title === 'Optional local model pack is available for follow-through'), true);
 });
+
+test('desktop bootstrap reaches ready_for_setup with provider-path copy when setup is incomplete and no providers are configured', () => {
+  const snapshot = buildDesktopBootstrapSnapshot({
+    config: desktopConfig,
+    services: [
+      readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
+    ],
+    appHealth: {
+      status: 'ok',
+      summary: 'Cats app server is ready to accept requests.',
+      readiness: { ready: true, phase: 'ready' },
+      runtime: { reachable: true },
+    },
+    appShell: {
+      setupCompleteAt: null,
+    },
+    runtimeHealth: {
+      status: 'ok',
+      runtime: { status: 'ok', summary: 'Runtime is ready.' },
+      providers: {
+        summary: {
+          status: 'degraded',
+          summary: 'No provider targets configured.',
+          configuredProviders: 0,
+          targets: 0,
+          defaultTargets: 0,
+          ok: 0,
+          degraded: 0,
+          unavailable: 0,
+        },
+      },
+    },
+    providerDiagnostics: {
+      summary: {
+        status: 'degraded',
+        summary: 'No provider targets configured.',
+        configuredProviders: 0,
+        targets: 0,
+        defaultTargets: 0,
+        ok: 0,
+        degraded: 0,
+        unavailable: 0,
+      },
+      providers: [],
+    },
+  });
+
+  assert.equal(snapshot.phase, 'ready_for_setup');
+  assert.match(snapshot.summary, /choose a provider path/i);
+  assert.ok(snapshot.actions.some((action) => action.id === 'open_setup' && action.primary === true));
+  assert.equal(snapshot.actions.some((action) => action.id === 'open_chat'), false);
+});
+
+test('desktop bootstrap stays in needs_prerequisites with Open Cats forward path when setup is complete but zero providers remain', () => {
+  const snapshot = buildDesktopBootstrapSnapshot({
+    config: desktopConfig,
+    services: [
+      readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
+    ],
+    appHealth: {
+      status: 'ok',
+      summary: 'Cats app server is ready to accept requests.',
+      readiness: { ready: true, phase: 'ready' },
+      runtime: { reachable: true },
+    },
+    appShell: {
+      setupCompleteAt: '2026-04-29T09:00:00.000Z',
+    },
+    runtimeHealth: {
+      status: 'degraded',
+      runtime: { status: 'ok', summary: 'Runtime is ready.' },
+      providers: {
+        summary: {
+          status: 'degraded',
+          summary: 'No provider targets remain after bulk uninstall.',
+          configuredProviders: 0,
+          targets: 0,
+          defaultTargets: 0,
+          ok: 0,
+          degraded: 0,
+          unavailable: 0,
+        },
+      },
+    },
+    providerDiagnostics: {
+      summary: {
+        status: 'degraded',
+        summary: 'No provider targets remain after bulk uninstall.',
+        configuredProviders: 0,
+        targets: 0,
+        defaultTargets: 0,
+        ok: 0,
+        degraded: 0,
+        unavailable: 0,
+      },
+      providers: [],
+    },
+  });
+
+  assert.equal(snapshot.phase, 'needs_prerequisites');
+  assert.ok(snapshot.actions.some((action) => action.id === 'open_chat' && action.primary === true));
+  assert.equal(snapshot.actions.some((action) => action.id === 'open_setup'), false);
+});

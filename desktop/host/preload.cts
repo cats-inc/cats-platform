@@ -28,7 +28,8 @@ type DesktopSetupHelperMode =
   | 'check'
   | 'apply'
   | 'upgrade'
-  | 'force';
+  | 'force'
+  | 'uninstall';
 
 const DESKTOP_HOST_ACTION_IDS = new Set<DesktopHostActionId>([
   'retry',
@@ -43,6 +44,7 @@ const DESKTOP_SETUP_HELPER_MODES = new Set<DesktopSetupHelperMode>([
   'apply',
   'upgrade',
   'force',
+  'uninstall',
 ]);
 
 interface DesktopBootstrapSnapshot {

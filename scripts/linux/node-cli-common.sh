@@ -331,7 +331,7 @@ EOF
 node_cli_pack_help() {
   local script_name="$1"
   cat <<EOF
-Usage: $script_name [--check] [-upgrade] [-force] [--skip-prefix-setup] [--help]
+Usage: $script_name [--check] [-upgrade] [-force] [--uninstall] [--skip-prefix-setup] [--help]
 
 Repo-owned self-hosted helper for the shared npm-based CLI provider pack:
 Codex, Gemini, Copilot, OpenCode, Kilo, Auggie, and Pi.
@@ -340,6 +340,7 @@ Options:
   --check             Verify whether the npm CLI pack is reachable on this host.
   -upgrade            Upgrade installed packages and install any missing package.
   -force              Reinstall every package in the pack.
+  --uninstall         Uninstall every npm-global package in the pack.
   --skip-prefix-setup Skip the npm prefix/PATH helper.
   --help              Show this help text.
 EOF
@@ -353,6 +354,7 @@ run_node_cli_pack() {
   local apply='false'
   local upgrade='false'
   local force='false'
+  local uninstall='false'
   local skip_prefix_setup='false'
   local emit_json='false'
   local outdated_packages=''
@@ -367,6 +369,7 @@ run_node_cli_pack() {
   local changed_count=0
   local planned_actions=()
   local applied_changes=()
+  local warnings=()
   local packages_json=''
   local first_package='true'
   local package_status=''
@@ -385,6 +388,9 @@ run_node_cli_pack() {
         ;;
       -force|-Force)
         force='true'
+        ;;
+      --uninstall|-Uninstall)
+        uninstall='true'
         ;;
       --skip-prefix-setup)
         skip_prefix_setup='true'
@@ -414,7 +420,7 @@ run_node_cli_pack() {
     if [ "$emit_json" = 'true' ]; then
       printf '{'
       printf '"helper":"%s-node-cli-pack",' "$platform"
-      printf '"mode":"%s",' "$( [ "$check_only" = 'true' ] && printf 'check' || [ "$force" = 'true' ] && printf 'force' || [ "$upgrade" = 'true' ] && printf 'upgrade' || printf 'apply' )"
+      printf '"mode":"%s",' "$( [ "$uninstall" = 'true' ] && printf 'uninstall' || [ "$check_only" = 'true' ] && printf 'check' || [ "$force" = 'true' ] && printf 'force' || [ "$upgrade" = 'true' ] && printf 'upgrade' || printf 'apply' )"
       printf '"status":"failed",'
       printf '"restartRequired":false,'
       printf '"plannedActions":[],'
@@ -429,12 +435,77 @@ run_node_cli_pack() {
   fi
 
   local execution_mode='apply'
-  if [ "$check_only" = 'true' ]; then
+  if [ "$uninstall" = 'true' ]; then
+    execution_mode='uninstall'
+  elif [ "$check_only" = 'true' ]; then
     execution_mode='check'
   elif [ "$force" = 'true' ]; then
     execution_mode='force'
   elif [ "$upgrade" = 'true' ]; then
     execution_mode='upgrade'
+  fi
+
+  if [ "$execution_mode" = 'uninstall' ]; then
+    local uninstall_status='not_installed'
+    while IFS='|' read -r id command_name package_name display_name; do
+      [ -n "$id" ] || continue
+      installed='false'
+      if command -v "$command_name" >/dev/null 2>&1 || npm list -g "$package_name" --depth=0 >/dev/null 2>&1; then
+        installed='true'
+        installed_count=$((installed_count + 1))
+        planned_actions+=("${package_name}:uninstall")
+        if npm uninstall -g "$package_name" >/dev/null 2>&1; then
+          applied_changes+=("${package_name}:uninstalled")
+          changed_count=$((changed_count + 1))
+          package_status='uninstalled'
+        else
+          warnings+=("${package_name}:uninstall_failed")
+          package_status='failed'
+        fi
+      else
+        package_status='not_installed'
+      fi
+
+      if [ "$first_package" = 'false' ]; then
+        packages_json="${packages_json},"
+      fi
+      first_package='false'
+      packages_json="${packages_json}{\"id\":\"${id}\",\"label\":\"$(json_escape "$display_name")\",\"packageName\":\"$(json_escape "$package_name")\",\"installed\":$(json_bool "$installed"),\"outdated\":false,\"plannedAction\":\"$( [ "$installed" = 'true' ] && printf 'uninstall' || printf 'skip' )\",\"status\":\"${package_status}\"}"
+    done <<EOF
+$(node_cli_package_rows)
+EOF
+
+    if [ $installed_count -eq 0 ]; then
+      uninstall_status='not_installed'
+    elif [ ${#warnings[@]} -gt 0 ]; then
+      uninstall_status='changes_required'
+    else
+      uninstall_status='uninstalled'
+    fi
+
+    if [ "$emit_json" = 'true' ]; then
+      printf '{'
+      printf '"helper":"%s-node-cli-pack",' "$platform"
+      printf '"mode":"uninstall",'
+      printf '"status":"%s",' "$uninstall_status"
+      printf '"restartRequired":false,'
+      printf '"plannedActions":'
+      json_string_array "${planned_actions[@]}"
+      printf ','
+      printf '"appliedChanges":'
+      json_string_array "${applied_changes[@]}"
+      printf ','
+      printf '"warnings":'
+      json_string_array "${warnings[@]}"
+      printf ','
+      printf '"manualSteps":[],'
+      printf '"interruptions":[],'
+      printf '"packages":[%s]' "$packages_json"
+      printf '}\n'
+    else
+      printf 'npm CLI pack uninstall complete. removed=%s warnings=%s\n' "$changed_count" "${#warnings[@]}"
+    fi
+    return 0
   fi
 
   if [ "$skip_prefix_setup" = 'false' ] && [ "$check_only" = 'false' ]; then

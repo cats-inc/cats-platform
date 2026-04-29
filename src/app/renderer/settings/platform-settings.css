@@ -105,6 +105,79 @@
   }
 }
 
+.settingsRuntimeNote {
+  font-size: var(--settings-hint-size);
+  color: var(--settings-text-muted);
+  margin: 0;
+}
+
+.settingsRuntimeHelperList {
+  gap: var(--space-3);
+}
+
+.settingsRuntimeHelperRow {
+  display: grid;
+  gap: var(--space-2);
+}
+
+.settingsRuntimeHelperHead {
+  display: grid;
+  gap: var(--space-1);
+}
+
+.settingsRuntimeHelperHead strong {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.settingsRuntimeHelperHead span {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, "Cascadia Mono", "Roboto Mono", monospace;
+  font-size: 0.78rem;
+  color: var(--settings-text-muted);
+  word-break: break-all;
+}
+
+.settingsRuntimeHelperActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.settingsRuntimeConfirmOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 12, 10, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: var(--space-4);
+}
+
+.settingsRuntimeConfirmCard {
+  background: var(--settings-surface);
+  border: 1px solid var(--settings-border);
+  border-radius: var(--settings-radius-lg);
+  padding: var(--space-4);
+  max-width: 520px;
+  width: 100%;
+  display: grid;
+  gap: var(--space-3);
+  box-shadow: 0 24px 48px rgba(15, 12, 10, 0.18);
+}
+
+.settingsRuntimeConfirmCard h3 {
+  margin: 0;
+  font-size: var(--settings-title-size);
+  font-weight: 600;
+}
+
+.settingsRuntimeConfirmCard code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, "Cascadia Mono", "Roboto Mono", monospace;
+  font-size: 0.82rem;
+  word-break: break-all;
+}
+
 @media (max-width: 820px) {
   .settingsShell {
     grid-template-columns: 1fr;

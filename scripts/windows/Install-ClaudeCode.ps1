@@ -21,6 +21,10 @@
 .PARAMETER Force
     Force a reinstall by re-running the official installer.
 
+.PARAMETER Uninstall
+    Remove the user-scoped Claude Code CLI binary and any legacy npm shims.
+    Auth files, API keys, and provider configuration files are left in place.
+
 .PARAMETER Json
     Emit a structured JSON result.
 
@@ -51,6 +55,7 @@ param(
   [switch]$Apply,
   [switch]$Upgrade,
   [switch]$Force,
+  [switch]$Uninstall,
   [switch]$Json,
   [switch]$AllowAdmin,
   [ValidateSet('auto', 'installed', 'missing')]
@@ -267,8 +272,12 @@ function Invoke-ClaudeInstaller {
   }
 }
 
-if (-not $CheckOnly -and -not $Apply -and -not $Upgrade -and -not $Force) {
+if (-not $CheckOnly -and -not $Apply -and -not $Upgrade -and -not $Force -and -not $Uninstall) {
   $CheckOnly = $true
+}
+
+if ($Uninstall -and ($CheckOnly -or $Apply -or $Upgrade -or $Force)) {
+  throw 'Install-ClaudeCode.ps1 -Uninstall is mutually exclusive with other modes.'
 }
 
 if ($CheckOnly -and ($Apply -or $Upgrade -or $Force)) {
@@ -279,7 +288,9 @@ if ($Force -and $Upgrade) {
   $Upgrade = $false
 }
 
-$executionMode = if ($CheckOnly) {
+$executionMode = if ($Uninstall) {
+  'uninstall'
+} elseif ($CheckOnly) {
   'check'
 } elseif ($Force) {
   'force'
@@ -321,6 +332,89 @@ $warnings = [System.Collections.Generic.List[string]]::new()
 $manualSteps = [System.Collections.Generic.List[string]]::new()
 $usedWingetFallback = $false
 $authSatisfied = [bool]$detected.installed -and (Test-ClaudeAuthSatisfied)
+
+if ($Uninstall) {
+  $userBinary = Resolve-ClaudeExecutablePath
+  $hasUserBinary = Test-Path -LiteralPath $userBinary -PathType Leaf
+  $npmArtifacts = @(Get-ClaudeNpmArtifacts)
+
+  if (-not $hasUserBinary -and $npmArtifacts.Count -eq 0 -and -not $detected.installed) {
+    $result = [pscustomobject]@{
+      helper = 'windows-claude-native-installer'
+      mode = 'uninstall'
+      status = 'not_installed'
+      installed = $false
+      detectedVersion = $null
+      commandPath = $userBinary
+      restartRequired = $false
+      plannedActions = @()
+      warnings = @()
+      appliedChanges = @()
+      manualSteps = @()
+      interruptions = @()
+      cleanedNpmShim = $false
+      usedWingetFallback = $false
+    }
+    Write-StructuredResult -Result $result -ExitCode 0
+  }
+
+  if ($hasUserBinary) { $plannedActions.Add("remove:$userBinary") | Out-Null }
+  foreach ($artifact in $npmArtifacts) { $plannedActions.Add("remove:$artifact") | Out-Null }
+
+  if ($hasUserBinary) {
+    try {
+      Remove-Item -LiteralPath $userBinary -Force -ErrorAction Stop
+      $appliedChanges.Add("removed:$userBinary") | Out-Null
+    } catch {
+      $warnings.Add("failed_to_remove:$userBinary") | Out-Null
+    }
+  }
+
+  $cleanedNpm = $false
+  if ($npmArtifacts.Count -gt 0) {
+    $cleanedNpm = Remove-ClaudeNpmShim
+    if ($cleanedNpm) {
+      foreach ($artifact in $npmArtifacts) { $appliedChanges.Add("removed:$artifact") | Out-Null }
+    } else {
+      foreach ($artifact in $npmArtifacts) { $warnings.Add("failed_to_remove:$artifact") | Out-Null }
+    }
+  }
+
+  Refresh-UserPath
+  $detectedAfter = Detect-ClaudeInstall
+  $finalStatus = if ($detectedAfter.installed) {
+    $warnings.Add("system_install_remains_at:$($detectedAfter.commandPath)") | Out-Null
+    'changes_required'
+  } elseif ($warnings.Count -gt 0) {
+    'changes_required'
+  } else {
+    'uninstalled'
+  }
+
+  $manualSteps = if ($detectedAfter.installed) {
+    @("Remove the remaining Claude Code install at $($detectedAfter.commandPath) using its installer or package manager.")
+  } else {
+    @()
+  }
+
+  $result = [pscustomobject]@{
+    helper = 'windows-claude-native-installer'
+    mode = 'uninstall'
+    status = $finalStatus
+    installed = [bool]$detectedAfter.installed
+    detectedVersion = $null
+    commandPath = $detectedAfter.commandPath
+    restartRequired = $false
+    plannedActions = $plannedActions.ToArray()
+    warnings = $warnings.ToArray()
+    appliedChanges = $appliedChanges.ToArray()
+    manualSteps = $manualSteps
+    interruptions = @()
+    cleanedNpmShim = $cleanedNpm
+    usedWingetFallback = $false
+  }
+  Write-StructuredResult -Result $result -ExitCode 0
+}
 
 if ($npmShimPresent) {
   $plannedActions.Add('remove_legacy_npm_claude_shim')

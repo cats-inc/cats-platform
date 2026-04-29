@@ -214,6 +214,8 @@ function modeFlag(mode: DesktopSetupHelperMode): string {
       return '-Upgrade';
     case 'force':
       return '-Force';
+    case 'uninstall':
+      return '-Uninstall';
   }
 }
 
@@ -227,6 +229,8 @@ function supportsMode(helper: DesktopSetupHelperSummary, mode: DesktopSetupHelpe
       return helper.supportsUpgrade;
     case 'force':
       return helper.supportsForce;
+    case 'uninstall':
+      return helper.supportsUninstall;
   }
 }
 
@@ -239,6 +243,9 @@ function deriveResumeAction(
     return null;
   }
   if (isOptionalCapabilityPackSetupAction(lastAction)) {
+    return null;
+  }
+  if (lastAction.mode === 'uninstall') {
     return null;
   }
 
