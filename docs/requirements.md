@@ -190,13 +190,24 @@ can be reused by `Cats Chat`, `Cats Work`, and `Cats Code`.
 - **Priority**: High
 - **Status**: Planned
 
-### FR-025: Mobile Companion Is Secondary
+### FR-025: Mobile Is a First-Class Product Client
 
-- **Description**: If a mobile client is added later, it shall begin as a
-  limited companion scope for Chat notifications, quick replies, and approvals
-  rather than a second full primary product shell.
+- **Description**: The mobile shell shall be a first-class React Native /
+  Expo client hosting `Lobby`, `Chat`, `Code`, `Work`, and `Settings` as
+  bottom tabs. The `Chat` tab carries the full web Chat sidebar; the
+  `Code` and `Work` tabs carry trimmed product sidebars limited to
+  `+New X`, the product's two presets, `MY YYY`, and `RECENTS`. All three
+  product sidebars route into one shared mobile `ChatView` keyed on
+  `productMode`. User and assistant bubble visual fidelity with the web
+  renderer is required at canonical viewports. Code's `Workspaces` /
+  `Artifacts` and Work's Projects / Work Items / Tasks / Runs / Missions
+  management surfaces are out of mobile scope.
 - **Priority**: Medium
 - **Status**: Planned
+- **Reference**: [ADR-092](./decisions/092-reposition-cats-mobile-as-first-class-product-client.md),
+  [SPEC-095](./specs/SPEC-095-cats-mobile-shell-five-tabs-and-product-sidebar-variants.md),
+  [PLAN-084](./plans/PLAN-084-cats-mobile-shell-rollout.md). Supersedes
+  the prior "limited companion scope" framing.
 
 ### FR-026: Chat-Contextual Add Cat Flow
 
@@ -845,7 +856,11 @@ hand after creation.
 - `Cats Chat` and `Cats Work` are expected to launch from shared contracts,
   not from two unrelated product schemas
 - The current product path keeps the full desktop platform on Electron plus
-  React/TypeScript, with mobile treated as later companion scope
+  React/TypeScript. Mobile is a first-class product client built on React
+  Native / Expo per ADR-092 / SPEC-095 / PLAN-084, with five bottom tabs
+  (`Lobby`, `Chat`, `Code`, `Work`, `Settings`) and a trimmed product
+  sidebar shape on Code and Work. Connectivity, pairing, and App Store
+  posture follow the 2026-03-24 mobile feasibility research note.
 
 ---
 

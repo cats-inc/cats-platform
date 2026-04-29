@@ -4,14 +4,38 @@
 
 - **Date**: 2026-03-24
 - **Author**: Claude
-- **Status**: Draft — pending review
+- **Status**: Partially superseded — see Scope Update below
 - **Scope**: mobile app 需求性分析、tech stack 評估、self-hosted 連線方案、App Store 審核策略
 - **Related**:
+  - [ADR-092](../decisions/092-reposition-cats-mobile-as-first-class-product-client.md) — 重新定位 mobile 為 first-class product client（取代本文件 Part 1 / Part 5 的 companion 框架）
+  - [SPEC-095](../specs/SPEC-095-cats-mobile-shell-five-tabs-and-product-sidebar-variants.md) — 新的 mobile shell 規格
+  - [PLAN-084](../plans/PLAN-084-cats-mobile-shell-rollout.md) — 新的 rollout 計畫
   - [ADR-013](../decisions/013-ship-cats-inc-as-an-executable-self-hosted-npm-app.md) — npm 分發策略
   - [ADR-036](../decisions/036-unify-api-contract-and-namespace-endpoints-by-product.md) — API contract
   - [ADR-037](../decisions/037-serve-runtime-dashboard-and-playground-from-platform-host.md) — runtime hosting
   - `cats-platform/docs/deployment.md` — 現有 desktop/Electron 部署
   - [Plugin Research](./2026-03-24-cats-plugin-architecture-and-packaging.md) — package 拆分策略
+
+## Scope Update — 2026-04-29
+
+ADR-092 重新定位 mobile 為 first-class product client，五個 bottom tab
+（`Lobby` / `Chat` / `Code` / `Work` / `Settings`），Chat 完整 sidebar、
+Code 與 Work 為精簡 sidebar、共用 `ChatView`，並要求與 web 的 bubble
+視覺一致。本研究文件的下列部分仍然適用，按原樣保留：
+
+- Part 2（連線方案比較與分階段策略：cloud relay → tunnel → Tailscale）
+- Part 3（Tailscale 上架審核分析）
+- Part 6（npm package 與 plugin 架構互動）
+- Part 7 第 2、3 階段（即時連線、power-user 選項）
+- Part 8（App Store / Play Store 審核 checklist）
+
+下列部分**已被 ADR-092 / SPEC-095 取代**，不應再作為設計依據：
+
+- Part 1（"mobile 是 companion app，不是完整 port" 的定位）
+- Part 5 第 314-337 行的 mobile 專案結構（dashboard / approvals / activity
+  三頁版本）— 改用 SPEC-095 的五 tab 結構
+- Part 7 第 1 階段（Push Notification MVP 是 Day 1 唯一範圍）— 改為
+  PLAN-084 Phase 7 在 shell 完成後加上的 connectivity 階段
 
 ---
 

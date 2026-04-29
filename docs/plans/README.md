@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-084](./PLAN-084-cats-mobile-shell-rollout.md) | Cats Mobile Shell Rollout | Draft | [SPEC-095](../specs/SPEC-095-cats-mobile-shell-five-tabs-and-product-sidebar-variants.md), [ADR-092](../decisions/092-reposition-cats-mobile-as-first-class-product-client.md) |
 | [PLAN-083](./PLAN-083-schedule-rules-and-mission-trigger-rollout.md) | Schedule Rules and Mission Trigger Rollout | Complete | [SPEC-094](../specs/SPEC-094-schedule-rules-and-mission-triggers.md), [ADR-090](../decisions/090-adopt-generic-schedule-rules-for-mission-triggers.md) |
 | [PLAN-082](./PLAN-082-settings-runtime-cli-provider-lifecycle-rollout.md) | Settings Runtime CLI Provider Lifecycle Rollout | Draft | [SPEC-093](../specs/SPEC-093-settings-runtime-cli-provider-lifecycle.md) |
 | [PLAN-081](./PLAN-081-code-artifact-declaration-rollout.md) | Code Artifact Declaration Rollout | Draft | [SPEC-092](../specs/SPEC-092-code-artifact-declaration-contract.md), [ADR-088](../decisions/088-use-structured-artifact-declarations-for-code-materialization.md) |
@@ -136,6 +137,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-04-29 (PLAN-083 completed for schedule rules and mission-trigger rollout; PLAN-082 added for Settings Runtime CLI provider lifecycle rollout.)*
+*Last updated: 2026-04-29 (PLAN-084 added: Cats Mobile shell rollout phased plan against ADR-092 / SPEC-095; PLAN-083 completed for schedule rules and mission-trigger rollout; PLAN-082 added for Settings Runtime CLI provider lifecycle rollout.)*
 
 *See also: [specs/](../specs/) for feature specifications*

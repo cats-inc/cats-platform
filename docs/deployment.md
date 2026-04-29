@@ -285,8 +285,12 @@ npm run desktop:icons -- --shape square
   - privileged provider-install execution
 - Tauri is not the current path because the desktop package still needs to
   supervise Node-based `cats` and `cats-runtime` sidecars
-- Mobile is not part of the first packaged primary product surface; if added
-  later, treat it as companion scope
+- Mobile is shipped as a separate React Native / Expo client per ADR-092 /
+  SPEC-095 / PLAN-084. It is not bundled into the desktop installer — it
+  ships through App Store and Play Store with EAS Build. Connectivity to
+  the desktop cats follows the 2026-03-24 research note (Phase 1 cloud
+  relay + push, Phase 2 tunnel / WebSocket relay direct, Phase 3 Tailscale
+  for power users)
 
 See
 [ADR-003](./decisions/003-electron-host-manages-local-services.md)

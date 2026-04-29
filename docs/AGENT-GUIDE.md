@@ -24,7 +24,10 @@
 - Product services should use direct `cats-runtime` APIs; MCP is a planned
   supplemental tool surface for orchestrator-style agents
 - Phase 1 keeps the implementation dependency-light with built-in Node APIs
-- Mobile is optional companion scope later, not the current full-product focus
+- Mobile is a first-class React Native / Expo product client per ADR-092 /
+  SPEC-095 / PLAN-084 — five bottom tabs (`Lobby`, `Chat`, `Code`, `Work`,
+  `Settings`), full Chat sidebar, trimmed Code / Work sidebars, one shared
+  `ChatView`, bubble visual parity with the web renderer required
 - Paperclip-derived control-plane docs remain exploratory unless a newer ADR
   explicitly promotes them into the execution path
 

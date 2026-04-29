@@ -384,8 +384,10 @@ below product orchestration policy:
 
 - **Purpose**: Expose product behavior through dedicated Chat, Work, and
   external transport experiences
-- **Technology**: Shared React/Vite desktop renderer inside Electron; transport
-  relays for Telegram and LINE; optional mobile companion later if needed
+- **Technology**: Shared React/Vite desktop renderer inside Electron; React
+  Native / Expo mobile client per ADR-092 with five bottom tabs (`Lobby`,
+  `Chat`, `Code`, `Work`, `Settings`) and one shared `ChatView`; transport
+  relays for Telegram and LINE
 - **Responsibilities**: Render chat and work views, surface approvals,
   ownership, activity, and allow external transport messages to reach the
   orchestrator safely. For Chat, high-frequency actions such as adding a cat
@@ -1004,8 +1006,9 @@ intentionally deferred:
   richer desktop remediation polish above the current host substrate
 - richer `Cats Work` project/work-item and team-operating-model surfaces above
   the shared core
-- any limited mobile companion scope, which is intentionally secondary to the
-  desktop platform
+- the React Native / Expo mobile client (first-class product client per
+  ADR-092 / SPEC-095 / PLAN-084 — Chat / Code / Work product surfaces with
+  shared `ChatView` and bubble visual parity to the web renderer)
 
 ## Technology Stack
 
