@@ -333,6 +333,60 @@ test('buildDesktopSetupSnapshot prefers verification after manual Ollama follow-
   assert.match(snapshot.resumeAction?.summary ?? '', /verification step/i);
 });
 
+test('buildDesktopSetupSnapshot routes install_node_lts to the Node host installer instead of re-running the audit', async () => {
+  const config = await createDesktopConfig();
+  await mkdir(join(config.packageRoot, 'scripts', 'windows'), { recursive: true });
+  await writeFile(
+    join(config.packageRoot, 'scripts', 'windows', 'Install-Node.ps1'),
+    '# helper',
+  );
+  await writeFile(
+    join(config.packageRoot, 'scripts', 'windows', 'Check-WindowsSetupReadiness.ps1'),
+    '# helper',
+  );
+
+  const packaging = createDesktopPackagingPlan(config, {
+    generatedAt: new Date('2026-04-29T10:00:00.000Z'),
+  });
+  const snapshot = await buildDesktopSetupSnapshot({
+    config,
+    packaging,
+    state: {
+      updatedAt: '2026-04-29T10:01:00.000Z',
+      lastAction: {
+        helperId: 'windows-install-readiness-audit',
+        assetId: 'windows-setup-readiness-audit-script',
+        label: 'Windows setup readiness audit',
+        mode: 'check',
+        runState: 'completed',
+        status: 'changes_required',
+        summary: 'Windows setup readiness audit check finished with changes_required.',
+        packagedRelativePath: 'desktop/setup-assets/windows/Check-WindowsSetupReadiness.ps1',
+        scriptPath: null,
+        requiresElevation: false,
+        resumable: true,
+        restartRequired: false,
+        startedAt: '2026-04-29T10:00:00.000Z',
+        completedAt: '2026-04-29T10:01:00.000Z',
+        warnings: [],
+        plannedActions: ['install_node_lts'],
+        appliedChanges: [],
+        manualSteps: [],
+        interruptions: [],
+        error: null,
+      },
+    },
+  }, {
+    platform: 'win32',
+  });
+
+  assert.equal(snapshot.resumeAction?.helperId, 'windows-node-host-installer');
+  assert.equal(snapshot.resumeAction?.mode, 'apply');
+  assert.equal(snapshot.resumeAction?.reason, 'changes_required');
+  assert.equal(snapshot.resumeAction?.requiresElevation, true);
+  assert.match(snapshot.resumeAction?.summary ?? '', /Node\.js LTS host installer/i);
+});
+
 test('runDesktopSetupHelper normalizes successful helper execution', async () => {
   const config = await createDesktopConfig();
   const packaging = createDesktopPackagingPlan(config, {

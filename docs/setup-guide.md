@@ -478,15 +478,25 @@ The current substrate writes:
 - `build/desktop-packaging/desktop-package-plan.json`
 - `build/desktop-packaging/shared/*`
 - `build/desktop-packaging/shared/setup-assets/windows/*`
-  - npm prefix helper, native CLI pack installer, native provider installers,
-    WSL helpers, Docker/Ollama helpers, Windows readiness audit, and the shared
-    `_HiddenProcess.ps1` support script
+  - Node.js LTS host installer (`Install-Node.ps1`), GitHub CLI host
+    installer (`Install-GitHubCli.ps1`), npm prefix helper, the shared
+    `_NpmCliInstaller.ps1` and per-CLI npm installers (Codex, Gemini,
+    Copilot, OpenCode, Kilo, Auggie, Pi), the native provider installers
+    (Claude Code, Cursor Agent, Goose, Junie, Kiro), the Ollama
+    local-model installer, the Windows readiness audit, and the shared
+    `_HiddenProcess.ps1` / `_PackagedUninstall.ps1` support scripts
 - `build/desktop-packaging/shared/setup-assets/linux/*`
-  - npm prefix helper, node CLI pack installer, Claude/Cursor/Goose/Junie/Kiro
-    native installers, and the Linux readiness audit
+  - Node.js LTS host installer (`install-node.sh`), GitHub CLI host
+    installer (`install-github-cli.sh`), npm prefix helper, per-CLI npm
+    installers (Codex, Gemini, Copilot, OpenCode, Kilo, Auggie, Pi),
+    Claude/Cursor/Goose/Junie/Kiro native installers, and the Linux
+    readiness audit
 - `build/desktop-packaging/shared/setup-assets/macos/*`
-  - npm prefix helper, node CLI pack installer, Claude/Cursor/Goose/Junie/Kiro
-    native installers, and the macOS readiness audit
+  - Node.js LTS host installer (`install-node.sh`), GitHub CLI host
+    installer (`install-github-cli.sh`), npm prefix helper, per-CLI npm
+    installers (Codex, Gemini, Copilot, OpenCode, Kilo, Auggie, Pi),
+    Claude/Cursor/Goose/Junie/Kiro native installers, and the macOS
+    readiness audit
 - `build/desktop-packaging/shared/setup-assets/linux/provider-cli-common.sh`
 - `build/desktop-packaging/shared/setup-assets/linux/node-cli-common.sh`
 - `build/desktop-packaging/shared/setup-assets/macos/provider-cli-common.sh`

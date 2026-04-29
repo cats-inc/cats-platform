@@ -235,6 +235,37 @@ function supportsMode(helper: DesktopSetupHelperSummary, mode: DesktopSetupHelpe
   }
 }
 
+// Planned-action signals emitted by the readiness audit that should hand the
+// resume slot to a different helper than the audit itself. The audit is
+// supportsApply=false, so without this routing the bootstrap "Continue setup"
+// button just re-runs the audit forever instead of installing what the audit
+// said to install.
+const PLANNED_ACTION_HELPER_SUFFIXES: Record<string, string> = {
+  install_node_lts: '-node-host-installer',
+  install_github_cli: '-github-cli-installer',
+};
+
+function findHelperByPlannedAction(
+  helpers: DesktopSetupHelperSummary[],
+  auditHelperId: string,
+  plannedAction: string,
+): DesktopSetupHelperSummary | null {
+  const suffix = PLANNED_ACTION_HELPER_SUFFIXES[plannedAction];
+  if (!suffix) {
+    return null;
+  }
+  // The audit helper id is `<platform>-install-readiness-audit`; reuse the
+  // platform prefix so we always pick the helper that ships on the current
+  // host's setup-asset bundle.
+  const platformPrefix = auditHelperId.replace(/-install-readiness-audit$/u, '');
+  const targetId = `${platformPrefix}${suffix}`;
+  const target = helpers.find((candidate) => candidate.id === targetId);
+  if (!target || !target.supported || !target.available) {
+    return null;
+  }
+  return target;
+}
+
 function deriveResumeAction(
   helpers: DesktopSetupHelperSummary[],
   state: DesktopSetupState,
@@ -248,6 +279,39 @@ function deriveResumeAction(
   }
   if (lastAction.mode === 'uninstall') {
     return null;
+  }
+
+  // If the audit emitted a host-installer planned action (install_node_lts,
+  // install_github_cli, ...), route the resume slot to the host installer's
+  // apply mode rather than re-running the audit's check mode.
+  if (lastAction.helperId.endsWith('-install-readiness-audit')) {
+    for (const planned of lastAction.plannedActions) {
+      const target = findHelperByPlannedAction(helpers, lastAction.helperId, planned);
+      if (!target) {
+        continue;
+      }
+      const targetMode: DesktopSetupHelperMode | null = target.supportsApply
+        ? 'apply'
+        : target.supportsCheckOnly
+          ? 'check'
+          : null;
+      if (!targetMode) {
+        continue;
+      }
+      return {
+        helperId: target.id,
+        label: target.label,
+        mode: targetMode,
+        reason: 'changes_required',
+        summary: `Run ${target.label} to install the missing host substrate flagged by the readiness audit.`,
+        manualSteps: lastAction.manualSteps,
+        interruptions: lastAction.interruptions,
+        requiresElevation: target.requiresElevation
+          || lastAction.interruptions.some((entry) => entry.requiresElevation),
+        restartRequired: lastAction.restartRequired
+          || lastAction.interruptions.some((entry) => entry.requiresRestart),
+      };
+    }
   }
 
   const helper = helpers.find((candidate) => candidate.id === lastAction.helperId);

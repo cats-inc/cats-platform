@@ -334,17 +334,40 @@ function Invoke-PackagedNpmCliInstall {
       exit 0
     }
 
-    if (-not $SkipNpmInvocation) {
-      try {
-        & npm uninstall -g $PackageName | Out-Null
-        if ($LASTEXITCODE -eq 0) {
-          $appliedChanges.Add("${PackageName}:uninstalled") | Out-Null
-        } else {
-          $warnings.Add("${PackageName}:uninstall_failed_exit_$LASTEXITCODE") | Out-Null
-        }
-      } catch {
-        $warnings.Add("${PackageName}:uninstall_failed") | Out-Null
+    if ($SkipNpmInvocation) {
+      $result = [pscustomobject]@{
+        helper = $HelperId
+        mode = 'uninstall'
+        status = 'changes_required'
+        installed = $true
+        detectedVersion = $detectedVersion
+        commandPath = $commandPath
+        restartRequired = $false
+        plannedActions = $plannedActions.ToArray()
+        warnings = @('Skipped npm invocation (-SkipNpmInvocation); uninstall was not executed.')
+        appliedChanges = @()
+        manualSteps = @()
+        interruptions = @()
       }
+      if ($Json) {
+        $result | ConvertTo-Json -Depth 10
+      } else {
+        Write-Host "Mode: uninstall"
+        Write-Host "Status: changes_required"
+        Write-Host "Warning: Skipped npm invocation; uninstall was not executed."
+      }
+      exit 0
+    }
+
+    try {
+      & npm uninstall -g $PackageName | Out-Null
+      if ($LASTEXITCODE -eq 0) {
+        $appliedChanges.Add("${PackageName}:uninstalled") | Out-Null
+      } else {
+        $warnings.Add("${PackageName}:uninstall_failed_exit_$LASTEXITCODE") | Out-Null
+      }
+    } catch {
+      $warnings.Add("${PackageName}:uninstall_failed") | Out-Null
     }
 
     $stillInstalled = Test-NpmCliPackageInstalled -PackageName $PackageName -CommandName $CommandName
@@ -464,23 +487,54 @@ function Invoke-PackagedNpmCliInstall {
     exit 0
   }
 
-  if (-not $SkipNpmInvocation) {
-    $arguments = @('install', '-g')
-    if ($plannedAction -eq 'upgrade') {
-      $arguments += "$PackageName@latest"
+  if ($SkipNpmInvocation) {
+    # Test/audit override: refuse to fake a successful mutation. Honor the
+    # caller-provided InstallState/DetectedVersion/OutdatedState as the
+    # final state and report what would have happened rather than what did.
+    # Status reflects the mutation that would still be required: if the
+    # plannedAction is anything other than 'skip' we have NOT reached
+    # ready, even when the package was already installed.
+    $previewStatus = if ($plannedAction -eq 'skip') { 'ready' } else { 'changes_required' }
+    $previewWarning = "Skipped npm invocation (-SkipNpmInvocation); mutation was not executed."
+    $result = [pscustomobject]@{
+      helper = $HelperId
+      mode = $mode
+      status = $previewStatus
+      installed = [bool]$installed
+      detectedVersion = $detectedVersion
+      commandPath = $commandPath
+      restartRequired = $false
+      plannedActions = $plannedActions.ToArray()
+      warnings = @($previewWarning)
+      appliedChanges = @()
+      manualSteps = @()
+      interruptions = @()
+    }
+    if ($Json) {
+      $result | ConvertTo-Json -Depth 10
     } else {
-      $arguments += $PackageName
+      Write-Host "Mode: $mode"
+      Write-Host "Status: $previewStatus"
+      Write-Host "Warning: $previewWarning"
     }
-    if ($plannedAction -eq 'reinstall') {
-      $arguments += '--force'
-    }
-
-    & npm @arguments | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-      throw "Failed to $plannedAction $PackageName (npm exit code $LASTEXITCODE)."
-    }
-    $appliedChanges.Add("${PackageName}:${plannedAction}") | Out-Null
+    exit 0
   }
+
+  $arguments = @('install', '-g')
+  if ($plannedAction -eq 'upgrade') {
+    $arguments += "$PackageName@latest"
+  } else {
+    $arguments += $PackageName
+  }
+  if ($plannedAction -eq 'reinstall') {
+    $arguments += '--force'
+  }
+
+  & npm @arguments | Out-Null
+  if ($LASTEXITCODE -ne 0) {
+    throw "Failed to $plannedAction $PackageName (npm exit code $LASTEXITCODE)."
+  }
+  $appliedChanges.Add("${PackageName}:${plannedAction}") | Out-Null
 
   $finalInstalled = Test-NpmCliPackageInstalled -PackageName $PackageName -CommandName $CommandName
   $finalCommandPath = if ($finalInstalled) { Resolve-NpmCliCommandPath -CommandName $CommandName } else { $null }
