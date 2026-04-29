@@ -4,7 +4,6 @@ export const WORK_ROUTE_PREFIX = resolvePlatformSurfaceRoutePrefix('work');
 export const WORK_WAR_ROOM_PATH = `${WORK_ROUTE_PREFIX}/war-room`;
 export const WORK_PROJECTS_PATH = `${WORK_ROUTE_PREFIX}/projects`;
 export const WORK_TASKS_PATH = `${WORK_ROUTE_PREFIX}/tasks`;
-export const WORK_TASKS_LEGACY_PATH = `${WORK_ROUTE_PREFIX}/tasks-legacy`;
 export const WORK_WORK_ITEMS_PATH = `${WORK_ROUTE_PREFIX}/work-items`;
 export const WORK_RUNS_PATH = `${WORK_ROUTE_PREFIX}/runs`;
 export const WORK_MISSIONS_PATH = `${WORK_ROUTE_PREFIX}/missions`;

@@ -20,13 +20,7 @@ import {
   NewChatDraft,
   type NewChatDraftProps,
 } from './components/NewChatDraft.js';
-import { ProjectListView } from './components/ProjectListView.js';
-import { ProjectDetailView } from './components/ProjectDetailView.js';
-import { WorkTaskListView } from './components/WorkTaskListView.js';
-import { TaskDetailView } from './components/TaskDetailView.js';
 import { WarRoomView } from './components/WarRoomView.js';
-import { WorkItemListView } from './components/WorkItemListView.js';
-import { WorkItemDetailView } from './components/WorkItemDetailView.js';
 import { ProjectDetailPage } from './components/projects/ProjectDetailPage.js';
 import { ProjectsListPage } from './components/projects/ProjectsListPage.js';
 import { TaskDetailPage } from './components/tasks/TaskDetailPage.js';
@@ -105,8 +99,6 @@ export function AppRoutes({
       <Route key="war-room" path="war-room" element={<WarRoomView />} />,
       <Route key="project-list" path="projects" element={<ProjectsListPage />} />,
       <Route key="project-detail" path="projects/:projectId" element={<ProjectDetailPage />} />,
-      <Route key="project-list-legacy" path="projects-legacy" element={<ProjectListView />} />,
-      <Route key="project-detail-legacy" path="projects-legacy/:projectId" element={<ProjectDetailView />} />,
       <Route key="task-list" path="tasks" element={<TasksListPage />} />,
       <Route key="task-detail" path="tasks/:taskId" element={<TaskDetailPage />} />,
       <Route key="run-detail" path="tasks/:taskId/runs/:runId" element={<RunDetailPage />} />,
@@ -115,12 +107,8 @@ export function AppRoutes({
       <Route key="mission-detail" path="missions/:missionId" element={<MissionDetailPage />} />,
       <Route key="schedule-list" path="schedules" element={<SchedulesListPage />} />,
       <Route key="schedule-detail" path="schedules/:scheduleId" element={<SchedulesDetailPage />} />,
-      <Route key="task-list-legacy" path="tasks-legacy" element={<WorkTaskListView />} />,
-      <Route key="task-detail-legacy" path="tasks-legacy/:taskId" element={<TaskDetailView />} />,
       <Route key="work-item-list" path="work-items" element={<WorkItemsListPage />} />,
       <Route key="work-item-detail" path="work-items/:workItemId" element={<WorkItemDetailPage />} />,
-      <Route key="work-item-list-legacy" path="work-items-legacy" element={<WorkItemListView />} />,
-      <Route key="work-item-detail-legacy" path="work-items-legacy/:workItemId" element={<WorkItemDetailView />} />,
       <Route key="system-map" path="system-map" element={<SystemMapPage />} />,
       <Route key="cockpit" path="cockpit" element={<CockpitPage />} />,
       <Route key="broken-links" path="broken-links" element={<BrokenLinksPage />} />,
