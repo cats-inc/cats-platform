@@ -124,6 +124,7 @@ test('POST /api/apps/install installs an enabled app into the registry', async (
   });
   const list = await routeJson(platformDir, 'GET', '/api/apps');
   const detail = await routeJson(platformDir, 'GET', '/api/apps/user.pomodoro');
+  const inspect = await routeJson(platformDir, 'GET', '/api/apps/user.pomodoro/inspect');
 
   assert.equal(install.statusCode, 201);
   assert.equal((install.payload as { app: { id: string } }).app.id, 'user.pomodoro');
@@ -133,6 +134,11 @@ test('POST /api/apps/install installs an enabled app into the registry', async (
     [['user.pomodoro', ['/apps/user.pomodoro']]],
   );
   assert.equal((detail.payload as { app: { enabled: boolean } }).app.enabled, true);
+  const inspectRecord = (inspect.payload as {
+    record: { manifest: { id: string }; packagePath: string };
+  }).record;
+  assert.equal(inspectRecord.manifest.id, 'user.pomodoro');
+  assert.equal(inspectRecord.packagePath, packagePath);
 });
 
 test('app package disable and uninstall update launch visibility', async () => {

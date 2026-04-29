@@ -107,7 +107,7 @@ third-party install, signing, and full sandboxing are explicitly later work.
 - [x] Add `POST /api/apps/install` for owner-approved local paths.
 - [x] Add `GET /api/apps` and `GET /api/apps/:appId`.
 - [x] Add enable, disable, and uninstall endpoints.
-- [ ] Add inspect endpoint.
+- [x] Add inspect endpoint.
 - [x] Add route serving for `/apps/:appId/*`.
 - [ ] Add scoped app API route mounting under `/api/apps/:appId/*`.
 - [ ] Gate mutations behind owner-level confirmation in the UI flow.
@@ -261,6 +261,7 @@ The overnight implementation agent should aim for this first vertical slice:
 | 2026-04-29 | Added local app validate/install/list/detail and enable/disable/uninstall API routes backed by the app registry. |
 | 2026-04-29 | Added the renderer `/apps/:appId/*` app host route skeleton for installed app packages. |
 | 2026-04-29 | Connected Settings `Apps` to the platform envelope installed app descriptors as a read-only management view. |
+| 2026-04-29 | Added app inspect API output for full manifest and registry record review. |
 
 ---
 

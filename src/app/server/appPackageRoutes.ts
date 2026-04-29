@@ -15,7 +15,10 @@ import {
   type RouteContext,
 } from '../../shared/http.js';
 import { listPlatformProductDescriptors } from '../../shared/platformProducts.js';
-import { readPlatformInstalledAppDescriptors } from '../../platform/apps/envelope.js';
+import {
+  readPlatformInstalledAppDescriptors,
+  toPlatformInstalledAppDescriptor,
+} from '../../platform/apps/envelope.js';
 import { resolveCatsAppStoragePathsFromChatState } from '../../platform/apps/paths.js';
 import { FileCatsAppRegistry } from '../../platform/apps/registry.js';
 
@@ -229,6 +232,22 @@ async function handleDetail(context: AppPackageRouteContext, appId: string): Pro
   sendJson(context.response, 200, { app });
 }
 
+async function handleInspect(context: AppPackageRouteContext, appId: string): Promise<void> {
+  const registry = appRegistryFor(context);
+  const record = await registry.getInstalledApp(appId);
+  if (!record) {
+    sendJson(context.response, 404, {
+      error: { code: 'cats_app_not_found', message: `Cats app "${appId}" is not installed.` },
+    });
+    return;
+  }
+
+  sendJson(context.response, 200, {
+    app: toPlatformInstalledAppDescriptor(record),
+    record,
+  });
+}
+
 async function handleStateMutation(
   context: AppPackageRouteContext,
   appId: string,
@@ -305,6 +324,16 @@ export async function routeAppPackageApi(
       stateMutationMatch[0]!,
       stateMutationMatch[1] === 'enable' ? 'enabled' : 'disabled',
     );
+    return true;
+  }
+
+  const inspectMatch = matchRoute(context.url.pathname, /^\/api\/apps\/([^/]+)\/inspect$/u);
+  if (inspectMatch) {
+    if (context.method !== 'GET') {
+      sendMethodNotAllowed(context.response, ['GET']);
+      return true;
+    }
+    await handleInspect(context, inspectMatch[0]!);
     return true;
   }
 
