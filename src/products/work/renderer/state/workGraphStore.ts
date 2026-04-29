@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useSyncExternalStore } from "react";
+import { useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 
+import { sharedQueryClient } from "../../../shared/renderer/queryClient.js";
 import { expectJson } from "../api/http.js";
 import { WORK_API_GRAPH_PATH } from "../../shared/apiPaths.js";
 import type { WorkGraphProjection } from "../components/topdown/types";
@@ -15,101 +17,11 @@ const EMPTY_GRAPH: WorkGraphProjection = {
   diagnostics: [],
 };
 
-interface WorkGraphState {
-  graph: WorkGraphProjection;
-  status: FetchStatus;
-  error: string | null;
-  revision: number;
-  lastFetchedAt: number | null;
-}
+export const WORK_GRAPH_QUERY_KEY = ["workGraph"] as const;
 
-const INITIAL_STATE: WorkGraphState = {
-  graph: EMPTY_GRAPH,
-  status: "idle",
-  error: null,
-  revision: 0,
-  lastFetchedAt: null,
-};
-
-// Refresh policy (event-driven only — no polling). Polling was removed
-// in favour of React Query migration; until that lands, rely on:
-//  - On hook mount, if cache is older than MOUNT_REFRESH_MAX_AGE_MS (or
-//    never fetched), trigger a refresh. Catches "I created a Task in
-//    Code and now navigated to /work/tasks" because the Tasks page
-//    component remounts.
-//  - On document visibility change / window focus, trigger a refresh if
-//    cache is older than VISIBILITY_REFRESH_MAX_AGE_MS. Catches "I was
-//    on Tasks page in another tab while Code created a task; coming
-//    back should reflect it."
-const MOUNT_REFRESH_MAX_AGE_MS = 5_000;
-const VISIBILITY_REFRESH_MAX_AGE_MS = 2_000;
-
-let state: WorkGraphState = INITIAL_STATE;
-const listeners = new Set<() => void>();
-let inflight: Promise<void> | null = null;
-let crossSurfaceListenersInstalled = false;
-
-function notify(): void {
-  for (const listener of listeners) listener();
-}
-
-function setState(next: WorkGraphState): void {
-  state = next;
-  notify();
-}
-
-function isDocumentVisible(): boolean {
-  return typeof document === "undefined" || document.visibilityState !== "hidden";
-}
-
-function handleVisibilityRefresh(): void {
-  if (listeners.size === 0) return;
-  if (!isDocumentVisible()) return;
-  const age = state.lastFetchedAt === null
-    ? Number.POSITIVE_INFINITY
-    : Date.now() - state.lastFetchedAt;
-  if (age > VISIBILITY_REFRESH_MAX_AGE_MS) {
-    void fetchOnce();
-  }
-}
-
-function ensureCrossSurfaceListenersInstalled(): void {
-  if (crossSurfaceListenersInstalled) return;
-  if (typeof document === "undefined" || typeof window === "undefined") return;
-  crossSurfaceListenersInstalled = true;
-  document.addEventListener("visibilitychange", handleVisibilityRefresh);
-  window.addEventListener("focus", handleVisibilityRefresh);
-}
-
-async function fetchOnce(): Promise<void> {
-  if (inflight) return inflight;
-  setState({ ...state, status: "loading", error: null });
-  inflight = (async () => {
-    try {
-      const response = await fetch(WORK_API_GRAPH_PATH);
-      const graph = await expectJson<WorkGraphProjection>(
-        response,
-        "Failed to load work graph",
-      );
-      setState({
-        graph,
-        status: "ready",
-        error: null,
-        revision: state.revision + 1,
-        lastFetchedAt: Date.now(),
-      });
-    } catch (err) {
-      setState({
-        ...state,
-        status: "error",
-        error: err instanceof Error ? err.message : "Failed to load work graph.",
-        lastFetchedAt: Date.now(),
-      });
-    } finally {
-      inflight = null;
-    }
-  })();
-  return inflight;
+async function fetchWorkGraph(): Promise<WorkGraphProjection> {
+  const response = await fetch(WORK_API_GRAPH_PATH);
+  return expectJson<WorkGraphProjection>(response, "Failed to load work graph");
 }
 
 export interface UseWorkGraphResult {
@@ -120,50 +32,27 @@ export interface UseWorkGraphResult {
 }
 
 export function useWorkGraph(): UseWorkGraphResult {
-  const subscribe = useCallback((listener: () => void) => {
-    ensureCrossSurfaceListenersInstalled();
-    listeners.add(listener);
-    return () => {
-      listeners.delete(listener);
-    };
-  }, []);
-  const snapshot = useSyncExternalStore(
-    subscribe,
-    () => state,
-    () => state,
-  );
+  const query = useQuery({
+    queryKey: WORK_GRAPH_QUERY_KEY,
+    queryFn: fetchWorkGraph,
+  });
 
-  // Mount-time refresh: idle (never fetched) → fetch; otherwise re-fetch
-  // when the cached snapshot is older than MOUNT_REFRESH_MAX_AGE_MS.
-  // Catches the "task created in Code, then navigate to /work/tasks"
-  // flow where the page remounts but the singleton is already 'ready'
-  // with stale data.
-  useEffect(() => {
-    if (snapshot.status === "idle") {
-      void fetchOnce();
-      return;
-    }
-    if (snapshot.lastFetchedAt === null) {
-      void fetchOnce();
-      return;
-    }
-    if (Date.now() - snapshot.lastFetchedAt > MOUNT_REFRESH_MAX_AGE_MS) {
-      void fetchOnce();
-    }
-    // Intentionally not a dependency: we only want this to run on the
-    // hook-consumer's mount, not every status transition.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const refresh = useCallback(async () => {
+    await query.refetch();
+  }, [query]);
 
-  const refresh = useCallback(() => {
-    setState({ ...state, status: "idle" });
-    return fetchOnce();
-  }, []);
+  const status: FetchStatus = query.isError
+    ? "error"
+    : query.isSuccess
+    ? "ready"
+    : query.isFetching || query.isPending
+    ? "loading"
+    : "idle";
 
   return {
-    graph: snapshot.graph,
-    status: snapshot.status,
-    error: snapshot.error,
+    graph: query.data ?? EMPTY_GRAPH,
+    status,
+    error: query.error instanceof Error ? query.error.message : query.error ? String(query.error) : null,
     refresh,
   };
 }
@@ -172,17 +61,17 @@ export function useWorkGraph(): UseWorkGraphResult {
  * Force a refresh of the cached graph from the producer pipeline.
  * Callers that mutate Core (createWorkProject / removeWorkLink / ...)
  * await this so the next render reflects the post-mutation state.
+ *
+ * Implemented in terms of the shared QueryClient so it works from
+ * imperative paths (outside React components).
  */
-export function triggerWorkGraphRefresh(): Promise<void> {
-  setState({ ...state, status: "idle" });
-  return fetchOnce();
+export async function triggerWorkGraphRefresh(): Promise<void> {
+  await sharedQueryClient.invalidateQueries({ queryKey: WORK_GRAPH_QUERY_KEY });
 }
 
-/** Test-only escape hatch — resets the singleton state. */
+/** Test-only escape hatch — clears the cached graph from the shared QueryClient. */
 export function __resetWorkGraphStoreForTest(): void {
-  state = INITIAL_STATE;
-  inflight = null;
-  notify();
+  sharedQueryClient.removeQueries({ queryKey: WORK_GRAPH_QUERY_KEY });
 }
 
 /**
@@ -190,18 +79,7 @@ export function __resetWorkGraphStoreForTest(): void {
  * (renderToStaticMarkup, which never runs useEffect) see populated
  * data instead of the idle empty projection. Production callers
  * should never reach for this — they wait for the fetch effect.
- *
- * The seeded `lastFetchedAt` is set so the mount-time staleness check in
- * `useWorkGraph` does not immediately re-fetch on test render.
  */
 export function __seedWorkGraphForTest(graph: WorkGraphProjection): void {
-  state = {
-    graph,
-    status: "ready",
-    error: null,
-    revision: state.revision + 1,
-    lastFetchedAt: Date.now(),
-  };
-  inflight = null;
-  notify();
+  sharedQueryClient.setQueryData(WORK_GRAPH_QUERY_KEY, graph);
 }

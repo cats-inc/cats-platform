@@ -3,21 +3,25 @@ import test from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
 import { StaticRouter } from 'react-router-dom';
+import { QueryClientProvider } from '@tanstack/react-query';
 
 import { BrokenLinksPage } from '../src/products/work/renderer/components/topdown/BrokenLinksPage.tsx';
 import {
   __seedWorkGraphForTest,
   __resetWorkGraphStoreForTest,
 } from '../src/products/work/renderer/state/workGraphStore.ts';
+import { sharedQueryClient } from '../src/products/shared/renderer/queryClient.ts';
 import { SAMPLE_WORK_GRAPH } from './fixtures/sampleWorkGraph.ts';
 
 function renderPage(): string {
   __resetWorkGraphStoreForTest();
   __seedWorkGraphForTest(SAMPLE_WORK_GRAPH);
   return renderToStaticMarkup(
-    <StaticRouter location="/work/broken-links">
-      <BrokenLinksPage />
-    </StaticRouter>,
+    <QueryClientProvider client={sharedQueryClient}>
+      <StaticRouter location="/work/broken-links">
+        <BrokenLinksPage />
+      </StaticRouter>
+    </QueryClientProvider>,
   );
 }
 
