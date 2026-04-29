@@ -260,6 +260,7 @@ The overnight implementation agent should aim for this first vertical slice:
 | 2026-04-29 | Replaced the Lobby `Apps` Pomodoro mock with registry-driven app entries and an empty state. |
 | 2026-04-29 | Added local app validate/install/list/detail and enable/disable/uninstall API routes backed by the app registry. |
 | 2026-04-29 | Added the renderer `/apps/:appId/*` app host route skeleton for installed app packages. |
+| 2026-04-29 | Connected Settings `Apps` to the platform envelope installed app descriptors as a read-only management view. |
 
 ---
 
