@@ -3,7 +3,15 @@ import test from 'node:test';
 
 import {
   DAILY_MORNING_GREETING_TITLE,
+  DAILY_CODE_CHECK_TITLE,
+  DAILY_MEMORY_FLUSH_TITLE,
+  DAILY_TRANSPORT_DIGEST_TITLE,
+  DAILY_WORK_REVIEW_TITLE,
+  buildDailyCodeCheckScheduleInput,
+  buildDailyMemoryFlushScheduleInput,
   buildDailyMorningGreetingScheduleInput,
+  buildDailyTransportDigestScheduleInput,
+  buildDailyWorkReviewScheduleInput,
   buildScheduleAuditExport,
   findDailyMorningGreetingRule,
   resolveDailyMorningGreetingShortcut,
@@ -165,6 +173,47 @@ test('schedule audit export serializes rules and receipts without mutating input
   assert.equal(exported.rules[0]?.title, DAILY_MORNING_GREETING_TITLE);
   assert.equal(exported.triggerReceipts[0]?.metadata.retryAttempt, 1);
   assert.match(serializeScheduleAuditExport(exported), /"exportedAt": "2026-04-29T01:00:00.000Z"/u);
+});
+
+test('follow-on schedule templates still emit generic rule inputs', () => {
+  const target = { kind: 'agent' as const, id: 'agent-ops' };
+  const workReview = buildDailyWorkReviewScheduleInput({
+    target,
+    timezone: 'UTC',
+  });
+  const codeCheck = buildDailyCodeCheckScheduleInput({
+    target,
+    timezone: 'UTC',
+  });
+  const memoryFlush = buildDailyMemoryFlushScheduleInput({
+    target,
+    timezone: 'UTC',
+  });
+  const transportDigest = buildDailyTransportDigestScheduleInput({
+    target,
+    bindingId: 'telegram-digest',
+    timezone: 'UTC',
+  });
+
+  assert.equal(workReview.title, DAILY_WORK_REVIEW_TITLE);
+  assert.equal(workReview.missionTemplate.originSurface, 'schedule');
+  assert.deepEqual(workReview.missionTemplate.target, target);
+  assert.equal(workReview.schedule.kind, 'daily');
+  assert.equal(workReview.executionPolicy.missionPolicy, 'per_fire');
+  assert.equal(codeCheck.title, DAILY_CODE_CHECK_TITLE);
+  assert.equal(codeCheck.missionTemplate.originSurface, 'schedule');
+  assert.equal(memoryFlush.title, DAILY_MEMORY_FLUSH_TITLE);
+  assert.equal(memoryFlush.missionTemplate.originSurface, 'schedule');
+  assert.equal(transportDigest.title, DAILY_TRANSPORT_DIGEST_TITLE);
+  assert.deepEqual(transportDigest.missionTemplate.transportTargets, [
+    {
+      platform: 'telegram',
+      bindingId: 'telegram-digest',
+    },
+  ]);
+  assert.deepEqual(transportDigest.missionTemplate.toolScopes, [
+    'transport.telegram.text.send',
+  ]);
 });
 
 function createRuleFixture(catId: string, bindingId: string): WorkScheduleRule {

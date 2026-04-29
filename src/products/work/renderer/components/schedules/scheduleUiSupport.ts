@@ -1,11 +1,16 @@
 import type {
   WorkScheduleCreateInput,
   WorkScheduleRule,
+  WorkScheduleTargetRef,
   WorkScheduleTriggerReceipt,
 } from '../../api/schedules.js';
 
 export const DAILY_MORNING_GREETING_TITLE = 'Daily morning greeting';
 export const DAILY_MORNING_GREETING_DEFAULT_TIME = '08:00';
+export const DAILY_WORK_REVIEW_TITLE = 'Daily work review';
+export const DAILY_CODE_CHECK_TITLE = 'Daily code check';
+export const DAILY_MEMORY_FLUSH_TITLE = 'Daily memory flush';
+export const DAILY_TRANSPORT_DIGEST_TITLE = 'Daily transport digest';
 
 const DAILY_MORNING_GREETING_TOOLS = [
   'companion.content.list',
@@ -110,6 +115,123 @@ export function buildDailyMorningGreetingScheduleInput(input: {
       retryPolicy: {
         maxAttempts: 0,
         backoff: 'none',
+        pauseAfterConsecutiveFailures: 3,
+      },
+    },
+  };
+}
+
+export function buildDailyWorkReviewScheduleInput(input: {
+  target: WorkScheduleTargetRef;
+  timezone?: string | null;
+  time?: string | null;
+}): WorkScheduleCreateInput {
+  return buildDailyOperationalScheduleInput({
+    title: DAILY_WORK_REVIEW_TITLE,
+    target: input.target,
+    timezone: input.timezone,
+    time: input.time ?? '17:00',
+    intent: [
+      'Review active Cats Work items, identify stale or blocked execution,',
+      'and produce an operator-facing summary with recommended next actions.',
+    ].join(' '),
+  });
+}
+
+export function buildDailyCodeCheckScheduleInput(input: {
+  target: WorkScheduleTargetRef;
+  timezone?: string | null;
+  time?: string | null;
+}): WorkScheduleCreateInput {
+  return buildDailyOperationalScheduleInput({
+    title: DAILY_CODE_CHECK_TITLE,
+    target: input.target,
+    timezone: input.timezone,
+    time: input.time ?? '18:00',
+    intent: [
+      'Review recent Cats Code execution context, check for unfinished code',
+      'work, and produce a concise engineering follow-up summary.',
+    ].join(' '),
+  });
+}
+
+export function buildDailyMemoryFlushScheduleInput(input: {
+  target: WorkScheduleTargetRef;
+  timezone?: string | null;
+  time?: string | null;
+}): WorkScheduleCreateInput {
+  return buildDailyOperationalScheduleInput({
+    title: DAILY_MEMORY_FLUSH_TITLE,
+    target: input.target,
+    timezone: input.timezone,
+    time: input.time ?? '21:00',
+    intent: [
+      'Review recent conversation and work context, identify durable memory',
+      'candidates, and prepare a bounded owner-review summary.',
+    ].join(' '),
+  });
+}
+
+export function buildDailyTransportDigestScheduleInput(input: {
+  target: WorkScheduleTargetRef;
+  bindingId: string;
+  timezone?: string | null;
+  time?: string | null;
+}): WorkScheduleCreateInput {
+  const intent = [
+    'Prepare a concise transport digest for the owner and send it through',
+    'the declared Telegram binding when there is actionable activity.',
+  ].join(' ');
+  const base = buildDailyOperationalScheduleInput({
+    title: DAILY_TRANSPORT_DIGEST_TITLE,
+    target: input.target,
+    timezone: input.timezone,
+    time: input.time ?? '18:30',
+    intent,
+  });
+
+  return {
+    ...base,
+    missionTemplate: {
+      ...base.missionTemplate,
+      transportTargets: [
+        {
+          platform: 'telegram',
+          bindingId: input.bindingId,
+        },
+      ],
+      toolScopes: ['transport.telegram.text.send'],
+    },
+  };
+}
+
+function buildDailyOperationalScheduleInput(input: {
+  title: string;
+  target: WorkScheduleTargetRef;
+  intent: string;
+  timezone?: string | null;
+  time?: string | null;
+}): WorkScheduleCreateInput {
+  return {
+    title: input.title,
+    enabled: true,
+    timezone: input.timezone?.trim() || resolveLocalTimezone(),
+    schedule: {
+      kind: 'daily',
+      time: input.time?.trim() || '17:00',
+    },
+    missionTemplate: {
+      target: input.target,
+      originSurface: 'schedule',
+      intent: input.intent,
+    },
+    executionPolicy: {
+      missionPolicy: 'per_fire',
+      concurrencyPolicy: 'skip',
+      misfirePolicy: 'fire_once',
+      retryPolicy: {
+        maxAttempts: 1,
+        backoff: 'fixed',
         pauseAfterConsecutiveFailures: 3,
       },
     },

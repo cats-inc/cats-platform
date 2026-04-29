@@ -183,13 +183,13 @@ without hand-editing state.
 
 - [x] Add bounded retries and pause-after-repeated-failures.
 - [x] Add audit/export view for recent trigger receipts and runs.
-- [ ] Decide whether OS-level scheduled wake is needed for closed-app
+- [x] Decide whether OS-level scheduled wake is needed for closed-app
       execution.
-- [ ] Decide whether heartbeat/liveness monitoring is needed for scheduler
+- [x] Decide whether heartbeat/liveness monitoring is needed for scheduler
       health. Do not block Phase 1-5 on heartbeat.
-- [ ] Expand rule templates for Work reviews, Code checks, memory flushes, and
+- [x] Expand rule templates for Work reviews, Code checks, memory flushes, and
       transport digests.
-- [ ] Revisit whether schedule rules should move from platform-owned config to
+- [x] Revisit whether schedule rules should move from platform-owned config to
       shared Core once the mission/run storage model is stable.
 
 **Deliverables**: scheduled automation becomes observable and extensible beyond
@@ -221,9 +221,18 @@ the first companion/Telegram scenario.
 - Scheduled run provenance uses `CoreRunRecord.metadata.scheduleTrigger` as the
   fixed query shape.
 - The first local scheduler only runs while Cats is running.
-- Heartbeat/liveness is a hardening follow-on, not a prerequisite.
+- OS-level scheduled wake is not needed for v1. Closed-app execution stays
+  deferred until a packaged background daemon / OS scheduler ADR exists.
+- Heartbeat/liveness monitoring is not needed for the v1 in-process scheduler.
+  Revisit only if schedules move to a daemon, OS wake, or multi-process runner.
+- Schedule rules stay in the platform-owned schedule store through v1. Moving
+  them into shared Core remains deferred until cross-device sync, Core-native
+  schedule queries, or cross-product ownership requires it.
 - Scheduler code never chooses content or calls runtime/transport APIs
   directly.
+- Work review, Code check, memory flush, and transport digest template builders
+  are generic `ScheduleRule` input builders only; UI exposure waits for the
+  matching resource/tool surfaces so the sidebar does not grow empty entries.
 
 ## Testing Strategy
 
@@ -284,6 +293,7 @@ the first companion/Telegram scenario.
 | 2026-04-29 | Schedule UI slice: added Cats Work `/work/schedules` route and sidebar entry, renderer schedule API helpers, a minimal schedule list with next-fire/last-run/failure/skipped diagnostics, and a Daily morning greeting shortcut that creates a generic schedule rule with declared companion content and Telegram delivery scopes. |
 | 2026-04-29 | Retry hardening slice: added schedule retry state, retry-attempt idempotency keys/receipt metadata, bounded retry admission, and automatic pause after repeated failed scheduled fires, with Work schedule diagnostics surfacing pending retries and paused reasons. |
 | 2026-04-29 | Audit/export slice: extended the Work Schedules surface with a recent trigger audit panel and JSON export payload covering schedule rules, trigger receipts, retry attempts, skips, and admitted run ids. |
+| 2026-04-29 | Phase 6 closeout slice: recorded v1 decisions to defer OS wake, heartbeat/liveness, and Core storage migration, and added generic builders for Work review, Code check, memory flush, and transport digest schedule templates without exposing empty UI entries. |
 
 ---
 
