@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "id": "user.app-template",
+  "displayName": "User App",
+  "version": "0.1.0",
+  "description": "Local user app generated from Cats Code.",
+  "category": "user-app",
+  "trustTier": "local-user",
+  "publisher": {
+    "name": "Local User"
+  },
+  "compatibility": {
+    "catsPlatform": "^0.1.0",
+    "appSdk": "1.x"
+  },
+  "entrypoints": {
+    "renderer": "dist/renderer/index.html"
+  },
+  "contributions": {
+    "lobbyApps": [
+      {
+        "id": "main",
+        "title": "User App",
+        "subtitle": "Cats Code export template",
+        "routePath": "/apps/user.app-template",
+        "icon": "app-window",
+        "maturity": "preview"
+      }
+    ]
+  },
+  "permissions": [
+    "ui.route",
+    "ui.lobby",
+    "storage.appData"
+  ]
+}

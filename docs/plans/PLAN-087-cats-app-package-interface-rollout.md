@@ -142,7 +142,7 @@ Inventory notes:
 
 ## Phase 5: Define the Cats Code Export Pipeline
 
-- [ ] Add a Cats Code user-app template with `cats.app.json`.
+- [x] Add a Cats Code user-app template with `cats.app.json`.
 - [x] Add export metadata that maps Code artifacts to a Cats App Package.
 - [ ] Add an export command/action that builds `dist/renderer` and optional
       `dist/server`.
@@ -313,6 +313,7 @@ Product integration notes:
 | 2026-04-30 | Added connector settings entry resolution from connector `setupPath` or app settings contributions, with Settings Apps links and auth summary coverage. |
 | 2026-04-30 | Added Cats Code app export metadata types and helper coverage that maps manifest entrypoints to package artifacts. |
 | 2026-04-30 | Added current manual E2E handoff notes and product integration notes for fixture install, app route navigation, product modules, and connector Settings entries. |
+| 2026-04-30 | Added the Cats Code user-app template folder and manifest helper for local-user app packages that install under Lobby. |
 
 ---
 

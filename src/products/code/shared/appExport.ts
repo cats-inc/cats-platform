@@ -1,4 +1,13 @@
-import type { CatsAppManifestV1 } from '../../../shared/catsAppManifest.js';
+import type {
+  CatsAppManifestV1,
+  CatsLobbyAppContribution,
+} from '../../../shared/catsAppManifest.js';
+
+export const CATS_CODE_USER_APP_TEMPLATE_ID = 'user-app';
+export const CATS_CODE_USER_APP_TEMPLATE_PACKAGE_PATH =
+  'src/products/code/templates/user-app';
+export const CATS_CODE_USER_APP_TEMPLATE_RENDERER_ENTRYPOINT =
+  'dist/renderer/index.html';
 
 export type CatsCodeAppExportArtifactKind = 'manifest' | 'renderer' | 'server' | 'worker';
 
@@ -23,6 +32,67 @@ export interface CreateCatsCodeAppExportMetadataInput {
   packagePath: string;
   manifestPath?: string;
   createdAt?: Date;
+}
+
+export interface CreateCatsCodeUserAppTemplateManifestInput {
+  appId: string;
+  displayName: string;
+  description?: string;
+  version?: string;
+  publisherName?: string;
+  lobbyEntryId?: string;
+  lobbyTitle?: string;
+  lobbySubtitle?: string;
+  lobbyIcon?: string;
+}
+
+export function createCatsCodeUserAppTemplateManifest(
+  input: CreateCatsCodeUserAppTemplateManifestInput,
+): CatsAppManifestV1 {
+  const routePath = `/apps/${input.appId}` as `/apps/${string}`;
+  const lobbyEntry: CatsLobbyAppContribution = {
+    id: input.lobbyEntryId ?? 'main',
+    title: input.lobbyTitle ?? input.displayName,
+    routePath,
+    maturity: 'preview',
+  };
+
+  if (input.lobbySubtitle) {
+    lobbyEntry.subtitle = input.lobbySubtitle;
+  } else if (input.description) {
+    lobbyEntry.subtitle = input.description;
+  }
+  if (input.lobbyIcon) {
+    lobbyEntry.icon = input.lobbyIcon;
+  }
+
+  return {
+    schemaVersion: 1,
+    id: input.appId,
+    displayName: input.displayName,
+    version: input.version ?? '0.1.0',
+    description: input.description,
+    category: 'user-app',
+    trustTier: 'local-user',
+    publisher: {
+      name: input.publisherName ?? 'Local User',
+    },
+    compatibility: {
+      catsPlatform: '^0.1.0',
+      appSdk: '1.x',
+    },
+    entrypoints: {
+      renderer: CATS_CODE_USER_APP_TEMPLATE_RENDERER_ENTRYPOINT,
+    },
+    contributions: {
+      lobbyApps: [lobbyEntry],
+    },
+    permissions: [
+      'ui.route',
+      'ui.lobby',
+      'storage.appData',
+    ],
+  };
 }
 
 export function createCatsCodeAppExportMetadata(
