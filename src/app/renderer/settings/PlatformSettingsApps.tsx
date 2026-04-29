@@ -16,12 +16,9 @@ import type {
   PlatformInstalledAppDescriptor,
 } from '../../../shared/catsAppManifest.js';
 import type { CatsAppManifestValidationIssue } from '../../../shared/catsAppValidation.js';
+import { type MessageKey } from '../../../shared/i18n/index.js';
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
-
-export interface PlatformSettingsAppsProps {
-  installedApps: readonly PlatformInstalledAppDescriptor[];
-  onInstalledAppsUpdate?: (installedApps: PlatformInstalledAppDescriptor[]) => void;
-}
+import { useI18n } from '../i18n/index.js';
 
 type AppPackageMutation = 'enable' | 'disable' | 'uninstall';
 
@@ -44,73 +41,112 @@ interface LocalInstallReview {
   manifest: CatsAppManifestV1;
 }
 
-function formatCategory(category: PlatformInstalledAppDescriptor['category']): string {
-  switch (category) {
-    case 'capability-connector':
-      return 'Connector';
-    case 'product-module':
-      return 'Product module';
-    case 'user-app':
-      return 'User app';
-  }
+const APP_CATEGORY_LABEL_BY_CATEGORY: Record<
+  PlatformInstalledAppDescriptor['category'],
+  MessageKey
+> = {
+  'capability-connector': 'settingsAppsCategoryConnector',
+  'product-module': 'settingsAppsCategoryProductModule',
+  'user-app': 'settingsAppsCategoryUserApp',
+};
+
+const APP_INSTALL_STATE_LABEL_BY_STATE: Record<CatsAppInstallState, MessageKey> = {
+  enabled: 'settingsAppsInstallStateEnabled',
+  installed: 'settingsAppsInstallStateInstalled',
+  disabled: 'settingsAppsInstallStateDisabled',
+  error: 'settingsAppsInstallStateError',
+  'upgrade-pending': 'settingsAppsInstallStateUpgradePending',
+  uninstalled: 'settingsAppsInstallStateUninstalled',
+};
+
+const APP_TRUST_TIER_LABEL_BY_TIER: Record<
+  PlatformInstalledAppDescriptor['trustTier'],
+  MessageKey
+> = {
+  'local-user': 'settingsAppsTrustTierLocalUser',
+  system: 'settingsAppsTrustTierSystem',
+  'third-party': 'settingsAppsTrustTierThirdParty',
+};
+
+const APP_MUTATION_TITLE_BY_ACTION: Record<AppPackageMutation, MessageKey> = {
+  uninstall: 'settingsAppsUninstallTitle',
+  enable: 'settingsAppsEnableTitle',
+  disable: 'settingsAppsDisableTitle',
+};
+
+const APP_MUTATION_MESSAGE_BY_ACTION: Record<AppPackageMutation, MessageKey> = {
+  uninstall: 'settingsAppsUninstallMessage',
+  enable: 'settingsAppsEnableMessage',
+  disable: 'settingsAppsDisableMessage',
+};
+
+function pluralSuffix(count: number): string {
+  return count === 1 ? '' : 's';
 }
 
-function formatInstallState(state: CatsAppInstallState): string {
-  switch (state) {
-    case 'enabled':
-      return 'Enabled';
-    case 'installed':
-      return 'Installed';
-    case 'disabled':
-      return 'Disabled';
-    case 'error':
-      return 'Error';
-    case 'upgrade-pending':
-      return 'Upgrade pending';
-    case 'uninstalled':
-      return 'Uninstalled';
-  }
+function formatPermissionCount(
+  count: number,
+  t: (key: MessageKey, values?: Record<string, unknown>) => string,
+): string {
+  return t('settingsAppsPermissionCount', {
+    count,
+    pluralSuffix: pluralSuffix(count),
+  });
 }
 
-function formatTrustTier(trustTier: PlatformInstalledAppDescriptor['trustTier']): string {
-  switch (trustTier) {
-    case 'local-user':
-      return 'Local user';
-    case 'system':
-      return 'System';
-    case 'third-party':
-      return 'Third party';
-  }
+function formatToolCount(
+  count: number,
+  t: (key: MessageKey, values?: Record<string, unknown>) => string,
+): string {
+  return t('settingsAppsToolCount', {
+    count,
+    pluralSuffix: pluralSuffix(count),
+  });
 }
 
-function formatPermissionCount(count: number): string {
-  return `${count} permission${count === 1 ? '' : 's'}`;
-}
-
-function formatToolCount(count: number): string {
-  return `${count} tool${count === 1 ? '' : 's'}`;
-}
-
-function formatConnectorCapabilities(app: PlatformInstalledAppDescriptor): string | null {
+function formatConnectorCapabilities(
+  app: PlatformInstalledAppDescriptor,
+  t: (key: MessageKey, values?: Record<string, unknown>) => string,
+): string | null {
   if (app.connectors.length === 0) {
     return null;
   }
-  const capabilityCount = app.connectors
-    .reduce((total, connector) => total + connector.capabilities.length, 0);
-  const capabilityLabel = `capabilit${capabilityCount === 1 ? 'y' : 'ies'}`;
+
+  const capabilityCount = app.connectors.reduce(
+    (total, connector) => total + connector.capabilities.length,
+    0,
+  );
+  const capabilityLabel = t(
+    capabilityCount === 1
+      ? 'settingsAppsCapabilitySingular'
+      : 'settingsAppsCapabilityPlural',
+  );
   if (app.connectors.length === 1) {
-    return `${app.connectors[0].service}: ${capabilityCount} ${capabilityLabel}`;
+    return t('settingsAppsConnectorCountSingle', {
+      connector: app.connectors[0].service,
+      count: capabilityCount,
+      capabilityLabel,
+    });
   }
-  return `${app.connectors.length} connectors, ${capabilityCount} ${capabilityLabel}`;
+  return t('settingsAppsConnectorCountMany', {
+    connectorCount: app.connectors.length,
+    count: capabilityCount,
+    capabilityLabel,
+  });
 }
 
-function formatConnectorAuth(app: PlatformInstalledAppDescriptor): string | null {
-  const authKinds = Array.from(new Set(
-    app.connectors
-      .map((connector) => connector.auth?.kind ?? 'none')
-      .filter((kind) => kind !== 'none'),
-  ));
-  return authKinds.length > 0 ? `Auth: ${authKinds.join(', ')}` : null;
+function formatConnectorAuth(
+  app: PlatformInstalledAppDescriptor,
+  t: (key: MessageKey) => string,
+): string | null {
+  const authKinds = Array.from(
+    new Set(
+      app.connectors
+        .map((connector) => connector.auth?.kind ?? 'none')
+        .filter((kind) => kind !== 'none'),
+    ),
+  );
+  return authKinds.length > 0 ? `${t('settingsAppsAuthLabel')}: ${authKinds.join(', ')}` : null;
 }
 
 function statusTone(state: CatsAppInstallState) {
@@ -123,7 +159,17 @@ function statusTone(state: CatsAppInstallState) {
   return 'muted';
 }
 
-async function readMutationError(response: Response, fallback: string): Promise<string> {
+function summarizeValidationIssues(
+  issues: readonly CatsAppManifestValidationIssue[] = [],
+  t: (key: MessageKey, values?: Record<string, unknown>) => string,
+): string {
+  return issues[0]?.message ?? t('settingsAppsValidationFailed');
+}
+
+async function readMutationError(
+  response: Response,
+  fallback: string,
+): Promise<string> {
   const payload = await response.json().catch(() => null) as {
     error?: { message?: string };
   } | null;
@@ -165,16 +211,16 @@ export function resolveInstalledAppSettingsPath(
     ?? null;
 }
 
-function summarizeValidationIssues(
-  issues: readonly CatsAppManifestValidationIssue[] = [],
-): string {
-  return issues[0]?.message ?? 'Package validation failed.';
+export interface PlatformSettingsAppsProps {
+  installedApps: readonly PlatformInstalledAppDescriptor[];
+  onInstalledAppsUpdate?: (installedApps: PlatformInstalledAppDescriptor[]) => void;
 }
 
 export function PlatformSettingsApps({
   installedApps,
   onInstalledAppsUpdate,
 }: PlatformSettingsAppsProps) {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const connectorCount = installedApps
     .filter((app) => app.category === 'capability-connector')
@@ -188,24 +234,20 @@ export function PlatformSettingsApps({
 
   async function mutateApp(app: PlatformInstalledAppDescriptor, mutation: AppPackageMutation) {
     const confirmation = await confirm({
-      title: mutation === 'uninstall'
-        ? 'Uninstall app'
-        : mutation === 'enable'
-          ? 'Enable app'
-          : 'Disable app',
-      message: mutation === 'uninstall'
-        ? `Uninstall "${app.displayName}"? It will be removed from Cats without deleting package files.`
-        : mutation === 'enable'
-          ? `Enable "${app.displayName}"? It can appear in Cats wherever its permissions allow.`
-          : `Disable "${app.displayName}"? It will stop appearing in Lobby and scoped app routes.`,
-      confirmLabel: mutation === 'uninstall'
-        ? 'Uninstall'
-        : mutation === 'enable'
-          ? 'Enable'
-          : 'Disable',
+      title: t(APP_MUTATION_TITLE_BY_ACTION[mutation]),
+      message: t(APP_MUTATION_MESSAGE_BY_ACTION[mutation], { appDisplayName: app.displayName }),
+      confirmLabel: t(
+        mutation === 'uninstall'
+          ? 'settingsAppsUninstallAction'
+          : mutation === 'enable'
+            ? 'settingsAppsEnableAction'
+            : 'settingsAppsDisableAction',
+      ),
       defaultAction: 'cancel',
     });
-    if (!confirmation) return;
+    if (!confirmation) {
+      return;
+    }
 
     const busyKey = `${app.id}:${mutation}`;
     setBusyAction(busyKey);
@@ -222,7 +264,16 @@ export function PlatformSettingsApps({
       if (!response.ok) {
         throw new Error(await readMutationError(
           response,
-          `${mutation} failed (${response.status})`,
+          t('settingsAppsMutationFailed', {
+            action: t(
+              mutation === 'uninstall'
+                ? 'settingsAppsUninstallAction'
+                : mutation === 'enable'
+                  ? 'settingsAppsEnableAction'
+                  : 'settingsAppsDisableAction',
+            ),
+            status: response.status,
+          }),
         ));
       }
 
@@ -234,7 +285,11 @@ export function PlatformSettingsApps({
       }
       dispatchPlatformEnvelopeRefresh();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : `${mutation} failed.`);
+      showToast(
+        error instanceof Error
+          ? error.message
+          : t('settingsAppsMutationFailedFallback'),
+      );
     } finally {
       setBusyAction(null);
     }
@@ -243,7 +298,7 @@ export function PlatformSettingsApps({
   async function reviewLocalPackage() {
     const packagePath = localPackagePath.trim();
     if (!packagePath) {
-      showToast('Package path is required.');
+      showToast(t('settingsAppsPackagePathRequired'));
       return;
     }
 
@@ -259,7 +314,7 @@ export function PlatformSettingsApps({
       });
       const result = await response.json() as AppPackageValidationResult;
       if (!response.ok || !result.ok || !result.manifest) {
-        throw new Error(summarizeValidationIssues(result.issues));
+        throw new Error(summarizeValidationIssues(result.issues, t));
       }
       setInstallReview({
         packagePath: result.packagePath ?? packagePath,
@@ -268,21 +323,29 @@ export function PlatformSettingsApps({
       });
     } catch (error) {
       setInstallReview(null);
-      showToast(error instanceof Error ? error.message : 'Package validation failed.');
+      showToast(
+        error instanceof Error
+          ? error.message
+          : t('settingsAppsValidationFailed'),
+      );
     } finally {
       setInstallBusy(false);
     }
   }
 
   async function installReviewedPackage() {
-    if (!installReview) return;
+    if (!installReview) {
+      return;
+    }
     const confirmation = await confirm({
-      title: 'Install app',
-      message: `Install "${installReview.manifest.displayName}"? It will be enabled after install.`,
-      confirmLabel: 'Install',
+      title: t('settingsAppsInstallTitle'),
+      message: t('settingsAppsInstallMessage', { appDisplayName: installReview.manifest.displayName }),
+      confirmLabel: t('settingsAppsInstallButton'),
       defaultAction: 'cancel',
     });
-    if (!confirmation) return;
+    if (!confirmation) {
+      return;
+    }
 
     setInstallBusy(true);
     try {
@@ -304,8 +367,11 @@ export function PlatformSettingsApps({
       if (!response.ok || !result.app) {
         throw new Error(
           result.issues
-            ? summarizeValidationIssues(result.issues)
-            : `Install failed (${response.status})`,
+            ? summarizeValidationIssues(result.issues, t)
+            : t('settingsAppsMutationFailed', {
+              action: t('settingsAppsInstallButton'),
+              status: response.status,
+            }),
         );
       }
       onInstalledAppsUpdate?.(upsertInstalledApp(installedApps, result.app));
@@ -317,26 +383,37 @@ export function PlatformSettingsApps({
         navigate(launchPath);
       }
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Install failed.');
+      showToast(
+        error instanceof Error
+          ? error.message
+          : t('settingsAppsMutationFailed', { action: t('settingsAppsInstallButton') }),
+      );
     } finally {
       setInstallBusy(false);
     }
   }
+
+  const title = t('settingsAppsSectionTitle');
+  const description = t('settingsAppsSectionDescription');
+  const installedPackagesDescription = t('settingsAppsInstalledPackagesDescription', {
+    count: connectorCount,
+    pluralSuffix: pluralSuffix(connectorCount),
+  });
 
   return (
     <>
       <SettingsSection
         header={
           <SettingsSectionHeader
-            title="Apps"
-            description="Installed Cats apps, connector packages, and system modules."
+            title={title}
+            description={description}
           />
         }
       >
         <div className="settings-sub-card settingsAppsList">
           <SettingsOptionRow
-            label="Installed packages"
-            description={`${connectorCount} connector package${connectorCount === 1 ? '' : 's'}`}
+            label={t('settingsAppsInstalledPackagesLabel')}
+            description={installedPackagesDescription}
             control={(
               <SettingsStatusChip tone={installedApps.length > 0 ? 'ready' : 'muted'}>
                 {installedApps.length}
@@ -348,8 +425,8 @@ export function PlatformSettingsApps({
             const canEnable = app.installState === 'installed' || app.installState === 'disabled';
             const canDisable = app.installState === 'enabled';
             const actionBusy = busyAction?.startsWith(`${app.id}:`) ?? false;
-            const connectorCapabilities = formatConnectorCapabilities(app);
-            const connectorAuth = formatConnectorAuth(app);
+            const connectorCapabilities = formatConnectorCapabilities(app, t);
+            const connectorAuth = formatConnectorAuth(app, t);
             const settingsPath = resolveInstalledAppSettingsPath(app);
             return (
               <SettingsOptionRow
@@ -357,11 +434,11 @@ export function PlatformSettingsApps({
                 label={app.displayName}
                 description={(
                   <span className="settingsAppsMeta">
-                    <span>{formatCategory(app.category)}</span>
-                    <span>{formatTrustTier(app.trustTier)}</span>
+                    <span>{t(APP_CATEGORY_LABEL_BY_CATEGORY[app.category], {})}</span>
+                    <span>{t(APP_TRUST_TIER_LABEL_BY_TIER[app.trustTier], {})}</span>
                     <span>{app.version}</span>
                     <span>{app.publisher}</span>
-                    <span>{formatPermissionCount(app.permissions.length)}</span>
+                    <span>{formatPermissionCount(app.permissions.length, t)}</span>
                     {connectorCapabilities ? (
                       <span>{connectorCapabilities}</span>
                     ) : null}
@@ -369,7 +446,7 @@ export function PlatformSettingsApps({
                       <span>{connectorAuth}</span>
                     ) : null}
                     {app.tools.length > 0 ? (
-                      <span>{formatToolCount(app.tools.length)}</span>
+                      <span>{formatToolCount(app.tools.length, t)}</span>
                     ) : null}
                   </span>
                 )}
@@ -380,7 +457,7 @@ export function PlatformSettingsApps({
                         className="secondaryButton settingsInlineLink"
                         href={primaryRoute}
                       >
-                        Open
+                        {t('settingsAppsOpenAction')}
                       </a>
                     ) : null}
                     {settingsPath ? (
@@ -388,7 +465,7 @@ export function PlatformSettingsApps({
                         className="secondaryButton settingsInlineLink"
                         href={settingsPath}
                       >
-                        Settings
+                        {t('settingsAppsSettingsAction')}
                       </a>
                     ) : null}
                     {canEnable ? (
@@ -398,7 +475,7 @@ export function PlatformSettingsApps({
                         disabled={actionBusy}
                         onClick={() => void mutateApp(app, 'enable')}
                       >
-                        Enable
+                        {t('settingsAppsEnableAction')}
                       </button>
                     ) : null}
                     {canDisable ? (
@@ -408,7 +485,7 @@ export function PlatformSettingsApps({
                         disabled={actionBusy}
                         onClick={() => void mutateApp(app, 'disable')}
                       >
-                        Disable
+                        {t('settingsAppsDisableAction')}
                       </button>
                     ) : null}
                     <button
@@ -417,10 +494,10 @@ export function PlatformSettingsApps({
                       disabled={actionBusy}
                       onClick={() => void mutateApp(app, 'uninstall')}
                     >
-                      Uninstall
+                      {t('settingsAppsUninstallAction')}
                     </button>
                     <SettingsStatusChip tone={statusTone(app.installState)}>
-                      {formatInstallState(app.installState)}
+                      {t(APP_INSTALL_STATE_LABEL_BY_STATE[app.installState], {})}
                     </SettingsStatusChip>
                   </SettingsActionBar>
                 )}
@@ -428,23 +505,27 @@ export function PlatformSettingsApps({
             );
           }) : (
             <SettingsOptionRow
-              label="Installed apps"
-              description="No installed apps are registered yet."
-              control={<SettingsStatusChip tone="muted">Empty</SettingsStatusChip>}
+              label={t('settingsAppsNoInstalledAppsLabel')}
+              description={t('settingsAppsNoInstalledAppsDescription')}
+              control={(
+                <SettingsStatusChip tone="muted">
+                  {t('settingsAppsEmptyStateChipLabel')}
+                </SettingsStatusChip>
+              )}
             />
           )}
           <SettingsOptionRow
-            label="Local install"
-            description="Review a local Cats app package before adding it to Cats."
+            label={t('settingsAppsLocalInstallTitle')}
+            description={t('settingsAppsLocalInstallDescription')}
             layout="stack"
             control={(
               <div className="settingsAppsInstall">
                 <label className="fieldLabel">
-                  <span>Package path</span>
+                  <span>{t('settingsAppsPackagePathLabel')}</span>
                   <input
                     className="textInput"
                     value={localPackagePath}
-                    placeholder="/path/to/cats-app-package"
+                    placeholder={t('settingsAppsPackagePathPlaceholder')}
                     disabled={installBusy}
                     onChange={(event) => {
                       setLocalPackagePath(event.target.value);
@@ -459,23 +540,23 @@ export function PlatformSettingsApps({
                     disabled={installBusy}
                     onClick={() => void reviewLocalPackage()}
                   >
-                    Review
+                    {t('settingsAppsReviewButton')}
                   </button>
                   <SettingsStatusChip tone={installReview ? 'ready' : 'warm'}>
-                    {installReview ? 'Ready' : 'Needs review'}
+                    {installReview
+                      ? t('settingsAppsLocalInstallReady')
+                      : t('settingsAppsLocalInstallNeedsReview')
+                    }
                   </SettingsStatusChip>
                 </SettingsActionBar>
                 {installReview ? (
                   <div className="settingsAppsReview">
                     <span>{installReview.manifest.displayName}</span>
                     <span>{installReview.manifest.id}</span>
-                    <span>
-                      {installReview.manifest.contributions.lobbyApps?.[0]?.routePath
-                        ?? 'No Lobby route'}
-                    </span>
-                    <span>{formatCategory(installReview.manifest.category)}</span>
-                    <span>{formatTrustTier(installReview.manifest.trustTier)}</span>
-                    <span>{formatPermissionCount(installReview.manifest.permissions.length)}</span>
+                    <span>{installReview.manifest.contributions.lobbyApps?.[0]?.routePath ?? t('settingsAppsNoLobbyRoute')}</span>
+                    <span>{t(APP_CATEGORY_LABEL_BY_CATEGORY[installReview.manifest.category], {})}</span>
+                    <span>{t(APP_TRUST_TIER_LABEL_BY_TIER[installReview.manifest.trustTier], {})}</span>
+                    <span>{formatPermissionCount(installReview.manifest.permissions.length, t)}</span>
                     <SettingsActionBar>
                       <button
                         type="button"
@@ -483,7 +564,7 @@ export function PlatformSettingsApps({
                         disabled={installBusy}
                         onClick={() => void installReviewedPackage()}
                       >
-                        Install
+                        {t('settingsAppsInstallButton')}
                       </button>
                     </SettingsActionBar>
                   </div>
@@ -498,3 +579,4 @@ export function PlatformSettingsApps({
     </>
   );
 }
+

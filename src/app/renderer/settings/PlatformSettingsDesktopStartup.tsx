@@ -11,6 +11,8 @@ import {
 } from '../../../design/components/settings/index.js';
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
 import type { DesktopMobilePairingEnvUpdateResult } from '../../../shared/desktopRecoveryBridge.js';
+import { type MessageKey } from '../../../shared/i18n/index.js';
+import { useI18n } from '../i18n/index.js';
 import { createQrCodeMatrix } from './qrCode.js';
 
 export interface PlatformSettingsDesktopStartupProps {
@@ -33,25 +35,44 @@ const DEFAULT_MOBILE_PAIRING: AppShellPayload['desktop']['mobilePairing'] = {
   pairingUrl: null,
 };
 
+function resolveDesktopPairingReachabilityLabel(
+  mobilePairing: AppShellPayload['desktop']['mobilePairing'],
+  t: (key: MessageKey) => string,
+): string {
+  if (mobilePairing.noLanCandidateReason === 'loopback_bound') {
+    return t('settingsDesktopMobilePairingReachabilityLoopback');
+  }
+  if (mobilePairing.noLanCandidateReason === 'no_lan_candidate') {
+    return t('settingsDesktopMobilePairingReachabilityLan');
+  }
+  if (
+    mobilePairing.noLanCandidateReason === 'bind_host_not_lan_candidate'
+  ) {
+    return t('settingsDesktopMobilePairingReachabilityOtherInterface');
+  }
+  return t('settingsDesktopMobilePairingReachabilityAllInterfaces');
+}
+
 function resolveMobilePairingStatus(
   mobilePairing: AppShellPayload['desktop']['mobilePairing'],
+  t: (key: MessageKey) => string,
 ): { tone: SettingsStatusChipTone; label: string } {
   if (!mobilePairing.enabled) {
-    return { tone: 'muted', label: 'Disabled' };
+    return { tone: 'muted', label: t('settingsDesktopMobilePairingStatusDisabled') };
   }
   if (mobilePairing.noLanCandidateReason === 'loopback_bound') {
-    return { tone: 'warm', label: 'Loopback only' };
+    return { tone: 'warm', label: t('settingsDesktopMobilePairingStatusLoopbackOnly') };
   }
   if (
     mobilePairing.noLanCandidateReason === 'no_lan_candidate'
     || mobilePairing.noLanCandidateReason === 'bind_host_not_lan_candidate'
   ) {
-    return { tone: 'warm', label: 'No LAN address' };
+    return { tone: 'warm', label: t('settingsDesktopMobilePairingStatusNoLanAddress') };
   }
   if (mobilePairing.pairingUrlStatus === 'ready' && mobilePairing.pairingUrl) {
-    return { tone: 'ready', label: 'Ready' };
+    return { tone: 'ready', label: t('settingsDesktopMobilePairingStatusReady') };
   }
-  return { tone: 'warm', label: 'QR pending' };
+  return { tone: 'warm', label: t('settingsDesktopMobilePairingStatusValidationPending') };
 }
 
 function resolveDefaultDesktopPreferences(): AppShellPayload['desktop'] {
@@ -64,13 +85,15 @@ function resolveDefaultDesktopPreferences(): AppShellPayload['desktop'] {
 }
 
 function MobilePairingQrCode({
+  t,
   url,
 }: {
+  t: (key: MessageKey) => string;
   url: string;
 }) {
   const qr = createQrCodeMatrix(url);
   if (!qr) {
-    return <span>URL too long</span>;
+    return <span>{t('settingsDesktopMobilePairingQrUrlTooLong')}</span>;
   }
 
   const modules = [];
@@ -87,7 +110,7 @@ function MobilePairingQrCode({
       className="settingsMobilePairingQrCode"
       viewBox={`-4 -4 ${qr.size + 8} ${qr.size + 8}`}
       role="img"
-      aria-label="Mobile pairing QR code"
+      aria-label={t('settingsDesktopMobilePairingQrCodeLabel')}
       shapeRendering="crispEdges"
     >
       <rect x="-4" y="-4" width={qr.size + 8} height={qr.size + 8} className="qrLight" />
@@ -100,11 +123,12 @@ export function PlatformSettingsDesktopStartup({
   payload,
   onPayloadUpdate,
 }: PlatformSettingsDesktopStartupProps) {
+  const { t } = useI18n();
   const [savingDesktopPrefs, setSavingDesktopPrefs] = useState(false);
   const [applyingMobilePairingEnv, setApplyingMobilePairingEnv] = useState(false);
   const desktopPrefs = payload.desktop ?? resolveDefaultDesktopPreferences();
   const mobilePairing = desktopPrefs.mobilePairing ?? DEFAULT_MOBILE_PAIRING;
-  const mobilePairingStatus = resolveMobilePairingStatus(mobilePairing);
+  const mobilePairingStatus = resolveMobilePairingStatus(mobilePairing, t);
   const { toasts, showToast } = useToast();
 
   async function copyToClipboard(value: string, successMessage: string): Promise<void> {
@@ -112,7 +136,7 @@ export function PlatformSettingsDesktopStartup({
       await navigator.clipboard.writeText(value);
       showToast(successMessage);
     } catch {
-      showToast('Failed to copy to clipboard.');
+      showToast(t('settingsConversationPreferenceUpdateFailure'));
     }
   }
 
@@ -127,16 +151,25 @@ export function PlatformSettingsDesktopStartup({
     ).catsDesktopHost;
 
     if (!desktopHost?.enableMobilePairing) {
-      await copyToClipboard(envText, 'Copied mobile pairing env values.');
+      await copyToClipboard(
+        envText,
+        t('settingsDesktopMobilePairingCopyEnvValuesSuccess'),
+      );
       return;
     }
 
     setApplyingMobilePairingEnv(true);
     try {
       const result = await desktopHost.enableMobilePairing();
-      showToast(`Updated ${result.envPath}. Restart Cats Desktop to apply.`);
+      showToast(t('settingsDesktopMobilePairingDesktopUpdateSuccess', {
+        envPath: result.envPath,
+      }));
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to update desktop env.');
+      showToast(
+        error instanceof Error
+          ? error.message
+          : t('settingsDesktopMobilePairingDesktopUpdateFailure'),
+      );
     } finally {
       setApplyingMobilePairingEnv(false);
     }
@@ -144,9 +177,9 @@ export function PlatformSettingsDesktopStartup({
 
   async function updateDesktopPreferences(
     nextDesktopPrefs: AppShellPayload['desktop'],
-    errorMessage: string,
   ): Promise<void> {
     const previousDesktopPrefs = payload.desktop ?? resolveDefaultDesktopPreferences();
+    const failureMessage = t('settingsConversationPreferenceUpdateFailure');
     onPayloadUpdate({
       ...payload,
       desktop: nextDesktopPrefs,
@@ -173,7 +206,7 @@ export function PlatformSettingsDesktopStartup({
           body: JSON.stringify(nextDesktopPrefs),
         });
         if (!response.ok) {
-          throw new Error(errorMessage);
+          throw new Error(failureMessage);
         }
         const body = await response.json() as Partial<AppShellPayload['desktop']>;
         persistedPrefs = {
@@ -194,7 +227,7 @@ export function PlatformSettingsDesktopStartup({
         ...payload,
         desktop: previousDesktopPrefs,
       });
-      showToast(error instanceof Error ? error.message : errorMessage);
+      showToast(error instanceof Error ? error.message : failureMessage);
     } finally {
       setSavingDesktopPrefs(false);
     }
@@ -204,24 +237,24 @@ export function PlatformSettingsDesktopStartup({
     <>
       <SettingsSection
         className="settingsMobilePairing"
-        header={
+        header={(
           <SettingsSectionHeader
-            title="Mobile pairing"
-            description="Expo Go QR for the bundled Cats Mobile shell."
+            title={t('settingsDesktopMobilePairingTitle')}
+            description={t('settingsDesktopMobilePairingDescription')}
             status={(
               <SettingsStatusChip tone={mobilePairingStatus.tone}>
                 {mobilePairingStatus.label}
               </SettingsStatusChip>
             )}
           />
-        }
+        )}
       >
         <div className="settingsMobilePairingGrid">
           <div className="settingsMobilePairingDetails">
             {!mobilePairing.enabled ? (
               <SettingsOptionRow
-                label="Enable mobile pairing"
-                description="Writes the desktop .env values needed for LAN access. Restart Cats Desktop after applying."
+                label={t('settingsDesktopMobilePairingEnableLabel')}
+                description={t('settingsDesktopMobilePairingEnableDescription')}
                 control={(
                   <button
                     type="button"
@@ -229,7 +262,9 @@ export function PlatformSettingsDesktopStartup({
                     disabled={applyingMobilePairingEnv}
                     onClick={() => void enableMobilePairingEnv()}
                   >
-                    {applyingMobilePairingEnv ? 'Applying...' : 'Enable'}
+                    {applyingMobilePairingEnv
+                      ? t('settingsDesktopMobilePairingApplyingButton')
+                      : t('settingsDesktopMobilePairingEnableButton')}
                   </button>
                 )}
               />
@@ -237,30 +272,26 @@ export function PlatformSettingsDesktopStartup({
               <>
                 <dl className="settingsMobilePairingFacts">
                   <div>
-                    <dt>Bind</dt>
+                    <dt>{t('settingsDesktopMobilePairingBindLabel')}</dt>
                     <dd>{mobilePairing.bindHost}:{mobilePairing.bindPort}</dd>
                   </div>
                   <div>
-                    <dt>Reachability</dt>
-                    <dd>{mobilePairing.bindReachability.replace('_', ' ')}</dd>
+                    <dt>{t('settingsDesktopMobilePairingReachabilityLabel')}</dt>
+                    <dd>{resolveDesktopPairingReachabilityLabel(mobilePairing, t)}</dd>
                   </div>
                   <div>
-                    <dt>LAN address</dt>
-                    <dd>{mobilePairing.selectedLanIp ?? 'None'}</dd>
+                    <dt>{t('settingsDesktopMobilePairingLanAddressLabel')}</dt>
+                    <dd>{mobilePairing.selectedLanIp ?? t('settingsDesktopMobilePairingNoneLabel')}</dd>
                   </div>
                 </dl>
 
                 {mobilePairing.noLanCandidateReason === 'loopback_bound'
                   && mobilePairing.bindOverrideEnv ? (
                   <SettingsOptionRow
-                    label="Allow LAN access"
-                    description={(
-                      <>
-                        Cats is bound to loopback. Restart with{' '}
-                        <code>{mobilePairing.bindOverrideEnv}</code>
-                        {' '}before scanning from a phone.
-                      </>
-                    )}
+                    label={t('settingsDesktopMobilePairingAllowLanLabel')}
+                    description={t('settingsDesktopMobilePairingAllowLanDescription', {
+                      bindOverrideEnv: mobilePairing.bindOverrideEnv,
+                    })}
                     control={(
                       <button
                         type="button"
@@ -268,47 +299,49 @@ export function PlatformSettingsDesktopStartup({
                         disabled={applyingMobilePairingEnv}
                         onClick={() => void enableMobilePairingEnv()}
                       >
-                        {applyingMobilePairingEnv ? 'Applying...' : 'Apply and restart'}
+                        {applyingMobilePairingEnv
+                          ? t('settingsDesktopMobilePairingApplyingButton')
+                          : t('settingsDesktopMobilePairingApplyAndRestartButton')}
                       </button>
                     )}
                   />
-                  ) : null}
+                ) : null}
 
                 {mobilePairing.noLanCandidateReason === 'no_lan_candidate' ? (
-                <p className="settingsMobilePairingNote">
-                  No non-loopback LAN IPv4 address was detected.
-                </p>
+                  <p className="settingsMobilePairingNote">
+                    {t('settingsDesktopMobilePairingNoLanAddressNote')}
+                  </p>
                 ) : null}
 
                 {mobilePairing.noLanCandidateReason === 'bind_host_not_lan_candidate' ? (
-                <p className="settingsMobilePairingNote">
-                  The current bind host does not match a LAN IPv4 address.
-                </p>
+                  <p className="settingsMobilePairingNote">
+                    {t('settingsDesktopMobilePairingHostMismatchNote')}
+                  </p>
                 ) : null}
 
                 {mobilePairing.diagnosticManifestUrl ? (
-                <SettingsOptionRow
-                  label="Diagnostic manifest"
-                  description={mobilePairing.diagnosticManifestUrl}
-                  control={(
-                    <button
-                      type="button"
-                      className="secondaryButton"
-                      onClick={() => void copyToClipboard(
-                        mobilePairing.diagnosticManifestUrl ?? '',
-                        'Copied diagnostic manifest URL.',
-                      )}
-                    >
-                      Copy URL
-                    </button>
-                  )}
-                  layout="stack"
-                />
+                  <SettingsOptionRow
+                    label={t('settingsDesktopMobilePairingDiagnosticLabel')}
+                    description={mobilePairing.diagnosticManifestUrl}
+                    control={(
+                      <button
+                        type="button"
+                        className="secondaryButton"
+                        onClick={() => void copyToClipboard(
+                          mobilePairing.diagnosticManifestUrl ?? '',
+                          t('settingsDesktopMobilePairingDiagnosticCopiedMessage'),
+                        )}
+                      >
+                        {t('settingsDesktopMobilePairingDiagnosticCopyButton')}
+                      </button>
+                    )}
+                    layout="stack"
+                  />
                 ) : null}
 
                 {mobilePairing.pairingUrlStatus === 'ready' && mobilePairing.pairingUrl ? (
                 <SettingsOptionRow
-                  label="Expo Go URL"
+                  label={t('settingsDesktopMobilePairingExpoUrlLabel')}
                   description={mobilePairing.pairingUrl}
                   control={(
                     <button
@@ -316,10 +349,10 @@ export function PlatformSettingsDesktopStartup({
                       className="secondaryButton"
                       onClick={() => void copyToClipboard(
                         mobilePairing.pairingUrl ?? '',
-                        'Copied Expo Go URL.',
+                        t('settingsDesktopMobilePairingExpoUrlCopiedMessage'),
                       )}
                     >
-                      Copy URL
+                      {t('settingsDesktopMobilePairingCopyUrlButton')}
                     </button>
                   )}
                   layout="stack"
@@ -332,86 +365,77 @@ export function PlatformSettingsDesktopStartup({
           <div className="settingsMobilePairingQr" data-state={mobilePairing.pairingUrlStatus}>
             {mobilePairing.pairingUrlStatus === 'ready' && mobilePairing.pairingUrl ? (
               <div className="settingsMobilePairingQrContent">
-                <MobilePairingQrCode url={mobilePairing.pairingUrl} />
+                <MobilePairingQrCode t={t} url={mobilePairing.pairingUrl} />
                 <code className="settingsMobilePairingQrUrl">{mobilePairing.pairingUrl}</code>
               </div>
             ) : (
-              <span>QR pending</span>
+              <span>{t('settingsDesktopMobilePairingNoPairingUrlStatus')}</span>
             )}
           </div>
         </div>
       </SettingsSection>
 
       <SettingsSection
-        header={
+        header={(
           <SettingsSectionHeader
-            title="Startup behavior"
-            description="Control whether Cats Desktop starts when you sign in, whether it opens the main window automatically after sign-in startup, and whether closing the window keeps Cats available in the system tray."
+            title={t('settingsDesktopStartupTitle')}
+            description={t('settingsDesktopStartupDescription')}
           />
-        }
+        )}
       >
         <SettingsOptionRow
           asChoice
-          label="Start Cats Desktop when you sign in to your computer"
-          description="Keep Cats Desktop ready in the background as soon as you sign in."
-          control={
+          label={t('settingsDesktopStartupSignInLabel')}
+          description={t('settingsDesktopStartupSignInDescription')}
+          control={(
             <input
               type="checkbox"
               checked={desktopPrefs.startAtLogin}
               disabled={savingDesktopPrefs}
               onChange={() => {
-                void updateDesktopPreferences(
-                  {
-                    ...desktopPrefs,
-                    startAtLogin: !desktopPrefs.startAtLogin,
-                  },
-                  'Failed to update desktop startup preference',
-                );
+                void updateDesktopPreferences({
+                  ...desktopPrefs,
+                  startAtLogin: !desktopPrefs.startAtLogin,
+                });
               }}
             />
-          }
+          )}
         />
         <SettingsOptionRow
           asChoice
-          label="Keep Cats in the system tray when you close the window"
-          description="When enabled, closing the window hides Cats and keeps it running. When disabled, closing the window quits Cats."
-          control={
+          label={t('settingsDesktopStartupTrayLabel')}
+          description={t('settingsDesktopStartupTrayDescription')}
+          control={(
             <input
               type="checkbox"
               checked={desktopPrefs.systemTrayEnabled}
               disabled={savingDesktopPrefs}
               onChange={() => {
-                void updateDesktopPreferences(
-                  {
-                    ...desktopPrefs,
-                    systemTrayEnabled: !desktopPrefs.systemTrayEnabled,
-                  },
-                  'Failed to update system tray preference',
-                );
+                void updateDesktopPreferences({
+                  ...desktopPrefs,
+                  systemTrayEnabled: !desktopPrefs.systemTrayEnabled,
+                });
               }}
             />
-          }
+          )}
         />
         <SettingsOptionRow
           asChoice
-          label="Open Cats after sign-in startup"
-          description="When disabled, Cats can start in the background after you sign in without opening the main window automatically. Opening Cats yourself still shows the app."
-          control={
+          label={t('settingsDesktopStartupOpenWindowLabel')}
+          description={t('settingsDesktopStartupOpenWindowDescription')}
+          control={(
             <input
               type="checkbox"
               checked={desktopPrefs.openWindowOnStartup}
               disabled={savingDesktopPrefs}
               onChange={() => {
-                void updateDesktopPreferences(
-                  {
-                    ...desktopPrefs,
-                    openWindowOnStartup: !desktopPrefs.openWindowOnStartup,
-                  },
-                  'Failed to update startup window preference',
-                );
+                void updateDesktopPreferences({
+                  ...desktopPrefs,
+                  openWindowOnStartup: !desktopPrefs.openWindowOnStartup,
+                });
               }}
             />
-          }
+          )}
         />
       </SettingsSection>
 

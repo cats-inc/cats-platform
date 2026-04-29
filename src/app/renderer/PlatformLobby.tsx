@@ -10,6 +10,7 @@ import {
   resolveRuntimePresentationStatus,
   resolveRuntimeTooltip,
 } from '../../shared/runtimeStatusPresentation.js';
+import { useI18n } from './i18n/index.js';
 import { LobbyBouncingCats } from './LobbyBouncingCats.js';
 import {
   buildPlatformLobbyAppEntries,
@@ -72,6 +73,7 @@ export function PlatformLobby({
 }: {
   envelope: PlatformHostEnvelope;
 }) {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const [fallbackGreeting] = useState(pickLobbyGreeting);
   const entries = buildPlatformLobbyEntries({
@@ -85,6 +87,7 @@ export function PlatformLobby({
   const runtimeStatus = resolveRuntimePresentationStatus(envelope.runtime);
   const dotClass = resolveRuntimeLobbyDotClassName(runtimeStatus);
   const runtimeTooltip = resolveRuntimeTooltip(runtimeStatus);
+  const runtimeStatusLabel = t('lobbyRuntimeStatusLabel', { runtimeStatus: runtimeTooltip });
 
   const avatarStyle = envelope.ownerAvatarUrl
     ? { backgroundImage: `url(${envelope.ownerAvatarUrl})`, backgroundSize: 'cover' as const, backgroundPosition: 'center' as const }
@@ -99,19 +102,19 @@ export function PlatformLobby({
       <LobbyBouncingCats animationMode={envelope.lobby.animationMode} cats={envelope.lobby.cats} />
       <div className="platformLobby">
         <div className="lobbyTopBar">
-          <span className="lobbyBrand">CATS INC</span>
+          <span className="lobbyBrand">{t('appBrandName')}</span>
           <div className="lobbyTopBarEnd">
             <LobbyCatRoster
               cats={envelope.lobby.cats}
               onSelect={(catId) => navigate(buildDirectLanePath(catId))}
             />
             <GuideCatDockSlot slotKind="lobby" />
-            <div className="lobbyIdentity" role="group" aria-label="Account settings">
+            <div className="lobbyIdentity" role="group" aria-label={t('lobbyAccountSettingsAriaLabel')}>
               <button
                 type="button"
                 className="lobbyIdentityMainButton"
                 onClick={() => navigate('/settings/general', { state: settingsNavState })}
-                aria-label="Open account settings"
+                aria-label={t('lobbyOpenAccountSettings')}
               >
                 <span className="lobbyAvatar" style={avatarStyle}>
                   {envelope.ownerAvatarUrl ? null : nameInitials(envelope.ownerDisplayName)}
@@ -123,7 +126,7 @@ export function PlatformLobby({
                 className="lobbyIdentityRuntime"
                 onClick={() => navigate('/settings/runtime', { state: settingsNavState })}
                 data-tooltip={runtimeTooltip}
-                aria-label={`Runtime status: ${runtimeTooltip}`}
+                aria-label={runtimeStatusLabel}
               >
                 <span className={dotClass} aria-hidden="true" />
               </button>
@@ -172,7 +175,7 @@ export function PlatformLobby({
         </div>
 
         <div className="lobbyProducts">
-          <p className="lobbyProductsEyebrow">Products</p>
+          <p className="lobbyProductsEyebrow">{t('lobbyProductsSectionTitle')}</p>
           <div className="platformLobbyGrid">
             {entries.map((entry) => {
               const productClassName = 'contentCard platformLobbyCard'
@@ -185,7 +188,7 @@ export function PlatformLobby({
                   <span className="platformLobbyCardName">{entry.productName}</span>
                   <span className="platformLobbyCardSub">{entry.subtitle}</span>
                   {entry.lastUsed ? (
-                    <span className="platformLobbyCardHint">Continue</span>
+                    <span className="platformLobbyCardHint">{t('lobbyContinueText')}</span>
                   ) : null}
                 </>
               );
@@ -209,7 +212,7 @@ export function PlatformLobby({
         </div>
 
         <div className="lobbyProducts">
-          <p className="lobbyProductsEyebrow">Apps</p>
+          <p className="lobbyProductsEyebrow">{t('lobbyAppsSectionTitle')}</p>
           <div className="platformLobbyGrid">
             {appEntries.length > 0 ? appEntries.map((entry) => (
               <button
@@ -217,7 +220,7 @@ export function PlatformLobby({
                 type="button"
                 className="contentCard platformLobbyCard platformLobbyCard--app"
                 onClick={() => navigate(entry.routePath)}
-                aria-label={`Open ${entry.title}`}
+                aria-label={t('lobbyOpenEntry', { entryTitle: entry.title })}
               >
                 <div className="platformLobbyCardAccent" />
                 <span className="platformLobbyCardName">{entry.title}</span>
@@ -226,7 +229,7 @@ export function PlatformLobby({
                 ) : null}
               </button>
             )) : (
-              <p className="lobbyAppsEmpty">No apps yet</p>
+              <p className="lobbyAppsEmpty">{t('lobbyAppsEmptyState')}</p>
             )}
           </div>
         </div>

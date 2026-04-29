@@ -5,6 +5,7 @@ import {
   isSetupResetBusy,
   type WorkspaceBusyState,
 } from '../../../shared/workspaceBusy.js';
+import { useI18n } from '../i18n/index.js';
 
 export interface PlatformSettingsDataProps {
   payload: AppShellPayload;
@@ -18,20 +19,21 @@ export function PlatformSettingsData({
 }: PlatformSettingsDataProps) {
   const resetBusy = isSetupResetBusy(busy);
   const { toasts, showToast } = useToast();
+  const { t } = useI18n();
 
   async function handleReset(): Promise<void> {
     try {
       await onResetSetup();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to reset setup.');
+      showToast(error instanceof Error ? error.message : t('settingsDataResetFailure'));
     }
   }
 
   return (
     <>
       <SettingsDangerZone
-        title="Reset all data"
-        description="This will erase all chats, cats, platform preferences, and setup state. You will be returned to the setup wizard."
+        title={t('settingsDataResetAllDataTitle')}
+        description={t('settingsDataResetAllDataDescription')}
       >
         <button
           className="dangerButton"
@@ -39,7 +41,9 @@ export function PlatformSettingsData({
           disabled={resetBusy}
           onClick={() => void handleReset()}
         >
-          {resetBusy ? 'Resetting...' : 'Reset all data'}
+          {resetBusy
+            ? t('settingsDataResetButtonResetting')
+            : t('settingsDataResetButtonLabel')}
         </button>
       </SettingsDangerZone>
       <ToastContainer toasts={toasts} />

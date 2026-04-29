@@ -1,6 +1,7 @@
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import type { PlatformHostEnvelope } from '../../shared/platform-contract.js';
+import { useI18n } from './i18n/index.js';
 
 function routeBelongsToEntry(pathname: string, routePath: string): boolean {
   return pathname === routePath || pathname.startsWith(`${routePath}/`);
@@ -11,6 +12,7 @@ export function AppHostRoute({
 }: {
   envelope: PlatformHostEnvelope;
 }) {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
   const { appId = '' } = useParams();
@@ -22,14 +24,14 @@ export function AppHostRoute({
     return (
       <div className="screen screenCentered appHostScreen">
         <section className="appHostPanel">
-          <p className="eyebrow">App</p>
-          <h1>App not installed</h1>
+          <p className="eyebrow">{t('appHostLabel')}</p>
+          <h1>{t('appHostNotInstalledTitle')}</h1>
           <button
             type="button"
             className="secondaryButton appHostBackButton"
             onClick={() => navigate('/lobby')}
           >
-            Back to Lobby
+            {t('appHostBackToLobby')}
           </button>
         </section>
       </div>
@@ -39,7 +41,7 @@ export function AppHostRoute({
   const active = app.enabled && app.installState === 'enabled';
   const title = activeEntry?.title ?? app.displayName;
   const subtitle = activeEntry?.subtitle ?? (
-    active ? 'App renderer pending' : 'App disabled'
+    active ? t('appHostSubtitleRendererPending') : t('appHostSubtitleDisabled')
   );
 
   return (
@@ -47,7 +49,7 @@ export function AppHostRoute({
       <section className="appHostPanel">
         <div className="appHostHeader">
           <div>
-            <p className="eyebrow">App</p>
+            <p className="eyebrow">{t('appHostLabel')}</p>
             <h1>{title}</h1>
           </div>
           <button
@@ -55,21 +57,21 @@ export function AppHostRoute({
             className="secondaryButton appHostBackButton"
             onClick={() => navigate('/lobby')}
           >
-            Back to Lobby
+            {t('appHostBackToLobby')}
           </button>
         </div>
         <p className="appHostSubtext">{subtitle}</p>
         <dl className="appHostMeta">
           <div>
-            <dt>Package</dt>
+            <dt>{t('appHostSectionPackage')}</dt>
             <dd>{app.id}</dd>
           </div>
           <div>
-            <dt>Status</dt>
+            <dt>{t('appHostSectionStatus')}</dt>
             <dd>{app.installState}</dd>
           </div>
           <div>
-            <dt>Publisher</dt>
+            <dt>{t('appHostSectionPublisher')}</dt>
             <dd>{app.publisher}</dd>
           </div>
         </dl>

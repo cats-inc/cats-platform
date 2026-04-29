@@ -1,0 +1,314 @@
+import type { MessageCatalog } from '../index.js';
+
+export const enCatalog: MessageCatalog = {
+  'app.brandName': 'CATS INC',
+  'app.loadingWithSurface': 'Loading {surface}',
+  'app.loadingEllipsis': 'Loading …',
+  'app.errorTitle': 'Could not start Cats',
+  'app.errorEyebrow': 'Error',
+  'app.loadErrorMessage': 'Failed to load',
+  'app.title': 'Cats',
+  'appHost.label': 'App',
+  'appHost.notInstalledTitle': 'App not installed',
+  'appHost.backToLobby': 'Back to Lobby',
+  'appHost.subtitleRendererPending': 'App renderer pending',
+  'appHost.subtitleDisabled': 'App disabled',
+  'appHost.sectionPackage': 'Package',
+  'appHost.sectionStatus': 'Status',
+  'appHost.sectionPublisher': 'Publisher',
+  'lobby.accountSettingsAriaLabel': 'Account settings',
+  'lobby.openAccountSettings': 'Open account settings',
+  'lobby.runtimeStatusLabel': 'Runtime status: {runtimeStatus}',
+  'lobby.productsSectionTitle': 'Products',
+  'lobby.appsSectionTitle': 'Apps',
+  'lobby.appsEmptyState': 'No apps yet',
+  'lobby.continueText': 'Continue',
+  'lobby.openEntry': 'Open {entryTitle}',
+  'settings.general.profileTitle': 'Profile',
+  'settings.general.profileDescription':
+    'This is your platform-wide profile across Chat, Code, Work, and Lobby.',
+  'settings.general.avatarLabel': 'Avatar',
+  'settings.general.avatarChangeLabel': 'Change avatar',
+  'settings.general.avatarUploadLabel': 'Upload avatar',
+  'settings.general.avatarRemoveLabel': 'Remove avatar',
+  'settings.general.nameLabel': 'Name',
+  'settings.general.lobbyMotionTitle': 'Lobby motion',
+  'settings.general.lobbyMotionDescription':
+    'Choose how lively the Lobby background should feel. Reduced is the default.',
+  'settings.general.lobbyMotionOffLabel': 'Off',
+  'settings.general.lobbyMotionOffDescription':
+    'Keep the Lobby still and remove the bouncing cats background.',
+  'settings.general.lobbyMotionReducedLabel': 'Reduced',
+  'settings.general.lobbyMotionReducedDescription':
+    'Keep the background alive, but soft and slow.',
+  'settings.general.lobbyMotionFullLabel': 'Full',
+  'settings.general.lobbyMotionFullDescription':
+    'Let the cats bounce at full speed in the Lobby background.',
+  'settings.general.guideCatAssistTitle': 'Guide Cat assist',
+  'settings.general.guideCatAssistDisabledDescription':
+    '{guideCatName} is disabled. Enable it again from Settings > Assistants when you want {guideCatName} help back.',
+  'settings.general.guideCatAssistEnabledDescription':
+    'Choose how {guideCatName} appears when you click the floating avatar.',
+  'settings.general.openAssistantsButton': 'Open Assistants',
+  'settings.general.guideCatAutoLabel': 'Auto',
+  'settings.general.guideCatAutoDescription':
+    'First time shows a speech bubble, then switches to a full side panel.',
+  'settings.general.guideCatSidePanelLabel': 'Side panel',
+  'settings.general.guideCatSidePanelDescription':
+    'Always open a full side panel when you click the guide cat avatar.',
+  'settings.general.guideCatBubbleLabel': 'Speech bubble',
+  'settings.general.guideCatBubbleDescription':
+    'Always show a compact speech bubble with quick actions.',
+  'settings.general.updateNameError': 'Failed to update name',
+  'settings.general.updateLobbyAnimationError': 'Failed to update Lobby motion',
+  'settings.general.updateGuideCatModeError': 'Failed to update Guide Cat mode',
+  'settings.general.removeAvatarError': 'Failed to remove avatar',
+  'settings.general.saveAvatarError': 'Failed to save avatar',
+  'settings.shell.heading': 'Settings',
+  'settings.shell.sectionGeneral': 'General',
+  'settings.shell.sectionCats': 'Cats',
+  'settings.shell.subsectionMyCats': 'My Cats',
+  'settings.shell.subsectionAssistants': 'Assistants',
+  'settings.shell.sectionApps': 'Apps',
+  'settings.shell.sectionDesktop': 'Desktop',
+  'settings.shell.sectionRuntime': 'Runtime',
+  'settings.shell.sectionData': 'Data',
+  'settings.shell.closeButtonLabel': 'Close settings',
+  'settings.chat.advancedControlsFailure': 'Failed to update chat advanced controls',
+  'settings.conversation.productLabelChat': 'Cats Chat',
+  'settings.conversation.productLabelCode': 'Cats Code',
+  'settings.conversation.productLabelWork': 'Cats Work',
+  'settings.conversation.behaviorTitle': 'Conversation behavior',
+  'settings.conversation.behaviorDescription': 'These settings affect {product} only.',
+  'settings.conversation.showVerboseLabel': 'Show verbose messages',
+  'settings.conversation.showVerboseDescription':
+    'Keep system-level room and orchestration messages visible in chat.',
+  'settings.conversation.showLiveProgressLabel': 'Show live progress details',
+  'settings.conversation.showLiveProgressDescription':
+    'Show more granular progress updates while a response is still running.',
+  'settings.conversation.updateFailure': 'Failed to update conversation behavior',
+  'settings.conversation.concurrentLayoutLabel': 'Concurrent response layout',
+  'settings.conversation.concurrentLayoutDescription':
+    'Choose how multi-model replies are arranged in {product}.',
+  'settings.conversation.layoutInlineStack': 'Inline stack',
+  'settings.conversation.layoutCompareCards': 'Compare cards',
+  'settings.conversation.layoutFocusRail': 'Focus rail',
+  'settings.conversation.layoutAdaptive': 'Adaptive',
+  'settings.advancedDraftControls.title': 'Draft builder',
+  'settings.advancedDraftControls.description':
+    'Let any {surface} draft add collaborators or compare against other models.',
+  'settings.advancedDraftControls.enableLabel': 'Enable advanced draft controls',
+  'settings.advancedDraftControls.toggleDescription':
+    'Shows whichever +collaborate or +compare button each draft entry hides by default.',
+  'settings.runtime.statusChip.runtimeUnavailable': 'Runtime unavailable',
+  'settings.runtime.statusChip.runtimeDegraded': 'Runtime degraded',
+  'settings.runtime.statusChip.runtimeReady': 'Runtime ready',
+  'settings.runtime.statusChip.setupReadyToApply': 'Setup ready to apply',
+  'settings.runtime.statusChip.setupNeedsRemediation': 'Setup needs remediation',
+  'settings.runtime.statusChip.providerScanRequired': 'Provider scan required',
+  'settings.runtime.statusChip.setupUnavailable': 'Setup unavailable',
+  'settings.runtime.statusTitle': 'Runtime status',
+  'settings.runtime.statusDescription':
+    'Whether cats-runtime is reachable and your provider setup is complete. The breakdown below shows how many providers are currently usable.',
+  'settings.runtime.metricReadyProviders': 'ready providers',
+  'settings.runtime.metricProvidersScanned': 'providers scanned',
+  'settings.runtime.metricNeedAttention': 'need attention',
+  'settings.runtime.needAttentionTitle': 'Need attention',
+  'settings.runtime.needAttentionDescription':
+    'Providers the scan flagged for remediation before they can join the runtime.',
+  'settings.runtime.providerHelpersTitle': 'Provider helpers',
+  'settings.runtime.providerHelpersDescription':
+    'Run packaged installers to check, install, upgrade, repair, or uninstall each local CLI provider. Actions stream through the desktop host bridge; the renderer never executes scripts directly.',
+  'settings.runtime.loadingHelpers': 'Loading helpers…',
+  'settings.runtime.noProviderHelpers':
+    'No provider helpers are bundled with this host build.',
+  'settings.runtime.workingState': 'Working…',
+  'settings.runtime.actions.check': 'Check',
+  'settings.runtime.actions.install': 'Install',
+  'settings.runtime.actions.upgrade': 'Upgrade',
+  'settings.runtime.actions.repair': 'Repair',
+  'settings.runtime.actions.uninstall': 'Uninstall',
+  'settings.runtime.uninstallButtonLabel': 'Uninstall',
+  'settings.runtime.modelCatalogsTitle': 'Model catalogs',
+  'settings.runtime.modelCatalogsDescription':
+    'Ask cats-runtime to refresh every provider\'s model list now, so newly released models show up in the Brain picker without waiting for the background caches to expire.',
+  'settings.runtime.refreshingState': 'Refreshing',
+  'settings.runtime.refreshCatalogsButton': 'Refresh model catalogs',
+  'settings.runtime.standaloneSetupTitle': 'Standalone setup',
+  'settings.runtime.standaloneSetupDescription':
+    'Open the standalone runtime setup when you need provider remediation or a deeper scan.',
+  'settings.runtime.openStandaloneSetup': 'Open Cats Runtime setup',
+  'settings.runtime.cancelActionLabel': 'Cancel',
+  'settings.runtime.cancelActionFallbackLabel': 'Close',
+  'settings.runtime.refreshFailure': 'Refresh failed.',
+  'settings.runtime.refreshSummary': 'Refreshed {refreshed} target{pluralSuffix}',
+  'settings.runtime.refreshSummaryWithFailures':
+    'Refreshed {refreshed} · {failed} failed',
+  'settings.runtime.uninstallTitle': 'Uninstall {label}',
+  'settings.runtime.uninstallDescriptionPrefix': 'This will remove user-owned files for',
+  'settings.runtime.uninstallDescriptionSuffix':
+    'Auth files, API keys, and external configuration are left in place. Active sessions using this provider may fail until another provider is configured.',
+  'settings.runtime.uninstallHelperLabel': 'Helper: {helperId}',
+  'settings.runtime.uninstallScriptLabel': 'Script: {scriptPath}',
+  'settings.runtime.computingPlannedRemovals': 'Computing planned removals…',
+  'settings.runtime.previewUnavailable':
+    'Preview unavailable; the uninstall will still report planned actions.',
+  'settings.runtime.nothingToRemove':
+    'Nothing to remove — the helper reports this provider is not installed.',
+  'settings.runtime.systemInstallDetected':
+    'Note: a system install was detected at {installPath} but it cannot be removed by this helper.',
+  'settings.runtime.willRemoveItems':
+    'Will remove {itemCount} item{pluralSuffix}:',
+  'settings.runtime.systemInstallCannotRemove':
+    'Note: a system install at {installPath} cannot be removed by this helper.',
+  'settings.runtime.fixStepCount': '{count} fix step{pluralSuffix}',
+  'settings.route.title.assistants': 'Assistants',
+  'settings.route.title.myCats': 'My Cats',
+  'settings.route.title.chat': 'Chat',
+  'settings.route.title.work': 'Work',
+  'settings.route.title.code': 'Code',
+  'settings.route.title.apps': 'Apps',
+  'settings.route.title.desktop': 'Desktop',
+  'settings.route.title.runtime': 'Runtime',
+  'settings.route.title.data': 'Data',
+  'settings.route.title.general': 'General',
+  'settings.apps.sectionTitle': 'Apps',
+  'settings.apps.sectionDescription':
+    'Installed Cats apps, connector packages, and system modules.',
+  'settings.apps.installedPackagesLabel': 'Installed packages',
+  'settings.apps.installedPackagesDescription':
+    '{count} connector package{pluralSuffix}',
+  'settings.apps.noInstalledAppsLabel': 'Installed apps',
+  'settings.apps.noInstalledAppsDescription':
+    'No installed apps are registered yet.',
+  'settings.apps.emptyStateChipLabel': 'Empty',
+  'settings.apps.localInstallTitle': 'Local install',
+  'settings.apps.localInstallDescription':
+    'Review a local Cats app package before adding it to Cats.',
+  'settings.apps.packagePathLabel': 'Package path',
+  'settings.apps.packagePathPlaceholder': '/path/to/cats-app-package',
+  'settings.apps.reviewButton': 'Review',
+  'settings.apps.readyStatusChip': 'Ready',
+  'settings.apps.needsReviewStatusChip': 'Needs review',
+  'settings.apps.noLobbyRoute': 'No Lobby route',
+  'settings.apps.installButton': 'Install',
+  'settings.apps.enableAction': 'Enable',
+  'settings.apps.disableAction': 'Disable',
+  'settings.apps.uninstallAction': 'Uninstall',
+  'settings.apps.openAction': 'Open',
+  'settings.apps.settingsAction': 'Settings',
+  'settings.apps.uninstallTitle': 'Uninstall app',
+  'settings.apps.enableTitle': 'Enable app',
+  'settings.apps.disableTitle': 'Disable app',
+  'settings.apps.uninstallMessage':
+    'Uninstall "{appDisplayName}"? It will be removed from Cats without deleting package files.',
+  'settings.apps.enableMessage':
+    'Enable "{appDisplayName}"? It can appear in Cats wherever its permissions allow.',
+  'settings.apps.disableMessage':
+    'Disable "{appDisplayName}"? It will stop appearing in Lobby and scoped app routes.',
+  'settings.apps.installTitle': 'Install app',
+  'settings.apps.installMessage':
+    'Install "{appDisplayName}"? It will be enabled after install.',
+  'settings.apps.localInstallReady': 'Ready',
+  'settings.apps.localInstallNeedsReview': 'Needs review',
+  'settings.apps.category.connector': 'Connector',
+  'settings.apps.category.productModule': 'Product module',
+  'settings.apps.category.userApp': 'User app',
+  'settings.apps.installState.enabled': 'Enabled',
+  'settings.apps.installState.installed': 'Installed',
+  'settings.apps.installState.disabled': 'Disabled',
+  'settings.apps.installState.error': 'Error',
+  'settings.apps.installState.upgradePending': 'Upgrade pending',
+  'settings.apps.installState.uninstalled': 'Uninstalled',
+  'settings.apps.trustTier.localUser': 'Local user',
+  'settings.apps.trustTier.system': 'System',
+  'settings.apps.trustTier.thirdParty': 'Third party',
+  'settings.apps.permissionCount': '{count} permission{pluralSuffix}',
+  'settings.apps.toolCount': '{count} tool{pluralSuffix}',
+  'settings.apps.capabilitySingular': 'capability',
+  'settings.apps.capabilityPlural': 'capabilities',
+  'settings.apps.connectorCountSingle': '{connector}: {count} {capabilityLabel}',
+  'settings.apps.connectorCountMany':
+    '{connectorCount} connectors, {count} {capabilityLabel}',
+  'settings.apps.authLabel': 'Auth',
+  'settings.apps.confirmMutationFailed': 'Could not confirm the action. Please retry.',
+  'settings.apps.confirmMutationFailedFallback':
+    'Action confirmation failed before execution.',
+  'settings.apps.mutationFailed': '{action} failed.',
+  'settings.apps.mutationFailedFallback': 'The action failed.',
+  'settings.apps.packagePathRequired': 'Package path is required.',
+  'settings.apps.validationFailed': 'Package validation failed.',
+  'settings.apps.openPairingUrl': 'Open pairing URL',
+  'settings.data.resetAllDataTitle': 'Reset all data',
+  'settings.data.resetAllDataDescription':
+    'This will erase all chats, cats, platform preferences, and setup state. You will be returned to the setup wizard.',
+  'settings.data.resetButtonResetting': 'Resetting...',
+  'settings.data.resetButtonLabel': 'Reset all data',
+  'settings.data.resetFailure': 'Failed to reset setup.',
+  'settings.conversation.preferenceUpdateFailure': 'Failed to update preference.',
+  'settings.desktop.mobilePairingTitle': 'Mobile pairing',
+  'settings.desktop.mobilePairingDescription':
+    'LAN readiness for the bundled Expo Go mobile shell.',
+  'settings.desktop.mobilePairingStatusDisabled': 'Disabled',
+  'settings.desktop.mobilePairingStatusLoopbackOnly': 'Loopback only',
+  'settings.desktop.mobilePairingStatusNoLanAddress': 'No LAN address',
+  'settings.desktop.mobilePairingStatusReady': 'Ready',
+  'settings.desktop.mobilePairingStatusValidationPending':
+    'Manifest validation pending',
+  'settings.desktop.mobilePairingEnableLabel': 'Enable mobile pairing',
+  'settings.desktop.mobilePairingEnableDescription':
+    'Writes the desktop .env values needed for LAN access. Restart Cats Desktop after applying.',
+  'settings.desktop.mobilePairingEnableButton': 'Enable',
+  'settings.desktop.mobilePairingApplyingButton': 'Applying...',
+  'settings.desktop.mobilePairingBindLabel': 'Bind',
+  'settings.desktop.mobilePairingReachabilityLabel': 'Reachability',
+  'settings.desktop.mobilePairingLanAddressLabel': 'LAN address',
+  'settings.desktop.mobilePairingNoneLabel': 'None',
+  'settings.desktop.mobilePairingReachabilityLoopback': 'Loopback',
+  'settings.desktop.mobilePairingReachabilityLan': 'LAN address',
+  'settings.desktop.mobilePairingReachabilityAllInterfaces': 'All interfaces',
+  'settings.desktop.mobilePairingReachabilityOtherInterface':
+    'Interface mismatch',
+  'settings.desktop.mobilePairingAllowLanLabel': 'Allow LAN access',
+  'settings.desktop.mobilePairingAllowLanDescription':
+    'Cats is bound to loopback. Restart with {bindOverrideEnv} before scanning from a phone.',
+  'settings.desktop.mobilePairingApplyAndRestartButton': 'Apply and restart',
+  'settings.desktop.mobilePairingNoLanAddressNote':
+    'No non-loopback LAN IPv4 address was detected.',
+  'settings.desktop.mobilePairingHostMismatchNote':
+    'The current bind host does not match a LAN IPv4 address.',
+  'settings.desktop.mobilePairingDiagnosticLabel': 'Diagnostic manifest',
+  'settings.desktop.mobilePairingDiagnosticCopyButton': 'Copy URL',
+  'settings.desktop.mobilePairingDiagnosticCopiedMessage':
+    'Copied diagnostic manifest URL.',
+  'settings.desktop.mobilePairingExpoUrlLabel': 'Expo Go URL',
+  'settings.desktop.mobilePairingExpoUrlCopiedMessage': 'Copied Expo Go URL.',
+  'settings.desktop.mobilePairingCopyUrlButton': 'Copy URL',
+  'settings.desktop.mobilePairingQrUrlTooLong': 'URL too long',
+  'settings.desktop.mobilePairingQrCodeLabel': 'Mobile pairing QR code',
+  'settings.desktop.mobilePairingNoPairingUrlStatus': 'QR pending',
+  'settings.desktop.mobilePairingOpenPairingUrlLabel': 'Open pairing URL',
+  'settings.desktop.mobilePairingCopyEnvValuesSuccess':
+    'Copied mobile pairing env values.',
+  'settings.desktop.mobilePairingDesktopUpdateSuccess':
+    'Updated {envPath}. Restart Cats Desktop to apply.',
+  'settings.desktop.mobilePairingDesktopUpdateFailure':
+    'Failed to update desktop env.',
+  'settings.desktop.startupTitle': 'Startup behavior',
+  'settings.desktop.startupDescription':
+    'Control whether Cats Desktop starts when you sign in, whether it opens the main window automatically after sign-in startup, and whether closing the window keeps Cats available in the system tray.',
+  'settings.desktop.startupSignInLabel':
+    'Start Cats Desktop when you sign in to your computer',
+  'settings.desktop.startupSignInDescription':
+    'Keep Cats Desktop ready in the background as soon as you sign in.',
+  'settings.desktop.startupTrayLabel':
+    'Keep Cats in the system tray when you close the window',
+  'settings.desktop.startupTrayDescription':
+    'When enabled, closing the window hides Cats and keeps it running. When disabled, closing the window quits Cats.',
+  'settings.desktop.startupOpenWindowLabel':
+    'Open Cats after sign-in startup',
+  'settings.desktop.startupOpenWindowDescription':
+    'When disabled, Cats can start in the background after you sign in without opening the main window automatically. Opening Cats yourself still shows the app.',
+};
+
+export default enCatalog;

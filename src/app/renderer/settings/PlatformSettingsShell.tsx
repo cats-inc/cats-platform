@@ -7,6 +7,7 @@ import type {
 } from '../../../shared/platform-contract.js';
 import { isDesktopEnvironment } from '../../../shared/desktopRecoveryBridge.js';
 import { getSettingsExitDelta } from './settingsExitMemory.js';
+import { useI18n } from '../i18n/index.js';
 
 type PlatformSettingsSection =
   | 'general'
@@ -52,6 +53,7 @@ export function PlatformSettingsShell({
   const navigate = useNavigate();
   const productEntries = buildPlatformSettingsProductEntries(products);
   const showDesktop = isDesktopEnvironment();
+  const { t } = useI18n();
 
   // settingsExitMemory tracks the idx just before the user entered /settings
   // in this session. If we have that memory, navigate(-N) jumps past all
@@ -72,29 +74,29 @@ export function PlatformSettingsShell({
   return (
     <div className="settingsShell">
       <nav className="settingsSidebar">
-        <p className="settingsNavHeading">Settings</p>
+        <p className="settingsNavHeading">{t('settingsShellHeading')}</p>
         <button
           className={section === 'general' ? 'settingsTab settingsTabActive' : 'settingsTab'}
           type="button"
           onClick={() => navigate('/settings/general')}
         >
-          General
+          {t('settingsShellSectionGeneral')}
         </button>
-        <p className="settingsNavSubheading">Cats</p>
+        <p className="settingsNavSubheading">{t('settingsShellSectionCats')}</p>
         <div className="settingsSidebarGroup">
           <button
             className={section === 'cats:my-cats' ? 'settingsTab settingsTabActive' : 'settingsTab'}
             type="button"
             onClick={() => navigate('/settings/cats/my-cats')}
           >
-            My Cats
+            {t('settingsShellSubsectionMyCats')}
           </button>
           <button
             className={section === 'cats:assistants' ? 'settingsTab settingsTabActive' : 'settingsTab'}
             type="button"
             onClick={() => navigate('/settings/cats/assistants')}
           >
-            Assistants
+            {t('settingsShellSubsectionAssistants')}
           </button>
         </div>
         {productEntries.map((entry) => (
@@ -112,7 +114,7 @@ export function PlatformSettingsShell({
           type="button"
           onClick={() => navigate('/settings/apps')}
         >
-          Apps
+          {t('settingsShellSectionApps')}
         </button>
         {showDesktop ? (
           <button
@@ -120,7 +122,7 @@ export function PlatformSettingsShell({
             type="button"
             onClick={() => navigate('/settings/desktop')}
           >
-            Desktop
+            {t('settingsShellSectionDesktop')}
           </button>
         ) : null}
         <button
@@ -128,14 +130,14 @@ export function PlatformSettingsShell({
           type="button"
           onClick={() => navigate('/settings/runtime')}
         >
-          Runtime
+          {t('settingsShellSectionRuntime')}
         </button>
         <button
           className={section === 'data' ? 'settingsTab settingsTabActive' : 'settingsTab'}
           type="button"
           onClick={() => navigate('/settings/data')}
         >
-          Data
+          {t('settingsShellSectionData')}
         </button>
       </nav>
       <section className="settingsContent">
@@ -144,7 +146,7 @@ export function PlatformSettingsShell({
           <button
             type="button"
             className="settingsCloseButton"
-            aria-label="Close settings"
+            aria-label={t('settingsShellCloseButtonLabel')}
             onClick={handleClose}
           >
             &#x2715;

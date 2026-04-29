@@ -4,26 +4,28 @@ import {
   SettingsSection,
   SettingsSectionHeader,
 } from '../../../design/components/settings/index.js';
+import { type MessageKey } from '../../../shared/i18n/index.js';
+import { useI18n } from '../i18n/index.js';
 
 const SURFACE_COPY: Record<'chat' | 'code' | 'work', {
-  title: string;
-  description: string;
-  toggleDescription: string;
+  title: MessageKey;
+  description: MessageKey;
+  toggleDescription: MessageKey;
 }> = {
   chat: {
-    title: 'Draft builder',
-    description: 'Let any Chat draft add collaborators or compare against other models.',
-    toggleDescription: 'Shows whichever +collaborate or +compare button each draft entry hides by default.',
+    title: 'settingsAdvancedDraftControlsTitle',
+    description: 'settingsAdvancedDraftControlsDescription',
+    toggleDescription: 'settingsAdvancedDraftControlsToggleDescription',
   },
   code: {
-    title: 'Draft builder',
-    description: 'Let any Code draft add collaborators or compare against other models.',
-    toggleDescription: 'Shows whichever +collaborate or +compare button each draft entry hides by default.',
+    title: 'settingsAdvancedDraftControlsTitle',
+    description: 'settingsAdvancedDraftControlsDescription',
+    toggleDescription: 'settingsAdvancedDraftControlsToggleDescription',
   },
   work: {
-    title: 'Draft builder',
-    description: 'Let any Work draft add collaborators or compare against other models.',
-    toggleDescription: 'Shows whichever +collaborate or +compare button each draft entry hides by default.',
+    title: 'settingsAdvancedDraftControlsTitle',
+    description: 'settingsAdvancedDraftControlsDescription',
+    toggleDescription: 'settingsAdvancedDraftControlsToggleDescription',
   },
 };
 
@@ -44,20 +46,42 @@ export function ProductAdvancedDraftControlsSection({
     return null;
   }
 
+  const { t } = useI18n();
   const copy = SURFACE_COPY[surface];
 
   return (
     <SettingsSection
       header={
         <SettingsSectionHeader
-          title={copy.title}
-          description={copy.description}
+          title={t(copy.title)}
+          description={t(copy.description, {
+            surface: t(
+              `settingsConversationProductLabel${surface === 'chat' ? 'Chat'
+                : surface === 'code'
+                  ? 'Code'
+                  : 'Work'}` as
+                | 'settingsConversationProductLabelChat'
+                | 'settingsConversationProductLabelCode'
+                | 'settingsConversationProductLabelWork',
+            ),
+          })}
         />
       }
     >
       <SettingsOptionRow
-        label="Enable advanced draft controls"
-        description={copy.toggleDescription}
+        label={t('settingsAdvancedDraftControlsEnableLabel')}
+        description={t(copy.toggleDescription, {
+          surface: t(
+            `settingsConversationProductLabel${surface === 'chat'
+              ? 'Chat'
+              : surface === 'code'
+                ? 'Code'
+                : 'Work'}` as
+              | 'settingsConversationProductLabelChat'
+              | 'settingsConversationProductLabelCode'
+              | 'settingsConversationProductLabelWork',
+          ),
+        })}
         control={(
           <input
             type="checkbox"

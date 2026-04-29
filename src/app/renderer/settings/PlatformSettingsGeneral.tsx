@@ -17,6 +17,7 @@ import {
   resolveClientGuideCatName,
 } from '../../../shared/guideCatIdentity.js';
 import { useNavigate } from 'react-router-dom';
+import { useI18n } from '../i18n/index.js';
 
 export interface PlatformSettingsGeneralProps {
   payload: AppShellPayload;
@@ -28,6 +29,7 @@ export function PlatformSettingsGeneral({
   onPayloadUpdate,
 }: PlatformSettingsGeneralProps) {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [cropOpen, setCropOpen] = useState(false);
   const [savingLobbyPrefs, setSavingLobbyPrefs] = useState(false);
   const [nameDraft, setNameDraft] = useState(payload.ownerDisplayName);
@@ -94,7 +96,7 @@ export function PlatformSettingsGeneral({
         body: JSON.stringify({ displayName: trimmed }),
       });
       if (!response.ok) {
-        throw new Error('Failed to update name');
+        throw new Error(t('settingsGeneralUpdateNameError'));
       }
       onPayloadUpdate({
         ...payload,
@@ -102,7 +104,7 @@ export function PlatformSettingsGeneral({
       });
       dispatchPlatformEnvelopeRefresh();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to update name');
+      showToast(error instanceof Error ? error.message : t('settingsGeneralUpdateNameError'));
     } finally {
       setSavingName(false);
     }
@@ -156,7 +158,11 @@ export function PlatformSettingsGeneral({
     try {
       guideCatUiPrefs.update({ sidecarMode: nextMode });
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to update guide cat mode');
+      showToast(
+        error instanceof Error
+          ? error.message
+          : t('settingsGeneralUpdateGuideCatModeError'),
+      );
     }
   }
 
@@ -173,14 +179,14 @@ export function PlatformSettingsGeneral({
         <SettingsSection
           header={
             <SettingsSectionHeader
-              title="Profile"
-              description="This is your platform-wide profile across Chat, Code, Work, and Lobby."
+              title={t('settingsGeneralProfileTitle')}
+              description={t('settingsGeneralProfileDescription')}
             />
           }
         >
           <div className="settings-sub-card">
             <div className="fieldLabel">
-              <span>Avatar</span>
+              <span>{t('settingsGeneralAvatarLabel')}</span>
               <div className="settingsOwnerAvatarDock">
                 <button
                   type="button"
@@ -194,8 +200,8 @@ export function PlatformSettingsGeneral({
                       }
                     : undefined}
                   onClick={() => setCropOpen(true)}
-                  aria-label={avatarUrl ? 'Change avatar' : 'Upload avatar'}
-                  data-tooltip={avatarUrl ? 'Change avatar' : 'Upload avatar'}
+                  aria-label={avatarUrl ? t('settingsGeneralAvatarChangeLabel') : t('settingsGeneralAvatarUploadLabel')}
+                  data-tooltip={avatarUrl ? t('settingsGeneralAvatarChangeLabel') : t('settingsGeneralAvatarUploadLabel')}
                 >
                   {avatarUrl ? '' : initials}
                 </button>
@@ -211,10 +217,10 @@ export function PlatformSettingsGeneral({
                     className="settingsOwnerAvatarRemove"
                     onClick={(event) => {
                       event.stopPropagation();
-                      void updateOwnerAvatar(null, 'Failed to remove avatar');
+                      void updateOwnerAvatar(null, t('settingsGeneralRemoveAvatarError'));
                     }}
-                    aria-label="Remove avatar"
-                    data-tooltip="Remove avatar"
+                    aria-label={t('settingsGeneralAvatarRemoveLabel')}
+                    data-tooltip={t('settingsGeneralAvatarRemoveLabel')}
                   >
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <line x1="18" y1="6" x2="6" y2="18" />
@@ -225,7 +231,7 @@ export function PlatformSettingsGeneral({
               </div>
             </div>
             <label className="fieldLabel">
-              <span>Name</span>
+              <span>{t('settingsGeneralNameLabel')}</span>
               <input
                 className="textInput"
                 value={nameDraft}
@@ -252,15 +258,15 @@ export function PlatformSettingsGeneral({
         <SettingsSection
           header={
             <SettingsSectionHeader
-              title="Lobby motion"
-              description="Choose how lively the Lobby background should feel. Reduced is the default."
+              title={t('settingsGeneralLobbyMotionTitle')}
+              description={t('settingsGeneralLobbyMotionDescription')}
             />
           }
         >
           <SettingsOptionRow
             asChoice
-            label="Off"
-            description="Keep the Lobby still and remove the bouncing cats background."
+            label={t('settingsGeneralLobbyMotionOffLabel')}
+            description={t('settingsGeneralLobbyMotionOffDescription')}
             control={
               <input
                 type="radio"
@@ -268,15 +274,15 @@ export function PlatformSettingsGeneral({
                 checked={lobbyPrefs.animationMode === 'off'}
                 disabled={savingLobbyPrefs}
                 onChange={() => {
-                  void updateLobbyAnimationMode('off', 'Failed to update Lobby motion');
+                  void updateLobbyAnimationMode('off', t('settingsGeneralUpdateLobbyAnimationError'));
                 }}
               />
             }
           />
           <SettingsOptionRow
             asChoice
-            label="Reduced"
-            description="Keep the background alive, but soft and slow."
+            label={t('settingsGeneralLobbyMotionReducedLabel')}
+            description={t('settingsGeneralLobbyMotionReducedDescription')}
             control={
               <input
                 type="radio"
@@ -284,15 +290,15 @@ export function PlatformSettingsGeneral({
                 checked={lobbyPrefs.animationMode === 'reduced'}
                 disabled={savingLobbyPrefs}
                 onChange={() => {
-                  void updateLobbyAnimationMode('reduced', 'Failed to update Lobby motion');
+                  void updateLobbyAnimationMode('reduced', t('settingsGeneralUpdateLobbyAnimationError'));
                 }}
               />
             }
           />
           <SettingsOptionRow
             asChoice
-            label="Full"
-            description="Let the cats bounce at full speed in the Lobby background."
+            label={t('settingsGeneralLobbyMotionFullLabel')}
+            description={t('settingsGeneralLobbyMotionFullDescription')}
             control={
               <input
                 type="radio"
@@ -300,7 +306,7 @@ export function PlatformSettingsGeneral({
                 checked={lobbyPrefs.animationMode === 'full'}
                 disabled={savingLobbyPrefs}
                 onChange={() => {
-                  void updateLobbyAnimationMode('full', 'Failed to update Lobby motion');
+                  void updateLobbyAnimationMode('full', t('settingsGeneralUpdateLobbyAnimationError'));
                 }}
               />
             }
@@ -311,11 +317,11 @@ export function PlatformSettingsGeneral({
           <SettingsSection
             header={
               <SettingsSectionHeader
-                title="Guide Cat assist"
+                title={t('settingsGeneralGuideCatAssistTitle')}
                 description={
-                  !guideCatEnabled
-                    ? `${guideCatName} is disabled. Enable it again from Settings > Assistants when you want ${guideCatName} help back.`
-                    : `Choose how ${guideCatName} appears when you click the floating avatar.`
+                  guideCatEnabled
+                    ? t('settingsGeneralGuideCatAssistEnabledDescription', { guideCatName })
+                    : t('settingsGeneralGuideCatAssistDisabledDescription', { guideCatName })
                 }
               />
             }
@@ -324,18 +330,18 @@ export function PlatformSettingsGeneral({
               <div className="setupActionGroup">
                 <button
                   type="button"
-                  className="secondaryButton"
-                  onClick={() => navigate('/settings/cats/assistants')}
-                >
-                  Open Assistants
-                </button>
-              </div>
+                className="secondaryButton"
+                onClick={() => navigate('/settings/cats/assistants')}
+              >
+                {t('settingsGeneralOpenAssistantsButton')}
+              </button>
+            </div>
             ) : (
               <>
                 <SettingsOptionRow
                   asChoice
-                  label="Auto"
-                  description="First time shows a speech bubble, then switches to a full side panel."
+                  label={t('settingsGeneralGuideCatAutoLabel')}
+                  description={t('settingsGeneralGuideCatAutoDescription')}
                   control={
                     <input
                       type="radio"
@@ -349,8 +355,8 @@ export function PlatformSettingsGeneral({
                 />
                 <SettingsOptionRow
                   asChoice
-                  label="Side panel"
-                  description="Always open a full side panel when you click the guide cat avatar."
+                  label={t('settingsGeneralGuideCatSidePanelLabel')}
+                  description={t('settingsGeneralGuideCatSidePanelDescription')}
                   control={
                     <input
                       type="radio"
@@ -364,8 +370,8 @@ export function PlatformSettingsGeneral({
                 />
                 <SettingsOptionRow
                   asChoice
-                  label="Speech bubble"
-                  description="Always show a compact speech bubble with quick actions."
+                  label={t('settingsGeneralGuideCatBubbleLabel')}
+                  description={t('settingsGeneralGuideCatBubbleDescription')}
                   control={
                     <input
                       type="radio"
@@ -386,7 +392,7 @@ export function PlatformSettingsGeneral({
         <AvatarCropDialog
           onSave={(dataUrl) => {
             setCropOpen(false);
-            void updateOwnerAvatar(dataUrl, 'Failed to save avatar');
+            void updateOwnerAvatar(dataUrl, t('settingsGeneralSaveAvatarError'));
           }}
           onClose={() => setCropOpen(false)}
           initialDataUrl={avatarUrl ?? null}

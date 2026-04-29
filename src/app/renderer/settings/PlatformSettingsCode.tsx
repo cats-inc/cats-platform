@@ -7,6 +7,7 @@ import {
   isAdvancedDraftControlsEnabled,
   normalizeAdvancedDraftControlsPreferences,
 } from '../../../products/shared/advancedDraftControls.js';
+import { useI18n } from '../i18n/index.js';
 import { ProductAdvancedDraftControlsSection } from './ProductAdvancedDraftControlsSection.js';
 import { ProductConversationBehaviorSection } from './ProductConversationBehaviorSection.js';
 
@@ -20,6 +21,7 @@ export function PlatformSettingsCode({
   onPayloadUpdate,
 }: PlatformSettingsCodeProps) {
   const { toasts, showToast } = useToast();
+  const { t } = useI18n();
   const enabled = isAdvancedDraftControlsEnabled(payload.chat.advancedDraftControls, 'code');
 
   async function updateAdvancedDraftControls(nextEnabled: boolean): Promise<void> {
@@ -44,7 +46,11 @@ export function PlatformSettingsCode({
           advancedDraftControls: previous,
         },
       });
-      showToast(error instanceof Error ? error.message : 'Failed to update preference');
+      showToast(
+        error instanceof Error
+          ? error.message
+          : t('settingsConversationPreferenceUpdateFailure'),
+      );
     }
   }
 

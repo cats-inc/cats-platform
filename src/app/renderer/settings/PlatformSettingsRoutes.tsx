@@ -16,6 +16,8 @@ import { PlatformSettingsRuntime } from './PlatformSettingsRuntime.js';
 import { PlatformSettingsShell } from './PlatformSettingsShell.js';
 import { PlatformSettingsWork } from './PlatformSettingsWork.js';
 import './platform-settings.css';
+import { useI18n } from '../i18n/index.js';
+import { type MessageKey } from '../../../shared/i18n/index.js';
 
 export interface PlatformSettingsRoutesProps<
   TPayload extends WorkspaceAppShellPayload = WorkspaceAppShellPayload,
@@ -30,35 +32,36 @@ export interface PlatformSettingsRoutesProps<
 
 export function resolveSettingsSectionConfig(
   pathname: string,
+  translate: (key: MessageKey) => string,
 ): { section: string; title: string } {
   if (pathname.startsWith('/settings/cats/assistants')) {
-    return { section: 'cats:assistants', title: 'Assistants' };
+    return { section: 'cats:assistants', title: translate('settingsRouteTitleAssistants') };
   }
   if (pathname.startsWith('/settings/cats')) {
-    return { section: 'cats:my-cats', title: 'My Cats' };
+    return { section: 'cats:my-cats', title: translate('settingsRouteTitleMyCats') };
   }
   if (pathname.startsWith('/settings/chat')) {
-    return { section: 'chat', title: 'Chat' };
+    return { section: 'chat', title: translate('settingsRouteTitleChat') };
   }
   if (pathname.startsWith('/settings/work')) {
-    return { section: 'work', title: 'Work' };
+    return { section: 'work', title: translate('settingsRouteTitleWork') };
   }
   if (pathname.startsWith('/settings/code')) {
-    return { section: 'code', title: 'Code' };
+    return { section: 'code', title: translate('settingsRouteTitleCode') };
   }
   if (pathname.startsWith('/settings/apps')) {
-    return { section: 'apps', title: 'Apps' };
+    return { section: 'apps', title: translate('settingsRouteTitleApps') };
   }
   if (pathname.startsWith('/settings/desktop')) {
-    return { section: 'desktop', title: 'Desktop' };
+    return { section: 'desktop', title: translate('settingsRouteTitleDesktop') };
   }
   if (pathname.startsWith('/settings/runtime')) {
-    return { section: 'runtime', title: 'Runtime' };
+    return { section: 'runtime', title: translate('settingsRouteTitleRuntime') };
   }
   if (pathname.startsWith('/settings/data')) {
-    return { section: 'data', title: 'Data' };
+    return { section: 'data', title: translate('settingsRouteTitleData') };
   }
-  return { section: 'general', title: 'General' };
+  return { section: 'general', title: translate('settingsRouteTitleGeneral') };
 }
 
 // Pure builder — deliberately hook-free so route structure tests can call it
@@ -193,7 +196,11 @@ export function PlatformSettingsRoutes<TPayload extends WorkspaceAppShellPayload
   props: PlatformSettingsRoutesProps<TPayload>,
 ) {
   const location = useLocation();
-  const { section, title } = resolveSettingsSectionConfig(location.pathname);
+  const { t } = useI18n();
+  const { section, title } = resolveSettingsSectionConfig(
+    location.pathname,
+    t,
+  );
 
   return (
     <PlatformSettingsShell section={section} title={title} products={props.payload.products}>

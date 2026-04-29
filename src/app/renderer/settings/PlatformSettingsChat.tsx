@@ -11,6 +11,7 @@ import {
 } from '../../../products/shared/advancedDraftControls.js';
 import { ProductAdvancedDraftControlsSection } from './ProductAdvancedDraftControlsSection.js';
 import { ProductConversationBehaviorSection } from './ProductConversationBehaviorSection.js';
+import { useI18n } from '../i18n/index.js';
 
 export interface PlatformSettingsChatProps {
   payload: AppShellPayload;
@@ -22,6 +23,7 @@ export function PlatformSettingsChat({
   onPayloadUpdate,
 }: PlatformSettingsChatProps) {
   const { toasts, showToast } = useToast();
+  const { t } = useI18n();
 
   async function updateAdvancedDraftControls(enabled: boolean): Promise<void> {
     const previous = payload.chat.advancedDraftControls;
@@ -45,7 +47,7 @@ export function PlatformSettingsChat({
           advancedDraftControls: previous,
         },
       });
-      showToast(error instanceof Error ? error.message : 'Failed to update preference');
+      showToast(error instanceof Error ? error.message : t('settingsChatAdvancedControlsFailure'));
     }
   }
 

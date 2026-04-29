@@ -15,12 +15,13 @@ import {
   SettingsSection,
   SettingsSectionHeader,
 } from '../../../design/components/settings/index.js';
+import { useI18n } from '../i18n/index.js';
 import { updateProductConversationBehaviorPreference } from './productConversationBehaviorApi.js';
 
 const PRODUCT_LABEL_BY_SURFACE: Record<ConversationBehaviorSurface, string> = {
-  chat: 'Cats Chat',
-  code: 'Cats Code',
-  work: 'Cats Work',
+  chat: 'settingsConversationProductLabelChat',
+  code: 'settingsConversationProductLabelCode',
+  work: 'settingsConversationProductLabelWork',
 };
 
 function applyConversationBehaviorPatchToPayload(
@@ -55,7 +56,13 @@ export function ProductConversationBehaviorSection({
   onPayloadUpdate,
   onError,
 }: ProductConversationBehaviorSectionProps) {
-  const productLabel = PRODUCT_LABEL_BY_SURFACE[surface];
+  const { t } = useI18n();
+  const productLabel = t(
+    PRODUCT_LABEL_BY_SURFACE[surface] as
+      | 'settingsConversationProductLabelChat'
+      | 'settingsConversationProductLabelCode'
+      | 'settingsConversationProductLabelWork',
+  );
   const behavior = resolveConversationBehaviorPreferences(
     payload.chat.conversationBehavior,
     surface,
@@ -79,14 +86,14 @@ export function ProductConversationBehaviorSection({
     <SettingsSection
       header={(
         <SettingsSectionHeader
-          title="Conversation behavior"
-          description={`These settings affect ${productLabel} only.`}
+          title={t('settingsConversationBehaviorTitle')}
+          description={t('settingsConversationBehaviorDescription', { product: productLabel })}
         />
       )}
     >
       <SettingsOptionRow
-        label="Show verbose messages"
-        description="Keep system-level room and orchestration messages visible in chat."
+        label={t('settingsConversationShowVerboseLabel')}
+        description={t('settingsConversationShowVerboseDescription')}
         control={(
           <input
             type="checkbox"
@@ -94,15 +101,15 @@ export function ProductConversationBehaviorSection({
             onChange={() => {
               void updateBehaviorPreference(
                 { showVerboseMessages: !behavior.showVerboseMessages },
-                'Failed to update conversation behavior',
+                t('settingsConversationUpdateFailure'),
               );
             }}
           />
         )}
       />
       <SettingsOptionRow
-        label="Show live progress details"
-        description="Show more granular progress updates while a response is still running."
+        label={t('settingsConversationShowLiveProgressLabel')}
+        description={t('settingsConversationShowLiveProgressDescription')}
         control={(
           <input
             type="checkbox"
@@ -110,15 +117,15 @@ export function ProductConversationBehaviorSection({
             onChange={() => {
               void updateBehaviorPreference(
                 { showLiveProgressDetails: !behavior.showLiveProgressDetails },
-                'Failed to update conversation behavior',
+                t('settingsConversationUpdateFailure'),
               );
             }}
           />
         )}
       />
       <SettingsOptionRow
-        label="Concurrent response layout"
-        description={`Choose how multi-model replies are arranged in ${productLabel}.`}
+        label={t('settingsConversationConcurrentLayoutLabel')}
+        description={t('settingsConversationConcurrentLayoutDescription', { product: productLabel })}
         layout="stack"
         control={(
           <select
@@ -130,14 +137,14 @@ export function ProductConversationBehaviorSection({
                   concurrentPresentationMode:
                     event.target.value as ConcurrentChatPresentationMode,
                 },
-                'Failed to update conversation behavior',
+                t('settingsConversationUpdateFailure'),
               );
             }}
           >
-            <option value="inline_stack">Inline stack</option>
-            <option value="compare_cards">Compare cards</option>
-            <option value="focus_rail">Focus rail</option>
-            <option value="adaptive">Adaptive</option>
+            <option value="inline_stack">{t('settingsConversationLayoutInlineStack')}</option>
+            <option value="compare_cards">{t('settingsConversationLayoutCompareCards')}</option>
+            <option value="focus_rail">{t('settingsConversationLayoutFocusRail')}</option>
+            <option value="adaptive">{t('settingsConversationLayoutAdaptive')}</option>
           </select>
         )}
       />

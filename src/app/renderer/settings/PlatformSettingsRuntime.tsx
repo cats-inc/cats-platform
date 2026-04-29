@@ -31,30 +31,38 @@ import {
   type RuntimeLifecycleAction,
   type RuntimeUninstallPreview,
 } from './runtimeLifecycleHelpers.js';
+import {
+  useI18n,
+} from '../i18n/index.js';
+import {
+  type MessageInterpolationValues,
+  type MessageKey,
+} from '../../../shared/i18n/index.js';
 
 function resolveRuntimeStatusChip(
   runtime: AppShellPayload['runtime'],
   runtimeSetup: RuntimeSetupSummary,
+  t: (key: MessageKey, values?: MessageInterpolationValues) => string,
 ): { tone: SettingsStatusChipTone; label: string } {
   const connection = resolveRuntimePresentationStatus(runtime);
   if (connection === 'unavailable' || connection === 'unknown') {
-    return { tone: 'warm', label: 'Runtime unavailable' };
+    return { tone: 'warm', label: t('settingsRuntimeStatusChipRuntimeUnavailable') };
   }
   if (connection === 'degraded') {
-    return { tone: 'warm', label: 'Runtime degraded' };
+    return { tone: 'warm', label: t('settingsRuntimeStatusChipRuntimeDegraded') };
   }
   switch (runtimeSetup.status) {
     case 'ready':
-      return { tone: 'ready', label: 'Runtime ready' };
+      return { tone: 'ready', label: t('settingsRuntimeStatusChipRuntimeReady') };
     case 'ready_to_apply':
-      return { tone: 'warm', label: 'Setup ready to apply' };
+      return { tone: 'warm', label: t('settingsRuntimeStatusChipSetupReadyToApply') };
     case 'attention_required':
-      return { tone: 'warm', label: 'Setup needs remediation' };
+      return { tone: 'warm', label: t('settingsRuntimeStatusChipSetupNeedsRemediation') };
     case 'scan_required':
-      return { tone: 'warm', label: 'Provider scan required' };
+      return { tone: 'warm', label: t('settingsRuntimeStatusChipProviderScanRequired') };
     case 'unavailable':
     default:
-      return { tone: 'warm', label: 'Setup unavailable' };
+      return { tone: 'warm', label: t('settingsRuntimeStatusChipSetupUnavailable') };
   }
 }
 
@@ -75,8 +83,8 @@ export function PlatformSettingsRuntime({
 }: {
   payload: AppShellPayload;
 }) {
-  const runtimeChip = resolveRuntimeStatusChip(payload.runtime, payload.runtimeSetup);
   const { toasts, showToast } = useToast();
+  const { t } = useI18n();
   const refreshSnapshot = useSyncExternalStore(
     subscribeProviderCatalogRefresh,
     getProviderCatalogRefreshSnapshot,
@@ -89,6 +97,24 @@ export function PlatformSettingsRuntime({
   const [helpersLoading, setHelpersLoading] = useState(false);
   const [runningHelperId, setRunningHelperId] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<UninstallPrompt | null>(null);
+  const runtimeChip = resolveRuntimeStatusChip(payload.runtime, payload.runtimeSetup, t);
+
+  const actionLabel = (action: RuntimeLifecycleAction): string => {
+    switch (action) {
+      case 'check':
+        return t('settingsRuntimeActionCheckLabel');
+      case 'install':
+        return t('settingsRuntimeActionInstallLabel');
+      case 'upgrade':
+        return t('settingsRuntimeActionUpgradeLabel');
+      case 'repair':
+        return t('settingsRuntimeActionRepairLabel');
+      case 'uninstall':
+        return t('settingsRuntimeActionUninstallLabel');
+    }
+  };
+
+  const pluralSuffix = (count: number): string => (count === 1 ? '' : 's');
 
   const refreshHelpers = useCallback(async () => {
     if (!desktopEnvironment) return;
@@ -105,20 +131,30 @@ export function PlatformSettingsRuntime({
     void refreshHelpers();
   }, [refreshHelpers]);
 
-  useEffect(() => subscribeProviderCatalogRefreshResult((result) => {
-    if (result.type === 'success') {
-      const { refreshed, failures } = result.value;
-      if (failures.length > 0) {
-        showToast(`Refreshed ${refreshed} · ${failures.length} failed`);
+  useEffect(() => {
+    subscribeProviderCatalogRefreshResult((result) => {
+      if (result.type === 'success') {
+        const { refreshed, failures } = result.value;
+        if (failures.length > 0) {
+          showToast(t('settingsRuntimeRefreshSummaryWithFailures', {
+            refreshed,
+            failed: failures.length,
+          }));
+        } else {
+          showToast(t('settingsRuntimeRefreshSummary', {
+            refreshed,
+            pluralSuffix: pluralSuffix(refreshed),
+          }));
+        }
       } else {
-        showToast(`Refreshed ${refreshed} target${refreshed === 1 ? '' : 's'}`);
+        showToast(
+          result.error instanceof Error
+            ? result.error.message
+            : t('settingsRuntimeRefreshFailure'),
+        );
       }
-    } else {
-      showToast(
-        result.error instanceof Error ? result.error.message : 'Refresh failed.',
-      );
-    }
-  }), [showToast]);
+    });
+  }, [showToast, t]);
 
   const handleRefresh = () => {
     void triggerProviderCatalogRefresh().catch(() => undefined);
@@ -166,8 +202,8 @@ export function PlatformSettingsRuntime({
       <SettingsSection
         header={
           <SettingsSectionHeader
-            title="Runtime status"
-            description="Whether cats-runtime is reachable and your provider setup is complete. The breakdown below shows how many providers are currently usable."
+            title={t('settingsRuntimeStatusTitle')}
+            description={t('settingsRuntimeStatusDescription')}
           />
         }
       >
@@ -179,15 +215,15 @@ export function PlatformSettingsRuntime({
         <div className="settingsRuntimeMetrics">
           <div className="settingsRuntimeMetric">
             <strong>{payload.runtimeSetup.availableCount}</strong>
-            <span>ready providers</span>
+            <span>{t('settingsRuntimeMetricReadyProviders')}</span>
           </div>
           <div className="settingsRuntimeMetric">
             <strong>{payload.runtimeSetup.providerCount}</strong>
-            <span>providers scanned</span>
+            <span>{t('settingsRuntimeMetricProvidersScanned')}</span>
           </div>
           <div className="settingsRuntimeMetric">
             <strong>{payload.runtimeSetup.providersNeedingAttention.length}</strong>
-            <span>need attention</span>
+            <span>{t('settingsRuntimeMetricNeedAttention')}</span>
           </div>
         </div>
       </SettingsSection>
@@ -196,8 +232,8 @@ export function PlatformSettingsRuntime({
         <SettingsSection
           header={
             <SettingsSectionHeader
-              title="Need attention"
-              description="Providers the scan flagged for remediation before they can join the runtime."
+              title={t('settingsRuntimeNeedAttentionTitle')}
+              description={t('settingsRuntimeNeedAttentionDescription')}
             />
           }
         >
@@ -208,7 +244,10 @@ export function PlatformSettingsRuntime({
                 <span>
                   {entry.family}
                   {typeof entry.remediationCount === 'number'
-                    ? ` • ${entry.remediationCount} fix step(s)`
+                    ? ` • ${t('settingsRuntimeFixStepCount', {
+                      count: entry.remediationCount,
+                      pluralSuffix: entry.remediationCount === 1 ? '' : 's',
+                    })}`
                     : ''}
                 </span>
               </li>
@@ -221,16 +260,16 @@ export function PlatformSettingsRuntime({
         <SettingsSection
           header={
             <SettingsSectionHeader
-              title="Provider helpers"
-              description="Run packaged installers to check, install, upgrade, repair, or uninstall each local CLI provider. Actions stream through the desktop host bridge; the renderer never executes scripts directly."
+              title={t('settingsRuntimeProviderHelpersTitle')}
+              description={t('settingsRuntimeProviderHelpersDescription')}
             />
           }
         >
           {helpersLoading && lifecycleHelpers.length === 0 ? (
-            <p className="settingsRuntimeNote">Loading helpers…</p>
+            <p className="settingsRuntimeNote">{t('settingsRuntimeLoadingHelpers')}</p>
           ) : lifecycleHelpers.length === 0 ? (
             <p className="settingsRuntimeNote">
-              No provider helpers are bundled with this host build.
+              {t('settingsRuntimeNoProviderHelpers')}
             </p>
           ) : (
             <ul className="settingsRuntimeList settingsRuntimeHelperList">
@@ -254,7 +293,9 @@ export function PlatformSettingsRuntime({
                             disabled={isThisHelperRunning}
                             onClick={() => void runAction(helper, entry.action)}
                           >
-                            {isThisHelperRunning ? 'Working…' : entry.label}
+                            {isThisHelperRunning
+                              ? t('settingsRuntimeWorkingState')
+                              : actionLabel(entry.action)}
                           </button>
                         ))}
                       {helper.supportsUninstall ? (
@@ -264,7 +305,7 @@ export function PlatformSettingsRuntime({
                           disabled={isThisHelperRunning}
                           onClick={() => void openUninstallPrompt(helper)}
                         >
-                          Uninstall
+                          {t('settingsRuntimeUninstallButtonLabel')}
                         </button>
                       ) : null}
                     </div>
@@ -279,8 +320,8 @@ export function PlatformSettingsRuntime({
       <SettingsSection
         header={
           <SettingsSectionHeader
-            title="Model catalogs"
-            description="Ask cats-runtime to refresh every provider's model list now, so newly released models show up in the Brain picker without waiting for the background caches to expire."
+            title={t('settingsRuntimeModelCatalogsTitle')}
+            description={t('settingsRuntimeModelCatalogsDescription')}
           />
         }
       >
@@ -293,10 +334,10 @@ export function PlatformSettingsRuntime({
           {refreshing ? (
             <>
               <span className="settingsRefreshSpinner" aria-hidden="true" />
-              <span>Refreshing</span>
+              <span>{t('settingsRuntimeRefreshingState')}</span>
             </>
           ) : (
-            'Refresh model catalogs'
+            t('settingsRuntimeRefreshCatalogsButton')
           )}
         </button>
       </SettingsSection>
@@ -304,8 +345,8 @@ export function PlatformSettingsRuntime({
       <SettingsSection
         header={
           <SettingsSectionHeader
-            title="Standalone setup"
-            description="Open the standalone runtime setup when you need provider remediation or a deeper scan."
+            title={t('settingsRuntimeStandaloneSetupTitle')}
+            description={t('settingsRuntimeStandaloneSetupDescription')}
           />
         }
       >
@@ -315,27 +356,28 @@ export function PlatformSettingsRuntime({
           target="_blank"
           rel="noreferrer"
         >
-          Open Cats Runtime setup
+          {t('settingsRuntimeOpenStandaloneSetup')}
         </a>
       </SettingsSection>
 
       {confirmation ? (() => {
         const canConfirm = uninstallPromptIsActionable(confirmation);
-        const cancelLabel =
-          confirmation.preview?.status === 'not_installed' || (!canConfirm && !confirmation.loading)
-            ? 'Close'
-            : 'Cancel';
+        const showCloseAction = !canConfirm && !confirmation.loading;
         return (
           <div className="settingsRuntimeConfirmOverlay" role="dialog" aria-modal="true">
             <div className="settingsRuntimeConfirmCard">
-              <UninstallConfirmBody prompt={confirmation} />
+              <UninstallConfirmBody prompt={confirmation} t={t} />
               <SettingsActionBar>
                 <button
                   type="button"
                   className="secondaryButton"
                   onClick={() => setConfirmation(null)}
                 >
-                  {cancelLabel}
+                  {t(
+                    showCloseAction
+                      ? 'settingsRuntimeCancelActionFallbackLabel'
+                      : 'settingsRuntimeCancelActionLabel',
+                  )}
                 </button>
                 <button
                   type="button"
@@ -343,7 +385,7 @@ export function PlatformSettingsRuntime({
                   disabled={!canConfirm}
                   onClick={() => void handleUninstallConfirmed()}
                 >
-                  Uninstall
+                  {t('settingsRuntimeUninstallButtonLabel')}
                 </button>
               </SettingsActionBar>
             </div>
@@ -356,21 +398,28 @@ export function PlatformSettingsRuntime({
   );
 }
 
-function UninstallConfirmBody({ prompt }: { prompt: UninstallPrompt }) {
+function UninstallConfirmBody({
+  prompt,
+  t,
+}: {
+  prompt: UninstallPrompt;
+  t: (key: MessageKey, values?: MessageInterpolationValues) => string;
+}) {
   return (
     <>
-      <h3>Uninstall {prompt.helper.label}?</h3>
+      <h3>{t('settingsRuntimeUninstallTitle', { label: prompt.helper.label })}?</h3>
       <p>
-        This will remove user-owned files for <strong>{prompt.helper.label}</strong>.
-        Auth files, API keys, and external configuration are left in place.
-        Active sessions using this provider may fail until another provider is configured.
+        {t('settingsRuntimeUninstallDescriptionPrefix')}
+        <strong> {prompt.helper.label}</strong>.
+        {' '}
+        {t('settingsRuntimeUninstallDescriptionSuffix')}
       </p>
       <p className="settingsRuntimeNote">
-        Helper: <code>{prompt.helper.id}</code>
+        {t('settingsRuntimeUninstallHelperLabel', { helperId: prompt.helper.id })}
         <br />
-        Script: <code>{prompt.helper.packagedRelativePath}</code>
+        {t('settingsRuntimeUninstallScriptLabel', { scriptPath: prompt.helper.packagedRelativePath })}
       </p>
-      <RemovalPreview preview={prompt.preview} loading={prompt.loading} />
+      <RemovalPreview preview={prompt.preview} loading={prompt.loading} t={t} />
     </>
   );
 }
@@ -378,28 +427,32 @@ function UninstallConfirmBody({ prompt }: { prompt: UninstallPrompt }) {
 function RemovalPreview({
   preview,
   loading,
+  t,
 }: {
   preview: RuntimeUninstallPreview | null;
   loading: boolean;
+  t: (key: MessageKey, values?: MessageInterpolationValues) => string;
 }) {
   if (loading) {
-    return <p className="settingsRuntimeNote">Computing planned removals…</p>;
+    return <p className="settingsRuntimeNote">{t('settingsRuntimeComputingPlannedRemovals')}</p>;
   }
   if (!preview || !preview.available) {
     return (
       <p className="settingsRuntimeNote">
-        {preview?.message ?? 'Preview unavailable; the uninstall will still report planned actions.'}
+        {preview?.message ?? t('settingsRuntimePreviewUnavailable')}
       </p>
     );
   }
   if (preview.status === 'not_installed') {
     return (
       <p className="settingsRuntimeNote">
-        Nothing to remove — the helper reports this provider is not installed.
+        {t('settingsRuntimeNothingToRemove')}
         {preview.systemInstallPath ? (
           <>
             <br />
-            Note: a system install was detected at <code>{preview.systemInstallPath}</code> but it cannot be removed by this helper.
+            {t('settingsRuntimeSystemInstallDetected', {
+              installPath: preview.systemInstallPath,
+            })}
           </>
         ) : null}
       </p>
@@ -408,7 +461,10 @@ function RemovalPreview({
   return (
     <div className="settingsRuntimePreview">
       <p className="settingsRuntimeNote">
-        Will remove {preview.plannedActions.length} item{preview.plannedActions.length === 1 ? '' : 's'}:
+        {t('settingsRuntimeWillRemoveItems', {
+          itemCount: preview.plannedActions.length,
+          pluralSuffix: preview.plannedActions.length === 1 ? '' : 's',
+        })}
       </p>
       <ul className="settingsRuntimePreviewList">
         {preview.plannedActions.map((entry) => (
@@ -419,7 +475,9 @@ function RemovalPreview({
       </ul>
       {preview.systemInstallPath ? (
         <p className="settingsRuntimeNote">
-          Note: a system install at <code>{preview.systemInstallPath}</code> cannot be removed by this helper.
+          {t('settingsRuntimeSystemInstallCannotRemove', {
+            installPath: preview.systemInstallPath,
+          })}
         </p>
       ) : null}
       {preview.manualSteps.length > 0 ? (

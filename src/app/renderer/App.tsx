@@ -15,6 +15,14 @@ import {
   platformSurfaceLabel,
   platformSurfaceRoutePrefix,
 } from '../../core/platformSurface.js';
+import { I18nProvider } from './i18n/I18nProvider.js';
+import {
+  createTranslator,
+  normalizeMessageLocale,
+  type MessageInterpolationValues,
+  type MessageKey,
+  type MessageLocale,
+} from '../../shared/i18n/index.js';
 import { normalizePlatformSurface } from '../../shared/platformSurfaces.js';
 import {
   isPlatformNonProductPath,
@@ -54,6 +62,17 @@ const ChatApp = createLazyProductSurface('chat');
 const WorkApp = createLazyProductSurface('work');
 const CodeApp = createLazyProductSurface('code');
 
+function resolveEnvelopeUiLocale(envelope: PlatformHostEnvelope | null): MessageLocale {
+  if (envelope === null) {
+    return 'en';
+  }
+
+  const envelopeWithLanguage = envelope as
+    PlatformHostEnvelope & { language?: { resolvedUiLanguage?: string } };
+
+  return normalizeMessageLocale(envelopeWithLanguage.language?.resolvedUiLanguage);
+}
+
 export function shouldRenderGuideCatSidecar(input: {
   guideCat: PlatformHostEnvelope['guideCat'] | null | undefined;
   productSurfaceFallbackActive: boolean;
@@ -70,9 +89,11 @@ export function shouldRenderGuideCatSidecar(input: {
 
 function ProductSurfaceFallback({
   surface,
+  translate,
   onVisibilityChange,
 }: {
   surface: PlatformSurfaceId;
+  translate: (key: MessageKey, values?: MessageInterpolationValues) => string;
   onVisibilityChange: (visible: boolean) => void;
 }) {
   const surfaceLabel = platformSurfaceLabel(surface);
@@ -85,8 +106,8 @@ function ProductSurfaceFallback({
   return (
     <div className="screen screenCentered">
       <div className="loadingPanel">
-        <p className="eyebrow">CATS INC</p>
-        <h1>Loading {surfaceLabel}</h1>
+        <p className="eyebrow">{translate('appBrandName')}</p>
+        <h1>{translate('appLoadingWithSurface', { surface: surfaceLabel })}</h1>
       </div>
     </div>
   );
@@ -95,6 +116,7 @@ function ProductSurfaceFallback({
 function renderProductSurface(
   surface: PlatformSurfaceId,
   onFallbackVisibilityChange: (visible: boolean) => void,
+  translate: (key: MessageKey, values?: MessageInterpolationValues) => string,
 ) {
   const AppComponent = surface === 'work'
     ? WorkApp
@@ -107,6 +129,7 @@ function renderProductSurface(
       fallback={(
         <ProductSurfaceFallback
           surface={surface}
+          translate={translate}
           onVisibilityChange={onFallbackVisibilityChange}
         />
       )}
@@ -131,20 +154,21 @@ export function resolvePlatformDocumentTitle(input: {
   loadStatus: PlatformLoadState['status'];
   pathname: string;
   setupComplete: boolean;
+  t: (key: MessageKey, values?: MessageInterpolationValues) => string;
 }): string | null {
   if (input.loadStatus !== 'ready') {
-    return 'Cats';
+    return input.t('appTitle');
   }
 
   if (!input.setupComplete) {
-    return 'Cats';
+    return input.t('appTitle');
   }
 
   if (
     isLobbyPath(input.pathname)
     || isProductsPath(input.pathname)
   ) {
-    return 'Cats';
+    return input.t('appTitle');
   }
 
   return null;
@@ -170,6 +194,8 @@ export default function PlatformApp() {
   const [state, setState] = useState<PlatformLoadState>({ status: 'loading' });
   const [productSurfaceFallbackActive, setProductSurfaceFallbackActive] = useState(false);
   const [guideCatProactiveGreetingToken, setGuideCatProactiveGreetingToken] = useState(0);
+  const uiLocale = resolveEnvelopeUiLocale(state.status === 'ready' ? state.envelope : null);
+  const t = createTranslator(uiLocale);
   const lastSyncedSurface = useRef<PlatformSurfaceId | null>(null);
   const previousPathnameRef = useRef(location.pathname);
   const [activeSurface, setActiveSurface] = useState<PlatformSurfaceId>('chat');
@@ -188,12 +214,12 @@ export default function PlatformApp() {
         if (!signal?.aborted && !options?.suppressErrors) {
           setState({
             status: 'error',
-            message: error instanceof Error ? error.message : 'Failed to load',
+            message: error instanceof Error ? error.message : t('appLoadErrorMessage'),
           });
         }
       }
     },
-    [],
+    [t],
   );
 
   useEffect(() => {
@@ -337,6 +363,7 @@ export default function PlatformApp() {
       loadStatus: state.status,
       pathname: location.pathname,
       setupComplete,
+      t,
     });
     if (title) {
       document.title = title;
@@ -432,24 +459,28 @@ export default function PlatformApp() {
 
   if (state.status === 'loading') {
     return (
-      <div className="screen screenCentered">
-        <div className="loadingPanel">
-          <p className="eyebrow">CATS INC</p>
-          <h1>Loading &hellip;</h1>
+      <I18nProvider locale={uiLocale}>
+        <div className="screen screenCentered">
+          <div className="loadingPanel">
+            <p className="eyebrow">{t('appBrandName')}</p>
+            <h1>{t('appLoadingEllipsis')}</h1>
+          </div>
         </div>
-      </div>
+      </I18nProvider>
     );
   }
 
   if (state.status === 'error') {
     return (
-      <div className="screen screenCentered">
-        <div className="errorPanel">
-          <p className="eyebrow">Error</p>
-          <h1>Could not start Cats</h1>
-          <p>{state.message}</p>
+      <I18nProvider locale={uiLocale}>
+        <div className="screen screenCentered">
+          <div className="errorPanel">
+            <p className="eyebrow">{t('appErrorEyebrow')}</p>
+            <h1>{t('appErrorTitle')}</h1>
+            <p>{state.message}</p>
+          </div>
         </div>
-      </div>
+      </I18nProvider>
     );
   }
 
@@ -504,6 +535,7 @@ export default function PlatformApp() {
   const settingsSurfaceElement = renderProductSurface(
     shellSurface,
     setProductSurfaceFallbackActive,
+    t,
   );
   const guideCatSidecarInput = {
     guideCat: readyEnvelope.guideCat,
@@ -511,44 +543,46 @@ export default function PlatformApp() {
   };
   const guideCatVisible = shouldRenderGuideCatSidecar(guideCatSidecarInput);
   return (
-    <GuideCatPlacementProvider
-      guideCat={guideCatVisible ? guideCatSidecarInput.guideCat : null}
-      placement={guideCatUiPrefs.prefs.placement}
-      floatingAnchor={guideCatUiPrefs.prefs.floatingAnchor}
-      sidecarMode={guideCatUiPrefs.prefs.sidecarMode}
-      proactiveGreetingToken={guideCatProactiveGreetingToken}
-      onPersistSeen={persistGuideCatSeen}
-      onCommit={guideCatUiPrefs.update}
-    >
-      {guideCatVisible ? (
-        <GuideCatSidecar
-          guideCat={guideCatSidecarInput.guideCat}
-          ownerDisplayName={readyEnvelope.ownerDisplayName}
-          unreadCount={0}
-          onDismissed={() => void refreshEnvelope()}
-        />
-      ) : null}
-      <Routes>
-        <Route path="/lobby" element={<PlatformLobby envelope={readyEnvelope} />} />
-        <Route path="/apps/:appId/*" element={<AppHostRoute envelope={readyEnvelope} />} />
-        <Route path="/products" element={<Navigate to="/lobby" replace />} />
-        <Route path="/settings/*" element={settingsSurfaceElement} />
-        <Route
-          path={`${PLATFORM_SURFACE_ROUTES.chat.routePrefix}/*`}
-          element={renderProductSurface('chat', setProductSurfaceFallbackActive)}
-        />
-        <Route
-          path={`${PLATFORM_SURFACE_ROUTES.work.routePrefix}/*`}
-          element={renderProductSurface('work', setProductSurfaceFallbackActive)}
-        />
-        <Route
-          path={`${PLATFORM_SURFACE_ROUTES.code.routePrefix}/*`}
-          element={renderProductSurface('code', setProductSurfaceFallbackActive)}
-        />
-        <Route path="/setup" element={<Navigate to={entryPath} replace />} />
-        <Route path="/" element={<Navigate to={entryPath} replace />} />
-        <Route path="*" element={<Navigate to={entryPath} replace />} />
-      </Routes>
-    </GuideCatPlacementProvider>
+    <I18nProvider locale={uiLocale}>
+      <GuideCatPlacementProvider
+        guideCat={guideCatVisible ? guideCatSidecarInput.guideCat : null}
+        placement={guideCatUiPrefs.prefs.placement}
+        floatingAnchor={guideCatUiPrefs.prefs.floatingAnchor}
+        sidecarMode={guideCatUiPrefs.prefs.sidecarMode}
+        proactiveGreetingToken={guideCatProactiveGreetingToken}
+        onPersistSeen={persistGuideCatSeen}
+        onCommit={guideCatUiPrefs.update}
+      >
+        {guideCatVisible ? (
+          <GuideCatSidecar
+            guideCat={guideCatSidecarInput.guideCat}
+            ownerDisplayName={readyEnvelope.ownerDisplayName}
+            unreadCount={0}
+            onDismissed={() => void refreshEnvelope()}
+          />
+        ) : null}
+        <Routes>
+          <Route path="/lobby" element={<PlatformLobby envelope={readyEnvelope} />} />
+          <Route path="/apps/:appId/*" element={<AppHostRoute envelope={readyEnvelope} />} />
+          <Route path="/products" element={<Navigate to="/lobby" replace />} />
+          <Route path="/settings/*" element={settingsSurfaceElement} />
+          <Route
+            path={`${PLATFORM_SURFACE_ROUTES.chat.routePrefix}/*`}
+            element={renderProductSurface('chat', setProductSurfaceFallbackActive, t)}
+          />
+          <Route
+            path={`${PLATFORM_SURFACE_ROUTES.work.routePrefix}/*`}
+            element={renderProductSurface('work', setProductSurfaceFallbackActive, t)}
+          />
+          <Route
+            path={`${PLATFORM_SURFACE_ROUTES.code.routePrefix}/*`}
+            element={renderProductSurface('code', setProductSurfaceFallbackActive, t)}
+          />
+          <Route path="/setup" element={<Navigate to={entryPath} replace />} />
+          <Route path="/" element={<Navigate to={entryPath} replace />} />
+          <Route path="*" element={<Navigate to={entryPath} replace />} />
+        </Routes>
+      </GuideCatPlacementProvider>
+    </I18nProvider>
   );
 }
