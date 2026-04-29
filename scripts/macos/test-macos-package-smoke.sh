@@ -45,6 +45,8 @@ assert_file "${RESOURCES_ROOT}/cats-runtime/config/management.yaml.example" 'bun
 assert_file "${RESOURCES_ROOT}/cats-runtime/config/providers.yaml.example" 'bundled cats-runtime provider config example'
 assert_file "${RESOURCES_ROOT}/cats-runtime/config/curated-model-catalogs.yaml.example" 'bundled cats-runtime curated model catalog example'
 assert_file "${RESOURCES_ROOT}/cats-runtime/node_modules/yaml/package.json" 'bundled cats-runtime dependency marker'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-node.sh" 'bundled macOS Node.js LTS host installer'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-github-cli.sh" 'bundled macOS GitHub CLI host installer'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/setup-node-global-prefix.sh" 'bundled macOS npm prefix helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-codex.sh" 'bundled macOS OpenAI Codex installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/macos/install-gemini.sh" 'bundled macOS Gemini installer helper'

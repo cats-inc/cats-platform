@@ -45,6 +45,8 @@ assert_file "${RESOURCES_ROOT}/cats-runtime/config/management.yaml.example" 'bun
 assert_file "${RESOURCES_ROOT}/cats-runtime/config/providers.yaml.example" 'bundled cats-runtime provider config example'
 assert_file "${RESOURCES_ROOT}/cats-runtime/config/curated-model-catalogs.yaml.example" 'bundled cats-runtime curated model catalog example'
 assert_file "${RESOURCES_ROOT}/cats-runtime/node_modules/yaml/package.json" 'bundled cats-runtime dependency marker'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-node.sh" 'bundled Linux Node.js LTS host installer'
+assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-github-cli.sh" 'bundled Linux GitHub CLI host installer'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/setup-node-global-prefix.sh" 'bundled Linux npm prefix helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-codex.sh" 'bundled Linux OpenAI Codex installer helper'
 assert_file "${RESOURCES_ROOT}/desktop/setup-assets/linux/install-gemini.sh" 'bundled Linux Gemini installer helper'

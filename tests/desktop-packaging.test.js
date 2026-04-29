@@ -115,6 +115,8 @@ async function seedWindowsSetupAssets(packageRoot) {
   await seedFile(join(packageRoot, 'scripts', 'windows', '_HiddenProcess.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', '_PackagedUninstall.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', '_NpmCliInstaller.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Node.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-GitHubCli.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Setup-NodeGlobalPrefix.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-ClaudeCode.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-CursorAgent.ps1'), '# helper');
@@ -136,6 +138,8 @@ async function seedWindowsSetupAssets(packageRoot) {
 async function seedUnixSetupAssets(packageRoot, platform) {
   await seedFile(join(packageRoot, 'scripts', platform, 'provider-cli-common.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'node-cli-common.sh'), '#!/usr/bin/env bash\n');
+  await seedFile(join(packageRoot, 'scripts', platform, 'install-node.sh'), '#!/usr/bin/env bash\n');
+  await seedFile(join(packageRoot, 'scripts', platform, 'install-github-cli.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'setup-node-global-prefix.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'install-claude-code.sh'), '#!/usr/bin/env bash\n');
   await seedFile(join(packageRoot, 'scripts', platform, 'install-cursor-agent.sh'), '#!/usr/bin/env bash\n');
@@ -352,6 +356,46 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
     true,
   );
   assert.equal(
+    plan.installer.providerSetup.helperCatalog.some(
+      (helper) => helper.id === 'windows-node-host-installer'
+        && helper.assetId === 'windows-node-host-installer-script'
+        && helper.kind === 'prerequisite_helper'
+        && helper.requiresElevation === true
+        && helper.supportsUninstall === false
+        && helper.supportsUpgrade === true,
+    ),
+    true,
+  );
+  assert.equal(
+    plan.installer.providerSetup.helperCatalog.some(
+      (helper) => helper.id === 'windows-github-cli-installer'
+        && helper.assetId === 'windows-github-cli-installer-script'
+        && helper.kind === 'prerequisite_helper'
+        && helper.requiresElevation === true
+        && helper.supportsUninstall === false
+        && helper.supportsUpgrade === true,
+    ),
+    true,
+  );
+  assert.equal(
+    plan.installer.providerSetup.helperCatalog.some(
+      (helper) => helper.id === 'linux-node-host-installer'
+        && helper.kind === 'prerequisite_helper'
+        && helper.requiresElevation === false
+        && helper.supportsUninstall === false,
+    ),
+    true,
+  );
+  assert.equal(
+    plan.installer.providerSetup.helperCatalog.some(
+      (helper) => helper.id === 'macos-github-cli-installer'
+        && helper.kind === 'prerequisite_helper'
+        && helper.requiresElevation === false
+        && helper.supportsUninstall === false,
+    ),
+    true,
+  );
+  assert.equal(
     plan.installer.providerSetup.prioritizedAssets.some(
       (asset) => asset.id === 'windows-opencode-native-installer' && asset.status === 'ported',
     ),
@@ -414,6 +458,18 @@ test('createDesktopPackagingPlan keeps self-hosted npm compatibility while defin
   const windowsTarget = plan.targets.find((target) => target.id === 'windows-x64');
   const linuxTarget = plan.targets.find((target) => target.id === 'linux-x64');
   const macosTarget = plan.targets.find((target) => target.id === 'macos-universal');
+  assert.equal(
+    windowsTarget?.artifacts.some(
+      (artifact) => artifact.id === 'windows-node-host-installer-script' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
+  assert.equal(
+    windowsTarget?.artifacts.some(
+      (artifact) => artifact.id === 'windows-github-cli-installer-script' && artifact.role === 'setup_asset',
+    ),
+    true,
+  );
   assert.equal(
     windowsTarget?.artifacts.some(
       (artifact) => artifact.id === 'windows-npm-prefix-helper-script' && artifact.role === 'setup_asset',
@@ -718,6 +774,8 @@ test('Windows installer smoke-check script validates bundled sidecars and host s
   assert.match(script, /cats-runtime\\skills\\README\.md/);
   assert.match(script, /cats-runtime\\config\\providers\.yaml\.example/);
   assert.match(script, /cats-runtime\\node_modules\\yaml\\package\.json/);
+  assert.match(script, /desktop\\setup-assets\\windows\\Install-Node\.ps1/);
+  assert.match(script, /desktop\\setup-assets\\windows\\Install-GitHubCli\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\Setup-NodeGlobalPrefix\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\_NpmCliInstaller\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\Install-Codex\.ps1/);
@@ -1003,6 +1061,8 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'config', 'providers.yaml.example'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'config', 'curated-model-catalogs.yaml.example'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'node_modules', 'yaml', 'package.json'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Node.ps1'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-GitHubCli.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Setup-NodeGlobalPrefix.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', '_NpmCliInstaller.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Codex.ps1'));
@@ -1020,6 +1080,8 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Ollama.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Check-WindowsSetupReadiness.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', '_HiddenProcess.ps1'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-node.sh'));
+  await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-github-cli.sh'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'setup-node-global-prefix.sh'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-codex.sh'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'linux', 'install-gemini.sh'));

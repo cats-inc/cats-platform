@@ -138,6 +138,8 @@ test('package.json keeps the self-hosted npm executable contract aligned with pa
   assert.equal(packedPaths.has('build/server/index.js'), true);
   assert.equal(packedPaths.has('build/desktop/main.js'), true);
   assert.equal(packedPaths.has('build/desktop/preload.cjs'), true);
+  assert.equal(packedPaths.has('scripts/linux/install-node.sh'), true);
+  assert.equal(packedPaths.has('scripts/linux/install-github-cli.sh'), true);
   assert.equal(packedPaths.has('scripts/linux/install-codex.sh'), true);
   assert.equal(packedPaths.has('scripts/linux/install-gemini.sh'), true);
   assert.equal(packedPaths.has('scripts/linux/install-copilot.sh'), true);
@@ -147,6 +149,8 @@ test('package.json keeps the self-hosted npm executable contract aligned with pa
   assert.equal(packedPaths.has('scripts/linux/install-pi.sh'), true);
   assert.equal(packedPaths.has('scripts/linux/install-claude-code.sh'), true);
   assert.equal(packedPaths.has('scripts/linux/check-installation.sh'), true);
+  assert.equal(packedPaths.has('scripts/macos/install-node.sh'), true);
+  assert.equal(packedPaths.has('scripts/macos/install-github-cli.sh'), true);
   assert.equal(packedPaths.has('scripts/macos/install-codex.sh'), true);
   assert.equal(packedPaths.has('scripts/macos/install-gemini.sh'), true);
   assert.equal(packedPaths.has('scripts/macos/install-copilot.sh'), true);
@@ -157,6 +161,8 @@ test('package.json keeps the self-hosted npm executable contract aligned with pa
   assert.equal(packedPaths.has('scripts/macos/install-claude-code.sh'), true);
   assert.equal(packedPaths.has('scripts/macos/check-installation.sh'), true);
   assert.equal(packedPaths.has('scripts/windows/_NpmCliInstaller.ps1'), true);
+  assert.equal(packedPaths.has('scripts/windows/Install-Node.ps1'), true);
+  assert.equal(packedPaths.has('scripts/windows/Install-GitHubCli.ps1'), true);
   assert.equal(packedPaths.has('scripts/windows/Install-Codex.ps1'), true);
   assert.equal(packedPaths.has('scripts/windows/Install-Gemini.ps1'), true);
   assert.equal(packedPaths.has('scripts/windows/Install-Copilot.ps1'), true);
