@@ -22,6 +22,7 @@ export const WORK_API_PROJECTS_PATH = `${WORK_API_PREFIX}/projects`;
 export const WORK_API_TASKS_PATH = `${WORK_API_PREFIX}/tasks`;
 export const WORK_API_WORK_ITEMS_PATH = `${WORK_API_PREFIX}/work-items`;
 export const WORK_API_RUNS_PATH = `${WORK_API_PREFIX}/runs`;
+export const WORK_API_MISSIONS_PATH = `${WORK_API_PREFIX}/missions`;
 export const WORK_API_SCHEDULES_PATH = `${WORK_API_PREFIX}/schedules`;
 export const WORK_API_WAR_ROOM_PATH = `${WORK_API_PREFIX}/war-room`;
 export const WORK_API_LINKS_PATH = `${WORK_API_PREFIX}/links`;

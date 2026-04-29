@@ -44,6 +44,7 @@ import type {
   CoreTaskStatus,
   CoreWorkItemRecord,
   CoreWorkItemStatus,
+  MissionRecordStatus,
 } from '../../../core/types.js';
 import {
   buildProjectStatusCounts,
@@ -303,6 +304,42 @@ export interface WorkRunListProjection {
   };
   runs: WorkRunListItem[];
   summary: WorkRunListSummary;
+}
+
+export interface WorkMissionListItem {
+  id: string;
+  title: string;
+  status: MissionRecordStatus;
+  summary: string | null;
+  managedWorkId: string | null;
+  managedWorkTitle: string | null;
+  conversationId: string | null;
+  conversationTitle: string | null;
+  assignedAgentId: string | null;
+  assignedAgentName: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface WorkMissionListSummary {
+  totalAvailable: number;
+  returned: number;
+  draftCount: number;
+  plannedCount: number;
+  queuedCount: number;
+  runningCount: number;
+  completedCount: number;
+  failedCount: number;
+  cancelledCount: number;
+}
+
+export interface WorkMissionListProjection {
+  product: {
+    id: 'work';
+    name: typeof WORK_PRODUCT_NAME;
+  };
+  missions: WorkMissionListItem[];
+  summary: WorkMissionListSummary;
 }
 
 export interface WorkTaskActionContext {
@@ -836,6 +873,94 @@ export function buildWorkRunListProjection(
     product: createWorkProductRef(),
     runs,
     summary: buildRunListSummary(runs),
+  };
+}
+
+function buildMissionListSummary(
+  missions: readonly WorkMissionListItem[],
+): WorkMissionListSummary {
+  const summary: WorkMissionListSummary = {
+    totalAvailable: missions.length,
+    returned: missions.length,
+    draftCount: 0,
+    plannedCount: 0,
+    queuedCount: 0,
+    runningCount: 0,
+    completedCount: 0,
+    failedCount: 0,
+    cancelledCount: 0,
+  };
+  for (const mission of missions) {
+    switch (mission.status) {
+      case 'draft':
+        summary.draftCount += 1;
+        break;
+      case 'planned':
+        summary.plannedCount += 1;
+        break;
+      case 'queued':
+        summary.queuedCount += 1;
+        break;
+      case 'running':
+        summary.runningCount += 1;
+        break;
+      case 'completed':
+        summary.completedCount += 1;
+        break;
+      case 'failed':
+        summary.failedCount += 1;
+        break;
+      case 'cancelled':
+        summary.cancelledCount += 1;
+        break;
+      default: {
+        const exhaustive: never = mission.status;
+        void exhaustive;
+      }
+    }
+  }
+  return summary;
+}
+
+export function buildWorkMissionListProjection(
+  core: CatsCoreState,
+): WorkMissionListProjection {
+  const workItemTitleById = new Map<string, string>();
+  for (const workItem of core.workItems) {
+    workItemTitleById.set(workItem.id, workItem.title);
+  }
+  const conversationTitleById = new Map<string, string>();
+  for (const conversation of core.conversations) {
+    conversationTitleById.set(conversation.id, conversation.title || conversation.id);
+  }
+
+  const missions: WorkMissionListItem[] = [...core.missions]
+    .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt))
+    .map((mission) => ({
+      id: mission.id,
+      title: mission.title,
+      status: mission.status,
+      summary: mission.summary,
+      managedWorkId: mission.managedWorkId,
+      managedWorkTitle: mission.managedWorkId
+        ? workItemTitleById.get(mission.managedWorkId) ?? null
+        : null,
+      conversationId: mission.conversationId,
+      conversationTitle: mission.conversationId
+        ? conversationTitleById.get(mission.conversationId) ?? null
+        : null,
+      assignedAgentId: mission.assignedAgentId,
+      assignedAgentName: mission.assignedAgentId
+        ? resolveActorName(core, mission.assignedAgentId)
+        : null,
+      createdAt: mission.createdAt,
+      updatedAt: mission.updatedAt,
+    }));
+
+  return {
+    product: createWorkProductRef(),
+    missions,
+    summary: buildMissionListSummary(missions),
   };
 }
 

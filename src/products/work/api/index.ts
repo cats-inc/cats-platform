@@ -38,6 +38,7 @@ import { startProviderAgentRunLoop } from '../../../platform/orchestration/index
 import { buildWorkTaskRuntimeExecutionRequest } from '../state/taskExecutionRequest.js';
 import {
   buildWorkDashboardProjection,
+  buildWorkMissionListProjection,
   buildWorkProjectDetailProjection,
   buildWorkProjectListProjection,
   buildWorkRunListProjection,
@@ -46,6 +47,7 @@ import {
   buildWorkWorkItemDetailProjection,
   buildWorkWorkItemListProjection,
   type WorkDashboardProjection,
+  type WorkMissionListProjection,
   type WorkProjectDetailProjection,
   type WorkRunListProjection,
   type WorkSupervisedRunLaunchProjection,
@@ -66,6 +68,7 @@ import {
   buildWorkApiProjectPath,
   buildWorkApiTaskPath,
   buildWorkApiWorkItemPath,
+  WORK_API_MISSIONS_PATH,
   WORK_API_PREFIX,
   WORK_API_PROJECT_DETAIL_PATTERN,
   WORK_API_PROJECTS_PATH,
@@ -324,6 +327,12 @@ export function createWorkRunListPayload(
   return buildWorkRunListProjection(core);
 }
 
+export function createWorkMissionListPayload(
+  core: Awaited<ReturnType<CoreStore['readCore']>>,
+): WorkMissionListProjection {
+  return buildWorkMissionListProjection(core);
+}
+
 export function createWorkProjectDetailPayload(
   core: Awaited<ReturnType<CoreStore['readCore']>>,
   projectId: string,
@@ -477,6 +486,20 @@ export async function routeWorkApi(
       context.response,
       200,
       createWorkRunListPayload(await context.dependencies.coreStore.readCore()),
+    );
+    return true;
+  }
+
+  if (context.url.pathname === WORK_API_MISSIONS_PATH) {
+    if (context.method !== 'GET') {
+      sendMethodNotAllowed(context.response, ['GET']);
+      return true;
+    }
+
+    sendJson(
+      context.response,
+      200,
+      createWorkMissionListPayload(await context.dependencies.coreStore.readCore()),
     );
     return true;
   }
