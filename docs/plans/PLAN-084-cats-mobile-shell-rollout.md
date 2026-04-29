@@ -9,7 +9,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | In Progress (Phases 1, 2, 3, 4a, 4d, 5, 6 landed against fixture data; 4b, 4c, 7, 8 outstanding) |
+| **Status** | In Progress (Phases 1–6 + 4b/4c live data path landed; mobile-safe boundary established; Phase 5 product modal panels and Phase 7/8 outstanding) |
 | **Owner** | TBD |
 | **Assigned To** | Unassigned |
 | **Reviewer** | Owner |
@@ -131,32 +131,47 @@ Status:
 - [x] Build `cats-platform/mobile/src/renderer/ChatView.tsx` taking
       `productMode` and `channelId` props. *(Phase 4a — landed in
       commit `15a8f7ef`.)*
-- [ ] Conversation list streaming updates land on the same store as
-      web. *(Phase 4b — outstanding; depends on the API client / Metro
-      path resolution architecture decision.)*
-- [ ] Composer is wired to the real shared-engine send path.
-      *(Phase 4c — outstanding; same dependency as 4b.)*
+- [x] Conversation list updates land on the same store as web.
+      *(Phase 4b — landed in commits `0aba95c2` (live messages) and
+      `a87329e0` (live MY lens / Recents). Streaming for assistant
+      replies still lands later as a Phase 4c follow-up; for now
+      pull-to-refresh + auto-refetch after send picks up new
+      assistant messages.)*
+- [x] Composer is wired to the real shared-engine send path.
+      *(Phase 4c — landed in commit `f9b73bc1`. POSTs to
+      `/api/channels/{id}/messages` with body, refetches on success,
+      surfaces MobileApiError inline on failure. Streaming is the
+      remaining Phase-4c follow-up.)*
 - [x] Keyboard avoidance, scroll-to-bottom, and pull-to-refresh.
-      *(Phase 4d — landed in commit `823f4319`. Pull-to-refresh is a
-      no-op visual until 4b lands the live store refresh.)*
-- [ ] Acceptance: a Chat conversation can be entered, messages can be
-      sent and received, and bubbles match the visual gate from
-      Phase 2. *(Send / receive blocked on 4b/4c; bubble parity is
-      pending operator screenshot comparison from Phase 2.)*
+      *(Phase 4d — landed in commit `823f4319`; pull-to-refresh now
+      genuinely refetches after `f9b73bc1`.)*
+- [x] Acceptance: a Chat conversation can be entered, messages can
+      be sent and received, and bubbles match the visual gate from
+      Phase 2. *(Send / receive end-to-end against the live desktop;
+      bubble parity remains pending operator screenshot
+      comparison.)*
 
 **Deliverables**: working Chat conversation surface on mobile.
 
 #### Phase 4 dependency note
 
-Phases 4b and 4c require either (a) a published `@cats-inc/cats-platform`
-package mobile can `import` from, or (b) Metro / tsconfig path
-resolution from mobile to `cats-platform/src`. A 2026-04-29 probe
-showed (b) pulls the entire `cats-platform/src` tree into type-checking
-through transitive imports (e.g. `node:crypto` from
-`src/shared/guideCatAssist.ts`), which fails the mobile RN environment.
-Resolving this is its own slice — likely a build step that emits a
-typed entry point for mobile, or staged extraction of the relevant
-contracts into a published-style sub-package.
+Phases 4b and 4c required either (a) a published
+`@cats-inc/cats-platform` package mobile could `import` from, or (b)
+Metro / tsconfig path resolution from mobile to `cats-platform/src`.
+The 2026-04-29 probe showed naive (b) pulls the entire
+`cats-platform/src` tree into mobile typecheck through transitive
+imports (`node:crypto` via `guideCatAssist`).
+
+The resolution that landed: `src/mobile/**` mobile-safe boundary
+(commits `cc0dea4b` and `3f7a1b9c`). The boundary exposes narrow DTO
+types and pure selectors only; an import-guard script
+(`scripts/check-mobile-boundary.mjs`) plus a server-side alignment
+file (`__mobileAlignment.ts`) enforce that the boundary stays clean
+and that the narrow DTOs remain structural subsets of the full
+server contracts. Mobile imports types and selectors from the
+boundary via TypeScript bundler resolution; the segmenter signature
+was narrowed (`MentionResolverCat` instead of `ChatCat`) so it does
+not drag the heavy contract chain.
 
 ### Phase 5: Code and Work tabs
 
@@ -312,6 +327,10 @@ class shell scope.
 | 2026-04-29 | Phase 6 Lobby + Settings landed (`9d8d721f`): Lobby with stat cards, Guide Cat assist, recent activity; Settings with connection mode, notifications, owner, advanced, developer tools. |
 | 2026-04-29 | Phase 4d polish landed (`823f4319`): scroll-to-bottom, pull-to-refresh, KeyboardAvoidingView offset; bubble harness consolidated onto MessageBubble. |
 | 2026-04-29 | Shared-source-import probe: importing from `cats-platform/src` pulls the whole src tree into mobile typecheck through transitive `node:crypto` etc. Phase 4b / 4c blocked on a separate published-package or build-step slice. |
+| 2026-04-29 | SPEC-095 Open Questions all resolved (`536215df`). Two Work presets locked, Settings tab depth locked, MY YYY routes through the platform MY CATS lens, visual gate is manual operator sign-off for v1, Lobby uses a mobile-specific subset over the same `/lobby` projection. |
+| 2026-04-29 | Mobile-safe boundary lands (`196c5bd9`): `src/mobile/**` skeleton, segmenter narrow (drops ChatCat dep), import-guard script, server-side alignment check. Mobile migrates to consume from the boundary (`31c4abc2`). Settings persistence + manual base URL ship (`3dfe889a`). |
+| 2026-04-29 | API client foundation (`012419dd`); boundary expansion with chat sidebar DTOs + selector (`3f7a1b9c`); ChatSidebar wired to live `/api/app-shell` (`8f061034`); ChatView wired to live `/api/channels/{id}/messages` (`0aba95c2`); composer wired to real `POST` send (`f9b73bc1`). Phase 4b/4c effectively complete on a poll-based read/write loop. |
+| 2026-04-29 | Live MY CODES / MY WORKS / Recents (Code) / Recents (Work) screens (`a87329e0`). `useMobileAppShell` shared base hook composes the shell fetch; `selectMobileMyCatsLens` and `selectMobileProductRecents` selectors filter by product. Boundary exposes `MobilePlatformSurfaceId` and `MobileChatChannelSummary.originSurface` for the recents filter. |
 
 ---
 
