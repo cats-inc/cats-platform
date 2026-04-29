@@ -559,6 +559,130 @@ action or a future explicit supervision/policy grant spec. Until that future
 spec exists, an agent declaration that requests `published` shall be rejected
 with `artifact_publish_requires_action`.
 
+### Producer Onboarding
+
+The receiver-side rules above only work if producers know the contract.
+Producer onboarding has different shapes per producer kind; agents in
+particular need explicit instruction or they will under- or over-declare.
+
+#### Agent Onboarding
+
+When the Code product creates a runtime session for a `+New code` task (or
+resumes one), it shall inject a Code-owned **artifact-declaration onboarding
+block** into the agent's system prompt **before the agent's first turn**.
+The block:
+
+- shall name the canonical tool: `declare_artifact`;
+- shall include the positive list of artifact kinds (`build`, `preview`,
+  `document`, `report`, `attachment`, `transcript_export`, `dataset`);
+- shall include an explicit **negative** list (do **not** declare source
+  edits, intermediate / scratch files, lockfiles, generated dependency
+  manifests, files in `node_modules/` / `.cache/` / `__pycache__/` /
+  `.venv/` / build temp dirs, partial / failed-mid-stream outputs unless
+  the failure itself is the artifact);
+- shall instruct one declaration per durable output (no bundling) and
+  remind the agent that source-file edits are workspace mutations, not
+  artifacts.
+
+The first canonical onboarding block text is:
+
+```text
+You can record durable outputs the user will want to find later by calling
+the `declare_artifact` tool.
+
+Declare these (one tool call per output):
+
+- a successful build output (kind = "build")
+- a runnable preview URL or local server (kind = "preview")
+- a generated test report, code review, or implementation summary (kind = "report")
+- a long-form document you wrote — design doc, spec, plan, README — (kind = "document")
+- a patch bundle, screenshot, or other binary deliverable (kind = "attachment")
+- an exported chat or transcript file (kind = "transcript_export")
+- a generated dataset or fixture file (kind = "dataset")
+
+Do NOT declare:
+
+- source-file edits in the workspace (those are workspace mutations, not artifacts)
+- intermediate / scratch files written during exploration
+- lockfiles, generated dependency manifests, cache files
+- anything inside node_modules/, .cache/, __pycache__/, .venv/, dist/ work
+  files that are not the final build, or temp build dirs
+- partial outputs from a failed mid-stream run, unless the failure summary
+  itself is the artifact the user wants to keep
+
+Each declaration must include `kind`, `title`, and a `location` (local
+path inside the workspace, URL, inline summary, or external ref). Add
+`summary` when the title alone does not explain why this output exists.
+
+Declare each artifact exactly once. Use the same `declarationId` for the
+same logical output across retries so the system can deduplicate.
+```
+
+Implementation notes:
+
+- The Code product owns the template text. CLI provider adapters
+  (claude-code / codex / cursor / opencode / etc.) shall not rewrite
+  positive / negative lists, only translate format if the underlying
+  provider does not accept the literal block.
+- The onboarding block shall be emitted as a stable system-prompt segment
+  separate from the user-authored `+New code` first message; it must
+  survive context compression / summarization unchanged. Implementations
+  that rewrite history mid-session shall preserve the onboarding block
+  verbatim or re-inject it.
+- When an agent declares an artifact and the server rejects it with one
+  of the SPEC-092 error codes, the rejection reason is surfaced to the
+  agent through the same tool-call-result channel; the agent may correct
+  and re-call. Server shall not auto-retry on the agent's behalf.
+
+#### Tool Catalog Registration
+
+`declare_artifact` shall be registered as a first-class Code-product tool
+in the catalog visible to the active runtime session, alongside the rest
+of the agent's tools:
+
+- the tool name shall be exactly `declare_artifact` (no aliases);
+- the tool's catalog description shall reproduce the positive list and a
+  short form of the negative list so an agent that does not see the full
+  onboarding block (e.g. tool-only listing) can still infer correct usage;
+- the tool's parameter schema shall mirror the `CodeArtifactDeclaration`
+  request shape for `kind` / `title` / `summary` / `location` / `metadata`,
+  with server-resolved fields (`producer.*`, `anchors.*` beyond hints,
+  authoritative `runId` / `taskId` / `conversationId`) **omitted from the
+  agent-visible parameters**. The Code product fills those server-side.
+
+#### `declarationId` Composition Guidance for Agents
+
+The server is authoritative on idempotency keys (§ Idempotency Key) but
+agents help by emitting a stable `declarationId` per logical output. The
+recommended composition for agent-emitted declarations is:
+
+```text
+<short-stable-output-handle>:<artifact-kind>
+```
+
+For example: `pomodoro-preview-localhost-5180:preview`,
+`spec-092-draft:document`. Agents shall not include random nonces in
+`declarationId` unless the underlying output truly is unique-per-call;
+random ids defeat idempotency on retries.
+
+#### Tool / System / User Onboarding
+
+Tool, system, and user producers do not use the agent system prompt:
+
+- **Tool** producers are server-side bridge code in the Code runtime /
+  delivery proxy. They call `upsertCoreArtifactDeclaration` (or its
+  internal delegate) directly from the tool-completion handler with a
+  declaration constructed from known runtime/tool output (preview URL,
+  build manifest, test report, screenshot, etc.). No prompt injection.
+- **System** producers are Code-bridge detector code. They call the same
+  delegate as tools, with `producer.kind = 'system'` and the registered
+  detector name. System producers are candidate-only per § Disposition
+  and Status Precedence.
+- **User** producers come from sidebar affordances (Add attachment,
+  Export transcript, import-and-publish). The product UI constructs the
+  declaration / `CodeArtifactImportAndPublishInput` payload; users do
+  not interact with `declare_artifact` directly.
+
 ### Location Rules
 
 `location.kind` is interpreted as follows:
@@ -780,6 +904,11 @@ agent/tool/system/user output
 - Per-workspace editable `toolAutoPublishPolicies` overrides (vs. the current
   single server config list) is deferred — when does that follow-up land, and
   does it co-exist with the boot-time list or replace it?
+- Should the agent onboarding block accept per-task or per-workspace
+  customization (e.g. a workspace policy that elevates `diff_summary` to
+  `record` instead of `candidate`, or a task that wants every preview
+  declared regardless of size)? Deferred to the same per-workspace policy
+  follow-up as `toolAutoPublishPolicies`.
 
 ---
 
@@ -787,3 +916,4 @@ agent/tool/system/user output
 *Author: Codex*
 *Related Plan: [PLAN-081](../plans/PLAN-081-code-artifact-declaration-rollout.md)*
 *Amended: 2026-04-29 — added § Workspace Key and Path Canonicalization (workspace key resolution, host-OS-aware lexical canonicalization, segment-based prefix matching), § Publish-Transition Failure Semantics (no rollback, `artifact_publish_transition_failed` partial-success contract, `tool_auto_publish_transition_failed` server log), `CodeArtifactImportAndPublishInput` payload shape and route, structured `policyDiagnostics` channel + `failBootOnInvalidEntry` opt-in, and string input normalization (empty / whitespace → null on optional fields, `artifact_required_field_empty` on required fields).*
+*Amended: 2026-04-29 — added § Producer Onboarding: agent system-prompt onboarding block (positive + negative artifact list, one-declaration-per-output rule, context-compression preservation), tool-catalog registration shape, agent-side `declarationId` composition guidance, and tool / system / user producer onboarding paths.*

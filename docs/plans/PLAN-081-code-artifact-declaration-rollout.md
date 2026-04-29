@@ -132,6 +132,27 @@ validation helpers with unit coverage.
 - [ ] Task 3.1: Expose the Phase 1 agent-facing channel as a Cats-native Code
       runtime action named `declare_artifact` backed by the Code product
       API/delegate. Do not use transcript JSON as a fallback command channel.
+- [ ] Task 3.1a: Inject the SPEC-092 § Producer Onboarding agent
+      onboarding block into the system prompt of every Code runtime session
+      before the agent's first turn. The block carries the canonical
+      `declare_artifact` instruction with positive + negative lists. CLI
+      provider adapters may translate format but shall not rewrite the
+      content of the lists. The block must survive context compression /
+      summarization.
+- [ ] Task 3.1b: Register `declare_artifact` in the Code-product tool
+      catalog with a parameter schema that exposes only the agent-visible
+      `CodeArtifactDeclaration` fields (`kind`, `title`, `summary`,
+      `location`, `metadata`, `declarationId`). Server-resolved fields
+      (`producer.*`, authoritative anchors, `runId` / `taskId` /
+      `conversationId`) shall be omitted from agent-visible parameters.
+      Catalog description shall short-form the positive + negative list so
+      tool-only listings remain self-explanatory.
+- [ ] Task 3.1c: Surface server validation errors back to the agent through
+      the tool-call-result channel verbatim (using the SPEC-092 error codes
+      such as `artifact_required_field_empty`,
+      `artifact_publish_requires_action`, `artifact_idempotency_ambiguous`)
+      so the agent can correct and re-call. Server shall not auto-retry on
+      the agent's behalf.
 - [ ] Task 3.2: Define a Code-owned runtime artifact signal shape before
       auto-materializing bridge outputs. The first fields should cover preview
       URL, build output, test report, screenshot, patch bundle, and review
@@ -289,6 +310,7 @@ and implementation review.
 | 2026-04-29 | Clarified publication as an explicit publish action / tool auto-policy path, froze idempotency scope across retries, defined producer identity resolution, external-ref allowlist, and material-change activity suppression. |
 | 2026-04-29 | Added tool auto-publish policy schema, user import-and-publish action split, producer field misuse validation, recursive volatile filtering, and ambiguous idempotency recovery requirements. |
 | 2026-04-29 | Pinned workspace key + path canonicalization rules, `CodeArtifactImportAndPublishInput` payload shape, publish-transition partial-success semantics, structured `policyDiagnostics` channel + `failBootOnInvalidEntry` opt-in, and string input normalization (empty → null) for declaration / import-and-publish optional fields. |
+| 2026-04-29 | Added § Producer Onboarding rollout: agent system-prompt onboarding block injection (Task 3.1a), `declare_artifact` tool-catalog registration with agent-visible-fields-only schema (Task 3.1b), and tool-call-result error surfacing for agent self-correction (Task 3.1c). |
 
 ---
 
