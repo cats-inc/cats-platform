@@ -62,7 +62,7 @@ rather than duplicating every validation branch.
 | `work.approval_gated.apply` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / future `runtime_tool` | Work supervised agent | [Work Supervised Tools](#work-supervised-tools) |
 | `work.sop.classify_text_batch` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / worker tool | Work SOP worker | [Work Supervised Tools](#work-supervised-tools) |
 | `work.sop.ask_weak` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / worker tool | Work SOP worker | [Work Supervised Tools](#work-supervised-tools) |
-| `declare_artifact` | Cats Code | Scaffolded, not wired | `runtime_tool` first; bridge/user delegates later | Code assistant / runtime bridge / Code UI import flow | [Declare Artifact](#declare_artifact) |
+| `declare_artifact` | Cats Code | Active-session onboarding wired; materialization pending | `runtime_tool` first; bridge/user delegates later | Code assistant / runtime bridge / Code UI import flow | [Declare Artifact](#declare_artifact) |
 
 ## Supervised Tool Contract
 
@@ -120,10 +120,11 @@ a transcript command and it is not a public HTTP route in the current scaffold.
 | Field | Value |
 |-------|-------|
 | Owning product | Cats Code |
-| Current status | Scaffolded only; no runtime catalog wiring, product route, or persistence flow yet |
+| Current status | Code-origin active sessions receive the onboarding block and runtime context metadata; returned `declare_artifact` `tool_use` segments are observed as shape summaries. Native runtime tool execution, product route, and persistence remain pending. |
 | First channel | `runtime_tool` |
 | Tool name | `declare_artifact` |
 | Implementation entry point | `src/products/code/shared/artifactDeclaration.ts` |
+| Active-session wiring | `src/products/code/state/runtimeArtifactTooling.ts` |
 | Finalization helper | `src/products/code/state/sessionFinalization.ts` |
 | Related SPEC | [SPEC-092](./specs/SPEC-092-code-artifact-declaration-contract.md) |
 | Related ADR | [ADR-088](./decisions/088-use-structured-artifact-declarations-for-code-materialization.md) |
@@ -163,6 +164,29 @@ non-null values:
 
 Supplying a non-null server-resolved field rejects the call with
 `artifact_producer_field_not_allowed`.
+
+### Active-Session Wiring
+
+When a chat/channel originates from Cats Code (`originSurface = "code"`),
+activation of `+New code`, `+Team code`, or a `+Peer code` member channel
+enriches the runtime session-create request with:
+
+- the SPEC-092 onboarding block, including
+  `codeArtifactDeclaration.onboardingBlockVersion`;
+- runtime context metadata at `metadata.codeArtifactDeclaration` with the
+  tool name, schema version, onboarding version, agent-visible field list,
+  producer labels, finalization envelope name, source channel id/title, and
+  workspace path when known.
+
+The same enrichment is applied again to each runtime message send so resumed
+or long-lived Code sessions do not rely on the first activation turn retaining
+the tool contract.
+
+The current Cats Platform receiver also preserves `toolArgs` on runtime
+`tool_use` segments and records same-turn `declare_artifact` observations as
+`codeArtifactToolCalls` metadata on the terminal assistant segment. These
+observations are shape summaries only. They do not replace the future
+server-side `accepted` result, Core artifact upsert, or finalization gate.
 
 ### Output Summary
 

@@ -34,6 +34,11 @@ import {
   buildDispatchRuntimeContextMetadata,
   mergeRuntimeInvocationContextMetadata,
 } from './context.js';
+import {
+  collectCodeArtifactRuntimeToolCalls,
+  type CodeArtifactRuntimeToolCallSummary,
+  withCodeArtifactRuntimeTooling,
+} from '../../../code/state/runtimeArtifactTooling.js';
 
 export interface DispatchExecution extends DispatchRequest {
   responseSegments: RuntimeMessageSegment[] | null;
@@ -47,6 +52,7 @@ export interface DispatchExecution extends DispatchRequest {
   leasePatch?: DispatchLeasePatch;
   channelChatCwd?: string;
   recoveredMessages?: ChatMessage[];
+  codeArtifactToolCalls?: CodeArtifactRuntimeToolCallSummary[];
 }
 
 function readRuntimeEnvelopeMetadataString(
@@ -120,14 +126,14 @@ export async function executeDispatch(
       runtimeClient,
       sessionId,
       content: dispatchPrompt.message,
-      input: {
+      input: withCodeArtifactRuntimeTooling({
         instructions: dispatchPrompt.instructions?.trim() || undefined,
         context: mergeRuntimeInvocationContextMetadata(
           runtimeEnvelope.context,
           dispatchContextMetadata,
         ),
         skills: runtimeEnvelope.skills,
-      },
+      }, channel),
       supervision: {
         product: 'cats-chat',
         surface: 'runtime-dispatch',
@@ -140,6 +146,10 @@ export async function executeDispatch(
     let responseSegments: RuntimeMessageSegment[] = runtimeResult.segments.length > 0
       ? runtimeResult.segments
       : [{ kind: 'text', text: `${request.target.participantName} completed the routed turn without text output.`, toolName: null, toolId: null }];
+    const codeArtifactToolCalls = collectCodeArtifactRuntimeToolCalls(
+      channel,
+      runtimeResult.segments,
+    );
     let usage: MessageUsageSummary | null = {
       inputTokens: runtimeResult.inputTokens,
       outputTokens: runtimeResult.outputTokens,
@@ -196,6 +206,7 @@ export async function executeDispatch(
       conversationId: resolvedConversationId,
       containerId: resolvedContainerId,
       transportBindingId: resolvedTransportBindingId,
+      ...(codeArtifactToolCalls.length > 0 ? { codeArtifactToolCalls } : {}),
     };
   } catch (error) {
     const supervisedRejection = error instanceof RuntimeSupervisionRejectedError

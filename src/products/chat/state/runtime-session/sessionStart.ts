@@ -18,6 +18,7 @@ import {
 import type { RuntimeEnvelopeCanonicalMetadata } from './shared.js';
 import type { ChannelTaskExecutionContext } from './taskExecution.js';
 import type { ResolvedChannelRuntimeSessionPolicy } from './policy.js';
+import { withCodeArtifactRuntimeTooling } from '../../../code/state/runtimeArtifactTooling.js';
 
 export interface RuntimeSessionExecutionTarget {
   provider: string;
@@ -46,14 +47,15 @@ export async function createOrchestratorTargetRuntimeSession(input: {
   taskExecutionContext: ChannelTaskExecutionContext | undefined;
   runtimeEnvelope: Awaited<ReturnType<typeof resolveRuntimeEnvelopeForTarget>>;
 }): Promise<CreatedTargetRuntimeSession> {
+  const channel = requireChannel(input.state, input.channelId);
   const sessionTarget = resolveOrchestratorExecutionTarget(
     input.state,
-    requireChannel(input.state, input.channelId),
+    channel,
   );
   const { spawnCwd, ...runtimePolicy } = input.sessionPolicy;
   const session = await createSupervisedRuntimeSession({
     runtimeClient: input.runtimeClient,
-    input: {
+    input: withCodeArtifactRuntimeTooling({
       provider: sessionTarget.provider,
       instance: sessionTarget.instance,
       model: sessionTarget.model,
@@ -68,7 +70,7 @@ export async function createOrchestratorTargetRuntimeSession(input: {
       ),
       skills: input.runtimeEnvelope.skills,
       ...(input.taskExecutionContext?.executionRequest ?? {}),
-    },
+    }, channel),
     supervision: {
       product: 'cats-chat',
       surface: 'orchestrator-session-start',
@@ -103,6 +105,7 @@ export async function createParticipantTargetRuntimeSession(input: {
   taskExecutionContext: ChannelTaskExecutionContext | undefined;
   runtimeEnvelope: Awaited<ReturnType<typeof resolveRuntimeEnvelopeForTarget>>;
 }): Promise<CreatedTargetRuntimeSession> {
+  const channel = requireChannel(input.state, input.channelId);
   const participant = findAssignedParticipant(
     buildChannelView(input.state, input.channelId),
     input.target.participantId,
@@ -114,7 +117,7 @@ export async function createParticipantTargetRuntimeSession(input: {
   const { spawnCwd, ...runtimePolicy } = input.sessionPolicy;
   const session = await createSupervisedRuntimeSession({
     runtimeClient: input.runtimeClient,
-    input: {
+    input: withCodeArtifactRuntimeTooling({
       provider: participant.execution.target.provider,
       instance: participant.execution.target.instance,
       model: participant.execution.target.model,
@@ -129,7 +132,7 @@ export async function createParticipantTargetRuntimeSession(input: {
       ),
       skills: input.runtimeEnvelope.skills,
       ...(input.taskExecutionContext?.executionRequest ?? {}),
-    },
+    }, channel),
     supervision: {
       product: 'cats-chat',
       surface: 'participant-session-start',

@@ -122,6 +122,8 @@ export interface RuntimeMessageSegment {
   text: string;
   toolName: string | null;
   toolId: string | null;
+  toolArgs?: Record<string, unknown> | null;
+  isError?: boolean | null;
 }
 
 export interface RuntimeMessageResult {

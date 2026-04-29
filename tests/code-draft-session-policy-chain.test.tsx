@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
+import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
@@ -7,6 +8,7 @@ import test from 'node:test';
 import { createServer } from '../src/app/server/index.ts';
 import { MemoryChatStore } from '../src/products/chat/state/store.ts';
 import { buildNewChatChannelInput } from '../src/products/shared/renderer/workspaceChatUtils.tsx';
+import { waitForCondition } from './testUtils.js';
 
 const baseConfig = {
   host: '127.0.0.1',
@@ -22,14 +24,33 @@ interface RecordedSession {
   workspaceKind?: string | null;
   workspaceAccess?: string | null;
   permissionMode?: string | null;
+  instructions?: string | null;
+  context?: {
+    labels?: string[];
+    metadata?: Record<string, unknown>;
+  };
   id: string;
+}
+
+interface RecordedMessage {
+  sessionId: string;
+  content: string;
+  input?: {
+    instructions?: string | null;
+    context?: {
+      labels?: string[];
+      metadata?: Record<string, unknown>;
+    };
+  };
 }
 
 function createRuntimeStub() {
   const createdSessions: RecordedSession[] = [];
+  const sentMessages: RecordedMessage[] = [];
   let nextSession = 1;
   return {
     createdSessions,
+    sentMessages,
     async getHealth() {
       return {
         baseUrl: baseConfig.runtimeBaseUrl,
@@ -86,12 +107,20 @@ function createRuntimeStub() {
           ?? path.join(os.tmpdir(), '.cats', 'runtime', 'sessions', sessionId),
       };
     },
-    async sendMessage() {
+    async sendMessage(sessionId: string, content: string, input?: RecordedMessage['input']) {
+      sentMessages.push({ sessionId, content, input });
       return {
-        segments: [],
-        inputTokens: 0,
-        outputTokens: 0,
-        tokensUsed: 0,
+        segments: [
+          {
+            kind: 'text',
+            text: 'Chain Cat handled the request.',
+            toolName: null,
+            toolId: null,
+          },
+        ],
+        inputTokens: 5,
+        outputTokens: 5,
+        tokensUsed: 10,
       };
     },
     async closeSession() {},
@@ -103,9 +132,14 @@ async function withServer(
   callback: (baseUrl: string) => Promise<void>,
 ): Promise<void> {
   const chatStore = new MemoryChatStore();
+  const tempStateDir = await mkdtemp(path.join(os.tmpdir(), 'cats-code-session-policy-'));
   const server = createServer({
     shared: {
-      config: baseConfig,
+      config: {
+        ...baseConfig,
+        chatStatePath: path.join(tempStateDir, 'platform', 'state', 'chat-state.local.json'),
+        runtimeDataDir: path.join(tempStateDir, 'runtime-data'),
+      },
       runtimeClient: runtimeClient as unknown as Parameters<typeof createServer>[0]['shared']['runtimeClient'],
       now: () => new Date('2026-04-18T00:00:00.000Z'),
     },
@@ -125,6 +159,7 @@ async function withServer(
   } finally {
     server.close();
     await once(server, 'close');
+    await rm(tempStateDir, { recursive: true, force: true });
   }
 }
 
@@ -158,6 +193,7 @@ test('code-draft session policy flows end-to-end from chip input to runtime sess
     assert.equal(createChannelResponse.status, 201);
     const createChannelPayload = await createChannelResponse.json();
     const channelId = createChannelPayload.channel.id;
+    assert.equal(createChannelPayload.channel.originSurface, 'code');
     assert.equal(createChannelPayload.channel.runtimeWorkspaceKind, 'worktree');
     assert.equal(createChannelPayload.channel.runtimeWorkspaceAccess, 'read_only');
     assert.equal(createChannelPayload.channel.runtimePermissionMode, 'default');
@@ -195,5 +231,36 @@ test('code-draft session policy flows end-to-end from chip input to runtime sess
     assert.equal(runtimeClient.createdSessions[0]?.workspaceKind, 'worktree');
     assert.equal(runtimeClient.createdSessions[0]?.workspaceAccess, 'read_only');
     assert.equal(runtimeClient.createdSessions[0]?.permissionMode, 'default');
+    assert.match(
+      runtimeClient.createdSessions[0]?.instructions ?? '',
+      /declare_artifact/u,
+    );
+    const artifactContext =
+      runtimeClient.createdSessions[0]?.context?.metadata?.codeArtifactDeclaration as
+        | Record<string, unknown>
+        | undefined;
+    assert.equal(artifactContext?.toolName, 'declare_artifact');
+    assert.equal(artifactContext?.onboardingBlockVersion, 'v1');
+
+    const sendMessageResponse = await fetch(`${baseUrl}/api/channels/${channelId}/messages`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ body: 'Now implement it.' }),
+    });
+    const sendMessagePayload = await sendMessageResponse.text();
+    assert.equal(sendMessageResponse.status, 200, sendMessagePayload);
+
+    await waitForCondition(async () => runtimeClient.sentMessages.length > 0
+      ? runtimeClient.sentMessages[0]
+      : null);
+    assert.match(
+      runtimeClient.sentMessages[0]?.input?.instructions ?? '',
+      /codeArtifactDeclaration\.onboardingBlockVersion=v1/u,
+    );
+    const turnArtifactContext =
+      runtimeClient.sentMessages[0]?.input?.context?.metadata?.codeArtifactDeclaration as
+        | Record<string, unknown>
+        | undefined;
+    assert.equal(turnArtifactContext?.toolName, 'declare_artifact');
   });
 });

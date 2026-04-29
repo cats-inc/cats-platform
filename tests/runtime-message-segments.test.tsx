@@ -39,6 +39,40 @@ test('normalizeRuntimeMessageSegmentEntry accepts text, output_text, tool_use, a
   );
 });
 
+test('normalizeRuntimeMessageSegmentEntry preserves tool_use args and tool_result error state', () => {
+  assert.deepEqual(
+    normalizeRuntimeMessageSegmentEntry({
+      type: 'tool_use',
+      toolName: 'declare_artifact',
+      toolId: 'tool-1',
+      toolArgs: { declarationId: 'preview-1' },
+    }),
+    {
+      kind: 'tool_use',
+      text: '',
+      toolName: 'declare_artifact',
+      toolId: 'tool-1',
+      toolArgs: { declarationId: 'preview-1' },
+    },
+  );
+  assert.deepEqual(
+    normalizeRuntimeMessageSegmentEntry({
+      type: 'tool_result',
+      toolName: 'declare_artifact',
+      toolId: 'tool-1',
+      text: 'rejected',
+      isError: true,
+    }),
+    {
+      kind: 'tool_result',
+      text: 'rejected',
+      toolName: 'declare_artifact',
+      toolId: 'tool-1',
+      isError: true,
+    },
+  );
+});
+
 test('normalizeRuntimeMessageSegmentEntry rejects empty or unsupported entries', () => {
   assert.equal(normalizeRuntimeMessageSegmentEntry(''), null);
   assert.equal(normalizeRuntimeMessageSegmentEntry({ kind: 'text', text: '' }), null);

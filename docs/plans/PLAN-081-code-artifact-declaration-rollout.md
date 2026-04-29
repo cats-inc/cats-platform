@@ -234,6 +234,7 @@ and implementation review.
 | `src/products/code/api/contracts.ts` | Modify | Export declaration request/response shapes |
 | `src/products/code/api/projection.ts` | Modify | Project artifacts from Core rows plus declaration metadata |
 | `src/products/code/shared/artifactDeclaration.ts` | Create | Mapping, validation, and metadata helpers |
+| `src/products/code/state/runtimeArtifactTooling.ts` | Create | Code-origin runtime onboarding and `declare_artifact` observation helper |
 | `src/products/code/shared/runtimeArtifactSignals.ts` | Create | Code-owned bridge signal shape for preview/build/test/screenshot/patch/report outputs |
 | `src/products/code/shared/workspaceSummary.ts` | Modify | Reuse workspace containment / summary semantics |
 | `src/products/code/state/sessionFinalization.ts` | Create | Validate Code assistant finalization envelopes and enforce `artifactClaims[]` gating before visible response commit |
@@ -244,6 +245,7 @@ and implementation review.
 | `src/core/model/planningRecords.ts` | Modify | Avoid schema change unless idempotency metadata needs helper support |
 | `tests/code-artifact-declaration.test.tsx` | Create | Contract, mapping, validation, and idempotency tests |
 | `tests/code-artifact-finalization.test.tsx` | Create | Finalization-envelope gating tests for `artifactClaims[]` / same-turn accepted declarations |
+| `tests/code-artifact-runtime-tooling.test.tsx` | Create | Code-origin onboarding and tool-use observation tests |
 | `tests/code-artifact-projection.test.js` | Create | Sidebar/detail projection tests |
 | `tests/code-task-execution.test.js` | Modify | Cover runtime bridge artifact declaration side effects |
 | `docs/specs/SPEC-092-code-artifact-declaration-contract.md` | Maintain | Keep contract aligned with implementation |
@@ -365,6 +367,7 @@ and implementation review.
 | 2026-04-29 | Follow-up hardening: split no-flow `shape_ok` from future server `accepted` tool results, aligned `tool-calls.md` with the TypeScript discriminated unions, added SPEC-092 § Error Code Registry, enforced context-free metadata/location limits in the helper, changed validation order to surface required-field errors before server-field misuse, moved artifact tests to `.tsx` source imports, and made label mapping exhaustive via `satisfies Record<CodeArtifactProducerLabel, ...>`. |
 | 2026-04-29 | Follow-up normalization fix: local paths now get lexical path normalization plus an internal `verification.workspaceContainment = 'unverified'` marker until server containment validation clears it; `inline_summary` and `external_ref` persist trimmed values; disallowed server-resolved fields follow the same empty-string-as-omitted normalization; tool-call docs now state URL canonicalization behavior. |
 | 2026-04-29 | Type-level + verification-marker hardening: `CodeArtifactLocationInput` (no `verification`) split from `CodeArtifactLocationNormalized` (with `verification`) so agent-supplied `verification` cannot smuggle through TS; the `local_path` deferred-verification marker is broadened to `{ workspaceContainment, pathCaseCanonicalization }` so the server-side host-OS case rule is also visibly deferred (not just containment). Added regression tests for verification smuggling and empty-string disallowed-field handling. UNC / drive-relative path edge cases documented in `collapseLexicalPath` + SPEC-092 § Location Rules. `inline_summary` `summary` vs `location.value` divergence documented as permitted (short description vs full content). |
+| 2026-04-29 | Wired the first active-session slice: Code-origin channels from `+New code`, `+Team code`, and `+Peer code` member activation now receive the artifact onboarding block and `metadata.codeArtifactDeclaration` on runtime session create and every runtime message send. Runtime `tool_use` segments now preserve `toolArgs`, and Code records same-turn `declare_artifact` shape observations as assistant-message metadata. Native runtime tool execution, product persistence, and finalization enforcement remain Phase 2/3 follow-ups. |
 
 ---
 

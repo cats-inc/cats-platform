@@ -24,6 +24,13 @@ function readRuntimeToolId(record: Record<string, unknown>): string | null {
     ?? readString(record.id);
 }
 
+function readRuntimeToolArgs(record: Record<string, unknown>): Record<string, unknown> | null {
+  const args = record.toolArgs ?? record.arguments ?? record.input;
+  return args && typeof args === 'object' && !Array.isArray(args)
+    ? (args as Record<string, unknown>)
+    : null;
+}
+
 function readRuntimeContentArrayText(value: unknown): string {
   if (!Array.isArray(value)) {
     return '';
@@ -123,11 +130,13 @@ export function normalizeRuntimeMessageSegmentEntry(
       : null;
   }
   if (normalizedKind === 'tool_use') {
+    const toolArgs = readRuntimeToolArgs(record);
     return {
       kind: 'tool_use',
       text: readRuntimeSegmentText(record),
       toolName: readRuntimeToolName(record),
       toolId: readRuntimeToolId(record),
+      ...(toolArgs ? { toolArgs } : {}),
     };
   }
   if (normalizedKind === 'tool_result') {
@@ -136,6 +145,7 @@ export function normalizeRuntimeMessageSegmentEntry(
       text: readRuntimeSegmentText(record),
       toolName: readRuntimeToolName(record),
       toolId: readRuntimeToolId(record),
+      ...(typeof record.isError === 'boolean' ? { isError: record.isError } : {}),
     };
   }
 
