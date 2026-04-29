@@ -1,4 +1,4 @@
-; --- Per-user-only install: suppress multi-user choice page ---
+; --- Per-user-only install: skip multi-user choice page ---
 ;
 ; Cats packaged setup helpers (Install-ClaudeCode.ps1, Install-NodeCliPack.ps1,
 ; etc.) refuse to run under an elevated shell because every CLI provider we
@@ -7,12 +7,17 @@
 ; %LOCALAPPDATA%, auth files live under the user's profile, and the npm
 ; prefix is per-user. An all-users install would put Cats.exe under
 ; Program Files but every spawned helper would either reject elevation or
-; write into the wrong profile, so the choice is a footgun. Define
-; MULTIUSER_INSTALLMODE_NO_PAGE in customHeader before electron-builder's
-; bundled MultiUser.nsh runs so the install-mode page is skipped while the
-; rest of the wizard (license, install directory) stays available.
-!macro customHeader
-  !define MULTIUSER_INSTALLMODE_NO_PAGE
+; write into the wrong profile, so the choice is a footgun.
+;
+; electron-builder's assistedInstaller.nsh inserts PAGE_INSTALL_MODE before
+; customHeader runs, so we cannot suppress it via MULTIUSER_INSTALLMODE_NO_PAGE.
+; Instead we hook customInstallMode (invoked inside the install-mode PRE
+; function in multiUserUi.nsh): forcing $isForceCurrentInstall = "1" makes
+; that function take the per-user branch and Abort the page before any UI
+; is drawn, so the dialog never appears and the install always lands under
+; the current user's profile.
+!macro customInstallMode
+  StrCpy $isForceCurrentInstall "1"
 !macroend
 
 ; --- Uninstaller: optional user-data removal ---
