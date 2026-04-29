@@ -61,11 +61,11 @@ third-party install, signing, and full sandboxing are explicitly later work.
 
 ## Phase 2: Add Persisted App Registry
 
-- [ ] Add registry storage helpers under the Cats platform data root.
-- [ ] Store installed app records separately from Chat/Core state.
-- [ ] Support install states: `installed`, `enabled`, `disabled`, `error`,
+- [x] Add registry storage helpers under the Cats platform data root.
+- [x] Store installed app records separately from Chat/Core state.
+- [x] Support install states: `installed`, `enabled`, `disabled`, `error`,
       `upgrade-pending`, `uninstalled`.
-- [ ] Support soft uninstall without purging app data.
+- [x] Support soft uninstall without purging app data.
 - [ ] Expose registry reads to the platform host envelope.
 - [ ] Keep all state writes out of user dev data during tests by using temp
       directories and isolated stores.
@@ -254,6 +254,7 @@ The overnight implementation agent should aim for this first vertical slice:
 | 2026-04-29 | Plan created from the OpenClaw/Paperclip hybrid architecture review and Cats Code user-app export requirement. |
 | 2026-04-29 | Added the first Settings `Apps` entry and placeholder route under `Work` and above `Runtime`; registry-backed management remains pending. |
 | 2026-04-29 | Added shared Cats App Package manifest contracts, contribution permissions, route/settings collision validation, and manifest tests. |
+| 2026-04-29 | Added file-backed app registry paths and lifecycle storage tests using temporary platform data roots. |
 
 ---
 
