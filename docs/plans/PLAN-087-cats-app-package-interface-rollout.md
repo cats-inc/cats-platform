@@ -103,10 +103,11 @@ third-party install, signing, and full sandboxing are explicitly later work.
 
 ## Phase 4: Add Local App Install and Launch APIs
 
-- [ ] Add `POST /api/apps/validate`.
-- [ ] Add `POST /api/apps/install` for owner-approved local paths.
-- [ ] Add `GET /api/apps` and `GET /api/apps/:appId`.
-- [ ] Add enable, disable, uninstall, and inspect endpoints.
+- [x] Add `POST /api/apps/validate`.
+- [x] Add `POST /api/apps/install` for owner-approved local paths.
+- [x] Add `GET /api/apps` and `GET /api/apps/:appId`.
+- [x] Add enable, disable, and uninstall endpoints.
+- [ ] Add inspect endpoint.
 - [ ] Add route serving for `/apps/:appId/*`.
 - [ ] Add scoped app API route mounting under `/api/apps/:appId/*`.
 - [ ] Gate mutations behind owner-level confirmation in the UI flow.
@@ -257,6 +258,7 @@ The overnight implementation agent should aim for this first vertical slice:
 | 2026-04-29 | Added file-backed app registry paths and lifecycle storage tests using temporary platform data roots. |
 | 2026-04-29 | Wired registry reads into the platform host envelope as `installedApps` descriptors. |
 | 2026-04-29 | Replaced the Lobby `Apps` Pomodoro mock with registry-driven app entries and an empty state. |
+| 2026-04-29 | Added local app validate/install/list/detail and enable/disable/uninstall API routes backed by the app registry. |
 
 ---
 
