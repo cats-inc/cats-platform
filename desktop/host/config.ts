@@ -28,6 +28,7 @@ export interface DesktopHostPaths {
   runtimeConfigPath: string;
   runtimeManagementConfigPath: string;
   runtimeCuratedModelCatalogPath: string;
+  mobileBundleRoot: string;
   hostStatePath: string;
   hostLogsDir: string;
   packagingOutputRoot: string;
@@ -309,6 +310,14 @@ export function resolveDesktopHostConfig(
       ),
       runtimeCuratedModelCatalogPath: resolveDesktopPath(
         joinDesktopPath(runtimeConfigDir, 'curated-model-catalogs.yaml'),
+      ),
+      mobileBundleRoot: resolveDesktopPath(
+        env.CATS_MOBILE_BUNDLE_ROOT?.trim()
+          || (
+            options.packaged === true
+              ? joinDesktopPath(resolveDesktopPath(options.resourcesPath ?? joinDesktopPath(packageRoot, '..')), 'mobile')
+              : joinDesktopPath(packageRoot, 'build', 'mobile')
+          ),
       ),
       hostStatePath: resolveDesktopPath(joinDesktopPath(desktopDir, 'state.json')),
       hostLogsDir: resolveDesktopPath(joinDesktopPath(desktopDir, 'logs')),

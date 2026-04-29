@@ -27,6 +27,8 @@ export interface AppConfig {
   debugLiveTrace: boolean;
   debugKeepRuntimeSessionsOnProductDelete: boolean;
   chatProviderAgentDecisionEnabled?: boolean;
+  mobilePairingEnabled: boolean;
+  mobileBundleRoot: string;
   runtimeDataDir: string;
   desktopHostStatePath: string;
   desktopDir: string;
@@ -165,6 +167,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       env.CATS_CHAT_PROVIDER_AGENT_DECISION_ENABLED,
       false,
     ),
+    mobilePairingEnabled: parseBoolean(env.CATS_DESKTOP_MOBILE_PAIRING_ENABLED, false),
+    mobileBundleRoot: env.CATS_MOBILE_BUNDLE_ROOT?.trim()
+      || path.resolve(process.cwd(), 'build', 'mobile'),
     runtimeDataDir: path.join(runtimeDir, 'data'),
     desktopHostStatePath: path.join(desktopDir, 'state.json'),
     desktopDir,

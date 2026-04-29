@@ -99,49 +99,47 @@ after install.
 cats-platform server, per the routes defined in SPEC-099 §FR-4.
 Gated; default off.
 
-- [ ] Add `cats-platform/src/server/routes/mobileManifest.ts` (or
-      similar) implementing the routes from SPEC-099 §FR-4
+- [x] Add `cats-platform/src/app/server/mobileManifestRoutes.ts`
+      implementing the diagnostic routes from SPEC-099 §FR-4
       (`/api/mobile/manifest`, `/api/mobile/bundle/{platform}/{fileName}`,
       `/api/mobile/assets/{hash}`). `/api/mobile/manifest` is the
       canonical internal diagnostic endpoint until Phase 1 resolves
       the Expo-Go-facing manifest ingress URL/path in Q2; if Expo
       Go requires a stock path outside `/api/mobile/manifest`, add
       that ingress and route it to the same generator.
-- [ ] Resolve the on-disk path: dev mode reads
+- [x] Resolve the on-disk path: dev mode reads
       `cats-platform/build/mobile/`; packaged mode reads
       `process.resourcesPath/mobile/` (or whatever electron-builder
       decides — confirmed in Phase 2).
-- [ ] Implement the manifest generator using the schema chosen in
-      Phase 1 (FR-8). The generator reads `expo-platform`,
-      `expo-runtime-version`, and `expo-protocol-version` headers
-      (FR-8a) and uses the incoming request's host header (FR-9)
-      to build the schema-specific bundle-entry URL
-      (`launchAsset.url` for Updates v1 or `bundleUrl` for
-      Classic) plus the asset URLs that the manifest body returns.
-      There is no separate stable "current bundle" URL outside the
-      manifest's schema-specific bundle entry.
-- [ ] Wire the gate: when
+- [ ] Implement the Expo-Go-facing manifest generator using the
+      schema chosen in Phase 1 (FR-8). The diagnostic generator
+      already reads `expo-platform`, echoes `expo-runtime-version`
+      and `expo-protocol-version`, and uses the incoming request's
+      host header (FR-9) to build platform-specific bundle and
+      asset URLs, but it intentionally does not claim to be the
+      final Expo Go manifest schema before Phase 1 is resolved.
+- [x] Wire the gate: when
       `CATS_DESKTOP_MOBILE_PAIRING_ENABLED !== 'true'`, every
       `/api/mobile/*` route and the Phase 1-selected Expo-Go-facing
       manifest ingress return 404 (FR-7).
-- [ ] Cache headers per FR-6 (manifest `no-store`, hash-addressed
+- [x] Cache headers per FR-6 (manifest `no-store`, hash-addressed
       bundle/asset `public, max-age=31536000, immutable`).
 - [ ] Tests:
-      - [ ] Manifest fetched through the Phase 1-selected ingress
-            with `expo-platform: ios` returns an iOS
-            schema-specific bundle-entry URL; same request with
-            `expo-platform: android` returns an Android
-            schema-specific bundle-entry URL.
+      - [x] Canonical diagnostic manifest fetched with
+            `expo-platform: ios` returns an iOS bundle-entry URL;
+            same request with `expo-platform: android` returns an
+            Android bundle-entry URL.
       - [ ] Missing or unsupported `expo-runtime-version` /
             `expo-protocol-version` headers are handled per the
             schema chosen in Phase 1 (e.g. negotiated default vs
-            error).
-      - [ ] Every `/api/mobile/*` route and the Phase 1-selected
-            Expo-Go-facing manifest ingress return 404 when the
-            flag is off.
-      - [ ] Bundle-entry URL host matches the request host
+            error). The diagnostic endpoint currently records
+            these headers without enforcing a schema decision.
+      - [x] Every `/api/mobile/*` route returns 404 when the flag
+            is off. The Phase 1-selected Expo-Go-facing manifest
+            ingress remains pending.
+      - [x] Bundle-entry URL host matches the request host
             (loopback vs LAN IP).
-      - [ ] Hash-addressed bundle and asset URLs serve the
+      - [x] Hash-addressed bundle and asset URLs serve the
             corresponding file from `<resources>/mobile/`.
 
 **Deliverable**: a header-aware integration test (e.g. via
@@ -154,6 +152,11 @@ A plain `curl /api/mobile/manifest` without Expo request headers
 is **not** a valid deliverable, even if Q2 chooses that route as
 the actual Expo-Go-facing ingress; Expo Go's per-platform
 discrimination relies on request headers.
+
+**Current implementation note**: Slice 2 landed the gated
+diagnostic manifest/bundle/asset surface and host-header-aware
+integration tests. The final Expo-Go-facing ingress and manifest
+schema remain blocked on Phase 1 physical-device validation.
 
 ## Phase 4 — Settings → Desktop "Mobile pairing" card
 
@@ -234,7 +237,7 @@ flip the env flag for the first internal-release artifact.
 | `cats-platform/docs/plans/PLAN-088-...md` | created (this slice) |
 | `cats-platform/package.json` | add `build:mobile` script, hook into `build` |
 | `cats-platform/electron-builder.yml` (or equivalent) | bundle `build/mobile/` into resources |
-| `cats-platform/src/server/routes/mobileManifest.ts` | new — manifest + bundle + assets routes |
+| `cats-platform/src/app/server/mobileManifestRoutes.ts` | new — manifest + bundle + assets routes |
 | `cats-platform/src/server/...` (route registration) | wire the new routes |
 | `cats-platform/src/config.ts` | parse `CATS_DESKTOP_MOBILE_PAIRING_ENABLED` |
 | `cats-platform/src/shared/platform-contract.ts` | extend `PlatformDesktopPreferences` / `PlatformHostEnvelope` desktop payload with the gate flag, bind reachability state, detected LAN IP, and no-candidate reason |

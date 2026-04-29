@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type { ResolvedServerDependencies } from './contracts.js';
 import { routeAppPackageApi } from './appPackageRoutes.js';
+import { routeMobileManifestApi } from './mobileManifestRoutes.js';
 import { routePlatformSetupApi } from './platformSetupRoutes.js';
 import {
   handleRuntimeApiProxyRoute,
@@ -366,6 +367,13 @@ export async function routeRequest(
       now: dependencies.shared.now,
     },
   };
+  const mobileManifestContext = {
+    ...context,
+    dependencies: {
+      config: dependencies.shared.config,
+      now: dependencies.shared.now,
+    },
+  };
 
   if (url.pathname === '/health') {
     if (method !== 'GET') {
@@ -416,6 +424,10 @@ export async function routeRequest(
   }
 
   if (await routeAppPackageApi(appPackageContext)) {
+    return;
+  }
+
+  if (await routeMobileManifestApi(mobileManifestContext)) {
     return;
   }
 

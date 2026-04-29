@@ -125,6 +125,7 @@ test('desktop host config and managed service specs preserve the app/runtime pro
   assert.equal(appSpec.env.CATS_RUNTIME_BASE_URL, 'http://127.0.0.1:43110');
   assert.equal(appSpec.env.CATS_PLATFORM_DIR, 'C:\\Users\\test\\.cats\\platform');
   assert.equal(appSpec.env.CATS_DESKTOP_DIR, 'C:\\Users\\test\\.cats\\desktop');
+  assert.equal(appSpec.env.CATS_MOBILE_BUNDLE_ROOT, 'C:\\repo\\cats-platform\\build\\mobile');
   assert.equal(appSpec.env.CATS_RUNTIME_DIR, 'C:\\Users\\test\\.cats\\runtime');
   assert.equal(appSpec.cwd, config.packageRoot);
   assert.equal(config.background.trayEnabled, true);
@@ -208,6 +209,10 @@ test('desktop host config resolves bundled sidecar paths in packaged mode', () =
   assert.equal(
     config.paths.preloadScript,
     'C:\\Program Files\\Cats\\resources\\app.asar\\build\\desktop\\preload.cjs',
+  );
+  assert.equal(
+    config.paths.mobileBundleRoot,
+    'C:\\Program Files\\Cats\\resources\\mobile',
   );
   assert.equal(config.packaged, true);
 });

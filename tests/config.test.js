@@ -56,10 +56,22 @@ test('loadConfig derives storage paths from canonical root directories', () => {
   assert.equal(config.debugLiveTrace, false);
   assert.equal(config.debugKeepRuntimeSessionsOnProductDelete, false);
   assert.equal(config.chatProviderAgentDecisionEnabled, false);
+  assert.equal(config.mobilePairingEnabled, false);
+  assert.equal(config.mobileBundleRoot, path.resolve(process.cwd(), 'build', 'mobile'));
   assert.equal(config.runtimeStaleSessionRetryLimit, 3);
   assert.equal(config.maxChatParticipants, 7);
   assert.equal(config.maxAudienceParticipants, 2);
   assert.equal(config.maxParallelChats, 3);
+});
+
+test('loadConfig reads mobile pairing gate and bundle root', () => {
+  const config = loadConfig({
+    CATS_DESKTOP_MOBILE_PAIRING_ENABLED: 'true',
+    CATS_MOBILE_BUNDLE_ROOT: 'C:/Users/test/cats-mobile-build',
+  });
+
+  assert.equal(config.mobilePairingEnabled, true);
+  assert.equal(config.mobileBundleRoot, 'C:/Users/test/cats-mobile-build');
 });
 
 test('loadConfig falls back to CATS_INC_* compatibility aliases for host and port', () => {
