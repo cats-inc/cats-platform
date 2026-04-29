@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { createMobileApiClient, MobileApiError } from '../../api/client';
 import { loadConnectionConfig } from '../../api/persistence';
@@ -33,6 +34,7 @@ const APP_SHELL_PATH = '/api/app-shell';
 export function useMobileAppShell(): MobileAppShellHook {
   const [state, setState] = useState<MobileAppShellState>({ kind: 'loading' });
   const [version, setVersion] = useState(0);
+  const initialFocusRef = useRef(true);
 
   useEffect(() => {
     let active = true;
@@ -76,9 +78,24 @@ export function useMobileAppShell(): MobileAppShellHook {
     };
   }, [version]);
 
-  const refetch = () => {
+  // Re-fetch on every screen focus _after_ the initial mount, so the
+  // user setting a desktop base URL in Settings and returning to a
+  // tab triggers a fresh load instead of leaving the tab stuck in its
+  // pre-config state. The initial focus skips because the mount-time
+  // useEffect already covers it.
+  useFocusEffect(
+    useCallback(() => {
+      if (initialFocusRef.current) {
+        initialFocusRef.current = false;
+        return;
+      }
+      setVersion((current) => current + 1);
+    }, []),
+  );
+
+  const refetch = useCallback(() => {
     setVersion((current) => current + 1);
-  };
+  }, []);
 
   return { state, refetch };
 }

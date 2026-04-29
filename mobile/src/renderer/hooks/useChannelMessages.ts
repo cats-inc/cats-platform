@@ -1,3 +1,4 @@
+import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
@@ -125,6 +126,7 @@ export function useChannelMessages(channelId: string): ChannelMessagesHook {
   const [sendState, setSendState] = useState<ChannelSendState>({ kind: 'idle' });
   const [version, setVersion] = useState(0);
   const activeRef = useRef(true);
+  const initialFocusRef = useRef(true);
 
   useEffect(() => {
     activeRef.current = true;
@@ -159,6 +161,19 @@ export function useChannelMessages(channelId: string): ChannelMessagesHook {
       activeRef.current = false;
     };
   }, [channelId, version]);
+
+  // Refetch on each screen focus after the first mount, so returning
+  // from Settings or another tab picks up new messages without a
+  // manual pull-to-refresh.
+  useFocusEffect(
+    useCallback(() => {
+      if (initialFocusRef.current) {
+        initialFocusRef.current = false;
+        return;
+      }
+      setVersion((current) => current + 1);
+    }, []),
+  );
 
   const refetch = useCallback(() => {
     setVersion((current) => current + 1);
