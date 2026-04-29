@@ -5,7 +5,10 @@ import {
   resolveDesktopWindowRevealNavigation,
   shouldNavigateDesktopBootstrap,
 } from '../build/desktop/bootstrapNavigation.js';
-import { buildDesktopTrayMenuState } from '../build/desktop/trayMenu.js';
+import {
+  buildDesktopTrayMenuState,
+  buildDesktopTrayQuittingMenuState,
+} from '../build/desktop/trayMenu.js';
 
 test('tray menu shows setup-oriented actions before onboarding is complete', () => {
   const state = buildDesktopTrayMenuState({
@@ -184,6 +187,16 @@ test('tray menu hides unavailable or disabled products from app-shell descriptor
     state.products.map((product) => product.id),
     ['chat'],
   );
+});
+
+test('tray menu exposes a locked quitting state with no actionable entries', () => {
+  const state = buildDesktopTrayQuittingMenuState();
+
+  assert.equal(state.lockedLabel, 'Quitting...');
+  assert.equal(state.summary, 'Quitting...');
+  assert.deepEqual(state.actions, []);
+  assert.deepEqual(state.products, []);
+  assert.equal(state.setupCompleteAt, null);
 });
 
 test('window reveal navigation exits the bootstrap page once chat is ready', () => {

@@ -25,6 +25,7 @@ export interface DesktopTrayMenuState {
     label: string;
     path: string;
   }>;
+  lockedLabel?: string;
 }
 
 interface BuildDesktopTrayMenuStateOptions {
@@ -87,5 +88,16 @@ export function buildDesktopTrayMenuState(
     setupCompleteAt: effectiveSetupCompleteAt,
     actions: options.actions.filter((action) => TRAY_PRIMARY_ACTION_IDS.has(action.id)),
     products,
+  };
+}
+
+export function buildDesktopTrayQuittingMenuState(): DesktopTrayMenuState {
+  return {
+    phase: 'starting_services',
+    summary: 'Quitting...',
+    setupCompleteAt: null,
+    actions: [],
+    products: [],
+    lockedLabel: 'Quitting...',
   };
 }

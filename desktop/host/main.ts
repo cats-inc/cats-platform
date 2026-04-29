@@ -76,7 +76,10 @@ import {
   createDesktopTrayController,
   type DesktopTrayController,
 } from './tray.js';
-import { buildDesktopTrayMenuState as buildElectronTrayMenuState } from './trayMenu.js';
+import {
+  buildDesktopTrayMenuState as buildElectronTrayMenuState,
+  buildDesktopTrayQuittingMenuState,
+} from './trayMenu.js';
 import {
   applyDesktopHostPlatformShellUpdate,
   normalizePlatformShellSetupState,
@@ -176,6 +179,8 @@ let bootstrapPromise: Promise<DesktopBootstrapSnapshot> | null = null;
 let latestBootstrapError: string | null = null;
 let lateReadyRecoveryPromise: Promise<void> | null = null;
 let shuttingDown = false;
+let shutdownPromise: Promise<void> | null = null;
+let exitingAfterShutdown = false;
 let trayController: DesktopTrayController | null = null;
 let stateStore: DesktopHostStateStore | null = null;
 let backgroundState: DesktopBackgroundState | null = null;
@@ -730,7 +735,11 @@ function publishSnapshot(snapshot: DesktopBootstrapSnapshot): DesktopBootstrapSn
     hostStatePath: hostConfig?.paths.hostStatePath ?? snapshot.hostStatePath,
   };
   latestSnapshot = enriched;
-  trayController?.updateMenu(resolveDesktopTrayMenuState(enriched));
+  trayController?.updateMenu(
+    shuttingDown
+      ? buildDesktopTrayQuittingMenuState()
+      : resolveDesktopTrayMenuState(enriched),
+  );
   writePersistedHostState(enriched);
   mainWindow?.webContents.send('cats-host:snapshot', enriched);
   return enriched;
@@ -862,23 +871,38 @@ function buildTrayControllerOptions(): Parameters<typeof createDesktopTrayContro
   return {
     getWindow: () => mainWindow,
     onShowWindow: async () => {
+      if (shuttingDown) {
+        return;
+      }
       await showMainWindow();
     },
     onNavigate: async (path) => {
+      if (shuttingDown) {
+        return;
+      }
       if (hostConfig) {
         await showMainWindow(`${hostConfig.appBaseUrl}${path}`);
       }
     },
     onRunAction: async (actionId) => {
+      if (shuttingDown) {
+        return;
+      }
       await runHostAction(actionId);
     },
     onQuit: () => {
       void shutdownHost();
     },
+    canInteract: () => !shuttingDown,
   };
 }
 
 async function syncTrayController(): Promise<void> {
+  if (shuttingDown) {
+    trayController?.updateMenu(buildDesktopTrayQuittingMenuState());
+    return;
+  }
+
   if (!isSystemTrayEnabled()) {
     const activeTrayController = trayController;
     trayController = null;
@@ -1369,20 +1393,25 @@ async function createMainWindow(
 }
 
 async function shutdownHost(): Promise<void> {
-  if (shuttingDown) {
-    return;
+  if (shutdownPromise) {
+    return shutdownPromise;
   }
   shuttingDown = true;
-  try {
+  shutdownPromise = (async () => {
     voiceCaptureController?.dispose();
     voiceCaptureController = null;
     const activeTrayController = trayController;
-    trayController = null;
-    activeTrayController?.dispose();
-    await supervisor?.stopAll();
-  } finally {
-    app.exit();
-  }
+    activeTrayController?.updateMenu(buildDesktopTrayQuittingMenuState());
+    try {
+      await supervisor?.stopAll();
+    } finally {
+      trayController = null;
+      activeTrayController?.dispose();
+      exitingAfterShutdown = true;
+      app.exit();
+    }
+  })();
+  return shutdownPromise;
 }
 
 async function main(): Promise<void> {
@@ -1639,7 +1668,7 @@ async function main(): Promise<void> {
   await syncTrayController();
 
   app.on('before-quit', (event) => {
-    if (!shuttingDown) {
+    if (!exitingAfterShutdown) {
       event.preventDefault();
       void shutdownHost();
     }
@@ -1656,6 +1685,9 @@ async function main(): Promise<void> {
     }
   });
   app.on('second-instance', () => {
+    if (shuttingDown) {
+      return;
+    }
     if (mainWindow) {
       if (mainWindow.isMinimized()) {
         mainWindow.restore();
@@ -1664,6 +1696,9 @@ async function main(): Promise<void> {
     }
   });
   app.on('activate', () => {
+    if (shuttingDown) {
+      return;
+    }
     void showMainWindow();
   });
 

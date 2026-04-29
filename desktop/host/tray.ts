@@ -24,6 +24,7 @@ interface CreateDesktopTrayControllerOptions {
   onNavigate: (path: string) => Promise<void>;
   onRunAction: (actionId: DesktopHostActionId) => Promise<void>;
   onQuit: () => void;
+  canInteract?: () => boolean;
 }
 
 function createBundledTrayImage(name: string): Electron.NativeImage | null {
@@ -91,9 +92,19 @@ export function runDesktopTrayShowWindow(onShowWindow: () => Promise<void>): voi
 
 function buildDesktopTrayMenuTemplate(
   state: DesktopTrayMenuState,
-  options: Pick<CreateDesktopTrayControllerOptions, 'onNavigate' | 'onRunAction' | 'onQuit'>,
+  options: Pick<
+    CreateDesktopTrayControllerOptions,
+    'onNavigate' | 'onRunAction' | 'onQuit' | 'canInteract'
+  >,
   showWindow: () => void,
 ): MenuItemConstructorOptions[] {
+  if (state.lockedLabel) {
+    return [{
+      label: state.lockedLabel,
+      enabled: false,
+    }];
+  }
+
   const template: MenuItemConstructorOptions[] = [];
   const pushSeparator = () => {
     if (template.length > 0 && template.at(-1)?.type !== 'separator') {
@@ -106,6 +117,9 @@ function buildDesktopTrayMenuTemplate(
       label: action.label,
       click: () => {
         runTrayAction(async () => {
+          if (options.canInteract?.() === false) {
+            return;
+          }
           await options.onRunAction(action.id);
           showWindow();
         });
@@ -120,6 +134,9 @@ function buildDesktopTrayMenuTemplate(
         label: product.label,
         click: () => {
           runTrayAction(async () => {
+            if (options.canInteract?.() === false) {
+              return;
+            }
             await options.onNavigate(product.path);
             showWindow();
           });
@@ -134,6 +151,9 @@ function buildDesktopTrayMenuTemplate(
       label: 'Settings',
       click: () => {
         runTrayAction(async () => {
+          if (options.canInteract?.() === false) {
+            return;
+          }
           await options.onNavigate('/settings');
           showWindow();
         });
@@ -152,6 +172,9 @@ function buildDesktopTrayMenuTemplate(
   template.push({
     label: 'Quit',
     click: () => {
+      if (options.canInteract?.() === false) {
+        return;
+      }
       options.onQuit();
     },
   });
@@ -166,7 +189,11 @@ export async function createDesktopTrayController(
   const tray = new Tray(icon);
   tray.setToolTip('Cats');
 
+  const canInteract = () => options.canInteract?.() !== false;
   const showWindow = () => {
+    if (!canInteract()) {
+      return;
+    }
     runDesktopTrayShowWindow(options.onShowWindow);
   };
 
@@ -175,6 +202,7 @@ export async function createDesktopTrayController(
 
   const trayLifecycle = createGuardedTrayLifecycle<DesktopTrayMenuState>({
     apply(state) {
+      tray.setToolTip(state.lockedLabel ?? 'Cats');
       currentMenu = Menu.buildFromTemplate(
         buildDesktopTrayMenuTemplate(state, options, showWindow),
       );
