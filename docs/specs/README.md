@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-098](./SPEC-098-cats-app-package-and-extension-interface.md) | Cats App Package and Extension Interface | Draft | [PLAN-087](../plans/PLAN-087-cats-app-package-interface-rollout.md), [ADR-094](../decisions/094-adopt-cats-app-packages-as-extension-boundary.md) |
 | [SPEC-097](./SPEC-097-platform-language-settings-and-ui-localization.md) | Platform Language Settings and UI Localization | Draft | [PLAN-086](../plans/PLAN-086-platform-language-settings-and-ui-localization-rollout.md), [ADR-093](../decisions/093-use-platform-language-preferences-for-assistant-and-ui-locales.md) |
 | [SPEC-096](./SPEC-096-mission-cancel-and-run-stop-contract.md) | Mission Cancel and Run Stop Contract | Draft | [PLAN-085](../plans/PLAN-085-mission-cancel-and-run-stop-rollout.md), [ADR-082](../decisions/082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md) |
 | [SPEC-095](./SPEC-095-cats-mobile-shell-five-tabs-and-product-sidebar-variants.md) | Cats Mobile Shell — Five Tabs and Product Sidebar Variants | Draft | [PLAN-084](../plans/PLAN-084-cats-mobile-shell-rollout.md), [ADR-092](../decisions/092-reposition-cats-mobile-as-first-class-product-client.md) |
@@ -152,6 +153,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-04-29 (SPEC-097 added for platform language settings and UI localization; SPEC-096 added for Mission cancel and Run stop public cancellation contract; SPEC-095 added for Cats Mobile shell with five tabs; SPEC-094 implemented for schedule rules and mission triggers.)*
+*Last updated: 2026-04-29 (SPEC-098 added for Cats App Packages and the extension interface; SPEC-097 added for platform language settings and UI localization; SPEC-096 added for Mission cancel and Run stop public cancellation contract.)*
 
 *See also: [plans/](../plans/) for implementation plans*

@@ -57,6 +57,9 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [PLAN-087](./plans/PLAN-087-cats-app-package-interface-rollout.md)
+- [SPEC-098](./specs/SPEC-098-cats-app-package-and-extension-interface.md)
+- [ADR-094](./decisions/094-adopt-cats-app-packages-as-extension-boundary.md)
 - [PLAN-086](./plans/PLAN-086-platform-language-settings-and-ui-localization-rollout.md)
 - [SPEC-097](./specs/SPEC-097-platform-language-settings-and-ui-localization.md)
 - [ADR-093](./decisions/093-use-platform-language-preferences-for-assistant-and-ui-locales.md)
