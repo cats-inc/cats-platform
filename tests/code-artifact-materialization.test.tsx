@@ -190,6 +190,43 @@ test('Code artifact materialization recovers frozen idempotency scope across ret
   });
 });
 
+test('Code artifact materialization rejects ambiguous frozen-scope retries', () => {
+  const core = createAnchoredCodeCore();
+  const first = materializeCodeArtifactDeclaration(
+    core,
+    createPreviewDeclaration(),
+    new Date('2026-04-30T10:00:00.000Z'),
+  );
+  const ambiguousCore = {
+    ...first.core,
+    artifacts: [
+      ...first.core.artifacts,
+      {
+        ...first.artifact,
+        id: 'artifact-ambiguous-preview',
+        title: 'Ambiguous local preview',
+      },
+    ],
+  };
+
+  assert.throws(
+    () => materializeCodeArtifactDeclaration(
+      ambiguousCore,
+      createPreviewDeclaration({
+        anchors: {
+          conversationId: 'conversation-code-1',
+          taskId: 'task-code-1',
+          workspacePath: 'C:/repo/cats-platform',
+        },
+      }),
+      new Date('2026-04-30T10:01:00.000Z'),
+    ),
+    (error) =>
+      error instanceof CodeArtifactDeclarationError &&
+      error.code === 'artifact_idempotency_ambiguous',
+  );
+});
+
 test('Code artifact materialization stores candidate declarations as draft artifacts', () => {
   const core = createAnchoredCodeCore();
   const result = materializeCodeArtifactDeclaration(
