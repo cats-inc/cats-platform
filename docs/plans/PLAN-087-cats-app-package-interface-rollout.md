@@ -60,7 +60,7 @@ Inventory notes:
       tools, connectors, scoped APIs, and jobs.
 - [x] Add permission vocabulary and validation rules.
 - [x] Add app ID and route collision validation.
-- [ ] Add SDK surface types for activation and renderer contexts.
+- [x] Add SDK surface types for activation and renderer contexts.
 - [x] Add tests for valid and invalid manifests.
 
 **Likely files**:
@@ -150,7 +150,7 @@ Inventory notes:
 - [ ] Add an install review screen showing display name, route, trust tier, and
       permissions.
 - [ ] After install, optionally navigate to the installed `/apps/:appId` route.
-- [ ] Add a sample Pomodoro package fixture that can be exported and installed.
+- [x] Add a sample Pomodoro package fixture that can be exported and installed.
 
 **Likely files**:
 
@@ -281,6 +281,7 @@ The overnight implementation agent should aim for this first vertical slice:
 | 2026-04-30 | Added Settings Apps open, enable, disable, and uninstall actions with confirmation dialogs, toast-only error feedback, local payload updates, and envelope refresh. |
 | 2026-04-30 | Connected enabled system `product-module` packages to the host product envelope, kept user apps out of Products, added a Cats Learn fixture path, and kept first-party product packages mirrored in installed apps inventory. |
 | 2026-04-30 | Exposed connector and tool declarations on installed app descriptors and surfaced connector service, auth, capability, and inert tool summaries in Settings Apps. |
+| 2026-04-30 | Added shared App SDK activation/renderer context types and a Pomodoro fixture package that validates through the app package API. |
 
 ---
 

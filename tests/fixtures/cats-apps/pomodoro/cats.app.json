@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "user.pomodoro",
+  "displayName": "Pomodoro",
+  "version": "0.1.0",
+  "description": "Local focus timer app fixture.",
+  "category": "user-app",
+  "trustTier": "local-user",
+  "publisher": {
+    "name": "Local User"
+  },
+  "compatibility": {
+    "catsPlatform": "^0.1.0",
+    "appSdk": "1.x"
+  },
+  "entrypoints": {
+    "renderer": "renderer/index.html"
+  },
+  "contributions": {
+    "lobbyApps": [
+      {
+        "id": "timer",
+        "title": "Pomodoro",
+        "subtitle": "Focus timer",
+        "routePath": "/apps/user.pomodoro",
+        "maturity": "preview"
+      }
+    ]
+  },
+  "permissions": [
+    "ui.route",
+    "ui.lobby",
+    "storage.appData"
+  ]
+}

@@ -144,6 +144,21 @@ test('POST /api/apps/validate validates a local cats.app.json without installing
   assert.deepEqual((list.payload as { apps: unknown[] }).apps, []);
 });
 
+test('POST /api/apps/validate accepts the Pomodoro fixture package', async () => {
+  const platformDir = await createTempPlatformDir();
+  const packagePath = path.join(process.cwd(), 'tests', 'fixtures', 'cats-apps', 'pomodoro');
+
+  const validate = await routeJson(platformDir, 'POST', '/api/apps/validate', { packagePath });
+
+  assert.equal(validate.statusCode, 200);
+  assert.equal((validate.payload as { ok: boolean }).ok, true);
+  assert.equal(
+    (validate.payload as { manifest: { id: string; entrypoints?: { renderer?: string } } })
+      .manifest.entrypoints?.renderer,
+    'renderer/index.html',
+  );
+});
+
 test('POST /api/apps/install installs an enabled app into the registry', async () => {
   const platformDir = await createTempPlatformDir();
   const packagePath = await createPackage(platformDir);
