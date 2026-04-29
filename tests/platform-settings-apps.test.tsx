@@ -7,6 +7,7 @@ import { StaticRouter } from 'react-router-dom';
 import {
   PlatformSettingsApps,
   resolveInstalledAppLaunchPath,
+  resolveInstalledAppSettingsPath,
 } from '../src/app/renderer/settings/PlatformSettingsApps.tsx';
 import type { PlatformInstalledAppDescriptor } from '../src/shared/catsAppManifest.ts';
 
@@ -70,6 +71,7 @@ test('PlatformSettingsApps renders installed app and connector package status', 
           service: 'calendar',
           auth: { kind: 'oauth' },
           capabilities: ['calendar.read', 'calendar.write'],
+          setupPath: '/settings/apps/connector.calendar',
         },
       ],
       tools: [
@@ -98,9 +100,42 @@ test('PlatformSettingsApps renders installed app and connector package status', 
   assert.match(markup, />calendar: 2 capabilities</u);
   assert.match(markup, />Auth: oauth</u);
   assert.match(markup, />1 tool</u);
+  assert.match(markup, /href="\/settings\/apps\/connector\.calendar"[^>]*>Settings</u);
   assert.match(markup, />Disabled</u);
   assert.match(markup, />Enable</u);
   assert.match(markup, />1 connector package</u);
+});
+
+test('resolveInstalledAppSettingsPath prefers connector setup path', () => {
+  assert.equal(resolveInstalledAppSettingsPath(createInstalledApp({
+    id: 'connector.calendar',
+    category: 'capability-connector',
+    connectors: [
+      {
+        id: 'calendar',
+        service: 'calendar',
+        capabilities: ['calendar.read'],
+        setupPath: '/settings/apps/connector.calendar',
+      },
+    ],
+    settings: [
+      {
+        id: 'fallback',
+        label: 'Fallback',
+        path: '/settings/apps/connector.calendar/fallback',
+      },
+    ],
+  })), '/settings/apps/connector.calendar');
+  assert.equal(resolveInstalledAppSettingsPath(createInstalledApp({
+    settings: [
+      {
+        id: 'settings',
+        label: 'Settings',
+        path: '/settings/apps/user.focus',
+      },
+    ],
+  })), '/settings/apps/user.focus');
+  assert.equal(resolveInstalledAppSettingsPath(createInstalledApp()), null);
 });
 
 test('resolveInstalledAppLaunchPath returns the first enabled Lobby route', () => {

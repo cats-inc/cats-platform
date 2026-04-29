@@ -169,7 +169,7 @@ Inventory notes:
 - [ ] Register declared tools through the platform tool boundary.
 - [ ] Route runtime-backed connector behavior through `cats-runtime` or a
       platform-owned runtime adapter, never direct `agent-fleet` imports.
-- [ ] Add settings/auth contribution support for connectors.
+- [x] Add settings/auth contribution support for connectors.
 - [x] Add a local fixture connector with one inert tool for validation.
 
 **Deliverables**: connector packages share the same manifest and registry
@@ -194,7 +194,7 @@ standard without granting that privilege to local user apps.
 - [x] Add installed app management under Settings.
 - [x] Show app identity, version, category, trust tier, permissions, and state.
 - [x] Add enable, disable, uninstall, and open actions.
-- [ ] Add capability connector settings entries.
+- [x] Add capability connector settings entries.
 - [x] Use existing Settings toast conventions for save/error feedback.
 - [x] Avoid inline settings feedback in violation of the settings UI rules.
 
@@ -284,6 +284,7 @@ The overnight implementation agent should aim for this first vertical slice:
 | 2026-04-30 | Added shared App SDK activation/renderer context types and a Pomodoro fixture package that validates through the app package API. |
 | 2026-04-30 | Replaced the Local install placeholder with path validation, owner confirmation, install review metadata, install API handoff, local payload update, and envelope refresh. |
 | 2026-04-30 | Added post-install navigation to the installed app's first enabled Lobby route, with a pure launch-path resolver test. |
+| 2026-04-30 | Added connector settings entry resolution from connector `setupPath` or app settings contributions, with Settings Apps links and auth summary coverage. |
 
 ---
 

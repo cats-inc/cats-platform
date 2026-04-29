@@ -157,6 +157,14 @@ export function resolveInstalledAppLaunchPath(
   return app.lobbyEntries[0]?.routePath ?? null;
 }
 
+export function resolveInstalledAppSettingsPath(
+  app: PlatformInstalledAppDescriptor,
+): `/settings/${string}` | null {
+  return app.connectors.find((connector) => connector.setupPath)?.setupPath
+    ?? app.settings?.[0]?.path
+    ?? null;
+}
+
 function summarizeValidationIssues(
   issues: readonly CatsAppManifestValidationIssue[] = [],
 ): string {
@@ -342,6 +350,7 @@ export function PlatformSettingsApps({
             const actionBusy = busyAction?.startsWith(`${app.id}:`) ?? false;
             const connectorCapabilities = formatConnectorCapabilities(app);
             const connectorAuth = formatConnectorAuth(app);
+            const settingsPath = resolveInstalledAppSettingsPath(app);
             return (
               <SettingsOptionRow
                 key={app.id}
@@ -372,6 +381,14 @@ export function PlatformSettingsApps({
                         href={primaryRoute}
                       >
                         Open
+                      </a>
+                    ) : null}
+                    {settingsPath ? (
+                      <a
+                        className="secondaryButton settingsInlineLink"
+                        href={settingsPath}
+                      >
+                        Settings
                       </a>
                     ) : null}
                     {canEnable ? (
