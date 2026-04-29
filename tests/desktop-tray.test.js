@@ -193,10 +193,15 @@ test('tray menu exposes a locked quitting state with no actionable entries', () 
   const state = buildDesktopTrayQuittingMenuState();
 
   assert.equal(state.lockedLabel, 'Quitting...');
+  assert.equal(state.lockedTooltip, 'Cats — quitting');
   assert.equal(state.summary, 'Quitting...');
   assert.deepEqual(state.actions, []);
   assert.deepEqual(state.products, []);
   assert.equal(state.setupCompleteAt, null);
+  // phase is intentionally omitted — locked menus short-circuit before the
+  // phase-driven status label runs, so guessing a bootstrap phase here
+  // would lie to anything else that reads the snapshot later.
+  assert.equal(state.phase, undefined);
 });
 
 test('window reveal navigation exits the bootstrap page once chat is ready', () => {

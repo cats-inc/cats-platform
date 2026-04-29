@@ -16,7 +16,11 @@ export interface DesktopTrayProductDescriptor {
 }
 
 export interface DesktopTrayMenuState {
-  phase: DesktopBootstrapPhase;
+  // Phase drives the fallback status label rendered when the menu is
+  // otherwise empty. Locked states (see lockedLabel) short-circuit before
+  // phase is read, so the field is optional for those cases — callers that
+  // build a real bootstrap-driven menu still set it.
+  phase?: DesktopBootstrapPhase;
   summary: string;
   setupCompleteAt: string | null;
   actions: Array<Pick<DesktopHostAction, 'id' | 'label' | 'primary'>>;
@@ -25,7 +29,15 @@ export interface DesktopTrayMenuState {
     label: string;
     path: string;
   }>;
+  // When set, the menu is replaced by a single disabled item with this
+  // label and every interaction entry-point is short-circuited. Used while
+  // shutdownHost drains services so the tray icon stays visible but the
+  // menu cannot be re-triggered.
   lockedLabel?: string;
+  // Optional tooltip override for locked states. Defaults to lockedLabel
+  // when omitted so callers do not have to repeat themselves; setting it
+  // explicitly lets the tooltip carry richer status (e.g. service count).
+  lockedTooltip?: string;
 }
 
 interface BuildDesktopTrayMenuStateOptions {
@@ -93,11 +105,11 @@ export function buildDesktopTrayMenuState(
 
 export function buildDesktopTrayQuittingMenuState(): DesktopTrayMenuState {
   return {
-    phase: 'starting_services',
     summary: 'Quitting...',
     setupCompleteAt: null,
     actions: [],
     products: [],
     lockedLabel: 'Quitting...',
+    lockedTooltip: 'Cats — quitting',
   };
 }

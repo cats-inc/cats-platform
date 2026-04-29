@@ -40,7 +40,7 @@ function createBundledTrayImage(name: string): Electron.NativeImage | null {
   return null;
 }
 
-function buildStatusLabel(phase: DesktopBootstrapPhase, summary: string): string {
+function buildStatusLabel(phase: DesktopBootstrapPhase | undefined, summary: string): string {
   if (phase === 'starting_services') {
     return 'Starting Cats services...';
   }
@@ -202,7 +202,7 @@ export async function createDesktopTrayController(
 
   const trayLifecycle = createGuardedTrayLifecycle<DesktopTrayMenuState>({
     apply(state) {
-      tray.setToolTip(state.lockedLabel ?? 'Cats');
+      tray.setToolTip(state.lockedTooltip ?? state.lockedLabel ?? 'Cats');
       currentMenu = Menu.buildFromTemplate(
         buildDesktopTrayMenuTemplate(state, options, showWindow),
       );

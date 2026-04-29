@@ -1392,23 +1392,61 @@ async function createMainWindow(
   return window;
 }
 
+// Hard ceiling for graceful shutdown. Generous compared with the
+// supervisor's per-service gracefulShutdownMs (3s today) so the natural
+// shutdown of cats-platform (~2-3s for closeAppServerGracefully +
+// flushProviderSnapshotPersistence) plus a SIGTERM round still fits, but
+// guarantees the user is never stuck on "Quitting..." forever if a child
+// process refuses to exit.
+const SHUTDOWN_WATCHDOG_MS = 15_000;
+
+function waitForShutdownDeadline(ms: number): Promise<'timed_out'> {
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve('timed_out'), ms);
+    timer.unref?.();
+  });
+}
+
 async function shutdownHost(): Promise<void> {
   if (shutdownPromise) {
     return shutdownPromise;
   }
   shuttingDown = true;
   shutdownPromise = (async () => {
-    voiceCaptureController?.dispose();
-    voiceCaptureController = null;
-    const activeTrayController = trayController;
-    activeTrayController?.updateMenu(buildDesktopTrayQuittingMenuState());
+    let shutdownExitCode = 0;
+    let activeTrayController: DesktopTrayController | null = null;
     try {
-      await supervisor?.stopAll();
+      voiceCaptureController?.dispose();
+      voiceCaptureController = null;
+      activeTrayController = trayController;
+      activeTrayController?.updateMenu(buildDesktopTrayQuittingMenuState());
+      const drain = supervisor?.stopAll() ?? Promise.resolve();
+      const result = await Promise.race([
+        drain.then(() => 'drained' as const),
+        waitForShutdownDeadline(SHUTDOWN_WATCHDOG_MS),
+      ]);
+      if (result === 'timed_out') {
+        shutdownExitCode = 1;
+        process.stderr.write(
+          `Desktop host shutdown watchdog tripped after ${SHUTDOWN_WATCHDOG_MS}ms; forcing exit.\n`,
+        );
+      }
+    } catch (error) {
+      shutdownExitCode = 1;
+      process.stderr.write(
+        `Desktop host shutdown failed: ${error instanceof Error ? error.stack ?? error.message : String(error)}\n`,
+      );
     } finally {
       trayController = null;
-      activeTrayController?.dispose();
+      try {
+        activeTrayController?.dispose();
+      } catch (disposeError) {
+        process.stderr.write(
+          `Desktop host tray dispose failed during shutdown: ${disposeError instanceof Error ? disposeError.message : String(disposeError)}\n`,
+        );
+      }
       exitingAfterShutdown = true;
-      app.exit();
+      app.exit(shutdownExitCode);
     }
   })();
   return shutdownPromise;
@@ -1674,6 +1712,13 @@ async function main(): Promise<void> {
     }
   });
   mainWindow.on('close', (event) => {
+    // We gate on shuttingDown (not exitingAfterShutdown) on purpose: once
+    // shutdownHost has flipped shuttingDown to true the user has explicitly
+    // asked to quit, so any subsequent window close should fall through to
+    // the real close path. Hiding to tray here would leak the window past
+    // the shutdown drain. exitingAfterShutdown is reserved for the
+    // before-quit handler where we explicitly want to allow the final
+    // app.exit() to complete.
     if (!shuttingDown && isSystemTrayEnabled() && trayController) {
       event.preventDefault();
       hideMainWindowToTray();
