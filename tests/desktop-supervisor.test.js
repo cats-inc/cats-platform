@@ -45,6 +45,12 @@ class FakeChildProcess extends EventEmitter {
         this.emit('exit', 0, null);
       }, 5);
     }
+    if (signal === 'SIGKILL') {
+      setTimeout(() => {
+        this.signalCode = 'SIGKILL';
+        this.emit('exit', null, 'SIGKILL');
+      }, 5);
+    }
     return true;
   }
 }
@@ -493,6 +499,33 @@ test('stopService gives SIGTERM its own grace window before SIGKILL', async () =
 
   assert.equal(child.stdinEnded, true);
   assert.deepEqual(child.killCalls, ['SIGTERM']);
+});
+
+test('forceStopAll SIGKILLs live managed services for host watchdog recovery', async () => {
+  const config = resolveDesktopHostConfig({
+    env: {},
+    userDataDir: 'C:/Users/test/AppData/Roaming/Cats',
+    catsHomeDir: 'C:/Users/test/.cats',
+  });
+  const supervisor = new ManagedServiceSupervisor(config);
+  const platformChild = new FakeChildProcess();
+  const runtimeChild = new FakeChildProcess();
+  const platformHandle = supervisor.handles.get('cats-platform');
+  const runtimeHandle = supervisor.handles.get('cats-runtime');
+
+  assert.ok(platformHandle);
+  assert.ok(runtimeHandle);
+  platformHandle.child = platformChild;
+  runtimeHandle.child = runtimeChild;
+
+  assert.equal(supervisor.getManagedServiceCount(), 2);
+
+  await supervisor.forceStopAll();
+
+  assert.deepEqual(platformChild.killCalls, ['SIGKILL']);
+  assert.deepEqual(runtimeChild.killCalls, ['SIGKILL']);
+  assert.equal(platformHandle.child, null);
+  assert.equal(runtimeHandle.child, null);
 });
 
 test('prepareManagedServiceLog rotates the previous attempt log into a bounded backup', async () => {

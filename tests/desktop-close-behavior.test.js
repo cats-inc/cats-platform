@@ -26,15 +26,17 @@ test('desktop host keeps tray locked while shutdown drains services', async () =
 
   assert.match(source, /let shutdownPromise: Promise<void> \| null = null;/u);
   assert.match(source, /let exitingAfterShutdown = false;/u);
-  // The whole shutdown sequence (voice dispose, tray updateMenu, supervisor
-  // drain) sits inside a try block; finally always runs dispose + app.exit
-  // so a thrown error in any earlier step still ends the process.
-  assert.match(source, /try \{[\s\S]*voiceCaptureController\?\.dispose\(\);[\s\S]*activeTrayController\?\.updateMenu\(buildDesktopTrayQuittingMenuState\(\)\);[\s\S]*supervisor\?\.stopAll\(\)[\s\S]*\} catch \(error\) \{[\s\S]*\} finally \{[\s\S]*activeTrayController\?\.dispose\(\);[\s\S]*exitingAfterShutdown = true;[\s\S]*app\.exit\(shutdownExitCode\);/u);
-  // Watchdog races the supervisor drain against a deadline so a stuck
-  // child cannot leave the tray frozen on "Quitting..." forever.
-  assert.match(source, /SHUTDOWN_WATCHDOG_MS = 15_000;/u);
-  assert.match(source, /Promise\.race\(\[[\s\S]*drain[\s\S]*waitForShutdownDeadline\(SHUTDOWN_WATCHDOG_MS\)/u);
+  // Snapshot the tray before any disposable subsystem can throw; the whole
+  // shutdown sequence then lives inside try/catch/finally so app.exit always runs.
+  assert.match(source, /const activeTrayController = trayController;[\s\S]*try \{[\s\S]*voiceCaptureController\?\.dispose\(\);[\s\S]*activeTrayController\?\.updateMenu\(buildDesktopTrayQuittingMenuState\(\)\);[\s\S]*supervisor\?\.stopAll\(\)[\s\S]*\} catch \(error\) \{[\s\S]*\} finally \{[\s\S]*activeTrayController\?\.dispose\(\);[\s\S]*exitingAfterShutdown = true;[\s\S]*app\.exit\(shutdownExitCode\);/u);
+  // Watchdog derives from gracefulShutdownMs and managed service count; a
+  // timeout force-stops children before letting the Electron host exit.
+  assert.match(source, /SHUTDOWN_GRACE_WINDOWS_PER_SERVICE = 2;/u);
+  assert.match(source, /SHUTDOWN_WATCHDOG_BUFFER_MS = 3_000;/u);
+  assert.match(source, /resolveShutdownWatchdogMs\(hostConfig, supervisor\?\.getManagedServiceCount\(\) \?\? 0\)/u);
+  assert.match(source, /Promise\.race\(\[[\s\S]*drain[\s\S]*waitForShutdownDeadline\(shutdownWatchdogMs\)/u);
   assert.match(source, /shutdown watchdog tripped/u);
+  assert.match(source, /await supervisor\?\.forceStopAll\(\);/u);
   // before-quit only releases preventDefault once shutdownHost is past the
   // app.exit() call; everything else funnels back into shutdownHost.
   assert.match(source, /app\.on\('before-quit', \(event\) => \{[\s\S]*if \(!exitingAfterShutdown\) \{[\s\S]*event\.preventDefault\(\);[\s\S]*void shutdownHost\(\);/u);

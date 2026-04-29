@@ -46,6 +46,7 @@ interface ManagedServiceLifecyclePayload {
 
 const DEFAULT_APP_STARTUP_TIMEOUT_MS = 90_000;
 const DEFAULT_WINDOWS_RUNTIME_STARTUP_TIMEOUT_MS = 60_000;
+const FORCE_STOP_EXIT_WAIT_MS = 1_000;
 const RUNTIME_TEMPLATE_SEED_STATE_FILE_NAME = '.bundled-template-seeds.json';
 const LEGACY_CURATED_TEMPLATE_SOURCE_HASHES = [
   '04519fcae77681ce2bf4bd231218163fca82611a0e95cf8c52f29c767ec72b7e',
@@ -647,6 +648,10 @@ export class ManagedServiceSupervisor {
     return Array.from(this.handles.values()).map((handle) => ({ ...handle.snapshot }));
   }
 
+  getManagedServiceCount(): number {
+    return this.handles.size;
+  }
+
   async startAll(): Promise<void> {
     await ensureLaunchAssets(this.config);
     const specs = buildManagedServiceSpecs(this.config, process.env, this.platform);
@@ -659,6 +664,39 @@ export class ManagedServiceSupervisor {
     for (const name of this.shutdownOrder) {
       await this.stopService(name);
     }
+  }
+
+  async forceStopAll(): Promise<void> {
+    const waits: Promise<void>[] = [];
+    for (const name of this.shutdownOrder) {
+      const handle = this.handles.get(name);
+      const child = handle?.child;
+      if (!handle || !child || child.exitCode !== null || child.signalCode !== null) {
+        continue;
+      }
+      handle.expectedExit = true;
+      const waitForExit = new Promise<void>((resolve) => {
+        child.once('exit', (code, _signal) => {
+          if (handle.child === child) {
+            handle.child = null;
+            this.updateSnapshot(name, {
+              status: 'stopped',
+              ready: false,
+              pid: null,
+              exitCode: typeof code === 'number' ? code : null,
+              error: null,
+            });
+          }
+          resolve();
+        });
+      });
+      child.kill('SIGKILL');
+      waits.push(Promise.race([
+        waitForExit,
+        waitForTimeout(FORCE_STOP_EXIT_WAIT_MS),
+      ]).then(() => undefined));
+    }
+    await Promise.all(waits);
   }
 
   private updateSnapshot(name: ManagedServiceName, update: Partial<ManagedServiceSnapshot>): void {

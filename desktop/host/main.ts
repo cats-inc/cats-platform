@@ -1392,13 +1392,17 @@ async function createMainWindow(
   return window;
 }
 
-// Hard ceiling for graceful shutdown. Generous compared with the
-// supervisor's per-service gracefulShutdownMs (3s today) so the natural
-// shutdown of cats-platform (~2-3s for closeAppServerGracefully +
-// flushProviderSnapshotPersistence) plus a SIGTERM round still fits, but
-// guarantees the user is never stuck on "Quitting..." forever if a child
-// process refuses to exit.
-const SHUTDOWN_WATCHDOG_MS = 15_000;
+// Hard ceiling for graceful shutdown. The supervisor gives every managed
+// service two grace windows (stdin close, then SIGTERM), so the host-level
+// watchdog derives its budget from the configured per-window grace and the
+// active service count, with a small buffer for app-level cleanup.
+const SHUTDOWN_GRACE_WINDOWS_PER_SERVICE = 2;
+const SHUTDOWN_WATCHDOG_BUFFER_MS = 3_000;
+
+function resolveShutdownWatchdogMs(config: DesktopHostConfig, serviceCount: number): number {
+  return (config.gracefulShutdownMs * SHUTDOWN_GRACE_WINDOWS_PER_SERVICE * Math.max(1, serviceCount))
+    + SHUTDOWN_WATCHDOG_BUFFER_MS;
+}
 
 function waitForShutdownDeadline(ms: number): Promise<'timed_out'> {
   return new Promise((resolve) => {
@@ -1414,28 +1418,45 @@ async function shutdownHost(): Promise<void> {
   shuttingDown = true;
   shutdownPromise = (async () => {
     let shutdownExitCode = 0;
-    let activeTrayController: DesktopTrayController | null = null;
+    let forcedStopAttempted = false;
+    const activeTrayController = trayController;
     try {
       voiceCaptureController?.dispose();
       voiceCaptureController = null;
-      activeTrayController = trayController;
       activeTrayController?.updateMenu(buildDesktopTrayQuittingMenuState());
       const drain = supervisor?.stopAll() ?? Promise.resolve();
+      const shutdownWatchdogMs = hostConfig
+        ? resolveShutdownWatchdogMs(hostConfig, supervisor?.getManagedServiceCount() ?? 0)
+        : SHUTDOWN_WATCHDOG_BUFFER_MS;
       const result = await Promise.race([
         drain.then(() => 'drained' as const),
-        waitForShutdownDeadline(SHUTDOWN_WATCHDOG_MS),
+        waitForShutdownDeadline(shutdownWatchdogMs),
       ]);
       if (result === 'timed_out') {
         shutdownExitCode = 1;
         process.stderr.write(
-          `Desktop host shutdown watchdog tripped after ${SHUTDOWN_WATCHDOG_MS}ms; forcing exit.\n`,
+          `Desktop host shutdown watchdog tripped after ${shutdownWatchdogMs}ms; forcing managed services down.\n`,
         );
+        forcedStopAttempted = true;
+        await supervisor?.forceStopAll();
+        void drain.catch((error) => {
+          process.stderr.write(
+            `Desktop host graceful shutdown failed after watchdog: ${error instanceof Error ? error.stack ?? error.message : String(error)}\n`,
+          );
+        });
       }
     } catch (error) {
       shutdownExitCode = 1;
       process.stderr.write(
         `Desktop host shutdown failed: ${error instanceof Error ? error.stack ?? error.message : String(error)}\n`,
       );
+      if (!forcedStopAttempted) {
+        await supervisor?.forceStopAll().catch((forceStopError) => {
+          process.stderr.write(
+            `Desktop host force-stop failed during shutdown recovery: ${forceStopError instanceof Error ? forceStopError.stack ?? forceStopError.message : String(forceStopError)}\n`,
+          );
+        });
+      }
     } finally {
       trayController = null;
       try {
