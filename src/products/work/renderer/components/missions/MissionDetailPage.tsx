@@ -2,10 +2,10 @@ import { useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { formatRelative } from "../topdown/shared";
-import { useMissions } from "../../state/missionsStore";
-import { useRuns } from "../../state/runsStore";
-import { useTasks } from "../../state/tasksStore";
-import { useWorkItems } from "../../state/workItemsStore";
+import { useMissionsQuery } from "../../state/queries/missionsQuery.js";
+import { useRunsQuery } from "../../state/queries/runsQuery.js";
+import { useTasksQuery } from "../../state/queries/tasksQuery.js";
+import { useWorkItemsQuery } from "../../state/queries/workItemsQuery.js";
 import {
   WORK_MISSIONS_PATH,
   buildWorkRunPath,
@@ -16,34 +16,39 @@ import "./missions.css";
 
 export function MissionDetailPage(): JSX.Element {
   const { missionId } = useParams<{ missionId: string }>();
-  const { allMissions } = useMissions();
-  const { allWorkItems } = useWorkItems();
-  const { allTasks } = useTasks();
-  const { allRuns } = useRuns();
+  const missionsQuery = useMissionsQuery();
+  const workItemsQuery = useWorkItemsQuery();
+  const tasksQuery = useTasksQuery();
+  const runsQuery = useRunsQuery();
 
   const mission = missionId
-    ? allMissions.find((m) => m.id === missionId)
+    ? missionsQuery.data?.missions.find((m) => m.id === missionId)
     : undefined;
 
-  const linkedWorkItem = mission?.linkedWorkItemId
-    ? allWorkItems.find((wi) => wi.id === mission.linkedWorkItemId)
+  const linkedWorkItem = mission?.managedWorkId
+    ? workItemsQuery.data?.workItems.find((wi) => wi.id === mission.managedWorkId)
     : undefined;
 
   const transitiveTasks = useMemo(() => {
     if (!linkedWorkItem) return [];
+    const allTasks = tasksQuery.data?.tasks ?? [];
     return allTasks
-      .filter((t) => t.linkedWorkItemId === linkedWorkItem.id)
+      .filter((t) => t.workItemId === linkedWorkItem.id)
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  }, [allTasks, linkedWorkItem]);
+  }, [tasksQuery.data, linkedWorkItem]);
 
   const transitiveRuns = useMemo(() => {
     if (transitiveTasks.length === 0) return [];
     const taskIds = new Set(transitiveTasks.map((t) => t.id));
+    const allRuns = runsQuery.data?.runs ?? [];
     return allRuns
-      .filter((r) => r.linkedTaskId && taskIds.has(r.linkedTaskId))
+      .filter((r) => r.taskId !== null && taskIds.has(r.taskId))
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  }, [allRuns, transitiveTasks]);
+  }, [runsQuery.data, transitiveTasks]);
 
+  if (missionsQuery.isPending) {
+    return <MissionDetailLoading />;
+  }
   if (!mission) {
     return <MissionNotFound missionId={missionId ?? null} />;
   }
@@ -95,16 +100,10 @@ export function MissionDetailPage(): JSX.Element {
               <dt>Status</dt>
               <dd>{mission.status.replace(/_/g, " ")}</dd>
             </div>
-            {mission.assignedActorTitles &&
-            mission.assignedActorTitles.length > 0 ? (
+            {mission.assignedAgentName ? (
               <div className="missionDetail__summaryRow">
                 <dt>Assigned agent</dt>
-                <dd>{mission.assignedActorTitles.join(", ")}</dd>
-              </div>
-            ) : mission.ownerRole ? (
-              <div className="missionDetail__summaryRow">
-                <dt>Owner role</dt>
-                <dd>{mission.ownerRole}</dd>
+                <dd>{mission.assignedAgentName}</dd>
               </div>
             ) : null}
             <div className="missionDetail__summaryRow">
@@ -124,13 +123,13 @@ export function MissionDetailPage(): JSX.Element {
                 </dd>
               </div>
             ) : null}
-            {mission.linkedConversationId ? (
+            {mission.conversationId ? (
               <div className="missionDetail__summaryRow">
                 <dt>Conversation</dt>
                 <dd>
-                  {mission.linkedConversationTitle ?? (
+                  {mission.conversationTitle ?? (
                     <code className="missionDetail__monoId">
-                      {mission.linkedConversationId}
+                      {mission.conversationId}
                     </code>
                   )}
                 </dd>
@@ -199,15 +198,15 @@ export function MissionDetailPage(): JSX.Element {
               {transitiveRuns.map((run) => (
                 <li key={run.id} className="missionDetail__transitiveRow">
                   <Link
-                    to={buildWorkRunPath(run.linkedTaskId ?? "orphan", run.id)}
+                    to={buildWorkRunPath(run.taskId ?? "orphan", run.id)}
                     className="missionDetail__transitiveLink"
                   >
                     <span className="missionDetail__transitiveTitle">
                       {run.title}
                     </span>
-                    {run.linkedTaskTitle ? (
+                    {run.taskTitle ? (
                       <span className="missionDetail__transitiveParent">
-                        ↳ {run.linkedTaskTitle}
+                        ↳ {run.taskTitle}
                       </span>
                     ) : null}
                     <span
@@ -224,6 +223,26 @@ export function MissionDetailPage(): JSX.Element {
             </ul>
           )}
         </section>
+      </main>
+    </div>
+  );
+}
+
+function MissionDetailLoading(): JSX.Element {
+  return (
+    <div className="missionDetail">
+      <header className="channelTopBar missionDetailTopBar">
+        <div className="channelTopBarStart missionDetailTopBar__start">
+          <Link
+            to={WORK_MISSIONS_PATH}
+            className="missionDetailTopBar__back"
+          >
+            <span>Missions</span>
+          </Link>
+        </div>
+      </header>
+      <main className="missionDetail__main">
+        <p className="missionDetail__empty">Loading mission…</p>
       </main>
     </div>
   );
