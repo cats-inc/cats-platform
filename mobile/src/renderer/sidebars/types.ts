@@ -1,37 +1,19 @@
 /**
- * Mobile sidebar data shapes. SPEC-095 keeps Recents + MY CATS contextual
- * subset + Add-cat-in-chat as the canonical Chat sidebar entry set
- * (FR-026, FR-027). The shapes here are minimal subsets of the real web
- * contracts in `cats-platform/src/products/chat/api/contracts.ts` and
- * `cats-platform/src/products/shared/api/workspaceContracts.ts`. Same
- * deferred-import pattern as `types/messageBody.ts` — these go away
- * once Metro / tsconfig path resolution to `cats-platform/src` lands.
+ * Sidebar types. Data shapes are aliased from the cats-platform mobile-
+ * safe boundary so any drift between the wire DTO and the mobile UX
+ * stays caught by `__mobileAlignment.ts`. Callback / interaction
+ * shapes (function signatures the screens supply to the components)
+ * stay mobile-local — they describe React Native behaviour, not data.
  *
- * Edits here MUST stay in lockstep with the web contracts.
+ * Per the 2026-04-29 integrator review (PLAN-084 Phase 4b prep).
  */
 
-export interface SidebarRecentEntry {
-  id: string;
-  title: string;
-  /** Free-form subtitle (last sender, channel kind, etc.). */
-  subtitle?: string;
-  /** Last activity timestamp, used for sorting and display. */
-  updatedAt: number;
-}
-
-export type SidebarCatStatus = 'ready' | 'warm' | 'sleeping';
-
-export interface SidebarCatEntry {
-  id: string;
-  name: string;
-  avatarColor?: string | null;
-  status: SidebarCatStatus;
-}
-
-export interface ChatSidebarData {
-  recents: SidebarRecentEntry[];
-  cats: SidebarCatEntry[];
-}
+export type {
+  MobileChatSidebarData as ChatSidebarData,
+  MobileSidebarCat as SidebarCatEntry,
+  MobileSidebarCatStatus as SidebarCatStatus,
+  MobileSidebarRecent as SidebarRecentEntry,
+} from '../../../../src/mobile/index.js';
 
 export interface ChatSidebarCallbacks {
   onStartNewChat: () => void;
