@@ -1589,6 +1589,37 @@ test('NSIS installer.nsh provides an uninstaller page for optional user-data rem
   assert.match(nsh, /customUnInstall/);
 });
 
+test('NSIS customUnInstall keeps user-data removals inside the RemoveUserDataState gate', async () => {
+  const nsh = await readFile(
+    join(process.cwd(), 'assets', 'build', 'installer.nsh'),
+    'utf8',
+  );
+
+  const macroMatch = nsh.match(/!macro customUnInstall([\s\S]*?)!macroend/);
+  assert.ok(macroMatch, 'customUnInstall macro must exist');
+  const macroBody = macroMatch[1];
+
+  const conditionalMatch = macroBody.match(
+    /\$\{If\} \$RemoveUserDataState == \$\{BST_CHECKED\}([\s\S]*?)\$\{EndIf\}/,
+  );
+  assert.ok(conditionalMatch, 'RemoveUserDataState gate must exist');
+  const conditionalBody = conditionalMatch[1];
+
+  // Both Cats userData (Chromium localStorage/IndexedDB) and the home-dir
+  // .cats tree (sessions/state) must only be deleted when the user opts in;
+  // installer-driven upgrades run the old uninstaller silently and would
+  // otherwise reset Guide Cat placement, sidecarSeen, etc. on every upgrade.
+  assert.match(conditionalBody, /RMDir \/r "\$APPDATA\\Cats"/);
+  assert.match(conditionalBody, /RMDir \/r "\$PROFILE\\\.cats"/);
+
+  const before = macroBody.slice(0, macroMatch[1].indexOf(conditionalMatch[0]));
+  const after = macroBody.slice(
+    macroMatch[1].indexOf(conditionalMatch[0]) + conditionalMatch[0].length,
+  );
+  assert.equal(/RMDir \/r/.test(before), false, 'no RMDir outside the gate (before)');
+  assert.equal(/RMDir \/r/.test(after), false, 'no RMDir outside the gate (after)');
+});
+
 test('NSIS installer.nsh forces per-user install via customInstallMode so admin/all-users is not offered', async () => {
   const nsh = await readFile(
     join(process.cwd(), 'assets', 'build', 'installer.nsh'),

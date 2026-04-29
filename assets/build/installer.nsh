@@ -55,9 +55,16 @@ FunctionEnd
 !endif
 
 !macro customUnInstall
-  ; Always clean Electron internal cache (not user-meaningful).
-  RMDir /r "$APPDATA\Cats"
+  ; $APPDATA\Cats holds Electron's userData (localStorage, IndexedDB,
+  ; Preferences). On Windows the installer-driven upgrade flow runs the old
+  ; uninstaller silently before the new version installs, so wiping this
+  ; directory unconditionally would reset Chromium-backed prefs every
+  ; upgrade. The Guide Cat placement / floatingAnchor / sidecarSeen, the
+  ; renderer's product surface memory, and any localStorage-driven UI
+  ; state live here, so we only remove it when the user explicitly opts in
+  ; via the "Remove all user data" checkbox.
   ${If} $RemoveUserDataState == ${BST_CHECKED}
+    RMDir /r "$APPDATA\Cats"
     RMDir /r "$PROFILE\.cats"
   ${EndIf}
 !macroend
