@@ -10,6 +10,7 @@ import {
   createSupervisedToolRegistry,
   createSupervisedTransportDeliveryTools,
   createToolBoundary,
+  type SupervisedTransportDeliveryApprovalPolicy,
   type SupervisedTelegramTextDeliveryInput,
   type SupervisedTelegramTextDeliveryResult,
   type SupervisedTransportTarget,
@@ -116,6 +117,7 @@ async function invokeTelegramDeliveryTool(input: {
   binding: BotBindingRecord;
   relay: TelegramRelay;
   allowedTargets?: SupervisedTransportTarget[];
+  approval?: SupervisedTransportDeliveryApprovalPolicy;
   grant?: ToolSurfaceGrant;
   toolInput?: Partial<SupervisedTelegramTextDeliveryInput>;
 }) {
@@ -127,6 +129,7 @@ async function invokeTelegramDeliveryTool(input: {
     coreStore,
     telegramRelay: input.relay,
     allowedTransportTargets: input.allowedTargets,
+    approval: input.approval,
   });
   const registry = createSupervisedToolRegistry();
   tools.register(registry);
@@ -215,6 +218,32 @@ test('supervised Telegram text delivery rejects undeclared bindings', async () =
   assert.equal(result.error.code, 'E_NOT_AUTHORIZED');
   assert.equal(deliveries.length, 0);
   assert.equal(evidence[0].status, 'rejected');
+});
+
+test('supervised Telegram text delivery pauses when policy requires approval', async () => {
+  const binding = createTelegramBinding();
+  const deliveries: RecordedTelegramDelivery[] = [];
+  const relay = createTelegramRelay({
+    now: () => new Date(NOW),
+    deliveryClient: createRecordingDeliveryClient(deliveries),
+  });
+  seedTelegramConversation(relay, binding);
+
+  const { result, evidence } = await invokeTelegramDeliveryTool({
+    binding,
+    relay,
+    allowedTargets: [{ platform: 'telegram', bindingId: binding.id }],
+    approval: {
+      required: true,
+      requestId: 'approval-telegram-delivery-1',
+    },
+  });
+
+  assert.equal(result.status, 'pending_approval');
+  assert.equal(result.requestId, 'approval-telegram-delivery-1');
+  assert.equal(deliveries.length, 0);
+  assert.equal(evidence[0].status, 'pending_approval');
+  assert.equal(evidence[0].approvalRequestId, 'approval-telegram-delivery-1');
 });
 
 test('supervised Telegram text delivery requires broad-write tool scope', async () => {

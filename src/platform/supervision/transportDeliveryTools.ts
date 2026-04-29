@@ -28,6 +28,12 @@ export interface SupervisedTransportTarget {
   bindingId: string;
 }
 
+export interface SupervisedTransportDeliveryApprovalPolicy {
+  required: boolean;
+  requestId?: string;
+  summary?: string;
+}
+
 export interface SupervisedTelegramTextDeliveryInput {
   bindingId: string;
   text: string;
@@ -53,6 +59,7 @@ export interface SupervisedTransportDeliveryToolOptions {
   coreStore: CoreStore;
   telegramRelay: TelegramRelay;
   allowedTransportTargets?: SupervisedTransportTarget[];
+  approval?: SupervisedTransportDeliveryApprovalPolicy;
 }
 
 export interface SupervisedTransportDeliveryTools {
@@ -172,6 +179,11 @@ function createTelegramTextDeliveryExecutor(
       return destination;
     }
 
+    const approval = resolveDeliveryApproval(options.approval, binding, input);
+    if (approval) {
+      return approval;
+    }
+
     const context = buildTelegramRelayContext(core, binding);
     const receipts: TelegramDeliveryReceipt[] = [];
     for (const chunk of chunks) {
@@ -215,6 +227,26 @@ function createTelegramTextDeliveryExecutor(
         textPreview: createTextPreview(input.text),
       },
     };
+  };
+}
+
+function resolveDeliveryApproval(
+  approval: SupervisedTransportDeliveryApprovalPolicy | undefined,
+  binding: BotBindingRecord,
+  input: NormalizedTelegramTextDeliveryInput,
+): ToolResult<SupervisedTelegramTextDeliveryResult> | null {
+  if (approval?.required !== true) {
+    return null;
+  }
+
+  return {
+    status: 'pending_approval',
+    requestId: approval.requestId ?? `telegram-delivery:${binding.id}`,
+    summary: approval.summary ?? [
+      `Send Telegram text through ${binding.botName}`,
+      `binding=${binding.id}`,
+      `preview=${createTextPreview(input.text)}`,
+    ].join(' '),
   };
 }
 
