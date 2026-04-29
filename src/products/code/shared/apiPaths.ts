@@ -20,6 +20,7 @@ function buildCodeApiDetailPath(
 export const CODE_API_PREFIX = PLATFORM_CODE_API_BASE;
 export const CODE_API_TASKS_PATH = `${CODE_API_PREFIX}/tasks`;
 export const CODE_API_ARTIFACTS_PATH = `${CODE_API_PREFIX}/artifacts`;
+export const CODE_API_ARTIFACT_DECLARATIONS_PATH = `${CODE_API_ARTIFACTS_PATH}/declarations`;
 export const CODE_API_BUILDS_PATH = `${CODE_API_PREFIX}/builds`;
 export const CODE_API_PREVIEWS_PATH = `${CODE_API_PREFIX}/previews`;
 export const CODE_API_WORKSPACE_RESOLVE_PATH = `${CODE_API_PREFIX}/workspace/resolve`;
@@ -36,6 +37,7 @@ export const CODE_API_TASK_PLAN_PATH_TEMPLATE = `${CODE_API_TASKS_PATH}/:taskId/
 export const CODE_API_TASK_PLAN_STEP_PATH_TEMPLATE =
   `${CODE_API_TASKS_PATH}/:taskId/plan/steps/:stepId`;
 export const CODE_API_ARTIFACT_DETAIL_PATH_TEMPLATE = `${CODE_API_ARTIFACTS_PATH}/:artifactId`;
+export const CODE_API_ARTIFACT_DECLARATIONS_PATH_TEMPLATE = CODE_API_ARTIFACT_DECLARATIONS_PATH;
 export const CODE_API_RUNTIME_SESSION_OBSERVE_PATH_TEMPLATE =
   `${CODE_API_PREFIX}/runtime/sessions/:sessionId/observe`;
 export const CODE_API_RELAY_ROSTER_ENTRY_PATH_TEMPLATE =
@@ -50,6 +52,8 @@ export const CODE_API_TASK_PLAN_PATTERN = /^\/api\/code\/tasks\/([^/]+)\/plan$/u
 export const CODE_API_TASK_PLAN_STEP_PATTERN =
   /^\/api\/code\/tasks\/([^/]+)\/plan\/steps\/([^/]+)$/u;
 export const CODE_API_ARTIFACT_DETAIL_PATTERN = /^\/api\/code\/artifacts\/([^/]+)$/u;
+export const CODE_API_ARTIFACT_DECLARATIONS_PATTERN =
+  /^\/api\/code\/artifacts\/declarations$/u;
 export const CODE_API_RUNTIME_SESSION_OBSERVE_PATTERN =
   /^\/api\/code\/runtime\/sessions\/([^/]+)\/observe$/u;
 export const CODE_API_RELAY_ROSTER_ENTRY_PATTERN =

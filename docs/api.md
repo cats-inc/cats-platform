@@ -657,6 +657,7 @@ GET /api/code
 GET /api/code/tasks
 GET /api/code/tasks/:taskId
 GET /api/code/artifacts
+POST /api/code/artifacts/declarations
 GET /api/code/artifacts/:artifactId
 GET /api/code/builds
 GET /api/code/previews
@@ -685,6 +686,11 @@ GET /api/code/previews
   - code-specific workspace/plan context
 - `GET /api/code/artifacts` returns the code-output list read model above all
   code-linked artifacts.
+- `POST /api/code/artifacts/declarations` is the first Code-owned artifact
+  declaration submit route. It accepts a structured Code artifact declaration,
+  validates it through the Code materialization delegate, writes or updates the
+  corresponding `CoreArtifactRecord`, and returns the artifact detail projection
+  plus the accepted tool-result shape.
 - `GET /api/code/artifacts/:artifactId` returns the focused code-output detail
   view, including linked task/work-item/project references plus related output
   siblings.

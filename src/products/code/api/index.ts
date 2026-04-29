@@ -20,6 +20,7 @@ import { routeCodePlanApi } from './planRoutes.js';
 import { routeCodeDeliveryApi } from './deliveryRoutes.js';
 import { routeCodeRuntimeBridgeApi } from './runtimeBridgeRoutes.js';
 import { routeCodeRelayApi } from './relayRoutes.js';
+import { routeCodeArtifactDeclarationApi } from './artifactDeclarationRoutes.js';
 import {
   matchRoute,
   sendJson,
@@ -104,6 +105,9 @@ export async function routeCodeApi(
     return true;
   }
   if (await routeCodeRelayApi(context)) {
+    return true;
+  }
+  if (await routeCodeArtifactDeclarationApi(context)) {
     return true;
   }
 
