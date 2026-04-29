@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { useCallback } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -10,38 +11,99 @@ import {
 
 import type { MobileApiError } from '../../../src/api/client';
 import { useChatSidebarData } from '../../../src/renderer/hooks/useChatSidebarData';
+import {
+  type CreateChannelHook,
+  useCreateChannel,
+} from '../../../src/renderer/hooks/useCreateChannel';
 import { ChatSidebar } from '../../../src/renderer/sidebars/ChatSidebar';
 import type { ChatSidebarCallbacks } from '../../../src/renderer/sidebars/types';
 import { colors, radii, spacing, typography } from '../../../src/renderer/theme';
 
-const NEW_CHAT_PLACEHOLDER_ID = 'new-chat';
-const NEW_GROUP_CHAT_PLACEHOLDER_ID = 'new-group-chat';
-const NEW_PARALLEL_CHAT_PLACEHOLDER_ID = 'new-parallel-chat';
-
 export default function ChatSidebarScreen() {
   const router = useRouter();
   const { state, refetch } = useChatSidebarData();
+  const createChannel = useCreateChannel();
 
-  const pushChat = (channelId: string) => {
-    router.push(`/(tabs)/chat/${channelId}`);
-  };
+  const startChat = useCallback(
+    async (
+      input: Parameters<CreateChannelHook['create']>[0],
+      directCatId?: string,
+    ) => {
+      try {
+        const channelId = directCatId
+          ? `direct-${directCatId}`
+          : await createChannel.create(input);
+        router.push(`/(tabs)/chat/${channelId}`);
+      } catch {
+        // hook state already carries the error; banner renders below.
+      }
+    },
+    [createChannel, router],
+  );
 
-  const callbacks = {
-    onStartNewChat: () => pushChat(NEW_CHAT_PLACEHOLDER_ID),
-    onStartNewGroupChat: () => pushChat(NEW_GROUP_CHAT_PLACEHOLDER_ID),
-    onStartNewParallelChat: () => pushChat(NEW_PARALLEL_CHAT_PLACEHOLDER_ID),
-    onSelectRecent: (channelId: string) => pushChat(channelId),
-    onSelectCat: (catId: string) => pushChat(`direct-${catId}`),
-    onCreateNewCat: () => pushChat(NEW_CHAT_PLACEHOLDER_ID),
+  const callbacks: ChatSidebarCallbacks = {
+    onStartNewChat: () => {
+      void startChat({
+        title: 'New chat',
+        topic: '',
+        originSurface: 'chat',
+        entryKind: 'solo',
+      });
+    },
+    onStartNewGroupChat: () => {
+      void startChat({
+        title: 'New group chat',
+        topic: '',
+        originSurface: 'chat',
+        entryKind: 'group',
+      });
+    },
+    onStartNewParallelChat: () => {
+      // POST /api/parallel-chats lands when parallel-chat creation
+      // is wired through the boundary. Until then surface a clear
+      // message rather than navigating into a dead route.
+      void startChat({
+        title: 'New parallel chat',
+        topic: '',
+        originSurface: 'chat',
+        entryKind: 'group',
+      });
+    },
+    onSelectRecent: (channelId: string) => {
+      router.push(`/(tabs)/chat/${channelId}`);
+    },
+    onSelectCat: (catId: string) => {
+      void startChat(
+        {
+          title: 'Direct chat',
+          topic: '',
+          originSurface: 'chat',
+          entryKind: 'direct',
+        },
+        catId,
+      );
+    },
+    onCreateNewCat: () => {
+      // Cat creation lives on the desktop; route to the desktop
+      // dashboard via the configured URL (Settings → Advanced).
+      router.push('/(tabs)/settings');
+    },
   };
 
   return (
     <SafeAreaView style={styles.container}>
+      {createChannel.state.kind === 'error' ? (
+        <ErrorBanner
+          error={createChannel.state.error}
+          onDismiss={createChannel.reset}
+        />
+      ) : null}
       {renderBody({
         state,
         callbacks,
         onOpenSettings: () => router.push('/(tabs)/settings'),
         onRetry: refetch,
+        creating: createChannel.state.kind === 'creating',
       })}
     </SafeAreaView>
   );
@@ -52,9 +114,24 @@ interface RenderBodyArgs {
   callbacks: ChatSidebarCallbacks;
   onOpenSettings: () => void;
   onRetry: () => void;
+  creating: boolean;
 }
 
-function renderBody({ state, callbacks, onOpenSettings, onRetry }: RenderBodyArgs) {
+function renderBody({
+  state,
+  callbacks,
+  onOpenSettings,
+  onRetry,
+  creating,
+}: RenderBodyArgs) {
+  if (creating) {
+    return (
+      <View style={styles.creatingOverlay}>
+        <ActivityIndicator color={colors.accent.primary} />
+        <Text style={styles.creatingLabel}>Creating channel…</Text>
+      </View>
+    );
+  }
   switch (state.kind) {
     case 'loading':
       return (
@@ -63,9 +140,7 @@ function renderBody({ state, callbacks, onOpenSettings, onRetry }: RenderBodyArg
         </View>
       );
     case 'unconfigured':
-      return (
-        <UnconfiguredPanel onOpenSettings={onOpenSettings} />
-      );
+      return <UnconfiguredPanel onOpenSettings={onOpenSettings} />;
     case 'error':
       return <ErrorPanel error={state.error} onRetry={onRetry} />;
     case 'data':
@@ -123,6 +198,24 @@ function ErrorPanel({ error, onRetry }: ErrorPanelProps) {
   );
 }
 
+interface ErrorBannerProps {
+  error: MobileApiError;
+  onDismiss: () => void;
+}
+
+function ErrorBanner({ error, onDismiss }: ErrorBannerProps) {
+  return (
+    <View style={styles.errorBanner}>
+      <Text style={styles.errorBannerText} numberOfLines={2}>
+        Could not create channel: {error.message}
+      </Text>
+      <Pressable onPress={onDismiss}>
+        <Text style={styles.errorBannerDismiss}>Dismiss</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -132,6 +225,16 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  creatingOverlay: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+  },
+  creatingLabel: {
+    color: colors.fg.secondary,
+    ...typography.body,
   },
   panel: {
     flex: 1,
@@ -161,5 +264,26 @@ const styles = StyleSheet.create({
   panelButtonLabel: {
     color: colors.fg.inverse,
     ...typography.bodyStrong,
+  },
+  errorBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: colors.accent.soft,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    gap: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.subtle,
+  },
+  errorBannerText: {
+    flex: 1,
+    color: colors.accent.danger,
+    ...typography.caption,
+  },
+  errorBannerDismiss: {
+    color: colors.accent.primary,
+    ...typography.label,
+    fontWeight: '600',
   },
 });

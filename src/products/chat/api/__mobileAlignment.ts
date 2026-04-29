@@ -27,6 +27,7 @@ import type {
   MobileChatMessage,
   MobileChatShellState,
   MobileAppShellPayload,
+  MobileCreateChannelInput,
 } from '../../../mobile/contracts.js';
 import type {
   AppShellPayload,
@@ -34,6 +35,7 @@ import type {
   ChatChannelSummary,
   ChatMessage,
   ChatShellState,
+  CreateChatChannelInput,
 } from './contracts.js';
 
 type AssertExtends<T extends Required, Required> = true;
@@ -49,9 +51,14 @@ const _checkAppShellPayload: AssertExtends<
   AppShellPayload,
   MobileAppShellPayload
 > = true;
+const _checkCreateChannelInput: AssertExtends<
+  MobileCreateChannelInput,
+  CreateChatChannelInput
+> = true;
 
 void _checkChatCat;
 void _checkChatChannelSummary;
 void _checkChatMessage;
 void _checkChatShellState;
 void _checkAppShellPayload;
+void _checkCreateChannelInput;

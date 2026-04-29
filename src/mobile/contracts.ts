@@ -75,3 +75,23 @@ export interface MobileChatMessage {
 export interface MobileChannelMessagesPayload {
   messages: MobileChatMessage[];
 }
+
+/** Mobile-narrow create-channel input for `POST /api/channels`.
+ *  Mirrors `CreateChatChannelInput` from
+ *  `src/products/chat/api/contracts.ts` minus the optional fields that
+ *  mobile does not need to set. The server defaults the rest. */
+export interface MobileCreateChannelInput {
+  title: string;
+  topic: string;
+  originSurface: MobilePlatformSurfaceId;
+  entryKind?: 'solo' | 'group' | 'direct';
+}
+
+export interface MobileCreatedChannel {
+  id: string;
+  title: string;
+}
+
+export interface MobileCreateChannelResponse {
+  channel: MobileCreatedChannel;
+}

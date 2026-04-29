@@ -101,8 +101,8 @@ function renderBody({
     case 'channelNotFound':
       return (
         <PanelView
-          title="No conversation yet"
-          body={`Channel \`${channelId}\` was not found on the desktop. Sending the first message will create it once Phase 4c lands the new-chat creation flow.`}
+          title="Conversation not found"
+          body="This channel does not exist on your desktop. It may have been deleted from the desktop, or the link is stale."
         />
       );
     case 'error':
