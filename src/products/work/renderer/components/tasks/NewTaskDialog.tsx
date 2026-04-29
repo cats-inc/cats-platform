@@ -9,21 +9,47 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import type { CoreTaskStatus } from "../../api/workRecords.js";
+import { createWorkTask, type CoreTaskStatus } from "../../api/workRecords.js";
 import { WORK_TASKS_PATH } from "../../workPaths.js";
-import { useProjectsQuery } from "../../state/queries/projectsQuery.js";
 import { TASKS_QUERY_KEY, useTasksQuery } from "../../state/queries/tasksQuery.js";
-import { useWorkItemsQuery } from "../../state/queries/workItemsQuery.js";
-import {
-  tasksStore,
-  type CreateTaskInput,
-  type TaskPriority,
-} from "../../state/tasksStore";
+import type { TaskPriority } from "../../../shared/workGraphTypes.js";
+
+interface CreateTaskInput {
+  title: string;
+  summary: string | null;
+  status: CoreTaskStatus;
+  priority: TaskPriority | null;
+  assigneeName: string | null;
+  acceptanceCriteria: string | null;
+  parentTaskId: string | null;
+}
+
+const TASK_RENDERER_METADATA_KEY = "workRenderer";
+
+async function createTaskFromDialog(input: CreateTaskInput): Promise<{ id: string }> {
+  const rendererExtras: Record<string, unknown> = {};
+  if (input.priority) rendererExtras.priority = input.priority;
+  if (input.assigneeName) rendererExtras.assigneeName = input.assigneeName;
+  if (input.acceptanceCriteria) {
+    rendererExtras.acceptanceCriteria = input.acceptanceCriteria;
+  }
+  const metadata =
+    Object.keys(rendererExtras).length > 0
+      ? { [TASK_RENDERER_METADATA_KEY]: rendererExtras }
+      : undefined;
+
+  const result = await createWorkTask({
+    title: input.title,
+    summary: input.summary,
+    status: input.status,
+    parentTaskId: input.parentTaskId,
+    metadata,
+  });
+  return { id: result.task.id };
+}
 
 interface NewTaskDialogProps {
   onClose: () => void;
-  defaultProjectId?: string | null;
-  defaultWorkItemId?: string | null;
   defaultParentTaskId?: string | null;
 }
 
@@ -46,42 +72,30 @@ const PRIORITY_OPTIONS: { value: TaskPriority | ""; label: string }[] = [
 
 export function NewTaskDialog({
   onClose,
-  defaultProjectId,
-  defaultWorkItemId,
   defaultParentTaskId,
 }: NewTaskDialogProps): JSX.Element {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const titleId = useId();
   const summaryId = useId();
-  const projectId = useId();
-  const workItemId = useId();
   const parentTaskFieldId = useId();
-  const ownerId = useId();
   const assigneeId = useId();
   const statusId = useId();
   const priorityId = useId();
-  const nextActionId = useId();
   const acceptanceId = useId();
   const titleInputRef = useRef<HTMLInputElement>(null);
-  const projectsQuery = useProjectsQuery();
-  const workItemsQuery = useWorkItemsQuery();
   const tasksQuery = useTasksQuery();
 
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
-  const [linkedProject, setLinkedProject] = useState(defaultProjectId ?? "");
-  const [linkedWorkItem, setLinkedWorkItem] = useState(defaultWorkItemId ?? "");
   const [parentTask, setParentTask] = useState(defaultParentTaskId ?? "");
-  const [ownerRole, setOwnerRole] = useState("");
   const [assigneeName, setAssigneeName] = useState("");
   const [status, setStatus] = useState<CoreTaskStatus>("draft");
   const [priority, setPriority] = useState<TaskPriority | "">("");
-  const [nextAction, setNextAction] = useState("");
   const [acceptanceCriteria, setAcceptanceCriteria] = useState("");
 
   const createMutation = useMutation({
-    mutationFn: (input: CreateTaskInput) => tasksStore.createTask(input),
+    mutationFn: createTaskFromDialog,
     onSuccess: async (task) => {
       await queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
       onClose();
@@ -122,23 +136,15 @@ export function NewTaskDialog({
     if (!trimmed || submitting) return;
     createMutation.mutate({
       title: trimmed,
-      summary: summary || null,
-      linkedProjectId: linkedProject || null,
-      linkedWorkItemId: linkedWorkItem || null,
-      parentTaskId: parentTask || null,
-      ownerRole: ownerRole || null,
-      assigneeName: assigneeName || null,
+      summary: summary.trim() || null,
       status,
       priority: priority || null,
-      nextAction: nextAction || null,
-      acceptanceCriteria: acceptanceCriteria || null,
+      assigneeName: assigneeName.trim() || null,
+      acceptanceCriteria: acceptanceCriteria.trim() || null,
+      parentTaskId: parentTask || null,
     });
   }
 
-  const projectOptions = projectsQuery.data?.projects ?? [];
-  const workItemOptions = (workItemsQuery.data?.workItems ?? []).filter((wi) =>
-    linkedProject ? wi.projectId === linkedProject : true,
-  );
   const parentTaskOptions = tasksQuery.data?.tasks ?? [];
 
   return (
@@ -197,45 +203,6 @@ export function NewTaskDialog({
             />
           </label>
 
-          <div className="newProjectDialog__row">
-            <label className="newProjectDialog__field" htmlFor={projectId}>
-              <span className="newProjectDialog__label">Project</span>
-              <select
-                id={projectId}
-                className="newProjectDialog__select"
-                value={linkedProject}
-                onChange={(event) => {
-                  setLinkedProject(event.target.value);
-                  setLinkedWorkItem("");
-                }}
-              >
-                <option value="">— No project —</option>
-                {projectOptions.map((project) => (
-                  <option key={project.id} value={project.id}>
-                    {project.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="newProjectDialog__field" htmlFor={workItemId}>
-              <span className="newProjectDialog__label">Work item</span>
-              <select
-                id={workItemId}
-                className="newProjectDialog__select"
-                value={linkedWorkItem}
-                onChange={(event) => setLinkedWorkItem(event.target.value)}
-              >
-                <option value="">— No work item —</option>
-                {workItemOptions.map((wi) => (
-                  <option key={wi.id} value={wi.id}>
-                    {wi.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
           <label className="newProjectDialog__field" htmlFor={parentTaskFieldId}>
             <span className="newProjectDialog__label">Parent task</span>
             <select
@@ -253,33 +220,18 @@ export function NewTaskDialog({
             </select>
           </label>
 
-          <div className="newProjectDialog__row">
-            <label className="newProjectDialog__field" htmlFor={ownerId}>
-              <span className="newProjectDialog__label">Owner role</span>
-              <input
-                id={ownerId}
-                type="text"
-                className="newProjectDialog__input"
-                value={ownerRole}
-                onChange={(event) => setOwnerRole(event.target.value)}
-                placeholder="e.g. marketing"
-                maxLength={40}
-              />
-            </label>
-
-            <label className="newProjectDialog__field" htmlFor={assigneeId}>
-              <span className="newProjectDialog__label">Assignee</span>
-              <input
-                id={assigneeId}
-                type="text"
-                className="newProjectDialog__input"
-                value={assigneeName}
-                onChange={(event) => setAssigneeName(event.target.value)}
-                placeholder="Who picks this up?"
-                maxLength={60}
-              />
-            </label>
-          </div>
+          <label className="newProjectDialog__field" htmlFor={assigneeId}>
+            <span className="newProjectDialog__label">Assignee</span>
+            <input
+              id={assigneeId}
+              type="text"
+              className="newProjectDialog__input"
+              value={assigneeName}
+              onChange={(event) => setAssigneeName(event.target.value)}
+              placeholder="Who picks this up?"
+              maxLength={60}
+            />
+          </label>
 
           <div className="newProjectDialog__row">
             <label className="newProjectDialog__field" htmlFor={statusId}>
@@ -316,19 +268,6 @@ export function NewTaskDialog({
               </select>
             </label>
           </div>
-
-          <label className="newProjectDialog__field" htmlFor={nextActionId}>
-            <span className="newProjectDialog__label">Next action</span>
-            <input
-              id={nextActionId}
-              type="text"
-              className="newProjectDialog__input"
-              value={nextAction}
-              onChange={(event) => setNextAction(event.target.value)}
-              placeholder="What's the very next step?"
-              maxLength={120}
-            />
-          </label>
 
           <label className="newProjectDialog__field" htmlFor={acceptanceId}>
             <span className="newProjectDialog__label">Acceptance criteria</span>

@@ -10,12 +10,15 @@ import {
 } from "../topdown/shared";
 import type { WorkGraphObjectSummary } from "../topdown/types";
 import { useProjectsQuery } from "../../state/queries/projectsQuery.js";
-import { useWorkGraph } from "../../state/workGraphStore";
+import {
+  EMPTY_WORK_GRAPH,
+  useWorkGraphQuery,
+} from "../../state/queries/workGraphQuery.js";
 import "./projects.css";
 
 export function ProjectDetailPage(): JSX.Element {
   const { projectId } = useParams<{ projectId: string }>();
-  const { graph } = useWorkGraph();
+  const graph = useWorkGraphQuery().data ?? EMPTY_WORK_GRAPH;
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
   const projectsQuery = useProjectsQuery();
 

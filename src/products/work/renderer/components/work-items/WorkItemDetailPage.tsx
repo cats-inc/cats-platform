@@ -12,7 +12,10 @@ import type { WorkGraphObjectSummary } from "../topdown/types";
 import { useMissionsQuery, type WorkMissionListItem } from "../../state/queries/missionsQuery.js";
 import { useProjectsQuery } from "../../state/queries/projectsQuery.js";
 import { useWorkItemsQuery } from "../../state/queries/workItemsQuery.js";
-import { useWorkGraph } from "../../state/workGraphStore";
+import {
+  EMPTY_WORK_GRAPH,
+  useWorkGraphQuery,
+} from "../../state/queries/workGraphQuery.js";
 import {
   WORK_PROJECTS_PATH,
   buildWorkMissionPath,
@@ -22,7 +25,7 @@ import "./work-items.css";
 
 export function WorkItemDetailPage(): JSX.Element {
   const { workItemId } = useParams<{ workItemId: string }>();
-  const { graph } = useWorkGraph();
+  const graph = useWorkGraphQuery().data ?? EMPTY_WORK_GRAPH;
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
   const workItemsQuery = useWorkItemsQuery();
   const projectsQuery = useProjectsQuery();

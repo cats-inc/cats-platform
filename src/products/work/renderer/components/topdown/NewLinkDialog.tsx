@@ -8,8 +8,10 @@ import {
   useState,
 } from "react";
 
+import { useQueryClient } from "@tanstack/react-query";
+
 import { createWorkLink } from "../../api/links.js";
-import { useWorkGraph } from "../../state/workGraphStore";
+import { WORK_GRAPH_QUERY_KEY } from "../../state/queries/workGraphQuery.js";
 import { endpointKey, KIND_LABEL } from "./shared";
 import type {
   WorkGraphLinkEndpointKind,
@@ -60,7 +62,7 @@ export function NewLinkDialog({
   const noteId = useId();
   const titleInputRef = useRef<HTMLInputElement>(null);
 
-  const { refresh } = useWorkGraph();
+  const queryClient = useQueryClient();
 
   const [kind, setKind] = useState<SubmittableKind>("blocks");
   const [targetQuery, setTargetQuery] = useState("");
@@ -139,7 +141,7 @@ export function NewLinkDialog({
         target: { recordFamily: targetRefKind, recordId: selectedTarget.sourceRecordId },
         note: trimmedNote.length === 0 ? null : trimmedNote,
       });
-      await refresh();
+      await queryClient.invalidateQueries({ queryKey: WORK_GRAPH_QUERY_KEY });
       onCreated?.(result.link.id);
       onClose();
     } catch (err) {

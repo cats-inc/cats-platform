@@ -11,7 +11,10 @@ import { useProjectsQuery } from "../../state/queries/projectsQuery.js";
 import { useRunsQuery, type WorkRunListItem } from "../../state/queries/runsQuery.js";
 import { useTasksQuery, type WorkTaskListItem } from "../../state/queries/tasksQuery.js";
 import { useWorkItemsQuery } from "../../state/queries/workItemsQuery.js";
-import { useWorkGraph } from "../../state/workGraphStore";
+import {
+  EMPTY_WORK_GRAPH,
+  useWorkGraphQuery,
+} from "../../state/queries/workGraphQuery.js";
 import {
   WORK_PROJECTS_PATH,
   WORK_TASKS_PATH,
@@ -22,7 +25,7 @@ import "./tasks.css";
 
 export function TaskDetailPage(): JSX.Element {
   const { taskId } = useParams<{ taskId: string }>();
-  const { graph } = useWorkGraph();
+  const graph = useWorkGraphQuery().data ?? EMPTY_WORK_GRAPH;
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
   const tasksQuery = useTasksQuery();
   const projectsQuery = useProjectsQuery();

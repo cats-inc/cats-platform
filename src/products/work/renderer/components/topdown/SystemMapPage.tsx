@@ -1,7 +1,10 @@
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { useWorkGraph } from "../../state/workGraphStore";
+import {
+  EMPTY_WORK_GRAPH,
+  useWorkGraphQuery,
+} from "../../state/queries/workGraphQuery.js";
 import { buildIndexes } from "./shared";
 import type { WorkGraphLayer, WorkGraphObjectSummary } from "./types";
 import { WorkObjectCard, pickEvidence } from "./WorkObjectCard";
@@ -30,7 +33,7 @@ export function SystemMapPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedId = searchParams.get("selectedId");
 
-  const { graph } = useWorkGraph();
+  const graph = useWorkGraphQuery().data ?? EMPTY_WORK_GRAPH;
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
 
   const byLayer = useMemo(() => {

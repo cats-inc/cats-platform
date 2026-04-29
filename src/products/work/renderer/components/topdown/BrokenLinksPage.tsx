@@ -1,8 +1,13 @@
 import { useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { removeWorkLink } from "../../api/links.js";
-import { useWorkGraph } from "../../state/workGraphStore";
+import {
+  EMPTY_WORK_GRAPH,
+  WORK_GRAPH_QUERY_KEY,
+  useWorkGraphQuery,
+} from "../../state/queries/workGraphQuery.js";
 import {
   buildIndexes,
   endpointKey,
@@ -31,10 +36,11 @@ export function BrokenLinksPage(): JSX.Element {
   const severityFilter =
     (searchParams.get("severity") as SeverityFilter | null) ?? "all";
   const selectedId = searchParams.get("selectedId");
-  const { graph, refresh } = useWorkGraph();
+  const queryClient = useQueryClient();
+  const graph = useWorkGraphQuery().data ?? EMPTY_WORK_GRAPH;
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
-  // Every link in the graph is producer-stored (no mock fallback), so
-  // every Remove affordance is enabled.
+  // Every link in the graph is producer-stored, so every Remove
+  // affordance is enabled.
   const fetchedLinkIds = useMemo(
     () => new Set(graph.links.map((l) => l.id)),
     [graph.links],
@@ -48,14 +54,14 @@ export function BrokenLinksPage(): JSX.Element {
       setRemoveError(null);
       try {
         await removeWorkLink(linkId);
-        await refresh();
+        await queryClient.invalidateQueries({ queryKey: WORK_GRAPH_QUERY_KEY });
       } catch (err) {
         setRemoveError(err instanceof Error ? err.message : "Failed to remove link.");
       } finally {
         setRemovingId(null);
       }
     },
-    [refresh],
+    [queryClient],
   );
 
   const counts = useMemo(() => {

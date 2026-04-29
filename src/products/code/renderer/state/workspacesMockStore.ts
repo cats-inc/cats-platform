@@ -3,8 +3,8 @@ import { useSyncExternalStore } from "react";
 /**
  * Mock Workspaces store for Cats Code sidebar preview.
  *
- * Pinning model mirrors pinnedProjectsStore in Work: every workspace is
- * pinned by default, the unpinned set is persisted in localStorage.
+ * Pinning model mirrors pinnedProjectPreferences in Work: every workspace
+ * is pinned by default, the unpinned set is persisted in localStorage.
  * Replace with a real projection over Code workspaces (Conversation
  * `repoPath`, task `codeWorkspace`, runtime `cwd`) once SPEC-091 lands.
  */

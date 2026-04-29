@@ -9,11 +9,32 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import type { CoreWorkItemStatus } from "../../api/workRecords.js";
+import {
+  createWorkItem as restCreateWorkItem,
+  type CoreWorkItemStatus,
+} from "../../api/workRecords.js";
 import { WORK_WORK_ITEMS_PATH } from "../../workPaths.js";
 import { useProjectsQuery } from "../../state/queries/projectsQuery.js";
 import { WORK_ITEMS_QUERY_KEY } from "../../state/queries/workItemsQuery.js";
-import { workItemsStore, type CreateWorkItemInput } from "../../state/workItemsStore";
+
+interface CreateWorkItemInput {
+  title: string;
+  summary: string | null;
+  status: CoreWorkItemStatus;
+  projectId: string | null;
+}
+
+async function createWorkItemFromDialog(
+  input: CreateWorkItemInput,
+): Promise<{ id: string }> {
+  const result = await restCreateWorkItem({
+    title: input.title,
+    summary: input.summary,
+    status: input.status,
+    projectId: input.projectId,
+  });
+  return { id: result.workItem.id };
+}
 
 interface NewWorkItemDialogProps {
   onClose: () => void;
@@ -39,22 +60,17 @@ export function NewWorkItemDialog({
   const titleId = useId();
   const summaryId = useId();
   const projectId = useId();
-  const ownerId = useId();
   const statusId = useId();
-  const nextActionId = useId();
   const titleInputRef = useRef<HTMLInputElement>(null);
   const projectsQuery = useProjectsQuery();
 
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [linkedProject, setLinkedProject] = useState(defaultProjectId ?? "");
-  const [ownerRole, setOwnerRole] = useState("");
   const [status, setStatus] = useState<CoreWorkItemStatus>("draft");
-  const [nextAction, setNextAction] = useState("");
 
   const createMutation = useMutation({
-    mutationFn: (input: CreateWorkItemInput) =>
-      workItemsStore.createWorkItem(input),
+    mutationFn: createWorkItemFromDialog,
     onSuccess: async (workItem) => {
       await queryClient.invalidateQueries({ queryKey: WORK_ITEMS_QUERY_KEY });
       onClose();
@@ -95,11 +111,9 @@ export function NewWorkItemDialog({
     if (!trimmed || submitting) return;
     createMutation.mutate({
       title: trimmed,
-      summary: summary || null,
-      linkedProjectId: linkedProject || null,
-      ownerRole: ownerRole || null,
+      summary: summary.trim() || null,
       status,
-      nextAction: nextAction || null,
+      projectId: linkedProject || null,
     });
   }
 
@@ -178,50 +192,22 @@ export function NewWorkItemDialog({
             </select>
           </label>
 
-          <div className="newProjectDialog__row">
-            <label className="newProjectDialog__field" htmlFor={ownerId}>
-              <span className="newProjectDialog__label">Owner role</span>
-              <input
-                id={ownerId}
-                type="text"
-                className="newProjectDialog__input"
-                value={ownerRole}
-                onChange={(event) => setOwnerRole(event.target.value)}
-                placeholder="e.g. marketing"
-                maxLength={40}
-              />
-            </label>
-
-            <label className="newProjectDialog__field" htmlFor={statusId}>
-              <span className="newProjectDialog__label">Status</span>
-              <select
-                id={statusId}
-                className="newProjectDialog__select"
-                value={status}
-                onChange={(event) =>
-                  setStatus(event.target.value as CoreWorkItemStatus)
-                }
-              >
-                {STATUS_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <label className="newProjectDialog__field" htmlFor={nextActionId}>
-            <span className="newProjectDialog__label">Next action</span>
-            <input
-              id={nextActionId}
-              type="text"
-              className="newProjectDialog__input"
-              value={nextAction}
-              onChange={(event) => setNextAction(event.target.value)}
-              placeholder="What's the very next step?"
-              maxLength={120}
-            />
+          <label className="newProjectDialog__field" htmlFor={statusId}>
+            <span className="newProjectDialog__label">Status</span>
+            <select
+              id={statusId}
+              className="newProjectDialog__select"
+              value={status}
+              onChange={(event) =>
+                setStatus(event.target.value as CoreWorkItemStatus)
+              }
+            >
+              {STATUS_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </label>
 
           {error ? (

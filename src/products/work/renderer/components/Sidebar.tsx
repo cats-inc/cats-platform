@@ -7,14 +7,17 @@ import {
   type ConversationSidebarRecentEntry,
 } from '../../../../app/renderer/productShell/ConversationSidebar.js';
 import type { ConversationSidebarPinnedItem } from '../../../../app/renderer/productShell/ConversationSidebarPinned.js';
+import { removeWorkProject } from '../api/workRecords.js';
 import {
-  pinnedProjectsStore,
-  useUnpinnedIds,
-} from '../state/pinnedProjectsStore';
+  unpinProject,
+  useUnpinnedProjectIds,
+} from '../state/pinnedProjectPreferences.js';
 import {
+  PROJECTS_QUERY_KEY,
   useProjectsQuery,
   type WorkProjectListItem,
 } from '../state/queries/projectsQuery.js';
+import { sharedQueryClient } from '../../../shared/renderer/queryClient.js';
 import './projects/projects.css';
 import { buildConversationSidebarRecentEntries } from '../../../../app/renderer/productShell/conversationSidebarRecentEntries.js';
 import type { AppShellPayload } from '../../api/contracts.js';
@@ -490,7 +493,7 @@ function buildPinnedProjectItems(
           label: 'Unpin',
           onClick: () => {
             props.onOverflowMenuToggle(null);
-            pinnedProjectsStore.unpin(project.id);
+            unpinProject(project.id);
           },
         },
         {
@@ -499,7 +502,9 @@ function buildPinnedProjectItems(
           destructive: true,
           onClick: () => {
             props.onOverflowMenuToggle(null);
-            void pinnedProjectsStore.remove(project.id);
+            void removeWorkProject(project.id).then(() =>
+              sharedQueryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY }),
+            );
           },
         },
       ],
@@ -523,7 +528,7 @@ function buildRecentEntries(props: SidebarProps): ConversationSidebarRecentEntry
 
 export function Sidebar(props: SidebarProps) {
   const projectsQuery = useProjectsQuery();
-  const unpinnedIds = useUnpinnedIds();
+  const unpinnedIds = useUnpinnedProjectIds();
   const pinnedProjects = (projectsQuery.data?.projects ?? []).filter(
     (project) => !unpinnedIds.has(project.id),
   );

@@ -1,10 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { formatRelative } from "../topdown/shared";
 import { useRunsQuery, type WorkRunListItem } from "../../state/queries/runsQuery.js";
 import { useTasksQuery } from "../../state/queries/tasksQuery.js";
-import { useWorkGraph } from "../../state/workGraphStore";
+import {
+  EMPTY_WORK_GRAPH,
+  WORK_GRAPH_QUERY_KEY,
+  useWorkGraphQuery,
+} from "../../state/queries/workGraphQuery.js";
 import {
   WORK_TASKS_PATH,
   buildWorkRunPath,
@@ -78,9 +83,10 @@ function formatDuration(start: string | null, end: string | null): string | null
 
 export function RunDetailPage(): JSX.Element {
   const { taskId, runId } = useParams<{ taskId: string; runId: string }>();
+  const queryClient = useQueryClient();
   const runsQuery = useRunsQuery();
   const tasksQuery = useTasksQuery();
-  const { graph, refresh: refreshGraph } = useWorkGraph();
+  const graph = useWorkGraphQuery().data ?? EMPTY_WORK_GRAPH;
 
   const allRuns = runsQuery.data?.runs ?? [];
   const allTasks = tasksQuery.data?.tasks ?? [];
@@ -162,7 +168,7 @@ export function RunDetailPage(): JSX.Element {
     }
 
     const interval = window.setInterval(() => {
-      void refreshGraph();
+      void queryClient.invalidateQueries({ queryKey: WORK_GRAPH_QUERY_KEY });
       loadOnce();
     }, 3000);
     return () => {
@@ -170,7 +176,7 @@ export function RunDetailPage(): JSX.Element {
       controller.abort();
       window.clearInterval(interval);
     };
-  }, [runId, run?.status, refreshGraph]);
+  }, [runId, run?.status, queryClient]);
 
   if (runsQuery.isPending) {
     return <RunDetailLoading />;

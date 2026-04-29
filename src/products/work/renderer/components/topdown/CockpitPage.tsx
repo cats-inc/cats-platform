@@ -1,7 +1,10 @@
 import { useMemo } from "react";
 import { useSearchParams } from "react-router-dom";
 
-import { useWorkGraph } from "../../state/workGraphStore";
+import {
+  EMPTY_WORK_GRAPH,
+  useWorkGraphQuery,
+} from "../../state/queries/workGraphQuery.js";
 import { BlockersRail } from "./BlockersRail";
 import { buildIndexes, formatRelative } from "./shared";
 import type {
@@ -60,7 +63,7 @@ export function CockpitPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = (searchParams.get("tab") as CockpitTab | null) ?? "command";
   const selectedId = searchParams.get("selectedId");
-  const { graph } = useWorkGraph();
+  const graph = useWorkGraphQuery().data ?? EMPTY_WORK_GRAPH;
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
 
   const buckets = useMemo(() => {

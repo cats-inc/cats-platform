@@ -9,10 +9,29 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import type { CoreProjectStatus } from "../../api/workRecords.js";
+import {
+  createWorkProject as restCreateWorkProject,
+  type CoreProjectStatus,
+} from "../../api/workRecords.js";
 import { WORK_PROJECTS_PATH } from "../../workPaths.js";
 import { PROJECTS_QUERY_KEY } from "../../state/queries/projectsQuery.js";
-import { pinnedProjectsStore, type CreateProjectInput } from "../../state/pinnedProjectsStore";
+
+interface CreateProjectInput {
+  title: string;
+  summary: string | null;
+  status: CoreProjectStatus;
+}
+
+async function createProjectFromDialog(
+  input: CreateProjectInput,
+): Promise<{ id: string }> {
+  const result = await restCreateWorkProject({
+    title: input.title,
+    summary: input.summary,
+    status: input.status,
+  });
+  return { id: result.project.id };
+}
 
 interface NewProjectDialogProps {
   onClose: () => void;
@@ -30,20 +49,15 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps): JSX.Elemen
   const queryClient = useQueryClient();
   const titleId = useId();
   const summaryId = useId();
-  const ownerId = useId();
   const statusId = useId();
-  const nextActionId = useId();
   const titleInputRef = useRef<HTMLInputElement>(null);
 
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
-  const [ownerRole, setOwnerRole] = useState("");
   const [status, setStatus] = useState<CoreProjectStatus>("planned");
-  const [nextAction, setNextAction] = useState("");
 
   const createMutation = useMutation({
-    mutationFn: (input: CreateProjectInput) =>
-      pinnedProjectsStore.createProject(input),
+    mutationFn: createProjectFromDialog,
     onSuccess: async (project) => {
       await queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY });
       onClose();
@@ -84,10 +98,8 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps): JSX.Elemen
     if (!trimmed || submitting) return;
     createMutation.mutate({
       title: trimmed,
-      summary: summary || null,
-      ownerRole: ownerRole || null,
+      summary: summary.trim() || null,
       status,
-      nextAction: nextAction || null,
     });
   }
 
@@ -147,50 +159,22 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps): JSX.Elemen
             />
           </label>
 
-          <div className="newProjectDialog__row">
-            <label className="newProjectDialog__field" htmlFor={ownerId}>
-              <span className="newProjectDialog__label">Owner role</span>
-              <input
-                id={ownerId}
-                type="text"
-                className="newProjectDialog__input"
-                value={ownerRole}
-                onChange={(event) => setOwnerRole(event.target.value)}
-                placeholder="e.g. marketing"
-                maxLength={40}
-              />
-            </label>
-
-            <label className="newProjectDialog__field" htmlFor={statusId}>
-              <span className="newProjectDialog__label">Status</span>
-              <select
-                id={statusId}
-                className="newProjectDialog__select"
-                value={status}
-                onChange={(event) =>
-                  setStatus(event.target.value as CoreProjectStatus)
-                }
-              >
-                {STATUS_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
-
-          <label className="newProjectDialog__field" htmlFor={nextActionId}>
-            <span className="newProjectDialog__label">Next action</span>
-            <input
-              id={nextActionId}
-              type="text"
-              className="newProjectDialog__input"
-              value={nextAction}
-              onChange={(event) => setNextAction(event.target.value)}
-              placeholder="What's the very next step?"
-              maxLength={120}
-            />
+          <label className="newProjectDialog__field" htmlFor={statusId}>
+            <span className="newProjectDialog__label">Status</span>
+            <select
+              id={statusId}
+              className="newProjectDialog__select"
+              value={status}
+              onChange={(event) =>
+                setStatus(event.target.value as CoreProjectStatus)
+              }
+            >
+              {STATUS_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </label>
 
           {error ? (
