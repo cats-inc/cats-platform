@@ -229,6 +229,11 @@ interface MorningGreetingExample {
       active
     - `queue`: queue one or more due fires behind the active run
     - `replace`: cancel or supersede the active run before starting the new one
+
+    V1 accepts `skip` and `queue`. `replace` is reserved until scheduled runs
+    can cancel through the supervision runtime boundary; V1 implementations
+    shall reject `replace` rather than marking Core metadata while the runtime
+    continues executing.
 33. The first implementation should default to `skip` for chat/transport
     greetings to avoid duplicate messages.
 34. A `ScheduleRule` shall have a `misfirePolicy`:
@@ -356,7 +361,8 @@ interface MissionTemplate {
 
 interface ScheduleExecutionPolicy {
   missionPolicy: 'per_fire';
-  concurrencyPolicy: 'skip' | 'queue' | 'replace';
+  // `replace` is a reserved follow-up once supervised cancellation is wired.
+  concurrencyPolicy: 'skip' | 'queue';
   misfirePolicy: 'skip' | 'fire_once' | 'fire_all';
   retryPolicy: {
     maxAttempts: number;
@@ -376,7 +382,7 @@ interface ScheduleTriggerMetadata {
   idempotencyKey: string;
   reason: ScheduleTriggerReason;
   triggerReceiptId?: string;
-  originalTargetRef?: { kind: 'cat' | 'agent'; id: string };
+  originalTargetRef?: { kind: 'cat'; id: string };
 }
 ```
 

@@ -212,7 +212,43 @@ function zonedLocalTimeToUtc(input: ZonedDateParts & { timezone: string }): Date
     guess += delta;
   }
 
+  const rolledForward = findFirstValidLocalInstantAfterGap(input, targetAsUtc);
+  if (rolledForward) {
+    return rolledForward;
+  }
+
   return new Date(guess);
+}
+
+function findFirstValidLocalInstantAfterGap(
+  input: ZonedDateParts & { timezone: string },
+  targetAsUtc: number,
+): Date | null {
+  const start = targetAsUtc - 18 * 60 * 60 * 1000;
+  const end = targetAsUtc + 18 * 60 * 60 * 1000;
+  for (let instant = start; instant <= end; instant += 60_000) {
+    const parts = getZonedDateParts(new Date(instant), input.timezone);
+    if (
+      parts.year === input.year
+      && parts.month === input.month
+      && parts.day === input.day
+      && compareLocalTime(parts, input) > 0
+    ) {
+      return new Date(instant);
+    }
+  }
+  return null;
+}
+
+function compareLocalTime(
+  left: Pick<ZonedDateParts, 'hour' | 'minute' | 'second'>,
+  right: Pick<ZonedDateParts, 'hour' | 'minute' | 'second'>,
+): number {
+  return (
+    (left.hour - right.hour)
+    || (left.minute - right.minute)
+    || (left.second - right.second)
+  );
 }
 
 function addLocalDays(

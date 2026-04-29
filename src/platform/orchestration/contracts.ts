@@ -443,6 +443,9 @@ export interface OrchestratorChatStore<TState extends OrchestratorStateView = Or
   write(state: TState): Promise<TState>;
   readCore(): Promise<CatsCoreState>;
   writeCore(state: CatsCoreState): Promise<CatsCoreState>;
+  updateCore(
+    mutator: (state: CatsCoreState) => CatsCoreState | Promise<CatsCoreState>,
+  ): Promise<CatsCoreState>;
 }
 
 export interface OrchestratorChannelRouteInput<

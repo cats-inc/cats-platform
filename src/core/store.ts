@@ -4,6 +4,9 @@ import { createDefaultCoreState } from './model/index.js';
 export interface CoreStore {
   readCore(): Promise<CatsCoreState>;
   writeCore(state: CatsCoreState): Promise<CatsCoreState>;
+  updateCore(
+    mutator: (state: CatsCoreState) => CatsCoreState | Promise<CatsCoreState>,
+  ): Promise<CatsCoreState>;
 }
 
 export class MemoryCoreStore implements CoreStore {
@@ -19,6 +22,14 @@ export class MemoryCoreStore implements CoreStore {
 
   async writeCore(state: CatsCoreState): Promise<CatsCoreState> {
     this.#state = structuredClone(state);
+    return structuredClone(this.#state);
+  }
+
+  async updateCore(
+    mutator: (state: CatsCoreState) => CatsCoreState | Promise<CatsCoreState>,
+  ): Promise<CatsCoreState> {
+    const next = await mutator(structuredClone(this.#state));
+    this.#state = structuredClone(next);
     return structuredClone(this.#state);
   }
 }

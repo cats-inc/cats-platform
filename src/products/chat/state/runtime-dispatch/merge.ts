@@ -252,7 +252,7 @@ export function mergeCompletedDispatchState(
 }
 
 export function createMergedDispatchChatStore(options: {
-  chatStore: Pick<ChatStore, 'read' | 'write' | 'readCore' | 'writeCore'>;
+  chatStore: Pick<ChatStore, 'read' | 'write' | 'readCore' | 'writeCore' | 'updateCore'>;
   mutationGate: MutationGateLike;
   channelId: string;
   baselineState: ChatState;
@@ -263,12 +263,13 @@ export function createMergedDispatchChatStore(options: {
     dispatchState: ChatState;
     channelId: string;
   }) => void;
-}): Pick<ChatStore, 'write' | 'readCore' | 'writeCore'> {
+}): Pick<ChatStore, 'write' | 'readCore' | 'writeCore' | 'updateCore'> {
   let previousState = options.baselineState;
 
   return {
     readCore: options.chatStore.readCore.bind(options.chatStore),
     writeCore: options.chatStore.writeCore.bind(options.chatStore),
+    updateCore: options.chatStore.updateCore.bind(options.chatStore),
     async write(dispatchState: ChatState): Promise<ChatState> {
       return options.mutationGate.run(options.channelId, async () => {
         return options.mutationGate.run(MERGED_DISPATCH_WRITE_GATE_KEY, async () => {

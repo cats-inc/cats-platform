@@ -36,6 +36,10 @@ export interface ChatStore extends CoreStore {
   writeSnapshot(chat: ChatState, core: CatsCoreState): Promise<PersistedChatSnapshot>;
 }
 
+type CoreStateMutator = (
+  state: CatsCoreState,
+) => CatsCoreState | Promise<CatsCoreState>;
+
 async function writePersistedChatSnapshot(
   filePath: string,
   snapshot: PersistedChatSnapshot,
@@ -256,6 +260,15 @@ export class FileChatStore implements ChatStore {
       return structuredClone(extractCoreState(persisted));
     });
   }
+
+  async updateCore(mutator: CoreStateMutator): Promise<CatsCoreState> {
+    return this.runExclusive(async () => {
+      const current = await this.readPersistedSnapshotUnsafe();
+      const nextCore = await mutator(structuredClone(extractCoreState(current)));
+      const persisted = await this.writeSnapshotUnsafe(current.chat, nextCore);
+      return structuredClone(extractCoreState(persisted));
+    });
+  }
 }
 
 export class MemoryChatStore implements ChatStore {
@@ -292,6 +305,12 @@ export class MemoryChatStore implements ChatStore {
 
   async writeCore(state: CatsCoreState): Promise<CatsCoreState> {
     await this.writeSnapshot(this.chatState, state);
+    return structuredClone(this.coreState);
+  }
+
+  async updateCore(mutator: CoreStateMutator): Promise<CatsCoreState> {
+    const nextCore = await mutator(structuredClone(this.coreState));
+    await this.writeSnapshot(this.chatState, nextCore);
     return structuredClone(this.coreState);
   }
 }

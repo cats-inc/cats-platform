@@ -27,7 +27,7 @@ export interface RuntimeSessionRoutingOptions {
   transportBindingId?: string | null;
   companionStore?: CompanionBoxStore;
   memoryService?: CatsMemoryService;
-  chatStore?: Pick<ChatStore, 'readCore' | 'writeCore'>;
+  chatStore?: Pick<ChatStore, 'readCore' | 'writeCore' | 'updateCore'>;
   forceReviveClosedSessions?: boolean;
   chatStatePath?: string;
   runtimeDataDir?: string;

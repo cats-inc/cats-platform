@@ -78,7 +78,7 @@ export const chatDeterministicPlannerSurface: OrchestratorPlannerSurface<ChatSta
 
 export async function resumeStoredWorkflowContinuationDispatch(input: {
   request: WorkflowContinuationReplaySnapshot;
-  chatStore: Pick<ChatStore, 'read' | 'write' | 'readCore' | 'writeCore'>;
+  chatStore: Pick<ChatStore, 'read' | 'write' | 'readCore' | 'writeCore' | 'updateCore'>;
   runtimeClient: RuntimeClient;
   now: Date;
   companionStore?: CompanionBoxStore;

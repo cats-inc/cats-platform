@@ -20,7 +20,7 @@ export interface ChannelTaskExecutionContext {
 }
 
 export async function resolveChannelTaskExecutionRequest(
-  chatStore: Pick<ChatStore, 'readCore' | 'writeCore'> | undefined,
+  chatStore: Pick<ChatStore, 'readCore' | 'writeCore' | 'updateCore'> | undefined,
   channelId: string,
   target: RoutingTarget,
 ): Promise<ChannelTaskExecutionContext | undefined> {
@@ -55,7 +55,7 @@ export async function resolveChannelTaskExecutionRequest(
 }
 
 export async function maybeAutoCheckoutChannelTask(
-  chatStore: Pick<ChatStore, 'readCore' | 'writeCore'> | undefined,
+  chatStore: Pick<ChatStore, 'readCore' | 'writeCore' | 'updateCore'> | undefined,
   runtimeClient: Pick<RuntimeClient, 'observeSession' | 'streamSession'>,
   channelId: string,
   target: RoutingTarget,

@@ -83,7 +83,9 @@ stored without running them.
 - [x] Implement concurrency policy:
       - `skip`
       - `queue`
-      - `replace` as a later phase if cancellation is not ready
+      - explicit `replace` rejection until supervised cancellation is ready
+- [ ] Implement `replace` by cancelling through the supervision runtime
+      boundary rather than Core metadata only.
 - [x] Add tests for restart/misfire/idempotency behavior.
 
 **Deliverables**: scheduler can detect due rules and record admissible trigger
@@ -99,6 +101,8 @@ events without invoking runtime.
 - [x] Create one mission per fire by default (`missionPolicy = per_fire`).
 - [x] Admit a Run through the execution dispatcher/materialization path before
       any runtime work starts.
+- [x] Use the Core store atomic update seam for scheduler Mission/Run
+      materialization so admission does not do a naked read-modify-write.
 - [x] Write canonical trigger metadata to
       `CoreRunRecord.metadata.scheduleTrigger`:
       - rule id
@@ -258,6 +262,7 @@ the first companion/Telegram scenario.
 | 2026-04-29 | Review follow-up: clarified v1 `once`/`daily` scope, rule revision semantics, Cat-to-Agent admission resolution, `CoreRunRecord.metadata.scheduleTrigger` provenance, and deferred `reuse_active`/cron follow-ups. |
 | 2026-04-29 | Polish pass: dropped redundant `kind: 'schedule'` discriminant on `ScheduleTriggerMetadata`, narrowed `MissionTemplate.originSurface` from `string` back to literal `'schedule'` until a second origin caller exists, consolidated SPEC #14/#16 prose, pinned `originalTargetRef` storage to `CoreRunRecord.metadata.scheduleTrigger`, and removed the cron-API Open Question already answered by req #4 + Phase 2. |
 | 2026-04-29 | Implementation slice: added platform scheduler contracts, in-memory/file-backed schedule store, v1 validation, timezone-aware `once`/`daily` next-fire evaluation, trigger receipt/idempotency ledger, startup misfire and concurrency handling, server scheduler loop while Cats is running, Mission/Run admission with Cat→Agent resolution and `CoreRunRecord.metadata.scheduleTrigger.originalTargetRef`, minimal `/api/work/schedules` + `/test-fire` routes, and targeted scheduler/route/static-boundary tests. Runtime/Telegram execution remains deferred to Phase 4/5 capability work. |
+| 2026-04-29 | Review follow-up: scheduler admission now writes Core through an atomic update seam, v1 rejects `replace` until supervised cancellation lands, `originalTargetRef` is emitted only for Cat targets on run trigger metadata, manual test fires are visibly titled and no longer update scheduled last-run timing, scheduler store timestamps honor the injected clock, and DST gap/overlap tests cover local daily schedules. |
 
 ---
 

@@ -1,4 +1,4 @@
-import { CoreConflictError, CoreNotFoundError } from '../../core/errors.js';
+import { CoreNotFoundError, CoreValidationError } from '../../core/errors.js';
 import { createCatActorId } from '../../core/actors.js';
 import {
   upsertCoreMission,
@@ -15,6 +15,7 @@ import type {
   ScheduleRule,
   ScheduleRuleCreateInput,
   ScheduleRuleUpdateInput,
+  ScheduleOriginalTargetRef,
   ScheduleTargetRef,
   ScheduleTriggerMetadata,
   ScheduleTriggerReceipt,
@@ -39,7 +40,10 @@ export interface SchedulerService {
   updateRule(ruleId: string, input: ScheduleRuleUpdateInput): Promise<ScheduleRule>;
   manualTestFire(ruleId: string): Promise<ScheduleAdmissionResult>;
   tick(options?: { startup?: boolean; maxFireAll?: number }): Promise<ScheduleTickResult>;
-  listTriggerReceipts(filter?: { ruleId?: string; limit?: number }): Promise<ScheduleTriggerReceipt[]>;
+  listTriggerReceipts(filter?: {
+    ruleId?: string;
+    limit?: number;
+  }): Promise<ScheduleTriggerReceipt[]>;
 }
 
 export interface SchedulerServiceDependencies {
@@ -116,12 +120,18 @@ class DefaultSchedulerService implements SchedulerService {
     }, now);
   }
 
-  async tick(options: { startup?: boolean; maxFireAll?: number } = {}): Promise<ScheduleTickResult> {
+  async tick(
+    options: { startup?: boolean; maxFireAll?: number } = {},
+  ): Promise<ScheduleTickResult> {
     const now = this.now();
-    const rules = await this.dependencies.scheduleStore.listRules();
+    const ruleIds = (await this.dependencies.scheduleStore.listRules()).map((rule) => rule.id);
     const results: ScheduleAdmissionResult[] = [];
 
-    for (const rule of rules) {
+    for (const ruleId of ruleIds) {
+      const rule = await this.dependencies.scheduleStore.getRule(ruleId);
+      if (!rule) {
+        continue;
+      }
       const fires = collectDueFires({
         rule,
         now,
@@ -129,12 +139,17 @@ class DefaultSchedulerService implements SchedulerService {
         maxFireAll: options.maxFireAll,
       });
       for (const fire of fires) {
-        const latestRule = await this.dependencies.scheduleStore.getRule(rule.id);
+        const latestRule = await this.dependencies.scheduleStore.getRule(ruleId);
         if (!latestRule) {
           continue;
         }
         if (options.startup && latestRule.executionPolicy.misfirePolicy === 'skip') {
-          results.push(await this.skipFire(latestRule, fire, now, 'Skipped startup misfire by policy.'));
+          results.push(await this.skipFire(
+            latestRule,
+            fire,
+            now,
+            'Skipped startup misfire by policy.',
+          ));
           continue;
         }
         results.push(await this.admitFire(latestRule, fire, now));
@@ -212,9 +227,40 @@ class DefaultSchedulerService implements SchedulerService {
     }
 
     try {
-      let core = await this.dependencies.coreStore.readCore();
-      const activeRuns = findActiveScheduleRuns(core, rule.id);
-      if (activeRuns.length > 0 && rule.executionPolicy.concurrencyPolicy === 'skip') {
+      if (rule.executionPolicy.concurrencyPolicy === 'replace') {
+        throw new CoreValidationError(
+          [
+            'Schedule concurrencyPolicy replace is not supported until supervised',
+            'cancellation lands.',
+          ].join(' '),
+          'schedule_concurrency_replace_unsupported',
+        );
+      }
+
+      let skippedBecauseActive = false;
+      let admittedMissionId: string | null = null;
+      let admittedRunId: string | null = null;
+      const persisted = await updateCoreAtomically(this.dependencies.coreStore, (core) => {
+        const activeRuns = findActiveScheduleRuns(core, rule.id);
+        if (activeRuns.length > 0 && rule.executionPolicy.concurrencyPolicy === 'skip') {
+          skippedBecauseActive = true;
+          return core;
+        }
+
+        const assignedAgent = resolveScheduleTargetAgent(core, rule.missionTemplate.target);
+        const admission = admitMissionAndRun({
+          core,
+          rule,
+          receipt: receiptClaim.receipt,
+          assignedAgent,
+          actualFireAt,
+        });
+        admittedMissionId = admission.mission.id;
+        admittedRunId = admission.run.id;
+        return admission.core;
+      });
+
+      if (skippedBecauseActive) {
         const skipped = await this.dependencies.scheduleStore.updateTriggerReceipt(
           receiptClaim.receipt.id,
           {
@@ -222,10 +268,12 @@ class DefaultSchedulerService implements SchedulerService {
             message: 'Skipped because a previous run for this schedule is still active.',
           },
         );
-        const updatedRule = await this.advanceRuleAfterFire(rule, fire.scheduledFireAt, {
-          lastRunId: null,
-          lastFailure: null,
-        });
+        const updatedRule = fire.reason === 'manual_test'
+          ? rule
+          : await this.advanceRuleAfterFire(rule, fire.scheduledFireAt, {
+              lastRunId: null,
+              lastFailure: null,
+            });
         return {
           status: 'skipped',
           receipt: skipped,
@@ -234,24 +282,18 @@ class DefaultSchedulerService implements SchedulerService {
           run: null,
         };
       }
-
-      if (activeRuns.length > 0 && rule.executionPolicy.concurrencyPolicy === 'replace') {
-        core = replaceActiveScheduleRuns(core, activeRuns, actualFireAt);
+      const run = admittedRunId
+        ? persisted.runs.find((candidate) => candidate.id === admittedRunId) ?? null
+        : null;
+      const mission = admittedMissionId
+        ? persisted.missions.find((candidate) => candidate.id === admittedMissionId) ?? null
+        : null;
+      if (!run || !mission) {
+        throw new CoreValidationError(
+          'Scheduled admission did not persist a mission and run.',
+          'schedule_admission_missing_records',
+        );
       }
-
-      const assignedAgent = resolveScheduleTargetAgent(core, rule.missionTemplate.target);
-      const admission = admitMissionAndRun({
-        core,
-        rule,
-        receipt: receiptClaim.receipt,
-        assignedAgent,
-        actualFireAt,
-      });
-      const persisted = await this.dependencies.coreStore.writeCore(admission.core);
-      const run = persisted.runs.find((candidate) => candidate.id === admission.run.id)
-        ?? admission.run;
-      const mission = persisted.missions.find((candidate) => candidate.id === admission.mission.id)
-        ?? admission.mission;
       const admittedReceipt = await this.dependencies.scheduleStore.updateTriggerReceipt(
         receiptClaim.receipt.id,
         {
@@ -261,17 +303,11 @@ class DefaultSchedulerService implements SchedulerService {
         },
       );
       const updatedRule = fire.reason === 'manual_test'
-        ? {
-            ...rule,
-            lastRunId: run.id,
-          }
+        ? rule
         : await this.advanceRuleAfterFire(rule, fire.scheduledFireAt, {
             lastRunId: run.id,
             lastFailure: null,
           });
-      if (fire.reason === 'manual_test') {
-        await this.dependencies.scheduleStore.upsertRule(updatedRule);
-      }
 
       return {
         status: 'admitted',
@@ -289,10 +325,12 @@ class DefaultSchedulerService implements SchedulerService {
           message,
         },
       );
-      const updatedRule = await this.advanceRuleAfterFire(rule, fire.scheduledFireAt, {
-        lastRunId: null,
-        lastFailure: message,
-      });
+      const updatedRule = fire.reason === 'manual_test'
+        ? rule
+        : await this.advanceRuleAfterFire(rule, fire.scheduledFireAt, {
+            lastRunId: null,
+            lastFailure: message,
+          });
 
       return {
         status: 'failed',
@@ -328,9 +366,6 @@ class DefaultSchedulerService implements SchedulerService {
       actualFireAt: actualFireAtIso,
       idempotencyKey,
       reason: fire.reason,
-      metadata: {
-        originalTargetRef: rule.missionTemplate.target,
-      },
     });
   }
 
@@ -357,6 +392,13 @@ class DefaultSchedulerService implements SchedulerService {
   }
 }
 
+async function updateCoreAtomically(
+  coreStore: CoreStore,
+  mutator: (core: CatsCoreState) => CatsCoreState | Promise<CatsCoreState>,
+): Promise<CatsCoreState> {
+  return coreStore.updateCore(mutator);
+}
+
 function admitMissionAndRun(input: {
   core: CatsCoreState;
   rule: ScheduleRule;
@@ -369,6 +411,11 @@ function admitMissionAndRun(input: {
   run: CoreRunRecord;
 } {
   const now = input.actualFireAt;
+  const originalTargetRef = resolveOriginalTargetRef(input.rule.missionTemplate.target);
+  const runTitle = [
+    input.receipt.reason === 'manual_test' ? '[TEST] ' : '',
+    `Scheduled run: ${input.rule.title}`,
+  ].join('');
   const missionWrite = upsertCoreMission(
     input.core,
     {
@@ -383,7 +430,6 @@ function admitMissionAndRun(input: {
         scheduleRuleId: input.rule.id,
         scheduleRuleRevision: input.rule.revision,
         scheduleTriggerReceiptId: input.receipt.id,
-        originalTargetRef: input.rule.missionTemplate.target,
         originSurface: input.rule.missionTemplate.originSurface,
         transportTargets: input.rule.missionTemplate.transportTargets ?? [],
         resourceScopes: input.rule.missionTemplate.resourceScopes ?? [],
@@ -402,12 +448,12 @@ function admitMissionAndRun(input: {
     idempotencyKey: input.receipt.idempotencyKey,
     reason: input.receipt.reason,
     triggerReceiptId: input.receipt.id,
-    originalTargetRef: input.rule.missionTemplate.target,
+    ...(originalTargetRef ? { originalTargetRef } : {}),
   };
   const runWrite = upsertCoreRun(
     missionWrite.core,
     {
-      title: `Scheduled run: ${input.rule.title}`,
+      title: runTitle,
       status: 'queued',
       conversationId: input.rule.missionTemplate.conversationTarget?.conversationId ?? null,
       taskId: null,
@@ -456,6 +502,12 @@ function admitMissionAndRun(input: {
   };
 }
 
+function resolveOriginalTargetRef(
+  target: ScheduleTargetRef,
+): ScheduleOriginalTargetRef | undefined {
+  return target.kind === 'cat' ? target : undefined;
+}
+
 function resolveScheduleTargetAgent(
   core: CatsCoreState,
   target: ScheduleTargetRef,
@@ -484,40 +536,6 @@ function findActiveScheduleRuns(core: CatsCoreState, ruleId: string): CoreRunRec
     const trigger = readScheduleTrigger(run);
     return trigger?.ruleId === ruleId;
   });
-}
-
-function replaceActiveScheduleRuns(
-  core: CatsCoreState,
-  runs: CoreRunRecord[],
-  now: Date,
-): CatsCoreState {
-  return runs.reduce((nextCore, run) => {
-    const existingTrigger = readScheduleTrigger(run);
-    if (!existingTrigger) {
-      throw new CoreConflictError(
-        `Run ${run.id} is missing schedule trigger metadata.`,
-        'schedule_run_trigger_missing',
-      );
-    }
-    return upsertCoreRun(
-      nextCore,
-      {
-        id: run.id,
-        title: run.title,
-        status: 'cancelled',
-        completedAt: now.toISOString(),
-        summary: 'Cancelled by schedule replace concurrency policy.',
-        metadata: {
-          ...run.metadata,
-          scheduleReplacement: {
-            replacedAt: now.toISOString(),
-            ruleId: existingTrigger.ruleId,
-          },
-        },
-      },
-      now,
-    ).core;
-  }, core);
 }
 
 function readScheduleTrigger(run: CoreRunRecord): ScheduleTriggerMetadata | null {

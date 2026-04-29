@@ -94,8 +94,8 @@ function createDefaultScheduleStore(
   chat: ChatServerDependencies,
 ): ScheduleStore {
   return chat.chatStore instanceof MemoryChatStore
-    ? new MemoryScheduleStore()
-    : createFileBackedScheduleStore(shared.config.chatStatePath);
+    ? new MemoryScheduleStore(undefined, shared.now)
+    : createFileBackedScheduleStore(shared.config.chatStatePath, shared.now);
 }
 
 function createDefaultTelegramRelay(

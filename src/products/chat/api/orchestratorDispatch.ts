@@ -59,62 +59,62 @@ async function persistDispatchReplayMetadata<TCompanionStore, TState extends Orc
     replayTrigger: 'dispatch',
   },
 ): Promise<void> {
-  const core = await input.chatStore.readCore();
-  const task = core.tasks.find((candidate) => candidate.id === taskId);
-  if (!task) {
-    return;
-  }
+  await input.chatStore.updateCore((core) => {
+    const task = core.tasks.find((candidate) => candidate.id === taskId);
+    if (!task) {
+      return core;
+    }
 
-  const replayRequest = buildOrchestratorDispatchReplayRequest({
-    channelId: input.channelId,
-    body: input.body,
-    senderName: input.senderName,
-    transport: input.transport,
-    recordedAt: now.toISOString(),
-  });
-  let metadata = writeOrchestratorDispatchReplayMetadata(
-    task.metadata,
-    replayRequest,
-    {
-      replayState: options.replayState,
-      replayTrigger: options.replayTrigger,
-      replayAttemptAt: options.replayAttemptAt ?? null,
-      replayError: options.replayError ?? null,
-      sourceMessageId: options.sourceMessageId ?? null,
-    },
-  );
-
-  if (options.keepPendingApprovalRequest) {
-    metadata = writePendingOrchestratorDispatchMetadata(
-      metadata,
-      buildPendingOrchestratorDispatchRequest({
-        channelId: input.channelId,
-        body: input.body,
-        senderName: input.senderName,
-        transport: input.transport,
-        blockedAt: now.toISOString(),
-      }),
+    const replayRequest = buildOrchestratorDispatchReplayRequest({
+      channelId: input.channelId,
+      body: input.body,
+      senderName: input.senderName,
+      transport: input.transport,
+      recordedAt: now.toISOString(),
+    });
+    let metadata = writeOrchestratorDispatchReplayMetadata(
+      task.metadata,
+      replayRequest,
+      {
+        replayState: options.replayState,
+        replayTrigger: options.replayTrigger,
+        replayAttemptAt: options.replayAttemptAt ?? null,
+        replayError: options.replayError ?? null,
+        sourceMessageId: options.sourceMessageId ?? null,
+      },
     );
-  }
 
-  const next = upsertCoreTask(
-    core,
-    {
-      id: task.id,
-      title: task.title,
-      status: task.status,
-      conversationId: task.conversationId,
-      ownerActorId: task.ownerActorId,
-      orchestratorActorId: task.orchestratorActorId,
-      assignedActorIds: task.assignedActorIds,
-      summary: task.summary,
-      approval: task.approval,
-      createdAt: task.createdAt,
-      metadata,
-    },
-    now,
-  );
-  await input.chatStore.writeCore(next.core);
+    if (options.keepPendingApprovalRequest) {
+      metadata = writePendingOrchestratorDispatchMetadata(
+        metadata,
+        buildPendingOrchestratorDispatchRequest({
+          channelId: input.channelId,
+          body: input.body,
+          senderName: input.senderName,
+          transport: input.transport,
+          blockedAt: now.toISOString(),
+        }),
+      );
+    }
+
+    return upsertCoreTask(
+      core,
+      {
+        id: task.id,
+        title: task.title,
+        status: task.status,
+        conversationId: task.conversationId,
+        ownerActorId: task.ownerActorId,
+        orchestratorActorId: task.orchestratorActorId,
+        assignedActorIds: task.assignedActorIds,
+        summary: task.summary,
+        approval: task.approval,
+        createdAt: task.createdAt,
+        metadata,
+      },
+      now,
+    ).core;
+  });
 }
 
 async function persistPendingApprovalDispatch<TCompanionStore, TState extends OrchestratorStateView>(

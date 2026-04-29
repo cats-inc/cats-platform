@@ -89,7 +89,7 @@ export interface ProcessDispatchQueueOptions {
   transportBindingId?: string | null;
   companionStore?: CompanionBoxStore;
   memoryService?: CatsMemoryService;
-  chatStore?: Pick<ChatStore, 'write' | 'readCore' | 'writeCore'>;
+  chatStore?: Pick<ChatStore, 'write' | 'readCore' | 'writeCore' | 'updateCore'>;
   chatStatePath?: string;
   runtimeDataDir?: string;
   runtimeRecovery: RuntimeDispatchRecoveryPolicy;

@@ -38,8 +38,14 @@ export interface ScheduleStore {
 abstract class BaseScheduleStore implements ScheduleStore {
   private mutationQueue: Promise<void> = Promise.resolve();
 
+  constructor(private readonly now: () => Date = () => new Date()) {}
+
   protected abstract readSnapshot(): Promise<SchedulerState>;
   protected abstract writeSnapshot(state: SchedulerState): Promise<void>;
+
+  protected currentDate(): Date {
+    return this.now();
+  }
 
   private async runExclusive<T>(operation: () => Promise<T>): Promise<T> {
     const previous = this.mutationQueue;
@@ -64,7 +70,7 @@ abstract class BaseScheduleStore implements ScheduleStore {
     return this.runExclusive(async () => {
       const next = {
         ...structuredClone(state),
-        updatedAt: new Date().toISOString(),
+        updatedAt: this.now().toISOString(),
       };
       await this.writeSnapshot(next);
       return structuredClone(next);
@@ -155,7 +161,7 @@ abstract class BaseScheduleStore implements ScheduleStore {
         throw new Error(`Schedule trigger receipt not found: ${receiptId}`);
       }
 
-      const nowIso = new Date().toISOString();
+      const nowIso = this.now().toISOString();
       const existing = state.triggerReceipts[existingIndex]!;
       const next: ScheduleTriggerReceipt = {
         ...existing,
@@ -191,9 +197,12 @@ abstract class BaseScheduleStore implements ScheduleStore {
 export class MemoryScheduleStore extends BaseScheduleStore {
   private state: SchedulerState;
 
-  constructor(initialState: SchedulerState = createEmptySchedulerState()) {
-    super();
-    this.state = structuredClone(initialState);
+  constructor(
+    initialState?: SchedulerState,
+    now?: () => Date,
+  ) {
+    super(now);
+    this.state = structuredClone(initialState ?? createEmptySchedulerState(this.currentDate()));
   }
 
   protected async readSnapshot(): Promise<SchedulerState> {
@@ -206,17 +215,20 @@ export class MemoryScheduleStore extends BaseScheduleStore {
 }
 
 export class FileBackedScheduleStore extends BaseScheduleStore {
-  constructor(private readonly statePath: string) {
-    super();
+  constructor(
+    private readonly statePath: string,
+    now?: () => Date,
+  ) {
+    super(now);
   }
 
   protected async readSnapshot(): Promise<SchedulerState> {
     try {
       const raw = await readFile(this.statePath, 'utf-8');
-      return normalizeSchedulerState(JSON.parse(raw) as unknown);
+      return normalizeSchedulerState(JSON.parse(raw) as unknown, this.currentDate());
     } catch (error) {
       if (isErrnoException(error) && error.code === 'ENOENT') {
-        const state = createEmptySchedulerState();
+        const state = createEmptySchedulerState(this.currentDate());
         await this.writeSnapshot(state);
         return state;
       }
@@ -230,8 +242,11 @@ export class FileBackedScheduleStore extends BaseScheduleStore {
   }
 }
 
-export function createFileBackedScheduleStore(chatStatePath: string): ScheduleStore {
-  return new FileBackedScheduleStore(resolveScheduleStatePathFromChatState(chatStatePath));
+export function createFileBackedScheduleStore(
+  chatStatePath: string,
+  now?: () => Date,
+): ScheduleStore {
+  return new FileBackedScheduleStore(resolveScheduleStatePathFromChatState(chatStatePath), now);
 }
 
 function isErrnoException(error: unknown): error is NodeJS.ErrnoException {

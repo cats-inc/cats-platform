@@ -14,8 +14,18 @@ export type ScheduleTriggerReceiptStatus =
   | 'skipped'
   | 'failed';
 
-export interface ScheduleTargetRef {
-  kind: ScheduleTargetKind;
+export type ScheduleTargetRef =
+  | {
+      kind: 'cat';
+      id: string;
+    }
+  | {
+      kind: 'agent';
+      id: string;
+    };
+
+export interface ScheduleOriginalTargetRef {
+  kind: 'cat';
   id: string;
 }
 
@@ -71,7 +81,7 @@ export interface ScheduleTriggerMetadata {
   idempotencyKey: string;
   reason: ScheduleTriggerReason;
   triggerReceiptId?: string;
-  originalTargetRef?: ScheduleTargetRef;
+  originalTargetRef?: ScheduleOriginalTargetRef;
 }
 
 export interface ScheduleTriggerReceipt {

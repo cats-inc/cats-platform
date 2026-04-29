@@ -93,7 +93,7 @@ interface RouteChannelMessageOptions {
   transportBindingId?: string | null;
   companionStore?: CompanionBoxStore;
   memoryService?: CatsMemoryService;
-  chatStore?: Pick<ChatStore, 'write' | 'readCore' | 'writeCore'>;
+  chatStore?: Pick<ChatStore, 'write' | 'readCore' | 'writeCore' | 'updateCore'>;
   latestState?: ChatState;
   runtimeRecovery?: Partial<RuntimeDispatchRecoveryPolicy>;
   chatStatePath?: string;

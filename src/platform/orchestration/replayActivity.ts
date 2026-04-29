@@ -27,6 +27,9 @@ export {
 
 interface ReplayActivityStore {
   writeCore(state: CatsCoreState): Promise<CatsCoreState>;
+  updateCore?(
+    mutator: (state: CatsCoreState) => CatsCoreState | Promise<CatsCoreState>,
+  ): Promise<CatsCoreState>;
 }
 
 function describeReplayResumeContext(input: OrchestratorReplayActivityInput): string {
@@ -124,6 +127,24 @@ export async function persistOrchestratorReplayActivity(
   core: CatsCoreState;
   activity: CoreActivityRecord;
 }> {
+  if (store.updateCore) {
+    const appendedResult: { activity?: CoreActivityRecord } = {};
+    const persisted = await store.updateCore((latestCore) => {
+      const appended = appendOrchestratorReplayActivity(latestCore, input, now);
+      appendedResult.activity = appended.activity;
+      return appended.core;
+    });
+    const activity = appendedResult.activity;
+    if (!activity) {
+      throw new Error('Orchestrator replay activity was not appended.');
+    }
+    return {
+      core: persisted,
+      activity: persisted.activities.find((candidate) => candidate.id === activity.id)
+        ?? activity,
+    };
+  }
+
   const appended = appendOrchestratorReplayActivity(core, input, now);
   const persisted = await store.writeCore(appended.core);
   return {

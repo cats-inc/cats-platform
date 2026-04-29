@@ -86,7 +86,7 @@ export async function prepareReadyRequests(
     transportBindingId?: string | null;
     companionStore?: CompanionBoxStore;
     memoryService?: CatsMemoryService;
-    chatStore?: Pick<ChatStore, 'readCore' | 'writeCore'>;
+    chatStore?: Pick<ChatStore, 'readCore' | 'writeCore' | 'updateCore'>;
     chatStatePath?: string;
     runtimeDataDir?: string;
   },
@@ -283,7 +283,7 @@ export async function executeDispatchWithRecovery(input: {
   transportBindingId?: string | null;
   companionStore?: CompanionBoxStore;
   memoryService?: CatsMemoryService;
-  chatStore?: Pick<ChatStore, 'readCore' | 'writeCore'>;
+  chatStore?: Pick<ChatStore, 'readCore' | 'writeCore' | 'updateCore'>;
   chatStatePath?: string;
   runtimeDataDir?: string;
   runtimeRecovery: RuntimeDispatchRecoveryPolicy;

@@ -315,7 +315,7 @@ function buildChannelTaskId(channelId: string): string {
 }
 
 async function persistBlockedReplayMetadata(
-  chatStore: Pick<ChatStore, 'readCore' | 'writeCore'>,
+  chatStore: Pick<ChatStore, 'readCore' | 'writeCore' | 'updateCore'>,
   request: WorkflowContinuationReplaySnapshot,
   resolution: Pick<
     ReturnType<typeof buildReplayResolution>,
@@ -327,48 +327,49 @@ async function persistBlockedReplayMetadata(
     return;
   }
 
-  const core = await chatStore.readCore();
-  const task = core.tasks.find((candidate) => candidate.id === buildChannelTaskId(request.channelId));
-  if (!task) {
-    return;
-  }
+  await chatStore.updateCore((core) => {
+    const task = core.tasks.find((candidate) =>
+      candidate.id === buildChannelTaskId(request.channelId));
+    if (!task) {
+      return core;
+    }
 
-  const existingReplay = readWorkflowContinuationReplay(task.metadata, {
-    includeInProgress: true,
-  }) ?? request;
-  const metadata = writeWorkflowContinuationReplayMetadata(
-    task.metadata,
-    {
-      ...existingReplay,
-      blockedReason: resolution.blockedReason,
-      unresolvedTargets: resolution.unresolvedTargets,
-    },
-    {
-      replayState: existingReplay.replayState,
-      replayTrigger: existingReplay.replayTrigger,
-      replayAttemptAt: existingReplay.replayAttemptAt,
-      replayError: existingReplay.replayError,
-    },
-  );
-  const write = upsertCoreTask(
-    core,
-    {
-      id: task.id,
-      title: task.title,
-      status: task.status,
-      conversationId: task.conversationId,
-      parentTaskId: task.parentTaskId ?? null,
-      ownerActorId: task.ownerActorId,
-      orchestratorActorId: task.orchestratorActorId,
-      assignedActorIds: task.assignedActorIds,
-      summary: task.summary,
-      approval: task.approval,
-      createdAt: task.createdAt,
-      metadata,
-    },
-    now,
-  );
-  await chatStore.writeCore(write.core);
+    const existingReplay = readWorkflowContinuationReplay(task.metadata, {
+      includeInProgress: true,
+    }) ?? request;
+    const metadata = writeWorkflowContinuationReplayMetadata(
+      task.metadata,
+      {
+        ...existingReplay,
+        blockedReason: resolution.blockedReason,
+        unresolvedTargets: resolution.unresolvedTargets,
+      },
+      {
+        replayState: existingReplay.replayState,
+        replayTrigger: existingReplay.replayTrigger,
+        replayAttemptAt: existingReplay.replayAttemptAt,
+        replayError: existingReplay.replayError,
+      },
+    );
+    return upsertCoreTask(
+      core,
+      {
+        id: task.id,
+        title: task.title,
+        status: task.status,
+        conversationId: task.conversationId,
+        parentTaskId: task.parentTaskId ?? null,
+        ownerActorId: task.ownerActorId,
+        orchestratorActorId: task.orchestratorActorId,
+        assignedActorIds: task.assignedActorIds,
+        summary: task.summary,
+        approval: task.approval,
+        createdAt: task.createdAt,
+        metadata,
+      },
+      now,
+    ).core;
+  });
 }
 
 export function canResumeWorkflowContinuationReplay(
@@ -457,7 +458,7 @@ function mapTurnStatusToExecutionState(
 
 export async function resumeWorkflowContinuationReplay(input: {
   request: WorkflowContinuationReplaySnapshot;
-  chatStore: Pick<ChatStore, 'read' | 'write' | 'readCore' | 'writeCore'>;
+  chatStore: Pick<ChatStore, 'read' | 'write' | 'readCore' | 'writeCore' | 'updateCore'>;
   runtimeClient: RuntimeClient;
   now: Date;
   companionStore?: CompanionBoxStore;
