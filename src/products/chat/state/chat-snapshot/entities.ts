@@ -78,7 +78,9 @@ export function normalizeMessage(rawMessage: unknown, channelId: string): ChatMe
   const rawSenderKind = readString(messageRecord?.senderKind, 'system');
   const normalizedChoiceResponse = normalizeChatMessageChoiceResponse(messageRecord?.choiceResponse);
   const metadataRecord = asRecord(messageRecord?.metadata) ?? {};
-  // Always return owned metadata; callers may mutate normalized messages.
+  // Always return owned metadata; never share refs with the source raw record.
+  // Callers mutate normalized messages downstream, and shared refs would
+  // silently corrupt the source store on every legacy-free reload.
   const normalizedMetadata = hasLegacyMessageMetadata(metadataRecord)
     ? Object.fromEntries(
         Object.entries(metadataRecord).filter(
