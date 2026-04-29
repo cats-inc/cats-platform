@@ -13,8 +13,8 @@
 `Settings > Runtime` already shows a CLI/provider list, but the list is mostly
 diagnostic today. The next slice should make that existing list useful by
 turning it into the provider lifecycle control surface for desktop users:
-check, install, upgrade, repair, uninstall, and rescan local CLI providers from
-the existing Electron packaged setup bridge.
+check, install, upgrade, repair, uninstall, bulk uninstall, and rescan local CLI
+providers from the existing Electron packaged setup bridge.
 
 The feature remains a Runtime settings feature. The Electron desktop host is
 only the privileged execution boundary for allowlisted packaged helpers.
@@ -22,8 +22,9 @@ Non-Electron clients keep the current read-only provider/runtime status list and
 runtime setup links.
 
 This spec intentionally does not change the pre-`/setup` bootstrap flow. One
-practical goal is to make it easy to create a zero-CLI environment from the app
-so bootstrap behavior can be retested honestly.
+practical goal is to make it easy to create a zero-provider or zero-CLI test
+environment from the app so bootstrap and post-setup degradation behavior can be
+retested honestly.
 
 ## Current Baseline
 
@@ -44,13 +45,15 @@ so bootstrap behavior can be retested honestly.
 1. Reuse the current `Settings > Runtime` CLI/provider list as the primary
    provider lifecycle UI.
 2. Add Electron-only lifecycle buttons for packaged setup helpers:
-   `Check`, `Install`, `Upgrade`, `Repair`, `Uninstall`, and `Rescan`.
+   `Check`, `Install`, `Upgrade`, `Repair`, `Uninstall`, `Bulk uninstall`, and
+   `Rescan`.
 3. Keep non-Electron/browser clients read-only, preserving the current list and
    runtime setup links without shell execution controls.
 4. Keep all process execution in the desktop host through allowlisted packaged
    helpers; the renderer must never run arbitrary commands or scripts.
-5. Add uninstall helper support so developers can create a zero-CLI environment
-   for bootstrap/onboarding regression testing.
+5. Add uninstall and bulk uninstall support so developers can create a
+   zero-provider or zero-CLI environment for bootstrap/onboarding regression
+   testing.
 6. Refresh runtime/provider diagnostics immediately after lifecycle actions so
    Settings and bootstrap see the same provider truth.
 
@@ -64,7 +67,8 @@ so bootstrap behavior can be retested honestly.
 - Exposing a generic script runner or accepting arbitrary script paths from the
   renderer.
 - Making `cats-runtime` the owner of OS-level package installation or removal.
-- Guaranteeing removal of every externally installed CLI on the first pass.
+- Silently removing authentication files, API keys, local model data, or
+  unrelated package manager state as part of CLI uninstall.
 
 ## User Stories
 
@@ -72,8 +76,8 @@ so bootstrap behavior can be retested honestly.
   for each provider, not only whether it is currently usable.
 - As a desktop user, I want to install or upgrade a local CLI provider from
   Settings without reading setup docs.
-- As a developer, I want to uninstall recognized CLI providers from Settings so
-  I can retest the first-run zero-CLI bootstrap path.
+- As a developer, I want uninstall and bulk uninstall actions that can remove
+  recognized local CLI provider paths from a test machine after confirmation.
 - As a browser user, I want Settings to remain safe and informative even though
   my client cannot run local setup helpers.
 
@@ -96,13 +100,23 @@ so bootstrap behavior can be retested honestly.
    uninstall where no helper supports it.
 8. Uninstall helpers shall use the same structured JSON result contract as
    check/apply/upgrade helpers.
-9. After any install, upgrade, repair, force, or uninstall action, Settings
-   shall force-refresh provider registry and model catalog state.
-10. Runtime diagnostics shall be reloaded after lifecycle actions so provider
+9. User-facing actions shall map to concrete behavior as follows:
+   - `Check` runs helper mode `check`.
+   - `Install` runs helper mode `apply`.
+   - `Upgrade` runs helper mode `upgrade`.
+   - `Repair` runs helper mode `force`.
+   - `Uninstall` runs helper mode `uninstall`.
+   - `Rescan` is UI/runtime refresh only and shall not run a setup helper.
+   - `Bulk uninstall` is an advanced action that runs uninstall for selected or
+     all recognized local CLI providers after confirmation.
+10. After any install, upgrade, repair, force, uninstall, or bulk uninstall
+    action, Settings shall force-refresh provider registry and model catalog
+    state.
+11. Runtime diagnostics shall be reloaded after lifecycle actions so provider
     cards do not keep stale "ready" state after uninstall.
-11. Lifecycle action feedback shall use Settings toast behavior, not inline
+12. Lifecycle action feedback shall use Settings toast behavior, not inline
     success/error strings.
-12. The last packaged setup action shall remain visible through the existing
+13. The last packaged setup action shall remain visible through the existing
     desktop host setup state/history path.
 
 ### Uninstall Requirements
@@ -111,18 +125,35 @@ so bootstrap behavior can be retested honestly.
 2. Confirmation copy shall list the provider/helper being removed and state that
    active sessions using that provider may fail until another provider is
    configured.
-3. The first implementation may support "recognized local CLI removal" rather
-   than only "Cats-managed install removal", because the development need is to
-   create a zero-CLI machine state.
-4. When a helper can distinguish Cats-managed installs from external installs,
-   the UI shall label that distinction.
-5. When ownership is ambiguous, uninstall shall be presented as an advanced
-   action, not as the primary row action.
+3. Uninstall may remove any recognized local CLI install for that provider,
+   including CLIs installed outside Cats. A Cats install receipt is not required.
+4. When the helper can identify the install source, the UI should label it as
+   Cats-managed, package-manager detected, PATH detected, or unknown.
+5. The confirmation dialog shall list the concrete provider/helper and the
+   package names, executable paths, or shim paths the helper plans to remove.
 6. Uninstall shall not remove user authentication files, shell profiles, global
-   package manager configuration, or unrelated dependencies unless the helper
-   explicitly reports those removals and the confirmation copy names them.
+   package manager configuration, API keys, local model data, or unrelated
+   dependencies.
 7. Uninstall shall be idempotent: running it when the CLI is absent shall return
    a successful `not_installed` or equivalent no-op status.
+
+### Bulk Uninstall Requirements
+
+1. Bulk uninstall shall be a separate advanced action from per-provider
+   uninstall.
+2. Bulk uninstall is required for zero-provider regression work; it shall not be
+   optional if this feature claims to support zero-provider bootstrap testing.
+3. Bulk uninstall shall run the same uninstall contract for selected or all
+   recognized local CLI providers after one confirmation dialog.
+4. The confirmation dialog shall list the concrete providers, package names,
+   executable paths, shim paths, and Cats-owned runtime config entries that
+   would be changed.
+5. Bulk uninstall may clear Cats-owned runtime provider config entries only when
+   the confirmation dialog names those entries.
+6. Bulk uninstall shall report blockers instead of claiming zero-provider
+   success when an API key, external local model runtime, or unmanaged provider
+   target remains configured and would keep the provider registry non-empty.
+7. Bulk uninstall shall not delete auth tokens or external user config files.
 
 ### Host Contract Requirements
 
@@ -134,9 +165,11 @@ so bootstrap behavior can be retested honestly.
 5. macOS/Linux helpers shall receive an uninstall flag such as `--uninstall`.
 6. The bridge shall keep the same allowlisted asset lookup, packaging path
    resolution, JSON parsing, and action persistence behavior for uninstall.
-7. `resume_setup` should not automatically resume uninstall unless the helper
-   reports a resumable interruption and the UI is explicit about continuing a
-   removal action.
+7. `desktop/host/setupBridge.ts` owns mode-to-flag translation in
+   `modeFlag()`. No renderer code shall translate modes to script flags.
+8. `resume_setup` shall not automatically resume uninstall. Continuing an
+   interrupted uninstall or bulk uninstall shall require an explicit Settings
+   Runtime action with removal-specific copy.
 
 ### Script Contract Requirements
 
@@ -159,14 +192,18 @@ Accepted uninstall-oriented statuses should include:
 - `uninstalled`
 - `not_installed`
 - `changes_required`
-- `auth_required`
-- `restart_required`
+- `blocked`
 - `failed`
 
-Scripts should avoid silent broad cleanup. If a helper removes PATH entries,
+`auth_required` is not an uninstall status. If a removal needs elevation or
+manual follow-through, scripts shall use interruption/manual-step fields instead
+of borrowing install-only status vocabulary.
+
+Scripts must avoid silent broad cleanup. If a helper removes PATH entries,
 package manager shims, model data, background services, or config files, those
 changes must be present in `plannedActions`, `appliedChanges`, `warnings`, or
-`manualSteps`.
+`manualSteps`. Tests shall assert that confirmation-preview and applied JSON
+enumerate every path or config key the script touches.
 
 ### UI Requirements
 
@@ -174,15 +211,19 @@ changes must be present in `plannedActions`, `appliedChanges`, `warnings`, or
 2. Primary row action should be the safest next step:
    - `Install` when no recognized CLI is present and helper supports apply.
    - `Upgrade` when installed but outdated and helper supports upgrade.
-   - `Repair` when diagnostics report fixable degraded state.
-   - `Check` or `Rescan` when no direct mutation is needed.
+   - `Repair` when diagnostics report fixable degraded state and helper
+     supports force.
+   - `Check` when helper verification is useful.
+   - `Rescan` when only runtime/provider cache refresh is needed.
 3. `Uninstall` shall appear as a secondary or advanced/danger action.
-4. Rows shall show enough context to explain why a button is present:
+4. `Bulk uninstall` shall appear only in an advanced/danger area, not as a
+   normal provider row action.
+5. Rows shall show enough context to explain why a button is present:
    current availability, helper availability, last action status, and whether
    the action is desktop-only.
-5. Settings shall not duplicate the desktop bootstrap recovery UI. It may link
+6. Settings shall not duplicate the desktop bootstrap recovery UI. It may link
    to Desktop diagnostics/history for logs.
-6. Settings shall not put provider lifecycle controls in `Settings > Desktop`
+7. Settings shall not put provider lifecycle controls in `Settings > Desktop`
    as the main path. `Settings > Desktop` may link back to Runtime.
 
 ## Design Overview
@@ -195,7 +236,13 @@ Settings > Runtime
     runtime diagnostics from cats-runtime
     helper capabilities from Electron host setup snapshot
     actions:
-      check/apply/upgrade/force/uninstall through desktop host only
+      Check -> helper check
+      Install -> helper apply
+      Upgrade -> helper upgrade
+      Repair -> helper force
+      Uninstall -> helper uninstall
+      Rescan -> runtime/provider refresh only
+      Bulk uninstall -> advanced confirmation plus multiple helper uninstall runs
     after action:
       refresh host setup snapshot
       force-refresh /api/providers
@@ -229,23 +276,27 @@ Ownership stays split:
   and require confirmation.
 - In a browser/non-Electron session, Settings Runtime remains read-only and does
   not expose local mutation buttons.
-- After uninstalling all supported local CLI providers, forced provider refresh
-  reports zero usable CLI targets when no API/local model fallback is
-  configured.
-- Restarting Electron after that zero-CLI state still reaches the expected
-  pre-`/setup` bootstrap phase for first-run setup instead of a fatal startup
-  failure.
+- Normal uninstall of a recognized local CLI removes that provider's CLI-backed
+  target, including external/package-manager installs when the confirmation
+  dialog names the target; forced provider refresh may still report API or
+  local-model targets if they remain configured.
+- Bulk uninstall can produce a zero-usable-provider registry only when no
+  unmanaged API/local-model fallback remains, or after the user explicitly
+  approves clearing Cats-owned provider config entries.
+- State-machine coverage distinguishes the two bootstrap cases:
+  - fresh install with setup incomplete and zero providers reaches
+    `ready_for_setup` with provider-path setup copy
+  - setup-complete state plus provider diagnostics with zero targets reaches
+    `needs_prerequisites` and keeps `Open Cats` as the forward path
 
 ## Open Questions
 
-- [ ] Should the first uninstall helpers remove only CLI binaries/packages, or
-      also remove provider-specific Cats config entries?
 - [ ] Which providers must support uninstall in the first implementation slice:
       Claude, Codex/OpenAI CLI, Gemini, Goose, Junie, Kiro, Cursor, Ollama?
-- [ ] Should there be one bulk "Remove local CLI providers for testing" action,
-      or only per-provider uninstall buttons in the first slice?
-- [ ] Should helper install receipts be added before broad external uninstall
-      support, or can receipt support follow after the zero-CLI testing need?
+- [ ] What exact confirmation copy should gate per-provider uninstall and bulk
+      uninstall?
+- [ ] Which Cats-owned runtime provider config entries may bulk uninstall clear
+      after confirmation?
 
 ## References
 
