@@ -60,6 +60,8 @@ function Invoke-PackagedProviderUninstall {
 
     [switch]$EmitJson,
 
+    [switch]$DryRun,
+
     [int]$ExitCode = 0
   )
 
@@ -96,6 +98,44 @@ function Invoke-PackagedProviderUninstall {
     }
   }
 
+  foreach ($path in $allPaths) {
+    $plannedActions.Add("remove:$path") | Out-Null
+  }
+
+  if ($DryRun) {
+    if ($remainingInstalled -and $remainingCommandPath) {
+      $warnings.Add("system_install_remains_at:$remainingCommandPath") | Out-Null
+      $manualSteps.Add("System install at $remainingCommandPath cannot be removed by this helper; uninstall it through its installer.") | Out-Null
+    }
+    $previewStatus = if ($allPaths.Count -eq 0 -and -not $remainingInstalled) {
+      'not_installed'
+    } else {
+      'preview'
+    }
+    $result = [pscustomobject]@{
+      helper = $HelperId
+      mode = 'uninstall'
+      status = $previewStatus
+      installed = [bool]$remainingInstalled
+      detectedVersion = $null
+      commandPath = if ($remainingCommandPath) { $remainingCommandPath } else { $UserBinaryPath }
+      restartRequired = $false
+      plannedActions = $plannedActions.ToArray()
+      warnings = $warnings.ToArray()
+      appliedChanges = @()
+      manualSteps = $manualSteps.ToArray()
+      interruptions = @()
+    }
+    if ($EmitJson) {
+      $result | ConvertTo-Json -Depth 10
+    } else {
+      Write-Host "Mode: uninstall (dry-run)"
+      Write-Host "Status: $previewStatus"
+      foreach ($entry in $plannedActions) { Write-Host "Planned: $entry" }
+    }
+    exit $ExitCode
+  }
+
   if ($allPaths.Count -eq 0 -and -not $remainingInstalled) {
     $result = [pscustomobject]@{
       helper = $HelperId
@@ -120,9 +160,6 @@ function Invoke-PackagedProviderUninstall {
     exit $ExitCode
   }
 
-  foreach ($path in $allPaths) {
-    $plannedActions.Add("remove:$path") | Out-Null
-  }
   foreach ($path in $allPaths) {
     Remove-PackagedProviderPath -Path $path -AppliedChanges $appliedChanges -Warnings $warnings
   }

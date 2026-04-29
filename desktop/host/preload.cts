@@ -96,6 +96,13 @@ interface DesktopSetupSnapshot {
       mode: DesktopSetupHelperMode;
       runState: 'completed' | 'failed';
       status: string | null;
+      summary: string;
+      plannedActions: string[];
+      appliedChanges: string[];
+      warnings: string[];
+      manualSteps: string[];
+      startedAt: string;
+      completedAt: string | null;
     };
   };
 }
@@ -156,13 +163,22 @@ const bridge = {
   runSetupHelper(
     helperId: string,
     mode: DesktopSetupHelperMode,
+    extraArguments?: string[],
   ): Promise<DesktopSetupSnapshot> {
     if (typeof helperId !== 'string' || helperId.trim().length === 0) {
       throw new Error(`Invalid desktop setup helper id: ${String(helperId)}`);
     }
+    let extras: string[] | undefined;
+    if (extraArguments !== undefined) {
+      if (!Array.isArray(extraArguments) || !extraArguments.every((entry) => typeof entry === 'string')) {
+        throw new Error('Invalid desktop setup helper extraArguments.');
+      }
+      extras = extraArguments.slice();
+    }
     return ipcRenderer.invoke('cats-host:run-setup-helper', {
       helperId,
       mode: assertDesktopSetupHelperMode(mode),
+      ...(extras ? { extraArguments: extras } : {}),
     });
   },
   resumeSetup(): Promise<DesktopSetupSnapshot> {

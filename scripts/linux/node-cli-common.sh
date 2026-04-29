@@ -355,6 +355,7 @@ run_node_cli_pack() {
   local upgrade='false'
   local force='false'
   local uninstall='false'
+  local dry_run='false'
   local skip_prefix_setup='false'
   local emit_json='false'
   local outdated_packages=''
@@ -392,6 +393,9 @@ run_node_cli_pack() {
       --uninstall|-Uninstall)
         uninstall='true'
         ;;
+      --dry-run|-DryRun)
+        dry_run='true'
+        ;;
       --skip-prefix-setup)
         skip_prefix_setup='true'
         ;;
@@ -417,11 +421,33 @@ run_node_cli_pack() {
 
   load_nvm_if_present
   if ! ensure_node_and_npm; then
+    local missing_node_mode missing_node_status missing_node_exit
+    if [ "$uninstall" = 'true' ]; then
+      missing_node_mode='uninstall'
+      missing_node_status='not_installed'
+      missing_node_exit=0
+    elif [ "$check_only" = 'true' ]; then
+      missing_node_mode='check'
+      missing_node_status='not_installed'
+      missing_node_exit=0
+    elif [ "$force" = 'true' ]; then
+      missing_node_mode='force'
+      missing_node_status='failed'
+      missing_node_exit=1
+    elif [ "$upgrade" = 'true' ]; then
+      missing_node_mode='upgrade'
+      missing_node_status='failed'
+      missing_node_exit=1
+    else
+      missing_node_mode='apply'
+      missing_node_status='failed'
+      missing_node_exit=1
+    fi
     if [ "$emit_json" = 'true' ]; then
       printf '{'
       printf '"helper":"%s-node-cli-pack",' "$platform"
-      printf '"mode":"%s",' "$( [ "$uninstall" = 'true' ] && printf 'uninstall' || [ "$check_only" = 'true' ] && printf 'check' || [ "$force" = 'true' ] && printf 'force' || [ "$upgrade" = 'true' ] && printf 'upgrade' || printf 'apply' )"
-      printf '"status":"failed",'
+      printf '"mode":"%s",' "$missing_node_mode"
+      printf '"status":"%s",' "$missing_node_status"
       printf '"restartRequired":false,'
       printf '"plannedActions":[],'
       printf '"appliedChanges":[],'
@@ -431,7 +457,7 @@ run_node_cli_pack() {
       printf '"packages":[]'
       printf '}\n'
     fi
-    return 1
+    return "$missing_node_exit"
   fi
 
   local execution_mode='apply'
@@ -454,7 +480,9 @@ run_node_cli_pack() {
         installed='true'
         installed_count=$((installed_count + 1))
         planned_actions+=("${package_name}:uninstall")
-        if npm uninstall -g "$package_name" >/dev/null 2>&1; then
+        if [ "$dry_run" = 'true' ]; then
+          package_status='preview'
+        elif npm uninstall -g "$package_name" >/dev/null 2>&1; then
           applied_changes+=("${package_name}:uninstalled")
           changed_count=$((changed_count + 1))
           package_status='uninstalled'
@@ -475,7 +503,9 @@ run_node_cli_pack() {
 $(node_cli_package_rows)
 EOF
 
-    if [ $installed_count -eq 0 ]; then
+    if [ "$dry_run" = 'true' ]; then
+      uninstall_status='preview'
+    elif [ $installed_count -eq 0 ]; then
       uninstall_status='not_installed'
     elif [ ${#warnings[@]} -gt 0 ]; then
       uninstall_status='changes_required'

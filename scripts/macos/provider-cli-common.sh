@@ -368,13 +368,22 @@ Options:
 EOF
 }
 
+# Globals populated by uninstall_provider_native_paths.
+# Bash 3.2 (macOS /bin/bash) lacks `local -n` namerefs, so we use named globals.
+__CATS_UNINSTALL_PLANNED=()
+__CATS_UNINSTALL_APPLIED=()
+__CATS_UNINSTALL_WARNINGS=()
+__CATS_UNINSTALL_REMAINING=''
+
 uninstall_provider_native_paths() {
   local platform="$1"
   local provider="$2"
-  local -n out_planned="$3"
-  local -n out_applied="$4"
-  local -n out_warnings="$5"
-  local -n out_remaining_path="$6"
+  local dry_run="${3:-false}"
+
+  __CATS_UNINSTALL_PLANNED=()
+  __CATS_UNINSTALL_APPLIED=()
+  __CATS_UNINSTALL_WARNINGS=()
+  __CATS_UNINSTALL_REMAINING=''
 
   local primary_command primary_path candidate path extra existing already
   local planned_paths=()
@@ -415,28 +424,29 @@ UPNP_EOF
   fi
 
   for path in "${planned_paths[@]}"; do
-    out_planned+=("remove:$path")
+    __CATS_UNINSTALL_PLANNED+=("remove:$path")
   done
 
-  for path in "${planned_paths[@]}"; do
-    if [ -d "$path" ] && [ ! -L "$path" ]; then
-      if rm -rf "$path" 2>/dev/null; then
-        out_applied+=("removed:$path")
-      else
-        out_warnings+=("failed_to_remove:$path")
+  if [ "$dry_run" != 'true' ]; then
+    for path in "${planned_paths[@]}"; do
+      if [ -d "$path" ] && [ ! -L "$path" ]; then
+        if rm -rf "$path" 2>/dev/null; then
+          __CATS_UNINSTALL_APPLIED+=("removed:$path")
+        else
+          __CATS_UNINSTALL_WARNINGS+=("failed_to_remove:$path")
+        fi
+      elif [ -e "$path" ] || [ -L "$path" ]; then
+        if rm -f "$path" 2>/dev/null; then
+          __CATS_UNINSTALL_APPLIED+=("removed:$path")
+        else
+          __CATS_UNINSTALL_WARNINGS+=("failed_to_remove:$path")
+        fi
       fi
-    elif [ -e "$path" ] || [ -L "$path" ]; then
-      if rm -f "$path" 2>/dev/null; then
-        out_applied+=("removed:$path")
-      else
-        out_warnings+=("failed_to_remove:$path")
-      fi
-    fi
-  done
+    done
+  fi
 
-  out_remaining_path=''
   if primary_path="$(detect_provider_command "$platform" "$provider")"; then
-    out_remaining_path="$primary_path"
+    __CATS_UNINSTALL_REMAINING="$primary_path"
   fi
 }
 
@@ -450,6 +460,7 @@ run_native_provider_installer() {
   local upgrade='false'
   local force='false'
   local uninstall='false'
+  local dry_run='false'
   local emit_json='false'
   local shell_rc
   local command_path=''
@@ -478,6 +489,9 @@ run_native_provider_installer() {
         ;;
       --uninstall|-Uninstall)
         uninstall='true'
+        ;;
+      --dry-run|-DryRun)
+        dry_run='true'
         ;;
       --json|-Json)
         emit_json='true'
@@ -515,78 +529,51 @@ run_native_provider_installer() {
   shell_rc="$(detect_shell_rc)"
 
   if [ "$execution_mode" = 'uninstall' ]; then
+    local alias_name
     local uninstall_planned=()
     local uninstall_applied=()
     local uninstall_warnings=()
     local uninstall_remaining=''
-    local alias_name
 
-    uninstall_provider_native_paths "$platform" "$provider" \
-      uninstall_planned uninstall_applied uninstall_warnings uninstall_remaining
+    uninstall_provider_native_paths "$platform" "$provider" "$dry_run"
+    uninstall_planned=("${__CATS_UNINSTALL_PLANNED[@]}")
+    uninstall_applied=("${__CATS_UNINSTALL_APPLIED[@]}")
+    uninstall_warnings=("${__CATS_UNINSTALL_WARNINGS[@]}")
+    uninstall_remaining="$__CATS_UNINSTALL_REMAINING"
 
     alias_name="$(provider_alias_name "$provider")"
     if [ -n "$alias_name" ] && [ -f "$shell_rc" ] && grep -Eq "^[[:space:]]*alias[[:space:]]+${alias_name}=" "$shell_rc" 2>/dev/null; then
       uninstall_warnings+=("alias_${alias_name}_remains_in:$shell_rc")
     fi
 
-    if [ ${#uninstall_planned[@]} -eq 0 ]; then
-      if [ "$emit_json" = 'true' ]; then
-        printf '{'
-        printf '"helper":"%s-%s-native-installer",' "$platform" "$provider"
-        printf '"mode":"uninstall",'
-        printf '"status":"not_installed",'
-        printf '"installed":false,'
-        printf '"commandPath":null,'
-        printf '"detectedVersion":null,'
-        printf '"plannedActions":[],'
-        printf '"appliedChanges":[],'
-        printf '"warnings":[],'
-        printf '"manualSteps":[],'
-        printf '"interruptions":[]'
-        printf '}\n'
-      else
-        printf '%s is not installed; nothing to remove.\n' "$display_name"
-      fi
-      return 0
+    local uninstall_status
+    if [ "$dry_run" = 'true' ]; then
+      uninstall_status='preview'
+    elif [ ${#uninstall_planned[@]} -eq 0 ] && [ -z "$uninstall_remaining" ]; then
+      uninstall_status='not_installed'
+    elif [ -n "$uninstall_remaining" ]; then
+      uninstall_status='changes_required'
+      uninstall_warnings+=("system_install_remains_at:$uninstall_remaining")
+    elif [ ${#uninstall_warnings[@]} -gt 0 ]; then
+      uninstall_status='changes_required'
+    else
+      uninstall_status='uninstalled'
     fi
 
+    local uninstall_installed='false'
+    local uninstall_command_path='null'
     if [ -n "$uninstall_remaining" ]; then
-      uninstall_warnings+=("system_install_remains_at:$uninstall_remaining")
-      if [ "$emit_json" = 'true' ]; then
-        printf '{'
-        printf '"helper":"%s-%s-native-installer",' "$platform" "$provider"
-        printf '"mode":"uninstall",'
-        printf '"status":"changes_required",'
-        printf '"installed":true,'
-        printf '"commandPath":"%s",' "$(json_escape "$uninstall_remaining")"
-        printf '"detectedVersion":null,'
-        printf '"plannedActions":'
-        json_string_array "${uninstall_planned[@]}"
-        printf ','
-        printf '"appliedChanges":'
-        json_string_array "${uninstall_applied[@]}"
-        printf ','
-        printf '"warnings":'
-        json_string_array "${uninstall_warnings[@]}"
-        printf ','
-        printf '"manualSteps":["Remove the remaining %s install at %s using your package manager."],' \
-          "$(json_escape "$display_name")" "$(json_escape "$uninstall_remaining")"
-        printf '"interruptions":[]'
-        printf '}\n'
-      else
-        printf '%s removed from user-owned paths but a system install remains at %s.\n' \
-          "$display_name" "$uninstall_remaining"
-      fi
-      return 0
+      uninstall_installed='true'
+      uninstall_command_path="\"$(json_escape "$uninstall_remaining")\""
     fi
 
     if [ "$emit_json" = 'true' ]; then
       printf '{'
       printf '"helper":"%s-%s-native-installer",' "$platform" "$provider"
       printf '"mode":"uninstall",'
-      printf '"status":"uninstalled",'
-      printf '"installed":false,'
-      printf '"commandPath":null,'
+      printf '"status":"%s",' "$uninstall_status"
+      printf '"installed":%s,' "$uninstall_installed"
+      printf '"commandPath":%s,' "$uninstall_command_path"
       printf '"detectedVersion":null,'
       printf '"plannedActions":'
       json_string_array "${uninstall_planned[@]}"
@@ -597,11 +584,29 @@ run_native_provider_installer() {
       printf '"warnings":'
       json_string_array "${uninstall_warnings[@]}"
       printf ','
-      printf '"manualSteps":[],'
+      if [ -n "$uninstall_remaining" ]; then
+        printf '"manualSteps":["Remove the remaining %s install at %s using your package manager."],' \
+          "$(json_escape "$display_name")" "$(json_escape "$uninstall_remaining")"
+      else
+        printf '"manualSteps":[],'
+      fi
       printf '"interruptions":[]'
       printf '}\n'
     else
-      printf '%s removed.\n' "$display_name"
+      case "$uninstall_status" in
+        preview)
+          printf '%s preview: %s path(s) planned for removal.\n' "$display_name" "${#uninstall_planned[@]}"
+          ;;
+        not_installed)
+          printf '%s is not installed; nothing to remove.\n' "$display_name"
+          ;;
+        changes_required)
+          printf '%s removal incomplete; remaining install at %s.\n' "$display_name" "$uninstall_remaining"
+          ;;
+        uninstalled)
+          printf '%s removed.\n' "$display_name"
+          ;;
+      esac
     fi
     return 0
   fi

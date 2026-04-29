@@ -44,6 +44,7 @@ param(
   [switch]$Upgrade,
   [switch]$Force,
   [switch]$Uninstall,
+  [switch]$DryRun,
   [switch]$Json,
   [switch]$AllowAdmin,
   [ValidateSet('auto', 'installed', 'missing')]
@@ -243,7 +244,8 @@ if ($Uninstall) {
     -HelperId 'windows-goose-native-installer' `
     -UserBinaryPath (Resolve-GooseExecutablePath) `
     -RedetectCommand { Detect-GooseInstall } `
-    -EmitJson:$Json
+    -EmitJson:$Json `
+    -DryRun:$DryRun
 }
 
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).

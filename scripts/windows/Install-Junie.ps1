@@ -44,6 +44,7 @@ param(
   [switch]$Upgrade,
   [switch]$Force,
   [switch]$Uninstall,
+  [switch]$DryRun,
   [switch]$Json,
   [switch]$AllowAdmin,
   [ValidateSet('auto', 'installed', 'missing')]
@@ -204,7 +205,8 @@ if ($Uninstall) {
     -HelperId 'windows-junie-native-installer' `
     -UserBinaryPath (Resolve-JunieExecutablePath) `
     -RedetectCommand { Detect-JunieInstall } `
-    -EmitJson:$Json
+    -EmitJson:$Json `
+    -DryRun:$DryRun
 }
 
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).

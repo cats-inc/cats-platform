@@ -1498,9 +1498,18 @@ async function main(): Promise<void> {
     ) {
       throw new Error('Invalid packaged setup helper action payload.');
     }
+    const rawExtra = (payload as { extraArguments?: unknown }).extraArguments;
+    let extraArguments: string[] | undefined;
+    if (rawExtra !== undefined) {
+      if (!Array.isArray(rawExtra) || !rawExtra.every((entry): entry is string => typeof entry === 'string')) {
+        throw new Error('Invalid packaged setup helper extraArguments payload.');
+      }
+      extraArguments = rawExtra;
+    }
     return await runSetupAction({
       helperId: (payload as { helperId: string }).helperId,
       mode: (payload as { mode: DesktopSetupHelperMode }).mode,
+      ...(extraArguments ? { extraArguments } : {}),
     });
   });
   ipcMain.handle('cats-host:resume-setup', async () => {

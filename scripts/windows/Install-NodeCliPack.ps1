@@ -47,6 +47,7 @@ param(
   [switch]$Upgrade,
   [switch]$Force,
   [switch]$Uninstall,
+  [switch]$DryRun,
   [switch]$Json,
   [switch]$AllowAdmin,
   [switch]$SkipNodeCheck,
@@ -282,7 +283,7 @@ if (-not $SkipNodeCheck) {
       warnings = @('Node.js and npm must be installed before the native CLI pack can be installed.')
       appliedChanges = @()
     }
-    Write-StructuredResult -Result $result -ExitCode $(if ($CheckOnly) { 0 } else { 1 })
+    Write-StructuredResult -Result $result -ExitCode $(if ($CheckOnly -or $Uninstall) { 0 } else { 1 })
   }
 
   $nodeVersion = (& node -v).Trim()
@@ -290,7 +291,7 @@ if (-not $SkipNodeCheck) {
 }
 
 $prefixHelperResult = Invoke-PrefixHelper -Mode 'check'
-if (-not $CheckOnly -and $prefixHelperResult.status -eq 'changes_required') {
+if (-not $CheckOnly -and -not $Uninstall -and $prefixHelperResult.status -eq 'changes_required') {
   $prefixHelperResult = Invoke-PrefixHelper -Mode 'apply'
 }
 
@@ -309,18 +310,22 @@ if ($Uninstall) {
     if ($isInstalled) {
       $plannedAction = 'uninstall'
       $uninstallPlanned.Add("$($package.packageName): uninstall") | Out-Null
-      try {
-        & npm 'uninstall' '-g' $package.packageName | Out-Null
-        if ($LASTEXITCODE -eq 0) {
-          $uninstallApplied.Add("$($package.packageName): uninstalled") | Out-Null
-          $packageStatus = 'uninstalled'
-        } else {
-          $uninstallWarnings.Add("$($package.packageName): uninstall_failed_exit_$LASTEXITCODE") | Out-Null
+      if ($DryRun) {
+        $packageStatus = 'preview'
+      } else {
+        try {
+          & npm 'uninstall' '-g' $package.packageName | Out-Null
+          if ($LASTEXITCODE -eq 0) {
+            $uninstallApplied.Add("$($package.packageName): uninstalled") | Out-Null
+            $packageStatus = 'uninstalled'
+          } else {
+            $uninstallWarnings.Add("$($package.packageName): uninstall_failed_exit_$LASTEXITCODE") | Out-Null
+            $packageStatus = 'failed'
+          }
+        } catch {
+          $uninstallWarnings.Add("$($package.packageName): uninstall_failed") | Out-Null
           $packageStatus = 'failed'
         }
-      } catch {
-        $uninstallWarnings.Add("$($package.packageName): uninstall_failed") | Out-Null
-        $packageStatus = 'failed'
       }
     }
 
@@ -335,7 +340,9 @@ if ($Uninstall) {
     }
   }
 
-  $uninstallStatus = if ($uninstallPlanned.Count -eq 0) {
+  $uninstallStatus = if ($DryRun) {
+    'preview'
+  } elseif ($uninstallPlanned.Count -eq 0) {
     'not_installed'
   } elseif ($uninstallWarnings.Count -gt 0) {
     'changes_required'

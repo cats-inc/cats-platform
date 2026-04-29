@@ -56,6 +56,7 @@ param(
   [switch]$Upgrade,
   [switch]$Force,
   [switch]$Uninstall,
+  [switch]$DryRun,
   [switch]$Json,
   [switch]$AllowAdmin,
   [ValidateSet('auto', 'installed', 'missing')]
@@ -338,6 +339,38 @@ if ($Uninstall) {
   $hasUserBinary = Test-Path -LiteralPath $userBinary -PathType Leaf
   $npmArtifacts = @(Get-ClaudeNpmArtifacts)
 
+  if ($hasUserBinary) { $plannedActions.Add("remove:$userBinary") | Out-Null }
+  foreach ($artifact in $npmArtifacts) { $plannedActions.Add("remove:$artifact") | Out-Null }
+
+  if ($DryRun) {
+    $previewStatus = if (-not $hasUserBinary -and $npmArtifacts.Count -eq 0 -and -not $detected.installed) {
+      'not_installed'
+    } else {
+      'preview'
+    }
+    if ($detected.installed -and -not $hasUserBinary -and $npmArtifacts.Count -eq 0) {
+      $warnings.Add("system_install_remains_at:$($detected.commandPath)") | Out-Null
+      $manualSteps.Add("Claude Code install at $($detected.commandPath) cannot be removed by this helper; uninstall it through its installer.") | Out-Null
+    }
+    $result = [pscustomobject]@{
+      helper = 'windows-claude-native-installer'
+      mode = 'uninstall'
+      status = $previewStatus
+      installed = [bool]$detected.installed
+      detectedVersion = $null
+      commandPath = $detected.commandPath
+      restartRequired = $false
+      plannedActions = $plannedActions.ToArray()
+      warnings = $warnings.ToArray()
+      appliedChanges = @()
+      manualSteps = $manualSteps.ToArray()
+      interruptions = @()
+      cleanedNpmShim = $false
+      usedWingetFallback = $false
+    }
+    Write-StructuredResult -Result $result -ExitCode 0
+  }
+
   if (-not $hasUserBinary -and $npmArtifacts.Count -eq 0 -and -not $detected.installed) {
     $result = [pscustomobject]@{
       helper = 'windows-claude-native-installer'
@@ -357,9 +390,6 @@ if ($Uninstall) {
     }
     Write-StructuredResult -Result $result -ExitCode 0
   }
-
-  if ($hasUserBinary) { $plannedActions.Add("remove:$userBinary") | Out-Null }
-  foreach ($artifact in $npmArtifacts) { $plannedActions.Add("remove:$artifact") | Out-Null }
 
   if ($hasUserBinary) {
     try {
@@ -391,7 +421,7 @@ if ($Uninstall) {
     'uninstalled'
   }
 
-  $manualSteps = if ($detectedAfter.installed) {
+  $finalManualSteps = if ($detectedAfter.installed) {
     @("Remove the remaining Claude Code install at $($detectedAfter.commandPath) using its installer or package manager.")
   } else {
     @()
@@ -408,7 +438,7 @@ if ($Uninstall) {
     plannedActions = $plannedActions.ToArray()
     warnings = $warnings.ToArray()
     appliedChanges = $appliedChanges.ToArray()
-    manualSteps = $manualSteps
+    manualSteps = $finalManualSteps
     interruptions = @()
     cleanedNpmShim = $cleanedNpm
     usedWingetFallback = $false

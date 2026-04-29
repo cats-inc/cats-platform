@@ -44,6 +44,7 @@ param(
   [switch]$Upgrade,
   [switch]$Force,
   [switch]$Uninstall,
+  [switch]$DryRun,
   [switch]$Json,
   [switch]$AllowAdmin,
   [ValidateSet('auto', 'installed', 'missing')]
@@ -219,7 +220,8 @@ if ($Uninstall) {
     -HelperId 'windows-cursor-native-installer' `
     -UserBinaryPath (Resolve-CursorExecutablePath) `
     -RedetectCommand { Detect-CursorInstall } `
-    -EmitJson:$Json
+    -EmitJson:$Json `
+    -DryRun:$DryRun
 }
 
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).

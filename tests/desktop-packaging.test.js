@@ -99,6 +99,7 @@ async function seedRuntimeBundle(runtimeRoot, contents = 'export const layout = 
 
 async function seedWindowsSetupAssets(packageRoot) {
   await seedFile(join(packageRoot, 'scripts', 'windows', '_HiddenProcess.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', '_PackagedUninstall.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Setup-NodeGlobalPrefix.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-NodeCliPack.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-ClaudeCode.ps1'), '# helper');
@@ -111,6 +112,7 @@ async function seedWindowsSetupAssets(packageRoot) {
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-DockerDesktop.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Ollama.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Check-WindowsSetupReadiness.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'config', 'provider-capability-bootstrap.yaml.example'), '# example\n');
 }
 
 async function seedUnixSetupAssets(packageRoot, platform) {

@@ -40,17 +40,26 @@ export interface RuntimeLifecycleHelperSummary {
   unsupportedReason: string | null;
 }
 
-interface DesktopSetupSnapshot {
+export interface RuntimeLifecycleLastAction {
+  helperId: string;
+  mode: RuntimeLifecycleHelperMode;
+  runState: 'completed' | 'failed';
+  status: string | null;
+  summary: string;
+  plannedActions: string[];
+  appliedChanges: string[];
+  warnings: string[];
+  manualSteps: string[];
+  startedAt: string;
+  completedAt: string | null;
+}
+
+export interface DesktopSetupSnapshot {
   helpers?: RuntimeLifecycleHelperSummary[];
   resumeAction: DesktopSetupResumeAction | null;
   state?: {
     updatedAt: string | null;
-    lastAction: null | {
-      helperId: string;
-      mode: RuntimeLifecycleHelperMode;
-      runState: 'completed' | 'failed';
-      status: string | null;
-    };
+    lastAction: RuntimeLifecycleLastAction | null;
   };
 }
 
@@ -92,6 +101,7 @@ export interface DesktopHostBridge {
   runSetupHelper?: (
     helperId: string,
     mode: RuntimeLifecycleHelperMode,
+    extraArguments?: string[],
   ) => Promise<DesktopSetupSnapshot>;
   resumeSetup?: () => Promise<DesktopSetupSnapshot>;
   screenshotRegionCaptureAvailable?: boolean;
