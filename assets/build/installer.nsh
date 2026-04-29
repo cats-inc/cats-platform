@@ -1,3 +1,20 @@
+; --- Per-user-only install: suppress multi-user choice page ---
+;
+; Cats packaged setup helpers (Install-ClaudeCode.ps1, Install-NodeCliPack.ps1,
+; etc.) refuse to run under an elevated shell because every CLI provider we
+; install (Claude / Cursor / Goose / Junie / npm-global pack / Ollama) is
+; user-scoped: binaries land in $env:USERPROFILE\.local\bin or
+; %LOCALAPPDATA%, auth files live under the user's profile, and the npm
+; prefix is per-user. An all-users install would put Cats.exe under
+; Program Files but every spawned helper would either reject elevation or
+; write into the wrong profile, so the choice is a footgun. Define
+; MULTIUSER_INSTALLMODE_NO_PAGE in customHeader before electron-builder's
+; bundled MultiUser.nsh runs so the install-mode page is skipped while the
+; rest of the wizard (license, install directory) stays available.
+!macro customHeader
+  !define MULTIUSER_INSTALLMODE_NO_PAGE
+!macroend
+
 ; --- Uninstaller: optional user-data removal ---
 !include "LogicLib.nsh"
 !include "nsDialogs.nsh"

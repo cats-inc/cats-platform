@@ -1588,3 +1588,13 @@ test('NSIS installer.nsh provides an uninstaller page for optional user-data rem
   assert.match(nsh, /RMDir \/r "\$APPDATA\\Cats"/);
   assert.match(nsh, /customUnInstall/);
 });
+
+test('NSIS installer.nsh suppresses the multi-user install-mode page so admin/all-users is not offered', async () => {
+  const nsh = await readFile(
+    join(process.cwd(), 'assets', 'build', 'installer.nsh'),
+    'utf8',
+  );
+
+  assert.match(nsh, /!macro customHeader/);
+  assert.match(nsh, /!define MULTIUSER_INSTALLMODE_NO_PAGE/);
+});
