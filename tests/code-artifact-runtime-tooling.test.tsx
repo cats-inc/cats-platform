@@ -2,7 +2,14 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  clearRuntimeInvocationEnrichers,
+  collectRuntimeInvocationAssistantMetadata,
+  enrichRuntimeInvocation,
+  registerRuntimeInvocationEnricher,
+} from '../src/platform/runtime/invocationEnrichment.ts';
+import {
   CODE_ARTIFACT_RUNTIME_CONTEXT_METADATA_KEY,
+  CODE_ARTIFACT_RUNTIME_ENRICHER_ID,
   collectCodeArtifactRuntimeToolCalls,
   createCodeArtifactRuntimeInvocationEnricher,
   enrichCodeArtifactRuntimeInvocation,
@@ -45,6 +52,15 @@ test('Code artifact runtime tooling attaches only to Code-origin active sessions
   assert.equal(metadata?.toolName, 'declare_artifact');
   assert.equal(metadata?.sourceChannelId, 'channel-code');
   assert.equal(metadata?.workspacePath, 'C:/repo/cats-platform');
+
+  const chatInvocation = enrichCodeArtifactRuntimeInvocation(
+    { instructions: 'No Code tooling.', context: { labels: ['existing'] } },
+    { originSurface: 'chat', id: 'channel-chat' },
+    { phase: 'session_create' },
+  );
+
+  assert.equal(chatInvocation.instructions, 'No Code tooling.');
+  assert.deepEqual(chatInvocation.context?.metadata, undefined);
 });
 
 test('Code artifact runtime tooling does not repeat onboarding on message sends', () => {
@@ -173,4 +189,86 @@ test('Code artifact runtime enricher returns assistant metadata without Chat cou
       },
     ],
   });
+});
+
+test('runtime invocation registry namespaces assistant metadata and can be reset', () => {
+  clearRuntimeInvocationEnrichers();
+  try {
+    registerRuntimeInvocationEnricher(createCodeArtifactRuntimeInvocationEnricher());
+    const metadata = collectRuntimeInvocationAssistantMetadata(
+      { originSurface: 'code' },
+      [
+        {
+          kind: 'tool_use',
+          toolName: 'declare_artifact',
+          toolId: 'tool-1',
+          text: '',
+          toolArgs: {
+            declarationId: 'report-1',
+            label: 'test_report',
+            title: 'Test report',
+            location: { kind: 'inline_summary', value: 'All tests passed.' },
+          },
+        },
+      ],
+    );
+
+    assert.deepEqual(metadata, {
+      [CODE_ARTIFACT_RUNTIME_ENRICHER_ID]: {
+        codeArtifactToolCalls: [
+          {
+            toolName: 'declare_artifact',
+            toolId: 'tool-1',
+            declarationId: 'report-1',
+            status: 'shape_ok',
+          },
+        ],
+      },
+    });
+
+    clearRuntimeInvocationEnrichers();
+    assert.deepEqual(
+      collectRuntimeInvocationAssistantMetadata({ originSurface: 'code' }, []),
+      {},
+    );
+  } finally {
+    clearRuntimeInvocationEnrichers();
+  }
+});
+
+test('runtime invocation registry applies deterministic priority order', () => {
+  clearRuntimeInvocationEnrichers();
+  try {
+    registerRuntimeInvocationEnricher({
+      id: 'z-enricher',
+      priority: 10,
+      enrich(_channel, input) {
+        return { ...input, instructions: `${input.instructions ?? ''}Z` };
+      },
+    });
+    registerRuntimeInvocationEnricher({
+      id: 'a-enricher',
+      priority: 10,
+      enrich(_channel, input) {
+        return { ...input, instructions: `${input.instructions ?? ''}A` };
+      },
+    });
+    registerRuntimeInvocationEnricher({
+      id: 'first-enricher',
+      priority: -1,
+      enrich(_channel, input) {
+        return { ...input, instructions: `${input.instructions ?? ''}F` };
+      },
+    });
+
+    const enriched = enrichRuntimeInvocation(
+      { originSurface: 'code' },
+      { instructions: '' },
+      { phase: 'message_send' },
+    );
+
+    assert.equal(enriched.instructions, 'FAZ');
+  } finally {
+    clearRuntimeInvocationEnrichers();
+  }
 });

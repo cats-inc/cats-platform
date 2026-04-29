@@ -699,7 +699,7 @@ export function applyDispatchExecutions(
               ? { precedingTools: segment.precedingTools }
               : {}),
             ...(isLastSegment && execution.runtimeAssistantMetadata
-              ? execution.runtimeAssistantMetadata
+              ? { runtimeAssistantMetadata: execution.runtimeAssistantMetadata }
               : {}),
             ...(isLastSegment && serializedWorkflowRecommendation
               ? { workflowRecommendation: serializedWorkflowRecommendation }
@@ -751,7 +751,7 @@ export function applyDispatchExecutions(
             dispatchDepth: execution.depth,
             segmentIndex: 0,
             ...(execution.runtimeAssistantMetadata
-              ? execution.runtimeAssistantMetadata
+              ? { runtimeAssistantMetadata: execution.runtimeAssistantMetadata }
               : {}),
             ...(serializedWorkflowRecommendation
               ? { workflowRecommendation: serializedWorkflowRecommendation }

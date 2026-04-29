@@ -169,7 +169,9 @@ Supplying a non-null server-resolved field rejects the call with
 
 Runtime invocation enrichment is registered through the platform runtime
 invocation-enricher registry. Chat calls the platform registry and does not
-import Code artifact tooling directly.
+import Code artifact tooling directly. Enrichers run in ascending `priority`
+order, with equal priorities ordered by id; assistant metadata contributions are
+stored under each enricher id rather than flattened into Chat metadata.
 
 When a chat/channel originates from Cats Code (`originSurface = "code"`),
 activation of `+New code`, `+Team code`, or a `+Peer code` member channel
@@ -190,11 +192,12 @@ the follow-up path from SPEC-092 / PLAN-081.
 
 The current Cats Platform receiver also preserves `toolArgs` on runtime
 `tool_use` segments and records same-turn `declare_artifact` observations as
-`codeArtifactToolCalls` metadata on the terminal assistant segment. These
-observations are shape summaries only. They do not replace the future
-server-side `accepted` result, Core artifact upsert, or finalization gate.
-Until the finalization gate is wired, Cats Platform still accepts final visible
-responses that claim an artifact without an accepted same-turn declaration.
+`runtimeAssistantMetadata["cats-code.artifact-declaration"].codeArtifactToolCalls`
+metadata on the terminal assistant segment. These observations are shape
+summaries only. They do not replace the future server-side `accepted` result,
+Core artifact upsert, or finalization gate. Until the finalization gate is
+wired, Cats Platform still accepts final visible responses that claim an
+artifact without an accepted same-turn declaration.
 
 ### Output Summary
 

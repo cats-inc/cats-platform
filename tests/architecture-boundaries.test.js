@@ -872,18 +872,19 @@ test('runtime dispatch execution consumes dedicated runtime targeting helpers in
 });
 
 test('chat runtime invocation enrichment stays behind the platform registry', async () => {
-  const sources = [
-    '../src/products/chat/api/routeSupport.ts',
-    '../src/products/chat/state/runtime-dispatch/execution.ts',
-    '../src/products/chat/state/runtime-session/sessionStart.ts',
-  ];
+  const chatRootPath = fileURLToPath(new URL('../src/products/chat', import.meta.url));
+  let platformRegistryConsumerCount = 0;
 
-  for (const sourcePath of sources) {
-    const source = await readFile(new URL(sourcePath, import.meta.url), 'utf8');
-    assert.match(source, /platform\/runtime\/invocationEnrichment\.js/u);
-    assert.doesNotMatch(source, /products\/code\/state\/runtimeArtifactTooling\.js/u);
-    assert.doesNotMatch(source, /code\/state\/runtimeArtifactTooling\.js/u);
+  for await (const filePath of walkSourceFiles(chatRootPath)) {
+    const source = await readFile(filePath, 'utf8');
+    if (/platform\/runtime\/invocationEnrichment\.js/u.test(source)) {
+      platformRegistryConsumerCount += 1;
+    }
+    assert.doesNotMatch(source, /from\s+['"][^'"]*products\/code\//u);
+    assert.doesNotMatch(source, /from\s+['"][^'"]*(?:\.\.\/)+code\//u);
   }
+
+  assert.equal(platformRegistryConsumerCount > 0, true);
 });
 
 test('runtime dispatch routing consumes dedicated runtime targeting helpers instead of defining choice resolution inline', async () => {
@@ -914,6 +915,22 @@ test('runtime dispatch execution consumes dedicated runtime session-state helper
   assert.match(dispatchExecutionModule, /runtime-session\/state\.js/u);
   assert.doesNotMatch(dispatchExecutionModule, /function participantKey\(/u);
   assert.match(sessionStateModule, /export function participantKey/u);
+});
+
+test('runtime dispatch results namespace runtime assistant metadata', async () => {
+  const dispatchResultsModule = await readFile(
+    new URL('../src/products/chat/state/runtime-dispatch/results.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(
+    dispatchResultsModule,
+    /runtimeAssistantMetadata:\s+execution\.runtimeAssistantMetadata/u,
+  );
+  assert.doesNotMatch(
+    dispatchResultsModule,
+    /\?\s+execution\.runtimeAssistantMetadata\s+:\s+\{\}/u,
+  );
 });
 
 test('runtime dispatch execution consumes dedicated runtime session-routing helpers instead of defining rewrite logic inline', async () => {

@@ -6,7 +6,7 @@ import type {
 export type RuntimeInvocationEnrichmentPhase = 'session_create' | 'message_send';
 
 export interface RuntimeInvocationEnrichmentChannel {
-  originSurface?: unknown;
+  originSurface?: string | null;
   id?: string | null;
   title?: string | null;
   chatCwd?: string | null;
@@ -34,6 +34,11 @@ export interface RuntimeInvocationEnrichmentContext {
 
 export interface RuntimeInvocationEnricher {
   id: string;
+  /**
+   * Lower values run first. Equal-priority enrichers are ordered by id so the
+   * runtime contract is deterministic across import and registration timing.
+   */
+  priority?: number;
   enrich(
     channel: RuntimeInvocationEnrichmentChannel,
     input: RuntimeInvocationEnrichmentInput,
@@ -51,6 +56,17 @@ export function registerRuntimeInvocationEnricher(enricher: RuntimeInvocationEnr
   runtimeInvocationEnrichers.set(enricher.id, enricher);
 }
 
+export function clearRuntimeInvocationEnrichers(): void {
+  runtimeInvocationEnrichers.clear();
+}
+
+function getOrderedRuntimeInvocationEnrichers(): RuntimeInvocationEnricher[] {
+  return [...runtimeInvocationEnrichers.values()].sort((left, right) => {
+    const priorityDelta = (left.priority ?? 0) - (right.priority ?? 0);
+    return priorityDelta !== 0 ? priorityDelta : left.id.localeCompare(right.id);
+  });
+}
+
 export function enrichRuntimeInvocation<TInput extends RuntimeInvocationEnrichmentInput>(
   channel: RuntimeInvocationEnrichmentChannel,
   input: TInput,
@@ -58,7 +74,7 @@ export function enrichRuntimeInvocation<TInput extends RuntimeInvocationEnrichme
 ): RuntimeInvocationEnrichmentResult<TInput> {
   let current: RuntimeInvocationEnrichmentInput = { ...input };
 
-  for (const enricher of runtimeInvocationEnrichers.values()) {
+  for (const enricher of getOrderedRuntimeInvocationEnrichers()) {
     current = enricher.enrich(channel, current, context);
   }
 
@@ -71,10 +87,10 @@ export function collectRuntimeInvocationAssistantMetadata(
 ): Record<string, unknown> {
   const metadata: Record<string, unknown> = {};
 
-  for (const enricher of runtimeInvocationEnrichers.values()) {
+  for (const enricher of getOrderedRuntimeInvocationEnrichers()) {
     const contribution = enricher.collectAssistantMetadata?.(channel, segments);
     if (contribution) {
-      Object.assign(metadata, contribution);
+      metadata[enricher.id] = contribution;
     }
   }
 
