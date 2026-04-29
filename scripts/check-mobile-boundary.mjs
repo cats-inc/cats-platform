@@ -1,18 +1,22 @@
 #!/usr/bin/env node
 /**
- * Boundary check for `src/mobile/**`. Per the 2026-04-29 integrator
- * review (review on `9531f0e8`), the mobile-safe entry point must not
- * import anything that drags Node-only / desktop-only code into the
- * mobile typecheck. This script walks every `.ts` file under
- * `src/mobile/` and fails if any direct import statement matches a
- * forbidden pattern.
+ * Boundary check for the cats-platform mobile-safe entry point.
  *
- * Direct-import scanning catches the common case (someone adds an
- * `import` line that pulls in `node:crypto` or a server module).
- * Transitive compliance — i.e. that an allowed re-export does not
- * itself have a forbidden import deeper in the chain — is checked by
- * running the mobile workspace's `npm run typecheck` after wiring
- * mobile to consume from this boundary.
+ * Two scans land in this script — see `MAIN_RULES` below for the
+ * inverse rule formulation:
+ *
+ *   1. **Boundary surface** (`src/mobile/**`) — must not import any
+ *      Node-only or desktop-only module. Scans direct imports only.
+ *      Transitive compliance (an allowed re-export pulling node:*
+ *      deeper down) is verified by running the mobile workspace's
+ *      `npm run typecheck` against the boundary.
+ *
+ *   2. **Mobile consumer** (`mobile/app/**` and `mobile/src/**`) —
+ *      must reach `cats-platform/src/**` only through the boundary
+ *      (`src/mobile/**`). Anything else under `cats-platform/src/`
+ *      is a violation. Per-platform Node prefixes are also blocked
+ *      so a consumer cannot bypass the boundary by reaching into
+ *      `node_modules` directly for poisoned modules.
  *
  * Run from `cats-platform/`:
  *
@@ -29,6 +33,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const PROJECT_ROOT = path.resolve(__dirname, '..');
 const BOUNDARY_DIR = path.resolve(PROJECT_ROOT, 'src/mobile');
+const MOBILE_APP_DIR = path.resolve(PROJECT_ROOT, 'mobile/app');
+const MOBILE_SRC_DIR = path.resolve(PROJECT_ROOT, 'mobile/src');
+const PLATFORM_SRC_DIR = path.resolve(PROJECT_ROOT, 'src');
 
 const FORBIDDEN_NODE_PREFIXES = ['node:'];
 
@@ -49,10 +56,9 @@ const FORBIDDEN_NODE_BARE_NAMES = new Set([
 ]);
 
 /**
- * Project-internal paths that are known to leak Node deps. Add to this
- * list as new transitive offenders are discovered. Each entry is a
- * substring that, if present anywhere in the resolved import path,
- * fails the check.
+ * Project-internal paths that are known to leak Node deps. Each entry
+ * is a substring that, if present anywhere in the resolved import
+ * path (forward-slash normalised), fails the boundary scan.
  */
 const FORBIDDEN_PROJECT_SUBSTRINGS = [
   '/server/',
@@ -67,9 +73,23 @@ const IMPORT_REGEX =
   /^\s*(?:import|export)(?:\s+type)?\s+(?:[^"'`]+?\s+from\s+)?["']([^"'`]+)["']/gm;
 
 async function* walkTsFiles(dir) {
-  for (const entry of await readdir(dir, { withFileTypes: true })) {
+  let entries;
+  try {
+    entries = await readdir(dir, { withFileTypes: true });
+  } catch (error) {
+    if (error?.code === 'ENOENT') {
+      return;
+    }
+    throw error;
+  }
+  for (const entry of entries) {
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
+      // Skip generated directories that should never carry boundary
+      // violations (e.g. .expo/types or build outputs).
+      if (entry.name === 'node_modules' || entry.name === '.expo') {
+        continue;
+      }
       yield* walkTsFiles(full);
     } else if (entry.isFile() && /\.tsx?$/.test(entry.name)) {
       yield full;
@@ -77,7 +97,16 @@ async function* walkTsFiles(dir) {
   }
 }
 
-function classifyImport(importPath, sourceFile) {
+/** Forward-slash-normalised project-relative path. */
+function projectRel(absolute) {
+  return path.relative(PROJECT_ROOT, absolute).split(path.sep).join('/');
+}
+
+/**
+ * Boundary scan: rejects forbidden Node + project-internal imports
+ * directly inside `src/mobile/**`.
+ */
+function classifyBoundaryImport(importPath, sourceFile) {
   for (const prefix of FORBIDDEN_NODE_PREFIXES) {
     if (importPath.startsWith(prefix)) {
       return { ok: false, reason: `forbidden ${prefix}* import` };
@@ -85,22 +114,20 @@ function classifyImport(importPath, sourceFile) {
   }
 
   if (FORBIDDEN_NODE_BARE_NAMES.has(importPath)) {
-    return { ok: false, reason: `forbidden bare Node import "${importPath}"` };
+    return {
+      ok: false,
+      reason: `forbidden bare Node import "${importPath}"`,
+    };
   }
 
   if (importPath.startsWith('.')) {
     const resolved = path.resolve(path.dirname(sourceFile), importPath);
-    // Normalise to forward-slash so the substring blocklist matches on
-    // Windows (where `path.relative` returns backslashes).
-    const projectRelative = path
-      .relative(PROJECT_ROOT, resolved)
-      .split(path.sep)
-      .join('/');
+    const rel = projectRel(resolved);
     for (const fragment of FORBIDDEN_PROJECT_SUBSTRINGS) {
-      if (projectRelative.includes(fragment)) {
+      if (rel.includes(fragment)) {
         return {
           ok: false,
-          reason: `forbidden project path fragment "${fragment}" in "${projectRelative}"`,
+          reason: `forbidden project path fragment "${fragment}" in "${rel}"`,
         };
       }
     }
@@ -109,53 +136,126 @@ function classifyImport(importPath, sourceFile) {
   return { ok: true };
 }
 
-async function checkFile(filePath) {
+/**
+ * Consumer scan: rejects mobile imports that reach into
+ * `cats-platform/src/**` outside the boundary, or that hit a
+ * forbidden Node module directly. Mobile may import:
+ *
+ *   - `cats-platform/src/mobile/**` (the boundary)
+ *   - own files under `cats-platform/mobile/**`
+ *   - npm packages
+ */
+function classifyConsumerImport(importPath, sourceFile) {
+  for (const prefix of FORBIDDEN_NODE_PREFIXES) {
+    if (importPath.startsWith(prefix)) {
+      return { ok: false, reason: `forbidden ${prefix}* import` };
+    }
+  }
+
+  if (FORBIDDEN_NODE_BARE_NAMES.has(importPath)) {
+    return {
+      ok: false,
+      reason: `forbidden bare Node import "${importPath}"`,
+    };
+  }
+
+  if (!importPath.startsWith('.')) {
+    // npm package — outside our jurisdiction.
+    return { ok: true };
+  }
+
+  const resolved = path.resolve(path.dirname(sourceFile), importPath);
+  // If it resolves outside cats-platform/src/ entirely, it is either
+  // own mobile code or some other consumer — fine.
+  if (!resolved.startsWith(`${PLATFORM_SRC_DIR}${path.sep}`)) {
+    return { ok: true };
+  }
+  // It does point into cats-platform/src/. Allow only if it lands
+  // inside the boundary directory.
+  if (
+    resolved === BOUNDARY_DIR ||
+    resolved.startsWith(`${BOUNDARY_DIR}${path.sep}`)
+  ) {
+    return { ok: true };
+  }
+  return {
+    ok: false,
+    reason: `mobile must reach cats-platform/src only via src/mobile/**; got "${projectRel(resolved)}"`,
+  };
+}
+
+async function scanFile(filePath, classify) {
   const content = await readFile(filePath, 'utf8');
   const violations = [];
   let match;
   IMPORT_REGEX.lastIndex = 0;
   while ((match = IMPORT_REGEX.exec(content)) !== null) {
     const importPath = match[1];
-    const verdict = classifyImport(importPath, filePath);
+    const verdict = classify(importPath, filePath);
     if (!verdict.ok) {
       violations.push({ importPath, reason: verdict.reason });
     }
   }
-  return violations;
+  let importsScanned = 0;
+  IMPORT_REGEX.lastIndex = 0;
+  while (IMPORT_REGEX.exec(content) !== null) {
+    importsScanned += 1;
+  }
+  return { violations, importsScanned };
 }
 
-async function main() {
-  let hasViolation = false;
+async function runScan(label, dir, classify) {
   let filesScanned = 0;
   let importsScanned = 0;
-
-  for await (const file of walkTsFiles(BOUNDARY_DIR)) {
+  let hasViolation = false;
+  for await (const file of walkTsFiles(dir)) {
     filesScanned += 1;
-    const content = await readFile(file, 'utf8');
-    const importMatches = content.match(IMPORT_REGEX) ?? [];
-    importsScanned += importMatches.length;
-
-    const violations = await checkFile(file);
+    const { violations, importsScanned: count } = await scanFile(
+      file,
+      classify,
+    );
+    importsScanned += count;
     if (violations.length > 0) {
       hasViolation = true;
-      const projectRelative = path.relative(PROJECT_ROOT, file);
-      console.error(`✗ ${projectRelative}`);
+      console.error(`✗ ${projectRel(file)}`);
       for (const v of violations) {
         console.error(`    ${v.importPath} — ${v.reason}`);
       }
     }
   }
+  return { label, filesScanned, importsScanned, hasViolation };
+}
 
-  if (hasViolation) {
-    console.error(
-      `\n${filesScanned} file(s) scanned, violations found. Mobile boundary breached.`,
-    );
+async function main() {
+  const boundaryReport = await runScan(
+    'src/mobile/ boundary',
+    BOUNDARY_DIR,
+    classifyBoundaryImport,
+  );
+  const consumerAppReport = await runScan(
+    'mobile/app/ consumer',
+    MOBILE_APP_DIR,
+    classifyConsumerImport,
+  );
+  const consumerSrcReport = await runScan(
+    'mobile/src/ consumer',
+    MOBILE_SRC_DIR,
+    classifyConsumerImport,
+  );
+
+  const reports = [boundaryReport, consumerAppReport, consumerSrcReport];
+  const anyViolation = reports.some((r) => r.hasViolation);
+
+  if (anyViolation) {
+    console.error('\nMobile boundary breached.');
     process.exit(1);
   }
 
-  console.log(
-    `✓ src/mobile/ boundary clean (${filesScanned} file(s), ${importsScanned} import(s) scanned).`,
-  );
+  for (const r of reports) {
+    console.log(
+      `✓ ${r.label} clean (${r.filesScanned} file(s), ${r.importsScanned} import(s) scanned).`,
+    );
+  }
 }
 
 main().catch((error) => {
