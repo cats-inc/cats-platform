@@ -155,59 +155,56 @@ function renderBody({
         </View>
       );
     case 'unconfigured':
-      return <UnconfiguredPanel onOpenSettings={onOpenSettings} />;
+      // Render the sidebar shell with empty data so the user sees the
+      // structure (the three +New action chips, RECENTS empty state,
+      // MY CATS empty state) even before pairing — matches the
+      // Code / Work tabs which use a static config and never hide the
+      // sidebar. A banner above explains the empty state.
+      return (
+        <>
+          <UnconfiguredBanner onOpenSettings={onOpenSettings} />
+          <ChatSidebar {...callbacks} data={EMPTY_SIDEBAR_DATA} />
+        </>
+      );
     case 'error':
-      return <ErrorPanel error={state.error} onRetry={onRetry} />;
+      return (
+        <>
+          <ErrorBanner error={state.error} onDismiss={onRetry} />
+          <ChatSidebar {...callbacks} data={EMPTY_SIDEBAR_DATA} />
+        </>
+      );
     case 'data':
       return <ChatSidebar {...callbacks} data={state.data} />;
   }
 }
 
-interface UnconfiguredPanelProps {
+const EMPTY_SIDEBAR_DATA: Parameters<typeof ChatSidebar>[0]['data'] = {
+  recents: [],
+  cats: [],
+};
+
+interface UnconfiguredBannerProps {
   onOpenSettings: () => void;
 }
 
-function UnconfiguredPanel({ onOpenSettings }: UnconfiguredPanelProps) {
+function UnconfiguredBanner({ onOpenSettings }: UnconfiguredBannerProps) {
   return (
-    <View style={styles.panel}>
-      <Text style={styles.panelTitle}>Connect to your desktop</Text>
-      <Text style={styles.panelBody}>
-        Set the desktop base URL in Settings so this device can fetch your
-        chat shell. LAN, Tailscale, or tunnel URL all work.
-      </Text>
+    <View style={styles.infoBanner}>
+      <View style={styles.infoBannerText}>
+        <Text style={styles.infoBannerTitle}>Connect to your desktop</Text>
+        <Text style={styles.infoBannerBody} numberOfLines={2}>
+          Set the desktop base URL in Settings to load Recents and MY CATS.
+        </Text>
+      </View>
       <Pressable
         accessibilityRole="button"
         onPress={onOpenSettings}
         style={({ pressed }) => [
-          styles.panelButton,
-          pressed ? styles.panelButtonPressed : null,
+          styles.infoBannerButton,
+          pressed ? styles.infoBannerButtonPressed : null,
         ]}
       >
-        <Text style={styles.panelButtonLabel}>Open Settings</Text>
-      </Pressable>
-    </View>
-  );
-}
-
-interface ErrorPanelProps {
-  error: MobileApiError;
-  onRetry: () => void;
-}
-
-function ErrorPanel({ error, onRetry }: ErrorPanelProps) {
-  return (
-    <View style={styles.panel}>
-      <Text style={styles.panelTitle}>Could not reach desktop cats</Text>
-      <Text style={styles.panelBody}>{error.message}</Text>
-      <Pressable
-        accessibilityRole="button"
-        onPress={onRetry}
-        style={({ pressed }) => [
-          styles.panelButton,
-          pressed ? styles.panelButtonPressed : null,
-        ]}
-      >
-        <Text style={styles.panelButtonLabel}>Retry</Text>
+        <Text style={styles.infoBannerButtonLabel}>Settings</Text>
       </Pressable>
     </View>
   );
@@ -222,7 +219,7 @@ function ErrorBanner({ error, onDismiss }: ErrorBannerProps) {
   return (
     <View style={styles.errorBanner}>
       <Text style={styles.errorBannerText} numberOfLines={2}>
-        Could not create channel: {error.message}
+        {error.message}
       </Text>
       <Pressable onPress={onDismiss}>
         <Text style={styles.errorBannerDismiss}>Dismiss</Text>
@@ -251,34 +248,41 @@ const styles = StyleSheet.create({
     color: colors.fg.secondary,
     ...typography.body,
   },
-  panel: {
-    flex: 1,
-    padding: spacing.xl,
+  infoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing.md,
-    alignItems: 'flex-start',
-    justifyContent: 'center',
-  },
-  panelTitle: {
-    color: colors.fg.primary,
-    ...typography.title,
-  },
-  panelBody: {
-    color: colors.fg.secondary,
-    ...typography.body,
-  },
-  panelButton: {
+    paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.lg,
+    backgroundColor: colors.accent.soft,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border.subtle,
+  },
+  infoBannerText: {
+    flex: 1,
+    gap: 2,
+  },
+  infoBannerTitle: {
+    color: colors.fg.primary,
+    ...typography.bodyStrong,
+  },
+  infoBannerBody: {
+    color: colors.fg.secondary,
+    ...typography.caption,
+  },
+  infoBannerButton: {
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.md,
     borderRadius: radii.md,
     backgroundColor: colors.accent.primary,
-    marginTop: spacing.sm,
   },
-  panelButtonPressed: {
+  infoBannerButtonPressed: {
     opacity: 0.85,
   },
-  panelButtonLabel: {
+  infoBannerButtonLabel: {
     color: colors.fg.inverse,
-    ...typography.bodyStrong,
+    ...typography.label,
+    fontWeight: '600',
   },
   errorBanner: {
     flexDirection: 'row',
