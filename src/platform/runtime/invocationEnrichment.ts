@@ -37,9 +37,9 @@ export const RuntimeEnricherPriority = {
 
 export interface RuntimeInvocationContextContribution
   extends Omit<Partial<RuntimeSessionInvocationContext>, 'labels' | 'metadata' | 'workspace'> {
-  labels?: readonly string[] | null;
-  metadata?: Record<string, unknown> | null;
-  workspace?: RuntimeSessionInvocationContext['workspace'] | null;
+  labels?: readonly string[];
+  metadata?: Record<string, unknown>;
+  workspace?: RuntimeSessionInvocationContext['workspace'];
 }
 
 export interface RuntimeInvocationEnrichmentContributionFields {
@@ -51,9 +51,10 @@ export interface RuntimeInvocationEnrichmentContributionFields {
   /**
    * Context contributions are merged by the platform. Labels are appended with
    * de-duplication, metadata is merged by top-level key, and workspace fields
-   * are merged shallowly. `null` and `undefined` leave context unchanged.
+   * are merged shallowly. `undefined` leaves context unchanged. Metadata values
+   * must be structured-cloneable.
    */
-  context?: RuntimeInvocationContextContribution | null;
+  context?: RuntimeInvocationContextContribution;
 }
 
 export type RuntimeInvocationEnrichmentContribution =
@@ -100,16 +101,35 @@ function getOrderedRuntimeInvocationEnrichers(): RuntimeInvocationEnricher[] {
 
 function cloneRuntimeSessionInvocationContext(
   context: RuntimeSessionInvocationContext | undefined,
+  scope: string,
 ): RuntimeSessionInvocationContext | undefined {
-  return context ? structuredClone(context) as RuntimeSessionInvocationContext : undefined;
+  if (!context) {
+    return undefined;
+  }
+  try {
+    return structuredClone(context) as RuntimeSessionInvocationContext;
+  } catch {
+    throw new Error(
+      `${scope} contains non-structured-cloneable context values; runtime invocation metadata ` +
+      'must not contain functions, class instances, Maps, Sets, or other unsupported values.',
+    );
+  }
 }
 
 function cloneRuntimeInvocationEnricherInput(
   input: RuntimeInvocationEnrichmentInput,
+  enricherId: string,
 ): RuntimeInvocationEnrichmentInput {
   return {
     ...(input.instructions !== undefined ? { instructions: input.instructions } : {}),
-    ...(input.context ? { context: cloneRuntimeSessionInvocationContext(input.context) } : {}),
+    ...(input.context
+      ? {
+          context: cloneRuntimeSessionInvocationContext(
+            input.context,
+            `Runtime enricher "${enricherId}" input`,
+          ),
+        }
+      : {}),
   };
 }
 
@@ -118,10 +138,16 @@ function cloneRuntimeInvocationEnrichmentResult<
 >(
   input: TInput,
 ): RuntimeInvocationEnrichmentResult<TInput> {
-  return {
-    ...input,
-    ...(input.context ? { context: cloneRuntimeSessionInvocationContext(input.context) } : {}),
-  } as unknown as RuntimeInvocationEnrichmentResult<TInput>;
+  // TypeScript cannot prove that cloning/replacing the optional context still
+  // satisfies the distributive Omit result for every generic TInput.
+  const result = { ...input } as unknown as RuntimeInvocationEnrichmentResult<TInput>;
+  if (input.context) {
+    result.context = cloneRuntimeSessionInvocationContext(
+      input.context,
+      'Runtime invocation input',
+    );
+  }
+  return result;
 }
 
 function mergeDefinedProperties<TRecord extends Record<string, unknown>>(
@@ -143,10 +169,12 @@ function mergeDefinedProperties<TRecord extends Record<string, unknown>>(
 
 function mergeRuntimeInvocationContextContribution(
   current: RuntimeSessionInvocationContext | undefined,
-  contribution: RuntimeInvocationContextContribution | null | undefined,
+  contribution: RuntimeInvocationContextContribution | undefined,
 ): RuntimeSessionInvocationContext | undefined {
   if (!contribution) {
-    return current ? cloneRuntimeSessionInvocationContext(current) : undefined;
+    return current
+      ? cloneRuntimeSessionInvocationContext(current, 'Runtime invocation context')
+      : undefined;
   }
 
   const merged: RuntimeSessionInvocationContext = {
@@ -231,7 +259,11 @@ export function enrichRuntimeInvocation<TInput extends RuntimeInvocationEnrichme
   for (const enricher of getOrderedRuntimeInvocationEnrichers()) {
     current = mergeRuntimeInvocationEnrichmentContribution(
       current,
-      enricher.enrich(channel, cloneRuntimeInvocationEnricherInput(current), context),
+      enricher.enrich(channel, cloneRuntimeInvocationEnricherInput(current, enricher.id), context),
+    );
+    cloneRuntimeSessionInvocationContext(
+      current.context,
+      `Runtime enricher "${enricher.id}" output`,
     );
   }
 

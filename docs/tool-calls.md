@@ -178,10 +178,14 @@ product hook cannot accidentally drop provider/model/workspace fields. Context
 contributions are merged by platform contract: labels append with
 de-duplication, metadata merges by top-level key, workspace fields merge
 shallowly, `undefined` means "leave unchanged", and `instructions: null`
-explicitly clears the outgoing instruction text. Each enricher receives a cloned
-view of the current invocation context, so accidental mutation cannot alter
-later enrichers or the final invocation. Assistant metadata contributions are
-stored under each enricher id rather than flattened into Chat metadata.
+explicitly clears the outgoing instruction text. Context fields do not accept
+`null` clear semantics. Metadata same-key sub-objects are replaced wholesale
+rather than deep-merged; multiple enrichers writing the same metadata key must
+coordinate on a shared shape. Metadata values must be structured-cloneable.
+Each enricher receives a cloned view of the current invocation context, so
+accidental mutation cannot alter later enrichers or the final invocation.
+Assistant metadata contributions are stored under each enricher id rather than
+flattened into Chat metadata.
 
 When a chat/channel originates from Cats Code (`originSurface = "code"`),
 activation of `+New code`, `+Team code`, or a `+Peer code` member channel

@@ -374,6 +374,56 @@ test('runtime invocation registry merges context labels and metadata by platform
   }
 });
 
+test('runtime invocation registry replaces same-key metadata sub-objects by contract', () => {
+  clearRuntimeInvocationEnrichers();
+  try {
+    registerRuntimeInvocationEnricher({
+      id: 'base-artifact-metadata',
+      priority: RuntimeEnricherPriority.NORMAL,
+      enrich() {
+        return {
+          context: {
+            metadata: {
+              codeArtifactDeclaration: {
+                toolName: 'declare_artifact',
+                schemaVersion: 'v1',
+              },
+            },
+          },
+        };
+      },
+    });
+    registerRuntimeInvocationEnricher({
+      id: 'override-artifact-metadata',
+      priority: RuntimeEnricherPriority.POST_PROCESS,
+      enrich() {
+        return {
+          context: {
+            metadata: {
+              codeArtifactDeclaration: {
+                finalization: true,
+              },
+            },
+          },
+        };
+      },
+    });
+
+    const enriched = enrichRuntimeInvocation(
+      { originSurface: 'code' },
+      { context: { metadata: { channelId: 'channel-code' } } },
+      { phase: 'session_create' },
+    );
+
+    assert.deepEqual(enriched.context?.metadata, {
+      channelId: 'channel-code',
+      codeArtifactDeclaration: { finalization: true },
+    });
+  } finally {
+    clearRuntimeInvocationEnrichers();
+  }
+});
+
 test('runtime invocation registry isolates enricher input mutations', () => {
   clearRuntimeInvocationEnrichers();
   try {
@@ -418,6 +468,23 @@ test('runtime invocation registry isolates enricher input mutations', () => {
   } finally {
     clearRuntimeInvocationEnrichers();
   }
+});
+
+test('runtime invocation registry rejects non-structured-cloneable context metadata', () => {
+  assert.throws(
+    () => enrichRuntimeInvocation(
+      { originSurface: 'code' },
+      {
+        context: {
+          metadata: {
+            invalid: () => 'not cloneable',
+          },
+        },
+      },
+      { phase: 'session_create' },
+    ),
+    /Runtime invocation input contains non-structured-cloneable context values/u,
+  );
 });
 
 test('runtime invocation registry defines null and undefined contribution semantics', () => {

@@ -196,11 +196,8 @@ export function enrichCodeArtifactRuntimeInvocation(
   channel: CodeArtifactRuntimeToolingChannel,
   enrichmentContext: RuntimeInvocationEnrichmentContext,
 ): RuntimeInvocationWithCodeArtifactToolingResult {
-  const contribution = buildCodeArtifactRuntimeInvocationContribution(
-    input,
-    channel,
-    enrichmentContext,
-  );
+  const contribution = createCodeArtifactRuntimeInvocationEnricher()
+    .enrich(channel, input, enrichmentContext);
   return mergeRuntimeInvocationEnrichmentContribution(input, contribution);
 }
 
