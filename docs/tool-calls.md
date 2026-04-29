@@ -215,12 +215,34 @@ idempotency, producer identity, policy, or Core persistence succeeded.
 For `local_path`, the current helper performs context-free lexical
 normalization only: separators are normalized, `.` / `..` segments are
 collapsed, and URL-like / null-byte values are rejected. The normalized output
-marks the location with
-`verification.workspaceContainment = 'unverified'`; this marker is internal,
-not caller-visible, and must be cleared only by the server materialization path
-after validating the path against the resolved workspace. URL values are
-canonicalized through the platform `URL` constructor, so agents should use the
-returned canonical form when composing related identifiers.
+marks the location with **two** internal verification fields:
+
+- `verification.workspaceContainment = 'unverified'` — must be cleared by the
+  server materialization path after validating the path against the resolved
+  workspace.
+- `verification.pathCaseCanonicalization = 'unverified'` — must be cleared by
+  the server after applying the host-OS case rule (Windows lowercases the
+  drive letter and the entire path; Linux/macOS keeps case). The context-free
+  helper preserves drive-letter case verbatim because it does not know the
+  host OS.
+
+Both markers are internal, not caller-visible (the agent-visible tool input
+schema does not declare `verification`, and the normalizer reads only `kind`
+and `value` so any agent-supplied `verification` is silently dropped). They
+must be cleared independently by the server.
+
+URL values are canonicalized through the platform `URL` constructor (which
+adds a trailing slash for origin-only URLs such as `http://127.0.0.1:5173/`),
+so agents should use the returned canonical form when composing related
+identifiers. `inline_summary` and `external_ref` are persisted in trimmed
+form; for `inline_summary`, `summary` and `location.value` are not required
+to match when the producer supplies both — `summary` is the short caller-
+facing description and `location.value` carries the full inline content.
+
+Edge cases the helper does NOT handle (documented in SPEC-092 § Location
+Rules): UNC paths (`\\server\share\...`) lose their double-slash prefix
+after separator normalization; drive-relative paths (`C:foo` without a
+slash after the colon) are conservatively rejected as URL-like.
 
 `accepted` shall be returned only after the server-side declaration path has
 accepted the declaration. `disposition` reports whether the declaration became a

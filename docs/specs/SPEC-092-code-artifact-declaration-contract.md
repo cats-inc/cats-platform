@@ -874,16 +874,35 @@ Tool, system, and user producers do not use the agent system prompt:
 | `none` | No durable object reference | `null` | Requires a non-empty `summary` or metadata evidence. |
 | `local_path` | Workspace-relative path, or an absolute path that canonicalizes inside the resolved workspace | normalized workspace-relative path | Absolute paths outside the workspace are rejected unless they are normalized through user import first. |
 | `url` | HTTP(S) URL for a preview or externally hosted output | normalized URL string | Credentials in URLs are rejected. Runtime-local URLs must be attached to known runtime/tool output or explicit user input. |
-| `inline_summary` | Text summary content, not a file path | `null` | `value` is copied into `summary` when `summary` is empty; maximum 8 KiB after trimming. |
-| `external_ref` | Opaque reference to a known external object, such as an upload id, runtime artifact id, or storage key | normalized external reference string | The value must use `<refKind>:<refId>`, where `refKind` is allowlisted and `refId` is non-empty. |
+| `inline_summary` | Text summary content, not a file path | `null` | `value` is copied into `summary` when `summary` is empty; maximum 8 KiB **after trimming** (size check uses the trimmed bytes). When the producer supplies both a non-empty `summary` and `location.value`, they are NOT required to match: `summary` is the short caller-facing description while `location.value` carries the full inline content (e.g. multi-paragraph implementation summary). Persisted forms use trimmed values for both. Surfaces that need a single canonical text shall prefer `summary`; surfaces that need full evidence shall prefer `location.value`. |
+| `external_ref` | Opaque reference to a known external object, such as an upload id, runtime artifact id, or storage key | normalized external reference string | The value must use `<refKind>:<refId>`, where `refKind` is allowlisted and `refId` is non-empty. Both `refKind` and `refId` are trimmed before comparison and persistence. |
 
 When implementation splits context-free shape normalization from server
 materialization, a normalized `local_path` is still untrusted. The helper may
-normalize separators and collapse `.` / `..` lexically, but it shall carry an
-internal `verification.workspaceContainment = 'unverified'` marker until the
-server has resolved the workspace and validated containment. That marker is
-not part of the agent-visible tool schema and shall not be treated as proof of
-containment.
+normalize separators and collapse `.` / `..` lexically, but it shall carry
+two internal verification markers until the server has resolved the workspace
+and applied the host-OS case rule from § Workspace Key and Path
+Canonicalization:
+
+- `verification.workspaceContainment = 'unverified'` until the server confirms
+  the canonical path is contained inside the resolved workspace;
+- `verification.pathCaseCanonicalization = 'unverified'` until the server
+  applies the Windows-lowercase / Linux-keep-case rule (the helper is
+  host-agnostic and preserves drive-letter case verbatim).
+
+Both markers are NOT part of the agent-visible tool schema and shall not be
+treated as proof of containment or canonical case. The agent-side input shape
+does not carry `verification`, so producer-supplied values are silently
+dropped during normalization rather than trusted.
+
+Edge cases the helper does NOT handle (intentional, documented):
+
+- **UNC paths** (`\\server\share\...`) are not preserved; after separator
+  normalization the leading double slash collapses, so `\\server\share\foo`
+  becomes `/server/share/foo`. UNC-mounted workspaces are not a target use
+  case for the current scaffold.
+- **Drive-relative paths** (`C:foo` without a slash after the colon) are
+  conservatively rejected as URL-like with `artifact_local_path_invalid`.
 
 The first implementation shall maintain `external_ref` allowlist policy as one
 Code server configuration value, `codeArtifactDeclaration.externalRefKinds`.
@@ -1117,3 +1136,4 @@ agent/tool/system/user output
 *Amended: 2026-04-29 — added § Producer Onboarding: agent system-prompt onboarding block (positive + negative artifact list, one-declaration-per-output rule, context-compression preservation), tool-catalog registration shape, agent-side `declarationId` composition guidance, and tool / system / user producer onboarding paths.*
 *Amended: 2026-04-29 — § Producer Onboarding tightened: agent-visible tool schema is **label-based** (`declarationId` + `label` + `title` + `location` + `summary` + `metadata`); `kind` / `coreKind` / `producer.*` / authoritative anchors removed from agent-facing schema and rejected with `artifact_producer_field_not_allowed` if supplied. Added explicit structured **final-response gating** via `CodeAssistantFinalization.artifactClaims[]`; each claim must match a same-turn accepted `declarationId`, unmatched claims block finalization with `artifact_claim_without_declaration`, and prose heuristics are telemetry only. Added `transcript_export` and `dataset_file` label mappings. Onboarding block carries `codeArtifactDeclaration.onboardingBlockVersion` stamp and runtime bridge re-injects before every assistant turn after session create / resume / context compaction / system-prompt rewrite, not only at first turn.*
 *Amended: 2026-04-29 — clarified split normalization semantics for `local_path`: context-free helpers may perform lexical path normalization but must mark workspace containment as `unverified` until server materialization validates it. `inline_summary` size checks and persisted values use trimmed content, `external_ref` trims both `refKind` and `refId`, and empty strings for agent-supplied server-resolved fields are treated as omitted.*
+*Amended: 2026-04-29 — split `CodeArtifactLocationInput` (no `verification`) from `CodeArtifactLocationNormalized` (with `verification`) so producer-supplied `verification` is rejected at the TS type boundary, not just by convention. Broadened the `local_path` deferred-verification marker into `{ workspaceContainment: 'unverified', pathCaseCanonicalization: 'unverified' }` to cover both server-side concerns (containment + Windows drive-letter case rule). Documented `inline_summary` `summary` vs `location.value` divergence is permitted (short description vs full content), UNC paths are not preserved, and drive-relative paths reject as URL-like.*

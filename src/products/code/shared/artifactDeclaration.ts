@@ -36,24 +36,51 @@ export const CODE_ARTIFACT_PRODUCER_LABELS = [
 
 export type CodeArtifactProducerLabel = (typeof CODE_ARTIFACT_PRODUCER_LABELS)[number];
 
-export interface CodeArtifactLocation {
+/**
+ * Agent-visible / producer-supplied `location` shape. Producers shall NOT
+ * supply `verification` — the input type does not have that field, so any
+ * agent-supplied value is silently dropped during normalization rather than
+ * trusted. Use `CodeArtifactLocationNormalized` for normalized output.
+ */
+export interface CodeArtifactLocationInput {
   kind: CodeArtifactLocationKind;
   value?: string | null;
-  /**
-   * Internal normalized-output marker. The agent-visible tool schema never
-   * accepts this field; server materialization must clear it by validating the
-   * path against the resolved workspace.
-   */
+}
+
+/**
+ * Normalized output `location` shape produced by `normalizeCodeArtifactLocation`.
+ * Carries deferred-verification markers that server materialization must clear:
+ *
+ * - `workspaceContainment: 'unverified'` until the server resolves the workspace
+ *   and confirms the canonical path is contained inside it.
+ * - `pathCaseCanonicalization: 'unverified'` until the server applies the host-OS
+ *   case rule from SPEC-092 § Workspace Key and Path Canonicalization (Windows
+ *   lowercases drive letter and entire path; Linux/macOS keeps case).
+ *
+ * Both markers are server-side concerns — the context-free helper cannot
+ * resolve them. They are NEVER part of the tool catalog parameter schema.
+ */
+export interface CodeArtifactLocationNormalized {
+  kind: CodeArtifactLocationKind;
+  value?: string | null;
   verification?: {
     workspaceContainment?: 'unverified';
+    pathCaseCanonicalization?: 'unverified';
   };
 }
+
+/**
+ * @deprecated Use `CodeArtifactLocationInput` for producer-supplied input or
+ * `CodeArtifactLocationNormalized` for normalizer output. This alias points at
+ * the normalized output type for backward compatibility while callers migrate.
+ */
+export type CodeArtifactLocation = CodeArtifactLocationNormalized;
 
 export interface CodeArtifactToolInput {
   declarationId: string;
   label: string;
   title: string;
-  location: CodeArtifactLocation;
+  location: CodeArtifactLocationNormalized;
   summary?: string | null;
   metadata?: CoreRecordMetadata;
 }
@@ -476,7 +503,7 @@ export function resolveCodeArtifactLabelMapping(label: string): CodeArtifactLabe
       };
 }
 
-function normalizeCodeArtifactLocation(input: unknown): CodeArtifactLocation {
+function normalizeCodeArtifactLocation(input: unknown): CodeArtifactLocationNormalized {
   if (!isRecord(input)) {
     throw new CodeArtifactDeclarationError(
       'artifact_location_required',
@@ -506,12 +533,19 @@ function normalizeCodeArtifactLocation(input: unknown): CodeArtifactLocation {
     ? undefined
     : normalizeLocationValue(kind, value);
 
-  const location: CodeArtifactLocation = {
+  // The normalizer reads ONLY `kind` and `value` from the raw input. Any
+  // `verification` field a producer might supply is therefore silently
+  // dropped — never propagated to the normalized output. The output's
+  // `verification` is set below by the helper, never trusted from input.
+  const location: CodeArtifactLocationNormalized = {
     kind,
     ...(normalizedValue !== undefined ? { value: normalizedValue } : {}),
   };
   if (kind === 'local_path') {
-    location.verification = { workspaceContainment: 'unverified' };
+    location.verification = {
+      workspaceContainment: 'unverified',
+      pathCaseCanonicalization: 'unverified',
+    };
   }
 
   return location;
@@ -749,12 +783,41 @@ function isMeaningfulDisallowedFieldValue(value: unknown): boolean {
 }
 
 function isUrlLikeLocalPath(value: string): boolean {
+  // Windows drive prefixes such as `C:/Users/...` look like `scheme:` and
+  // would otherwise hit the URL-like regex; we exempt them so they pass to
+  // collapseLexicalPath. Drive-relative paths without a slash after the
+  // colon (e.g. `C:foo`) are NOT exempted: they fall through to the second
+  // regex and are conservatively rejected as URL-like. Documented edge case;
+  // owner-folder workspaces that would emit drive-relative paths are rare and
+  // unsupported for now (reject is safer than silently mis-canonicalizing).
   if (/^[a-zA-Z]:\//.test(value)) {
     return false;
   }
   return /^[a-z][a-z0-9+.-]*:/i.test(value);
 }
 
+/**
+ * Lexical, host-agnostic path canonicalization for `local_path` location
+ * values. Performs separator normalization (already done by the caller),
+ * `.` / `..` collapse, repeated-slash collapse, and trailing-slash removal.
+ *
+ * Limitations (intentional, documented; do not silently fix):
+ *
+ * - **UNC paths** (`\\server\share\...`) are NOT preserved. After
+ *   separator normalization they look like `//server/share/...`; the leading
+ *   double slash collapses to a single `/`, so `\\server\share\foo` becomes
+ *   `/server/share/foo`. UNC-mounted workspaces are not a target use case
+ *   for the current artifact-declaration scaffold; the server-side
+ *   workspace-key resolver will reject them as ambiguous if they appear.
+ * - **Drive-letter case** is preserved verbatim. SPEC-092 § Workspace Key
+ *   and Path Canonicalization mandates host-OS-aware case rules (Windows
+ *   lowercase, Linux/macOS keep case), but case canonicalization is a
+ *   server-side concern (the helper does not know the host) and is
+ *   explicitly deferred via the
+ *   `verification.pathCaseCanonicalization = 'unverified'` marker.
+ * - **Filesystem touch** is NOT performed. Symlinks, real-path resolution,
+ *   and existence checks are server-side only.
+ */
 function collapseLexicalPath(value: string): string {
   const hasDrivePrefix = /^[a-zA-Z]:\//.test(value);
   const isAbsolute = hasDrivePrefix || value.startsWith('/');

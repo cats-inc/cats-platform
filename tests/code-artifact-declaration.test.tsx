@@ -119,7 +119,10 @@ test('declare_artifact validates location rules that do not need server context'
       location: {
         kind: 'local_path',
         value: 'reports/summary.md',
-        verification: { workspaceContainment: 'unverified' },
+        verification: {
+          workspaceContainment: 'unverified',
+          pathCaseCanonicalization: 'unverified',
+        },
       },
     },
   );
@@ -241,6 +244,97 @@ test('declare_artifact shape result does not claim server acceptance', () => {
     declarationId: 'shape-only:test_report',
     input,
   });
+});
+
+test('declare_artifact silently strips agent-supplied location.verification', () => {
+  // Agent must NOT be able to smuggle a "verified" marker through the input
+  // shape; the normalizer reads only `kind` and `value`, and only the helper
+  // sets `verification` to 'unverified' for local_path. Other location kinds
+  // do not carry the marker at all.
+  const localPath = CODE_ARTIFACT_DECLARATION_TOOL.normalizeInput({
+    declarationId: 'smuggle:spec_document',
+    label: 'spec_document',
+    title: 'Smuggling attempt',
+    location: {
+      kind: 'local_path',
+      value: 'reports/summary.md',
+      verification: {
+        workspaceContainment: 'verified',
+        pathCaseCanonicalization: 'verified',
+      },
+    },
+  });
+
+  assert.deepEqual(localPath.location, {
+    kind: 'local_path',
+    value: 'reports/summary.md',
+    verification: {
+      workspaceContainment: 'unverified',
+      pathCaseCanonicalization: 'unverified',
+    },
+  });
+
+  const inlineSummary = CODE_ARTIFACT_DECLARATION_TOOL.normalizeInput({
+    declarationId: 'smuggle:implementation_summary',
+    label: 'implementation_summary',
+    title: 'Inline smuggling attempt',
+    location: {
+      kind: 'inline_summary',
+      value: 'Delivered.',
+      verification: { workspaceContainment: 'verified' },
+    },
+  });
+
+  // Non-local_path locations don't carry verification at all; agent-supplied
+  // value gets dropped entirely.
+  assert.deepEqual(inlineSummary.location, {
+    kind: 'inline_summary',
+    value: 'Delivered.',
+  });
+});
+
+test('declare_artifact treats empty / whitespace strings on disallowed string fields as omitted', () => {
+  // SPEC-092 string-input normalization: optional string fields trim → null.
+  // The disallowed-field check must apply the same rule so a buggy producer
+  // emitting `kind: ''` (instead of omitting the field) is forgiven, not
+  // rejected with `artifact_producer_field_not_allowed`. Object-shaped
+  // disallowed fields (`producer`, `anchors`) are out of this rule's scope —
+  // those are caught regardless of inner emptiness because their presence as
+  // an object is itself meaningful intent.
+  const result = CODE_ARTIFACT_DECLARATION_TOOL.normalizeInput({
+    declarationId: 'empty-strings:preview_url',
+    label: 'preview_url',
+    title: 'Empty disallowed strings',
+    location: { kind: 'url', value: 'http://127.0.0.1:5173' },
+    kind: '',
+    coreKind: '   ',
+    runId: '\t',
+    taskId: '\n',
+    workspaceKey: '',
+    requestedDisposition: '   ',
+  });
+
+  assert.deepEqual(result, {
+    declarationId: 'empty-strings:preview_url',
+    label: 'preview_url',
+    title: 'Empty disallowed strings',
+    location: { kind: 'url', value: 'http://127.0.0.1:5173/' },
+  });
+
+  // Non-empty string on a disallowed field still rejects.
+  assert.throws(
+    () =>
+      CODE_ARTIFACT_DECLARATION_TOOL.normalizeInput({
+        declarationId: 'set:preview_url',
+        label: 'preview_url',
+        title: 'Set disallowed string',
+        location: { kind: 'url', value: 'http://127.0.0.1:5173' },
+        kind: 'preview',
+      }),
+    (error) =>
+      error instanceof CodeArtifactDeclarationError &&
+      error.code === 'artifact_producer_field_not_allowed',
+  );
 });
 
 test('declare_artifact label mapping includes transcript and dataset labels', () => {
