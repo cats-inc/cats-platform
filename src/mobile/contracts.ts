@@ -52,8 +52,16 @@ export interface MobileChatShellState {
   cats: MobileChatCat[];
 }
 
+/**
+ * Owner fields on the AppShell envelope. Mirror the
+ * `PlatformOwnerContext` slice the web Settings → General Profile
+ * card consumes (`src/shared/platform-contract.ts`).
+ */
 export interface MobileAppShellPayload {
   chat: MobileChatShellState;
+  ownerDisplayName: string;
+  ownerAvatarUrl: string | null;
+  ownerAvatarColor: string | null;
 }
 
 export type MobileChatMessageSenderKind =

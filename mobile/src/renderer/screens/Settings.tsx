@@ -1,6 +1,7 @@
 import { Link } from 'expo-router';
 import { type ReactNode, useEffect, useState } from 'react';
 import {
+  Image,
   Linking,
   Pressable,
   ScrollView,
@@ -11,7 +12,7 @@ import {
   View,
 } from 'react-native';
 
-import { ownerFixture } from '../../api/fixtures/owner';
+import { buildAttachmentResolver, createMobileApiClient } from '../../api/client';
 import {
   type ConnectionConfig,
   type ConnectionMode,
@@ -22,6 +23,7 @@ import {
   saveConnectionConfig,
   saveNotificationPreferences,
 } from '../../api/persistence';
+import { useMobileAppShell } from '../hooks/useMobileAppShell';
 import { colors, radii, spacing, typography } from '../theme';
 
 interface ConnectionOption {
@@ -60,6 +62,7 @@ export function Settings() {
       enabled: true,
       approvalsOnly: false,
     });
+  const { state: shellState } = useMobileAppShell();
 
   useEffect(() => {
     let active = true;
@@ -105,6 +108,7 @@ export function Settings() {
   };
 
   const webDashboardUrl = resolveWebDashboardUrl(connectionConfig);
+  const profile = resolveProfile(shellState, connectionConfig);
 
   return (
     <ScrollView
@@ -113,10 +117,30 @@ export function Settings() {
     >
       <View style={styles.header}>
         <Text style={styles.title}>Settings</Text>
-        <Text style={styles.subtitle}>
-          Mobile-relevant only. Use the desktop app for advanced controls.
-        </Text>
       </View>
+
+      <Section
+        label="Profile"
+        description="Your platform-wide profile across Chat, Code, Work, and Lobby."
+      >
+        <View style={styles.profileCard}>
+          <ProfileAvatar
+            avatarUrl={profile.avatarUrl}
+            avatarColor={profile.avatarColor}
+            initials={profile.initials}
+          />
+          <View style={styles.profileText}>
+            <Text style={styles.profileLabel}>Name</Text>
+            <Text style={styles.profileName}>{profile.displayName}</Text>
+          </View>
+        </View>
+        {__DEV__ ? (
+          <Text style={styles.scopeNote}>
+            Read-only on mobile. Edit avatar / name on the desktop in
+            Settings → General.
+          </Text>
+        ) : null}
+      </Section>
 
       <Section label="Connection mode">
         {CONNECTION_OPTIONS.map((option) => (
@@ -182,11 +206,6 @@ export function Settings() {
         ) : null}
       </Section>
 
-      <Section label="Owner">
-        <ReadOnlyRow label="Display name" value={ownerFixture.displayName} />
-        <ReadOnlyRow label="Email" value={ownerFixture.email} />
-      </Section>
-
       <Section label="Advanced">
         <Pressable
           accessibilityRole="link"
@@ -222,9 +241,8 @@ export function Settings() {
         </Pressable>
         {__DEV__ ? (
           <Text style={styles.scopeNote}>
-            Settings tab depth is locked per SPEC-095 — exactly the four
-            sections above. Companion controls and Cats registry browse
-            stay desktop-only.
+            Settings tab depth is locked per SPEC-095. Companion controls
+            and Cats registry browse stay desktop-only.
           </Text>
         ) : null}
       </Section>
@@ -240,15 +258,107 @@ export function Settings() {
   );
 }
 
+interface ProfileFields {
+  displayName: string;
+  initials: string;
+  avatarColor: string | null;
+  avatarUrl: string | null;
+}
+
+function resolveProfile(
+  shellState: ReturnType<typeof useMobileAppShell>['state'],
+  connectionConfig: ConnectionConfig,
+): ProfileFields {
+  if (shellState.kind !== 'data') {
+    return {
+      displayName: 'Not connected',
+      initials: '—',
+      avatarColor: null,
+      avatarUrl: null,
+    };
+  }
+  const { ownerDisplayName, ownerAvatarColor, ownerAvatarUrl } =
+    shellState.payload;
+  const trimmed = ownerDisplayName.trim();
+  const displayName = trimmed.length > 0 ? trimmed : 'Owner';
+  const initials = nameInitials(displayName);
+  const absoluteAvatarUrl = ownerAvatarUrl
+    ? resolveAvatarAbsoluteUrl(ownerAvatarUrl, connectionConfig)
+    : null;
+  return {
+    displayName,
+    initials,
+    avatarColor: ownerAvatarColor,
+    avatarUrl: absoluteAvatarUrl,
+  };
+}
+
+function nameInitials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) {
+    return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase();
+  }
+  return name.slice(0, 2).toUpperCase();
+}
+
+function resolveAvatarAbsoluteUrl(
+  avatarUrl: string,
+  connectionConfig: ConnectionConfig,
+): string | null {
+  // Already absolute (http(s) / data URI) — use as-is.
+  if (/^[a-z][a-z0-9+\-.]*:\/\//i.test(avatarUrl) || avatarUrl.startsWith('data:')) {
+    return avatarUrl;
+  }
+  // Relative path — only meaningful when paired with the desktop's base URL.
+  if (!connectionConfig.baseUrl) {
+    return null;
+  }
+  try {
+    const client = createMobileApiClient(connectionConfig);
+    const baseUrl = client.baseUrl;
+    return `${baseUrl}${avatarUrl.startsWith('/') ? avatarUrl : `/${avatarUrl}`}`;
+  } catch {
+    return null;
+  }
+}
+
+interface ProfileAvatarProps {
+  avatarUrl: string | null;
+  avatarColor: string | null;
+  initials: string;
+}
+
+function ProfileAvatar({ avatarUrl, avatarColor, initials }: ProfileAvatarProps) {
+  const fallbackColor = avatarColor ?? colors.bubble.mentionDefault;
+  if (avatarUrl) {
+    return (
+      <Image
+        source={{ uri: avatarUrl }}
+        style={[styles.avatar, { backgroundColor: fallbackColor }]}
+        accessibilityLabel="Owner avatar"
+      />
+    );
+  }
+  return (
+    <View style={[styles.avatar, { backgroundColor: fallbackColor }]}>
+      <Text style={styles.avatarInitials}>{initials}</Text>
+    </View>
+  );
+}
+
 interface SectionProps {
   label: string;
+  description?: string;
   children: ReactNode;
 }
 
-function Section({ label, children }: SectionProps) {
+function Section({ label, description, children }: SectionProps) {
   return (
     <View style={styles.section}>
       <Text style={styles.sectionLabel}>{label.toUpperCase()}</Text>
+      {description ? (
+        <Text style={styles.sectionDescription}>{description}</Text>
+      ) : null}
       <View style={styles.sectionBody}>{children}</View>
     </View>
   );
@@ -317,20 +427,6 @@ function ToggleRow({
   );
 }
 
-interface ReadOnlyRowProps {
-  label: string;
-  value: string;
-}
-
-function ReadOnlyRow({ label, value }: ReadOnlyRowProps) {
-  return (
-    <View style={styles.readOnlyRow}>
-      <Text style={styles.readOnlyLabel}>{label}</Text>
-      <Text style={styles.readOnlyValue}>{value}</Text>
-    </View>
-  );
-}
-
 const styles = StyleSheet.create({
   scroll: {
     flex: 1,
@@ -347,17 +443,18 @@ const styles = StyleSheet.create({
     color: colors.fg.primary,
     ...typography.display,
   },
-  subtitle: {
-    color: colors.fg.secondary,
-    ...typography.body,
-  },
   section: {
-    gap: spacing.sm,
+    gap: spacing.xs,
   },
   sectionLabel: {
     color: colors.fg.muted,
     ...typography.label,
     letterSpacing: 0.8,
+  },
+  sectionDescription: {
+    color: colors.fg.secondary,
+    ...typography.caption,
+    paddingBottom: spacing.xs,
   },
   sectionBody: {
     backgroundColor: colors.bg.panel,
@@ -365,6 +462,37 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border.subtle,
     overflow: 'hidden',
+    marginTop: spacing.xs,
+  },
+  profileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    padding: spacing.md,
+  },
+  profileText: {
+    flex: 1,
+    gap: 2,
+  },
+  profileLabel: {
+    color: colors.fg.muted,
+    ...typography.label,
+  },
+  profileName: {
+    color: colors.fg.primary,
+    ...typography.title,
+  },
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarInitials: {
+    color: colors.bubble.mentionText,
+    ...typography.title,
+    fontWeight: '700',
   },
   connectionRow: {
     flexDirection: 'row',
@@ -456,24 +584,6 @@ const styles = StyleSheet.create({
   },
   rowDisabled: {
     opacity: 0.4,
-  },
-  readOnlyRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.subtle,
-  },
-  readOnlyLabel: {
-    color: colors.fg.secondary,
-    ...typography.body,
-  },
-  readOnlyValue: {
-    color: colors.fg.primary,
-    ...typography.body,
-    fontWeight: '500',
   },
   linkRow: {
     flexDirection: 'row',
