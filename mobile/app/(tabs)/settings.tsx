@@ -1,3 +1,4 @@
+import { Link } from 'expo-router';
 import { SafeAreaView, StyleSheet, Text, View } from 'react-native';
 
 import { colors, spacing, typography } from '../../src/renderer/theme';
@@ -13,6 +14,12 @@ export default function SettingsScreen() {
         <Text style={styles.placeholder}>
           Settings content lands in PLAN-084 Phase 6.
         </Text>
+        <View style={styles.devSection}>
+          <Text style={styles.devLabel}>Developer tools</Text>
+          <Link href="/bubble-harness" style={styles.devLink}>
+            Bubble visual gate (PLAN-084 Phase 2)
+          </Link>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -40,5 +47,20 @@ const styles = StyleSheet.create({
     color: colors.fg.muted,
     ...typography.caption,
     marginTop: spacing.md,
+  },
+  devSection: {
+    marginTop: spacing.xl,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border.subtle,
+    gap: spacing.xs,
+  },
+  devLabel: {
+    color: colors.fg.muted,
+    ...typography.label,
+  },
+  devLink: {
+    color: colors.accent.primary,
+    ...typography.body,
   },
 });
