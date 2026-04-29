@@ -69,51 +69,56 @@ creation for `+New code`.
 
 1. `Cats Code` shall expose `Codespaces` as a Code-owned sidebar entry.
 2. `Cats Code` shall expose `Artifacts` as a Code-owned sidebar entry.
-3. `Cats Code` shall keep `Recents` / code conversations as the primary
+3. Public Code navigation and API routes for this surface shall use
+   `codespaces`, not `workspaces`: `/code/codespaces`,
+   `/code/codespaces/:codespaceId`, `/api/code/codespaces`,
+   `/api/code/codespaces/:codespaceId`, and
+   `/api/code/codespaces/resolve`.
+4. `Cats Code` shall keep `Recents` / code conversations as the primary
    conversation-led entry surface.
-4. `Cats Code` shall not expose Projects, Work Items, Tasks, Runs, or Missions
+5. `Cats Code` shall not expose Projects, Work Items, Tasks, Runs, or Missions
    as peer top-level management entries in the Code sidebar for this slice.
-5. `Cats Work` remains the canonical sidebar home for Projects, Work Items,
+6. `Cats Work` remains the canonical sidebar home for Projects, Work Items,
    Tasks, Runs, and Missions.
-6. `Codespaces` shall group Code work by execution context, not by Work
+7. `Codespaces` shall group Code work by execution context, not by Work
    Planning hierarchy.
-7. A Codespace may be resolved from one or more existing signals:
+8. A Codespace may be resolved from one or more existing signals:
    - Code task metadata under the `codeWorkspace` key
    - the `Conversation.repoPath` field when a conversation is repo-bound
    - execution profile inputs such as `cwd` and worktree policy
    - run/runtime metadata when an execution attempt has a concrete cwd
-8. A Codespace shall not be treated as a `Project` or `WorkItem`.
-9. A `+New code` entry may start without a known codespace; such entries shall
+9. A Codespace shall not be treated as a `Project` or `WorkItem`.
+10. A `+New code` entry may start without a known codespace; such entries shall
    remain visible in Code Recents and may appear in a `No codespace` grouping
    if the Codespaces view needs to account for them.
-10. `Artifacts` shall list durable `CoreArtifactRecord` rows relevant to Code
+11. `Artifacts` shall list durable `CoreArtifactRecord` rows relevant to Code
     work.
-11. Artifact relevance for the Code sidebar shall be derived from anchors or
+12. Artifact relevance for the Code sidebar shall be derived from anchors or
     provenance, including:
     - attached `taskId` for a Code task
     - attached `runId` for a Code run
     - attached `conversationId` for a `code_thread`
     - artifact metadata that points at a Codespace or execution profile
-12. Artifact creation shall not happen merely because a Code entry or sidebar
+13. Artifact creation shall not happen merely because a Code entry or sidebar
     entry is opened. Artifacts are produced by attachments, imports, execution
     outputs, or explicit document/report creation.
-13. Code artifact materialization shall use the structured declaration contract
+14. Code artifact materialization shall use the structured declaration contract
     defined by SPEC-092. Agent declarations, tool declarations, system
     candidates, and user imports are valid producer paths.
-14. Phase 1 agent declarations shall use the Cats-native Code runtime action
+15. Phase 1 agent declarations shall use the Cats-native Code runtime action
     `declare_artifact` defined by SPEC-092. System candidates are
     candidate-only, not a durable record-authoring path.
-15. Cwd scanning and transcript JSON parsing shall not be authoritative
+16. Cwd scanning and transcript JSON parsing shall not be authoritative
     producer paths for the Code `Artifacts` sidebar.
-16. Artifact rows shall preserve provenance back to the strongest available
+17. Artifact rows shall preserve provenance back to the strongest available
     anchors: conversation, task, run, codespace/workspace provenance, project, and work item.
-17. Artifact detail shall deep-link back to the relevant Code conversation,
+18. Artifact detail shall deep-link back to the relevant Code conversation,
     task detail, run history, codespace, and Work object when those anchors
     exist.
-18. A Code artifact may also appear in Work as evidence when it is anchored to
+19. A Code artifact may also appear in Work as evidence when it is anchored to
     a Work-visible object, but Work evidence placement does not make Artifacts
     a Work-owned sidebar category.
-19. If a Code-origin task is later linked into Work through `WorkItem.taskId`,
+20. If a Code-origin task is later linked into Work through `WorkItem.taskId`,
     Codespace and artifact provenance remains available as Code execution
     context; Work current binding may still project as `work`.
 

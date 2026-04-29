@@ -95,13 +95,13 @@ export function AppRoutes({
     chatsPath: resolveVisibleChatPath(payload.chat.channels, payload.chat.selectedChannelId),
     extraRoutes: [
       <Route
-        key="workspaces"
-        path="workspaces"
+        key="codespaces"
+        path="codespaces"
         element={<WorkspacesListPage />}
       />,
       <Route
-        key="workspace-detail"
-        path="workspaces/:workspaceId"
+        key="codespace-detail"
+        path="codespaces/:codespaceId"
         element={<WorkspaceDetailPage />}
       />,
       <Route

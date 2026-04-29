@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 
 import {
-  CODE_WORKSPACES_PATH,
+  CODE_CODESPACES_PATH,
   buildCodeArtifactPath,
 } from '../../codePaths.js';
 import {
@@ -87,13 +87,13 @@ function renderArtifactItem(art: CodeArtifactListItemSummary): JSX.Element {
 }
 
 export function WorkspaceDetailPage(): JSX.Element {
-  const { workspaceId } = useParams<{ workspaceId: string }>();
+  const { codespaceId } = useParams<{ codespaceId: string }>();
   const [payload, setPayload] = useState<CodeWorkspaceDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!workspaceId) {
+    if (!codespaceId) {
       setError('Codespace id is required.');
       setLoading(false);
       return;
@@ -104,7 +104,7 @@ export function WorkspaceDetailPage(): JSX.Element {
     setError(null);
     setPayload(null);
 
-    void fetchCodeWorkspaceDetail(workspaceId)
+    void fetchCodeWorkspaceDetail(codespaceId)
       .then((nextPayload) => {
         if (!cancelled) {
           setPayload(nextPayload);
@@ -124,14 +124,14 @@ export function WorkspaceDetailPage(): JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [workspaceId]);
+  }, [codespaceId]);
 
   if (loading && !payload) {
     return (
       <div className="codeWorkspaceDetail">
         <header className="channelTopBar codeWsDetailTopBar">
           <div className="channelTopBarStart codeWsDetailTopBar__start">
-            <Link to={CODE_WORKSPACES_PATH} className="codeWsDetailTopBar__back">
+            <Link to={CODE_CODESPACES_PATH} className="codeWsDetailTopBar__back">
               ← Codespaces
             </Link>
           </div>
@@ -150,7 +150,7 @@ export function WorkspaceDetailPage(): JSX.Element {
       <div className="codeWorkspaceDetail">
         <header className="channelTopBar codeWsDetailTopBar">
           <div className="channelTopBarStart codeWsDetailTopBar__start">
-            <Link to={CODE_WORKSPACES_PATH} className="codeWsDetailTopBar__back">
+            <Link to={CODE_CODESPACES_PATH} className="codeWsDetailTopBar__back">
               ← Codespaces
             </Link>
           </div>
@@ -161,7 +161,7 @@ export function WorkspaceDetailPage(): JSX.Element {
           <p className="codeWorkspaceDetail__missing">
             {error ?? 'Codespace not found. It may have been removed or the URL changed.'}
             <br />
-            <Link to={CODE_WORKSPACES_PATH}>Back to all codespaces →</Link>
+            <Link to={CODE_CODESPACES_PATH}>Back to all codespaces →</Link>
           </p>
         </main>
       </div>
@@ -174,7 +174,7 @@ export function WorkspaceDetailPage(): JSX.Element {
     <div className="codeWorkspaceDetail">
       <header className="channelTopBar codeWsDetailTopBar">
         <div className="channelTopBarStart codeWsDetailTopBar__start">
-          <Link to={CODE_WORKSPACES_PATH} className="codeWsDetailTopBar__back">
+          <Link to={CODE_CODESPACES_PATH} className="codeWsDetailTopBar__back">
             ← Codespaces
           </Link>
           <span className="codeWsDetailTopBar__separator">/</span>

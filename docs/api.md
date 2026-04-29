@@ -656,8 +656,9 @@ with `action` narrowed to `resume | retry`.
 GET /api/code
 GET /api/code/tasks
 GET /api/code/tasks/:taskId
-GET /api/code/workspaces
-GET /api/code/workspaces/:workspaceId
+GET /api/code/codespaces
+GET /api/code/codespaces/:codespaceId
+POST /api/code/codespaces/resolve
 GET /api/code/artifacts
 POST /api/code/artifacts/declarations
 GET /api/code/artifacts/:artifactId
@@ -686,12 +687,14 @@ GET /api/code/previews
   - a normalized timeline preview
   - linked build/preview artifacts
   - code-specific workspace/plan context
-- `GET /api/code/workspaces` returns the real Codespaces read model derived
+- `GET /api/code/codespaces` returns the real Codespaces read model derived
   from Code task `codeWorkspace` metadata, Code-linked conversation repo paths,
   runtime cwd records, and Code artifact declaration workspace anchors. It does
   not return renderer-only seed fixtures.
-- `GET /api/code/workspaces/:workspaceId` returns the focused Codespace detail
+- `GET /api/code/codespaces/:codespaceId` returns the focused Codespace detail
   view, including linked conversations, Code tasks, and artifacts.
+- `POST /api/code/codespaces/resolve` resolves a candidate path and fallback
+  conversation context into a Code codespace summary.
 - `GET /api/code/artifacts` returns the code-output list read model above all
   code-linked artifacts.
 - `POST /api/code/artifacts/declarations` is the first Code-owned artifact
@@ -716,7 +719,7 @@ GET /api/code/previews
 - This slice intentionally keeps `Cats Code` above `Cats Core v1` rather than
   creating a second code-specific task or artifact schema. Richer project and
   live preview/build behavior should land through active Code entry/task
-  surfaces, not through standalone sidebar Build or Relay workspaces.
+  surfaces, not through standalone sidebar Build or Relay surfaces.
 
 ### Shell Helpers
 

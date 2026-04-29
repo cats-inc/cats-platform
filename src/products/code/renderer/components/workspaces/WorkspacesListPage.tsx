@@ -8,7 +8,7 @@ import type {
   CodeWorkspaceListItemSummary,
   CodeWorkspaceSource,
 } from '../../api/codeTask.js';
-import { buildCodeWorkspacePath } from '../../codePaths.js';
+import { buildCodeCodespacePath } from '../../codePaths.js';
 import './workspaces.css';
 
 const SOURCE_LABEL: Record<CodeWorkspaceSource, string> = {
@@ -73,7 +73,7 @@ export function WorkspacesListPage(): JSX.Element {
               {sorted.map((ws: CodeWorkspaceListItemSummary) => (
                 <li key={ws.id} className="codeWorkspacesList__row">
                   <Link
-                    to={buildCodeWorkspacePath(ws.id)}
+                    to={buildCodeCodespacePath(ws.id)}
                     className="codeWorkspacesList__rowLink"
                     aria-label={`Open codespace ${ws.title}`}
                   >

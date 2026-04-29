@@ -4,7 +4,7 @@ export const CODE_ROUTE_PREFIX = resolvePlatformSurfaceRoutePrefix('code');
 export const CODE_RELAY_PATH = `${CODE_ROUTE_PREFIX}/relay`;
 export const CODE_BUILD_PATH = `${CODE_ROUTE_PREFIX}/build`;
 export const CODE_ARTIFACTS_PATH = `${CODE_ROUTE_PREFIX}/artifacts`;
-export const CODE_WORKSPACES_PATH = `${CODE_ROUTE_PREFIX}/workspaces`;
+export const CODE_CODESPACES_PATH = `${CODE_ROUTE_PREFIX}/codespaces`;
 
 export function buildCodeArtifactPath(artifactId?: string | null): string {
   const normalized = artifactId?.trim();
@@ -13,11 +13,11 @@ export function buildCodeArtifactPath(artifactId?: string | null): string {
     : CODE_ARTIFACTS_PATH;
 }
 
-export function buildCodeWorkspacePath(workspaceId?: string | null): string {
-  const normalized = workspaceId?.trim();
+export function buildCodeCodespacePath(codespaceId?: string | null): string {
+  const normalized = codespaceId?.trim();
   return normalized
-    ? `${CODE_WORKSPACES_PATH}/${encodeURIComponent(normalized)}`
-    : CODE_WORKSPACES_PATH;
+    ? `${CODE_CODESPACES_PATH}/${encodeURIComponent(normalized)}`
+    : CODE_CODESPACES_PATH;
 }
 
 export function isCodeRelayPath(pathname: string): boolean {
@@ -28,8 +28,8 @@ export function isCodeBuildPath(pathname: string): boolean {
   return pathname.startsWith(CODE_BUILD_PATH);
 }
 
-export function isCodeWorkspacesPath(pathname: string): boolean {
-  return pathname.startsWith(CODE_WORKSPACES_PATH);
+export function isCodeCodespacesPath(pathname: string): boolean {
+  return pathname.startsWith(CODE_CODESPACES_PATH);
 }
 
 /**

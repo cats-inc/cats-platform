@@ -9,21 +9,21 @@ import type {
 } from '../../shared/workspaceSummary.js';
 import {
   buildCodeApiArtifactPath,
+  buildCodeApiCodespacePath,
   buildCodeApiRuntimeSessionObservePath,
   buildCodeApiTaskExecutePath,
   buildCodeApiTaskPath,
   buildCodeApiTaskPlanPath,
   buildCodeApiTaskPlanStepPath,
   buildCodeApiTaskResumePath,
-  buildCodeApiWorkspacePath,
+  CODE_API_CODESPACE_RESOLVE_PATH,
+  CODE_API_CODESPACES_PATH,
   CODE_API_DELIVERY_ARTIFACT_EXPORT_PATH,
   CODE_API_DELIVERY_REPO_COMMIT_PATH,
   CODE_API_DELIVERY_REPO_PUSH_PATH,
   CODE_API_DELIVERY_REPO_STATUS_PATH,
   CODE_API_ARTIFACTS_PATH,
   CODE_API_TASKS_PATH,
-  CODE_API_WORKSPACES_PATH,
-  CODE_API_WORKSPACE_RESOLVE_PATH,
 } from '../../shared/apiPaths.js';
 
 export interface CreateCodeTaskInput {
@@ -249,7 +249,7 @@ export interface CodeWorkspaceDetailResponse {
 export async function resolveWorkspace(
   input: ResolveWorkspaceInput,
 ): Promise<ResolveWorkspaceResponse> {
-  return postJson<ResolveWorkspaceResponse>(CODE_API_WORKSPACE_RESOLVE_PATH, input);
+  return postJson<ResolveWorkspaceResponse>(CODE_API_CODESPACE_RESOLVE_PATH, input);
 }
 
 export async function createCodeTask(input: CreateCodeTaskInput): Promise<CreateCodeTaskResponse> {
@@ -375,14 +375,14 @@ export async function fetchCodeArtifacts(): Promise<CodeArtifactListResponse> {
 }
 
 export async function fetchCodeWorkspaces(): Promise<CodeWorkspaceListResponse> {
-  return fetchJson<CodeWorkspaceListResponse>(CODE_API_WORKSPACES_PATH);
+  return fetchJson<CodeWorkspaceListResponse>(CODE_API_CODESPACES_PATH);
 }
 
 export async function fetchCodeWorkspaceDetail(
   workspaceId: string,
 ): Promise<CodeWorkspaceDetailResponse> {
   return fetchJson<CodeWorkspaceDetailResponse>(
-    buildCodeApiWorkspacePath(workspaceId),
+    buildCodeApiCodespacePath(workspaceId),
   );
 }
 

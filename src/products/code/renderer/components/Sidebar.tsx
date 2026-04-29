@@ -35,11 +35,11 @@ import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js'
 import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
 import {
   CODE_ROUTE_PREFIX,
-  buildCodeWorkspacePath,
+  buildCodeCodespacePath,
   isCodeArtifactsPath,
   isCodeBuildPath,
+  isCodeCodespacesPath,
   isCodeRelayPath,
-  isCodeWorkspacesPath,
 } from '../codePaths.js';
 
 export interface SidebarProps {
@@ -172,7 +172,7 @@ function createExtraActionGroups(
           key: 'workspaces',
           label: 'Codespaces',
           onClick: props.onOpenWorkspaces,
-          active: isCodeWorkspacesPath(currentPath),
+          active: isCodeCodespacesPath(currentPath),
           icon: (
             <svg
               width="16"
@@ -307,7 +307,7 @@ function buildPinnedWorkspaceItems(
     .map((ws) => ({
       id: ws.id,
       label: ws.title,
-      isActive: currentPath === buildCodeWorkspacePath(ws.id),
+      isActive: currentPath === buildCodeCodespacePath(ws.id),
       onClick: () => props.onOpenWorkspace?.(ws.id),
       statusDot: {
         className: `codeWorkspacesList__dot codeWorkspacesList__dot--small codeWorkspacesList__dot--${ws.status}`,

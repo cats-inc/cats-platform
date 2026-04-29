@@ -5,9 +5,9 @@ import { BootShell } from "./chatUtils";
 import {
   CODE_ARTIFACTS_PATH,
   CODE_BUILD_PATH,
+  CODE_CODESPACES_PATH,
   CODE_RELAY_PATH,
-  CODE_WORKSPACES_PATH,
-  buildCodeWorkspacePath,
+  buildCodeCodespacePath,
 } from "./codePaths.js";
 import "./styles.css";
 
@@ -22,9 +22,9 @@ export default createWorkspaceProductApp({
       {...props}
       onStartNewGroupChat={props.onStartNewGroupChat}
       onStartNewParallelChat={props.onStartNewParallelChat}
-      onOpenWorkspaces={() => props.navigate(CODE_WORKSPACES_PATH)}
+      onOpenWorkspaces={() => props.navigate(CODE_CODESPACES_PATH)}
       onOpenWorkspace={(workspaceId) =>
-        props.navigate(buildCodeWorkspacePath(workspaceId))
+        props.navigate(buildCodeCodespacePath(workspaceId))
       }
       onOpenArtifacts={() => props.navigate(CODE_ARTIFACTS_PATH)}
       onOpenRelay={() => props.navigate(CODE_RELAY_PATH)}

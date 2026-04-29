@@ -36,10 +36,10 @@ import {
   CODE_API_ARTIFACT_DETAIL_PATTERN,
   CODE_API_ARTIFACTS_PATH,
   CODE_API_BUILDS_PATH,
+  CODE_API_CODESPACE_DETAIL_PATTERN,
+  CODE_API_CODESPACES_PATH,
   CODE_API_PREFIX,
   CODE_API_PREVIEWS_PATH,
-  CODE_API_WORKSPACE_DETAIL_PATTERN,
-  CODE_API_WORKSPACES_PATH,
   CODE_API_TASK_DETAIL_PATTERN,
   CODE_API_TASKS_PATH,
 } from '../shared/apiPaths.js';
@@ -132,30 +132,30 @@ export async function routeCodeApi(
     return true;
   }
 
-  const workspaceDetailMatch = matchRoute(context.url.pathname, CODE_API_WORKSPACE_DETAIL_PATTERN);
-  if (workspaceDetailMatch) {
+  const codespaceDetailMatch = matchRoute(context.url.pathname, CODE_API_CODESPACE_DETAIL_PATTERN);
+  if (codespaceDetailMatch) {
     if (context.method !== 'GET') {
       sendMethodNotAllowed(context.response, ['GET']);
       return true;
     }
 
-    const workspaceId = workspaceDetailMatch[0];
-    if (!workspaceId) {
+    const codespaceId = codespaceDetailMatch[0];
+    if (!codespaceId) {
       sendJson(context.response, 400, {
-        error: { code: 'invalid_workspace_id', message: 'Codespace id is required.' },
+        error: { code: 'invalid_codespace_id', message: 'Codespace id is required.' },
       });
       return true;
     }
 
     const payload = createCodeWorkspaceDetailPayload(
       await context.dependencies.coreStore.readCore(),
-      workspaceId,
+      codespaceId,
     );
     if (!payload) {
       sendJson(context.response, 404, {
         error: {
-          code: 'workspace_not_found',
-          message: `No codespace found for id ${workspaceId}.`,
+          code: 'codespace_not_found',
+          message: `No codespace found for id ${codespaceId}.`,
         },
       });
       return true;
@@ -165,7 +165,7 @@ export async function routeCodeApi(
     return true;
   }
 
-  if (context.url.pathname === CODE_API_WORKSPACES_PATH) {
+  if (context.url.pathname === CODE_API_CODESPACES_PATH) {
     if (context.method !== 'GET') {
       sendMethodNotAllowed(context.response, ['GET']);
       return true;

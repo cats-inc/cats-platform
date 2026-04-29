@@ -19,12 +19,12 @@ function buildCodeApiDetailPath(
 
 export const CODE_API_PREFIX = PLATFORM_CODE_API_BASE;
 export const CODE_API_TASKS_PATH = `${CODE_API_PREFIX}/tasks`;
-export const CODE_API_WORKSPACES_PATH = `${CODE_API_PREFIX}/workspaces`;
+export const CODE_API_CODESPACES_PATH = `${CODE_API_PREFIX}/codespaces`;
 export const CODE_API_ARTIFACTS_PATH = `${CODE_API_PREFIX}/artifacts`;
 export const CODE_API_ARTIFACT_DECLARATIONS_PATH = `${CODE_API_ARTIFACTS_PATH}/declarations`;
 export const CODE_API_BUILDS_PATH = `${CODE_API_PREFIX}/builds`;
 export const CODE_API_PREVIEWS_PATH = `${CODE_API_PREFIX}/previews`;
-export const CODE_API_WORKSPACE_RESOLVE_PATH = `${CODE_API_PREFIX}/workspace/resolve`;
+export const CODE_API_CODESPACE_RESOLVE_PATH = `${CODE_API_CODESPACES_PATH}/resolve`;
 export const CODE_API_DELIVERY_REPO_STATUS_PATH = `${CODE_API_PREFIX}/delivery/repo/status`;
 export const CODE_API_DELIVERY_REPO_COMMIT_PATH = `${CODE_API_PREFIX}/delivery/repo/commit`;
 export const CODE_API_DELIVERY_REPO_PUSH_PATH = `${CODE_API_PREFIX}/delivery/repo/push`;
@@ -32,7 +32,7 @@ export const CODE_API_DELIVERY_ARTIFACT_EXPORT_PATH = `${CODE_API_PREFIX}/delive
 export const CODE_API_RELAY_THREADS_PATH = `${CODE_API_PREFIX}/relay/threads`;
 
 export const CODE_API_TASK_DETAIL_PATH_TEMPLATE = `${CODE_API_TASKS_PATH}/:taskId`;
-export const CODE_API_WORKSPACE_DETAIL_PATH_TEMPLATE = `${CODE_API_WORKSPACES_PATH}/:workspaceId`;
+export const CODE_API_CODESPACE_DETAIL_PATH_TEMPLATE = `${CODE_API_CODESPACES_PATH}/:codespaceId`;
 export const CODE_API_TASK_EXECUTE_PATH_TEMPLATE = `${CODE_API_TASKS_PATH}/:taskId/execute`;
 export const CODE_API_TASK_RESUME_PATH_TEMPLATE = `${CODE_API_TASKS_PATH}/:taskId/resume`;
 export const CODE_API_TASK_PLAN_PATH_TEMPLATE = `${CODE_API_TASKS_PATH}/:taskId/plan`;
@@ -48,7 +48,7 @@ export const CODE_API_RELAY_FAN_OUT_PATH_TEMPLATE =
   `${CODE_API_RELAY_THREADS_PATH}/:threadId/fan-out`;
 
 export const CODE_API_TASK_DETAIL_PATTERN = /^\/api\/code\/tasks\/([^/]+)$/u;
-export const CODE_API_WORKSPACE_DETAIL_PATTERN = /^\/api\/code\/workspaces\/([^/]+)$/u;
+export const CODE_API_CODESPACE_DETAIL_PATTERN = /^\/api\/code\/codespaces\/([^/]+)$/u;
 export const CODE_API_TASK_EXECUTE_PATTERN = /^\/api\/code\/tasks\/([^/]+)\/execute$/u;
 export const CODE_API_TASK_RESUME_PATTERN = /^\/api\/code\/tasks\/([^/]+)\/resume$/u;
 export const CODE_API_TASK_PLAN_PATTERN = /^\/api\/code\/tasks\/([^/]+)\/plan$/u;
@@ -67,8 +67,8 @@ export function buildCodeApiTaskPath(taskId?: string | null): string {
   return buildCodeApiDetailPath(CODE_API_TASKS_PATH, taskId);
 }
 
-export function buildCodeApiWorkspacePath(workspaceId?: string | null): string {
-  return buildCodeApiDetailPath(CODE_API_WORKSPACES_PATH, workspaceId);
+export function buildCodeApiCodespacePath(codespaceId?: string | null): string {
+  return buildCodeApiDetailPath(CODE_API_CODESPACES_PATH, codespaceId);
 }
 
 export function buildCodeApiTaskExecutePath(taskId: string): string {
