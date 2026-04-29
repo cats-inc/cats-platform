@@ -35,6 +35,8 @@ log "Validating Linux unpacked package under ${RELEASE_ROOT}"
 assert_file "${RESOURCES_ROOT}/app-sidecar/build/server/index.js" 'bundled cats server entry'
 assert_file "${RESOURCES_ROOT}/app-sidecar/build/renderer/index.html" 'bundled cats renderer build'
 assert_file "${RESOURCES_ROOT}/app-sidecar/package.json" 'bundled cats app package manifest'
+assert_file "${RESOURCES_ROOT}/app-sidecar/node_modules/js-yaml/package.json" 'bundled cats app js-yaml dependency marker'
+assert_file "${RESOURCES_ROOT}/app-sidecar/node_modules/argparse/package.json" 'bundled cats app argparse dependency marker'
 assert_file "${RESOURCES_ROOT}/cats-runtime/build/runtime/index.js" 'bundled cats-runtime entry'
 assert_file "${RESOURCES_ROOT}/cats-runtime/package.json" 'bundled cats-runtime package manifest'
 assert_file "${RESOURCES_ROOT}/cats-runtime/public/provider-setup.html" 'bundled cats-runtime setup UI'

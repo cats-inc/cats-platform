@@ -621,6 +621,12 @@ test('package.json wires Windows, macOS, and Linux installer targets through ele
       && entry.to === 'app-sidecar/package.json',
   ), true);
   assert.equal(packageJson.build.extraResources.some(
+    (entry) => entry.from === 'build/desktop-packaging/shared/app-sidecar/node_modules'
+      && entry.to === 'app-sidecar/node_modules'
+      && Array.isArray(entry.filter)
+      && entry.filter.includes('!.bin{,/**/*}'),
+  ), true);
+  assert.equal(packageJson.build.extraResources.some(
     (entry) => entry.from === 'build/desktop-packaging/shared/cats-runtime'
       && entry.to === 'cats-runtime'
       && Array.isArray(entry.filter)
@@ -1027,6 +1033,8 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'build', 'server', 'index.js'));
   await access(join(plan.outputRoot, 'shared', 'build', 'renderer', 'index.html'));
   await access(join(plan.outputRoot, 'shared', 'app-sidecar', 'package.json'));
+  await access(join(plan.outputRoot, 'shared', 'app-sidecar', 'node_modules', 'js-yaml', 'package.json'));
+  await access(join(plan.outputRoot, 'shared', 'app-sidecar', 'node_modules', 'argparse', 'package.json'));
   await access(join(plan.outputRoot, 'shared', 'build', 'desktop', 'main.js'));
   await access(join(plan.outputRoot, 'shared', 'build', 'desktop', 'preload.cjs'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'build', 'runtime', 'index.js'));
