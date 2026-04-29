@@ -9,11 +9,13 @@ import type {
 } from '../../shared/platform-contract.js';
 
 export interface PlatformLobbyProductEntry {
-  surface: PlatformSurfaceId;
+  productId: PlatformProductDescriptor['id'];
+  surface: PlatformSurfaceId | null;
   productName: string;
   subtitle: string;
   routePrefix: `/${string}`;
   lastUsed: boolean;
+  available: boolean;
 }
 
 export interface PlatformLobbyAppEntry {
@@ -32,13 +34,14 @@ export function buildPlatformLobbyEntries(options: {
   lastUsedSurface: PlatformSurfaceId | null;
 }): PlatformLobbyProductEntry[] {
   return options.products
-    .filter((d) => d.surface !== null)
     .map((d) => ({
-      surface: d.surface!,
+      productId: d.id,
+      surface: d.surface,
       productName: d.productName,
       subtitle: d.subtitle,
       routePrefix: d.routePrefix,
-      lastUsed: d.surface === options.lastUsedSurface,
+      lastUsed: d.surface !== null && d.surface === options.lastUsedSurface,
+      available: d.installState === 'available',
     }));
 }
 

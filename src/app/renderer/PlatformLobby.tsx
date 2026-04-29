@@ -174,31 +174,37 @@ export function PlatformLobby({
         <div className="lobbyProducts">
           <p className="lobbyProductsEyebrow">Products</p>
           <div className="platformLobbyGrid">
-            {entries.map((entry) => (
-              <button
-                key={entry.surface}
-                type="button"
-                className={
-                  'contentCard platformLobbyCard'
-                  + ` platformLobbyCard--${entry.surface}`
-                  + (entry.lastUsed ? ' platformLobbyCard--recent' : '')
-                }
-                onClick={() => navigate(entry.routePrefix)}
-              >
-                <div className="platformLobbyCardAccent" />
-                <span className="platformLobbyCardName">{entry.productName}</span>
-                <span className="platformLobbyCardSub">{entry.subtitle}</span>
-                {entry.lastUsed ? (
-                  <span className="platformLobbyCardHint">Continue</span>
-                ) : null}
-              </button>
-            ))}
-            {/* ── Mock product (layout preview) ── */}
-            <div className="contentCard platformLobbyCard platformLobbyCard--mock">
-              <div className="platformLobbyCardAccent" />
-              <span className="platformLobbyCardName">Cats Learn</span>
-              <span className="platformLobbyCardSub">Courses, flashcards, and study companions</span>
-            </div>
+            {entries.map((entry) => {
+              const productClassName = 'contentCard platformLobbyCard'
+                + ` platformLobbyCard--${entry.surface ?? 'module'}`
+                + (entry.lastUsed ? ' platformLobbyCard--recent' : '')
+                + (entry.available ? ' platformLobbyCard--mock' : '');
+              const content = (
+                <>
+                  <div className="platformLobbyCardAccent" />
+                  <span className="platformLobbyCardName">{entry.productName}</span>
+                  <span className="platformLobbyCardSub">{entry.subtitle}</span>
+                  {entry.lastUsed ? (
+                    <span className="platformLobbyCardHint">Continue</span>
+                  ) : null}
+                </>
+              );
+
+              return entry.available ? (
+                <div key={entry.productId} className={productClassName}>
+                  {content}
+                </div>
+              ) : (
+                <button
+                  key={entry.productId}
+                  type="button"
+                  className={productClassName}
+                  onClick={() => navigate(entry.routePrefix)}
+                >
+                  {content}
+                </button>
+              );
+            })}
           </div>
         </div>
 

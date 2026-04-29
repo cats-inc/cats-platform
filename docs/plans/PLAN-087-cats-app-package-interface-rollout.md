@@ -178,10 +178,10 @@ without pretending to be UI apps.
 ## Phase 7: Add System Product Module Path
 
 - [x] Allow `product-module` contributions only for `trustTier: "system"`.
-- [ ] Merge system product descriptors into the host product registry.
-- [ ] Keep user apps excluded from the Products section.
-- [ ] Add a system fixture or placeholder descriptor for future Cats Learn.
-- [ ] Decide whether first-party product packages appear mirrored in installed
+- [x] Merge system product descriptors into the host product registry.
+- [x] Keep user apps excluded from the Products section.
+- [x] Add a system fixture or placeholder descriptor for future Cats Learn.
+- [x] Decide whether first-party product packages appear mirrored in installed
       apps inventory or linked from product cards.
 
 **Deliverables**: Cats Learn-style system modules can fit the same package
@@ -279,6 +279,7 @@ The overnight implementation agent should aim for this first vertical slice:
 | 2026-04-29 | Added app inspect API output for full manifest and registry record review. |
 | 2026-04-29 | Closed remaining boundary notes, reserved scoped API routing, product/app separation tests, and Settings app identity details. |
 | 2026-04-30 | Added Settings Apps open, enable, disable, and uninstall actions with confirmation dialogs, toast-only error feedback, local payload updates, and envelope refresh. |
+| 2026-04-30 | Connected enabled system `product-module` packages to the host product envelope, kept user apps out of Products, added a Cats Learn fixture path, and kept first-party product packages mirrored in installed apps inventory. |
 
 ---
 

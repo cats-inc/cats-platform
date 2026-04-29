@@ -57,6 +57,36 @@ function createManifest(overrides: Partial<CatsAppManifestV1> = {}): CatsAppMani
   };
 }
 
+function createProductModuleManifest(
+  id: string,
+  productId: string,
+  routePrefix: `/${string}`,
+): CatsAppManifestV1 {
+  return createManifest({
+    id,
+    displayName: productId === 'learn' ? 'Cats Learn' : 'Other Product',
+    category: 'product-module',
+    trustTier: 'system',
+    publisher: {
+      name: 'Cats',
+    },
+    contributions: {
+      products: [
+        {
+          productId,
+          productName: productId === 'learn' ? 'Cats Learn' : 'Other Product',
+          subtitle: 'System product module',
+          routePrefix,
+          group: 'home',
+          installPolicy: 'optional',
+          maturity: 'preview',
+        },
+      ],
+    },
+    permissions: [],
+  });
+}
+
 async function createTempPlatformDir(): Promise<string> {
   return mkdtemp(path.join(tmpdir(), 'cats-app-package-routes-'));
 }
@@ -268,4 +298,32 @@ test('POST /api/apps/install rejects manifests that shadow product routes', asyn
       .some((issue) => issue.code === 'cats_app_route_collision'),
   );
   assert.deepEqual((list.payload as { apps: unknown[] }).apps, []);
+});
+
+test('POST /api/apps/install rejects product modules that shadow installed product modules', async () => {
+  const platformDir = await createTempPlatformDir();
+  const learnPackagePath = await createPackage(
+    platformDir,
+    createProductModuleManifest('system.learn', 'learn', '/learn'),
+  );
+  const otherPackagePath = await createPackage(
+    platformDir,
+    createProductModuleManifest('system.other-learn', 'other-learn', '/learn'),
+  );
+
+  const learnInstall = await routeJson(platformDir, 'POST', '/api/apps/install', {
+    packagePath: learnPackagePath,
+    enable: false,
+  });
+  const otherInstall = await routeJson(platformDir, 'POST', '/api/apps/install', {
+    packagePath: otherPackagePath,
+    enable: true,
+  });
+
+  assert.equal(learnInstall.statusCode, 201);
+  assert.equal(otherInstall.statusCode, 400);
+  assert.ok(
+    (otherInstall.payload as { issues: Array<{ code: string }> }).issues
+      .some((issue) => issue.code === 'cats_app_product_route_collision'),
+  );
 });

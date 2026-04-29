@@ -251,6 +251,7 @@
 .platformLobbyCard--code .platformLobbyCardAccent { background: #6E8450; }
 .platformLobbyCard--work .platformLobbyCardAccent { background: #4F6C92; }
 .platformLobbyCard--app .platformLobbyCardAccent { background: #3F7F78; }
+.platformLobbyCard--module .platformLobbyCardAccent { background: #7A5C98; }
 
 .platformLobbyCard--recent {
   box-shadow: 0 0 0 2px var(--accent-soft);

@@ -219,6 +219,18 @@ test('PlatformLobby keeps product cards separate from installed app cards', () =
         maturity: 'active',
         setup: { selectable: true },
       },
+      {
+        id: 'learn',
+        surface: null,
+        routePrefix: '/learn',
+        productName: 'Cats Learn',
+        subtitle: 'Courses and flashcards',
+        group: 'home',
+        installPolicy: 'optional',
+        installState: 'installed',
+        maturity: 'preview',
+        setup: { selectable: false },
+      },
     ],
     lastProductSurface: 'chat',
     installedApps: [
@@ -245,11 +257,14 @@ test('PlatformLobby keeps product cards separate from installed app cards', () =
 
   const productsIndex = markup.indexOf('>Products<');
   const chatIndex = markup.indexOf('>Cats Chat<');
+  const learnIndex = markup.indexOf('>Cats Learn<');
   const appsIndex = markup.indexOf('>Apps<');
   const focusIndex = markup.indexOf('>Focus Timer<');
   assert.ok(productsIndex >= 0);
   assert.ok(chatIndex > productsIndex);
-  assert.ok(appsIndex > chatIndex);
+  assert.ok(learnIndex > chatIndex);
+  assert.ok(appsIndex > learnIndex);
   assert.ok(focusIndex > appsIndex);
+  assert.match(markup, /platformLobbyCard--module/u);
   assert.match(markup, />Continue</u);
 });

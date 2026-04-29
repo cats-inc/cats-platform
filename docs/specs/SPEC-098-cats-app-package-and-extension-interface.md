@@ -300,6 +300,8 @@ export interface CatsProductModuleContribution {
 Rules:
 
 - Only `trustTier: 'system'` may contribute products in the first slice.
+- Only enabled system product-module packages are projected into the host
+  `products` envelope.
 - Product modules may also appear in installed apps inventory as the owning
   package.
 - Chat, Work, and Code remain existing products until a separate migration

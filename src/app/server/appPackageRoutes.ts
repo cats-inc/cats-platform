@@ -2,7 +2,10 @@ import { readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 
 import type { AppConfig } from '../../config.js';
-import type { CatsAppManifestV1 } from '../../shared/catsAppManifest.js';
+import type {
+  CatsAppManifestV1,
+  CatsInstalledAppRecord,
+} from '../../shared/catsAppManifest.js';
 import {
   parseCatsAppManifestV1,
   type CatsAppManifestValidationIssue,
@@ -14,9 +17,9 @@ import {
   sendMethodNotAllowed,
   type RouteContext,
 } from '../../shared/http.js';
-import { listPlatformProductDescriptors } from '../../shared/platformProducts.js';
 import {
   readPlatformInstalledAppDescriptors,
+  readPlatformProductDescriptors,
   toPlatformInstalledAppDescriptor,
 } from '../../platform/apps/envelope.js';
 import { resolveCatsAppStoragePathsFromChatState } from '../../platform/apps/paths.js';
@@ -46,7 +49,7 @@ interface LocalManifestReadResult {
 const CATS_APP_MANIFEST_FILE = 'cats.app.json';
 const RESERVED_APP_IDS = new Set(['install', 'validate']);
 
-const RESERVED_SETTINGS_PATHS = [
+const BASE_RESERVED_SETTINGS_PATHS = [
   '/settings',
   '/settings/general',
   '/settings/cats',
@@ -56,8 +59,6 @@ const RESERVED_SETTINGS_PATHS = [
   '/settings/desktop',
   '/settings/runtime',
   '/settings/data',
-  ...listPlatformProductDescriptors().flatMap((product) =>
-    product.settings?.map((setting) => setting.path) ?? []),
 ];
 
 function appRegistryFor(context: AppPackageRouteContext): FileCatsAppRegistry {
@@ -86,6 +87,31 @@ function reservedAppIdIssue(appId: string): CatsAppManifestValidationIssue {
     path: 'id',
     details: { appId },
   };
+}
+
+function readInstalledProductModuleRoutePrefixes(
+  records: readonly CatsInstalledAppRecord[],
+): string[] {
+  return records
+    .filter((record) =>
+      record.installState !== 'uninstalled'
+      && record.manifest.category === 'product-module'
+      && record.manifest.trustTier === 'system')
+    .flatMap((record) =>
+      record.manifest.contributions.products?.map((product) => product.routePrefix) ?? []);
+}
+
+function readInstalledProductModuleSettingsPaths(
+  records: readonly CatsInstalledAppRecord[],
+): string[] {
+  return records
+    .filter((record) =>
+      record.installState !== 'uninstalled'
+      && record.manifest.category === 'product-module'
+      && record.manifest.trustTier === 'system')
+    .flatMap((record) =>
+      record.manifest.contributions.products?.flatMap((product) =>
+        product.settings?.map((setting) => setting.path) ?? []) ?? []);
 }
 
 async function readLocalManifestPackage(input: AppPackagePathInput): Promise<
@@ -151,12 +177,23 @@ async function validateLocalManifestPackage(
 
   const registry = appRegistryFor(context);
   const registryState = await registry.readState();
+  const productDescriptors = await readPlatformProductDescriptors(
+    context.dependencies.config.chatStatePath,
+  );
   const parsed = parseCatsAppManifestV1(packageRead.value.manifestJson, {
     existingAppIds: registryState.apps
       .filter((record) => record.installState !== 'uninstalled')
       .map((record) => record.id),
-    productRoutePrefixes: listPlatformProductDescriptors().map((product) => product.routePrefix),
-    reservedSettingsPaths: RESERVED_SETTINGS_PATHS,
+    productRoutePrefixes: [
+      ...productDescriptors.map((product) => product.routePrefix),
+      ...readInstalledProductModuleRoutePrefixes(registryState.apps),
+    ],
+    reservedSettingsPaths: [
+      ...BASE_RESERVED_SETTINGS_PATHS,
+      ...productDescriptors.flatMap((product) =>
+        product.settings?.map((setting) => setting.path) ?? []),
+      ...readInstalledProductModuleSettingsPaths(registryState.apps),
+    ],
   });
 
   if (!parsed.ok) {

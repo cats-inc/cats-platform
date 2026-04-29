@@ -7,6 +7,7 @@ import type {
   PlatformDesktopPreferences,
   PlatformLobbyCatSummary,
   PlatformLobbyPreferences,
+  PlatformProductDescriptor,
   PlatformSurfaceId,
 } from '../../../shared/platform-contract.js';
 import {
@@ -73,6 +74,7 @@ export function createAppShell(
     guideCat?: GuideCatRecord | null;
     assistantPresets?: AssistantPresetRecord[];
     installedApps?: PlatformInstalledAppDescriptor[];
+    products?: PlatformProductDescriptor[];
     lobbyGuideCatAssist?: GuideCatAssistSurfaceReadModel | null;
     newChatAssist?: AppShellPayload['chat']['newChatAssist'];
     codeGuideCatAssist?: GuideCatAssistSurfaceReadModel | null;
@@ -86,7 +88,7 @@ export function createAppShell(
 
   return {
     app: createPlatformAppDescriptor(),
-    products: listPlatformProductDescriptors(),
+    products: structuredClone(setup?.products ?? listPlatformProductDescriptors()),
     installedApps: structuredClone(setup?.installedApps ?? []),
     desktop: {
       startAtLogin: setup?.desktop?.startAtLogin ?? true,
