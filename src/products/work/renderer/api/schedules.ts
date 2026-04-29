@@ -44,7 +44,17 @@ export interface WorkScheduleExecutionPolicy {
   retryPolicy: {
     maxAttempts: number;
     backoff: WorkScheduleRetryBackoff;
+    pauseAfterConsecutiveFailures: number | null;
   };
+}
+
+export interface WorkScheduleRetryState {
+  attempt: number;
+  maxAttempts: number;
+  nextRetryAt: string;
+  originalScheduledFireAt: string;
+  lastError: string;
+  failedReceiptId: string;
 }
 
 export interface WorkScheduleRule {
@@ -63,6 +73,10 @@ export interface WorkScheduleRule {
   lastFireAt: string | null;
   lastRunId: string | null;
   lastFailure: string | null;
+  consecutiveFailures?: number;
+  retryState?: WorkScheduleRetryState | null;
+  pausedAt?: string | null;
+  pauseReason?: string | null;
 }
 
 export interface WorkScheduleTriggerReceipt {

@@ -6,6 +6,7 @@ import type {
 export interface ScheduleDueFire {
   scheduledFireAt: string;
   reason: ScheduleTriggerReason;
+  retryAttempt?: number;
 }
 
 export function buildScheduleIdempotencyKey(input: {
@@ -14,6 +15,7 @@ export function buildScheduleIdempotencyKey(input: {
   scheduledFireAt: string;
   reason: ScheduleTriggerReason;
   actualFireAt: string;
+  retryAttempt?: number;
 }): string {
   if (input.reason === 'manual_test') {
     return [
@@ -21,6 +23,15 @@ export function buildScheduleIdempotencyKey(input: {
       input.ruleId,
       input.ruleRevision,
       input.actualFireAt,
+    ].join(':');
+  }
+  if (input.reason === 'retry') {
+    return [
+      'schedule-retry',
+      input.ruleId,
+      input.ruleRevision,
+      input.scheduledFireAt,
+      input.retryAttempt ?? 1,
     ].join(':');
   }
 
@@ -54,7 +65,24 @@ export function collectDueFires(input: {
   startup?: boolean;
   maxFireAll?: number;
 }): ScheduleDueFire[] {
-  if (!input.rule.enabled || !input.rule.nextFireAt) {
+  if (!input.rule.enabled) {
+    return [];
+  }
+
+  const retryState = input.rule.retryState ?? null;
+  if (retryState) {
+    const nextRetryAt = new Date(retryState.nextRetryAt);
+    if (Number.isFinite(nextRetryAt.getTime()) && nextRetryAt.getTime() <= input.now.getTime()) {
+      return [{
+        scheduledFireAt: retryState.originalScheduledFireAt,
+        reason: 'retry',
+        retryAttempt: retryState.attempt,
+      }];
+    }
+    return [];
+  }
+
+  if (!input.rule.nextFireAt) {
     return [];
   }
 

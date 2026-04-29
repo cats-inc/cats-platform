@@ -110,6 +110,7 @@ export function buildDailyMorningGreetingScheduleInput(input: {
       retryPolicy: {
         maxAttempts: 0,
         backoff: 'none',
+        pauseAfterConsecutiveFailures: 3,
       },
     },
   };

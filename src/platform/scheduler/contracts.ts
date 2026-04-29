@@ -52,7 +52,17 @@ export interface ScheduleExecutionPolicy {
   retryPolicy: {
     maxAttempts: number;
     backoff: ScheduleRetryBackoff;
+    pauseAfterConsecutiveFailures: number | null;
   };
+}
+
+export interface ScheduleRetryState {
+  attempt: number;
+  maxAttempts: number;
+  nextRetryAt: string;
+  originalScheduledFireAt: string;
+  lastError: string;
+  failedReceiptId: string;
 }
 
 export interface ScheduleRule {
@@ -71,6 +81,10 @@ export interface ScheduleRule {
   lastFireAt: string | null;
   lastRunId: string | null;
   lastFailure: string | null;
+  consecutiveFailures?: number;
+  retryState?: ScheduleRetryState | null;
+  pausedAt?: string | null;
+  pauseReason?: string | null;
 }
 
 export interface ScheduleTriggerMetadata {

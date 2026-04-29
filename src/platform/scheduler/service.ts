@@ -16,6 +16,7 @@ import type {
   ScheduleRuleCreateInput,
   ScheduleRuleUpdateInput,
   ScheduleOriginalTargetRef,
+  ScheduleRetryState,
   ScheduleTargetRef,
   ScheduleTriggerMetadata,
   ScheduleTriggerReceipt,
@@ -32,6 +33,9 @@ import {
   createScheduleRule,
   updateScheduleRule,
 } from './validation.js';
+
+const RETRY_FIXED_DELAY_MS = 5 * 60 * 1000;
+const RETRY_EXPONENTIAL_MAX_DELAY_MS = 60 * 60 * 1000;
 
 export interface SchedulerService {
   listRules(): Promise<ScheduleRule[]>;
@@ -281,6 +285,7 @@ class DefaultSchedulerService implements SchedulerService {
           : await this.advanceRuleAfterFire(rule, fire.scheduledFireAt, {
               lastRunId: null,
               lastFailure: null,
+              ...(fire.reason === 'retry' ? { retryState: null } : {}),
             });
         return {
           status: 'skipped',
@@ -315,6 +320,10 @@ class DefaultSchedulerService implements SchedulerService {
         : await this.advanceRuleAfterFire(rule, fire.scheduledFireAt, {
             lastRunId: run.id,
             lastFailure: null,
+            consecutiveFailures: 0,
+            retryState: null,
+            pausedAt: null,
+            pauseReason: null,
           });
 
       return {
@@ -335,10 +344,11 @@ class DefaultSchedulerService implements SchedulerService {
       );
       const updatedRule = fire.reason === 'manual_test'
         ? rule
-        : await this.advanceRuleAfterFire(rule, fire.scheduledFireAt, {
-            lastRunId: null,
-            lastFailure: message,
-          });
+        : await this.advanceRuleAfterFire(
+            rule,
+            fire.scheduledFireAt,
+            this.buildFailureAdvanceUpdate(rule, fire, actualFireAt, failedReceipt, message),
+          );
 
       return {
         status: 'failed',
@@ -391,6 +401,7 @@ class DefaultSchedulerService implements SchedulerService {
       scheduledFireAt: fire.scheduledFireAt,
       actualFireAt: actualFireAtIso,
       reason: fire.reason,
+      retryAttempt: fire.retryAttempt,
     });
 
     return this.dependencies.scheduleStore.claimTriggerReceipt({
@@ -400,30 +411,103 @@ class DefaultSchedulerService implements SchedulerService {
       actualFireAt: actualFireAtIso,
       idempotencyKey,
       reason: fire.reason,
+      metadata: fire.reason === 'retry'
+        ? {
+            retryAttempt: fire.retryAttempt ?? 1,
+          }
+        : undefined,
     });
+  }
+
+  private buildFailureAdvanceUpdate(
+    rule: ScheduleRule,
+    fire: ScheduleDueFire,
+    actualFireAt: Date,
+    failedReceipt: ScheduleTriggerReceipt,
+    message: string,
+  ): RuleAdvanceUpdate {
+    const currentAttempt = fire.reason === 'retry' ? fire.retryAttempt ?? 1 : 0;
+    const nextAttempt = currentAttempt + 1;
+    const retryPolicy = rule.executionPolicy.retryPolicy;
+    if (nextAttempt <= retryPolicy.maxAttempts) {
+      return {
+        lastRunId: null,
+        lastFailure: message,
+        retryState: {
+          attempt: nextAttempt,
+          maxAttempts: retryPolicy.maxAttempts,
+          nextRetryAt: computeRetryAt(actualFireAt, retryPolicy.backoff, nextAttempt),
+          originalScheduledFireAt: fire.scheduledFireAt,
+          lastError: message,
+          failedReceiptId: failedReceipt.id,
+        },
+      };
+    }
+
+    const consecutiveFailures = (rule.consecutiveFailures ?? 0) + 1;
+    const pauseAfter = retryPolicy.pauseAfterConsecutiveFailures;
+    if (pauseAfter !== null && consecutiveFailures >= pauseAfter) {
+      return {
+        lastRunId: null,
+        lastFailure: message,
+        consecutiveFailures,
+        retryState: null,
+        enabled: false,
+        nextFireAt: null,
+        pausedAt: actualFireAt.toISOString(),
+        pauseReason: `Paused after ${consecutiveFailures} consecutive failed scheduled fires.`,
+      };
+    }
+
+    return {
+      lastRunId: null,
+      lastFailure: message,
+      consecutiveFailures,
+      retryState: null,
+    };
   }
 
   private async advanceRuleAfterFire(
     rule: ScheduleRule,
     scheduledFireAt: string,
-    update: {
-      lastRunId: string | null;
-      lastFailure: string | null;
-    },
+    update: RuleAdvanceUpdate,
   ): Promise<ScheduleRule> {
     const scheduled = new Date(scheduledFireAt);
     const nextFire = computeNextFireAfter(rule, scheduled);
+    const enabled = update.enabled ?? rule.enabled;
     const nextRule: ScheduleRule = {
       ...rule,
-      nextFireAt: nextFire?.toISOString() ?? null,
+      enabled,
+      nextFireAt: update.nextFireAt === undefined
+        ? enabled
+          ? nextFire?.toISOString() ?? null
+          : null
+        : update.nextFireAt,
       lastFireAt: scheduled.toISOString(),
       lastRunId: update.lastRunId,
       lastFailure: update.lastFailure,
+      consecutiveFailures: update.consecutiveFailures ?? rule.consecutiveFailures ?? 0,
+      retryState: update.retryState === undefined ? rule.retryState ?? null : update.retryState,
+      pausedAt: update.pausedAt === undefined ? rule.pausedAt ?? null : update.pausedAt,
+      pauseReason: update.pauseReason === undefined
+        ? rule.pauseReason ?? null
+        : update.pauseReason,
       updatedAt: this.now().toISOString(),
     };
 
     return this.dependencies.scheduleStore.upsertRule(nextRule);
   }
+}
+
+interface RuleAdvanceUpdate {
+  lastRunId: string | null;
+  lastFailure: string | null;
+  consecutiveFailures?: number;
+  retryState?: ScheduleRetryState | null;
+  enabled?: boolean;
+  nextFireAt?: string | null;
+  pausedAt?: string | null;
+  pauseReason?: string | null;
 }
 
 async function updateCoreAtomically(
@@ -583,4 +667,22 @@ function readScheduleTrigger(run: CoreRunRecord): ScheduleTriggerMetadata | null
 
 function isActiveRunStatus(status: CoreRunRecord['status']): boolean {
   return status === 'queued' || status === 'running' || status === 'blocked';
+}
+
+function computeRetryAt(
+  actualFireAt: Date,
+  backoff: ScheduleRule['executionPolicy']['retryPolicy']['backoff'],
+  attempt: number,
+): string {
+  if (backoff === 'none') {
+    return actualFireAt.toISOString();
+  }
+
+  const delay = backoff === 'fixed'
+    ? RETRY_FIXED_DELAY_MS
+    : Math.min(
+        RETRY_FIXED_DELAY_MS * (2 ** Math.max(0, attempt - 1)),
+        RETRY_EXPONENTIAL_MAX_DELAY_MS,
+      );
+  return new Date(actualFireAt.getTime() + delay).toISOString();
 }

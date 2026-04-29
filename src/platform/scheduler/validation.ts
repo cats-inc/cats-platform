@@ -9,6 +9,7 @@ import type {
   ScheduleRuleCreateInput,
   ScheduleRuleUpdateInput,
   ScheduleTargetRef,
+  ScheduleRetryState,
   ScheduleTriggerReceipt,
 } from './contracts.js';
 import { SCHEDULER_STATE_VERSION, type SchedulerState } from './contracts.js';
@@ -51,6 +52,27 @@ function readOptionalRecord(
     return undefined;
   }
   return structuredClone(readRecord(value, fieldName));
+}
+
+function readOptionalPositiveIntegerOrNull(
+  value: unknown,
+  fallback: number | null,
+  fieldName: string,
+): number | null {
+  if (value === undefined) {
+    return fallback;
+  }
+  if (value === null) {
+    return null;
+  }
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 1) {
+    throw new CoreValidationError(
+      `${fieldName} must be null or a positive integer.`,
+      `${fieldName}_invalid`,
+    );
+  }
+  return parsed;
 }
 
 function readOptionalStringArray(value: unknown, fieldName: string): string[] | undefined {
@@ -219,6 +241,7 @@ export function createDefaultScheduleExecutionPolicy(): ScheduleExecutionPolicy 
     retryPolicy: {
       maxAttempts: 0,
       backoff: 'none',
+      pauseAfterConsecutiveFailures: 3,
     },
   };
 }
@@ -284,6 +307,11 @@ export function normalizeScheduleExecutionPolicy(value: unknown): ScheduleExecut
       'schedule_retry_backoff_invalid',
     );
   }
+  const pauseAfterConsecutiveFailures = readOptionalPositiveIntegerOrNull(
+    retryPolicyRecord.pauseAfterConsecutiveFailures,
+    defaults.retryPolicy.pauseAfterConsecutiveFailures,
+    'executionPolicy.retryPolicy.pauseAfterConsecutiveFailures',
+  );
 
   return {
     missionPolicy,
@@ -292,6 +320,7 @@ export function normalizeScheduleExecutionPolicy(value: unknown): ScheduleExecut
     retryPolicy: {
       maxAttempts,
       backoff,
+      pauseAfterConsecutiveFailures,
     },
   };
 }
@@ -333,6 +362,10 @@ export function createScheduleRule(
     lastFireAt: null,
     lastRunId: null,
     lastFailure: null,
+    consecutiveFailures: 0,
+    retryState: null,
+    pausedAt: null,
+    pauseReason: null,
   };
 }
 
@@ -365,12 +398,23 @@ export function updateScheduleRule(
     lastFailure: input.enabled === true ? null : existing.lastFailure,
   };
   const afterAdmissionFields = serializeAdmissionFields(next);
+  const admissionChanged = beforeAdmissionFields !== afterAdmissionFields;
 
   return {
     ...next,
-    revision: beforeAdmissionFields === afterAdmissionFields
-      ? existing.revision
-      : existing.revision + 1,
+    revision: admissionChanged ? existing.revision + 1 : existing.revision,
+    consecutiveFailures: input.enabled === true || admissionChanged
+      ? 0
+      : existing.consecutiveFailures ?? 0,
+    retryState: input.enabled === true || admissionChanged
+      ? null
+      : existing.retryState ?? null,
+    pausedAt: input.enabled === true || admissionChanged
+      ? null
+      : existing.pausedAt ?? null,
+    pauseReason: input.enabled === true || admissionChanged
+      ? null
+      : existing.pauseReason ?? null,
   };
 }
 
@@ -389,6 +433,7 @@ export function normalizeSchedulerState(value: unknown, now: Date = new Date()):
   }
   const rules = Array.isArray(value.rules)
     ? value.rules.filter(isScheduleRule)
+      .map(normalizeScheduleRuleRuntimeState)
     : [];
   const triggerReceipts = Array.isArray(value.triggerReceipts)
     ? value.triggerReceipts.filter(isScheduleTriggerReceipt)
@@ -399,6 +444,62 @@ export function normalizeSchedulerState(value: unknown, now: Date = new Date()):
     updatedAt: typeof value.updatedAt === 'string' ? value.updatedAt : now.toISOString(),
     rules: structuredClone(rules),
     triggerReceipts: structuredClone(triggerReceipts),
+  };
+}
+
+function normalizeScheduleRuleRuntimeState(rule: ScheduleRule): ScheduleRule {
+  const consecutiveFailures = rule.consecutiveFailures;
+  const pauseAfterConsecutiveFailures =
+    rule.executionPolicy.retryPolicy.pauseAfterConsecutiveFailures;
+  const normalizedConsecutiveFailures =
+    Number.isInteger(consecutiveFailures) && (consecutiveFailures ?? 0) >= 0
+      ? consecutiveFailures ?? 0
+      : 0;
+  return {
+    ...structuredClone(rule),
+    executionPolicy: {
+      ...rule.executionPolicy,
+      retryPolicy: {
+        ...rule.executionPolicy.retryPolicy,
+        pauseAfterConsecutiveFailures: typeof pauseAfterConsecutiveFailures === 'number'
+          || pauseAfterConsecutiveFailures === null
+          ? pauseAfterConsecutiveFailures
+          : createDefaultScheduleExecutionPolicy().retryPolicy.pauseAfterConsecutiveFailures,
+      },
+    },
+    consecutiveFailures: normalizedConsecutiveFailures,
+    retryState: normalizeScheduleRetryState(rule.retryState),
+    pausedAt: typeof rule.pausedAt === 'string' ? rule.pausedAt : null,
+    pauseReason: typeof rule.pauseReason === 'string' ? rule.pauseReason : null,
+  };
+}
+
+function normalizeScheduleRetryState(value: unknown): ScheduleRetryState | null {
+  if (!isRecord(value)) {
+    return null;
+  }
+  if (
+    !Number.isInteger(value.attempt)
+    || Number(value.attempt) < 1
+    || !Number.isInteger(value.maxAttempts)
+    || Number(value.maxAttempts) < Number(value.attempt)
+    || typeof value.nextRetryAt !== 'string'
+    || !Number.isFinite(Date.parse(value.nextRetryAt))
+    || typeof value.originalScheduledFireAt !== 'string'
+    || !Number.isFinite(Date.parse(value.originalScheduledFireAt))
+    || typeof value.lastError !== 'string'
+    || typeof value.failedReceiptId !== 'string'
+  ) {
+    return null;
+  }
+
+  return {
+    attempt: Number(value.attempt),
+    maxAttempts: Number(value.maxAttempts),
+    nextRetryAt: new Date(value.nextRetryAt).toISOString(),
+    originalScheduledFireAt: new Date(value.originalScheduledFireAt).toISOString(),
+    lastError: value.lastError,
+    failedReceiptId: value.failedReceiptId,
   };
 }
 

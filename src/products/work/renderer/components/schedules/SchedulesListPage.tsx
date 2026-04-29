@@ -237,6 +237,8 @@ function ScheduleRow({
   const lastFailure = rule.lastFailure ??
     (latestReceipt?.status === 'failed' ? latestReceipt.message : null);
   const skippedReceipt = latestReceipt?.status === 'skipped' ? latestReceipt : null;
+  const retryState = rule.retryState ?? null;
+  const consecutiveFailures = rule.consecutiveFailures ?? 0;
   const toggleBusy = busyAction === `toggle:${rule.id}`;
   const testBusy = busyAction === `test:${rule.id}`;
 
@@ -295,7 +297,25 @@ function ScheduleRow({
 
       <div className="schedulesList__diagnostics">
         {!rule.enabled ? (
-          <DiagnosticPill tone="muted" text="Disabled: no future fires will be evaluated." />
+          <DiagnosticPill
+            tone={rule.pausedAt ? 'bad' : 'muted'}
+            text={rule.pauseReason ?? 'Disabled: no future fires will be evaluated.'}
+          />
+        ) : null}
+        {retryState ? (
+          <DiagnosticPill
+            tone="warn"
+            text={[
+              `Retry ${retryState.attempt}/${retryState.maxAttempts}`,
+              formatDateTime(retryState.nextRetryAt, rule.timezone),
+            ].join(' at ')}
+          />
+        ) : null}
+        {consecutiveFailures > 0 ? (
+          <DiagnosticPill
+            tone="warn"
+            text={`${consecutiveFailures} consecutive failed scheduled fires`}
+          />
         ) : null}
         {lastFailure ? (
           <DiagnosticPill tone="bad" text={`Last failure: ${lastFailure}`} />

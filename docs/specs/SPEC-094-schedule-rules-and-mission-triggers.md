@@ -247,6 +247,7 @@ interface MorningGreetingExample {
     - rule id
     - rule revision
     - scheduled fire time
+    - retry attempt number for retry triggers
 37. The scheduler shall not admit the same idempotency key twice.
 38. Manual test fires shall use a separate idempotency namespace and shall be
     visibly marked as test runs.
@@ -256,9 +257,11 @@ interface MorningGreetingExample {
 39. A `ScheduleRule` shall define a bounded retry policy:
     - max attempts
     - backoff strategy
-    - retryable error classes
-40. Retry attempts shall remain linked to the same scheduled fire and mission
-    when they are attempts to complete the same due work.
+    - pause-after-consecutive-failures threshold
+40. Scheduler-owned retry attempts shall remain linked to the same scheduled
+    fire through retry trigger receipts and `metadata.scheduleTrigger`.
+    Runtime-level retries after a mission/run has already started remain owned
+    by the supervision runtime boundary.
 41. Transport delivery failures shall be visible as run failures or partial
     failures, not swallowed by the scheduler.
 42. A rule may pause itself after repeated failures if configured.
@@ -337,6 +340,11 @@ interface ScheduleRule {
   nextFireAt?: string | null;
   lastFireAt?: string | null;
   lastRunId?: string | null;
+  lastFailure?: string | null;
+  consecutiveFailures?: number;
+  retryState?: ScheduleRetryState | null;
+  pausedAt?: string | null;
+  pauseReason?: string | null;
 }
 
 type ScheduleDefinition =
@@ -362,13 +370,24 @@ interface MissionTemplate {
 
 interface ScheduleExecutionPolicy {
   missionPolicy: 'per_fire';
-  // `replace` is a reserved follow-up once supervised cancellation is wired.
-  concurrencyPolicy: 'skip' | 'queue';
+  // `replace` must cancel active scheduled runs through the supervision
+  // runtime boundary before admitting the replacement.
+  concurrencyPolicy: 'skip' | 'queue' | 'replace';
   misfirePolicy: 'skip' | 'fire_once' | 'fire_all';
   retryPolicy: {
     maxAttempts: number;
     backoff: 'none' | 'fixed' | 'exponential';
+    pauseAfterConsecutiveFailures: number | null;
   };
+}
+
+interface ScheduleRetryState {
+  attempt: number;
+  maxAttempts: number;
+  nextRetryAt: string;
+  originalScheduledFireAt: string;
+  lastError: string;
+  failedReceiptId: string;
 }
 
 // Stored under CoreRunRecord.metadata.scheduleTrigger for admitted scheduled

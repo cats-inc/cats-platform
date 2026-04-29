@@ -53,6 +53,7 @@ test('daily morning greeting shortcut creates a generic schedule rule input', ()
     retryPolicy: {
       maxAttempts: 0,
       backoff: 'none',
+      pauseAfterConsecutiveFailures: 3,
     },
   });
 });
@@ -160,6 +161,7 @@ function createRuleFixture(catId: string, bindingId: string): WorkScheduleRule {
       retryPolicy: {
         maxAttempts: 0,
         backoff: 'none',
+        pauseAfterConsecutiveFailures: 3,
       },
     },
     createdAt: '2026-04-29T00:00:00.000Z',

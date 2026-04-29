@@ -553,6 +553,142 @@ test('scheduler tick replaces active scheduled runs through the cancellation bou
   assert.equal((await scheduleStore.listTriggerReceipts())[0]?.status, 'admitted');
 });
 
+test('scheduler retries failed fires within the bounded retry policy', async () => {
+  const scheduleStore = new MemoryScheduleStore();
+  const coreStore = new MemoryCoreStore(createDefaultCoreState());
+  let now = new Date('2026-04-29T00:00:00.000Z');
+  const service = createSchedulerService({
+    scheduleStore,
+    coreStore,
+    now: () => now,
+  });
+  await service.createRule({
+    id: 'schedule-retry-once',
+    title: 'Retry scheduled work',
+    enabled: true,
+    timezone: 'UTC',
+    schedule: {
+      kind: 'once',
+      fireAt: '2026-04-29T00:05:00.000Z',
+    },
+    missionTemplate: {
+      target: { kind: 'agent', id: 'agent-retry' },
+      originSurface: 'schedule',
+      intent: 'Retry once agent appears.',
+    },
+    executionPolicy: {
+      missionPolicy: 'per_fire',
+      concurrencyPolicy: 'skip',
+      misfirePolicy: 'skip',
+      retryPolicy: {
+        maxAttempts: 2,
+        backoff: 'none',
+        pauseAfterConsecutiveFailures: null,
+      },
+    },
+    createdByActorId: 'actor-owner',
+  });
+
+  now = new Date('2026-04-29T00:10:00.000Z');
+  const first = await service.tick();
+  const afterFailure = await scheduleStore.getRule('schedule-retry-once');
+
+  assert.equal(first.results[0]?.status, 'failed');
+  assert.equal(afterFailure?.retryState?.attempt, 1);
+  assert.equal(afterFailure?.retryState?.maxAttempts, 2);
+  assert.equal(afterFailure?.retryState?.nextRetryAt, '2026-04-29T00:10:00.000Z');
+  assert.equal(afterFailure?.nextFireAt, null);
+
+  await coreStore.updateCore((current) => upsertCoreActor(
+    current,
+    {
+      id: 'agent-retry',
+      name: 'Retry Agent',
+      kind: 'worker',
+      defaultExecutionTarget: {
+        provider: 'claude',
+        instance: null,
+        model: null,
+      },
+    },
+    new Date('2026-04-29T00:10:01.000Z'),
+  ).core);
+
+  now = new Date('2026-04-29T00:10:01.000Z');
+  const second = await service.tick();
+  const afterRetry = await scheduleStore.getRule('schedule-retry-once');
+  const receipts = await scheduleStore.listTriggerReceipts({ ruleId: 'schedule-retry-once' });
+  const retryReceipt = receipts.find((receipt) => receipt.reason === 'retry');
+
+  assert.equal(second.results[0]?.status, 'admitted');
+  assert.equal(readScheduleTrigger(second.results[0]!.run!).reason, 'retry');
+  assert.equal(afterRetry?.retryState, null);
+  assert.equal(afterRetry?.consecutiveFailures, 0);
+  assert.equal(afterRetry?.lastRunId, second.results[0]?.run?.id);
+  assert.equal(retryReceipt?.status, 'admitted');
+  assert.equal(retryReceipt?.metadata.retryAttempt, 1);
+});
+
+test('scheduler pauses a rule after repeated failed scheduled fires', async () => {
+  const scheduleStore = new MemoryScheduleStore();
+  const coreStore = new MemoryCoreStore(createDefaultCoreState());
+  let now = new Date('2026-04-29T00:00:00.000Z');
+  const service = createSchedulerService({
+    scheduleStore,
+    coreStore,
+    now: () => now,
+  });
+  await service.createRule({
+    id: 'schedule-pause-failures',
+    title: 'Pause failing work',
+    enabled: true,
+    timezone: 'UTC',
+    schedule: {
+      kind: 'daily',
+      time: '00:05',
+    },
+    missionTemplate: {
+      target: { kind: 'agent', id: 'agent-never-present' },
+      originSurface: 'schedule',
+      intent: 'Pause after repeated failures.',
+    },
+    executionPolicy: {
+      missionPolicy: 'per_fire',
+      concurrencyPolicy: 'skip',
+      misfirePolicy: 'skip',
+      retryPolicy: {
+        maxAttempts: 0,
+        backoff: 'none',
+        pauseAfterConsecutiveFailures: 2,
+      },
+    },
+    createdByActorId: 'actor-owner',
+  });
+
+  now = new Date('2026-04-29T00:06:00.000Z');
+  const first = await service.tick();
+  const afterFirstFailure = await scheduleStore.getRule('schedule-pause-failures');
+
+  assert.equal(first.results[0]?.status, 'failed');
+  assert.equal(afterFirstFailure?.enabled, true);
+  assert.equal(afterFirstFailure?.consecutiveFailures, 1);
+  assert.equal(afterFirstFailure?.pausedAt, null);
+
+  now = new Date('2026-04-30T00:06:00.000Z');
+  const second = await service.tick();
+  const afterSecondFailure = await scheduleStore.getRule('schedule-pause-failures');
+
+  assert.equal(second.results[0]?.status, 'failed');
+  assert.equal(afterSecondFailure?.enabled, false);
+  assert.equal(afterSecondFailure?.nextFireAt, null);
+  assert.equal(afterSecondFailure?.consecutiveFailures, 2);
+  assert.equal(afterSecondFailure?.pausedAt, '2026-04-30T00:06:00.000Z');
+  assert.equal(
+    afterSecondFailure?.pauseReason,
+    'Paused after 2 consecutive failed scheduled fires.',
+  );
+});
+
 test('startup misfire policy skips or admits missed fires deterministically', async () => {
   const scheduleStore = new MemoryScheduleStore();
   let core = createDefaultCoreState();
