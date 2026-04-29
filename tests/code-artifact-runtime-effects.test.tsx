@@ -116,6 +116,18 @@ test('runtime assistant effects materialize Code declare_artifact tool calls', (
       ],
     },
   });
+  assert.equal(result.segments.length, 2);
+  assert.equal(result.segments[0]?.kind, 'tool_use');
+  assert.equal(result.segments[1]?.kind, 'tool_result');
+  assert.equal(result.segments[1]?.toolName, 'declare_artifact');
+  assert.equal(result.segments[1]?.toolId, 'tool-1');
+  assert.deepEqual(JSON.parse(result.segments[1]?.text ?? '{}'), {
+    status: 'accepted',
+    declarationId: 'preview-localhost:preview_url',
+    disposition: 'record',
+    artifactId: result.core.artifacts[0].id,
+    artifactStatus: 'ready',
+  });
 });
 
 test('runtime assistant effects skip non-Code channels', () => {

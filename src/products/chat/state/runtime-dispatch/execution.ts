@@ -195,6 +195,7 @@ export async function executeDispatch(
           },
         );
         effectsMetadata = appliedEffects.metadata;
+        responseSegments = appliedEffects.segments;
         return appliedEffects.core;
       });
       mergeRuntimeAssistantMetadata(runtimeAssistantMetadata, effectsMetadata);

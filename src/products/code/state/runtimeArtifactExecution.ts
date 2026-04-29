@@ -148,6 +148,10 @@ export function createCodeArtifactRuntimeAssistantEffectProcessor(): RuntimeInvo
       return execution.declarations.length > 0
         ? {
             core: execution.core,
+            segments: projectCodeArtifactToolResultsIntoSegments(
+              input.segments,
+              execution.declarations,
+            ),
             metadata: {
               codeArtifactToolResults: execution.declarations,
             } satisfies CodeArtifactRuntimeAssistantEffectMetadata,
@@ -156,6 +160,46 @@ export function createCodeArtifactRuntimeAssistantEffectProcessor(): RuntimeInvo
             core: execution.core,
           };
     },
+  };
+}
+
+export function projectCodeArtifactToolResultsIntoSegments(
+  segments: readonly RuntimeMessageSegment[],
+  declarations: readonly CodeArtifactRuntimeDeclarationExecutionItem[],
+): RuntimeMessageSegment[] {
+  const projected: RuntimeMessageSegment[] = [];
+  let declarationIndex = 0;
+
+  for (const segment of segments) {
+    projected.push(segment);
+    const observation = observeCodeArtifactRuntimeToolCall(segment);
+    if (!observation) {
+      continue;
+    }
+    const declaration = declarations[declarationIndex];
+    declarationIndex += 1;
+    if (!declaration) {
+      continue;
+    }
+    projected.push(buildCodeArtifactToolResultSegment(declaration));
+  }
+
+  for (; declarationIndex < declarations.length; declarationIndex += 1) {
+    projected.push(buildCodeArtifactToolResultSegment(declarations[declarationIndex]!));
+  }
+
+  return projected;
+}
+
+function buildCodeArtifactToolResultSegment(
+  declaration: CodeArtifactRuntimeDeclarationExecutionItem,
+): RuntimeMessageSegment {
+  return {
+    kind: 'tool_result',
+    text: JSON.stringify(declaration.result),
+    toolName: CODE_ARTIFACT_DECLARATION_TOOL_NAME,
+    toolId: declaration.toolId,
+    ...(declaration.result.status === 'rejected' ? { isError: true } : {}),
   };
 }
 

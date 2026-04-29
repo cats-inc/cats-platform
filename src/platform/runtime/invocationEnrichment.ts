@@ -97,11 +97,13 @@ export interface RuntimeInvocationAssistantEffectInput {
 
 export interface RuntimeInvocationAssistantEffectContribution {
   core: CatsCoreState;
+  segments?: readonly RuntimeMessageSegment[] | null;
   metadata?: Record<string, unknown> | null;
 }
 
 export interface RuntimeInvocationAssistantEffectResult {
   core: CatsCoreState;
+  segments: RuntimeMessageSegment[];
   metadata: Record<string, unknown>;
 }
 
@@ -413,6 +415,7 @@ export function applyRuntimeInvocationAssistantEffects(
   context: RuntimeInvocationAssistantEffectContext,
 ): RuntimeInvocationAssistantEffectResult {
   let currentCore = input.core;
+  let currentSegments = [...input.segments];
   const metadata: Record<string, unknown> = {};
 
   for (const processor of getOrderedRuntimeInvocationAssistantEffectProcessors()) {
@@ -426,7 +429,7 @@ export function applyRuntimeInvocationAssistantEffects(
       channel,
       {
         core: currentCore,
-        segments: input.segments,
+        segments: currentSegments,
       },
       context,
     );
@@ -434,6 +437,9 @@ export function applyRuntimeInvocationAssistantEffects(
       continue;
     }
     currentCore = contribution.core;
+    if (contribution.segments) {
+      currentSegments = [...contribution.segments];
+    }
     if (contribution.metadata) {
       metadata[processor.id] = contribution.metadata;
     }
@@ -441,6 +447,7 @@ export function applyRuntimeInvocationAssistantEffects(
 
   return {
     core: currentCore,
+    segments: currentSegments,
     metadata,
   };
 }

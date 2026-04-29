@@ -62,7 +62,7 @@ rather than duplicating every validation branch.
 | `work.approval_gated.apply` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / future `runtime_tool` | Work supervised agent | [Work Supervised Tools](#work-supervised-tools) |
 | `work.sop.classify_text_batch` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / worker tool | Work SOP worker | [Work Supervised Tools](#work-supervised-tools) |
 | `work.sop.ask_weak` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / worker tool | Work SOP worker | [Work Supervised Tools](#work-supervised-tools) |
-| `declare_artifact` | Cats Code | Active-session onboarding, submit route, materialization, activity, runtime execution helper, assistant-effect processor, and live dispatch persistence wired; tool-result delivery pending | `runtime_tool` first; bridge/user delegates later | Code assistant / runtime bridge / Code UI import flow | [Declare Artifact](#declare_artifact) |
+| `declare_artifact` | Cats Code | Active-session onboarding, submit route, materialization, activity, runtime execution helper, assistant-effect processor, live dispatch persistence, and local tool-result projection wired; live tool-result loop pending | `runtime_tool` first; bridge/user delegates later | Code assistant / runtime bridge / Code UI import flow | [Declare Artifact](#declare_artifact) |
 
 ## Supervised Tool Contract
 
@@ -228,8 +228,10 @@ a turn predicate, so ordinary assistant text replies do not open a Core write
 when no product-owned tool call is present. Accepted / rejected declaration
 results are recorded in assistant-message metadata under
 `runtimeAssistantMetadata["cats-code.artifact-declaration"].codeArtifactToolResults`.
-Tool results are not yet sent back to the assistant through the runtime
-tool-result channel. Until the finalization gate is wired, Cats Platform still
+The same results are also projected into local runtime `tool_result` segments
+so the persisted turn has a `tool_use` -> `tool_result` trace. These projected
+segments are not yet sent back to the assistant through a live runtime
+tool-result loop. Until the finalization gate is wired, Cats Platform still
 accepts final visible responses that claim an artifact without an accepted
 same-turn declaration.
 
