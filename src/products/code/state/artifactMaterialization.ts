@@ -1,9 +1,12 @@
 import { createHash } from 'node:crypto';
 
+import { appendCoreActivity } from '../../../core/model/executionRecords.js';
 import { upsertCoreArtifact } from '../../../core/model/planningRecords.js';
 import type {
+  CoreActivityRecord,
   CatsCoreState,
   CoreArtifactRecord,
+  CoreArtifactKind,
   CoreArtifactStatus,
   CoreRecordMetadata,
 } from '../../../core/types.js';
@@ -29,6 +32,8 @@ export type CodeArtifactMaterializationScopeKind =
 export interface CodeArtifactMaterializationResult {
   core: CatsCoreState;
   artifact: CoreArtifactRecord;
+  activity: CoreActivityRecord | null;
+  activityCreated: boolean;
   created: boolean;
   disposition: CodeArtifactDisposition;
   toolResult: CodeArtifactToolResult;
@@ -72,6 +77,16 @@ export function materializeCodeArtifactDeclaration(
   const status = resolveMaterializationStatus(declaration, disposition, mapping.defaultStatus);
   const location = normalizeMaterializedLocation(declaration.location, declaration.anchors?.workspacePath);
   const artifactId = `artifact-${hashStableIdempotencyKey(idempotencyKey)}`;
+  const materialChangeSignature = buildMaterialChangeSignature({
+    declaration,
+    kind: declaration.artifact.coreKind ?? mapping.coreKind,
+    status,
+    disposition,
+    location,
+  });
+  const existing = core.artifacts.find((artifact) => artifact.id === artifactId) ?? null;
+  const existingSignature = readMaterialChangeSignature(existing);
+  const shouldRecordActivity = existingSignature !== materialChangeSignature;
   const metadata = buildCoreArtifactMetadata({
     declaration,
     disposition,
@@ -79,6 +94,7 @@ export function materializeCodeArtifactDeclaration(
     scope,
     idempotencyKey,
     location,
+    materialChangeSignature,
   });
   const result = upsertCoreArtifact(core, {
     id: artifactId,
@@ -96,10 +112,35 @@ export function materializeCodeArtifactDeclaration(
     summary: declaration.artifact.summary ?? null,
     metadata,
   }, now);
+  const activityResult = shouldRecordActivity
+    ? appendCoreActivity(result.core, {
+        id: `activity-${hashStableIdempotencyKey(`${artifactId}:${materialChangeSignature}`)}`,
+        kind: 'artifact_recorded',
+        actorId: resolveActivityActorId(declaration.producer),
+        projectId: result.artifact.projectId,
+        workItemId: result.artifact.workItemId,
+        conversationId: result.artifact.conversationId,
+        taskId: result.artifact.taskId,
+        runId: result.artifact.runId,
+        artifactId: result.artifact.id,
+        message: `Recorded Code artifact: ${result.artifact.title}.`,
+        metadata: {
+          codeArtifactDeclaration: {
+            declarationId: declaration.declarationId,
+            producerLabel: declaration.artifact.label,
+            disposition,
+            materialChangeSignature,
+          },
+        },
+      }, now)
+    : null;
+  const nextCore = activityResult?.core ?? result.core;
 
   return {
-    core: result.core,
+    core: nextCore,
     artifact: result.artifact,
+    activity: activityResult?.activity ?? null,
+    activityCreated: activityResult?.created ?? false,
     created: result.created,
     disposition,
     toolResult: CODE_ARTIFACT_DECLARATION_TOOL.materializationAccepted({
@@ -367,6 +408,7 @@ function buildCoreArtifactMetadata(input: {
   producerIdentity: ResolvedProducerIdentity;
   scope: ResolvedScope;
   idempotencyKey: string;
+  materialChangeSignature: string;
   location: { metadataLocation: CodeArtifactLocationNormalized | null };
 }): CoreRecordMetadata {
   return {
@@ -381,6 +423,7 @@ function buildCoreArtifactMetadata(input: {
       candidate: input.disposition === 'candidate',
       location: input.location.metadataLocation,
       anchors: input.declaration.anchors ?? {},
+      materialChangeSignature: input.materialChangeSignature,
       idempotency: {
         key: input.idempotencyKey,
         producerKind: input.declaration.producer.kind,
@@ -391,6 +434,109 @@ function buildCoreArtifactMetadata(input: {
       },
     },
   };
+}
+
+function buildMaterialChangeSignature(input: {
+  declaration: CodeArtifactDeclaration;
+  kind: CoreArtifactKind;
+  status: Extract<CoreArtifactStatus, 'draft' | 'ready'>;
+  disposition: CodeArtifactDisposition;
+  location: { path: string | null; metadataLocation: CodeArtifactLocationNormalized | null };
+}): string {
+  const anchors = input.declaration.anchors ?? {};
+  return hashStableIdempotencyKey(stableJsonStringify({
+    title: input.declaration.artifact.title,
+    kind: input.kind,
+    status: input.status,
+    projectId: anchors.projectId ?? null,
+    workItemId: anchors.workItemId ?? null,
+    conversationId: anchors.conversationId ?? null,
+    taskId: anchors.taskId ?? null,
+    runId: anchors.runId ?? null,
+    path: input.location.path,
+    mimeType: input.declaration.artifact.mimeType ?? null,
+    sizeBytes: input.declaration.artifact.sizeBytes ?? null,
+    summary: input.declaration.artifact.summary ?? null,
+    producerLabel: input.declaration.artifact.label,
+    disposition: input.disposition,
+    location: input.location.metadataLocation,
+    candidate: input.disposition === 'candidate',
+    producerDetails: removeVolatileProducerDetails(
+      readProducerDetails(input.declaration.metadata),
+    ),
+  }));
+}
+
+function readMaterialChangeSignature(artifact: CoreArtifactRecord | null): string | null {
+  const declaration = asRecord(artifact?.metadata.codeArtifactDeclaration);
+  const signature = declaration?.materialChangeSignature;
+  return typeof signature === 'string' && signature.trim() ? signature : null;
+}
+
+function resolveActivityActorId(producer: CodeArtifactProducer): string | null {
+  return producer.kind === 'agent' || producer.kind === 'user'
+    ? producer.actorId?.trim() || null
+    : null;
+}
+
+function readProducerDetails(metadata: CoreRecordMetadata | undefined): unknown {
+  return metadata?.producerDetails ?? null;
+}
+
+function removeVolatileProducerDetails(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => removeVolatileProducerDetails(item));
+  }
+  const record = asRecord(value);
+  if (!record) {
+    return value;
+  }
+
+  const normalized: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(record)) {
+    if (isVolatileProducerDetailKey(key)) {
+      continue;
+    }
+    normalized[key] = removeVolatileProducerDetails(child);
+  }
+  return normalized;
+}
+
+function isVolatileProducerDetailKey(key: string): boolean {
+  const normalized = key.toLowerCase();
+  return normalized.endsWith('at')
+    || normalized.includes('timestamp')
+    || normalized === 'retrycount'
+    || normalized === 'attemptcount'
+    || normalized === 'observedat'
+    || normalized === 'receivedat'
+    || normalized === 'updatedat'
+    || normalized === 'createdat';
+}
+
+function stableJsonStringify(value: unknown): string {
+  return JSON.stringify(sortJsonValue(value));
+}
+
+function sortJsonValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((item) => sortJsonValue(item));
+  }
+  const record = asRecord(value);
+  if (!record) {
+    return value;
+  }
+  return Object.fromEntries(
+    Object.entries(record)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, child]) => [key, sortJsonValue(child)]),
+  );
+}
+
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
 }
 
 function normalizeRequiredString(

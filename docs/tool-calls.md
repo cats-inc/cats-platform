@@ -316,8 +316,10 @@ declarations. The delegate writes accepted declarations into `CoreArtifactRecord
 with canonical idempotency metadata and deterministic artifact ids. The Code
 product API exposes `POST /api/code/artifacts/declarations` as the first
 authoritative submit route into that delegate. Runtime tool execution,
-frozen-scope fallback recovery, and `artifact_recorded` activity emission are
-follow-up slices.
+frozen-scope fallback recovery, and full native tool-result delivery are
+follow-up slices. Materialized create/update operations emit idempotent
+background `artifact_recorded` activities keyed by the material-change
+signature; exact no-op replays do not duplicate activity.
 
 ### Idempotency
 

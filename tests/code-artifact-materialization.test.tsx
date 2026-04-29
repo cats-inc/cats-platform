@@ -80,6 +80,9 @@ test('Code artifact materialization writes accepted declarations as Core artifac
   );
 
   assert.equal(result.created, true);
+  assert.equal(result.activityCreated, true);
+  assert.equal(result.activity?.kind, 'artifact_recorded');
+  assert.equal(result.activity?.artifactId, result.artifact.id);
   assert.equal(result.disposition, 'record');
   assert.equal(result.artifact.kind, 'preview');
   assert.equal(result.artifact.status, 'ready');
@@ -89,6 +92,7 @@ test('Code artifact materialization writes accepted declarations as Core artifac
   assert.equal(result.artifact.runId, 'run-code-1');
   assert.equal(result.toolResult.status, 'accepted');
   assert.equal(result.toolResult.artifactId, result.artifact.id);
+  assert.equal(result.core.activities.length, 1);
 
   const declarationMetadata = result.artifact.metadata.codeArtifactDeclaration as
     | Record<string, unknown>
@@ -107,17 +111,23 @@ test('Code artifact materialization writes accepted declarations as Core artifac
   assert.equal(idempotency.scopeId, 'run-code-1');
   assert.equal(idempotency.declarationId, 'preview-localhost:preview_url');
   assert.match(String(idempotency.key), /^code-artifact-declaration:v1:/u);
+  assert.match(String(declarationMetadata?.materialChangeSignature), /^[a-f0-9]{24}$/u);
 });
 
-test('Code artifact materialization is idempotent for the same canonical key', () => {
+test('Code artifact materialization is idempotent and records material changes', () => {
   const core = createAnchoredCodeCore();
   const first = materializeCodeArtifactDeclaration(
     core,
     createPreviewDeclaration(),
     new Date('2026-04-30T10:00:00.000Z'),
   );
-  const second = materializeCodeArtifactDeclaration(
+  const replay = materializeCodeArtifactDeclaration(
     first.core,
+    createPreviewDeclaration(),
+    new Date('2026-04-30T10:01:00.000Z'),
+  );
+  const changed = materializeCodeArtifactDeclaration(
+    replay.core,
     createPreviewDeclaration({
       artifact: {
         title: 'Local preview',
@@ -128,10 +138,18 @@ test('Code artifact materialization is idempotent for the same canonical key', (
     new Date('2026-04-30T10:05:00.000Z'),
   );
 
-  assert.equal(second.created, false);
-  assert.equal(second.artifact.id, first.artifact.id);
-  assert.equal(second.artifact.summary, 'Preview URL was refreshed.');
-  assert.equal(second.core.artifacts.length, 1);
+  assert.equal(replay.created, false);
+  assert.equal(replay.activityCreated, false);
+  assert.equal(replay.artifact.id, first.artifact.id);
+  assert.equal(replay.core.artifacts.length, 1);
+  assert.equal(replay.core.activities.length, 1);
+
+  assert.equal(changed.created, false);
+  assert.equal(changed.activityCreated, true);
+  assert.equal(changed.artifact.id, first.artifact.id);
+  assert.equal(changed.artifact.summary, 'Preview URL was refreshed.');
+  assert.equal(changed.core.artifacts.length, 1);
+  assert.equal(changed.core.activities.length, 2);
 });
 
 test('Code artifact materialization stores candidate declarations as draft artifacts', () => {
