@@ -36,6 +36,7 @@ import { RunDetailPage } from './components/runs/RunDetailPage.js';
 import { MissionsListPage } from './components/missions/MissionsListPage.js';
 import { MissionDetailPage } from './components/missions/MissionDetailPage.js';
 import { SchedulesListPage } from './components/schedules/SchedulesListPage.js';
+import { SchedulesDetailPage } from './components/schedules/SchedulesDetailPage.js';
 import { WorkItemDetailPage } from './components/work-items/WorkItemDetailPage.js';
 import { WorkItemsListPage } from './components/work-items/WorkItemsListPage.js';
 import { BrokenLinksPage } from './components/topdown/BrokenLinksPage.js';
@@ -113,6 +114,7 @@ export function AppRoutes({
       <Route key="mission-list" path="missions" element={<MissionsListPage />} />,
       <Route key="mission-detail" path="missions/:missionId" element={<MissionDetailPage />} />,
       <Route key="schedule-list" path="schedules" element={<SchedulesListPage payload={payload} />} />,
+      <Route key="schedule-detail" path="schedules/:scheduleId" element={<SchedulesDetailPage />} />,
       <Route key="task-list-legacy" path="tasks-legacy" element={<WorkTaskListView />} />,
       <Route key="task-detail-legacy" path="tasks-legacy/:taskId" element={<TaskDetailView />} />,
       <Route key="work-item-list" path="work-items" element={<WorkItemsListPage />} />,

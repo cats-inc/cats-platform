@@ -1,20 +1,19 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 import type { AppShellPayload } from '../../../api/contracts.js';
 import {
   createWorkSchedule,
   listWorkSchedules,
-  testFireWorkSchedule,
-  updateWorkSchedule,
   type WorkScheduleRule,
   type WorkScheduleTriggerReceipt,
 } from '../../api/schedules.js';
 import { formatRelative } from '../topdown/shared';
+import { buildWorkSchedulePath } from '../../workPaths.js';
 import {
   buildScheduleAuditExport,
   formatDateTime,
   formatScheduleSummary,
-  receiptsForRule,
   resolveDailyMorningGreetingShortcut,
   resolveLocalTimezone,
   serializeScheduleAuditExport,
@@ -78,13 +77,16 @@ export function SchedulesListPage({ payload }: SchedulesListPageProps): JSX.Elem
     }),
   [payload, snapshot.rules, timezone]);
 
-  const receiptsByRule = useMemo(() => {
-    const map = new Map<string, WorkScheduleTriggerReceipt[]>();
-    for (const rule of snapshot.rules) {
-      map.set(rule.id, receiptsForRule(snapshot.triggerReceipts, rule.id));
+  const latestReceiptByRule = useMemo(() => {
+    const map = new Map<string, WorkScheduleTriggerReceipt>();
+    for (const receipt of snapshot.triggerReceipts) {
+      const existing = map.get(receipt.ruleId);
+      if (!existing || receipt.actualFireAt.localeCompare(existing.actualFireAt) > 0) {
+        map.set(receipt.ruleId, receipt);
+      }
     }
     return map;
-  }, [snapshot.rules, snapshot.triggerReceipts]);
+  }, [snapshot.triggerReceipts]);
 
   const runAction = useCallback(async (
     key: string,
@@ -111,18 +113,6 @@ export function SchedulesListPage({ payload }: SchedulesListPageProps): JSX.Elem
     });
   }, [runAction, shortcut]);
 
-  const toggleRule = useCallback((rule: WorkScheduleRule) => {
-    void runAction(`toggle:${rule.id}`, async () => {
-      await updateWorkSchedule(rule.id, { enabled: !rule.enabled });
-    });
-  }, [runAction]);
-
-  const testFireRule = useCallback((rule: WorkScheduleRule) => {
-    void runAction(`test:${rule.id}`, async () => {
-      await testFireWorkSchedule(rule.id);
-    });
-  }, [runAction]);
-
   const exportAudit = useCallback(() => {
     const payload = buildScheduleAuditExport({
       exportedAt: new Date().toISOString(),
@@ -140,17 +130,33 @@ export function SchedulesListPage({ payload }: SchedulesListPageProps): JSX.Elem
     URL.revokeObjectURL(url);
   }, [snapshot.rules, snapshot.triggerReceipts]);
 
+  const sortedRules = useMemo(
+    () => snapshot.rules.slice().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+    [snapshot.rules],
+  );
+
+  const createButtonLabel = !shortcut.available
+    ? 'Daily greeting'
+    : shortcut.existingRule
+      ? 'Daily greeting exists'
+      : busyAction === 'create-morning-greeting'
+        ? 'Creating…'
+        : '+ Daily greeting';
   const createDisabled =
     !shortcut.available ||
     Boolean(shortcut.available && shortcut.existingRule) ||
     busyAction !== null;
+  const createTooltip =
+    shortcut.available
+      ? `${shortcut.catName} · ${shortcut.bindingName} · ${timezone}`
+      : shortcut.message;
 
   return (
     <div className="schedulesList">
       <header className="channelTopBar schedulesListTopBar">
         <div className="channelTopBarStart schedulesListTopBar__start">
           <h1 className="channelTopBarTitle schedulesListTopBar__title">Schedules</h1>
-          <span className="schedulesListTopBar__count">{snapshot.rules.length}</span>
+          <span className="schedulesListTopBar__count">{sortedRules.length}</span>
         </div>
         <div className="channelTopBarCenter schedulesListTopBar__center">
           <p className="schedulesListTopBar__lede">
@@ -161,44 +167,35 @@ export function SchedulesListPage({ payload }: SchedulesListPageProps): JSX.Elem
           <button
             type="button"
             className="schedulesList__secondaryButton"
+            onClick={exportAudit}
+            disabled={
+              busyAction !== null ||
+              (snapshot.rules.length === 0 && snapshot.triggerReceipts.length === 0)
+            }
+          >
+            Export
+          </button>
+          <button
+            type="button"
+            className="schedulesList__secondaryButton"
             onClick={() => void load()}
             disabled={busyAction !== null || status === 'loading'}
           >
             Refresh
           </button>
-        </div>
-      </header>
-
-      <main className="schedulesList__main">
-        <section className="schedulesList__shortcutBand" aria-label="Schedule shortcuts">
-          <div className="schedulesList__shortcutText">
-            <h2 className="schedulesList__sectionTitle">Daily greeting</h2>
-            <p className="schedulesList__sectionCopy">
-              Creates a generic daily schedule that launches a Cat mission with
-              declared companion-content and Telegram delivery tools.
-            </p>
-            {shortcut.available ? (
-              <p className="schedulesList__shortcutMeta">
-                {shortcut.catName} · {shortcut.bindingName} · {timezone}
-              </p>
-            ) : (
-              <p className="schedulesList__shortcutMeta">{shortcut.message}</p>
-            )}
-          </div>
           <button
             type="button"
             className="schedulesList__primaryButton"
             onClick={createMorningGreeting}
             disabled={createDisabled}
+            title={createTooltip}
           >
-            {shortcut.available && shortcut.existingRule
-              ? 'Daily greeting exists'
-              : busyAction === 'create-morning-greeting'
-                ? 'Creating...'
-                : 'Create daily greeting'}
+            {createButtonLabel}
           </button>
-        </section>
+        </div>
+      </header>
 
+      <main className="schedulesList__main">
         {actionError ? (
           <p className="schedulesList__error" role="alert">
             {actionError}
@@ -210,268 +207,85 @@ export function SchedulesListPage({ payload }: SchedulesListPageProps): JSX.Elem
           </p>
         ) : null}
 
-        {status === 'loading' && snapshot.rules.length === 0 ? (
-          <p className="schedulesList__empty">Loading schedules...</p>
-        ) : snapshot.rules.length === 0 ? (
+        {status === 'loading' && sortedRules.length === 0 ? (
+          <p className="schedulesList__empty">Loading schedules…</p>
+        ) : sortedRules.length === 0 ? (
           <p className="schedulesList__empty">
-            No schedules yet. Create the daily greeting shortcut or add a rule through the API.
+            No schedules yet. Click <strong>+ Daily greeting</strong> to add one,
+            or POST to <code>/api/work/schedules</code>.
           </p>
         ) : (
           <ul className="schedulesList__list">
-            {snapshot.rules
-              .slice()
-              .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
-              .map((rule) => (
-                <ScheduleRow
-                  key={rule.id}
-                  rule={rule}
-                  receipts={receiptsByRule.get(rule.id) ?? []}
-                  busyAction={busyAction}
-                  onToggle={toggleRule}
-                  onTestFire={testFireRule}
-                />
-              ))}
+            {sortedRules.map((rule) => (
+              <ScheduleRow
+                key={rule.id}
+                rule={rule}
+                latestReceipt={latestReceiptByRule.get(rule.id) ?? null}
+              />
+            ))}
           </ul>
         )}
-
-        <ScheduleAuditPanel
-          receipts={snapshot.triggerReceipts}
-          ruleById={new Map(snapshot.rules.map((rule) => [rule.id, rule]))}
-          onExport={exportAudit}
-          exportDisabled={snapshot.rules.length === 0 && snapshot.triggerReceipts.length === 0}
-        />
       </main>
     </div>
   );
 }
 
-function ScheduleAuditPanel({
-  receipts,
-  ruleById,
-  onExport,
-  exportDisabled,
-}: {
-  receipts: readonly WorkScheduleTriggerReceipt[];
-  ruleById: ReadonlyMap<string, WorkScheduleRule>;
-  onExport: () => void;
-  exportDisabled: boolean;
-}): JSX.Element {
-  const recentReceipts = receipts
-    .slice()
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-    .slice(0, 12);
-
-  return (
-    <section className="schedulesList__audit" aria-label="Recent schedule audit">
-      <header className="schedulesList__auditHead">
-        <div>
-          <h2 className="schedulesList__sectionTitle">Recent trigger audit</h2>
-          <p className="schedulesList__sectionCopy">
-            Trigger receipts, retry attempts, skips, and admitted runs.
-          </p>
-        </div>
-        <button
-          type="button"
-          className="schedulesList__secondaryButton"
-          onClick={onExport}
-          disabled={exportDisabled}
-        >
-          Export JSON
-        </button>
-      </header>
-      {recentReceipts.length === 0 ? (
-        <p className="schedulesList__auditEmpty">No trigger receipts yet.</p>
-      ) : (
-        <ol className="schedulesList__auditRows">
-          {recentReceipts.map((receipt) => {
-            const rule = ruleById.get(receipt.ruleId) ?? null;
-            return (
-              <li key={receipt.id} className="schedulesList__auditRow">
-                <span
-                  className={`schedulesList__auditStatus schedulesList__auditStatus--${
-                    receipt.status
-                  }`}
-                >
-                  {receipt.status}
-                </span>
-                <span className="schedulesList__auditTitle">
-                  {rule?.title ?? receipt.ruleId}
-                </span>
-                <span className="schedulesList__auditMeta">
-                  {receipt.reason}
-                  {typeof receipt.metadata.retryAttempt === 'number'
-                    ? ` #${receipt.metadata.retryAttempt}`
-                    : ''}
-                  {' · '}
-                  {formatRelative(receipt.actualFireAt)}
-                </span>
-                {receipt.runId ? (
-                  <code className="schedulesList__auditRun">{receipt.runId}</code>
-                ) : null}
-              </li>
-            );
-          })}
-        </ol>
-      )}
-    </section>
-  );
-}
-
 function ScheduleRow({
   rule,
-  receipts,
-  busyAction,
-  onToggle,
-  onTestFire,
+  latestReceipt,
 }: {
   rule: WorkScheduleRule;
-  receipts: readonly WorkScheduleTriggerReceipt[];
-  busyAction: string | null;
-  onToggle: (rule: WorkScheduleRule) => void;
-  onTestFire: (rule: WorkScheduleRule) => void;
+  latestReceipt: WorkScheduleTriggerReceipt | null;
 }): JSX.Element {
-  const latestReceipt = receipts[0] ?? null;
-  const lastRunId = rule.lastRunId ?? latestReceipt?.runId ?? null;
-  const lastFailure = rule.lastFailure ??
-    (latestReceipt?.status === 'failed' ? latestReceipt.message : null);
-  const skippedReceipt = latestReceipt?.status === 'skipped' ? latestReceipt : null;
-  const retryState = rule.retryState ?? null;
-  const consecutiveFailures = rule.consecutiveFailures ?? 0;
-  const toggleBusy = busyAction === `toggle:${rule.id}`;
-  const testBusy = busyAction === `test:${rule.id}`;
+  const summary = formatScheduleSummary(rule);
+  const nextFireText = rule.nextFireAt
+    ? `next ${formatDateTime(rule.nextFireAt, rule.timezone)}`
+    : null;
+  const triggerChip = latestReceipt
+    ? `${latestReceipt.status} · ${formatRelative(latestReceipt.actualFireAt)}`
+    : null;
+  const enabledClass = rule.enabled ? 'enabled' : 'disabled';
 
   return (
     <li className="schedulesList__row">
-      <div className="schedulesList__rowHead">
-        <div className="schedulesList__rowTitleBlock">
+      <Link
+        to={buildWorkSchedulePath(rule.id)}
+        className="schedulesList__rowLink"
+        aria-label={`Open schedule ${rule.title}`}
+      >
+        <div className="schedulesList__rowMain">
           <span
-            className={
-              'schedulesList__dot' +
-              (rule.enabled ? ' schedulesList__dot--enabled' : ' schedulesList__dot--disabled')
-            }
+            className={`schedulesList__dot schedulesList__dot--${enabledClass}`}
             aria-hidden="true"
           />
           <div className="schedulesList__rowText">
             <span className="schedulesList__rowTitle">{rule.title}</span>
-            <span className="schedulesList__rowSummary">{formatScheduleSummary(rule)}</span>
+            <span className="schedulesList__rowSummary">{summary}</span>
           </div>
         </div>
-        <div className="schedulesList__actions">
-          <button
-            type="button"
-            className="schedulesList__secondaryButton"
-            onClick={() => onTestFire(rule)}
-            disabled={busyAction !== null}
-          >
-            {testBusy ? 'Firing...' : 'Test fire'}
-          </button>
-          <button
-            type="button"
-            className="schedulesList__secondaryButton"
-            onClick={() => onToggle(rule)}
-            disabled={busyAction !== null}
-          >
-            {toggleBusy ? 'Updating...' : rule.enabled ? 'Disable' : 'Enable'}
-          </button>
+        <div className="schedulesList__rowMeta">
+          {nextFireText ? (
+            <span className="schedulesList__chip">{nextFireText}</span>
+          ) : null}
+          {triggerChip ? (
+            <span
+              className={`schedulesList__chip schedulesList__chip--${
+                latestReceipt!.status
+              }`}
+            >
+              {triggerChip}
+            </span>
+          ) : null}
+          <span className="schedulesList__metric--muted">
+            {formatRelative(rule.updatedAt)}
+          </span>
           <span
-            className={
-              'schedulesList__statusPill' +
-              (rule.enabled
-                ? ' schedulesList__statusPill--enabled'
-                : ' schedulesList__statusPill--disabled')
-            }
+            className={`schedulesList__statusPill schedulesList__statusPill--${enabledClass}`}
           >
-            {rule.enabled ? 'enabled' : 'disabled'}
+            {enabledClass}
           </span>
         </div>
-      </div>
-
-      <dl className="schedulesList__metrics">
-        <Metric label="Next fire" value={formatDateTime(rule.nextFireAt, rule.timezone)} />
-        <Metric label="Last scheduled fire" value={formatDateTime(rule.lastFireAt, rule.timezone)} />
-        <Metric label="Last run" value={lastRunId ?? 'None'} mono={Boolean(lastRunId)} />
-        <Metric label="Revision" value={`r${rule.revision}`} />
-      </dl>
-
-      <div className="schedulesList__diagnostics">
-        {!rule.enabled ? (
-          <DiagnosticPill
-            tone={rule.pausedAt ? 'bad' : 'muted'}
-            text={rule.pauseReason ?? 'Disabled: no future fires will be evaluated.'}
-          />
-        ) : null}
-        {retryState ? (
-          <DiagnosticPill
-            tone="warn"
-            text={[
-              `Retry ${retryState.attempt}/${retryState.maxAttempts}`,
-              formatDateTime(retryState.nextRetryAt, rule.timezone),
-            ].join(' at ')}
-          />
-        ) : null}
-        {consecutiveFailures > 0 ? (
-          <DiagnosticPill
-            tone="warn"
-            text={`${consecutiveFailures} consecutive failed scheduled fires`}
-          />
-        ) : null}
-        {lastFailure ? (
-          <DiagnosticPill tone="bad" text={`Last failure: ${lastFailure}`} />
-        ) : null}
-        {skippedReceipt ? (
-          <DiagnosticPill
-            tone="warn"
-            text={`Skipped ${skippedReceipt.reason}: ${skippedReceipt.message ?? 'no detail'}`}
-          />
-        ) : null}
-        {latestReceipt ? (
-          <DiagnosticPill
-            tone={latestReceipt.status === 'failed'
-              ? 'bad'
-              : latestReceipt.status === 'skipped'
-                ? 'warn'
-                : 'ok'}
-            text={`Last trigger ${latestReceipt.status} · ${latestReceipt.reason} · ${
-              formatRelative(latestReceipt.actualFireAt)
-            }`}
-          />
-        ) : (
-          <DiagnosticPill tone="muted" text="No trigger history yet." />
-        )}
-      </div>
+      </Link>
     </li>
-  );
-}
-
-function Metric({
-  label,
-  value,
-  mono,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}): JSX.Element {
-  return (
-    <div className="schedulesList__metric">
-      <dt>{label}</dt>
-      <dd className={mono ? 'schedulesList__metricValue--mono' : undefined}>
-        {value}
-      </dd>
-    </div>
-  );
-}
-
-function DiagnosticPill({
-  tone,
-  text,
-}: {
-  tone: 'ok' | 'warn' | 'bad' | 'muted';
-  text: string;
-}): JSX.Element {
-  return (
-    <span className={`schedulesList__diagnostic schedulesList__diagnostic--${tone}`}>
-      {text}
-    </span>
   );
 }
