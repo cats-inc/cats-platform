@@ -9,7 +9,7 @@
 
 | Field | Value |
 |-------|-------|
-| **Status** | Draft |
+| **Status** | In Progress (all Open Questions resolved 2026-04-29; mobile-safe contracts boundary slice in flight) |
 | **Owner** | TBD |
 | **Reviewer** | Owner |
 | **Related ADR** | [ADR-092](../decisions/092-reposition-cats-mobile-as-first-class-product-client.md) |
@@ -317,24 +317,32 @@ the single source of truth for bubble styling on mobile.
 
 ## Open Questions
 
-- [ ] **Two Work presets**: which two product presets sit on the Work
-  tab next to `+New work`? Pending product-team confirmation.
-- [ ] **Settings tab depth**: beyond connection / notifications / owner /
-  deep-link-to-web, does mobile Settings include any additional surface
-  (e.g. companion controls, transport pairing entry, Cats registry
-  read-only browse)? Owner decision needed before PLAN-084 Phase 6.
-- [ ] **MY YYY routing target**: does `MY CODES` / `MY WORKS` push into
-  the platform `MY CATS` lens (FR-046) directly, or does each product
-  expose a product-local lens screen that re-uses platform projection
-  data? Both satisfy FR-047; product-team preference pending.
-- [ ] **WebView fallback gate**: PLAN-084 Phase 2 owns the visual-diff
-  acceptance criteria; if the gate fails, ChatView falls back to a
-  WebView pointing at the web ChatView. The exact pass/fail bar (image
-  similarity threshold? manual sign-off?) needs an explicit decision.
-- [ ] **Lobby content scoping**: the platform `/lobby` projection is
-  desktop-shaped today. Does mobile show the same projection truncated,
-  or a mobile-specific subset (e.g. omit the Guide Cat assist column on
-  small viewports)?
+All five questions resolved 2026-04-29 by the integrator review on commit
+`9531f0e8`. Decisions captured below; the original question text is kept
+for historical traceability.
+
+- [x] **Two Work presets** — *Resolved*: `+ Team work` and `+ Peer work`,
+  mirroring the Code preset shape (`+Team code` / `+Peer code` from
+  FR-038). The Work tab now ships these as final names rather than
+  TODO-marked placeholders.
+- [x] **Settings tab depth** — *Resolved*: keep exactly the four canonical
+  sections — connection mode, notifications, owner, advanced (deep link
+  to web). Companion controls, transport pairing entry, and Cats registry
+  read-only browse stay desktop-only. Developer tools row stays
+  `__DEV__`-only (already shipped in `324aed96`).
+- [x] **MY YYY routing target** — *Resolved*: route into the platform
+  `MY CATS` lens projection filtered by product (the Code lens for
+  `MY CODES`, the Work lens for `MY WORKS`). No product-local lens
+  screen, no parallel agent home model — FR-046 / FR-047 only.
+- [x] **WebView fallback gate** — *Resolved*: first-version gate is
+  manual operator sign-off against the side-by-side bubble harness on
+  iOS at the three NFR-002 viewports. Image-similarity automation is a
+  later refinement, not v1.
+- [x] **Lobby content scoping** — *Resolved*: mobile renders a
+  mobile-specific subset of the `/lobby` projection (today summary,
+  Guide Cat assist greeting, recent activity, quick entry). Data source
+  is the same `/lobby` projection as desktop — mobile does not add a
+  new persistence schema.
 
 ## References
 
