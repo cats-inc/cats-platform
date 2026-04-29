@@ -298,6 +298,9 @@ test('code-origin runtime declare_artifact calls persist artifacts during dispat
         toolId: null,
       },
     ],
+    finalization: {
+      artifactClaims: [{ declarationId: 'preview-localhost:preview_url' }],
+    },
   });
 
   const createInput = buildNewChatChannelInput({
@@ -392,6 +395,12 @@ test('code-origin runtime declare_artifact calls persist artifacts during dispat
         },
       },
     ]);
+    assert.deepEqual(artifactMetadata?.codeArtifactFinalization, {
+      status: 'accepted',
+      artifactClaims: [
+        { declarationId: 'preview-localhost:preview_url', label: null, title: null },
+      ],
+    });
   });
 });
 
