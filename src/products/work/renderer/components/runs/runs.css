@@ -257,6 +257,47 @@ main.canvas:has(> .runDetail) {
   flex-basis: 100%;
 }
 
+.runDetailTopBar__action {
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.runDetailTopBar__action--destructive {
+  color: #c0382b;
+  border-color: rgba(192, 56, 43, 0.3);
+}
+
+.runDetailTopBar__action--destructive:hover:not(:disabled) {
+  background: rgba(192, 56, 43, 0.08);
+}
+
+.runDetailTopBar__action--destructive:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.runDetail__warning {
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(192, 128, 56, 0.35);
+  background: rgba(192, 128, 56, 0.08);
+  color: #c08038;
+  border-radius: 6px;
+  font-size: 0.82rem;
+}
+
 .runDetail__main {
   flex: 1;
   overflow-y: auto;
@@ -299,8 +340,12 @@ main.canvas:has(> .runDetail) {
 }
 
 .runDetail__error {
-  margin: 0;
+  margin: 0 0 8px;
+  padding: 8px 10px;
+  border: 1px solid rgba(192, 56, 43, 0.35);
+  background: rgba(192, 56, 43, 0.08);
   color: #c0382b;
+  border-radius: 6px;
   font-size: 0.82rem;
 }
 

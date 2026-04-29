@@ -1,9 +1,14 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { formatRelative } from "../topdown/shared";
-import { useMissionsQuery } from "../../state/queries/missionsQuery.js";
-import { useRunsQuery } from "../../state/queries/runsQuery.js";
+import { cancelWorkMission } from "../../api/runCancellation.js";
+import {
+  MISSIONS_QUERY_KEY,
+  useMissionsQuery,
+} from "../../state/queries/missionsQuery.js";
+import { RUNS_QUERY_KEY, useRunsQuery } from "../../state/queries/runsQuery.js";
 import { useTasksQuery } from "../../state/queries/tasksQuery.js";
 import { useWorkItemsQuery } from "../../state/queries/workItemsQuery.js";
 import {
@@ -16,14 +21,59 @@ import "./missions.css";
 
 export function MissionDetailPage(): JSX.Element {
   const { missionId } = useParams<{ missionId: string }>();
+  const queryClient = useQueryClient();
   const missionsQuery = useMissionsQuery();
   const workItemsQuery = useWorkItemsQuery();
   const tasksQuery = useTasksQuery();
   const runsQuery = useRunsQuery();
+  const [cancelBlockerMessage, setCancelBlockerMessage] = useState<string | null>(null);
 
   const mission = missionId
     ? missionsQuery.data?.missions.find((m) => m.id === missionId)
     : undefined;
+
+  const cancelMissionMutation = useMutation({
+    mutationFn: async (id: string) => cancelWorkMission(id),
+    onSuccess: async (result) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: MISSIONS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: RUNS_QUERY_KEY }),
+      ]);
+      if (result.status === 'blocked') {
+        const detail = result.blockers
+          .map((blocker) => `${blocker.runId}: ${blocker.reason}`)
+          .join('; ');
+        setCancelBlockerMessage(
+          result.message
+            ?? `Mission cancel blocked. ${detail || 'See per-run results.'}`,
+        );
+      } else {
+        setCancelBlockerMessage(null);
+      }
+    },
+  });
+
+  const handleCancelMission = () => {
+    if (!mission) return;
+    if (
+      !window.confirm(
+        `Cancel mission "${mission.title}"?\n\n`
+        + 'Active runs will be stopped through supervised runtime cancellation. '
+        + 'Linked Tasks and Work Items are not changed.',
+      )
+    ) {
+      return;
+    }
+    setCancelBlockerMessage(null);
+    cancelMissionMutation.mutate(mission.id);
+  };
+
+  const cancelMutationError = cancelMissionMutation.error;
+  const cancelErrorMessage = cancelMutationError
+    ? cancelMutationError instanceof Error
+      ? cancelMutationError.message
+      : 'Mission cancel failed.'
+    : null;
 
   const linkedWorkItem = mission?.managedWorkId
     ? workItemsQuery.data?.workItems.find((wi) => wi.id === mission.managedWorkId)
@@ -52,6 +102,11 @@ export function MissionDetailPage(): JSX.Element {
   if (!mission) {
     return <MissionNotFound missionId={missionId ?? null} />;
   }
+
+  const isTerminal =
+    mission.status === 'completed'
+    || mission.status === 'failed'
+    || mission.status === 'cancelled';
 
   return (
     <div className="missionDetail">
@@ -84,6 +139,17 @@ export function MissionDetailPage(): JSX.Element {
         </div>
         <div className="channelTopBarCenter missionDetailTopBar__center" />
         <div className="channelTopBarEnd missionDetailTopBar__end">
+          {!isTerminal ? (
+            <button
+              type="button"
+              className="missionDetailTopBar__action missionDetailTopBar__action--destructive"
+              onClick={handleCancelMission}
+              disabled={cancelMissionMutation.isPending}
+              aria-label="Cancel mission"
+            >
+              {cancelMissionMutation.isPending ? "Cancelling…" : "Cancel"}
+            </button>
+          ) : null}
           <span
             className={`missionDetail__statusPill missionDetail__statusPill--${mission.status}`}
           >
@@ -93,6 +159,16 @@ export function MissionDetailPage(): JSX.Element {
       </header>
 
       <main className="missionDetail__main">
+        {cancelErrorMessage ? (
+          <p className="missionDetail__error" role="alert">
+            {cancelErrorMessage}
+          </p>
+        ) : null}
+        {cancelBlockerMessage ? (
+          <p className="missionDetail__warning" role="alert">
+            {cancelBlockerMessage}
+          </p>
+        ) : null}
         <section className="missionDetail__section">
           <h2 className="missionDetail__sectionHeading">Mission summary</h2>
           <dl className="missionDetail__summary">

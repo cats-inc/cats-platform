@@ -1,9 +1,18 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { formatRelative } from "../topdown/shared";
-import { useRunsQuery, type WorkRunListItem } from "../../state/queries/runsQuery.js";
+import {
+  stopWorkRun,
+  type WorkRunStopResponse,
+} from "../../api/runCancellation.js";
+import { MISSIONS_QUERY_KEY } from "../../state/queries/missionsQuery.js";
+import {
+  RUNS_QUERY_KEY,
+  useRunsQuery,
+  type WorkRunListItem,
+} from "../../state/queries/runsQuery.js";
 import { useTasksQuery } from "../../state/queries/tasksQuery.js";
 import {
   EMPTY_WORK_GRAPH,
@@ -67,6 +76,23 @@ function buildSubRunTree(
   return walk(rootRunId, new Set([rootRunId]));
 }
 
+function isTerminalRunStatus(status: WorkRunListItem["status"]): boolean {
+  return status === "completed" || status === "failed" || status === "cancelled";
+}
+
+function buildRuntimeAbortBlockerMessage(result: WorkRunStopResponse): string {
+  const { runtimeAbort } = result;
+  if (runtimeAbort.status === "failed") {
+    return runtimeAbort.error
+      ? `Runtime cancellation failed: ${runtimeAbort.error}`
+      : "Runtime cancellation failed. Run was not marked cancelled.";
+  }
+  if (runtimeAbort.status === "not_applicable") {
+    return "Run is not stoppable: no supervised runtime session is bridged.";
+  }
+  return "Run is not stoppable.";
+}
+
 function formatDuration(start: string | null, end: string | null): string | null {
   if (!start) return null;
   const startMs = Date.parse(start);
@@ -87,12 +113,54 @@ export function RunDetailPage(): JSX.Element {
   const runsQuery = useRunsQuery();
   const tasksQuery = useTasksQuery();
   const graph = useWorkGraphQuery().data ?? EMPTY_WORK_GRAPH;
+  const [stopBlockerMessage, setStopBlockerMessage] = useState<string | null>(null);
 
   const allRuns = runsQuery.data?.runs ?? [];
   const allTasks = tasksQuery.data?.tasks ?? [];
 
   const run = runId ? allRuns.find((r) => r.id === runId) : undefined;
   const parentTask = taskId ? allTasks.find((t) => t.id === taskId) : undefined;
+
+  const stopRunMutation = useMutation({
+    mutationFn: async (id: string) => stopWorkRun(id),
+    onSuccess: async (result: WorkRunStopResponse) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: RUNS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: MISSIONS_QUERY_KEY }),
+        queryClient.invalidateQueries({ queryKey: WORK_GRAPH_QUERY_KEY }),
+      ]);
+      if (result.status === 'not_stoppable') {
+        setStopBlockerMessage(
+          result.message ?? buildRuntimeAbortBlockerMessage(result),
+        );
+      } else {
+        setStopBlockerMessage(null);
+      }
+    },
+  });
+
+  const handleStopRun = () => {
+    if (!run) return;
+    if (
+      !window.confirm(
+        `Stop run "${run.title}"?\n\n`
+        + 'Cats requests runtime cancellation through the supervised session '
+        + 'before marking the run cancelled. External side effects already '
+        + 'sent are not rolled back.',
+      )
+    ) {
+      return;
+    }
+    setStopBlockerMessage(null);
+    stopRunMutation.mutate(run.id);
+  };
+
+  const stopMutationError = stopRunMutation.error;
+  const stopErrorMessage = stopMutationError
+    ? stopMutationError instanceof Error
+      ? stopMutationError.message
+      : 'Run stop failed.'
+    : null;
   const subTree = useMemo<RunTreeNode[]>(
     () => (runId ? buildSubRunTree(runId, allRuns) : []),
     [runId, allRuns],
@@ -229,6 +297,17 @@ export function RunDetailPage(): JSX.Element {
         </div>
         <div className="channelTopBarCenter runDetailTopBar__center" />
         <div className="channelTopBarEnd runDetailTopBar__end">
+          {!isTerminalRunStatus(run.status) ? (
+            <button
+              type="button"
+              className="runDetailTopBar__action runDetailTopBar__action--destructive"
+              onClick={handleStopRun}
+              disabled={stopRunMutation.isPending}
+              aria-label="Stop run"
+            >
+              {stopRunMutation.isPending ? "Stopping…" : "Stop"}
+            </button>
+          ) : null}
           <span className={`runDetail__statusPill runDetail__statusPill--${run.status}`}>
             {run.status.replace(/_/g, " ")}
           </span>
@@ -236,6 +315,16 @@ export function RunDetailPage(): JSX.Element {
       </header>
 
       <main className="runDetail__main">
+        {stopErrorMessage ? (
+          <p className="runDetail__error" role="alert">
+            {stopErrorMessage}
+          </p>
+        ) : null}
+        {stopBlockerMessage ? (
+          <p className="runDetail__warning" role="alert">
+            {stopBlockerMessage}
+          </p>
+        ) : null}
         <section className="runDetail__section">
           <h2 className="runDetail__sectionHeading">Run summary</h2>
           <dl className="runDetail__summary">
