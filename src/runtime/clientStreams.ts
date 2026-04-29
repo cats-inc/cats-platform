@@ -5,6 +5,7 @@ import type {
 } from './client.js';
 import {
   normalizeRuntimeMessageSegmentEntry,
+  readRuntimeMessageResultFinalization,
   readRuntimeMessageResultSegments,
   readRuntimeMessageResultText,
 } from './messageSegments.js';
@@ -25,6 +26,7 @@ export async function readRuntimeNdjsonResponse(
   const decoder = new TextDecoder();
   let buffer = '';
   const segments: RuntimeMessageSegment[] = [];
+  let finalization: Record<string, unknown> | null = null;
   let inputTokens = 0;
   let outputTokens = 0;
 
@@ -65,10 +67,16 @@ function processEvent(event: Record<string, unknown>): void {
       return;
     }
 
+    if (type === 'finalization') {
+      finalization = readRuntimeMessageResultFinalization(event) ?? finalization;
+      return;
+    }
+
     if (type === 'result') {
       const usage = (event.usage ?? {}) as Record<string, unknown>;
       inputTokens = Number(usage.inputTokens ?? 0);
       outputTokens = Number(usage.outputTokens ?? 0);
+      finalization = readRuntimeMessageResultFinalization(event) ?? finalization;
       const normalizedResultSegments = readRuntimeMessageResultSegments(event);
       if (normalizedResultSegments.length > 0) {
         if (segments.length === 0) {
@@ -139,6 +147,7 @@ function processEvent(event: Record<string, unknown>): void {
 
   return {
     segments,
+    ...(finalization ? { finalization } : {}),
     inputTokens,
     outputTokens,
     tokensUsed: inputTokens + outputTokens,

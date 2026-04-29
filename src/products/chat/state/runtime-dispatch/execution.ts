@@ -58,6 +58,7 @@ export interface DispatchExecution extends DispatchRequest {
   channelChatCwd?: string;
   recoveredMessages?: ChatMessage[];
   runtimeAssistantMetadata?: Record<string, unknown>;
+  runtimeFinalization?: Record<string, unknown> | null;
 }
 
 type RuntimeEffectCoreStore = Pick<ChatStore, 'updateCore'>;
@@ -259,6 +260,7 @@ export async function executeDispatch(
       ...(Object.keys(runtimeAssistantMetadata).length > 0
         ? { runtimeAssistantMetadata }
         : {}),
+      ...(runtimeResult.finalization ? { runtimeFinalization: runtimeResult.finalization } : {}),
     };
   } catch (error) {
     const supervisedRejection = error instanceof RuntimeSupervisionRejectedError

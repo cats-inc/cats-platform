@@ -136,6 +136,35 @@ test('Code runtime finalization gate rejects unmatched structured artifact claim
   assert.equal(decision.gateId, CODE_ARTIFACT_RUNTIME_ENRICHER_ID);
 });
 
+test('Code runtime finalization gate reads runtime finalization envelopes', () => {
+  registerCodeArtifactRuntimeFinalizationGate();
+  const decision = applyRuntimeAssistantFinalizationGates(
+    { originSurface: 'code', id: 'channel-code' },
+    {
+      assistantTurnId: 'turn-1',
+      bodyText: 'I recorded the preview.',
+      runtimeFinalization: {
+        artifactClaims: [{ declarationId: 'preview-localhost:preview_url' }],
+      },
+      runtimeAssistantMetadata: {
+        [CODE_ARTIFACT_RUNTIME_ENRICHER_ID]: {
+          codeArtifactToolResults: [
+            {
+              result: {
+                status: 'accepted',
+                declarationId: 'preview-localhost:preview_url',
+                artifactId: 'artifact-1',
+              },
+            },
+          ],
+        },
+      },
+    },
+  );
+
+  assert.equal(decision.status, 'accepted');
+});
+
 test('Code runtime finalization gate accepts same-turn artifact claims', () => {
   registerCodeArtifactRuntimeFinalizationGate();
   const decision = applyRuntimeAssistantFinalizationGates(

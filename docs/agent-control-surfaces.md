@@ -153,7 +153,9 @@ Source of truth:
 
 ## Code Assistant Finalization
 
-Cats Code has a scaffolded finalization envelope:
+Cats Code has a structured finalization envelope that runtime adapters can
+emit as a `finalization` stream event or as `result.finalization` /
+`result.finalizationEnvelope` metadata:
 
 ```ts
 interface CodeAssistantFinalization {
@@ -175,6 +177,7 @@ result. Otherwise finalization is blocked with
 
 Source of truth:
 
+- `src/platform/runtime/assistantFinalization.ts`
 - `src/products/code/state/sessionFinalization.ts`
 - [SPEC-092](./specs/SPEC-092-code-artifact-declaration-contract.md)
 - [PLAN-081](./plans/PLAN-081-code-artifact-declaration-rollout.md)

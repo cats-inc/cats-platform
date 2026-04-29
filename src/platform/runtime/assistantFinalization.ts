@@ -3,6 +3,7 @@ import type { RuntimeInvocationEnrichmentChannel } from './invocationEnrichment.
 export interface RuntimeAssistantFinalizationInput {
   assistantTurnId: string;
   bodyText: string;
+  runtimeFinalization?: Record<string, unknown> | null;
   runtimeAssistantMetadata?: Record<string, unknown> | null;
 }
 

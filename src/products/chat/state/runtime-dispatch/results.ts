@@ -700,6 +700,7 @@ export function applyDispatchExecutions(
         {
           assistantTurnId,
           bodyText: fullResponseText,
+          runtimeFinalization: execution.runtimeFinalization,
           runtimeAssistantMetadata: execution.runtimeAssistantMetadata,
         },
       );

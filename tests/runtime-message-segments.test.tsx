@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   normalizeRuntimeMessageSegmentEntry,
+  readRuntimeMessageResultFinalization,
   readRuntimeMessageResultSegments,
   readRuntimeMessageResultText,
 } from '../src/runtime/messageSegments.ts';
@@ -121,4 +122,33 @@ test('readRuntimeMessageResultText prefers top-level text/content before nested 
     'nested-content',
   );
   assert.equal(readRuntimeMessageResultText({ result: {} }), '');
+});
+
+test('readRuntimeMessageResultFinalization reads top-level and nested envelopes', () => {
+  assert.deepEqual(
+    readRuntimeMessageResultFinalization({
+      finalization: {
+        artifactClaims: [{ declarationId: 'preview-localhost:preview_url' }],
+      },
+    }),
+    {
+      artifactClaims: [{ declarationId: 'preview-localhost:preview_url' }],
+    },
+  );
+  assert.deepEqual(
+    readRuntimeMessageResultFinalization({
+      result: {
+        finalizationEnvelope: {
+          codeArtifactFinalization: {
+            artifactClaims: [{ declarationId: 'report:test_report' }],
+          },
+        },
+      },
+    }),
+    {
+      codeArtifactFinalization: {
+        artifactClaims: [{ declarationId: 'report:test_report' }],
+      },
+    },
+  );
 });

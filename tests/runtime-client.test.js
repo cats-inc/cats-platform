@@ -671,6 +671,57 @@ test('runtime client normalizes streaming tool_result content arrays into tool_r
   }
 });
 
+test('runtime client preserves finalization envelopes from stream events', async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url.endsWith('/messages')) {
+      return new Response(
+        [
+          JSON.stringify({
+            type: 'finalization',
+            artifactClaims: [{ declarationId: 'preview-localhost:preview_url' }],
+          }),
+          JSON.stringify({
+            type: 'result',
+            text: 'Preview recorded.',
+            usage: { inputTokens: 2, outputTokens: 3 },
+          }),
+          '',
+        ].join('\n'),
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/x-ndjson',
+          },
+        },
+      );
+    }
+
+    throw new Error(`Unexpected runtime client request: ${url}`);
+  };
+
+  try {
+    const client = new CatsRuntimeClient('http://runtime.test');
+    const result = await client.sendMessage('session-1', 'hello');
+
+    assert.deepEqual(result, {
+      segments: [
+        { kind: 'text', text: 'Preview recorded.', toolName: null, toolId: null },
+      ],
+      finalization: {
+        type: 'finalization',
+        artifactClaims: [{ declarationId: 'preview-localhost:preview_url' }],
+      },
+      inputTokens: 2,
+      outputTokens: 3,
+      tokensUsed: 5,
+    });
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
 test('runtime setup summary reads still use the standard runtime timeout budget', async () => {
   const timeoutSignals = createTimeoutSignalRecorder();
   const originalFetch = globalThis.fetch;

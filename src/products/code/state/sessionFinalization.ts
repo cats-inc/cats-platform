@@ -92,11 +92,17 @@ export function createCodeArtifactRuntimeFinalizationGate(): RuntimeAssistantFin
       const codeMetadata = asRecord(
         input.runtimeAssistantMetadata?.[CODE_ARTIFACT_RUNTIME_ENRICHER_ID],
       );
+      const runtimeFinalization = asRecord(input.runtimeFinalization);
+      const codeFinalization = asRecord(runtimeFinalization?.codeArtifactFinalization)
+        ?? runtimeFinalization;
       const decision = CODE_ARTIFACT_FINALIZATION_GATE.evaluate({
         finalization: {
           assistantTurnId: input.assistantTurnId,
           bodyText: input.bodyText,
-          artifactClaims: readFinalizationArtifactClaims(codeMetadata),
+          artifactClaims: readFinalizationArtifactClaims(
+            codeMetadata,
+            codeFinalization,
+          ),
         },
         acceptedDeclarations: readAcceptedDeclarationRefs(
           input.assistantTurnId,
@@ -178,8 +184,11 @@ function normalizeNullableString(input: unknown): string | null {
 
 function readFinalizationArtifactClaims(
   codeMetadata: Record<string, unknown> | null,
+  runtimeFinalization: Record<string, unknown> | null = null,
 ): CodeAssistantArtifactClaim[] | undefined {
-  const finalization = asRecord(codeMetadata?.codeArtifactFinalization);
+  const finalization =
+    runtimeFinalization
+    ?? asRecord(codeMetadata?.codeArtifactFinalization);
   const artifactClaims = finalization?.artifactClaims;
   if (!Array.isArray(artifactClaims)) {
     return undefined;

@@ -187,6 +187,33 @@ export function readRuntimeMessageResultSegments(value: unknown): RuntimeMessage
   return [];
 }
 
+export function readRuntimeMessageResultFinalization(
+  value: unknown,
+): Record<string, unknown> | null {
+  const record = asRecord(value);
+  if (!record) {
+    return null;
+  }
+
+  const nestedResult = asRecord(record.result);
+  const candidates = [
+    record.finalization,
+    record.finalizationEnvelope,
+    nestedResult?.finalization,
+    nestedResult?.finalizationEnvelope,
+    record.type === 'finalization' ? record : null,
+  ];
+
+  for (const candidate of candidates) {
+    const finalization = asRecord(candidate);
+    if (finalization) {
+      return { ...finalization };
+    }
+  }
+
+  return null;
+}
+
 export function readRuntimeMessageResultText(value: unknown): string {
   const record = asRecord(value);
   if (!record) {

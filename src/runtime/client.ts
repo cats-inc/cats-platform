@@ -147,6 +147,7 @@ export type RuntimeMessageSegmentKind = RuntimeMessageSegment['kind'];
 
 export interface RuntimeMessageResult {
   segments: RuntimeMessageSegment[];
+  finalization?: Record<string, unknown> | null;
   inputTokens: number;
   outputTokens: number;
   tokensUsed: number;

@@ -232,9 +232,10 @@ The same results are also projected into local runtime `tool_result` segments
 so the persisted turn has a `tool_use` -> `tool_result` trace. These projected
 segments are not yet sent back to the assistant through a live runtime
 tool-result loop. The Code finalization gate is now registered at visible
-response commit time for structured `artifactClaims[]`: unmatched claims block
-the assistant response before it is appended. Text heuristics are still not
-used.
+response commit time for structured `artifactClaims[]`. Runtime adapters can
+deliver that envelope as a `finalization` stream event or in
+`result.finalization` / `result.finalizationEnvelope`; unmatched claims block the
+assistant response before it is appended. Text heuristics are still not used.
 
 ### Output Summary
 
