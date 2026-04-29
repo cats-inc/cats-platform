@@ -108,7 +108,7 @@ third-party install, signing, and full sandboxing are explicitly later work.
 - [x] Add `GET /api/apps` and `GET /api/apps/:appId`.
 - [x] Add enable, disable, and uninstall endpoints.
 - [ ] Add inspect endpoint.
-- [ ] Add route serving for `/apps/:appId/*`.
+- [x] Add route serving for `/apps/:appId/*`.
 - [ ] Add scoped app API route mounting under `/api/apps/:appId/*`.
 - [ ] Gate mutations behind owner-level confirmation in the UI flow.
 - [ ] Ensure app APIs cannot shadow core, product, setup, runtime, or settings
@@ -259,6 +259,7 @@ The overnight implementation agent should aim for this first vertical slice:
 | 2026-04-29 | Wired registry reads into the platform host envelope as `installedApps` descriptors. |
 | 2026-04-29 | Replaced the Lobby `Apps` Pomodoro mock with registry-driven app entries and an empty state. |
 | 2026-04-29 | Added local app validate/install/list/detail and enable/disable/uninstall API routes backed by the app registry. |
+| 2026-04-29 | Added the renderer `/apps/:appId/*` app host route skeleton for installed app packages. |
 
 ---
 

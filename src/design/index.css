@@ -14,6 +14,7 @@
 @import './components/product-placeholder.css';
 @import './components/platform-setup.css';
 @import './components/platform-lobby.css';
+@import './components/app-host.css';
 @import './components/toast.css';
 @import './components/confirm-dialog.css';
 @import './components/notification.css';

@@ -24,6 +24,7 @@ import {
   PLATFORM_SURFACE_ROUTES,
 } from './routeMap';
 import { GuideCatSidecar } from '../../design/components/GuideCatSidecar';
+import { AppHostRoute } from './AppHostRoute.js';
 import { PlatformLobby } from './PlatformLobby';
 import {
   GuideCatPlacementProvider,
@@ -529,6 +530,7 @@ export default function PlatformApp() {
       ) : null}
       <Routes>
         <Route path="/lobby" element={<PlatformLobby envelope={readyEnvelope} />} />
+        <Route path="/apps/:appId/*" element={<AppHostRoute envelope={readyEnvelope} />} />
         <Route path="/products" element={<Navigate to="/lobby" replace />} />
         <Route path="/settings/*" element={settingsSurfaceElement} />
         <Route
