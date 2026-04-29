@@ -180,8 +180,10 @@ export function createCodeArtifactRuntimeInvocationEnricher(): RuntimeInvocation
   };
 }
 
+const codeArtifactRuntimeInvocationEnricher = createCodeArtifactRuntimeInvocationEnricher();
+
 export function registerCodeArtifactRuntimeInvocationEnrichers(): void {
-  registerRuntimeInvocationEnricher(createCodeArtifactRuntimeInvocationEnricher());
+  registerRuntimeInvocationEnricher(codeArtifactRuntimeInvocationEnricher);
 }
 
 export function enrichCodeArtifactRuntimeInvocation<
@@ -196,8 +198,11 @@ export function enrichCodeArtifactRuntimeInvocation(
   channel: CodeArtifactRuntimeToolingChannel,
   enrichmentContext: RuntimeInvocationEnrichmentContext,
 ): RuntimeInvocationWithCodeArtifactToolingResult {
-  const contribution = createCodeArtifactRuntimeInvocationEnricher()
-    .enrich(channel, input, enrichmentContext);
+  const contribution = codeArtifactRuntimeInvocationEnricher.enrich(
+    channel,
+    input,
+    enrichmentContext,
+  );
   return mergeRuntimeInvocationEnrichmentContribution(input, contribution);
 }
 

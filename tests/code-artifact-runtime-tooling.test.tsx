@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
-import test from 'node:test';
+import test, { afterEach, beforeEach } from 'node:test';
 
 import {
   RuntimeEnricherPriority,
+  RuntimeEnrichmentCloneError,
   clearRuntimeInvocationEnrichers,
   collectRuntimeInvocationAssistantMetadata,
   enrichRuntimeInvocation,
@@ -16,6 +17,14 @@ import {
   enrichCodeArtifactRuntimeInvocation,
   shouldAttachCodeArtifactRuntimeTooling,
 } from '../src/products/code/state/runtimeArtifactTooling.ts';
+
+beforeEach(() => {
+  clearRuntimeInvocationEnrichers();
+});
+
+afterEach(() => {
+  clearRuntimeInvocationEnrichers();
+});
 
 test('Code artifact runtime tooling attaches only to Code-origin active sessions', () => {
   const codeInvocation = enrichCodeArtifactRuntimeInvocation(
@@ -483,7 +492,46 @@ test('runtime invocation registry rejects non-structured-cloneable context metad
       },
       { phase: 'session_create' },
     ),
-    /Runtime invocation input contains non-structured-cloneable context values/u,
+    (error: unknown) => {
+      assert.ok(error instanceof RuntimeEnrichmentCloneError);
+      assert.equal(error.scope, 'Runtime invocation input');
+      assert.equal(error.enricherId, null);
+      assert.match(error.message, /Runtime invocation input contains/u);
+      return true;
+    },
+  );
+});
+
+test('runtime invocation registry rejects non-structured-cloneable enricher contributions', () => {
+  registerRuntimeInvocationEnricher({
+    id: 'bad-contribution-enricher',
+    enrich() {
+      return {
+        context: {
+          metadata: {
+            invalid: () => 'not cloneable',
+          },
+        },
+      };
+    },
+  });
+
+  assert.throws(
+    () => enrichRuntimeInvocation(
+      { originSurface: 'code' },
+      { context: { metadata: { channelId: 'channel-code' } } },
+      { phase: 'session_create' },
+    ),
+    (error: unknown) => {
+      assert.ok(error instanceof RuntimeEnrichmentCloneError);
+      assert.equal(error.scope, 'Runtime enricher "bad-contribution-enricher" contribution');
+      assert.equal(error.enricherId, 'bad-contribution-enricher');
+      assert.match(
+        error.message,
+        /Runtime enricher "bad-contribution-enricher" contribution contains/u,
+      );
+      return true;
+    },
   );
 });
 

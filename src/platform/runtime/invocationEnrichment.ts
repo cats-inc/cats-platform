@@ -80,6 +80,21 @@ export interface RuntimeInvocationEnricher {
   ): Record<string, unknown> | null;
 }
 
+export class RuntimeEnrichmentCloneError extends Error {
+  readonly scope: string;
+  readonly enricherId: string | null;
+
+  constructor(scope: string, enricherId?: string | null) {
+    super(
+      `${scope} contains non-structured-cloneable context values; runtime invocation metadata ` +
+      'must not contain functions, class instances, Maps, Sets, or other unsupported values.',
+    );
+    this.name = 'RuntimeEnrichmentCloneError';
+    this.scope = scope;
+    this.enricherId = enricherId ?? null;
+  }
+}
+
 const runtimeInvocationEnrichers = new Map<string, RuntimeInvocationEnricher>();
 
 export function registerRuntimeInvocationEnricher(enricher: RuntimeInvocationEnricher): void {
@@ -109,11 +124,35 @@ function cloneRuntimeSessionInvocationContext(
   try {
     return structuredClone(context) as RuntimeSessionInvocationContext;
   } catch {
-    throw new Error(
-      `${scope} contains non-structured-cloneable context values; runtime invocation metadata ` +
-      'must not contain functions, class instances, Maps, Sets, or other unsupported values.',
+    throw new RuntimeEnrichmentCloneError(scope);
+  }
+}
+
+function cloneRuntimeInvocationContextContribution(
+  contribution: RuntimeInvocationContextContribution,
+  enricherId: string,
+): RuntimeInvocationContextContribution {
+  try {
+    return structuredClone(contribution) as RuntimeInvocationContextContribution;
+  } catch {
+    throw new RuntimeEnrichmentCloneError(
+      `Runtime enricher "${enricherId}" contribution`,
+      enricherId,
     );
   }
+}
+
+function cloneRuntimeInvocationEnrichmentContribution(
+  contribution: RuntimeInvocationEnrichmentContribution,
+  enricherId: string,
+): RuntimeInvocationEnrichmentContribution {
+  if (!contribution || !contribution.context) {
+    return contribution;
+  }
+  return {
+    ...contribution,
+    context: cloneRuntimeInvocationContextContribution(contribution.context, enricherId),
+  };
 }
 
 function cloneRuntimeInvocationEnricherInput(
@@ -257,13 +296,13 @@ export function enrichRuntimeInvocation<TInput extends RuntimeInvocationEnrichme
   let current = cloneRuntimeInvocationEnrichmentResult(input);
 
   for (const enricher of getOrderedRuntimeInvocationEnrichers()) {
+    const contribution = cloneRuntimeInvocationEnrichmentContribution(
+      enricher.enrich(channel, cloneRuntimeInvocationEnricherInput(current, enricher.id), context),
+      enricher.id,
+    );
     current = mergeRuntimeInvocationEnrichmentContribution(
       current,
-      enricher.enrich(channel, cloneRuntimeInvocationEnricherInput(current, enricher.id), context),
-    );
-    cloneRuntimeSessionInvocationContext(
-      current.context,
-      `Runtime enricher "${enricher.id}" output`,
+      contribution,
     );
   }
 

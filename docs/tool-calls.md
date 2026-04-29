@@ -184,6 +184,9 @@ rather than deep-merged; multiple enrichers writing the same metadata key must
 coordinate on a shared shape. Metadata values must be structured-cloneable.
 Each enricher receives a cloned view of the current invocation context, so
 accidental mutation cannot alter later enrichers or the final invocation.
+Enricher contributions are also structured-clone validated before merge, so a
+non-cloneable metadata value is attributed to the enricher that returned it
+rather than to a later hook that happened to receive the merged context.
 Assistant metadata contributions are stored under each enricher id rather than
 flattened into Chat metadata.
 
