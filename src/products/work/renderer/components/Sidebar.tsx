@@ -39,6 +39,7 @@ import {
   isWorkMissionsPath,
   isWorkProjectsPath,
   isWorkRunsPath,
+  isWorkSchedulesPath,
   isWorkSystemMapPath,
   isWorkTasksPath,
   isWorkWarRoomPath,
@@ -67,6 +68,7 @@ export interface SidebarProps {
   onOpenTasks?: () => void;
   onOpenRuns?: () => void;
   onOpenMissions?: () => void;
+  onOpenSchedules?: () => void;
   onOpenWorkItems?: () => void;
   onOpenSystemMap?: () => void;
   onOpenCockpit?: () => void;
@@ -235,7 +237,12 @@ function createExtraActionGroups(
     });
   }
 
-  if (props.onOpenTasks || props.onOpenRuns || props.onOpenMissions) {
+  if (
+    props.onOpenTasks ||
+    props.onOpenRuns ||
+    props.onOpenMissions ||
+    props.onOpenSchedules
+  ) {
     const executionItems: ConversationSidebarAction[] = [];
     if (props.onOpenTasks) {
       executionItems.push({
@@ -307,6 +314,31 @@ function createExtraActionGroups(
             <path d="M8 12.5v2" />
             <path d="M1.5 8h2" />
             <path d="M12.5 8h2" />
+          </svg>
+        ),
+      });
+    }
+    if (props.onOpenSchedules) {
+      executionItems.push({
+        key: 'schedules',
+        label: 'Schedules',
+        onClick: props.onOpenSchedules,
+        active: isWorkSchedulesPath(currentPath),
+        icon: (
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="8" cy="8" r="5.5" />
+            <path d="M8 4.5V8l2.5 1.5" />
+            <path d="M4 2.5l-1 1" />
+            <path d="M12 2.5l1 1" />
           </svg>
         ),
       });

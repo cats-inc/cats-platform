@@ -162,18 +162,18 @@ what to send and how to send it.
       - enable/disable rule
       - manual test fire
       - recent trigger/run history
-- [ ] Add a minimal schedule-management UI in the most appropriate surface:
+- [x] Add a minimal schedule-management UI in the most appropriate surface:
       - platform Settings / Automations if available, or
       - a simple My Cats / Cat detail action for the first companion use case.
-- [ ] Add product-specific creation shortcuts that still create generic rules:
+- [x] Add product-specific creation shortcuts that still create generic rules:
       - "Daily morning greeting" prefilled template from a Cat/companion view
       - future Work/Code templates later
-- [ ] Show diagnostics:
+- [x] Show diagnostics:
       - next fire
       - last run
       - last failure
       - skipped because app was closed/concurrency/rule disabled
-- [ ] Keep UI copy clear that scheduled execution only fires while Cats is
+- [x] Keep UI copy clear that scheduled execution only fires while Cats is
       running in v1.
 
 **Deliverables**: the owner can create and inspect the morning-greeting rule
@@ -281,6 +281,7 @@ the first companion/Telegram scenario.
 | 2026-04-29 | Companion post slice: added `companion.content.post.create` as a supervised local-state tool that writes profile post derived records through `CompanionBoxStore.upsertDerived`, requires `narrow_write` scope, and rejects posts built from sources outside declared `companion_content` resource scopes. |
 | 2026-04-29 | Telegram media capability slice: added `transport.telegram.media.send` as a supervised external-visible tool for URL/file-id media delivery through declared Telegram bindings, extended the relay/Bot API client with `send_media`, and added tests for media delivery, approval gating, undeclared bindings, and local-path rejection. |
 | 2026-04-29 | Replace concurrency slice: enabled `concurrencyPolicy: replace` now that active scheduled runs cancel through the supervision runtime cancellation boundary, including runtime session cancellation, run/mission cancellation metadata, and replacement admission tests. |
+| 2026-04-29 | Schedule UI slice: added Cats Work `/work/schedules` route and sidebar entry, renderer schedule API helpers, a minimal schedule list with next-fire/last-run/failure/skipped diagnostics, and a Daily morning greeting shortcut that creates a generic schedule rule with declared companion content and Telegram delivery scopes. |
 
 ---
 

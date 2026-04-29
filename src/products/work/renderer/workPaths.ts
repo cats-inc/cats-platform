@@ -8,6 +8,7 @@ export const WORK_TASKS_LEGACY_PATH = `${WORK_ROUTE_PREFIX}/tasks-legacy`;
 export const WORK_WORK_ITEMS_PATH = `${WORK_ROUTE_PREFIX}/work-items`;
 export const WORK_RUNS_PATH = `${WORK_ROUTE_PREFIX}/runs`;
 export const WORK_MISSIONS_PATH = `${WORK_ROUTE_PREFIX}/missions`;
+export const WORK_SCHEDULES_PATH = `${WORK_ROUTE_PREFIX}/schedules`;
 export const WORK_SYSTEM_MAP_PATH = `${WORK_ROUTE_PREFIX}/system-map`;
 export const WORK_COCKPIT_PATH = `${WORK_ROUTE_PREFIX}/cockpit`;
 export const WORK_BROKEN_LINKS_PATH = `${WORK_ROUTE_PREFIX}/broken-links`;
@@ -49,6 +50,13 @@ export function buildWorkMissionPath(missionId?: string | null): string {
   return normalized
     ? `${WORK_MISSIONS_PATH}/${encodeURIComponent(normalized)}`
     : WORK_MISSIONS_PATH;
+}
+
+export function buildWorkSchedulePath(scheduleId?: string | null): string {
+  const normalized = scheduleId?.trim();
+  return normalized
+    ? `${WORK_SCHEDULES_PATH}/${encodeURIComponent(normalized)}`
+    : WORK_SCHEDULES_PATH;
 }
 
 export function isWorkWarRoomPath(pathname: string): boolean {
@@ -94,4 +102,8 @@ export function isWorkRunsPath(pathname: string): boolean {
 
 export function isWorkMissionsPath(pathname: string): boolean {
   return pathname === WORK_MISSIONS_PATH || pathname.startsWith(`${WORK_MISSIONS_PATH}/`);
+}
+
+export function isWorkSchedulesPath(pathname: string): boolean {
+  return pathname === WORK_SCHEDULES_PATH || pathname.startsWith(`${WORK_SCHEDULES_PATH}/`);
 }
