@@ -204,6 +204,67 @@
   word-break: break-all;
 }
 
+/* Desktop mobile pairing card. Consumed only by
+ * PlatformSettingsDesktopStartup; pairing readiness is server-computed and
+ * delivered in AppShellPayload, so this layout stays renderer-only. */
+
+.settingsMobilePairingGrid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 168px;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.settingsMobilePairingDetails {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.settingsMobilePairingFacts {
+  display: grid;
+  gap: var(--space-2);
+  margin: 0;
+}
+
+.settingsMobilePairingFacts div {
+  display: grid;
+  grid-template-columns: 112px minmax(0, 1fr);
+  gap: var(--space-2);
+  align-items: baseline;
+}
+
+.settingsMobilePairingFacts dt {
+  color: var(--settings-text-muted);
+  font-size: var(--settings-hint-size);
+}
+
+.settingsMobilePairingFacts dd {
+  margin: 0;
+  min-width: 0;
+  color: var(--settings-text);
+  font-size: var(--settings-body-size);
+  word-break: break-word;
+}
+
+.settingsMobilePairingNote {
+  margin: 0;
+  color: var(--settings-text-muted);
+  font-size: var(--settings-body-size);
+}
+
+.settingsMobilePairingQr {
+  display: grid;
+  place-items: center;
+  min-height: 168px;
+  border: 1px dashed var(--settings-border);
+  border-radius: var(--settings-radius-md);
+  background: var(--settings-surface-hover);
+  color: var(--settings-text-muted);
+  font-size: var(--settings-label-size);
+  text-align: center;
+}
+
 @media (max-width: 820px) {
   .settingsShell {
     grid-template-columns: 1fr;
@@ -225,5 +286,13 @@
 
   .settingsRuntimeMetrics {
     grid-template-columns: 1fr;
+  }
+
+  .settingsMobilePairingGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .settingsMobilePairingQr {
+    min-height: 120px;
   }
 }

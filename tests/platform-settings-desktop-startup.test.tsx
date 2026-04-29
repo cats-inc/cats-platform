@@ -7,7 +7,29 @@ import { StaticRouter } from 'react-router-dom';
 import { PlatformSettingsDesktopStartup } from '../src/app/renderer/settings/PlatformSettingsDesktopStartup.tsx';
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
 
-function createPayload(): AppShellPayload {
+function createMobilePairing(
+  overrides: Partial<AppShellPayload['desktop']['mobilePairing']> = {},
+): AppShellPayload['desktop']['mobilePairing'] {
+  return {
+    enabled: false,
+    bindHost: '127.0.0.1',
+    bindPort: 8181,
+    bindReachability: 'loopback',
+    canReachFromLan: false,
+    selectedLanIp: null,
+    selectedLanUrl: null,
+    diagnosticManifestUrl: null,
+    noLanCandidateReason: 'feature_disabled',
+    bindOverrideEnv: 'CATS_DESKTOP_APP_HOST=0.0.0.0',
+    pairingUrlStatus: 'phase1_pending',
+    pairingUrl: null,
+    ...overrides,
+  };
+}
+
+function createPayload(
+  desktopOverrides: Partial<AppShellPayload['desktop']> = {},
+): AppShellPayload {
   return {
     setupCompleteAt: '2026-04-05T00:00:00.000Z',
     ownerDisplayName: 'Kenny',
@@ -19,6 +41,8 @@ function createPayload(): AppShellPayload {
       startAtLogin: true,
       openWindowOnStartup: false,
       systemTrayEnabled: true,
+      mobilePairing: createMobilePairing(),
+      ...desktopOverrides,
     },
     lobby: {
       animationMode: 'reduced',
@@ -126,4 +150,70 @@ test('PlatformSettingsDesktopStartup renders desktop controls with system tray b
       (globalThis as typeof globalThis & { catsDesktopHost?: object }).catsDesktopHost = previousBridge;
     }
   }
+});
+
+test('PlatformSettingsDesktopStartup hides mobile pairing when the payload gate is disabled', () => {
+  const markup = renderToStaticMarkup(
+    <StaticRouter location="/settings/desktop">
+      <PlatformSettingsDesktopStartup
+        payload={createPayload()}
+        onPayloadUpdate={() => {}}
+      />
+    </StaticRouter>,
+  );
+
+  assert.doesNotMatch(markup, /Mobile pairing/u);
+});
+
+test('PlatformSettingsDesktopStartup shows loopback-only mobile pairing recovery', () => {
+  const markup = renderToStaticMarkup(
+    <StaticRouter location="/settings/desktop">
+      <PlatformSettingsDesktopStartup
+        payload={createPayload({
+          mobilePairing: createMobilePairing({
+            enabled: true,
+            noLanCandidateReason: 'loopback_bound',
+            bindOverrideEnv: 'CATS_DESKTOP_APP_HOST=0.0.0.0',
+          }),
+        })}
+        onPayloadUpdate={() => {}}
+      />
+    </StaticRouter>,
+  );
+
+  assert.match(markup, /Mobile pairing/u);
+  assert.match(markup, /Loopback only/u);
+  assert.match(markup, /Copy override/u);
+  assert.match(markup, /CATS_DESKTOP_APP_HOST=0\.0\.0\.0/u);
+  assert.doesNotMatch(markup, /Diagnostic manifest/u);
+});
+
+test('PlatformSettingsDesktopStartup shows diagnostic manifest when LAN-ready', () => {
+  const markup = renderToStaticMarkup(
+    <StaticRouter location="/settings/desktop">
+      <PlatformSettingsDesktopStartup
+        payload={createPayload({
+          mobilePairing: createMobilePairing({
+            enabled: true,
+            bindHost: '0.0.0.0',
+            bindReachability: 'all_interfaces',
+            canReachFromLan: true,
+            selectedLanIp: '192.168.1.25',
+            selectedLanUrl: 'http://192.168.1.25:8181',
+            diagnosticManifestUrl: 'http://192.168.1.25:8181/api/mobile/manifest',
+            noLanCandidateReason: null,
+            bindOverrideEnv: null,
+          }),
+        })}
+        onPayloadUpdate={() => {}}
+      />
+    </StaticRouter>,
+  );
+
+  assert.match(markup, /Mobile pairing/u);
+  assert.match(markup, /192\.168\.1\.25/u);
+  assert.match(markup, /Diagnostic manifest/u);
+  assert.match(markup, /http:\/\/192\.168\.1\.25:8181\/api\/mobile\/manifest/u);
+  assert.match(markup, /QR pending/u);
+  assert.doesNotMatch(markup, /Copy override/u);
 });

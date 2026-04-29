@@ -6,6 +6,8 @@ import {
   SettingsOptionRow,
   SettingsSection,
   SettingsSectionHeader,
+  SettingsStatusChip,
+  type SettingsStatusChipTone,
 } from '../../../design/components/settings/index.js';
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
 
@@ -29,6 +31,27 @@ const DEFAULT_MOBILE_PAIRING: AppShellPayload['desktop']['mobilePairing'] = {
   pairingUrl: null,
 };
 
+function resolveMobilePairingStatus(
+  mobilePairing: AppShellPayload['desktop']['mobilePairing'],
+): { tone: SettingsStatusChipTone; label: string } {
+  if (!mobilePairing.enabled) {
+    return { tone: 'muted', label: 'Disabled' };
+  }
+  if (mobilePairing.noLanCandidateReason === 'loopback_bound') {
+    return { tone: 'warm', label: 'Loopback only' };
+  }
+  if (
+    mobilePairing.noLanCandidateReason === 'no_lan_candidate'
+    || mobilePairing.noLanCandidateReason === 'bind_host_not_lan_candidate'
+  ) {
+    return { tone: 'warm', label: 'No LAN address' };
+  }
+  if (mobilePairing.pairingUrlStatus === 'ready' && mobilePairing.pairingUrl) {
+    return { tone: 'ready', label: 'Ready' };
+  }
+  return { tone: 'warm', label: 'Manifest validation pending' };
+}
+
 function resolveDefaultDesktopPreferences(): AppShellPayload['desktop'] {
   return {
     startAtLogin: true,
@@ -44,7 +67,18 @@ export function PlatformSettingsDesktopStartup({
 }: PlatformSettingsDesktopStartupProps) {
   const [savingDesktopPrefs, setSavingDesktopPrefs] = useState(false);
   const desktopPrefs = payload.desktop ?? resolveDefaultDesktopPreferences();
+  const mobilePairing = desktopPrefs.mobilePairing ?? DEFAULT_MOBILE_PAIRING;
+  const mobilePairingStatus = resolveMobilePairingStatus(mobilePairing);
   const { toasts, showToast } = useToast();
+
+  async function copyToClipboard(value: string, successMessage: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(value);
+      showToast(successMessage);
+    } catch {
+      showToast('Failed to copy to clipboard.');
+    }
+  }
 
   async function updateDesktopPreferences(
     nextDesktopPrefs: AppShellPayload['desktop'],
@@ -106,6 +140,115 @@ export function PlatformSettingsDesktopStartup({
 
   return (
     <>
+      {mobilePairing.enabled ? (
+        <SettingsSection
+          className="settingsMobilePairing"
+          header={
+            <SettingsSectionHeader
+              title="Mobile pairing"
+              description="LAN readiness for the bundled Expo Go mobile shell."
+              status={(
+                <SettingsStatusChip tone={mobilePairingStatus.tone}>
+                  {mobilePairingStatus.label}
+                </SettingsStatusChip>
+              )}
+            />
+          }
+        >
+          <div className="settingsMobilePairingGrid">
+            <div className="settingsMobilePairingDetails">
+              <dl className="settingsMobilePairingFacts">
+                <div>
+                  <dt>Bind</dt>
+                  <dd>{mobilePairing.bindHost}:{mobilePairing.bindPort}</dd>
+                </div>
+                <div>
+                  <dt>Reachability</dt>
+                  <dd>{mobilePairing.bindReachability.replace('_', ' ')}</dd>
+                </div>
+                <div>
+                  <dt>LAN address</dt>
+                  <dd>{mobilePairing.selectedLanIp ?? 'None'}</dd>
+                </div>
+              </dl>
+
+              {mobilePairing.noLanCandidateReason === 'loopback_bound'
+                && mobilePairing.bindOverrideEnv ? (
+                  <SettingsOptionRow
+                    label="Allow LAN access"
+                    description={(
+                      <>
+                        Cats is bound to loopback. Restart with{' '}
+                        <code>{mobilePairing.bindOverrideEnv}</code>
+                        {' '}before scanning from a phone.
+                      </>
+                    )}
+                    control={(
+                      <button
+                        type="button"
+                        className="secondaryButton"
+                        onClick={() => void copyToClipboard(
+                          mobilePairing.bindOverrideEnv ?? '',
+                          'Copied bind override.',
+                        )}
+                      >
+                        Copy override
+                      </button>
+                    )}
+                  />
+                ) : null}
+
+              {mobilePairing.noLanCandidateReason === 'no_lan_candidate' ? (
+                <p className="settingsMobilePairingNote">
+                  No non-loopback LAN IPv4 address was detected.
+                </p>
+              ) : null}
+
+              {mobilePairing.noLanCandidateReason === 'bind_host_not_lan_candidate' ? (
+                <p className="settingsMobilePairingNote">
+                  The current bind host does not match a LAN IPv4 address.
+                </p>
+              ) : null}
+
+              {mobilePairing.diagnosticManifestUrl ? (
+                <SettingsOptionRow
+                  label="Diagnostic manifest"
+                  description={mobilePairing.diagnosticManifestUrl}
+                  control={(
+                    <button
+                      type="button"
+                      className="secondaryButton"
+                      onClick={() => void copyToClipboard(
+                        mobilePairing.diagnosticManifestUrl ?? '',
+                        'Copied diagnostic manifest URL.',
+                      )}
+                    >
+                      Copy URL
+                    </button>
+                  )}
+                  layout="stack"
+                />
+              ) : null}
+            </div>
+
+            <div className="settingsMobilePairingQr" data-state={mobilePairing.pairingUrlStatus}>
+              {mobilePairing.pairingUrlStatus === 'ready' && mobilePairing.pairingUrl ? (
+                <a
+                  className="secondaryButton settingsInlineLink"
+                  href={mobilePairing.pairingUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Open pairing URL
+                </a>
+              ) : (
+                <span>QR pending</span>
+              )}
+            </div>
+          </div>
+        </SettingsSection>
+      ) : null}
+
       <SettingsSection
         header={
           <SettingsSectionHeader

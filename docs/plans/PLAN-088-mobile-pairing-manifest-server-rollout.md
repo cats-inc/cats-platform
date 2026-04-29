@@ -163,9 +163,9 @@ schema remain blocked on Phase 1 physical-device validation.
 **Goal**: render the card in the desktop renderer, gated on the
 same flag, with a working QR.
 
-- [ ] Add the card component under
-      `cats-platform/src/app/renderer/settings/PlatformSettingsDesktop.tsx`
-      (or wherever the Desktop settings tab lives).
+- [x] Add the card component under
+      `cats-platform/src/app/renderer/settings/PlatformSettingsDesktopStartup.tsx`
+      (the current Desktop settings tab component).
 - [x] Pull the gate value through the existing `AppShellPayload`
       desktop-feature plumbing so the renderer knows whether to
       show the card without an extra fetch.
@@ -179,7 +179,7 @@ same flag, with a working QR.
       any), and no-candidate reason through the AppShell payload.
       The renderer reads them from the payload only — it never calls
       `os.networkInterfaces()` directly.
-- [ ] Implement the loopback-only-bind escape hatch (FR-13, FR-14):
+- [x] Implement the loopback-only-bind escape hatch (FR-13, FR-14):
       copy-button for `CATS_DESKTOP_APP_HOST=0.0.0.0` only when
       the payload says the server is loopback-bound. If the server
       is already LAN-bound but no LAN candidate exists, render a
@@ -190,6 +190,11 @@ same flag, with a working QR.
 `desktop.mobilePairing` in `AppShellPayload`, including gate,
 bind host/port, reachability, selected LAN candidate, diagnostic
 manifest URL, and Phase 1 pending pairing-URL status.
+
+**Current implementation note**: Slice 4 renders the gated
+Desktop settings card, loopback bind override, no-LAN state, and
+diagnostic manifest URL. QR rendering remains pending because the
+Expo Go pairing URL is still Phase 1 unresolved.
 
 **Deliverable**: the card renders end-to-end with a working QR
 when both flags align.
