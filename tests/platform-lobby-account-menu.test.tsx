@@ -36,6 +36,7 @@ function createEnvelope(
         setup: { selectable: true },
       },
     ],
+    installedApps: [],
     desktop: {
       startAtLogin: false,
       openWindowOnStartup: true,

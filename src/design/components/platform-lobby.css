@@ -250,6 +250,7 @@
 .platformLobbyCard--chat .platformLobbyCardAccent { background: #E0B323; }
 .platformLobbyCard--code .platformLobbyCardAccent { background: #6E8450; }
 .platformLobbyCard--work .platformLobbyCardAccent { background: #4F6C92; }
+.platformLobbyCard--app .platformLobbyCardAccent { background: #3F7F78; }
 
 .platformLobbyCard--recent {
   box-shadow: 0 0 0 2px var(--accent-soft);
@@ -287,6 +288,14 @@
   cursor: default;
   pointer-events: none;
   border-style: dashed;
+}
+
+.lobbyAppsEmpty {
+  grid-column: 1 / -1;
+  margin: 0;
+  padding: var(--space-3) 0;
+  color: var(--muted);
+  font-size: var(--text-sm);
 }
 
 /* ── Responsive ── */

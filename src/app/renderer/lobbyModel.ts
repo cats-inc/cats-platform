@@ -1,4 +1,9 @@
 import type {
+  CatsAppInstallState,
+  CatsAppTrustTier,
+  PlatformInstalledAppDescriptor,
+} from '../../shared/catsAppManifest.js';
+import type {
   PlatformProductDescriptor,
   PlatformSurfaceId,
 } from '../../shared/platform-contract.js';
@@ -9,6 +14,17 @@ export interface PlatformLobbyProductEntry {
   subtitle: string;
   routePrefix: `/${string}`;
   lastUsed: boolean;
+}
+
+export interface PlatformLobbyAppEntry {
+  appId: string;
+  entryId: string;
+  title: string;
+  subtitle: string | null;
+  routePath: `/apps/${string}`;
+  publisher: string;
+  installState: CatsAppInstallState;
+  trustTier: CatsAppTrustTier;
 }
 
 export function buildPlatformLobbyEntries(options: {
@@ -24,6 +40,26 @@ export function buildPlatformLobbyEntries(options: {
       routePrefix: d.routePrefix,
       lastUsed: d.surface === options.lastUsedSurface,
     }));
+}
+
+export function buildPlatformLobbyAppEntries(options: {
+  installedApps: readonly PlatformInstalledAppDescriptor[];
+}): PlatformLobbyAppEntry[] {
+  return options.installedApps.flatMap((app) => {
+    if (!app.enabled || app.installState !== 'enabled') {
+      return [];
+    }
+    return app.lobbyEntries.map((entry) => ({
+      appId: app.id,
+      entryId: entry.id,
+      title: entry.title,
+      subtitle: entry.subtitle ?? null,
+      routePath: entry.routePath,
+      publisher: app.publisher,
+      installState: app.installState,
+      trustTier: app.trustTier,
+    }));
+  });
 }
 
 const LOBBY_GREETING_LINES = [

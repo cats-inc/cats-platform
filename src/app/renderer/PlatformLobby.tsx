@@ -11,7 +11,11 @@ import {
   resolveRuntimeTooltip,
 } from '../../shared/runtimeStatusPresentation.js';
 import { LobbyBouncingCats } from './LobbyBouncingCats.js';
-import { buildPlatformLobbyEntries, pickLobbyGreeting } from './lobbyModel.js';
+import {
+  buildPlatformLobbyAppEntries,
+  buildPlatformLobbyEntries,
+  pickLobbyGreeting,
+} from './lobbyModel.js';
 
 function buildDirectLanePath(catId: string): string {
   return `/chat/my-cats/${encodeURIComponent(catId)}`;
@@ -73,6 +77,9 @@ export function PlatformLobby({
   const entries = buildPlatformLobbyEntries({
     products: envelope.products,
     lastUsedSurface: envelope.lastProductSurface ?? null,
+  });
+  const appEntries = buildPlatformLobbyAppEntries({
+    installedApps: envelope.installedApps ?? [],
   });
   const greeting = envelope.lobby.guideCatAssist?.bundle.content.greeting?.trim() || fallbackGreeting;
   const runtimeStatus = resolveRuntimePresentationStatus(envelope.runtime);
@@ -195,15 +202,26 @@ export function PlatformLobby({
           </div>
         </div>
 
-        {/* ── Mock apps section (layout preview) ── */}
         <div className="lobbyProducts">
           <p className="lobbyProductsEyebrow">Apps</p>
           <div className="platformLobbyGrid">
-            <div className="contentCard platformLobbyCard platformLobbyCard--mock">
-              <div className="platformLobbyCardAccent" />
-              <span className="platformLobbyCardName">Pomodoro</span>
-              <span className="platformLobbyCardSub">Focus timer with break reminders</span>
-            </div>
+            {appEntries.length > 0 ? appEntries.map((entry) => (
+              <button
+                key={`${entry.appId}:${entry.entryId}`}
+                type="button"
+                className="contentCard platformLobbyCard platformLobbyCard--app"
+                onClick={() => navigate(entry.routePath)}
+                aria-label={`Open ${entry.title}`}
+              >
+                <div className="platformLobbyCardAccent" />
+                <span className="platformLobbyCardName">{entry.title}</span>
+                {entry.subtitle ? (
+                  <span className="platformLobbyCardSub">{entry.subtitle}</span>
+                ) : null}
+              </button>
+            )) : (
+              <p className="lobbyAppsEmpty">No apps yet</p>
+            )}
           </div>
         </div>
       </div>

@@ -589,7 +589,10 @@ export interface PlatformInstalledAppDescriptor {
 }
 ```
 
-Lobby reads this descriptor list to render `Apps`.
+Lobby reads this descriptor list to render `Apps`. Disabled, error, and
+connector-only packages may remain in `installedApps`, but they must not create
+an active Lobby launch entry unless their descriptor is enabled and has
+`lobbyEntries`.
 
 ## Cats Code Export Standard
 
