@@ -312,19 +312,73 @@ interface RuntimeClientOptions {
   apiKey?: string;
   timeoutMs?: number;
   sessionCreateTimeoutMs?: number;
-  messageTimeoutMs?: number;
+  messageIdleTimeoutMs?: number;
   providerRegistryTimeoutMs?: number;
   selectorConfigTimeoutMs?: number;
   selectorDiagnosticsTimeoutMs?: number;
+  createTimeoutSignal?: RuntimeTimeoutSignalFactory;
+  createIdleTimeoutController?: RuntimeIdleTimeoutControllerFactory;
 }
 
 const DEFAULT_RUNTIME_REQUEST_TIMEOUT_MS = 5_000;
 export const DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS = 60_000;
-export const DEFAULT_RUNTIME_MESSAGE_TIMEOUT_MS = 120_000;
+export const DEFAULT_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS = 120_000;
 const DEFAULT_RUNTIME_PROVIDER_REGISTRY_TIMEOUT_MS = 10_000;
 const DEFAULT_RUNTIME_PROVIDER_CATALOG_REFRESH_TIMEOUT_MS = 60_000;
 const DEFAULT_RUNTIME_SELECTOR_CONFIG_TIMEOUT_MS = 5_000;
 const DEFAULT_RUNTIME_SELECTOR_DIAGNOSTICS_TIMEOUT_MS = 8_000;
+const DEFAULT_RUNTIME_SESSION_CREATE_SLOW_WARNING_MS = 10_000;
+
+type RuntimeTimeoutSignalFactory = (timeoutMs: number) => AbortSignal;
+
+interface RuntimeIdleTimeoutController {
+  signal: AbortSignal;
+  reset(): void;
+  clear(): void;
+}
+
+type RuntimeIdleTimeoutControllerFactory = (timeoutMs: number) => RuntimeIdleTimeoutController;
+
+function createDefaultTimeoutSignal(timeoutMs: number): AbortSignal {
+  return AbortSignal.timeout(timeoutMs);
+}
+
+function createDefaultIdleTimeoutController(timeoutMs: number): RuntimeIdleTimeoutController {
+  const controller = new AbortController();
+  let timeout: ReturnType<typeof setTimeout> | null = null;
+
+  const arm = () => {
+    if (timeout) {
+      clearTimeout(timeout);
+    }
+    timeout = setTimeout(() => {
+      const error = new Error(`Runtime message stream idle timeout after ${timeoutMs}ms`);
+      error.name = 'TimeoutError';
+      controller.abort(error);
+    }, timeoutMs);
+    const maybeUnref = (timeout as { unref?: () => void }).unref;
+    if (typeof maybeUnref === 'function') {
+      maybeUnref.call(timeout);
+    }
+  };
+
+  arm();
+
+  return {
+    signal: controller.signal,
+    reset() {
+      if (!controller.signal.aborted) {
+        arm();
+      }
+    },
+    clear() {
+      if (timeout) {
+        clearTimeout(timeout);
+        timeout = null;
+      }
+    },
+  };
+}
 
 export class RuntimeRequestError extends Error {
   constructor(message: string, readonly status: number) {
@@ -364,10 +418,12 @@ export class CatsRuntimeClient implements RuntimeClient {
   private readonly apiKey: string;
   private readonly timeoutMs: number;
   private readonly sessionCreateTimeoutMs: number;
-  private readonly messageTimeoutMs: number;
+  private readonly messageIdleTimeoutMs: number;
   private readonly providerRegistryTimeoutMs: number;
   private readonly selectorConfigTimeoutMs: number;
   private readonly selectorDiagnosticsTimeoutMs: number;
+  private readonly createTimeoutSignal: RuntimeTimeoutSignalFactory;
+  private readonly createIdleTimeoutController: RuntimeIdleTimeoutControllerFactory;
 
   constructor(
     private readonly baseUrl: string,
@@ -376,24 +432,25 @@ export class CatsRuntimeClient implements RuntimeClient {
     this.apiKey = options.apiKey?.trim() || '';
     this.timeoutMs = options.timeoutMs ?? DEFAULT_RUNTIME_REQUEST_TIMEOUT_MS;
     this.sessionCreateTimeoutMs = options.sessionCreateTimeoutMs
-      ?? options.timeoutMs
       ?? DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS;
-    this.messageTimeoutMs = options.messageTimeoutMs
-      ?? options.timeoutMs
-      ?? DEFAULT_RUNTIME_MESSAGE_TIMEOUT_MS;
+    this.messageIdleTimeoutMs = options.messageIdleTimeoutMs
+      ?? DEFAULT_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS;
     this.providerRegistryTimeoutMs = options.providerRegistryTimeoutMs
       ?? Math.max(this.timeoutMs, DEFAULT_RUNTIME_PROVIDER_REGISTRY_TIMEOUT_MS);
     this.selectorConfigTimeoutMs = options.selectorConfigTimeoutMs
       ?? DEFAULT_RUNTIME_SELECTOR_CONFIG_TIMEOUT_MS;
     this.selectorDiagnosticsTimeoutMs = options.selectorDiagnosticsTimeoutMs
       ?? DEFAULT_RUNTIME_SELECTOR_DIAGNOSTICS_TIMEOUT_MS;
+    this.createTimeoutSignal = options.createTimeoutSignal ?? createDefaultTimeoutSignal;
+    this.createIdleTimeoutController =
+      options.createIdleTimeoutController ?? createDefaultIdleTimeoutController;
   }
 
   async getHealth(): Promise<RuntimeStatusSummary> {
     try {
       const response = await fetch(`${this.baseUrl}/health`, {
         headers: this.authHeaders(),
-        signal: AbortSignal.timeout(this.timeoutMs),
+        signal: this.createTimeoutSignal(this.timeoutMs),
       });
 
       if (!response.ok) {
@@ -432,7 +489,7 @@ export class CatsRuntimeClient implements RuntimeClient {
         ...this.authHeaders(),
         Accept: 'application/json',
       },
-      signal: AbortSignal.timeout(
+      signal: this.createTimeoutSignal(
         options.selector ? this.selectorConfigTimeoutMs : this.providerRegistryTimeoutMs,
       ),
     });
@@ -474,7 +531,7 @@ export class CatsRuntimeClient implements RuntimeClient {
         ...this.authHeaders(),
         Accept: 'application/json',
       },
-      signal: AbortSignal.timeout(
+      signal: this.createTimeoutSignal(
         query.scope === 'availability'
           ? this.selectorDiagnosticsTimeoutMs
           : this.providerRegistryTimeoutMs,
@@ -498,7 +555,7 @@ export class CatsRuntimeClient implements RuntimeClient {
         ...this.authHeaders(),
         Accept: 'application/json',
       },
-      signal: AbortSignal.timeout(this.timeoutMs),
+      signal: this.createTimeoutSignal(this.timeoutMs),
     });
 
     if (!response.ok) {
@@ -530,7 +587,7 @@ export class CatsRuntimeClient implements RuntimeClient {
         ...this.authHeaders(),
         Accept: 'application/json',
       },
-      signal: AbortSignal.timeout(
+      signal: this.createTimeoutSignal(
         options.forceRefresh
           ? DEFAULT_RUNTIME_PROVIDER_CATALOG_REFRESH_TIMEOUT_MS
           : this.providerRegistryTimeoutMs,
@@ -566,7 +623,7 @@ export class CatsRuntimeClient implements RuntimeClient {
         ...this.authHeaders(),
         Accept: 'application/json',
       },
-      signal: AbortSignal.timeout(
+      signal: this.createTimeoutSignal(
         options.forceRefresh
           ? DEFAULT_RUNTIME_PROVIDER_CATALOG_REFRESH_TIMEOUT_MS
           : this.providerRegistryTimeoutMs,
@@ -632,6 +689,7 @@ export class CatsRuntimeClient implements RuntimeClient {
     }
     appendTaskRuntimeExecutionRequestFields(payload, input);
 
+    const startedAt = Date.now();
     const response = await fetch(`${this.baseUrl}/sessions`, {
       method: 'POST',
       headers: {
@@ -640,7 +698,7 @@ export class CatsRuntimeClient implements RuntimeClient {
         Accept: 'application/json',
       },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(this.sessionCreateTimeoutMs),
+      signal: this.createTimeoutSignal(this.sessionCreateTimeoutMs),
     });
 
     if (!response.ok) {
@@ -649,12 +707,14 @@ export class CatsRuntimeClient implements RuntimeClient {
     }
 
     const data = (await response.json()) as Record<string, unknown>;
-    return readRuntimeSessionInfo(data, {
+    const session = readRuntimeSessionInfo(data, {
       provider: input.provider,
       model: input.model?.trim() || null,
       modelSelection: input.modelSelection ?? null,
       cwd: input.cwd?.trim() || null,
     });
+    this.warnOnSlowSessionCreate(startedAt, input.provider, session.id);
+    return session;
   }
 
   async sendMessage(
@@ -680,23 +740,31 @@ export class CatsRuntimeClient implements RuntimeClient {
     }
     appendTaskRuntimeExecutionRequestFields(payload, input);
 
-    const response = await fetch(`${this.baseUrl}/sessions/${sessionId}/messages`, {
-      method: 'POST',
-      headers: {
-        ...this.authHeaders(),
-        'content-type': 'application/json',
-        Accept: 'application/x-ndjson',
-      },
-      body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(this.messageTimeoutMs),
-    });
+    const idleTimeout = this.createIdleTimeoutController(this.messageIdleTimeoutMs);
 
-    if (!response.ok) {
-      const rawBody = await response.text();
-      throw new Error(readRuntimeErrorText(rawBody, `Failed to send message (${response.status})`));
+    try {
+      const response = await fetch(`${this.baseUrl}/sessions/${sessionId}/messages`, {
+        method: 'POST',
+        headers: {
+          ...this.authHeaders(),
+          'content-type': 'application/json',
+          Accept: 'application/x-ndjson',
+        },
+        body: JSON.stringify(payload),
+        signal: idleTimeout.signal,
+      });
+
+      if (!response.ok) {
+        const rawBody = await response.text();
+        throw new Error(readRuntimeErrorText(rawBody, `Failed to send message (${response.status})`));
+      }
+
+      return await readRuntimeNdjsonResponse(response, {
+        onChunk: idleTimeout.reset,
+      });
+    } finally {
+      idleTimeout.clear();
     }
-
-    return readRuntimeNdjsonResponse(response);
   }
 
   async observeSession(sessionId: string): Promise<RuntimeObservedSessionPayload> {
@@ -705,7 +773,7 @@ export class CatsRuntimeClient implements RuntimeClient {
         ...this.authHeaders(),
         Accept: 'application/json',
       },
-      signal: AbortSignal.timeout(this.timeoutMs),
+      signal: this.createTimeoutSignal(this.timeoutMs),
     });
 
     if (!response.ok) {
@@ -744,7 +812,7 @@ export class CatsRuntimeClient implements RuntimeClient {
         ...this.authHeaders(),
         Accept: 'application/json',
       },
-      signal: AbortSignal.timeout(this.timeoutMs),
+      signal: this.createTimeoutSignal(this.timeoutMs),
     });
 
     if (!response.ok) {
@@ -782,7 +850,7 @@ export class CatsRuntimeClient implements RuntimeClient {
         Accept: 'application/json',
       },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(this.timeoutMs),
+      signal: this.createTimeoutSignal(this.timeoutMs),
     });
 
     if (!response.ok) {
@@ -802,7 +870,7 @@ export class CatsRuntimeClient implements RuntimeClient {
         Accept: 'application/json',
       },
       body: JSON.stringify(request),
-      signal: AbortSignal.timeout(this.timeoutMs),
+      signal: this.createTimeoutSignal(this.timeoutMs),
     });
 
     if (response.status === 204) {
@@ -821,7 +889,7 @@ export class CatsRuntimeClient implements RuntimeClient {
     const response = await fetch(`${this.baseUrl}/sessions/${sessionId}/close`, {
       method: 'POST',
       headers: this.authHeaders(),
-      signal: AbortSignal.timeout(this.timeoutMs),
+      signal: this.createTimeoutSignal(this.timeoutMs),
     });
 
     if (!response.ok && response.status !== 204) {
@@ -837,7 +905,7 @@ export class CatsRuntimeClient implements RuntimeClient {
     const response = await fetch(`${this.baseUrl}/sessions/${sessionId}/cancel`, {
       method: 'POST',
       headers: this.authHeaders(),
-      signal: AbortSignal.timeout(this.timeoutMs),
+      signal: this.createTimeoutSignal(this.timeoutMs),
     });
 
     if (!response.ok && response.status !== 204) {
@@ -856,7 +924,7 @@ export class CatsRuntimeClient implements RuntimeClient {
         ...this.authHeaders(),
         Accept: 'application/json',
       },
-      signal: AbortSignal.timeout(this.timeoutMs),
+      signal: this.createTimeoutSignal(this.timeoutMs),
     });
 
     if (!response.ok) {
@@ -887,6 +955,23 @@ export class CatsRuntimeClient implements RuntimeClient {
         ? { reason: payload.reason }
         : {}),
     };
+  }
+
+  private warnOnSlowSessionCreate(startedAt: number, provider: string, sessionId: string): void {
+    const elapsedMs = Date.now() - startedAt;
+    if (elapsedMs <= DEFAULT_RUNTIME_SESSION_CREATE_SLOW_WARNING_MS) {
+      return;
+    }
+
+    console.warn(
+      [
+        'cats-runtime session creation was slow',
+        `provider=${provider}`,
+        `sessionId=${sessionId}`,
+        `elapsedMs=${elapsedMs}`,
+        `thresholdMs=${DEFAULT_RUNTIME_SESSION_CREATE_SLOW_WARNING_MS}`,
+      ].join(' '),
+    );
   }
 
   private authHeaders(): Record<string, string> {

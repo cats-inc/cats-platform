@@ -542,6 +542,8 @@ export function applyDispatchExecutions(
             ...(execution.containerId ? { containerId: execution.containerId } : {}),
             ...(execution.target.laneId ? { laneId: execution.target.laneId } : {}),
             sessionId: execution.target.sessionId,
+            ...(execution.errorToolName ? { toolName: execution.errorToolName } : {}),
+            ...(execution.errorRejectionCode ? { rejectionCode: execution.errorRejectionCode } : {}),
             ...(execution.transportBindingId
               ? { transportBindingId: execution.transportBindingId }
               : {}),

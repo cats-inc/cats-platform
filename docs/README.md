@@ -55,6 +55,7 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [ADR-089](./decisions/089-split-runtime-request-and-stream-idle-timeouts.md)
 - [PLAN-082](./plans/PLAN-082-settings-runtime-cli-provider-lifecycle-rollout.md)
 - [SPEC-093](./specs/SPEC-093-settings-runtime-cli-provider-lifecycle.md)
 - [PLAN-081](./plans/PLAN-081-code-artifact-declaration-rollout.md)

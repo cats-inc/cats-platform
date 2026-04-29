@@ -52,6 +52,17 @@ export interface SupervisedRuntimeMessageSendInput {
   supervision: RuntimeSupervisionContext;
 }
 
+export class RuntimeSupervisionRejectedError extends Error {
+  constructor(
+    readonly toolName: string,
+    readonly rejectionCode: string,
+    message: string,
+  ) {
+    super(`${toolName} rejected: ${rejectionCode} ${message}`);
+    this.name = 'RuntimeSupervisionRejectedError';
+  }
+}
+
 interface RuntimeMessageSendToolInput {
   sessionId: string;
   content: string;
@@ -220,7 +231,11 @@ function requireAppliedToolResult<TResult>(
     return result.result;
   }
   if (result.status === 'rejected') {
-    throw new Error(`${toolName} rejected: ${result.error.code} ${result.error.message}`);
+    throw new RuntimeSupervisionRejectedError(
+      toolName,
+      result.error.code,
+      result.error.message,
+    );
   }
 
   throw new Error(`${toolName} returned pending approval unexpectedly.`);

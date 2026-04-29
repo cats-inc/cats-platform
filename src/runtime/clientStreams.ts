@@ -9,7 +9,14 @@ import {
   readRuntimeMessageResultText,
 } from './messageSegments.js';
 
-export async function readRuntimeNdjsonResponse(response: Response): Promise<RuntimeMessageResult> {
+export interface RuntimeNdjsonReadOptions {
+  onChunk?: () => void;
+}
+
+export async function readRuntimeNdjsonResponse(
+  response: Response,
+  options: RuntimeNdjsonReadOptions = {},
+): Promise<RuntimeMessageResult> {
   if (!response.body) {
     throw new Error('cats-runtime did not provide a response stream');
   }
@@ -96,6 +103,7 @@ function processEvent(event: Record<string, unknown>): void {
       break;
     }
 
+    options.onChunk?.();
     buffer += decoder.decode(chunk.value, { stream: true });
     const lines = buffer.split(/\r?\n/u);
     buffer = lines.pop() ?? '';

@@ -8,6 +8,9 @@ import test from 'node:test';
 import { createServer } from '../build/server/app/server/index.js';
 import { MemoryChatStore } from '../build/server/products/chat/state/store.js';
 import {
+  RUNTIME_MESSAGE_SEND_TOOL,
+} from '../build/server/platform/supervision/runtimeBoundary.js';
+import {
   buildChatConversationId,
   buildDirectLaneTransportBindingId,
   CHAT_ROOT_CONTAINER_ID,
@@ -202,7 +205,8 @@ test('posting a direct-lane message keeps canonical transport binding on runtime
       runtimeClient.sentMessages[0]?.input?.context?.metadata?.supervisionBoundary,
       'cats-supervision-runtime-boundary',
     );
-    assert.equal(/cats\.runtime\.message\.send rejected/u.test(runtimeError.body), true);
+    assert.equal(runtimeError.metadata?.toolName, RUNTIME_MESSAGE_SEND_TOOL);
+    assert.equal(runtimeError.metadata?.rejectionCode, 'E_PRECHECK_FAILED');
     assert.equal(runtimeError.metadata?.conversationId, buildChatConversationId(channelId));
     assert.equal(runtimeError.metadata?.containerId, CHAT_ROOT_CONTAINER_ID);
     assert.equal(

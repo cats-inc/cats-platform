@@ -1,6 +1,6 @@
 import path from 'node:path';
 import {
-  DEFAULT_RUNTIME_MESSAGE_TIMEOUT_MS,
+  DEFAULT_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS,
   DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS,
 } from './runtime/client.js';
 import { DEFAULT_RUNTIME_STALE_SESSION_RETRY_LIMIT } from './shared/runtimeRecovery.js';
@@ -18,7 +18,7 @@ export interface AppConfig {
   runtimeBaseUrl: string;
   runtimeApiKey: string;
   runtimeSessionCreateTimeoutMs: number;
-  runtimeMessageTimeoutMs: number;
+  runtimeMessageIdleTimeoutMs: number;
   runtimeSetupProxyTimeoutMs?: number;
   runtimeSetupScanProxyTimeoutMs?: number;
   runtimeSetupApplyProxyTimeoutMs?: number;
@@ -136,9 +136,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       env.CATS_RUNTIME_SESSION_CREATE_TIMEOUT_MS,
       DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS,
     ),
-    runtimeMessageTimeoutMs: parsePositiveInt(
-      env.CATS_RUNTIME_MESSAGE_TIMEOUT_MS,
-      DEFAULT_RUNTIME_MESSAGE_TIMEOUT_MS,
+    runtimeMessageIdleTimeoutMs: parsePositiveInt(
+      env.CATS_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS,
+      DEFAULT_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS,
     ),
     runtimeSetupProxyTimeoutMs: legacySetupProxyTimeoutMs,
     runtimeSetupScanProxyTimeoutMs: parsePositiveInt(

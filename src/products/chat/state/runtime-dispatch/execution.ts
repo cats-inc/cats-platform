@@ -15,6 +15,7 @@ import {
   type RuntimeMessageSegment,
 } from '../../../../platform/runtime/client.js';
 import {
+  RuntimeSupervisionRejectedError,
   sendSupervisedRuntimeMessage,
 } from '../../../../platform/supervision/runtimeBoundary.js';
 import { buildChannelView } from '../model/index.js';
@@ -41,6 +42,8 @@ export interface DispatchExecution extends DispatchRequest {
   conversationId?: string | null;
   containerId?: string | null;
   transportBindingId?: string | null;
+  errorToolName?: string | null;
+  errorRejectionCode?: string | null;
   leasePatch?: DispatchLeasePatch;
   channelChatCwd?: string;
   recoveredMessages?: ChatMessage[];
@@ -195,6 +198,9 @@ export async function executeDispatch(
       transportBindingId: resolvedTransportBindingId,
     };
   } catch (error) {
+    const supervisedRejection = error instanceof RuntimeSupervisionRejectedError
+      ? error
+      : null;
     return {
       ...request,
       responseSegments: null,
@@ -203,6 +209,8 @@ export async function executeDispatch(
       conversationId: resolvedConversationId,
       containerId: resolvedContainerId,
       transportBindingId: resolvedTransportBindingId,
+      errorToolName: supervisedRejection?.toolName ?? null,
+      errorRejectionCode: supervisedRejection?.rejectionCode ?? null,
     };
   }
 }

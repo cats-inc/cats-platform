@@ -3,9 +3,47 @@ import test from 'node:test';
 
 import {
   CatsRuntimeClient,
-  DEFAULT_RUNTIME_MESSAGE_TIMEOUT_MS,
+  DEFAULT_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS,
   DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS,
 } from '../build/server/runtime/client.js';
+
+function createTimeoutSignalRecorder() {
+  const calls = [];
+  return {
+    calls,
+    createTimeoutSignal(ms) {
+      calls.push(ms);
+      return new AbortController().signal;
+    },
+  };
+}
+
+function createIdleTimeoutRecorder() {
+  const calls = [];
+  const controllers = [];
+  return {
+    calls,
+    controllers,
+    createIdleTimeoutController(ms) {
+      calls.push(ms);
+      const controller = new AbortController();
+      const record = {
+        resetCalls: 0,
+        clearCalls: 0,
+      };
+      controllers.push(record);
+      return {
+        signal: controller.signal,
+        reset() {
+          record.resetCalls += 1;
+        },
+        clear() {
+          record.clearCalls += 1;
+        },
+      };
+    },
+  };
+}
 
 test('runtime client reuses the shared execution-request serializer for outbound payloads', async () => {
   const requests = [];
@@ -172,15 +210,9 @@ test('runtime client synthesizes a text segment from coarse result-only delivery
   }
 });
 
-test('runtime client applies timeout budget to message sends', async () => {
-  const timeoutCalls = [];
+test('runtime client keeps the standard request timeout separate from message stream idle timeout', async () => {
+  const idleTimeout = createIdleTimeoutRecorder();
   const originalFetch = globalThis.fetch;
-  const originalAbortSignalTimeout = AbortSignal.timeout;
-
-  AbortSignal.timeout = (ms) => {
-    timeoutCalls.push(ms);
-    return new AbortController().signal;
-  };
 
   globalThis.fetch = async (input, init = {}) => {
     const url = String(input);
@@ -201,25 +233,22 @@ test('runtime client applies timeout budget to message sends', async () => {
   };
 
   try {
-    const client = new CatsRuntimeClient('http://runtime.test', { timeoutMs: 12_345 });
+    const client = new CatsRuntimeClient('http://runtime.test', {
+      timeoutMs: 12_345,
+      createIdleTimeoutController: idleTimeout.createIdleTimeoutController,
+    });
     await client.sendMessage('session-1', 'hello');
   } finally {
     globalThis.fetch = originalFetch;
-    AbortSignal.timeout = originalAbortSignalTimeout;
   }
 
-  assert.deepEqual(timeoutCalls, [12_345]);
+  assert.deepEqual(idleTimeout.calls, [DEFAULT_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS]);
+  assert.equal(idleTimeout.controllers[0]?.clearCalls, 1);
 });
 
 test('runtime client uses an extended default timeout for session creation', async () => {
-  const timeoutCalls = [];
+  const timeoutSignals = createTimeoutSignalRecorder();
   const originalFetch = globalThis.fetch;
-  const originalAbortSignalTimeout = AbortSignal.timeout;
-
-  AbortSignal.timeout = (ms) => {
-    timeoutCalls.push(ms);
-    return new AbortController().signal;
-  };
 
   globalThis.fetch = async (input) => {
     const url = String(input);
@@ -240,25 +269,21 @@ test('runtime client uses an extended default timeout for session creation', asy
   };
 
   try {
-    const client = new CatsRuntimeClient('http://runtime.test');
+    const client = new CatsRuntimeClient('http://runtime.test', {
+      timeoutMs: 12_345,
+      createTimeoutSignal: timeoutSignals.createTimeoutSignal,
+    });
     await client.createSession({ provider: 'claude' });
   } finally {
     globalThis.fetch = originalFetch;
-    AbortSignal.timeout = originalAbortSignalTimeout;
   }
 
-  assert.deepEqual(timeoutCalls, [DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS]);
+  assert.deepEqual(timeoutSignals.calls, [DEFAULT_RUNTIME_SESSION_CREATE_TIMEOUT_MS]);
 });
 
 test('runtime client lets callers override the session-create timeout separately', async () => {
-  const timeoutCalls = [];
+  const timeoutSignals = createTimeoutSignalRecorder();
   const originalFetch = globalThis.fetch;
-  const originalAbortSignalTimeout = AbortSignal.timeout;
-
-  AbortSignal.timeout = (ms) => {
-    timeoutCalls.push(ms);
-    return new AbortController().signal;
-  };
 
   globalThis.fetch = async (input) => {
     const url = String(input);
@@ -282,63 +307,19 @@ test('runtime client lets callers override the session-create timeout separately
     const client = new CatsRuntimeClient('http://runtime.test', {
       sessionCreateTimeoutMs: 45_000,
       timeoutMs: 5_000,
+      createTimeoutSignal: timeoutSignals.createTimeoutSignal,
     });
     await client.createSession({ provider: 'claude' });
   } finally {
     globalThis.fetch = originalFetch;
-    AbortSignal.timeout = originalAbortSignalTimeout;
   }
 
-  assert.deepEqual(timeoutCalls, [45_000]);
+  assert.deepEqual(timeoutSignals.calls, [45_000]);
 });
 
-test('runtime client uses an extended default timeout for message sends', async () => {
-  const timeoutCalls = [];
+test('runtime client uses an extended default idle timeout for message streams', async () => {
+  const idleTimeout = createIdleTimeoutRecorder();
   const originalFetch = globalThis.fetch;
-  const originalAbortSignalTimeout = AbortSignal.timeout;
-
-  AbortSignal.timeout = (ms) => {
-    timeoutCalls.push(ms);
-    return new AbortController().signal;
-  };
-
-  globalThis.fetch = async (input) => {
-    const url = String(input);
-    if (url.endsWith('/messages')) {
-      return new Response(
-        '{"type":"text","text":"ok"}\n{"type":"result","usage":{"inputTokens":1,"outputTokens":1}}\n',
-        {
-          status: 200,
-          headers: {
-            'content-type': 'application/x-ndjson',
-          },
-        },
-      );
-    }
-
-    throw new Error(`Unexpected runtime client request: ${url}`);
-  };
-
-  try {
-    const client = new CatsRuntimeClient('http://runtime.test');
-    await client.sendMessage('session-1', 'hello');
-  } finally {
-    globalThis.fetch = originalFetch;
-    AbortSignal.timeout = originalAbortSignalTimeout;
-  }
-
-  assert.deepEqual(timeoutCalls, [DEFAULT_RUNTIME_MESSAGE_TIMEOUT_MS]);
-});
-
-test('runtime client lets callers override the message-send timeout separately', async () => {
-  const timeoutCalls = [];
-  const originalFetch = globalThis.fetch;
-  const originalAbortSignalTimeout = AbortSignal.timeout;
-
-  AbortSignal.timeout = (ms) => {
-    timeoutCalls.push(ms);
-    return new AbortController().signal;
-  };
 
   globalThis.fetch = async (input) => {
     const url = String(input);
@@ -359,16 +340,52 @@ test('runtime client lets callers override the message-send timeout separately',
 
   try {
     const client = new CatsRuntimeClient('http://runtime.test', {
-      messageTimeoutMs: 60_000,
-      timeoutMs: 5_000,
+      createIdleTimeoutController: idleTimeout.createIdleTimeoutController,
     });
     await client.sendMessage('session-1', 'hello');
   } finally {
     globalThis.fetch = originalFetch;
-    AbortSignal.timeout = originalAbortSignalTimeout;
   }
 
-  assert.deepEqual(timeoutCalls, [60_000]);
+  assert.deepEqual(idleTimeout.calls, [DEFAULT_RUNTIME_MESSAGE_IDLE_TIMEOUT_MS]);
+  assert.equal(idleTimeout.controllers[0]?.resetCalls >= 1, true);
+  assert.equal(idleTimeout.controllers[0]?.clearCalls, 1);
+});
+
+test('runtime client lets callers override the message stream idle timeout separately', async () => {
+  const idleTimeout = createIdleTimeoutRecorder();
+  const originalFetch = globalThis.fetch;
+
+  globalThis.fetch = async (input) => {
+    const url = String(input);
+    if (url.endsWith('/messages')) {
+      return new Response(
+        '{"type":"text","text":"ok"}\n{"type":"result","usage":{"inputTokens":1,"outputTokens":1}}\n',
+        {
+          status: 200,
+          headers: {
+            'content-type': 'application/x-ndjson',
+          },
+        },
+      );
+    }
+
+    throw new Error(`Unexpected runtime client request: ${url}`);
+  };
+
+  try {
+    const client = new CatsRuntimeClient('http://runtime.test', {
+      messageIdleTimeoutMs: 60_000,
+      timeoutMs: 5_000,
+      createIdleTimeoutController: idleTimeout.createIdleTimeoutController,
+    });
+    await client.sendMessage('session-1', 'hello');
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.deepEqual(idleTimeout.calls, [60_000]);
+  assert.equal(idleTimeout.controllers[0]?.clearCalls, 1);
 });
 
 test('runtime client synthesizes a text segment from content-array result delivery', async () => {
@@ -507,14 +524,8 @@ test('runtime client normalizes streaming tool_result content arrays into tool_r
 });
 
 test('runtime setup summary reads still use the standard runtime timeout budget', async () => {
-  const timeoutCalls = [];
+  const timeoutSignals = createTimeoutSignalRecorder();
   const originalFetch = globalThis.fetch;
-  const originalAbortSignalTimeout = AbortSignal.timeout;
-
-  AbortSignal.timeout = (ms) => {
-    timeoutCalls.push(ms);
-    return new AbortController().signal;
-  };
 
   globalThis.fetch = async (input) => {
     const url = String(input);
@@ -561,26 +572,21 @@ test('runtime setup summary reads still use the standard runtime timeout budget'
   };
 
   try {
-    const client = new CatsRuntimeClient('http://runtime.test');
+    const client = new CatsRuntimeClient('http://runtime.test', {
+      createTimeoutSignal: timeoutSignals.createTimeoutSignal,
+    });
     const payload = await client.getSetupState();
     assert.equal(payload.bootstrapRequired, true);
   } finally {
     globalThis.fetch = originalFetch;
-    AbortSignal.timeout = originalAbortSignalTimeout;
   }
 
-  assert.deepEqual(timeoutCalls, [5000]);
+  assert.deepEqual(timeoutSignals.calls, [5000]);
 });
 
 test('runtime client returns truthful provider diagnostics for filtered selector reads', async () => {
-  const timeoutCalls = [];
+  const timeoutSignals = createTimeoutSignalRecorder();
   const originalFetch = globalThis.fetch;
-  const originalAbortSignalTimeout = AbortSignal.timeout;
-
-  AbortSignal.timeout = (ms) => {
-    timeoutCalls.push(ms);
-    return new AbortController().signal;
-  };
 
   globalThis.fetch = async (input) => {
     const url = new URL(String(input));
@@ -629,7 +635,9 @@ test('runtime client returns truthful provider diagnostics for filtered selector
   };
 
   try {
-    const client = new CatsRuntimeClient('http://runtime.test');
+    const client = new CatsRuntimeClient('http://runtime.test', {
+      createTimeoutSignal: timeoutSignals.createTimeoutSignal,
+    });
     const diagnostics = await client.getProviderDiagnostics({
       provider: 'claude',
       scope: 'availability',
@@ -663,21 +671,14 @@ test('runtime client returns truthful provider diagnostics for filtered selector
     });
   } finally {
     globalThis.fetch = originalFetch;
-    AbortSignal.timeout = originalAbortSignalTimeout;
   }
 
-  assert.deepEqual(timeoutCalls, [8000]);
+  assert.deepEqual(timeoutSignals.calls, [8000]);
 });
 
 test('runtime client uses the extended provider-registry timeout for provider config reads', async () => {
-  const timeoutCalls = [];
+  const timeoutSignals = createTimeoutSignalRecorder();
   const originalFetch = globalThis.fetch;
-  const originalAbortSignalTimeout = AbortSignal.timeout;
-
-  AbortSignal.timeout = (ms) => {
-    timeoutCalls.push(ms);
-    return new AbortController().signal;
-  };
 
   globalThis.fetch = async (input) => {
     const url = String(input);
@@ -708,15 +709,16 @@ test('runtime client uses the extended provider-registry timeout for provider co
   };
 
   try {
-    const client = new CatsRuntimeClient('http://runtime.test');
+    const client = new CatsRuntimeClient('http://runtime.test', {
+      createTimeoutSignal: timeoutSignals.createTimeoutSignal,
+    });
     const registry = await client.getProviderConfig();
     assert.equal(registry.claude?.defaultInstance, 'native');
   } finally {
     globalThis.fetch = originalFetch;
-    AbortSignal.timeout = originalAbortSignalTimeout;
   }
 
-  assert.deepEqual(timeoutCalls, [10000]);
+  assert.deepEqual(timeoutSignals.calls, [10000]);
 });
 
 test('runtime client does not fall back to static advanced catalogs on upstream errors', async () => {
