@@ -9,7 +9,7 @@ import {
   KIND_LABEL,
 } from "../topdown/shared";
 import type { WorkGraphObjectSummary } from "../topdown/types";
-import { usePinnedProjects } from "../../state/pinnedProjectsStore";
+import { useProjectsQuery } from "../../state/queries/projectsQuery.js";
 import { useWorkGraph } from "../../state/workGraphStore";
 import "./projects.css";
 
@@ -17,16 +17,16 @@ export function ProjectDetailPage(): JSX.Element {
   const { projectId } = useParams<{ projectId: string }>();
   const { graph } = useWorkGraph();
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
-  const { allProjects, deletedIds } = usePinnedProjects();
+  const projectsQuery = useProjectsQuery();
 
   const project = projectId
-    ? allProjects.find((p) => p.id === projectId)
+    ? projectsQuery.data?.projects.find((p) => p.id === projectId)
     : undefined;
 
-  if (
-    !project
-    || (projectId !== undefined && deletedIds.has(projectId))
-  ) {
+  if (projectsQuery.isPending) {
+    return <ProjectDetailLoading />;
+  }
+  if (!project) {
     return <ProjectNotFound projectId={projectId ?? null} />;
   }
 
@@ -41,8 +41,6 @@ export function ProjectDetailPage(): JSX.Element {
       (o) => o.kind === "activity" && o.linkedProjectId === project.id,
     )
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-  // Conversation title resolves through projection's
-  // `linkedConversationTitle` now — no per-page indexes lookup.
 
   return (
     <div className="projectDetail">
@@ -130,17 +128,15 @@ export function ProjectDetailPage(): JSX.Element {
                 <dd>{project.summary}</dd>
               </>
             ) : null}
-            <dt>Owner role</dt>
-            <dd>{project.ownerRole ?? <em>(not assigned)</em>}</dd>
-            <dt>Next action</dt>
-            <dd>{project.nextAction ?? <em>(none recorded)</em>}</dd>
-            {project.linkedConversationId ? (
+            <dt>Owner</dt>
+            <dd>{project.ownerName}</dd>
+            {project.primaryConversationId ? (
               <>
                 <dt>Conversation</dt>
                 <dd>
                   <span className="projectDetail__convoTitle">
-                    {project.linkedConversationTitle ??
-                      project.linkedConversationId}
+                    {project.primaryConversationTitle ??
+                      project.primaryConversationId}
                   </span>
                 </dd>
               </>
@@ -161,7 +157,7 @@ export function ProjectDetailPage(): JSX.Element {
         />
 
         <LinkageSection
-          selfRef={{ recordFamily: "project", recordId: project.sourceRecordId }}
+          selfRef={{ recordFamily: "project", recordId: project.id }}
           graph={graph}
           indexes={indexes}
         />
@@ -253,6 +249,27 @@ function ItemsSection({
         </ul>
       )}
     </section>
+  );
+}
+
+function ProjectDetailLoading(): JSX.Element {
+  return (
+    <div className="projectDetail">
+      <header className="channelTopBar projectDetailTopBar">
+        <div className="channelTopBarStart projectDetailTopBar__start">
+          <Link
+            to=".."
+            relative="path"
+            className="projectDetailTopBar__back"
+          >
+            <span>← Projects</span>
+          </Link>
+        </div>
+      </header>
+      <main className="projectDetail__main">
+        <p className="projectDetail__empty">Loading project…</p>
+      </main>
+    </div>
   );
 }
 

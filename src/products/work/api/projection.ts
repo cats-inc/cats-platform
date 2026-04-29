@@ -113,6 +113,7 @@ export interface WorkProjectListItem {
   primaryConversationSourceChannelId: string | null;
   ownerActorId: string;
   ownerName: string;
+  attention: WorkAttentionState;
   linkedWorkItemCount: number;
   activeWorkItemCount: number;
   linkedTaskCount: number;
@@ -493,6 +494,7 @@ function buildProjectListItems(
         primaryConversationSourceChannelId: primaryConversation?.sourceChannelId ?? null,
         ownerActorId: project.ownerActorId,
         ownerName: resolveActorName(core, project.ownerActorId),
+        attention: deriveAttentionFromStatus(project.status),
         linkedWorkItemCount: linkedWorkItems.length,
         activeWorkItemCount: activeWorkItems.length,
         linkedTaskCount: linkedTaskIdSet.size,
