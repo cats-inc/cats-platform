@@ -24,6 +24,7 @@
 import type {
   MobileChatCat,
   MobileChatChannelSummary,
+  MobileChatMessage,
   MobileChatShellState,
   MobileAppShellPayload,
 } from '../../../mobile/contracts.js';
@@ -31,6 +32,7 @@ import type {
   AppShellPayload,
   ChatCat,
   ChatChannelSummary,
+  ChatMessage,
   ChatShellState,
 } from './contracts.js';
 
@@ -41,6 +43,7 @@ const _checkChatChannelSummary: AssertExtends<
   ChatChannelSummary,
   MobileChatChannelSummary
 > = true;
+const _checkChatMessage: AssertExtends<ChatMessage, MobileChatMessage> = true;
 const _checkChatShellState: AssertExtends<ChatShellState, MobileChatShellState> = true;
 const _checkAppShellPayload: AssertExtends<
   AppShellPayload,
@@ -49,5 +52,6 @@ const _checkAppShellPayload: AssertExtends<
 
 void _checkChatCat;
 void _checkChatChannelSummary;
+void _checkChatMessage;
 void _checkChatShellState;
 void _checkAppShellPayload;

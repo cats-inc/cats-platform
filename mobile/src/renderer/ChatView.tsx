@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
+  ActivityIndicator,
   FlatList,
   KeyboardAvoidingView,
   type NativeScrollEvent,
@@ -13,10 +14,14 @@ import {
   View,
 } from 'react-native';
 
-import { getFixtureConversation } from '../api/fixtures/conversation';
-import type { FixtureMessage } from '../api/fixtures/conversation';
+import type { MobileApiError } from '../api/client';
+import {
+  type ChannelMessagesState,
+  useChannelMessages,
+} from './hooks/useChannelMessages';
 import { MessageBody, type ResolveAttachmentUrl } from './MessageBody';
 import { MessageBubble } from './MessageBubble';
+import type { MobileRenderedMessage } from '../../../src/mobile/index.js';
 import { colors, radii, spacing, typography } from './theme';
 
 export type ChatViewProductMode = 'chat' | 'code' | 'work';
@@ -38,55 +43,90 @@ const KEYBOARD_VERTICAL_OFFSET_IOS = 88;
  *  "stuck" to the latest message and auto-scroll on new content. */
 const STICKY_BOTTOM_THRESHOLD_PX = 80;
 
-const REFRESH_FIXTURE_DELAY_MS = 600;
-
 /**
- * Default resolver returns null so attachments render as non-interactive
- * placeholders until the device has a paired desktop. Phase 7 replaces
- * this with a connection-mode-aware resolver (cloud relay base URL,
- * tunnel URL, or Tailscale IP) per ADR-092 / SPEC-095.
- */
-const NO_CONNECTION_RESOLVER: ResolveAttachmentUrl = () => null;
-
-/**
- * Shared mobile ChatView. Phase 4a built the visual shell; Phase 4d
- * replaces the original scrollToIndex polish with onContentSizeChange +
- * scrollToEnd, which is the canonical RN chat pattern for variable-
- * height bubbles. A "sticky bottom" rule keeps autoscroll intact while
- * the user is near the latest message and disengages once they scroll
- * up to read history.
+ * Shared mobile ChatView. PLAN-084 Phase 4b wires the FlatList of
+ * messages to the live `/api/channels/{id}/messages` endpoint via
+ * `useChannelMessages`. Phase 4c will replace the no-op composer with
+ * the real send path. Phase 5 adds product-mode side panels (bottom
+ * sheet / fullscreen modal).
  */
 export function ChatView({ channelId, productMode }: ChatViewProps) {
-  const conversation = useMemo(
-    () => getFixtureConversation(channelId, productMode),
-    [channelId, productMode],
-  );
+  const { state, refetch } = useChannelMessages(channelId);
 
-  const listRef = useRef<FlatList<FixtureMessage>>(null);
+  return (
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={
+        Platform.OS === 'ios' ? KEYBOARD_VERTICAL_OFFSET_IOS : 0
+      }
+    >
+      {renderBody(state, productMode, channelId, refetch)}
+    </KeyboardAvoidingView>
+  );
+}
+
+function renderBody(
+  state: ChannelMessagesState,
+  productMode: ChatViewProductMode,
+  channelId: string,
+  onRetry: () => void,
+) {
+  switch (state.kind) {
+    case 'loading':
+      return (
+        <View style={styles.centered}>
+          <ActivityIndicator color={colors.accent.primary} />
+        </View>
+      );
+    case 'unconfigured':
+      return (
+        <PanelView
+          title="Connect to your desktop"
+          body="Set the desktop base URL in Settings so this device can fetch messages."
+        />
+      );
+    case 'channelNotFound':
+      return (
+        <PanelView
+          title="No conversation yet"
+          body={`Channel \`${channelId}\` was not found on the desktop. Sending the first message will create it (Phase 4c).`}
+        />
+      );
+    case 'error':
+      return <ErrorView error={state.error} onRetry={onRetry} />;
+    case 'data':
+      return (
+        <LiveConversation
+          state={state}
+          productMode={productMode}
+          channelId={channelId}
+        />
+      );
+  }
+}
+
+interface LiveConversationProps {
+  state: Extract<ChannelMessagesState, { kind: 'data' }>;
+  productMode: ChatViewProductMode;
+  channelId: string;
+}
+
+function LiveConversation({
+  state,
+  productMode,
+  channelId,
+}: LiveConversationProps) {
+  const listRef = useRef<FlatList<MobileRenderedMessage>>(null);
   const isNearBottomRef = useRef<boolean>(true);
-  const refreshTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [draft, setDraft] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
   const canSubmit = draft.trim().length > 0;
 
-  // Re-arm sticky-bottom whenever the channel switches, so the new
-  // conversation lands at the latest message even if the previous one
-  // was scrolled mid-history.
+  // Re-arm sticky-bottom whenever the channel switches.
   useEffect(() => {
     isNearBottomRef.current = true;
   }, [channelId]);
-
-  // Clean up any in-flight refresh timer on unmount so we never call
-  // setState on an unmounted component.
-  useEffect(() => {
-    return () => {
-      if (refreshTimerRef.current !== null) {
-        clearTimeout(refreshTimerRef.current);
-        refreshTimerRef.current = null;
-      }
-    };
-  }, []);
 
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, layoutMeasurement, contentSize } = event.nativeEvent;
@@ -103,61 +143,41 @@ export function ChatView({ channelId, productMode }: ChatViewProps) {
 
   const handleSend = () => {
     // Phase-4c will wire this to the real send path. Until then, just
-    // clear the draft so the composer feels responsive in dev builds.
+    // clear the draft so the composer feels responsive.
     setDraft('');
-    // Re-engage sticky bottom regardless of where the user was — sending
-    // a message should always pull the conversation to the latest.
     isNearBottomRef.current = true;
     listRef.current?.scrollToEnd({ animated: true });
   };
 
-  const handleRefresh = () => {
-    // Phase-4b will refresh the conversation against the live store.
-    // For the fixture phase, simulate the refresh state for ~600 ms so
-    // the gesture is visible during dev. The timer is held in a ref so
-    // unmount cleanup can cancel it.
-    setRefreshing(true);
-    if (refreshTimerRef.current !== null) {
-      clearTimeout(refreshTimerRef.current);
-    }
-    refreshTimerRef.current = setTimeout(() => {
-      setRefreshing(false);
-      refreshTimerRef.current = null;
-    }, REFRESH_FIXTURE_DELAY_MS);
-  };
-
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={
-        Platform.OS === 'ios' ? KEYBOARD_VERTICAL_OFFSET_IOS : 0
-      }
-    >
+    <>
       <FlatList
         ref={listRef}
         style={styles.list}
         contentContainerStyle={styles.listContent}
-        data={conversation.messages}
+        data={state.messages}
         keyExtractor={messageKey}
         onScroll={handleScroll}
         onContentSizeChange={handleContentSizeChange}
         scrollEventThrottle={16}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
-            tintColor={colors.accent.primary}
-          />
-        }
+        refreshControl={<NoOpRefreshControl />}
         renderItem={({ item }) => (
-          <MessageBubbleItem channelId={channelId} message={item} />
+          <MessageBubbleItem
+            channelId={channelId}
+            message={item}
+            resolveAttachmentUrl={state.resolveAttachmentUrl}
+          />
         )}
         ListHeaderComponent={
           <ChatViewHeader
-            title={conversation.title}
-            productMode={conversation.productMode}
+            title={state.channelTitle}
+            productMode={productMode}
           />
+        }
+        ListEmptyComponent={
+          <Text style={styles.emptyState}>
+            No messages yet. Send the first one below.
+          </Text>
         }
       />
       <View style={styles.composer}>
@@ -182,20 +202,39 @@ export function ChatView({ channelId, productMode }: ChatViewProps) {
           <Text style={styles.sendButtonLabel}>Send</Text>
         </Pressable>
       </View>
-    </KeyboardAvoidingView>
+    </>
   );
 }
 
-function messageKey(message: FixtureMessage): string {
-  return message.id;
+function NoOpRefreshControl() {
+  // RefreshControl placeholder for now; Phase 4c wires it to refetch
+  // via the hook's refetch callback once pull-to-refresh has a real
+  // backend interaction. Empty refresh keeps the gesture available
+  // visually.
+  return (
+    <RefreshControl
+      refreshing={false}
+      onRefresh={() => undefined}
+      tintColor={colors.accent.primary}
+    />
+  );
 }
 
 interface MessageBubbleItemProps {
   channelId: string;
-  message: FixtureMessage;
+  message: MobileRenderedMessage;
+  resolveAttachmentUrl: ResolveAttachmentUrl;
 }
 
-function MessageBubbleItem({ channelId, message }: MessageBubbleItemProps) {
+function messageKey(message: MobileRenderedMessage): string {
+  return message.id;
+}
+
+function MessageBubbleItem({
+  channelId,
+  message,
+  resolveAttachmentUrl,
+}: MessageBubbleItemProps) {
   return (
     <View>
       <View
@@ -211,7 +250,7 @@ function MessageBubbleItem({ channelId, message }: MessageBubbleItemProps) {
           segments={message.segments}
           attachments={message.attachments}
           channelId={channelId}
-          resolveAttachmentUrl={NO_CONNECTION_RESOLVER}
+          resolveAttachmentUrl={resolveAttachmentUrl}
         />
       </MessageBubble>
     </View>
@@ -243,10 +282,82 @@ function productLabel(productMode: ChatViewProductMode): string {
   }
 }
 
+interface PanelViewProps {
+  title: string;
+  body: string;
+}
+
+function PanelView({ title, body }: PanelViewProps) {
+  return (
+    <View style={styles.panel}>
+      <Text style={styles.panelTitle}>{title}</Text>
+      <Text style={styles.panelBody}>{body}</Text>
+    </View>
+  );
+}
+
+interface ErrorViewProps {
+  error: MobileApiError;
+  onRetry: () => void;
+}
+
+function ErrorView({ error, onRetry }: ErrorViewProps) {
+  return (
+    <View style={styles.panel}>
+      <Text style={styles.panelTitle}>Could not load messages</Text>
+      <Text style={styles.panelBody}>{error.message}</Text>
+      <Pressable
+        accessibilityRole="button"
+        onPress={onRetry}
+        style={({ pressed }) => [
+          styles.retryButton,
+          pressed ? styles.retryButtonPressed : null,
+        ]}
+      >
+        <Text style={styles.retryButtonLabel}>Retry</Text>
+      </Pressable>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.bg.canvas,
+  },
+  centered: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  panel: {
+    flex: 1,
+    padding: spacing.xl,
+    gap: spacing.md,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  panelTitle: {
+    color: colors.fg.primary,
+    ...typography.title,
+  },
+  panelBody: {
+    color: colors.fg.secondary,
+    ...typography.body,
+  },
+  retryButton: {
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radii.md,
+    backgroundColor: colors.accent.primary,
+    marginTop: spacing.sm,
+  },
+  retryButtonPressed: {
+    opacity: 0.85,
+  },
+  retryButtonLabel: {
+    color: colors.fg.inverse,
+    ...typography.bodyStrong,
   },
   list: {
     flex: 1,
@@ -254,6 +365,13 @@ const styles = StyleSheet.create({
   listContent: {
     paddingTop: spacing.md,
     paddingBottom: spacing.lg,
+  },
+  emptyState: {
+    color: colors.fg.muted,
+    ...typography.body,
+    textAlign: 'center',
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.lg,
   },
   header: {
     paddingHorizontal: spacing.lg,

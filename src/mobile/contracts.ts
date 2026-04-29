@@ -52,3 +52,23 @@ export interface MobileChatShellState {
 export interface MobileAppShellPayload {
   chat: MobileChatShellState;
 }
+
+export type MobileChatMessageSenderKind =
+  | 'user'
+  | 'agent'
+  | 'system'
+  | 'orchestrator';
+
+export interface MobileChatMessage {
+  id: string;
+  channelId: string;
+  senderKind: MobileChatMessageSenderKind;
+  senderName: string;
+  body: string;
+  mentions: string[];
+  createdAt: string;
+}
+
+export interface MobileChannelMessagesPayload {
+  messages: MobileChatMessage[];
+}
