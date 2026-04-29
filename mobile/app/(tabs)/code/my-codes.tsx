@@ -9,11 +9,14 @@ export default function MyCodesScreen() {
       <Stack.Screen options={{ title: 'My Codes', headerShown: true }} />
       <View style={styles.body}>
         <Text style={styles.title}>MY CODES</Text>
-        <Text style={styles.subtitle}>The Code lens of MY CATS.</Text>
-        <Text style={styles.placeholder}>
-          MY CATS lens projections (FR-046, FR-047) land in PLAN-084 Phase 6
-          alongside the Lobby and Settings tab content.
-        </Text>
+        <Text style={styles.subtitle}>The Code lens of your cats.</Text>
+        <Text style={styles.empty}>Nothing here yet.</Text>
+        {__DEV__ ? (
+          <Text style={styles.devNote}>
+            MY CATS lens projections (FR-046, FR-047) land in PLAN-084
+            Phase 6 alongside the Lobby and Settings tab content.
+          </Text>
+        ) : null}
       </View>
     </SafeAreaView>
   );
@@ -37,9 +40,14 @@ const styles = StyleSheet.create({
     color: colors.fg.secondary,
     ...typography.body,
   },
-  placeholder: {
+  empty: {
     color: colors.fg.muted,
-    ...typography.caption,
+    ...typography.body,
+    marginTop: spacing.lg,
+  },
+  devNote: {
+    color: colors.fg.muted,
+    ...typography.label,
     marginTop: spacing.md,
   },
 });

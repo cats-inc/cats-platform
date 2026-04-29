@@ -74,10 +74,12 @@ export function Settings() {
             onSelect={() => setConnection(option.id)}
           />
         ))}
-        <Text style={styles.scopeNote}>
-          Live pairing flow lands in PLAN-084 Phase 7. Selection here is local
-          state only for now.
-        </Text>
+        {__DEV__ ? (
+          <Text style={styles.scopeNote}>
+            Live pairing flow lands in PLAN-084 Phase 7. Selection here is
+            local state only for now.
+          </Text>
+        ) : null}
       </Section>
 
       <Section label="Notifications">
@@ -134,18 +136,22 @@ export function Settings() {
           </View>
           <Text style={styles.linkRowChevron}>›</Text>
         </Pressable>
-        <Text style={styles.scopeNote}>
-          Settings tab depth is an open SPEC-095 question. Companion controls
-          and Cats registry read-only browse may land here pending owner
-          decision.
-        </Text>
+        {__DEV__ ? (
+          <Text style={styles.scopeNote}>
+            Settings tab depth is an open SPEC-095 question. Companion
+            controls and Cats registry read-only browse may land here
+            pending owner decision.
+          </Text>
+        ) : null}
       </Section>
 
-      <Section label="Developer tools">
-        <Link href="/bubble-harness" style={styles.devLink}>
-          Bubble visual gate (PLAN-084 Phase 2)
-        </Link>
-      </Section>
+      {__DEV__ ? (
+        <Section label="Developer tools">
+          <Link href="/bubble-harness" style={styles.devLink}>
+            Bubble visual gate
+          </Link>
+        </Section>
+      ) : null}
     </ScrollView>
   );
 }

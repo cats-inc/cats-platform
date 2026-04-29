@@ -66,11 +66,14 @@ export function Lobby() {
         ))}
       </View>
 
-      <Text style={styles.scopeNote}>
-        Lobby content scoping is open per SPEC-095 — Phase 6 ships a single-
-        column mobile layout against fixture data; live `/lobby` projection
-        lands once the desktop / mobile content split is decided.
-      </Text>
+      {__DEV__ ? (
+        <Text style={styles.scopeNote}>
+          Lobby content scoping is open per SPEC-095 — Phase 6 ships a
+          single-column mobile layout against fixture data; live `/lobby`
+          projection lands once the desktop / mobile content split is
+          decided.
+        </Text>
+      ) : null}
     </ScrollView>
   );
 }
