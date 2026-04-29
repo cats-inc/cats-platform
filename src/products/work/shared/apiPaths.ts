@@ -41,6 +41,13 @@ export const WORK_API_WORK_ITEM_DETAIL_PATH_TEMPLATE = `${WORK_API_WORK_ITEMS_PA
 export const WORK_API_SCHEDULE_DETAIL_PATH_TEMPLATE = `${WORK_API_SCHEDULES_PATH}/:scheduleId`;
 export const WORK_API_SCHEDULE_TEST_FIRE_PATH_TEMPLATE =
   `${WORK_API_SCHEDULE_DETAIL_PATH_TEMPLATE}/test-fire`;
+export const WORK_API_RUN_DETAIL_PATH_TEMPLATE = `${WORK_API_RUNS_PATH}/:runId`;
+export const WORK_API_RUN_STOP_PATH_TEMPLATE =
+  `${WORK_API_RUN_DETAIL_PATH_TEMPLATE}/stop`;
+export const WORK_API_MISSION_DETAIL_PATH_TEMPLATE =
+  `${WORK_API_MISSIONS_PATH}/:missionId`;
+export const WORK_API_MISSION_CANCEL_PATH_TEMPLATE =
+  `${WORK_API_MISSION_DETAIL_PATH_TEMPLATE}/cancel`;
 
 export const WORK_API_PROJECT_DETAIL_PATTERN = /^\/api\/work\/projects\/([^/]+)$/u;
 export const WORK_API_TASK_DETAIL_PATTERN = /^\/api\/work\/tasks\/([^/]+)$/u;
@@ -52,6 +59,10 @@ export const WORK_API_WORK_ITEM_DETAIL_PATTERN = /^\/api\/work\/work-items\/([^/
 export const WORK_API_SCHEDULE_DETAIL_PATTERN = /^\/api\/work\/schedules\/([^/]+)$/u;
 export const WORK_API_SCHEDULE_TEST_FIRE_PATTERN =
   /^\/api\/work\/schedules\/([^/]+)\/test-fire$/u;
+export const WORK_API_RUN_STOP_PATTERN =
+  /^\/api\/work\/runs\/([^/]+)\/stop$/u;
+export const WORK_API_MISSION_CANCEL_PATTERN =
+  /^\/api\/work\/missions\/([^/]+)\/cancel$/u;
 export const WORK_API_LINK_DETAIL_PATTERN = /^\/api\/work\/links\/([^/]+)$/u;
 export const WORK_API_LINK_DETAIL_PATH_TEMPLATE = `${WORK_API_LINKS_PATH}/:linkId`;
 
@@ -88,4 +99,12 @@ export function buildWorkApiSchedulePath(scheduleId?: string | null): string {
 
 export function buildWorkApiScheduleTestFirePath(scheduleId: string): string {
   return `${buildWorkApiSchedulePath(scheduleId)}/test-fire`;
+}
+
+export function buildWorkApiRunStopPath(runId: string): string {
+  return `${buildWorkApiDetailPath(WORK_API_RUNS_PATH, runId)}/stop`;
+}
+
+export function buildWorkApiMissionCancelPath(missionId: string): string {
+  return `${buildWorkApiDetailPath(WORK_API_MISSIONS_PATH, missionId)}/cancel`;
 }
