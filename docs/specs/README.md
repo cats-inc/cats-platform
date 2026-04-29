@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-093](./SPEC-093-settings-runtime-cli-provider-lifecycle.md) | Settings Runtime CLI Provider Lifecycle | Draft | [PLAN-082](../plans/PLAN-082-settings-runtime-cli-provider-lifecycle-rollout.md) |
 | [SPEC-092](./SPEC-092-code-artifact-declaration-contract.md) | Code Artifact Declaration Contract | Draft | [PLAN-081](../plans/PLAN-081-code-artifact-declaration-rollout.md), [ADR-088](../decisions/088-use-structured-artifact-declarations-for-code-materialization.md) |
 | [SPEC-091](./SPEC-091-cats-code-workspace-and-artifact-sidebar.md) | Cats Code Workspace and Artifact Sidebar | Draft | TBD |
 | [SPEC-090](./SPEC-090-work-graph-link-relations.md) | Work Graph Link Relations | Draft | [PLAN-079](../plans/PLAN-079-work-graph-link-relations-rollout.md), [ADR-086](../decisions/086-adopt-n-to-m-work-graph-link-relations.md) |
@@ -147,6 +148,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-04-28 (Build/Relay sidebar specs marked retired; SPEC-090 added for Work Graph link relations; SPEC-087 marked Cancelled alongside ADR-085 rejection; SPEC-088/SPEC-089 companion placeholders unchanged.)*
+*Last updated: 2026-04-29 (SPEC-093 added for Settings Runtime CLI provider lifecycle controls.)*
 
 *See also: [plans/](../plans/) for implementation plans*

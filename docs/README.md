@@ -55,6 +55,8 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [PLAN-082](./plans/PLAN-082-settings-runtime-cli-provider-lifecycle-rollout.md)
+- [SPEC-093](./specs/SPEC-093-settings-runtime-cli-provider-lifecycle.md)
 - [PLAN-081](./plans/PLAN-081-code-artifact-declaration-rollout.md)
 - [SPEC-092](./specs/SPEC-092-code-artifact-declaration-contract.md)
 - [ADR-088](./decisions/088-use-structured-artifact-declarations-for-code-materialization.md)
@@ -201,4 +203,4 @@ The main platform-foundation docs are current, but these areas still need dedica
 
 ---
 
-*Last updated: 2026-04-28*
+*Last updated: 2026-04-29*

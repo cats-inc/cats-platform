@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-082](./PLAN-082-settings-runtime-cli-provider-lifecycle-rollout.md) | Settings Runtime CLI Provider Lifecycle Rollout | Draft | [SPEC-093](../specs/SPEC-093-settings-runtime-cli-provider-lifecycle.md) |
 | [PLAN-081](./PLAN-081-code-artifact-declaration-rollout.md) | Code Artifact Declaration Rollout | Draft | [SPEC-092](../specs/SPEC-092-code-artifact-declaration-contract.md), [ADR-088](../decisions/088-use-structured-artifact-declarations-for-code-materialization.md) |
 | [PLAN-080](./PLAN-080-provider-capability-bootstrap-config-rollout.md) | Provider Capability Bootstrap Config Rollout | Complete | [SPEC-082](../specs/SPEC-082-cats-work-agent-supervision-and-tool-boundary.md), [ADR-082](../decisions/082-recast-orchestrator-as-capability-shell-with-policy-dial-supervision.md), [PLAN-075](./PLAN-075-real-provider-orchestrator-integration.md) |
 | [PLAN-079](./PLAN-079-work-graph-link-relations-rollout.md) | Work Graph Link Relations Rollout | Draft | [SPEC-090](../specs/SPEC-090-work-graph-link-relations.md), [ADR-086](../decisions/086-adopt-n-to-m-work-graph-link-relations.md) |
@@ -134,6 +135,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-04-28 (Build/Relay sidebar plans marked stopped; PLAN-079 added for Work Graph link relations; PLAN-078 marked Cancelled alongside ADR-085 rejection.)*
+*Last updated: 2026-04-29 (PLAN-082 added for Settings Runtime CLI provider lifecycle rollout.)*
 
 *See also: [specs/](../specs/) for feature specifications*
