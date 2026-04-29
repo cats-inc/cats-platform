@@ -159,11 +159,16 @@ Developer account.
   - A QR code rendered from that URL.
   - Step-by-step copy: "Install Expo Go on your phone, scan this
     QR with the Camera app or Expo Go's scanner."
-- **FR-13.** The card auto-detects the LAN IP using
-  `os.networkInterfaces()` filtered to a non-loopback IPv4
-  candidate. If no candidate is found, the card shows a
-  recoverable error explaining that the desktop is bound to
-  loopback only (`CATS_DESKTOP_APP_HOST=127.0.0.1`).
+- **FR-13.** LAN IP detection happens server-side in the desktop
+  host: the desktop main process calls `os.networkInterfaces()`,
+  filters to a non-loopback IPv4 candidate, and ships the result
+  to the renderer through the existing `AppShellPayload`
+  desktop-feature plumbing. The renderer never calls
+  `os.networkInterfaces()` directly. If no candidate is found,
+  the payload carries an explicit "no LAN candidate" signal and
+  the card shows a recoverable error explaining that the desktop
+  is bound to loopback only
+  (`CATS_DESKTOP_APP_HOST=127.0.0.1`).
 - **FR-14.** The card surfaces the desktop bind state explicitly:
   if the server is loopback-only, the QR is hidden and the card
   shows a one-click button to copy the canonical override
@@ -215,21 +220,28 @@ Developer account.
                                                                        │
 HTTP server on CATS_HOST:CATS_PORT (LAN-bound)                         │
   GET /api/mobile/manifest         ←──── from Expo Go ──────────────── ┘
-  GET /api/mobile/index.bundle
-  GET /api/mobile/assets/:hash
+    (reads expo-platform / expo-runtime-version /
+     expo-protocol-version request headers; emits the
+     hash-addressed launch-asset URL inside the body)
+  GET /api/mobile/bundle/{platform}/{hash}.js
+  GET /api/mobile/assets/{hash}
                                                                        
 Renderer process (Settings → Desktop)
   shows Mobile pairing card
-  computes exp://${LAN}:${PORT}/--/api/mobile/manifest
-  renders QR
+  receives LAN IP + gate flag via AppShellPayload
+  renders QR for the pairing URL form chosen in Phase 1 spike
+  (TBD — see Open Questions Q2; the earlier --/path draft
+   was wrong)
 ```
 
 ## Open Questions
 
-All four legacy questions plus three escalated by review on the
-2026-04-30 Draft. PLAN-088 Phase 1 owns triage; the spike
-deliverable is a concrete answer to each one before any code
-lands.
+The five questions below (Q1–Q5) all need concrete answers
+before any server / renderer code lands. Q1 and Q2 were
+escalated by the 2026-04-30 review from "single-format / single
+URL question" to "blocker for the rest of the plan"; the rest
+were already in scope. PLAN-088 Phase 1 owns triage and is the
+gate for Phases 2–6.
 
 - **Q1.** *(SCHEMA — escalated.)* Confirm which manifest format
   stock Expo Go SDK 54 accepts when served by a non-EAS host:

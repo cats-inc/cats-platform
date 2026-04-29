@@ -94,30 +94,57 @@ after install.
 
 ## Phase 3 — Server endpoints
 
-**Goal**: serve the manifest + bundle + assets from cats-platform
-server. Gated; default off.
+**Goal**: serve the manifest + hash-addressed bundle + assets from
+cats-platform server, per the routes defined in SPEC-099 §FR-4.
+Gated; default off.
 
 - [ ] Add `cats-platform/src/server/routes/mobileManifest.ts` (or
-      similar) with the four routes from SPEC-099 §FR-4.
+      similar) implementing the routes from SPEC-099 §FR-4
+      (`/api/mobile/manifest`, `/api/mobile/bundle/{platform}/{hash}.js`,
+      `/api/mobile/assets/{hash}`). Exact route count and method
+      list follow whatever the §FR-4 amendment lands on; the plan
+      does not pin a number.
 - [ ] Resolve the on-disk path: dev mode reads
       `cats-platform/build/mobile/`; packaged mode reads
       `process.resourcesPath/mobile/` (or whatever electron-builder
       decides — confirmed in Phase 2).
-- [ ] Implement manifest generator using the schema from Phase 1.
-      Use the request's host header to compute `bundleUrl`
-      (FR-9).
+- [ ] Implement the manifest generator using the schema chosen in
+      Phase 1 (FR-8). The generator reads `expo-platform`,
+      `expo-runtime-version`, and `expo-protocol-version` headers
+      (FR-8a) and uses the incoming request's host header (FR-9)
+      to build the **launch-asset URL** plus the asset URLs that
+      the manifest body returns. There is no separate "bundle URL"
+      concept outside that launch-asset URL.
 - [ ] Wire the gate: when
-      `CATS_DESKTOP_MOBILE_PAIRING_ENABLED !== 'true'`, all four
-      routes return 404 (FR-7).
-- [ ] Cache headers per FR-6.
+      `CATS_DESKTOP_MOBILE_PAIRING_ENABLED !== 'true'`, every
+      `/api/mobile/*` route returns 404 (FR-7).
+- [ ] Cache headers per FR-6 (manifest `no-store`, hash-addressed
+      bundle/asset `public, max-age=31536000, immutable`).
 - [ ] Tests:
-      - [ ] Manifest returns expected JSON when flag on.
-      - [ ] All four routes return 404 when flag off.
-      - [ ] `bundleUrl` matches request host (loopback vs LAN IP).
+      - [ ] Manifest fetched with `expo-platform: ios` returns
+            an iOS launch-asset URL; same request with
+            `expo-platform: android` returns an Android
+            launch-asset URL.
+      - [ ] Missing or unsupported `expo-runtime-version` /
+            `expo-protocol-version` headers are handled per the
+            schema chosen in Phase 1 (e.g. negotiated default vs
+            error).
+      - [ ] Every `/api/mobile/*` route returns 404 when the
+            flag is off.
+      - [ ] Launch-asset URL host matches the request host
+            (loopback vs LAN IP).
+      - [ ] Hash-addressed bundle and asset URLs serve the
+            corresponding file from `<resources>/mobile/`.
 
-**Deliverable**: `curl http://localhost:8181/api/mobile/manifest` on
-a flagged-on dev server returns a manifest pointing at the
-on-disk bundle.
+**Deliverable**: a header-aware integration test (e.g. via
+`supertest` against the in-process Express app) that fetches
+`/api/mobile/manifest` with `expo-platform: ios` *and*
+`expo-platform: android`, confirms the response body shape
+matches the Phase 1 schema, and successfully resolves the
+returned launch-asset URL plus one asset URL. A plain
+`curl /api/mobile/manifest` is **not** a valid deliverable
+because Expo Go's per-platform discrimination relies on
+request headers.
 
 ## Phase 4 — Settings → Desktop "Mobile pairing" card
 
@@ -132,10 +159,14 @@ same flag, with a working QR.
       show the card without an extra fetch.
 - [ ] Add a small QR generator (renderer-side, pure JS — proposed
       `qrcode`).
-- [ ] Compute the LAN-facing host. Server already knows
-      `CATS_DESKTOP_APP_HOST` and `CATS_PORT`; surface the
-      detected LAN IP via the AppShell payload to avoid
-      duplicating `os.networkInterfaces()` on the renderer.
+- [ ] Compute the LAN-facing host server-side per SPEC-099 FR-13:
+      the desktop main process calls `os.networkInterfaces()`,
+      filters to a non-loopback IPv4 candidate, and ships both
+      the LAN IP and the gate flag through the AppShell payload.
+      The renderer reads them from the payload only — it never
+      calls `os.networkInterfaces()` directly. If no candidate
+      exists, the payload signals "no LAN candidate" so the card
+      can fall through to the FR-14 escape hatch.
 - [ ] Implement the loopback-only-bind escape hatch (FR-13, FR-14):
       copy-button for `CATS_DESKTOP_APP_HOST=0.0.0.0`.
 
