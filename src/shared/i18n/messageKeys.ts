@@ -1020,6 +1020,24 @@ export const messageKeys = {
   chatSidePanelRunStatusUnavailableTitle: 'chat.sidePanel.runStatusUnavailableTitle',
   chatSidePanelLoadingTitle: 'chat.sidePanel.loadingTitle',
   chatSidePanelOperatorLoadingState: 'chat.sidePanel.operatorLoadingState',
+  chatCompanionMessageReferenceListAria: 'chat.companionMessageReferenceListAria',
+  chatCompanionMessageReferenceUnsupportedVersionLabel:
+    'chat.companionMessageReferenceUnsupportedVersionLabel',
+  chatCompanionMessageReferenceMalformedLabel:
+    'chat.companionMessageReferenceMalformedLabel',
+  chatCompanionMessageReferenceLoadingLabel: 'chat.companionMessageReferenceLoadingLabel',
+  chatCompanionMessageReferenceUnavailableLabel:
+    'chat.companionMessageReferenceUnavailableLabel',
+  chatCompanionMessageReferenceOpenInCompanionAction:
+    'chat.companionMessageReferenceOpenInCompanionAction',
+  chatCompanionMessageReferenceAvailabilityLivePreview:
+    'chat.companionMessageReferenceAvailabilityLivePreview',
+  chatCompanionMessageReferenceAvailabilityMissing:
+    'chat.companionMessageReferenceAvailabilityMissing',
+  chatCompanionMessageReferenceAvailabilityDeleted:
+    'chat.companionMessageReferenceAvailabilityDeleted',
+  chatCompanionMessageReferenceAvailabilityInaccessible:
+    'chat.companionMessageReferenceAvailabilityInaccessible',
   chatNewChatDraftBranchPolicyWorkspaceWorktree: 'chat.newChatDraft.branchPolicyWorkspaceWorktree',
   chatNewChatDraftBranchPolicyWorkspaceSource: 'chat.newChatDraft.branchPolicyWorkspaceSource',
   chatNewChatDraftBranchPolicyWorkspaceSandbox: 'chat.newChatDraft.branchPolicyWorkspaceSandbox',

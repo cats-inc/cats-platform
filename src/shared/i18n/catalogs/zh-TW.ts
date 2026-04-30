@@ -993,6 +993,18 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.sidePanel.runStatusUnavailableTitle': '狀態無法取得',
   'chat.sidePanel.loadingTitle': '載入中',
   'chat.sidePanel.operatorLoadingState': '正在載入審批、活動與執行詳情。',
+  'chat.companionMessageReferenceListAria': 'Companion 內容參考',
+  'chat.companionMessageReferenceUnsupportedVersionLabel':
+    '不支援的參考版本',
+  'chat.companionMessageReferenceMalformedLabel': '參考格式錯誤',
+  'chat.companionMessageReferenceLoadingLabel': '正在載入參考預覽',
+  'chat.companionMessageReferenceUnavailableLabel': '無法取得參考內容',
+  'chat.companionMessageReferenceOpenInCompanionAction': '在 Companion 開啟',
+  'chat.companionMessageReferenceAvailabilityLivePreview': '即時預覽',
+  'chat.companionMessageReferenceAvailabilityMissing': '缺少',
+  'chat.companionMessageReferenceAvailabilityDeleted': '已刪除',
+  'chat.companionMessageReferenceAvailabilityInaccessible':
+    '目前工作區不可存取',
   'chat.newChatDraft.composerPlaceholder': '我可以怎麼幫你？',
   'chat.newChatDraft.folderActionLabel': '選擇資料夾',
   'chat.newChatDraft.groupDraftSelectionLabelSingle':

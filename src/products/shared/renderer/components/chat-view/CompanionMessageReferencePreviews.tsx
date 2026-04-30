@@ -16,6 +16,8 @@ import {
   readCompanionMessageReferenceSnapshot,
   type CompanionMessageReferenceSnapshot,
 } from '../../../../chat/companion/messageReferenceSnapshot.js';
+import { messageKeys } from '../../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
 /**
  * Phase 5 transcript hydrator. Reads each persisted-or-detected
@@ -83,6 +85,7 @@ export function CompanionMessageReferencePreviews({
   body,
   metadata,
 }: CompanionMessageReferencePreviewsProps) {
+  const { t } = useI18n();
   const matches = useMemo<CompanionReferenceMatch[]>(
     () => detectCompanionReferences(body),
     [body],
@@ -243,10 +246,13 @@ export function CompanionMessageReferencePreviews({
   }
 
   return (
-    <ul className="companionMessageReferenceList" aria-label="Companion content references">
+    <ul
+      className="companionMessageReferenceList"
+      aria-label={t(messageKeys.chatCompanionMessageReferenceListAria)}
+    >
       {previews.map((entry, index) => (
         <li key={`${entry.rawText}-${index}`} className="companionMessageReferenceItem">
-          {renderPreviewCard(entry)}
+          {renderPreviewCard(entry, t)}
         </li>
       ))}
     </ul>
@@ -299,11 +305,16 @@ function isGenericFallbackTitle(title: string): boolean {
   );
 }
 
-function renderPreviewCard(entry: PreviewState) {
+function renderPreviewCard(
+  entry: PreviewState,
+  t: (key: keyof typeof messageKeys) => string,
+) {
   if (entry.status === 'unsupported_version') {
     return (
       <div className="companionReferenceCard companionReferenceCardUnsupported">
-        <span className="companionReferenceCardLabel">Unsupported reference version</span>
+        <span className="companionReferenceCardLabel">
+          {t(messageKeys.chatCompanionMessageReferenceUnsupportedVersionLabel)}
+        </span>
         {entry.parseUnsupportedVersion ? (
           <span className="companionReferenceCardSubtle">
             ({entry.parseUnsupportedVersion})
@@ -315,7 +326,9 @@ function renderPreviewCard(entry: PreviewState) {
   if (entry.status === 'invalid') {
     return (
       <div className="companionReferenceCard companionReferenceCardInvalid">
-        <span className="companionReferenceCardLabel">Malformed companion reference</span>
+        <span className="companionReferenceCardLabel">
+          {t(messageKeys.chatCompanionMessageReferenceMalformedLabel)}
+        </span>
         {entry.parseInvalidReason ? (
           <span className="companionReferenceCardSubtle">
             ({entry.parseInvalidReason})
@@ -327,7 +340,9 @@ function renderPreviewCard(entry: PreviewState) {
   if (entry.loading) {
     return (
       <div className="companionReferenceCard companionReferenceCardLoading">
-        <span className="companionReferenceCardLabel">Loading companion preview...</span>
+        <span className="companionReferenceCardLabel">
+          {t(messageKeys.chatCompanionMessageReferenceLoadingLabel)}
+        </span>
       </div>
     );
   }
@@ -335,7 +350,9 @@ function renderPreviewCard(entry: PreviewState) {
   if (!preview) {
     return (
       <div className="companionReferenceCard companionReferenceCardError">
-        <span className="companionReferenceCardLabel">Companion preview unavailable</span>
+        <span className="companionReferenceCardLabel">
+          {t(messageKeys.chatCompanionMessageReferenceUnavailableLabel)}
+        </span>
       </div>
     );
   }
@@ -358,25 +375,33 @@ function renderPreviewCard(entry: PreviewState) {
       ) : null}
       {preview.openRoute ? (
         <a className="companionReferenceCardOpen" href={preview.openRoute}>
-          Open in companion
+          {t(messageKeys.chatCompanionMessageReferenceOpenInCompanionAction)}
         </a>
       ) : null}
       <span
         className="companionReferenceCardAvailability"
         data-availability={preview.availability}
       >
-        {labelForAvailability(preview.availability)}
+        {labelForAvailability(preview.availability, t)}
       </span>
     </div>
   );
 }
 
-function labelForAvailability(value: CompanionContentAvailability): string {
+function labelForAvailability(
+  value: CompanionContentAvailability,
+  t: (key: keyof typeof messageKeys) => string,
+): string {
   switch (value) {
-    case 'available': return 'Live preview';
-    case 'missing': return 'Content unavailable';
-    case 'deleted': return 'Content deleted';
-    case 'inaccessible': return 'Different workspace';
+    case 'available':
+      return t(messageKeys.chatCompanionMessageReferenceAvailabilityLivePreview);
+    case 'missing':
+      return t(messageKeys.chatCompanionMessageReferenceAvailabilityMissing);
+    case 'deleted':
+      return t(messageKeys.chatCompanionMessageReferenceAvailabilityDeleted);
+    case 'inaccessible':
+      return t(messageKeys.chatCompanionMessageReferenceAvailabilityInaccessible);
+    default: return '';
   }
 }
 

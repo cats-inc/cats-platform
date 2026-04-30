@@ -1026,6 +1026,19 @@ export const enCatalog: MessageCatalog = {
   'chat.sidePanel.runStatusUnavailableTitle': 'Status unavailable',
   'chat.sidePanel.loadingTitle': 'Loading',
   'chat.sidePanel.operatorLoadingState': 'Loading approvals, activity, and run details.',
+  'chat.companionMessageReferenceListAria': 'Companion content references',
+  'chat.companionMessageReferenceUnsupportedVersionLabel':
+    'Unsupported reference version',
+  'chat.companionMessageReferenceMalformedLabel': 'Malformed reference',
+  'chat.companionMessageReferenceLoadingLabel': 'Loading reference preview',
+  'chat.companionMessageReferenceUnavailableLabel':
+    'Companion reference unavailable',
+  'chat.companionMessageReferenceOpenInCompanionAction': 'Open in companion',
+  'chat.companionMessageReferenceAvailabilityLivePreview': 'Live preview',
+  'chat.companionMessageReferenceAvailabilityMissing': 'Missing',
+  'chat.companionMessageReferenceAvailabilityDeleted': 'Deleted',
+  'chat.companionMessageReferenceAvailabilityInaccessible':
+    'Inaccessible from this workspace',
   'chat.newChatDraft.composerPlaceholder': 'How can I help you today?',
   'chat.newChatDraft.folderActionLabel': 'Choose folder',
   'chat.newChatDraft.groupDraftSelectionLabelSingle':
