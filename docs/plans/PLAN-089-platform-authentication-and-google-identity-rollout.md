@@ -25,12 +25,17 @@ auth state + route gate
   -> local admin setup/login
   -> renderer login/setup integration
   -> Google provider
+  -> Expo Go / Cats Mobile device sessions
   -> attribution and multi-user follow-through
 ```
 
 The first working milestone is local admin auth. Google should not block the
 server-side route gate because Google Web OAuth has origin restrictions that
 make raw LAN-IP access unreliable.
+
+The Expo Go QR path from ADR-095 is not part of the browser auth flow. It
+loads the mobile bundle only. Mobile product-data access lands as a separate
+first-party client slice using Cats-owned mobile device bearer sessions.
 
 ## Implementation Phases
 
@@ -164,7 +169,7 @@ CSRF; repeated invalid logins are throttled.
 **Deliverables**: a user can create the first local admin, reload the app,
 log out, log back in, and access Chat/Work/Code only while authenticated.
 
-### Phase 4: Google Identity Provider
+### Phase 4: Browser Google Identity Provider
 
 - [ ] Task 4.1: Choose and add the ID-token verifier dependency after checking
       dependency footprint and Node ESM compatibility.
@@ -181,6 +186,46 @@ log out, log back in, and access Chat/Work/Code only while authenticated.
 
 **Deliverables**: Google can create the first admin or log in an existing
 linked account on supported origins; local password remains available.
+
+### Phase 4b: Expo Go / Cats Mobile Device Sessions
+
+This phase must land before mobile pairing is advertised as a data-access
+feature. ADR-095 / SPEC-099 may expose static manifest and bundle routes, but
+the mobile app cannot read Chat, Work, Code, Core, runtime proxy, shell helper,
+or transport data until this phase exists.
+
+- [ ] Task 4b.1: Extend auth state and session helpers with
+      `kind: 'mobile_device'`, token hashing, expiration, revocation,
+      last-seen updates, and device metadata.
+- [ ] Task 4b.2: Add mobile auth routes for status, local login, logout, and
+      session revocation. Successful mobile login returns the raw bearer token
+      exactly once; persisted state stores only the hash.
+- [ ] Task 4b.3: Add route-gate support for `Authorization: Bearer` mobile
+      device sessions. Browser cookie sessions still require the browser
+      CSRF/origin policy; mobile bearer sessions do not require
+      `X-Cats-CSRF-Token`.
+- [ ] Task 4b.4: Wire Cats Mobile launch flow so QR-loaded apps call mobile
+      auth status first, show login when unauthenticated, and fetch product
+      data only after a valid mobile session exists.
+- [ ] Task 4b.5: Store mobile bearer tokens through the mobile secure-storage
+      adapter backed by Expo SecureStore when available. Do not store tokens in
+      AsyncStorage, URLs, logs, app-shell payloads, or manifests.
+- [ ] Task 4b.6: Add mobile local-login throttling to the same composite
+      lockout and aggregate brute-force guard policy used by browser login.
+- [ ] Task 4b.7: Add mobile Google login using Expo AuthSession, a native
+      Google provider, or another approved mobile OAuth/OIDC flow. Keep it
+      separate from the browser GIS credential POST route and verify the
+      resulting ID token or code exchange server-side against
+      `CATS_AUTH_GOOGLE_MOBILE_AUDIENCES`.
+- [ ] Task 4b.8: Add tests proving mobile manifest/bundle routes contain no
+      product data or credentials, unauthenticated mobile API calls receive
+      `E_UNAUTHENTICATED`, valid mobile bearer sessions resolve to the same
+      principal shape as browser sessions, and browser CSRF cannot be bypassed
+      by omitting `X-Cats-CSRF-Token` without a bearer token.
+
+**Deliverables**: Expo Go can load the mobile bundle from the QR, requires
+local or Google login before data access, stores a mobile device token
+securely, and can revoke/logout without deleting all auth state.
 
 ### Phase 5: Principal Propagation and Multi-User Readiness
 
@@ -230,6 +275,9 @@ product write path.
       loopback/recovery-token constraint on the repair flow; (d) pinned
       `E_UNAUTHENTICATED` / `E_FORBIDDEN` / `E_CSRF_MISMATCH` error codes
       that downstream tooling can rely on.
+- [ ] Task 6.7: Update mobile pairing docs to state that the Expo Go QR loads
+      only the mobile bundle; Cats Mobile must complete local or Google mobile
+      login before any product data is fetched.
 
 **Deliverables**: auth behavior is documented, tested, and visible to
 operators before implementation is marked complete.
@@ -240,6 +288,7 @@ operators before implementation is marked complete.
 |------|--------|-------------|
 | `src/platform/auth/**` | Create | Auth state, password, session, Google verifier, and policy helpers |
 | `src/app/server/authRoutes.ts` | Create | Auth status/login/logout/bootstrap routes |
+| `src/app/server/mobileAuthRoutes.ts` | Create | Mobile status/login/logout/revocation routes issuing bearer device sessions |
 | `src/app/server/requestRouter.ts` | Modify | Install auth gate before product/runtime route dispatch |
 | `src/app/server/contracts.ts` | Modify | Add auth dependencies/principal to resolved route contexts |
 | `src/app/server/dependencies.ts` | Modify | Wire auth store and verifier dependencies |
@@ -249,6 +298,8 @@ operators before implementation is marked complete.
 | `src/app/renderer/App.tsx` | Modify | Route unauthenticated users to `/login` after setup |
 | `src/app/renderer/setup/**` | Modify | Add first-admin local credential and optional Google bootstrap UI |
 | `src/app/renderer/auth/**` | Create | Login screen and auth API client |
+| `mobile/**` | Modify | Add mobile auth status/login/logout flow, secure token storage, and mobile Google provider integration |
+| `src/mobile/**` | Modify | Keep shared mobile contracts aligned with mobile auth status and bearer-session requirements |
 | `src/app/server/platformSetupRoutes.ts` | Modify | Canonical platform setup route; create first admin during platform setup |
 | `src/products/chat/api/setupRoutes.ts` | Audit/Delete or Modify | Legacy setup/reset route; remove if unused, otherwise align with the canonical auth gate and require admin auth after setup |
 | `tests/*auth*.test.*` | Create | Store, route gate, setup/login/logout, and Google verifier coverage |
@@ -263,6 +314,17 @@ operators before implementation is marked complete.
 - Auth belongs at the platform host boundary because `cats-platform` owns the
   browser ingress surface.
 - Google is a provider identity, not the authorization layer.
+- Expo Go QR pairing is bundle bootstrap, not authorization. Static mobile
+  manifest/bundle/assets routes may be public when pairing is enabled, but
+  product-data APIs require an auth principal.
+- Cats Mobile is a first-party non-browser client. It uses mobile device
+  bearer sessions, not browser HttpOnly cookies, browser CSRF, or
+  allowed-browser-origin headers.
+- Mobile Google login is separate from browser Google Identity Services:
+  mobile uses AuthSession/native OAuth/OIDC and the server verifies the
+  resulting token/code against mobile audiences.
+- Mobile bearer tokens are returned once, stored as hashes server-side, and
+  stored in Expo SecureStore or equivalent secure storage client-side.
 - Local admin credentials are required even if Google is configured, because
   Google Web OAuth is a poor fit for raw LAN IP and offline local-first use.
 - Auth state is separate from owner profile and Chat state.
@@ -328,6 +390,9 @@ operators before implementation is marked complete.
   - password hash/verify rejects wrong password and never exposes plaintext;
   - session creation stores only token hashes and rejects expired/revoked
     sessions;
+  - mobile device session creation returns the raw bearer token only once,
+    stores only the token hash, records `kind: 'mobile_device'`, and updates
+    `lastSeenAt` on authenticated use;
   - only the first admin membership receives `coreActorId: 'actor-owner'`;
   - actor-attributed write helpers fail closed when principal membership has
     `coreActorId: null`;
@@ -354,7 +419,9 @@ operators before implementation is marked complete.
   - config validation rejects `CATS_AUTH_ENABLED=false` whenever
     `setupCompleteAt` exists, on every host, with a structured configuration
     error rather than a silent warning;
-  - Google verifier wrapper checks expected claims using injected test payloads.
+  - Google verifier wrapper checks expected claims using injected test payloads;
+  - mobile Google verifier wrapper accepts only configured mobile audiences and
+    rejects browser-only or unknown client IDs.
 - **Integration Tests**:
   - setup incomplete allows setup bootstrap and blocks product APIs;
   - setup complete with missing/unreadable auth state enters repair and keeps
@@ -362,6 +429,15 @@ operators before implementation is marked complete.
   - setup complete unauthenticated returns `401` for protected APIs;
   - authenticated admin can access app shell, Chat, Work, Core, and runtime
     proxy routes;
+  - mobile manifest/bundle/assets routes can be fetched when mobile pairing is
+    enabled but never return product data, auth state, bearer tokens, or Google
+    tokens;
+  - mobile product-data requests without `Authorization: Bearer` return `401`,
+    while the same request with a valid mobile device session receives the same
+    principal shape as a browser session;
+  - mobile bearer requests are not required to send `X-Cats-CSRF-Token`, and
+    browser cookie requests cannot bypass CSRF by pretending to be mobile
+    without a valid bearer token;
   - setup reset requires admin after setup;
   - mutating authenticated API routes reject missing or mismatched
     `X-Cats-CSRF-Token`;
@@ -407,11 +483,22 @@ operators before implementation is marked complete.
     other `403` code, and does not pattern-match on user-visible error text;
   - Google button hides when not configured and uses the client ID from the
     minimal auth/provider envelope when configured.
+- **Mobile Tests**:
+  - first Expo Go launch loads bundle/bootstrap only, then shows login before
+    fetching product data;
+  - local mobile login stores the bearer token via the secure-storage adapter,
+    not AsyncStorage;
+  - mobile logout deletes the local secure token and revokes the server
+    session;
+  - mobile Google login uses the mobile OAuth/OIDC flow and does not call the
+    browser GIS credential POST route.
 - **Manual Testing**:
   - localhost dev with local admin;
   - LAN IP dev with local admin;
   - localhost Google login with configured client ID;
   - HTTPS tunnel Google login when available.
+  - Expo Go on iOS and Android: QR loads the bundle, unauthenticated app shows
+    login, local mobile login unlocks data, logout returns to login.
 
 ## Risks & Mitigations
 
@@ -419,8 +506,12 @@ operators before implementation is marked complete.
 |------|--------|------------|
 | Auth gate breaks existing tests | High | Add test helpers for authenticated requests; land gate in a dedicated slice |
 | Missing auth state after setup accidentally disables auth | High | Treat `setupCompleteAt` as fail-closed and route only to repair/login/bootstrap surfaces |
+| Expo Go QR mistaken for authorization | High | Document and test that QR/manifest/bundle routes contain no product data or credentials; mobile product-data routes require mobile bearer sessions |
 | Local admin login becomes brute-forceable on LAN | High | Add per-address and per-account/provider throttling with default lockout |
 | Google OAuth does not work on LAN IP | Medium | Keep local admin path first-class; hide/fallback Google where unavailable |
+| Browser auth middleware blocks mobile clients | Medium | Keep browser CSRF/origin checks scoped to browser cookie sessions; bearer sessions use Authorization header validation instead |
+| Mobile bearer token leaks from client storage | High | Use SecureStore/equivalent secure storage, never AsyncStorage/logs/URLs/manifests; support session revocation |
+| Mobile Google and browser GIS flows are conflated | High | Keep mobile AuthSession/native OAuth routes separate from browser GIS credential POST; verify mobile audiences explicitly |
 | Cookie/origin behavior differs between Vite proxy and built server | Medium | Put Vite origin preservation in Phase 2 atomic work; add explicit dev and built-server session/origin tests |
 | Password/session local state becomes sensitive | High | Store only salted password hashes and session token hashes; document state reset |
 | Route allowlist accidentally leaves a privileged route public | High | Add static route-policy tests and review runtime/shell/transport routes explicitly |
@@ -443,6 +534,7 @@ operators before implementation is marked complete.
 | 2026-04-30 | Tightened auth invariants: composite `(account, address)` throttle key; uniform `CATS_AUTH_ENABLED=false` rejection after `setupCompleteAt`; pre-setup row clarified in the gate table; pre-auth CSRF token explicitly absent; renderer stale-CSRF retry contract; rotation on privilege changes marked forward-looking; auth-state-file escape hatch for forgotten credentials documented. |
 | 2026-04-30 | Closed pre-auth bootstrap CSRF gap with allowed-browser-origin gate on `/setup`/`/api/auth/login`/repair; constrained repair first-admin creation to loopback or one-time recovery token so the escape hatch does not re-open LAN admin bootstrap; pinned `E_CSRF_MISMATCH` / `E_FORBIDDEN` / `E_UNAUTHENTICATED` error codes; promoted per-account aggregate guards (progressive delay, bounded daily cooldown, per-/24 subnet budget) from optional to required. |
 | 2026-04-30 | Aligned origin gate with Vite/reverse-proxy reality: allowed browser-origin set is explicit and Phase 2 atomic, `same-site` no longer passes without an allowlisted `Origin`, recovery tokens stay out of structured logs, and aggregate cooldowns have TTL/non-destructive recovery so the v1 owner is not forced to delete auth state. |
+| 2026-04-30 | Added Expo Go / Cats Mobile device-session slice: QR pairing remains bundle bootstrap only, mobile data access requires bearer device sessions, and mobile Google login is separate from browser GIS. |
 
 ---
 

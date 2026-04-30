@@ -86,6 +86,36 @@ mistakes.
 The frontend may initiate login flows, but the frontend never decides that a
 user is authenticated or authorized by itself.
 
+### 1a. Expo Go and mobile clients are not browser sessions
+
+ADR-095's Expo Go QR flow loads a Cats Mobile bundle from the desktop over
+LAN. That QR flow is a bundle/bootstrap mechanism, not authentication. It
+must not create an account, grant a session, or authorize product data access.
+
+Cats Mobile is a first-party client of the same platform host, but it is not a
+browser-origin client. It cannot rely on the browser assumptions in section 1:
+HttpOnly cookies, `SameSite`, `Origin`, `Sec-Fetch-Site`, or the Cats
+synchronizer CSRF header are browser protections, not the mobile session
+contract.
+
+Mobile data access therefore uses a Cats-owned **mobile device session**:
+
+- local credentials and Google identity still authenticate against the same
+  account/identity/membership model;
+- the server issues an opaque mobile bearer token, stores only its hash, and
+  accepts it through `Authorization: Bearer ...`;
+- the mobile app stores the raw token in Expo SecureStore or the equivalent
+  secure OS credential store when available, never in plain AsyncStorage;
+- device sessions have expiration, revocation, and last-seen metadata, and
+  route handlers receive the same principal shape as browser sessions.
+
+Mobile bearer requests do not use browser CSRF because the credential is not
+an ambient browser cookie. The platform auth gate accepts either a valid
+browser cookie session that satisfies browser CSRF/origin policy or a valid
+mobile device bearer session. The QR/manifest/bundle routes remain limited to
+static bootstrap artifacts and must never embed product data, session tokens,
+Google tokens, or other secrets.
+
 ### 2. First-run setup creates the first admin account
 
 `/setup` remains the first-run route, but it becomes an admin bootstrap flow.
@@ -137,6 +167,13 @@ OAuth origin and redirect rules generally reject raw IP hosts and plain HTTP
 except localhost. Cats must therefore keep local admin credentials as a
 first-class bootstrap/login path.
 
+Mobile Google login is a separate provider surface from browser Google
+Identity Services. Expo Go / React Native flows use AuthSession, a native
+Google library, or another mobile OAuth/OIDC redirect flow. They do not submit
+the browser GIS `g_csrf_token` credential POST. The Cats server still verifies
+the resulting ID token or authorization-code exchange server-side and binds
+the verified Google `sub` to the same account model.
+
 ### 5. Route access policy is explicit
 
 Before setup is complete, only bootstrap-safe routes are public:
@@ -158,7 +195,11 @@ After setup is complete, unauthenticated requests may access only:
 
 All product data, setup reset, shell helper, runtime proxy, transport, Core,
 Chat, Work, and Code mutation/read APIs require an authenticated session unless
-a later ADR explicitly grants a different ingress model.
+this ADR or a later ADR explicitly grants a different ingress model. Browser
+requests satisfy that rule with a browser session cookie plus the browser
+CSRF/origin policy. Cats Mobile requests satisfy it with a mobile device bearer
+session. Expo Go manifest/bundle/bootstrap routes are not product-data routes
+and do not satisfy this requirement by themselves.
 
 Once `setupCompleteAt` exists, the auth gate remains engaged even if auth state
 is missing, unreadable, or corrupt. Such workspaces enter an admin-auth
@@ -240,6 +281,9 @@ that need Core actor attribution until an explicit mapping exists.
   carefully so dev and packaged flows behave the same.
 - Login attempts need rate limiting and lockout behavior so LAN access does
   not become a brute-force surface for local admin credentials.
+- Mobile device sessions add another credential class that needs secure
+  storage, revocation, and clear tests so Expo Go QR pairing is not mistaken
+  for authorization.
 
 ### Neutral
 
@@ -289,11 +333,16 @@ that need Core actor attribution until an explicit mapping exists.
 
 - [SPEC-100: Platform Authentication, Admin Bootstrap, and Google Identity](../specs/SPEC-100-platform-authentication-admin-bootstrap-and-google-identity.md)
 - [PLAN-089: Platform Authentication and Google Identity Rollout](../plans/PLAN-089-platform-authentication-and-google-identity-rollout.md)
+- [ADR-095: Distribute Cats Mobile as a Static Expo Go Bundle Served by the Desktop](./095-distribute-mobile-as-static-expo-go-bundle-served-by-desktop.md)
+- [SPEC-099: Mobile pairing manifest server in Cats Desktop](../specs/SPEC-099-mobile-pairing-manifest-server.md)
 - [ADR-074: Keep browser ingress at the platform host and phase LAN before tunnels](./074-keep-browser-ingress-at-platform-host-and-phase-lan-before-tunnels.md)
 - [SPEC-075: Platform Browser Ingress for LAN and Tunneled Access](../specs/SPEC-075-platform-browser-ingress-for-lan-and-tunneled-access.md)
 - Google Identity Services — verify Google ID token on server side: https://developers.google.com/identity/gsi/web/guides/verify-google-id-token
 - Google backend authentication guidance: https://developers.google.com/identity/sign-in/web/backend-auth
 - Google OAuth client origin and redirect rules: https://support.google.com/cloud/answer/15549257
+- Expo AuthSession: https://docs.expo.dev/versions/latest/sdk/auth-session/
+- Expo SecureStore: https://docs.expo.dev/versions/latest/sdk/securestore/
+- Expo Go vs development builds: https://docs.expo.dev/get-started/set-up-your-environment/
 
 ---
 
@@ -301,4 +350,5 @@ that need Core actor attribution until an explicit mapping exists.
 *Amended: 2026-04-30 — composite `(account, address)` throttle key; uniform `CATS_AUTH_ENABLED=false` rejection after `setupCompleteAt`; pre-auth CSRF token explicitly absent; renderer stale-CSRF retry contract; rotation on privilege changes marked forward-looking; auth-state-file escape hatch for forgotten credentials documented.*
 *Amended: 2026-04-30 — closed pre-auth bootstrap CSRF gap with same-origin gate on `/setup`/`/api/auth/login`/repair; constrained repair first-admin creation to loopback or one-time recovery token so the escape hatch does not re-open LAN admin bootstrap; pinned `E_CSRF_MISMATCH` error code so renderer retry cannot collide with `E_FORBIDDEN`; promoted per-account aggregate guards (progressive delay, daily failure budget, per-/24 subnet budget) from optional to required.*
 *Amended: 2026-04-30 — aligned the pre-auth gate with Vite/reverse-proxy topologies by using an explicit allowed browser-origin set; clarified that `same-site` does not pass without an allowlisted `Origin`; kept raw recovery tokens out of structured logs; made aggregate account cooldown bounded and recoverable without deleting auth state.*
+*Amended: 2026-04-30 — added Expo Go / Cats Mobile as a first-party non-browser client: QR pairing only bootstraps the bundle, product data requires a mobile device bearer session, and mobile Google login is separate from browser GIS credential POST.*
 *Decision makers: user + Codex*

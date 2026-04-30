@@ -19,6 +19,11 @@ code that Expo Go scans to load the bundle. Pairing works on a
 clean machine — no source repo, no Node, no Xcode, no Apple
 Developer account.
 
+The pairing QR is not an authorization mechanism. It lets Expo Go
+load Cats Mobile. Product data access is owned by SPEC-100's auth
+contract and requires a browser session or mobile device session
+after setup.
+
 ## Goals
 
 - A user with `Cats Desktop` installed and `Expo Go` installed on
@@ -40,9 +45,11 @@ Developer account.
 - Custom Expo dev client (`.ipa` / `.apk` distribution). Tracked
   separately if stock Expo Go limitations bite.
 - Push notification delivery (orthogonal; out of scope).
-- Per-device authorisation / pairing tokens. The manifest endpoint
-  is open to anyone who can reach the LAN port. Future hardening
-  belongs in a separate spec.
+- Per-device authorization tokens for the manifest/bundle surface.
+  The manifest endpoint is open to anyone who can reach the LAN
+  port when the feature flag is enabled. It must serve only static
+  bootstrap artifacts; mobile product-data authorization belongs to
+  SPEC-100 / PLAN-089 mobile device sessions.
 - Mobile-side build pipeline beyond `expo export`. EAS Build,
   TestFlight, App Store submission stay deferred per ADR-095.
 - Re-export automation for SDK upgrades. Triaged manually until
@@ -111,6 +118,11 @@ Developer account.
   manifest ingress if that ingress is outside `/api/mobile/`.
   Disabling the feature must be sufficient to take it off the
   network surface, not just hide the UI.
+- **FR-7a.** Mobile pairing routes shall never return product data,
+  auth state, browser session cookies, mobile bearer tokens, Google
+  tokens, recovery tokens, or transport credentials. They may return
+  only manifest metadata, bundle URLs, static assets, and non-secret
+  base URL hints needed for the mobile app to contact the desktop.
 
 ### Manifest format
 
@@ -174,6 +186,9 @@ Developer account.
   - A QR code rendered from that URL.
   - Step-by-step copy: "Install Expo Go on your phone, scan this
     QR with the Camera app or Expo Go's scanner."
+  - A concise note that scanning the QR only opens Cats Mobile; the
+    mobile app still requires local or Google login before showing
+    workspace data.
 - **FR-13.** LAN IP detection happens server-side in the
   desktop-hosted Cats process: the AppShell payload builder calls
   `os.networkInterfaces()`, filters to a non-loopback IPv4
@@ -225,6 +240,10 @@ Developer account.
   immutable-per-content or no-store. This avoids the
   "stable URL + immutable cache" trap where a stale CDN / phone /
   proxy cache pins a previous bundle byte stream.
+- **NFR-6.** The mobile manifest and bundle are treated like
+  public installer artifacts while the flag is enabled. Security
+  must not depend on keeping the JS bundle secret; all product data
+  remains behind SPEC-100 auth.
 
 ## Design Overview
 
@@ -249,6 +268,8 @@ HTTP server on CATS_HOST:CATS_PORT (LAN-bound)                         │
      hash-addressed bundle-entry URL inside the body)
   GET /api/mobile/bundle/{platform}/{fileName}
   GET /api/mobile/assets/{hash}
+  (serves only bundle/bootstrap artifacts; product data APIs are
+   separate and require SPEC-100 auth)
                                                                        
 Renderer process (Settings → Desktop)
   shows Mobile pairing card
@@ -300,5 +321,7 @@ gate for Phases 2–6.
 - [ADR-095](../decisions/095-distribute-mobile-as-static-expo-go-bundle-served-by-desktop.md)
 - [PLAN-088](../plans/PLAN-088-mobile-pairing-manifest-server-rollout.md)
 - [SPEC-095](./SPEC-095-cats-mobile-shell-five-tabs-and-product-sidebar-variants.md)
+- [ADR-096](../decisions/096-adopt-platform-owned-auth-sessions-with-google-as-identity-provider.md)
+- [SPEC-100](./SPEC-100-platform-authentication-admin-bootstrap-and-google-identity.md)
 - Expo CLI export reference: https://docs.expo.dev/distribution/publishing-websites/
 - Expo Updates self-hosting protocol: https://docs.expo.dev/eas-update/serving-updates/

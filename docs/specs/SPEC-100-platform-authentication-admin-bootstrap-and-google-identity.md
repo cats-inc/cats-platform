@@ -15,7 +15,9 @@ be treated as more than a trusted developer convenience. This spec defines the
 first platform-owned auth layer: `/setup` creates the first admin account,
 `/login` establishes a Cats session, protected API routes require that session,
 and Google Sign-In is supported as an optional identity provider rather than as
-the whole authorization system.
+the whole authorization system. It also defines how Cats Mobile / Expo Go
+authenticates as a first-party non-browser client after loading its bundle from
+the ADR-095 pairing QR.
 
 ## Goals
 
@@ -23,6 +25,8 @@ the whole authorization system.
 - Preserve local-first operation through local admin credentials.
 - Allow `/setup` and `/login` to use Google identity when configured and when
   the current origin satisfies Google OAuth rules.
+- Allow Cats Mobile / Expo Go to authenticate to the same account model without
+  relying on browser cookies, browser CSRF, or web Google Identity Services.
 - Separate accounts, provider identities, sessions, memberships, and Core actor
   attribution so future Cats Work multi-human workflows have a clean model.
 - Keep the first rollout small enough to close the LAN access risk without
@@ -40,6 +44,9 @@ the whole authorization system.
 - Moving browser auth down into `cats-runtime`.
 - Solving Google OAuth for raw LAN IP origins. The local admin path covers that
   environment.
+- Treating the Expo Go QR code or mobile manifest fetch as authorization. The
+  QR loads the mobile bundle only; product data access is covered by this auth
+  spec.
 
 ## User Stories
 
@@ -51,6 +58,9 @@ the whole authorization system.
   raw LAN IP, offline, and packaged desktop environments.
 - As a future Cats Work operator, I want my own session and role so that tasks,
   approvals, and runs can be attributed to the correct human.
+- As the owner using Expo Go, I want the mobile app to require the same account
+  login before showing data so that the pairing QR does not expose my workspace
+  to anyone on the LAN.
 
 ## Requirements
 
@@ -78,6 +88,11 @@ the whole authorization system.
    or reversible passwords.
 8. Session records shall store only server-generated opaque token hashes, never
    raw session tokens.
+8a. Session records shall distinguish browser sessions from mobile device
+    sessions. Browser sessions are represented by HttpOnly cookies and Cats
+    synchronizer CSRF tokens. Mobile device sessions are represented by opaque
+    bearer tokens returned once to the mobile client and then stored only as
+    server-side hashes.
 9. Google identities shall store Google `sub` as the stable external subject.
    Email may be stored for display or lookup hints but shall not be the primary
    identity key.
@@ -113,6 +128,9 @@ the whole authorization system.
 19. The platform shall expose a Google login/token endpoint accepting a Google
     credential/ID token and returning a Cats session only after server-side
     verification.
+19a. The platform shall expose mobile login/status/logout surfaces that use the
+     same account, identity, membership, throttle, and principal model while
+     issuing mobile device session bearer tokens instead of browser cookies.
 20. Logout shall revoke the current session server-side and clear the browser
     cookie.
 21. Sessions shall have an expiration timestamp.
@@ -159,11 +177,15 @@ the whole authorization system.
     runtime-hosted setup/operator surfaces, shell browse/open-folder helpers,
     transport configuration, provider mutation routes, and subscription routes.
 28. Public routes after setup shall be limited to renderer assets, login/auth
-    endpoints, and narrow health/readiness endpoints.
+    endpoints, narrow health/readiness endpoints, and the mobile
+    manifest/bundle/assets surface when the mobile pairing feature is enabled.
+    Mobile pairing public routes shall serve only static bootstrap artifacts
+    and shall not return product data or credentials.
 29. Before setup is complete, public routes shall be limited to renderer
     assets, minimal app-shell/bootstrap envelope reads, setup/bootstrap
     endpoints, auth bootstrap/status endpoints, optional Google auth bootstrap
-    endpoints, and narrow health/readiness endpoints.
+    endpoints, narrow health/readiness endpoints, and the mobile
+    manifest/bundle/assets surface when the mobile pairing feature is enabled.
 30. Unauthenticated app-shell/bootstrap reads shall return only setup/auth
     routing state and provider availability, including
     `auth.providers.google = { enabled, clientId }`. They shall not include
@@ -212,6 +234,16 @@ the whole authorization system.
     unavailable or lacks a client ID.
 45. The renderer shall surface a clear fallback to local login on raw LAN IP or
     other origins where Google Web OAuth is not expected to work.
+45a. Cats Mobile shall treat Google login as a mobile OAuth/OIDC provider
+     surface, not as the browser GIS credential POST flow. The mobile app may
+     use Expo AuthSession, a native Google library, or a later approved mobile
+     provider SDK. The server shall verify the resulting ID token or
+     authorization-code exchange against an explicit mobile Google audience
+     allowlist before creating a mobile device session.
+45b. Mobile Google login shall not depend on Google's browser
+     `g_csrf_token`, browser `Origin`, or `Sec-Fetch-Site` headers. It shall
+     still use OAuth/OIDC `state`/PKCE or the provider library's equivalent
+     anti-forgery contract.
 
 #### CSRF and browser safety
 
@@ -282,6 +314,44 @@ the whole authorization system.
     configured secret, or Google token details.
 53. Login attempts shall use generic invalid-credential errors.
 
+#### Cats Mobile / Expo Go sessions
+
+53a. The Expo Go QR code, mobile manifest fetch, bundle fetch, and asset fetch
+     are not authentication events. They shall not create accounts, create
+     sessions, grant roles, or authorize product data.
+53b. Mobile product-data requests shall require a valid mobile device session
+     bearer token in `Authorization: Bearer <token>`. A mobile request without
+     that bearer token shall receive the same structured `401` contract as an
+     unauthenticated browser API request.
+53c. The server shall generate mobile device session tokens with the same
+     entropy expectations as browser session tokens, return the raw token only
+     at session creation, and persist only a token hash.
+53d. Mobile device sessions shall carry `accountId`, membership/role
+     resolution, expiration, revocation, `createdAt`, `lastSeenAt`, and
+     best-effort device metadata such as display label, platform, app version,
+     and last seen address when available.
+53e. Mobile local-login attempts shall use the same password verification,
+     generic invalid-credential response, composite lockout, and aggregate
+     brute-force guards as browser local login.
+53f. Cats Mobile shall store the raw mobile token in Expo SecureStore or an
+     equivalent secure OS credential store when available. It shall not store
+     the token in plain AsyncStorage, app-shell payloads, logs, URLs, or the
+     mobile manifest. Biometric `requireAuthentication` is optional and shall
+     not be required for Expo Go because Expo Go cannot carry Cats-specific
+     native permission strings.
+53g. Mobile bearer requests do not use Cats synchronizer CSRF tokens because
+     the bearer token is not an ambient browser cookie. The platform auth gate
+     shall resolve a principal from either a browser cookie session that passes
+     browser CSRF/origin policy or a mobile bearer session that passes bearer
+     token validation.
+53h. The mobile client shall call an auth status/bootstrap endpoint on launch
+     and route unauthenticated users to local or Google login before requesting
+     Chat, Work, Code, Core, shell helper, runtime proxy, or transport data.
+53i. Mobile device sessions shall be revocable independently from browser
+     sessions. The first rollout may expose revocation only through an admin
+     route or auth-state helper, but the data model shall not require deleting
+     all auth state to invalidate one phone.
+
 #### Configuration
 
 54. The platform shall add documented auth configuration keys:
@@ -295,7 +365,9 @@ the whole authorization system.
     - `CATS_AUTH_SUBNET_DAILY_FAILURE_CAP`
     - `CATS_AUTH_ALLOWED_BROWSER_ORIGINS`
     - `CATS_AUTH_GOOGLE_CLIENT_ID`
+    - `CATS_AUTH_GOOGLE_MOBILE_AUDIENCES`
     - `CATS_AUTH_GOOGLE_HD`
+    - `CATS_AUTH_MOBILE_SESSION_TTL_MS`
 55. Auth shall default to enabled when the platform is bound to a non-loopback
     host or when `setupCompleteAt` exists. Once `setupCompleteAt` exists,
     missing, unreadable, or corrupt auth state shall trigger the repair flow
@@ -372,6 +444,9 @@ Effective auth gate state:
 - **Security**: Authentication decisions must be made on the server, not in the
   renderer. Failed-login throttling and lockout are required before LAN-facing
   auth is considered complete.
+- **Mobile security**: Expo Go pairing is only bundle bootstrap. Mobile data
+  access must require a mobile device session, and mobile bearer tokens must be
+  stored in a secure credential store when available.
 - **Local-first operation**: Local password bootstrap/login must work without
   Google, HTTPS, internet access, or a public DNS name.
 - **Privacy**: Auth state must not store Google access tokens unless a later
@@ -397,6 +472,20 @@ cats-platform auth routes
 platform auth gate
   |
   | session principal
+  v
+Chat / Work / Code / Core / runtime proxy routes
+
+Expo Go / Cats Mobile
+  |
+  | QR loads bundle only; local credentials OR mobile Google OAuth
+  v
+cats-platform mobile auth routes
+  |
+  | verifies credential, returns one-time-visible bearer token
+  v
+platform auth gate
+  |
+  | mobile device session principal
   v
 Chat / Work / Code / Core / runtime proxy routes
 ```
@@ -438,11 +527,17 @@ interface PlatformIdentityRecord {
 interface PlatformSessionRecord {
   id: string;
   accountId: string;
+  kind: 'browser' | 'mobile_device';
   tokenHash: string;
+  csrfTokenHash?: string;
+  deviceLabel?: string;
+  devicePlatform?: 'ios' | 'android' | 'web' | 'unknown';
+  appVersion?: string;
   createdAt: string;
   expiresAt: string;
   revokedAt: string | null;
   lastSeenAt: string;
+  lastSeenAddress?: string;
 }
 
 interface PlatformMembershipRecord {
@@ -459,8 +554,8 @@ Public/protected route policy:
 
 | Phase | Public | Protected |
 |-------|--------|-----------|
-| Before setup | static assets, health, minimal app-shell/bootstrap envelope, setup bootstrap, auth status, optional Google auth bootstrap | product data, runtime proxy, shell helpers, transports |
-| After setup | static assets, health, minimal app-shell/bootstrap envelope, login, auth status/logout | all product/runtime/shell/transport/Core APIs |
+| Before setup | static assets, mobile manifest/bundle/assets when pairing is enabled, health, minimal app-shell/bootstrap envelope, setup bootstrap, auth status, optional Google auth bootstrap | product data, runtime proxy, shell helpers, transports |
+| After setup | static assets, mobile manifest/bundle/assets when pairing is enabled, health, minimal app-shell/bootstrap envelope, login, auth status/logout | all product/runtime/shell/transport/Core APIs unless the request has a valid browser or mobile session |
 
 ## Dependencies
 
@@ -470,6 +565,9 @@ Public/protected route policy:
 - File-backed platform state path helpers
 - Google Identity Services frontend library
 - Maintained ID-token verifier library for Node.js
+- Cats Mobile / Expo Go bundle served by SPEC-099
+- Expo SecureStore or equivalent secure credential storage in the mobile app
+- Expo AuthSession or equivalent mobile OAuth/OIDC provider flow
 - ADR-074 / SPEC-075 LAN ingress constraints
 
 ## Open Questions
@@ -485,10 +583,15 @@ Public/protected route policy:
 
 - [ADR-096: Adopt Platform-Owned Auth Sessions with Google as an Identity Provider](../decisions/096-adopt-platform-owned-auth-sessions-with-google-as-identity-provider.md)
 - [PLAN-089: Platform Authentication and Google Identity Rollout](../plans/PLAN-089-platform-authentication-and-google-identity-rollout.md)
+- [ADR-095: Distribute Cats Mobile as a Static Expo Go Bundle Served by the Desktop](../decisions/095-distribute-mobile-as-static-expo-go-bundle-served-by-desktop.md)
+- [SPEC-099: Mobile pairing manifest server in Cats Desktop](./SPEC-099-mobile-pairing-manifest-server.md)
 - [ADR-074: Keep browser ingress at the platform host and phase LAN before tunnels](../decisions/074-keep-browser-ingress-at-platform-host-and-phase-lan-before-tunnels.md)
 - Google Identity Services — verify Google ID token on server side: https://developers.google.com/identity/gsi/web/guides/verify-google-id-token
 - Google backend authentication guidance: https://developers.google.com/identity/sign-in/web/backend-auth
 - Google OAuth client origin and redirect rules: https://support.google.com/cloud/answer/15549257
+- Expo AuthSession: https://docs.expo.dev/versions/latest/sdk/auth-session/
+- Expo SecureStore: https://docs.expo.dev/versions/latest/sdk/securestore/
+- Expo Go vs development builds: https://docs.expo.dev/get-started/set-up-your-environment/
 
 ---
 

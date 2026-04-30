@@ -64,6 +64,10 @@ Concretely:
   `CATS_DESKTOP_MOBILE_PAIRING_ENABLED=true` is set in the env Cats
   Desktop loads (project `.env` for source builds, or a build-time
   env injection for distributed installers — see below).
+- The QR is not an auth grant. It loads the mobile bundle only.
+  Workspace data access is still governed by ADR-096 / SPEC-100:
+  Cats Mobile must establish a mobile device session through local
+  login or mobile Google OAuth before calling product-data APIs.
 
 Distribution paths #2 and #3 remain on the roadmap for later phases.
 This ADR does not preclude them; it picks the most lightweight path
@@ -137,6 +141,10 @@ package time.
   are on the same LAN (or share a Tailscale/VPN that exposes the
   desktop's LAN IP). Cross-network pairing requires real tunneling
   infrastructure, which is out of scope for this ADR.
+- **Separate mobile auth work.** Static bundle distribution does not
+  make Expo Go a browser session. Mobile login, secure token storage,
+  and bearer-session route-gate behavior are owned by ADR-096 /
+  SPEC-100.
 - **Desktop must be running for pairing.** Closing Cats Desktop
   takes the manifest server with it; the phone shows a connection
   error. Acceptable since the mobile app is a thin client of the
@@ -201,6 +209,8 @@ package time.
 - [PLAN-088: Mobile pairing manifest server rollout](../plans/PLAN-088-mobile-pairing-manifest-server-rollout.md)
 - [SPEC-095: Cats Mobile Shell — Five Tabs and Product Sidebar Variants](../specs/SPEC-095-cats-mobile-shell-five-tabs-and-product-sidebar-variants.md)
 - [PLAN-084: Cats Mobile Shell Rollout](../plans/PLAN-084-cats-mobile-shell-rollout.md)
+- [ADR-096: Adopt Platform-Owned Auth Sessions with Google as an Identity Provider](./096-adopt-platform-owned-auth-sessions-with-google-as-identity-provider.md)
+- [SPEC-100: Platform Authentication, Admin Bootstrap, and Google Identity](../specs/SPEC-100-platform-authentication-admin-bootstrap-and-google-identity.md)
 - [ADR-074: Keep browser ingress at platform host and phase LAN before tunnels](./074-keep-browser-ingress-at-platform-host-and-phase-lan-before-tunnels.md)
 - Expo Updates self-hosting: https://docs.expo.dev/eas-update/serving-updates/
 - Expo CLI export: https://docs.expo.dev/distribution/publishing-websites/

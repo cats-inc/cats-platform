@@ -28,6 +28,11 @@ shipping the server side. Phase 1 must come first because it
 resolves the five Open Questions in SPEC-099 that affect every
 later phase.
 
+This plan covers bundle distribution only. The QR/manifest path is
+not authorization; it must not expose product data or credentials.
+Mobile data access is owned by SPEC-100 / PLAN-089 and requires a
+mobile device session after the bundle loads.
+
 ## Phase 1 — Manifest format and pairing-URL spike
 
 **Goal**: confirm both the manifest schema AND the QR URL form
@@ -233,8 +238,9 @@ installer running on the same machine).
 - [ ] Enable the flag (via `.env` override or installer-time env).
 - [ ] Open Settings → Desktop → Mobile pairing.
 - [ ] Scan QR with Expo Go on iOS — confirm bundle loads, all five
-      tabs render, real `/api/app-shell` data loads after the user
-      sets the desktop URL.
+      tabs render, unauthenticated state routes to mobile login, and
+      real `/api/app-shell` data loads only after local or Google
+      mobile login.
 - [ ] Scan QR with Expo Go on Android — same checklist.
 - [ ] Document any platform-specific quirks (e.g. Android needing
       cleartext traffic permission, iOS local-network prompt).
@@ -281,7 +287,8 @@ flip the env flag for the first internal-release artifact.
   `/api/mobile/manifest` diagnostics, if enabled) and pull the
   bundle. *Mitigation*: the bundle is the same artifact users
   would obtain from a public installer. No PII / secrets in the
-  bundle. Future hardening is a separate spec.
+  bundle or manifest. Product data access is protected by
+  SPEC-100 mobile device sessions, not by secrecy of the QR.
 
 ## Out of scope
 
@@ -289,6 +296,9 @@ flip the env flag for the first internal-release artifact.
 - Custom dev client (`.ipa` / `.apk`) — separate spec triggered
   by stock-Expo-Go limitation.
 - Push notifications — separate spec.
-- Per-device pairing tokens — separate spec.
+- Per-device pairing tokens for the manifest/bundle surface —
+  separate spec if the static bundle itself ever needs distribution
+  control. Product data auth is not out of scope; it is handled by
+  SPEC-100 / PLAN-089 mobile device sessions.
 - Build-variant CI matrix — only revisit if env flag proves
   insufficient for distribution segmentation.
