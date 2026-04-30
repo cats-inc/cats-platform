@@ -178,12 +178,38 @@ test('mobile Expo Go manifest is served at the QR entrypoint', async () => {
     assert.equal(manifest.launchAsset.key, 'bundle');
     assert.equal(manifest.launchAsset.contentType, 'application/javascript');
     assert.equal(manifest.launchAsset.url, `${baseUrl}/api/mobile/bundle/android/entry-android.hbc`);
+    assert.equal(manifest.assets.length, 0);
     assert.equal(manifest.extra.catsDesktopBaseUrl, baseUrl);
     assert.equal(manifest.extra.expoClient.slug, 'cats-mobile');
     assert.equal(manifest.extra.expoClient.extra.catsDesktopBaseUrl, baseUrl);
     assert.equal(manifest.extra.expoGo.debuggerHost, new URL(baseUrl).host);
-    assert.equal(manifest.extra.expoGo.mainModuleName, 'expo-router/entry');
-    assert.equal(manifest.assets[0].url, `${baseUrl}/api/mobile/assets/assetandroidhash`);
+    assert.equal(manifest.extra.expoGo.mainModuleName, 'node_modules/expo-router/entry');
+  });
+});
+
+test('mobile Expo asset route serves dev-server style asset requests by hash', async () => {
+  await withServer({}, async (baseUrl, { mobileBundleRoot }) => {
+    await seedMobileBundle(mobileBundleRoot);
+
+    const response = await fetch(
+      `${baseUrl}/assets/node_modules/expo-router/assets/file.png?platform=android&hash=assetandroidhash`,
+    );
+
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('cache-control'), 'public, max-age=31536000, immutable');
+    assert.equal(response.headers.get('content-type'), 'image/png');
+    assert.equal(await response.text(), 'android-asset');
+  });
+});
+
+test('mobile Expo asset route does not intercept normal desktop assets', async () => {
+  await withServer({}, async (baseUrl, { mobileBundleRoot }) => {
+    await seedMobileBundle(mobileBundleRoot);
+
+    const response = await fetch(`${baseUrl}/assets/app.js`);
+
+    assert.notEqual(response.status, 200);
+    assert.notEqual(response.headers.get('content-type'), 'image/png');
   });
 });
 

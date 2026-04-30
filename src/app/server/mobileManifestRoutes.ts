@@ -132,7 +132,7 @@ const EXPO_GO_MANIFEST_PATHS = new Set(['/', '/manifest', '/index.exp']);
 const EXPO_GO_RUNTIME_VERSION = 'exposdk:54.0.0';
 const EXPO_GO_SDK_VERSION = '54.0.0';
 const EXPO_GO_PROJECT_SLUG = 'cats-mobile';
-const EXPO_GO_MAIN_MODULE_NAME = 'expo-router/entry';
+const EXPO_GO_MAIN_MODULE_NAME = 'node_modules/expo-router/entry';
 const EXPO_MANIFEST_HEADERS = {
   'Cache-Control': 'private, max-age=0',
   'content-type': 'application/expo+json',
@@ -300,6 +300,20 @@ function isExpoGoManifestRequest(context: MobileManifestRouteContext): boolean {
   );
 }
 
+function isExpoAssetRequest(context: MobileManifestRouteContext): boolean {
+  if (!context.url.pathname.startsWith('/assets/')) {
+    return false;
+  }
+  const hash = context.url.searchParams.get('hash')?.trim();
+  if (!hash) {
+    return false;
+  }
+  return Boolean(
+    normalizePlatform(context.url.searchParams.get('platform'))
+      || normalizePlatform(readHeaderValue(context.request.headers['expo-platform'])),
+  );
+}
+
 function resolveExpoGoPlatform(context: MobileManifestRouteContext): MobilePlatform {
   return normalizePlatform(readHeaderValue(context.request.headers['expo-platform']))
     ?? normalizePlatform(context.url.searchParams.get('platform'))
@@ -340,9 +354,8 @@ function buildExpoGoManifest(input: {
   context: MobileManifestRouteContext;
   platform: MobilePlatform;
   platformFiles: MobilePlatformFiles;
-  assets: ExpoManifestAsset[];
 }): ExpoUpdatesManifest {
-  const { context, platform, platformFiles, assets } = input;
+  const { context, platform, platformFiles } = input;
   const bundleUrl = buildAbsoluteUrl(
     context.url,
     buildBundlePathname(platform, platformFiles.bundle.fileName),
@@ -357,7 +370,7 @@ function buildExpoGoManifest(input: {
       contentType: 'application/javascript',
       url: bundleUrl,
     },
-    assets,
+    assets: [],
     metadata: {},
     extra: {
       catsDesktopBaseUrl: context.url.origin,
@@ -377,26 +390,6 @@ function buildExpoGoManifest(input: {
       scopeKey: `@anonymous/${EXPO_GO_PROJECT_SLUG}-cats-desktop`,
     },
   };
-}
-
-async function collectExistingExpoAssets(
-  context: MobileManifestRouteContext,
-  platformFiles: MobilePlatformFiles,
-): Promise<ExpoManifestAsset[]> {
-  const assets = new Map<string, ExpoManifestAsset>();
-  for (const asset of platformFiles.assets) {
-    if (!await fileExists(asset.absolutePath)) {
-      continue;
-    }
-    assets.set(asset.hash, {
-      key: asset.hash,
-      hash: asset.hash,
-      fileExtension: asset.ext,
-      contentType: asset.contentType,
-      url: buildAbsoluteUrl(context.url, buildAssetPathname(asset.hash)),
-    });
-  }
-  return Array.from(assets.values());
 }
 
 async function handleExpoGoManifest(
@@ -427,7 +420,6 @@ async function handleExpoGoManifest(
       context,
       platform,
       platformFiles,
-      assets: await collectExistingExpoAssets(context, platformFiles),
     }),
     EXPO_MANIFEST_HEADERS,
   );
@@ -586,12 +578,50 @@ async function handleMobileAsset(
   );
 }
 
+async function handleExpoAsset(
+  context: MobileManifestRouteContext,
+  exportFiles: MobileExportFiles,
+): Promise<void> {
+  const hash = context.url.searchParams.get('hash')?.trim();
+  const platform = normalizePlatform(context.url.searchParams.get('platform'))
+    ?? normalizePlatform(readHeaderValue(context.request.headers['expo-platform']));
+  if (!hash) {
+    sendJson(context.response, 404, {
+      error: { code: 'mobile_asset_not_found', message: 'Mobile asset not found.' },
+    });
+    return;
+  }
+
+  const candidateAssets = platform
+    ? exportFiles.platforms[platform]?.assets ?? []
+    : Array.from(MOBILE_PLATFORMS).flatMap((candidate) => (
+      exportFiles.platforms[candidate]?.assets ?? []
+    ));
+  const asset = candidateAssets.find((candidate) => candidate.hash === hash);
+
+  if (!asset || !await fileExists(asset.absolutePath)) {
+    sendJson(context.response, 404, {
+      error: { code: 'mobile_asset_not_found', message: 'Mobile asset not found.' },
+    });
+    return;
+  }
+
+  sendBinary(
+    context.response,
+    200,
+    await readFile(asset.absolutePath),
+    asset.contentType,
+    IMMUTABLE_HEADERS,
+  );
+}
+
 export async function routeMobileManifestApi(
   context: MobileManifestRouteContext,
 ): Promise<boolean> {
   const isApiRoute = context.url.pathname.startsWith('/api/mobile/');
   const isExpoGoRoute = isExpoGoManifestRequest(context);
-  if (!isApiRoute && !isExpoGoRoute) {
+  const isExpoAssetRoute = isExpoAssetRequest(context);
+  if (!isApiRoute && !isExpoGoRoute && !isExpoAssetRoute) {
     return false;
   }
 
@@ -623,6 +653,11 @@ export async function routeMobileManifestApi(
 
   if (isExpoGoRoute) {
     await handleExpoGoManifest(context, exportFiles);
+    return true;
+  }
+
+  if (isExpoAssetRoute) {
+    await handleExpoAsset(context, exportFiles);
     return true;
   }
 
