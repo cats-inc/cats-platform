@@ -6,6 +6,8 @@ import type {
   CompanionSourceKind,
   CompanionSourceStorageMode,
 } from '../../../companion/contracts.js';
+import { messageKeys } from '../../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 
 export interface CompanionResourcesSectionProps {
   sources: CompanionSourceRecord[];
@@ -27,14 +29,22 @@ function formatDate(iso: string): string {
 
 function sourceKindLabel(kind: string): string {
   switch (kind) {
-    case 'note': return 'Note';
-    case 'conversation_log': return 'Log';
-    case 'article': return 'Article';
-    case 'image': return 'Image';
-    case 'video': return 'Video';
-    case 'audio': return 'Audio';
-    case 'path_ref': return 'Path';
-    default: return kind;
+    case 'note':
+      return 'note';
+    case 'conversation_log':
+      return 'conversation_log';
+    case 'article':
+      return 'article';
+    case 'image':
+      return 'image';
+    case 'video':
+      return 'video';
+    case 'audio':
+      return 'audio';
+    case 'path_ref':
+      return 'path_ref';
+    default:
+      return 'unknown';
   }
 }
 
@@ -49,6 +59,18 @@ export function CompanionResourcesSection({
   const [formNote, setFormNote] = useState('');
   const [formText, setFormText] = useState('');
   const [formBusy, setFormBusy] = useState(false);
+  const { t } = useI18n();
+
+  const sourceKindMap: Record<string, string> = {
+    note: t(messageKeys.chatCompanionResourcesSourceKindNote),
+    conversation_log: t(messageKeys.chatCompanionResourcesSourceKindConversationLog),
+    article: t(messageKeys.chatCompanionResourcesSourceKindArticle),
+    image: t(messageKeys.chatCompanionResourcesSourceKindImage),
+    video: t(messageKeys.chatCompanionResourcesSourceKindVideo),
+    audio: t(messageKeys.chatCompanionResourcesSourceKindAudio),
+    path_ref: t(messageKeys.chatCompanionResourcesSourceKindPath),
+    unknown: t(messageKeys.chatCompanionResourcesSourceKindUnknown),
+  };
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -74,19 +96,23 @@ export function CompanionResourcesSection({
   }
 
   if (loading && sources.length === 0) {
-    return <div className="companionSection companionLoading">Loading...</div>;
+    return (
+      <div className="companionSection companionLoading">
+        {t(messageKeys.chatCompanionResourcesLoadingState)}
+      </div>
+    );
   }
 
   return (
     <div className="companionSection companionResources">
       <div className="companionSectionHeader">
-        <span>Resources</span>
+        <span>{t(messageKeys.chatCompanionResourcesSectionTitle)}</span>
         <button
           type="button"
           className="companionActionButton"
           onClick={() => setShowForm(!showForm)}
         >
-          {showForm ? 'Cancel' : '+ Add'}
+          {showForm ? t(messageKeys.chatCompanionResourcesActionCancel) : t(messageKeys.chatCompanionResourcesActionShowForm)}
         </button>
       </div>
 
@@ -95,20 +121,20 @@ export function CompanionResourcesSection({
           <input
             type="text"
             className="companionInput"
-            placeholder="Title"
+            placeholder={t(messageKeys.chatCompanionResourcesFormTitlePlaceholder)}
             value={formTitle}
             onChange={(e) => setFormTitle(e.target.value)}
           />
           <input
             type="text"
             className="companionInput"
-            placeholder="Note (optional)"
+            placeholder={t(messageKeys.chatCompanionResourcesFormNotePlaceholder)}
             value={formNote}
             onChange={(e) => setFormNote(e.target.value)}
           />
           <textarea
             className="companionTextarea"
-            placeholder="Content"
+            placeholder={t(messageKeys.chatCompanionResourcesFormContentPlaceholder)}
             value={formText}
             onChange={(e) => setFormText(e.target.value)}
             rows={4}
@@ -118,21 +144,27 @@ export function CompanionResourcesSection({
             className="companionActionButton"
             disabled={formBusy || (!formTitle.trim() && !formNote.trim() && !formText.trim())}
           >
-            {formBusy ? 'Adding...' : 'Add Resource'}
+            {formBusy
+              ? t(messageKeys.chatCompanionResourcesActionBusy)
+              : t(messageKeys.chatCompanionResourcesActionAddResource)}
           </button>
         </form>
       )}
 
       {sources.length === 0 ? (
-        <p className="companionEmpty">No resources yet. Add materials to help your companion.</p>
+        <p className="companionEmpty">
+          {t(messageKeys.chatCompanionResourcesEmptyState)}
+        </p>
       ) : (
         <ul className="companionSourceList">
           {sources.map((source) => (
             <li key={source.id} className="companionCard companionSourceCard">
               <div className="companionSourceHeader">
-                <span className="companionSourceKind">{sourceKindLabel(source.kind)}</span>
+                <span className="companionSourceKind">
+                  {sourceKindMap[sourceKindLabel(source.kind)]}
+                </span>
                 <span className="companionSourceTitle">
-                  {source.title || source.originalFileName || 'Untitled'}
+                  {source.title || source.originalFileName || t(messageKeys.chatCompanionResourcesUntitledSource)}
                 </span>
                 <span className="companionSourceDate">{formatDate(source.updatedAt)}</span>
               </div>
@@ -148,7 +180,7 @@ export function CompanionResourcesSection({
                   className="companionDangerButton"
                   onClick={() => onDeleteSource(source.id)}
                 >
-                  Remove
+                  {t(messageKeys.chatCompanionResourcesActionRemove)}
                 </button>
               </div>
             </li>

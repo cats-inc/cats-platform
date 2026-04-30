@@ -1056,6 +1056,32 @@ export const messageKeys = {
     'chat.companionModeToggleChatViewAriaLabel',
   chatCompanionModeToggleCompanionViewAriaLabel:
     'chat.companionModeToggleCompanionViewAriaLabel',
+  chatCompanionResourcesLoadingState: 'chat.companionResourcesLoadingState',
+  chatCompanionResourcesSectionTitle: 'chat.companionResourcesSectionTitle',
+  chatCompanionResourcesActionShowForm: 'chat.companionResourcesActionShowForm',
+  chatCompanionResourcesActionCancel: 'chat.companionResourcesActionCancel',
+  chatCompanionResourcesActionAddResource: 'chat.companionResourcesActionAddResource',
+  chatCompanionResourcesActionBusy: 'chat.companionResourcesActionBusy',
+  chatCompanionResourcesFormTitlePlaceholder:
+    'chat.companionResourcesFormTitlePlaceholder',
+  chatCompanionResourcesFormNotePlaceholder:
+    'chat.companionResourcesFormNotePlaceholder',
+  chatCompanionResourcesFormContentPlaceholder:
+    'chat.companionResourcesFormContentPlaceholder',
+  chatCompanionResourcesEmptyState: 'chat.companionResourcesEmptyState',
+  chatCompanionResourcesSourceKindNote: 'chat.companionResourcesSourceKindNote',
+  chatCompanionResourcesSourceKindConversationLog:
+    'chat.companionResourcesSourceKindConversationLog',
+  chatCompanionResourcesSourceKindArticle:
+    'chat.companionResourcesSourceKindArticle',
+  chatCompanionResourcesSourceKindImage: 'chat.companionResourcesSourceKindImage',
+  chatCompanionResourcesSourceKindVideo: 'chat.companionResourcesSourceKindVideo',
+  chatCompanionResourcesSourceKindAudio: 'chat.companionResourcesSourceKindAudio',
+  chatCompanionResourcesSourceKindPath: 'chat.companionResourcesSourceKindPath',
+  chatCompanionResourcesSourceKindUnknown:
+    'chat.companionResourcesSourceKindUnknown',
+  chatCompanionResourcesUntitledSource: 'chat.companionResourcesUntitledSource',
+  chatCompanionResourcesActionRemove: 'chat.companionResourcesActionRemove',
   chatCompanionMessageReferenceAvailabilityLivePreview:
     'chat.companionMessageReferenceAvailabilityLivePreview',
   chatCompanionMessageReferenceAvailabilityMissing:
