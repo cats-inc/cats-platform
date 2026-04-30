@@ -6,49 +6,61 @@ import type {
   CompanionActivityProjection,
   CompanionActivityRenderEntry,
 } from '../../../companion/activityProjection.js';
+import { messageKeys } from '../../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 
 type FeedTab = 'posts' | 'photos' | 'videos' | 'music' | 'files' | 'activity';
+type CompanionFeedSurface = 'photo' | 'video' | 'music' | 'file';
+type TranslateFn = (key: keyof typeof messageKeys, values?: Record<string, unknown>) => string;
 
-const FEED_TABS: ReadonlyArray<{ id: FeedTab; label: string }> = [
-  { id: 'posts', label: 'Posts' },
-  { id: 'photos', label: 'Photos' },
-  { id: 'videos', label: 'Videos' },
-  { id: 'music', label: 'Music' },
-  { id: 'files', label: 'Files' },
-  { id: 'activity', label: 'Activity' },
+const FEED_TABS: ReadonlyArray<{ id: FeedTab; labelKey: keyof typeof messageKeys }> = [
+  { id: 'posts', labelKey: 'chatCompanionFeedTabPosts' },
+  { id: 'photos', labelKey: 'chatCompanionFeedTabPhotos' },
+  { id: 'videos', labelKey: 'chatCompanionFeedTabVideos' },
+  { id: 'music', labelKey: 'chatCompanionFeedTabMusic' },
+  { id: 'files', labelKey: 'chatCompanionFeedTabFiles' },
+  { id: 'activity', labelKey: 'chatCompanionFeedTabActivity' },
 ];
 
-const SURFACE_LABELS: Record<'photo' | 'video' | 'music' | 'file', string> = {
-  photo: 'photos',
-  video: 'videos',
-  music: 'music',
-  file: 'files',
+const SURFACE_LABEL_KEYS: Record<CompanionFeedSurface, keyof typeof messageKeys> = {
+  photo: 'chatCompanionFeedSurfacePhotoLabel',
+  video: 'chatCompanionFeedSurfaceVideoLabel',
+  music: 'chatCompanionFeedSurfaceMusicLabel',
+  file: 'chatCompanionFeedSurfaceFileLabel',
 };
 
-function CompanionPostsEmptyState({ catName }: { catName: string }) {
+function CompanionPostsEmptyState({
+  catName,
+  translate,
+}: {
+  catName: string;
+  translate: TranslateFn;
+}) {
   return (
     <div className="companionEmptyState">
-      <p>{catName} hasn't posted anything yet.</p>
+      <p>{translate(messageKeys.chatCompanionFeedPostEmptyState, { catName })}</p>
     </div>
   );
 }
 
 function CompanionMediaEmptyState({
-  surface,
+  surfaceLabel,
+  translate,
 }: {
-  surface: 'photo' | 'video' | 'music' | 'file';
+  surfaceLabel: string;
+  translate: TranslateFn;
 }) {
   return (
     <div className="companionEmptyState">
-      <p>No {SURFACE_LABELS[surface]} yet.</p>
+      <p>{translate(messageKeys.chatCompanionFeedMediaEmptyState, { type: surfaceLabel })}</p>
     </div>
   );
 }
 
-function CompanionActivityEmptyState() {
+function CompanionActivityEmptyState({ translate }: { translate: TranslateFn }) {
   return (
     <div className="companionEmptyState">
-      <p>Nothing recent.</p>
+      <p>{translate(messageKeys.chatCompanionFeedActivityEmptyState)}</p>
     </div>
   );
 }
@@ -66,10 +78,13 @@ function formatActivityTimestamp(iso: string): string {
   }
 }
 
-function renderActivity(projection: CompanionActivityProjection | null | undefined): ReactNode {
+function renderActivity(
+  projection: CompanionActivityProjection | null | undefined,
+  translate: TranslateFn,
+): ReactNode {
   const entries = projection?.entries ?? [];
   if (entries.length === 0) {
-    return <CompanionActivityEmptyState />;
+    return <CompanionActivityEmptyState translate={translate} />;
   }
   return (
     <div className="companionActivityList">
@@ -80,14 +95,14 @@ function renderActivity(projection: CompanionActivityProjection | null | undefin
               {formatActivityTimestamp(entry.occurredAt)}
             </time>
             <span className="companionActivitySummary">{entry.summary}</span>
-            {entry.count > 1 ? (
-              <span className="companionActivityCount">×{entry.count}</span>
-            ) : null}
+            {entry.count > 1 ? <span className="companionActivityCount">×{entry.count}</span> : null}
           </li>
         ))}
       </ul>
       {projection?.olderHidden ? (
-        <p className="companionActivityHidden">Older activity is hidden.</p>
+        <p className="companionActivityHidden">
+          {translate(messageKeys.chatCompanionFeedActivityHiddenState)}
+        </p>
       ) : null}
     </div>
   );
@@ -96,11 +111,13 @@ function renderActivity(projection: CompanionActivityProjection | null | undefin
 function renderProfilePosts(
   profile: CompanionProfileReadModel | null | undefined,
   catName: string,
+  translate: TranslateFn,
+  mediaItemsLabel: (count: number) => string,
 ): ReactNode {
   const posts = profile?.posts ?? [];
   const active = posts.filter((post) => post.status === 'active');
   if (active.length === 0) {
-    return <CompanionPostsEmptyState catName={catName} />;
+    return <CompanionPostsEmptyState catName={catName} translate={translate} />;
   }
   return (
     <div className="companionProfilePostList">
@@ -121,10 +138,7 @@ function renderProfilePosts(
             </ul>
           ) : null}
           {post.mediaRefs.length > 0 ? (
-            <div
-              className="companionProfilePostMediaGrid"
-              aria-label={`${post.mediaRefs.length} media items`}
-            >
+            <div className="companionProfilePostMediaGrid" aria-label={mediaItemsLabel(post.mediaRefs.length)}>
               {post.mediaRefs.map((ref) => (
                 <span
                   key={`${ref.kind}:${ref.id}`}
@@ -144,22 +158,23 @@ function renderProfilePosts(
 function renderProfileMedia(
   tiles: CompanionProfileReadModel['photos'] | undefined,
   surface: 'photo' | 'video' | 'music',
+  surfaceLabel: string,
+  translate: TranslateFn,
+  mediaItemsLabel: string,
 ): ReactNode {
   const items = tiles ?? [];
   if (items.length === 0) {
-    return <CompanionMediaEmptyState surface={surface} />;
+    return <CompanionMediaEmptyState surfaceLabel={surfaceLabel} translate={translate} />;
   }
   return (
     <ul
       className={`companionProfileMediaList companionProfileMediaList--${surface}`}
-      aria-label={`${items.length} ${SURFACE_LABELS[surface]}`}
+      aria-label={mediaItemsLabel}
     >
       {items.map((tile) => (
         <li key={tile.id} className="companionProfileMediaTile">
           <span className="companionProfileMediaTitle">{tile.title}</span>
-          {tile.mimeType ? (
-            <span className="companionProfileMediaMime">{tile.mimeType}</span>
-          ) : null}
+          {tile.mimeType ? <span className="companionProfileMediaMime">{tile.mimeType}</span> : null}
         </li>
       ))}
     </ul>
@@ -168,22 +183,20 @@ function renderProfileMedia(
 
 function renderProfileFiles(
   tiles: CompanionProfileReadModel['files'] | undefined,
+  surfaceLabel: string,
+  translate: TranslateFn,
+  mediaItemsLabel: string,
 ): ReactNode {
   const items = tiles ?? [];
   if (items.length === 0) {
-    return <CompanionMediaEmptyState surface="file" />;
+    return <CompanionMediaEmptyState surfaceLabel={surfaceLabel} translate={translate} />;
   }
   return (
-    <ul
-      className="companionProfileFileList"
-      aria-label={`${items.length} files`}
-    >
+    <ul className="companionProfileFileList" aria-label={mediaItemsLabel}>
       {items.map((tile) => (
         <li key={tile.id} className="companionProfileFileRow">
           <span className="companionProfileFileTitle">{tile.title}</span>
-          {tile.mimeType ? (
-            <span className="companionProfileFileMime">{tile.mimeType}</span>
-          ) : null}
+          {tile.mimeType ? <span className="companionProfileFileMime">{tile.mimeType}</span> : null}
         </li>
       ))}
     </ul>
@@ -207,6 +220,20 @@ export interface CompanionFeedProps {
 
 export function CompanionFeed({ cat, profile = null, activity = null }: CompanionFeedProps) {
   const [activeTab, setActiveTab] = useState<FeedTab>('posts');
+  const { t } = useI18n();
+
+  const surfaceLabels: Record<CompanionFeedSurface, string> = {
+    photo: t(SURFACE_LABEL_KEYS.photo),
+    video: t(SURFACE_LABEL_KEYS.video),
+    music: t(SURFACE_LABEL_KEYS.music),
+    file: t(SURFACE_LABEL_KEYS.file),
+  };
+
+  const mediaItemsLabel = (count: number, surfaceLabel: string): string =>
+    t(messageKeys.chatCompanionFeedMediaItemsLabel, {
+      count,
+      surface: surfaceLabel,
+    });
 
   useEffect(() => {
     if (!FEED_TABS.some((tab) => tab.id === activeTab)) {
@@ -217,28 +244,60 @@ export function CompanionFeed({ cat, profile = null, activity = null }: Companio
   let content: ReactNode;
   switch (activeTab) {
     case 'posts':
-      content = renderProfilePosts(profile, cat.name);
+      content = renderProfilePosts(
+        profile,
+        cat.name,
+        t,
+        (count) => mediaItemsLabel(count, t(messageKeys.chatCompanionFeedMediaItemDefaultLabel)),
+      );
       break;
     case 'photos':
-      content = renderProfileMedia(profile?.photos, 'photo');
+      content = renderProfileMedia(
+        profile?.photos,
+        'photo',
+        surfaceLabels.photo,
+        t,
+        mediaItemsLabel(profile?.photos?.length ?? 0, surfaceLabels.photo),
+      );
       break;
     case 'videos':
-      content = renderProfileMedia(profile?.videos, 'video');
+      content = renderProfileMedia(
+        profile?.videos,
+        'video',
+        surfaceLabels.video,
+        t,
+        mediaItemsLabel(profile?.videos?.length ?? 0, surfaceLabels.video),
+      );
       break;
     case 'music':
-      content = renderProfileMedia(profile?.music, 'music');
+      content = renderProfileMedia(
+        profile?.music,
+        'music',
+        surfaceLabels.music,
+        t,
+        mediaItemsLabel(profile?.music?.length ?? 0, surfaceLabels.music),
+      );
       break;
     case 'files':
-      content = renderProfileFiles(profile?.files);
+      content = renderProfileFiles(
+        profile?.files,
+        surfaceLabels.file,
+        t,
+        mediaItemsLabel(profile?.files?.length ?? 0, surfaceLabels.file),
+      );
       break;
     case 'activity':
-      content = renderActivity(activity);
+      content = renderActivity(activity, t);
       break;
   }
 
   return (
     <div className="companionFeed">
-      <nav className="companionFeedTabs" role="tablist" aria-label="Companion feed">
+      <nav
+        className="companionFeedTabs"
+        role="tablist"
+        aria-label={t(messageKeys.chatCompanionFeedNavAriaLabel)}
+      >
         {FEED_TABS.map((tab) => (
           <button
             key={tab.id}
@@ -252,7 +311,7 @@ export function CompanionFeed({ cat, profile = null, activity = null }: Companio
             }
             onClick={() => setActiveTab(tab.id)}
           >
-            {tab.label}
+            {t(tab.labelKey)}
           </button>
         ))}
       </nav>

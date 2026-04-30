@@ -19,6 +19,8 @@ import { CompanionOverviewSection } from './CompanionOverviewSection.js';
 import { CompanionResourcesSection } from './CompanionResourcesSection.js';
 import { CompanionMemorySection } from './CompanionMemorySection.js';
 import { CompanionSettingsSection } from './CompanionSettingsSection.js';
+import { messageKeys } from '../../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 
 export interface CompanionWorkspaceProps {
   payload: AppShellPayload;
@@ -39,6 +41,7 @@ export function CompanionWorkspace({
 }: CompanionWorkspaceProps) {
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<CompanionWorkspaceTab | null>('overview');
+  const { t } = useI18n();
   const presence = useCompanionPresence(cat.id, payload);
   const workspace = useCompanionWorkspace(cat.id, activeTab ?? 'overview');
 
@@ -82,7 +85,7 @@ export function CompanionWorkspace({
               className="companionActionButton"
               onClick={workspace.refreshTab}
             >
-              Retry
+              {t(messageKeys.chatCompanionWorkspaceRetryLabel)}
             </button>
           </div>
         ) : null}
@@ -129,7 +132,7 @@ export function CompanionWorkspace({
     ),
     inspector: wrapSection(
       <div className="companionEmptyState">
-        <p>No selection.</p>
+        <p>{t(messageKeys.chatCompanionWorkspaceNoSelectionState)}</p>
       </div>,
     ),
   };
@@ -183,7 +186,7 @@ export function CompanionWorkspace({
               className="sidePanelToggle"
               type="button"
               onClick={() => setSidePanelOpen((prev) => !prev)}
-              aria-label="Toggle inspector panel"
+              aria-label={t(messageKeys.chatTopBarToggleSidePanelAriaLabel)}
               aria-pressed={sidePanelOpen}
             >
               <svg
@@ -222,19 +225,19 @@ export function CompanionWorkspace({
                   type="button"
                   className="companionHeaderAction companionHeaderActionPrimary"
                   disabled
-                  title="Companion subscriptions are not available yet."
+                  title={t(messageKeys.chatCompanionWorkspaceSubscriptionDisabledTooltip)}
                   aria-disabled
                 >
-                  Subscribe
+                  {t(messageKeys.chatCompanionWorkspaceSubscriptionLabel)}
                 </button>
                 <button
                   type="button"
                   className="companionHeaderAction"
                   disabled
-                  title="Select a post, photo, video, music track, or file before sharing."
+                  title={t(messageKeys.chatCompanionWorkspaceShareDisabledTooltip)}
                   aria-disabled
                 >
-                  Share
+                  {t(messageKeys.chatCompanionWorkspaceShareLabel)}
                 </button>
               </>
             )}
@@ -248,7 +251,7 @@ export function CompanionWorkspace({
       </div>
       {sidePanelOpen ? (
         <SidePanel
-          title="Companion"
+          title={t(messageKeys.chatCompanionWorkspaceSidePanelTitle)}
           activeSection={activeTab}
           onSectionToggle={onSidePanelSectionToggle}
           onClose={() => setSidePanelOpen(false)}
