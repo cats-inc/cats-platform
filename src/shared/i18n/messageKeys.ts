@@ -1134,6 +1134,7 @@ export const messageKeys = {
     'chat.transcriptMessageCounterWithOthersLabel',
   chatTranscriptMessageDebateWithOthersLabel:
     'chat.transcriptMessageDebateWithOthersLabel',
+  chatTranscriptMessageCopyLabel: 'chat.transcriptMessageCopyLabel',
   chatTranscriptMessageRetryResponseLabel: 'chat.transcriptMessageRetryResponseLabel',
   chatTranscriptMessageRelayToOthersLabel: 'chat.transcriptMessageRelayToOthersLabel',
   chatTranscriptMessageFailedStatusLabel: 'chat.transcriptMessageFailedStatusLabel',

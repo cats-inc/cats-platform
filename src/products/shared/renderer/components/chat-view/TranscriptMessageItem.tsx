@@ -233,6 +233,7 @@ export function TranscriptMessageItem({
       <TranscriptMessageActions
         senderKind={message.senderKind}
         showDefaultCopyAction={message.body.trim().length > 0}
+        copyActionLabel={t(messageKeys.chatTranscriptMessageCopyLabel)}
         onCopyMessage={() => {
           void onCopyMessage(message.body);
         }}

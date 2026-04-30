@@ -35,7 +35,7 @@ export type TranscriptMessageActionDescriptor =
 export interface TranscriptMessageActionsProps {
   senderKind: string;
   showDefaultCopyAction?: boolean;
-  copyActionLabel?: string;
+  copyActionLabel: string;
   onCopyMessage?: () => void;
   extraActions?: ReadonlyArray<TranscriptMessageActionDescriptor>;
 }
@@ -106,7 +106,7 @@ export function RelayActionIcon(): JSX.Element {
 export function TranscriptMessageActions({
   senderKind,
   showDefaultCopyAction = false,
-  copyActionLabel = 'Copy message',
+  copyActionLabel,
   onCopyMessage,
   extraActions = [],
 }: TranscriptMessageActionsProps): JSX.Element | null {
