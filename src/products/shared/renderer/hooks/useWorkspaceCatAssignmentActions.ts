@@ -19,6 +19,8 @@ import {
   removeCatFromChannelApi as removeWorkspaceCatFromChannelApi,
 } from '../api/index.js';
 import { emptyCatForm, type CatFormState } from '../workspaceChatUtils.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
 
 export interface WorkspaceCatAssignmentPayloadLike {
   chat: {
@@ -121,6 +123,7 @@ export function useWorkspaceCatAssignmentActions<
       catId: string,
     ) => Promise<TPayload>,
   } = options;
+  const { t } = useI18n();
 
   const onCreateAndAssignCat = useCallback(async (event: FormEvent<HTMLFormElement>): Promise<void> => {
     event.preventDefault();
@@ -149,7 +152,7 @@ export function useWorkspaceCatAssignmentActions<
       const newCat = created.chat.cats.find((participant) => !previousIds.has(participant.id));
       if (!newCat) {
         setCatForm(emptyCatForm());
-        setFeedback('Cat created. Open "Choose existing" to assign it.');
+        setFeedback(t(messageKeys.chatCatAssignmentCreatedAssignHint));
         setBusy(clearBusyState());
         return;
       }
@@ -168,7 +171,7 @@ export function useWorkspaceCatAssignmentActions<
         setFeedback('');
       });
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to create cat.');
+      setFeedback(error instanceof Error ? error.message : t(messageKeys.chatCatAssignmentErrorCreateCat));
     } finally {
       setBusy(clearBusyState());
     }
@@ -185,6 +188,7 @@ export function useWorkspaceCatAssignmentActions<
     setFeedback,
     setState,
     state,
+    t,
   ]);
 
   const onAssignExistingCat = useCallback(async (cat: AssignableCat): Promise<void> => {
@@ -211,11 +215,11 @@ export function useWorkspaceCatAssignmentActions<
         setFeedback('');
       });
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to assign cat.');
+      setFeedback(error instanceof Error ? error.message : t(messageKeys.chatCatAssignmentErrorAssignCat));
     } finally {
       setBusy(clearBusyState());
     }
-  }, [setBusy, setFeedback, setState, state]);
+  }, [setBusy, setFeedback, setState, state, t]);
 
   const onRemoveAssignedCat = useCallback(async (cat: { id: string }): Promise<void> => {
     if (state.status !== 'ready') {
@@ -235,11 +239,11 @@ export function useWorkspaceCatAssignmentActions<
         setFeedback('');
       });
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to remove cat.');
+      setFeedback(error instanceof Error ? error.message : t(messageKeys.chatCatAssignmentErrorRemoveCat));
     } finally {
       setBusy(clearBusyState());
     }
-  }, [setBusy, setFeedback, setState, state]);
+  }, [setBusy, setFeedback, setState, state, t]);
 
   const toggleDraftCat = useCallback((catId: string): void => {
     setDraftCatIds((current) =>
@@ -272,7 +276,7 @@ export function useWorkspaceCatAssignmentActions<
       setAddCatOpen(false);
       setFeedback('');
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to create cat.');
+      setFeedback(error instanceof Error ? error.message : t(messageKeys.chatCatAssignmentErrorCreateCat));
     } finally {
       setBusy(clearBusyState());
     }
@@ -290,6 +294,7 @@ export function useWorkspaceCatAssignmentActions<
     setFeedback,
     setState,
     state,
+    t,
   ]);
 
   return {

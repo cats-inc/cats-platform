@@ -810,7 +810,7 @@ export function useComposerSubmit(options: {
       if (isAbortError(error)) {
         setFeedback('');
       } else {
-        setFeedback(error instanceof Error ? error.message : 'Failed to retry response.');
+        setFeedback(error instanceof Error ? error.message : t(messageKeys.chatComposerErrorRetryFailed));
       }
     } finally {
       if (!keepBusyAfterReturn) {
@@ -830,6 +830,7 @@ export function useComposerSubmit(options: {
     setFeedback,
     setState,
     state,
+    t,
   ]);
 
   return {

@@ -16,6 +16,8 @@ import type {
   ActiveAckRequest,
   ActiveSubmitRequest,
 } from './useComposerRequestLifecycle.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
 
 type LoadStateLike<TPayload> =
   | { status: 'loading' }
@@ -44,6 +46,7 @@ export function useComposerRequestControls<TPayload>({
   setFeedback,
   setState,
 }: UseComposerRequestControlsOptions<TPayload>) {
+  const { t } = useI18n();
   const onStopMessage = useCallback(async (): Promise<void> => {
     const activeRequest = activeDispatchRequestRef.current;
     if (!activeRequest) {
@@ -66,7 +69,7 @@ export function useComposerRequestControls<TPayload>({
         : await cancelChannel(activeRequest.channelId);
       setState({ status: 'ready', payload: cancellation.appShell });
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to stop response.');
+      setFeedback(error instanceof Error ? error.message : t(messageKeys.chatComposerErrorStopFailed));
     } finally {
       setBusy(clearBusyState());
     }
@@ -77,6 +80,7 @@ export function useComposerRequestControls<TPayload>({
     setBusy,
     setFeedback,
     setState,
+    t,
   ]);
 
   const onCancelPendingSend = useCallback((): void => {

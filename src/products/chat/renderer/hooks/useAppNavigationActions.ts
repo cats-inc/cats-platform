@@ -172,11 +172,13 @@ export function useAppNavigationActions(options: {
         setFeedback('');
       });
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to rename parallel chat.');
+      setFeedback(error instanceof Error
+        ? error.message
+        : t(messageKeys.sharedWorkspaceNavigationRenameParallelChatError));
     } finally {
       setBusy(clearBusyState());
     }
-  }, [setBusy, setFeedback, setState]);
+  }, [setBusy, setFeedback, setState, t]);
 
   const onUngroupParallelChatGroup = useCallback(async (groupId: string): Promise<void> => {
     setBusy(createConcurrentGroupBusyState('ungroup', groupId));
@@ -187,11 +189,13 @@ export function useAppNavigationActions(options: {
         setFeedback('');
       });
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to ungroup parallel chat.');
+      setFeedback(error instanceof Error
+        ? error.message
+        : t(messageKeys.sharedWorkspaceNavigationUngroupParallelChatError));
     } finally {
       setBusy(clearBusyState());
     }
-  }, [setBusy, setFeedback, setState]);
+  }, [setBusy, setFeedback, setState, t]);
 
   const onDeleteParallelChatGroup = useCallback(async (groupId: string): Promise<void> => {
     const groupTitle = state.status === 'ready'
@@ -212,7 +216,9 @@ export function useAppNavigationActions(options: {
       });
       navigate(resolveVisibleChatPath(payload.chat.channels, payload.chat.selectedChannelId));
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to delete all chats.');
+      setFeedback(error instanceof Error
+        ? error.message
+        : t(messageKeys.sharedWorkspaceNavigationDeleteParallelChatGroupError));
     } finally {
       setBusy(clearBusyState());
     }

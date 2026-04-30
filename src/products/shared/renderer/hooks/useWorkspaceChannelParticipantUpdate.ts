@@ -6,6 +6,8 @@ import {
   createChannelParticipantBusyState,
   type WorkspaceBusyState,
 } from '../../../../shared/workspaceBusy.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
 
 export function useWorkspaceChannelParticipantUpdate<TPayload>(input: {
   updateChannelParticipantApi: (
@@ -18,6 +20,7 @@ export function useWorkspaceChannelParticipantUpdate<TPayload>(input: {
   setState: (value: { status: 'ready'; payload: TPayload }) => void;
 }) {
   const { updateChannelParticipantApi, setBusy, setFeedback, setState } = input;
+  const { t } = useI18n();
   return useCallback(async (
     channelId: string,
     participantId: string,
@@ -31,9 +34,9 @@ export function useWorkspaceChannelParticipantUpdate<TPayload>(input: {
         setFeedback('');
       });
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to update participant.');
+      setFeedback(error instanceof Error ? error.message : t(messageKeys.chatParticipantsErrorUpdateParticipant));
     } finally {
       setBusy(clearBusyState());
     }
-  }, [setBusy, setFeedback, setState, updateChannelParticipantApi]);
+  }, [setBusy, setFeedback, setState, t, updateChannelParticipantApi]);
 }

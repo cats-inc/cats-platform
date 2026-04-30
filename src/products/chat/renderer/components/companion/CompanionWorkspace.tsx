@@ -139,7 +139,7 @@ export function CompanionWorkspace({
 
   const sidePanelSections = COMPANION_SIDE_PANEL_SECTION_IDS.map((id) => ({
     id,
-    title: companionTabLabel(id),
+    title: companionTabLabel(id, t),
     children: sectionContentById[id],
   }));
 

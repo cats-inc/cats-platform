@@ -22,6 +22,8 @@ import {
   createOperatorActionBusyState,
   type WorkspaceBusyState,
 } from '../../../../shared/workspaceBusy.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
 
 export interface WorkspaceGovernancePayloadLike {
   ownerDisplayName: string;
@@ -76,6 +78,7 @@ export function useWorkspaceGovernanceActions<
       choiceResponse: TChoiceResponse;
     }) => Promise<{ appShell: TPayload }>,
   } = options;
+  const { t } = useI18n();
 
   const onApprovalDecision = useCallback(async (
     taskId: string,
@@ -102,11 +105,11 @@ export function useWorkspaceGovernanceActions<
         setFeedback('');
       });
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to update approval.');
+      setFeedback(error instanceof Error ? error.message : t(messageKeys.chatGovernanceErrorUpdateApproval));
     } finally {
       setBusy(clearBusyState());
     }
-  }, [operatorState.snapshot, setBusy, setFeedback, setOperatorState]);
+  }, [operatorState.snapshot, setBusy, setFeedback, setOperatorState, t]);
 
   const onChoiceSubmit = useCallback(async (
     input: Omit<MessageChoicesSubmitInput, 'choiceResponse'> & { choiceResponse: TChoiceResponse },
@@ -132,11 +135,11 @@ export function useWorkspaceGovernanceActions<
         setFeedback('');
       });
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to submit choice response.');
+      setFeedback(error instanceof Error ? error.message : t(messageKeys.chatGovernanceErrorSubmitChoiceResponse));
     } finally {
       setBusy(clearBusyState());
     }
-  }, [setBusy, setFeedback, setState, state]);
+  }, [setBusy, setFeedback, setState, state, t]);
 
   const onOperatorAction = useCallback(async (input: {
     action: 'retry' | 'acknowledge';
@@ -165,11 +168,11 @@ export function useWorkspaceGovernanceActions<
         setFeedback('');
       });
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to record operator action.');
+      setFeedback(error instanceof Error ? error.message : t(messageKeys.chatGovernanceErrorRecordOperatorAction));
     } finally {
       setBusy(clearBusyState());
     }
-  }, [operatorState.snapshot, setBusy, setFeedback, setOperatorState]);
+  }, [operatorState.snapshot, setBusy, setFeedback, setOperatorState, t]);
 
   return {
     onApprovalDecision,

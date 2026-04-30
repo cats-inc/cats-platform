@@ -6,6 +6,19 @@ import type {
   CompanionSourceRecord,
 } from '../companion/contracts.js';
 import type { ChatCat } from '../api/contracts.js';
+import {
+  createTranslator,
+  messageKeys,
+  type MessageInterpolationValues,
+  type MessageKey,
+} from '../../../shared/i18n/index.js';
+
+type CompanionTabTranslator = (
+  key: MessageKey,
+  values?: MessageInterpolationValues,
+) => string;
+
+const defaultCompanionTabTranslator = createTranslator('en');
 
 export type CompanionPresenceState = 'sleeping' | 'waking_up' | 'awake' | 'error';
 
@@ -27,18 +40,21 @@ export type CompanionWorkspaceTab =
  * - `settings`  → `Behavior` (response/profile controls live here)
  * - `inspector` → `Inspector`
  */
-export function companionTabLabel(tab: CompanionWorkspaceTab): string {
+export function companionTabLabel(
+  tab: CompanionWorkspaceTab,
+  t: CompanionTabTranslator = defaultCompanionTabTranslator,
+): string {
   switch (tab) {
     case 'overview':
-      return 'Status';
+      return t(messageKeys.chatCompanionTabStatus);
     case 'resources':
-      return 'Sources';
+      return t(messageKeys.chatCompanionTabSources);
     case 'memory':
-      return 'Memory';
+      return t(messageKeys.chatCompanionTabMemory);
     case 'settings':
-      return 'Behavior';
+      return t(messageKeys.chatCompanionTabBehavior);
     case 'inspector':
-      return 'Inspector';
+      return t(messageKeys.chatCompanionTabInspector);
   }
 }
 
