@@ -33,6 +33,16 @@ export function shouldApplyWorkspaceChatEventRefresh(
   return nextTimestamp >= currentTimestamp;
 }
 
+export interface UseWorkspaceChatEventsResult {
+  // Mutation-driven flows (e.g. companion wake/sleep, settings saves) can
+  // call this to force a refresh after a server-side action without losing
+  // the timestamp guard, single-flight, or active-entity merge that the SSE
+  // refresher already enforces. Pre-refactor (commit 8316bab30^) the chat
+  // App used `useChatAppShellRefresh` to expose the same hardened refresher;
+  // surfacing it here keeps that contract intact for the unified shell.
+  refreshAppShell: () => void;
+}
+
 export function useWorkspaceChatEvents<
   TPayload extends MergeableAppShellPayload & { metadata: { generatedAt: string | null } } =
     AppShellPayload,
@@ -41,7 +51,7 @@ export function useWorkspaceChatEvents<
   setState: Dispatch<SetStateAction<LoadStateLike<TPayload>>>;
   enabled?: boolean;
   fetchAppShell?: (signal: AbortSignal) => Promise<TPayload>;
-}): void {
+}): UseWorkspaceChatEventsResult {
   const {
     enabled = true,
     fetchAppShell = fetchWorkspaceAppShell as unknown as (
@@ -155,4 +165,6 @@ export function useWorkspaceChatEvents<
       queuedRefreshRef.current = false;
     };
   }, [enabled, refreshAppShell]);
+
+  return { refreshAppShell };
 }

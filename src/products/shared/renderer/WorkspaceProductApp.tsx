@@ -450,13 +450,17 @@ export function createWorkspaceProductApp({
 
     const publishReadyPayload = usePublishReadyPayload<AppShellPayload>(setState);
 
-    const refreshAppShell = useCallback((): void => {
-      void fetchAppShell()
-        .then((payload) => {
-          publishReadyPayload(payload);
-        })
-        .catch(() => {});
-    }, [publishReadyPayload]);
+    // ADR-075 owns mounted channel state, so refetches must preserve active
+    // entity subscriptions instead of replacing the whole app-shell payload.
+    // Hoisted ahead of companion wake/sleep so those mutation flows can reuse
+    // the same hardened refresher (timestamp guard + single-flight + entity
+    // merge) instead of issuing a bare fetch — the latter race-clobbered the
+    // active-channel subscription state pre-fix.
+    const { refreshAppShell } = useWorkspaceChatEvents({
+      state,
+      setState,
+      enabled: state.status === 'ready',
+    });
 
     const [companionMode, setCompanionMode] = useState(false);
     const previousMyCatIdRef = useRef(routeMyCatId);
@@ -1482,13 +1486,8 @@ export function createWorkspaceProductApp({
       readySelectedChannel,
     });
     // ADR-041 owns collection-tier chat invalidations on every product shell.
-    // ADR-075 owns mounted channel state, so refetches must preserve active
-    // entity subscriptions instead of replacing the whole app-shell payload.
-    useWorkspaceChatEvents({
-      state,
-      setState,
-      enabled: state.status === 'ready',
-    });
+    // The matching `useWorkspaceChatEvents` call is hoisted to the top of the
+    // factory so companion wake/sleep can reuse its hardened `refreshAppShell`.
 
     const onDraftExecutionTargetChange = useCallback(
       (nextDraftExecutionTarget: ExecutionTargetValue): void => {
