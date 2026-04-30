@@ -18,7 +18,11 @@ import { ProviderModelFields } from './ProviderModelFields.js';
 import { type SidePanelSection } from '../../../../design/components/SidePanel.js';
 import type { ProviderTargetSelection } from '../../../../shared/providerSelection.js';
 import type { RuntimeSessionPolicy } from '../../../../shared/runtimeSessionPolicy.js';
-import { messageKeys, type MessageInterpolationValues, type MessageKey } from '../../../../shared/i18n/index.js';
+import {
+  messageKeys,
+  type MessageInterpolationValues,
+  type MessageKey,
+} from '../../../../shared/i18n/index.js';
 
 type ChatNewChatDraftTranslator = (
   key: MessageKey,

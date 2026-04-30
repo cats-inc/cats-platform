@@ -1,11 +1,15 @@
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ChangeEvent,
   type KeyboardEvent,
   type MouseEvent,
 } from 'react';
+
+import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
 
 // === CODE TASK PILLS MOCKUP (SPEC-068 follow-up, 2026-04-22) ===
 //
@@ -19,20 +23,24 @@ interface MockTask {
   label: string;
 }
 
-const INITIAL_TASKS: MockTask[] = [
-  { id: 'mock-task-1', label: 'Refactor auth middleware' },
-  { id: 'mock-task-2', label: 'Fix Kiro session delete' },
-  { id: 'mock-task-3', label: 'Draft artifact gallery' },
-];
-
 const EDIT_INPUT_MAX_LENGTH = 80;
 
+function createInitialTasks(t: ReturnType<typeof useI18n>['t']): MockTask[] {
+  return [
+    { id: 'mock-task-1', label: t(messageKeys.codeTaskPillsMockAuthMiddleware) },
+    { id: 'mock-task-2', label: t(messageKeys.codeTaskPillsMockKiroSessionDelete) },
+    { id: 'mock-task-3', label: t(messageKeys.codeTaskPillsMockArtifactGallery) },
+  ];
+}
+
 export function CodeTaskPillsBar(): JSX.Element {
-  const [tasks, setTasks] = useState<MockTask[]>(INITIAL_TASKS);
-  const [focusId, setFocusId] = useState<string | null>(INITIAL_TASKS[0]?.id ?? null);
+  const { t } = useI18n();
+  const initialTasks = useMemo(() => createInitialTasks(t), [t]);
+  const [tasks, setTasks] = useState<MockTask[]>(() => initialTasks);
+  const [focusId, setFocusId] = useState<string | null>(() => initialTasks[0]?.id ?? null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState<string>('');
-  const [nextSeq, setNextSeq] = useState<number>(INITIAL_TASKS.length + 1);
+  const [nextSeq, setNextSeq] = useState<number>(() => initialTasks.length + 1);
   const editInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -117,7 +125,7 @@ export function CodeTaskPillsBar(): JSX.Element {
   }
 
   return (
-    <div className="codeTaskPillsBar" aria-label="Task reminders">
+    <div className="codeTaskPillsBar" aria-label={t(messageKeys.codeTaskPillsAriaLabel)}>
       {tasks.map((task) => {
         const isFocus = task.id === focusId;
         const isEditing = task.id === editingId;
@@ -134,11 +142,11 @@ export function CodeTaskPillsBar(): JSX.Element {
                 type="text"
                 value={editDraft}
                 maxLength={EDIT_INPUT_MAX_LENGTH}
-                placeholder="Name this task"
+                placeholder={t(messageKeys.codeTaskPillsNamePlaceholder)}
                 onChange={handleEditChange}
                 onKeyDown={handleEditKeyDown}
                 onBlur={commitEdit}
-                aria-label="Edit task name"
+                aria-label={t(messageKeys.codeTaskPillsEditAria)}
               />
             ) : (
               <button
@@ -149,8 +157,8 @@ export function CodeTaskPillsBar(): JSX.Element {
                 aria-pressed={isFocus}
                 title={
                   isFocus
-                    ? `Current task: ${task.label} — double-click to rename`
-                    : `Focus on ${task.label} (double-click to rename)`
+                    ? t(messageKeys.codeTaskPillsTitleCurrent, { taskLabel: task.label })
+                    : t(messageKeys.codeTaskPillsTitleFocus, { taskLabel: task.label })
                 }
               >
                 {task.label}
@@ -159,7 +167,9 @@ export function CodeTaskPillsBar(): JSX.Element {
             <button
               type="button"
               className="codeTaskPillHide"
-              aria-label={`Hide ${task.label || 'task'}`}
+              aria-label={t(messageKeys.codeTaskPillsHideAria, {
+                taskLabel: task.label || t(messageKeys.codeTaskPillsFallbackTask),
+              })}
               onClick={(event) => handleHide(task.id, event)}
               disabled={isEditing}
             >
@@ -184,7 +194,7 @@ export function CodeTaskPillsBar(): JSX.Element {
         type="button"
         className="codeAddTaskButton"
         onClick={handleAdd}
-        aria-label="Add task reminder"
+        aria-label={t(messageKeys.codeTaskPillsAddAria)}
         disabled={editingId !== null}
       >
         <svg
@@ -200,7 +210,7 @@ export function CodeTaskPillsBar(): JSX.Element {
           <path d="M6 2v8" />
           <path d="M2 6h8" />
         </svg>
-        <span>Task</span>
+        <span>{t(messageKeys.codeTaskPillsButtonTask)}</span>
       </button>
     </div>
   );

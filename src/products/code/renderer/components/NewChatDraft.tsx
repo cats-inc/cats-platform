@@ -20,84 +20,129 @@ import { isAdvancedDraftControlsEnabled } from '../../../shared/advancedDraftCon
 import { resolveChatNewChatDraftBuilderControls } from '../../../shared/renderer/draftBuilderControls.js';
 import { isComposerBusyForDraft } from '../../../../shared/composer.js';
 import {
+  createTranslator,
+  messageKeys,
+  type MessageInterpolationValues,
+  type MessageKey,
+} from '../../../../shared/i18n/index.js';
+import {
   completeRuntimeSessionPolicy,
   resolveCreateRuntimeSessionPolicy,
   resolveDraftPermissionModeFromRuntimeAccess,
   resolveRuntimePermissionPolicyFromDraft,
   type RuntimeSessionPolicy,
 } from '../../../../shared/runtimeSessionPolicy.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
 
-export const NEW_CODE_DRAFT_COPY: WorkspaceNewChatDraftCopy = {
-  greeting: 'Ready to code.',
-  composer: {
-    placeholder: 'What should this code session build, fix, or investigate?',
-  },
-  sidePanel: {
-    title: 'New Code Setup',
-  },
-  participants: {
-    sectionTitle: 'Participants',
-    emptyState: 'No participants available yet.',
-  },
-  execution: {
-    sectionTitle: 'Execution',
-    actionLabel: 'Choose execution target',
-    emptyState: 'No execution target set yet.',
-  },
-  folder: {
-    sectionTitle: 'Codespace',
-    actionLabel: 'Choose codespace',
-    emptyState: 'No codespace selected yet.',
-  },
-};
+type CodeDraftTranslate = (
+  key: MessageKey,
+  values?: MessageInterpolationValues,
+) => string;
 
-export const NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY: ChatNewChatDraftSidePanelCopy = {
-  title: NEW_CODE_DRAFT_COPY.sidePanel?.title,
-  participants: {
-    catsSectionTitle: NEW_CODE_DRAFT_COPY.participants?.sectionTitle,
-    groupSectionTitle: NEW_CODE_DRAFT_COPY.participants?.sectionTitle,
-    emptyState: NEW_CODE_DRAFT_COPY.participants?.emptyState,
-  },
-  execution: {
-    sectionTitle: NEW_CODE_DRAFT_COPY.execution?.sectionTitle,
-    emptyState: NEW_CODE_DRAFT_COPY.execution?.emptyState,
-  },
-  folder: {
-    sectionTitle: NEW_CODE_DRAFT_COPY.folder?.sectionTitle,
-    emptyState: NEW_CODE_DRAFT_COPY.folder?.emptyState,
-  },
-};
+const defaultCodeDraftTranslator = createTranslator('en');
 
-function formatCodeSessionWorkspace(policy: RuntimeSessionPolicy): string {
-  if (policy.workspaceKind === 'worktree') return 'Independent worktree';
-  if (policy.workspaceKind === 'source') return 'Current folder';
-  return 'Sandbox';
+export function buildNewCodeDraftCopy(
+  t: CodeDraftTranslate = defaultCodeDraftTranslator,
+): WorkspaceNewChatDraftCopy {
+  return {
+    greeting: t(messageKeys.codeNewDraftGreeting),
+    composer: {
+      placeholder: t(messageKeys.codeNewDraftComposerPlaceholder),
+    },
+    sidePanel: {
+      title: t(messageKeys.codeNewDraftSetupTitle),
+    },
+    participants: {
+      sectionTitle: t(messageKeys.codeNewDraftParticipantsTitle),
+      emptyState: t(messageKeys.codeNewDraftParticipantsEmpty),
+    },
+    execution: {
+      sectionTitle: t(messageKeys.codeNewDraftExecutionTitle),
+      actionLabel: t(messageKeys.codeNewDraftExecutionAction),
+      emptyState: t(messageKeys.codeNewDraftExecutionEmpty),
+    },
+    folder: {
+      sectionTitle: t(messageKeys.codeNewDraftFolderTitle),
+      actionLabel: t(messageKeys.codeNewDraftFolderAction),
+      emptyState: t(messageKeys.codeNewDraftFolderEmpty),
+    },
+  };
 }
 
-function formatCodeSessionPermission(policy: RuntimeSessionPolicy): string {
-  return policy.workspaceAccess === 'read_only' ? 'Read only' : 'Full access';
+export function buildNewCodeChatDraftSidePanelCopy(
+  draftCopy: WorkspaceNewChatDraftCopy,
+): ChatNewChatDraftSidePanelCopy {
+  return {
+    title: draftCopy.sidePanel?.title,
+    participants: {
+      catsSectionTitle: draftCopy.participants?.sectionTitle,
+      groupSectionTitle: draftCopy.participants?.sectionTitle,
+      emptyState: draftCopy.participants?.emptyState,
+    },
+    execution: {
+      sectionTitle: draftCopy.execution?.sectionTitle,
+      emptyState: draftCopy.execution?.emptyState,
+    },
+    folder: {
+      sectionTitle: draftCopy.folder?.sectionTitle,
+      emptyState: draftCopy.folder?.emptyState,
+    },
+  };
+}
+
+export const NEW_CODE_DRAFT_COPY: WorkspaceNewChatDraftCopy =
+  buildNewCodeDraftCopy(defaultCodeDraftTranslator);
+
+export const NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY: ChatNewChatDraftSidePanelCopy =
+  buildNewCodeChatDraftSidePanelCopy(NEW_CODE_DRAFT_COPY);
+
+function formatCodeSessionWorkspace(
+  policy: RuntimeSessionPolicy,
+  t: CodeDraftTranslate,
+): string {
+  if (policy.workspaceKind === 'worktree') {
+    return t(messageKeys.codeNewDraftWorkspaceIndependentWorktree);
+  }
+  if (policy.workspaceKind === 'source') {
+    return t(messageKeys.codeNewDraftWorkspaceCurrentFolder);
+  }
+  return t(messageKeys.codeNewDraftWorkspaceSandbox);
+}
+
+function formatCodeSessionPermission(
+  policy: RuntimeSessionPolicy,
+  t: CodeDraftTranslate,
+): string {
+  return policy.workspaceAccess === 'read_only'
+    ? t(messageKeys.codeNewDraftPermissionReadOnly)
+    : t(messageKeys.codeNewDraftPermissionFullAccess);
 }
 
 export function buildCodeNewChatDraftSessionProfileSection(
   input: BuildChatNewChatDraftSidePanelSectionsInput,
+  t: CodeDraftTranslate = defaultCodeDraftTranslator,
 ): SidePanelSection {
   const currentSessionPolicy = resolveCreateRuntimeSessionPolicy({
     repoPath: input.draftCwd,
     policy: input.draftRuntimeSessionPolicy,
   });
+  const workspaceLabel = formatCodeSessionWorkspace(currentSessionPolicy, t);
+  const permissionLabel = formatCodeSessionPermission(currentSessionPolicy, t);
 
   return {
     id: 'code:session-profile',
-    title: 'Session Profile',
+    title: t(messageKeys.codeNewDraftSessionProfileTitle),
     children: (
       <div className="sidePanelSectionStack">
         <p className="operatorEmptyState" style={{ margin: 0 }}>
-          This code session starts with {formatCodeSessionWorkspace(currentSessionPolicy)} and{' '}
-          {formatCodeSessionPermission(currentSessionPolicy)}.
+          {t(messageKeys.codeNewDraftSessionProfileDescription, {
+            workspace: workspaceLabel,
+            permission: permissionLabel,
+          })}
         </p>
         <div className="chipRow">
           <span className="composerBranchChip">
-            <span>{formatCodeSessionWorkspace(currentSessionPolicy)}</span>
+            <span>{workspaceLabel}</span>
           </span>
           <PermissionModeChip
             value={resolveDraftPermissionModeFromRuntimeAccess(
@@ -124,12 +169,14 @@ export function buildCodeNewChatDraftSessionProfileSection(
 
 export function buildCodeNewChatDraftSidePanelSections(
   input: BuildChatNewChatDraftSidePanelSectionsInput,
+  t: CodeDraftTranslate = defaultCodeDraftTranslator,
 ): SidePanelSection[] {
+  const draftCopy = buildNewCodeDraftCopy(t);
   const sections = buildChatNewChatDraftSidePanelSections({
     ...input,
-    sidePanelCopy: NEW_CODE_CHAT_DRAFT_SIDE_PANEL_COPY,
+    sidePanelCopy: buildNewCodeChatDraftSidePanelCopy(draftCopy),
   });
-  const sessionProfileSection = buildCodeNewChatDraftSessionProfileSection(input);
+  const sessionProfileSection = buildCodeNewChatDraftSessionProfileSection(input, t);
   const cwdSectionIndex = sections.findIndex((section) => section.id === 'cwd');
   if (cwdSectionIndex === -1) {
     return [...sections, sessionProfileSection];
@@ -178,15 +225,19 @@ function resolveCodeDraftHelperChips(props: NewChatDraftProps): Array<{
     }));
 }
 
-function resolveCodeDraftGreeting(props: NewChatDraftProps): string | undefined {
+function resolveCodeDraftGreeting(
+  props: NewChatDraftProps,
+  draftCopy: WorkspaceNewChatDraftCopy,
+): string | undefined {
   const assistGreeting = props.payload.guideCatAssist?.codeNewDraft?.bundle.content.greeting?.trim();
   if (assistGreeting) return assistGreeting;
   if (props.greeting && props.greeting.trim().length > 0) return props.greeting;
-  return NEW_CODE_DRAFT_COPY.greeting;
+  return draftCopy.greeting;
 }
 
 function buildWorkspaceDraftProps(input: {
   props: NewChatDraftProps;
+  draftCopy: WorkspaceNewChatDraftCopy;
   visibleHelperChips: Array<{
     id: string;
     label?: string | null;
@@ -194,7 +245,7 @@ function buildWorkspaceDraftProps(input: {
   }>;
   onSelectHelperChip: (prompt: string) => void;
 }): WorkspaceDraftProps {
-  const { props, visibleHelperChips, onSelectHelperChip } = input;
+  const { props, draftCopy, visibleHelperChips, onSelectHelperChip } = input;
   const {
     greetingPool,
     draftTemporaryParticipants,
@@ -247,7 +298,7 @@ function buildWorkspaceDraftProps(input: {
 
   return {
     ...workspaceProps,
-    greeting: resolveCodeDraftGreeting(props) ?? undefined,
+    greeting: resolveCodeDraftGreeting(props, draftCopy) ?? undefined,
     postComposerAccessory: visibleHelperChips.length > 0 ? (
       <div className="draftPromptSuggestions">
         <div className="chipRow">
@@ -275,6 +326,8 @@ function buildWorkspaceDraftProps(input: {
  * because direct-lane is a 1×1 context.
  */
 function CodeDirectLaneDraft(props: NewChatDraftProps) {
+  const { t } = useI18n();
+  const draftCopy = buildNewCodeDraftCopy(t);
   const helperChips = resolveCodeDraftHelperChips(props);
   const { permissionChip, whereExtras } = useDraftSessionChips({
     draftCwd: props.draftCwd,
@@ -284,6 +337,7 @@ function CodeDirectLaneDraft(props: NewChatDraftProps) {
   });
   const workspaceProps = buildWorkspaceDraftProps({
     props,
+    draftCopy,
     visibleHelperChips: helperChips,
     onSelectHelperChip: (prompt) => { props.onComposerChange(prompt); },
   });
@@ -291,7 +345,7 @@ function CodeDirectLaneDraft(props: NewChatDraftProps) {
   return (
     <WorkspaceNewChatDraft
       {...workspaceProps}
-      copy={NEW_CODE_DRAFT_COPY}
+      copy={draftCopy}
       composerHeaderAccessory={permissionChip}
       composerHeaderWhereExtras={whereExtras}
       surfaceTag={<ComposerSurfaceChip surface="code" />}
@@ -306,6 +360,8 @@ function CodeDirectLaneDraft(props: NewChatDraftProps) {
  * navigating off the current URL — matching +New Chat.
  */
 function CodeChatDraft(props: NewChatDraftProps) {
+  const { t } = useI18n();
+  const draftCopy = buildNewCodeDraftCopy(t);
   const advancedDraftControlsEnabled = isAdvancedDraftControlsEnabled(
     props.payload.chat.advancedDraftControls,
     'code',
@@ -323,7 +379,7 @@ function CodeChatDraft(props: NewChatDraftProps) {
     showStructuredDraftControls: true,
     hasVisibleParallelDraftTargets: (props.parallelTargets?.length ?? 0) > 1,
   });
-  const codeGreeting = resolveCodeDraftGreeting(props);
+  const codeGreeting = resolveCodeDraftGreeting(props, draftCopy);
 
   return (
     <ChatNewChatDraft
@@ -345,12 +401,12 @@ function CodeChatDraft(props: NewChatDraftProps) {
         surfaceTag: <ComposerSurfaceChip surface="code" />,
       }}
       draftCopy={{
-        composerPlaceholder: NEW_CODE_DRAFT_COPY.composer?.placeholder,
-        folderActionLabel: NEW_CODE_DRAFT_COPY.folder?.actionLabel,
+        composerPlaceholder: draftCopy.composer?.placeholder,
+        folderActionLabel: draftCopy.folder?.actionLabel,
       }}
       sidePanel={{
-        title: NEW_CODE_DRAFT_COPY.sidePanel?.title,
-        buildSections: buildCodeNewChatDraftSidePanelSections,
+        title: draftCopy.sidePanel?.title,
+        buildSections: (input) => buildCodeNewChatDraftSidePanelSections(input, t),
       }}
       builderControls={builderControls}
     />
