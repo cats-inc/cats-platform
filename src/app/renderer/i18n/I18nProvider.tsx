@@ -1,4 +1,4 @@
-import { createContext, type ReactNode, useContext } from 'react';
+import { createContext, type ReactNode, useContext, useMemo } from 'react';
 
 import {
   createTranslator,
@@ -26,10 +26,13 @@ export function I18nProvider({
   children: ReactNode;
   locale: MessageLocale;
 }) {
-  const t = createTranslator(locale);
+  const value = useMemo<I18nContextValue>(
+    () => ({ locale, t: createTranslator(locale) }),
+    [locale],
+  );
 
   return (
-    <I18nContext.Provider value={{ locale, t }}>
+    <I18nContext.Provider value={value}>
       {children}
     </I18nContext.Provider>
   );

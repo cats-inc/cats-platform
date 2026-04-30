@@ -3,6 +3,7 @@ import {
   startTransition,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -195,7 +196,7 @@ export default function PlatformApp() {
   const [productSurfaceFallbackActive, setProductSurfaceFallbackActive] = useState(false);
   const [guideCatProactiveGreetingToken, setGuideCatProactiveGreetingToken] = useState(0);
   const uiLocale = resolveEnvelopeUiLocale(state.status === 'ready' ? state.envelope : null);
-  const t = createTranslator(uiLocale);
+  const t = useMemo(() => createTranslator(uiLocale), [uiLocale]);
   const lastSyncedSurface = useRef<PlatformSurfaceId | null>(null);
   const previousPathnameRef = useRef(location.pathname);
   const [activeSurface, setActiveSurface] = useState<PlatformSurfaceId>('chat');
