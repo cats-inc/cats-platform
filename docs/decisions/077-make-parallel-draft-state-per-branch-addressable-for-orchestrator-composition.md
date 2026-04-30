@@ -107,8 +107,14 @@ interface DraftParallelTarget {
 
   // ── Phase 3 (NOT in Phase 1 schema; placeholders deliberately
   //            NOT added early to avoid premature contract speculation)
-  //   promptOverride?: string | null;
   //   taskRef?: TaskRef | null;
+  //
+  // RETIRED 2026-05-01: per-branch `promptOverride` is OUT OF SCOPE.
+  // Owner directive — every branch shares a single prompt. Shadow
+  // branches mirror the lead's composer text read-only and clicking
+  // them returns the carousel to the lead for editing. Do not add a
+  // promptOverride field, branchPromptDetach UI, or "Detach prompt /
+  // Keep linked" flow back into the spec.
 }
 ```
 
@@ -166,14 +172,16 @@ which other branches default to".
 
 The carousel's "Follows lead" chip becomes interactive: clicking
 opens the per-branch override UI for that dimension (cwd picker,
-session policy editor, eventually prompt detach). Detached cards
-swap the chip for the concrete value (e.g.,
-`composerCwdChip` showing the branch's own cwd). Reverting to
-inherit is a "Re-link to lead" action that nulls the field.
+session policy editor). Detached cards swap the chip for the
+concrete value (e.g., `composerCwdChip` showing the branch's own
+cwd). Reverting to inherit is a "Re-link to lead" action that
+nulls the field.
 
 The carousel ships flipped first for cwd (the most-requested
-override), then session policy, then prompt — staged so each
-detach UX is its own slice.
+override), then session policy. **Per-branch prompt override is
+explicitly out of scope** (retired 2026-05-01) — shadow branches
+mirror the lead prompt read-only and clicking them returns to the
+lead for editing.
 
 ### 6. Orchestrator-composed drafts are the primary motivation, not the
    only consumer

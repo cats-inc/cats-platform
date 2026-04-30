@@ -72,11 +72,11 @@ export function DraftCompareCarousel({
   }
 
   if (total === 0) return null;
-  if (total === 1) {
-    // Caller should normally skip the carousel for single-card cases,
-    // but we cope gracefully by rendering the card without chrome.
-    return <div className="draftCompareCarousel">{cards[0].content}</div>;
-  }
+  // Single-card mode is a valid first-class state: it still routes
+  // through the carousel so the +compare slot can anchor on the right
+  // even before the user expands to a second branch. Boundary nav
+  // arrows + the dot pagination simply suppress themselves below
+  // (`activeIndex > 0`, `activeIndex < total - 1`, `total > 1`).
 
   return (
     <div
@@ -86,26 +86,35 @@ export function DraftCompareCarousel({
       onKeyDown={onKeyDown}
     >
       <div className="draftCompareCarouselTrack">
-        <button
-          type="button"
-          className="draftCompareCarouselNav draftCompareCarouselNavPrev"
-          onClick={goPrev}
-          disabled={disabled || activeIndex === 0}
-          aria-label={t(messageKeys.chatDraftCompareCarouselPreviousBranchAria)}
-        >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+        {/* Owner directive (2026-05-01): boundary nav buttons render
+            only when there's somewhere to go. Index 0 has no left
+            neighbour, so the prev arrow is suppressed entirely
+            (instead of greyed-disabled). The right slot resolves to
+            either the next-branch arrow (mid-carousel), the +compare
+            button (last branch with cap room), or nothing (last
+            branch, cap reached). */}
+        {activeIndex > 0 ? (
+          <button
+            type="button"
+            className="draftCompareCarouselNav draftCompareCarouselNavPrev"
+            onClick={goPrev}
+            disabled={disabled}
+            aria-label={t(messageKeys.chatDraftCompareCarouselPreviousBranchAria)}
           >
-            <polyline points="15 18 9 12 15 6" />
-          </svg>
-        </button>
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
+        ) : null}
 
         {cards.map((card, index) => (
           <DraftCompareCarouselCardWrapper
@@ -123,46 +132,50 @@ export function DraftCompareCarousel({
           </DraftCompareCarouselCardWrapper>
         ))}
 
-        <button
-          type="button"
-          className="draftCompareCarouselNav draftCompareCarouselNavNext"
-          onClick={goNext}
-          disabled={disabled || activeIndex >= total - 1}
-          aria-label={t(messageKeys.chatDraftCompareCarouselNextBranchAria)}
-        >
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+        {activeIndex < total - 1 ? (
+          <button
+            type="button"
+            className="draftCompareCarouselNav draftCompareCarouselNavNext"
+            onClick={goNext}
+            disabled={disabled}
+            aria-label={t(messageKeys.chatDraftCompareCarouselNextBranchAria)}
           >
-            <polyline points="9 18 15 12 9 6" />
-          </svg>
-        </button>
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        ) : null}
       </div>
 
-      <div
-        className="draftCompareCarouselDots"
-        aria-label={t(messageKeys.chatDraftCompareCarouselSelectBranchAria)}
-      >
-        {cards.map((card, index) => (
-          <button
-            key={card.id}
-            type="button"
-            className={`draftCompareCarouselDot${index === activeIndex ? ' draftCompareCarouselDotActive' : ''}`}
-            onClick={() => onActiveIndexChange(index)}
-            disabled={disabled}
-            aria-label={t(messageKeys.chatDraftCompareCarouselGoToBranchAria, {
-              branchIndex: `${index + 1}`,
-            })}
-            aria-current={index === activeIndex ? 'true' : undefined}
-          />
-        ))}
-      </div>
+      {total > 1 ? (
+        <div
+          className="draftCompareCarouselDots"
+          aria-label={t(messageKeys.chatDraftCompareCarouselSelectBranchAria)}
+        >
+          {cards.map((card, index) => (
+            <button
+              key={card.id}
+              type="button"
+              className={`draftCompareCarouselDot${index === activeIndex ? ' draftCompareCarouselDotActive' : ''}`}
+              onClick={() => onActiveIndexChange(index)}
+              disabled={disabled}
+              aria-label={t(messageKeys.chatDraftCompareCarouselGoToBranchAria, {
+                branchIndex: `${index + 1}`,
+              })}
+              aria-current={index === activeIndex ? 'true' : undefined}
+            />
+          ))}
+        </div>
+      ) : null}
     </div>
   );
 }

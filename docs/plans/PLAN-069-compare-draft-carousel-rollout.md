@@ -94,11 +94,12 @@ field is added.
 
 ### Phase 2 / Phase 3 moved to PLAN-070
 
-Per-branch cwd / session policy / prompt detach UX, task-chip
+Per-branch cwd / session policy ~~/ prompt detach UX~~, task-chip
 wiring, and orchestrator-composed draft ingestion all depend on a
 schema that makes `DraftParallelTarget` per-branch-addressable.
 That schema work lives in its own ADR / SPEC / PLAN so this rollout
-stays scoped to carousel layout:
+stays scoped to carousel layout. (Prompt detach was retired
+2026-05-01 — see PLAN-070 Phase 3 banner.)
 
 - [ADR-077: Make parallel draft state per-branch-addressable](../decisions/077-make-parallel-draft-state-per-branch-addressable-for-orchestrator-composition.md)
 - [SPEC-078: Per-Branch Draft State Schema and Lead-Default Fallback Semantics](../specs/SPEC-078-per-branch-draft-state-schema.md)

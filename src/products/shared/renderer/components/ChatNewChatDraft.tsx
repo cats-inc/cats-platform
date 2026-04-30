@@ -1,5 +1,6 @@
 import {
   useEffect,
+  useRef,
   useState,
   type FormEvent,
   type KeyboardEvent,
@@ -20,7 +21,6 @@ import {
 import { createDraftCompareShadowCardId } from './draftCompareShadowCardId.js';
 import {
   resolveBranchAudienceKeys,
-  resolveBranchPrompt,
   resolveBranchWorkflowShape,
   type DraftLeadContext,
 } from '../draftBranchResolution.js';
@@ -40,7 +40,6 @@ import {
 } from './chatNewChatDraftSidePanel.js';
 import { DraftHeader } from './DraftHeader.js';
 import { DraftComposerFooter } from './DraftComposerFooter.js';
-import { DraftComposerStack } from './DraftComposerStack.js';
 import { BranchAudienceRoster } from './BranchAudienceRoster.js';
 import { CollaborateIcon, CompareIcon } from './DraftBuilderIcons.js';
 import {
@@ -134,7 +133,6 @@ export interface ParallelBranchDraftActions {
     index: number,
     policy: RuntimeSessionPolicy | null,
   ) => void;
-  onSetPromptOverride?: (index: number, promptOverride: string | null) => void;
   onToggleWorkflowShape?: (index: number) => void;
   onQuickAddTemporaryParticipant?: (index: number) => void;
 }
@@ -468,7 +466,6 @@ export function NewChatDraft({
   const onSetParallelBranchCwd = parallelBranchActions?.onSetCwd;
   const onSetParallelBranchRuntimeSessionPolicy =
     parallelBranchActions?.onSetRuntimeSessionPolicy;
-  const onSetParallelBranchPromptOverride = parallelBranchActions?.onSetPromptOverride;
   const onToggleParallelBranchWorkflowShape = parallelBranchActions?.onToggleWorkflowShape;
   const onQuickAddParallelBranchTemporaryParticipant =
     parallelBranchActions?.onQuickAddTemporaryParticipant;
@@ -480,10 +477,6 @@ export function NewChatDraft({
       buildChatNewChatDraftSidePanelSections(input));
   const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
   const [activeBranchIndex, setActiveBranchIndex] = useState(0);
-  const [
-    promptDetachConfirmBranchIndex,
-    setPromptDetachConfirmBranchIndex,
-  ] = useState<number | null>(null);
   const parallelCount = parallelTargets?.length ?? 0;
   useEffect(() => {
     if (!isParallelMode) {
@@ -593,14 +586,6 @@ export function NewChatDraft({
       return 'sequential';
     }
     return resolveBranchWorkflowShape(target, draftLeadContext);
-  }
-
-  function resolveParallelBranchPrompt(branchIndex: number): string {
-    const target = parallelTargets?.[branchIndex];
-    if (!target) {
-      return composerDraft;
-    }
-    return resolveBranchPrompt(target, draftLeadContext);
   }
 
   function resolveParallelBranchMembers(
@@ -781,9 +766,9 @@ export function NewChatDraft({
     );
   }
 
-  // ── Hoisted JSX pieces: used by both the parallel-mode carousel
-  // (each branch card stitches header + form + footer together) and
-  // the non-parallel single-card layout (passed to DraftComposerStack).
+  // ── Hoisted JSX pieces: every branch card (single-branch lead OR
+  // multi-branch carousel) stitches header + form + footer together
+  // and is rendered through `DraftCompareCarousel`.
 
   const draftHeaderJsx = isDirectLaneContext && defaultRecipientCat ? (
     <DraftHeader
@@ -1148,18 +1133,47 @@ export function NewChatDraft({
     </form>
   );
 
+  // Adding a branch should always land the user on the new last branch so
+  // the +compare affordance (whether inline footer or carousel next-slot)
+  // stays anchored to the right of the composer they just expanded into.
+  // We can't compute the post-add index inside the click handler — when
+  // the parent surface gates `parallelTargets` behind
+  // `hasVisibleParallelDraftTargets` (i.e. only passes the array once
+  // length > 1), the closure-captured `parallelCount` is 0 even though
+  // the parent already holds a lead target. Defer the index update to a
+  // post-render effect that observes the count React just committed.
+  const followToLastBranchAfterAddRef = useRef(false);
+  useEffect(() => {
+    if (!followToLastBranchAfterAddRef.current || parallelCount <= 0) {
+      return;
+    }
+    followToLastBranchAfterAddRef.current = false;
+    setActiveBranchIndex(parallelCount - 1);
+  }, [parallelCount]);
+  const onAddParallelTargetAndFollow = onAddParallelTarget
+    ? () => {
+        followToLastBranchAfterAddRef.current = true;
+        onAddParallelTarget();
+      }
+    : undefined;
+
+  // Lead card's footer slot below the Send button:
+  //  - count <= 1: empty (the carousel's addBranchSlot owns +compare).
+  //  - count >= 2: "-" remove button (carousel still hosts +compare at
+  //    the last branch). Stays visible-but-disabled when count equals
+  //    the parallel preset's minimum so the lead matches the shadows.
+  const leadBranchRemove = (parallelTargets?.length ?? 0) >= 2 && onRemoveParallelTarget
+    ? {
+        branchIndex: 0,
+        disabled: (parallelTargets?.length ?? 0) <= minParallelTargetCount,
+        onRemove: () => onRemoveParallelTarget(0),
+      }
+    : undefined;
   const draftComposerFooterJsx = (
     <DraftComposerFooter
       accessory={composerFooterAccessory}
-      showParallelAddButton={Boolean(
-        onAddParallelTarget
-          && (showDraftParallelAddButton || (parallelTargets?.length ?? 0) > 0)
-          && (parallelTargets?.length ?? 1) < maxParallelChats,
-      )}
-      hideParallelHint={hideDraftParallelHint}
-      accentParallelAddButton={accentParallelAddButton}
       disabled={isSubmittingFirstTurn}
-      onAddParallelTarget={onAddParallelTarget}
+      branchRemove={leadBranchRemove}
     />
   );
 
@@ -1290,7 +1304,11 @@ export function NewChatDraft({
   // chip instead of the cwd chip, per-branch audience + collaborate +
   // remove controls).
 
-  function buildShadowCardContent(branchIndex: number, target: DraftParallelTarget): ReactNode {
+  function buildShadowCardContent(
+    branchIndex: number,
+    target: DraftParallelTarget,
+    addBranchSlot: ReactNode = null,
+  ): ReactNode {
     const branchAudienceKeysLen = resolveParallelBranchAudienceKeys(branchIndex).length;
     const branchMembers = resolveParallelBranchMembers(branchIndex);
     const branchAudienceParticipants = branchAudienceKeysLen > 1
@@ -1301,21 +1319,7 @@ export function NewChatDraft({
       canAddToBranch && onQuickAddParallelBranchTemporaryParticipant != null;
     const branchWorkflowShape = resolveParallelBranchWorkflowShape(branchIndex);
     const canRemoveBranch = parallelCount > minParallelTargetCount;
-    const canAddMoreBranches = parallelCount < maxParallelChats;
-    const showCompareHint = accentParallelAddButton && !hideDraftParallelHint;
     const branchCwd = target.cwd?.trim() || null;
-    const canEditBranchPrompt = onSetParallelBranchPromptOverride != null;
-    const branchPromptDetached = target.promptOverride != null && target.promptOverride !== '';
-    const branchPromptValue = resolveParallelBranchPrompt(branchIndex);
-    const showPromptDetachConfirm =
-      promptDetachConfirmBranchIndex === branchIndex
-      && canEditBranchPrompt
-      && !branchPromptDetached;
-    const branchPromptClassName = [
-      'composerInput',
-      canEditBranchPrompt && !branchPromptDetached ? 'composerInputPromptFollowsLead' : null,
-      branchPromptDetached ? 'composerInputPromptDetached' : null,
-    ].filter(Boolean).join(' ');
 
     return (
       <>
@@ -1377,80 +1381,28 @@ export function NewChatDraft({
           </div>
         </div>
 
+        <div className="draftBranchFormAnchor">
         <form className="composerCard composerCardFresh parallelComposerAnchor" onSubmit={(event) => event.preventDefault()}>
-          {branchPromptDetached ? (
-            <div className="composerPromptDetachToolbar">
-              <span className="composerBranchChip composerPromptOverrideChip">
-                <span>{t(messageKeys.chatNewChatDraftBranchPromptDetachedLabel)}</span>
-                {onSetParallelBranchPromptOverride ? (
-                  <button
-                    className="composerChipClose"
-                    type="button"
-                    disabled={isSubmittingFirstTurn}
-                    onClick={() => onSetParallelBranchPromptOverride(branchIndex, null)}
-                    aria-label={t(messageKeys.chatNewChatDraftBranchPromptRelinkAria)}
-                  >
-                    &times;
-                  </button>
-                ) : null}
-              </span>
-            </div>
-          ) : null}
+          {/* Shadow branches mirror the lead's prompt read-only — owner
+              directive (2026-05-01): every branch shares a single prompt,
+              per-branch overrides are explicitly not in the spec. Clicking
+              the textarea jumps the carousel back to the lead so the user
+              edits the source instead of (formerly) detaching a copy. */}
           <textarea
-            className={branchPromptClassName}
+            className="composerInput composerInputJumpToLead"
             rows={1}
             placeholder={composerPlaceholder}
-            value={branchPromptValue}
+            value={composerDraft}
             disabled={isSubmittingFirstTurn}
-            readOnly={!branchPromptDetached || !onSetParallelBranchPromptOverride}
-            title={
-              canEditBranchPrompt && !branchPromptDetached
-                ? t(messageKeys.chatNewChatDraftBranchPromptTextareaDetachTitle)
-                : undefined
-            }
-            aria-label={
-              canEditBranchPrompt && !branchPromptDetached
-                ? t(messageKeys.chatNewChatDraftBranchPromptTextareaDetachAria)
-                : undefined
-            }
-            onClick={
-              canEditBranchPrompt && !branchPromptDetached
-                ? () => setPromptDetachConfirmBranchIndex(branchIndex)
-                : undefined
-            }
-            onChange={
-              branchPromptDetached && onSetParallelBranchPromptOverride
-                ? (event) => {
-                    onSetParallelBranchPromptOverride(branchIndex, event.currentTarget.value);
-                    autoResize(event.currentTarget);
-                  }
-                : undefined
-            }
+            readOnly
+            title={t(messageKeys.chatNewChatDraftBranchPromptJumpToLeadTitle)}
+            aria-label={t(messageKeys.chatNewChatDraftBranchPromptJumpToLeadAria)}
+            onClick={isSubmittingFirstTurn ? undefined : () => setActiveBranchIndex(0)}
+            onFocus={isSubmittingFirstTurn ? undefined : (event) => {
+              event.currentTarget.blur();
+              setActiveBranchIndex(0);
+            }}
           />
-          {showPromptDetachConfirm ? (
-            <div className="composerPromptDetachConfirm">
-              <span>{t(messageKeys.chatNewChatDraftBranchPromptDetachConfirmQuestion)}</span>
-              <button
-                type="button"
-                className="composerPromptDetachButton"
-                disabled={isSubmittingFirstTurn}
-                onClick={() => {
-                  onSetParallelBranchPromptOverride?.(branchIndex, composerDraft);
-                  setPromptDetachConfirmBranchIndex(null);
-                }}
-              >
-                {t(messageKeys.chatNewChatDraftBranchPromptDetachConfirmButton)}
-              </button>
-              <button
-                type="button"
-                className="composerPromptKeepLinkedButton"
-                disabled={isSubmittingFirstTurn}
-                onClick={() => setPromptDetachConfirmBranchIndex(null)}
-              >
-                {t(messageKeys.chatNewChatDraftBranchPromptKeepLinkedButton)}
-              </button>
-            </div>
-          ) : null}
           <div className="composerBottomRow">
             <div className="composerLeftGroup">
               <div className="composerPlusWrapper">
@@ -1520,89 +1472,122 @@ export function NewChatDraft({
             </div>
           </div>
         </form>
+        {addBranchSlot}
+        </div>
 
         <div className="composerFooterRow">
+          {/* Owner directive (2026-05-01): "-" stays visible at the
+              parallel preset's minimum branch count (just disabled),
+              so the user can see why removal is blocked. +compare
+              lives at the carousel's last-branch next-arrow slot, not
+              per-card, so it's intentionally absent here. */}
           <div className="parallelAddRow parallelAddRowInline">
-            {canRemoveBranch ? (
-              <button
-                type="button"
-                className={`parallelStubRemove${useDangerParallelRemoveHover ? ' parallelStubRemoveDanger' : ''}`}
-                disabled={isSubmittingFirstTurn}
-                onClick={() => onRemoveParallelTarget?.(branchIndex)}
-                aria-label={t(messageKeys.chatNewChatDraftBranchRemoveAria, {
-                  branchIndex: branchIndex + 1,
-                })}
-              >
-                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-                  <path d="M4 8h8" />
-                </svg>
-              </button>
-            ) : null}
-            {onAddParallelTarget && canAddMoreBranches ? (
-              <button
-                type="button"
-                className={`parallelAddButton${accentParallelAddButton ? ' parallelAddButtonAccent' : ''}`}
-                disabled={isSubmittingFirstTurn}
-                onClick={onAddParallelTarget}
-                aria-label={t(messageKeys.chatNewChatDraftBranchAddParallelAria)}
-              >
-                <CompareIcon />
-              </button>
-            ) : null}
-            {showCompareHint && onAddParallelTarget && canAddMoreBranches ? (
-              <span className="parallelAddHint parallelAddHintAccent">
-                {t(messageKeys.chatNewChatDraftBranchAddCompareHint)}
-              </span>
-            ) : null}
+            <button
+              type="button"
+              className={`parallelStubRemove${useDangerParallelRemoveHover ? ' parallelStubRemoveDanger' : ''}`}
+              disabled={isSubmittingFirstTurn || !canRemoveBranch}
+              onClick={() => onRemoveParallelTarget?.(branchIndex)}
+              aria-label={t(messageKeys.chatNewChatDraftBranchRemoveAria, {
+                branchIndex: branchIndex + 1,
+              })}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                <path d="M4 8h8" />
+              </svg>
+            </button>
           </div>
         </div>
       </>
     );
   }
 
-  const isParallelCarouselActive = isParallelMode
-    && Array.isArray(parallelTargets)
-    && parallelTargets.length >= 2;
+  // Owner directive (2026-05-01): the +compare affordance always lives at
+  // the right edge of the LAST branch's composer — even in single-branch
+  // mode. The slot is rendered INSIDE that branch's card content (wrapped
+  // in a relative anchor next to the form) so the button + hint align
+  // vertically with the form's centre regardless of how much chrome the
+  // branch has above/below — anchoring at the carousel-cell level mis-
+  // aligned because cell height tracks the tallest branch (shadows have
+  // extra chrome) while the lead card sits at the cell top.
+  const effectiveBranchTotal = Math.max(parallelCount, 1);
+  const lastBranchIndex = effectiveBranchTotal - 1;
+  const canAddBranchNow = effectiveBranchTotal < maxParallelChats;
+  const renderAddBranchSlot = (cardIndex: number): ReactNode => {
+    // The slot only mounts when the user is actually viewing the last
+    // branch (not just when the card index matches `lastBranchIndex`).
+    // Mounting it inside peek branches caused the button + hint to
+    // ride along with the 460ms 3D-rotation when navigating to the
+    // last branch — owner flagged the visual flash on 2026-05-01.
+    // Mount-on-arrival pairs with the CSS `fadeIn` animation delay so
+    // the slot stays invisible until the carousel transition lands.
+    if (
+      cardIndex !== lastBranchIndex
+      || activeBranchIndex !== lastBranchIndex
+      || !canAddBranchNow
+      || !onAddParallelTargetAndFollow
+    ) {
+      return null;
+    }
+    const slotClass = effectiveBranchTotal > 1
+      ? 'draftCompareCarouselAddBranchSlot draftCompareCarouselAddBranchSlotDelayed'
+      : 'draftCompareCarouselAddBranchSlot';
+    return (
+      <div className={slotClass}>
+        <button
+          type="button"
+          className={`draftCompareCarouselNav draftCompareCarouselAddBranch${accentParallelAddButton ? ' draftCompareCarouselAddBranchAccent' : ''}`}
+          onClick={onAddParallelTargetAndFollow}
+          disabled={isSubmittingFirstTurn}
+          aria-label={t(messageKeys.chatNewChatDraftBranchAddParallelAria)}
+        >
+          <CompareIcon />
+        </button>
+        {accentParallelAddButton ? (
+          <span className="parallelAddHint parallelAddHintAccent">
+            {t(messageKeys.chatNewChatDraftBranchAddCompareHint)}
+          </span>
+        ) : null}
+      </div>
+    );
+  };
 
-  if (isParallelCarouselActive && parallelTargets) {
-    const branchCards: DraftCompareCarouselCard[] = parallelTargets.map((target, branchIndex) => {
-      if (branchIndex === 0) {
-        return {
-          id: `lead-${target.provider}-${target.instance ?? ''}-${target.model ?? ''}`,
+  const branchCards: DraftCompareCarouselCard[] = (
+    isParallelMode && Array.isArray(parallelTargets) && parallelTargets.length >= 2
+      ? parallelTargets.map((target, branchIndex) => {
+          if (branchIndex === 0) {
+            return {
+              id: `lead-${target.provider}-${target.instance ?? ''}-${target.model ?? ''}`,
+              content: (
+                <>
+                  {composerHeaderRowJsx}
+                  <div className="draftBranchFormAnchor">
+                    {leadFormJsx}
+                    {renderAddBranchSlot(0)}
+                  </div>
+                  {draftComposerFooterJsx}
+                </>
+              ),
+            };
+          }
+          return {
+            id: createDraftCompareShadowCardId(branchIndex, target),
+            content: buildShadowCardContent(branchIndex, target, renderAddBranchSlot(branchIndex)),
+          };
+        })
+      : [{
+          id: 'lead-only',
           content: (
             <>
               {composerHeaderRowJsx}
-              {leadFormJsx}
+              <div className="draftBranchFormAnchor">
+                {leadFormJsx}
+                {renderAddBranchSlot(0)}
+              </div>
               {draftComposerFooterJsx}
             </>
           ),
-        };
-      }
-      return {
-        id: createDraftCompareShadowCardId(branchIndex, target),
-        content: buildShadowCardContent(branchIndex, target),
-      };
-    });
-
-    return (
-      <div className="viewShell viewShellDraft">
-        <section className="draftShell">
-          {draftHeaderJsx}
-          {draftCustomRegion ? (
-            <div className="draftCustomRegion">{draftCustomRegion}</div>
-          ) : null}
-          <DraftCompareCarousel
-            cards={branchCards}
-            activeIndex={activeBranchIndex}
-            onActiveIndexChange={setActiveBranchIndex}
-            disabled={isSubmittingFirstTurn}
-          />
-          {helperRegionJsx}
-        </section>
-        {sidePanelJsx}
-      </div>
-    );
-  }
+        }]
+  );
 
   return (
     <div className="viewShell viewShellDraft">
@@ -1611,12 +1596,13 @@ export function NewChatDraft({
         {draftCustomRegion ? (
           <div className="draftCustomRegion">{draftCustomRegion}</div>
         ) : null}
-        {composerHeaderRowJsx}
-        <DraftComposerStack
-          card={leadFormJsx}
-          footer={draftComposerFooterJsx}
-          helperRegion={helperRegionJsx}
+        <DraftCompareCarousel
+          cards={branchCards}
+          activeIndex={activeBranchIndex}
+          onActiveIndexChange={setActiveBranchIndex}
+          disabled={isSubmittingFirstTurn}
         />
+        {helperRegionJsx}
       </section>
       {sidePanelJsx}
       <ToastContainer toasts={voiceInputToasts} />

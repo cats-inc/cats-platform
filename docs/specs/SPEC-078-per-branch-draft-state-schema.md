@@ -16,6 +16,16 @@
 | **Depends on** | [ADR-067](../decisions/067-use-shared-draft-primitives-with-product-owned-code-entry-drafts.md), [ADR-071](../decisions/071-reject-invalid-runtime-session-policy-combinations-at-create-boundary.md), [ADR-076](../decisions/076-lay-parallel-draft-branches-in-a-3d-compare-carousel.md), [SPEC-077](./SPEC-077-compare-draft-carousel-and-per-card-chrome.md) |
 | **Reviewer** | User |
 
+> ⚠ **2026-05-01 — `promptOverride` retired.** Per-branch prompt
+> overrides are EXPLICITLY OUT OF SCOPE. Owner directive: every branch
+> shares a single prompt; the lead branch is the sole edit surface and
+> shadow branches mirror it read-only. The "Detach prompt / Keep
+> linked" carousel UI, the empty-string-means-inherit invariant, and
+> the `resolveBranchPrompt` helper have been removed from code. The
+> sections below that describe `promptOverride` semantics are kept for
+> historical context but **must not** be re-implemented. See ADR-077
+> §5 for the current contract.
+
 ## Goals
 
 1. Make every per-branch dimension of a parallel draft expressible on
@@ -82,7 +92,9 @@ interface DraftParallelTarget {
   // ── New per-branch overrides (all nullable / optional) ───────────
   // Absolute rule: null | undefined  ⇒  inherit from lead-level field.
   //                concrete value     ⇒  detached; use as-is for this branch.
-  // Exception: promptOverride treats "" as inherit-from-lead; see invariants.
+  // (RETIRED 2026-05-01: the empty-string exception was for
+  // promptOverride only. promptOverride is no longer part of the
+  // contract — see retirement banner at the top of this file.)
 
   /** Per-branch working directory. Lead default: draft.draftCwd. */
   cwd?: string | null;
@@ -107,8 +119,10 @@ interface DraftParallelTarget {
    */
   workflowShape?: DraftRoomWorkflowShape | null;
 
-  /** Per-branch prompt body. Lead default: draft.composerDraft; "" also inherits. */
-  promptOverride?: string | null;
+  // promptOverride RETIRED 2026-05-01 — DO NOT add this field back.
+  // Owner directive: every branch shares the lead's prompt;
+  // shadow-branch textareas are read-only and click-to-jump to the
+  // lead. See retirement banner at the top of this file.
 
   /**
    * Reserved for future per-branch attachment overrides. Phase 1 writes
@@ -138,22 +152,20 @@ The former `DraftParallelBranchState<T>` wrapper and the derived
 renderer props have been removed; `DraftParallelTarget[]` is now the
 canonical renderer draft state.
 
-As of 2026-04-21, Phase 3 Task 3.1 has landed
-`promptOverride?: string | null` on `DraftParallelTarget`.
-`resolveBranchPrompt(...)` resolves it against `lead.composerDraft`,
-and parallel submit dispatch sends each branch's `effectivePrompt`
-through the existing `channelInputs[].body` wire.
-
-As of 2026-04-21, Phase 3 Task 3.2 has landed prompt detach UI on
-non-lead carousel cards. The followed prompt textarea opens an
-explicit detach confirmation; detached prompts are edited directly in
-that branch textarea; re-link clears `promptOverride` to return to
-lead inheritance.
+**RETIRED 2026-05-01:** Phase 3 Task 3.1 (`promptOverride` schema and
+`resolveBranchPrompt` resolver) and Task 3.2 (prompt detach UI on
+non-lead carousel cards, including "Detach prompt" / "Keep linked"
+confirmation) have been **removed from code**. The owner directive is
+that every branch shares the lead's prompt verbatim; shadow-branch
+textareas mirror it read-only and clicking them returns the carousel
+to the lead for editing. Do not re-introduce per-branch prompt
+overrides — see the retirement banner at the top of this file.
 
 As of 2026-04-21, the renderer has a synthetic
 orchestrator-authored draft fixture covering the landed per-branch
 fields (`cwd`, `runtimeSessionPolicy`, `audienceKeys`,
-`workflowShape`, `promptOverride`, and `attachmentsOverride: null`).
+`workflowShape`, and `attachmentsOverride: null`). (Originally also
+`promptOverride`, but that field was retired 2026-05-01 — see banner.)
 `taskRef` remains excluded until the upstream task model spec defines
 it.
 
@@ -176,7 +188,7 @@ The draft-shared fields stay where they are. They now act as the
 | `draftRuntimeSessionPolicy` | `DraftParallelTarget.runtimeSessionPolicy` (Phase 1) |
 | `draftAudienceKeys` | `DraftParallelTarget.audienceKeys` (Phase 1) |
 | `draftWorkflowShape` | `DraftParallelTarget.workflowShape` (Phase 1) |
-| `composerDraft` | `DraftParallelTarget.promptOverride` (Phase 3 Task 3.1) |
+| `composerDraft` | (no per-branch override — RETIRED 2026-05-01) |
 | `draftFiles` | `DraftParallelTarget.attachmentsOverride` (Phase 3+, schema-reserved) |
 
 ### Lead branch is `parallelTargets[0]`
@@ -263,9 +275,10 @@ Phase 1):
 //   export function resolveBranchTaskRef(...): TaskRef | null;
 ```
 
-Phase 3 Task 3.1 introduced `resolveBranchPrompt(...)` alongside
-`promptOverride`; parallel submit call sites now read
-`resolvedBranch.effectivePrompt` for each branch.
+**RETIRED 2026-05-01:** the planned `resolveBranchPrompt(...)` /
+`promptOverride` / `effectivePrompt` triplet is no longer in the
+contract. Submit reads each branch's prompt from `lead.composerDraft`
+unchanged (every branch shares it). See retirement banner.
 
 The `isDetached` flags let the renderer decide, per dimension, which
 chip to show on a branch card ("Follows lead" vs the detached value).
@@ -319,15 +332,15 @@ As of 2026-04-21, Phase 2 cwd / session-policy UI has landed:
 5. Re-link clears `parallelTargets[i].runtimeSessionPolicy` back to
    `null`, returning the branch to lead inheritance.
 
-### Phase 3: prompt detach + taskRef + attachments
+### Phase 3: ~~prompt detach +~~ taskRef + attachments
 
-1. Add `promptOverride?: string | null` to `DraftParallelTarget`.
-   Add `resolveBranchPrompt` to the resolver suite and dispatch
-   through `channelInputs[].body`. Landed in Phase 3 Task 3.1.
-   Carousel prompt detach UI landed in Phase 3 Task 3.2: followed
-   prompt textareas open an explicit detach confirmation, detached
-   prompt textareas edit `promptOverride`, and re-link clears the
-   override.
+1. ~~Add `promptOverride?: string | null` to `DraftParallelTarget`. Add
+   `resolveBranchPrompt` to the resolver suite and dispatch through
+   `channelInputs[].body`.~~ **RETIRED 2026-05-01.** Owner directive:
+   every branch shares the lead's prompt verbatim. Shadow branches
+   render the lead prompt read-only and click-to-jump to lead. Do NOT
+   add a `promptOverride` field, "Detach prompt / Keep linked"
+   confirmation, or `resolveBranchPrompt` helper.
 2. Add `taskRef?: TaskRef | null` to `DraftParallelTarget` once
    the upstream task model spec defines `TaskRef`. Add
    `resolveBranchTaskRef` to the resolver suite. Wire to the
@@ -505,12 +518,9 @@ the UI affordances that populate them.
    path** at create time are rejected by the parallel-group
    create handler with a per-target error message. Resolution
    happens before the runtime ever sees the channel.
-6. **`promptOverride` empty-string rule (Phase 3)**. When
-   `promptOverride` ships, an empty-string override resolves to
-   the lead prompt (empty override is indistinguishable from
-   "follow lead" — intentional). Orchestrator authors SHOULD
-   prefer `null` over `""` for clarity, but the renderer
-   tolerates both.
+6. ~~**`promptOverride` empty-string rule (Phase 3)**.~~ **RETIRED
+   2026-05-01.** No `promptOverride` field exists; the rule is
+   irrelevant. Every branch shares the lead's prompt.
 
 ## Surfaces Affected
 
@@ -539,8 +549,9 @@ Renderer:
   owns the Phase 2 branch detach controls. The shadow-card cwd chip
   opens a branch-scoped folder picker, while detached session policy
   renders permission controls plus repo-ready workspace-mode controls.
-  Phase 3 prompt detach UI also lives here: non-lead prompt textareas
-  confirm detach, edit detached prompts, and re-link back to lead.
+  ~~Phase 3 prompt detach UI also lives here.~~ **RETIRED 2026-05-01:**
+  shadow-card prompt textareas mirror the lead read-only and click-to-
+  jump back to the lead branch instead.
 - `src/products/shared/renderer/components/DraftCompareCarousel.tsx`
   — unaffected; UI is already per-card.
 - Draft state hooks (Chat's `src/products/chat/state/**` plus the

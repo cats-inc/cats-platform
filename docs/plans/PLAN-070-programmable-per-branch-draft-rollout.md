@@ -48,10 +48,11 @@ Three phases, each ships a usable slice:
    "Follows lead" chip on non-lead cards interactive for two
    dimensions: click to open a per-branch cwd picker; click again
    to detach session policy. Advanced-controls gated.
-3. **Phase 3 — Detach prompt, wire `taskRef`, reserve
-   `attachmentsOverride`.** Prompt detach UX, task-chip wiring
+3. **Phase 3 — ~~Detach prompt,~~ wire `taskRef`, reserve
+   `attachmentsOverride`.** ~~Prompt detach UX,~~ task-chip wiring
    (depends on an upstream task model spec), and schema-only
-   reservation for attachments.
+   reservation for attachments. (Prompt detach was retired 2026-05-01
+   — see Phase 3 section banner.)
 
 Phase 1 is the critical path because every downstream phase — and
 every orchestrator integration — depends on the schema being in
@@ -281,32 +282,30 @@ order once Phase 1 lands.
 - [x] Task 2.5: Update SPEC-078 § Migration and § Surfaces Affected
       to reflect the new UI touch points.
 
-### Phase 3: Detach prompt, add + wire `taskRef`, reserve `attachmentsOverride`
+### Phase 3: ~~Detach prompt,~~ add + wire `taskRef`, reserve `attachmentsOverride`
 
-- Progress as of 2026-04-21:
-      Prompt override schema / resolver groundwork is landed:
-      `DraftParallelTarget.promptOverride` resolves through
-      `resolveBranchPrompt`, and renderer parallel dispatch sends
-      each branch's `effectivePrompt` through the existing
-      `channelInputs[].body` wire. Prompt detach UI is now exposed
-      on non-lead carousel cards: clicking the followed textarea
-      opens an explicit detach confirmation, detached prompts become
-      editable, and re-link clears the override back to lead.
+> ⚠ **2026-05-01 — Tasks 3.1 and 3.2 RETIRED.** Owner directive: every
+> branch shares the lead's prompt verbatim. The `promptOverride`
+> schema field, `resolveBranchPrompt` helper, "Detach prompt / Keep
+> linked" confirmation UI, and the per-branch dispatch fork have all
+> been REMOVED from code. Shadow-branch textareas now mirror the lead
+> read-only and click-to-jump to the lead branch. **Do not
+> re-implement.** See SPEC-078 retirement banner and ADR-077 §5.
+
+- Progress as of 2026-04-21 *(historical, retired):*
+      Prompt override schema / resolver groundwork was landed and
+      then removed on 2026-05-01.
       `attachmentsOverride` remains schema-reserved and rejected
       when non-null; the UI keeps producing null / undefined only.
-      A synthetic orchestrator-authored fixture now renders with all
-      landed per-branch fields populated. SPEC-078 open questions are
-      closed down to the two true follow-up specs: upstream `TaskRef`
-      shape and per-branch attachment ownership.
-- [x] Task 3.1: Add `promptOverride?: string | null` to
-      `DraftParallelTarget`. Add the corresponding resolution
-      helper. Wire dispatch to read resolved prompt per branch.
-- [x] Task 3.2: Prompt detach UX. Non-lead textarea in carousel
-      becomes click-to-detach; detached state enables editing
-      that branch's textarea; re-link clears `promptOverride`.
-      Guard against accidental detach: require an explicit "Detach
-      prompt" confirm (textarea is small enough that a stray
-      keystroke could otherwise trigger unwanted editing).
+      A synthetic orchestrator-authored fixture renders with all
+      currently-landed per-branch fields populated (no
+      `promptOverride`). SPEC-078 open questions are closed down to
+      the two true follow-up specs: upstream `TaskRef` shape and
+      per-branch attachment ownership.
+- ~~[x] Task 3.1: Add `promptOverride?: string | null` to `DraftParallelTarget`.~~
+      **RETIRED 2026-05-01.**
+- ~~[x] Task 3.2: Prompt detach UX with explicit "Detach prompt" confirm.~~
+      **RETIRED 2026-05-01.**
 - [ ] Task 3.3: **Add `taskRef?: TaskRef | null` to
       `DraftParallelTarget`** — deferred from Phase 1 because
       `TaskRef` requires an upstream task model spec. When that
@@ -515,8 +514,9 @@ Phase 2 / Phase 3 surfaces will be listed when they're scheduled.
 | 2026-04-21 | Phase 1 | Landed the target-owned branch schema, resolver module, wrapper removal, parallel-group create contract extension, product-owned create materialization, attachment override rejection, and focused renderer / dispatcher / state-model tests. Per-channel runtime dispatch wire remains unchanged by design; renderer submit now resolves effective branch audience/workflow before the first parallel message. |
 | 2026-04-21 | Phase 2 | Landed branch cwd and runtime-session-policy detach UI, branch-scoped folder picker targeting, editable detached policy controls, re-link helpers, API propagation tests, and carousel identity guard. |
 | 2026-04-21 | Phase 3 | Landed prompt override schema/resolution/dispatch, prompt detach/re-link UI, synthetic orchestrator-authored renderer fixture for landed branch fields, and closed SPEC-078 open questions down to `TaskRef` plus attachment ownership follow-ups. |
+| 2026-05-01 | Phase 3 | **RETIRED** Tasks 3.1 + 3.2 (`promptOverride`, `resolveBranchPrompt`, prompt-detach UI). Owner directive: every branch shares the lead's prompt; shadow-branch textareas render read-only and click-to-jump back to the lead. Schema field, resolver, dispatch fork, and "Detach prompt / Keep linked" UI removed from code. Documentation entries kept with strikethroughs as a guard against re-implementation. |
 | 2026-04-21 | — | Plan drafted off ADR-077 / SPEC-078 / PLAN-069 hand-off. |
 
 ---
 
-*Last updated: 2026-04-21*
+*Last updated: 2026-05-01*

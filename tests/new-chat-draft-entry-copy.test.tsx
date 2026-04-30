@@ -311,11 +311,18 @@ test('advanced draft controls expose group and compare add buttons on the defaul
     />,
   );
 
-  const addButtonMatches = markup.match(/class="parallelAddButton"/gu) ?? [];
+  // After 2026-05-01, +compare moved to the carousel's last-branch slot
+  // (`draftCompareCarouselAddBranch`) — the inline footer `parallelAddButton`
+  // is now only the +collaborate affordance, still shown next to the
+  // composer text in advanced mode.
+  const collaborateMatches = markup.match(/class="parallelAddButton"/gu) ?? [];
+  const compareSlotMatches = markup.match(/draftCompareCarouselAddBranch/gu) ?? [];
 
-  assert.equal(addButtonMatches.length, 2);
+  assert.equal(collaborateMatches.length, 1);
+  assert.ok(compareSlotMatches.length >= 1);
   assert.match(markup, /aria-label="Add another model to collaborate"/u);
   assert.match(markup, /aria-label="Add parallel chat"/u);
+  // Default preset is non-accent, so the inline hint stays suppressed.
   assert.doesNotMatch(markup, /Add another model to compare/u);
   assert.doesNotMatch(markup, /Add another model to collaborate<\/span>/u);
 });
@@ -1422,7 +1429,11 @@ test('parallel shadow branch following lead exposes the session policy detach co
   assert.match(markup, /aria-label="Detach branch session policy"/u);
 });
 
-test('parallel shadow branch following lead exposes the prompt detach affordance when wired', () => {
+test('parallel shadow branch mirrors the lead prompt read-only with a click-to-jump affordance (no detach UI)', () => {
+  // Regression guard: per-branch prompt overrides were retired
+  // 2026-05-01. Shadow branches must mirror the lead read-only and
+  // surface a click-to-jump affordance that returns the carousel to
+  // the lead branch — no "Detach prompt / Keep linked" UI.
   const leadTarget = { provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null } as const;
   const markup = renderToStaticMarkup(
     <NewChatDraft
@@ -1440,46 +1451,18 @@ test('parallel shadow branch following lead exposes the prompt detach affordance
             workflowShape: 'sequential',
           },
         ],
-        parallelBranchActions: { onSetPromptOverride: () => {} },
         onAddParallelTarget: () => {},
       })}
     />,
   );
 
-  assert.match(markup, /composerInputPromptFollowsLead/u);
-  assert.match(markup, /aria-label="Open branch prompt detach confirmation"/u);
-  assert.match(markup, /Click to detach this branch prompt/u);
-});
-
-test('parallel shadow branch with detached prompt renders editable prompt and relink chip', () => {
-  const leadTarget = { provider: 'claude-cli', instance: null, model: 'opus-4.6-1m', modelSelection: null } as const;
-  const markup = renderToStaticMarkup(
-    <NewChatDraft
-      {...createProps({
-        composerDraft: 'Lead prompt',
-        selectedExecutionTarget: leadTarget,
-        parallelTargets: [
-          { ...leadTarget, audienceKeys: [], workflowShape: 'sequential' },
-          {
-            provider: 'codex-cli',
-            instance: null,
-            model: 'codex-max',
-            modelSelection: null,
-            audienceKeys: [],
-            workflowShape: 'sequential',
-            promptOverride: 'Branch prompt',
-          },
-        ],
-        parallelBranchActions: { onSetPromptOverride: () => {} },
-        onAddParallelTarget: () => {},
-      })}
-    />,
-  );
-
-  assert.match(markup, /Prompt detached/u);
-  assert.match(markup, /composerInputPromptDetached/u);
-  assert.match(markup, /Branch prompt/u);
-  assert.match(markup, /aria-label="Re-link branch prompt to lead"/u);
+  assert.match(markup, /composerInputJumpToLead/u);
+  assert.match(markup, /aria-label="Jump to lead branch to edit prompt"/u);
+  assert.doesNotMatch(markup, /composerInputPromptFollowsLead/u);
+  assert.doesNotMatch(markup, /composerInputPromptDetached/u);
+  assert.doesNotMatch(markup, /Detach prompt/u);
+  assert.doesNotMatch(markup, /Keep linked/u);
+  assert.doesNotMatch(markup, /Prompt detached/u);
 });
 
 test('synthetic orchestrator-authored parallel draft renders landed branch fields cleanly', () => {
@@ -1502,7 +1485,6 @@ test('synthetic orchestrator-authored parallel draft renders landed branch field
             workflowShape: 'concurrent',
             cwd: null,
             runtimeSessionPolicy: null,
-            promptOverride: null,
             attachmentsOverride: null,
           },
           {
@@ -1518,7 +1500,6 @@ test('synthetic orchestrator-authored parallel draft renders landed branch field
               workspaceAccess: 'read_only',
               permissionMode: 'default',
             },
-            promptOverride: 'Review the implementation branch.',
             attachmentsOverride: null,
           },
           {
@@ -1530,7 +1511,6 @@ test('synthetic orchestrator-authored parallel draft renders landed branch field
             workflowShape: 'concurrent',
             cwd: null,
             runtimeSessionPolicy: null,
-            promptOverride: '',
             attachmentsOverride: null,
           },
         ],
@@ -1543,7 +1523,6 @@ test('synthetic orchestrator-authored parallel draft renders landed branch field
           onSetAudienceKeys: () => {},
           onSetCwd: () => {},
           onSetRuntimeSessionPolicy: () => {},
-          onSetPromptOverride: () => {},
         },
         onAddParallelTarget: () => {},
       })}
@@ -1551,11 +1530,13 @@ test('synthetic orchestrator-authored parallel draft renders landed branch field
   );
 
   assert.match(markup, /class="draftCompareCarousel"/u);
-  assert.match(markup, /Review the implementation branch\./u);
-  assert.match(markup, /Prompt detached/u);
   assert.match(markup, /C:\/repo\/worktrees\/review/u);
   assert.match(markup, /Worktree \/ Read only/u);
   assert.match(markup, /Gemini-cli · gemini-2\.5-pro/u);
+  // Per the 2026-05-01 retirement, no shadow branch may surface its
+  // own prompt — the lead's `composerDraft` shows verbatim.
+  assert.doesNotMatch(markup, /Prompt detached/u);
+  assert.doesNotMatch(markup, /Review the implementation branch\./u);
 });
 
 test('parallel shadow branch with detached runtime policy renders a relinkable policy editor', () => {

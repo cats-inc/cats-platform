@@ -112,6 +112,91 @@
   cursor: not-allowed;
 }
 
+/* +compare slot: replaces the next-arrow position when the user is on
+ * the last branch and the parallel cap has room. The slot is a flex
+ * group (`[hint?][button]`) anchored to the right of the carousel
+ * cell; the hint only renders under the parallel preset's accent
+ * treatment. The button itself reuses `.draftCompareCarouselNav` size
+ * + colors and overrides positioning to nest inside the slot. */
+/* Anchor wrapper that sits between the branch's header row and footer
+ * row, holding the form (composerCard) and the +compare slot side-by-
+ * side. `position: relative` so the absolutely-positioned slot anchors
+ * to the form's vertical center regardless of how much chrome the
+ * branch's header / footer carry — anchoring the slot at carousel-cell
+ * level mis-aligned the button on single-branch drafts because the cell
+ * height equalled the (shorter) lead card while shadow branches were
+ * taller. */
+.draftBranchFormAnchor {
+  position: relative;
+  width: 100%;
+}
+
+.draftCompareCarouselAddBranchSlot {
+  position: absolute;
+  top: 50%;
+  /* Slot's left edge sits 8px right of the composer card's right edge
+   * so the button + hint live in the empty margin next to the card.
+   * The button has `width: 34px` (.draftCompareCarouselNav) so the
+   * button center lands at ~25px right of card — same X column as the
+   * carousel's prev/next arrows (`right: -44px`). */
+  left: calc(100% + 8px);
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  /* HTML order is `[button][hint]` so the hint sits to the RIGHT of
+   * the button (per owner directive 2026-05-01). */
+  flex-direction: row;
+  gap: 8px;
+  white-space: nowrap;
+  z-index: 1200;
+}
+
+/* Multi-branch carousel only: hold the slot invisible while the
+ * carousel's branch-swap transition is in flight (matches the
+ * `.draftCompareCarouselCard` 460ms transform duration), then fade
+ * in. Single-branch drafts have no transition and the slot must
+ * appear immediately — owner flagged the perceived "lag" on
+ * 2026-05-01. */
+.draftCompareCarouselAddBranchSlotDelayed {
+  animation: draftAddBranchSlotFadeIn 200ms ease-out 460ms backwards;
+}
+
+@keyframes draftAddBranchSlotFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.draftCompareCarouselAddBranchSlot .draftCompareCarouselNav {
+  position: static;
+  transform: none;
+}
+
+/* Non-accent +compare slot inherits the muted/dashed treatment of the
+ * legacy inline `.parallelAddButton` so default / group presets do
+ * NOT pick up the parallel-preset blue accent. */
+.draftCompareCarouselAddBranch:not(.draftCompareCarouselAddBranchAccent) {
+  border: 1px dashed var(--border);
+  color: var(--muted);
+}
+
+.draftCompareCarouselAddBranch:not(.draftCompareCarouselAddBranchAccent):hover:not(:disabled) {
+  background: var(--panel-hover);
+  color: var(--text);
+  border-style: solid;
+  border-color: var(--border);
+}
+
+.draftCompareCarouselAddBranchAccent {
+  border-color: rgb(var(--draft-teaching-accent) / 0.7);
+  color: rgb(var(--draft-teaching-accent));
+  background: rgb(var(--draft-teaching-accent) / 0.04);
+}
+
+.draftCompareCarouselAddBranchAccent:hover:not(:disabled) {
+  background: rgb(var(--draft-teaching-accent) / 0.14);
+  border-color: rgb(var(--draft-teaching-accent));
+}
+
 /* Pagination dots — same visual language as compareCardsPaginationDot
  * so the draft builder shares its "you are here" vocabulary with the
  * chat-view compare carousel. */
@@ -183,56 +268,14 @@
   opacity: 0.6;
 }
 
-.composerInputPromptFollowsLead {
+/* Shadow-branch read-only textareas surface a click-to-jump affordance:
+ * tapping them returns the carousel to the lead branch where the prompt
+ * is editable. Hint via cursor + hover highlight; the actual jump is wired
+ * in `ChatNewChatDraft.buildShadowCardContent`. */
+.composerInputJumpToLead {
   cursor: pointer;
 }
 
-.composerInputPromptFollowsLead:hover:not(:disabled) {
+.composerInputJumpToLead:hover:not(:disabled) {
   background: var(--panel-hover);
-}
-
-.composerInputPromptDetached {
-  box-shadow: inset 0 0 0 1px var(--accent, var(--border));
-}
-
-.composerPromptDetachToolbar {
-  display: flex;
-  justify-content: flex-end;
-  margin: -2px 0 8px;
-}
-
-.composerPromptOverrideChip {
-  max-width: 100%;
-}
-
-.composerPromptDetachConfirm {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-  margin: 8px 0 0;
-  color: var(--muted);
-  font-size: 0.78rem;
-}
-
-.composerPromptDetachButton,
-.composerPromptKeepLinkedButton {
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: var(--panel);
-  color: var(--text);
-  cursor: pointer;
-  font: inherit;
-  padding: 4px 10px;
-}
-
-.composerPromptDetachButton:hover:not(:disabled),
-.composerPromptKeepLinkedButton:hover:not(:disabled) {
-  background: var(--panel-hover);
-}
-
-.composerPromptDetachButton:disabled,
-.composerPromptKeepLinkedButton:disabled {
-  cursor: not-allowed;
-  opacity: 0.6;
 }

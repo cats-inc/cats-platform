@@ -1268,16 +1268,8 @@ export const enCatalog: MessageCatalog = {
   'chat.newChatDraft.branchFolderRelinkAria': 'Re-link branch folder to lead',
   'chat.newChatDraft.branchFolderChooseAria': 'Choose branch folder',
   'chat.newChatDraft.branchFollowsLeadLabel': 'Follows lead',
-  'chat.newChatDraft.branchPromptDetachedLabel': 'Prompt detached',
-  'chat.newChatDraft.branchPromptRelinkAria': 'Re-link branch prompt to lead',
-  'chat.newChatDraft.branchPromptTextareaDetachTitle':
-    'Click to detach this branch prompt',
-  'chat.newChatDraft.branchPromptTextareaDetachAria':
-    'Open branch prompt detach confirmation',
-  'chat.newChatDraft.branchPromptDetachConfirmQuestion':
-    'Detach this branch prompt from the lead?',
-  'chat.newChatDraft.branchPromptDetachConfirmButton': 'Detach prompt',
-  'chat.newChatDraft.branchPromptKeepLinkedButton': 'Keep linked',
+  'chat.newChatDraft.branchPromptJumpToLeadTitle': 'Click to edit on lead branch',
+  'chat.newChatDraft.branchPromptJumpToLeadAria': 'Jump to lead branch to edit prompt',
   'chat.newChatDraft.branchAttachAria': 'Attach',
   'chat.newChatDraft.branchCollaborateAria': 'Add another model to collaborate',
   'chat.newChatDraft.branchRemoveAria': 'Remove branch {branchIndex}',

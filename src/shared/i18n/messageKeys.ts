@@ -1253,19 +1253,10 @@ export const messageKeys = {
   chatNewChatDraftBranchFolderRelinkAria: 'chat.newChatDraft.branchFolderRelinkAria',
   chatNewChatDraftBranchFolderChooseAria: 'chat.newChatDraft.branchFolderChooseAria',
   chatNewChatDraftBranchFollowsLeadLabel: 'chat.newChatDraft.branchFollowsLeadLabel',
-  chatNewChatDraftBranchPromptDetachedLabel:
-    'chat.newChatDraft.branchPromptDetachedLabel',
-  chatNewChatDraftBranchPromptRelinkAria: 'chat.newChatDraft.branchPromptRelinkAria',
-  chatNewChatDraftBranchPromptTextareaDetachTitle:
-    'chat.newChatDraft.branchPromptTextareaDetachTitle',
-  chatNewChatDraftBranchPromptTextareaDetachAria:
-    'chat.newChatDraft.branchPromptTextareaDetachAria',
-  chatNewChatDraftBranchPromptDetachConfirmQuestion:
-    'chat.newChatDraft.branchPromptDetachConfirmQuestion',
-  chatNewChatDraftBranchPromptDetachConfirmButton:
-    'chat.newChatDraft.branchPromptDetachConfirmButton',
-  chatNewChatDraftBranchPromptKeepLinkedButton:
-    'chat.newChatDraft.branchPromptKeepLinkedButton',
+  chatNewChatDraftBranchPromptJumpToLeadTitle:
+    'chat.newChatDraft.branchPromptJumpToLeadTitle',
+  chatNewChatDraftBranchPromptJumpToLeadAria:
+    'chat.newChatDraft.branchPromptJumpToLeadAria',
   chatNewChatDraftBranchAttachAria: 'chat.newChatDraft.branchAttachAria',
   chatNewChatDraftBranchCollaborateAria: 'chat.newChatDraft.branchCollaborateAria',
   chatNewChatDraftBranchRemoveAria: 'chat.newChatDraft.branchRemoveAria',
