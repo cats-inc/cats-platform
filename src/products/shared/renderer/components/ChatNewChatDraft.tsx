@@ -878,11 +878,33 @@ export function NewChatDraft({
     </div>
   );
 
+  // Owner directive (2026-05-01): the per-branch remove button moves
+  // out of the per-card footer slot below Send into the composer's
+  // top-right corner with an X icon. Hidden in single-branch drafts;
+  // disabled when the carousel is at the parallel preset's minimum
+  // (2 branches) so the user keeps the affordance visible.
+  const leadBranchRemoveTopRight = (parallelTargets?.length ?? 0) >= 2 && onRemoveParallelTarget
+    ? (
+      <button
+        type="button"
+        className={`composerCardBranchRemove${accentParallelAddButton ? ' composerCardBranchRemoveAccent' : ''}`}
+        disabled={isSubmittingFirstTurn || (parallelTargets?.length ?? 0) <= minParallelTargetCount}
+        onClick={() => onRemoveParallelTarget(0)}
+        aria-label={t(messageKeys.chatNewChatDraftBranchRemoveAria, { branchIndex: 1 })}
+      >
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+          <path d="M4 4l8 8M12 4l-8 8" />
+        </svg>
+      </button>
+    )
+    : null;
+
   const leadFormJsx = (
     <form
       className={`composerCard composerCardFresh${parallelTargets ? ' parallelComposerAnchor' : ''}${plusMenuOpen ? ' composerCardMenuOpen' : ''}`}
       onSubmit={(event) => void onSendMessage(event)}
     >
+      {leadBranchRemoveTopRight}
       {draftFiles.length > 0 ? (
         <div className="composerAttachments">
           {draftFiles.map((file, index) => {
@@ -1177,23 +1199,15 @@ export function NewChatDraft({
       }
     : undefined;
 
-  // Lead card's footer slot below the Send button:
-  //  - count <= 1: empty (the carousel's addBranchSlot owns +compare).
-  //  - count >= 2: "-" remove button (carousel still hosts +compare at
-  //    the last branch). Stays visible-but-disabled when count equals
-  //    the parallel preset's minimum so the lead matches the shadows.
-  const leadBranchRemove = (parallelTargets?.length ?? 0) >= 2 && onRemoveParallelTarget
-    ? {
-        branchIndex: 0,
-        disabled: (parallelTargets?.length ?? 0) <= minParallelTargetCount,
-        onRemove: () => onRemoveParallelTarget(0),
-      }
-    : undefined;
+  // Lead card's footer slot below the Send button is empty by default
+  // now: the per-branch remove button moved into the form's top-right
+  // corner (`composerCardBranchRemove`), and +compare lives at the
+  // carousel's last-branch addBranchSlot. The footer only renders when
+  // a product passes a separate `composerFooterAccessory`.
   const draftComposerFooterJsx = (
     <DraftComposerFooter
       accessory={composerFooterAccessory}
       disabled={isSubmittingFirstTurn}
-      branchRemove={leadBranchRemove}
     />
   );
 
@@ -1403,6 +1417,19 @@ export function NewChatDraft({
 
         <div className="draftBranchFormAnchor">
         <form className="composerCard composerCardFresh parallelComposerAnchor" onSubmit={(event) => event.preventDefault()}>
+          {onRemoveParallelTarget ? (
+            <button
+              type="button"
+              className={`composerCardBranchRemove${accentParallelAddButton ? ' composerCardBranchRemoveAccent' : ''}`}
+              disabled={isSubmittingFirstTurn || !canRemoveBranch}
+              onClick={() => onRemoveParallelTarget(branchIndex)}
+              aria-label={t(messageKeys.chatNewChatDraftBranchRemoveAria, { branchIndex: branchIndex + 1 })}
+            >
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
+                <path d="M4 4l8 8M12 4l-8 8" />
+              </svg>
+            </button>
+          ) : null}
           {/* Shadow branches mirror the lead's prompt read-only — owner
               directive (2026-05-01): every branch shares a single prompt,
               per-branch overrides are explicitly not in the spec. Clicking
@@ -1494,29 +1521,9 @@ export function NewChatDraft({
         </form>
         {addBranchSlot}
         </div>
-
-        <div className="composerFooterRow">
-          {/* Owner directive (2026-05-01): "-" stays visible at the
-              parallel preset's minimum branch count (just disabled),
-              so the user can see why removal is blocked. +compare
-              lives at the carousel's last-branch next-arrow slot, not
-              per-card, so it's intentionally absent here. */}
-          <div className="parallelAddRow parallelAddRowInline">
-            <button
-              type="button"
-              className={`parallelStubRemove${useDangerParallelRemoveHover ? ' parallelStubRemoveDanger' : ''}`}
-              disabled={isSubmittingFirstTurn || !canRemoveBranch}
-              onClick={() => onRemoveParallelTarget?.(branchIndex)}
-              aria-label={t(messageKeys.chatNewChatDraftBranchRemoveAria, {
-                branchIndex: branchIndex + 1,
-              })}
-            >
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
-                <path d="M4 8h8" />
-              </svg>
-            </button>
-          </div>
-        </div>
+        {/* Per-card remove button moved into the form's top-right
+            corner (`composerCardBranchRemove`). Footer slot below
+            the form is now empty for shadow cards. */}
       </>
     );
   }

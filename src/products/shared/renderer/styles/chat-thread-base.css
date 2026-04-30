@@ -395,10 +395,13 @@
 .composerCardFresh {
   max-width: var(--chat-transcript-max-width, 720px);
   margin: 0 auto;
+  /* Always relative so the in-card branch remove button (top-right
+   * of the form, owner directive 2026-05-01) anchors to the card,
+   * not to whichever ancestor happens to be relative. */
+  position: relative;
 }
 
 .composerCardFresh.composerCardMenuOpen {
-  position: relative;
   z-index: 12;
 }
 

@@ -118,6 +118,53 @@
  * cell; the hint only renders under the parallel preset's accent
  * treatment. The button itself reuses `.draftCompareCarouselNav` size
  * + colors and overrides positioning to nest inside the slot. */
+/* In-card branch remove button — top-right of the composer form.
+ * Owner directive 2026-05-01: per-branch remove moved out of the
+ * footer slot below Send into the composer's top-right corner with
+ * an X icon. Stays visible-but-disabled when the branch count is at
+ * the parallel preset's minimum so the user understands why removal
+ * is blocked. */
+.composerCardBranchRemove {
+  position: absolute;
+  /* Button overlaps the composer card's top-right corner so the
+   * circle just clips the rectangle's corner — most of the button
+   * sits inside the card, with a small bite extending past each
+   * edge. Owner directive 2026-05-01. */
+  top: -4px;
+  right: -4px;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--panel);
+  color: var(--muted);
+  cursor: pointer;
+  z-index: 2;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+
+.composerCardBranchRemove:hover:not(:disabled) {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+/* Parallel preset: hover signals destructive intent in red, matching
+ * the legacy `parallelStubRemoveDanger` palette so the move from the
+ * footer slot to the top-right corner doesn't lose the danger cue. */
+.composerCardBranchRemoveAccent:hover:not(:disabled) {
+  background: rgba(140, 60, 50, 0.1);
+  color: #8f4f3f;
+  border-color: transparent;
+}
+
+.composerCardBranchRemove:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* Anchor wrapper that sits between the branch's header row and footer
  * row, holding the form (composerCard) and the +compare slot side-by-
  * side. `position: relative` so the absolutely-positioned slot anchors
