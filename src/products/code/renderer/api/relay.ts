@@ -1,5 +1,6 @@
 import { expectJson } from './http.js';
 import type { ProviderModelSelection } from '../../../../shared/providerSelection.js';
+import { messageKeys, t as translate } from '../../../../shared/i18n/index.js';
 import {
   buildCodeApiRelayFanOutPath,
   buildCodeApiRelayRosterEntryPath,
@@ -100,22 +101,26 @@ export interface CodeRelayThreadsPayload {
   };
 }
 
-export async function fetchCodeRelayThreads(): Promise<CodeRelayThreadsPayload> {
+export async function fetchCodeRelayThreads(
+  errorMessage = translate(messageKeys.codeRelayErrorThreadLoadFailed),
+): Promise<CodeRelayThreadsPayload> {
   const response = await fetch(CODE_API_RELAY_THREADS_PATH);
-  return expectJson<CodeRelayThreadsPayload>(response, 'Failed to load Code relay threads.');
+  return expectJson<CodeRelayThreadsPayload>(response, errorMessage);
 }
 
 export async function createCodeRelayThread(input: {
   title: string;
   objective?: string | null;
   repoPath?: string | null;
-}): Promise<CodeRelayThreadsPayload> {
+}, errorMessage = translate(
+  messageKeys.codeRelayErrorThreadCreateFailed,
+)): Promise<CodeRelayThreadsPayload> {
   const response = await fetch(CODE_API_RELAY_THREADS_PATH, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(input),
   });
-  return expectJson<CodeRelayThreadsPayload>(response, 'Failed to create Code relay thread.');
+  return expectJson<CodeRelayThreadsPayload>(response, errorMessage);
 }
 
 export async function updateCodeRelayRosterEntry(
@@ -130,6 +135,7 @@ export async function updateCodeRelayRosterEntry(
     quotaNote?: string | null;
     recentRole?: string | null;
   },
+  errorMessage = translate(messageKeys.codeRelayErrorRosterUpdateFailed),
 ): Promise<CodeRelayThreadsPayload> {
   const response = await fetch(
     buildCodeApiRelayRosterEntryPath(threadId, agentId),
@@ -139,7 +145,7 @@ export async function updateCodeRelayRosterEntry(
       body: JSON.stringify(patch),
     },
   );
-  return expectJson<CodeRelayThreadsPayload>(response, 'Failed to update relay roster entry.');
+  return expectJson<CodeRelayThreadsPayload>(response, errorMessage);
 }
 
 export async function runCodeRelayFanOut(
@@ -150,6 +156,7 @@ export async function runCodeRelayFanOut(
     prompt: string;
     agentIds: string[];
   },
+  errorMessage = translate(messageKeys.codeRelayErrorRelayFailed),
 ): Promise<CodeRelayThreadsPayload> {
   const response = await fetch(
     buildCodeApiRelayFanOutPath(threadId),
@@ -159,5 +166,5 @@ export async function runCodeRelayFanOut(
       body: JSON.stringify(input),
     },
   );
-  return expectJson<CodeRelayThreadsPayload>(response, 'Failed to run relay fan-out.');
+  return expectJson<CodeRelayThreadsPayload>(response, errorMessage);
 }

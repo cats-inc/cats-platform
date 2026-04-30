@@ -104,7 +104,10 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
     setLoading(true);
     setError('');
     try {
-      applyThreadsPayload(await fetchCodeRelayThreads(), nextSelectedThreadId);
+      applyThreadsPayload(
+        await fetchCodeRelayThreads(t(messageKeys.codeRelayErrorThreadLoadFailed)),
+        nextSelectedThreadId,
+      );
     } catch (loadError) {
       setError(loadError instanceof Error ? loadError.message : t(messageKeys.codeRelayErrorThreadLoadFailed));
     } finally {
@@ -114,7 +117,10 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
 
   async function refreshThreads(nextSelectedThreadId: string | null = null): Promise<void> {
     try {
-      applyThreadsPayload(await fetchCodeRelayThreads(), nextSelectedThreadId);
+      applyThreadsPayload(
+        await fetchCodeRelayThreads(t(messageKeys.codeRelayErrorThreadRefreshFailed)),
+        nextSelectedThreadId,
+      );
     } catch (loadError) {
       setError(loadError instanceof Error
         ? loadError.message
@@ -175,11 +181,16 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
     setBusy('create-thread');
     setError('');
     try {
-      applyThreadsPayload(await createCodeRelayThread({
-        title: createTitle.trim(),
-        objective: createObjective.trim() || null,
-        repoPath: createRepoPath.trim() || null,
-      }));
+      applyThreadsPayload(
+        await createCodeRelayThread(
+          {
+            title: createTitle.trim(),
+            objective: createObjective.trim() || null,
+            repoPath: createRepoPath.trim() || null,
+          },
+          t(messageKeys.codeRelayErrorThreadCreateFailed),
+        ),
+      );
       setFanOutPrompt('');
       setFanOutObjective(createObjective.trim() || t(messageKeys.codeRelayOpenDiscoveryRound));
     } catch (createError) {
@@ -210,7 +221,12 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
     setError('');
     try {
       applyThreadsPayload(
-        await updateCodeRelayRosterEntry(selectedThreadId, agentId, patch),
+        await updateCodeRelayRosterEntry(
+          selectedThreadId,
+          agentId,
+          patch,
+          t(messageKeys.codeRelayErrorRosterUpdateFailed),
+        ),
         selectedThreadId,
       );
     } catch (patchError) {
@@ -268,12 +284,19 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
     setBusy('fan-out');
     setError('');
     try {
-      applyThreadsPayload(await runCodeRelayFanOut(selectedThreadId, {
-        mode: 'discover',
-        objective: fanOutObjective.trim() || t(messageKeys.codeRelayOpenDiscoveryRound),
-        prompt: fanOutPrompt.trim(),
-        agentIds: selectedAgentIds,
-      }), selectedThreadId);
+      applyThreadsPayload(
+        await runCodeRelayFanOut(
+          selectedThreadId,
+          {
+            mode: 'discover',
+            objective: fanOutObjective.trim() || t(messageKeys.codeRelayOpenDiscoveryRound),
+            prompt: fanOutPrompt.trim(),
+            agentIds: selectedAgentIds,
+          },
+          t(messageKeys.codeRelayErrorRelayFailed),
+        ),
+        selectedThreadId,
+      );
     } catch (fanOutError) {
       setError(fanOutError instanceof Error ? fanOutError.message : t(messageKeys.codeRelayErrorRelayFailed));
     } finally {
