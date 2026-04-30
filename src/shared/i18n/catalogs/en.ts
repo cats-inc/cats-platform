@@ -1006,6 +1006,29 @@ export const enCatalog: MessageCatalog = {
   'work.newProject.createError': 'Failed to create project.',
   'work.item.loadingTitle': 'Loading work item',
   'work.item.relatedWorkItemTitle': 'Related work item',
+  'shared.addCatPanelTitle': 'Add cat to chat',
+  'shared.addCatPanelClose': 'Close',
+  'shared.addCatPanelChooseExisting': 'Choose existing',
+  'shared.addCatPanelCreateNew': 'Create new',
+  'shared.addCatPanelAdding': 'Adding…',
+  'shared.addCatPanelRemoving': 'Removing…',
+  'shared.addCatPanelRemove': 'Remove',
+  'shared.addCatPanelAdd': 'Add',
+  'shared.addCatPanelNoOtherCats': 'No other cats yet. Create one first.',
+  'shared.addCatPanelAllCatsInChat': 'All cats are already in this chat.',
+  'shared.addCatPanelNameLabel': 'Name',
+  'shared.addCatPanelNamePlaceholder': 'Cat name',
+  'shared.addCatPanelSaving': 'Saving…',
+  'shared.addCatPanelCreateAndAdd': 'Create & Add',
+  'shared.addCatPanelCreateAndAddToChat': 'Create & Add to Chat',
+  'shared.approvalEyebrow': 'Approval',
+  'shared.approvalPendingTitle': 'Pending approvals',
+  'shared.approvalEmptyState':
+    'The room can keep moving until a plan asks for an owner decision.',
+  'shared.approvalRequester': 'Orchestrator',
+  'shared.approvalSummaryFallback':
+    'Review this dispatch before Cats continue.',
+  'shared.approvalRequestedBy': 'Requested by {requestedBy}',
 };
 
 export default enCatalog;

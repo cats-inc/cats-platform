@@ -4,6 +4,7 @@ import {
   isApprovalBusy,
   type WorkspaceBusyState,
 } from '../../../../shared/workspaceBusy.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
 
 export interface ApprovalQueuePanelProps {
   approvals: CoreApprovalQueueItem[];
@@ -18,40 +19,43 @@ export function ApprovalQueuePanel({
   busy,
   onDecision,
 }: ApprovalQueuePanelProps) {
+  const { t } = useI18n();
+
   return (
     <section className="operatorPanel">
       <div className="operatorPanelHeader">
         <div>
-          <p className="operatorEyebrow">Approval</p>
-          <h2>Pending approvals</h2>
+          <p className="operatorEyebrow">{t('sharedApprovalEyebrow')}</p>
+          <h2>{t('sharedApprovalPendingTitle')}</h2>
         </div>
         <span className="operatorCountBadge">{approvals.length}</span>
       </div>
       {approvals.length === 0 ? (
         <p className="operatorEmptyState">
-          The room can keep moving until a plan asks for an owner decision.
+          {t('sharedApprovalEmptyState')}
         </p>
       ) : (
         <div className="operatorStack">
           {approvals.map((approval) => {
             const isBusy = isApprovalBusy(busy, approval.taskId);
             const requestedBy = approval.requestedByActorId
-              ? actorNameById[approval.requestedByActorId] ?? 'Orchestrator'
-              : 'Orchestrator';
+              ? actorNameById[approval.requestedByActorId]
+                ?? t('sharedApprovalRequester')
+              : t('sharedApprovalRequester');
 
             return (
               <article key={approval.id} className="operatorCard approvalCard">
                 <div className="operatorCardHeader">
                   <div>
                     <strong>{approval.title}</strong>
-                    <p>{approval.summary ?? 'Review this dispatch before Cats continue.'}</p>
+                    <p>{approval.summary ?? t('sharedApprovalSummaryFallback')}</p>
                   </div>
                   <span className="operatorMetaText">
                     {formatOperatorTimestamp(approval.requestedAt)}
                   </span>
                 </div>
                 <div className="operatorMetaRow">
-                  <span>Requested by {requestedBy}</span>
+                  <span>{t('sharedApprovalRequestedBy', { requestedBy })}</span>
                   {approval.notes ? <span>{approval.notes}</span> : null}
                 </div>
                 <div className="operatorActionRow">

@@ -18,6 +18,7 @@ import {
   type CatFormState,
 } from '../workspaceChatUtils.js';
 import { ProviderModelFields } from './ProviderModelFields.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
 
 interface ProviderModelFieldsProps {
   provider: string;
@@ -68,15 +69,17 @@ export function WorkspaceAddCatPanel({
   onCreateCat,
   ProviderModelFieldsComponent,
 }: WorkspaceAddCatPanelProps) {
+  const { t } = useI18n();
+
   return (
     <div className="addCatPanel" ref={panelRef}>
       <div className="addCatPanelHeader">
-        <h2>Add cat to chat</h2>
+        <h2>{t('sharedAddCatPanelTitle')}</h2>
         <button
           className="addCatClose"
           type="button"
           onClick={onClose}
-          aria-label="Close"
+          aria-label={t('sharedAddCatPanelClose')}
         >
           x
         </button>
@@ -88,14 +91,14 @@ export function WorkspaceAddCatPanel({
           type="button"
           onClick={() => onTabChange('existing')}
         >
-          Choose existing
+          {t('sharedAddCatPanelChooseExisting')}
         </button>
         <button
           className={addCatTab === 'new' ? 'addCatTab addCatTabActive' : 'addCatTab'}
           type="button"
           onClick={() => onTabChange('new')}
         >
-          Create new
+          {t('sharedAddCatPanelCreateNew')}
         </button>
       </div>
 
@@ -133,7 +136,13 @@ export function WorkspaceAddCatPanel({
                         onAssignExistingCat(cat);
                       }}
                     >
-                      {isAdding ? 'Adding...' : isRemoving ? 'Removing...' : included ? 'Remove' : 'Add'}
+                      {isAdding
+                        ? t('sharedAddCatPanelAdding')
+                        : isRemoving
+                          ? t('sharedAddCatPanelRemoving')
+                          : included
+                            ? t('sharedAddCatPanelRemove')
+                            : t('sharedAddCatPanelAdd')}
                     </button>
                   );
                 })()}
@@ -143,8 +152,8 @@ export function WorkspaceAddCatPanel({
             <div className="emptyStateCard">
               <p>
                 {assignableCatCount === 0
-                  ? 'No other cats yet. Create one first.'
-                  : 'All cats are already in this chat.'}
+                  ? t('sharedAddCatPanelNoOtherCats')
+                  : t('sharedAddCatPanelAllCatsInChat')}
               </p>
             </div>
           )}
@@ -156,12 +165,12 @@ export function WorkspaceAddCatPanel({
             onSubmit={(event) => onCreateCat(event)}
           >
             <label className="fieldLabel">
-              <span>Name</span>
+              <span>{t('sharedAddCatPanelNameLabel')}</span>
               <input
                 className="textInput"
                 value={catForm.name}
                 onChange={(event) => onCatFormChange({ ...catForm, name: event.target.value })}
-                placeholder="Cat name"
+                placeholder={t('sharedAddCatPanelNamePlaceholder')}
               />
             </label>
             <ProviderModelFieldsComponent
@@ -184,10 +193,10 @@ export function WorkspaceAddCatPanel({
               type="submit"
             >
               {isCatBusy(busy, 'create') || isCatBusy(busy, 'create-assign')
-                ? 'Saving...'
+                ? t('sharedAddCatPanelSaving')
                 : showingNewChatDraft
-                  ? 'Create & Add'
-                  : 'Create & Add to Chat'}
+                  ? t('sharedAddCatPanelCreateAndAdd')
+                  : t('sharedAddCatPanelCreateAndAddToChat')}
             </button>
           </form>
         </div>

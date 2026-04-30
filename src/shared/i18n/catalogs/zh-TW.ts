@@ -973,6 +973,28 @@ export const zhTWCatalog: MessageCatalog = {
   'work.newProject.createError': '建立專案失敗。',
   'work.item.loadingTitle': '載入工作項目',
   'work.item.relatedWorkItemTitle': '關聯工作項目',
+  'shared.addCatPanelTitle': '新增貓到聊天室',
+  'shared.addCatPanelClose': '關閉',
+  'shared.addCatPanelChooseExisting': '選擇既有',
+  'shared.addCatPanelCreateNew': '建立新貓',
+  'shared.addCatPanelAdding': '加入中…',
+  'shared.addCatPanelRemoving': '移除中…',
+  'shared.addCatPanelRemove': '移除',
+  'shared.addCatPanelAdd': '加入',
+  'shared.addCatPanelNoOtherCats': '目前沒有其他貓，請先建立一隻。',
+  'shared.addCatPanelAllCatsInChat': '所有貓都已加入此聊天室。',
+  'shared.addCatPanelNameLabel': '名稱',
+  'shared.addCatPanelNamePlaceholder': '貓咪名稱',
+  'shared.addCatPanelSaving': '儲存中…',
+  'shared.addCatPanelCreateAndAdd': '建立並加入',
+  'shared.addCatPanelCreateAndAddToChat': '建立並加入聊天室',
+  'shared.approvalEyebrow': '核准',
+  'shared.approvalPendingTitle': '待核准項目',
+  'shared.approvalEmptyState':
+    '在此由指揮面板保持運轉，直到任務需要由負責人做判斷決定。',
+  'shared.approvalRequester': '指揮者',
+  'shared.approvalSummaryFallback': '請先確認此次派工，確認後再繼續。',
+  'shared.approvalRequestedBy': '提交者：{requestedBy}',
 };
 
 export default zhTWCatalog;
