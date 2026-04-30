@@ -9,10 +9,7 @@ import {
   normalizeCodeBuilderTaskId,
   resolveCodeBuilderExecutionTaskId,
 } from '../../shared/builderExecution.js';
-import {
-  labelCodeWorkspaceKind,
-  type CodeWorkspaceSummary,
-} from '../../shared/workspaceSummary.js';
+import type { CodeWorkspaceSummary } from '../../shared/workspaceSummary.js';
 import { useCodeTaskExecution } from '../hooks/useCodeTaskExecution.js';
 import { PlanPanel } from './PlanPanel.js';
 import { BuildPreviewPanel, type ArtifactItem } from './BuildPreviewPanel.js';
@@ -33,6 +30,7 @@ import { resolveComposerWorkspacePath } from '../../../../core/workspacePaths.js
 import { buildCodeArtifactPath } from '../codePaths.js';
 import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { labelCodeWorkspaceKindForLocale } from './codeWorkspaceLabels.js';
 
 type BuilderStep = 'workspace' | 'task' | 'running' | 'done';
 
@@ -476,7 +474,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
                 <div className="operatorCardHeader">
                   <strong>{workspaceSummary.workspacePath}</strong>
                   <span className="operatorStatusBadge isMuted">
-                    {labelCodeWorkspaceKind(workspaceSummary.workspaceKind)}
+                    {labelCodeWorkspaceKindForLocale(workspaceSummary.workspaceKind, t)}
                   </span>
                 </div>
                 <p>{t(messageKeys.codeBuilderWorkspaceActiveNotice)}</p>

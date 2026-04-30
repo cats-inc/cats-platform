@@ -34,6 +34,13 @@ import { isDirectLaneSummary } from '../../shared/channelTopology.js';
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
 import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
 import {
+  createTranslator,
+  messageKeys,
+  type MessageInterpolationValues,
+  type MessageKey,
+} from '../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import {
   CODE_ROUTE_PREFIX,
   buildCodeCodespacePath,
   isCodeArtifactsPath,
@@ -79,11 +86,16 @@ export interface SidebarProps {
   onOpenArtifacts?: () => void;
 }
 
-function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] {
+type Translate = (key: MessageKey, values?: MessageInterpolationValues) => string;
+
+function createPrimaryActions(
+  props: SidebarProps,
+  t: Translate,
+): ConversationSidebarAction[] {
   const actions: ConversationSidebarAction[] = [
     {
       key: 'new-chat',
-      label: 'New Code',
+      label: t(messageKeys.codeSidebarNewCodeLabel),
       onClick: props.onStartNewChat,
       icon: (
         <svg
@@ -106,7 +118,7 @@ function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] 
   if (props.onStartNewGroupChat) {
     actions.push({
       key: 'new-group-chat',
-      label: 'Team Code',
+      label: t(messageKeys.codeSidebarTeamCodeLabel),
       onClick: props.onStartNewGroupChat,
       icon: (
         <svg
@@ -131,7 +143,7 @@ function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] 
   if (props.onStartNewParallelChat) {
     actions.push({
       key: 'new-parallel-chat',
-      label: 'Peer Code',
+      label: t(messageKeys.codeSidebarPeerCodeLabel),
       onClick: props.onStartNewParallelChat,
       icon: (
         <svg
@@ -159,6 +171,7 @@ function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] 
 function createExtraActionGroups(
   props: SidebarProps,
   workspacesSnapshot: CodeWorkspacesSnapshot,
+  t: Translate,
 ): ConversationSidebarActionGroup[] {
   const currentPath = globalThis.location?.pathname ?? CODE_ROUTE_PREFIX;
   const groups: ConversationSidebarActionGroup[] = [];
@@ -166,11 +179,11 @@ function createExtraActionGroups(
   if (props.onOpenWorkspaces) {
     groups.push({
       key: 'workspaces',
-      ariaLabel: 'Codespaces',
+      ariaLabel: t(messageKeys.codeSidebarCodespacesLabel),
       items: [
         {
           key: 'workspaces',
-          label: 'Codespaces',
+          label: t(messageKeys.codeSidebarCodespacesLabel),
           onClick: props.onOpenWorkspaces,
           active: isCodeCodespacesPath(currentPath),
           icon: (
@@ -197,11 +210,11 @@ function createExtraActionGroups(
   if (props.onOpenArtifacts) {
     groups.push({
       key: 'artifacts',
-      ariaLabel: 'Artifacts',
+      ariaLabel: t(messageKeys.codeSidebarLabelArtifacts),
       items: [
         {
           key: 'artifacts',
-          label: 'Artifacts',
+          label: t(messageKeys.codeSidebarLabelArtifacts),
           onClick: props.onOpenArtifacts,
           active: isCodeArtifactsPath(currentPath),
           icon: (
@@ -228,11 +241,11 @@ function createExtraActionGroups(
   if (props.onOpenRelay) {
     groups.push({
       key: 'relay',
-      ariaLabel: 'Relay',
+      ariaLabel: t(messageKeys.codeSidebarLabelRelay),
       items: [
         {
           key: 'relay',
-          label: 'Relay',
+          label: t(messageKeys.codeSidebarLabelRelay),
           onClick: props.onOpenRelay,
           active: isCodeRelayPath(currentPath),
           icon: (
@@ -263,11 +276,11 @@ function createExtraActionGroups(
   if (props.onOpenBuild) {
     groups.push({
       key: 'build',
-      ariaLabel: 'Build',
+      ariaLabel: t(messageKeys.codeSidebarLabelBuild),
       items: [
         {
           key: 'build',
-          label: 'Build',
+          label: t(messageKeys.codeSidebarLabelBuild),
           onClick: props.onOpenBuild,
           active: isCodeBuildPath(currentPath),
           icon: (
@@ -331,6 +344,7 @@ function buildRecentEntries(props: SidebarProps): ConversationSidebarRecentEntry
 
 export interface CodeSidebarConversationPropsOptions {
   workspacesSnapshot?: CodeWorkspacesSnapshot;
+  t?: Translate;
 }
 
 export type CodeSidebarConversationProps = ConversationSidebarProps<
@@ -345,6 +359,7 @@ export function createCodeSidebarConversationProps(
   options: CodeSidebarConversationPropsOptions = {},
 ): CodeSidebarConversationProps {
   const workspacesSnapshot = options.workspacesSnapshot ?? createEmptyCodeWorkspacesSnapshot();
+  const t = options.t ?? createTranslator('en');
   return {
     payload: props.payload,
     sidebarOpen: props.sidebarOpen,
@@ -355,15 +370,15 @@ export function createCodeSidebarConversationProps(
     shellSurface: props.shellSurface,
     routeChannelId: props.routeChannelId,
     accountMenuRef: props.accountMenuRef,
-    primaryActions: createPrimaryActions(props),
-    extraActionGroups: createExtraActionGroups(props, workspacesSnapshot),
+    primaryActions: createPrimaryActions(props, t),
+    extraActionGroups: createExtraActionGroups(props, workspacesSnapshot, t),
     recentEntries: buildRecentEntries(props),
-    recentEmptyStateLabel: 'No codes yet',
-    myCatsSectionLabel: 'My Clowders',
+    recentEmptyStateLabel: t(messageKeys.codeSidebarNoCodesYetLabel),
+    myCatsSectionLabel: t(messageKeys.codeSidebarMyClowdersLabel),
     myCatsSectionCats: [],
     forceShowMyCatsSection: true,
     myCatsEmptyStatePlaceholder: {
-      label: 'New clowder',
+      label: t(messageKeys.codeSidebarNewClowderLabel),
       onClick: () => undefined,
     },
     helpers: {
@@ -396,9 +411,10 @@ export function createCodeSidebarConversationProps(
 
 export function Sidebar(props: SidebarProps) {
   const workspacesSnapshot = useCodeWorkspaces();
+  const { t } = useI18n();
   return (
     <ConversationSidebar
-      {...createCodeSidebarConversationProps(props, { workspacesSnapshot })}
+      {...createCodeSidebarConversationProps(props, { workspacesSnapshot, t })}
     />
   );
 }

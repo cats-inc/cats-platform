@@ -1,38 +1,37 @@
+import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import type { CodeWorkspaceSummary } from '../../shared/workspaceSummary.js';
 import {
-  labelCodeWorkspaceKind,
-  labelCodeWorkspaceOwnershipState,
-  type CodeWorkspaceSummary,
-} from '../../shared/workspaceSummary.js';
+  describeCodeWorkspaceBindingForLocale,
+  labelCodeWorkspaceKindForLocale,
+  labelCodeWorkspaceOwnershipStateForLocale,
+} from './codeWorkspaceLabels.js';
 
 export interface CodeWorkspaceSummaryPanelProps {
   summary: CodeWorkspaceSummary;
   selectedChannelTitle?: string | null;
 }
 
-function describeWorkspaceBinding(summary: CodeWorkspaceSummary): string {
-  switch (summary.workspaceKind) {
-    case 'conversation_repo':
-      return 'Builder loop is bound to the selected chat repo.';
-    case 'managed_room':
-      return 'Builder loop is bound to the selected room-managed codespace.';
-    default:
-      return 'Builder loop is bound to the owner-selected local folder.';
-  }
-}
-
 export function CodeWorkspaceSummaryPanel({
   summary,
   selectedChannelTitle,
 }: CodeWorkspaceSummaryPanelProps) {
+  const { t } = useI18n();
+  const workspaceKindLabel = labelCodeWorkspaceKindForLocale(summary.workspaceKind, t);
+  const ownershipStateLabel = labelCodeWorkspaceOwnershipStateForLocale(
+    summary.ownershipState,
+    t,
+  );
+
   return (
     <section className="operatorPanel">
       <div className="operatorPanelHeader">
         <div>
-          <p className="operatorEyebrow">Codespace</p>
-          <h2>Binding</h2>
+          <p className="operatorEyebrow">{t(messageKeys.codeWorkspaceSummaryCodespace)}</p>
+          <h2>{t(messageKeys.codeWorkspaceSummaryBinding)}</h2>
         </div>
         <span className="operatorStatusBadge isMuted">
-          {labelCodeWorkspaceKind(summary.workspaceKind)}
+          {workspaceKindLabel}
         </span>
       </div>
 
@@ -40,15 +39,23 @@ export function CodeWorkspaceSummaryPanel({
         <div className="operatorCardHeader">
           <strong>{summary.workspacePath}</strong>
           <span className="operatorStatusBadge isMuted">
-            {labelCodeWorkspaceOwnershipState(summary.ownershipState)}
+            {ownershipStateLabel}
           </span>
         </div>
-        <p>{describeWorkspaceBinding(summary)}</p>
+        <p>{describeCodeWorkspaceBindingForLocale(summary, t)}</p>
         <div className="operatorMetaRow">
-          <span>Kind: {labelCodeWorkspaceKind(summary.workspaceKind)}</span>
-          <span>Ownership: {labelCodeWorkspaceOwnershipState(summary.ownershipState)}</span>
+          <span>
+            {t(messageKeys.codeWorkspaceSummaryKind, { kind: workspaceKindLabel })}
+          </span>
+          <span>
+            {t(messageKeys.codeWorkspaceSummaryOwnership, { ownership: ownershipStateLabel })}
+          </span>
           {selectedChannelTitle && summary.workspaceKind !== 'user_selected' ? (
-            <span>Chat context: {selectedChannelTitle}</span>
+            <span>
+              {t(messageKeys.codeWorkspaceSummaryNoticeConversation, {
+                title: selectedChannelTitle,
+              })}
+            </span>
           ) : null}
         </div>
       </article>
