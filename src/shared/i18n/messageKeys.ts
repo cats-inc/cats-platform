@@ -1044,6 +1044,10 @@ export const messageKeys = {
   chatSidePanelRunStatusUnavailableTitle: 'chat.sidePanel.runStatusUnavailableTitle',
   chatSidePanelLoadingTitle: 'chat.sidePanel.loadingTitle',
   chatSidePanelOperatorLoadingState: 'chat.sidePanel.operatorLoadingState',
+  chatCatStatusCompactActiveLabel: 'chat.catStatus.compact.activeLabel',
+  chatCatStatusCompactNeedAttentionLabel:
+    'chat.catStatus.compact.needAttentionLabel',
+  chatCatStatusCompactSleepingLabel: 'chat.catStatus.compact.sleepingLabel',
   chatCompanionWorkspaceRetryLabel: 'chat.companionWorkspace.retryLabel',
   chatCompanionWorkspaceNoSelectionState: 'chat.companionWorkspace.noSelectionState',
   chatCompanionWorkspaceSubscriptionDisabledTooltip:

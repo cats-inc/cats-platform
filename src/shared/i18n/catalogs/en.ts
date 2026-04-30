@@ -1050,6 +1050,9 @@ export const enCatalog: MessageCatalog = {
   'chat.sidePanel.runStatusUnavailableTitle': 'Status unavailable',
   'chat.sidePanel.loadingTitle': 'Loading',
   'chat.sidePanel.operatorLoadingState': 'Loading approvals, activity, and run details.',
+  'chat.catStatus.compact.activeLabel': 'active',
+  'chat.catStatus.compact.needAttentionLabel': 'need attention',
+  'chat.catStatus.compact.sleepingLabel': 'sleeping',
   'chat.companionWorkspace.retryLabel': 'Retry',
   'chat.companionWorkspace.noSelectionState': 'No selection.',
   'chat.companionWorkspace.subscriptionDisabledTooltip':

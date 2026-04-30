@@ -1,5 +1,7 @@
 import type { CatStatusIndicator } from '../../shared/catStatusResolution.js';
 import { catInitials } from '../chatUtils.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
 export interface CatStatusRowProps {
   indicators: CatStatusIndicator[];
@@ -19,6 +21,7 @@ function statusDotClass(status: CatStatusIndicator['status']): string {
 }
 
 export function CatStatusRow({ indicators, onInspect }: CatStatusRowProps) {
+  const { t } = useI18n();
   if (indicators.length === 0) return null;
 
   const showCompact = indicators.length > 3;
@@ -34,17 +37,17 @@ export function CatStatusRow({ indicators, onInspect }: CatStatusRowProps) {
       <div className="catStatusRow catStatusRowCompact">
         {activeCount > 0 && (
           <span className="catStatusCompactBadge catStatusCompactActive">
-            {activeCount} active
+            {activeCount} {t(messageKeys.chatCatStatusCompactActiveLabel)}
           </span>
         )}
         {blockedCount > 0 && (
           <span className="catStatusCompactBadge catStatusCompactBlocked">
-            {blockedCount} need attention
+            {blockedCount} {t(messageKeys.chatCatStatusCompactNeedAttentionLabel)}
           </span>
         )}
         {sleepingCount > 0 && (
           <span className="catStatusCompactBadge catStatusCompactSleeping">
-            {sleepingCount} sleeping
+            {sleepingCount} {t(messageKeys.chatCatStatusCompactSleepingLabel)}
           </span>
         )}
       </div>

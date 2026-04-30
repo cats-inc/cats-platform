@@ -1017,6 +1017,9 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.sidePanel.runStatusUnavailableTitle': '狀態無法取得',
   'chat.sidePanel.loadingTitle': '載入中',
   'chat.sidePanel.operatorLoadingState': '正在載入審批、活動與執行詳情。',
+  'chat.catStatus.compact.activeLabel': '運作中',
+  'chat.catStatus.compact.needAttentionLabel': '需要注意',
+  'chat.catStatus.compact.sleepingLabel': '睡眠中',
   'chat.companionWorkspace.retryLabel': '重試',
   'chat.companionWorkspace.noSelectionState': '尚未選取。',
   'chat.companionWorkspace.subscriptionDisabledTooltip':
