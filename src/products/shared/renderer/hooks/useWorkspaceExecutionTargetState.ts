@@ -621,7 +621,8 @@ export function useWorkspaceExecutionTargetState<
       mergeExecutionTargetValue(currentSoloChannelExecutionTarget, nextSoloChannelExecutionTarget));
   }, [
     readySelectedChannel?.id,
-    readySelectedChannel,
+    readySelectedChannel?.channelKind,
+    readySelectedChannel?.roomRouting?.mode,
     readySelectedChannel?.pendingProvider,
     readySelectedChannel?.pendingModel,
     readySelectedChannel?.pendingInstance,
@@ -711,7 +712,9 @@ export function useWorkspaceExecutionTargetState<
       cancelled = true;
     };
   }, [
-    readySelectedChannel,
+    readySelectedChannel?.id,
+    readySelectedChannel?.channelKind,
+    readySelectedChannel?.roomRouting?.mode,
     soloChannelExecutionTargetReconcileSignature,
     state.status,
   ]);
@@ -881,8 +884,17 @@ export function useWorkspaceExecutionTargetState<
     };
   }, [
     debounceMs,
-    readyChat,
-    readySelectedChannel,
+    readyChat?.globalOrchestrator.executionTarget.provider,
+    readyChat?.globalOrchestrator.executionTarget.model,
+    readyChat?.globalOrchestrator.executionTarget.instance,
+    readyChat?.globalOrchestrator.executionModelSelection,
+    readySelectedChannel?.id,
+    readySelectedChannel?.channelKind,
+    readySelectedChannel?.roomRouting?.mode,
+    readySelectedChannel?.pendingProvider,
+    readySelectedChannel?.pendingModel,
+    readySelectedChannel?.pendingInstance,
+    readySelectedChannel?.pendingModelSelection,
     setFeedback,
     setState,
     soloChannelExecutionTarget.instance,
