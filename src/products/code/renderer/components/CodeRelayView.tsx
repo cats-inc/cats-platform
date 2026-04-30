@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { sameProviderModelSelection } from '../../../../shared/providerSelection.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
 
 import {
   createCodeRelayThread,
@@ -22,13 +24,17 @@ interface CodeRelayViewProps {
   selectedChannelContext?: CodeRelaySelectedChannelContext | null;
 }
 
-function formatTimestamp(value: string | null): string {
+function formatTimestamp(
+  value: string | null,
+  locale: string,
+  t: ReturnType<typeof useI18n>['t'],
+): string {
   if (!value) {
-    return 'Not recorded';
+    return t(messageKeys.codeRelayNotRecorded);
   }
 
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
+  return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString(locale);
 }
 
 function relayStatusBadgeClass(status: string): string {
@@ -67,12 +73,13 @@ function selectedRosterIds(entries: CodeRelayRosterEntryPayload[]): string[] {
 }
 
 export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewProps) {
+  const { locale, t } = useI18n();
   const [payload, setPayload] = useState<CodeRelayThreadsPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
-  const [createTitle, setCreateTitle] = useState('New relay thread');
+  const [createTitle, setCreateTitle] = useState(() => t(messageKeys.codeRelayDefaultThreadTitle));
   const [createObjective, setCreateObjective] = useState('');
   const [createRepoPath, setCreateRepoPath] = useState('');
   const [fanOutObjective, setFanOutObjective] = useState('');
@@ -99,7 +106,7 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
     try {
       applyThreadsPayload(await fetchCodeRelayThreads(), nextSelectedThreadId);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Failed to load relay threads.');
+      setError(loadError instanceof Error ? loadError.message : t(messageKeys.codeRelayErrorThreadLoadFailed));
     } finally {
       setLoading(false);
     }
@@ -109,7 +116,9 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
     try {
       applyThreadsPayload(await fetchCodeRelayThreads(), nextSelectedThreadId);
     } catch (loadError) {
-      setError(loadError instanceof Error ? loadError.message : 'Failed to refresh relay threads.');
+      setError(loadError instanceof Error
+        ? loadError.message
+        : t(messageKeys.codeRelayErrorThreadRefreshFailed));
     }
   }
 
@@ -153,13 +162,13 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
       ),
     );
     if (!fanOutObjective.trim()) {
-      setFanOutObjective(selectedThread.thread.summary ?? 'Open discovery round');
+      setFanOutObjective(selectedThread.thread.summary ?? t(messageKeys.codeRelayOpenDiscoveryRound));
     }
-  }, [selectedThread]);
+  }, [fanOutObjective, selectedThread, t]);
 
   async function handleCreateThread(): Promise<void> {
     if (!createTitle.trim()) {
-      setError('Thread title is required.');
+      setError(t(messageKeys.codeRelayErrorThreadTitleRequired));
       return;
     }
 
@@ -172,9 +181,11 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
         repoPath: createRepoPath.trim() || null,
       }));
       setFanOutPrompt('');
-      setFanOutObjective(createObjective.trim() || 'Open discovery round');
+      setFanOutObjective(createObjective.trim() || t(messageKeys.codeRelayOpenDiscoveryRound));
     } catch (createError) {
-      setError(createError instanceof Error ? createError.message : 'Failed to create relay thread.');
+      setError(createError instanceof Error
+        ? createError.message
+        : t(messageKeys.codeRelayErrorThreadCreateFailed));
     } finally {
       setBusy('');
     }
@@ -203,7 +214,9 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
         selectedThreadId,
       );
     } catch (patchError) {
-      setError(patchError instanceof Error ? patchError.message : 'Failed to update relay roster.');
+      setError(patchError instanceof Error
+        ? patchError.message
+        : t(messageKeys.codeRelayErrorRosterUpdateFailed));
     } finally {
       setBusy('');
     }
@@ -240,15 +253,15 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
 
   async function handleFanOut(): Promise<void> {
     if (!selectedThreadId) {
-      setError('Create or select a relay thread first.');
+      setError(t(messageKeys.codeRelayErrorThreadRequired));
       return;
     }
     if (!fanOutPrompt.trim()) {
-      setError('Fan out prompt is required.');
+      setError(t(messageKeys.codeRelayErrorFanOutPromptRequired));
       return;
     }
     if (selectedAgentIds.length === 0) {
-      setError('Select at least one agent.');
+      setError(t(messageKeys.codeRelayErrorAgentRequired));
       return;
     }
 
@@ -257,12 +270,12 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
     try {
       applyThreadsPayload(await runCodeRelayFanOut(selectedThreadId, {
         mode: 'discover',
-        objective: fanOutObjective.trim() || 'Open discovery round',
+        objective: fanOutObjective.trim() || t(messageKeys.codeRelayOpenDiscoveryRound),
         prompt: fanOutPrompt.trim(),
         agentIds: selectedAgentIds,
       }), selectedThreadId);
     } catch (fanOutError) {
-      setError(fanOutError instanceof Error ? fanOutError.message : 'Failed to run relay fan-out.');
+      setError(fanOutError instanceof Error ? fanOutError.message : t(messageKeys.codeRelayErrorRelayFailed));
     } finally {
       setBusy('');
     }
@@ -271,7 +284,7 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
   return (
     <div className="codeRelayView">
       <div className="codeBuilderHeader">
-        <h1 className="codeBuilderTitle">Code Relay</h1>
+        <h1 className="codeBuilderTitle">{t(messageKeys.codeRelayTitle)}</h1>
         <div className="codeRelayHeaderActions">
           <button
             type="button"
@@ -279,7 +292,7 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
             onClick={() => { void loadThreads(selectedThreadId); }}
             disabled={loading || busy.length > 0}
           >
-            Refresh
+            {t(messageKeys.codeRelayActionRefresh)}
           </button>
         </div>
       </div>
@@ -291,8 +304,8 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
       <section className="operatorPanel">
         <div className="operatorPanelHeader">
           <div>
-            <p className="operatorEyebrow">Phase 0</p>
-            <h2>Connector Contract</h2>
+            <p className="operatorEyebrow">{t(messageKeys.codeRelayLabelPhase0)}</p>
+            <h2>{t(messageKeys.codeRelayTitleConnectorContract)}</h2>
           </div>
           {payload?.contract ? (
             <span className="operatorStatusBadge isMuted">{payload.contract.version}</span>
@@ -300,25 +313,25 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
         </div>
         <article className="operatorCard">
           <div className="operatorCardHeader">
-            <strong>Runtime provider surface</strong>
+            <strong>{t(messageKeys.codeRelayLabelRuntimeProviderSurface)}</strong>
             <span className="operatorStatusBadge isMuted">
-              {payload?.contract.transport ?? 'runtime_session_bridge'}
+              {payload?.contract.transport ?? t(messageKeys.codeRelayTransportUnknown)}
             </span>
           </div>
-          <p>{payload?.contract.supportedProviders.join(', ') || 'Loading connector contract...'}</p>
+          <p>{payload?.contract.supportedProviders.join(', ') || t(messageKeys.codeRelayLabelContractLoading)}</p>
         </article>
       </section>
 
       <section className="operatorPanel">
         <div className="operatorPanelHeader">
           <div>
-            <p className="operatorEyebrow">Phase 1</p>
-            <h2>Project Thread</h2>
+            <p className="operatorEyebrow">{t(messageKeys.codeRelayLabelPhase1)}</p>
+            <h2>{t(messageKeys.codeRelayTitleProjectThread)}</h2>
           </div>
         </div>
         <div className="codeBuilderForm">
           <label className="codeBuilderLabel">
-            Thread title
+            {t(messageKeys.codeRelayLabelThreadTitle)}
             <input
               className="codeBuilderInput"
               type="text"
@@ -327,23 +340,23 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
             />
           </label>
           <label className="codeBuilderLabel">
-            Objective
+            {t(messageKeys.codeRelayLabelObjective)}
             <textarea
               className="codeBuilderTextarea"
               rows={3}
               value={createObjective}
               onChange={(event) => setCreateObjective(event.target.value)}
-              placeholder="What are we trying to decide or build?"
+              placeholder={t(messageKeys.codeRelayPlaceholderObjective)}
             />
           </label>
           <label className="codeBuilderLabel">
-            Repo path
+            {t(messageKeys.codeRelayLabelRepoPath)}
             <input
               className="codeBuilderInput"
               type="text"
               value={createRepoPath}
               onChange={(event) => setCreateRepoPath(event.target.value)}
-              placeholder="Optional local repo binding"
+              placeholder={t(messageKeys.codeRelayPlaceholderOptionalRepo)}
             />
           </label>
           <div className="codeBuilderFormRow">
@@ -353,10 +366,16 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
               onClick={() => { void handleCreateThread(); }}
               disabled={busy === 'create-thread'}
             >
-              {busy === 'create-thread' ? 'Creating...' : 'Create relay thread'}
+              {busy === 'create-thread'
+                ? t(messageKeys.codeRelayLabelCreate)
+                : t(messageKeys.codeRelayActionCreateRelayThread)}
             </button>
             {selectedChannelContext?.title ? (
-              <span className="codeRelayHint">Current chat: {selectedChannelContext.title}</span>
+              <span className="codeRelayHint">
+                {t(messageKeys.codeRelayLabelCurrentChat, {
+                  title: selectedChannelContext.title,
+                })}
+              </span>
             ) : null}
           </div>
         </div>
@@ -365,7 +384,7 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
       {loading ? (
         <section className="operatorPanel">
           <div className="operatorPanelHeader">
-            <h2>Loading relay codespace...</h2>
+            <h2>{t(messageKeys.codeRelayLabelLoading)}</h2>
           </div>
         </section>
       ) : null}
@@ -375,13 +394,13 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
           <section className="operatorPanel">
             <div className="operatorPanelHeader">
               <div>
-                <p className="operatorEyebrow">Resume</p>
-                <h2>Thread Shell</h2>
+                <p className="operatorEyebrow">{t(messageKeys.codeBuilderResumePrompt)}</p>
+                <h2>{t(messageKeys.codeRelayLabelThreadShell)}</h2>
               </div>
             </div>
             <div className="codeBuilderForm">
               <label className="codeBuilderLabel">
-                Active thread
+                {t(messageKeys.codeRelayLabelActiveThread)}
                 <select
                   className="codeBuilderInput"
                   value={selectedThreadId ?? ''}
@@ -403,11 +422,25 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
                       {selectedThread.thread.status}
                     </span>
                   </div>
-                  <p>{selectedThread.thread.summary ?? 'No objective recorded yet.'}</p>
+                  <p>{selectedThread.thread.summary ?? t(messageKeys.codeRelayNoObjective)}</p>
                   <div className="codeRelayMetaRow">
-                    <span>Repo: {selectedThread.thread.repoPath ?? 'Not bound'}</span>
-                    <span>Updated: {formatTimestamp(selectedThread.thread.updatedAt)}</span>
-                    <span>Proven: {selectedThread.provenProviderIds.join(', ') || 'none yet'}</span>
+                    <span>
+                      {t(messageKeys.codeRelayLabelRepoPath, {
+                        repoPath: selectedThread.thread.repoPath
+                          ?? t(messageKeys.codeRelayLabelRepoNoBound),
+                      })}
+                    </span>
+                    <span>
+                      {t(messageKeys.codeRelayLabelUpdated, {
+                        updatedAt: formatTimestamp(selectedThread.thread.updatedAt, locale, t),
+                      })}
+                    </span>
+                    <span>
+                      {t(messageKeys.codeRelayLabelProven, {
+                        providers: selectedThread.provenProviderIds.join(', ')
+                          || t(messageKeys.codeRelayLabelNoneYet),
+                      })}
+                    </span>
                   </div>
                 </article>
               ) : null}
@@ -419,8 +452,8 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
               <section className="operatorPanel">
                 <div className="operatorPanelHeader">
                   <div>
-                    <p className="operatorEyebrow">Roster</p>
-                    <h2>Agent Roster</h2>
+                    <p className="operatorEyebrow">{t(messageKeys.codeRelayLabelPhaseRoster)}</p>
+                    <h2>{t(messageKeys.codeRelayLabelRoster)}</h2>
                   </div>
                 </div>
                 <div className="codeRelayRosterGrid">
@@ -432,10 +465,17 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
                           {entry.availability}
                         </span>
                       </div>
-                      <p>{entry.availabilitySummary ?? `${entry.provider}:${entry.instance ?? 'default'}`}</p>
+                      <p>
+                        {entry.availabilitySummary
+                          ?? `${entry.provider}:${entry.instance ?? t(messageKeys.codeRelayLabelDefault)}`}
+                      </p>
                       <div className="codeRelayMetaRow">
-                        <span>Model: {entry.model ?? 'default'}</span>
-                        <span>Role: {entry.recentRole}</span>
+                        <span>
+                          {t(messageKeys.codeRelayLabelModel, {
+                            model: entry.model ?? t(messageKeys.codeRelayLabelDefault),
+                          })}
+                        </span>
+                        <span>{t(messageKeys.codeRelayLabelRole, { role: entry.recentRole })}</span>
                       </div>
                       <div
                         className="codeRelayProviderFields"
@@ -460,10 +500,10 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
                           }}
                           disabled={busy === `roster:${entry.id}`}
                         />
-                        <span>Enabled</span>
+                        <span>{t(messageKeys.codeRelayLabelEnabled)}</span>
                       </label>
                       <label className="codeBuilderLabel">
-                        Quota note
+                        {t(messageKeys.codeRelayLabelQuotaNote)}
                         <input
                           className="codeBuilderInput"
                           type="text"
@@ -483,7 +523,7 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
                               quotaNote: normalized,
                             });
                           }}
-                          placeholder="Optional advisory note"
+                          placeholder={t(messageKeys.codeRelayPlaceholderQuotaNote)}
                         />
                       </label>
                     </article>
@@ -494,13 +534,13 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
               <section className="operatorPanel">
                 <div className="operatorPanelHeader">
                   <div>
-                    <p className="operatorEyebrow">Fan-Out</p>
-                    <h2>Parallel Prompt</h2>
+                    <p className="operatorEyebrow">{t(messageKeys.codeRelayLabelPhaseFanOut)}</p>
+                    <h2>{t(messageKeys.codeRelayModeParallelPrompt)}</h2>
                   </div>
                 </div>
                 <div className="codeBuilderForm">
                   <label className="codeBuilderLabel">
-                    Round objective
+                    {t(messageKeys.codeRelayLabelRoundObjective)}
                     <input
                       className="codeBuilderInput"
                       type="text"
@@ -509,13 +549,13 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
                     />
                   </label>
                   <label className="codeBuilderLabel">
-                    Fan out prompt
+                    {t(messageKeys.codeRelayLabelRoundPrompt)}
                     <textarea
                       className="codeBuilderTextarea"
                       rows={5}
                       value={fanOutPrompt}
                       onChange={(event) => setFanOutPrompt(event.target.value)}
-                      placeholder="Ask the same requirement question to multiple coding agents."
+                      placeholder={t(messageKeys.codeRelayPlaceholderFanOutPrompt)}
                     />
                   </label>
                   <div className="codeRelayAgentChecklist">
@@ -544,7 +584,9 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
                       onClick={() => { void handleFanOut(); }}
                       disabled={busy === 'fan-out'}
                     >
-                      {busy === 'fan-out' ? 'Dispatching...' : 'Fan out to selected agents'}
+                      {busy === 'fan-out'
+                        ? t(messageKeys.codeRelayActionDispatching)
+                        : t(messageKeys.codeRelayActionFanOutSelected)}
                     </button>
                   </div>
                 </div>
@@ -553,18 +595,20 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
               <section className="operatorPanel">
                 <div className="operatorPanelHeader">
                   <div>
-                    <p className="operatorEyebrow">Timeline</p>
-                    <h2>Rounds</h2>
+                    <p className="operatorEyebrow">{t(messageKeys.codeRelayLabelRoundTimeline)}</p>
+                    <h2>{t(messageKeys.codeRelayLabelRounds)}</h2>
                   </div>
                 </div>
                 <div className="codeRelayRounds">
                   {selectedThread.rounds.length === 0 ? (
                     <article className="operatorCard">
                       <div className="operatorCardHeader">
-                        <strong>No rounds yet</strong>
-                        <span className="operatorStatusBadge isMuted">waiting</span>
+                        <strong>{t(messageKeys.codeRelayLabelNoRounds)}</strong>
+                        <span className="operatorStatusBadge isMuted">
+                          {t(messageKeys.codeRelayLabelStatusWaiting)}
+                        </span>
                       </div>
-                      <p>Use the fan-out form above to open the first discovery round.</p>
+                      <p>{t(messageKeys.codeRelayNoRoundsHint)}</p>
                     </article>
                   ) : selectedThread.rounds.map((round) => (
                     <article key={round.id} className="operatorCard codeRelayRoundCard">
@@ -574,9 +618,17 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
                       </div>
                       <p>{round.prompt}</p>
                       <div className="codeRelayMetaRow">
-                        <span>Mode: {round.mode}</span>
-                        <span>Started: {formatTimestamp(round.startedAt)}</span>
-                        <span>Ended: {formatTimestamp(round.endedAt)}</span>
+                        <span>{t(messageKeys.codeRelayLabelMode, { mode: round.mode })}</span>
+                        <span>
+                          {t(messageKeys.codeRelayLabelStarted, {
+                            startedAt: formatTimestamp(round.startedAt, locale, t),
+                          })}
+                        </span>
+                        <span>
+                          {t(messageKeys.codeRelayLabelEnded, {
+                            endedAt: formatTimestamp(round.endedAt, locale, t),
+                          })}
+                        </span>
                       </div>
                       <div className="codeRelayDispatchList">
                         {round.dispatches.map((dispatch) => {
@@ -594,7 +646,8 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
                               {responseMessage ? (
                                 <div className="codeRelayMessageBlock">
                                   <p className="codeRelayMessageMeta">
-                                    {responseMessage.authorKind} · {formatTimestamp(responseMessage.createdAt)}
+                                    {responseMessage.authorKind} ·{' '}
+                                    {formatTimestamp(responseMessage.createdAt, locale, t)}
                                   </p>
                                   <pre className="codeRelayMessageBody">{responseMessage.content}</pre>
                                 </div>
@@ -604,7 +657,7 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
                                 className="operatorActionButton"
                                 disabled
                               >
-                                Relay to others (Phase 2)
+                                {t(messageKeys.codeRelayLabelRelayToOthers)}
                               </button>
                             </div>
                           );
