@@ -1,6 +1,8 @@
 import { useEffect, useRef, type FormEvent } from 'react';
 
 import { CatCreationFields } from '../../../../../design/components/CatCreationFields.js';
+import { messageKeys } from '../../../../../shared/i18n/messageKeys.js';
+import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import {
   fetchAdvancedProviderModels,
   fetchProviderModels,
@@ -41,6 +43,7 @@ export function SettingsCatsCreateForm({
   onExpandChange,
   embedded,
 }: SettingsCatsCreateFormProps) {
+  const { t } = useI18n();
   const formRef = useRef<HTMLFormElement>(null);
   const isCollapsedCta = collapsible && !expanded;
   useEffect(() => {
@@ -77,9 +80,11 @@ export function SettingsCatsCreateForm({
             </svg>
           </span>
           <span className="catsCreateCtaLabel">
-            <strong>New cat</strong>
+            <strong>{t(messageKeys.sharedCatsCreateNewCat)}</strong>
             <span className="catsCreateCtaHint">
-              {atCatLimit ? 'Cat limit reached' : 'Add a new cat to your roster'}
+              {atCatLimit
+                ? t(messageKeys.sharedCatsCreateCatLimitReached)
+                : t(messageKeys.sharedCatsCreateAddNewCatHint)}
             </span>
           </span>
         </button>
@@ -108,7 +113,7 @@ export function SettingsCatsCreateForm({
             model: target.model,
             modelSelection: target.modelSelection ?? null,
           })}
-        namePlaceholder="Cat name"
+        namePlaceholder={t(messageKeys.sharedCatsCreateCatNamePlaceholder)}
         autoFocusName={autoFocusName}
         makeBoss={catForm.makeBoss}
         onMakeBossChange={(makeBoss) => onCatFormChange({ ...catForm, makeBoss })}
@@ -127,7 +132,7 @@ export function SettingsCatsCreateForm({
             className="secondaryButton"
             onClick={() => onExpandChange?.(false)}
           >
-            Cancel
+            {t(messageKeys.sharedCatsCreateCancel)}
           </button>
         ) : null}
         <button
@@ -135,7 +140,9 @@ export function SettingsCatsCreateForm({
           disabled={!catForm.name.trim() || !catForm.provider.trim() || !catForm.model.trim() || atCatLimit}
           type="submit"
         >
-          {isCatBusy(busy, 'create') ? 'Saving...' : 'Save Cat'}
+          {isCatBusy(busy, 'create')
+            ? t(messageKeys.sharedCatsCreateSaving)
+            : t(messageKeys.sharedCatsCreateSaveCat)}
         </button>
       </div>
     </form>
@@ -149,15 +156,15 @@ export function SettingsCatsCreateForm({
     <section className="contentCard contentCardForm catsCreateCard">
       <div className="contentCardHeader">
         <div>
-          <p className="sectionLabel">Create</p>
-          <h2>New cat</h2>
+          <p className="sectionLabel">{t(messageKeys.sharedCatsCreateCreateSection)}</p>
+          <h2>{t(messageKeys.sharedCatsCreateNewCat)}</h2>
         </div>
         {collapsible ? (
           <button
             type="button"
             className="iconButton catsCreateClose"
             onClick={() => onExpandChange?.(false)}
-            aria-label="Cancel"
+            aria-label={t(messageKeys.sharedCatsCreateCancel)}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <line x1="18" y1="6" x2="6" y2="18" />
