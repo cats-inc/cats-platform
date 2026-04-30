@@ -9,6 +9,10 @@ import {
 // importing the full RuntimeSetupReadModel type from src/ because the desktop
 // host tsconfig is rooted under desktop/host/ and cannot reach src/.
 export interface RuntimeCliInventoryProbe {
+  state?: {
+    status?: 'pending' | 'scanning' | 'ready' | 'applied' | 'error' | string;
+    error?: string | null;
+  } | null;
   scan: {
     scannedAt?: string | null;
     providers: Array<{ provider: string; available: boolean }>;

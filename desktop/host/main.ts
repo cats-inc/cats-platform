@@ -187,6 +187,8 @@ let latestBootstrapError: string | null = null;
 let latestCliInventoryError: DesktopCliInventoryError | null = null;
 let lateReadyRecoveryPromise: Promise<void> | null = null;
 let retryCliScanPromise: Promise<DesktopBootstrapSnapshot> | null = null;
+let runtimeCliInventoryPollTimer: ReturnType<typeof setTimeout> | null = null;
+let runtimeCliInventoryScanPending = false;
 let shuttingDown = false;
 let shutdownPromise: Promise<void> | null = null;
 let exitingAfterShutdown = false;
@@ -211,6 +213,7 @@ let voiceCaptureController: DesktopVoiceCaptureController | null = null;
 const RUNTIME_SETUP_STATE_TIMEOUT_MS = 2_000;
 const RUNTIME_SETUP_SCAN_TIMEOUT_MS = 30_000;
 const RUNTIME_BOOTSTRAP_SETUP_SCAN_TIMEOUT_MS = 8_000;
+const RUNTIME_CLI_INVENTORY_POLL_INTERVAL_MS = 2_000;
 const RUNTIME_PROVIDER_DIAGNOSTICS_TIMEOUT_MS = 5_000;
 const BOOTSTRAP_CLI_INVENTORY_FAILURE_SUMMARY =
   'Cats could not confirm the local CLI inventory. Retry the startup check.';
@@ -227,6 +230,39 @@ function createCliInventoryScanFailedError(): DesktopCliInventoryError {
     kind: 'scan_failed',
     summary: BOOTSTRAP_CLI_INVENTORY_FAILURE_SUMMARY,
   };
+}
+
+function isRuntimeCliInventoryScanActive(probe: RuntimeCliInventoryProbe | null): boolean {
+  return probe?.state?.status === 'scanning';
+}
+
+function isRuntimeCliInventoryScanErrored(probe: RuntimeCliInventoryProbe | null): boolean {
+  return probe?.state?.status === 'error';
+}
+
+function rememberRuntimeCliInventoryProbe(probe: RuntimeCliInventoryProbe | null): boolean {
+  if (!probe) {
+    return false;
+  }
+  if (probe.scan) {
+    latestCliInventoryProbe = probe;
+    runtimeCliInventoryScanPending = false;
+    clearCliInventoryError();
+    return true;
+  }
+  if (isRuntimeCliInventoryScanActive(probe)) {
+    runtimeCliInventoryScanPending = true;
+  } else if (probe.state) {
+    runtimeCliInventoryScanPending = false;
+  }
+  return false;
+}
+
+function clearRuntimeCliInventoryPoll(): void {
+  if (runtimeCliInventoryPollTimer) {
+    clearTimeout(runtimeCliInventoryPollTimer);
+    runtimeCliInventoryPollTimer = null;
+  }
 }
 
 interface ProductBootstrapDiagnosticsPayload {
@@ -1048,6 +1084,9 @@ function shouldRefreshRuntimeCliInventoryProbe(
   if (options.triggerScanIfMissing !== true) {
     return false;
   }
+  if (runtimeCliInventoryScanPending || isRuntimeCliInventoryScanActive(probe)) {
+    return false;
+  }
   if (!probe?.scan) {
     return true;
   }
@@ -1066,7 +1105,8 @@ async function fetchRuntimeCliInventoryProbe(
   const setupStateTimeoutMs = options.setupStateTimeoutMs ?? RUNTIME_SETUP_STATE_TIMEOUT_MS;
   const scanTimeoutMs = options.scanTimeoutMs ?? RUNTIME_SETUP_SCAN_TIMEOUT_MS;
   let probe: RuntimeCliInventoryProbe | null = null;
-  if (!options.forceRescan) {
+  const shouldReadSetupStateFirst = !options.forceRescan || runtimeCliInventoryScanPending;
+  if (shouldReadSetupStateFirst) {
     try {
       probe = await fetchJsonWithTimeout<RuntimeCliInventoryProbe>(`${baseUrl}/setup-state`, {
         method: 'GET',
@@ -1076,20 +1116,29 @@ async function fetchRuntimeCliInventoryProbe(
         return null;
       }
     }
-    if (!shouldRefreshRuntimeCliInventoryProbe(probe, options)) {
+    if (probe?.scan || isRuntimeCliInventoryScanActive(probe)) {
+      return probe;
+    }
+    if (runtimeCliInventoryScanPending) {
+      return probe;
+    }
+    if (!options.forceRescan && !shouldRefreshRuntimeCliInventoryProbe(probe, options)) {
       return probe;
     }
   }
   // Trigger a fresh scan (none cached before setup, cached zero CLIs, or caller
-  // forced rescan after install/uninstall). 12 providers in parallel via runtime's
-  // BootstrapService light probe mode — typically under ~500ms.
+  // forced rescan after install/uninstall). The runtime exposes scan progress
+  // through /setup-state, so a host-side HTTP timeout means "poll later", not
+  // "startup failed".
   try {
+    runtimeCliInventoryScanPending = true;
     const scanResponse = await fetchWithTimeout(`${baseUrl}/setup-scan`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', accept: 'application/json' },
       body: JSON.stringify({ manual: false }),
     }, scanTimeoutMs);
     if (!scanResponse.ok) {
+      runtimeCliInventoryScanPending = false;
       return probe;
     }
   } catch {
@@ -1174,7 +1223,7 @@ async function refreshBootstrapSnapshot(
     fetchJson<RuntimeDiagnosticsHealthPayload | ReadinessPayload>(`${hostConfig.runtimeBaseUrl}/health`),
     fetchJson<ProductBootstrapDiagnosticsPayload>(`${hostConfig.appBaseUrl}/api/platform/bootstrap-diagnostics`),
     fetchRuntimeCliInventoryProbe(hostConfig.runtimeBaseUrl, {
-      triggerScanIfMissing: !setupCompleted,
+      triggerScanIfMissing: false,
       scanTimeoutMs: setupCompleted
         ? RUNTIME_SETUP_SCAN_TIMEOUT_MS
         : RUNTIME_BOOTSTRAP_SETUP_SCAN_TIMEOUT_MS,
@@ -1190,9 +1239,8 @@ async function refreshBootstrapSnapshot(
   if (runtimeHealth.status === 'fulfilled') {
     latestRuntimeHealthPayload = runtimeHealth.value;
   }
-  if (cliInventoryProbe.status === 'fulfilled' && cliInventoryProbe.value?.scan) {
-    latestCliInventoryProbe = cliInventoryProbe.value;
-    clearCliInventoryError();
+  if (cliInventoryProbe.status === 'fulfilled') {
+    rememberRuntimeCliInventoryProbe(cliInventoryProbe.value);
   }
 
   if (diagnosticsState && productDiagnostics.status === 'fulfilled') {
@@ -1285,6 +1333,49 @@ function scheduleBackgroundSetupAudit(
 
 const BACKGROUND_CLI_SCAN_BACKOFF_MS = [2_000, 4_000];
 
+function scheduleRuntimeCliInventoryPoll(options: {
+  setupCompleted: boolean;
+  delayMs?: number;
+}): void {
+  if (!hostConfig || runtimeCliInventoryPollTimer || shuttingDown) {
+    return;
+  }
+  runtimeCliInventoryPollTimer = setTimeout(() => {
+    runtimeCliInventoryPollTimer = null;
+    void pollRuntimeCliInventory(options).catch((error) => {
+      process.stderr.write(
+        `Background CLI inventory poll failed: ${error instanceof Error ? error.message : String(error)}\n`,
+      );
+      scheduleRuntimeCliInventoryPoll(options);
+    });
+  }, options.delayMs ?? RUNTIME_CLI_INVENTORY_POLL_INTERVAL_MS);
+}
+
+async function pollRuntimeCliInventory(options: {
+  setupCompleted: boolean;
+}): Promise<void> {
+  if (!hostConfig) return;
+  const probe = await fetchRuntimeCliInventoryProbe(hostConfig.runtimeBaseUrl, {
+    triggerScanIfMissing: !runtimeCliInventoryScanPending,
+    scanTimeoutMs: options.setupCompleted
+      ? RUNTIME_SETUP_SCAN_TIMEOUT_MS
+      : RUNTIME_BOOTSTRAP_SETUP_SCAN_TIMEOUT_MS,
+  });
+  if (rememberRuntimeCliInventoryProbe(probe)) {
+    const snapshot = publishSnapshot(buildSnapshot());
+    scheduleBackgroundSetupAudit(snapshot, latestPersistedSetupState);
+    await maybeOpenApp(snapshot);
+    return;
+  }
+  if (isRuntimeCliInventoryScanErrored(probe)) {
+    latestCliInventoryError = createCliInventoryScanFailedError();
+    const snapshot = publishSnapshot(buildSnapshot());
+    scheduleBackgroundSetupAudit(snapshot, latestPersistedSetupState);
+    return;
+  }
+  scheduleRuntimeCliInventoryPoll(options);
+}
+
 async function retryCliInventoryScanInBackground(options: {
   forceRescan: boolean;
   setupCompleted: boolean;
@@ -1304,12 +1395,11 @@ async function retryCliInventoryScanInBackground(options: {
     } catch {
       probe = null;
     }
-    if (probe?.scan) {
-      latestCliInventoryProbe = probe;
-      clearCliInventoryError();
+    if (rememberRuntimeCliInventoryProbe(probe)) {
       try {
         const snapshot = publishSnapshot(buildSnapshot());
         scheduleBackgroundSetupAudit(snapshot, latestPersistedSetupState);
+        await maybeOpenApp(snapshot);
       } catch {
         // host may have shut down; ignore
       }
@@ -1321,13 +1411,9 @@ async function retryCliInventoryScanInBackground(options: {
     }
   }
   if (!options.setupCompleted && latestSnapshot && isDesktopBootstrapLoadingPhase(latestSnapshot.phase)) {
-    latestCliInventoryError = createCliInventoryScanFailedError();
-    try {
-      const snapshot = publishSnapshot(buildSnapshot());
-      scheduleBackgroundSetupAudit(snapshot, latestPersistedSetupState);
-    } catch {
-      // host may have shut down; ignore
-    }
+    scheduleRuntimeCliInventoryPoll({
+      setupCompleted: options.setupCompleted,
+    });
   }
 }
 
@@ -1484,6 +1570,8 @@ async function bootstrapDesktopHost(restartServices = false): Promise<DesktopBoo
   bootstrapPromise = (async () => {
     latestBootstrapError = null;
     latestCliInventoryError = null;
+    runtimeCliInventoryScanPending = false;
+    clearRuntimeCliInventoryPoll();
     await ensureBootstrapPageVisible();
     const persistedSetup = hostConfig
       ? await readPersistedSetupCompletionState(hostConfig.paths.appStatePath)
@@ -1637,9 +1725,13 @@ async function runSetupAction(
     const refreshedProbe = await fetchRuntimeCliInventoryProbe(hostConfig.runtimeBaseUrl, {
       forceRescan: true,
     });
-    if (refreshedProbe?.scan) {
-      latestCliInventoryProbe = refreshedProbe;
-      clearCliInventoryError();
+    if (!rememberRuntimeCliInventoryProbe(refreshedProbe)) {
+      scheduleRuntimeCliInventoryPoll({
+        setupCompleted: Boolean(
+          latestPersistedSetupState.setupCompleteAt
+            || latestPersistedSetupState.productSetupCompleted,
+        ),
+      });
     }
   }
   const shouldPublish = options.publishMode !== 'bootstrap-only' || bootstrapPageVisible;
@@ -1666,17 +1758,29 @@ async function runRetryCliScanAction(): Promise<DesktopBootstrapSnapshot> {
     throw new Error('Desktop host is not initialized.');
   }
 
+  const setupCompleted = Boolean(
+    latestPersistedSetupState.setupCompleteAt || latestPersistedSetupState.productSetupCompleted,
+  );
   const probe = await fetchRuntimeCliInventoryProbe(hostConfig.runtimeBaseUrl, {
     triggerScanIfMissing: true,
     forceRescan: true,
-    scanTimeoutMs: RUNTIME_BOOTSTRAP_SETUP_SCAN_TIMEOUT_MS,
+    scanTimeoutMs: setupCompleted
+      ? RUNTIME_SETUP_SCAN_TIMEOUT_MS
+      : RUNTIME_BOOTSTRAP_SETUP_SCAN_TIMEOUT_MS,
   });
-  if (probe?.scan) {
-    latestCliInventoryProbe = probe;
-    clearCliInventoryError();
+  if (rememberRuntimeCliInventoryProbe(probe)) {
     const snapshot = publishSnapshot(buildSnapshot());
     scheduleBackgroundSetupAudit(snapshot, latestPersistedSetupState);
     await maybeOpenApp(snapshot);
+    return snapshot;
+  }
+  if (runtimeCliInventoryScanPending || isRuntimeCliInventoryScanActive(probe)) {
+    clearCliInventoryError();
+    const snapshot = publishSnapshot(buildSnapshot());
+    scheduleRuntimeCliInventoryPoll({
+      setupCompleted,
+      delayMs: 0,
+    });
     return snapshot;
   }
 
@@ -1776,6 +1880,7 @@ async function shutdownHost(): Promise<void> {
     return shutdownPromise;
   }
   shuttingDown = true;
+  clearRuntimeCliInventoryPoll();
   shutdownPromise = (async () => {
     let shutdownExitCode = 0;
     let forcedStopAttempted = false;
