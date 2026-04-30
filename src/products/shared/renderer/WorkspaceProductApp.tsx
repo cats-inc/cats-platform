@@ -107,6 +107,8 @@ import {
   createDefaultRuntimeSessionPolicy,
   type RuntimeSessionPolicy,
 } from "../../../shared/runtimeSessionPolicy.js";
+import { messageKeys } from "../../../shared/i18n/messageKeys.js";
+import { useI18n } from "../../../app/renderer/i18n/index.js";
 import {
   buildFolderBrowserContentProps,
   resolveVisibleChatChannel,
@@ -228,6 +230,7 @@ export function createWorkspaceProductApp({
 
   return function WorkspaceProductApp() {
     const navigate = useNavigate();
+    const { t } = useI18n();
     const {
       location,
       settingsMode,
@@ -512,12 +515,14 @@ export function createWorkspaceProductApp({
         const catName =
           state.status === "ready"
             ? (state.payload.chat.cats.find((cat) => cat.id === catId)?.name ??
-              "this cat")
-            : "this cat";
+              t(messageKeys.sharedSettingsCatsFallbackCatName))
+            : t(messageKeys.sharedSettingsCatsFallbackCatName);
         const confirmed = await appConfirm({
-          title: "Archive cat",
-          message: `Archive "${catName}"? Telegram bot bindings will be removed, but you can still recover the cat later from Settings.`,
-          confirmLabel: "Archive",
+          title: t(messageKeys.sharedSettingsCatsArchiveConfirmTitle),
+          message: t(messageKeys.sharedSettingsCatsArchiveWithTelegramConfirmMessage, {
+            catName,
+          }),
+          confirmLabel: t(messageKeys.sharedSettingsCatsArchiveLabel),
         });
         if (!confirmed) {
           return;
@@ -529,13 +534,15 @@ export function createWorkspaceProductApp({
           setState({ status: "ready", payload });
         } catch (error) {
           setFeedback(
-            error instanceof Error ? error.message : "Failed to archive cat.",
+            error instanceof Error
+              ? error.message
+              : t(messageKeys.sharedSettingsCatsArchiveError),
           );
         } finally {
           setBusy(clearBusyState());
         }
       },
-      [appConfirm, state],
+      [appConfirm, state, t],
     );
 
     const {

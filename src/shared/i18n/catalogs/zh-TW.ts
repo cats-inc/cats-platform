@@ -1447,6 +1447,19 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.settingsCats.memoryCategoryStyleLabel': '風格',
   'shared.settingsCats.memoryCategoryRelationshipLabel': '關係',
   'shared.settingsCats.memoryCategoryLessonLabel': '學習',
+  'shared.settingsCats.fallbackCatName': '這隻 cat',
+  'shared.settingsCats.archiveConfirmTitle': '封存 cat',
+  'shared.settingsCats.archiveConfirmMessage':
+    '要封存「{catName}」嗎？之後仍可從 Settings 復原。',
+  'shared.settingsCats.archiveWithTelegramConfirmMessage':
+    '要封存「{catName}」嗎？Telegram bot bindings 會被移除，但之後仍可從 Settings 復原。',
+  'shared.settingsCats.archiveSuccess': '{catName} 已封存。',
+  'shared.settingsCats.archiveError': '封存 cat 失敗。',
+  'shared.settingsCats.recoverConfirmTitle': '復原 cat',
+  'shared.settingsCats.recoverConfirmMessage': '要從封存復原「{catName}」嗎？',
+  'shared.settingsCats.recoverConfirmLabel': '復原',
+  'shared.settingsCats.recoverSuccess': '{catName} 已復原。',
+  'shared.settingsCats.recoverError': '復原 cat 失敗。',
   'shared.platformSurfaceSwitcher.menuLabel': '切換產品',
   'shared.platformSurfaceSwitcher.openLobby': '開啟 Lobby',
   'shared.platformSurfaceSwitcher.ariaLabel':

@@ -40,6 +40,8 @@ import {
   createConcurrentGroupBusyState,
   type WorkspaceBusyState,
 } from '../../../../shared/workspaceBusy.js';
+import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
 
 type LoadStateLike = WorkspaceNavigationLoadState<AppShellPayload>;
 
@@ -96,6 +98,7 @@ export function useAppNavigationActions(options: {
     setChannelFiles,
     confirm: confirmDialog,
   } = options;
+  const { t } = useI18n();
   const sharedActions = useWorkspaceAppNavigationActions<
     ExecutionTargetValue,
     AppShellPayload,
@@ -217,13 +220,18 @@ export function useAppNavigationActions(options: {
 
   const onArchiveCat = useCallback(async (catId: string): Promise<void> => {
     const catName = state.status === 'ready'
-      ? (state.payload.chat.cats.find((cat) => cat.id === catId)?.name ?? 'this cat')
-      : 'this cat';
+      ? (
+          state.payload.chat.cats.find((cat) => cat.id === catId)?.name
+          ?? t(messageKeys.sharedSettingsCatsFallbackCatName)
+        )
+      : t(messageKeys.sharedSettingsCatsFallbackCatName);
     const confirmed = confirmDialog
       ? await confirmDialog({
-          title: 'Archive cat',
-          message: `Archive "${catName}"? Telegram bot bindings will be removed, but you can still recover the cat later from Settings.`,
-          confirmLabel: 'Archive',
+          title: t(messageKeys.sharedSettingsCatsArchiveConfirmTitle),
+          message: t(messageKeys.sharedSettingsCatsArchiveWithTelegramConfirmMessage, {
+            catName,
+          }),
+          confirmLabel: t(messageKeys.sharedSettingsCatsArchiveLabel),
         })
       : true;
     if (!confirmed) return;
@@ -232,11 +240,13 @@ export function useAppNavigationActions(options: {
       const payload = await updateCatProfile(catId, { archive: true });
       startTransition(() => setState({ status: 'ready', payload }));
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to archive cat.');
+      setFeedback(error instanceof Error
+        ? error.message
+        : t(messageKeys.sharedSettingsCatsArchiveError));
     } finally {
       setBusy(clearBusyState());
     }
-  }, [confirmDialog, setBusy, setFeedback, setState, state]);
+  }, [confirmDialog, setBusy, setFeedback, setState, state, t]);
 
   const onDirectChatCat = useCallback(async (catId: string): Promise<void> => {
     if (state.status !== 'ready') {

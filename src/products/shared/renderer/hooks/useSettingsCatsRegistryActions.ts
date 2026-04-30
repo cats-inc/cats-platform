@@ -14,6 +14,8 @@ import {
 import { buildDeleteCatConfirmation } from '../deleteConfirmations.js';
 import { updateCatProfile } from '../api/index.js';
 import { emptyCatForm, type CatFormState } from '../workspaceChatUtils.js';
+import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
 
 export type { BotFormState } from './settingsCatsRegistryActions.js';
 
@@ -33,6 +35,7 @@ export function useSettingsCatsRegistryActions(options: {
     onPayloadUpdate,
     confirm: confirmDialog,
   } = options;
+  const { t } = useI18n();
   const [catForm, setCatForm] = useState<CatFormState>(emptyCatForm);
   const [renameValue, setRenameValue] = useState('');
   const [botForm, setBotForm] = useState<BotFormState>(emptyBotForm);
@@ -64,9 +67,9 @@ export function useSettingsCatsRegistryActions(options: {
   async function onArchiveCat(catId: string, catName: string): Promise<void> {
     const confirmed = confirmDialog
       ? await confirmDialog({
-          title: 'Archive cat',
-          message: `Archive "${catName}"? You can recover this cat later from Settings.`,
-          confirmLabel: 'Archive',
+          title: t(messageKeys.sharedSettingsCatsArchiveConfirmTitle),
+          message: t(messageKeys.sharedSettingsCatsArchiveConfirmMessage, { catName }),
+          confirmLabel: t(messageKeys.sharedSettingsCatsArchiveLabel),
         })
       : true;
     if (!confirmed) return;
@@ -75,12 +78,14 @@ export function useSettingsCatsRegistryActions(options: {
     try {
       const next = await updateCatProfile(catId, { archive: true });
       onPayloadUpdate(next);
-      onFeedback(`${catName} archived.`);
+      onFeedback(t(messageKeys.sharedSettingsCatsArchiveSuccess, { catName }));
       if (expandedCatId === catId) {
         setExpandedCatId(null);
       }
     } catch (error) {
-      onFeedback(error instanceof Error ? error.message : 'Failed to archive cat');
+      onFeedback(error instanceof Error
+        ? error.message
+        : t(messageKeys.sharedSettingsCatsArchiveError));
     } finally {
       onBusy(clearBusyState());
     }
@@ -89,9 +94,9 @@ export function useSettingsCatsRegistryActions(options: {
   async function onUnarchiveCat(catId: string, catName: string): Promise<void> {
     const confirmed = confirmDialog
       ? await confirmDialog({
-          title: 'Recover cat',
-          message: `Recover "${catName}" from archive?`,
-          confirmLabel: 'Recover',
+          title: t(messageKeys.sharedSettingsCatsRecoverConfirmTitle),
+          message: t(messageKeys.sharedSettingsCatsRecoverConfirmMessage, { catName }),
+          confirmLabel: t(messageKeys.sharedSettingsCatsRecoverConfirmLabel),
         })
       : true;
     if (!confirmed) return;
@@ -100,9 +105,11 @@ export function useSettingsCatsRegistryActions(options: {
     try {
       const next = await updateCatProfile(catId, { unarchive: true });
       onPayloadUpdate(next);
-      onFeedback(`${catName} recovered.`);
+      onFeedback(t(messageKeys.sharedSettingsCatsRecoverSuccess, { catName }));
     } catch (error) {
-      onFeedback(error instanceof Error ? error.message : 'Failed to recover cat');
+      onFeedback(error instanceof Error
+        ? error.message
+        : t(messageKeys.sharedSettingsCatsRecoverError));
     } finally {
       onBusy(clearBusyState());
     }
