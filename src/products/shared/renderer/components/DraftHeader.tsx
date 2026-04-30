@@ -13,6 +13,8 @@ import {
   subscribeCatCover,
   writeCatCover,
 } from '../catCoverStorage.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
 
 export type DraftHeaderVariant = 'intro' | 'profile';
 
@@ -86,6 +88,7 @@ export function DraftHeader({
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
   const [coverDialogOpen, setCoverDialogOpen] = useState(false);
   const [avatarDialogOpen, setAvatarDialogOpen] = useState(false);
+  const { t } = useI18n();
 
   useEffect(() => {
     if (!hasCover || !coverStorageKey) {
@@ -131,8 +134,12 @@ export function DraftHeader({
     && typeof onAvatarSave === 'function'
     && (alwaysEditable || !avatarUrl);
   const coverIsEditable = hasCover && (alwaysEditable || !coverUrl);
-  const coverButtonLabel = coverUrl ? 'Change cover photo' : 'Add cover photo';
-  const avatarButtonLabel = avatarUrl ? 'Change avatar' : 'Add avatar';
+  const coverButtonLabel = coverUrl
+    ? t(messageKeys.sharedDraftHeaderChangeCoverPhoto)
+    : t(messageKeys.sharedDraftHeaderAddCoverPhoto);
+  const avatarButtonLabel = avatarUrl
+    ? t(messageKeys.sharedDraftHeaderChangeAvatar)
+    : t(messageKeys.sharedDraftHeaderAddAvatar);
 
   return (
     <div className={headerClassName}>

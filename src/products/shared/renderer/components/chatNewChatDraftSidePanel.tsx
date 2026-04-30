@@ -213,7 +213,7 @@ export function buildChatNewChatDraftSidePanelSections(
                     provider: assistantPreset.executionTarget.provider,
                     instance: assistantPreset.executionTarget.instance,
                     model: assistantPreset.executionTarget.model,
-                  });
+                  }, undefined, t);
                   let addButtonLabel = t(messageKeys.chatNewChatDraftAssistantPresetAdd);
                   if (capabilityReview.requiresActivationReview) {
                     addButtonLabel = t(messageKeys.chatNewChatDraftAssistantPresetReview);

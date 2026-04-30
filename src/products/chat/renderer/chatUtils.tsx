@@ -421,8 +421,9 @@ export function buildDraftParticipantCapabilityReview(
     model?: string | null;
   },
   policyDials: DraftParticipantPolicyDials = {},
+  t?: ChatUtilsTranslator,
 ): DraftParticipantCapabilityReview {
-  return buildWorkspaceDraftParticipantCapabilityReview(participant, policyDials);
+  return buildWorkspaceDraftParticipantCapabilityReview(participant, policyDials, t);
 }
 
 function applyDraftAudienceLimit(

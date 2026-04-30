@@ -849,6 +849,7 @@ export function ChatView({
       onStopMessage,
       repoPath: selectedChannel.repoPath,
       chatCwd: selectedChannel.chatCwd,
+      t,
     }),
     [
       activeRoomParticipants,
@@ -861,6 +862,7 @@ export function ChatView({
       selectedChannel.chatCwd,
       selectedChannel.id,
       selectedChannel.repoPath,
+      t,
     ],
   );
   const stopBusy = isParallelChatBusy(busy, 'stop');

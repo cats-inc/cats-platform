@@ -1053,6 +1053,47 @@ export const messageKeys = {
   sharedSettingsCatsMemoryDeleteError: 'shared.settingsCatsMemory.deleteError',
   sharedOperatorLoopLoadError: 'shared.operatorLoop.loadError',
   sharedFolderBrowserLoadError: 'shared.folderBrowser.loadError',
+  sharedDraftHeaderChangeCoverPhoto: 'shared.draftHeader.changeCoverPhoto',
+  sharedDraftHeaderAddCoverPhoto: 'shared.draftHeader.addCoverPhoto',
+  sharedDraftHeaderChangeAvatar: 'shared.draftHeader.changeAvatar',
+  sharedDraftHeaderAddAvatar: 'shared.draftHeader.addAvatar',
+  chatParticipantChipCountOne: 'chat.participantChip.countOne',
+  chatParticipantChipCountMany: 'chat.participantChip.countMany',
+  chatParticipantChipDefault: 'chat.participantChip.default',
+  chatDraftParticipantCapabilityStrongAgent:
+    'chat.draftParticipant.capability.strongAgent',
+  chatDraftParticipantCapabilityConservativeAgent:
+    'chat.draftParticipant.capability.conservativeAgent',
+  chatDraftParticipantReviewReasonBroadWrite:
+    'chat.draftParticipant.reviewReason.broadWrite',
+  chatDraftParticipantReviewReasonOutcomeDelegation:
+    'chat.draftParticipant.reviewReason.outcomeDelegation',
+  chatDraftParticipantReviewReasonHighApproval:
+    'chat.draftParticipant.reviewReason.highApproval',
+  chatDraftParticipantAutonomyNone: 'chat.draftParticipant.autonomy.none',
+  chatDraftParticipantAutonomySingleStep:
+    'chat.draftParticipant.autonomy.singleStep',
+  chatDraftParticipantAutonomyMilestonePlan:
+    'chat.draftParticipant.autonomy.milestonePlan',
+  chatDraftParticipantAutonomyOutcomeDelegation:
+    'chat.draftParticipant.autonomy.outcomeDelegation',
+  chatDraftParticipantToolScopeNone: 'chat.draftParticipant.toolScope.none',
+  chatDraftParticipantToolScopeReadOnly:
+    'chat.draftParticipant.toolScope.readOnly',
+  chatDraftParticipantToolScopeNarrowWrite:
+    'chat.draftParticipant.toolScope.narrowWrite',
+  chatDraftParticipantToolScopeBroadWrite:
+    'chat.draftParticipant.toolScope.broadWrite',
+  chatDraftParticipantApprovalThresholdLow:
+    'chat.draftParticipant.approvalThreshold.low',
+  chatDraftParticipantApprovalThresholdMedium:
+    'chat.draftParticipant.approvalThreshold.medium',
+  chatDraftParticipantApprovalThresholdHigh:
+    'chat.draftParticipant.approvalThreshold.high',
+  chatDraftParticipantPolicySummary:
+    'chat.draftParticipant.policySummary',
+  chatDraftParticipantToolGrantSummary:
+    'chat.draftParticipant.toolGrantSummary',
   chatSidebarPrimaryActionNewChat: 'chat.sidebar.primaryAction.newChat',
   chatSidebarPrimaryActionGroupChat: 'chat.sidebar.primaryAction.groupChat',
   chatSidebarPrimaryActionParallelChat: 'chat.sidebar.primaryAction.parallelChat',

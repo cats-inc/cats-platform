@@ -30,6 +30,19 @@ import {
   buildCatExecutionLabel,
   buildParticipantExecutionLabel,
 } from '../../../../../shared/executionLabel.js';
+import {
+  createTranslator,
+  messageKeys,
+  type MessageInterpolationValues,
+  type MessageKey,
+} from '../../../../../shared/i18n/index.js';
+
+type ChatViewSupportTranslator = (
+  key: MessageKey,
+  values?: MessageInterpolationValues,
+) => string;
+
+const defaultChatViewSupportTranslator = createTranslator('en');
 
 export interface ChatComposerStackParticipantView {
   participantId: string;
@@ -520,7 +533,9 @@ export function resolveChatComposerViewState(input: {
   onStopMessage?: (() => void) | null;
   repoPath?: string | null;
   chatCwd?: string | null;
+  t?: ChatViewSupportTranslator;
 }): ChatComposerViewState {
+  const t = input.t ?? defaultChatViewSupportTranslator;
   const composerAckBusy =
     isParallelChatBusy(input.busy, 'ack')
     || isComposerAckBusyForChannel(input.busy, input.selectedChannelId);
@@ -548,8 +563,13 @@ export function resolveChatComposerViewState(input: {
 
   return {
     participantChipLabel: input.activeRoomParticipants.length > 0
-      ? `${input.activeRoomParticipants.length} participant${input.activeRoomParticipants.length === 1 ? '' : 's'}`
-      : 'Participants',
+      ? t(
+          input.activeRoomParticipants.length === 1
+            ? messageKeys.chatParticipantChipCountOne
+            : messageKeys.chatParticipantChipCountMany,
+          { count: input.activeRoomParticipants.length },
+        )
+      : t(messageKeys.chatParticipantChipDefault),
     directLaneExecutionTarget: input.directLaneCat
       ? {
           provider: input.directLaneCat.defaultExecutionTarget.provider,

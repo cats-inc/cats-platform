@@ -45,7 +45,7 @@ export interface DraftParticipantPolicyDials {
 }
 
 export interface DraftParticipantCapabilityReview {
-  capabilityLabel: 'Strong agent' | 'Conservative agent';
+  capabilityLabel: string;
   executionLabel: string;
   policySummary: string;
   toolGrantSummary: string;
@@ -99,24 +99,74 @@ export function buildDraftParticipantExecutionLabel(participant: {
 
 function resolveDraftCapabilityLabel(
   bootstrapTreatment: DraftParticipantPolicyDials['bootstrapTreatment'],
-): DraftParticipantCapabilityReview['capabilityLabel'] {
+  t: DraftChatTranslator,
+): string {
   return bootstrapTreatment === 'strong_agent'
-    ? 'Strong agent'
-    : 'Conservative agent';
+    ? t(messageKeys.chatDraftParticipantCapabilityStrongAgent)
+    : t(messageKeys.chatDraftParticipantCapabilityConservativeAgent);
 }
 
-function buildReviewReasons(policyDials: ResolvedDraftParticipantPolicyDials): string[] {
+function buildReviewReasons(
+  policyDials: ResolvedDraftParticipantPolicyDials,
+  t: DraftChatTranslator,
+): string[] {
   const reasons: string[] = [];
   if (policyDials.toolScope === 'broad_write') {
-    reasons.push('broad-write tool grants');
+    reasons.push(t(messageKeys.chatDraftParticipantReviewReasonBroadWrite));
   }
   if (policyDials.autonomy === 'outcome_delegation') {
-    reasons.push('outcome delegation');
+    reasons.push(t(messageKeys.chatDraftParticipantReviewReasonOutcomeDelegation));
   }
   if (policyDials.approvalThreshold === 'high') {
-    reasons.push('high approval threshold');
+    reasons.push(t(messageKeys.chatDraftParticipantReviewReasonHighApproval));
   }
   return reasons;
+}
+
+function labelDraftAutonomy(
+  autonomy: ResolvedDraftParticipantPolicyDials['autonomy'],
+  t: DraftChatTranslator,
+): string {
+  switch (autonomy) {
+    case 'none':
+      return t(messageKeys.chatDraftParticipantAutonomyNone);
+    case 'single_step':
+      return t(messageKeys.chatDraftParticipantAutonomySingleStep);
+    case 'milestone_plan':
+      return t(messageKeys.chatDraftParticipantAutonomyMilestonePlan);
+    case 'outcome_delegation':
+      return t(messageKeys.chatDraftParticipantAutonomyOutcomeDelegation);
+  }
+}
+
+function labelDraftToolScope(
+  toolScope: ResolvedDraftParticipantPolicyDials['toolScope'],
+  t: DraftChatTranslator,
+): string {
+  switch (toolScope) {
+    case 'none':
+      return t(messageKeys.chatDraftParticipantToolScopeNone);
+    case 'read_only':
+      return t(messageKeys.chatDraftParticipantToolScopeReadOnly);
+    case 'narrow_write':
+      return t(messageKeys.chatDraftParticipantToolScopeNarrowWrite);
+    case 'broad_write':
+      return t(messageKeys.chatDraftParticipantToolScopeBroadWrite);
+  }
+}
+
+function labelDraftApprovalThreshold(
+  threshold: ResolvedDraftParticipantPolicyDials['approvalThreshold'],
+  t: DraftChatTranslator,
+): string {
+  switch (threshold) {
+    case 'low':
+      return t(messageKeys.chatDraftParticipantApprovalThresholdLow);
+    case 'medium':
+      return t(messageKeys.chatDraftParticipantApprovalThresholdMedium);
+    case 'high':
+      return t(messageKeys.chatDraftParticipantApprovalThresholdHigh);
+  }
 }
 
 export function buildDraftParticipantCapabilityReview(
@@ -126,21 +176,28 @@ export function buildDraftParticipantCapabilityReview(
     model?: string | null;
   },
   policyDials: DraftParticipantPolicyDials = {},
+  t: DraftChatTranslator = defaultDraftChatTranslator,
 ): DraftParticipantCapabilityReview {
-  const capabilityLabel = resolveDraftCapabilityLabel(policyDials.bootstrapTreatment);
+  const isStrongAgent = policyDials.bootstrapTreatment === 'strong_agent';
+  const capabilityLabel = resolveDraftCapabilityLabel(policyDials.bootstrapTreatment, t);
   const resolvedPolicyDials: ResolvedDraftParticipantPolicyDials = {
     autonomy: policyDials.autonomy
-      ?? (capabilityLabel === 'Strong agent' ? 'milestone_plan' : 'single_step'),
+      ?? (isStrongAgent ? 'milestone_plan' : 'single_step'),
     toolScope: policyDials.toolScope ?? 'read_only',
     approvalThreshold: policyDials.approvalThreshold ?? 'low',
   };
-  const reviewReasons = buildReviewReasons(resolvedPolicyDials);
+  const reviewReasons = buildReviewReasons(resolvedPolicyDials, t);
 
   return {
     capabilityLabel,
     executionLabel: buildDraftParticipantExecutionLabel(participant),
-    policySummary: `${resolvedPolicyDials.autonomy}; ${resolvedPolicyDials.approvalThreshold} approval`,
-    toolGrantSummary: `${resolvedPolicyDials.toolScope} tools`,
+    policySummary: t(messageKeys.chatDraftParticipantPolicySummary, {
+      autonomy: labelDraftAutonomy(resolvedPolicyDials.autonomy, t),
+      approvalThreshold: labelDraftApprovalThreshold(resolvedPolicyDials.approvalThreshold, t),
+    }),
+    toolGrantSummary: t(messageKeys.chatDraftParticipantToolGrantSummary, {
+      toolScope: labelDraftToolScope(resolvedPolicyDials.toolScope, t),
+    }),
     requiresActivationReview: reviewReasons.length > 0,
     reviewReasons,
   };
