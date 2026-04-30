@@ -15,6 +15,8 @@ import {
   resolveDraftWorkspaceModeFromRuntimeKind,
 } from '../../../../shared/runtimeSessionPolicy.js';
 import { useCodeRepoProbe } from '../hooks/useCodeRepoProbe.js';
+import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
 
 interface Props {
   channel: {
@@ -29,6 +31,7 @@ interface Props {
 export function ActiveCodeComposerChips({ channel, placement = 'permission' }: Props) {
   const cwd = channel.repoPath ?? channel.chatCwd ?? null;
   const probe = useCodeRepoProbe(cwd);
+  const { t } = useI18n();
 
   if (!cwd) {
     return null;
@@ -46,7 +49,7 @@ export function ActiveCodeComposerChips({ channel, placement = 'permission' }: P
   if (!repoReady) {
     return null;
   }
-  const branchLabel = probe.branch ?? 'detached';
+  const branchLabel = probe.branch ?? t(messageKeys.codeActiveComposerDetachedBranch);
   const workspaceMode = channel.runtimeWorkspaceKind
     ? resolveDraftWorkspaceModeFromRuntimeKind(channel.runtimeWorkspaceKind)
     : DEFAULT_WORKSPACE_MODE;

@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { PlatformHostEnvelope } from '../../../shared/platform-contract';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
+import { messageKeys } from '../../../shared/i18n/messageKeys.js';
+import { useI18n } from '../i18n/index.js';
 import {
   completePlatformSetup,
   markPlatformSetupOpened,
@@ -48,6 +50,7 @@ export function PlatformSetupWizard({
   const [busyAction, setBusyAction] = useState<PendingAction>(null);
   const [feedback, setFeedback] = useState('');
   const setupOpenedRecorded = useRef(false);
+  const { t } = useI18n();
 
   const busy = busyAction !== null;
   const guideCatName = resolveClientGuideCatName();
@@ -73,7 +76,7 @@ export function PlatformSetupWizard({
       await syncDesktopHostPlatformShell(result);
       onComplete(result);
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Setup failed.');
+      setFeedback(error instanceof Error ? error.message : t(messageKeys.setupWizardFailedMessage));
     } finally {
       setBusyAction(null);
     }
@@ -86,6 +89,7 @@ export function PlatformSetupWizard({
     ownerName,
     provider,
     attemptId,
+    t,
   ]);
 
   useEffect(() => {
@@ -146,18 +150,18 @@ export function PlatformSetupWizard({
 
         {step === 1 ? (
           <div className="contentCard setupCard">
-            <p className="eyebrow">Cats Inc</p>
-            <h1>Welcome to Cats</h1>
+            <p className="eyebrow">{t(messageKeys.appBrandName)}</p>
+            <h1>{t(messageKeys.setupWizardWelcomeTitle)}</h1>
             <p className="heroNote">
-              Your personal AI workspace. Let&apos;s get you set up; it only takes a moment.
+              {t(messageKeys.setupWizardWelcomeIntro)}
             </p>
             <label className="fieldLabel">
-              <span>Your name</span>
+              <span>{t(messageKeys.setupWizardOwnerNameLabel)}</span>
               <input
                 className="textInput"
                 value={ownerName}
                 onChange={(e) => setOwnerName(e.target.value)}
-                placeholder="Your display name"
+                placeholder={t(messageKeys.setupWizardOwnerNamePlaceholder)}
                 autoFocus
               />
             </label>
@@ -168,17 +172,22 @@ export function PlatformSetupWizard({
               type="button"
               onClick={() => setStep(nextSetupStep(step))}
             >
-              Get started
+              {t(messageKeys.setupWizardGetStartedButton)}
             </button>
           </div>
         ) : null}
 
         {step === 2 ? (
           <div className="contentCard setupCard">
-            <p className="eyebrow">Step 2 of 2</p>
-            <h1>Enable your {guideCatName}</h1>
+            <p className="eyebrow">
+              {t(messageKeys.setupWizardStepIndicator, {
+                step: 2,
+                total: 2,
+              })}
+            </p>
+            <h1>{t(messageKeys.setupWizardEnableGuideTitle, { guideCatName })}</h1>
             <p className="heroNote">
-              This optional helper can support you across Chat, Work, and Code.
+              {t(messageKeys.setupWizardEnableGuideSubtitle)}
             </p>
             <label className="setupCheckboxLabel">
               <input
@@ -187,7 +196,7 @@ export function PlatformSetupWizard({
                 checked={createGuideCat}
                 onChange={(e) => setCreateGuideCat(e.target.checked)}
               />
-              <span>Enable {guideCatName}</span>
+              <span>{t(messageKeys.setupWizardEnableGuideLabel, { guideCatName })}</span>
             </label>
             {createGuideCat ? (
               <GuideCatSetupFields
@@ -205,7 +214,7 @@ export function PlatformSetupWizard({
               />
             ) : (
               <p className="setupRuntimeNote">
-                You can skip this for now and enable {guideCatName} later from Settings &gt; Assistants.
+                {t(messageKeys.setupWizardSkipGuideMessage, { guideCatName })}
               </p>
             )}
             {feedback ? <p className="feedbackText">{feedback}</p> : null}
@@ -216,7 +225,7 @@ export function PlatformSetupWizard({
                 disabled={busy}
                 onClick={() => setStep(previousSetupStep(step))}
               >
-                Back
+                {t(messageKeys.setupWizardBackButton)}
               </button>
               <button
                 className="primaryButton setupPrimaryButton"
@@ -224,7 +233,9 @@ export function PlatformSetupWizard({
                 type="button"
                 onClick={() => void finishSetup()}
               >
-                {busyAction === 'complete' ? 'Opening Cats...' : 'Open Cats'}
+                {busyAction === 'complete'
+                  ? t(messageKeys.setupWizardOpeningCatsAction)
+                  : t(messageKeys.setupWizardOpenCatsAction)}
               </button>
             </div>
           </div>

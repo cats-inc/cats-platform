@@ -31,6 +31,8 @@ import {
 } from '../api/codeTask.js';
 import { resolveComposerWorkspacePath } from '../../../../core/workspacePaths.js';
 import { buildCodeArtifactPath } from '../codePaths.js';
+import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
 
 type BuilderStep = 'workspace' | 'task' | 'running' | 'done';
 
@@ -47,6 +49,7 @@ interface CodeBuilderViewProps {
 export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderViewProps) {
   const navigate = useNavigate();
   const { state, create, execute, resume, refreshRepoStatus, reset, stopPolling } = useCodeTaskExecution();
+  const { t } = useI18n();
 
   const [step, setStep] = useState<BuilderStep>('workspace');
   const [workspacePath, setWorkspacePath] = useState('');
@@ -73,9 +76,9 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
     ? null
     : resolveComposerWorkspacePath(null, selectedChannelContext?.chatCwd ?? null);
   const workspaceFallbackLabel = fallbackConversationRepoPath
-    ? 'Leave this blank to use the selected chat repo.'
+    ? t(messageKeys.codeBuilderWorkspaceFallbackChatRepo)
     : fallbackRoomWorkspacePath
-      ? 'Leave this blank to use the selected room codespace.'
+      ? t(messageKeys.codeBuilderWorkspaceFallbackRoom)
       : null;
 
   const resolveWorkspaceBinding = useCallback(async (): Promise<CodeWorkspaceSummary | null> => {
@@ -87,7 +90,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
       });
 
       if (!result.workspace) {
-        setFeedback(result.error || 'Failed to resolve the codespace.');
+        setFeedback(result.error || t(messageKeys.codeBuilderErrorCodespaceResolve));
         return null;
       }
 
@@ -95,7 +98,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
       setWorkspacePath(result.workspace.workspacePath);
       return result.workspace;
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to resolve the codespace.');
+      setFeedback(error instanceof Error ? error.message : t(messageKeys.codeBuilderErrorCodespaceResolve));
       return null;
     }
   }, [fallbackConversationRepoPath, fallbackRoomWorkspacePath, workspacePath]);
@@ -203,7 +206,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
 
   const handleCreateAndExecute = useCallback(async () => {
     if (!taskTitle.trim()) {
-      setFeedback('Please enter a task title.');
+      setFeedback(t(messageKeys.codeBuilderErrorTaskTitle));
       return;
     }
     const resolvedWorkspace = await resolveWorkspaceBinding();
@@ -224,7 +227,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
     }
 
     if (!taskId) {
-      setFeedback(state.error || 'Failed to create task.');
+      setFeedback(state.error || t(messageKeys.codeBuilderErrorTaskCreate));
       return;
     }
 
@@ -241,7 +244,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
       setStep('running');
       refreshRepoStatus(resolvedWorkspace.workspacePath);
     } else {
-      setFeedback(state.error || 'Failed to start execution.');
+      setFeedback(state.error || t(messageKeys.codeBuilderErrorTaskExecution));
     }
   }, [
     taskTitle,
@@ -261,18 +264,18 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
   const handleResumeTask = useCallback(async () => {
     const normalizedTaskId = normalizeCodeBuilderTaskId(resumeTaskId);
     if (!normalizedTaskId) {
-      setFeedback('Please enter a task ID to resume.');
+      setFeedback(t(messageKeys.codeBuilderErrorTaskResumeInput));
       return;
     }
 
     setFeedback('');
     const resumedTaskId = await resume(normalizedTaskId);
     if (!resumedTaskId) {
-      setFeedback(state.error || 'Failed to resume task.');
+      setFeedback(state.error || t(messageKeys.codeBuilderErrorTaskResume));
       return;
     }
 
-    let nextFeedback = `Task ${resumedTaskId} is ready to continue.`;
+    let nextFeedback = t(messageKeys.codeBuilderFeedbackResumeTask, { taskId: resumedTaskId });
     try {
       const detail = await fetchCodeTaskDetail(resumedTaskId);
       if (detail.workspace) {
@@ -281,9 +284,9 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
       } else {
         const resolvedWorkspace = await resolveWorkspaceBinding();
         if (!resolvedWorkspace) {
-          nextFeedback =
-            `Task ${resumedTaskId} is ready, but you still need to resolve a codespace `
-            + 'before continuing.';
+          nextFeedback = t(messageKeys.codeBuilderFeedbackResumeNoWorkspace, {
+            taskId: resumedTaskId,
+          });
         }
       }
       if (detail.title) {
@@ -436,7 +439,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
             </label>
             <p className="codeBuilderHelperText">
               Resume is for a draft, blocked, or failed Code task you want to continue.{' '}
-              {workspaceFallbackLabel ?? 'Enter a local folder to bind this builder loop.'}
+              {workspaceFallbackLabel ?? t(messageKeys.codeBuilderWorkspaceFallbackBoundFallback)}
             </p>
             <div className="codeBuilderFormRow">
               <button
@@ -458,9 +461,12 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
             {workspaceFallbackLabel && !workspacePath.trim() ? (
               <p className="codeBuilderHelperText">
                 {selectedChannelContext?.title
-                  ? `${workspaceFallbackLabel} Current chat: ${selectedChannelContext.title}.`
+                  ? t(messageKeys.codeBuilderSuccessTaskReadyWithCurrentChat, {
+                    workspaceFallback: workspaceFallbackLabel,
+                    title: selectedChannelContext.title,
+                  })
                   : workspaceFallbackLabel}
-              </p>
+                </p>
             ) : null}
             {workspaceSummary ? (
               <article className="operatorCard codeWorkspaceInlineCard">

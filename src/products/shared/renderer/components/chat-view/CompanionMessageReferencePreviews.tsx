@@ -16,8 +16,11 @@ import {
   readCompanionMessageReferenceSnapshot,
   type CompanionMessageReferenceSnapshot,
 } from '../../../../chat/companion/messageReferenceSnapshot.js';
-import { messageKeys } from '../../../../../shared/i18n/index.js';
-import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
+import {
+  messageKeys,
+  type MessageKey,
+} from '../../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 
 /**
  * Phase 5 transcript hydrator. Reads each persisted-or-detected
@@ -262,7 +265,7 @@ export function CompanionMessageReferencePreviews({
 function applySnapshotFallback(
   livePreview: CompanionContentPreview | null,
   snapshot: CompanionMessageReferenceSnapshot | null,
-  t: (key: keyof typeof messageKeys) => string,
+  t: (key: MessageKey) => string,
 ): CompanionContentPreview | null {
   if (!livePreview) {
     if (!snapshot) return null;
@@ -270,6 +273,8 @@ function applySnapshotFallback(
       reference: snapshot.reference,
       availability: 'missing',
       title: snapshot.title,
+      generatedTitleKind: null,
+      fallbackReason: 'missing',
       subtitle: snapshot.subtitle,
       description: snapshot.description,
       thumbnailUrl: snapshot.thumbnailUrl,
@@ -312,7 +317,7 @@ function applySnapshotFallback(
 
 function resolveFallbackTitle(
   availability: CompanionContentAvailability,
-  t: (key: keyof typeof messageKeys) => string,
+  t: (key: MessageKey) => string,
 ): string {
   if (availability === 'missing') {
     return t(messageKeys.chatCompanionMessageReferenceMissingFallbackTitle);
@@ -323,13 +328,13 @@ function resolveFallbackTitle(
   return t(messageKeys.chatCompanionMessageReferenceInaccessibleFallbackTitle);
 }
 
-function resolveFallbackCatName(t: (key: keyof typeof messageKeys) => string): string {
+function resolveFallbackCatName(t: (key: MessageKey) => string): string {
   return t(messageKeys.chatCompanionMessageReferenceUnknownCompanionLabel);
 }
 
 function resolveInaccessibleDescription(
   description: string | null,
-  t: (key: keyof typeof messageKeys) => string,
+  t: (key: MessageKey) => string,
 ): string {
   if (!description) {
     return t(messageKeys.chatCompanionMessageReferenceInaccessibleFallbackDescription);
@@ -346,7 +351,7 @@ function isGenericFallbackTitle(
 
 function renderPreviewCard(
   entry: PreviewState,
-  t: (key: keyof typeof messageKeys) => string,
+  t: (key: MessageKey) => string,
 ) {
   if (entry.status === 'unsupported_version') {
     return (
@@ -431,7 +436,7 @@ function renderPreviewCard(
 
 function labelForAvailability(
   value: CompanionContentAvailability,
-  t: (key: keyof typeof messageKeys) => string,
+  t: (key: MessageKey) => string,
 ): string {
   switch (value) {
     case 'available':
@@ -452,7 +457,7 @@ function capitalize(value: string): string {
 
 function resolvePreviewTitle(
   preview: CompanionContentPreview,
-  t: (key: keyof typeof messageKeys) => string,
+  t: (key: MessageKey) => string,
 ): string {
   if (preview.generatedTitleKind === 'post') {
     return t(messageKeys.chatCompanionMessageReferenceUntitledPostTitle);

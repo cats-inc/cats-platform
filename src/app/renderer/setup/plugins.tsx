@@ -3,7 +3,9 @@ import { useState } from 'react';
 import { CatCreationFields } from './CatCreationFields.js';
 import type { ProductProviderRegistryReadModel } from '../../../shared/providerCatalog.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
+import { messageKeys } from '../../../shared/i18n/messageKeys.js';
 import { PLATFORM_RUNTIME_SETUP_PATH } from '../../../shared/runtimeIngressPaths.js';
+import { useI18n } from '../i18n/index.js';
 import { resolveProviderRegistrySetupHref } from '../../../design/components/ProviderModelFields.js';
 import {
   resolveClientGuideCatName,
@@ -32,6 +34,7 @@ export function GuideCatSetupFields({
   onTargetChange,
 }: GuideCatSetupFieldsProps) {
   const guideCatName = resolveClientGuideCatName();
+  const { t } = useI18n();
   const [providerRegistry, setProviderRegistry] = useState<ProductProviderRegistryReadModel>({
     state: 'ready',
     providers: [],
@@ -39,12 +42,18 @@ export function GuideCatSetupFields({
   const runtimeSetupHref = resolveProviderRegistrySetupHref(providerRegistry)
     ?? PLATFORM_RUNTIME_SETUP_PATH;
   const runtimeStatusChip = providerRegistry.state === 'runtime_unreachable'
-    ? { className: 'statusChip statusChipWarm', label: 'Provider registry unavailable' }
+    ? {
+      className: 'statusChip statusChipWarm',
+      label: t(messageKeys.setupGuideCatRuntimeUnavailable),
+    }
     : providerRegistry.state === 'no_usable_targets'
-      ? { className: 'statusChip statusChipWarm', label: 'No usable providers found' }
+      ? {
+        className: 'statusChip statusChipWarm',
+        label: t(messageKeys.setupGuideCatNoUsableTargets),
+      }
       : runtimeReachable
-        ? { className: 'statusChip statusChipReady', label: 'Cats Runtime connected' }
-        : { className: 'statusChip statusChipWarm', label: 'Cats Runtime not detected' };
+        ? { className: 'statusChip statusChipReady', label: t(messageKeys.setupGuideCatRuntimeConnected) }
+        : { className: 'statusChip statusChipWarm', label: t(messageKeys.setupGuideCatRuntimeNotDetected) };
 
   return (
     <>
@@ -57,9 +66,9 @@ export function GuideCatSetupFields({
         model={model}
         modelSelection={modelSelection}
         onTargetChange={onTargetChange}
-        nameLabel="Guide Cat name"
+        nameLabel={t(messageKeys.setupGuideCatNameLabel)}
         namePlaceholder={guideCatName}
-        nameHint="Cats keeps this name fixed. It can vary by app language later."
+        nameHint={t(messageKeys.setupGuideCatNameHint)}
         hideMakeBoss
         hideProductToggles
         onProviderRegistryChange={setProviderRegistry}
@@ -71,21 +80,20 @@ export function GuideCatSetupFields({
         {providerRegistry.state === 'runtime_unreachable' ? (
           <>
             <span className="setupRuntimeNote">
-              Cats can still open without the Guide Cat. Retry here, or open Cats Runtime setup if the
-              provider registry keeps timing out.
+              {t(messageKeys.setupGuideCatUnavailableNote)}
             </span>
             <a className="secondaryButton setupInlineLink" href={runtimeSetupHref} target="_blank" rel="noreferrer">
-              Open Cats Runtime setup
+              {t(messageKeys.setupGuideCatOpenRuntimeSetup)}
             </a>
           </>
         ) : null}
         {providerRegistry.state === 'no_usable_targets' ? (
           <>
             <span className="setupRuntimeNote">
-              Cats Runtime is reachable, but it did not report any usable provider targets for the Guide Cat.
+              {t(messageKeys.setupGuideCatNoUsableTargetsNote)}
             </span>
             <a className="secondaryButton setupInlineLink" href={runtimeSetupHref} target="_blank" rel="noreferrer">
-              Open Cats Runtime setup
+              {t(messageKeys.setupGuideCatOpenRuntimeSetup)}
             </a>
           </>
         ) : null}

@@ -14,8 +14,9 @@ import {
 import {
   messageKeys,
   type MessageInterpolationValues,
-} from '../../../../shared/i18n/index.js';
-import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
+  type MessageKey,
+} from '../../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 
 function CopyButton(): JSX.Element {
   return (
@@ -49,7 +50,7 @@ function buildToggleLabel<Participant>(
   presentation: ResolvedSegmentPresentation<Participant>,
   isExpanded: boolean,
   isAnonymousResponseLabel: string,
-  t: (key: keyof typeof messageKeys, values?: MessageInterpolationValues) => string,
+  t: (key: MessageKey, values?: MessageInterpolationValues) => string,
 ): string {
   const accessibleName = (
     presentation.segmentParticipantDisplayName
@@ -140,8 +141,8 @@ export function FocusRailLayout<Participant>(
                     type="button"
                     className="focusRailActionIcon"
                     onClick={() => { void copySegmentPlainTextToClipboard(primaryPlainText); }}
-                    aria-label={primaryCopyLabel}
-                    title={primaryCopyLabel}
+                    aria-label={primaryCopyLabel ?? undefined}
+                    title={primaryCopyLabel ?? undefined}
                   >
                     <CopyButton />
                   </button>

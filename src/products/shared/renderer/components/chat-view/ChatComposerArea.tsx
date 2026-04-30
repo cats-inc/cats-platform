@@ -14,8 +14,8 @@ import { ComposerHighlight } from '../ComposerHighlight.js';
 import type { ComposerStackParticipant } from '../ComposerParticipantStack.js';
 import type { RecipientChipTarget } from '../ComposerRecipientChip.js';
 import { ChatComposerTargetSlot } from './ChatComposerTargetSlot.js';
-import { messageKeys } from '../../../../shared/i18n/index.js';
-import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
+import { messageKeys } from '../../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 
 export interface ChatComposerAreaProps {
   hasConversationStarted: boolean;

@@ -6,27 +6,31 @@ import type {
   CompanionActivityProjection,
   CompanionActivityRenderEntry,
 } from '../../../companion/activityProjection.js';
-import { messageKeys } from '../../../../../shared/i18n/index.js';
+import {
+  messageKeys,
+  type MessageInterpolationValues,
+  type MessageKey,
+} from '../../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 
 type FeedTab = 'posts' | 'photos' | 'videos' | 'music' | 'files' | 'activity';
 type CompanionFeedSurface = 'photo' | 'video' | 'music' | 'file';
-type TranslateFn = (key: keyof typeof messageKeys, values?: Record<string, unknown>) => string;
+type TranslateFn = (key: MessageKey, values?: MessageInterpolationValues) => string;
 
-const FEED_TABS: ReadonlyArray<{ id: FeedTab; labelKey: keyof typeof messageKeys }> = [
-  { id: 'posts', labelKey: 'chatCompanionFeedTabPosts' },
-  { id: 'photos', labelKey: 'chatCompanionFeedTabPhotos' },
-  { id: 'videos', labelKey: 'chatCompanionFeedTabVideos' },
-  { id: 'music', labelKey: 'chatCompanionFeedTabMusic' },
-  { id: 'files', labelKey: 'chatCompanionFeedTabFiles' },
-  { id: 'activity', labelKey: 'chatCompanionFeedTabActivity' },
+const FEED_TABS: ReadonlyArray<{ id: FeedTab; labelKey: MessageKey }> = [
+  { id: 'posts', labelKey: messageKeys.chatCompanionFeedTabPosts },
+  { id: 'photos', labelKey: messageKeys.chatCompanionFeedTabPhotos },
+  { id: 'videos', labelKey: messageKeys.chatCompanionFeedTabVideos },
+  { id: 'music', labelKey: messageKeys.chatCompanionFeedTabMusic },
+  { id: 'files', labelKey: messageKeys.chatCompanionFeedTabFiles },
+  { id: 'activity', labelKey: messageKeys.chatCompanionFeedTabActivity },
 ];
 
-const SURFACE_LABEL_KEYS: Record<CompanionFeedSurface, keyof typeof messageKeys> = {
-  photo: 'chatCompanionFeedSurfacePhotoLabel',
-  video: 'chatCompanionFeedSurfaceVideoLabel',
-  music: 'chatCompanionFeedSurfaceMusicLabel',
-  file: 'chatCompanionFeedSurfaceFileLabel',
+const SURFACE_LABEL_KEYS: Record<CompanionFeedSurface, MessageKey> = {
+  photo: messageKeys.chatCompanionFeedSurfacePhotoLabel,
+  video: messageKeys.chatCompanionFeedSurfaceVideoLabel,
+  music: messageKeys.chatCompanionFeedSurfaceMusicLabel,
+  file: messageKeys.chatCompanionFeedSurfaceFileLabel,
 };
 
 function CompanionPostsEmptyState({

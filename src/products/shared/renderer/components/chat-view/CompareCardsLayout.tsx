@@ -9,8 +9,8 @@ import {
   SegmentContentBody,
   type ClusterLayoutProps,
 } from './ConcurrentClusterRenderer.js';
-import { messageKeys } from '../../../../shared/i18n/index.js';
-import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
+import { messageKeys } from '../../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 
 function phaseClassName(phase: string): string {
   switch (phase) {

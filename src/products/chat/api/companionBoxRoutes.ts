@@ -398,6 +398,7 @@ async function handleResolveCompanionContentReference(
             preview: {
               title: match.title ?? '',
               generatedTitleKind: match.title ? null : 'post',
+              fallbackReason: null,
               subtitle: null,
               description: match.content || null,
               thumbnailUrl: null,
@@ -416,6 +417,7 @@ async function handleResolveCompanionContentReference(
           preview: {
             title: match.title ?? match.originalFileName ?? '',
             generatedTitleKind: match.title || match.originalFileName ? null : 'source',
+            fallbackReason: null,
             subtitle: null,
             description: match.ownerNote ?? match.textExcerpt ?? null,
             thumbnailUrl: null,

@@ -13,7 +13,7 @@ import {
 } from '../workExecutionPresentation.js';
 import {
   getWorkObjectStatusLabel,
-} from '../topdown/WorkObjectCard';
+} from './topdown/WorkObjectCard';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 
 type WorkOperatorInboxItem = WorkDashboardProjection['sections']['operatorInbox']['items'][number];

@@ -1,6 +1,8 @@
 import { useEffect, useRef, type ReactNode } from 'react';
 
 import { AccordionSection } from './AccordionSection';
+import { messageKeys } from '../../shared/i18n/messageKeys.js';
+import { useI18n } from '../../app/renderer/i18n/index.js';
 
 export const SIDE_PANEL_LAYOUT_EVENT = 'cats:side-panel-layout-change';
 
@@ -31,6 +33,7 @@ export function SidePanel({
   position = 'side',
 }: SidePanelProps) {
   const panelRef = useRef<HTMLElement>(null);
+  const { t } = useI18n();
   const panelClassName = [
     'sidePanel',
     position === 'bottom' ? 'sidePanelBottom' : '',
@@ -83,7 +86,7 @@ export function SidePanel({
           type="button"
           className="chromeButton"
           onClick={onClose}
-          aria-label="Close"
+          aria-label={t(messageKeys.designSidePanelCloseLabel)}
         >
           &times;
         </button>

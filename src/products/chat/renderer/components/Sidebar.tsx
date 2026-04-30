@@ -23,7 +23,7 @@ import {
 } from '../myCatNavigation';
 import { isDirectLaneSummary } from '../../shared/channelTopology.js';
 import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
-import { messageKeys } from '../../../../shared/i18n/index.js';
+import { messageKeys, type MessageKey } from '../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
 export interface SidebarProps {
@@ -61,7 +61,7 @@ export interface SidebarProps {
 
 function createPrimaryActions(
   props: SidebarProps,
-  t: (key: string) => string,
+  t: (key: MessageKey) => string,
 ): ConversationSidebarAction[] {
   return [
     {

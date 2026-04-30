@@ -23,10 +23,10 @@ export interface ComposerSelectedChannelLike {
     mode?: RoomRoutingMode | null;
     defaultRecipientId?: string | null;
   };
-  assignedParticipants?: readonly Array<{ participantId: string; status: string }> | null;
-  assignedCats?: readonly Array<{ catId: string; status: string }> | null;
-  participantAssignments?: readonly Array<{ participantId: string; status: string }> | null;
-  catAssignments?: readonly Array<{ catId: string; status: string }> | null;
+  assignedParticipants?: ReadonlyArray<{ participantId: string; status: string }> | null;
+  assignedCats?: ReadonlyArray<{ catId: string; status: string }> | null;
+  participantAssignments?: ReadonlyArray<{ participantId: string; status: string }> | null;
+  catAssignments?: ReadonlyArray<{ catId: string; status: string }> | null;
   repoPath?: string | null;
   chatCwd?: string | null;
 }

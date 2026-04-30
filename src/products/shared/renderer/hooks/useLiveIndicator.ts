@@ -26,6 +26,7 @@ import {
   describeBusyState,
   type WorkspaceBusyState,
 } from '../../../../shared/workspaceBusy.js';
+import type { RoomRoutingMode } from '../../../../shared/roomRouting.js';
 import { resolveChannelCanonicalIdentity } from '../../../chat/shared/channelCanonicalIdentity.js';
 import { isProviderSoloThreadChannel } from '../../../chat/shared/channelTopology.js';
 import { isOptimisticDraftChannelId } from '../../channelPaths.js';
@@ -75,6 +76,7 @@ export interface LiveIndicatorSelectedChannelLike {
     createdAt: string;
   }>;
   roomRouting: {
+    mode?: RoomRoutingMode | null;
     defaultRecipientId: string | null;
     lastOutcome?: {
       turnId?: string | null;
@@ -154,7 +156,8 @@ export function shouldConnectLiveIndicatorStream(
 export function resolveLiveIndicatorSpeakerLabel(
   selectedChannel: LiveIndicatorSelectedChannelLike | null,
 ): string | null {
-  if (!selectedChannel || selectedChannel.roomRouting.defaultRecipientId) {
+  const pendingProvider = selectedChannel?.pendingProvider?.trim() || null;
+  if (!selectedChannel || selectedChannel.roomRouting.defaultRecipientId || !pendingProvider) {
     return null;
   }
 
@@ -163,7 +166,7 @@ export function resolveLiveIndicatorSpeakerLabel(
   }
 
   return buildExecutionLabel(
-    selectedChannel.pendingProvider,
+    pendingProvider,
     selectedChannel.pendingInstance,
     null,
   );

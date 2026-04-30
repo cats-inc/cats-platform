@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { messageKeys } from '../../shared/i18n/messageKeys.js';
+import { useI18n } from '../../app/renderer/i18n/index.js';
+
 export type NotificationLevel = 'info' | 'success' | 'warning' | 'error';
 
 export interface NotificationOptions {
@@ -84,6 +87,7 @@ export function NotificationContainer({
   notifications: NotificationEntry[];
   onDismiss: (id: number) => void;
 }) {
+  const { t } = useI18n();
   if (notifications.length === 0) return null;
   return (
     <div className="notificationContainer">
@@ -103,7 +107,7 @@ export function NotificationContainer({
             className="notificationDismiss"
             type="button"
             onClick={() => onDismiss(n.id)}
-            aria-label="Dismiss"
+            aria-label={t(messageKeys.designNotificationDismissLabel)}
           >
             &#x2715;
           </button>

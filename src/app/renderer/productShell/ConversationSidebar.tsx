@@ -11,6 +11,7 @@ import type {
 } from '../../../shared/roomRouting.js';
 import type { RuntimeSetupStatus } from '../../../shared/runtimeSetup.js';
 import type { WorkspaceBusyState } from '../../../shared/workspaceBusy.js';
+import { messageKeys } from '../../../shared/i18n/messageKeys.js';
 import { GuideCatDockSlot } from '../../../design/components/GuideCatDockSlot.js';
 import { ConversationSidebarFooter } from './ConversationSidebarFooter.js';
 import {
@@ -24,6 +25,7 @@ import {
 } from './ConversationSidebarPinned.js';
 import { buildConversationSidebarViewModel } from './conversationSidebarViewModel.js';
 import { ConversationSidebarRecentsSection } from './ConversationSidebarRecents.js';
+import { useI18n } from '../i18n/index.js';
 
 export interface ConversationSidebarCat {
   id: string;
@@ -242,6 +244,9 @@ export function ConversationSidebar<
     shellSurface,
     currentPath,
   });
+  const { t } = useI18n();
+  const resolvedMyCatsSectionLabel = myCatsSectionLabel
+    ?? t(messageKeys.conversationSidebarMyCatsLabel);
   const resolvedMyCatsSectionCats = myCatsSectionCats ?? visibleCats;
   const showMyCatsSection =
     forceShowMyCatsSection
@@ -264,14 +269,17 @@ export function ConversationSidebar<
         />
 
         <div className="sidebarScrollable">
-          <nav className="navGroup navGroupChat" aria-label="Chat">
+          <nav
+            className="navGroup navGroupChat"
+            aria-label={t(messageKeys.conversationSidebarChatsLabel)}
+          >
             <button
               className={surface === 'chats' ? 'navItem navItemActive' : 'navItem'}
               onClick={onOpenChatsOverview}
               type="button"
             >
               <span className="navGlyph navGlyphSquare" aria-hidden="true" />
-              <span className="navLabel">Chats</span>
+              <span className="navLabel">{t(messageKeys.conversationSidebarChatsLabel)}</span>
             </button>
           </nav>
 
@@ -314,7 +322,7 @@ export function ConversationSidebar<
 
           {showMyCatsSection ? (
             <ConversationSidebarMyCatsSection
-              label={myCatsSectionLabel}
+              label={resolvedMyCatsSectionLabel}
               cats={resolvedMyCatsSectionCats}
               bossCatId={payload.chat.bossCatId}
               payloadChannels={payload.chat.channels}

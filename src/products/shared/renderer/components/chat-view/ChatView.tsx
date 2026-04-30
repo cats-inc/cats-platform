@@ -90,8 +90,8 @@ import {
   resolveConversationBehaviorPreferences,
   type ConversationBehaviorSurface,
 } from '../../../conversationBehavior.js';
-import { messageKeys } from '../../../../shared/i18n/index.js';
-import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
+import { messageKeys } from '../../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 
 let _lastLiveIndicatorLogSignature: string | null = null;
 let _lastLiveIndicatorLogAt: number | null = null;

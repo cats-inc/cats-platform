@@ -6,6 +6,7 @@ import type { ProviderModelSelection } from '../../../shared/providerSelection.j
 import { ConfirmDialog, useConfirmDialog } from '../../../design/components/ConfirmDialog.js';
 import { GUIDE_CAT_AVATAR_URL } from '../../../design/components/GuideCatSidecar.js';
 import { ProviderModelBrainCard } from '../../../design/components/ProviderModelBrainCard.js';
+import { messageKeys } from '../../../shared/i18n/messageKeys.js';
 import {
   SettingsActionBar,
   SettingsSection,
@@ -22,6 +23,7 @@ import {
   isGuideCatEnabledStatus,
   resolveClientGuideCatName,
 } from '../../../shared/guideCatIdentity.js';
+import { useI18n } from '../i18n/index.js';
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
 
 export interface SettingsAssistantsProps {
@@ -36,17 +38,6 @@ interface AssistantDraft {
   instance: string;
   model: string;
   modelSelection: ProviderModelSelection | null;
-}
-
-function emptyAssistantDraft(): AssistantDraft {
-  return {
-    name: 'Assistant',
-    roleHint: '',
-    provider: 'claude',
-    instance: '',
-    model: '',
-    modelSelection: null,
-  };
 }
 
 function assistantInitials(name: string): string {
@@ -65,6 +56,17 @@ export function SettingsAssistants({
   const guideCatName = resolveClientGuideCatName();
   const guideCatEnabled = guideCat ? isGuideCatEnabledStatus(guideCat.status) : false;
   const assistantPresets = payload.assistantPresets ?? [];
+
+  const { t } = useI18n();
+  const defaultAssistantName = t(messageKeys.settingsAssistantsNamePlaceholder);
+  const emptyAssistantDraft = useCallback((): AssistantDraft => ({
+    name: defaultAssistantName,
+    roleHint: '',
+    provider: 'claude',
+    instance: '',
+    model: '',
+    modelSelection: null,
+  }), [defaultAssistantName]);
 
   const { toasts, showToast } = useToast();
   const { dialog, confirm, handleClose } = useConfirmDialog();
@@ -132,7 +134,9 @@ export function SettingsAssistants({
           const errorPayload = await response.json().catch(() => null);
           throw new Error(
             (errorPayload as { error?: { message?: string } } | null)?.error?.message
-              ?? `Save failed (${response.status})`,
+              ?? t(messageKeys.settingsAssistantsSaveFailedWithError, {
+                status: response.status,
+              }),
           );
         }
         const result = (await response.json()) as { guideCat: GuideCatRecord };
@@ -140,13 +144,13 @@ export function SettingsAssistants({
         dispatchPlatformEnvelopeRefresh();
         return true;
       } catch (error) {
-        toastError(error instanceof Error ? error.message : 'Failed to save Guide Cat.');
+        toastError(error instanceof Error ? error.message : t(messageKeys.settingsAssistantsGuideCatSaveFailed));
         return false;
       } finally {
         setGuideBusy(false);
       }
     },
-    [guideCat, onPayloadUpdate, payload, toastError],
+    [guideCat, onPayloadUpdate, payload, toastError, t],
   );
 
   const patchGuideStatus = useCallback(
@@ -162,7 +166,9 @@ export function SettingsAssistants({
           const errorPayload = await response.json().catch(() => null);
           throw new Error(
             (errorPayload as { error?: { message?: string } } | null)?.error?.message
-              ?? `Status update failed (${response.status})`,
+              ?? t(messageKeys.settingsAssistantsStatusUpdateFailed, {
+                status: response.status,
+              }),
           );
         }
         const result = (await response.json()) as { guideCat: GuideCatRecord };
@@ -170,13 +176,13 @@ export function SettingsAssistants({
         dispatchPlatformEnvelopeRefresh();
         return true;
       } catch (error) {
-        toastError(error instanceof Error ? error.message : 'Failed to update Guide Cat.');
+        toastError(error instanceof Error ? error.message : t(messageKeys.settingsAssistantsGuideCatUpdateFailed));
         return false;
       } finally {
         setGuideBusy(false);
       }
     },
-    [onPayloadUpdate, payload, toastError],
+    [onPayloadUpdate, payload, toastError, t],
   );
 
   const handleEnableGuide = useCallback(async () => {
@@ -240,7 +246,9 @@ export function SettingsAssistants({
           const errorPayload = await response.json().catch(() => null);
           throw new Error(
             (errorPayload as { error?: { message?: string } } | null)?.error?.message
-              ?? `Save failed (${response.status})`,
+              ?? t(messageKeys.settingsAssistantsSaveFailedWithError, {
+                status: response.status,
+              }),
           );
         }
         const result = (await response.json()) as {
@@ -278,7 +286,9 @@ export function SettingsAssistants({
         const errorPayload = await response.json().catch(() => null);
         throw new Error(
           (errorPayload as { error?: { message?: string } } | null)?.error?.message
-            ?? `Save failed (${response.status})`,
+            ?? t(messageKeys.settingsAssistantsSaveFailedWithError, {
+              status: response.status,
+            }),
         );
       }
       const result = (await response.json()) as {
@@ -290,18 +300,20 @@ export function SettingsAssistants({
       setIsCreatingAssistant(false);
       setCreateDraft(emptyAssistantDraft());
     } catch (error) {
-      toastError(error instanceof Error ? error.message : 'Failed to save assistant.');
+      toastError(error instanceof Error ? error.message : t(messageKeys.settingsAssistantsCreateFailed));
     } finally {
       setAssistantBusy(false);
     }
-  }, [createDraft, onPayloadUpdate, payload, toastError]);
+  }, [createDraft, emptyAssistantDraft, onPayloadUpdate, payload, t, toastError]);
 
   const handleDeleteAssistant = useCallback(async () => {
     if (!selectedAssistant) return;
     const confirmed = await confirm({
-      title: 'Remove assistant',
-      message: `Remove "${selectedAssistant.name}"? This can't be undone.`,
-      confirmLabel: 'Remove',
+      title: t(messageKeys.settingsAssistantsRemoveTitle),
+      message: t(messageKeys.settingsAssistantsRemoveMessage, {
+        title: selectedAssistant.name,
+      }),
+      confirmLabel: t(messageKeys.settingsAssistantsRemoveButton),
     });
     if (!confirmed) return;
     setAssistantBusy(true);
@@ -317,7 +329,7 @@ export function SettingsAssistants({
         const errorPayload = await response.json().catch(() => null);
         throw new Error(
           (errorPayload as { error?: { message?: string } } | null)?.error?.message
-            ?? `Delete failed (${response.status})`,
+            ?? t(messageKeys.settingsAssistantsStatusFailed, { status: response.status }),
         );
       }
       const result = (await response.json()) as {
@@ -329,11 +341,11 @@ export function SettingsAssistants({
         setIsCreatingAssistant(true);
       }
     } catch (error) {
-      toastError(error instanceof Error ? error.message : 'Failed to remove assistant.');
+      toastError(error instanceof Error ? error.message : t(messageKeys.settingsAssistantsRemoveFailed));
     } finally {
       setAssistantBusy(false);
     }
-  }, [confirm, onPayloadUpdate, payload, selectedAssistant, toastError]);
+  }, [confirm, onPayloadUpdate, payload, selectedAssistant, t, toastError]);
 
   const handleSelectAssistant = useCallback((assistantId: string) => {
     setSelectedAssistantId(assistantId);
@@ -343,7 +355,7 @@ export function SettingsAssistants({
   const handleStartCreate = useCallback(() => {
     setIsCreatingAssistant(true);
     setCreateDraft(emptyAssistantDraft());
-  }, []);
+  }, [emptyAssistantDraft]);
 
   const handleCancelCreate = useCallback(() => {
     if (assistantPresets.length === 0) return;
@@ -377,7 +389,7 @@ export function SettingsAssistants({
                       disabled={guideBusy}
                       onClick={() => void handleDisableGuide()}
                     >
-                      Disable
+                      {t(messageKeys.settingsAssistantsDisableButton)}
                     </button>
                   ) : (
                     <button
@@ -386,7 +398,9 @@ export function SettingsAssistants({
                       disabled={guideBusy}
                       onClick={() => void handleEnableGuide()}
                     >
-                      {guideBusy ? 'Saving...' : 'Enable'}
+                      {guideBusy
+                        ? t(messageKeys.sharedCommonSaving)
+                        : t(messageKeys.settingsAssistantsEnableButton)}
                     </button>
                   )}
                 </SettingsActionBar>
@@ -398,7 +412,7 @@ export function SettingsAssistants({
             <div className="catsDetailColumn">
               <SettingsSubSection headerless className="catsSubCard catsIdentityCard">
                 <div className="fieldLabel">
-                  <span>Avatar</span>
+                  <span>{t(messageKeys.settingsAssistantsAvatarLabel)}</span>
                   <div className="catsAvatarDock">
                     <div
                       className="catAvatar catsIdentityAvatar catsIdentityAvatarStatic"
@@ -414,7 +428,7 @@ export function SettingsAssistants({
                   </div>
                 </div>
                 <div className="fieldLabel">
-                  <span>Name</span>
+                  <span>{t(messageKeys.settingsAssistantsNameLabel)}</span>
                   <div className="catsIdentityNameStatic">{guideCatName}</div>
                 </div>
               </SettingsSubSection>
@@ -445,7 +459,7 @@ export function SettingsAssistants({
         <nav
           className="catsSelectorStrip"
           role="tablist"
-          aria-label="Select an assistant"
+          aria-label={t(messageKeys.settingsAssistantsSelectAriaLabel)}
         >
           {assistantPresets.map((assistant) => {
             const isSelected = !isCreatingAssistant
@@ -479,8 +493,8 @@ export function SettingsAssistants({
               isCreatingAssistant ? 'catsSelectorAvatarActive' : '',
             ].filter(Boolean).join(' ')}
             onClick={handleStartCreate}
-            aria-label="Add new assistant"
-            data-tooltip="Add new assistant"
+            aria-label={t(messageKeys.settingsAssistantsAddNewLabel)}
+            data-tooltip={t(messageKeys.settingsAssistantsAddNewLabel)}
           >
             <svg
               width="16"
@@ -504,7 +518,7 @@ export function SettingsAssistants({
           header={
             <SettingsSectionHeader
               title={showCreateView
-                ? 'New assistant'
+                ? t(messageKeys.settingsAssistantsNewAssistantTitle)
                 : (selectedAssistant?.name ?? '')}
               status={
                 showCreateView ? (
@@ -516,7 +530,7 @@ export function SettingsAssistants({
                         disabled={assistantBusy}
                         onClick={handleCancelCreate}
                       >
-                        Cancel
+                        {t(messageKeys.settingsAssistantsCancelButton)}
                       </button>
                     ) : null}
                     <button
@@ -525,7 +539,9 @@ export function SettingsAssistants({
                       disabled={assistantBusy || !canSaveCreate}
                       onClick={() => void handleCreateAssistant()}
                     >
-                      {assistantBusy ? 'Saving...' : 'Save'}
+                      {assistantBusy
+                        ? t(messageKeys.sharedCommonSaving)
+                        : t(messageKeys.settingsAssistantsCreateButton)}
                     </button>
                   </SettingsActionBar>
                 ) : (
@@ -536,7 +552,7 @@ export function SettingsAssistants({
                       disabled={assistantBusy}
                       onClick={() => void handleDeleteAssistant()}
                     >
-                      Delete
+                      {t(messageKeys.settingsAssistantsDeleteButton)}
                     </button>
                   </SettingsActionBar>
                 )
@@ -549,11 +565,11 @@ export function SettingsAssistants({
               <div className="catsDetailColumn">
                 <SettingsSubSection headerless className="catsSubCard catsIdentityCard">
                   <label className="fieldLabel">
-                    <span>Name</span>
+                    <span>{t(messageKeys.settingsAssistantsNameLabel)}</span>
                     <input
                       className="textInput"
                       value={createDraft.name}
-                      placeholder="Assistant"
+                      placeholder={t(messageKeys.settingsAssistantsNamePlaceholder)}
                       onChange={(event) =>
                         setCreateDraft((prev) => ({
                           ...prev,
@@ -564,13 +580,16 @@ export function SettingsAssistants({
                 </SettingsSubSection>
                 <SettingsSubSection
                   className="catsSubCard"
-                  header={<SettingsSectionHeader title="Role hint" nested />}
+                  header={<SettingsSectionHeader
+                    title={t(messageKeys.settingsAssistantsRoleHintTitle)}
+                    nested
+                  />}
                 >
                   <textarea
                     className="textInput"
                     rows={3}
                     value={createDraft.roleHint}
-                    placeholder="Reviewer, debugger, copy editor, API specialist..."
+                    placeholder={t(messageKeys.settingsAssistantsRoleHintPlaceholder)}
                     onChange={(event) =>
                       setCreateDraft((prev) => ({
                         ...prev,
@@ -604,12 +623,12 @@ export function SettingsAssistants({
               <div className="catsDetailColumn">
                 <SettingsSubSection headerless className="catsSubCard catsIdentityCard">
                   <label className="fieldLabel">
-                    <span>Name</span>
+                    <span>{t(messageKeys.settingsAssistantsNameLabel)}</span>
                     <input
                       key={selectedAssistant.id}
                       className="textInput"
                       defaultValue={selectedAssistant.name}
-                      placeholder="Assistant"
+                      placeholder={t(messageKeys.settingsAssistantsNamePlaceholder)}
                       onBlur={async (event) => {
                         const next = event.currentTarget.value.trim();
                         if (!next) {
@@ -620,7 +639,7 @@ export function SettingsAssistants({
                         const ok = await commitAssistant(
                           selectedAssistant.id,
                           { name: next },
-                          'Failed to rename assistant.',
+                          t(messageKeys.settingsAssistantsRenameFailed),
                         );
                         if (!ok) {
                           event.currentTarget.value = selectedAssistant.name;
@@ -631,14 +650,17 @@ export function SettingsAssistants({
                 </SettingsSubSection>
                 <SettingsSubSection
                   className="catsSubCard"
-                  header={<SettingsSectionHeader title="Role hint" nested />}
+                  header={<SettingsSectionHeader
+                    title={t(messageKeys.settingsAssistantsRoleHintTitle)}
+                    nested
+                  />}
                 >
                   <textarea
                     key={selectedAssistant.id}
                     className="textInput"
                     rows={3}
                     defaultValue={selectedAssistant.roleHint ?? ''}
-                    placeholder="Reviewer, debugger, copy editor, API specialist..."
+                    placeholder={t(messageKeys.settingsAssistantsRoleHintPlaceholder)}
                     onBlur={async (event) => {
                       const raw = event.currentTarget.value.trim();
                       const next: string | null = raw ? raw : null;
@@ -647,7 +669,7 @@ export function SettingsAssistants({
                       const ok = await commitAssistant(
                         selectedAssistant.id,
                         { roleHint: next },
-                        'Failed to update role hint.',
+                        t(messageKeys.settingsAssistantsRoleHintUpdateFailed),
                       );
                       if (!ok) {
                         event.currentTarget.value = selectedAssistant.roleHint ?? '';
@@ -671,7 +693,7 @@ export function SettingsAssistants({
                         model: target.model || null,
                         modelSelection: target.modelSelection ?? null,
                       },
-                      'Failed to update Brain.',
+                      t(messageKeys.settingsAssistantsBrainUpdateFailed),
                     );
                   }}
                   fetchProviderRegistry={fetchProviderRegistry}

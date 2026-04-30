@@ -20,7 +20,7 @@ import {
   hasVisibleLiveIndicatorSegmentActivity,
 } from '../../../../../shared/liveIndicator.js';
 import { MessageBody } from '../MessageBody.js';
-import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
+import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 import {
   shouldRenderLiveTranscriptBlock,
   shouldShowLiveTranscriptTrailingDots,

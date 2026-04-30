@@ -12,7 +12,7 @@ import {
   type SelectedChannelView,
 } from '../../workspaceChatUtils.js';
 import { MessageBody } from '../MessageBody.js';
-import { messageKeys } from '../../../../shared/i18n/index.js';
+import { messageKeys } from '../../../../../shared/i18n/index.js';
 import { CompanionMessageReferencePreviews } from './CompanionMessageReferencePreviews.js';
 import {
   MessageChoices,
@@ -24,7 +24,7 @@ import {
   TranscriptMessageActions,
   type TranscriptMessageActionDescriptor,
 } from './TranscriptMessageActions.js';
-import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
+import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 import type {
   ResolvedChannelParticipant,
 } from '../../../channelParticipants.js';

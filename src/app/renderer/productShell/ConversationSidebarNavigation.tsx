@@ -1,5 +1,7 @@
 import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
 import { PlatformSurfaceSwitcher } from '../../../design/components/PlatformSurfaceSwitcher.js';
+import { messageKeys } from '../../../shared/i18n/messageKeys.js';
+import { useI18n } from '../i18n/index.js';
 import type { ConversationSidebarAction } from './ConversationSidebar.js';
 
 interface ConversationSidebarNavigationProps {
@@ -17,6 +19,7 @@ export function ConversationSidebarNavigation({
   onToggleSidebar,
   onSwitchProduct,
 }: ConversationSidebarNavigationProps) {
+  const { t } = useI18n();
   return (
     <>
       <div className="brandRow">
@@ -29,7 +32,11 @@ export function ConversationSidebarNavigation({
         <button
           className="chromeButton"
           type="button"
-          aria-label={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
+          aria-label={
+            sidebarOpen
+              ? t(messageKeys.conversationSidebarCloseSidebarLabel)
+              : t(messageKeys.conversationSidebarOpenSidebarLabel)
+          }
           onClick={onToggleSidebar}
         >
           <svg
@@ -48,7 +55,7 @@ export function ConversationSidebarNavigation({
         </button>
       </div>
 
-      <nav className="navGroup" aria-label="Primary">
+      <nav className="navGroup" aria-label={t(messageKeys.conversationSidebarPrimaryAriaLabel)}>
         {primaryActions.map((item) => (
           <button
             key={item.key}

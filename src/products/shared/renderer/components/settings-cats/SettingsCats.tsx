@@ -632,7 +632,7 @@ export function SettingsCatsCanvas({
                           const confirmed = await confirm({
                             title: t(messageKeys.sharedSettingsCatsChangeBossCatTitle),
                             message: t(messageKeys.sharedSettingsCatsChangeBossCatMessage, {
-                              name: currentBoss?.name ?? catForm.name.trim() || t(messageKeys.sharedCatsCreateNewCat),
+                              name: currentBoss?.name ?? (catForm.name.trim() || t(messageKeys.sharedCatsCreateNewCat)),
                             }),
                             confirmLabel: t(messageKeys.sharedSettingsCatsConfirm),
                           });

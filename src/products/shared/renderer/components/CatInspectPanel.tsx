@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 import { catInitials } from '../workspaceChatUtils.js';
 import { buildExecutionTargetSummary } from './ExecutionTarget.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
-import { getCatSkillProfileLabel } from '../settings-cats/viewSupport.js';
+import { getCatSkillProfileLabel } from './settings-cats/viewSupport.js';
 
 export interface CatInspectTarget {
   id: string;

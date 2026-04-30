@@ -5,6 +5,8 @@ import type {
   ConversationSidebarChannel,
   ConversationSidebarHelpers,
 } from './ConversationSidebar.js';
+import { messageKeys } from '../../../shared/i18n/messageKeys.js';
+import { useI18n } from '../i18n/index.js';
 import { SidebarFloatingMenuPortal } from './SidebarFloatingMenuPortal.js';
 import { useFloatingSidebarMenu } from './useFloatingSidebarMenu.js';
 
@@ -33,6 +35,7 @@ function MyCatRowItem<TCat extends ConversationSidebarCat>({
   onArchive: () => void;
   onOverflowToggle: () => void;
 }) {
+  const { t } = useI18n();
   const overflowButtonRef = useRef<HTMLButtonElement>(null);
   const overflowMenuRef = useRef<HTMLDivElement>(null);
   const overflowMenuStyle = useFloatingSidebarMenu(
@@ -77,8 +80,8 @@ function MyCatRowItem<TCat extends ConversationSidebarCat>({
         {hasTelegramBinding ? (
           <span
             className="myCatTelegramIcon"
-            data-tooltip="Telegram bot bound"
-            aria-label="Telegram bot bound"
+            data-tooltip={t(messageKeys.conversationSidebarTelegramBoundTooltip)}
+            aria-label={t(messageKeys.conversationSidebarTelegramBoundTooltip)}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
               <path d="M20.66 3.88 2.92 10.9a.73.73 0 0 0 .04 1.38l4.45 1.4 1.72 5.52a.78.78 0 0 0 1.24.37l2.48-2.02 4.87 3.6a.78.78 0 0 0 1.2-.46L21.7 4.76c.17-.7-.52-1.27-1.04-0.88ZM10.1 14.6l-.44 3.15-1.34-4.3 9.38-6.2Z" />
@@ -105,7 +108,7 @@ function MyCatRowItem<TCat extends ConversationSidebarCat>({
           onClick={(event) => event.stopPropagation()}
         >
           <button type="button" disabled={false} onClick={onArchive}>
-            Archive
+            {t(messageKeys.conversationSidebarArchiveButton)}
           </button>
         </SidebarFloatingMenuPortal>
       ) : null}
@@ -175,7 +178,7 @@ export function ConversationSidebarMyCatsSection<
   TChannel extends ConversationSidebarChannel,
   TDot extends string,
 >({
-  label = 'My Cats',
+  label,
   cats,
   bossCatId,
   payloadChannels,
@@ -201,6 +204,7 @@ export function ConversationSidebarMyCatsSection<
   onArchiveCat: (catId: string) => void;
   emptyStatePlaceholder?: ConversationSidebarMyCatsPlaceholder;
 }) {
+  const { t } = useI18n();
   const activeCats = helpers.sortCatsForDisplay(
     cats.filter((cat) => cat.status === 'active'),
     { bossCatIds: bossCatId },
@@ -208,7 +212,7 @@ export function ConversationSidebarMyCatsSection<
   const showPlaceholder = activeCats.length === 0 && emptyStatePlaceholder != null;
   return (
     <section className="myCatsSection">
-      <p className="sectionLabel">{label}</p>
+      <p className="sectionLabel">{label ?? t(messageKeys.conversationSidebarMyCatsLabel)}</p>
       <div className="myCatsList">
         {showPlaceholder ? (
           <MyCatPlaceholderRow

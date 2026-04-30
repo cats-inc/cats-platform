@@ -4,6 +4,8 @@ import {
   isConcurrentGroupBusy,
   type WorkspaceBusyState,
 } from '../../../shared/workspaceBusy.js';
+import { messageKeys } from '../../../shared/i18n/messageKeys.js';
+import { useI18n } from '../i18n/index.js';
 
 import {
   type ConversationSidebarCat,
@@ -73,6 +75,7 @@ function ChannelItem<
   titleOverride?: string;
   disableRename?: boolean;
 }) {
+  const { t } = useI18n();
   const cat = resolveCatForChannel(channel, payload);
   const overflowButtonRef = useRef<HTMLButtonElement>(null);
   const overflowMenuRef = useRef<HTMLDivElement>(null);
@@ -177,7 +180,7 @@ function ChannelItem<
           {!disableRename ? (
             <>
               <button type="button" onClick={startRename}>
-                Rename
+                {t(messageKeys.conversationSidebarRenameLabel)}
               </button>
               <div className="recentOverflowMenuDivider" />
             </>
@@ -187,7 +190,9 @@ function ChannelItem<
             disabled={isChannelBusy(busy, 'delete', channel.id)}
             onClick={onDelete}
           >
-            {isChannelBusy(busy, 'delete', channel.id) ? 'Deleting...' : 'Delete'}
+            {isChannelBusy(busy, 'delete', channel.id)
+              ? t(messageKeys.conversationSidebarDeletingLabel)
+              : t(messageKeys.conversationSidebarDeleteLabel)}
           </button>
         </SidebarFloatingMenuPortal>
       ) : null}
@@ -222,6 +227,7 @@ function GroupHeaderItem({
   ungroupBusyKey?: string;
   deleteBusyKey?: string;
 }) {
+  const { t } = useI18n();
   const overflowButtonRef = useRef<HTMLButtonElement>(null);
   const overflowMenuRef = useRef<HTMLDivElement>(null);
   const overflowMenuStyle = useFloatingSidebarMenu(
@@ -338,7 +344,9 @@ function GroupHeaderItem({
         >
           {onRename ? (
             <button type="button" disabled={renameBusy} onClick={startRename}>
-              {renameBusy ? 'Renaming...' : 'Rename'}
+              {renameBusy
+                ? t(messageKeys.conversationSidebarRenamingLabel)
+                : t(messageKeys.conversationSidebarRenameLabel)}
             </button>
           ) : null}
           {onUngroup ? (
@@ -350,14 +358,18 @@ function GroupHeaderItem({
                 onUngroup();
               }}
             >
-              {ungroupBusy ? 'Ungrouping...' : 'Ungroup'}
+              {ungroupBusy
+                ? t(messageKeys.conversationSidebarUngroupingLabel)
+                : t(messageKeys.conversationSidebarUngroupLabel)}
             </button>
           ) : null}
           {onDelete ? (
             <>
               {onRename || onUngroup ? <div className="recentOverflowMenuDivider" /> : null}
               <button type="button" disabled={deleteBusy} onClick={onDelete}>
-                {deleteBusy ? 'Deleting...' : 'Delete All'}
+                {deleteBusy
+                  ? t(messageKeys.conversationSidebarDeletingLabel)
+                  : t(messageKeys.conversationSidebarDeleteAllLabel)}
               </button>
             </>
           ) : null}
@@ -373,7 +385,7 @@ export function ConversationSidebarRecentsSection<
   TDot extends string,
 >({
   entries,
-  emptyStateLabel = 'No chats yet',
+  emptyStateLabel,
   payload,
   helpers,
   routeChannelId,
@@ -396,6 +408,7 @@ export function ConversationSidebarRecentsSection<
   onRenameChannel: (channelId: string, title: string) => void;
   onOverflowMenuToggle: (channelId: string | null) => void;
 }) {
+  const { t } = useI18n();
   function renderChannelItem(
     entry: ConversationSidebarRecentChannelEntry<TChannel>,
   ): ReactNode {
@@ -430,7 +443,7 @@ export function ConversationSidebarRecentsSection<
     if (entries.length === 0) {
       return (
         <div className="recentEmpty">
-          <p>{emptyStateLabel}</p>
+          <p>{emptyStateLabel ?? t(messageKeys.conversationSidebarNoChatsLabel)}</p>
         </div>
       );
     }
@@ -470,7 +483,7 @@ export function ConversationSidebarRecentsSection<
   return (
     <section className="recentSection">
       <div className="recentHeader">
-        <p className="sectionLabel">Recents</p>
+        <p className="sectionLabel">{t(messageKeys.conversationSidebarRecentsLabel)}</p>
       </div>
       <div className="recentList">{renderRecentEntries()}</div>
     </section>

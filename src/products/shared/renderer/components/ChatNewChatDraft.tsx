@@ -191,6 +191,7 @@ function BranchRuntimeSessionPolicyControls({
   isSubmittingFirstTurn,
   onSetParallelBranchRuntimeSessionPolicy,
 }: BranchRuntimeSessionPolicyControlsProps) {
+  const { t } = useI18n();
   const branchSessionPolicy = target.runtimeSessionPolicy ?? null;
   const canEditBranchSessionPolicy = onSetParallelBranchRuntimeSessionPolicy != null;
   const branchCwd = target.cwd ?? draftCwd;
@@ -937,7 +938,7 @@ export function NewChatDraft({
             <button
               className="composerPlusButton"
               type="button"
-              aria-label={t(messageKeys.chatNewChatDraftAttachAria)}
+              aria-label={t(messageKeys.chatNewChatDraftBranchAttachAria)}
               disabled={isSubmittingFirstTurn}
               onClick={onTogglePlusMenu}
             >

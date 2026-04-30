@@ -71,10 +71,10 @@ export interface WorkspaceExecutionTargetChannelLike {
   roomRouting?: {
     mode?: RoomRoutingMode | null;
   } | null;
-  assignedParticipants?: readonly Array<{ participantId: string; status?: string | null }> | null;
-  assignedCats?: readonly Array<{ catId: string; status?: string | null }> | null;
-  participantAssignments?: readonly Array<{ participantId: string; status?: string | null }> | null;
-  catAssignments?: readonly Array<{ catId: string; status?: string | null }> | null;
+  assignedParticipants?: ReadonlyArray<{ participantId: string; status?: string | null }> | null;
+  assignedCats?: ReadonlyArray<{ catId: string; status?: string | null }> | null;
+  participantAssignments?: ReadonlyArray<{ participantId: string; status?: string | null }> | null;
+  catAssignments?: ReadonlyArray<{ catId: string; status?: string | null }> | null;
   pendingProvider?: string | null;
   pendingModel?: string | null;
   pendingInstance?: string | null;

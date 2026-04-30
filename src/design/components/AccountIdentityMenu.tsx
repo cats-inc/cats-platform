@@ -1,5 +1,8 @@
 import React, { useEffect, useRef, type ReactNode, type RefObject } from 'react';
 
+import { messageKeys } from '../../shared/i18n/messageKeys.js';
+import { useI18n } from '../../app/renderer/i18n/index.js';
+
 export type AccountIdentityMenuPlacement = 'above' | 'below';
 export type AccountIdentityMenuAlignment = 'start' | 'end';
 export type AccountIdentityMenuWidth = 'content' | 'trigger';
@@ -39,7 +42,7 @@ export function AccountIdentityMenu({
   onNavigateEnvironment,
   containerClassName,
   triggerClassName,
-  triggerAriaLabel = 'Account menu',
+  triggerAriaLabel,
   menuPlacement = 'above',
   menuAlignment = 'start',
   menuWidth = 'content',
@@ -48,6 +51,9 @@ export function AccountIdentityMenu({
   meta,
   statusIndicator,
 }: AccountIdentityMenuProps) {
+  const { t } = useI18n();
+  const resolvedTriggerAriaLabel = triggerAriaLabel
+    ?? t(messageKeys.designAccountIdentityMenuLabel);
   const fallbackRootRef = useRef<HTMLDivElement>(null);
   const resolvedRootRef = rootRef ?? fallbackRootRef;
 
@@ -91,7 +97,7 @@ export function AccountIdentityMenu({
         className={triggerClassName}
         type="button"
         onClick={handleToggle}
-        aria-label={triggerAriaLabel}
+        aria-label={resolvedTriggerAriaLabel}
         aria-haspopup="menu"
         aria-expanded={open}
       >
@@ -108,7 +114,7 @@ export function AccountIdentityMenu({
             menuWidth === 'trigger' ? 'accountMenu--matchTrigger' : undefined,
           )}
           role="menu"
-          aria-label="Account menu"
+          aria-label={resolvedTriggerAriaLabel}
         >
           <button
             className="accountMenuItem"
@@ -116,7 +122,7 @@ export function AccountIdentityMenu({
             role="menuitem"
             onClick={handleSettingsClick}
           >
-            Settings
+            {t(messageKeys.designAccountIdentityMenuSettingsLabel)}
           </button>
           <div className="accountMenuDivider" role="separator" />
           <button
@@ -125,7 +131,7 @@ export function AccountIdentityMenu({
             role="menuitem"
             onClick={handleEnvironmentClick}
           >
-            Environment
+            {t(messageKeys.designAccountIdentityMenuEnvironmentLabel)}
           </button>
         </div>
       ) : null}

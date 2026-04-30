@@ -301,9 +301,7 @@ function buildPinnedWorkspaceItems(
 ): ConversationSidebarPinnedItem[] {
   if (!props.onOpenWorkspace) return [];
   return snapshot.workspaces
-    .filter(
-      (ws) => snapshot.pinnedIds.has(ws.id) && !snapshot.deletedIds.has(ws.id),
-    )
+    .filter((ws) => snapshot.pinnedIds.has(ws.id))
     .map((ws) => ({
       id: ws.id,
       label: ws.title,

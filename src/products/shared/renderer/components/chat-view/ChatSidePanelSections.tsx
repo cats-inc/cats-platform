@@ -26,7 +26,7 @@ import { RunInspector } from '../RunInspector.js';
 import { ChatParticipantsSection } from './ChatParticipantsSection.js';
 import type { WorkspaceBusyState } from '../../../../../shared/workspaceBusy.js';
 import { messageKeys } from '../../../../../shared/i18n/index.js';
-import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
+import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 
 export interface BuildChatSidePanelSectionsOptions {
   payload: AppShellPayload;
@@ -298,18 +298,18 @@ export function buildChatSidePanelSections({
         </div>
       );
     }
-    return <p className="operatorEmptyState">{t(messageKeys.chatNewChatDraftExecutionEmptyState)}</p>;
+    return <p className="operatorEmptyState">{t(messageKeys.chatNewChatDraftSidePanelExecutionEmptyState)}</p>;
   })();
   sections.push({
     id: 'execution',
-    title: t(messageKeys.chatNewChatDraftExecutionTitle),
+    title: t(messageKeys.chatNewChatDraftSidePanelExecutionTitle),
     children: executionChildren,
   });
 
   const cwd = selectedChannel.repoPath ?? selectedChannel.chatCwd;
   sections.push({
     id: 'cwd',
-    title: t(messageKeys.chatNewChatDraftFolderTitle),
+    title: t(messageKeys.chatNewChatDraftSidePanelFolderTitle),
     children: cwd ? (
       <div style={{ display: 'grid', gap: 8 }}>
         <p style={{ margin: 0, fontSize: '0.85rem', wordBreak: 'break-all' }}>{cwd}</p>
@@ -322,7 +322,7 @@ export function buildChatSidePanelSections({
         </button>
       </div>
     ) : (
-      <p className="operatorEmptyState">{t(messageKeys.chatNewChatDraftFolderEmptyState)}</p>
+      <p className="operatorEmptyState">{t(messageKeys.chatNewChatDraftSidePanelFolderEmptyState)}</p>
     ),
   });
 
