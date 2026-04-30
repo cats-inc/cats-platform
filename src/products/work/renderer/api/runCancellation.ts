@@ -9,6 +9,10 @@ import type {
   WorkRunStopResponse,
 } from '../../../../platform/supervision/runCancellationContracts.js';
 import {
+  messageKeys,
+  t as translate,
+} from '../../../../shared/i18n/index.js';
+import {
   buildWorkApiMissionCancelPath,
   buildWorkApiRunStopPath,
 } from '../../shared/apiPaths.js';
@@ -23,16 +27,37 @@ export interface CancellationRouteError extends Error {
   statusCode: number;
 }
 
+export interface WorkCancellationErrorMessages {
+  fallbackMessage: string;
+  routeFallback: (statusCode: number) => string;
+}
+
 function createRouteError(statusCode: number, message: string): CancellationRouteError {
   const error = new Error(message) as CancellationRouteError;
   error.statusCode = statusCode;
   return error;
 }
 
+function defaultStopRunMessages(): WorkCancellationErrorMessages {
+  return {
+    fallbackMessage: translate(messageKeys.workRunStopError),
+    routeFallback: (statusCode) =>
+      translate(messageKeys.workRunStopRouteFailed, { statusCode }),
+  };
+}
+
+function defaultCancelMissionMessages(): WorkCancellationErrorMessages {
+  return {
+    fallbackMessage: translate(messageKeys.workMissionCancelError),
+    routeFallback: (statusCode) =>
+      translate(messageKeys.workMissionCancelRouteFailed, { statusCode }),
+  };
+}
+
 async function postCancellation<T>(
   url: string,
   body: WorkCancellationRequest | undefined,
-  fallbackMessage: string,
+  messages: WorkCancellationErrorMessages,
 ): Promise<T> {
   const init: RequestInit = {
     method: 'POST',
@@ -58,7 +83,7 @@ async function postCancellation<T>(
           return candidate;
         }
       }
-      return `${fallbackMessage} (HTTP ${response.status})`;
+      return messages.routeFallback(response.status) || messages.fallbackMessage;
     })();
     throw createRouteError(response.status, message);
   }
@@ -68,21 +93,23 @@ async function postCancellation<T>(
 export async function stopWorkRun(
   runId: string,
   body?: WorkCancellationRequest,
+  messages: WorkCancellationErrorMessages = defaultStopRunMessages(),
 ): Promise<WorkRunStopResponse> {
   return postCancellation<WorkRunStopResponse>(
     buildWorkApiRunStopPath(runId),
     body,
-    'Failed to stop run.',
+    messages,
   );
 }
 
 export async function cancelWorkMission(
   missionId: string,
   body?: WorkCancellationRequest,
+  messages: WorkCancellationErrorMessages = defaultCancelMissionMessages(),
 ): Promise<WorkMissionCancelResponse> {
   return postCancellation<WorkMissionCancelResponse>(
     buildWorkApiMissionCancelPath(missionId),
     body,
-    'Failed to cancel mission.',
+    messages,
   );
 }

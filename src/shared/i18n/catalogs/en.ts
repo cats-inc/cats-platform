@@ -397,6 +397,8 @@ export const enCatalog: MessageCatalog = {
   'work.mission.cancelBlocked': 'Mission cancel blocked. {detail}',
   'work.mission.cancelBlockedNoDetails': 'See per-run results.',
   'work.mission.cancelError': 'Mission cancel failed.',
+  'work.mission.cancelRouteFailed':
+    'Mission cancel failed. HTTP {statusCode}.',
   'work.mission.cancelLabel': 'Cancel',
   'work.mission.cancelLabelBusy': 'Cancelling…',
   'work.mission.summaryTitle': 'Mission summary',
@@ -471,6 +473,7 @@ export const enCatalog: MessageCatalog = {
   'work.run.stopConfirmation':
     'Stop run "{runTitle}"?\n\nCats requests runtime cancellation through the supervised session before marking the run cancelled. External side effects already sent are not rolled back.',
   'work.run.stopError': 'Run stop failed.',
+  'work.run.stopRouteFailed': 'Run stop failed. HTTP {statusCode}.',
   'work.run.backArrowLabel': 'Back to tasks',
   'work.run.backLabel': 'Tasks',
   'work.run.stopLabel': 'Stop',

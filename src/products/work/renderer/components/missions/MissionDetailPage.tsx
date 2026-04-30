@@ -36,7 +36,12 @@ export function MissionDetailPage(): JSX.Element {
     : undefined;
 
   const cancelMissionMutation = useMutation({
-    mutationFn: async (id: string) => cancelWorkMission(id),
+    mutationFn: async (id: string) =>
+      cancelWorkMission(id, undefined, {
+        fallbackMessage: t("workMissionCancelError"),
+        routeFallback: (statusCode) =>
+          t("workMissionCancelRouteFailed", { statusCode }),
+      }),
     onSuccess: async (result) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: MISSIONS_QUERY_KEY }),

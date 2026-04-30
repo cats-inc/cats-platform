@@ -376,6 +376,7 @@ export const zhTWCatalog: MessageCatalog = {
   'work.mission.cancelBlocked': '任務取消遭阻擋。{detail}',
   'work.mission.cancelBlockedNoDetails': '請參考各執行單位回報。',
   'work.mission.cancelError': '取消任務失敗。',
+  'work.mission.cancelRouteFailed': '取消任務失敗。HTTP {statusCode}。',
   'work.mission.cancelLabel': '取消',
   'work.mission.cancelLabelBusy': '取消中…',
   'work.mission.summaryTitle': '任務群概覽',
@@ -448,6 +449,7 @@ export const zhTWCatalog: MessageCatalog = {
   'work.run.stopConfirmation':
     '要停止 Run「{runTitle}」嗎？\n\nCats 會先透過監督式 session 要求 runtime 取消，再將 Run 標記為已取消。已送出的外部副作用不會回復。',
   'work.run.stopError': '停止 Run 失敗。',
+  'work.run.stopRouteFailed': '停止 Run 失敗。HTTP {statusCode}。',
   'work.run.backArrowLabel': '返回任務',
   'work.run.backLabel': '任務',
   'work.run.stopLabel': '停止',

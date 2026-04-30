@@ -128,7 +128,12 @@ export function RunDetailPage(): JSX.Element {
   const parentTask = taskId ? allTasks.find((t) => t.id === taskId) : undefined;
 
   const stopRunMutation = useMutation({
-    mutationFn: async (id: string) => stopWorkRun(id),
+    mutationFn: async (id: string) =>
+      stopWorkRun(id, undefined, {
+        fallbackMessage: t("workRunStopError"),
+        routeFallback: (statusCode) =>
+          t("workRunStopRouteFailed", { statusCode }),
+      }),
     onSuccess: async (result: WorkRunStopResponse) => {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: RUNS_QUERY_KEY }),
