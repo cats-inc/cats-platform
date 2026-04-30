@@ -110,7 +110,7 @@
 .channelTopBarCenter {
   justify-content: center;
   justify-self: center;
-  width: min(55vw, 680px);
+  width: min(55vw, var(--chat-transcript-max-width, 720px));
   max-width: 100%;
   overflow: hidden;
 }
@@ -265,7 +265,7 @@
 
 .transcriptPanel {
   width: 100%;
-  max-width: 680px;
+  max-width: var(--chat-transcript-max-width, 720px);
   flex: 1;
   padding-bottom: 0;
   margin: 0 auto;
@@ -351,8 +351,13 @@
   align-content: start;
   justify-items: center;
   padding-top: 20vh;
-  max-width: 680px;
+  max-width: 720px;
   margin: 0 auto;
+  /* Match the transcript width used by every active chat layout mode
+   * (chatLayout.ts) so the draft composer / cover / starter chips align
+   * with what the user sees once the first message is sent — composer no
+   * longer jumps from 680 to 720 on send. */
+  --chat-transcript-max-width: 720px;
 }
 
 .draftShell:has(.draftHeaderWithCover) {
@@ -382,13 +387,13 @@
 }
 
 .composerCardDocked {
-  max-width: 680px;
+  max-width: var(--chat-transcript-max-width, 720px);
   margin: 0 auto;
   width: 100%;
 }
 
 .composerCardFresh {
-  max-width: 680px;
+  max-width: var(--chat-transcript-max-width, 720px);
   margin: 0 auto;
 }
 
@@ -424,7 +429,7 @@
 
 .draftHeader {
   width: 100%;
-  max-width: var(--chat-transcript-max-width, 680px);
+  max-width: var(--chat-transcript-max-width, 720px);
   margin: 0 auto 24px;
 }
 
@@ -457,7 +462,7 @@
     "avatar body";
   column-gap: 20px;
   row-gap: 0;
-  max-width: 680px;
+  max-width: var(--chat-transcript-max-width, 720px);
   width: 100%;
   margin: 0 auto 16px;
   align-items: center;

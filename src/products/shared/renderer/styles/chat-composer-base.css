@@ -112,7 +112,7 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: var(--chat-transcript-max-width, 680px);
+  max-width: var(--chat-transcript-max-width, 720px);
   min-width: 0;
   justify-self: stretch;
 }
@@ -165,7 +165,7 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: var(--chat-transcript-max-width, 680px);
+  max-width: var(--chat-transcript-max-width, 720px);
   margin: 0 auto;
   position: relative;
   z-index: 2;
@@ -245,7 +245,7 @@
   justify-content: flex-end;
   gap: 8px;
   width: 100%;
-  max-width: var(--chat-transcript-max-width, 680px);
+  max-width: var(--chat-transcript-max-width, 720px);
   margin: 12px auto 0;
   padding-right: 16px;
 }
@@ -833,7 +833,7 @@
   margin: 12px auto 0;
   padding: 0 17px 0 4px;
   width: 100%;
-  max-width: var(--chat-transcript-max-width, 680px);
+  max-width: var(--chat-transcript-max-width, 720px);
   min-width: 0;
 }
 
@@ -853,7 +853,7 @@
   margin: 0 auto 12px;
   padding: 0 4px;
   width: 100%;
-  max-width: var(--chat-transcript-max-width, 680px);
+  max-width: var(--chat-transcript-max-width, 720px);
   min-width: 0;
   /* Reserve space matching the tallest populated row child so the
    * composer card stays anchored regardless of whether the row carries
@@ -949,7 +949,7 @@
   margin: 0 auto 12px;
   padding: 0 4px;
   width: 100%;
-  max-width: var(--chat-transcript-max-width, 680px);
+  max-width: var(--chat-transcript-max-width, 720px);
   min-width: 0;
   min-height: 8px;
 }
@@ -1353,6 +1353,12 @@
 
 .composerInputOverlay {
   position: relative;
+  /* `display: block` removes the inline-block baseline descent (~6.93px
+   * on the default font stack) that otherwise inflates the surrounding
+   * `.composerInputWrapper` line-box. Without this, the active
+   * conversation composer card renders ~7px taller than the draft
+   * composer when both have the same min-height: 44px on the input. */
+  display: block;
   color: transparent;
   caret-color: var(--text);
 }

@@ -23,12 +23,19 @@ export function resolveLayoutMetrics(
 ): LayoutMetrics {
   const isNarrow = viewportWidth < NARROW_BREAKPOINT;
 
+  // Owner directive (2026-05-01): unify transcript max-width to 720px across
+  // all chat layout modes so draft, solo, direct-lane, companion, and
+  // multi-cat surfaces present the same composer/transcript width and the
+  // composer no longer jumps when sending the first message or switching
+  // modes. Draft shells separately set the same CSS variable so they match.
+  const transcriptMaxWidth = '720px';
+
   switch (mode) {
     case 'solo':
       return {
         mode,
         sidebarWidth: isNarrow ? 'collapsed' : 'standard',
-        transcriptMaxWidth: '720px',
+        transcriptMaxWidth,
         secondarySurfacePosition: 'hidden',
         catStatusRowVisible: false,
         composerVariant: 'solo',
@@ -38,7 +45,7 @@ export function resolveLayoutMetrics(
       return {
         mode,
         sidebarWidth: isNarrow ? 'collapsed' : 'standard',
-        transcriptMaxWidth: '720px',
+        transcriptMaxWidth,
         secondarySurfacePosition: isNarrow ? 'bottom' : 'side',
         catStatusRowVisible: false,
         composerVariant: 'direct',
@@ -48,7 +55,7 @@ export function resolveLayoutMetrics(
       return {
         mode,
         sidebarWidth: isNarrow ? 'collapsed' : 'standard',
-        transcriptMaxWidth: '680px',
+        transcriptMaxWidth,
         secondarySurfacePosition: 'hidden',
         catStatusRowVisible: false,
         composerVariant: 'direct',
@@ -58,7 +65,7 @@ export function resolveLayoutMetrics(
       return {
         mode,
         sidebarWidth: isNarrow ? 'collapsed' : 'standard',
-        transcriptMaxWidth: '800px',
+        transcriptMaxWidth,
         secondarySurfacePosition: isNarrow ? 'bottom' : 'side',
         catStatusRowVisible: true,
         composerVariant: 'mention_enabled',

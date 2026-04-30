@@ -1,7 +1,7 @@
 @import '../../../shared/renderer/styles/chat-thread-base.css';
 
 .channelTopBarCenter {
-  width: min(55vw, var(--chat-transcript-max-width, 680px));
+  width: min(55vw, var(--chat-transcript-max-width, 720px));
 }
 
 .catAvatar.channelParticipantAvatar {
@@ -12,7 +12,7 @@
 }
 
 .transcriptPanel {
-  max-width: var(--chat-transcript-max-width, 680px);
+  max-width: var(--chat-transcript-max-width, 720px);
 }
 
 .transcriptList {
@@ -79,7 +79,7 @@
 }
 
 .composerCardDocked {
-  max-width: var(--chat-transcript-max-width, 680px);
+  max-width: var(--chat-transcript-max-width, 720px);
 }
 
 .composerAreaStack.composerAreaStackDocked.composerAreaStackDockedParallel {
@@ -87,7 +87,7 @@
 }
 
 .composerCardFresh {
-  max-width: var(--chat-transcript-max-width, 680px);
+  max-width: var(--chat-transcript-max-width, 720px);
 }
 
 .draftGreetingActions {

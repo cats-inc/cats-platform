@@ -45,7 +45,7 @@
   grid-column: 1;
   grid-row: 1;
   width: 100%;
-  max-width: var(--chat-transcript-max-width, 680px);
+  max-width: var(--chat-transcript-max-width, 720px);
   display: flex;
   flex-direction: column;
   transform-origin: center center;
