@@ -1501,8 +1501,9 @@ test('stageDesktopPackagingOutputs honors bundle layout for both app and runtime
     'export const layout = "bundle-runtime";',
   );
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'node_modules', 'playwright-core', 'package.json'));
+  await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'node_modules', 'yaml', 'package.json'));
   await assert.rejects(
-    access(join(plan.outputRoot, 'shared', 'cats-runtime', 'node_modules', 'yaml', 'package.json')),
+    access(join(plan.outputRoot, 'shared', 'cats-runtime', 'node_modules', 'hono', 'package.json')),
     /ENOENT/,
   );
 
