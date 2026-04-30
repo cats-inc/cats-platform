@@ -44,6 +44,11 @@ verification.
 - Do not write demo chats, cats, tasks, runs, or verification records into the
   user's persisted dev state.
 - Use targeted tests and source inspection for verification.
+- Before extracting strings, apply the SPEC-097 string boundary. Do not spend
+  localization work on API-internal fallbacks, query-client internal fallbacks,
+  HTTP methods, route constants, CSS classes, enum/status keys, logs, traces,
+  debug diagnostics, or test/smoke strings unless they are separately rendered
+  as owner-facing product chrome.
 
 ## Implementation Phases
 
@@ -166,26 +171,30 @@ localized.
       surfaces, tooltips, and empty states.
 - [ ] **5.5** Do not translate transcript bodies, assistant output, user input,
       code blocks, file names, provider names, model names, or runtime traces.
-- [ ] **5.6** Add/adjust product renderer tests where current assertions depend
+- [ ] **5.6** Do not extract API/query helper fallback strings while doing
+      product renderer passes. Those strings are implementation fallbacks unless
+      the UI intentionally presents them as product copy.
+- [ ] **5.7** Add/adjust product renderer tests where current assertions depend
       on English labels.
-- [ ] **5.7** Manually inspect Chat, Code, and Work in both locales for button,
+- [ ] **5.8** Manually inspect Chat, Code, and Work in both locales for button,
       tab, sidebar, and composer overflow.
 
 **Deliverables**: the main product surfaces no longer depend on hard-coded
 English chrome for normal operation.
 
-### Phase 6: Server-Originated UI Message Cleanup
+### Phase 6: Owner-Facing Server Message Cleanup
 
-- [ ] **6.1** Audit server responses that are shown directly as user-facing UI
-      chrome.
-- [ ] **6.2** For known deterministic messages, return stable codes/keys or map
-      existing codes to renderer catalog messages.
-- [ ] **6.3** Keep unknown server errors as raw fallbacks and document them in
-      the allowlist.
+- [ ] **6.1** Audit only server responses that are deliberately shown directly
+      as owner-facing UI chrome.
+- [ ] **6.2** For known deterministic owner-facing messages, return stable
+      codes/keys or map existing codes to renderer catalog messages.
+- [ ] **6.3** Keep unknown server errors, low-level transport exceptions,
+      API-internal fallbacks, query-client internal fallbacks, debug
+      diagnostics, logs, and traces as raw strings or allowlisted categories.
 - [ ] **6.4** Add tests for at least one known server error/status mapping.
 
 **Deliverables**: common server-originated UI messages are localizable without
-pretending every raw exception can be translated safely.
+pretending every raw exception, diagnostic, or API fallback should be translated.
 
 ### Phase 7: Assistant Response Language Propagation
 
@@ -215,14 +224,18 @@ share the same default response-language policy.
       - localized now
       - dynamic/user/provider/runtime content
       - protocol/config/code identifier
+      - API/query internal fallback
       - debug-only diagnostic
       - unknown fallback
 - [ ] **8.3** Create or update a raw-string allowlist document or source module.
       Suggested doc: `docs/plans/PLAN-086-ui-localization-raw-string-audit.md`
       if the list is too large for the plan progress log.
-- [ ] **8.4** Add a lightweight test or script if practical to prevent obvious
+- [ ] **8.4** Report progress using only user-visible chrome as the denominator.
+      Do not count debug/internal/API fallback literals as incomplete
+      localization work.
+- [ ] **8.5** Add a lightweight test or script if practical to prevent obvious
       new unlocalized Settings/product chrome strings.
-- [ ] **8.5** Update this plan's progress log with remaining known gaps.
+- [ ] **8.6** Update this plan's progress log with remaining known gaps.
 
 **Deliverables**: the migration has an explicit evidence trail and future agents
 can tell intentional raw strings from missed extraction work.
@@ -292,6 +305,10 @@ known-gaps list.
   user instructions can override them.
 - **String extraction**: localize Cats-owned chrome aggressively, but maintain an
   allowlist for protocol/runtime/user/provider strings that should remain raw.
+- **Extraction boundary**: do not localize or count API-internal fallback
+  messages, query-client internal fallbacks, HTTP methods, route constants, CSS
+  classes, enum/status keys, logs, traces, debug diagnostics, or test/smoke
+  strings unless they are intentionally rendered as owner-facing product chrome.
 
 ## Testing Strategy
 
@@ -323,7 +340,7 @@ known-gaps list.
 | Product surfaces build their own assistant language prompts | High | Centralize policy helper and add prompt-construction tests |
 | UI locale and assistant response language become coupled | Medium | Keep separate preference fields, separate Settings option groups, and independent tests |
 | Traditional Chinese strings overflow existing controls | Medium | Manual viewport inspection and targeted layout fixes after extraction |
-| Server raw errors cannot be localized safely | Medium | Convert known messages to keys, keep unknown errors as documented fallback |
+| Server raw errors cannot be localized safely | Medium | Convert only known owner-facing messages to keys; keep unknown/internal/debug/API fallbacks as documented raw strings |
 | New i18n layer leaks app/product imports into design primitives | Medium | Keep shared i18n helpers product-agnostic and enforce import direction in review |
 
 ## Progress Log
@@ -331,6 +348,7 @@ known-gaps list.
 | Date | Update |
 |------|--------|
 | 2026-04-29 | Plan created with ADR-093 / SPEC-097 for platform language settings and UI localization rollout |
+| 2026-05-01 | Clarified extraction boundary: localization work targets owner-facing Cats UI chrome only; API/query fallbacks, debug diagnostics, logs, route/method/class/enum identifiers, and smoke/test strings must not be extracted or counted as progress debt. |
 
 ---
 

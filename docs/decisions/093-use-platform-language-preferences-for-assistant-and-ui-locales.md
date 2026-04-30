@@ -123,6 +123,11 @@ UI display language is a renderer localization concern.
 - Extract Cats-owned static UI strings aggressively across the desktop renderer.
 - Do not translate transcript content, provider output, file paths, code, logs,
   route paths, API field names, enum values, or configuration keys.
+- Do not translate API-internal fallback strings, query-client internal
+  fallbacks, HTTP methods, route constants, CSS classes, test/smoke strings,
+  debug diagnostics, traces, telemetry names, or internal status/enum keys.
+  These are not UI localization debt unless a separate display label is
+  deliberately rendered as owner-facing product chrome.
 
 The Settings UI should present both preferences in one **Language** section in
 General Settings. The labels shown to users are:
@@ -158,6 +163,9 @@ when the selected value already reflects the new state.
 - Server-generated user-visible messages need careful handling. Some existing
   responses are plain English strings; they must either become typed renderer
   messages or remain explicit fallbacks during the migration.
+- Raw-string scans will find many English literals that are intentionally not
+  localizable. Progress tracking must classify and exclude internal/debug/API
+  literals rather than turning them into catalog work.
 - Tests must grow around catalog key coverage and language-policy dispatch, not
   just Settings rendering.
 
