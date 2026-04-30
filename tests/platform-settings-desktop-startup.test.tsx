@@ -222,6 +222,7 @@ test('PlatformSettingsDesktopStartup shows diagnostic manifest when LAN-ready', 
   assert.match(markup, /Expo Go URL/u);
   assert.match(markup, /exp:\/\/192\.168\.1\.25:8181/u);
   assert.match(markup, /Mobile pairing QR code/u);
+  assert.match(markup, /settingsMobilePairingQrUrl/u);
   assert.doesNotMatch(markup, /QR pending/u);
   assert.doesNotMatch(markup, /Apply and restart/u);
 });

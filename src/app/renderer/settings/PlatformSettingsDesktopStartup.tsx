@@ -331,7 +331,10 @@ export function PlatformSettingsDesktopStartup({
 
           <div className="settingsMobilePairingQr" data-state={mobilePairing.pairingUrlStatus}>
             {mobilePairing.pairingUrlStatus === 'ready' && mobilePairing.pairingUrl ? (
-              <MobilePairingQrCode url={mobilePairing.pairingUrl} />
+              <div className="settingsMobilePairingQrContent">
+                <MobilePairingQrCode url={mobilePairing.pairingUrl} />
+                <code className="settingsMobilePairingQrUrl">{mobilePairing.pairingUrl}</code>
+              </div>
             ) : (
               <span>QR pending</span>
             )}
