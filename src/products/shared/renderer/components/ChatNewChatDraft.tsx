@@ -771,13 +771,13 @@ export function NewChatDraft({
             }
             openSidePanelTo('cats');
           }}
-          aria-label="Add another model to collaborate"
+          aria-label={t(messageKeys.chatNewChatDraftCollaborateAria)}
         >
           <CollaborateIcon />
         </button>
         {options.showHint ? (
           <span className={`parallelAddHint${options.accent ? ' parallelAddHintAccent' : ''}`}>
-            Add another model to collaborate
+            {t(messageKeys.chatNewChatDraftCollaborateHint)}
           </span>
         ) : null}
       </div>
@@ -805,9 +805,13 @@ export function NewChatDraft({
   ) : isParticipantDraft && effectiveDefaultRecipientCat ? (
     <DraftHeader
       variant="intro"
-      eyebrow="Participant Chat"
-      title={`Start with ${effectiveDefaultRecipientCat.name}`}
-      description={`Ask ${effectiveDefaultRecipientCat.name} to take the first pass. Add more Cats anytime, or keep the thread focused.`}
+      eyebrow={t(messageKeys.chatNewChatDraftParticipantChatEyebrow)}
+      title={t(messageKeys.chatNewChatDraftParticipantChatTitle, {
+        recipientName: effectiveDefaultRecipientCat.name,
+      })}
+      description={t(messageKeys.chatNewChatDraftParticipantChatDescription, {
+        recipientName: effectiveDefaultRecipientCat.name,
+      })}
     />
   ) : (
     <DraftHeader
@@ -848,7 +852,7 @@ export function NewChatDraft({
                 event.stopPropagation();
                 onDraftCwdClear();
               }}
-              aria-label="Remove folder"
+              aria-label={t(messageKeys.chatNewChatDraftRemoveFolderAria)}
             >
               &times;
             </button>
@@ -890,7 +894,9 @@ export function NewChatDraft({
                   type="button"
                   disabled={isSubmittingFirstTurn}
                   onClick={() => onDraftFilesChange(draftFiles.filter((_, i) => i !== index))}
-                  aria-label={`Remove ${file.name}`}
+                  aria-label={t(messageKeys.chatNewChatDraftAttachmentRemoveAria, {
+                    fileName: file.name,
+                  })}
                 >
                   &times;
                 </button>
@@ -931,7 +937,7 @@ export function NewChatDraft({
             <button
               className="composerPlusButton"
               type="button"
-              aria-label="Attach"
+              aria-label={t(messageKeys.chatNewChatDraftAttachAria)}
               disabled={isSubmittingFirstTurn}
               onClick={onTogglePlusMenu}
             >
@@ -953,7 +959,7 @@ export function NewChatDraft({
                     <path d="M8 2v8" />
                     <path d="M4 6l4-4 4 4" />
                   </svg>
-                  Add photos and files
+                  {t(messageKeys.chatNewChatDraftAddPhotosAndFiles)}
                 </button>
                 {onTakeScreenshot ? (
                   <button
@@ -966,7 +972,7 @@ export function NewChatDraft({
                       <path d="M5 3.5l1-1h4l1 1h2a1 1 0 0 1 1 1v7.5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1h2z" />
                       <circle cx="8" cy="8.5" r="2.5" />
                     </svg>
-                    Take screenshot
+                    {t(messageKeys.chatNewChatDraftTakeScreenshot)}
                   </button>
                 ) : null}
                 {chooseFolderPlacement === 'plusMenu' ? (
@@ -1066,8 +1072,12 @@ export function NewChatDraft({
               type="button"
               aria-label={
                 voiceInputListening
-                  ? `Stop voice input${voiceInputPrivacyMessage ? `. ${voiceInputPrivacyMessage}` : ''}`
-                  : 'Start voice input'
+                  ? t(messageKeys.chatNewChatDraftStopVoiceInputAria, {
+                    privacyMessageSuffix: voiceInputPrivacyMessage
+                      ? `. ${voiceInputPrivacyMessage}`
+                      : '',
+                  })
+                  : t(messageKeys.chatNewChatDraftStartVoiceInputAria)
               }
               aria-pressed={voiceInputListening}
               title={voiceInputPrivacyMessage ?? undefined}
@@ -1089,7 +1099,7 @@ export function NewChatDraft({
             <button
               className="composerSendButton composerCancelButton"
               type="button"
-              aria-label="Cancel send"
+              aria-label={t(messageKeys.chatNewChatDraftCancelSendAria)}
               onClick={() => onCancelPendingSend?.()}
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
@@ -1106,7 +1116,9 @@ export function NewChatDraft({
                 || (isGroupDraft && draftParticipantCount < 2)
               }
               type="submit"
-              aria-label={isParallelMode ? 'Send to all chats' : 'Send'}
+              aria-label={isParallelMode
+                ? t(messageKeys.chatNewChatDraftSendAllChatsAria)
+                : t(messageKeys.chatNewChatDraftSendAria)}
             >
               {isParallelMode ? (
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">

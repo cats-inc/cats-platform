@@ -1038,6 +1038,23 @@ export const messageKeys = {
   chatNewChatDraftBranchRemoveAria: 'chat.newChatDraft.branchRemoveAria',
   chatNewChatDraftBranchAddParallelAria: 'chat.newChatDraft.branchAddParallelAria',
   chatNewChatDraftBranchAddCompareHint: 'chat.newChatDraft.branchAddCompareHint',
+  chatNewChatDraftCollaborateAria: 'chat.newChatDraft.collaborateAria',
+  chatNewChatDraftCollaborateHint: 'chat.newChatDraft.collaborateHint',
+  chatNewChatDraftParticipantChatEyebrow: 'chat.newChatDraft.participantChatEyebrow',
+  chatNewChatDraftParticipantChatTitle:
+    'chat.newChatDraft.participantChatTitle',
+  chatNewChatDraftParticipantChatDescription:
+    'chat.newChatDraft.participantChatDescription',
+  chatNewChatDraftRemoveFolderAria: 'chat.newChatDraft.removeFolderAria',
+  chatNewChatDraftAttachmentRemoveAria:
+    'chat.newChatDraft.attachmentRemoveAria',
+  chatNewChatDraftAddPhotosAndFiles: 'chat.newChatDraft.addPhotosAndFiles',
+  chatNewChatDraftTakeScreenshot: 'chat.newChatDraft.takeScreenshot',
+  chatNewChatDraftCancelSendAria: 'chat.newChatDraft.cancelSendAria',
+  chatNewChatDraftSendAria: 'chat.newChatDraft.sendAria',
+  chatNewChatDraftSendAllChatsAria: 'chat.newChatDraft.sendAllChatsAria',
+  chatNewChatDraftStartVoiceInputAria: 'chat.newChatDraft.startVoiceInputAria',
+  chatNewChatDraftStopVoiceInputAria: 'chat.newChatDraft.stopVoiceInputAria',
   sharedAddCatPanelTitle: 'shared.addCatPanelTitle',
   sharedAddCatPanelClose: 'shared.addCatPanelClose',
   sharedAddCatPanelChooseExisting: 'shared.addCatPanelChooseExisting',
