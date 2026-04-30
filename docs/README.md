@@ -58,6 +58,7 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [ADR-097](./decisions/097-store-code-canvas-focus-on-task-metadata.md)
 - [PLAN-090](./plans/PLAN-090-cats-code-artifact-canvas-rollout.md)
 - [SPEC-101](./specs/SPEC-101-cats-code-artifact-canvas.md)
 - [PLAN-089](./plans/PLAN-089-platform-authentication-and-google-identity-rollout.md)

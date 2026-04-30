@@ -71,29 +71,48 @@ viewer for safe preview URL artifacts. Image, PDF, code viewers, and live
 6. Assistant-driven focus shall be accepted only through the `show_in_canvas`
    runtime tool, or through a product-internal delegate that applies the same
    validation.
-7. Manual close shall call the same clear delegate used by `clear_canvas`;
-   renderer-only hiding may be used for transient UI collapse, but it must not
-   claim the server focus was cleared.
+7. The pane shall expose two distinct user controls with different semantics:
+   - **Close (X)**: invokes the same clear delegate used by `clear_canvas`,
+     persists the server change, and survives reload. This is the only path
+     that mutates `codeCanvasFocus`.
+   - **Collapse / expand**: renderer-only ephemeral toggle. It hides the pane
+     visually without touching `codeCanvasFocus`, and a reload restores the
+     pane to its expanded state. The renderer shall not surface the collapsed
+     state as "cleared".
 8. `show_in_canvas` shall accept exactly one identity:
    - `artifactId`
    - `declarationId`
-9. `declarationId` shall resolve only against accepted same-turn
-   `declare_artifact` results from the active Code assistant turn.
+9. `declarationId` shall resolve only against accepted `declare_artifact`
+   results recorded in the Code assistant-effect processor's per-turn
+   declaration index. The index shall be keyed by
+   `(turnId, declarationId)` and shall be populated only by accepted
+   same-turn declarations. Cross-turn collisions on `declarationId` shall be
+   rejected, even when the prior turn accepted the same id.
 10. `artifactId` shall resolve only to a Code-relevant artifact that is
     compatible with the active Code task/session context.
-11. `show_in_canvas` shall accept `presentation = 'auto' | 'iframe' | 'image' |
-    'pdf' | 'code'`; Phase 1 may reject or downgrade non-iframe requests to
+11. `show_in_canvas` shall require an active Code task on the caller's
+    surface; calls without an active task shall be rejected with
+    `artifact_canvas_no_active_task` and shall not store partial focus.
+12. `show_in_canvas` shall accept `presentation = 'auto' | 'iframe' | 'image' |
+    'pdf' | 'code'`. Phase 1 resolves all viewer-shaped presentations through
+    the iframe viewer using a content-appropriate sandbox profile (see
+    §Iframe Policy); only artifacts with no safe inline target resolve to
     `unsupported`.
-12. `clear_canvas` shall clear the active task's `codeCanvasFocus`.
-13. The renderer shall ignore transcript prose, markdown links, and JSON-looking
+13. `clear_canvas` shall clear the active task's `codeCanvasFocus` and shall
+    require the same active-task precondition as `show_in_canvas`.
+14. The renderer shall ignore transcript prose, markdown links, and JSON-looking
     snippets as canvas commands.
-14. The pane top bar shall show artifact title, resolved presentation, status,
-    close, refresh, and open-external controls when supported.
-15. The first viewer shall render only server-approved iframe preview targets.
-16. The Artifacts sidebar and artifact detail route shall continue to work
+15. The pane top bar shall show artifact title, resolved presentation, status,
+    close, collapse/expand, refresh, and open-external controls when supported.
+16. The first viewer shall render only server-approved iframe preview targets.
+17. The renderer shall re-validate the resolved URL scheme and the
+    server-emitted iframe sandbox profile before mounting the viewer; a
+    mismatch or rejected scheme shall fall back to the metadata / external-link
+    state without mounting the iframe.
+18. The Artifacts sidebar and artifact detail route shall continue to work
     without opening the split pane unless the user or assistant explicitly
     requests presentation.
-17. Accepted / rejected canvas tool results shall be projected into the
+19. Accepted / rejected canvas tool results shall be projected into the
     persisted assistant turn, matching the `declare_artifact` trace pattern.
 
 ### Non-Functional Requirements
@@ -120,6 +139,7 @@ interface CodeCanvasFocus {
   artifactId: string;
   presentationRequested: 'auto' | 'iframe' | 'image' | 'pdf' | 'code';
   presentationResolved: 'iframe' | 'image' | 'pdf' | 'code' | 'unsupported';
+  iframeSandboxProfile: 'static' | 'scripted-cross-origin' | null;
   openedAt: string;
   openedBy: {
     kind: 'agent' | 'user' | 'system';
@@ -130,9 +150,17 @@ interface CodeCanvasFocus {
 }
 ```
 
+`iframeSandboxProfile` is non-null only when `presentationResolved` is one of
+`iframe`, `image`, or `pdf`; for `code` and `unsupported` it shall be `null`.
+The server is the authority that picks the profile (see §Iframe Policy); the
+renderer shall not upgrade a `static` profile to `scripted-cross-origin`.
+
 The Code task/detail projection shall expose this as read-only `canvasFocus`.
 Projection code shall drop malformed focus metadata rather than surfacing a
-partial or unsafe pane.
+partial or unsafe pane. The storage location is fixed by
+[ADR-097](../decisions/097-store-code-canvas-focus-on-task-metadata.md);
+do not migrate this state to `CoreConversationRecord.metadata` or a new Core
+record family without superseding that ADR.
 
 ### Tool: `show_in_canvas`
 
@@ -150,12 +178,16 @@ Validation:
 
 - exactly one of `artifactId` or `declarationId` is required;
 - `presentation` defaults to `auto`;
-- `declarationId` must match an accepted same-turn `declare_artifact` result;
+- `declarationId` must resolve through the per-turn declaration index keyed
+  by `(turnId, declarationId)`; misses (no accepted declaration this turn)
+  and stale hits (matching id from a different turn) are both rejected;
 - resolved artifact must exist and be Code-relevant;
 - resolved artifact must be anchored to the active task, run, conversation, or
   codespace according to the same anchor rules used by SPEC-092;
 - the caller must be the active Code assistant/session or the authenticated
   owner user;
+- the caller's surface must have an active Code task; calls with no active
+  task are rejected with `artifact_canvas_no_active_task`;
 - unsupported presentation is rejected or normalized to `unsupported` with a
   clear tool result.
 
@@ -166,6 +198,7 @@ interface ShowInCanvasAccepted {
   status: 'accepted';
   artifactId: string;
   presentationResolved: 'iframe' | 'image' | 'pdf' | 'code' | 'unsupported';
+  iframeSandboxProfile: 'static' | 'scripted-cross-origin' | null;
 }
 ```
 
@@ -192,9 +225,12 @@ interface ClearCanvasInput {}
 
 Validation:
 
-- active Code task context is required;
+- active Code task context is required; calls without an active task are
+  rejected with `artifact_canvas_no_active_task`;
 - agent callers must come from the active runtime session;
-- user callers may clear through the product-internal delegate.
+- user callers may clear through the product-internal delegate;
+- `clear_canvas` is idempotent: calling it when no `codeCanvasFocus` is set
+  shall accept and return `cleared: true` without writing task metadata.
 
 Accepted result:
 
@@ -207,42 +243,102 @@ interface ClearCanvasAccepted {
 
 ### Presentation Resolution
 
-`presentation = 'auto'` resolves from server-normalized artifact metadata:
+`presentation = 'auto'` resolves from server-normalized artifact metadata.
+Phase 1 routes all viewer-shaped presentations through the iframe viewer, but
+selects the sandbox profile (see §Iframe Policy) per content type so that
+static media never receives `allow-scripts`.
 
-| Artifact signal | Phase 1 result |
-|-----------------|----------------|
-| `kind = 'preview'` and preview target is safe iframe URL | `iframe` |
-| URL path ending in a known image extension | `unsupported` in Phase 1; `image` in Phase 2 |
-| URL path ending in `.pdf` | `unsupported` in Phase 1; `pdf` in Phase 2 |
-| `location.kind = 'inline_summary'` or text/code mime type | `unsupported` in Phase 1; `code` in Phase 2 |
-| no safe inline target | `unsupported` |
+| Artifact signal | Phase 1 `presentationResolved` | `iframeSandboxProfile` |
+|-----------------|--------------------------------|------------------------|
+| `kind = 'preview'` and preview target is a safe iframe URL | `iframe` | `scripted-cross-origin` |
+| URL path ending in a known image extension | `iframe` | `static` |
+| URL path ending in `.pdf` | `iframe` | `static` |
+| `location.kind = 'inline_summary'` or text/code mime type | `unsupported` in Phase 1; `code` in Phase 2 | `null` |
+| no safe inline target | `unsupported` | `null` |
 
 `unsupported` is a valid resolved state. It opens a pane with artifact metadata
 and external-open/download affordances rather than embedding unsafe content.
+The Phase 2 dedicated `image`, `pdf`, and `code` viewers replace the iframe
+fallback for media presentations without changing tool inputs or accepted
+results.
 
 ## Iframe Policy
 
-Phase 1 iframe rendering shall obey all of these rules:
+Phase 1 iframe rendering shall obey all of these rules.
 
-- allowed URL schemes: `http:`, `https:`, and app-served relative URLs that the
-  server has explicitly classified as preview-safe;
+### URL Scheme Allowlist
+
+- allowed URL schemes: `http:`, `https:`, and app-served relative URLs that
+  pass the server-side preview-safe classifier (`normalizePreviewSurfaceUrl`
+  or its successor);
 - rejected URL schemes: `file:`, `javascript:`, `data:`, `blob:`, and raw
   local filesystem paths;
-- iframe attributes:
+- the renderer shall re-check the scheme of the projected URL before
+  embedding (defense in depth).
 
-```tsx
-<iframe
-  sandbox="allow-scripts allow-forms allow-popups"
-  referrerPolicy="no-referrer"
-  allow=""
-/>
-```
+### Sandbox Profiles
 
-- `allow-same-origin` is not default. It may be added only for server-verified
-  runtime-owned preview origins, not arbitrary remote URLs and not Cats app
-  routes.
-- Renderer code must re-check the safe target before embedding, even when the
-  server projection already accepted it.
+The server projection picks one of two named sandbox profiles per resolved
+focus and emits the choice as `iframeSandboxProfile`. The renderer applies the
+profile literally and shall not promote `static` to `scripted-cross-origin`.
+
+- `static` (used for static media: images, PDFs, future binary previews):
+
+  ```tsx
+  <iframe
+    sandbox=""
+    referrerPolicy="no-referrer"
+    allow=""
+  />
+  ```
+
+  No script execution, no same-origin access, no top-level navigation.
+
+- `scripted-cross-origin` (used for `kind = 'preview'` URL artifacts that
+  point at a runtime-owned dev server origin distinct from the Cats shell
+  origin — typical examples: vite, Next.js dev, Lovable preview, Storybook):
+
+  ```tsx
+  <iframe
+    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+    referrerPolicy="no-referrer"
+    allow=""
+  />
+  ```
+
+  `allow-same-origin` here is paired with a cross-origin URL, so the iframe
+  document can fetch / route / read storage **inside its own origin** without
+  reaching the Cats shell origin. This profile is the only path that may
+  combine `allow-scripts` with `allow-same-origin`.
+
+### Same-Origin Rule (the `allow-same-origin` test)
+
+The server may emit `scripted-cross-origin` only when **all** the following
+hold:
+
+1. the projected URL is absolute (`http:` or `https:`);
+2. the URL parses successfully and yields a non-empty origin;
+3. the URL's origin is **not** equal to the Cats shell origin that serves
+   the renderer (configured at server boot; in packaged Electron this is the
+   app-served origin, in browser dev it is the host serving the renderer
+   bundle);
+4. the URL is `kind = 'preview'`.
+
+If any condition fails, the server shall fall back to `static`. App-relative
+preview URLs (which always resolve to the Cats shell origin) therefore never
+qualify for `scripted-cross-origin` and shall always be served as `static`.
+
+### Renderer Re-Check
+
+The renderer shall:
+
+- assert the projected `iframeSandboxProfile` is one of the two named values;
+- re-validate the URL scheme through the same allowlist;
+- when the projected profile is `scripted-cross-origin`, re-compute the
+  same-origin test against the renderer's `window.location.origin` and
+  downgrade to `static` rendering (or fall back to the `unsupported` pane)
+  if the test fails — that is, the renderer may **only** demote, never
+  promote.
 
 ## Design Overview
 
@@ -260,6 +356,32 @@ assistant output
 The canvas tools are presentation tools, not artifact creation tools. They do
 not bypass `declare_artifact`, and they do not scan the filesystem.
 
+### Error Code Registry
+
+This registry is the canonical source for Cats Code Artifact Canvas error
+codes. TypeScript helper unions and tool-call registry summaries shall
+reference these codes instead of inventing local aliases.
+
+| Error code | Trigger |
+|------------|---------|
+| `artifact_canvas_identity_required` | Neither `artifactId` nor `declarationId` is supplied. |
+| `artifact_canvas_identity_conflict` | Both `artifactId` and `declarationId` are supplied. |
+| `artifact_canvas_declaration_unknown` | `declarationId` does not match any accepted entry in the per-turn declaration index for the current `(turnId, declarationId)` key. |
+| `artifact_canvas_declaration_cross_turn` | `declarationId` matches a declaration accepted in a different turn; cross-turn fallback is not allowed. |
+| `artifact_canvas_artifact_not_found` | `artifactId` does not resolve to a Code-relevant `CoreArtifactRecord`. |
+| `artifact_canvas_artifact_not_anchored` | The resolved artifact is not anchored to the active task, run, conversation, or codespace. |
+| `artifact_canvas_no_active_task` | The caller's surface has no active Code task; canvas focus cannot be set or cleared. |
+| `artifact_canvas_caller_not_authorized` | The caller is neither the active Code assistant/session nor the authenticated owner user. |
+| `artifact_canvas_presentation_invalid` | `presentation` is not one of `auto`, `iframe`, `image`, `pdf`, `code`. |
+| `artifact_canvas_presentation_unsupported` | The server cannot resolve the requested presentation against the artifact (e.g. an `iframe` request for an artifact with no safe URL). |
+| `artifact_canvas_iframe_scheme_rejected` | The artifact URL fails the scheme allowlist or normalization. |
+| `artifact_canvas_iframe_origin_not_allowed` | A `scripted-cross-origin` request resolves to the Cats shell origin and cannot keep `allow-same-origin`. |
+
+The renderer's defense-in-depth checks shall surface scheme / origin
+rejections to the user as the `unsupported` pane state, not as silently
+broken iframes; the underlying server-side error code is the canonical record
+in the persisted tool trace.
+
 ## Dependencies
 
 - [SPEC-092](./SPEC-092-code-artifact-declaration-contract.md)
@@ -268,8 +390,24 @@ not bypass `declare_artifact`, and they do not scan the filesystem.
 - [SPEC-020](./SPEC-020-embedded-preview-surfaces-for-runtime-artifacts-and-services.md)
 - [ADR-019](../decisions/019-normalize-runtime-previews-as-surfaces-not-provider-iframes.md)
 - [ADR-088](../decisions/088-use-structured-artifact-declarations-for-code-materialization.md)
+- [ADR-097](../decisions/097-store-code-canvas-focus-on-task-metadata.md)
 - [Tool Call Registry](../tool-calls.md)
 - [Research note](../research/2026-04-30-cats-code-split-canvas-artifact-panel.md)
+
+## Resolved Questions
+
+- **Scope of canvas focus**: task-scoped under
+  `CoreTaskRecord.metadata.codeCanvasFocus`. See
+  [ADR-097](../decisions/097-store-code-canvas-focus-on-task-metadata.md).
+- **Manual close semantics**: explicit two-control model (`Close` writes
+  through `clear_canvas`; `Collapse / expand` is renderer-only). See FR7.
+- **Phase 1 image / PDF rendering**: served through the iframe viewer with
+  the `static` sandbox profile so they remain visible without `allow-scripts`;
+  Phase 2 replaces the iframe fallback with dedicated viewers. See
+  §Presentation Resolution.
+- **`allow-same-origin` eligibility**: `scripted-cross-origin` profile only
+  when the projected URL has a non-Cats-shell origin and is `kind = 'preview'`;
+  enforced server-side and re-checked client-side. See §Iframe Policy.
 
 ## Open Questions
 
@@ -277,8 +415,6 @@ not bypass `declare_artifact`, and they do not scan the filesystem.
       a sidebar artifact without changing task-scoped focus?
 - [ ] Should canvas focus changes also append `CoreActivityRecord` rows, or is
       the persisted tool trace enough for Phase 1 audit?
-- [ ] Which exact runtime-owned origins may receive `allow-same-origin` for
-      iframe previews?
 
 ---
 

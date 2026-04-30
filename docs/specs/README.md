@@ -48,7 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
-| [SPEC-101](./SPEC-101-cats-code-artifact-canvas.md) | Cats Code Artifact Canvas | Draft | [PLAN-090](../plans/PLAN-090-cats-code-artifact-canvas-rollout.md) |
+| [SPEC-101](./SPEC-101-cats-code-artifact-canvas.md) | Cats Code Artifact Canvas | Draft | [PLAN-090](../plans/PLAN-090-cats-code-artifact-canvas-rollout.md), [ADR-097](../decisions/097-store-code-canvas-focus-on-task-metadata.md) |
 | [SPEC-100](./SPEC-100-platform-authentication-admin-bootstrap-and-google-identity.md) | Platform Authentication, Admin Bootstrap, and Google Identity | Draft | [PLAN-089](../plans/PLAN-089-platform-authentication-and-google-identity-rollout.md), [ADR-096](../decisions/096-adopt-platform-owned-auth-sessions-with-google-as-identity-provider.md) |
 | [SPEC-099](./SPEC-099-mobile-pairing-manifest-server.md) | Mobile Pairing Manifest Server in Cats Desktop | Draft | [PLAN-088](../plans/PLAN-088-mobile-pairing-manifest-server-rollout.md), [ADR-095](../decisions/095-distribute-mobile-as-static-expo-go-bundle-served-by-desktop.md) |
 | [SPEC-098](./SPEC-098-cats-app-package-and-extension-interface.md) | Cats App Package and Extension Interface | Draft | [PLAN-087](../plans/PLAN-087-cats-app-package-interface-rollout.md), [ADR-094](../decisions/094-adopt-cats-app-packages-as-extension-boundary.md) |

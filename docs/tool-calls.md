@@ -378,8 +378,8 @@ shape/location/metadata subset from that registry, while finalization may return
 
 These planned Cats Code tools control presentation focus in the right-hand
 Artifact Canvas pane. They are intentionally separate from `declare_artifact`:
-`declare_artifact` records the output; the canvas tools choose what the active
-Code task shows.
+`declare_artifact` records the output; the canvas tools choose what the
+active Code task shows.
 
 | Field | Value |
 |-------|-------|
@@ -389,61 +389,30 @@ Code task shows.
 | Tool names | `show_in_canvas`, `clear_canvas` |
 | Implementation entry point | Planned: `src/products/code/state/runtimeCanvasFocusExecution.ts` |
 | Related SPEC | [SPEC-101](./specs/SPEC-101-cats-code-artifact-canvas.md) |
+| Related ADR | [ADR-097](./decisions/097-store-code-canvas-focus-on-task-metadata.md) |
 | Related PLAN | [PLAN-090](./plans/PLAN-090-cats-code-artifact-canvas-rollout.md) |
 
 ### `show_in_canvas`
 
-Caller-visible input:
+Sets the right-hand Artifact Canvas focus to a Code-relevant artifact. Accepts
+exactly one of `artifactId` or a same-turn `declarationId` plus an optional
+`presentation` hint; the server resolves the iframe sandbox profile via the
+SPEC-101 same-origin rule. Persists the resolved focus under
+`CoreTaskRecord.metadata.codeCanvasFocus`.
 
-```ts
-interface ShowInCanvasInput {
-  artifactId?: string | null;
-  declarationId?: string | null;
-  presentation?: 'auto' | 'iframe' | 'image' | 'pdf' | 'code' | null;
-}
-```
-
-Rules:
-
-- exactly one of `artifactId` or `declarationId` is required;
-- `declarationId` may resolve only to an accepted same-turn
-  `declare_artifact` result;
-- the resolved artifact must be Code-relevant and compatible with the active
-  task/session context;
-- Phase 1 resolves safe preview URL artifacts to `iframe`; image, PDF, and code
-  presentations may return `unsupported` until their viewers land;
-- accepted focus is stored under `CoreTaskRecord.metadata.codeCanvasFocus`.
-
-Result:
-
-```ts
-type ShowInCanvasResult =
-  | {
-      status: 'accepted';
-      artifactId: string;
-      presentationResolved: 'iframe' | 'image' | 'pdf' | 'code' | 'unsupported';
-    }
-  | {
-      status: 'rejected';
-      error: { code: string; message: string; details?: unknown };
-    };
-```
+The full input shape, sandbox-profile resolution table, error code registry,
+and renderer defense-in-depth requirements are the responsibility of
+[SPEC-101](./specs/SPEC-101-cats-code-artifact-canvas.md). Do not duplicate
+those tables here; reference SPEC-101 from new code paths or downstream
+documents.
 
 ### `clear_canvas`
 
-Caller-visible input is an empty object. Accepted execution removes the active
-Code task's `codeCanvasFocus` metadata and returns:
-
-```ts
-interface ClearCanvasResult {
-  status: 'accepted';
-  cleared: true;
-}
-```
-
-Manual pane close in the renderer must call the same product-internal clear
-delegate. Renderer-only hiding is allowed only as transient UI collapse; it
-must not claim the server focus was cleared.
+Clears the active Code task's `codeCanvasFocus`. Empty input, idempotent on
+already-clear focus. Required for the pane top bar's "Close (X)" control;
+the pane's "Collapse / expand" control is renderer-only and must NOT call
+this tool. See [SPEC-101 §FR7](./specs/SPEC-101-cats-code-artifact-canvas.md)
+for the two-control split.
 
 ---
 
