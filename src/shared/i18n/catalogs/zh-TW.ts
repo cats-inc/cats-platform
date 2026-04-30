@@ -1295,6 +1295,13 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.telegramConnectDialog.cancel': '取消',
   'shared.telegramConnectDialog.connecting': '連線中...',
   'shared.telegramConnectDialog.connect': '連線',
+  'shared.memoryEditorDialog.title': '新增記憶',
+  'shared.memoryEditorDialog.categoryLabel': '分類',
+  'shared.memoryEditorDialog.contentLabel': '內容',
+  'shared.memoryEditorDialog.memoryPlaceholder': '這隻貓咪需要記住些什麼？',
+  'shared.memoryEditorDialog.cancel': '取消',
+  'shared.memoryEditorDialog.saving': '儲存中...',
+  'shared.memoryEditorDialog.add': '新增',
   'shared.approvalEyebrow': '核准',
   'shared.approvalPendingTitle': '待核准項目',
   'shared.approvalEmptyState':

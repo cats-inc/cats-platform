@@ -1340,6 +1340,13 @@ export const enCatalog: MessageCatalog = {
   'shared.telegramConnectDialog.cancel': 'Cancel',
   'shared.telegramConnectDialog.connecting': 'Connecting...',
   'shared.telegramConnectDialog.connect': 'Connect',
+  'shared.memoryEditorDialog.title': 'Add memory',
+  'shared.memoryEditorDialog.categoryLabel': 'Category',
+  'shared.memoryEditorDialog.contentLabel': 'Content',
+  'shared.memoryEditorDialog.memoryPlaceholder': 'What should this cat remember?',
+  'shared.memoryEditorDialog.cancel': 'Cancel',
+  'shared.memoryEditorDialog.saving': 'Saving...',
+  'shared.memoryEditorDialog.add': 'Add',
   'shared.approvalEyebrow': 'Approval',
   'shared.approvalPendingTitle': 'Pending approvals',
   'shared.approvalEmptyState':

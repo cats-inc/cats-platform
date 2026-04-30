@@ -1,5 +1,7 @@
 import { useEffect, type Dispatch, type SetStateAction } from 'react';
 
+import { messageKeys } from '../../../../../shared/i18n/messageKeys.js';
+import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import { MEMORY_CATEGORIES } from './viewSupport.js';
 
 export interface MemoryFormState {
@@ -22,6 +24,7 @@ export function MemoryEditorDialog({
   onSubmit,
   onClose,
 }: MemoryEditorDialogProps) {
+  const { t } = useI18n();
   useEffect(() => {
     function onKey(event: KeyboardEvent): void {
       if (event.key === 'Escape' && !busyCreating) onClose();
@@ -48,9 +51,9 @@ export function MemoryEditorDialog({
           onSubmit();
         }}
       >
-        <p className="catsDialogTitle">Add memory</p>
+        <p className="catsDialogTitle">{t(messageKeys.sharedMemoryEditorDialogTitle)}</p>
         <label className="fieldLabel">
-          <span>Category</span>
+          <span>{t(messageKeys.sharedMemoryEditorDialogCategoryLabel)}</span>
           <select
             className="textInput"
             value={memoryForm.category}
@@ -62,11 +65,11 @@ export function MemoryEditorDialog({
           </select>
         </label>
         <label className="fieldLabel">
-          <span>Content</span>
+          <span>{t(messageKeys.sharedMemoryEditorDialogContentLabel)}</span>
           <textarea
             className="textInput"
             rows={4}
-            placeholder="What should this cat remember?"
+            placeholder={t(messageKeys.sharedMemoryEditorDialogMemoryPlaceholder)}
             value={memoryForm.content}
             onChange={(event) => setMemoryForm({ ...memoryForm, content: event.target.value })}
             autoFocus
@@ -79,14 +82,14 @@ export function MemoryEditorDialog({
             onClick={onClose}
             disabled={busyCreating}
           >
-            Cancel
+            {t(messageKeys.sharedMemoryEditorDialogCancel)}
           </button>
           <button
             className="primaryButton"
             type="submit"
             disabled={submitDisabled}
           >
-            {busyCreating ? 'Saving...' : 'Add'}
+            {busyCreating ? t(messageKeys.sharedMemoryEditorDialogSaving) : t(messageKeys.sharedMemoryEditorDialogAdd)}
           </button>
         </div>
       </form>
