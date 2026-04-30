@@ -24,25 +24,6 @@ const MEMORY_CATEGORIES: readonly CompanionMemoryCategory[] = [
   'owner_note',
 ];
 
-function categoryLabel(category: string): string {
-  switch (category) {
-    case 'identity':
-      return 'identity';
-    case 'preference':
-      return 'preference';
-    case 'relationship':
-      return 'relationship';
-    case 'fact':
-      return 'fact';
-    case 'event':
-      return 'event';
-    case 'owner_note':
-      return 'owner_note';
-    default:
-      return category;
-  }
-}
-
 function formatDate(iso: string): string {
   try {
     return new Date(iso).toLocaleDateString(undefined, {
@@ -131,7 +112,7 @@ export function CompanionMemorySection({
           >
             {MEMORY_CATEGORIES.map((cat) => (
               <option key={cat} value={cat}>
-                {categoryLabelMap[categoryLabel(cat)]}
+                {categoryLabelMap[cat]}
               </option>
             ))}
           </select>
@@ -170,7 +151,7 @@ export function CompanionMemorySection({
               className={`companionFilterPill ${filterCategory === cat ? 'isActive' : ''}`}
               onClick={() => setFilterCategory(filterCategory === cat ? null : cat)}
             >
-              {categoryLabelMap[categoryLabel(cat)]} ({count})
+              {categoryLabelMap[cat]} ({count})
             </button>
           );
         })}
@@ -187,7 +168,9 @@ export function CompanionMemorySection({
           {filteredMemory.map((record) => (
             <li key={record.id} className="companionCard companionMemoryCard">
               <div className="companionMemoryCardHeader">
-                <span className="companionMemoryCategory">{categoryLabel(record.category)}</span>
+                <span className="companionMemoryCategory">
+                  {categoryLabelMap[record.category] ?? categoryLabelMap.all}
+                </span>
                 <span className="companionMemoryDate">{formatDate(record.updatedAt)}</span>
               </div>
               <p className="companionMemoryContent">{record.content}</p>

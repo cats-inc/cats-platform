@@ -34,6 +34,15 @@ export function CompanionOverviewSection({
   loading,
 }: CompanionOverviewSectionProps) {
   const { t } = useI18n();
+  const categoryLabelMap: Record<string, string> = {
+    identity: t(messageKeys.chatCompanionMemoryCategoryIdentity),
+    preference: t(messageKeys.chatCompanionMemoryCategoryPreference),
+    relationship: t(messageKeys.chatCompanionMemoryCategoryRelationship),
+    fact: t(messageKeys.chatCompanionMemoryCategoryFact),
+    event: t(messageKeys.chatCompanionMemoryCategoryEvent),
+    owner_note: t(messageKeys.chatCompanionMemoryCategoryOwnerNote),
+    all: t(messageKeys.chatCompanionMemoryFilterAll),
+  };
 
   if (loading && !summary) {
     return (
@@ -114,7 +123,9 @@ export function CompanionOverviewSection({
           <ul className="companionMemoryList">
             {recentSlice.map((record) => (
               <li key={record.id} className="companionMemoryItem">
-                <span className="companionMemoryCategory">{record.category}</span>
+                <span className="companionMemoryCategory">
+                  {categoryLabelMap[record.category] ?? record.category}
+                </span>
                 <span className="companionMemoryContent">{record.content}</span>
                 <span className="companionMemoryDate">{formatDate(record.updatedAt)}</span>
               </li>
