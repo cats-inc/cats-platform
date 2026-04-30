@@ -857,6 +857,36 @@ test('desktop bootstrap keeps retry non-primary when no continue slot is availab
   assert.equal(snapshot.actions.find((action) => action.id === 'retry')?.primary, undefined);
 });
 
+test('desktop bootstrap retries CLI inventory failures without restarting services', () => {
+  const snapshot = buildDesktopBootstrapSnapshot({
+    config: desktopConfig,
+    services: [
+      readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
+    ],
+    appHealth: {
+      status: 'ok',
+      summary: 'Cats app server is ready to accept requests.',
+      readiness: { ready: true, phase: 'ready' },
+      runtime: { reachable: true },
+    },
+    appShell: { setupCompleteAt: null },
+    runtimeHealth: {
+      status: 'ok',
+      runtime: { status: 'ok', summary: 'Runtime is ready.' },
+    },
+    providerDiagnostics: null,
+    lastError: 'Cats could not confirm the local CLI inventory. Retry the startup check.',
+  });
+
+  assert.equal(snapshot.phase, 'failed');
+  assert.deepEqual(snapshot.actions.map((action) => action.id), [
+    'open_setup',
+    'retry_cli_scan',
+    'quit',
+  ]);
+});
+
 test('desktop bootstrap keeps optional local-model audit follow-through non-blocking', () => {
   const snapshot = buildDesktopBootstrapSnapshot({
     config: desktopConfig,

@@ -9,6 +9,7 @@ export const DESKTOP_BOOTSTRAP_PHASES = [
 ] as const;
 export const DESKTOP_HOST_ACTION_IDS = [
   'retry',
+  'retry_cli_scan',
   'resume_setup',
   'open_runtime_diagnostics',
   'open_setup',

@@ -19,6 +19,7 @@ const DESKTOP_VOICE_CAPTURE_EVENT_CHANNEL = 'cats-host:voice-event';
 
 type DesktopHostActionId =
   | 'retry'
+  | 'retry_cli_scan'
   | 'resume_setup'
   | 'open_runtime_diagnostics'
   | 'open_setup'
@@ -33,6 +34,7 @@ type DesktopSetupHelperMode =
 
 const DESKTOP_HOST_ACTION_IDS = new Set<DesktopHostActionId>([
   'retry',
+  'retry_cli_scan',
   'resume_setup',
   'open_runtime_diagnostics',
   'open_setup',

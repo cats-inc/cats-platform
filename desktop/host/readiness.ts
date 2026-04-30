@@ -581,10 +581,12 @@ function buildActions(
     setupComplete: boolean;
     cliMissing: boolean;
     setup: DesktopSetupState | null | undefined;
+    lastError: string | null | undefined;
   },
 ): DesktopHostAction[] {
   const actions: DesktopHostAction[] = [];
   const resumable = canResumePackagedSetup(options.setup);
+  const cliScanFailed = Boolean(options.lastError?.includes('local CLI inventory'));
 
   function pushAction(
     id: DesktopHostAction['id'],
@@ -617,7 +619,11 @@ function buildActions(
   } else if (phase === 'needs_prerequisites' && resumable) {
     pushAction('resume_setup', 'Resume Setup');
   } else if (phase === 'failed') {
-    pushAction('retry', 'Retry Startup');
+    if (cliScanFailed) {
+      pushAction('retry_cli_scan', 'Retry CLI Scan');
+    } else {
+      pushAction('retry', 'Retry Startup');
+    }
   } else if (phase === 'needs_prerequisites') {
     pushAction('retry', 'Retry Check');
   }
@@ -821,6 +827,7 @@ export function buildDesktopBootstrapSnapshot(
       setupComplete: setupCompleted,
       cliMissing,
       setup,
+      lastError: input.lastError,
     }),
     lastError: input.lastError ?? null,
     progress,

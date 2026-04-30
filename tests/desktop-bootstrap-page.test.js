@@ -23,7 +23,7 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /Cats needs one setup fix/);
   assert.match(html, /Cats is ready to set up/);
   assert.match(html, /Try again first/);
-  assert.match(html, /Back to quick fix/);
+  assert.match(html, /Return/);
 
   // Back button to leave detail mode
   assert.match(html, /recovery-back/);
@@ -72,6 +72,8 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /slowHintMessages/);
   assert.match(html, /retryHintMessage/);
   assert.match(html, /runRetryAction/);
+  assert.match(html, /resolveRetryActionId/);
+  assert.match(html, /retry_cli_scan/);
   assert.match(html, /showRetryLoadingState/);
   assert.match(html, /scheduleSlowHint/);
   assert.match(html, /slowHintStep = 0;/);
@@ -87,6 +89,16 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
 
   // Page mode handling
   assert.match(html, /resolvePageMode/);
+  assert.match(html, /ONBOARDING_NATIVE_PROVIDER_ORDER = \[\s*'claude_code', 'cursor_agent', 'goose', 'junie',\s*'kiro', 'ollama'\s*\]/);
+  assert.match(html, /ONBOARDING_NPM_PROVIDER_ORDER = \[\s*'codex', 'gemini', 'copilot', 'opencode',\s*'kilo', 'auggie', 'pi'\s*\]/);
+  assert.match(html, /Node\.js \/ npm/);
+  assert.match(html, /Required by npm CLIs/);
+  assert.match(html, /Checking Node\.\.\./);
+  assert.match(html, /Waiting for Node check/);
+  assert.match(html, /ONBOARDING_NODE_HELPER_SUFFIX = '-node-host-installer'/);
+  assert.match(html, /cli-row-break/);
+  assert.match(html, /hasHiddenCards: renderedCards > 4/);
+  assert.doesNotMatch(html, /elements\.hasHiddenCards/);
 
   // CSS overflow / layout safety
   assert.match(html, /overflow-x: hidden/);
@@ -97,4 +109,8 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /fadeSlideIn/);
   assert.match(html, /dot-pulse/);
   assert.match(html, /@keyframes pulse/);
+
+  const script = html.match(/<script>([\s\S]*)<\/script>/)?.[1];
+  assert.equal(typeof script, 'string');
+  assert.doesNotThrow(() => new Function(script));
 });

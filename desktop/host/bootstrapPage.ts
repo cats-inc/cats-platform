@@ -458,6 +458,11 @@ export function buildDesktopBootstrapPage(): string {
       font-size: 0.78rem;
       border-radius: 8px;
     }
+    .cli-row-break {
+      grid-column: 1 / -1;
+      height: 0;
+    }
+    .cli-row-break.cli-card-hidden { display: none; }
 
     /* Responsive */
     @media (max-width: 520px) {
@@ -586,14 +591,39 @@ export function buildDesktopBootstrapPage(): string {
     }
 
     /* CLI install card — used by onboarding mode AND the recovery accordion.
-       Order matches the user-facing arrangement: top row visible by default,
-       lower rows collapsed until Show more is pressed. */
-    var ONBOARDING_PROVIDER_ORDER = [
-      'claude_code', 'codex', 'gemini', 'copilot',
-      'cursor_agent', 'kiro', 'opencode', 'kilo',
-      'auggie', 'junie', 'goose', 'pi',
-      'ollama'
+       First row favors CLIs that do not depend on Node/npm. Lower rows are
+       collapsed until Show more is pressed, then npm prerequisites appear
+       before npm-based CLIs. */
+    var ONBOARDING_NATIVE_PROVIDER_ORDER = [
+      'claude_code', 'cursor_agent', 'goose', 'junie',
+      'kiro', 'ollama'
     ];
+    var ONBOARDING_NPM_PROVIDER_ORDER = [
+      'codex', 'gemini', 'copilot', 'opencode',
+      'kilo', 'auggie', 'pi'
+    ];
+    var ONBOARDING_NODE_HELPER_SUFFIX = '-node-host-installer';
+    var ONBOARDING_CARD_LABELS = {
+      node: 'Node.js / npm'
+    };
+    var ONBOARDING_CARD_STATUS = {
+      node: 'Required by npm CLIs'
+    };
+    var ONBOARDING_PROVIDER_LABELS = {
+      claude_code: 'Claude',
+      cursor_agent: 'Cursor',
+      codex: 'Codex',
+      gemini: 'Gemini',
+      copilot: 'Copilot',
+      opencode: 'OpenCode',
+      kilo: 'Kilo',
+      kiro: 'Kiro',
+      goose: 'Goose',
+      junie: 'Junie',
+      auggie: 'Auggie',
+      pi: 'Pi',
+      ollama: 'Ollama'
+    };
     var cliInstallingState = Object.create(null);
     var onboardingExpanded = false;
 
@@ -606,62 +636,143 @@ export function buildDesktopBootstrapPage(): string {
       return null;
     }
 
-    function handleCliInstallClick(candidate) {
-      if (cliInstallingState[candidate.helperId]) return;
-      cliInstallingState[candidate.helperId] = true;
+    function pickSetupHelper(setupSnap, predicate) {
+      var helpers = setupSnap && Array.isArray(setupSnap.helpers) ? setupSnap.helpers : [];
+      for (var i = 0; i < helpers.length; i++) {
+        if (predicate(helpers[i])) return helpers[i];
+      }
+      return null;
+    }
+
+    function buildNodePrerequisiteCard(setupSnap) {
+      var helper = pickSetupHelper(setupSnap, function (candidate) {
+        return candidate && candidate.id && candidate.id.indexOf(ONBOARDING_NODE_HELPER_SUFFIX) > 0;
+      });
+      if (!helper) {
+        if (!setupSnap) {
+          return {
+            helperId: 'node-prerequisite-loading',
+            label: ONBOARDING_CARD_LABELS.node,
+            statusText: 'Checking Node...',
+            installed: false,
+            available: false,
+            supported: true,
+            supportsApply: false
+          };
+        }
+        return null;
+      }
+      return {
+        helperId: helper.id,
+        label: ONBOARDING_CARD_LABELS.node,
+        statusText: ONBOARDING_CARD_STATUS.node,
+        installed: false,
+        available: helper.available,
+        supported: helper.supported,
+        supportsApply: helper.supportsApply
+      };
+    }
+
+    function toProviderInstallCard(candidate) {
+      return {
+        helperId: candidate.helperId,
+        label: ONBOARDING_PROVIDER_LABELS[candidate.providerId] || candidate.label,
+        installed: candidate.installed,
+        available: candidate.available,
+        supported: candidate.supported,
+        supportsApply: true
+      };
+    }
+
+    function handleCliInstallClick(card) {
+      if (cliInstallingState[card.helperId]) return;
+      cliInstallingState[card.helperId] = true;
       doRender();
-      bridge.runSetupHelper(candidate.helperId, 'apply')
+      bridge.runSetupHelper(card.helperId, 'apply')
         .catch(function (err) {
-          try { console.error('CLI install failed', candidate.helperId, err); } catch (e) {}
+          try { console.error('CLI install failed', card.helperId, err); } catch (e) {}
         })
         .finally(function () {
-          delete cliInstallingState[candidate.helperId];
+          delete cliInstallingState[card.helperId];
           doRender();
         });
     }
 
-    function CliCard(candidate, hidden) {
-      var installing = Boolean(cliInstallingState[candidate.helperId]);
+    function CliCard(card, hidden) {
+      var installing = Boolean(cliInstallingState[card.helperId]);
       var btnLabel, statusClass, statusText;
       if (installing) {
         btnLabel = 'Installing…';
         statusClass = '';
         statusText = ' ';
-      } else if (candidate.installed) {
+      } else if (card.installed) {
         btnLabel = 'Reinstall';
         statusClass = 'c-ok';
         statusText = '✓ Installed';
       } else {
         btnLabel = 'Install';
         statusClass = '';
-        statusText = ' ';
+        statusText = card.statusText || ' ';
       }
       var btn = el('button', {
         class: 'btn cli-card-btn',
-        disabled: installing || !candidate.available || !candidate.supported,
-        onclick: function () { handleCliInstallClick(candidate); }
+        disabled: installing || !card.available || !card.supported || card.supportsApply === false,
+        onclick: function () { handleCliInstallClick(card); }
       }, btnLabel);
       var className = 'cli-card' + (hidden ? ' cli-card-hidden' : '');
       return el('div', { class: className },
-        el('div', { class: 'cli-card-name' }, candidate.label),
+        el('div', { class: 'cli-card-name' }, card.label),
         el('div', { class: 'cli-card-status ' + statusClass }, statusText),
         btn
       );
     }
 
-    function buildCliCards(snapshot, options) {
-      var alwaysExpanded = Boolean(options && options.alwaysExpanded);
-      var cards = [];
-      var rendered = 0;
-      for (var i = 0; i < ONBOARDING_PROVIDER_ORDER.length; i++) {
-        var providerId = ONBOARDING_PROVIDER_ORDER[i];
+    function rowBreak(hidden) {
+      return el('div', { class: 'cli-row-break' + (hidden ? ' cli-card-hidden' : '') });
+    }
+
+    function appendProviderCards(cards, snapshot, providerOrder, options) {
+      for (var i = 0; i < providerOrder.length; i++) {
+        var providerId = providerOrder[i];
         var candidate = pickInventoryCandidate(snapshot, providerId);
         if (!candidate || !candidate.available) continue;
-        var hidden = !alwaysExpanded && !onboardingExpanded && rendered >= 4;
-        cards.push(CliCard(candidate, hidden));
-        rendered += 1;
+        var card = toProviderInstallCard(candidate);
+        if (options && options.waitForNodeCheck) {
+          card.statusText = 'Waiting for Node check';
+          card.supportsApply = false;
+        }
+        cards.push(card);
       }
-      return cards;
+    }
+
+    function buildCliCards(snapshot, setupSnap, options) {
+      var alwaysExpanded = Boolean(options && options.alwaysExpanded);
+      var expanded = alwaysExpanded || onboardingExpanded;
+      var entries = [];
+      appendProviderCards(entries, snapshot, ONBOARDING_NATIVE_PROVIDER_ORDER);
+      entries.push({ kind: 'break' });
+      var nodeCard = buildNodePrerequisiteCard(setupSnap);
+      if (nodeCard) entries.push(nodeCard);
+      appendProviderCards(entries, snapshot, ONBOARDING_NPM_PROVIDER_ORDER, {
+        waitForNodeCheck: !setupSnap
+      });
+
+      var elements = [];
+      var renderedCards = 0;
+      for (var i = 0; i < entries.length; i++) {
+        var entry = entries[i];
+        if (entry.kind === 'break') {
+          elements.push(rowBreak(!expanded));
+          continue;
+        }
+        var hidden = !expanded && renderedCards >= 4;
+        elements.push(CliCard(entry, hidden));
+        renderedCards += 1;
+      }
+      return {
+        elements: elements,
+        hasHiddenCards: renderedCards > 4
+      };
     }
 
     /* ================================================================
@@ -1192,13 +1303,23 @@ export function buildDesktopBootstrapPage(): string {
 
     function runRetryAction(button, restoreDisabled) {
       showRetryLoadingState();
-      bridge.runAction('retry')
+      bridge.runAction(resolveRetryActionId())
         .catch(function () {
           retryHintActive = false;
           hideSlowHint();
           doRender();
         })
         .finally(function () { button.disabled = restoreDisabled; });
+    }
+
+    function resolveRetryActionId() {
+      var actions = currentSnapshot && Array.isArray(currentSnapshot.actions)
+        ? currentSnapshot.actions
+        : [];
+      for (var i = 0; i < actions.length; i++) {
+        if (actions[i] && actions[i].id === 'retry_cli_scan') return 'retry_cli_scan';
+      }
+      return 'retry';
     }
 
     function showOnboarding(snap) {
@@ -1230,16 +1351,18 @@ export function buildDesktopBootstrapPage(): string {
         }
       }, 'Continue');
 
-      var moreLabel = onboardingExpanded ? 'Show fewer' : 'Show more';
-      var moreBtn = el('button', {
-        class: 'btn',
-        onclick: function () {
-          onboardingExpanded = !onboardingExpanded;
-          doRender();
-        }
-      }, moreLabel);
-
-      var cards = buildCliCards(snap, { alwaysExpanded: false });
+      var cardSet = buildCliCards(snap, currentSetupSnapshot, { alwaysExpanded: false });
+      var actions = [continueBtn];
+      if (cardSet.hasHiddenCards) {
+        var moreLabel = onboardingExpanded ? 'Show fewer' : 'Show more';
+        actions.push(el('button', {
+          class: 'btn',
+          onclick: function () {
+            onboardingExpanded = !onboardingExpanded;
+            doRender();
+          }
+        }, moreLabel));
+      }
 
       onboardingEl.append(
         el('section', { class: 'hero' },
@@ -1247,18 +1370,18 @@ export function buildDesktopBootstrapPage(): string {
         ),
         el('p', { class: 'onboarding-headline' },
           'Welcome. Pick a CLI to get started.'),
-        el('div', { class: 'onboarding-actions' }, continueBtn, moreBtn),
-        el('div', { class: 'cli-grid' }, cards)
+        el('div', { class: 'onboarding-actions' }, actions),
+        el('div', { class: 'cli-grid' }, cardSet.elements)
       );
     }
 
     function InstallACliSection(snap) {
       var inv = snap.prerequisites && snap.prerequisites.cliInventory;
       if (!inv || inv.source !== 'runtime' || inv.total > 0) return null;
-      var cards = buildCliCards(snap, { alwaysExpanded: true });
-      if (cards.length === 0) return null;
+      var cardSet = buildCliCards(snap, currentSetupSnapshot, { alwaysExpanded: true });
+      if (cardSet.elements.length === 0) return null;
       return ExpandableSection('Install a CLI', [
-        el('div', { class: 'cli-grid' }, cards)
+        el('div', { class: 'cli-grid' }, cardSet.elements)
       ]);
     }
 
@@ -1281,7 +1404,7 @@ export function buildDesktopBootstrapPage(): string {
           showRecoveryDetails = false;
           doRender();
         }
-      }, '\u2190 Back to quick fix');
+      }, '\u2190 Return');
 
       /* Summary card with 3-slot action row */
       var summary = RecoverySummaryCard(snap, bridge);
