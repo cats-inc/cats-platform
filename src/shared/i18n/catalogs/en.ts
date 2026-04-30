@@ -1085,6 +1085,13 @@ export const enCatalog: MessageCatalog = {
   'chat.activityLatestUpdatesHeading': 'Latest updates',
   'chat.activityEmptyState': 'Activity appears here when the room starts moving.',
   'chat.activityByActor': 'By {actorName}',
+  'chat.participantsSectionNameLabel': 'Participant name',
+  'chat.participantsSectionSaveNameButton': 'Save name',
+  'chat.participantsSectionCancelButton': 'Cancel',
+  'chat.participantsSectionRenameButton': 'Rename',
+  'chat.participantsSectionNoParticipants':
+    'No participants are in this chat yet.',
+  'chat.participantsSectionChooseCatsButton': 'Choose cats',
   'shared.addCatPanelTitle': 'Add cat to chat',
   'shared.addCatPanelClose': 'Close',
   'shared.addCatPanelChooseExisting': 'Choose existing',

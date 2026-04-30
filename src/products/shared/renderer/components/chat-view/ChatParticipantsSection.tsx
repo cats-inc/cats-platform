@@ -6,6 +6,8 @@ import {
   isChannelParticipantBusy,
   type WorkspaceBusyState,
 } from '../../../../../shared/workspaceBusy.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
 export interface ChatParticipantsSectionProps {
   assignedCatRecords: ChatCat[];
@@ -42,6 +44,7 @@ export function ChatParticipantsSection({
   onOpenAddCat,
   onCloseSidePanel,
 }: ChatParticipantsSectionProps) {
+  const { t } = useI18n();
   const isBusyForParticipant = (participantId: string): boolean =>
     isChannelParticipantBusy(busy, participantId);
 
@@ -83,7 +86,7 @@ export function ChatParticipantsSection({
                         fontSize: '0.8rem',
                       }}
                     >
-                      <span>Participant name</span>
+                      <span>{t(messageKeys.chatParticipantsSectionNameLabel)}</span>
                       <input
                         className="chromeInput"
                         value={editingParticipantName}
@@ -100,7 +103,7 @@ export function ChatParticipantsSection({
                           || isBusyForParticipant(participant.participantId)
                         }
                       >
-                        Save name
+                        {t(messageKeys.chatParticipantsSectionSaveNameButton)}
                       </button>
                       <button
                         type="button"
@@ -108,7 +111,7 @@ export function ChatParticipantsSection({
                         onClick={onCancelParticipantRename}
                         disabled={isBusyForParticipant(participant.participantId)}
                       >
-                        Cancel
+                        {t(messageKeys.chatParticipantsSectionCancelButton)}
                       </button>
                     </div>
                   </form>
@@ -122,7 +125,7 @@ export function ChatParticipantsSection({
                     disabled={isBusyForParticipant(participant.participantId)}
                     onClick={() => onBeginParticipantRename(participant)}
                   >
-                    Rename
+                    {t(messageKeys.chatParticipantsSectionRenameButton)}
                   </button>
                 ) : null}
               </div>
@@ -131,7 +134,9 @@ export function ChatParticipantsSection({
         </div>
       ) : null}
       {assignedCatRecords.length === 0 && assignedAdhocParticipants.length === 0 ? (
-        <p className="operatorEmptyState">No participants are in this chat yet.</p>
+        <p className="operatorEmptyState">
+          {t(messageKeys.chatParticipantsSectionNoParticipants)}
+        </p>
       ) : null}
       {showAddCatButton ? (
         <button
@@ -142,7 +147,7 @@ export function ChatParticipantsSection({
             onOpenAddCat?.();
           }}
         >
-          Choose cats
+          {t(messageKeys.chatParticipantsSectionChooseCatsButton)}
         </button>
       ) : null}
     </div>

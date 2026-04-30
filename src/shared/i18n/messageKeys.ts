@@ -1059,6 +1059,14 @@ export const messageKeys = {
   chatActivityLatestUpdatesHeading: 'chat.activityLatestUpdatesHeading',
   chatActivityEmptyState: 'chat.activityEmptyState',
   chatActivityByActor: 'chat.activityByActor',
+  chatParticipantsSectionNameLabel: 'chat.participantsSectionNameLabel',
+  chatParticipantsSectionSaveNameButton: 'chat.participantsSectionSaveNameButton',
+  chatParticipantsSectionCancelButton: 'chat.participantsSectionCancelButton',
+  chatParticipantsSectionRenameButton: 'chat.participantsSectionRenameButton',
+  chatParticipantsSectionNoParticipants:
+    'chat.participantsSectionNoParticipants',
+  chatParticipantsSectionChooseCatsButton:
+    'chat.participantsSectionChooseCatsButton',
   sharedAddCatPanelTitle: 'shared.addCatPanelTitle',
   sharedAddCatPanelClose: 'shared.addCatPanelClose',
   sharedAddCatPanelChooseExisting: 'shared.addCatPanelChooseExisting',
