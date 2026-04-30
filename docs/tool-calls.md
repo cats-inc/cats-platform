@@ -434,8 +434,11 @@ Effect: server records an `artifact_canvas_show_intent` Activity record
 keyed by the caller's surface. That stream may use the same app push
 transport as [ADR-075](./decisions/075-adopt-push-based-per-entity-state-subscription.md),
 but it is not a generic `subscribeEntity` entity patch. The renderer
-applies only matching active-surface intents, calls `navigate(targetUrl)`,
-and acknowledges by `intentId`. The tool does NOT mutate any product
+subscribes only for its active `CanvasSurfaceRef`, applies matching
+intents, calls `navigate(targetUrl)`, waits for route commit, and
+acknowledges with `POST /api/canvas/intents/:intentId/ack`. Pending
+intents have a 30-second TTL and replay only to the same active surface
+subscription while unacknowledged. The tool does NOT mutate any product
 `metadata`.
 
 Core rules (the SPEC-101 source-of-truth covers full validation, the
@@ -485,6 +488,17 @@ table):
   kind `artifact_canvas_show_intent` per ADR-081 Materialization tier;
   explicit non-`auto` presentation requests use the `/view/:presentation`
   URL form, while `auto` uses the shorter `/canvas/:artifactId` form;
+  `CanvasSurfaceRouteRegistry.parse(targetUrl)` must round-trip to the
+  same surface, `artifactId`, and `presentationRequested` carried by the
+  render intent;
+- valid canvas surfaces are a single enum, not a free product/surface
+  pair: `code_task`, `code_codespace`, `work_item`, `work_project`,
+  `work_task`, and `chat_conversation`;
+- Activity top-level anchors are the source of truth for Core-backed
+  surfaces. Metadata surface fields are derived audit convenience
+  fields; if they ever disagree, readers trust the top-level anchor.
+  `code_codespace` is the only Phase 1 metadata-authoritative surface
+  because Core Activity has no codespace anchor;
 - credential-bearing URLs (`user:pass@host`) hard-reject at the canvas
   with `artifact_canvas_url_credentials_not_allowed` and never reach
   iframe `src`, open-external href, or pane metadata;

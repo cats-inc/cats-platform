@@ -63,6 +63,7 @@ surface that opts in:
 /code/tasks/:taskId/canvas/:artifactId           ← left + right
 /code/tasks/:taskId/canvas/:artifactId/view/iframe  ← explicit viewer
 /work/items/:itemId/canvas/:artifactId           ← same pane in Work
+/work/tasks/:taskId/canvas/:artifactId           ← same pane for Work task
 /chat/conversations/:convId/canvas/:artifactId   ← same pane in Chat
 ```
 
@@ -72,6 +73,10 @@ is one platform primitive shared across products. The optional
 `/view/:presentation` segment preserves explicit presentation requests
 (`iframe` / `image` / `pdf` / `code`) across reload, share-link, and
 browser back/forward. Absence of the segment means `auto`.
+The platform route registry uses one valid surface enum
+(`code_task`, `code_codespace`, `work_item`, `work_project`,
+`work_task`, `chat_conversation`) instead of a free
+`productKind × surfaceKind` pair.
 
 Query string is **not** used for canvas state. Query string remains
 reserved for ephemeral parameters (search filters, etc.) that do not
@@ -100,9 +105,8 @@ intent, not for visible state:
 - Given a surface-scoped canvas path, the server returns a projection
   with the resolved `iframeSandboxProfile`, `policyVersion`, and any
   artifact metadata the viewer needs. The projection API receives
-  `(productKind, surfaceKind, surfaceId, artifactId,
-  presentationRequested)` and validates that the artifact is anchored
-  to that surface.
+  `(surfaceKind, surfaceId, artifactId, presentationRequested)` and
+  validates that the artifact is anchored to that surface.
 - Assistant tool `show_in_canvas` writes an Activity record (audit /
   trace) and pushes an `ArtifactCanvasNavigateIntent` to the renderer
   through the platform render-intent stream. The stream may use the
@@ -110,8 +114,9 @@ intent, not for visible state:
   [ADR-075](./075-adopt-push-based-per-entity-state-subscription.md),
   but it is not a generic `subscribeEntity` entity snapshot / patch.
   Intents are short-lived (Phase 1 TTL: 30 seconds), acknowledged by
-  `intentId`, and applied only to the currently mounted surface. The
-  renderer receives a matching intent and calls `navigate()`. The URL
+  `POST /api/canvas/intents/:intentId/ack`, and applied only to the
+  currently mounted surface. The renderer receives a matching intent,
+  calls `navigate()`, then acknowledges after route commit. The URL
   changes; the viewer remounts.
 - User actions on the canvas (close, switch artifact via sidebar click)
   are renderer-only `navigate()` calls. They do **not** require server

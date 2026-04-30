@@ -101,6 +101,7 @@ This spec covers the Phase 1 contract:
    - `/code/codespaces/:codespaceId/canvas/:artifactId`
    - `/work/items/:itemId/canvas/:artifactId`
    - `/work/projects/:projectId/canvas/:artifactId`
+   - `/work/tasks/:taskId/canvas/:artifactId`
    - `/chat/conversations/:convId/canvas/:artifactId`
    The canvas pane component, viewer registry, and safety policy are
    platform-shared (see FR3); each product only registers the child
@@ -127,11 +128,10 @@ This spec covers the Phase 1 contract:
    `withSharedViewerRoutes(parent: RouteObject): RouteObject` helper
    so each product registers the child route in a single line, and a
    `CanvasSurfaceRouteRegistry` that composes and parses parent URLs,
-   canvas URLs, and projection API URLs for `(productKind,
-   surfaceKind, surfaceId)`.
+   canvas URLs, and projection API URLs for `(surfaceKind, surfaceId)`.
 5. The artifact addressed by `:artifactId` must resolve to a
    materialized `CoreArtifactRecord`. The server projection endpoint is
-   surface-scoped; it receives `(productKind, surfaceKind, surfaceId,
+   surface-scoped; it receives `(surfaceKind, surfaceId,
    artifactId, presentationRequested)` and validates that the artifact
    is anchored to that surface before returning the resolved
    `iframeSandboxProfile`, `policyVersion`, and the artifact metadata
@@ -146,8 +146,8 @@ This spec covers the Phase 1 contract:
    stream carrying the target URL. The render-intent stream uses the
    same app push transport as ADR-075 but is not an ADR-075
    entity-state patch. The renderer subscribes for the active surface,
-   acknowledges by `intentId`, and responds by calling
-   `navigate(targetUrl)`.
+   responds by calling `navigate(targetUrl)`, and acknowledges through
+   `POST /api/canvas/intents/:intentId/ack` after route commit.
 7. The pane shall expose two distinct user controls with different
    semantics:
    - **Close (X)**: renderer-only `navigate()` that pops the
@@ -226,8 +226,8 @@ This spec covers the Phase 1 contract:
     shall be pushed.
 12. `artifactId` shall resolve only to a canvas-eligible artifact that
     is compatible with the calling product's surface context (Code task /
-    Code session for Code; Work item / project for Work; conversation
-    for Chat).
+    Code codespace for Code; Work item / project / task for Work;
+    conversation for Chat).
 13. `show_in_canvas` shall require an active product surface (Code
     task, Work item, etc.) for the caller; calls without such an active
     surface shall reject with `artifact_canvas_no_active_surface` and
@@ -311,44 +311,57 @@ product surface route. `:artifactId` is the Core artifact id.
 All products compose these routes through one platform registry:
 
 ```ts
-type CanvasProductKind = 'code' | 'work' | 'chat';
 type CanvasSurfaceKind =
-  | 'task'
-  | 'codespace'
+  | 'code_task'
+  | 'code_codespace'
   | 'work_item'
   | 'work_project'
-  | 'conversation';
+  | 'work_task'
+  | 'chat_conversation';
 
 interface CanvasSurfaceRef {
-  productKind: CanvasProductKind;
   surfaceKind: CanvasSurfaceKind;
   surfaceId: string;
 }
+
+type CanvasPresentationRequested = 'auto' | 'iframe' | 'image' | 'pdf' | 'code';
+
+type CanvasUrlParse =
+  | {
+      kind: 'canvas';
+      surface: CanvasSurfaceRef;
+      artifactId: string;
+      presentationRequested: CanvasPresentationRequested;
+    }
+  | {
+      kind: 'parent';
+      surface: CanvasSurfaceRef;
+    }
+  | null;
 
 interface CanvasSurfaceRouteRegistry {
   parentUrl(surface: CanvasSurfaceRef): string;
   canvasUrl(
     surface: CanvasSurfaceRef,
     artifactId: string,
-    presentationRequested?: 'auto' | 'iframe' | 'image' | 'pdf' | 'code',
+    presentationRequested?: CanvasPresentationRequested,
   ): string;
   projectionApiUrl(
     surface: CanvasSurfaceRef,
     artifactId: string,
-    presentationRequested?: 'auto' | 'iframe' | 'image' | 'pdf' | 'code',
+    presentationRequested?: CanvasPresentationRequested,
   ): string;
-  parse(url: string): {
-    surface: CanvasSurfaceRef;
-    artifactId?: string;
-    presentationRequested: 'auto' | 'iframe' | 'image' | 'pdf' | 'code';
-  } | null;
+  parse(url: string): CanvasUrlParse;
 }
 ```
 
 `CanvasSurfaceRouteRegistry` is the only code allowed to compose or
 parse canvas URLs. Products do not hand-build `targetUrl`, and the
 server projection does not infer surface context from only
-`:artifactId`.
+`:artifactId`. The registry must be symmetric:
+`parse(canvasUrl(surface, artifactId, presentation)).presentationRequested`
+must equal the requested presentation, and `auto` must round-trip as
+the shorter `/canvas/:artifactId` URL without a `/view/auto` segment.
 
 #### Server projection (read on every URL hit)
 
@@ -356,8 +369,8 @@ The renderer extracts the surface and artifact route params and asks a
 surface-scoped projection endpoint:
 
 ```text
-GET /api/canvas/:productKind/:surfaceKind/:surfaceId/artifacts/:artifactId
-GET /api/canvas/:productKind/:surfaceKind/:surfaceId/artifacts/:artifactId/view/:presentation
+GET /api/canvas/:surfaceKind/:surfaceId/artifacts/:artifactId
+GET /api/canvas/:surfaceKind/:surfaceId/artifacts/:artifactId/view/:presentation
 ```
 
 The second form is used only for explicit `iframe` / `image` / `pdf` /
@@ -377,7 +390,7 @@ interface ArtifactCanvasProjection {
     location: { kind: CoreArtifactLocationKind; value: string | null };
   };
   // Presentation requested by the URL. No /view segment means auto.
-  presentationRequested: 'auto' | 'iframe' | 'image' | 'pdf' | 'code';
+  presentationRequested: CanvasPresentationRequested;
   // Server's resolved presentation. Explicit URL requests that cannot
   // be served return artifact_canvas_presentation_unsupported instead
   // of silently downgrading. Auto may resolve to unsupported.
@@ -420,7 +433,7 @@ interface ArtifactCanvasNavigateIntent {
   // Mirror of the projection fields, included so the renderer can
   // optimistically render before fetching the projection.
   artifactId: string;
-  presentationRequested: 'auto' | 'iframe' | 'image' | 'pdf' | 'code';
+  presentationRequested: CanvasPresentationRequested;
   presentationResolved: 'iframe' | 'image' | 'pdf' | 'code' | 'unsupported';
   iframeSandboxProfile: 'static' | 'scripted-cross-origin' | null;
   policyVersion: string | null;
@@ -437,16 +450,55 @@ an ADR-075 entity snapshot and must not be implemented as a generic
 
 - the server writes the Activity record first and uses the Activity id
   as `activityId`;
-- the renderer applies only intents whose `surface` equals the
-  currently mounted surface;
-- the renderer acknowledges by `intentId` after calling
-  `navigate(targetUrl)`;
+- the renderer opens a render-intent subscription for exactly the
+  currently mounted `CanvasSurfaceRef`; the server delivers only to
+  matching active subscriptions;
+- the renderer acknowledges by `intentId` only after route commit
+  confirms `CanvasSurfaceRouteRegistry.parse(currentUrl)` is a
+  `kind: 'canvas'` entry matching the intent's `surface`, `artifactId`,
+  and `presentationRequested`;
 - the server may replay an unacknowledged intent only for the same
   focused surface and only while the intent TTL is live (Phase 1 TTL:
   30 seconds);
 - unfocused intents must not be queued for later automatic navigation.
   They remain visible through Activity audit / transcript tool result,
   but remounting a surface later must not surprise-navigate the user.
+
+##### Render-Intent Stream Protocol
+
+Phase 1 uses the existing app push transport for server-to-renderer
+delivery. Because that transport is server-to-renderer, acknowledgements
+are a separate HTTP call:
+
+```text
+POST /api/canvas/intents/:intentId/ack
+```
+
+If a future bidirectional transport replaces the stream, it may carry an
+equivalent `{ kind: 'artifact_canvas_intent_ack', intentId }` frame, but
+the acknowledgement semantics stay the same.
+
+Protocol invariants:
+
+- server creates `intentId`, writes the Activity record, and starts a
+  30-second TTL window at `triggeredAt`;
+- server sends an intent only to render-intent subscribers whose
+  subscribed `CanvasSurfaceRef` equals the intent surface. No subscriber
+  means no automatic delivery and no later queue;
+- if the push connection reconnects while the same surface is still
+  subscribed and the TTL has not expired, the server may replay any
+  unacknowledged intent for that surface;
+- after TTL expiry, the server drops the pending intent regardless of
+  acknowledgement state. The Activity audit remains durable;
+- renderer handling is idempotent by `intentId`. A duplicate intent for
+  the same `targetUrl` may call `navigate(targetUrl)` again; React
+  Router should treat that as a no-op if already there. The renderer
+  still sends / repeats the ack after the route is committed;
+- `targetUrl`, `presentationRequested`, and `artifactId` must agree:
+  `CanvasSurfaceRouteRegistry.parse(targetUrl)` must produce
+  `{ kind: 'canvas', surface, artifactId, presentationRequested }`
+  equal to the fields in the intent. If not, the server must reject
+  before publishing the intent.
 
 #### Audit (server-side Activity record)
 
@@ -458,9 +510,9 @@ Each accepted `show_in_canvas` writes one Activity record:
   artifactId,
   conversationId, taskId, runId, projectId, workItemId, // anchors per ADR-081
   metadata: {
-    productKind,
     surfaceKind,
     surfaceId,
+    surfaceAnchorSource, // taskId | workItemId | projectId | conversationId | metadata
     presentationRequested,
     presentationResolved,
     iframeSandboxProfile,
@@ -476,6 +528,29 @@ record. These records are the durable audit trail. They are not the
 visible state. Implementation must add these Activity kinds to
 `CoreActivityKind` in `src/core/types.ts` and include them in any
 Activity filters / projections that enumerate known kinds.
+
+Activity top-level anchors are the source of truth for surfaces backed
+by Core anchor fields:
+
+| `surfaceKind` | Top-level Activity anchor source |
+|---------------|----------------------------------|
+| `code_task` | `taskId` |
+| `work_task` | `taskId` |
+| `work_item` | `workItemId` |
+| `work_project` | `projectId` |
+| `chat_conversation` | `conversationId` |
+| `code_codespace` | `metadata.surfaceId` (`surfaceAnchorSource = 'metadata'`) |
+
+`metadata.surfaceKind`, `metadata.surfaceId`, and
+`metadata.surfaceAnchorSource` are derived audit convenience fields.
+For Core-anchor-backed surfaces, writers must derive them from the
+top-level anchor and reject / fail fast before write if the derived
+surface disagrees with the top-level anchor. Readers resolving a
+conflict must trust the top-level Activity anchor over metadata. The
+`code_task` vs `work_task` distinction is derived from the referenced
+`CoreTaskRecord`'s product binding, not from a free metadata value. The
+only Phase 1 exception is `code_codespace`, which has no top-level Core
+Activity anchor field; there `metadata.surfaceId` is authoritative.
 
 #### Notes on policy and authority
 
@@ -1040,7 +1115,7 @@ assistant output
   -> validate artifact / surface / presentation / iframe policy
   -> write Activity (artifact_canvas_show_intent) for audit
   -> push ArtifactCanvasNavigateIntent over platform render-intent stream
-  -> renderer subscribes, calls navigate(targetUrl)
+  -> renderer subscribes, calls navigate(targetUrl), acks after route commit
   -> URL becomes /<product>/<surface>/:id/canvas/:artifactId[/view/:presentation]
   -> route remounts shared <CanvasPane> + <IframeViewer> from
      src/products/shared/renderer/

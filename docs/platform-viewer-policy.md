@@ -98,6 +98,7 @@ Examples (current and illustrative future):
 /code/tasks/:taskId/canvas/:artifactId
 /code/tasks/:taskId/canvas/:artifactId/view/iframe
 /work/items/:itemId/canvas/:artifactId
+/work/tasks/:taskId/canvas/:artifactId
 /chat/conversations/:convId/canvas/:artifactId
 
 # Hypothetical future viewers (not implemented):
@@ -111,6 +112,10 @@ Implementation guidance:
   `withSharedViewerRoutes(parent: RouteObject): RouteObject`, that
   attaches the platform-owned child routes once. The helper lives in
   `src/products/shared/renderer/` next to the viewers themselves.
+- Shared viewers use one valid surface enum rather than a free product /
+  surface cartesian product. For Artifact Canvas, valid surface kinds
+  are `code_task`, `code_codespace`, `work_item`, `work_project`,
+  `work_task`, and `chat_conversation`.
 - The viewer pane mounts via React Router `<Outlet />` in the product's
   shell layout.
 - Query string is **not** used for canvas / viewer identity. Preserve
@@ -135,8 +140,9 @@ The renderer treats the projection as authoritative. Server-pushed
 render intents carry navigate-intent when an assistant tool wants to
 surface a specific entity to the user. They may share the same app push
 transport as ADR-075, but they are not generic entity snapshots /
-patches. The renderer responds by calling `navigate()`, never by
-mutating product-scope domain state.
+patches. The renderer responds by calling `navigate()`, acknowledges
+according to the owning SPEC's protocol, and never mutates
+product-scope domain state.
 
 ## Entity Viewer-Ownership Table
 

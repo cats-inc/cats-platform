@@ -198,6 +198,26 @@ other's concerns.
   ADR-075 streams entities. The renderer consumes both, they don't
   cross-talk.
 
+### 8. Relationship with Non-Entity Render Intents
+
+This ADR defines the per-entity state subscription protocol:
+`subscribeEntity({ kind, id })` snapshots and patches one entity. The
+same app push connection may also carry explicitly namespaced
+non-entity messages, but those messages are not ADR-075 entity patches
+and must not be reduced by `useEntitySubscription`.
+
+For example, SPEC-101 defines `ArtifactCanvasNavigateIntent` as a
+platform render-intent message that asks the currently mounted surface
+to navigate to an artifact canvas URL. Its owning SPEC defines the
+surface subscription scope, TTL, acknowledgement endpoint, replay
+rules, and idempotency behavior. ADR-075 only supplies the push
+transport relationship; it does not define render-intent semantics.
+
+If a future push transport becomes bidirectional, the owning SPEC may
+move acknowledgements onto that connection. Until then, renderer
+acknowledgements for non-entity messages must use the explicit ack path
+defined by that message family.
+
 ## Consequences
 
 ### Positive
