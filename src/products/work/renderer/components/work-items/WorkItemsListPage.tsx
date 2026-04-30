@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
-import { useI18n } from "../../../../app/renderer/i18n/index.js";
+import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import { formatRelative } from "../topdown/shared";
 import { useWorkItemsQuery } from "../../state/queries/workItemsQuery.js";
 import { NewWorkItemDialog } from "./NewWorkItemDialog";

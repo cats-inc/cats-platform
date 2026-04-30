@@ -5,6 +5,8 @@ import {
   EMPTY_WORK_GRAPH,
   useWorkGraphQuery,
 } from "../../state/queries/workGraphQuery.js";
+import type { MessageKey } from "../../../../../shared/i18n/index.js";
+import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import { BlockersRail } from "./BlockersRail";
 import { buildIndexes, formatRelative } from "./shared";
 import type {
@@ -26,14 +28,54 @@ type CockpitTab =
   | "shipped"
   | "teams";
 
-const TABS: Array<{ id: CockpitTab; label: string; sub: string }> = [
-  { id: "command", label: "Command Center", sub: "All buckets at a glance" },
-  { id: "needs-decision", label: "Needs Decision", sub: "Owner action required" },
-  { id: "active", label: "Active", sub: "Tasks in progress, on track" },
-  { id: "active-runs", label: "Active Runs", sub: "Runs currently executing" },
-  { id: "blocked", label: "Blocked", sub: "Stalled or failed" },
-  { id: "shipped", label: "Shipped", sub: "Recently completed" },
-  { id: "teams", label: "Teams · Roles", sub: "Grouped by resolved actor role" },
+const TABS: ReadonlyArray<{
+  id: CockpitTab;
+  labelKey: MessageKey;
+  subKey: MessageKey;
+}> = [
+  {
+    id: "command",
+    labelKey: "workTopdownCockpitTabCommandLabel",
+    subKey: "workTopdownCockpitTabCommandSub",
+  },
+  {
+    id: "needs-decision",
+    labelKey: "workTopdownCockpitTabNeedsDecisionLabel",
+    subKey: "workTopdownCockpitTabNeedsDecisionSub",
+  },
+  {
+    id: "active",
+    labelKey: "workTopdownCockpitTabActiveLabel",
+    subKey: "workTopdownCockpitTabActiveSub",
+  },
+  {
+    id: "active-runs",
+    labelKey: "workTopdownCockpitTabActiveRunsLabel",
+    subKey: "workTopdownCockpitTabActiveRunsSub",
+  },
+  {
+    id: "blocked",
+    labelKey: "workTopdownCockpitTabBlockedLabel",
+    subKey: "workTopdownCockpitTabBlockedSub",
+  },
+  {
+    id: "shipped",
+    labelKey: "workTopdownCockpitTabShippedLabel",
+    subKey: "workTopdownCockpitTabShippedSub",
+  },
+  {
+    id: "teams",
+    labelKey: "workTopdownCockpitTabTeamsLabel",
+    subKey: "workTopdownCockpitTabTeamsSub",
+  },
+];
+
+const COMMAND_CENTER_ORDER: BucketId[] = [
+  "needs-decision",
+  "blocked",
+  "active",
+  "active-runs",
+  "shipped",
 ];
 
 const OPERATIONAL_KINDS: WorkGraphObjectKind[] = [
@@ -60,6 +102,7 @@ type BucketId =
   | "shipped";
 
 export function CockpitPage(): JSX.Element {
+  const { t } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = (searchParams.get("tab") as CockpitTab | null) ?? "command";
   const selectedId = searchParams.get("selectedId");
@@ -125,7 +168,7 @@ export function CockpitPage(): JSX.Element {
     setSearchParams(params, { replace: true });
   }
 
-  const counts = {
+  const counts: Record<BucketId | "teams", number> = {
     "needs-decision": buckets["needs-decision"].length,
     active: buckets.active.length,
     "active-runs": buckets["active-runs"].length,
@@ -133,18 +176,24 @@ export function CockpitPage(): JSX.Element {
     shipped: buckets.shipped.length,
     teams: teamLanes.length,
   };
+  const current = TABS.find((item) => item.id === tab);
+  const tabLabel = current ? t(current.labelKey) : "";
+  const tabSub = current ? t(current.subKey) : "";
 
   return (
     <div className="topDownPage">
       <header className="channelTopBar topDownTopBar">
         <div className="channelTopBarStart topDownTopBar__start">
-          <span className="topDownTopBar__eyebrow">Top-down · operational</span>
-          <h1 className="channelTopBarTitle topDownTopBar__title">Cockpit</h1>
+          <span className="topDownTopBar__eyebrow">
+            {t("workTopdownCockpitEyebrow")}
+          </span>
+          <h1 className="channelTopBarTitle topDownTopBar__title">
+            {t("workTopdownCockpitTitle")}
+          </h1>
         </div>
         <div className="channelTopBarCenter topDownTopBar__center">
           <p className="topDownTopBar__lede">
-            Triage what needs you now. Same Work Graph, grouped by attention
-            state instead of by structural layer.
+            {t("workTopdownCockpitLede")}
           </p>
         </div>
         <div className="channelTopBarEnd topDownTopBar__end">
@@ -156,7 +205,8 @@ export function CockpitPage(): JSX.Element {
                 : "")
             }
           >
-            <strong>{counts["needs-decision"]}</strong> decisions
+            <strong>{counts["needs-decision"]}</strong>{" "}
+            {t("workTopdownCockpitMetricDecisions")}
           </span>
           <span
             className={
@@ -164,36 +214,44 @@ export function CockpitPage(): JSX.Element {
               (counts.blocked > 0 ? " topDownTopBar__metric--bad" : "")
             }
           >
-            <strong>{counts.blocked}</strong> blocked
+            <strong>{counts.blocked}</strong> {t("workTopdownCockpitMetricBlocked")}
           </span>
           <span className="topDownTopBar__metric">
-            <strong>{counts.shipped}</strong> shipped
+            <strong>{counts.shipped}</strong>{" "}
+            {t("workTopdownCockpitMetricShipped")}
           </span>
         </div>
       </header>
-      <nav className="cockpit__tabs" aria-label="Cockpit sections">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            className={
-              "cockpit__tab" + (tab === t.id ? " cockpit__tab--active" : "")
-            }
-            onClick={() => setTab(t.id)}
-            aria-pressed={tab === t.id}
-          >
-            <span className="cockpit__tabLabel">{t.label}</span>
-            <span className="cockpit__tabSub">{t.sub}</span>
-            {t.id !== "command" && t.id !== "teams" ? (
-              <span className="cockpit__tabCount">
-                {counts[t.id as BucketId]}
-              </span>
-            ) : null}
-            {t.id === "teams" ? (
-              <span className="cockpit__tabCount">{counts.teams}</span>
-            ) : null}
-          </button>
-        ))}
+      <nav
+        className="cockpit__tabs"
+        aria-label={t("workTopdownCockpitTabsAriaLabel")}
+      >
+        {TABS.map((tabItem) => {
+          const label = t(tabItem.labelKey);
+          const sub = t(tabItem.subKey);
+          return (
+            <button
+              key={tabItem.id}
+              type="button"
+              className={
+                "cockpit__tab" + (tab === tabItem.id ? " cockpit__tab--active" : "")
+              }
+              onClick={() => setTab(tabItem.id)}
+              aria-pressed={tab === tabItem.id}
+            >
+              <span className="cockpit__tabLabel">{label}</span>
+              <span className="cockpit__tabSub">{sub}</span>
+              {tabItem.id !== "command" && tabItem.id !== "teams" ? (
+                <span className="cockpit__tabCount">
+                  {counts[tabItem.id as Exclude<CockpitTab, "command" | "teams">]}
+                </span>
+              ) : null}
+              {tabItem.id === "teams" ? (
+                <span className="cockpit__tabCount">{counts.teams}</span>
+              ) : null}
+            </button>
+          );
+        })}
       </nav>
       <div className="cockpit__main">
         {tab === "command" ? (
@@ -204,6 +262,8 @@ export function CockpitPage(): JSX.Element {
             selectedId={selectedId}
             onSelect={setSelectedId}
             onJump={(id) => setTab(id)}
+            tabs={TABS}
+            t={t}
           />
         ) : tab === "teams" ? (
           <TeamsLanes
@@ -211,16 +271,18 @@ export function CockpitPage(): JSX.Element {
             indexes={indexes}
             selectedId={selectedId}
             onSelect={setSelectedId}
+            t={t}
           />
         ) : (
           <BucketDetail
-            label={TABS.find((t) => t.id === tab)?.label ?? ""}
-            sub={TABS.find((t) => t.id === tab)?.sub ?? ""}
+            label={tabLabel}
+            sub={tabSub}
             objects={buckets[tab as BucketId]}
             graph={graph}
             indexes={indexes}
             selectedId={selectedId}
             onSelect={setSelectedId}
+            t={t}
           />
         )}
       </div>
@@ -242,6 +304,8 @@ function CommandCenter({
   selectedId,
   onSelect,
   onJump,
+  tabs,
+  t,
 }: {
   graph: WorkGraphProjection;
   buckets: Record<BucketId, WorkGraphObjectSummary[]>;
@@ -249,22 +313,23 @@ function CommandCenter({
   selectedId: string | null;
   onSelect: (id: string | null) => void;
   onJump: (id: CockpitTab) => void;
+  tabs: ReadonlyArray<{ id: CockpitTab; labelKey: MessageKey; subKey: MessageKey }>;
+  t: ReturnType<typeof useI18n>["t"];
 }): JSX.Element {
-  const ORDER: BucketId[] = [
-    "needs-decision",
-    "blocked",
-    "active",
-    "active-runs",
-    "shipped",
-  ];
   const recentActivity = graph.objects
     .filter((o) => o.kind === "activity")
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
     .slice(0, 5);
+
+  function getTabLabel(tabId: CockpitTab): string {
+    const tabMeta = tabs.find((item) => item.id === tabId);
+    return tabMeta ? t(tabMeta.labelKey) : "";
+  }
+
   return (
     <div className="commandCenter">
       <div className="commandCenter__grid">
-        {ORDER.map((id) => (
+        {COMMAND_CENTER_ORDER.map((id) => (
           <section
             key={id}
             className="commandCenter__bucket"
@@ -272,7 +337,7 @@ function CommandCenter({
             aria-label={id}
           >
             <header className="commandCenter__bucketHead">
-              <h3>{TABS.find((t) => t.id === id)?.label}</h3>
+              <h3>{getTabLabel(id)}</h3>
               <span className="commandCenter__bucketCount">
                 {buckets[id].length}
               </span>
@@ -281,13 +346,13 @@ function CommandCenter({
                 className="commandCenter__seeMore"
                 onClick={() => onJump(id)}
               >
-                Open →
+                {t("workTopdownCockpitOpen")} →
               </button>
             </header>
             <div className="commandCenter__bucketBody">
               {buckets[id].length === 0 ? (
                 <p className="commandCenter__empty">
-                  Nothing in this bucket.
+                  {t("workTopdownCockpitNoBucketItems")}
                 </p>
               ) : (
                 buckets[id].slice(0, 3).map((o) => (
@@ -297,7 +362,9 @@ function CommandCenter({
                     evidence={pickEvidence(indexes, o.id)}
                     gates={indexes.gatesBySubject.get(o.id) ?? []}
                     selected={selectedId === o.id}
-                    onSelect={(next) => onSelect(selectedId === next ? null : next)}
+                    onSelect={(next) =>
+                      onSelect(selectedId === next ? null : next)
+                    }
                   />
                 ))
               )}
@@ -305,13 +372,22 @@ function CommandCenter({
           </section>
         ))}
       </div>
-      <aside className="commandCenter__rail" aria-label="Recent activity">
+      <aside
+        className="commandCenter__rail"
+        aria-label={t("workTopdownCockpitRecentActivityAriaLabel")}
+      >
         <header className="commandCenter__railHead">
-          <h3>Recent activity</h3>
-          <p>Last {recentActivity.length} activity-kind records.</p>
+          <h3>{t("workTopdownCockpitRecentActivityTitle")}</h3>
+          <p>
+            {t("workTopdownCockpitRecentActivitySummary", {
+              count: `${recentActivity.length}`,
+            })}
+          </p>
         </header>
         {recentActivity.length === 0 ? (
-          <p className="commandCenter__empty">No activity yet.</p>
+          <p className="commandCenter__empty">
+            {t("workTopdownCockpitRecentActivityEmpty")}
+          </p>
         ) : (
           <ul className="commandCenter__activityList">
             {recentActivity.map((act) => (
@@ -332,7 +408,7 @@ function CommandCenter({
                     {act.title}
                   </span>
                   <span className="commandCenter__activityWhen">
-                    {formatRelative(act.updatedAt)}
+                    {formatRelative(act.updatedAt, t)}
                   </span>
                 </button>
               </li>
@@ -352,6 +428,7 @@ function BucketDetail({
   indexes,
   selectedId,
   onSelect,
+  t,
 }: {
   label: string;
   sub: string;
@@ -360,6 +437,7 @@ function BucketDetail({
   indexes: ReturnType<typeof buildIndexes>;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  t: ReturnType<typeof useI18n>["t"];
 }): JSX.Element {
   return (
     <section className="bucketDetail">
@@ -368,7 +446,9 @@ function BucketDetail({
         <p>{sub}</p>
       </header>
       {objects.length === 0 ? (
-        <p className="bucketDetail__empty">Nothing in this bucket right now.</p>
+        <p className="bucketDetail__empty">
+          {t("workTopdownCockpitNoBucketItems")}
+        </p>
       ) : (
         <div className="bucketDetail__body">
           <div className="bucketDetail__main">
@@ -405,16 +485,18 @@ function TeamsLanes({
   indexes,
   selectedId,
   onSelect,
+  t,
 }: {
   lanes: Array<{ role: string; items: WorkGraphObjectSummary[] }>;
   indexes: ReturnType<typeof buildIndexes>;
   selectedId: string | null;
   onSelect: (id: string | null) => void;
+  t: ReturnType<typeof useI18n>["t"];
 }): JSX.Element {
   if (lanes.length === 0) {
     return (
       <p className="bucketDetail__empty">
-        No actor roles resolve in the current projection.
+        {t("workTopdownCockpitNoActorRoles")}
       </p>
     );
   }

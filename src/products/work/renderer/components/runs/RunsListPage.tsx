@@ -1,6 +1,8 @@
 import { Link } from "react-router-dom";
 
 import { formatRelative } from "../topdown/shared";
+import { useI18n } from "../../../../../app/renderer/i18n/index.js";
+import { getWorkObjectStatusLabel } from "../topdown/WorkObjectCard";
 import { useRunsQuery } from "../../state/queries/runsQuery.js";
 import { buildWorkRunPath } from "../../workPaths.js";
 import "./runs.css";
@@ -8,34 +10,36 @@ import "./runs.css";
 export function RunsListPage(): JSX.Element {
   const runsQuery = useRunsQuery();
   const runs = runsQuery.data?.runs ?? [];
+  const { t } = useI18n();
 
   return (
     <div className="runsList">
       <header className="channelTopBar runsListTopBar">
         <div className="channelTopBarStart runsListTopBar__start">
-          <h1 className="channelTopBarTitle runsListTopBar__title">Runs</h1>
+          <h1 className="channelTopBarTitle runsListTopBar__title">
+            {t("workRunsListTitle")}
+          </h1>
           <span className="runsListTopBar__count">{runs.length}</span>
         </div>
         <div className="channelTopBarCenter runsListTopBar__center">
           <p className="runsListTopBar__lede">
-            Every Core run, flat. Click into a run to inspect its trace
-            and sub-runs. Runs are created by orchestrator dispatch — not
-            from this page.
+            {t("workRunsListLede")}
           </p>
         </div>
         <div className="channelTopBarEnd runsListTopBar__end" />
       </header>
       <main className="runsList__main">
         {runsQuery.isPending ? (
-          <p className="runsList__empty">Loading runs…</p>
+          <p className="runsList__empty">{t("workRunsListLoading")}</p>
         ) : runsQuery.isError ? (
           <p className="runsList__empty">
-            Failed to load runs: {String((runsQuery.error as Error).message)}
+            {t("workRunsListLoadError", {
+              errorMessage: String((runsQuery.error as Error).message),
+            })}
           </p>
         ) : runs.length === 0 ? (
           <p className="runsList__empty">
-            No runs yet. Runs are created when an orchestrator dispatches a
-            task or a sub-run.
+            {t("workRunsListNoRunsIntro")}
           </p>
         ) : (
           <ul className="runsList__list">
@@ -46,7 +50,7 @@ export function RunsListPage(): JSX.Element {
                   <Link
                     to={buildWorkRunPath(taskRouteId, run.id)}
                     className="runsList__rowLink"
-                    aria-label={`Open run ${run.title}`}
+                    aria-label={t("workRunOpenAriaLabel", { runTitle: run.title })}
                   >
                     <div className="runsList__rowMain">
                       <span
@@ -70,16 +74,16 @@ export function RunsListPage(): JSX.Element {
                       ) : null}
                       {run.parentRunId ? (
                         <span className="runsList__chip runsList__chip--parentRun">
-                          sub-run
+                          {t("workRunSubRunChip")}
                         </span>
                       ) : null}
                       <span className="runsList__metric runsList__metric--muted">
-                        {formatRelative(run.updatedAt)}
+                        {formatRelative(run.updatedAt, t)}
                       </span>
                       <span
                         className={`runsList__statusPill runsList__statusPill--${run.status}`}
                       >
-                        {run.status.replace(/_/g, " ")}
+                        {getWorkObjectStatusLabel(run.status, t)}
                       </span>
                     </div>
                   </Link>

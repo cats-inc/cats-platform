@@ -1,10 +1,11 @@
 import { useMemo } from "react";
 
 import {
-  KIND_LABEL,
+  getWorkGraphKindLabel,
   walkUpstreamBlockers,
   type WorkGraphIndexes,
 } from "./shared";
+import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import type {
   WorkGraphLink,
   WorkGraphLinkEndpointKind,
@@ -50,6 +51,7 @@ export function BlockersRail({
   onSelect,
   maxDepth = 3,
 }: BlockersRailProps): JSX.Element {
+  const { t } = useI18n();
   const sections = useMemo<RowChain[]>(() => {
     const out: RowChain[] = [];
     for (const row of rows) {
@@ -70,14 +72,21 @@ export function BlockersRail({
   }, [rows, links, indexes.objectsByCoreRef, maxDepth]);
 
   return (
-    <aside className="blockersRail" aria-label="Upstream blockers">
+    <aside
+      className="blockersRail"
+      aria-label={t("workTopdownUpstreamBlockersAriaLabel")}
+    >
       <header className="blockersRail__head">
-        <h3>Blockers</h3>
-        <p>Upstream <code>blocks</code> chain (depth ≤ {maxDepth}) per row.</p>
+        <h3>{t("workTopdownBlockersTitle")}</h3>
+        <p>
+          {t("workTopdownUpstreamBlocksLine", {
+            maxDepth: `${maxDepth}`,
+          })}
+        </p>
       </header>
       {sections.length === 0 ? (
         <p className="blockersRail__empty">
-          Nothing in this list has upstream blockers.
+          {t("workTopdownNoUpstreamBlockers")}
         </p>
       ) : (
         <ul className="blockersRail__sections">
@@ -115,7 +124,7 @@ export function BlockersRail({
                         {blocker.title}
                       </span>
                       <span className="blockersRail__btnTier">
-                        {KIND_LABEL[blocker.kind]}
+                        {getWorkGraphKindLabel(blocker.kind, t)}
                       </span>
                     </button>
                   </li>

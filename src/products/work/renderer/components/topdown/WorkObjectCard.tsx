@@ -2,7 +2,7 @@ import {
   type EvidenceCounts,
   type WorkGraphIndexes,
 } from "./shared";
-import { useI18n } from "../../../app/renderer/i18n/index.js";
+import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import type { WorkGraphGateDecorator, WorkGraphObjectSummary } from "./types";
 
 interface WorkObjectCardProps {
@@ -29,11 +29,11 @@ export function WorkObjectCard({
   const statusLabel = getWorkObjectStatusLabel(object.status, t);
   const parentTaskLabel =
     object.kind === "run"
-      ? t("topdown.parentTaskOwningLabel")
-      : t("topdown.parentTaskLabel");
+      ? t("workTopdownParentTaskOwningLabel")
+      : t("workTopdownParentTaskLabel");
   const parentWorkItemTitle =
     object.kind === "work_item" && object.linkedWorkItemTitle
-      ? t("topdown.parentWorkItemLabel", {
+      ? t("workTopdownParentWorkItemLabel", {
           parentWorkItemTitle: object.linkedWorkItemTitle,
         })
       : null;
@@ -60,7 +60,7 @@ export function WorkObjectCard({
         {object.kind === "task" && object.productBinding ? (
           <span
             className={`topDownCard__binding topDownCard__binding--${object.productBinding}`}
-            title={t("topdown.taskProductBindingTitle", {
+            title={t("workTopdownTaskProductBindingTitle", {
               productBinding: object.productBinding,
             })}
           >
@@ -97,12 +97,12 @@ export function WorkObjectCard({
           object.linkedTaskTitle ? (
             <span
               className="topDownCard__chip topDownCard__chip--parentTask"
-              title={t("topdown.parentTaskTooltip", {
+              title={t("workTopdownParentTaskTooltip", {
                 linkedTaskTitle: object.linkedTaskTitle,
                 linkType:
                   object.kind === "run"
-                    ? t("topdown.parentTaskOwningLabel")
-                    : t("topdown.parentTaskLabel"),
+                    ? t("workTopdownParentTaskOwningLabel")
+                    : t("workTopdownParentTaskLabel"),
               })}
             >
               {parentTaskLabel}: {object.linkedTaskTitle}
@@ -111,7 +111,7 @@ export function WorkObjectCard({
           {object.kind === "work_item" && object.linkedWorkItemTitle ? (
             <span
               className="topDownCard__chip topDownCard__chip--parentTask"
-              title={t("topdown.parentWorkItemLabel", {
+              title={t("workTopdownParentWorkItemLabel", {
                 parentWorkItemTitle: object.linkedWorkItemTitle,
               })}
             >
@@ -161,7 +161,7 @@ export function pickEvidence(
   return c;
 }
 
-function getWorkObjectStatusLabel(
+export function getWorkObjectStatusLabel(
   status: string,
   t: ReturnType<typeof useI18n>["t"],
 ): string {
@@ -203,7 +203,7 @@ function getWorkObjectAttentionLabel(
             : attention;
 }
 
-function getWorkObjectKindLabel(
+export function getWorkObjectKindLabel(
   kind: WorkGraphObjectSummary["kind"],
   t: ReturnType<typeof useI18n>["t"],
 ): string {

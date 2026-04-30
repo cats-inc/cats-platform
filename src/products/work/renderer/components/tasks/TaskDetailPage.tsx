@@ -2,11 +2,13 @@ import { useMemo } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import { LinkageSection } from "../topdown/LinkageSection";
+import { getWorkObjectStatusLabel } from "../topdown/WorkObjectCard";
 import {
-  ATTENTION_LABEL,
   buildIndexes,
   formatRelative,
+  getWorkGraphAttentionLabel,
 } from "../topdown/shared";
 import { removeWorkTask } from "../../api/workRecords.js";
 import { useProjectsQuery } from "../../state/queries/projectsQuery.js";
@@ -33,6 +35,7 @@ export function TaskDetailPage(): JSX.Element {
   const { taskId } = useParams<{ taskId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { t } = useI18n();
   const graph = useWorkGraphQuery().data ?? EMPTY_WORK_GRAPH;
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
   const tasksQuery = useTasksQuery();
@@ -57,7 +60,7 @@ export function TaskDetailPage(): JSX.Element {
     if (!task) return;
     if (
       !window.confirm(
-        `Delete task "${task.title}"?\n\nThis cannot be undone. Linked runs are not removed.`,
+        t("workTaskDeleteConfirmation", { taskTitle: task.title }),
       )
     ) {
       return;
@@ -75,7 +78,7 @@ export function TaskDetailPage(): JSX.Element {
   const deleteError = deleteMutation.error
     ? deleteMutation.error instanceof Error
       ? deleteMutation.error.message
-      : "Failed to delete task."
+      : t("workTaskDeleteError")
     : null;
 
   const linkedProject = task.projectId
@@ -93,9 +96,7 @@ export function TaskDetailPage(): JSX.Element {
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
   const activities = graph.objects
-    .filter(
-      (o) => o.kind === "activity" && o.linkedTaskId === task.id,
-    )
+    .filter((o) => o.kind === "activity" && o.linkedTaskId === task.id)
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 
   const assignedNames = task.assignedActors.map((actor) => actor.displayName);
@@ -108,7 +109,7 @@ export function TaskDetailPage(): JSX.Element {
             to=".."
             relative="path"
             className="taskDetailTopBar__back"
-            aria-label="Back to tasks"
+            aria-label={t("workTaskBackLabel")}
           >
             <svg
               width="12"
@@ -123,7 +124,7 @@ export function TaskDetailPage(): JSX.Element {
             >
               <path d="M7.5 2L3.5 6l4 4" />
             </svg>
-            <span>Tasks</span>
+            <span>{t("workTaskBackArrowLabel")}</span>
           </Link>
         </div>
         <div className="channelTopBarCenter taskDetailTopBar__center">
@@ -136,25 +137,29 @@ export function TaskDetailPage(): JSX.Element {
           </h1>
         </div>
         <div className="channelTopBarEnd taskDetailTopBar__end">
-          {task.attention !== "none" && ATTENTION_LABEL[task.attention] ? (
+          {task.attention !== "none" ? (
             <span
               className={`taskDetail__attention taskDetail__attention--${task.attention}`}
             >
-              {ATTENTION_LABEL[task.attention]}
+              {getWorkGraphAttentionLabel(task.attention, t)}
             </span>
           ) : null}
           {task.priority ? (
             <span
               className={`tasksList__priority tasksList__priority--${task.priority}`}
-              title={`${task.priority} priority`}
+              title={t("workTaskPriorityTooltip", {
+                priority: formatTaskPriorityLabel(task.priority, t),
+              })}
             >
-              {task.priority}
+              {formatTaskPriorityLabel(task.priority, t)}
             </span>
           ) : null}
           {task.productBinding ? (
             <span
               className={`tasksList__binding tasksList__binding--${task.productBinding}`}
-              title={`Task product binding: ${task.productBinding}`}
+              title={t("workTopdownTaskProductBindingTitle", {
+                productBinding: task.productBinding,
+              })}
             >
               {task.productBinding}
             </span>
@@ -162,19 +167,23 @@ export function TaskDetailPage(): JSX.Element {
           <span
             className={`tasksList__statusPill tasksList__statusPill--${task.status}`}
           >
-            {task.status.replace(/_/g, " ")}
+            {formatTaskStatusLabel(task.status, t)}
           </span>
           <span className="taskDetailTopBar__updated">
-            updated {formatRelative(task.updatedAt)}
+            {t("workTaskUpdatedAtPrefix", {
+              updatedAt: formatRelative(task.updatedAt, t),
+            })}
           </span>
           <button
             type="button"
             className="taskDetailTopBar__action taskDetailTopBar__action--destructive"
             onClick={handleDelete}
             disabled={deleteMutation.isPending}
-            aria-label="Delete task"
+            aria-label={t("workTaskDeleteLabel")}
           >
-            {deleteMutation.isPending ? "Deleting…" : "Delete"}
+            {deleteMutation.isPending
+              ? t("workTaskDeleteLabelBusy")
+              : t("workTaskDeleteLabel")}
           </button>
         </div>
       </header>
@@ -186,16 +195,16 @@ export function TaskDetailPage(): JSX.Element {
         ) : null}
         <section className="taskDetail__section taskDetail__overview">
           <header className="taskDetail__sectionHeader">
-            <h2>Overview</h2>
+            <h2>{t("workTaskOverviewTitle")}</h2>
           </header>
           <dl className="taskDetail__overviewList">
             {task.summary ? (
               <>
-                <dt>Summary</dt>
+                <dt>{t("workTaskSummaryLabel")}</dt>
                 <dd>{task.summary}</dd>
               </>
             ) : null}
-            <dt>Project</dt>
+            <dt>{t("workTaskProjectLabel")}</dt>
             <dd>
               {linkedProject ? (
                 <Link
@@ -207,10 +216,10 @@ export function TaskDetailPage(): JSX.Element {
               ) : task.projectTitle ? (
                 <span>{task.projectTitle}</span>
               ) : (
-                <em>(orphan — no project linked)</em>
+                <em>{t("workTaskOrphanProjectFallback")}</em>
               )}
             </dd>
-            <dt>Work item</dt>
+            <dt>{t("workTaskWorkItemLabel")}</dt>
             <dd>
               {linkedWorkItem ? (
                 <Link
@@ -222,12 +231,12 @@ export function TaskDetailPage(): JSX.Element {
               ) : task.workItemTitle ? (
                 <span>{task.workItemTitle}</span>
               ) : (
-                <em>(no work item linked)</em>
+                <em>{t("workTaskNoWorkItemFallback")}</em>
               )}
             </dd>
             {parentTask ? (
               <>
-                <dt>Parent task</dt>
+                <dt>{t("workTaskParentTaskLabel")}</dt>
                 <dd>
                   <Link
                     className="taskDetail__refLink"
@@ -238,27 +247,29 @@ export function TaskDetailPage(): JSX.Element {
                 </dd>
               </>
             ) : null}
-            <dt>Owner</dt>
+            <dt>{t("workTaskOwnerLabel")}</dt>
             <dd>{task.ownerName}</dd>
-            <dt>Assignee</dt>
-            <dd>{task.assigneeName ?? <em>(unassigned)</em>}</dd>
-            <dt>Assigned actors</dt>
+            <dt>{t("workTaskAssigneeLabel")}</dt>
+            <dd>
+              {task.assigneeName ?? <em>{t("workTaskNoAssigneeFallback")}</em>}
+            </dd>
+            <dt>{t("workTaskAssignedActorsLabel")}</dt>
             <dd>
               {assignedNames.length > 0 ? (
                 assignedNames.join(", ")
               ) : (
-                <em>(no Core actors assigned)</em>
+                <em>{t("workTaskNoActorsAssignedFallback")}</em>
               )}
             </dd>
             {task.acceptanceCriteria ? (
               <>
-                <dt>Acceptance criteria</dt>
+                <dt>{t("workTaskAcceptanceCriteriaLabel")}</dt>
                 <dd>{task.acceptanceCriteria}</dd>
               </>
             ) : null}
             {task.conversationId ? (
               <>
-                <dt>Conversation</dt>
+                <dt>{t("workTaskConversationLabel")}</dt>
                 <dd>
                   <span className="taskDetail__convoTitle">
                     {task.conversationTitle ?? task.conversationId}
@@ -281,21 +292,19 @@ export function TaskDetailPage(): JSX.Element {
 
         <section className="taskDetail__section">
           <header className="taskDetail__sectionHeader">
-            <h2>Activity</h2>
+            <h2>{t("workTaskActivityTitle")}</h2>
             <span className="taskDetail__sectionCount">
               {activities.length}
             </span>
           </header>
           {activities.length === 0 ? (
-            <p className="taskDetail__empty">
-              No activity recorded for this task.
-            </p>
+            <p className="taskDetail__empty">{t("workTaskNoActivity")}</p>
           ) : (
             <ul className="taskDetail__activity">
               {activities.map((act) => (
                 <li key={act.id} className="taskDetail__activityRow">
                   <span className="taskDetail__activityWhen">
-                    {formatRelative(act.updatedAt)}
+                    {formatRelative(act.updatedAt, t)}
                   </span>
                   <span className="taskDetail__activityTitle">
                     {act.title}
@@ -315,17 +324,19 @@ export function TaskDetailPage(): JSX.Element {
   );
 }
 
-function SubTasksSection({ subTasks }: { subTasks: WorkTaskListItem[] }): JSX.Element {
+function SubTasksSection({
+  subTasks,
+}: { subTasks: WorkTaskListItem[] }): JSX.Element {
+  const { t } = useI18n();
+
   return (
     <section className="taskDetail__section">
       <header className="taskDetail__sectionHeader">
-        <h2>Sub-tasks</h2>
+        <h2>{t("workTaskSubTasksTitle")}</h2>
         <span className="taskDetail__sectionCount">{subTasks.length}</span>
       </header>
       {subTasks.length === 0 ? (
-        <p className="taskDetail__empty">
-          No sub-tasks yet.
-        </p>
+        <p className="taskDetail__empty">{t("workTaskNoSubTasksLabel")}</p>
       ) : (
         <ul className="taskDetail__subTasks">
           {subTasks.map((sub) => (
@@ -343,7 +354,7 @@ function SubTasksSection({ subTasks }: { subTasks: WorkTaskListItem[] }): JSX.El
               <span
                 className={`tasksList__statusPill tasksList__statusPill--${sub.status}`}
               >
-                {sub.status.replace(/_/g, " ")}
+                {formatTaskStatusLabel(sub.status, t)}
               </span>
             </li>
           ))}
@@ -359,16 +370,19 @@ interface RunsSectionProps {
 }
 
 function RunsSection({ taskId, runs }: RunsSectionProps): JSX.Element {
+  const { t } = useI18n();
+
   return (
     <section className="taskDetail__section">
       <header className="taskDetail__sectionHeader">
-        <h2>Runs</h2>
+        <h2>{t("workTaskRunsTitle")}</h2>
         <span className="taskDetail__sectionCount">{runs.length}</span>
       </header>
       {runs.length === 0 ? (
         <p className="taskDetail__empty">
-          No runs dispatched. Use <strong>Start supervised run</strong> to
-          dispatch.
+          {t("workTaskNoRunsIntro")}{" "}
+          <strong>{t("workTaskNoRunsActionLabel")}</strong>{" "}
+          {t("workTaskNoRunsSuffix")}
         </p>
       ) : (
         <ul className="taskDetail__subTasks">
@@ -387,10 +401,10 @@ function RunsSection({ taskId, runs }: RunsSectionProps): JSX.Element {
               <span
                 className={`tasksList__statusPill tasksList__statusPill--${run.status}`}
               >
-                {run.status.replace(/_/g, " ")}
+                {formatRunStatusLabel(run.status, t)}
               </span>
               <span className="taskDetail__activityWhen">
-                {formatRelative(run.updatedAt)}
+                {formatRelative(run.updatedAt, t)}
               </span>
             </li>
           ))}
@@ -401,44 +415,86 @@ function RunsSection({ taskId, runs }: RunsSectionProps): JSX.Element {
 }
 
 function TaskDetailLoading(): JSX.Element {
+  const { t } = useI18n();
+
   return (
     <div className="taskDetail">
       <header className="channelTopBar taskDetailTopBar">
         <div className="channelTopBarStart taskDetailTopBar__start">
           <Link to=".." relative="path" className="taskDetailTopBar__back">
-            <span>← Tasks</span>
+            <span>{t("workTaskBackArrowLabel")}</span>
           </Link>
         </div>
       </header>
       <main className="taskDetail__main">
-        <p className="taskDetail__empty">Loading task…</p>
+        <p className="taskDetail__empty">{t("workTaskLoadingLabel")}</p>
       </main>
     </div>
   );
 }
 
 function TaskNotFound({ taskId }: { taskId: string | null }): JSX.Element {
+  const { t } = useI18n();
+
   return (
     <div className="taskDetail">
       <header className="channelTopBar taskDetailTopBar">
         <div className="channelTopBarStart taskDetailTopBar__start">
           <Link to=".." relative="path" className="taskDetailTopBar__back">
-            <span>← Tasks</span>
+            <span>{t("workTaskBackArrowLabel")}</span>
           </Link>
           <span className="taskDetailTopBar__separator" aria-hidden="true">
             /
           </span>
           <h1 className="channelTopBarTitle taskDetailTopBar__title">
-            Not found
+            {t("workTaskNotFoundTitle")}
           </h1>
         </div>
       </header>
       <main className="taskDetail__main">
         <p className="taskDetail__empty">
-          Task <code>{taskId ?? "(missing id)"}</code> is not in the current
-          projection.
+          {t("workTaskNotFoundText", {
+            taskId: taskId ?? t("workTaskNotFoundCodeLabel"),
+          })}
         </p>
       </main>
     </div>
   );
+}
+
+function formatTaskStatusLabel(
+  status: string,
+  t: ReturnType<typeof useI18n>["t"],
+): string {
+  return status === "pending_approval"
+    ? t("workTaskStatusPendingApproval")
+    : status === "approved"
+      ? t("workTaskStatusApproved")
+      : status === "archived"
+        ? t("workTaskStatusArchived")
+        : getWorkObjectStatusLabel(status, t);
+}
+
+function formatRunStatusLabel(
+  status: string,
+  t: ReturnType<typeof useI18n>["t"],
+): string {
+  return status === "pending_approval"
+    ? t("workTaskStatusPendingApproval")
+    : getWorkObjectStatusLabel(status, t);
+}
+
+function formatTaskPriorityLabel(
+  priority: string,
+  t: ReturnType<typeof useI18n>["t"],
+): string {
+  return priority === "urgent"
+    ? t("workTaskPriorityUrgent")
+    : priority === "high"
+      ? t("workTaskPriorityHigh")
+      : priority === "medium"
+        ? t("workTaskPriorityMedium")
+        : priority === "low"
+          ? t("workTaskPriorityLow")
+          : priority;
 }

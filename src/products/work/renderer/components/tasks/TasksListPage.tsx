@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
-import { formatRelative } from "../topdown/shared";
+import { useI18n } from "../../../../../app/renderer/i18n/index.js";
+import {
+  formatRelative,
+  getWorkGraphAttentionLabel,
+} from "../topdown/shared";
+import { getWorkObjectStatusLabel } from "../topdown/WorkObjectCard";
 import { useTasksQuery } from "../../state/queries/tasksQuery.js";
 import { NewTaskDialog } from "./NewTaskDialog";
 import "./tasks.css";
@@ -10,13 +15,14 @@ export function TasksListPage(): JSX.Element {
   const tasksQuery = useTasksQuery();
   const tasks = tasksQuery.data?.tasks ?? [];
   const [dialogOpen, setDialogOpen] = useState(false);
+  const { t } = useI18n();
 
   return (
     <div className="tasksList">
       <header className="channelTopBar tasksListTopBar">
         <div className="channelTopBarStart tasksListTopBar__start">
           <h1 className="channelTopBarTitle tasksListTopBar__title">
-            Tasks
+            {t("workTasksListTitle")}
           </h1>
           <span className="tasksListTopBar__count">{tasks.length}</span>
         </div>
@@ -26,7 +32,7 @@ export function TasksListPage(): JSX.Element {
             type="button"
             className="tasksListTopBar__addBtn"
             onClick={() => setDialogOpen(true)}
-            aria-label="Create new task"
+            aria-label={t("workTasksListCreateNewTaskAriaLabel")}
           >
             <svg
               width="14"
@@ -42,20 +48,24 @@ export function TasksListPage(): JSX.Element {
               <path d="M7 2v10" />
               <path d="M2 7h10" />
             </svg>
-            <span>New task</span>
+            <span>{t("workTasksListNewAction")}</span>
           </button>
         </div>
       </header>
       <main className="tasksList__main">
         {tasksQuery.isPending ? (
-          <p className="tasksList__empty">Loading tasks…</p>
+          <p className="tasksList__empty">{t("workTasksListLoading")}</p>
         ) : tasksQuery.isError ? (
           <p className="tasksList__empty">
-            Failed to load tasks: {String((tasksQuery.error as Error).message)}
+            {t("workTasksListLoadError", {
+              errorMessage: String((tasksQuery.error as Error).message),
+            })}
           </p>
         ) : tasks.length === 0 ? (
           <p className="tasksList__empty">
-            No tasks yet. Click <strong>New task</strong> to create one.
+            {t("workTasksListEmptyIntro")}{" "}
+            <strong>{t("workTasksListEmptyActionLabel")}</strong>{" "}
+            {t("workTasksListEmptySuffix")}
           </p>
         ) : (
           <ul className="tasksList__list">
@@ -64,7 +74,9 @@ export function TasksListPage(): JSX.Element {
                 <Link
                   to={task.id}
                   className="tasksList__rowLink"
-                  aria-label={`Open task ${task.title}`}
+                  aria-label={t("workTasksListOpenTaskAria", {
+                    title: task.title,
+                  })}
                 >
                   <div className="tasksList__rowMain">
                     <span
@@ -86,7 +98,9 @@ export function TasksListPage(): JSX.Element {
                     {task.productBinding ? (
                       <span
                         className={`tasksList__binding tasksList__binding--${task.productBinding}`}
-                        title={`Task product binding: ${task.productBinding}`}
+                        title={t("workTopdownTaskProductBindingTitle", {
+                          productBinding: task.productBinding,
+                        })}
                       >
                         {task.productBinding}
                       </span>
@@ -102,21 +116,21 @@ export function TasksListPage(): JSX.Element {
                       </span>
                     ) : null}
                     {task.priority ? (
-                      <span
-                        className={`tasksList__priority tasksList__priority--${task.priority}`}
-                        title={`${task.priority} priority`}
-                      >
-                        {task.priority}
+                  <span
+                    className={`tasksList__priority tasksList__priority--${task.priority}`}
+                    title={formatTaskPriorityTitle(task.priority, t)}
+                  >
+                        {formatTaskPriorityLabel(task.priority, t)}
                       </span>
                     ) : null}
                     {task.attention === "decision_needed" ? (
                       <span className="tasksList__pip tasksList__pip--decision">
-                        decision
+                        {t("workObjectAttentionDecisionNeeded")}
                       </span>
                     ) : null}
                     {task.attention === "blocked" || task.attention === "failed" ? (
                       <span className="tasksList__pip tasksList__pip--blocked">
-                        {task.attention}
+                        {getWorkGraphAttentionLabel(task.attention, t)}
                       </span>
                     ) : null}
                     {task.assigneeName ? (
@@ -129,12 +143,12 @@ export function TasksListPage(): JSX.Element {
                       </span>
                     ) : null}
                     <span className="tasksList__metric tasksList__metric--muted">
-                      {formatRelative(task.updatedAt)}
+                      {formatRelative(task.updatedAt, t)}
                     </span>
                     <span
                       className={`tasksList__statusPill tasksList__statusPill--${task.status}`}
                     >
-                      {task.status.replace(/_/g, " ")}
+                      {formatTaskStatusLabel(task.status, t)}
                     </span>
                   </div>
                 </Link>
@@ -148,4 +162,40 @@ export function TasksListPage(): JSX.Element {
       ) : null}
     </div>
   );
+}
+
+function formatTaskStatusLabel(
+  status: string,
+  t: ReturnType<typeof useI18n>["t"],
+): string {
+  return status === "pending_approval"
+    ? t("workTaskStatusPendingApproval")
+    : status === "approved"
+      ? t("workTaskStatusApproved")
+      : status === "archived"
+        ? t("workTaskStatusArchived")
+        : getWorkObjectStatusLabel(status, t);
+}
+
+function formatTaskPriorityLabel(
+  priority: string,
+  t: ReturnType<typeof useI18n>["t"],
+): string {
+  return priority === "urgent"
+    ? t("workTaskPriorityUrgent")
+    : priority === "high"
+      ? t("workTaskPriorityHigh")
+      : priority === "medium"
+        ? t("workTaskPriorityMedium")
+          : priority === "low"
+              ? t("workTaskPriorityLow")
+              : priority;
+}
+
+function formatTaskPriorityTitle(
+  priority: string,
+  t: ReturnType<typeof useI18n>["t"],
+): string {
+  const label = formatTaskPriorityLabel(priority, t);
+  return t("workTaskPriorityLabelWithValue", { priorityLabel: label });
 }

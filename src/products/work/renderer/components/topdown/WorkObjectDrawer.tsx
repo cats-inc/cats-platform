@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import { SidePanel, type SidePanelSection } from "../../../../../design/components/SidePanel";
-import { useI18n } from "../../../app/renderer/i18n/index.js";
+import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import { formatRelative, type WorkGraphIndexes } from "./shared";
 import { getWorkObjectKindLabel, getWorkObjectStatusLabel } from "./WorkObjectCard";
 import type { WorkGraphObjectSummary, WorkGraphProjection } from "./types";
@@ -31,7 +31,7 @@ export function WorkObjectDrawer({
   if (!object) {
     return (
       <SidePanel
-        title={t("topdown.selectionLost")}
+        title={t("workTopdownSelectionLost")}
         activeSection="missing"
         onSectionToggle={() => undefined}
         onClose={onClose}
@@ -39,10 +39,10 @@ export function WorkObjectDrawer({
         sections={[
           {
             id: "missing",
-            title: t("topdown.objectNotInProjectionTitle"),
+            title: t("workTopdownObjectNotInProjectionTitle"),
             children: (
               <p className="topDownDrawer__missing">
-                {t("topdown.objectNotInProjectionMessage", {
+                {t("workTopdownObjectNotInProjectionMessage", {
                   selectedId,
                 })}
               </p>
@@ -60,54 +60,54 @@ export function WorkObjectDrawer({
   const sections: SidePanelSection[] = [
     {
       id: "identity",
-      title: t("topdown.identityTitle"),
+      title: t("workTopdownIdentityTitle"),
       children: (
         <dl className="topDownDrawer__list">
           <Field
-            label={t("topdown.identityKind")}
+            label={t("workTopdownIdentityKind")}
             value={getWorkObjectKindLabel(object.kind, t)}
           />
           <Field
-            label={t("topdown.identityStatus")}
+            label={t("workTopdownIdentityStatus")}
             value={getWorkObjectStatusLabel(object.status, t)}
           />
           <Field
-            label={t("topdown.identityLayer")}
-            value={object.structuralLayer ?? t("topdown.crossCuttingLayer")}
+            label={t("workTopdownIdentityLayer")}
+            value={object.structuralLayer ?? t("workTopdownCrossCuttingLayer")}
           />
           {object.ownerRole ? (
-            <Field label={t("topdown.identityOwnerRole")} value={object.ownerRole} />
+            <Field label={t("workTopdownIdentityOwnerRole")} value={object.ownerRole} />
           ) : null}
           {object.nextAction ? (
             <Field
-              label={t("topdown.identityNextAction")}
+              label={t("workTopdownIdentityNextAction")}
               value={object.nextAction}
             />
           ) : null}
-          <Field
-            label={t("topdown.identityUpdated")}
-            value={formatRelative(object.updatedAt)}
-          />
+            <Field
+              label={t("workTopdownIdentityUpdated")}
+              value={formatRelative(object.updatedAt, t)}
+            />
           {object.summary ? (
-            <Field label={t("topdown.identitySummary")} value={object.summary} />
+            <Field label={t("workTopdownIdentitySummary")} value={object.summary} />
           ) : null}
         </dl>
       ),
     },
     {
       id: "anchors",
-      title: t("topdown.anchorsTitle"),
+      title: t("workTopdownAnchorsTitle"),
       children: (
         <AnchorsBlock object={object} indexes={indexes} onSelect={onSelect} />
       ),
     },
     {
       id: "evidence",
-      title: t("topdown.evidenceTitle"),
+      title: t("workTopdownEvidenceTitle"),
       badge: evidence.length || undefined,
       children:
         evidence.length === 0 ? (
-          <p className="topDownDrawer__empty">{t("topdown.evidenceEmpty")}</p>
+          <p className="topDownDrawer__empty">{t("workTopdownEvidenceEmpty")}</p>
         ) : (
           <ul className="topDownDrawer__refs">
             {evidence.map((a) => {
@@ -125,7 +125,7 @@ export function WorkObjectDrawer({
                     </button>
                   ) : (
                     <span>
-                      {a.evidenceObjectId} {t("topdown.missingSuffix")}
+                      {a.evidenceObjectId} {t("workTopdownMissingSuffix")}
                     </span>
                   )}
                 </li>
@@ -136,11 +136,11 @@ export function WorkObjectDrawer({
     },
     {
       id: "gates",
-      title: t("topdown.gatesTitle"),
+      title: t("workTopdownGatesTitle"),
       badge: gates.length || undefined,
       children:
         gates.length === 0 ? (
-          <p className="topDownDrawer__empty">{t("topdown.gatesEmpty")}</p>
+          <p className="topDownDrawer__empty">{t("workTopdownGatesEmpty")}</p>
         ) : (
           <ul className="topDownDrawer__refs">
             {gates.map((g) => {
@@ -162,7 +162,7 @@ export function WorkObjectDrawer({
                     </button>
                   ) : (
                     <span>
-                      {g.gateObjectId} {t("topdown.missingSuffix")}
+                      {g.gateObjectId} {t("workTopdownMissingSuffix")}
                     </span>
                   )}
                 </li>
@@ -175,7 +175,7 @@ export function WorkObjectDrawer({
   if (diagnostics.length > 0) {
     sections.push({
       id: "diagnostics",
-      title: t("topdown.diagnosticsTitle"),
+      title: t("workTopdownDiagnosticsTitle"),
       badge: diagnostics.length,
       children: (
         <ul className="topDownDrawer__diagnostics">
@@ -225,15 +225,15 @@ function AnchorsBlock({
 }): JSX.Element {
   const { t } = useI18n();
   const rows: Array<{ label: string; id: string | null }> = [
-    { label: t("topdown.anchorProject"), id: object.linkedProjectId },
-    { label: t("topdown.anchorWorkItem"), id: object.linkedWorkItemId },
-    { label: t("topdown.anchorTask"), id: object.linkedTaskId },
-    { label: t("topdown.anchorRun"), id: object.linkedRunId },
-    { label: t("topdown.anchorConversation"), id: object.linkedConversationId },
+    { label: t("workTopdownAnchorProject"), id: object.linkedProjectId },
+    { label: t("workTopdownAnchorWorkItem"), id: object.linkedWorkItemId },
+    { label: t("workTopdownAnchorTask"), id: object.linkedTaskId },
+    { label: t("workTopdownAnchorRun"), id: object.linkedRunId },
+    { label: t("workTopdownAnchorConversation"), id: object.linkedConversationId },
   ];
   const present = rows.filter((r) => r.id !== null);
   if (present.length === 0) {
-    return <p className="topDownDrawer__empty">{t("topdown.anchorsEmpty")}</p>;
+    return <p className="topDownDrawer__empty">{t("workTopdownAnchorsEmpty")}</p>;
   }
   return (
     <ul className="topDownDrawer__refs">
@@ -252,7 +252,7 @@ function AnchorsBlock({
               </button>
             ) : (
               <span className="topDownDrawer__refBroken">
-                {r.id} {t("topdown.missingSuffix")}
+                {r.id} {t("workTopdownMissingSuffix")}
               </span>
             )}
           </li>

@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { LinkageSection } from "../topdown/LinkageSection";
-import { useI18n } from "../../../../app/renderer/i18n/index.js";
+import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import { buildIndexes, formatRelative } from "../topdown/shared";
 import type { WorkGraphObjectSummary } from "../topdown/types";
 import { removeWorkItem } from "../../api/workRecords.js";
@@ -285,6 +285,8 @@ function ItemsSection({
   items,
   emptyLabel,
 }: ItemsSectionProps): JSX.Element {
+  const { t } = useI18n();
+
   return (
     <section className="workItemDetail__section">
       <header className="workItemDetail__sectionHeader">

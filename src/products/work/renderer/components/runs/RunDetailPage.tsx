@@ -3,6 +3,8 @@ import { Link, useParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { formatRelative } from "../topdown/shared";
+import { useI18n } from "../../../../../app/renderer/i18n/index.js";
+import { getWorkObjectStatusLabel } from "../topdown/WorkObjectCard";
 import {
   stopWorkRun,
   type WorkRunStopResponse,
@@ -80,17 +82,20 @@ function isTerminalRunStatus(status: WorkRunListItem["status"]): boolean {
   return status === "completed" || status === "failed" || status === "cancelled";
 }
 
-function buildRuntimeAbortBlockerMessage(result: WorkRunStopResponse): string {
+function buildRuntimeAbortBlockerMessage(
+  result: WorkRunStopResponse,
+  t: ReturnType<typeof useI18n>["t"],
+): string {
   const { runtimeAbort } = result;
   if (runtimeAbort.status === "failed") {
     return runtimeAbort.error
-      ? `Runtime cancellation failed: ${runtimeAbort.error}`
-      : "Runtime cancellation failed. Run was not marked cancelled.";
+      ? t("workRunStopErrorWithError", { error: runtimeAbort.error })
+      : t("workRunStopErrorFallback");
   }
   if (runtimeAbort.status === "not_applicable") {
-    return "Run is not stoppable: no supervised runtime session is bridged.";
+    return t("workRunStopNotStoppable");
   }
-  return "Run is not stoppable.";
+  return t("workRunStopNotStoppableGeneric");
 }
 
 function formatDuration(start: string | null, end: string | null): string | null {
@@ -110,6 +115,7 @@ function formatDuration(start: string | null, end: string | null): string | null
 export function RunDetailPage(): JSX.Element {
   const { taskId, runId } = useParams<{ taskId: string; runId: string }>();
   const queryClient = useQueryClient();
+  const { t } = useI18n();
   const runsQuery = useRunsQuery();
   const tasksQuery = useTasksQuery();
   const graph = useWorkGraphQuery().data ?? EMPTY_WORK_GRAPH;
@@ -131,7 +137,7 @@ export function RunDetailPage(): JSX.Element {
       ]);
       if (result.status === 'not_stoppable') {
         setStopBlockerMessage(
-          result.message ?? buildRuntimeAbortBlockerMessage(result),
+          result.message ?? buildRuntimeAbortBlockerMessage(result, t),
         );
       } else {
         setStopBlockerMessage(null);
@@ -143,10 +149,9 @@ export function RunDetailPage(): JSX.Element {
     if (!run) return;
     if (
       !window.confirm(
-        `Stop run "${run.title}"?\n\n`
-        + 'Cats requests runtime cancellation through the supervised session '
-        + 'before marking the run cancelled. External side effects already '
-        + 'sent are not rolled back.',
+        t("workRunStopConfirmation", {
+          runTitle: run.title,
+        }),
       )
     ) {
       return;
@@ -159,7 +164,7 @@ export function RunDetailPage(): JSX.Element {
   const stopErrorMessage = stopMutationError
     ? stopMutationError instanceof Error
       ? stopMutationError.message
-      : 'Run stop failed.'
+      : t("workRunStopError")
     : null;
   const subTree = useMemo<RunTreeNode[]>(
     () => (runId ? buildSubRunTree(runId, allRuns) : []),
@@ -262,7 +267,7 @@ export function RunDetailPage(): JSX.Element {
           <Link
             to={WORK_TASKS_PATH}
             className="runDetailTopBar__back"
-            aria-label="Back to tasks"
+            aria-label={t("workRunBackArrowLabel")}
           >
             <svg
               width="12"
@@ -277,7 +282,7 @@ export function RunDetailPage(): JSX.Element {
             >
               <path d="M7.5 2L3.5 6l4 4" />
             </svg>
-            <span>Tasks</span>
+            <span>{t("workRunBackLabel")}</span>
           </Link>
           {parentTask ? (
             <>
@@ -303,13 +308,15 @@ export function RunDetailPage(): JSX.Element {
               className="runDetailTopBar__action runDetailTopBar__action--destructive"
               onClick={handleStopRun}
               disabled={stopRunMutation.isPending}
-              aria-label="Stop run"
+              aria-label={t("workRunStopLabel")}
             >
-              {stopRunMutation.isPending ? "Stopping…" : "Stop"}
+              {stopRunMutation.isPending
+                ? t("workRunStopLabelBusy")
+                : t("workRunStopLabel")}
             </button>
           ) : null}
           <span className={`runDetail__statusPill runDetail__statusPill--${run.status}`}>
-            {run.status.replace(/_/g, " ")}
+            {getWorkObjectStatusLabel(run.status, t)}
           </span>
         </div>
       </header>
@@ -326,25 +333,25 @@ export function RunDetailPage(): JSX.Element {
           </p>
         ) : null}
         <section className="runDetail__section">
-          <h2 className="runDetail__sectionHeading">Run summary</h2>
+          <h2 className="runDetail__sectionHeading">{t("workRunSummaryTitle")}</h2>
           <dl className="runDetail__summary">
             <div className="runDetail__summaryRow">
-              <dt>Status</dt>
-              <dd>{run.status.replace(/_/g, " ")}</dd>
+              <dt>{t("workRunStatusLabel")}</dt>
+              <dd>{getWorkObjectStatusLabel(run.status, t)}</dd>
             </div>
             <div className="runDetail__summaryRow">
-              <dt>Updated</dt>
-              <dd>{formatRelative(run.updatedAt)}</dd>
+              <dt>{t("workRunUpdatedLabel")}</dt>
+              <dd>{formatRelative(run.updatedAt, t)}</dd>
             </div>
             {duration ? (
               <div className="runDetail__summaryRow">
-                <dt>Duration</dt>
+                <dt>{t("workRunDurationLabel")}</dt>
                 <dd>{duration}</dd>
               </div>
             ) : null}
             {run.parentRunId ? (
               <div className="runDetail__summaryRow">
-                <dt>Parent run</dt>
+                <dt>{t("workRunParentRunLabel")}</dt>
                 <dd>
                   {parentTask ? (
                     <Link
@@ -363,7 +370,7 @@ export function RunDetailPage(): JSX.Element {
             ) : null}
             {run.conversationId ? (
               <div className="runDetail__summaryRow">
-                <dt>Conversation</dt>
+                <dt>{t("workRunConversationLabel")}</dt>
                 <dd>
                   {run.conversationTitle ?? (
                     <code>{run.conversationId}</code>
@@ -379,28 +386,33 @@ export function RunDetailPage(): JSX.Element {
 
         <section className="runDetail__section">
           <h2 className="runDetail__sectionHeading">
-            Sub-runs <span className="runDetail__count">{countTree(subTree)}</span>
+            {t("workRunSubRunsTitle", {
+              count: `${countTree(subTree)}`,
+            })}
           </h2>
           {subTree.length === 0 ? (
-            <p className="runDetail__empty">No sub-runs.</p>
+            <p className="runDetail__empty">{t("workRunNoSubRuns")}</p>
           ) : (
-            <SubRunTree nodes={subTree} taskId={taskId ?? "orphan"} depth={0} />
+            <SubRunTree nodes={subTree} taskId={taskId ?? "orphan"} depth={0} t={t} />
           )}
         </section>
 
         <section className="runDetail__section">
           <h2 className="runDetail__sectionHeading">
-            Trace{" "}
-            <span className="runDetail__count">{traceState.traces.length}</span>
+            {t("workRunTraceTitle", {
+              count: `${traceState.traces.length}`,
+            })}
           </h2>
           {traceState.status === "loading" ? (
-            <p className="runDetail__empty">Loading trace…</p>
+            <p className="runDetail__empty">{t("workRunTraceLoading")}</p>
           ) : traceState.status === "error" ? (
             <p className="runDetail__error">
-              Failed to load trace: {traceState.error}
+              {t("workRunTraceLoadError", { errorMessage: traceState.error })}
             </p>
           ) : traceState.traces.length === 0 ? (
-            <p className="runDetail__empty">{emptyTraceMessage(run.status)}</p>
+            <p className="runDetail__empty">
+              {emptyTraceMessage(run.status, t)}
+            </p>
           ) : (
             <ol className="runDetail__trace">
               {traceState.traces
@@ -420,13 +432,13 @@ export function RunDetailPage(): JSX.Element {
                       </span>
                       <span
                         className="runDetail__traceActor"
-                        title={trace.actorId ?? "no actor recorded"}
+                        title={trace.actorId ?? t("workRunTraceNoActorRecorded")}
                       >
                         {actorLabel ?? "—"}
                       </span>
                       <p className="runDetail__traceMessage">{trace.message}</p>
                       <span className="runDetail__traceTime">
-                        {formatRelative(trace.createdAt)}
+                        {formatRelative(trace.createdAt, t)}
                       </span>
                     </li>
                   );
@@ -438,14 +450,16 @@ export function RunDetailPage(): JSX.Element {
         {activities.length > 0 ? (
           <section className="runDetail__section">
             <h2 className="runDetail__sectionHeading">
-              Activities <span className="runDetail__count">{activities.length}</span>
+              {t("workRunActivitiesTitle", {
+                count: `${activities.length}`,
+              })}
             </h2>
             <ul className="runDetail__simpleList">
               {activities.map((a) => (
                 <li key={a.id} className="runDetail__simpleRow">
                   <span className="runDetail__simpleTitle">{a.title}</span>
                   <span className="runDetail__simpleTime">
-                    {formatRelative(a.updatedAt)}
+                    {formatRelative(a.updatedAt, t)}
                   </span>
                 </li>
               ))}
@@ -456,7 +470,7 @@ export function RunDetailPage(): JSX.Element {
         {outcomes.length > 0 ? (
           <section className="runDetail__section">
             <h2 className="runDetail__sectionHeading">
-              Outcomes <span className="runDetail__count">{outcomes.length}</span>
+              {t("workRunOutcomesTitle", { count: `${outcomes.length}` })}
             </h2>
             <ul className="runDetail__simpleList">
               {outcomes.map((o) => (
@@ -472,7 +486,7 @@ export function RunDetailPage(): JSX.Element {
         {artifacts.length > 0 ? (
           <section className="runDetail__section">
             <h2 className="runDetail__sectionHeading">
-              Artifacts <span className="runDetail__count">{artifacts.length}</span>
+              {t("workRunArtifactsTitle", { count: `${artifacts.length}` })}
             </h2>
             <ul className="runDetail__simpleList">
               {artifacts.map((a) => (
@@ -497,22 +511,25 @@ function countTree(nodes: RunTreeNode[]): number {
   return count;
 }
 
-function emptyTraceMessage(status: string): string {
+function emptyTraceMessage(
+  status: string,
+  t: ReturnType<typeof useI18n>["t"],
+): string {
   switch (status) {
     case "queued":
-      return "Run is queued — trace records appear once the orchestrator dispatches.";
+      return t("workRunTraceEmptyQueued");
     case "running":
-      return "Run is executing but has not emitted any trace records yet.";
+      return t("workRunTraceEmptyRunning");
     case "blocked":
-      return "Run is blocked and emitted no trace before stalling.";
+      return t("workRunTraceEmptyBlocked");
     case "completed":
-      return "Run completed without emitting trace records.";
+      return t("workRunTraceEmptyCompleted");
     case "failed":
-      return "Run failed before emitting any trace.";
+      return t("workRunTraceEmptyFailed");
     case "cancelled":
-      return "Run was cancelled before emitting any trace.";
+      return t("workRunTraceEmptyCancelled");
     default:
-      return "No trace records.";
+      return t("workRunTraceEmptyDefault");
   }
 }
 
@@ -520,9 +537,10 @@ interface SubRunTreeProps {
   nodes: RunTreeNode[];
   taskId: string;
   depth: number;
+  t: ReturnType<typeof useI18n>["t"];
 }
 
-function SubRunTree({ nodes, taskId, depth }: SubRunTreeProps): JSX.Element {
+function SubRunTree({ nodes, taskId, depth, t }: SubRunTreeProps): JSX.Element {
   return (
     <ul
       className={
@@ -534,7 +552,7 @@ function SubRunTree({ nodes, taskId, depth }: SubRunTreeProps): JSX.Element {
           <Link
             to={buildWorkRunPath(taskId, run.id)}
             className="runDetail__subTreeLink"
-            aria-label={`Open sub-run ${run.title}`}
+            aria-label={t("workRunOpenSubRunAriaLabel", { runTitle: run.title })}
           >
             <span
               className={`runDetail__subTreeDot runDetail__subTreeDot--${run.status}`}
@@ -544,14 +562,14 @@ function SubRunTree({ nodes, taskId, depth }: SubRunTreeProps): JSX.Element {
             <span
               className={`runDetail__subTreeStatus runDetail__subTreeStatus--${run.status}`}
             >
-              {run.status.replace(/_/g, " ")}
+              {getWorkObjectStatusLabel(run.status, t)}
             </span>
             <span className="runDetail__subTreeTime">
-              {formatRelative(run.updatedAt)}
+              {formatRelative(run.updatedAt, t)}
             </span>
           </Link>
           {children.length > 0 ? (
-            <SubRunTree nodes={children} taskId={taskId} depth={depth + 1} />
+            <SubRunTree nodes={children} taskId={taskId} depth={depth + 1} t={t} />
           ) : null}
         </li>
       ))}
@@ -560,35 +578,39 @@ function SubRunTree({ nodes, taskId, depth }: SubRunTreeProps): JSX.Element {
 }
 
 function RunDetailLoading(): JSX.Element {
+  const { t } = useI18n();
+
   return (
     <div className="runDetail">
       <header className="channelTopBar runDetailTopBar">
         <div className="channelTopBarStart runDetailTopBar__start">
           <Link to={WORK_TASKS_PATH} className="runDetailTopBar__back">
-            <span>Tasks</span>
+            <span>{t("workRunBackLabel")}</span>
           </Link>
         </div>
       </header>
       <main className="runDetail__main">
-        <p className="runDetail__empty">Loading run…</p>
+        <p className="runDetail__empty">{t("workRunLoadingLabel")}</p>
       </main>
     </div>
   );
 }
 
 function RunNotFound({ runId }: { runId: string | null }): JSX.Element {
+  const { t } = useI18n();
+
   return (
     <div className="runDetail">
       <header className="channelTopBar runDetailTopBar">
         <div className="channelTopBarStart runDetailTopBar__start">
           <Link to={WORK_TASKS_PATH} className="runDetailTopBar__back">
-            <span>Tasks</span>
+            <span>{t("workRunBackLabel")}</span>
           </Link>
         </div>
       </header>
       <main className="runDetail__main">
         <p className="runDetail__empty">
-          {runId ? `Run ${runId} not found.` : "No run id provided."}
+          {runId ? t("workRunNotFound", { runId }) : t("workRunNoRunId")}
         </p>
       </main>
     </div>

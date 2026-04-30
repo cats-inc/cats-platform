@@ -5,7 +5,7 @@ import {
   EMPTY_WORK_GRAPH,
   useWorkGraphQuery,
 } from "../../state/queries/workGraphQuery.js";
-import { useI18n } from "../../../app/renderer/i18n/index.js";
+import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import { buildIndexes } from "./shared";
 import type { WorkGraphLayer, WorkGraphObjectSummary } from "./types";
 import { WorkObjectCard, pickEvidence } from "./WorkObjectCard";
@@ -63,23 +63,23 @@ export function SystemMapPage(): JSX.Element {
       <header className="channelTopBar topDownTopBar">
         <div className="channelTopBarStart topDownTopBar__start">
           <span className="topDownTopBar__eyebrow">
-            {t("topdown.systemMapEyebrow")}
+            {t("workTopdownSystemMapEyebrow")}
           </span>
           <h1 className="channelTopBarTitle topDownTopBar__title">
-            {t("topdown.systemMapTitle")}
+            {t("workTopdownSystemMapTitle")}
           </h1>
         </div>
         <div className="channelTopBarCenter topDownTopBar__center">
           <p className="topDownTopBar__lede">
-            {t("topdown.systemMapLede")}
+            {t("workTopdownSystemMapLede")}
           </p>
         </div>
         <div className="channelTopBarEnd topDownTopBar__end">
           <span className="topDownTopBar__metric">
-            <strong>{counts.structural}</strong> {t("topdown.systemMapStructuralLabel")}
+            <strong>{counts.structural}</strong> {t("workTopdownSystemMapStructuralLabel")}
           </span>
           <span className="topDownTopBar__metric">
-            <strong>{counts.objects}</strong> {t("topdown.systemMapTotalLabel")}
+            <strong>{counts.objects}</strong> {t("workTopdownSystemMapTotalLabel")}
           </span>
           <span
             className={
@@ -90,7 +90,7 @@ export function SystemMapPage(): JSX.Element {
             }
           >
             <strong>{counts.diagnostics}</strong>{" "}
-            {t("topdown.systemMapDiagnosticsLabel")}
+            {t("workTopdownSystemMapDiagnosticsLabel")}
           </span>
         </div>
       </header>
@@ -102,7 +102,7 @@ export function SystemMapPage(): JSX.Element {
               key={pane.layer}
               className="systemMap__pane"
               data-layer={pane.layer}
-              aria-label={t("topdown.systemMapLayerAriaLabel", {
+              aria-label={t("workTopdownSystemMapLayerAriaLabel", {
                 layerLabel: getSystemMapLayerLabel(pane.layer, t),
               })}
             >
@@ -118,7 +118,7 @@ export function SystemMapPage(): JSX.Element {
               <div className="systemMap__paneBody">
                 {objects.length === 0 ? (
                   <p className="systemMap__paneEmpty">
-                    {t("topdown.systemMapLayerEmpty")}
+                    {t("workTopdownSystemMapLayerEmpty")}
                   </p>
                 ) : (
                   objects.map((o) => (
@@ -152,22 +152,22 @@ export function SystemMapPage(): JSX.Element {
 
 function getSystemMapLayerLabel(
   layer: WorkGraphLayer,
-  t: (key: string, values?: Record<string, string>) => string,
+  t: ReturnType<typeof useI18n>["t"],
 ): string {
   return layer === "interaction"
-    ? t("topdown.systemMapLayerInteractionLabel")
+    ? t("workTopdownSystemMapLayerInteractionLabel")
     : layer === "planning"
-      ? t("topdown.systemMapLayerPlanningLabel")
-      : t("topdown.systemMapLayerExecutionLabel");
+      ? t("workTopdownSystemMapLayerPlanningLabel")
+      : t("workTopdownSystemMapLayerExecutionLabel");
 }
 
 function getSystemMapLayerDescription(
   layer: WorkGraphLayer,
-  t: (key: string, values?: Record<string, string>) => string,
+  t: ReturnType<typeof useI18n>["t"],
 ): string {
   return layer === "interaction"
-    ? t("topdown.systemMapLayerInteractionDescription")
+    ? t("workTopdownSystemMapLayerInteractionDescription")
     : layer === "planning"
-      ? t("topdown.systemMapLayerPlanningDescription")
-      : t("topdown.systemMapLayerExecutionDescription");
+      ? t("workTopdownSystemMapLayerPlanningDescription")
+      : t("workTopdownSystemMapLayerExecutionDescription");
 }

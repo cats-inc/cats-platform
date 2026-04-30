@@ -1,15 +1,17 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
+import type { MessageKey } from "../../../../../shared/i18n/index.js";
 import {
   buildWorkProjectPath,
   buildWorkTaskPath,
   buildWorkWorkItemPath,
 } from "../../workPaths.js";
+import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import { NewLinkDialog } from "./NewLinkDialog";
 import {
   endpointKey,
-  KIND_LABEL,
+  getWorkGraphKindLabel,
   type WorkGraphIndexes,
 } from "./shared";
 import type {
@@ -27,12 +29,12 @@ interface LinkageSectionProps {
   indexes: WorkGraphIndexes;
 }
 
-const VIEW_KIND_LABEL: Record<WorkGraphLinkViewKind, string> = {
-  blocks: "Blocking",
-  blocked_by: "Blocked by",
-  related_to: "Related",
-  duplicate_of: "Duplicate of",
-  follows: "Follows",
+const VIEW_KIND_LABEL_KEY: Record<WorkGraphLinkViewKind, MessageKey> = {
+  blocks: "workTopdownLinkageViewKindBlocksLabel",
+  blocked_by: "workTopdownLinkageViewKindBlockedByLabel",
+  related_to: "workTopdownLinkageViewKindRelatedToLabel",
+  duplicate_of: "workTopdownLinkageViewKindDuplicateOfLabel",
+  follows: "workTopdownLinkageViewKindFollowsLabel",
 };
 
 const VIEW_KIND_ORDER: WorkGraphLinkViewKind[] = [
@@ -43,12 +45,15 @@ const VIEW_KIND_ORDER: WorkGraphLinkViewKind[] = [
   "follows",
 ];
 
-const EMPTY_COPY_BY_KIND: Record<WorkGraphLinkViewKind, string> = {
-  blocks: "Nothing is waiting on this yet.",
-  blocked_by: "No upstream blockers.",
-  related_to: "No related projects, work items, or tasks linked.",
-  duplicate_of: "Not marked as a duplicate of anything.",
-  follows: "Doesn't supersede an earlier item.",
+const EMPTY_COPY_BY_KIND_KEY: Record<
+  WorkGraphLinkViewKind,
+  MessageKey
+> = {
+  blocks: "workTopdownLinkageViewKindBlocksEmpty",
+  blocked_by: "workTopdownLinkageViewKindBlockedByEmpty",
+  related_to: "workTopdownLinkageViewKindRelatedToEmpty",
+  duplicate_of: "workTopdownLinkageViewKindDuplicateOfEmpty",
+  follows: "workTopdownLinkageViewKindFollowsEmpty",
 };
 
 function detailRouteFor(ref: WorkGraphLinkEndpointRef): string {
@@ -67,6 +72,7 @@ export function LinkageSection({
   graph,
   indexes,
 }: LinkageSectionProps): JSX.Element {
+  const { t } = useI18n();
   const [dialogOpen, setDialogOpen] = useState(false);
   const selfKey = endpointKey(selfRef);
   const views = graph.linksByEndpoint[selfKey] ?? [];
@@ -82,26 +88,26 @@ export function LinkageSection({
   return (
     <section className="linkageSection">
       <header className="linkageSection__header">
-        <h2>Linkage</h2>
+        <h2>{t("workTopdownLinkageTitle")}</h2>
         <span className="linkageSection__count">{views.length}</span>
         <button
           type="button"
           className="linkageSection__addBtn"
           onClick={() => setDialogOpen(true)}
         >
-          + Add link
+          + {t("workTopdownLinkageAddAction")}
         </button>
       </header>
       {views.length === 0 ? (
         <p className="linkageSection__empty">
-          No links yet — use <strong>Add link</strong> to connect this to a
-          Project, Work Item, or Task.
+          {t("workTopdownLinkageNoLinksYetPrefix")}{" "}
+          <strong>{t("workTopdownLinkageAddAction")}</strong>{" "}
+          {t("workTopdownLinkageNoLinksYetSuffix")}
         </p>
       ) : (
         presentKinds.map((kind) => (
           <LinkageGroup
             key={kind}
-            label={VIEW_KIND_LABEL[kind]}
             views={byKind.get(kind) ?? []}
             kind={kind}
             indexes={indexes}
@@ -120,29 +126,32 @@ export function LinkageSection({
 }
 
 interface LinkageGroupProps {
-  label: string;
   views: WorkGraphLinkView[];
   kind: WorkGraphLinkViewKind;
   indexes: WorkGraphIndexes;
 }
 
 function LinkageGroup({
-  label,
   views,
   kind,
   indexes,
 }: LinkageGroupProps): JSX.Element {
+  const { t } = useI18n();
   if (views.length === 0) {
     return (
       <div className={`linkageSection__group linkageSection__group--${kind}`}>
-        <h3 className="linkageSection__groupLabel">{label}</h3>
-        <p className="linkageSection__groupEmpty">{EMPTY_COPY_BY_KIND[kind]}</p>
+        <h3 className="linkageSection__groupLabel">
+          {t(VIEW_KIND_LABEL_KEY[kind])}
+        </h3>
+        <p className="linkageSection__groupEmpty">
+          {t(EMPTY_COPY_BY_KIND_KEY[kind])}
+        </p>
       </div>
     );
   }
   return (
     <div className={`linkageSection__group linkageSection__group--${kind}`}>
-      <h3 className="linkageSection__groupLabel">{label}</h3>
+      <h3 className="linkageSection__groupLabel">{t(VIEW_KIND_LABEL_KEY[kind])}</h3>
       <ul className="linkageSection__list">
         {views.map((view) => {
           const otherKey = endpointKey(view.otherEndpoint);
@@ -161,7 +170,7 @@ function LinkageGroup({
                 {other.title}
               </Link>
               <span className="linkageSection__kindBadge">
-                {KIND_LABEL[other.kind]}
+                {getWorkGraphKindLabel(other.kind, t)}
               </span>
               {view.note ? (
                 <span className="linkageSection__note">{view.note}</span>

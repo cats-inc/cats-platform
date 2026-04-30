@@ -9,9 +9,13 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import { createWorkTask, type CoreTaskStatus } from "../../api/workRecords.js";
 import { WORK_TASKS_PATH } from "../../workPaths.js";
-import { TASKS_QUERY_KEY, useTasksQuery } from "../../state/queries/tasksQuery.js";
+import {
+  TASKS_QUERY_KEY,
+  useTasksQuery,
+} from "../../state/queries/tasksQuery.js";
 import type { TaskPriority } from "../../../shared/workGraphTypes.js";
 
 interface CreateTaskInput {
@@ -26,7 +30,9 @@ interface CreateTaskInput {
 
 const TASK_RENDERER_METADATA_KEY = "workRenderer";
 
-async function createTaskFromDialog(input: CreateTaskInput): Promise<{ id: string }> {
+async function createTaskFromDialog(
+  input: CreateTaskInput,
+): Promise<{ id: string }> {
   const rendererExtras: Record<string, unknown> = {};
   if (input.priority) rendererExtras.priority = input.priority;
   if (input.assigneeName) rendererExtras.assigneeName = input.assigneeName;
@@ -53,27 +59,11 @@ interface NewTaskDialogProps {
   defaultParentTaskId?: string | null;
 }
 
-const STATUS_OPTIONS: { value: CoreTaskStatus; label: string }[] = [
-  { value: "draft", label: "Draft" },
-  { value: "pending_approval", label: "Pending approval" },
-  { value: "approved", label: "Approved" },
-  { value: "in_progress", label: "In progress" },
-  { value: "blocked", label: "Blocked" },
-  { value: "completed", label: "Completed" },
-];
-
-const PRIORITY_OPTIONS: { value: TaskPriority | ""; label: string }[] = [
-  { value: "", label: "— No priority —" },
-  { value: "urgent", label: "Urgent" },
-  { value: "high", label: "High" },
-  { value: "medium", label: "Medium" },
-  { value: "low", label: "Low" },
-];
-
 export function NewTaskDialog({
   onClose,
   defaultParentTaskId,
 }: NewTaskDialogProps): JSX.Element {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const titleId = useId();
@@ -106,7 +96,7 @@ export function NewTaskDialog({
   const error = createMutation.error
     ? createMutation.error instanceof Error
       ? createMutation.error.message
-      : "Failed to create task."
+      : t("workNewTaskCreateError")
     : null;
 
   useEffect(() => {
@@ -145,6 +135,29 @@ export function NewTaskDialog({
     });
   }
 
+  const statusOptions: { value: CoreTaskStatus; label: string }[] = [
+    { value: "draft", label: t("workNewTaskStatusDraft") },
+    {
+      value: "pending_approval",
+      label: t("workNewTaskStatusPendingApproval"),
+    },
+    { value: "approved", label: t("workNewTaskStatusApproved") },
+    { value: "in_progress", label: t("workNewTaskStatusInProgress") },
+    { value: "blocked", label: t("workNewTaskStatusBlocked") },
+    { value: "completed", label: t("workNewTaskStatusCompleted") },
+  ];
+
+  const priorityOptions: {
+    value: TaskPriority | "";
+    label: string;
+  }[] = [
+    { value: "", label: t("workNewTaskNoPriority") },
+    { value: "urgent", label: t("workNewTaskPriorityUrgent") },
+    { value: "high", label: t("workNewTaskPriorityHigh") },
+    { value: "medium", label: t("workNewTaskPriorityMedium") },
+    { value: "low", label: t("workNewTaskPriorityLow") },
+  ];
+
   const parentTaskOptions = tasksQuery.data?.tasks ?? [];
 
   return (
@@ -161,12 +174,12 @@ export function NewTaskDialog({
       >
         <header className="newProjectDialog__header">
           <h2 id={`${titleId}-heading`} className="newProjectDialog__heading">
-            New task
+            {t("workNewTaskTitle")}
           </h2>
           <button
             type="button"
             className="newProjectDialog__close"
-            aria-label="Close"
+            aria-label={t("workNewTaskCloseLabel")}
             onClick={onClose}
           >
             &times;
@@ -175,7 +188,10 @@ export function NewTaskDialog({
         <form className="newProjectDialog__form" onSubmit={onSubmit}>
           <label className="newProjectDialog__field" htmlFor={titleId}>
             <span className="newProjectDialog__label">
-              Title<span className="newProjectDialog__required" aria-hidden="true">*</span>
+              {t("workNewTaskTitleLabel")}
+              <span className="newProjectDialog__required" aria-hidden="true">
+                *
+              </span>
             </span>
             <input
               ref={titleInputRef}
@@ -184,34 +200,38 @@ export function NewTaskDialog({
               className="newProjectDialog__input"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="What concrete action needs to happen?"
+              placeholder={t("workNewTaskTitlePlaceholder")}
               required
               maxLength={120}
             />
           </label>
 
           <label className="newProjectDialog__field" htmlFor={summaryId}>
-            <span className="newProjectDialog__label">Summary</span>
+            <span className="newProjectDialog__label">
+              {t("workNewTaskSummaryLabel")}
+            </span>
             <textarea
               id={summaryId}
               className="newProjectDialog__textarea"
               value={summary}
               onChange={(event) => setSummary(event.target.value)}
-              placeholder="Describe scope or context in one or two lines."
+              placeholder={t("workNewTaskSummaryPlaceholder")}
               rows={3}
               maxLength={400}
             />
           </label>
 
           <label className="newProjectDialog__field" htmlFor={parentTaskFieldId}>
-            <span className="newProjectDialog__label">Parent task</span>
+            <span className="newProjectDialog__label">
+              {t("workNewTaskParentTaskLabel")}
+            </span>
             <select
               id={parentTaskFieldId}
               className="newProjectDialog__select"
               value={parentTask}
               onChange={(event) => setParentTask(event.target.value)}
             >
-              <option value="">— No parent task —</option>
+              <option value="">{t("workNewTaskNoParentTask")}</option>
               {parentTaskOptions.map((task) => (
                 <option key={task.id} value={task.id}>
                   {task.title}
@@ -221,28 +241,32 @@ export function NewTaskDialog({
           </label>
 
           <label className="newProjectDialog__field" htmlFor={assigneeId}>
-            <span className="newProjectDialog__label">Assignee</span>
+            <span className="newProjectDialog__label">
+              {t("workNewTaskAssigneeLabel")}
+            </span>
             <input
               id={assigneeId}
               type="text"
               className="newProjectDialog__input"
               value={assigneeName}
               onChange={(event) => setAssigneeName(event.target.value)}
-              placeholder="Who picks this up?"
+              placeholder={t("workNewTaskAssigneePlaceholder")}
               maxLength={60}
             />
           </label>
 
           <div className="newProjectDialog__row">
             <label className="newProjectDialog__field" htmlFor={statusId}>
-              <span className="newProjectDialog__label">Status</span>
+              <span className="newProjectDialog__label">
+                {t("workNewTaskStatusLabel")}
+              </span>
               <select
                 id={statusId}
                 className="newProjectDialog__select"
                 value={status}
                 onChange={(event) => setStatus(event.target.value as CoreTaskStatus)}
               >
-                {STATUS_OPTIONS.map((option) => (
+                {statusOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
@@ -251,7 +275,9 @@ export function NewTaskDialog({
             </label>
 
             <label className="newProjectDialog__field" htmlFor={priorityId}>
-              <span className="newProjectDialog__label">Priority</span>
+              <span className="newProjectDialog__label">
+                {t("workNewTaskPriorityLabel")}
+              </span>
               <select
                 id={priorityId}
                 className="newProjectDialog__select"
@@ -260,7 +286,7 @@ export function NewTaskDialog({
                   setPriority(event.target.value as TaskPriority | "")
                 }
               >
-                {PRIORITY_OPTIONS.map((option) => (
+                {priorityOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {option.label}
                   </option>
@@ -270,13 +296,15 @@ export function NewTaskDialog({
           </div>
 
           <label className="newProjectDialog__field" htmlFor={acceptanceId}>
-            <span className="newProjectDialog__label">Acceptance criteria</span>
+            <span className="newProjectDialog__label">
+              {t("workNewTaskAcceptanceCriteriaLabel")}
+            </span>
             <textarea
               id={acceptanceId}
               className="newProjectDialog__textarea"
               value={acceptanceCriteria}
               onChange={(event) => setAcceptanceCriteria(event.target.value)}
-              placeholder='How do we know this is "done"?'
+              placeholder={t("workNewTaskAcceptanceCriteriaPlaceholder")}
               rows={2}
               maxLength={280}
             />
@@ -294,14 +322,16 @@ export function NewTaskDialog({
               onClick={onClose}
               disabled={submitting}
             >
-              Cancel
+              {t("workNewTaskCancelButton")}
             </button>
             <button
               type="submit"
               className="newProjectDialog__submitBtn"
               disabled={title.trim().length === 0 || submitting}
             >
-              {submitting ? "Creating…" : "Create task"}
+              {submitting
+                ? t("workNewTaskSubmittingLabel")
+                : t("workNewTaskSubmitLabel")}
             </button>
           </footer>
         </form>

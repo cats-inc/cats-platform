@@ -2,6 +2,8 @@ import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { useI18n } from "../../../../../app/renderer/i18n/index.js";
+import { getWorkObjectStatusLabel } from "../topdown/WorkObjectCard";
 import { formatRelative } from "../topdown/shared";
 import { cancelWorkMission } from "../../api/runCancellation.js";
 import {
@@ -26,6 +28,7 @@ export function MissionDetailPage(): JSX.Element {
   const workItemsQuery = useWorkItemsQuery();
   const tasksQuery = useTasksQuery();
   const runsQuery = useRunsQuery();
+  const { t } = useI18n();
   const [cancelBlockerMessage, setCancelBlockerMessage] = useState<string | null>(null);
 
   const mission = missionId
@@ -39,13 +42,15 @@ export function MissionDetailPage(): JSX.Element {
         queryClient.invalidateQueries({ queryKey: MISSIONS_QUERY_KEY }),
         queryClient.invalidateQueries({ queryKey: RUNS_QUERY_KEY }),
       ]);
-      if (result.status === 'blocked') {
+      if (result.status === "blocked") {
         const detail = result.blockers
           .map((blocker) => `${blocker.runId}: ${blocker.reason}`)
-          .join('; ');
+          .join("; ");
         setCancelBlockerMessage(
           result.message
-            ?? `Mission cancel blocked. ${detail || 'See per-run results.'}`,
+            ?? t("workMissionCancelBlocked", {
+              detail: detail || t("workMissionCancelBlockedNoDetails"),
+            }),
         );
       } else {
         setCancelBlockerMessage(null);
@@ -57,9 +62,9 @@ export function MissionDetailPage(): JSX.Element {
     if (!mission) return;
     if (
       !window.confirm(
-        `Cancel mission "${mission.title}"?\n\n`
-        + 'Active runs will be stopped through supervised runtime cancellation. '
-        + 'Linked Tasks and Work Items are not changed.',
+        t("workMissionCancelConfirmation", {
+          missionTitle: mission.title,
+        }),
       )
     ) {
       return;
@@ -72,7 +77,7 @@ export function MissionDetailPage(): JSX.Element {
   const cancelErrorMessage = cancelMutationError
     ? cancelMutationError instanceof Error
       ? cancelMutationError.message
-      : 'Mission cancel failed.'
+      : t("workMissionCancelError")
     : null;
 
   const linkedWorkItem = mission?.managedWorkId
@@ -104,9 +109,9 @@ export function MissionDetailPage(): JSX.Element {
   }
 
   const isTerminal =
-    mission.status === 'completed'
-    || mission.status === 'failed'
-    || mission.status === 'cancelled';
+    mission.status === "completed"
+    || mission.status === "failed"
+    || mission.status === "cancelled";
 
   return (
     <div className="missionDetail">
@@ -115,7 +120,7 @@ export function MissionDetailPage(): JSX.Element {
           <Link
             to={WORK_MISSIONS_PATH}
             className="missionDetailTopBar__back"
-            aria-label="Back to missions"
+            aria-label={t("workMissionBackArrowLabel")}
           >
             <svg
               width="12"
@@ -130,7 +135,7 @@ export function MissionDetailPage(): JSX.Element {
             >
               <path d="M7.5 2L3.5 6l4 4" />
             </svg>
-            <span>Missions</span>
+            <span>{t("workMissionBackLabel")}</span>
           </Link>
           <span className="missionDetailTopBar__sep">›</span>
           <h1 className="channelTopBarTitle missionDetailTopBar__title">
@@ -145,15 +150,17 @@ export function MissionDetailPage(): JSX.Element {
               className="missionDetailTopBar__action missionDetailTopBar__action--destructive"
               onClick={handleCancelMission}
               disabled={cancelMissionMutation.isPending}
-              aria-label="Cancel mission"
+              aria-label={t("workMissionCancelLabel")}
             >
-              {cancelMissionMutation.isPending ? "Cancelling…" : "Cancel"}
+              {cancelMissionMutation.isPending
+                ? t("workMissionCancelLabelBusy")
+                : t("workMissionCancelLabel")}
             </button>
           ) : null}
           <span
             className={`missionDetail__statusPill missionDetail__statusPill--${mission.status}`}
           >
-            {mission.status.replace(/_/g, " ")}
+            {getWorkObjectStatusLabel(mission.status, t)}
           </span>
         </div>
       </header>
@@ -170,25 +177,27 @@ export function MissionDetailPage(): JSX.Element {
           </p>
         ) : null}
         <section className="missionDetail__section">
-          <h2 className="missionDetail__sectionHeading">Mission summary</h2>
+          <h2 className="missionDetail__sectionHeading">
+            {t("workMissionSummaryTitle")}
+          </h2>
           <dl className="missionDetail__summary">
             <div className="missionDetail__summaryRow">
-              <dt>Status</dt>
-              <dd>{mission.status.replace(/_/g, " ")}</dd>
+              <dt>{t("workMissionStatusLabel")}</dt>
+              <dd>{getWorkObjectStatusLabel(mission.status, t)}</dd>
             </div>
             {mission.assignedAgentName ? (
               <div className="missionDetail__summaryRow">
-                <dt>Assigned agent</dt>
+                <dt>{t("workMissionAssignedAgentLabel")}</dt>
                 <dd>{mission.assignedAgentName}</dd>
               </div>
             ) : null}
             <div className="missionDetail__summaryRow">
-              <dt>Updated</dt>
-              <dd>{formatRelative(mission.updatedAt)}</dd>
+              <dt>{t("workMissionUpdatedAtLabel")}</dt>
+              <dd>{formatRelative(mission.updatedAt, t)}</dd>
             </div>
             {linkedWorkItem ? (
               <div className="missionDetail__summaryRow">
-                <dt>Work Item</dt>
+                <dt>{t("workMissionWorkItemLabel")}</dt>
                 <dd>
                   <Link
                     to={buildWorkWorkItemPath(linkedWorkItem.id)}
@@ -201,7 +210,7 @@ export function MissionDetailPage(): JSX.Element {
             ) : null}
             {mission.conversationId ? (
               <div className="missionDetail__summaryRow">
-                <dt>Conversation</dt>
+                <dt>{t("workMissionConversationLabel")}</dt>
                 <dd>
                   {mission.conversationTitle ?? (
                     <code className="missionDetail__monoId">
@@ -219,16 +228,17 @@ export function MissionDetailPage(): JSX.Element {
 
         <section className="missionDetail__section">
           <h2 className="missionDetail__sectionHeading">
-            Tasks under this work item{" "}
-            <span className="missionDetail__count">{transitiveTasks.length}</span>
+            {t("workMissionTasksHeading", {
+              count: `${transitiveTasks.length}`,
+            })}
           </h2>
           {!linkedWorkItem ? (
             <p className="missionDetail__empty">
-              Mission is ad-hoc — no work item to scope tasks against.
+              {t("workMissionNoLinkedWorkItemForTasks")}
             </p>
           ) : transitiveTasks.length === 0 ? (
             <p className="missionDetail__empty">
-              The linked work item has no tasks yet.
+              {t("workMissionNoTasks")}
             </p>
           ) : (
             <ul className="missionDetail__transitiveList">
@@ -244,10 +254,10 @@ export function MissionDetailPage(): JSX.Element {
                     <span
                       className={`missionDetail__transitiveStatus missionDetail__transitiveStatus--${task.status}`}
                     >
-                      {task.status.replace(/_/g, " ")}
+                      {getWorkObjectStatusLabel(task.status, t)}
                     </span>
                     <span className="missionDetail__transitiveTime">
-                      {formatRelative(task.updatedAt)}
+                      {formatRelative(task.updatedAt, t)}
                     </span>
                   </Link>
                 </li>
@@ -258,16 +268,17 @@ export function MissionDetailPage(): JSX.Element {
 
         <section className="missionDetail__section">
           <h2 className="missionDetail__sectionHeading">
-            Runs from those tasks{" "}
-            <span className="missionDetail__count">{transitiveRuns.length}</span>
+            {t("workMissionRunsHeading", {
+              count: `${transitiveRuns.length}`,
+            })}
           </h2>
           {!linkedWorkItem ? (
             <p className="missionDetail__empty">
-              Mission is ad-hoc — no transitive runs.
+              {t("workMissionNoLinkedWorkItemForRuns")}
             </p>
           ) : transitiveRuns.length === 0 ? (
             <p className="missionDetail__empty">
-              No runs dispatched from these tasks yet.
+              {t("workMissionNoTransitiveRuns")}
             </p>
           ) : (
             <ul className="missionDetail__transitiveList">
@@ -288,10 +299,10 @@ export function MissionDetailPage(): JSX.Element {
                     <span
                       className={`missionDetail__transitiveStatus missionDetail__transitiveStatus--${run.status}`}
                     >
-                      {run.status.replace(/_/g, " ")}
+                      {getWorkObjectStatusLabel(run.status, t)}
                     </span>
                     <span className="missionDetail__transitiveTime">
-                      {formatRelative(run.updatedAt)}
+                      {formatRelative(run.updatedAt, t)}
                     </span>
                   </Link>
                 </li>
@@ -305,6 +316,8 @@ export function MissionDetailPage(): JSX.Element {
 }
 
 function MissionDetailLoading(): JSX.Element {
+  const { t } = useI18n();
+
   return (
     <div className="missionDetail">
       <header className="channelTopBar missionDetailTopBar">
@@ -313,12 +326,12 @@ function MissionDetailLoading(): JSX.Element {
             to={WORK_MISSIONS_PATH}
             className="missionDetailTopBar__back"
           >
-            <span>Missions</span>
+            <span>{t("workMissionBackLabel")}</span>
           </Link>
         </div>
       </header>
       <main className="missionDetail__main">
-        <p className="missionDetail__empty">Loading mission…</p>
+        <p className="missionDetail__empty">{t("workMissionLoadingLabel")}</p>
       </main>
     </div>
   );
@@ -329,6 +342,8 @@ function MissionNotFound({
 }: {
   missionId: string | null;
 }): JSX.Element {
+  const { t } = useI18n();
+
   return (
     <div className="missionDetail">
       <header className="channelTopBar missionDetailTopBar">
@@ -337,13 +352,17 @@ function MissionNotFound({
             to={WORK_MISSIONS_PATH}
             className="missionDetailTopBar__back"
           >
-            <span>Missions</span>
+            <span>{t("workMissionBackLabel")}</span>
           </Link>
         </div>
       </header>
       <main className="missionDetail__main">
         <p className="missionDetail__empty">
-          {missionId ? `Mission ${missionId} not found.` : "No mission id provided."}
+          {missionId
+            ? t("workMissionNotFound", {
+                missionId,
+              })
+            : t("workMissionNoMissionId")}
         </p>
       </main>
     </div>

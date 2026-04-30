@@ -9,7 +9,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { useI18n } from "../../../../app/renderer/i18n/index.js";
+import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import {
   createWorkItem as restCreateWorkItem,
   type CoreWorkItemStatus,

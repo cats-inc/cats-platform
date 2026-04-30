@@ -11,7 +11,7 @@ import {
 import {
   buildIndexes,
   endpointKey,
-  KIND_LABEL,
+  getWorkGraphKindLabel,
   type WorkGraphIndexes,
 } from "./shared";
 import type {
@@ -23,6 +23,7 @@ import type {
   WorkGraphLinkOrphanDiagnostic,
 } from "./types";
 import { WorkObjectDrawer } from "./WorkObjectDrawer";
+import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import "./topdown.css";
 
 type SeverityFilter = "all" | WorkGraphDiagnosticSeverity;
@@ -32,6 +33,7 @@ const SEVERITY_ORDER: WorkGraphDiagnosticSeverity[] = ["error", "warning", "info
 type Diagnostic = WorkGraphDiagnostic | WorkGraphLinkDiagnostic;
 
 export function BrokenLinksPage(): JSX.Element {
+  const { t } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
   const severityFilter =
     (searchParams.get("severity") as SeverityFilter | null) ?? "all";
@@ -56,12 +58,16 @@ export function BrokenLinksPage(): JSX.Element {
         await removeWorkLink(linkId);
         await queryClient.invalidateQueries({ queryKey: WORK_GRAPH_QUERY_KEY });
       } catch (err) {
-        setRemoveError(err instanceof Error ? err.message : "Failed to remove link.");
+        setRemoveError(
+          err instanceof Error
+            ? err.message
+            : t("workTopdownBrokenLinksRemoveUnknownError"),
+        );
       } finally {
         setRemovingId(null);
       }
     },
-    [queryClient],
+    [queryClient, t],
   );
 
   const counts = useMemo(() => {
@@ -105,15 +111,15 @@ export function BrokenLinksPage(): JSX.Element {
     <div className="topDownPage">
       <header className="channelTopBar topDownTopBar">
         <div className="channelTopBarStart topDownTopBar__start">
-          <span className="topDownTopBar__eyebrow">Top-down · conformance</span>
-          <h1 className="channelTopBarTitle topDownTopBar__title">Broken Links</h1>
+          <span className="topDownTopBar__eyebrow">
+            {t("workTopdownBrokenLinksEyebrow")}
+          </span>
+          <h1 className="channelTopBarTitle topDownTopBar__title">
+            {t("workTopdownBrokenLinksTitle")}
+          </h1>
         </div>
         <div className="channelTopBarCenter topDownTopBar__center">
-          <p className="topDownTopBar__lede">
-            Diagnostics from the projection layer when producer writes don't
-            satisfy <code>SPEC-083 §Minimum Anchor Sets</code> or SPEC-090 link
-            integrity.
-          </p>
+          <p className="topDownTopBar__lede">{t("workTopdownBrokenLinksLede")}</p>
         </div>
         <div className="channelTopBarEnd topDownTopBar__end">
           <span
@@ -122,7 +128,8 @@ export function BrokenLinksPage(): JSX.Element {
               (counts.error > 0 ? " topDownTopBar__metric--bad" : "")
             }
           >
-            <strong>{counts.error}</strong> errors
+            <strong>{counts.error}</strong>{" "}
+            {t("workTopdownBrokenLinksErrorMetricSuffix")}
           </span>
           <span
             className={
@@ -130,37 +137,42 @@ export function BrokenLinksPage(): JSX.Element {
               (counts.warning > 0 ? " topDownTopBar__metric--warn" : "")
             }
           >
-            <strong>{counts.warning}</strong> warnings
+            <strong>{counts.warning}</strong>{" "}
+            {t("workTopdownBrokenLinksWarningMetricSuffix")}
           </span>
           <span className="topDownTopBar__metric">
-            <strong>{counts.info}</strong> info
+            <strong>{counts.info}</strong>{" "}
+            {t("workTopdownBrokenLinksInfoMetricSuffix")}
           </span>
         </div>
       </header>
-      <nav className="brokenLinks__filters" aria-label="Severity filters">
+      <nav
+        className="brokenLinks__filters"
+        aria-label={t("workTopdownBrokenLinksSeverityFiltersAriaLabel")}
+      >
         <FilterChip
           active={severityFilter === "all"}
-          label="All"
+          label={t("workTopdownBrokenLinksSeverityAllLabel")}
           n={graph.diagnostics.length}
           onClick={() => setSeverity("all")}
         />
         <FilterChip
           active={severityFilter === "error"}
-          label="Error"
+          label={t("workTopdownBrokenLinksSeverityErrorLabel")}
           n={counts.error}
           tone="error"
           onClick={() => setSeverity("error")}
         />
         <FilterChip
           active={severityFilter === "warning"}
-          label="Warning"
+          label={t("workTopdownBrokenLinksSeverityWarningLabel")}
           n={counts.warning}
           tone="warning"
           onClick={() => setSeverity("warning")}
         />
         <FilterChip
           active={severityFilter === "info"}
-          label="Info"
+          label={t("workTopdownBrokenLinksSeverityInfoLabel")}
           n={counts.info}
           tone="info"
           onClick={() => setSeverity("info")}
@@ -174,7 +186,7 @@ export function BrokenLinksPage(): JSX.Element {
         ) : null}
         {filtered.length === 0 ? (
           <p className="brokenLinks__empty">
-            No diagnostics under the active filter.
+            {t("workTopdownBrokenLinksNoDiagnostics")}
           </p>
         ) : (
           filtered.map((d) => (
@@ -253,6 +265,7 @@ function RowSubject({
   diagnostic: Diagnostic;
   indexes: WorkGraphIndexes;
 }): JSX.Element | null {
+  const { t } = useI18n();
   if (diagnostic.kind === "orphan_link" || diagnostic.kind === "link_cycle") {
     return null;
   }
@@ -261,7 +274,7 @@ function RowSubject({
   if (!target) return null;
   return (
     <span className="brokenLinks__rowSubject">
-      on <strong>{target.title}</strong>
+      {t("workTopdownBrokenLinksOn")} <strong>{target.title}</strong>
     </span>
   );
 }
@@ -315,6 +328,7 @@ function BaseDiagnosticBody({
   indexes: WorkGraphIndexes;
   onOpenObject: (id: string | null) => void;
 }): JSX.Element {
+  const { t } = useI18n();
   const target = diagnostic.objectId
     ? indexes.objectsById.get(diagnostic.objectId)
     : undefined;
@@ -327,16 +341,18 @@ function BaseDiagnosticBody({
             className="brokenLinks__open"
             onClick={() => onOpenObject(diagnostic.objectId)}
           >
-            Open in drawer →
+            {t("workTopdownBrokenLinksOpenInDrawer")} →
           </button>
         ) : (
           <span className="brokenLinks__broken">
-            object id <code>{diagnostic.objectId}</code> not in projection
+            {t("workTopdownBrokenLinksObjectNotInProjection", {
+              objectId: diagnostic.objectId,
+            })}
           </span>
         )
       ) : (
         <span className="brokenLinks__system">
-          systemic — no specific object
+          {t("workTopdownBrokenLinksNoSpecificObject")}
         </span>
       )}
     </footer>
@@ -362,6 +378,7 @@ function OrphanLinkBody({
   const targetUnresolved =
     diagnostic.unresolvedSide === "target" ||
     diagnostic.unresolvedSide === "both";
+  const { t } = useI18n();
   return (
     <div className="brokenLinks__linkBody">
       <div className="brokenLinks__endpoints">
@@ -387,15 +404,17 @@ function OrphanLinkBody({
           }}
           title={
             removable
-              ? "Remove this link via the producer pipeline."
-              : "Demo seed — restart the renderer to clear, or write through the producer pipeline first."
+              ? t("workTopdownBrokenLinksRemoveTooltipRemovable")
+              : t("workTopdownBrokenLinksRemoveTooltipDemoSeed")
           }
         >
-          {removing ? "Removing…" : "Remove this link"}
+          {removing
+            ? t("workTopdownBrokenLinksRemovingInProgress")
+            : t("workTopdownBrokenLinksRemoveAction")}
         </button>
         {!removable ? (
           <span className="brokenLinks__pendingNote">
-            Demo fixture — only producer-stored links can be removed via API.
+            {t("workTopdownBrokenLinksRemovableOnlyDemo")}
           </span>
         ) : null}
       </footer>
@@ -416,6 +435,7 @@ function CycleLinkBody({
   onRemove: (linkId: string) => Promise<void>;
   removingId: string | null;
 }): JSX.Element {
+  const { t } = useI18n();
   return (
     <div className="brokenLinks__linkBody">
       <ol className="brokenLinks__cycle">
@@ -445,7 +465,9 @@ function CycleLinkBody({
       </ol>
       <footer className="brokenLinks__rowFoot brokenLinks__rowFoot--cycle">
         <span className="brokenLinks__cycleActionsLabel">
-          Removable rows ({diagnostic.cycleLinkIds.length}):
+          {t("workTopdownBrokenLinksCycleRemovableRows", {
+            count: `${diagnostic.cycleLinkIds.length}`,
+          })}
         </span>
         <ul className="brokenLinks__cycleActions">
           {diagnostic.cycleLinkIds.map((linkId) => {
@@ -462,16 +484,18 @@ function CycleLinkBody({
                   }}
                   title={
                     removable
-                      ? "Remove this link via the producer pipeline."
-                      : "Demo seed — only producer-stored links can be removed via API."
+                      ? t("workTopdownBrokenLinksRemoveTooltipRemovable")
+                      : t("workTopdownBrokenLinksRemoveTooltipDemoSeed")
                   }
                 >
-                  {removing ? "Removing…" : `Remove `}
+                  {removing
+                    ? t("workTopdownBrokenLinksRemovingInProgress")
+                    : t("workTopdownBrokenLinksRemoveAction")}
                   {!removing ? <code>{linkId}</code> : null}
                 </button>
-              </li>
-            );
-          })}
+                </li>
+              );
+            })}
         </ul>
       </footer>
     </div>
@@ -490,7 +514,8 @@ function EndpointPill({
   unresolved,
 }: EndpointPillProps): JSX.Element {
   const summary = indexes.objectsByCoreRef.get(endpointKey(endpoint));
-  const familyLabel = KIND_LABEL[endpoint.recordFamily];
+  const { t } = useI18n();
+  const familyLabel = getWorkGraphKindLabel(endpoint.recordFamily, t);
   return (
     <span
       className={
@@ -503,7 +528,9 @@ function EndpointPill({
         {summary ? summary.title : <code>{endpoint.recordId}</code>}
       </span>
       {unresolved ? (
-        <span className="brokenLinks__deletedMark">(deleted)</span>
+        <span className="brokenLinks__deletedMark">
+          {t("workTopdownBrokenLinksDeletedLabel")}
+        </span>
       ) : null}
     </span>
   );

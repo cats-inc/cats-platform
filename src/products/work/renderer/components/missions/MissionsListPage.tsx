@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 
 import { formatRelative } from "../topdown/shared";
+import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import { useMissionsQuery } from "../../state/queries/missionsQuery.js";
 import { buildWorkMissionPath } from "../../workPaths.js";
 import "./missions.css";
@@ -8,35 +9,33 @@ import "./missions.css";
 export function MissionsListPage(): JSX.Element {
   const missionsQuery = useMissionsQuery();
   const missions = missionsQuery.data?.missions ?? [];
+  const { t } = useI18n();
 
   return (
     <div className="missionsList">
       <header className="channelTopBar missionsListTopBar">
         <div className="channelTopBarStart missionsListTopBar__start">
           <h1 className="channelTopBarTitle missionsListTopBar__title">
-            Missions
+            {t("workMissionsListTitle")}
           </h1>
           <span className="missionsListTopBar__count">{missions.length}</span>
         </div>
         <div className="channelTopBarCenter missionsListTopBar__center">
-          <p className="missionsListTopBar__lede">
-            Agent missions — distinct from tasks. Anchored to a Work Item
-            when planned, or fully internal when spawned by an agent.
-          </p>
+          <p className="missionsListTopBar__lede">{t("workMissionsListLede")}</p>
         </div>
         <div className="channelTopBarEnd missionsListTopBar__end" />
       </header>
       <main className="missionsList__main">
         {missionsQuery.isPending ? (
-          <p className="missionsList__empty">Loading missions…</p>
+          <p className="missionsList__empty">{t("workMissionsListLoading")}</p>
         ) : missionsQuery.isError ? (
           <p className="missionsList__empty">
-            Failed to load missions: {String((missionsQuery.error as Error).message)}
+            {t("workMissionsListLoadError", {
+              errorMessage: String((missionsQuery.error as Error).message),
+            })}
           </p>
         ) : missions.length === 0 ? (
-          <p className="missionsList__empty">
-            No missions yet.
-          </p>
+          <p className="missionsList__empty">{t("workMissionsListEmpty")}</p>
         ) : (
           <ul className="missionsList__list">
             {missions.map((mission) => (
@@ -44,7 +43,9 @@ export function MissionsListPage(): JSX.Element {
                 <Link
                   to={buildWorkMissionPath(mission.id)}
                   className="missionsList__rowLink"
-                  aria-label={`Open mission ${mission.title}`}
+                  aria-label={t("workMissionsListOpenMissionAria", {
+                    title: mission.title,
+                  })}
                 >
                   <div className="missionsList__rowMain">
                     <span

@@ -10,9 +10,11 @@ import {
 
 import { useQueryClient } from "@tanstack/react-query";
 
+import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import { createWorkLink } from "../../api/links.js";
 import { WORK_GRAPH_QUERY_KEY } from "../../state/queries/workGraphQuery.js";
-import { endpointKey, KIND_LABEL } from "./shared";
+import { endpointKey, getWorkGraphKindLabel } from "./shared";
+import type { MessageKey } from "../../../../../shared/i18n/index.js";
 import type {
   WorkGraphLinkEndpointKind,
   WorkGraphLinkEndpointRef,
@@ -22,6 +24,35 @@ import type {
 } from "./types";
 
 type SubmittableKind = WorkGraphLinkViewKind;
+type KindOption = { value: SubmittableKind; label: MessageKey; help: MessageKey };
+
+const KIND_OPTIONS: ReadonlyArray<KindOption> = [
+  {
+    value: "blocks",
+    label: "workTopdownLinkageViewKindBlocksLabel",
+    help: "workTopdownLinkKindBlocksHelp",
+  },
+  {
+    value: "blocked_by",
+    label: "workTopdownLinkageViewKindBlockedByLabel",
+    help: "workTopdownLinkKindBlockedByHelp",
+  },
+  {
+    value: "related_to",
+    label: "workTopdownLinkageViewKindRelatedToLabel",
+    help: "workTopdownLinkKindRelatedToHelp",
+  },
+  {
+    value: "duplicate_of",
+    label: "workTopdownLinkageViewKindDuplicateOfLabel",
+    help: "workTopdownLinkKindDuplicateOfHelp",
+  },
+  {
+    value: "follows",
+    label: "workTopdownLinkageViewKindFollowsLabel",
+    help: "workTopdownLinkKindFollowsHelp",
+  },
+];
 
 interface NewLinkDialogProps {
   selfRef: WorkGraphLinkEndpointRef;
@@ -30,25 +61,16 @@ interface NewLinkDialogProps {
   onCreated?: (linkId: string) => void;
 }
 
-const KIND_OPTIONS: ReadonlyArray<{ value: SubmittableKind; label: string; help: string }> = [
-  { value: "blocks", label: "Blocking", help: "This blocks the target." },
-  { value: "blocked_by", label: "Blocked by", help: "The target blocks this." },
-  { value: "related_to", label: "Related", help: "Related but no containment." },
-  { value: "duplicate_of", label: "Duplicate of", help: "This is a duplicate of the target." },
-  { value: "follows", label: "Follows", help: "This supersedes the target." },
-];
-
 const ENDPOINT_KINDS: ReadonlySet<WorkGraphLinkEndpointKind> = new Set([
   "project",
   "work_item",
   "task",
 ]);
+const NOTE_MAX_LENGTH = 280;
 
 function isPwt(o: WorkGraphObjectSummary): boolean {
   return ENDPOINT_KINDS.has(o.kind as WorkGraphLinkEndpointKind);
 }
-
-const NOTE_MAX_LENGTH = 280;
 
 export function NewLinkDialog({
   selfRef,
@@ -70,6 +92,7 @@ export function NewLinkDialog({
   const [note, setNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useI18n();
 
   useEffect(() => {
     titleInputRef.current?.focus();
@@ -104,6 +127,7 @@ export function NewLinkDialog({
   const selectedTarget = targetId
     ? graph.objects.find((o) => o.id === targetId) ?? null
     : null;
+  const selectedKindOption = KIND_OPTIONS.find((option) => option.value === kind);
 
   function onBackdropClick(event: ReactMouseEvent<HTMLDivElement>): void {
     if (event.target === event.currentTarget && !submitting) {
@@ -115,7 +139,7 @@ export function NewLinkDialog({
     event.preventDefault();
     if (!selectedTarget || submitting) return;
     if (!isPwt(selectedTarget)) {
-      setError("Target must be a Project, Work Item, or Task.");
+      setError(t("workTopdownNewLinkErrorInvalidTarget"));
       return;
     }
     const targetRefKind = selectedTarget.kind as WorkGraphLinkEndpointKind;
@@ -123,12 +147,16 @@ export function NewLinkDialog({
       targetRefKind === selfRef.recordFamily &&
       selectedTarget.sourceRecordId === selfRef.recordId
     ) {
-      setError("A link cannot point to itself.");
+      setError(t("workTopdownNewLinkErrorSelfLink"));
       return;
     }
     const trimmedNote = note.trim();
     if (trimmedNote.length > NOTE_MAX_LENGTH) {
-      setError(`Note must be ${NOTE_MAX_LENGTH} characters or fewer.`);
+      setError(
+        t("workTopdownNewLinkErrorNoteTooLong", {
+          max: `${NOTE_MAX_LENGTH}`,
+        }),
+      );
       return;
     }
 
@@ -145,7 +173,7 @@ export function NewLinkDialog({
       onCreated?.(result.link.id);
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to create link.");
+      setError(err instanceof Error ? err.message : t("workTopdownNewLinkErrorFailed"));
     } finally {
       setSubmitting(false);
     }
@@ -167,12 +195,12 @@ export function NewLinkDialog({
       >
         <header className="newLinkDialog__header">
           <h2 id={headingId} className="newLinkDialog__heading">
-            Add link
+            {t("workTopdownNewLinkDialogTitle")}
           </h2>
           <button
             type="button"
             className="newLinkDialog__close"
-            aria-label="Close"
+            aria-label={t("workTopdownNewLinkClose")}
             onClick={onClose}
             disabled={submitting}
           >
@@ -181,12 +209,15 @@ export function NewLinkDialog({
         </header>
         <form className="newLinkDialog__form" onSubmit={onSubmit}>
           <p className="newLinkDialog__sourceLine">
-            From <strong>{KIND_LABEL[selfRef.recordFamily]}</strong>{" "}
+            {t("workTopdownNewLinkSourcePrefix")}{" "}
+            <strong>{getWorkGraphKindLabel(selfRef.recordFamily, t)}</strong>{" "}
             <code>{selfRef.recordId}</code>
           </p>
 
           <label className="newLinkDialog__field" htmlFor={kindId}>
-            <span className="newLinkDialog__label">Relation</span>
+            <span className="newLinkDialog__label">
+              {t("workTopdownNewLinkRelationLabel")}
+            </span>
             <select
               id={kindId}
               className="newLinkDialog__select"
@@ -195,18 +226,18 @@ export function NewLinkDialog({
             >
               {KIND_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
-                  {option.label}
+                  {t(option.label)}
                 </option>
               ))}
             </select>
             <span className="newLinkDialog__hint">
-              {KIND_OPTIONS.find((o) => o.value === kind)?.help}
+              {selectedKindOption ? t(selectedKindOption.help) : ""}
             </span>
           </label>
 
           <div className="newLinkDialog__field">
             <label className="newLinkDialog__label" htmlFor={targetSearchId}>
-              Target
+              {t("workTopdownNewLinkTargetLabel")}
             </label>
             <input
               ref={titleInputRef}
@@ -218,11 +249,17 @@ export function NewLinkDialog({
                 setTargetQuery(event.target.value);
                 setTargetId(null);
               }}
-              placeholder="Search Projects / Work Items / Tasks"
+              placeholder={t("workTopdownNewLinkTargetSearchPlaceholder", {
+                project: t("workTopdownAnchorProject"),
+                workItem: t("workTopdownAnchorWorkItem"),
+                task: t("workTopdownAnchorTask"),
+              })}
               autoComplete="off"
             />
             {candidates.length === 0 ? (
-              <p className="newLinkDialog__empty">No matches.</p>
+              <p className="newLinkDialog__empty">
+                {t("workTopdownNewLinkNoMatches")}
+              </p>
             ) : (
               <ul className="newLinkDialog__candidates">
                 {candidates.map((candidate) => {
@@ -238,7 +275,7 @@ export function NewLinkDialog({
                         onClick={() => setTargetId(candidate.id)}
                       >
                         <span className="newLinkDialog__candidateKind">
-                          {KIND_LABEL[candidate.kind]}
+                          {getWorkGraphKindLabel(candidate.kind, t)}
                         </span>
                         <span className="newLinkDialog__candidateTitle">
                           {candidate.title}
@@ -252,13 +289,15 @@ export function NewLinkDialog({
           </div>
 
           <label className="newLinkDialog__field" htmlFor={noteId}>
-            <span className="newLinkDialog__label">Note (optional)</span>
+            <span className="newLinkDialog__label">
+              {t("workTopdownNewLinkNoteLabel")}
+            </span>
             <textarea
               id={noteId}
               className="newLinkDialog__textarea"
               value={note}
               onChange={(event) => setNote(event.target.value)}
-              placeholder="Why is this relation worth recording?"
+              placeholder={t("workTopdownNewLinkNotePlaceholder")}
               rows={2}
               maxLength={NOTE_MAX_LENGTH}
             />
@@ -280,14 +319,14 @@ export function NewLinkDialog({
               onClick={onClose}
               disabled={submitting}
             >
-              Cancel
+              {t("workTopdownNewLinkCancel")}
             </button>
             <button
               type="submit"
               className="newLinkDialog__submitBtn"
               disabled={submitDisabled}
             >
-              {submitting ? "Saving…" : "Add link"}
+              {submitting ? t("workTopdownNewLinkSaving") : t("workTopdownLinkageAddAction")}
             </button>
           </footer>
         </form>

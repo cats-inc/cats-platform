@@ -5,6 +5,7 @@ import type {
   WorkScheduleRule,
   WorkScheduleTriggerReceipt,
 } from '../../api/schedules.js';
+import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import { useSchedulesQuery } from '../../state/queries/schedulesQuery.js';
 import { formatRelative } from '../topdown/shared';
 import { buildWorkSchedulePath } from '../../workPaths.js';
@@ -12,11 +13,13 @@ import {
   buildScheduleAuditExport,
   formatDateTime,
   formatScheduleSummary,
+  getScheduleReceiptStatusLabel,
   serializeScheduleAuditExport,
 } from './scheduleUiSupport.js';
 import './schedules.css';
 
 export function SchedulesListPage(): JSX.Element {
+  const { t } = useI18n();
   const schedulesQuery = useSchedulesQuery();
   const rules = schedulesQuery.data?.rules ?? [];
   const triggerReceipts = schedulesQuery.data?.triggerReceipts ?? [];
@@ -57,19 +60,21 @@ export function SchedulesListPage(): JSX.Element {
   const errorMessage = schedulesQuery.error
     ? schedulesQuery.error instanceof Error
       ? schedulesQuery.error.message
-      : 'Failed to load schedules.'
+      : t('workSchedulesListLoadErrorFallback')
     : null;
 
   return (
     <div className="schedulesList">
       <header className="channelTopBar schedulesListTopBar">
         <div className="channelTopBarStart schedulesListTopBar__start">
-          <h1 className="channelTopBarTitle schedulesListTopBar__title">Schedules</h1>
+          <h1 className="channelTopBarTitle schedulesListTopBar__title">
+            {t('workSchedulesListTitle')}
+          </h1>
           <span className="schedulesListTopBar__count">{sortedRules.length}</span>
         </div>
         <div className="channelTopBarCenter schedulesListTopBar__center">
           <p className="schedulesListTopBar__lede">
-            Scheduled execution fires only while Cats is running in v1.
+            {t('workSchedulesListLede')}
           </p>
         </div>
         <div className="channelTopBarEnd schedulesListTopBar__end">
@@ -79,7 +84,7 @@ export function SchedulesListPage(): JSX.Element {
             onClick={exportAudit}
             disabled={rules.length === 0 && triggerReceipts.length === 0}
           >
-            Export
+            {t('workSchedulesExportAction')}
           </button>
         </div>
       </header>
@@ -92,11 +97,10 @@ export function SchedulesListPage(): JSX.Element {
         ) : null}
 
         {schedulesQuery.isPending ? (
-          <p className="schedulesList__empty">Loading schedules…</p>
+          <p className="schedulesList__empty">{t('workSchedulesListLoading')}</p>
         ) : sortedRules.length === 0 ? (
           <p className="schedulesList__empty">
-            No schedules yet. Product surfaces create schedule rules from their
-            own workflows; this page audits and operates existing rules.
+            {t('workSchedulesListEmpty')}
           </p>
         ) : (
           <ul className="schedulesList__list">
@@ -121,21 +125,30 @@ function ScheduleRow({
   rule: WorkScheduleRule;
   latestReceipt: WorkScheduleTriggerReceipt | null;
 }): JSX.Element {
-  const summary = formatScheduleSummary(rule);
+  const { t } = useI18n();
+  const summary = formatScheduleSummary(rule, t);
   const nextFireText = rule.nextFireAt
-    ? `next ${formatDateTime(rule.nextFireAt, rule.timezone)}`
+    ? t('workScheduleNextFireChip', {
+      dateTime: formatDateTime(rule.nextFireAt, rule.timezone, t),
+    })
     : null;
   const triggerChip = latestReceipt
-    ? `${latestReceipt.status} · ${formatRelative(latestReceipt.actualFireAt)}`
+    ? t('workScheduleReceiptChip', {
+      status: getScheduleReceiptStatusLabel(latestReceipt.status, t),
+      relativeTime: formatRelative(latestReceipt.actualFireAt, t),
+    })
     : null;
   const enabledClass = rule.enabled ? 'enabled' : 'disabled';
+  const enabledLabel = rule.enabled
+    ? t('workScheduleEnabledStatus')
+    : t('workScheduleDisabledStatus');
 
   return (
     <li className="schedulesList__row">
       <Link
         to={buildWorkSchedulePath(rule.id)}
         className="schedulesList__rowLink"
-        aria-label={`Open schedule ${rule.title}`}
+        aria-label={t('workScheduleOpenAriaLabel', { scheduleTitle: rule.title })}
       >
         <div className="schedulesList__rowMain">
           <span
@@ -161,12 +174,12 @@ function ScheduleRow({
             </span>
           ) : null}
           <span className="schedulesList__metric--muted">
-            {formatRelative(rule.updatedAt)}
+            {formatRelative(rule.updatedAt, t)}
           </span>
           <span
             className={`schedulesList__statusPill schedulesList__statusPill--${enabledClass}`}
           >
-            {enabledClass}
+            {enabledLabel}
           </span>
         </div>
       </Link>

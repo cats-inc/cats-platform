@@ -8,6 +8,7 @@ import {
   updateWorkSchedule,
   type WorkScheduleRule,
 } from '../../api/schedules.js';
+import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import {
   scheduleDetailQueryKey,
   SCHEDULES_QUERY_KEY,
@@ -18,10 +19,17 @@ import { WORK_SCHEDULES_PATH } from '../../workPaths.js';
 import {
   formatDateTime,
   formatScheduleSummary,
+  getScheduleConcurrencyPolicyLabel,
+  getScheduleMisfirePolicyLabel,
+  getScheduleMissionPolicyLabel,
+  getScheduleReceiptStatusLabel,
+  getScheduleRetryBackoffLabel,
+  getScheduleTriggerReasonLabel,
 } from './scheduleUiSupport.js';
 import './schedules.css';
 
 export function SchedulesDetailPage(): JSX.Element {
+  const { t } = useI18n();
   const { scheduleId } = useParams<{ scheduleId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -39,7 +47,7 @@ export function SchedulesDetailPage(): JSX.Element {
 
   const toggleMutation = useMutation({
     mutationFn: async (next: boolean) => {
-      if (!rule) throw new Error('Schedule rule not loaded.');
+      if (!rule) throw new Error(t('workScheduleRuleNotLoadedError'));
       await updateWorkSchedule(rule.id, { enabled: next });
     },
     onSuccess: invalidate,
@@ -47,7 +55,7 @@ export function SchedulesDetailPage(): JSX.Element {
 
   const testFireMutation = useMutation({
     mutationFn: async () => {
-      if (!rule) throw new Error('Schedule rule not loaded.');
+      if (!rule) throw new Error(t('workScheduleRuleNotLoadedError'));
       await testFireWorkSchedule(rule.id);
     },
     onSuccess: invalidate,
@@ -55,7 +63,7 @@ export function SchedulesDetailPage(): JSX.Element {
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      if (!rule) throw new Error('Schedule rule not loaded.');
+      if (!rule) throw new Error(t('workScheduleRuleNotLoadedError'));
       await removeWorkSchedule(rule.id);
     },
     onSuccess: async () => {
@@ -71,7 +79,7 @@ export function SchedulesDetailPage(): JSX.Element {
     if (!rule) return;
     if (
       !window.confirm(
-        `Delete schedule "${rule.title}"?\n\nThis cannot be undone. Future fires stop and the rule's trigger history is removed; admitted Mission/Run records remain.`,
+        t('workScheduleDeleteConfirmation', { scheduleTitle: rule.title }),
       )
     ) {
       return;
@@ -92,7 +100,7 @@ export function SchedulesDetailPage(): JSX.Element {
   const actionErrorMessage = actionError
     ? actionError instanceof Error
       ? actionError.message
-      : 'Schedule action failed.'
+      : t('workScheduleActionFailed')
     : null;
 
   if (!scheduleId) {
@@ -102,7 +110,7 @@ export function SchedulesDetailPage(): JSX.Element {
     return (
       <div className="scheduleDetail">
         <ScheduleDetailTopBar
-          title="Loading…"
+          title={t('workScheduleLoadingTitle')}
           rule={null}
           togglePending={false}
           testFirePending={false}
@@ -112,7 +120,7 @@ export function SchedulesDetailPage(): JSX.Element {
           onDelete={() => undefined}
         />
         <main className="scheduleDetail__main">
-          <p className="scheduleDetail__empty">Loading schedule…</p>
+          <p className="scheduleDetail__empty">{t('workScheduleLoadingLabel')}</p>
         </main>
       </div>
     );
@@ -121,10 +129,14 @@ export function SchedulesDetailPage(): JSX.Element {
     const detailErrorMessage = detailQuery.error
       ? detailQuery.error instanceof Error
         ? detailQuery.error.message
-        : 'Failed to load schedule.'
+        : t('workScheduleLoadFailed')
       : null;
     return <ScheduleNotFound scheduleId={scheduleId} message={detailErrorMessage} />;
   }
+
+  const targetKindLabel = rule.missionTemplate.target.kind === 'cat'
+    ? t('workScheduleTargetKindCat')
+    : t('workScheduleTargetKindAgent');
 
   return (
     <div className="scheduleDetail">
@@ -146,38 +158,62 @@ export function SchedulesDetailPage(): JSX.Element {
         ) : null}
 
         <section className="scheduleDetail__section">
-          <h2 className="scheduleDetail__sectionHeading">Overview</h2>
+          <h2 className="scheduleDetail__sectionHeading">
+            {t('workScheduleOverviewTitle')}
+          </h2>
           <dl className="scheduleDetail__summary">
-            <SummaryRow label="Schedule" value={formatScheduleSummary(rule)} />
-            <SummaryRow label="Timezone" value={rule.timezone} />
-            <SummaryRow label="Revision" value={`r${rule.revision}`} mono />
             <SummaryRow
-              label="Target"
-              value={`${rule.missionTemplate.target.kind}:${rule.missionTemplate.target.id}`}
+              label={t('workScheduleScheduleLabel')}
+              value={formatScheduleSummary(rule, t)}
+            />
+            <SummaryRow label={t('workScheduleTimezoneLabel')} value={rule.timezone} />
+            <SummaryRow
+              label={t('workScheduleRevisionLabel')}
+              value={`r${rule.revision}`}
               mono
             />
             <SummaryRow
-              label="Origin"
-              value={rule.missionTemplate.originSurface}
+              label={t('workScheduleTargetLabel')}
+              value={`${targetKindLabel}:${rule.missionTemplate.target.id}`}
+              mono
             />
             <SummaryRow
-              label="Mission policy"
-              value={rule.executionPolicy.missionPolicy}
+              label={t('workScheduleOriginLabel')}
+              value={t('workScheduleOriginSchedule')}
             />
             <SummaryRow
-              label="Concurrency"
-              value={rule.executionPolicy.concurrencyPolicy}
+              label={t('workScheduleMissionPolicyLabel')}
+              value={getScheduleMissionPolicyLabel(
+                rule.executionPolicy.missionPolicy,
+                t,
+              )}
             />
             <SummaryRow
-              label="Misfire"
-              value={rule.executionPolicy.misfirePolicy}
+              label={t('workScheduleConcurrencyLabel')}
+              value={getScheduleConcurrencyPolicyLabel(
+                rule.executionPolicy.concurrencyPolicy,
+                t,
+              )}
             />
             <SummaryRow
-              label="Retry"
+              label={t('workScheduleMisfireLabel')}
+              value={getScheduleMisfirePolicyLabel(
+                rule.executionPolicy.misfirePolicy,
+                t,
+              )}
+            />
+            <SummaryRow
+              label={t('workScheduleRetryLabel')}
               value={
                 rule.executionPolicy.retryPolicy.maxAttempts === 0
-                  ? 'none'
-                  : `${rule.executionPolicy.retryPolicy.maxAttempts}× ${rule.executionPolicy.retryPolicy.backoff}`
+                  ? t('workScheduleRetryNone')
+                  : t('workScheduleRetryPolicyValue', {
+                    maxAttempts: rule.executionPolicy.retryPolicy.maxAttempts,
+                    backoff: getScheduleRetryBackoffLabel(
+                      rule.executionPolicy.retryPolicy.backoff,
+                      t,
+                    ),
+                  })
               }
             />
           </dl>
@@ -187,23 +223,25 @@ export function SchedulesDetailPage(): JSX.Element {
         </section>
 
         <section className="scheduleDetail__section">
-          <h2 className="scheduleDetail__sectionHeading">Diagnostics</h2>
+          <h2 className="scheduleDetail__sectionHeading">
+            {t('workScheduleDiagnosticsTitle')}
+          </h2>
           <dl className="scheduleDetail__summary">
             <SummaryRow
-              label="Next fire"
-              value={formatDateTime(rule.nextFireAt, rule.timezone)}
+              label={t('workScheduleNextFireLabel')}
+              value={formatDateTime(rule.nextFireAt, rule.timezone, t)}
             />
             <SummaryRow
-              label="Last scheduled fire"
-              value={formatDateTime(rule.lastFireAt, rule.timezone)}
+              label={t('workScheduleLastScheduledFireLabel')}
+              value={formatDateTime(rule.lastFireAt, rule.timezone, t)}
             />
             <SummaryRow
-              label="Last run"
-              value={rule.lastRunId ?? 'None'}
+              label={t('workScheduleLastRunLabel')}
+              value={rule.lastRunId ?? t('workScheduleDateNone')}
               mono={Boolean(rule.lastRunId)}
             />
             <SummaryRow
-              label="Consecutive failures"
+              label={t('workScheduleConsecutiveFailuresLabel')}
               value={String(rule.consecutiveFailures ?? 0)}
             />
           </dl>
@@ -211,31 +249,42 @@ export function SchedulesDetailPage(): JSX.Element {
             {!rule.enabled ? (
               <DiagnosticPill
                 tone={rule.pausedAt ? 'bad' : 'muted'}
-                text={rule.pauseReason ?? 'Disabled: no future fires will be evaluated.'}
+                text={
+                  rule.pauseReason ?? t('workScheduleDisabledDiagnosticFallback')
+                }
               />
             ) : null}
             {rule.retryState ? (
               <DiagnosticPill
                 tone="warn"
-                text={[
-                  `Retry ${rule.retryState.attempt}/${rule.retryState.maxAttempts}`,
-                  formatDateTime(rule.retryState.nextRetryAt, rule.timezone),
-                ].join(' at ')}
+                text={t('workScheduleRetryStatePill', {
+                  attempt: rule.retryState.attempt,
+                  maxAttempts: rule.retryState.maxAttempts,
+                  dateTime: formatDateTime(rule.retryState.nextRetryAt, rule.timezone, t),
+                })}
               />
             ) : null}
             {rule.lastFailure ? (
-              <DiagnosticPill tone="bad" text={`Last failure: ${rule.lastFailure}`} />
+              <DiagnosticPill
+                tone="bad"
+                text={t('workScheduleLastFailurePill', {
+                  failure: rule.lastFailure,
+                })}
+              />
             ) : null}
           </div>
         </section>
 
         <section className="scheduleDetail__section">
           <h2 className="scheduleDetail__sectionHeading">
-            Recent triggers
-            <span className="scheduleDetail__count">{sortedReceipts.length}</span>
+            {t('workScheduleRecentTriggersTitle', {
+              count: sortedReceipts.length,
+            })}
           </h2>
           {sortedReceipts.length === 0 ? (
-            <p className="scheduleDetail__empty">No trigger receipts yet.</p>
+            <p className="scheduleDetail__empty">
+              {t('workScheduleNoTriggerReceipts')}
+            </p>
           ) : (
             <ol className="scheduleDetail__triggerList">
               {sortedReceipts.map((receipt) => (
@@ -243,16 +292,18 @@ export function SchedulesDetailPage(): JSX.Element {
                   <span
                     className={`scheduleDetail__triggerStatus scheduleDetail__triggerStatus--${receipt.status}`}
                   >
-                    {receipt.status}
+                    {getScheduleReceiptStatusLabel(receipt.status, t)}
                   </span>
                   <span className="scheduleDetail__triggerReason">
-                    {receipt.reason}
+                    {getScheduleTriggerReasonLabel(receipt.reason, t)}
                     {typeof receipt.metadata.retryAttempt === 'number'
-                      ? ` #${receipt.metadata.retryAttempt}`
+                      ? t('workScheduleRetryAttemptSuffix', {
+                        attempt: receipt.metadata.retryAttempt,
+                      })
                       : ''}
                   </span>
                   <span className="scheduleDetail__triggerWhen">
-                    {formatRelative(receipt.actualFireAt)}
+                    {formatRelative(receipt.actualFireAt, t)}
                   </span>
                   {receipt.runId ? (
                     <code className="scheduleDetail__triggerRun">{receipt.runId}</code>
@@ -288,6 +339,7 @@ function ScheduleDetailTopBar({
   onTestFire,
   onDelete,
 }: ScheduleDetailTopBarProps): JSX.Element {
+  const { t } = useI18n();
   const busy = togglePending || testFirePending || deletePending;
   return (
     <header className="channelTopBar scheduleDetailTopBar">
@@ -295,7 +347,7 @@ function ScheduleDetailTopBar({
         <Link
           to={WORK_SCHEDULES_PATH}
           className="scheduleDetailTopBar__back"
-          aria-label="Back to schedules"
+          aria-label={t('workScheduleBackArrowLabel')}
         >
           <svg
             width="12"
@@ -310,7 +362,7 @@ function ScheduleDetailTopBar({
           >
             <path d="M7.5 2L3.5 6l4 4" />
           </svg>
-          <span>Schedules</span>
+          <span>{t('workScheduleBackLabel')}</span>
         </Link>
       </div>
       <div className="channelTopBarCenter scheduleDetailTopBar__center">
@@ -336,7 +388,9 @@ function ScheduleDetailTopBar({
               onClick={onTestFire}
               disabled={busy}
             >
-              {testFirePending ? 'Firing…' : 'Test fire'}
+              {testFirePending
+                ? t('workScheduleTestFireBusyLabel')
+                : t('workScheduleTestFireLabel')}
             </button>
             <button
               type="button"
@@ -345,19 +399,21 @@ function ScheduleDetailTopBar({
               disabled={busy}
             >
               {togglePending
-                ? 'Updating…'
+                ? t('workScheduleUpdatingLabel')
                 : rule.enabled
-                  ? 'Disable'
-                  : 'Enable'}
+                  ? t('workScheduleDisableLabel')
+                  : t('workScheduleEnableLabel')}
             </button>
             <button
               type="button"
               className="schedulesList__destructiveButton"
               onClick={onDelete}
               disabled={busy}
-              aria-label="Delete schedule"
+              aria-label={t('workScheduleDeleteAriaLabel')}
             >
-              {deletePending ? 'Deleting…' : 'Delete'}
+              {deletePending
+                ? t('workScheduleDeleteBusyLabel')
+                : t('workScheduleDeleteLabel')}
             </button>
             <span
               className={
@@ -367,7 +423,9 @@ function ScheduleDetailTopBar({
                   : ' schedulesList__statusPill--disabled')
               }
             >
-              {rule.enabled ? 'enabled' : 'disabled'}
+              {rule.enabled
+                ? t('workScheduleEnabledStatus')
+                : t('workScheduleDisabledStatus')}
             </span>
           </>
         ) : null}
@@ -414,6 +472,9 @@ function ScheduleNotFound({
   scheduleId: string | null;
   message?: string | null;
 }): JSX.Element {
+  const { t } = useI18n();
+  const missingScheduleId = scheduleId ?? t('workScheduleMissingIdLabel');
+
   return (
     <div className="scheduleDetail">
       <header className="channelTopBar scheduleDetailTopBar">
@@ -422,19 +483,22 @@ function ScheduleNotFound({
             to={WORK_SCHEDULES_PATH}
             className="scheduleDetailTopBar__back"
           >
-            <span>← Schedules</span>
+            <span>{t('workScheduleBackArrowLabel')}</span>
           </Link>
         </div>
         <div className="channelTopBarCenter scheduleDetailTopBar__center">
-          <h1 className="channelTopBarTitle scheduleDetailTopBar__title">Not found</h1>
+          <h1 className="channelTopBarTitle scheduleDetailTopBar__title">
+            {t('workScheduleNotFoundTitle')}
+          </h1>
         </div>
       </header>
       <main className="scheduleDetail__main">
         <p className="scheduleDetail__empty">
           {message ?? (
             <>
-              Schedule <code>{scheduleId ?? '(missing id)'}</code> is not in the current
-              state.
+              {t('workScheduleNotFoundPrefix')}{' '}
+              <code>{missingScheduleId}</code>{' '}
+              {t('workScheduleNotFoundSuffix')}
             </>
           )}
         </p>

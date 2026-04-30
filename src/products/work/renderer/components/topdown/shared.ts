@@ -8,6 +8,7 @@ import type {
   WorkGraphObjectSummary,
   WorkGraphProjection,
 } from "./types";
+import type { MessageKey } from "../../../../../shared/i18n/index.js";
 
 export {
   endpointKey,
@@ -15,6 +16,50 @@ export {
   type LinkProjectionResult,
 } from "../../../shared/workGraphProjection.js";
 
+const WORKGRAPH_KIND_LABEL_KEY: Record<WorkGraphObjectKind, MessageKey> = {
+  agent: "workObjectKindAgent",
+  container: "workObjectKindContainer",
+  conversation: "workObjectKindConversation",
+  turn: "workObjectKindTurn",
+  lane: "workObjectKindLane",
+  project: "workObjectKindProject",
+  work_item: "workObjectKindWorkItem",
+  task: "workObjectKindTask",
+  mission: "workObjectKindMission",
+  run: "workObjectKindRun",
+  artifact: "workObjectKindArtifact",
+  activity: "workObjectKindActivity",
+  outcome: "workObjectKindOutcome",
+  approval_binding: "workObjectKindApprovalBinding",
+};
+
+const WORKGRAPH_ATTENTION_LABEL_KEY: Partial<
+  Record<WorkAttentionState, MessageKey>
+> = {
+  decision_needed: "workObjectAttentionDecisionNeeded",
+  blocked: "workObjectAttentionBlocked",
+  failed: "workObjectAttentionFailed",
+  ready_to_review: "workObjectAttentionReadyToReview",
+  recently_shipped: "workObjectAttentionRecentlyShipped",
+};
+
+/**
+ * Backward compatibility for older renderer surfaces.
+ * New work uses `getWorkGraphAttentionLabel` and top-down keys for
+ * locale-aware output.
+ */
+export const ATTENTION_LABEL: Partial<Record<WorkAttentionState, string>> = {
+  decision_needed: "Decision",
+  blocked: "Blocked",
+  failed: "Failed",
+  ready_to_review: "Review",
+  recently_shipped: "Shipped",
+};
+
+/**
+ * Backward compatibility for older renderer surfaces.
+ * New work should use `getWorkGraphKindLabel` to keep labels in i18n.
+ */
 export const KIND_LABEL: Record<WorkGraphObjectKind, string> = {
   agent: "Agent",
   container: "Container",
@@ -32,13 +77,21 @@ export const KIND_LABEL: Record<WorkGraphObjectKind, string> = {
   approval_binding: "Approval",
 };
 
-export const ATTENTION_LABEL: Partial<Record<WorkAttentionState, string>> = {
-  decision_needed: "Decision",
-  blocked: "Blocked",
-  failed: "Failed",
-  ready_to_review: "Review",
-  recently_shipped: "Shipped",
-};
+export function getWorkGraphKindLabel(
+  kind: WorkGraphObjectKind,
+  t: (key: MessageKey, values?: Record<string, string | number>) => string,
+): string {
+  const key = WORKGRAPH_KIND_LABEL_KEY[kind];
+  return key ? t(key) : kind.replace(/_/g, " ");
+}
+
+export function getWorkGraphAttentionLabel(
+  attention: WorkAttentionState,
+  t: (key: MessageKey, values?: Record<string, string | number>) => string,
+): string | null {
+  const key = WORKGRAPH_ATTENTION_LABEL_KEY[attention];
+  return key ? t(key) : attention === "none" ? null : attention;
+}
 
 /** Reverse-lookup indexes built from the authoritative top-level
  *  `evidenceAttachments` and `gateDecorators` collections (SPEC-083 FR7). */
@@ -148,16 +201,35 @@ export function summarizeEvidence(
   return c;
 }
 
-export function formatRelative(iso: string): string {
-  const t = Date.parse(iso);
-  if (Number.isNaN(t)) return iso;
-  const deltaMs = Date.now() - t;
-  if (deltaMs < 0) return "just now";
+export function formatRelative(
+  iso: string,
+  t?: (key: MessageKey, values?: Record<string, string | number>) => string,
+): string {
+  const translate = t ?? ((key: MessageKey, values?: Record<string, string | number>): string => {
+    const count = values?.count === undefined ? "" : values.count;
+    if (key === "workTopdownRelativeJustNow") return "just now";
+    if (key === "workTopdownRelativeMinutesAgo") return `${count}m ago`;
+    if (key === "workTopdownRelativeHoursAgo") return `${count}h ago`;
+    if (key === "workTopdownRelativeDaysAgo") return `${count}d ago`;
+    return String(key);
+  });
+  const parsed = Date.parse(iso);
+  if (Number.isNaN(parsed)) return iso;
+  const deltaMs = Date.now() - parsed;
+  if (deltaMs < 0) return translate("workTopdownRelativeJustNow");
   const minutes = Math.round(deltaMs / 60_000);
-  if (minutes < 1) return "just now";
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1) return translate("workTopdownRelativeJustNow");
+  if (minutes < 60)
+    return translate("workTopdownRelativeMinutesAgo", {
+      count: `${minutes}`,
+    });
   const hours = Math.round(minutes / 60);
-  if (hours < 48) return `${hours}h ago`;
+  if (hours < 48)
+    return translate("workTopdownRelativeHoursAgo", {
+      count: `${hours}`,
+    });
   const days = Math.round(hours / 24);
-  return `${days}d ago`;
+  return translate("workTopdownRelativeDaysAgo", {
+    count: `${days}`,
+  });
 }
