@@ -5,10 +5,7 @@ import { promisify } from 'node:util';
 
 import type { DesktopHostConfig } from './config.js';
 import type {
-  DesktopCliInventory,
-  DesktopCliInventoryEntry,
   DesktopPackagingPlan,
-  DesktopProviderSetupLocalProviderId,
   DesktopProviderSetupPlatform,
   DesktopProviderSetupPackId,
   DesktopSetupActionRecord,
@@ -20,7 +17,6 @@ import type {
   DesktopSetupSnapshot,
   DesktopSetupState,
 } from './contracts.js';
-import { DESKTOP_PROVIDER_SETUP_LOCAL_PROVIDERS } from './contracts.js';
 import { DESKTOP_SETUP_ASSETS } from './setupAssets.js';
 
 interface ExecFileResult {
@@ -101,112 +97,6 @@ function createDefaultSetupState(): DesktopSetupState {
   return {
     lastAction: null,
     updatedAt: null,
-    installedHelperIds: [],
-  };
-}
-
-const NATIVE_INSTALLER_HELPER_SUFFIX = '-native-installer';
-const LOCAL_MODEL_INSTALLER_HELPER_SUFFIX = '-local-model-installer';
-
-// Mapping from provider id (cats-runtime canonical) to the helper id suffix
-// used in DESKTOP_SETUP_ASSETS. Most use the `-${providerId}-native-installer`
-// pattern; ollama uses the local-model installer naming.
-const PROVIDER_TO_HELPER_SUFFIX: Record<DesktopProviderSetupLocalProviderId, string> = {
-  claude_code: 'claude' + NATIVE_INSTALLER_HELPER_SUFFIX,
-  cursor_agent: 'cursor' + NATIVE_INSTALLER_HELPER_SUFFIX,
-  codex: 'codex' + NATIVE_INSTALLER_HELPER_SUFFIX,
-  gemini: 'gemini' + NATIVE_INSTALLER_HELPER_SUFFIX,
-  copilot: 'copilot' + NATIVE_INSTALLER_HELPER_SUFFIX,
-  opencode: 'opencode' + NATIVE_INSTALLER_HELPER_SUFFIX,
-  kilo: 'kilo' + NATIVE_INSTALLER_HELPER_SUFFIX,
-  kiro: 'kiro' + NATIVE_INSTALLER_HELPER_SUFFIX,
-  goose: 'goose' + NATIVE_INSTALLER_HELPER_SUFFIX,
-  junie: 'junie' + NATIVE_INSTALLER_HELPER_SUFFIX,
-  auggie: 'auggie' + NATIVE_INSTALLER_HELPER_SUFFIX,
-  pi: 'pi' + NATIVE_INSTALLER_HELPER_SUFFIX,
-  ollama: 'ollama' + LOCAL_MODEL_INSTALLER_HELPER_SUFFIX,
-};
-
-const PROVIDER_LABEL: Record<DesktopProviderSetupLocalProviderId, string> = {
-  claude_code: 'Claude',
-  cursor_agent: 'Cursor',
-  codex: 'Codex',
-  gemini: 'Gemini',
-  copilot: 'Copilot',
-  opencode: 'Opencode',
-  kilo: 'Kilo',
-  kiro: 'Kiro',
-  goose: 'Goose',
-  junie: 'Junie',
-  auggie: 'Auggie',
-  pi: 'Pi',
-  ollama: 'Ollama',
-};
-
-function platformToHelperPrefix(platform: NodeJS.Platform): string | null {
-  if (platform === 'win32') return 'windows';
-  if (platform === 'darwin') return 'macos';
-  if (platform === 'linux') return 'linux';
-  return null;
-}
-
-export function applyDesktopSetupActionToInstalledHelpers(
-  state: DesktopSetupState,
-  action: DesktopSetupActionRecord,
-): string[] {
-  const current = Array.isArray(state.installedHelperIds) ? state.installedHelperIds : [];
-  if (action.runState !== 'completed') {
-    return current;
-  }
-  const isNativeInstaller = action.helperId.endsWith(NATIVE_INSTALLER_HELPER_SUFFIX)
-    || action.helperId.endsWith(LOCAL_MODEL_INSTALLER_HELPER_SUFFIX);
-  if (!isNativeInstaller) {
-    return current;
-  }
-  if (action.mode === 'uninstall') {
-    return current.filter((entry) => entry !== action.helperId);
-  }
-  if ((action.mode === 'apply' || action.mode === 'upgrade' || action.mode === 'force')
-    && action.status === 'ready') {
-    return current.includes(action.helperId)
-      ? current
-      : [...current, action.helperId];
-  }
-  return current;
-}
-
-export function buildDesktopCliInventory(
-  packaging: DesktopPackagingPlan,
-  state: DesktopSetupState,
-  platform: NodeJS.Platform = process.platform,
-): DesktopCliInventory {
-  const helperPrefix = platformToHelperPrefix(platform);
-  const helperById = new Map(
-    packaging.installer.providerSetup.helperCatalog.map((helper) => [helper.id, helper] as const),
-  );
-  const installedSet = new Set(
-    Array.isArray(state.installedHelperIds) ? state.installedHelperIds : [],
-  );
-  const candidates: DesktopCliInventoryEntry[] = DESKTOP_PROVIDER_SETUP_LOCAL_PROVIDERS.map((providerId) => {
-    const suffix = PROVIDER_TO_HELPER_SUFFIX[providerId];
-    const helperId = helperPrefix ? `${helperPrefix}-${suffix}` : '';
-    const helper = helperId ? helperById.get(helperId) ?? null : null;
-    return {
-      helperId,
-      providerId,
-      label: PROVIDER_LABEL[providerId],
-      installed: helperId !== '' && installedSet.has(helperId),
-      available: Boolean(helper),
-      supported: Boolean(helper && helperPrefix),
-    };
-  });
-  const installed = candidates
-    .filter((entry) => entry.installed)
-    .map((entry) => entry.helperId);
-  return {
-    installed,
-    total: installed.length,
-    candidates,
   };
 }
 

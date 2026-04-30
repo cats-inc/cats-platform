@@ -115,10 +115,5 @@ export function normalizePlatformShellSetupState(
     return setup;
   }
 
-  return {
-    ...createEmptyDesktopSetupState(),
-    installedHelperIds: Array.isArray(setup.installedHelperIds)
-      ? setup.installedHelperIds
-      : [],
-  };
+  return createEmptyDesktopSetupState();
 }

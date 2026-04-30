@@ -1,9 +1,7 @@
 import type {
   DesktopBackgroundState,
-  DesktopBootstrapPrerequisites,
   DesktopBootstrapSnapshot,
   DesktopBootstrapProgress,
-  DesktopCliInventory,
   DesktopHostAction,
   DesktopPackagingPlan,
   DesktopHostActionId,
@@ -20,11 +18,7 @@ import type { DesktopHealthStatus } from './contracts.js';
 import type { DesktopHostConfig } from './config.js';
 import { createDesktopBackgroundState } from './hostState.js';
 import { createDesktopPackagingPlan } from './packaging.js';
-import {
-  buildDesktopCliInventory,
-  describeSetupPack,
-  isOptionalCapabilityPackSetupAction,
-} from './setupBridge.js';
+import { describeSetupPack, isOptionalCapabilityPackSetupAction } from './setupBridge.js';
 import { createDefaultDesktopUpdateState } from './update.js';
 
 export interface ReadinessPayload {
@@ -106,7 +100,6 @@ interface BuildDesktopBootstrapSnapshotInput {
   packaging?: DesktopPackagingPlan;
   setup?: DesktopSetupState;
   hostStatePath?: string | null;
-  platform?: NodeJS.Platform;
 }
 
 interface WaitForServiceReadinessOptions {
@@ -695,21 +688,6 @@ export function buildDesktopBootstrapSnapshot(
   const hasAppHealth = Boolean(input.appHealth);
   const hasAppShell = Boolean(input.appShell);
   const requiresProviderDiagnostics = !setupCompleted;
-  const packagingForInventory = input.packaging ?? createDesktopPackagingPlan(input.config, {
-    generatedAt: now,
-    outputRoot: input.config.paths.packagingOutputRoot,
-  });
-  const setupForInventory = input.setup ?? {
-    lastAction: null,
-    updatedAt: null,
-    installedHelperIds: [],
-  };
-  const cliInventory: DesktopCliInventory = buildDesktopCliInventory(
-    packagingForInventory,
-    setupForInventory,
-    input.platform ?? process.platform,
-  );
-  const cliMissing = cliInventory.total === 0;
   let phase: DesktopBootstrapSnapshot['phase'];
   let status: DesktopBootstrapSnapshot['status'];
   let summary: string;
@@ -726,12 +704,6 @@ export function buildDesktopBootstrapSnapshot(
     phase = 'checking_prerequisites';
     status = 'degraded';
     summary = 'Local services are ready. Running prerequisite checks.';
-  } else if (cliMissing) {
-    phase = 'needs_prerequisites';
-    status = 'degraded';
-    summary = setupCompleteAt
-      ? 'No CLI is currently installed. Install one to continue using Cats.'
-      : 'Welcome. Install a CLI to get started with Cats.';
   } else if (!setupCompleted) {
     if (!hasRuntimeHealth) {
       phase = 'checking_prerequisites';
@@ -765,8 +737,14 @@ export function buildDesktopBootstrapSnapshot(
 
   const background = input.background ?? createDesktopBackgroundState(input.config);
   const updates = input.updates ?? createDefaultDesktopUpdateState(input.config.update);
-  const packaging = packagingForInventory;
-  const setup = setupForInventory;
+  const packaging = input.packaging ?? createDesktopPackagingPlan(input.config, {
+    generatedAt: now,
+    outputRoot: input.config.paths.packagingOutputRoot,
+  });
+  const setup = input.setup ?? {
+    lastAction: null,
+    updatedAt: null,
+  };
   const progress = buildBootstrapProgress(
     input.services,
     phase,
@@ -813,8 +791,5 @@ export function buildDesktopBootstrapSnapshot(
     setup,
     diagnostics: null,
     hostStatePath: input.hostStatePath ?? input.config.paths.hostStatePath,
-    prerequisites: {
-      cliInventory,
-    } satisfies DesktopBootstrapPrerequisites,
   };
 }

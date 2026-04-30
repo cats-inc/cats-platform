@@ -1,18 +1,7 @@
 import type { DesktopBootstrapSnapshot } from './contracts.js';
 
-type NavSnapshot = Pick<DesktopBootstrapSnapshot, 'phase' | 'app' | 'prerequisites'>;
-
-function isCliMissing(snapshot: NavSnapshot): boolean {
-  return Boolean(
-    snapshot.phase === 'needs_prerequisites'
-      && snapshot.prerequisites
-      && snapshot.prerequisites.cliInventory
-      && snapshot.prerequisites.cliInventory.total === 0,
-  );
-}
-
 export function resolveDesktopBootstrapNavigation(
-  snapshot: NavSnapshot,
+  snapshot: Pick<DesktopBootstrapSnapshot, 'phase' | 'app'>,
   options: {
     appBaseUrl: string;
     showWindowOnStartup: boolean;
@@ -30,13 +19,6 @@ export function resolveDesktopBootstrapNavigation(
     return `${options.appBaseUrl}${snapshot.app.entryPath}`;
   }
 
-  // CLI missing is a hard gate: stay on bootstrap page regardless of
-  // setupCompleteAt, so the user lands on the install card grid instead of
-  // an empty-shell chat.
-  if (snapshot.phase === 'needs_prerequisites' && isCliMissing(snapshot)) {
-    return null;
-  }
-
   if (snapshot.phase === 'needs_prerequisites' && snapshot.app.setupCompleteAt) {
     return `${options.appBaseUrl}${snapshot.app.entryPath}`;
   }
@@ -52,7 +34,7 @@ export function shouldNavigateDesktopBootstrap(options: {
 }
 
 export function shouldRevealDesktopBootstrapRecovery(
-  snapshot: NavSnapshot,
+  snapshot: Pick<DesktopBootstrapSnapshot, 'phase' | 'app'>,
   options: {
     showWindowOnStartup: boolean;
     windowRevealRequested: boolean;
@@ -63,12 +45,11 @@ export function shouldRevealDesktopBootstrapRecovery(
   }
 
   return snapshot.phase === 'failed'
-    || (snapshot.phase === 'needs_prerequisites'
-      && (!snapshot.app.setupCompleteAt || isCliMissing(snapshot)));
+    || (snapshot.phase === 'needs_prerequisites' && !snapshot.app.setupCompleteAt);
 }
 
 export function resolveDesktopWindowRevealNavigation(
-  snapshot: NavSnapshot | null,
+  snapshot: Pick<DesktopBootstrapSnapshot, 'phase' | 'app'> | null,
   options: {
     appBaseUrl: string;
     bootstrapPageVisible: boolean;
