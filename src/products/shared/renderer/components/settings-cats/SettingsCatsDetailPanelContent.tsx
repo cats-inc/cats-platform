@@ -18,7 +18,11 @@ import { messageKeys } from '../../../../../shared/i18n/messageKeys.js';
 import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import { MemoryEditorDialog } from './MemoryEditorDialog.js';
 import { TelegramConnectDialog } from './TelegramConnectDialog.js';
-import { SKILL_PROFILES, formatTransportTimestamp } from './viewSupport.js';
+import {
+  getMemoryCategoryLabel,
+  SKILL_PROFILES,
+  formatTransportTimestamp,
+} from './viewSupport.js';
 
 export interface SettingsCatsDetailPanelRegistryController {
   botForm: BotFormState;
@@ -348,11 +352,14 @@ function SettingsCatsMemoryRow({
   onDelete: () => void;
 }) {
   const { t } = useI18n();
+  const categoryLabel = getMemoryCategoryLabel(memoryRecord.category);
 
   return (
     <div className="memoryItem">
       <div>
-        <span className="statusChip statusChipMuted">{memoryRecord.category}</span>
+        <span className="statusChip statusChipMuted">
+          {categoryLabel ? t(categoryLabel) : memoryRecord.category}
+        </span>
         <span style={{ marginLeft: 8 }}>
           {memoryRecord.content.slice(0, 100)}
           {memoryRecord.content.length > 100 ? '...' : ''}

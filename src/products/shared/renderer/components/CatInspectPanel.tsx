@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { catInitials } from '../workspaceChatUtils.js';
 import { buildExecutionTargetSummary } from './ExecutionTarget.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { getCatSkillProfileLabel } from '../settings-cats/viewSupport.js';
 
 export interface CatInspectTarget {
   id: string;
@@ -41,6 +42,9 @@ export function CatInspectPanel({ cat, onClose }: CatInspectPanelProps) {
     model: cat.model,
     modelSelection: null,
   });
+  const skillProfileLabel = cat.skillProfile
+    ? getCatSkillProfileLabel(cat.skillProfile)
+    : null;
 
   return (
     <div className="catInspectPanel" ref={panelRef}>
@@ -91,7 +95,9 @@ export function CatInspectPanel({ cat, onClose }: CatInspectPanelProps) {
         {cat.skillProfile ? (
           <div className="catInspectField">
             <span className="catInspectFieldLabel">{t('sharedCatInspectSkillProfileLabel')}</span>
-            <span>{cat.skillProfile}</span>
+            <span>
+              {skillProfileLabel ? t(skillProfileLabel) : cat.skillProfile}
+            </span>
           </div>
         ) : null}
 
