@@ -5,31 +5,27 @@ import {
   EMPTY_WORK_GRAPH,
   useWorkGraphQuery,
 } from "../../state/queries/workGraphQuery.js";
+import { useI18n } from "../../../app/renderer/i18n/index.js";
 import { buildIndexes } from "./shared";
 import type { WorkGraphLayer, WorkGraphObjectSummary } from "./types";
 import { WorkObjectCard, pickEvidence } from "./WorkObjectCard";
 import { WorkObjectDrawer } from "./WorkObjectDrawer";
 import "./topdown.css";
 
-const PANES: Array<{ layer: WorkGraphLayer; label: string; description: string }> = [
+const PANES: ReadonlyArray<{ layer: WorkGraphLayer }> = [
   {
     layer: "interaction",
-    label: "Interaction",
-    description: "Who interacts, through which channel, in what shape.",
   },
   {
     layer: "planning",
-    label: "Planning",
-    description: "What the operator wants done — Project / WorkItem.",
   },
   {
     layer: "execution",
-    label: "Execution",
-    description: "How work runs — Task / Mission / Run.",
   },
 ];
 
 export function SystemMapPage(): JSX.Element {
+  const { t } = useI18n();
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedId = searchParams.get("selectedId");
 
@@ -66,21 +62,24 @@ export function SystemMapPage(): JSX.Element {
     <div className="topDownPage">
       <header className="channelTopBar topDownTopBar">
         <div className="channelTopBarStart topDownTopBar__start">
-          <span className="topDownTopBar__eyebrow">Top-down · structural</span>
-          <h1 className="channelTopBarTitle topDownTopBar__title">System Map</h1>
+          <span className="topDownTopBar__eyebrow">
+            {t("topdown.systemMapEyebrow")}
+          </span>
+          <h1 className="channelTopBarTitle topDownTopBar__title">
+            {t("topdown.systemMapTitle")}
+          </h1>
         </div>
         <div className="channelTopBarCenter topDownTopBar__center">
           <p className="topDownTopBar__lede">
-            Three canonical layers from <code>ADR-081</code> as cohabiting
-            cards — see what exists in the taxonomy, not what's urgent.
+            {t("topdown.systemMapLede")}
           </p>
         </div>
         <div className="channelTopBarEnd topDownTopBar__end">
           <span className="topDownTopBar__metric">
-            <strong>{counts.structural}</strong> structural
+            <strong>{counts.structural}</strong> {t("topdown.systemMapStructuralLabel")}
           </span>
           <span className="topDownTopBar__metric">
-            <strong>{counts.objects}</strong> total
+            <strong>{counts.objects}</strong> {t("topdown.systemMapTotalLabel")}
           </span>
           <span
             className={
@@ -90,7 +89,8 @@ export function SystemMapPage(): JSX.Element {
                 : "")
             }
           >
-            <strong>{counts.diagnostics}</strong> diagnostics
+            <strong>{counts.diagnostics}</strong>{" "}
+            {t("topdown.systemMapDiagnosticsLabel")}
           </span>
         </div>
       </header>
@@ -102,17 +102,23 @@ export function SystemMapPage(): JSX.Element {
               key={pane.layer}
               className="systemMap__pane"
               data-layer={pane.layer}
-              aria-label={`${pane.label} layer`}
+              aria-label={t("topdown.systemMapLayerAriaLabel", {
+                layerLabel: getSystemMapLayerLabel(pane.layer, t),
+              })}
             >
               <header className="systemMap__paneHead">
-                <h2 className="systemMap__paneTitle">{pane.label}</h2>
+                <h2 className="systemMap__paneTitle">
+                  {getSystemMapLayerLabel(pane.layer, t)}
+                </h2>
                 <span className="systemMap__paneCount">{objects.length}</span>
-                <p className="systemMap__paneDescription">{pane.description}</p>
+                <p className="systemMap__paneDescription">
+                  {getSystemMapLayerDescription(pane.layer, t)}
+                </p>
               </header>
               <div className="systemMap__paneBody">
                 {objects.length === 0 ? (
                   <p className="systemMap__paneEmpty">
-                    No objects in this layer.
+                    {t("topdown.systemMapLayerEmpty")}
                   </p>
                 ) : (
                   objects.map((o) => (
@@ -142,4 +148,26 @@ export function SystemMapPage(): JSX.Element {
       />
     </div>
   );
+}
+
+function getSystemMapLayerLabel(
+  layer: WorkGraphLayer,
+  t: (key: string, values?: Record<string, string>) => string,
+): string {
+  return layer === "interaction"
+    ? t("topdown.systemMapLayerInteractionLabel")
+    : layer === "planning"
+      ? t("topdown.systemMapLayerPlanningLabel")
+      : t("topdown.systemMapLayerExecutionLabel");
+}
+
+function getSystemMapLayerDescription(
+  layer: WorkGraphLayer,
+  t: (key: string, values?: Record<string, string>) => string,
+): string {
+  return layer === "interaction"
+    ? t("topdown.systemMapLayerInteractionDescription")
+    : layer === "planning"
+      ? t("topdown.systemMapLayerPlanningDescription")
+      : t("topdown.systemMapLayerExecutionDescription");
 }

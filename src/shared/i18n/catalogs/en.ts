@@ -419,6 +419,24 @@ export const enCatalog: MessageCatalog = {
   'work.topdown.anchorRun': 'Run',
   'work.topdown.anchorConversation': 'Conversation',
   'work.topdown.anchorsEmpty': 'No structural anchors.',
+  'work.topdown.systemMapEyebrow': 'Top-down · structural',
+  'work.topdown.systemMapTitle': 'System Map',
+  'work.topdown.systemMapLede':
+    'Three canonical layers from ADR-081 as cohabiting cards — see what exists in the taxonomy, not what is urgent.',
+  'work.topdown.systemMapStructuralLabel': 'structural',
+  'work.topdown.systemMapTotalLabel': 'total',
+  'work.topdown.systemMapDiagnosticsLabel': 'diagnostics',
+  'work.topdown.systemMapLayerAriaLabel': '{layerLabel} layer',
+  'work.topdown.systemMapLayerInteractionLabel': 'Interaction',
+  'work.topdown.systemMapLayerPlanningLabel': 'Planning',
+  'work.topdown.systemMapLayerExecutionLabel': 'Execution',
+  'work.topdown.systemMapLayerInteractionDescription':
+    'Who interacts, through which channel, in what shape.',
+  'work.topdown.systemMapLayerPlanningDescription':
+    'What the operator wants done — Project / Work Item.',
+  'work.topdown.systemMapLayerExecutionDescription':
+    'How work runs — Task / Mission / Run.',
+  'work.topdown.systemMapLayerEmpty': 'No objects in this layer.',
   'work.newWorkItem.title': 'New work item',
   'work.newWorkItem.titleLabel': 'Title',
   'work.newWorkItem.summaryLabel': 'Summary',

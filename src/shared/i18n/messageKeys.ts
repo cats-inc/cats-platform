@@ -385,6 +385,27 @@ export const messageKeys = {
   workTopdownAnchorRun: 'work.topdown.anchorRun',
   workTopdownAnchorConversation: 'work.topdown.anchorConversation',
   workTopdownAnchorsEmpty: 'work.topdown.anchorsEmpty',
+  workTopdownSystemMapEyebrow: 'work.topdown.systemMapEyebrow',
+  workTopdownSystemMapTitle: 'work.topdown.systemMapTitle',
+  workTopdownSystemMapLede: 'work.topdown.systemMapLede',
+  workTopdownSystemMapStructuralLabel: 'work.topdown.systemMapStructuralLabel',
+  workTopdownSystemMapTotalLabel: 'work.topdown.systemMapTotalLabel',
+  workTopdownSystemMapDiagnosticsLabel:
+    'work.topdown.systemMapDiagnosticsLabel',
+  workTopdownSystemMapLayerAriaLabel: 'work.topdown.systemMapLayerAriaLabel',
+  workTopdownSystemMapLayerInteractionLabel:
+    'work.topdown.systemMapLayerInteractionLabel',
+  workTopdownSystemMapLayerPlanningLabel:
+    'work.topdown.systemMapLayerPlanningLabel',
+  workTopdownSystemMapLayerExecutionLabel:
+    'work.topdown.systemMapLayerExecutionLabel',
+  workTopdownSystemMapLayerInteractionDescription:
+    'work.topdown.systemMapLayerInteractionDescription',
+  workTopdownSystemMapLayerPlanningDescription:
+    'work.topdown.systemMapLayerPlanningDescription',
+  workTopdownSystemMapLayerExecutionDescription:
+    'work.topdown.systemMapLayerExecutionDescription',
+  workTopdownSystemMapLayerEmpty: 'work.topdown.systemMapLayerEmpty',
   workNewWorkItemTitle: 'work.newWorkItem.title',
   workNewWorkItemTitleLabel: 'work.newWorkItem.titleLabel',
   workNewWorkItemSummaryLabel: 'work.newWorkItem.summaryLabel',

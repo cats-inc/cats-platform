@@ -398,6 +398,24 @@ export const zhTWCatalog: MessageCatalog = {
   'work.topdown.anchorRun': 'Run',
   'work.topdown.anchorConversation': '對話',
   'work.topdown.anchorsEmpty': '沒有結構化錨點。',
+  'work.topdown.systemMapEyebrow': 'Top-down · 結構',
+  'work.topdown.systemMapTitle': '系統地圖',
+  'work.topdown.systemMapLede':
+    '來自 ADR-081 的三個結構層作為共居卡片，聚焦在分類體系中存在的內容，而非緊急程度。',
+  'work.topdown.systemMapStructuralLabel': '結構',
+  'work.topdown.systemMapTotalLabel': '總數',
+  'work.topdown.systemMapDiagnosticsLabel': '診斷',
+  'work.topdown.systemMapLayerAriaLabel': '{layerLabel} 層',
+  'work.topdown.systemMapLayerInteractionLabel': '互動',
+  'work.topdown.systemMapLayerPlanningLabel': '規劃',
+  'work.topdown.systemMapLayerExecutionLabel': '執行',
+  'work.topdown.systemMapLayerInteractionDescription':
+    '誰在與誰互動、透過什麼通道、以什麼型態呈現。',
+  'work.topdown.systemMapLayerPlanningDescription':
+    '產品方想要完成的目標——專案/工作項目。',
+  'work.topdown.systemMapLayerExecutionDescription':
+    '工作如何執行——任務 / Mission / Run。',
+  'work.topdown.systemMapLayerEmpty': '此層沒有物件。',
   'work.newWorkItem.title': '新增工作項目',
   'work.newWorkItem.titleLabel': '標題',
   'work.newWorkItem.summaryLabel': '摘要',
