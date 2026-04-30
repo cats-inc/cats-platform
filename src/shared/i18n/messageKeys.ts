@@ -2000,6 +2000,8 @@ export const messageKeys = {
   codeWorkspaceDetailLoading: 'code.workspaceDetail.loading',
   codeWorkspaceDetailTitle: 'code.workspaceDetail.title',
   codeWorkspaceDetailNotFound: 'code.workspaceDetail.notFound',
+  codeWorkspaceDetailMissingId: 'code.workspaceDetail.missingId',
+  codeWorkspaceDetailBackToList: 'code.workspaceDetail.backToList',
   codeWorkspaceDetailOverviewTitle: 'code.workspaceDetail.overviewTitle',
   codeWorkspaceDetailArtifactSection: 'code.workspaceDetail.artifactSection',
   codeWorkspaceDetailConversationsSection: 'code.workspaceDetail.conversationsSection',

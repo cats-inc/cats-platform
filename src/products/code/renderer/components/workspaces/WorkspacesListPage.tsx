@@ -9,32 +9,57 @@ import type {
   CodeWorkspaceSource,
 } from '../../api/codeTask.js';
 import { buildCodeCodespacePath } from '../../codePaths.js';
+import { messageKeys } from '../../../../../shared/i18n/messageKeys.js';
+import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import './workspaces.css';
 
-const SOURCE_LABEL: Record<CodeWorkspaceSource, string> = {
-  task_workspace: 'Code task',
-  conversation_repo: 'Repo bind',
-  runtime_cwd: 'Runtime cwd',
-  artifact_anchor: 'Artifact anchor',
-};
+function labelWorkspaceSource(
+  source: CodeWorkspaceSource,
+  t: ReturnType<typeof useI18n>['t'],
+): string {
+  switch (source) {
+    case 'task_workspace':
+      return t(messageKeys.codeWorkspacesListSourceCodes);
+    case 'conversation_repo':
+      return t(messageKeys.codeWorkspacesListSourceRepo);
+    case 'runtime_cwd':
+      return t(messageKeys.codeWorkspacesListSourceRuntime);
+    case 'artifact_anchor':
+      return t(messageKeys.codeWorkspacesListSourceArtifact);
+    default:
+      return t(messageKeys.codeWorkspaceDetailSourceUnknown);
+  }
+}
 
-function formatRelative(iso: string): string {
+function formatRelative(iso: string, locale: string): string {
   const then = new Date(iso).getTime();
   const now = Date.now();
   const delta = now - then;
-  if (Number.isNaN(delta)) return '';
+  if (Number.isNaN(delta)) {
+    return '';
+  }
+  const formatter = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
   const minute = 60 * 1000;
   const hour = 60 * minute;
   const day = 24 * hour;
-  if (delta < minute) return 'just now';
-  if (delta < hour) return `${Math.round(delta / minute)}m ago`;
-  if (delta < day) return `${Math.round(delta / hour)}h ago`;
-  if (delta < 7 * day) return `${Math.round(delta / day)}d ago`;
-  return new Date(iso).toLocaleDateString();
+  if (delta < minute) {
+    return formatter.format(0, 'second');
+  }
+  if (delta < hour) {
+    return formatter.format(-Math.round(delta / minute), 'minute');
+  }
+  if (delta < day) {
+    return formatter.format(-Math.round(delta / hour), 'hour');
+  }
+  if (delta < 7 * day) {
+    return formatter.format(-Math.round(delta / day), 'day');
+  }
+  return new Intl.DateTimeFormat(locale).format(new Date(iso));
 }
 
 export function WorkspacesListPage(): JSX.Element {
   const { workspaces, loading, error } = useCodeWorkspaces();
+  const { locale, t } = useI18n();
 
   const sorted = useMemo(
     () =>
@@ -50,7 +75,7 @@ export function WorkspacesListPage(): JSX.Element {
       <header className="channelTopBar codeWsListTopBar">
         <div className="channelTopBarStart codeWsListTopBar__start">
           <h1 className="channelTopBarTitle codeWsListTopBar__title">
-            Codespaces
+            {t(messageKeys.codeWorkspacesListHeader)}
           </h1>
           <span className="codeWsListTopBar__count">{sorted.length}</span>
         </div>
@@ -59,13 +84,16 @@ export function WorkspacesListPage(): JSX.Element {
       </header>
       <main className="codeWorkspacesList__main">
         {loading && sorted.length === 0 ? (
-          <p className="codeWorkspacesList__empty">Loading codespaces...</p>
+          <p className="codeWorkspacesList__empty">
+            {t(messageKeys.codeWorkspacesListLoading)}
+          </p>
         ) : error ? (
-          <p className="codeWorkspacesList__empty">Codespaces could not be loaded: {error}</p>
+          <p className="codeWorkspacesList__empty">
+            {t(messageKeys.codeWorkspacesListError, { error })}
+          </p>
         ) : sorted.length === 0 ? (
           <p className="codeWorkspacesList__empty">
-            No codespaces yet. Start a code session that names a repo, folder,
-            worktree, or managed room and it will land here.
+            {t(messageKeys.codeWorkspacesListNoCodespaces)}
           </p>
         ) : (
           <>
@@ -75,7 +103,9 @@ export function WorkspacesListPage(): JSX.Element {
                   <Link
                     to={buildCodeCodespacePath(ws.id)}
                     className="codeWorkspacesList__rowLink"
-                    aria-label={`Open codespace ${ws.title}`}
+                    aria-label={t(messageKeys.codeWorkspacesListAriaOpen, {
+                      title: ws.title,
+                    })}
                   >
                     <div className="codeWorkspacesList__rowMain">
                       <span
@@ -98,19 +128,22 @@ export function WorkspacesListPage(): JSX.Element {
                     </div>
                     <div className="codeWorkspacesList__rowMeta">
                       <span className="codeWorkspacesList__sourcePill">
-                        {SOURCE_LABEL[ws.source]}
+                        {labelWorkspaceSource(ws.source, t)}
                       </span>
                       <span className="codeWorkspacesList__metric">
-                        <strong>{ws.conversationCount}</strong> chat
+                        <strong>{ws.conversationCount}</strong>{' '}
+                        {t(messageKeys.codeWorkspaceDetailMetricConversations)}
                       </span>
                       <span className="codeWorkspacesList__metric">
-                        <strong>{ws.taskCount}</strong> tasks
+                        <strong>{ws.taskCount}</strong>{' '}
+                        {t(messageKeys.codeWorkspaceDetailMetricTasks)}
                       </span>
                       <span className="codeWorkspacesList__metric">
-                        <strong>{ws.artifactCount}</strong> art
+                        <strong>{ws.artifactCount}</strong>{' '}
+                        {t(messageKeys.codeWorkspaceDetailMetricArtifacts)}
                       </span>
                       <span className="codeWorkspacesList__metric codeWorkspacesList__metric--muted">
-                        {formatRelative(ws.lastActiveAt)}
+                        {formatRelative(ws.lastActiveAt, locale)}
                       </span>
                       <span
                         className={`codeWorkspacesList__statusPill codeWorkspacesList__statusPill--${ws.status}`}

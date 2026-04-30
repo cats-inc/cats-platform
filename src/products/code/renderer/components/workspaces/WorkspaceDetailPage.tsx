@@ -11,6 +11,8 @@ import {
   type CodeWorkspaceDetailResponse,
   type CodeWorkspaceSource,
 } from '../../api/codeTask.js';
+import { messageKeys } from '../../../../../shared/i18n/messageKeys.js';
+import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import './workspaces.css';
 
 type CodeArtifactKind =
@@ -22,47 +24,79 @@ type CodeArtifactKind =
   | 'transcript_export'
   | 'dataset';
 
-const ARTIFACT_KIND_LABELS: Record<CodeArtifactKind, string> = {
-  build: 'Build',
-  preview: 'Preview',
-  document: 'Document',
-  report: 'Report',
-  attachment: 'Attachment',
-  transcript_export: 'Transcript',
-  dataset: 'Dataset',
-};
-
-function isCodeArtifactKind(value: string): value is CodeArtifactKind {
-  return value in ARTIFACT_KIND_LABELS;
+function labelArtifactKind(
+  kind: string,
+  t: ReturnType<typeof useI18n>['t'],
+): string {
+  switch (kind as CodeArtifactKind) {
+    case 'build':
+      return t(messageKeys.codeArtifactKindBuildLabel);
+    case 'preview':
+      return t(messageKeys.codeArtifactKindPreviewLabel);
+    case 'document':
+      return t(messageKeys.codeArtifactKindDocumentLabel);
+    case 'report':
+      return t(messageKeys.codeArtifactKindReportLabel);
+    case 'attachment':
+      return t(messageKeys.codeArtifactKindAttachmentLabel);
+    case 'transcript_export':
+      return t(messageKeys.codeArtifactKindTranscriptLabel);
+    case 'dataset':
+      return t(messageKeys.codeArtifactDatasetLabel);
+    default:
+      return kind || t(messageKeys.codeArtifactKindUnknownLabel);
+  }
 }
 
-function labelArtifactKind(kind: string): string {
-  return isCodeArtifactKind(kind) ? ARTIFACT_KIND_LABELS[kind] : kind;
+function labelWorkspaceSource(
+  source: CodeWorkspaceSource,
+  t: ReturnType<typeof useI18n>['t'],
+): string {
+  switch (source) {
+    case 'task_workspace':
+      return t(messageKeys.codeWorkspacesListSourceCodes);
+    case 'conversation_repo':
+      return t(messageKeys.codeWorkspacesListSourceRepo);
+    case 'runtime_cwd':
+      return t(messageKeys.codeWorkspacesListSourceRuntime);
+    case 'artifact_anchor':
+      return t(messageKeys.codeWorkspacesListSourceArtifact);
+    default:
+      return t(messageKeys.codeWorkspaceDetailSourceUnknown);
+  }
 }
 
-const SOURCE_LABEL: Record<CodeWorkspaceSource, string> = {
-  task_workspace: 'Code task',
-  conversation_repo: 'Repo bind from conversation',
-  runtime_cwd: 'Runtime cwd',
-  artifact_anchor: 'Artifact anchor',
-};
-
-function formatRelative(iso: string): string {
+function formatRelative(iso: string, locale: string): string {
   const then = new Date(iso).getTime();
   const now = Date.now();
   const delta = now - then;
-  if (Number.isNaN(delta)) return '';
+  if (Number.isNaN(delta)) {
+    return '';
+  }
+  const formatter = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
   const minute = 60 * 1000;
   const hour = 60 * minute;
   const day = 24 * hour;
-  if (delta < minute) return 'just now';
-  if (delta < hour) return `${Math.round(delta / minute)}m ago`;
-  if (delta < day) return `${Math.round(delta / hour)}h ago`;
-  if (delta < 7 * day) return `${Math.round(delta / day)}d ago`;
-  return new Date(iso).toLocaleDateString();
+  if (delta < minute) {
+    return formatter.format(0, 'second');
+  }
+  if (delta < hour) {
+    return formatter.format(-Math.round(delta / minute), 'minute');
+  }
+  if (delta < day) {
+    return formatter.format(-Math.round(delta / hour), 'hour');
+  }
+  if (delta < 7 * day) {
+    return formatter.format(-Math.round(delta / day), 'day');
+  }
+  return new Intl.DateTimeFormat(locale).format(new Date(iso));
 }
 
-function renderArtifactItem(art: CodeArtifactListItemSummary): JSX.Element {
+function renderArtifactItem(
+  art: CodeArtifactListItemSummary,
+  t: ReturnType<typeof useI18n>['t'],
+  locale: string,
+): JSX.Element {
   return (
     <li key={art.id}>
       <Link
@@ -70,7 +104,7 @@ function renderArtifactItem(art: CodeArtifactListItemSummary): JSX.Element {
         className="codeWorkspaceDetail__item"
       >
         <span className="codeWorkspaceDetail__itemKind">
-          {labelArtifactKind(art.kind)}
+          {labelArtifactKind(art.kind, t)}
         </span>
         <span className="codeWorkspaceDetail__itemTitle">
           {art.title}
@@ -79,7 +113,7 @@ function renderArtifactItem(art: CodeArtifactListItemSummary): JSX.Element {
           {art.status}
         </span>
         <span className="codeWorkspaceDetail__itemUpdated">
-          {formatRelative(art.updatedAt)}
+          {formatRelative(art.updatedAt, locale)}
         </span>
       </Link>
     </li>
@@ -88,13 +122,14 @@ function renderArtifactItem(art: CodeArtifactListItemSummary): JSX.Element {
 
 export function WorkspaceDetailPage(): JSX.Element {
   const { codespaceId } = useParams<{ codespaceId: string }>();
+  const { locale, t } = useI18n();
   const [payload, setPayload] = useState<CodeWorkspaceDetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!codespaceId) {
-      setError('Codespace id is required.');
+      setError(t(messageKeys.codeWorkspaceDetailMissingId));
       setLoading(false);
       return;
     }
@@ -112,7 +147,9 @@ export function WorkspaceDetailPage(): JSX.Element {
       })
       .catch((fetchError: unknown) => {
         if (!cancelled) {
-          setError(fetchError instanceof Error ? fetchError.message : 'Failed to load codespace.');
+          setError(fetchError instanceof Error
+            ? fetchError.message
+            : t(messageKeys.codeWorkspaceDetailError));
         }
       })
       .finally(() => {
@@ -124,7 +161,7 @@ export function WorkspaceDetailPage(): JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, [codespaceId]);
+  }, [codespaceId, t]);
 
   if (loading && !payload) {
     return (
@@ -132,14 +169,16 @@ export function WorkspaceDetailPage(): JSX.Element {
         <header className="channelTopBar codeWsDetailTopBar">
           <div className="channelTopBarStart codeWsDetailTopBar__start">
             <Link to={CODE_CODESPACES_PATH} className="codeWsDetailTopBar__back">
-              ← Codespaces
+              ← {t(messageKeys.codeWorkspacesListHeader)}
             </Link>
           </div>
           <div className="channelTopBarCenter codeWsDetailTopBar__center" />
           <div className="channelTopBarEnd codeWsDetailTopBar__end" />
         </header>
         <main className="codeWorkspaceDetail__main">
-          <p className="codeWorkspaceDetail__missing">Loading codespace...</p>
+          <p className="codeWorkspaceDetail__missing">
+            {t(messageKeys.codeWorkspaceDetailLoading)}
+          </p>
         </main>
       </div>
     );
@@ -151,7 +190,7 @@ export function WorkspaceDetailPage(): JSX.Element {
         <header className="channelTopBar codeWsDetailTopBar">
           <div className="channelTopBarStart codeWsDetailTopBar__start">
             <Link to={CODE_CODESPACES_PATH} className="codeWsDetailTopBar__back">
-              ← Codespaces
+              ← {t(messageKeys.codeWorkspacesListHeader)}
             </Link>
           </div>
           <div className="channelTopBarCenter codeWsDetailTopBar__center" />
@@ -159,9 +198,11 @@ export function WorkspaceDetailPage(): JSX.Element {
         </header>
         <main className="codeWorkspaceDetail__main">
           <p className="codeWorkspaceDetail__missing">
-            {error ?? 'Codespace not found. It may have been removed or the URL changed.'}
+            {error ?? t(messageKeys.codeWorkspaceDetailNotFound)}
             <br />
-            <Link to={CODE_CODESPACES_PATH}>Back to all codespaces →</Link>
+            <Link to={CODE_CODESPACES_PATH}>
+              {t(messageKeys.codeWorkspaceDetailBackToList)}
+            </Link>
           </p>
         </main>
       </div>
@@ -175,7 +216,7 @@ export function WorkspaceDetailPage(): JSX.Element {
       <header className="channelTopBar codeWsDetailTopBar">
         <div className="channelTopBarStart codeWsDetailTopBar__start">
           <Link to={CODE_CODESPACES_PATH} className="codeWsDetailTopBar__back">
-            ← Codespaces
+            ← {t(messageKeys.codeWorkspacesListHeader)}
           </Link>
           <span className="codeWsDetailTopBar__separator">/</span>
         </div>
@@ -191,59 +232,70 @@ export function WorkspaceDetailPage(): JSX.Element {
         </div>
         <div className="channelTopBarEnd codeWsDetailTopBar__end">
           <span className="codeWsDetailTopBar__updated">
-            {formatRelative(workspace.lastActiveAt)}
+            {formatRelative(workspace.lastActiveAt, locale)}
           </span>
         </div>
       </header>
       <main className="codeWorkspaceDetail__main">
         <section className="codeWorkspaceDetail__section">
           <header className="codeWorkspaceDetail__sectionHeader">
-            <h2>Overview</h2>
+            <h2>{t(messageKeys.codeWorkspaceDetailOverviewTitle)}</h2>
           </header>
           <dl className="codeWorkspaceDetail__overviewList">
-            <dt>Path</dt>
+            <dt>{t(messageKeys.codeWorkspaceDetailOverviewPath)}</dt>
             <dd>
               <code>{workspace.path}</code>
             </dd>
-            <dt>Source</dt>
-            <dd>{SOURCE_LABEL[workspace.source]}</dd>
-            <dt>Status</dt>
+            <dt>{t(messageKeys.codeWorkspaceDetailOverviewSource)}</dt>
+            <dd>{labelWorkspaceSource(workspace.source, t)}</dd>
+            <dt>{t(messageKeys.codeWorkspaceDetailOverviewStatus)}</dt>
             <dd>{workspace.status}</dd>
-            <dt>Last active</dt>
+            <dt>{t(messageKeys.codeWorkspaceDetailOverviewLastActive)}</dt>
             <dd>
-              {new Date(workspace.lastActiveAt).toLocaleString()}{' '}
-              <em>({formatRelative(workspace.lastActiveAt)})</em>
+              {new Intl.DateTimeFormat(locale, {
+                dateStyle: 'medium',
+                timeStyle: 'short',
+              }).format(new Date(workspace.lastActiveAt))}{' '}
+              <em>({formatRelative(workspace.lastActiveAt, locale)})</em>
             </dd>
-            <dt>Summary</dt>
+            <dt>{t(messageKeys.codeWorkspaceDetailOverviewSummary)}</dt>
             <dd>
               {workspace.summary ? (
                 workspace.summary
               ) : (
-                <em>No summary yet.</em>
+                <em>{t(messageKeys.codeWorkspaceDetailNoSummary)}</em>
               )}
             </dd>
           </dl>
           <div className="codeWorkspaceDetail__metricStrip">
             <div className="codeWorkspaceDetail__metricCell">
-              <span className="codeWorkspaceDetail__metricLabel">Conversations</span>
+              <span className="codeWorkspaceDetail__metricLabel">
+                {t(messageKeys.codeWorkspaceDetailMetricConversations)}
+              </span>
               <span className="codeWorkspaceDetail__metricValue">
                 {workspace.conversationCount}
               </span>
             </div>
             <div className="codeWorkspaceDetail__metricCell">
-              <span className="codeWorkspaceDetail__metricLabel">Tasks</span>
+              <span className="codeWorkspaceDetail__metricLabel">
+                {t(messageKeys.codeWorkspaceDetailMetricTasks)}
+              </span>
               <span className="codeWorkspaceDetail__metricValue">
                 {workspace.taskCount}
               </span>
             </div>
             <div className="codeWorkspaceDetail__metricCell">
-              <span className="codeWorkspaceDetail__metricLabel">Artifacts</span>
+              <span className="codeWorkspaceDetail__metricLabel">
+                {t(messageKeys.codeWorkspaceDetailMetricArtifacts)}
+              </span>
               <span className="codeWorkspaceDetail__metricValue">
                 {artifacts.length}
               </span>
             </div>
             <div className="codeWorkspaceDetail__metricCell">
-              <span className="codeWorkspaceDetail__metricLabel">ID</span>
+              <span className="codeWorkspaceDetail__metricLabel">
+                {t(messageKeys.codeWorkspaceDetailMetricId)}
+              </span>
               <span className="codeWorkspaceDetail__metricValue" style={{ fontSize: '0.78rem' }}>
                 <code>{workspace.id}</code>
               </span>
@@ -253,33 +305,32 @@ export function WorkspaceDetailPage(): JSX.Element {
 
         <section className="codeWorkspaceDetail__section">
           <header className="codeWorkspaceDetail__sectionHeader">
-            <h2>Artifacts in this codespace</h2>
+            <h2>{t(messageKeys.codeWorkspaceDetailArtifactsHeader)}</h2>
             <span className="codeWorkspaceDetail__sectionCount">
               {artifacts.length}
             </span>
           </header>
           {artifacts.length === 0 ? (
             <p className="codeWorkspaceDetail__empty">
-              No artifacts linked yet. Builds, previews, or documents produced
-              from this codespace will appear here.
+              {t(messageKeys.codeWorkspaceDetailNoArtifactsDesc)}
             </p>
           ) : (
             <ul className="codeWorkspaceDetail__items">
-              {artifacts.map((art) => renderArtifactItem(art))}
+              {artifacts.map((art) => renderArtifactItem(art, t, locale))}
             </ul>
           )}
         </section>
 
         <section className="codeWorkspaceDetail__section">
           <header className="codeWorkspaceDetail__sectionHeader">
-            <h2>Conversations</h2>
+            <h2>{t(messageKeys.codeWorkspaceDetailConversationsSection)}</h2>
             <span className="codeWorkspaceDetail__sectionCount">
               {conversations.length}
             </span>
           </header>
           {conversations.length === 0 ? (
             <p className="codeWorkspaceDetail__empty">
-              No conversations are currently linked to this codespace.
+              {t(messageKeys.codeWorkspaceDetailNoConversations)}
             </p>
           ) : (
             <ul className="codeWorkspaceDetail__items">
@@ -295,7 +346,7 @@ export function WorkspaceDetailPage(): JSX.Element {
                     {conversation.status}
                   </span>
                   <span className="codeWorkspaceDetail__itemUpdated">
-                    {formatRelative(conversation.lastMessageAt ?? conversation.updatedAt)}
+                    {formatRelative(conversation.lastMessageAt ?? conversation.updatedAt, locale)}
                   </span>
                 </li>
               ))}
@@ -305,20 +356,22 @@ export function WorkspaceDetailPage(): JSX.Element {
 
         <section className="codeWorkspaceDetail__section">
           <header className="codeWorkspaceDetail__sectionHeader">
-            <h2>Tasks</h2>
+            <h2>{t(messageKeys.codeWorkspaceDetailTasksSection)}</h2>
             <span className="codeWorkspaceDetail__sectionCount">
               {tasks.length}
             </span>
           </header>
           {tasks.length === 0 ? (
             <p className="codeWorkspaceDetail__empty">
-              No Code tasks are currently linked to this codespace.
+              {t(messageKeys.codeWorkspaceDetailNoTasks)}
             </p>
           ) : (
             <ul className="codeWorkspaceDetail__items">
               {tasks.map((task) => (
                 <li key={task.id} className="codeWorkspaceDetail__item">
-                  <span className="codeWorkspaceDetail__itemKind">Task</span>
+                  <span className="codeWorkspaceDetail__itemKind">
+                    {t(messageKeys.codeWorkspaceDetailTaskLabel)}
+                  </span>
                   <span className="codeWorkspaceDetail__itemTitle">
                     {task.title}
                   </span>
