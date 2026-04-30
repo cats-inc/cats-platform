@@ -69,6 +69,7 @@ import { PermissionModeChip } from './PermissionModeChip.js';
 import { WorkspaceModeChip } from './WorkspaceModeChip.js';
 import { useRepoProbe } from '../hooks/useRepoProbe.js';
 import { useVoiceInputComposer } from '../hooks/useVoiceInputComposer.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
 function formatBranchRuntimeSessionPolicy(policy: RuntimeSessionPolicy): string {
@@ -446,8 +447,10 @@ export function NewChatDraft({
     hideParallelHint: hideDraftParallelHint = false,
   } = builderControls ?? {};
   const { t } = useI18n();
-  const composerPlaceholder = draftCopy?.composerPlaceholder ?? 'How can I help you today?';
-  const folderActionLabel = draftCopy?.folderActionLabel ?? 'Choose folder';
+  const composerPlaceholder = draftCopy?.composerPlaceholder
+    ?? t(messageKeys.chatNewChatDraftComposerPlaceholder);
+  const folderActionLabel = draftCopy?.folderActionLabel
+    ?? t(messageKeys.chatNewChatDraftFolderActionLabel);
   const sidePanelCopy = draftCopy?.sidePanel;
   const leadingStarterChips = starterChips?.leading;
   const preserveHelperChipsOnSelect = starterChips?.preserveOnSelect ?? false;

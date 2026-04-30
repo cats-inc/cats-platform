@@ -981,6 +981,8 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.newChatDraft.execution.emptyState': '尚未設定 AI 回覆。',
   'chat.newChatDraft.folder.title': '資料夾',
   'chat.newChatDraft.folder.emptyState': '尚未選擇資料夾。',
+  'chat.newChatDraft.composerPlaceholder': '我可以怎麼幫你？',
+  'chat.newChatDraft.folderActionLabel': '選擇資料夾',
   'chat.newChatDraft.groupDraftSelectionLabelSingle':
     '目前已選 1 位參與者，請再新增或準備好後開始發送。',
   'chat.newChatDraft.groupDraftSelectionLabelCount':

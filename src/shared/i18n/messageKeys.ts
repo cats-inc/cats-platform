@@ -979,6 +979,8 @@ export const messageKeys = {
   chatNewChatDraftSidePanelExecutionEmptyState: 'chat.newChatDraft.execution.emptyState',
   chatNewChatDraftSidePanelFolderTitle: 'chat.newChatDraft.folder.title',
   chatNewChatDraftSidePanelFolderEmptyState: 'chat.newChatDraft.folder.emptyState',
+  chatNewChatDraftComposerPlaceholder: 'chat.newChatDraft.composerPlaceholder',
+  chatNewChatDraftFolderActionLabel: 'chat.newChatDraft.folderActionLabel',
   chatNewChatDraftGroupDraftSelectionLabelSingle:
     'chat.newChatDraft.groupDraftSelectionLabelSingle',
   chatNewChatDraftGroupDraftSelectionLabelCount:

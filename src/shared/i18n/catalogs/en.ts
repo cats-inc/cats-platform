@@ -1014,6 +1014,8 @@ export const enCatalog: MessageCatalog = {
   'chat.newChatDraft.execution.emptyState': 'No AI reply setup yet.',
   'chat.newChatDraft.folder.title': 'Folder',
   'chat.newChatDraft.folder.emptyState': 'No folder selected yet.',
+  'chat.newChatDraft.composerPlaceholder': 'How can I help you today?',
+  'chat.newChatDraft.folderActionLabel': 'Choose folder',
   'chat.newChatDraft.groupDraftSelectionLabelSingle':
     '1 participant selected so far. Add more or send when ready.',
   'chat.newChatDraft.groupDraftSelectionLabelCount':
