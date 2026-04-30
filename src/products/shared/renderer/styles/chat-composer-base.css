@@ -855,13 +855,16 @@
   width: 100%;
   max-width: var(--chat-transcript-max-width, 680px);
   min-width: 0;
-  /* Reserve space matching populated row height (composerSurfaceChip is
-   * 24px tall; composerHeaderChooseButton ≈ 22-24px). Keeps composer card
-   * anchored at the same Y across +New / +Group / +Parallel presets so
-   * sidebar switching does not shift UI vertically. Parallel mode's
-   * carousel cell already reserves this height via shadow cards' always-
-   * rendered header; non-carousel presets need this explicit floor. */
-  min-height: 24px;
+  /* Reserve space matching the tallest populated row child so the
+   * composer card stays anchored regardless of whether the row carries
+   * a surfaceTag (24px), composerCwdChip (24px), or
+   * composerHeaderChooseButton (~29-30px from font line-height +
+   * 4px*2 padding + 1px*2 border). Without this floor, switching
+   * surfaces (e.g. Pomodoro starter chip → Code) or +New / +Group /
+   * +Parallel presets shifts the composer vertically. Parallel's
+   * carousel grid already aligns the lead via `align-items: start`;
+   * non-carousel presets rely on this explicit floor. */
+  min-height: 30px;
 }
 
 .composerHeaderLeft {
