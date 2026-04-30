@@ -64,12 +64,14 @@ import {
   buildDesktopSetupSnapshot,
   createEmptyDesktopSetupState,
   runDesktopSetupHelper,
+  shouldAutoRunSetupAudit,
 } from './setupBridge.js';
 import {
   isDesktopBootstrapLoadingPhase,
   resolveDesktopBootstrapError,
   shouldAttemptDesktopLateReadyRecovery,
 } from './startupRecovery.js';
+import { resolveDefaultSetupAuditAction } from './setupAudit.js';
 import {
   buildDesktopCliInventoryFromRuntime,
   type RuntimeCliInventoryProbe,
@@ -1121,22 +1123,21 @@ async function refreshBootstrapSnapshot(
   const setupCompleted = Boolean(
     effectivePersistedSetup.setupCompleteAt || effectivePersistedSetup.productSetupCompleted,
   );
+  // /diagnostics/providers is intentionally NOT fetched on the boot critical
+  // path — it's not authoritative for any phase decision before setup, and
+  // for setup-complete users we kick it off in the background (see
+  // scheduleBackgroundBootstrapWork) so a slow provider probe never blocks
+  // the window from opening.
   const [
     appHealth,
     appShell,
     runtimeHealth,
-    providerDiagnostics,
     productDiagnostics,
     cliInventoryProbe,
   ] = await Promise.allSettled([
     fetchJson<AppHealthPayload>(`${hostConfig.appBaseUrl}/health`),
     fetchJson<AppShellPayload>(`${hostConfig.appBaseUrl}/api/app-shell`),
     fetchJson<RuntimeDiagnosticsHealthPayload | ReadinessPayload>(`${hostConfig.runtimeBaseUrl}/health`),
-    setupCompleted
-      ? fetchJsonWithTimeout<RuntimeProviderDiagnosticsPayload>(`${hostConfig.runtimeBaseUrl}/diagnostics/providers`, {
-        method: 'GET',
-      }, RUNTIME_PROVIDER_DIAGNOSTICS_TIMEOUT_MS)
-      : Promise.resolve<RuntimeProviderDiagnosticsPayload | null>(null),
     fetchJson<ProductBootstrapDiagnosticsPayload>(`${hostConfig.appBaseUrl}/api/platform/bootstrap-diagnostics`),
     fetchRuntimeCliInventoryProbe(hostConfig.runtimeBaseUrl, {
       triggerScanIfMissing: !setupCompleted,
@@ -1151,9 +1152,6 @@ async function refreshBootstrapSnapshot(
   }
   if (runtimeHealth.status === 'fulfilled') {
     latestRuntimeHealthPayload = runtimeHealth.value;
-  }
-  if (providerDiagnostics.status === 'fulfilled') {
-    latestProviderDiagnosticsPayload = providerDiagnostics.value;
   }
   if (cliInventoryProbe.status === 'fulfilled' && cliInventoryProbe.value?.scan) {
     latestCliInventoryProbe = cliInventoryProbe.value;
@@ -1175,9 +1173,7 @@ async function refreshBootstrapSnapshot(
     runtimeHealth: runtimeHealth.status === 'fulfilled'
       ? normalizeRuntimeHealthPayload(runtimeHealth.value)
       : null,
-    providerDiagnostics: providerDiagnostics.status === 'fulfilled'
-      ? providerDiagnostics.value
-      : null,
+    providerDiagnostics: latestProviderDiagnosticsPayload,
     persistedSetupCompleteAt: effectivePersistedSetup.setupCompleteAt,
     persistedProductSetupCompleted: effectivePersistedSetup.productSetupCompleted,
     background: backgroundState ?? undefined,
@@ -1189,6 +1185,139 @@ async function refreshBootstrapSnapshot(
       ? buildDesktopCliInventoryFromRuntime(latestCliInventoryProbe)
       : null,
   });
+}
+
+function hasPersistedProductSetupCompletion(
+  persistedSetup: PersistedSetupCompletionState | null = null,
+): boolean {
+  if (persistedSetup?.productSetupCompleted) {
+    return true;
+  }
+
+  const productEvents = diagnosticsState?.product?.events ?? [];
+  return productEvents.some((event) => event.kind === 'setup_completed' && event.status === 'ok');
+}
+
+async function maybePrimeSetupAudit(
+  snapshot: DesktopBootstrapSnapshot,
+  persistedSetup: PersistedSetupCompletionState | null = null,
+): Promise<void> {
+  if (!hostConfig) {
+    return;
+  }
+  if (!shouldAutoRunSetupAudit(setupState, {
+    setupCompleteAt: snapshot.app.setupCompleteAt ?? persistedSetup?.setupCompleteAt ?? null,
+    productSetupCompleted: hasPersistedProductSetupCompletion(persistedSetup),
+  })) {
+    return;
+  }
+  const setupAuditAction = resolveDefaultSetupAuditAction(hostConfig);
+  if (!setupAuditAction) {
+    return;
+  }
+
+  await runSetupAction({
+    helperId: setupAuditAction.helperId,
+    mode: 'check',
+    extraArguments: setupAuditAction.extraArguments,
+  });
+}
+
+const BACKGROUND_CLI_SCAN_BACKOFF_MS = [3_000, 6_000, 12_000, 20_000, 30_000];
+
+async function retryCliInventoryScanInBackground(options: {
+  forceRescan: boolean;
+}): Promise<void> {
+  if (!hostConfig) return;
+  for (let attempt = 0; attempt < BACKGROUND_CLI_SCAN_BACKOFF_MS.length; attempt += 1) {
+    if (!hostConfig) return;
+    let probe: RuntimeCliInventoryProbe | null = null;
+    try {
+      probe = await fetchRuntimeCliInventoryProbe(hostConfig.runtimeBaseUrl, {
+        triggerScanIfMissing: true,
+        forceRescan: attempt === 0 ? options.forceRescan : false,
+      });
+    } catch {
+      probe = null;
+    }
+    if (probe?.scan) {
+      latestCliInventoryProbe = probe;
+      try {
+        publishSnapshot(buildSnapshot());
+      } catch {
+        // host may have shut down; ignore
+      }
+      return;
+    }
+    const wait = BACKGROUND_CLI_SCAN_BACKOFF_MS[attempt];
+    if (typeof wait === 'number') {
+      await new Promise<void>((resolve) => setTimeout(resolve, wait));
+    }
+  }
+}
+
+async function fetchProviderDiagnosticsInBackground(): Promise<void> {
+  if (!hostConfig) return;
+  let payload: RuntimeProviderDiagnosticsPayload;
+  try {
+    payload = await fetchJsonWithTimeout<RuntimeProviderDiagnosticsPayload>(
+      `${hostConfig.runtimeBaseUrl}/diagnostics/providers`,
+      { method: 'GET' },
+      RUNTIME_PROVIDER_DIAGNOSTICS_TIMEOUT_MS,
+    );
+  } catch {
+    // best-effort — leave latestProviderDiagnosticsPayload as-is
+    return;
+  }
+  latestProviderDiagnosticsPayload = payload;
+  try {
+    publishSnapshot(buildSnapshot());
+  } catch {
+    // host may have shut down; ignore
+  }
+}
+
+function scheduleBackgroundBootstrapWork(
+  snapshot: DesktopBootstrapSnapshot,
+  persistedSetup: PersistedSetupCompletionState | null,
+): void {
+  const setupCompleted = Boolean(
+    snapshot.app.setupCompleteAt
+      ?? persistedSetup?.setupCompleteAt
+      ?? persistedSetup?.productSetupCompleted,
+  );
+
+  // Prerequisite audit — Node / GitHub CLI / npm prefix detection lives in
+  // the packaged readiness audit, not in cats-runtime's CLI inventory probe.
+  // Fresh users without Node need this signal so the recovery panel can
+  // surface install_node_lts before they fail an Install action.
+  void maybePrimeSetupAudit(snapshot, persistedSetup).catch((error) => {
+    process.stderr.write(
+      `Background setup audit failed: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
+  });
+
+  // CLI inventory rescan with backoff — covers two cases:
+  //  - first-run: initial scan didn't return data yet, retry until it does
+  //  - setup-complete: refresh stale on-disk cache so we eventually reflect
+  //    CLIs the user installed/uninstalled outside our flow
+  void retryCliInventoryScanInBackground({
+    forceRescan: setupCompleted,
+  }).catch((error) => {
+    process.stderr.write(
+      `Background CLI inventory rescan failed: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
+  });
+
+  // Provider diagnostics — only meaningful after setup is applied. Best
+  // effort, single-shot; failures fall back to "Cats can still open".
+  if (setupCompleted) {
+    void fetchProviderDiagnosticsInBackground().catch((error) => {
+      process.stderr.write(
+        `Background provider diagnostics fetch failed: ${error instanceof Error ? error.message : String(error)}\n`,
+      );
+    });
+  }
 }
 
 async function maybeOpenApp(snapshot: DesktopBootstrapSnapshot): Promise<void> {
@@ -1308,6 +1437,7 @@ async function bootstrapDesktopHost(restartServices = false): Promise<DesktopBoo
     }));
     const snapshot = publishSnapshot(await refreshBootstrapSnapshot(persistedSetup));
     await maybeOpenApp(snapshot);
+    scheduleBackgroundBootstrapWork(snapshot, persistedSetup);
     return snapshot;
   })().catch((error) => {
     const message = error instanceof Error ? error.message : String(error);
