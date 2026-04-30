@@ -2089,6 +2089,7 @@ export const enCatalog: MessageCatalog = {
     'No codespaces yet. Start a code session that names a repo, folder, worktree, or managed room and it will land here.',
   'code.workspaces.loading': 'Loading codespaces...',
   'code.workspaces.error': 'Codespaces could not be loaded: {error}',
+  'code.workspaces.loadError': 'Failed to load codespaces.',
   'code.workspaces.sourceCodes': 'Code task',
   'code.workspaces.sourceRepo': 'Conversation repo',
   'code.workspaces.sourceRuntime': 'Runtime cwd',

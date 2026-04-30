@@ -1,11 +1,24 @@
 import { useEffect, useSyncExternalStore } from 'react';
 
 import {
+  createTranslator,
+  messageKeys,
+  type MessageInterpolationValues,
+  type MessageKey,
+} from '../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import {
   fetchCodeWorkspaces,
   type CodeWorkspaceListItemSummary,
 } from '../api/codeTask.js';
 
 const listeners = new Set<() => void>();
+const defaultCodeWorkspacesTranslator = createTranslator('en');
+
+type CodeWorkspacesTranslator = (
+  key: MessageKey,
+  values?: MessageInterpolationValues,
+) => string;
 
 export interface CodeWorkspacesSnapshot {
   workspaces: readonly CodeWorkspaceListItemSummary[];
@@ -58,11 +71,14 @@ function invalidate(): void {
   notify();
 }
 
-export function refreshCodeWorkspaces(): Promise<void> {
+export function refreshCodeWorkspaces(options: {
+  t?: CodeWorkspacesTranslator;
+} = {}): Promise<void> {
   if (refreshPromise) {
     return refreshPromise;
   }
 
+  const t = options.t ?? defaultCodeWorkspacesTranslator;
   loading = true;
   error = null;
   invalidate();
@@ -75,7 +91,7 @@ export function refreshCodeWorkspaces(): Promise<void> {
     .catch((fetchError: unknown) => {
       error = fetchError instanceof Error
         ? fetchError.message
-        : 'Failed to load codespaces.';
+        : t(messageKeys.codeWorkspacesLoadError);
     })
     .finally(() => {
       loading = false;
@@ -87,6 +103,7 @@ export function refreshCodeWorkspaces(): Promise<void> {
 }
 
 export function useCodeWorkspaces(): CodeWorkspacesSnapshot {
+  const { t } = useI18n();
   const snapshot = useSyncExternalStore(
     (onChange) => {
       listeners.add(onChange);
@@ -99,8 +116,8 @@ export function useCodeWorkspaces(): CodeWorkspacesSnapshot {
   );
 
   useEffect(() => {
-    void refreshCodeWorkspaces();
-  }, []);
+    void refreshCodeWorkspaces({ t });
+  }, [t]);
 
   return snapshot;
 }

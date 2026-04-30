@@ -2030,6 +2030,7 @@ export const zhTWCatalog: MessageCatalog = {
     '目前沒有 codespace。啟動一個指定 repo、資料夾、worktree 或 managed room 的 code session 後，會出現在這裡。',
   'code.workspaces.loading': '正在載入 codespaces...',
   'code.workspaces.error': '無法載入 codespaces：{error}',
+  'code.workspaces.loadError': '載入 codespaces 失敗。',
   'code.workspaces.sourceCodes': '程式任務',
   'code.workspaces.sourceRepo': '對話 repo',
   'code.workspaces.sourceRuntime': 'Runtime cwd',

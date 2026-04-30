@@ -2066,6 +2066,7 @@ export const messageKeys = {
   codeWorkspacesListNoCodespaces: 'code.workspaces.listNoCodespaces',
   codeWorkspacesListLoading: 'code.workspaces.loading',
   codeWorkspacesListError: 'code.workspaces.error',
+  codeWorkspacesLoadError: 'code.workspaces.loadError',
   codeWorkspacesListSourceCodes: 'code.workspaces.sourceCodes',
   codeWorkspacesListSourceRepo: 'code.workspaces.sourceRepo',
   codeWorkspacesListSourceRuntime: 'code.workspaces.sourceRuntime',
