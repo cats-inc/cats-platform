@@ -387,8 +387,8 @@ export function messageTone(senderKind: string): string {
   return resolveWorkspaceMessageTone(senderKind);
 }
 
-export function presentChannelTitle(title: string): string {
-  return presentWorkspaceChannelTitle(title);
+export function presentChannelTitle(title: string, t?: ChatUtilsTranslator): string {
+  return presentWorkspaceChannelTitle(title, t);
 }
 
 export { nameInitials as catInitials } from '../../../shared/nameInitials.js';

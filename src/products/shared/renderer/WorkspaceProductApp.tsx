@@ -1651,6 +1651,7 @@ export function createWorkspaceProductApp({
             addCatOpen,
             showingNewChatDraft,
             draftCatIds,
+            t,
           });
           const visibleChatChannelId = resolveVisibleChatChannelId(
             selectedChannel,

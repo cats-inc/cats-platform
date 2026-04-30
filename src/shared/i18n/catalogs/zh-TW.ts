@@ -1049,6 +1049,7 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.settingsCatsMemory.deleteError': '刪除記憶失敗。',
   'shared.operatorLoop.loadError': '載入 operator loop 失敗。',
   'shared.folderBrowser.loadError': '載入資料夾失敗。',
+  'shared.orchestrator.fallbackName': '調度者',
   'shared.draftHeader.changeCoverPhoto': '更換封面照片',
   'shared.draftHeader.addCoverPhoto': '新增封面照片',
   'shared.draftHeader.changeAvatar': '更換頭像',

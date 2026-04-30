@@ -15,6 +15,19 @@ import {
   resolveConversationMode,
 } from '../../../app/renderer/productShell/conversationMode.js';
 import { findDirectLaneForCat } from '../../../app/renderer/productShell/myCatNavigation.js';
+import {
+  createTranslator,
+  messageKeys,
+  type MessageInterpolationValues,
+  type MessageKey,
+} from '../../../shared/i18n/index.js';
+
+type WorkspaceAppViewTranslator = (
+  key: MessageKey,
+  values?: MessageInterpolationValues,
+) => string;
+
+const defaultWorkspaceAppViewTranslator = createTranslator('en');
 
 export type AppLoadState =
   | { status: 'loading' }
@@ -105,6 +118,7 @@ export function deriveAppViewState(input: {
   addCatOpen: boolean;
   showingNewChatDraft: boolean;
   draftCatIds: string[];
+  t?: WorkspaceAppViewTranslator;
 }) {
   const {
     addCatOpen,
@@ -117,6 +131,7 @@ export function deriveAppViewState(input: {
     selectedDirectLane,
     showingMyCatDirectLane,
     showingNewChatDraft,
+    t = defaultWorkspaceAppViewTranslator,
   } = input;
   const surface: Surface =
     pathname.startsWith('/settings')
@@ -140,7 +155,7 @@ export function deriveAppViewState(input: {
   const assignedCatIds = new Set(
     activeChannelView?.assignedCats.map((cat) => cat.catId) ?? [],
   );
-  const bossCatName = resolveBossCatName(payload) ?? 'Orchestrator';
+  const bossCatName = resolveBossCatName(payload) ?? t(messageKeys.sharedOrchestratorFallbackName);
   const bossCatAvatarColor = payload.chat.cats.find(
     (cat) => cat.id === payload.chat.bossCatId,
   )?.avatarColor ?? null;

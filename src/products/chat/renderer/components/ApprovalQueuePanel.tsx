@@ -39,7 +39,8 @@ export function ApprovalQueuePanel({
           {approvals.map((approval) => {
             const isBusy = isApprovalBusy(busy, approval.taskId);
             const requestedBy = approval.requestedByActorId
-              ? actorNameById[approval.requestedByActorId] ?? 'Orchestrator'
+              ? actorNameById[approval.requestedByActorId]
+                ?? t(messageKeys.chatApprovalQueueDefaultRequester)
               : t(messageKeys.chatApprovalQueueDefaultRequester);
 
             return (

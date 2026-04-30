@@ -383,7 +383,7 @@ export function createCodeSidebarConversationProps(
     },
     helpers: {
       catInitials,
-      presentChannelTitle,
+      presentChannelTitle: (title) => presentChannelTitle(title, t),
       isVisibleCat: isChatCat,
       sortCatsForDisplay: sortChatCatsForDisplay,
       isDirectLaneSummary,

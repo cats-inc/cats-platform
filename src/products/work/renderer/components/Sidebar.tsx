@@ -573,7 +573,7 @@ export function createWorkSidebarConversationProps(
     },
     helpers: {
       catInitials,
-      presentChannelTitle,
+      presentChannelTitle: (title) => presentChannelTitle(title, t),
       isVisibleCat: isChatCat,
       sortCatsForDisplay: sortChatCatsForDisplay,
       isDirectLaneSummary,

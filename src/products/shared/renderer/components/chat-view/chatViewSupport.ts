@@ -135,16 +135,18 @@ export function resolveChatViewTopBarTitle(input: {
   selectedChannelTitle: string;
   isCompareGroup: boolean;
   compareGroup: ParallelChatGroupSummary | null;
+  t?: ChatViewSupportTranslator;
 }): string {
+  const t = input.t ?? defaultChatViewSupportTranslator;
   return input.isDirectLane
     ? (
       input.directLaneCat?.name
       ?? input.defaultRecipientCatRecord?.name
-      ?? presentChannelTitle(input.selectedChannelTitle)
+      ?? presentChannelTitle(input.selectedChannelTitle, t)
     )
     : input.isCompareGroup && input.compareGroup
-      ? presentChannelTitle(input.compareGroup.title)
-      : presentChannelTitle(input.selectedChannelTitle);
+      ? presentChannelTitle(input.compareGroup.title, t)
+      : presentChannelTitle(input.selectedChannelTitle, t);
 }
 
 export function resolveShowRosterAvatars(input: {

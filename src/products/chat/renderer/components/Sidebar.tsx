@@ -167,7 +167,7 @@ export function Sidebar(props: SidebarProps) {
     },
     helpers: {
       catInitials,
-      presentChannelTitle,
+      presentChannelTitle: (title) => presentChannelTitle(title, t),
       isVisibleCat: isChatCat,
       sortCatsForDisplay: sortChatCatsForDisplay,
       isDirectLaneSummary,

@@ -363,8 +363,13 @@ export function messageTone(senderKind: string): string {
   }
 }
 
-export function presentChannelTitle(title: string): string {
-  return title.trim() === 'Untitled chat' ? 'New chat' : title;
+export function presentChannelTitle(
+  title: string,
+  t: WorkspaceChatTranslator = defaultWorkspaceChatTranslator,
+): string {
+  return title.trim() === 'Untitled chat'
+    ? t(messageKeys.chatNewChatDraftGeneratedTitle)
+    : title;
 }
 
 export { nameInitials as catInitials } from '../../../shared/nameInitials.js';

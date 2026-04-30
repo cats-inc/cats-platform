@@ -1083,6 +1083,7 @@ export const enCatalog: MessageCatalog = {
   'shared.settingsCatsMemory.deleteError': 'Failed to delete memory.',
   'shared.operatorLoop.loadError': 'Failed to load operator loop.',
   'shared.folderBrowser.loadError': 'Failed to load folders.',
+  'shared.orchestrator.fallbackName': 'Orchestrator',
   'shared.draftHeader.changeCoverPhoto': 'Change cover photo',
   'shared.draftHeader.addCoverPhoto': 'Add cover photo',
   'shared.draftHeader.changeAvatar': 'Change avatar',

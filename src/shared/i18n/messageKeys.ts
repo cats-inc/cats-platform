@@ -1053,6 +1053,7 @@ export const messageKeys = {
   sharedSettingsCatsMemoryDeleteError: 'shared.settingsCatsMemory.deleteError',
   sharedOperatorLoopLoadError: 'shared.operatorLoop.loadError',
   sharedFolderBrowserLoadError: 'shared.folderBrowser.loadError',
+  sharedOrchestratorFallbackName: 'shared.orchestrator.fallbackName',
   sharedDraftHeaderChangeCoverPhoto: 'shared.draftHeader.changeCoverPhoto',
   sharedDraftHeaderAddCoverPhoto: 'shared.draftHeader.addCoverPhoto',
   sharedDraftHeaderChangeAvatar: 'shared.draftHeader.changeAvatar',

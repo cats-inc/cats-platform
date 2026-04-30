@@ -483,6 +483,7 @@ export function ChatView({
     selectedChannelTitle: selectedChannel.title,
     isCompareGroup,
     compareGroup,
+    t,
   });
   const showRosterAvatars = resolveShowRosterAvatars({
     isDirectLane,

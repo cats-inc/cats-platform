@@ -71,7 +71,7 @@ export function ParallelFooterBar({
               type="button"
               role="tab"
               aria-selected={active}
-              title={`${label} · ${presentChannelTitle(member.title)}`}
+              title={`${label} · ${presentChannelTitle(member.title, t)}`}
               onClick={() => onSelect(member.channelId)}
             >
               <span className="parallelFooterTabLabel">{label}</span>
