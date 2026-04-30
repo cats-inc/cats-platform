@@ -69,6 +69,7 @@ import { PermissionModeChip } from './PermissionModeChip.js';
 import { WorkspaceModeChip } from './WorkspaceModeChip.js';
 import { useRepoProbe } from '../hooks/useRepoProbe.js';
 import { useVoiceInputComposer } from '../hooks/useVoiceInputComposer.js';
+import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
 function formatBranchRuntimeSessionPolicy(policy: RuntimeSessionPolicy): string {
   const workspaceLabel = policy.workspaceKind === 'worktree'
@@ -444,6 +445,7 @@ export function NewChatDraft({
     hideGroupHint: hideDraftGroupHint = false,
     hideParallelHint: hideDraftParallelHint = false,
   } = builderControls ?? {};
+  const { t } = useI18n();
   const composerPlaceholder = draftCopy?.composerPlaceholder ?? 'How can I help you today?';
   const folderActionLabel = draftCopy?.folderActionLabel ?? 'Choose folder';
   const sidePanelCopy = draftCopy?.sidePanel;
@@ -458,7 +460,7 @@ export function NewChatDraft({
   const onToggleParallelBranchWorkflowShape = parallelBranchActions?.onToggleWorkflowShape;
   const onQuickAddParallelBranchTemporaryParticipant =
     parallelBranchActions?.onQuickAddTemporaryParticipant;
-  const resolvedSidePanelCopy = resolveChatNewChatDraftSidePanelCopy(sidePanelCopy);
+  const resolvedSidePanelCopy = resolveChatNewChatDraftSidePanelCopy(sidePanelCopy, t);
   const sidePanelTitle = sidePanel?.title ?? resolvedSidePanelCopy.title;
   const buildDraftSidePanelSections =
     sidePanel?.buildSections ?? buildChatNewChatDraftSidePanelSections;
@@ -519,6 +521,7 @@ export function NewChatDraft({
     draftCatExecutionTargetOverrides,
     selectedExecutionTarget,
     busy,
+    t,
   });
   const { isGroupDraft, isDirectLaneContext, isParticipantDraft } = draftSuggestionContext;
   const {

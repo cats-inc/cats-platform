@@ -18,6 +18,13 @@ import { ProviderModelFields } from './ProviderModelFields.js';
 import { type SidePanelSection } from '../../../../design/components/SidePanel.js';
 import type { ProviderTargetSelection } from '../../../../shared/providerSelection.js';
 import type { RuntimeSessionPolicy } from '../../../../shared/runtimeSessionPolicy.js';
+import { messageKeys, type MessageInterpolationValues, type MessageKey } from '../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
+
+type ChatNewChatDraftTranslator = (
+  key: MessageKey,
+  values?: MessageInterpolationValues,
+) => string;
 
 export interface ChatNewChatTemporaryParticipantFormState {
   roleHint: string;
@@ -51,38 +58,42 @@ type ResolvedChatNewChatDraftSidePanelCopy = Required<{
   folder: Required<NonNullable<ChatNewChatDraftSidePanelCopy['folder']>>;
 }>;
 
-const defaultChatNewChatDraftSidePanelCopy: ResolvedChatNewChatDraftSidePanelCopy = {
-  title: 'New Chat Setup',
+const defaultChatNewChatDraftSidePanelCopy = (
+  t: ChatNewChatDraftTranslator,
+): ResolvedChatNewChatDraftSidePanelCopy => ({
+  title: t(messageKeys.chatNewChatDraftSidePanelTitle),
   participants: {
-    catsSectionTitle: 'Cats',
-    groupSectionTitle: 'Participants',
-    emptyState: 'No cats are available yet.',
+    catsSectionTitle: t(messageKeys.chatNewChatDraftSidePanelParticipantsCatsTitle),
+    groupSectionTitle: t(messageKeys.chatNewChatDraftSidePanelParticipantsGroupTitle),
+    emptyState: t(messageKeys.chatNewChatDraftSidePanelParticipantsEmptyState),
   },
   execution: {
-    sectionTitle: 'AI Reply',
-    emptyState: 'No AI reply setup yet.',
+    sectionTitle: t(messageKeys.chatNewChatDraftSidePanelExecutionTitle),
+    emptyState: t(messageKeys.chatNewChatDraftSidePanelExecutionEmptyState),
   },
   folder: {
-    sectionTitle: 'Folder',
-    emptyState: 'No folder selected yet.',
+    sectionTitle: t(messageKeys.chatNewChatDraftSidePanelFolderTitle),
+    emptyState: t(messageKeys.chatNewChatDraftSidePanelFolderEmptyState),
   },
-};
+});
 
 export function resolveChatNewChatDraftSidePanelCopy(
   copy: ChatNewChatDraftSidePanelCopy | undefined,
+  t: ChatNewChatDraftTranslator,
 ): ResolvedChatNewChatDraftSidePanelCopy {
+  const defaultCopy = defaultChatNewChatDraftSidePanelCopy(t);
   return {
-    title: copy?.title ?? defaultChatNewChatDraftSidePanelCopy.title,
+    title: copy?.title ?? defaultCopy.title,
     participants: {
-      ...defaultChatNewChatDraftSidePanelCopy.participants,
+      ...defaultCopy.participants,
       ...copy?.participants,
     },
     execution: {
-      ...defaultChatNewChatDraftSidePanelCopy.execution,
+      ...defaultCopy.execution,
       ...copy?.execution,
     },
     folder: {
-      ...defaultChatNewChatDraftSidePanelCopy.folder,
+      ...defaultCopy.folder,
       ...copy?.folder,
     },
   };
@@ -152,7 +163,8 @@ export function buildChatNewChatDraftSidePanelSections(
   input: BuildChatNewChatDraftSidePanelSectionsInput,
 ): SidePanelSection[] {
   const sections: SidePanelSection[] = [];
-  const copy = resolveChatNewChatDraftSidePanelCopy(input.sidePanelCopy);
+  const { t } = useI18n();
+  const copy = resolveChatNewChatDraftSidePanelCopy(input.sidePanelCopy, t);
 
   sections.push({
     id: 'cats',
@@ -194,11 +206,11 @@ export function buildChatNewChatDraftSidePanelSections(
                     instance: assistantPreset.executionTarget.instance,
                     model: assistantPreset.executionTarget.model,
                   });
-                  let addButtonLabel = 'Add';
+                  let addButtonLabel = t(messageKeys.chatNewChatDraftAssistantPresetAdd);
                   if (capabilityReview.requiresActivationReview) {
-                    addButtonLabel = 'Review';
+                    addButtonLabel = t(messageKeys.chatNewChatDraftAssistantPresetReview);
                   } else if (alreadyAdded) {
-                    addButtonLabel = 'Added';
+                    addButtonLabel = t(messageKeys.chatNewChatDraftAssistantPresetAdded);
                   }
                   return (
                     <div key={assistantPreset.id} className="addCatItem">
@@ -257,13 +269,15 @@ export function buildChatNewChatDraftSidePanelSections(
                           }}
                         >
                           <label className="fieldLabel">
-                            <span>Name</span>
+                            <span>{t(messageKeys.chatNewChatDraftTemporaryParticipantNameLabel)}</span>
                             <input
                               className="textInput"
                               value={input.editingTemporaryParticipantName}
                               onChange={(event) =>
                                 input.onEditingTemporaryParticipantNameChange(event.target.value)}
-                              placeholder="Participant name"
+                              placeholder={t(
+                                messageKeys.chatNewChatDraftTemporaryParticipantNamePlaceholder,
+                              )}
                             />
                           </label>
                           <div style={{ display: 'flex', gap: 8 }}>
@@ -272,14 +286,14 @@ export function buildChatNewChatDraftSidePanelSections(
                               className="operatorActionButton"
                               onClick={input.onCancelTemporaryParticipantRename}
                             >
-                              Cancel
+                              {t(messageKeys.chatNewChatDraftTemporaryParticipantCancel)}
                             </button>
                             <button
                               type="submit"
                               className="primaryButton"
                               disabled={!input.editingTemporaryParticipantName.trim()}
                             >
-                              Save name
+                              {t(messageKeys.chatNewChatDraftTemporaryParticipantSaveName)}
                             </button>
                           </div>
                         </form>
@@ -292,7 +306,7 @@ export function buildChatNewChatDraftSidePanelSections(
                         disabled={input.isSubmittingFirstTurn}
                         onClick={() => input.onBeginTemporaryParticipantRename(participant)}
                       >
-                        Rename
+                        {t(messageKeys.chatNewChatDraftTemporaryParticipantRename)}
                       </button>
                       <button
                         className="addCatAssignButton addCatRemoveButton"
@@ -305,7 +319,7 @@ export function buildChatNewChatDraftSidePanelSections(
                           input.onRemoveDraftTemporaryParticipant(participant.participantId);
                         }}
                       >
-                        Remove
+                        {t(messageKeys.chatNewChatDraftTemporaryParticipantRemove)}
                       </button>
                     </div>
                   </div>
@@ -321,10 +335,10 @@ export function buildChatNewChatDraftSidePanelSections(
                 }}
               >
                 <p className="operatorEmptyState" style={{ margin: 0 }}>
-                  Name will be assigned automatically from the provider. You can rename it after adding.
+                  {t(messageKeys.chatNewChatDraftTemporaryParticipantNameHint)}
                 </p>
                 <label className="fieldLabel">
-                  <span>Role Hint</span>
+                  <span>{t(messageKeys.chatNewChatDraftTemporaryParticipantRoleHintLabel)}</span>
                   <input
                     className="textInput"
                     value={input.temporaryParticipantForm.roleHint}
@@ -333,7 +347,7 @@ export function buildChatNewChatDraftSidePanelSections(
                         ...current,
                         roleHint: event.target.value,
                       }))}
-                    placeholder="Optional one-line role"
+                    placeholder={t(messageKeys.chatNewChatDraftTemporaryParticipantRoleHintPlaceholder)}
                   />
                 </label>
                 <ProviderModelFields
@@ -360,17 +374,17 @@ export function buildChatNewChatDraftSidePanelSections(
                       input.onTemporaryParticipantFormOpenChange(false);
                     }}
                   >
-                    Cancel
+                    {t(messageKeys.chatNewChatDraftTemporaryParticipantCancel)}
                   </button>
                   <button
                     type="submit"
                     className="primaryButton"
                     disabled={
                       input.hasReachedGroupParticipantLimit
-                      || !input.temporaryParticipantForm.provider.trim()
+                    || !input.temporaryParticipantForm.provider.trim()
                     }
                   >
-                    Add participant
+                    {t(messageKeys.chatNewChatDraftTemporaryParticipantSubmit)}
                   </button>
                 </div>
               </form>
@@ -381,7 +395,7 @@ export function buildChatNewChatDraftSidePanelSections(
                 disabled={input.isSubmittingFirstTurn}
                 onClick={() => input.onTemporaryParticipantFormOpenChange(true)}
               >
-                Add temporary participant
+                {t(messageKeys.chatNewChatDraftTemporaryParticipantOpenForm)}
               </button>
             ) : null}
           </>

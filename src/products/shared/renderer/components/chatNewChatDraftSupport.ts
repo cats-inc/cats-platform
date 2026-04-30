@@ -22,9 +22,19 @@ import {
 } from '../../../../shared/composer.js';
 import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
 import {
+  messageKeys,
+  type MessageInterpolationValues,
+  type MessageKey,
+} from '../../../../shared/i18n/index.js';
+import {
   buildAudienceParticipantFromCat,
   buildAudienceParticipantFromTemporaryParticipant,
 } from '../audienceParticipantBuilder.js';
+
+type ChatNewChatDraftTranslator = (
+  key: MessageKey,
+  values?: MessageInterpolationValues,
+) => string;
 
 export interface DraftComposerStackParticipant {
   key: string;
@@ -86,6 +96,7 @@ export function resolveChatNewChatDraftViewState(input: {
   draftCatExecutionTargetOverrides: Map<string, ExecutionTargetValue>;
   selectedExecutionTarget?: ExecutionTargetValue | undefined;
   busy: WorkspaceBusyState;
+  t: ChatNewChatDraftTranslator;
 }) {
   const chatCats = input.payload.chat.cats.filter(isChatCat);
   const assistantPresets = input.payload.assistantPresets ?? [];
@@ -152,12 +163,14 @@ export function resolveChatNewChatDraftViewState(input: {
     return pickDraftGreeting({ pool: input.greetingPool });
   })();
   const groupDraftSelectionLabel = draftParticipantCount === 1
-    ? '1 participant selected so far. Add more or send when ready.'
+    ? input.t(messageKeys.chatNewChatDraftGroupDraftSelectionLabelSingle)
     : draftParticipantCount > 1
-      ? `${draftParticipantCount} participants selected for this shared chat.`
+      ? input.t(messageKeys.chatNewChatDraftGroupDraftSelectionLabelCount, {
+        count: draftParticipantCount,
+      })
       : activeChatCats.length > 0 || assistantPresets.length > 0
-        ? 'Choose Cats, reuse saved Assistants, or add temporary participants for this shared chat.'
-        : 'Add temporary participants here, or create Cats and Assistants in Settings before starting a shared chat.';
+        ? input.t(messageKeys.chatNewChatDraftGroupDraftSelectionLabelWithCatsOrAssistants)
+        : input.t(messageKeys.chatNewChatDraftGroupDraftSelectionLabelWithSettings);
   const highlightedCat = input.draftHighlightedCatId && input.draftCatIds.includes(input.draftHighlightedCatId)
     ? chatCats.find((cat) => cat.id === input.draftHighlightedCatId) ?? null
     : null;

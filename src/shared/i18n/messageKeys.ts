@@ -970,6 +970,43 @@ export const messageKeys = {
   workNewProjectCreateError: 'work.newProject.createError',
   workItemLoadingTitle: 'work.item.loadingTitle',
   workItemRelatedWorkItemTitle: 'work.item.relatedWorkItemTitle',
+  chatNewChatDraftSidePanelTitle: 'chat.newChatDraft.sidePanelTitle',
+  chatNewChatDraftSidePanelParticipantsCatsTitle: 'chat.newChatDraft.participants.catsTitle',
+  chatNewChatDraftSidePanelParticipantsGroupTitle: 'chat.newChatDraft.participants.groupTitle',
+  chatNewChatDraftSidePanelParticipantsEmptyState:
+    'chat.newChatDraft.participants.emptyState',
+  chatNewChatDraftSidePanelExecutionTitle: 'chat.newChatDraft.execution.title',
+  chatNewChatDraftSidePanelExecutionEmptyState: 'chat.newChatDraft.execution.emptyState',
+  chatNewChatDraftSidePanelFolderTitle: 'chat.newChatDraft.folder.title',
+  chatNewChatDraftSidePanelFolderEmptyState: 'chat.newChatDraft.folder.emptyState',
+  chatNewChatDraftGroupDraftSelectionLabelSingle:
+    'chat.newChatDraft.groupDraftSelectionLabelSingle',
+  chatNewChatDraftGroupDraftSelectionLabelCount:
+    'chat.newChatDraft.groupDraftSelectionLabelCount',
+  chatNewChatDraftGroupDraftSelectionLabelWithCatsOrAssistants:
+    'chat.newChatDraft.groupDraftSelectionLabelWithCatsOrAssistants',
+  chatNewChatDraftGroupDraftSelectionLabelWithSettings:
+    'chat.newChatDraft.groupDraftSelectionLabelWithSettings',
+  chatNewChatDraftAssistantPresetAdd: 'chat.newChatDraft.assistantPresetAdd',
+  chatNewChatDraftAssistantPresetReview: 'chat.newChatDraft.assistantPresetReview',
+  chatNewChatDraftAssistantPresetAdded: 'chat.newChatDraft.assistantPresetAdded',
+  chatNewChatDraftTemporaryParticipantCancel:
+    'chat.newChatDraft.temporaryParticipantCancel',
+  chatNewChatDraftTemporaryParticipantNameLabel: 'chat.newChatDraft.temporaryParticipantNameLabel',
+  chatNewChatDraftTemporaryParticipantNamePlaceholder:
+    'chat.newChatDraft.temporaryParticipantNamePlaceholder',
+  chatNewChatDraftTemporaryParticipantNameHint:
+    'chat.newChatDraft.temporaryParticipantNameHint',
+  chatNewChatDraftTemporaryParticipantSaveName: 'chat.newChatDraft.temporaryParticipantSaveName',
+  chatNewChatDraftTemporaryParticipantRename: 'chat.newChatDraft.temporaryParticipantRename',
+  chatNewChatDraftTemporaryParticipantRemove: 'chat.newChatDraft.temporaryParticipantRemove',
+  chatNewChatDraftTemporaryParticipantRoleHintLabel:
+    'chat.newChatDraft.temporaryParticipantRoleHintLabel',
+  chatNewChatDraftTemporaryParticipantRoleHintPlaceholder:
+    'chat.newChatDraft.temporaryParticipantRoleHintPlaceholder',
+  chatNewChatDraftTemporaryParticipantSubmit: 'chat.newChatDraft.temporaryParticipantSubmit',
+  chatNewChatDraftTemporaryParticipantOpenForm:
+    'chat.newChatDraft.temporaryParticipantOpenForm',
   sharedAddCatPanelTitle: 'shared.addCatPanelTitle',
   sharedAddCatPanelClose: 'shared.addCatPanelClose',
   sharedAddCatPanelChooseExisting: 'shared.addCatPanelChooseExisting',
