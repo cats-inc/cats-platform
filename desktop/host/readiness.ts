@@ -726,14 +726,12 @@ export function buildDesktopBootstrapSnapshot(
     phase = 'checking_prerequisites';
     status = 'degraded';
     summary = 'Local services are ready. Running prerequisite checks.';
-  } else if (cliMissing && !setupCompleteAt) {
-    // Hard gate only for first-run / post-reset users; setupCompleteAt
-    // users may have a stale inventory (e.g., migrated from a build that
-    // didn't track installedHelperIds) so we don't block them — they fall
-    // through to ready_for_chat / ready_for_setup as before.
+  } else if (cliMissing) {
     phase = 'needs_prerequisites';
     status = 'degraded';
-    summary = 'Welcome. Install a CLI to get started with Cats.';
+    summary = setupCompleteAt
+      ? 'No CLI is currently installed. Install one to continue using Cats.'
+      : 'Welcome. Install a CLI to get started with Cats.';
   } else if (!setupCompleted) {
     if (!hasRuntimeHealth) {
       phase = 'checking_prerequisites';

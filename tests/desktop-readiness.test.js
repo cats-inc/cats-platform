@@ -1118,11 +1118,7 @@ test('desktop bootstrap fires needs_prerequisites for cli_missing before setup i
   );
 });
 
-test('desktop bootstrap does NOT fire cli_missing for setupCompleteAt users (legacy migration safety)', () => {
-  // Migration scenario: legacy persisted state has no installedHelperIds, so
-  // cliInventory.total === 0 even though the user has CLIs installed. The
-  // setupCompleteAt timestamp is the trust signal — fall through to
-  // ready_for_chat instead of trapping the user on bootstrap.
+test('desktop bootstrap fires needs_prerequisites for cli_missing even after setup is complete', () => {
   const snapshot = buildDesktopBootstrapSnapshot({
     config: desktopConfig,
     services: [
@@ -1141,10 +1137,11 @@ test('desktop bootstrap does NOT fire cli_missing for setupCompleteAt users (leg
       runtime: { status: 'ok', summary: 'Runtime is ready.' },
     },
     providerDiagnostics: null,
-    // setup omitted on purpose -> empty installedHelperIds, but should not gate
+    // setup omitted on purpose -> empty installedHelperIds -> cli_missing
   });
 
-  assert.equal(snapshot.phase, 'ready_for_chat');
+  assert.equal(snapshot.phase, 'needs_prerequisites');
+  assert.match(snapshot.summary, /No CLI is currently installed|Install/i);
   assert.equal(snapshot.prerequisites?.cliInventory?.total, 0);
 });
 
