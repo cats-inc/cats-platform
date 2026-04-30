@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
 
 import { catInitials } from '../../workspaceChatUtils.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
 export interface ChatViewTopBarAvatar {
   key: string;
@@ -35,6 +37,7 @@ export function ChatViewTopBar({
   extraActions,
   onToggleSidePanel,
 }: ChatViewTopBarProps) {
+  const { t } = useI18n();
   return (
     <header className="channelTopBar">
       <div className="channelTopBarStart">
@@ -80,7 +83,7 @@ export function ChatViewTopBar({
           className="sidePanelToggle"
           type="button"
           onClick={onToggleSidePanel}
-          aria-label="Toggle inspector panel"
+          aria-label={t(messageKeys.chatTopBarToggleSidePanelAriaLabel)}
           aria-pressed={sidePanelOpen}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">

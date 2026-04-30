@@ -9,6 +9,8 @@ import {
   SegmentContentBody,
   type ClusterLayoutProps,
 } from './ConcurrentClusterRenderer.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
 function phaseClassName(phase: string): string {
   switch (phase) {
@@ -109,6 +111,7 @@ export function CompareCardsLayout<Participant>(
     resolveParticipantDisplayName,
     showProgressDetails,
   } = props;
+  const { t } = useI18n();
   const primarySegmentId = segments[0]?.id ?? null;
 
   const renderableCards = segments.flatMap((segment) => {
@@ -146,7 +149,7 @@ export function CompareCardsLayout<Participant>(
           type="button"
           className="compareCardsNavButton compareCardsNavPrev"
           onClick={() => setStartIndex(wrapIndex(normalizedStartIndex - 1, total))}
-          aria-label="Previous card"
+          aria-label={t(messageKeys.chatCompareCardsPrevCardAriaLabel)}
         >
           <svg
             width="18"
@@ -222,7 +225,7 @@ export function CompareCardsLayout<Participant>(
           type="button"
           className="compareCardsNavButton compareCardsNavNext"
           onClick={() => setStartIndex(wrapIndex(normalizedStartIndex + 1, total))}
-          aria-label="Next card"
+          aria-label={t(messageKeys.chatCompareCardsNextCardAriaLabel)}
         >
           <svg
             width="18"
@@ -248,7 +251,9 @@ export function CompareCardsLayout<Participant>(
                 ? 'compareCardsPaginationDot compareCardsPaginationDotActive'
                 : 'compareCardsPaginationDot'}
               onClick={() => setStartIndex(i)}
-              aria-label={`Card ${i + 1}`}
+              aria-label={t(messageKeys.chatCompareCardsPaginationItemAriaLabel, {
+                cardIndex: i + 1,
+              })}
             />
           ))}
         </div>
