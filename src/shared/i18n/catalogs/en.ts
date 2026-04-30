@@ -1044,6 +1044,13 @@ export const enCatalog: MessageCatalog = {
   'shared.messageChoicesRecorded': 'Owner response recorded.',
   'shared.messageChoicesConfirm': 'Confirm',
   'shared.messageChoicesSkip': 'Skip',
+  'shared.folderBrowserEnterPath': 'Enter a path',
+  'shared.folderBrowserGo': 'Go',
+  'shared.folderBrowserUpOneLevel': 'Up one level',
+  'shared.folderBrowserRefresh': 'Refresh',
+  'shared.folderBrowserLoading': 'Loading...',
+  'shared.folderBrowserNoSubdirectories': 'No subdirectories in this folder.',
+  'shared.folderBrowserUseThisFolder': 'Use this folder',
 };
 
 export default enCatalog;

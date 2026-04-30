@@ -1006,6 +1006,13 @@ export const messageKeys = {
   sharedMessageChoicesRecorded: 'shared.messageChoicesRecorded',
   sharedMessageChoicesConfirm: 'shared.messageChoicesConfirm',
   sharedMessageChoicesSkip: 'shared.messageChoicesSkip',
+  sharedFolderBrowserEnterPath: 'shared.folderBrowserEnterPath',
+  sharedFolderBrowserGo: 'shared.folderBrowserGo',
+  sharedFolderBrowserUpOneLevel: 'shared.folderBrowserUpOneLevel',
+  sharedFolderBrowserRefresh: 'shared.folderBrowserRefresh',
+  sharedFolderBrowserLoading: 'shared.folderBrowserLoading',
+  sharedFolderBrowserNoSubdirectories: 'shared.folderBrowserNoSubdirectories',
+  sharedFolderBrowserUseThisFolder: 'shared.folderBrowserUseThisFolder',
 } as const;
 
 export type MessageKey = keyof typeof messageKeys;

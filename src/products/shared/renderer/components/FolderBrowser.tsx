@@ -1,4 +1,5 @@
 import type { BrowseDirectoryEntry } from '../api/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
 
 export interface FolderBrowserContentProps {
   folderBrowsePath: string;
@@ -23,6 +24,8 @@ export function FolderBrowserContent({
   onBrowse,
   onSelect,
 }: FolderBrowserContentProps) {
+  const { t } = useI18n();
+
   return (
     <div className="folderBrowserInline">
       <div className="folderBrowserPathRow">
@@ -37,15 +40,15 @@ export function FolderBrowserContent({
               onBrowse(folderBrowsePath);
             }
           }}
-          placeholder="Enter a path"
+          placeholder={t('sharedFolderBrowserEnterPath')}
         />
         <button
           className="folderBrowserNavButton"
           type="button"
           onClick={() => onBrowse(folderBrowsePath)}
           disabled={folderBrowseLoading}
-          aria-label="Go"
-          data-tooltip="Go"
+          aria-label={t('sharedFolderBrowserGo')}
+          data-tooltip={t('sharedFolderBrowserGo')}
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M3 8h10" />
@@ -59,8 +62,8 @@ export function FolderBrowserContent({
           type="button"
           onClick={() => onBrowse(folderBrowseParentPath)}
           disabled={folderBrowseLoading || !folderBrowseParentPath || folderBrowseParentPath === folderBrowseCurrentPath}
-          aria-label="Up one level"
-          data-tooltip="Up one level"
+          aria-label={t('sharedFolderBrowserUpOneLevel')}
+          data-tooltip={t('sharedFolderBrowserUpOneLevel')}
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M8 13V3" />
@@ -72,8 +75,8 @@ export function FolderBrowserContent({
           type="button"
           onClick={() => onBrowse(folderBrowseCurrentPath)}
           disabled={folderBrowseLoading || !folderBrowseCurrentPath}
-          aria-label="Refresh"
-          data-tooltip="Refresh"
+          aria-label={t('sharedFolderBrowserRefresh')}
+          data-tooltip={t('sharedFolderBrowserRefresh')}
         >
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M13.5 2.5v4h-4" />
@@ -83,7 +86,7 @@ export function FolderBrowserContent({
           </svg>
         </button>
         <span className="folderBrowserCurrentPath" data-tooltip={folderBrowseCurrentPath}>
-          {folderBrowseCurrentPath || 'Loading...'}
+          {folderBrowseCurrentPath || t('sharedFolderBrowserLoading')}
         </span>
       </div>
       <div className="folderBrowserListScroll" role="list">
@@ -106,7 +109,7 @@ export function FolderBrowserContent({
           ))
         ) : (
           <div className="folderBrowserStatus">
-            {folderBrowseError || 'No subdirectories in this folder.'}
+            {folderBrowseError || t('sharedFolderBrowserNoSubdirectories')}
           </div>
         )}
       </div>
@@ -120,7 +123,7 @@ export function FolderBrowserContent({
           onClick={onSelect}
           disabled={!folderBrowseCurrentPath || Boolean(folderBrowseError)}
         >
-          Use this folder
+          {t('sharedFolderBrowserUseThisFolder')}
         </button>
       </div>
     </div>

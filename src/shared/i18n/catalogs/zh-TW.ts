@@ -1010,6 +1010,14 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.messageChoicesRecorded': '發起者回應已記錄。',
   'shared.messageChoicesConfirm': '確認',
   'shared.messageChoicesSkip': '跳過',
+  'shared.folderBrowserEnterPath': '輸入路徑',
+  'shared.folderBrowserGo': '前往',
+  'shared.folderBrowserUpOneLevel': '回上一層',
+  'shared.folderBrowserRefresh': '重新整理',
+  'shared.folderBrowserLoading': '載入中…',
+  'shared.folderBrowserNoSubdirectories':
+    '此資料夾中沒有子資料夾。',
+  'shared.folderBrowserUseThisFolder': '使用此資料夾',
 };
 
 export default zhTWCatalog;
