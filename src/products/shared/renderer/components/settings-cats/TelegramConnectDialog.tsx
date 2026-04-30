@@ -1,5 +1,7 @@
 import { useEffect, type Dispatch, type SetStateAction } from 'react';
 
+import { messageKeys } from '../../../../../shared/i18n/messageKeys.js';
+import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import type { BotFormState } from '../../hooks/settingsCatsRegistryActions.js';
 
 export interface TelegramConnectDialogProps {
@@ -17,6 +19,7 @@ export function TelegramConnectDialog({
   onSubmit,
   onClose,
 }: TelegramConnectDialogProps) {
+  const { t } = useI18n();
   useEffect(() => {
     function onKey(event: KeyboardEvent): void {
       if (event.key === 'Escape' && !busyCreating) onClose();
@@ -44,52 +47,52 @@ export function TelegramConnectDialog({
           onSubmit();
         }}
       >
-        <p className="catsDialogTitle">Connect Telegram</p>
+        <p className="catsDialogTitle">{t(messageKeys.sharedTelegramConnectDialogTitle)}</p>
         <label className="fieldLabel">
-          <span>Bot username</span>
+          <span>{t(messageKeys.sharedTelegramConnectBotUsernameLabel)}</span>
           <input
             className="textInput"
-            placeholder="my_cat_bot"
+            placeholder={t(messageKeys.sharedTelegramConnectBotUsernamePlaceholder)}
             value={botForm.botName}
             onChange={(event) => setBotForm({ ...botForm, botName: event.target.value })}
             autoFocus
           />
         </label>
         <label className="fieldLabel">
-          <span>Bot token</span>
+          <span>{t(messageKeys.sharedTelegramConnectBotTokenLabel)}</span>
           <input
             className="textInput"
             type="password"
-            placeholder="Paste from @BotFather"
+            placeholder={t(messageKeys.sharedTelegramConnectBotTokenPlaceholder)}
             value={botForm.botToken}
             onChange={(event) => setBotForm({ ...botForm, botToken: event.target.value })}
           />
         </label>
         <div className="fieldLabel">
-          <span>Mode</span>
+          <span>{t(messageKeys.sharedTelegramConnectModeLabel)}</span>
           <div className="skillPills">
             <button
               type="button"
               className={botForm.inboundMode === 'polling' ? 'draftLeadPill draftLeadPillActive' : 'draftLeadPill'}
               onClick={() => setBotForm({ ...botForm, inboundMode: 'polling' })}
             >
-              Polling
+              {t(messageKeys.sharedTelegramConnectModePolling)}
             </button>
             <button
               type="button"
               className={botForm.inboundMode === 'webhook' ? 'draftLeadPill draftLeadPillActive' : 'draftLeadPill'}
               onClick={() => setBotForm({ ...botForm, inboundMode: 'webhook' })}
             >
-              Webhook
+              {t(messageKeys.sharedTelegramConnectModeWebhook)}
             </button>
           </div>
         </div>
         {botForm.inboundMode === 'webhook' ? (
           <label className="fieldLabel">
-            <span>Webhook secret</span>
+            <span>{t(messageKeys.sharedTelegramConnectWebhookSecretLabel)}</span>
             <input
               className="textInput"
-              placeholder="Optional"
+              placeholder={t(messageKeys.sharedTelegramConnectWebhookSecretPlaceholder)}
               value={botForm.webhookSecret}
               onChange={(event) => setBotForm({ ...botForm, webhookSecret: event.target.value })}
             />
@@ -102,14 +105,16 @@ export function TelegramConnectDialog({
             onClick={onClose}
             disabled={busyCreating}
           >
-            Cancel
+            {t(messageKeys.sharedTelegramConnectCancel)}
           </button>
           <button
             className="primaryButton"
             type="submit"
             disabled={submitDisabled}
           >
-            {busyCreating ? 'Connecting...' : 'Connect'}
+            {busyCreating
+              ? t(messageKeys.sharedTelegramConnectConnecting)
+              : t(messageKeys.sharedTelegramConnectConnect)}
           </button>
         </div>
       </form>
