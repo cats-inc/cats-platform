@@ -11,6 +11,11 @@ import {
   type ClusterLayoutProps,
   type ResolvedSegmentPresentation,
 } from './ConcurrentClusterRenderer.js';
+import {
+  messageKeys,
+  type MessageInterpolationValues,
+} from '../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
 function CopyButton(): JSX.Element {
   return (
@@ -43,17 +48,24 @@ function hasSpeakerIdentity<Participant>(
 function buildToggleLabel<Participant>(
   presentation: ResolvedSegmentPresentation<Participant>,
   isExpanded: boolean,
+  isAnonymousResponseLabel: string,
+  t: (key: keyof typeof messageKeys, values?: MessageInterpolationValues) => string,
 ): string {
   const accessibleName = (
     presentation.segmentParticipantDisplayName
     ?? presentation.segmentParticipantCat?.name
     ?? presentation.speakerCat?.name
     ?? presentation.speakerLabel?.trim()
-    ?? 'unnamed response'
+    ?? isAnonymousResponseLabel
   );
-  return accessibleName === 'unnamed response'
-    ? `${isExpanded ? 'Collapse' : 'Expand'} unnamed response`
-    : `${isExpanded ? 'Collapse' : 'Expand'} response from ${accessibleName}`;
+  if (accessibleName === isAnonymousResponseLabel) {
+    return isExpanded
+      ? t(messageKeys.chatFocusRailCollapseAnonymousResponseLabel)
+      : t(messageKeys.chatFocusRailExpandAnonymousResponseLabel);
+  }
+  return isExpanded
+    ? t(messageKeys.chatFocusRailCollapseLabeledResponseLabel, { speakerName: accessibleName })
+    : t(messageKeys.chatFocusRailExpandLabeledResponseLabel, { speakerName: accessibleName });
 }
 
 function AnonymousSecondarySummary(): JSX.Element {
@@ -88,8 +100,10 @@ export function FocusRailLayout<Participant>(
     resolveParticipantDisplayName,
     showProgressDetails,
   } = props;
+  const { t } = useI18n();
 
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const unnamedResponseLabel = t(messageKeys.chatFocusRailUnnamedResponseLabel);
 
   const primarySegment = segments[0] ?? null;
   const secondarySegments = primarySegment
@@ -163,7 +177,12 @@ export function FocusRailLayout<Participant>(
               isActive,
               isExpanded,
             });
-            const toggleLabel = buildToggleLabel(presentation, isExpanded);
+            const toggleLabel = buildToggleLabel(
+              presentation,
+              isExpanded,
+              unnamedResponseLabel,
+              t,
+            );
             const copyLabel = buildSegmentCopyLabel(presentation);
             return (
               <div key={segment.id} className="focusRailSecondarySlot">
