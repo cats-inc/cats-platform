@@ -33,6 +33,8 @@ import {
   subscribeCatCover,
   writeCatCover,
 } from '../../catCoverStorage.js';
+import { messageKeys } from '../../../../../shared/i18n/messageKeys.js';
+import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import { SettingsCatsDetailPanelContent } from './SettingsCatsDetailPanelContent.js';
 import { SettingsCatsRegistry } from './SettingsCatsRegistry.js';
 import { findNewlyCreatedActiveCat } from './settingsCatsSupport.js';
@@ -108,6 +110,7 @@ export function SettingsCatsCanvas({
   const location = useLocation();
   const navigate = useNavigate();
   const isCreateRoute = location.pathname.endsWith('/cats/new');
+  const { t } = useI18n();
 
   useEffect(() => {
     // Clear any residual parent feedback once on entry so stale messages from other screens do not leak through.
@@ -387,7 +390,7 @@ export function SettingsCatsCanvas({
   return (
     <>
       <div className="catsLayout catsLayoutSidePanel">
-        <nav className="catsSelectorStrip" role="tablist" aria-label="Select a cat">
+        <nav className="catsSelectorStrip" role="tablist" aria-label={t(messageKeys.sharedSettingsCatsSelectCatAria)}>
           {sortedActiveCats.map((cat) => {
             const isSelected = effectiveMode === 'view' && cat.id === selectedCatId;
             const isBoss = cat.id === payload.chat.bossCatId;
@@ -425,8 +428,10 @@ export function SettingsCatsCanvas({
             ].filter(Boolean).join(' ')}
             onClick={handleStartCreate}
             disabled={atCatLimit && effectiveMode !== 'create'}
-            aria-label="Add new cat"
-            data-tooltip={atCatLimit ? 'Cat limit reached' : 'Add new cat'}
+            aria-label={t(messageKeys.sharedSettingsCatsAddNewCatLabel)}
+            data-tooltip={atCatLimit
+              ? t(messageKeys.sharedCatsCreateCatLimitReached)
+              : t(messageKeys.sharedSettingsCatsAddNewCatLabel)}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.25" strokeLinecap="round" strokeLinejoin="round">
               <line x1="12" y1="5" x2="12" y2="19" />
@@ -455,8 +460,8 @@ export function SettingsCatsCanvas({
                   ? { backgroundImage: `url(${cat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
                   : cat.avatarColor ? { background: cat.avatarColor } : undefined}
                 onClick={() => handleSelectCat(cat.id)}
-                data-tooltip={`${cat.name} (archived)`}
-                aria-label={`${cat.name} (archived)`}
+                data-tooltip={`${cat.name} (${t(messageKeys.workObjectStatusArchived)})`}
+                aria-label={`${cat.name} (${t(messageKeys.workObjectStatusArchived)})`}
               >
                 {cat.avatarUrl ? null : catInitials(cat.name)}
               </button>
@@ -469,7 +474,9 @@ export function SettingsCatsCanvas({
                 checked={showArchived}
                 onChange={(event) => setShowArchived(event.target.checked)}
               />
-              <span>Show archived ({archivedCats.length})</span>
+              <span>
+                {t(messageKeys.sharedSettingsCatsShowArchivedLabel, { count: archivedCats.length })}
+              </span>
             </label>
           ) : null}
         </nav>
@@ -479,14 +486,14 @@ export function SettingsCatsCanvas({
           header={
             <SettingsSectionHeader
               title={
-                effectiveMode === 'create' ? 'New cat' : selectedCat ? (
+                effectiveMode === 'create' ? t(messageKeys.sharedCatsCreateNewCat) : selectedCat ? (
                   <>
                     {selectedCat.name}
                     {selectedCat.id === payload.chat.bossCatId ? (
-                      <span className="catsDetailBossTag">Boss</span>
+                      <span className="catsDetailBossTag">{t(messageKeys.sharedCatInspectBossLabel)}</span>
                     ) : null}
                     {selectedCat.status === 'archived' ? (
-                      <span className="catsDetailArchivedTag">Archived</span>
+                      <span className="catsDetailArchivedTag">{t(messageKeys.workObjectStatusArchived)}</span>
                     ) : null}
                   </>
                 ) : ''
@@ -495,14 +502,14 @@ export function SettingsCatsCanvas({
                 effectiveMode === 'view' && selectedCat ? (
                   <SettingsActionBar>
                     {selectedCat.status === 'active' ? (
-                      <button
-                        type="button"
-                        className="secondaryButton"
-                        disabled={isCatBusy(busy, 'archive', selectedCat.id)}
-                        onClick={() => void onArchiveCat(selectedCat.id, selectedCat.name)}
-                      >
-                        Archive
-                      </button>
+                          <button
+                            type="button"
+                            className="secondaryButton"
+                            disabled={isCatBusy(busy, 'archive', selectedCat.id)}
+                            onClick={() => void onArchiveCat(selectedCat.id, selectedCat.name)}
+                          >
+                        {t(messageKeys.sharedSettingsCatsArchiveLabel)}
+                          </button>
                     ) : (
                       <>
                         <button
