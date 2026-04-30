@@ -89,9 +89,9 @@ export function FolderBrowserContent({
           {folderBrowseCurrentPath || t('sharedFolderBrowserLoading')}
         </span>
       </div>
-      <div className="folderBrowserListScroll" role="list">
+        <div className="folderBrowserListScroll" role="list">
         {folderBrowseLoading ? (
-          <div className="folderBrowserStatus">Loading folders&#x2026;</div>
+          <div className="folderBrowserStatus">{t('sharedFolderBrowserLoading')}</div>
         ) : folderBrowseEntries.length > 0 ? (
           folderBrowseEntries.map((entry) => (
             <button
