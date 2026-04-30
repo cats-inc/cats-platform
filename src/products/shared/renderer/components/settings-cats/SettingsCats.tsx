@@ -735,7 +735,7 @@ export function SettingsCatsCanvas({
                         className={(catForm.skillProfile || 'chat-default') === profile.value ? 'draftLeadPill draftLeadPillActive' : 'draftLeadPill'}
                         onClick={() => setCatForm({ ...catForm, skillProfile: profile.value })}
                       >
-                        {profile.label}
+                        {t(profile.label)}
                       </button>
                     ))}
                   </div>
@@ -949,7 +949,7 @@ export function SettingsCatsCanvas({
                             );
                           }}
                         >
-                          {profile.label}
+                          {t(profile.label)}
                         </button>
                       );
                     })}

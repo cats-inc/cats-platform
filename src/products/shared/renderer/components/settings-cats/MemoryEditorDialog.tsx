@@ -60,7 +60,7 @@ export function MemoryEditorDialog({
             onChange={(event) => setMemoryForm({ ...memoryForm, category: event.target.value })}
           >
             {MEMORY_CATEGORIES.map((category) => (
-              <option key={category} value={category}>{category}</option>
+              <option key={category.value} value={category.value}>{t(category.label)}</option>
             ))}
           </select>
         </label>

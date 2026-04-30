@@ -195,7 +195,7 @@ export function SettingsCatsDetailPanelContent({
                 disabled={isCatBusy(busy, 'skill', cat.id)}
                 onClick={() => void onSkillChange(cat.id, profile.value)}
               >
-                {profile.label}
+                {t(profile.label)}
               </button>
             ))}
           </div>
