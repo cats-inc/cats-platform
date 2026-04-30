@@ -1326,7 +1326,7 @@ export function NewChatDraft({
                     type="button"
                     disabled={isSubmittingFirstTurn}
                     onClick={() => onSetParallelBranchCwd(branchIndex, null)}
-                    aria-label="Re-link branch folder to lead"
+                    aria-label={t(messageKeys.chatNewChatDraftBranchFolderRelinkAria)}
                   >
                     &times;
                   </button>
@@ -1341,13 +1341,13 @@ export function NewChatDraft({
                   onPickParallelBranchFolder(branchIndex);
                   openSidePanelTo('cwd', { skipSectionAction: true });
                 }}
-                aria-label="Choose branch folder"
+                aria-label={t(messageKeys.chatNewChatDraftBranchFolderChooseAria)}
               >
                 <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M6 3l-3 5 3 5" />
                   <path d="M3 8h10" />
                 </svg>
-                <span>Follows lead</span>
+                <span>{t(messageKeys.chatNewChatDraftBranchFollowsLeadLabel)}</span>
               </button>
             ) : (
               <span className="composerFollowsLeadChip">
@@ -1355,7 +1355,7 @@ export function NewChatDraft({
                   <path d="M6 3l-3 5 3 5" />
                   <path d="M3 8h10" />
                 </svg>
-                <span>Follows lead</span>
+                <span>{t(messageKeys.chatNewChatDraftBranchFollowsLeadLabel)}</span>
               </span>
             )}
             <BranchRuntimeSessionPolicyControls
@@ -1373,14 +1373,14 @@ export function NewChatDraft({
           {branchPromptDetached ? (
             <div className="composerPromptDetachToolbar">
               <span className="composerBranchChip composerPromptOverrideChip">
-                <span>Prompt detached</span>
+                <span>{t(messageKeys.chatNewChatDraftBranchPromptDetachedLabel)}</span>
                 {onSetParallelBranchPromptOverride ? (
                   <button
                     className="composerChipClose"
                     type="button"
                     disabled={isSubmittingFirstTurn}
                     onClick={() => onSetParallelBranchPromptOverride(branchIndex, null)}
-                    aria-label="Re-link branch prompt to lead"
+                    aria-label={t(messageKeys.chatNewChatDraftBranchPromptRelinkAria)}
                   >
                     &times;
                   </button>
@@ -1397,12 +1397,12 @@ export function NewChatDraft({
             readOnly={!branchPromptDetached || !onSetParallelBranchPromptOverride}
             title={
               canEditBranchPrompt && !branchPromptDetached
-                ? 'Click to detach this branch prompt'
+                ? t(messageKeys.chatNewChatDraftBranchPromptTextareaDetachTitle)
                 : undefined
             }
             aria-label={
               canEditBranchPrompt && !branchPromptDetached
-                ? 'Open branch prompt detach confirmation'
+                ? t(messageKeys.chatNewChatDraftBranchPromptTextareaDetachAria)
                 : undefined
             }
             onClick={
@@ -1421,7 +1421,7 @@ export function NewChatDraft({
           />
           {showPromptDetachConfirm ? (
             <div className="composerPromptDetachConfirm">
-              <span>Detach this branch prompt from the lead?</span>
+              <span>{t(messageKeys.chatNewChatDraftBranchPromptDetachConfirmQuestion)}</span>
               <button
                 type="button"
                 className="composerPromptDetachButton"
@@ -1431,7 +1431,7 @@ export function NewChatDraft({
                   setPromptDetachConfirmBranchIndex(null);
                 }}
               >
-                Detach prompt
+                {t(messageKeys.chatNewChatDraftBranchPromptDetachConfirmButton)}
               </button>
               <button
                 type="button"
@@ -1439,7 +1439,7 @@ export function NewChatDraft({
                 disabled={isSubmittingFirstTurn}
                 onClick={() => setPromptDetachConfirmBranchIndex(null)}
               >
-                Keep linked
+                {t(messageKeys.chatNewChatDraftBranchPromptKeepLinkedButton)}
               </button>
             </div>
           ) : null}
@@ -1449,7 +1449,7 @@ export function NewChatDraft({
                 <button
                   type="button"
                   className="composerPlusButton"
-                  aria-label="Attach"
+                  aria-label={t(messageKeys.chatNewChatDraftBranchAttachAria)}
                   disabled
                 >
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -1482,7 +1482,7 @@ export function NewChatDraft({
                       className="parallelAddButton"
                       disabled={isSubmittingFirstTurn}
                       onClick={() => onQuickAddParallelBranchTemporaryParticipant(branchIndex)}
-                      aria-label="Add another model to collaborate"
+                      aria-label={t(messageKeys.chatNewChatDraftBranchCollaborateAria)}
                     >
                       <CollaborateIcon />
                     </button>
@@ -1521,7 +1521,9 @@ export function NewChatDraft({
                 className={`parallelStubRemove${useDangerParallelRemoveHover ? ' parallelStubRemoveDanger' : ''}`}
                 disabled={isSubmittingFirstTurn}
                 onClick={() => onRemoveParallelTarget?.(branchIndex)}
-                aria-label={`Remove branch ${branchIndex + 1}`}
+                aria-label={t(messageKeys.chatNewChatDraftBranchRemoveAria, {
+                  branchIndex: branchIndex + 1,
+                })}
               >
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden="true">
                   <path d="M4 8h8" />
@@ -1534,14 +1536,14 @@ export function NewChatDraft({
                 className={`parallelAddButton${accentParallelAddButton ? ' parallelAddButtonAccent' : ''}`}
                 disabled={isSubmittingFirstTurn}
                 onClick={onAddParallelTarget}
-                aria-label="Add parallel chat"
+                aria-label={t(messageKeys.chatNewChatDraftBranchAddParallelAria)}
               >
                 <CompareIcon />
               </button>
             ) : null}
             {showCompareHint && onAddParallelTarget && canAddMoreBranches ? (
               <span className="parallelAddHint parallelAddHintAccent">
-                Add another model to compare
+                {t(messageKeys.chatNewChatDraftBranchAddCompareHint)}
               </span>
             ) : null}
           </div>

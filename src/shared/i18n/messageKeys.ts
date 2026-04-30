@@ -1017,6 +1017,27 @@ export const messageKeys = {
   chatNewChatDraftBranchPolicyRelinkAria: 'chat.newChatDraft.branchPolicyRelinkAria',
   chatNewChatDraftBranchPolicyDetachAria: 'chat.newChatDraft.branchPolicyDetachAria',
   chatNewChatDraftBranchPolicyFollowsLeadLabel: 'chat.newChatDraft.branchPolicyFollowsLeadLabel',
+  chatNewChatDraftBranchFolderRelinkAria: 'chat.newChatDraft.branchFolderRelinkAria',
+  chatNewChatDraftBranchFolderChooseAria: 'chat.newChatDraft.branchFolderChooseAria',
+  chatNewChatDraftBranchFollowsLeadLabel: 'chat.newChatDraft.branchFollowsLeadLabel',
+  chatNewChatDraftBranchPromptDetachedLabel:
+    'chat.newChatDraft.branchPromptDetachedLabel',
+  chatNewChatDraftBranchPromptRelinkAria: 'chat.newChatDraft.branchPromptRelinkAria',
+  chatNewChatDraftBranchPromptTextareaDetachTitle:
+    'chat.newChatDraft.branchPromptTextareaDetachTitle',
+  chatNewChatDraftBranchPromptTextareaDetachAria:
+    'chat.newChatDraft.branchPromptTextareaDetachAria',
+  chatNewChatDraftBranchPromptDetachConfirmQuestion:
+    'chat.newChatDraft.branchPromptDetachConfirmQuestion',
+  chatNewChatDraftBranchPromptDetachConfirmButton:
+    'chat.newChatDraft.branchPromptDetachConfirmButton',
+  chatNewChatDraftBranchPromptKeepLinkedButton:
+    'chat.newChatDraft.branchPromptKeepLinkedButton',
+  chatNewChatDraftBranchAttachAria: 'chat.newChatDraft.branchAttachAria',
+  chatNewChatDraftBranchCollaborateAria: 'chat.newChatDraft.branchCollaborateAria',
+  chatNewChatDraftBranchRemoveAria: 'chat.newChatDraft.branchRemoveAria',
+  chatNewChatDraftBranchAddParallelAria: 'chat.newChatDraft.branchAddParallelAria',
+  chatNewChatDraftBranchAddCompareHint: 'chat.newChatDraft.branchAddCompareHint',
   sharedAddCatPanelTitle: 'shared.addCatPanelTitle',
   sharedAddCatPanelClose: 'shared.addCatPanelClose',
   sharedAddCatPanelChooseExisting: 'shared.addCatPanelChooseExisting',
