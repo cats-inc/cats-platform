@@ -1786,6 +1786,8 @@ export const enCatalog: MessageCatalog = {
   'code.builder.detailsLabel': 'Details / acceptance criteria (optional)',
   'code.builder.errorCodespaceResolve': 'Could not resolve that codespace.',
   'code.builder.errorTaskCreate': 'Could not create the Code task.',
+  'code.builder.errorTaskCreateMissingId':
+    'Task creation response did not include a task id.',
   'code.builder.errorTaskExecution': 'Could not start the Code task.',
   'code.builder.errorTaskResume': 'Could not resume that Code task.',
   'code.builder.errorTaskResumeInput': 'Enter a task ID to resume.',

@@ -1737,6 +1737,8 @@ export const zhTWCatalog: MessageCatalog = {
   'code.builder.detailsLabel': '細節 / 驗收條件（選填）',
   'code.builder.errorCodespaceResolve': '無法解析這個 codespace。',
   'code.builder.errorTaskCreate': '無法建立 Code 任務。',
+  'code.builder.errorTaskCreateMissingId':
+    '建立任務的回應缺少 task id。',
   'code.builder.errorTaskExecution': '無法啟動 Code 任務。',
   'code.builder.errorTaskResume': '無法接續這個 Code 任務。',
   'code.builder.errorTaskResumeInput': '請輸入要接續的任務 ID。',

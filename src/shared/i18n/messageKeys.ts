@@ -1770,6 +1770,7 @@ export const messageKeys = {
   codeBuilderDetailsLabel: 'code.builder.detailsLabel',
   codeBuilderErrorCodespaceResolve: 'code.builder.errorCodespaceResolve',
   codeBuilderErrorTaskCreate: 'code.builder.errorTaskCreate',
+  codeBuilderErrorTaskCreateMissingId: 'code.builder.errorTaskCreateMissingId',
   codeBuilderErrorTaskExecution: 'code.builder.errorTaskExecution',
   codeBuilderErrorTaskResume: 'code.builder.errorTaskResume',
   codeBuilderErrorTaskResumeInput: 'code.builder.errorTaskResumeInput',

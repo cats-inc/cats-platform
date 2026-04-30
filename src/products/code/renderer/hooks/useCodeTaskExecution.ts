@@ -1,4 +1,7 @@
 import { useCallback, useRef, useState } from 'react';
+
+import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import type { CodePlanState } from '../../state/planSteps.js';
 import {
   type CodeDeliveryResult,
@@ -38,6 +41,7 @@ const INITIAL_STATE: CodeTaskExecutionState = {
 };
 
 export function useCodeTaskExecution() {
+  const { t } = useI18n();
   const [state, setState] = useState<CodeTaskExecutionState>(INITIAL_STATE);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -66,7 +70,7 @@ export function useCodeTaskExecution() {
       const result = await createCodeTask(input);
       const taskId = result.task.taskId;
       if (!taskId) {
-        throw new Error('Task creation response did not include a task id.');
+        throw new Error(t(messageKeys.codeBuilderErrorTaskCreateMissingId));
       }
       setState((prev) => ({
         ...prev,
@@ -75,11 +79,13 @@ export function useCodeTaskExecution() {
       }));
       return taskId;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Task creation failed.';
+      const message = error instanceof Error
+        ? error.message
+        : t(messageKeys.codeBuilderErrorTaskCreate);
       setState((prev) => ({ ...prev, phase: 'failed', error: message }));
       return null;
     }
-  }, []);
+  }, [t]);
 
   const execute = useCallback(async (taskId: string, input: ExecuteCodeTaskInput) => {
     setState((prev) => ({ ...prev, phase: 'executing', error: null }));
@@ -94,11 +100,13 @@ export function useCodeTaskExecution() {
       startPlanPolling(taskId);
       return result.sessionId;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Execution failed.';
+      const message = error instanceof Error
+        ? error.message
+        : t(messageKeys.codeBuilderErrorTaskExecution);
       setState((prev) => ({ ...prev, phase: 'failed', error: message }));
       return null;
     }
-  }, [startPlanPolling]);
+  }, [startPlanPolling, t]);
 
   const resume = useCallback(async (taskId: string) => {
     setState((prev) => ({ ...prev, phase: 'executing', error: null }));
@@ -113,11 +121,13 @@ export function useCodeTaskExecution() {
       startPlanPolling(taskId);
       return taskId;
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Resume failed.';
+      const message = error instanceof Error
+        ? error.message
+        : t(messageKeys.codeBuilderErrorTaskResume);
       setState((prev) => ({ ...prev, phase: 'failed', error: message }));
       return null;
     }
-  }, [startPlanPolling]);
+  }, [startPlanPolling, t]);
 
   const refreshRepoStatus = useCallback(async (workspacePath: string) => {
     try {
