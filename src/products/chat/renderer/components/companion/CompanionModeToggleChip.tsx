@@ -1,3 +1,6 @@
+import { messageKeys } from '../../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
+
 export interface CompanionModeToggleChipProps {
   companionMode: boolean;
   onToggle: () => void;
@@ -7,14 +10,20 @@ export function CompanionModeToggleChip({
   companionMode,
   onToggle,
 }: CompanionModeToggleChipProps) {
+  const { t } = useI18n();
+
   return (
-    <div className="companionModeToggle" role="group" aria-label="Direct lane view">
+    <div
+      className="companionModeToggle"
+      role="group"
+      aria-label={t(messageKeys.chatCompanionModeToggleDirectLaneAriaLabel)}
+    >
       <button
         type="button"
         className="channelActionIconButton companionModeToggleSegment"
         aria-pressed={!companionMode}
-        aria-label="Chat view"
-        data-tooltip="Chat view"
+        aria-label={t(messageKeys.chatCompanionModeToggleChatViewAriaLabel)}
+        data-tooltip={t(messageKeys.chatCompanionModeToggleChatViewAriaLabel)}
         onClick={() => {
           if (companionMode) {
             onToggle();
@@ -40,8 +49,8 @@ export function CompanionModeToggleChip({
         type="button"
         className="channelActionIconButton companionModeToggleSegment"
         aria-pressed={companionMode}
-        aria-label="Companion view"
-        data-tooltip="Companion view"
+        aria-label={t(messageKeys.chatCompanionModeToggleCompanionViewAriaLabel)}
+        data-tooltip={t(messageKeys.chatCompanionModeToggleCompanionViewAriaLabel)}
         onClick={() => {
           if (!companionMode) {
             onToggle();

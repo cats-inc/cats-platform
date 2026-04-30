@@ -1054,6 +1054,9 @@ export const enCatalog: MessageCatalog = {
   'chat.companionMessageReferenceUnavailableLabel':
     'Companion reference unavailable',
   'chat.companionMessageReferenceOpenInCompanionAction': 'Open in companion',
+  'chat.companionModeToggleDirectLaneAriaLabel': 'Direct lane view',
+  'chat.companionModeToggleChatViewAriaLabel': 'Chat view',
+  'chat.companionModeToggleCompanionViewAriaLabel': 'Companion view',
   'chat.companionMessageReferenceAvailabilityLivePreview': 'Live preview',
   'chat.companionMessageReferenceAvailabilityMissing': 'Missing',
   'chat.companionMessageReferenceAvailabilityDeleted': 'Deleted',

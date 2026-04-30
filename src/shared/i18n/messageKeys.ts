@@ -1050,6 +1050,12 @@ export const messageKeys = {
     'chat.companionMessageReferenceUnavailableLabel',
   chatCompanionMessageReferenceOpenInCompanionAction:
     'chat.companionMessageReferenceOpenInCompanionAction',
+  chatCompanionModeToggleDirectLaneAriaLabel:
+    'chat.companionModeToggleDirectLaneAriaLabel',
+  chatCompanionModeToggleChatViewAriaLabel:
+    'chat.companionModeToggleChatViewAriaLabel',
+  chatCompanionModeToggleCompanionViewAriaLabel:
+    'chat.companionModeToggleCompanionViewAriaLabel',
   chatCompanionMessageReferenceAvailabilityLivePreview:
     'chat.companionMessageReferenceAvailabilityLivePreview',
   chatCompanionMessageReferenceAvailabilityMissing:
