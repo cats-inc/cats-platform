@@ -85,30 +85,50 @@ viewer for safe preview URL artifacts. Image, PDF, code viewers, and live
 9. `declarationId` shall resolve only against accepted `declare_artifact`
    results recorded in the Code assistant-effect processor's per-turn
    declaration index for the **current** assistant turn. The index shall be
-   keyed by `(turnId, producerKey, declarationId)`. `producerKey` is
-   defined as `ResolvedProducerIdentity.encoded` from SPEC-092 — the
-   canonical `<refKind>:<refId>` form that `declare_artifact` already
-   produces during materialization (`actor:<actorId>` for agent producers,
-   `tool:<toolName>` for tool producers, `system:<detectorId>` for system
-   producers, `user:<actorId>` for user producers). It is one string field,
-   not a tuple of multiple sub-fields, and it does not include
-   `runtimeSessionId` (which is scope, not identity).
-10. `declarationId` resolution shall be **same-caller-only**: the
-    `producerKey` used to look up an accepted declaration is the
-    `show_in_canvas` caller's own resolved producer identity, not a
-    field on the input. Cross-producer references (e.g. an agent
-    requesting presentation of a `tool:`-declared artifact via
+   keyed by `(turnId, producerKey, scopeKey, declarationId)` — the same
+   components SPEC-092 freezes for declaration idempotency, plus
+   `turnId`. The two component definitions are:
+   - `producerKey = ResolvedProducerIdentity.encoded` from SPEC-092
+     (`actor:<actorId>` / `tool:<toolName>` / `system:<detectorId>` /
+     `user:<actorId>`). One string field; does not include
+     `runtimeSessionId`.
+   - `scopeKey = "<ResolvedScope.kind>:<ResolvedScope.id>"` from SPEC-092
+     (e.g. `runtime:sess-abc`, `task:task-xyz`, `conversation:conv-1`,
+     `workspace:ws-1`). One string field; this carries the
+     `runtimeSessionId` and other scope disambiguation. Without it, the
+     same actor or tool spanning multiple runtime sessions in one turn
+     would collide.
+10. `declarationId` resolution shall be **same-caller-only**: both the
+    `producerKey` and the `scopeKey` used for lookup are the
+    `show_in_canvas` caller's own resolved producer identity and active
+    scope, not fields on the input. Cross-producer references (e.g. an
+    agent requesting presentation of a `tool:`-declared artifact via
     `declarationId`) shall reject with
-    `artifact_canvas_declaration_producer_mismatch`. Callers that need to
-    present a foreign-producer declaration shall pass `artifactId`
-    instead, after the materialized artifact is available.
+    `artifact_canvas_declaration_producer_mismatch`; cross-scope
+    references shall reject with `artifact_canvas_declaration_unknown`
+    (the entry simply does not exist under the caller's scope key).
+    Callers that need to present a foreign-producer or foreign-scope
+    declaration shall pass `artifactId` instead, after the materialized
+    artifact is available.
 11. The per-turn declaration index is **same-turn-only**; the processor
     does not consult any cross-turn history. A `declarationId` that does
     not appear in the current turn's index under the caller's
-    `producerKey` is rejected with `artifact_canvas_declaration_unknown`
-    regardless of whether a prior turn happened to accept the same id.
-    There is no separate cross-turn rejection path because the processor
-    cannot — and intentionally does not — see across turn boundaries.
+    `(producerKey, scopeKey)` pair is rejected with
+    `artifact_canvas_declaration_unknown` regardless of whether a prior
+    turn happened to accept the same id. There is no separate cross-turn
+    rejection path because the processor cannot — and intentionally does
+    not — see across turn boundaries.
+11b. **Duplicate handling within one key**: when the processor observes
+    multiple accepted `declare_artifact` results sharing the same
+    `(turnId, producerKey, scopeKey, declarationId)`, SPEC-092
+    idempotency guarantees they all resolve to the **same** materialized
+    `artifactId` (frozen scope). The canvas index records only the
+    `artifactId`; repeated accepts are no-ops. If the processor ever
+    observes the same key paired with a **different** `artifactId`
+    (which would indicate a SPEC-092 invariant violation upstream), the
+    `show_in_canvas` call for that id shall reject with
+    `artifact_canvas_declaration_collision` and the canvas focus shall
+    not be written.
 12. `artifactId` shall resolve only to a Code-relevant artifact that is
     compatible with the active Code task/session context.
 13. `show_in_canvas` shall require an active Code task on the caller's
@@ -170,6 +190,14 @@ interface CodeCanvasFocus {
   presentationRequested: 'auto' | 'iframe' | 'image' | 'pdf' | 'code';
   presentationResolved: 'iframe' | 'image' | 'pdf' | 'code' | 'unsupported';
   iframeSandboxProfile: 'static' | 'scripted-cross-origin' | null;
+  // Identifier for the iframe-policy snapshot that produced
+  // iframeSandboxProfile. Format: short hash (e.g. first 16 hex chars of
+  // a SHA-256 over the canonicalized
+  // (runtimePreviewOriginAllowlist + scriptedPreviewProducerAllowlist +
+  // catsShellOrigin) tuple at decision time). Null when the focus was
+  // resolved without consulting the iframe policy
+  // (presentationResolved = 'code' or 'unsupported').
+  policyVersion: string | null;
   openedAt: string;
   openedBy: {
     kind: 'agent' | 'user' | 'system';
@@ -184,6 +212,16 @@ interface CodeCanvasFocus {
 `iframe`, `image`, or `pdf`; for `code` and `unsupported` it shall be `null`.
 The server is the authority that picks the profile (see §Iframe Policy); the
 renderer shall not upgrade a `static` profile to `scripted-cross-origin`.
+
+`policyVersion` is the projection's primary signal that the iframe policy
+config has not drifted since the focus was resolved. When the projection
+runs and `policyVersion` differs from the server's current iframe policy
+version, the projection shall **demote** the projected
+`iframeSandboxProfile` to `static` for that read (without rewriting the
+stored focus) and surface the demotion to the renderer. A subsequent
+`show_in_canvas` call re-resolves under the current policy. Operators
+changing the allowlist therefore force existing canvases to demote until
+re-pinned, which is the safe default.
 
 The Code task/detail projection shall expose this as read-only `canvasFocus`.
 Projection code shall drop malformed focus metadata rather than surfacing a
@@ -210,13 +248,16 @@ Validation:
 - `presentation` defaults to `auto`. `'unsupported'` is not accepted as an
   input value;
 - `declarationId` resolves through the per-turn declaration index keyed by
-  `(turnId, producerKey, declarationId)`. `producerKey` is
-  `ResolvedProducerIdentity.encoded` (per SPEC-092) and is taken from the
-  caller's own resolved producer identity, not from the input. Misses
-  reject with `artifact_canvas_declaration_unknown`. If a declaration with
-  that id exists in the same turn under a different producer, reject with
-  `artifact_canvas_declaration_producer_mismatch` instead — callers
-  presenting foreign-producer declarations must pass `artifactId`;
+  `(turnId, producerKey, scopeKey, declarationId)` — the SPEC-092
+  idempotency components plus `turnId`. Both `producerKey` and `scopeKey`
+  are taken from the caller's own resolved producer identity and active
+  scope, not from the input. Misses reject with
+  `artifact_canvas_declaration_unknown`. A same-turn entry under a
+  different producer rejects with
+  `artifact_canvas_declaration_producer_mismatch`. Multiple accepted
+  declarations at the same key must all resolve to the same materialized
+  `artifactId` (SPEC-092 idempotency); a key paired with a conflicting
+  `artifactId` rejects with `artifact_canvas_declaration_collision`;
 - resolved artifact must exist and be Code-relevant;
 - the resolved artifact URL (when any) must contain no embedded credentials
   (`user:pass@host` syntax). Credential URLs hard-reject with
@@ -242,6 +283,7 @@ interface ShowInCanvasAccepted {
   artifactId: string;
   presentationResolved: 'iframe' | 'image' | 'pdf' | 'code' | 'unsupported';
   iframeSandboxProfile: 'static' | 'scripted-cross-origin' | null;
+  policyVersion: string | null;
 }
 ```
 
@@ -384,13 +426,17 @@ preview hosts, paired with a **producer-eligibility gate** so an agent
 cannot synthesize a preview-script-eligible artifact by just calling
 `declare_artifact` with a loopback URL.
 
-Phase 1 allowlist config schema:
+Phase 1 allowlist config schema (flat array, no wrapper):
 
 ```ts
 interface CodeCanvasRuntimePreviewOriginEntry {
-  // Required. Compared against URL.hostname after normalization (lower-case,
-  // IPv6 unbracketed). Exact match only — no wildcards in the host segment.
-  // For IPv6, write the address without brackets, e.g. '::1', not '[::1]'.
+  // Required. Compared against the URL's normalized host (see Hostname
+  // Normalization below). Exact string match only — no wildcards in the
+  // hostname segment. For IPv6, write the address WITHOUT enclosing
+  // brackets, e.g. '::1' not '[::1]'. Operators are responsible for
+  // listing the form Node's WHATWG URL parser canonicalizes to: write
+  // '::1', not '0:0:0:0:0:0:0:1' (Node canonicalizes inputs of the
+  // latter form to '::1').
   hostname: string;
 
   // Optional. Default ['http']. Matches URL.protocol minus the trailing
@@ -398,61 +444,117 @@ interface CodeCanvasRuntimePreviewOriginEntry {
   schemes?: ('http' | 'https')[];
 
   // Optional. Default '*' (any port). When a number array is supplied, the
-  // URL's port (string) must equal one of the entries' decimal forms after
-  // URL.port normalization (empty string for default ports is treated as
-  // 80 for http: and 443 for https:).
+  // URL's effective port must equal one of the entries' values. The
+  // effective port is URL.port parsed as a number, or the scheme default
+  // (80 for http:, 443 for https:) when URL.port is the empty string.
   ports?: number[] | '*';
 }
 
-interface CodeCanvasRuntimePreviewOriginAllowlist {
-  entries: CodeCanvasRuntimePreviewOriginEntry[];
-}
+// codeCanvas.runtimePreviewOriginAllowlist is THE flat array; no wrapper.
+type CodeCanvasRuntimePreviewOriginAllowlist =
+  CodeCanvasRuntimePreviewOriginEntry[];
 ```
 
 Phase 1 default value:
 
 ```ts
-{
-  entries: [
-    { hostname: '127.0.0.1', schemes: ['http'], ports: '*' },
-    { hostname: '::1',       schemes: ['http'], ports: '*' },
-    { hostname: 'localhost', schemes: ['http'], ports: '*' },
-  ],
-}
+[
+  { hostname: '127.0.0.1', schemes: ['http'], ports: '*' },
+  { hostname: '::1',       schemes: ['http'], ports: '*' },
+  { hostname: 'localhost', schemes: ['http'], ports: '*' },
+]
 ```
 
-Operators may extend `entries` through `codeCanvas.runtimePreviewOriginAllowlist`
-to add LAN dev hostnames; they may also tighten `ports` to a finite list per
-host. The list is **not** an origin-string list — it is a structured
-schema, parsed and validated at server boot.
+Operators may extend the array through
+`codeCanvas.runtimePreviewOriginAllowlist` to add LAN dev hostnames; they
+may also tighten `ports` to a finite list per host. The list is **not** an
+origin-string list — it is a structured schema, parsed and validated at
+server boot. Boot-time validation rejects entries with empty hostname,
+unknown schemes, or non-positive port numbers.
 
-URL matching algorithm (server, mirrored on renderer):
+#### Hostname Normalization
 
-1. parse the URL with the standard `URL` constructor; reject on parse error
-   (treated as scheme-allowlist failure);
-2. lower-case `URL.hostname`. For IPv6, the parser already strips outer
-   brackets; treat `::1` and `0:0:0:0:0:0:0:1` as equal after Node's
-   canonical form. Compare to each entry's `hostname` for exact equality;
-3. if `URL.protocol.replace(/:$/, '')` is not in the entry's `schemes`,
-   skip the entry;
-4. if the entry's `ports` is `'*'`, accept any port; otherwise compute the
-   effective port (`URL.port || (scheme === 'https' ? 443 : 80)`) as a
-   number and require membership in `entries[i].ports`;
-5. an entry matches when host + scheme + port all pass; the URL matches the
-   allowlist when **any** entry matches.
+Node's WHATWG `URL` parser does **not** strip the brackets from IPv6
+hostnames: `new URL('http://[::1]:5173').hostname` returns `'[::1]'`,
+including brackets. The matcher therefore must normalize **both** sides
+(URL and entry) before comparison:
 
-Producer-eligibility gate (Phase 1):
+1. lower-case the string;
+2. if the result starts with `'['` and ends with `']'`, remove those two
+   characters (this is how IPv6 brackets get stripped — Node does not do
+   it for us);
+3. compare for exact string equality.
 
-- `producer.kind === 'tool'` or `producer.kind === 'system'` artifacts are
-  eligible for `scripted-cross-origin`. The platform trusts its own
-  preview-emitting tools and system detectors.
-- `producer.kind === 'agent'` artifacts are **never** eligible for
-  `scripted-cross-origin` in Phase 1, regardless of URL — they always
-  resolve to `static`. Agents who need a script-eligible preview shall go
-  through a registered tool / system producer (Phase 3 substrate).
-- `producer.kind === 'user'` artifacts (user-imported) are eligible only
-  when the URL also passes the allowlist; user import already requires an
-  authenticated owner actor per SPEC-092.
+Node's URL parser **does** canonicalize IPv6 numeric form (so
+`new URL('http://[0:0:0:0:0:0:0:1]/').hostname` already returns `'[::1]'`
+before bracket stripping). Operators therefore only need to list the
+canonical short form (`::1`); they do not need to enumerate every
+equivalent textual representation.
+
+URL matching algorithm (server, mirrored on renderer for defense in depth):
+
+1. parse the URL with the standard `URL` constructor; on parse error,
+   reject the call as scheme-allowlist failure;
+2. apply Hostname Normalization to `URL.hostname`;
+3. for each entry, apply Hostname Normalization to `entry.hostname`, then
+   compare for exact string equality. Skip non-matching entries;
+4. if `URL.protocol.replace(/:$/, '')` is not in
+   `entry.schemes ?? ['http']`, skip;
+5. if `entry.ports ?? '*'` is `'*'`, accept any port; otherwise compute
+   the effective port (`Number(URL.port) || (scheme === 'https' ? 443 : 80)`)
+   and require membership in `entry.ports`;
+6. an entry matches when host + scheme + port all pass; the URL matches
+   the allowlist when **any** entry matches.
+
+#### Scripted Preview Producer Allowlist (Phase 1)
+
+The previous "all `tool` / `system` producers qualify" gate was too wide
+— not every tool that can call `declare_artifact` is a preview-origin
+owner. Phase 1 replaces it with an explicit named producer allowlist:
+
+```ts
+interface CodeCanvasScriptedPreviewProducerEntry {
+  // 'tool' | 'system' | 'user'. 'agent' is intentionally absent — agent
+  // producers are never eligible for scripted-cross-origin in Phase 1
+  // regardless of allowlist membership.
+  producerKind: 'tool' | 'system' | 'user';
+
+  // The SPEC-092 ResolvedProducerIdentity.encoded form WITHOUT the
+  // leading kind prefix that the encoded field already includes. For a
+  // tool entry, this is the tool name (e.g. 'cats_runtime_preview_bridge').
+  // For a system entry, this is the detector identifier
+  // (e.g. 'patch-bundle-detector'). For a user entry, this is the
+  // owner actor id.
+  producerIdentity: string;
+}
+
+type CodeCanvasScriptedPreviewProducerAllowlist =
+  CodeCanvasScriptedPreviewProducerEntry[];
+```
+
+Phase 1 default value:
+
+```ts
+[]
+```
+
+The default is **empty**: out of the box, no producer earns
+`scripted-cross-origin` and every preview iframe runs under the `static`
+profile. Operators must explicitly enumerate the producers they trust
+through `codeCanvas.scriptedPreviewProducerAllowlist`. The Phase 1
+rollout (PLAN-090 Task 2.5) decides whether to populate this list with
+the specific producer identities behind the existing builder/artifact
+preview iframes or to accept the static-only regression for those
+surfaces; the SPEC does not bake known producer names in.
+
+Producer-eligibility check:
+
+- if `producer.kind === 'agent'`, the artifact is **never** eligible —
+  short-circuit to `static`;
+- otherwise, look up `(producer.kind, producer.value)` in the producer
+  allowlist (where `producer.value` is `ResolvedProducerIdentity.value`
+  from SPEC-092 — the part after the kind prefix in `encoded`);
+- only entries that match are eligible for `scripted-cross-origin`.
 
 The server may emit `scripted-cross-origin` only when **all** the following
 hold:
@@ -462,15 +564,17 @@ hold:
    URL (the credential and scheme checks are themselves preconditions to
    getting this far);
 3. the URL parses successfully and yields a non-empty hostname;
-4. the URL matches the runtime preview origin allowlist per the algorithm
-   above;
+4. the URL matches the runtime preview origin allowlist per the
+   §Hostname Normalization + matching algorithm above;
 5. the URL's origin is **not** equal to the Cats shell origin that serves
    the renderer (configured at server boot; in packaged Electron this is
    the app-served origin, in browser dev it is the host serving the
    renderer bundle) — note that with the loopback default this only
    matters when Cats itself is served on a loopback origin;
 6. the artifact is `kind = 'preview'`;
-7. the artifact's producer kind passes the producer-eligibility gate above.
+7. the artifact's resolved producer matches an entry in the Scripted
+   Preview Producer Allowlist (and is not `agent`-kind; agent is
+   short-circuited above).
 
 When the credential / scheme checks fail, the server **rejects**. When any
 of the remaining conditions (4–7) fails, the server **silently demotes** to
@@ -478,6 +582,33 @@ the `static` profile. Demotion is not an error; the assistant gets back
 `presentationResolved: 'iframe'` (or whichever family was requested) with
 `iframeSandboxProfile: 'static'` and can decide whether the static frame is
 useful.
+
+#### Policy Version and Renderer Authority Boundary
+
+The server is the authority for both allowlists. The renderer:
+
+- does **not** receive the runtime preview origin allowlist or the
+  scripted preview producer allowlist over the projection — operators may
+  reasonably treat these as server-only secrets (e.g. internal hostnames),
+  and bandwidth is a non-goal;
+- does NOT re-run the origin allowlist matcher; it trusts the server's
+  `iframeSandboxProfile` decision;
+- DOES re-run the cheap, config-free defense-in-depth checks (scheme
+  allowlist, profile-name validity, same-origin-with-shell short-circuit
+  using `window.location.origin`).
+
+The earlier draft asked the renderer to "mirror the matcher" — that was
+overstated. Removing the duplicate-config requirement also removes the
+risk of server / renderer config drift.
+
+The `policyVersion` field on `CodeCanvasFocus` (see §Canvas Focus Shape)
+is the projection-side guard against config drift across time: the
+server publishes its current policy version alongside the projection;
+the projection compares the stored `policyVersion` against the current
+version on every read; a mismatch demotes the projected
+`iframeSandboxProfile` to `static` for that read without rewriting the
+stored focus. The next `show_in_canvas` call re-resolves under the new
+policy and stamps a fresh `policyVersion`.
 
 ### Forward Compatibility: Session-Bound Preview Registry (Phase 3)
 
@@ -498,14 +629,21 @@ a deny-list backstop for non-supervised callers.
 
 The renderer shall:
 
-- assert the projected `iframeSandboxProfile` is one of the two named values;
-- re-validate the URL scheme through the same allowlist;
-- when the projected profile is `scripted-cross-origin`, re-compute the
-  origin allowlist match (using the same matching algorithm and the
-  client-side mirror of the config) plus the non-Cats-shell-origin test
-  against the renderer's `window.location.origin` and demote to `static`
-  rendering if either test fails. The renderer may **only** demote, never
-  promote. Demotion is silent at the renderer layer too.
+- assert the projected `iframeSandboxProfile` is one of the two named
+  values; an unknown value falls back to `unsupported`;
+- re-validate the URL scheme through the same scheme allowlist (config-
+  free; `http:`, `https:`, app-relative);
+- when the projected profile is `scripted-cross-origin`, re-run the
+  same-origin-with-shell short-circuit against the renderer's
+  `window.location.origin` and demote to `static` if the URL origin
+  equals the shell origin;
+- demote (never promote) on any of the above failures. Demotion is silent
+  at the renderer layer.
+
+The renderer does NOT re-run the runtime preview origin allowlist
+matcher or the scripted preview producer allowlist check. The server is
+the authority for those; `policyVersion` is the cross-time staleness
+guard.
 
 ## Design Overview
 
@@ -533,8 +671,9 @@ reference these codes instead of inventing local aliases.
 |------------|---------|
 | `artifact_canvas_identity_required` | Neither `artifactId` nor `declarationId` is supplied. |
 | `artifact_canvas_identity_conflict` | Both `artifactId` and `declarationId` are supplied. |
-| `artifact_canvas_declaration_unknown` | `declarationId` does not match any entry in the current turn's declaration index under the caller's `(turnId, producerKey, declarationId)` key — covers the "no accepted declaration this turn" and "id only seen in a prior turn" cases uniformly. |
-| `artifact_canvas_declaration_producer_mismatch` | A declaration with that id exists in the current turn but under a different producer's `producerKey`. Callers who need to present a foreign-producer declaration must pass `artifactId` instead. |
+| `artifact_canvas_declaration_unknown` | `declarationId` does not match any entry in the current turn's declaration index under the caller's `(turnId, producerKey, scopeKey, declarationId)` key — covers the "no accepted declaration this turn", "id only seen in a prior turn", and "id only seen under a different scope (e.g. a different runtime session)" cases uniformly. |
+| `artifact_canvas_declaration_producer_mismatch` | A declaration with that id exists in the current turn under the caller's scope but under a different producer's `producerKey`. Callers who need to present a foreign-producer declaration must pass `artifactId` instead. |
+| `artifact_canvas_declaration_collision` | The processor has observed accepted `declare_artifact` results sharing the same `(turnId, producerKey, scopeKey, declarationId)` key but resolving to **different** materialized `artifactId` values. This indicates a SPEC-092 idempotency invariant violation upstream and must hard-reject; the canvas focus shall not be written. |
 | `artifact_canvas_artifact_not_found` | `artifactId` does not resolve to a Code-relevant `CoreArtifactRecord`. |
 | `artifact_canvas_artifact_not_anchored` | The resolved artifact is not anchored to the active task, run, conversation, or codespace. |
 | `artifact_canvas_no_active_task` | The caller's surface has no active Code task; canvas focus cannot be set or cleared. |
@@ -581,24 +720,45 @@ above.
   §Presentation Resolution.
 - **`allow-same-origin` eligibility**: `scripted-cross-origin` profile
   requires (a) URL passes the structured runtime preview origin allowlist
-  (Phase 1 default: loopback + configured local hostnames) and is not the
-  Cats shell origin, (b) artifact is `kind = 'preview'`, and (c) producer
-  is `tool` / `system` (or `user` with allowlist match) — agent-declared
-  artifacts never qualify in Phase 1. Allowlist or producer-gate failure
-  silently demotes to `static`. Credential URLs and scheme failures
-  hard-reject. Phase 3 narrows further to a session-bound preview registry.
-  See §Iframe Policy.
-- **`producerKey` definition**: equals SPEC-092's
-  `ResolvedProducerIdentity.encoded` (e.g. `actor:abc`, `tool:declare_artifact`,
-  `system:patch-bundle-detector`, `user:owner-id`). It does NOT include
-  `runtimeSessionId` (which is scope, not identity) and is one string
-  field, not a multi-field tuple. See FR9.
-- **`declarationId` resolution scope**: same-caller-only. The
-  `producerKey` used for lookup is the caller's resolved producer
-  identity, not an input. Cross-producer references reject with
-  `artifact_canvas_declaration_producer_mismatch`; callers wanting to
-  present a foreign-producer declaration must pass `artifactId`. See
-  FR10.
+  (Phase 1 default: loopback `127.0.0.1` / `::1` / `localhost` on `http:`
+  with any port) and is not the Cats shell origin, (b) artifact is
+  `kind = 'preview'`, and (c) producer matches an explicit entry in the
+  Scripted Preview Producer Allowlist (Phase 1 default: empty — operators
+  must enumerate trusted producers). Agent-declared artifacts are
+  short-circuited to `static` regardless of allowlist membership.
+  Allowlist or producer-gate failure silently demotes to `static`.
+  Credential URLs and scheme failures hard-reject. Phase 3 narrows further
+  to a session-bound preview registry. See §Iframe Policy.
+- **Index key**: `(turnId, producerKey, scopeKey, declarationId)` — the
+  SPEC-092 idempotency components plus `turnId`. `producerKey` is
+  `ResolvedProducerIdentity.encoded`; `scopeKey` is
+  `"<ResolvedScope.kind>:<ResolvedScope.id>"`. `runtimeSessionId` lives
+  in `scopeKey`, not `producerKey`. See FR9.
+- **`declarationId` resolution scope**: same-caller-only. Both
+  `producerKey` and `scopeKey` are taken from the caller, not the input.
+  Cross-producer rejects with `artifact_canvas_declaration_producer_mismatch`;
+  cross-scope rejects with `artifact_canvas_declaration_unknown` (no
+  entry under that scope key); foreign-producer / foreign-scope
+  presentation must use `artifactId`. See FR10.
+- **Duplicate accepts at same key**: idempotent same-`artifactId` is a
+  no-op; differing-`artifactId` rejects with
+  `artifact_canvas_declaration_collision`. See FR11b.
+- **IPv6 hostname normalization**: Node's WHATWG URL parser does NOT
+  strip enclosing `[...]` from `URL.hostname`; the matcher does it
+  explicitly (lower-case + bracket strip on both sides). Operators list
+  the canonical short form (`::1`); Node already canonicalizes input
+  IPv6 addresses to that form before bracket stripping. See §Hostname
+  Normalization.
+- **Allowlist config shape**: flat array
+  `codeCanvas.runtimePreviewOriginAllowlist: CodeCanvasRuntimePreviewOriginEntry[]`
+  with no `{ entries: [...] }` wrapper. Same flat-array shape for
+  `codeCanvas.scriptedPreviewProducerAllowlist`. See §Iframe Policy.
+- **Renderer authority boundary**: renderer does NOT receive the
+  allowlists or re-run the matcher; it re-runs only the cheap
+  config-free defense-in-depth checks (scheme allowlist, profile-name
+  validity, same-origin-with-shell short-circuit). `policyVersion` on
+  `CodeCanvasFocus` guards against config drift across time. See
+  §Policy Version and Renderer Authority Boundary.
 - **Credential URL handling**: hard reject with
   `artifact_canvas_url_credentials_not_allowed`, never demote. Mirrors
   SPEC-092 at the canvas boundary so credentials never reach iframe

@@ -415,6 +415,7 @@ type ShowInCanvasResult =
       artifactId: string;
       presentationResolved: 'iframe' | 'image' | 'pdf' | 'code' | 'unsupported';
       iframeSandboxProfile: 'static' | 'scripted-cross-origin' | null;
+      policyVersion: string | null;
     }
   | {
       status: 'rejected';
@@ -433,30 +434,54 @@ table):
   served reject with `artifact_canvas_presentation_unsupported`; `auto`
   accepts and opens the metadata-only `unsupported` pane instead;
 - `declarationId` resolves only against the current turn's per-turn index
-  keyed by `(turnId, producerKey, declarationId)` where `producerKey`
-  equals SPEC-092's `ResolvedProducerIdentity.encoded` (e.g.
-  `actor:abc`, `tool:declare_artifact`, `system:patch-bundle-detector`).
-  Lookup is **same-caller-only**: the `producerKey` is the caller's own
-  resolved producer identity, not an input. Misses (no accepted
-  declaration this turn, including ids only seen in prior turns) reject
-  with `artifact_canvas_declaration_unknown`; same-turn cross-producer
-  references reject with `artifact_canvas_declaration_producer_mismatch`.
-  Callers wanting to present a foreign-producer declaration must pass
-  `artifactId`. The processor keeps no cross-turn lookup;
+  keyed by `(turnId, producerKey, scopeKey, declarationId)` — the
+  SPEC-092 idempotency components plus `turnId`.
+  - `producerKey = ResolvedProducerIdentity.encoded` (e.g. `actor:abc`,
+    `tool:declare_artifact`, `system:patch-bundle-detector`,
+    `user:owner-id`).
+  - `scopeKey = "<ResolvedScope.kind>:<ResolvedScope.id>"` (e.g.
+    `runtime:sess-abc`, `task:task-xyz`). `runtimeSessionId` lives here,
+    NOT in `producerKey`.
+  Lookup is **same-caller-only**: both keys come from the caller's own
+  resolved identity / scope, not from the input. Misses (no accepted
+  declaration this turn under the caller's `(producerKey, scopeKey)`,
+  including ids only seen in prior turns or under other scopes) reject
+  with `artifact_canvas_declaration_unknown`; same-turn same-scope
+  cross-producer references reject with
+  `artifact_canvas_declaration_producer_mismatch`. Callers wanting to
+  present a foreign-producer or foreign-scope declaration must pass
+  `artifactId`. Multiple accepts at one key must resolve to the same
+  `artifactId` (SPEC-092 idempotency); a key paired with a conflicting
+  `artifactId` rejects with `artifact_canvas_declaration_collision`.
+  The processor keeps no cross-turn lookup;
 - accepted focus is persisted under
   `CoreTaskRecord.metadata.codeCanvasFocus` per
   [ADR-097](./decisions/097-store-code-canvas-focus-on-task-metadata.md);
 - credential-bearing URLs (`user:pass@host`) hard-reject at the canvas
   with `artifact_canvas_url_credentials_not_allowed` and never reach
   iframe `src`, open-external href, or pane metadata;
-- the iframe sandbox profile is server-decided through (a) an explicit
-  structured runtime preview origin allowlist
-  (`{ hostname, schemes?, ports? }[]`; Phase 1 default: loopback on
-  `http:` with any port), and (b) a producer-eligibility gate
-  (`tool` / `system` producers, plus `user` with allowlist match;
-  `agent` producers never qualify in Phase 1). Failure of either gate
+- the iframe sandbox profile is server-decided through TWO flat-array
+  allowlists, both straight arrays with no `{ entries: [...] }` wrapper:
+  - `codeCanvas.runtimePreviewOriginAllowlist:
+    { hostname, schemes?, ports? }[]` (Phase 1 default: loopback
+    `127.0.0.1` / `::1` / `localhost` on `http:` with any port);
+  - `codeCanvas.scriptedPreviewProducerAllowlist:
+    { producerKind, producerIdentity }[]` (Phase 1 default: **empty** —
+    out of the box, no producer earns `scripted-cross-origin`;
+    operators must enumerate trusted producers).
+  `agent`-kind producers are short-circuited to `static` and cannot
+  appear in the producer allowlist. Origin / producer allowlist failure
   silently demotes `scripted-cross-origin` -> `static`; scheme allowlist
   failure hard-rejects with `artifact_canvas_iframe_scheme_rejected`.
+  IPv6 hostnames require manual bracket strip during normalization
+  (Node's WHATWG `URL.hostname` does NOT strip the enclosing
+  `[...]` — see SPEC-101 §Hostname Normalization);
+- the `policyVersion` field on the accepted result and on the stored
+  `CodeCanvasFocus` is the cross-time staleness guard. The renderer is
+  NOT a mirror of the allowlist matchers — it re-runs only scheme
+  allowlist + same-origin-with-shell + profile-name validity. The
+  projection demotes to `static` on `policyVersion` mismatch without
+  rewriting the stored focus.
 
 #### Error Codes
 
@@ -468,6 +493,7 @@ Implementers shall use these names verbatim:
 - `artifact_canvas_identity_conflict`
 - `artifact_canvas_declaration_unknown`
 - `artifact_canvas_declaration_producer_mismatch`
+- `artifact_canvas_declaration_collision`
 - `artifact_canvas_artifact_not_found`
 - `artifact_canvas_artifact_not_anchored`
 - `artifact_canvas_no_active_task`
@@ -478,9 +504,10 @@ Implementers shall use these names verbatim:
 - `artifact_canvas_url_credentials_not_allowed`
 
 There are no error codes for runtime-preview-origin allowlist failure or
-producer-eligibility-gate failure; both silently demote to `static`. The
-`iframeSandboxProfile` field on the accepted result is the
-assistant-visible signal that demotion happened.
+scripted preview producer allowlist failure; both silently demote to
+`static`. The `iframeSandboxProfile` field on the accepted result is the
+assistant-visible signal that demotion happened, and `policyVersion`
+identifies the policy snapshot under which the decision was made.
 
 ### `clear_canvas`
 
