@@ -8,6 +8,8 @@ import type {
   UpdateCompanionResponseProfileInput,
 } from '../../../companion/contracts.js';
 import type { AppShellPayload } from '../../../api/contracts.js';
+import { messageKeys } from '../../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 
 export interface CompanionSettingsSectionProps {
   catId: string;
@@ -18,16 +20,16 @@ export interface CompanionSettingsSectionProps {
 }
 
 const EXPRESSION_MODES: readonly { value: CompanionExpressionMode; label: string }[] = [
-  { value: 'animalistic', label: 'Animalistic' },
-  { value: 'anthropomorphic', label: 'Anthropomorphic' },
-  { value: 'mixed', label: 'Mixed' },
+  { value: 'animalistic', label: 'animalistic' },
+  { value: 'anthropomorphic', label: 'anthropomorphic' },
+  { value: 'mixed', label: 'mixed' },
 ];
 
 const OUTPUT_MODES: readonly { value: CompanionOutputMode; label: string }[] = [
-  { value: 'text', label: 'Text' },
-  { value: 'audio_clip', label: 'Audio Clip' },
-  { value: 'tts', label: 'TTS' },
-  { value: 'mixed', label: 'Mixed' },
+  { value: 'text', label: 'text' },
+  { value: 'audio_clip', label: 'audio_clip' },
+  { value: 'tts', label: 'tts' },
+  { value: 'mixed', label: 'mixed' },
 ];
 
 export function CompanionSettingsSection({
@@ -39,6 +41,19 @@ export function CompanionSettingsSection({
 }: CompanionSettingsSectionProps) {
   const [notes, setNotes] = useState(responseProfile?.notes ?? '');
   const [saving, setSaving] = useState(false);
+  const { t } = useI18n();
+  const expressionModeLabelMap: Record<string, string> = {
+    animalistic: t(messageKeys.chatCompanionSettingsExpressionModeAnimalistic),
+    anthropomorphic: t(messageKeys.chatCompanionSettingsExpressionModeAnthropomorphic),
+    mixed: t(messageKeys.chatCompanionSettingsExpressionModeMixed),
+  };
+  const outputModeLabelMap: Record<string, string> = {
+    text: t(messageKeys.chatCompanionSettingsOutputModeText),
+    audio_clip: t(messageKeys.chatCompanionSettingsOutputModeAudioClip),
+    tts: t(messageKeys.chatCompanionSettingsOutputModeTts),
+    mixed: t(messageKeys.chatCompanionSettingsOutputModeMixed),
+  };
+  const telegramInboundModeFallback = t(messageKeys.chatCompanionSettingsTelegramBindingDefaultMode);
 
   const binding = payload.chat.botBindings?.find(
     (b) => b.catId === catId,
@@ -72,16 +87,22 @@ export function CompanionSettingsSection({
   }
 
   if (loading && !responseProfile) {
-    return <div className="companionSection companionLoading">Loading...</div>;
+    return (
+      <div className="companionSection companionLoading">
+        {t(messageKeys.chatCompanionSettingsLoadingState)}
+      </div>
+    );
   }
 
   return (
     <div className="companionSection companionSettings">
       <div className="companionCard">
-        <div className="companionCardHeader">Response Profile</div>
+        <div className="companionCardHeader">{t(messageKeys.chatCompanionSettingsResponseProfileTitle)}</div>
 
         <div className="companionFormRow">
-          <label className="companionLabel">Expression Mode</label>
+          <label className="companionLabel">
+            {t(messageKeys.chatCompanionSettingsExpressionModeLabel)}
+          </label>
           <div className="companionPillGroup">
             {EXPRESSION_MODES.map(({ value, label }) => (
               <button
@@ -91,14 +112,16 @@ export function CompanionSettingsSection({
                 onClick={() => handleExpressionMode(value)}
                 disabled={saving}
               >
-                {label}
+                {expressionModeLabelMap[label]}
               </button>
             ))}
           </div>
         </div>
 
         <div className="companionFormRow">
-          <label className="companionLabel">Output Mode</label>
+          <label className="companionLabel">
+            {t(messageKeys.chatCompanionSettingsOutputModeLabel)}
+          </label>
           <div className="companionPillGroup">
             {OUTPUT_MODES.map(({ value, label }) => (
               <button
@@ -108,17 +131,19 @@ export function CompanionSettingsSection({
                 onClick={() => handleOutputMode(value)}
                 disabled={saving}
               >
-                {label}
+                {outputModeLabelMap[label]}
               </button>
             ))}
           </div>
         </div>
 
         <div className="companionFormRow">
-          <label className="companionLabel">Response Notes</label>
+          <label className="companionLabel">
+            {t(messageKeys.chatCompanionSettingsResponseNotesLabel)}
+          </label>
           <textarea
             className="companionTextarea"
-            placeholder="Custom instructions for how your companion should respond..."
+            placeholder={t(messageKeys.chatCompanionSettingsResponseNotesPlaceholder)}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={3}
@@ -129,30 +154,42 @@ export function CompanionSettingsSection({
             onClick={handleSaveNotes}
             disabled={saving || notes === (responseProfile?.notes ?? '')}
           >
-            {saving ? 'Saving...' : 'Save Notes'}
+            {saving
+              ? t(messageKeys.chatCompanionSettingsResponseNotesSaving)
+              : t(messageKeys.chatCompanionSettingsResponseNotesSave)}
           </button>
         </div>
       </div>
 
       <div className="companionCard">
-        <div className="companionCardHeader">Telegram Binding</div>
+        <div className="companionCardHeader">
+          {t(messageKeys.chatCompanionSettingsTelegramBindingTitle)}
+        </div>
         {binding ? (
           <div className="companionTelegramInfo">
             <p>
-              <strong>Bot:</strong> {binding.botName ?? 'Connected'}
+              <strong>{t(messageKeys.chatCompanionSettingsTelegramBindingBotLabel)} </strong>
+              {binding.botName ?? t(messageKeys.chatCompanionSettingsTelegramBindingConnected)}
             </p>
             <p>
-              <strong>Mode:</strong> {binding.inboundMode ?? 'default'}
+              <strong>{t(messageKeys.chatCompanionSettingsTelegramBindingModeLabel)} </strong>
+              {binding.inboundMode ?? telegramInboundModeFallback}
             </p>
             <p className="companionMuted">
-              Manage Telegram binding in{' '}
-              <Link to="/settings/cats">Settings &gt; My Cats</Link>.
+              {t(messageKeys.chatCompanionSettingsTelegramBindingManageHint)}
+              <Link to="/settings/cats">
+                {t(messageKeys.chatCompanionSettingsTelegramBindingSettingsLabel)}
+              </Link>
+              {t(messageKeys.chatCompanionSettingsTelegramBindingSuffix)}
             </p>
           </div>
         ) : (
           <p className="companionEmpty">
-            No Telegram binding. Configure one in{' '}
-            <Link to="/settings/cats">Settings &gt; My Cats</Link>.
+            {t(messageKeys.chatCompanionSettingsNoTelegramBindingState)}
+            <Link to="/settings/cats">
+              {t(messageKeys.chatCompanionSettingsTelegramBindingSettingsLabel)}
+            </Link>
+            {t(messageKeys.chatCompanionSettingsTelegramBindingSuffix)}
           </p>
         )}
       </div>

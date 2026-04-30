@@ -1082,6 +1082,35 @@ export const messageKeys = {
     'chat.companionResourcesSourceKindUnknown',
   chatCompanionResourcesUntitledSource: 'chat.companionResourcesUntitledSource',
   chatCompanionResourcesActionRemove: 'chat.companionResourcesActionRemove',
+  chatCompanionSettingsLoadingState: 'chat.companionSettingsLoadingState',
+  chatCompanionSettingsResponseProfileTitle: 'chat.companionSettingsResponseProfileTitle',
+  chatCompanionSettingsExpressionModeLabel: 'chat.companionSettingsExpressionModeLabel',
+  chatCompanionSettingsExpressionModeAnimalistic:
+    'chat.companionSettingsExpressionModeAnimalistic',
+  chatCompanionSettingsExpressionModeAnthropomorphic:
+    'chat.companionSettingsExpressionModeAnthropomorphic',
+  chatCompanionSettingsExpressionModeMixed: 'chat.companionSettingsExpressionModeMixed',
+  chatCompanionSettingsOutputModeLabel: 'chat.companionSettingsOutputModeLabel',
+  chatCompanionSettingsOutputModeText: 'chat.companionSettingsOutputModeText',
+  chatCompanionSettingsOutputModeAudioClip: 'chat.companionSettingsOutputModeAudioClip',
+  chatCompanionSettingsOutputModeTts: 'chat.companionSettingsOutputModeTts',
+  chatCompanionSettingsOutputModeMixed: 'chat.companionSettingsOutputModeMixed',
+  chatCompanionSettingsResponseNotesLabel: 'chat.companionSettingsResponseNotesLabel',
+  chatCompanionSettingsResponseNotesPlaceholder:
+    'chat.companionSettingsResponseNotesPlaceholder',
+  chatCompanionSettingsResponseNotesSave: 'chat.companionSettingsResponseNotesSave',
+  chatCompanionSettingsResponseNotesSaving: 'chat.companionSettingsResponseNotesSaving',
+  chatCompanionSettingsTelegramBindingTitle: 'chat.companionSettingsTelegramBindingTitle',
+  chatCompanionSettingsTelegramBindingBotLabel: 'chat.companionSettingsTelegramBindingBotLabel',
+  chatCompanionSettingsTelegramBindingModeLabel: 'chat.companionSettingsTelegramBindingModeLabel',
+  chatCompanionSettingsTelegramBindingConnected: 'chat.companionSettingsTelegramBindingConnected',
+  chatCompanionSettingsTelegramBindingDefaultMode: 'chat.companionSettingsTelegramBindingDefaultMode',
+  chatCompanionSettingsTelegramBindingManageHint: 'chat.companionSettingsTelegramBindingManageHint',
+  chatCompanionSettingsTelegramBindingSettingsLabel:
+    'chat.companionSettingsTelegramBindingSettingsLabel',
+  chatCompanionSettingsTelegramBindingSuffix: 'chat.companionSettingsTelegramBindingSuffix',
+  chatCompanionSettingsNoTelegramBindingState:
+    'chat.companionSettingsNoTelegramBindingState',
   chatCompanionMessageReferenceAvailabilityLivePreview:
     'chat.companionMessageReferenceAvailabilityLivePreview',
   chatCompanionMessageReferenceAvailabilityMissing:
