@@ -69,16 +69,30 @@ import { PermissionModeChip } from './PermissionModeChip.js';
 import { WorkspaceModeChip } from './WorkspaceModeChip.js';
 import { useRepoProbe } from '../hooks/useRepoProbe.js';
 import { useVoiceInputComposer } from '../hooks/useVoiceInputComposer.js';
-import { messageKeys } from '../../../../shared/i18n/index.js';
+import {
+  messageKeys,
+  type MessageInterpolationValues,
+  type MessageKey,
+} from '../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
-function formatBranchRuntimeSessionPolicy(policy: RuntimeSessionPolicy): string {
+type ChatNewChatDraftTranslator = (
+  key: MessageKey,
+  values?: MessageInterpolationValues,
+) => string;
+
+function formatBranchRuntimeSessionPolicy(
+  policy: RuntimeSessionPolicy,
+  t: ChatNewChatDraftTranslator,
+): string {
   const workspaceLabel = policy.workspaceKind === 'worktree'
-    ? 'Worktree'
+    ? t(messageKeys.chatNewChatDraftBranchPolicyWorkspaceWorktree)
     : policy.workspaceKind === 'source'
-      ? 'Current folder'
-      : 'Sandbox';
-  const permissionLabel = policy.workspaceAccess === 'read_only' ? 'Read only' : 'Full access';
+      ? t(messageKeys.chatNewChatDraftBranchPolicyWorkspaceSource)
+      : t(messageKeys.chatNewChatDraftBranchPolicyWorkspaceSandbox);
+  const permissionLabel = policy.workspaceAccess === 'read_only'
+    ? t(messageKeys.chatNewChatDraftBranchPolicyAccessReadOnly)
+    : t(messageKeys.chatNewChatDraftBranchPolicyAccessFull);
   return `${workspaceLabel} / ${permissionLabel}`;
 }
 
@@ -207,7 +221,7 @@ function BranchRuntimeSessionPolicyControls({
     return (
       <div
         className="composerBranchPolicyControl"
-        data-tooltip={formatBranchRuntimeSessionPolicy(branchSessionPolicy)}
+        data-tooltip={formatBranchRuntimeSessionPolicy(branchSessionPolicy, t)}
       >
         {repoReady ? (
           <WorkspaceModeChip
@@ -236,7 +250,7 @@ function BranchRuntimeSessionPolicyControls({
           type="button"
           disabled={isSubmittingFirstTurn}
           onClick={() => onSetParallelBranchRuntimeSessionPolicy(branchIndex, null)}
-          aria-label="Re-link branch session policy to lead"
+          aria-label={t(messageKeys.chatNewChatDraftBranchPolicyRelinkAria)}
         >
           &times;
         </button>
@@ -248,12 +262,12 @@ function BranchRuntimeSessionPolicyControls({
     return (
       <span
         className="composerSelectChip composerPermissionChip composerBranchPolicyChip"
-        data-tooltip={formatBranchRuntimeSessionPolicy(branchSessionPolicy)}
+        data-tooltip={formatBranchRuntimeSessionPolicy(branchSessionPolicy, t)}
       >
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
           <path d="M8 1.5l5.5 2v4c0 3.3-2.4 6.2-5.5 7-3.1-.8-5.5-3.7-5.5-7v-4z" />
         </svg>
-        <span>{formatBranchRuntimeSessionPolicy(branchSessionPolicy)}</span>
+        <span>{formatBranchRuntimeSessionPolicy(branchSessionPolicy, t)}</span>
       </span>
     );
   }
@@ -272,12 +286,12 @@ function BranchRuntimeSessionPolicyControls({
           branchIndex,
           effectiveBranchSessionPolicy,
         )}
-      aria-label="Detach branch session policy"
+      aria-label={t(messageKeys.chatNewChatDraftBranchPolicyDetachAria)}
     >
       <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M8 1.5l5.5 2v4c0 3.3-2.4 6.2-5.5 7-3.1-.8-5.5-3.7-5.5-7v-4z" />
       </svg>
-      <span>Policy follows lead</span>
+      <span>{t(messageKeys.chatNewChatDraftBranchPolicyFollowsLeadLabel)}</span>
     </button>
   );
 }
