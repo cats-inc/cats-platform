@@ -113,56 +113,18 @@ test('desktop bootstrap only reveals the host recovery page for failed or setup-
   }), false);
 });
 
-test('desktop bootstrap navigation stays on the host page when CLI inventory is empty even after setup is complete', () => {
+test('desktop bootstrap navigation lets setupCompleteAt users into chat regardless of cli inventory (legacy migration safety)', () => {
+  // Legacy users upgrading from a build that didn't track installedHelperIds
+  // would otherwise be locked on bootstrap. Their setupCompleteAt timestamp
+  // is the trust signal — they had a working install, let them through.
   assert.equal(resolveDesktopBootstrapNavigation({
     phase: 'needs_prerequisites',
     app: {
       entryPath: '/',
       setupCompleteAt: '2026-04-30T08:00:00.000Z',
-    },
-    prerequisites: {
-      cliInventory: { installed: [], total: 0, candidates: [] },
-    },
-  }, {
-    appBaseUrl: 'http://127.0.0.1:8181',
-    showWindowOnStartup: true,
-  }), null);
-});
-
-test('desktop bootstrap navigation opens chat once any CLI is installed post-setup', () => {
-  assert.equal(resolveDesktopBootstrapNavigation({
-    phase: 'needs_prerequisites',
-    app: {
-      entryPath: '/',
-      setupCompleteAt: '2026-04-30T08:00:00.000Z',
-    },
-    prerequisites: {
-      cliInventory: {
-        installed: ['windows-codex-native-installer'],
-        total: 1,
-        candidates: [],
-      },
     },
   }, {
     appBaseUrl: 'http://127.0.0.1:8181',
     showWindowOnStartup: true,
   }), 'http://127.0.0.1:8181/');
-});
-
-test('desktop bootstrap reveals recovery for cli_missing whether or not setup was complete', () => {
-  const options = {
-    showWindowOnStartup: true,
-    windowRevealRequested: false,
-  };
-
-  assert.equal(shouldRevealDesktopBootstrapRecovery({
-    phase: 'needs_prerequisites',
-    app: {
-      entryPath: '/',
-      setupCompleteAt: '2026-04-30T08:00:00.000Z',
-    },
-    prerequisites: {
-      cliInventory: { installed: [], total: 0, candidates: [] },
-    },
-  }, options), true);
 });
