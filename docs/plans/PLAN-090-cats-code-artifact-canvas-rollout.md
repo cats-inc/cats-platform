@@ -34,19 +34,33 @@ depends on a separate process-supervision and security review.
       helpers with context-free validation, the SPEC-101 error code union,
       and the active-task precondition.
 - [ ] Task 1.3: Add a Code assistant-effect processor that resolves
-      `artifactId` or same-turn `declarationId`, validates active task/session
-      compatibility, picks the iframe sandbox profile via the runtime
-      preview origin allowlist, and updates task metadata. The processor
-      owns the per-turn declaration index keyed by
-      `(turnId, producerKey, declarationId)` (with `producerKey` matching
-      SPEC-092's idempotency tuple). The index is same-turn-only — there is
-      no cross-turn lookup; misses simply reject as
+      `artifactId` or same-turn `declarationId`, validates active
+      task/session compatibility, hard-rejects credential URLs, applies
+      the runtime preview origin allowlist + producer-eligibility gate to
+      pick the iframe sandbox profile, and updates task metadata. The
+      processor owns the per-turn declaration index keyed by
+      `(turnId, producerKey, declarationId)` where
+      `producerKey = ResolvedProducerIdentity.encoded` (SPEC-092). The
+      caller's own `producerKey` is used for lookup (same-caller-only);
+      same-turn cross-producer references reject with
+      `artifact_canvas_declaration_producer_mismatch`. The index is
+      same-turn-only — no cross-turn lookup; prior-turn matches reject as
       `artifact_canvas_declaration_unknown`.
 - [ ] Task 1.6: Add `codeCanvas.runtimePreviewOriginAllowlist` to Code
-      product config with default `['127.0.0.1', '::1', 'localhost']` and
-      operator-extensible local hostnames. Wire the allowlist into the
-      sandbox-profile decision and surface the resolved profile to clients
-      via the projection.
+      product config as the structured schema
+      `{ hostname: string; schemes?: ('http' | 'https')[]; ports?: number[] | '*' }[]`
+      with the SPEC-101 default
+      `[{hostname:'127.0.0.1',schemes:['http'],ports:'*'}, {hostname:'::1',...}, {hostname:'localhost',...}]`.
+      Implement the URL-matching algorithm (lower-case host equality,
+      IPv6-unbracketed normalization, scheme membership, port membership
+      with default-port fallback). Mirror the matcher on the renderer for
+      defense-in-depth re-checks.
+- [ ] Task 1.7: Implement the producer-eligibility gate: `tool` and
+      `system` producers may receive `scripted-cross-origin` (subject to
+      origin allowlist), `agent` producers always demote to `static`,
+      `user` producers qualify only with allowlist match. Surface the
+      gate decision in the projected `iframeSandboxProfile` so the
+      assistant sees the demotion explicitly.
 - [ ] Task 1.4: Expose read-only `canvasFocus` (including
       `iframeSandboxProfile`) from Code task/detail and dashboard
       projections, dropping malformed metadata.
@@ -110,7 +124,7 @@ this plan before Phase 4 approval.
 | File | Action | Description |
 |------|--------|-------------|
 | `src/products/code/shared/canvasFocus.ts` | Create | Code canvas focus types, normalizers, presentation resolution, sandbox-profile selection, and SPEC-101 error code union |
-| `src/products/code/state/runtimeCanvasFocusExecution.ts` | Create | Assistant-effect processor for `show_in_canvas` and `clear_canvas`; owns the per-turn `(turnId, declarationId)` declaration index |
+| `src/products/code/state/runtimeCanvasFocusExecution.ts` | Create | Assistant-effect processor for `show_in_canvas` and `clear_canvas`; owns the per-turn `(turnId, producerKey, declarationId)` declaration index keyed by SPEC-092's `ResolvedProducerIdentity.encoded` |
 | `src/products/code/state/runtimeArtifactTooling.ts` | Modify | Add onboarding/catalog entries for the canvas tools |
 | `src/products/code/api/projection.ts` | Modify | Expose `canvasFocus` (with `iframeSandboxProfile`) from task metadata |
 | `src/products/code/renderer/components/CodeArtifactCanvasPane.tsx` | Create | Right-pane shell, top bar with separate close vs collapse controls, and unsupported-state fallback |
@@ -130,8 +144,13 @@ this plan before Phase 4 approval.
 - `show_in_canvas` accepts `declarationId` as well as `artifactId` so the
   assistant can present an artifact declared in the same turn before it knows
   the materialized artifact id. The same-turn index is keyed by
-  `(turnId, declarationId)` and lives in the assistant-effect processor;
-  cross-turn collisions are rejected.
+  `(turnId, producerKey, declarationId)` where `producerKey` is SPEC-092's
+  `ResolvedProducerIdentity.encoded`. Resolution is **same-caller-only**:
+  the lookup `producerKey` is the canvas caller's own producer identity,
+  not an input field. Same-turn cross-producer references reject with
+  `artifact_canvas_declaration_producer_mismatch`; the index has no
+  cross-turn lookup, and prior-turn matches reject as
+  `artifact_canvas_declaration_unknown`.
 - Manual close has two distinct controls: `Close` (server write through the
   `clear_canvas` delegate, persists across reload) and `Collapse / expand`
   (renderer-only ephemeral toggle). The two-control split prevents
@@ -141,15 +160,24 @@ this plan before Phase 4 approval.
   the `static` sandbox profile (no `allow-scripts`). Phase 2 adds dedicated
   `image`, `pdf`, and `code` viewers without changing tool inputs or
   accepted results.
-- The runtime preview origin allowlist (Phase 1: loopback +
-  operator-configured local hostnames) is the single eligibility gate for
-  `scripted-cross-origin`. `normalizePreviewSurfaceUrl` is treated as a
-  syntactic gate only; the security boundary is the allowlist. Allowlist
-  failure silently demotes; scheme failure hard-rejects. The renderer
-  re-runs the same check and may only demote.
-- Phase 3 (live preview substrate, separate SPEC) replaces / narrows the
-  Phase 1 allowlist with a session-bound preview registry — Phase 1 leaves
-  hooks for that without binding to a registry shape now.
+- The runtime preview origin allowlist is a structured config schema
+  (`{ hostname, schemes?, ports? }[]` per SPEC-101 §Iframe Policy), not a
+  hand-typed origin string list. Phase 1 default is loopback
+  (`127.0.0.1` / `::1` / `localhost`) on `http:` with any port; operators
+  may extend it through `codeCanvas.runtimePreviewOriginAllowlist`. URL
+  matching is hostname-equality (lower-cased, IPv6 unbracketed) +
+  scheme-membership + port-membership, mirrored on the renderer.
+- The producer-eligibility gate is the second half of the
+  `scripted-cross-origin` decision. Phase 1: `tool` and `system`
+  producers qualify; `agent` producers never qualify (they always demote
+  to `static` regardless of URL); `user` producers qualify only with an
+  allowlist match. Phase 3 narrows further via session-bound preview
+  registry. `normalizePreviewSurfaceUrl` is treated as a syntactic gate
+  only; the security boundary is the allowlist + producer gate.
+- Credential URLs (`user:pass@host`) hard-reject at the canvas with
+  `artifact_canvas_url_credentials_not_allowed`; they shall not appear in
+  iframe `src` or external-open hrefs even when the rest of the artifact
+  passes. Mirrors SPEC-092's declaration-time rejection.
 - Live `npm start`-style previews are deliberately separate from the canvas
   pane. The canvas consumes safe preview artifacts; it does not spawn them.
 
@@ -170,26 +198,44 @@ this plan before Phase 4 approval.
   - explicit `presentation = 'iframe'` against a URL whose origin fails the
     allowlist accepts and silently demotes to `static` (asserts no error
     code raised);
-  - origin allowlist: loopback origins (`127.0.0.1`, `::1`, `localhost`)
-    qualify; an external `https://example.com` does not;
+  - origin allowlist (matching algorithm): default loopback entries
+    (`127.0.0.1`, `::1`, `localhost`) match same-host any-port URLs;
+    `[::1]:5173` (IPv6 with port) and `127.0.0.1:5173` both match;
+    external `https://example.com` does not;
+  - origin allowlist (port restriction): with an entry `{ hostname:
+    'dev.local', schemes: ['http'], ports: [5173, 4321] }`, port 5173 and
+    4321 match; port 8080 demotes to `static`;
+  - origin allowlist (scheme restriction): with `schemes: ['http']`, an
+    `https://127.0.0.1/` URL demotes to `static`;
   - origin allowlist: a URL whose origin equals the Cats shell origin
-    silently demotes to `static`, even when it would otherwise be on the
+    silently demotes to `static`, even when it would otherwise match the
     allowlist;
+  - producer-eligibility gate: an `agent`-declared `kind = 'preview'`
+    artifact whose URL passes the allowlist demotes to `static` regardless
+    of URL (no agent-driven script-eligible iframes in Phase 1);
+  - producer-eligibility gate: a `tool`-declared or `system`-declared
+    `kind = 'preview'` artifact whose URL passes the allowlist resolves to
+    `scripted-cross-origin`;
+  - producer-eligibility gate: a `user`-imported `kind = 'preview'`
+    artifact qualifies only with an allowlist match;
   - scheme allowlist: `javascript:` / `file:` / `data:` / `blob:` URLs
     reject with `artifact_canvas_iframe_scheme_rejected` (hard reject; no
     static fallback);
-  - credential rejection: `https://user:pass@host/` URLs silently demote
-    `scripted-cross-origin` to `static`;
-  - per-turn declaration index: `show_in_canvas({declarationId})` issued in a
-    turn with no accepted declaration of that id under
-    `(turnId, producerKey, declarationId)` rejects with
+  - credential rejection (hard reject): `https://user:pass@host/` URLs
+    reject with `artifact_canvas_url_credentials_not_allowed` and the
+    URL must not appear in any subsequent surface (iframe `src`,
+    open-external href, or pane metadata);
+  - per-turn declaration index: `show_in_canvas({declarationId})` issued
+    by an agent in a turn with no accepted declaration of that id under
+    `(turnId, agent's producerKey, declarationId)` rejects with
     `artifact_canvas_declaration_unknown`;
-  - multi-producer collision in one turn: agent and tool both emit
-    `declarationId: 'X'`; `show_in_canvas({declarationId: 'X'})` resolves
-    against the producer-matching entry (or rejects with
-    `artifact_canvas_declaration_unknown` when no matching producer key
-    exists) and never accidentally binds to the other producer's
-    declaration;
+  - multi-producer same-turn (same-caller-only resolution): agent and
+    tool both emit `declarationId: 'X'`; the agent calls
+    `show_in_canvas({declarationId: 'X'})` and resolves to the agent's
+    declaration entry (NOT the tool's). When the agent did not
+    declare `'X'` itself but the tool did,
+    `show_in_canvas({declarationId: 'X'})` from the agent rejects with
+    `artifact_canvas_declaration_producer_mismatch`;
   - same-id-prior-turn: `show_in_canvas({declarationId})` issued in turn
     N+1 referencing a declaration accepted in turn N rejects with
     `artifact_canvas_declaration_unknown` (the per-turn index does not see
@@ -236,10 +282,12 @@ this plan before Phase 4 approval.
 |------|--------|------------|
 | Assistant presents unsafe URL | High | Server picks sandbox profile and re-checks scheme; renderer re-validates and may only demote |
 | Migrating existing builder/artifact iframes silently regresses dev-server previews (vite / Next.js / Lovable) | High | Loopback default in the runtime preview origin allowlist preserves `scripted-cross-origin` for `127.0.0.1` / `localhost` dev servers; manual check on Task 2.5 verifies real preview URLs still load |
-| External `https://...` artifacts marked `kind = 'preview'` qualify for `allow-scripts allow-same-origin` (issue raised in first-round security review) | High | Allowlist replaces "is not Cats shell origin" with explicit positive enumeration; off-allowlist URLs silently demote to `static` even when `kind = 'preview'` |
+| External `https://...` artifacts marked `kind = 'preview'` qualify for `allow-scripts allow-same-origin` (first-round security review) | High | Structured runtime preview origin allowlist replaces "is not Cats shell origin"; off-allowlist URLs silently demote to `static` even when `kind = 'preview'` |
+| Agent escalates to script-eligible iframe by declaring a loopback `kind = 'preview'` URL (second-round security review) | High | Producer-eligibility gate denies `scripted-cross-origin` to all `agent`-declared artifacts in Phase 1 regardless of URL; only `tool` / `system` (and `user` with allowlist match) qualify. Phase 3 narrows further via session-bound preview registry |
+| Credential URLs leak into iframe `src` / open-external href / pane metadata (second-round security review) | High | Hard reject at canvas boundary with `artifact_canvas_url_credentials_not_allowed`, mirroring SPEC-092's `artifact_url_credentials_not_allowed` declaration-time rule |
 | Task metadata becomes a dumping ground | Medium | Single `codeCanvasFocus` key with schema version and normalizer |
 | Split pane breaks chat/composer layout | Medium | Product-local layout first; targeted renderer tests and manual viewport check |
-| `declarationId` ambiguity across turns | Medium | Per-turn declaration index keyed by `(turnId, declarationId)`; cross-turn collisions explicitly rejected with `artifact_canvas_declaration_cross_turn` |
+| `declarationId` ambiguity across turns / producers | Medium | Per-turn index keyed by `(turnId, producerKey, declarationId)` where `producerKey = ResolvedProducerIdentity.encoded` (SPEC-092). Same-caller-only resolution; same-turn cross-producer rejects with `artifact_canvas_declaration_producer_mismatch`; prior-turn matches reject as `artifact_canvas_declaration_unknown` (no cross-turn lookup) |
 | User confusion between collapse and close (collapse "loses" their pane on reload) | Low | Two visually distinct controls; collapse uses an obvious chevron-style affordance, close uses an X |
 | Live preview scope creeps into Phase 1 | High | Keep process spawning in separate Phase 4 security plan |
 
@@ -250,6 +298,7 @@ this plan before Phase 4 approval.
 | 2026-04-30 | Plan created from split-canvas artifact panel review. |
 | 2026-04-30 | Reworked sandbox profiles, two-control close model, per-turn declaration index, active-task precondition, and renderer defense-in-depth tests after first-round review; added ADR-097 dependency. |
 | 2026-04-30 | Second-round security follow-up: replaced "is not Cats shell origin" with explicit runtime preview origin allowlist; rekeyed declaration index with `producerKey` for multi-producer same-turn collisions; dropped cross-turn error code (cross-turn lookup is intentionally absent); pinned reject-vs-demote semantics for explicit-presentation vs auto and for scheme-vs-origin failures. |
+| 2026-04-30 | Third-round security follow-up: pinned the runtime preview origin allowlist as a structured `{ hostname, schemes?, ports? }[]` schema with explicit URL-matching algorithm; added the producer-eligibility gate that denies `scripted-cross-origin` to all agent-declared artifacts in Phase 1; promoted credential URL handling from silent demote to hard reject; defined `producerKey = ResolvedProducerIdentity.encoded` per SPEC-092; pinned `declarationId` resolution as same-caller-only with the new `artifact_canvas_declaration_producer_mismatch` error code; scrubbed stale `(turnId, declarationId)` and `artifact_canvas_declaration_cross_turn` references from PLAN-090. |
 
 ---
 

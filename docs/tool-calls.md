@@ -423,7 +423,8 @@ type ShowInCanvasResult =
 ```
 
 Core rules (the SPEC-101 source-of-truth covers full validation, the
-runtime preview origin allowlist, and the presentation resolution table):
+runtime preview origin allowlist schema, and the presentation resolution
+table):
 
 - exactly one of `artifactId` or `declarationId` is required;
 - `'unsupported'` is **not** a valid input; it is a server-resolved output
@@ -432,18 +433,30 @@ runtime preview origin allowlist, and the presentation resolution table):
   served reject with `artifact_canvas_presentation_unsupported`; `auto`
   accepts and opens the metadata-only `unsupported` pane instead;
 - `declarationId` resolves only against the current turn's per-turn index
-  keyed by `(turnId, producerKey, declarationId)`; misses (no accepted
+  keyed by `(turnId, producerKey, declarationId)` where `producerKey`
+  equals SPEC-092's `ResolvedProducerIdentity.encoded` (e.g.
+  `actor:abc`, `tool:declare_artifact`, `system:patch-bundle-detector`).
+  Lookup is **same-caller-only**: the `producerKey` is the caller's own
+  resolved producer identity, not an input. Misses (no accepted
   declaration this turn, including ids only seen in prior turns) reject
-  with `artifact_canvas_declaration_unknown`. The processor keeps no
-  cross-turn lookup;
+  with `artifact_canvas_declaration_unknown`; same-turn cross-producer
+  references reject with `artifact_canvas_declaration_producer_mismatch`.
+  Callers wanting to present a foreign-producer declaration must pass
+  `artifactId`. The processor keeps no cross-turn lookup;
 - accepted focus is persisted under
   `CoreTaskRecord.metadata.codeCanvasFocus` per
   [ADR-097](./decisions/097-store-code-canvas-focus-on-task-metadata.md);
-- the iframe sandbox profile is server-decided through an explicit runtime
-  preview origin allowlist (Phase 1 default: loopback + configured local
-  hostnames). Allowlist failure silently demotes
-  `scripted-cross-origin` -> `static`; scheme allowlist failure
-  hard-rejects with `artifact_canvas_iframe_scheme_rejected`.
+- credential-bearing URLs (`user:pass@host`) hard-reject at the canvas
+  with `artifact_canvas_url_credentials_not_allowed` and never reach
+  iframe `src`, open-external href, or pane metadata;
+- the iframe sandbox profile is server-decided through (a) an explicit
+  structured runtime preview origin allowlist
+  (`{ hostname, schemes?, ports? }[]`; Phase 1 default: loopback on
+  `http:` with any port), and (b) a producer-eligibility gate
+  (`tool` / `system` producers, plus `user` with allowlist match;
+  `agent` producers never qualify in Phase 1). Failure of either gate
+  silently demotes `scripted-cross-origin` -> `static`; scheme allowlist
+  failure hard-rejects with `artifact_canvas_iframe_scheme_rejected`.
 
 #### Error Codes
 
@@ -454,6 +467,7 @@ Implementers shall use these names verbatim:
 - `artifact_canvas_identity_required`
 - `artifact_canvas_identity_conflict`
 - `artifact_canvas_declaration_unknown`
+- `artifact_canvas_declaration_producer_mismatch`
 - `artifact_canvas_artifact_not_found`
 - `artifact_canvas_artifact_not_anchored`
 - `artifact_canvas_no_active_task`
@@ -461,9 +475,12 @@ Implementers shall use these names verbatim:
 - `artifact_canvas_presentation_invalid`
 - `artifact_canvas_presentation_unsupported`
 - `artifact_canvas_iframe_scheme_rejected`
+- `artifact_canvas_url_credentials_not_allowed`
 
-There is no error code for runtime-preview-origin allowlist failure;
-allowlist failure is a silent demote, not a rejection.
+There are no error codes for runtime-preview-origin allowlist failure or
+producer-eligibility-gate failure; both silently demote to `static`. The
+`iframeSandboxProfile` field on the accepted result is the
+assistant-visible signal that demotion happened.
 
 ### `clear_canvas`
 
