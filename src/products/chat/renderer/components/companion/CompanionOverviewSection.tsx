@@ -1,5 +1,7 @@
 import type { CompanionBoxSummary, CompanionMemoryRecord } from '../../../companion/contracts.js';
 import type { CompanionPresenceInfo } from '../../hooks/useCompanionPresence.js';
+import { messageKeys } from '../../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 
 export interface CompanionOverviewSectionProps {
   summary: CompanionBoxSummary | null;
@@ -31,16 +33,24 @@ export function CompanionOverviewSection({
   onSleep,
   loading,
 }: CompanionOverviewSectionProps) {
+  const { t } = useI18n();
+
   if (loading && !summary) {
-    return <div className="companionSection companionLoading">Loading...</div>;
+    return (
+      <div className="companionSection companionLoading">
+        {t(messageKeys.chatCompanionOverviewLoadingState)}
+      </div>
+    );
   }
 
   const recentSlice = recentMemory.slice(0, 5);
 
   return (
     <div className="companionSection companionOverview">
-      <div className="companionCard companionPresenceCard">
-        <div className="companionCardHeader">Presence</div>
+        <div className="companionCard companionPresenceCard">
+        <div className="companionCardHeader">
+          {t(messageKeys.chatCompanionOverviewPresenceTitle)}
+        </div>
         <div className="companionPresenceRow">
           <span className={`companionPresenceLarge ${presence.className}`}>
             <span className="companionPresenceDot" />
@@ -52,7 +62,7 @@ export function CompanionOverviewSection({
               className="companionActionButton"
               onClick={onWake}
             >
-              Wake
+              {t(messageKeys.chatCompanionOverviewPresenceWakeButton)}
             </button>
           )}
           {presence.canSleep && (
@@ -61,7 +71,7 @@ export function CompanionOverviewSection({
               className="companionActionButton companionActionSecondary"
               onClick={onSleep}
             >
-              Sleep
+              {t(messageKeys.chatCompanionOverviewPresenceSleepButton)}
             </button>
           )}
         </div>
@@ -69,19 +79,37 @@ export function CompanionOverviewSection({
 
       {summary && (
         <div className="companionCard companionStatsCard">
-          <div className="companionCardHeader">Summary</div>
+          <div className="companionCardHeader">
+            {t(messageKeys.chatCompanionOverviewSummaryTitle)}
+          </div>
           <ul className="companionStatsList">
-            <li><strong>{summary.sourceCount}</strong> resources</li>
-            <li><strong>{summary.derivedCount}</strong> creations</li>
-            <li><strong>{summary.memoryCount}</strong> memories</li>
+            <li>
+              <strong>{summary.sourceCount}</strong>
+              {' '}
+              {t(messageKeys.chatCompanionOverviewSummaryResourceLabel)}
+            </li>
+            <li>
+              <strong>{summary.derivedCount}</strong>
+              {' '}
+              {t(messageKeys.chatCompanionOverviewSummaryCreationLabel)}
+            </li>
+            <li>
+              <strong>{summary.memoryCount}</strong>
+              {' '}
+              {t(messageKeys.chatCompanionOverviewSummaryMemoryLabel)}
+            </li>
           </ul>
         </div>
       )}
 
       <div className="companionCard companionRecentMemoryCard">
-        <div className="companionCardHeader">Recent Memories</div>
+        <div className="companionCardHeader">
+          {t(messageKeys.chatCompanionOverviewRecentMemoriesTitle)}
+        </div>
         {recentSlice.length === 0 ? (
-          <p className="companionEmpty">No memories yet.</p>
+          <p className="companionEmpty">
+            {t(messageKeys.chatCompanionOverviewEmptyState)}
+          </p>
         ) : (
           <ul className="companionMemoryList">
             {recentSlice.map((record) => (

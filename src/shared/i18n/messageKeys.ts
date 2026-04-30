@@ -1111,6 +1111,16 @@ export const messageKeys = {
   chatCompanionSettingsTelegramBindingSuffix: 'chat.companionSettingsTelegramBindingSuffix',
   chatCompanionSettingsNoTelegramBindingState:
     'chat.companionSettingsNoTelegramBindingState',
+  chatCompanionOverviewLoadingState: 'chat.companionOverviewLoadingState',
+  chatCompanionOverviewPresenceTitle: 'chat.companionOverviewPresenceTitle',
+  chatCompanionOverviewPresenceWakeButton: 'chat.companionOverviewPresenceWakeButton',
+  chatCompanionOverviewPresenceSleepButton: 'chat.companionOverviewPresenceSleepButton',
+  chatCompanionOverviewSummaryTitle: 'chat.companionOverviewSummaryTitle',
+  chatCompanionOverviewSummaryResourceLabel: 'chat.companionOverviewSummaryResourceLabel',
+  chatCompanionOverviewSummaryCreationLabel: 'chat.companionOverviewSummaryCreationLabel',
+  chatCompanionOverviewSummaryMemoryLabel: 'chat.companionOverviewSummaryMemoryLabel',
+  chatCompanionOverviewRecentMemoriesTitle: 'chat.companionOverviewRecentMemoriesTitle',
+  chatCompanionOverviewEmptyState: 'chat.companionOverviewEmptyState',
   chatCompanionMessageReferenceAvailabilityLivePreview:
     'chat.companionMessageReferenceAvailabilityLivePreview',
   chatCompanionMessageReferenceAvailabilityMissing:
