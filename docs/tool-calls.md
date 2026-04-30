@@ -394,24 +394,102 @@ active Code task shows.
 
 ### `show_in_canvas`
 
-Sets the right-hand Artifact Canvas focus to a Code-relevant artifact. Accepts
-exactly one of `artifactId` or a same-turn `declarationId` plus an optional
-`presentation` hint; the server resolves the iframe sandbox profile via the
-SPEC-101 same-origin rule. Persists the resolved focus under
-`CoreTaskRecord.metadata.codeCanvasFocus`.
+Sets the right-hand Artifact Canvas focus to a Code-relevant artifact.
 
-The full input shape, sandbox-profile resolution table, error code registry,
-and renderer defense-in-depth requirements are the responsibility of
-[SPEC-101](./specs/SPEC-101-cats-code-artifact-canvas.md). Do not duplicate
-those tables here; reference SPEC-101 from new code paths or downstream
-documents.
+Caller-visible input:
+
+```ts
+interface ShowInCanvasInput {
+  artifactId?: string | null;
+  declarationId?: string | null;
+  presentation?: 'auto' | 'iframe' | 'image' | 'pdf' | 'code' | null;
+}
+```
+
+Result:
+
+```ts
+type ShowInCanvasResult =
+  | {
+      status: 'accepted';
+      artifactId: string;
+      presentationResolved: 'iframe' | 'image' | 'pdf' | 'code' | 'unsupported';
+      iframeSandboxProfile: 'static' | 'scripted-cross-origin' | null;
+    }
+  | {
+      status: 'rejected';
+      error: { code: string; message: string; details?: unknown };
+    };
+```
+
+Core rules (the SPEC-101 source-of-truth covers full validation, the
+runtime preview origin allowlist, and the presentation resolution table):
+
+- exactly one of `artifactId` or `declarationId` is required;
+- `'unsupported'` is **not** a valid input; it is a server-resolved output
+  state for `presentation: 'auto'` only;
+- explicit `iframe` / `image` / `pdf` / `code` requests that cannot be
+  served reject with `artifact_canvas_presentation_unsupported`; `auto`
+  accepts and opens the metadata-only `unsupported` pane instead;
+- `declarationId` resolves only against the current turn's per-turn index
+  keyed by `(turnId, producerKey, declarationId)`; misses (no accepted
+  declaration this turn, including ids only seen in prior turns) reject
+  with `artifact_canvas_declaration_unknown`. The processor keeps no
+  cross-turn lookup;
+- accepted focus is persisted under
+  `CoreTaskRecord.metadata.codeCanvasFocus` per
+  [ADR-097](./decisions/097-store-code-canvas-focus-on-task-metadata.md);
+- the iframe sandbox profile is server-decided through an explicit runtime
+  preview origin allowlist (Phase 1 default: loopback + configured local
+  hostnames). Allowlist failure silently demotes
+  `scripted-cross-origin` -> `static`; scheme allowlist failure
+  hard-rejects with `artifact_canvas_iframe_scheme_rejected`.
+
+#### Error Codes
+
+The full registry (with triggers) is
+[SPEC-101 §Error Code Registry](./specs/SPEC-101-cats-code-artifact-canvas.md#error-code-registry).
+Implementers shall use these names verbatim:
+
+- `artifact_canvas_identity_required`
+- `artifact_canvas_identity_conflict`
+- `artifact_canvas_declaration_unknown`
+- `artifact_canvas_artifact_not_found`
+- `artifact_canvas_artifact_not_anchored`
+- `artifact_canvas_no_active_task`
+- `artifact_canvas_caller_not_authorized`
+- `artifact_canvas_presentation_invalid`
+- `artifact_canvas_presentation_unsupported`
+- `artifact_canvas_iframe_scheme_rejected`
+
+There is no error code for runtime-preview-origin allowlist failure;
+allowlist failure is a silent demote, not a rejection.
 
 ### `clear_canvas`
 
-Clears the active Code task's `codeCanvasFocus`. Empty input, idempotent on
-already-clear focus. Required for the pane top bar's "Close (X)" control;
-the pane's "Collapse / expand" control is renderer-only and must NOT call
-this tool. See [SPEC-101 §FR7](./specs/SPEC-101-cats-code-artifact-canvas.md)
+Clears the active Code task's `codeCanvasFocus`.
+
+Caller-visible input is empty:
+
+```ts
+interface ClearCanvasInput {}
+```
+
+Result:
+
+```ts
+interface ClearCanvasResult {
+  status: 'accepted';
+  cleared: true;
+}
+```
+
+Idempotent on already-clear focus. Shares the `artifact_canvas_no_active_task`
+and `artifact_canvas_caller_not_authorized` rejection codes with
+`show_in_canvas`. Required by the pane top bar's "Close (X)" control; the
+pane's "Collapse / expand" control is renderer-only and shall NOT call this
+tool. See
+[SPEC-101 §FR7](./specs/SPEC-101-cats-code-artifact-canvas.md#functional-requirements)
 for the two-control split.
 
 ---

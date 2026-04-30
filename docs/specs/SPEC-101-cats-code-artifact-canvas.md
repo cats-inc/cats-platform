@@ -84,20 +84,40 @@ viewer for safe preview URL artifacts. Image, PDF, code viewers, and live
    - `declarationId`
 9. `declarationId` shall resolve only against accepted `declare_artifact`
    results recorded in the Code assistant-effect processor's per-turn
-   declaration index. The index shall be keyed by
-   `(turnId, declarationId)` and shall be populated only by accepted
-   same-turn declarations. Cross-turn collisions on `declarationId` shall be
-   rejected, even when the prior turn accepted the same id.
+   declaration index for the **current** assistant turn. The index shall be
+   keyed by
+   `(turnId, producerKey, declarationId)`
+   where `producerKey` is the same producer-identity tuple that
+   `declare_artifact` uses for idempotency
+   (`producer.kind` + `producer.actorId` + `producer.toolName` +
+   `producer.runtimeSessionId`, normalized per SPEC-092). This handles
+   multi-producer collisions inside one turn (e.g. an agent and a tool both
+   emitting the same `declarationId`).
+   The index is **same-turn-only**; the processor does not consult any
+   cross-turn history. A `declarationId` that does not appear in the current
+   turn's index is rejected with `artifact_canvas_declaration_unknown`
+   regardless of whether a prior turn happened to accept the same id. There
+   is no separate cross-turn rejection path because the processor cannot —
+   and intentionally does not — see across turn boundaries.
 10. `artifactId` shall resolve only to a Code-relevant artifact that is
     compatible with the active Code task/session context.
 11. `show_in_canvas` shall require an active Code task on the caller's
     surface; calls without an active task shall be rejected with
     `artifact_canvas_no_active_task` and shall not store partial focus.
 12. `show_in_canvas` shall accept `presentation = 'auto' | 'iframe' | 'image' |
-    'pdf' | 'code'`. Phase 1 resolves all viewer-shaped presentations through
-    the iframe viewer using a content-appropriate sandbox profile (see
-    §Iframe Policy); only artifacts with no safe inline target resolve to
-    `unsupported`.
+    'pdf' | 'code'` only; `'unsupported'` is **never** a valid input — it is
+    a server-resolved output state. Phase 1 resolution rules are explicit:
+    - `presentation: 'auto'` may resolve to any of `iframe`, `image`, `pdf`,
+      `code`, or `unsupported`. When the artifact has no safe inline target,
+      `auto` accepts and opens the metadata-only `unsupported` pane.
+    - Explicit `'iframe'`, `'image'`, `'pdf'`, or `'code'` requests against
+      an artifact that cannot be served as that family **reject** with
+      `artifact_canvas_presentation_unsupported`. They do not silently
+      downgrade to `unsupported`.
+    - Phase 1 implements all viewer-shaped presentations through the iframe
+      viewer using a content-appropriate sandbox profile (see §Iframe
+      Policy); Phase 2 splits image / pdf / code into dedicated viewers
+      without changing this rule.
 13. `clear_canvas` shall clear the active task's `codeCanvasFocus` and shall
     require the same active-task precondition as `show_in_canvas`.
 14. The renderer shall ignore transcript prose, markdown links, and JSON-looking
@@ -177,10 +197,12 @@ interface ShowInCanvasInput {
 Validation:
 
 - exactly one of `artifactId` or `declarationId` is required;
-- `presentation` defaults to `auto`;
+- `presentation` defaults to `auto`. `'unsupported'` is not accepted as an
+  input value;
 - `declarationId` must resolve through the per-turn declaration index keyed
-  by `(turnId, declarationId)`; misses (no accepted declaration this turn)
-  and stale hits (matching id from a different turn) are both rejected;
+  by `(turnId, producerKey, declarationId)` (where `producerKey` mirrors
+  SPEC-092's idempotency tuple). Misses are rejected with
+  `artifact_canvas_declaration_unknown`; the index is same-turn-only;
 - resolved artifact must exist and be Code-relevant;
 - resolved artifact must be anchored to the active task, run, conversation, or
   codespace according to the same anchor rules used by SPEC-092;
@@ -188,8 +210,11 @@ Validation:
   owner user;
 - the caller's surface must have an active Code task; calls with no active
   task are rejected with `artifact_canvas_no_active_task`;
-- unsupported presentation is rejected or normalized to `unsupported` with a
-  clear tool result.
+- explicit non-`auto` presentation requests that cannot be served against
+  the artifact are rejected with `artifact_canvas_presentation_unsupported`;
+- `presentation: 'auto'` requests that find no safe inline target are
+  accepted and resolve to `presentationResolved: 'unsupported'`, opening
+  the metadata-only pane.
 
 Accepted result:
 
@@ -250,11 +275,13 @@ static media never receives `allow-scripts`.
 
 | Artifact signal | Phase 1 `presentationResolved` | `iframeSandboxProfile` |
 |-----------------|--------------------------------|------------------------|
-| `kind = 'preview'` and preview target is a safe iframe URL | `iframe` | `scripted-cross-origin` |
-| URL path ending in a known image extension | `iframe` | `static` |
-| URL path ending in `.pdf` | `iframe` | `static` |
+| `kind = 'preview'` and URL passes scheme + runtime-preview-origin allowlist (and other §Iframe Policy conditions) | `iframe` | `scripted-cross-origin` |
+| `kind = 'preview'` and URL passes scheme but fails the origin allowlist | `iframe` (silently demoted) | `static` |
+| URL path ending in a known image extension and URL passes scheme | `iframe` | `static` |
+| URL path ending in `.pdf` and URL passes scheme | `iframe` | `static` |
 | `location.kind = 'inline_summary'` or text/code mime type | `unsupported` in Phase 1; `code` in Phase 2 | `null` |
-| no safe inline target | `unsupported` | `null` |
+| URL fails scheme allowlist | rejected with `artifact_canvas_iframe_scheme_rejected` | n/a |
+| no safe inline target (and `presentation: 'auto'`) | `unsupported` | `null` |
 
 `unsupported` is a valid resolved state. It opens a pane with artifact metadata
 and external-open/download affordances rather than embedding unsafe content.
@@ -268,13 +295,19 @@ Phase 1 iframe rendering shall obey all of these rules.
 
 ### URL Scheme Allowlist
 
-- allowed URL schemes: `http:`, `https:`, and app-served relative URLs that
-  pass the server-side preview-safe classifier (`normalizePreviewSurfaceUrl`
-  or its successor);
-- rejected URL schemes: `file:`, `javascript:`, `data:`, `blob:`, and raw
-  local filesystem paths;
+- allowed URL schemes: absolute `http:` / `https:`, and app-served relative
+  URLs (paths beginning with `/`);
+- rejected URL schemes: `file:`, `javascript:`, `data:`, `blob:`, raw local
+  filesystem paths, and any URL whose scheme cannot be parsed;
+- the existing `normalizePreviewSurfaceUrl` helper enforces only this
+  syntactic gate — it is **not** a security classifier. Origin / port /
+  producer / session checks are layered on top of it (see §Runtime Preview
+  Origin Allowlist below);
 - the renderer shall re-check the scheme of the projected URL before
-  embedding (defense in depth).
+  embedding (defense in depth);
+- a request that fails the scheme allowlist is **rejected** with
+  `artifact_canvas_iframe_scheme_rejected` and never falls back to a less
+  permissive sandbox profile.
 
 ### Sandbox Profiles
 
@@ -311,22 +344,69 @@ profile literally and shall not promote `static` to `scripted-cross-origin`.
   reaching the Cats shell origin. This profile is the only path that may
   combine `allow-scripts` with `allow-same-origin`.
 
-### Same-Origin Rule (the `allow-same-origin` test)
+### Runtime Preview Origin Allowlist
+
+`scripted-cross-origin` requires `allow-scripts` + `allow-same-origin`,
+which is the riskier combination. It must not be granted just because a URL
+"isn't the Cats shell origin" — that would let any external `https://...`
+artifact escalate. The eligibility test is therefore an **explicit
+allowlist** of origins that the platform recognizes as runtime-owned
+preview hosts.
+
+Phase 1 allowlist (server-decided, configurable at server boot):
+
+1. **Loopback hosts** with any port: `127.0.0.1`, `::1`, `localhost`. These
+   are the addresses a locally-spawned dev server can bind to in the current
+   single-machine deployment.
+2. **Configured local hostnames** explicitly listed in
+   `codeCanvas.runtimePreviewOriginAllowlist` server config. Operators can
+   add LAN hostnames (e.g. a dev VM, a Tailscale host) here. The list is
+   empty by default.
+
+URLs that resolve to any other origin — including arbitrary `https://...`
+artifacts declared by an agent — never qualify for `scripted-cross-origin`,
+even when `kind = 'preview'`. They are served with the `static` profile.
 
 The server may emit `scripted-cross-origin` only when **all** the following
 hold:
 
-1. the projected URL is absolute (`http:` or `https:`);
+1. the projected URL passes the scheme allowlist as an absolute
+   `http:` / `https:` URL;
 2. the URL parses successfully and yields a non-empty origin;
-3. the URL's origin is **not** equal to the Cats shell origin that serves
+3. the URL's origin matches an entry in the runtime preview origin
+   allowlist defined above;
+4. the URL's origin is **not** equal to the Cats shell origin that serves
    the renderer (configured at server boot; in packaged Electron this is the
    app-served origin, in browser dev it is the host serving the renderer
-   bundle);
-4. the URL is `kind = 'preview'`.
+   bundle) — note that with the loopback allowlist this only matters when
+   Cats itself is served on a loopback origin;
+5. the URL contains no embedded credentials (`user:pass@host` syntax);
+6. the artifact is `kind = 'preview'`;
+7. the artifact's producer identity is one the platform considers eligible
+   to bind a preview origin (Phase 1: any agent / tool producer that
+   already passed `declare_artifact` validation; Phase 3 will narrow this
+   to the session-bound preview registry — see §Forward Compatibility).
 
-If any condition fails, the server shall fall back to `static`. App-relative
-preview URLs (which always resolve to the Cats shell origin) therefore never
-qualify for `scripted-cross-origin` and shall always be served as `static`.
+When any condition fails, the server **silently demotes** to the `static`
+profile. Demotion is not an error; the assistant gets back
+`presentationResolved: 'iframe'` (or whichever family was requested) with
+`iframeSandboxProfile: 'static'` and can decide whether the static frame is
+useful. The server only **rejects** a request when the static profile also
+cannot serve the URL (scheme failure → rejection per the rule above).
+
+### Forward Compatibility: Session-Bound Preview Registry (Phase 3)
+
+The Phase 1 allowlist is intentionally coarse (loopback + configured
+hostnames) because Phase 1 has no process supervisor that can witness which
+URL was bound by which runtime session. Phase 3 (live `npm start`-style
+preview substrate, separate SPEC) shall introduce a session-bound preview
+registry: the runtime registers `(sessionId, origin, port)` tuples when it
+spawns a preview server, and `scripted-cross-origin` becomes conditional on
+the URL's origin matching a tuple registered by the **same runtime session**
+that produced the artifact. This narrows the trust boundary from "any
+loopback URL" to "loopback URL provably owned by the session that declared
+this artifact". When the registry lands, the Phase 1 allowlist becomes the
+fallback for non-supervised callers.
 
 ### Renderer Re-Check
 
@@ -335,10 +415,10 @@ The renderer shall:
 - assert the projected `iframeSandboxProfile` is one of the two named values;
 - re-validate the URL scheme through the same allowlist;
 - when the projected profile is `scripted-cross-origin`, re-compute the
-  same-origin test against the renderer's `window.location.origin` and
-  downgrade to `static` rendering (or fall back to the `unsupported` pane)
-  if the test fails — that is, the renderer may **only** demote, never
-  promote.
+  origin allowlist + non-Cats-shell-origin test against the renderer's
+  `window.location.origin` and demote to `static` rendering if the test
+  fails. The renderer may **only** demote, never promote. Demotion is
+  silent at the renderer layer too.
 
 ## Design Overview
 
@@ -366,21 +446,25 @@ reference these codes instead of inventing local aliases.
 |------------|---------|
 | `artifact_canvas_identity_required` | Neither `artifactId` nor `declarationId` is supplied. |
 | `artifact_canvas_identity_conflict` | Both `artifactId` and `declarationId` are supplied. |
-| `artifact_canvas_declaration_unknown` | `declarationId` does not match any accepted entry in the per-turn declaration index for the current `(turnId, declarationId)` key. |
-| `artifact_canvas_declaration_cross_turn` | `declarationId` matches a declaration accepted in a different turn; cross-turn fallback is not allowed. |
+| `artifact_canvas_declaration_unknown` | `declarationId` does not match any entry in the current turn's declaration index under the `(turnId, producerKey, declarationId)` key — covers the "no accepted declaration this turn", "wrong producer", and "id only seen in a prior turn" cases uniformly. |
 | `artifact_canvas_artifact_not_found` | `artifactId` does not resolve to a Code-relevant `CoreArtifactRecord`. |
 | `artifact_canvas_artifact_not_anchored` | The resolved artifact is not anchored to the active task, run, conversation, or codespace. |
 | `artifact_canvas_no_active_task` | The caller's surface has no active Code task; canvas focus cannot be set or cleared. |
 | `artifact_canvas_caller_not_authorized` | The caller is neither the active Code assistant/session nor the authenticated owner user. |
-| `artifact_canvas_presentation_invalid` | `presentation` is not one of `auto`, `iframe`, `image`, `pdf`, `code`. |
-| `artifact_canvas_presentation_unsupported` | The server cannot resolve the requested presentation against the artifact (e.g. an `iframe` request for an artifact with no safe URL). |
-| `artifact_canvas_iframe_scheme_rejected` | The artifact URL fails the scheme allowlist or normalization. |
-| `artifact_canvas_iframe_origin_not_allowed` | A `scripted-cross-origin` request resolves to the Cats shell origin and cannot keep `allow-same-origin`. |
+| `artifact_canvas_presentation_invalid` | `presentation` is not one of `auto`, `iframe`, `image`, `pdf`, `code` (in particular, `'unsupported'` as input is rejected here). |
+| `artifact_canvas_presentation_unsupported` | An **explicit** `iframe` / `image` / `pdf` / `code` request cannot be served against the artifact (no safe inline target, no usable inline summary, etc.). `presentation: 'auto'` never raises this — it accepts and resolves to the `unsupported` pane state instead. |
+| `artifact_canvas_iframe_scheme_rejected` | The artifact URL fails the scheme allowlist (e.g. `javascript:`, `file:`, `data:`, `blob:`, unparseable). Hard reject; not demoted to `static`. |
 
-The renderer's defense-in-depth checks shall surface scheme / origin
-rejections to the user as the `unsupported` pane state, not as silently
-broken iframes; the underlying server-side error code is the canonical record
-in the persisted tool trace.
+There is no error code for runtime-preview-origin allowlist failure: missing
+the allowlist silently demotes `scripted-cross-origin` -> `static`, both
+server-side and during the renderer's defense-in-depth re-check. The
+`iframeSandboxProfile` field on the accepted result is the assistant-visible
+signal that demotion happened.
+
+The renderer's defense-in-depth path shall surface scheme rejections as the
+`unsupported` pane state, not as silently broken iframes. Server-side
+rejections appear in the persisted tool trace under the canonical error code
+above.
 
 ## Dependencies
 
@@ -406,8 +490,12 @@ in the persisted tool trace.
   Phase 2 replaces the iframe fallback with dedicated viewers. See
   §Presentation Resolution.
 - **`allow-same-origin` eligibility**: `scripted-cross-origin` profile only
-  when the projected URL has a non-Cats-shell origin and is `kind = 'preview'`;
-  enforced server-side and re-checked client-side. See §Iframe Policy.
+  when the projected URL passes an explicit runtime preview origin
+  allowlist (Phase 1: loopback + configured local hostnames), is not the
+  Cats shell origin, carries no embedded credentials, and the artifact is
+  `kind = 'preview'`. Allowlist failure silently demotes to `static`;
+  scheme failure hard-rejects. Phase 3 narrows the allowlist to a
+  session-bound preview registry. See §Iframe Policy.
 
 ## Open Questions
 

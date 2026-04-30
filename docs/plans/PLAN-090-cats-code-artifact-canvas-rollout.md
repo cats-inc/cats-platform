@@ -35,10 +35,18 @@ depends on a separate process-supervision and security review.
       and the active-task precondition.
 - [ ] Task 1.3: Add a Code assistant-effect processor that resolves
       `artifactId` or same-turn `declarationId`, validates active task/session
-      compatibility, picks the iframe sandbox profile via the same-origin
-      rule, and updates task metadata. The processor owns the per-turn
-      declaration index keyed by `(turnId, declarationId)` and shall
-      explicitly reject cross-turn collisions.
+      compatibility, picks the iframe sandbox profile via the runtime
+      preview origin allowlist, and updates task metadata. The processor
+      owns the per-turn declaration index keyed by
+      `(turnId, producerKey, declarationId)` (with `producerKey` matching
+      SPEC-092's idempotency tuple). The index is same-turn-only — there is
+      no cross-turn lookup; misses simply reject as
+      `artifact_canvas_declaration_unknown`.
+- [ ] Task 1.6: Add `codeCanvas.runtimePreviewOriginAllowlist` to Code
+      product config with default `['127.0.0.1', '::1', 'localhost']` and
+      operator-extensible local hostnames. Wire the allowlist into the
+      sandbox-profile decision and surface the resolved profile to clients
+      via the projection.
 - [ ] Task 1.4: Expose read-only `canvasFocus` (including
       `iframeSandboxProfile`) from Code task/detail and dashboard
       projections, dropping malformed metadata.
@@ -133,30 +141,59 @@ this plan before Phase 4 approval.
   the `static` sandbox profile (no `allow-scripts`). Phase 2 adds dedicated
   `image`, `pdf`, and `code` viewers without changing tool inputs or
   accepted results.
-- The same-origin rule for `allow-same-origin` is server-decided
-  (`scripted-cross-origin` profile only when the URL parses, has a non-Cats
-  shell origin, and is `kind = 'preview'`) and renderer-rechecked. The
-  renderer may demote `scripted-cross-origin` -> `static` but never promote.
+- The runtime preview origin allowlist (Phase 1: loopback +
+  operator-configured local hostnames) is the single eligibility gate for
+  `scripted-cross-origin`. `normalizePreviewSurfaceUrl` is treated as a
+  syntactic gate only; the security boundary is the allowlist. Allowlist
+  failure silently demotes; scheme failure hard-rejects. The renderer
+  re-runs the same check and may only demote.
+- Phase 3 (live preview substrate, separate SPEC) replaces / narrows the
+  Phase 1 allowlist with a session-bound preview registry — Phase 1 leaves
+  hooks for that without binding to a registry shape now.
 - Live `npm start`-style previews are deliberately separate from the canvas
   pane. The canvas consumes safe preview artifacts; it does not spawn them.
 
 ## Testing Strategy
 
 - **Unit tests**:
-  - input normalization rejects missing/both identities and unknown
-    presentation;
+  - input normalization rejects missing/both identities, unknown
+    presentation values, and `presentation: 'unsupported'` as input;
   - malformed `codeCanvasFocus` metadata is dropped by projection;
-  - `presentation = auto` resolves preview URL artifacts to `iframe` with
-    `scripted-cross-origin`, image / PDF URL artifacts to `iframe` with
-    `static`, and code/unknown shapes to `unsupported`;
-  - same-origin rule: a URL whose origin equals the Cats shell origin is
-    rejected from `scripted-cross-origin` and falls back to `static`;
+  - `presentation = 'auto'` resolves preview URL artifacts whose origin
+    passes the runtime preview origin allowlist to `iframe` +
+    `scripted-cross-origin`, the same artifact with an off-allowlist origin
+    to `iframe` + `static` (silent demote, no error), image / PDF URL
+    artifacts to `iframe` + `static`, and `inline_summary` / no-safe-target
+    shapes to `unsupported`;
+  - explicit `presentation = 'iframe'` against an artifact with no safe URL
+    rejects with `artifact_canvas_presentation_unsupported`;
+  - explicit `presentation = 'iframe'` against a URL whose origin fails the
+    allowlist accepts and silently demotes to `static` (asserts no error
+    code raised);
+  - origin allowlist: loopback origins (`127.0.0.1`, `::1`, `localhost`)
+    qualify; an external `https://example.com` does not;
+  - origin allowlist: a URL whose origin equals the Cats shell origin
+    silently demotes to `static`, even when it would otherwise be on the
+    allowlist;
+  - scheme allowlist: `javascript:` / `file:` / `data:` / `blob:` URLs
+    reject with `artifact_canvas_iframe_scheme_rejected` (hard reject; no
+    static fallback);
+  - credential rejection: `https://user:pass@host/` URLs silently demote
+    `scripted-cross-origin` to `static`;
   - per-turn declaration index: `show_in_canvas({declarationId})` issued in a
-    turn with no accepted declaration of that id rejects with
+    turn with no accepted declaration of that id under
+    `(turnId, producerKey, declarationId)` rejects with
     `artifact_canvas_declaration_unknown`;
-  - cross-turn rejection: `show_in_canvas({declarationId})` issued in turn
+  - multi-producer collision in one turn: agent and tool both emit
+    `declarationId: 'X'`; `show_in_canvas({declarationId: 'X'})` resolves
+    against the producer-matching entry (or rejects with
+    `artifact_canvas_declaration_unknown` when no matching producer key
+    exists) and never accidentally binds to the other producer's
+    declaration;
+  - same-id-prior-turn: `show_in_canvas({declarationId})` issued in turn
     N+1 referencing a declaration accepted in turn N rejects with
-    `artifact_canvas_declaration_cross_turn`, even when the id matches;
+    `artifact_canvas_declaration_unknown` (the per-turn index does not see
+    turn N — there is no separate cross-turn lookup);
   - active-task precondition: both tools reject with
     `artifact_canvas_no_active_task` when invoked without an active task.
 - **Integration tests**:
@@ -180,9 +217,10 @@ this plan before Phase 4 approval.
     allowlist (e.g. a `javascript:` URL slipped past the server), the
     renderer renders the unsupported pane and does not mount the iframe;
   - **defense in depth**: when the projection emits a
-    `scripted-cross-origin` profile but the URL origin equals the
-    renderer's `window.location.origin`, the renderer demotes to `static`
-    (or unsupported) — never promotes;
+    `scripted-cross-origin` profile but the URL origin fails the renderer's
+    own runtime-preview-origin / Cats-shell-origin re-check, the renderer
+    silently demotes to `static`. The renderer never promotes `static` to
+    `scripted-cross-origin`;
   - unsupported artifacts show metadata and external-open fallback instead
     of a blank frame.
 - **Manual checks**:
@@ -197,7 +235,8 @@ this plan before Phase 4 approval.
 | Risk | Impact | Mitigation |
 |------|--------|------------|
 | Assistant presents unsafe URL | High | Server picks sandbox profile and re-checks scheme; renderer re-validates and may only demote |
-| Migrating existing builder/artifact iframes silently regresses dev-server previews (vite / Next.js / Lovable) | High | Same-origin rule preserves `scripted-cross-origin` profile for cross-origin preview URLs; manual check on Task 2.5 verifies real preview URLs still load |
+| Migrating existing builder/artifact iframes silently regresses dev-server previews (vite / Next.js / Lovable) | High | Loopback default in the runtime preview origin allowlist preserves `scripted-cross-origin` for `127.0.0.1` / `localhost` dev servers; manual check on Task 2.5 verifies real preview URLs still load |
+| External `https://...` artifacts marked `kind = 'preview'` qualify for `allow-scripts allow-same-origin` (issue raised in first-round security review) | High | Allowlist replaces "is not Cats shell origin" with explicit positive enumeration; off-allowlist URLs silently demote to `static` even when `kind = 'preview'` |
 | Task metadata becomes a dumping ground | Medium | Single `codeCanvasFocus` key with schema version and normalizer |
 | Split pane breaks chat/composer layout | Medium | Product-local layout first; targeted renderer tests and manual viewport check |
 | `declarationId` ambiguity across turns | Medium | Per-turn declaration index keyed by `(turnId, declarationId)`; cross-turn collisions explicitly rejected with `artifact_canvas_declaration_cross_turn` |
@@ -210,6 +249,7 @@ this plan before Phase 4 approval.
 |------|--------|
 | 2026-04-30 | Plan created from split-canvas artifact panel review. |
 | 2026-04-30 | Reworked sandbox profiles, two-control close model, per-turn declaration index, active-task precondition, and renderer defense-in-depth tests after first-round review; added ADR-097 dependency. |
+| 2026-04-30 | Second-round security follow-up: replaced "is not Cats shell origin" with explicit runtime preview origin allowlist; rekeyed declaration index with `producerKey` for multi-producer same-turn collisions; dropped cross-turn error code (cross-turn lookup is intentionally absent); pinned reject-vs-demote semantics for explicit-presentation vs auto and for scheme-vs-origin failures. |
 
 ---
 
