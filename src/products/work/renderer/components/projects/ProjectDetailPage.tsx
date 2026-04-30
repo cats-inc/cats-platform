@@ -4,11 +4,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { LinkageSection } from "../topdown/LinkageSection";
 import {
-  ATTENTION_LABEL,
   buildIndexes,
   formatRelative,
-  KIND_LABEL,
+  getWorkGraphAttentionLabel,
+  getWorkGraphKindLabel,
 } from "../topdown/shared";
+import { useI18n } from "../../../../../app/renderer/i18n/index.js";
+import { getWorkObjectStatusLabel } from "../topdown/WorkObjectCard";
 import type { WorkGraphObjectSummary } from "../topdown/types";
 import { removeWorkProject } from "../../api/workRecords.js";
 import {
@@ -23,6 +25,7 @@ import { WORK_PROJECTS_PATH } from "../../workPaths.js";
 import "./projects.css";
 
 export function ProjectDetailPage(): JSX.Element {
+  const { t } = useI18n();
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -48,7 +51,9 @@ export function ProjectDetailPage(): JSX.Element {
     if (!project) return;
     if (
       !window.confirm(
-        `Delete project "${project.title}"?\n\nThis cannot be undone. Linked work items, tasks, and runs are not removed.`,
+        t("workProjectDeleteConfirmation", {
+          projectTitle: project.title,
+        }),
       )
     ) {
       return;
@@ -66,7 +71,7 @@ export function ProjectDetailPage(): JSX.Element {
   const deleteError = deleteMutation.error
     ? deleteMutation.error instanceof Error
       ? deleteMutation.error.message
-      : "Failed to delete project."
+      : t("workProjectDeleteError")
     : null;
 
   const workItems = graph.objects.filter(
@@ -89,7 +94,7 @@ export function ProjectDetailPage(): JSX.Element {
             to=".."
             relative="path"
             className="projectDetailTopBar__back"
-            aria-label="Back to projects"
+            aria-label={t("workProjectBackArrowLabel")}
           >
             <svg
               width="12"
@@ -104,7 +109,7 @@ export function ProjectDetailPage(): JSX.Element {
             >
               <path d="M7.5 2L3.5 6l4 4" />
             </svg>
-            <span>Projects</span>
+            <span>{t("workProjectBackLabel")}</span>
           </Link>
         </div>
         <div className="channelTopBarCenter projectDetailTopBar__center">
@@ -117,29 +122,33 @@ export function ProjectDetailPage(): JSX.Element {
           </h1>
         </div>
         <div className="channelTopBarEnd projectDetailTopBar__end">
-          {project.attention !== "none" && ATTENTION_LABEL[project.attention] ? (
+          {getWorkGraphAttentionLabel(project.attention, t) ? (
             <span
               className={`projectDetail__attention projectDetail__attention--${project.attention}`}
             >
-              {ATTENTION_LABEL[project.attention]}
+              {getWorkGraphAttentionLabel(project.attention, t)}
             </span>
           ) : null}
           <span
             className={`projectsList__statusPill projectsList__statusPill--${project.status}`}
           >
-            {project.status.replace(/_/g, " ")}
+            {getWorkObjectStatusLabel(project.status, t)}
           </span>
           <span className="projectDetailTopBar__updated">
-            updated {formatRelative(project.updatedAt)}
+            {t("workProjectUpdatedAtPrefix", {
+              updatedAt: formatRelative(project.updatedAt, t),
+            })}
           </span>
           <button
             type="button"
             className="projectDetailTopBar__action projectDetailTopBar__action--destructive"
             onClick={handleDelete}
             disabled={deleteMutation.isPending}
-            aria-label="Delete project"
+            aria-label={t("workProjectDeleteLabel")}
           >
-            {deleteMutation.isPending ? "Deleting…" : "Delete"}
+            {deleteMutation.isPending
+              ? t("workProjectDeleteLabelBusy")
+              : t("workProjectDeleteLabel")}
           </button>
         </div>
       </header>
@@ -151,20 +160,20 @@ export function ProjectDetailPage(): JSX.Element {
         ) : null}
         <section className="projectDetail__section projectDetail__overview">
           <header className="projectDetail__sectionHeader">
-            <h2>Overview</h2>
+            <h2>{t("workProjectOverviewTitle")}</h2>
           </header>
           <dl className="projectDetail__overviewList">
             {project.summary ? (
               <>
-                <dt>Summary</dt>
+                <dt>{t("workProjectSummaryLabel")}</dt>
                 <dd>{project.summary}</dd>
               </>
             ) : null}
-            <dt>Owner</dt>
+            <dt>{t("workProjectOwnerLabel")}</dt>
             <dd>{project.ownerName}</dd>
             {project.primaryConversationId ? (
               <>
-                <dt>Conversation</dt>
+                <dt>{t("workProjectConversationLabel")}</dt>
                 <dd>
                   <span className="projectDetail__convoTitle">
                     {project.primaryConversationTitle ??
@@ -177,15 +186,15 @@ export function ProjectDetailPage(): JSX.Element {
         </section>
 
         <ItemsSection
-          title="Work items"
+          title={t("workProjectWorkItemsTitle")}
           items={workItems}
-          emptyLabel="No work items in this project yet."
+          emptyLabel={t("workProjectNoWorkItems")}
         />
 
         <ItemsSection
-          title="Tasks"
+          title={t("workProjectTasksTitle")}
           items={tasks}
-          emptyLabel="No tasks in this project yet."
+          emptyLabel={t("workProjectNoTasks")}
         />
 
         <LinkageSection
@@ -196,21 +205,21 @@ export function ProjectDetailPage(): JSX.Element {
 
         <section className="projectDetail__section">
           <header className="projectDetail__sectionHeader">
-            <h2>Activity</h2>
+            <h2>{t("workProjectActivityTitle")}</h2>
             <span className="projectDetail__sectionCount">
               {activities.length}
             </span>
           </header>
           {activities.length === 0 ? (
             <p className="projectDetail__empty">
-              No activity recorded for this project.
+              {t("workProjectNoActivity")}
             </p>
           ) : (
             <ul className="projectDetail__activity">
               {activities.map((act) => (
                 <li key={act.id} className="projectDetail__activityRow">
                   <span className="projectDetail__activityWhen">
-                    {formatRelative(act.updatedAt)}
+                    {formatRelative(act.updatedAt, t)}
                   </span>
                   <span className="projectDetail__activityTitle">
                     {act.title}
@@ -241,6 +250,8 @@ function ItemsSection({
   items,
   emptyLabel,
 }: ItemsSectionProps): JSX.Element {
+  const { t } = useI18n();
+
   return (
     <section className="projectDetail__section">
       <header className="projectDetail__sectionHeader">
@@ -258,18 +269,18 @@ function ItemsSection({
                 aria-hidden="true"
               />
               <span className="projectDetail__itemKind">
-                {KIND_LABEL[item.kind]}
+                {getWorkGraphKindLabel(item.kind, t)}
               </span>
               <span className="projectDetail__itemTitle">{item.title}</span>
-              {item.attention !== "none" && ATTENTION_LABEL[item.attention] ? (
+              {getWorkGraphAttentionLabel(item.attention, t) ? (
                 <span
                   className={`projectDetail__itemAttention projectDetail__itemAttention--${item.attention}`}
                 >
-                  {ATTENTION_LABEL[item.attention]}
+                  {getWorkGraphAttentionLabel(item.attention, t)}
                 </span>
               ) : null}
               <span className="projectDetail__itemStatus">
-                {item.status.replace(/_/g, " ")}
+                {getWorkObjectStatusLabel(item.status, t)}
               </span>
               {item.ownerRole ? (
                 <span className="projectDetail__itemOwner">
@@ -285,6 +296,8 @@ function ItemsSection({
 }
 
 function ProjectDetailLoading(): JSX.Element {
+  const { t } = useI18n();
+
   return (
     <div className="projectDetail">
       <header className="channelTopBar projectDetailTopBar">
@@ -294,12 +307,12 @@ function ProjectDetailLoading(): JSX.Element {
             relative="path"
             className="projectDetailTopBar__back"
           >
-            <span>← Projects</span>
+            <span>{t("workProjectBackArrowLabel")}</span>
           </Link>
         </div>
       </header>
       <main className="projectDetail__main">
-        <p className="projectDetail__empty">Loading project…</p>
+        <p className="projectDetail__empty">{t("workProjectLoadingLabel")}</p>
       </main>
     </div>
   );
@@ -310,6 +323,9 @@ function ProjectNotFound({
 }: {
   projectId: string | null;
 }): JSX.Element {
+  const { t } = useI18n();
+  const missingProjectId = projectId ?? t("workProjectMissingIdLabel");
+
   return (
     <div className="projectDetail">
       <header className="channelTopBar projectDetailTopBar">
@@ -319,20 +335,20 @@ function ProjectNotFound({
             relative="path"
             className="projectDetailTopBar__back"
           >
-            <span>← Projects</span>
+            <span>{t("workProjectBackArrowLabel")}</span>
           </Link>
           <span className="projectDetailTopBar__separator" aria-hidden="true">
             /
           </span>
           <h1 className="channelTopBarTitle projectDetailTopBar__title">
-            Not found
+            {t("workProjectNotFoundTitle")}
           </h1>
         </div>
       </header>
       <main className="projectDetail__main">
         <p className="projectDetail__empty">
-          Project <code>{projectId ?? "(missing id)"}</code> is not in the
-          current projection.
+          {t("workProjectNotFoundPrefix")} <code>{missingProjectId}</code>{" "}
+          {t("workProjectNotFoundSuffix")}
         </p>
       </main>
     </div>

@@ -13,6 +13,8 @@ import {
   createWorkProject as restCreateWorkProject,
   type CoreProjectStatus,
 } from "../../api/workRecords.js";
+import { useI18n } from "../../../../../app/renderer/i18n/index.js";
+import { getWorkObjectStatusLabel } from "../topdown/WorkObjectCard";
 import { WORK_PROJECTS_PATH } from "../../workPaths.js";
 import { PROJECTS_QUERY_KEY } from "../../state/queries/projectsQuery.js";
 
@@ -37,14 +39,15 @@ interface NewProjectDialogProps {
   onClose: () => void;
 }
 
-const STATUS_OPTIONS: { value: CoreProjectStatus; label: string }[] = [
-  { value: "planned", label: "Planned" },
-  { value: "active", label: "Active" },
-  { value: "paused", label: "Paused" },
-  { value: "archived", label: "Archived" },
+const STATUS_OPTIONS: CoreProjectStatus[] = [
+  "planned",
+  "active",
+  "paused",
+  "archived",
 ];
 
 export function NewProjectDialog({ onClose }: NewProjectDialogProps): JSX.Element {
+  const { t } = useI18n();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const titleId = useId();
@@ -68,7 +71,7 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps): JSX.Elemen
   const error = createMutation.error
     ? createMutation.error instanceof Error
       ? createMutation.error.message
-      : "Failed to create project."
+      : t("workNewProjectCreateError")
     : null;
 
   useEffect(() => {
@@ -117,12 +120,12 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps): JSX.Elemen
       >
         <header className="newProjectDialog__header">
           <h2 id={`${titleId}-heading`} className="newProjectDialog__heading">
-            New project
+            {t("workNewProjectTitle")}
           </h2>
           <button
             type="button"
             className="newProjectDialog__close"
-            aria-label="Close"
+            aria-label={t("workNewProjectCloseLabel")}
             onClick={onClose}
           >
             &times;
@@ -131,7 +134,8 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps): JSX.Elemen
         <form className="newProjectDialog__form" onSubmit={onSubmit}>
           <label className="newProjectDialog__field" htmlFor={titleId}>
             <span className="newProjectDialog__label">
-              Title<span className="newProjectDialog__required" aria-hidden="true">*</span>
+              {t("workNewProjectTitleLabel")}
+              <span className="newProjectDialog__required" aria-hidden="true">*</span>
             </span>
             <input
               ref={titleInputRef}
@@ -140,27 +144,31 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps): JSX.Elemen
               className="newProjectDialog__input"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="What is this project?"
+              placeholder={t("workNewProjectTitlePlaceholder")}
               required
               maxLength={120}
             />
           </label>
 
           <label className="newProjectDialog__field" htmlFor={summaryId}>
-            <span className="newProjectDialog__label">Summary</span>
+            <span className="newProjectDialog__label">
+              {t("workNewProjectSummaryLabel")}
+            </span>
             <textarea
               id={summaryId}
               className="newProjectDialog__textarea"
               value={summary}
               onChange={(event) => setSummary(event.target.value)}
-              placeholder="Why does it exist? Who is it for?"
+              placeholder={t("workNewProjectSummaryPlaceholder")}
               rows={3}
               maxLength={400}
             />
           </label>
 
           <label className="newProjectDialog__field" htmlFor={statusId}>
-            <span className="newProjectDialog__label">Status</span>
+            <span className="newProjectDialog__label">
+              {t("workNewProjectStatusLabel")}
+            </span>
             <select
               id={statusId}
               className="newProjectDialog__select"
@@ -170,8 +178,8 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps): JSX.Elemen
               }
             >
               {STATUS_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
+                <option key={option} value={option}>
+                  {getWorkObjectStatusLabel(option, t)}
                 </option>
               ))}
             </select>
@@ -189,14 +197,16 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps): JSX.Elemen
               onClick={onClose}
               disabled={submitting}
             >
-              Cancel
+              {t("workNewProjectCancelButton")}
             </button>
             <button
               type="submit"
               className="newProjectDialog__submitBtn"
               disabled={title.trim().length === 0 || submitting}
             >
-              {submitting ? "Creating…" : "Create project"}
+              {submitting
+                ? t("workNewProjectSubmitBusyLabel")
+                : t("workNewProjectSubmitLabel")}
             </button>
           </footer>
         </form>

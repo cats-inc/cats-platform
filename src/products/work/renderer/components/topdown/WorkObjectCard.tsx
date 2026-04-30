@@ -169,6 +169,12 @@ export function getWorkObjectStatusLabel(
     ? t("workObjectStatusDraft")
     : status === "planned"
       ? t("workObjectStatusPlanned")
+      : status === "active"
+        ? t("workObjectStatusActive")
+        : status === "paused"
+          ? t("workObjectStatusPaused")
+          : status === "archived"
+            ? t("workObjectStatusArchived")
       : status === "ready"
         ? t("workObjectStatusReady")
         : status === "in_progress"

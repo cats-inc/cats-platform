@@ -2,11 +2,14 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 
 import { formatRelative } from "../topdown/shared";
+import { useI18n } from "../../../../../app/renderer/i18n/index.js";
+import { getWorkObjectStatusLabel } from "../topdown/WorkObjectCard";
 import { useProjectsQuery } from "../../state/queries/projectsQuery.js";
 import { NewProjectDialog } from "./NewProjectDialog";
 import "./projects.css";
 
 export function ProjectsListPage(): JSX.Element {
+  const { t } = useI18n();
   const projectsQuery = useProjectsQuery();
   const projects = projectsQuery.data?.projects ?? [];
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -16,7 +19,7 @@ export function ProjectsListPage(): JSX.Element {
       <header className="channelTopBar projectsListTopBar">
         <div className="channelTopBarStart projectsListTopBar__start">
           <h1 className="channelTopBarTitle projectsListTopBar__title">
-            Projects
+            {t("workProjectsListTitle")}
           </h1>
           <span className="projectsListTopBar__count">
             {projects.length}
@@ -28,7 +31,7 @@ export function ProjectsListPage(): JSX.Element {
             type="button"
             className="projectsListTopBar__addBtn"
             onClick={() => setDialogOpen(true)}
-            aria-label="Create new project"
+            aria-label={t("workProjectsCreateNewProjectAriaLabel")}
           >
             <svg
               width="14"
@@ -44,20 +47,24 @@ export function ProjectsListPage(): JSX.Element {
               <path d="M7 2v10" />
               <path d="M2 7h10" />
             </svg>
-            <span>New project</span>
+            <span>{t("workProjectsNewAction")}</span>
           </button>
         </div>
       </header>
       <main className="projectsList__main">
         {projectsQuery.isPending ? (
-          <p className="projectsList__empty">Loading projects…</p>
+          <p className="projectsList__empty">{t("workProjectsListLoading")}</p>
         ) : projectsQuery.isError ? (
           <p className="projectsList__empty">
-            Failed to load projects: {String((projectsQuery.error as Error).message)}
+            {t("workProjectsListLoadError", {
+              errorMessage: String((projectsQuery.error as Error).message),
+            })}
           </p>
         ) : projects.length === 0 ? (
           <p className="projectsList__empty">
-            No projects yet. Click <strong>New project</strong> to start one.
+            {t("workProjectsListEmptyIntro")}{" "}
+            <strong>{t("workProjectsNewAction")}</strong>{" "}
+            {t("workProjectsListEmptySuffix")}
           </p>
         ) : (
           <ul className="projectsList__list">
@@ -66,7 +73,9 @@ export function ProjectsListPage(): JSX.Element {
                 <Link
                   to={project.id}
                   className="projectsList__rowLink"
-                  aria-label={`Open project ${project.title}`}
+                  aria-label={t("workProjectsOpenProjectAriaLabel", {
+                    projectTitle: project.title,
+                  })}
                 >
                   <div className="projectsList__rowMain">
                     <span
@@ -87,28 +96,35 @@ export function ProjectsListPage(): JSX.Element {
                   <div className="projectsList__rowMeta">
                     {project.attentionDecisionCount > 0 ? (
                       <span className="projectsList__pip projectsList__pip--decision">
-                        {project.attentionDecisionCount} decision
-                        {project.attentionDecisionCount === 1 ? "" : "s"}
+                        {t("workProjectsDecisionPill", {
+                          count: project.attentionDecisionCount,
+                          pluralSuffix:
+                            project.attentionDecisionCount === 1 ? "" : "s",
+                        })}
                       </span>
                     ) : null}
                     {project.attentionBlockedCount > 0 ? (
                       <span className="projectsList__pip projectsList__pip--blocked">
-                        {project.attentionBlockedCount} blocked
+                        {t("workProjectsBlockedPill", {
+                          count: project.attentionBlockedCount,
+                        })}
                       </span>
                     ) : null}
                     <span className="projectsList__metric">
-                      <strong>{project.linkedWorkItemCount}</strong> WI
+                      <strong>{project.linkedWorkItemCount}</strong>{" "}
+                      {t("workProjectsWorkItemsAbbrev")}
                     </span>
                     <span className="projectsList__metric">
-                      <strong>{project.linkedTaskCount}</strong> tasks
+                      <strong>{project.linkedTaskCount}</strong>{" "}
+                      {t("workProjectsTasksLabel")}
                     </span>
                     <span className="projectsList__metric projectsList__metric--muted">
-                      {formatRelative(project.updatedAt)}
+                      {formatRelative(project.updatedAt, t)}
                     </span>
                     <span
                       className={`projectsList__statusPill projectsList__statusPill--${project.status}`}
                     >
-                      {project.status.replace(/_/g, " ")}
+                      {getWorkObjectStatusLabel(project.status, t)}
                     </span>
                   </div>
                 </Link>
