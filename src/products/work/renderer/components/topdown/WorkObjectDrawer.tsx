@@ -1,11 +1,10 @@
 import { useState } from "react";
 
 import { SidePanel, type SidePanelSection } from "../../../../../design/components/SidePanel";
-import { KIND_LABEL, formatRelative, type WorkGraphIndexes } from "./shared";
-import type {
-  WorkGraphObjectSummary,
-  WorkGraphProjection,
-} from "./types";
+import { useI18n } from "../../../app/renderer/i18n/index.js";
+import { formatRelative, type WorkGraphIndexes } from "./shared";
+import { getWorkObjectKindLabel, getWorkObjectStatusLabel } from "./WorkObjectCard";
+import type { WorkGraphObjectSummary, WorkGraphProjection } from "./types";
 
 interface WorkObjectDrawerProps {
   graph: WorkGraphProjection;
@@ -25,13 +24,14 @@ export function WorkObjectDrawer({
   onClose,
   onSelect,
 }: WorkObjectDrawerProps): JSX.Element | null {
+  const { t } = useI18n();
   const [activeSection, setActiveSection] = useState<SectionId>("identity");
   if (!selectedId) return null;
   const object = indexes.objectsById.get(selectedId);
   if (!object) {
     return (
       <SidePanel
-        title="Selection lost"
+        title={t("topdown.selectionLost")}
         activeSection="missing"
         onSectionToggle={() => undefined}
         onClose={onClose}
@@ -39,11 +39,12 @@ export function WorkObjectDrawer({
         sections={[
           {
             id: "missing",
-            title: "Object not in projection",
+            title: t("topdown.objectNotInProjectionTitle"),
             children: (
               <p className="topDownDrawer__missing">
-                Selected id <code>{selectedId}</code> is not in the current
-                WorkGraphProjection.
+                {t("topdown.objectNotInProjectionMessage", {
+                  selectedId,
+                })}
               </p>
             ),
           },
@@ -59,33 +60,54 @@ export function WorkObjectDrawer({
   const sections: SidePanelSection[] = [
     {
       id: "identity",
-      title: "Identity",
+      title: t("topdown.identityTitle"),
       children: (
         <dl className="topDownDrawer__list">
-          <Field label="Kind" value={KIND_LABEL[object.kind]} />
-          <Field label="Status" value={object.status} />
-          <Field label="Layer" value={object.structuralLayer ?? "(cross-cutting)"} />
-          {object.ownerRole ? <Field label="Owner role" value={object.ownerRole} /> : null}
-          {object.nextAction ? <Field label="Next action" value={object.nextAction} /> : null}
-          <Field label="Updated" value={formatRelative(object.updatedAt)} />
-          {object.summary ? <Field label="Summary" value={object.summary} /> : null}
+          <Field
+            label={t("topdown.identityKind")}
+            value={getWorkObjectKindLabel(object.kind, t)}
+          />
+          <Field
+            label={t("topdown.identityStatus")}
+            value={getWorkObjectStatusLabel(object.status, t)}
+          />
+          <Field
+            label={t("topdown.identityLayer")}
+            value={object.structuralLayer ?? t("topdown.crossCuttingLayer")}
+          />
+          {object.ownerRole ? (
+            <Field label={t("topdown.identityOwnerRole")} value={object.ownerRole} />
+          ) : null}
+          {object.nextAction ? (
+            <Field
+              label={t("topdown.identityNextAction")}
+              value={object.nextAction}
+            />
+          ) : null}
+          <Field
+            label={t("topdown.identityUpdated")}
+            value={formatRelative(object.updatedAt)}
+          />
+          {object.summary ? (
+            <Field label={t("topdown.identitySummary")} value={object.summary} />
+          ) : null}
         </dl>
       ),
     },
     {
       id: "anchors",
-      title: "Anchors",
+      title: t("topdown.anchorsTitle"),
       children: (
         <AnchorsBlock object={object} indexes={indexes} onSelect={onSelect} />
       ),
     },
     {
       id: "evidence",
-      title: "Evidence",
+      title: t("topdown.evidenceTitle"),
       badge: evidence.length || undefined,
       children:
         evidence.length === 0 ? (
-          <p className="topDownDrawer__empty">No evidence attached.</p>
+          <p className="topDownDrawer__empty">{t("topdown.evidenceEmpty")}</p>
         ) : (
           <ul className="topDownDrawer__refs">
             {evidence.map((a) => {
@@ -102,7 +124,9 @@ export function WorkObjectDrawer({
                       {target.title}
                     </button>
                   ) : (
-                    <span>{a.evidenceObjectId} (missing)</span>
+                    <span>
+                      {a.evidenceObjectId} {t("topdown.missingSuffix")}
+                    </span>
                   )}
                 </li>
               );
@@ -112,11 +136,11 @@ export function WorkObjectDrawer({
     },
     {
       id: "gates",
-      title: "Gates",
+      title: t("topdown.gatesTitle"),
       badge: gates.length || undefined,
       children:
         gates.length === 0 ? (
-          <p className="topDownDrawer__empty">No approval gates.</p>
+          <p className="topDownDrawer__empty">{t("topdown.gatesEmpty")}</p>
         ) : (
           <ul className="topDownDrawer__refs">
             {gates.map((g) => {
@@ -137,7 +161,9 @@ export function WorkObjectDrawer({
                       {target.title}
                     </button>
                   ) : (
-                    <span>{g.gateObjectId} (missing)</span>
+                    <span>
+                      {g.gateObjectId} {t("topdown.missingSuffix")}
+                    </span>
                   )}
                 </li>
               );
@@ -149,7 +175,7 @@ export function WorkObjectDrawer({
   if (diagnostics.length > 0) {
     sections.push({
       id: "diagnostics",
-      title: "Diagnostics",
+      title: t("topdown.diagnosticsTitle"),
       badge: diagnostics.length,
       children: (
         <ul className="topDownDrawer__diagnostics">
@@ -197,16 +223,17 @@ function AnchorsBlock({
   indexes: WorkGraphIndexes;
   onSelect: (id: string) => void;
 }): JSX.Element {
+  const { t } = useI18n();
   const rows: Array<{ label: string; id: string | null }> = [
-    { label: "Project", id: object.linkedProjectId },
-    { label: "Work item", id: object.linkedWorkItemId },
-    { label: "Task", id: object.linkedTaskId },
-    { label: "Run", id: object.linkedRunId },
-    { label: "Conversation", id: object.linkedConversationId },
+    { label: t("topdown.anchorProject"), id: object.linkedProjectId },
+    { label: t("topdown.anchorWorkItem"), id: object.linkedWorkItemId },
+    { label: t("topdown.anchorTask"), id: object.linkedTaskId },
+    { label: t("topdown.anchorRun"), id: object.linkedRunId },
+    { label: t("topdown.anchorConversation"), id: object.linkedConversationId },
   ];
   const present = rows.filter((r) => r.id !== null);
   if (present.length === 0) {
-    return <p className="topDownDrawer__empty">No structural anchors.</p>;
+    return <p className="topDownDrawer__empty">{t("topdown.anchorsEmpty")}</p>;
   }
   return (
     <ul className="topDownDrawer__refs">
@@ -225,7 +252,7 @@ function AnchorsBlock({
               </button>
             ) : (
               <span className="topDownDrawer__refBroken">
-                {r.id} (missing)
+                {r.id} {t("topdown.missingSuffix")}
               </span>
             )}
           </li>
