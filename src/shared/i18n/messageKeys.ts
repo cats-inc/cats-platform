@@ -1449,8 +1449,16 @@ export const messageKeys = {
   sharedSettingsCatsChangeBossCatMessage: 'shared.settingsCats.changeBossCatMessage',
   sharedSettingsCatsConfirm: 'shared.settingsCats.confirm',
   sharedSettingsCatsSetting: 'shared.settingsCats.setting',
+  sharedSettingsCatsSaveSuccess: 'shared.settingsCats.saveSuccess',
+  sharedSettingsCatsSaveError: 'shared.settingsCats.saveError',
+  sharedSettingsCatsRenameSuccess: 'shared.settingsCats.renameSuccess',
+  sharedSettingsCatsRenameError: 'shared.settingsCats.renameError',
+  sharedSettingsCatsDeleteSuccess: 'shared.settingsCats.deleteSuccess',
+  sharedSettingsCatsDeleteError: 'shared.settingsCats.deleteError',
+  sharedSettingsCatsBossUpdated: 'shared.settingsCats.bossUpdated',
   sharedSettingsCatsMakeBossCatLabel: 'shared.settingsCats.makeBossCatLabel',
   sharedSettingsCatsSetBossCatError: 'shared.settingsCats.setBossCatError',
+  sharedSettingsCatsSkillUpdateError: 'shared.settingsCats.skillUpdateError',
   sharedSettingsCatsSkillProfileLabel: 'shared.settingsCats.skillProfileLabel',
   sharedSettingsCatsDisconnectTelegramAria: 'shared.settingsCats.disconnectTelegramAria',
   sharedSettingsCatsDisconnectTelegram: 'shared.settingsCats.disconnectTelegram',
@@ -1458,6 +1466,14 @@ export const messageKeys = {
   sharedSettingsCatsBindingDisabled: 'shared.settingsCats.bindingDisabled',
   sharedSettingsCatsBindingPollingMode: 'shared.settingsCats.bindingPollingMode',
   sharedSettingsCatsBindingWebhookMode: 'shared.settingsCats.bindingWebhookMode',
+  sharedSettingsCatsTelegramBindingCreated:
+    'shared.settingsCats.telegramBindingCreated',
+  sharedSettingsCatsTelegramBindingCreateError:
+    'shared.settingsCats.telegramBindingCreateError',
+  sharedSettingsCatsTelegramBindingRemoved:
+    'shared.settingsCats.telegramBindingRemoved',
+  sharedSettingsCatsTelegramBindingRemoveError:
+    'shared.settingsCats.telegramBindingRemoveError',
   sharedSettingsCatsCoverPhotoLabel: 'shared.settingsCats.coverPhotoLabel',
   sharedSettingsCatsChangeCoverPhotoLabel: 'shared.settingsCats.changeCoverPhotoLabel',
   sharedSettingsCatsUploadCoverPhotoLabel: 'shared.settingsCats.uploadCoverPhotoLabel',

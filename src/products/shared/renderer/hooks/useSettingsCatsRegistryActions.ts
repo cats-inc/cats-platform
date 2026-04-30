@@ -62,6 +62,7 @@ export function useSettingsCatsRegistryActions(options: {
     botForm,
     setBotForm,
     emptyCatForm,
+    t,
   });
 
   async function onArchiveCat(catId: string, catName: string): Promise<void> {

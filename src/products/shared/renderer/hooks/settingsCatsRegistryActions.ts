@@ -8,6 +8,12 @@ import {
   type WorkspaceBusyState,
 } from '../../../../shared/workspaceBusy.js';
 import {
+  createTranslator,
+  messageKeys,
+  type MessageInterpolationValues,
+  type MessageKey,
+} from '../../../../shared/i18n/index.js';
+import {
   createBotBindingApi,
   createGlobalCat,
   deleteBotBindingApi,
@@ -22,6 +28,11 @@ export interface BotFormState {
   webhookSecret: string;
   inboundMode: 'polling' | 'webhook';
 }
+
+type SettingsCatsRegistryActionTranslator = (
+  key: MessageKey,
+  values?: MessageInterpolationValues,
+) => string;
 
 export function emptyBotForm(): BotFormState {
   return {
@@ -45,11 +56,14 @@ export interface SettingsCatsRegistryActionsContext {
   botForm: BotFormState;
   setBotForm: Dispatch<SetStateAction<BotFormState>>;
   emptyCatForm: () => CatFormState;
+  t?: SettingsCatsRegistryActionTranslator;
 }
 
 export function createSettingsCatsRegistryActions(
   context: SettingsCatsRegistryActionsContext,
 ) {
+  const t = context.t ?? createTranslator('en');
+
   async function performCreateCat(): Promise<AppShellPayload | null> {
     context.onBusy(createCatBusyState('create'));
     try {
@@ -65,10 +79,12 @@ export function createSettingsCatsRegistryActions(
       });
       context.onPayloadUpdate(result);
       context.setCatForm(context.emptyCatForm());
-      context.onFeedback('Cat saved.');
+      context.onFeedback(t(messageKeys.sharedSettingsCatsSaveSuccess));
       return result;
     } catch (error) {
-      context.onFeedback(error instanceof Error ? error.message : 'Failed to save cat.');
+      context.onFeedback(error instanceof Error
+        ? error.message
+        : t(messageKeys.sharedSettingsCatsSaveError));
       return null;
     } finally {
       context.onBusy(clearBusyState());
@@ -91,9 +107,11 @@ export function createSettingsCatsRegistryActions(
       const result = await updateCatProfile(catId, { name: trimmed });
       context.onPayloadUpdate(result);
       context.setRenameValue('');
-      context.onFeedback('Cat renamed.');
+      context.onFeedback(t(messageKeys.sharedSettingsCatsRenameSuccess));
     } catch (error) {
-      context.onFeedback(error instanceof Error ? error.message : 'Failed to rename cat.');
+      context.onFeedback(error instanceof Error
+        ? error.message
+        : t(messageKeys.sharedSettingsCatsRenameError));
     } finally {
       context.onBusy(clearBusyState());
     }
@@ -105,12 +123,14 @@ export function createSettingsCatsRegistryActions(
     try {
       const next = await deleteGlobalCat(catId);
       context.onPayloadUpdate(next);
-      context.onFeedback(`${catName} deleted.`);
+      context.onFeedback(t(messageKeys.sharedSettingsCatsDeleteSuccess, { catName }));
       if (context.expandedCatId === catId) {
         context.setExpandedCatId(null);
       }
     } catch (error) {
-      context.onFeedback(error instanceof Error ? error.message : 'Failed to delete cat');
+      context.onFeedback(error instanceof Error
+        ? error.message
+        : t(messageKeys.sharedSettingsCatsDeleteError));
     } finally {
       context.onBusy(clearBusyState());
     }
@@ -121,9 +141,11 @@ export function createSettingsCatsRegistryActions(
     try {
       const result = await updateCatProfile(catId, { makeBoss: true });
       context.onPayloadUpdate(result);
-      context.onFeedback('Boss Cat updated.');
+      context.onFeedback(t(messageKeys.sharedSettingsCatsBossUpdated));
     } catch (error) {
-      context.onFeedback(error instanceof Error ? error.message : 'Failed to set Boss Cat.');
+      context.onFeedback(error instanceof Error
+        ? error.message
+        : t(messageKeys.sharedSettingsCatsSetBossCatError));
     } finally {
       context.onBusy(clearBusyState());
     }
@@ -137,7 +159,9 @@ export function createSettingsCatsRegistryActions(
       });
       context.onPayloadUpdate(result);
     } catch (error) {
-      context.onFeedback(error instanceof Error ? error.message : 'Failed to update skill.');
+      context.onFeedback(error instanceof Error
+        ? error.message
+        : t(messageKeys.sharedSettingsCatsSkillUpdateError));
     } finally {
       context.onBusy(clearBusyState());
     }
@@ -162,9 +186,11 @@ export function createSettingsCatsRegistryActions(
       });
       context.onPayloadUpdate(result);
       context.setBotForm(emptyBotForm());
-      context.onFeedback('Telegram bot binding created.');
+      context.onFeedback(t(messageKeys.sharedSettingsCatsTelegramBindingCreated));
     } catch (error) {
-      context.onFeedback(error instanceof Error ? error.message : 'Failed to create binding.');
+      context.onFeedback(error instanceof Error
+        ? error.message
+        : t(messageKeys.sharedSettingsCatsTelegramBindingCreateError));
     } finally {
       context.onBusy(clearBusyState());
     }
@@ -175,9 +201,11 @@ export function createSettingsCatsRegistryActions(
     try {
       const result = await deleteBotBindingApi(bindingId);
       context.onPayloadUpdate(result);
-      context.onFeedback('Binding removed.');
+      context.onFeedback(t(messageKeys.sharedSettingsCatsTelegramBindingRemoved));
     } catch (error) {
-      context.onFeedback(error instanceof Error ? error.message : 'Failed to remove binding.');
+      context.onFeedback(error instanceof Error
+        ? error.message
+        : t(messageKeys.sharedSettingsCatsTelegramBindingRemoveError));
     } finally {
       context.onBusy(clearBusyState());
     }
