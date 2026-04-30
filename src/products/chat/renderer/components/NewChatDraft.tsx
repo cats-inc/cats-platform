@@ -13,13 +13,13 @@ import { useDraftSessionChips } from '../../../shared/renderer/hooks/useDraftSes
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
 import { resolveDraftPermissionModeFromRuntimeAccess } from '../../../../shared/runtimeSessionPolicy.js';
 import { prefetchCrossSurfaceNavigationTarget } from '../../../shared/renderer/crossSurfaceNavigationRegistry.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
 export interface NewChatDraftProps extends SharedNewChatDraftProps {
   draftSurface: PlatformSurfaceId;
   onDraftSurfaceChange: (surface: PlatformSurfaceId) => void;
 }
-
-const POMODORO_PROMPT = 'Write a small pomodoro timer app.';
 
 export function NewChatDraft(props: NewChatDraftProps) {
   // Reset per-draft UI state (folder probe, starter visibility, ...) when the
@@ -34,6 +34,7 @@ export function NewChatDraft(props: NewChatDraftProps) {
 }
 
 function NewChatDraftInner(props: NewChatDraftProps) {
+  const { t } = useI18n();
   const codeChips = useDraftSessionChips({
     draftCwd: props.draftCwd,
     busy: props.busy,
@@ -72,9 +73,9 @@ function NewChatDraftInner(props: NewChatDraftProps) {
     ? [
       {
         id: 'pomodoro-app',
-        label: 'Pomodoro app',
+        label: t(messageKeys.chatNewChatDraftPomodoroChipLabel),
         onClick: () => {
-          props.onComposerChange(POMODORO_PROMPT);
+          props.onComposerChange(t(messageKeys.chatNewChatDraftPomodoroPrompt));
           void prefetchCrossSurfaceNavigationTarget('code');
           props.onDraftSurfaceChange('code');
         },
@@ -87,7 +88,9 @@ function NewChatDraftInner(props: NewChatDraftProps) {
     : buildChatPermissionChip(props);
   const composerHeaderWhereExtras = isCodeSurface ? codeChips.whereExtras : null;
   const chooseFolderPlacement = isCodeSurface ? 'header' : 'plusMenu';
-  const folderActionLabel = isCodeSurface ? 'Choose codespace' : 'Choose folder';
+  const folderActionLabel = isCodeSurface
+    ? t(messageKeys.chatNewChatDraftChooseCodespaceActionLabel)
+    : t(messageKeys.chatNewChatDraftFolderActionLabel);
 
   return (
     <SharedChatNewChatDraft

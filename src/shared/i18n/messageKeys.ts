@@ -1003,12 +1003,16 @@ export const messageKeys = {
   chatNewChatDraftSidePanelParticipantsGroupTitle: 'chat.newChatDraft.participants.groupTitle',
   chatNewChatDraftSidePanelParticipantsEmptyState:
     'chat.newChatDraft.participants.emptyState',
+  chatNewChatDraftPomodoroChipLabel: 'chat.newChatDraft.pomodoroChipLabel',
+  chatNewChatDraftPomodoroPrompt: 'chat.newChatDraft.pomodoroPrompt',
   chatNewChatDraftSidePanelExecutionTitle: 'chat.newChatDraft.execution.title',
   chatNewChatDraftSidePanelExecutionEmptyState: 'chat.newChatDraft.execution.emptyState',
   chatNewChatDraftSidePanelFolderTitle: 'chat.newChatDraft.folder.title',
   chatNewChatDraftSidePanelFolderEmptyState: 'chat.newChatDraft.folder.emptyState',
   chatNewChatDraftComposerPlaceholder: 'chat.newChatDraft.composerPlaceholder',
   chatNewChatDraftFolderActionLabel: 'chat.newChatDraft.folderActionLabel',
+  chatNewChatDraftChooseCodespaceActionLabel:
+    'chat.newChatDraft.chooseCodespaceActionLabel',
   chatNewChatDraftGroupDraftSelectionLabelSingle:
     'chat.newChatDraft.groupDraftSelectionLabelSingle',
   chatNewChatDraftGroupDraftSelectionLabelCount:
