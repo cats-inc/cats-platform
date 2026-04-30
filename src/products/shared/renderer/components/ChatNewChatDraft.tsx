@@ -1199,6 +1199,32 @@ export function NewChatDraft({
       }
     : undefined;
 
+  // Owner directive (2026-04-30): tapping a shadow branch's read-only
+  // textarea jumps the carousel to the lead AND drops the cursor at
+  // end-of-prompt so the user can keep typing without an extra click.
+  // Defer the focus to a post-render effect so the lead's textarea is
+  // the active card before we move focus into it (otherwise focus
+  // lands mid-rotation and the page scrolls toward an off-screen peek).
+  const pendingFocusLeadEditEndRef = useRef(false);
+  useEffect(() => {
+    if (!pendingFocusLeadEditEndRef.current || activeBranchIndex !== 0) {
+      return;
+    }
+    pendingFocusLeadEditEndRef.current = false;
+    const node = textareaRef.current;
+    if (!node) return;
+    const raf = requestAnimationFrame(() => {
+      node.focus();
+      const end = node.value.length;
+      node.setSelectionRange(end, end);
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [activeBranchIndex, textareaRef]);
+  function requestJumpToLeadEditEnd(): void {
+    pendingFocusLeadEditEndRef.current = true;
+    setActiveBranchIndex(0);
+  }
+
   // Lead card's footer slot below the Send button is empty by default
   // now: the per-branch remove button moved into the form's top-right
   // corner (`composerCardBranchRemove`), and +compare lives at the
@@ -1442,12 +1468,12 @@ export function NewChatDraft({
             value={composerDraft}
             disabled={isSubmittingFirstTurn}
             readOnly
-            title={t(messageKeys.chatNewChatDraftBranchPromptJumpToLeadTitle)}
+            data-tooltip={t(messageKeys.chatNewChatDraftBranchPromptJumpToLeadTitle)}
             aria-label={t(messageKeys.chatNewChatDraftBranchPromptJumpToLeadAria)}
-            onClick={isSubmittingFirstTurn ? undefined : () => setActiveBranchIndex(0)}
+            onClick={isSubmittingFirstTurn ? undefined : () => requestJumpToLeadEditEnd()}
             onFocus={isSubmittingFirstTurn ? undefined : (event) => {
               event.currentTarget.blur();
-              setActiveBranchIndex(0);
+              requestJumpToLeadEditEnd();
             }}
           />
           <div className="composerBottomRow">

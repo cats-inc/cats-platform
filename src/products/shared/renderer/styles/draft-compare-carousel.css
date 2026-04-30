@@ -67,6 +67,21 @@
   filter: saturate(0.82);
 }
 
+/* Peek branches are background context only — disable everything inside
+ * so the user can't tap a button / textarea / chip on a half-rotated
+ * card by accident. Owner directive 2026-04-30. The wrapper itself
+ * keeps `pointer-events: auto` (default) so its click handler still
+ * promotes the peek to active. The shadow textarea opts back in via
+ * `composerInputJumpToLead` below — it's the one element that stays
+ * clickable on a peek card because tapping it jumps to the LEAD branch
+ * (not just to its own branch) and drops the cursor at end-of-prompt. */
+.draftCompareCarouselCardPeek > * {
+  pointer-events: none;
+}
+.draftCompareCarouselCardPeek .composerInputJumpToLead {
+  pointer-events: auto;
+}
+
 /* Header / footer rows inside each card wrapper inherit the base
  * `composerHeaderRow` / `composerFooterRow` 12px gaps. Earlier we
  * tightened these to 10px so the three rows read as a single
