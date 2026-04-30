@@ -92,12 +92,15 @@ viewer for safe preview URL artifacts. Image, PDF, code viewers, and live
      fields stored under
      `CoreArtifactRecord.metadata.codeArtifactDeclaration.idempotency`.
      `producerKind` is one of `agent` / `tool` / `system` / `user`;
-     `producerIdentity` is the actor id (for `agent` / `user`), tool
-     name (for `tool`), or detector id (for `system`). Examples:
-     `agent:actor-abc`, `tool:declare_artifact`,
-     `system:patch-bundle-detector`, `user:owner-id`. One string field
-     synthesized from SPEC-092's two stored fields; does NOT include
-     `runtimeSessionId` (that's scope, not identity).
+     `producerIdentity` is the SPEC-092 encoded identity string
+     (`actor:<id>` for `agent` / `user`, `tool:<name>` for `tool`,
+     `system:<detector>` for `system`). Examples:
+     `agent:actor:actor-abc`, `tool:tool:declare_artifact`,
+     `system:system:patch-bundle-detector`, `user:actor:owner-id`.
+     One string field synthesized from SPEC-092's two stored fields;
+     consumers shall not recover the fields by naive two-part colon
+     splitting. The key does NOT include `runtimeSessionId` (that's
+     scope, not identity).
    - `scopeKey = "<scopeKind>:<scopeId>"` where `scopeKind` is the
      SPEC-092 frozen `scopeKind` (one of `run` / `runtime` /
      `conversation` / `workspace` — SPEC-092 does NOT define a `task`
@@ -533,15 +536,15 @@ interface CodeCanvasScriptedPreviewProducerEntry {
   producerKind: 'tool' | 'system' | 'user';
 
   // Matched against the SPEC-092 `producerIdentity` idempotency field
-  // (the same string SPEC-092 stores under
+  // (the exact encoded string SPEC-092 stores under
   // CoreArtifactRecord.metadata.codeArtifactDeclaration.idempotency).
-  // - For tool entries, this is the tool name
-  //   (e.g. 'cats_runtime_preview_bridge').
-  // - For system entries, this is the detector identifier
-  //   (e.g. 'patch-bundle-detector').
-  // - For user entries, this is the owner actor id.
-  // It is NOT prefixed with `producerKind` — the prefix lives in the
-  // sibling field above.
+  // - For tool entries, this is `tool:<server-resolved-tool-name>`
+  //   (e.g. 'tool:cats_runtime_preview_bridge').
+  // - For system entries, this is `system:<server-detector-name>`
+  //   (e.g. 'system:patch-bundle-detector').
+  // - For user entries, this is `actor:<owner-actor-id>`.
+  // It is NOT additionally prefixed with `producerKind` — that lives in
+  // the sibling field above.
   producerIdentity: string;
 }
 
@@ -560,9 +563,9 @@ The default is **empty**: out of the box, no producer earns
 profile. Operators must explicitly enumerate the producers they trust
 through `codeCanvas.scriptedPreviewProducerAllowlist`. The Phase 1
 rollout (PLAN-090 Task 2.5) decides whether to populate this list with
-the specific producer identities behind the existing builder/artifact
-preview iframes or to accept the static-only regression for those
-surfaces; the SPEC does not bake known producer names in.
+the specific encoded producer identities behind the existing
+builder/artifact preview iframes or to accept the static-only regression
+for those surfaces; the SPEC does not bake known producer names in.
 
 Producer-eligibility check:
 
@@ -620,16 +623,18 @@ produce a different hash. The algorithm:
      is a number array, convert to integers, drop duplicates, then
      sort numerically ascending; if it is the string `'*'`, leave
      untouched.
-2. **Sort origin allowlist** entries by canonical-JSON string of the
-   normalized entry (step 5's serializer applied to each entry, then
-   string sort using `String.prototype.localeCompare(undefined, { sensitivity: 'variant' })`
-   or equivalent code-point comparison — implementations must agree on
-   ASCII-bytewise comparison to avoid locale-dependent ordering).
+2. **Sort origin allowlist** entries by the canonical-JSON string of the
+   normalized entry (step 7's serializer applied to each entry). The
+   comparator is bytewise lexicographic order over the UTF-8 bytes of
+   those strings. Implementations MUST NOT use locale-sensitive
+   collation such as `localeCompare`; a JavaScript implementation can
+   use `Buffer.compare(Buffer.from(a, 'utf8'), Buffer.from(b, 'utf8'))`.
 3. **Normalize each producer allowlist entry**: keep `producerKind`
    as-is (one of `tool` / `system` / `user`); keep `producerIdentity`
    as-is (case-sensitive, opaque). No defaults to expand.
 4. **Sort producer allowlist** entries by `(producerKind, producerIdentity)`
-   tuple, both compared as ASCII byte sequences.
+   tuple, comparing each tuple part in bytewise lexicographic order over
+   UTF-8 bytes.
 5. **Normalize `catsShellOrigin`**:
    - parse as `URL`; reject (treat as a server config error) if parse
      fails or origin is not http(s);
@@ -656,13 +661,20 @@ produce a different hash. The algorithm:
    take the first 16 hex characters in lower case.
 
 Implementation note: a small canonical-JSON helper (sorted-keys recursive
-serializer) is the only non-obvious piece. Test vectors should be
-checked into `tests/code-canvas-policy-version.test.tsx` with at least:
-empty config, default config, default config with reordered entries
-(must produce the same hash), default config with one entry's `ports`
-written as `[5173, 4321]` vs `[4321, 5173]` (must produce the same
-hash), and a config with one extra producer entry (must produce a
-different hash).
+serializer) is the only non-obvious piece. Test vectors shall be checked
+into `tests/code-canvas-policy-version.test.tsx` with literal expected
+canonical JSON strings and 16-hex hashes, not only equality/difference
+assertions. Minimum baseline vectors:
+
+| Vector | Canonical JSON | Hash |
+|--------|----------------|------|
+| Empty allowlists, shell `http://127.0.0.1:5173` | `{"catsShellOrigin":"http://127.0.0.1:5173","originAllowlist":[],"producerAllowlist":[]}` | `24c20a6275ac4b18` |
+| Phase 1 default origin allowlist, empty producer allowlist, shell `http://127.0.0.1:5173` | `{"catsShellOrigin":"http://127.0.0.1:5173","originAllowlist":[{"hostname":"127.0.0.1","ports":"*","schemes":["http"]},{"hostname":"::1","ports":"*","schemes":["http"]},{"hostname":"localhost","ports":"*","schemes":["http"]}],"producerAllowlist":[]}` | `cf7a2fc9e81778ff` |
+
+The test file shall also include reordered-entry and ports-permutation
+fixtures that assert the same literal hash as their canonical baseline,
+plus a fixture with one extra producer entry that asserts its own literal
+hash and differs from the default vector.
 
 #### Policy Version and Renderer Authority Boundary
 
@@ -718,8 +730,12 @@ The renderer shall:
   same-origin-with-shell short-circuit against the renderer's
   `window.location.origin` and demote to `static` if the URL origin
   equals the shell origin;
-- demote (never promote) on any of the above failures. Demotion is silent
-  at the renderer layer.
+- never promote `static` to `scripted-cross-origin`.
+
+Renderer failure outcomes are intentionally split: unknown sandbox
+profiles and scheme failures render the `unsupported` pane and do not
+mount an iframe; the same-origin-with-shell short-circuit silently
+demotes only `scripted-cross-origin` to `static`.
 
 The renderer does NOT re-run the runtime preview origin allowlist
 matcher or the scripted preview producer allowlist check. The server is
@@ -766,10 +782,12 @@ reference these codes instead of inventing local aliases.
 
 There is no error code for runtime-preview-origin allowlist failure or
 producer-eligibility-gate failure: both silently demote
-`scripted-cross-origin` -> `static`, both server-side and during the
-renderer's defense-in-depth re-check. The `iframeSandboxProfile` field on
-the accepted result is the assistant-visible signal that demotion
-happened.
+`scripted-cross-origin` -> `static` server-side. The renderer's
+same-origin-with-shell defense-in-depth check can also silently demote
+`scripted-cross-origin` -> `static`; renderer-side scheme/profile
+failures render `unsupported` instead. The `iframeSandboxProfile` field
+on the accepted result is the assistant-visible signal that server-side
+demotion happened.
 
 The renderer's defense-in-depth path shall surface scheme rejections as the
 `unsupported` pane state, not as silently broken iframes. Server-side
@@ -816,6 +834,10 @@ above.
   "<scopeKind>:<scopeId>"` are derived from the four SPEC-092
   idempotency fields stored under
   `CoreArtifactRecord.metadata.codeArtifactDeclaration.idempotency`.
+  `producerIdentity` is the encoded SPEC-092 identity string
+  (`actor:<id>`, `tool:<name>`, or `system:<detector>`), so example
+  `producerKey` values include `agent:actor:actor-abc` and
+  `tool:tool:declare_artifact`.
   `scopeKind` is one of `run` / `runtime` / `conversation` /
   `workspace` (the canvas does NOT add a `task` scope).
   `runtimeSessionId` lives in `scopeKey` (when `scopeKind = 'runtime'`),

@@ -43,7 +43,9 @@ depends on a separate process-supervision and security review.
       `(turnId, producerKey, scopeKey, declarationId)` where
       `producerKey = "<producerKind>:<producerIdentity>"` (the two
       SPEC-092 idempotency fields stored under
-      `CoreArtifactRecord.metadata.codeArtifactDeclaration.idempotency`)
+      `CoreArtifactRecord.metadata.codeArtifactDeclaration.idempotency`;
+      `producerIdentity` is the encoded value such as `actor:<id>` or
+      `tool:<name>`, not a bare actor id / tool name)
       and `scopeKey = "<scopeKind>:<scopeId>"` where `scopeKind` is one
       of SPEC-092's frozen scope kinds `run` / `runtime` /
       `conversation` / `workspace` (the canvas does NOT add a `task`
@@ -106,6 +108,8 @@ depends on a separate process-supervision and security review.
       hash), default config with a single entry's `ports` written as
       `[5173, 4321]` vs `[4321, 5173]` (must equal each other), and a
       config with one extra producer entry (must differ). These vectors
+      must include literal expected canonical JSON strings and exact
+      16-hex hashes, not only equality/difference assertions, so they
       pin the canonicalization across implementations.
 - [ ] Task 1.4: Expose read-only `canvasFocus` (including
       `iframeSandboxProfile`) from Code task/detail and dashboard
@@ -134,9 +138,12 @@ projection fields, and tests for accepted/rejected focus changes.
 - [ ] Task 2.5: Update the existing artifact detail / builder preview iframe
       path (`ArtifactDetailView.tsx`, `BuildPreviewPanel.tsx`) to share the
       same preview target, sandbox-profile decision, and renderer-side
-      defense-in-depth checks. Verify that vite / Next.js / Lovable preview
-      URLs still render after the migration (they qualify for the
-      `scripted-cross-origin` profile).
+      defense-in-depth checks. If the migration chooses to preserve scripted
+      dev previews, enumerate the exact encoded producer identities behind
+      vite / Next.js / Lovable preview URLs in
+      `codeCanvas.scriptedPreviewProducerAllowlist` and verify they still
+      render with `scripted-cross-origin`; otherwise document and accept the
+      static-only regression for those previews.
 
 **Deliverables**: Visible split pane, safe iframe rendering for preview URL
 artifacts, close/refresh/open controls, and renderer tests for pane state.
@@ -171,7 +178,7 @@ this plan before Phase 4 approval.
 |------|--------|-------------|
 | `src/products/code/shared/canvasFocus.ts` | Create | Code canvas focus types (incl. `policyVersion`), normalizers, presentation resolution, and SPEC-101 error code union |
 | `src/products/code/shared/canvasIframePolicy.ts` | Create | Runtime preview origin allowlist matcher (host normalization + bracket strip + scheme + port), scripted preview producer allowlist lookup, scheme allowlist, credential URL rejector, and `policyVersion` digest helper |
-| `src/products/code/state/runtimeCanvasFocusExecution.ts` | Create | Assistant-effect processor for `show_in_canvas` and `clear_canvas`; owns the per-turn `(turnId, producerKey, scopeKey, declarationId)` declaration index where `producerKey = "<producerKind>:<producerIdentity>"` and `scopeKey = "<scopeKind>:<scopeId>"` (both derived from the SPEC-092 idempotency fields stored on the materialized artifact) |
+| `src/products/code/state/runtimeCanvasFocusExecution.ts` | Create | Assistant-effect processor for `show_in_canvas` and `clear_canvas`; owns the per-turn `(turnId, producerKey, scopeKey, declarationId)` declaration index where `producerKey = "<producerKind>:<encoded producerIdentity>"` and `scopeKey = "<scopeKind>:<scopeId>"` (both derived from the SPEC-092 idempotency fields stored on the materialized artifact) |
 | `src/products/code/state/runtimeArtifactTooling.ts` | Modify | Add onboarding/catalog entries for the canvas tools |
 | `src/products/code/api/projection.ts` | Modify | Expose `canvasFocus` (with `iframeSandboxProfile`) from task metadata |
 | `src/products/code/renderer/components/CodeArtifactCanvasPane.tsx` | Create | Right-pane shell, top bar with separate close vs collapse controls, and unsupported-state fallback |
@@ -197,6 +204,8 @@ this plan before Phase 4 approval.
   "<scopeKind>:<scopeId>"` are derived from the four SPEC-092
   idempotency fields stored under
   `CoreArtifactRecord.metadata.codeArtifactDeclaration.idempotency`;
+  `producerIdentity` is the encoded SPEC-092 value (`actor:<id>`,
+  `tool:<name>`, or `system:<detector>`), not a bare id/name;
   `scopeKind` is one of `run` / `runtime` / `conversation` /
   `workspace` (the canvas does NOT add a `task` scope). Both keys come from the
   canvas caller (same-caller-only); same-turn cross-producer rejects
@@ -229,9 +238,11 @@ this plan before Phase 4 approval.
   { producerKind, producerIdentity }[]`) is a separate **flat array**,
   defaulting to empty. Out of the box, no producer earns
   `scripted-cross-origin` — operators must enumerate trusted producers
-  (e.g. the runtime preview bridge tool name, approved system
-  detectors). `agent`-kind producers are short-circuited to `static` and
-  cannot appear in the allowlist. Phase 3 narrows further via
+  using encoded SPEC-092 identities (e.g.
+  `{ producerKind: 'tool', producerIdentity: 'tool:<bridge-tool-name>' }`
+  or `{ producerKind: 'system', producerIdentity: 'system:<detector>' }`).
+  `agent`-kind producers are short-circuited to `static` and cannot
+  appear in the allowlist. Phase 3 narrows further via
   session-bound preview registry. `normalizePreviewSurfaceUrl` is
   treated as a syntactic gate only; the security boundary is the two
   allowlists.
@@ -290,17 +301,18 @@ this plan before Phase 4 approval.
     `scriptedPreviewProducerAllowlist = []`, every `kind = 'preview'`
     artifact (regardless of producer kind / URL) demotes to `static`;
   - producer allowlist (entry match): with
-    `[{ producerKind: 'tool', producerIdentity: 'cats_runtime_preview_bridge' }]`,
+    `[{ producerKind: 'tool', producerIdentity: 'tool:cats_runtime_preview_bridge' }]`,
     a `tool`-declared `kind = 'preview'` artifact whose
-    `producer.value === 'cats_runtime_preview_bridge'` and whose URL
-    passes the origin allowlist resolves to `scripted-cross-origin`;
+    stored SPEC-092 `producerIdentity === 'tool:cats_runtime_preview_bridge'`
+    and whose URL passes the origin allowlist resolves to
+    `scripted-cross-origin`;
   - producer allowlist (agent short-circuit): with the same allowlist
     above, an `agent`-declared artifact still demotes to `static` even
-    if `producer.value` somehow appeared in the producer allowlist —
-    the agent short-circuit runs first;
+    if its encoded `producerIdentity` somehow appeared in the producer
+    allowlist — the agent short-circuit runs first;
   - producer allowlist (kind mismatch): an entry of
-    `{ producerKind: 'tool', producerIdentity: 'X' }` does NOT match a
-    `system` producer with identity `'X'`;
+    `{ producerKind: 'tool', producerIdentity: 'tool:X' }` does NOT
+    match a `system` producer with identity `'system:X'`;
   - boot-time validation: server boot rejects allowlist entries with
     empty hostname, unknown schemes, or non-positive ports;
   - scheme allowlist: `javascript:` / `file:` / `data:` / `blob:` URLs
@@ -382,14 +394,16 @@ this plan before Phase 4 approval.
   - pane top bar aligns with existing route top bars;
   - narrow viewport collapses or stacks without overlapping composer text;
   - existing builder/artifact preview iframes still render after Task 2.5
-    migration (vite, Next.js dev, Lovable preview, Storybook).
+    migration only under the chosen policy posture: either
+    `scripted-cross-origin` after adding the exact encoded producer
+    identities, or the documented static-only fallback.
 
 ## Risks & Mitigations
 
 | Risk | Impact | Mitigation |
 |------|--------|------------|
 | Assistant presents unsafe URL | High | Server picks sandbox profile and re-checks scheme; renderer re-validates and may only demote |
-| Migrating existing builder/artifact iframes silently regresses dev-server previews (vite / Next.js / Lovable) | High | Task 2.5 explicitly enumerates the producer identities behind real preview URLs and adds them to `codeCanvas.scriptedPreviewProducerAllowlist`, OR accepts the static-only regression. Manual check verifies real preview URLs still load under the chosen posture |
+| Migrating existing builder/artifact iframes silently regresses dev-server previews (vite / Next.js / Lovable) | High | Task 2.5 explicitly enumerates the encoded producer identities behind real preview URLs and adds them to `codeCanvas.scriptedPreviewProducerAllowlist`, OR accepts the static-only regression. Manual check verifies real preview URLs still load under the chosen posture |
 | External `https://...` artifacts marked `kind = 'preview'` qualify for `allow-scripts allow-same-origin` (first-round security review) | High | Structured runtime preview origin allowlist replaces "is not Cats shell origin"; off-allowlist URLs silently demote to `static` even when `kind = 'preview'` |
 | Agent escalates to script-eligible iframe by declaring a loopback `kind = 'preview'` URL (second / third-round security review) | High | Two-allowlist gate: `agent` short-circuits to `static`; non-agent producers must additionally match a named entry in `codeCanvas.scriptedPreviewProducerAllowlist` (default empty, operator-enumerated). URL allowlist alone is no longer sufficient; a specific producer entry is required |
 | Producer-by-kind gate too wide (third-round security review): not every tool / system detector is a preview-origin owner | High | Replaced kind-based gate with named producer allowlist `{ producerKind, producerIdentity }[]`; default empty so the platform earns nothing automatically |
@@ -410,9 +424,9 @@ this plan before Phase 4 approval.
 | 2026-04-30 | Plan created from split-canvas artifact panel review. |
 | 2026-04-30 | Reworked sandbox profiles, two-control close model, per-turn declaration index, active-task precondition, and renderer defense-in-depth tests after first-round review; added ADR-097 dependency. |
 | 2026-04-30 | Second-round security follow-up: replaced "is not Cats shell origin" with explicit runtime preview origin allowlist; rekeyed declaration index with `producerKey` for multi-producer same-turn collisions; dropped cross-turn error code (cross-turn lookup is intentionally absent); pinned reject-vs-demote semantics for explicit-presentation vs auto and for scheme-vs-origin failures. |
-| 2026-04-30 | Third-round security follow-up: pinned the runtime preview origin allowlist as a structured `{ hostname, schemes?, ports? }[]` schema with explicit URL-matching algorithm; added the producer-eligibility gate that denies `scripted-cross-origin` to all agent-declared artifacts in Phase 1; promoted credential URL handling from silent demote to hard reject; defined `producerKey = ResolvedProducerIdentity.encoded` per SPEC-092; pinned `declarationId` resolution as same-caller-only with the new `artifact_canvas_declaration_producer_mismatch` error code; scrubbed stale `(turnId, declarationId)` and `artifact_canvas_declaration_cross_turn` references from PLAN-090. |
+| 2026-04-30 | Third-round security follow-up: pinned the runtime preview origin allowlist as a structured `{ hostname, schemes?, ports? }[]` schema with explicit URL-matching algorithm; added the producer-eligibility gate that denies `scripted-cross-origin` to all agent-declared artifacts in Phase 1; promoted credential URL handling from silent demote to hard reject; defined `producerKey` from the SPEC-092 encoded producer identity; pinned `declarationId` resolution as same-caller-only with the new `artifact_canvas_declaration_producer_mismatch` error code; scrubbed stale `(turnId, declarationId)` and `artifact_canvas_declaration_cross_turn` references from PLAN-090. |
 | 2026-04-30 | Fourth-round security follow-up: added `scopeKey = "<scopeKind>:<scopeId>"` to the index key so same-actor / same-tool spanning multiple runtime sessions in one turn no longer collide; added duplicate-key collision detection (`artifact_canvas_declaration_collision`); flattened both allowlist config shapes (no `{ entries: [...] }` wrapper) and made them consistent across SPEC / PLAN / tool-calls; corrected IPv6 hostname normalization (Node's `URL.hostname` does NOT strip brackets — manual strip required); replaced producer-by-kind gate with named `scriptedPreviewProducerAllowlist` defaulting to empty; added `policyVersion` to `CodeCanvasFocus` and projection-side demote-on-mismatch; clarified renderer is NOT a matcher mirror (scheme + same-origin-with-shell + profile-name validity only). |
-| 2026-04-30 | Fifth-round contract follow-up: removed `task:` from `scopeKey` examples (SPEC-092 scope kinds are `run` / `runtime` / `conversation` / `workspace` only — the canvas does not add `task`); replaced `ResolvedProducerIdentity.encoded` / `ResolvedProducerIdentity.value` references with the public SPEC-092 idempotency fields (`producerKind`, `producerIdentity`); scrubbed remaining "mirrored on renderer" / "renderer's own runtime-preview-origin re-check" wording; added explicit §Policy Version Canonicalization algorithm (per-entry normalization, default expansion, port dedupe + numeric sort, sort orderings, `catsShellOrigin` default-port handling, canonical-JSON sorted-keys serialization, SHA-256 first-16 lower-case) plus test-vector requirements as Task 1.9. |
+| 2026-04-30 | Fifth-round contract follow-up: removed `task:` from `scopeKey` examples (SPEC-092 scope kinds are `run` / `runtime` / `conversation` / `workspace` only — the canvas does not add `task`); replaced internal type-name references with the public SPEC-092 idempotency fields while preserving encoded `producerIdentity` values (`actor:<id>`, `tool:<name>`, `system:<detector>`); scrubbed stale renderer-matcher mirror wording; added explicit §Policy Version Canonicalization algorithm (per-entry normalization, default expansion, port dedupe + numeric sort, sort orderings, `catsShellOrigin` default-port handling, canonical-JSON sorted-keys serialization, SHA-256 first-16 lower-case) plus test-vector requirements as Task 1.9. |
 
 ---
 

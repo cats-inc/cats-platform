@@ -439,8 +439,10 @@ table):
   - `producerKey = "<producerKind>:<producerIdentity>"` derived from the
     SPEC-092 idempotency fields stored under
     `CoreArtifactRecord.metadata.codeArtifactDeclaration.idempotency`
-    (e.g. `agent:actor-abc`, `tool:declare_artifact`,
-    `system:patch-bundle-detector`, `user:owner-id`).
+    (e.g. `agent:actor:actor-abc`, `tool:tool:declare_artifact`,
+    `system:system:patch-bundle-detector`, `user:actor:owner-id`).
+    `producerIdentity` is the encoded SPEC-092 identity string; do not
+    parse `producerKey` by a naive two-part colon split.
   - `scopeKey = "<scopeKind>:<scopeId>"` derived from the same
     idempotency record, where `scopeKind` is one of SPEC-092's frozen
     scope kinds: `run` / `runtime` / `conversation` / `workspace`
@@ -474,7 +476,8 @@ table):
   - `codeCanvas.scriptedPreviewProducerAllowlist:
     { producerKind, producerIdentity }[]` (Phase 1 default: **empty** —
     out of the box, no producer earns `scripted-cross-origin`;
-    operators must enumerate trusted producers).
+    operators must enumerate trusted producers using encoded SPEC-092
+    identities such as `tool:<tool-name>` or `system:<detector-name>`).
   `agent`-kind producers are short-circuited to `static` and cannot
   appear in the producer allowlist. Origin / producer allowlist failure
   silently demotes `scripted-cross-origin` -> `static`; scheme allowlist
