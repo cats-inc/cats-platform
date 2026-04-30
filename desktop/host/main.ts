@@ -61,6 +61,7 @@ import {
   type PersistedSetupCompletionState,
 } from './persistedSetupState.js';
 import {
+  applyDesktopSetupActionToInstalledHelpers,
   buildDesktopSetupSnapshot,
   createEmptyDesktopSetupState,
   runDesktopSetupHelper,
@@ -1275,6 +1276,10 @@ async function runSetupAction(
   setupState = {
     lastAction: result,
     updatedAt: result.completedAt ?? result.startedAt,
+    installedHelperIds: applyDesktopSetupActionToInstalledHelpers(
+      setupState ?? createEmptyDesktopSetupState(),
+      result,
+    ),
   };
   if (diagnosticsState) {
     diagnosticsState = appendHostEvent(diagnosticsState, createDesktopBootstrapEvent({

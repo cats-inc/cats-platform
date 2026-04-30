@@ -636,12 +636,32 @@ export interface DesktopSetupResumeAction {
 export interface DesktopSetupState {
   lastAction: DesktopSetupActionRecord | null;
   updatedAt: string | null;
+  installedHelperIds: string[];
 }
 
 export interface DesktopSetupSnapshot {
   helpers: DesktopSetupHelperSummary[];
   state: DesktopSetupState;
   resumeAction: DesktopSetupResumeAction | null;
+}
+
+export interface DesktopCliInventoryEntry {
+  helperId: string;
+  providerId: DesktopProviderSetupLocalProviderId;
+  label: string;
+  installed: boolean;
+  available: boolean;
+  supported: boolean;
+}
+
+export interface DesktopCliInventory {
+  installed: string[];
+  total: number;
+  candidates: DesktopCliInventoryEntry[];
+}
+
+export interface DesktopBootstrapPrerequisites {
+  cliInventory: DesktopCliInventory | null;
 }
 
 export interface DesktopBootstrapSnapshot {
@@ -677,6 +697,7 @@ export interface DesktopBootstrapSnapshot {
   setup: DesktopSetupState;
   diagnostics: DesktopHostDiagnosticsState | null;
   hostStatePath: string | null;
+  prerequisites: DesktopBootstrapPrerequisites | null;
 }
 
 export interface DesktopHostPersistedState {

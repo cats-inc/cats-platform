@@ -394,6 +394,80 @@ export function buildDesktopBootstrapPage(): string {
     }
     .expand-body.open { display: block; animation: fadeSlideIn 0.25s ease both; }
 
+    /* Onboarding mode — shown when cliInventory.total === 0 + !setupCompleteAt */
+    .onboarding-page {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      padding: 56px 24px 56px;
+      text-align: center;
+    }
+    .onboarding-hero {
+      margin-bottom: 24px;
+    }
+    .onboarding-actions {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 32px;
+    }
+    .onboarding-btn {
+      min-width: 180px;
+    }
+    .cli-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      width: 100%;
+      max-width: 720px;
+      margin-bottom: 12px;
+    }
+    .cli-grid.collapsed { display: grid; }
+    .cli-grid-row-hidden { display: none; }
+    .cli-card {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 10px 12px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      min-height: 110px;
+      box-shadow: var(--shadow);
+    }
+    .cli-card-name {
+      font-size: 0.92rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+    }
+    .cli-card-status {
+      font-size: 0.72rem;
+      color: var(--muted);
+      min-height: 14px;
+    }
+    .cli-card-status.c-ok { color: var(--ok); }
+    .cli-card-status.c-err { color: var(--err); }
+    .cli-card-btn {
+      align-self: stretch;
+      padding: 6px 8px;
+      font-size: 0.78rem;
+      border-radius: 8px;
+    }
+    .cli-card-spinner {
+      width: 12px;
+      height: 12px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: bootSpin 0.8s linear infinite;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 4px;
+    }
+
     /* Responsive */
     @media (max-width: 520px) {
       .app { padding: 32px 16px 56px; }
@@ -403,6 +477,7 @@ export function buildDesktopBootstrapPage(): string {
       .actions { flex-direction: column; }
       .btn { width: 100%; }
       .error-actions { flex-direction: column; }
+      .cli-grid { grid-template-columns: repeat(2, 1fr); }
     }
   </style>
 </head>
@@ -425,6 +500,7 @@ export function buildDesktopBootstrapPage(): string {
         </div>
       </div>
     </div>
+    <div id="onboarding" class="app hidden"></div>
     <div id="recovery" class="app hidden"></div>
   </div>
   <script>
@@ -485,9 +561,102 @@ export function buildDesktopBootstrapPage(): string {
       return action.plannedActions.every(function (e) { return e.startsWith('local_model:'); });
     }
 
+    function isCliMissing(snapshot) {
+      return Boolean(
+        snapshot && snapshot.phase === 'needs_prerequisites'
+          && snapshot.prerequisites && snapshot.prerequisites.cliInventory
+          && snapshot.prerequisites.cliInventory.total === 0
+      );
+    }
+
     function resolvePageMode(snapshot) {
-      return snapshot.phase === 'failed' || snapshot.phase === 'needs_prerequisites'
-        ? 'recovery' : 'loading';
+      if (!snapshot) return 'loading';
+      if (snapshot.phase === 'failed') return 'recovery';
+      if (snapshot.phase === 'needs_prerequisites') {
+        var setupCompleteAt = snapshot.app && snapshot.app.setupCompleteAt;
+        if (isCliMissing(snapshot) && !setupCompleteAt) return 'onboarding';
+        return 'recovery';
+      }
+      return 'loading';
+    }
+
+    /* ================================================================
+     *  CLI install card (shared between onboarding + recovery accordion)
+     * ================================================================ */
+
+    var ONBOARDING_PROVIDER_ORDER = [
+      'claude_code', 'codex', 'gemini', 'copilot',
+      'cursor_agent', 'kiro', 'opencode', 'kilo',
+      'auggie', 'junie', 'goose', 'pi',
+      'ollama'
+    ];
+    var cliInstallingState = Object.create(null);
+    var onboardingExpanded = false;
+
+    function pickInventoryCandidate(snapshot, providerId) {
+      var inv = snapshot && snapshot.prerequisites && snapshot.prerequisites.cliInventory;
+      if (!inv || !Array.isArray(inv.candidates)) return null;
+      for (var i = 0; i < inv.candidates.length; i++) {
+        if (inv.candidates[i].providerId === providerId) return inv.candidates[i];
+      }
+      return null;
+    }
+
+    function handleCliInstallClick(candidate) {
+      if (cliInstallingState[candidate.helperId]) return;
+      cliInstallingState[candidate.helperId] = true;
+      doRender();
+      bridge.runSetupHelper(candidate.helperId, 'apply')
+        .catch(function (err) {
+          try { console.error('CLI install failed', candidate.helperId, err); } catch (e) {}
+        })
+        .finally(function () {
+          delete cliInstallingState[candidate.helperId];
+          doRender();
+        });
+    }
+
+    function CliCard(candidate, hidden) {
+      var installing = Boolean(cliInstallingState[candidate.helperId]);
+      var btnLabel, statusClass, statusText;
+      if (installing) {
+        btnLabel = 'Installing…';
+        statusClass = '';
+        statusText = '';
+      } else if (candidate.installed) {
+        btnLabel = 'Reinstall';
+        statusClass = 'c-ok';
+        statusText = '✓ Installed';
+      } else {
+        btnLabel = 'Install';
+        statusClass = '';
+        statusText = '';
+      }
+      var btn = el('button', {
+        class: 'btn cli-card-btn',
+        disabled: installing || !candidate.available || !candidate.supported,
+        onclick: function () { handleCliInstallClick(candidate); }
+      }, btnLabel);
+      var classNames = 'cli-card' + (hidden ? ' cli-card-hidden' : '');
+      return el('div', { class: classNames },
+        el('div', { class: 'cli-card-name' }, candidate.label),
+        el('div', { class: 'cli-card-status ' + statusClass }, statusText || ' '),
+        btn
+      );
+    }
+
+    function buildCliCards(snapshot, alwaysExpanded) {
+      var cards = [];
+      var rendered = 0;
+      for (var i = 0; i < ONBOARDING_PROVIDER_ORDER.length; i++) {
+        var providerId = ONBOARDING_PROVIDER_ORDER[i];
+        var candidate = pickInventoryCandidate(snapshot, providerId);
+        if (!candidate || !candidate.available) continue;
+        var hidden = !alwaysExpanded && !onboardingExpanded && rendered >= 4;
+        cards.push(CliCard(candidate, hidden));
+        rendered += 1;
+      }
+      return cards;
     }
 
     /* ================================================================
@@ -541,6 +710,7 @@ export function buildDesktopBootstrapPage(): string {
     var splashText = document.getElementById('splash-text');
     var errorArea = document.getElementById('error-area');
     var recoveryEl = document.getElementById('recovery');
+    var onboardingEl = document.getElementById('onboarding');
     var btnRetry = document.getElementById('btn-retry');
     var btnDetails = document.getElementById('btn-details');
     var slowHint = document.getElementById('slow-hint');
@@ -581,6 +751,7 @@ export function buildDesktopBootstrapPage(): string {
       clearSlowHintTimer();
       splashEl.classList.remove('hidden');
       recoveryEl.classList.add('hidden');
+      onboardingEl.classList.add('hidden');
       splashDot.className = 'dot dot-warn dot-pulse';
       splashDot.style.display = '';
       splashText.textContent = 'Trying again\u2026';
@@ -965,6 +1136,7 @@ export function buildDesktopBootstrapPage(): string {
               }
             : null,
           app: snap.app || null,
+          prerequisites: snap.prerequisites || null,
           setup: snap.setup || null,
           setupSnap: setupSnap
             ? {
@@ -1014,8 +1186,72 @@ export function buildDesktopBootstrapPage(): string {
         .finally(function () { button.disabled = restoreDisabled; });
     }
 
+    function showOnboarding(snap) {
+      splashEl.classList.add('hidden');
+      recoveryEl.classList.add('hidden');
+      onboardingEl.classList.remove('hidden');
+      resetSlowHintCycle();
+
+      onboardingEl.innerHTML = '';
+      onboardingEl.classList.add('onboarding-page');
+
+      var setupCompleteAt = snap.app && snap.app.setupCompleteAt;
+      var heading = setupCompleteAt
+        ? 'No CLI is currently available. Pick one to continue.'
+        : 'Welcome. Pick a CLI to get started.';
+
+      var inventory = (snap.prerequisites && snap.prerequisites.cliInventory) || {};
+      var installedCount = Array.isArray(inventory.installed) ? inventory.installed.length : 0;
+      var continueDisabled = installedCount === 0;
+
+      var continueBtn = el('button', {
+        class: 'btn btn-primary onboarding-btn',
+        disabled: continueDisabled,
+        onclick: function () {
+          if (continueDisabled) return;
+          var self = this;
+          self.disabled = true;
+          var nextAction = setupCompleteAt ? 'open_chat' : 'open_setup';
+          bridge.runAction(nextAction).catch(function () {
+            self.disabled = false;
+          });
+        }
+      }, '繼續');
+
+      var moreLabel = onboardingExpanded ? 'Show fewer' : 'Show more';
+      var moreBtn = el('button', {
+        class: 'btn onboarding-btn',
+        onclick: function () {
+          onboardingExpanded = !onboardingExpanded;
+          doRender();
+        }
+      }, moreLabel);
+
+      var cards = buildCliCards(snap, false);
+
+      onboardingEl.append(
+        el('section', { class: 'onboarding-hero' },
+          el('h1', { class: 'hero-title' }, 'Cats'),
+          el('p', { class: 'recovery-desc' }, heading)
+        ),
+        el('div', { class: 'onboarding-actions' }, continueBtn, moreBtn),
+        el('div', { class: 'cli-grid' }, cards)
+      );
+    }
+
+    function InstallACliSection(snap) {
+      var inv = snap.prerequisites && snap.prerequisites.cliInventory;
+      if (!inv || inv.total > 0) return null;
+      var cards = buildCliCards(snap, true);
+      if (cards.length === 0) return null;
+      return ExpandableSection('Install a CLI', [
+        el('div', { class: 'cli-grid' }, cards)
+      ]);
+    }
+
     function showRecovery(snap) {
       splashEl.classList.add('hidden');
+      onboardingEl.classList.add('hidden');
       recoveryEl.classList.remove('hidden');
 
       var signature = recoverySignature(snap, currentSetupSnapshot);
@@ -1045,6 +1281,12 @@ export function buildDesktopBootstrapPage(): string {
         LogsAndPathsSection(snap)
       );
 
+      /* Install a CLI accordion (only when cliInventory.total === 0) */
+      var installCliSection = InstallACliSection(snap);
+      if (installCliSection) {
+        details.append(installCliSection);
+      }
+
       /* Conditional setup recovery section */
       var setupSection = SetupRecoverySection(snap, currentSetupSnapshot, bridge);
       if (setupSection) {
@@ -1058,14 +1300,22 @@ export function buildDesktopBootstrapPage(): string {
       var snap = currentSnapshot;
       if (!snap) return;
 
-      if (showRecoveryDetails) {
+      var mode = resolvePageMode(snap);
+
+      if (showRecoveryDetails || mode === 'recovery') {
         showRecovery(snap);
+        return;
+      }
+
+      if (mode === 'onboarding') {
+        showOnboarding(snap);
         return;
       }
 
       /* Splash is always in the DOM — just update it */
       splashEl.classList.remove('hidden');
       recoveryEl.classList.add('hidden');
+      onboardingEl.classList.add('hidden');
       updateSplash(snap);
     }
 

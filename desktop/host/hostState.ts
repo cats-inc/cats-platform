@@ -248,6 +248,7 @@ function normalizeSetupState(
   return {
     lastAction: normalizeSetupActionRecord(value.lastAction),
     updatedAt: readString(value.updatedAt),
+    installedHelperIds: readStringArray(value.installedHelperIds),
   };
 }
 

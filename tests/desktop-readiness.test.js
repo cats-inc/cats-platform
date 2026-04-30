@@ -57,6 +57,24 @@ function readyService(name, healthUrl) {
   };
 }
 
+// Default installed-CLI fixture so the new cli_missing gate doesn't intercept
+// tests that exercise post-services flows. Includes all three platform helper
+// id prefixes so tests stay deterministic regardless of the host runner.
+const TEST_INSTALLED_HELPER_IDS = [
+  'windows-codex-native-installer',
+  'linux-codex-native-installer',
+  'macos-codex-native-installer',
+];
+
+function defaultSetupWithCli(extra = {}) {
+  return {
+    lastAction: null,
+    updatedAt: null,
+    installedHelperIds: TEST_INSTALLED_HELPER_IDS,
+    ...extra,
+  };
+}
+
 test('waitForServiceReadiness rejects HTTP error payloads even when they claim ready', async (t) => {
   let calls = 0;
   t.mock.method(globalThis, 'fetch', async () => {
@@ -161,6 +179,7 @@ test('desktop bootstrap stays in ready_for_setup until setup is completed', () =
       },
       providers: [],
     },
+    setup: defaultSetupWithCli(),
   });
 
   assert.equal(snapshot.phase, 'ready_for_setup');
@@ -221,6 +240,7 @@ test('desktop bootstrap opens chat when setup and provider readiness are complet
       },
       providers: [],
     },
+    setup: defaultSetupWithCli(),
   });
 
   assert.equal(snapshot.phase, 'ready_for_chat');
@@ -261,6 +281,7 @@ test('desktop bootstrap opens chat after setup without requiring startup provide
       },
     },
     providerDiagnostics: null,
+    setup: defaultSetupWithCli(),
   });
 
   assert.equal(snapshot.phase, 'ready_for_chat');
@@ -320,6 +341,7 @@ test('desktop bootstrap surfaces packaged setup restart recovery as an install i
     },
     setup: {
       updatedAt: '2026-03-30T12:15:00.000Z',
+      installedHelperIds: TEST_INSTALLED_HELPER_IDS,
       lastAction: {
         helperId: 'windows-kiro-native-installer',
         assetId: 'windows-kiro-native-installer-script',
@@ -723,6 +745,7 @@ test('desktop bootstrap keeps completed setup out of onboarding when runtime hea
     },
     runtimeHealth: null,
     providerDiagnostics: null,
+    setup: defaultSetupWithCli(),
   });
 
   assert.equal(snapshot.phase, 'needs_prerequisites');
@@ -824,6 +847,7 @@ test('desktop bootstrap keeps optional local-model audit follow-through non-bloc
     },
     setup: {
       updatedAt: '2026-03-30T13:00:00.000Z',
+      installedHelperIds: TEST_INSTALLED_HELPER_IDS,
       lastAction: {
         helperId: 'windows-install-readiness-audit',
         assetId: 'windows-setup-readiness-audit-script',
@@ -908,6 +932,7 @@ test('desktop bootstrap keeps optional local-model follow-through reachable afte
     },
     setup: {
       updatedAt: '2026-03-30T13:10:05.000Z',
+      installedHelperIds: TEST_INSTALLED_HELPER_IDS,
       lastAction: {
         helperId: 'windows-install-readiness-audit',
         assetId: 'windows-setup-readiness-audit-script',
@@ -987,6 +1012,7 @@ test('desktop bootstrap reaches ready_for_setup with provider-path copy when set
       },
       providers: [],
     },
+    setup: defaultSetupWithCli(),
   });
 
   assert.equal(snapshot.phase, 'ready_for_setup');
@@ -1045,4 +1071,114 @@ test('desktop bootstrap stays in needs_prerequisites with Open Cats forward path
   assert.equal(snapshot.phase, 'needs_prerequisites');
   assert.ok(snapshot.actions.some((action) => action.id === 'open_chat' && action.primary === true));
   assert.equal(snapshot.actions.some((action) => action.id === 'open_setup'), false);
+});
+
+test('desktop bootstrap fires needs_prerequisites for cli_missing before setup is complete', () => {
+  const snapshot = buildDesktopBootstrapSnapshot({
+    config: desktopConfig,
+    services: [
+      readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
+    ],
+    appHealth: {
+      status: 'ok',
+      summary: 'Cats app server is ready to accept requests.',
+      readiness: { ready: true, phase: 'ready' },
+      runtime: { reachable: true },
+    },
+    appShell: { setupCompleteAt: null },
+    runtimeHealth: {
+      status: 'ok',
+      runtime: { status: 'ok', summary: 'Runtime is ready.' },
+    },
+    providerDiagnostics: {
+      summary: {
+        status: 'degraded',
+        summary: 'No provider targets are configured yet.',
+        configuredProviders: 0,
+        targets: 0,
+        defaultTargets: 0,
+        ok: 0,
+        degraded: 0,
+        unavailable: 0,
+      },
+      providers: [],
+    },
+    // setup omitted on purpose -> empty installedHelperIds -> cli_missing
+  });
+
+  assert.equal(snapshot.phase, 'needs_prerequisites');
+  assert.match(snapshot.summary, /Welcome\.|Install a CLI/i);
+  assert.ok(snapshot.prerequisites);
+  assert.ok(snapshot.prerequisites?.cliInventory);
+  assert.equal(snapshot.prerequisites?.cliInventory?.total, 0);
+  assert.ok(
+    Array.isArray(snapshot.prerequisites?.cliInventory?.candidates)
+      && snapshot.prerequisites.cliInventory.candidates.length >= 12,
+  );
+});
+
+test('desktop bootstrap fires needs_prerequisites for cli_missing even after setup is complete', () => {
+  const snapshot = buildDesktopBootstrapSnapshot({
+    config: desktopConfig,
+    services: [
+      readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
+    ],
+    appHealth: {
+      status: 'ok',
+      summary: 'Cats app server is ready to accept requests.',
+      readiness: { ready: true, phase: 'ready' },
+      runtime: { reachable: true },
+    },
+    appShell: { setupCompleteAt: '2026-04-30T08:00:00.000Z' },
+    runtimeHealth: {
+      status: 'ok',
+      runtime: { status: 'ok', summary: 'Runtime is ready.' },
+    },
+    providerDiagnostics: null,
+    // setup omitted on purpose -> empty installedHelperIds -> cli_missing
+  });
+
+  assert.equal(snapshot.phase, 'needs_prerequisites');
+  assert.match(snapshot.summary, /No CLI is currently installed|Install/i);
+  assert.equal(snapshot.prerequisites?.cliInventory?.total, 0);
+});
+
+test('desktop bootstrap clears cli_missing once an installer has been recorded', () => {
+  const snapshot = buildDesktopBootstrapSnapshot({
+    config: desktopConfig,
+    services: [
+      readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
+    ],
+    appHealth: {
+      status: 'ok',
+      summary: 'Cats app server is ready to accept requests.',
+      readiness: { ready: true, phase: 'ready' },
+      runtime: { reachable: true },
+    },
+    appShell: { setupCompleteAt: null },
+    runtimeHealth: {
+      status: 'ok',
+      runtime: { status: 'ok', summary: 'Runtime is ready.' },
+    },
+    providerDiagnostics: {
+      summary: {
+        status: 'degraded',
+        summary: 'No provider targets are configured yet.',
+        configuredProviders: 0,
+        targets: 0,
+        defaultTargets: 0,
+        ok: 0,
+        degraded: 0,
+        unavailable: 0,
+      },
+      providers: [],
+    },
+    setup: defaultSetupWithCli(),
+  });
+
+  assert.equal(snapshot.phase, 'ready_for_setup');
+  assert.ok((snapshot.prerequisites?.cliInventory?.total ?? 0) >= 1);
 });
