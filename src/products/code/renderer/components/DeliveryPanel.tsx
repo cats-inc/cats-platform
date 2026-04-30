@@ -3,6 +3,8 @@ import type {
   CodeDeliveryResult,
   CodeDeliveryResult as DeliveryPreview,
 } from '../api/codeTask.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
 
 export type RepoStatus = CodeDeliveryResult;
 
@@ -19,14 +21,20 @@ export interface DeliveryPanelProps {
 }
 
 function PreviewResult({ preview, label }: { preview: DeliveryPreview; label: string }) {
+  const { t } = useI18n();
   const blocked = preview.blockedReasons ?? [];
   const warnings = preview.warnings ?? [];
   const repo = preview.repo;
+  const stateLabel = preview.state === 'ready'
+    ? t(messageKeys.codeDeliveryStatusReady)
+    : preview.state === 'blocked'
+      ? t(messageKeys.codeDeliveryStatusBlocked)
+      : t(messageKeys.codeDeliveryStatusUnknown);
 
   return (
     <div className="codeDeliveryPreview">
       <div className="codeDeliveryPreviewHeader">
-        <strong>{label} Preview</strong>
+        <strong>{t(messageKeys.codeDeliveryLabelPreview, { label })}</strong>
         <span className={
           preview.state === 'ready'
             ? 'operatorStatusBadge isSuccess'
@@ -34,16 +42,18 @@ function PreviewResult({ preview, label }: { preview: DeliveryPreview; label: st
               ? 'operatorStatusBadge isError'
               : 'operatorStatusBadge isMuted'
         }>
-          {preview.state ?? 'unknown'}
+          {stateLabel}
         </span>
       </div>
 
       {blocked.length > 0 ? (
         <div className="codeDeliveryPreviewSection codeDeliveryBlocked">
-          <p className="codeDeliveryPreviewLabel">Blocked</p>
+          <p className="codeDeliveryPreviewLabel">{t(messageKeys.codeDeliveryBlockerLabel)}</p>
           <ul className="codeDeliveryPreviewList">
             {blocked.map((reason, i) => (
-              <li key={i}>{reason.message ?? reason.code ?? 'Unknown blocker'}</li>
+              <li key={i}>
+                {reason.message ?? reason.code ?? t(messageKeys.codeDeliveryUnknownBlocker)}
+              </li>
             ))}
           </ul>
         </div>
@@ -51,10 +61,12 @@ function PreviewResult({ preview, label }: { preview: DeliveryPreview; label: st
 
       {warnings.length > 0 ? (
         <div className="codeDeliveryPreviewSection codeDeliveryWarnings">
-          <p className="codeDeliveryPreviewLabel">Warnings</p>
+          <p className="codeDeliveryPreviewLabel">{t(messageKeys.codeDeliveryWarningsLabel)}</p>
           <ul className="codeDeliveryPreviewList">
             {warnings.map((warning, i) => (
-              <li key={i}>{warning.message ?? warning.code ?? 'Warning'}</li>
+              <li key={i}>
+                {warning.message ?? warning.code ?? t(messageKeys.codeDeliveryWarningFallback)}
+              </li>
             ))}
           </ul>
         </div>
@@ -62,16 +74,32 @@ function PreviewResult({ preview, label }: { preview: DeliveryPreview; label: st
 
       {repo ? (
         <div className="codeDeliveryPreviewSection">
-          <p className="codeDeliveryPreviewLabel">Repo</p>
+          <p className="codeDeliveryPreviewLabel">{t(messageKeys.codeDeliveryRepoStatusHeader)}</p>
           <div className="operatorMetaRow">
-            {typeof repo.branch === 'string' ? <span>Branch: {repo.branch}</span> : null}
-            {typeof repo.ahead === 'number' ? <span>Ahead: {String(repo.ahead)}</span> : null}
-            {typeof repo.behind === 'number' ? <span>Behind: {String(repo.behind)}</span> : null}
-            {typeof repo.staged === 'number' ? <span>Staged: {String(repo.staged)}</span> : null}
-            {typeof repo.unstaged === 'number' ? <span>Unstaged: {String(repo.unstaged)}</span> : null}
-            {typeof repo.remote === 'string' ? <span>Remote: {repo.remote}</span> : null}
+            {typeof repo.branch === 'string' ? (
+              <span>{t(messageKeys.codeDeliveryMetaBranch, { branch: repo.branch })}</span>
+            ) : null}
+            {typeof repo.ahead === 'number' ? (
+              <span>{t(messageKeys.codeDeliveryMetaAhead, { count: repo.ahead })}</span>
+            ) : null}
+            {typeof repo.behind === 'number' ? (
+              <span>{t(messageKeys.codeDeliveryMetaBehind, { count: repo.behind })}</span>
+            ) : null}
+            {typeof repo.staged === 'number' ? (
+              <span>{t(messageKeys.codeDeliveryMetaStaged, { count: repo.staged })}</span>
+            ) : null}
+            {typeof repo.unstaged === 'number' ? (
+              <span>{t(messageKeys.codeDeliveryMetaUnstaged, { count: repo.unstaged })}</span>
+            ) : null}
+            {typeof repo.remote === 'string' ? (
+              <span>{t(messageKeys.codeDeliveryMetaRemote, { remote: repo.remote })}</span>
+            ) : null}
             {typeof repo.clean === 'boolean' ? (
-              <span>{repo.clean ? 'Working tree clean' : 'Working tree dirty'}</span>
+              <span>
+                {repo.clean
+                  ? t(messageKeys.codeDeliveryRepoClean)
+                  : t(messageKeys.codeDeliveryRepoDirty)}
+              </span>
             ) : null}
           </div>
         </div>
@@ -79,10 +107,16 @@ function PreviewResult({ preview, label }: { preview: DeliveryPreview; label: st
 
       {preview.contract ? (
         <div className="codeDeliveryPreviewSection">
-          <p className="codeDeliveryPreviewLabel">Contract</p>
+          <p className="codeDeliveryPreviewLabel">{t(messageKeys.codeDeliveryContractLabel)}</p>
           <div className="operatorMetaRow">
-            <span>Mode: {preview.contract.mode ?? '—'}</span>
-            <span>Decision: {preview.contract.applyDecision ?? '—'}</span>
+            <span>
+              {t(messageKeys.codeDeliveryMetaMode, { mode: preview.contract.mode ?? '-' })}
+            </span>
+            <span>
+              {t(messageKeys.codeDeliveryMetaDecision, {
+                decision: preview.contract.applyDecision ?? '-',
+              })}
+            </span>
           </div>
         </div>
       ) : null}
@@ -100,6 +134,7 @@ export function DeliveryPanel({
   onApplyPush,
   onExportArtifacts,
 }: DeliveryPanelProps) {
+  const { t } = useI18n();
   const [commitMessage, setCommitMessage] = useState('');
   const [commitPreview, setCommitPreview] = useState<DeliveryPreview | null>(null);
   const [pushPreview, setPushPreview] = useState<DeliveryPreview | null>(null);
@@ -161,12 +196,12 @@ export function DeliveryPanel({
       <section className="operatorPanel">
         <div className="operatorPanelHeader">
           <div>
-            <p className="operatorEyebrow">Delivery</p>
-            <h2>Repo Actions</h2>
+            <p className="operatorEyebrow">{t(messageKeys.codeDeliveryHeader)}</p>
+            <h2>{t(messageKeys.codeDeliveryPanelTitle)}</h2>
           </div>
         </div>
         <p className="operatorEmptyState">
-          No codespace bound. Resolve a codespace to see repo actions.
+          {t(messageKeys.codeDeliveryNoCodespace)}
         </p>
       </section>
     );
@@ -178,8 +213,8 @@ export function DeliveryPanel({
     <section className="operatorPanel">
       <div className="operatorPanelHeader">
         <div>
-          <p className="operatorEyebrow">Delivery</p>
-          <h2>Repo Actions</h2>
+          <p className="operatorEyebrow">{t(messageKeys.codeDeliveryHeader)}</p>
+          <h2>{t(messageKeys.codeDeliveryPanelTitle)}</h2>
         </div>
         <button
           type="button"
@@ -187,39 +222,53 @@ export function DeliveryPanel({
           onClick={onRefreshRepoStatus}
           disabled={busy}
         >
-          Refresh
+          {t(messageKeys.codeDeliveryActionRefresh)}
         </button>
       </div>
 
       {repo ? (
         <article className="operatorCard">
           <div className="operatorCardHeader">
-            <strong>Repo Status</strong>
-            <span className={repo.clean ? 'operatorStatusBadge isSuccess' : 'operatorStatusBadge isAttention'}>
-              {repo.clean ? 'Clean' : 'Dirty'}
+            <strong>{t(messageKeys.codeDeliveryRepoStatusHeader)}</strong>
+            <span
+              className={repo.clean
+                ? 'operatorStatusBadge isSuccess'
+                : 'operatorStatusBadge isAttention'}
+            >
+              {repo.clean
+                ? t(messageKeys.codeDeliveryRepoClean)
+                : t(messageKeys.codeDeliveryRepoDirty)}
             </span>
           </div>
           <div className="operatorMetaRow">
-            {repo.branch ? <span>Branch: {String(repo.branch)}</span> : null}
-            {typeof repo.staged === 'number' ? <span>Staged: {repo.staged}</span> : null}
-            {typeof repo.unstaged === 'number' ? <span>Unstaged: {repo.unstaged}</span> : null}
-            {typeof repo.untracked === 'number' ? <span>Untracked: {repo.untracked}</span> : null}
+            {repo.branch ? (
+              <span>{t(messageKeys.codeDeliveryMetaBranch, { branch: String(repo.branch) })}</span>
+            ) : null}
+            {typeof repo.staged === 'number' ? (
+              <span>{t(messageKeys.codeDeliveryMetaStaged, { count: repo.staged })}</span>
+            ) : null}
+            {typeof repo.unstaged === 'number' ? (
+              <span>{t(messageKeys.codeDeliveryMetaUnstaged, { count: repo.unstaged })}</span>
+            ) : null}
+            {typeof repo.untracked === 'number' ? (
+              <span>{t(messageKeys.codeDeliveryMetaUntracked, { count: repo.untracked })}</span>
+            ) : null}
           </div>
         </article>
       ) : (
-        <p className="operatorEmptyState">No repo status loaded.</p>
+        <p className="operatorEmptyState">{t(messageKeys.codeDeliveryNoRepoStatus)}</p>
       )}
 
       <div className="operatorStack">
         <article className="operatorCard">
           <div className="operatorCardHeader">
-            <strong>Commit</strong>
+            <strong>{t(messageKeys.codeDeliveryActionsCommitHeader)}</strong>
           </div>
           <div className="codeDeliveryCommitForm">
             <input
               type="text"
               className="codeDeliveryInput"
-              placeholder="Commit message..."
+              placeholder={t(messageKeys.codeDeliveryActionCommitPlaceholder)}
               value={commitMessage}
               onChange={(e) => setCommitMessage(e.target.value)}
             />
@@ -230,7 +279,7 @@ export function DeliveryPanel({
                 onClick={handlePreviewCommit}
                 disabled={busy || !commitMessage.trim()}
               >
-                Preview
+                {t(messageKeys.codeDeliveryActionPreview)}
               </button>
               {commitPreview && commitPreview.state !== 'blocked' ? (
                 <button
@@ -239,19 +288,22 @@ export function DeliveryPanel({
                   onClick={handleApplyCommit}
                   disabled={busy}
                 >
-                  Commit
+                  {t(messageKeys.codeDeliveryActionCommit)}
                 </button>
               ) : null}
             </div>
             {commitPreview ? (
-              <PreviewResult preview={commitPreview} label="Commit" />
+              <PreviewResult
+                preview={commitPreview}
+                label={t(messageKeys.codeDeliveryActionCommit)}
+              />
             ) : null}
           </div>
         </article>
 
         <article className="operatorCard">
           <div className="operatorCardHeader">
-            <strong>Push</strong>
+            <strong>{t(messageKeys.codeDeliveryActionsPushHeader)}</strong>
           </div>
           <div className="codeDeliveryActions">
             <button
@@ -260,12 +312,15 @@ export function DeliveryPanel({
               onClick={handlePreviewPush}
               disabled={busy}
             >
-              Preview Push
+              {t(messageKeys.codeDeliveryActionPushPreview)}
             </button>
           </div>
           {pushPreview ? (
             <>
-              <PreviewResult preview={pushPreview} label="Push" />
+              <PreviewResult
+                preview={pushPreview}
+                label={t(messageKeys.codeDeliveryActionsPushHeader)}
+              />
               {pushPreview.state !== 'blocked' && !confirmPush ? (
                 <div className="codeDeliveryActions">
                   <button
@@ -273,27 +328,27 @@ export function DeliveryPanel({
                     className="operatorActionButton codeBuilderActionButtonDanger"
                     onClick={() => setConfirmPush(true)}
                   >
-                    Push...
+                    {t(messageKeys.codeDeliveryActionPush)}
                   </button>
                 </div>
               ) : null}
               {confirmPush ? (
                 <div className="codeDeliveryConfirm">
-                  <span>Push to remote? This is externally visible.</span>
+                  <span>{t(messageKeys.codeDeliveryConfirmationPush)}</span>
                   <button
                     type="button"
                     className="operatorActionButton codeBuilderActionButtonDanger"
                     onClick={handleApplyPush}
                     disabled={busy}
                   >
-                    Confirm Push
+                    {t(messageKeys.codeDeliveryActionPushConfirm)}
                   </button>
                   <button
                     type="button"
                     className="operatorActionButton"
                     onClick={() => setConfirmPush(false)}
                   >
-                    Cancel
+                    {t(messageKeys.codeDeliveryActionPushCancel)}
                   </button>
                 </div>
               ) : null}
@@ -303,7 +358,7 @@ export function DeliveryPanel({
 
         <article className="operatorCard">
           <div className="operatorCardHeader">
-            <strong>Export</strong>
+            <strong>{t(messageKeys.codeDeliveryActionsExportHeader)}</strong>
           </div>
           <button
             type="button"
@@ -311,7 +366,7 @@ export function DeliveryPanel({
             onClick={() => { onExportArtifacts(); }}
             disabled={busy}
           >
-            Export Artifacts
+            {t(messageKeys.codeDeliveryActionExport)}
           </button>
         </article>
       </div>
