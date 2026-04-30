@@ -377,7 +377,11 @@ export function SettingsCatsCanvas({
           setPendingCreateAvatar(null);
         } catch (error) {
           setPendingCreateAvatar(null);
-          toastFeedback(error instanceof Error ? error.message : 'Failed to save avatar.');
+          toastFeedback(
+            error instanceof Error
+              ? error.message
+              : t(messageKeys.settingsGeneralSaveAvatarError),
+          );
         }
       }
       if (pendingCreateCover) {
@@ -502,14 +506,14 @@ export function SettingsCatsCanvas({
                 effectiveMode === 'view' && selectedCat ? (
                   <SettingsActionBar>
                     {selectedCat.status === 'active' ? (
-                          <button
-                            type="button"
-                            className="secondaryButton"
-                            disabled={isCatBusy(busy, 'archive', selectedCat.id)}
-                            onClick={() => void onArchiveCat(selectedCat.id, selectedCat.name)}
-                          >
+                      <button
+                        type="button"
+                        className="secondaryButton"
+                        disabled={isCatBusy(busy, 'archive', selectedCat.id)}
+                        onClick={() => void onArchiveCat(selectedCat.id, selectedCat.name)}
+                      >
                         {t(messageKeys.sharedSettingsCatsArchiveLabel)}
-                          </button>
+                      </button>
                     ) : (
                       <>
                         <button
@@ -518,7 +522,7 @@ export function SettingsCatsCanvas({
                           disabled={isCatBusy(busy, 'unarchive', selectedCat.id)}
                           onClick={() => void onUnarchiveCat(selectedCat.id, selectedCat.name)}
                         >
-                          Recover
+                          {t(messageKeys.sharedSettingsCatsRegistryRecoverLabel)}
                         </button>
                         <button
                           type="button"
@@ -526,7 +530,7 @@ export function SettingsCatsCanvas({
                           disabled={isCatBusy(busy, 'delete', selectedCat.id)}
                           onClick={() => void onDeleteCat(selectedCat.id, selectedCat.name)}
                         >
-                          Delete
+                          {t(messageKeys.sharedSettingsCatsDeleteLabel)}
                         </button>
                       </>
                     )}
@@ -540,7 +544,7 @@ export function SettingsCatsCanvas({
                         onClick={() => navigate('/settings/cats', { replace: true })}
                         disabled={isCatBusy(busy, 'create')}
                       >
-                        Cancel
+                        {t(messageKeys.sharedCatsCreateCancel)}
                       </button>
                     ) : null}
                     <button
@@ -549,7 +553,9 @@ export function SettingsCatsCanvas({
                       disabled={!catForm.name.trim() || !catForm.provider.trim() || !catForm.model.trim() || atCatLimit || isCatBusy(busy, 'create')}
                       onClick={() => { void handleCreateCat(); }}
                     >
-                      {isCatBusy(busy, 'create') ? 'Saving...' : 'Save'}
+                      {isCatBusy(busy, 'create')
+                        ? t(messageKeys.sharedSettingsCatsSaving)
+                        : t(messageKeys.sharedCatsCreateSaveCat)}
                     </button>
                   </SettingsActionBar>
                 ) : null
@@ -562,7 +568,7 @@ export function SettingsCatsCanvas({
               <div className="catsDetailColumn">
                 <SettingsSubSection headerless className="catsSubCard catsIdentityCard">
                   <div className="fieldLabel">
-                    <span>Avatar</span>
+                    <span>{t(messageKeys.settingsGeneralAvatarLabel)}</span>
                     <div className="catsIdentityAvatarRow">
                       <div className="catsAvatarDock">
                         <button
@@ -576,8 +582,12 @@ export function SettingsCatsCanvas({
                             ? { backgroundImage: `url(${pendingCreateAvatar})`, backgroundSize: 'cover', backgroundPosition: 'center', color: 'transparent' }
                             : undefined}
                           onClick={() => setAvatarCropOpen(true)}
-                          aria-label={pendingCreateAvatar ? 'Change avatar' : 'Upload avatar'}
-                          data-tooltip={pendingCreateAvatar ? 'Change avatar' : 'Upload avatar'}
+                          aria-label={pendingCreateAvatar
+                            ? t(messageKeys.settingsGeneralAvatarChangeLabel)
+                            : t(messageKeys.settingsGeneralAvatarUploadLabel)}
+                          data-tooltip={pendingCreateAvatar
+                            ? t(messageKeys.settingsGeneralAvatarChangeLabel)
+                            : t(messageKeys.settingsGeneralAvatarUploadLabel)}
                         >
                           {pendingCreateAvatar ? '' : (catForm.name.trim() ? catInitials(catForm.name) : (
                             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -601,8 +611,8 @@ export function SettingsCatsCanvas({
                               event.stopPropagation();
                               setPendingCreateAvatar(null);
                             }}
-                            aria-label="Remove avatar"
-                            data-tooltip="Remove avatar"
+                            aria-label={t(messageKeys.settingsGeneralAvatarRemoveLabel)}
+                            data-tooltip={t(messageKeys.settingsGeneralAvatarRemoveLabel)}
                           >
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                               <line x1="18" y1="6" x2="6" y2="18" />
@@ -611,51 +621,61 @@ export function SettingsCatsCanvas({
                           </button>
                         ) : null}
                       </div>
-                      <label className="fieldLabelInline catsIdentityBossToggle">
-                        <input
-                          type="checkbox"
-                          checked={catForm.makeBoss}
-                          onChange={async (event) => {
-                            const next = event.target.checked;
-                            if (next && payload.chat.bossCatId) {
-                              const currentBoss = payload.chat.cats.find((c) => c.id === payload.chat.bossCatId);
-                              const confirmed = await confirm({
-                                title: 'Change Boss Cat',
-                                message: `${currentBoss?.name ?? 'Another cat'} is currently the Boss Cat. Set this new cat as the Boss instead?`,
-                                confirmLabel: 'Confirm',
-                              });
-                              if (!confirmed) return;
-                            }
-                            setCatForm({
-                              ...catForm,
-                              makeBoss: next,
-                            });
-                          }}
-                        />
-                        <span>Set as Boss Cat</span>
-                      </label>
+                  <label className="fieldLabelInline catsIdentityBossToggle">
+                    <input
+                      type="checkbox"
+                      checked={catForm.makeBoss}
+                      onChange={async (event) => {
+                        const next = event.target.checked;
+                        if (next && payload.chat.bossCatId) {
+                          const currentBoss = payload.chat.cats.find((c) => c.id === payload.chat.bossCatId);
+                          const confirmed = await confirm({
+                            title: t(messageKeys.sharedSettingsCatsChangeBossCatTitle),
+                            message: t(messageKeys.sharedSettingsCatsChangeBossCatMessage, {
+                              name: currentBoss?.name ?? catForm.name.trim() || t(messageKeys.sharedCatsCreateNewCat),
+                            }),
+                            confirmLabel: t(messageKeys.sharedSettingsCatsConfirm),
+                          });
+                          if (!confirmed) return;
+                        }
+                        setCatForm({
+                          ...catForm,
+                          makeBoss: next,
+                        });
+                      }}
+                    />
+                    <span>
+                      {t(messageKeys.sharedSettingsCatsMakeBossCatLabel, {
+                        name: catForm.name.trim() || t(messageKeys.sharedCatsCreateNewCat),
+                      })}
+                    </span>
+                  </label>
                     </div>
                   </div>
                   <label className="fieldLabel">
-                    <span>Name</span>
+                    <span>{t(messageKeys.settingsGeneralNameLabel)}</span>
                     <input
                       ref={createNameInputRef}
                       className="textInput"
                       value={catForm.name}
-                      placeholder="Cat name"
+                      placeholder={t(messageKeys.sharedCatsCreateCatNamePlaceholder)}
                       onChange={(event) => setCatForm({ ...catForm, name: event.target.value })}
                     />
                   </label>
                   <div className="fieldLabel catsCoverField">
-                    <span>Cover photo</span>
+                    <span>{t(messageKeys.sharedSettingsCatsCoverPhotoLabel)}</span>
                     <div className="catsCoverDock">
                       <button
                         type="button"
                         className={`catsCoverThumb${pendingCreateCover ? ' catsCoverThumbLoaded' : ' catsCoverThumbPlaceholder'}`}
                         style={pendingCreateCover ? { backgroundImage: `url(${pendingCreateCover})` } : undefined}
                         onClick={() => setCoverCropOpen(true)}
-                        aria-label={pendingCreateCover ? 'Change cover photo' : 'Upload cover photo'}
-                        data-tooltip={pendingCreateCover ? 'Change cover' : 'Upload cover'}
+                        aria-label={pendingCreateCover
+                          ? t(messageKeys.sharedSettingsCatsChangeCoverPhotoLabel)
+                          : t(messageKeys.sharedSettingsCatsUploadCoverPhotoLabel)}
+                        data-tooltip={pendingCreateCover
+                          ? t(messageKeys.sharedSettingsCatsChangeCoverLabel)
+                          : t(messageKeys.sharedSettingsCatsUploadCoverLabel)}
                       >
                         {!pendingCreateCover ? (
                           <svg
@@ -690,8 +710,8 @@ export function SettingsCatsCanvas({
                             event.stopPropagation();
                             setPendingCreateCover(null);
                           }}
-                          aria-label="Remove cover"
-                          data-tooltip="Remove cover"
+                          aria-label={t(messageKeys.sharedSettingsCatsRemoveCoverLabel)}
+                          data-tooltip={t(messageKeys.sharedSettingsCatsRemoveCoverLabel)}
                         >
                           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18" />
@@ -705,7 +725,7 @@ export function SettingsCatsCanvas({
 
                 <SettingsSubSection
                   className="catsSubCard"
-                  header={<SettingsSectionHeader title="Skill" nested />}
+                  header={<SettingsSectionHeader title={t(messageKeys.sharedSettingsCatsSkillProfileLabel)} nested />}
                 >
                   <div className="skillPills">
                     {SKILL_PROFILES.map((profile) => (
@@ -747,42 +767,156 @@ export function SettingsCatsCanvas({
               disabled={isArchived}
             >
               <div className="catsDetailColumn">
-              <SettingsSubSection headerless className="catsSubCard catsIdentityCard">
-                <div className="fieldLabel">
-                  <span>Avatar</span>
-                  <div className="catsIdentityAvatarRow">
-                    <div className="catsAvatarDock">
+                <SettingsSubSection headerless className="catsSubCard catsIdentityCard">
+                  <div className="fieldLabel">
+                    <span>{t(messageKeys.settingsGeneralAvatarLabel)}</span>
+                    <div className="catsIdentityAvatarRow">
+                      <div className="catsAvatarDock">
+                        <button
+                          type="button"
+                          className="catAvatar catsIdentityAvatar"
+                          style={selectedCat.avatarUrl
+                            ? { backgroundImage: `url(${selectedCat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', color: 'transparent' }
+                            : selectedCat.avatarColor ? { background: selectedCat.avatarColor } : undefined}
+                          onClick={() => { if (!isArchived) setAvatarCropOpen(true); }}
+                          disabled={isArchived}
+                          aria-label={selectedCat.avatarUrl
+                            ? t(messageKeys.settingsGeneralAvatarChangeLabel)
+                            : t(messageKeys.settingsGeneralAvatarUploadLabel)}
+                          data-tooltip={isArchived ? undefined : (
+                            selectedCat.avatarUrl
+                              ? t(messageKeys.settingsGeneralAvatarChangeLabel)
+                              : t(messageKeys.settingsGeneralAvatarUploadLabel)
+                          )}
+                        >
+                          {selectedCat.avatarUrl ? '' : catInitials(selectedCat.name)}
+                        </button>
+                        {!isArchived ? (
+                          <span className="catsAvatarCameraBadge" aria-hidden="true">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                              <circle cx="12" cy="13" r="4" />
+                            </svg>
+                          </span>
+                        ) : null}
+                        {selectedCat.avatarUrl && !isArchived ? (
+                          <button
+                            type="button"
+                            className="catsAvatarRemoveBadge"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              void handleAvatarRemove();
+                            }}
+                            aria-label={t(messageKeys.settingsGeneralAvatarRemoveLabel)}
+                            data-tooltip={t(messageKeys.settingsGeneralAvatarRemoveLabel)}
+                          >
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                              <line x1="18" y1="6" x2="6" y2="18" />
+                              <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                          </button>
+                        ) : null}
+                      </div>
+                      {!isArchived && selectedCat.id !== payload.chat.bossCatId ? (
+                        <label className="fieldLabelInline catsIdentityBossToggle">
+                          <input
+                            type="checkbox"
+                            checked={false}
+                            onChange={async (event) => {
+                              if (!event.target.checked) return;
+                              if (payload.chat.bossCatId && payload.chat.bossCatId !== selectedCat.id) {
+                                const currentBoss = payload.chat.cats.find((c) => c.id === payload.chat.bossCatId);
+                                const confirmed = await confirm({
+                                  title: t(messageKeys.sharedSettingsCatsChangeBossCatTitle),
+                                  message: t(messageKeys.sharedSettingsCatsChangeBossCatMessage, {
+                                    name: selectedCat.name,
+                                  }),
+                                  confirmLabel: t(messageKeys.sharedSettingsCatsConfirm),
+                                });
+                                if (!confirmed) return;
+                              }
+                              await commitCatProfile(
+                                selectedCat.id,
+                                { makeBoss: true },
+                                t(messageKeys.sharedSettingsCatsSetBossCatError),
+                              );
+                            }}
+                          />
+                          <span>{t(messageKeys.sharedSettingsCatsMakeBossCatLabel, { name: selectedCat.name })}</span>
+                        </label>
+                      ) : null}
+                    </div>
+                  </div>
+                  <label className="fieldLabel">
+                    <span>{t(messageKeys.settingsGeneralNameLabel)}</span>
+                    <input
+                      // `key` re-mounts the uncontrolled input when the
+                      // selected cat switches, picking up the new
+                      // defaultValue without a second useState.
+                      key={selectedCat.id}
+                      className="textInput"
+                      defaultValue={selectedCat.name}
+                      placeholder={selectedCat.name}
+                      disabled={isArchived}
+                      onBlur={async (event) => {
+                        const next = event.currentTarget.value.trim();
+                        if (!next) {
+                          event.currentTarget.value = selectedCat.name;
+                          return;
+                        }
+                        if (next === selectedCat.name) return;
+                        const ok = await commitCatProfile(
+                          selectedCat.id,
+                          { name: next },
+                          t(messageKeys.settingsGeneralUpdateNameError),
+                        );
+                        if (!ok) {
+                          event.currentTarget.value = selectedCat.name;
+                        }
+                      }}
+                    />
+                  </label>
+                  <div className="fieldLabel catsCoverField">
+                    <span>{t(messageKeys.sharedSettingsCatsCoverPhotoLabel)}</span>
+                    <div
+                      className="catsCoverDock"
+                      style={
+                        selectedCat.avatarColor
+                          ? ({ '--cat-avatar-color': selectedCat.avatarColor } as Record<string, string>)
+                          : undefined
+                      }
+                    >
                       <button
                         type="button"
-                        className="catAvatar catsIdentityAvatar"
-                        style={selectedCat.avatarUrl
-                          ? { backgroundImage: `url(${selectedCat.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center', color: 'transparent' }
-                          : selectedCat.avatarColor ? { background: selectedCat.avatarColor } : undefined}
-                        onClick={() => { if (!isArchived) setAvatarCropOpen(true); }}
+                        className={`catsCoverThumb${coverUrl ? ' catsCoverThumbLoaded' : ''}`}
+                        style={coverUrl ? { backgroundImage: `url(${coverUrl})` } : undefined}
+                        onClick={() => { if (!isArchived) setCoverCropOpen(true); }}
                         disabled={isArchived}
-                        aria-label={selectedCat.avatarUrl ? 'Change avatar' : 'Upload avatar'}
-                        data-tooltip={isArchived ? undefined : (selectedCat.avatarUrl ? 'Change avatar' : 'Upload avatar')}
-                      >
-                        {selectedCat.avatarUrl ? '' : catInitials(selectedCat.name)}
-                      </button>
+                        aria-label={coverUrl
+                          ? t(messageKeys.sharedSettingsCatsChangeCoverPhotoLabel)
+                          : t(messageKeys.sharedSettingsCatsUploadCoverPhotoLabel)}
+                        data-tooltip={isArchived ? undefined : (
+                          coverUrl ? t(messageKeys.sharedSettingsCatsChangeCoverLabel) : t(messageKeys.sharedSettingsCatsUploadCoverLabel)
+                        )}
+                      />
                       {!isArchived ? (
-                        <span className="catsAvatarCameraBadge" aria-hidden="true">
+                        <span className="catsCoverCameraBadge" aria-hidden="true">
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                             <circle cx="12" cy="13" r="4" />
                           </svg>
                         </span>
                       ) : null}
-                      {selectedCat.avatarUrl && !isArchived ? (
+                      {coverUrl && !isArchived ? (
                         <button
                           type="button"
-                          className="catsAvatarRemoveBadge"
+                          className="catsCoverRemoveBadge"
                           onClick={(event) => {
                             event.stopPropagation();
-                            void handleAvatarRemove();
+                            handleCoverRemove();
                           }}
-                          aria-label="Remove avatar"
-                          data-tooltip="Remove avatar"
+                          aria-label={t(messageKeys.sharedSettingsCatsRemoveCoverLabel)}
+                          data-tooltip={t(messageKeys.sharedSettingsCatsRemoveCoverLabel)}
                         >
                           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                             <line x1="18" y1="6" x2="6" y2="18" />
@@ -791,192 +925,90 @@ export function SettingsCatsCanvas({
                         </button>
                       ) : null}
                     </div>
-                    {!isArchived && selectedCat.id !== payload.chat.bossCatId ? (
-                      <label className="fieldLabelInline catsIdentityBossToggle">
-                        <input
-                          type="checkbox"
-                          checked={false}
-                          onChange={async (event) => {
-                            if (!event.target.checked) return;
-                            if (payload.chat.bossCatId && payload.chat.bossCatId !== selectedCat.id) {
-                              const currentBoss = payload.chat.cats.find((c) => c.id === payload.chat.bossCatId);
-                              const confirmed = await confirm({
-                                title: 'Change Boss Cat',
-                                message: `${currentBoss?.name ?? 'Another cat'} is currently the Boss Cat. Set ${selectedCat.name} as the Boss instead?`,
-                                confirmLabel: 'Confirm',
-                              });
-                              if (!confirmed) return;
-                            }
-                            await commitCatProfile(
+                  </div>
+                </SettingsSubSection>
+
+                <SettingsSubSection
+                  className="catsSubCard"
+                  header={<SettingsSectionHeader title={t(messageKeys.sharedSettingsCatsSkillProfileLabel)} nested />}
+                >
+                  <div className="skillPills">
+                    {SKILL_PROFILES.map((profile) => {
+                      const active = (selectedCat.skillProfile ?? 'chat-default') === profile.value;
+                      return (
+                        <button
+                          key={profile.value}
+                          type="button"
+                          className={active ? 'draftLeadPill draftLeadPillActive' : 'draftLeadPill'}
+                          disabled={isArchived || active}
+                          onClick={() => {
+                            void commitCatProfile(
                               selectedCat.id,
-                              { makeBoss: true },
-                              'Failed to set Boss Cat.',
+                              { skillProfile: profile.value },
+                              t(messageKeys.sharedSettingsCatsChangeSkillProfileError),
                             );
                           }}
-                        />
-                        <span>Set as Boss Cat</span>
-                      </label>
-                    ) : null}
-                  </div>
-                </div>
-                <label className="fieldLabel">
-                  <span>Name</span>
-                  <input
-                    // `key` re-mounts the uncontrolled input when the
-                    // selected cat switches, picking up the new
-                    // defaultValue without a second useState.
-                    key={selectedCat.id}
-                    className="textInput"
-                    defaultValue={selectedCat.name}
-                    placeholder={selectedCat.name}
-                    disabled={isArchived}
-                    onBlur={async (event) => {
-                      const next = event.currentTarget.value.trim();
-                      if (!next) {
-                        event.currentTarget.value = selectedCat.name;
-                        return;
-                      }
-                      if (next === selectedCat.name) return;
-                      const ok = await commitCatProfile(
-                        selectedCat.id,
-                        { name: next },
-                        'Failed to rename.',
+                        >
+                          {profile.label}
+                        </button>
                       );
-                      if (!ok) {
-                        event.currentTarget.value = selectedCat.name;
-                      }
-                    }}
-                  />
-                </label>
-                <div className="fieldLabel catsCoverField">
-                  <span>Cover photo</span>
-                  <div
-                    className="catsCoverDock"
-                    style={
-                      selectedCat.avatarColor
-                        ? ({ '--cat-avatar-color': selectedCat.avatarColor } as Record<string, string>)
-                        : undefined
-                    }
-                  >
-                    <button
-                      type="button"
-                      className={`catsCoverThumb${coverUrl ? ' catsCoverThumbLoaded' : ''}`}
-                      style={coverUrl ? { backgroundImage: `url(${coverUrl})` } : undefined}
-                      onClick={() => { if (!isArchived) setCoverCropOpen(true); }}
-                      disabled={isArchived}
-                      aria-label={coverUrl ? 'Change cover photo' : 'Upload cover photo'}
-                      data-tooltip={isArchived ? undefined : (coverUrl ? 'Change cover' : 'Upload cover')}
-                    />
-                    {!isArchived ? (
-                      <span className="catsCoverCameraBadge" aria-hidden="true">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
-                          <circle cx="12" cy="13" r="4" />
-                        </svg>
-                      </span>
-                    ) : null}
-                    {coverUrl && !isArchived ? (
-                      <button
-                        type="button"
-                        className="catsCoverRemoveBadge"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          handleCoverRemove();
-                        }}
-                        aria-label="Remove cover"
-                        data-tooltip="Remove cover"
-                      >
-                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <line x1="18" y1="6" x2="6" y2="18" />
-                          <line x1="6" y1="6" x2="18" y2="18" />
-                        </svg>
-                      </button>
-                    ) : null}
+                    })}
                   </div>
-                </div>
-              </SettingsSubSection>
+                </SettingsSubSection>
 
-              <SettingsSubSection
-                className="catsSubCard"
-                header={<SettingsSectionHeader title="Skill" nested />}
-              >
-                <div className="skillPills">
-                  {SKILL_PROFILES.map((profile) => {
-                    const active = (selectedCat.skillProfile ?? 'chat-default') === profile.value;
-                    return (
-                      <button
-                        key={profile.value}
-                        type="button"
-                        className={active ? 'draftLeadPill draftLeadPillActive' : 'draftLeadPill'}
-                        disabled={isArchived || active}
-                        onClick={() => {
-                          void commitCatProfile(
-                            selectedCat.id,
-                            { skillProfile: profile.value },
-                            'Failed to change skill profile.',
-                          );
-                        }}
-                      >
-                        {profile.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </SettingsSubSection>
+                <SettingsSubSection
+                  className="catsSubCard"
+                  header={<SettingsSectionHeader title={t(messageKeys.sharedSettingsCatsChannelLabel)} nested />}
+                >
+                  <SettingsCatsDetailPanelContent
+                    busy={busy}
+                    botBindings={botBindings}
+                    cat={selectedCat}
+                    isBossCat={selectedCat.id === payload.chat.bossCatId}
+                    memoryController={memoryController}
+                    registryController={{
+                      botForm,
+                      renameValue,
+                      setBotForm,
+                      setRenameValue,
+                      onCreateBinding,
+                      onDeleteBinding,
+                      onMakeBossCat,
+                      onRenameCat,
+                      onSkillChange,
+                    }}
+                    telegramDiagnostics={telegramDiagnostics}
+                    confirm={confirm}
+                    sections={['telegram']}
+                  />
+                </SettingsSubSection>
 
-              <SettingsSubSection
-                className="catsSubCard"
-                header={<SettingsSectionHeader title="Channel" nested />}
-              >
-                <SettingsCatsDetailPanelContent
-                  busy={busy}
-                  botBindings={botBindings}
-                  cat={selectedCat}
-                  isBossCat={selectedCat.id === payload.chat.bossCatId}
-                  memoryController={memoryController}
-                  registryController={{
-                    botForm,
-                    renameValue,
-                    setBotForm,
-                    setRenameValue,
-                    onCreateBinding,
-                    onDeleteBinding,
-                    onMakeBossCat,
-                    onRenameCat,
-                    onSkillChange,
-                  }}
-                  telegramDiagnostics={telegramDiagnostics}
-                  confirm={confirm}
-                  sections={['telegram']}
-                />
-              </SettingsSubSection>
-
-              <SettingsSubSection
-                className="catsSubCard"
-                header={<SettingsSectionHeader title="Memory" nested />}
-              >
-                <SettingsCatsDetailPanelContent
-                  busy={busy}
-                  botBindings={botBindings}
-                  cat={selectedCat}
-                  isBossCat={selectedCat.id === payload.chat.bossCatId}
-                  memoryController={memoryController}
-                  registryController={{
-                    botForm,
-                    renameValue,
-                    setBotForm,
-                    setRenameValue,
-                    onCreateBinding,
-                    onDeleteBinding,
-                    onMakeBossCat,
-                    onRenameCat,
-                    onSkillChange,
-                  }}
-                  telegramDiagnostics={telegramDiagnostics}
-                  confirm={confirm}
-                  sections={['memory']}
-                />
-              </SettingsSubSection>
+                <SettingsSubSection
+                  className="catsSubCard"
+                  header={<SettingsSectionHeader title={t(messageKeys.sharedSettingsCatsMemoryLabel)} nested />}
+                >
+                  <SettingsCatsDetailPanelContent
+                    busy={busy}
+                    botBindings={botBindings}
+                    cat={selectedCat}
+                    isBossCat={selectedCat.id === payload.chat.bossCatId}
+                    memoryController={memoryController}
+                    registryController={{
+                      botForm,
+                      renameValue,
+                      setBotForm,
+                      setRenameValue,
+                      onCreateBinding,
+                      onDeleteBinding,
+                      onMakeBossCat,
+                      onRenameCat,
+                      onSkillChange,
+                    }}
+                    telegramDiagnostics={telegramDiagnostics}
+                    confirm={confirm}
+                    sections={['memory']}
+                  />
+                </SettingsSubSection>
               </div>
 
               <div className="catsDetailColumn">
@@ -994,7 +1026,7 @@ export function SettingsCatsCanvas({
                         model: target.model || null,
                         modelSelection: target.modelSelection ?? null,
                       },
-                      'Failed to update Brain.',
+                      t(messageKeys.sharedSettingsCatsUpdateBrainError),
                     );
                   }}
                   fetchProviderRegistry={fetchProviderRegistry}
