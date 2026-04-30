@@ -42,7 +42,7 @@ context-specific affordances around it.
 
 | Tier (ADR-081) | Default posture |
 |----------------|-----------------|
-| Materialization (Artifact / Activity / Outcome / Checkpoint / Trace) | Default YES — these were defined as cross-cutting / cross-layer; their inherent content is renderable identically anywhere |
+| Materialization (Artifact / Activity / Outcome / Checkpoint / Trace) | Candidate YES — these were defined as cross-cutting / cross-layer, but Activity / Trace viewers still require explicit redaction, privacy, and safety policy before becoming platform-shared |
 | Interaction (Conversation / Cat / Channel / Participant) | Inherent-content viewer YES (e.g. message rendering, cat card); product-scoped main surface still belongs to the originating product (transcript stays Chat-primary) |
 | Planning + Execution (Project / WorkItem / Task / Run / Mission) | "Summary card" YES (platform); "full editor / interactive surface" NO (product-scoped because semantics differ across products) |
 | Configuration-style (TransportBinding, etc.) | NO by default — settings surfaces, not in-product viewers |
@@ -96,6 +96,7 @@ Examples (current and illustrative future):
 
 ```
 /code/tasks/:taskId/canvas/:artifactId
+/code/tasks/:taskId/canvas/:artifactId/view/iframe
 /work/items/:itemId/canvas/:artifactId
 /chat/conversations/:convId/canvas/:artifactId
 
@@ -112,15 +113,18 @@ Implementation guidance:
   `src/products/shared/renderer/` next to the viewers themselves.
 - The viewer pane mounts via React Router `<Outlet />` in the product's
   shell layout.
-- Query string is **not** used for canvas / viewer state. Reserve
-  query string for ephemeral parameters (filters, search) that do not
-  identify a navigable view.
+- Query string is **not** used for canvas / viewer identity. Preserve
+  explicit viewer modes in path segments (e.g.
+  `/canvas/:artifactId/view/:presentation`). Reserve query string for
+  ephemeral parameters (filters, search) that do not identify a
+  navigable view.
 
 ## Server-Side Safety Authority
 
 Whatever safety policy attaches to the viewer is server-decided and
-centralized. The viewer projection takes the entity id, runs the policy,
-and returns:
+centralized. The viewer projection takes the entity id plus the
+mounting surface ref, validates anchoring / authorization for that
+surface, runs the policy, and returns:
 
 - the resolved presentation parameters (sandbox profile, masking, etc.);
 - a `policyVersion` snapshot identifier so stale renderer cache demotes
@@ -128,9 +132,11 @@ and returns:
 - the entity metadata the renderer needs to display.
 
 The renderer treats the projection as authoritative. Server-pushed
-events (per ADR-075) carry navigate-intent when an assistant tool wants
-to surface a specific entity to the user — the renderer responds by
-calling `navigate()`, never by mutating product-scope domain state.
+render intents carry navigate-intent when an assistant tool wants to
+surface a specific entity to the user. They may share the same app push
+transport as ADR-075, but they are not generic entity snapshots /
+patches. The renderer responds by calling `navigate()`, never by
+mutating product-scope domain state.
 
 ## Entity Viewer-Ownership Table
 
@@ -140,7 +146,7 @@ entity.
 
 | Entity (Core record) | Inherent-content viewer | Owning location | URL convention | Safety policy authority | Source of decision |
 |----------------------|-------------------------|-----------------|----------------|-------------------------|--------------------|
-| `CoreArtifactRecord` | `<CanvasPane>` (iframe / future image / pdf / code) | Platform primitive in `src/products/shared/renderer/` | `/<product>/<surface>/:id/canvas/:artifactId` | Server: sandbox profile + origin allowlist + producer allowlist + scheme + credential reject + `policyVersion` | [SPEC-101](./specs/SPEC-101-cats-code-artifact-canvas.md), [ADR-098](./decisions/098-url-driven-canvas-and-platform-shared-viewer.md) |
+| `CoreArtifactRecord` | `<CanvasPane>` (iframe / future image / pdf / code) | Platform primitive in `src/products/shared/renderer/` | `/<product>/<surface>/:id/canvas/:artifactId[/view/:presentation]` | Server: sandbox profile + origin allowlist + producer allowlist + scheme + credential reject + `policyVersion` | [SPEC-101](./specs/SPEC-101-cats-code-artifact-canvas.md), [ADR-098](./decisions/098-url-driven-canvas-and-platform-shared-viewer.md) |
 
 Future entries are added via the SPEC / ADR that introduces the viewer.
 Each row records what the viewer is, where it lives, the URL

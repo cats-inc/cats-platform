@@ -3,7 +3,8 @@
 > Cats canvas pane state is addressable via the URL (nested route per
 > product), not stored under a product record's `metadata`. The canvas
 > pane itself is a platform-shared primitive that any product surface
-> can mount with a consistent `/canvas/:artifactId` convention. Server
+> can mount with a consistent `/canvas/:artifactId[/view/:presentation]`
+> convention. Server
 > remains the authority for safety decisions (sandbox profile, allowlists,
 > policy snapshot); the URL is the authority for what the user is looking
 > at.
@@ -36,7 +37,7 @@ small UI signal) but two follow-up questions exposed structural problems:
    metadata duplicates schema across products; promoting it to a new
    Core record family is exactly what ADR-097 rejected. URL-driven
    sidesteps both problems: any product surface can mount the same
-   canvas pane primitive at `?` or `/canvas/:artifactId`, server-side
+   canvas pane primitive at `/canvas/:artifactId`, server-side
    safety policy applies uniformly, no per-product metadata schema.
 
 The deeper principle these two questions share: **for Core-tier entities
@@ -58,15 +59,19 @@ canvas pane is mounted as a **nested route child** of any product
 surface that opts in:
 
 ```
-/code/tasks/:taskId                           ← left pane only
-/code/tasks/:taskId/canvas/:artifactId        ← left + right
-/work/items/:itemId/canvas/:artifactId        ← same pane in Work
-/chat/conversations/:convId/canvas/:artifactId  ← same pane in Chat
+/code/tasks/:taskId                              ← left pane only
+/code/tasks/:taskId/canvas/:artifactId           ← left + right
+/code/tasks/:taskId/canvas/:artifactId/view/iframe  ← explicit viewer
+/work/items/:itemId/canvas/:artifactId           ← same pane in Work
+/chat/conversations/:convId/canvas/:artifactId   ← same pane in Chat
 ```
 
-`/canvas/:artifactId` is a shared child-route convention. Each product
-registers it once; the canvas pane component is one platform primitive
-shared across products.
+`/canvas/:artifactId[/view/:presentation]` is a shared child-route
+convention. Each product registers it once; the canvas pane component
+is one platform primitive shared across products. The optional
+`/view/:presentation` segment preserves explicit presentation requests
+(`iframe` / `image` / `pdf` / `code`) across reload, share-link, and
+browser back/forward. Absence of the segment means `auto`.
 
 Query string is **not** used for canvas state. Query string remains
 reserved for ephemeral parameters (search filters, etc.) that do not
@@ -92,14 +97,21 @@ copy of these checks.
 The server is the authority for safety decisions and for assistant-driven
 intent, not for visible state:
 
-- Given an `artifactId` path segment, the server returns a projection
+- Given a surface-scoped canvas path, the server returns a projection
   with the resolved `iframeSandboxProfile`, `policyVersion`, and any
-  artifact metadata the viewer needs.
+  artifact metadata the viewer needs. The projection API receives
+  `(productKind, surfaceKind, surfaceId, artifactId,
+  presentationRequested)` and validates that the artifact is anchored
+  to that surface.
 - Assistant tool `show_in_canvas` writes an Activity record (audit /
-  trace) and pushes a navigate-intent event to the renderer through the
-  per-entity subscription channel from
-  [ADR-075](./075-adopt-push-based-per-entity-state-subscription.md).
-  The renderer receives the intent and calls `navigate()`. The URL
+  trace) and pushes an `ArtifactCanvasNavigateIntent` to the renderer
+  through the platform render-intent stream. The stream may use the
+  same app push transport as
+  [ADR-075](./075-adopt-push-based-per-entity-state-subscription.md),
+  but it is not a generic `subscribeEntity` entity snapshot / patch.
+  Intents are short-lived (Phase 1 TTL: 30 seconds), acknowledged by
+  `intentId`, and applied only to the currently mounted surface. The
+  renderer receives a matching intent and calls `navigate()`. The URL
   changes; the viewer remounts.
 - User actions on the canvas (close, switch artifact via sidebar click)
   are renderer-only `navigate()` calls. They do **not** require server
@@ -108,13 +120,13 @@ intent, not for visible state:
 ### What Goes Away
 
 - `CoreTaskRecord.metadata.codeCanvasFocus` — no longer the source of
-  truth; visible state lives in URL. A separate (renamed)
-  `metadata.lastAssistantCanvasIntent` may persist as an audit / "what
-  did the assistant most recently suggest" hint, but it is not the
-  visible state.
-- The two-control "Close vs Collapse" model from earlier
-  SPEC-101 drafts collapses to one server-touching action: Close = pop
-  the `/canvas/:artifactId` segment from the URL. Collapse remains
+  truth; visible state lives in URL. Assistant intent audit persists
+  in `artifact_canvas_show_intent` / `artifact_canvas_clear_intent`
+  Activity records, not in product metadata.
+- The two-control "Close vs Collapse" model from earlier SPEC-101
+  drafts remains visually distinct, but only assistant / delegate
+  `clear_canvas` touches the server. User Close pops the
+  `/canvas/:artifactId` segment from the URL; Collapse remains
   renderer-only via local state / `localStorage`.
 
 ### What Stays
@@ -256,16 +268,15 @@ needs a platform-shared viewer vs a product-owned one.
 - [ADR-081](./081-canonicalize-three-tier-core-record-taxonomy.md) — the
   Core / Materialization tier framing
 - [ADR-075](./075-adopt-push-based-per-entity-state-subscription.md) —
-  push channel that carries assistant-driven navigate-intent
+  app push substrate; SPEC-101's render-intent stream must not be
+  implemented as a generic `subscribeEntity` patch
 - [ADR-019](./019-normalize-runtime-previews-as-surfaces-not-provider-iframes.md)
-- [SPEC-101](../specs/SPEC-101-cats-code-artifact-canvas.md) — to be
-  rewritten under this ADR
+- [SPEC-101](../specs/SPEC-101-cats-code-artifact-canvas.md)
 - [SPEC-092](../specs/SPEC-092-code-artifact-declaration-contract.md) —
   artifact declaration contract; `producerKind` / `producerIdentity` /
   `scopeKind` / `scopeId` idempotency components survive into the
   per-turn declaration index
-- [PLAN-090](../plans/PLAN-090-cats-code-artifact-canvas-rollout.md) —
-  to be updated under this ADR
+- [PLAN-090](../plans/PLAN-090-cats-code-artifact-canvas-rollout.md)
 - [`docs/platform-viewer-policy.md`](../platform-viewer-policy.md) —
   cross-product viewer policy and entity viewer-ownership table
 - [Research note](../research/2026-04-30-cats-code-split-canvas-artifact-panel.md)

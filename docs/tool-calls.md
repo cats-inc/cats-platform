@@ -63,8 +63,8 @@ rather than duplicating every validation branch.
 | `work.sop.classify_text_batch` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / worker tool | Work SOP worker | [Work Supervised Tools](#work-supervised-tools) |
 | `work.sop.ask_weak` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / worker tool | Work SOP worker | [Work Supervised Tools](#work-supervised-tools) |
 | `declare_artifact` | Cats Code | Active-session onboarding, submit route, materialization, activity, runtime execution helper, assistant-effect processor, live dispatch persistence, and local tool-result projection wired; live tool-result loop pending | `runtime_tool` first; bridge/user delegates later | Code assistant / runtime bridge / Code UI import flow | [Declare Artifact](#declare_artifact) |
-| `show_in_canvas` | Cats Code | Planned by SPEC-101 / PLAN-090 | `runtime_tool` plus product-internal delegate | Code assistant / Code UI close-open flows | [Artifact Canvas Tools](#artifact-canvas-tools) |
-| `clear_canvas` | Cats Code | Planned by SPEC-101 / PLAN-090 | `runtime_tool` plus product-internal delegate | Code assistant / Code UI close flow | [Artifact Canvas Tools](#artifact-canvas-tools) |
+| `show_in_canvas` | Cats Code | Planned by SPEC-101 / PLAN-090 | `runtime_tool` plus product-internal delegate | Code assistant / product delegates that want to request canvas navigation | [Artifact Canvas Tools](#artifact-canvas-tools) |
+| `clear_canvas` | Cats Code | Planned by SPEC-101 / PLAN-090 | `runtime_tool` plus product-internal delegate | Code assistant / product delegates that want to request parent-surface navigation | [Artifact Canvas Tools](#artifact-canvas-tools) |
 
 ## Supervised Tool Contract
 
@@ -379,7 +379,7 @@ shape/location/metadata subset from that registry, while finalization may return
 These planned Cats Code tools control presentation focus in the right-hand
 Artifact Canvas pane. They are intentionally separate from `declare_artifact`:
 `declare_artifact` records the output; the canvas tools choose what the
-active Code task shows.
+active product surface opens in the shared Artifact Canvas.
 
 | Field | Value |
 |-------|-------|
@@ -387,14 +387,14 @@ active Code task shows.
 | Current status | Planned; contract documented by SPEC-101 and rollout tracked by PLAN-090 |
 | First channel | `runtime_tool` |
 | Tool names | `show_in_canvas`, `clear_canvas` |
-| Implementation entry point | Planned: `src/products/code/state/runtimeCanvasFocusExecution.ts` |
+| Implementation entry point | Planned: `src/products/code/state/runtimeArtifactCanvasExecution.ts` |
 | Related SPEC | [SPEC-101](./specs/SPEC-101-cats-code-artifact-canvas.md) |
-| Related ADR | [ADR-097](./decisions/097-store-code-canvas-focus-on-task-metadata.md) |
+| Related ADR | [ADR-098](./decisions/098-url-driven-canvas-and-platform-shared-viewer.md) |
 | Related PLAN | [PLAN-090](./plans/PLAN-090-cats-code-artifact-canvas-rollout.md) |
 
 ### `show_in_canvas`
 
-Sets the right-hand Artifact Canvas focus to a Code-relevant artifact.
+Sets the right-hand Artifact Canvas focus to a canvas-eligible artifact.
 
 Caller-visible input:
 
@@ -417,6 +417,8 @@ type ShowInCanvasResult =
       iframeSandboxProfile: 'static' | 'scripted-cross-origin' | null;
       policyVersion: string | null;
       // Full nested-route URL the renderer was asked to navigate to.
+      // Explicit presentation requests use
+      // /canvas/:artifactId/view/:presentation.
       // Mirrors the navigate-intent's targetUrl field.
       targetUrl: string;
     }
@@ -426,12 +428,15 @@ type ShowInCanvasResult =
     };
 ```
 
-Effect: server records a `code_canvas_show_intent` Activity record (per
-ADR-081 Materialization tier) and pushes a `CodeCanvasNavigateIntent`
-event over the [ADR-075](./decisions/075-adopt-push-based-per-entity-state-subscription.md)
-per-entity subscription channel keyed by the caller's surface. The
-renderer responds by calling `navigate(targetUrl)`. The tool does NOT
-mutate any product `metadata`.
+Effect: server records an `artifact_canvas_show_intent` Activity record
+(per ADR-081 Materialization tier) and pushes an
+`ArtifactCanvasNavigateIntent` over the platform render-intent stream
+keyed by the caller's surface. That stream may use the same app push
+transport as [ADR-075](./decisions/075-adopt-push-based-per-entity-state-subscription.md),
+but it is not a generic `subscribeEntity` entity patch. The renderer
+applies only matching active-surface intents, calls `navigate(targetUrl)`,
+and acknowledges by `intentId`. The tool does NOT mutate any product
+`metadata`.
 
 Core rules (the SPEC-101 source-of-truth covers full validation, the
 runtime preview origin allowlist schema, and the presentation resolution
@@ -474,19 +479,21 @@ table):
   The processor keeps no cross-turn lookup;
 - accepted intent is **not** persisted to any product `metadata`
   field. Visible state lives in the URL via the nested child route
-  `/canvas/:artifactId` per
+  `/canvas/:artifactId[/view/:presentation]` per
   [ADR-098](./decisions/098-url-driven-canvas-and-platform-shared-viewer.md)
   (which supersedes ADR-097); audit lives in an Activity record of
-  kind `code_canvas_show_intent` per ADR-081 Materialization tier;
+  kind `artifact_canvas_show_intent` per ADR-081 Materialization tier;
+  explicit non-`auto` presentation requests use the `/view/:presentation`
+  URL form, while `auto` uses the shorter `/canvas/:artifactId` form;
 - credential-bearing URLs (`user:pass@host`) hard-reject at the canvas
   with `artifact_canvas_url_credentials_not_allowed` and never reach
   iframe `src`, open-external href, or pane metadata;
 - the iframe sandbox profile is server-decided through TWO flat-array
   allowlists, both straight arrays with no `{ entries: [...] }` wrapper:
-  - `codeCanvas.runtimePreviewOriginAllowlist:
+  - `artifactCanvas.runtimePreviewOriginAllowlist:
     { hostname, schemes?, ports? }[]` (Phase 1 default: loopback
     `127.0.0.1` / `::1` / `localhost` on `http:` with any port);
-  - `codeCanvas.scriptedPreviewProducerAllowlist:
+  - `artifactCanvas.scriptedPreviewProducerAllowlist:
     { producerKind, producerIdentity }[]` (Phase 1 default: **empty** —
     out of the box, no producer earns `scripted-cross-origin`;
     operators must enumerate trusted producers using encoded SPEC-092
@@ -555,9 +562,9 @@ interface ClearCanvasResult {
 }
 ```
 
-Effect: writes a `code_canvas_clear_intent` Activity record (audit) and
-pushes a `CodeCanvasNavigateIntent` whose `targetUrl` is the parent
-surface URL. Idempotent: calling it from a URL without
+Effect: writes an `artifact_canvas_clear_intent` Activity record (audit)
+and pushes an `ArtifactCanvasNavigateIntent` whose `targetUrl` is the
+parent surface URL. Idempotent: calling it from a URL without
 `/canvas/:artifactId` segment still emits one Activity record and one
 navigate-intent (the resulting navigation is a no-op).
 
