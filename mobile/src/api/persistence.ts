@@ -1,13 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 
 /**
  * Persisted desktop connection. Today the mobile client only knows
  * one thing about the desktop: where to reach it (`baseUrl`). HTTP
- * fetches go straight at `${baseUrl}${path}`. There is no auth, no
- * relay, no tunnel integration. Earlier drafts of this module
- * speculated about cloud-relay / Cloudflare Tunnel / Tailscale modes
- * and a `pairingToken`; none of those exist yet, so they are not
- * persisted either.
+ * fetches go straight at `${baseUrl}${path}`. On a QR-launched Expo Go
+ * session, the desktop injects the LAN base URL into the manifest so
+ * first launch can connect without manual entry. There is no auth, no
+ * relay, no tunnel integration, and no persisted pairing token yet.
  */
 export interface ConnectionConfig {
   baseUrl: string | null;
@@ -15,24 +15,79 @@ export interface ConnectionConfig {
 
 const STORAGE_KEY = 'cats-mobile.connectionConfig.v2';
 
-const DEFAULT_CONFIG: ConnectionConfig = {
-  baseUrl: null,
-};
+function asRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === 'object' && value !== null
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function normalizeDesktopBaseUrl(value: unknown): string | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const trimmed = value.trim().replace(/\/+$/, '');
+  if (!/^https?:\/\//iu.test(trimmed)) {
+    return null;
+  }
+  try {
+    return new URL(trimmed).href.replace(/\/+$/, '');
+  } catch {
+    return null;
+  }
+}
+
+function readDesktopBaseUrlFromExtra(extra: unknown): string | null {
+  const record = asRecord(extra);
+  if (!record) {
+    return null;
+  }
+
+  const direct = normalizeDesktopBaseUrl(record.catsDesktopBaseUrl);
+  if (direct) {
+    return direct;
+  }
+
+  const expoClient = asRecord(record.expoClient);
+  const expoClientExtra = asRecord(expoClient?.extra);
+  return normalizeDesktopBaseUrl(expoClientExtra?.catsDesktopBaseUrl);
+}
+
+function resolveManifestDesktopBaseUrl(): string | null {
+  const constants = Constants as unknown as {
+    expoConfig?: { extra?: unknown } | null;
+    manifest?: { extra?: unknown } | null;
+    manifest2?: { extra?: unknown } | null;
+  };
+  return (
+    readDesktopBaseUrlFromExtra(constants.expoConfig?.extra)
+    ?? readDesktopBaseUrlFromExtra(constants.manifest?.extra)
+    ?? readDesktopBaseUrlFromExtra(constants.manifest2?.extra)
+    ?? null
+  );
+}
+
+function resolveDefaultConfig(): ConnectionConfig {
+  return {
+    baseUrl: resolveManifestDesktopBaseUrl(),
+  };
+}
 
 export async function loadConnectionConfig(): Promise<ConnectionConfig> {
   try {
     const raw = await AsyncStorage.getItem(STORAGE_KEY);
     if (raw === null) {
-      return DEFAULT_CONFIG;
+      return resolveDefaultConfig();
     }
     const parsed = JSON.parse(raw) as Partial<ConnectionConfig>;
+    const fallback = resolveDefaultConfig();
+    const hasStoredBaseUrl = Object.prototype.hasOwnProperty.call(parsed, 'baseUrl');
     return {
-      baseUrl: parsed.baseUrl ?? DEFAULT_CONFIG.baseUrl,
+      baseUrl: hasStoredBaseUrl ? parsed.baseUrl ?? null : fallback.baseUrl,
     };
   } catch {
     // Storage corruption or read failure should not crash the app.
     // Fall back to defaults; the next save will overwrite the bad blob.
-    return DEFAULT_CONFIG;
+    return resolveDefaultConfig();
   }
 }
 

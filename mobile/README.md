@@ -19,7 +19,8 @@ exports iOS + Android bundles into `build/mobile/`.
 Desktop pairing is documented in
 [`docs/setup-guide.md`](../docs/setup-guide.md#mobile-pairing-desktop).
 
-The current desktop card exposes LAN readiness, the diagnostic manifest URL,
-and a QR for the LAN desktop base URL. The final Expo Go manifest URL remains
-blocked on PLAN-088 Phase 1 physical-device validation of the manifest schema
-and Expo Go URL form.
+The desktop card exposes LAN readiness, the diagnostic manifest URL, and an
+Expo Go QR (`exp://<LAN-IP>:8181`). Expo Go resolves that QR through the
+desktop server, downloads the bundled Cats Mobile export, and receives the
+desktop LAN base URL in the manifest so the first launch can connect without
+manual URL entry.

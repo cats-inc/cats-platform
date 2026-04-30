@@ -107,9 +107,16 @@ test('mobile pairing routes are hidden when the feature flag is off', async () =
     const manifest = await fetch(`${baseUrl}/api/mobile/manifest`, {
       headers: { 'expo-platform': 'ios' },
     });
+    const expoGoManifest = await fetch(`${baseUrl}/`, {
+      headers: {
+        accept: 'application/expo+json',
+        'expo-platform': 'ios',
+      },
+    });
     const bundle = await fetch(`${baseUrl}/api/mobile/bundle/ios/entry-ios.hbc`);
 
     assert.equal(manifest.status, 404);
+    assert.equal(expoGoManifest.status, 404);
     assert.equal(bundle.status, 404);
   });
 });
@@ -140,7 +147,7 @@ test('mobile manifest diagnostics echo Expo headers and request-host asset URLs'
     const bundleResponse = await fetch(manifest.bundle.url);
     assert.equal(bundleResponse.status, 200);
     assert.equal(bundleResponse.headers.get('cache-control'), 'public, max-age=31536000, immutable');
-    assert.equal(bundleResponse.headers.get('content-type'), 'application/octet-stream');
+    assert.equal(bundleResponse.headers.get('content-type'), 'application/javascript');
     assert.equal(await bundleResponse.text(), 'ios-bundle');
 
     const assetResponse = await fetch(manifest.assets[0].url);
@@ -148,6 +155,47 @@ test('mobile manifest diagnostics echo Expo headers and request-host asset URLs'
     assert.equal(assetResponse.headers.get('cache-control'), 'public, max-age=31536000, immutable');
     assert.equal(assetResponse.headers.get('content-type'), 'image/png');
     assert.equal(await assetResponse.text(), 'ios-asset');
+  });
+});
+
+test('mobile Expo Go manifest is served at the QR entrypoint', async () => {
+  await withServer({}, async (baseUrl, { mobileBundleRoot }) => {
+    await seedMobileBundle(mobileBundleRoot);
+
+    const manifestResponse = await fetch(`${baseUrl}/`, {
+      headers: {
+        accept: 'application/expo+json',
+        'expo-platform': 'android',
+        'expo-protocol-version': '0',
+      },
+    });
+    const manifest = await manifestResponse.json();
+
+    assert.equal(manifestResponse.status, 200);
+    assert.equal(manifestResponse.headers.get('content-type'), 'application/expo+json');
+    assert.equal(manifestResponse.headers.get('expo-protocol-version'), '0');
+    assert.equal(manifest.runtimeVersion, 'exposdk:54.0.0');
+    assert.equal(manifest.launchAsset.key, 'bundle');
+    assert.equal(manifest.launchAsset.contentType, 'application/javascript');
+    assert.equal(manifest.launchAsset.url, `${baseUrl}/api/mobile/bundle/android/entry-android.hbc`);
+    assert.equal(manifest.extra.catsDesktopBaseUrl, baseUrl);
+    assert.equal(manifest.extra.expoClient.slug, 'cats-mobile');
+    assert.equal(manifest.extra.expoClient.extra.catsDesktopBaseUrl, baseUrl);
+    assert.equal(manifest.extra.expoGo.debuggerHost, new URL(baseUrl).host);
+    assert.equal(manifest.extra.expoGo.mainModuleName, 'expo-router/entry');
+    assert.equal(manifest.assets[0].url, `${baseUrl}/api/mobile/assets/assetandroidhash`);
+  });
+});
+
+test('plain browser root still serves the desktop renderer', async () => {
+  await withServer({}, async (baseUrl, { mobileBundleRoot }) => {
+    await seedMobileBundle(mobileBundleRoot);
+
+    const response = await fetch(`${baseUrl}/`, {
+      headers: { accept: 'text/html' },
+    });
+
+    assert.notEqual(response.headers.get('content-type'), 'application/expo+json');
   });
 });
 

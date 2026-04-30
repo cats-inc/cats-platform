@@ -91,12 +91,11 @@ Current implementation status:
   `/api/mobile/*` bundle-serving routes.
 - the card shows the LAN-facing diagnostic manifest URL when a LAN candidate is
   available.
-- the card renders a QR for the LAN desktop base URL when a LAN candidate is
-  available.
-- the final Expo Go manifest URL remains pending until PLAN-088 Phase 1
-  confirms the stock Expo Go manifest schema and URL form on real iOS and
-  Android devices. Do not treat the diagnostic manifest URL as the final
-  scannable Expo Go manifest URL.
+- the card renders an Expo Go QR (`exp://<LAN-IP>:8181`) when a LAN candidate
+  is available.
+- Expo Go requests the desktop root manifest, downloads the bundled Cats Mobile
+  export from `/api/mobile/bundle/*`, and receives the desktop LAN base URL in
+  the manifest so Cats Mobile can connect without manual URL entry.
 
 If the card reports no LAN address while the bind host is already
 LAN-visible, verify the machine has a non-loopback IPv4 address on the trusted

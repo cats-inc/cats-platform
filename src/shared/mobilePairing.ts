@@ -35,6 +35,19 @@ function appendAbsolutePath(baseUrl: string | null, path: string): string | null
   }
 }
 
+function toExpoGoUrl(baseUrl: string | null): string | null {
+  if (!baseUrl) {
+    return null;
+  }
+
+  try {
+    const url = new URL(baseUrl);
+    return `exp://${url.host}`;
+  } catch {
+    return null;
+  }
+}
+
 function resolveBindReachability(input: {
   mode: 'loopback' | 'wildcard' | 'specific';
   canReachFromLan: boolean;
@@ -81,6 +94,7 @@ export function buildMobilePairingReadiness(input: {
   });
   const selectedLanUrl = ingress.urls.lanUrls[0] ?? null;
   const selectedLanIp = firstUrlHost(selectedLanUrl);
+  const expoGoUrl = toExpoGoUrl(selectedLanUrl);
   const noLanCandidateReason = resolveNoLanCandidateReason({
     enabled: input.enabled,
     mode: ingress.binding.mode,
@@ -102,7 +116,7 @@ export function buildMobilePairingReadiness(input: {
     bindOverrideEnv: ingress.binding.mode === 'loopback'
       ? MOBILE_PAIRING_BIND_OVERRIDE_ENV
       : null,
-    pairingUrlStatus: input.enabled && selectedLanUrl ? 'ready' : 'phase1_pending',
-    pairingUrl: input.enabled ? selectedLanUrl : null,
+    pairingUrlStatus: input.enabled && expoGoUrl ? 'ready' : 'phase1_pending',
+    pairingUrl: input.enabled ? expoGoUrl : null,
   };
 }

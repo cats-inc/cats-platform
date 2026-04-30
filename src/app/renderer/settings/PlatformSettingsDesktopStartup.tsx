@@ -51,7 +51,7 @@ function resolveMobilePairingStatus(
   if (mobilePairing.pairingUrlStatus === 'ready' && mobilePairing.pairingUrl) {
     return { tone: 'ready', label: 'Ready' };
   }
-  return { tone: 'warm', label: 'Manifest validation pending' };
+  return { tone: 'warm', label: 'QR pending' };
 }
 
 function resolveDefaultDesktopPreferences(): AppShellPayload['desktop'] {
@@ -207,7 +207,7 @@ export function PlatformSettingsDesktopStartup({
         header={
           <SettingsSectionHeader
             title="Mobile pairing"
-            description="LAN readiness for the bundled Expo Go mobile shell."
+            description="Expo Go QR for the bundled Cats Mobile shell."
             status={(
               <SettingsStatusChip tone={mobilePairingStatus.tone}>
                 {mobilePairingStatus.label}
@@ -308,7 +308,7 @@ export function PlatformSettingsDesktopStartup({
 
                 {mobilePairing.pairingUrlStatus === 'ready' && mobilePairing.pairingUrl ? (
                 <SettingsOptionRow
-                  label="Pairing URL"
+                  label="Expo Go URL"
                   description={mobilePairing.pairingUrl}
                   control={(
                     <button
@@ -316,7 +316,7 @@ export function PlatformSettingsDesktopStartup({
                       className="secondaryButton"
                       onClick={() => void copyToClipboard(
                         mobilePairing.pairingUrl ?? '',
-                        'Copied pairing URL.',
+                        'Copied Expo Go URL.',
                       )}
                     >
                       Copy URL

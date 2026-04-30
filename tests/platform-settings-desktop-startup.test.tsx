@@ -207,7 +207,7 @@ test('PlatformSettingsDesktopStartup shows diagnostic manifest when LAN-ready', 
             noLanCandidateReason: null,
             bindOverrideEnv: null,
             pairingUrlStatus: 'ready',
-            pairingUrl: 'http://192.168.1.25:8181',
+            pairingUrl: 'exp://192.168.1.25:8181',
           }),
         })}
         onPayloadUpdate={() => {}}
@@ -219,7 +219,8 @@ test('PlatformSettingsDesktopStartup shows diagnostic manifest when LAN-ready', 
   assert.match(markup, /192\.168\.1\.25/u);
   assert.match(markup, /Diagnostic manifest/u);
   assert.match(markup, /http:\/\/192\.168\.1\.25:8181\/api\/mobile\/manifest/u);
-  assert.match(markup, /Pairing URL/u);
+  assert.match(markup, /Expo Go URL/u);
+  assert.match(markup, /exp:\/\/192\.168\.1\.25:8181/u);
   assert.match(markup, /Mobile pairing QR code/u);
   assert.doesNotMatch(markup, /QR pending/u);
   assert.doesNotMatch(markup, /Apply and restart/u);

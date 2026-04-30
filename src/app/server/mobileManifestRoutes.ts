@@ -1,5 +1,6 @@
 import { basename, extname, resolve, sep } from 'node:path';
 import { readFile, stat } from 'node:fs/promises';
+import { randomUUID } from 'node:crypto';
 
 import type { AppConfig } from '../../config.js';
 import type { RouteContext } from '../../shared/http.js';
@@ -53,6 +54,66 @@ interface MobileExportFiles {
   platforms: Record<MobilePlatform, MobilePlatformFiles | null>;
 }
 
+interface ExpoManifestAsset {
+  key: string;
+  hash: string;
+  fileExtension: string | null;
+  contentType: string;
+  url: string;
+}
+
+interface ExpoClientManifest {
+  name: string;
+  slug: string;
+  scheme: string;
+  version: string;
+  orientation: string;
+  userInterfaceStyle: string;
+  platforms: MobilePlatform[];
+  plugins: string[];
+  experiments: {
+    typedRoutes: boolean;
+  };
+  sdkVersion: string;
+  extra: {
+    router: Record<string, never>;
+    catsDesktopBaseUrl: string;
+  };
+  hostUri: string;
+}
+
+interface ExpoUpdatesManifest {
+  id: string;
+  createdAt: string;
+  runtimeVersion: string;
+  launchAsset: {
+    key: string;
+    contentType: string;
+    url: string;
+  };
+  assets: ExpoManifestAsset[];
+  metadata: Record<string, never>;
+  extra: {
+    catsDesktopBaseUrl: string;
+    eas: {
+      projectId?: string;
+    };
+    expoClient: ExpoClientManifest;
+    expoGo: {
+      debuggerHost: string;
+      developer: {
+        tool: string;
+        projectRoot: string;
+      };
+      packagerOpts: {
+        dev: boolean;
+      };
+      mainModuleName: string;
+    };
+    scopeKey: string;
+  };
+}
+
 export interface MobileManifestRouteDependencies {
   config: Pick<AppConfig, 'mobilePairingEnabled' | 'mobileBundleRoot'>;
   now?: () => Date;
@@ -66,6 +127,17 @@ const NO_STORE_HEADERS = {
 };
 const IMMUTABLE_HEADERS = {
   'Cache-Control': 'public, max-age=31536000, immutable',
+};
+const EXPO_GO_MANIFEST_PATHS = new Set(['/', '/manifest', '/index.exp']);
+const EXPO_GO_RUNTIME_VERSION = 'exposdk:54.0.0';
+const EXPO_GO_SDK_VERSION = '54.0.0';
+const EXPO_GO_PROJECT_SLUG = 'cats-mobile';
+const EXPO_GO_MAIN_MODULE_NAME = 'expo-router/entry';
+const EXPO_MANIFEST_HEADERS = {
+  'Cache-Control': 'private, max-age=0',
+  'content-type': 'application/expo+json',
+  'expo-protocol-version': '0',
+  'expo-sfv-version': '0',
 };
 
 function normalizePlatform(value: string | null | undefined): MobilePlatform | null {
@@ -127,6 +199,7 @@ function guessContentType(fileName: string, assetExt?: string | null): string {
     case '.webp':
       return 'image/webp';
     case '.hbc':
+      return 'application/javascript';
     default:
       return 'application/octet-stream';
   }
@@ -212,6 +285,154 @@ function buildAbsoluteUrl(url: URL, pathname: string): string {
   return `${url.origin}${pathname}`;
 }
 
+function isExpoGoManifestRequest(context: MobileManifestRouteContext): boolean {
+  if (!EXPO_GO_MANIFEST_PATHS.has(context.url.pathname)) {
+    return false;
+  }
+
+  const acceptHeader = readHeaderValue(context.request.headers.accept)?.toLowerCase() ?? '';
+  return Boolean(
+    normalizePlatform(readHeaderValue(context.request.headers['expo-platform']))
+      || normalizePlatform(context.url.searchParams.get('platform'))
+      || readHeaderValue(context.request.headers['expo-protocol-version'])
+      || acceptHeader.includes('application/expo+json')
+      || acceptHeader.includes('multipart/mixed'),
+  );
+}
+
+function resolveExpoGoPlatform(context: MobileManifestRouteContext): MobilePlatform {
+  return normalizePlatform(readHeaderValue(context.request.headers['expo-platform']))
+    ?? normalizePlatform(context.url.searchParams.get('platform'))
+    ?? 'ios';
+}
+
+function buildBundlePathname(platform: MobilePlatform, fileName: string): string {
+  return `/api/mobile/bundle/${platform}/${encodeURIComponent(fileName)}`;
+}
+
+function buildAssetPathname(hash: string): string {
+  return `/api/mobile/assets/${encodeURIComponent(hash)}`;
+}
+
+function createExpoClientManifest(context: MobileManifestRouteContext): ExpoClientManifest {
+  return {
+    name: 'Cats Mobile',
+    slug: EXPO_GO_PROJECT_SLUG,
+    scheme: 'cats-mobile',
+    version: '0.0.0',
+    orientation: 'portrait',
+    userInterfaceStyle: 'automatic',
+    platforms: ['ios', 'android'],
+    plugins: ['expo-router', 'expo-notifications', 'expo-asset'],
+    experiments: {
+      typedRoutes: true,
+    },
+    sdkVersion: EXPO_GO_SDK_VERSION,
+    extra: {
+      router: {},
+      catsDesktopBaseUrl: context.url.origin,
+    },
+    hostUri: context.url.host,
+  };
+}
+
+function buildExpoGoManifest(input: {
+  context: MobileManifestRouteContext;
+  platform: MobilePlatform;
+  platformFiles: MobilePlatformFiles;
+  assets: ExpoManifestAsset[];
+}): ExpoUpdatesManifest {
+  const { context, platform, platformFiles, assets } = input;
+  const bundleUrl = buildAbsoluteUrl(
+    context.url,
+    buildBundlePathname(platform, platformFiles.bundle.fileName),
+  );
+
+  return {
+    id: randomUUID(),
+    createdAt: (context.dependencies.now?.() ?? new Date()).toISOString(),
+    runtimeVersion: EXPO_GO_RUNTIME_VERSION,
+    launchAsset: {
+      key: 'bundle',
+      contentType: 'application/javascript',
+      url: bundleUrl,
+    },
+    assets,
+    metadata: {},
+    extra: {
+      catsDesktopBaseUrl: context.url.origin,
+      eas: {},
+      expoClient: createExpoClientManifest(context),
+      expoGo: {
+        debuggerHost: context.url.host,
+        developer: {
+          tool: 'expo-cli',
+          projectRoot: 'cats-platform/mobile',
+        },
+        packagerOpts: {
+          dev: false,
+        },
+        mainModuleName: EXPO_GO_MAIN_MODULE_NAME,
+      },
+      scopeKey: `@anonymous/${EXPO_GO_PROJECT_SLUG}-cats-desktop`,
+    },
+  };
+}
+
+async function collectExistingExpoAssets(
+  context: MobileManifestRouteContext,
+  platformFiles: MobilePlatformFiles,
+): Promise<ExpoManifestAsset[]> {
+  const assets = new Map<string, ExpoManifestAsset>();
+  for (const asset of platformFiles.assets) {
+    if (!await fileExists(asset.absolutePath)) {
+      continue;
+    }
+    assets.set(asset.hash, {
+      key: asset.hash,
+      hash: asset.hash,
+      fileExtension: asset.ext,
+      contentType: asset.contentType,
+      url: buildAbsoluteUrl(context.url, buildAssetPathname(asset.hash)),
+    });
+  }
+  return Array.from(assets.values());
+}
+
+async function handleExpoGoManifest(
+  context: MobileManifestRouteContext,
+  exportFiles: MobileExportFiles,
+): Promise<void> {
+  const platform = resolveExpoGoPlatform(context);
+  const platformFiles = exportFiles.platforms[platform];
+  if (!platformFiles || !await fileExists(platformFiles.bundle.absolutePath)) {
+    sendJson(
+      context.response,
+      404,
+      {
+        error: {
+          code: 'mobile_bundle_not_found',
+          message: `No Expo Go mobile bundle is available for ${platform}.`,
+        },
+      },
+      NO_STORE_HEADERS,
+    );
+    return;
+  }
+
+  sendJson(
+    context.response,
+    200,
+    buildExpoGoManifest({
+      context,
+      platform,
+      platformFiles,
+      assets: await collectExistingExpoAssets(context, platformFiles),
+    }),
+    EXPO_MANIFEST_HEADERS,
+  );
+}
+
 async function handleMobileManifest(
   context: MobileManifestRouteContext,
   exportFiles: MobileExportFiles,
@@ -248,7 +469,7 @@ async function handleMobileManifest(
     return;
   }
 
-  const bundlePathname = `/api/mobile/bundle/${platform}/${encodeURIComponent(platformFiles.bundle.fileName)}`;
+  const bundlePathname = buildBundlePathname(platform, platformFiles.bundle.fileName);
   const assets = [];
   for (const asset of platformFiles.assets) {
     if (!await fileExists(asset.absolutePath)) {
@@ -258,7 +479,7 @@ async function handleMobileManifest(
       hash: asset.hash,
       ext: asset.ext,
       path: asset.relativePath,
-      url: buildAbsoluteUrl(context.url, `/api/mobile/assets/${encodeURIComponent(asset.hash)}`),
+      url: buildAbsoluteUrl(context.url, buildAssetPathname(asset.hash)),
       contentType: asset.contentType,
     });
   }
@@ -368,7 +589,9 @@ async function handleMobileAsset(
 export async function routeMobileManifestApi(
   context: MobileManifestRouteContext,
 ): Promise<boolean> {
-  if (!context.url.pathname.startsWith('/api/mobile/')) {
+  const isApiRoute = context.url.pathname.startsWith('/api/mobile/');
+  const isExpoGoRoute = isExpoGoManifestRequest(context);
+  if (!isApiRoute && !isExpoGoRoute) {
     return false;
   }
 
@@ -395,6 +618,11 @@ export async function routeMobileManifestApi(
         message: 'Mobile bundle metadata is unavailable.',
       },
     });
+    return true;
+  }
+
+  if (isExpoGoRoute) {
+    await handleExpoGoManifest(context, exportFiles);
     return true;
   }
 
