@@ -89,6 +89,8 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
 
   // Page mode handling
   assert.match(html, /resolvePageMode/);
+  assert.match(html, /snapshot\.app\.onboardingMode === 'setup_status'/);
+  assert.match(html, /continueDisabled = legacyCliGate && installedCount === 0/);
   assert.match(html, /ONBOARDING_NATIVE_PROVIDER_ORDER = \[\s*'claude_code', 'cursor_agent', 'goose', 'junie',\s*'kiro', 'ollama'\s*\]/);
   assert.match(html, /ONBOARDING_NPM_PROVIDER_ORDER = \[\s*'codex', 'gemini', 'copilot', 'opencode',\s*'kilo', 'auggie', 'pi'\s*\]/);
   assert.match(html, /Node\.js \/ npm/);

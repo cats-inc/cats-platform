@@ -24,6 +24,10 @@ export const DESKTOP_BACKGROUND_CLOSE_BEHAVIORS = [
   'quit',
   'minimize_to_tray',
 ] as const;
+export const DESKTOP_BOOTSTRAP_ONBOARDING_MODES = [
+  'setup_status',
+  'cli_inventory_gate',
+] as const;
 export const DESKTOP_PROGRESS_STEP_STATUSES = [
   'pending',
   'running',
@@ -198,6 +202,7 @@ export type ManagedServiceName = 'cats-runtime' | 'cats-platform';
 export type ManagedServiceStatus = 'stopped' | 'starting' | 'ready' | 'failed';
 export type DesktopBackgroundMode = typeof DESKTOP_BACKGROUND_MODES[number];
 export type DesktopBackgroundCloseBehavior = typeof DESKTOP_BACKGROUND_CLOSE_BEHAVIORS[number];
+export type DesktopBootstrapOnboardingMode = typeof DESKTOP_BOOTSTRAP_ONBOARDING_MODES[number];
 export type DesktopProgressStepStatus = typeof DESKTOP_PROGRESS_STEP_STATUSES[number];
 export type DesktopUpdateStatus = typeof DESKTOP_UPDATE_STATUSES[number];
 export type DesktopUpdateChannel = typeof DESKTOP_UPDATE_CHANNELS[number];
@@ -664,6 +669,8 @@ export interface DesktopBootstrapSnapshot {
   app: {
     baseUrl: string;
     setupCompleteAt: string | null;
+    setupCompleted: boolean;
+    onboardingMode: DesktopBootstrapOnboardingMode;
     entryPath: string;
     status: DesktopHealthStatus | null;
     summary: string | null;

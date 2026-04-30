@@ -11,6 +11,10 @@ import { normalizeDesktopHost } from './security.js';
 import {
   resolvePlatformStatePath,
 } from './platformPaths.js';
+import {
+  DESKTOP_BOOTSTRAP_ONBOARDING_MODES,
+  type DesktopBootstrapOnboardingMode,
+} from './contracts.js';
 
 export interface DesktopHostPaths {
   platformDir: string;
@@ -44,6 +48,10 @@ export interface DesktopHostSetupAuditConfig {
   parallel: boolean;
 }
 
+export interface DesktopHostBootstrapConfig {
+  onboardingMode: DesktopBootstrapOnboardingMode;
+}
+
 export interface DesktopHostConfig {
   packaged: boolean;
   packageRoot: string;
@@ -59,6 +67,7 @@ export interface DesktopHostConfig {
   readinessTimeoutMs: number;
   readinessPollIntervalMs: number;
   gracefulShutdownMs: number;
+  bootstrap: DesktopHostBootstrapConfig;
   background: DesktopHostBackgroundConfig;
   setupAudit: DesktopHostSetupAuditConfig;
   update: DesktopUpdateConfig;
@@ -84,6 +93,7 @@ const DEFAULT_KEEP_SERVICES_RUNNING = true;
 const DEFAULT_CLOSE_BEHAVIOR = 'minimize_to_tray';
 const DEFAULT_FORCE_QUIT_ON_CLOSE = false;
 const DEFAULT_SETUP_AUDIT_PARALLEL = true;
+const DEFAULT_BOOTSTRAP_ONBOARDING_MODE: DesktopBootstrapOnboardingMode = 'setup_status';
 export const DESKTOP_USER_DATA_DIR_NAME = 'Cats';
 
 function isWindowsAbsolutePath(value: string | undefined): boolean {
@@ -170,6 +180,17 @@ function parsePositiveInt(rawValue: string | undefined, fallback: number): numbe
     throw new Error(`Invalid positive integer value: ${rawValue}`);
   }
   return parsed;
+}
+
+function parseBootstrapOnboardingMode(rawValue: string | undefined): DesktopBootstrapOnboardingMode {
+  const value = rawValue?.trim();
+  if (!value) {
+    return DEFAULT_BOOTSTRAP_ONBOARDING_MODE;
+  }
+  if ((DESKTOP_BOOTSTRAP_ONBOARDING_MODES as readonly string[]).includes(value)) {
+    return value as DesktopBootstrapOnboardingMode;
+  }
+  throw new Error(`Invalid desktop bootstrap onboarding mode: ${rawValue}`);
 }
 
 function resolveDesktopAppConnectHost(bindHost: string): string {
@@ -263,6 +284,9 @@ export function resolveDesktopHostConfig(
     keepServicesRunning: forceQuitOnClose ? false : DEFAULT_KEEP_SERVICES_RUNNING,
     closeBehavior: forceQuitOnClose ? 'quit' : DEFAULT_CLOSE_BEHAVIOR,
   };
+  const bootstrap: DesktopHostBootstrapConfig = {
+    onboardingMode: parseBootstrapOnboardingMode(env.CATS_DESKTOP_BOOTSTRAP_ONBOARDING_MODE),
+  };
   const setupAudit: DesktopHostSetupAuditConfig = {
     parallel: parseDesktopBoolean(
       env.CATS_DESKTOP_SETUP_AUDIT_PARALLEL,
@@ -286,6 +310,7 @@ export function resolveDesktopHostConfig(
     readinessTimeoutMs,
     readinessPollIntervalMs,
     gracefulShutdownMs,
+    bootstrap,
     background,
     setupAudit,
     update,

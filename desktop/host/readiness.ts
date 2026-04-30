@@ -708,13 +708,17 @@ export function buildDesktopBootstrapSnapshot(
     input.runtimeHealth?.readiness?.bootstrapRequired === true
       || input.runtimeHealth?.startup?.bootstrapRequired === true,
   );
+  const cliInventoryGateEnabled =
+    input.config.bootstrap?.onboardingMode === 'cli_inventory_gate';
   const cliMissing = Boolean(
-    input.cliInventory
+    cliInventoryGateEnabled
+      && input.cliInventory
       && input.cliInventory.source === 'runtime'
       && input.cliInventory.total === 0,
   );
   const cliInventoryPending = Boolean(
-    !setupCompleted
+    cliInventoryGateEnabled
+      && !setupCompleted
       && (!input.cliInventory || input.cliInventory.source === 'unknown'),
   );
   let phase: DesktopBootstrapSnapshot['phase'];
@@ -819,6 +823,8 @@ export function buildDesktopBootstrapSnapshot(
     app: {
       baseUrl: input.config.appBaseUrl,
       setupCompleteAt,
+      setupCompleted,
+      onboardingMode: input.config.bootstrap?.onboardingMode ?? 'setup_status',
       entryPath,
       status: normalizeHealthStatus(input.appHealth?.status),
       summary: input.appHealth?.summary ?? null,

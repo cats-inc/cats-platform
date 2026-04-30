@@ -5,10 +5,23 @@ type NavSnapshot = Pick<DesktopBootstrapSnapshot, 'phase' | 'app' | 'prerequisit
 function isCliMissing(snapshot: NavSnapshot): boolean {
   return Boolean(
     snapshot.phase === 'needs_prerequisites'
+      && snapshot.app.onboardingMode === 'cli_inventory_gate'
       && snapshot.prerequisites
       && snapshot.prerequisites.cliInventory
       && snapshot.prerequisites.cliInventory.source === 'runtime'
       && snapshot.prerequisites.cliInventory.total === 0,
+  );
+}
+
+function isSetupComplete(snapshot: NavSnapshot): boolean {
+  return Boolean(snapshot.app.setupCompleted || snapshot.app.setupCompleteAt);
+}
+
+function shouldShowSetupStatusOnboarding(snapshot: NavSnapshot): boolean {
+  return Boolean(
+    snapshot.phase === 'ready_for_setup'
+      && snapshot.app.onboardingMode === 'setup_status'
+      && !isSetupComplete(snapshot),
   );
 }
 
@@ -24,6 +37,9 @@ export function resolveDesktopBootstrapNavigation(
   }
 
   if (snapshot.phase === 'ready_for_setup') {
+    if (shouldShowSetupStatusOnboarding(snapshot)) {
+      return null;
+    }
     return `${options.appBaseUrl}/setup`;
   }
 
@@ -38,7 +54,7 @@ export function resolveDesktopBootstrapNavigation(
     return null;
   }
 
-  if (snapshot.phase === 'needs_prerequisites' && snapshot.app.setupCompleteAt) {
+  if (snapshot.phase === 'needs_prerequisites' && isSetupComplete(snapshot)) {
     return `${options.appBaseUrl}${snapshot.app.entryPath}`;
   }
 
@@ -64,8 +80,9 @@ export function shouldRevealDesktopBootstrapRecovery(
   }
 
   return snapshot.phase === 'failed'
+    || shouldShowSetupStatusOnboarding(snapshot)
     || (snapshot.phase === 'needs_prerequisites'
-      && (!snapshot.app.setupCompleteAt || isCliMissing(snapshot)));
+      && (!isSetupComplete(snapshot) || isCliMissing(snapshot)));
 }
 
 export function resolveDesktopWindowRevealNavigation(

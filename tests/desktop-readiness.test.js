@@ -19,6 +19,9 @@ const desktopConfig = {
   readinessTimeoutMs: 30000,
   readinessPollIntervalMs: 500,
   gracefulShutdownMs: 3000,
+  bootstrap: {
+    onboardingMode: 'setup_status',
+  },
   background: {
     trayEnabled: true,
     keepServicesRunning: true,
@@ -41,6 +44,13 @@ const desktopConfig = {
     runtimeConfigPath: 'cats-platform/.desktop/runtime/config/providers.yaml',
     hostStatePath: 'cats-platform/.desktop/state.json',
     packagingOutputRoot: 'cats-platform/build/desktop-packaging',
+  },
+};
+
+const cliGateDesktopConfig = {
+  ...desktopConfig,
+  bootstrap: {
+    onboardingMode: 'cli_inventory_gate',
   },
 };
 
@@ -1251,9 +1261,27 @@ const PRESETUP_INPUT = {
   cliInventory: populatedCliInventory(),
 };
 
-test('desktop bootstrap fires cli_missing for fresh users when runtime probe reports zero CLIs', () => {
+test('desktop bootstrap opens setup by default even when runtime reports zero CLIs', () => {
   const snapshot = buildDesktopBootstrapSnapshot({
     config: desktopConfig,
+    services: [
+      readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
+    ],
+    ...PRESETUP_INPUT,
+    cliInventory: emptyCliInventory(),
+  });
+
+  assert.equal(snapshot.phase, 'ready_for_setup');
+  assert.equal(snapshot.prerequisites?.cliInventory?.source, 'runtime');
+  assert.equal(snapshot.prerequisites?.cliInventory?.total, 0);
+  assert.equal(snapshot.actions.some((action) => action.id === 'open_setup'), true);
+  assert.equal(snapshot.actions.some((action) => action.id === 'open_chat'), false);
+});
+
+test('desktop bootstrap can restore legacy cli_missing gate for fresh users', () => {
+  const snapshot = buildDesktopBootstrapSnapshot({
+    config: cliGateDesktopConfig,
     services: [
       readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
       readyService('cats-platform', 'http://127.0.0.1:8181/health'),
@@ -1270,9 +1298,9 @@ test('desktop bootstrap fires cli_missing for fresh users when runtime probe rep
   assert.equal(snapshot.actions.some((action) => action.id === 'open_chat'), false);
 });
 
-test('desktop bootstrap fires cli_missing for setup-complete users when runtime probe reports zero CLIs', () => {
+test('desktop bootstrap can restore legacy cli_missing gate for setup-complete users', () => {
   const snapshot = buildDesktopBootstrapSnapshot({
-    config: desktopConfig,
+    config: cliGateDesktopConfig,
     services: [
       readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
       readyService('cats-platform', 'http://127.0.0.1:8181/health'),
@@ -1290,9 +1318,24 @@ test('desktop bootstrap fires cli_missing for setup-complete users when runtime 
   assert.equal(snapshot.actions.some((action) => action.id === 'open_chat'), false);
 });
 
-test('desktop bootstrap keeps fresh users in prerequisite checking when CLI inventory is unknown', () => {
+test('desktop bootstrap ignores unknown CLI inventory by default before setup', () => {
   const snapshot = buildDesktopBootstrapSnapshot({
     config: desktopConfig,
+    services: [
+      readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
+    ],
+    ...PRESETUP_INPUT,
+    cliInventory: emptyCliInventory({ source: 'unknown', scannedAt: null }),
+  });
+
+  assert.equal(snapshot.phase, 'ready_for_setup');
+  assert.equal(snapshot.actions.some((action) => action.id === 'open_setup'), true);
+});
+
+test('desktop bootstrap can restore legacy pending state when CLI inventory is unknown', () => {
+  const snapshot = buildDesktopBootstrapSnapshot({
+    config: cliGateDesktopConfig,
     services: [
       readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
       readyService('cats-platform', 'http://127.0.0.1:8181/health'),
@@ -1332,5 +1375,5 @@ test('desktop bootstrap leaves prerequisites null when no inventory passed', () 
   });
 
   assert.equal(snapshot.prerequisites, null);
-  assert.equal(snapshot.phase, 'checking_prerequisites');
+  assert.equal(snapshot.phase, 'ready_for_setup');
 });

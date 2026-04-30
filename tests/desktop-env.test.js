@@ -68,6 +68,24 @@ test('desktop host config exposes setup audit parallel policy', () => {
   assert.equal(serialConfig.setupAudit.parallel, false);
 });
 
+test('desktop host config defaults bootstrap onboarding to setup status', () => {
+  const defaultConfig = resolveDesktopHostConfig({
+    env: {},
+    userDataDir: WINDOWS_USER_DATA_DIR,
+    catsHomeDir: WINDOWS_CATS_HOME_DIR,
+  });
+  const legacyConfig = resolveDesktopHostConfig({
+    env: {
+      CATS_DESKTOP_BOOTSTRAP_ONBOARDING_MODE: 'cli_inventory_gate',
+    },
+    userDataDir: WINDOWS_USER_DATA_DIR,
+    catsHomeDir: WINDOWS_CATS_HOME_DIR,
+  });
+
+  assert.equal(defaultConfig.bootstrap.onboardingMode, 'setup_status');
+  assert.equal(legacyConfig.bootstrap.onboardingMode, 'cli_inventory_gate');
+});
+
 test('resolveDefaultSetupAuditAction maps setup audit parallel policy onto platform helpers', () => {
   const defaultConfig = resolveDesktopHostConfig({
     env: {},

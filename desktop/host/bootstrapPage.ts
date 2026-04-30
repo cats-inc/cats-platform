@@ -574,15 +574,36 @@ export function buildDesktopBootstrapPage(): string {
       );
     }
 
+    function isSetupComplete(snapshot) {
+      return Boolean(
+        snapshot && snapshot.app
+          && (snapshot.app.setupCompleted || snapshot.app.setupCompleteAt)
+      );
+    }
+
+    function usesSetupStatusOnboarding(snapshot) {
+      return Boolean(
+        snapshot && snapshot.app
+          && snapshot.app.onboardingMode === 'setup_status'
+      );
+    }
+
     function resolvePageMode(snapshot) {
       if (!snapshot) return 'loading';
       if (snapshot.phase === 'failed') return 'recovery';
-      var setupCompleteAt = snapshot.app && snapshot.app.setupCompleteAt;
-      if (onboardingActive && !setupCompleteAt) {
+      var setupComplete = isSetupComplete(snapshot);
+      if (onboardingActive && !setupComplete) {
+        return 'onboarding';
+      }
+      if (
+        usesSetupStatusOnboarding(snapshot)
+          && !setupComplete
+          && snapshot.phase === 'ready_for_setup'
+      ) {
         return 'onboarding';
       }
       if (snapshot.phase === 'needs_prerequisites') {
-        if (isCliMissing(snapshot) && !setupCompleteAt) {
+        if (isCliMissing(snapshot) && !setupComplete) {
           return 'onboarding';
         }
         return 'recovery';
@@ -1370,9 +1391,10 @@ export function buildDesktopBootstrapPage(): string {
 
       onboardingEl.innerHTML = '';
 
+      var legacyCliGate = snap.app && snap.app.onboardingMode === 'cli_inventory_gate';
       var inventory = (snap.prerequisites && snap.prerequisites.cliInventory) || {};
       var installedCount = Array.isArray(inventory.installed) ? inventory.installed.length : 0;
-      var continueDisabled = installedCount === 0;
+      var continueDisabled = legacyCliGate && installedCount === 0;
 
       var continueBtn = el('button', {
         class: 'btn',
@@ -1407,7 +1429,7 @@ export function buildDesktopBootstrapPage(): string {
           el('h1', { class: 'hero-title' }, 'Cats')
         ),
         el('p', { class: 'onboarding-headline' },
-          'Welcome. Pick a CLI to get started.'),
+          'Welcome. Install a CLI now or continue into setup.'),
         el('div', { class: 'onboarding-actions' }, actions),
         el('div', { class: 'cli-grid' }, cardSet.elements)
       );
@@ -1485,8 +1507,9 @@ export function buildDesktopBootstrapPage(): string {
         return;
       }
 
-      /* Onboarding (CLI install gate) replaces splash for fresh-user
-         + cli_missing case. Auto-shown because it IS the bootstrap UI. */
+      /* Onboarding replaces splash for fresh desktop users before /setup.
+         The default policy is informational: users may install CLIs here or
+         continue into setup without waiting for inventory scans. */
       if (mode === 'onboarding') {
         showOnboarding(snap);
         return;

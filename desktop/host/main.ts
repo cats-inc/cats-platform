@@ -1154,6 +1154,9 @@ async function fetchRuntimeCliInventoryProbe(
 }
 
 function isCliMissingBootstrapSnapshot(snapshot: DesktopBootstrapSnapshot): boolean {
+  if (hostConfig?.bootstrap.onboardingMode !== 'cli_inventory_gate') {
+    return false;
+  }
   return Boolean(
     snapshot.phase === 'needs_prerequisites'
       && snapshot.prerequisites?.cliInventory?.source === 'runtime'
@@ -1186,11 +1189,25 @@ function buildSnapshot(lastError?: string | null): DesktopBootstrapSnapshot {
     packaging: packagingState ?? undefined,
     setup: setupState ?? undefined,
     hostStatePath: hostConfig.paths.hostStatePath,
-    cliInventory: latestCliInventoryProbe
-      ? buildDesktopCliInventoryFromRuntime(latestCliInventoryProbe)
-      : null,
+    cliInventory: resolveSnapshotCliInventory(),
     cliInventoryError: latestCliInventoryError,
   });
+}
+
+function hasPersistedSetupCompletion(): boolean {
+  return Boolean(
+    latestPersistedSetupState.setupCompleteAt || latestPersistedSetupState.productSetupCompleted,
+  );
+}
+
+function resolveSnapshotCliInventory(): ReturnType<typeof buildDesktopCliInventoryFromRuntime> | null {
+  if (latestCliInventoryProbe) {
+    return buildDesktopCliInventoryFromRuntime(latestCliInventoryProbe);
+  }
+  if (hostConfig?.bootstrap.onboardingMode === 'setup_status' && !hasPersistedSetupCompletion()) {
+    return buildDesktopCliInventoryFromRuntime(null);
+  }
+  return null;
 }
 
 async function refreshBootstrapSnapshot(
@@ -1206,6 +1223,8 @@ async function refreshBootstrapSnapshot(
   const setupCompleted = Boolean(
     effectivePersistedSetup.setupCompleteAt || effectivePersistedSetup.productSetupCompleted,
   );
+  const shouldReadCliInventory =
+    setupCompleted || hostConfig.bootstrap.onboardingMode === 'cli_inventory_gate';
   // /diagnostics/providers is intentionally NOT fetched on the boot critical
   // path — it's not authoritative for any phase decision before setup, and
   // for setup-complete users we kick it off in the background (see
@@ -1222,12 +1241,14 @@ async function refreshBootstrapSnapshot(
     fetchJson<AppShellPayload>(`${hostConfig.appBaseUrl}/api/app-shell`),
     fetchJson<RuntimeDiagnosticsHealthPayload | ReadinessPayload>(`${hostConfig.runtimeBaseUrl}/health`),
     fetchJson<ProductBootstrapDiagnosticsPayload>(`${hostConfig.appBaseUrl}/api/platform/bootstrap-diagnostics`),
-    fetchRuntimeCliInventoryProbe(hostConfig.runtimeBaseUrl, {
-      triggerScanIfMissing: false,
-      scanTimeoutMs: setupCompleted
-        ? RUNTIME_SETUP_SCAN_TIMEOUT_MS
-        : RUNTIME_BOOTSTRAP_SETUP_SCAN_TIMEOUT_MS,
-    }),
+    shouldReadCliInventory
+      ? fetchRuntimeCliInventoryProbe(hostConfig.runtimeBaseUrl, {
+        triggerScanIfMissing: false,
+        scanTimeoutMs: setupCompleted
+          ? RUNTIME_SETUP_SCAN_TIMEOUT_MS
+          : RUNTIME_BOOTSTRAP_SETUP_SCAN_TIMEOUT_MS,
+      })
+      : Promise.resolve(null),
   ]);
 
   if (appHealth.status === 'fulfilled') {
@@ -1267,9 +1288,7 @@ async function refreshBootstrapSnapshot(
     packaging: packagingState ?? undefined,
     setup: setupState ?? undefined,
     hostStatePath: hostConfig.paths.hostStatePath,
-    cliInventory: latestCliInventoryProbe
-      ? buildDesktopCliInventoryFromRuntime(latestCliInventoryProbe)
-      : null,
+    cliInventory: resolveSnapshotCliInventory(),
     cliInventoryError: latestCliInventoryError,
   });
 }
@@ -1454,18 +1473,18 @@ function scheduleBackgroundBootstrapWork(
   // surface install_node_lts before they fail an Install action.
   scheduleBackgroundSetupAudit(snapshot, persistedSetup);
 
-  // CLI inventory rescan with backoff — covers two cases:
-  //  - first-run: initial scan didn't return data yet, retry until it does
-  //  - setup-complete: refresh stale on-disk cache so we eventually reflect
-  //    CLIs the user installed/uninstalled outside our flow
-  void retryCliInventoryScanInBackground({
-    forceRescan: setupCompleted,
-    setupCompleted,
-  }).catch((error) => {
-    process.stderr.write(
-      `Background CLI inventory rescan failed: ${error instanceof Error ? error.message : String(error)}\n`,
-    );
-  });
+  // CLI inventory is not part of the default first-run gate. We only probe it
+  // before setup when the legacy env policy explicitly asks for that gate.
+  if (setupCompleted || hostConfig?.bootstrap.onboardingMode === 'cli_inventory_gate') {
+    void retryCliInventoryScanInBackground({
+      forceRescan: setupCompleted,
+      setupCompleted,
+    }).catch((error) => {
+      process.stderr.write(
+        `Background CLI inventory rescan failed: ${error instanceof Error ? error.message : String(error)}\n`,
+      );
+    });
+  }
 
   // Provider diagnostics — only meaningful after setup is applied. Best
   // effort, single-shot; failures fall back to "Cats can still open".
@@ -1721,16 +1740,18 @@ async function runSetupAction(
   // After any helper run that may have changed CLI inventory, force a
   // runtime rescan so the next snapshot reflects the new state. We don't
   // depend on the helper's runState — the rescan itself is authoritative.
-  if (action.mode !== 'check' && shouldRefreshCliInventoryAfterSetupAction(action.helperId)) {
+  const setupCompleted = hasPersistedSetupCompletion();
+  const shouldRefreshCliInventory =
+    action.mode !== 'check'
+      && shouldRefreshCliInventoryAfterSetupAction(action.helperId)
+      && (setupCompleted || hostConfig.bootstrap.onboardingMode === 'cli_inventory_gate');
+  if (shouldRefreshCliInventory) {
     const refreshedProbe = await fetchRuntimeCliInventoryProbe(hostConfig.runtimeBaseUrl, {
       forceRescan: true,
     });
     if (!rememberRuntimeCliInventoryProbe(refreshedProbe)) {
       scheduleRuntimeCliInventoryPoll({
-        setupCompleted: Boolean(
-          latestPersistedSetupState.setupCompleteAt
-            || latestPersistedSetupState.productSetupCompleted,
-        ),
+        setupCompleted,
       });
     }
   }
