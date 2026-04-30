@@ -14,6 +14,8 @@ import {
   isMemoryBusy,
   type WorkspaceBusyState,
 } from '../../../../../shared/workspaceBusy.js';
+import { messageKeys } from '../../../../../shared/i18n/messageKeys.js';
+import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import { MemoryEditorDialog } from './MemoryEditorDialog.js';
 import { TelegramConnectDialog } from './TelegramConnectDialog.js';
 import { SKILL_PROFILES, formatTransportTimestamp } from './viewSupport.js';
@@ -89,6 +91,7 @@ export function SettingsCatsDetailPanelContent({
   ) ?? [];
   const canBindTelegramBot = cat.status === 'active'
     && hasPlatformSurface(cat.products, 'chat', { fallback: defaultCatProducts() });
+  const { t } = useI18n();
 
   // Dialog is opened from the empty-state button; it closes itself when
   // the create succeeds (catBindings.length transitions from 0 → >0) or
@@ -122,7 +125,7 @@ export function SettingsCatsDetailPanelContent({
     <>
       {shouldRender('rename') ? (
         <div className="catDetailSection">
-          <p className="sectionLabel">Rename</p>
+          <p className="sectionLabel">{t(messageKeys.sharedSettingsCatsRenameLabel)}</p>
           <div style={{ display: 'flex', gap: 8 }}>
             <input
               className="textInput"
@@ -141,7 +144,9 @@ export function SettingsCatsDetailPanelContent({
               }
               onClick={() => void onRenameCat(cat.id)}
             >
-              {isCatBusy(busy, 'rename', cat.id) ? 'Saving...' : 'Save'}
+              {isCatBusy(busy, 'rename', cat.id)
+                ? t(messageKeys.sharedSettingsCatsSaving)
+                : t(messageKeys.sharedSettingsCatsSave)}
             </button>
           </div>
         </div>
@@ -149,28 +154,34 @@ export function SettingsCatsDetailPanelContent({
 
       {shouldRender('makeBoss') && !isBossCat ? (
         <div className="catDetailSection">
-          <p className="sectionLabel">Boss Cat</p>
+          <p className="sectionLabel">{t(messageKeys.sharedSettingsCatsBossCatLabel)}</p>
           <button
             className="primaryButton"
             type="button"
             disabled={isCatBusy(busy, 'makeBoss', cat.id)}
             onClick={async () => {
               const confirmed = confirmDialog
-                ? await confirmDialog({ title: 'Change Boss Cat', message: `Make ${cat.name} the Boss Cat? This will change the default recipient for new chats.`, confirmLabel: 'Confirm' })
+                ? await confirmDialog({
+                    title: t(messageKeys.sharedSettingsCatsChangeBossCatTitle),
+                    message: t(messageKeys.sharedSettingsCatsChangeBossCatMessage, { name: cat.name }),
+                    confirmLabel: t(messageKeys.sharedSettingsCatsConfirm),
+                  })
                 : true;
               if (confirmed) {
                 void onMakeBossCat(cat.id);
               }
             }}
           >
-            {isCatBusy(busy, 'makeBoss', cat.id) ? 'Setting...' : `Make ${cat.name} the Boss Cat`}
+            {isCatBusy(busy, 'makeBoss', cat.id)
+              ? t(messageKeys.sharedSettingsCatsSetting)
+              : t(messageKeys.sharedSettingsCatsMakeBossCatLabel, { name: cat.name })}
           </button>
         </div>
       ) : null}
 
       {shouldRender('skill') ? (
         <div className="catDetailSection">
-          <p className="sectionLabel">Skill Profile</p>
+          <p className="sectionLabel">{t(messageKeys.sharedSettingsCatsSkillProfileLabel)}</p>
           <div className="skillPills">
             {SKILL_PROFILES.map((profile) => (
               <button
@@ -219,8 +230,8 @@ export function SettingsCatsDetailPanelContent({
                       className="catsInlineDeleteButton catsTelegramBindingDisconnect"
                       disabled={isBotBusy(busy, 'delete', binding.id)}
                       onClick={() => void onDeleteBinding(binding.id)}
-                      aria-label="Disconnect Telegram"
-                      data-tooltip="Disconnect"
+                      aria-label={t(messageKeys.sharedSettingsCatsDisconnectTelegramAria)}
+                      data-tooltip={t(messageKeys.sharedSettingsCatsDisconnectTelegram)}
                     >
                       <svg
                         width="14"
@@ -241,14 +252,20 @@ export function SettingsCatsDetailPanelContent({
                     <span
                       className={`statusChip ${binding.status === 'active' ? 'statusChipReady' : 'statusChipMuted'}`}
                     >
-                      {binding.status === 'active' ? 'Active' : 'Disabled'}
+                      {binding.status === 'active'
+                        ? t(messageKeys.sharedSettingsCatsBindingActive)
+                        : t(messageKeys.sharedSettingsCatsBindingDisabled)}
                     </span>
                     <span className="statusChip statusChipMuted">
-                      {binding.inboundMode === 'polling' ? 'Polling' : 'Webhook'}
+                      {binding.inboundMode === 'polling'
+                        ? t(messageKeys.sharedSettingsCatsBindingPollingMode)
+                        : t(messageKeys.sharedSettingsCatsBindingWebhookMode)}
                     </span>
                     {diagnostic?.lastInboundAt ? (
                       <span className="catsTelegramBindingLastInbound">
-                        Last inbound {formatTransportTimestamp(diagnostic.lastInboundAt)}
+                        {t(messageKeys.sharedSettingsCatsLastInboundLabel, {
+                          time: formatTransportTimestamp(diagnostic.lastInboundAt),
+                        })}
                       </span>
                     ) : null}
                   </div>
@@ -264,10 +281,10 @@ export function SettingsCatsDetailPanelContent({
               disabled={!canBindTelegramBot}
               onClick={() => setTelegramDialogOpen(true)}
             >
-              Connect Telegram
+              {t(messageKeys.sharedSettingsCatsConnectTelegramLabel)}
             </button>
             {!canBindTelegramBot ? (
-              <p className="catsTelegramHint">Unavailable for archived or non-chat cats.</p>
+              <p className="catsTelegramHint">{t(messageKeys.sharedSettingsCatsUnavailableHint)}</p>
             ) : null}
           </div>
         )
@@ -303,7 +320,7 @@ export function SettingsCatsDetailPanelContent({
             disabled={isMemoryBusy(busy, 'create')}
             onClick={() => setMemoryDialogOpen(true)}
           >
-            Add memory
+            {t(messageKeys.sharedSettingsCatsAddMemoryLabel)}
           </button>
         </div>
       ) : null}
@@ -330,6 +347,8 @@ function SettingsCatsMemoryRow({
   memoryRecord: DurableMemoryItem;
   onDelete: () => void;
 }) {
+  const { t } = useI18n();
+
   return (
     <div className="memoryItem">
       <div>
@@ -344,7 +363,7 @@ function SettingsCatsMemoryRow({
         type="button"
         disabled={isMemoryBusy(busy, 'delete', memoryRecord.id)}
         onClick={onDelete}
-        aria-label="Delete memory"
+        aria-label={t(messageKeys.sharedSettingsCatsDeleteMemoryAria)}
       >
         <svg
           width="14"
