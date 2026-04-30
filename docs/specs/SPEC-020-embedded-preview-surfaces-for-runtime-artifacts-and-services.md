@@ -19,6 +19,12 @@ not "provider returns iframe HTML". The correct contract is:
 
 This spec defines that product/runtime direction.
 
+Cats Code's concrete split-canvas UI is now specified by
+[SPEC-101: Cats Code Artifact Canvas](./SPEC-101-cats-code-artifact-canvas.md).
+This SPEC-020 document remains the lower-level runtime preview-surface direction:
+runtime reports previewable outputs, while products decide where and how to
+render them.
+
 ## Goals
 
 - allow in-place preview for some runtime outputs without coupling UI rendering
@@ -32,7 +38,8 @@ This spec defines that product/runtime direction.
 
 - requiring every provider to support inline preview
 - allowing arbitrary raw HTML or arbitrary iframe payloads from providers
-- finalizing the full preview-pane UI in this document
+- finalizing the full preview-pane UI in this document; Cats Code's first
+  product-owned pane is covered by SPEC-101
 - replacing transcript, artifact history, or download flows
 
 ## User Stories

@@ -29,8 +29,7 @@ commitment.
     artifact view conceptual model.
   - `2026-04-20-draft-canvas-and-composer-layout-guidance.md` — composer-side
     canvas vocabulary.
-  - SPEC-092 / PLAN-081 — `declare_artifact` contract and rollout (already
-    landed and stabilized as of `a637c2060`).
+  - SPEC-092 / PLAN-081 — `declare_artifact` contract and rollout.
   - ADR-088 — structured artifact declarations for code materialization.
   - ADR-019 — runtime previews are surfaces, not provider iframes.
 
@@ -60,10 +59,15 @@ commitment.
   `inline_summary`, `external_ref`.
 - Detail projection: `CodeArtifactDetailProjection` in
   `src/products/code/api/projection.ts`.
-- Renderer entry: `src/products/code/renderer/components/ArtifactDetailView.tsx`
-  resolves preview targets via `resolvePreviewSurfaceTargetFromArtifacts()`
-  but only renders link / download / action-button shapes. There is no image,
-  PDF, code-syntax, or iframe viewer today.
+- Renderer entries:
+  - `src/products/code/renderer/components/ArtifactDetailView.tsx`
+    resolves preview targets via `resolvePreviewSurfaceTargetFromArtifacts()`
+    and already renders an inline iframe for safe preview targets.
+  - `src/products/code/renderer/components/BuildPreviewPanel.tsx` also renders
+    an inline iframe for the latest build / preview target.
+- The missing piece is not "no iframe anywhere"; it is the absence of a
+  reusable split-canvas shell, pane-local top bar, viewer registry, and
+  assistant-controlled presentation focus.
 
 ### 3. Tool registration model is reusable
 
@@ -79,14 +83,15 @@ commitment.
   exporting a sibling processor from `src/products/code/state/`. No frozen
   contract changes required.
 
-### 4. No iframe / preview-rendering infrastructure exists
+### 4. No split-pane preview-rendering infrastructure exists
 
-- No iframe / WebView / BrowserView usage anywhere in
-  `src/products/code/**` or `src/platform/runtime/**`.
 - `src/core/previewSurfaces.js` resolves preview targets from artifact records
-  but does not render. There is currently no client-side renderer that
-  embeds a preview URL inline.
-- All artifact rendering is link- or download-shaped. Inline preview is new.
+  but does not own rendering.
+- Existing iframe rendering is local to builder/detail views and replaces the
+  main route. It does not let the active chat remain open while a right-hand
+  canvas pane shows the artifact.
+- There is no image, PDF, code-syntax, or generalized iframe viewer registry
+  today.
 
 ### 5. No local dev-server runtime exists
 
@@ -109,15 +114,12 @@ commitment.
 
 ### 7. Top-bar alignment is a known platform-shell hazard
 
-- Per `cats-platform/CLAUDE.md` ("Canvas Top Bar Edge Alignment"), a new
-  `<header className="channelTopBar …">` mounted inside `main.canvas`
-  visually insets unless three platform-shell rules are countered:
-  `padding: 0 28px`, `scrollbar-gutter: stable`, and grid-column
-  `justify-items: center`. A canvas-pane top bar must follow the
-  canonical override pattern at
-  `src/products/work/renderer/components/projects/projects.css`. This is
-  resolvable with existing CSS recipes; flagging it so the implementation
-  step does not rediscover the pitfall.
+- A new `<header className="channelTopBar ...">` mounted inside `main.canvas`
+  can visually inset unless it follows the same route-level top-bar pattern
+  already used by Code list/detail routes and Work list/detail routes.
+- The canvas pane top bar must be pane-local and must not reuse the chat
+  top bar instance. It should inherit the 60px height and sticky behavior, but
+  it must own its close / refresh / external-open controls independently.
 
 ## Recommended Design
 
@@ -142,52 +144,88 @@ be issued in the same turn.
 ### Tool surface
 
 - New tool `show_in_canvas` (Code product):
-  - Input: `{ artifactId: string, presentation?: 'iframe' | 'image' | 'pdf' |
-    'code' | 'auto' }`.
+  - Input:
+    `{ artifactId?: string, declarationId?: string, presentation?: 'iframe' |
+    'image' | 'pdf' | 'code' | 'auto' }`.
+  - Exactly one of `artifactId` or `declarationId` is required. `declarationId`
+    is for the same-turn flow where the assistant has just called
+    `declare_artifact` but does not yet know the materialized `artifactId`.
   - Default `presentation: 'auto'` lets the projection choose by artifact
     kind and `location.kind`.
-  - `normalizeInput` rejects unknown presentation, missing id, foreign-product
-    artifact ids, and unmaterialized / unanchored artifacts.
+  - `normalizeInput` rejects unknown presentation, missing identity, both
+    identities at once, foreign-product artifacts, and unmaterialized /
+    unanchored artifacts.
 - New tool `clear_canvas`:
   - No input. Result clears the canvas focus.
 - Both tools are registered as sibling assistant-effect processors next to
   `runtimeArtifactExecution.ts`, with a new file
   `src/products/code/state/runtimeCanvasFocusExecution.ts`.
 
-### Core state shape
+### State shape
 
-- New optional field on the Code dashboard projection root, e.g.
-  `canvasFocus: { artifactId: string; presentation: 'iframe' | 'image' |
-  'pdf' | 'code'; openedAt: string; openedBy: { kind, actorId,
-  runtimeSessionId } } | null`.
-- Persisted in Core under a Materialization-tier record per ADR-081, so it
-  survives reloads and is replayable.
-- Mutated only through the two new tools (server-side); the renderer treats
-  it as read-only state.
+- Phase 1 should use Code task metadata rather than a new Core record family:
+  `CoreTaskRecord.metadata.codeCanvasFocus`.
+- Rationale:
+  - active Cats Code chats are task-first;
+  - `CoreConversationRecord` currently has no `metadata` field;
+  - a new Core record family would be a larger shared-contract change than
+    this UI state needs;
+  - task-scoped focus lets Peer Code / Team Code member tasks focus different
+    artifacts independently.
+- Suggested shape:
+
+```ts
+interface CodeCanvasFocus {
+  schemaVersion: '1.0';
+  artifactId: string;
+  presentationRequested: 'auto' | 'iframe' | 'image' | 'pdf' | 'code';
+  presentationResolved: 'iframe' | 'image' | 'pdf' | 'code' | 'unsupported';
+  openedAt: string;
+  openedBy: {
+    kind: 'agent' | 'user' | 'system';
+    actorId: string | null;
+    runtimeSessionId: string | null;
+    toolCallId: string | null;
+  };
+}
+```
+
+- The Code task detail / dashboard projection may expose this as read-only
+  `canvasFocus`, sourced from persisted task metadata `codeCanvasFocus`.
+  The renderer may also use URL query state for a manual
+  sidebar/detail-page preview, but assistant-driven focus must go through the
+  server-side tool path.
+- Mutated only through `show_in_canvas`, `clear_canvas`, and the equivalent
+  product-internal delegate used by the user close button.
 
 ### Client-side wiring
 
-- New hook `useCanvasFocus()` in
-  `src/products/code/renderer/state/useCanvasFocus.ts` reads
-  `canvasFocus` from the dashboard projection (already pushed via the
-  existing per-entity subscription channel from ADR-075).
-- `WorkspaceProductApp` gains a conditional split-pane layout:
+- New hook `useCodeCanvasFocus()` in
+  `src/products/code/renderer/state/useCodeCanvasFocus.ts` reads the active
+  Code task's projected `canvasFocus` / persisted `codeCanvasFocus` from the
+  task/dashboard projection and falls back to route query state only for
+  manual artifact inspection.
+- Cats Code gains a product-local conditional split-pane layout:
   flex-row, default 60 / 40, with a min-width on each side; the right pane
   mounts only when `canvasFocus` is non-null.
 - The right pane has its own top bar (title from artifact, close button
-  calling `clear_canvas`, optional "open externally" link). It must follow
-  the canvas-top-bar alignment recipe noted above.
+  calling the clear delegate, optional "open externally" link, refresh).
 
 ### Viewer components
 
 - `IframeViewer` for `presentation: 'iframe'`:
   - `<iframe>` with
-    `sandbox="allow-scripts allow-same-origin allow-forms allow-popups"`,
+    `sandbox="allow-scripts allow-forms allow-popups"` by default,
     `referrerPolicy="no-referrer"`,
     `allow=""` (no powerful-feature delegation by default).
-  - URL scheme whitelist: `http:`, `https:`, `blob:`. Reject `file:`,
-    `javascript:`, `data:` (with explicit error code surfaced into the
-    artifact projection so the assistant can see the rejection).
+  - `allow-same-origin` may be added only by explicit server policy for
+    runtime-owned preview origins. It must not be added for Cats-served app
+    routes or arbitrary remote URLs.
+  - URL scheme whitelist: `http:`, `https:`, and app-served relative preview
+    URLs explicitly classified as preview-safe by the server. Reject `file:`,
+    `javascript:`, `data:`, `blob:`, and raw local paths (with explicit error
+    code surfaced into the artifact projection so the assistant can see the
+    rejection).
 - `ImageViewer` for `presentation: 'image'`: `<img>` with the artifact url,
   loading=lazy, decoding=async, max-height bounded to the pane.
 - `PdfViewer` for `presentation: 'pdf'`: `<iframe>` against the same url
@@ -206,19 +244,20 @@ be issued in the same turn.
 
 ### Phasing
 
-- **Phase 1 — minimum useful slice (this work item, scoped):**
+- **Phase 1 - minimum useful slice (this work item, scoped):**
   - `show_in_canvas` + `clear_canvas` tools, processor registration,
-    Core `canvasFocus` field, projection wiring.
+    Code task metadata `codeCanvasFocus`, projection wiring.
   - Split-pane layout with top bar and close.
-  - `IframeViewer` only (the primary unlock for live-preview-style use
-    cases when a url artifact already exists).
+  - Reusable `IframeViewer` only (the primary unlock for live-preview-style
+    use cases when a url artifact already exists), replacing the duplicated
+    route-local iframe logic where practical.
   - Tests: tool normalization, processor, projection auto-resolution,
     layout split-on / split-off, sandbox attribute presence.
-- **Phase 2 — viewer breadth:**
+- **Phase 2 - viewer breadth:**
   - `ImageViewer`, `PdfViewer`, `CodeSnippetViewer`.
   - Resizable divider, persisted width.
   - Pop-out / open-externally / refresh affordances on the panel top bar.
-- **Phase 3 — live preview substrate (separate SPEC, not this work):**
+- **Phase 3 - live preview substrate (separate SPEC, not this work):**
   - Process-spawning runtime tool that boots `npm start`-class servers,
     publishes a `url` artifact pointing at the bound port, and pipes that
     artifact through `show_in_canvas`. Requires command whitelist,
@@ -230,10 +269,9 @@ be issued in the same turn.
 ## Security notes
 
 - iframe `sandbox` must be present on day one. Default to
-  `allow-scripts allow-same-origin allow-forms allow-popups`. Tighter
-  variants (drop `allow-same-origin`) should be configurable per artifact
-  later, but never the other way around (do not start permissive and tighten
-  retroactively).
+  `allow-scripts allow-forms allow-popups`. Add `allow-same-origin` only for
+  server-verified runtime preview origins, never for raw Cats app routes or
+  arbitrary remote URLs.
 - URL scheme whitelist enforced both at projection time (server) and at
   render time (client). Defense in depth.
 - Same-origin caveat: a Cats-served URL in an iframe with `allow-same-origin`
@@ -249,13 +287,12 @@ be issued in the same turn.
   (or a user) may pin it to canvas. Avoid letting a foreign agent session
   reframe another session's artifacts.
 
-## Open questions
+## Resolved and Remaining Questions
 
-- Should `canvasFocus` be conversation-scoped, task-scoped, or run-scoped?
-  Conversation-scoped is the simplest user-mental-model match (one canvas
-  per chat surface) and aligns with how the sidebar currently scopes other
-  state. Recommend conversation-scoped unless a specific Code surface needs
-  finer scoping.
+- Scope is resolved by SPEC-101 for Phase 1: task-scoped under Code task
+  metadata `codeCanvasFocus`. Conversation scope would require adding metadata
+  or a presentation-state record to Core conversations; run scope is too narrow
+  for previews that remain useful after the run closes.
 - Should the user be allowed to pin / unpin manually from the renderer,
   or is the canvas exclusively assistant-driven? Recommend allowing manual
   unpin (close button on top bar) but keeping pin server-side / tool-driven
@@ -267,12 +304,14 @@ be issued in the same turn.
 
 ## Action Items
 
-- Decide on conversation-scoped vs. task-scoped `canvasFocus` before kicking
-  off Phase 1.
+- Task-scoped canvas focus was selected for Phase 1 by SPEC-101; do not add
+  conversation metadata or a separate Core presentation-state record in the
+  first implementation slice.
 - Draft a SPEC entry capturing the `show_in_canvas` / `clear_canvas`
-  contract and presentation-resolution table (sibling to SPEC-092).
+  contract and presentation-resolution table (sibling to SPEC-092). Completed
+  by SPEC-101.
 - Open a PLAN entry for Phase 1 implementation; defer Phase 2 / Phase 3 to
-  later PLANs.
+  later PLANs. Completed by PLAN-090.
 - Out-of-band: open a separate research note on the live-preview Phase 3
   substrate (process supervision, port allocation, command whitelist) so
   the security model is debated before any spawn code lands.

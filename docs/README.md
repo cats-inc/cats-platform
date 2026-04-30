@@ -29,7 +29,7 @@ These important documents live in the project root:
 | [release-notes.md](./release-notes.md) | Complete | Operator-facing behavior changes and migration notes |
 | [product-integration-guide.md](./product-integration-guide.md) | Complete | Product registration plus unified engine, materialization, agent/transport vocabulary, conversational-vs-operational projection rules, `MY CATS` platform-home/subset rules, and optional-capability integration rules for parallel Chat/Work/Code delivery |
 | [agent-control-surfaces.md](./agent-control-surfaces.md) | Draft | Parent registry for mandatory structured agent/runtime control surfaces: decision envelopes, tool calls, finalization envelopes, lifecycle events, and evidence events |
-| [tool-calls.md](./tool-calls.md) | Draft | Central registry for Cats-owned agent/runtime tool call contracts, including `declare_artifact` |
+| [tool-calls.md](./tool-calls.md) | Draft | Central registry for Cats-owned agent/runtime tool call contracts, including `declare_artifact`, `show_in_canvas`, and `clear_canvas` |
 | [security-guidelines.md](./security-guidelines.md) | Template | Security policies placeholder inherited from bootstrap |
 | [mcp-config.md](./mcp-config.md) | Partial | Planning notes for the future `cats-runtime` MCP facade used by orchestrators |
 | [services.md](./services.md) | Complete | Service registry, port assignments, and shared service-boundary notes |
@@ -58,6 +58,8 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [PLAN-090](./plans/PLAN-090-cats-code-artifact-canvas-rollout.md)
+- [SPEC-101](./specs/SPEC-101-cats-code-artifact-canvas.md)
 - [PLAN-089](./plans/PLAN-089-platform-authentication-and-google-identity-rollout.md)
 - [SPEC-100](./specs/SPEC-100-platform-authentication-admin-bootstrap-and-google-identity.md)
 - [ADR-096](./decisions/096-adopt-platform-owned-auth-sessions-with-google-as-identity-provider.md)

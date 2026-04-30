@@ -63,6 +63,8 @@ rather than duplicating every validation branch.
 | `work.sop.classify_text_batch` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / worker tool | Work SOP worker | [Work Supervised Tools](#work-supervised-tools) |
 | `work.sop.ask_weak` | Cats Work | Implemented test vertical slice | `product_internal_delegate` / worker tool | Work SOP worker | [Work Supervised Tools](#work-supervised-tools) |
 | `declare_artifact` | Cats Code | Active-session onboarding, submit route, materialization, activity, runtime execution helper, assistant-effect processor, live dispatch persistence, and local tool-result projection wired; live tool-result loop pending | `runtime_tool` first; bridge/user delegates later | Code assistant / runtime bridge / Code UI import flow | [Declare Artifact](#declare_artifact) |
+| `show_in_canvas` | Cats Code | Planned by SPEC-101 / PLAN-090 | `runtime_tool` plus product-internal delegate | Code assistant / Code UI close-open flows | [Artifact Canvas Tools](#artifact-canvas-tools) |
+| `clear_canvas` | Cats Code | Planned by SPEC-101 / PLAN-090 | `runtime_tool` plus product-internal delegate | Code assistant / Code UI close flow | [Artifact Canvas Tools](#artifact-canvas-tools) |
 
 ## Supervised Tool Contract
 
@@ -371,6 +373,77 @@ The source of truth is [SPEC-092 § Error Code Registry](./specs/SPEC-092-code-a
 The scaffolded TypeScript helper currently throws only the context-free
 shape/location/metadata subset from that registry, while finalization may return
 `artifact_claim_without_declaration`.
+
+## Artifact Canvas Tools
+
+These planned Cats Code tools control presentation focus in the right-hand
+Artifact Canvas pane. They are intentionally separate from `declare_artifact`:
+`declare_artifact` records the output; the canvas tools choose what the active
+Code task shows.
+
+| Field | Value |
+|-------|-------|
+| Owning product | Cats Code |
+| Current status | Planned; contract documented by SPEC-101 and rollout tracked by PLAN-090 |
+| First channel | `runtime_tool` |
+| Tool names | `show_in_canvas`, `clear_canvas` |
+| Implementation entry point | Planned: `src/products/code/state/runtimeCanvasFocusExecution.ts` |
+| Related SPEC | [SPEC-101](./specs/SPEC-101-cats-code-artifact-canvas.md) |
+| Related PLAN | [PLAN-090](./plans/PLAN-090-cats-code-artifact-canvas-rollout.md) |
+
+### `show_in_canvas`
+
+Caller-visible input:
+
+```ts
+interface ShowInCanvasInput {
+  artifactId?: string | null;
+  declarationId?: string | null;
+  presentation?: 'auto' | 'iframe' | 'image' | 'pdf' | 'code' | null;
+}
+```
+
+Rules:
+
+- exactly one of `artifactId` or `declarationId` is required;
+- `declarationId` may resolve only to an accepted same-turn
+  `declare_artifact` result;
+- the resolved artifact must be Code-relevant and compatible with the active
+  task/session context;
+- Phase 1 resolves safe preview URL artifacts to `iframe`; image, PDF, and code
+  presentations may return `unsupported` until their viewers land;
+- accepted focus is stored under `CoreTaskRecord.metadata.codeCanvasFocus`.
+
+Result:
+
+```ts
+type ShowInCanvasResult =
+  | {
+      status: 'accepted';
+      artifactId: string;
+      presentationResolved: 'iframe' | 'image' | 'pdf' | 'code' | 'unsupported';
+    }
+  | {
+      status: 'rejected';
+      error: { code: string; message: string; details?: unknown };
+    };
+```
+
+### `clear_canvas`
+
+Caller-visible input is an empty object. Accepted execution removes the active
+Code task's `codeCanvasFocus` metadata and returns:
+
+```ts
+interface ClearCanvasResult {
+  status: 'accepted';
+  cleared: true;
+}
+```
+
+Manual pane close in the renderer must call the same product-internal clear
+delegate. Renderer-only hiding is allowed only as transient UI collapse; it
+must not claim the server focus was cleared.
 
 ---
 
