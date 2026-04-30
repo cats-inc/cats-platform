@@ -52,21 +52,21 @@ function NewChatDraftInner(props: NewChatDraftProps) {
   ) : null;
 
   const isDirectLaneDraft = !(props.allowAddCat ?? true) && Boolean(props.draftDefaultRecipientCatId);
-  const isParallelDraft = (props.parallelTargets?.length ?? 0) >= 2;
   const entryPreset = props.entryPreset ?? 'default';
-  // Chat owns the cross-surface "Pomodoro app" affordance for fresh
-  // +New, +Group, and +Parallel entry routes. Any runtime-backed
-  // `newChatAssist` chips still take precedence inside the shared
-  // composer helperRegion, so this fallback only renders when the
-  // route has no runtime chip source. Keep expanded default compare
-  // drafts excluded; they are no longer one of the dedicated fresh
-  // entry routes the product is asking to decorate.
+  // Chat owns the cross-surface "Pomodoro app" affordance for the three
+  // fresh entry routes (+New / +Group / +Parallel). Behaviour is symmetric
+  // across them: clicking +compare from any of the three keeps the chip
+  // (it just adds another branch — not a mode change). Direct-lane drafts
+  // remain excluded because that surface owns its private cat-led flow.
+  // Runtime-backed `newChatAssist` chips still take precedence inside the
+  // shared composer helperRegion, so this fallback only renders when the
+  // route has no runtime chip source.
   const showsChatStarterChip =
     !isDirectLaneDraft
     && (
       entryPreset === 'group'
       || entryPreset === 'parallel'
-      || (entryPreset === 'default' && !isParallelDraft)
+      || entryPreset === 'default'
     );
 
   const leadingStarterChips = showsChatStarterChip

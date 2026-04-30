@@ -672,6 +672,38 @@ test('parallel draft shows the same Pomodoro helper chip as the default new chat
   assert.doesNotMatch(markup, /Compare how different models would approach the same task\./u);
 });
 
+test('+compare expanded default draft keeps the Pomodoro helper chip — symmetric with +Group/+Parallel', () => {
+  // Regression guard: pressing +compare on a +New chat draft used to hide
+  // the chat-product Pomodoro fallback because the wrapper gated it on
+  // `entryPreset === 'default' && !isParallelDraft`. +Group and +Parallel
+  // didn't gate, so the three presets behaved inconsistently when the
+  // user expanded compare. Lock the symmetric behaviour.
+  const markup = renderToStaticMarkup(
+    <NewChatDraft
+      {...createProps({
+        entryPreset: 'default',
+        parallelTargets: [
+          {
+            provider: 'claude-cli',
+            instance: null,
+            model: 'opus-4.6-1m',
+            modelSelection: null,
+          },
+          {
+            provider: 'codex-cli',
+            instance: null,
+            model: 'codex-max',
+            modelSelection: null,
+          },
+        ],
+      })}
+    />,
+  );
+
+  assert.match(markup, />Pomodoro app</u);
+  assert.match(markup, /draftPromptChip/u);
+});
+
 test('direct-lane draft now uses the profile header without helper chips', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
