@@ -412,6 +412,9 @@ Result:
 type ShowInCanvasResult =
   | {
       status: 'accepted';
+      // Public correlation handle for the Activity audit record. Safe
+      // for transcript / UI surfaces; intentId is never exposed here.
+      activityId: string;
       artifactId: string;
       presentationResolved: 'iframe' | 'image' | 'pdf' | 'code' | 'unsupported';
       iframeSandboxProfile: 'static' | 'scripted-cross-origin' | null;
@@ -436,15 +439,16 @@ transport as [ADR-075](./decisions/075-adopt-push-based-per-entity-state-subscri
 but it is not a generic `subscribeEntity` entity patch. The renderer
 subscribes only for its active `CanvasSurfaceRef`, applies matching
 intents, calls `navigate(targetUrl)`, waits for route commit, and
-acknowledges with `POST /api/canvas/intents/:intentId/ack`. Pending
+acknowledges with `POST /api/canvas/intents/ack` and `{ intentId }`. Pending
 intents have a 30-second TTL and replay only to the same active surface
 subscription while unacknowledged. `intentId` is a server-generated
 unguessable secret used as the ack capability — it does NOT appear in
-the Activity record, projection response, or tool-result payloads, and
-the public correlation handle is `activityId` instead. The ack
+the Activity record, projection response, tool-result payloads, or URL
+path/query, and the public correlation handle is `activityId` instead. The ack
 endpoint requires the same session credentials the renderer used to
-open the subscription and returns the same idempotent 200 body for
-unknown / unauthorized / TTL-expired intent ids. The tool does NOT
+open the subscription and returns the same fixed `200 OK` body
+`{ "status": "ok" }` for unknown / unauthorized / TTL-expired intent
+ids. The tool does NOT
 mutate any product `metadata`.
 
 Core rules (the SPEC-101 source-of-truth covers full validation, the
@@ -501,8 +505,12 @@ table):
   pair: `code_task`, `code_codespace`, `work_item`, `work_project`,
   `work_task`, and `chat_conversation`;
 - Activity top-level anchors are the source of truth for Core-backed
-  surfaces. Metadata surface fields are derived audit convenience
-  fields; if they ever disagree, readers trust the top-level anchor.
+  surface identity. Metadata `surfaceId` / `surfaceAnchorSource` are
+  derived audit convenience fields; if they disagree with the top-level
+  anchor, readers trust the top-level anchor. For task-backed surfaces,
+  `metadata.surfaceKind` (`code_task` vs `work_task`) is a write-time
+  historical snapshot of the task binding, so later task promotion does
+  not rewrite it and is not treated as an anchor conflict.
   `code_codespace` is the only Phase 1 metadata-authoritative surface
   because Core Activity has no codespace anchor;
 - credential-bearing URLs (`user:pass@host`) hard-reject at the canvas
@@ -575,6 +583,8 @@ Result:
 ```ts
 interface ClearCanvasResult {
   status: 'accepted';
+  // Public correlation handle for the Activity audit record.
+  activityId: string;
   // The full URL the renderer was asked to navigate to (the parent
   // surface URL, with /canvas/:artifactId popped). Mirrors the
   // navigate-intent's targetUrl.

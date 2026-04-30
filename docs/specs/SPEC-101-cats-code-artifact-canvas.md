@@ -147,7 +147,7 @@ This spec covers the Phase 1 contract:
    same app push transport as ADR-075 but is not an ADR-075
    entity-state patch. The renderer subscribes for the active surface,
    responds by calling `navigate(targetUrl)`, and acknowledges through
-   `POST /api/canvas/intents/:intentId/ack` after route commit.
+   `POST /api/canvas/intents/ack` with `{ intentId }` after route commit.
 7. The pane shall expose two distinct user controls with different
    semantics:
    - **Close (X)**: renderer-only `navigate()` that pops the
@@ -428,10 +428,10 @@ interface ArtifactCanvasNavigateIntent {
   // base64url-encoded). Treated as a capability token: knowing
   // intentId is sufficient to ack the intent. Therefore intentId
   // MUST NOT appear in any artifact-visible surface — Activity
-  // metadata, projection responses, transcript tool results, log
-  // lines indexed alongside conversations, etc. Use activityId for
-  // anything user-visible / cross-actor; keep intentId on the push
-  // connection and the ack endpoint only.
+  // metadata, projection responses, transcript tool results, URL
+  // paths, log lines indexed alongside conversations, etc. Use
+  // activityId for anything user-visible / cross-actor; keep intentId
+  // on the push connection and the ack request body only.
   intentId: string;
   // Stable Activity record id for audit / transcript correlation.
   // This IS the public correlation handle and may appear anywhere.
@@ -481,7 +481,10 @@ delivery. Because that transport is server-to-renderer, acknowledgements
 are a separate HTTP call:
 
 ```text
-POST /api/canvas/intents/:intentId/ack
+POST /api/canvas/intents/ack
+Content-Type: application/json
+
+{ "intentId": "<server-generated capability token>" }
 ```
 
 If a future bidirectional transport replaces the stream, it may carry an
@@ -501,18 +504,21 @@ the acknowledgement semantics (and authorization rules) stay the same.
   correlation uses `activityId`, which is stable and public;
 - `intentId` flows on exactly two paths: from server out to the
   targeted subscriber's push connection, and from that subscriber back
-  on `POST /api/canvas/intents/:intentId/ack`.
+  in the JSON body of `POST /api/canvas/intents/ack`. It is never placed
+  in the URL path or query string. Ack handlers, access logs, telemetry,
+  and error logs must redact request bodies for this endpoint or log
+  only `activityId` / fixed status fields.
 
 The ack endpoint requires authorization:
 
 - the request MUST carry the same session credentials (cookie / auth
   header) the renderer used to open the render-intent subscription;
 - the server resolves the request's session, looks up the pending
-  intent by `intentId`, and rejects with `403` when the intent's
-  target session does not match. A 403 is NOT a hint that the
-  `intentId` exists — the response body is the same as for an unknown
-  `intentId` (see idempotency rule below) so an unauthorized caller
-  cannot probe;
+  intent by `intentId`, and returns the same fixed `200 OK` response
+  when the intent is unknown, expired, already acked, or owned by a
+  different session. Unauthorized callers never receive a distinct
+  status, body, header, or timing signal that proves whether an
+  `intentId` exists;
 - session-bound auth means an attacker who scrapes `intentId` from a
   log file or memory dump still cannot ack it from another session.
 
@@ -523,15 +529,16 @@ network failure and the server must not let "ack already received" or
 "intent already TTL-expired" look like a hard failure:
 
 - first ack for a live intent: server marks intent as acked, drops it
-  from the replay queue, returns `200 OK`;
+  from the replay queue, returns `200 OK` with the fixed body
+  `{ "status": "ok" }`;
 - second-and-later ack for the same `intentId` (already acked or
-  TTL-expired): server returns `200 OK` with the same body shape. The
+  TTL-expired): server returns the exact same `200 OK` fixed body. The
   renderer cannot tell the difference and does not need to;
 - ack for an unknown / never-issued `intentId`: returns `200 OK` with
-  the same body. This is intentional — combined with session-bound
-  auth, this prevents probing for valid `intentId` values; an
-  unauthorized caller never sees a `404` or `403` distinguishable
-  from a normal accept.
+  the exact same fixed body. This is intentional — combined with
+  session-bound auth, this prevents probing for valid `intentId` values;
+  an unauthorized caller never sees a `404`, `403`, or alternate body
+  distinguishable from a normal accept.
 
 ###### Renderer ack retry policy
 
@@ -628,15 +635,25 @@ by Core anchor fields:
 
 `metadata.surfaceKind`, `metadata.surfaceId`, and
 `metadata.surfaceAnchorSource` are derived audit convenience fields.
-For Core-anchor-backed surfaces, writers must derive them from the
+For Core-anchor-backed surfaces, writers must derive
+`metadata.surfaceId` and `metadata.surfaceAnchorSource` from the
 top-level anchor and reject / fail fast before write if the derived
-surface disagrees with the top-level anchor. Readers resolving a
-conflict must trust the top-level Activity anchor over metadata. The
-`code_task` vs `work_task` distinction is derived from the referenced
-`CoreTaskRecord`'s product binding, not from a free metadata value. The
-only Phase 1 exception is `code_codespace`, which has no top-level Core
-Activity anchor field; there `metadata.surfaceId` is authoritative and
-`surfaceAnchorSource` is `'metadata'`.
+surface identity disagrees with the top-level anchor. Readers resolving
+an identity conflict must trust the top-level Activity anchor over
+metadata.
+
+`metadata.surfaceKind` is different for task-backed surfaces:
+`code_task` vs `work_task` is stamped from the referenced
+`CoreTaskRecord`'s product binding at Activity write time. That value
+is a historical audit snapshot, not a re-derived live projection. A
+later task-binding change can make the current task surface differ from
+the recorded `metadata.surfaceKind`; readers must not treat that as a
+metadata/top-level-anchor conflict because the top-level `taskId`
+cannot encode historical product binding.
+
+The only Phase 1 exception is `code_codespace`, which has no top-level
+Core Activity anchor field; there `metadata.surfaceId` is authoritative
+and `surfaceAnchorSource` is `'metadata'`.
 
 ###### Historical-snapshot rule for `metadata.surfaceKind`
 
@@ -747,7 +764,7 @@ Validation:
 - the caller must be the active Code assistant/session or the authenticated
   owner user;
 - the caller's surface must be an active product surface (Code task,
-  Code codespace, Work item, Work project, or Chat conversation
+  Code codespace, Work item, Work project, Work task, or Chat conversation
   depending on the calling product); calls with no active surface are
   rejected with `artifact_canvas_no_active_surface`;
 - explicit non-`auto` presentation requests that cannot be served against
@@ -766,6 +783,10 @@ Accepted result:
 ```ts
 interface ShowInCanvasAccepted {
   status: 'accepted';
+  // Public correlation handle for the Activity audit record. This is
+  // safe for transcript / UI surfaces and replaces any temptation to
+  // expose intentId.
+  activityId: string;
   artifactId: string;
   presentationResolved: 'iframe' | 'image' | 'pdf' | 'code' | 'unsupported';
   iframeSandboxProfile: 'static' | 'scripted-cross-origin' | null;
@@ -815,6 +836,8 @@ Accepted result:
 ```ts
 interface ClearCanvasAccepted {
   status: 'accepted';
+  // Public correlation handle for the Activity audit record.
+  activityId: string;
   // The URL the renderer was asked to navigate to (the parent surface
   // URL, with the /canvas/:artifactId segment popped). Mirrors the
   // navigate-intent's targetUrl.
@@ -1295,8 +1318,8 @@ reference these codes instead of inventing local aliases.
 | `artifact_canvas_declaration_producer_mismatch` | A declaration with that id exists in the current turn under the caller's scope but under a different producer's `producerKey`. Callers who need to present a foreign-producer declaration must pass `artifactId` instead. |
 | `artifact_canvas_declaration_collision` | The processor has observed accepted `declare_artifact` results sharing the same `(turnId, producerKey, scopeKey, declarationId)` key but resolving to **different** materialized `artifactId` values. This indicates a SPEC-092 idempotency invariant violation upstream and must hard-reject; no Activity record or navigate-intent is emitted. |
 | `artifact_canvas_artifact_not_found` | `artifactId` does not resolve to a canvas-eligible `CoreArtifactRecord`. |
-| `artifact_canvas_artifact_not_anchored` | The resolved artifact is not anchored to the active surface (Code task / Code codespace / Work item / Work project / Chat conversation), per the same anchor rules SPEC-092 uses for declaration. |
-| `artifact_canvas_no_active_surface` | The caller has no active product surface (Code task, Code codespace, Work item, Work project, or Chat conversation). Canvas tools require a surface to compose the navigate-intent target URL against. |
+| `artifact_canvas_artifact_not_anchored` | The resolved artifact is not anchored to the active surface (Code task / Code codespace / Work item / Work project / Work task / Chat conversation), per the same anchor rules SPEC-092 uses for declaration. |
+| `artifact_canvas_no_active_surface` | The caller has no active product surface (Code task, Code codespace, Work item, Work project, Work task, or Chat conversation). Canvas tools require a surface to compose the navigate-intent target URL against. |
 | `artifact_canvas_caller_not_authorized` | The caller is neither the active Code assistant/session nor the authenticated owner user. |
 | `artifact_canvas_presentation_invalid` | `presentation` is not one of `auto`, `iframe`, `image`, `pdf`, `code` (in particular, `'unsupported'` as input is rejected here). |
 | `artifact_canvas_presentation_unsupported` | An **explicit** `iframe` / `image` / `pdf` / `code` request cannot be served against the artifact (no safe inline target, no usable inline summary, etc.). `presentation: 'auto'` never raises this — it accepts and resolves to the `unsupported` pane state instead. |
