@@ -53,26 +53,41 @@ password hashes and session tokens are never stored in plaintext.
 
 ### Phase 2: Server Auth Gate and Local Admin Bootstrap
 
+Tasks 2.1, 2.2, 2.5, 2.6, and 2.7 must land atomically in one PR or behind
+one feature flag. Do not ship middleware without login/status endpoints,
+allowlists, CSRF issuance, and the minimal unauthenticated envelope; do not
+ship login endpoints as the only auth change while protected routes remain
+public.
+
 - [ ] Task 2.1: Add a platform auth route module:
       `/api/auth/status`, `/api/auth/login`, `/api/auth/logout`, and local
-      bootstrap/login helpers.
-- [ ] Task 2.2: Extend setup completion so the local credentials path creates
+      bootstrap/login helpers. The status/bootstrap payload shall expose the
+      Cats synchronizer CSRF token for authenticated sessions.
+- [ ] Task 2.2: Implement synchronizer CSRF validation for mutating
+      authenticated API routes using `X-Cats-CSRF-Token`.
+- [ ] Task 2.3: Extend setup completion so the local credentials path creates
       the first admin account, identity, membership, owner profile update, and
       session in one logical transaction.
-- [ ] Task 2.3: Add the repair flow for existing setup-complete workspaces that
-      have no auth state: require first-admin creation before protected product
-      APIs become available.
-- [ ] Task 2.4: Add platform request middleware before product route dispatch.
-- [ ] Task 2.5: Implement public-route allowlists for pre-setup and post-setup
+- [ ] Task 2.4: Add the repair flow for existing setup-complete workspaces that
+      have missing, unreadable, or corrupt auth state. The route gate must stay
+      engaged and protected product APIs must fail closed during repair.
+- [ ] Task 2.5: Add platform request middleware before product route dispatch.
+- [ ] Task 2.6: Implement public-route allowlists for pre-setup and post-setup
       states.
-- [ ] Task 2.6: Return only a minimal setup/auth bootstrap envelope from
-      unauthenticated app-shell reads.
-- [ ] Task 2.7: Require admin auth for setup reset after setup is complete.
-- [ ] Task 2.8: Add structured `401 unauthenticated` and `403 forbidden`
+- [ ] Task 2.7: Return only a minimal setup/auth bootstrap envelope from
+      unauthenticated app-shell reads, including
+      `auth.providers.google = { enabled, clientId }`.
+- [ ] Task 2.8: Require admin auth for setup reset after setup is complete.
+- [ ] Task 2.9: Add structured `401 unauthenticated` and `403 forbidden`
       responses.
+- [ ] Task 2.10: Add failed-login throttling and lockout for local and Google
+      auth attempts, defaulting to 5 failures followed by at least 30 seconds
+      of lockout with secret-free logging.
 
 **Deliverables**: after setup, unauthenticated API calls to product/runtime
-routes are rejected; local admin can log in and out.
+routes are rejected; missing auth state after setup fails closed into repair;
+local admin can log in and out; mutating authenticated API calls require Cats
+CSRF; repeated invalid logins are throttled.
 
 ### Phase 3: Renderer Setup and Login UX
 
@@ -83,7 +98,10 @@ routes are rejected; local admin can log in and out.
       redirect to `/login` instead of surfacing raw API failures.
 - [ ] Task 3.4: Add logout action in an existing account/settings surface.
 - [ ] Task 3.5: Ensure Vite dev proxy and built server both preserve
-      Set-Cookie / Cookie behavior.
+      Set-Cookie / Cookie behavior. Audit `vite.config.ts` for explicit proxy
+      `changeOrigin` and cookie pass-through settings, including
+      `cookieDomainRewrite` / `cookiePathRewrite` behavior where the app server
+      sets cookie domain or path attributes.
 
 **Deliverables**: a user can create the first local admin, reload the app,
 log out, log back in, and access Chat/Work/Code only while authenticated.
@@ -101,7 +119,7 @@ log out, log back in, and access Chat/Work/Code only while authenticated.
 - [ ] Task 4.5: Add UI fallback messaging for raw LAN-IP / unavailable Google
       origin cases.
 - [ ] Task 4.6: Validate Google CSRF token handling for GIS POST credential
-      submissions.
+      submissions separately from Cats authenticated-API CSRF.
 
 **Deliverables**: Google can create the first admin or log in an existing
 linked account on supported origins; local password remains available.
@@ -110,8 +128,10 @@ linked account on supported origins; local password remains available.
 
 - [ ] Task 5.1: Add `auth` / `principal` to shared route contexts without
       reshaping frozen product contracts.
-- [ ] Task 5.2: Preserve current `actor-owner` behavior for existing writes
-      while making the session principal available to new write paths.
+- [ ] Task 5.2: Preserve only the first admin's explicit `actor-owner` mapping
+      for existing single-owner writes. Later memberships default
+      `coreActorId` to `null`; write paths that need Core actor attribution
+      must fail closed until explicit mapping exists.
 - [ ] Task 5.3: Add first attribution tests for approvals/operator actions or
       another low-risk Core write path.
 - [ ] Task 5.4: Document the follow-up boundary for account management UI and
@@ -153,8 +173,8 @@ operators before implementation is marked complete.
 | `src/app/renderer/App.tsx` | Modify | Route unauthenticated users to `/login` after setup |
 | `src/app/renderer/setup/**` | Modify | Add first-admin local credential and optional Google bootstrap UI |
 | `src/app/renderer/auth/**` | Create | Login screen and auth API client |
-| `src/products/chat/api/setupRoutes.ts` | Modify | Require auth for reset after setup; keep legacy setup route aligned |
-| `src/app/server/platformSetupRoutes.ts` | Modify | Create first admin during platform setup |
+| `src/app/server/platformSetupRoutes.ts` | Modify | Canonical platform setup route; create first admin during platform setup |
+| `src/products/chat/api/setupRoutes.ts` | Audit/Delete or Modify | Legacy setup/reset route; remove if unused, otherwise align with the canonical auth gate and require admin auth after setup |
 | `tests/*auth*.test.*` | Create | Store, route gate, setup/login/logout, and Google verifier coverage |
 | `.env.example` | Modify | Document auth and Google config |
 | `docs/api.md` | Modify | Document auth status and route protection |
@@ -170,6 +190,14 @@ operators before implementation is marked complete.
 - Local admin credentials are required even if Google is configured, because
   Google Web OAuth is a poor fit for raw LAN IP and offline local-first use.
 - Auth state is separate from owner profile and Chat state.
+- Once `setupCompleteAt` exists, auth fails closed even if auth state is
+  missing or unreadable; repair surfaces do not make product APIs public.
+- Session cookies use `SameSite=Lax` so Google credential POST flows are not
+  broken by a stricter default.
+- Authenticated Cats API mutations use synchronizer CSRF tokens. Google
+  credential POST validates the separate GIS `g_csrf_token` contract.
+- Only the first admin maps to `actor-owner`; later memberships require
+  explicit Core actor mapping before actor-attributed writes can proceed.
 - The first rollout should expose principal data to route handlers but avoid a
   broad rewrite of every existing product write path.
 
@@ -179,18 +207,27 @@ operators before implementation is marked complete.
   - password hash/verify rejects wrong password and never exposes plaintext;
   - session creation stores only token hashes and rejects expired/revoked
     sessions;
+  - only the first admin membership receives `coreActorId: 'actor-owner'`;
+  - actor-attributed write helpers fail closed when principal membership has
+    `coreActorId: null`;
+  - login throttling locks out repeated failures and logs without secrets;
   - Google verifier wrapper checks expected claims using injected test payloads.
 - **Integration Tests**:
   - setup incomplete allows setup bootstrap and blocks product APIs;
+  - setup complete with missing/unreadable auth state enters repair and keeps
+    protected APIs closed;
   - setup complete unauthenticated returns `401` for protected APIs;
   - authenticated admin can access app shell, Chat, Work, Core, and runtime
     proxy routes;
   - setup reset requires admin after setup;
+  - mutating authenticated API routes reject missing or mismatched
+    `X-Cats-CSRF-Token`;
   - logout revokes session and clears cookie.
 - **Renderer Tests**:
   - setup shows local credential fields;
   - login route appears after unauthenticated app-shell load;
-  - Google button hides when not configured.
+  - Google button hides when not configured and uses the client ID from the
+    minimal auth/provider envelope when configured.
 - **Manual Testing**:
   - localhost dev with local admin;
   - LAN IP dev with local admin;
@@ -202,11 +239,13 @@ operators before implementation is marked complete.
 | Risk | Impact | Mitigation |
 |------|--------|------------|
 | Auth gate breaks existing tests | High | Add test helpers for authenticated requests; land gate in a dedicated slice |
+| Missing auth state after setup accidentally disables auth | High | Treat `setupCompleteAt` as fail-closed and route only to repair/login/bootstrap surfaces |
+| Local admin login becomes brute-forceable on LAN | High | Add per-address and per-account/provider throttling with default lockout |
 | Google OAuth does not work on LAN IP | Medium | Keep local admin path first-class; hide/fallback Google where unavailable |
 | Cookie behavior differs between Vite proxy and built server | Medium | Add explicit dev and built-server session tests |
 | Password/session local state becomes sensitive | High | Store only salted password hashes and session token hashes; document state reset |
 | Route allowlist accidentally leaves a privileged route public | High | Add static route-policy tests and review runtime/shell/transport routes explicitly |
-| Future multi-user attribution is blocked by first slice shortcuts | Medium | Carry principal in route context from the first implementation even if write paths still map to owner initially |
+| Future multi-user attribution is blocked by first slice shortcuts | Medium | Carry principal in route context and fail closed for `coreActorId: null` instead of mapping every admin to owner |
 
 ## Progress Log
 

@@ -44,9 +44,15 @@ All browser-facing product and runtime-proxy APIs must pass through a shared
 platform auth gate once setup is complete. The gate lives at the platform host,
 before Chat / Work / Code / Core / runtime route dispatch.
 
-The server session is a Cats-owned HttpOnly cookie. The frontend may initiate
-login flows, but the frontend never decides that a user is authenticated or
-authorized by itself.
+The server session is a Cats-owned HttpOnly cookie with `SameSite=Lax` by
+default and `Secure` when Cats is served over HTTPS. Authenticated mutating API
+requests use Cats synchronizer CSRF tokens tied to the server session. Google
+Identity Services credential POST routes are separate: they validate Google's
+`g_csrf_token` before a Cats session exists and do not use the generic
+authenticated-API CSRF header.
+
+The frontend may initiate login flows, but the frontend never decides that a
+user is authenticated or authorized by itself.
 
 ### 2. First-run setup creates the first admin account
 
@@ -73,7 +79,10 @@ The auth model separates these concepts:
   `owner` and `admin`, later `operator` / `member` as Cats Work needs them.
 - **Actor mapping**: the account's platform identity can map to a Core actor
   for tasks, approvals, runs, and audit attribution. The first admin maps to
-  `actor-owner`.
+  `actor-owner`. Later accounts do not silently inherit that mapping:
+  memberships created after the first admin default `coreActorId` to `null`,
+  and write paths that require Core actor attribution must fail closed or
+  require an explicit mapping instead of falling back to `actor-owner`.
 
 This auth state is platform-owned local state. It should not be forced into
 the existing owner profile or Chat state records just to avoid adding a new
@@ -119,11 +128,11 @@ All product data, setup reset, shell helper, runtime proxy, transport, Core,
 Chat, Work, and Code mutation/read APIs require an authenticated session unless
 a later ADR explicitly grants a different ingress model.
 
-If an existing pre-auth workspace already has `setupCompleteAt` but no auth
-state, the platform must enter an admin-auth bootstrap repair state instead of
-continuing to serve protected product APIs publicly. This is a pre-release
-product, so the repair path can require the local operator to create the first
-admin before continuing.
+Once `setupCompleteAt` exists, the auth gate remains engaged even if auth state
+is missing, unreadable, or corrupt. Such workspaces enter an admin-auth
+bootstrap repair state; protected product APIs fail closed instead of becoming
+public. This is a pre-release product, so the repair path can require the
+local operator to create the first admin before continuing.
 
 ### 6. Multi-user support is future-proofed but not fully shipped in v1
 
@@ -131,9 +140,11 @@ The first implementation only needs one owner/admin account to close the LAN
 security gap. The data model and API should still avoid single-user shortcuts
 that would make future Cats Work multi-human sessions difficult.
 
-In particular, API write attribution should be capable of receiving a session
-principal even if existing write paths initially continue to map all owner
-actions to `actor-owner`.
+In particular, API write attribution must receive a session principal and must
+not collapse every authenticated admin to `actor-owner`. Existing single-owner
+write paths may keep the first admin's explicit `actor-owner` mapping, but a
+principal whose membership has `coreActorId: null` must be rejected by writes
+that need Core actor attribution until an explicit mapping exists.
 
 ## Consequences
 
@@ -161,6 +172,8 @@ actions to `actor-owner`.
   origins/redirects, and HTTPS/tunnel setup for non-localhost browser access.
 - Cookies, CSRF protection, and Vite dev proxy behavior must be tested
   carefully so dev and packaged flows behave the same.
+- Login attempts need rate limiting and lockout behavior so LAN access does
+  not become a brute-force surface for local admin credentials.
 
 ### Neutral
 
