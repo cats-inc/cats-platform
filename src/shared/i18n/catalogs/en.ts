@@ -1068,6 +1068,8 @@ export const enCatalog: MessageCatalog = {
   'chat.companionMessageReferenceInaccessibleFallbackDescription':
     'This companion content comes from a different platform-host scope and cannot be opened here.',
   'chat.companionMessageReferenceUnknownCompanionLabel': 'Companion',
+  'chat.companionMessageReferenceUntitledPostTitle': 'Untitled post',
+  'chat.companionMessageReferenceUntitledSourceTitle': 'Untitled companion source',
   'chat.newChatDraft.composerPlaceholder': 'How can I help you today?',
   'chat.newChatDraft.folderActionLabel': 'Choose folder',
   'chat.newChatDraft.groupDraftSelectionLabelSingle':

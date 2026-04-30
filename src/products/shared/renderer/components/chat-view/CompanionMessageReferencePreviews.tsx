@@ -403,7 +403,9 @@ function renderPreviewCard(
       data-availability={preview.availability}
     >
       <div className="companionReferenceCardHeader">
-        <span className="companionReferenceCardTitle">{preview.title}</span>
+        <span className="companionReferenceCardTitle">
+          {resolvePreviewTitle(preview, t)}
+        </span>
         <span className="companionReferenceCardCat">{preview.catName}</span>
       </div>
       {preview.subtitle ? (
@@ -446,4 +448,17 @@ function labelForAvailability(
 
 function capitalize(value: string): string {
   return value.length === 0 ? value : value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function resolvePreviewTitle(
+  preview: CompanionContentPreview,
+  t: (key: keyof typeof messageKeys) => string,
+): string {
+  if (preview.generatedTitleKind === 'post') {
+    return t(messageKeys.chatCompanionMessageReferenceUntitledPostTitle);
+  }
+  if (preview.generatedTitleKind === 'source') {
+    return t(messageKeys.chatCompanionMessageReferenceUntitledSourceTitle);
+  }
+  return preview.title;
 }

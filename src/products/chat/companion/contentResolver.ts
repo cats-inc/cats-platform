@@ -23,6 +23,7 @@ export interface CompanionContentPreview {
   availability: CompanionContentAvailability;
   fallbackReason: CompanionContentAvailability | null;
   title: string;
+  generatedTitleKind: 'post' | 'source' | null;
   subtitle: string | null;
   description: string | null;
   thumbnailUrl: string | null;
@@ -84,6 +85,7 @@ export async function resolveCompanionContentReference(
       reference: input.reference,
       availability: 'available',
       fallbackReason: null,
+      generatedTitleKind: null,
       title: lookupResult.preview.title,
       subtitle: lookupResult.preview.subtitle ?? null,
       description: lookupResult.preview.description ?? null,
@@ -112,6 +114,7 @@ function buildInaccessiblePreview(
     reference,
     availability: 'inaccessible',
     fallbackReason: 'inaccessible',
+    generatedTitleKind: null,
     title: '',
     subtitle: null,
     description: '',
@@ -134,6 +137,7 @@ function buildFallbackPreview(input: {
     reference: input.reference,
     availability: input.availability,
     fallbackReason: input.availability,
+    generatedTitleKind: null,
     title: input.fallback?.title ?? '',
     subtitle: input.fallback?.subtitle ?? null,
     description: input.fallback?.description ?? null,

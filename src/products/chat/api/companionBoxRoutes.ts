@@ -396,7 +396,8 @@ async function handleResolveCompanionContentReference(
           return {
             status: 'available',
             preview: {
-              title: match.title ?? '(Untitled post)',
+              title: match.title ?? '',
+              generatedTitleKind: match.title ? null : 'post',
               subtitle: null,
               description: match.content || null,
               thumbnailUrl: null,
@@ -413,7 +414,8 @@ async function handleResolveCompanionContentReference(
         return {
           status: 'available',
           preview: {
-            title: match.title ?? match.originalFileName ?? '(Untitled)',
+            title: match.title ?? match.originalFileName ?? '',
+            generatedTitleKind: match.title || match.originalFileName ? null : 'source',
             subtitle: null,
             description: match.ownerNote ?? match.textExcerpt ?? null,
             thumbnailUrl: null,

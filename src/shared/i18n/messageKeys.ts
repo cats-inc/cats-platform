@@ -1068,6 +1068,10 @@ export const messageKeys = {
     'chat.companionMessageReferenceInaccessibleFallbackDescription',
   chatCompanionMessageReferenceUnknownCompanionLabel:
     'chat.companionMessageReferenceUnknownCompanionLabel',
+  chatCompanionMessageReferenceUntitledPostTitle:
+    'chat.companionMessageReferenceUntitledPostTitle',
+  chatCompanionMessageReferenceUntitledSourceTitle:
+    'chat.companionMessageReferenceUntitledSourceTitle',
   chatNewChatDraftBranchPolicyWorkspaceWorktree: 'chat.newChatDraft.branchPolicyWorkspaceWorktree',
   chatNewChatDraftBranchPolicyWorkspaceSource: 'chat.newChatDraft.branchPolicyWorkspaceSource',
   chatNewChatDraftBranchPolicyWorkspaceSandbox: 'chat.newChatDraft.branchPolicyWorkspaceSandbox',

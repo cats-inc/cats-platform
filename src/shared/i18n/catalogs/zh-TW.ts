@@ -1034,6 +1034,8 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.companionMessageReferenceInaccessibleFallbackDescription':
     '此 Companion 內容位於不同的平台主機範圍，無法在此開啟。',
   'chat.companionMessageReferenceUnknownCompanionLabel': 'Companion',
+  'chat.companionMessageReferenceUntitledPostTitle': '未命名貼文',
+  'chat.companionMessageReferenceUntitledSourceTitle': '未命名 Companion 來源',
   'chat.newChatDraft.composerPlaceholder': '我可以怎麼幫你？',
   'chat.newChatDraft.folderActionLabel': '選擇資料夾',
   'chat.newChatDraft.groupDraftSelectionLabelSingle':
