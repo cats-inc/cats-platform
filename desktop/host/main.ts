@@ -204,6 +204,7 @@ let latestDesktopStartupPreferences: DesktopStartupPreferences = {
 };
 let activeScreenshotOverlaySession: DesktopScreenshotOverlaySession | null = null;
 let voiceCaptureController: DesktopVoiceCaptureController | null = null;
+const RUNTIME_SETUP_STATE_TIMEOUT_MS = 2_000;
 const RUNTIME_SETUP_SCAN_TIMEOUT_MS = 30_000;
 
 interface ProductBootstrapDiagnosticsPayload {
@@ -443,6 +444,7 @@ function normalizeRuntimeHealthPayload(
         status: payload.status,
         summary: payload.summary,
       },
+    startup: 'startup' in payload ? payload.startup : undefined,
     providers: 'providers' in payload ? payload.providers : undefined,
   };
 }
@@ -999,6 +1001,24 @@ async function fetchWithTimeout(
   }
 }
 
+async function fetchJsonWithTimeout<T>(
+  url: string,
+  init: RequestInit,
+  timeoutMs: number,
+): Promise<T> {
+  const response = await fetchWithTimeout(url, {
+    ...init,
+    headers: {
+      accept: 'application/json',
+      ...(init.headers ?? {}),
+    },
+  }, timeoutMs);
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} while fetching ${url}.`);
+  }
+  return await response.json() as T;
+}
+
 function createUnknownRuntimeCliInventoryProbe(): RuntimeCliInventoryProbe {
   return { scan: null };
 }
@@ -1007,8 +1027,11 @@ function shouldRefreshRuntimeCliInventoryProbe(
   probe: RuntimeCliInventoryProbe | null,
   options: { triggerScanIfMissing?: boolean },
 ): boolean {
+  if (options.triggerScanIfMissing !== true) {
+    return false;
+  }
   if (!probe?.scan) {
-    return options.triggerScanIfMissing === true;
+    return true;
   }
   return !probe.scan.providers.some((provider) => provider.available === true);
 }
@@ -1020,7 +1043,9 @@ async function fetchRuntimeCliInventoryProbe(
   let probe: RuntimeCliInventoryProbe | null = null;
   if (!options.forceRescan) {
     try {
-      probe = await fetchJson<RuntimeCliInventoryProbe>(`${baseUrl}/setup-state`);
+      probe = await fetchJsonWithTimeout<RuntimeCliInventoryProbe>(`${baseUrl}/setup-state`, {
+        method: 'GET',
+      }, RUNTIME_SETUP_STATE_TIMEOUT_MS);
     } catch {
       return null;
     }
@@ -1096,10 +1121,6 @@ async function refreshBootstrapSnapshot(
   const effectivePersistedSetup = persistedSetup
     ?? await readPersistedSetupCompletionState(hostConfig.paths.appStatePath);
   latestPersistedSetupState = effectivePersistedSetup;
-  const skipStartupProviderReprobe = Boolean(
-    effectivePersistedSetup.setupCompleteAt || effectivePersistedSetup.productSetupCompleted,
-  );
-
   const [
     appHealth,
     appShell,
@@ -1110,17 +1131,11 @@ async function refreshBootstrapSnapshot(
   ] = await Promise.allSettled([
     fetchJson<AppHealthPayload>(`${hostConfig.appBaseUrl}/health`),
     fetchJson<AppShellPayload>(`${hostConfig.appBaseUrl}/api/app-shell`),
-    fetchJson<RuntimeDiagnosticsHealthPayload | ReadinessPayload>(
-      skipStartupProviderReprobe
-        ? `${hostConfig.runtimeBaseUrl}/health`
-        : `${hostConfig.runtimeBaseUrl}/diagnostics/health`,
-    ),
-    skipStartupProviderReprobe
-      ? Promise.resolve<RuntimeProviderDiagnosticsPayload | null>(null)
-      : fetchJson<RuntimeProviderDiagnosticsPayload>(`${hostConfig.runtimeBaseUrl}/diagnostics/providers`),
+    fetchJson<RuntimeDiagnosticsHealthPayload | ReadinessPayload>(`${hostConfig.runtimeBaseUrl}/health`),
+    Promise.resolve<RuntimeProviderDiagnosticsPayload | null>(null),
     fetchJson<ProductBootstrapDiagnosticsPayload>(`${hostConfig.appBaseUrl}/api/platform/bootstrap-diagnostics`),
     fetchRuntimeCliInventoryProbe(hostConfig.runtimeBaseUrl, {
-      triggerScanIfMissing: !skipStartupProviderReprobe,
+      triggerScanIfMissing: false,
     }),
   ]);
 
@@ -1298,11 +1313,13 @@ async function bootstrapDesktopHost(restartServices = false): Promise<DesktopBoo
       persistedSetupCompleteAt: persistedSetup?.setupCompleteAt ?? null,
       persistedProductSetupCompleted: persistedSetup?.productSetupCompleted ?? false,
     }));
-    const preAuditSnapshot = publishSnapshot(await refreshBootstrapSnapshot(persistedSetup));
-    await maybePrimeSetupAudit(preAuditSnapshot, persistedSetup);
-
     const snapshot = publishSnapshot(await refreshBootstrapSnapshot(persistedSetup));
     await maybeOpenApp(snapshot);
+    void maybePrimeSetupAudit(snapshot, persistedSetup).catch((error) => {
+      process.stderr.write(
+        `Failed to prime desktop setup audit in background: ${error instanceof Error ? error.message : String(error)}\n`,
+      );
+    });
     return snapshot;
   })().catch((error) => {
     const message = error instanceof Error ? error.message : String(error);

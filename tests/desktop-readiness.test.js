@@ -173,6 +173,43 @@ test('desktop bootstrap stays in ready_for_setup until setup is completed', () =
   assert.equal(snapshot.hostStatePath, 'cats-platform/.desktop/state.json');
 });
 
+test('desktop bootstrap opens setup before setup without waiting for provider diagnostics', () => {
+  const snapshot = buildDesktopBootstrapSnapshot({
+    config: desktopConfig,
+    services: [
+      readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
+    ],
+    appHealth: {
+      status: 'ok',
+      summary: 'Cats app server is ready to accept requests.',
+      readiness: { ready: true, phase: 'ready' },
+      runtime: { reachable: true },
+    },
+    appShell: {
+      setupCompleteAt: null,
+    },
+    runtimeHealth: {
+      status: 'degraded',
+      summary: 'Runtime is in bootstrap mode. Provider setup is required before normal operation.',
+      readiness: {
+        ready: true,
+        phase: 'ready',
+        bootstrapRequired: true,
+      },
+      runtime: {
+        status: 'degraded',
+        summary: 'Runtime is in bootstrap mode.',
+      },
+    },
+    providerDiagnostics: null,
+  });
+
+  assert.equal(snapshot.phase, 'ready_for_setup');
+  assert.equal(snapshot.app.entryPath, '/setup');
+  assert.ok(snapshot.actions.some((action) => action.id === 'open_setup'));
+});
+
 test('desktop bootstrap opens chat when setup and provider readiness are complete', () => {
   const snapshot = buildDesktopBootstrapSnapshot({
     config: desktopConfig,
@@ -268,6 +305,49 @@ test('desktop bootstrap opens chat after setup without requiring startup provide
   assert.equal(snapshot.app.entryPath, '/');
   assert.equal(snapshot.runtime.providerSummary, null);
   assert.match(snapshot.summary, /without a startup provider reprobe/i);
+});
+
+test('desktop bootstrap returns to setup after setup if runtime bootstrap is still required', () => {
+  const snapshot = buildDesktopBootstrapSnapshot({
+    config: desktopConfig,
+    services: [
+      readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
+    ],
+    appHealth: {
+      status: 'ok',
+      summary: 'Cats app server is ready to accept requests.',
+      readiness: { ready: true, phase: 'ready' },
+      runtime: { reachable: true },
+    },
+    appShell: {
+      setupCompleteAt: '2026-03-31T04:14:48.267Z',
+    },
+    runtimeHealth: {
+      status: 'degraded',
+      summary: 'Runtime is in bootstrap mode. Provider setup is required before normal operation.',
+      readiness: {
+        ready: true,
+        phase: 'ready',
+        bootstrapRequired: true,
+      },
+      startup: {
+        bootstrapRequired: true,
+      },
+      runtime: {
+        status: 'degraded',
+        summary: 'Runtime is in bootstrap mode.',
+      },
+    },
+    providerDiagnostics: null,
+  });
+
+  assert.equal(snapshot.phase, 'ready_for_setup');
+  assert.equal(snapshot.status, 'degraded');
+  assert.equal(snapshot.app.entryPath, '/');
+  assert.ok(snapshot.actions.some((action) => action.id === 'open_setup'));
+  assert.equal(snapshot.actions.some((action) => action.id === 'open_chat'), false);
+  assert.match(snapshot.summary, /setup is still required/i);
 });
 
 test('desktop bootstrap surfaces packaged setup restart recovery as an install issue', () => {

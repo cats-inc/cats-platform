@@ -65,6 +65,9 @@ export interface RuntimeDiagnosticsHealthPayload {
     status?: string;
     summary?: string;
   };
+  startup?: {
+    bootstrapRequired?: boolean;
+  };
   providers?: {
     summary?: DesktopProviderSummary;
   };
@@ -693,7 +696,10 @@ export function buildDesktopBootstrapSnapshot(
   const hasRuntimeHealth = Boolean(input.runtimeHealth);
   const hasAppHealth = Boolean(input.appHealth);
   const hasAppShell = Boolean(input.appShell);
-  const requiresProviderDiagnostics = !setupCompleted;
+  const runtimeBootstrapRequired = Boolean(
+    input.runtimeHealth?.readiness?.bootstrapRequired === true
+      || input.runtimeHealth?.startup?.bootstrapRequired === true,
+  );
   const cliMissing = Boolean(
     input.cliInventory
       && input.cliInventory.source === 'runtime'
@@ -711,7 +717,7 @@ export function buildDesktopBootstrapSnapshot(
     phase = 'starting_services';
     status = 'degraded';
     summary = 'Starting local Cats services and waiting for readiness.';
-  } else if (!hasAppHealth || !hasAppShell || (requiresProviderDiagnostics && !input.providerDiagnostics)) {
+  } else if (!hasAppHealth || !hasAppShell) {
     phase = 'checking_prerequisites';
     status = 'degraded';
     summary = 'Local services are ready. Running prerequisite checks.';
@@ -740,6 +746,10 @@ export function buildDesktopBootstrapSnapshot(
     phase = 'needs_prerequisites';
     status = 'unavailable';
     summary = 'Cats Runtime is unavailable. Open Cats to recover in-app once the runtime is back.';
+  } else if (runtimeBootstrapRequired) {
+    phase = 'ready_for_setup';
+    status = 'degraded';
+    summary = 'Cats Runtime setup is still required. Continue into setup.';
   } else if (!input.providerDiagnostics || hasReadyProviderPath(providerSummary)) {
     phase = 'ready_for_chat';
     status = normalizeHealthStatus(input.runtimeHealth?.status)
