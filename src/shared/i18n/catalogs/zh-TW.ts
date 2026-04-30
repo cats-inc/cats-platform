@@ -995,6 +995,15 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.approvalRequester': '指揮者',
   'shared.approvalSummaryFallback': '請先確認此次派工，確認後再繼續。',
   'shared.approvalRequestedBy': '提交者：{requestedBy}',
+  'shared.catInspectTitle': '貓咪預設',
+  'shared.catInspectClose': '關閉',
+  'shared.catInspectBossLabel': '主控',
+  'shared.catInspectProviderLabel': '供應商',
+  'shared.catInspectInstanceLabel': '實例',
+  'shared.catInspectModelLabel': '模型',
+  'shared.catInspectSkillProfileLabel': '技能檔案',
+  'shared.catInspectSharedPresetDescription':
+    '這是共用的貓咪預設。這裡的變更會影響所有使用此貓咪的對話。',
 };
 
 export default zhTWCatalog;

@@ -1029,6 +1029,15 @@ export const enCatalog: MessageCatalog = {
   'shared.approvalSummaryFallback':
     'Review this dispatch before Cats continue.',
   'shared.approvalRequestedBy': 'Requested by {requestedBy}',
+  'shared.catInspectTitle': 'Cat Preset',
+  'shared.catInspectClose': 'Close',
+  'shared.catInspectBossLabel': 'Boss',
+  'shared.catInspectProviderLabel': 'Provider',
+  'shared.catInspectInstanceLabel': 'Instance',
+  'shared.catInspectModelLabel': 'Model',
+  'shared.catInspectSkillProfileLabel': 'Skill Profile',
+  'shared.catInspectSharedPresetDescription':
+    'This is a shared Cat preset. Changes here would affect all threads using this Cat.',
 };
 
 export default enCatalog;

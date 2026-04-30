@@ -991,6 +991,14 @@ export const messageKeys = {
   sharedApprovalRequester: 'shared.approvalRequester',
   sharedApprovalSummaryFallback: 'shared.approvalSummaryFallback',
   sharedApprovalRequestedBy: 'shared.approvalRequestedBy',
+  sharedCatInspectTitle: 'shared.catInspectTitle',
+  sharedCatInspectClose: 'shared.catInspectClose',
+  sharedCatInspectBossLabel: 'shared.catInspectBossLabel',
+  sharedCatInspectProviderLabel: 'shared.catInspectProviderLabel',
+  sharedCatInspectInstanceLabel: 'shared.catInspectInstanceLabel',
+  sharedCatInspectModelLabel: 'shared.catInspectModelLabel',
+  sharedCatInspectSkillProfileLabel: 'shared.catInspectSkillProfileLabel',
+  sharedCatInspectSharedPresetDescription: 'shared.catInspectSharedPresetDescription',
 } as const;
 
 export type MessageKey = keyof typeof messageKeys;

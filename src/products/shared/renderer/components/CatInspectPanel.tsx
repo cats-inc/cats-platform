@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 
 import { catInitials } from '../workspaceChatUtils.js';
 import { buildExecutionTargetSummary } from './ExecutionTarget.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
 
 export interface CatInspectTarget {
   id: string;
@@ -22,6 +23,7 @@ export interface CatInspectPanelProps {
 
 export function CatInspectPanel({ cat, onClose }: CatInspectPanelProps) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const { t } = useI18n();
 
   useEffect(() => {
     function onClickOutside(event: MouseEvent): void {
@@ -43,12 +45,12 @@ export function CatInspectPanel({ cat, onClose }: CatInspectPanelProps) {
   return (
     <div className="catInspectPanel" ref={panelRef}>
       <div className="catInspectPanelHeader">
-        <strong>Cat Preset</strong>
+        <strong>{t('sharedCatInspectTitle')}</strong>
         <button
           type="button"
           className="chromeButton"
           onClick={onClose}
-          aria-label="Close"
+          aria-label={t('sharedCatInspectClose')}
         >
           &times;
         </button>
@@ -65,36 +67,36 @@ export function CatInspectPanel({ cat, onClose }: CatInspectPanelProps) {
           </div>
           <div>
             <strong>{cat.name}</strong>
-            {cat.isBoss ? <span className="catInspectBadge">Boss</span> : null}
+            {cat.isBoss ? <span className="catInspectBadge">{t('sharedCatInspectBossLabel')}</span> : null}
           </div>
         </div>
 
         <div className="catInspectField">
-          <span className="catInspectFieldLabel">Provider</span>
+          <span className="catInspectFieldLabel">{t('sharedCatInspectProviderLabel')}</span>
           <span>{executionSummary.providerLabel}</span>
         </div>
 
         {executionSummary.instanceLabel ? (
           <div className="catInspectField">
-            <span className="catInspectFieldLabel">Instance</span>
+            <span className="catInspectFieldLabel">{t('sharedCatInspectInstanceLabel')}</span>
             <span>{executionSummary.instanceLabel}</span>
           </div>
         ) : null}
 
         <div className="catInspectField">
-          <span className="catInspectFieldLabel">Model</span>
+          <span className="catInspectFieldLabel">{t('sharedCatInspectModelLabel')}</span>
           <span>{executionSummary.modelLabel}</span>
         </div>
 
         {cat.skillProfile ? (
           <div className="catInspectField">
-            <span className="catInspectFieldLabel">Skill Profile</span>
+            <span className="catInspectFieldLabel">{t('sharedCatInspectSkillProfileLabel')}</span>
             <span>{cat.skillProfile}</span>
           </div>
         ) : null}
 
         <p className="catInspectNote">
-          This is a shared Cat preset. Changes here would affect all threads using this Cat.
+          {t('sharedCatInspectSharedPresetDescription')}
         </p>
       </div>
     </div>
