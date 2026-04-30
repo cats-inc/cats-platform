@@ -14,6 +14,9 @@ export const messageKeys = {
   appHostSectionPackage: 'appHost.sectionPackage',
   appHostSectionStatus: 'appHost.sectionStatus',
   appHostSectionPublisher: 'appHost.sectionPublisher',
+  sharedProductRendererErrorEyebrow: 'shared.productRenderer.errorEyebrow',
+  sharedProductRendererChatUnavailableTitle:
+    'shared.productRenderer.chatUnavailableTitle',
   lobbyAccountSettingsAriaLabel: 'lobby.accountSettingsAriaLabel',
   lobbyOpenAccountSettings: 'lobby.openAccountSettings',
   lobbyRuntimeStatusLabel: 'lobby.runtimeStatusLabel',
@@ -22,6 +25,13 @@ export const messageKeys = {
   lobbyAppsEmptyState: 'lobby.appsEmptyState',
   lobbyContinueText: 'lobby.continueText',
   lobbyOpenEntry: 'lobby.openEntry',
+  lobbyGreetingChooseSurface: 'lobby.greeting.chooseSurface',
+  lobbyGreetingHomeReady: 'lobby.greeting.homeReady',
+  lobbyGreetingPickProduct: 'lobby.greeting.pickProduct',
+  lobbyGreetingEverythingStaged: 'lobby.greeting.everythingStaged',
+  lobbyGreetingOpenSurface: 'lobby.greeting.openSurface',
+  lobbyGreetingAwake: 'lobby.greeting.awake',
+  lobbyGreetingContinue: 'lobby.greeting.continue',
   settingsGeneralProfileTitle: 'settings.general.profileTitle',
   settingsGeneralProfileDescription: 'settings.general.profileDescription',
   settingsGeneralAvatarLabel: 'settings.general.avatarLabel',
@@ -1013,6 +1023,7 @@ export const messageKeys = {
   chatCompareCardsNextCardAriaLabel: 'chat.compareCards.nextCardAriaLabel',
   chatCompareCardsPaginationItemAriaLabel: 'chat.compareCards.paginationItemAriaLabel',
   chatTopBarToggleSidePanelAriaLabel: 'chat.topBar.toggleSidePanelAriaLabel',
+  chatBootLoadingAria: 'chat.boot.loadingAria',
   chatNewChatDraftSidePanelParticipantsCatsTitle: 'chat.newChatDraft.participants.catsTitle',
   chatNewChatDraftSidePanelParticipantsGroupTitle: 'chat.newChatDraft.participants.groupTitle',
   chatNewChatDraftSidePanelParticipantsEmptyState:
@@ -1020,9 +1031,18 @@ export const messageKeys = {
   chatNewChatDraftPomodoroChipLabel: 'chat.newChatDraft.pomodoroChipLabel',
   chatNewChatDraftPomodoroPrompt: 'chat.newChatDraft.pomodoroPrompt',
   chatNewChatDraftSidePanelExecutionTitle: 'chat.newChatDraft.execution.title',
+  chatNewChatDraftSidePanelExecutionActionLabel:
+    'chat.newChatDraft.execution.actionLabel',
   chatNewChatDraftSidePanelExecutionEmptyState: 'chat.newChatDraft.execution.emptyState',
   chatNewChatDraftSidePanelFolderTitle: 'chat.newChatDraft.folder.title',
   chatNewChatDraftSidePanelFolderEmptyState: 'chat.newChatDraft.folder.emptyState',
+  chatNewChatDraftDefaultGreeting: 'chat.newChatDraft.defaultGreeting',
+  chatNewChatDraftGreetingNap: 'chat.newChatDraft.greeting.nap',
+  chatNewChatDraftGreetingKeyboard: 'chat.newChatDraft.greeting.keyboard',
+  chatNewChatDraftGreetingLetsGo: 'chat.newChatDraft.greeting.letsGo',
+  chatNewChatDraftGreetingStandby: 'chat.newChatDraft.greeting.standby',
+  chatNewChatDraftGreetingTaskReady: 'chat.newChatDraft.greeting.taskReady',
+  chatNewChatDraftGreetingOnDuty: 'chat.newChatDraft.greeting.onDuty',
   chatNewChatDraftComposerPlaceholder: 'chat.newChatDraft.composerPlaceholder',
   chatNewChatDraftFolderActionLabel: 'chat.newChatDraft.folderActionLabel',
   chatNewChatDraftChooseCodespaceActionLabel:
@@ -1268,6 +1288,15 @@ export const messageKeys = {
   chatNewChatDraftSendAllChatsAria: 'chat.newChatDraft.sendAllChatsAria',
   chatNewChatDraftStartVoiceInputAria: 'chat.newChatDraft.startVoiceInputAria',
   chatNewChatDraftStopVoiceInputAria: 'chat.newChatDraft.stopVoiceInputAria',
+  chatDraftCompareCarouselAriaLabel: 'chat.draftCompareCarousel.ariaLabel',
+  chatDraftCompareCarouselPreviousBranchAria:
+    'chat.draftCompareCarousel.previousBranchAria',
+  chatDraftCompareCarouselNextBranchAria:
+    'chat.draftCompareCarousel.nextBranchAria',
+  chatDraftCompareCarouselSelectBranchAria:
+    'chat.draftCompareCarousel.selectBranchAria',
+  chatDraftCompareCarouselGoToBranchAria:
+    'chat.draftCompareCarousel.goToBranchAria',
   chatComposerAreaAttachAria: 'chat.composerArea.attachAria',
   chatComposerAreaPlaceholderParallelWaiting: 'chat.composerArea.placeholderParallelWaiting',
   chatComposerAreaPlaceholderReply: 'chat.composerArea.placeholderReply',

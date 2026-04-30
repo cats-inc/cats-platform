@@ -75,7 +75,7 @@ export function PlatformLobby({
 }) {
   const { t } = useI18n();
   const navigate = useNavigate();
-  const [fallbackGreeting] = useState(pickLobbyGreeting);
+  const [fallbackGreeting] = useState(() => pickLobbyGreeting(null, Math.random, t));
   const entries = buildPlatformLobbyEntries({
     products: envelope.products,
     lastUsedSurface: envelope.lastProductSurface ?? null,

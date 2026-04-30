@@ -6,6 +6,9 @@ import {
   type ReactNode,
 } from 'react';
 
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
+
 export interface DraftCompareCarouselCard {
   /** Stable identity so React/CSS transitions animate the right element. */
   id: string;
@@ -39,9 +42,12 @@ export function DraftCompareCarousel({
   activeIndex,
   onActiveIndexChange,
   disabled = false,
-  ariaLabel = 'Compare branch carousel',
+  ariaLabel,
 }: DraftCompareCarouselProps) {
+  const { t } = useI18n();
   const total = cards.length;
+  const resolvedAriaLabel = ariaLabel
+    ?? t(messageKeys.chatDraftCompareCarouselAriaLabel);
 
   const goPrev = useCallback(() => {
     if (disabled) return;
@@ -76,7 +82,7 @@ export function DraftCompareCarousel({
     <div
       className="draftCompareCarousel"
       role="region"
-      aria-label={ariaLabel}
+      aria-label={resolvedAriaLabel}
       onKeyDown={onKeyDown}
     >
       <div className="draftCompareCarouselTrack">
@@ -85,7 +91,7 @@ export function DraftCompareCarousel({
           className="draftCompareCarouselNav draftCompareCarouselNavPrev"
           onClick={goPrev}
           disabled={disabled || activeIndex === 0}
-          aria-label="Previous branch"
+          aria-label={t(messageKeys.chatDraftCompareCarouselPreviousBranchAria)}
         >
           <svg
             width="18"
@@ -122,7 +128,7 @@ export function DraftCompareCarousel({
           className="draftCompareCarouselNav draftCompareCarouselNavNext"
           onClick={goNext}
           disabled={disabled || activeIndex >= total - 1}
-          aria-label="Next branch"
+          aria-label={t(messageKeys.chatDraftCompareCarouselNextBranchAria)}
         >
           <svg
             width="18"
@@ -139,7 +145,10 @@ export function DraftCompareCarousel({
         </button>
       </div>
 
-      <div className="draftCompareCarouselDots" aria-label="Select branch">
+      <div
+        className="draftCompareCarouselDots"
+        aria-label={t(messageKeys.chatDraftCompareCarouselSelectBranchAria)}
+      >
         {cards.map((card, index) => (
           <button
             key={card.id}
@@ -147,7 +156,9 @@ export function DraftCompareCarousel({
             className={`draftCompareCarouselDot${index === activeIndex ? ' draftCompareCarouselDotActive' : ''}`}
             onClick={() => onActiveIndexChange(index)}
             disabled={disabled}
-            aria-label={`Go to branch ${index + 1}`}
+            aria-label={t(messageKeys.chatDraftCompareCarouselGoToBranchAria, {
+              branchIndex: `${index + 1}`,
+            })}
             aria-current={index === activeIndex ? 'true' : undefined}
           />
         ))}

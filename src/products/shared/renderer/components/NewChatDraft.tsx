@@ -29,6 +29,20 @@ import { DraftComposerStack } from './DraftComposerStack.js';
 import { WorkspaceNewChatDraftTargetSlot } from './WorkspaceNewChatDraftTargetSlot.js';
 import { FolderBrowserContent } from './FolderBrowser.js';
 import { ProviderModelFields } from './ProviderModelFields.js';
+import {
+  createTranslator,
+  messageKeys,
+  type MessageInterpolationValues,
+  type MessageKey,
+} from '../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+
+type WorkspaceNewChatDraftTranslator = (
+  key: MessageKey,
+  values?: MessageInterpolationValues,
+) => string;
+
+const defaultWorkspaceNewChatDraftTranslator = createTranslator('en');
 
 interface ComposerCatStackProps {
   cats: AppShellPayload['chat']['cats'];
@@ -118,53 +132,59 @@ export type WorkspaceNewChatDraftSectionId =
   | 'cwd'
   | (string & {});
 
-const defaultWorkspaceNewChatDraftCopy: ResolvedWorkspaceNewChatDraftCopy = {
-  greeting: 'Meow. Ready when you are.',
-  composer: {
-    placeholder: 'How can I help you today?',
-  },
-  sidePanel: {
-    title: 'New Chat Setup',
-  },
-  participants: {
-    sectionTitle: 'Cats',
-    emptyState: 'No cats are available yet.',
-  },
-  execution: {
-    sectionTitle: 'AI Reply',
-    actionLabel: 'Choose AI reply',
-    emptyState: 'No AI reply setup yet.',
-  },
-  folder: {
-    sectionTitle: 'Folder',
-    actionLabel: 'Choose folder',
-    emptyState: 'No folder selected yet.',
-  },
-};
+function buildDefaultWorkspaceNewChatDraftCopy(
+  t: WorkspaceNewChatDraftTranslator = defaultWorkspaceNewChatDraftTranslator,
+): ResolvedWorkspaceNewChatDraftCopy {
+  return {
+    greeting: t(messageKeys.chatNewChatDraftDefaultGreeting),
+    composer: {
+      placeholder: t(messageKeys.chatNewChatDraftComposerPlaceholder),
+    },
+    sidePanel: {
+      title: t(messageKeys.chatNewChatDraftSidePanelTitle),
+    },
+    participants: {
+      sectionTitle: t(messageKeys.chatNewChatDraftSidePanelParticipantsCatsTitle),
+      emptyState: t(messageKeys.chatNewChatDraftSidePanelParticipantsEmptyState),
+    },
+    execution: {
+      sectionTitle: t(messageKeys.chatNewChatDraftSidePanelExecutionTitle),
+      actionLabel: t(messageKeys.chatNewChatDraftSidePanelExecutionActionLabel),
+      emptyState: t(messageKeys.chatNewChatDraftSidePanelExecutionEmptyState),
+    },
+    folder: {
+      sectionTitle: t(messageKeys.chatNewChatDraftSidePanelFolderTitle),
+      actionLabel: t(messageKeys.chatNewChatDraftFolderActionLabel),
+      emptyState: t(messageKeys.chatNewChatDraftSidePanelFolderEmptyState),
+    },
+  };
+}
 
 export function resolveWorkspaceNewChatDraftCopy(
   copy: WorkspaceNewChatDraftCopy | undefined,
+  t: WorkspaceNewChatDraftTranslator = defaultWorkspaceNewChatDraftTranslator,
 ): ResolvedWorkspaceNewChatDraftCopy {
+  const defaultCopy = buildDefaultWorkspaceNewChatDraftCopy(t);
   return {
-    greeting: copy?.greeting ?? defaultWorkspaceNewChatDraftCopy.greeting,
+    greeting: copy?.greeting ?? defaultCopy.greeting,
     composer: {
-      ...defaultWorkspaceNewChatDraftCopy.composer,
+      ...defaultCopy.composer,
       ...copy?.composer,
     },
     sidePanel: {
-      ...defaultWorkspaceNewChatDraftCopy.sidePanel,
+      ...defaultCopy.sidePanel,
       ...copy?.sidePanel,
     },
     participants: {
-      ...defaultWorkspaceNewChatDraftCopy.participants,
+      ...defaultCopy.participants,
       ...copy?.participants,
     },
     execution: {
-      ...defaultWorkspaceNewChatDraftCopy.execution,
+      ...defaultCopy.execution,
       ...copy?.execution,
     },
     folder: {
-      ...defaultWorkspaceNewChatDraftCopy.folder,
+      ...defaultCopy.folder,
       ...copy?.folder,
     },
   };
@@ -299,7 +319,8 @@ export function WorkspaceNewChatDraft({
 }: WorkspaceNewChatDraftProps) {
   void bossCatName;
   void bossCatAvatarColor;
-  const resolvedCopy = resolveWorkspaceNewChatDraftCopy(copy);
+  const { t } = useI18n();
+  const resolvedCopy = resolveWorkspaceNewChatDraftCopy(copy, t);
   const resolvedGreeting = greeting ?? resolvedCopy.greeting;
 
   const chatCats = payload.chat.cats.filter(isChatCat);
@@ -412,7 +433,7 @@ export function WorkspaceNewChatDraft({
                     event.stopPropagation();
                     onDraftCwdClear();
                   }}
-                  aria-label="Remove folder"
+                  aria-label={t(messageKeys.chatNewChatDraftRemoveFolderAria)}
                 >
                   &times;
                 </button>
@@ -453,7 +474,9 @@ export function WorkspaceNewChatDraft({
                           type="button"
                           disabled={isSubmittingFirstTurn}
                           onClick={() => onDraftFilesChange(draftFiles.filter((_, i) => i !== index))}
-                          aria-label={`Remove ${file.name}`}
+                          aria-label={t(messageKeys.chatNewChatDraftAttachmentRemoveAria, {
+                            fileName: file.name,
+                          })}
                         >
                           &times;
                         </button>
@@ -497,7 +520,7 @@ export function WorkspaceNewChatDraft({
                     <button
                       className="composerPlusButton"
                       type="button"
-                      aria-label="Attach"
+                      aria-label={t(messageKeys.chatComposerAreaAttachAria)}
                       disabled={isSubmittingFirstTurn}
                       onClick={onTogglePlusMenu}
                     >
@@ -519,7 +542,7 @@ export function WorkspaceNewChatDraft({
                             <path d="M8 2v8" />
                             <path d="M4 6l4-4 4 4" />
                           </svg>
-                          Add photos and files
+                          {t(messageKeys.chatNewChatDraftAddPhotosAndFiles)}
                         </button>
                         {onTakeScreenshot ? (
                           <button
@@ -532,7 +555,7 @@ export function WorkspaceNewChatDraft({
                               <path d="M5 3.5l1-1h4l1 1h2a1 1 0 0 1 1 1v7.5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1h2z" />
                               <circle cx="8" cy="8.5" r="2.5" />
                             </svg>
-                            Take screenshot
+                            {t(messageKeys.chatNewChatDraftTakeScreenshot)}
                           </button>
                         ) : null}
                         {chooseFolderPlacement === 'plusMenu' ? (
@@ -559,7 +582,7 @@ export function WorkspaceNewChatDraft({
                       className="parallelAddButton"
                       disabled={isSubmittingFirstTurn}
                       onClick={onQuickAddDraftTemporaryParticipant}
-                      aria-label="Add another model to collaborate"
+                      aria-label={t(messageKeys.chatNewChatDraftCollaborateAria)}
                     >
                       <CollaborateIcon />
                     </button>
@@ -582,8 +605,12 @@ export function WorkspaceNewChatDraft({
                     type="button"
                     aria-label={
                       voiceInputListening
-                        ? `Stop voice input${voiceInputPrivacyMessage ? `. ${voiceInputPrivacyMessage}` : ''}`
-                        : 'Start voice input'
+                        ? t(messageKeys.chatNewChatDraftStopVoiceInputAria, {
+                          privacyMessageSuffix: voiceInputPrivacyMessage
+                            ? `. ${voiceInputPrivacyMessage}`
+                            : '',
+                        })
+                        : t(messageKeys.chatNewChatDraftStartVoiceInputAria)
                     }
                     aria-pressed={voiceInputListening}
                     title={voiceInputPrivacyMessage ?? undefined}
@@ -608,7 +635,7 @@ export function WorkspaceNewChatDraft({
                     || isSubmittingFirstTurn
                   }
                   type="submit"
-                  aria-label="Send"
+                  aria-label={t(messageKeys.chatNewChatDraftSendAria)}
                 >
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M8 13V3" />

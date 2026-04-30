@@ -25,6 +25,19 @@ import {
   normalizeSelectedChannelView,
   type SelectedChannelView,
 } from '../channelEntry.js';
+import {
+  createTranslator,
+  messageKeys,
+  type MessageInterpolationValues,
+  type MessageKey,
+} from '../../../shared/i18n/index.js';
+
+type WorkspaceChatTranslator = (
+  key: MessageKey,
+  values?: MessageInterpolationValues,
+) => string;
+
+const defaultWorkspaceChatTranslator = createTranslator('en');
 
 export type Surface = 'chats' | 'settings';
 
@@ -351,18 +364,21 @@ export function truncatePath(fullPath: string, maxLen = 20): string {
   return name.slice(0, maxLen - 3) + '...';
 }
 
-export const GREETING_LINES = [
-  "Meow. Ready when you are.",
-  "Your cat hasn't napped yet.",
-  "Cats on the keyboard.",
-  "Tail up, let's go.",
-  "Purring in standby.",
-  "Claws sharpened. What's the task?",
-  "This cat doesn't sleep on the job.",
+const GREETING_LINE_KEYS = [
+  messageKeys.chatNewChatDraftDefaultGreeting,
+  messageKeys.chatNewChatDraftGreetingNap,
+  messageKeys.chatNewChatDraftGreetingKeyboard,
+  messageKeys.chatNewChatDraftGreetingLetsGo,
+  messageKeys.chatNewChatDraftGreetingStandby,
+  messageKeys.chatNewChatDraftGreetingTaskReady,
+  messageKeys.chatNewChatDraftGreetingOnDuty,
 ];
 
-export function pickGreeting(): string {
-  return GREETING_LINES[Math.floor(Math.random() * GREETING_LINES.length)];
+export function pickGreeting(
+  t: WorkspaceChatTranslator = defaultWorkspaceChatTranslator,
+): string {
+  const greetingLines = GREETING_LINE_KEYS.map((key) => t(key));
+  return greetingLines[Math.floor(Math.random() * greetingLines.length)]!;
 }
 
 export function resolveBossCatName(payload: AppShellPayload): string | null {

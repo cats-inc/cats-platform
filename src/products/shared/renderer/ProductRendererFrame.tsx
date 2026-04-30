@@ -5,6 +5,8 @@ import {
   type ConfirmDialogAction,
   type ConfirmDialogOptions,
 } from '../../../design/components/ConfirmDialog.js';
+import { useI18n } from '../../../app/renderer/i18n/index.js';
+import { messageKeys } from '../../../shared/i18n/messageKeys.js';
 
 export type ProductRendererLoadState<TPayload> =
   | { status: 'loading' }
@@ -22,6 +24,8 @@ export function ProductAppStateBoundary<TPayload>({
   unavailableTitle: string;
   renderReady: (payload: TPayload) => ReactNode;
 }) {
+  const { t } = useI18n();
+
   if (state.status === 'loading') {
     return <BootShell />;
   }
@@ -30,7 +34,7 @@ export function ProductAppStateBoundary<TPayload>({
     return (
       <div className="screen screenCentered">
         <div className="errorPanel">
-          <p className="eyebrow">Renderer Error</p>
+          <p className="eyebrow">{t(messageKeys.sharedProductRendererErrorEyebrow)}</p>
           <h1>{unavailableTitle}</h1>
           <p>{state.message}</p>
         </div>

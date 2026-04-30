@@ -7,6 +7,19 @@ import type {
   PlatformProductDescriptor,
   PlatformSurfaceId,
 } from '../../shared/platform-contract.js';
+import {
+  createTranslator,
+  messageKeys,
+  type MessageInterpolationValues,
+  type MessageKey,
+} from '../../shared/i18n/index.js';
+
+type LobbyModelTranslator = (
+  key: MessageKey,
+  values?: MessageInterpolationValues,
+) => string;
+
+const defaultLobbyModelTranslator = createTranslator('en');
 
 export interface PlatformLobbyProductEntry {
   productId: PlatformProductDescriptor['id'];
@@ -65,14 +78,14 @@ export function buildPlatformLobbyAppEntries(options: {
   });
 }
 
-const LOBBY_GREETING_LINES = [
-  'Choose a surface and get moving.',
-  'Home base is ready.',
-  'Chat, Work, or Code. Your call.',
-  'Everything is staged. Pick a lane.',
-  'Open the surface that fits the task.',
-  'Cats Inc is awake.',
-  'Continue where the work makes sense.',
+const LOBBY_GREETING_LINE_KEYS = [
+  messageKeys.lobbyGreetingChooseSurface,
+  messageKeys.lobbyGreetingHomeReady,
+  messageKeys.lobbyGreetingPickProduct,
+  messageKeys.lobbyGreetingEverythingStaged,
+  messageKeys.lobbyGreetingOpenSurface,
+  messageKeys.lobbyGreetingAwake,
+  messageKeys.lobbyGreetingContinue,
 ];
 
 function normalizeGreetingPool(pool: ReadonlyArray<string> | null | undefined): string[] {
@@ -82,11 +95,12 @@ function normalizeGreetingPool(pool: ReadonlyArray<string> | null | undefined): 
 }
 
 export function pickLobbyGreeting(
-  pool: ReadonlyArray<string> = LOBBY_GREETING_LINES,
+  pool?: ReadonlyArray<string> | null,
   random: () => number = Math.random,
+  t: LobbyModelTranslator = defaultLobbyModelTranslator,
 ): string {
   const normalizedPool = normalizeGreetingPool(pool);
-  const fallbackPool = normalizeGreetingPool(LOBBY_GREETING_LINES);
+  const fallbackPool = LOBBY_GREETING_LINE_KEYS.map((key) => t(key));
   const activePool = normalizedPool.length > 0 ? normalizedPool : fallbackPool;
   return activePool[Math.floor(random() * activePool.length)];
 }

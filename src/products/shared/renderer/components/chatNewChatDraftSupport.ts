@@ -160,7 +160,7 @@ export function resolveChatNewChatDraftViewState(input: {
     if (payloadGreeting) {
       return payloadGreeting;
     }
-    return pickDraftGreeting({ pool: input.greetingPool });
+    return pickDraftGreeting({ pool: input.greetingPool, t: input.t });
   })();
   const groupDraftSelectionLabel = draftParticipantCount === 1
     ? input.t(messageKeys.chatNewChatDraftGroupDraftSelectionLabelSingle)

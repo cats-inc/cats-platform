@@ -345,7 +345,7 @@ export function createWorkspaceProductApp({
         ? { status: "ready", payload: initialWarmPayload }
         : { status: "loading" },
       createEmptyCatForm: emptyCatForm,
-      pickGreeting,
+      pickGreeting: () => pickGreeting(t),
     });
     const draftFolderBrowseTargetRef = useRef<DraftFolderBrowseTarget>({ kind: "lead" });
     const parallelBranchCwdSetterRef = useRef<(
@@ -1625,7 +1625,7 @@ export function createWorkspaceProductApp({
         <ProductAppStateBoundary
           state={state}
           BootShell={BootShell}
-          unavailableTitle="Chat unavailable"
+          unavailableTitle={t(messageKeys.sharedProductRendererChatUnavailableTitle)}
           renderReady={(payload) => {
           const {
             surface,

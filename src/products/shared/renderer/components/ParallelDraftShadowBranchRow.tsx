@@ -1,4 +1,6 @@
 import type { RoomWorkflowShape } from '../../../../shared/roomRouting.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
 import { buildAudienceParticipantFromExecutionTarget } from '../audienceParticipantBuilder.js';
 import { BranchAudienceRoster } from './BranchAudienceRoster.js';
 import type { DraftComposerStackParticipant } from './chatNewChatDraftSupport.js';
@@ -50,6 +52,7 @@ export function ParallelDraftShadowBranchRow({
   canRemoveParallelTarget,
   useDangerParallelRemoveHover,
 }: ParallelDraftShadowBranchRowProps) {
+  const { t } = useI18n();
   // Fall back to a target-derived chip when the branch has no
   // audienceKeys yet (legacy parallel-preset bootstraps that haven't
   // been seeded with a temp participant). The chip on the right is
@@ -82,7 +85,7 @@ export function ParallelDraftShadowBranchRow({
               className={`parallelAddButton${accentCollaborateButton ? ' parallelAddButtonAccent' : ''}`}
               disabled={isSubmittingFirstTurn}
               onClick={() => onAddCollaborator(branchIndex)}
-              aria-label="Add another model to collaborate"
+              aria-label={t(messageKeys.chatNewChatDraftCollaborateAria)}
             >
               <CollaborateIcon />
             </button>
@@ -112,7 +115,9 @@ export function ParallelDraftShadowBranchRow({
             className={`parallelStubRemove${useDangerParallelRemoveHover ? ' parallelStubRemoveDanger' : ''}`}
             disabled={isSubmittingFirstTurn || !canRemoveParallelTarget}
             onClick={() => onRemoveParallelTarget?.(branchIndex)}
-            aria-label="Remove parallel chat"
+            aria-label={t(messageKeys.chatNewChatDraftBranchRemoveAria, {
+              branchIndex: `${branchIndex + 1}`,
+            })}
           >
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M3 8h10" />

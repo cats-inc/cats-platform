@@ -1,5 +1,7 @@
 import type { ReactNode } from 'react';
 
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
 import { CompareIcon } from './DraftBuilderIcons.js';
 
 export interface DraftComposerFooterProps {
@@ -19,6 +21,7 @@ export function DraftComposerFooter({
   disabled = false,
   onAddParallelTarget,
 }: DraftComposerFooterProps) {
+  const { t } = useI18n();
   const renderParallelAddButton = showParallelAddButton && onAddParallelTarget != null;
   if (!accessory && !renderParallelAddButton) {
     return null;
@@ -31,7 +34,7 @@ export function DraftComposerFooter({
         <div className="parallelAddRow parallelAddRowInline">
           {hideParallelHint ? null : (
             <span className={`parallelAddHint${accentParallelAddButton ? ' parallelAddHintAccent' : ''}`}>
-              Add another model to compare
+              {t(messageKeys.chatNewChatDraftBranchAddCompareHint)}
             </span>
           )}
           <button
@@ -39,7 +42,7 @@ export function DraftComposerFooter({
             className={`parallelAddButton${accentParallelAddButton ? ' parallelAddButtonAccent' : ''}`}
             disabled={disabled}
             onClick={onAddParallelTarget}
-            aria-label="Add parallel chat"
+            aria-label={t(messageKeys.chatNewChatDraftBranchAddParallelAria)}
           >
             <CompareIcon />
           </button>

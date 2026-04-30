@@ -57,8 +57,21 @@ import {
   buildAutoTemporaryParticipantName,
   resolveTemporaryParticipantName,
 } from '../shared/participantNaming';
+import {
+  createTranslator,
+  messageKeys,
+  type MessageInterpolationValues,
+  type MessageKey,
+} from '../../../shared/i18n/index.js';
+import { useI18n } from '../../../app/renderer/i18n/index.js';
 
 export type Surface = 'chats' | 'settings';
+type ChatUtilsTranslator = (
+  key: MessageKey,
+  values?: MessageInterpolationValues,
+) => string;
+
+const defaultChatUtilsTranslator = createTranslator('en');
 
 export interface CatFormState {
   name: string;
@@ -563,15 +576,18 @@ export function draftHasAssistantPresetParticipant(
   return draftTemporaryParticipants.some((participant) => participant.presetId === assistantPresetId);
 }
 
-export const GREETING_LINES = [
-  "Meow. Ready when you are.",
-  "Your cat hasn't napped yet.",
-  "Cats on the keyboard.",
-  "Tail up, let's go.",
-  "Purring in standby.",
-  "Claws sharpened. What's the task?",
-  "This cat doesn't sleep on the job.",
+const GREETING_LINE_KEYS = [
+  messageKeys.chatNewChatDraftDefaultGreeting,
+  messageKeys.chatNewChatDraftGreetingNap,
+  messageKeys.chatNewChatDraftGreetingKeyboard,
+  messageKeys.chatNewChatDraftGreetingLetsGo,
+  messageKeys.chatNewChatDraftGreetingStandby,
+  messageKeys.chatNewChatDraftGreetingTaskReady,
+  messageKeys.chatNewChatDraftGreetingOnDuty,
 ];
+
+export const GREETING_LINES = GREETING_LINE_KEYS.map((key) =>
+  defaultChatUtilsTranslator(key));
 
 export const DRAFT_GREETING_LINES = GREETING_LINES;
 
@@ -582,11 +598,12 @@ function normalizeGreetingPool(pool: ReadonlyArray<string> | null | undefined): 
 }
 
 export function pickGreeting(
-  pool: ReadonlyArray<string> = DRAFT_GREETING_LINES,
+  pool?: ReadonlyArray<string> | null,
   random: () => number = Math.random,
+  t: ChatUtilsTranslator = defaultChatUtilsTranslator,
 ): string {
   const normalizedPool = normalizeGreetingPool(pool);
-  const fallbackPool = normalizeGreetingPool(DRAFT_GREETING_LINES);
+  const fallbackPool = GREETING_LINE_KEYS.map((key) => t(key));
   const activePool = normalizedPool.length > 0 ? normalizedPool : fallbackPool;
   return activePool[Math.floor(random() * activePool.length)];
 }
@@ -595,13 +612,15 @@ export function pickDraftGreeting(
   options: {
     pool?: ReadonlyArray<string> | null;
     random?: () => number;
+    t?: ChatUtilsTranslator;
   } = {},
 ): string {
   return pickGreeting(
     normalizeGreetingPool(options.pool).length > 0
-      ? options.pool ?? DRAFT_GREETING_LINES
-      : DRAFT_GREETING_LINES,
+      ? options.pool ?? null
+      : null,
     options.random,
+    options.t,
   );
 }
 
@@ -632,8 +651,10 @@ export function insertCreatedChannelIntoPayload(
 }
 
 export function BootShell() {
+  const { t } = useI18n();
+
   return (
-    <div className="screen bootShell" aria-label="Loading Cats Chat">
+    <div className="screen bootShell" aria-label={t(messageKeys.chatBootLoadingAria)}>
       <div className="bootSpinner" aria-hidden="true" />
     </div>
   );

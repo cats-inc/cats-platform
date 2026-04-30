@@ -11,8 +11,20 @@ import {
   getDefaultProviderInstance,
 } from '../../../shared/providerCatalog.js';
 import type { AppShellPayload } from '../api/workspaceContracts.js';
+import {
+  createTranslator,
+  messageKeys,
+  type MessageInterpolationValues,
+  type MessageKey,
+} from '../../../shared/i18n/index.js';
 
 type AssistantPresetRecord = NonNullable<AppShellPayload['assistantPresets']>[number];
+type DraftChatTranslator = (
+  key: MessageKey,
+  values?: MessageInterpolationValues,
+) => string;
+
+const defaultDraftChatTranslator = createTranslator('en');
 
 export interface DraftTemporaryParticipant {
   participantId: string;
@@ -573,14 +585,14 @@ export function draftHasAssistantPresetParticipant(
   return draftTemporaryParticipants.some((participant) => participant.presetId === assistantPresetId);
 }
 
-export const DRAFT_GREETING_LINES = [
-  'Meow. Ready when you are.',
-  'Your cat hasn\'t napped yet.',
-  'Cats on the keyboard.',
-  'Tail up, let\'s go.',
-  'Purring in standby.',
-  'Claws sharpened. What\'s the task?',
-  'This cat doesn\'t sleep on the job.',
+const DRAFT_GREETING_LINE_KEYS = [
+  messageKeys.chatNewChatDraftDefaultGreeting,
+  messageKeys.chatNewChatDraftGreetingNap,
+  messageKeys.chatNewChatDraftGreetingKeyboard,
+  messageKeys.chatNewChatDraftGreetingLetsGo,
+  messageKeys.chatNewChatDraftGreetingStandby,
+  messageKeys.chatNewChatDraftGreetingTaskReady,
+  messageKeys.chatNewChatDraftGreetingOnDuty,
 ];
 
 function normalizeGreetingPool(pool: ReadonlyArray<string> | null | undefined): string[] {
@@ -592,9 +604,12 @@ function normalizeGreetingPool(pool: ReadonlyArray<string> | null | undefined): 
 export function pickDraftGreeting(options: {
   pool?: ReadonlyArray<string> | null;
   random?: () => number;
+  t?: DraftChatTranslator;
 } = {}): string {
   const normalizedPool = normalizeGreetingPool(options.pool);
-  const activePool = normalizedPool.length > 0 ? normalizedPool : DRAFT_GREETING_LINES;
+  const fallbackPool = DRAFT_GREETING_LINE_KEYS.map((key) =>
+    (options.t ?? defaultDraftChatTranslator)(key));
+  const activePool = normalizedPool.length > 0 ? normalizedPool : fallbackPool;
   const random = options.random ?? Math.random;
   return activePool[Math.floor(random() * activePool.length)]!;
 }

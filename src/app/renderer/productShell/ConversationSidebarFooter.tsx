@@ -1,5 +1,7 @@
 import type { RefObject } from 'react';
 
+import { useI18n } from '../i18n/index.js';
+import { messageKeys } from '../../../shared/i18n/messageKeys.js';
 import {
   resolveRuntimeDotClassName,
   type RuntimePresentationStatus,
@@ -37,13 +39,15 @@ export function ConversationSidebarFooter<
   onNavigateRuntime: () => void;
   catInitials: (name: string) => string;
 }) {
+  const { t } = useI18n();
+
   return (
     <div className="sidebarFooter" ref={accountMenuRef}>
       <button
         type="button"
         className="sidebarFooterMainButton"
         onClick={onNavigateSettings}
-        aria-label="Open account settings"
+        aria-label={t(messageKeys.conversationSidebarOpenAccountSettingsLabel)}
       >
         <div
           className="profileBadge"
@@ -65,7 +69,9 @@ export function ConversationSidebarFooter<
         type="button"
         className="sidebarFooterTrailing"
         onClick={onNavigateRuntime}
-        aria-label={`Runtime status: ${runtimeFooterLabel}`}
+        aria-label={t(messageKeys.conversationSidebarRuntimeStatusAriaLabel, {
+          status: runtimeFooterLabel,
+        })}
         data-tooltip={runtimeFooterLabel}
       >
         <span
