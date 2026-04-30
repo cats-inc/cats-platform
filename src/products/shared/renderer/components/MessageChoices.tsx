@@ -5,6 +5,7 @@ import type {
   ChatMessageChoiceResponse,
 } from '../../api/workspaceContracts.js';
 import { buildChoiceResponseBody } from '../../messageChoices.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
 
 export interface MessageChoicesSubmitInput {
   channelId: string;
@@ -36,6 +37,8 @@ export function MessageChoices({
   busy,
   onSubmit,
 }: MessageChoicesProps) {
+  const { t } = useI18n();
+
   const [selectedByQuestion, setSelectedByQuestion] = useState<Record<string, string[]>>(() =>
     Object.fromEntries(
       choices.map((choice) => [
@@ -165,7 +168,7 @@ export function MessageChoices({
                     [choice.question]: !current[choice.question],
                   }))}
               >
-                Custom
+                {t('sharedMessageChoicesCustom')}
               </button>
             ) : null}
           </div>
@@ -177,7 +180,7 @@ export function MessageChoices({
                 ? (answerForQuestion(existingResponse, choice.question)?.customText ?? '')
                 : (customByQuestion[choice.question] ?? '')}
               disabled={disabled}
-              placeholder="Add your own answer"
+              placeholder={t('sharedMessageChoicesAddCustomPlaceholder')}
               onChange={(event) =>
                 setCustomByQuestion((current) => ({
                   ...current,
@@ -190,8 +193,8 @@ export function MessageChoices({
       {existingResponse ? (
         <p className="messageChoiceResolved">
           {existingResponse.status === 'skipped'
-            ? 'Owner skipped these choices.'
-            : 'Owner response recorded.'}
+            ? t('sharedMessageChoicesSkipped')
+            : t('sharedMessageChoicesRecorded')}
         </p>
       ) : (
         <div className="messageChoiceActions">
@@ -201,7 +204,7 @@ export function MessageChoices({
             disabled={busy || !canSubmit()}
             onClick={() => submit('submitted')}
           >
-            Confirm
+            {t('sharedMessageChoicesConfirm')}
           </button>
           {allowSkip ? (
             <button
@@ -210,7 +213,7 @@ export function MessageChoices({
               disabled={busy}
               onClick={() => submit('skipped')}
             >
-              Skip
+              {t('sharedMessageChoicesSkip')}
             </button>
           ) : null}
         </div>

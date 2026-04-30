@@ -1004,6 +1004,12 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.catInspectSkillProfileLabel': '技能檔案',
   'shared.catInspectSharedPresetDescription':
     '這是共用的貓咪預設。這裡的變更會影響所有使用此貓咪的對話。',
+  'shared.messageChoicesCustom': '自訂',
+  'shared.messageChoicesAddCustomPlaceholder': '輸入你的答案',
+  'shared.messageChoicesSkipped': '發起者已略過這些選項。',
+  'shared.messageChoicesRecorded': '發起者回應已記錄。',
+  'shared.messageChoicesConfirm': '確認',
+  'shared.messageChoicesSkip': '跳過',
 };
 
 export default zhTWCatalog;

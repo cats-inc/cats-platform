@@ -999,6 +999,13 @@ export const messageKeys = {
   sharedCatInspectModelLabel: 'shared.catInspectModelLabel',
   sharedCatInspectSkillProfileLabel: 'shared.catInspectSkillProfileLabel',
   sharedCatInspectSharedPresetDescription: 'shared.catInspectSharedPresetDescription',
+  sharedMessageChoicesCustom: 'shared.messageChoicesCustom',
+  sharedMessageChoicesAddCustomPlaceholder:
+    'shared.messageChoicesAddCustomPlaceholder',
+  sharedMessageChoicesSkipped: 'shared.messageChoicesSkipped',
+  sharedMessageChoicesRecorded: 'shared.messageChoicesRecorded',
+  sharedMessageChoicesConfirm: 'shared.messageChoicesConfirm',
+  sharedMessageChoicesSkip: 'shared.messageChoicesSkip',
 } as const;
 
 export type MessageKey = keyof typeof messageKeys;

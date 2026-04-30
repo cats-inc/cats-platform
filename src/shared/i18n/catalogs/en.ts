@@ -1038,6 +1038,12 @@ export const enCatalog: MessageCatalog = {
   'shared.catInspectSkillProfileLabel': 'Skill Profile',
   'shared.catInspectSharedPresetDescription':
     'This is a shared Cat preset. Changes here would affect all threads using this Cat.',
+  'shared.messageChoicesCustom': 'Custom',
+  'shared.messageChoicesAddCustomPlaceholder': 'Add your own answer',
+  'shared.messageChoicesSkipped': 'Owner skipped these choices.',
+  'shared.messageChoicesRecorded': 'Owner response recorded.',
+  'shared.messageChoicesConfirm': 'Confirm',
+  'shared.messageChoicesSkip': 'Skip',
 };
 
 export default enCatalog;
