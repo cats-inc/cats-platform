@@ -52,6 +52,7 @@ import {
   isWorkWarRoomPath,
   isWorkWorkItemsPath,
 } from '../workPaths.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
 
 export interface SidebarProps {
   payload: AppShellPayload;
@@ -96,11 +97,14 @@ export interface SidebarProps {
   onDirectChatCat: (catId: string) => void;
 }
 
-function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] {
+function createPrimaryActions(
+  props: SidebarProps,
+  t: ReturnType<typeof useI18n>["t"],
+): ConversationSidebarAction[] {
   const actions: ConversationSidebarAction[] = [
     {
       key: 'new-work',
-      label: 'New work',
+      label: t('workSidebarNewWorkLabel'),
       onClick: props.onStartNewChat,
       icon: (
         <svg
@@ -123,7 +127,7 @@ function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] 
   if (props.onStartNewGroupChat) {
     actions.push({
       key: 'new-team-work',
-      label: 'Team work',
+      label: t('workSidebarTeamWorkLabel'),
       onClick: props.onStartNewGroupChat,
       icon: (
         <svg
@@ -148,7 +152,7 @@ function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] 
   if (props.onStartNewParallelChat) {
     actions.push({
       key: 'new-parallel-work',
-      label: 'Parallel work',
+      label: t('workSidebarParallelWorkLabel'),
       onClick: props.onStartNewParallelChat,
       icon: (
         <svg
@@ -175,6 +179,7 @@ function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] 
 function createExtraActionGroups(
   props: SidebarProps,
   pinnedProjects: readonly WorkProjectListItem[],
+  t: ReturnType<typeof useI18n>["t"],
 ): ConversationSidebarActionGroup[] {
   const currentPath = globalThis.location?.pathname ?? WORK_ROUTE_PREFIX;
   const groups: ConversationSidebarActionGroup[] = [];
@@ -182,11 +187,11 @@ function createExtraActionGroups(
   if (props.onOpenProjects) {
     groups.push({
       key: 'projects',
-      ariaLabel: 'Portfolio',
+      ariaLabel: t('workSidebarPortfolioLabel'),
       items: [
         {
           key: 'projects',
-          label: 'Projects',
+          label: t('workSidebarProjectsLabel'),
           onClick: props.onOpenProjects,
           active: isWorkProjectsPath(currentPath),
           icon: (
@@ -208,18 +213,18 @@ function createExtraActionGroups(
           ),
         },
       ],
-      pinnedItems: buildPinnedProjectItems(props, currentPath, pinnedProjects),
+      pinnedItems: buildPinnedProjectItems(props, currentPath, pinnedProjects, t),
     });
   }
 
   if (props.onOpenWorkItems) {
     groups.push({
       key: 'work-items',
-      ariaLabel: 'Managed Work',
+      ariaLabel: t('workSidebarManagedWorkLabel'),
       items: [
         {
           key: 'work-items',
-          label: 'Work Items',
+          label: t('workSidebarWorkItemsLabel'),
           onClick: props.onOpenWorkItems,
           active: isWorkWorkItemsPath(currentPath),
           icon: (
@@ -254,7 +259,7 @@ function createExtraActionGroups(
     if (props.onOpenTasks) {
       executionItems.push({
         key: 'tasks',
-        label: 'Tasks',
+        label: t('workSidebarTasksLabel'),
         onClick: props.onOpenTasks,
         active: isWorkTasksPath(currentPath) && !isWorkRunsPath(currentPath),
         icon: (
@@ -279,7 +284,7 @@ function createExtraActionGroups(
     if (props.onOpenRuns) {
       executionItems.push({
         key: 'runs',
-        label: 'Runs',
+        label: t('workSidebarRunsLabel'),
         onClick: props.onOpenRuns,
         active: isWorkRunsPath(currentPath),
         icon: (
@@ -301,7 +306,7 @@ function createExtraActionGroups(
     if (props.onOpenMissions) {
       executionItems.push({
         key: 'missions',
-        label: 'Missions',
+        label: t('workSidebarMissionsLabel'),
         onClick: props.onOpenMissions,
         active: isWorkMissionsPath(currentPath),
         icon: (
@@ -328,7 +333,7 @@ function createExtraActionGroups(
     if (props.onOpenSchedules) {
       executionItems.push({
         key: 'schedules',
-        label: 'Schedules',
+        label: t('workSidebarSchedulesLabel'),
         onClick: props.onOpenSchedules,
         active: isWorkSchedulesPath(currentPath),
         icon: (
@@ -352,7 +357,7 @@ function createExtraActionGroups(
     }
     groups.push({
       key: 'execution',
-      ariaLabel: 'Execution',
+      ariaLabel: t('workSidebarExecutionLabel'),
       items: executionItems,
     });
   }
@@ -364,7 +369,7 @@ function createExtraActionGroups(
   if (props.onOpenSystemMap) {
     topDownItems.push({
       key: 'system-map',
-      label: 'System Map',
+      label: t('workSidebarSystemMapLabel'),
       onClick: props.onOpenSystemMap,
       active: isWorkSystemMapPath(currentPath),
       icon: (
@@ -390,7 +395,7 @@ function createExtraActionGroups(
   if (props.onOpenCockpit) {
     topDownItems.push({
       key: 'cockpit',
-      label: 'Cockpit',
+      label: t('workSidebarCockpitLabel'),
       onClick: props.onOpenCockpit,
       active: isWorkCockpitPath(currentPath),
       icon: (
@@ -415,7 +420,7 @@ function createExtraActionGroups(
   if (props.onOpenBrokenLinks) {
     topDownItems.push({
       key: 'broken-links',
-      label: 'Broken Links',
+      label: t('workSidebarBrokenLinksLabel'),
       onClick: props.onOpenBrokenLinks,
       active: isWorkBrokenLinksPath(currentPath),
       icon: (
@@ -439,7 +444,7 @@ function createExtraActionGroups(
   if (props.onOpenWarRoom) {
     topDownItems.push({
       key: 'war-room',
-      label: 'War Room',
+      label: t('workSidebarWarRoomLabel'),
       onClick: props.onOpenWarRoom,
       active: isWorkWarRoomPath(currentPath),
       icon: (
@@ -464,7 +469,7 @@ function createExtraActionGroups(
   if (topDownItems.length > 0) {
     groups.push({
       key: 'top-down',
-      ariaLabel: 'Work top-down surfaces',
+      ariaLabel: t('workSidebarWorkTopDownSurfacesLabel'),
       items: topDownItems,
     });
   }
@@ -476,6 +481,7 @@ function buildPinnedProjectItems(
   props: SidebarProps,
   currentPath: string,
   projects: readonly WorkProjectListItem[],
+  t: ReturnType<typeof useI18n>["t"],
 ): ConversationSidebarPinnedItem[] {
   if (!props.onOpenProject) return [];
   return projects
@@ -491,7 +497,7 @@ function buildPinnedProjectItems(
       overflowActions: [
         {
           key: 'unpin',
-          label: 'Unpin',
+          label: t('workSidebarUnpinProjectLabel'),
           onClick: () => {
             props.onOverflowMenuToggle(null);
             unpinProject(project.id);
@@ -499,7 +505,7 @@ function buildPinnedProjectItems(
         },
         {
           key: 'delete',
-          label: 'Delete',
+          label: t('workSidebarDeleteProjectLabel'),
           destructive: true,
           onClick: () => {
             props.onOverflowMenuToggle(null);
@@ -541,6 +547,7 @@ export type WorkSidebarConversationProps = ConversationSidebarProps<
 export function createWorkSidebarConversationProps(
   props: SidebarProps,
   options: WorkSidebarConversationPropsOptions = {},
+  t: ReturnType<typeof useI18n>["t"],
 ): WorkSidebarConversationProps {
   const pinnedProjects = options.pinnedProjects ?? [];
   return {
@@ -553,15 +560,15 @@ export function createWorkSidebarConversationProps(
     shellSurface: props.shellSurface,
     routeChannelId: props.routeChannelId,
     accountMenuRef: props.accountMenuRef,
-    primaryActions: createPrimaryActions(props),
-    extraActionGroups: createExtraActionGroups(props, pinnedProjects),
+    primaryActions: createPrimaryActions(props, t),
+    extraActionGroups: createExtraActionGroups(props, pinnedProjects, t),
     recentEntries: buildRecentEntries(props),
-    recentEmptyStateLabel: 'No work yet',
-    myCatsSectionLabel: 'My Catteries',
+    recentEmptyStateLabel: t('workSidebarNoWorkYetLabel'),
+    myCatsSectionLabel: t('workSidebarMyCatteriesLabel'),
     myCatsSectionCats: [],
     forceShowMyCatsSection: true,
     myCatsEmptyStatePlaceholder: {
-      label: 'New cattery',
+      label: t('workSidebarNewCatteryLabel'),
       onClick: () => undefined,
     },
     helpers: {
@@ -593,6 +600,7 @@ export function createWorkSidebarConversationProps(
 }
 
 export function Sidebar(props: SidebarProps) {
+  const { t } = useI18n();
   const projectsQuery = useProjectsQuery();
   const unpinnedIds = useUnpinnedProjectIds();
   const pinnedProjects = (projectsQuery.data?.projects ?? []).filter(
@@ -600,7 +608,7 @@ export function Sidebar(props: SidebarProps) {
   );
   return (
     <ConversationSidebar
-      {...createWorkSidebarConversationProps(props, { pinnedProjects })}
+      {...createWorkSidebarConversationProps(props, { pinnedProjects }, t)}
     />
   );
 }
