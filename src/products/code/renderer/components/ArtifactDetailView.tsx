@@ -12,6 +12,8 @@ import {
   buildCodeArtifactPath,
   CODE_BUILD_PATH,
 } from '../codePaths.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
 
 function artifactStatusClassName(status: string): string {
   switch (status) {
@@ -26,9 +28,31 @@ function artifactStatusClassName(status: string): string {
   }
 }
 
+function labelArtifactKind(kind: string, t: ReturnType<typeof useI18n>['t']): string {
+  switch (kind) {
+    case 'build':
+      return t(messageKeys.codeArtifactKindBuildLabel);
+    case 'preview':
+      return t(messageKeys.codeArtifactKindPreviewLabel);
+    case 'document':
+      return t(messageKeys.codeArtifactKindDocumentLabel);
+    case 'report':
+      return t(messageKeys.codeArtifactKindReportLabel);
+    case 'attachment':
+      return t(messageKeys.codeArtifactKindAttachmentLabel);
+    case 'transcript_export':
+      return t(messageKeys.codeArtifactKindTranscriptLabel);
+    case 'dataset':
+      return t(messageKeys.codeArtifactDatasetLabel);
+    default:
+      return kind || t(messageKeys.codeArtifactKindUnknownLabel);
+  }
+}
+
 export function ArtifactDetailView() {
   const navigate = useNavigate();
   const { artifactId } = useParams<{ artifactId: string }>();
+  const { t } = useI18n();
   const [payload, setPayload] = useState<CodeArtifactDetailResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -36,7 +60,7 @@ export function ArtifactDetailView() {
   useEffect(() => {
     if (!artifactId) {
       setLoading(false);
-      setError('Artifact id is required.');
+      setError(t(messageKeys.codeArtifactDetailMissingId));
       return;
     }
 
@@ -55,7 +79,9 @@ export function ArtifactDetailView() {
         if (cancelled) {
           return;
         }
-        setError(fetchError instanceof Error ? fetchError.message : 'Failed to load artifact detail.');
+        setError(fetchError instanceof Error
+          ? fetchError.message
+          : t(messageKeys.codeArtifactDetailLoadFailed));
       })
       .finally(() => {
         if (cancelled) {
@@ -67,7 +93,7 @@ export function ArtifactDetailView() {
     return () => {
       cancelled = true;
     };
-  }, [artifactId]);
+  }, [artifactId, t]);
 
   const previewTarget = useMemo(() => {
     if (!payload) {
@@ -89,11 +115,11 @@ export function ArtifactDetailView() {
       <section className="operatorPanel codeArtifactDetailView">
         <div className="operatorPanelHeader">
           <div>
-            <p className="operatorEyebrow">Artifact</p>
-            <h2>Loading artifact detail</h2>
+            <p className="operatorEyebrow">{t(messageKeys.codeArtifactListArtifact)}</p>
+            <h2>{t(messageKeys.codeArtifactDetailLoadingTitle)}</h2>
           </div>
         </div>
-        <p className="operatorEmptyState">Fetching artifact metadata and related context.</p>
+        <p className="operatorEmptyState">{t(messageKeys.codeArtifactDetailLoadingBody)}</p>
       </section>
     );
   }
@@ -103,32 +129,34 @@ export function ArtifactDetailView() {
       <section className="operatorPanel codeArtifactDetailView">
         <div className="operatorPanelHeader">
           <div>
-            <p className="operatorEyebrow">Artifact</p>
-            <h2>Artifact detail unavailable</h2>
+            <p className="operatorEyebrow">{t(messageKeys.codeArtifactListArtifact)}</p>
+            <h2>{t(messageKeys.codeArtifactDetailArtifactUnavailable)}</h2>
           </div>
           <button
             type="button"
             className="operatorActionButton"
             onClick={() => navigate(CODE_BUILD_PATH)}
           >
-            Back to Build
+            {t(messageKeys.codeArtifactDetailBackToBuild)}
           </button>
         </div>
-        <p className="operatorEmptyState">{error ?? 'Artifact detail could not be loaded.'}</p>
+        <p className="operatorEmptyState">
+          {error ?? t(messageKeys.codeArtifactDetailLoadFailed)}
+        </p>
       </section>
     );
   }
 
   const previewActionLabel = previewTarget?.renderHint === 'download'
-    ? 'Open artifact'
-    : 'Open preview';
+    ? t(messageKeys.codeArtifactDetailPreviewActionOpenArtifact)
+    : t(messageKeys.codeArtifactDetailPreviewActionOpenPreview);
 
   return (
     <div className="codeArtifactDetailView">
       <section className="operatorPanel">
         <div className="operatorPanelHeader">
           <div>
-            <p className="operatorEyebrow">Artifact</p>
+            <p className="operatorEyebrow">{t(messageKeys.codeArtifactListArtifact)}</p>
             <h2>{payload.artifact.title}</h2>
           </div>
           <div className="operatorActionRow">
@@ -137,7 +165,7 @@ export function ArtifactDetailView() {
               className="operatorActionButton"
               onClick={() => navigate(CODE_BUILD_PATH)}
             >
-              Back to Build
+              {t(messageKeys.codeArtifactDetailBackToBuild)}
             </button>
             {previewTarget?.actionUrl ? (
               <a
@@ -154,15 +182,23 @@ export function ArtifactDetailView() {
 
         <article className="operatorCard">
           <div className="operatorCardHeader">
-            <strong>{payload.focus.kind === 'preview' ? 'Preview output' : 'Artifact output'}</strong>
+            <strong>
+              {payload.focus.kind === 'preview'
+                ? t(messageKeys.codeArtifactDetailPreviewOutput)
+                : t(messageKeys.codeArtifactDetailArtifactOutput)}
+            </strong>
             <span className={artifactStatusClassName(payload.artifact.status)}>
               {payload.artifact.status}
             </span>
           </div>
           {payload.artifact.summary ? <p>{payload.artifact.summary}</p> : null}
           <div className="operatorMetaRow">
-            <span>Kind: {payload.artifact.kind}</span>
-            <span>Updated: {payload.artifact.updatedAt}</span>
+            <span>
+              {t(messageKeys.codeArtifactMetaKind, {
+                kind: labelArtifactKind(payload.artifact.kind, t),
+              })}
+            </span>
+            <span>{t(messageKeys.codeArtifactMetaUpdated, { updatedAt: payload.artifact.updatedAt })}</span>
             {payload.artifact.path ? <span>{payload.artifact.path}</span> : null}
           </div>
         </article>
@@ -179,7 +215,7 @@ export function ArtifactDetailView() {
         ) : previewTarget?.actionUrl ? (
           <div className="codeBuildPreviewFallback">
             <p className="operatorEmptyState">
-              This artifact is available, but it is not inline-safe in the current Code surface.
+              {t(messageKeys.codeArtifactDetailNotInlineSafe)}
             </p>
             <a
               className="operatorActionButton"
@@ -192,7 +228,7 @@ export function ArtifactDetailView() {
           </div>
         ) : (
           <p className="operatorEmptyState">
-            No inline preview is available for this artifact yet.
+            {t(messageKeys.codeArtifactDetailNoInlinePreview)}
           </p>
         )}
       </section>
@@ -200,8 +236,8 @@ export function ArtifactDetailView() {
       <section className="operatorPanel">
         <div className="operatorPanelHeader">
           <div>
-            <p className="operatorEyebrow">Context</p>
-            <h2>Linked Records</h2>
+            <p className="operatorEyebrow">{t(messageKeys.codeArtifactDetailContextEyebrow)}</p>
+            <h2>{t(messageKeys.codeArtifactDetailContextTitle)}</h2>
           </div>
         </div>
 
@@ -209,7 +245,7 @@ export function ArtifactDetailView() {
           {payload.task ? (
             <article className="operatorCard">
               <div className="operatorCardHeader">
-                <strong>Task</strong>
+                <strong>{t(messageKeys.codeArtifactDetailTaskLabel)}</strong>
                 <span className={artifactStatusClassName(payload.task.status)}>{payload.task.status}</span>
               </div>
               <p>{payload.task.title}</p>
@@ -219,14 +255,20 @@ export function ArtifactDetailView() {
           {payload.workItem ? (
             <article className="operatorCard">
               <div className="operatorCardHeader">
-                <strong>Work Item</strong>
+                <strong>{t(messageKeys.codeArtifactDetailWorkItemLinkedLabel)}</strong>
                 <span className={artifactStatusClassName(payload.workItem.status)}>
                   {payload.workItem.status}
                 </span>
               </div>
               <p>{payload.workItem.title}</p>
               <div className="operatorMetaRow">
-                {payload.workItem.projectTitle ? <span>Project: {payload.workItem.projectTitle}</span> : null}
+                {payload.workItem.projectTitle ? (
+                  <span>
+                    {t(messageKeys.codeArtifactDetailProjectMeta, {
+                      projectTitle: payload.workItem.projectTitle,
+                    })}
+                  </span>
+                ) : null}
               </div>
             </article>
           ) : null}
@@ -234,7 +276,7 @@ export function ArtifactDetailView() {
           {payload.project ? (
             <article className="operatorCard">
               <div className="operatorCardHeader">
-                <strong>Project</strong>
+                <strong>{t(messageKeys.codeArtifactDetailProjectLabel)}</strong>
                 <span className={artifactStatusClassName(payload.project.status)}>{payload.project.status}</span>
               </div>
               <p>{payload.project.title}</p>
@@ -244,7 +286,7 @@ export function ArtifactDetailView() {
           {payload.conversation ? (
             <article className="operatorCard">
               <div className="operatorCardHeader">
-                <strong>Conversation</strong>
+                <strong>{t(messageKeys.codeArtifactDetailConversationLabel)}</strong>
                 <span className="operatorStatusBadge isMuted">{payload.conversation.kind}</span>
               </div>
               <p>{payload.conversation.title}</p>
@@ -256,15 +298,15 @@ export function ArtifactDetailView() {
       <section className="operatorPanel">
         <div className="operatorPanelHeader">
           <div>
-            <p className="operatorEyebrow">Related</p>
-            <h2>Neighboring Artifacts</h2>
+            <p className="operatorEyebrow">{t(messageKeys.codeArtifactDetailRelatedEyebrow)}</p>
+            <h2>{t(messageKeys.codeArtifactDetailRelatedTitle)}</h2>
           </div>
           <span className="operatorCountBadge">{payload.relatedArtifacts.length}</span>
         </div>
 
         {payload.relatedArtifacts.length === 0 ? (
           <p className="operatorEmptyState">
-            No related artifacts were recorded for this task or work item.
+            {t(messageKeys.codeArtifactDetailRelatedEmpty)}
           </p>
         ) : (
           <div className="operatorStack">
@@ -276,7 +318,7 @@ export function ArtifactDetailView() {
                 </div>
                 {artifact.summary ? <p>{artifact.summary}</p> : null}
                 <div className="operatorMetaRow">
-                  <span>{artifact.kind}</span>
+                  <span>{labelArtifactKind(artifact.kind, t)}</span>
                   {artifact.path ? <span>{artifact.path}</span> : null}
                 </div>
                 <div className="operatorActionRow">
@@ -285,7 +327,7 @@ export function ArtifactDetailView() {
                     className="operatorActionButton"
                     onClick={() => navigate(buildCodeArtifactPath(artifact.id))}
                   >
-                    View artifact
+                    {t(messageKeys.codeArtifactDetailViewArtifact)}
                   </button>
                 </div>
               </article>

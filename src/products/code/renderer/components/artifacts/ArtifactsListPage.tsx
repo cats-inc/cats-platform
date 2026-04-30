@@ -6,6 +6,8 @@ import {
   type CodeArtifactListItemSummary,
 } from '../../api/codeTask.js';
 import { buildCodeArtifactPath } from '../../codePaths.js';
+import { useI18n } from '../../../../../app/renderer/i18n/index.js';
+import { messageKeys } from '../../../../../shared/i18n/messageKeys.js';
 import './artifactsList.css';
 
 type CodeArtifactKind =
@@ -30,40 +32,55 @@ const FILTER_ORDER: readonly KindFilter[] = [
   'dataset',
 ];
 
-const ARTIFACT_KIND_LABELS: Record<CodeArtifactKind, string> = {
-  build: 'Build',
-  preview: 'Preview',
-  document: 'Document',
-  report: 'Report',
-  attachment: 'Attachment',
-  transcript_export: 'Transcript',
-  dataset: 'Dataset',
-};
-
-function isCodeArtifactKind(value: string): value is CodeArtifactKind {
-  return value in ARTIFACT_KIND_LABELS;
+function labelArtifactKind(kind: string, t: ReturnType<typeof useI18n>['t']): string {
+  switch (kind) {
+    case 'build':
+      return t(messageKeys.codeArtifactKindBuildLabel);
+    case 'preview':
+      return t(messageKeys.codeArtifactKindPreviewLabel);
+    case 'document':
+      return t(messageKeys.codeArtifactKindDocumentLabel);
+    case 'report':
+      return t(messageKeys.codeArtifactKindReportLabel);
+    case 'attachment':
+      return t(messageKeys.codeArtifactKindAttachmentLabel);
+    case 'transcript_export':
+      return t(messageKeys.codeArtifactKindTranscriptLabel);
+    case 'dataset':
+      return t(messageKeys.codeArtifactDatasetLabel);
+    default:
+      return kind || t(messageKeys.codeArtifactKindUnknownLabel);
+  }
 }
 
-function labelArtifactKind(kind: string): string {
-  return isCodeArtifactKind(kind) ? ARTIFACT_KIND_LABELS[kind] : kind;
-}
-
-function formatRelative(iso: string): string {
+function formatRelative(iso: string, locale: string): string {
   const then = new Date(iso).getTime();
   const now = Date.now();
   const delta = now - then;
-  if (Number.isNaN(delta)) return '';
+  if (Number.isNaN(delta)) {
+    return '';
+  }
+  const formatter = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' });
   const minute = 60 * 1000;
   const hour = 60 * minute;
   const day = 24 * hour;
-  if (delta < minute) return 'just now';
-  if (delta < hour) return `${Math.round(delta / minute)}m ago`;
-  if (delta < day) return `${Math.round(delta / hour)}h ago`;
-  if (delta < 7 * day) return `${Math.round(delta / day)}d ago`;
-  return new Date(iso).toLocaleDateString();
+  if (delta < minute) {
+    return formatter.format(0, 'second');
+  }
+  if (delta < hour) {
+    return formatter.format(-Math.round(delta / minute), 'minute');
+  }
+  if (delta < day) {
+    return formatter.format(-Math.round(delta / hour), 'hour');
+  }
+  if (delta < 7 * day) {
+    return formatter.format(-Math.round(delta / day), 'day');
+  }
+  return new Intl.DateTimeFormat(locale).format(new Date(iso));
 }
 
 export function ArtifactsListPage(): JSX.Element {
+  const { locale, t } = useI18n();
   const [artifacts, setArtifacts] = useState<CodeArtifactListItemSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -81,7 +98,7 @@ export function ArtifactsListPage(): JSX.Element {
       })
       .catch((fetchError: unknown) => {
         if (cancelled) return;
-        setError(fetchError instanceof Error ? fetchError.message : 'Failed to load artifacts.');
+        setError(fetchError instanceof Error ? fetchError.message : t(messageKeys.codeArtifactUnknown));
       })
       .finally(() => {
         if (!cancelled) {
@@ -92,7 +109,7 @@ export function ArtifactsListPage(): JSX.Element {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   const visible = useMemo(() => {
     const base = filter === 'all'
@@ -109,7 +126,7 @@ export function ArtifactsListPage(): JSX.Element {
       <header className="channelTopBar codeArtListTopBar">
         <div className="channelTopBarStart codeArtListTopBar__start">
           <h1 className="channelTopBarTitle codeArtListTopBar__title">
-            Artifacts
+            {t(messageKeys.codeArtifactListHeader)}
           </h1>
           <span className="codeArtListTopBar__count">{visible.length}</span>
         </div>
@@ -127,7 +144,7 @@ export function ArtifactsListPage(): JSX.Element {
               onClick={() => setFilter(kind)}
               aria-pressed={filter === kind}
             >
-              {kind === 'all' ? 'All' : ARTIFACT_KIND_LABELS[kind]}
+              {kind === 'all' ? t(messageKeys.codeArtifactListAllFilter) : labelArtifactKind(kind, t)}
             </button>
           ))}
         </div>
@@ -135,13 +152,14 @@ export function ArtifactsListPage(): JSX.Element {
       </header>
       <main className="codeArtifactsList__main">
         {loading && visible.length === 0 ? (
-          <p className="codeArtifactsList__empty">Loading artifacts...</p>
+          <p className="codeArtifactsList__empty">{t(messageKeys.codeArtifactListLoading)}</p>
         ) : error ? (
-          <p className="codeArtifactsList__empty">Artifacts could not be loaded: {error}</p>
+          <p className="codeArtifactsList__empty">
+            {t(messageKeys.codeArtifactListError, { error })}
+          </p>
         ) : visible.length === 0 ? (
           <p className="codeArtifactsList__empty">
-            No artifacts match this filter yet. Builds, previews, reports,
-            attachments, and transcript exports will land here.
+            {t(messageKeys.codeArtifactListEmpty)}
           </p>
         ) : (
           <>
@@ -151,13 +169,13 @@ export function ArtifactsListPage(): JSX.Element {
                   <Link
                     to={buildCodeArtifactPath(art.id)}
                     className="codeArtifactsList__rowLink"
-                    aria-label={`Open artifact ${art.title}`}
+                    aria-label={t(messageKeys.codeArtifactListAriaOpen, { title: art.title })}
                   >
                     <div className="codeArtifactsList__rowMain">
                       <span
                         className={`codeArtifactsList__kindPill codeArtifactsList__kindPill--${art.kind}`}
                       >
-                        {labelArtifactKind(art.kind)}
+                        {labelArtifactKind(art.kind, t)}
                       </span>
                       <div className="codeArtifactsList__rowText">
                         <span className="codeArtifactsList__rowTitle">
@@ -178,16 +196,18 @@ export function ArtifactsListPage(): JSX.Element {
                     <div className="codeArtifactsList__rowMeta">
                       {art.taskTitle ? (
                         <span className="codeArtifactsList__provenance">
-                          task · <strong>{art.taskTitle}</strong>
+                          {t(messageKeys.codeArtifactListProvenanceTask)} ·{' '}
+                          <strong>{art.taskTitle}</strong>
                         </span>
                       ) : null}
                       {art.runId ? (
                         <span className="codeArtifactsList__provenance">
-                          run · <strong>{art.runId}</strong>
+                          {t(messageKeys.codeArtifactListProvenanceRun)} ·{' '}
+                          <strong>{art.runId}</strong>
                         </span>
                       ) : null}
                       <span className="codeArtifactsList__updated">
-                        {formatRelative(art.updatedAt)}
+                        {formatRelative(art.updatedAt, locale)}
                       </span>
                       <span
                         className={`codeArtifactsList__statusPill codeArtifactsList__statusPill--${art.status}`}
