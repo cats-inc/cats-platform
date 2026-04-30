@@ -86,36 +86,14 @@ export function DraftCompareCarousel({
       onKeyDown={onKeyDown}
     >
       <div className="draftCompareCarouselTrack">
-        {/* Owner directive (2026-05-01): boundary nav buttons render
-            only when there's somewhere to go. Index 0 has no left
-            neighbour, so the prev arrow is suppressed entirely
-            (instead of greyed-disabled). The right slot resolves to
-            either the next-branch arrow (mid-carousel), the +compare
-            button (last branch with cap room), or nothing (last
-            branch, cap reached). */}
-        {activeIndex > 0 ? (
-          <button
-            type="button"
-            className="draftCompareCarouselNav draftCompareCarouselNavPrev"
-            onClick={goPrev}
-            disabled={disabled}
-            aria-label={t(messageKeys.chatDraftCompareCarouselPreviousBranchAria)}
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-          </button>
-        ) : null}
-
+        {/* Owner directive (2026-05-01): nav arrows + the +compare slot
+            are owned by the active card's `draftBranchFormAnchor` (in
+            `ChatNewChatDraft`) so all three buttons share the form's
+            vertical centre. Carousel-level rendering would anchor at
+            `top: 50%` of the cell, which tracks the tallest branch's
+            chrome and drifted higher than the form on single-branch
+            (+New / +Group) drafts. Keyboard arrow shortcuts still fire
+            `goPrev` / `goNext` via this carousel's `onKeyDown`. */}
         {cards.map((card, index) => (
           <DraftCompareCarouselCardWrapper
             key={card.id}
@@ -131,29 +109,6 @@ export function DraftCompareCarousel({
             {card.content}
           </DraftCompareCarouselCardWrapper>
         ))}
-
-        {activeIndex < total - 1 ? (
-          <button
-            type="button"
-            className="draftCompareCarouselNav draftCompareCarouselNavNext"
-            onClick={goNext}
-            disabled={disabled}
-            aria-label={t(messageKeys.chatDraftCompareCarouselNextBranchAria)}
-          >
-            <svg
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polyline points="9 18 15 12 9 6" />
-            </svg>
-          </button>
-        ) : null}
       </div>
 
       {total > 1 ? (

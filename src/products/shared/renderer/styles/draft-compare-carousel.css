@@ -134,12 +134,14 @@
 .draftCompareCarouselAddBranchSlot {
   position: absolute;
   top: 50%;
-  /* Slot's left edge sits 8px right of the composer card's right edge
-   * so the button + hint live in the empty margin next to the card.
-   * The button has `width: 34px` (.draftCompareCarouselNav) so the
-   * button center lands at ~25px right of card — same X column as the
-   * carousel's prev/next arrows (`right: -44px`). */
-  left: calc(100% + 8px);
+  /* Slot's left edge sits 10px right of the composer card's right
+   * edge so the button center lands at +27px (10 + 34/2) — the SAME
+   * X column as the prev/next arrows when they're anchored via
+   * `right: -44px` (button right at +44, button left at +10, button
+   * center at +27). Keeping all three nav buttons in the same column
+   * means switching between +New/+Group/+Parallel doesn't shift the
+   * affordance horizontally either. */
+  left: calc(100% + 10px);
   transform: translateY(-50%);
   display: inline-flex;
   align-items: center;
@@ -151,14 +153,15 @@
   z-index: 1200;
 }
 
-/* Multi-branch carousel only: hold the slot invisible while the
- * carousel's branch-swap transition is in flight (matches the
- * `.draftCompareCarouselCard` 460ms transform duration), then fade
- * in. Single-branch drafts have no transition and the slot must
- * appear immediately — owner flagged the perceived "lag" on
- * 2026-05-01. */
-.draftCompareCarouselAddBranchSlotDelayed {
-  animation: draftAddBranchSlotFadeIn 200ms ease-out 460ms backwards;
+/* Multi-branch carousel only: hold the slot / nav buttons invisible
+ * during the carousel's branch-swap transition, then fade in. Owner
+ * tuned the delay to 200ms (2026-05-01) — long enough that the
+ * buttons don't ride along with the rotation, short enough that
+ * arrival doesn't feel laggy. The card transform itself runs 460ms
+ * but the buttons can join earlier without visual whiplash. */
+.draftCompareCarouselAddBranchSlotDelayed,
+.draftCompareCarouselNavDelayed {
+  animation: draftAddBranchSlotFadeIn 200ms ease-out 200ms backwards;
 }
 
 @keyframes draftAddBranchSlotFadeIn {
@@ -171,30 +174,34 @@
   transform: none;
 }
 
-/* Non-accent +compare slot inherits the muted/dashed treatment of the
- * legacy inline `.parallelAddButton` so default / group presets do
- * NOT pick up the parallel-preset blue accent. */
-.draftCompareCarouselAddBranch:not(.draftCompareCarouselAddBranchAccent) {
-  border: 1px dashed var(--border);
+/* The +compare button shares the prev/next nav arrows' 34x34 size
+ * (inherited from `.draftCompareCarouselNav`) so all three nav slots
+ * are visually equal-weighted — owner directive 2026-05-01: previous
+ * size mismatches read as a regression. Border is `dashed` to mark
+ * the "teaching add" intent vs. the solid prev/next navigation. */
+.draftCompareCarouselAddBranch {
+  border-style: dashed;
+  border-color: var(--border);
   color: var(--muted);
+  background: transparent;
 }
 
-.draftCompareCarouselAddBranch:not(.draftCompareCarouselAddBranchAccent):hover:not(:disabled) {
+.draftCompareCarouselAddBranch:hover:not(:disabled) {
   background: var(--panel-hover);
   color: var(--text);
-  border-style: solid;
   border-color: var(--border);
 }
 
 .draftCompareCarouselAddBranchAccent {
-  border-color: rgb(var(--draft-teaching-accent) / 0.7);
-  color: rgb(var(--draft-teaching-accent));
-  background: rgb(var(--draft-teaching-accent) / 0.04);
+  border-color: rgb(var(--draft-teaching-accent) / 0.4);
+  color: rgb(var(--draft-teaching-accent) / 0.7);
+  background: transparent;
 }
 
 .draftCompareCarouselAddBranchAccent:hover:not(:disabled) {
-  background: rgb(var(--draft-teaching-accent) / 0.14);
-  border-color: rgb(var(--draft-teaching-accent));
+  background: rgb(var(--draft-teaching-accent) / 0.08);
+  color: rgb(var(--draft-teaching-accent));
+  border-color: rgb(var(--draft-teaching-accent) / 0.6);
 }
 
 /* Pagination dots — same visual language as compareCardsPaginationDot

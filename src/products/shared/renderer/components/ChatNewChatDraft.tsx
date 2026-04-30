@@ -488,6 +488,26 @@ export function NewChatDraft({
     }
   }, [activeBranchIndex, isParallelMode, parallelCount]);
 
+  // Owner directive (2026-05-01): the carousel-nav fade-in animation
+  // is only justified when the user actually triggered a branch swap
+  // (so the buttons don't ride along with the 460ms 3D rotation). On
+  // first mount or on a route entry there's no transition to mask, so
+  // the buttons must appear immediately. Track previous active index
+  // and toggle a transient `isNavigating` flag only on real changes.
+  const [isNavigating, setIsNavigating] = useState(false);
+  const previousActiveBranchIndexRef = useRef(activeBranchIndex);
+  useEffect(() => {
+    if (previousActiveBranchIndexRef.current === activeBranchIndex) {
+      return;
+    }
+    previousActiveBranchIndexRef.current = activeBranchIndex;
+    setIsNavigating(true);
+    // 200ms matches the CSS animation-delay on
+    // `.draftCompareCarouselNavDelayed` — owner tuned 2026-05-01.
+    const timer = setTimeout(() => setIsNavigating(false), 200);
+    return () => clearTimeout(timer);
+  }, [activeBranchIndex]);
+
   const maxAudienceParticipants = payload.chat.capabilities.maxAudienceParticipants ?? 3;
   // Per-branch membership cap. Each branch (lead OR shadow) is its
   // own sub-chat, so maxChatParticipants applies per branch, not to
@@ -1512,42 +1532,76 @@ export function NewChatDraft({
   const effectiveBranchTotal = Math.max(parallelCount, 1);
   const lastBranchIndex = effectiveBranchTotal - 1;
   const canAddBranchNow = effectiveBranchTotal < maxParallelChats;
-  const renderAddBranchSlot = (cardIndex: number): ReactNode => {
-    // The slot only mounts when the user is actually viewing the last
-    // branch (not just when the card index matches `lastBranchIndex`).
-    // Mounting it inside peek branches caused the button + hint to
-    // ride along with the 460ms 3D-rotation when navigating to the
-    // last branch — owner flagged the visual flash on 2026-05-01.
-    // Mount-on-arrival pairs with the CSS `fadeIn` animation delay so
-    // the slot stays invisible until the carousel transition lands.
-    if (
-      cardIndex !== lastBranchIndex
-      || activeBranchIndex !== lastBranchIndex
-      || !canAddBranchNow
-      || !onAddParallelTargetAndFollow
-    ) {
+  // All carousel nav (prev / next / +compare) renders INSIDE the active
+  // card's `draftBranchFormAnchor` — owner directive (2026-05-01): every
+  // right/left-edge button lives on the composer's vertical centre so
+  // single-branch +New / +Group drafts use the same Y as +Parallel's
+  // next-branch arrow. Anchoring at carousel-cell level previously
+  // floated the +compare button higher than the next-branch arrow
+  // because the cell height tracked the (taller) shadow chrome.
+  const renderActiveBranchNav = (cardIndex: number): ReactNode => {
+    if (cardIndex !== activeBranchIndex) {
       return null;
     }
-    const slotClass = effectiveBranchTotal > 1
-      ? 'draftCompareCarouselAddBranchSlot draftCompareCarouselAddBranchSlotDelayed'
-      : 'draftCompareCarouselAddBranchSlot';
+    const showsPrev = activeBranchIndex > 0;
+    const showsNext = activeBranchIndex < lastBranchIndex;
+    const showsAdd = activeBranchIndex === lastBranchIndex
+      && canAddBranchNow
+      && Boolean(onAddParallelTargetAndFollow);
+    if (!showsPrev && !showsNext && !showsAdd) {
+      return null;
+    }
+    const delayed = isNavigating && effectiveBranchTotal > 1;
+    const navClass = (extra: string): string =>
+      `draftCompareCarouselNav ${extra}${delayed ? ' draftCompareCarouselNavDelayed' : ''}`;
     return (
-      <div className={slotClass}>
-        <button
-          type="button"
-          className={`draftCompareCarouselNav draftCompareCarouselAddBranch${accentParallelAddButton ? ' draftCompareCarouselAddBranchAccent' : ''}`}
-          onClick={onAddParallelTargetAndFollow}
-          disabled={isSubmittingFirstTurn}
-          aria-label={t(messageKeys.chatNewChatDraftBranchAddParallelAria)}
-        >
-          <CompareIcon />
-        </button>
-        {accentParallelAddButton ? (
-          <span className="parallelAddHint parallelAddHintAccent">
-            {t(messageKeys.chatNewChatDraftBranchAddCompareHint)}
-          </span>
+      <>
+        {showsPrev ? (
+          <button
+            type="button"
+            className={navClass('draftCompareCarouselNavPrev')}
+            onClick={() => setActiveBranchIndex(Math.max(0, activeBranchIndex - 1))}
+            disabled={isSubmittingFirstTurn}
+            aria-label={t(messageKeys.chatDraftCompareCarouselPreviousBranchAria)}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 18 9 12 15 6" />
+            </svg>
+          </button>
         ) : null}
-      </div>
+        {showsAdd ? (
+          <div
+            className={`draftCompareCarouselAddBranchSlot${delayed ? ' draftCompareCarouselAddBranchSlotDelayed' : ''}`}
+          >
+            <button
+              type="button"
+              className={`draftCompareCarouselNav draftCompareCarouselAddBranch${accentParallelAddButton ? ' draftCompareCarouselAddBranchAccent' : ''}`}
+              onClick={onAddParallelTargetAndFollow}
+              disabled={isSubmittingFirstTurn}
+              aria-label={t(messageKeys.chatNewChatDraftBranchAddParallelAria)}
+            >
+              <CompareIcon />
+            </button>
+            {accentParallelAddButton ? (
+              <span className="parallelAddHint parallelAddHintAccent">
+                {t(messageKeys.chatNewChatDraftBranchAddCompareHint)}
+              </span>
+            ) : null}
+          </div>
+        ) : showsNext ? (
+          <button
+            type="button"
+            className={navClass('draftCompareCarouselNavNext')}
+            onClick={() => setActiveBranchIndex(Math.min(lastBranchIndex, activeBranchIndex + 1))}
+            disabled={isSubmittingFirstTurn}
+            aria-label={t(messageKeys.chatDraftCompareCarouselNextBranchAria)}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="9 18 15 12 9 6" />
+            </svg>
+          </button>
+        ) : null}
+      </>
     );
   };
 
@@ -1562,7 +1616,7 @@ export function NewChatDraft({
                   {composerHeaderRowJsx}
                   <div className="draftBranchFormAnchor">
                     {leadFormJsx}
-                    {renderAddBranchSlot(0)}
+                    {renderActiveBranchNav(0)}
                   </div>
                   {draftComposerFooterJsx}
                 </>
@@ -1571,7 +1625,7 @@ export function NewChatDraft({
           }
           return {
             id: createDraftCompareShadowCardId(branchIndex, target),
-            content: buildShadowCardContent(branchIndex, target, renderAddBranchSlot(branchIndex)),
+            content: buildShadowCardContent(branchIndex, target, renderActiveBranchNav(branchIndex)),
           };
         })
       : [{
@@ -1581,7 +1635,7 @@ export function NewChatDraft({
               {composerHeaderRowJsx}
               <div className="draftBranchFormAnchor">
                 {leadFormJsx}
-                {renderAddBranchSlot(0)}
+                {renderActiveBranchNav(0)}
               </div>
               {draftComposerFooterJsx}
             </>
