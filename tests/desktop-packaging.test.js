@@ -85,6 +85,7 @@ async function seedRuntimeSidecar(runtimeRoot) {
   await seedFile(join(runtimeRoot, 'node_modules', 'hono', 'package.json'), '{"name":"hono"}');
   await seedFile(join(runtimeRoot, 'node_modules', 'playwright-core', 'package.json'), '{"name":"playwright-core"}');
   await seedFile(join(runtimeRoot, 'node_modules', 'yaml', 'package.json'), '{"name":"yaml"}');
+  await seedFile(join(runtimeRoot, 'node_modules', 'vitest', 'package.json'), '{"name":"vitest"}');
 }
 
 async function seedPlatformServerBundle(packageRoot, contents = 'export const layout = "bundle";') {
@@ -783,7 +784,7 @@ test('Windows installer smoke-check script validates bundled sidecars and host s
   assert.match(script, /cats-runtime\\public\\provider-setup\.html/);
   assert.match(script, /cats-runtime\\skills\\README\.md/);
   assert.match(script, /cats-runtime\\config\\providers\.yaml\.example/);
-  assert.match(script, /cats-runtime\\node_modules\\yaml\\package\.json/);
+  assert.match(script, /cats-runtime\\node_modules\\playwright-core\\package\.json/);
   assert.match(script, /desktop\\setup-assets\\windows\\Install-Node\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\Install-GitHubCli\.ps1/);
   assert.match(script, /desktop\\setup-assets\\windows\\Setup-NodeGlobalPrefix\.ps1/);
@@ -1071,6 +1072,10 @@ test('stageDesktopPackagingOutputs writes staging manifests and shared assets', 
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'config', 'providers.yaml.example'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'config', 'curated-model-catalogs.yaml.example'));
   await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'node_modules', 'yaml', 'package.json'));
+  await assert.rejects(
+    access(join(plan.outputRoot, 'shared', 'cats-runtime', 'node_modules', 'vitest', 'package.json')),
+    /ENOENT/,
+  );
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-Node.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Install-GitHubCli.ps1'));
   await access(join(plan.outputRoot, 'shared', 'setup-assets', 'windows', 'Setup-NodeGlobalPrefix.ps1'));
@@ -1495,6 +1500,11 @@ test('stageDesktopPackagingOutputs honors bundle layout for both app and runtime
     await readFile(join(plan.outputRoot, 'shared', 'cats-runtime', 'build', 'runtime', 'index.js'), 'utf8'),
     'export const layout = "bundle-runtime";',
   );
+  await access(join(plan.outputRoot, 'shared', 'cats-runtime', 'node_modules', 'playwright-core', 'package.json'));
+  await assert.rejects(
+    access(join(plan.outputRoot, 'shared', 'cats-runtime', 'node_modules', 'yaml', 'package.json')),
+    /ENOENT/,
+  );
 
   const assetMap = JSON.parse(await readFile(
     join(plan.outputRoot, 'shared', 'asset-map.json'),
@@ -1523,6 +1533,13 @@ test('stageDesktopPackagingOutputs honors bundle layout for both app and runtime
     assetMap.assets.some(
       (asset) => asset.target === 'shared/cats-runtime/build/runtime/index.js'
         && asset.source.replace(/\\/g, '/').endsWith('cats-runtime/build/runtime-bundle/index.js'),
+    ),
+    true,
+  );
+  assert.equal(
+    targetManifest.artifacts.some(
+      (artifact) => artifact.id === 'runtime-external-dependencies'
+        && artifact.relativePath === 'shared/cats-runtime/node_modules/playwright-core/package.json',
     ),
     true,
   );

@@ -29,6 +29,23 @@ interface RuntimePackageManifest {
   dependencies?: Record<string, string>;
 }
 
+interface RuntimePackageLockPackage {
+  dependencies?: Record<string, string>;
+  optionalDependencies?: Record<string, string>;
+  peerDependencies?: Record<string, string>;
+  dev?: boolean;
+}
+
+interface RuntimePackageLockManifest {
+  packages?: Record<string, RuntimePackageLockPackage>;
+}
+
+interface RuntimeDependencyStageAsset {
+  packageName: string;
+  directoryPath: string;
+  packageJsonPath: string;
+}
+
 interface RuntimeSidecarAsset {
   sourceRelativePath: string;
   targetRelativePath: string;
@@ -121,6 +138,7 @@ const PLATFORM_OPTIONAL_ASSETS: PlatformSidecarAsset[] = [
 // output as shared/app-sidecar/node_modules/<name>. Transitive runtime deps must
 // be listed explicitly so packaging is deterministic.
 const APP_SIDECAR_RUNTIME_DEPENDENCIES = ['js-yaml', 'argparse'] as const;
+const RUNTIME_BUNDLE_EXTERNAL_DEPENDENCIES = ['playwright-core'] as const;
 
 const RUNTIME_OPTIONAL_ASSETS: RuntimeSidecarAsset[] = [
   {
@@ -131,11 +149,6 @@ const RUNTIME_OPTIONAL_ASSETS: RuntimeSidecarAsset[] = [
   {
     sourceRelativePath: 'skills',
     targetRelativePath: join('shared', 'cats-runtime', 'skills'),
-    directory: true,
-  },
-  {
-    sourceRelativePath: 'node_modules',
-    targetRelativePath: join('shared', 'cats-runtime', 'node_modules'),
     directory: true,
   },
   {
@@ -186,8 +199,114 @@ function resolveSidecarLayoutSelection(
   };
 }
 
+function runtimeDependencyDirectoryPath(packageName: string): string {
+  return join('node_modules', ...packageName.split('/'));
+}
+
 function runtimeDependencyPackagePath(packageName: string): string {
-  return join('node_modules', ...packageName.split('/'), 'package.json');
+  return join(runtimeDependencyDirectoryPath(packageName), 'package.json');
+}
+
+async function readRuntimePackageLockManifest(
+  runtimePackageRoot: string,
+): Promise<RuntimePackageLockManifest | null> {
+  try {
+    const raw = await readFile(join(runtimePackageRoot, 'package-lock.json'), 'utf8');
+    return JSON.parse(raw) as RuntimePackageLockManifest;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (message.includes('ENOENT')) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+function collectRuntimeDependencyNamesFromLock(
+  lockManifest: RuntimePackageLockManifest | null,
+  rootDependencyNames: string[],
+): string[] {
+  const packages = lockManifest?.packages ?? {};
+  if (Object.keys(packages).length === 0) {
+    return rootDependencyNames;
+  }
+
+  const visited = new Set<string>();
+  const pending = [...rootDependencyNames];
+  const rootDependencies = new Set(rootDependencyNames);
+
+  while (pending.length > 0) {
+    const packageName = pending.shift();
+    if (!packageName || visited.has(packageName)) {
+      continue;
+    }
+
+    const packagePath = runtimeDependencyDirectoryPath(packageName).replace(/\\/g, '/');
+    const packageEntry = packages[packagePath];
+    if (!packageEntry) {
+      if (rootDependencies.has(packageName)) {
+        visited.add(packageName);
+      }
+      continue;
+    }
+    if (packageEntry.dev === true && !rootDependencies.has(packageName)) {
+      continue;
+    }
+
+    visited.add(packageName);
+    const dependencies = {
+      ...packageEntry.dependencies,
+      ...packageEntry.optionalDependencies,
+      ...packageEntry.peerDependencies,
+    };
+    for (const dependencyName of Object.keys(dependencies)) {
+      const dependencyPath = runtimeDependencyDirectoryPath(dependencyName).replace(/\\/g, '/');
+      const dependencyEntry = packages[dependencyPath];
+      if (dependencyEntry && dependencyEntry.dev !== true && !visited.has(dependencyName)) {
+        pending.push(dependencyName);
+      }
+    }
+  }
+
+  return [...visited].sort();
+}
+
+function resolveRuntimeRootDependencyNames(
+  manifest: RuntimePackageManifest,
+  layout: DesktopSidecarLayout,
+): string[] {
+  const dependencyNames = Object.keys(manifest.dependencies ?? {});
+  if (layout === 'split') {
+    return dependencyNames;
+  }
+
+  return dependencyNames.filter((dependencyName) =>
+    (RUNTIME_BUNDLE_EXTERNAL_DEPENDENCIES as readonly string[]).includes(dependencyName));
+}
+
+function buildRuntimeDependencyStageAssets(packageNames: string[]): RuntimeDependencyStageAsset[] {
+  return packageNames.map((packageName) => ({
+    packageName,
+    directoryPath: runtimeDependencyDirectoryPath(packageName),
+    packageJsonPath: runtimeDependencyPackagePath(packageName),
+  }));
+}
+
+function runtimeDependencyMarkerForLayout(layout: DesktopSidecarLayout): string {
+  const dependencyName = layout === 'bundle'
+    ? RUNTIME_BUNDLE_EXTERNAL_DEPENDENCIES[0]
+    : 'yaml';
+  return runtimeDependencyPackagePath(dependencyName);
+}
+
+function runtimeDependencyArtifactId(layout: DesktopSidecarLayout): string {
+  return layout === 'bundle'
+    ? 'runtime-external-dependencies'
+    : 'runtime-dependencies';
+}
+
+function runtimeDependencyArtifactPath(layout: DesktopSidecarLayout): string {
+  return join('shared', 'cats-runtime', runtimeDependencyMarkerForLayout(layout)).replace(/\\/g, '/');
 }
 
 async function readRuntimePackageManifest(runtimePackageRoot: string): Promise<RuntimePackageManifest> {
@@ -195,11 +314,18 @@ async function readRuntimePackageManifest(runtimePackageRoot: string): Promise<R
   return JSON.parse(raw) as RuntimePackageManifest;
 }
 
-async function ensureBundledRuntimeAssets(runtimePackageRoot: string): Promise<string[]> {
+async function ensureBundledRuntimeAssets(
+  runtimePackageRoot: string,
+  layout: DesktopSidecarLayout,
+): Promise<RuntimeDependencyStageAsset[]> {
   const manifest = await readRuntimePackageManifest(runtimePackageRoot);
-  const dependencyPackagePaths = Object.keys(manifest.dependencies ?? {}).map((dependency) =>
-    runtimeDependencyPackagePath(dependency)
+  const rootDependencyNames = resolveRuntimeRootDependencyNames(manifest, layout);
+  const lockManifest = await readRuntimePackageLockManifest(runtimePackageRoot);
+  const dependencyPackageNames = collectRuntimeDependencyNamesFromLock(
+    lockManifest,
+    rootDependencyNames,
   );
+  const dependencyAssets = buildRuntimeDependencyStageAssets(dependencyPackageNames);
   const requiredPaths = [
     join(runtimePackageRoot, 'build', 'runtime', 'index.js'),
     join(runtimePackageRoot, 'package.json'),
@@ -208,12 +334,11 @@ async function ensureBundledRuntimeAssets(runtimePackageRoot: string): Promise<s
     join(runtimePackageRoot, 'config', 'management.yaml.example'),
     join(runtimePackageRoot, 'config', 'providers.yaml.example'),
     join(runtimePackageRoot, 'config', 'curated-model-catalogs.yaml.example'),
-    join(runtimePackageRoot, 'node_modules'),
-    ...dependencyPackagePaths.map((dependencyPath) => join(runtimePackageRoot, dependencyPath)),
+    ...dependencyAssets.map((dependency) => join(runtimePackageRoot, dependency.packageJsonPath)),
   ];
 
   await Promise.all(requiredPaths.map((path) => ensureRequiredFile(path)));
-  return dependencyPackagePaths;
+  return dependencyAssets;
 }
 
 async function resolveAppServerStageSource(
@@ -775,6 +900,7 @@ function buildPackagingTarget(
   config: DesktopHostConfig,
   outputRoot: string,
   target: (typeof PACKAGING_TARGETS)[number],
+  sidecarLayout: DesktopSidecarLayoutSelection,
 ): DesktopPackagingTarget {
   const stageDirectory = join(outputRoot, 'targets', target.id);
   const setupAssets = DESKTOP_SETUP_ASSETS.filter((asset) => asset.targetPlatforms.includes(target.platform));
@@ -795,7 +921,11 @@ function buildPackagingTarget(
     { id: 'runtime-package-manifest', relativePath: 'shared/cats-runtime/package.json', role: 'runtime_sidecar' as const },
     { id: 'runtime-setup-ui', relativePath: 'shared/cats-runtime/public/provider-setup.html', role: 'runtime_sidecar' as const },
     { id: 'runtime-skills', relativePath: 'shared/cats-runtime/skills/README.md', role: 'runtime_sidecar' as const },
-    { id: 'runtime-dependencies', relativePath: 'shared/cats-runtime/node_modules/yaml/package.json', role: 'runtime_sidecar' as const },
+    {
+      id: runtimeDependencyArtifactId(sidecarLayout.runtime),
+      relativePath: runtimeDependencyArtifactPath(sidecarLayout.runtime),
+      role: 'runtime_sidecar' as const,
+    },
     { id: 'installer-manifest', relativePath: `targets/${target.id}/installer-manifest.json`, role: 'manifest' as const },
   ];
   if (setupAssets.length > 0 || setupSupportAssets.length > 0) {
@@ -853,7 +983,7 @@ export function createDesktopPackagingPlan(
     selfHostedNpmCompatible: true,
     targets: PACKAGING_TARGETS
       .filter((target) => allowedPlatforms === null || allowedPlatforms.has(target.platform))
-      .map((target) => buildPackagingTarget(config, outputRoot, target)),
+      .map((target) => buildPackagingTarget(config, outputRoot, target, sidecarLayout)),
     installer: buildInstallerContract(config.update.channel, allowedPlatforms),
     updates: {
       channel: config.update.channel,
@@ -977,10 +1107,13 @@ export async function stageDesktopPackagingOutputs(
     allowedPlatforms,
   );
 
-  let runtimeDependencyPackagePaths: string[] = [];
+  let runtimeDependencyAssets: RuntimeDependencyStageAsset[] = [];
   let runtimeStageSource: DesktopStagedSidecarOutput | null = null;
   try {
-    runtimeDependencyPackagePaths = await ensureBundledRuntimeAssets(config.runtimePackageRoot);
+    runtimeDependencyAssets = await ensureBundledRuntimeAssets(
+      config.runtimePackageRoot,
+      sidecarLayout.runtime,
+    );
     runtimeStageSource = await resolveRuntimeStageSource(
       config.runtimePackageRoot,
       sidecarLayout.runtime,
@@ -997,6 +1130,12 @@ export async function stageDesktopPackagingOutputs(
       } else {
         await copyFile(sourcePath, targetPath);
       }
+    }
+    for (const dependency of runtimeDependencyAssets) {
+      await copyDirectory(
+        join(config.runtimePackageRoot, dependency.directoryPath),
+        join(outputRoot, 'shared', 'cats-runtime', dependency.directoryPath),
+      );
     }
   } catch (error) {
     throw new Error(
@@ -1066,9 +1205,9 @@ export async function stageDesktopPackagingOutputs(
         source: relative(outputRoot, join(config.runtimePackageRoot, 'config', 'providers.yaml.example')),
         target: 'shared/cats-runtime/config/providers.yaml.example',
       },
-      ...runtimeDependencyPackagePaths.map((dependencyPath) => ({
-        source: relative(outputRoot, join(config.runtimePackageRoot, dependencyPath)),
-        target: join('shared', 'cats-runtime', dependencyPath),
+      ...runtimeDependencyAssets.map((dependency) => ({
+        source: relative(outputRoot, join(config.runtimePackageRoot, dependency.directoryPath)),
+        target: join('shared', 'cats-runtime', dependency.directoryPath).replace(/\\/g, '/'),
       })),
       ...setupAssets.map((asset) => ({
         source: relative(outputRoot, join(config.packageRoot, asset.sourceRelativePath)),
