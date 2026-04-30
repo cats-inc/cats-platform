@@ -1271,6 +1271,11 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.addCatPanelSaving': '儲存中…',
   'shared.addCatPanelCreateAndAdd': '建立並加入',
   'shared.addCatPanelCreateAndAddToChat': '建立並加入聊天室',
+  'shared.workspaceMode.currentLabel': '目前資料夾',
+  'shared.workspaceMode.worktreeLabel': '獨立工作區',
+  'shared.workspaceMode.currentTooltip': '直接修改所選資料夾中的檔案。',
+  'shared.workspaceMode.worktreeTooltip':
+    '為此儲存庫建立平行的工作目錄。需要 Git 儲存庫。',
   'shared.approvalEyebrow': '核准',
   'shared.approvalPendingTitle': '待核准項目',
   'shared.approvalEmptyState':

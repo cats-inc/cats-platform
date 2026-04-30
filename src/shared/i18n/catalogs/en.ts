@@ -1315,6 +1315,12 @@ export const enCatalog: MessageCatalog = {
   'shared.addCatPanelSaving': 'Saving…',
   'shared.addCatPanelCreateAndAdd': 'Create & Add',
   'shared.addCatPanelCreateAndAddToChat': 'Create & Add to Chat',
+  'shared.workspaceMode.currentLabel': 'Current folder',
+  'shared.workspaceMode.worktreeLabel': 'Independent worktree',
+  'shared.workspaceMode.currentTooltip':
+    'Edits files in the selected folder directly.',
+  'shared.workspaceMode.worktreeTooltip':
+    'Creates a parallel working directory for this repo. Requires a git repository.',
   'shared.approvalEyebrow': 'Approval',
   'shared.approvalPendingTitle': 'Pending approvals',
   'shared.approvalEmptyState':

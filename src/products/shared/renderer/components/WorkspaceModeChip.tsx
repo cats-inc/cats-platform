@@ -4,6 +4,8 @@ import {
   DEFAULT_DRAFT_WORKSPACE_MODE,
   type DraftWorkspaceMode,
 } from '../../../../shared/runtimeSessionPolicy.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
 export type WorkspaceMode = DraftWorkspaceMode;
 
@@ -11,15 +13,14 @@ export const DEFAULT_WORKSPACE_MODE: WorkspaceMode = DEFAULT_DRAFT_WORKSPACE_MOD
 
 // UI-facing copy stays user-readable here, even though the underlying mode name
 // remains "worktree" because the runtime still uses git worktrees under the hood.
-const WORKSPACE_MODE_LABELS: Record<WorkspaceMode, string> = {
-  current: 'Current folder',
-  worktree: 'Independent worktree',
-};
-
-const WORKSPACE_MODE_TOOLTIPS: Record<WorkspaceMode, string> = {
-  current: 'Edits files in the selected folder directly.',
-  worktree: 'Creates a parallel working directory for this repo. Requires a git repository.',
-};
+const WORKSPACE_MODE_LABEL_KEYS = {
+  current: messageKeys.sharedWorkspaceModeCurrentLabel,
+  worktree: messageKeys.sharedWorkspaceModeWorktreeLabel,
+} as const;
+const WORKSPACE_MODE_TOOLTIP_KEYS = {
+  current: messageKeys.sharedWorkspaceModeCurrentTooltip,
+  worktree: messageKeys.sharedWorkspaceModeWorktreeTooltip,
+} as const;
 
 const WORKSPACE_MODE_ORDER: readonly WorkspaceMode[] = ['current', 'worktree'];
 
@@ -30,6 +31,7 @@ export interface WorkspaceModeChipProps {
 }
 
 export function WorkspaceModeChip({ value, onChange, disabled }: WorkspaceModeChipProps) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -63,7 +65,7 @@ export function WorkspaceModeChip({ value, onChange, disabled }: WorkspaceModeCh
         disabled={disabled}
         aria-haspopup="listbox"
         aria-expanded={open}
-        data-tooltip={WORKSPACE_MODE_TOOLTIPS[value]}
+        data-tooltip={t(WORKSPACE_MODE_TOOLTIP_KEYS[value])}
         onClick={() => setOpen((current) => !current)}
       >
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -71,7 +73,7 @@ export function WorkspaceModeChip({ value, onChange, disabled }: WorkspaceModeCh
           <path d="M2 8l6 3 6-3" />
           <path d="M2 11l6 3 6-3" />
         </svg>
-        <span>{WORKSPACE_MODE_LABELS[value]}</span>
+        <span>{t(WORKSPACE_MODE_LABEL_KEYS[value])}</span>
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M2.5 4 5 6.5 7.5 4" />
         </svg>
@@ -99,7 +101,7 @@ export function WorkspaceModeChip({ value, onChange, disabled }: WorkspaceModeCh
                     </svg>
                   ) : null}
                 </span>
-                <span>{WORKSPACE_MODE_LABELS[mode]}</span>
+                <span>{t(WORKSPACE_MODE_LABEL_KEYS[mode])}</span>
               </button>
             );
           })}
