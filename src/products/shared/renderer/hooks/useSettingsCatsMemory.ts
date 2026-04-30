@@ -11,6 +11,8 @@ import {
   listCatMemory,
   type DurableMemoryItem,
 } from '../api/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
 
 export interface SettingsCatsMemoryController {
   memoryForm: {
@@ -32,6 +34,7 @@ export function useSettingsCatsMemory(input: {
   onBusy: (busy: WorkspaceBusyState) => void;
   onFeedback: (message: string) => void;
 }): SettingsCatsMemoryController {
+  const { t } = useI18n();
   const [memoryForm, setMemoryForm] = useState({ category: 'fact', content: '' });
   const [catMemory, setCatMemory] = useState<DurableMemoryItem[]>([]);
   const [memoryLoading, setMemoryLoading] = useState(false);
@@ -80,7 +83,7 @@ export function useSettingsCatsMemory(input: {
       setCatMemory((prev) => [item, ...prev.filter((existing) => existing.id !== item.id)]);
       setMemoryForm({ category: 'fact', content: '' });
     } catch (error) {
-      input.onFeedback(error instanceof Error ? error.message : 'Failed to save memory.');
+      input.onFeedback(error instanceof Error ? error.message : t(messageKeys.sharedSettingsCatsMemorySaveError));
     } finally {
       input.onBusy(clearBusyState());
     }
@@ -92,7 +95,7 @@ export function useSettingsCatsMemory(input: {
       await deleteCatMemory(catId, memoryId);
       setCatMemory((prev) => prev.filter((memoryRecord) => memoryRecord.id !== memoryId));
     } catch (error) {
-      input.onFeedback(error instanceof Error ? error.message : 'Failed to delete memory.');
+      input.onFeedback(error instanceof Error ? error.message : t(messageKeys.sharedSettingsCatsMemoryDeleteError));
     } finally {
       input.onBusy(clearBusyState());
     }

@@ -1072,6 +1072,17 @@ export const enCatalog: MessageCatalog = {
   'chat.companion.tab.memory': 'Memory',
   'chat.companion.tab.behavior': 'Behavior',
   'chat.companion.tab.inspector': 'Inspector',
+  'chat.companion.workspace.loadError': 'Failed to load companion data',
+  'shared.executionTarget.saveNewChatDefaultsError':
+    'Failed to save new chat model defaults.',
+  'shared.executionTarget.saveChatReplySettingsError':
+    'Failed to save this chat AI reply settings.',
+  'shared.channelContinuity.startFreshError':
+    'Failed to start a fresh chat continuity branch.',
+  'shared.settingsCatsMemory.saveError': 'Failed to save memory.',
+  'shared.settingsCatsMemory.deleteError': 'Failed to delete memory.',
+  'shared.operatorLoop.loadError': 'Failed to load operator loop.',
+  'shared.folderBrowser.loadError': 'Failed to load folders.',
   'chat.sidebar.primaryAction.newChat': 'New chat',
   'chat.sidebar.primaryAction.groupChat': 'Group chat',
   'chat.sidebar.primaryAction.parallelChat': 'Parallel chat',

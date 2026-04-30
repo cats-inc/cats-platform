@@ -11,6 +11,8 @@ import {
   createChannelBusyState,
   type WorkspaceBusyState,
 } from '../../../../shared/workspaceBusy.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
 
 export interface WorkspaceDirectLaneModelValueLike {
   provider: string;
@@ -62,6 +64,7 @@ export function useWorkspaceResetChannelContinuity<TPayload>({
   setBusy,
   setFeedback,
 }: UseWorkspaceResetChannelContinuityOptions<TPayload>) {
+  const { t } = useI18n();
   return useCallback(
     async (channelId: string): Promise<void> => {
       setBusy(createChannelBusyState('reset'));
@@ -73,12 +76,12 @@ export function useWorkspaceResetChannelContinuity<TPayload>({
         setFeedback(
           error instanceof Error
             ? error.message
-            : 'Failed to start a fresh chat continuity branch.',
+            : t(messageKeys.sharedChannelContinuityStartFreshError),
         );
       } finally {
         setBusy(clearBusyState());
       }
     },
-    [publishReadyPayload, resetChannelContinuity, setBusy, setFeedback],
+    [publishReadyPayload, resetChannelContinuity, setBusy, setFeedback, t],
   );
 }

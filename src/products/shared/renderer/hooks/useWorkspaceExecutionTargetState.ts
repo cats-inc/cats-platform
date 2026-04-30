@@ -39,6 +39,8 @@ import {
   type ExecutionTargetValue,
 } from '../components/ExecutionTarget.js';
 import type { RoomRoutingMode } from '../../../../shared/roomRouting.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
 
 export interface ExecutionTargetDefaultsLike {
   provider?: string | null;
@@ -553,6 +555,7 @@ export function useWorkspaceExecutionTargetState<
   updateChannelPendingExecutionTarget,
   debounceMs = 150,
 }: UseWorkspaceExecutionTargetStateOptions<TPayload, TChat, TSelectedChannel>) {
+  const { t } = useI18n();
   const [draftExecutionTarget, setDraftExecutionTarget] = useState<ExecutionTargetValue>(
     createDefaultExecutionTargetValue,
   );
@@ -767,7 +770,7 @@ export function useWorkspaceExecutionTargetState<
           setFeedback(
             error instanceof Error
               ? error.message
-              : 'Failed to save new chat model defaults.',
+              : t(messageKeys.sharedExecutionTargetSaveNewChatDefaultsError),
           );
         });
     }, debounceMs);
@@ -787,6 +790,7 @@ export function useWorkspaceExecutionTargetState<
     draftExecutionTarget.provider,
     setFeedback,
     setState,
+    t,
     state.status,
     state.status === 'ready'
       ? state.payload.chat.newChatDefaults?.instance ?? null
@@ -870,7 +874,7 @@ export function useWorkspaceExecutionTargetState<
           setFeedback(
             error instanceof Error
               ? error.message
-              : 'Failed to save this chat AI reply settings.',
+              : t(messageKeys.sharedExecutionTargetSaveChatReplySettingsError),
           );
         });
     }, debounceMs);
@@ -897,6 +901,7 @@ export function useWorkspaceExecutionTargetState<
     readySelectedChannel?.pendingModelSelection,
     setFeedback,
     setState,
+    t,
     soloChannelExecutionTarget.instance,
     soloChannelExecutionTarget.model,
     soloChannelExecutionTarget.modelSelection,

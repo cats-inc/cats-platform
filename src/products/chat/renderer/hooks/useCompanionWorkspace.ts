@@ -23,6 +23,8 @@ import {
   updateCompanionResponseProfile,
   updateCompanionSource,
 } from '../api/companion.js';
+import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
 
 export interface CompanionWorkspaceData {
   summary: CompanionBoxSummary | null;
@@ -55,6 +57,7 @@ export function useCompanionWorkspace(
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const refreshCounterRef = useRef(0);
+  const { t } = useI18n();
 
   const loadTabData = useCallback(async (tab: CompanionWorkspaceTab) => {
     abortRef.current?.abort();
@@ -102,14 +105,14 @@ export function useCompanionWorkspace(
       }
     } catch (err) {
       if (!signal.aborted) {
-        setError(err instanceof Error ? err.message : 'Failed to load companion data');
+        setError(err instanceof Error ? err.message : t(messageKeys.chatCompanionWorkspaceLoadError));
       }
     } finally {
       if (!signal.aborted) {
         setLoading(false);
       }
     }
-  }, [catId]);
+  }, [catId, t]);
 
   useEffect(() => {
     loadTabData(activeTab);

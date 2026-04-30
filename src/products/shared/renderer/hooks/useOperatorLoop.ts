@@ -9,6 +9,8 @@ import {
 import type { AppShellPayload } from '../../api/workspaceContracts.js';
 import { fetchOperatorLoopSnapshot } from '../api/index.js';
 import type { ChatOperatorSnapshot } from '../../operator-loop/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
 
 type OperatorLoadState =
   | { status: 'idle'; snapshot: ChatOperatorSnapshot | null; message: string }
@@ -22,6 +24,7 @@ export function useOperatorLoop(
   readyPayload: AppShellPayload | null,
   operatorRefreshKey: string,
 ) {
+  const { t } = useI18n();
   const [operatorState, setOperatorState] = useState<OperatorLoadState>({
     status: 'idle',
     snapshot: null,
@@ -77,13 +80,13 @@ export function useOperatorLoop(
           return {
             status: 'error',
             snapshot: current.snapshot,
-            message: error instanceof Error ? error.message : 'Failed to load operator loop.',
+            message: error instanceof Error ? error.message : t(messageKeys.sharedOperatorLoopLoadError),
           };
         });
       });
 
     return () => controller.abort();
-  }, [readyPayload?.setupCompleteAt]);
+  }, [readyPayload?.setupCompleteAt, t]);
 
   useEffect(() => {
     return refreshOperatorSnapshot();

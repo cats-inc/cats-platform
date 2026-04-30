@@ -1042,6 +1042,17 @@ export const messageKeys = {
   chatCompanionTabMemory: 'chat.companion.tab.memory',
   chatCompanionTabBehavior: 'chat.companion.tab.behavior',
   chatCompanionTabInspector: 'chat.companion.tab.inspector',
+  chatCompanionWorkspaceLoadError: 'chat.companion.workspace.loadError',
+  sharedExecutionTargetSaveNewChatDefaultsError:
+    'shared.executionTarget.saveNewChatDefaultsError',
+  sharedExecutionTargetSaveChatReplySettingsError:
+    'shared.executionTarget.saveChatReplySettingsError',
+  sharedChannelContinuityStartFreshError:
+    'shared.channelContinuity.startFreshError',
+  sharedSettingsCatsMemorySaveError: 'shared.settingsCatsMemory.saveError',
+  sharedSettingsCatsMemoryDeleteError: 'shared.settingsCatsMemory.deleteError',
+  sharedOperatorLoopLoadError: 'shared.operatorLoop.loadError',
+  sharedFolderBrowserLoadError: 'shared.folderBrowser.loadError',
   chatSidebarPrimaryActionNewChat: 'chat.sidebar.primaryAction.newChat',
   chatSidebarPrimaryActionGroupChat: 'chat.sidebar.primaryAction.groupChat',
   chatSidebarPrimaryActionParallelChat: 'chat.sidebar.primaryAction.parallelChat',

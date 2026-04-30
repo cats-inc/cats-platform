@@ -19,6 +19,8 @@ import {
   type FolderBrowsePreferenceSurface,
   type FolderBrowsePreferences,
 } from '../../folderBrowsePreferences.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
 
 const FOLDER_BROWSE_PERSIST_DELAY_MS = 300;
 
@@ -39,6 +41,7 @@ export function useFolderBrowser(options: {
   directLaneCatId?: string | null;
   initialPreferences?: FolderBrowsePreferences | null;
 }) {
+  const { t } = useI18n();
   const {
     onSelectPath,
     surface,
@@ -158,7 +161,7 @@ export function useFolderBrowser(options: {
         rememberPath(result.current);
       }
     } catch (error) {
-      setFolderBrowseError(error instanceof Error ? error.message : 'Failed to load folders.');
+      setFolderBrowseError(error instanceof Error ? error.message : t(messageKeys.sharedFolderBrowserLoadError));
       setFolderBrowseEntries([]);
       if (targetPath) {
         setFolderBrowsePath(targetPath);
@@ -166,7 +169,7 @@ export function useFolderBrowser(options: {
     } finally {
       setFolderBrowseLoading(false);
     }
-  }, [rememberPath]);
+  }, [rememberPath, t]);
 
   const openFolderBrowser = useCallback(async (targetPath?: string | null): Promise<void> => {
     const rememberedPath = readFolderBrowseRememberedPath(preferencesRef.current, {
@@ -192,12 +195,12 @@ export function useFolderBrowser(options: {
         rememberPath(result.current);
       }
     } catch (error) {
-      setFolderBrowseError(error instanceof Error ? error.message : 'Failed to load folders.');
+      setFolderBrowseError(error instanceof Error ? error.message : t(messageKeys.sharedFolderBrowserLoadError));
       setFolderBrowseEntries([]);
     } finally {
       setFolderBrowseLoading(false);
     }
-  }, [directLaneCatId, rememberPath, surface]);
+  }, [directLaneCatId, rememberPath, surface, t]);
 
   const selectCurrentFolder = useCallback(() => {
     if (!folderBrowseCurrentPath || folderBrowseError) {

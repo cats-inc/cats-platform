@@ -1038,6 +1038,17 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.companion.tab.memory': '記憶',
   'chat.companion.tab.behavior': '行為',
   'chat.companion.tab.inspector': '檢視器',
+  'chat.companion.workspace.loadError': '載入 companion 資料失敗',
+  'shared.executionTarget.saveNewChatDefaultsError':
+    '儲存新增聊天室模型預設值失敗。',
+  'shared.executionTarget.saveChatReplySettingsError':
+    '儲存這個聊天室的 AI 回覆設定失敗。',
+  'shared.channelContinuity.startFreshError':
+    '開始新的聊天連續性分支失敗。',
+  'shared.settingsCatsMemory.saveError': '儲存記憶失敗。',
+  'shared.settingsCatsMemory.deleteError': '刪除記憶失敗。',
+  'shared.operatorLoop.loadError': '載入 operator loop 失敗。',
+  'shared.folderBrowser.loadError': '載入資料夾失敗。',
   'chat.sidebar.primaryAction.newChat': '新增聊天',
   'chat.sidebar.primaryAction.groupChat': '新增群組聊天',
   'chat.sidebar.primaryAction.parallelChat': '新增平行聊天',
