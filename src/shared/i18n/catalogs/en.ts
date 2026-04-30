@@ -1014,6 +1014,18 @@ export const enCatalog: MessageCatalog = {
   'chat.newChatDraft.execution.emptyState': 'No AI reply setup yet.',
   'chat.newChatDraft.folder.title': 'Folder',
   'chat.newChatDraft.folder.emptyState': 'No folder selected yet.',
+  'chat.sidePanel.temporaryParticipantLabel': 'Temporary',
+  'chat.sidePanel.roleLabel': 'Role',
+  'chat.sidePanel.aiServiceLabel': 'AI Service',
+  'chat.sidePanel.connectionLabel': 'Connection',
+  'chat.sidePanel.startFresh': 'Start fresh',
+  'chat.sidePanel.startingFreshBusy': 'Starting fresh...',
+  'chat.sidePanel.startFreshHint':
+    'Keep this chat open, but reset solo continuity so the next turn starts a new branch.',
+  'chat.sidePanel.runStatusTitle': 'Run Status',
+  'chat.sidePanel.runStatusUnavailableTitle': 'Status unavailable',
+  'chat.sidePanel.loadingTitle': 'Loading',
+  'chat.sidePanel.operatorLoadingState': 'Loading approvals, activity, and run details.',
   'chat.newChatDraft.composerPlaceholder': 'How can I help you today?',
   'chat.newChatDraft.folderActionLabel': 'Choose folder',
   'chat.newChatDraft.groupDraftSelectionLabelSingle':

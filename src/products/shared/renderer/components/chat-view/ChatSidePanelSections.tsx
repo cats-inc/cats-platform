@@ -25,6 +25,8 @@ import { ProviderModelFields } from '../ProviderModelFields.js';
 import { RunInspector } from '../RunInspector.js';
 import { ChatParticipantsSection } from './ChatParticipantsSection.js';
 import type { WorkspaceBusyState } from '../../../../../shared/workspaceBusy.js';
+import { messageKeys } from '../../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
 export interface BuildChatSidePanelSectionsOptions {
   payload: AppShellPayload;
@@ -106,13 +108,16 @@ export function buildChatSidePanelSections({
   onDirectLaneExecutionTargetChange,
   buildParticipantAvatarStyle,
 }: BuildChatSidePanelSectionsOptions): SidePanelSection[] {
+  const { t } = useI18n();
   const sections: SidePanelSection[] = [];
   const startFreshBusy = isChannelBusy(busy, 'reset');
 
   if (showAddCatButton || assignedCatRecords.length > 0 || assignedAdhocParticipants.length > 0) {
     sections.push({
       id: 'cats',
-      title: assignedAdhocParticipants.length > 0 ? 'Participants' : 'Cats',
+      title: assignedAdhocParticipants.length > 0
+        ? t(messageKeys.chatNewChatDraftSidePanelParticipantsGroupTitle)
+        : t(messageKeys.chatNewChatDraftSidePanelParticipantsCatsTitle),
       children: (
         <ChatParticipantsSection
           assignedCatRecords={assignedCatRecords}
@@ -151,7 +156,9 @@ export function buildChatSidePanelSections({
               </div>
               <div>
                 <strong>{directLaneCat.name}</strong>
-                {directLaneCat.id === payload.chat.bossCatId ? <span className="catInspectBadge">Boss</span> : null}
+                {directLaneCat.id === payload.chat.bossCatId ? (
+                  <span className="catInspectBadge">{t(messageKeys.sharedCatInspectBossLabel)}</span>
+                ) : null}
               </div>
             </div>
           </div>
@@ -190,10 +197,10 @@ export function buildChatSidePanelSections({
                 onClick={() => void onStartFresh()}
                 disabled={startFreshBusy}
               >
-                {startFreshBusy ? 'Starting fresh...' : 'Start fresh'}
+                {startFreshBusy ? t(messageKeys.chatSidePanelStartingFreshBusy) : t(messageKeys.chatSidePanelStartFresh)}
               </button>
               <p className="operatorEmptyState">
-                Keep this chat open, but reset solo continuity so the next turn starts a new branch.
+                {t(messageKeys.chatSidePanelStartFreshHint)}
               </p>
             </div>
           ) : null}
@@ -219,27 +226,33 @@ export function buildChatSidePanelSections({
               </div>
               <div>
                 <strong>{defaultRecipientParticipant.name}</strong>
-                <span className="catInspectBadge">Temporary</span>
+                <span className="catInspectBadge">
+                  {t(messageKeys.chatSidePanelTemporaryParticipantLabel)}
+                </span>
               </div>
             </div>
             {defaultRecipientParticipant.roleHint ? (
               <div className="catInspectField">
-                <span className="catInspectFieldLabel">Role</span>
+                <span className="catInspectFieldLabel">{t(messageKeys.chatSidePanelRoleLabel)}</span>
                 <span>{defaultRecipientParticipant.roleHint}</span>
               </div>
             ) : null}
             <div className="catInspectField">
-              <span className="catInspectFieldLabel">AI Service</span>
+              <span className="catInspectFieldLabel">
+                {t(messageKeys.chatSidePanelAiServiceLabel)}
+              </span>
               <span>{executionSummary.providerLabel}</span>
             </div>
             {executionSummary.instanceLabel ? (
               <div className="catInspectField">
-                <span className="catInspectFieldLabel">Connection</span>
+                <span className="catInspectFieldLabel">
+                  {t(messageKeys.chatSidePanelConnectionLabel)}
+                </span>
                 <span>{executionSummary.instanceLabel}</span>
               </div>
             ) : null}
             <div className="catInspectField">
-              <span className="catInspectFieldLabel">Model</span>
+              <span className="catInspectFieldLabel">{t(messageKeys.sharedCatInspectModelLabel)}</span>
               <span>{executionSummary.modelLabel}</span>
             </div>
           </div>
@@ -252,45 +265,51 @@ export function buildChatSidePanelSections({
         : null;
       return (
         <div className="catInspectPanelBody">
-          <div className="catInspectIdentity">
-            <div
-              className={defaultRecipientCatRef === payload.chat.bossCatId ? 'catAvatar catAvatarBoss catInspectAvatar' : 'catAvatar catInspectAvatar'}
-              style={catRecord?.avatarUrl
-                ? { backgroundImage: `url(${catRecord.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                : defaultRecipientParticipant.avatarColor ? { background: defaultRecipientParticipant.avatarColor } : undefined}
+            <div className="catInspectIdentity">
+              <div
+                className={defaultRecipientCatRef === payload.chat.bossCatId ? 'catAvatar catAvatarBoss catInspectAvatar' : 'catAvatar catInspectAvatar'}
+                style={catRecord?.avatarUrl
+                  ? { backgroundImage: `url(${catRecord.avatarUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                  : defaultRecipientParticipant.avatarColor ? { background: defaultRecipientParticipant.avatarColor } : undefined}
             >
               {catRecord?.avatarUrl ? null : catInitials(defaultRecipientParticipant.name)}
             </div>
             <div>
               <strong>{defaultRecipientParticipant.name}</strong>
-              {defaultRecipientCatRef === payload.chat.bossCatId ? <span className="catInspectBadge">Boss</span> : null}
+              {defaultRecipientCatRef === payload.chat.bossCatId ? (
+                <span className="catInspectBadge">{t(messageKeys.sharedCatInspectBossLabel)}</span>
+              ) : null}
             </div>
           </div>
           <div className="catInspectField">
-            <span className="catInspectFieldLabel">AI Service</span>
+            <span className="catInspectFieldLabel">{t(messageKeys.chatSidePanelAiServiceLabel)}</span>
             <span>{executionSummary.providerLabel}</span>
           </div>
           {executionSummary.instanceLabel ? (
             <div className="catInspectField">
-              <span className="catInspectFieldLabel">Connection</span>
+              <span className="catInspectFieldLabel">{t(messageKeys.chatSidePanelConnectionLabel)}</span>
               <span>{executionSummary.instanceLabel}</span>
             </div>
           ) : null}
           <div className="catInspectField">
-            <span className="catInspectFieldLabel">Model</span>
+            <span className="catInspectFieldLabel">{t(messageKeys.sharedCatInspectModelLabel)}</span>
             <span>{executionSummary.modelLabel}</span>
           </div>
         </div>
       );
     }
-    return <p className="operatorEmptyState">No AI reply setup yet.</p>;
+    return <p className="operatorEmptyState">{t(messageKeys.chatNewChatDraftExecutionEmptyState)}</p>;
   })();
-  sections.push({ id: 'execution', title: 'AI Reply', children: executionChildren });
+  sections.push({
+    id: 'execution',
+    title: t(messageKeys.chatNewChatDraftExecutionTitle),
+    children: executionChildren,
+  });
 
   const cwd = selectedChannel.repoPath ?? selectedChannel.chatCwd;
   sections.push({
     id: 'cwd',
-    title: 'Folder',
+    title: t(messageKeys.chatNewChatDraftFolderTitle),
     children: cwd ? (
       <div style={{ display: 'grid', gap: 8 }}>
         <p style={{ margin: 0, fontSize: '0.85rem', wordBreak: 'break-all' }}>{cwd}</p>
@@ -299,17 +318,17 @@ export function buildChatSidePanelSections({
           className="operatorActionButton"
           onClick={() => void openFolderInExplorer(cwd)}
         >
-          Open folder
+          {t(messageKeys.chatNewChatDraftFolderActionLabel)}
         </button>
       </div>
     ) : (
-      <p className="operatorEmptyState">No folder selected yet.</p>
+      <p className="operatorEmptyState">{t(messageKeys.chatNewChatDraftFolderEmptyState)}</p>
     ),
   });
 
   sections.push({
     id: 'operator',
-    title: 'Run Status',
+    title: t(messageKeys.chatSidePanelRunStatusTitle),
     badge: operatorView?.approvals.length ?? 0,
     children: (
       <>
@@ -317,8 +336,8 @@ export function buildChatSidePanelSections({
           <section className="operatorPanel operatorPanelError">
             <div className="operatorPanelHeader">
               <div>
-                <p className="operatorEyebrow">Run Status</p>
-                <h2>Status unavailable</h2>
+                <p className="operatorEyebrow">{t(messageKeys.chatSidePanelRunStatusTitle)}</p>
+                <h2>{t(messageKeys.chatSidePanelRunStatusUnavailableTitle)}</h2>
               </div>
             </div>
             <p className="operatorEmptyState">{operatorError}</p>
@@ -328,11 +347,13 @@ export function buildChatSidePanelSections({
           <section className="operatorPanel">
             <div className="operatorPanelHeader">
               <div>
-                <p className="operatorEyebrow">Run Status</p>
-                <h2>Loading</h2>
+                <p className="operatorEyebrow">{t(messageKeys.chatSidePanelRunStatusTitle)}</p>
+                <h2>{t(messageKeys.chatSidePanelLoadingTitle)}</h2>
               </div>
             </div>
-            <p className="operatorEmptyState">Loading approvals, activity, and run details.</p>
+            <p className="operatorEmptyState">
+              {t(messageKeys.chatSidePanelOperatorLoadingState)}
+            </p>
           </section>
         ) : null}
         <ApprovalQueuePanel

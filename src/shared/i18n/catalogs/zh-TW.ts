@@ -981,6 +981,18 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.newChatDraft.execution.emptyState': '尚未設定 AI 回覆。',
   'chat.newChatDraft.folder.title': '資料夾',
   'chat.newChatDraft.folder.emptyState': '尚未選擇資料夾。',
+  'chat.sidePanel.temporaryParticipantLabel': '臨時',
+  'chat.sidePanel.roleLabel': '角色',
+  'chat.sidePanel.aiServiceLabel': 'AI 服務',
+  'chat.sidePanel.connectionLabel': '連線',
+  'chat.sidePanel.startFresh': '重新開始',
+  'chat.sidePanel.startingFreshBusy': '重新開始中…',
+  'chat.sidePanel.startFreshHint':
+    '保留此聊天室開啟，但重置單人連續對話，讓下一回合從新分支開始。',
+  'chat.sidePanel.runStatusTitle': '執行狀態',
+  'chat.sidePanel.runStatusUnavailableTitle': '狀態無法取得',
+  'chat.sidePanel.loadingTitle': '載入中',
+  'chat.sidePanel.operatorLoadingState': '正在載入審批、活動與執行詳情。',
   'chat.newChatDraft.composerPlaceholder': '我可以怎麼幫你？',
   'chat.newChatDraft.folderActionLabel': '選擇資料夾',
   'chat.newChatDraft.groupDraftSelectionLabelSingle':
