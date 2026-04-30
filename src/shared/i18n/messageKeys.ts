@@ -153,6 +153,23 @@ export const messageKeys = {
   settingsRuntimeSystemInstallCannotRemove: 'settings.runtime.systemInstallCannotRemove',
   settingsRuntimeUninstallDescriptionPrefix: 'settings.runtime.uninstallDescriptionPrefix',
   settingsRuntimeUninstallDescriptionSuffix: 'settings.runtime.uninstallDescriptionSuffix',
+  settingsRuntimeActionNoResult: 'settings.runtime.actionNoResult',
+  settingsRuntimeActionSuccessComplete: 'settings.runtime.actionSuccessComplete',
+  settingsRuntimeActionSuccessNothingToRemove:
+    'settings.runtime.actionSuccessNothingToRemove',
+  settingsRuntimeActionPartialWithDetail:
+    'settings.runtime.actionPartialWithDetail',
+  settingsRuntimeActionPartial: 'settings.runtime.actionPartial',
+  settingsRuntimeActionFailedWithDetail:
+    'settings.runtime.actionFailedWithDetail',
+  settingsRuntimeActionFailed: 'settings.runtime.actionFailed',
+  settingsRuntimeHostBridgeUnavailableClient:
+    'settings.runtime.hostBridgeUnavailableClient',
+  settingsRuntimeHostBridgeUnavailable:
+    'settings.runtime.hostBridgeUnavailable',
+  settingsRuntimePreviewMissingResult:
+    'settings.runtime.previewMissingResult',
+  settingsRuntimePreviewFailed: 'settings.runtime.previewFailed',
   settingsRuntimeFixStepCount: 'settings.runtime.fixStepCount',
   settingsRouteTitleAssistants: 'settings.route.title.assistants',
   settingsRouteTitleMyCats: 'settings.route.title.myCats',

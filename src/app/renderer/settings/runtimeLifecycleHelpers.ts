@@ -154,8 +154,10 @@ function buildOutcome(
   helper: RuntimeLifecycleHelperSummary,
   action: RuntimeLifecycleAction,
   snapshot: DesktopSetupSnapshot | undefined,
+  t: RuntimeLifecycleI18n,
 ): RuntimeLifecycleOutcome {
   const lastAction = snapshot?.state?.lastAction ?? null;
+  const actionText = actionLabel(action, t).toLowerCase();
   const expectedMode = ACTION_TO_MODE[action];
   if (
     !lastAction
@@ -172,7 +174,10 @@ function buildOutcome(
       appliedChanges: [],
       warnings: [],
       manualSteps: [],
-      message: `${helper.label}: host did not report a result for ${action}.`,
+      message: t(messageKeys.settingsRuntimeActionNoResult, {
+        helperLabel: helper.label,
+        actionLabel: actionText,
+      }),
     };
   }
 
@@ -180,19 +185,43 @@ function buildOutcome(
   const status = lastAction.status;
   const message = (() => {
     if (kind === 'success') {
-      return `${helper.label}: ${actionLabel(action).toLowerCase()} ${
-        status === 'not_installed' && action === 'uninstall' ? 'reported nothing to remove' : 'complete'
-      }.`;
+      return t(
+        status === 'not_installed' && action === 'uninstall'
+          ? messageKeys.settingsRuntimeActionSuccessNothingToRemove
+          : messageKeys.settingsRuntimeActionSuccessComplete,
+        {
+          helperLabel: helper.label,
+          actionLabel: actionText,
+        },
+      );
     }
     if (kind === 'partial') {
-      const head = `${helper.label}: ${actionLabel(action).toLowerCase()} ${status ?? 'changes_required'}`;
+      const normalizedStatus = status ?? 'changes_required';
       const detail = lastAction.warnings[0] ?? lastAction.manualSteps[0];
-      return detail ? `${head} — ${detail}` : `${head}.`;
+      return detail
+        ? t(messageKeys.settingsRuntimeActionPartialWithDetail, {
+            helperLabel: helper.label,
+            actionLabel: actionText,
+            status: normalizedStatus,
+            detail,
+          })
+        : t(messageKeys.settingsRuntimeActionPartial, {
+            helperLabel: helper.label,
+            actionLabel: actionText,
+            status: normalizedStatus,
+          });
     }
     const detail = lastAction.summary || lastAction.warnings[0] || status;
     return detail
-      ? `${helper.label}: ${actionLabel(action).toLowerCase()} failed — ${detail}.`
-      : `${helper.label}: ${actionLabel(action).toLowerCase()} failed.`;
+      ? t(messageKeys.settingsRuntimeActionFailedWithDetail, {
+          helperLabel: helper.label,
+          actionLabel: actionText,
+          detail,
+        })
+      : t(messageKeys.settingsRuntimeActionFailed, {
+          helperLabel: helper.label,
+          actionLabel: actionText,
+        });
   })();
 
   return {
@@ -224,6 +253,7 @@ async function invokeHelper(
 export async function runRuntimeLifecycleAction(
   helper: RuntimeLifecycleHelperSummary,
   action: RuntimeLifecycleAction,
+  t: RuntimeLifecycleI18n = defaultRuntimeLifecycleI18n,
 ): Promise<RuntimeLifecycleOutcome> {
   const bridge = resolveDesktopHostBridge();
   if (!bridge?.runSetupHelper) {
@@ -237,13 +267,13 @@ export async function runRuntimeLifecycleAction(
       appliedChanges: [],
       warnings: [],
       manualSteps: [],
-      message: 'Desktop host bridge is not available in this client.',
+      message: t(messageKeys.settingsRuntimeHostBridgeUnavailableClient),
     };
   }
 
   try {
     const snapshot = await invokeHelper(helper.id, ACTION_TO_MODE[action]);
-    const outcome = buildOutcome(helper, action, snapshot);
+    const outcome = buildOutcome(helper, action, snapshot, t);
     if (outcome.kind === 'success' || outcome.kind === 'partial') {
       void triggerProviderCatalogRefresh().catch(() => undefined);
     }
@@ -259,7 +289,12 @@ export async function runRuntimeLifecycleAction(
       appliedChanges: [],
       warnings: [],
       manualSteps: [],
-      message: error instanceof Error ? error.message : `${helper.label}: ${action} failed.`,
+      message: error instanceof Error
+        ? error.message
+        : t(messageKeys.settingsRuntimeActionFailed, {
+            helperLabel: helper.label,
+            actionLabel: actionLabel(action, t).toLowerCase(),
+          }),
     };
   }
 }
@@ -277,6 +312,7 @@ export interface RuntimeUninstallPreview {
 
 export async function previewRuntimeLifecycleUninstall(
   helper: RuntimeLifecycleHelperSummary,
+  t: RuntimeLifecycleI18n = defaultRuntimeLifecycleI18n,
 ): Promise<RuntimeUninstallPreview> {
   const bridge = resolveDesktopHostBridge();
   if (!bridge?.runSetupHelper) {
@@ -288,7 +324,7 @@ export async function previewRuntimeLifecycleUninstall(
       manualSteps: [],
       systemInstallPath: null,
       available: false,
-      message: 'Desktop host bridge is not available.',
+      message: t(messageKeys.settingsRuntimeHostBridgeUnavailable),
     };
   }
 
@@ -304,7 +340,7 @@ export async function previewRuntimeLifecycleUninstall(
         manualSteps: [],
         systemInstallPath: null,
         available: false,
-        message: 'Host did not return a preview result.',
+        message: t(messageKeys.settingsRuntimePreviewMissingResult),
       };
     }
     const systemInstallWarning = (lastAction.warnings ?? []).find((entry) =>
@@ -331,7 +367,7 @@ export async function previewRuntimeLifecycleUninstall(
       manualSteps: [],
       systemInstallPath: null,
       available: false,
-      message: error instanceof Error ? error.message : 'Preview failed.',
+      message: error instanceof Error ? error.message : t(messageKeys.settingsRuntimePreviewFailed),
     };
   }
 }

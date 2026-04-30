@@ -171,6 +171,22 @@ export const enCatalog: MessageCatalog = {
     'Will remove {itemCount} item{pluralSuffix}:',
   'settings.runtime.systemInstallCannotRemove':
     'Note: a system install at {installPath} cannot be removed by this helper.',
+  'settings.runtime.actionNoResult':
+    '{helperLabel}: host did not report a result for {actionLabel}.',
+  'settings.runtime.actionSuccessComplete': '{helperLabel}: {actionLabel} complete.',
+  'settings.runtime.actionSuccessNothingToRemove':
+    '{helperLabel}: {actionLabel} reported nothing to remove.',
+  'settings.runtime.actionPartialWithDetail':
+    '{helperLabel}: {actionLabel} {status} - {detail}',
+  'settings.runtime.actionPartial': '{helperLabel}: {actionLabel} {status}.',
+  'settings.runtime.actionFailedWithDetail':
+    '{helperLabel}: {actionLabel} failed - {detail}.',
+  'settings.runtime.actionFailed': '{helperLabel}: {actionLabel} failed.',
+  'settings.runtime.hostBridgeUnavailableClient':
+    'Desktop host bridge is not available in this client.',
+  'settings.runtime.hostBridgeUnavailable': 'Desktop host bridge is not available.',
+  'settings.runtime.previewMissingResult': 'Host did not return a preview result.',
+  'settings.runtime.previewFailed': 'Preview failed.',
   'settings.runtime.fixStepCount': '{count} fix step{pluralSuffix}',
   'settings.route.title.assistants': 'Assistants',
   'settings.route.title.myCats': 'My Cats',

@@ -168,7 +168,7 @@ export function PlatformSettingsRuntime({
   ) => {
     setRunningHelperId(helper.id);
     try {
-      const outcome = await runRuntimeLifecycleAction(helper, action);
+      const outcome = await runRuntimeLifecycleAction(helper, action, t);
       showToast(outcome.message);
       if (outcome.kind !== 'failure') {
         await refreshHelpers();
@@ -177,18 +177,18 @@ export function PlatformSettingsRuntime({
     } finally {
       setRunningHelperId(null);
     }
-  }, [refreshHelpers, showToast]);
+  }, [refreshHelpers, showToast, t]);
 
   const openUninstallPrompt = useCallback(async (helper: RuntimeLifecycleHelperSummary) => {
     setConfirmation({ helper, preview: null, loading: true });
-    const preview = await previewRuntimeLifecycleUninstall(helper);
+    const preview = await previewRuntimeLifecycleUninstall(helper, t);
     setConfirmation((prev) => {
       if (!prev || prev.helper.id !== helper.id) {
         return prev;
       }
       return { helper, preview, loading: false };
     });
-  }, []);
+  }, [t]);
 
   const handleUninstallConfirmed = useCallback(async () => {
     if (!confirmation || confirmation.loading) return;

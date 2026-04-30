@@ -162,6 +162,22 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.runtime.willRemoveItems': '將移除 {itemCount} 個項目{pluralSuffix}:',
   'settings.runtime.systemInstallCannotRemove':
     '注意：位於 {installPath} 的系統安裝不能被此 helper 移除。',
+  'settings.runtime.actionNoResult':
+    '{helperLabel}：host 未回報 {actionLabel} 結果。',
+  'settings.runtime.actionSuccessComplete': '{helperLabel}：{actionLabel} 完成。',
+  'settings.runtime.actionSuccessNothingToRemove':
+    '{helperLabel}：{actionLabel} 回報沒有可移除項目。',
+  'settings.runtime.actionPartialWithDetail':
+    '{helperLabel}：{actionLabel} {status} - {detail}',
+  'settings.runtime.actionPartial': '{helperLabel}：{actionLabel} {status}。',
+  'settings.runtime.actionFailedWithDetail':
+    '{helperLabel}：{actionLabel} 失敗 - {detail}。',
+  'settings.runtime.actionFailed': '{helperLabel}：{actionLabel} 失敗。',
+  'settings.runtime.hostBridgeUnavailableClient':
+    '此 client 無法使用 Desktop host bridge。',
+  'settings.runtime.hostBridgeUnavailable': '無法使用 Desktop host bridge。',
+  'settings.runtime.previewMissingResult': 'Host 未回傳預覽結果。',
+  'settings.runtime.previewFailed': '預覽失敗。',
   'settings.runtime.fixStepCount': '{count} 個步驟{pluralSuffix}',
   'settings.route.title.assistants': '助理',
   'settings.route.title.myCats': '我的貓咪',
