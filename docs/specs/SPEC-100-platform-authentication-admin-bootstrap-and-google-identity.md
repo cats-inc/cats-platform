@@ -69,8 +69,10 @@ the whole authorization system.
    default `coreActorId` to `null`.
 5. Write paths that require Core actor attribution shall fail closed when the
    current principal's membership has `coreActorId: null`, unless that path
-   explicitly supports an unaffiliated account action. Such paths shall never
-   fall back to `actor-owner`.
+   explicitly supports an unaffiliated account action. Unaffiliated account
+   actions are limited to account/session self-management, such as self-profile
+   reads, session status, logout, password change, and revoking the current
+   account's sessions. Such paths shall never fall back to `actor-owner`.
 6. Auth state shall include a version field for future schema changes.
 7. Password identities shall store only salted password hashes, never plaintext
    or reversible passwords.
@@ -97,7 +99,10 @@ the whole authorization system.
 16. If existing state has `setupCompleteAt`, missing, unreadable, or corrupt
     auth state shall enter an admin-auth bootstrap repair flow before exposing
     protected product APIs. The route gate remains active and protected routes
-    fail closed during repair.
+    fail closed during repair. Corrupt auth state means JSON parse failure,
+    missing required top-level fields, or a schema version greater than the
+    current code can read. Unknown extra fields shall not be treated as
+    corrupt.
 
 #### Login, logout, and session status
 
@@ -157,6 +162,9 @@ the whole authorization system.
     for existing single-owner writes. Other owner/admin accounts shall not be
     silently mapped to `actor-owner`; writes that need Core actor attribution
     shall fail closed until an explicit `coreActorId` mapping exists.
+    The `coreActorId: null` guard is a forward-looking invariant: v1 ships only
+    the first-admin UI path, but the guard prevents future account-management
+    work from silently regressing multi-user attribution.
 
 #### Google identity provider
 
@@ -180,20 +188,25 @@ the whole authorization system.
 46. The Google credential POST flow shall validate the Google Identity Services
     `g_csrf_token` double-submit contract when GIS submits a credential.
 47. For authenticated Cats sessions, the server shall issue a synchronizer CSRF
-    token through the session status, app-shell, or auth bootstrap payload.
+    token through `/api/auth/status`. App-shell or auth bootstrap payloads may
+    mirror the current status token for render efficiency, but they shall not
+    mint, rotate, or diverge from the `/api/auth/status` token.
 48. Mutating authenticated API requests shall send that token in
     `X-Cats-CSRF-Token`; the server shall validate it against the current
     session before route dispatch.
 49. Google credential POST routes shall not require `X-Cats-CSRF-Token` before a
     Cats session exists, because their CSRF boundary is the GIS
     `g_csrf_token`.
-50. Auth error responses shall not leak password-hash, session-token,
+50. CSRF tokens shall rotate on login/session creation and on privilege
+    changes. Logout and session revocation shall invalidate existing CSRF
+    tokens for the revoked session.
+51. Auth error responses shall not leak password-hash, session-token,
     configured secret, or Google token details.
-51. Login attempts shall use generic invalid-credential errors.
+52. Login attempts shall use generic invalid-credential errors.
 
 #### Configuration
 
-52. The platform shall add documented auth configuration keys:
+53. The platform shall add documented auth configuration keys:
     - `CATS_AUTH_ENABLED`
     - `CATS_AUTH_SESSION_SECRET`
     - `CATS_AUTH_SESSION_TTL_MS`
@@ -201,12 +214,25 @@ the whole authorization system.
     - `CATS_AUTH_LOGIN_LOCKOUT_MS`
     - `CATS_AUTH_GOOGLE_CLIENT_ID`
     - `CATS_AUTH_GOOGLE_HD`
-53. Auth shall default to enabled when the platform is bound to a non-loopback
+54. Auth shall default to enabled when the platform is bound to a non-loopback
     host or when `setupCompleteAt` exists. Once `setupCompleteAt` exists,
     missing, unreadable, or corrupt auth state shall trigger the repair flow
     and fail closed; it shall never disable the route gate.
-54. During development, a temporary explicit opt-out may exist only if it is
-    documented as unsafe and does not apply to packaged or LAN-facing defaults.
+55. During development, a temporary explicit opt-out may exist only if it is
+    documented as unsafe, applies only to loopback setup-incomplete workspaces,
+    and does not apply to packaged or LAN-facing defaults.
+
+Effective auth gate state:
+
+| Host / build state | Setup state | `CATS_AUTH_ENABLED` | Effective gate |
+|--------------------|-------------|---------------------|----------------|
+| Non-loopback or packaged | Any | unset or `true` | Enabled |
+| Non-loopback or packaged | Any | `false` | Configuration error; refuse to start serving browser traffic |
+| Loopback dev/test | Setup incomplete | unset | Disabled except setup/bootstrap policy |
+| Loopback dev/test | Setup incomplete | `true` | Enabled |
+| Loopback dev/test | Setup incomplete | `false` | Disabled, unsafe dev/test only |
+| Loopback dev/test | `setupCompleteAt` exists | unset or `true` | Enabled |
+| Loopback dev/test | `setupCompleteAt` exists | `false` | Enabled; `setupCompleteAt` takes precedence and the override is ignored with a warning |
 
 ### Non-Functional Requirements
 
@@ -317,8 +343,6 @@ Public/protected route policy:
 
 - [ ] Exact verifier dependency: Google Auth Library for Node.js vs a smaller
       standards-based JWT/OIDC verifier such as `jose`.
-- [ ] Whether `CATS_AUTH_ENABLED=false` should exist in packaged builds or only
-      in dev/test.
 - [ ] Whether account management UI belongs in the first rollout or a follow-up
       after the first admin gate lands.
 - [ ] Whether future role names should stay coarse (`admin`, `operator`) or

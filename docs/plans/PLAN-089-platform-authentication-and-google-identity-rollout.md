@@ -53,16 +53,18 @@ password hashes and session tokens are never stored in plaintext.
 
 ### Phase 2: Server Auth Gate and Local Admin Bootstrap
 
-Tasks 2.1, 2.2, 2.5, 2.6, and 2.7 must land atomically in one PR or behind
-one feature flag. Do not ship middleware without login/status endpoints,
-allowlists, CSRF issuance, and the minimal unauthenticated envelope; do not
-ship login endpoints as the only auth change while protected routes remain
-public.
+Tasks 2.1 through 2.10 must land atomically in one PR or behind one feature
+flag before the auth gate is enabled for any non-test host. Do not ship
+middleware without login/status endpoints, first-admin setup, repair flow,
+allowlists, CSRF issuance/validation, setup-reset protection, structured
+errors, login throttling, and the minimal unauthenticated envelope; do not ship
+login endpoints as the only auth change while protected routes remain public.
 
 - [ ] Task 2.1: Add a platform auth route module:
       `/api/auth/status`, `/api/auth/login`, `/api/auth/logout`, and local
-      bootstrap/login helpers. The status/bootstrap payload shall expose the
-      Cats synchronizer CSRF token for authenticated sessions.
+      bootstrap/login helpers. `/api/auth/status` is the canonical source for
+      the Cats synchronizer CSRF token for authenticated sessions; app-shell or
+      bootstrap payloads may only mirror that token.
 - [ ] Task 2.2: Implement synchronizer CSRF validation for mutating
       authenticated API routes using `X-Cats-CSRF-Token`.
 - [ ] Task 2.3: Extend setup completion so the local credentials path creates
@@ -71,6 +73,9 @@ public.
 - [ ] Task 2.4: Add the repair flow for existing setup-complete workspaces that
       have missing, unreadable, or corrupt auth state. The route gate must stay
       engaged and protected product APIs must fail closed during repair.
+      Corrupt means JSON parse failure, missing required top-level fields, or a
+      schema version newer than this code can read; unknown extra fields are
+      allowed.
 - [ ] Task 2.5: Add platform request middleware before product route dispatch.
 - [ ] Task 2.6: Implement public-route allowlists for pre-setup and post-setup
       states.
@@ -132,8 +137,9 @@ linked account on supported origins; local password remains available.
       for existing single-owner writes. Later memberships default
       `coreActorId` to `null`; write paths that need Core actor attribution
       must fail closed until explicit mapping exists.
-- [ ] Task 5.3: Add first attribution tests for approvals/operator actions or
-      another low-risk Core write path.
+- [ ] Task 5.3: Add forward-invariant attribution tests that create a second
+      admin membership with `coreActorId: null` and assert actor-attributed
+      writes fail closed instead of silently using `actor-owner`.
 - [ ] Task 5.4: Document the follow-up boundary for account management UI and
       non-admin roles.
 
@@ -191,13 +197,20 @@ operators before implementation is marked complete.
   Google Web OAuth is a poor fit for raw LAN IP and offline local-first use.
 - Auth state is separate from owner profile and Chat state.
 - Once `setupCompleteAt` exists, auth fails closed even if auth state is
-  missing or unreadable; repair surfaces do not make product APIs public.
+  missing, unreadable, or corrupt; repair surfaces do not make product APIs
+  public.
 - Session cookies use `SameSite=Lax` so Google credential POST flows are not
   broken by a stricter default.
-- Authenticated Cats API mutations use synchronizer CSRF tokens. Google
-  credential POST validates the separate GIS `g_csrf_token` contract.
+- `/api/auth/status` is the canonical source for Cats synchronizer CSRF tokens;
+  app-shell/bootstrap payloads may mirror but not mint or rotate them.
+- Authenticated Cats API mutations use synchronizer CSRF tokens and rotate them
+  on login/session creation and privilege changes. Google credential POST
+  validates the separate GIS `g_csrf_token` contract.
 - Only the first admin maps to `actor-owner`; later memberships require
   explicit Core actor mapping before actor-attributed writes can proceed.
+- The `coreActorId: null` fail-closed path is a forward-looking invariant
+  guard; v1 has only the first-admin UI path, but tests should prevent future
+  multi-account work from regressing attribution.
 - The first rollout should expose principal data to route handlers but avoid a
   broad rewrite of every existing product write path.
 
@@ -211,6 +224,9 @@ operators before implementation is marked complete.
   - actor-attributed write helpers fail closed when principal membership has
     `coreActorId: null`;
   - login throttling locks out repeated failures and logs without secrets;
+  - auth-state validation treats JSON parse failures, missing required
+    top-level fields, and too-new schema versions as corrupt while preserving
+    unknown extra fields;
   - Google verifier wrapper checks expected claims using injected test payloads.
 - **Integration Tests**:
   - setup incomplete allows setup bootstrap and blocks product APIs;
@@ -222,6 +238,10 @@ operators before implementation is marked complete.
   - setup reset requires admin after setup;
   - mutating authenticated API routes reject missing or mismatched
     `X-Cats-CSRF-Token`;
+  - `/api/auth/status` is the canonical CSRF-token source and app-shell mirrors
+    the same token without rotating it;
+  - Cats CSRF middleware is not registered on Google credential POST routes,
+    and GIS `g_csrf_token` validation is not accepted for Cats mutations;
   - logout revokes session and clears cookie.
 - **Renderer Tests**:
   - setup shows local credential fields;
@@ -245,6 +265,7 @@ operators before implementation is marked complete.
 | Cookie behavior differs between Vite proxy and built server | Medium | Add explicit dev and built-server session tests |
 | Password/session local state becomes sensitive | High | Store only salted password hashes and session token hashes; document state reset |
 | Route allowlist accidentally leaves a privileged route public | High | Add static route-policy tests and review runtime/shell/transport routes explicitly |
+| Cats CSRF and Google GIS CSRF are conflated | High | Keep Cats auth routes and Google credential routes in distinct modules; add static tests that `X-Cats-CSRF-Token` middleware is not registered on Google credential routes and GIS `g_csrf_token` validation is not accepted for Cats mutations |
 | Future multi-user attribution is blocked by first slice shortcuts | Medium | Carry principal in route context and fail closed for `coreActorId: null` instead of mapping every admin to owner |
 
 ## Progress Log

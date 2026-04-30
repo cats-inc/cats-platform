@@ -46,10 +46,13 @@ before Chat / Work / Code / Core / runtime route dispatch.
 
 The server session is a Cats-owned HttpOnly cookie with `SameSite=Lax` by
 default and `Secure` when Cats is served over HTTPS. Authenticated mutating API
-requests use Cats synchronizer CSRF tokens tied to the server session. Google
-Identity Services credential POST routes are separate: they validate Google's
-`g_csrf_token` before a Cats session exists and do not use the generic
-authenticated-API CSRF header.
+requests use Cats synchronizer CSRF tokens tied to the server session.
+`/api/auth/status` is the canonical token source; app-shell/bootstrap payloads
+may mirror that token but must not mint or rotate it independently. Tokens
+rotate on login/session creation and privilege changes, and are invalidated on
+logout/session revocation. Google Identity Services credential POST routes are
+separate: they validate Google's `g_csrf_token` before a Cats session exists
+and do not use the generic authenticated-API CSRF header.
 
 The frontend may initiate login flows, but the frontend never decides that a
 user is authenticated or authorized by itself.
@@ -133,6 +136,10 @@ is missing, unreadable, or corrupt. Such workspaces enter an admin-auth
 bootstrap repair state; protected product APIs fail closed instead of becoming
 public. This is a pre-release product, so the repair path can require the
 local operator to create the first admin before continuing.
+
+For this policy, corrupt auth state means JSON parse failure, missing required
+top-level fields, or a schema version newer than the running code can read.
+Unknown extra fields are not corrupt.
 
 ### 6. Multi-user support is future-proofed but not fully shipped in v1
 
