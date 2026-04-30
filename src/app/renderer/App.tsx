@@ -11,7 +11,10 @@ import { flushSync } from 'react-dom';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
 import type { PlatformHostEnvelope } from '../../shared/platform-contract';
-import type { PlatformSurfaceId } from '../../shared/platform-contract.js';
+import type {
+  PlatformSurfaceId,
+  PlatformUiLanguagePreference,
+} from '../../shared/platform-contract.js';
 import {
   platformSurfaceLabel,
   platformSurfaceRoutePrefix,
@@ -20,6 +23,7 @@ import { I18nProvider } from './i18n/I18nProvider.js';
 import {
   createTranslator,
   normalizeMessageLocale,
+  parseMessageLocale,
   type MessageInterpolationValues,
   type MessageKey,
   type MessageLocale,
@@ -63,15 +67,37 @@ const ChatApp = createLazyProductSurface('chat');
 const WorkApp = createLazyProductSurface('work');
 const CodeApp = createLazyProductSurface('code');
 
-function resolveEnvelopeUiLocale(envelope: PlatformHostEnvelope | null): MessageLocale {
-  if (envelope === null) {
+function resolveAutoDetectedUiLocale(): MessageLocale {
+  if (typeof navigator === 'undefined') {
     return 'en';
   }
 
-  const envelopeWithLanguage = envelope as
-    PlatformHostEnvelope & { language?: { resolvedUiLanguage?: string } };
+  const candidates = Array.isArray(navigator.languages) && navigator.languages.length > 0
+    ? navigator.languages
+    : [navigator.language];
 
-  return normalizeMessageLocale(envelopeWithLanguage.language?.resolvedUiLanguage);
+  for (const candidate of candidates) {
+    const locale = parseMessageLocale(candidate);
+    if (locale) {
+      return locale;
+    }
+  }
+
+  return 'en';
+}
+
+function resolveEnvelopeUiLanguagePreference(
+  envelope: PlatformHostEnvelope | null,
+): PlatformUiLanguagePreference {
+  return envelope?.language?.uiLanguagePreference ?? 'auto';
+}
+
+function resolveUiLocaleForLanguagePreference(
+  preference: PlatformUiLanguagePreference,
+): MessageLocale {
+  return preference === 'auto'
+    ? resolveAutoDetectedUiLocale()
+    : normalizeMessageLocale(preference);
 }
 
 export function shouldRenderGuideCatSidecar(input: {
@@ -195,11 +221,21 @@ export default function PlatformApp() {
   const [state, setState] = useState<PlatformLoadState>({ status: 'loading' });
   const [productSurfaceFallbackActive, setProductSurfaceFallbackActive] = useState(false);
   const [guideCatProactiveGreetingToken, setGuideCatProactiveGreetingToken] = useState(0);
-  const uiLocale = resolveEnvelopeUiLocale(state.status === 'ready' ? state.envelope : null);
+  const envelopeLanguagePreference = resolveEnvelopeUiLanguagePreference(
+    state.status === 'ready' ? state.envelope : null,
+  );
+  const [optimisticLanguagePreference, setOptimisticLanguagePreference] =
+    useState<PlatformUiLanguagePreference | null>(null);
+  const uiLanguagePreference = optimisticLanguagePreference ?? envelopeLanguagePreference;
+  const uiLocale = resolveUiLocaleForLanguagePreference(uiLanguagePreference);
   const t = useMemo(() => createTranslator(uiLocale), [uiLocale]);
   const lastSyncedSurface = useRef<PlatformSurfaceId | null>(null);
   const previousPathnameRef = useRef(location.pathname);
   const [activeSurface, setActiveSurface] = useState<PlatformSurfaceId>('chat');
+
+  useEffect(() => {
+    setOptimisticLanguagePreference(null);
+  }, [envelopeLanguagePreference]);
 
   const refreshEnvelope = useCallback(
     async (
@@ -460,7 +496,11 @@ export default function PlatformApp() {
 
   if (state.status === 'loading') {
     return (
-      <I18nProvider locale={uiLocale}>
+      <I18nProvider
+        languagePreference={uiLanguagePreference}
+        locale={uiLocale}
+        setLanguagePreference={setOptimisticLanguagePreference}
+      >
         <div className="screen screenCentered">
           <div className="loadingPanel">
             <p className="eyebrow">{t('appBrandName')}</p>
@@ -473,7 +513,11 @@ export default function PlatformApp() {
 
   if (state.status === 'error') {
     return (
-      <I18nProvider locale={uiLocale}>
+      <I18nProvider
+        languagePreference={uiLanguagePreference}
+        locale={uiLocale}
+        setLanguagePreference={setOptimisticLanguagePreference}
+      >
         <div className="screen screenCentered">
           <div className="errorPanel">
             <p className="eyebrow">{t('appErrorEyebrow')}</p>
@@ -490,42 +534,48 @@ export default function PlatformApp() {
   if (!readyEnvelope.setupCompleteAt) {
     // Setup incomplete: `/setup` shows wizard, everything else redirects to `/setup`.
     return (
-      <Routes>
-        <Route
-          path="/setup"
-          element={
-            <PlatformSetupWizard
-              envelope={readyEnvelope}
-              onComplete={(nextEnvelope) => {
-                flushSync(() => {
-                  setState({ status: 'ready', envelope: nextEnvelope });
-                  // Fire the one-shot setup greeting only for fresh installs
-                  // (sidecarSeen=false). See `persistGuideCatSeen` above for
-                  // why sidecarSeen still exists after the renderer-owned
-                  // prefs migration — it is the only signal that prevents
-                  // replaying this peek after the user resets setup on the
-                  // same install. The hydrated guard is pessimistic on
-                  // purpose: if hydration is ever made async, skipping is
-                  // safer than replaying, at the accepted cost that a fresh
-                  // install with a not-yet-hydrated store would miss this
-                  // one-shot. Today hydration is synchronous so hydrated is
-                  // always true here in practice.
-                  if (
-                    nextEnvelope.guideCat
-                    && isGuideCatEnabledStatus(nextEnvelope.guideCat.status)
-                    && guideCatUiPrefs.hydrated
-                    && !guideCatUiPrefs.prefs.sidecarSeen
-                  ) {
-                    setGuideCatProactiveGreetingToken((current) => current + 1);
-                  }
-                });
-                navigate('/lobby', { replace: true });
-              }}
-            />
-          }
-        />
-        <Route path="*" element={<Navigate to="/setup" replace />} />
-      </Routes>
+      <I18nProvider
+        languagePreference={uiLanguagePreference}
+        locale={uiLocale}
+        setLanguagePreference={setOptimisticLanguagePreference}
+      >
+        <Routes>
+          <Route
+            path="/setup"
+            element={
+              <PlatformSetupWizard
+                envelope={readyEnvelope}
+                onComplete={(nextEnvelope) => {
+                  flushSync(() => {
+                    setState({ status: 'ready', envelope: nextEnvelope });
+                    // Fire the one-shot setup greeting only for fresh installs
+                    // (sidecarSeen=false). See `persistGuideCatSeen` above for
+                    // why sidecarSeen still exists after the renderer-owned
+                    // prefs migration — it is the only signal that prevents
+                    // replaying this peek after the user resets setup on the
+                    // same install. The hydrated guard is pessimistic on
+                    // purpose: if hydration is ever made async, skipping is
+                    // safer than replaying, at the accepted cost that a fresh
+                    // install with a not-yet-hydrated store would miss this
+                    // one-shot. Today hydration is synchronous so hydrated is
+                    // always true here in practice.
+                    if (
+                      nextEnvelope.guideCat
+                      && isGuideCatEnabledStatus(nextEnvelope.guideCat.status)
+                      && guideCatUiPrefs.hydrated
+                      && !guideCatUiPrefs.prefs.sidecarSeen
+                    ) {
+                      setGuideCatProactiveGreetingToken((current) => current + 1);
+                    }
+                  });
+                  navigate('/lobby', { replace: true });
+                }}
+              />
+            }
+          />
+          <Route path="*" element={<Navigate to="/setup" replace />} />
+        </Routes>
+      </I18nProvider>
     );
   }
 
@@ -544,7 +594,11 @@ export default function PlatformApp() {
   };
   const guideCatVisible = shouldRenderGuideCatSidecar(guideCatSidecarInput);
   return (
-    <I18nProvider locale={uiLocale}>
+    <I18nProvider
+      languagePreference={uiLanguagePreference}
+      locale={uiLocale}
+      setLanguagePreference={setOptimisticLanguagePreference}
+    >
       <GuideCatPlacementProvider
         guideCat={guideCatVisible ? guideCatSidecarInput.guideCat : null}
         placement={guideCatUiPrefs.prefs.placement}

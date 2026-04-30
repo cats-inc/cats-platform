@@ -4,6 +4,7 @@ import path from 'node:path';
 import type {
   PlatformLobbyAnimationMode,
   PlatformSurfaceId,
+  PlatformUiLanguagePreference,
 } from './platform-contract.js';
 import { resolvePlatformPreferencesPathFromChatState } from './platformPaths.js';
 import { normalizePlatformSurface } from './platformSurfaces.js';
@@ -14,6 +15,7 @@ export interface PlatformPreferences {
   openWindowOnStartup: boolean;
   systemTrayEnabled: boolean;
   lobbyAnimationMode: PlatformLobbyAnimationMode;
+  uiLanguagePreference: PlatformUiLanguagePreference;
 }
 
 const DEFAULTS: PlatformPreferences = {
@@ -22,6 +24,7 @@ const DEFAULTS: PlatformPreferences = {
   openWindowOnStartup: false,
   systemTrayEnabled: true,
   lobbyAnimationMode: 'reduced',
+  uiLanguagePreference: 'auto',
 };
 
 export function parsePlatformLobbyAnimationMode(
@@ -37,6 +40,21 @@ export function normalizePlatformLobbyAnimationMode(
   fallback: PlatformLobbyAnimationMode = DEFAULTS.lobbyAnimationMode,
 ): PlatformLobbyAnimationMode {
   return parsePlatformLobbyAnimationMode(value) ?? fallback;
+}
+
+export function parsePlatformUiLanguagePreference(
+  value: unknown,
+): PlatformUiLanguagePreference | undefined {
+  return value === 'auto' || value === 'en' || value === 'zh-TW'
+    ? value
+    : undefined;
+}
+
+export function normalizePlatformUiLanguagePreference(
+  value: unknown,
+  fallback: PlatformUiLanguagePreference = DEFAULTS.uiLanguagePreference,
+): PlatformUiLanguagePreference {
+  return parsePlatformUiLanguagePreference(value) ?? fallback;
 }
 
 export function resolvePlatformPreferencesPath(chatStatePath: string): string {
@@ -55,6 +73,7 @@ function normalizePlatformPreferences(value: unknown): PlatformPreferences {
     openWindowOnStartup: record.openWindowOnStartup === true,
     systemTrayEnabled: record.systemTrayEnabled !== false,
     lobbyAnimationMode: normalizePlatformLobbyAnimationMode(record.lobbyAnimationMode),
+    uiLanguagePreference: normalizePlatformUiLanguagePreference(record.uiLanguagePreference),
   };
 }
 

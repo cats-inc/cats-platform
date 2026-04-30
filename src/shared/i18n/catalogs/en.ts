@@ -42,6 +42,14 @@ export const enCatalog: MessageCatalog = {
   'settings.general.avatarUploadLabel': 'Upload avatar',
   'settings.general.avatarRemoveLabel': 'Remove avatar',
   'settings.general.nameLabel': 'Name',
+  'settings.general.languageTitle': 'Language',
+  'settings.general.languageDescription':
+    'Choose the display language used across Cats.',
+  'settings.general.languagePreferenceLabel': 'Display language',
+  'settings.general.languagePreferenceDescription':
+    'Auto-detect follows your browser or desktop language. Named languages are shown in their own language.',
+  'settings.general.languageSelectAriaLabel': 'Display language',
+  'settings.general.languageAutoOption': 'Auto-detect',
   'settings.general.lobbyMotionTitle': 'Lobby motion',
   'settings.general.lobbyMotionDescription':
     'Choose how lively the Lobby background should feel. Reduced is the default.',
@@ -70,6 +78,7 @@ export const enCatalog: MessageCatalog = {
   'settings.general.guideCatBubbleDescription':
     'Always show a compact speech bubble with quick actions.',
   'settings.general.updateNameError': 'Failed to update name',
+  'settings.general.updateLanguageError': 'Failed to update language',
   'settings.general.updateLobbyAnimationError': 'Failed to update Lobby motion',
   'settings.general.updateGuideCatModeError': 'Failed to update Guide Cat mode',
   'settings.general.removeAvatarError': 'Failed to remove avatar',

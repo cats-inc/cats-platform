@@ -116,6 +116,13 @@ export interface PlatformLobbyPreferences {
   animationMode: PlatformLobbyAnimationMode;
 }
 
+export type PlatformUiLanguage = 'en' | 'zh-TW';
+export type PlatformUiLanguagePreference = 'auto' | PlatformUiLanguage;
+
+export interface PlatformLanguagePreferences {
+  uiLanguagePreference: PlatformUiLanguagePreference;
+}
+
 export interface PlatformLobbyState extends PlatformLobbyPreferences {
   cats: PlatformLobbyCatSummary[];
   guideCatAssist?: GuideCatAssistSurfaceReadModel | null;
@@ -140,6 +147,7 @@ export interface PlatformHostEnvelope extends PlatformOwnerContext {
   products: PlatformProductDescriptor[];
   installedApps: PlatformInstalledAppDescriptor[];
   desktop: PlatformDesktopPreferences;
+  language?: PlatformLanguagePreferences;
   lobby: PlatformLobbyState;
   guideCatAssist?: PlatformGuideCatAssistState;
   runtime: RuntimeStatusSummary;

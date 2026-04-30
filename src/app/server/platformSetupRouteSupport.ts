@@ -4,6 +4,7 @@ import type {
 } from '../../shared/platform-contract.js';
 import {
   parsePlatformLobbyAnimationMode,
+  parsePlatformUiLanguagePreference,
   normalizePlatformLobbyAnimationMode,
   type PlatformPreferences,
 } from '../../shared/platformPreferences.js';
@@ -64,6 +65,7 @@ export interface PlatformPreferencesUpdateBody {
   openWindowOnStartup?: boolean;
   systemTrayEnabled?: boolean;
   lobbyAnimationMode?: string;
+  uiLanguagePreference?: string;
 }
 
 type ParseResult<T> =
@@ -130,6 +132,15 @@ export function parsePlatformPreferencesUpdate(
       message: 'lobbyAnimationMode must be off, reduced, or full',
     };
   }
+  if (
+    body.uiLanguagePreference !== undefined
+    && parsePlatformUiLanguagePreference(body.uiLanguagePreference) === undefined
+  ) {
+    return {
+      ok: false,
+      message: 'uiLanguagePreference must be auto, en, or zh-TW',
+    };
+  }
 
   return {
     ok: true,
@@ -140,6 +151,9 @@ export function parsePlatformPreferencesUpdate(
       systemTrayEnabled: body.systemTrayEnabled ?? currentPrefs.systemTrayEnabled,
       lobbyAnimationMode:
         parseLobbyAnimationMode(body.lobbyAnimationMode) ?? currentPrefs.lobbyAnimationMode,
+      uiLanguagePreference:
+        parsePlatformUiLanguagePreference(body.uiLanguagePreference)
+        ?? currentPrefs.uiLanguagePreference,
     },
   };
 }

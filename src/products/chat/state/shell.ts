@@ -5,6 +5,7 @@ import type { GuideCatAssistSurfaceReadModel } from '../../../shared/guideCatAss
 import type { PlatformInstalledAppDescriptor } from '../../../shared/catsAppManifest.js';
 import type {
   PlatformDesktopPreferences,
+  PlatformLanguagePreferences,
   PlatformLobbyCatSummary,
   PlatformLobbyPreferences,
   PlatformProductDescriptor,
@@ -47,6 +48,7 @@ function resolveSetupCompleteAt(
     botBindings?: ChatBotBindingSummary[];
     lastProductSurface?: PlatformSurfaceId | null;
     desktop?: PlatformDesktopPreferencesInput;
+    language?: PlatformLanguagePreferences;
     lobby?: PlatformLobbyPreferences;
     guideCat?: GuideCatRecord | null;
   },
@@ -74,6 +76,7 @@ export function createAppShell(
     botBindings?: ChatBotBindingSummary[];
     lastProductSurface?: PlatformSurfaceId | null;
     desktop?: PlatformDesktopPreferencesInput;
+    language?: PlatformLanguagePreferences;
     lobby?: PlatformLobbyPreferences;
     runtimeSetup?: RuntimeSetupSummary;
     guideCat?: GuideCatRecord | null;
@@ -112,6 +115,9 @@ export function createAppShell(
       animationMode: setup?.lobby?.animationMode ?? 'reduced',
       cats: buildLobbyCats(summary.cats, chat.bossCatId),
       guideCatAssist: setup?.lobbyGuideCatAssist ?? null,
+    },
+    language: {
+      uiLanguagePreference: setup?.language?.uiLanguagePreference ?? 'auto',
     },
     guideCatAssist: {
       codeNewDraft: setup?.codeGuideCatAssist ?? null,

@@ -357,6 +357,9 @@ export async function buildAppShellPayload(
         openWindowOnStartup: platformPrefs.openWindowOnStartup,
         systemTrayEnabled: platformPrefs.systemTrayEnabled,
       },
+      language: {
+        uiLanguagePreference: platformPrefs.uiLanguagePreference,
+      },
       lobby: {
         animationMode: platformPrefs.lobbyAnimationMode,
       },

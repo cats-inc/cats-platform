@@ -9,7 +9,10 @@ import {
   SettingsSectionHeader,
 } from '../../../design/components/settings/index.js';
 import { nameInitials } from '../../../shared/nameInitials.js';
-import type { GuideCatSidecarMode } from '../../../shared/platform-contract.js';
+import type {
+  GuideCatSidecarMode,
+  PlatformUiLanguagePreference,
+} from '../../../shared/platform-contract.js';
 import { useGuideCatUiPrefs } from '../guideCatUiPrefsStore.js';
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
 import {
@@ -24,14 +27,19 @@ export interface PlatformSettingsGeneralProps {
   onPayloadUpdate: (payload: AppShellPayload) => void;
 }
 
+function isPlatformUiLanguagePreference(value: unknown): value is PlatformUiLanguagePreference {
+  return value === 'auto' || value === 'en' || value === 'zh-TW';
+}
+
 export function PlatformSettingsGeneral({
   payload,
   onPayloadUpdate,
 }: PlatformSettingsGeneralProps) {
   const navigate = useNavigate();
-  const { t } = useI18n();
+  const { languagePreference, setLanguagePreference, t } = useI18n();
   const [cropOpen, setCropOpen] = useState(false);
   const [savingLobbyPrefs, setSavingLobbyPrefs] = useState(false);
+  const [savingLanguagePreference, setSavingLanguagePreference] = useState(false);
   const [nameDraft, setNameDraft] = useState(payload.ownerDisplayName);
   const [savingName, setSavingName] = useState(false);
   // Escape sets this synchronously before calling blur(); commitOwnerDisplayName
@@ -152,6 +160,66 @@ export function PlatformSettingsGeneral({
     }
   }
 
+  async function updateUiLanguagePreference(
+    nextPreference: PlatformUiLanguagePreference,
+  ): Promise<void> {
+    if (nextPreference === languagePreference) {
+      return;
+    }
+
+    const previousPreference = languagePreference;
+    const previousLanguage = payload.language ?? {
+      uiLanguagePreference: previousPreference,
+    };
+
+    setLanguagePreference(nextPreference);
+    onPayloadUpdate({
+      ...payload,
+      language: {
+        uiLanguagePreference: nextPreference,
+      },
+    });
+    setSavingLanguagePreference(true);
+
+    try {
+      const response = await fetch('/api/platform/preferences', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ uiLanguagePreference: nextPreference }),
+      });
+      if (!response.ok) {
+        throw new Error(t('settingsGeneralUpdateLanguageError'));
+      }
+      const body = await response.json() as {
+        uiLanguagePreference?: unknown;
+      };
+      const persistedPreference = isPlatformUiLanguagePreference(body.uiLanguagePreference)
+        ? body.uiLanguagePreference
+        : nextPreference;
+      setLanguagePreference(persistedPreference);
+      onPayloadUpdate({
+        ...payload,
+        language: {
+          uiLanguagePreference: persistedPreference,
+        },
+      });
+      dispatchPlatformEnvelopeRefresh();
+    } catch (error) {
+      setLanguagePreference(previousPreference);
+      onPayloadUpdate({
+        ...payload,
+        language: previousLanguage,
+      });
+      showToast(
+        error instanceof Error
+          ? error.message
+          : t('settingsGeneralUpdateLanguageError'),
+      );
+    } finally {
+      setSavingLanguagePreference(false);
+    }
+  }
+
   async function updateGuideCatSidecarMode(
     nextMode: GuideCatSidecarMode,
   ): Promise<void> {
@@ -253,6 +321,38 @@ export function PlatformSettingsGeneral({
               />
             </label>
           </div>
+        </SettingsSection>
+
+        <SettingsSection
+          header={
+            <SettingsSectionHeader
+              title={t('settingsGeneralLanguageTitle')}
+              description={t('settingsGeneralLanguageDescription')}
+            />
+          }
+        >
+          <SettingsOptionRow
+            label={t('settingsGeneralLanguagePreferenceLabel')}
+            description={t('settingsGeneralLanguagePreferenceDescription')}
+            layout="stack"
+            control={
+              <select
+                className="textInput"
+                value={languagePreference}
+                disabled={savingLanguagePreference}
+                onChange={(event) => {
+                  void updateUiLanguagePreference(
+                    event.target.value as PlatformUiLanguagePreference,
+                  );
+                }}
+                aria-label={t('settingsGeneralLanguageSelectAriaLabel')}
+              >
+                <option value="auto">{t('settingsGeneralLanguageAutoOption')}</option>
+                <option value="en">English</option>
+                <option value="zh-TW">繁體中文</option>
+              </select>
+            }
+          />
         </SettingsSection>
 
         <SettingsSection

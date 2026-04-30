@@ -19,8 +19,29 @@ const catalogs: Record<MessageLocale, MessageCatalog> = {
   'zh-TW': zhTWCatalog,
 };
 
+export function parseMessageLocale(locale: string | undefined | null): MessageLocale | null {
+  if (!locale) {
+    return null;
+  }
+
+  const normalized = locale.replace(/_/gu, '-').toLowerCase();
+  if (normalized === 'en' || normalized.startsWith('en-')) {
+    return 'en';
+  }
+  if (
+    normalized === 'zh-tw'
+    || normalized === 'zh-hant'
+    || normalized.startsWith('zh-tw-')
+    || normalized.startsWith('zh-hant-')
+  ) {
+    return 'zh-TW';
+  }
+
+  return null;
+}
+
 export function normalizeMessageLocale(locale: string | undefined | null): MessageLocale {
-  return locale === 'zh-TW' ? 'zh-TW' : 'en';
+  return parseMessageLocale(locale) ?? 'en';
 }
 
 function interpolateMessage(

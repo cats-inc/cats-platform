@@ -15,6 +15,7 @@ function baselinePreferences(): PlatformPreferences {
     openWindowOnStartup: false,
     systemTrayEnabled: true,
     lobbyAnimationMode: 'reduced',
+    uiLanguagePreference: 'auto',
   };
 }
 
@@ -62,11 +63,34 @@ test('parsePlatformPreferencesUpdate rejects an unknown lobby animation mode', (
   }
 });
 
+test('parsePlatformPreferencesUpdate accepts a valid UI language preference', () => {
+  const result = parsePlatformPreferencesUpdate(
+    { uiLanguagePreference: 'zh-TW' },
+    baselinePreferences(),
+  );
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.value.uiLanguagePreference, 'zh-TW');
+  }
+});
+
+test('parsePlatformPreferencesUpdate rejects an unknown UI language preference', () => {
+  const result = parsePlatformPreferencesUpdate(
+    { uiLanguagePreference: 'debug' },
+    baselinePreferences(),
+  );
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.match(result.message, /uiLanguagePreference/u);
+  }
+});
+
 test('parsePlatformPreferencesUpdate preserves omitted fields', () => {
   const current: PlatformPreferences = {
     ...baselinePreferences(),
     lastProductSurface: 'code',
     lobbyAnimationMode: 'off',
+    uiLanguagePreference: 'en',
   };
   const result = parsePlatformPreferencesUpdate(
     { startAtLogin: false },
@@ -77,6 +101,7 @@ test('parsePlatformPreferencesUpdate preserves omitted fields', () => {
     assert.equal(result.value.startAtLogin, false);
     assert.equal(result.value.lastProductSurface, 'code');
     assert.equal(result.value.lobbyAnimationMode, 'off');
+    assert.equal(result.value.uiLanguagePreference, 'en');
   }
 });
 

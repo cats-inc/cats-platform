@@ -42,6 +42,14 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.general.avatarUploadLabel': '上傳頭像',
   'settings.general.avatarRemoveLabel': '移除頭像',
   'settings.general.nameLabel': '名字',
+  'settings.general.languageTitle': '語言',
+  'settings.general.languageDescription':
+    '選擇 Cats 介面使用的顯示語言。',
+  'settings.general.languagePreferenceLabel': '顯示語言',
+  'settings.general.languagePreferenceDescription':
+    '自動偵測會跟隨瀏覽器或桌面語言。語言名稱會以該語言自身顯示。',
+  'settings.general.languageSelectAriaLabel': '顯示語言',
+  'settings.general.languageAutoOption': '自動偵測',
   'settings.general.lobbyMotionTitle': 'Lobby 動畫',
   'settings.general.lobbyMotionDescription':
     '選擇 Lobby 背景的動態感。預設使用較為平緩版本。',
@@ -67,6 +75,7 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.general.guideCatBubbleDescription':
     '固定顯示精簡對話泡泡並提供快速操作按鈕。',
   'settings.general.updateNameError': '無法更新名字',
+  'settings.general.updateLanguageError': '無法更新語言',
   'settings.general.updateLobbyAnimationError': '無法更新 Lobby 動畫',
   'settings.general.updateGuideCatModeError': '無法更新 Guide Cat 模式',
   'settings.general.removeAvatarError': '無法移除頭像',

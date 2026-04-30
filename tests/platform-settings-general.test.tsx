@@ -89,6 +89,10 @@ test('PlatformSettingsGeneral renders lobby motion controls without desktop star
   );
 
   assert.match(markup, /Choose how lively the Lobby background should feel/u);
+  assert.match(markup, /Display language/u);
+  assert.match(markup, /Auto-detect/u);
+  assert.match(markup, /English/u);
+  assert.match(markup, /繁體中文/u);
   assert.match(markup, /Reduced is the default/u);
   assert.doesNotMatch(markup, /Desktop startup/u);
   assert.match(markup, /checked/u);
