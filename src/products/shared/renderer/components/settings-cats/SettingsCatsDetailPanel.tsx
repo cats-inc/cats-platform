@@ -4,6 +4,8 @@ import type { AppShellPayload } from '../../../api/workspaceContracts.js';
 import type { WorkspaceBusyState } from '../../../../../shared/workspaceBusy.js';
 import { AvatarCropDialog } from '../../../../../design/components/AvatarCropDialog.js';
 import { updateCatProfile } from '../../api/index.js';
+import { messageKeys } from '../../../../../shared/i18n/messageKeys.js';
+import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import type { SettingsCatsMemoryController } from '../../hooks/useSettingsCatsMemory.js';
 import { catInitials } from '../../workspaceChatUtils.js';
 import {
@@ -35,6 +37,7 @@ export function SettingsCatsDetailPanel({
   confirm: confirmDialog,
 }: SettingsCatsDetailPanelProps) {
   const [cropOpen, setCropOpen] = useState(false);
+  const { t } = useI18n();
 
   async function handleCatAvatarSave(dataUrl: string): Promise<void> {
     setCropOpen(false);
@@ -58,7 +61,7 @@ export function SettingsCatsDetailPanel({
   return (
     <div className="catDetailPanel">
       <div className="catDetailSection">
-        <p className="sectionLabel">Avatar</p>
+        <p className="sectionLabel">{t(messageKeys.settingsGeneralAvatarLabel)}</p>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div
             className="catAvatar"
@@ -83,7 +86,7 @@ export function SettingsCatsDetailPanel({
               className="primaryButton"
               onClick={() => setCropOpen(true)}
             >
-              {cat.avatarUrl ? 'Change avatar' : 'Upload avatar'}
+              {cat.avatarUrl ? t(messageKeys.settingsGeneralAvatarChangeLabel) : t(messageKeys.settingsGeneralAvatarUploadLabel)}
             </button>
             {cat.avatarUrl ? (
               <button
@@ -91,7 +94,7 @@ export function SettingsCatsDetailPanel({
                 className="secondaryButton"
                 onClick={() => void handleCatAvatarRemove()}
               >
-                Remove avatar
+                {t(messageKeys.settingsGeneralAvatarRemoveLabel)}
               </button>
             ) : null}
           </div>
