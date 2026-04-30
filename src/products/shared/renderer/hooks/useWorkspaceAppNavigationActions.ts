@@ -174,6 +174,7 @@ export interface UseWorkspaceAppNavigationActionsOptions<
   setDraftTemporaryParticipants?: Dispatch<SetStateAction<TDraftParticipant[]>>;
   setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
   setDraftCatExecutionTargetOverrides: Dispatch<SetStateAction<Map<string, TExecutionTargetValue>>>;
+  setDraftSurface?: Dispatch<SetStateAction<PlatformSurfaceId>>;
   setDraftRuntimeSessionPolicy?: Dispatch<SetStateAction<RuntimeSessionPolicy>>;
   setDraftWorkflowShape?: Dispatch<SetStateAction<'sequential' | 'concurrent'>>;
   setDraftAudienceKeys?: Dispatch<SetStateAction<string[] | null>>;
@@ -210,6 +211,7 @@ export function useWorkspaceAppNavigationActions<
     setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
     setDraftCatExecutionTargetOverrides,
+    setDraftSurface,
     setDraftRuntimeSessionPolicy,
     setDraftWorkflowShape,
     setDraftAudienceKeys,
@@ -238,6 +240,7 @@ export function useWorkspaceAppNavigationActions<
       setDraftTemporaryParticipants,
       setDraftHighlightedCatId,
       setDraftCatExecutionTargetOverrides,
+      resetDraftSurface: () => setDraftSurface?.(platformShellSurface),
       setDraftRuntimeSessionPolicy,
       setDraftWorkflowShape,
       setDraftAudienceKeys,
@@ -258,6 +261,8 @@ export function useWorkspaceAppNavigationActions<
     setDraftTemporaryParticipants,
     setDraftHighlightedCatId,
     setDraftCatExecutionTargetOverrides,
+    setDraftSurface,
+    platformShellSurface,
     setDraftRuntimeSessionPolicy,
     setDraftWorkflowShape,
     setDraftAudienceKeys,

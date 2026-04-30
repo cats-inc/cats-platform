@@ -41,6 +41,8 @@ import type { ExecutionTargetValue } from "./components/ExecutionTarget.js";
 import type { NewChatDraftProps as ChatNewChatDraftProps } from "./components/ChatNewChatDraft.js";
 import type { ChatViewProps } from "./components/chat-view/ChatView.js";
 import {
+  activateChatChannel,
+  fetchAppShell,
   relayParallelChatMessage,
   resetChannelContinuity,
   updateCatProfile,
@@ -149,6 +151,8 @@ type DraftSurfaceProps = Omit<
   "payload" | "onOpenAddCat" | "onDraftDefaultRecipientChange" | "allowAddCat"
 > & {
   greeting: string;
+  draftSurface: PlatformSurfaceId;
+  onDraftSurfaceChange: (surface: PlatformSurfaceId) => void;
 };
 
 type DraftFolderBrowseTarget =
@@ -157,6 +161,7 @@ type DraftFolderBrowseTarget =
 
 export interface WorkspaceProductAppRoutesProps {
   payload: AppShellPayload;
+  routeChannelId: string | null;
   selectedChannel: SelectedChannelView | null;
   directLaneChannel: SelectedChannelView | null;
   showDirectLaneBoot: boolean;
@@ -170,6 +175,12 @@ export interface WorkspaceProductAppRoutesProps {
   onToggleAddCat: () => void;
   onOpenDraftAddCat: () => void;
   onChangeDraftDefaultRecipient: (catId: string | null) => void;
+  companionMode: boolean;
+  companionCat: AppShellPayload['chat']['cats'][number] | null;
+  onToggleCompanionMode: () => void;
+  onCompanionWake: (catId: string) => void;
+  onCompanionSleep: (catId: string) => void;
+  onCatAvatarSave?: (catId: string, dataUrl: string) => void;
 }
 
 export interface WorkspaceProductSidebarProps {
@@ -195,6 +206,7 @@ export interface WorkspaceProductSidebarProps {
   onUngroupParallelChatGroup: (groupId: string) => void;
   onDeleteParallelChatGroup: (groupId: string) => void;
   onArchiveCat: (catId: string) => void;
+  onCreateNewCat: () => void;
   onAccountMenuToggle: () => void;
   onOverflowMenuToggle: (channelId: string | null) => void;
   onNavigateSettings: () => void;
@@ -205,10 +217,10 @@ export interface WorkspaceProductSidebarProps {
   navigate: NavigateFunction;
 }
 
-export type WorkspaceProductShellSurface = "work" | "code";
+export type WorkspaceProductShellSurface = PlatformSurfaceId;
 
 export interface WorkspaceProductAppConfig {
-  productName: "Work" | "Code";
+  productName: "Chat" | "Work" | "Code";
   shellSurface: WorkspaceProductShellSurface;
   supportsStructuredDraftModes?: boolean;
   BootShell: ComponentType;
@@ -235,6 +247,7 @@ export function createWorkspaceProductApp({
       location,
       settingsMode,
       routeChannelId,
+      routeMyCatId,
       showingNewChatDraft,
       newChatPreset,
       draftDefaultRecipientCatId,
@@ -242,7 +255,18 @@ export function createWorkspaceProductApp({
     } = useWorkspaceLocationState(chatPrefix);
     const effectiveNewChatPreset = supportsStructuredDraftModes ? newChatPreset : "default";
     const showingParallelChatDraft = effectiveNewChatPreset === "parallel";
+    const showingRecipientScopedNewChatDraft =
+      showingNewChatDraft && !showingMyCatDirectLane && Boolean(draftDefaultRecipientCatId);
     const showingGenericNewChatDraft = !draftDefaultRecipientCatId;
+    const [draftSurface, setDraftSurface] = useState<PlatformSurfaceId>(shellSurface);
+    const draftSurfaceResetKey = useMemo(
+      () => [
+        effectiveNewChatPreset,
+        showingMyCatDirectLane ? "direct" : "public",
+        draftDefaultRecipientCatId ?? "none",
+      ].join(":"),
+      [draftDefaultRecipientCatId, effectiveNewChatPreset, showingMyCatDirectLane],
+    );
     const currentNavigationPath = useMemo(
       () => buildCrossSurfaceNavigationMatchPath(location.pathname, location.search),
       [location.pathname, location.search],
@@ -426,6 +450,69 @@ export function createWorkspaceProductApp({
 
     const publishReadyPayload = usePublishReadyPayload<AppShellPayload>(setState);
 
+    const refreshAppShell = useCallback((): void => {
+      void fetchAppShell()
+        .then((payload) => {
+          publishReadyPayload(payload);
+        })
+        .catch(() => {});
+    }, [publishReadyPayload]);
+
+    const [companionMode, setCompanionMode] = useState(false);
+    const previousMyCatIdRef = useRef(routeMyCatId);
+    useEffect(() => {
+      if (previousMyCatIdRef.current !== routeMyCatId) {
+        previousMyCatIdRef.current = routeMyCatId;
+        setCompanionMode(false);
+      }
+    }, [routeMyCatId]);
+    const companionCat =
+      shellSurface === 'chat' && companionMode && routeMyCatId && state.status === 'ready'
+        ? state.payload.chat.cats.find((cat) => cat.id === routeMyCatId) ?? null
+        : null;
+    const onToggleCompanionMode = useCallback((): void => {
+      setCompanionMode((prev) => !prev);
+    }, []);
+    const onCompanionWake = useCallback((catId: string): void => {
+      const channel = state.status === 'ready'
+        ? state.payload.chat.channels.find((candidate) =>
+            candidate.channelKind === 'direct_lane'
+            && candidate.defaultRecipientCatId === catId)
+        : null;
+      if (!channel) {
+        return;
+      }
+      void activateChatChannel(channel.id).then(refreshAppShell);
+    }, [refreshAppShell, state]);
+    const onCompanionSleep = useCallback((catId: string): void => {
+      const channel = state.status === 'ready'
+        ? state.payload.chat.channels.find((candidate) =>
+            candidate.channelKind === 'direct_lane'
+            && candidate.defaultRecipientCatId === catId)
+        : null;
+      if (!channel) {
+        return;
+      }
+      void fetch(`/api/channels/${encodeURIComponent(channel.id)}/deactivate`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+      })
+        .catch(() => {})
+        .then(refreshAppShell);
+    }, [refreshAppShell, state]);
+
+    const onCatAvatarSave = useCallback(
+      async (catId: string, dataUrl: string): Promise<void> => {
+        try {
+          const payload = await updateCatProfile(catId, { avatarUrl: dataUrl });
+          publishReadyPayload(payload);
+        } catch {
+          // The existing payload remains visible when avatar persistence fails.
+        }
+      },
+      [publishReadyPayload],
+    );
+
     const onDirectLaneModelSave =
       useWorkspaceDirectLaneModelSave<AppShellPayload>({
         updateCatProfile,
@@ -468,7 +555,7 @@ export function createWorkspaceProductApp({
     } = useFolderBrowser({
       onSelectPath: applyDraftFolderSelection,
       surface: shellSurface,
-      directLaneCatId: null,
+      directLaneCatId: routeMyCatId,
       initialPreferences:
         state.status === "ready"
           ? state.payload.chat.folderBrowsePreferences
@@ -590,6 +677,7 @@ export function createWorkspaceProductApp({
       : supportsStructuredDraftModes
         && (
           effectiveNewChatPreset === "group"
+          || showingRecipientScopedNewChatDraft
           || draftParticipants.participantCatIds.length > 0
           || draftTemporaryParticipants.length > 0
         )
@@ -1118,6 +1206,7 @@ export function createWorkspaceProductApp({
       onDeleteCat,
       onNavigateSettings,
       onNavigateRuntime,
+      onCreateNewCat,
       onDirectChatCat,
       onResetSetup,
       onStartNewChat,
@@ -1140,6 +1229,7 @@ export function createWorkspaceProductApp({
       setDraftTemporaryParticipants,
       setDraftHighlightedCatId,
       setDraftCatExecutionTargetOverrides,
+      setDraftSurface,
       setDraftWorkflowShape,
       setDraftRuntimeSessionPolicy: setDraftSessionPolicy,
       setDraftAudienceKeys,
@@ -1179,6 +1269,10 @@ export function createWorkspaceProductApp({
         });
       },
     });
+    useEffect(() => {
+      setDraftSurface(shellSurface);
+    }, [draftSurfaceResetKey, shellSurface]);
+
     const latestActiveUserMessage = selectedChannel?.messages
       ? [...selectedChannel.messages].reverse().find((message) => message.senderKind === 'user') ?? null
       : null;
@@ -1193,9 +1287,13 @@ export function createWorkspaceProductApp({
       typeof latestActiveUserMessage?.metadata?.workflowShape === 'string'
         ? latestActiveUserMessage.metadata.workflowShape
         : '';
-    const activeAudienceParticipantIdsKey = (selectedChannel?.assignedCats ?? [])
+    const activeAudienceParticipantIdsKey = (
+      selectedChannel?.assignedParticipants?.length
+        ? selectedChannel.assignedParticipants
+        : selectedChannel?.assignedCats ?? []
+    )
       .filter((participant) => participant.status === 'active')
-      .map((participant) => participant.catId)
+      .map((participant) => participant.participantId)
       .join('|');
     const selectedParallelChatGroup = useMemo(
       () => readyPayload && selectedChannel
@@ -1236,7 +1334,7 @@ export function createWorkspaceProductApp({
       state,
       setState,
       navigate,
-      originSurface: shellSurface,
+      originSurface: draftSurface,
       currentPath: `${location.pathname}${location.search}`,
       composerDraft,
       setComposerDraft,
@@ -1600,6 +1698,7 @@ export function createWorkspaceProductApp({
                 onUngroupParallelChatGroup,
                 onDeleteParallelChatGroup,
                 onArchiveCat,
+                onCreateNewCat,
                 onAccountMenuToggle: () => setAccountMenuOpen(!accountMenuOpen),
                 onOverflowMenuToggle: setOverflowMenuOpenId,
                 onNavigateSettings,
@@ -1614,6 +1713,7 @@ export function createWorkspaceProductApp({
               appContent={(
                 <AppRoutesComponent
                   payload={payload}
+                  routeChannelId={routeChannelId}
                   selectedChannel={selectedChannel}
                   directLaneChannel={directLaneChannel}
                   showDirectLaneBoot={showDirectLaneBoot}
@@ -1690,6 +1790,8 @@ export function createWorkspaceProductApp({
                     onCompareSendScopeChange: setCompareSendScope,
                   }}
                   draftSurfaceProps={{
+                    draftSurface,
+                    onDraftSurfaceChange: setDraftSurface,
                     composerDraft,
                     busy,
                     greeting,
@@ -1705,6 +1807,7 @@ export function createWorkspaceProductApp({
                     onComposerChange: setComposerDraft,
                     onComposerKeyDown,
                     onSendMessage,
+                    onCancelPendingSend,
                     onTogglePlusMenu: toggleDraftPlusMenu,
                     onFileSelect: openDraftFilePicker,
                     onTakeScreenshot: captureAndAttachDraftScreenshot,
@@ -1818,6 +1921,7 @@ export function createWorkspaceProductApp({
                     onSetAudienceKeys: supportsStructuredDraftModes
                       ? setDraftAudienceKeys
                       : undefined,
+                    onCatAvatarSave,
                   }}
                   addCatOpen={showAddCatPanel}
                   onToggleAddCat={toggleAddCatPanel}
@@ -1858,6 +1962,12 @@ export function createWorkspaceProductApp({
                   })}
                   onOpenDraftAddCat={openDraftAddCatPanel}
                   onChangeDraftDefaultRecipient={changeDraftDefaultRecipient}
+                  companionMode={companionMode}
+                  companionCat={companionCat}
+                  onToggleCompanionMode={onToggleCompanionMode}
+                  onCompanionWake={onCompanionWake}
+                  onCompanionSleep={onCompanionSleep}
+                  onCatAvatarSave={onCatAvatarSave}
                 />
               )}
               confirmDialog={appDialog}

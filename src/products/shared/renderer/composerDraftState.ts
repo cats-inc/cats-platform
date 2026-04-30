@@ -12,6 +12,7 @@ export interface ResetComposerDraftStateOptions<ModelValue, ParticipantValue> {
   setDraftCatIds: Dispatch<SetStateAction<string[]>>;
   setDraftHighlightedCatId: Dispatch<SetStateAction<string | null>>;
   setDraftCatExecutionTargetOverrides: Dispatch<SetStateAction<Map<string, ModelValue>>>;
+  resetDraftSurface?: () => void;
   setDraftRuntimeSessionPolicy?: Dispatch<SetStateAction<RuntimeSessionPolicy>>;
   setDraftFiles: Dispatch<SetStateAction<File[]>>;
   setDraftTemporaryParticipants?: Dispatch<SetStateAction<ParticipantValue[]>>;
@@ -26,6 +27,7 @@ export function resetComposerDraftState<ModelValue, ParticipantValue = never>({
   setDraftCatIds,
   setDraftHighlightedCatId,
   setDraftCatExecutionTargetOverrides,
+  resetDraftSurface,
   setDraftRuntimeSessionPolicy,
   setDraftFiles,
   setDraftTemporaryParticipants,
@@ -39,6 +41,7 @@ export function resetComposerDraftState<ModelValue, ParticipantValue = never>({
   setDraftTemporaryParticipants?.([]);
   setDraftHighlightedCatId(null);
   setDraftCatExecutionTargetOverrides(new Map<string, ModelValue>());
+  resetDraftSurface?.();
   setDraftRuntimeSessionPolicy?.(createDefaultRuntimeSessionPolicy());
   setDraftFiles([]);
   setChannelFiles?.([]);

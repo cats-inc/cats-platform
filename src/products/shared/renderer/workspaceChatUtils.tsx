@@ -493,6 +493,8 @@ export function insertCreatedChannelIntoPayload<TPayload extends AppShellPayload
   ).length;
   const summary: ChatChannelSummary = {
     id: normalizedChannel.id,
+    containerId: normalizedChannel.containerId,
+    conversationId: normalizedChannel.conversationId,
     title: normalizedChannel.title,
     topic: normalizedChannel.topic,
     originSurface: normalizedChannel.originSurface,

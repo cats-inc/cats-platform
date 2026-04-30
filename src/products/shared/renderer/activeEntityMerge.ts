@@ -176,6 +176,8 @@ export function mergeChannelSummaryWithChannelView(
   return {
     ...currentSummary,
     id: selectedChannel.id,
+    containerId: selectedChannel.containerId,
+    conversationId: selectedChannel.conversationId,
     title: selectedChannel.title,
     topic: selectedChannel.topic,
     originSurface: selectedChannel.originSurface ?? currentSummary?.originSurface,

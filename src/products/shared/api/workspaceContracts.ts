@@ -11,6 +11,7 @@ import type {
   RoomRouteResolution,
   RoomRouteResolutionMode,
   RoomRouteSelectionKind,
+  RoomAssistantTurnDelivery,
   RoomRoutingCheckpoint,
   RoomRoutingCheckpointKind,
   RoomRoutingDispatch,
@@ -65,6 +66,7 @@ export type {
   RoomRouteResolution,
   RoomRouteResolutionMode,
   RoomRouteSelectionKind,
+  RoomAssistantTurnDelivery,
   RoomRoutingCheckpoint,
   RoomRoutingCheckpointKind,
   RoomRoutingDispatch,
@@ -124,6 +126,7 @@ export type {
   SurfaceConversationBehaviorPatch,
   SurfaceConversationBehaviorPreferences,
 } from '../conversationBehavior.js';
+export { CONCURRENT_PRESENTATION_MODES } from '../conversationBehavior.js';
 
 export type ChatChannelStatus =
   | 'planned'
@@ -145,6 +148,14 @@ export type ParallelChatRelayCommandKind =
   | 'counter_this'
   | 'synthesize_this';
 export type ParallelChatRelayTargetPolicy = 'all_others' | 'single';
+export type MessageOrigin =
+  | 'web'
+  | 'telegram'
+  | 'browser'
+  | 'email'
+  | 'runtime'
+  | 'system'
+  | 'unknown';
 
 export interface MessageUsageSummary {
   inputTokens: number;
@@ -315,36 +326,43 @@ export interface ChatChannelState {
   pendingModel: string | null;
   pendingInstance: string | null;
   pendingModelSelection?: ProviderModelSelection | null;
+  continuityResetAt?: string | null;
   createdAt: string;
   updatedAt: string;
   lastMessageAt: string | null;
   lastActivatedAt: string | null;
   orchestratorLease: ParticipantExecutionLease;
   catAssignments: ChannelCatAssignment[];
+  /** Optional for legacy persisted snapshots; runtime normalization populates this. */
+  participantAssignments?: ChannelParticipantAssignment[];
   messages: ChatMessage[];
   roomRouting?: RoomRoutingState;
   workingMemory?: MemoryCheckpointSummary;
 }
 
 export interface ChatChannelView extends ChatChannelState {
+  containerId: string;
+  conversationId: string;
   assignedParticipants?: ChatChannelParticipant[];
   assignedCats: ChatChannelCat[];
 }
 
 export interface ChatChannelSummary {
   id: string;
+  containerId: string;
+  conversationId: string;
   title: string;
   topic: string;
   originSurface?: PlatformSurfaceId | null;
   channelKind?: ChatChannelKind;
   status: ChatChannelStatus;
   unreadCount: number;
-  /** Optional when a product distinguishes temporary and Cat-backed participants separately. */
-  participantCount?: number;
-  /** Optional when a product distinguishes temporary and Cat-backed participants separately. */
-  activeParticipantCount?: number;
+  /** Legacy alias that now counts all channel participants, not only Cat-backed ones. */
   catCount: number;
+  /** Legacy alias that now counts all active channel participants, not only Cat-backed ones. */
   activeCatCount: number;
+  participantCount?: number;
+  activeParticipantCount?: number;
   repoPath: string | null;
   chatCwd: string | null;
   runtimeWorkspaceKind?: RuntimeWorkspaceKind | null;

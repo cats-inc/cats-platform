@@ -585,7 +585,12 @@ test('workspace renderer apps delegate settings routing through the shared app f
   assert.match(sharedLocationHookSource, /useMatch/u);
   assert.match(sharedReadyShellSource, /PlatformSettingsRoutes/u);
 
-  for (const source of [workAppSource, codeAppSource]) {
+  const chatAppSource = await readFile(
+    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    'utf8',
+  );
+
+  for (const source of [chatAppSource, workAppSource, codeAppSource]) {
     assert.match(source, /createWorkspaceProductApp/u);
     assert.doesNotMatch(source, /products\/chat\/api\/contracts\.js/u);
     assert.doesNotMatch(source, /\bChatSettingsPayload\b/u);
@@ -620,7 +625,7 @@ test('chat and workspace apps consume a dedicated generic-draft route entry hook
     'utf8',
   );
 
-  assert.match(chatAppSource, /useOnGenericDraftRouteEntry/u);
+  assert.match(chatAppSource, /createWorkspaceProductApp/u);
   assert.match(workspaceAppSource, /useOnGenericDraftRouteEntry/u);
   assert.doesNotMatch(chatAppSource, /wasGenericNewChatRoute/u);
   assert.doesNotMatch(workspaceAppSource, /wasGenericNewChatRoute/u);
@@ -664,7 +669,7 @@ test('chat and workspace apps consume a shared product document-title hook', asy
     'utf8',
   );
 
-  assert.match(chatAppSource, /useProductChannelDocumentTitle/u);
+  assert.match(chatAppSource, /createWorkspaceProductApp/u);
   assert.match(workspaceAppSource, /useProductChannelDocumentTitle/u);
   assert.doesNotMatch(chatAppSource, /document\.title = routeChannelTitle/u);
   assert.doesNotMatch(workspaceAppSource, /document\.title = routeChannelTitle/u);
@@ -1109,7 +1114,7 @@ test('runtime session routing composes dedicated wake and activation modules ins
 
 test('renderer app consumes a dedicated operator-loop hook instead of defining polling inline', async () => {
   const appSource = await readFile(
-    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    new URL('../src/products/shared/renderer/WorkspaceProductApp.tsx', import.meta.url),
     'utf8',
   );
   const hookSource = await readFile(
@@ -1131,7 +1136,7 @@ test('renderer app consumes a dedicated operator-loop hook instead of defining p
 
 test('renderer app consumes a dedicated app-shell routing hook instead of defining route sync inline', async () => {
   const appSource = await readFile(
-    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    new URL('../src/products/shared/renderer/WorkspaceProductApp.tsx', import.meta.url),
     'utf8',
   );
   const chatHookSource = await readFile(
@@ -1143,7 +1148,7 @@ test('renderer app consumes a dedicated app-shell routing hook instead of defini
     'utf8',
   );
 
-  assert.match(appSource, /useAppShellRouting/u);
+  assert.match(appSource, /useWorkspaceAppShellRouting/u);
   assert.doesNotMatch(appSource, /void fetchAppShell\(controller\.signal\)/u);
   assert.doesNotMatch(appSource, /updateSelectedChannel\(routeChannelId,\s*controller\.signal\)/u);
   assert.match(chatHookSource, /useWorkspaceAppShellRouting/u);
@@ -1153,7 +1158,7 @@ test('renderer app consumes a dedicated app-shell routing hook instead of defini
 
 test('renderer app consumes a dedicated folder-browser hook instead of defining browse flows inline', async () => {
   const appSource = await readFile(
-    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    new URL('../src/products/shared/renderer/WorkspaceProductApp.tsx', import.meta.url),
     'utf8',
   );
   const hookSource = await readFile(
@@ -1177,7 +1182,7 @@ test('renderer app consumes a dedicated folder-browser hook instead of defining 
 
 test('renderer app consumes a dedicated composer-submit hook instead of defining send flows inline', async () => {
   const appSource = await readFile(
-    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    new URL('../src/products/shared/renderer/WorkspaceProductApp.tsx', import.meta.url),
     'utf8',
   );
   const hookSource = await readFile(
@@ -1204,7 +1209,7 @@ test('renderer app consumes a dedicated composer-submit hook instead of defining
     ? sharedDispatchSource
     : hookSource;
 
-  assert.match(appSource, /useComposerSubmit/u);
+  assert.match(appSource, /createUseComposerSubmit/u);
   assert.doesNotMatch(appSource, /async function submitComposerMessage\(/u);
   assert.match(hookSource, /export function useComposerSubmit/u);
   assert.match(hookSource, /prepareWorkspaceSendContext/u);
@@ -1278,7 +1283,7 @@ test('chat and workspace apps consume shared app-shell channel action hooks', as
     'utf8',
   );
 
-  assert.match(chatAppSource, /useWorkspaceDirectLaneModelSave/u);
+  assert.match(chatAppSource, /createWorkspaceProductApp/u);
   assert.match(workspaceAppSource, /useWorkspaceDirectLaneModelSave/u);
   assert.match(hookSource, /export function useWorkspaceDirectLaneModelSave/u);
   assert.match(hookSource, /updateCatProfile/u);
@@ -1301,7 +1306,7 @@ test('chat and workspace apps consume a shared ready-payload publisher', async (
     'utf8',
   );
 
-  assert.match(chatAppSource, /usePublishReadyPayload/u);
+  assert.match(chatAppSource, /createWorkspaceProductApp/u);
   assert.match(workspaceAppSource, /usePublishReadyPayload/u);
   assert.doesNotMatch(chatAppSource, /function updatePayload\(payload: AppShellPayload\)/u);
   assert.match(hookSource, /export function usePublishReadyPayload/u);
@@ -1322,8 +1327,7 @@ test('chat and workspace apps consume shared app-shell presentation helpers', as
     'utf8',
   );
 
-  assert.match(chatAppSource, /buildFolderBrowserContentProps/u);
-  assert.match(chatAppSource, /resolveVisibleChatChannelId/u);
+  assert.match(chatAppSource, /createWorkspaceProductApp/u);
   assert.match(workspaceAppSource, /buildFolderBrowserContentProps/u);
   assert.match(workspaceAppSource, /resolveVisibleChatChannelId/u);
   assert.doesNotMatch(chatAppSource, /selectedChannel\?\.id \?\? directLaneChannel\?\.id \?\? null/u);
@@ -1334,7 +1338,7 @@ test('chat and workspace apps consume shared app-shell presentation helpers', as
 
 test('renderer app consumes dedicated cat-assignment actions instead of defining cat create/assign flows inline', async () => {
   const appSource = await readFile(
-    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    new URL('../src/products/shared/renderer/WorkspaceProductApp.tsx', import.meta.url),
     'utf8',
   );
   const hookSource = await readFile(
@@ -1346,7 +1350,7 @@ test('renderer app consumes dedicated cat-assignment actions instead of defining
     'utf8',
   );
 
-  assert.match(appSource, /useCatAssignmentActions/u);
+  assert.match(appSource, /useWorkspaceCatAssignmentActions/u);
   assert.doesNotMatch(appSource, /async function onCreateAndAssignCat\(/u);
   assert.doesNotMatch(appSource, /async function onCreateAndDraftCat\(/u);
   assert.doesNotMatch(appSource, /async function onAssignExistingCat\(/u);
@@ -1360,7 +1364,7 @@ test('renderer app consumes dedicated cat-assignment actions instead of defining
 
 test('renderer app consumes dedicated governance actions instead of defining approval and choice flows inline', async () => {
   const appSource = await readFile(
-    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    new URL('../src/products/shared/renderer/WorkspaceProductApp.tsx', import.meta.url),
     'utf8',
   );
   const hookSource = await readFile(
@@ -1372,7 +1376,7 @@ test('renderer app consumes dedicated governance actions instead of defining app
     'utf8',
   );
 
-  assert.match(appSource, /useGovernanceActions/u);
+  assert.match(appSource, /useWorkspaceGovernanceActions/u);
   assert.doesNotMatch(appSource, /async function onApprovalDecision\(/u);
   assert.doesNotMatch(appSource, /async function onChoiceSubmit\(/u);
   assert.doesNotMatch(appSource, /async function onOperatorAction\(/u);
@@ -1385,7 +1389,7 @@ test('renderer app consumes dedicated governance actions instead of defining app
 
 test('renderer app consumes a dedicated chrome hook instead of defining shell menu state inline', async () => {
   const appSource = await readFile(
-    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    new URL('../src/products/shared/renderer/WorkspaceProductApp.tsx', import.meta.url),
     'utf8',
   );
   const hookSource = await readFile(
@@ -1409,8 +1413,12 @@ test('renderer app consumes a dedicated chrome hook instead of defining shell me
 });
 
 test('renderer app consumes a dedicated routes module instead of defining the route tree inline', async () => {
-  const appSource = await readFile(
+  const chatAppSource = await readFile(
     new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    'utf8',
+  );
+  const workspaceAppSource = await readFile(
+    new URL('../src/products/shared/renderer/WorkspaceProductApp.tsx', import.meta.url),
     'utf8',
   );
   const routesSource = await readFile(
@@ -1418,10 +1426,11 @@ test('renderer app consumes a dedicated routes module instead of defining the ro
     'utf8',
   );
 
-  assert.match(appSource, /AppRoutes/u);
-  assert.match(appSource, /ProductReadyShell/u);
-  assert.doesNotMatch(appSource, /<Routes>/u);
-  assert.doesNotMatch(appSource, /path="chats\/:channelId"/u);
+  assert.match(chatAppSource, /AppRoutes/u);
+  assert.match(chatAppSource, /createWorkspaceProductApp/u);
+  assert.match(workspaceAppSource, /ProductReadyShell/u);
+  assert.doesNotMatch(chatAppSource, /<Routes>/u);
+  assert.doesNotMatch(chatAppSource, /path="chats\/:channelId"/u);
   assert.match(routesSource, /export function AppRoutes/u);
   assert.match(routesSource, /chats\/:channelId/u);
   assert.match(routesSource, /path="new"/u);
@@ -1429,7 +1438,7 @@ test('renderer app consumes a dedicated routes module instead of defining the ro
 
 test('renderer app keeps the new-chat greeting stable by threading the greeting seam into draft routes', async () => {
   const appSource = await readFile(
-    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    new URL('../src/products/shared/renderer/WorkspaceProductApp.tsx', import.meta.url),
     'utf8',
   );
 
@@ -1441,7 +1450,7 @@ test('renderer app keeps the new-chat greeting stable by threading the greeting 
 
 test('renderer app consumes dedicated derived-state helpers instead of defining route and view-model derivations inline', async () => {
   const appSource = await readFile(
-    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    new URL('../src/products/shared/renderer/WorkspaceProductApp.tsx', import.meta.url),
     'utf8',
   );
   const viewStateSource = await readFile(
@@ -1461,7 +1470,7 @@ test('renderer app consumes dedicated derived-state helpers instead of defining 
 
 test('renderer app consumes dedicated navigation actions instead of defining route-side effects inline', async () => {
   const appSource = await readFile(
-    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    new URL('../src/products/shared/renderer/WorkspaceProductApp.tsx', import.meta.url),
     'utf8',
   );
   const hookSource = await readFile(
@@ -1477,7 +1486,7 @@ test('renderer app consumes dedicated navigation actions instead of defining rou
       ? sharedHookSource
       : hookSource;
 
-  assert.match(appSource, /useAppNavigationActions/u);
+  assert.match(appSource, /useWorkspaceAppNavigationActions/u);
   assert.doesNotMatch(appSource, /async function onDeleteChannel\(/u);
   assert.doesNotMatch(appSource, /async function onResetSetup\(/u);
   assert.doesNotMatch(appSource, /async function onStartNewChat\(/u);
@@ -1493,7 +1502,7 @@ test('renderer app consumes dedicated navigation actions instead of defining rou
 
 test('renderer app consumes dedicated draft-ui actions instead of defining menu toggles inline', async () => {
   const appSource = await readFile(
-    new URL('../src/products/chat/renderer/App.tsx', import.meta.url),
+    new URL('../src/products/shared/renderer/WorkspaceProductApp.tsx', import.meta.url),
     'utf8',
   );
   const hookSource = await readFile(
@@ -1508,7 +1517,7 @@ test('renderer app consumes dedicated draft-ui actions instead of defining menu 
     ? sharedHookSource
     : hookSource;
 
-  assert.match(appSource, /useAppDraftUiActions/u);
+  assert.match(appSource, /useWorkspaceAppDraftUiActions/u);
   assert.doesNotMatch(appSource, /setAddCatOpen\(!addCatOpen\)/u);
   assert.doesNotMatch(appSource, /setPlusMenuOpen\(!plusMenuOpen\)/u);
   assert.doesNotMatch(appSource, /fileInputRef\.current\?\.click\(\)/u);
@@ -1623,7 +1632,8 @@ test('settings cats consumes dedicated detail content instead of rendering teleg
   assert.doesNotMatch(settingsCatsSource, /Tracked inboxes \{telegramDiagnostics\.bindings\.length\}/u);
   assert.match(sharedDetailContentSource, /export function SettingsCatsDetailPanelContent/u);
   assert.match(sharedDetailContentSource, /formatTransportTimestamp/u);
-  assert.match(sharedDetailContentSource, /Last inbound \{formatTransportTimestamp/u);
+  assert.match(sharedDetailContentSource, /sharedSettingsCatsLastInboundLabel/u);
+  assert.match(sharedDetailContentSource, /time: formatTransportTimestamp/u);
 });
 
 test('settings cats composes dedicated shared settings modules instead of keeping helper logic inline', async () => {
