@@ -424,11 +424,11 @@ export function createWorkspaceProductApp({
     const screenshotCaptureDisabled = !isScreenshotCaptureAvailable(screenshotCaptureRoute);
 
     const showScreenshotCaptureError = useCallback((error: unknown): void => {
-      const feedback = resolveScreenshotCaptureFeedback(error);
+      const feedback = resolveScreenshotCaptureFeedback(error, t);
       showToast(feedback.message);
-    }, [showToast]);
+    }, [showToast, t]);
     const captureAndAppendDraftScreenshot = useCallback((): void => {
-      const capturePromise = captureScreenshotFile(screenshotCaptureRoute);
+      const capturePromise = captureScreenshotFile(screenshotCaptureRoute, t);
       void capturePromise
         .then((file) => {
           if (file) {
@@ -436,9 +436,9 @@ export function createWorkspaceProductApp({
           }
         })
         .catch(showScreenshotCaptureError);
-    }, [screenshotCaptureRoute, setDraftFiles, showScreenshotCaptureError]);
+    }, [screenshotCaptureRoute, setDraftFiles, showScreenshotCaptureError, t]);
     const captureAndAppendChannelScreenshot = useCallback((): void => {
-      const capturePromise = captureScreenshotFile(screenshotCaptureRoute);
+      const capturePromise = captureScreenshotFile(screenshotCaptureRoute, t);
       void capturePromise
         .then((file) => {
           if (file) {
@@ -446,7 +446,7 @@ export function createWorkspaceProductApp({
           }
         })
         .catch(showScreenshotCaptureError);
-    }, [screenshotCaptureRoute, setChannelFiles, showScreenshotCaptureError]);
+    }, [screenshotCaptureRoute, setChannelFiles, showScreenshotCaptureError, t]);
 
     const publishReadyPayload = usePublishReadyPayload<AppShellPayload>(setState);
 

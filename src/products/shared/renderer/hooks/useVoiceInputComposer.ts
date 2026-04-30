@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useRef, type RefObject } from 'react';
 
 import { useToast } from '../../../../design/components/Toast.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import {
+  messageKeys,
+  type MessageInterpolationValues,
+  type MessageKey,
+} from '../../../../shared/i18n/index.js';
 import type { VoiceCaptureMode } from '../../../../shared/voiceCaptureBridge.js';
 import { useNativeVoiceInput } from './useNativeVoiceInput.js';
 import { useWebSpeechInput } from './useWebSpeechInput.js';
@@ -23,30 +29,39 @@ export interface UseVoiceInputComposerResult {
   privacyMessage: string | null;
 }
 
-const ERROR_MESSAGES: Record<string, string> = {
-  'not-allowed': 'Microphone access was denied. Check your system and browser permissions.',
-  'service-not-allowed': 'Voice input is not available in this environment.',
-  'audio-capture': 'No microphone was detected.',
-  'network': 'Voice input could not reach the recognition service.',
-  'language-not-supported': 'Voice input does not support the current language.',
-  permission_denied: 'Microphone access was denied. Check your system voice permissions.',
-  permission_not_determined: 'Voice input needs system microphone and speech permissions.',
-  mic_unavailable: 'No microphone was detected.',
-  language_not_supported: 'Voice input does not support the current language.',
-  engine_unavailable: 'Voice input is not available on this device.',
-  helper_crashed: 'Voice input stopped unexpectedly.',
+type VoiceInputI18n = (
+  key: MessageKey,
+  values?: MessageInterpolationValues,
+) => string;
+
+const ERROR_MESSAGE_KEYS: Record<string, MessageKey> = {
+  'not-allowed': messageKeys.sharedVoiceInputErrorNotAllowed,
+  'service-not-allowed': messageKeys.sharedVoiceInputErrorServiceNotAllowed,
+  'audio-capture': messageKeys.sharedVoiceInputErrorAudioCapture,
+  network: messageKeys.sharedVoiceInputErrorNetwork,
+  'language-not-supported': messageKeys.sharedVoiceInputErrorLanguageNotSupported,
+  permission_denied: messageKeys.sharedVoiceInputErrorPermissionDenied,
+  permission_not_determined: messageKeys.sharedVoiceInputErrorPermissionNotDetermined,
+  mic_unavailable: messageKeys.sharedVoiceInputErrorMicUnavailable,
+  language_not_supported: messageKeys.sharedVoiceInputErrorLanguageNotSupported,
+  engine_unavailable: messageKeys.sharedVoiceInputErrorEngineUnavailable,
+  helper_crashed: messageKeys.sharedVoiceInputErrorHelperCrashed,
 };
 
-function resolveVoiceErrorMessage(kind: string): string {
-  return ERROR_MESSAGES[kind] ?? `Voice input failed (${kind}).`;
+function resolveVoiceErrorMessage(kind: string, t: VoiceInputI18n): string {
+  const key = ERROR_MESSAGE_KEYS[kind];
+  return key ? t(key) : t(messageKeys.sharedVoiceInputFailedWithKind, { kind });
 }
 
-function resolveVoicePrivacyMessage(mode: VoiceCaptureMode | null): string | null {
+function resolveVoicePrivacyMessage(
+  mode: VoiceCaptureMode | null,
+  t: VoiceInputI18n,
+): string | null {
   if (mode === 'unknown') {
-    return 'Voice input may use Microsoft online speech depending on Windows privacy settings.';
+    return t(messageKeys.sharedVoiceInputPrivacyUnknown);
   }
   if (mode === 'cloud') {
-    return 'Voice input is using an online speech service.';
+    return t(messageKeys.sharedVoiceInputPrivacyCloud);
   }
   return null;
 }
@@ -58,6 +73,7 @@ export function useVoiceInputComposer({
   disabled,
   lang,
 }: UseVoiceInputComposerOptions): UseVoiceInputComposerResult {
+  const { t } = useI18n();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const valueRef = useRef(value);
   valueRef.current = value;
@@ -143,9 +159,9 @@ export function useVoiceInputComposer({
   const { toasts, showToast } = useToast();
   const handleRecognitionError = useCallback(
     (kind: string) => {
-      showToast(resolveVoiceErrorMessage(kind));
+      showToast(resolveVoiceErrorMessage(kind, t));
     },
-    [showToast],
+    [showToast, t],
   );
 
   const nativeVoiceInput = useNativeVoiceInput({
@@ -188,7 +204,7 @@ export function useVoiceInputComposer({
   }, [voiceInputActive, cancel]);
 
   const privacyMode = nativeVoiceInput.supported ? nativeVoiceInput.privacyMode : null;
-  const privacyMessage = resolveVoicePrivacyMessage(privacyMode);
+  const privacyMessage = resolveVoicePrivacyMessage(privacyMode, t);
 
   return {
     supported,

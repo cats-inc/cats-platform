@@ -1296,12 +1296,50 @@ export const enCatalog: MessageCatalog = {
   'chat.newChatDraft.attachmentRemoveAria': 'Remove {fileName}',
   'chat.newChatDraft.addPhotosAndFiles': 'Add photos and files',
   'chat.newChatDraft.takeScreenshot': 'Take screenshot',
+  'shared.screenshotCapture.tooltipDesktopRegion': 'Capture a region of your screen',
+  'shared.screenshotCapture.tooltipWebPicker': 'Capture a screen, window, or tab',
+  'shared.screenshotCapture.tooltipUnavailable':
+    'Screen capture is unavailable in this environment',
+  'shared.screenshotCapture.permissionRequired':
+    'Screen Recording permission is required to capture a screenshot.',
+  'shared.screenshotCapture.failed': 'Failed to capture screenshot.',
+  'shared.screenshotCapture.frameLoadFailed': 'Failed to load captured screen frame.',
+  'shared.screenshotCapture.frameEmpty': 'Captured screen frame is empty.',
+  'shared.screenshotCapture.canvasPrepareFailed': 'Could not prepare screenshot canvas.',
+  'shared.screenshotCapture.encodeFailed': 'Could not encode screenshot.',
+  'shared.screenshotCapture.downscaleFailed': 'Could not downscale screenshot.',
+  'shared.screenshotCapture.displayUnavailable':
+    'Screenshot failed: the selected display is no longer available.',
+  'shared.screenshotCapture.regionUnsupported':
+    'Region screenshot capture is unavailable on this desktop environment.',
   'chat.newChatDraft.cancelSendAria': 'Cancel send',
   'chat.newChatDraft.sendAria': 'Send',
   'chat.newChatDraft.sendAllChatsAria': 'Send to all chats',
   'chat.newChatDraft.startVoiceInputAria': 'Start voice input',
   'chat.newChatDraft.stopVoiceInputAria':
     'Stop voice input{privacyMessageSuffix}',
+  'shared.voiceInput.error.notAllowed':
+    'Microphone access was denied. Check your system and browser permissions.',
+  'shared.voiceInput.error.serviceNotAllowed':
+    'Voice input is not available in this environment.',
+  'shared.voiceInput.error.audioCapture': 'No microphone was detected.',
+  'shared.voiceInput.error.network':
+    'Voice input could not reach the recognition service.',
+  'shared.voiceInput.error.languageNotSupported':
+    'Voice input does not support the current language.',
+  'shared.voiceInput.error.permissionDenied':
+    'Microphone access was denied. Check your system voice permissions.',
+  'shared.voiceInput.error.permissionNotDetermined':
+    'Voice input needs system microphone and speech permissions.',
+  'shared.voiceInput.error.micUnavailable': 'No microphone was detected.',
+  'shared.voiceInput.error.engineUnavailable':
+    'Voice input is not available on this device.',
+  'shared.voiceInput.error.helperCrashed': 'Voice input stopped unexpectedly.',
+  'shared.voiceInput.failedWithKind': 'Voice input failed ({kind}).',
+  'shared.voiceInput.privacyUnknown':
+    'Voice input may use Microsoft online speech depending on Windows privacy settings.',
+  'shared.voiceInput.privacyCloud':
+    'Voice input is using an online speech service.',
   'chat.draftCompareCarousel.ariaLabel': 'Compare branch carousel',
   'chat.draftCompareCarousel.previousBranchAria': 'Previous branch',
   'chat.draftCompareCarousel.nextBranchAria': 'Next branch',

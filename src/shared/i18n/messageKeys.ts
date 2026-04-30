@@ -1285,11 +1285,54 @@ export const messageKeys = {
     'chat.newChatDraft.attachmentRemoveAria',
   chatNewChatDraftAddPhotosAndFiles: 'chat.newChatDraft.addPhotosAndFiles',
   chatNewChatDraftTakeScreenshot: 'chat.newChatDraft.takeScreenshot',
+  sharedScreenshotCaptureTooltipDesktopRegion:
+    'shared.screenshotCapture.tooltipDesktopRegion',
+  sharedScreenshotCaptureTooltipWebPicker:
+    'shared.screenshotCapture.tooltipWebPicker',
+  sharedScreenshotCaptureTooltipUnavailable:
+    'shared.screenshotCapture.tooltipUnavailable',
+  sharedScreenshotCapturePermissionRequired:
+    'shared.screenshotCapture.permissionRequired',
+  sharedScreenshotCaptureFailed: 'shared.screenshotCapture.failed',
+  sharedScreenshotCaptureFrameLoadFailed:
+    'shared.screenshotCapture.frameLoadFailed',
+  sharedScreenshotCaptureFrameEmpty:
+    'shared.screenshotCapture.frameEmpty',
+  sharedScreenshotCaptureCanvasPrepareFailed:
+    'shared.screenshotCapture.canvasPrepareFailed',
+  sharedScreenshotCaptureEncodeFailed:
+    'shared.screenshotCapture.encodeFailed',
+  sharedScreenshotCaptureDownscaleFailed:
+    'shared.screenshotCapture.downscaleFailed',
+  sharedScreenshotCaptureDisplayUnavailable:
+    'shared.screenshotCapture.displayUnavailable',
+  sharedScreenshotCaptureRegionUnsupported:
+    'shared.screenshotCapture.regionUnsupported',
   chatNewChatDraftCancelSendAria: 'chat.newChatDraft.cancelSendAria',
   chatNewChatDraftSendAria: 'chat.newChatDraft.sendAria',
   chatNewChatDraftSendAllChatsAria: 'chat.newChatDraft.sendAllChatsAria',
   chatNewChatDraftStartVoiceInputAria: 'chat.newChatDraft.startVoiceInputAria',
   chatNewChatDraftStopVoiceInputAria: 'chat.newChatDraft.stopVoiceInputAria',
+  sharedVoiceInputErrorNotAllowed: 'shared.voiceInput.error.notAllowed',
+  sharedVoiceInputErrorServiceNotAllowed:
+    'shared.voiceInput.error.serviceNotAllowed',
+  sharedVoiceInputErrorAudioCapture: 'shared.voiceInput.error.audioCapture',
+  sharedVoiceInputErrorNetwork: 'shared.voiceInput.error.network',
+  sharedVoiceInputErrorLanguageNotSupported:
+    'shared.voiceInput.error.languageNotSupported',
+  sharedVoiceInputErrorPermissionDenied:
+    'shared.voiceInput.error.permissionDenied',
+  sharedVoiceInputErrorPermissionNotDetermined:
+    'shared.voiceInput.error.permissionNotDetermined',
+  sharedVoiceInputErrorMicUnavailable:
+    'shared.voiceInput.error.micUnavailable',
+  sharedVoiceInputErrorEngineUnavailable:
+    'shared.voiceInput.error.engineUnavailable',
+  sharedVoiceInputErrorHelperCrashed:
+    'shared.voiceInput.error.helperCrashed',
+  sharedVoiceInputFailedWithKind: 'shared.voiceInput.failedWithKind',
+  sharedVoiceInputPrivacyUnknown: 'shared.voiceInput.privacyUnknown',
+  sharedVoiceInputPrivacyCloud: 'shared.voiceInput.privacyCloud',
   chatDraftCompareCarouselAriaLabel: 'chat.draftCompareCarousel.ariaLabel',
   chatDraftCompareCarouselPreviousBranchAria:
     'chat.draftCompareCarousel.previousBranchAria',

@@ -1255,11 +1255,47 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.newChatDraft.attachmentRemoveAria': '移除 {fileName}',
   'chat.newChatDraft.addPhotosAndFiles': '新增照片和檔案',
   'chat.newChatDraft.takeScreenshot': '拍攝畫面截圖',
+  'shared.screenshotCapture.tooltipDesktopRegion': '擷取螢幕區域',
+  'shared.screenshotCapture.tooltipWebPicker': '擷取螢幕、視窗或分頁',
+  'shared.screenshotCapture.tooltipUnavailable': '此環境無法使用螢幕擷取',
+  'shared.screenshotCapture.permissionRequired':
+    '需要螢幕錄製權限才能擷取截圖。',
+  'shared.screenshotCapture.failed': '擷取截圖失敗。',
+  'shared.screenshotCapture.frameLoadFailed': '讀取擷取畫面失敗。',
+  'shared.screenshotCapture.frameEmpty': '擷取畫面是空的。',
+  'shared.screenshotCapture.canvasPrepareFailed': '無法準備截圖畫布。',
+  'shared.screenshotCapture.encodeFailed': '無法編碼截圖。',
+  'shared.screenshotCapture.downscaleFailed': '無法縮小截圖。',
+  'shared.screenshotCapture.displayUnavailable':
+    '截圖失敗：選取的顯示器已無法使用。',
+  'shared.screenshotCapture.regionUnsupported':
+    '此桌面環境無法使用區域截圖。',
   'chat.newChatDraft.cancelSendAria': '取消發送',
   'chat.newChatDraft.sendAria': '送出',
   'chat.newChatDraft.sendAllChatsAria': '送出給全部聊天室',
   'chat.newChatDraft.startVoiceInputAria': '開始語音輸入',
   'chat.newChatDraft.stopVoiceInputAria': '停止語音輸入{privacyMessageSuffix}',
+  'shared.voiceInput.error.notAllowed':
+    '麥克風存取遭拒。請檢查系統與瀏覽器權限。',
+  'shared.voiceInput.error.serviceNotAllowed':
+    '此環境無法使用語音輸入。',
+  'shared.voiceInput.error.audioCapture': '未偵測到麥克風。',
+  'shared.voiceInput.error.network': '語音輸入無法連線到辨識服務。',
+  'shared.voiceInput.error.languageNotSupported':
+    '語音輸入不支援目前語言。',
+  'shared.voiceInput.error.permissionDenied':
+    '麥克風存取遭拒。請檢查系統語音權限。',
+  'shared.voiceInput.error.permissionNotDetermined':
+    '語音輸入需要系統麥克風與語音權限。',
+  'shared.voiceInput.error.micUnavailable': '未偵測到麥克風。',
+  'shared.voiceInput.error.engineUnavailable':
+    '此裝置無法使用語音輸入。',
+  'shared.voiceInput.error.helperCrashed': '語音輸入意外停止。',
+  'shared.voiceInput.failedWithKind': '語音輸入失敗（{kind}）。',
+  'shared.voiceInput.privacyUnknown':
+    '語音輸入可能依 Windows 隱私設定使用 Microsoft 線上語音服務。',
+  'shared.voiceInput.privacyCloud':
+    '語音輸入正在使用線上語音服務。',
   'chat.draftCompareCarousel.ariaLabel': '比較分支輪播',
   'chat.draftCompareCarousel.previousBranchAria': '上一個分支',
   'chat.draftCompareCarousel.nextBranchAria': '下一個分支',

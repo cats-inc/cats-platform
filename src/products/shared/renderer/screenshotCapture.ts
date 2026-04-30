@@ -1,11 +1,21 @@
 import { resolveDesktopHostBridge } from '../../../shared/desktopRecoveryBridge.js';
 import type { DesktopScreenshotCaptureResult } from '../../../shared/desktopRecoveryBridge.js';
+import {
+  createTranslator,
+  messageKeys,
+  type MessageInterpolationValues,
+  type MessageKey,
+} from '../../../shared/i18n/index.js';
 
 export type ScreenshotCaptureRoute = 'desktop_region' | 'web_picker' | 'unavailable';
 
 const SCREENSHOT_PERMISSION_DENIED_ERROR_CODE = 'screenshot_permission_denied';
-const SCREENSHOT_PERMISSION_DENIED_FALLBACK =
-  'Screen Recording permission is required to capture a screenshot.';
+type ScreenshotCaptureI18n = (
+  key: MessageKey,
+  values?: MessageInterpolationValues,
+) => string;
+
+const defaultScreenshotCaptureI18n = createTranslator('en');
 
 const MAX_CAPTURE_WIDTH = 8000;
 const MAX_CAPTURE_HEIGHT = 8000;
@@ -38,30 +48,38 @@ export function resolveScreenshotCaptureRoute(): ScreenshotCaptureRoute {
   return 'unavailable';
 }
 
-export function resolveScreenshotCaptureTooltip(route: ScreenshotCaptureRoute): string {
+export function resolveScreenshotCaptureTooltip(
+  route: ScreenshotCaptureRoute,
+  t: ScreenshotCaptureI18n = defaultScreenshotCaptureI18n,
+): string {
   if (route === 'desktop_region') {
-    return 'Capture a region of your screen';
+    return t(messageKeys.sharedScreenshotCaptureTooltipDesktopRegion);
   }
 
   if (route === 'web_picker') {
-    return 'Capture a screen, window, or tab';
+    return t(messageKeys.sharedScreenshotCaptureTooltipWebPicker);
   }
 
-  return 'Screen capture is unavailable in this environment';
+  return t(messageKeys.sharedScreenshotCaptureTooltipUnavailable);
 }
 
 export function isScreenshotCaptureAvailable(route: ScreenshotCaptureRoute): boolean {
   return route !== 'unavailable';
 }
 
-export function resolveScreenshotCaptureToastMessage(error: unknown): string {
-  return error instanceof Error ? error.message : 'Failed to capture screenshot.';
+export function resolveScreenshotCaptureToastMessage(
+  error: unknown,
+  t: ScreenshotCaptureI18n = defaultScreenshotCaptureI18n,
+): string {
+  return error instanceof Error ? error.message : t(messageKeys.sharedScreenshotCaptureFailed);
 }
 
 export class ScreenshotPermissionDeniedError extends Error {
   readonly code = SCREENSHOT_PERMISSION_DENIED_ERROR_CODE;
 
-  constructor(message = SCREENSHOT_PERMISSION_DENIED_FALLBACK) {
+  constructor(message = defaultScreenshotCaptureI18n(
+    messageKeys.sharedScreenshotCapturePermissionRequired,
+  )) {
     super(message);
     this.name = 'ScreenshotPermissionDeniedError';
   }
@@ -84,10 +102,13 @@ export interface ScreenshotCaptureFeedback {
   message: string;
 }
 
-export function resolveScreenshotCaptureFeedback(error: unknown): ScreenshotCaptureFeedback {
+export function resolveScreenshotCaptureFeedback(
+  error: unknown,
+  t: ScreenshotCaptureI18n = defaultScreenshotCaptureI18n,
+): ScreenshotCaptureFeedback {
   return {
     surface: 'toast',
-    message: resolveScreenshotCaptureToastMessage(error),
+    message: resolveScreenshotCaptureToastMessage(error, t),
   };
 }
 
@@ -112,22 +133,30 @@ export function createScreenshotFilename(now = new Date()): string {
   return `cats-screenshot-${second}-${pad(filenameCounter, 3)}.png`;
 }
 
-async function waitForVideoMetadata(video: HTMLVideoElement): Promise<void> {
+async function waitForVideoMetadata(
+  video: HTMLVideoElement,
+  t: ScreenshotCaptureI18n,
+): Promise<void> {
   if (video.readyState >= HTMLMediaElement.HAVE_METADATA && video.videoWidth > 0) {
     return;
   }
 
   await new Promise<void>((resolve, reject) => {
     video.onloadedmetadata = () => resolve();
-    video.onerror = () => reject(new Error('Failed to load captured screen frame.'));
+    video.onerror = () => reject(new Error(
+      t(messageKeys.sharedScreenshotCaptureFrameLoadFailed),
+    ));
   });
 }
 
-function createCanvasForVideo(video: HTMLVideoElement): HTMLCanvasElement {
+function createCanvasForVideo(
+  video: HTMLVideoElement,
+  t: ScreenshotCaptureI18n,
+): HTMLCanvasElement {
   const sourceWidth = video.videoWidth;
   const sourceHeight = video.videoHeight;
   if (sourceWidth <= 0 || sourceHeight <= 0) {
-    throw new Error('Captured screen frame is empty.');
+    throw new Error(t(messageKeys.sharedScreenshotCaptureFrameEmpty));
   }
 
   const scale = Math.min(
@@ -141,17 +170,20 @@ function createCanvasForVideo(video: HTMLVideoElement): HTMLCanvasElement {
 
   const context = canvas.getContext('2d');
   if (!context) {
-    throw new Error('Could not prepare screenshot canvas.');
+    throw new Error(t(messageKeys.sharedScreenshotCaptureCanvasPrepareFailed));
   }
   context.drawImage(video, 0, 0, canvas.width, canvas.height);
   return canvas;
 }
 
-async function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+async function canvasToPngBlob(
+  canvas: HTMLCanvasElement,
+  t: ScreenshotCaptureI18n,
+): Promise<Blob> {
   return await new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((blob) => {
       if (!blob) {
-        reject(new Error('Could not encode screenshot.'));
+        reject(new Error(t(messageKeys.sharedScreenshotCaptureEncodeFailed)));
         return;
       }
       resolve(blob);
@@ -159,9 +191,12 @@ async function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
   });
 }
 
-async function canvasToBoundedPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+async function canvasToBoundedPngBlob(
+  canvas: HTMLCanvasElement,
+  t: ScreenshotCaptureI18n,
+): Promise<Blob> {
   let currentCanvas = canvas;
-  let blob = await canvasToPngBlob(currentCanvas);
+  let blob = await canvasToPngBlob(currentCanvas, t);
 
   while (blob.size > MAX_CAPTURE_BYTES && currentCanvas.width > 1 && currentCanvas.height > 1) {
     const nextCanvas = document.createElement('canvas');
@@ -169,11 +204,11 @@ async function canvasToBoundedPngBlob(canvas: HTMLCanvasElement): Promise<Blob> 
     nextCanvas.height = Math.max(1, Math.floor(currentCanvas.height * 0.85));
     const context = nextCanvas.getContext('2d');
     if (!context) {
-      throw new Error('Could not downscale screenshot.');
+      throw new Error(t(messageKeys.sharedScreenshotCaptureDownscaleFailed));
     }
     context.drawImage(currentCanvas, 0, 0, nextCanvas.width, nextCanvas.height);
     currentCanvas = nextCanvas;
-    blob = await canvasToPngBlob(currentCanvas);
+    blob = await canvasToPngBlob(currentCanvas, t);
   }
 
   return blob;
@@ -188,9 +223,11 @@ export function stopMediaStreamTracks(stream: Pick<MediaStream, 'getTracks'> | n
   }
 }
 
-async function captureWebScreenshotFile(): Promise<File | null> {
+async function captureWebScreenshotFile(
+  t: ScreenshotCaptureI18n = defaultScreenshotCaptureI18n,
+): Promise<File | null> {
   if (!supportsWebScreenCapture()) {
-    throw new Error(resolveScreenshotCaptureTooltip('unavailable'));
+    throw new Error(resolveScreenshotCaptureTooltip('unavailable', t));
   }
 
   // Must be invoked synchronously from the click handler. Do not put awaits before this call.
@@ -206,12 +243,12 @@ async function captureWebScreenshotFile(): Promise<File | null> {
     video.muted = true;
     video.playsInline = true;
     video.srcObject = stream;
-    await waitForVideoMetadata(video);
+    await waitForVideoMetadata(video, t);
     await video.play();
-    const canvas = createCanvasForVideo(video);
+    const canvas = createCanvasForVideo(video, t);
     stopMediaStreamTracks(stream);
     stream = null;
-    const blob = await canvasToBoundedPngBlob(canvas);
+    const blob = await canvasToBoundedPngBlob(canvas, t);
     return new File([blob], createScreenshotFilename(), { type: 'image/png' });
   } catch (error) {
     if (error instanceof DOMException && error.name === 'NotAllowedError') {
@@ -225,11 +262,12 @@ async function captureWebScreenshotFile(): Promise<File | null> {
 
 function buildDesktopScreenshotError(
   result: Exclude<DesktopScreenshotCaptureResult, { outcome: 'ok' }>,
+  t: ScreenshotCaptureI18n,
 ): Error | null {
   if (result.outcome === 'cancelled') {
     switch (result.reason) {
       case 'unknown_display':
-        return new Error('Screenshot failed: the selected display is no longer available.');
+        return new Error(t(messageKeys.sharedScreenshotCaptureDisplayUnavailable));
       case 'too_small':
       case 'user_cancel':
         return null;
@@ -249,10 +287,10 @@ function buildDesktopScreenshotError(
   }
 
   if (result.outcome === 'platform_unsupported') {
-    return new Error('Region screenshot capture is unavailable on this desktop environment.');
+    return new Error(t(messageKeys.sharedScreenshotCaptureRegionUnsupported));
   }
 
-  return new Error('Failed to capture screenshot.');
+  return new Error(t(messageKeys.sharedScreenshotCaptureFailed));
 }
 
 function copyBytesToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
@@ -261,15 +299,17 @@ function copyBytesToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
   return buffer;
 }
 
-async function captureDesktopScreenshotFile(): Promise<File | null> {
+async function captureDesktopScreenshotFile(
+  t: ScreenshotCaptureI18n = defaultScreenshotCaptureI18n,
+): Promise<File | null> {
   const capture = resolveDesktopHostBridge()?.captureScreenshotRegion;
   if (!capture) {
-    throw new Error(resolveScreenshotCaptureTooltip('unavailable'));
+    throw new Error(resolveScreenshotCaptureTooltip('unavailable', t));
   }
 
   const result = await capture();
   if (result.outcome !== 'ok') {
-    const error = buildDesktopScreenshotError(result);
+    const error = buildDesktopScreenshotError(result, t);
     if (!error) {
       return null;
     }
@@ -285,14 +325,15 @@ async function captureDesktopScreenshotFile(): Promise<File | null> {
 
 export async function captureScreenshotFile(
   route: ScreenshotCaptureRoute = resolveScreenshotCaptureRoute(),
+  t: ScreenshotCaptureI18n = defaultScreenshotCaptureI18n,
 ): Promise<File | null> {
   if (route === 'desktop_region') {
-    return await captureDesktopScreenshotFile();
+    return await captureDesktopScreenshotFile(t);
   }
 
   if (route === 'web_picker') {
-    return await captureWebScreenshotFile();
+    return await captureWebScreenshotFile(t);
   }
 
-  throw new Error(resolveScreenshotCaptureTooltip(route));
+  throw new Error(resolveScreenshotCaptureTooltip(route, t));
 }
