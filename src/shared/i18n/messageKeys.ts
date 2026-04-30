@@ -318,6 +318,8 @@ export const messageKeys = {
   workSidebarNoWorkYetLabel: 'work.sidebar.noWorkYetLabel',
   workSidebarMyCatteriesLabel: 'work.sidebar.myCatteriesLabel',
   workSidebarNewCatteryLabel: 'work.sidebar.newCatteryLabel',
+  workQueryHttpError: 'work.query.httpError',
+  workQueryHttpErrorWithStatusText: 'work.query.httpErrorWithStatusText',
   workMissionsListTitle: 'work.missions.listTitle',
   workMissionsListLede: 'work.missions.lede',
   workMissionsListLoading: 'work.missions.loading',

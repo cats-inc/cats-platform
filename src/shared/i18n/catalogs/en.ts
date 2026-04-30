@@ -381,6 +381,8 @@ export const enCatalog: MessageCatalog = {
   'work.sidebar.noWorkYetLabel': 'No work yet',
   'work.sidebar.myCatteriesLabel': 'My Catteries',
   'work.sidebar.newCatteryLabel': 'New cattery',
+  'work.query.httpError': 'Request failed with status {status}.',
+  'work.query.httpErrorWithStatusText': 'Request failed with status {status} {statusText}.',
   'work.missions.listTitle': 'Missions',
   'work.missions.lede':
     'Agent missions — distinct from tasks. Anchored to a Work Item when planned, or fully internal when spawned by an agent.',

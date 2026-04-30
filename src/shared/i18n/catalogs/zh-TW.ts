@@ -360,6 +360,8 @@ export const zhTWCatalog: MessageCatalog = {
   'work.sidebar.noWorkYetLabel': '尚未有工作',
   'work.sidebar.myCatteriesLabel': '我的貓窩',
   'work.sidebar.newCatteryLabel': '新增貓窩',
+  'work.query.httpError': '請求失敗，狀態碼 {status}。',
+  'work.query.httpErrorWithStatusText': '請求失敗，狀態碼 {status} {statusText}。',
   'work.missions.listTitle': '任務群',
   'work.missions.lede':
     '任務群不同於一般任務。當任務已排程時會綁定到工作項目，否則則由代理人於內部啟動。',
