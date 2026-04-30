@@ -41,9 +41,13 @@ depends on a separate process-supervision and security review.
       `policyVersion`, and updates task metadata. The processor owns the
       per-turn declaration index keyed by
       `(turnId, producerKey, scopeKey, declarationId)` where
-      `producerKey = ResolvedProducerIdentity.encoded` and
-      `scopeKey = "<ResolvedScope.kind>:<ResolvedScope.id>"` (both per
-      SPEC-092). Both keys are taken from the caller's own resolved
+      `producerKey = "<producerKind>:<producerIdentity>"` (the two
+      SPEC-092 idempotency fields stored under
+      `CoreArtifactRecord.metadata.codeArtifactDeclaration.idempotency`)
+      and `scopeKey = "<scopeKind>:<scopeId>"` where `scopeKind` is one
+      of SPEC-092's frozen scope kinds `run` / `runtime` /
+      `conversation` / `workspace` (the canvas does NOT add a `task`
+      scope). Both keys are taken from the caller's own resolved
       identity / scope — same-caller-only resolution. Same-turn
       cross-producer references reject with
       `artifact_canvas_declaration_producer_mismatch`; same-turn
@@ -69,8 +73,9 @@ depends on a separate process-supervision and security review.
       `{ producerKind: 'tool' | 'system' | 'user'; producerIdentity: string }[]`,
       defaulting to `[]` (empty). The producer-eligibility check is:
       `producer.kind === 'agent'` short-circuits to `static`; otherwise
-      look up `(producer.kind, ResolvedProducerIdentity.value)` in this
-      allowlist. The default empty list means **no producer earns
+      look up the artifact's frozen `(producerKind, producerIdentity)`
+      pair (the SPEC-092 idempotency fields) in this allowlist. The
+      default empty list means **no producer earns
       `scripted-cross-origin` out of the box** — operators must
       explicitly enumerate trusted producers. Task 2.5's migration
       decides whether to add the specific producer identities behind
@@ -78,15 +83,30 @@ depends on a separate process-supervision and security review.
       static-only regression; that decision is captured separately and
       not baked into the Phase 1 default.
 - [ ] Task 1.8: Add `policyVersion` to `CodeCanvasFocus` and to the
-      `show_in_canvas` accepted result. Compute the version as the first
-      16 hex chars of a SHA-256 over the canonicalized
-      `(runtimePreviewOriginAllowlist + scriptedPreviewProducerAllowlist + catsShellOrigin)`
-      tuple at decision time. The Code projection compares the stored
-      `policyVersion` against the server's current version on every
-      read; mismatch demotes the projected `iframeSandboxProfile` to
-      `static` for that read **without rewriting the stored focus**, so
-      a subsequent `show_in_canvas` can re-resolve under the new policy.
-      Server config reload republishes the version.
+      `show_in_canvas` accepted result. Implement the
+      §Policy Version Canonicalization algorithm from SPEC-101: per-entry
+      hostname normalization (lower-case + manual bracket strip),
+      default expansion (`schemes ?? ['http']`, `ports ?? '*'`),
+      port deduping + numeric ascending sort, origin-allowlist sort by
+      canonical-JSON of normalized entry, producer-allowlist sort by
+      `(producerKind, producerIdentity)`, `catsShellOrigin`
+      normalization (drop default port), then canonical-JSON
+      serialization (sorted keys, no whitespace) → SHA-256 → first 16
+      hex chars lower-case. Treat the canonical-JSON helper as a
+      shared utility (sorted-keys recursive serializer). The Code
+      projection compares the stored `policyVersion` against the
+      server's current version on every read; mismatch demotes the
+      projected `iframeSandboxProfile` to `static` for that read
+      **without rewriting the stored focus**, so a subsequent
+      `show_in_canvas` can re-resolve under the new policy. Server
+      config reload republishes the version.
+- [ ] Task 1.9: Add canonicalization test vectors at
+      `tests/code-canvas-policy-version.test.tsx`: empty config, default
+      config, default config with reordered entries (must equal default
+      hash), default config with a single entry's `ports` written as
+      `[5173, 4321]` vs `[4321, 5173]` (must equal each other), and a
+      config with one extra producer entry (must differ). These vectors
+      pin the canonicalization across implementations.
 - [ ] Task 1.4: Expose read-only `canvasFocus` (including
       `iframeSandboxProfile`) from Code task/detail and dashboard
       projections, dropping malformed metadata.
@@ -151,7 +171,7 @@ this plan before Phase 4 approval.
 |------|--------|-------------|
 | `src/products/code/shared/canvasFocus.ts` | Create | Code canvas focus types (incl. `policyVersion`), normalizers, presentation resolution, and SPEC-101 error code union |
 | `src/products/code/shared/canvasIframePolicy.ts` | Create | Runtime preview origin allowlist matcher (host normalization + bracket strip + scheme + port), scripted preview producer allowlist lookup, scheme allowlist, credential URL rejector, and `policyVersion` digest helper |
-| `src/products/code/state/runtimeCanvasFocusExecution.ts` | Create | Assistant-effect processor for `show_in_canvas` and `clear_canvas`; owns the per-turn `(turnId, producerKey, scopeKey, declarationId)` declaration index keyed by SPEC-092's `ResolvedProducerIdentity.encoded` and `ResolvedScope` components |
+| `src/products/code/state/runtimeCanvasFocusExecution.ts` | Create | Assistant-effect processor for `show_in_canvas` and `clear_canvas`; owns the per-turn `(turnId, producerKey, scopeKey, declarationId)` declaration index where `producerKey = "<producerKind>:<producerIdentity>"` and `scopeKey = "<scopeKind>:<scopeId>"` (both derived from the SPEC-092 idempotency fields stored on the materialized artifact) |
 | `src/products/code/state/runtimeArtifactTooling.ts` | Modify | Add onboarding/catalog entries for the canvas tools |
 | `src/products/code/api/projection.ts` | Modify | Expose `canvasFocus` (with `iframeSandboxProfile`) from task metadata |
 | `src/products/code/renderer/components/CodeArtifactCanvasPane.tsx` | Create | Right-pane shell, top bar with separate close vs collapse controls, and unsupported-state fallback |
@@ -172,9 +192,13 @@ this plan before Phase 4 approval.
   assistant can present an artifact declared in the same turn before it
   knows the materialized artifact id. The same-turn index is keyed by
   `(turnId, producerKey, scopeKey, declarationId)` — the SPEC-092
-  idempotency components plus `turnId`, where `producerKey` is
-  `ResolvedProducerIdentity.encoded` and `scopeKey` is
-  `"<ResolvedScope.kind>:<ResolvedScope.id>"`. Both keys come from the
+  idempotency components plus `turnId`. `producerKey =
+  "<producerKind>:<producerIdentity>"` and `scopeKey =
+  "<scopeKind>:<scopeId>"` are derived from the four SPEC-092
+  idempotency fields stored under
+  `CoreArtifactRecord.metadata.codeArtifactDeclaration.idempotency`;
+  `scopeKind` is one of `run` / `runtime` / `conversation` /
+  `workspace` (the canvas does NOT add a `task` scope). Both keys come from the
   canvas caller (same-caller-only); same-turn cross-producer rejects
   with `artifact_canvas_declaration_producer_mismatch`; same-turn
   cross-scope rejects with `artifact_canvas_declaration_unknown`.
@@ -345,10 +369,12 @@ this plan before Phase 4 approval.
     allowlist (e.g. a `javascript:` URL slipped past the server), the
     renderer renders the unsupported pane and does not mount the iframe;
   - **defense in depth**: when the projection emits a
-    `scripted-cross-origin` profile but the URL origin fails the renderer's
-    own runtime-preview-origin / Cats-shell-origin re-check, the renderer
-    silently demotes to `static`. The renderer never promotes `static` to
-    `scripted-cross-origin`;
+    `scripted-cross-origin` profile but the URL origin equals the
+    renderer's `window.location.origin` (the cheap config-free
+    same-origin-with-shell short-circuit), the renderer silently demotes
+    to `static`. The renderer does NOT re-run the runtime-preview-origin
+    or scripted-preview-producer allowlists — those are server-only —
+    and never promotes `static` to `scripted-cross-origin`;
   - unsupported artifacts show metadata and external-open fallback instead
     of a blank frame.
 - **Manual checks**:
@@ -385,7 +411,8 @@ this plan before Phase 4 approval.
 | 2026-04-30 | Reworked sandbox profiles, two-control close model, per-turn declaration index, active-task precondition, and renderer defense-in-depth tests after first-round review; added ADR-097 dependency. |
 | 2026-04-30 | Second-round security follow-up: replaced "is not Cats shell origin" with explicit runtime preview origin allowlist; rekeyed declaration index with `producerKey` for multi-producer same-turn collisions; dropped cross-turn error code (cross-turn lookup is intentionally absent); pinned reject-vs-demote semantics for explicit-presentation vs auto and for scheme-vs-origin failures. |
 | 2026-04-30 | Third-round security follow-up: pinned the runtime preview origin allowlist as a structured `{ hostname, schemes?, ports? }[]` schema with explicit URL-matching algorithm; added the producer-eligibility gate that denies `scripted-cross-origin` to all agent-declared artifacts in Phase 1; promoted credential URL handling from silent demote to hard reject; defined `producerKey = ResolvedProducerIdentity.encoded` per SPEC-092; pinned `declarationId` resolution as same-caller-only with the new `artifact_canvas_declaration_producer_mismatch` error code; scrubbed stale `(turnId, declarationId)` and `artifact_canvas_declaration_cross_turn` references from PLAN-090. |
-| 2026-04-30 | Fourth-round security follow-up: added `scopeKey = "<ResolvedScope.kind>:<ResolvedScope.id>"` to the index key so same-actor / same-tool spanning multiple runtime sessions in one turn no longer collide; added duplicate-key collision detection (`artifact_canvas_declaration_collision`); flattened both allowlist config shapes (no `{ entries: [...] }` wrapper) and made them consistent across SPEC / PLAN / tool-calls; corrected IPv6 hostname normalization (Node's `URL.hostname` does NOT strip brackets — manual strip required); replaced producer-by-kind gate with named `scriptedPreviewProducerAllowlist` defaulting to empty; added `policyVersion` to `CodeCanvasFocus` and projection-side demote-on-mismatch; clarified renderer is NOT a matcher mirror (scheme + same-origin-with-shell + profile-name validity only). |
+| 2026-04-30 | Fourth-round security follow-up: added `scopeKey = "<scopeKind>:<scopeId>"` to the index key so same-actor / same-tool spanning multiple runtime sessions in one turn no longer collide; added duplicate-key collision detection (`artifact_canvas_declaration_collision`); flattened both allowlist config shapes (no `{ entries: [...] }` wrapper) and made them consistent across SPEC / PLAN / tool-calls; corrected IPv6 hostname normalization (Node's `URL.hostname` does NOT strip brackets — manual strip required); replaced producer-by-kind gate with named `scriptedPreviewProducerAllowlist` defaulting to empty; added `policyVersion` to `CodeCanvasFocus` and projection-side demote-on-mismatch; clarified renderer is NOT a matcher mirror (scheme + same-origin-with-shell + profile-name validity only). |
+| 2026-04-30 | Fifth-round contract follow-up: removed `task:` from `scopeKey` examples (SPEC-092 scope kinds are `run` / `runtime` / `conversation` / `workspace` only — the canvas does not add `task`); replaced `ResolvedProducerIdentity.encoded` / `ResolvedProducerIdentity.value` references with the public SPEC-092 idempotency fields (`producerKind`, `producerIdentity`); scrubbed remaining "mirrored on renderer" / "renderer's own runtime-preview-origin re-check" wording; added explicit §Policy Version Canonicalization algorithm (per-entry normalization, default expansion, port dedupe + numeric sort, sort orderings, `catsShellOrigin` default-port handling, canonical-JSON sorted-keys serialization, SHA-256 first-16 lower-case) plus test-vector requirements as Task 1.9. |
 
 ---
 

@@ -85,19 +85,29 @@ viewer for safe preview URL artifacts. Image, PDF, code viewers, and live
 9. `declarationId` shall resolve only against accepted `declare_artifact`
    results recorded in the Code assistant-effect processor's per-turn
    declaration index for the **current** assistant turn. The index shall be
-   keyed by `(turnId, producerKey, scopeKey, declarationId)` — the same
-   components SPEC-092 freezes for declaration idempotency, plus
-   `turnId`. The two component definitions are:
-   - `producerKey = ResolvedProducerIdentity.encoded` from SPEC-092
-     (`actor:<actorId>` / `tool:<toolName>` / `system:<detectorId>` /
-     `user:<actorId>`). One string field; does not include
-     `runtimeSessionId`.
-   - `scopeKey = "<ResolvedScope.kind>:<ResolvedScope.id>"` from SPEC-092
-     (e.g. `runtime:sess-abc`, `task:task-xyz`, `conversation:conv-1`,
-     `workspace:ws-1`). One string field; this carries the
-     `runtimeSessionId` and other scope disambiguation. Without it, the
-     same actor or tool spanning multiple runtime sessions in one turn
-     would collide.
+   keyed by `(turnId, producerKey, scopeKey, declarationId)`, derived
+   from SPEC-092's frozen idempotency components plus `turnId`.
+   - `producerKey = "<producerKind>:<producerIdentity>"` where
+     `producerKind` and `producerIdentity` are the SPEC-092 idempotency
+     fields stored under
+     `CoreArtifactRecord.metadata.codeArtifactDeclaration.idempotency`.
+     `producerKind` is one of `agent` / `tool` / `system` / `user`;
+     `producerIdentity` is the actor id (for `agent` / `user`), tool
+     name (for `tool`), or detector id (for `system`). Examples:
+     `agent:actor-abc`, `tool:declare_artifact`,
+     `system:patch-bundle-detector`, `user:owner-id`. One string field
+     synthesized from SPEC-092's two stored fields; does NOT include
+     `runtimeSessionId` (that's scope, not identity).
+   - `scopeKey = "<scopeKind>:<scopeId>"` where `scopeKind` is the
+     SPEC-092 frozen `scopeKind` (one of `run` / `runtime` /
+     `conversation` / `workspace` — SPEC-092 does NOT define a `task`
+     scope kind, and the canvas does not introduce one) and `scopeId`
+     is the corresponding frozen `scopeId`. Examples:
+     `runtime:sess-abc`, `run:run-xyz`, `conversation:conv-1`,
+     `workspace:ws-1`. One string field; this carries the
+     `runtimeSessionId` (when `scopeKind = 'runtime'`) and other scope
+     disambiguation. Without it, the same actor or tool spanning
+     multiple runtime sessions in one turn would collide.
 10. `declarationId` resolution shall be **same-caller-only**: both the
     `producerKey` and the `scopeKey` used for lookup are the
     `show_in_canvas` caller's own resolved producer identity and active
@@ -191,10 +201,9 @@ interface CodeCanvasFocus {
   presentationResolved: 'iframe' | 'image' | 'pdf' | 'code' | 'unsupported';
   iframeSandboxProfile: 'static' | 'scripted-cross-origin' | null;
   // Identifier for the iframe-policy snapshot that produced
-  // iframeSandboxProfile. Format: short hash (e.g. first 16 hex chars of
-  // a SHA-256 over the canonicalized
-  // (runtimePreviewOriginAllowlist + scriptedPreviewProducerAllowlist +
-  // catsShellOrigin) tuple at decision time). Null when the focus was
+  // iframeSandboxProfile. Lower-case hex string of the first 16 chars of
+  // SHA-256 over the canonicalized policy tuple
+  // (see §Policy Version Canonicalization). Null when the focus was
   // resolved without consulting the iframe policy
   // (presentationResolved = 'code' or 'unsupported').
   policyVersion: string | null;
@@ -491,7 +500,9 @@ before bracket stripping). Operators therefore only need to list the
 canonical short form (`::1`); they do not need to enumerate every
 equivalent textual representation.
 
-URL matching algorithm (server, mirrored on renderer for defense in depth):
+URL matching algorithm (**server-only** — the renderer does NOT run this;
+it lives on the server and the renderer trusts the resulting
+`iframeSandboxProfile`):
 
 1. parse the URL with the standard `URL` constructor; on parse error,
    reject the call as scheme-allowlist failure;
@@ -516,15 +527,21 @@ owner. Phase 1 replaces it with an explicit named producer allowlist:
 interface CodeCanvasScriptedPreviewProducerEntry {
   // 'tool' | 'system' | 'user'. 'agent' is intentionally absent — agent
   // producers are never eligible for scripted-cross-origin in Phase 1
-  // regardless of allowlist membership.
+  // regardless of allowlist membership. Matched against the SPEC-092
+  // `producerKind` idempotency field stored under
+  // CoreArtifactRecord.metadata.codeArtifactDeclaration.idempotency.
   producerKind: 'tool' | 'system' | 'user';
 
-  // The SPEC-092 ResolvedProducerIdentity.encoded form WITHOUT the
-  // leading kind prefix that the encoded field already includes. For a
-  // tool entry, this is the tool name (e.g. 'cats_runtime_preview_bridge').
-  // For a system entry, this is the detector identifier
-  // (e.g. 'patch-bundle-detector'). For a user entry, this is the
-  // owner actor id.
+  // Matched against the SPEC-092 `producerIdentity` idempotency field
+  // (the same string SPEC-092 stores under
+  // CoreArtifactRecord.metadata.codeArtifactDeclaration.idempotency).
+  // - For tool entries, this is the tool name
+  //   (e.g. 'cats_runtime_preview_bridge').
+  // - For system entries, this is the detector identifier
+  //   (e.g. 'patch-bundle-detector').
+  // - For user entries, this is the owner actor id.
+  // It is NOT prefixed with `producerKind` — the prefix lives in the
+  // sibling field above.
   producerIdentity: string;
 }
 
@@ -549,12 +566,15 @@ surfaces; the SPEC does not bake known producer names in.
 
 Producer-eligibility check:
 
-- if `producer.kind === 'agent'`, the artifact is **never** eligible —
+- if the artifact's frozen `producerKind` (from SPEC-092 idempotency
+  metadata) is `'agent'`, the artifact is **never** eligible —
   short-circuit to `static`;
-- otherwise, look up `(producer.kind, producer.value)` in the producer
-  allowlist (where `producer.value` is `ResolvedProducerIdentity.value`
-  from SPEC-092 — the part after the kind prefix in `encoded`);
-- only entries that match are eligible for `scripted-cross-origin`.
+- otherwise, look up the artifact's frozen
+  `(producerKind, producerIdentity)` pair in the producer allowlist —
+  the same two SPEC-092 fields stored under
+  `CoreArtifactRecord.metadata.codeArtifactDeclaration.idempotency`;
+- only entries that match `(producerKind, producerIdentity)` exactly are
+  eligible for `scripted-cross-origin`.
 
 The server may emit `scripted-cross-origin` only when **all** the following
 hold:
@@ -582,6 +602,67 @@ the `static` profile. Demotion is not an error; the assistant gets back
 `presentationResolved: 'iframe'` (or whichever family was requested) with
 `iframeSandboxProfile: 'static'` and can decide whether the static frame is
 useful.
+
+#### Policy Version Canonicalization
+
+`policyVersion` MUST be reproducible across implementations. Two servers
+running the same config — or the same server before and after restart —
+must produce the identical hash, while any meaningful config change must
+produce a different hash. The algorithm:
+
+1. **Normalize each origin allowlist entry** in input order:
+   - `hostname`: lower-case the string; if it begins with `[` and ends
+     with `]`, strip those two characters (manual IPv6 bracket strip);
+   - `schemes`: if `undefined`, default to `['http']`; lower-case each
+     value; remove duplicates (preserving first occurrence is fine, but
+     the next step re-sorts); sort lexicographically (ASCII order);
+   - `ports`: if `undefined`, set to the literal string `'*'`; if it
+     is a number array, convert to integers, drop duplicates, then
+     sort numerically ascending; if it is the string `'*'`, leave
+     untouched.
+2. **Sort origin allowlist** entries by canonical-JSON string of the
+   normalized entry (step 5's serializer applied to each entry, then
+   string sort using `String.prototype.localeCompare(undefined, { sensitivity: 'variant' })`
+   or equivalent code-point comparison — implementations must agree on
+   ASCII-bytewise comparison to avoid locale-dependent ordering).
+3. **Normalize each producer allowlist entry**: keep `producerKind`
+   as-is (one of `tool` / `system` / `user`); keep `producerIdentity`
+   as-is (case-sensitive, opaque). No defaults to expand.
+4. **Sort producer allowlist** entries by `(producerKind, producerIdentity)`
+   tuple, both compared as ASCII byte sequences.
+5. **Normalize `catsShellOrigin`**:
+   - parse as `URL`; reject (treat as a server config error) if parse
+     fails or origin is not http(s);
+   - take `URL.protocol` minus the trailing `:`, lower-case;
+   - apply Hostname Normalization to `URL.hostname`;
+   - if `URL.port` is empty or equal to the scheme default
+     (`'80'` for http, `'443'` for https), omit the port; otherwise
+     include it as `:<port>`;
+   - emit `<scheme>://<host>` or `<scheme>://<host>:<port>`.
+6. **Compose the canonical object** with these top-level keys, in
+   alphabetical order:
+   ```
+   {
+     "catsShellOrigin": <normalized string>,
+     "originAllowlist": <sorted normalized array>,
+     "producerAllowlist": <sorted normalized array>
+   }
+   ```
+7. **Serialize via canonical JSON**: every object's keys are emitted in
+   ASCII-byte ascending order; arrays preserve the canonical sort
+   order from steps 2 and 4; no whitespace; numbers as decimal
+   integers (no trailing `.0`); strings as standard JSON-escaped UTF-8.
+8. **Hash**: SHA-256 over the UTF-8 bytes of the serialized string;
+   take the first 16 hex characters in lower case.
+
+Implementation note: a small canonical-JSON helper (sorted-keys recursive
+serializer) is the only non-obvious piece. Test vectors should be
+checked into `tests/code-canvas-policy-version.test.tsx` with at least:
+empty config, default config, default config with reordered entries
+(must produce the same hash), default config with one entry's `ports`
+written as `[5173, 4321]` vs `[4321, 5173]` (must produce the same
+hash), and a config with one extra producer entry (must produce a
+different hash).
 
 #### Policy Version and Renderer Authority Boundary
 
@@ -730,10 +811,15 @@ above.
   Credential URLs and scheme failures hard-reject. Phase 3 narrows further
   to a session-bound preview registry. See §Iframe Policy.
 - **Index key**: `(turnId, producerKey, scopeKey, declarationId)` — the
-  SPEC-092 idempotency components plus `turnId`. `producerKey` is
-  `ResolvedProducerIdentity.encoded`; `scopeKey` is
-  `"<ResolvedScope.kind>:<ResolvedScope.id>"`. `runtimeSessionId` lives
-  in `scopeKey`, not `producerKey`. See FR9.
+  SPEC-092 idempotency components plus `turnId`. `producerKey =
+  "<producerKind>:<producerIdentity>"` and `scopeKey =
+  "<scopeKind>:<scopeId>"` are derived from the four SPEC-092
+  idempotency fields stored under
+  `CoreArtifactRecord.metadata.codeArtifactDeclaration.idempotency`.
+  `scopeKind` is one of `run` / `runtime` / `conversation` /
+  `workspace` (the canvas does NOT add a `task` scope).
+  `runtimeSessionId` lives in `scopeKey` (when `scopeKind = 'runtime'`),
+  not `producerKey`. See FR9.
 - **`declarationId` resolution scope**: same-caller-only. Both
   `producerKey` and `scopeKey` are taken from the caller, not the input.
   Cross-producer rejects with `artifact_canvas_declaration_producer_mismatch`;

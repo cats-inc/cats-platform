@@ -436,12 +436,18 @@ table):
 - `declarationId` resolves only against the current turn's per-turn index
   keyed by `(turnId, producerKey, scopeKey, declarationId)` — the
   SPEC-092 idempotency components plus `turnId`.
-  - `producerKey = ResolvedProducerIdentity.encoded` (e.g. `actor:abc`,
-    `tool:declare_artifact`, `system:patch-bundle-detector`,
-    `user:owner-id`).
-  - `scopeKey = "<ResolvedScope.kind>:<ResolvedScope.id>"` (e.g.
-    `runtime:sess-abc`, `task:task-xyz`). `runtimeSessionId` lives here,
-    NOT in `producerKey`.
+  - `producerKey = "<producerKind>:<producerIdentity>"` derived from the
+    SPEC-092 idempotency fields stored under
+    `CoreArtifactRecord.metadata.codeArtifactDeclaration.idempotency`
+    (e.g. `agent:actor-abc`, `tool:declare_artifact`,
+    `system:patch-bundle-detector`, `user:owner-id`).
+  - `scopeKey = "<scopeKind>:<scopeId>"` derived from the same
+    idempotency record, where `scopeKind` is one of SPEC-092's frozen
+    scope kinds: `run` / `runtime` / `conversation` / `workspace`
+    (the canvas does NOT add a `task` scope). Examples:
+    `runtime:sess-abc`, `run:run-xyz`, `conversation:conv-1`.
+    `runtimeSessionId` lives here (when `scopeKind = 'runtime'`), NOT
+    in `producerKey`.
   Lookup is **same-caller-only**: both keys come from the caller's own
   resolved identity / scope, not from the input. Misses (no accepted
   declaration this turn under the caller's `(producerKey, scopeKey)`,
