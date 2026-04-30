@@ -3,6 +3,7 @@ import type {
   DesktopBootstrapPrerequisites,
   DesktopBootstrapSnapshot,
   DesktopBootstrapProgress,
+  DesktopCliInventoryError,
   DesktopCliInventory,
   DesktopHostAction,
   DesktopPackagingPlan,
@@ -106,6 +107,7 @@ interface BuildDesktopBootstrapSnapshotInput {
   setup?: DesktopSetupState;
   hostStatePath?: string | null;
   cliInventory?: DesktopCliInventory | null;
+  cliInventoryError?: DesktopCliInventoryError | null;
 }
 
 interface WaitForServiceReadinessOptions {
@@ -581,12 +583,12 @@ function buildActions(
     setupComplete: boolean;
     cliMissing: boolean;
     setup: DesktopSetupState | null | undefined;
-    lastError: string | null | undefined;
+    cliInventoryError: DesktopCliInventoryError | null | undefined;
   },
 ): DesktopHostAction[] {
   const actions: DesktopHostAction[] = [];
   const resumable = canResumePackagedSetup(options.setup);
-  const cliScanFailed = Boolean(options.lastError?.includes('local CLI inventory'));
+  const cliScanFailed = options.cliInventoryError?.kind === 'scan_failed';
 
   function pushAction(
     id: DesktopHostAction['id'],
@@ -827,7 +829,7 @@ export function buildDesktopBootstrapSnapshot(
       setupComplete: setupCompleted,
       cliMissing,
       setup,
-      lastError: input.lastError,
+      cliInventoryError: input.cliInventoryError,
     }),
     lastError: input.lastError ?? null,
     progress,
@@ -837,8 +839,11 @@ export function buildDesktopBootstrapSnapshot(
     setup,
     diagnostics: null,
     hostStatePath: input.hostStatePath ?? input.config.paths.hostStatePath,
-    prerequisites: input.cliInventory
-      ? ({ cliInventory: input.cliInventory } satisfies DesktopBootstrapPrerequisites)
+    prerequisites: input.cliInventory || input.cliInventoryError
+      ? ({
+          cliInventory: input.cliInventory ?? null,
+          cliInventoryError: input.cliInventoryError ?? null,
+        } satisfies DesktopBootstrapPrerequisites)
       : null,
   };
 }

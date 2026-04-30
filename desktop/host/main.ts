@@ -19,6 +19,7 @@ import type {
   DesktopBackgroundState,
   DesktopBootstrapEventStatus,
   DesktopBootstrapSnapshot,
+  DesktopCliInventoryError,
   DesktopHostDiagnosticsState,
   DesktopHostActionId,
   DesktopManagedServiceLog,
@@ -183,8 +184,9 @@ let latestPersistedSetupState: PersistedSetupCompletionState = {
 };
 let bootstrapPromise: Promise<DesktopBootstrapSnapshot> | null = null;
 let latestBootstrapError: string | null = null;
-let latestCliInventoryError: string | null = null;
+let latestCliInventoryError: DesktopCliInventoryError | null = null;
 let lateReadyRecoveryPromise: Promise<void> | null = null;
+let retryCliScanPromise: Promise<DesktopBootstrapSnapshot> | null = null;
 let shuttingDown = false;
 let shutdownPromise: Promise<void> | null = null;
 let exitingAfterShutdown = false;
@@ -210,14 +212,21 @@ const RUNTIME_SETUP_STATE_TIMEOUT_MS = 2_000;
 const RUNTIME_SETUP_SCAN_TIMEOUT_MS = 30_000;
 const RUNTIME_BOOTSTRAP_SETUP_SCAN_TIMEOUT_MS = 8_000;
 const RUNTIME_PROVIDER_DIAGNOSTICS_TIMEOUT_MS = 5_000;
-const BOOTSTRAP_CLI_INVENTORY_FAILURE =
+const BOOTSTRAP_CLI_INVENTORY_FAILURE_SUMMARY =
   'Cats could not confirm the local CLI inventory. Retry the startup check.';
 
 function clearCliInventoryError(): void {
   latestCliInventoryError = null;
-  if (latestBootstrapError === BOOTSTRAP_CLI_INVENTORY_FAILURE) {
+  if (latestBootstrapError === BOOTSTRAP_CLI_INVENTORY_FAILURE_SUMMARY) {
     latestBootstrapError = null;
   }
+}
+
+function createCliInventoryScanFailedError(): DesktopCliInventoryError {
+  return {
+    kind: 'scan_failed',
+    summary: BOOTSTRAP_CLI_INVENTORY_FAILURE_SUMMARY,
+  };
 }
 
 interface ProductBootstrapDiagnosticsPayload {
@@ -1108,7 +1117,7 @@ function buildSnapshot(lastError?: string | null): DesktopBootstrapSnapshot {
     throw new Error('Desktop host is not initialized.');
   }
   const effectiveLastError = resolveDesktopBootstrapError(
-    latestBootstrapError ?? latestCliInventoryError,
+    latestBootstrapError ?? latestCliInventoryError?.summary ?? null,
     lastError,
   );
   return buildDesktopBootstrapSnapshot({
@@ -1131,6 +1140,7 @@ function buildSnapshot(lastError?: string | null): DesktopBootstrapSnapshot {
     cliInventory: latestCliInventoryProbe
       ? buildDesktopCliInventoryFromRuntime(latestCliInventoryProbe)
       : null,
+    cliInventoryError: latestCliInventoryError,
   });
 }
 
@@ -1212,6 +1222,7 @@ async function refreshBootstrapSnapshot(
     cliInventory: latestCliInventoryProbe
       ? buildDesktopCliInventoryFromRuntime(latestCliInventoryProbe)
       : null,
+    cliInventoryError: latestCliInventoryError,
   });
 }
 
@@ -1310,7 +1321,7 @@ async function retryCliInventoryScanInBackground(options: {
     }
   }
   if (!options.setupCompleted && latestSnapshot && isDesktopBootstrapLoadingPhase(latestSnapshot.phase)) {
-    latestCliInventoryError = BOOTSTRAP_CLI_INVENTORY_FAILURE;
+    latestCliInventoryError = createCliInventoryScanFailedError();
     try {
       const snapshot = publishSnapshot(buildSnapshot());
       scheduleBackgroundSetupAudit(snapshot, latestPersistedSetupState);
@@ -1522,24 +1533,11 @@ async function runHostAction(actionId: DesktopHostActionId): Promise<DesktopBoot
     return await bootstrapDesktopHost(true);
   }
   if (actionId === 'retry_cli_scan') {
-    const probe = await fetchRuntimeCliInventoryProbe(hostConfig.runtimeBaseUrl, {
-      triggerScanIfMissing: true,
-      forceRescan: true,
-      scanTimeoutMs: RUNTIME_BOOTSTRAP_SETUP_SCAN_TIMEOUT_MS,
-    });
-    if (probe?.scan) {
-      latestCliInventoryProbe = probe;
-      clearCliInventoryError();
-      const snapshot = publishSnapshot(buildSnapshot());
-      scheduleBackgroundSetupAudit(snapshot, latestPersistedSetupState);
-      await maybeOpenApp(snapshot);
-      return snapshot;
-    }
-
-    latestCliInventoryError = BOOTSTRAP_CLI_INVENTORY_FAILURE;
-    const snapshot = publishSnapshot(buildSnapshot());
-    scheduleBackgroundSetupAudit(snapshot, latestPersistedSetupState);
-    return snapshot;
+    retryCliScanPromise ??= runRetryCliScanAction()
+      .finally(() => {
+        retryCliScanPromise = null;
+      });
+    return await retryCliScanPromise;
   }
   if (actionId === 'resume_setup') {
     await resumeSetupAction();
@@ -1635,7 +1633,7 @@ async function runSetupAction(
   // After any helper run that may have changed CLI inventory, force a
   // runtime rescan so the next snapshot reflects the new state. We don't
   // depend on the helper's runState — the rescan itself is authoritative.
-  if (action.mode !== 'check') {
+  if (action.mode !== 'check' && shouldRefreshCliInventoryAfterSetupAction(action.helperId)) {
     const refreshedProbe = await fetchRuntimeCliInventoryProbe(hostConfig.runtimeBaseUrl, {
       forceRescan: true,
     });
@@ -1656,6 +1654,36 @@ async function runSetupAction(
     }
   }
   return await getSetupSnapshot();
+}
+
+function shouldRefreshCliInventoryAfterSetupAction(helperId: string): boolean {
+  return helperId.endsWith('-native-installer')
+    || helperId.endsWith('-local-model-installer');
+}
+
+async function runRetryCliScanAction(): Promise<DesktopBootstrapSnapshot> {
+  if (!hostConfig) {
+    throw new Error('Desktop host is not initialized.');
+  }
+
+  const probe = await fetchRuntimeCliInventoryProbe(hostConfig.runtimeBaseUrl, {
+    triggerScanIfMissing: true,
+    forceRescan: true,
+    scanTimeoutMs: RUNTIME_BOOTSTRAP_SETUP_SCAN_TIMEOUT_MS,
+  });
+  if (probe?.scan) {
+    latestCliInventoryProbe = probe;
+    clearCliInventoryError();
+    const snapshot = publishSnapshot(buildSnapshot());
+    scheduleBackgroundSetupAudit(snapshot, latestPersistedSetupState);
+    await maybeOpenApp(snapshot);
+    return snapshot;
+  }
+
+  latestCliInventoryError = createCliInventoryScanFailedError();
+  const snapshot = publishSnapshot(buildSnapshot());
+  scheduleBackgroundSetupAudit(snapshot, latestPersistedSetupState);
+  return snapshot;
 }
 
 async function resumeSetupAction(): Promise<DesktopSetupSnapshot> {

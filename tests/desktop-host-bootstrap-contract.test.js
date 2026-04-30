@@ -16,9 +16,12 @@ test('desktop host bounds fresh-start CLI inventory scans and exits pending stat
     source,
     /scanTimeoutMs: setupCompleted\s*\?\s*RUNTIME_SETUP_SCAN_TIMEOUT_MS\s*:\s*RUNTIME_BOOTSTRAP_SETUP_SCAN_TIMEOUT_MS/u,
   );
-  assert.match(source, /latestCliInventoryError = BOOTSTRAP_CLI_INVENTORY_FAILURE;/);
+  assert.match(source, /function createCliInventoryScanFailedError\(\)/);
+  assert.match(source, /latestCliInventoryError = createCliInventoryScanFailedError\(\);/);
   assert.match(source, /function clearCliInventoryError\(\)/);
   assert.match(source, /actionId === 'retry_cli_scan'/);
+  assert.match(source, /retryCliScanPromise \?\?= runRetryCliScanAction\(\)/);
+  assert.match(source, /shouldRefreshCliInventoryAfterSetupAction\(action\.helperId\)/);
   assert.match(
     source,
     /!options\.setupCompleted && latestSnapshot && isDesktopBootstrapLoadingPhase\(latestSnapshot\.phase\)/u,

@@ -698,8 +698,14 @@ export interface DesktopCliInventory {
   scannedAt: string | null;
 }
 
+export interface DesktopCliInventoryError {
+  kind: 'scan_failed';
+  summary: string;
+}
+
 export interface DesktopBootstrapPrerequisites {
   cliInventory: DesktopCliInventory | null;
+  cliInventoryError?: DesktopCliInventoryError | null;
 }
 
 export interface DesktopHostPersistedState {

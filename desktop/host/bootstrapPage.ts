@@ -644,14 +644,48 @@ export function buildDesktopBootstrapPage(): string {
       return null;
     }
 
-    function buildNodePrerequisiteCard(setupSnap) {
-      var helper = pickSetupHelper(setupSnap, function (candidate) {
-        return candidate && candidate.id && candidate.id.indexOf(ONBOARDING_NODE_HELPER_SUFFIX) > 0;
+    function isNodePrerequisiteHelperId(helperId) {
+      return Boolean(helperId && helperId.indexOf(ONBOARDING_NODE_HELPER_SUFFIX) > 0);
+    }
+
+    function pickNodePrerequisiteHelper(setupSnap) {
+      return pickSetupHelper(setupSnap, function (candidate) {
+        return candidate && isNodePrerequisiteHelperId(candidate.id);
       });
+    }
+
+    function isReadinessAuditAction(action) {
+      return Boolean(
+        action
+          && action.helperId
+          && action.helperId.indexOf('-install-readiness-audit') > 0
+      );
+    }
+
+    function plannedActionsIncludeNodeInstall(action) {
+      var planned = action && Array.isArray(action.plannedActions) ? action.plannedActions : [];
+      return planned.indexOf('install_node_lts') >= 0
+        || planned.indexOf('install_node_lts_via_nvm') >= 0;
+    }
+
+    function isNodePrerequisiteReady(setupSnap) {
+      var action = setupSnap && setupSnap.state ? setupSnap.state.lastAction : null;
+      if (!action || action.runState === 'failed') return false;
+      if (isNodePrerequisiteHelperId(action.helperId)) {
+        return action.status === 'ready';
+      }
+      if (isReadinessAuditAction(action)) {
+        return !plannedActionsIncludeNodeInstall(action);
+      }
+      return false;
+    }
+
+    function buildNodePrerequisiteCard(setupSnap) {
+      var helper = pickNodePrerequisiteHelper(setupSnap);
       if (!helper) {
         if (!setupSnap) {
           return {
-            helperId: 'node-prerequisite-loading',
+            helperId: null,
             label: ONBOARDING_CARD_LABELS.node,
             statusText: 'Checking Node...',
             installed: false,
@@ -662,14 +696,15 @@ export function buildDesktopBootstrapPage(): string {
         }
         return null;
       }
+      var nodeReady = isNodePrerequisiteReady(setupSnap);
       return {
         helperId: helper.id,
         label: ONBOARDING_CARD_LABELS.node,
         statusText: ONBOARDING_CARD_STATUS.node,
-        installed: false,
+        installed: nodeReady,
         available: helper.available,
         supported: helper.supported,
-        supportsApply: helper.supportsApply
+        supportsApply: nodeReady ? false : helper.supportsApply
       };
     }
 
@@ -685,6 +720,7 @@ export function buildDesktopBootstrapPage(): string {
     }
 
     function handleCliInstallClick(card) {
+      if (!card.helperId) return;
       if (cliInstallingState[card.helperId]) return;
       cliInstallingState[card.helperId] = true;
       doRender();
@@ -706,7 +742,7 @@ export function buildDesktopBootstrapPage(): string {
         statusClass = '';
         statusText = ' ';
       } else if (card.installed) {
-        btnLabel = 'Reinstall';
+        btnLabel = card.supportsApply === false ? 'Installed' : 'Reinstall';
         statusClass = 'c-ok';
         statusText = '✓ Installed';
       } else {
@@ -737,8 +773,8 @@ export function buildDesktopBootstrapPage(): string {
         var candidate = pickInventoryCandidate(snapshot, providerId);
         if (!candidate || !candidate.available) continue;
         var card = toProviderInstallCard(candidate);
-        if (options && options.waitForNodeCheck) {
-          card.statusText = 'Waiting for Node check';
+        if (options && options.waitForNodePrerequisite) {
+          card.statusText = options.nodePrerequisiteStatusText || 'Install Node first';
           card.supportsApply = false;
         }
         cards.push(card);
@@ -753,8 +789,10 @@ export function buildDesktopBootstrapPage(): string {
       entries.push({ kind: 'break' });
       var nodeCard = buildNodePrerequisiteCard(setupSnap);
       if (nodeCard) entries.push(nodeCard);
+      var nodeReady = isNodePrerequisiteReady(setupSnap);
       appendProviderCards(entries, snapshot, ONBOARDING_NPM_PROVIDER_ORDER, {
-        waitForNodeCheck: !setupSnap
+        waitForNodePrerequisite: !nodeReady,
+        nodePrerequisiteStatusText: setupSnap ? 'Install Node first' : 'Checking Node...'
       });
 
       var elements = [];

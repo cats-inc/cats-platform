@@ -877,6 +877,10 @@ test('desktop bootstrap retries CLI inventory failures without restarting servic
     },
     providerDiagnostics: null,
     lastError: 'Cats could not confirm the local CLI inventory. Retry the startup check.',
+    cliInventoryError: {
+      kind: 'scan_failed',
+      summary: 'Cats could not confirm the local CLI inventory. Retry the startup check.',
+    },
   });
 
   assert.equal(snapshot.phase, 'failed');
@@ -885,6 +889,33 @@ test('desktop bootstrap retries CLI inventory failures without restarting servic
     'retry_cli_scan',
     'quit',
   ]);
+});
+
+test('desktop bootstrap does not infer CLI retry type from error copy', () => {
+  const snapshot = buildDesktopBootstrapSnapshot({
+    config: desktopConfig,
+    services: [
+      readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
+    ],
+    appHealth: {
+      status: 'ok',
+      summary: 'Cats app server is ready to accept requests.',
+      readiness: { ready: true, phase: 'ready' },
+      runtime: { reachable: true },
+    },
+    appShell: { setupCompleteAt: null },
+    runtimeHealth: {
+      status: 'ok',
+      runtime: { status: 'ok', summary: 'Runtime is ready.' },
+    },
+    providerDiagnostics: null,
+    lastError: 'Cats could not confirm the local CLI inventory. Retry the startup check.',
+  });
+
+  assert.equal(snapshot.phase, 'failed');
+  assert.equal(snapshot.actions.some((action) => action.id === 'retry_cli_scan'), false);
+  assert.equal(snapshot.actions.some((action) => action.id === 'retry'), true);
 });
 
 test('desktop bootstrap keeps optional local-model audit follow-through non-blocking', () => {

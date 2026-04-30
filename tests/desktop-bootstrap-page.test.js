@@ -94,7 +94,11 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /Node\.js \/ npm/);
   assert.match(html, /Required by npm CLIs/);
   assert.match(html, /Checking Node\.\.\./);
-  assert.match(html, /Waiting for Node check/);
+  assert.match(html, /Install Node first/);
+  assert.match(html, /if \(!card\.helperId\) return;/);
+  assert.match(html, /supportsApply: nodeReady \? false : helper\.supportsApply/);
+  assert.match(html, /btnLabel = card\.supportsApply === false \? 'Installed' : 'Reinstall';/);
+  assert.doesNotMatch(html, /node-prerequisite-loading/);
   assert.match(html, /ONBOARDING_NODE_HELPER_SUFFIX = '-node-host-installer'/);
   assert.match(html, /cli-row-break/);
   assert.match(html, /hasHiddenCards: renderedCards > 4/);
