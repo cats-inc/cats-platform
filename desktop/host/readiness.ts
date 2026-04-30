@@ -1,7 +1,9 @@
 import type {
   DesktopBackgroundState,
+  DesktopBootstrapPrerequisites,
   DesktopBootstrapSnapshot,
   DesktopBootstrapProgress,
+  DesktopCliInventory,
   DesktopHostAction,
   DesktopPackagingPlan,
   DesktopHostActionId,
@@ -100,6 +102,7 @@ interface BuildDesktopBootstrapSnapshotInput {
   packaging?: DesktopPackagingPlan;
   setup?: DesktopSetupState;
   hostStatePath?: string | null;
+  cliInventory?: DesktopCliInventory | null;
 }
 
 interface WaitForServiceReadinessOptions {
@@ -704,6 +707,19 @@ export function buildDesktopBootstrapSnapshot(
     phase = 'checking_prerequisites';
     status = 'degraded';
     summary = 'Local services are ready. Running prerequisite checks.';
+  } else if (
+    input.cliInventory
+    && input.cliInventory.source === 'runtime'
+    && input.cliInventory.total === 0
+  ) {
+    // CLI gate: only fires when we have authoritative runtime probe data
+    // saying zero CLIs are usable. Source 'unknown' (probe failed / pending)
+    // never fires the gate so we don't block users on unavailable signal.
+    phase = 'needs_prerequisites';
+    status = 'degraded';
+    summary = setupCompleteAt
+      ? 'No CLI is currently installed. Install one to continue using Cats.'
+      : 'Welcome. Install a CLI to get started with Cats.';
   } else if (!setupCompleted) {
     if (!hasRuntimeHealth) {
       phase = 'checking_prerequisites';
@@ -791,5 +807,8 @@ export function buildDesktopBootstrapSnapshot(
     setup,
     diagnostics: null,
     hostStatePath: input.hostStatePath ?? input.config.paths.hostStatePath,
+    prerequisites: input.cliInventory
+      ? ({ cliInventory: input.cliInventory } satisfies DesktopBootstrapPrerequisites)
+      : null,
   };
 }

@@ -58,6 +58,8 @@ function createRuntimeStub(options: {
           appliedConfigPath: null,
           error: null,
         },
+        scan: null,
+        manualScan: null,
         repair: {
           status: 'ready',
           summary: 'Cats Runtime is ready.',

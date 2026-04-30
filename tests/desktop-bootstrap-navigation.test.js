@@ -112,3 +112,87 @@ test('desktop bootstrap only reveals the host recovery page for failed or setup-
     windowRevealRequested: false,
   }), false);
 });
+
+const EMPTY_RUNTIME_INVENTORY = {
+  cliInventory: {
+    source: 'runtime',
+    installed: [],
+    total: 0,
+    candidates: [],
+    scannedAt: '2026-04-30T10:00:00.000Z',
+  },
+};
+
+test('desktop bootstrap navigation stays on host page when runtime probe reports zero CLIs (fresh user)', () => {
+  assert.equal(resolveDesktopBootstrapNavigation({
+    phase: 'needs_prerequisites',
+    app: { entryPath: '/setup', setupCompleteAt: null },
+    prerequisites: EMPTY_RUNTIME_INVENTORY,
+  }, {
+    appBaseUrl: 'http://127.0.0.1:8181',
+    showWindowOnStartup: true,
+  }), null);
+});
+
+test('desktop bootstrap navigation stays on host page even after setup if runtime probe reports zero CLIs', () => {
+  assert.equal(resolveDesktopBootstrapNavigation({
+    phase: 'needs_prerequisites',
+    app: { entryPath: '/', setupCompleteAt: '2026-04-30T08:00:00.000Z' },
+    prerequisites: EMPTY_RUNTIME_INVENTORY,
+  }, {
+    appBaseUrl: 'http://127.0.0.1:8181',
+    showWindowOnStartup: true,
+  }), null);
+});
+
+test('desktop bootstrap navigation passes through to chat once runtime reports any CLI installed (post-setup)', () => {
+  assert.equal(resolveDesktopBootstrapNavigation({
+    phase: 'needs_prerequisites',
+    app: { entryPath: '/', setupCompleteAt: '2026-04-30T08:00:00.000Z' },
+    prerequisites: {
+      cliInventory: {
+        source: 'runtime',
+        installed: ['windows-claude-native-installer'],
+        total: 1,
+        candidates: [],
+        scannedAt: '2026-04-30T10:00:00.000Z',
+      },
+    },
+  }, {
+    appBaseUrl: 'http://127.0.0.1:8181',
+    showWindowOnStartup: true,
+  }), 'http://127.0.0.1:8181/');
+});
+
+test('desktop bootstrap navigation does not gate on unknown-source probe (legacy / probe failed)', () => {
+  // Runtime hasn't returned data yet — must not block legacy users.
+  assert.equal(resolveDesktopBootstrapNavigation({
+    phase: 'needs_prerequisites',
+    app: { entryPath: '/', setupCompleteAt: '2026-04-30T08:00:00.000Z' },
+    prerequisites: {
+      cliInventory: {
+        source: 'unknown',
+        installed: [],
+        total: 0,
+        candidates: [],
+        scannedAt: null,
+      },
+    },
+  }, {
+    appBaseUrl: 'http://127.0.0.1:8181',
+    showWindowOnStartup: true,
+  }), 'http://127.0.0.1:8181/');
+});
+
+test('desktop bootstrap reveals recovery for cli_missing whether or not setup was complete', () => {
+  const options = {
+    showWindowOnStartup: true,
+    windowRevealRequested: false,
+  };
+
+  assert.equal(shouldRevealDesktopBootstrapRecovery({
+    phase: 'needs_prerequisites',
+    app: { entryPath: '/', setupCompleteAt: '2026-04-30T08:00:00.000Z' },
+    prerequisites: EMPTY_RUNTIME_INVENTORY,
+  }, options), true);
+});

@@ -1046,3 +1046,140 @@ test('desktop bootstrap stays in needs_prerequisites with Open Cats forward path
   assert.ok(snapshot.actions.some((action) => action.id === 'open_chat' && action.primary === true));
   assert.equal(snapshot.actions.some((action) => action.id === 'open_setup'), false);
 });
+
+function emptyCliInventory(overrides = {}) {
+  return {
+    source: 'runtime',
+    installed: [],
+    total: 0,
+    candidates: [],
+    scannedAt: '2026-04-30T10:00:00.000Z',
+    ...overrides,
+  };
+}
+
+function populatedCliInventory() {
+  return {
+    source: 'runtime',
+    installed: ['windows-codex-native-installer'],
+    total: 1,
+    candidates: [
+      {
+        helperId: 'windows-codex-native-installer',
+        providerId: 'codex',
+        label: 'Codex',
+        installed: true,
+        available: true,
+        supported: true,
+      },
+    ],
+    scannedAt: '2026-04-30T10:00:00.000Z',
+  };
+}
+
+const PRESETUP_INPUT = {
+  appHealth: {
+    status: 'ok',
+    summary: 'Cats app server is ready to accept requests.',
+    readiness: { ready: true, phase: 'ready' },
+    runtime: { reachable: true },
+  },
+  appShell: { setupCompleteAt: null },
+  runtimeHealth: {
+    status: 'ok',
+    runtime: { status: 'ok', summary: 'Runtime is ready.' },
+  },
+  providerDiagnostics: {
+    summary: {
+      status: 'degraded',
+      summary: 'No provider targets are configured yet.',
+      configuredProviders: 0,
+      targets: 0,
+      defaultTargets: 0,
+      ok: 0,
+      degraded: 0,
+      unavailable: 0,
+    },
+    providers: [],
+  },
+};
+
+test('desktop bootstrap fires cli_missing for fresh users when runtime probe reports zero CLIs', () => {
+  const snapshot = buildDesktopBootstrapSnapshot({
+    config: desktopConfig,
+    services: [
+      readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
+    ],
+    ...PRESETUP_INPUT,
+    cliInventory: emptyCliInventory(),
+  });
+
+  assert.equal(snapshot.phase, 'needs_prerequisites');
+  assert.match(snapshot.summary, /Welcome\.|Install a CLI/i);
+  assert.equal(snapshot.prerequisites?.cliInventory?.source, 'runtime');
+  assert.equal(snapshot.prerequisites?.cliInventory?.total, 0);
+});
+
+test('desktop bootstrap fires cli_missing for setup-complete users when runtime probe reports zero CLIs', () => {
+  const snapshot = buildDesktopBootstrapSnapshot({
+    config: desktopConfig,
+    services: [
+      readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
+    ],
+    appHealth: PRESETUP_INPUT.appHealth,
+    appShell: { setupCompleteAt: '2026-04-30T08:00:00.000Z' },
+    runtimeHealth: PRESETUP_INPUT.runtimeHealth,
+    providerDiagnostics: null,
+    cliInventory: emptyCliInventory(),
+  });
+
+  assert.equal(snapshot.phase, 'needs_prerequisites');
+  assert.match(snapshot.summary, /No CLI is currently installed|Install/i);
+});
+
+test('desktop bootstrap does NOT fire cli_missing when probe source is unknown (probe failed/pending)', () => {
+  const snapshot = buildDesktopBootstrapSnapshot({
+    config: desktopConfig,
+    services: [
+      readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
+    ],
+    ...PRESETUP_INPUT,
+    cliInventory: emptyCliInventory({ source: 'unknown', scannedAt: null }),
+  });
+
+  // No authoritative data — gate stays open, falls through to ready_for_setup
+  assert.equal(snapshot.phase, 'ready_for_setup');
+});
+
+test('desktop bootstrap clears cli_missing once runtime reports any CLI installed', () => {
+  const snapshot = buildDesktopBootstrapSnapshot({
+    config: desktopConfig,
+    services: [
+      readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
+    ],
+    ...PRESETUP_INPUT,
+    cliInventory: populatedCliInventory(),
+  });
+
+  assert.equal(snapshot.phase, 'ready_for_setup');
+  assert.equal(snapshot.prerequisites?.cliInventory?.total, 1);
+});
+
+test('desktop bootstrap leaves prerequisites null when no inventory passed', () => {
+  const snapshot = buildDesktopBootstrapSnapshot({
+    config: desktopConfig,
+    services: [
+      readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
+      readyService('cats-platform', 'http://127.0.0.1:8181/health'),
+    ],
+    ...PRESETUP_INPUT,
+  });
+
+  assert.equal(snapshot.prerequisites, null);
+  // Without inventory the gate cannot fire — ready_for_setup as before.
+  assert.equal(snapshot.phase, 'ready_for_setup');
+});

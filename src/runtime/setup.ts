@@ -8,6 +8,24 @@ type RawRuntimeSetupStateStatus =
   | 'applied'
   | 'error';
 
+export interface RuntimeSetupScanProviderEntry {
+  provider: string;
+  family: string;
+  commandStatus: string;
+  commandPath: string | null;
+  version: string | null;
+  authStatus: string;
+  available: boolean;
+}
+
+export interface RuntimeSetupScanSummary {
+  scannedAt: string;
+  scanType: 'auto' | 'manual';
+  providers: RuntimeSetupScanProviderEntry[];
+  providerCount: number;
+  availableCount: number;
+}
+
 export interface RuntimeSetupReadModel {
   bootstrapRequired: boolean;
   state: {
@@ -18,6 +36,8 @@ export interface RuntimeSetupReadModel {
     appliedConfigPath: string | null;
     error: string | null;
   };
+  scan: RuntimeSetupScanSummary | null;
+  manualScan: RuntimeSetupScanSummary | null;
   repair: {
     status: 'ready' | 'scan_required' | 'attention_required';
     summary: string;

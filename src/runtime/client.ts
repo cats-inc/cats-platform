@@ -296,6 +296,7 @@ export interface RuntimeDeleteSessionResult {
 export interface RuntimeClient {
   getHealth(): Promise<RuntimeStatusSummary>;
   getSetupState(): Promise<RuntimeSetupReadModel>;
+  triggerSetupScan?(options?: { manual?: boolean }): Promise<RuntimeSetupReadModel>;
   getProviderConfig(options?: { selector?: boolean }): Promise<RuntimeProviderConfigRegistry>;
   getProviderDiagnostics(
     query?: RuntimeProviderDiagnosticsQuery,
@@ -616,6 +617,29 @@ export class CatsRuntimeClient implements RuntimeClient {
     }
 
     return (await response.json()) as RuntimeSetupReadModel;
+  }
+
+  async triggerSetupScan(options: { manual?: boolean } = {}): Promise<RuntimeSetupReadModel> {
+    const response = await fetch(`${this.baseUrl}/setup-scan`, {
+      method: 'POST',
+      headers: {
+        ...this.authHeaders(),
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ manual: options.manual === true }),
+      signal: this.createTimeoutSignal(this.timeoutMs),
+    });
+
+    if (!response.ok) {
+      const rawBody = await response.text();
+      throw new RuntimeRequestError(
+        readRuntimeErrorText(rawBody, `Failed to trigger runtime setup scan (${response.status})`),
+        response.status,
+      );
+    }
+
+    return await this.getSetupState();
   }
 
   async getProviderModels(

@@ -40,6 +40,8 @@ test('summarizeRuntimeSetupReadModel promotes ready repair state to ready_to_app
       appliedConfigPath: null,
       error: null,
     },
+    scan: null,
+    manualScan: null,
     repair: {
       status: 'ready',
       summary: '2 providers ready to apply.',
@@ -84,6 +86,8 @@ test('summarizeRuntimeSetupReadModel reports runtime-ready state when bootstrap 
       appliedConfigPath: 'C:/cats/runtime-config.json',
       error: null,
     },
+    scan: null,
+    manualScan: null,
     repair: {
       status: 'attention_required',
       summary: 'ignored after apply',

@@ -677,6 +677,28 @@ export interface DesktopBootstrapSnapshot {
   setup: DesktopSetupState;
   diagnostics: DesktopHostDiagnosticsState | null;
   hostStatePath: string | null;
+  prerequisites: DesktopBootstrapPrerequisites | null;
+}
+
+export interface DesktopCliInventoryEntry {
+  helperId: string;
+  providerId: DesktopProviderSetupLocalProviderId;
+  label: string;
+  installed: boolean;
+  available: boolean;
+  supported: boolean;
+}
+
+export interface DesktopCliInventory {
+  source: 'runtime' | 'unknown';
+  installed: string[];
+  total: number;
+  candidates: DesktopCliInventoryEntry[];
+  scannedAt: string | null;
+}
+
+export interface DesktopBootstrapPrerequisites {
+  cliInventory: DesktopCliInventory | null;
 }
 
 export interface DesktopHostPersistedState {

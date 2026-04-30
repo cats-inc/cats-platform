@@ -73,6 +73,10 @@ import {
 } from './startupRecovery.js';
 import { resolveDefaultSetupAuditAction } from './setupAudit.js';
 import {
+  buildDesktopCliInventoryFromRuntime,
+  type RuntimeCliInventoryProbe,
+} from './cliInventoryProbe.js';
+import {
   createDesktopTrayController,
   type DesktopTrayController,
 } from './tray.js';
@@ -172,6 +176,7 @@ let latestAppHealthPayload: AppHealthPayload | null = null;
 let latestAppShellPayload: AppShellPayload | null = null;
 let latestRuntimeHealthPayload: RuntimeDiagnosticsHealthPayload | ReadinessPayload | null = null;
 let latestProviderDiagnosticsPayload: RuntimeProviderDiagnosticsPayload | null = null;
+let latestCliInventoryProbe: RuntimeCliInventoryProbe | null = null;
 let latestPersistedSetupState: PersistedSetupCompletionState = {
   setupCompleteAt: null,
   productSetupCompleted: false,
@@ -970,6 +975,43 @@ async function getSetupSnapshot(): Promise<DesktopSetupSnapshot> {
   });
 }
 
+async function fetchRuntimeCliInventoryProbe(
+  baseUrl: string,
+  options: { triggerScanIfMissing?: boolean; forceRescan?: boolean } = {},
+): Promise<RuntimeCliInventoryProbe | null> {
+  let probe: RuntimeCliInventoryProbe | null = null;
+  if (!options.forceRescan) {
+    try {
+      probe = await fetchJson<RuntimeCliInventoryProbe>(`${baseUrl}/setup-state`);
+    } catch {
+      return null;
+    }
+    if (!options.triggerScanIfMissing) {
+      return probe;
+    }
+    if (probe && probe.scan !== null) {
+      return probe;
+    }
+  }
+  // Trigger a fresh scan (either none cached, or caller forced rescan after
+  // an install/uninstall). 12 providers in parallel via runtime's
+  // BootstrapService light probe mode — typically under ~500ms.
+  try {
+    await fetch(`${baseUrl}/setup-scan`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      body: JSON.stringify({ manual: false }),
+    });
+  } catch {
+    return probe;
+  }
+  try {
+    return await fetchJson<RuntimeCliInventoryProbe>(`${baseUrl}/setup-state`);
+  } catch {
+    return probe;
+  }
+}
+
 function buildSnapshot(lastError?: string | null): DesktopBootstrapSnapshot {
   if (!hostConfig || !supervisor) {
     throw new Error('Desktop host is not initialized.');
@@ -992,6 +1034,9 @@ function buildSnapshot(lastError?: string | null): DesktopBootstrapSnapshot {
     packaging: packagingState ?? undefined,
     setup: setupState ?? undefined,
     hostStatePath: hostConfig.paths.hostStatePath,
+    cliInventory: latestCliInventoryProbe
+      ? buildDesktopCliInventoryFromRuntime(latestCliInventoryProbe)
+      : null,
   });
 }
 
@@ -1015,6 +1060,7 @@ async function refreshBootstrapSnapshot(
     runtimeHealth,
     providerDiagnostics,
     productDiagnostics,
+    cliInventoryProbe,
   ] = await Promise.allSettled([
     fetchJson<AppHealthPayload>(`${hostConfig.appBaseUrl}/health`),
     fetchJson<AppShellPayload>(`${hostConfig.appBaseUrl}/api/app-shell`),
@@ -1027,6 +1073,9 @@ async function refreshBootstrapSnapshot(
       ? Promise.resolve<RuntimeProviderDiagnosticsPayload | null>(null)
       : fetchJson<RuntimeProviderDiagnosticsPayload>(`${hostConfig.runtimeBaseUrl}/diagnostics/providers`),
     fetchJson<ProductBootstrapDiagnosticsPayload>(`${hostConfig.appBaseUrl}/api/platform/bootstrap-diagnostics`),
+    fetchRuntimeCliInventoryProbe(hostConfig.runtimeBaseUrl, {
+      triggerScanIfMissing: !skipStartupProviderReprobe,
+    }),
   ]);
 
   if (appHealth.status === 'fulfilled') {
@@ -1040,6 +1089,9 @@ async function refreshBootstrapSnapshot(
   }
   if (providerDiagnostics.status === 'fulfilled') {
     latestProviderDiagnosticsPayload = providerDiagnostics.value;
+  }
+  if (cliInventoryProbe.status === 'fulfilled' && cliInventoryProbe.value) {
+    latestCliInventoryProbe = cliInventoryProbe.value;
   }
 
   if (diagnosticsState && productDiagnostics.status === 'fulfilled') {
@@ -1068,6 +1120,9 @@ async function refreshBootstrapSnapshot(
     packaging: packagingState ?? undefined,
     setup: setupState ?? undefined,
     hostStatePath: hostConfig.paths.hostStatePath,
+    cliInventory: latestCliInventoryProbe
+      ? buildDesktopCliInventoryFromRuntime(latestCliInventoryProbe)
+      : null,
   });
 }
 
@@ -1302,6 +1357,17 @@ async function runSetupAction(
         artifactPath: hostConfig.paths.hostStatePath,
       },
     }));
+  }
+  // After any helper run that may have changed CLI inventory, force a
+  // runtime rescan so the next snapshot reflects the new state. We don't
+  // depend on the helper's runState — the rescan itself is authoritative.
+  if (action.helperId.endsWith('-native-installer')) {
+    const refreshedProbe = await fetchRuntimeCliInventoryProbe(hostConfig.runtimeBaseUrl, {
+      forceRescan: true,
+    });
+    if (refreshedProbe) {
+      latestCliInventoryProbe = refreshedProbe;
+    }
   }
   publishSnapshot(await refreshBootstrapSnapshot());
   return await getSetupSnapshot();
