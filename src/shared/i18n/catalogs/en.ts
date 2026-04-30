@@ -1047,6 +1047,16 @@ export const enCatalog: MessageCatalog = {
   'chat.newChatDraft.sidePanelTitle': 'New Chat Setup',
   'chat.newChatDraft.generatedTitle': 'New chat',
   'chat.newChatDraft.generatedTitleWithIndex': 'New chat {index}',
+  'chat.composer.error.chooseTwoParallelChats':
+    'Choose at least two parallel chats before sending.',
+  'chat.composer.error.noActiveParallelThread':
+    'Parallel chat was created without an active thread.',
+  'chat.composer.error.noParallelChatForSending':
+    'No parallel chat is available for sending messages.',
+  'chat.composer.error.noChatForSending': 'No chat is available for sending messages.',
+  'chat.composer.error.relayFailedForChannel': 'Relay failed for {channelId}.',
+  'chat.composer.error.relayCompareFailed': 'Failed to relay compare message.',
+  'chat.composer.error.sendFailed': 'Failed to send message.',
   'chat.sidebar.primaryAction.newChat': 'New chat',
   'chat.sidebar.primaryAction.groupChat': 'Group chat',
   'chat.sidebar.primaryAction.parallelChat': 'Parallel chat',
@@ -1308,6 +1318,8 @@ export const enCatalog: MessageCatalog = {
   'chat.newChatDraft.branchRemoveAria': 'Remove branch {branchIndex}',
   'chat.newChatDraft.branchAddParallelAria': 'Add parallel chat',
   'chat.newChatDraft.branchAddCompareHint': 'Add another model to compare',
+  'chat.newChatDraft.branchAttachmentOverrideError':
+    'Branch {branchIndex}: attachments are not yet per-branch; remove the override.',
   'chat.newChatDraft.collaborateAria': 'Add another model to collaborate',
   'chat.newChatDraft.collaborateHint': 'Add another model to collaborate',
   'chat.newChatDraft.participantChatEyebrow': 'Participant Chat',

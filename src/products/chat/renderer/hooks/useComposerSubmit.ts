@@ -83,6 +83,8 @@ import {
   clearCrossSurfaceNavigationHandoff,
   stageCrossSurfaceNavigationHandoff,
 } from '../../../shared/renderer/crossSurfaceNavigationHandoff.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
 
 type LoadStateLike =
   | { status: 'loading' }
@@ -271,6 +273,7 @@ export function useComposerSubmit(options: {
     setBusy,
     setFeedback,
   } = options;
+  const { t } = useI18n();
   const {
     activeDispatchRequestRef,
     beginAckRequest,
@@ -405,6 +408,7 @@ export function useComposerSubmit(options: {
           draftParticipantCatIds,
           draftTemporaryParticipants,
           buildChannelPath: buildTargetChannelPath,
+          t,
           signal: ackController.signal,
         });
 
@@ -470,7 +474,7 @@ export function useComposerSubmit(options: {
 
       if (compareGroupId && compareSendScope === 'all_members' && !wasDraftingNewChat) {
         if (!channelId) {
-          throw new Error('No parallel chat is available for sending messages.');
+          throw new Error(t(messageKeys.chatComposerErrorNoParallelChatForSending));
         }
 
         rollbackPath = currentPath;
@@ -556,6 +560,7 @@ export function useComposerSubmit(options: {
         buildChannelPath: buildTargetChannelPath,
         updateSelectedChannel,
         uploadChannelAttachments,
+        t,
         signal: ackController.signal,
       });
       payload = preparedSendContext.payload;
@@ -701,7 +706,7 @@ export function useComposerSubmit(options: {
       if (isAbortError(error)) {
         setFeedback('');
       } else {
-        setFeedback(error instanceof Error ? error.message : 'Failed to send message.');
+        setFeedback(error instanceof Error ? error.message : t(messageKeys.chatComposerErrorSendFailed));
       }
       navigateWithinManagedFlow(rollbackPath);
     } finally {
@@ -760,6 +765,7 @@ export function useComposerSubmit(options: {
     soloChannelExecutionTarget.model,
     soloChannelExecutionTarget.provider,
     state,
+    t,
   ]);
 
   const { onSendMessage, onComposerKeyDown } =

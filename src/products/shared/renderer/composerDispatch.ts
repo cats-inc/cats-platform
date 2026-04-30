@@ -6,7 +6,14 @@ import { isSoloThreadChannel } from '../../chat/shared/channelTopology.js';
 import {
   buildAttachedFilesMessageBody,
   buildNewChatChannelInput,
+  type WorkspaceChatTranslator,
 } from './workspaceChatUtils.js';
+import {
+  createTranslator,
+  messageKeys,
+} from '../../../shared/i18n/index.js';
+
+const defaultComposerDispatchTranslator = createTranslator('en');
 
 export interface ComposerModelValue {
   provider: string;
@@ -214,6 +221,7 @@ export async function prepareComposerChannelDispatch<
   temporaryParticipants?: ComposerTemporaryParticipantLike[];
   draftEntryKind?: 'solo' | 'group' | 'direct';
   draftExecutionTarget?: ComposerModelValue;
+  t?: WorkspaceChatTranslator;
   createChatChannel: (
     input: ReturnType<typeof buildNewChatChannelInput>,
     signal?: AbortSignal,
@@ -247,6 +255,7 @@ export async function prepareComposerChannelDispatch<
     temporaryParticipants = [],
     draftEntryKind,
     draftExecutionTarget,
+    t = defaultComposerDispatchTranslator,
     createChatChannel,
     insertCreatedChannelIntoPayload,
     setState,
@@ -279,6 +288,7 @@ export async function prepareComposerChannelDispatch<
         entryKind: 'direct',
         repoPath: draftCwd,
         draftSessionPolicy,
+        t,
         defaultRecipientCatId: draftDefaultRecipientCatId,
         participantCatIds,
         temporaryParticipants: temporaryParticipants.map((participant) => ({
@@ -293,7 +303,7 @@ export async function prepareComposerChannelDispatch<
       }), signal);
       channelId = createdChannel.id;
       if (!channelId) {
-        throw new Error('No chat is available for sending messages.');
+        throw new Error(t(messageKeys.chatComposerErrorNoChatForSending));
       }
       payload = insertCreatedChannelIntoPayload(initialPayload, createdChannel);
       rollbackPayload = payload;
@@ -316,6 +326,7 @@ export async function prepareComposerChannelDispatch<
       entryKind: draftEntryKind,
       repoPath: draftCwd,
       draftSessionPolicy,
+      t,
       defaultRecipientCatId: draftDefaultRecipientCatId,
       participantCatIds,
       temporaryParticipants: temporaryParticipants.map((participant) => ({
@@ -331,7 +342,7 @@ export async function prepareComposerChannelDispatch<
     }), signal);
     channelId = createdChannel.id;
     if (!channelId) {
-      throw new Error('No chat is available for sending messages.');
+      throw new Error(t(messageKeys.chatComposerErrorNoChatForSending));
     }
     rollbackPath = buildChannelPath(channelId);
     payload = insertCreatedChannelIntoPayload(initialPayload, createdChannel);
@@ -343,7 +354,7 @@ export async function prepareComposerChannelDispatch<
     };
   } else {
     if (!channelId) {
-      throw new Error('No chat is available for sending messages.');
+      throw new Error(t(messageKeys.chatComposerErrorNoChatForSending));
     }
     restoreFiles = () => {
       setChannelFiles(originalChannelFiles);
@@ -351,7 +362,7 @@ export async function prepareComposerChannelDispatch<
   }
 
   if (!channelId) {
-    throw new Error('No chat is available for sending messages.');
+    throw new Error(t(messageKeys.chatComposerErrorNoChatForSending));
   }
 
   return {
@@ -385,6 +396,7 @@ export async function prepareWorkspaceSendContext<
   temporaryParticipants?: ComposerTemporaryParticipantLike[];
   draftEntryKind?: 'solo' | 'group' | 'direct';
   draftExecutionTarget?: ModelValue;
+  t?: WorkspaceChatTranslator;
   selectedChannel: ComposerSelectedChannelLike | null;
   soloChannelExecutionTarget: ModelValue;
   draftFiles: File[];
@@ -431,6 +443,7 @@ export async function prepareWorkspaceSendContext<
     temporaryParticipants,
     draftEntryKind,
     draftExecutionTarget,
+    t,
     selectedChannel,
     soloChannelExecutionTarget,
     draftFiles,
@@ -466,6 +479,7 @@ export async function prepareWorkspaceSendContext<
     temporaryParticipants,
     draftEntryKind,
     draftExecutionTarget,
+    t,
     createChatChannel,
     insertCreatedChannelIntoPayload,
     setState,

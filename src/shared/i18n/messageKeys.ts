@@ -1013,6 +1013,17 @@ export const messageKeys = {
   chatNewChatDraftGeneratedTitle: 'chat.newChatDraft.generatedTitle',
   chatNewChatDraftGeneratedTitleWithIndex:
     'chat.newChatDraft.generatedTitleWithIndex',
+  chatComposerErrorChooseTwoParallelChats:
+    'chat.composer.error.chooseTwoParallelChats',
+  chatComposerErrorNoActiveParallelThread:
+    'chat.composer.error.noActiveParallelThread',
+  chatComposerErrorNoParallelChatForSending:
+    'chat.composer.error.noParallelChatForSending',
+  chatComposerErrorNoChatForSending: 'chat.composer.error.noChatForSending',
+  chatComposerErrorRelayFailedForChannel:
+    'chat.composer.error.relayFailedForChannel',
+  chatComposerErrorRelayCompareFailed: 'chat.composer.error.relayCompareFailed',
+  chatComposerErrorSendFailed: 'chat.composer.error.sendFailed',
   chatSidebarPrimaryActionNewChat: 'chat.sidebar.primaryAction.newChat',
   chatSidebarPrimaryActionGroupChat: 'chat.sidebar.primaryAction.groupChat',
   chatSidebarPrimaryActionParallelChat: 'chat.sidebar.primaryAction.parallelChat',
@@ -1297,6 +1308,8 @@ export const messageKeys = {
   chatNewChatDraftBranchRemoveAria: 'chat.newChatDraft.branchRemoveAria',
   chatNewChatDraftBranchAddParallelAria: 'chat.newChatDraft.branchAddParallelAria',
   chatNewChatDraftBranchAddCompareHint: 'chat.newChatDraft.branchAddCompareHint',
+  chatNewChatDraftBranchAttachmentOverrideError:
+    'chat.newChatDraft.branchAttachmentOverrideError',
   chatNewChatDraftCollaborateAria: 'chat.newChatDraft.collaborateAria',
   chatNewChatDraftCollaborateHint: 'chat.newChatDraft.collaborateHint',
   chatNewChatDraftParticipantChatEyebrow: 'chat.newChatDraft.participantChatEyebrow',

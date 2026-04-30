@@ -18,10 +18,19 @@ import {
   createDraftLeadContext,
   resolveBranch,
 } from './draftBranchResolution.js';
-import { createDraftChannelTitle } from './workspaceChatUtils.js';
+import {
+  createDraftChannelTitle,
+  type WorkspaceChatTranslator,
+} from './workspaceChatUtils.js';
 import type { DraftParallelTargetBranchFields } from './draftParallelTargets.js';
+import {
+  createTranslator,
+  messageKeys,
+} from '../../../shared/i18n/index.js';
 
 type ParallelDispatchTarget = WorkspaceExecutionTargetValue & DraftParallelTargetBranchFields;
+
+const defaultParallelDispatchTranslator = createTranslator('en');
 
 export interface ParallelDispatchRequestState {
   kind: 'parallel';
@@ -58,6 +67,7 @@ export interface SubmitNewParallelChatDraftOptions {
   draftParticipantCatIds?: string[];
   draftTemporaryParticipants?: DraftTemporaryParticipant[];
   buildChannelPath: (channelId: string) => string;
+  t?: WorkspaceChatTranslator;
   signal?: AbortSignal;
 }
 
@@ -80,8 +90,10 @@ export function buildParallelChatDraftCreateInput(input: {
   draftParallelChatTargets: ParallelDispatchTarget[];
   draftParticipantCatIds?: string[];
   draftTemporaryParticipants?: DraftTemporaryParticipant[];
+  t?: WorkspaceChatTranslator;
 }): CreateParallelChatGroupInput {
-  assertNoBranchAttachmentOverrides(input.draftParallelChatTargets);
+  const t = input.t ?? defaultParallelDispatchTranslator;
+  assertNoBranchAttachmentOverrides(input.draftParallelChatTargets, t);
   const leadContext = createDraftLeadContext({
     composerDraft: input.body,
     draftCwd: input.draftCwd,
@@ -94,7 +106,7 @@ export function buildParallelChatDraftCreateInput(input: {
     resolveBranch(target, leadContext));
 
   return {
-    title: createDraftChannelTitle(input.body, input.existingCount),
+    title: createDraftChannelTitle(input.body, input.existingCount, t),
     originSurface: input.originSurface,
     repoPath: input.draftCwd ?? undefined,
     ...(input.draftSessionPolicy === undefined
@@ -140,10 +152,11 @@ export async function submitNewParallelChatDraft({
   draftParticipantCatIds = [],
   draftTemporaryParticipants = [],
   buildChannelPath,
+  t = defaultParallelDispatchTranslator,
   signal,
 }: SubmitNewParallelChatDraftOptions): Promise<SubmitNewParallelChatDraftResult> {
   if (draftParallelChatTargets.length < 2) {
-    throw new Error('Choose at least two parallel chats before sending.');
+    throw new Error(t(messageKeys.chatComposerErrorChooseTwoParallelChats));
   }
   const leadContext = createDraftLeadContext({
     composerDraft: body,
@@ -169,6 +182,7 @@ export async function submitNewParallelChatDraft({
       draftParallelChatTargets,
       draftParticipantCatIds,
       draftTemporaryParticipants,
+      t,
     }),
     signal,
   );
@@ -177,7 +191,7 @@ export async function submitNewParallelChatDraft({
       ? created.appShell.chat.selectedChannelId
       : created.group.members[0]?.channelId ?? null;
   if (!activeChannelId) {
-    throw new Error('Parallel chat was created without an active thread.');
+    throw new Error(t(messageKeys.chatComposerErrorNoActiveParallelThread));
   }
 
   const encodedAttachments = draftFiles.length > 0

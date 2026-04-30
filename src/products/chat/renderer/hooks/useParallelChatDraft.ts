@@ -36,6 +36,8 @@ import {
   setDraftParallelTargetRuntimeSessionPolicy,
   updateDraftParallelTargetAt,
 } from '../../../shared/renderer/draftParallelTargets.js';
+import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
 
 type LoadStateLike =
   | { status: 'loading' }
@@ -143,6 +145,7 @@ export function useParallelChatDraft(options: {
     setFeedback,
     seedCompareTarget = true,
   } = options;
+  const { t } = useI18n();
   const [draftParallelChatTargets, setDraftParallelChatTargets] = useState(
     () => createDraftParallelTargets(
       createInitialCompareTargetsWithOptions({
@@ -304,12 +307,14 @@ export function useParallelChatDraft(options: {
       if (failures.length > 0) {
         setFeedback(
           failures
-            .map((result) => result.error || `Relay failed for ${result.channelId}.`)
+            .map((result) => result.error || t(messageKeys.chatComposerErrorRelayFailedForChannel, {
+              channelId: result.channelId,
+            }))
             .join(' '),
         );
       }
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to relay compare message.');
+      setFeedback(error instanceof Error ? error.message : t(messageKeys.chatComposerErrorRelayCompareFailed));
     } finally {
       setBusy(clearBusyState());
     }
@@ -319,6 +324,7 @@ export function useParallelChatDraft(options: {
     setBusy,
     setFeedback,
     setState,
+    t,
   ]);
 
   return {

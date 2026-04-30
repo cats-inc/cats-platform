@@ -66,7 +66,7 @@ import {
 import { useI18n } from '../../../app/renderer/i18n/index.js';
 
 export type Surface = 'chats' | 'settings';
-type ChatUtilsTranslator = (
+export type ChatUtilsTranslator = (
   key: MessageKey,
   values?: MessageInterpolationValues,
 ) => string;
@@ -334,8 +334,12 @@ export function resolveTranscriptMessageSpeaker(
   return resolveWorkspaceTranscriptMessageSpeaker(message, cats, t);
 }
 
-export function createDraftChannelTitle(body: string, existingCount: number): string {
-  return createWorkspaceDraftChannelTitle(body, existingCount);
+export function createDraftChannelTitle(
+  body: string,
+  existingCount: number,
+  t?: ChatUtilsTranslator,
+): string {
+  return createWorkspaceDraftChannelTitle(body, existingCount, t);
 }
 
 export function createDraftChannelTopic(body: string): string {

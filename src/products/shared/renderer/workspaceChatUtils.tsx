@@ -32,7 +32,7 @@ import {
   type MessageKey,
 } from '../../../shared/i18n/index.js';
 
-type WorkspaceChatTranslator = (
+export type WorkspaceChatTranslator = (
   key: MessageKey,
   values?: MessageInterpolationValues,
 ) => string;

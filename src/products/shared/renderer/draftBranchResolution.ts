@@ -1,9 +1,19 @@
 import type { RuntimeSessionPolicy } from '../../../shared/runtimeSessionPolicy.js';
 import type { DraftRoomWorkflowShape } from '../../../shared/roomRouting.js';
 import type { DraftParallelTarget } from './draftChatUtils.js';
+import {
+  createTranslator,
+  messageKeys,
+  type MessageInterpolationValues,
+  type MessageKey,
+} from '../../../shared/i18n/index.js';
 
-const BRANCH_ATTACHMENT_OVERRIDE_ERROR =
-  'attachments are not yet per-branch; remove the override';
+type DraftBranchTranslator = (
+  key: MessageKey,
+  values?: MessageInterpolationValues,
+) => string;
+
+const defaultDraftBranchTranslator = createTranslator('en');
 
 export interface DraftLeadContext {
   composerDraft: string;
@@ -103,12 +113,15 @@ export function resolveBranchAttachments(
 
 export function assertNoBranchAttachmentOverrides(
   targets: readonly Pick<DraftParallelTarget, 'attachmentsOverride'>[],
+  t: DraftBranchTranslator = defaultDraftBranchTranslator,
 ): void {
   const index = targets.findIndex((target) => target.attachmentsOverride != null);
   if (index === -1) {
     return;
   }
-  throw new Error(`Branch ${index + 1}: ${BRANCH_ATTACHMENT_OVERRIDE_ERROR}.`);
+  throw new Error(t(messageKeys.chatNewChatDraftBranchAttachmentOverrideError, {
+    branchIndex: index + 1,
+  }));
 }
 
 export function resolveBranch(

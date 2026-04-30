@@ -11,6 +11,8 @@ import {
   createParallelChatBusyState,
   type WorkspaceBusyState,
 } from '../../../../shared/workspaceBusy.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
 
 interface SelectedChannelLike {
   id: string;
@@ -36,6 +38,7 @@ export function useWorkspaceCompareRelay<TPayload extends { chat: unknown }>(inp
     setFeedback,
     setState,
   } = input;
+  const { t } = useI18n();
 
   return useCallback(async (
     messageId: string,
@@ -61,12 +64,14 @@ export function useWorkspaceCompareRelay<TPayload extends { chat: unknown }>(inp
       if (failures.length > 0) {
         setFeedback(
           failures
-            .map((result) => result.error || `Relay failed for ${result.channelId}.`)
+            .map((result) => result.error || t(messageKeys.chatComposerErrorRelayFailedForChannel, {
+              channelId: result.channelId,
+            }))
             .join(' '),
         );
       }
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to relay compare message.');
+      setFeedback(error instanceof Error ? error.message : t(messageKeys.chatComposerErrorRelayCompareFailed));
     } finally {
       setBusy(clearBusyState());
     }
@@ -77,5 +82,6 @@ export function useWorkspaceCompareRelay<TPayload extends { chat: unknown }>(inp
     setBusy,
     setFeedback,
     setState,
+    t,
   ]);
 }

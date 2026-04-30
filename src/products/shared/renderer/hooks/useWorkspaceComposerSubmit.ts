@@ -70,6 +70,8 @@ import {
 } from './useComposerRequestLifecycle.js';
 import { useComposerSubmitBindings } from './useComposerSubmitBindings.js';
 import type { DraftParallelTargetBranchFields } from '../draftParallelTargets.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
 
 type LoadStateLike =
   | { status: 'loading' }
@@ -191,6 +193,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     setFeedback,
     hydratePendingDispatch = null,
   } = options;
+  const { t } = useI18n();
   const managedNavigationLocationRef = useRef<string | null>(null);
   const {
     activeDispatchRequestRef,
@@ -287,6 +290,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
           draftTemporaryParticipants,
           buildChannelPath: (createdChannelId) =>
             buildWorkspaceChannelPath(chatPrefix, createdChannelId),
+          t,
           signal: ackController.signal,
         });
 
@@ -330,7 +334,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
 
       if (compareGroupId && compareSendScope === 'all_members' && !wasDraftingNewChat) {
         if (!channelId) {
-          throw new Error('No parallel chat is available for sending messages.');
+          throw new Error(t(messageKeys.chatComposerErrorNoParallelChatForSending));
         }
 
         // Compare-container sends rely on the group dispatch ack to materialize
@@ -400,6 +404,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
           buildWorkspaceChannelPath(chatPrefix, createdChannelId),
         updateSelectedChannel,
         uploadChannelAttachments,
+        t,
         signal: ackController.signal,
       });
       payload = preparedSendContext.payload;
@@ -514,7 +519,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
       if (isAbortError(error)) {
         setFeedback('');
       } else {
-        setFeedback(error instanceof Error ? error.message : 'Failed to send message.');
+        setFeedback(error instanceof Error ? error.message : t(messageKeys.chatComposerErrorSendFailed));
       }
       navigateWithinManagedFlow(rollbackPath);
     } finally {
@@ -581,6 +586,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
     soloChannelExecutionTarget.provider,
     resetDraftParallelChatTargets,
     state,
+    t,
   ]);
 
   const { onSendMessage, onComposerKeyDown } =

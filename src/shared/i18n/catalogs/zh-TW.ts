@@ -1013,6 +1013,16 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.newChatDraft.sidePanelTitle': '新增聊天室設定',
   'chat.newChatDraft.generatedTitle': '新增對話',
   'chat.newChatDraft.generatedTitleWithIndex': '新增對話 {index}',
+  'chat.composer.error.chooseTwoParallelChats':
+    '送出前請至少選擇兩個平行聊天室。',
+  'chat.composer.error.noActiveParallelThread':
+    '已建立平行聊天室，但沒有作用中的 thread。',
+  'chat.composer.error.noParallelChatForSending':
+    '目前沒有可送出訊息的平行聊天室。',
+  'chat.composer.error.noChatForSending': '目前沒有可送出訊息的聊天室。',
+  'chat.composer.error.relayFailedForChannel': 'Relay 到 {channelId} 失敗。',
+  'chat.composer.error.relayCompareFailed': 'Relay 比較訊息失敗。',
+  'chat.composer.error.sendFailed': '送出訊息失敗。',
   'chat.sidebar.primaryAction.newChat': '新增聊天',
   'chat.sidebar.primaryAction.groupChat': '新增群組聊天',
   'chat.sidebar.primaryAction.parallelChat': '新增平行聊天',
@@ -1267,6 +1277,8 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.newChatDraft.branchRemoveAria': '移除第 {branchIndex} 分支',
   'chat.newChatDraft.branchAddParallelAria': '新增平行聊天室',
   'chat.newChatDraft.branchAddCompareHint': '新增另一個模型來比較',
+  'chat.newChatDraft.branchAttachmentOverrideError':
+    '第 {branchIndex} 分支：附件尚未支援逐分支設定；請移除覆寫。',
   'chat.newChatDraft.collaborateAria': '新增另一個模型共同推理',
   'chat.newChatDraft.collaborateHint': '新增另一個模型共同推理',
   'chat.newChatDraft.participantChatEyebrow': '參與者聊天室',
