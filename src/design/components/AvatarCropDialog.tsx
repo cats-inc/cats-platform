@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useI18n } from '../../app/renderer/i18n/useI18n.js';
+import { messageKeys } from '../../shared/i18n/index.js';
 
 const OUTPUT_SIZE = 256;
 
@@ -45,6 +47,7 @@ export function AvatarCropDialog({ onSave, onClose, initialDataUrl }: AvatarCrop
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageState, setImageState] = useState<ImageState | null>(null);
   const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const { t } = useI18n();
 
   const redraw = useCallback(() => {
     const ctx = canvasRef.current?.getContext('2d');
@@ -177,7 +180,7 @@ export function AvatarCropDialog({ onSave, onClose, initialDataUrl }: AvatarCrop
   return (
     <div className="avatarCropOverlay" onClick={onClose}>
       <div className="avatarCropDialog" onClick={(e) => e.stopPropagation()}>
-        <p className="avatarCropTitle">Upload avatar</p>
+        <p className="avatarCropTitle">{t(messageKeys.settingsGeneralAvatarUploadLabel)}</p>
         {imageState ? (
           <>
             <div
@@ -192,14 +195,16 @@ export function AvatarCropDialog({ onSave, onClose, initialDataUrl }: AvatarCrop
                 height={OUTPUT_SIZE}
               />
             </div>
-            <p className="avatarCropHint">Drag to reposition, scroll to zoom</p>
+            <p className="avatarCropHint">
+              {t(messageKeys.sharedImageUploadDragHint)}
+            </p>
           </>
         ) : (
           <div
             className="avatarCropUploadArea"
             onClick={() => fileInputRef.current?.click()}
           >
-            Click to choose image
+            {t(messageKeys.sharedImageUploadClickHint)}
           </div>
         )}
         <input
@@ -219,7 +224,7 @@ export function AvatarCropDialog({ onSave, onClose, initialDataUrl }: AvatarCrop
             type="button"
             onClick={onClose}
           >
-            Cancel
+            {t(messageKeys.sharedCommonCancel)}
           </button>
           {imageState ? (
             <button
@@ -227,7 +232,7 @@ export function AvatarCropDialog({ onSave, onClose, initialDataUrl }: AvatarCrop
               type="button"
               onClick={handleSave}
             >
-              Apply
+              {t(messageKeys.sharedCommonApply)}
             </button>
           ) : null}
         </div>

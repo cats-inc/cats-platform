@@ -12,6 +12,8 @@ import {
   TraceList,
   type OperatorTraceListItem,
 } from './TraceList';
+import { useI18n } from '../../../app/renderer/i18n/useI18n.js';
+import { messageKeys } from '../../../shared/i18n/index.js';
 
 export interface OperatorRunInspectorRun {
   id: string;
@@ -73,18 +75,18 @@ export function RunInspector({
   inspector,
   onSelectRun,
 }: OperatorRunInspectorProps) {
+  const { t } = useI18n();
+
   return (
     <section className="operatorPanel">
       <div className="operatorPanelHeader">
         <div>
-          <p className="operatorEyebrow">Inspector</p>
-          <h2>Run inspector</h2>
+          <p className="operatorEyebrow">{t(messageKeys.sharedOperatorEyebrowInspector)}</p>
+          <h2>{t(messageKeys.sharedOperatorRunInspectorTitle)}</h2>
         </div>
       </div>
       {runs.length === 0 || !inspector ? (
-        <p className="operatorEmptyState">
-          Select a room with workflow history to inspect traces and checkpoints.
-        </p>
+        <p className="operatorEmptyState">{t(messageKeys.sharedOperatorRunInspectorNoHistory)}</p>
       ) : (
         <div className="operatorStack">
           <div className="operatorRunTabs">
@@ -104,47 +106,78 @@ export function RunInspector({
             <div className="operatorCardHeader">
               <div>
                 <strong>{inspector.run.title}</strong>
-                <p>{inspector.run.summary ?? 'Inspect trace, checkpoint, and outcome records for this run.'}</p>
+                <p>
+                  {inspector.run.summary
+                    ?? t(messageKeys.sharedOperatorRunInspectorSummaryFallback)}
+                </p>
               </div>
               <span
                 className={`operatorStatusBadge ${operatorSeverityClassName(runStatusSeverity(inspector.run.status as never))}`}
               >
-                {runStatusLabel(inspector.run.status as never)}
+                {runStatusLabel(inspector.run.status as never, t)}
               </span>
             </div>
             <div className="operatorMetaRow">
-              <span>Started {formatOperatorTimestamp(inspector.run.startedAt ?? inspector.run.createdAt)}</span>
-              <span>Updated {formatOperatorTimestamp(inspector.run.updatedAt)}</span>
+              <span>
+                {t(messageKeys.sharedOperatorMetaStarted, {
+                  time: formatOperatorTimestamp(inspector.run.startedAt ?? inspector.run.createdAt, t),
+                })}
+              </span>
+              <span>
+                {t(messageKeys.sharedOperatorMetaUpdated, {
+                  time: formatOperatorTimestamp(inspector.run.updatedAt, t),
+                })}
+              </span>
             </div>
             {inspector.workflowStageId || inspector.workflowShape ? (
               <div className="operatorMetaRow">
-                {inspector.workflowStageId ? <span>Stage: {inspector.workflowStageId}</span> : null}
-                {inspector.workflowShape ? <span>Shape: {inspector.workflowShape}</span> : null}
-                {inspector.reviewRequired ? <span>Review required</span> : null}
+                {inspector.workflowStageId ? (
+                  <span>
+                    {t(messageKeys.sharedOperatorMetaStage, {
+                      stage: inspector.workflowStageId,
+                    })}
+                  </span>
+                ) : null}
+                {inspector.workflowShape ? (
+                  <span>
+                    {t(messageKeys.sharedOperatorMetaShape, {
+                      shape: inspector.workflowShape,
+                    })}
+                  </span>
+                ) : null}
+                {inspector.reviewRequired ? (
+                  <span>{t(messageKeys.sharedOperatorMetaReviewRequired)}</span>
+                ) : null}
               </div>
             ) : null}
             {inspector.guardReason ? (
               <div className="operatorCallout operatorCalloutAttention">
-                Guardrail: {inspector.guardReason}
+                {t(messageKeys.sharedOperatorMetaGuardrail, {
+                  guardrail: inspector.guardReason,
+                })}
               </div>
             ) : null}
             {inspector.cooldownLabel ? (
               <div className="operatorCallout operatorCalloutMuted">
-                Cooldown: {inspector.cooldownLabel}
+                {t(messageKeys.sharedOperatorMetaCooldown, {
+                  cooldown: inspector.cooldownLabel,
+                })}
               </div>
             ) : null}
             <div className="operatorInspectorSection">
               <div className="operatorInspectorHeader">
-                <strong>Trace</strong>
+                <strong>{t(messageKeys.sharedOperatorSectionTrace)}</strong>
               </div>
               <TraceList traces={inspector.traces} actorNameById={actorNameById} />
             </div>
             <div className="operatorInspectorSection">
               <div className="operatorInspectorHeader">
-                <strong>Checkpoints</strong>
+                <strong>{t(messageKeys.sharedOperatorSectionCheckpoints)}</strong>
               </div>
               {inspector.checkpoints.length === 0 ? (
-                <p className="operatorEmptyState operatorInsetEmpty">No checkpoints recorded for this run.</p>
+                <p className="operatorEmptyState operatorInsetEmpty">
+                  {t(messageKeys.sharedOperatorNoCheckpointsRecorded)}
+                </p>
               ) : (
                 <div className="operatorList">
                   {inspector.checkpoints.slice(0, 4).map((checkpoint) => (
@@ -154,10 +187,10 @@ export function RunInspector({
                         <span
                           className={`operatorStatusBadge ${operatorSeverityClassName(checkpointStatusSeverity(checkpoint.status as never))}`}
                         >
-                          {checkpointStatusLabel(checkpoint.status as never)}
+                          {checkpointStatusLabel(checkpoint.status as never, t)}
                         </span>
                       </div>
-                      <p>{checkpoint.summary ?? 'Checkpoint recorded.'}</p>
+                      <p>{checkpoint.summary ?? t(messageKeys.sharedOperatorCheckpointSummaryFallback)}</p>
                     </article>
                   ))}
                 </div>
@@ -165,11 +198,11 @@ export function RunInspector({
             </div>
             <div className="operatorInspectorSection">
               <div className="operatorInspectorHeader">
-                <strong>Branches</strong>
+                <strong>{t(messageKeys.sharedOperatorSectionBranches)}</strong>
               </div>
               {inspector.branchStates.length === 0 ? (
                 <p className="operatorEmptyState operatorInsetEmpty">
-                  No branch or handoff lineage recorded for this run.
+                  {t(messageKeys.sharedOperatorNoBranchesRecorded)}
                 </p>
               ) : (
                 <div className="operatorList">
@@ -180,9 +213,21 @@ export function RunInspector({
                         <span className="operatorMetaText">{branch.status}</span>
                       </div>
                       <p>
-                        {branch.handoffReason ? `Handoff: ${branch.handoffReason}. ` : ''}
-                        {branch.branchStrategy ? `Strategy: ${branch.branchStrategy}. ` : ''}
-                        {branch.parentCheckpointId ? `From ${branch.parentCheckpointId}.` : 'No checkpoint lineage recorded.'}
+                        {branch.handoffReason
+                          ? `${t(messageKeys.sharedOperatorBranchHandoff, {
+                            handoffReason: branch.handoffReason,
+                          })} `
+                          : ''}
+                        {branch.branchStrategy
+                          ? `${t(messageKeys.sharedOperatorBranchStrategy, {
+                            strategy: branch.branchStrategy,
+                          })} `
+                          : ''}
+                        {branch.parentCheckpointId
+                          ? t(messageKeys.sharedOperatorBranchFromCheckpoint, {
+                            checkpointId: branch.parentCheckpointId,
+                          })
+                          : t(messageKeys.sharedOperatorBranchNoLineage)}
                       </p>
                       {branch.error ? <p>{branch.error}</p> : null}
                     </article>
@@ -192,10 +237,12 @@ export function RunInspector({
             </div>
             <div className="operatorInspectorSection">
               <div className="operatorInspectorHeader">
-                <strong>Outcomes</strong>
+                <strong>{t(messageKeys.sharedOperatorSectionOutcomes)}</strong>
               </div>
               {inspector.outcomes.length === 0 ? (
-                <p className="operatorEmptyState operatorInsetEmpty">No outcomes recorded for this run.</p>
+                <p className="operatorEmptyState operatorInsetEmpty">
+                  {t(messageKeys.sharedOperatorNoOutcomesRecorded)}
+                </p>
               ) : (
                 <div className="operatorList">
                   {inspector.outcomes.slice(0, 3).map((outcome) => (
@@ -205,10 +252,10 @@ export function RunInspector({
                         <span
                           className={`operatorStatusBadge ${operatorSeverityClassName(outcomeStatusSeverity(outcome.status as never))}`}
                         >
-                          {outcomeStatusLabel(outcome.status as never)}
+                          {outcomeStatusLabel(outcome.status as never, t)}
                         </span>
                       </div>
-                      <p>{outcome.summary ?? 'Outcome recorded.'}</p>
+                      <p>{outcome.summary ?? t(messageKeys.sharedOperatorOutcomeSummaryFallback)}</p>
                     </article>
                   ))}
                 </div>

@@ -30,6 +30,8 @@ import {
 import { useProviderRegistryAutoRecheck } from './useProviderRegistryAutoRecheck.js';
 import { useProviderRegistryState } from './useProviderRegistryState.js';
 import { useProviderTargetReconciliation } from './useProviderTargetReconciliation.js';
+import { useI18n } from '../../app/renderer/i18n/useI18n.js';
+import { messageKeys } from '../../shared/i18n/index.js';
 
 export {
   attachExecutionLabelToProviderTarget,
@@ -102,6 +104,8 @@ export function ProviderModelFields({
   hideInlineRetry = false,
   onRegistryRecoveryChange,
 }: SharedProviderModelFieldsProps) {
+  const { t } = useI18n();
+
   const {
     providers,
     providerRegistry,
@@ -293,7 +297,7 @@ export function ProviderModelFields({
   return (
     <>
       <label className="fieldLabel">
-        <span>Provider</span>
+        <span>{t(messageKeys.sharedProviderModelFieldProviderLabel)}</span>
         <select
           className="textInput"
           value={selectedProvider?.id ?? ''}
@@ -306,7 +310,7 @@ export function ProviderModelFields({
             <>
               {!selectedProvider ? (
                 <option value="" disabled>
-                  Select an available provider
+                  {t(messageKeys.sharedProviderModelFieldSelectProviderHint)}
                 </option>
               ) : null}
               {providerOptions.map((option) => (
@@ -329,7 +333,7 @@ export function ProviderModelFields({
       </label>
       {showInstanceField ? (
         <label className="fieldLabel">
-          <span>Provider instance</span>
+          <span>{t(messageKeys.sharedProviderModelFieldProviderInstanceLabel)}</span>
           <select
             className="textInput"
             value={resolvedInstance}
@@ -350,7 +354,7 @@ export function ProviderModelFields({
       ) : null}
       <label className="fieldLabel">
         <div className="fieldLabelInline">
-          <span>Model</span>
+          <span>{t(messageKeys.sharedProviderModelFieldModelLabel)}</span>
           {supportBadge ? (
             <span className={`providerSupportBadge providerSupportBadge${supportBadge.tone}`}>
               {supportBadge.label}
@@ -374,7 +378,9 @@ export function ProviderModelFields({
             </option>
           ))}
           {allowLegacyManualModelEntry ? (
-            <option value={CUSTOM_LEGACY_MODEL_VALUE}>Custom legacy model...</option>
+            <option value={CUSTOM_LEGACY_MODEL_VALUE}>
+              {t(messageKeys.sharedProviderModelFieldCustomLegacyModelLabel)}
+            </option>
           ) : null}
         </select>
         {selectedEntryNotes.length > 0 ? (
@@ -389,28 +395,32 @@ export function ProviderModelFields({
       </label>
       {isLegacyModelTarget ? (
         <label className="fieldLabel">
-          <span>Legacy model ID</span>
+          <span>{t(messageKeys.sharedProviderModelFieldLegacyModelIdLabel)}</span>
           <input
             className="textInput"
             type="text"
             value={model}
-            placeholder="e.g. claude-sonnet-4-6"
+            placeholder={t(messageKeys.sharedProviderModelFieldLegacyModelIdPlaceholder)}
             onChange={(event) => onLegacyModelChange(event.target.value)}
           />
           <span className="fieldHint">
-            Manual model id passthrough. Runtime resolves this as the legacy `model` field, not a structured entry/preset selection.
+            {t(messageKeys.sharedProviderModelFieldLegacyModelIdHint)}
           </span>
         </label>
       ) : (
         <label className="fieldLabel">
-          <span>Mode</span>
+          <span>{t(messageKeys.sharedProviderModelFieldModeLabel)}</span>
           <select
             className="textInput"
             value={selectedPresetId}
             disabled={presetOptions.length === 0}
             onChange={(event) => onPresetChange(event.target.value)}
           >
-            <option value="">{presetOptions.length > 0 ? 'Standard' : 'Standard only'}</option>
+            <option value="">
+              {presetOptions.length > 0
+                ? t(messageKeys.sharedProviderModelFieldModeStandardLabel)
+                : t(messageKeys.sharedProviderModelFieldModeStandardOnlyLabel)}
+            </option>
             {presetOptions.map((preset) => (
               <option
                 key={preset.id}
@@ -418,19 +428,23 @@ export function ProviderModelFields({
                 disabled={preset.availability === 'unavailable'}
               >
                 {preset.label}
-                {preset.availability === 'preview' ? ' (preview)' : ''}
-                {preset.availability === 'unavailable' ? ' (unavailable)' : ''}
+                {preset.availability === 'preview'
+                  ? t(messageKeys.sharedProviderModelFieldPresetPreviewSuffix)
+                  : ''}
+                {preset.availability === 'unavailable'
+                  ? t(messageKeys.sharedProviderModelFieldPresetUnavailableSuffix)
+                  : ''}
               </option>
             ))}
           </select>
           {selectedPresetId ? (
             <span className="fieldHint">
               {presetOptions.find((preset) => preset.id === selectedPresetId)?.description
-                ?? 'Extra tuning for this model.'}
+                ?? t(messageKeys.sharedProviderModelFieldPresetTuningDescriptionFallback)}
             </span>
           ) : presetOptions.length === 0 ? (
             <span className="fieldHint">
-              This provider target exposes only the base catalog entry for persisted chat/session settings.
+              {t(messageKeys.sharedProviderModelFieldModeOnlyBaseHint)}
             </span>
           ) : null}
         </label>
@@ -448,7 +462,7 @@ export function ProviderModelFields({
       ) : null}
       {requestScopedControlCount > 0 ? (
         <span className="fieldHint providerCatalogHint">
-          Request-only runtime overrides are hidden here because this selector persists chat/session defaults.
+          {t(messageKeys.sharedProviderModelFieldRequestScopedWarning)}
         </span>
       ) : null}
       {effectiveAdvancedCatalog.warnings.length > 0 ? (

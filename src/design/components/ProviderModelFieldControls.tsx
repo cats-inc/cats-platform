@@ -2,6 +2,8 @@ import type {
   ProviderAdvancedCatalogControl,
   ProviderAdvancedControlValue,
 } from '../../shared/providerCatalog.js';
+import { useI18n } from '../../app/renderer/i18n/useI18n.js';
+import { messageKeys } from '../../shared/i18n/index.js';
 import {
   hasExplicitDefaultEnumOption,
   listApplicableControlValueOptions,
@@ -21,6 +23,7 @@ export function ProviderModelFieldControls(input: {
     controlValues,
     onControlChange,
   } = input;
+  const { t } = useI18n();
 
   return controlOptions.map((control) => {
     const value = controlValues[control.key];
@@ -33,9 +36,11 @@ export function ProviderModelFieldControls(input: {
             value={serializeControlInputValue(value)}
             onChange={(event) => onControlChange(control, event.target.value)}
           >
-            <option value="">Default</option>
-            <option value="true">Enabled</option>
-            <option value="false">Disabled</option>
+            <option value="">
+              {t(messageKeys.sharedProviderModelControlDefault)}
+            </option>
+            <option value="true">{t(messageKeys.sharedProviderModelControlEnabled)}</option>
+            <option value="false">{t(messageKeys.sharedProviderModelControlDisabled)}</option>
           </select>
           {control.description ? (
             <span className="fieldHint">{control.description}</span>
@@ -66,7 +71,9 @@ export function ProviderModelFieldControls(input: {
             value={displayedValue}
             onChange={(event) => onControlChange(control, event.target.value)}
           >
-            {showSyntheticDefaultOption ? <option value="">Default</option> : null}
+            {showSyntheticDefaultOption
+              ? <option value="">{t(messageKeys.sharedProviderModelControlDefault)}</option>
+              : null}
             {controlValueOptions.map((option, index) => (
               <option
                 key={`${control.key}-${String(option.value)}-${index}`}
@@ -93,7 +100,7 @@ export function ProviderModelFieldControls(input: {
           min={control.kind === 'number' ? control.minimum : undefined}
           max={control.kind === 'number' ? control.maximum : undefined}
           step={control.kind === 'number' ? control.step ?? 1 : undefined}
-          placeholder="Optional"
+          placeholder={t(messageKeys.sharedProviderModelControlOptionalPlaceholder)}
           onChange={(event) => onControlChange(control, event.target.value)}
         />
         {control.description ? (

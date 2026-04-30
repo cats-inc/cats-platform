@@ -1,5 +1,7 @@
 import type { CoreTraceRecord } from '../../../core/types';
 import { formatOperatorTimestamp, traceKindLabel } from '../../operatorFormatting';
+import { useI18n } from '../../../app/renderer/i18n/useI18n.js';
+import { messageKeys } from '../../../shared/i18n/index.js';
 
 export type OperatorTraceListItem = Pick<
   CoreTraceRecord,
@@ -12,10 +14,12 @@ export interface OperatorTraceListProps {
 }
 
 export function TraceList({ traces, actorNameById }: OperatorTraceListProps) {
+  const { t } = useI18n();
+
   if (traces.length === 0) {
     return (
       <p className="operatorEmptyState operatorInsetEmpty">
-        No trace records yet for this run.
+        {t(messageKeys.sharedOperatorNoTraceRecords)}
       </p>
     );
   }
@@ -24,9 +28,9 @@ export function TraceList({ traces, actorNameById }: OperatorTraceListProps) {
     <div className="operatorList">
       {traces.slice(0, 8).map((trace) => (
         <article key={trace.id} className="operatorListItem">
-          <div className="operatorListItemHeader">
-            <strong>{traceKindLabel(trace.kind)}</strong>
-            <span>{formatOperatorTimestamp(trace.createdAt)}</span>
+            <div className="operatorListItemHeader">
+            <strong>{traceKindLabel(trace.kind, t)}</strong>
+            <span>{formatOperatorTimestamp(trace.createdAt, t)}</span>
           </div>
           <p>{trace.message}</p>
           {trace.actorId ? (

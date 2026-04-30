@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useI18n } from '../../app/renderer/i18n/useI18n.js';
+import { messageKeys } from '../../shared/i18n/index.js';
 
 const OUTPUT_WIDTH = 960;
 const OUTPUT_HEIGHT = 360;
@@ -48,7 +50,7 @@ function fitScale(img: HTMLImageElement, width: number, height: number): number 
 export function CoverCropDialog({
   onSave,
   onClose,
-  title = 'Upload cover photo',
+  title,
   initialDataUrl,
 }: CoverCropDialogProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -56,6 +58,8 @@ export function CoverCropDialog({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [imageState, setImageState] = useState<ImageState | null>(null);
   const dragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const { t } = useI18n();
+  const resolvedTitle = title ?? t(messageKeys.sharedSettingsCatsUploadCoverPhotoLabel);
 
   const redraw = useCallback(() => {
     const ctx = canvasRef.current?.getContext('2d');
@@ -194,7 +198,7 @@ export function CoverCropDialog({
         className="avatarCropDialog coverCropDialog"
         onClick={(e) => e.stopPropagation()}
       >
-        <p className="avatarCropTitle">{title}</p>
+        <p className="avatarCropTitle">{resolvedTitle}</p>
         {imageState ? (
           <>
             <div
@@ -209,14 +213,16 @@ export function CoverCropDialog({
                 height={CANVAS_HEIGHT}
               />
             </div>
-            <p className="avatarCropHint">Drag to reposition, scroll to zoom</p>
+            <p className="avatarCropHint">
+              {t(messageKeys.sharedImageUploadDragHint)}
+            </p>
           </>
         ) : (
           <div
             className="avatarCropUploadArea coverCropUploadArea"
             onClick={() => fileInputRef.current?.click()}
           >
-            Click to choose image
+            {t(messageKeys.sharedImageUploadClickHint)}
           </div>
         )}
         <input
@@ -236,7 +242,7 @@ export function CoverCropDialog({
             type="button"
             onClick={onClose}
           >
-            Cancel
+            {t(messageKeys.sharedCommonCancel)}
           </button>
           {imageState ? (
             <button
@@ -244,7 +250,7 @@ export function CoverCropDialog({
               type="button"
               onClick={handleSave}
             >
-              Apply
+              {t(messageKeys.sharedCommonApply)}
             </button>
           ) : null}
         </div>

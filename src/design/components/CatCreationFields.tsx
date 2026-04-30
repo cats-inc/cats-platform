@@ -1,4 +1,6 @@
 import React from 'react';
+import { useI18n } from '../../app/renderer/i18n/useI18n.js';
+import { messageKeys } from '../../shared/i18n/index.js';
 
 import type {
   ProviderModelSelection,
@@ -62,11 +64,12 @@ export function CatCreationFields({
   fetchAdvancedProviderModels,
   onProviderRegistryChange,
 }: CatCreationFieldsProps) {
+  const { t } = useI18n();
 
   return (
     <>
       <label className="fieldLabel">
-        <span>{nameLabel ?? 'Name'}</span>
+        <span>{nameLabel ?? t(messageKeys.settingsGeneralNameLabel)}</span>
         <input
           className="textInput"
           value={name}
@@ -85,7 +88,7 @@ export function CatCreationFields({
             checked={makeBoss ?? false}
             onChange={(e) => onMakeBossChange(e.target.checked)}
           />
-          <span>Set as Boss Cat</span>
+          <span>{t(messageKeys.sharedSettingsCatsSetBossCatLabel)}</span>
         </label>
       ) : null}
       <ProviderModelFields

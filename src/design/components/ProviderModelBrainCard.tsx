@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useI18n } from '../../app/renderer/i18n/useI18n.js';
+import { messageKeys } from '../../shared/i18n/index.js';
 
 import type {
   ProductProviderRegistryReadModel,
@@ -41,11 +43,13 @@ interface ProviderModelBrainCardProps {
 }
 
 export function ProviderModelBrainCard({
-  title = 'Brain',
+  title,
   className = 'catsSubCard',
   ...fieldsProps
 }: ProviderModelBrainCardProps) {
+  const { t } = useI18n();
   const [recovery, setRecovery] = useState<ProviderRegistryRecoveryState | null>(null);
+  const resolvedTitle = title ?? t(messageKeys.sharedProviderModelBrainCardTitle);
 
   const status = recovery?.canRetry ? (
     <button
@@ -53,14 +57,14 @@ export function ProviderModelBrainCard({
       className="secondaryButton"
       onClick={() => recovery.retry()}
     >
-      Retry
+      {t(messageKeys.sharedCommonRetry)}
     </button>
   ) : null;
 
   return (
     <SettingsSubSection
       className={className}
-      header={<SettingsSectionHeader title={title} nested status={status} />}
+      header={<SettingsSectionHeader title={resolvedTitle} nested status={status} />}
     >
       <ProviderModelFields
         {...fieldsProps}

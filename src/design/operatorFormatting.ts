@@ -1,3 +1,6 @@
+import type { MessageKey } from '../shared/i18n/messageKeys.js';
+import { messageKeys } from '../shared/i18n/index.js';
+
 import type {
   CoreCheckpointRecord,
   CoreOrchestrationOutcomeRecord,
@@ -6,10 +9,41 @@ import type {
 } from '../core/types.js';
 
 export type OperatorSeverity = 'muted' | 'progress' | 'attention' | 'error' | 'success';
+type OperatorTranslate = (key: MessageKey, params?: Record<string, unknown>) => string;
+const fallbackOperatorTranslate: OperatorTranslate = (key) => {
+  const fallback: Partial<Record<MessageKey, string>> = {
+    [messageKeys.sharedOperatorNoTimestamp]: 'No timestamp',
+    [messageKeys.sharedOperatorRunStatusRunning]: 'Running',
+    [messageKeys.sharedOperatorRunStatusBlocked]: 'Blocked',
+    [messageKeys.sharedOperatorRunStatusCompleted]: 'Completed',
+    [messageKeys.sharedOperatorRunStatusFailed]: 'Failed',
+    [messageKeys.sharedOperatorRunStatusCancelled]: 'Cancelled',
+    [messageKeys.sharedOperatorRunStatusQueued]: 'Queued',
+    [messageKeys.sharedOperatorCheckpointStatusCompleted]: 'Completed',
+    [messageKeys.sharedOperatorCheckpointStatusCancelled]: 'Cancelled',
+    [messageKeys.sharedOperatorCheckpointStatusOpen]: 'Open',
+    [messageKeys.sharedOperatorOutcomeStatusSucceeded]: 'Succeeded',
+    [messageKeys.sharedOperatorOutcomeStatusBlocked]: 'Blocked',
+    [messageKeys.sharedOperatorOutcomeStatusFailed]: 'Failed',
+    [messageKeys.sharedOperatorOutcomeStatusCancelled]: 'Cancelled',
+    [messageKeys.sharedOperatorTraceKindApproval]: 'Approval',
+    [messageKeys.sharedOperatorTraceKindCheckpoint]: 'Checkpoint',
+    [messageKeys.sharedOperatorTraceKindDispatch]: 'Dispatch',
+    [messageKeys.sharedOperatorTraceKindError]: 'Error',
+    [messageKeys.sharedOperatorTraceKindOutcome]: 'Outcome',
+    [messageKeys.sharedOperatorTraceKindStatus]: 'Status',
+    [messageKeys.sharedOperatorTraceKindNote]: 'Note',
+  };
 
-export function formatOperatorTimestamp(timestamp: string | null): string {
+  return fallback[key] ?? String(key);
+};
+
+export function formatOperatorTimestamp(
+  timestamp: string | null,
+  t: OperatorTranslate = fallbackOperatorTranslate,
+): string {
   if (!timestamp) {
-    return 'No timestamp';
+    return t(messageKeys.sharedOperatorNoTimestamp);
   }
 
   const date = new Date(timestamp);
@@ -40,20 +74,23 @@ export function operatorSeverityClassName(severity: OperatorSeverity): string {
   }
 }
 
-export function runStatusLabel(status: CoreRunRecord['status']): string {
+export function runStatusLabel(
+  status: CoreRunRecord['status'],
+  t: OperatorTranslate = fallbackOperatorTranslate,
+): string {
   switch (status) {
     case 'running':
-      return 'Running';
+      return t(messageKeys.sharedOperatorRunStatusRunning);
     case 'blocked':
-      return 'Blocked';
+      return t(messageKeys.sharedOperatorRunStatusBlocked);
     case 'completed':
-      return 'Completed';
+      return t(messageKeys.sharedOperatorRunStatusCompleted);
     case 'failed':
-      return 'Failed';
+      return t(messageKeys.sharedOperatorRunStatusFailed);
     case 'cancelled':
-      return 'Cancelled';
+      return t(messageKeys.sharedOperatorRunStatusCancelled);
     default:
-      return 'Queued';
+      return t(messageKeys.sharedOperatorRunStatusQueued);
   }
 }
 
@@ -72,14 +109,17 @@ export function runStatusSeverity(status: CoreRunRecord['status']): OperatorSeve
   }
 }
 
-export function checkpointStatusLabel(status: CoreCheckpointRecord['status']): string {
+export function checkpointStatusLabel(
+  status: CoreCheckpointRecord['status'],
+  t: OperatorTranslate = fallbackOperatorTranslate,
+): string {
   switch (status) {
     case 'completed':
-      return 'Completed';
+      return t(messageKeys.sharedOperatorCheckpointStatusCompleted);
     case 'cancelled':
-      return 'Cancelled';
+      return t(messageKeys.sharedOperatorCheckpointStatusCancelled);
     default:
-      return 'Open';
+      return t(messageKeys.sharedOperatorCheckpointStatusOpen);
   }
 }
 
@@ -98,16 +138,17 @@ export function checkpointStatusSeverity(
 
 export function outcomeStatusLabel(
   status: CoreOrchestrationOutcomeRecord['status'],
+  t: OperatorTranslate = fallbackOperatorTranslate,
 ): string {
   switch (status) {
     case 'succeeded':
-      return 'Succeeded';
+      return t(messageKeys.sharedOperatorOutcomeStatusSucceeded);
     case 'blocked':
-      return 'Blocked';
+      return t(messageKeys.sharedOperatorOutcomeStatusBlocked);
     case 'failed':
-      return 'Failed';
+      return t(messageKeys.sharedOperatorOutcomeStatusFailed);
     default:
-      return 'Cancelled';
+      return t(messageKeys.sharedOperatorOutcomeStatusCancelled);
   }
 }
 
@@ -126,21 +167,24 @@ export function outcomeStatusSeverity(
   }
 }
 
-export function traceKindLabel(kind: CoreTraceRecord['kind']): string {
+export function traceKindLabel(
+  kind: CoreTraceRecord['kind'],
+  t: OperatorTranslate = fallbackOperatorTranslate,
+): string {
   switch (kind) {
     case 'approval':
-      return 'Approval';
+      return t(messageKeys.sharedOperatorTraceKindApproval);
     case 'checkpoint':
-      return 'Checkpoint';
+      return t(messageKeys.sharedOperatorTraceKindCheckpoint);
     case 'dispatch':
-      return 'Dispatch';
+      return t(messageKeys.sharedOperatorTraceKindDispatch);
     case 'error':
-      return 'Error';
+      return t(messageKeys.sharedOperatorTraceKindError);
     case 'outcome':
-      return 'Outcome';
+      return t(messageKeys.sharedOperatorTraceKindOutcome);
     case 'status':
-      return 'Status';
+      return t(messageKeys.sharedOperatorTraceKindStatus);
     default:
-      return 'Note';
+      return t(messageKeys.sharedOperatorTraceKindNote);
   }
 }

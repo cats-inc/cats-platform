@@ -1,4 +1,6 @@
 import React from 'react';
+import { useI18n } from '../../app/renderer/i18n/useI18n.js';
+import { messageKeys } from '../../shared/i18n/index.js';
 
 export function ProviderRegistryRecovery(input: {
   providerRegistryHint: string;
@@ -7,6 +9,8 @@ export function ProviderRegistryRecovery(input: {
   forceReloadProviderRegistry: () => void;
   hideRetry?: boolean;
 }) {
+  const { t } = useI18n();
+
   const {
     providerRegistryHint,
     canRetryProviderRegistry,
@@ -29,7 +33,7 @@ export function ProviderRegistryRecovery(input: {
             type="button"
             onClick={() => forceReloadProviderRegistry()}
           >
-            Retry
+            {t(messageKeys.sharedCommonRetry)}
           </button>
           {providerRegistrySetupHref ? (
             <a
@@ -38,7 +42,7 @@ export function ProviderRegistryRecovery(input: {
               target="_blank"
               rel="noreferrer"
             >
-              Open Cats Runtime setup
+              {t(messageKeys.sharedProviderModelFieldOpenRuntimeSetupLabel)}
             </a>
           ) : null}
         </div>
@@ -49,9 +53,9 @@ export function ProviderRegistryRecovery(input: {
             href={providerRegistrySetupHref}
             target="_blank"
             rel="noreferrer"
-          >
-            Open Cats Runtime setup
-          </a>
+            >
+              {t(messageKeys.sharedProviderModelFieldOpenRuntimeSetupLabel)}
+            </a>
         </div>
       ) : null}
     </>

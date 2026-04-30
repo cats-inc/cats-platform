@@ -7,6 +7,8 @@ import {
   listPlatformSurfaceDescriptors,
   platformSurfaceProductName,
 } from '../../core/platformSurface.js';
+import { useI18n } from '../../app/renderer/i18n/useI18n.js';
+import { messageKeys } from '../../shared/i18n/index.js';
 import {
   getPendingPlatformSurfaceMenuStyle,
   resolvePlatformSurfaceMenuStyle,
@@ -45,6 +47,7 @@ export function PlatformSurfaceSwitcher({
   onSelectSurface,
 }: PlatformSurfaceSwitcherProps) {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -119,9 +122,9 @@ export function PlatformSurfaceSwitcher({
       className="platformSurfaceMenu"
       style={menuStyle ?? getPendingPlatformSurfaceMenuStyle()}
       role="menu"
-      aria-label="Switch product"
+      aria-label={t(messageKeys.sharedPlatformSurfaceSwitcherMenuLabel)}
     >
-      <p className="platformSurfaceMenuHeading">CATS INC</p>
+      <p className="platformSurfaceMenuHeading">{t(messageKeys.appBrandName)}</p>
       <div className="platformSurfaceMenuList">
         {descriptors.map((descriptor) => {
           const current = descriptor.id === activeSurface;
@@ -184,7 +187,7 @@ export function PlatformSurfaceSwitcher({
           );
         }}
       >
-        Open Lobby
+        {t(messageKeys.sharedPlatformSurfaceSwitcherOpenLobby)}
       </button>
     </div>
   ) : null;
@@ -196,7 +199,9 @@ export function PlatformSurfaceSwitcher({
         className={open ? 'platformSurfaceTrigger isOpen' : 'platformSurfaceTrigger'}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label={`Switch product. Current product is ${platformSurfaceProductName(activeSurface)}.`}
+        aria-label={t(messageKeys.sharedPlatformSurfaceSwitcherAriaLabel, {
+          productName: platformSurfaceProductName(activeSurface),
+        })}
         onClick={() => setOpen((current) => !current)}
       >
         <span className="platformSurfaceTriggerRow">

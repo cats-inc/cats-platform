@@ -1,4 +1,8 @@
-import { messageKeys, type MessageKey } from './messageKeys.js';
+import {
+  messageKeys,
+  type MessageCatalogId,
+  type MessageKey,
+} from './messageKeys.js';
 import { enCatalog } from './catalogs/en.js';
 import { zhTWCatalog } from './catalogs/zh-TW.js';
 
@@ -7,8 +11,6 @@ export type MessageLocale = 'en' | 'zh-TW';
 export interface MessageInterpolationValues {
   [key: string]: unknown;
 }
-
-type MessageCatalogId = (typeof messageKeys)[MessageKey];
 
 export type MessageCatalog = Record<MessageCatalogId, string>;
 
@@ -39,12 +41,16 @@ export function createTranslator(locale: MessageLocale) {
     key: MessageKey,
     values?: MessageInterpolationValues,
   ): string {
-    const catalogKey = messageKeys[key];
+    const catalogKey = key in messageKeys
+      ? messageKeys[key as keyof typeof messageKeys]
+      : key as MessageCatalogId;
     return interpolateMessage(catalogs[locale][catalogKey] ?? catalogs.en[catalogKey], values);
   };
 }
 
 export const t = createTranslator('en');
 
+export { messageKeys };
 export const uiMessageKeys = messageKeys;
 export type { MessageKey };
+export type { MessageCatalogId };

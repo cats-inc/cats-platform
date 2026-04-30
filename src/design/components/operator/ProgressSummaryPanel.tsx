@@ -4,6 +4,8 @@ import {
   runStatusLabel,
   runStatusSeverity,
 } from '../../operatorFormatting';
+import { useI18n } from '../../../app/renderer/i18n/useI18n.js';
+import { messageKeys } from '../../../shared/i18n/index.js';
 
 export interface OperatorProgressSummaryRun {
   id: string;
@@ -70,17 +72,19 @@ export function ProgressSummaryPanel({
   onInspectRun,
   onOperatorAction,
 }: OperatorProgressSummaryPanelProps) {
+  const { t } = useI18n();
+
   return (
     <section className="operatorPanel">
       <div className="operatorPanelHeader">
         <div>
-          <p className="operatorEyebrow">Progress</p>
-          <h2>Run status</h2>
+          <p className="operatorEyebrow">{t(messageKeys.sharedOperatorEyebrowProgress)}</p>
+          <h2>{t(messageKeys.sharedOperatorRunStatusTitle)}</h2>
         </div>
       </div>
       {!inspector ? (
         <p className="operatorEmptyState">
-          No active room run yet. Start or continue the chat to inspect dispatch state.
+          {t(messageKeys.sharedOperatorNoActiveRun)}
         </p>
       ) : (
         <div className="operatorStack">
@@ -88,60 +92,110 @@ export function ProgressSummaryPanel({
             <div className="operatorCardHeader">
               <div>
                 <strong>{inspector.run.title}</strong>
-                <p>{inspector.run.summary ?? 'Room orchestration state is available for inspection.'}</p>
+                <p>
+                  {inspector.run.summary ?? t(messageKeys.sharedOperatorProgressSummaryFallback)}
+                </p>
               </div>
               <span
                 className={`operatorStatusBadge ${operatorSeverityClassName(runStatusSeverity(inspector.run.status as never))}`}
               >
-                {runStatusLabel(inspector.run.status as never)}
+                {runStatusLabel(inspector.run.status as never, t)}
               </span>
             </div>
             <div className="operatorMetricGrid">
               <div className="operatorMetricCard">
-                <span className="operatorMetricLabel">Dispatches</span>
+                <span className="operatorMetricLabel">
+                  {t(messageKeys.sharedOperatorMetricDispatches)}
+                </span>
                 <strong>{inspector.metrics.dispatchCount ?? '—'}</strong>
               </div>
               <div className="operatorMetricCard">
-                <span className="operatorMetricLabel">Continuations</span>
+                <span className="operatorMetricLabel">
+                  {t(messageKeys.sharedOperatorMetricContinuations)}
+                </span>
                 <strong>{inspector.metrics.continuationCount ?? '—'}</strong>
               </div>
               <div className="operatorMetricCard">
-                <span className="operatorMetricLabel">Targets</span>
+                <span className="operatorMetricLabel">
+                  {t(messageKeys.sharedOperatorMetricTargets)}
+                </span>
                 <strong>{inspector.metrics.targetCount ?? '—'}</strong>
               </div>
             </div>
             <div className="operatorMetaRow">
-              <span>Updated {formatOperatorTimestamp(inspector.run.updatedAt)}</span>
-              <span>{pendingApprovalCount} approval{pendingApprovalCount === 1 ? '' : 's'} pending</span>
+              <span>
+                {t(messageKeys.sharedOperatorMetaUpdated, {
+                  time: formatOperatorTimestamp(inspector.run.updatedAt, t),
+                })}
+              </span>
+              <span>
+                {pendingApprovalCount === 1
+                  ? t(messageKeys.sharedOperatorApprovalPendingSingular, {
+                    count: pendingApprovalCount,
+                  })
+                  : t(messageKeys.sharedOperatorApprovalPendingPlural, {
+                    count: pendingApprovalCount,
+                  })}
+              </span>
             </div>
             {inspector.workflowStageId || inspector.workflowShape ? (
               <div className="operatorMetaRow">
-                {inspector.workflowStageId ? <span>Stage: {inspector.workflowStageId}</span> : null}
-                {inspector.workflowShape ? <span>Shape: {inspector.workflowShape}</span> : null}
-                {inspector.reviewRequired ? <span>Review required</span> : null}
+                {inspector.workflowStageId ? (
+                  <span>
+                    {t(messageKeys.sharedOperatorMetaStage, {
+                      stage: inspector.workflowStageId,
+                    })}
+                  </span>
+                ) : null}
+                {inspector.workflowShape ? (
+                  <span>
+                    {t(messageKeys.sharedOperatorMetaShape, {
+                      shape: inspector.workflowShape,
+                    })}
+                  </span>
+                ) : null}
+                {inspector.reviewRequired ? (
+                  <span>{t(messageKeys.sharedOperatorMetaReviewRequired)}</span>
+                ) : null}
               </div>
             ) : null}
             {effectivePolicy ? (
               <div className="operatorMetaRow">
                 {effectivePolicy.deliveryMode ? (
-                  <span>Delivery: {effectivePolicy.deliveryMode}</span>
+                  <span>
+                    {t(messageKeys.sharedOperatorDeliveryLabel, {
+                      deliveryMode: effectivePolicy.deliveryMode,
+                    })}
+                  </span>
                 ) : null}
                 {effectivePolicy.deliveryGates.length > 0 ? (
-                  <span>Gates: {effectivePolicy.deliveryGates.join(', ')}</span>
+                  <span>
+                    {t(messageKeys.sharedOperatorGatesLabel, {
+                      gates: effectivePolicy.deliveryGates.join(', '),
+                    })}
+                  </span>
                 ) : null}
                 {effectivePolicy.budgetAlertLevel ? (
-                  <span>Budget: {effectivePolicy.budgetAlertLevel}</span>
+                  <span>
+                    {t(messageKeys.sharedOperatorBudgetLabel, {
+                      budgetLevel: effectivePolicy.budgetAlertLevel,
+                    })}
+                  </span>
                 ) : null}
               </div>
             ) : null}
             {guardReason ? (
               <div className="operatorCallout operatorCalloutAttention">
-                Guardrail: {guardReason}
+                {t(messageKeys.sharedOperatorMetaGuardrail, {
+                  guardrail: guardReason,
+                })}
               </div>
             ) : null}
             {cooldownLabel ? (
               <div className="operatorCallout operatorCalloutMuted">
-                Cooldown: {cooldownLabel}
+                {t(messageKeys.sharedOperatorMetaCooldown, {
+                  cooldown: cooldownLabel,
+                })}
               </div>
             ) : null}
             <div className="operatorActionRow">
@@ -150,7 +204,7 @@ export function ProgressSummaryPanel({
                 type="button"
                 onClick={() => onInspectRun(inspector.run.id)}
               >
-                Inspect run
+                {t(messageKeys.sharedOperatorInspectRunButton)}
               </button>
               {incidentActions.map((action) => (
                 <button
