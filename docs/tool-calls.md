@@ -438,8 +438,14 @@ subscribes only for its active `CanvasSurfaceRef`, applies matching
 intents, calls `navigate(targetUrl)`, waits for route commit, and
 acknowledges with `POST /api/canvas/intents/:intentId/ack`. Pending
 intents have a 30-second TTL and replay only to the same active surface
-subscription while unacknowledged. The tool does NOT mutate any product
-`metadata`.
+subscription while unacknowledged. `intentId` is a server-generated
+unguessable secret used as the ack capability — it does NOT appear in
+the Activity record, projection response, or tool-result payloads, and
+the public correlation handle is `activityId` instead. The ack
+endpoint requires the same session credentials the renderer used to
+open the subscription and returns the same idempotent 200 body for
+unknown / unauthorized / TTL-expired intent ids. The tool does NOT
+mutate any product `metadata`.
 
 Core rules (the SPEC-101 source-of-truth covers full validation, the
 runtime preview origin allowlist schema, and the presentation resolution

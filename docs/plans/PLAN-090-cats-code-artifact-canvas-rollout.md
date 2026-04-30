@@ -170,17 +170,32 @@ process-supervision and security review (Phase 4).
       `(surfaceKind, surfaceId)` — e.g.
       `('code_task', 'task-abc')`. This stream may share the same
       app push connection as ADR-075, but it must not be implemented
-      as an ADR-075 entity snapshot / patch. The renderer subscribes
-      for the surface it currently has mounted, applies only matching
-      intents, calls `navigate(targetUrl)`, waits for route commit, and
-      acknowledges by `POST /api/canvas/intents/:intentId/ack`. Phase 1
-      TTL is 30 seconds from `triggeredAt`; server may replay only
-      unacknowledged intents for the same active subscription while TTL
-      is live. Duplicate `intentId` handling is idempotent: navigate is
-      a same-URL no-op and the renderer still repeats the ack. If no
-      renderer is currently subscribed for the target surface, the
-      server does not queue the intent for later automatic navigation.
-      The Activity record / tool result remain the durable audit.
+      as an ADR-075 entity snapshot / patch.
+      `intentId` is a server-generated unguessable secret (>= 128 bits,
+      base64url) that MUST NOT appear in Activity records, projection
+      responses, transcript tool results, or cross-actor logs — the
+      public correlation handle is `activityId`.
+      The ack endpoint
+      `POST /api/canvas/intents/:intentId/ack` requires the same
+      session credentials the renderer used to open the render-intent
+      subscription; on session mismatch the server returns the same
+      response body as for unknown / TTL-expired intents (200 with the
+      idempotent body) so an unauthorized caller cannot probe.
+      Server-side ack idempotency: the endpoint always returns 200 for
+      unknown `intentId`, already-acked, or TTL-expired entries.
+      Renderer ack delivery is best-effort with up to 3 exponential
+      retries (250 ms, 500 ms, 1 s; total wall time < TTL/2 = 15 s);
+      failure to ack does NOT trigger a re-navigate.
+      The renderer subscribes for the surface it currently has mounted,
+      applies only matching intents, calls `navigate(targetUrl)`, waits
+      for route commit, then POSTs the ack. Phase 1 TTL is 30 seconds
+      from `triggeredAt`; server may replay only unacknowledged intents
+      for the same active subscription while TTL is live. Duplicate
+      `intentId` handling is idempotent: navigate is a same-URL no-op
+      and the renderer still repeats the ack. If no renderer is
+      currently subscribed for the target surface, the server does not
+      queue the intent for later automatic navigation. The Activity
+      record / tool result remain the durable audit.
 - [ ] Task 1.11: Extend `CoreActivityKind` in `src/core/types.ts` with
       `artifact_canvas_show_intent` and `artifact_canvas_clear_intent`.
       Update any Activity filters / projections / tests that enumerate
@@ -194,6 +209,22 @@ process-supervision and security review (Phase 4).
       top-level anchor. `code_codespace` is the only Phase 1 surface
       whose `surfaceId` is metadata-authoritative because Core Activity
       has no codespace anchor field.
+      Add a historical-snapshot test: change a referenced
+      `CoreTaskRecord.productBinding` after Activity write and assert
+      the recorded `metadata.surfaceKind` is unchanged (Activity is a
+      historical snapshot; do not retroactively rewrite). Add a
+      backfill test: bulk update / migration code does not touch
+      existing `metadata.surfaceKind` values.
+- [ ] Task 1.13: Add ack-endpoint security tests. (a) An ack request
+      whose session does not own the intent is rejected with the same
+      idempotent 200 body as for unknown `intentId` (the server must
+      not leak existence). (b) An ack from the owning session for a
+      live intent succeeds, drops the intent from the replay queue,
+      and is observable by the absence of further pushes. (c)
+      Repeated acks from the owning session continue to return 200.
+      (d) `intentId` does not appear in Activity record bodies, the
+      projection response, or any other surface readable by a
+      different session.
 
 **Deliverables**: Platform-shared contract types, iframe-policy module
 with allowlists / canonicalization, Code assistant-effect processor
@@ -293,7 +324,7 @@ this plan before Phase 4 approval.
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/products/shared/artifactCanvas/contracts.ts` | Create | Platform-shared `ArtifactCanvasProjection`, `ArtifactCanvasNavigateIntent`, `CanvasSurfaceRef` with single valid surface enum, discriminated `CanvasUrlParse`, `CanvasSurfaceRouteRegistry`, tool input/result types, error code union |
+| `src/products/shared/artifactCanvas/contracts.ts` | Create | Platform-shared `ArtifactCanvasProjection`, `ArtifactCanvasNavigateIntent`, `CanvasSurfaceRef` with single valid surface enum, discriminated `CanvasUrlParse`, `CanvasSurfaceRouteRegistry`, `CanvasSurfaceAnchorSource` typed union, tool input/result types, error code union |
 | `src/products/shared/artifactCanvas/iframePolicy.ts` | Create | Platform-shared origin allowlist matcher (host normalization + bracket strip + scheme + port), producer allowlist lookup, scheme allowlist, credential URL rejector, `policyVersion` canonicalization + digest helper |
 | `src/products/shared/artifactCanvas/renderIntentStream.ts` | Create | Platform render-intent stream for `ArtifactCanvasNavigateIntent`; TTL + ack semantics; not an ADR-075 entity snapshot |
 | `src/core/types.ts` | Modify | Add `artifact_canvas_show_intent` / `artifact_canvas_clear_intent` to `CoreActivityKind` |
@@ -580,6 +611,7 @@ this plan before Phase 4 approval.
 | 2026-04-30 | Sixth-round architectural pivot under ADR-098: visible canvas state moved from `CoreTaskRecord.metadata.codeCanvasFocus` to URL nested child route `/canvas/:artifactId`; canvas pane and iframe viewer promoted from Code-product to platform-shared (`src/products/shared/renderer/`) so Cats Work and Cats Chat can mount the same pane against any anchored artifact; `show_in_canvas` / `clear_canvas` effect changed from "write task metadata" to "write Activity audit + push navigate intent"; user close becomes renderer-only `navigate()` (no server delegate); `clear_canvas` accepted result drops the legacy `cleared: true` boolean in favor of `targetUrl`; ADR-097 superseded; `platform-viewer-policy.md` added as the operational entry point for cross-product viewer decisions. All hard-won security policy from rounds 1-5 (sandbox profiles, two flat-array allowlists with structured schema, hostname normalization with manual IPv6 bracket strip, scripted preview producer allowlist defaulting empty, credential URL hard reject, scheme allowlist hard reject, scope+producer-keyed declaration index, policyVersion canonicalization) survives intact and relocates with the platform viewer. |
 | 2026-04-30 | Seventh-round URL / platform contract follow-up: made the projection API surface-scoped instead of artifact-only; added `CanvasSurfaceRouteRegistry`; preserved explicit presentation requests in URL via `/view/:presentation`; replaced Code-named projection / navigate-intent / Activity kinds with artifact-canvas names; clarified the render-intent stream is a TTL + ack platform stream, not an ADR-075 entity patch; and added `src/core/types.ts` to the implementation surface for the new Activity kinds. |
 | 2026-04-30 | Eighth-round contract follow-up: collapsed `CanvasSurfaceRef` to one valid surface enum; added Work task as a legal canvas surface; made `CanvasSurfaceRouteRegistry.parse()` a discriminated union; pinned Activity anchor-vs-metadata source-of-truth rules; defined render-intent ack / TTL / replay / duplicate handling; added route round-trip invariants; and updated ADR-075 to name non-entity render intents as transport users, not entity patches. |
+| 2026-04-30 | Ninth-round security + audit follow-up: pinned `intentId` as a >=128-bit unguessable capability secret that MUST NOT appear in Activity records, projection responses, or transcript tool results (`activityId` remains the public correlation handle); required the ack endpoint to verify the caller's session matches the intent's target session and to return the same idempotent 200 body for unknown / unauthorized / TTL-expired intentId values to prevent probing; defined renderer ack as best-effort with up to 3 exponential retries (250 / 500 / 1000 ms, capped at TTL/2 = 15 s) and no re-navigate on retry exhaustion; promoted `CanvasSurfaceAnchorSource` to a typed TypeScript union; pinned the historical-snapshot rule for `metadata.surfaceKind` (Activity records are not retroactively rewritten when a referenced task's `productBinding` changes); added the future-anchor-less-surface fallback principle (prefer adding a top-level Core Activity anchor over going metadata-authoritative; the latter requires its own ADR); added Tasks 1.13 ack-security tests and historical-snapshot test in 1.12. |
 
 ---
 

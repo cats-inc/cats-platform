@@ -424,7 +424,17 @@ keyed by the caller's surface:
 ```ts
 interface ArtifactCanvasNavigateIntent {
   kind: 'artifact_canvas_navigate_intent';
+  // Server-generated unguessable secret (>=128 bits of entropy,
+  // base64url-encoded). Treated as a capability token: knowing
+  // intentId is sufficient to ack the intent. Therefore intentId
+  // MUST NOT appear in any artifact-visible surface — Activity
+  // metadata, projection responses, transcript tool results, log
+  // lines indexed alongside conversations, etc. Use activityId for
+  // anything user-visible / cross-actor; keep intentId on the push
+  // connection and the ack endpoint only.
   intentId: string;
+  // Stable Activity record id for audit / transcript correlation.
+  // This IS the public correlation handle and may appear anywhere.
   activityId: string;
   surface: CanvasSurfaceRef;
   // The full nested-route path the renderer should navigate to. Server
@@ -476,9 +486,72 @@ POST /api/canvas/intents/:intentId/ack
 
 If a future bidirectional transport replaces the stream, it may carry an
 equivalent `{ kind: 'artifact_canvas_intent_ack', intentId }` frame, but
-the acknowledgement semantics stay the same.
+the acknowledgement semantics (and authorization rules) stay the same.
 
-Protocol invariants:
+###### intentId-as-capability and ack authorization
+
+`intentId` is a capability token, not a public id:
+
+- the server generates `intentId` with at least 128 bits of entropy,
+  base64url-encoded, and never replays the same value across intents;
+- `intentId` MUST NOT appear in: the Activity record body, the
+  projection response, transcript tool results, render-intent
+  subscriber broadcasts other than the targeted subscriber, or any
+  log line indexed alongside cross-actor data. Audit / transcript
+  correlation uses `activityId`, which is stable and public;
+- `intentId` flows on exactly two paths: from server out to the
+  targeted subscriber's push connection, and from that subscriber back
+  on `POST /api/canvas/intents/:intentId/ack`.
+
+The ack endpoint requires authorization:
+
+- the request MUST carry the same session credentials (cookie / auth
+  header) the renderer used to open the render-intent subscription;
+- the server resolves the request's session, looks up the pending
+  intent by `intentId`, and rejects with `403` when the intent's
+  target session does not match. A 403 is NOT a hint that the
+  `intentId` exists — the response body is the same as for an unknown
+  `intentId` (see idempotency rule below) so an unauthorized caller
+  cannot probe;
+- session-bound auth means an attacker who scrapes `intentId` from a
+  log file or memory dump still cannot ack it from another session.
+
+###### Server-side ack idempotency
+
+The ack endpoint is idempotent by design — renderers retry under
+network failure and the server must not let "ack already received" or
+"intent already TTL-expired" look like a hard failure:
+
+- first ack for a live intent: server marks intent as acked, drops it
+  from the replay queue, returns `200 OK`;
+- second-and-later ack for the same `intentId` (already acked or
+  TTL-expired): server returns `200 OK` with the same body shape. The
+  renderer cannot tell the difference and does not need to;
+- ack for an unknown / never-issued `intentId`: returns `200 OK` with
+  the same body. This is intentional — combined with session-bound
+  auth, this prevents probing for valid `intentId` values; an
+  unauthorized caller never sees a `404` or `403` distinguishable
+  from a normal accept.
+
+###### Renderer ack retry policy
+
+Renderer ack delivery is best-effort. The protocol guarantees the URL
+is correct after navigate; the ack is purely a hint that lets the
+server stop replaying:
+
+- after route commit, the renderer POSTs the ack;
+- on transport failure (network error, 5xx), the renderer retries up
+  to 3 times with exponential backoff (250 ms, 500 ms, 1 s), capped
+  at 15 seconds total wall time (TTL/2);
+- on retry exhaustion, the renderer gives up. It does NOT re-navigate
+  — the URL is already correct, and the worst case is one duplicate
+  push from the server within TTL, which the renderer also
+  treats idempotently (no-op navigate, ack again);
+- on `200` response, the renderer stops retrying immediately. There
+  is no need to confirm "really acked" because the server's ack
+  endpoint is idempotent.
+
+###### Other protocol invariants
 
 - server creates `intentId`, writes the Activity record, and starts a
   30-second TTL window at `triggeredAt`;
@@ -505,6 +578,13 @@ Protocol invariants:
 Each accepted `show_in_canvas` writes one Activity record:
 
 ```ts
+type CanvasSurfaceAnchorSource =
+  | 'taskId'
+  | 'workItemId'
+  | 'projectId'
+  | 'conversationId'
+  | 'metadata';
+
 {
   kind: 'artifact_canvas_show_intent',
   artifactId,
@@ -512,7 +592,7 @@ Each accepted `show_in_canvas` writes one Activity record:
   metadata: {
     surfaceKind,
     surfaceId,
-    surfaceAnchorSource, // taskId | workItemId | projectId | conversationId | metadata
+    surfaceAnchorSource, // typed CanvasSurfaceAnchorSource
     presentationRequested,
     presentationResolved,
     iframeSandboxProfile,
@@ -523,6 +603,11 @@ Each accepted `show_in_canvas` writes one Activity record:
 }
 ```
 
+`CanvasSurfaceAnchorSource` is exported from
+`src/products/shared/artifactCanvas/contracts.ts` so server writers
+and projection / activity readers reference one canonical union
+instead of free strings.
+
 `clear_canvas` writes a sibling `artifact_canvas_clear_intent` Activity
 record. These records are the durable audit trail. They are not the
 visible state. Implementation must add these Activity kinds to
@@ -532,14 +617,14 @@ Activity filters / projections that enumerate known kinds.
 Activity top-level anchors are the source of truth for surfaces backed
 by Core anchor fields:
 
-| `surfaceKind` | Top-level Activity anchor source |
-|---------------|----------------------------------|
-| `code_task` | `taskId` |
-| `work_task` | `taskId` |
-| `work_item` | `workItemId` |
-| `work_project` | `projectId` |
-| `chat_conversation` | `conversationId` |
-| `code_codespace` | `metadata.surfaceId` (`surfaceAnchorSource = 'metadata'`) |
+| `surfaceKind` | Top-level Activity anchor source | `surfaceAnchorSource` |
+|---------------|----------------------------------|------------------------|
+| `code_task` | `taskId` | `'taskId'` |
+| `work_task` | `taskId` | `'taskId'` |
+| `work_item` | `workItemId` | `'workItemId'` |
+| `work_project` | `projectId` | `'projectId'` |
+| `chat_conversation` | `conversationId` | `'conversationId'` |
+| `code_codespace` | `metadata.surfaceId` | `'metadata'` |
 
 `metadata.surfaceKind`, `metadata.surfaceId`, and
 `metadata.surfaceAnchorSource` are derived audit convenience fields.
@@ -550,7 +635,55 @@ conflict must trust the top-level Activity anchor over metadata. The
 `code_task` vs `work_task` distinction is derived from the referenced
 `CoreTaskRecord`'s product binding, not from a free metadata value. The
 only Phase 1 exception is `code_codespace`, which has no top-level Core
-Activity anchor field; there `metadata.surfaceId` is authoritative.
+Activity anchor field; there `metadata.surfaceId` is authoritative and
+`surfaceAnchorSource` is `'metadata'`.
+
+###### Historical-snapshot rule for `metadata.surfaceKind`
+
+`CoreTaskRecord.productBinding` can change after the Activity record is
+written (see terminology.md tenth-round follow-up: chat-originated
+tasks may later be promoted to a Code or Work binding through draft
+activation). The recorded `metadata.surfaceKind` is a **historical
+snapshot** of the binding at write time and is never retroactively
+rewritten:
+
+- Writers stamp `metadata.surfaceKind` from the task's binding at the
+  moment of the Activity write.
+- Readers who only need a stable audit value (e.g. "what surface did
+  the assistant ask the user to navigate to?") use the recorded
+  `metadata.surfaceKind` directly.
+- Readers who need the **current** surfaceKind for the same anchored
+  task (e.g. for a "go to current canvas for this task" affordance)
+  must re-derive from the anchored task's current `productBinding` and
+  may produce a different value than the historical metadata.
+
+Backfill / migration code that updates Activity records in bulk MUST
+NOT touch existing `metadata.surfaceKind`; the historical value is
+preserved by definition.
+
+###### Future anchor-less canvas surfaces
+
+`code_codespace` is the only Phase 1 surface that goes
+metadata-authoritative because Core Activity has no codespace anchor
+field. When future canvas surfaces appear without a corresponding
+top-level Activity anchor, the order of preference is:
+
+1. **Add a new top-level Activity anchor** in
+   `CoreActivityRecord` (as a sibling to `taskId` / `workItemId` /
+   `projectId` / `conversationId`) under ADR-081's Materialization-tier
+   guidance, and use it as the anchor source. This is the strongly
+   preferred path for any surface that has a stable Core record family
+   it can point at.
+2. **Fall back to metadata-authoritative** (`surfaceAnchorSource =
+   'metadata'`) only when (a) the surface is genuinely not first-class
+   in Core (e.g. a transient projection-only entity), and (b) the
+   trade-off has been documented in a follow-up ADR. The downside of
+   this path is weaker audit query — you cannot fan out queries on the
+   anchor field — and it should only be accepted when option 1 is not
+   appropriate.
+
+Adding a new metadata-authoritative surface without an ADR is not
+allowed, even when it would be technically simpler than extending Core.
 
 #### Notes on policy and authority
 

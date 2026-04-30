@@ -115,9 +115,13 @@ intent, not for visible state:
   but it is not a generic `subscribeEntity` entity snapshot / patch.
   Intents are short-lived (Phase 1 TTL: 30 seconds), acknowledged by
   `POST /api/canvas/intents/:intentId/ack`, and applied only to the
-  currently mounted surface. The renderer receives a matching intent,
-  calls `navigate()`, then acknowledges after route commit. The URL
-  changes; the viewer remounts.
+  currently mounted surface. `intentId` is a server-generated
+  unguessable capability secret that does not appear in audit /
+  projection / tool-result surfaces (the public correlation handle is
+  `activityId`). The ack endpoint is session-bound and idempotent (see
+  SPEC-101 §Render-Intent Stream Protocol). The renderer receives a
+  matching intent, calls `navigate()`, then acknowledges after route
+  commit. The URL changes; the viewer remounts.
 - User actions on the canvas (close, switch artifact via sidebar click)
   are renderer-only `navigate()` calls. They do **not** require server
   writes.
