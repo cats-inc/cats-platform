@@ -18,6 +18,7 @@ export const enCatalog: MessageCatalog = {
   'appHost.sectionPublisher': 'Publisher',
   'shared.productRenderer.errorEyebrow': 'Renderer Error',
   'shared.productRenderer.chatUnavailableTitle': 'Chat unavailable',
+  'shared.product.bootLoadingAria': 'Loading Cats {productName}',
   'lobby.accountSettingsAriaLabel': 'Account settings',
   'lobby.openAccountSettings': 'Open account settings',
   'lobby.runtimeStatusLabel': 'Runtime status: {runtimeStatus}',
@@ -1028,6 +1029,8 @@ export const enCatalog: MessageCatalog = {
   'work.item.loadingTitle': 'Loading work item',
   'work.item.relatedWorkItemTitle': 'Related work item',
   'chat.newChatDraft.sidePanelTitle': 'New Chat Setup',
+  'chat.newChatDraft.generatedTitle': 'New chat',
+  'chat.newChatDraft.generatedTitleWithIndex': 'New chat {index}',
   'chat.sidebar.primaryAction.newChat': 'New chat',
   'chat.sidebar.primaryAction.groupChat': 'Group chat',
   'chat.sidebar.primaryAction.parallelChat': 'Parallel chat',
@@ -1321,6 +1324,8 @@ export const enCatalog: MessageCatalog = {
   'chat.newChatDraft.startVoiceInputAria': 'Start voice input',
   'chat.newChatDraft.stopVoiceInputAria':
     'Stop voice input{privacyMessageSuffix}',
+  'chat.audience.removeParticipantAria': 'Remove {name}',
+  'chat.audience.removeParticipantFromAudienceAria': 'Remove {name} from audience',
   'shared.voiceInput.error.notAllowed':
     'Microphone access was denied. Check your system and browser permissions.',
   'shared.voiceInput.error.serviceNotAllowed':

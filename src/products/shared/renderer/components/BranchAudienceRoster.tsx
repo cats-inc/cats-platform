@@ -1,5 +1,7 @@
 import { catInitials } from '../workspaceChatUtils.js';
 import type { DraftComposerStackParticipant } from './chatNewChatDraftSupport.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
 
 export interface BranchAudienceRosterProps {
   audienceParticipants: DraftComposerStackParticipant[];
@@ -30,6 +32,7 @@ export function BranchAudienceRoster({
   onAvatarClick,
   onRemoveParticipant,
 }: BranchAudienceRosterProps) {
+  const { t } = useI18n();
   if (audienceParticipants.length <= 1) return null;
   return (
     <>
@@ -65,7 +68,9 @@ export function BranchAudienceRoster({
             <button
               type="button"
               className={`composerGroupAvatarRemove${useDangerRemoveHover ? ' composerGroupAvatarRemoveDanger' : ''}`}
-              aria-label={`Remove ${participant.name}`}
+              aria-label={t(messageKeys.chatAudienceRemoveParticipantAria, {
+                name: participant.name,
+              })}
               disabled={isSubmittingFirstTurn}
               onClick={() => onRemoveParticipant(participant)}
             >

@@ -18,6 +18,7 @@ export const zhTWCatalog: MessageCatalog = {
   'appHost.sectionPublisher': '提供者',
   'shared.productRenderer.errorEyebrow': 'Renderer 錯誤',
   'shared.productRenderer.chatUnavailableTitle': 'Chat 無法使用',
+  'shared.product.bootLoadingAria': '正在載入 Cats {productName}',
   'lobby.accountSettingsAriaLabel': '帳號設定',
   'lobby.openAccountSettings': '開啟帳號設定',
   'lobby.runtimeStatusLabel': '執行階段狀態：{runtimeStatus}',
@@ -994,6 +995,8 @@ export const zhTWCatalog: MessageCatalog = {
   'work.item.loadingTitle': '載入工作項目',
   'work.item.relatedWorkItemTitle': '關聯工作項目',
   'chat.newChatDraft.sidePanelTitle': '新增聊天室設定',
+  'chat.newChatDraft.generatedTitle': '新增對話',
+  'chat.newChatDraft.generatedTitleWithIndex': '新增對話 {index}',
   'chat.sidebar.primaryAction.newChat': '新增聊天',
   'chat.sidebar.primaryAction.groupChat': '新增群組聊天',
   'chat.sidebar.primaryAction.parallelChat': '新增平行聊天',
@@ -1278,6 +1281,8 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.newChatDraft.sendAllChatsAria': '送出給全部聊天室',
   'chat.newChatDraft.startVoiceInputAria': '開始語音輸入',
   'chat.newChatDraft.stopVoiceInputAria': '停止語音輸入{privacyMessageSuffix}',
+  'chat.audience.removeParticipantAria': '移除 {name}',
+  'chat.audience.removeParticipantFromAudienceAria': '從受眾移除 {name}',
   'shared.voiceInput.error.notAllowed':
     '麥克風存取遭拒。請檢查系統與瀏覽器權限。',
   'shared.voiceInput.error.serviceNotAllowed':

@@ -222,10 +222,18 @@ export function resolveTranscriptMessageSpeaker(
   return { kind: 'none', label: null, cat: null };
 }
 
-export function createDraftChannelTitle(body: string, existingCount: number): string {
+export function createDraftChannelTitle(
+  body: string,
+  existingCount: number,
+  t: WorkspaceChatTranslator = defaultWorkspaceChatTranslator,
+): string {
   const normalized = body.replace(/\s+/g, ' ').trim();
   if (!normalized) {
-    return existingCount > 0 ? `New chat ${existingCount + 1}` : 'New chat';
+    return existingCount > 0
+      ? t(messageKeys.chatNewChatDraftGeneratedTitleWithIndex, {
+          index: existingCount + 1,
+        })
+      : t(messageKeys.chatNewChatDraftGeneratedTitle);
   }
 
   return normalized.slice(0, 48);
@@ -264,6 +272,7 @@ export function buildNewChatChannelInput(options: {
     instance: string | null;
     modelSelection?: ProviderModelSelection | null;
   };
+  t?: WorkspaceChatTranslator;
 }): CreateChatChannelInput {
   const {
     body,
@@ -276,6 +285,7 @@ export function buildNewChatChannelInput(options: {
     participantCatIds = [],
     temporaryParticipants = [],
     draftExecutionTarget,
+    t,
   } = options;
   const normalizedLeadCatId = defaultRecipientCatId?.trim() || null;
   const normalizedParticipantCatIds = participantCatIds.filter((id) => id !== normalizedLeadCatId);
@@ -287,7 +297,7 @@ export function buildNewChatChannelInput(options: {
     policy: draftSessionPolicy,
   });
   const baseInput: CreateChatChannelInput = {
-    title: createDraftChannelTitle(body, existingCount),
+    title: createDraftChannelTitle(body, existingCount, t),
     topic: createDraftChannelTopic(body),
     originSurface,
     entryKind: resolvedEntryKind,
@@ -594,9 +604,15 @@ export function preserveOptimisticUserMessageAfterRefresh(
   return next;
 }
 
-export function renderBootShell(productName: string) {
+export function renderBootShell(
+  productName: string,
+  t: WorkspaceChatTranslator = defaultWorkspaceChatTranslator,
+) {
   return (
-    <div className="screen bootShell" aria-label={`Loading Cats ${productName}`}>
+    <div
+      className="screen bootShell"
+      aria-label={t(messageKeys.sharedProductBootLoadingAria, { productName })}
+    >
       <div className="bootSpinner" aria-hidden="true" />
     </div>
   );

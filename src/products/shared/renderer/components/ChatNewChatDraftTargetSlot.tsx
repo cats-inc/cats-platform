@@ -9,6 +9,8 @@ import { ComposerCatStack } from './ComposerCatStack.js';
 import type { ExecutionTargetValue } from './ExecutionTarget.js';
 import { AudienceChip } from './AudienceChip.js';
 import { buildAudienceParticipantFromExecutionTarget } from '../audienceParticipantBuilder.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
 
 interface GroupComposerParticipant {
   key: string;
@@ -54,6 +56,8 @@ export function ChatNewChatDraftTargetSlot({
   onRemoveDraftTemporaryParticipant,
   onRemoveFromAudience,
 }: ChatNewChatDraftTargetSlotProps) {
+  const { t } = useI18n();
+
   if (isGroupDraft) {
     if (groupComposerParticipants.length === 0) {
       return null;
@@ -101,7 +105,9 @@ export function ChatNewChatDraftTargetSlot({
                 <button
                   type="button"
                   className="composerStackRemove"
-                  aria-label={`Remove ${participant.name} from audience`}
+                  aria-label={t(messageKeys.chatAudienceRemoveParticipantFromAudienceAria, {
+                    name: participant.name,
+                  })}
                   onClick={(event) => {
                     event.stopPropagation();
                     onRemoveFromAudience(participant.key);
@@ -156,4 +162,3 @@ export function ChatNewChatDraftTargetSlot({
 
   return null;
 }
-

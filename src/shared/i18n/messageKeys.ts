@@ -17,6 +17,7 @@ export const messageKeys = {
   sharedProductRendererErrorEyebrow: 'shared.productRenderer.errorEyebrow',
   sharedProductRendererChatUnavailableTitle:
     'shared.productRenderer.chatUnavailableTitle',
+  sharedProductBootLoadingAria: 'shared.product.bootLoadingAria',
   lobbyAccountSettingsAriaLabel: 'lobby.accountSettingsAriaLabel',
   lobbyOpenAccountSettings: 'lobby.openAccountSettings',
   lobbyRuntimeStatusLabel: 'lobby.runtimeStatusLabel',
@@ -992,6 +993,9 @@ export const messageKeys = {
   workItemLoadingTitle: 'work.item.loadingTitle',
   workItemRelatedWorkItemTitle: 'work.item.relatedWorkItemTitle',
   chatNewChatDraftSidePanelTitle: 'chat.newChatDraft.sidePanelTitle',
+  chatNewChatDraftGeneratedTitle: 'chat.newChatDraft.generatedTitle',
+  chatNewChatDraftGeneratedTitleWithIndex:
+    'chat.newChatDraft.generatedTitleWithIndex',
   chatSidebarPrimaryActionNewChat: 'chat.sidebar.primaryAction.newChat',
   chatSidebarPrimaryActionGroupChat: 'chat.sidebar.primaryAction.groupChat',
   chatSidebarPrimaryActionParallelChat: 'chat.sidebar.primaryAction.parallelChat',
@@ -1316,6 +1320,9 @@ export const messageKeys = {
   chatNewChatDraftSendAllChatsAria: 'chat.newChatDraft.sendAllChatsAria',
   chatNewChatDraftStartVoiceInputAria: 'chat.newChatDraft.startVoiceInputAria',
   chatNewChatDraftStopVoiceInputAria: 'chat.newChatDraft.stopVoiceInputAria',
+  chatAudienceRemoveParticipantAria: 'chat.audience.removeParticipantAria',
+  chatAudienceRemoveParticipantFromAudienceAria:
+    'chat.audience.removeParticipantFromAudienceAria',
   sharedVoiceInputErrorNotAllowed: 'shared.voiceInput.error.notAllowed',
   sharedVoiceInputErrorServiceNotAllowed:
     'shared.voiceInput.error.serviceNotAllowed',

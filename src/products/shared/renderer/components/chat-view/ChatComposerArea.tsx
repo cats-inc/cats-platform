@@ -233,7 +233,9 @@ export function ChatComposerArea({
                   type="button"
                   disabled={composerBusy}
                   onClick={() => onChannelFilesChange(channelFiles.filter((_, i) => i !== index))}
-                  aria-label={`Remove ${file.name}`}
+                  aria-label={t(messageKeys.chatNewChatDraftAttachmentRemoveAria, {
+                    fileName: file.name,
+                  })}
                 >
                   &times;
                 </button>
