@@ -9,19 +9,6 @@ function readEntityLabel(value: string | null | undefined, fallback: string): st
   return trimmed ? trimmed : fallback;
 }
 
-export function buildDeleteConversationConfirmation(
-  conversationTitle?: string | null,
-): DeleteConfirmationCopy {
-  const label = readEntityLabel(conversationTitle, 'this conversation');
-  return {
-    title: 'Delete conversation',
-    message: `Delete "${label}"? This removes the conversation `
-      + 'and cleans up linked runtime sessions. '
-      + 'This cannot be undone.',
-    confirmLabel: 'Delete',
-  };
-}
-
 export function buildDeleteParallelChatGroupConfirmation(
   groupTitle?: string | null,
 ): DeleteConfirmationCopy {

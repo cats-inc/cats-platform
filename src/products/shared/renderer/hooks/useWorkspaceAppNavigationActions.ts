@@ -37,7 +37,6 @@ import type { DeleteChatChannelResult } from '../api/chat.js';
 import { resetComposerDraftState } from '../composerDraftState.js';
 import {
   buildDeleteCatConfirmation,
-  buildDeleteConversationConfirmation,
   buildDeleteParallelChatGroupConfirmation,
 } from '../deleteConfirmations.js';
 import { syncDesktopHostPlatformShellState } from '../../../../app/renderer/setup/desktopHostBridge.js';
@@ -318,14 +317,6 @@ export function useWorkspaceAppNavigationActions<
   }, [navigationApi, setBusy, setFeedback, setState]);
 
   const onDeleteChannel = useCallback(async (channelId: string): Promise<void> => {
-    const channelTitle = state.status === 'ready'
-      ? (state.payload.chat.channels.find((channel) => channel.id === channelId)?.title ?? null)
-      : null;
-    const confirmed = confirmDialog
-      ? await confirmDialog(buildDeleteConversationConfirmation(channelTitle))
-      : true;
-    if (!confirmed) return;
-
     setBusy(createChannelBusyState('delete', channelId));
     try {
       const result = await navigationApi.deleteChatChannel(channelId);
@@ -351,7 +342,6 @@ export function useWorkspaceAppNavigationActions<
     }
   }, [
     chatPrefix,
-    confirmDialog,
     navigate,
     navigationApi,
     platformShellSurface,
@@ -359,7 +349,6 @@ export function useWorkspaceAppNavigationActions<
     setBusy,
     setFeedback,
     setState,
-    state,
   ]);
 
   const onRenameParallelChatGroup = useCallback(async (
