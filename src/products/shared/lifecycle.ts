@@ -1,4 +1,10 @@
+import { createTranslator, messageKeys, type MessageKey } from '../../shared/i18n/index.js';
+
 export type ChatLifecycleState = 'sleeping' | 'waking_up' | 'awake' | 'error';
+
+type TranslateMessage = (key: MessageKey) => string;
+
+const defaultTranslator = createTranslator('en');
 
 export function resolveChatLifecycleState(
   status: string | null | undefined,
@@ -15,17 +21,24 @@ export function resolveChatLifecycleState(
   }
 }
 
-export function chatLifecycleLabel(state: ChatLifecycleState): string {
+export function chatLifecycleLabelKey(state: ChatLifecycleState): MessageKey {
   switch (state) {
     case 'awake':
-      return 'Awake';
+      return messageKeys.chatLifecycleAwakeLabel;
     case 'waking_up':
-      return 'Waking up';
+      return messageKeys.chatLifecycleWakingUpLabel;
     case 'error':
-      return 'Needs attention';
+      return messageKeys.chatLifecycleNeedsAttentionLabel;
     default:
-      return 'Sleeping';
+      return messageKeys.chatLifecycleSleepingLabel;
   }
+}
+
+export function chatLifecycleLabel(
+  state: ChatLifecycleState,
+  t: TranslateMessage = defaultTranslator,
+): string {
+  return t(chatLifecycleLabelKey(state));
 }
 
 export function chatLifecycleClassName(state: ChatLifecycleState): string {

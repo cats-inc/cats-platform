@@ -229,7 +229,8 @@ export function ConversationSidebarMyCatsSection<
             directLane?.defaultRecipientLeaseStatus,
           );
           const dotClass = helpers.statusDotClassName(dot);
-          const dotTitle = helpers.statusDotLabel(dot);
+          const dotLabelKey = helpers.statusDotLabel(dot);
+          const dotTitle = dotLabelKey ? t(dotLabelKey) : '';
           const overflowKey = `cat:${cat.id}`;
           const catOverflowOpen = overflowMenuOpenId === overflowKey;
 

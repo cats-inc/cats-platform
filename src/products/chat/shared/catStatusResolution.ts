@@ -1,6 +1,7 @@
 import type { ChatCat, ChatChannelView } from '../api/contracts.js';
 import type { ChatOperatorView } from './operator-loop/types.js';
 import { resolveChatLifecycleState, type ChatLifecycleState } from './lifecycle.js';
+import { messageKeys, type MessageKey } from '../../../shared/i18n/index.js';
 
 export type CatStatusKind =
   | 'active'
@@ -15,7 +16,7 @@ export interface CatStatusIndicator {
   catName: string;
   avatarColor: string | null;
   status: CatStatusKind;
-  statusLabel: string;
+  statusLabelKey: MessageKey;
   busy: boolean;
 }
 
@@ -39,32 +40,32 @@ export function resolveCatStatusIndicator(
   const hasBlockedRun = operatorView?.latestRun?.status === 'blocked';
 
   let status: CatStatusKind;
-  let statusLabel: string;
+  let statusLabelKey: MessageKey;
   let busy = false;
 
   if (lifecycle === 'error') {
     status = 'error';
-    statusLabel = 'Error';
+    statusLabelKey = messageKeys.chatCatStatusErrorLabel;
   } else if (hasPendingApproval) {
     status = 'waiting_for_review';
-    statusLabel = 'Waiting for review';
+    statusLabelKey = messageKeys.chatCatStatusWaitingForReviewLabel;
   } else if (hasBlockedRun) {
     status = 'blocked';
-    statusLabel = 'Blocked';
+    statusLabelKey = messageKeys.chatCatStatusBlockedLabel;
   } else if (lifecycle === 'awake') {
     status = 'active';
-    statusLabel = 'Active';
+    statusLabelKey = messageKeys.chatCatStatusActiveLabel;
     busy = true;
   } else if (lifecycle === 'waking_up') {
     status = 'active';
-    statusLabel = 'Waking up';
+    statusLabelKey = messageKeys.chatCatStatusWakingUpLabel;
     busy = true;
   } else if (lifecycle === 'sleeping') {
     status = 'sleeping';
-    statusLabel = 'Sleeping';
+    statusLabelKey = messageKeys.chatCatStatusSleepingLabel;
   } else {
     status = 'idle';
-    statusLabel = 'Idle';
+    statusLabelKey = messageKeys.chatCatStatusIdleLabel;
   }
 
   return {
@@ -72,7 +73,7 @@ export function resolveCatStatusIndicator(
     catName: cat.name,
     avatarColor: cat.avatarColor ?? null,
     status,
-    statusLabel,
+    statusLabelKey,
     busy,
   };
 }

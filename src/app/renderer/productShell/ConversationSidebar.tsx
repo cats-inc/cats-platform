@@ -11,7 +11,7 @@ import type {
 } from '../../../shared/roomRouting.js';
 import type { RuntimeSetupStatus } from '../../../shared/runtimeSetup.js';
 import type { WorkspaceBusyState } from '../../../shared/workspaceBusy.js';
-import { messageKeys } from '../../../shared/i18n/messageKeys.js';
+import { messageKeys, type MessageKey } from '../../../shared/i18n/messageKeys.js';
 import { GuideCatDockSlot } from '../../../design/components/GuideCatDockSlot.js';
 import { ConversationSidebarFooter } from './ConversationSidebarFooter.js';
 import {
@@ -145,7 +145,7 @@ export interface ConversationSidebarHelpers<
   findDirectLaneForCat: (channels: TChannel[], catId: string) => TChannel | null;
   resolveMyCatStatusDot: (leaseStatus: TChannel['defaultRecipientLeaseStatus']) => TDot;
   statusDotClassName: (dot: TDot) => string;
-  statusDotLabel: (dot: TDot) => string;
+  statusDotLabel: (dot: TDot) => MessageKey | null;
 }
 
 export interface ConversationSidebarProps<

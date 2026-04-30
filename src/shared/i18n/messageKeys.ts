@@ -1096,6 +1096,17 @@ export const messageKeys = {
   chatCatStatusCompactNeedAttentionLabel:
     'chat.catStatus.compact.needAttentionLabel',
   chatCatStatusCompactSleepingLabel: 'chat.catStatus.compact.sleepingLabel',
+  chatCatStatusActiveLabel: 'chat.catStatus.activeLabel',
+  chatCatStatusBlockedLabel: 'chat.catStatus.blockedLabel',
+  chatCatStatusWaitingForReviewLabel: 'chat.catStatus.waitingForReviewLabel',
+  chatCatStatusErrorLabel: 'chat.catStatus.errorLabel',
+  chatCatStatusWakingUpLabel: 'chat.catStatus.wakingUpLabel',
+  chatCatStatusSleepingLabel: 'chat.catStatus.sleepingLabel',
+  chatCatStatusIdleLabel: 'chat.catStatus.idleLabel',
+  chatLifecycleAwakeLabel: 'chat.lifecycle.awakeLabel',
+  chatLifecycleWakingUpLabel: 'chat.lifecycle.wakingUpLabel',
+  chatLifecycleNeedsAttentionLabel: 'chat.lifecycle.needsAttentionLabel',
+  chatLifecycleSleepingLabel: 'chat.lifecycle.sleepingLabel',
   chatCompanionWorkspaceRetryLabel: 'chat.companionWorkspace.retryLabel',
   chatCompanionWorkspaceNoSelectionState: 'chat.companionWorkspace.noSelectionState',
   chatCompanionWorkspaceSubscriptionDisabledTooltip:

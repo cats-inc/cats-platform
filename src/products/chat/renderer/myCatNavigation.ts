@@ -2,6 +2,7 @@ import type { ChatChannelSummary } from '../api/contracts.js';
 import type { ParticipantSessionStatus } from '../../../shared/roomRouting.js';
 import { buildMyCatPath } from '../shared/channelPaths.js';
 import { isDirectLaneSummary } from '../shared/channelTopology.js';
+import { messageKeys, type MessageKey } from '../../../shared/i18n/index.js';
 
 export type MyCatNavigationTarget =
   | { kind: 'direct_lane'; path: string };
@@ -46,13 +47,13 @@ export function statusDotClassName(dot: MyCatStatusDot): string {
   }
 }
 
-export function statusDotLabel(dot: MyCatStatusDot): string {
+export function statusDotLabel(dot: MyCatStatusDot): MessageKey | null {
   switch (dot) {
-    case 'awake': return 'Awake';
-    case 'waking_up': return 'Waking up';
-    case 'sleeping': return 'Sleeping';
-    case 'error': return 'Error';
-    default: return '';
+    case 'awake': return messageKeys.chatLifecycleAwakeLabel;
+    case 'waking_up': return messageKeys.chatLifecycleWakingUpLabel;
+    case 'sleeping': return messageKeys.chatLifecycleSleepingLabel;
+    case 'error': return messageKeys.chatCatStatusErrorLabel;
+    default: return null;
   }
 }
 

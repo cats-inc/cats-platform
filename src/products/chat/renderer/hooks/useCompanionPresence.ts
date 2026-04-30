@@ -7,6 +7,7 @@ import {
   chatLifecycleLabel,
   resolveChatLifecycleState,
 } from '../../shared/lifecycle.js';
+import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
 export interface CompanionPresenceInfo {
   presence: CompanionPresenceState;
@@ -20,6 +21,8 @@ export function useCompanionPresence(
   catId: string,
   payload: AppShellPayload,
 ): CompanionPresenceInfo {
+  const { t } = useI18n();
+
   return useMemo(() => {
     const directLane = payload.chat.channels.find(
       (channel) =>
@@ -30,7 +33,7 @@ export function useCompanionPresence(
     if (!directLane) {
       return {
         presence: 'sleeping' as CompanionPresenceState,
-        label: 'Sleeping',
+        label: chatLifecycleLabel('sleeping', t),
         className: 'isSleeping',
         canWake: true,
         canSleep: false,
@@ -42,10 +45,10 @@ export function useCompanionPresence(
 
     return {
       presence: lifecycle as CompanionPresenceState,
-      label: chatLifecycleLabel(lifecycle),
+      label: chatLifecycleLabel(lifecycle, t),
       className: chatLifecycleClassName(lifecycle),
       canWake: lifecycle === 'sleeping' || lifecycle === 'error',
       canSleep: lifecycle === 'awake',
     };
-  }, [catId, payload.chat.channels]);
+  }, [catId, payload.chat.channels, t]);
 }

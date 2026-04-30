@@ -56,24 +56,27 @@ export function CatStatusRow({ indicators, onInspect }: CatStatusRowProps) {
 
   return (
     <div className="catStatusRow">
-      {indicators.map((indicator) => (
-        <button
-          key={indicator.catId}
-          type="button"
-          className={`catStatusBadge ${indicator.busy ? 'catStatusBadgeBusy' : ''}`}
-          onClick={() => onInspect(indicator.catId)}
-          title={`${indicator.catName}: ${indicator.statusLabel}`}
-        >
-          <span
-            className="catStatusAvatar"
-            style={indicator.avatarColor ? { background: indicator.avatarColor } : undefined}
+      {indicators.map((indicator) => {
+        const statusLabel = t(indicator.statusLabelKey);
+        return (
+          <button
+            key={indicator.catId}
+            type="button"
+            className={`catStatusBadge ${indicator.busy ? 'catStatusBadgeBusy' : ''}`}
+            onClick={() => onInspect(indicator.catId)}
+            title={`${indicator.catName}: ${statusLabel}`}
           >
-            {catInitials(indicator.catName)}
-          </span>
-          <span className={statusDotClass(indicator.status)} />
-          <span className="catStatusName">{indicator.catName}</span>
-        </button>
-      ))}
+            <span
+              className="catStatusAvatar"
+              style={indicator.avatarColor ? { background: indicator.avatarColor } : undefined}
+            >
+              {catInitials(indicator.catName)}
+            </span>
+            <span className={statusDotClass(indicator.status)} />
+            <span className="catStatusName">{indicator.catName}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }

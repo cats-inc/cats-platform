@@ -1,5 +1,6 @@
 import type { ParticipantSessionStatus, RoomRoutingMode } from '../../../shared/roomRouting.js';
 import { isDirectLaneSummary, type ProductChannelKind } from './channelTopology.js';
+import { messageKeys, type MessageKey } from '../../../shared/i18n/index.js';
 
 type ChatChannelSummaryRef = {
   defaultRecipientCatId?: string | null;
@@ -70,18 +71,18 @@ export function statusDotClassName(dot: MyCatStatusDot): string {
   }
 }
 
-export function statusDotLabel(dot: MyCatStatusDot): string {
+export function statusDotLabel(dot: MyCatStatusDot): MessageKey | null {
   switch (dot) {
     case 'awake':
-      return 'Awake';
+      return messageKeys.chatLifecycleAwakeLabel;
     case 'waking_up':
-      return 'Waking up';
+      return messageKeys.chatLifecycleWakingUpLabel;
     case 'sleeping':
-      return 'Sleeping';
+      return messageKeys.chatLifecycleSleepingLabel;
     case 'error':
-      return 'Error';
+      return messageKeys.chatCatStatusErrorLabel;
     default:
-      return '';
+      return null;
   }
 }
 
