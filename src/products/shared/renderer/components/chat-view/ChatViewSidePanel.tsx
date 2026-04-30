@@ -21,6 +21,8 @@ import { ProgressSummaryPanel } from '../ProgressSummaryPanel.js';
 import { ProviderModelFields } from '../ProviderModelFields.js';
 import { RunInspector } from '../RunInspector.js';
 import type { WorkspaceBusyState } from '../../../../../shared/workspaceBusy.js';
+import { messageKeys } from '../../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
 export interface ChatViewSidePanelProps {
   sidePanelOpen: boolean;
@@ -85,13 +87,15 @@ export function ChatViewSidePanel({
   onDirectLaneExecutionTargetChange,
   onOpenAddCat,
 }: ChatViewSidePanelProps) {
+  const { t } = useI18n();
+
   if (!sidePanelOpen) {
     return null;
   }
 
   return (
     <SidePanel
-      title="Chat Setup"
+      title={t(messageKeys.chatNewChatDraftSidePanelTitle)}
       activeSection={sidePanelSection}
       onSectionToggle={onSectionToggle}
       onClose={onClose}
@@ -107,7 +111,7 @@ export function ChatViewSidePanel({
     if (showAddCatButton || assignedCatRecords.length > 0) {
       sections.push({
         id: 'cats',
-        title: 'Cats',
+        title: t(messageKeys.chatNewChatDraftSidePanelParticipantsCatsTitle),
         children: (
           <div className="sidePanelSectionStack">
             {assignedCatRecords.length > 0 ? (
@@ -123,7 +127,9 @@ export function ChatViewSidePanel({
                 onHighlight={() => {}}
               />
             ) : (
-              <p className="operatorEmptyState">No cats are in this chat yet.</p>
+              <p className="operatorEmptyState">
+                {t(messageKeys.chatParticipantsSectionNoParticipants)}
+              </p>
             )}
             {showAddCatButton ? (
               <button
@@ -134,7 +140,7 @@ export function ChatViewSidePanel({
                   onOpenAddCat?.();
                 }}
               >
-                Choose cats
+                {t(messageKeys.chatParticipantsSectionChooseCatsButton)}
               </button>
             ) : null}
           </div>
@@ -206,34 +212,44 @@ export function ChatViewSidePanel({
               </div>
               <div>
                 <strong>{defaultRecipientCat.name}</strong>
-                {defaultRecipientCat.catId === payload.chat.bossCatId ? <span className="catInspectBadge">Boss</span> : null}
+                {defaultRecipientCat.catId === payload.chat.bossCatId ? (
+                  <span className="catInspectBadge">{t(messageKeys.sharedCatInspectBossLabel)}</span>
+                ) : null}
               </div>
             </div>
             <div className="catInspectField">
-              <span className="catInspectFieldLabel">AI Service</span>
+              <span className="catInspectFieldLabel">
+                {t(messageKeys.chatSidePanelAiServiceLabel)}
+              </span>
               <span>{executionSummary.providerLabel}</span>
             </div>
             {executionSummary.instanceLabel ? (
               <div className="catInspectField">
-                <span className="catInspectFieldLabel">Connection</span>
+                <span className="catInspectFieldLabel">
+                  {t(messageKeys.chatSidePanelConnectionLabel)}
+                </span>
                 <span>{executionSummary.instanceLabel}</span>
               </div>
             ) : null}
             <div className="catInspectField">
-              <span className="catInspectFieldLabel">Model</span>
+              <span className="catInspectFieldLabel">{t(messageKeys.sharedCatInspectModelLabel)}</span>
               <span>{executionSummary.modelLabel}</span>
             </div>
           </div>
         );
       }
-      return <p className="operatorEmptyState">No AI reply setup yet.</p>;
+      return <p className="operatorEmptyState">{t(messageKeys.chatNewChatDraftExecutionEmptyState)}</p>;
     })();
-    sections.push({ id: 'execution', title: 'AI Reply', children: executionChildren });
+    sections.push({
+      id: 'execution',
+      title: t(messageKeys.chatNewChatDraftExecutionTitle),
+      children: executionChildren,
+    });
 
     const cwd = selectedChannel.repoPath ?? selectedChannel.chatCwd;
     sections.push({
       id: 'cwd',
-      title: 'Folder',
+      title: t(messageKeys.chatNewChatDraftFolderTitle),
       children: cwd ? (
         <div style={{ display: 'grid', gap: 8 }}>
           <p style={{ margin: 0, fontSize: '0.85rem', wordBreak: 'break-all' }}>{cwd}</p>
@@ -242,42 +258,44 @@ export function ChatViewSidePanel({
             className="operatorActionButton"
             onClick={() => void openFolderInExplorer(cwd)}
           >
-            Open folder
+            {t(messageKeys.chatNewChatDraftFolderActionLabel)}
           </button>
         </div>
       ) : (
-        <p className="operatorEmptyState">No folder selected yet.</p>
+        <p className="operatorEmptyState">{t(messageKeys.chatNewChatDraftFolderEmptyState)}</p>
       ),
     });
 
     sections.push({
       id: 'operator',
-      title: 'Run Status',
+      title: t(messageKeys.chatSidePanelRunStatusTitle),
       badge: operatorView?.approvals.length ?? 0,
       children: (
         <>
           {operatorError ? (
-            <section className="operatorPanel operatorPanelError">
-              <div className="operatorPanelHeader">
-                <div>
-                  <p className="operatorEyebrow">Run Status</p>
-                  <h2>Status unavailable</h2>
-                </div>
+          <section className="operatorPanel operatorPanelError">
+            <div className="operatorPanelHeader">
+              <div>
+                <p className="operatorEyebrow">{t(messageKeys.chatSidePanelRunStatusTitle)}</p>
+                <h2>{t(messageKeys.chatSidePanelRunStatusUnavailableTitle)}</h2>
               </div>
-              <p className="operatorEmptyState">{operatorError}</p>
+            </div>
+            <p className="operatorEmptyState">{operatorError}</p>
             </section>
           ) : null}
           {operatorLoading && !operatorView ? (
-            <section className="operatorPanel">
-              <div className="operatorPanelHeader">
-                <div>
-                  <p className="operatorEyebrow">Run Status</p>
-                  <h2>Loading</h2>
-                </div>
+          <section className="operatorPanel">
+            <div className="operatorPanelHeader">
+              <div>
+                <p className="operatorEyebrow">{t(messageKeys.chatSidePanelRunStatusTitle)}</p>
+                <h2>{t(messageKeys.chatSidePanelLoadingTitle)}</h2>
               </div>
-              <p className="operatorEmptyState">Loading approvals, activity, and run details.</p>
-            </section>
-          ) : null}
+            </div>
+            <p className="operatorEmptyState">
+              {t(messageKeys.chatSidePanelOperatorLoadingState)}
+            </p>
+          </section>
+        ) : null}
           <ApprovalQueuePanel
             approvals={operatorView?.approvals ?? []}
             actorNameById={operatorView?.actorNameById ?? {}}
