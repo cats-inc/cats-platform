@@ -4,7 +4,13 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { LinkageSection } from "../topdown/LinkageSection";
 import { useI18n } from "../../../../../app/renderer/i18n/index.js";
-import { buildIndexes, formatRelative } from "../topdown/shared";
+import {
+  buildIndexes,
+  formatRelative,
+  getWorkGraphAttentionLabel,
+  getWorkGraphKindLabel,
+} from "../topdown/shared";
+import { getWorkObjectStatusLabel } from "../topdown/WorkObjectCard";
 import type { WorkGraphObjectSummary } from "../topdown/types";
 import { removeWorkItem } from "../../api/workRecords.js";
 import { useMissionsQuery, type WorkMissionListItem } from "../../state/queries/missionsQuery.js";
@@ -137,17 +143,17 @@ export function WorkItemDetailPage(): JSX.Element {
             <span
               className={`workItemDetail__attention workItemDetail__attention--${workItem.attention}`}
             >
-              {getAttentionLabel(workItem.attention, t)}
+              {getWorkGraphAttentionLabel(workItem.attention, t)}
             </span>
           ) : null}
           <span
             className={`workItemsList__statusPill workItemsList__statusPill--${workItem.status}`}
           >
-            {formatStatusLabel(workItem.status, t)}
+            {getWorkObjectStatusLabel(workItem.status, t)}
           </span>
           <span className="workItemDetailTopBar__updated">
             {t("workItemUpdatedAtPrefix", {
-              updatedAt: formatRelative(workItem.updatedAt),
+              updatedAt: formatRelative(workItem.updatedAt, t),
             })}
           </span>
           <button
@@ -254,7 +260,7 @@ export function WorkItemDetailPage(): JSX.Element {
               {activities.map((act) => (
                 <li key={act.id} className="workItemDetail__activityRow">
                   <span className="workItemDetail__activityWhen">
-                    {formatRelative(act.updatedAt)}
+                    {formatRelative(act.updatedAt, t)}
                   </span>
                   <span className="workItemDetail__activityTitle">
                     {act.title}
@@ -304,18 +310,18 @@ function ItemsSection({
                 aria-hidden="true"
               />
               <span className="workItemDetail__itemKind">
-                {getKindLabel(item.kind, t)}
+                {getWorkGraphKindLabel(item.kind, t)}
               </span>
               <span className="workItemDetail__itemTitle">{item.title}</span>
               {item.attention !== "none" ? (
                 <span
                   className={`workItemDetail__itemAttention workItemDetail__itemAttention--${item.attention}`}
                 >
-                  {getAttentionLabel(item.attention, t)}
+                  {getWorkGraphAttentionLabel(item.attention, t)}
                 </span>
               ) : null}
               <span className="workItemDetail__itemStatus">
-                {formatStatusLabel(item.status, t)}
+                {getWorkObjectStatusLabel(item.status, t)}
               </span>
               {item.ownerRole ? (
                 <span className="workItemDetail__itemOwner">
@@ -369,10 +375,10 @@ function SubWorkItemsSection({
                 {item.title}
               </Link>
               <span className="workItemDetail__itemStatus">
-                {formatStatusLabel(item.status, t)}
+                {getWorkObjectStatusLabel(item.status, t)}
               </span>
               <span className="workItemDetail__itemOwner">
-                {formatRelative(item.updatedAt)}
+                {formatRelative(item.updatedAt, t)}
               </span>
             </li>
           ))}
@@ -410,10 +416,10 @@ function MissionsSection({ missions }: MissionsSectionProps): JSX.Element {
                 {mission.title}
               </Link>
               <span className="workItemDetail__itemStatus">
-                {formatStatusLabel(mission.status, t)}
+                {getWorkObjectStatusLabel(mission.status, t)}
               </span>
               <span className="workItemDetail__itemOwner">
-                {formatRelative(mission.updatedAt)}
+                {formatRelative(mission.updatedAt, t)}
               </span>
             </li>
           ))}
@@ -481,81 +487,4 @@ function WorkItemNotFound({
       </main>
     </div>
   );
-}
-
-function formatStatusLabel(
-  status: string,
-  t: ReturnType<typeof useI18n>["t"],
-): string {
-  return status === "draft"
-    ? t("workObjectStatusDraft")
-    : status === "planned"
-      ? t("workObjectStatusPlanned")
-      : status === "ready"
-        ? t("workObjectStatusReady")
-        : status === "in_progress"
-          ? t("workObjectStatusInProgress")
-          : status === "blocked"
-            ? t("workObjectStatusBlocked")
-            : status === "completed"
-              ? t("workObjectStatusCompleted")
-              : status === "cancelled"
-                ? t("workObjectStatusCancelled")
-                : status === "running"
-                  ? t("workObjectStatusRunning")
-                  : status === "queued"
-                    ? t("workObjectStatusQueued")
-                    : status.replace(/_/g, " ");
-}
-
-function getAttentionLabel(
-  attention: string,
-  t: ReturnType<typeof useI18n>["t"],
-): string {
-  return attention === "decision_needed"
-    ? t("workObjectAttentionDecisionNeeded")
-    : attention === "blocked"
-      ? t("workObjectAttentionBlocked")
-      : attention === "failed"
-        ? t("workObjectAttentionFailed")
-        : attention === "ready_to_review"
-          ? t("workObjectAttentionReadyToReview")
-          : attention === "recently_shipped"
-            ? t("workObjectAttentionRecentlyShipped")
-            : attention;
-}
-
-function getKindLabel(
-  kind: WorkGraphObjectSummary["kind"],
-  t: ReturnType<typeof useI18n>["t"],
-): string {
-  return kind === "agent"
-    ? t("workObjectKindAgent")
-    : kind === "container"
-      ? t("workObjectKindContainer")
-      : kind === "conversation"
-        ? t("workObjectKindConversation")
-        : kind === "turn"
-          ? t("workObjectKindTurn")
-          : kind === "lane"
-            ? t("workObjectKindLane")
-            : kind === "project"
-              ? t("workObjectKindProject")
-              : kind === "work_item"
-                ? t("workObjectKindWorkItem")
-                : kind === "task"
-                  ? t("workObjectKindTask")
-                  : kind === "mission"
-                    ? t("workObjectKindMission")
-                    : kind === "run"
-                      ? t("workObjectKindRun")
-                      : kind === "artifact"
-                        ? t("workObjectKindArtifact")
-                        : kind === "activity"
-                          ? t("workObjectKindActivity")
-                          : kind === "outcome"
-                            ? t("workObjectKindOutcome")
-                            : kind === "approval_binding"
-                              ? t("workObjectKindApprovalBinding")
-                              : kind;
 }

@@ -2,8 +2,13 @@ import { useState } from "react";
 
 import { SidePanel, type SidePanelSection } from "../../../../../design/components/SidePanel";
 import { useI18n } from "../../../../../app/renderer/i18n/index.js";
-import { formatRelative, type WorkGraphIndexes } from "./shared";
-import { getWorkObjectKindLabel, getWorkObjectStatusLabel } from "./WorkObjectCard";
+import {
+  getWorkGraphGateStateLabel,
+  getWorkGraphKindLabel,
+  formatRelative,
+  type WorkGraphIndexes,
+} from "./shared";
+import { getWorkObjectStatusLabel } from "./WorkObjectCard";
 import type { WorkGraphObjectSummary, WorkGraphProjection } from "./types";
 
 interface WorkObjectDrawerProps {
@@ -65,7 +70,7 @@ export function WorkObjectDrawer({
         <dl className="topDownDrawer__list">
           <Field
             label={t("workTopdownIdentityKind")}
-            value={getWorkObjectKindLabel(object.kind, t)}
+            value={getWorkGraphKindLabel(object.kind, t)}
           />
           <Field
             label={t("workTopdownIdentityStatus")}
@@ -150,7 +155,7 @@ export function WorkObjectDrawer({
                   <span
                     className={`topDownDrawer__gateState topDownDrawer__gateState--${g.state}`}
                   >
-                    {g.state}
+                    {getWorkGraphGateStateLabel(g.state, t)}
                   </span>
                   {target ? (
                     <button

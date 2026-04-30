@@ -1,6 +1,9 @@
 import {
   type EvidenceCounts,
   type WorkGraphIndexes,
+  getWorkGraphAttentionLabel,
+  getWorkGraphKindLabel,
+  getWorkGraphGateStateLabel,
 } from "./shared";
 import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import type { WorkGraphGateDecorator, WorkGraphObjectSummary } from "./types";
@@ -21,11 +24,11 @@ export function WorkObjectCard({
   onSelect,
 }: WorkObjectCardProps): JSX.Element {
   const { t } = useI18n();
-  const kindLabel = getWorkObjectKindLabel(object.kind, t);
+  const kindLabel = getWorkGraphKindLabel(object.kind, t);
   const attentionTag =
     object.attention === "none"
       ? null
-      : getWorkObjectAttentionLabel(object.attention, t);
+      : getWorkGraphAttentionLabel(object.attention, t);
   const statusLabel = getWorkObjectStatusLabel(object.status, t);
   const parentTaskLabel =
     object.kind === "run"
@@ -138,7 +141,7 @@ export function WorkObjectCard({
               key={g.gateObjectId}
               className={`topDownCard__chip topDownCard__chip--gate-${g.state}`}
             >
-              ⊘ {g.state.replace(/_/g, " ")}
+              ⊘ {getWorkGraphGateStateLabel(g.state, t)}
             </span>
           ))}
         </footer>
@@ -184,62 +187,12 @@ export function getWorkObjectStatusLabel(
             : status === "completed"
               ? t("workObjectStatusCompleted")
               : status === "cancelled"
-                ? t("workObjectStatusCancelled")
-                : status === "running"
-                  ? t("workObjectStatusRunning")
-                  : status === "queued"
+                  ? t("workObjectStatusCancelled")
+                  : status === "running"
+                    ? t("workObjectStatusRunning")
+                    : status === "queued"
                     ? t("workObjectStatusQueued")
-                    : status.replace(/_/g, " ");
-}
-
-function getWorkObjectAttentionLabel(
-  attention: string,
-  t: ReturnType<typeof useI18n>["t"],
-): string {
-  return attention === "decision_needed"
-    ? t("workObjectAttentionDecisionNeeded")
-    : attention === "blocked"
-      ? t("workObjectAttentionBlocked")
-      : attention === "failed"
-        ? t("workObjectAttentionFailed")
-        : attention === "ready_to_review"
-          ? t("workObjectAttentionReadyToReview")
-          : attention === "recently_shipped"
-            ? t("workObjectAttentionRecentlyShipped")
-            : attention;
-}
-
-export function getWorkObjectKindLabel(
-  kind: WorkGraphObjectSummary["kind"],
-  t: ReturnType<typeof useI18n>["t"],
-): string {
-  return kind === "agent"
-    ? t("workObjectKindAgent")
-    : kind === "container"
-      ? t("workObjectKindContainer")
-      : kind === "conversation"
-        ? t("workObjectKindConversation")
-        : kind === "turn"
-          ? t("workObjectKindTurn")
-          : kind === "lane"
-            ? t("workObjectKindLane")
-            : kind === "project"
-              ? t("workObjectKindProject")
-              : kind === "work_item"
-                ? t("workObjectKindWorkItem")
-                : kind === "task"
-                  ? t("workObjectKindTask")
-                  : kind === "mission"
-                    ? t("workObjectKindMission")
-                    : kind === "run"
-                      ? t("workObjectKindRun")
-                      : kind === "artifact"
-                        ? t("workObjectKindArtifact")
-                        : kind === "activity"
-                          ? t("workObjectKindActivity")
-                          : kind === "outcome"
-                            ? t("workObjectKindOutcome")
-                            : kind === "approval_binding"
-                              ? t("workObjectKindApprovalBinding")
-                              : kind;
+                    : t("workObjectStatusUnknown", {
+                        status: status.replace(/_/g, " "),
+                      });
 }

@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 
 import { formatRelative } from "../topdown/shared";
 import { useI18n } from "../../../../../app/renderer/i18n/index.js";
+import { getWorkObjectStatusLabel } from "../topdown/WorkObjectCard";
 import { useMissionsQuery } from "../../state/queries/missionsQuery.js";
 import { buildWorkMissionPath } from "../../workPaths.js";
 import "./missions.css";
@@ -70,12 +71,12 @@ export function MissionsListPage(): JSX.Element {
                       </span>
                     ) : null}
                     <span className="missionsList__metric missionsList__metric--muted">
-                      {formatRelative(mission.updatedAt)}
+                      {formatRelative(mission.updatedAt, t)}
                     </span>
                     <span
                       className={`missionsList__statusPill missionsList__statusPill--${mission.status}`}
                     >
-                      {mission.status.replace(/_/g, " ")}
+                      {getWorkObjectStatusLabel(mission.status, t)}
                     </span>
                   </div>
                 </Link>

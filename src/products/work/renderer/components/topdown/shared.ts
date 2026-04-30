@@ -43,46 +43,16 @@ const WORKGRAPH_ATTENTION_LABEL_KEY: Partial<
   recently_shipped: "workObjectAttentionRecentlyShipped",
 };
 
-/**
- * Backward compatibility for older renderer surfaces.
- * New work uses `getWorkGraphAttentionLabel` and top-down keys for
- * locale-aware output.
- */
-export const ATTENTION_LABEL: Partial<Record<WorkAttentionState, string>> = {
-  decision_needed: "Decision",
-  blocked: "Blocked",
-  failed: "Failed",
-  ready_to_review: "Review",
-  recently_shipped: "Shipped",
-};
-
-/**
- * Backward compatibility for older renderer surfaces.
- * New work should use `getWorkGraphKindLabel` to keep labels in i18n.
- */
-export const KIND_LABEL: Record<WorkGraphObjectKind, string> = {
-  agent: "Agent",
-  container: "Container",
-  conversation: "Conversation",
-  turn: "Turn",
-  lane: "Lane",
-  project: "Project",
-  work_item: "Work Item",
-  task: "Task",
-  mission: "Mission",
-  run: "Run",
-  artifact: "Artifact",
-  activity: "Activity",
-  outcome: "Outcome",
-  approval_binding: "Approval",
-};
-
 export function getWorkGraphKindLabel(
   kind: WorkGraphObjectKind,
   t: (key: MessageKey, values?: Record<string, string | number>) => string,
 ): string {
   const key = WORKGRAPH_KIND_LABEL_KEY[kind];
-  return key ? t(key) : kind.replace(/_/g, " ");
+  return key
+    ? t(key)
+    : t("workObjectKindUnknown", {
+        kind: kind.replace(/_/g, " "),
+      });
 }
 
 export function getWorkGraphAttentionLabel(
@@ -90,7 +60,27 @@ export function getWorkGraphAttentionLabel(
   t: (key: MessageKey, values?: Record<string, string | number>) => string,
 ): string | null {
   const key = WORKGRAPH_ATTENTION_LABEL_KEY[attention];
-  return key ? t(key) : attention === "none" ? null : attention;
+  return key ? t(key) : attention === "none"
+    ? null
+    : t("workObjectAttentionUnknown", {
+        attention: attention.replace(/_/g, " "),
+      });
+}
+
+export function getWorkGraphGateStateLabel(
+  state: WorkGraphGateDecorator["state"],
+  t: (key: MessageKey, values?: Record<string, string | number>) => string,
+): string {
+  const stateLabel = String(state).replace(/_/g, " ");
+  return state === "not_requested"
+    ? t("workObjectGateStateNotRequested")
+    : state === "pending"
+      ? t("workObjectGateStatePending")
+      : state === "approved"
+        ? t("workObjectGateStateApproved")
+        : state === "rejected"
+          ? t("workObjectGateStateRejected")
+          : t("workObjectGateStateUnknown", { state: stateLabel });
 }
 
 /** Reverse-lookup indexes built from the authoritative top-level
@@ -203,33 +193,25 @@ export function summarizeEvidence(
 
 export function formatRelative(
   iso: string,
-  t?: (key: MessageKey, values?: Record<string, string | number>) => string,
+  t: (key: MessageKey, values?: Record<string, string | number>) => string,
 ): string {
-  const translate = t ?? ((key: MessageKey, values?: Record<string, string | number>): string => {
-    const count = values?.count === undefined ? "" : values.count;
-    if (key === "workTopdownRelativeJustNow") return "just now";
-    if (key === "workTopdownRelativeMinutesAgo") return `${count}m ago`;
-    if (key === "workTopdownRelativeHoursAgo") return `${count}h ago`;
-    if (key === "workTopdownRelativeDaysAgo") return `${count}d ago`;
-    return String(key);
-  });
   const parsed = Date.parse(iso);
   if (Number.isNaN(parsed)) return iso;
   const deltaMs = Date.now() - parsed;
-  if (deltaMs < 0) return translate("workTopdownRelativeJustNow");
+  if (deltaMs < 0) return t("workTopdownRelativeJustNow");
   const minutes = Math.round(deltaMs / 60_000);
-  if (minutes < 1) return translate("workTopdownRelativeJustNow");
+  if (minutes < 1) return t("workTopdownRelativeJustNow");
   if (minutes < 60)
-    return translate("workTopdownRelativeMinutesAgo", {
+    return t("workTopdownRelativeMinutesAgo", {
       count: `${minutes}`,
     });
   const hours = Math.round(minutes / 60);
   if (hours < 48)
-    return translate("workTopdownRelativeHoursAgo", {
+    return t("workTopdownRelativeHoursAgo", {
       count: `${hours}`,
     });
   const days = Math.round(hours / 24);
-  return translate("workTopdownRelativeDaysAgo", {
+  return t("workTopdownRelativeDaysAgo", {
     count: `${days}`,
   });
 }

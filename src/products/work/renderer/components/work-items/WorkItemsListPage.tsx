@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import { formatRelative } from "../topdown/shared";
 import { useWorkItemsQuery } from "../../state/queries/workItemsQuery.js";
+import { getWorkObjectStatusLabel } from "../topdown/WorkObjectCard";
 import { NewWorkItemDialog } from "./NewWorkItemDialog";
 import "./work-items.css";
 
@@ -129,12 +130,12 @@ export function WorkItemsListPage(): JSX.Element {
                       {t("workItemsListTasksLabel")}
                     </span>
                     <span className="workItemsList__metric workItemsList__metric--muted">
-                      {formatRelative(wi.updatedAt)}
+                      {formatRelative(wi.updatedAt, t)}
                     </span>
                     <span
                       className={`workItemsList__statusPill workItemsList__statusPill--${wi.status}`}
                     >
-                      {wi.status.replace(/_/g, " ")}
+                      {getWorkObjectStatusLabel(wi.status, t)}
                     </span>
                   </div>
                 </Link>
