@@ -13,11 +13,6 @@ import type {
   CompanionContentPreview,
 } from '../../../../chat/companion/contentResolver.js';
 import {
-  FALLBACK_DELETED_TITLE,
-  FALLBACK_INACCESSIBLE_TITLE,
-  FALLBACK_MISSING_TITLE,
-} from '../../../../chat/companion/contentResolver.js';
-import {
   readCompanionMessageReferenceSnapshot,
   type CompanionMessageReferenceSnapshot,
 } from '../../../../chat/companion/messageReferenceSnapshot.js';
@@ -288,7 +283,7 @@ function applySnapshotFallback(
   if (livePreview.availability !== 'available' && snapshot) {
     return {
       ...livePreview,
-      title: livePreview.title === '' || isGenericFallbackTitle(livePreview.title)
+      title: livePreview.title === '' || isGenericFallbackTitle(livePreview.title, livePreview.fallbackReason)
         ? snapshot.title
         : livePreview.title,
       subtitle: livePreview.subtitle ?? snapshot.subtitle,
@@ -344,13 +339,9 @@ function resolveInaccessibleDescription(
 
 function isGenericFallbackTitle(
   title: string,
+  fallbackReason: CompanionContentAvailability | null,
 ): boolean {
-  return (
-    title.length === 0
-    || title === FALLBACK_MISSING_TITLE
-    || title === FALLBACK_DELETED_TITLE
-    || title === FALLBACK_INACCESSIBLE_TITLE
-  );
+  return title.length === 0 || Boolean(fallbackReason);
 }
 
 function renderPreviewCard(

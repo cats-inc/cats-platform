@@ -21,6 +21,7 @@ export type CompanionContentAvailability =
 export interface CompanionContentPreview {
   reference: CompanionContentReference;
   availability: CompanionContentAvailability;
+  fallbackReason: CompanionContentAvailability | null;
   title: string;
   subtitle: string | null;
   description: string | null;
@@ -67,10 +68,6 @@ export interface ResolveCompanionContentReferenceInput {
   resolvedAt?: string;
 }
 
-export const FALLBACK_INACCESSIBLE_TITLE = 'Companion content from another workspace';
-export const FALLBACK_MISSING_TITLE = 'Companion content unavailable';
-export const FALLBACK_DELETED_TITLE = 'Companion content deleted';
-
 export async function resolveCompanionContentReference(
   input: ResolveCompanionContentReferenceInput,
 ): Promise<CompanionContentPreview> {
@@ -86,6 +83,7 @@ export async function resolveCompanionContentReference(
     return {
       reference: input.reference,
       availability: 'available',
+      fallbackReason: null,
       title: lookupResult.preview.title,
       subtitle: lookupResult.preview.subtitle ?? null,
       description: lookupResult.preview.description ?? null,
@@ -113,14 +111,13 @@ function buildInaccessiblePreview(
   return {
     reference,
     availability: 'inaccessible',
-    title: FALLBACK_INACCESSIBLE_TITLE,
+    fallbackReason: 'inaccessible',
+    title: '',
     subtitle: null,
-    description:
-      'This companion content lives in a different platform-host data '
-      + 'scope and cannot be opened here.',
+    description: '',
     thumbnailUrl: null,
     icon: null,
-    catName: 'Unknown companion',
+    catName: 'Companion',
     openRoute: null,
     snapshot: null,
     resolvedAt,
@@ -133,14 +130,11 @@ function buildFallbackPreview(input: {
   fallback: CompanionContentLookupMissing['fallback'];
   resolvedAt: string;
 }): CompanionContentPreview {
-  const fallbackTitle =
-    input.availability === 'deleted'
-      ? FALLBACK_DELETED_TITLE
-      : FALLBACK_MISSING_TITLE;
   return {
     reference: input.reference,
     availability: input.availability,
-    title: input.fallback?.title ?? fallbackTitle,
+    fallbackReason: input.availability,
+    title: input.fallback?.title ?? '',
     subtitle: input.fallback?.subtitle ?? null,
     description: input.fallback?.description ?? null,
     thumbnailUrl: input.fallback?.thumbnailUrl ?? null,
