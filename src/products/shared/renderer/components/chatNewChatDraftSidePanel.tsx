@@ -19,7 +19,6 @@ import { type SidePanelSection } from '../../../../design/components/SidePanel.j
 import type { ProviderTargetSelection } from '../../../../shared/providerSelection.js';
 import type { RuntimeSessionPolicy } from '../../../../shared/runtimeSessionPolicy.js';
 import { messageKeys, type MessageInterpolationValues, type MessageKey } from '../../../../shared/i18n/index.js';
-import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
 type ChatNewChatDraftTranslator = (
   key: MessageKey,
@@ -157,13 +156,18 @@ export interface BuildChatNewChatDraftSidePanelSectionsInput {
   onDraftRuntimeSessionPolicyChange?: (policy: RuntimeSessionPolicy) => void;
   onCloseSidePanel: () => void;
   sidePanelCopy?: ChatNewChatDraftSidePanelCopy;
+  // Translator must be passed in by the caller (a real component) — calling
+  // `useI18n()` here would violate Rules of Hooks because this builder is
+  // invoked conditionally (only when the side panel is open), inserting an
+  // extra hook into the parent's call order on toggle.
+  t: ChatNewChatDraftTranslator;
 }
 
 export function buildChatNewChatDraftSidePanelSections(
   input: BuildChatNewChatDraftSidePanelSectionsInput,
 ): SidePanelSection[] {
   const sections: SidePanelSection[] = [];
-  const { t } = useI18n();
+  const { t } = input;
   const copy = resolveChatNewChatDraftSidePanelCopy(input.sidePanelCopy, t);
 
   sections.push({

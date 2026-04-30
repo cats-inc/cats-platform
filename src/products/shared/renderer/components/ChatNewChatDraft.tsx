@@ -1228,6 +1228,7 @@ export function NewChatDraft({
       onClose={isSubmittingFirstTurn ? () => {} : () => setSidePanelOpen(false)}
       className="chatPaneSidePanel"
       sections={buildDraftSidePanelSections({
+        t,
         payload,
         chatCats,
         draftCatIds,
