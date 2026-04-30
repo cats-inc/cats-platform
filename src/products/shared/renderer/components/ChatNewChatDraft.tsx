@@ -17,6 +17,7 @@ import {
   type DraftParallelTarget,
   type DraftTemporaryParticipant,
 } from '../draftChatUtils.js';
+import { createDraftCompareShadowCardId } from './draftCompareShadowCardId.js';
 import {
   resolveBranchAudienceKeys,
   resolveBranchPrompt,
@@ -124,13 +125,6 @@ interface BranchRuntimeSessionPolicyControlsProps {
 type BranchRuntimeSessionPolicyPatch = Partial<
   Pick<RuntimeSessionPolicy, 'workspaceKind' | 'workspaceAccess' | 'permissionMode'>
 >;
-
-export function createDraftCompareShadowCardId(
-  branchIndex: number,
-  target: Pick<DraftParallelTarget, 'provider' | 'instance' | 'model'>,
-): string {
-  return `shadow-${branchIndex}-${target.provider}-${target.instance ?? ''}-${target.model ?? ''}`;
-}
 
 export interface ParallelBranchDraftActions {
   onPickFolder?: (index: number) => void;

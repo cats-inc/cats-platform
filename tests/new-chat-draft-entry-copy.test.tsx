@@ -6,7 +6,7 @@ import { renderToStaticMarkup } from 'react-dom/server.browser';
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
 import { pickDraftGreeting } from '../src/products/chat/renderer/chatUtils.tsx';
 import { NewChatDraft, type NewChatDraftProps } from '../src/products/chat/renderer/components/NewChatDraft.tsx';
-import { createDraftCompareShadowCardId } from '../src/products/shared/renderer/components/ChatNewChatDraft.tsx';
+import { createDraftCompareShadowCardId } from '../src/products/shared/renderer/components/draftCompareShadowCardId.ts';
 import { clearBusyState } from '../src/shared/workspaceBusy.ts';
 
 function createPayload(): AppShellPayload {
