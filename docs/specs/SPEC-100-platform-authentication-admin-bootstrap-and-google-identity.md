@@ -125,9 +125,27 @@ the whole authorization system.
     shall lock that composite key for at least 30 seconds after 5 failed
     attempts and shall log lockouts without leaking credential details. A
     legitimate admin shall not be globally lockable from arbitrary remote
-    addresses, so per-account-only and per-IP-only lockout shall not be used as
-    the primary throttle. Per-IP global throttling may be added as a separate
-    secondary layer with looser thresholds.
+    addresses, so per-account-only and per-IP-only hard lockout shall not be
+    used as the primary throttle.
+25a. Beyond the composite-key hard lockout, the platform shall apply
+     non-blocking aggregate guards so distributed sources cannot quietly share
+     a brute-force budget against a single account:
+     - **Per-account progressive delay**: failed attempts against a single
+       account from any source shall add a server-side delay that grows with
+       recent failure count (e.g. 0ms / 100ms / 500ms / 2s / 5s steps), reset
+       on successful login. This applies across all `(account, *)` keys, not
+       per-IP.
+     - **Per-account 24-hour failure budget**: a per-account rolling 24-hour
+       cap on total failed attempts shall trigger a logged alert and put the
+       account into extended cooldown clearable only by the operator escape
+       hatch (§58) or admin action. Default cap shall be configurable
+       (`CATS_AUTH_ACCOUNT_DAILY_FAILURE_CAP`).
+     - **Per-/24 subnet budget**: a rolling failure budget per /24 IPv4 (or
+       /64 IPv6) prefix shall trigger a subnet-level cooldown so a single
+       subnet cannot drive a wide brute force across many accounts.
+     These guards are mandatory before LAN-facing auth is considered complete.
+     Operators may tune thresholds via configuration but shall not be able to
+     disable the guards entirely.
 
 #### Route gate
 
@@ -149,9 +167,13 @@ the whole authorization system.
     session details, transport bindings, or shell helper data.
 31. Unauthenticated browser navigation to product routes shall render the app
     shell and let the renderer redirect to `/login`.
-32. Unauthenticated API requests shall return `401` with a structured error.
+32. Unauthenticated API requests shall return `401` with a structured error
+    body containing a stable `code` field, e.g. `code: 'E_UNAUTHENTICATED'`.
 33. Authenticated but unauthorized requests shall return `403` with a
-    structured error.
+    structured error body containing a stable `code` field, e.g.
+    `code: 'E_FORBIDDEN'`. Authorization failures and CSRF mismatches shall
+    use distinct codes so renderer logic can differentiate them without
+    parsing user-visible text.
 
 #### Authorization and roles
 
@@ -203,15 +225,39 @@ the whole authorization system.
 49. Google credential POST routes shall not require `X-Cats-CSRF-Token` before a
     Cats session exists, because their CSRF boundary is the GIS
     `g_csrf_token`.
+49a. Pre-auth mutating endpoints — including the local first-admin setup
+     bootstrap, the local `/api/auth/login` endpoint, the auth-state-file
+     repair first-admin creation, and any other route that creates accounts,
+     identities, sessions, or memberships before a Cats session exists —
+     shall enforce a same-origin gate. The gate shall reject requests when:
+     - the `Origin` header is present and does not match the platform's
+       expected origin (host + port + scheme); or
+     - the `Sec-Fetch-Site` header is present and is `cross-site`
+       (`same-origin` and `same-site` are accepted; `none` is accepted only
+       for top-level navigations to the renderer, never for API mutations); or
+     - both `Origin` and `Sec-Fetch-Site` are absent on a non-`GET` request.
+49b. The same-origin gate is in addition to, not a replacement for, the
+     authenticated-API CSRF token (§47-48). Authenticated mutations shall
+     pass both checks; pre-auth mutations shall pass only the same-origin
+     gate (no Cats session exists yet to mint a CSRF token from).
+49c. Google credential POST routes shall enforce the same-origin gate
+     against the platform's own origin even though their CSRF defense is the
+     GIS `g_csrf_token` double-submit, because GIS posts the credential to
+     the Cats origin via a top-level form submission whose `Origin` matches.
+     The gate shall not be bypassed for "Google" or any provider name.
 50. CSRF tokens shall rotate on login/session creation. Logout and session
     revocation shall invalidate existing CSRF tokens for the revoked session.
     Rotation on privilege changes is a forward-looking guarantee: v1 ships no
     role-mutation paths, so this clause is dormant until role mutation lands;
     when it does, the rotation contract shall already cover it.
-51. The renderer shall treat a `403` from CSRF mismatch as a stale-token
-    signal: re-fetch `/api/auth/status` to refresh the token and retry the
-    original mutation once. A second consecutive CSRF mismatch shall be a hard
-    error surfaced to the operator rather than silently retried again.
+51. CSRF mismatch responses shall return `403` with `code: 'E_CSRF_MISMATCH'`
+    in the structured error body. The renderer shall treat exactly that code
+    as a stale-token signal: re-fetch `/api/auth/status` to refresh the token
+    and retry the original mutation once. A second consecutive
+    `E_CSRF_MISMATCH` shall be a hard error surfaced to the operator rather
+    than silently retried again. The renderer shall not retry on any other
+    `403` code (e.g. `E_FORBIDDEN`), and shall not pattern-match on
+    user-visible text to decide retry behavior.
 52. Auth error responses shall not leak password-hash, session-token,
     configured secret, or Google token details.
 53. Login attempts shall use generic invalid-credential errors.
@@ -224,6 +270,8 @@ the whole authorization system.
     - `CATS_AUTH_SESSION_TTL_MS`
     - `CATS_AUTH_LOGIN_FAILURE_LIMIT`
     - `CATS_AUTH_LOGIN_LOCKOUT_MS`
+    - `CATS_AUTH_ACCOUNT_DAILY_FAILURE_CAP`
+    - `CATS_AUTH_SUBNET_DAILY_FAILURE_CAP`
     - `CATS_AUTH_GOOGLE_CLIENT_ID`
     - `CATS_AUTH_GOOGLE_HD`
 55. Auth shall default to enabled when the platform is bound to a non-loopback
@@ -262,12 +310,37 @@ Effective auth gate state:
     state file (the file persisted by the auth state store, e.g.
     `<state-dir>/auth-state.local.json`) shall trigger the §16 repair flow on
     next start, allowing the local operator to create a fresh first admin.
-59. The escape hatch shall be documented in `docs/setup-guide.md`,
+59. The repair first-admin creation endpoint shall NOT be reachable as a
+    plain `setupCompleteAt`-aware mutation from arbitrary LAN clients.
+    Instead, the platform shall accept repair first-admin creation only when
+    at least one of the following holds:
+    - **Loopback origin**: the request originated from `127.0.0.1` / `::1`
+      (loopback only, not LAN host IPs); or
+    - **Recovery token**: the request carries a one-time recovery token
+      whose hash matches a token the platform generated at start-up after
+      detecting the missing/corrupt auth state. The platform shall write the
+      raw recovery token to two places at start-up:
+        - the server console / structured log (visible to anyone with shell
+          access to the host), and
+        - a file in the state directory (e.g.
+          `<state-dir>/auth-recovery-token.local.txt`) with restrictive
+          filesystem permissions where the OS supports them.
+      The token shall be single-use, rotate on every repair-mode start-up,
+      and be invalidated as soon as the first-admin repair completes or the
+      platform restarts.
+60. Repair-mode start-up shall log a high-visibility warning that the
+    workspace is in repair mode, the recovery token has been written, and
+    LAN-bound deployments should rebind to loopback or use the recovery
+    token before allowing the LAN to reach the host. Routes other than the
+    constrained repair first-admin creation endpoint shall remain failed
+    closed during repair (per §16, §55).
+61. The escape hatch shall be documented in `docs/setup-guide.md`,
     `docs/deployment.md`, and the rollout release notes so operators discover
-    it before they need it. The documentation shall name the exact file path
-    for both packaged and dev deployments and shall warn that all existing
-    sessions, identities, and memberships will be discarded.
-60. The repair flow shall not bypass `setupCompleteAt`; the rebuilt admin
+    it before they need it. The documentation shall name the exact file paths
+    for both packaged and dev deployments, explain the loopback / recovery
+    token constraint, and warn that all existing sessions, identities, and
+    memberships will be discarded.
+62. The repair flow shall not bypass `setupCompleteAt`; the rebuilt admin
     inherits the existing owner profile and Guide Cat state. Product data
     (Chat, Work, Code, Core) shall remain untouched by the escape hatch.
 

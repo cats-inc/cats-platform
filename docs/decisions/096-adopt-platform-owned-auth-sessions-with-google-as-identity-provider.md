@@ -57,9 +57,26 @@ a forward-looking rotation hook for privilege changes that is dormant in v1
 routes are separate: they validate Google's `g_csrf_token` before a Cats
 session exists and do not use the generic authenticated-API CSRF header.
 
-The renderer treats a `403` from CSRF mismatch as a stale-token signal:
-re-fetch `/api/auth/status` and retry the original mutation once. A second
-consecutive mismatch is a hard error rather than a silent retry loop.
+CSRF mismatches return `403` with `code: 'E_CSRF_MISMATCH'` in the structured
+error body; the renderer retries exactly that code by refreshing
+`/api/auth/status` and re-issuing the mutation once. A second consecutive
+`E_CSRF_MISMATCH` is a hard error. The renderer does not pattern-match on
+user-visible text or retry on plain `E_FORBIDDEN`.
+
+Pre-auth mutating endpoints — local first-admin setup, `/api/auth/login`, and
+the auth-state-file repair first-admin creation — have no Cats session yet to
+mint a CSRF token from, so they are protected by a same-origin gate using the
+`Origin` and `Sec-Fetch-Site` headers. Cross-site POSTs against `/setup` or
+`/api/auth/login` from a malicious LAN page are rejected before any account or
+session is created. Authenticated mutations pass both the same-origin gate
+and the synchronizer CSRF token.
+
+Per-account brute force is contained by mandatory aggregate guards on top of
+the composite `(account, address)` lockout: a per-account progressive delay
+that grows with recent failure count, a per-account 24-hour failure budget
+that triggers an alert and extended cooldown, and a per-/24 subnet failure
+budget so a single subnet cannot quietly drive a wide brute force across
+many accounts.
 
 The frontend may initiate login flows, but the frontend never decides that a
 user is authenticated or authorized by itself.
@@ -164,6 +181,18 @@ start. The escape hatch is documented in `docs/setup-guide.md`,
 sessions, identities, and memberships but leaves owner profile, Guide Cat
 state, and product data (Chat, Work, Code, Core) untouched.
 
+Repair first-admin creation is **not** a publicly-reachable mutation on a
+LAN-bound deployment. Without this constraint, deleting the auth state file on
+a LAN-facing host would let any same-network client race to become the new
+admin. The repair endpoint accepts a request only when it originates from
+loopback (`127.0.0.1` / `::1`) or carries a one-time recovery token that the
+platform generates and writes to the server console and to a file in the
+state directory at repair-mode start-up. The token is single-use, rotates on
+every repair-mode start-up, and is invalidated when the first admin is
+re-created or the platform restarts. The deployment docs warn operators to
+rebind to loopback or use the recovery token before exposing the host on the
+LAN during recovery.
+
 ### 6. Multi-user support is future-proofed but not fully shipped in v1
 
 The first implementation only needs one owner/admin account to close the LAN
@@ -263,4 +292,5 @@ that need Core actor attribution until an explicit mapping exists.
 
 *Decision made: 2026-04-30*
 *Amended: 2026-04-30 — composite `(account, address)` throttle key; uniform `CATS_AUTH_ENABLED=false` rejection after `setupCompleteAt`; pre-auth CSRF token explicitly absent; renderer stale-CSRF retry contract; rotation on privilege changes marked forward-looking; auth-state-file escape hatch for forgotten credentials documented.*
+*Amended: 2026-04-30 — closed pre-auth bootstrap CSRF gap with same-origin gate on `/setup`/`/api/auth/login`/repair; constrained repair first-admin creation to loopback or one-time recovery token so the escape hatch does not re-open LAN admin bootstrap; pinned `E_CSRF_MISMATCH` error code so renderer retry cannot collide with `E_FORBIDDEN`; promoted per-account aggregate guards (progressive delay, daily failure budget, per-/24 subnet budget) from optional to required.*
 *Decision makers: user + Codex*

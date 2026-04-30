@@ -53,12 +53,17 @@ password hashes and session tokens are never stored in plaintext.
 
 ### Phase 2: Server Auth Gate and Local Admin Bootstrap
 
-Tasks 2.1 through 2.10 must land atomically in one PR or behind one feature
+Tasks 2.1 through 2.14 must land atomically in one PR or behind one feature
 flag before the auth gate is enabled for any non-test host. Do not ship
 middleware without login/status endpoints, first-admin setup, repair flow,
 allowlists, CSRF issuance/validation, setup-reset protection, structured
-errors, login throttling, and the minimal unauthenticated envelope; do not ship
+errors, login throttling, aggregate brute-force guards, the pre-auth
+same-origin gate, the loopback/recovery-token-constrained repair endpoint,
+pinned error codes, and the minimal unauthenticated envelope; do not ship
 login endpoints as the only auth change while protected routes remain public.
+The loopback/recovery-token constraint on repair (Task 2.13) is part of the
+atomic group because shipping the auth-state-file escape hatch without it
+re-opens LAN admin bootstrap.
 
 - [ ] Task 2.1: Add a platform auth route module:
       `/api/auth/status`, `/api/auth/login`, `/api/auth/logout`, and local
@@ -89,9 +94,40 @@ login endpoints as the only auth change while protected routes remain public.
       auth attempts. The lockout key shall be the composite
       `(account_or_provider_subject, remote_address)`, defaulting to 5
       failures followed by at least 30 seconds of lockout with secret-free
-      logging. Per-account-only and per-IP-only lockout shall not be the
+      logging. Per-account-only and per-IP-only hard lockout shall not be the
       primary throttle so a remote attacker cannot DoS a legitimate admin from
       arbitrary addresses.
+- [ ] Task 2.11: Add mandatory aggregate brute-force guards on top of 2.10:
+      (a) per-account progressive server-side delay that grows with recent
+      failure count and resets on success; (b) per-account 24-hour failure
+      budget that triggers a logged alert and extended cooldown clearable
+      only via the operator escape hatch; (c) per-/24 IPv4 (or /64 IPv6)
+      subnet failure budget. Operators may tune thresholds via
+      `CATS_AUTH_ACCOUNT_DAILY_FAILURE_CAP` /
+      `CATS_AUTH_SUBNET_DAILY_FAILURE_CAP` but shall not be able to disable
+      the guards entirely.
+- [ ] Task 2.12: Add a same-origin gate to all pre-auth mutating endpoints
+      (`/setup` first-admin creation, `/api/auth/login`, repair first-admin
+      creation, Google credential POST). The gate shall reject requests when
+      `Origin` is present and does not match the platform's expected origin,
+      `Sec-Fetch-Site` is `cross-site`, or both headers are absent on a
+      non-`GET` request. This is in addition to (not a replacement for) the
+      authenticated synchronizer CSRF token and the GIS `g_csrf_token`
+      double-submit.
+- [ ] Task 2.13: Constrain the auth-state-file repair first-admin creation
+      endpoint so it is reachable only from loopback (`127.0.0.1` / `::1`)
+      OR with a one-time recovery token. At repair-mode start-up the
+      platform shall generate the token, write its hash to memory, and write
+      the raw token to (a) the server console / structured log and (b)
+      `<state-dir>/auth-recovery-token.local.txt` with restrictive
+      filesystem permissions where the OS supports them. The token shall be
+      single-use, rotate on every repair-mode start-up, and be invalidated
+      after first-admin re-creation or platform restart.
+- [ ] Task 2.14: Pin error response codes for the auth/CSRF gate. Use stable
+      structured `code` fields: `E_UNAUTHENTICATED` for `401`, `E_FORBIDDEN`
+      for plain authorization failures, and `E_CSRF_MISMATCH` for CSRF
+      failures. The renderer logic shall key on these codes, never on
+      user-visible text.
 
 **Deliverables**: after setup, unauthenticated API calls to product/runtime
 routes are rejected; missing auth state after setup fails closed into repair;
@@ -163,15 +199,24 @@ product write path.
       mutations.
 - [ ] Task 6.5: Update `docs/api.md`, `docs/setup-guide.md`,
       `docs/deployment.md`, and `.env.example`. The setup-guide and deployment
-      docs shall explicitly document the forgotten-credential escape hatch:
-      the exact path to the persisted auth state file for both packaged and
-      dev deployments, and a warning that deleting it discards all sessions,
-      identities, and memberships while leaving owner profile, Guide Cat
-      state, and product data untouched.
+      docs shall explicitly document:
+      (a) the forgotten-credential escape hatch — the exact path to the
+      persisted auth state file for both packaged and dev deployments, and a
+      warning that deleting it discards all sessions, identities, and
+      memberships while leaving owner profile, Guide Cat state, and product
+      data untouched;
+      (b) the recovery flow constraint — repair first-admin creation only
+      accepts loopback requests OR a one-time recovery token printed to
+      console and written to `<state-dir>/auth-recovery-token.local.txt` at
+      repair-mode start-up; LAN-bound deployments should rebind to loopback
+      or use the recovery token before allowing the LAN to reach the host
+      during recovery.
 - [ ] Task 6.6: Add release notes covering: (a) LAN-facing workspaces now
       require login after setup; (b) `CATS_AUTH_ENABLED=false` is rejected
-      after `setupCompleteAt`; (c) the auth state file escape hatch for
-      forgotten credentials.
+      after `setupCompleteAt`; (c) the auth state file escape hatch and the
+      loopback/recovery-token constraint on the repair flow; (d) pinned
+      `E_UNAUTHENTICATED` / `E_FORBIDDEN` / `E_CSRF_MISMATCH` error codes
+      that downstream tooling can rely on.
 
 **Deliverables**: auth behavior is documented, tested, and visible to
 operators before implementation is marked complete.
@@ -220,11 +265,29 @@ operators before implementation is marked complete.
   Google credential POST validates the separate GIS `g_csrf_token` contract.
 - Unauthenticated `/api/auth/status` and bootstrap envelope responses do not
   return a CSRF token; the field is absent or `null`.
-- Stale-token recovery: renderer treats `403` from CSRF mismatch as a refresh
-  signal — re-fetch `/api/auth/status` and retry once; a second consecutive
-  mismatch is a hard error.
-- Login throttle key is the composite `(account_or_provider_subject,
-  remote_address)` so legitimate admins cannot be DoS'd from arbitrary IPs.
+- Stale-token recovery: renderer treats a `403` with
+  `code: 'E_CSRF_MISMATCH'` as a refresh signal — re-fetch
+  `/api/auth/status` and retry once; a second consecutive mismatch is a hard
+  error. The renderer never retries on `E_FORBIDDEN` or any other `403`
+  code, and never matches on user-visible text.
+- Pre-auth bootstrap defense: `/setup` first-admin, `/api/auth/login`,
+  repair first-admin, and Google credential POST are all guarded by an
+  `Origin` + `Sec-Fetch-Site` same-origin gate. This sits in addition to,
+  not in place of, the synchronizer CSRF token used by authenticated
+  mutations and the `g_csrf_token` double-submit used by Google credentials.
+- Repair-mode admin bootstrap is loopback-only OR requires a one-time
+  recovery token written to console + state-dir file at repair start-up.
+  Token is single-use, rotates per restart, and is invalidated after
+  first-admin re-creation. This prevents the escape hatch from re-opening
+  LAN admin bootstrap.
+- Login throttle hard-lockout key is composite `(account, address)`;
+  per-account progressive delay, per-account 24-hour failure budget, and
+  per-/24 subnet budget are mandatory aggregate guards on top — operators
+  may tune thresholds but cannot disable the guards.
+- Auth/CSRF gate uses pinned structured error codes (`E_UNAUTHENTICATED` /
+  `E_FORBIDDEN` / `E_CSRF_MISMATCH`) rather than relying on HTTP status
+  alone, so client retry logic stays correct and decoupled from copy
+  changes.
 - After `setupCompleteAt`, `CATS_AUTH_ENABLED=false` is rejected on every host
   (uniform rule, no loopback warning shortcut).
 - v1 has no in-band password reset; deleting the persisted auth state file is
@@ -250,6 +313,17 @@ operators before implementation is marked complete.
   - login throttling locks the composite `(account_or_provider_subject,
     remote_address)` key, allows other (account, address) pairs to keep
     trying, and logs without leaking credentials;
+  - per-account progressive delay grows with recent failure count from any
+    source and resets on successful login;
+  - per-account 24-hour failure budget triggers logged alert and extended
+    cooldown that survives across distributed source addresses;
+  - per-/24 subnet failure budget cools the subnet down when the same /24
+    drives failures across many accounts;
+  - aggregate guard thresholds are configurable but cannot be disabled
+    entirely;
+  - recovery-token issuance: at repair-mode start-up the platform writes a
+    fresh single-use token, rotates it on every restart, and invalidates it
+    after first-admin re-creation;
   - auth-state validation treats JSON parse failures, missing required
     top-level fields, and too-new schema versions as corrupt while preserving
     unknown extra fields;
@@ -277,13 +351,30 @@ operators before implementation is marked complete.
     token as a substitute;
   - deleting the persisted auth state file with `setupCompleteAt` already set
     triggers the repair flow on next start without exposing protected APIs;
+  - pre-auth mutating endpoints (`/setup` first-admin, `/api/auth/login`,
+    repair first-admin, Google credential POST) reject requests with a
+    cross-site `Origin`, with `Sec-Fetch-Site: cross-site`, or with both
+    headers absent on a non-`GET`;
+  - the same-origin gate is enforced on Google credential POST and is not
+    bypassed by provider name;
+  - the repair first-admin creation endpoint rejects requests from non-loopback
+    addresses without a valid recovery token, accepts loopback requests
+    without a token, and accepts non-loopback requests with the issued
+    token; the token is single-use and a second attempt with the same token
+    is rejected;
+  - error responses from the auth/CSRF gate carry stable `code` fields
+    (`E_UNAUTHENTICATED`, `E_FORBIDDEN`, `E_CSRF_MISMATCH`) and renderer
+    retry logic keys on those codes only;
   - logout revokes session and clears cookie.
 - **Renderer Tests**:
   - setup shows local credential fields;
   - login route appears after unauthenticated app-shell load;
-  - on a `403` CSRF mismatch the renderer re-fetches `/api/auth/status` and
-    retries the original mutation exactly once; a second consecutive mismatch
-    surfaces a hard error instead of silent retry;
+  - on a `403` with `code: 'E_CSRF_MISMATCH'` the renderer re-fetches
+    `/api/auth/status` and retries the original mutation exactly once; a
+    second consecutive `E_CSRF_MISMATCH` surfaces a hard error instead of
+    silent retry;
+  - the renderer does NOT retry on `403` with `code: 'E_FORBIDDEN'` or any
+    other `403` code, and does not pattern-match on user-visible error text;
   - Google button hides when not configured and uses the client ID from the
     minimal auth/provider envelope when configured.
 - **Manual Testing**:
@@ -305,8 +396,12 @@ operators before implementation is marked complete.
 | Route allowlist accidentally leaves a privileged route public | High | Add static route-policy tests and review runtime/shell/transport routes explicitly |
 | Cats CSRF and Google GIS CSRF are conflated | High | Keep Cats auth routes and Google credential routes in distinct modules; add static tests that `X-Cats-CSRF-Token` middleware is not registered on Google credential routes and that Cats mutation routes reject requests supplying only `g_csrf_token` |
 | Operator forgets the only admin credential and bricks their workspace | High | Document the auth-state-file escape hatch in setup-guide, deployment, and release notes; ensure the repair flow does not require the lost password |
-| Legitimate admin DoS via per-account global lockout | Medium | Use composite `(account, address)` lockout key; cover with a unit test that other addresses can still attempt the same account during lockout |
-| Stale CSRF token after rotation breaks UX silently | Medium | Renderer must refresh `/api/auth/status` on `403` mismatch and retry once; a second mismatch surfaces a hard error |
+| Escape hatch re-opens LAN admin bootstrap | High | Constrain repair first-admin creation to loopback OR a one-time recovery token printed at start-up; never expose the repair endpoint as a plain LAN-reachable bootstrap; document the loopback/token requirement in deployment docs |
+| Pre-auth CSRF on `/setup` / `/api/auth/login` / repair from cross-site POST | High | Same-origin gate via `Origin` + `Sec-Fetch-Site` on all pre-auth mutating endpoints, including Google credential POST; static test that the gate is registered on every pre-auth route |
+| Distributed brute force shares budget per account | High | Mandatory aggregate guards: per-account progressive delay, per-account 24-hour failure budget with extended cooldown, per-/24 subnet failure budget; cannot be disabled |
+| Renderer retries non-CSRF `403` and masks real authz failures | Medium | Pin `code: 'E_CSRF_MISMATCH'`; renderer keys retry on that code only; static test asserts no retry on `E_FORBIDDEN` |
+| Legitimate admin DoS via per-account global hard lockout | Medium | Use composite `(account, address)` hard-lockout key; aggregate guards add delay and budgets but never hard-lock the account globally without operator action |
+| Stale CSRF token after rotation breaks UX silently | Medium | Renderer must refresh `/api/auth/status` on `E_CSRF_MISMATCH` and retry once; a second mismatch surfaces a hard error |
 | `CATS_AUTH_ENABLED=false` honored after setup re-opens LAN exposure | High | Reject the override as a configuration error after `setupCompleteAt` on every host; cover with config-validation tests |
 | Future multi-user attribution is blocked by first slice shortcuts | Medium | Carry principal in route context and fail closed for `coreActorId: null` instead of mapping every admin to owner |
 
@@ -316,6 +411,7 @@ operators before implementation is marked complete.
 |------|--------|
 | 2026-04-30 | Plan created with ADR-096 and SPEC-100 after LAN access exposed the missing general auth boundary. |
 | 2026-04-30 | Tightened auth invariants: composite `(account, address)` throttle key; uniform `CATS_AUTH_ENABLED=false` rejection after `setupCompleteAt`; pre-setup row clarified in the gate table; pre-auth CSRF token explicitly absent; renderer stale-CSRF retry contract; rotation on privilege changes marked forward-looking; auth-state-file escape hatch for forgotten credentials documented. |
+| 2026-04-30 | Closed pre-auth bootstrap CSRF gap with same-origin gate on `/setup`/`/api/auth/login`/repair; constrained repair first-admin creation to loopback or one-time recovery token so the escape hatch does not re-open LAN admin bootstrap; pinned `E_CSRF_MISMATCH` / `E_FORBIDDEN` / `E_UNAUTHENTICATED` error codes; promoted per-account aggregate guards (progressive delay, daily failure budget, per-/24 subnet budget) from optional to required. |
 
 ---
 
