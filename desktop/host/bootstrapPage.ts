@@ -557,7 +557,7 @@ export function buildDesktopBootstrapPage(): string {
        there even if a successful install flips phase to ready_for_setup, so
        they see their install complete and can click Continue at their own
        pace (and queue up more installs if they want). The flag is cleared
-       only when the user actually presses Continue / navigates away. */
+       when the user explicitly continues into setup. */
     var onboardingActive = false;
 
     function isCliMissing(snapshot) {
@@ -800,6 +800,11 @@ export function buildDesktopBootstrapPage(): string {
     function recoveryTitle(snap) {
       if (snap.phase === 'failed') return 'Cats needs a quick restart';
       if (snap.phase === 'needs_prerequisites') {
+        if (isCliMissing(snap)) {
+          return snap.app && snap.app.setupCompleteAt
+            ? 'Install a CLI to continue using Cats'
+            : 'Pick a CLI to get started';
+        }
         return snap.app && snap.app.setupCompleteAt
           ? 'Cats can open, but one helper needs attention'
           : 'Cats needs one setup fix';
@@ -818,6 +823,11 @@ export function buildDesktopBootstrapPage(): string {
         return 'A local helper did not start. Try again first; use advanced details only if it keeps failing.';
       }
       if (snap.phase === 'needs_prerequisites') {
+        if (isCliMissing(snap)) {
+          return snap.app && snap.app.setupCompleteAt
+            ? 'Cats did not find an installed CLI. Install at least one CLI below, then continue.'
+            : 'Cats needs at least one installed CLI before setup can continue.';
+        }
         if (snap.app && snap.app.setupCompleteAt) {
           return 'You can keep using Cats now. Repair the local helper when convenient, or open advanced details if you need them.';
         }
@@ -1212,7 +1222,9 @@ export function buildDesktopBootstrapPage(): string {
           if (continueDisabled) return;
           var self = this;
           self.disabled = true;
+          onboardingActive = false;
           bridge.runAction('open_setup').catch(function () {
+            onboardingActive = true;
             self.disabled = false;
           });
         }

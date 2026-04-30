@@ -576,6 +576,7 @@ function buildActions(
   options: {
     appReady: boolean;
     setupComplete: boolean;
+    cliMissing: boolean;
     setup: DesktopSetupState | null | undefined;
   },
 ): DesktopHostAction[] {
@@ -591,17 +592,19 @@ function buildActions(
   }
 
   // ── Continue slot ──────────────────────────────────────────────────
-  if (phase === 'ready_for_setup') {
-    pushAction('open_setup', 'Continue to Setup', true);
-  } else if (phase === 'ready_for_chat') {
-    pushAction('open_chat', 'Open Cats', true);
-  } else if (phase === 'needs_prerequisites' && options.setupComplete) {
-    pushAction('open_chat', 'Open Cats', true);
-  } else if ((phase === 'failed' || phase === 'needs_prerequisites') && options.appReady) {
-    if (options.setupComplete) {
+  if (!options.cliMissing) {
+    if (phase === 'ready_for_setup') {
+      pushAction('open_setup', 'Continue to Setup', true);
+    } else if (phase === 'ready_for_chat') {
       pushAction('open_chat', 'Open Cats', true);
-    } else {
-      pushAction('open_setup', 'Open Setup', true);
+    } else if (phase === 'needs_prerequisites' && options.setupComplete) {
+      pushAction('open_chat', 'Open Cats', true);
+    } else if ((phase === 'failed' || phase === 'needs_prerequisites') && options.appReady) {
+      if (options.setupComplete) {
+        pushAction('open_chat', 'Open Cats', true);
+      } else {
+        pushAction('open_setup', 'Open Setup', true);
+      }
     }
   }
 
@@ -691,6 +694,11 @@ export function buildDesktopBootstrapSnapshot(
   const hasAppHealth = Boolean(input.appHealth);
   const hasAppShell = Boolean(input.appShell);
   const requiresProviderDiagnostics = !setupCompleted;
+  const cliMissing = Boolean(
+    input.cliInventory
+      && input.cliInventory.source === 'runtime'
+      && input.cliInventory.total === 0,
+  );
   let phase: DesktopBootstrapSnapshot['phase'];
   let status: DesktopBootstrapSnapshot['status'];
   let summary: string;
@@ -707,13 +715,9 @@ export function buildDesktopBootstrapSnapshot(
     phase = 'checking_prerequisites';
     status = 'degraded';
     summary = 'Local services are ready. Running prerequisite checks.';
-  } else if (
-    input.cliInventory
-    && input.cliInventory.source === 'runtime'
-    && input.cliInventory.total === 0
-  ) {
+  } else if (cliMissing) {
     // CLI gate: only fires when we have authoritative runtime probe data
-    // saying zero CLIs are usable. Source 'unknown' (probe failed / pending)
+    // saying zero CLIs are installed. Source 'unknown' (probe failed / pending)
     // never fires the gate so we don't block users on unavailable signal.
     phase = 'needs_prerequisites';
     status = 'degraded';
@@ -797,6 +801,7 @@ export function buildDesktopBootstrapSnapshot(
     actions: buildActions(phase, {
       appReady: Boolean(appService?.ready),
       setupComplete: setupCompleted,
+      cliMissing,
       setup,
     }),
     lastError: input.lastError ?? null,

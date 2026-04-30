@@ -204,6 +204,7 @@ let latestDesktopStartupPreferences: DesktopStartupPreferences = {
 };
 let activeScreenshotOverlaySession: DesktopScreenshotOverlaySession | null = null;
 let voiceCaptureController: DesktopVoiceCaptureController | null = null;
+const RUNTIME_SETUP_SCAN_TIMEOUT_MS = 30_000;
 
 interface ProductBootstrapDiagnosticsPayload {
   generatedAt?: string;
@@ -930,7 +931,11 @@ async function syncTrayController(): Promise<void> {
 }
 
 function isDesktopSetupHelperMode(value: unknown): value is DesktopSetupHelperMode {
-  return value === 'check' || value === 'apply' || value === 'upgrade' || value === 'force';
+  return value === 'check'
+    || value === 'apply'
+    || value === 'upgrade'
+    || value === 'force'
+    || value === 'uninstall';
 }
 
 function resolveHostPackagingPlatforms(
@@ -975,6 +980,39 @@ async function getSetupSnapshot(): Promise<DesktopSetupSnapshot> {
   });
 }
 
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit,
+  timeoutMs: number,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
+  try {
+    return await fetch(url, {
+      ...init,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function createUnknownRuntimeCliInventoryProbe(): RuntimeCliInventoryProbe {
+  return { scan: null };
+}
+
+function shouldRefreshRuntimeCliInventoryProbe(
+  probe: RuntimeCliInventoryProbe | null,
+  options: { triggerScanIfMissing?: boolean },
+): boolean {
+  if (!probe?.scan) {
+    return options.triggerScanIfMissing === true;
+  }
+  return !probe.scan.providers.some((provider) => provider.available === true);
+}
+
 async function fetchRuntimeCliInventoryProbe(
   baseUrl: string,
   options: { triggerScanIfMissing?: boolean; forceRescan?: boolean } = {},
@@ -986,30 +1024,38 @@ async function fetchRuntimeCliInventoryProbe(
     } catch {
       return null;
     }
-    if (!options.triggerScanIfMissing) {
-      return probe;
-    }
-    if (probe && probe.scan !== null) {
+    if (!shouldRefreshRuntimeCliInventoryProbe(probe, options)) {
       return probe;
     }
   }
-  // Trigger a fresh scan (either none cached, or caller forced rescan after
-  // an install/uninstall). 12 providers in parallel via runtime's
+  // Trigger a fresh scan (none cached before setup, cached zero CLIs, or caller
+  // forced rescan after install/uninstall). 12 providers in parallel via runtime's
   // BootstrapService light probe mode — typically under ~500ms.
   try {
-    await fetch(`${baseUrl}/setup-scan`, {
+    const scanResponse = await fetchWithTimeout(`${baseUrl}/setup-scan`, {
       method: 'POST',
       headers: { 'content-type': 'application/json', accept: 'application/json' },
       body: JSON.stringify({ manual: false }),
-    });
+    }, RUNTIME_SETUP_SCAN_TIMEOUT_MS);
+    if (!scanResponse.ok) {
+      return options.forceRescan ? createUnknownRuntimeCliInventoryProbe() : probe;
+    }
   } catch {
-    return probe;
+    return options.forceRescan ? createUnknownRuntimeCliInventoryProbe() : probe;
   }
   try {
     return await fetchJson<RuntimeCliInventoryProbe>(`${baseUrl}/setup-state`);
   } catch {
-    return probe;
+    return options.forceRescan ? createUnknownRuntimeCliInventoryProbe() : probe;
   }
+}
+
+function isCliMissingBootstrapSnapshot(snapshot: DesktopBootstrapSnapshot): boolean {
+  return Boolean(
+    snapshot.phase === 'needs_prerequisites'
+      && snapshot.prerequisites?.cliInventory?.source === 'runtime'
+      && snapshot.prerequisites.cliInventory.total === 0,
+  );
 }
 
 function buildSnapshot(lastError?: string | null): DesktopBootstrapSnapshot {
@@ -1292,11 +1338,18 @@ async function runHostAction(actionId: DesktopHostActionId): Promise<DesktopBoot
     return latestSnapshot ?? buildSnapshot(null);
   }
   if (actionId === 'open_setup') {
+    const snapshot = latestSnapshot ?? await refreshBootstrapSnapshot();
+    if (isCliMissingBootstrapSnapshot(snapshot)) {
+      return snapshot;
+    }
     await showMainWindow(`${hostConfig.appBaseUrl}/setup`);
-    return latestSnapshot ?? buildSnapshot(null);
+    return snapshot;
   }
   if (actionId === 'open_chat') {
     const snapshot = latestSnapshot ?? await refreshBootstrapSnapshot();
+    if (isCliMissingBootstrapSnapshot(snapshot)) {
+      return snapshot;
+    }
     await showMainWindow(`${hostConfig.appBaseUrl}${snapshot.app.entryPath}`);
     return snapshot;
   }
@@ -1361,13 +1414,11 @@ async function runSetupAction(
   // After any helper run that may have changed CLI inventory, force a
   // runtime rescan so the next snapshot reflects the new state. We don't
   // depend on the helper's runState — the rescan itself is authoritative.
-  if (action.helperId.endsWith('-native-installer')) {
+  if (action.mode !== 'check' && action.helperId.endsWith('-native-installer')) {
     const refreshedProbe = await fetchRuntimeCliInventoryProbe(hostConfig.runtimeBaseUrl, {
       forceRescan: true,
     });
-    if (refreshedProbe) {
-      latestCliInventoryProbe = refreshedProbe;
-    }
+    latestCliInventoryProbe = refreshedProbe;
   }
   publishSnapshot(await refreshBootstrapSnapshot());
   return await getSetupSnapshot();

@@ -84,7 +84,7 @@ export function buildDesktopCliInventoryFromRuntime(
   platform: NodeJS.Platform = process.platform,
 ): DesktopCliInventory {
   const helperPrefix = platformToHelperPrefix(platform);
-  // Runtime provider id -> available (binary on PATH).
+  // Runtime provider id -> installed command detected by the runtime setup scan.
   const runtimeAvailability = new Map<string, boolean>();
   let scannedAt: string | null = null;
   if (probe?.scan) {

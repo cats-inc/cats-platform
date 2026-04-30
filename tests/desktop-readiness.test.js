@@ -1119,6 +1119,8 @@ test('desktop bootstrap fires cli_missing for fresh users when runtime probe rep
   assert.match(snapshot.summary, /Welcome\.|Install a CLI/i);
   assert.equal(snapshot.prerequisites?.cliInventory?.source, 'runtime');
   assert.equal(snapshot.prerequisites?.cliInventory?.total, 0);
+  assert.equal(snapshot.actions.some((action) => action.id === 'open_setup'), false);
+  assert.equal(snapshot.actions.some((action) => action.id === 'open_chat'), false);
 });
 
 test('desktop bootstrap fires cli_missing for setup-complete users when runtime probe reports zero CLIs', () => {
@@ -1137,6 +1139,8 @@ test('desktop bootstrap fires cli_missing for setup-complete users when runtime 
 
   assert.equal(snapshot.phase, 'needs_prerequisites');
   assert.match(snapshot.summary, /No CLI is currently installed|Install/i);
+  assert.equal(snapshot.actions.some((action) => action.id === 'open_setup'), false);
+  assert.equal(snapshot.actions.some((action) => action.id === 'open_chat'), false);
 });
 
 test('desktop bootstrap does NOT fire cli_missing when probe source is unknown (probe failed/pending)', () => {
