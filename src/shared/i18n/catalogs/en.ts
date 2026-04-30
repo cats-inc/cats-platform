@@ -1315,6 +1315,12 @@ export const enCatalog: MessageCatalog = {
   'shared.addCatPanelSaving': 'Saving…',
   'shared.addCatPanelCreateAndAdd': 'Create & Add',
   'shared.addCatPanelCreateAndAddToChat': 'Create & Add to Chat',
+  'shared.audience.popoverHeader': 'Audience',
+  'shared.audience.selectAudienceLabel': 'Select audience',
+  'shared.audience.workflowSequential': 'Sequential',
+  'shared.audience.workflowConcurrent': 'Concurrent',
+  'shared.audience.switchToSequentialModeLabel': 'Switch to sequential mode',
+  'shared.audience.switchToConcurrentModeLabel': 'Switch to concurrent mode',
   'shared.workspaceMode.currentLabel': 'Current folder',
   'shared.workspaceMode.worktreeLabel': 'Independent worktree',
   'shared.workspaceMode.currentTooltip':

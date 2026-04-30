@@ -2,6 +2,8 @@ import { type DragEvent, useCallback, useEffect, useRef, useState } from 'react'
 
 import { nameInitials } from '../../../../shared/nameInitials.js';
 import type { RoomWorkflowShape } from '../../../../shared/roomRouting.js';
+import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import type { DraftComposerStackParticipant } from './chatNewChatDraftSupport.js';
 
 export interface AudienceChipProps {
@@ -29,6 +31,7 @@ export function AudienceChip({
   workflowShape = 'sequential',
   onToggleWorkflowShape,
 }: AudienceChipProps) {
+  const { t } = useI18n();
   const isMulti = audienceParticipants.length > 1;
   const canPopover = Boolean(onSetAudienceKeys) && allParticipants.length > 1;
   const [open, setOpen] = useState(false);
@@ -120,7 +123,11 @@ export function AudienceChip({
   const firstTooltip = first.isCat && first.executionLabel
     ? `${first.name} \u00b7 ${first.executionLabel}`
     : (first.executionLabel || first.name);
-  const chipTooltip = isMulti ? 'Select audience' : firstTooltip;
+  const chipTooltip = isMulti ? t(messageKeys.sharedAudienceSelectAudienceLabel) : firstTooltip;
+
+  const workflowTooltip = workflowShape === 'sequential'
+    ? t(messageKeys.sharedAudienceSwitchToConcurrentModeLabel)
+    : t(messageKeys.sharedAudienceSwitchToSequentialModeLabel);
 
   const handleChipClick = () => {
     if (canPopover) {
@@ -170,8 +177,10 @@ export function AudienceChip({
             className="audienceChipWorkflow"
             role="button"
             tabIndex={disabled ? -1 : 0}
-            data-tooltip={workflowShape === 'sequential' ? 'Sequential' : 'Concurrent'}
-            aria-label={`Switch to ${workflowShape === 'sequential' ? 'concurrent' : 'sequential'} mode`}
+            data-tooltip={workflowShape === 'sequential'
+              ? t(messageKeys.sharedAudienceWorkflowSequential)
+              : t(messageKeys.sharedAudienceWorkflowConcurrent)}
+            aria-label={workflowTooltip}
             onClick={(event) => {
               event.stopPropagation();
               onToggleWorkflowShape();
@@ -195,8 +204,8 @@ export function AudienceChip({
       </button>
 
       {open && canPopover ? (
-        <div className="audiencePopover">
-          <div className="audiencePopoverHeader">Audience</div>
+          <div className="audiencePopover">
+          <div className="audiencePopoverHeader">{t(messageKeys.sharedAudiencePopoverHeader)}</div>
           {orderedForPopover.map((participant) => {
             const isInAudience = audienceKeySet.has(participant.key);
             const audienceIndex = isInAudience
