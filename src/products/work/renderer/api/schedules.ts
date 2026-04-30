@@ -1,4 +1,5 @@
 import { expectJson } from './http.js';
+import { messageKeys, t as translate } from '../../../../shared/i18n/index.js';
 import {
   WORK_API_SCHEDULES_PATH,
   buildWorkApiSchedulePath,
@@ -137,51 +138,56 @@ export interface WorkScheduleAdmissionResult {
 
 export async function listWorkSchedules(
   signal?: AbortSignal,
+  errorMessage = translate(messageKeys.workSchedulesListLoadErrorFallback),
 ): Promise<WorkScheduleListResponse> {
   const response = await fetch(WORK_API_SCHEDULES_PATH, { signal });
-  return expectJson<WorkScheduleListResponse>(response, 'Failed to load schedules.');
+  return expectJson<WorkScheduleListResponse>(response, errorMessage);
 }
 
 export async function createWorkSchedule(
   input: WorkScheduleCreateInput,
+  errorMessage = translate(messageKeys.workScheduleCreateFailed),
 ): Promise<WorkScheduleRuleResponse> {
   const response = await fetch(WORK_API_SCHEDULES_PATH, {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(input),
   });
-  return expectJson<WorkScheduleRuleResponse>(response, 'Failed to create schedule.');
+  return expectJson<WorkScheduleRuleResponse>(response, errorMessage);
 }
 
 export async function updateWorkSchedule(
   scheduleId: string,
   input: WorkScheduleUpdateInput,
+  errorMessage = translate(messageKeys.workScheduleUpdateFailed),
 ): Promise<WorkScheduleRuleResponse> {
   const response = await fetch(buildWorkApiSchedulePath(scheduleId), {
     method: 'PATCH',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify(input),
   });
-  return expectJson<WorkScheduleRuleResponse>(response, 'Failed to update schedule.');
+  return expectJson<WorkScheduleRuleResponse>(response, errorMessage);
 }
 
 export async function testFireWorkSchedule(
   scheduleId: string,
+  errorMessage = translate(messageKeys.workScheduleTestFireFailed),
 ): Promise<WorkScheduleAdmissionResult> {
   const response = await fetch(buildWorkApiScheduleTestFirePath(scheduleId), {
     method: 'POST',
   });
-  return expectJson<WorkScheduleAdmissionResult>(response, 'Failed to test-fire schedule.');
+  return expectJson<WorkScheduleAdmissionResult>(response, errorMessage);
 }
 
 export async function removeWorkSchedule(
   scheduleId: string,
+  errorMessage = translate(messageKeys.workScheduleDeleteFailed),
 ): Promise<{ removed: boolean; ruleId: string }> {
   const response = await fetch(buildWorkApiSchedulePath(scheduleId), {
     method: 'DELETE',
   });
   return expectJson<{ removed: boolean; ruleId: string }>(
     response,
-    'Failed to delete schedule.',
+    errorMessage,
   );
 }

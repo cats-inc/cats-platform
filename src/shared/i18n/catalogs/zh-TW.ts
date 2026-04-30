@@ -513,6 +513,10 @@ export const zhTWCatalog: MessageCatalog = {
   'work.schedule.retryBackoff.fixed': '固定',
   'work.schedule.retryBackoff.exponential': '指數退避',
   'work.schedule.ruleNotLoadedError': 'Schedule rule 尚未載入。',
+  'work.schedule.createFailed': '建立 schedule 失敗。',
+  'work.schedule.updateFailed': '更新 schedule 失敗。',
+  'work.schedule.testFireFailed': 'test-fire schedule 失敗。',
+  'work.schedule.deleteFailed': '刪除 schedule 失敗。',
   'work.schedule.deleteConfirmation':
     '要刪除 schedule「{scheduleTitle}」嗎？\n\n此動作無法復原。未來觸發會停止，rule 的觸發歷史會移除；已准入的 Mission/Run 仍會保留。',
   'work.schedule.actionFailed': 'Schedule 操作失敗。',

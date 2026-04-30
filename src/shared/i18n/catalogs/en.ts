@@ -538,6 +538,10 @@ export const enCatalog: MessageCatalog = {
   'work.schedule.retryBackoff.fixed': 'Fixed',
   'work.schedule.retryBackoff.exponential': 'Exponential',
   'work.schedule.ruleNotLoadedError': 'Schedule rule not loaded.',
+  'work.schedule.createFailed': 'Failed to create schedule.',
+  'work.schedule.updateFailed': 'Failed to update schedule.',
+  'work.schedule.testFireFailed': 'Failed to test-fire schedule.',
+  'work.schedule.deleteFailed': 'Failed to delete schedule.',
   'work.schedule.deleteConfirmation':
     'Delete schedule "{scheduleTitle}"?\n\nThis cannot be undone. Future fires stop and the rule\'s trigger history is removed; admitted Mission/Run records remain.',
   'work.schedule.actionFailed': 'Schedule action failed.',

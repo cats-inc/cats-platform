@@ -48,7 +48,11 @@ export function SchedulesDetailPage(): JSX.Element {
   const toggleMutation = useMutation({
     mutationFn: async (next: boolean) => {
       if (!rule) throw new Error(t('workScheduleRuleNotLoadedError'));
-      await updateWorkSchedule(rule.id, { enabled: next });
+      await updateWorkSchedule(
+        rule.id,
+        { enabled: next },
+        t('workScheduleUpdateFailed'),
+      );
     },
     onSuccess: invalidate,
   });
@@ -56,7 +60,7 @@ export function SchedulesDetailPage(): JSX.Element {
   const testFireMutation = useMutation({
     mutationFn: async () => {
       if (!rule) throw new Error(t('workScheduleRuleNotLoadedError'));
-      await testFireWorkSchedule(rule.id);
+      await testFireWorkSchedule(rule.id, t('workScheduleTestFireFailed'));
     },
     onSuccess: invalidate,
   });
@@ -64,7 +68,7 @@ export function SchedulesDetailPage(): JSX.Element {
   const deleteMutation = useMutation({
     mutationFn: async () => {
       if (!rule) throw new Error(t('workScheduleRuleNotLoadedError'));
-      await removeWorkSchedule(rule.id);
+      await removeWorkSchedule(rule.id, t('workScheduleDeleteFailed'));
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: SCHEDULES_QUERY_KEY });

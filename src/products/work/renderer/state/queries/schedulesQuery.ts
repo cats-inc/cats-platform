@@ -1,5 +1,7 @@
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 
+import { useI18n } from "../../../../../app/renderer/i18n/index.js";
+import { messageKeys } from "../../../../../shared/i18n/messageKeys.js";
 import { buildWorkApiSchedulePath } from "../../../shared/apiPaths.js";
 import { expectJson } from "../../api/http.js";
 import {
@@ -18,15 +20,20 @@ export function scheduleDetailQueryKey(scheduleId: string): readonly [
 }
 
 export function useSchedulesQuery(): UseQueryResult<WorkScheduleListResponse> {
+  const { t } = useI18n();
   return useQuery({
     queryKey: SCHEDULES_QUERY_KEY,
-    queryFn: ({ signal }) => listWorkSchedules(signal),
+    queryFn: ({ signal }) => listWorkSchedules(
+      signal,
+      t(messageKeys.workSchedulesListLoadErrorFallback),
+    ),
   });
 }
 
 export function useScheduleDetailQuery(
   scheduleId: string | undefined,
 ): UseQueryResult<WorkScheduleRuleResponse> {
+  const { t } = useI18n();
   return useQuery({
     queryKey: scheduleId ? scheduleDetailQueryKey(scheduleId) : ["schedules", "_unknown"],
     enabled: typeof scheduleId === "string" && scheduleId.length > 0,
@@ -34,7 +41,7 @@ export function useScheduleDetailQuery(
       const response = await fetch(buildWorkApiSchedulePath(scheduleId!), { signal });
       return expectJson<WorkScheduleRuleResponse>(
         response,
-        "Failed to load schedule.",
+        t(messageKeys.workScheduleLoadFailed),
       );
     },
   });
