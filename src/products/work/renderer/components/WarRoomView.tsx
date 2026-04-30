@@ -11,6 +11,10 @@ import {
   formatWorkExecutionStrategy,
   formatWorkTokenList,
 } from '../workExecutionPresentation.js';
+import {
+  getWorkObjectStatusLabel,
+} from '../topdown/WorkObjectCard';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
 
 type WorkOperatorInboxItem = WorkDashboardProjection['sections']['operatorInbox']['items'][number];
 type WorkControlPlaneItem = WorkDashboardProjection['sections']['controlPlane']['items'][number];
@@ -18,18 +22,25 @@ type WorkProjectItem = WorkDashboardProjection['sections']['projects']['items'][
 type WorkRecoveryItem = WorkDashboardProjection['sections']['recovery']['items'][number];
 type WorkWorkItemItem = WorkDashboardProjection['sections']['workItems']['items'][number];
 type WorkTaskActionContext = WorkOperatorInboxItem['taskContext'];
+type I18nTranslate = ReturnType<typeof useI18n>['t'];
 
-function formatTimestamp(value: string | null | undefined): string {
+function formatTimestamp(
+  value: string | null | undefined,
+  t: I18nTranslate,
+): string {
   if (!value) {
-    return 'Not recorded';
+    return t('workWarRoomNotRecorded');
   }
 
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString();
 }
 
-function compactList(values: readonly string[]): string {
-  return values.length > 0 ? values.join(', ') : 'None';
+function compactList(
+  values: readonly string[],
+  t: I18nTranslate,
+): string {
+  return values.length > 0 ? values.join(', ') : t('workWarRoomNone');
 }
 
 function attentionBadgeClassName(severity: string | null | undefined): string {
@@ -45,6 +56,37 @@ function attentionBadgeClassName(severity: string | null | undefined): string {
     default:
       return 'operatorStatusBadge isMuted';
   }
+}
+
+function getWarRoomAttentionLabel(
+  severity: string | null | undefined,
+  t: I18nTranslate,
+): string {
+  return severity === 'attention'
+    ? t('workWarRoomAttentionAttention')
+    : severity === 'error'
+      ? t('workWarRoomAttentionError')
+      : severity === 'progress'
+        ? t('workWarRoomAttentionProgress')
+        : severity === 'success'
+          ? t('workWarRoomAttentionSuccess')
+          : severity === 'muted'
+            ? t('workWarRoomAttentionMuted')
+            : t('workWarRoomAttentionFallback', { severity });
+}
+
+function getWarRoomStatusLabel(
+  status: string | null | undefined,
+  t: I18nTranslate,
+): string {
+  if (!status) {
+    return t('workWarRoomNoStatus');
+  }
+
+  const normalized = getWorkObjectStatusLabel(status, t);
+  return normalized === status
+    ? t('workWarRoomStatusFallback', { status })
+    : normalized;
 }
 
 function taskStatusBadgeClassName(status: string | null | undefined): string {
@@ -110,8 +152,10 @@ function WorkSectionHeader({
 
 function WorkWarRoomOpenTaskButton({
   taskId,
+  t,
 }: {
   taskId: string;
+  t: I18nTranslate;
 }) {
   const navigate = useNavigate();
 
@@ -125,7 +169,7 @@ function WorkWarRoomOpenTaskButton({
         });
       }}
     >
-      Open task
+      {t('workWarRoomOpenTask')}
     </button>
   );
 }
@@ -133,15 +177,17 @@ function WorkWarRoomOpenTaskButton({
 function WorkWarRoomTaskContextActions({
   taskId,
   taskContext,
+  t,
 }: {
   taskId: string;
   taskContext: WorkTaskActionContext;
+  t: I18nTranslate;
 }) {
   const navigate = useNavigate();
 
   return (
     <div className="workWarRoomHeaderActions">
-      <WorkWarRoomOpenTaskButton taskId={taskId} />
+      <WorkWarRoomOpenTaskButton taskId={taskId} t={t} />
       {taskContext.projectId ? (
         <button
           type="button"
@@ -152,7 +198,7 @@ function WorkWarRoomTaskContextActions({
             });
           }}
         >
-          Open project
+          {t('workWarRoomOpenProject')}
         </button>
       ) : null}
       {taskContext.workItemId ? (
@@ -165,7 +211,7 @@ function WorkWarRoomTaskContextActions({
             });
           }}
         >
-          Open work item
+          {t('workWarRoomOpenWorkItem')}
         </button>
       ) : null}
       {taskContext.conversationSourceChannelId ? (
@@ -178,7 +224,7 @@ function WorkWarRoomTaskContextActions({
             });
           }}
         >
-          Open briefing thread
+          {t('workWarRoomOpenBriefingThread')}
         </button>
       ) : null}
       {listCatActorLinks(taskContext.assignedActors).map((actor) => (
@@ -192,7 +238,7 @@ function WorkWarRoomTaskContextActions({
             });
           }}
         >
-          Open {actor.displayName}
+          {t('workWarRoomOpenActor', { actorName: actor.displayName })}
         </button>
       ))}
     </div>
@@ -202,24 +248,31 @@ function WorkWarRoomTaskContextActions({
 function OperatorInboxSection({
   items,
   totalAvailable,
+  t,
 }: {
   items: WorkOperatorInboxItem[];
   totalAvailable: number;
+  t: I18nTranslate;
 }) {
   return (
     <section className="operatorPanel">
       <WorkSectionHeader
-        eyebrow="Operate"
-        title="Operator Inbox"
-        summary={`${items.length} of ${totalAvailable}`}
+        eyebrow={t('workWarRoomOperateEyebrow')}
+        title={t('workWarRoomOperatorInbox')}
+        summary={t('workWarRoomCountSummary', {
+          count: items.length,
+          total: totalAvailable,
+        })}
       />
       {items.length === 0 ? (
         <article className="operatorCard">
           <div className="operatorCardHeader">
-            <strong>No tasks need operator attention.</strong>
-            <span className="operatorStatusBadge isMuted">clear</span>
+            <strong>{t('workWarRoomOperatorInboxEmptyTitle')}</strong>
+            <span className="operatorStatusBadge isMuted">
+              {t('workWarRoomOperatorInboxEmptyBadge')}
+            </span>
           </div>
-          <p>The inbox will surface retry, approval, and blocked continuation work here.</p>
+          <p>{t('workWarRoomOperatorInboxEmptyBody')}</p>
         </article>
       ) : (
         <div className="workWarRoomTaskGrid">
@@ -229,39 +282,79 @@ function OperatorInboxSection({
                 <strong>{item.taskTitle}</strong>
                 <div className="workWarRoomBadgeRow">
                   <span className={attentionBadgeClassName(item.attention.severity)}>
-                    {item.attention.severity}
+                    {getWarRoomAttentionLabel(item.attention.severity, t)}
                   </span>
                   <span className={taskStatusBadgeClassName(item.taskStatus)}>
-                    {item.taskStatus}
+                    {getWarRoomStatusLabel(item.taskStatus, t)}
                   </span>
                 </div>
               </div>
-              <p>{item.summary ?? 'No task summary recorded.'}</p>
+              <p>{item.summary ?? t('workWarRoomNoTaskSummary')}</p>
               <div className="operatorMetaRow">
-                <span>Reasons: {compactList(item.attention.reasons)}</span>
-                <span>Actions: {formatWorkTokenList(item.nextActions.map((action) => action.kind))}</span>
+                <span>
+                  {t('workWarRoomMetaLabelReasons')}:{' '}
+                  {compactList(item.attention.reasons, t)}
+                </span>
+                <span>
+                  {t('workWarRoomMetaLabelActions')}:{' '}
+                  {formatWorkTokenList(item.nextActions.map((action) => action.kind))}
+                </span>
               </div>
               <div className="operatorMetaRow">
-                <span>Product: {formatWorkExecutionProduct(item.planning.effectiveProduct)}</span>
-                <span>Strategy: {formatWorkExecutionStrategy(item.runtimeBridge.request.requestedStrategy)}</span>
+                <span>
+                  {t('workWarRoomMetaLabelProduct')}:{' '}
+                  {formatWorkExecutionProduct(item.planning.effectiveProduct)}
+                </span>
+                <span>
+                  {t('workWarRoomMetaLabelStrategy')}:{' '}
+                  {formatWorkExecutionStrategy(item.runtimeBridge.request.requestedStrategy)}
+                </span>
               </div>
               <div className="operatorMetaRow">
-                <span>Delivery: {formatWorkDeliveryMode(item.runtimeDeliveryIntent?.mode)}</span>
-                <span>Workflow: {item.workflowContinuation?.blockedReason ?? 'No replay block'}</span>
+                <span>
+                  {t('workWarRoomMetaLabelDelivery')}:{' '}
+                  {formatWorkDeliveryMode(item.runtimeDeliveryIntent?.mode)}
+                </span>
+                <span>
+                  {t('workWarRoomMetaLabelWorkflow')}:{' '}
+                  {item.workflowContinuation?.blockedReason ??
+                    t('workWarRoomMetaValueNoReplayBlock')}
+                </span>
               </div>
               <div className="operatorMetaRow">
-                <span>Latest: {item.latestTimelineItem?.title ?? 'No timeline item yet'}</span>
-                <span>{formatTimestamp(item.latestTimelineItem?.timestamp)}</span>
+                <span>
+                  {t('workWarRoomMetaLabelLatest')}:{' '}
+                  {item.latestTimelineItem?.title ?? t('workWarRoomMetaValueNoTimelineItem')}
+                </span>
+                <span>{formatTimestamp(item.latestTimelineItem?.timestamp, t)}</span>
               </div>
               <div className="operatorMetaRow">
-                <span>Project: {item.taskContext.projectTitle ?? 'No linked project'}</span>
-                <span>Work item: {item.taskContext.workItemTitle ?? 'No linked work item'}</span>
+                <span>
+                  {t('workWarRoomMetaLabelProject')}: {item.taskContext.projectTitle ?? t('workWarRoomNoLinkedProject')}
+                </span>
+                <span>
+                  {t('workWarRoomMetaLabelWorkItem')}:{' '}
+                  {item.taskContext.workItemTitle ?? t('workWarRoomNoLinkedWorkItem')}
+                </span>
               </div>
               <div className="operatorMetaRow">
-                <span>Conversation: {item.taskContext.conversationTitle ?? 'No linked conversation'}</span>
-                <span>Actors: {compactList(item.taskContext.assignedActors.map((actor) => actor.displayName))}</span>
+                <span>
+                  {t('workWarRoomMetaLabelConversation')}:{' '}
+                  {item.taskContext.conversationTitle ?? t('workWarRoomNoLinkedConversation')}
+                </span>
+                <span>
+                  {t('workWarRoomMetaLabelActors')}:{' '}
+                  {compactList(
+                    item.taskContext.assignedActors.map((actor) => actor.displayName),
+                    t,
+                  )}
+                </span>
               </div>
-              <WorkWarRoomTaskContextActions taskId={item.taskId} taskContext={item.taskContext} />
+              <WorkWarRoomTaskContextActions
+                taskId={item.taskId}
+                taskContext={item.taskContext}
+                t={t}
+              />
             </article>
           ))}
         </div>
@@ -273,24 +366,29 @@ function OperatorInboxSection({
 function ControlPlaneSection({
   items,
   totalAvailable,
+  t,
 }: {
   items: WorkControlPlaneItem[];
   totalAvailable: number;
+  t: I18nTranslate;
 }) {
   return (
     <section className="operatorPanel">
       <WorkSectionHeader
-        eyebrow="Governance"
-        title="Control Plane"
-        summary={`${items.length} of ${totalAvailable}`}
+        eyebrow={t('workWarRoomGovernanceEyebrow')}
+        title={t('workWarRoomControlPlane')}
+        summary={t('workWarRoomCountSummary', {
+          count: items.length,
+          total: totalAvailable,
+        })}
       />
       {items.length === 0 ? (
         <article className="operatorCard">
           <div className="operatorCardHeader">
-            <strong>No governance or workflow signals are active.</strong>
-            <span className="operatorStatusBadge isMuted">idle</span>
+            <strong>{t('workWarRoomControlPlaneEmptyTitle')}</strong>
+            <span className="operatorStatusBadge isMuted">{t('workWarRoomControlPlaneEmptyBadge')}</span>
           </div>
-          <p>Approval, delivery, and continuation signals will appear here once work starts moving.</p>
+          <p>{t('workWarRoomControlPlaneEmptyBody')}</p>
         </article>
       ) : (
         <div className="workWarRoomTaskGrid">
@@ -300,41 +398,82 @@ function ControlPlaneSection({
                 <strong>{item.taskId}</strong>
                 <div className="workWarRoomBadgeRow">
                   <span className={attentionBadgeClassName(item.attention.severity)}>
-                    {item.attention.severity}
+                    {getWarRoomAttentionLabel(item.attention.severity, t)}
                   </span>
                   <span className={taskStatusBadgeClassName(item.taskStatus)}>
-                    {item.taskStatus}
+                    {getWarRoomStatusLabel(item.taskStatus, t)}
                   </span>
                 </div>
               </div>
               <p>
                 {item.workflowContinuation?.targetNames.length
-                  ? `Targets: ${item.workflowContinuation.targetNames.join(', ')}`
+                  ? t('workWarRoomControlPlaneTargets', {
+                      targets: item.workflowContinuation.targetNames.join(', '),
+                    })
                   : item.workflowContinuation?.blockedReason
-                    ? `Blocked by ${item.workflowContinuation.blockedReason}.`
-                    : 'No continuation target currently recorded.'}
+                    ? t('workWarRoomControlPlaneBlockedBy', {
+                        reason: item.workflowContinuation.blockedReason,
+                      })
+                    : t('workWarRoomControlPlaneNoTargets')}
               </p>
               <div className="operatorMetaRow">
-                <span>Product: {formatWorkExecutionProduct(item.planning.effectiveProduct)}</span>
-                <span>Strategy: {formatWorkExecutionStrategy(item.planning.effectiveStrategy)}</span>
+                <span>
+                  {t('workWarRoomMetaLabelProduct')}:{' '}
+                  {formatWorkExecutionProduct(item.planning.effectiveProduct)}
+                </span>
+                <span>
+                  {t('workWarRoomMetaLabelStrategy')}:{' '}
+                  {formatWorkExecutionStrategy(item.planning.effectiveStrategy)}
+                </span>
               </div>
               <div className="operatorMetaRow">
-                <span>Next: {formatWorkTokenList(item.nextActions.map((action) => action.kind))}</span>
-                <span>Delivery: {formatWorkDeliveryMode(item.runtimeDeliveryIntent?.mode)}</span>
+                <span>
+                  {t('workWarRoomMetaLabelNext')}:{' '}
+                  {formatWorkTokenList(item.nextActions.map((action) => action.kind))}
+                </span>
+                <span>
+                  {t('workWarRoomMetaLabelDelivery')}:{' '}
+                  {formatWorkDeliveryMode(item.runtimeDeliveryIntent?.mode)}
+                </span>
               </div>
               <div className="operatorMetaRow">
-                <span>Replay: {item.workflowContinuation?.replayState ?? 'Not recorded'}</span>
-                <span>Blocked: {item.workflowContinuation?.blockedReason ?? 'No'}</span>
+                <span>
+                  {t('workWarRoomMetaLabelReplay')}:{' '}
+                  {item.workflowContinuation?.replayState ?? t('workWarRoomMetaValueNotRecorded')}
+                </span>
+                <span>
+                  {t('workWarRoomMetaLabelBlocked')}:{' '}
+                  {item.workflowContinuation?.blockedReason ?? t('workWarRoomMetaValueNo')}
+                </span>
               </div>
               <div className="operatorMetaRow">
-                <span>Project: {item.taskContext.projectTitle ?? 'No linked project'}</span>
-                <span>Work item: {item.taskContext.workItemTitle ?? 'No linked work item'}</span>
+                <span>
+                  {t('workWarRoomMetaLabelProject')}:{' '}
+                  {item.taskContext.projectTitle ?? t('workWarRoomNoLinkedProject')}
+                </span>
+                <span>
+                  {t('workWarRoomMetaLabelWorkItem')}:{' '}
+                  {item.taskContext.workItemTitle ?? t('workWarRoomNoLinkedWorkItem')}
+                </span>
               </div>
               <div className="operatorMetaRow">
-                <span>Conversation: {item.taskContext.conversationTitle ?? 'No linked conversation'}</span>
-                <span>Actors: {compactList(item.taskContext.assignedActors.map((actor) => actor.displayName))}</span>
+                <span>
+                  {t('workWarRoomMetaLabelConversation')}:{' '}
+                  {item.taskContext.conversationTitle ?? t('workWarRoomNoLinkedConversation')}
+                </span>
+                <span>
+                  {t('workWarRoomMetaLabelActors')}:{' '}
+                  {compactList(
+                    item.taskContext.assignedActors.map((actor) => actor.displayName),
+                    t,
+                  )}
+                </span>
               </div>
-              <WorkWarRoomTaskContextActions taskId={item.taskId} taskContext={item.taskContext} />
+              <WorkWarRoomTaskContextActions
+                taskId={item.taskId}
+                taskContext={item.taskContext}
+                t={t}
+              />
             </article>
           ))}
         </div>
@@ -346,26 +485,31 @@ function ControlPlaneSection({
 function ProjectsSection({
   items,
   totalAvailable,
+  t,
 }: {
   items: WorkProjectItem[];
   totalAvailable: number;
+  t: I18nTranslate;
 }) {
   const navigate = useNavigate();
 
   return (
     <section className="operatorPanel">
       <WorkSectionHeader
-        eyebrow="Portfolio"
-        title="Projects"
-        summary={`${items.length} of ${totalAvailable}`}
+        eyebrow={t('workWarRoomPortfolioEyebrow')}
+        title={t('workWarRoomProjects')}
+        summary={t('workWarRoomCountSummary', {
+          count: items.length,
+          total: totalAvailable,
+        })}
       />
       {items.length === 0 ? (
         <article className="operatorCard">
           <div className="operatorCardHeader">
-            <strong>No projects recorded yet.</strong>
-            <span className="operatorStatusBadge isMuted">empty</span>
+            <strong>{t('workWarRoomProjectsEmptyTitle')}</strong>
+            <span className="operatorStatusBadge isMuted">{t('workWarRoomProjectsEmptyBadge')}</span>
           </div>
-          <p>Projects created from intake or manual work setup will appear here.</p>
+          <p>{t('workWarRoomProjectsEmptyBody')}</p>
         </article>
       ) : (
         <div className="workWarRoomTaskGrid">
@@ -373,23 +517,35 @@ function ProjectsSection({
             <article key={item.id} className="operatorCard workWarRoomTaskCard">
               <div className="operatorCardHeader">
                 <strong>{item.title}</strong>
-                <span className={taskStatusBadgeClassName(item.status)}>{item.status}</span>
+                <span className={taskStatusBadgeClassName(item.status)}>
+                  {getWarRoomStatusLabel(item.status, t)}
+                </span>
               </div>
-              <p>{item.summary ?? 'No project summary recorded.'}</p>
+              <p>{item.summary ?? t('workWarRoomNoProjectSummary')}</p>
               <div className="operatorMetaRow">
-                <span>Owner: {item.ownerName}</span>
-                <span>Repo: {item.repoPath ?? 'Not bound'}</span>
+                <span>
+                  {t('workWarRoomMetaLabelOwner')}: {item.ownerName}
+                </span>
+                <span>
+                  {t('workWarRoomMetaLabelRepo')}: {item.repoPath ?? t('workWarRoomMetaValueNotBound')}
+                </span>
               </div>
               <div className="operatorMetaRow">
-                <span>Work items: {item.linkedWorkItemCount}</span>
-                <span>Tasks: {item.linkedTaskCount}</span>
+                <span>
+                  {t('workWarRoomMetaLabelWorkItems')}: {item.linkedWorkItemCount}
+                </span>
+                <span>
+                  {t('workWarRoomMetaLabelTasks')}: {item.linkedTaskCount}
+                </span>
               </div>
               <div className="operatorMetaRow">
-                <span>Conversation: {item.primaryConversationTitle ?? 'No primary conversation'}</span>
-                <span>{formatTimestamp(item.updatedAt)}</span>
+                <span>
+                  {t('workWarRoomMetaLabelConversation')}: {item.primaryConversationTitle ?? t('workWarRoomNoPrimaryConversation')}
+                </span>
+                <span>{formatTimestamp(item.updatedAt, t)}</span>
               </div>
               <div className="workWarRoomHeaderActions">
-                <WorkWarRoomOpenProjectButton projectId={item.id} />
+                <WorkWarRoomOpenProjectButton projectId={item.id} t={t} />
                 {item.primaryConversationSourceChannelId ? (
                   <button
                     type="button"
@@ -400,7 +556,7 @@ function ProjectsSection({
                       });
                     }}
                   >
-                    Open briefing thread
+                  {t('workWarRoomOpenBriefingThread')}
                   </button>
                 ) : null}
               </div>
@@ -415,26 +571,31 @@ function ProjectsSection({
 function WorkItemsSection({
   items,
   totalAvailable,
+  t,
 }: {
   items: WorkWorkItemItem[];
   totalAvailable: number;
+  t: I18nTranslate;
 }) {
   const navigate = useNavigate();
 
   return (
     <section className="operatorPanel">
       <WorkSectionHeader
-        eyebrow="Managed Work"
-        title="Work Items"
-        summary={`${items.length} of ${totalAvailable}`}
+        eyebrow={t('workWarRoomManagedWorkEyebrow')}
+        title={t('workWarRoomWorkItems')}
+        summary={t('workWarRoomCountSummary', {
+          count: items.length,
+          total: totalAvailable,
+        })}
       />
       {items.length === 0 ? (
         <article className="operatorCard">
           <div className="operatorCardHeader">
-            <strong>No work items recorded yet.</strong>
-            <span className="operatorStatusBadge isMuted">empty</span>
+            <strong>{t('workWarRoomWorkItemsEmptyTitle')}</strong>
+            <span className="operatorStatusBadge isMuted">{t('workWarRoomWorkItemsEmptyBadge')}</span>
           </div>
-          <p>Operational work items will appear here as projects start executing.</p>
+          <p>{t('workWarRoomWorkItemsEmptyBody')}</p>
         </article>
       ) : (
         <div className="workWarRoomTaskGrid">
@@ -442,23 +603,38 @@ function WorkItemsSection({
             <article key={item.id} className="operatorCard workWarRoomTaskCard">
               <div className="operatorCardHeader">
                 <strong>{item.title}</strong>
-                <span className={taskStatusBadgeClassName(item.status)}>{item.status}</span>
+                <span className={taskStatusBadgeClassName(item.status)}>
+                  {getWarRoomStatusLabel(item.status, t)}
+                </span>
               </div>
-              <p>{item.summary ?? 'No work-item summary recorded.'}</p>
+              <p>{item.summary ?? t('workWarRoomNoWorkItemSummary')}</p>
               <div className="operatorMetaRow">
-                <span>Project: {item.projectTitle ?? 'No linked project'}</span>
-                <span>Task: {item.taskTitle ?? 'No linked task'}</span>
+                <span>
+                  {t('workWarRoomMetaLabelProject')}:{' '}
+                  {item.projectTitle ?? t('workWarRoomNoLinkedProject')}
+                </span>
+                <span>
+                  {t('workWarRoomMetaLabelTask')}:{' '}
+                  {item.taskTitle ?? t('workWarRoomNoLinkedTask')}
+                </span>
               </div>
               <div className="operatorMetaRow">
-                <span>Owner: {item.ownerName}</span>
-                <span>Actors: {compactList(item.assignedActors.map((actor) => actor.displayName))}</span>
+                <span>
+                  {t('workWarRoomMetaLabelOwner')}: {item.ownerName}
+                </span>
+                <span>
+                  {t('workWarRoomMetaLabelActors')}:{' '}
+                  {compactList(item.assignedActors.map((actor) => actor.displayName), t)}
+                </span>
               </div>
               <div className="operatorMetaRow">
-                <span>Conversation: {item.conversationTitle ?? 'No linked conversation'}</span>
-                <span>{formatTimestamp(item.updatedAt)}</span>
+                <span>
+                  {t('workWarRoomMetaLabelConversation')}: {item.conversationTitle ?? t('workWarRoomNoLinkedConversation')}
+                </span>
+                <span>{formatTimestamp(item.updatedAt, t)}</span>
               </div>
               <div className="workWarRoomHeaderActions">
-                <WorkWarRoomOpenWorkItemButton workItemId={item.id} />
+                <WorkWarRoomOpenWorkItemButton workItemId={item.id} t={t} />
                 {item.conversationSourceChannelId ? (
                   <button
                     type="button"
@@ -469,23 +645,23 @@ function WorkItemsSection({
                       });
                     }}
                   >
-                    Open briefing thread
+                    {t('workWarRoomOpenBriefingThread')}
                   </button>
                 ) : null}
                 {listCatActorLinks(item.assignedActors).map((actor) => (
-                    <button
-                      key={actor.actorId}
-                      type="button"
-                      className="operatorActionButton"
-                      onClick={() => {
-                        startTransition(() => {
-                          navigate(buildMyCatPath(actor.catId));
-                        });
-                      }}
-                    >
-                      Open {actor.displayName}
-                    </button>
-                  ))}
+                  <button
+                    key={actor.actorId}
+                    type="button"
+                    className="operatorActionButton"
+                    onClick={() => {
+                      startTransition(() => {
+                        navigate(buildMyCatPath(actor.catId));
+                      });
+                    }}
+                  >
+                    {t('workWarRoomOpenActor', { actorName: actor.displayName })}
+                  </button>
+                ))}
               </div>
             </article>
           ))}
@@ -498,24 +674,29 @@ function WorkItemsSection({
 function RecoverySection({
   items,
   totalAvailable,
+  t,
 }: {
   items: WorkRecoveryItem[];
   totalAvailable: number;
+  t: I18nTranslate;
 }) {
   return (
     <section className="operatorPanel">
       <WorkSectionHeader
-        eyebrow="Recovery"
-        title="Replay & Retry"
-        summary={`${items.length} of ${totalAvailable}`}
+        eyebrow={t('workWarRoomRecoveryEyebrow')}
+        title={t('workWarRoomRecovery')}
+        summary={t('workWarRoomCountSummary', {
+          count: items.length,
+          total: totalAvailable,
+        })}
       />
       {items.length === 0 ? (
         <article className="operatorCard">
           <div className="operatorCardHeader">
-            <strong>No tasks currently need recovery.</strong>
-            <span className="operatorStatusBadge isSuccess">stable</span>
+            <strong>{t('workWarRoomRecoveryEmptyTitle')}</strong>
+            <span className="operatorStatusBadge isSuccess">{t('workWarRoomRecoveryEmptyBadge')}</span>
           </div>
-          <p>Blocked approvals, failed replays, and continuation recovery will surface here.</p>
+          <p>{t('workWarRoomRecoveryEmptyBody')}</p>
         </article>
       ) : (
         <div className="workWarRoomTaskGrid">
@@ -525,40 +706,71 @@ function RecoverySection({
                 <strong>{item.taskId}</strong>
                 <div className="workWarRoomBadgeRow">
                   <span className={item.canRetry ? 'operatorStatusBadge isAttention' : 'operatorStatusBadge isMuted'}>
-                    {item.canRetry ? 'retry available' : 'watch'}
+                    {item.canRetry
+                      ? t('workWarRoomMetaLabelRetryAvailable')
+                      : t('workWarRoomMetaLabelWatch')}
                   </span>
                   <span className={taskStatusBadgeClassName(item.taskStatus)}>
-                    {item.taskStatus}
+                    {getWarRoomStatusLabel(item.taskStatus, t)}
                   </span>
                 </div>
               </div>
               <p>
-                {item.latestActivity?.message
-                  ?? item.workflowContinuationReplay?.blockedReason
-                  ?? item.dispatchReplay?.replayError
-                  ?? 'No recovery note recorded.'}
+                {item.latestActivity?.message ??
+                  item.workflowContinuationReplay?.blockedReason ??
+                  item.dispatchReplay?.replayError ??
+                  t('workWarRoomRecoveryNoRecoveryNote')}
               </p>
               <div className="operatorMetaRow">
-                <span>Delivery: {formatWorkDeliveryMode(item.context?.deliveryMode)}</span>
-                <span>Approval: {item.approval.status}</span>
+                <span>
+                  {t('workWarRoomMetaLabelDelivery')}: {formatWorkDeliveryMode(item.context?.deliveryMode)}
+                </span>
+                <span>
+                  {t('workWarRoomMetaLabelApproval')}: {item.approval.status}
+                </span>
               </div>
               <div className="operatorMetaRow">
-                <span>Replay: {item.workflowContinuationReplay?.replayState ?? item.dispatchReplay?.replayState ?? 'None'}</span>
-                <span>Blocked: {item.workflowContinuationReplay?.blockedReason ?? 'No'}</span>
+                <span>
+                  {t('workWarRoomMetaLabelReplay')}:{' '}
+                  {item.workflowContinuationReplay?.replayState ??
+                    item.dispatchReplay?.replayState ??
+                    t('workWarRoomMetaValueNone')}
+                </span>
+                <span>
+                  {t('workWarRoomMetaLabelBlocked')}: {item.workflowContinuationReplay?.blockedReason ?? t('workWarRoomMetaValueNo')}
+                </span>
               </div>
               <div className="operatorMetaRow">
-                <span>Latest source: {item.latestActivity?.source ?? 'Not recorded'}</span>
-                <span>{formatTimestamp(item.latestActivity?.createdAt)}</span>
+                <span>
+                  {t('workWarRoomMetaLabelLatestSource')}:{' '}
+                  {item.latestActivity?.source ?? t('workWarRoomMetaValueNotRecorded')}
+                </span>
+                <span>{formatTimestamp(item.latestActivity?.createdAt, t)}</span>
               </div>
               <div className="operatorMetaRow">
-                <span>Project: {item.taskContext.projectTitle ?? 'No linked project'}</span>
-                <span>Work item: {item.taskContext.workItemTitle ?? 'No linked work item'}</span>
+                <span>
+                  {t('workWarRoomMetaLabelProject')}: {item.taskContext.projectTitle ?? t('workWarRoomNoLinkedProject')}
+                </span>
+                <span>
+                  {t('workWarRoomMetaLabelWorkItem')}:{' '}
+                  {item.taskContext.workItemTitle ?? t('workWarRoomNoLinkedWorkItem')}
+                </span>
               </div>
               <div className="operatorMetaRow">
-                <span>Conversation: {item.taskContext.conversationTitle ?? 'No linked conversation'}</span>
-                <span>Actors: {compactList(item.taskContext.assignedActors.map((actor) => actor.displayName))}</span>
+                <span>
+                  {t('workWarRoomMetaLabelConversation')}:{' '}
+                  {item.taskContext.conversationTitle ?? t('workWarRoomNoLinkedConversation')}
+                </span>
+                <span>
+                  {t('workWarRoomMetaLabelActors')}:{' '}
+                  {compactList(item.taskContext.assignedActors.map((actor) => actor.displayName), t)}
+                </span>
               </div>
-              <WorkWarRoomTaskContextActions taskId={item.taskId} taskContext={item.taskContext} />
+              <WorkWarRoomTaskContextActions
+                taskId={item.taskId}
+                taskContext={item.taskContext}
+                t={t}
+              />
             </article>
           ))}
         </div>
@@ -569,8 +781,10 @@ function RecoverySection({
 
 function WorkWarRoomOpenProjectButton({
   projectId,
+  t,
 }: {
   projectId: string;
+  t: I18nTranslate;
 }) {
   const navigate = useNavigate();
 
@@ -584,15 +798,17 @@ function WorkWarRoomOpenProjectButton({
         });
       }}
     >
-      Open project
+      {t('workWarRoomOpenProject')}
     </button>
   );
 }
 
 function WorkWarRoomOpenWorkItemButton({
   workItemId,
+  t,
 }: {
   workItemId: string;
+  t: I18nTranslate;
 }) {
   const navigate = useNavigate();
 
@@ -606,27 +822,27 @@ function WorkWarRoomOpenWorkItemButton({
         });
       }}
     >
-      Open work item
+      {t('workWarRoomOpenWorkItem')}
     </button>
   );
 }
 
 export function WarRoomView() {
-  const navigate = useNavigate();
+  const { t } = useI18n();
   const dashboardQuery = useWorkDashboardQuery();
   const payload = dashboardQuery.data ?? null;
   const error = dashboardQuery.error
     ? dashboardQuery.error instanceof Error
       ? dashboardQuery.error.message
-      : 'Failed to load war room.'
+      : t('workWarRoomLoadError')
     : '';
 
   return (
     <div className="workWarRoomView">
       <div className="codeBuilderHeader">
         <div>
-          <p className="operatorEyebrow">Work</p>
-          <h1 className="codeBuilderTitle">War Room</h1>
+          <p className="operatorEyebrow">{t('workWarRoomPageEyebrow')}</p>
+          <h1 className="codeBuilderTitle">{t('workWarRoomPageTitle')}</h1>
         </div>
       </div>
 
@@ -636,13 +852,17 @@ export function WarRoomView() {
 
       {dashboardQuery.isPending && !payload ? (
         <section className="operatorPanel">
-          <WorkSectionHeader eyebrow="Loading" title="War Room" summary="pending" />
+          <WorkSectionHeader
+            eyebrow={t('workWarRoomLoadingEyebrow')}
+            title={t('workWarRoomPageTitle')}
+            summary={t('workWarRoomLoadingSummary')}
+          />
           <article className="operatorCard">
             <div className="operatorCardHeader">
-              <strong>Loading operational dashboard...</strong>
-              <span className="operatorStatusBadge isProgress">loading</span>
+              <strong>{t('workWarRoomLoadingTitle')}</strong>
+              <span className="operatorStatusBadge isProgress">{t('workWarRoomLoadingBadge')}</span>
             </div>
-            <p>Collecting operator, control-plane, and recovery sections from Cats Core.</p>
+            <p>{t('workWarRoomLoadingBody')}</p>
           </article>
         </section>
       ) : null}
@@ -651,30 +871,42 @@ export function WarRoomView() {
         <>
           <section className="operatorPanel">
             <WorkSectionHeader
-              eyebrow="Snapshot"
-              title="Operational Summary"
-              summary={`owner ${payload.summary.ownerActorId}`}
+              eyebrow={t('workWarRoomSnapshotEyebrow')}
+              title={t('workWarRoomSnapshotTitle')}
+              summary={t('workWarRoomSnapshotSummary', {
+                ownerActorId: payload.summary.ownerActorId,
+              })}
             />
             <div className="workWarRoomSummaryGrid">
               <WorkSummaryCard
-                label="Projects"
+                label={t('workWarRoomSummaryLabelProjects')}
                 value={payload.summary.projectCount}
-                helper={`${payload.summary.inProgressCount} in progress, ${payload.summary.blockedCount} blocked.`}
+                helper={t('workWarRoomSummaryInProgressBlocked', {
+                  inProgress: payload.summary.inProgressCount,
+                  blocked: payload.summary.blockedCount,
+                })}
               />
               <WorkSummaryCard
-                label="Tasks"
+                label={t('workWarRoomSummaryLabelTasks')}
                 value={payload.summary.taskCount}
-                helper={`${payload.summary.inProgressCount} in progress, ${payload.summary.blockedCount} blocked.`}
+                helper={t('workWarRoomSummaryInProgressBlocked', {
+                  inProgress: payload.summary.inProgressCount,
+                  blocked: payload.summary.blockedCount,
+                })}
               />
               <WorkSummaryCard
-                label="Operator Attention"
+                label={t('workWarRoomSummaryLabelAttention')}
                 value={payload.summary.operatorAttentionCount}
-                helper={`${payload.sections.operatorInbox.summary.returned} surfaced in the inbox right now.`}
+                helper={t('workWarRoomSummaryAttention', {
+                  count: payload.sections.operatorInbox.summary.returned,
+                })}
               />
               <WorkSummaryCard
-                label="Recovery"
+                label={t('workWarRoomSummaryLabelRecovery')}
                 value={payload.summary.recoveryCount}
-                helper={`${payload.sections.recovery.summary.returned} retry or replay queues are visible.`}
+                helper={t('workWarRoomSummaryRecovery', {
+                  count: payload.sections.recovery.summary.returned,
+                })}
               />
             </div>
           </section>
@@ -682,22 +914,27 @@ export function WarRoomView() {
           <ProjectsSection
             items={payload.sections.projects.items}
             totalAvailable={payload.sections.projects.summary.totalAvailable}
+            t={t}
           />
           <WorkItemsSection
             items={payload.sections.workItems.items}
             totalAvailable={payload.sections.workItems.summary.totalAvailable}
+            t={t}
           />
           <OperatorInboxSection
             items={payload.sections.operatorInbox.items}
             totalAvailable={payload.sections.operatorInbox.summary.totalAvailable}
+            t={t}
           />
           <ControlPlaneSection
             items={payload.sections.controlPlane.items}
             totalAvailable={payload.sections.controlPlane.summary.totalAvailable}
+            t={t}
           />
           <RecoverySection
             items={payload.sections.recovery.items}
             totalAvailable={payload.sections.recovery.summary.totalAvailable}
+            t={t}
           />
         </>
       ) : null}
