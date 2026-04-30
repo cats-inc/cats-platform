@@ -86,8 +86,12 @@ login endpoints as the only auth change while protected routes remain public.
 - [ ] Task 2.9: Add structured `401 unauthenticated` and `403 forbidden`
       responses.
 - [ ] Task 2.10: Add failed-login throttling and lockout for local and Google
-      auth attempts, defaulting to 5 failures followed by at least 30 seconds
-      of lockout with secret-free logging.
+      auth attempts. The lockout key shall be the composite
+      `(account_or_provider_subject, remote_address)`, defaulting to 5
+      failures followed by at least 30 seconds of lockout with secret-free
+      logging. Per-account-only and per-IP-only lockout shall not be the
+      primary throttle so a remote attacker cannot DoS a legitimate admin from
+      arbitrary addresses.
 
 **Deliverables**: after setup, unauthenticated API calls to product/runtime
 routes are rejected; missing auth state after setup fails closed into repair;
@@ -158,9 +162,16 @@ product write path.
 - [ ] Task 6.4: Add CSRF tests for Google credential POST and authenticated
       mutations.
 - [ ] Task 6.5: Update `docs/api.md`, `docs/setup-guide.md`,
-      `docs/deployment.md`, and `.env.example`.
-- [ ] Task 6.6: Add release notes warning that LAN-facing workspaces now
-      require login after setup.
+      `docs/deployment.md`, and `.env.example`. The setup-guide and deployment
+      docs shall explicitly document the forgotten-credential escape hatch:
+      the exact path to the persisted auth state file for both packaged and
+      dev deployments, and a warning that deleting it discards all sessions,
+      identities, and memberships while leaving owner profile, Guide Cat
+      state, and product data untouched.
+- [ ] Task 6.6: Add release notes covering: (a) LAN-facing workspaces now
+      require login after setup; (b) `CATS_AUTH_ENABLED=false` is rejected
+      after `setupCompleteAt`; (c) the auth state file escape hatch for
+      forgotten credentials.
 
 **Deliverables**: auth behavior is documented, tested, and visible to
 operators before implementation is marked complete.
@@ -203,9 +214,22 @@ operators before implementation is marked complete.
   broken by a stricter default.
 - `/api/auth/status` is the canonical source for Cats synchronizer CSRF tokens;
   app-shell/bootstrap payloads may mirror but not mint or rotate them.
-- Authenticated Cats API mutations use synchronizer CSRF tokens and rotate them
-  on login/session creation and privilege changes. Google credential POST
-  validates the separate GIS `g_csrf_token` contract.
+- Authenticated Cats API mutations use synchronizer CSRF tokens and rotate
+  them on login/session creation; rotation on privilege changes is a
+  forward-looking guarantee dormant in v1 (no role-mutation paths exist yet).
+  Google credential POST validates the separate GIS `g_csrf_token` contract.
+- Unauthenticated `/api/auth/status` and bootstrap envelope responses do not
+  return a CSRF token; the field is absent or `null`.
+- Stale-token recovery: renderer treats `403` from CSRF mismatch as a refresh
+  signal — re-fetch `/api/auth/status` and retry once; a second consecutive
+  mismatch is a hard error.
+- Login throttle key is the composite `(account_or_provider_subject,
+  remote_address)` so legitimate admins cannot be DoS'd from arbitrary IPs.
+- After `setupCompleteAt`, `CATS_AUTH_ENABLED=false` is rejected on every host
+  (uniform rule, no loopback warning shortcut).
+- v1 has no in-band password reset; deleting the persisted auth state file is
+  the documented escape hatch for forgotten credentials and triggers the
+  repair flow on next start.
 - Only the first admin maps to `actor-owner`; later memberships require
   explicit Core actor mapping before actor-attributed writes can proceed.
 - The `coreActorId: null` fail-closed path is a forward-looking invariant
@@ -223,10 +247,15 @@ operators before implementation is marked complete.
   - only the first admin membership receives `coreActorId: 'actor-owner'`;
   - actor-attributed write helpers fail closed when principal membership has
     `coreActorId: null`;
-  - login throttling locks out repeated failures and logs without secrets;
+  - login throttling locks the composite `(account_or_provider_subject,
+    remote_address)` key, allows other (account, address) pairs to keep
+    trying, and logs without leaking credentials;
   - auth-state validation treats JSON parse failures, missing required
     top-level fields, and too-new schema versions as corrupt while preserving
     unknown extra fields;
+  - config validation rejects `CATS_AUTH_ENABLED=false` whenever
+    `setupCompleteAt` exists, on every host, with a structured configuration
+    error rather than a silent warning;
   - Google verifier wrapper checks expected claims using injected test payloads.
 - **Integration Tests**:
   - setup incomplete allows setup bootstrap and blocks product APIs;
@@ -240,12 +269,21 @@ operators before implementation is marked complete.
     `X-Cats-CSRF-Token`;
   - `/api/auth/status` is the canonical CSRF-token source and app-shell mirrors
     the same token without rotating it;
-  - Cats CSRF middleware is not registered on Google credential POST routes,
-    and GIS `g_csrf_token` validation is not accepted for Cats mutations;
+  - unauthenticated `/api/auth/status` and bootstrap envelope responses do not
+    return a CSRF token (field is absent or `null`);
+  - Cats CSRF middleware is not registered on Google credential POST routes;
+    Cats mutation routes reject requests that supply only `g_csrf_token`
+    without a valid `X-Cats-CSRF-Token` and never silently accept the Google
+    token as a substitute;
+  - deleting the persisted auth state file with `setupCompleteAt` already set
+    triggers the repair flow on next start without exposing protected APIs;
   - logout revokes session and clears cookie.
 - **Renderer Tests**:
   - setup shows local credential fields;
   - login route appears after unauthenticated app-shell load;
+  - on a `403` CSRF mismatch the renderer re-fetches `/api/auth/status` and
+    retries the original mutation exactly once; a second consecutive mismatch
+    surfaces a hard error instead of silent retry;
   - Google button hides when not configured and uses the client ID from the
     minimal auth/provider envelope when configured.
 - **Manual Testing**:
@@ -265,7 +303,11 @@ operators before implementation is marked complete.
 | Cookie behavior differs between Vite proxy and built server | Medium | Add explicit dev and built-server session tests |
 | Password/session local state becomes sensitive | High | Store only salted password hashes and session token hashes; document state reset |
 | Route allowlist accidentally leaves a privileged route public | High | Add static route-policy tests and review runtime/shell/transport routes explicitly |
-| Cats CSRF and Google GIS CSRF are conflated | High | Keep Cats auth routes and Google credential routes in distinct modules; add static tests that `X-Cats-CSRF-Token` middleware is not registered on Google credential routes and GIS `g_csrf_token` validation is not accepted for Cats mutations |
+| Cats CSRF and Google GIS CSRF are conflated | High | Keep Cats auth routes and Google credential routes in distinct modules; add static tests that `X-Cats-CSRF-Token` middleware is not registered on Google credential routes and that Cats mutation routes reject requests supplying only `g_csrf_token` |
+| Operator forgets the only admin credential and bricks their workspace | High | Document the auth-state-file escape hatch in setup-guide, deployment, and release notes; ensure the repair flow does not require the lost password |
+| Legitimate admin DoS via per-account global lockout | Medium | Use composite `(account, address)` lockout key; cover with a unit test that other addresses can still attempt the same account during lockout |
+| Stale CSRF token after rotation breaks UX silently | Medium | Renderer must refresh `/api/auth/status` on `403` mismatch and retry once; a second mismatch surfaces a hard error |
+| `CATS_AUTH_ENABLED=false` honored after setup re-opens LAN exposure | High | Reject the override as a configuration error after `setupCompleteAt` on every host; cover with config-validation tests |
 | Future multi-user attribution is blocked by first slice shortcuts | Medium | Carry principal in route context and fail closed for `coreActorId: null` instead of mapping every admin to owner |
 
 ## Progress Log
@@ -273,6 +315,7 @@ operators before implementation is marked complete.
 | Date | Update |
 |------|--------|
 | 2026-04-30 | Plan created with ADR-096 and SPEC-100 after LAN access exposed the missing general auth boundary. |
+| 2026-04-30 | Tightened auth invariants: composite `(account, address)` throttle key; uniform `CATS_AUTH_ENABLED=false` rejection after `setupCompleteAt`; pre-setup row clarified in the gate table; pre-auth CSRF token explicitly absent; renderer stale-CSRF retry contract; rotation on privilege changes marked forward-looking; auth-state-file escape hatch for forgotten credentials documented. |
 
 ---
 

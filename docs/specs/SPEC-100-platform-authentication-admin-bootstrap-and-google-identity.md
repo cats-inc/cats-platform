@@ -120,10 +120,14 @@ the whole authorization system.
 23. Session cookies shall use Secure when Cats is served over HTTPS.
 24. The platform shall support a session secret loaded from configuration or
     generated/persisted locally on first run.
-25. Failed local and Google login attempts shall be throttled per remote
-    address and account/provider key. The default policy shall lock the target
-    for at least 30 seconds after 5 failed attempts and shall log lockouts
-    without leaking credential details.
+25. Failed local and Google login attempts shall be throttled by the composite
+    key `(account_or_provider_subject, remote_address)`. The default policy
+    shall lock that composite key for at least 30 seconds after 5 failed
+    attempts and shall log lockouts without leaking credential details. A
+    legitimate admin shall not be globally lockable from arbitrary remote
+    addresses, so per-account-only and per-IP-only lockout shall not be used as
+    the primary throttle. Per-IP global throttling may be added as a separate
+    secondary layer with looser thresholds.
 
 #### Route gate
 
@@ -190,23 +194,31 @@ the whole authorization system.
 47. For authenticated Cats sessions, the server shall issue a synchronizer CSRF
     token through `/api/auth/status`. App-shell or auth bootstrap payloads may
     mirror the current status token for render efficiency, but they shall not
-    mint, rotate, or diverge from the `/api/auth/status` token.
+    mint, rotate, or diverge from the `/api/auth/status` token. For
+    unauthenticated requests, `/api/auth/status` and the bootstrap envelope
+    shall not return a CSRF token; the field shall be absent or `null`.
 48. Mutating authenticated API requests shall send that token in
     `X-Cats-CSRF-Token`; the server shall validate it against the current
     session before route dispatch.
 49. Google credential POST routes shall not require `X-Cats-CSRF-Token` before a
     Cats session exists, because their CSRF boundary is the GIS
     `g_csrf_token`.
-50. CSRF tokens shall rotate on login/session creation and on privilege
-    changes. Logout and session revocation shall invalidate existing CSRF
-    tokens for the revoked session.
-51. Auth error responses shall not leak password-hash, session-token,
+50. CSRF tokens shall rotate on login/session creation. Logout and session
+    revocation shall invalidate existing CSRF tokens for the revoked session.
+    Rotation on privilege changes is a forward-looking guarantee: v1 ships no
+    role-mutation paths, so this clause is dormant until role mutation lands;
+    when it does, the rotation contract shall already cover it.
+51. The renderer shall treat a `403` from CSRF mismatch as a stale-token
+    signal: re-fetch `/api/auth/status` to refresh the token and retry the
+    original mutation once. A second consecutive CSRF mismatch shall be a hard
+    error surfaced to the operator rather than silently retried again.
+52. Auth error responses shall not leak password-hash, session-token,
     configured secret, or Google token details.
-52. Login attempts shall use generic invalid-credential errors.
+53. Login attempts shall use generic invalid-credential errors.
 
 #### Configuration
 
-53. The platform shall add documented auth configuration keys:
+54. The platform shall add documented auth configuration keys:
     - `CATS_AUTH_ENABLED`
     - `CATS_AUTH_SESSION_SECRET`
     - `CATS_AUTH_SESSION_TTL_MS`
@@ -214,25 +226,50 @@ the whole authorization system.
     - `CATS_AUTH_LOGIN_LOCKOUT_MS`
     - `CATS_AUTH_GOOGLE_CLIENT_ID`
     - `CATS_AUTH_GOOGLE_HD`
-54. Auth shall default to enabled when the platform is bound to a non-loopback
+55. Auth shall default to enabled when the platform is bound to a non-loopback
     host or when `setupCompleteAt` exists. Once `setupCompleteAt` exists,
     missing, unreadable, or corrupt auth state shall trigger the repair flow
     and fail closed; it shall never disable the route gate.
-55. During development, a temporary explicit opt-out may exist only if it is
-    documented as unsafe, applies only to loopback setup-incomplete workspaces,
-    and does not apply to packaged or LAN-facing defaults.
+56. Once `setupCompleteAt` exists, `CATS_AUTH_ENABLED=false` shall be rejected
+    as a configuration error on every host, including loopback. The platform
+    shall refuse to start serving browser traffic instead of silently honoring
+    or silently ignoring the override. This rule is uniform across hosts so
+    operators cannot rely on a "loopback warns but works" path that becomes a
+    "non-loopback refuses to start" surprise after deployment.
+57. During development, a temporary explicit opt-out may exist only if it is
+    documented as unsafe, applies only to loopback workspaces with no
+    `setupCompleteAt`, and does not apply to packaged or LAN-facing defaults.
 
 Effective auth gate state:
 
 | Host / build state | Setup state | `CATS_AUTH_ENABLED` | Effective gate |
 |--------------------|-------------|---------------------|----------------|
-| Non-loopback or packaged | Any | unset or `true` | Enabled |
+| Non-loopback or packaged | Setup incomplete | unset or `true` | Enabled (with pre-setup public allowlist for setup/bootstrap) |
+| Non-loopback or packaged | `setupCompleteAt` exists | unset or `true` | Enabled |
 | Non-loopback or packaged | Any | `false` | Configuration error; refuse to start serving browser traffic |
-| Loopback dev/test | Setup incomplete | unset | Disabled except setup/bootstrap policy |
-| Loopback dev/test | Setup incomplete | `true` | Enabled |
+| Loopback dev/test | Setup incomplete | unset | Enabled (with pre-setup public allowlist for setup/bootstrap) |
+| Loopback dev/test | Setup incomplete | `true` | Enabled (with pre-setup public allowlist for setup/bootstrap) |
 | Loopback dev/test | Setup incomplete | `false` | Disabled, unsafe dev/test only |
 | Loopback dev/test | `setupCompleteAt` exists | unset or `true` | Enabled |
-| Loopback dev/test | `setupCompleteAt` exists | `false` | Enabled; `setupCompleteAt` takes precedence and the override is ignored with a warning |
+| Loopback dev/test | `setupCompleteAt` exists | `false` | Configuration error; refuse to start serving browser traffic |
+
+#### Operator escape hatch for forgotten credentials
+
+58. v1 ships no in-band password-reset, recovery-code, or self-service unlock
+    flow. To prevent operators from being permanently locked out of their own
+    workspace after losing the only admin credential, the platform shall
+    document an explicit out-of-band escape hatch: deleting the platform auth
+    state file (the file persisted by the auth state store, e.g.
+    `<state-dir>/auth-state.local.json`) shall trigger the §16 repair flow on
+    next start, allowing the local operator to create a fresh first admin.
+59. The escape hatch shall be documented in `docs/setup-guide.md`,
+    `docs/deployment.md`, and the rollout release notes so operators discover
+    it before they need it. The documentation shall name the exact file path
+    for both packaged and dev deployments and shall warn that all existing
+    sessions, identities, and memberships will be discarded.
+60. The repair flow shall not bypass `setupCompleteAt`; the rebuilt admin
+    inherits the existing owner profile and Guide Cat state. Product data
+    (Chat, Work, Code, Core) shall remain untouched by the escape hatch.
 
 ### Non-Functional Requirements
 

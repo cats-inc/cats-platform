@@ -48,11 +48,18 @@ The server session is a Cats-owned HttpOnly cookie with `SameSite=Lax` by
 default and `Secure` when Cats is served over HTTPS. Authenticated mutating API
 requests use Cats synchronizer CSRF tokens tied to the server session.
 `/api/auth/status` is the canonical token source; app-shell/bootstrap payloads
-may mirror that token but must not mint or rotate it independently. Tokens
-rotate on login/session creation and privilege changes, and are invalidated on
-logout/session revocation. Google Identity Services credential POST routes are
-separate: they validate Google's `g_csrf_token` before a Cats session exists
-and do not use the generic authenticated-API CSRF header.
+may mirror that token but must not mint or rotate it independently.
+Unauthenticated `/api/auth/status` and bootstrap envelope responses do not
+return a CSRF token — the field is absent or `null`. Tokens rotate on
+login/session creation, are invalidated on logout/session revocation, and have
+a forward-looking rotation hook for privilege changes that is dormant in v1
+(no role mutation paths exist yet). Google Identity Services credential POST
+routes are separate: they validate Google's `g_csrf_token` before a Cats
+session exists and do not use the generic authenticated-API CSRF header.
+
+The renderer treats a `403` from CSRF mismatch as a stale-token signal:
+re-fetch `/api/auth/status` and retry the original mutation once. A second
+consecutive mismatch is a hard error rather than a silent retry loop.
 
 The frontend may initiate login flows, but the frontend never decides that a
 user is authenticated or authorized by itself.
@@ -140,6 +147,22 @@ local operator to create the first admin before continuing.
 For this policy, corrupt auth state means JSON parse failure, missing required
 top-level fields, or a schema version newer than the running code can read.
 Unknown extra fields are not corrupt.
+
+Once `setupCompleteAt` exists, `CATS_AUTH_ENABLED=false` is rejected as a
+configuration error on every host, including loopback. Honoring or silently
+ignoring the override after setup would make "loopback warns but works" a path
+that becomes "non-loopback refuses to start" after deployment. The rule is
+uniform across hosts so that post-setup operators cannot accidentally weaken
+the gate via environment configuration.
+
+v1 ships no in-band password-reset, recovery-code, or self-service unlock flow.
+To prevent operators from being permanently locked out of their own workspace
+after losing the only admin credential, deleting the platform auth state file
+(e.g. `<state-dir>/auth-state.local.json`) triggers the repair flow on next
+start. The escape hatch is documented in `docs/setup-guide.md`,
+`docs/deployment.md`, and the rollout release notes; it discards all existing
+sessions, identities, and memberships but leaves owner profile, Guide Cat
+state, and product data (Chat, Work, Code, Core) untouched.
 
 ### 6. Multi-user support is future-proofed but not fully shipped in v1
 
@@ -239,4 +262,5 @@ that need Core actor attribution until an explicit mapping exists.
 ---
 
 *Decision made: 2026-04-30*
+*Amended: 2026-04-30 — composite `(account, address)` throttle key; uniform `CATS_AUTH_ENABLED=false` rejection after `setupCompleteAt`; pre-auth CSRF token explicitly absent; renderer stale-CSRF retry contract; rotation on privilege changes marked forward-looking; auth-state-file escape hatch for forgotten credentials documented.*
 *Decision makers: user + Codex*
