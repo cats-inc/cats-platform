@@ -1,9 +1,8 @@
 import {
-  ATTENTION_LABEL,
-  KIND_LABEL,
   type EvidenceCounts,
   type WorkGraphIndexes,
 } from "./shared";
+import { useI18n } from "../../../app/renderer/i18n/index.js";
 import type { WorkGraphGateDecorator, WorkGraphObjectSummary } from "./types";
 
 interface WorkObjectCardProps {
@@ -21,7 +20,23 @@ export function WorkObjectCard({
   selected,
   onSelect,
 }: WorkObjectCardProps): JSX.Element {
-  const attentionTag = ATTENTION_LABEL[object.attention];
+  const { t } = useI18n();
+  const kindLabel = getWorkObjectKindLabel(object.kind, t);
+  const attentionTag =
+    object.attention === "none"
+      ? null
+      : getWorkObjectAttentionLabel(object.attention, t);
+  const statusLabel = getWorkObjectStatusLabel(object.status, t);
+  const parentTaskLabel =
+    object.kind === "run"
+      ? t("topdown.parentTaskOwningLabel")
+      : t("topdown.parentTaskLabel");
+  const parentWorkItemTitle =
+    object.kind === "work_item" && object.linkedWorkItemTitle
+      ? t("topdown.parentWorkItemLabel", {
+          parentWorkItemTitle: object.linkedWorkItemTitle,
+        })
+      : null;
   return (
     <article
       className={
@@ -41,11 +56,13 @@ export function WorkObjectCard({
       }}
     >
       <header className="topDownCard__head">
-        <span className="topDownCard__kind">{KIND_LABEL[object.kind]}</span>
+        <span className="topDownCard__kind">{kindLabel}</span>
         {object.kind === "task" && object.productBinding ? (
           <span
             className={`topDownCard__binding topDownCard__binding--${object.productBinding}`}
-            title={`Task product binding: ${object.productBinding}`}
+            title={t("topdown.taskProductBindingTitle", {
+              productBinding: object.productBinding,
+            })}
           >
             {object.productBinding}
           </span>
@@ -57,7 +74,7 @@ export function WorkObjectCard({
             {attentionTag}
           </span>
         ) : null}
-        <span className="topDownCard__status">{object.status}</span>
+        <span className="topDownCard__status">{statusLabel}</span>
       </header>
       <h4 className="topDownCard__title">{object.title}</h4>
       {object.summary ? (
@@ -80,17 +97,25 @@ export function WorkObjectCard({
           object.linkedTaskTitle ? (
             <span
               className="topDownCard__chip topDownCard__chip--parentTask"
-              title={`${object.kind === "run" ? "Owning" : "Parent"} task: ${object.linkedTaskTitle}`}
+              title={t("topdown.parentTaskTooltip", {
+                linkedTaskTitle: object.linkedTaskTitle,
+                linkType:
+                  object.kind === "run"
+                    ? t("topdown.parentTaskOwningLabel")
+                    : t("topdown.parentTaskLabel"),
+              })}
             >
-              ↳ {object.linkedTaskTitle}
+              {parentTaskLabel}: {object.linkedTaskTitle}
             </span>
           ) : null}
           {object.kind === "work_item" && object.linkedWorkItemTitle ? (
             <span
               className="topDownCard__chip topDownCard__chip--parentTask"
-              title={`Parent work item: ${object.linkedWorkItemTitle}`}
+              title={t("topdown.parentWorkItemLabel", {
+                parentWorkItemTitle: object.linkedWorkItemTitle,
+              })}
             >
-              ↳ {object.linkedWorkItemTitle}
+              {parentWorkItemTitle}
             </span>
           ) : null}
           {evidence.artifact > 0 ? (
@@ -134,4 +159,81 @@ export function pickEvidence(
     c.total += 1;
   }
   return c;
+}
+
+function getWorkObjectStatusLabel(
+  status: string,
+  t: ReturnType<typeof useI18n>["t"],
+): string {
+  return status === "draft"
+    ? t("workObjectStatusDraft")
+    : status === "planned"
+      ? t("workObjectStatusPlanned")
+      : status === "ready"
+        ? t("workObjectStatusReady")
+        : status === "in_progress"
+          ? t("workObjectStatusInProgress")
+          : status === "blocked"
+            ? t("workObjectStatusBlocked")
+            : status === "completed"
+              ? t("workObjectStatusCompleted")
+              : status === "cancelled"
+                ? t("workObjectStatusCancelled")
+                : status === "running"
+                  ? t("workObjectStatusRunning")
+                  : status === "queued"
+                    ? t("workObjectStatusQueued")
+                    : status.replace(/_/g, " ");
+}
+
+function getWorkObjectAttentionLabel(
+  attention: string,
+  t: ReturnType<typeof useI18n>["t"],
+): string {
+  return attention === "decision_needed"
+    ? t("workObjectAttentionDecisionNeeded")
+    : attention === "blocked"
+      ? t("workObjectAttentionBlocked")
+      : attention === "failed"
+        ? t("workObjectAttentionFailed")
+        : attention === "ready_to_review"
+          ? t("workObjectAttentionReadyToReview")
+          : attention === "recently_shipped"
+            ? t("workObjectAttentionRecentlyShipped")
+            : attention;
+}
+
+function getWorkObjectKindLabel(
+  kind: WorkGraphObjectSummary["kind"],
+  t: ReturnType<typeof useI18n>["t"],
+): string {
+  return kind === "agent"
+    ? t("workObjectKindAgent")
+    : kind === "container"
+      ? t("workObjectKindContainer")
+      : kind === "conversation"
+        ? t("workObjectKindConversation")
+        : kind === "turn"
+          ? t("workObjectKindTurn")
+          : kind === "lane"
+            ? t("workObjectKindLane")
+            : kind === "project"
+              ? t("workObjectKindProject")
+              : kind === "work_item"
+                ? t("workObjectKindWorkItem")
+                : kind === "task"
+                  ? t("workObjectKindTask")
+                  : kind === "mission"
+                    ? t("workObjectKindMission")
+                    : kind === "run"
+                      ? t("workObjectKindRun")
+                      : kind === "artifact"
+                        ? t("workObjectKindArtifact")
+                        : kind === "activity"
+                          ? t("workObjectKindActivity")
+                          : kind === "outcome"
+                            ? t("workObjectKindOutcome")
+                            : kind === "approval_binding"
+                              ? t("workObjectKindApprovalBinding")
+                              : kind;
 }

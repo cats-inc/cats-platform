@@ -387,6 +387,12 @@ export const enCatalog: MessageCatalog = {
   'work.object.status.cancelled': 'Cancelled',
   'work.object.status.running': 'Running',
   'work.object.status.queued': 'Queued',
+  'work.topdown.parentTaskOwningLabel': 'Owning task',
+  'work.topdown.parentTaskLabel': 'Parent task',
+  'work.topdown.parentWorkItemLabel': 'Parent work item: {parentWorkItemTitle}',
+  'work.topdown.taskProductBindingTitle': 'Product binding: {productBinding}',
+  'work.topdown.parentTaskTooltip':
+    'Related task: {linkedTaskTitle} ({linkType})',
   'work.newWorkItem.title': 'New work item',
   'work.newWorkItem.titleLabel': 'Title',
   'work.newWorkItem.summaryLabel': 'Summary',

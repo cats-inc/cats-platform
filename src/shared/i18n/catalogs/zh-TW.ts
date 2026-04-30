@@ -366,6 +366,12 @@ export const zhTWCatalog: MessageCatalog = {
   'work.object.status.cancelled': '已取消',
   'work.object.status.running': '執行中',
   'work.object.status.queued': '排隊中',
+  'work.topdown.parentTaskOwningLabel': '負責任務',
+  'work.topdown.parentTaskLabel': '上層任務',
+  'work.topdown.parentWorkItemLabel': '上層工作項目：{parentWorkItemTitle}',
+  'work.topdown.taskProductBindingTitle': '產品綁定：{productBinding}',
+  'work.topdown.parentTaskTooltip':
+    '關聯任務：{linkedTaskTitle}（{linkType}）',
   'work.newWorkItem.title': '新增工作項目',
   'work.newWorkItem.titleLabel': '標題',
   'work.newWorkItem.summaryLabel': '摘要',
