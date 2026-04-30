@@ -204,7 +204,12 @@ export function WorkspaceSettingsCatsRegistry({
                       : t(messageKeys.sharedSettingsCatsRegistryNoMemoryYetLabel)}
                   </span>
                   {catBindings.length > 0 ? (
-                    <span>{catBindings.length} bot{catBindings.length > 1 ? 's' : ''}</span>
+                    <span>
+                      {t(messageKeys.sharedSettingsCatsRegistryBotBindingCount, {
+                        count: catBindings.length,
+                        pluralSuffix: catBindings.length > 1 ? 's' : '',
+                      })}
+                    </span>
                   ) : null}
                 </div>
 

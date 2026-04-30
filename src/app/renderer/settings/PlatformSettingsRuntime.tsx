@@ -274,7 +274,7 @@ export function PlatformSettingsRuntime({
           ) : (
             <ul className="settingsRuntimeList settingsRuntimeHelperList">
               {lifecycleHelpers.map((helper) => {
-                const actions = deriveHelperActions(helper);
+                const actions = deriveHelperActions(helper, t);
                 const isThisHelperRunning = runningHelperId === helper.id;
                 return (
                   <li key={helper.id} className="settingsRuntimeHelperRow">

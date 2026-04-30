@@ -12,21 +12,11 @@ import type {
   MessageInterpolationValues,
   MessageKey,
 } from '../../../../../shared/i18n/index.js';
+import { createTranslator } from '../../../../../shared/i18n/index.js';
 
 export type ScheduleUiI18n = (key: MessageKey, values?: MessageInterpolationValues) => string;
 
-const fallbackDateI18n: ScheduleUiI18n = (key, values) => {
-  if (key === "workScheduleSummaryOnceAt") {
-    return `Once at ${values?.dateTime ?? ""}`;
-  }
-  if (key === "workScheduleSummaryDailyAt") {
-    return `Daily at ${values?.time ?? ""} ${values?.timezone ?? ""}`.trim();
-  }
-  if (key === "workScheduleDateNone") {
-    return "None";
-  }
-  return String(key);
-};
+const fallbackDateI18n: ScheduleUiI18n = createTranslator('en');
 
 export function formatScheduleSummary(
   rule: WorkScheduleRule,

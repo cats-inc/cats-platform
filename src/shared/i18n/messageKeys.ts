@@ -875,6 +875,9 @@ export const messageKeys = {
   workWarRoomMetaValueNoTimelineItem: 'work.warRoom.metaValueNoTimelineItem',
   workWarRoomMetaValueNotBound: 'work.warRoom.metaValueNotBound',
   workWarRoomMetaValueNotRecorded: 'work.warRoom.metaValueNotRecorded',
+  workWarRoomMetaValueNotSpecified: 'work.warRoom.metaValueNotSpecified',
+  workWarRoomMetaValueUnassigned: 'work.warRoom.metaValueUnassigned',
+  workWarRoomMetaValueNoRuntimeBridge: 'work.warRoom.metaValueNoRuntimeBridge',
   workWarRoomMetaValueNone: 'work.warRoom.metaValueNone',
   workWarRoomNoLinkedConversation: 'work.warRoom.noLinkedConversation',
   workWarRoomNoLinkedProject: 'work.warRoom.noLinkedProject',
@@ -1546,6 +1549,8 @@ export const messageKeys = {
   sharedSettingsCatsRegistryDefaultSkillProfileLabel: 'shared.settingsCatsRegistry.defaultSkillProfileLabel',
   sharedSettingsCatsRegistryMemorySavedLabel: 'shared.settingsCatsRegistry.memorySavedLabel',
   sharedSettingsCatsRegistryNoMemoryYetLabel: 'shared.settingsCatsRegistry.noMemoryYetLabel',
+  sharedSettingsCatsRegistryBotBindingCount:
+    'shared.settingsCatsRegistry.botBindingCount',
   sharedSettingsCatsRegistryEmptyStateHint: 'shared.settingsCatsRegistry.emptyStateHint',
   sharedSettingsCatsSelectCatAria: 'shared.settingsCats.selectCatAriaLabel',
   sharedSettingsCatsAddNewCatLabel: 'shared.settingsCats.addNewCatLabel',

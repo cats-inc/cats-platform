@@ -297,23 +297,23 @@ function OperatorInboxSection({
                 </span>
                 <span>
                   {t('workWarRoomMetaLabelActions')}:{' '}
-                  {formatWorkTokenList(item.nextActions.map((action) => action.kind))}
+                  {formatWorkTokenList(item.nextActions.map((action) => action.kind), t)}
                 </span>
               </div>
               <div className="operatorMetaRow">
                 <span>
                   {t('workWarRoomMetaLabelProduct')}:{' '}
-                  {formatWorkExecutionProduct(item.planning.effectiveProduct)}
+                  {formatWorkExecutionProduct(item.planning.effectiveProduct, t)}
                 </span>
                 <span>
                   {t('workWarRoomMetaLabelStrategy')}:{' '}
-                  {formatWorkExecutionStrategy(item.runtimeBridge.request.requestedStrategy)}
+                  {formatWorkExecutionStrategy(item.runtimeBridge.request.requestedStrategy, t)}
                 </span>
               </div>
               <div className="operatorMetaRow">
                 <span>
                   {t('workWarRoomMetaLabelDelivery')}:{' '}
-                  {formatWorkDeliveryMode(item.runtimeDeliveryIntent?.mode)}
+                  {formatWorkDeliveryMode(item.runtimeDeliveryIntent?.mode, t)}
                 </span>
                 <span>
                   {t('workWarRoomMetaLabelWorkflow')}:{' '}
@@ -419,21 +419,21 @@ function ControlPlaneSection({
               <div className="operatorMetaRow">
                 <span>
                   {t('workWarRoomMetaLabelProduct')}:{' '}
-                  {formatWorkExecutionProduct(item.planning.effectiveProduct)}
+                  {formatWorkExecutionProduct(item.planning.effectiveProduct, t)}
                 </span>
                 <span>
                   {t('workWarRoomMetaLabelStrategy')}:{' '}
-                  {formatWorkExecutionStrategy(item.planning.effectiveStrategy)}
+                  {formatWorkExecutionStrategy(item.planning.effectiveStrategy, t)}
                 </span>
               </div>
               <div className="operatorMetaRow">
                 <span>
                   {t('workWarRoomMetaLabelNext')}:{' '}
-                  {formatWorkTokenList(item.nextActions.map((action) => action.kind))}
+                  {formatWorkTokenList(item.nextActions.map((action) => action.kind), t)}
                 </span>
                 <span>
                   {t('workWarRoomMetaLabelDelivery')}:{' '}
-                  {formatWorkDeliveryMode(item.runtimeDeliveryIntent?.mode)}
+                  {formatWorkDeliveryMode(item.runtimeDeliveryIntent?.mode, t)}
                 </span>
               </div>
               <div className="operatorMetaRow">
@@ -723,7 +723,7 @@ function RecoverySection({
               </p>
               <div className="operatorMetaRow">
                 <span>
-                  {t('workWarRoomMetaLabelDelivery')}: {formatWorkDeliveryMode(item.context?.deliveryMode)}
+                  {t('workWarRoomMetaLabelDelivery')}: {formatWorkDeliveryMode(item.context?.deliveryMode, t)}
                 </span>
                 <span>
                   {t('workWarRoomMetaLabelApproval')}: {item.approval.status}

@@ -6,6 +6,12 @@ import {
   type RuntimeLifecycleLastAction,
 } from '../../../shared/desktopRecoveryBridge.js';
 import { triggerProviderCatalogRefresh } from '../../../products/shared/renderer/api/providerCatalogRefreshStore.js';
+import {
+  createTranslator,
+  messageKeys,
+  type MessageInterpolationValues,
+  type MessageKey,
+} from '../../../shared/i18n/index.js';
 
 export type RuntimeLifecycleAction =
   | 'check'
@@ -29,6 +35,13 @@ export interface RuntimeLifecycleActionAvailability {
   reason: string | null;
 }
 
+type RuntimeLifecycleI18n = (
+  key: MessageKey,
+  values?: MessageInterpolationValues,
+) => string;
+
+const defaultRuntimeLifecycleI18n = createTranslator('en');
+
 export function helperSupportsAction(
   helper: RuntimeLifecycleHelperSummary,
   action: RuntimeLifecycleAction,
@@ -49,11 +62,12 @@ export function helperSupportsAction(
 
 export function deriveHelperActions(
   helper: RuntimeLifecycleHelperSummary,
+  t: RuntimeLifecycleI18n = defaultRuntimeLifecycleI18n,
 ): RuntimeLifecycleActionAvailability[] {
   const actions: RuntimeLifecycleAction[] = ['check', 'install', 'upgrade', 'repair', 'uninstall'];
   return actions.map((action) => ({
     action,
-    label: actionLabel(action),
+    label: actionLabel(action, t),
     available: helper.supported && helper.available && helperSupportsAction(helper, action),
     reason: !helper.supported
       ? helper.unsupportedReason
@@ -65,18 +79,21 @@ export function deriveHelperActions(
   }));
 }
 
-export function actionLabel(action: RuntimeLifecycleAction): string {
+export function actionLabel(
+  action: RuntimeLifecycleAction,
+  t: RuntimeLifecycleI18n = defaultRuntimeLifecycleI18n,
+): string {
   switch (action) {
     case 'check':
-      return 'Check';
+      return t(messageKeys.settingsRuntimeActionCheckLabel);
     case 'install':
-      return 'Install';
+      return t(messageKeys.settingsRuntimeActionInstallLabel);
     case 'upgrade':
-      return 'Upgrade';
+      return t(messageKeys.settingsRuntimeActionUpgradeLabel);
     case 'repair':
-      return 'Repair';
+      return t(messageKeys.settingsRuntimeActionRepairLabel);
     case 'uninstall':
-      return 'Uninstall';
+      return t(messageKeys.settingsRuntimeActionUninstallLabel);
   }
 }
 
