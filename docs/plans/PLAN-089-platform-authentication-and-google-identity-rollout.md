@@ -53,13 +53,14 @@ password hashes and session tokens are never stored in plaintext.
 
 ### Phase 2: Server Auth Gate and Local Admin Bootstrap
 
-Tasks 2.1 through 2.14 must land atomically in one PR or behind one feature
+Tasks 2.1 through 2.15 must land atomically in one PR or behind one feature
 flag before the auth gate is enabled for any non-test host. Do not ship
 middleware without login/status endpoints, first-admin setup, repair flow,
 allowlists, CSRF issuance/validation, setup-reset protection, structured
 errors, login throttling, aggregate brute-force guards, the pre-auth
-same-origin gate, the loopback/recovery-token-constrained repair endpoint,
-pinned error codes, and the minimal unauthenticated envelope; do not ship
+allowed-browser-origin gate, Vite/reverse-proxy origin preservation, the
+loopback/recovery-token-constrained repair endpoint, pinned error codes, and
+the minimal unauthenticated envelope; do not ship
 login endpoints as the only auth change while protected routes remain public.
 The loopback/recovery-token constraint on repair (Task 2.13) is part of the
 atomic group because shipping the auth-state-file escape hatch without it
@@ -100,34 +101,46 @@ re-opens LAN admin bootstrap.
 - [ ] Task 2.11: Add mandatory aggregate brute-force guards on top of 2.10:
       (a) per-account progressive server-side delay that grows with recent
       failure count and resets on success; (b) per-account 24-hour failure
-      budget that triggers a logged alert and extended cooldown clearable
-      only via the operator escape hatch; (c) per-/24 IPv4 (or /64 IPv6)
-      subnet failure budget. Operators may tune thresholds via
-      `CATS_AUTH_ACCOUNT_DAILY_FAILURE_CAP` /
+      budget that triggers a logged alert and bounded extended cooldown;
+      (c) per-/24 IPv4 (or /64 IPv6) subnet failure budget. The account
+      cooldown shall expire after a configured TTL and shall also be clearable
+      by authenticated admin action, loopback-local recovery, or the recovery
+      token flow without requiring auth-state deletion. Operators may tune
+      thresholds via `CATS_AUTH_ACCOUNT_DAILY_FAILURE_CAP` /
+      `CATS_AUTH_ACCOUNT_COOLDOWN_MS` /
       `CATS_AUTH_SUBNET_DAILY_FAILURE_CAP` but shall not be able to disable
       the guards entirely.
-- [ ] Task 2.12: Add a same-origin gate to all pre-auth mutating endpoints
+- [ ] Task 2.12: Add an allowed-browser-origin gate to all pre-auth mutating endpoints
       (`/setup` first-admin creation, `/api/auth/login`, repair first-admin
       creation, Google credential POST). The gate shall reject requests when
-      `Origin` is present and does not match the platform's expected origin,
-      `Sec-Fetch-Site` is `cross-site`, or both headers are absent on a
-      non-`GET` request. This is in addition to (not a replacement for) the
-      authenticated synchronizer CSRF token and the GIS `g_csrf_token`
-      double-submit.
+      `Origin` is absent or not in the configured allowed browser-origin set,
+      `Sec-Fetch-Site` is `cross-site`, `Sec-Fetch-Site` is `same-site`
+      without an allowlisted `Origin`, or `Sec-Fetch-Site` is `none` on an API
+      mutation. This is in addition to (not a replacement for) the authenticated
+      synchronizer CSRF token and the GIS `g_csrf_token` double-submit.
 - [ ] Task 2.13: Constrain the auth-state-file repair first-admin creation
       endpoint so it is reachable only from loopback (`127.0.0.1` / `::1`)
       OR with a one-time recovery token. At repair-mode start-up the
       platform shall generate the token, write its hash to memory, and write
-      the raw token to (a) the server console / structured log and (b)
-      `<state-dir>/auth-recovery-token.local.txt` with restrictive
-      filesystem permissions where the OS supports them. The token shall be
-      single-use, rotate on every repair-mode start-up, and be invalidated
-      after first-admin re-creation or platform restart.
+      the raw token only to `<state-dir>/auth-recovery-token.local.txt` with
+      restrictive filesystem permissions where the OS supports them. Structured
+      logs shall include only repair-mode status and the token file path, never
+      the raw token. An interactive local console may print the raw token only
+      when it is not routed into structured/remote logging. The token shall be
+      single-use, rotate on every repair-mode start-up, and be invalidated after
+      first-admin re-creation or platform restart.
 - [ ] Task 2.14: Pin error response codes for the auth/CSRF gate. Use stable
       structured `code` fields: `E_UNAUTHENTICATED` for `401`, `E_FORBIDDEN`
       for plain authorization failures, and `E_CSRF_MISMATCH` for CSRF
       failures. The renderer logic shall key on these codes, never on
       user-visible text.
+- [ ] Task 2.15: Wire browser-origin preservation for dev and deployed
+      topologies before enabling the pre-auth gate. Add
+      `CATS_AUTH_ALLOWED_BROWSER_ORIGINS`, include Vite dev origin(s) such as
+      `http://localhost:5173` explicitly in dev/test configuration, and audit
+      `vite.config.ts` / reverse-proxy behavior so the server can distinguish
+      the browser-facing origin from the internal app-server origin without
+      trusting arbitrary client-supplied forwarded headers.
 
 **Deliverables**: after setup, unauthenticated API calls to product/runtime
 routes are rejected; missing auth state after setup fails closed into repair;
@@ -142,11 +155,11 @@ CSRF; repeated invalid logins are throttled.
 - [ ] Task 3.3: Update platform bootstrap loading so unauthenticated app loads
       redirect to `/login` instead of surfacing raw API failures.
 - [ ] Task 3.4: Add logout action in an existing account/settings surface.
-- [ ] Task 3.5: Ensure Vite dev proxy and built server both preserve
-      Set-Cookie / Cookie behavior. Audit `vite.config.ts` for explicit proxy
-      `changeOrigin` and cookie pass-through settings, including
-      `cookieDomainRewrite` / `cookiePathRewrite` behavior where the app server
-      sets cookie domain or path attributes.
+- [ ] Task 3.5: Verify Vite dev proxy and built server both preserve
+      Set-Cookie / Cookie behavior after the Phase 2 origin-preservation work
+      has landed. Keep `vite.config.ts` proxy `changeOrigin`,
+      `cookieDomainRewrite`, and `cookiePathRewrite` behavior covered by the
+      Phase 2 auth-gate tests so dev and packaged flows do not diverge.
 
 **Deliverables**: a user can create the first local admin, reload the app,
 log out, log back in, and access Chat/Work/Code only while authenticated.
@@ -206,11 +219,11 @@ product write path.
       memberships while leaving owner profile, Guide Cat state, and product
       data untouched;
       (b) the recovery flow constraint — repair first-admin creation only
-      accepts loopback requests OR a one-time recovery token printed to
-      console and written to `<state-dir>/auth-recovery-token.local.txt` at
-      repair-mode start-up; LAN-bound deployments should rebind to loopback
-      or use the recovery token before allowing the LAN to reach the host
-      during recovery.
+      accepts loopback requests OR a one-time recovery token written to
+      `<state-dir>/auth-recovery-token.local.txt` at repair-mode start-up;
+      structured logs expose only the token file path, not the raw token;
+      LAN-bound deployments should rebind to loopback or use the recovery
+      token before allowing the LAN to reach the host during recovery.
 - [ ] Task 6.6: Add release notes covering: (a) LAN-facing workspaces now
       require login after setup; (b) `CATS_AUTH_ENABLED=false` is rejected
       after `setupCompleteAt`; (c) the auth state file escape hatch and the
@@ -230,7 +243,8 @@ operators before implementation is marked complete.
 | `src/app/server/requestRouter.ts` | Modify | Install auth gate before product/runtime route dispatch |
 | `src/app/server/contracts.ts` | Modify | Add auth dependencies/principal to resolved route contexts |
 | `src/app/server/dependencies.ts` | Modify | Wire auth store and verifier dependencies |
-| `src/config.ts` | Modify | Parse auth and Google provider configuration |
+| `src/config.ts` | Modify | Parse auth, allowed browser origins, and Google provider configuration |
+| `vite.config.ts` | Modify | Preserve browser-origin/cookie behavior for auth routes in dev proxy |
 | `src/shared/platform-contract.ts` | Modify | Expose auth/session/provider availability in app shell payload |
 | `src/app/renderer/App.tsx` | Modify | Route unauthenticated users to `/login` after setup |
 | `src/app/renderer/setup/**` | Modify | Add first-admin local credential and optional Google bootstrap UI |
@@ -272,18 +286,25 @@ operators before implementation is marked complete.
   code, and never matches on user-visible text.
 - Pre-auth bootstrap defense: `/setup` first-admin, `/api/auth/login`,
   repair first-admin, and Google credential POST are all guarded by an
-  `Origin` + `Sec-Fetch-Site` same-origin gate. This sits in addition to,
-  not in place of, the synchronizer CSRF token used by authenticated
-  mutations and the `g_csrf_token` double-submit used by Google credentials.
+  `Origin` + `Sec-Fetch-Site` allowed-browser-origin gate. The gate uses a
+  configured allowlist of browser-facing origins, including Vite dev origins,
+  and does not trust arbitrary forwarded headers. `same-site` is accepted only
+  when `Origin` is allowlisted; it is not treated as same-origin by itself.
+  This sits in addition to, not in place of, the synchronizer CSRF token used
+  by authenticated mutations and the `g_csrf_token` double-submit used by
+  Google credentials.
 - Repair-mode admin bootstrap is loopback-only OR requires a one-time
-  recovery token written to console + state-dir file at repair start-up.
-  Token is single-use, rotates per restart, and is invalidated after
-  first-admin re-creation. This prevents the escape hatch from re-opening
-  LAN admin bootstrap.
+  recovery token written to a restrictive state-dir file at repair start-up.
+  Structured logs never contain the raw token; an interactive local console may
+  print it only when not routed into structured/remote logging. Token is
+  single-use, rotates per restart, and is invalidated after first-admin
+  re-creation. This prevents the escape hatch from re-opening LAN admin
+  bootstrap.
 - Login throttle hard-lockout key is composite `(account, address)`;
-  per-account progressive delay, per-account 24-hour failure budget, and
-  per-/24 subnet budget are mandatory aggregate guards on top — operators
-  may tune thresholds but cannot disable the guards.
+  per-account progressive delay, bounded per-account 24-hour cooldown, and
+  per-/24 subnet budget are mandatory aggregate guards on top. Cooldowns expire
+  by TTL and can be cleared by admin/loopback/recovery token flow, so the
+  single v1 owner is not forced into deleting auth state after mistakes.
 - Auth/CSRF gate uses pinned structured error codes (`E_UNAUTHENTICATED` /
   `E_FORBIDDEN` / `E_CSRF_MISMATCH`) rather than relying on HTTP status
   alone, so client retry logic stays correct and decoupled from copy
@@ -316,14 +337,17 @@ operators before implementation is marked complete.
   - per-account progressive delay grows with recent failure count from any
     source and resets on successful login;
   - per-account 24-hour failure budget triggers logged alert and extended
-    cooldown that survives across distributed source addresses;
+    cooldown that survives across distributed source addresses, expires by TTL,
+    and can be cleared through admin/loopback/recovery-token recovery without
+    deleting auth state;
   - per-/24 subnet failure budget cools the subnet down when the same /24
     drives failures across many accounts;
   - aggregate guard thresholds are configurable but cannot be disabled
     entirely;
   - recovery-token issuance: at repair-mode start-up the platform writes a
-    fresh single-use token, rotates it on every restart, and invalidates it
-    after first-admin re-creation;
+    fresh single-use token only to the state-dir token file, rotates it on
+    every restart, invalidates it after first-admin re-creation, and never
+    places the raw token in structured logs;
   - auth-state validation treats JSON parse failures, missing required
     top-level fields, and too-new schema versions as corrupt while preserving
     unknown extra fields;
@@ -353,9 +377,15 @@ operators before implementation is marked complete.
     triggers the repair flow on next start without exposing protected APIs;
   - pre-auth mutating endpoints (`/setup` first-admin, `/api/auth/login`,
     repair first-admin, Google credential POST) reject requests with a
-    cross-site `Origin`, with `Sec-Fetch-Site: cross-site`, or with both
-    headers absent on a non-`GET`;
-  - the same-origin gate is enforced on Google credential POST and is not
+    cross-site `Origin`, with `Sec-Fetch-Site: cross-site`, with
+    `Sec-Fetch-Site: same-site` but no allowlisted `Origin`, with
+    `Sec-Fetch-Site: none` on an API mutation, or with `Origin` absent on a
+    non-`GET`;
+  - Vite dev origin (for example `http://localhost:5173`) succeeds only when it
+    is configured in `CATS_AUTH_ALLOWED_BROWSER_ORIGINS`, and arbitrary
+    forwarded-origin headers from clients are ignored unless they came through
+    a configured trusted proxy hop;
+  - the allowed-browser-origin gate is enforced on Google credential POST and is not
     bypassed by provider name;
   - the repair first-admin creation endpoint rejects requests from non-loopback
     addresses without a valid recovery token, accepts loopback requests
@@ -391,16 +421,16 @@ operators before implementation is marked complete.
 | Missing auth state after setup accidentally disables auth | High | Treat `setupCompleteAt` as fail-closed and route only to repair/login/bootstrap surfaces |
 | Local admin login becomes brute-forceable on LAN | High | Add per-address and per-account/provider throttling with default lockout |
 | Google OAuth does not work on LAN IP | Medium | Keep local admin path first-class; hide/fallback Google where unavailable |
-| Cookie behavior differs between Vite proxy and built server | Medium | Add explicit dev and built-server session tests |
+| Cookie/origin behavior differs between Vite proxy and built server | Medium | Put Vite origin preservation in Phase 2 atomic work; add explicit dev and built-server session/origin tests |
 | Password/session local state becomes sensitive | High | Store only salted password hashes and session token hashes; document state reset |
 | Route allowlist accidentally leaves a privileged route public | High | Add static route-policy tests and review runtime/shell/transport routes explicitly |
 | Cats CSRF and Google GIS CSRF are conflated | High | Keep Cats auth routes and Google credential routes in distinct modules; add static tests that `X-Cats-CSRF-Token` middleware is not registered on Google credential routes and that Cats mutation routes reject requests supplying only `g_csrf_token` |
 | Operator forgets the only admin credential and bricks their workspace | High | Document the auth-state-file escape hatch in setup-guide, deployment, and release notes; ensure the repair flow does not require the lost password |
-| Escape hatch re-opens LAN admin bootstrap | High | Constrain repair first-admin creation to loopback OR a one-time recovery token printed at start-up; never expose the repair endpoint as a plain LAN-reachable bootstrap; document the loopback/token requirement in deployment docs |
-| Pre-auth CSRF on `/setup` / `/api/auth/login` / repair from cross-site POST | High | Same-origin gate via `Origin` + `Sec-Fetch-Site` on all pre-auth mutating endpoints, including Google credential POST; static test that the gate is registered on every pre-auth route |
-| Distributed brute force shares budget per account | High | Mandatory aggregate guards: per-account progressive delay, per-account 24-hour failure budget with extended cooldown, per-/24 subnet failure budget; cannot be disabled |
+| Escape hatch re-opens LAN admin bootstrap | High | Constrain repair first-admin creation to loopback OR a one-time recovery token written to a restrictive state-dir file; never expose the repair endpoint as a plain LAN-reachable bootstrap; document the loopback/token requirement in deployment docs |
+| Pre-auth CSRF on `/setup` / `/api/auth/login` / repair from cross-site POST | High | Allowed-browser-origin gate via `Origin` + `Sec-Fetch-Site` on all pre-auth mutating endpoints, including Google credential POST; static test that the gate is registered on every pre-auth route |
+| Distributed brute force shares budget per account | High | Mandatory aggregate guards: per-account progressive delay, bounded per-account 24-hour cooldown with non-destructive recovery, per-/24 subnet failure budget; cannot be disabled |
 | Renderer retries non-CSRF `403` and masks real authz failures | Medium | Pin `code: 'E_CSRF_MISMATCH'`; renderer keys retry on that code only; static test asserts no retry on `E_FORBIDDEN` |
-| Legitimate admin DoS via per-account global hard lockout | Medium | Use composite `(account, address)` hard-lockout key; aggregate guards add delay and budgets but never hard-lock the account globally without operator action |
+| Legitimate admin DoS via per-account global hard lockout | Medium | Use composite `(account, address)` hard-lockout key; aggregate guards add delay and bounded cooldowns with TTL/admin/loopback/recovery-token clearing |
 | Stale CSRF token after rotation breaks UX silently | Medium | Renderer must refresh `/api/auth/status` on `E_CSRF_MISMATCH` and retry once; a second mismatch surfaces a hard error |
 | `CATS_AUTH_ENABLED=false` honored after setup re-opens LAN exposure | High | Reject the override as a configuration error after `setupCompleteAt` on every host; cover with config-validation tests |
 | Future multi-user attribution is blocked by first slice shortcuts | Medium | Carry principal in route context and fail closed for `coreActorId: null` instead of mapping every admin to owner |
@@ -411,7 +441,8 @@ operators before implementation is marked complete.
 |------|--------|
 | 2026-04-30 | Plan created with ADR-096 and SPEC-100 after LAN access exposed the missing general auth boundary. |
 | 2026-04-30 | Tightened auth invariants: composite `(account, address)` throttle key; uniform `CATS_AUTH_ENABLED=false` rejection after `setupCompleteAt`; pre-setup row clarified in the gate table; pre-auth CSRF token explicitly absent; renderer stale-CSRF retry contract; rotation on privilege changes marked forward-looking; auth-state-file escape hatch for forgotten credentials documented. |
-| 2026-04-30 | Closed pre-auth bootstrap CSRF gap with same-origin gate on `/setup`/`/api/auth/login`/repair; constrained repair first-admin creation to loopback or one-time recovery token so the escape hatch does not re-open LAN admin bootstrap; pinned `E_CSRF_MISMATCH` / `E_FORBIDDEN` / `E_UNAUTHENTICATED` error codes; promoted per-account aggregate guards (progressive delay, daily failure budget, per-/24 subnet budget) from optional to required. |
+| 2026-04-30 | Closed pre-auth bootstrap CSRF gap with allowed-browser-origin gate on `/setup`/`/api/auth/login`/repair; constrained repair first-admin creation to loopback or one-time recovery token so the escape hatch does not re-open LAN admin bootstrap; pinned `E_CSRF_MISMATCH` / `E_FORBIDDEN` / `E_UNAUTHENTICATED` error codes; promoted per-account aggregate guards (progressive delay, bounded daily cooldown, per-/24 subnet budget) from optional to required. |
+| 2026-04-30 | Aligned origin gate with Vite/reverse-proxy reality: allowed browser-origin set is explicit and Phase 2 atomic, `same-site` no longer passes without an allowlisted `Origin`, recovery tokens stay out of structured logs, and aggregate cooldowns have TTL/non-destructive recovery so the v1 owner is not forced to delete auth state. |
 
 ---
 

@@ -137,9 +137,13 @@ the whole authorization system.
        per-IP.
      - **Per-account 24-hour failure budget**: a per-account rolling 24-hour
        cap on total failed attempts shall trigger a logged alert and put the
-       account into extended cooldown clearable only by the operator escape
-       hatch (§58) or admin action. Default cap shall be configurable
-       (`CATS_AUTH_ACCOUNT_DAILY_FAILURE_CAP`).
+       account into extended cooldown. The cooldown shall have a bounded
+       default TTL and shall not force the single v1 owner into deleting auth
+       state as the only recovery path. It may also be cleared by an
+       authenticated admin, by loopback-local recovery, or by the recovery
+       token flow (§58-62). Default cap and cooldown duration shall be
+       configurable (`CATS_AUTH_ACCOUNT_DAILY_FAILURE_CAP`,
+       `CATS_AUTH_ACCOUNT_COOLDOWN_MS`).
      - **Per-/24 subnet budget**: a rolling failure budget per /24 IPv4 (or
        /64 IPv6) prefix shall trigger a subnet-level cooldown so a single
        subnet cannot drive a wide brute force across many accounts.
@@ -229,22 +233,38 @@ the whole authorization system.
      bootstrap, the local `/api/auth/login` endpoint, the auth-state-file
      repair first-admin creation, and any other route that creates accounts,
      identities, sessions, or memberships before a Cats session exists —
-     shall enforce a same-origin gate. The gate shall reject requests when:
-     - the `Origin` header is present and does not match the platform's
-       expected origin (host + port + scheme); or
-     - the `Sec-Fetch-Site` header is present and is `cross-site`
-       (`same-origin` and `same-site` are accepted; `none` is accepted only
-       for top-level navigations to the renderer, never for API mutations); or
-     - both `Origin` and `Sec-Fetch-Site` are absent on a non-`GET` request.
-49b. The same-origin gate is in addition to, not a replacement for, the
+     shall enforce an allowed-browser-origin gate. The allowed origins are the
+     configured platform browser origins plus development proxy origins
+     explicitly trusted by configuration (for example Vite on
+     `http://localhost:5173`). The gate shall evaluate the browser-facing
+     origin, using trusted proxy headers only from configured internal dev or
+     reverse-proxy hops; arbitrary client-supplied forwarded headers shall not
+     be trusted.
+
+     The gate shall reject API mutations when:
+     - the `Origin` header is present and is not in the allowed browser-origin
+       set; or
+     - the `Origin` header is absent on a non-`GET` request; or
+     - the `Sec-Fetch-Site` header is present and is `cross-site`; or
+     - the `Sec-Fetch-Site` header is `same-site` but the `Origin` header is
+       absent or not allowlisted; or
+     - the `Sec-Fetch-Site` header is `none` on an API mutation.
+
+     `Sec-Fetch-Site: same-origin` is accepted only when the request origin is
+     also allowed. `same-site` is not treated as same-origin; it is accepted
+     only as supporting evidence after the `Origin` allowlist passes. `none`
+     is accepted only for top-level navigations to the renderer, never for API
+     mutations.
+49b. The allowed-browser-origin gate is in addition to, not a replacement for, the
      authenticated-API CSRF token (§47-48). Authenticated mutations shall
-     pass both checks; pre-auth mutations shall pass only the same-origin
-     gate (no Cats session exists yet to mint a CSRF token from).
-49c. Google credential POST routes shall enforce the same-origin gate
-     against the platform's own origin even though their CSRF defense is the
-     GIS `g_csrf_token` double-submit, because GIS posts the credential to
-     the Cats origin via a top-level form submission whose `Origin` matches.
-     The gate shall not be bypassed for "Google" or any provider name.
+     pass both checks; pre-auth mutations shall pass only the
+     allowed-browser-origin gate (no Cats session exists yet to mint a CSRF
+     token from).
+49c. Google credential POST routes shall enforce the allowed-browser-origin gate
+     against the allowed browser-origin set even though their CSRF defense is
+     the GIS `g_csrf_token` double-submit, because GIS posts the credential to
+     the Cats browser origin. The gate shall not be bypassed for "Google" or
+     any provider name.
 50. CSRF tokens shall rotate on login/session creation. Logout and session
     revocation shall invalidate existing CSRF tokens for the revoked session.
     Rotation on privilege changes is a forward-looking guarantee: v1 ships no
@@ -271,7 +291,9 @@ the whole authorization system.
     - `CATS_AUTH_LOGIN_FAILURE_LIMIT`
     - `CATS_AUTH_LOGIN_LOCKOUT_MS`
     - `CATS_AUTH_ACCOUNT_DAILY_FAILURE_CAP`
+    - `CATS_AUTH_ACCOUNT_COOLDOWN_MS`
     - `CATS_AUTH_SUBNET_DAILY_FAILURE_CAP`
+    - `CATS_AUTH_ALLOWED_BROWSER_ORIGINS`
     - `CATS_AUTH_GOOGLE_CLIENT_ID`
     - `CATS_AUTH_GOOGLE_HD`
 55. Auth shall default to enabled when the platform is bound to a non-loopback
@@ -319,18 +341,19 @@ Effective auth gate state:
     - **Recovery token**: the request carries a one-time recovery token
       whose hash matches a token the platform generated at start-up after
       detecting the missing/corrupt auth state. The platform shall write the
-      raw recovery token to two places at start-up:
-        - the server console / structured log (visible to anyone with shell
-          access to the host), and
-        - a file in the state directory (e.g.
-          `<state-dir>/auth-recovery-token.local.txt`) with restrictive
-          filesystem permissions where the OS supports them.
+      raw recovery token only to a file in the state directory (e.g.
+      `<state-dir>/auth-recovery-token.local.txt`) with restrictive filesystem
+      permissions where the OS supports them. Structured logs shall never
+      include the raw token; they may include only the token file path and a
+      repair-mode-active event. An interactive console may print the raw token
+      only when the server is attached to a local terminal and not using a
+      structured/remote log sink.
       The token shall be single-use, rotate on every repair-mode start-up,
       and be invalidated as soon as the first-admin repair completes or the
       platform restarts.
 60. Repair-mode start-up shall log a high-visibility warning that the
-    workspace is in repair mode, the recovery token has been written, and
-    LAN-bound deployments should rebind to loopback or use the recovery
+    workspace is in repair mode, where the recovery-token file is located, and
+    that LAN-bound deployments should rebind to loopback or use the recovery
     token before allowing the LAN to reach the host. Routes other than the
     constrained repair first-admin creation endpoint shall remain failed
     closed during repair (per §16, §55).
