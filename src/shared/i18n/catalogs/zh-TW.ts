@@ -1024,6 +1024,13 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.sidePanel.runStatusUnavailableTitle': '狀態無法取得',
   'chat.sidePanel.loadingTitle': '載入中',
   'chat.sidePanel.operatorLoadingState': '正在載入審批、活動與執行詳情。',
+  'chat.approvalQueue.eyebrow': '待審核',
+  'chat.approvalQueue.pendingTitle': '待審核項目',
+  'chat.approvalQueue.emptyState':
+    '房間可持續運行，直到計劃需要擁有者做出決策。',
+  'chat.approvalQueue.defaultRequester': '調度者',
+  'chat.approvalQueue.defaultSummary': '請先審核此派發，才能繼續下一步。',
+  'chat.approvalQueue.requestedByPrefix': '由 {requestedBy} 提出',
   'chat.catStatus.compact.activeLabel': '運作中',
   'chat.catStatus.compact.needAttentionLabel': '需要注意',
   'chat.catStatus.compact.sleepingLabel': '睡眠中',

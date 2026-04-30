@@ -1058,6 +1058,14 @@ export const enCatalog: MessageCatalog = {
   'chat.sidePanel.runStatusUnavailableTitle': 'Status unavailable',
   'chat.sidePanel.loadingTitle': 'Loading',
   'chat.sidePanel.operatorLoadingState': 'Loading approvals, activity, and run details.',
+  'chat.approvalQueue.eyebrow': 'Approval',
+  'chat.approvalQueue.pendingTitle': 'Pending approvals',
+  'chat.approvalQueue.emptyState':
+    'The room can keep moving until a plan asks for an owner decision.',
+  'chat.approvalQueue.defaultRequester': 'Orchestrator',
+  'chat.approvalQueue.defaultSummary':
+    'Review this dispatch before Cats continue.',
+  'chat.approvalQueue.requestedByPrefix': 'Requested by {requestedBy}',
   'chat.catStatus.compact.activeLabel': 'active',
   'chat.catStatus.compact.needAttentionLabel': 'need attention',
   'chat.catStatus.compact.sleepingLabel': 'sleeping',

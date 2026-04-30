@@ -4,6 +4,8 @@ import {
   isApprovalBusy,
   type WorkspaceBusyState,
 } from '../../../../shared/workspaceBusy.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
 export interface ApprovalQueuePanelProps {
   approvals: CoreApprovalQueueItem[];
@@ -18,18 +20,19 @@ export function ApprovalQueuePanel({
   busy,
   onDecision,
 }: ApprovalQueuePanelProps) {
+  const { t } = useI18n();
   return (
     <section className="operatorPanel">
       <div className="operatorPanelHeader">
         <div>
-          <p className="operatorEyebrow">Approval</p>
-          <h2>Pending approvals</h2>
+          <p className="operatorEyebrow">{t(messageKeys.chatApprovalQueueEyebrow)}</p>
+          <h2>{t(messageKeys.chatApprovalQueuePendingTitle)}</h2>
         </div>
         <span className="operatorCountBadge">{approvals.length}</span>
       </div>
       {approvals.length === 0 ? (
         <p className="operatorEmptyState">
-          The room can keep moving until a plan asks for an owner decision.
+          {t(messageKeys.chatApprovalQueueEmptyState)}
         </p>
       ) : (
         <div className="operatorStack">
@@ -37,21 +40,21 @@ export function ApprovalQueuePanel({
             const isBusy = isApprovalBusy(busy, approval.taskId);
             const requestedBy = approval.requestedByActorId
               ? actorNameById[approval.requestedByActorId] ?? 'Orchestrator'
-              : 'Orchestrator';
+              : t(messageKeys.chatApprovalQueueDefaultRequester);
 
             return (
               <article key={approval.id} className="operatorCard approvalCard">
                 <div className="operatorCardHeader">
                   <div>
                     <strong>{approval.title}</strong>
-                    <p>{approval.summary ?? 'Review this dispatch before Cats continue.'}</p>
+                    <p>{approval.summary ?? t(messageKeys.chatApprovalQueueDefaultSummary)}</p>
                   </div>
                   <span className="operatorMetaText">
                     {formatOperatorTimestamp(approval.requestedAt)}
                   </span>
                 </div>
                 <div className="operatorMetaRow">
-                  <span>Requested by {requestedBy}</span>
+                  <span>{t(messageKeys.chatApprovalQueueRequestedByPrefix, { requestedBy })}</span>
                   {approval.notes ? <span>{approval.notes}</span> : null}
                 </div>
                 <div className="operatorActionRow">
