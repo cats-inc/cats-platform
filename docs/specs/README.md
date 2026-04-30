@@ -48,6 +48,7 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-100](./SPEC-100-platform-authentication-admin-bootstrap-and-google-identity.md) | Platform Authentication, Admin Bootstrap, and Google Identity | Draft | [PLAN-089](../plans/PLAN-089-platform-authentication-and-google-identity-rollout.md), [ADR-096](../decisions/096-adopt-platform-owned-auth-sessions-with-google-as-identity-provider.md) |
 | [SPEC-099](./SPEC-099-mobile-pairing-manifest-server.md) | Mobile Pairing Manifest Server in Cats Desktop | Draft | [PLAN-088](../plans/PLAN-088-mobile-pairing-manifest-server-rollout.md), [ADR-095](../decisions/095-distribute-mobile-as-static-expo-go-bundle-served-by-desktop.md) |
 | [SPEC-098](./SPEC-098-cats-app-package-and-extension-interface.md) | Cats App Package and Extension Interface | Draft | [PLAN-087](../plans/PLAN-087-cats-app-package-interface-rollout.md), [ADR-094](../decisions/094-adopt-cats-app-packages-as-extension-boundary.md) |
 | [SPEC-097](./SPEC-097-platform-language-settings-and-ui-localization.md) | Platform Language Settings and UI Localization | Draft | [PLAN-086](../plans/PLAN-086-platform-language-settings-and-ui-localization-rollout.md), [ADR-093](../decisions/093-use-platform-language-preferences-for-assistant-and-ui-locales.md) |
@@ -154,6 +155,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-04-30 (SPEC-099 added for the Mobile pairing manifest server in Cats Desktop; SPEC-098 added for Cats App Packages and the extension interface; SPEC-097 added for platform language settings and UI localization; SPEC-096 added for Mission cancel and Run stop public cancellation contract.)*
+*Last updated: 2026-04-30 (SPEC-100 added for platform authentication, admin bootstrap, and Google identity; SPEC-099 added for the Mobile pairing manifest server in Cats Desktop; SPEC-098 added for Cats App Packages and the extension interface; SPEC-097 added for platform language settings and UI localization; SPEC-096 added for Mission cancel and Run stop public cancellation contract.)*
 
 *See also: [plans/](../plans/) for implementation plans*

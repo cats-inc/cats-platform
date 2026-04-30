@@ -1,0 +1,318 @@
+# SPEC-100: Platform Authentication, Admin Bootstrap, and Google Identity
+
+## Metadata
+
+| Field | Value |
+|-------|-------|
+| **Status** | Draft |
+| **Owner** | Codex |
+| **Reviewer** | User |
+
+## Summary
+
+Cats Platform needs a real authentication boundary before LAN-facing access can
+be treated as more than a trusted developer convenience. This spec defines the
+first platform-owned auth layer: `/setup` creates the first admin account,
+`/login` establishes a Cats session, protected API routes require that session,
+and Google Sign-In is supported as an optional identity provider rather than as
+the whole authorization system.
+
+## Goals
+
+- Protect Cats Platform APIs after setup completion with server-side sessions.
+- Preserve local-first operation through local admin credentials.
+- Allow `/setup` and `/login` to use Google identity when configured and when
+  the current origin satisfies Google OAuth rules.
+- Separate accounts, provider identities, sessions, memberships, and Core actor
+  attribution so future Cats Work multi-human workflows have a clean model.
+- Keep the first rollout small enough to close the LAN access risk without
+  building a full enterprise IAM system.
+
+## Non-Goals
+
+- Public-internet hardening for arbitrary untrusted exposure.
+- Enterprise SSO beyond Google OIDC / Google Identity Services.
+- Passkeys, WebAuthn, TOTP, recovery codes, or MFA in the first slice.
+- Organization/team administration UI beyond the first admin and basic session
+  status.
+- Per-resource ACLs for every Chat / Work / Code object.
+- Replacing Telegram webhook secret-token validation.
+- Moving browser auth down into `cats-runtime`.
+- Solving Google OAuth for raw LAN IP origins. The local admin path covers that
+  environment.
+
+## User Stories
+
+- As the owner, I want `/setup` to create an admin login so that opening Cats on
+  the LAN does not expose my workspace to anyone on the same network.
+- As the owner, I want Google login when available so that I do not have to
+  manage another password on localhost or a trusted HTTPS tunnel.
+- As the owner, I want a local password fallback so that Cats still works on
+  raw LAN IP, offline, and packaged desktop environments.
+- As a future Cats Work operator, I want my own session and role so that tasks,
+  approvals, and runs can be attributed to the correct human.
+
+## Requirements
+
+### Functional Requirements
+
+#### Auth state
+
+1. The platform shall persist auth state separately from Chat transcript state
+   and owner profile state.
+2. Auth state shall include accounts, provider identities, sessions, and
+   workspace memberships.
+3. The first account created by setup shall receive `owner` and `admin`
+   membership roles.
+4. The first admin account shall map to the existing owner actor
+   (`actor-owner`) for initial Core attribution.
+5. Auth state shall include a version field for future schema changes.
+6. Password identities shall store only salted password hashes, never plaintext
+   or reversible passwords.
+7. Session records shall store only server-generated opaque token hashes, never
+   raw session tokens.
+8. Google identities shall store Google `sub` as the stable external subject.
+   Email may be stored for display or lookup hints but shall not be the primary
+   identity key.
+
+#### Setup and bootstrap
+
+9. Before setup is complete, `/setup` shall offer a local admin path.
+10. Before setup is complete, `/setup` may offer a Google admin path only when
+    Google auth is configured.
+11. Completing setup through either path shall create the first admin account,
+    create a membership, update owner profile display fields, optionally create
+    Guide Cat state, mark setup complete, and establish a session.
+12. If setup is already complete, setup-complete endpoints shall reject repeat
+    bootstrap attempts.
+13. Setup reset shall require an authenticated admin session after setup has
+    been completed.
+14. A development/test-only reset helper may bypass auth only in isolated test
+    dependencies, not in the real dev server.
+15. If existing state has `setupCompleteAt` but no auth state, the platform
+    shall enter an admin-auth bootstrap repair flow before exposing protected
+    product APIs.
+
+#### Login, logout, and session status
+
+16. The platform shall expose a session status endpoint returning whether the
+    current request is authenticated and, if so, the current principal summary.
+17. The platform shall expose a local login endpoint accepting account
+    identifier and password.
+18. The platform shall expose a Google login/token endpoint accepting a Google
+    credential/ID token and returning a Cats session only after server-side
+    verification.
+19. Logout shall revoke the current session server-side and clear the browser
+    cookie.
+20. Sessions shall have an expiration timestamp.
+21. Session cookies shall be HttpOnly and SameSite by default.
+22. Session cookies shall use Secure when Cats is served over HTTPS.
+23. The platform shall support a session secret loaded from configuration or
+    generated/persisted locally on first run.
+
+#### Route gate
+
+24. Once setup is complete, protected routes shall require an authenticated
+    session before product-specific route dispatch.
+25. Protected routes include Chat, Work, Code, Core, setup reset, runtime proxy,
+    runtime-hosted setup/operator surfaces, shell browse/open-folder helpers,
+    transport configuration, provider mutation routes, and subscription routes.
+26. Public routes after setup shall be limited to renderer assets, login/auth
+    endpoints, and narrow health/readiness endpoints.
+27. Before setup is complete, public routes shall be limited to renderer assets,
+    setup/bootstrap endpoints, auth bootstrap/status endpoints, and narrow
+    health/readiness endpoints.
+28. Unauthenticated app-shell/bootstrap reads shall return only setup/auth
+    routing state and shall not include product data such as cats, channels,
+    Work state, Core records, runtime session details, transport bindings, or
+    shell helper data.
+29. Unauthenticated browser navigation to product routes shall render the app
+    shell and let the renderer redirect to `/login`.
+30. Unauthenticated API requests shall return `401` with a structured error.
+31. Authenticated but unauthorized requests shall return `403` with a
+    structured error.
+
+#### Authorization and roles
+
+32. The first rollout shall support `owner` and `admin` roles.
+33. Admin role shall authorize setup reset, account management bootstrap
+    follow-ups, and platform settings that mutate auth-sensitive state.
+34. Authenticated owner/admin sessions shall authorize the current single-user
+    product APIs in the first rollout.
+35. The auth principal shall be available to route handlers so future writes can
+    attribute actions to the correct account and Core actor.
+36. The first rollout may continue to map all owner/admin actions to
+    `actor-owner`, but the route context must expose enough principal
+    information to remove that shortcut later.
+
+#### Google identity provider
+
+37. Google Sign-In shall be disabled unless `CATS_AUTH_GOOGLE_CLIENT_ID` is
+    configured.
+38. The server shall verify Google ID tokens using a maintained verifier
+    library. It shall not trust frontend-decoded claims.
+39. Verification shall check token signature, `aud`, `iss`, and `exp`.
+40. If `CATS_AUTH_GOOGLE_HD` is configured, verification shall also require the
+    `hd` claim to match one of the configured domains.
+41. The server shall reject Google tokens whose email is not verified when the
+    provider flow depends on email display or matching.
+42. The renderer shall hide or disable Google login affordances when config says
+    the provider is unavailable.
+43. The renderer shall surface a clear fallback to local login on raw LAN IP or
+    other origins where Google Web OAuth is not expected to work.
+
+#### CSRF and browser safety
+
+44. The Google credential POST flow shall validate the Google Identity Services
+    CSRF token when GIS submits `g_csrf_token`.
+45. Mutating authenticated API requests shall be protected against cross-site
+    request forgery by a Cats-owned CSRF mechanism or by an equivalent
+    same-origin request contract documented in the implementation.
+46. Auth error responses shall not leak password-hash, session-token,
+    configured secret, or Google token details.
+47. Login attempts shall use generic invalid-credential errors.
+
+#### Configuration
+
+48. The platform shall add documented auth configuration keys:
+    - `CATS_AUTH_ENABLED`
+    - `CATS_AUTH_SESSION_SECRET`
+    - `CATS_AUTH_SESSION_TTL_MS`
+    - `CATS_AUTH_GOOGLE_CLIENT_ID`
+    - `CATS_AUTH_GOOGLE_HD`
+49. Auth shall default to enabled when the platform is bound to a non-loopback
+    host or when setup is complete and auth state exists.
+50. During development, a temporary explicit opt-out may exist only if it is
+    documented as unsafe and does not apply to packaged or LAN-facing defaults.
+
+### Non-Functional Requirements
+
+- **Security**: Authentication decisions must be made on the server, not in the
+  renderer.
+- **Local-first operation**: Local password bootstrap/login must work without
+  Google, HTTPS, internet access, or a public DNS name.
+- **Privacy**: Auth state must not store Google access tokens unless a later
+  spec explicitly needs Google API access. ID tokens are consumed transiently.
+- **Operability**: Login and setup failures should be structured enough for UI
+  recovery without exposing sensitive detail.
+- **Testability**: Route tests must be able to create authenticated principals
+  in isolated in-memory stores without writing to the user's real dev state.
+- **Compatibility posture**: This pre-release product should remove
+  unauthenticated legacy paths instead of preserving bypass shims.
+
+## Design Overview
+
+```
+Browser / renderer
+  |
+  | local credentials OR Google ID token
+  v
+cats-platform auth routes
+  |
+  | verifies credential, creates Cats session cookie
+  v
+platform auth gate
+  |
+  | session principal
+  v
+Chat / Work / Code / Core / runtime proxy routes
+```
+
+Auth state shape:
+
+```ts
+interface PlatformAuthState {
+  version: 1;
+  updatedAt: string;
+  accounts: PlatformAccountRecord[];
+  identities: PlatformIdentityRecord[];
+  sessions: PlatformSessionRecord[];
+  memberships: PlatformMembershipRecord[];
+}
+
+interface PlatformAccountRecord {
+  id: string;
+  displayName: string;
+  email: string | null;
+  avatarUrl: string | null;
+  status: 'active' | 'disabled';
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface PlatformIdentityRecord {
+  id: string;
+  accountId: string;
+  provider: 'local_password' | 'google';
+  providerSubject: string;
+  email: string | null;
+  passwordHash?: string;
+  passwordHashAlgorithm?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface PlatformSessionRecord {
+  id: string;
+  accountId: string;
+  tokenHash: string;
+  createdAt: string;
+  expiresAt: string;
+  revokedAt: string | null;
+  lastSeenAt: string;
+}
+
+interface PlatformMembershipRecord {
+  id: string;
+  accountId: string;
+  roles: Array<'owner' | 'admin' | 'operator' | 'member'>;
+  coreActorId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+```
+
+Public/protected route policy:
+
+| Phase | Public | Protected |
+|-------|--------|-----------|
+| Before setup | static assets, health, minimal app-shell/bootstrap envelope, setup bootstrap, auth status, optional Google auth bootstrap | product data, runtime proxy, shell helpers, transports |
+| After setup | static assets, health, minimal app-shell/bootstrap envelope, login, auth status/logout | all product/runtime/shell/transport/Core APIs |
+
+## Dependencies
+
+- Platform server request router and route contexts
+- Existing setup wizard and platform setup routes
+- Existing AppShell / PlatformHostEnvelope bootstrap flow
+- File-backed platform state path helpers
+- Google Identity Services frontend library
+- Maintained ID-token verifier library for Node.js
+- ADR-074 / SPEC-075 LAN ingress constraints
+
+## Open Questions
+
+- [ ] Exact verifier dependency: Google Auth Library for Node.js vs a smaller
+      standards-based JWT/OIDC verifier such as `jose`.
+- [ ] Whether `CATS_AUTH_ENABLED=false` should exist in packaged builds or only
+      in dev/test.
+- [ ] Exact CSRF strategy for all mutating API routes: synchronizer token in
+      session payload vs double-submit cookie/header.
+- [ ] Whether account management UI belongs in the first rollout or a follow-up
+      after the first admin gate lands.
+- [ ] Whether future role names should stay coarse (`admin`, `operator`) or
+      align directly with Cats Work responsibilities.
+
+## References
+
+- [ADR-096: Adopt Platform-Owned Auth Sessions with Google as an Identity Provider](../decisions/096-adopt-platform-owned-auth-sessions-with-google-as-identity-provider.md)
+- [PLAN-089: Platform Authentication and Google Identity Rollout](../plans/PLAN-089-platform-authentication-and-google-identity-rollout.md)
+- [ADR-074: Keep browser ingress at the platform host and phase LAN before tunnels](../decisions/074-keep-browser-ingress-at-platform-host-and-phase-lan-before-tunnels.md)
+- Google Identity Services — verify Google ID token on server side: https://developers.google.com/identity/gsi/web/guides/verify-google-id-token
+- Google backend authentication guidance: https://developers.google.com/identity/sign-in/web/backend-auth
+- Google OAuth client origin and redirect rules: https://support.google.com/cloud/answer/15549257
+
+---
+
+*Created: 2026-04-30*
+*Author: Codex*
+*Related Plan: [PLAN-089](../plans/PLAN-089-platform-authentication-and-google-identity-rollout.md)*

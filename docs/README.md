@@ -58,6 +58,12 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [PLAN-089](./plans/PLAN-089-platform-authentication-and-google-identity-rollout.md)
+- [SPEC-100](./specs/SPEC-100-platform-authentication-admin-bootstrap-and-google-identity.md)
+- [ADR-096](./decisions/096-adopt-platform-owned-auth-sessions-with-google-as-identity-provider.md)
+- [PLAN-088](./plans/PLAN-088-mobile-pairing-manifest-server-rollout.md)
+- [SPEC-099](./specs/SPEC-099-mobile-pairing-manifest-server.md)
+- [ADR-095](./decisions/095-distribute-mobile-as-static-expo-go-bundle-served-by-desktop.md)
 - [PLAN-087](./plans/PLAN-087-cats-app-package-interface-rollout.md)
 - [SPEC-098](./specs/SPEC-098-cats-app-package-and-extension-interface.md)
 - [ADR-094](./decisions/094-adopt-cats-app-packages-as-extension-boundary.md)
@@ -220,4 +226,4 @@ The main platform-foundation docs are current, but these areas still need dedica
 
 ---
 
-*Last updated: 2026-04-29*
+*Last updated: 2026-04-30*
