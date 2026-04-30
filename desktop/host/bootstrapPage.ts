@@ -1302,17 +1302,24 @@ export function buildDesktopBootstrapPage(): string {
 
       var mode = resolvePageMode(snap);
 
-      if (showRecoveryDetails || mode === 'recovery') {
+      /* Recovery panel is opt-in: only when user explicitly clicks
+       * "Show details". Error/needs-prerequisites states stay on splash
+       * with the compact error-area (Retry / Show details) shown. */
+      if (showRecoveryDetails) {
         showRecovery(snap);
         return;
       }
 
+      /* Onboarding is the fresh-user CLI-pick experience — it replaces
+       * splash entirely for !setupCompleteAt + cli_missing. */
       if (mode === 'onboarding') {
         showOnboarding(snap);
         return;
       }
 
-      /* Splash is always in the DOM — just update it */
+      /* Splash is always in the DOM — just update it. updateSplash()
+       * surfaces the error-area when mode === 'recovery' so the user
+       * still sees the Retry / Show details handles inside splash. */
       splashEl.classList.remove('hidden');
       recoveryEl.classList.add('hidden');
       onboardingEl.classList.add('hidden');
