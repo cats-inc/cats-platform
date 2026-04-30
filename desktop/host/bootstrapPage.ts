@@ -553,6 +553,13 @@ export function buildDesktopBootstrapPage(): string {
       return action.plannedActions.every(function (e) { return e.startsWith('local_model:'); });
     }
 
+    /* Sticky once entered: after the user lands on onboarding, we keep them
+       there even if a successful install flips phase to ready_for_setup, so
+       they see their install complete and can click Continue at their own
+       pace (and queue up more installs if they want). The flag is cleared
+       only when the user actually presses Continue / navigates away. */
+    var onboardingActive = false;
+
     function isCliMissing(snapshot) {
       return Boolean(
         snapshot && snapshot.phase === 'needs_prerequisites'
@@ -565,9 +572,12 @@ export function buildDesktopBootstrapPage(): string {
     function resolvePageMode(snapshot) {
       if (!snapshot) return 'loading';
       if (snapshot.phase === 'failed') return 'recovery';
+      var setupCompleteAt = snapshot.app && snapshot.app.setupCompleteAt;
+      if (onboardingActive && !setupCompleteAt) {
+        return 'onboarding';
+      }
       if (snapshot.phase === 'needs_prerequisites') {
-        if (isCliMissing(snapshot)
-          && !(snapshot.app && snapshot.app.setupCompleteAt)) {
+        if (isCliMissing(snapshot) && !setupCompleteAt) {
           return 'onboarding';
         }
         return 'recovery';
@@ -1182,6 +1192,7 @@ export function buildDesktopBootstrapPage(): string {
     }
 
     function showOnboarding(snap) {
+      onboardingActive = true;
       splashEl.classList.add('hidden');
       recoveryEl.classList.add('hidden');
       onboardingEl.classList.remove('hidden');
