@@ -1081,6 +1081,10 @@ export const enCatalog: MessageCatalog = {
   'chat.newChatDraft.startVoiceInputAria': 'Start voice input',
   'chat.newChatDraft.stopVoiceInputAria':
     'Stop voice input{privacyMessageSuffix}',
+  'chat.activityEyebrow': 'Activity',
+  'chat.activityLatestUpdatesHeading': 'Latest updates',
+  'chat.activityEmptyState': 'Activity appears here when the room starts moving.',
+  'chat.activityByActor': 'By {actorName}',
   'shared.addCatPanelTitle': 'Add cat to chat',
   'shared.addCatPanelClose': 'Close',
   'shared.addCatPanelChooseExisting': 'Choose existing',
