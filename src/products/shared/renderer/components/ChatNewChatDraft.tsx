@@ -477,7 +477,7 @@ export function NewChatDraft({
   const buildDraftSidePanelSections =
     sidePanel?.buildSections
     ?? ((input: BuildChatNewChatDraftSidePanelSectionsInput) =>
-      buildChatNewChatDraftSidePanelSections(input, t));
+      buildChatNewChatDraftSidePanelSections(input));
   const isParallelMode = (parallelTargets?.length ?? 0) >= 2;
   const [activeBranchIndex, setActiveBranchIndex] = useState(0);
   const [
