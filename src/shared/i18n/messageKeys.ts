@@ -971,6 +971,8 @@ export const messageKeys = {
   workItemLoadingTitle: 'work.item.loadingTitle',
   workItemRelatedWorkItemTitle: 'work.item.relatedWorkItemTitle',
   chatNewChatDraftSidePanelTitle: 'chat.newChatDraft.sidePanelTitle',
+  chatConcurrentClusterDismissActionLabel: 'chat.concurrentCluster.dismissActionLabel',
+  chatConcurrentClusterDismissActionTitle: 'chat.concurrentCluster.dismissActionTitle',
   chatNewChatDraftSidePanelParticipantsCatsTitle: 'chat.newChatDraft.participants.catsTitle',
   chatNewChatDraftSidePanelParticipantsGroupTitle: 'chat.newChatDraft.participants.groupTitle',
   chatNewChatDraftSidePanelParticipantsEmptyState:

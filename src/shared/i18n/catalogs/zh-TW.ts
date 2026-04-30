@@ -974,6 +974,8 @@ export const zhTWCatalog: MessageCatalog = {
   'work.item.loadingTitle': '載入工作項目',
   'work.item.relatedWorkItemTitle': '關聯工作項目',
   'chat.newChatDraft.sidePanelTitle': '新增聊天室設定',
+  'chat.concurrentCluster.dismissActionLabel': '關閉',
+  'chat.concurrentCluster.dismissActionTitle': '關閉佈局',
   'chat.newChatDraft.participants.catsTitle': '貓咪',
   'chat.newChatDraft.participants.groupTitle': '參與者',
   'chat.newChatDraft.participants.emptyState': '尚未有可用的貓咪。',

@@ -90,6 +90,8 @@ import {
   resolveConversationBehaviorPreferences,
   type ConversationBehaviorSurface,
 } from '../../../conversationBehavior.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
 let _lastLiveIndicatorLogSignature: string | null = null;
 let _lastLiveIndicatorLogAt: number | null = null;
@@ -326,8 +328,10 @@ export function ChatView({
   renderComposerFooterAccessory,
   renderComposerSurfaceTag,
   buildSidePanelSections,
-  sidePanelTitle = 'Chat Setup',
+  sidePanelTitle = '',
 }: ChatViewProps) {
+  const { t } = useI18n();
+  const resolvedSidePanelTitle = sidePanelTitle || t(messageKeys.chatNewChatDraftSidePanelTitle);
   const conversationBehavior = useMemo(
     () => resolveConversationBehaviorPreferences(
       payload.chat.conversationBehavior,
@@ -452,8 +456,8 @@ export function ChatView({
       return [
         {
           key: `dismiss:${context.turnId}`,
-          label: 'Dismiss',
-          title: 'Dismiss layout',
+          label: t(messageKeys.chatConcurrentClusterDismissActionLabel),
+          title: t(messageKeys.chatConcurrentClusterDismissActionTitle),
           onSelect: () => {
             setConcurrentClusterUiStateByKey((previous) =>
               dismissConcurrentClusterUiState(previous, {
@@ -1039,7 +1043,7 @@ export function ChatView({
       statusRow={statusRow}
       sidePanel={sidePanelOpen ? (
         <SidePanel
-          title={sidePanelTitle}
+          title={resolvedSidePanelTitle}
           activeSection={sidePanelSection}
           onSectionToggle={setSidePanelSection}
           onClose={() => setSidePanelOpen(false)}

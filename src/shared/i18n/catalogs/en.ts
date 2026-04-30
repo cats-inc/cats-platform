@@ -1007,6 +1007,8 @@ export const enCatalog: MessageCatalog = {
   'work.item.loadingTitle': 'Loading work item',
   'work.item.relatedWorkItemTitle': 'Related work item',
   'chat.newChatDraft.sidePanelTitle': 'New Chat Setup',
+  'chat.concurrentCluster.dismissActionLabel': 'Dismiss',
+  'chat.concurrentCluster.dismissActionTitle': 'Dismiss layout',
   'chat.newChatDraft.participants.catsTitle': 'Cats',
   'chat.newChatDraft.participants.groupTitle': 'Participants',
   'chat.newChatDraft.participants.emptyState': 'No cats are available yet.',
