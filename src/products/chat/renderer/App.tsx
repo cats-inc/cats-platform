@@ -547,52 +547,66 @@ export default function App() {
       return;
     }
 
-    const visibleCatNames = draftParticipants.participantCatIds
+    // React 18 auto-batches setState in event handlers — the functional
+    // updater passed to `setDraftTemporaryParticipants` does NOT run
+    // synchronously, so any `addedParticipantId` we tried to capture from
+    // inside it would still be null when we read it on the next line. Build
+    // the next participant up-front (the closure already has the latest
+    // `draftTemporaryParticipants`/`participantCatIds`), then queue both
+    // state updates with the resolved id available.
+    const participantCatIds = draftParticipants.participantCatIds;
+    if (participantCatIds.length + draftTemporaryParticipants.length >= maxDraftGroupParticipants) {
+      return;
+    }
+    const visibleCatNames = participantCatIds
       .map((catId) => state.payload.chat.cats.find((cat) => cat.id === catId)?.name ?? '')
       .filter((name) => name.trim().length > 0);
-    let addedParticipantId: string | null = null;
+    const randomUUID = () =>
+      globalThis.crypto?.randomUUID?.() ?? `participant-${Date.now()}`;
+    const nextParticipant = draftTemporaryParticipants.length === 0 && participantCatIds.length === 0
+      ? createDraftTemporaryParticipant({
+          provider: draftExecutionTarget.provider,
+          instance: draftExecutionTarget.instance,
+          model: draftExecutionTarget.model,
+          modelSelection: draftExecutionTarget.modelSelection,
+          takenNames: [...visibleCatNames, ...draftTemporaryParticipants.map((p) => p.name)],
+          randomUUID,
+        })
+      : createNextGroupTemporaryParticipant({
+          baseProvider: draftExecutionTarget.provider,
+          existingParticipants: draftTemporaryParticipants,
+          takenNames: [...visibleCatNames, ...draftTemporaryParticipants.map((p) => p.name)],
+          randomUUID,
+        });
+    const addedParticipantId = nextParticipant.participantId;
 
     setDraftTemporaryParticipants((current) => {
-      if (draftParticipants.participantCatIds.length + current.length >= maxDraftGroupParticipants) {
+      if (participantCatIds.length + current.length >= maxDraftGroupParticipants) {
         return current;
       }
-
-      const nextParticipant = current.length === 0 && draftParticipants.participantCatIds.length === 0
-        ? createDraftTemporaryParticipant({
-            provider: draftExecutionTarget.provider,
-            instance: draftExecutionTarget.instance,
-            model: draftExecutionTarget.model,
-            modelSelection: draftExecutionTarget.modelSelection,
-            takenNames: [...visibleCatNames, ...current.map((participant) => participant.name)],
-            randomUUID: () =>
-              globalThis.crypto?.randomUUID?.() ?? `participant-${Date.now()}`,
-          })
-        : createNextGroupTemporaryParticipant({
-            baseProvider: draftExecutionTarget.provider,
-            existingParticipants: current,
-            takenNames: [...visibleCatNames, ...current.map((participant) => participant.name)],
-            randomUUID: () =>
-              globalThis.crypto?.randomUUID?.() ?? `participant-${Date.now()}`,
-          });
-      addedParticipantId = nextParticipant.participantId;
+      // Guard against StrictMode double-invocation duplicating the entry.
+      if (current.some((p) => p.participantId === addedParticipantId)) {
+        return current;
+      }
       return [...current, nextParticipant];
     });
 
-    if (!addedParticipantId) {
-      return;
-    }
-
     // Auto-add new member to audience if under the limit; otherwise leave unchecked.
     setDraftAudienceKeys((current) => {
-      const visibleCatKeys = draftParticipants.participantCatIds.map((catId) => `cat:${catId}`);
-      const currentParticipantKeys = [
+      const visibleCatKeys = participantCatIds.map((catId) => `cat:${catId}`);
+      const nextParticipantKeys = [
         ...visibleCatKeys,
         ...draftTemporaryParticipants.map((participant) => `temp:${participant.participantId}`),
+        `temp:${addedParticipantId}`,
       ];
       const nextParticipantKey = `temp:${addedParticipantId}`;
-      const baseAudienceKeys = current ?? currentParticipantKeys;
+      const baseAudienceKeys = current ?? nextParticipantKeys;
       const normalizedAudienceKeys = baseAudienceKeys.filter((key, index, source) =>
-        source.indexOf(key) === index && currentParticipantKeys.includes(key));
+        source.indexOf(key) === index && nextParticipantKeys.includes(key));
+
+      if (normalizedAudienceKeys.includes(nextParticipantKey)) {
+        return normalizedAudienceKeys;
+      }
 
       // If audience is at or over the limit, don't add — just materialize and return
       if (Number.isFinite(maxDraftAudienceParticipants)
@@ -605,6 +619,9 @@ export default function App() {
   }, [
     draftTemporaryParticipants,
     draftExecutionTarget.provider,
+    draftExecutionTarget.instance,
+    draftExecutionTarget.model,
+    draftExecutionTarget.modelSelection,
     draftParticipants.participantCatIds,
     maxDraftAudienceParticipants,
     maxDraftGroupParticipants,

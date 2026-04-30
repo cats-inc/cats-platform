@@ -21,6 +21,16 @@ function shouldShowAvatar(participant: DraftComposerStackParticipant): boolean {
   return Boolean(participant.avatarUrl || participant.avatarColor || participant.isCat || participant.participantId);
 }
 
+// When the chip carries a single audience member, the avatar is only meaningful
+// for cats or participants with an explicit avatar/colour. A bare temp
+// participant (only `participantId` set — e.g. the lone survivor after the
+// "+collaborate" flow promoted the implicit execution target into a temp and
+// the user removed the other) should look like the original solo state with
+// no avatar, since it semantically still represents the implicit speaker.
+function shouldShowSoloAvatar(participant: DraftComposerStackParticipant): boolean {
+  return Boolean(participant.avatarUrl || participant.avatarColor || participant.isCat);
+}
+
 export function AudienceChip({
   audienceParticipants,
   allParticipants = [],
@@ -116,7 +126,7 @@ export function AudienceChip({
 
   if (!first) return null;
 
-  const showAvatar = shouldShowAvatar(first);
+  const showAvatar = isMulti ? shouldShowAvatar(first) : shouldShowSoloAvatar(first);
   const chipLabel = isMulti
     ? `${first.name} +${extraCount}`
     : (first.isCat ? first.name : (first.executionLabel || first.name));
