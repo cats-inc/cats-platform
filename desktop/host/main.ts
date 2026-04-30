@@ -64,14 +64,12 @@ import {
   buildDesktopSetupSnapshot,
   createEmptyDesktopSetupState,
   runDesktopSetupHelper,
-  shouldAutoRunSetupAudit,
 } from './setupBridge.js';
 import {
   isDesktopBootstrapLoadingPhase,
   resolveDesktopBootstrapError,
   shouldAttemptDesktopLateReadyRecovery,
 } from './startupRecovery.js';
-import { resolveDefaultSetupAuditAction } from './setupAudit.js';
 import {
   buildDesktopCliInventoryFromRuntime,
   type RuntimeCliInventoryProbe,
@@ -206,6 +204,7 @@ let activeScreenshotOverlaySession: DesktopScreenshotOverlaySession | null = nul
 let voiceCaptureController: DesktopVoiceCaptureController | null = null;
 const RUNTIME_SETUP_STATE_TIMEOUT_MS = 2_000;
 const RUNTIME_SETUP_SCAN_TIMEOUT_MS = 30_000;
+const RUNTIME_PROVIDER_DIAGNOSTICS_TIMEOUT_MS = 5_000;
 
 interface ProductBootstrapDiagnosticsPayload {
   generatedAt?: string;
@@ -1019,10 +1018,6 @@ async function fetchJsonWithTimeout<T>(
   return await response.json() as T;
 }
 
-function createUnknownRuntimeCliInventoryProbe(): RuntimeCliInventoryProbe {
-  return { scan: null };
-}
-
 function shouldRefreshRuntimeCliInventoryProbe(
   probe: RuntimeCliInventoryProbe | null,
   options: { triggerScanIfMissing?: boolean },
@@ -1047,7 +1042,9 @@ async function fetchRuntimeCliInventoryProbe(
         method: 'GET',
       }, RUNTIME_SETUP_STATE_TIMEOUT_MS);
     } catch {
-      return null;
+      if (options.triggerScanIfMissing !== true) {
+        return null;
+      }
     }
     if (!shouldRefreshRuntimeCliInventoryProbe(probe, options)) {
       return probe;
@@ -1063,15 +1060,15 @@ async function fetchRuntimeCliInventoryProbe(
       body: JSON.stringify({ manual: false }),
     }, RUNTIME_SETUP_SCAN_TIMEOUT_MS);
     if (!scanResponse.ok) {
-      return options.forceRescan ? createUnknownRuntimeCliInventoryProbe() : probe;
+      return probe;
     }
   } catch {
-    return options.forceRescan ? createUnknownRuntimeCliInventoryProbe() : probe;
+    return probe;
   }
   try {
     return await fetchJson<RuntimeCliInventoryProbe>(`${baseUrl}/setup-state`);
   } catch {
-    return options.forceRescan ? createUnknownRuntimeCliInventoryProbe() : probe;
+    return probe;
   }
 }
 
@@ -1121,6 +1118,9 @@ async function refreshBootstrapSnapshot(
   const effectivePersistedSetup = persistedSetup
     ?? await readPersistedSetupCompletionState(hostConfig.paths.appStatePath);
   latestPersistedSetupState = effectivePersistedSetup;
+  const setupCompleted = Boolean(
+    effectivePersistedSetup.setupCompleteAt || effectivePersistedSetup.productSetupCompleted,
+  );
   const [
     appHealth,
     appShell,
@@ -1132,10 +1132,14 @@ async function refreshBootstrapSnapshot(
     fetchJson<AppHealthPayload>(`${hostConfig.appBaseUrl}/health`),
     fetchJson<AppShellPayload>(`${hostConfig.appBaseUrl}/api/app-shell`),
     fetchJson<RuntimeDiagnosticsHealthPayload | ReadinessPayload>(`${hostConfig.runtimeBaseUrl}/health`),
-    Promise.resolve<RuntimeProviderDiagnosticsPayload | null>(null),
+    setupCompleted
+      ? fetchJsonWithTimeout<RuntimeProviderDiagnosticsPayload>(`${hostConfig.runtimeBaseUrl}/diagnostics/providers`, {
+        method: 'GET',
+      }, RUNTIME_PROVIDER_DIAGNOSTICS_TIMEOUT_MS)
+      : Promise.resolve<RuntimeProviderDiagnosticsPayload | null>(null),
     fetchJson<ProductBootstrapDiagnosticsPayload>(`${hostConfig.appBaseUrl}/api/platform/bootstrap-diagnostics`),
     fetchRuntimeCliInventoryProbe(hostConfig.runtimeBaseUrl, {
-      triggerScanIfMissing: false,
+      triggerScanIfMissing: !setupCompleted,
     }),
   ]);
 
@@ -1151,7 +1155,7 @@ async function refreshBootstrapSnapshot(
   if (providerDiagnostics.status === 'fulfilled') {
     latestProviderDiagnosticsPayload = providerDiagnostics.value;
   }
-  if (cliInventoryProbe.status === 'fulfilled' && cliInventoryProbe.value) {
+  if (cliInventoryProbe.status === 'fulfilled' && cliInventoryProbe.value?.scan) {
     latestCliInventoryProbe = cliInventoryProbe.value;
   }
 
@@ -1185,17 +1189,6 @@ async function refreshBootstrapSnapshot(
       ? buildDesktopCliInventoryFromRuntime(latestCliInventoryProbe)
       : null,
   });
-}
-
-function hasPersistedProductSetupCompletion(
-  persistedSetup: PersistedSetupCompletionState | null = null,
-): boolean {
-  if (persistedSetup?.productSetupCompleted) {
-    return true;
-  }
-
-  const productEvents = diagnosticsState?.product?.events ?? [];
-  return productEvents.some((event) => event.kind === 'setup_completed' && event.status === 'ok');
 }
 
 async function maybeOpenApp(snapshot: DesktopBootstrapSnapshot): Promise<void> {
@@ -1315,11 +1308,6 @@ async function bootstrapDesktopHost(restartServices = false): Promise<DesktopBoo
     }));
     const snapshot = publishSnapshot(await refreshBootstrapSnapshot(persistedSetup));
     await maybeOpenApp(snapshot);
-    void maybePrimeSetupAudit(snapshot, persistedSetup).catch((error) => {
-      process.stderr.write(
-        `Failed to prime desktop setup audit in background: ${error instanceof Error ? error.message : String(error)}\n`,
-      );
-    });
     return snapshot;
   })().catch((error) => {
     const message = error instanceof Error ? error.message : String(error);
@@ -1435,35 +1423,12 @@ async function runSetupAction(
     const refreshedProbe = await fetchRuntimeCliInventoryProbe(hostConfig.runtimeBaseUrl, {
       forceRescan: true,
     });
-    latestCliInventoryProbe = refreshedProbe;
+    if (refreshedProbe?.scan) {
+      latestCliInventoryProbe = refreshedProbe;
+    }
   }
   publishSnapshot(await refreshBootstrapSnapshot());
   return await getSetupSnapshot();
-}
-
-async function maybePrimeSetupAudit(
-  snapshot: DesktopBootstrapSnapshot,
-  persistedSetup: PersistedSetupCompletionState | null = null,
-): Promise<void> {
-  if (!hostConfig) {
-    return;
-  }
-  if (!shouldAutoRunSetupAudit(setupState, {
-    setupCompleteAt: snapshot.app.setupCompleteAt ?? persistedSetup?.setupCompleteAt ?? null,
-    productSetupCompleted: hasPersistedProductSetupCompletion(persistedSetup),
-  })) {
-    return;
-  }
-  const setupAuditAction = resolveDefaultSetupAuditAction(hostConfig);
-  if (!setupAuditAction) {
-    return;
-  }
-
-  await runSetupAction({
-    helperId: setupAuditAction.helperId,
-    mode: 'check',
-    extraArguments: setupAuditAction.extraArguments,
-  });
 }
 
 async function resumeSetupAction(): Promise<DesktopSetupSnapshot> {

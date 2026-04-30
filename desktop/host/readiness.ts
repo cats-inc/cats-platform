@@ -705,6 +705,10 @@ export function buildDesktopBootstrapSnapshot(
       && input.cliInventory.source === 'runtime'
       && input.cliInventory.total === 0,
   );
+  const cliInventoryPending = Boolean(
+    !setupCompleted
+      && (!input.cliInventory || input.cliInventory.source === 'unknown'),
+  );
   let phase: DesktopBootstrapSnapshot['phase'];
   let status: DesktopBootstrapSnapshot['status'];
   let summary: string;
@@ -730,6 +734,10 @@ export function buildDesktopBootstrapSnapshot(
     summary = setupCompleteAt
       ? 'No CLI is currently installed. Install one to continue using Cats.'
       : 'Welcome. Install a CLI to get started with Cats.';
+  } else if (cliInventoryPending) {
+    phase = 'checking_prerequisites';
+    status = 'degraded';
+    summary = 'Local services are ready. Checking local CLI inventory.';
   } else if (!setupCompleted) {
     if (!hasRuntimeHealth) {
       phase = 'checking_prerequisites';

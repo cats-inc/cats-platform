@@ -161,6 +161,7 @@ test('desktop bootstrap stays in ready_for_setup until setup is completed', () =
       },
       providers: [],
     },
+    cliInventory: populatedCliInventory(),
   });
 
   assert.equal(snapshot.phase, 'ready_for_setup');
@@ -203,6 +204,7 @@ test('desktop bootstrap opens setup before setup without waiting for provider di
       },
     },
     providerDiagnostics: null,
+    cliInventory: populatedCliInventory(),
   });
 
   assert.equal(snapshot.phase, 'ready_for_setup');
@@ -398,6 +400,7 @@ test('desktop bootstrap surfaces packaged setup restart recovery as an install i
       },
       providers: [],
     },
+    cliInventory: populatedCliInventory(),
     setup: {
       updatedAt: '2026-03-30T12:15:00.000Z',
       lastAction: {
@@ -902,6 +905,7 @@ test('desktop bootstrap keeps optional local-model audit follow-through non-bloc
       },
       providers: [],
     },
+    cliInventory: populatedCliInventory(),
     setup: {
       updatedAt: '2026-03-30T13:00:00.000Z',
       lastAction: {
@@ -1067,6 +1071,7 @@ test('desktop bootstrap reaches ready_for_setup with provider-path copy when set
       },
       providers: [],
     },
+    cliInventory: populatedCliInventory(),
   });
 
   assert.equal(snapshot.phase, 'ready_for_setup');
@@ -1182,6 +1187,7 @@ const PRESETUP_INPUT = {
     },
     providers: [],
   },
+  cliInventory: populatedCliInventory(),
 };
 
 test('desktop bootstrap fires cli_missing for fresh users when runtime probe reports zero CLIs', () => {
@@ -1223,7 +1229,7 @@ test('desktop bootstrap fires cli_missing for setup-complete users when runtime 
   assert.equal(snapshot.actions.some((action) => action.id === 'open_chat'), false);
 });
 
-test('desktop bootstrap does NOT fire cli_missing when probe source is unknown (probe failed/pending)', () => {
+test('desktop bootstrap keeps fresh users in prerequisite checking when CLI inventory is unknown', () => {
   const snapshot = buildDesktopBootstrapSnapshot({
     config: desktopConfig,
     services: [
@@ -1234,8 +1240,8 @@ test('desktop bootstrap does NOT fire cli_missing when probe source is unknown (
     cliInventory: emptyCliInventory({ source: 'unknown', scannedAt: null }),
   });
 
-  // No authoritative data — gate stays open, falls through to ready_for_setup
-  assert.equal(snapshot.phase, 'ready_for_setup');
+  assert.equal(snapshot.phase, 'checking_prerequisites');
+  assert.match(snapshot.summary, /Checking local CLI inventory/i);
 });
 
 test('desktop bootstrap clears cli_missing once runtime reports any CLI installed', () => {
@@ -1254,16 +1260,16 @@ test('desktop bootstrap clears cli_missing once runtime reports any CLI installe
 });
 
 test('desktop bootstrap leaves prerequisites null when no inventory passed', () => {
+  const { cliInventory: _cliInventory, ...presetupWithoutInventory } = PRESETUP_INPUT;
   const snapshot = buildDesktopBootstrapSnapshot({
     config: desktopConfig,
     services: [
       readyService('cats-runtime', 'http://127.0.0.1:3110/health'),
       readyService('cats-platform', 'http://127.0.0.1:8181/health'),
     ],
-    ...PRESETUP_INPUT,
+    ...presetupWithoutInventory,
   });
 
   assert.equal(snapshot.prerequisites, null);
-  // Without inventory the gate cannot fire — ready_for_setup as before.
-  assert.equal(snapshot.phase, 'ready_for_setup');
+  assert.equal(snapshot.phase, 'checking_prerequisites');
 });
