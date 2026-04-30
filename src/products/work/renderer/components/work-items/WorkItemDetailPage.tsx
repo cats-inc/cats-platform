@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { LinkageSection } from "../topdown/LinkageSection";
+import { useI18n } from "../../../../app/renderer/i18n/index.js";
 import {
   ATTENTION_LABEL,
   buildIndexes,
@@ -38,6 +39,7 @@ export function WorkItemDetailPage(): JSX.Element {
   const workItemsQuery = useWorkItemsQuery();
   const projectsQuery = useProjectsQuery();
   const missionsQuery = useMissionsQuery();
+  const { t } = useI18n();
 
   const allWorkItems = workItemsQuery.data?.workItems ?? [];
   const workItem = workItemId
@@ -58,7 +60,7 @@ export function WorkItemDetailPage(): JSX.Element {
     if (!workItem) return;
     if (
       !window.confirm(
-        `Delete work item "${workItem.title}"?\n\nThis cannot be undone. Linked tasks, runs, and missions are not removed.`,
+        t("workItemDeleteConfirmation", { title: workItem.title }),
       )
     ) {
       return;
@@ -76,7 +78,7 @@ export function WorkItemDetailPage(): JSX.Element {
   const deleteError = deleteMutation.error
     ? deleteMutation.error instanceof Error
       ? deleteMutation.error.message
-      : "Failed to delete work item."
+      : t("workItemDeleteError")
     : null;
 
   const linkedProject = workItem.projectId
@@ -108,7 +110,7 @@ export function WorkItemDetailPage(): JSX.Element {
             to=".."
             relative="path"
             className="workItemDetailTopBar__back"
-            aria-label="Back to work items"
+            aria-label={t("workItemBackLabel")}
           >
             <svg
               width="12"
@@ -123,7 +125,7 @@ export function WorkItemDetailPage(): JSX.Element {
             >
               <path d="M7.5 2L3.5 6l4 4" />
             </svg>
-            <span>Work items</span>
+            <span>{t("workItemBackArrowLabel")}</span>
           </Link>
         </div>
         <div className="channelTopBarCenter workItemDetailTopBar__center">
@@ -149,16 +151,20 @@ export function WorkItemDetailPage(): JSX.Element {
             {workItem.status.replace(/_/g, " ")}
           </span>
           <span className="workItemDetailTopBar__updated">
-            updated {formatRelative(workItem.updatedAt)}
+            {t("workItemUpdatedAtPrefix", {
+              updatedAt: formatRelative(workItem.updatedAt),
+            })}
           </span>
           <button
             type="button"
             className="workItemDetailTopBar__action workItemDetailTopBar__action--destructive"
             onClick={handleDelete}
             disabled={deleteMutation.isPending}
-            aria-label="Delete work item"
+            aria-label={t("workItemDeleteLabel")}
           >
-            {deleteMutation.isPending ? "Deleting…" : "Delete"}
+            {deleteMutation.isPending
+              ? t("workItemDeleteLabelBusy")
+              : t("workItemDeleteLabel")}
           </button>
         </div>
       </header>
@@ -170,16 +176,16 @@ export function WorkItemDetailPage(): JSX.Element {
         ) : null}
         <section className="workItemDetail__section workItemDetail__overview">
           <header className="workItemDetail__sectionHeader">
-            <h2>Overview</h2>
+            <h2>{t("workItemOverviewTitle")}</h2>
           </header>
           <dl className="workItemDetail__overviewList">
             {workItem.summary ? (
               <>
-                <dt>Summary</dt>
+                <dt>{t("workItemSummaryLabel")}</dt>
                 <dd>{workItem.summary}</dd>
               </>
             ) : null}
-            <dt>Project</dt>
+            <dt>{t("workItemProjectLabel")}</dt>
             <dd>
               {linkedProject ? (
                 <Link
@@ -189,12 +195,12 @@ export function WorkItemDetailPage(): JSX.Element {
                   {linkedProject.title}
                 </Link>
               ) : (
-                <em>(orphan — no project linked)</em>
+                <em>{t("workItemOrphanSummaryFallback")}</em>
               )}
             </dd>
             {parentWorkItem ? (
               <>
-                <dt>Parent work item</dt>
+                <dt>{t("workItemParentLabel")}</dt>
                 <dd>
                   <Link
                     className="workItemDetail__projectLink"
@@ -205,11 +211,11 @@ export function WorkItemDetailPage(): JSX.Element {
                 </dd>
               </>
             ) : null}
-            <dt>Owner</dt>
+            <dt>{t("workItemOwnerLabel")}</dt>
             <dd>{workItem.ownerName}</dd>
             {workItem.conversationId ? (
               <>
-                <dt>Conversation</dt>
+                <dt>{t("workItemConversationLabel")}</dt>
                 <dd>
                   <span className="workItemDetail__convoTitle">
                     {workItem.conversationTitle ??
@@ -224,9 +230,9 @@ export function WorkItemDetailPage(): JSX.Element {
         <SubWorkItemsSection items={subWorkItems} />
 
         <ItemsSection
-          title="Tasks"
+          title={t("workItemTasksTitle")}
           items={tasks}
-          emptyLabel="No tasks under this work item yet."
+          emptyLabel={t("workItemNoTasksLabel")}
         />
 
         <MissionsSection missions={linkedMissions} />
@@ -239,14 +245,14 @@ export function WorkItemDetailPage(): JSX.Element {
 
         <section className="workItemDetail__section">
           <header className="workItemDetail__sectionHeader">
-            <h2>Activity</h2>
+            <h2>{t("workItemActivityTitle")}</h2>
             <span className="workItemDetail__sectionCount">
               {activities.length}
             </span>
           </header>
           {activities.length === 0 ? (
             <p className="workItemDetail__empty">
-              No activity recorded for this work item.
+              {t("workItemNoActivity")}
             </p>
           ) : (
             <ul className="workItemDetail__activity">
@@ -339,15 +345,17 @@ interface SubWorkItemsSectionProps {
 function SubWorkItemsSection({
   items,
 }: SubWorkItemsSectionProps): JSX.Element {
+  const { t } = useI18n();
+
   return (
     <section className="workItemDetail__section">
       <header className="workItemDetail__sectionHeader">
-        <h2>Sub-work-items</h2>
+        <h2>{t("workItemSubWorkItemsTitle")}</h2>
         <span className="workItemDetail__sectionCount">{items.length}</span>
       </header>
       {items.length === 0 ? (
         <p className="workItemDetail__empty">
-          No sub-work-items.
+          {t("workItemNoSubWorkItems")}
         </p>
       ) : (
         <ul className="workItemDetail__items">
@@ -382,15 +390,17 @@ interface MissionsSectionProps {
 }
 
 function MissionsSection({ missions }: MissionsSectionProps): JSX.Element {
+  const { t } = useI18n();
+
   return (
     <section className="workItemDetail__section">
       <header className="workItemDetail__sectionHeader">
-        <h2>Missions</h2>
+        <h2>{t("workItemMissionsTitle")}</h2>
         <span className="workItemDetail__sectionCount">{missions.length}</span>
       </header>
       {missions.length === 0 ? (
         <p className="workItemDetail__empty">
-          No missions for this work item.
+          {t("workItemNoMissions")}
         </p>
       ) : (
         <ul className="workItemDetail__items">
@@ -417,6 +427,8 @@ function MissionsSection({ missions }: MissionsSectionProps): JSX.Element {
 }
 
 function WorkItemDetailLoading(): JSX.Element {
+  const { t } = useI18n();
+
   return (
     <div className="workItemDetail">
       <header className="channelTopBar workItemDetailTopBar">
@@ -426,12 +438,12 @@ function WorkItemDetailLoading(): JSX.Element {
             relative="path"
             className="workItemDetailTopBar__back"
           >
-            <span>← Work items</span>
+            <span>{t("workItemBackArrowLabel")}</span>
           </Link>
         </div>
       </header>
       <main className="workItemDetail__main">
-        <p className="workItemDetail__empty">Loading work item…</p>
+        <p className="workItemDetail__empty">{t("workItemLoadingLabel")}</p>
       </main>
     </div>
   );
@@ -442,6 +454,8 @@ function WorkItemNotFound({
 }: {
   workItemId: string | null;
 }): JSX.Element {
+  const { t } = useI18n();
+
   return (
     <div className="workItemDetail">
       <header className="channelTopBar workItemDetailTopBar">
@@ -451,20 +465,21 @@ function WorkItemNotFound({
             relative="path"
             className="workItemDetailTopBar__back"
           >
-            <span>← Work items</span>
+            <span>{t("workItemBackArrowLabel")}</span>
           </Link>
           <span className="workItemDetailTopBar__separator" aria-hidden="true">
             /
           </span>
           <h1 className="channelTopBarTitle workItemDetailTopBar__title">
-            Not found
+            {t("workItemNotFoundTitle")}
           </h1>
         </div>
       </header>
       <main className="workItemDetail__main">
         <p className="workItemDetail__empty">
-          Work item <code>{workItemId ?? "(missing id)"}</code> is not in the
-          current projection.
+          {t("workItemNotFoundText", {
+            workItemId: workItemId ?? t("workItemNotFoundCodeLabel"),
+          })}
         </p>
       </main>
     </div>

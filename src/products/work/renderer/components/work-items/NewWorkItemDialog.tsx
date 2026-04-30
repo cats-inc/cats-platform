@@ -9,6 +9,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { useI18n } from "../../../../app/renderer/i18n/index.js";
 import {
   createWorkItem as restCreateWorkItem,
   type CoreWorkItemStatus,
@@ -41,22 +42,13 @@ interface NewWorkItemDialogProps {
   defaultProjectId?: string | null;
 }
 
-const STATUS_OPTIONS: { value: CoreWorkItemStatus; label: string }[] = [
-  { value: "draft", label: "Draft" },
-  { value: "planned", label: "Planned" },
-  { value: "ready", label: "Ready" },
-  { value: "in_progress", label: "In progress" },
-  { value: "blocked", label: "Blocked" },
-  { value: "completed", label: "Completed" },
-  { value: "cancelled", label: "Cancelled" },
-];
-
 export function NewWorkItemDialog({
   onClose,
   defaultProjectId,
 }: NewWorkItemDialogProps): JSX.Element {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { t } = useI18n();
   const titleId = useId();
   const summaryId = useId();
   const projectId = useId();
@@ -81,7 +73,7 @@ export function NewWorkItemDialog({
   const error = createMutation.error
     ? createMutation.error instanceof Error
       ? createMutation.error.message
-      : "Failed to create work item."
+      : t("workNewWorkItemCreateError")
     : null;
 
   useEffect(() => {
@@ -118,6 +110,15 @@ export function NewWorkItemDialog({
   }
 
   const projectOptions = projectsQuery.data?.projects ?? [];
+  const statusOptions = [
+    { value: "draft", label: t("workNewWorkItemStatusDraft") },
+    { value: "planned", label: t("workNewWorkItemStatusPlanned") },
+    { value: "ready", label: t("workNewWorkItemStatusReady") },
+    { value: "in_progress", label: t("workNewWorkItemStatusInProgress") },
+    { value: "blocked", label: t("workNewWorkItemStatusBlocked") },
+    { value: "completed", label: t("workNewWorkItemStatusCompleted") },
+    { value: "cancelled", label: t("workNewWorkItemStatusCancelled") },
+  ];
 
   return (
     <div
@@ -133,12 +134,12 @@ export function NewWorkItemDialog({
       >
         <header className="newProjectDialog__header">
           <h2 id={`${titleId}-heading`} className="newProjectDialog__heading">
-            New work item
+            {t("workNewWorkItemTitle")}
           </h2>
           <button
             type="button"
             className="newProjectDialog__close"
-            aria-label="Close"
+            aria-label={t("workNewWorkItemCloseLabel")}
             onClick={onClose}
           >
             &times;
@@ -147,7 +148,10 @@ export function NewWorkItemDialog({
         <form className="newProjectDialog__form" onSubmit={onSubmit}>
           <label className="newProjectDialog__field" htmlFor={titleId}>
             <span className="newProjectDialog__label">
-              Title<span className="newProjectDialog__required" aria-hidden="true">*</span>
+              {t("workNewWorkItemTitleLabel")}
+              <span className="newProjectDialog__required" aria-hidden="true">
+                *
+              </span>
             </span>
             <input
               ref={titleInputRef}
@@ -156,34 +160,38 @@ export function NewWorkItemDialog({
               className="newProjectDialog__input"
               value={title}
               onChange={(event) => setTitle(event.target.value)}
-              placeholder="What needs to ship?"
+              placeholder={t("workNewWorkItemTitlePlaceholder")}
               required
               maxLength={120}
             />
           </label>
 
           <label className="newProjectDialog__field" htmlFor={summaryId}>
-            <span className="newProjectDialog__label">Summary</span>
+            <span className="newProjectDialog__label">
+              {t("workNewWorkItemSummaryLabel")}
+            </span>
             <textarea
               id={summaryId}
               className="newProjectDialog__textarea"
               value={summary}
               onChange={(event) => setSummary(event.target.value)}
-              placeholder="Define the scope in one or two lines."
+              placeholder={t("workNewWorkItemSummaryPlaceholder")}
               rows={3}
               maxLength={400}
             />
           </label>
 
           <label className="newProjectDialog__field" htmlFor={projectId}>
-            <span className="newProjectDialog__label">Project</span>
+            <span className="newProjectDialog__label">
+              {t("workNewWorkItemProjectLabel")}
+            </span>
             <select
               id={projectId}
               className="newProjectDialog__select"
               value={linkedProject}
               onChange={(event) => setLinkedProject(event.target.value)}
             >
-              <option value="">— Orphan (no project) —</option>
+              <option value="">{t("workNewWorkItemProjectOrphan")}</option>
               {projectOptions.map((project) => (
                 <option key={project.id} value={project.id}>
                   {project.title}
@@ -193,7 +201,9 @@ export function NewWorkItemDialog({
           </label>
 
           <label className="newProjectDialog__field" htmlFor={statusId}>
-            <span className="newProjectDialog__label">Status</span>
+            <span className="newProjectDialog__label">
+              {t("workNewWorkItemStatusLabel")}
+            </span>
             <select
               id={statusId}
               className="newProjectDialog__select"
@@ -202,7 +212,7 @@ export function NewWorkItemDialog({
                 setStatus(event.target.value as CoreWorkItemStatus)
               }
             >
-              {STATUS_OPTIONS.map((option) => (
+              {statusOptions.map((option) => (
                 <option key={option.value} value={option.value}>
                   {option.label}
                 </option>
@@ -222,14 +232,16 @@ export function NewWorkItemDialog({
               onClick={onClose}
               disabled={submitting}
             >
-              Cancel
+              {t("workNewWorkItemCancelButton")}
             </button>
             <button
               type="submit"
               className="newProjectDialog__submitBtn"
               disabled={title.trim().length === 0 || submitting}
             >
-              {submitting ? "Creating…" : "Create work item"}
+              {submitting
+                ? t("workNewWorkItemSubmitBusyLabel")
+                : t("workNewWorkItemSubmitLabel")}
             </button>
           </footer>
         </form>

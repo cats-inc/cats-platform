@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 
+import { useI18n } from "../../../../app/renderer/i18n/index.js";
 import { formatRelative } from "../topdown/shared";
 import { useWorkItemsQuery } from "../../state/queries/workItemsQuery.js";
 import { NewWorkItemDialog } from "./NewWorkItemDialog";
@@ -10,13 +11,14 @@ export function WorkItemsListPage(): JSX.Element {
   const workItemsQuery = useWorkItemsQuery();
   const workItems = workItemsQuery.data?.workItems ?? [];
   const [dialogOpen, setDialogOpen] = useState(false);
+  const { t } = useI18n();
 
   return (
     <div className="workItemsList">
       <header className="channelTopBar workItemsListTopBar">
         <div className="channelTopBarStart workItemsListTopBar__start">
           <h1 className="channelTopBarTitle workItemsListTopBar__title">
-            Work items
+            {t("workItemsListTitle")}
           </h1>
           <span className="workItemsListTopBar__count">
             {workItems.length}
@@ -28,7 +30,7 @@ export function WorkItemsListPage(): JSX.Element {
             type="button"
             className="workItemsListTopBar__addBtn"
             onClick={() => setDialogOpen(true)}
-            aria-label="Create new work item"
+            aria-label={t("workItemsListCreateNewWorkItemAriaLabel")}
           >
             <svg
               width="14"
@@ -44,20 +46,24 @@ export function WorkItemsListPage(): JSX.Element {
               <path d="M7 2v10" />
               <path d="M2 7h10" />
             </svg>
-            <span>New work item</span>
+            <span>{t("workItemsListNewAction")}</span>
           </button>
         </div>
       </header>
       <main className="workItemsList__main">
         {workItemsQuery.isPending ? (
-          <p className="workItemsList__empty">Loading work items…</p>
+          <p className="workItemsList__empty">{t("workItemsListLoading")}</p>
         ) : workItemsQuery.isError ? (
           <p className="workItemsList__empty">
-            Failed to load work items: {String((workItemsQuery.error as Error).message)}
+            {t("workItemsListLoadError", {
+              errorMessage: String((workItemsQuery.error as Error).message),
+            })}
           </p>
         ) : workItems.length === 0 ? (
           <p className="workItemsList__empty">
-            No work items yet. Click <strong>New work item</strong> to create one.
+            {t("workItemsListEmptyIntro")}{" "}
+            <strong>{t("workItemsListEmptyActionLabel")}</strong>{" "}
+            {t("workItemsListEmptySuffix")}
           </p>
         ) : (
           <ul className="workItemsList__list">
@@ -66,7 +72,9 @@ export function WorkItemsListPage(): JSX.Element {
                 <Link
                   to={wi.id}
                   className="workItemsList__rowLink"
-                  aria-label={`Open work item ${wi.title}`}
+                  aria-label={t("workItemsListOpenWorkItemAria", {
+                    title: wi.title,
+                  })}
                 >
                   <div className="workItemsList__rowMain">
                     <span
@@ -87,33 +95,38 @@ export function WorkItemsListPage(): JSX.Element {
                   <div className="workItemsList__rowMeta">
                     {wi.projectTitle ? (
                       <span className="workItemsList__projectChip">
-                        in {wi.projectTitle}
+                        {t("workItemsListProjectPrefix", {
+                          projectTitle: wi.projectTitle,
+                        })}
                       </span>
                     ) : (
                       <span className="workItemsList__projectChip workItemsList__projectChip--orphan">
-                        orphan
+                        {t("workItemsListProjectOrphan")}
                       </span>
                     )}
                     {wi.parentWorkItemTitle ? (
                       <span
                         className="workItemsList__projectChip workItemsList__projectChip--parent"
-                        title={`Parent work item: ${wi.parentWorkItemTitle}`}
+                        title={t("workItemsListParentWorkItemTooltip", {
+                          parentTitle: wi.parentWorkItemTitle,
+                        })}
                       >
                         ↳ {wi.parentWorkItemTitle}
                       </span>
                     ) : null}
                     {wi.attention === "decision_needed" ? (
                       <span className="workItemsList__pip workItemsList__pip--decision">
-                        decision
+                        {t("workItemsListDecisionPill")}
                       </span>
                     ) : null}
                     {wi.attention === "blocked" || wi.attention === "failed" ? (
                       <span className="workItemsList__pip workItemsList__pip--blocked">
-                        blocked
+                        {t("workItemsListBlockedPill")}
                       </span>
                     ) : null}
                     <span className="workItemsList__metric">
-                      <strong>{wi.linkedTaskCount}</strong> tasks
+                      <strong>{wi.linkedTaskCount}</strong>{" "}
+                      {t("workItemsListTasksLabel")}
                     </span>
                     <span className="workItemsList__metric workItemsList__metric--muted">
                       {formatRelative(wi.updatedAt)}
