@@ -46,7 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
-| [PLAN-090](./PLAN-090-cats-code-artifact-canvas-rollout.md) | Cats Code Artifact Canvas Rollout | Draft | [SPEC-101](../specs/SPEC-101-cats-code-artifact-canvas.md), [ADR-097](../decisions/097-store-code-canvas-focus-on-task-metadata.md) |
+| [PLAN-090](./PLAN-090-cats-code-artifact-canvas-rollout.md) | Cats Code Artifact Canvas Rollout | Draft | [SPEC-101](../specs/SPEC-101-cats-code-artifact-canvas.md), [ADR-098](../decisions/098-url-driven-canvas-and-platform-shared-viewer.md) (supersedes [ADR-097](../decisions/097-store-code-canvas-focus-on-task-metadata.md)) |
 | [PLAN-089](./PLAN-089-platform-authentication-and-google-identity-rollout.md) | Platform Authentication and Google Identity Rollout | Draft | [SPEC-100](../specs/SPEC-100-platform-authentication-admin-bootstrap-and-google-identity.md), [ADR-096](../decisions/096-adopt-platform-owned-auth-sessions-with-google-as-identity-provider.md) |
 | [PLAN-088](./PLAN-088-mobile-pairing-manifest-server-rollout.md) | Mobile Pairing Manifest Server Rollout | Draft | [SPEC-099](../specs/SPEC-099-mobile-pairing-manifest-server.md), [ADR-095](../decisions/095-distribute-mobile-as-static-expo-go-bundle-served-by-desktop.md) |
 | [PLAN-087](./PLAN-087-cats-app-package-interface-rollout.md) | Cats App Package Interface Rollout | Draft | [SPEC-098](../specs/SPEC-098-cats-app-package-and-extension-interface.md), [ADR-094](../decisions/094-adopt-cats-app-packages-as-extension-boundary.md) |

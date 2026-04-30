@@ -39,7 +39,8 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 | ADR | Title | Status | Date |
 |-----|-------|--------|------|
 | [000-template](./000-template.md) | Template | - | - |
-| [097-store-code-canvas-focus-on-task-metadata](./097-store-code-canvas-focus-on-task-metadata.md) | Store Code Canvas Focus on Task Metadata, Not a New Core Record Family | Proposed | 2026-04-30 |
+| [098-url-driven-canvas-and-platform-shared-viewer](./098-url-driven-canvas-and-platform-shared-viewer.md) | URL-Driven Canvas View-State and Platform-Shared Viewer for Core-Tier Entities | Proposed | 2026-04-30 |
+| [097-store-code-canvas-focus-on-task-metadata](./097-store-code-canvas-focus-on-task-metadata.md) | Store Code Canvas Focus on Task Metadata, Not a New Core Record Family | Superseded by ADR-098 | 2026-04-30 |
 | [096-adopt-platform-owned-auth-sessions-with-google-as-identity-provider](./096-adopt-platform-owned-auth-sessions-with-google-as-identity-provider.md) | Adopt Platform-Owned Auth Sessions with Google as an Identity Provider | Proposed | 2026-04-30 |
 | [095-distribute-mobile-as-static-expo-go-bundle-served-by-desktop](./095-distribute-mobile-as-static-expo-go-bundle-served-by-desktop.md) | Distribute Cats Mobile as a Static Expo Go Bundle Served by the Desktop | Proposed | 2026-04-30 |
 | [094-adopt-cats-app-packages-as-extension-boundary](./094-adopt-cats-app-packages-as-extension-boundary.md) | Adopt Cats App Packages as the Extension Boundary | Proposed | 2026-04-29 |
@@ -139,6 +140,6 @@ Use [000-template.md](./000-template.md) as the starting point for new ADRs.
 
 ---
 
-*Last updated: 2026-04-30 (ADR-097 added: store Code canvas focus on task metadata rather than a new Core record family; ADR-096 added for platform-owned auth sessions with Google as an identity provider; ADR-095 added: distribute Cats Mobile as a static Expo Go bundle served by Cats Desktop; ADR-094 added for Cats App Packages as the extension boundary; ADR-093 added for platform language preferences; ADR-092 proposed: reposition Cats Mobile as a first-class product client; ADR-091 accepted: retire `composerMode = cat_led` in favor of channel intent; ADR-090 added: generic schedule rules trigger missions/runs; ADR-089 added: split runtime request and stream idle timeouts; ADR-088 added: structured artifact declarations for Code materialization.)*
+*Last updated: 2026-04-30 (ADR-098 added: URL-driven canvas view-state with cross-product nested-route convention and platform-shared viewer for Core-tier entities; ADR-097 superseded by ADR-098 — task-metadata storage was the wrong source of truth; visible canvas state moved to URL with assistant intent retained as Activity audit; ADR-096 added for platform-owned auth sessions with Google as an identity provider; ADR-095 added: distribute Cats Mobile as a static Expo Go bundle served by Cats Desktop; ADR-094 added for Cats App Packages as the extension boundary; ADR-093 added for platform language preferences; ADR-092 proposed: reposition Cats Mobile as a first-class product client; ADR-091 accepted: retire `composerMode = cat_led` in favor of channel intent; ADR-090 added: generic schedule rules trigger missions/runs; ADR-089 added: split runtime request and stream idle timeouts; ADR-088 added: structured artifact declarations for Code materialization.)*
 
 *See also: [AGENTS.md](../../../AGENTS.md) for decision-making protocols*

@@ -1,7 +1,13 @@
 # PLAN-090: Cats Code Artifact Canvas Rollout
 
-> Implement the task-scoped split-canvas artifact presentation surface defined
-> by SPEC-101.
+> Implement the URL-driven split-canvas artifact presentation surface
+> defined by [SPEC-101](../specs/SPEC-101-cats-code-artifact-canvas.md)
+> under [ADR-098](../decisions/098-url-driven-canvas-and-platform-shared-viewer.md).
+> Phase 1 lands the platform-shared canvas pane primitive,
+> `show_in_canvas` / `clear_canvas` tools that record audit + push
+> navigate-intent, the iframe viewer with full safety policy, and
+> first-product (Code) integration. Phase 2 wires Cats Work to the
+> same primitive.
 
 ## Metadata
 
@@ -17,28 +23,37 @@
 
 ## Overview
 
-The rollout should land the Artifact Canvas in small slices: first the
-contract/state path, then the renderer split pane, then viewer breadth. The
-first implementation must not start local processes. Live app preview work
-depends on a separate process-supervision and security review.
+The rollout lands the Artifact Canvas in small slices: contract /
+projection / tool effect first, then the platform-shared canvas pane
+primitive, then the per-product nested-route registration (Code first;
+Work and Chat in Phase 3). The first implementation must not start
+local processes. Live app preview work depends on a separate
+process-supervision and security review (Phase 4).
 
 ## Implementation Phases
 
-### Phase 1: Contract and Task-Scoped Focus
+### Phase 1: Contract, Projection, and Tool Effect
 
-- [ ] Task 1.1: Add Code-owned canvas focus types and normalizers for
-      `CoreTaskRecord.metadata.codeCanvasFocus`, including the
-      `iframeSandboxProfile` field and a schema-version-aware reader that
-      drops malformed metadata.
+- [ ] Task 1.1: Add `CodeCanvasProjection` and
+      `CodeCanvasNavigateIntent` types in
+      `src/products/shared/canvasFocus/contracts.ts` (platform-shared
+      because Work and Chat will consume them too). Drop the prior
+      `CoreTaskRecord.metadata.codeCanvasFocus` shape — the URL is
+      the visible state and the server stores no focus record.
 - [ ] Task 1.2: Add `show_in_canvas` and `clear_canvas` tool input/result
       helpers with context-free validation, the SPEC-101 error code union,
-      and the active-task precondition.
+      and the active-surface precondition. The accepted result includes
+      `targetUrl`; the legacy `cleared: true` boolean is removed.
 - [ ] Task 1.3: Add a Code assistant-effect processor that resolves
       `artifactId` or same-turn `declarationId`, validates active
-      task/session compatibility, hard-rejects credential URLs, applies
+      surface compatibility, hard-rejects credential URLs, applies
       the runtime preview origin allowlist + scripted preview producer
       allowlist to pick the iframe sandbox profile, stamps a
-      `policyVersion`, and updates task metadata. The processor owns the
+      `policyVersion`, writes a `code_canvas_show_intent` Activity
+      record, and pushes a `CodeCanvasNavigateIntent` event over the
+      ADR-075 per-entity subscription channel keyed by the caller's
+      surface. The processor does NOT mutate any product `metadata`.
+      The processor owns the
       per-turn declaration index keyed by
       `(turnId, producerKey, scopeKey, declarationId)` where
       `producerKey = "<producerKind>:<producerIdentity>"` (the two
@@ -84,8 +99,10 @@ depends on a separate process-supervision and security review.
       existing builder/artifact preview iframes or accept the
       static-only regression; that decision is captured separately and
       not baked into the Phase 1 default.
-- [ ] Task 1.8: Add `policyVersion` to `CodeCanvasFocus` and to the
-      `show_in_canvas` accepted result. Implement the
+- [ ] Task 1.8: Add `policyVersion` to the projection (`CodeCanvasProjection`),
+      to the `show_in_canvas` accepted result, to the
+      `CodeCanvasNavigateIntent`, and to the
+      `code_canvas_show_intent` Activity record metadata. Implement the
       §Policy Version Canonicalization algorithm from SPEC-101: per-entry
       hostname normalization (lower-case + manual bracket strip),
       default expansion (`schemes ?? ['http']`, `ports ?? '*'`),
@@ -95,13 +112,13 @@ depends on a separate process-supervision and security review.
       normalization (drop default port), then canonical-JSON
       serialization (sorted keys, no whitespace) → SHA-256 → first 16
       hex chars lower-case. Treat the canonical-JSON helper as a
-      shared utility (sorted-keys recursive serializer). The Code
-      projection compares the stored `policyVersion` against the
-      server's current version on every read; mismatch demotes the
-      projected `iframeSandboxProfile` to `static` for that read
-      **without rewriting the stored focus**, so a subsequent
-      `show_in_canvas` can re-resolve under the new policy. Server
-      config reload republishes the version.
+      shared utility (sorted-keys recursive serializer). Because the
+      projection is computed on each URL hit, it always reflects the
+      current policy — there is no stored stale focus to demote.
+      Server config reload republishes the version, and any in-flight
+      `CodeCanvasNavigateIntent` from before the reload that still
+      reaches the renderer will be reconciled when the renderer
+      fetches the projection.
 - [ ] Task 1.9: Add canonicalization test vectors at
       `tests/code-canvas-policy-version.test.tsx`: empty config, default
       config, default config with reordered entries (must equal default
@@ -111,31 +128,60 @@ depends on a separate process-supervision and security review.
       must include literal expected canonical JSON strings and exact
       16-hex hashes, not only equality/difference assertions, so they
       pin the canonicalization across implementations.
-- [ ] Task 1.4: Expose read-only `canvasFocus` (including
-      `iframeSandboxProfile`) from Code task/detail and dashboard
-      projections, dropping malformed metadata.
-- [ ] Task 1.5: Register the tools in active Code runtime onboarding without
-      changing `declare_artifact`.
+- [ ] Task 1.4: Add the canvas projection HTTP route at
+      `/api/canvas/:artifactId` (or the platform-shared equivalent)
+      returning `CodeCanvasProjection`. The route is read-only and
+      stateless; calling it does not write any record. 4xx errors
+      (artifact not found / not Code-relevant / not anchored) are
+      surfaced verbatim to the renderer so the `unsupported` /
+      error pane can render a useful message.
+- [ ] Task 1.5: Register `show_in_canvas` and `clear_canvas` in the
+      active Code runtime tool catalog without changing
+      `declare_artifact`. The catalog entry references SPEC-101's
+      shape and the SPEC-101 § Error Code Registry.
+- [ ] Task 1.10: Implement the navigate-intent push channel using the
+      ADR-075 per-entity subscription primitive. Surface key is
+      `(productKind, surfaceKind, surfaceId)` — e.g.
+      `('code', 'task', 'task-abc')`. The renderer subscribes for the
+      surface it currently has mounted; intents for unfocused
+      surfaces are queued and replayed when that surface remounts.
 
-**Deliverables**: Tool helpers, processor registration, task metadata state,
-projection fields, and tests for accepted/rejected focus changes.
+**Deliverables**: Platform-shared contract types, iframe-policy module
+with allowlists / canonicalization, Code assistant-effect processor
+that records audit + pushes navigate-intent (no metadata writes),
+read-only projection HTTP route, and tests for accepted/rejected tool
+calls + projection responses.
 
-### Phase 2: Split Pane and Iframe Viewer
+### Phase 2: Platform-Shared Pane, Iframe Viewer, and Code Integration
 
-- [ ] Task 2.1: Add a Cats Code product-local split canvas layout that keeps the
-      active chat/task surface mounted while the Artifact Canvas opens on the
-      right.
-- [ ] Task 2.2: Add `CodeArtifactCanvasPane` with pane-local top bar:
-      close (server-write delegate), collapse / expand (renderer-only),
-      refresh, open-external, and unsupported-state UI.
-- [ ] Task 2.3: Add reusable `IframeViewer` that consumes the projected
-      `iframeSandboxProfile` literally, applies the SPEC-101 scheme allowlist,
-      re-runs the same-origin test on the renderer, and demotes to `static`
-      or `unsupported` on any defense-in-depth failure.
-- [ ] Task 2.4: Wire **only** the close (X) control through the
-      `clear_canvas` delegate; the collapse / expand affordance shall stay
-      renderer-only and shall not write task metadata.
-- [ ] Task 2.5: Update the existing artifact detail / builder preview iframe
+- [ ] Task 2.1: Add the platform-shared shell layout helper at
+      `src/products/shared/renderer/withSharedViewerRoutes.ts` that
+      attaches the `/canvas/:artifactId` child route to any product
+      surface route in one call. The helper renders the parent route
+      with `<Outlet />` for the right pane.
+- [ ] Task 2.2: Add `<CanvasPane>` at
+      `src/products/shared/renderer/CanvasPane.tsx` with pane-local
+      top bar: close (renderer-only `navigate()` to drop the
+      child segment), collapse / expand (renderer-only), refresh,
+      open-external, and unsupported-state UI. The pane fetches the
+      projection from `/api/canvas/:artifactId` on mount and on
+      `:artifactId` change.
+- [ ] Task 2.3: Add `<IframeViewer>` at
+      `src/products/shared/renderer/viewers/IframeViewer.tsx`. It
+      consumes the projection's `iframeSandboxProfile` literally,
+      applies the SPEC-101 scheme allowlist, re-runs the same-origin
+      with-shell short-circuit on the renderer, and demotes to
+      `static` or `unsupported` on any defense-in-depth failure.
+- [ ] Task 2.4: Subscribe the shell-level renderer to the
+      `CodeCanvasNavigateIntent` channel for the currently mounted
+      surface. On intent receipt, call `navigate(targetUrl)`. Phase 1
+      auto-navigates; the soft-suggest mode is a Phase 2 follow-up
+      open question per SPEC-101.
+- [ ] Task 2.5: Register Code's product surfaces with
+      `withSharedViewerRoutes` so the canvas pane mounts under
+      Code task / Code codespace routes. **No** server clear delegate
+      wiring is needed — close is renderer-only `navigate()`.
+- [ ] Task 2.6: Update the existing artifact detail / builder preview iframe
       path (`ArtifactDetailView.tsx`, `BuildPreviewPanel.tsx`) to share the
       same preview target, sandbox-profile decision, and renderer-side
       defense-in-depth checks. If the migration chooses to preserve scripted
@@ -159,6 +205,21 @@ artifacts, close/refresh/open controls, and renderer tests for pane state.
 
 **Deliverables**: Image, PDF, and code/text rendering plus pane resizing.
 
+### Phase 3 also: Cross-Product Mount (Work / Chat)
+
+- [ ] Task 3.6: Wire Cats Work product surfaces (Work Item, Work
+      Project) to `withSharedViewerRoutes`. Sidebar / detail-page
+      links to anchored artifacts use renderer-only `navigate()` to
+      enter the shared canvas child route. No server tool call from
+      Work side.
+- [ ] Task 3.7: Wire Cats Chat conversation surfaces likewise. A chat
+      message that references an artifact can become a clickable
+      navigate target.
+- [ ] Task 3.8: Add platform-viewer-policy entry for any new
+      Materialization-tier viewer (image / pdf / code) added in
+      Phase 3 to the entity viewer-ownership table — each new viewer
+      is a row in the table, not just a Code-product feature.
+
 ### Phase 4: Live Preview Substrate Planning
 
 - [ ] Task 4.1: Create separate research/spec work for command whitelist,
@@ -176,25 +237,40 @@ this plan before Phase 4 approval.
 
 | File | Action | Description |
 |------|--------|-------------|
-| `src/products/code/shared/canvasFocus.ts` | Create | Code canvas focus types (incl. `policyVersion`), normalizers, presentation resolution, and SPEC-101 error code union |
-| `src/products/code/shared/canvasIframePolicy.ts` | Create | Runtime preview origin allowlist matcher (host normalization + bracket strip + scheme + port), scripted preview producer allowlist lookup, scheme allowlist, credential URL rejector, and `policyVersion` digest helper |
-| `src/products/code/state/runtimeCanvasFocusExecution.ts` | Create | Assistant-effect processor for `show_in_canvas` and `clear_canvas`; owns the per-turn `(turnId, producerKey, scopeKey, declarationId)` declaration index where `producerKey = "<producerKind>:<encoded producerIdentity>"` and `scopeKey = "<scopeKind>:<scopeId>"` (both derived from the SPEC-092 idempotency fields stored on the materialized artifact) |
+| `src/products/shared/canvasFocus/contracts.ts` | Create | Platform-shared `CodeCanvasProjection`, `CodeCanvasNavigateIntent`, tool input/result types, error code union |
+| `src/products/shared/canvasFocus/iframePolicy.ts` | Create | Platform-shared origin allowlist matcher (host normalization + bracket strip + scheme + port), producer allowlist lookup, scheme allowlist, credential URL rejector, `policyVersion` canonicalization + digest helper |
+| `src/products/code/state/runtimeCanvasFocusExecution.ts` | Create | Code assistant-effect processor for `show_in_canvas` / `clear_canvas`; resolves declarationId via per-turn index keyed by `(turnId, producerKey, scopeKey, declarationId)`, writes `code_canvas_show_intent` / `code_canvas_clear_intent` Activity, pushes `CodeCanvasNavigateIntent`. Does NOT write product `metadata`. |
 | `src/products/code/state/runtimeArtifactTooling.ts` | Modify | Add onboarding/catalog entries for the canvas tools |
-| `src/products/code/api/projection.ts` | Modify | Expose `canvasFocus` (with `iframeSandboxProfile`) from task metadata |
-| `src/products/code/renderer/components/CodeArtifactCanvasPane.tsx` | Create | Right-pane shell, top bar with separate close vs collapse controls, and unsupported-state fallback |
-| `src/products/code/renderer/components/viewers/IframeViewer.tsx` | Create | Safe iframe viewer; consumes `iframeSandboxProfile`, re-validates scheme, re-runs the renderer-side same-origin test |
-| `src/products/code/renderer/components/ArtifactDetailView.tsx` | Modify | Replace local `sandbox="allow-scripts allow-same-origin"` iframe with `IframeViewer` |
-| `src/products/code/renderer/components/BuildPreviewPanel.tsx` | Modify | Replace local `sandbox="allow-scripts allow-same-origin"` iframe with `IframeViewer` |
-| `src/products/code/renderer/AppRoutes.tsx` or product shell wrapper | Modify | Mount split layout around active Code routes |
+| `src/products/shared/api/canvasProjectionRoute.ts` | Create | Read-only HTTP route `/api/canvas/:artifactId` returning `CodeCanvasProjection`. Stateless; computes `iframeSandboxProfile` and `policyVersion` on each call |
+| `src/products/shared/renderer/CanvasPane.tsx` | Create | Platform-shared right-pane shell + top bar (close = `navigate()` to drop child segment; collapse = local state); fetches projection from `/api/canvas/:artifactId` |
+| `src/products/shared/renderer/viewers/IframeViewer.tsx` | Create | Platform-shared safe iframe viewer; consumes projected `iframeSandboxProfile`, re-validates scheme, re-runs same-origin-with-shell short-circuit |
+| `src/products/shared/renderer/withSharedViewerRoutes.ts` | Create | Helper that adds the `/canvas/:artifactId` child route to a parent route; one-line registration per product surface |
+| `src/products/shared/renderer/useCanvasNavigateIntent.ts` | Create | Renderer hook that subscribes to the ADR-075 channel for the active surface and calls `navigate()` on accepted intents |
+| `src/products/code/renderer/AppRoutes.tsx` | Modify | Wrap Code task / codespace routes with `withSharedViewerRoutes` |
+| `src/products/code/renderer/components/ArtifactDetailView.tsx` | Modify | Replace local `sandbox="allow-scripts allow-same-origin"` iframe with shared `<IframeViewer>` |
+| `src/products/code/renderer/components/BuildPreviewPanel.tsx` | Modify | Replace local `sandbox="allow-scripts allow-same-origin"` iframe with shared `<IframeViewer>` |
 | `docs/tool-calls.md` | Modify | Keep tool-call registry aligned (short summary, link to SPEC-101) |
-| `tests/code-canvas-focus*.test.tsx` | Create | Tool, projection, and renderer tests |
+| `tests/code-canvas-projection.test.tsx` | Create | Server-side projection tests (sandbox profile resolution, error codes, policyVersion correctness) |
+| `tests/code-canvas-tool.test.tsx` | Create | `show_in_canvas` / `clear_canvas` tool effect tests (Activity write + navigate-intent push; no metadata writes) |
+| `tests/code-canvas-policy-version.test.tsx` | Create | Canonicalization vectors with literal expected JSON + 16-hex hashes |
+| `tests/canvas-pane.test.tsx` | Create | Renderer tests: child route mount/unmount on URL change; close button = `navigate()` only; collapse = local state; iframe attributes per profile; defense-in-depth scheme + same-origin-with-shell |
 
 ## Technical Decisions
 
-- `codeCanvasFocus` is task-scoped in Phase 1 because active Cats Code is
-  task-first and `CoreConversationRecord` has no metadata field. The storage
-  decision is captured in
-  [ADR-097](../decisions/097-store-code-canvas-focus-on-task-metadata.md).
+- Visible canvas state lives in the URL (`/canvas/:artifactId` nested
+  child route). Server stores no "current focus" record. Audit lives
+  in `Activity` records of kind `code_canvas_show_intent` /
+  `code_canvas_clear_intent`. Storage decision captured in
+  [ADR-098](../decisions/098-url-driven-canvas-and-platform-shared-viewer.md);
+  [ADR-097](../decisions/097-store-code-canvas-focus-on-task-metadata.md)
+  is superseded.
+- The canvas pane and iframe viewer are platform-shared primitives in
+  `src/products/shared/renderer/`; Code, Work, and Chat all mount the
+  same component via `withSharedViewerRoutes`. The safety policy (two
+  allowlists, scheme allowlist, credential reject, hostname
+  normalization, `policyVersion` canonicalization) lives next to the
+  viewer at the platform layer, not in any product. See
+  [`platform-viewer-policy.md`](../platform-viewer-policy.md).
 - `show_in_canvas` accepts `declarationId` as well as `artifactId` so the
   assistant can present an artifact declared in the same turn before it
   knows the materialized artifact id. The same-turn index is keyed by
@@ -216,11 +292,12 @@ this plan before Phase 4 approval.
   `artifact_canvas_declaration_collision`. The index has no cross-turn
   lookup, and prior-turn matches reject as
   `artifact_canvas_declaration_unknown`.
-- Manual close has two distinct controls: `Close` (server write through the
-  `clear_canvas` delegate, persists across reload) and `Collapse / expand`
-  (renderer-only ephemeral toggle). The two-control split prevents
-  collapse-state churn from writing task metadata while still letting users
-  permanently dismiss the pane.
+- Manual close is renderer-only `navigate()` that pops the
+  `/canvas/:artifactId` segment from the URL. There is no server
+  delegate involved. Collapse / expand is renderer-only local state
+  (`useState` + `localStorage`) with no URL effect. The earlier
+  ADR-097-era "Close calls clear_canvas delegate" model is superseded
+  because there is no stored visible state to clear.
 - Phase 1 routes image and PDF presentations through the iframe viewer with
   the `static` sandbox profile (no `allow-scripts`). Phase 2 adds dedicated
   `image`, `pdf`, and `code` viewers without changing tool inputs or
@@ -250,10 +327,9 @@ this plan before Phase 4 approval.
   only the cheap config-free defense-in-depth checks (scheme allowlist,
   profile-name validity, same-origin-with-shell short-circuit using
   `window.location.origin`); the server is the authority for the origin
-  and producer allowlists. `policyVersion` on `CodeCanvasFocus` guards
-  against config drift across time: stored version != current server
-  version → projection demotes to `static` for that read without
-  rewriting the focus.
+  and producer allowlists. The projection is fetched on every URL
+  hit, so it always reflects the current `policyVersion`; there is no
+  stored "stale focus" record to demote.
 - Credential URLs (`user:pass@host`) hard-reject at the canvas with
   `artifact_canvas_url_credentials_not_allowed`; they shall not appear in
   iframe `src` or external-open hrefs even when the rest of the artifact
@@ -266,7 +342,10 @@ this plan before Phase 4 approval.
 - **Unit tests**:
   - input normalization rejects missing/both identities, unknown
     presentation values, and `presentation: 'unsupported'` as input;
-  - malformed `codeCanvasFocus` metadata is dropped by projection;
+  - the projection HTTP route returns 404 / 422 for missing /
+    not-Code-relevant / not-anchored `:artifactId`, and a normal
+    payload otherwise (server stores no focus record, so there is
+    no "stale metadata" failure mode);
   - `presentation = 'auto'` resolves preview URL artifacts whose origin
     passes the runtime preview origin allowlist to `iframe` +
     `scripted-cross-origin`, the same artifact with an off-allowlist origin
@@ -334,8 +413,8 @@ this plan before Phase 4 approval.
   - declaration index (duplicate collision): if the processor observes
     the same key paired with two different `artifactId`s,
     `show_in_canvas({declarationId})` rejects with
-    `artifact_canvas_declaration_collision` and `codeCanvasFocus` is
-    not written;
+    `artifact_canvas_declaration_collision`; no Activity audit
+    record is written and no `CodeCanvasNavigateIntent` is pushed;
   - per-turn declaration index: `show_in_canvas({declarationId})` issued
     by an agent in a turn with no accepted declaration of that id under
     `(turnId, agent's producerKey, agent's scopeKey, declarationId)`
@@ -351,28 +430,37 @@ this plan before Phase 4 approval.
     N+1 referencing a declaration accepted in turn N rejects with
     `artifact_canvas_declaration_unknown` (the per-turn index does not see
     turn N — there is no separate cross-turn lookup);
-  - active-task precondition: both tools reject with
-    `artifact_canvas_no_active_task` when invoked without an active task;
-  - policy version (drift demote): stored
-    `canvasFocus.policyVersion = 'v1'`; server reloads with a new
-    allowlist producing version `'v2'`; the projection demotes the
-    projected `iframeSandboxProfile` to `static` and surfaces the
-    demotion to the renderer, **without** rewriting the stored focus.
-    A subsequent `show_in_canvas` re-resolves under `'v2'` and rewrites
-    the focus.
+  - active-surface precondition: both tools reject with
+    `artifact_canvas_no_active_surface` when invoked without an active
+    product surface;
+  - policy version: each `show_in_canvas` accepted result and each
+    `code_canvas_show_intent` Activity record carries the
+    `policyVersion` snapshot under which the decision was made.
+    Reloading the server with new allowlists produces a new version,
+    but does NOT touch any stored visible state (there is none) — the
+    next URL hit fetches a projection under the new version
+    automatically.
 - **Integration tests**:
+  - `show_in_canvas` happy path: tool result accepted, Activity record
+    of kind `code_canvas_show_intent` written, navigate-intent pushed
+    on the surface's ADR-075 channel with the composed `targetUrl`;
   - same-turn `declare_artifact` result can be referenced by
     `show_in_canvas(declarationId)`;
-  - foreign task/session artifacts are rejected with
+  - foreign-surface artifacts are rejected with
     `artifact_canvas_artifact_not_anchored`;
-  - `clear_canvas` removes task metadata and is idempotent on already-clear
-    focus;
+  - `clear_canvas` writes a `code_canvas_clear_intent` Activity
+    record and pushes a navigate-intent whose `targetUrl` drops the
+    `/canvas/:artifactId` segment. It writes no product `metadata`
+    and is idempotent: calling it from a URL without the segment
+    still emits one Activity record and one navigate-intent (no-op
+    navigation);
   - the persisted tool trace surfaces accepted / rejected canvas tool
     results matching the `declare_artifact` pattern.
 - **Renderer tests**:
-  - pane opens when `canvasFocus` exists and closes through the delegate
-    (close button) but does NOT write through the delegate when collapse /
-    expand is toggled;
+  - child route mounts when the URL is `/<surface>/canvas/:artifactId`
+    and unmounts when the user navigates back; close button calls
+    `navigate(parentUrl)` and does NOT call any server endpoint;
+    collapse toggles local state without changing the URL;
   - iframe includes the projected `iframeSandboxProfile`'s sandbox /
     referrer / allow attributes literally — `static` profile must NOT
     include `allow-scripts` or `allow-same-origin`;
@@ -408,13 +496,14 @@ this plan before Phase 4 approval.
 | Agent escalates to script-eligible iframe by declaring a loopback `kind = 'preview'` URL (second / third-round security review) | High | Two-allowlist gate: `agent` short-circuits to `static`; non-agent producers must additionally match a named entry in `codeCanvas.scriptedPreviewProducerAllowlist` (default empty, operator-enumerated). URL allowlist alone is no longer sufficient; a specific producer entry is required |
 | Producer-by-kind gate too wide (third-round security review): not every tool / system detector is a preview-origin owner | High | Replaced kind-based gate with named producer allowlist `{ producerKind, producerIdentity }[]`; default empty so the platform earns nothing automatically |
 | Credential URLs leak into iframe `src` / open-external href / pane metadata (second-round security review) | High | Hard reject at canvas boundary with `artifact_canvas_url_credentials_not_allowed`, mirroring SPEC-092's `artifact_url_credentials_not_allowed` declaration-time rule |
-| Task metadata becomes a dumping ground | Medium | Single `codeCanvasFocus` key with schema version, `policyVersion`, and normalizer |
-| Split pane breaks chat/composer layout | Medium | Product-local layout first; targeted renderer tests and manual viewport check |
+| Task metadata becomes a dumping ground | Resolved | ADR-098 superseded ADR-097; canvas writes no product `metadata`. The risk is gone. |
+| Split pane breaks chat/composer layout | Medium | Platform-shared `<CanvasPane>` lives next to other shared shell components; targeted renderer tests cover URL-driven mount/unmount and manual viewport check; nested route uses parent's `<Outlet />` so the parent layout owns the responsive split |
 | `declarationId` ambiguity across turns / producers / scopes (third-round security review) | Medium | Per-turn index keyed by `(turnId, producerKey, scopeKey, declarationId)` matching SPEC-092 idempotency components plus `turnId`. Same-caller-only resolution; same-turn cross-producer → `artifact_canvas_declaration_producer_mismatch`; same-turn cross-scope or prior-turn → `artifact_canvas_declaration_unknown` (no cross-turn lookup) |
 | Duplicate-key declaration collision | Medium | Same-key duplicates resolving to the same `artifactId` are no-ops; differing `artifactId` rejects with `artifact_canvas_declaration_collision` and the focus is not written |
-| Server / renderer config drift across time (third-round security review) | Medium | `policyVersion` stamped on `CodeCanvasFocus` at decision time; projection demotes to `static` on version mismatch without rewriting stored focus; next `show_in_canvas` re-resolves under current policy |
+| Server / renderer config drift across time | Low | Projection is computed on every URL hit and always returns the current `policyVersion`; navigate-intent payload's optimistic-render data is reconciled with the projection on fetch. There is no stored visible state to drift |
 | Renderer holds stale or copied allowlist (third-round security review) | Medium | Renderer does NOT receive the allowlists; it re-runs only scheme + same-origin-with-shell + profile-name validity. Server is the single authority for the matchers |
-| User confusion between collapse and close (collapse "loses" their pane on reload) | Low | Two visually distinct controls; collapse uses an obvious chevron-style affordance, close uses an X |
+| User confusion between close and collapse | Low | Close = `navigate()` away (URL changes, share-link drops the canvas); collapse = local UI only (URL unchanged). Two visually distinct controls — close uses an X, collapse uses a chevron. Reload: close-state survives via URL; collapse-state survives via `localStorage` per-surface key, but a fresh deep-link to `/canvas/:artifactId` always shows the pane expanded |
+| Cross-product mount under-tested in Phase 1 | Medium | Phase 1 wires only Code; Phase 3 (Tasks 3.6-3.8) wires Work and Chat. Platform-shared component lives in `src/products/shared/` from day one so Phase 3 is route registration only, not new safety code |
 | Live preview scope creeps into Phase 1 | High | Keep process spawning in separate Phase 4 security plan |
 
 ## Progress Log
@@ -427,6 +516,7 @@ this plan before Phase 4 approval.
 | 2026-04-30 | Third-round security follow-up: pinned the runtime preview origin allowlist as a structured `{ hostname, schemes?, ports? }[]` schema with explicit URL-matching algorithm; added the producer-eligibility gate that denies `scripted-cross-origin` to all agent-declared artifacts in Phase 1; promoted credential URL handling from silent demote to hard reject; defined `producerKey` from the SPEC-092 encoded producer identity; pinned `declarationId` resolution as same-caller-only with the new `artifact_canvas_declaration_producer_mismatch` error code; scrubbed stale `(turnId, declarationId)` and `artifact_canvas_declaration_cross_turn` references from PLAN-090. |
 | 2026-04-30 | Fourth-round security follow-up: added `scopeKey = "<scopeKind>:<scopeId>"` to the index key so same-actor / same-tool spanning multiple runtime sessions in one turn no longer collide; added duplicate-key collision detection (`artifact_canvas_declaration_collision`); flattened both allowlist config shapes (no `{ entries: [...] }` wrapper) and made them consistent across SPEC / PLAN / tool-calls; corrected IPv6 hostname normalization (Node's `URL.hostname` does NOT strip brackets — manual strip required); replaced producer-by-kind gate with named `scriptedPreviewProducerAllowlist` defaulting to empty; added `policyVersion` to `CodeCanvasFocus` and projection-side demote-on-mismatch; clarified renderer is NOT a matcher mirror (scheme + same-origin-with-shell + profile-name validity only). |
 | 2026-04-30 | Fifth-round contract follow-up: removed `task:` from `scopeKey` examples (SPEC-092 scope kinds are `run` / `runtime` / `conversation` / `workspace` only — the canvas does not add `task`); replaced internal type-name references with the public SPEC-092 idempotency fields while preserving encoded `producerIdentity` values (`actor:<id>`, `tool:<name>`, `system:<detector>`); scrubbed stale renderer-matcher mirror wording; added explicit §Policy Version Canonicalization algorithm (per-entry normalization, default expansion, port dedupe + numeric sort, sort orderings, `catsShellOrigin` default-port handling, canonical-JSON sorted-keys serialization, SHA-256 first-16 lower-case) plus test-vector requirements as Task 1.9. |
+| 2026-04-30 | Sixth-round architectural pivot under ADR-098: visible canvas state moved from `CoreTaskRecord.metadata.codeCanvasFocus` to URL nested child route `/canvas/:artifactId`; canvas pane and iframe viewer promoted from Code-product to platform-shared (`src/products/shared/renderer/`) so Cats Work and Cats Chat can mount the same pane against any anchored artifact; `show_in_canvas` / `clear_canvas` effect changed from "write task metadata" to "write Activity audit + push `CodeCanvasNavigateIntent` over ADR-075 channel"; user close becomes renderer-only `navigate()` (no server delegate); `clear_canvas` accepted result drops the legacy `cleared: true` boolean in favor of `targetUrl`; `artifact_canvas_no_active_surface` renamed to `artifact_canvas_no_active_surface` to reflect cross-product applicability; ADR-097 superseded; `platform-viewer-policy.md` added as the operational entry point for cross-product viewer decisions. All hard-won security policy from rounds 1–5 (sandbox profiles, two flat-array allowlists with structured schema, hostname normalization with manual IPv6 bracket strip, scripted preview producer allowlist defaulting empty, credential URL hard reject, scheme allowlist hard reject, scope+producer-keyed declaration index, policyVersion canonicalization) survives intact and relocates with the platform viewer. |
 
 ---
 

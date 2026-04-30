@@ -416,12 +416,22 @@ type ShowInCanvasResult =
       presentationResolved: 'iframe' | 'image' | 'pdf' | 'code' | 'unsupported';
       iframeSandboxProfile: 'static' | 'scripted-cross-origin' | null;
       policyVersion: string | null;
+      // Full nested-route URL the renderer was asked to navigate to.
+      // Mirrors the navigate-intent's targetUrl field.
+      targetUrl: string;
     }
   | {
       status: 'rejected';
       error: { code: string; message: string; details?: unknown };
     };
 ```
+
+Effect: server records a `code_canvas_show_intent` Activity record (per
+ADR-081 Materialization tier) and pushes a `CodeCanvasNavigateIntent`
+event over the [ADR-075](./decisions/075-adopt-push-based-per-entity-state-subscription.md)
+per-entity subscription channel keyed by the caller's surface. The
+renderer responds by calling `navigate(targetUrl)`. The tool does NOT
+mutate any product `metadata`.
 
 Core rules (the SPEC-101 source-of-truth covers full validation, the
 runtime preview origin allowlist schema, and the presentation resolution
@@ -462,9 +472,12 @@ table):
   `artifactId` (SPEC-092 idempotency); a key paired with a conflicting
   `artifactId` rejects with `artifact_canvas_declaration_collision`.
   The processor keeps no cross-turn lookup;
-- accepted focus is persisted under
-  `CoreTaskRecord.metadata.codeCanvasFocus` per
-  [ADR-097](./decisions/097-store-code-canvas-focus-on-task-metadata.md);
+- accepted intent is **not** persisted to any product `metadata`
+  field. Visible state lives in the URL via the nested child route
+  `/canvas/:artifactId` per
+  [ADR-098](./decisions/098-url-driven-canvas-and-platform-shared-viewer.md)
+  (which supersedes ADR-097); audit lives in an Activity record of
+  kind `code_canvas_show_intent` per ADR-081 Materialization tier;
 - credential-bearing URLs (`user:pass@host`) hard-reject at the canvas
   with `artifact_canvas_url_credentials_not_allowed` and never reach
   iframe `src`, open-external href, or pane metadata;
@@ -485,12 +498,13 @@ table):
   IPv6 hostnames require manual bracket strip during normalization
   (Node's WHATWG `URL.hostname` does NOT strip the enclosing
   `[...]` — see SPEC-101 §Hostname Normalization);
-- the `policyVersion` field on the accepted result and on the stored
-  `CodeCanvasFocus` is the cross-time staleness guard. The renderer is
-  NOT a mirror of the allowlist matchers — it re-runs only scheme
-  allowlist + same-origin-with-shell + profile-name validity. The
-  projection demotes to `static` on `policyVersion` mismatch without
-  rewriting the stored focus.
+- the `policyVersion` field on the accepted result, the navigate-intent
+  payload, and the projection identifies the iframe-policy snapshot.
+  The renderer is NOT a mirror of the allowlist matchers — it re-runs
+  only scheme allowlist + same-origin-with-shell + profile-name
+  validity. The projection is fetched on every URL hit so it always
+  carries the current `policyVersion`; there is no stored visible
+  state to drift.
 
 #### Error Codes
 
@@ -505,7 +519,7 @@ Implementers shall use these names verbatim:
 - `artifact_canvas_declaration_collision`
 - `artifact_canvas_artifact_not_found`
 - `artifact_canvas_artifact_not_anchored`
-- `artifact_canvas_no_active_task`
+- `artifact_canvas_no_active_surface`
 - `artifact_canvas_caller_not_authorized`
 - `artifact_canvas_presentation_invalid`
 - `artifact_canvas_presentation_unsupported`
@@ -520,7 +534,8 @@ identifies the policy snapshot under which the decision was made.
 
 ### `clear_canvas`
 
-Clears the active Code task's `codeCanvasFocus`.
+Asks the renderer to navigate the caller's surface URL up out of the
+canvas child route.
 
 Caller-visible input is empty:
 
@@ -533,17 +548,31 @@ Result:
 ```ts
 interface ClearCanvasResult {
   status: 'accepted';
-  cleared: true;
+  // The full URL the renderer was asked to navigate to (the parent
+  // surface URL, with /canvas/:artifactId popped). Mirrors the
+  // navigate-intent's targetUrl.
+  targetUrl: string;
 }
 ```
 
-Idempotent on already-clear focus. Shares the `artifact_canvas_no_active_task`
-and `artifact_canvas_caller_not_authorized` rejection codes with
-`show_in_canvas`. Required by the pane top bar's "Close (X)" control; the
-pane's "Collapse / expand" control is renderer-only and shall NOT call this
-tool. See
+Effect: writes a `code_canvas_clear_intent` Activity record (audit) and
+pushes a `CodeCanvasNavigateIntent` whose `targetUrl` is the parent
+surface URL. Idempotent: calling it from a URL without
+`/canvas/:artifactId` segment still emits one Activity record and one
+navigate-intent (the resulting navigation is a no-op).
+
+Shares the `artifact_canvas_no_active_surface` and
+`artifact_canvas_caller_not_authorized` rejection codes with
+`show_in_canvas`.
+
+Note on the pane "Close (X)" control: it is **renderer-only**
+`navigate()` to drop the `/canvas/:artifactId` segment, NOT a
+`clear_canvas` call. The user driving close locally does not need a
+server tool — the URL change is enough. `clear_canvas` exists for the
+agent / product-internal-delegate path. The pane's "Collapse / expand"
+control is also renderer-only (does not change the URL). See
 [SPEC-101 §FR7](./specs/SPEC-101-cats-code-artifact-canvas.md#functional-requirements)
-for the two-control split.
+for the close-vs-collapse semantics.
 
 ---
 

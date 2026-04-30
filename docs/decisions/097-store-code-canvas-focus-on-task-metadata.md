@@ -1,5 +1,13 @@
 # ADR-097: Store Code Canvas Focus on Task Metadata, Not a New Core Record Family
 
+> **SUPERSEDED by [ADR-098](./098-url-driven-canvas-and-platform-shared-viewer.md).**
+> ADR-098 moves visible canvas state to URL (cross-product nested route)
+> and promotes the canvas pane to a platform-shared primitive. Task
+> metadata is no longer the source of truth; an Activity record retains
+> the assistant intent for audit. Read this ADR for the historical
+> context that produced ADR-098, but do not use its decision in new
+> implementation.
+
 > Cats Code's right-hand Artifact Canvas focus is presentation state attached
 > to the active Code task. It lives at
 > `CoreTaskRecord.metadata.codeCanvasFocus` instead of being promoted to a
@@ -7,7 +15,7 @@
 
 ## Status
 
-Proposed
+Superseded by [ADR-098](./098-url-driven-canvas-and-platform-shared-viewer.md) — 2026-04-30
 
 ## Context
 

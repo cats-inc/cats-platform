@@ -1,8 +1,13 @@
 # SPEC-101: Cats Code Artifact Canvas
 
-> Define the split-canvas artifact presentation surface for Cats Code, including
-> assistant-driven `show_in_canvas` / `clear_canvas` tool calls and the first
-> safe iframe viewer contract.
+> Define the split-canvas artifact presentation surface for Cats Code,
+> including assistant-driven `show_in_canvas` / `clear_canvas` tool
+> calls and the first safe iframe viewer contract. Canvas view-state
+> lives in the URL (per [ADR-098](../decisions/098-url-driven-canvas-and-platform-shared-viewer.md))
+> and the canvas pane component is a platform-shared primitive that
+> Cats Work and Cats Chat may also mount; the canvas safety policy
+> (sandbox profiles, allowlists, `policyVersion`) is centralized with
+> the platform viewer.
 
 ## Metadata
 
@@ -15,32 +20,57 @@
 
 ## Summary
 
-Cats Code needs a right-hand Artifact Canvas that can open beside the active
-Code chat/task surface without replacing it. The assistant may request this
-canvas through structured tool calls, but the visible content must remain bound
-to a validated `CoreArtifactRecord` or same-turn accepted artifact declaration.
+Cats Code needs a right-hand Artifact Canvas that can open beside the
+active Code chat/task surface without replacing it. The assistant may
+request this canvas through structured tool calls, but the visible
+content must remain bound to a validated `CoreArtifactRecord` or
+same-turn accepted artifact declaration.
 
-This spec covers the Phase 1 contract: task-scoped canvas focus, `show_in_canvas`
-and `clear_canvas`, split-pane layout, a pane-local top bar, and an iframe
-viewer for safe preview URL artifacts. Image, PDF, code viewers, and live
-`npm start`-style process supervision are follow-up work.
+This spec covers the Phase 1 contract:
+
+- **URL-addressable canvas state** via a nested child route
+  `/canvas/:artifactId` that any product surface (Code, Work, Chat) can
+  mount, per ADR-098. The URL is the source of truth for what the user
+  is looking at; server stores **no** "current focus" record.
+- `show_in_canvas` and `clear_canvas` tools whose effect is to record
+  audit (Activity) and push a navigate-intent to the renderer through
+  the [ADR-075](../decisions/075-adopt-push-based-per-entity-state-subscription.md)
+  per-entity subscription channel; the renderer responds by calling
+  `navigate()` to enter or pop the child route.
+- A **platform-shared viewer component** (`<CanvasPane>` +
+  `<IframeViewer>`) that lives in `src/products/shared/renderer/`,
+  with the safety policy (sandbox profiles, scheme allowlist, runtime
+  preview origin allowlist, scripted preview producer allowlist,
+  credential URL hard reject, hostname normalization, `policyVersion`
+  canonicalization) centralized at the platform layer.
+- An iframe viewer for safe preview URL artifacts. Image, PDF, code
+  viewers, and live `npm start`-style process supervision are follow-up
+  work.
 
 ## Goals
 
-- Let a Code assistant request that a recorded artifact be shown in the main
-  canvas beside the conversation.
-- Keep presentation requests structured; transcript prose is not a UI command.
-- Reuse the `declare_artifact` / Core artifact pipeline as the durable source
-  of truth.
-- Give the Artifact Canvas its own top bar and controls, independent of the
-  chat top bar and sidebar.
+- Let a Code assistant request that a recorded artifact be shown in the
+  main canvas beside the conversation.
+- Keep presentation requests structured; transcript prose is not a UI
+  command.
+- Reuse the `declare_artifact` / Core artifact pipeline as the durable
+  source of truth.
+- Give the Artifact Canvas its own pane-local top bar and controls,
+  independent of the chat top bar and sidebar.
 - Establish a safe iframe policy before live preview work starts.
+- Allow other product surfaces (Cats Work, Cats Chat) to mount the same
+  canvas pane against the same artifact through a shared URL convention
+  without re-implementing the safety policy.
 
 ## Non-Goals
 
 - Starting or supervising local preview servers.
 - Letting providers or assistants emit raw iframe HTML.
-- Adding a new Core record family for canvas focus in Phase 1.
+- Adding a new Core record family for canvas focus (handled by ADR-098:
+  visible state lives in URL, audit lives in Activity, no new family).
+- Storing visible canvas state on `CoreTaskRecord.metadata` or any
+  per-product `metadata` field (this was ADR-097's choice and is
+  superseded by ADR-098).
 - Replacing the Artifacts sidebar or artifact detail route.
 - Implementing image, PDF, or code snippet viewers in Phase 1.
 - Exposing the canvas tools as public HTTP APIs.
@@ -60,25 +90,62 @@ viewer for safe preview URL artifacts. Image, PDF, code viewers, and live
 
 ### Functional Requirements
 
-1. Cats Code shall support a split canvas with the active Code chat/task on the
-   left and an Artifact Canvas pane on the right.
-2. The Artifact Canvas pane shall mount only when there is a valid canvas focus.
-3. Phase 1 canvas focus shall be task-scoped and stored under
-   `CoreTaskRecord.metadata.codeCanvasFocus`.
-4. Cats Code shall not add `CoreConversationRecord.metadata` or a new Core
-   canvas-focus record family for Phase 1.
-5. Canvas focus shall reference exactly one materialized `CoreArtifactRecord`.
-6. Assistant-driven focus shall be accepted only through the `show_in_canvas`
-   runtime tool, or through a product-internal delegate that applies the same
-   validation.
-7. The pane shall expose two distinct user controls with different semantics:
-   - **Close (X)**: invokes the same clear delegate used by `clear_canvas`,
-     persists the server change, and survives reload. This is the only path
-     that mutates `codeCanvasFocus`.
-   - **Collapse / expand**: renderer-only ephemeral toggle. It hides the pane
-     visually without touching `codeCanvasFocus`, and a reload restores the
-     pane to its expanded state. The renderer shall not surface the collapsed
-     state as "cleared".
+1. Each product surface that opts in shall register a nested child route
+   under its own route tree at the path segment `/canvas/:artifactId`,
+   so that any of the following compose into one URL the user can share,
+   bookmark, and navigate:
+   - `/code/tasks/:taskId/canvas/:artifactId`
+   - `/code/codespaces/:codespaceId/canvas/:artifactId`
+   - `/work/items/:itemId/canvas/:artifactId`
+   - `/work/projects/:projectId/canvas/:artifactId`
+   - `/chat/conversations/:convId/canvas/:artifactId`
+   The canvas pane component, viewer registry, and safety policy are
+   platform-shared (see FR3); each product only registers the child
+   route and supplies its own surrounding chrome on the parent route.
+2. The Artifact Canvas pane shall mount only when the URL contains a
+   `/canvas/:artifactId` segment under the active product surface route.
+   When the URL has no such segment, no pane is mounted.
+3. Phase 1 visible canvas state lives in the URL **only**. The server
+   stores no "current focus" record. The
+   `CoreTaskRecord.metadata.codeCanvasFocus` storage location proposed
+   by the earlier draft is no longer used; ADR-097 is superseded by
+   ADR-098.
+4. The canvas pane component, viewer registry, scheme allowlist,
+   runtime preview origin allowlist, scripted preview producer
+   allowlist, credential URL hard-reject, hostname normalization,
+   `policyVersion` canonicalization, and the iframe sandbox profile
+   selection algorithm shall all live as **platform-shared code**
+   under `src/products/shared/renderer/` (or `src/design/`); they are
+   not Code-product-private. The platform exposes a
+   `withSharedViewerRoutes(parent: RouteObject): RouteObject` helper
+   so each product registers the child route in a single line.
+5. The artifact addressed by `:artifactId` must resolve to a
+   materialized `CoreArtifactRecord`. The server projection that
+   backs the canvas pane returns the resolved
+   `iframeSandboxProfile`, `policyVersion`, and the artifact metadata
+   the viewer needs.
+6. Assistant-driven focus shall be accepted only through the
+   `show_in_canvas` runtime tool, or through a product-internal
+   delegate that applies the same validation. The tool's effect is
+   **not** to write any product `metadata` field; instead it (a)
+   records an Activity entry of kind
+   `code_canvas_show_intent` (audit), and (b) pushes a navigate-intent
+   event through the ADR-075 per-entity subscription channel
+   carrying the target URL. The renderer subscribes and responds by
+   calling `navigate(targetUrl)`.
+7. The pane shall expose two distinct user controls with different
+   semantics:
+   - **Close (X)**: renderer-only `navigate()` that pops the
+     `/canvas/:artifactId` segment from the URL (keeping the parent
+     surface). It does **not** call any server endpoint and does
+     **not** require an Activity entry. Reload preserves the
+     URL-without-canvas state naturally.
+   - **Collapse / expand**: renderer-only ephemeral toggle that hides
+     the pane chrome without changing the URL. It is local UI state
+     only (`useState` and / or `localStorage`) and does not survive
+     deep-link reloads of a fresh URL — i.e. opening a
+     `/canvas/:artifactId` URL in a new tab always shows the pane
+     expanded by default.
 8. `show_in_canvas` shall accept exactly one identity:
    - `artifactId`
    - `declarationId`
@@ -140,43 +207,62 @@ viewer for safe preview URL artifacts. Image, PDF, code viewers, and live
     observes the same key paired with a **different** `artifactId`
     (which would indicate a SPEC-092 invariant violation upstream), the
     `show_in_canvas` call for that id shall reject with
-    `artifact_canvas_declaration_collision` and the canvas focus shall
-    not be written.
+    `artifact_canvas_declaration_collision` and no navigate-intent
+    shall be pushed.
 12. `artifactId` shall resolve only to a Code-relevant artifact that is
-    compatible with the active Code task/session context.
-13. `show_in_canvas` shall require an active Code task on the caller's
-    surface; calls without an active task shall be rejected with
-    `artifact_canvas_no_active_task` and shall not store partial focus.
+    compatible with the calling product's surface context (Code task /
+    Code session for Code; Work item / project for Work; conversation
+    for Chat).
+13. `show_in_canvas` shall require an active product surface (Code
+    task, Work item, etc.) for the caller; calls without such an active
+    surface shall reject with `artifact_canvas_no_active_surface` and
+    shall not record audit or push intent.
 14. `show_in_canvas` shall accept `presentation = 'auto' | 'iframe' | 'image' |
     'pdf' | 'code'` only; `'unsupported'` is **never** a valid input — it is
     a server-resolved output state. Phase 1 resolution rules are explicit:
     - `presentation: 'auto'` may resolve to any of `iframe`, `image`, `pdf`,
       `code`, or `unsupported`. When the artifact has no safe inline target,
-      `auto` accepts and opens the metadata-only `unsupported` pane.
+      `auto` accepts and the navigate-intent target is the metadata-only
+      `unsupported` pane.
     - Explicit `'iframe'`, `'image'`, `'pdf'`, or `'code'` requests against
       an artifact that cannot be served as that family **reject** with
-      `artifact_canvas_presentation_unsupported`. They do not silently
-      downgrade to `unsupported`.
-    - Phase 1 implements all viewer-shaped presentations through the iframe
-      viewer using a content-appropriate sandbox profile (see §Iframe
-      Policy); Phase 2 splits image / pdf / code into dedicated viewers
-      without changing this rule.
-15. `clear_canvas` shall clear the active task's `codeCanvasFocus` and shall
-    require the same active-task precondition as `show_in_canvas`.
+      `artifact_canvas_presentation_unsupported` and no navigate-intent is
+      pushed. They do not silently downgrade.
+    - Phase 1 implements all viewer-shaped presentations through the
+      shared iframe viewer using a content-appropriate sandbox profile
+      (see §Iframe Policy); Phase 2 splits image / pdf / code into
+      dedicated viewers without changing the tool surface.
+15. `clear_canvas` shall push a navigate-intent that pops the
+    `/canvas/:artifactId` child route from the caller's current URL.
+    It records the corresponding Activity audit entry of kind
+    `code_canvas_clear_intent`. It does NOT mutate any product
+    `metadata`.
 16. The renderer shall ignore transcript prose, markdown links, and JSON-looking
-    snippets as canvas commands.
-17. The pane top bar shall show artifact title, resolved presentation, status,
-    close, collapse/expand, refresh, and open-external controls when supported.
+    snippets as canvas commands. The only renderer-side mutation paths
+    for canvas state are: (a) reacting to navigate-intent from the
+    server push channel, (b) explicit user actions (close button →
+    `navigate()` to drop the segment; clicking a sidebar item →
+    `navigate()` to a new artifact id).
+17. The pane top bar shall show artifact title, resolved presentation,
+    status, close, collapse/expand, refresh, and open-external controls
+    when supported. Top-bar styling and layout follow the platform
+    `channelTopBar` / pane-local pattern (see CLAUDE.md §Canvas Top Bar
+    Edge Alignment).
 18. The first viewer shall render only server-approved iframe preview targets.
 19. The renderer shall re-validate the resolved URL scheme and the
     server-emitted iframe sandbox profile before mounting the viewer; a
     mismatch or rejected scheme shall fall back to the metadata / external-link
     state without mounting the iframe.
-20. The Artifacts sidebar and artifact detail route shall continue to work
-    without opening the split pane unless the user or assistant explicitly
-    requests presentation.
+20. The Artifacts sidebar and artifact detail route shall continue to
+    work as before. Sidebar clicks on an artifact navigate the surface
+    to the corresponding `/canvas/:artifactId` child route — they do
+    not require server tool calls because user-driven navigation is
+    URL-only.
 21. Accepted / rejected canvas tool results shall be projected into the
-    persisted assistant turn, matching the `declare_artifact` trace pattern.
+    persisted assistant turn, matching the `declare_artifact` trace
+    pattern. The `code_canvas_show_intent` / `code_canvas_clear_intent`
+    Activity records are the durable audit trail; the projected tool
+    result is the synchronous acknowledgement to the assistant.
 
 ### Non-Functional Requirements
 
@@ -192,55 +278,136 @@ viewer for safe preview URL artifacts. Image, PDF, code viewers, and live
 
 ## Contract
 
-### Canvas Focus Shape
+### Canvas URL Schema and Server Projection
 
-Phase 1 stores focus under `CoreTaskRecord.metadata.codeCanvasFocus`:
+Phase 1 stores **no** "current focus" record. The visible canvas state
+is the URL. The server is the authority for safety policy resolution
+and for assistant-driven navigate-intent.
+
+#### URL schema
+
+The shared child route segment is `/canvas/:artifactId`, mounted under
+each opted-in product surface route. `:artifactId` is the Core artifact
+id. Renderer extracts `:artifactId` from the URL and asks the server
+for its canvas projection.
+
+#### Server projection (read on every URL hit)
 
 ```ts
-interface CodeCanvasFocus {
+interface CodeCanvasProjection {
   schemaVersion: '1.0';
   artifactId: string;
-  presentationRequested: 'auto' | 'iframe' | 'image' | 'pdf' | 'code';
+  artifact: {
+    id: string;
+    title: string;
+    kind: CoreArtifactKind;
+    status: CoreArtifactStatus;
+    summary: string | null;
+    location: { kind: CoreArtifactLocationKind; value: string | null };
+  };
+  // Server's resolved presentation. Even when the URL does not specify
+  // a presentation hint (it doesn't — view-state in the URL is just the
+  // artifactId), the server resolves through the auto pipeline and
+  // returns iframe / image / pdf / code / unsupported plus the sandbox
+  // profile.
   presentationResolved: 'iframe' | 'image' | 'pdf' | 'code' | 'unsupported';
   iframeSandboxProfile: 'static' | 'scripted-cross-origin' | null;
-  // Identifier for the iframe-policy snapshot that produced
-  // iframeSandboxProfile. Lower-case hex string of the first 16 chars of
-  // SHA-256 over the canonicalized policy tuple
-  // (see §Policy Version Canonicalization). Null when the focus was
-  // resolved without consulting the iframe policy
-  // (presentationResolved = 'code' or 'unsupported').
+  // Identifier for the iframe-policy snapshot under which
+  // iframeSandboxProfile was decided. Lower-case hex string, first 16
+  // chars of SHA-256 over the canonicalized policy tuple (see §Policy
+  // Version Canonicalization). Null when iframeSandboxProfile is null.
   policyVersion: string | null;
-  openedAt: string;
-  openedBy: {
-    kind: 'agent' | 'user' | 'system';
-    actorId: string | null;
-    runtimeSessionId: string | null;
-    toolCallId: string | null;
-  };
+  // What the server cannot serve gets its own non-2xx error code (see
+  // §Error Code Registry); the projection response in that case
+  // contains only the error.
 }
 ```
 
-`iframeSandboxProfile` is non-null only when `presentationResolved` is one of
-`iframe`, `image`, or `pdf`; for `code` and `unsupported` it shall be `null`.
-The server is the authority that picks the profile (see §Iframe Policy); the
-renderer shall not upgrade a `static` profile to `scripted-cross-origin`.
+The projection is read-only and idempotent. Reading it does not write
+any record. URLs that reference an unknown / non-Code-relevant /
+unanchored artifact return the corresponding 4xx error from the
+projection endpoint, and the renderer shows the error pane.
 
-`policyVersion` is the projection's primary signal that the iframe policy
-config has not drifted since the focus was resolved. When the projection
-runs and `policyVersion` differs from the server's current iframe policy
-version, the projection shall **demote** the projected
-`iframeSandboxProfile` to `static` for that read (without rewriting the
-stored focus) and surface the demotion to the renderer. A subsequent
-`show_in_canvas` call re-resolves under the current policy. Operators
-changing the allowlist therefore force existing canvases to demote until
-re-pinned, which is the safe default.
+#### Server-pushed navigate-intent (assistant tool effect)
 
-The Code task/detail projection shall expose this as read-only `canvasFocus`.
-Projection code shall drop malformed focus metadata rather than surfacing a
-partial or unsafe pane. The storage location is fixed by
-[ADR-097](../decisions/097-store-code-canvas-focus-on-task-metadata.md);
-do not migrate this state to `CoreConversationRecord.metadata` or a new Core
-record family without superseding that ADR.
+When `show_in_canvas` is accepted, the server publishes an event to the
+ADR-075 per-entity subscription channel keyed by the caller's surface:
+
+```ts
+interface CodeCanvasNavigateIntent {
+  kind: 'code_canvas_navigate_intent';
+  surfaceKind: 'code_task' | 'code_codespace' | 'work_item' | 'work_project' | 'chat_conversation';
+  surfaceId: string;
+  // The full nested-route path the renderer should navigate to. Server
+  // composes this from surfaceKind + surfaceId + '/canvas/:artifactId'
+  // using the per-product route prefix.
+  targetUrl: string;
+  // Mirror of the projection fields, included so the renderer can
+  // optimistically render before fetching the projection.
+  artifactId: string;
+  presentationResolved: 'iframe' | 'image' | 'pdf' | 'code' | 'unsupported';
+  iframeSandboxProfile: 'static' | 'scripted-cross-origin' | null;
+  policyVersion: string | null;
+  // Caller identity for the renderer to display "the agent moved your
+  // canvas to X" affordance if desired (Phase 2).
+  triggeredBy: { kind: 'agent' | 'user' | 'system'; actorId: string | null };
+  triggeredAt: string;
+}
+```
+
+The renderer subscribes to this channel for the active surface and
+responds by calling `navigate(targetUrl)` when it receives an intent.
+It does not auto-navigate without user attention — the server is
+expected to attach this only to user-bound surfaces, and the renderer
+may ignore intents for surfaces that are not currently focused
+(Phase 2 may add an "the agent suggested a canvas — click to open"
+notification instead of forcing navigation).
+
+#### Audit (server-side Activity record)
+
+Each accepted `show_in_canvas` writes one Activity record:
+
+```ts
+{
+  kind: 'code_canvas_show_intent',
+  conversationId, taskId, runId, // anchors per ADR-081
+  metadata: {
+    artifactId,
+    presentationRequested,
+    presentationResolved,
+    iframeSandboxProfile,
+    policyVersion,
+    targetUrl,
+    triggeredBy: { kind, actorId, runtimeSessionId, toolCallId },
+  }
+}
+```
+
+`clear_canvas` writes a sibling `code_canvas_clear_intent` Activity
+record. These records are the durable audit trail. They are not the
+visible state.
+
+#### Notes on policy and authority
+
+`iframeSandboxProfile` is non-null only when `presentationResolved` is
+one of `iframe`, `image`, or `pdf`; for `code` and `unsupported` it
+shall be `null`. The server is the authority that picks the profile
+(see §Iframe Policy); the renderer shall not upgrade a `static` profile
+to `scripted-cross-origin`.
+
+`policyVersion` is the cross-time staleness guard. Because the
+projection is computed on each URL hit, it is naturally always under
+the current `policyVersion`. The persisted Activity records carry the
+`policyVersion` that applied when the assistant requested the canvas;
+those serve as audit evidence ("at the time of the request, this
+profile was applicable"). The renderer trusts whatever the projection
+says now.
+
+The storage location for visible canvas state is the URL.
+`CoreTaskRecord.metadata.codeCanvasFocus` and any sibling per-product
+`metadata` field shall NOT be used for this. ADR-097 is superseded by
+[ADR-098](../decisions/098-url-driven-canvas-and-platform-shared-viewer.md);
+the migration path described here reflects that supersede.
 
 ### Tool: `show_in_canvas`
 
@@ -279,13 +446,17 @@ Validation:
   codespace according to the same anchor rules used by SPEC-092;
 - the caller must be the active Code assistant/session or the authenticated
   owner user;
-- the caller's surface must have an active Code task; calls with no active
-  task are rejected with `artifact_canvas_no_active_task`;
+- the caller's surface must be an active product surface (Code task,
+  Code codespace, Work item, Work project, or Chat conversation
+  depending on the calling product); calls with no active surface are
+  rejected with `artifact_canvas_no_active_surface`;
 - explicit non-`auto` presentation requests that cannot be served against
   the artifact are rejected with `artifact_canvas_presentation_unsupported`;
 - `presentation: 'auto'` requests that find no safe inline target are
-  accepted and resolve to `presentationResolved: 'unsupported'`, opening
-  the metadata-only pane.
+  accepted and resolve to `presentationResolved: 'unsupported'`; the
+  navigate-intent target is the same `/canvas/:artifactId` URL — the
+  pane will mount in metadata-only state because the projection's
+  `presentationResolved` is `unsupported`.
 
 Accepted result:
 
@@ -296,6 +467,11 @@ interface ShowInCanvasAccepted {
   presentationResolved: 'iframe' | 'image' | 'pdf' | 'code' | 'unsupported';
   iframeSandboxProfile: 'static' | 'scripted-cross-origin' | null;
   policyVersion: string | null;
+  // The full URL the renderer was asked to navigate to. Mirrors the
+  // navigate-intent's targetUrl field. Useful for assistants that want
+  // to surface "I asked to show this — link" affordances in the
+  // transcript.
+  targetUrl: string;
 }
 ```
 
@@ -322,21 +498,31 @@ interface ClearCanvasInput {}
 
 Validation:
 
-- active Code task context is required; calls without an active task are
-  rejected with `artifact_canvas_no_active_task`;
+- an active product surface is required; calls without one are
+  rejected with `artifact_canvas_no_active_surface`;
 - agent callers must come from the active runtime session;
 - user callers may clear through the product-internal delegate;
-- `clear_canvas` is idempotent: calling it when no `codeCanvasFocus` is set
-  shall accept and return `cleared: true` without writing task metadata.
+- `clear_canvas` is idempotent: calling it when the caller's URL has
+  no `/canvas/:artifactId` segment shall accept (the pushed
+  navigate-intent simply navigates to the parent surface URL, which
+  is a no-op if already there) and emit no audit churn beyond a
+  single `code_canvas_clear_intent` Activity record.
 
 Accepted result:
 
 ```ts
 interface ClearCanvasAccepted {
   status: 'accepted';
-  cleared: true;
+  // The URL the renderer was asked to navigate to (the parent surface
+  // URL, with the /canvas/:artifactId segment popped). Mirrors the
+  // navigate-intent's targetUrl.
+  targetUrl: string;
 }
 ```
+
+The legacy `cleared: true` boolean from the prior draft is removed —
+"cleared" is no longer a meaningful flag because there is no stored
+focus to clear; the only outcome is "renderer was asked to navigate".
 
 ### Presentation Resolution
 
@@ -694,14 +880,22 @@ The earlier draft asked the renderer to "mirror the matcher" — that was
 overstated. Removing the duplicate-config requirement also removes the
 risk of server / renderer config drift.
 
-The `policyVersion` field on `CodeCanvasFocus` (see §Canvas Focus Shape)
-is the projection-side guard against config drift across time: the
-server publishes its current policy version alongside the projection;
-the projection compares the stored `policyVersion` against the current
-version on every read; a mismatch demotes the projected
-`iframeSandboxProfile` to `static` for that read without rewriting the
-stored focus. The next `show_in_canvas` call re-resolves under the new
-policy and stamps a fresh `policyVersion`.
+`policyVersion` in this URL-driven model serves a different purpose
+than in the superseded ADR-097 design. There is no stored canvas-focus
+record to drift against. Instead, `policyVersion` plays two roles:
+
+- it is included in the read-only canvas projection on every URL hit,
+  so the renderer's optimistic-render path (using the navigate-intent
+  payload) can be checked against the projection's current version on
+  fetch — if they disagree (which only happens when the policy changed
+  between push and fetch), the renderer prefers the projection;
+- it is recorded on each `code_canvas_show_intent` Activity record, so
+  audit reviewers can correlate "the assistant requested presentation
+  under this policy snapshot" with later policy changes.
+
+There is no stored "stale focus" to demote because canvas focus is the
+URL. URL navigation re-fetches the projection, which is always under
+the current policy.
 
 ### Forward Compatibility: Session-Bound Preview Registry (Phase 3)
 
@@ -747,16 +941,43 @@ guard.
 ```text
 assistant output
   -> declare_artifact
-  -> CoreArtifactRecord
-  -> show_in_canvas(artifactId or same-turn declarationId)
-  -> validate artifact/task/session/presentation policy
-  -> CoreTaskRecord.metadata.codeCanvasFocus
-  -> Code projection exposes canvasFocus
-  -> renderer mounts split Artifact Canvas pane
+  -> CoreArtifactRecord (durable domain truth)
+  -> show_in_canvas(artifactId | same-turn declarationId)
+  -> validate artifact / surface / presentation / iframe policy
+  -> write Activity (code_canvas_show_intent) for audit
+  -> push CodeCanvasNavigateIntent over ADR-075 channel
+  -> renderer subscribes, calls navigate(targetUrl)
+  -> URL becomes /<product>/<surface>/:id/canvas/:artifactId
+  -> route remounts shared <CanvasPane> + <IframeViewer> from
+     src/products/shared/renderer/
+  -> viewer fetches /api/canvas/:artifactId projection
+  -> projection returns iframeSandboxProfile + policyVersion + artifact
+  -> iframe renders under server-decided sandbox profile
 ```
 
-The canvas tools are presentation tools, not artifact creation tools. They do
-not bypass `declare_artifact`, and they do not scan the filesystem.
+User flow (no server tool involved):
+
+```text
+user clicks artifact in sidebar
+  -> renderer navigate('/code/tasks/X/canvas/art_abc')
+  -> route remounts shared <CanvasPane>
+  -> viewer fetches projection
+  -> iframe renders
+
+user clicks Close (X)
+  -> renderer navigate('/code/tasks/X')
+  -> route remounts without canvas pane
+  -> no server call
+
+user clicks Collapse
+  -> renderer setState({collapsed: true}); persist to localStorage
+  -> URL unchanged; pane visually hidden; no server call
+```
+
+The canvas tools are presentation-intent tools, not artifact creation
+tools and not URL writers — they nudge the renderer to navigate. They
+do not bypass `declare_artifact`, do not scan the filesystem, and do
+not mutate any product `metadata`.
 
 ### Error Code Registry
 
@@ -770,10 +991,10 @@ reference these codes instead of inventing local aliases.
 | `artifact_canvas_identity_conflict` | Both `artifactId` and `declarationId` are supplied. |
 | `artifact_canvas_declaration_unknown` | `declarationId` does not match any entry in the current turn's declaration index under the caller's `(turnId, producerKey, scopeKey, declarationId)` key — covers the "no accepted declaration this turn", "id only seen in a prior turn", and "id only seen under a different scope (e.g. a different runtime session)" cases uniformly. |
 | `artifact_canvas_declaration_producer_mismatch` | A declaration with that id exists in the current turn under the caller's scope but under a different producer's `producerKey`. Callers who need to present a foreign-producer declaration must pass `artifactId` instead. |
-| `artifact_canvas_declaration_collision` | The processor has observed accepted `declare_artifact` results sharing the same `(turnId, producerKey, scopeKey, declarationId)` key but resolving to **different** materialized `artifactId` values. This indicates a SPEC-092 idempotency invariant violation upstream and must hard-reject; the canvas focus shall not be written. |
+| `artifact_canvas_declaration_collision` | The processor has observed accepted `declare_artifact` results sharing the same `(turnId, producerKey, scopeKey, declarationId)` key but resolving to **different** materialized `artifactId` values. This indicates a SPEC-092 idempotency invariant violation upstream and must hard-reject; no Activity record or navigate-intent is emitted. |
 | `artifact_canvas_artifact_not_found` | `artifactId` does not resolve to a Code-relevant `CoreArtifactRecord`. |
-| `artifact_canvas_artifact_not_anchored` | The resolved artifact is not anchored to the active task, run, conversation, or codespace. |
-| `artifact_canvas_no_active_task` | The caller's surface has no active Code task; canvas focus cannot be set or cleared. |
+| `artifact_canvas_artifact_not_anchored` | The resolved artifact is not anchored to the active surface (Code task / Code codespace / Work item / Work project / Chat conversation), per the same anchor rules SPEC-092 uses for declaration. |
+| `artifact_canvas_no_active_surface` | The caller has no active product surface (Code task, Code codespace, Work item, Work project, or Chat conversation). Canvas tools require a surface to compose the navigate-intent target URL against. |
 | `artifact_canvas_caller_not_authorized` | The caller is neither the active Code assistant/session nor the authenticated owner user. |
 | `artifact_canvas_presentation_invalid` | `presentation` is not one of `auto`, `iframe`, `image`, `pdf`, `code` (in particular, `'unsupported'` as input is rejected here). |
 | `artifact_canvas_presentation_unsupported` | An **explicit** `iframe` / `image` / `pdf` / `code` request cannot be served against the artifact (no safe inline target, no usable inline summary, etc.). `presentation: 'auto'` never raises this — it accepts and resolves to the `unsupported` pane state instead. |
@@ -801,18 +1022,32 @@ above.
 - [SPEC-091](./SPEC-091-cats-code-workspace-and-artifact-sidebar.md)
 - [SPEC-020](./SPEC-020-embedded-preview-surfaces-for-runtime-artifacts-and-services.md)
 - [ADR-019](../decisions/019-normalize-runtime-previews-as-surfaces-not-provider-iframes.md)
+- [ADR-075](../decisions/075-adopt-push-based-per-entity-state-subscription.md) — push channel that carries `code_canvas_navigate_intent`
+- [ADR-081](../decisions/081-canonicalize-three-tier-core-record-taxonomy.md) — Materialization-tier framing for `Activity` audit records
 - [ADR-088](../decisions/088-use-structured-artifact-declarations-for-code-materialization.md)
-- [ADR-097](../decisions/097-store-code-canvas-focus-on-task-metadata.md)
+- [ADR-097](../decisions/097-store-code-canvas-focus-on-task-metadata.md) — superseded by ADR-098
+- [ADR-098](../decisions/098-url-driven-canvas-and-platform-shared-viewer.md) — URL-driven canvas + platform-shared viewer
+- [`platform-viewer-policy.md`](../platform-viewer-policy.md)
 - [Tool Call Registry](../tool-calls.md)
 - [Research note](../research/2026-04-30-cats-code-split-canvas-artifact-panel.md)
 
 ## Resolved Questions
 
-- **Scope of canvas focus**: task-scoped under
-  `CoreTaskRecord.metadata.codeCanvasFocus`. See
-  [ADR-097](../decisions/097-store-code-canvas-focus-on-task-metadata.md).
-- **Manual close semantics**: explicit two-control model (`Close` writes
-  through `clear_canvas`; `Collapse / expand` is renderer-only). See FR7.
+- **Visible canvas state location**: URL nested child route
+  `/canvas/:artifactId` under each opted-in product surface. The server
+  stores no "current focus" record. See ADR-098 and FR1-3.
+- **Scope of canvas focus (legacy)**: ADR-097 originally scoped focus
+  to `CoreTaskRecord.metadata.codeCanvasFocus`. ADR-098 supersedes
+  that — visible state is the URL, audit lives in Activity records.
+- **Cross-product viewing**: same `<CanvasPane>` platform component
+  mounts under Code / Work / Chat surfaces via the shared
+  `/canvas/:artifactId` child route. One safety policy, one viewer
+  registry. See FR4 and `platform-viewer-policy.md`.
+- **Manual close semantics**: Close = renderer-only `navigate()` that
+  pops the `/canvas/:artifactId` segment. No server call. Collapse =
+  renderer-only ephemeral toggle (does not change URL). The earlier
+  "Close calls `clear_canvas` delegate" model from the superseded
+  ADR-097 draft is gone. See FR7.
 - **Phase 1 image / PDF rendering**: served through the iframe viewer with
   the `static` sandbox profile so they remain visible without `allow-scripts`;
   Phase 2 replaces the iframe fallback with dedicated viewers. See
@@ -864,9 +1099,10 @@ above.
 - **Renderer authority boundary**: renderer does NOT receive the
   allowlists or re-run the matcher; it re-runs only the cheap
   config-free defense-in-depth checks (scheme allowlist, profile-name
-  validity, same-origin-with-shell short-circuit). `policyVersion` on
-  `CodeCanvasFocus` guards against config drift across time. See
-  §Policy Version and Renderer Authority Boundary.
+  validity, same-origin-with-shell short-circuit). The renderer
+  fetches the canvas projection on every URL hit, so it always sees
+  the current `policyVersion`. See §Policy Version and Renderer
+  Authority Boundary.
 - **Credential URL handling**: hard reject with
   `artifact_canvas_url_credentials_not_allowed`, never demote. Mirrors
   SPEC-092 at the canvas boundary so credentials never reach iframe
@@ -874,10 +1110,17 @@ above.
 
 ## Open Questions
 
-- [ ] Should Phase 2 add a route query override so users can temporarily inspect
-      a sidebar artifact without changing task-scoped focus?
-- [ ] Should canvas focus changes also append `CoreActivityRecord` rows, or is
-      the persisted tool trace enough for Phase 1 audit?
+- [ ] Should the navigate-intent push include a "soft suggest" mode
+      where the renderer shows a notification ("the agent suggested a
+      canvas — click to open") instead of force-navigating? Phase 1
+      auto-navigates; Phase 2 may add the soft mode for surfaces where
+      the user is in the middle of typing or scrolled away.
+- [ ] Telemetry for user-driven canvas open / close (sidebar clicks,
+      Close button) — currently invisible to the server because those
+      paths are pure renderer `navigate()`. If audit / product
+      analytics need this, add a thin client → `/api/canvas/telemetry`
+      ping that records an Activity record without affecting visible
+      state. Phase 1 keeps user actions silent; Phase 2 may opt in.
 
 ---
 

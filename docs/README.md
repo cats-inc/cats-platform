@@ -30,6 +30,7 @@ These important documents live in the project root:
 | [product-integration-guide.md](./product-integration-guide.md) | Complete | Product registration plus unified engine, materialization, agent/transport vocabulary, conversational-vs-operational projection rules, `MY CATS` platform-home/subset rules, and optional-capability integration rules for parallel Chat/Work/Code delivery |
 | [agent-control-surfaces.md](./agent-control-surfaces.md) | Draft | Parent registry for mandatory structured agent/runtime control surfaces: decision envelopes, tool calls, finalization envelopes, lifecycle events, and evidence events |
 | [tool-calls.md](./tool-calls.md) | Draft | Central registry for Cats-owned agent/runtime tool call contracts, including `declare_artifact`, `show_in_canvas`, and `clear_canvas` |
+| [platform-viewer-policy.md](./platform-viewer-policy.md) | Active | Policy for when Core-tier entities get a platform-shared viewer with URL-addressable nested-route mount, and the entity viewer-ownership table |
 | [security-guidelines.md](./security-guidelines.md) | Template | Security policies placeholder inherited from bootstrap |
 | [mcp-config.md](./mcp-config.md) | Partial | Planning notes for the future `cats-runtime` MCP facade used by orchestrators |
 | [services.md](./services.md) | Complete | Service registry, port assignments, and shared service-boundary notes |
@@ -58,7 +59,9 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
-- [ADR-097](./decisions/097-store-code-canvas-focus-on-task-metadata.md)
+- [ADR-098](./decisions/098-url-driven-canvas-and-platform-shared-viewer.md)
+- [platform-viewer-policy](./platform-viewer-policy.md)
+- [ADR-097](./decisions/097-store-code-canvas-focus-on-task-metadata.md) — superseded by ADR-098
 - [PLAN-090](./plans/PLAN-090-cats-code-artifact-canvas-rollout.md)
 - [SPEC-101](./specs/SPEC-101-cats-code-artifact-canvas.md)
 - [PLAN-089](./plans/PLAN-089-platform-authentication-and-google-identity-rollout.md)
