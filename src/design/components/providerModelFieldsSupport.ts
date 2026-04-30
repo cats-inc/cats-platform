@@ -27,6 +27,7 @@ import {
   rememberExecutionLabel,
   resolveControlDisplayLabels,
 } from '../../shared/executionLabel.js';
+import { messageKeys, type MessageKey } from '../../shared/i18n/index.js';
 
 export const PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS = 30_000;
 
@@ -319,14 +320,20 @@ export const CUSTOM_LEGACY_MODEL_VALUE = '__custom_legacy_model__';
 export function resolveProviderSupportBadge(
   supportTier: ProviderAdvancedModelCatalog['support']['tier'] | null | undefined,
 ): {
-  label: string;
+  labelKey: MessageKey;
   tone: 'advanced' | 'readOnly';
 } | null {
   if (supportTier === 'full') {
-    return { label: 'Advanced', tone: 'advanced' };
+    return {
+      labelKey: messageKeys.sharedProviderModelSupportAdvanced,
+      tone: 'advanced',
+    };
   }
   if (supportTier === 'read_only') {
-    return { label: 'Read-only', tone: 'readOnly' };
+    return {
+      labelKey: messageKeys.sharedProviderModelSupportReadOnly,
+      tone: 'readOnly',
+    };
   }
   return null;
 }
@@ -745,7 +752,7 @@ export function resolveProviderModelFieldsViewState(input: {
   requestScopedControlCount: number;
   controlValues: Record<string, ProviderAdvancedControlValue>;
   supportBadge: {
-    label: string;
+    labelKey: MessageKey;
     tone: 'advanced' | 'readOnly';
   } | null;
   selectedEntryNotes: string[];

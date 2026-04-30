@@ -118,7 +118,7 @@ export function useSettingsCatsRegistryActions(options: {
 
   async function onDeleteCat(catId: string, catName: string): Promise<void> {
     const confirmed = confirmDialog
-      ? await confirmDialog(buildDeleteCatConfirmation(catName))
+      ? await confirmDialog(buildDeleteCatConfirmation(catName, t))
       : true;
     if (!confirmed) return;
     await onDeleteCatBase(catId, catName);

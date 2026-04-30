@@ -329,8 +329,9 @@ export function resolveTranscriptMessageSpeaker(
     ? TChannel extends { messages: ReadonlyArray<infer TMessage> } ? TMessage : never
     : never,
   cats: ChatCat[],
+  t: ChatUtilsTranslator = defaultChatUtilsTranslator,
 ): TranscriptMessageSpeaker {
-  return resolveWorkspaceTranscriptMessageSpeaker(message, cats);
+  return resolveWorkspaceTranscriptMessageSpeaker(message, cats, t);
 }
 
 export function createDraftChannelTitle(body: string, existingCount: number): string {

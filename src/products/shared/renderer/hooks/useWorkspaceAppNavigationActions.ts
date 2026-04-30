@@ -424,7 +424,7 @@ export function useWorkspaceAppNavigationActions<
         )
       : fallbackGroupTitle;
     const confirmed = confirmDialog
-      ? await confirmDialog(buildDeleteParallelChatGroupConfirmation(groupTitle))
+      ? await confirmDialog(buildDeleteParallelChatGroupConfirmation(groupTitle, t))
       : true;
     if (!confirmed) return;
 
@@ -470,7 +470,7 @@ export function useWorkspaceAppNavigationActions<
       ? (state.payload.chat.cats?.find((cat) => cat.id === catId)?.name ?? null)
       : null;
     const confirmed = confirmDialog
-      ? await confirmDialog(buildDeleteCatConfirmation(catName))
+      ? await confirmDialog(buildDeleteCatConfirmation(catName, t))
       : true;
     if (!confirmed) return;
     setBusy(createCatBusyState('delete', catId));

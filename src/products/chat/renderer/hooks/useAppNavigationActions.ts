@@ -195,10 +195,10 @@ export function useAppNavigationActions(options: {
 
   const onDeleteParallelChatGroup = useCallback(async (groupId: string): Promise<void> => {
     const groupTitle = state.status === 'ready'
-      ? (state.payload.chat.parallelChatGroups.find((group) => group.id === groupId)?.title ?? 'this parallel chat')
-      : 'this parallel chat';
+      ? (state.payload.chat.parallelChatGroups.find((group) => group.id === groupId)?.title ?? null)
+      : null;
     const confirmed = confirmDialog
-      ? await confirmDialog(buildDeleteParallelChatGroupConfirmation(groupTitle))
+      ? await confirmDialog(buildDeleteParallelChatGroupConfirmation(groupTitle, t))
       : true;
     if (!confirmed) return;
 
@@ -216,7 +216,7 @@ export function useAppNavigationActions(options: {
     } finally {
       setBusy(clearBusyState());
     }
-  }, [confirmDialog, navigate, setAddCatOpen, setBusy, setFeedback, setState, state]);
+  }, [confirmDialog, navigate, setAddCatOpen, setBusy, setFeedback, setState, state, t]);
 
   const onArchiveCat = useCallback(async (catId: string): Promise<void> => {
     const catName = state.status === 'ready'

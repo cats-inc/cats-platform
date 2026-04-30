@@ -357,7 +357,7 @@ export function ProviderModelFields({
           <span>{t(messageKeys.sharedProviderModelFieldModelLabel)}</span>
           {supportBadge ? (
             <span className={`providerSupportBadge providerSupportBadge${supportBadge.tone}`}>
-              {supportBadge.label}
+              {t(supportBadge.labelKey)}
             </span>
           ) : null}
         </div>

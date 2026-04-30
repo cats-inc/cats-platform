@@ -4,14 +4,16 @@ import {
   DEFAULT_DRAFT_PERMISSION_MODE,
   type DraftPermissionMode,
 } from '../../../../shared/runtimeSessionPolicy.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
 export type PermissionMode = DraftPermissionMode;
 
 export const DEFAULT_PERMISSION_MODE: PermissionMode = DEFAULT_DRAFT_PERMISSION_MODE;
 
-const PERMISSION_MODE_LABELS: Record<PermissionMode, string> = {
-  full: 'Full access',
-  read_only: 'Read only',
+const PERMISSION_MODE_LABEL_KEYS: Record<PermissionMode, keyof typeof messageKeys> = {
+  full: 'sharedPermissionModeFullAccess',
+  read_only: 'sharedPermissionModeReadOnly',
 };
 
 const PERMISSION_MODE_ORDER: readonly PermissionMode[] = ['full', 'read_only'];
@@ -23,6 +25,7 @@ export interface PermissionModeChipProps {
 }
 
 export function PermissionModeChip({ value, onChange, disabled }: PermissionModeChipProps) {
+  const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -61,7 +64,7 @@ export function PermissionModeChip({ value, onChange, disabled }: PermissionMode
         <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M8 1.5l5.5 2v4c0 3.3-2.4 6.2-5.5 7-3.1-.8-5.5-3.7-5.5-7v-4z" />
         </svg>
-        <span>{PERMISSION_MODE_LABELS[value]}</span>
+        <span>{t(messageKeys[PERMISSION_MODE_LABEL_KEYS[value]])}</span>
         <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
           <path d="M2.5 4 5 6.5 7.5 4" />
         </svg>
@@ -89,7 +92,7 @@ export function PermissionModeChip({ value, onChange, disabled }: PermissionMode
                     </svg>
                   ) : null}
                 </span>
-                <span>{PERMISSION_MODE_LABELS[mode]}</span>
+                <span>{t(messageKeys[PERMISSION_MODE_LABEL_KEYS[mode]])}</span>
               </button>
             );
           })}

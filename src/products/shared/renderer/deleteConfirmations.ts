@@ -1,8 +1,22 @@
+import {
+  createTranslator,
+  messageKeys,
+  type MessageInterpolationValues,
+  type MessageKey,
+} from '../../../shared/i18n/index.js';
+
 export interface DeleteConfirmationCopy {
   title: string;
   message: string;
   confirmLabel: string;
 }
+
+type DeleteConfirmationTranslator = (
+  key: MessageKey,
+  values?: MessageInterpolationValues,
+) => string;
+
+const defaultDeleteConfirmationTranslator = createTranslator('en');
 
 function readEntityLabel(value: string | null | undefined, fallback: string): string {
   const trimmed = value?.trim();
@@ -11,26 +25,29 @@ function readEntityLabel(value: string | null | undefined, fallback: string): st
 
 export function buildDeleteParallelChatGroupConfirmation(
   groupTitle?: string | null,
+  t: DeleteConfirmationTranslator = defaultDeleteConfirmationTranslator,
 ): DeleteConfirmationCopy {
-  const label = readEntityLabel(groupTitle, 'this parallel chat');
+  const label = readEntityLabel(
+    groupTitle,
+    t(messageKeys.sharedDeleteParallelChatGroupFallback),
+  );
   return {
-    title: 'Delete all conversations',
-    message: `Delete all conversations in "${label}"? `
-      + 'This removes each conversation and cleans up linked runtime sessions. '
-      + 'This cannot be undone.',
-    confirmLabel: 'Delete all',
+    title: t(messageKeys.sharedDeleteParallelChatGroupTitle),
+    message: t(messageKeys.sharedDeleteParallelChatGroupMessage, {
+      groupTitle: label,
+    }),
+    confirmLabel: t(messageKeys.sharedDeleteParallelChatGroupConfirm),
   };
 }
 
 export function buildDeleteCatConfirmation(
   catName?: string | null,
+  t: DeleteConfirmationTranslator = defaultDeleteConfirmationTranslator,
 ): DeleteConfirmationCopy {
-  const label = readEntityLabel(catName, 'this cat');
+  const label = readEntityLabel(catName, t(messageKeys.sharedDeleteCatFallback));
   return {
-    title: 'Delete cat',
-    message: `Delete "${label}"? This removes the Cat `
-      + 'and cleans up linked runtime sessions. '
-      + 'This cannot be undone.',
-    confirmLabel: 'Delete',
+    title: t(messageKeys.sharedDeleteCatTitle),
+    message: t(messageKeys.sharedDeleteCatMessage, { catName: label }),
+    confirmLabel: t(messageKeys.sharedDeleteCatConfirm),
   };
 }

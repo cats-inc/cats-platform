@@ -1,13 +1,20 @@
 import type { ReactNode } from 'react';
 
-import { platformSurfaceLabel } from '../../../../core/platformSurface.js';
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
 export interface ComposerSurfaceChipProps {
   surface: PlatformSurfaceId;
   onDismiss?: () => void;
   disabled?: boolean;
 }
+
+const SURFACE_LABEL_KEYS: Record<PlatformSurfaceId, keyof typeof messageKeys> = {
+  chat: 'sharedComposerSurfaceLabelChat',
+  work: 'sharedComposerSurfaceLabelWork',
+  code: 'sharedComposerSurfaceLabelCode',
+};
 
 function renderSurfaceIcon(surface: PlatformSurfaceId): ReactNode {
   const common = {
@@ -45,7 +52,8 @@ function renderSurfaceIcon(surface: PlatformSurfaceId): ReactNode {
 }
 
 export function ComposerSurfaceChip({ surface, onDismiss, disabled = false }: ComposerSurfaceChipProps) {
-  const label = platformSurfaceLabel(surface);
+  const { t } = useI18n();
+  const label = t(messageKeys[SURFACE_LABEL_KEYS[surface]]);
   return (
     <span className={`composerSurfaceChip composerSurfaceChip${capitalize(surface)}`}>
       {renderSurfaceIcon(surface)}
@@ -56,7 +64,9 @@ export function ComposerSurfaceChip({ surface, onDismiss, disabled = false }: Co
           className="composerChipClose"
           disabled={disabled}
           onClick={onDismiss}
-          aria-label={`Clear ${label} surface`}
+          aria-label={t(messageKeys.sharedComposerSurfaceClearAria, {
+            surfaceLabel: label,
+          })}
         >
           &times;
         </button>

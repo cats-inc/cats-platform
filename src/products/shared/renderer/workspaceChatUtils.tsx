@@ -148,6 +148,7 @@ function normalizeTranscriptSenderName(
 export function resolveTranscriptMessageSpeaker(
   message: ChatMessage,
   cats: ChatCat[],
+  t: WorkspaceChatTranslator = defaultWorkspaceChatTranslator,
 ): TranscriptMessageSpeaker {
   if (message.senderKind === 'user' || message.senderKind === 'system') {
     return { kind: 'none', label: null, cat: null };
@@ -175,7 +176,7 @@ export function resolveTranscriptMessageSpeaker(
     }
     return {
       kind: 'deleted_cat',
-      label: 'Deleted Cat',
+      label: t(messageKeys.sharedTranscriptDeletedCat),
       cat: null,
     };
   }

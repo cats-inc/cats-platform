@@ -116,11 +116,11 @@ export function TranscriptMessageItem({
   resolveParticipantDisplayName,
   showSpeakerHeader = true,
 }: TranscriptMessageItemProps) {
-  const speaker = resolveTranscriptMessageSpeaker(message, cats);
+  const { t } = useI18n();
+  const speaker = resolveTranscriptMessageSpeaker(message, cats, t);
   const transcriptParticipant = resolveMessageParticipant(message);
   const transcriptParticipantCat = resolveParticipantCatRecord(transcriptParticipant);
   const resolvedExtraActions: TranscriptMessageActionDescriptor[] = [...extraActions];
-  const { t } = useI18n();
 
   if (message.senderKind === 'user' && userTurnStatus === 'failed' && onRetryMessage) {
     resolvedExtraActions.push({
