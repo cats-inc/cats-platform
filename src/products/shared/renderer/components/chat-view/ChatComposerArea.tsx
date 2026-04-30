@@ -14,6 +14,8 @@ import { ComposerHighlight } from '../ComposerHighlight.js';
 import type { ComposerStackParticipant } from '../ComposerParticipantStack.js';
 import type { RecipientChipTarget } from '../ComposerRecipientChip.js';
 import { ChatComposerTargetSlot } from './ChatComposerTargetSlot.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
 export interface ChatComposerAreaProps {
   hasConversationStarted: boolean;
@@ -151,6 +153,23 @@ export function ChatComposerArea({
     }
     return classes.join(' ');
   })();
+  const { t } = useI18n();
+  const composerPlaceholder = compareBusy
+    ? t(messageKeys.chatComposerAreaPlaceholderParallelWaiting)
+    : hasConversationStarted
+      ? t(messageKeys.chatComposerAreaPlaceholderReply)
+      : t(messageKeys.chatNewChatDraftComposerPlaceholder);
+  const voiceInputLabel = voiceInputListening
+    ? t(
+      messageKeys.chatNewChatDraftStopVoiceInputAria,
+      { privacyMessageSuffix: voiceInputPrivacyMessage ?? '' },
+    )
+    : t(messageKeys.chatNewChatDraftStartVoiceInputAria);
+  const sendLabel = compareSendScope === 'all_members'
+    ? t(messageKeys.chatNewChatDraftSendAllChatsAria)
+    : t(messageKeys.chatComposerAreaSendToThisChatAria);
+  const composerStopLabel = t(messageKeys.chatComposerAreaStopButtonLabel);
+  const switchSendModeLabel = t(messageKeys.chatComposerAreaSwitchSendModeLabel);
 
   return (
     <div className={stackClassName}>
@@ -194,7 +213,7 @@ export function ChatComposerArea({
         <button
           className="scrollToBottomButton"
           type="button"
-          aria-label="Scroll to latest"
+          aria-label={t(messageKeys.chatComposerAreaScrollToLatestAria)}
           onClick={onScrollToBottom}
         >
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -239,7 +258,7 @@ export function ChatComposerArea({
           })}
         </div>
       ) : null}
-      <div className="composerInputWrapper">
+        <div className="composerInputWrapper">
         <ComposerHighlight
           text={composerDraft}
           cats={payload.chat.cats}
@@ -249,7 +268,7 @@ export function ChatComposerArea({
           ref={textareaRef}
           className="composerInput composerInputOverlay"
           rows={1}
-          placeholder={compareBusy ? 'Waiting for parallel replies...' : hasConversationStarted ? 'Reply...' : 'How can I help you today?'}
+          placeholder={composerPlaceholder}
           value={composerDraft}
           disabled={composerBusy}
           onChange={(event) => {
@@ -265,7 +284,7 @@ export function ChatComposerArea({
             <button
               className="composerPlusButton"
               type="button"
-              aria-label="Attach"
+              aria-label={t(messageKeys.chatComposerAreaAttachAria)}
               disabled={composerBusy}
               onClick={onToggleChannelPlusMenu}
             >
@@ -287,7 +306,7 @@ export function ChatComposerArea({
                     <path d="M8 2v8" />
                     <path d="M4 6l4-4 4 4" />
                   </svg>
-                  Add photos and files
+                  {t(messageKeys.chatNewChatDraftAddPhotosAndFiles)}
                 </button>
                 {onTakeScreenshot ? (
                   <button
@@ -300,7 +319,7 @@ export function ChatComposerArea({
                       <path d="M5 3.5l1-1h4l1 1h2a1 1 0 0 1 1 1v7.5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V4.5a1 1 0 0 1 1-1h2z" />
                       <circle cx="8" cy="8.5" r="2.5" />
                     </svg>
-                    Take screenshot
+                    {t(messageKeys.chatNewChatDraftTakeScreenshot)}
                   </button>
                 ) : null}
               </div>
@@ -329,11 +348,7 @@ export function ChatComposerArea({
             <button
               className={`composerPlusButton composerVoiceButton${voiceInputListening ? ' composerVoiceButtonActive' : ''}`}
               type="button"
-              aria-label={
-                voiceInputListening
-                  ? `Stop voice input${voiceInputPrivacyMessage ? `. ${voiceInputPrivacyMessage}` : ''}`
-                  : 'Start voice input'
-              }
+              aria-label={voiceInputLabel}
               aria-pressed={voiceInputListening}
               title={voiceInputPrivacyMessage ?? undefined}
               disabled={composerBusy}
@@ -354,7 +369,7 @@ export function ChatComposerArea({
             <button
               className="composerSendButton composerCancelButton"
               type="button"
-              aria-label="Cancel send"
+              aria-label={t(messageKeys.chatNewChatDraftCancelSendAria)}
               onClick={() => onCancelPendingSend?.()}
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden="true">
@@ -367,7 +382,7 @@ export function ChatComposerArea({
               className="composerSendButton composerStopButton"
               disabled={stopBusy}
               type="button"
-              aria-label="Stop"
+              aria-label={composerStopLabel}
               onClick={() => void onStopMessage?.()}
             >
               <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
@@ -380,7 +395,7 @@ export function ChatComposerArea({
                 className="composerSplitSendMain"
                 disabled={!hasSendableContent || composerBusy || compareBusy}
                 type="submit"
-                aria-label={compareSendScope === 'all_members' ? 'Send to all chats' : 'Send to this chat'}
+                aria-label={sendLabel}
               >
                 {compareSendScope === 'all_members' ? (
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -397,7 +412,7 @@ export function ChatComposerArea({
               <button
                 className="composerSplitSendToggle"
                 type="button"
-                aria-label="Switch send mode"
+                aria-label={switchSendModeLabel}
                 onClick={() => onCompareSendScopeChange?.(compareSendScope === 'all_members' ? 'active_only' : 'all_members')}
               >
                 <svg width="8" height="8" viewBox="0 0 8 8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
@@ -410,7 +425,7 @@ export function ChatComposerArea({
               className="composerSendButton"
               disabled={!hasSendableContent || composerBusy || compareBusy}
               type="submit"
-              aria-label="Send"
+              aria-label={t(messageKeys.chatNewChatDraftSendAria)}
             >
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M8 13V3" />

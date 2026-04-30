@@ -1106,6 +1106,13 @@ export const enCatalog: MessageCatalog = {
   'chat.newChatDraft.startVoiceInputAria': 'Start voice input',
   'chat.newChatDraft.stopVoiceInputAria':
     'Stop voice input{privacyMessageSuffix}',
+  'chat.composerArea.attachAria': 'Attach',
+  'chat.composerArea.placeholderParallelWaiting': 'Waiting for parallel replies...',
+  'chat.composerArea.placeholderReply': 'Reply...',
+  'chat.composerArea.scrollToLatestAria': 'Scroll to latest',
+  'chat.composerArea.stopButtonLabel': 'Stop',
+  'chat.composerArea.switchSendModeLabel': 'Switch send mode',
+  'chat.composerArea.sendToThisChatAria': 'Send to this chat',
   'chat.activityEyebrow': 'Activity',
   'chat.activityLatestUpdatesHeading': 'Latest updates',
   'chat.activityEmptyState': 'Activity appears here when the room starts moving.',
