@@ -1369,7 +1369,23 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.operator.noTraceRecords': '本次執行尚無軌跡紀錄。',
   'shared.common.apply': '套用',
   'shared.common.cancel': '取消',
+  'shared.common.close': '關閉',
   'shared.common.retry': '重試',
+  'shared.guideCat.panelGreeting':
+    '嗨 {ownerDisplayName}，我是 {guideCatName}，你的導覽貓。可以點這些項目開始，或關閉面板自己探索吧。',
+  'shared.guideCat.welcomeGreeting':
+    '歡迎，{ownerDisplayName}。我是你的導覽貓。這裡有一些你可以先嘗試的功能。',
+  'shared.guideCat.welcomeStartChat': '先開始一則聊天',
+  'shared.guideCat.welcomeMeetCats': '認識你的貓',
+  'shared.guideCat.welcomeExploreProducts': '探索產品',
+  'shared.guideCat.welcomeHideNow': '先隱藏',
+  'shared.guideCat.pillDisableLabel': '停用導覽貓',
+  'shared.guideCat.dialog.disableTitle': '停用 {guideCatName}？',
+  'shared.guideCat.dialog.disableMessage':
+    '這會關閉 {guideCatName} 的導覽幫助。若只是想先藏起來，可先將其收進側欄。你隨時可以回到「設定」>「助手」重新開啟。',
+  'shared.guideCat.dialog.disableConfirm': '停用',
+  'shared.guideCat.dialog.keepEnabled': '保留啟用',
+  'shared.guideCat.dialog.dockNow': '立即收合',
   'shared.imageUpload.clickHint': '點擊以選擇圖片',
   'shared.imageUpload.dragHint': '拖曳來移動畫面，滾動可縮放',
   'shared.settingsCatsRegistry.sectionLabel': '註冊表',

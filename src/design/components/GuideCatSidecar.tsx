@@ -25,6 +25,8 @@ import {
 } from '../../app/renderer/GuideCatPlacementProvider.js';
 import { resolveGuideCatSurfaceClass } from '../../app/renderer/guideCatPlacement.js';
 import { useGuideCatUiPrefs } from '../../app/renderer/guideCatUiPrefsStore.js';
+import { useI18n } from '../../app/renderer/i18n/useI18n.js';
+import { messageKeys, type MessageKey } from '../../shared/i18n/index.js';
 
 import {
   buildCatTooltip,
@@ -86,6 +88,7 @@ export function CollapsedPill({
   className?: string;
   dragging?: boolean;
 }) {
+  const { t } = useI18n();
   const displayName = resolveClientGuideCatName();
   return (
     <div
@@ -112,7 +115,7 @@ export function CollapsedPill({
           type="button"
           className="guideCatPillDismiss"
           onClick={(e: ReactMouseEvent) => { e.stopPropagation(); onDismissClick(); }}
-          aria-label="Disable guide cat"
+          aria-label={t(messageKeys.sharedGuideCatPillDisableLabel)}
         >
           &#x2715;
         </button>
@@ -140,32 +143,59 @@ function WelcomePeek({
    * pill in the lobby top-bar dock slot. */
   anchor?: GuideCatPeekAnchor;
 }) {
+  const { t } = useI18n();
+
   return (
     <div
       className={`guideCatPeek guideCatPeek--${anchor}`}
       style={style}
     >
       <p className="guideCatPeekGreeting">
-        Welcome, {ownerDisplayName}. I&rsquo;m your guide cat.
-        Here are some things to get you started.
+        {t(messageKeys.sharedGuideCatWelcomeGreeting, { ownerDisplayName })}
       </p>
       <div className="guideCatPeekActions">
-        <button type="button" className="guideCatPeekAction" onClick={() => onAction('/chat/new')}>
-          Start first chat
-        </button>
-        <button type="button" className="guideCatPeekAction" onClick={() => onAction('/settings/cats')}>
-          Meet your cats
-        </button>
-        <button type="button" className="guideCatPeekAction" onClick={() => onAction('/lobby')}>
-          Explore products
-        </button>
+        <GuideCatActionButton
+          route="/chat/new"
+          onAction={onAction}
+          labelKey={messageKeys.sharedGuideCatWelcomeStartChat}
+        />
+        <GuideCatActionButton
+          route="/settings/cats"
+          onAction={onAction}
+          labelKey={messageKeys.sharedGuideCatWelcomeMeetCats}
+        />
+        <GuideCatActionButton
+          route="/lobby"
+          onAction={onAction}
+          labelKey={messageKeys.sharedGuideCatWelcomeExploreProducts}
+        />
       </div>
       {onDismiss ? (
         <button type="button" className="guideCatPeekDismiss" onClick={onDismiss}>
-          Hide for now
+          {t(messageKeys.sharedGuideCatWelcomeHideNow)}
         </button>
       ) : null}
     </div>
+  );
+}
+
+function GuideCatActionButton({
+  route,
+  onAction,
+  labelKey,
+  className = 'guideCatPeekAction',
+}: {
+  route: string;
+  onAction: (route: string) => void;
+  labelKey: MessageKey;
+  className?: string;
+}) {
+  const { t } = useI18n();
+
+  return (
+    <button type="button" className={className} onClick={() => onAction(route)}>
+      {t(labelKey)}
+    </button>
   );
 }
 
@@ -186,6 +216,7 @@ function OpenPanel({
   style?: CSSProperties;
   surfaceMode: GuideCatSidecarSurfaceMode;
 }) {
+  const { t } = useI18n();
   const displayName = resolveClientGuideCatName();
   return (
     <div
@@ -199,25 +230,41 @@ function OpenPanel({
       <div className="guideCatPanelHeader" data-tooltip={tooltip} data-tooltip-delay="1000">
         <GuideCatAvatar className="guideCatPanelAvatar" />
         <span className="guideCatPanelName">{displayName}</span>
-        <button type="button" className="guideCatPanelClose" onClick={onClose} aria-label="Close">
+        <button
+          type="button"
+          className="guideCatPanelClose"
+          onClick={onClose}
+          aria-label={t(messageKeys.sharedCommonClose)}
+        >
           &#x2715;
         </button>
       </div>
       <div className="guideCatPanelBody">
         <p className="guideCatPanelGreeting">
-          Hi {ownerDisplayName}, I&rsquo;m {displayName} &mdash; your guide cat.
-          Pick any of these to get started, or close this panel and explore on your own.
+          {t(messageKeys.sharedGuideCatPanelGreeting, {
+            ownerDisplayName,
+            guideCatName: displayName,
+          })}
         </p>
         <div className="guideCatPanelActions">
-          <button type="button" className="guideCatPanelAction" onClick={() => onAction('/chat/new')}>
-            Start first chat
-          </button>
-          <button type="button" className="guideCatPanelAction" onClick={() => onAction('/settings/cats')}>
-            Meet your cats
-          </button>
-          <button type="button" className="guideCatPanelAction" onClick={() => onAction('/lobby')}>
-            Explore products
-          </button>
+          <GuideCatActionButton
+            route="/chat/new"
+            onAction={onAction}
+            labelKey={messageKeys.sharedGuideCatWelcomeStartChat}
+            className="guideCatPanelAction"
+          />
+          <GuideCatActionButton
+            route="/settings/cats"
+            onAction={onAction}
+            labelKey={messageKeys.sharedGuideCatWelcomeMeetCats}
+            className="guideCatPanelAction"
+          />
+          <GuideCatActionButton
+            route="/lobby"
+            onAction={onAction}
+            labelKey={messageKeys.sharedGuideCatWelcomeExploreProducts}
+            className="guideCatPanelAction"
+          />
         </div>
       </div>
     </div>
@@ -415,6 +462,7 @@ function SidecarContent({
   const guideCatUiPrefs = useGuideCatUiPrefs();
   const { dialog, choose, handleClose } = useConfirmDialog();
   const guideCatName = resolveClientGuideCatName();
+  const { t } = useI18n();
 
   const handleAction = useCallback((route: string) => {
     collapse();
@@ -423,11 +471,11 @@ function SidecarContent({
 
   const handleDismissClick = useCallback(async () => {
     const action = await choose({
-      title: `Disable ${guideCatName}?`,
-      message: `This turns off ${guideCatName} help in Cats. If you just want it out of the way, you can dock it now instead. You can enable it again from Settings > Assistants.`,
-      confirmLabel: 'Disable',
-      cancelLabel: 'Keep enabled',
-      auxiliaryLabel: 'Dock now',
+      title: t(messageKeys.sharedGuideCatDialogDisableTitle, { guideCatName }),
+      message: t(messageKeys.sharedGuideCatDialogDisableMessage, { guideCatName }),
+      confirmLabel: t(messageKeys.sharedGuideCatDialogDisableConfirm),
+      cancelLabel: t(messageKeys.sharedGuideCatDialogKeepEnabled),
+      auxiliaryLabel: t(messageKeys.sharedGuideCatDialogDockNow),
       defaultAction: 'auxiliary',
     });
     if (action === 'auxiliary') {
