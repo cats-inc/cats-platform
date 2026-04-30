@@ -1026,6 +1026,12 @@ export const enCatalog: MessageCatalog = {
   'chat.activityFeed.emptyState':
     'Activity appears here when the room starts moving.',
   'chat.activityFeed.byActorLabel': 'By {actorName}',
+  'chat.messageChoices.customButton': 'Custom',
+  'chat.messageChoices.customPlaceholder': 'Add your own answer',
+  'chat.messageChoices.ownerSkippedState': 'Owner skipped these choices.',
+  'chat.messageChoices.ownerRecordedState': 'Owner response recorded.',
+  'chat.messageChoices.confirmButton': 'Confirm',
+  'chat.messageChoices.skipButton': 'Skip',
   'chat.parallelFooter.navigationAriaLabel': 'Parallel chat navigation',
   'chat.parallelFooter.prevAriaLabel': 'Previous parallel chat',
   'chat.parallelFooter.nextAriaLabel': 'Next parallel chat',

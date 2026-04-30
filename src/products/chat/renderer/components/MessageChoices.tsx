@@ -5,6 +5,8 @@ import type {
   ChatMessageChoiceResponse,
 } from '../../api/contracts.js';
 import { buildChoiceResponseBody } from '../../shared/messageChoices.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
 export interface MessageChoicesSubmitInput {
   channelId: string;
@@ -61,6 +63,7 @@ export function MessageChoices({
     ),
   );
 
+  const { t } = useI18n();
   const disabled = busy || Boolean(existingResponse);
   const allowSkip = choices.some((choice) => choice.allowSkip);
 
@@ -165,7 +168,7 @@ export function MessageChoices({
                     [choice.question]: !current[choice.question],
                   }))}
               >
-                Custom
+                {t(messageKeys.chatMessageChoicesCustomButton)}
               </button>
             ) : null}
           </div>
@@ -177,7 +180,7 @@ export function MessageChoices({
                 ? (answerForQuestion(existingResponse, choice.question)?.customText ?? '')
                 : (customByQuestion[choice.question] ?? '')}
               disabled={disabled}
-              placeholder="Add your own answer"
+              placeholder={t(messageKeys.chatMessageChoicesCustomPlaceholder)}
               onChange={(event) =>
                 setCustomByQuestion((current) => ({
                   ...current,
@@ -190,8 +193,8 @@ export function MessageChoices({
       {existingResponse ? (
         <p className="messageChoiceResolved">
           {existingResponse.status === 'skipped'
-            ? 'Owner skipped these choices.'
-            : 'Owner response recorded.'}
+            ? t(messageKeys.chatMessageChoicesOwnerSkippedState)
+            : t(messageKeys.chatMessageChoicesOwnerRecordedState)}
         </p>
       ) : (
         <div className="messageChoiceActions">
@@ -201,7 +204,7 @@ export function MessageChoices({
             disabled={busy || !canSubmit()}
             onClick={() => submit('submitted')}
           >
-            Confirm
+            {t(messageKeys.chatMessageChoicesConfirmButton)}
           </button>
           {allowSkip ? (
             <button
@@ -210,7 +213,7 @@ export function MessageChoices({
               disabled={busy}
               onClick={() => submit('skipped')}
             >
-              Skip
+              {t(messageKeys.chatMessageChoicesSkipButton)}
             </button>
           ) : null}
         </div>
