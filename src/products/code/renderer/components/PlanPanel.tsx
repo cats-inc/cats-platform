@@ -1,3 +1,6 @@
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
+
 export interface PlanStep {
   id: string;
   ordinal: number;
@@ -21,13 +24,6 @@ export interface PlanPanelProps {
   onReplan?: () => void;
 }
 
-const STATUS_LABELS: Record<PlanStep['status'], string> = {
-  not_started: 'Pending',
-  in_progress: 'Running',
-  completed: 'Done',
-  blocked: 'Blocked',
-};
-
 const STATUS_CLASSES: Record<PlanStep['status'], string> = {
   not_started: 'codePlanStepPending',
   in_progress: 'codePlanStepRunning',
@@ -35,18 +31,34 @@ const STATUS_CLASSES: Record<PlanStep['status'], string> = {
   blocked: 'codePlanStepBlocked',
 };
 
+function getStatusLabelKey(status: PlanStep['status']) {
+  switch (status) {
+    case 'completed':
+      return messageKeys.codePlanStatusDone;
+    case 'in_progress':
+      return messageKeys.codePlanStatusRunning;
+    case 'blocked':
+      return messageKeys.codePlanStatusBlocked;
+    case 'not_started':
+    default:
+      return messageKeys.codePlanStatusPending;
+  }
+}
+
 export function PlanPanel({ plan, onReplan }: PlanPanelProps) {
+  const { t } = useI18n();
+
   if (!plan) {
     return (
       <section className="operatorPanel">
         <div className="operatorPanelHeader">
           <div>
-            <p className="operatorEyebrow">Plan</p>
-            <h2>Code Plan</h2>
+            <p className="operatorEyebrow">{t(messageKeys.codePlanHeader)}</p>
+            <h2>{t(messageKeys.codePlanPanelTitle)}</h2>
           </div>
         </div>
         <p className="operatorEmptyState">
-          No plan steps have been created for this task yet.
+          {t(messageKeys.codePlanEmpty)}
         </p>
       </section>
     );
@@ -59,12 +71,14 @@ export function PlanPanel({ plan, onReplan }: PlanPanelProps) {
     <section className="operatorPanel">
       <div className="operatorPanelHeader">
         <div>
-          <p className="operatorEyebrow">Plan</p>
-          <h2>Code Plan</h2>
+          <p className="operatorEyebrow">{t(messageKeys.codePlanHeader)}</p>
+          <h2>{t(messageKeys.codePlanPanelTitle)}</h2>
         </div>
         <span className="operatorCountBadge">
           {completedCount}/{totalCount}
-          {plan.replanCount > 0 ? ` (re-planned ${plan.replanCount}x)` : ''}
+          {plan.replanCount > 0
+            ? t(messageKeys.codePlanReplannedSuffix, { count: plan.replanCount })
+            : ''}
         </span>
       </div>
       <div className="operatorStack">
@@ -73,7 +87,7 @@ export function PlanPanel({ plan, onReplan }: PlanPanelProps) {
             <li key={step.id} className={`codePlanStep ${STATUS_CLASSES[step.status]}`}>
               <span className="codePlanStepOrdinal">{step.ordinal + 1}.</span>
               <span className="codePlanStepTitle">{step.title}</span>
-              <span className="codePlanStepStatus">{STATUS_LABELS[step.status]}</span>
+              <span className="codePlanStepStatus">{t(getStatusLabelKey(step.status))}</span>
               {step.detail ? (
                 <p className="codePlanStepDetail">{step.detail}</p>
               ) : null}
@@ -88,7 +102,7 @@ export function PlanPanel({ plan, onReplan }: PlanPanelProps) {
             className="operatorActionButton"
             onClick={onReplan}
           >
-            Re-plan
+            {t(messageKeys.codePlanReplan)}
           </button>
         </div>
       ) : null}

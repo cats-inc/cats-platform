@@ -1,4 +1,6 @@
 import type { ProductPreviewSurfaceTarget } from '../../../../core/previewSurfaces.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
 
 export interface ArtifactItem {
   id: string;
@@ -34,27 +36,29 @@ export function BuildPreviewPanel({
   previewTarget,
   onOpenArtifact,
 }: BuildPreviewPanelProps) {
+  const { t } = useI18n();
   const previewActionLabel = previewTarget?.renderHint === 'download'
-    ? 'Open latest artifact'
-    : 'Open latest preview';
+    ? t(messageKeys.codePreviewOpenLatestArtifact)
+    : t(messageKeys.codePreviewOpenLatestPreview);
+  const artifactCountLabel = artifacts.length === 1
+    ? t(messageKeys.codePreviewArtifactCountOne, { count: artifacts.length })
+    : t(messageKeys.codePreviewArtifactCountMany, { count: artifacts.length });
 
   return (
     <section className="operatorPanel">
       <div className="operatorPanelHeader">
         <div>
-          <p className="operatorEyebrow">Output</p>
-          <h2>Build &amp; Preview</h2>
+          <p className="operatorEyebrow">{t(messageKeys.codePreviewHeader)}</p>
+          <h2>{t(messageKeys.codePreviewTitle)}</h2>
         </div>
-        <span className="operatorCountBadge">
-          {artifacts.length} artifact{artifacts.length !== 1 ? 's' : ''}
-        </span>
+        <span className="operatorCountBadge">{artifactCountLabel}</span>
       </div>
 
       {previewTarget?.inlineUrl ? (
         <div className="codeBuildPreviewFrame">
           <iframe
             src={previewTarget.inlineUrl}
-            title="Live preview"
+            title={t(messageKeys.codePreviewIframeTitle)}
             sandbox="allow-scripts allow-same-origin"
             className="codeBuildPreviewIframe"
           />
@@ -62,7 +66,7 @@ export function BuildPreviewPanel({
       ) : previewTarget?.actionUrl ? (
         <div className="codeBuildPreviewFallback">
           <p className="operatorEmptyState">
-            Latest preview is available, but this output is safer to open outside the inline frame.
+            {t(messageKeys.codePreviewNotInlineSafe)}
           </p>
           <a
             className="operatorActionButton"
@@ -77,7 +81,7 @@ export function BuildPreviewPanel({
 
       {artifacts.length === 0 ? (
         <p className="operatorEmptyState">
-          No build or preview artifacts have been produced yet.
+          {t(messageKeys.codePreviewNoPreview)}
         </p>
       ) : (
         <div className="operatorStack">
@@ -105,7 +109,7 @@ export function BuildPreviewPanel({
                   className="operatorActionButton"
                   onClick={() => onOpenArtifact(artifact.id)}
                 >
-                  Details
+                  {t(messageKeys.codePreviewDetails)}
                 </button>
               ) : null}
             </article>

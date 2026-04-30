@@ -101,7 +101,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
       setFeedback(error instanceof Error ? error.message : t(messageKeys.codeBuilderErrorCodespaceResolve));
       return null;
     }
-  }, [fallbackConversationRepoPath, fallbackRoomWorkspacePath, workspacePath]);
+  }, [fallbackConversationRepoPath, fallbackRoomWorkspacePath, t, workspacePath]);
 
   useEffect(() => {
     return () => stopPolling();
@@ -258,6 +258,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
     resumeTaskId,
     state.error,
     state.taskId,
+    t,
     refreshRepoStatus,
   ]);
 
@@ -308,7 +309,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
 
     setStep('task');
     setFeedback(nextFeedback);
-  }, [resumeTaskId, resume, resolveWorkspaceBinding, state.error]);
+  }, [resumeTaskId, resume, resolveWorkspaceBinding, state.error, t]);
 
   const plan = state.plan;
   const repoStatus = state.repoStatus;
@@ -363,14 +364,14 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
   return (
     <div className="codeBuilderView">
       <div className="codeBuilderHeader">
-        <h1 className="codeBuilderTitle">Code Builder</h1>
+        <h1 className="codeBuilderTitle">{t(messageKeys.codeBuilderTitle)}</h1>
         {step !== 'workspace' ? (
           <button
             type="button"
             className="operatorActionButton"
             onClick={handleReset}
           >
-            New task
+            {t(messageKeys.codeBuilderNewTaskButton)}
           </button>
         ) : null}
       </div>
@@ -407,17 +408,19 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
         <section className="operatorPanel">
           <div className="operatorPanelHeader">
             <div>
-              <p className="operatorEyebrow">Step 1</p>
-              <h2>Codespace</h2>
+              <p className="operatorEyebrow">
+                {t(messageKeys.codeBuilderStepLabel, { step: 1 })}
+              </p>
+              <h2>{t(messageKeys.codeBuilderCodespaceHeader)}</h2>
             </div>
           </div>
           <div className="codeBuilderForm">
             <label className="codeBuilderLabel">
-              Project folder
+              {t(messageKeys.codeBuilderHeaderProjectFolder)}
               <input
                 type="text"
                 className="codeBuilderInput"
-                placeholder="/path/to/project"
+                placeholder={t(messageKeys.codeBuilderWorkspacePathPlaceholder)}
                 value={workspacePath}
                 onChange={(e) => setWorkspacePath(e.target.value)}
                 onKeyDown={(e) => {
@@ -428,17 +431,17 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
               />
             </label>
             <label className="codeBuilderLabel">
-              Existing task ID (optional)
+              {t(messageKeys.codeBuilderResumeLabel)}
               <input
                 type="text"
                 className="codeBuilderInput"
-                placeholder="task-..."
+                placeholder={t(messageKeys.codeBuilderWorkspaceSampleTaskId)}
                 value={resumeTaskId}
                 onChange={(e) => setResumeTaskId(e.target.value)}
               />
             </label>
             <p className="codeBuilderHelperText">
-              Resume is for a draft, blocked, or failed Code task you want to continue.{' '}
+              {t(messageKeys.codeBuilderWorkspaceResumeHelp)}{' '}
               {workspaceFallbackLabel ?? t(messageKeys.codeBuilderWorkspaceFallbackBoundFallback)}
             </p>
             <div className="codeBuilderFormRow">
@@ -447,7 +450,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
                 className="operatorActionButton operatorActionButtonPrimary"
                 onClick={() => { void handleWorkspaceSubmit(); }}
               >
-                Continue
+                {t(messageKeys.codeBuilderContinue)}
               </button>
               <button
                 type="button"
@@ -455,7 +458,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
                 onClick={() => void handleResumeTask()}
                 disabled={!normalizeCodeBuilderTaskId(resumeTaskId)}
               >
-                Resume task
+                {t(messageKeys.codeBuilderResumePrompt)}
               </button>
             </div>
             {workspaceFallbackLabel && !workspacePath.trim() ? (
@@ -476,7 +479,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
                     {labelCodeWorkspaceKind(workspaceSummary.workspaceKind)}
                   </span>
                 </div>
-                <p>This will be the active builder codespace for the next task step.</p>
+                <p>{t(messageKeys.codeBuilderWorkspaceActiveNotice)}</p>
               </article>
             ) : null}
           </div>
@@ -487,33 +490,37 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
         <section className="operatorPanel">
           <div className="operatorPanelHeader">
             <div>
-              <p className="operatorEyebrow">Step 2</p>
-              <h2>Define Task</h2>
+              <p className="operatorEyebrow">
+                {t(messageKeys.codeBuilderStepLabel, { step: 2 })}
+              </p>
+              <h2>{t(messageKeys.codeBuilderDefineTaskHeader)}</h2>
             </div>
           </div>
           <div className="codeBuilderForm">
             {usingExistingTask ? (
               <div className="codeBuilderTaskNotice">
-                <span className="operatorStatusBadge isMuted">Existing task</span>
+                <span className="operatorStatusBadge isMuted">
+                  {t(messageKeys.codeBuilderExistingTask)}
+                </span>
                 <span>{activeTaskId}</span>
               </div>
             ) : null}
             <label className="codeBuilderLabel">
-              What do you want to build?
+              {t(messageKeys.codeBuilderTaskQuestion)}
               <input
                 type="text"
                 className="codeBuilderInput"
-                placeholder="e.g. Add user authentication"
+                placeholder={t(messageKeys.codeBuilderTaskSummaryPlaceholder)}
                 value={taskTitle}
                 onChange={(e) => setTaskTitle(e.target.value)}
                 disabled={usingExistingTask}
               />
             </label>
             <label className="codeBuilderLabel">
-              Details / acceptance criteria (optional)
+              {t(messageKeys.codeBuilderDetailsLabel)}
               <textarea
                 className="codeBuilderTextarea"
-                placeholder="Describe what done looks like..."
+                placeholder={t(messageKeys.codeBuilderDetailPlaceholder)}
                 value={taskDescription}
                 onChange={(e) => setTaskDescription(e.target.value)}
                 rows={3}
@@ -522,7 +529,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
             </label>
             <div className="codeBuilderFormRow">
               <label className="codeBuilderLabel">
-                Provider
+                {t(messageKeys.codeBuilderProviderLabel)}
                 <input
                   type="text"
                   className="codeBuilderInput"
@@ -531,11 +538,11 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
                 />
               </label>
               <label className="codeBuilderLabel">
-                Model (optional)
+                {t(messageKeys.codeBuilderModelLabel)}
                 <input
                   type="text"
                   className="codeBuilderInput"
-                  placeholder="default"
+                  placeholder={t(messageKeys.codeBuilderModelPlaceholder)}
                   value={model}
                   onChange={(e) => setModel(e.target.value)}
                 />
@@ -547,7 +554,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
                 className="operatorActionButton"
                 onClick={() => setStep('workspace')}
               >
-                Back
+                {t(messageKeys.codeBuilderBack)}
               </button>
               <button
                 type="button"
@@ -557,13 +564,13 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
               >
                 {usingExistingTask
                   ? state.phase === 'executing'
-                    ? 'Continuing...'
-                    : 'Continue Build'
+                    ? t(messageKeys.codeBuilderContinueTaskBusy)
+                    : t(messageKeys.codeBuilderContinueBuild)
                   : state.phase === 'creating'
-                    ? 'Creating...'
+                    ? t(messageKeys.codeBuilderCreatingTask)
                     : state.phase === 'executing'
-                      ? 'Starting...'
-                      : 'Build'}
+                      ? t(messageKeys.codeBuilderStartingTaskBusy)
+                      : t(messageKeys.codeBuilderCreateLabel)}
               </button>
             </div>
           </div>
@@ -600,7 +607,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
 
       {step === 'done' ? (
         <div className="codeBuilderDoneBanner">
-          Task completed. Review the results above and use delivery actions to commit or push.
+          {t(messageKeys.codeBuilderExecutionDoneBanner)}
         </div>
       ) : null}
     </div>
