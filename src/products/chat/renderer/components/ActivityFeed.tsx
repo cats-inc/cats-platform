@@ -3,23 +3,27 @@ import {
   formatOperatorTimestamp,
   operatorSeverityClassName,
 } from '../../../../design/operatorFormatting';
+import { messageKeys } from '../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
 export interface ActivityFeedProps {
   items: ChatOperatorActivityItem[];
 }
 
 export function ActivityFeed({ items }: ActivityFeedProps) {
+  const { t } = useI18n();
+
   return (
     <section className="operatorPanel">
       <div className="operatorPanelHeader">
         <div>
-          <p className="operatorEyebrow">Activity</p>
-          <h2>Latest updates</h2>
+          <p className="operatorEyebrow">{t(messageKeys.chatActivityFeedEyebrow)}</p>
+          <h2>{t(messageKeys.chatActivityFeedLatestUpdatesTitle)}</h2>
         </div>
       </div>
       {items.length === 0 ? (
         <p className="operatorEmptyState">
-          Activity appears here when the room starts moving.
+          {t(messageKeys.chatActivityFeedEmptyState)}
         </p>
       ) : (
         <div className="operatorTimeline">
@@ -35,7 +39,9 @@ export function ActivityFeed({ items }: ActivityFeedProps) {
                 </div>
                 <p>{item.message}</p>
                 {item.actorName ? (
-                  <span className="operatorMetaText">By {item.actorName}</span>
+                  <span className="operatorMetaText">
+                    {t(messageKeys.chatActivityFeedByActorLabel, { actorName: item.actorName })}
+                  </span>
                 ) : null}
               </div>
             </article>

@@ -1021,6 +1021,11 @@ export const enCatalog: MessageCatalog = {
   'chat.focusRail.collapseAnonymousResponseLabel': 'Collapse unnamed response',
   'chat.focusRail.expandLabeledResponseLabel': 'Expand response from {speakerName}',
   'chat.focusRail.collapseLabeledResponseLabel': 'Collapse response from {speakerName}',
+  'chat.activityFeed.eyebrow': 'Activity',
+  'chat.activityFeed.latestUpdatesTitle': 'Latest updates',
+  'chat.activityFeed.emptyState':
+    'Activity appears here when the room starts moving.',
+  'chat.activityFeed.byActorLabel': 'By {actorName}',
   'chat.parallelFooter.navigationAriaLabel': 'Parallel chat navigation',
   'chat.parallelFooter.prevAriaLabel': 'Previous parallel chat',
   'chat.parallelFooter.nextAriaLabel': 'Next parallel chat',
