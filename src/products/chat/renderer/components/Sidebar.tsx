@@ -23,6 +23,8 @@ import {
 } from '../myCatNavigation';
 import { isDirectLaneSummary } from '../../shared/channelTopology.js';
 import type { WorkspaceBusyState } from '../../../../shared/workspaceBusy.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
 export interface SidebarProps {
   payload: AppShellPayload;
@@ -57,11 +59,14 @@ export interface SidebarProps {
   onDirectChatCat: (catId: string) => void;
 }
 
-function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] {
+function createPrimaryActions(
+  props: SidebarProps,
+  t: (key: string) => string,
+): ConversationSidebarAction[] {
   return [
     {
       key: 'new-chat',
-      label: 'New chat',
+      label: t(messageKeys.chatSidebarPrimaryActionNewChat),
       onClick: props.onStartNewChat,
       icon: (
         <svg
@@ -81,7 +86,7 @@ function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] 
     },
     {
       key: 'group-chat',
-      label: 'Group chat',
+      label: t(messageKeys.chatSidebarPrimaryActionGroupChat),
       onClick: props.onStartNewGroupChat,
       icon: (
         <svg
@@ -103,7 +108,7 @@ function createPrimaryActions(props: SidebarProps): ConversationSidebarAction[] 
     },
     {
       key: 'parallel-chat',
-      label: 'Parallel chat',
+      label: t(messageKeys.chatSidebarPrimaryActionParallelChat),
       onClick: props.onStartNewParallelChat,
       icon: (
         <svg
@@ -141,6 +146,8 @@ function buildRecentEntries(props: SidebarProps): ConversationSidebarRecentEntry
 }
 
 export function Sidebar(props: SidebarProps) {
+  const { t } = useI18n();
+
   return ConversationSidebar({
     payload: props.payload,
     sidebarOpen: props.sidebarOpen,
@@ -151,11 +158,11 @@ export function Sidebar(props: SidebarProps) {
     shellSurface: props.shellSurface,
     routeChannelId: props.routeChannelId,
     accountMenuRef: props.accountMenuRef,
-    primaryActions: createPrimaryActions(props),
+    primaryActions: createPrimaryActions(props, t),
     recentEntries: buildRecentEntries(props),
     forceShowMyCatsSection: true,
     myCatsEmptyStatePlaceholder: {
-      label: 'New cat',
+      label: t(messageKeys.chatSidebarMyCatsEmptyStateLabel),
       onClick: props.onCreateNewCat,
     },
     helpers: {
