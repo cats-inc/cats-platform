@@ -12,6 +12,7 @@ import {
   type SelectedChannelView,
 } from '../../workspaceChatUtils.js';
 import { MessageBody } from '../MessageBody.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
 import { CompanionMessageReferencePreviews } from './CompanionMessageReferencePreviews.js';
 import {
   MessageChoices,
@@ -23,20 +24,21 @@ import {
   TranscriptMessageActions,
   type TranscriptMessageActionDescriptor,
 } from './TranscriptMessageActions.js';
+import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 import type {
   ResolvedChannelParticipant,
 } from '../../../channelParticipants.js';
 
 const relayActions: Array<{
   command: ParallelChatRelayCommandKind;
-  label: string;
+  titleLabel: keyof typeof messageKeys;
 }> = [
-  { command: 'check_this', label: 'Check with others' },
-  { command: 'synthesize_this', label: 'Synthesize with others' },
-  { command: 'improve_this', label: 'Improve in others' },
-  { command: 'adopt_this', label: 'Adopt in others' },
-  { command: 'counter_this', label: 'Counter with others' },
-  { command: 'debate_this', label: 'Debate with others' },
+  { command: 'check_this', titleLabel: 'chatTranscriptMessageCheckWithOthersLabel' },
+  { command: 'synthesize_this', titleLabel: 'chatTranscriptMessageSynthesizeWithOthersLabel' },
+  { command: 'improve_this', titleLabel: 'chatTranscriptMessageImproveWithOthersLabel' },
+  { command: 'adopt_this', titleLabel: 'chatTranscriptMessageAdoptWithOthersLabel' },
+  { command: 'counter_this', titleLabel: 'chatTranscriptMessageCounterWithOthersLabel' },
+  { command: 'debate_this', titleLabel: 'chatTranscriptMessageDebateWithOthersLabel' },
 ];
 
 export interface TranscriptMessageItemProps {
@@ -118,11 +120,12 @@ export function TranscriptMessageItem({
   const transcriptParticipant = resolveMessageParticipant(message);
   const transcriptParticipantCat = resolveParticipantCatRecord(transcriptParticipant);
   const resolvedExtraActions: TranscriptMessageActionDescriptor[] = [...extraActions];
+  const { t } = useI18n();
 
   if (message.senderKind === 'user' && userTurnStatus === 'failed' && onRetryMessage) {
     resolvedExtraActions.push({
       key: `retry:${message.id}`,
-      title: 'Retry response',
+      title: t(messageKeys.chatTranscriptMessageRetryResponseLabel),
       icon: <RetryActionIcon />,
       disabled: retryBusy,
       onSelect: () => {
@@ -135,14 +138,14 @@ export function TranscriptMessageItem({
     resolvedExtraActions.push({
       key: `relay:${message.id}`,
       kind: 'menu',
-      title: 'Relay to others',
+      title: t(messageKeys.chatTranscriptMessageRelayToOthersLabel),
       icon: <RelayActionIcon />,
       disabled: compareBusy,
       open: relayMenuOpen,
       onToggle: onToggleRelayMenu,
       items: relayActions.map((action, index) => ({
         key: action.command,
-        label: action.label,
+        label: t(action.titleLabel),
         disabled: compareBusy,
         dividerBefore: index === 2 || index === 4,
         onSelect: () => {
@@ -222,7 +225,9 @@ export function TranscriptMessageItem({
           metadata={message.metadata}
         />
         {message.senderKind === 'user' && userTurnStatus === 'failed' ? (
-          <div className="userTurnStatus userTurnStatusFailed">Response failed</div>
+          <div className="userTurnStatus userTurnStatusFailed">
+            {t(messageKeys.chatTranscriptMessageFailedStatusLabel)}
+          </div>
         ) : null}
       </div>
       <TranscriptMessageActions

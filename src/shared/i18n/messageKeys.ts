@@ -1096,6 +1096,20 @@ export const messageKeys = {
     'chat.participantsSectionNoParticipants',
   chatParticipantsSectionChooseCatsButton:
     'chat.participantsSectionChooseCatsButton',
+  chatTranscriptMessageCheckWithOthersLabel:
+    'chat.transcriptMessageCheckWithOthersLabel',
+  chatTranscriptMessageSynthesizeWithOthersLabel:
+    'chat.transcriptMessageSynthesizeWithOthersLabel',
+  chatTranscriptMessageImproveWithOthersLabel:
+    'chat.transcriptMessageImproveWithOthersLabel',
+  chatTranscriptMessageAdoptWithOthersLabel: 'chat.transcriptMessageAdoptWithOthersLabel',
+  chatTranscriptMessageCounterWithOthersLabel:
+    'chat.transcriptMessageCounterWithOthersLabel',
+  chatTranscriptMessageDebateWithOthersLabel:
+    'chat.transcriptMessageDebateWithOthersLabel',
+  chatTranscriptMessageRetryResponseLabel: 'chat.transcriptMessageRetryResponseLabel',
+  chatTranscriptMessageRelayToOthersLabel: 'chat.transcriptMessageRelayToOthersLabel',
+  chatTranscriptMessageFailedStatusLabel: 'chat.transcriptMessageFailedStatusLabel',
   sharedAddCatPanelTitle: 'shared.addCatPanelTitle',
   sharedAddCatPanelClose: 'shared.addCatPanelClose',
   sharedAddCatPanelChooseExisting: 'shared.addCatPanelChooseExisting',
