@@ -13,6 +13,11 @@ import type {
   CompanionContentPreview,
 } from '../../../../chat/companion/contentResolver.js';
 import {
+  FALLBACK_DELETED_TITLE,
+  FALLBACK_INACCESSIBLE_TITLE,
+  FALLBACK_MISSING_TITLE,
+} from '../../../../chat/companion/contentResolver.js';
+import {
   readCompanionMessageReferenceSnapshot,
   type CompanionMessageReferenceSnapshot,
 } from '../../../../chat/companion/messageReferenceSnapshot.js';
@@ -216,7 +221,7 @@ export function CompanionMessageReferencePreviews({
             next[index] = {
               ...current[index]!,
               loading: false,
-              preview: applySnapshotFallback(livePreview, entry.fallbackSnapshot),
+              preview: applySnapshotFallback(livePreview, entry.fallbackSnapshot, t),
             };
             return next;
           });
@@ -228,7 +233,7 @@ export function CompanionMessageReferencePreviews({
             next[index] = {
               ...current[index]!,
               loading: false,
-              preview: applySnapshotFallback(null, entry.fallbackSnapshot),
+              preview: applySnapshotFallback(null, entry.fallbackSnapshot, t),
             };
             return next;
           });
@@ -262,6 +267,7 @@ export function CompanionMessageReferencePreviews({
 function applySnapshotFallback(
   livePreview: CompanionContentPreview | null,
   snapshot: CompanionMessageReferenceSnapshot | null,
+  t: (key: keyof typeof messageKeys) => string,
 ): CompanionContentPreview | null {
   if (!livePreview) {
     if (!snapshot) return null;
@@ -294,14 +300,56 @@ function applySnapshotFallback(
       snapshot: livePreview.snapshot ?? snapshot.snapshot,
     };
   }
+  if (livePreview.availability !== 'available' && !snapshot) {
+    return {
+      ...livePreview,
+      title: resolveFallbackTitle(livePreview.availability, t),
+      catName: livePreview.catName === 'Companion'
+        ? resolveFallbackCatName(t)
+        : livePreview.catName,
+      description: livePreview.availability === 'inaccessible'
+        ? resolveInaccessibleDescription(livePreview.description, t)
+        : livePreview.description,
+    };
+  }
   return livePreview;
 }
 
-function isGenericFallbackTitle(title: string): boolean {
+function resolveFallbackTitle(
+  availability: CompanionContentAvailability,
+  t: (key: keyof typeof messageKeys) => string,
+): string {
+  if (availability === 'missing') {
+    return t(messageKeys.chatCompanionMessageReferenceMissingFallbackTitle);
+  }
+  if (availability === 'deleted') {
+    return t(messageKeys.chatCompanionMessageReferenceDeletedFallbackTitle);
+  }
+  return t(messageKeys.chatCompanionMessageReferenceInaccessibleFallbackTitle);
+}
+
+function resolveFallbackCatName(t: (key: keyof typeof messageKeys) => string): string {
+  return t(messageKeys.chatCompanionMessageReferenceUnknownCompanionLabel);
+}
+
+function resolveInaccessibleDescription(
+  description: string | null,
+  t: (key: keyof typeof messageKeys) => string,
+): string {
+  if (!description) {
+    return t(messageKeys.chatCompanionMessageReferenceInaccessibleFallbackDescription);
+  }
+  return description;
+}
+
+function isGenericFallbackTitle(
+  title: string,
+): boolean {
   return (
-    title === 'Companion content unavailable'
-    || title === 'Companion content deleted'
-    || title === 'Companion content from another workspace'
+    title.length === 0
+    || title === FALLBACK_MISSING_TITLE
+    || title === FALLBACK_DELETED_TITLE
+    || title === FALLBACK_INACCESSIBLE_TITLE
   );
 }
 

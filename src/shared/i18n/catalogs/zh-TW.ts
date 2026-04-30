@@ -1025,6 +1025,15 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.companionMessageReferenceAvailabilityDeleted': '已刪除',
   'chat.companionMessageReferenceAvailabilityInaccessible':
     '目前工作區不可存取',
+  'chat.companionMessageReferenceMissingFallbackTitle':
+    'Companion 內容無法取得',
+  'chat.companionMessageReferenceDeletedFallbackTitle':
+    'Companion 內容已刪除',
+  'chat.companionMessageReferenceInaccessibleFallbackTitle':
+    'Companion 內容來自其他工作區',
+  'chat.companionMessageReferenceInaccessibleFallbackDescription':
+    '此 Companion 內容位於不同的平台主機範圍，無法在此開啟。',
+  'chat.companionMessageReferenceUnknownCompanionLabel': 'Companion',
   'chat.newChatDraft.composerPlaceholder': '我可以怎麼幫你？',
   'chat.newChatDraft.folderActionLabel': '選擇資料夾',
   'chat.newChatDraft.groupDraftSelectionLabelSingle':

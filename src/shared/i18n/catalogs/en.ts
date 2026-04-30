@@ -1059,6 +1059,15 @@ export const enCatalog: MessageCatalog = {
   'chat.companionMessageReferenceAvailabilityDeleted': 'Deleted',
   'chat.companionMessageReferenceAvailabilityInaccessible':
     'Inaccessible from this workspace',
+  'chat.companionMessageReferenceMissingFallbackTitle':
+    'Companion content unavailable',
+  'chat.companionMessageReferenceDeletedFallbackTitle':
+    'Companion content deleted',
+  'chat.companionMessageReferenceInaccessibleFallbackTitle':
+    'Companion content from another workspace',
+  'chat.companionMessageReferenceInaccessibleFallbackDescription':
+    'This companion content comes from a different platform-host scope and cannot be opened here.',
+  'chat.companionMessageReferenceUnknownCompanionLabel': 'Companion',
   'chat.newChatDraft.composerPlaceholder': 'How can I help you today?',
   'chat.newChatDraft.folderActionLabel': 'Choose folder',
   'chat.newChatDraft.groupDraftSelectionLabelSingle':

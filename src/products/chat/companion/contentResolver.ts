@@ -67,9 +67,9 @@ export interface ResolveCompanionContentReferenceInput {
   resolvedAt?: string;
 }
 
-const FALLBACK_INACCESSIBLE_TITLE = 'Companion content from another workspace';
-const FALLBACK_MISSING_TITLE = 'Companion content unavailable';
-const FALLBACK_DELETED_TITLE = 'Companion content deleted';
+export const FALLBACK_INACCESSIBLE_TITLE = 'Companion content from another workspace';
+export const FALLBACK_MISSING_TITLE = 'Companion content unavailable';
+export const FALLBACK_DELETED_TITLE = 'Companion content deleted';
 
 export async function resolveCompanionContentReference(
   input: ResolveCompanionContentReferenceInput,

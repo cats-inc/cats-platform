@@ -1058,6 +1058,16 @@ export const messageKeys = {
     'chat.companionMessageReferenceAvailabilityDeleted',
   chatCompanionMessageReferenceAvailabilityInaccessible:
     'chat.companionMessageReferenceAvailabilityInaccessible',
+  chatCompanionMessageReferenceMissingFallbackTitle:
+    'chat.companionMessageReferenceMissingFallbackTitle',
+  chatCompanionMessageReferenceDeletedFallbackTitle:
+    'chat.companionMessageReferenceDeletedFallbackTitle',
+  chatCompanionMessageReferenceInaccessibleFallbackTitle:
+    'chat.companionMessageReferenceInaccessibleFallbackTitle',
+  chatCompanionMessageReferenceInaccessibleFallbackDescription:
+    'chat.companionMessageReferenceInaccessibleFallbackDescription',
+  chatCompanionMessageReferenceUnknownCompanionLabel:
+    'chat.companionMessageReferenceUnknownCompanionLabel',
   chatNewChatDraftBranchPolicyWorkspaceWorktree: 'chat.newChatDraft.branchPolicyWorkspaceWorktree',
   chatNewChatDraftBranchPolicyWorkspaceSource: 'chat.newChatDraft.branchPolicyWorkspaceSource',
   chatNewChatDraftBranchPolicyWorkspaceSandbox: 'chat.newChatDraft.branchPolicyWorkspaceSandbox',
