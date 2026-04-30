@@ -114,11 +114,12 @@ export function CompareCardsLayout<Participant>(
   const { t } = useI18n();
   const primarySegmentId = segments[0]?.id ?? null;
 
-  const renderableCards = segments.flatMap((segment) => {
+    const renderableCards = segments.flatMap((segment) => {
     const presentation = resolveSegmentPresentation(
       segment,
       segment.id === primarySegmentId,
       props,
+      t,
     );
     if (!presentation.shouldRender) {
       return [];
@@ -177,7 +178,7 @@ export function CompareCardsLayout<Participant>(
             || presentation.speakerLabel,
           );
           const plainText = extractSegmentPlainText(segment);
-          const copyLabel = buildSegmentCopyLabel(presentation);
+          const copyLabel = buildSegmentCopyLabel(presentation, t);
           return (
             <article key={segment.id} className={phaseClassName(segment.phase)}>
               <div className="compareCardHeader">

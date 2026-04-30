@@ -110,14 +110,16 @@ export function FocusRailLayout<Participant>(
     ? segments.filter((segment) => segment.id !== primarySegment.id)
     : [];
   const primaryPresentation = primarySegment
-    ? resolveSegmentPresentation(primarySegment, true, props)
+    ? resolveSegmentPresentation(primarySegment, true, props, t)
+    : null;
+  const primaryCopyLabel = primaryPresentation
+    ? buildSegmentCopyLabel(primaryPresentation, t)
     : null;
 
   return (
     <div className="focusRailContainer">
       {primarySegment && primaryPresentation?.shouldRender ? (() => {
         const primaryPlainText = extractSegmentPlainText(primarySegment);
-        const primaryCopyLabel = buildSegmentCopyLabel(primaryPresentation);
         return (
           <article className="focusRailPrimary">
             <div className="focusRailPrimaryHeader">
@@ -163,6 +165,7 @@ export function FocusRailLayout<Participant>(
               segment,
               false,
               props,
+              t,
             );
             if (!presentation.shouldRender) {
               return null;
@@ -183,7 +186,7 @@ export function FocusRailLayout<Participant>(
               unnamedResponseLabel,
               t,
             );
-            const copyLabel = buildSegmentCopyLabel(presentation);
+            const copyLabel = buildSegmentCopyLabel(presentation, t);
             return (
               <div key={segment.id} className="focusRailSecondarySlot">
                 <button

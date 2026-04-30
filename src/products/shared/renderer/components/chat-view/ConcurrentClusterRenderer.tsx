@@ -11,9 +11,16 @@ import type { LiveIndicatorContentBlock } from '../../../../../shared/runtimeCon
 import { catInitials } from '../../workspaceChatUtils.js';
 import { normalizeVisibleOrchestratorLabel } from '../../../../../shared/orchestratorLabel.js';
 import {
+  messageKeys,
+  t as enTranslator,
+  type MessageInterpolationValues,
+  type MessageKey,
+} from '../../../../../shared/i18n/index.js';
+import {
   hasVisibleLiveIndicatorSegmentActivity,
 } from '../../../../../shared/liveIndicator.js';
 import { MessageBody } from '../MessageBody.js';
+import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 import {
   shouldRenderLiveTranscriptBlock,
   shouldShowLiveTranscriptTrailingDots,
@@ -101,6 +108,7 @@ export function renderContentBlockSegment(
   channelId: string,
   disabledMentionNames: string[],
   showProgressDetails: boolean,
+  translate: (key: MessageKey, values?: MessageInterpolationValues) => string = enTranslator,
 ): JSX.Element | null {
   if (!shouldRenderLiveTranscriptBlock(block, showProgressDetails)) {
     return null;
@@ -131,7 +139,7 @@ export function renderContentBlockSegment(
           : 'toolSegmentChip toolSegmentChipDone'}
       >
         <span className="toolSegmentChipName">
-          {block.toolName ?? block.title ?? 'tool'}
+          {block.toolName ?? block.title ?? translate(messageKeys.chatConcurrentToolLabel)}
         </span>
         {block.text ? (
           <span className="toolSegmentChipDetail">{block.text}</span>
@@ -153,6 +161,7 @@ export function resolveSegmentPresentation<Participant>(
   segment: LiveIndicatorSegmentState,
   isPrimarySegment: boolean,
   props: ClusterLayoutProps<Participant>,
+  translate: (key: MessageKey, values?: MessageInterpolationValues) => string = enTranslator,
 ): ResolvedSegmentPresentation<Participant> {
   const {
     cats,
@@ -208,6 +217,7 @@ export function resolveSegmentPresentation<Participant>(
         selectedChannelId,
         disabledMentionNames,
         showProgressDetails,
+        translate,
       ),
     )
     .filter((block): block is JSX.Element => block != null);
@@ -238,23 +248,31 @@ export function resolveSegmentPresentation<Participant>(
 
 export function resolveSegmentAccessibleName<Participant>(
   presentation: ResolvedSegmentPresentation<Participant>,
+  translate: (key: MessageKey, values?: MessageInterpolationValues) => string = enTranslator,
 ): string {
   return (
     presentation.segmentParticipantDisplayName
     ?? presentation.segmentParticipantCat?.name
     ?? presentation.speakerCat?.name
     ?? presentation.speakerLabel?.trim()
-    ?? 'unnamed response'
+    ?? translate(messageKeys.chatFocusRailUnnamedResponseLabel)
   );
 }
 
 export function buildSegmentCopyLabel<Participant>(
   presentation: ResolvedSegmentPresentation<Participant>,
+  translate: (key: MessageKey, values?: MessageInterpolationValues) => string = enTranslator,
 ): string {
-  const accessibleName = resolveSegmentAccessibleName(presentation);
-  return accessibleName === 'unnamed response'
-    ? 'Copy unnamed response'
-    : `Copy message from ${accessibleName}`;
+  const accessibleName = resolveSegmentAccessibleName(
+    presentation,
+    translate,
+  );
+  const unnamedResponseLabel = translate(messageKeys.chatFocusRailUnnamedResponseLabel);
+  return accessibleName === unnamedResponseLabel
+    ? translate(messageKeys.chatConcurrentCopyUnnamedResponseLabel)
+    : translate(messageKeys.chatConcurrentCopyLabeledResponseLabel, {
+      speakerName: accessibleName,
+    });
 }
 
 export function SegmentSpeakerHeader<Participant>({
@@ -443,12 +461,13 @@ function InlineStackLayout<Participant>(props: ClusterLayoutProps<Participant>):
     resolveParticipantDisplayName,
     showProgressDetails,
   } = props;
+  const { t } = useI18n();
   const primarySegmentId = segments.at(-1)?.id ?? null;
   return (
     <>
       {segments.map((segment) => {
         const isPrimarySegment = segment.id === primarySegmentId;
-        const presentation = resolveSegmentPresentation(segment, isPrimarySegment, props);
+        const presentation = resolveSegmentPresentation(segment, isPrimarySegment, props, t);
         if (!presentation.shouldRender) {
           return null;
         }
@@ -483,7 +502,7 @@ function InlineStackLayout<Participant>(props: ClusterLayoutProps<Participant>):
             <SharedTranscriptMessageActions
               senderKind="agent"
               showDefaultCopyAction={showCopyAction}
-              copyActionLabel={buildSegmentCopyLabel(presentation)}
+              copyActionLabel={buildSegmentCopyLabel(presentation, t)}
               onCopyMessage={showCopyAction
                 ? (() => {
                   void copySegmentPlainTextToClipboard(sealedPlainText);
