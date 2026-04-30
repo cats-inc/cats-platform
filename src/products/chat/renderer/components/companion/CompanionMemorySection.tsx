@@ -5,6 +5,8 @@ import type {
   CompanionMemoryRecord,
   CreateCompanionMemoryInput,
 } from '../../../companion/contracts.js';
+import { messageKeys } from '../../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../../app/renderer/i18n/useI18n.js';
 
 export interface CompanionMemorySectionProps {
   memory: CompanionMemoryRecord[];
@@ -24,13 +26,20 @@ const MEMORY_CATEGORIES: readonly CompanionMemoryCategory[] = [
 
 function categoryLabel(category: string): string {
   switch (category) {
-    case 'identity': return 'Identity';
-    case 'preference': return 'Preference';
-    case 'relationship': return 'Relationship';
-    case 'fact': return 'Fact';
-    case 'event': return 'Event';
-    case 'owner_note': return 'Owner Note';
-    default: return category;
+    case 'identity':
+      return 'identity';
+    case 'preference':
+      return 'preference';
+    case 'relationship':
+      return 'relationship';
+    case 'fact':
+      return 'fact';
+    case 'event':
+      return 'event';
+    case 'owner_note':
+      return 'owner_note';
+    default:
+      return category;
   }
 }
 
@@ -58,6 +67,16 @@ export function CompanionMemorySection({
   const [formCategory, setFormCategory] = useState<CompanionMemoryCategory>('fact');
   const [formContent, setFormContent] = useState('');
   const [formBusy, setFormBusy] = useState(false);
+  const { t } = useI18n();
+  const categoryLabelMap: Record<string, string> = {
+    identity: t(messageKeys.chatCompanionMemoryCategoryIdentity),
+    preference: t(messageKeys.chatCompanionMemoryCategoryPreference),
+    relationship: t(messageKeys.chatCompanionMemoryCategoryRelationship),
+    fact: t(messageKeys.chatCompanionMemoryCategoryFact),
+    event: t(messageKeys.chatCompanionMemoryCategoryEvent),
+    owner_note: t(messageKeys.chatCompanionMemoryCategoryOwnerNote),
+    all: t(messageKeys.chatCompanionMemoryFilterAll),
+  };
 
   const filteredMemory = filterCategory
     ? memory.filter((record) => record.category === filterCategory)
@@ -83,19 +102,23 @@ export function CompanionMemorySection({
   }
 
   if (loading && memory.length === 0) {
-    return <div className="companionSection companionLoading">Loading...</div>;
+    return (
+      <div className="companionSection companionLoading">
+        {t(messageKeys.chatCompanionMemoryLoadingState)}
+      </div>
+    );
   }
 
   return (
     <div className="companionSection companionMemory">
       <div className="companionSectionHeader">
-        <span>Memory</span>
+        <span>{t(messageKeys.chatCompanionMemorySectionTitle)}</span>
         <button
           type="button"
           className="companionActionButton"
           onClick={() => setShowForm(!showForm)}
         >
-          {showForm ? 'Cancel' : '+ Add'}
+          {showForm ? t(messageKeys.chatCompanionMemoryActionCancel) : t(messageKeys.chatCompanionMemoryActionAdd)}
         </button>
       </div>
 
@@ -107,12 +130,14 @@ export function CompanionMemorySection({
             onChange={(e) => setFormCategory(e.target.value as CompanionMemoryCategory)}
           >
             {MEMORY_CATEGORIES.map((cat) => (
-              <option key={cat} value={cat}>{categoryLabel(cat)}</option>
+              <option key={cat} value={cat}>
+                {categoryLabelMap[categoryLabel(cat)]}
+              </option>
             ))}
           </select>
           <textarea
             className="companionTextarea"
-            placeholder="What should your companion remember?"
+            placeholder={t(messageKeys.chatCompanionMemoryFormPlaceholder)}
             value={formContent}
             onChange={(e) => setFormContent(e.target.value)}
             rows={3}
@@ -122,7 +147,7 @@ export function CompanionMemorySection({
             className="companionActionButton"
             disabled={formBusy || !formContent.trim()}
           >
-            {formBusy ? 'Adding...' : 'Add Memory'}
+            {formBusy ? t(messageKeys.chatCompanionMemoryActionBusy) : t(messageKeys.chatCompanionMemoryActionAddSubmit)}
           </button>
         </form>
       )}
@@ -133,7 +158,7 @@ export function CompanionMemorySection({
           className={`companionFilterPill ${!filterCategory ? 'isActive' : ''}`}
           onClick={() => setFilterCategory(null)}
         >
-          All ({memory.length})
+          {categoryLabelMap.all} ({memory.length})
         </button>
         {MEMORY_CATEGORIES.map((cat) => {
           const count = memory.filter((r) => r.category === cat).length;
@@ -145,7 +170,7 @@ export function CompanionMemorySection({
               className={`companionFilterPill ${filterCategory === cat ? 'isActive' : ''}`}
               onClick={() => setFilterCategory(filterCategory === cat ? null : cat)}
             >
-              {categoryLabel(cat)} ({count})
+              {categoryLabelMap[categoryLabel(cat)]} ({count})
             </button>
           );
         })}
@@ -154,8 +179,8 @@ export function CompanionMemorySection({
       {filteredMemory.length === 0 ? (
         <p className="companionEmpty">
           {memory.length === 0
-            ? 'No memories yet. Your companion learns from conversations and resources.'
-            : 'No memories match the selected filter.'}
+            ? t(messageKeys.chatCompanionMemoryEmptyState)
+            : t(messageKeys.chatCompanionMemoryEmptyFilterState)}
         </p>
       ) : (
         <ul className="companionMemoryList companionMemoryListFull">
@@ -174,7 +199,7 @@ export function CompanionMemorySection({
                 className="companionDangerButton"
                 onClick={() => onDeleteMemory(record.id)}
               >
-                Remove
+                {t(messageKeys.chatCompanionMemoryActionRemove)}
               </button>
             </li>
           ))}
