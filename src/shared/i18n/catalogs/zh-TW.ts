@@ -1388,6 +1388,16 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.guideCat.dialog.dockNow': '立即收合',
   'shared.imageUpload.clickHint': '點擊以選擇圖片',
   'shared.imageUpload.dragHint': '拖曳來移動畫面，滾動可縮放',
+  'shared.workspaceNavigation.deleteChannelRuntimeCleanupFeedbackOne':
+    'Conversation 已刪除；Cats Runtime 保留了 {count} 個連結的 runtime session。如需清理磁碟，請開啟 runtime diagnostics。',
+  'shared.workspaceNavigation.deleteChannelRuntimeCleanupFeedbackMany':
+    'Conversation 已刪除；Cats Runtime 保留了 {count} 個連結的 runtime session。如需清理磁碟，請開啟 runtime diagnostics。',
+  'shared.workspaceNavigation.renameChatError': '重新命名 chat 失敗。',
+  'shared.workspaceNavigation.deleteChatError': '刪除 chat 失敗。',
+  'shared.workspaceNavigation.renameParallelChatError': '重新命名 parallel chat 失敗。',
+  'shared.workspaceNavigation.ungroupParallelChatError': '取消群組 parallel chat 失敗。',
+  'shared.workspaceNavigation.deleteParallelChatGroupError': '刪除所有 chats 失敗。',
+  'shared.workspaceNavigation.parallelChatFallbackName': '這個 parallel chat',
   'shared.settingsCatsRegistry.sectionLabel': '註冊表',
   'shared.settingsCatsRegistry.savedCatsLabel': '已儲存貓咪',
   'shared.settingsCatsRegistry.noCatsYetLabel': '尚未有貓咪',

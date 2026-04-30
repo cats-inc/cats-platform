@@ -10,6 +10,11 @@ import type { AppShellPayload as WorkspaceAppShellPayload } from '../../api/work
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
 import { resolvePlatformSurfaceRoutePrefix } from '../../../../shared/platformProducts.js';
 import {
+  messageKeys,
+  type MessageInterpolationValues,
+  type MessageKey,
+} from '../../../../shared/i18n/index.js';
+import {
   buildWorkspaceChannelPath,
   buildWorkspaceNewGroupChatPath,
   buildWorkspaceNewChatPath,
@@ -50,6 +55,12 @@ import {
   type WorkspaceBusyState,
 } from '../../../../shared/workspaceBusy.js';
 import { type RuntimeSessionPolicy } from '../../../../shared/runtimeSessionPolicy.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+
+type WorkspaceNavigationTranslator = (
+  key: MessageKey,
+  values?: MessageInterpolationValues,
+) => string;
 
 export interface WorkspaceNavigationChannelRef {
   id: string;
@@ -120,14 +131,19 @@ function isDeleteChatChannelResult<TPayload extends WorkspaceNavigationPayloadLi
 
 function resolveDeleteChannelFeedback<TPayload extends WorkspaceNavigationPayloadLike>(
   result: TPayload | DeleteChatChannelResult<TPayload>,
+  t: WorkspaceNavigationTranslator,
 ): string {
   if (!isDeleteChatChannelResult(result) || result.runtimeCleanup.retainedSessionCount === 0) {
     return '';
   }
 
   const count = result.runtimeCleanup.retainedSessionCount;
-  const noun = count === 1 ? 'runtime session was' : 'runtime sessions were';
-  return `Conversation deleted. ${count} linked ${noun} retained by Cats Runtime; open runtime diagnostics if disk cleanup matters.`;
+  return t(
+    count === 1
+      ? messageKeys.sharedWorkspaceNavigationDeleteChannelRuntimeCleanupFeedbackOne
+      : messageKeys.sharedWorkspaceNavigationDeleteChannelRuntimeCleanupFeedbackMany,
+    { count },
+  );
 }
 
 export type WorkspaceNavigationLoadState<
@@ -205,6 +221,7 @@ export function useWorkspaceAppNavigationActions<
     navigationApi: providedNavigationApi,
     confirm: confirmDialog,
   } = options;
+  const { t } = useI18n();
   const chatPrefix = resolvePlatformSurfaceRoutePrefix(platformShellSurface);
   const navigationApi = (
     providedNavigationApi ?? defaultNavigationApi
@@ -310,18 +327,20 @@ export function useWorkspaceAppNavigationActions<
         setFeedback('');
       });
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to rename chat.');
+      setFeedback(error instanceof Error
+        ? error.message
+        : t(messageKeys.sharedWorkspaceNavigationRenameChatError));
     } finally {
       setBusy(clearBusyState());
     }
-  }, [navigationApi, setBusy, setFeedback, setState]);
+  }, [navigationApi, setBusy, setFeedback, setState, t]);
 
   const onDeleteChannel = useCallback(async (channelId: string): Promise<void> => {
     setBusy(createChannelBusyState('delete', channelId));
     try {
       const result = await navigationApi.deleteChatChannel(channelId);
       const payload = isDeleteChatChannelResult(result) ? result.payload : result;
-      const feedback = resolveDeleteChannelFeedback(result);
+      const feedback = resolveDeleteChannelFeedback(result, t);
       startTransition(() => {
         setState({ status: 'ready', payload });
         setAddCatOpen(false);
@@ -336,7 +355,9 @@ export function useWorkspaceAppNavigationActions<
         ),
       );
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to delete chat.');
+      setFeedback(error instanceof Error
+        ? error.message
+        : t(messageKeys.sharedWorkspaceNavigationDeleteChatError));
     } finally {
       setBusy(clearBusyState());
     }
@@ -349,6 +370,7 @@ export function useWorkspaceAppNavigationActions<
     setBusy,
     setFeedback,
     setState,
+    t,
   ]);
 
   const onRenameParallelChatGroup = useCallback(async (
@@ -363,11 +385,13 @@ export function useWorkspaceAppNavigationActions<
         setFeedback('');
       });
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to rename parallel chat.');
+      setFeedback(error instanceof Error
+        ? error.message
+        : t(messageKeys.sharedWorkspaceNavigationRenameParallelChatError));
     } finally {
       setBusy(clearBusyState());
     }
-  }, [navigationApi, setBusy, setFeedback, setState]);
+  }, [navigationApi, setBusy, setFeedback, setState, t]);
 
   const onUngroupParallelChatGroup = useCallback(async (groupId: string): Promise<void> => {
     setBusy(createConcurrentGroupBusyState('ungroup', groupId));
@@ -378,16 +402,22 @@ export function useWorkspaceAppNavigationActions<
         setFeedback('');
       });
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to ungroup parallel chat.');
+      setFeedback(error instanceof Error
+        ? error.message
+        : t(messageKeys.sharedWorkspaceNavigationUngroupParallelChatError));
     } finally {
       setBusy(clearBusyState());
     }
-  }, [navigationApi, setBusy, setFeedback, setState]);
+  }, [navigationApi, setBusy, setFeedback, setState, t]);
 
   const onDeleteParallelChatGroup = useCallback(async (groupId: string): Promise<void> => {
+    const fallbackGroupTitle = t(messageKeys.sharedWorkspaceNavigationParallelChatFallbackName);
     const groupTitle = state.status === 'ready'
-      ? (state.payload.chat.parallelChatGroups?.find((group) => group.id === groupId)?.title ?? 'this parallel chat')
-      : 'this parallel chat';
+      ? (
+          state.payload.chat.parallelChatGroups?.find((group) => group.id === groupId)?.title
+          ?? fallbackGroupTitle
+        )
+      : fallbackGroupTitle;
     const confirmed = confirmDialog
       ? await confirmDialog(buildDeleteParallelChatGroupConfirmation(groupTitle))
       : true;
@@ -410,7 +440,9 @@ export function useWorkspaceAppNavigationActions<
         ),
       );
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to delete all chats.');
+      setFeedback(error instanceof Error
+        ? error.message
+        : t(messageKeys.sharedWorkspaceNavigationDeleteParallelChatGroupError));
     } finally {
       setBusy(clearBusyState());
     }
@@ -425,6 +457,7 @@ export function useWorkspaceAppNavigationActions<
     setFeedback,
     setState,
     state,
+    t,
   ]);
 
   const onDeleteCat = useCallback(async (catId: string): Promise<void> => {
@@ -440,11 +473,13 @@ export function useWorkspaceAppNavigationActions<
       const payload = await navigationApi.deleteGlobalCat(catId);
       startTransition(() => setState({ status: 'ready', payload }));
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : 'Failed to delete cat.');
+      setFeedback(error instanceof Error
+        ? error.message
+        : t(messageKeys.sharedSettingsCatsDeleteError));
     } finally {
       setBusy(clearBusyState());
     }
-  }, [confirmDialog, navigationApi, setBusy, setFeedback, setState, state]);
+  }, [confirmDialog, navigationApi, setBusy, setFeedback, setState, state, t]);
 
   const onNavigateSettings = useCallback((): void => {
     navigate('/settings/general', {
@@ -490,7 +525,11 @@ export function useWorkspaceAppNavigationActions<
 
   const onResetSetup = useCallback(async (): Promise<void> => {
     const confirmed = confirmDialog
-      ? await confirmDialog({ title: 'Reset all data', message: 'This will erase all chats, cats, and settings. Continue?', confirmLabel: 'Reset' })
+      ? await confirmDialog({
+          title: t(messageKeys.settingsDataResetAllDataTitle),
+          message: t(messageKeys.settingsDataResetAllDataDescription),
+          confirmLabel: t(messageKeys.settingsDataResetButtonLabel),
+        })
       : true;
     if (!confirmed) return;
 
@@ -508,7 +547,7 @@ export function useWorkspaceAppNavigationActions<
       setBusy(clearBusyState());
       throw error;
     }
-  }, [confirmDialog, navigationApi, setBusy]);
+  }, [confirmDialog, navigationApi, setBusy, t]);
 
   const onStartNewChat = useCallback(async (): Promise<void> => {
     navigate(buildWorkspaceNewChatPath(chatPrefix, null));

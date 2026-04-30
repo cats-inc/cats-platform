@@ -1432,6 +1432,16 @@ export const enCatalog: MessageCatalog = {
   'shared.guideCat.dialog.dockNow': 'Dock now',
   'shared.imageUpload.clickHint': 'Click to choose image',
   'shared.imageUpload.dragHint': 'Drag to reposition, scroll to zoom',
+  'shared.workspaceNavigation.deleteChannelRuntimeCleanupFeedbackOne':
+    'Conversation deleted. Cats Runtime retained {count} linked runtime session; open runtime diagnostics if disk cleanup matters.',
+  'shared.workspaceNavigation.deleteChannelRuntimeCleanupFeedbackMany':
+    'Conversation deleted. Cats Runtime retained {count} linked runtime sessions; open runtime diagnostics if disk cleanup matters.',
+  'shared.workspaceNavigation.renameChatError': 'Failed to rename chat.',
+  'shared.workspaceNavigation.deleteChatError': 'Failed to delete chat.',
+  'shared.workspaceNavigation.renameParallelChatError': 'Failed to rename parallel chat.',
+  'shared.workspaceNavigation.ungroupParallelChatError': 'Failed to ungroup parallel chat.',
+  'shared.workspaceNavigation.deleteParallelChatGroupError': 'Failed to delete all chats.',
+  'shared.workspaceNavigation.parallelChatFallbackName': 'this parallel chat',
   'shared.settingsCatsRegistry.sectionLabel': 'Registry',
   'shared.settingsCatsRegistry.savedCatsLabel': 'Saved cats',
   'shared.settingsCatsRegistry.noCatsYetLabel': 'No cats yet',

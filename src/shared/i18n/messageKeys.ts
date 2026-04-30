@@ -1421,6 +1421,20 @@ export const messageKeys = {
   sharedGuideCatDialogDockNow: 'shared.guideCat.dialog.dockNow',
   sharedImageUploadClickHint: 'shared.imageUpload.clickHint',
   sharedImageUploadDragHint: 'shared.imageUpload.dragHint',
+  sharedWorkspaceNavigationDeleteChannelRuntimeCleanupFeedbackOne:
+    'shared.workspaceNavigation.deleteChannelRuntimeCleanupFeedbackOne',
+  sharedWorkspaceNavigationDeleteChannelRuntimeCleanupFeedbackMany:
+    'shared.workspaceNavigation.deleteChannelRuntimeCleanupFeedbackMany',
+  sharedWorkspaceNavigationRenameChatError: 'shared.workspaceNavigation.renameChatError',
+  sharedWorkspaceNavigationDeleteChatError: 'shared.workspaceNavigation.deleteChatError',
+  sharedWorkspaceNavigationRenameParallelChatError:
+    'shared.workspaceNavigation.renameParallelChatError',
+  sharedWorkspaceNavigationUngroupParallelChatError:
+    'shared.workspaceNavigation.ungroupParallelChatError',
+  sharedWorkspaceNavigationDeleteParallelChatGroupError:
+    'shared.workspaceNavigation.deleteParallelChatGroupError',
+  sharedWorkspaceNavigationParallelChatFallbackName:
+    'shared.workspaceNavigation.parallelChatFallbackName',
   sharedSettingsCatsRegistrySectionLabel: 'shared.settingsCatsRegistry.sectionLabel',
   sharedSettingsCatsRegistrySavedCatsLabel: 'shared.settingsCatsRegistry.savedCatsLabel',
   sharedSettingsCatsRegistryNoCatsYetLabel: 'shared.settingsCatsRegistry.noCatsYetLabel',
