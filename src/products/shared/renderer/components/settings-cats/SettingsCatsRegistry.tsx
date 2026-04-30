@@ -5,6 +5,8 @@ import {
   isCatBusy,
   type WorkspaceBusyState,
 } from '../../../../../shared/workspaceBusy.js';
+import { messageKeys } from '../../../../../shared/i18n/messageKeys.js';
+import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import type { TelegramTransportDiagnostics } from '../../api/index.js';
 import type { SettingsCatsMemoryController } from '../../hooks/useSettingsCatsMemory.js';
 import type { BotFormState } from '../../hooks/settingsCatsRegistryActions.js';
@@ -60,6 +62,7 @@ export function WorkspaceSettingsCatsRegistry({
   confirm: confirmDialog,
   SettingsCatsDetailPanelComponent,
 }: WorkspaceSettingsCatsRegistryProps) {
+  const { t } = useI18n();
   const [showArchived, setShowArchived] = useState(false);
   const archivedCount = payload.chat.cats.filter((cat) => cat.status === 'archived').length;
   const visibleCats = showArchived
@@ -74,8 +77,12 @@ export function WorkspaceSettingsCatsRegistry({
     <>
       <div className="contentCardHeader">
         <div>
-          <p className="sectionLabel">Registry</p>
-          <h2>{payload.chat.cats.length > 0 ? 'Saved cats' : 'No cats yet'}</h2>
+          <p className="sectionLabel">{t(messageKeys.sharedSettingsCatsRegistrySectionLabel)}</p>
+          <h2>
+            {payload.chat.cats.length > 0
+              ? t(messageKeys.sharedSettingsCatsRegistrySavedCatsLabel)
+              : t(messageKeys.sharedSettingsCatsRegistryNoCatsYetLabel)}
+          </h2>
         </div>
         <span className="countBadge">{visibleCats.length}</span>
       </div>
@@ -87,7 +94,9 @@ export function WorkspaceSettingsCatsRegistry({
             checked={showArchived}
             onChange={(event) => setShowArchived(event.target.checked)}
           />
-          <span>Show archived ({archivedCount})</span>
+          <span>
+            {t(messageKeys.sharedSettingsCatsRegistryShowArchivedLabel, { count: archivedCount })}
+          </span>
         </label>
       ) : null}
 
@@ -109,7 +118,9 @@ export function WorkspaceSettingsCatsRegistry({
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                       <strong>{cat.name}</strong>
                       {isBossCat ? (
-                        <span className="statusChip statusChipAccent">Boss Cat</span>
+                        <span className="statusChip statusChipAccent">
+                          {t(messageKeys.sharedSettingsCatsRegistryBossCatLabel)}
+                        </span>
                       ) : null}
                     </div>
                     <p>{executionLabel(cat)}</p>
@@ -146,9 +157,14 @@ export function WorkspaceSettingsCatsRegistry({
                             event.stopPropagation();
                             void registryController.onUnarchiveCat(cat.id, cat.name);
                           }}
-                          data-tooltip={`Recover ${cat.name}`}
+                          data-tooltip={t(
+                            messageKeys.sharedSettingsCatsRegistryRecoverTooltip,
+                            { name: cat.name },
+                          )}
                         >
-                          Recover
+                          <span className="srOnly">
+                            {t(messageKeys.sharedSettingsCatsRegistryRecoverLabel)}
+                          </span>
                         </button>
                         <button
                           className="chromeButton"
@@ -158,7 +174,7 @@ export function WorkspaceSettingsCatsRegistry({
                             event.stopPropagation();
                             void registryController.onDeleteCat(cat.id, cat.name);
                           }}
-                          data-tooltip={`Delete ${cat.name}`}
+                          data-tooltip={t(messageKeys.sharedSettingsCatsRegistryDeleteTooltip, { name: cat.name })}
                         >
                           &#x2715;
                         </button>
@@ -172,7 +188,7 @@ export function WorkspaceSettingsCatsRegistry({
                           event.stopPropagation();
                           void registryController.onArchiveCat(cat.id, cat.name);
                         }}
-                        data-tooltip={`Archive ${cat.name}`}
+                        data-tooltip={t(messageKeys.sharedSettingsCatsRegistryArchiveTooltip, { name: cat.name })}
                       >
                         &#x2715;
                       </button>
@@ -181,8 +197,12 @@ export function WorkspaceSettingsCatsRegistry({
                 </div>
 
                 <div className="catMeta">
-                  <span>{cat.skillProfile ?? 'Default'}</span>
-                  <span>{cat.memory.updatedAt ? 'Memory saved' : 'No memory yet'}</span>
+                  <span>{cat.skillProfile ?? t(messageKeys.sharedSettingsCatsRegistryDefaultSkillProfileLabel)}</span>
+                  <span>
+                    {cat.memory.updatedAt
+                      ? t(messageKeys.sharedSettingsCatsRegistryMemorySavedLabel)
+                      : t(messageKeys.sharedSettingsCatsRegistryNoMemoryYetLabel)}
+                  </span>
                   {catBindings.length > 0 ? (
                     <span>{catBindings.length} bot{catBindings.length > 1 ? 's' : ''}</span>
                   ) : null}
@@ -208,7 +228,7 @@ export function WorkspaceSettingsCatsRegistry({
           })
         ) : (
           <div className="emptyStateCard">
-            <p>Create your first cat from the panel on the right.</p>
+            <p>{t(messageKeys.sharedSettingsCatsRegistryEmptyStateHint)}</p>
           </div>
         )}
       </div>
