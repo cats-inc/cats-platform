@@ -383,55 +383,59 @@ export function WorkspaceNewChatDraft({
         {draftCustomRegion ? (
           <div className="draftCustomRegion">{draftCustomRegion}</div>
         ) : null}
-        {(surfaceTag || draftCwd || chooseFolderPlacement === 'header' || composerHeaderWhereExtras || composerHeaderAccessory) ? (
-          <div className="composerHeaderRow">
-            <div className="composerHeaderLeft">
-              {surfaceTag}
-              {draftCwd ? (
-                <span
-                  className="composerCwdChip composerCwdClickable"
-                  data-tooltip={draftCwd}
-                  role="button"
-                  tabIndex={isSubmittingFirstTurn ? undefined : 0}
-                  onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('cwd')}
-                >
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
-                  </svg>
-                  <span>{truncatePath(draftCwd)}</span>
-                  <button
-                    className="composerChipClose"
-                    type="button"
-                    disabled={isSubmittingFirstTurn}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      onDraftCwdClear();
-                    }}
-                    aria-label="Remove folder"
-                  >
-                    &times;
-                  </button>
-                </span>
-              ) : chooseFolderPlacement === 'header' ? (
+        {/* Always render `.composerHeaderRow` so the composer card stays
+            anchored at the same vertical position across +New / +Group /
+            +Parallel presets. Parallel's carousel grid already reserves the
+            row via shadow cards; non-carousel presets need an explicit
+            reservation here. CSS `min-height` on `.composerHeaderRow` keeps
+            the empty row matching the populated row's natural height. */}
+        <div className="composerHeaderRow">
+          <div className="composerHeaderLeft">
+            {surfaceTag}
+            {draftCwd ? (
+              <span
+                className="composerCwdChip composerCwdClickable"
+                data-tooltip={draftCwd}
+                role="button"
+                tabIndex={isSubmittingFirstTurn ? undefined : 0}
+                onClick={isSubmittingFirstTurn ? undefined : () => openSidePanelTo('cwd')}
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
+                </svg>
+                <span>{truncatePath(draftCwd)}</span>
                 <button
+                  className="composerChipClose"
                   type="button"
-                  className="composerHeaderChooseButton"
                   disabled={isSubmittingFirstTurn}
-                  onClick={() => openSidePanelTo('cwd')}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onDraftCwdClear();
+                  }}
+                  aria-label="Remove folder"
                 >
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
-                  </svg>
-                  <span>{resolvedCopy.folder.actionLabel}</span>
+                  &times;
                 </button>
-              ) : null}
-              {composerHeaderWhereExtras}
-            </div>
-            {composerHeaderAccessory ? (
-              <div className="composerHeaderRight">{composerHeaderAccessory}</div>
+              </span>
+            ) : chooseFolderPlacement === 'header' ? (
+              <button
+                type="button"
+                className="composerHeaderChooseButton"
+                disabled={isSubmittingFirstTurn}
+                onClick={() => openSidePanelTo('cwd')}
+              >
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 4v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1H8L6.5 3H3a1 1 0 0 0-1 1z" />
+                </svg>
+                <span>{resolvedCopy.folder.actionLabel}</span>
+              </button>
             ) : null}
+            {composerHeaderWhereExtras}
           </div>
-        ) : null}
+          {composerHeaderAccessory ? (
+            <div className="composerHeaderRight">{composerHeaderAccessory}</div>
+          ) : null}
+        </div>
         <DraftComposerStack
           card={(
             <form

@@ -28,7 +28,13 @@
   display: grid;
   grid-template-columns: 1fr;
   grid-template-rows: auto;
-  place-items: center;
+  /* Align cards to the cell top (instead of centering vertically) so the
+   * lead card's composer header row sits at the same Y as the non-carousel
+   * (+New / +Group) presets, regardless of how much taller the shadow
+   * cards are. Without this the lead drifts ~2-3px down when carousel
+   * activates, causing visible jitter on preset toggle. */
+  align-items: start;
+  justify-items: center;
   perspective: 1600px;
   perspective-origin: 50% 50%;
   transform-style: preserve-3d;

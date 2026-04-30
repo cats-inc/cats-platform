@@ -821,15 +821,13 @@ export function NewChatDraft({
     />
   );
 
-  const hasComposerHeaderContent = Boolean(
-    surfaceTag
-    || draftCwd
-    || chooseFolderPlacement === 'header'
-    || composerHeaderWhereExtras
-    || composerHeaderAccessory,
-  );
-
-  const composerHeaderRowJsx = hasComposerHeaderContent ? (
+  // Always render `.composerHeaderRow` so the composer card stays anchored
+  // at the same vertical position across +New / +Group / +Parallel presets
+  // (parallel's carousel grid already reserves the row via shadow cards;
+  // non-carousel presets need an explicit reservation here). The CSS
+  // `min-height` on `.composerHeaderRow` keeps the empty row matching the
+  // populated row's natural height.
+  const composerHeaderRowJsx = (
     <div className="composerHeaderRow">
       <div className="composerHeaderLeft">
         {surfaceTag}
@@ -877,7 +875,7 @@ export function NewChatDraft({
         <div className="composerHeaderRight">{composerHeaderAccessory}</div>
       ) : null}
     </div>
-  ) : null;
+  );
 
   const leadFormJsx = (
     <form

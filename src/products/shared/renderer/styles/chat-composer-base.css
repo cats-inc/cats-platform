@@ -855,6 +855,13 @@
   width: 100%;
   max-width: var(--chat-transcript-max-width, 680px);
   min-width: 0;
+  /* Reserve space matching populated row height (composerSurfaceChip is
+   * 24px tall; composerHeaderChooseButton ≈ 22-24px). Keeps composer card
+   * anchored at the same Y across +New / +Group / +Parallel presets so
+   * sidebar switching does not shift UI vertically. Parallel mode's
+   * carousel cell already reserves this height via shadow cards' always-
+   * rendered header; non-carousel presets need this explicit floor. */
+  min-height: 24px;
 }
 
 .composerHeaderLeft {
