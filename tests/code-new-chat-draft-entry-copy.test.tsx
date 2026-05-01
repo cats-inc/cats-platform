@@ -113,7 +113,7 @@ function createCodeAssistPayload(): AppShellPayload {
             entryChips: [
               {
                 id: 'code-pomodoro',
-                label: 'Pomodoro app',
+                label: 'Build a pomodoro app',
                 prompt: 'Write a small pomodoro timer app.',
               },
               {
@@ -125,6 +125,16 @@ function createCodeAssistPayload(): AppShellPayload {
                 id: 'code-refactor',
                 label: 'Refactor code',
                 prompt: 'Refactor this code without changing behavior.',
+              },
+              {
+                id: 'code-write-tests',
+                label: 'Write tests',
+                prompt: 'Add tests for the code we last touched.',
+              },
+              {
+                id: 'cross:work:start-project',
+                label: 'Start a project',
+                prompt: 'Start a small project to track milestones.',
               },
               {
                 id: 'code-hidden',
@@ -324,7 +334,7 @@ test('new code default draft does not render standalone setup chips between the 
   assert.doesNotMatch(markup, /class="draftPromptChip"/u);
 });
 
-test('new code default draft prefers payload-backed assist greeting and shows up to three helper chips', () => {
+test('new code default draft prefers payload-backed assist greeting and shows up to five helper chips', () => {
   const markup = renderToStaticMarkup(
     <NewChatDraft
       {...createProps({
@@ -335,9 +345,11 @@ test('new code default draft prefers payload-backed assist greeting and shows up
   );
 
   assert.match(markup, /Pick a small coding task\./u);
-  assert.match(markup, />Pomodoro app</u);
+  assert.match(markup, />Build a pomodoro app</u);
   assert.match(markup, />Fix a bug</u);
   assert.match(markup, />Refactor code</u);
+  assert.match(markup, />Write tests</u);
+  assert.match(markup, />Start a project</u);
   assert.doesNotMatch(markup, />Hidden helper</u);
   assert.doesNotMatch(markup, /Legacy code greeting\./u);
   assert.match(markup, /Choose codespace/u);
@@ -364,7 +376,7 @@ test('new code helper chips stay visible while the user types manually', () => {
                   entryChips: [
                     {
                       id: 'code-pomodoro',
-                      label: 'Pomodoro app',
+                      label: 'Build a pomodoro app',
                       prompt: 'Write a small pomodoro timer app.',
                     },
                   ],
@@ -381,7 +393,7 @@ test('new code helper chips stay visible while the user types manually', () => {
     />,
   );
 
-  assert.match(markup, />Pomodoro app</u);
+  assert.match(markup, />Build a pomodoro app</u);
 });
 
 test('team code and peer code drafts reuse the same code helper chips', () => {
@@ -411,9 +423,11 @@ test('team code and peer code drafts reuse the same code helper chips', () => {
   );
 
   for (const markup of [groupMarkup, parallelMarkup]) {
-    assert.match(markup, />Pomodoro app</u);
+    assert.match(markup, />Build a pomodoro app</u);
     assert.match(markup, />Fix a bug</u);
     assert.match(markup, />Refactor code</u);
+    assert.match(markup, />Write tests</u);
+    assert.match(markup, />Start a project</u);
     assert.doesNotMatch(markup, />Hidden helper</u);
   }
 });

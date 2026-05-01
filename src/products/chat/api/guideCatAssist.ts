@@ -43,7 +43,13 @@ interface GuideCatAssistRefreshQueueEntry {
 }
 
 const DEFAULT_GUIDE_CAT_ASSIST_CACHE_TTL_MS = 6 * 60 * 60 * 1000;
-const GUIDE_CAT_ASSIST_TEMPLATE_REVISION = 'guide-cat-assist-v1';
+// Bump when a baseline chip / greeting / copy in `guideCatAssistBaselines.ts`
+// changes — the constant is mixed into `refreshContextHash`, so changing it
+// invalidates every locally-cached bundle and forces the next render to
+// pick up the new baseline. Without a bump, label edits never reach users
+// who already have a cached bundle on disk. Last bump: 2026-05-01 to roll
+// out two new Code chips ("Write tests" + cross-surface "Start a project").
+const GUIDE_CAT_ASSIST_TEMPLATE_REVISION = 'guide-cat-assist-v3';
 const guideCatAssistRefreshQueue = new Map<string, GuideCatAssistRefreshQueueEntry>();
 
 function mergeOverrideContent(
@@ -77,10 +83,6 @@ function resolveSurfaceReadModel(options: {
   const cachedBundle = options.cacheBundles[scopeKey] ?? null;
   const surfaceDisabled = options.disabledSurfaceKeys.includes(scopeKey);
   const override = options.curatedOverrides[scopeKey];
-  const canRenderFromCache = options.guideCatExists && cachedBundle !== null && !surfaceDisabled;
-  const selectedBundle = canRenderFromCache
-    ? cachedBundle
-    : options.baselineBundle;
   const stale = cachedBundle
     ? (
       isGuideCatAssistBundleStale(cachedBundle)
@@ -90,6 +92,27 @@ function resolveSurfaceReadModel(options: {
       )
     )
     : false;
+  // When the cached bundle's refreshContextHash no longer matches the
+  // current one — meaning the scope, guideCat, owner, or baseline
+  // template revision has changed — the cached content is structurally
+  // out of date (not just TTL-expired). Drop back to the freshly-built
+  // baseline immediately instead of serving cached copy until a
+  // background refresh lands. Without this branch, a `GUIDE_CAT_ASSIST_TEMPLATE_REVISION`
+  // bump (the lever for rolling out new chip / greeting copy) would
+  // never reach users with a populated cache.
+  const cacheRefreshContextDrift = Boolean(
+    cachedBundle
+    && options.refreshContextHash !== null
+    && cachedBundle.provenance.refreshContextHash !== options.refreshContextHash,
+  );
+  const canRenderFromCache =
+    options.guideCatExists
+    && cachedBundle !== null
+    && !surfaceDisabled
+    && !cacheRefreshContextDrift;
+  const selectedBundle = canRenderFromCache
+    ? cachedBundle
+    : options.baselineBundle;
   const missing = cachedBundle === null;
   const refreshEligible =
     !surfaceDisabled

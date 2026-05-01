@@ -1,7 +1,14 @@
 import {
   NewChatDraft as ChatNewChatDraft,
-  type NewChatDraftProps,
+  type NewChatDraftProps as SharedNewChatDraftProps,
 } from '../../../shared/renderer/components/ChatNewChatDraft.js';
+import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
+import { prefetchCrossSurfaceNavigationTarget } from '../../../shared/renderer/crossSurfaceNavigationRegistry.js';
+
+export interface NewChatDraftProps extends SharedNewChatDraftProps {
+  draftSurface: PlatformSurfaceId;
+  onDraftSurfaceChange: (surface: PlatformSurfaceId) => void;
+}
 import {
   buildChatNewChatDraftSidePanelSections,
   type BuildChatNewChatDraftSidePanelSectionsInput,
@@ -188,10 +195,6 @@ export function buildCodeNewChatDraftSidePanelSections(
   ];
 }
 
-export type {
-  NewChatDraftProps,
-} from '../../../shared/renderer/components/ChatNewChatDraft.js';
-
 export type CodeNewChatDraftSurfaceKind = 'direct-lane' | 'default' | 'team' | 'peer';
 
 export function resolveCodeNewChatDraftSurfaceKind(input: {
@@ -210,6 +213,11 @@ export function resolveCodeNewChatDraftSurfaceKind(input: {
   return 'default';
 }
 
+// Cap at 5 to leave room for the inline "Write tests" + cross-surface
+// "Start a project" affordances added on top of the original 3 baseline
+// chips. Bump if the chip strip ever exceeds five.
+const CODE_HELPER_CHIP_LIMIT = 5;
+
 function resolveCodeDraftHelperChips(props: NewChatDraftProps): Array<{
   id: string;
   label: string;
@@ -217,12 +225,46 @@ function resolveCodeDraftHelperChips(props: NewChatDraftProps): Array<{
 }> {
   return (props.payload.guideCatAssist?.codeNewDraft?.bundle.content.entryChips ?? [])
     .filter((chip) => chip.prompt.trim().length > 0)
-    .slice(0, 3)
+    .slice(0, CODE_HELPER_CHIP_LIMIT)
     .map((chip) => ({
       id: chip.id,
       label: chip.label?.trim() || chip.prompt,
       prompt: chip.prompt,
     }));
+}
+
+// Chip IDs prefixed with `cross:work:` (or `cross:chat:`) hand off to the
+// matching draft surface instead of staying on Code. Today only the Code
+// → Work pomodoro/start-a-project handoff is wired; future cross-surface
+// chips can extend the prefix scheme without changing the renderer.
+const CROSS_SURFACE_CHIP_PREFIX = 'cross:';
+
+function resolveCrossSurfaceChipTarget(chipId: string): PlatformSurfaceId | null {
+  if (!chipId.startsWith(CROSS_SURFACE_CHIP_PREFIX)) return null;
+  const rest = chipId.slice(CROSS_SURFACE_CHIP_PREFIX.length);
+  const colon = rest.indexOf(':');
+  const surface = colon >= 0 ? rest.slice(0, colon) : rest;
+  if (surface === 'chat' || surface === 'work' || surface === 'code') {
+    return surface;
+  }
+  return null;
+}
+
+function buildCodeChipOnClick(
+  chip: { id: string; prompt: string },
+  props: NewChatDraftProps,
+): () => void {
+  const target = resolveCrossSurfaceChipTarget(chip.id);
+  if (target && target !== 'code') {
+    return () => {
+      props.onComposerChange(chip.prompt);
+      void prefetchCrossSurfaceNavigationTarget(target);
+      props.onDraftSurfaceChange(target);
+    };
+  }
+  return () => {
+    props.onComposerChange(chip.prompt);
+  };
 }
 
 function resolveCodeDraftGreeting(
@@ -243,7 +285,7 @@ function buildWorkspaceDraftProps(input: {
     label?: string | null;
     prompt: string;
   }>;
-  onSelectHelperChip: (prompt: string) => void;
+  onSelectHelperChip: (chip: { id: string; prompt: string }) => void;
 }): WorkspaceDraftProps {
   const { props, draftCopy, visibleHelperChips, onSelectHelperChip } = input;
   const {
@@ -308,7 +350,7 @@ function buildWorkspaceDraftProps(input: {
               className="promptChip draftPromptChip"
               type="button"
               disabled={isSubmittingFirstTurn}
-              onClick={() => onSelectHelperChip(chip.prompt)}
+              onClick={() => onSelectHelperChip({ id: chip.id, prompt: chip.prompt })}
             >
               {chip.label?.trim() || chip.prompt}
             </button>
@@ -339,7 +381,7 @@ function CodeDirectLaneDraft(props: NewChatDraftProps) {
     props,
     draftCopy,
     visibleHelperChips: helperChips,
-    onSelectHelperChip: (prompt) => { props.onComposerChange(prompt); },
+    onSelectHelperChip: (chip) => buildCodeChipOnClick(chip, props)(),
   });
 
   return (
@@ -391,7 +433,7 @@ function CodeChatDraft(props: NewChatDraftProps) {
           ? helperChips.map((chip) => ({
               id: chip.id,
               label: chip.label,
-              onClick: () => { props.onComposerChange(chip.prompt); },
+              onClick: buildCodeChipOnClick(chip, props),
             }))
           : undefined,
       }}

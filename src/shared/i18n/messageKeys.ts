@@ -1152,8 +1152,16 @@ export const messageKeys = {
   chatNewChatDraftSidePanelParticipantsGroupTitle: 'chat.newChatDraft.participants.groupTitle',
   chatNewChatDraftSidePanelParticipantsEmptyState:
     'chat.newChatDraft.participants.emptyState',
+  chatNewChatDraftPlanMyDayChipLabel: 'chat.newChatDraft.planMyDayChipLabel',
+  chatNewChatDraftPlanMyDayPrompt: 'chat.newChatDraft.planMyDayPrompt',
+  chatNewChatDraftBrainstormNameChipLabel: 'chat.newChatDraft.brainstormNameChipLabel',
+  chatNewChatDraftBrainstormNamePrompt: 'chat.newChatDraft.brainstormNamePrompt',
+  chatNewChatDraftSummarizeLinkChipLabel: 'chat.newChatDraft.summarizeLinkChipLabel',
+  chatNewChatDraftSummarizeLinkPrompt: 'chat.newChatDraft.summarizeLinkPrompt',
   chatNewChatDraftPomodoroChipLabel: 'chat.newChatDraft.pomodoroChipLabel',
   chatNewChatDraftPomodoroPrompt: 'chat.newChatDraft.pomodoroPrompt',
+  chatNewChatDraftStartProjectChipLabel: 'chat.newChatDraft.startProjectChipLabel',
+  chatNewChatDraftStartProjectPrompt: 'chat.newChatDraft.startProjectPrompt',
   chatNewChatDraftSidePanelExecutionTitle: 'chat.newChatDraft.execution.title',
   chatNewChatDraftSidePanelExecutionActionLabel:
     'chat.newChatDraft.execution.actionLabel',

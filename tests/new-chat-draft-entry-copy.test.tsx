@@ -118,7 +118,7 @@ test('generic new chat draft keeps only the product-owned starter chip out of th
   );
 
   assert.match(markup, /Meow\. Ready when you are\./u);
-  assert.match(markup, />Pomodoro app</u);
+  assert.match(markup, />Build a pomodoro app</u);
   assert.doesNotMatch(markup, /Plan today's priorities/u);
 });
 
@@ -165,7 +165,7 @@ test('generic new chat draft with multiple selected cats keeps a lightweight gre
   );
 
   assert.match(markup, /Meow\. Ready when you are\./u);
-  assert.match(markup, />Pomodoro app</u);
+  assert.match(markup, />Build a pomodoro app</u);
   assert.doesNotMatch(markup, /split roles, and ask for a coordinated plan/u);
   assert.doesNotMatch(markup, /Cat-led Chat/u);
 });
@@ -194,7 +194,7 @@ test('group route shows the same Pomodoro helper chip as the default new chat dr
   );
 
   assert.doesNotMatch(markup, /split roles, and ask for a coordinated plan/u);
-  assert.match(markup, />Pomodoro app</u);
+  assert.match(markup, />Build a pomodoro app</u);
   assert.match(markup, /draftPromptChip/u);
 });
 
@@ -285,7 +285,7 @@ test('default chat draft expanded to a group with runtime assist hides the chat-
   // The chat-product Pomodoro fallback yields, even though the
   // chat wrapper's `entryPreset === 'default' && !isParallelDraft`
   // gate is still true.
-  assert.doesNotMatch(markup, /Pomodoro app/u);
+  assert.doesNotMatch(markup, /Build a pomodoro app/u);
 });
 
 test('advanced draft controls expose group and compare add buttons on the default chat draft without hint copy', () => {
@@ -674,7 +674,7 @@ test('parallel draft shows the same Pomodoro helper chip as the default new chat
     />,
   );
 
-  assert.match(markup, />Pomodoro app</u);
+  assert.match(markup, />Build a pomodoro app</u);
   assert.match(markup, /draftPromptChip/u);
   assert.doesNotMatch(markup, /Compare how different models would approach the same task\./u);
 });
@@ -707,7 +707,7 @@ test('+compare expanded default draft keeps the Pomodoro helper chip — symmetr
     />,
   );
 
-  assert.match(markup, />Pomodoro app</u);
+  assert.match(markup, />Build a pomodoro app</u);
   assert.match(markup, /draftPromptChip/u);
 });
 
@@ -873,7 +873,7 @@ test('group draft ignores deterministic payload-backed starter prompts', () => {
   );
 
   assert.doesNotMatch(markup, /Brief the group, split roles, and ask for a coordinated plan\./u);
-  assert.match(markup, />Pomodoro app</u);
+  assert.match(markup, />Build a pomodoro app</u);
   assert.match(markup, /draftPromptChip/u);
 });
 

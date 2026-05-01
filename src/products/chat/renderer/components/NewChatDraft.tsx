@@ -53,14 +53,17 @@ function NewChatDraftInner(props: NewChatDraftProps) {
 
   const isDirectLaneDraft = !(props.allowAddCat ?? true) && Boolean(props.draftDefaultRecipientCatId);
   const entryPreset = props.entryPreset ?? 'default';
-  // Chat owns the cross-surface "Pomodoro app" affordance for the three
-  // fresh entry routes (+New / +Group / +Parallel). Behaviour is symmetric
-  // across them: clicking +compare from any of the three keeps the chip
-  // (it just adds another branch — not a mode change). Direct-lane drafts
+  // Chat owns the cross-surface starter strip for the three fresh entry
+  // routes (+New / +Group / +Parallel). Behaviour is symmetric across
+  // them: clicking +compare from any of the three keeps the chips (they
+  // just add another branch — not a mode change). Direct-lane drafts
   // remain excluded because that surface owns its private cat-led flow.
   // Runtime-backed `newChatAssist` chips still take precedence inside the
   // shared composer helperRegion, so this fallback only renders when the
   // route has no runtime chip source.
+  // Chips 1–3 stay on Chat. Chip 4 hands off to Code (existing pomodoro
+  // affordance). Chip 5 hands off to Work — temporary scaffolding for
+  // the draft-Chat → active-Work flow under test.
   const showsChatStarterChip =
     !isDirectLaneDraft
     && (
@@ -72,12 +75,42 @@ function NewChatDraftInner(props: NewChatDraftProps) {
   const leadingStarterChips = showsChatStarterChip
     ? [
       {
+        id: 'plan-my-day',
+        label: t(messageKeys.chatNewChatDraftPlanMyDayChipLabel),
+        onClick: () => {
+          props.onComposerChange(t(messageKeys.chatNewChatDraftPlanMyDayPrompt));
+        },
+      },
+      {
+        id: 'brainstorm-name',
+        label: t(messageKeys.chatNewChatDraftBrainstormNameChipLabel),
+        onClick: () => {
+          props.onComposerChange(t(messageKeys.chatNewChatDraftBrainstormNamePrompt));
+        },
+      },
+      {
+        id: 'summarize-link',
+        label: t(messageKeys.chatNewChatDraftSummarizeLinkChipLabel),
+        onClick: () => {
+          props.onComposerChange(t(messageKeys.chatNewChatDraftSummarizeLinkPrompt));
+        },
+      },
+      {
         id: 'pomodoro-app',
         label: t(messageKeys.chatNewChatDraftPomodoroChipLabel),
         onClick: () => {
           props.onComposerChange(t(messageKeys.chatNewChatDraftPomodoroPrompt));
           void prefetchCrossSurfaceNavigationTarget('code');
           props.onDraftSurfaceChange('code');
+        },
+      },
+      {
+        id: 'start-project',
+        label: t(messageKeys.chatNewChatDraftStartProjectChipLabel),
+        onClick: () => {
+          props.onComposerChange(t(messageKeys.chatNewChatDraftStartProjectPrompt));
+          void prefetchCrossSurfaceNavigationTarget('work');
+          props.onDraftSurfaceChange('work');
         },
       },
     ]

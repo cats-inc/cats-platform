@@ -269,7 +269,7 @@ export function resolveNewCodeGuideCatAssistBaseline(options: {
     entryChips: [
       {
         id: 'code-pomodoro',
-        label: 'Pomodoro app',
+        label: 'Build a pomodoro app',
         prompt: 'Write a small pomodoro timer app.',
       },
       {
@@ -281,6 +281,19 @@ export function resolveNewCodeGuideCatAssistBaseline(options: {
         id: 'code-refactor',
         label: 'Refactor code',
         prompt: 'Refactor this code without changing behavior.',
+      },
+      {
+        id: 'code-write-tests',
+        label: 'Write tests',
+        prompt: 'Add tests for the code we last touched.',
+      },
+      // Cross-surface chip: the Code renderer (`products/code/renderer/
+      // components/NewChatDraft.tsx`) routes IDs prefixed with
+      // `cross:work:` to `onDraftSurfaceChange('work')` + prefetch.
+      {
+        id: 'cross:work:start-project',
+        label: 'Start a project',
+        prompt: 'Start a small project to track milestones.',
       },
     ],
   });
