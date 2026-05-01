@@ -458,6 +458,20 @@ export function buildDesktopBootstrapPage(): string {
       font-size: 0.78rem;
       border-radius: 8px;
     }
+    .cli-card-spinner {
+      display: inline-block;
+      width: 12px;
+      height: 12px;
+      border: 2px solid var(--border);
+      border-top-color: var(--muted-soft);
+      border-radius: 50%;
+      animation: bootSpin 0.8s linear infinite;
+      vertical-align: middle;
+    }
+    .cli-card-btn .cli-card-spinner {
+      width: 10px;
+      height: 10px;
+    }
     .cli-row-break {
       grid-column: 1 / -1;
       height: 0;
@@ -616,8 +630,8 @@ export function buildDesktopBootstrapPage(): string {
        collapsed until Show more is pressed, then npm prerequisites appear
        before npm-based CLIs. */
     var ONBOARDING_NATIVE_PROVIDER_ORDER = [
-      'claude_code', 'cursor_agent', 'goose', 'junie',
-      'kiro', 'ollama'
+      'claude_code', 'cursor_agent', 'kiro', 'junie',
+      'goose', 'ollama'
     ];
     var ONBOARDING_NPM_PROVIDER_ORDER = [
       'codex', 'gemini', 'copilot', 'opencode',
@@ -708,11 +722,12 @@ export function buildDesktopBootstrapPage(): string {
           return {
             helperId: null,
             label: ONBOARDING_CARD_LABELS.node,
-            statusText: 'Checking Node...',
+            statusText: ' ',
             installed: false,
             available: false,
             supported: true,
-            supportsApply: false
+            supportsApply: false,
+            checkingHint: 'spinner-in-status'
           };
         }
         return null;
@@ -755,31 +770,43 @@ export function buildDesktopBootstrapPage(): string {
         });
     }
 
+    function spinnerEl() {
+      return el('span', { class: 'cli-card-spinner', 'aria-hidden': 'true' });
+    }
+
     function CliCard(card, hidden) {
       var installing = Boolean(cliInstallingState[card.helperId]);
-      var btnLabel, statusClass, statusText;
+      var btnLabel, statusClass, statusContent, btnContent;
       if (installing) {
         btnLabel = 'Installing…';
         statusClass = '';
-        statusText = ' ';
+        statusContent = ' ';
+        btnContent = btnLabel;
       } else if (card.installed) {
         btnLabel = card.supportsApply === false ? 'Installed' : 'Reinstall';
         statusClass = 'c-ok';
-        statusText = '✓ Installed';
+        statusContent = '✓ Installed';
+        btnContent = btnLabel;
       } else {
         btnLabel = 'Install';
         statusClass = '';
-        statusText = card.statusText || ' ';
+        statusContent = card.statusText || ' ';
+        btnContent = btnLabel;
+        if (card.checkingHint === 'spinner-in-status') {
+          statusContent = spinnerEl();
+        } else if (card.checkingHint === 'spinner-in-button') {
+          btnContent = spinnerEl();
+        }
       }
       var btn = el('button', {
         class: 'btn cli-card-btn',
         disabled: installing || !card.available || !card.supported || card.supportsApply === false,
         onclick: function () { handleCliInstallClick(card); }
-      }, btnLabel);
+      }, btnContent);
       var className = 'cli-card' + (hidden ? ' cli-card-hidden' : '');
       return el('div', { class: className },
         el('div', { class: 'cli-card-name' }, card.label),
-        el('div', { class: 'cli-card-status ' + statusClass }, statusText),
+        el('div', { class: 'cli-card-status ' + statusClass }, statusContent),
         btn
       );
     }
@@ -787,6 +814,14 @@ export function buildDesktopBootstrapPage(): string {
     function rowBreak(hidden) {
       return el('div', { class: 'cli-row-break' + (hidden ? ' cli-card-hidden' : '') });
     }
+
+    /* Provider IDs that stay visible in the collapsed onboarding view.
+       The Node prerequisite card is always pinned in collapsed view too —
+       see ONBOARDING_COLLAPSED_INCLUDES_NODE below. CSS grid auto-flow does
+       the visual reordering: hidden cards drop out and the visible cards
+       collapse into row 1 in entry order. */
+    var ONBOARDING_COLLAPSED_PROVIDER_IDS = ['claude_code', 'codex', 'gemini'];
+    var ONBOARDING_COLLAPSED_INCLUDES_NODE = true;
 
     function appendProviderCards(cards, snapshot, providerOrder, options) {
       for (var i = 0; i < providerOrder.length; i++) {
@@ -797,7 +832,11 @@ export function buildDesktopBootstrapPage(): string {
         if (options && options.waitForNodePrerequisite) {
           card.statusText = options.nodePrerequisiteStatusText || 'Install Node first';
           card.supportsApply = false;
+          if (options.showCheckingSpinner) {
+            card.checkingHint = 'spinner-in-button';
+          }
         }
+        card.collapsedSlot = ONBOARDING_COLLAPSED_PROVIDER_IDS.indexOf(providerId) !== -1;
         cards.push(card);
       }
     }
@@ -809,28 +848,32 @@ export function buildDesktopBootstrapPage(): string {
       appendProviderCards(entries, snapshot, ONBOARDING_NATIVE_PROVIDER_ORDER);
       entries.push({ kind: 'break' });
       var nodeCard = buildNodePrerequisiteCard(setupSnap);
-      if (nodeCard) entries.push(nodeCard);
+      if (nodeCard) {
+        nodeCard.collapsedSlot = ONBOARDING_COLLAPSED_INCLUDES_NODE;
+        entries.push(nodeCard);
+      }
       var nodeReady = isNodePrerequisiteReady(setupSnap);
       appendProviderCards(entries, snapshot, ONBOARDING_NPM_PROVIDER_ORDER, {
         waitForNodePrerequisite: !nodeReady,
-        nodePrerequisiteStatusText: setupSnap ? 'Install Node first' : 'Checking Node...'
+        nodePrerequisiteStatusText: setupSnap ? 'Install Node first' : ' ',
+        showCheckingSpinner: !setupSnap
       });
 
       var elements = [];
-      var renderedCards = 0;
+      var hasHiddenCards = false;
       for (var i = 0; i < entries.length; i++) {
         var entry = entries[i];
         if (entry.kind === 'break') {
           elements.push(rowBreak(!expanded));
           continue;
         }
-        var hidden = !expanded && renderedCards >= 4;
+        var hidden = !expanded && !entry.collapsedSlot;
+        if (hidden) hasHiddenCards = true;
         elements.push(CliCard(entry, hidden));
-        renderedCards += 1;
       }
       return {
         elements: elements,
-        hasHiddenCards: renderedCards > 4
+        hasHiddenCards: hasHiddenCards
       };
     }
 

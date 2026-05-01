@@ -91,19 +91,24 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /resolvePageMode/);
   assert.match(html, /snapshot\.app\.onboardingMode === 'setup_status'/);
   assert.match(html, /continueDisabled = legacyCliGate && installedCount === 0/);
-  assert.match(html, /ONBOARDING_NATIVE_PROVIDER_ORDER = \[\s*'claude_code', 'cursor_agent', 'goose', 'junie',\s*'kiro', 'ollama'\s*\]/);
+  assert.match(html, /ONBOARDING_NATIVE_PROVIDER_ORDER = \[\s*'claude_code', 'cursor_agent', 'kiro', 'junie',\s*'goose', 'ollama'\s*\]/);
   assert.match(html, /ONBOARDING_NPM_PROVIDER_ORDER = \[\s*'codex', 'gemini', 'copilot', 'opencode',\s*'kilo', 'auggie', 'pi'\s*\]/);
   assert.match(html, /Node\.js \/ npm/);
   assert.match(html, /Required by npm CLIs/);
-  assert.match(html, /Checking Node\.\.\./);
   assert.match(html, /Install Node first/);
+  assert.match(html, /cli-card-spinner/);
+  assert.match(html, /'spinner-in-status'/);
+  assert.match(html, /'spinner-in-button'/);
+  assert.match(html, /showCheckingSpinner: !setupSnap/);
   assert.match(html, /if \(!card\.helperId\) return;/);
   assert.match(html, /supportsApply: nodeReady \? false : helper\.supportsApply/);
   assert.match(html, /btnLabel = card\.supportsApply === false \? 'Installed' : 'Reinstall';/);
   assert.doesNotMatch(html, /node-prerequisite-loading/);
   assert.match(html, /ONBOARDING_NODE_HELPER_SUFFIX = '-node-host-installer'/);
   assert.match(html, /cli-row-break/);
-  assert.match(html, /hasHiddenCards: renderedCards > 4/);
+  assert.match(html, /ONBOARDING_COLLAPSED_PROVIDER_IDS = \['claude_code', 'codex', 'gemini'\]/);
+  assert.match(html, /ONBOARDING_COLLAPSED_INCLUDES_NODE = true/);
+  assert.match(html, /hidden = !expanded && !entry\.collapsedSlot/);
   assert.doesNotMatch(html, /elements\.hasHiddenCards/);
 
   // CSS overflow / layout safety
