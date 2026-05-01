@@ -2190,7 +2190,7 @@ export const zhTWCatalog: MessageCatalog = {
   'code.sidebar.peerCode': 'Peer Code',
   'code.sidebar.newCode': 'New Code',
   'code.sidebar.noCodesYet': '目前沒有 code 對話',
-  'code.sidebar.myClowders': '我的 Clowders',
+  'code.sidebar.myClowders': '我的貓群',
   'code.sidebar.newClowder': 'New clowder',
   'code.sidebar.noConversationsSummary': '目前沒有 code 對話',
   'code.relay.noRoundsHint': '使用上方 fan-out 表單開啟第一個 discovery round。',
