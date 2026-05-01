@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { parsePlatformPreferencesUpdate } from '../src/app/server/platformSetupRouteSupport.ts';
+import { buildAssistantResponseLanguageInstruction } from '../src/shared/assistantResponseLanguage.ts';
 import {
   normalizePlatformLobbyAnimationMode,
   type PlatformPreferences,
@@ -15,6 +16,7 @@ function baselinePreferences(): PlatformPreferences {
     openWindowOnStartup: false,
     systemTrayEnabled: true,
     lobbyAnimationMode: 'reduced',
+    assistantResponseLanguage: 'unspecified',
     uiLanguagePreference: 'auto',
   };
 }
@@ -74,6 +76,28 @@ test('parsePlatformPreferencesUpdate accepts a valid UI language preference', ()
   }
 });
 
+test('parsePlatformPreferencesUpdate accepts a valid assistant response language', () => {
+  const result = parsePlatformPreferencesUpdate(
+    { assistantResponseLanguage: 'ja' },
+    baselinePreferences(),
+  );
+  assert.equal(result.ok, true);
+  if (result.ok) {
+    assert.equal(result.value.assistantResponseLanguage, 'ja');
+  }
+});
+
+test('parsePlatformPreferencesUpdate rejects an unknown assistant response language', () => {
+  const result = parsePlatformPreferencesUpdate(
+    { assistantResponseLanguage: 'debug' },
+    baselinePreferences(),
+  );
+  assert.equal(result.ok, false);
+  if (!result.ok) {
+    assert.match(result.message, /assistantResponseLanguage/u);
+  }
+});
+
 test('parsePlatformPreferencesUpdate rejects an unknown UI language preference', () => {
   const result = parsePlatformPreferencesUpdate(
     { uiLanguagePreference: 'debug' },
@@ -90,6 +114,7 @@ test('parsePlatformPreferencesUpdate preserves omitted fields', () => {
     ...baselinePreferences(),
     lastProductSurface: 'code',
     lobbyAnimationMode: 'off',
+    assistantResponseLanguage: 'ko',
     uiLanguagePreference: 'en',
   };
   const result = parsePlatformPreferencesUpdate(
@@ -101,6 +126,7 @@ test('parsePlatformPreferencesUpdate preserves omitted fields', () => {
     assert.equal(result.value.startAtLogin, false);
     assert.equal(result.value.lastProductSurface, 'code');
     assert.equal(result.value.lobbyAnimationMode, 'off');
+    assert.equal(result.value.assistantResponseLanguage, 'ko');
     assert.equal(result.value.uiLanguagePreference, 'en');
   }
 });
@@ -137,4 +163,20 @@ test('normalizePlatformLobbyAnimationMode falls back when the value is invalid',
   assert.equal(normalizePlatformLobbyAnimationMode('full'), 'full');
   assert.equal(normalizePlatformLobbyAnimationMode('max'), 'reduced');
   assert.equal(normalizePlatformLobbyAnimationMode('max', 'off'), 'off');
+});
+
+test('buildAssistantResponseLanguageInstruction emits prompt policy from stable codes', () => {
+  assert.equal(buildAssistantResponseLanguageInstruction('unspecified'), null);
+  assert.match(
+    buildAssistantResponseLanguageInstruction('ja') ?? '',
+    /Japanese/u,
+  );
+  assert.match(
+    buildAssistantResponseLanguageInstruction('zh-TW') ?? '',
+    /Traditional Chinese/u,
+  );
+  assert.match(
+    buildAssistantResponseLanguageInstruction('zh-CN') ?? '',
+    /Simplified Chinese/u,
+  );
 });

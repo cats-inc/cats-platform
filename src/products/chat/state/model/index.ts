@@ -478,7 +478,7 @@ export function createChannel(
     runtimeWorkspaceAccess: runtimeSessionPolicy.workspaceAccess,
     runtimePermissionMode: runtimeSessionPolicy.permissionMode,
     language: normalizeOptionalText(input.language),
-    responseLanguage: normalizeOptionalText(input.responseLanguage) ?? 'en',
+    responseLanguage: normalizeOptionalText(input.responseLanguage) ?? 'unspecified',
     formationMode: input.formationMode ?? 'manual',
     skillProfile: normalizeOptionalText(input.skillProfile) ?? 'chat-default',
     mcpProfile: normalizeOptionalText(input.mcpProfile) ?? 'chat-memory',

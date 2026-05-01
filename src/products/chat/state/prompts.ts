@@ -6,6 +6,10 @@ import type {
   ChatMessage,
 } from '../api/contracts.js';
 import type { MemoryCheckpointSummary } from '../../../core/types.js';
+import {
+  buildAssistantResponseLanguageInstruction,
+  parseAssistantResponseLanguage,
+} from '../../../shared/assistantResponseLanguage.js';
 import { buildChoiceResponseBody } from '../shared/messageChoices.js';
 import { ORCHESTRATOR_NAME } from './model/index.js';
 
@@ -352,8 +356,15 @@ function buildSemanticContinuityTransplantInstructions(
 }
 
 function languageInstruction(responseLanguage: string): string {
-  if (!responseLanguage || responseLanguage === 'en') {
-    return 'Respond in English unless the user explicitly asks for another language.';
+  const parsedLanguage = parseAssistantResponseLanguage(responseLanguage);
+  const instruction = parsedLanguage
+    ? buildAssistantResponseLanguageInstruction(parsedLanguage)
+    : null;
+  if (instruction) {
+    return instruction;
+  }
+  if (!responseLanguage || responseLanguage === 'unspecified') {
+    return '';
   }
 
   return `Respond in ${responseLanguage}. Keep code, paths, and technical identifiers in English.`;

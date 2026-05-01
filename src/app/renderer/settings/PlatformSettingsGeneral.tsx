@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
 import { AvatarCropDialog } from '../../../design/components/AvatarCropDialog.js';
@@ -10,9 +10,15 @@ import {
 } from '../../../design/components/settings/index.js';
 import { nameInitials } from '../../../shared/nameInitials.js';
 import type {
+  AssistantResponseLanguage,
   GuideCatSidecarMode,
+  PlatformLanguagePreferences,
   PlatformUiLanguagePreference,
 } from '../../../shared/platform-contract.js';
+import {
+  ASSISTANT_RESPONSE_LANGUAGE_CODES,
+  isAssistantResponseLanguage,
+} from '../../../shared/assistantResponseLanguage.js';
 import { useGuideCatUiPrefs } from '../guideCatUiPrefsStore.js';
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
 import {
@@ -31,15 +37,42 @@ function isPlatformUiLanguagePreference(value: unknown): value is PlatformUiLang
   return value === 'auto' || value === 'en' || value === 'zh-TW';
 }
 
+function resolveLanguagePreferences(
+  language: AppShellPayload['language'] | undefined,
+  fallbackUiLanguage: PlatformUiLanguagePreference,
+): PlatformLanguagePreferences {
+  return {
+    assistantResponseLanguage: language?.assistantResponseLanguage ?? 'unspecified',
+    uiLanguagePreference: language?.uiLanguagePreference ?? fallbackUiLanguage,
+  };
+}
+
+function formatAssistantLanguageName(
+  languageCode: Exclude<AssistantResponseLanguage, 'unspecified'>,
+  locale: string,
+): string {
+  const displayCode = languageCode === 'zh-TW'
+    ? 'zh-Hant'
+    : languageCode === 'zh-CN'
+      ? 'zh-Hans'
+      : languageCode;
+  try {
+    return new Intl.DisplayNames([locale], { type: 'language' }).of(displayCode) ?? languageCode;
+  } catch {
+    return languageCode;
+  }
+}
+
 export function PlatformSettingsGeneral({
   payload,
   onPayloadUpdate,
 }: PlatformSettingsGeneralProps) {
   const navigate = useNavigate();
-  const { languagePreference, setLanguagePreference, t } = useI18n();
+  const { languagePreference, locale, setLanguagePreference, t } = useI18n();
   const [cropOpen, setCropOpen] = useState(false);
   const [savingLobbyPrefs, setSavingLobbyPrefs] = useState(false);
   const [savingLanguagePreference, setSavingLanguagePreference] = useState(false);
+  const [savingAssistantLanguage, setSavingAssistantLanguage] = useState(false);
   const [nameDraft, setNameDraft] = useState(payload.ownerDisplayName);
   const [savingName, setSavingName] = useState(false);
   // Escape sets this synchronously before calling blur(); commitOwnerDisplayName
@@ -168,14 +201,13 @@ export function PlatformSettingsGeneral({
     }
 
     const previousPreference = languagePreference;
-    const previousLanguage = payload.language ?? {
-      uiLanguagePreference: previousPreference,
-    };
+    const previousLanguage = resolveLanguagePreferences(payload.language, previousPreference);
 
     setLanguagePreference(nextPreference);
     onPayloadUpdate({
       ...payload,
       language: {
+        ...previousLanguage,
         uiLanguagePreference: nextPreference,
       },
     });
@@ -200,6 +232,7 @@ export function PlatformSettingsGeneral({
       onPayloadUpdate({
         ...payload,
         language: {
+          ...previousLanguage,
           uiLanguagePreference: persistedPreference,
         },
       });
@@ -217,6 +250,61 @@ export function PlatformSettingsGeneral({
       );
     } finally {
       setSavingLanguagePreference(false);
+    }
+  }
+
+  async function updateAssistantResponseLanguage(
+    nextLanguage: AssistantResponseLanguage,
+  ): Promise<void> {
+    const previousLanguage = resolveLanguagePreferences(payload.language, languagePreference);
+    if (nextLanguage === previousLanguage.assistantResponseLanguage) {
+      return;
+    }
+
+    onPayloadUpdate({
+      ...payload,
+      language: {
+        ...previousLanguage,
+        assistantResponseLanguage: nextLanguage,
+      },
+    });
+    setSavingAssistantLanguage(true);
+
+    try {
+      const response = await fetch('/api/platform/preferences', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ assistantResponseLanguage: nextLanguage }),
+      });
+      if (!response.ok) {
+        throw new Error(t('settingsGeneralUpdateAssistantLanguageError'));
+      }
+      const body = await response.json() as {
+        assistantResponseLanguage?: unknown;
+      };
+      const persistedLanguage = isAssistantResponseLanguage(body.assistantResponseLanguage)
+        ? body.assistantResponseLanguage
+        : nextLanguage;
+      onPayloadUpdate({
+        ...payload,
+        language: {
+          ...previousLanguage,
+          assistantResponseLanguage: persistedLanguage,
+        },
+      });
+      dispatchPlatformEnvelopeRefresh();
+    } catch (error) {
+      onPayloadUpdate({
+        ...payload,
+        language: previousLanguage,
+      });
+      showToast(
+        error instanceof Error
+          ? error.message
+          : t('settingsGeneralUpdateAssistantLanguageError'),
+      );
+    } finally {
+      setSavingAssistantLanguage(false);
     }
   }
 
@@ -241,6 +329,17 @@ export function PlatformSettingsGeneral({
   const lobbyPrefs = payload.lobby ?? {
     animationMode: 'reduced',
   };
+  const assistantResponseLanguage = resolveLanguagePreferences(
+    payload.language,
+    languagePreference,
+  ).assistantResponseLanguage;
+  const assistantLanguageOptions = useMemo(
+    () => ASSISTANT_RESPONSE_LANGUAGE_CODES.map((code) => ({
+      code,
+      label: formatAssistantLanguageName(code, locale),
+    })),
+    [locale],
+  );
 
   return (
     <>
@@ -350,6 +449,34 @@ export function PlatformSettingsGeneral({
                 <option value="auto">{t('settingsGeneralLanguageAutoOption')}</option>
                 <option value="en">English</option>
                 <option value="zh-TW">繁體中文</option>
+              </select>
+            }
+          />
+          <SettingsOptionRow
+            label={t('settingsGeneralAssistantLanguagePreferenceLabel')}
+            description={t('settingsGeneralAssistantLanguagePreferenceDescription')}
+            layout="stack"
+            control={
+              <select
+                className="textInput"
+                value={assistantResponseLanguage}
+                disabled={savingAssistantLanguage}
+                onChange={(event) => {
+                  const nextLanguage = event.target.value;
+                  if (isAssistantResponseLanguage(nextLanguage)) {
+                    void updateAssistantResponseLanguage(nextLanguage);
+                  }
+                }}
+                aria-label={t('settingsGeneralAssistantLanguageSelectAriaLabel')}
+              >
+                <option value="unspecified">
+                  {t('settingsGeneralAssistantLanguageUnspecifiedOption')}
+                </option>
+                {assistantLanguageOptions.map((option) => (
+                  <option key={option.code} value={option.code}>
+                    {option.label}
+                  </option>
+                ))}
               </select>
             }
           />

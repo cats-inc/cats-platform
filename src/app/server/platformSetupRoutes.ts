@@ -261,7 +261,10 @@ async function handlePlatformSetupComplete(
         guideCat: core.guideCat,
         assistantPresets: core.assistantPresets,
         lastProductSurface: legacyProduct ?? null,
-        language: { uiLanguagePreference: 'auto' },
+        language: {
+          assistantResponseLanguage: 'unspecified',
+          uiLanguagePreference: 'auto',
+        },
         lobby: { animationMode: 'reduced', cats: [] },
       };
     }

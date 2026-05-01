@@ -389,6 +389,7 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
         temporaryParticipants: draftTemporaryParticipants,
         draftEntryKind,
         draftExecutionTarget,
+        assistantResponseLanguage: initialPayload.language?.assistantResponseLanguage,
         selectedChannel,
         soloChannelExecutionTarget,
         draftFiles,

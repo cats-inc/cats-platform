@@ -44,7 +44,12 @@ export const enCatalog: MessageCatalog = {
   'settings.general.nameLabel': 'Name',
   'settings.general.languageTitle': 'Language',
   'settings.general.languageDescription':
-    'Choose the display language used across Cats.',
+    'Choose how assistants answer and how Cats displays its interface.',
+  'settings.general.assistantLanguagePreferenceLabel': 'Assistant response language',
+  'settings.general.assistantLanguagePreferenceDescription':
+    'Sets the default language instruction for assistant replies. User requests in a turn still take priority.',
+  'settings.general.assistantLanguageSelectAriaLabel': 'Assistant response language',
+  'settings.general.assistantLanguageUnspecifiedOption': 'Unspecified',
   'settings.general.languagePreferenceLabel': 'Display language',
   'settings.general.languagePreferenceDescription':
     'Auto-detect follows your browser or desktop language. Named languages are shown in their own language.',
@@ -78,6 +83,7 @@ export const enCatalog: MessageCatalog = {
   'settings.general.guideCatBubbleDescription':
     'Always show a compact speech bubble with quick actions.',
   'settings.general.updateNameError': 'Failed to update name',
+  'settings.general.updateAssistantLanguageError': 'Failed to update assistant language',
   'settings.general.updateLanguageError': 'Failed to update language',
   'settings.general.updateLobbyAnimationError': 'Failed to update Lobby motion',
   'settings.general.updateGuideCatModeError': 'Failed to update Guide Cat mode',

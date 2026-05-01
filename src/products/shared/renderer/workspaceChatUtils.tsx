@@ -9,7 +9,10 @@ import type {
   NewChatEntryKind,
 } from '../api/workspaceContracts.js';
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
-import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
+import type {
+  AssistantResponseLanguage,
+  PlatformSurfaceId,
+} from '../../../shared/platform-contract.js';
 import {
   createRuntimeSessionContractInput,
   resolveCreateRuntimeSessionPolicy,
@@ -272,6 +275,7 @@ export function buildNewChatChannelInput(options: {
     instance: string | null;
     modelSelection?: ProviderModelSelection | null;
   };
+  assistantResponseLanguage?: AssistantResponseLanguage;
   t?: WorkspaceChatTranslator;
 }): CreateChatChannelInput {
   const {
@@ -285,6 +289,7 @@ export function buildNewChatChannelInput(options: {
     participantCatIds = [],
     temporaryParticipants = [],
     draftExecutionTarget,
+    assistantResponseLanguage,
     t,
   } = options;
   const normalizedLeadCatId = defaultRecipientCatId?.trim() || null;
@@ -303,6 +308,7 @@ export function buildNewChatChannelInput(options: {
     entryKind: resolvedEntryKind,
     skipBossCatGreeting: true,
     repoPath: repoPath ?? undefined,
+    responseLanguage: assistantResponseLanguage,
     ...createRuntimeSessionContractInput(runtimeSessionPolicy),
     temporaryParticipants: temporaryParticipants.length > 0
       ? temporaryParticipants.map((participant) => ({

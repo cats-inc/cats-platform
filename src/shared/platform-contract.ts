@@ -118,8 +118,29 @@ export interface PlatformLobbyPreferences {
 
 export type PlatformUiLanguage = 'en' | 'zh-TW';
 export type PlatformUiLanguagePreference = 'auto' | PlatformUiLanguage;
+export type AssistantResponseLanguage =
+  | 'unspecified'
+  | 'en'
+  | 'zh-TW'
+  | 'zh-CN'
+  | 'ja'
+  | 'ko'
+  | 'fr'
+  | 'de'
+  | 'es'
+  | 'pt-BR'
+  | 'it'
+  | 'nl'
+  | 'pl'
+  | 'tr'
+  | 'id'
+  | 'vi'
+  | 'th'
+  | 'hi'
+  | 'ar';
 
 export interface PlatformLanguagePreferences {
+  assistantResponseLanguage: AssistantResponseLanguage;
   uiLanguagePreference: PlatformUiLanguagePreference;
 }
 

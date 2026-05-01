@@ -2,10 +2,12 @@ import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
 
 import type {
+  AssistantResponseLanguage,
   PlatformLobbyAnimationMode,
   PlatformSurfaceId,
   PlatformUiLanguagePreference,
 } from './platform-contract.js';
+import { parseAssistantResponseLanguage } from './assistantResponseLanguage.js';
 import { resolvePlatformPreferencesPathFromChatState } from './platformPaths.js';
 import { normalizePlatformSurface } from './platformSurfaces.js';
 
@@ -15,6 +17,7 @@ export interface PlatformPreferences {
   openWindowOnStartup: boolean;
   systemTrayEnabled: boolean;
   lobbyAnimationMode: PlatformLobbyAnimationMode;
+  assistantResponseLanguage: AssistantResponseLanguage;
   uiLanguagePreference: PlatformUiLanguagePreference;
 }
 
@@ -24,6 +27,7 @@ const DEFAULTS: PlatformPreferences = {
   openWindowOnStartup: false,
   systemTrayEnabled: true,
   lobbyAnimationMode: 'reduced',
+  assistantResponseLanguage: 'unspecified',
   uiLanguagePreference: 'auto',
 };
 
@@ -73,6 +77,9 @@ function normalizePlatformPreferences(value: unknown): PlatformPreferences {
     openWindowOnStartup: record.openWindowOnStartup === true,
     systemTrayEnabled: record.systemTrayEnabled !== false,
     lobbyAnimationMode: normalizePlatformLobbyAnimationMode(record.lobbyAnimationMode),
+    assistantResponseLanguage:
+      parseAssistantResponseLanguage(record.assistantResponseLanguage)
+      ?? DEFAULTS.assistantResponseLanguage,
     uiLanguagePreference: normalizePlatformUiLanguagePreference(record.uiLanguagePreference),
   };
 }

@@ -117,6 +117,7 @@ export function createAppShell(
       guideCatAssist: setup?.lobbyGuideCatAssist ?? null,
     },
     language: {
+      assistantResponseLanguage: setup?.language?.assistantResponseLanguage ?? 'unspecified',
       uiLanguagePreference: setup?.language?.uiLanguagePreference ?? 'auto',
     },
     guideCatAssist: {

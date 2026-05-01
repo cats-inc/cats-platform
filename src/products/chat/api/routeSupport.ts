@@ -358,6 +358,7 @@ export async function buildAppShellPayload(
         systemTrayEnabled: platformPrefs.systemTrayEnabled,
       },
       language: {
+        assistantResponseLanguage: platformPrefs.assistantResponseLanguage,
         uiLanguagePreference: platformPrefs.uiLanguagePreference,
       },
       lobby: {

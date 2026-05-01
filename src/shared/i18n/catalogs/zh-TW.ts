@@ -44,7 +44,12 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.general.nameLabel': '名字',
   'settings.general.languageTitle': '語言',
   'settings.general.languageDescription':
-    '選擇 Cats 介面使用的顯示語言。',
+    '選擇助理回覆語言，以及 Cats 介面的顯示語言。',
+  'settings.general.assistantLanguagePreferenceLabel': '助理回覆語言',
+  'settings.general.assistantLanguagePreferenceDescription':
+    '設定助理回覆時預設使用的語言指令。單次對話中使用者明確要求的語言仍會優先。',
+  'settings.general.assistantLanguageSelectAriaLabel': '助理回覆語言',
+  'settings.general.assistantLanguageUnspecifiedOption': '不指定',
   'settings.general.languagePreferenceLabel': '顯示語言',
   'settings.general.languagePreferenceDescription':
     '自動偵測會跟隨瀏覽器或桌面語言。語言名稱會以該語言自身顯示。',
@@ -75,6 +80,7 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.general.guideCatBubbleDescription':
     '固定顯示精簡對話泡泡並提供快速操作按鈕。',
   'settings.general.updateNameError': '無法更新名字',
+  'settings.general.updateAssistantLanguageError': '無法更新助理語言',
   'settings.general.updateLanguageError': '無法更新語言',
   'settings.general.updateLobbyAnimationError': '無法更新 Lobby 動畫',
   'settings.general.updateGuideCatModeError': '無法更新 Guide Cat 模式',

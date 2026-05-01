@@ -1,5 +1,8 @@
 import type { AppShellPayload } from '../api/workspaceContracts.js';
-import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
+import type {
+  AssistantResponseLanguage,
+  PlatformSurfaceId,
+} from '../../../shared/platform-contract.js';
 import type { DraftRoomWorkflowShape } from '../../../shared/roomRouting.js';
 import type { RuntimeSessionPolicy } from '../../../shared/runtimeSessionPolicy.js';
 import type { CreateParallelChatGroupInput } from './api/chat.js';
@@ -90,6 +93,7 @@ export function buildParallelChatDraftCreateInput(input: {
   draftParallelChatTargets: ParallelDispatchTarget[];
   draftParticipantCatIds?: string[];
   draftTemporaryParticipants?: DraftTemporaryParticipant[];
+  assistantResponseLanguage?: AssistantResponseLanguage;
   t?: WorkspaceChatTranslator;
 }): CreateParallelChatGroupInput {
   const t = input.t ?? defaultParallelDispatchTranslator;
@@ -109,6 +113,7 @@ export function buildParallelChatDraftCreateInput(input: {
     title: createDraftChannelTitle(input.body, input.existingCount, t),
     originSurface: input.originSurface,
     repoPath: input.draftCwd ?? undefined,
+    responseLanguage: input.assistantResponseLanguage,
     ...(input.draftSessionPolicy === undefined
       ? {}
       : { runtimeSessionPolicy: input.draftSessionPolicy }),
@@ -182,6 +187,7 @@ export async function submitNewParallelChatDraft({
       draftParallelChatTargets,
       draftParticipantCatIds,
       draftTemporaryParticipants,
+      assistantResponseLanguage: payload.language?.assistantResponseLanguage,
       t,
     }),
     signal,

@@ -42,6 +42,14 @@ export const messageKeys = {
   settingsGeneralNameLabel: 'settings.general.nameLabel',
   settingsGeneralLanguageTitle: 'settings.general.languageTitle',
   settingsGeneralLanguageDescription: 'settings.general.languageDescription',
+  settingsGeneralAssistantLanguagePreferenceLabel:
+    'settings.general.assistantLanguagePreferenceLabel',
+  settingsGeneralAssistantLanguagePreferenceDescription:
+    'settings.general.assistantLanguagePreferenceDescription',
+  settingsGeneralAssistantLanguageSelectAriaLabel:
+    'settings.general.assistantLanguageSelectAriaLabel',
+  settingsGeneralAssistantLanguageUnspecifiedOption:
+    'settings.general.assistantLanguageUnspecifiedOption',
   settingsGeneralLanguagePreferenceLabel: 'settings.general.languagePreferenceLabel',
   settingsGeneralLanguagePreferenceDescription:
     'settings.general.languagePreferenceDescription',
@@ -69,6 +77,8 @@ export const messageKeys = {
   settingsGeneralGuideCatBubbleLabel: 'settings.general.guideCatBubbleLabel',
   settingsGeneralGuideCatBubbleDescription: 'settings.general.guideCatBubbleDescription',
   settingsGeneralUpdateNameError: 'settings.general.updateNameError',
+  settingsGeneralUpdateAssistantLanguageError:
+    'settings.general.updateAssistantLanguageError',
   settingsGeneralUpdateLanguageError: 'settings.general.updateLanguageError',
   settingsGeneralUpdateLobbyAnimationError: 'settings.general.updateLobbyAnimationError',
   settingsGeneralUpdateGuideCatModeError: 'settings.general.updateGuideCatModeError',

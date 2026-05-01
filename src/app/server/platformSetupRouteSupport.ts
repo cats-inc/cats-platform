@@ -8,6 +8,7 @@ import {
   normalizePlatformLobbyAnimationMode,
   type PlatformPreferences,
 } from '../../shared/platformPreferences.js';
+import { parseAssistantResponseLanguage } from '../../shared/assistantResponseLanguage.js';
 import { cloneProviderModelSelection } from '../../shared/providerSelection.js';
 import type { ProviderModelSelection } from '../../shared/providerSelection.js';
 import { GUIDE_CAT_SYSTEM_NAME } from '../../shared/guideCatIdentity.js';
@@ -65,6 +66,7 @@ export interface PlatformPreferencesUpdateBody {
   openWindowOnStartup?: boolean;
   systemTrayEnabled?: boolean;
   lobbyAnimationMode?: string;
+  assistantResponseLanguage?: string;
   uiLanguagePreference?: string;
 }
 
@@ -141,6 +143,15 @@ export function parsePlatformPreferencesUpdate(
       message: 'uiLanguagePreference must be auto, en, or zh-TW',
     };
   }
+  if (
+    body.assistantResponseLanguage !== undefined
+    && parseAssistantResponseLanguage(body.assistantResponseLanguage) === undefined
+  ) {
+    return {
+      ok: false,
+      message: 'assistantResponseLanguage must be unspecified or a supported BCP 47 language code',
+    };
+  }
 
   return {
     ok: true,
@@ -151,6 +162,9 @@ export function parsePlatformPreferencesUpdate(
       systemTrayEnabled: body.systemTrayEnabled ?? currentPrefs.systemTrayEnabled,
       lobbyAnimationMode:
         parseLobbyAnimationMode(body.lobbyAnimationMode) ?? currentPrefs.lobbyAnimationMode,
+      assistantResponseLanguage:
+        parseAssistantResponseLanguage(body.assistantResponseLanguage)
+        ?? currentPrefs.assistantResponseLanguage,
       uiLanguagePreference:
         parsePlatformUiLanguagePreference(body.uiLanguagePreference)
         ?? currentPrefs.uiLanguagePreference,

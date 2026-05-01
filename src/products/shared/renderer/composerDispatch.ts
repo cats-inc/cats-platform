@@ -1,5 +1,8 @@
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
-import type { PlatformSurfaceId } from '../../../shared/platform-contract.js';
+import type {
+  AssistantResponseLanguage,
+  PlatformSurfaceId,
+} from '../../../shared/platform-contract.js';
 import type { RoomRoutingMode } from '../../../shared/roomRouting.js';
 import type { RuntimeSessionPolicy } from '../../../shared/runtimeSessionPolicy.js';
 import { isSoloThreadChannel } from '../../chat/shared/channelTopology.js';
@@ -221,6 +224,7 @@ export async function prepareComposerChannelDispatch<
   temporaryParticipants?: ComposerTemporaryParticipantLike[];
   draftEntryKind?: 'solo' | 'group' | 'direct';
   draftExecutionTarget?: ComposerModelValue;
+  assistantResponseLanguage?: AssistantResponseLanguage;
   t?: WorkspaceChatTranslator;
   createChatChannel: (
     input: ReturnType<typeof buildNewChatChannelInput>,
@@ -255,6 +259,7 @@ export async function prepareComposerChannelDispatch<
     temporaryParticipants = [],
     draftEntryKind,
     draftExecutionTarget,
+    assistantResponseLanguage,
     t = defaultComposerDispatchTranslator,
     createChatChannel,
     insertCreatedChannelIntoPayload,
@@ -291,6 +296,7 @@ export async function prepareComposerChannelDispatch<
         t,
         defaultRecipientCatId: draftDefaultRecipientCatId,
         participantCatIds,
+        assistantResponseLanguage,
         temporaryParticipants: temporaryParticipants.map((participant) => ({
           participantId: participant.participantId,
           name: participant.name,
@@ -329,6 +335,7 @@ export async function prepareComposerChannelDispatch<
       t,
       defaultRecipientCatId: draftDefaultRecipientCatId,
       participantCatIds,
+      assistantResponseLanguage,
       temporaryParticipants: temporaryParticipants.map((participant) => ({
         participantId: participant.participantId,
         name: participant.name,
@@ -396,6 +403,7 @@ export async function prepareWorkspaceSendContext<
   temporaryParticipants?: ComposerTemporaryParticipantLike[];
   draftEntryKind?: 'solo' | 'group' | 'direct';
   draftExecutionTarget?: ModelValue;
+  assistantResponseLanguage?: AssistantResponseLanguage;
   t?: WorkspaceChatTranslator;
   selectedChannel: ComposerSelectedChannelLike | null;
   soloChannelExecutionTarget: ModelValue;
@@ -443,6 +451,7 @@ export async function prepareWorkspaceSendContext<
     temporaryParticipants,
     draftEntryKind,
     draftExecutionTarget,
+    assistantResponseLanguage,
     t,
     selectedChannel,
     soloChannelExecutionTarget,
@@ -479,6 +488,7 @@ export async function prepareWorkspaceSendContext<
     temporaryParticipants,
     draftEntryKind,
     draftExecutionTarget,
+    assistantResponseLanguage,
     t,
     createChatChannel,
     insertCreatedChannelIntoPayload,

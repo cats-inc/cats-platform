@@ -89,6 +89,9 @@ test('PlatformSettingsGeneral renders lobby motion controls without desktop star
   );
 
   assert.match(markup, /Choose how lively the Lobby background should feel/u);
+  assert.match(markup, /Assistant response language/u);
+  assert.match(markup, /Unspecified/u);
+  assert.match(markup, /Japanese/u);
   assert.match(markup, /Display language/u);
   assert.match(markup, /Auto-detect/u);
   assert.match(markup, /English/u);
