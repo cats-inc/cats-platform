@@ -303,7 +303,12 @@
 }
 
 /* Non-lead branch's "follows lead" chip, in the slot where the lead's
- * cwd chip would appear. Purely informational — not clickable. */
+ * cwd chip would appear. Visually mirrors `.composerHeaderChooseButton`
+ * (the lead's "Choose codespace" affordance) so the inherited state
+ * reads as the same affordance class — same height, padding, font, and
+ * icon size. The dashed border + transparent background already comes
+ * from that base; the only delta is `cursor: pointer` + opt-in hover
+ * for the clickable variant. */
 .composerFollowsLeadChip {
   display: inline-flex;
   align-items: center;
@@ -322,9 +327,12 @@
   opacity: 0.75;
 }
 
+/* Note: do NOT add `font: inherit` here. The global `button { font:
+ * inherit }` (foundation.css) already covers it, and the shorthand
+ * silently resets `font-size` back to the inherited body size — which
+ * blew the chip up to ~16px and made it dwarf the surrounding chrome. */
 .composerFollowsLeadChipClickable {
   cursor: pointer;
-  font: inherit;
 }
 
 .composerFollowsLeadChipClickable:hover:not(:disabled) {

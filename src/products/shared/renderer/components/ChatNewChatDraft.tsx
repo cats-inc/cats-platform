@@ -281,7 +281,7 @@ function BranchRuntimeSessionPolicyControls({
         )}
       aria-label={t(messageKeys.chatNewChatDraftBranchPolicyDetachAria)}
     >
-      <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <path d="M8 1.5l5.5 2v4c0 3.3-2.4 6.2-5.5 7-3.1-.8-5.5-3.7-5.5-7v-4z" />
       </svg>
       <span>{t(messageKeys.chatNewChatDraftBranchPolicyFollowsLeadLabel)}</span>
@@ -1415,7 +1415,7 @@ export function NewChatDraft({
                 }}
                 aria-label={t(messageKeys.chatNewChatDraftBranchFolderChooseAria)}
               >
-                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M6 3l-3 5 3 5" />
                   <path d="M3 8h10" />
                 </svg>
@@ -1423,7 +1423,7 @@ export function NewChatDraft({
               </button>
             ) : (
               <span className="composerFollowsLeadChip">
-                <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                   <path d="M6 3l-3 5 3 5" />
                   <path d="M3 8h10" />
                 </svg>
