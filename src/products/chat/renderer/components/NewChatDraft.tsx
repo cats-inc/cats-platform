@@ -13,7 +13,7 @@ import { useDraftSessionChips } from '../../../shared/renderer/hooks/useDraftSes
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
 import { resolveDraftPermissionModeFromRuntimeAccess } from '../../../../shared/runtimeSessionPolicy.js';
 import { prefetchCrossSurfaceNavigationTarget } from '../../../shared/renderer/crossSurfaceNavigationRegistry.js';
-import { messageKeys } from '../../../../shared/i18n/index.js';
+import { messageKeys, type MessageKey } from '../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 
 export interface NewChatDraftProps extends SharedNewChatDraftProps {
@@ -72,28 +72,33 @@ function NewChatDraftInner(props: NewChatDraftProps) {
       || entryPreset === 'default'
     );
 
+  // Home-surface chips also call `onDraftSurfaceChange('chat')` so a
+  // user who crossed to Code/Work via the last two chips can come back
+  // simply by tapping any of the first three. Without this, draftSurface
+  // stays pinned to whichever surface the cross-chip last set.
+  function selectHomeSurfaceChip(promptKey: MessageKey): void {
+    props.onComposerChange(t(promptKey));
+    if (props.draftSurface !== 'chat') {
+      props.onDraftSurfaceChange('chat');
+    }
+  }
+
   const leadingStarterChips = showsChatStarterChip
     ? [
       {
         id: 'plan-my-day',
         label: t(messageKeys.chatNewChatDraftPlanMyDayChipLabel),
-        onClick: () => {
-          props.onComposerChange(t(messageKeys.chatNewChatDraftPlanMyDayPrompt));
-        },
+        onClick: () => selectHomeSurfaceChip(messageKeys.chatNewChatDraftPlanMyDayPrompt),
       },
       {
         id: 'brainstorm-name',
         label: t(messageKeys.chatNewChatDraftBrainstormNameChipLabel),
-        onClick: () => {
-          props.onComposerChange(t(messageKeys.chatNewChatDraftBrainstormNamePrompt));
-        },
+        onClick: () => selectHomeSurfaceChip(messageKeys.chatNewChatDraftBrainstormNamePrompt),
       },
       {
         id: 'summarize-link',
         label: t(messageKeys.chatNewChatDraftSummarizeLinkChipLabel),
-        onClick: () => {
-          props.onComposerChange(t(messageKeys.chatNewChatDraftSummarizeLinkPrompt));
-        },
+        onClick: () => selectHomeSurfaceChip(messageKeys.chatNewChatDraftSummarizeLinkPrompt),
       },
       {
         id: 'pomodoro-app',

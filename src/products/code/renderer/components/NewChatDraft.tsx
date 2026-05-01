@@ -262,9 +262,33 @@ function buildCodeChipOnClick(
       props.onDraftSurfaceChange(target);
     };
   }
+  // Home-surface chip: explicitly reset draftSurface back to 'code'.
+  // Without this, picking "Build a pomodoro app" after the user already
+  // crossed to Work via "Start a project" leaves draftSurface stuck on
+  // 'work' so the composer chip never returns to Code.
   return () => {
     props.onComposerChange(chip.prompt);
+    if (props.draftSurface !== 'code') {
+      props.onDraftSurfaceChange('code');
+    }
   };
+}
+
+// Surface tag follows the live `draftSurface` so a cross-surface chip
+// (e.g. "Start a project" → work) immediately swaps the Code chip for a
+// Work chip on the composer header. The dismiss arrow only renders when
+// drafted away from Code's home surface so the user can pop back.
+function buildCodeSurfaceTag(props: NewChatDraftProps) {
+  return (
+    <ComposerSurfaceChip
+      surface={props.draftSurface}
+      onDismiss={
+        props.draftSurface !== 'code'
+          ? () => props.onDraftSurfaceChange('code')
+          : undefined
+      }
+    />
+  );
 }
 
 function resolveCodeDraftGreeting(
@@ -390,7 +414,7 @@ function CodeDirectLaneDraft(props: NewChatDraftProps) {
       copy={draftCopy}
       composerHeaderAccessory={permissionChip}
       composerHeaderWhereExtras={whereExtras}
-      surfaceTag={<ComposerSurfaceChip surface="code" />}
+      surfaceTag={buildCodeSurfaceTag(props)}
     />
   );
 }
@@ -440,7 +464,7 @@ function CodeChatDraft(props: NewChatDraftProps) {
       draftChrome={{
         headerAccessory: permissionChip,
         headerWhereExtras: whereExtras,
-        surfaceTag: <ComposerSurfaceChip surface="code" />,
+        surfaceTag: buildCodeSurfaceTag(props),
       }}
       draftCopy={{
         composerPlaceholder: draftCopy.composer?.placeholder,

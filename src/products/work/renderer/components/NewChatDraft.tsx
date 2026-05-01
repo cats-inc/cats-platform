@@ -56,6 +56,24 @@ function buildWorkStarterChips(props: NewChatDraftProps) {
   }));
 }
 
+// Surface tag follows the live `draftSurface` so any future
+// cross-surface chip (e.g. Work → Code) can swap the Work chip for the
+// destination chip on the composer header. Today every Work chip stays
+// on Work, so the chip is effectively static — the dynamic wiring is
+// here so adding a `cross:<surface>:` chip later is a one-line change.
+function buildWorkSurfaceTag(props: NewChatDraftProps) {
+  return (
+    <ComposerSurfaceChip
+      surface={props.draftSurface}
+      onDismiss={
+        props.draftSurface !== 'work'
+          ? () => props.onDraftSurfaceChange('work')
+          : undefined
+      }
+    />
+  );
+}
+
 /**
  * Generic +New Work (no direct-lane recipient), +Group Work, and
  * +Parallel Work all render through `ChatNewChatDraft` so
@@ -78,7 +96,7 @@ function WorkChatDraft(props: NewChatDraftProps) {
     <ChatNewChatDraft
       {...props}
       draftChrome={{
-        surfaceTag: <ComposerSurfaceChip surface="work" />,
+        surfaceTag: buildWorkSurfaceTag(props),
       }}
       builderControls={builderControls}
       starterChips={{
@@ -98,7 +116,7 @@ function WorkDirectLaneDraft(props: NewChatDraftProps) {
     <SharedNewChatDraft
       {...props}
       greeting={sharedGreeting}
-      surfaceTag={<ComposerSurfaceChip surface="work" />}
+      surfaceTag={buildWorkSurfaceTag(props)}
     />
   );
 }
