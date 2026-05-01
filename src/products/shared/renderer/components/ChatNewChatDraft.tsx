@@ -737,13 +737,21 @@ export function NewChatDraft({
   const leadRosterLength = isParallelMode
     ? leadBranchAudienceLength
     : groupComposerParticipants.length;
-  const canRemoveGroupParticipant =
+  // Lead carries the group-preset min-2 constraint (the lead branch
+  // owns the group identity, so it cannot collapse below 2 members).
+  // Shadows are independent sub-chats — they're free to drop to a
+  // single member, so removal stays available the moment the row has
+  // at least 2 entries. Per-branch computation, never lead-scoped.
+  const canRemoveLeadGroupParticipant =
     !isSubmittingFirstTurn
     && (
       entryPreset === 'group'
         ? leadRosterLength > 2
         : leadRosterLength >= 2
     );
+  function canRemoveBranchRosterParticipant(branchRosterLength: number): boolean {
+    return !isSubmittingFirstTurn && branchRosterLength >= 2;
+  }
   const minParallelTargetCount = entryPreset === 'parallel' ? 2 : 1;
   const useDangerGroupRemoveHover = entryPreset === 'group';
   const useDangerParallelRemoveHover = entryPreset === 'parallel';
@@ -1020,7 +1028,7 @@ export function NewChatDraft({
               <BranchAudienceRoster
                 audienceParticipants={isParallelMode ? leadBranchMembers : groupComposerParticipants}
                 isSubmittingFirstTurn={isSubmittingFirstTurn}
-                canRemoveParticipant={canRemoveGroupParticipant}
+                canRemoveParticipant={canRemoveLeadGroupParticipant}
                 useDangerRemoveHover={useDangerGroupRemoveHover}
                 onAvatarClick={() => openSidePanelTo('cats')}
                 onRemoveParticipant={(participant) => {
@@ -1497,7 +1505,7 @@ export function NewChatDraft({
                     <BranchAudienceRoster
                       audienceParticipants={branchMembers}
                       isSubmittingFirstTurn={isSubmittingFirstTurn}
-                      canRemoveParticipant={canRemoveGroupParticipant}
+                      canRemoveParticipant={canRemoveBranchRosterParticipant(branchMembers.length)}
                       useDangerRemoveHover={useDangerGroupRemoveHover}
                       onAvatarClick={() => openSidePanelTo('cats')}
                       onRemoveParticipant={(p) => {
