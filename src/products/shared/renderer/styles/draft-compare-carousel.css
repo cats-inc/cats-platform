@@ -39,6 +39,15 @@
   perspective-origin: 50% 50%;
   transform-style: preserve-3d;
   overflow: visible;
+  /* `transform-style: preserve-3d` + `perspective` already form a
+   * stacking context, but with default z-index = auto (= 0). The
+   * direct-lane `DraftHeader` sibling carries
+   * `.draftHeaderVisual { z-index: 1 }` to keep the avatar above the
+   * cover image — that pinned the entire avatar stacking context above
+   * everything inside this 3D context, including the composer's plus
+   * menu (z-index: 30) which was trapped here. Lift the track above
+   * the avatar (>1) so the menu can render over it. */
+  z-index: 2;
 }
 
 .draftCompareCarouselCard {
