@@ -62,7 +62,7 @@
     "mobile:typecheck": "npm run mobile:boundary && npm run typecheck --prefix mobile",
     "mobile:boundary": "node scripts/check-mobile-boundary.mjs",
     "mobile:export": "cd mobile && npx expo export --platform all --output-dir ../build/mobile",
-    "mobile:install": "npm ci --prefix mobile"
+    "mobile:install": "npm ci --prefix mobile && node scripts/patch-mobile-hermesc.mjs"
   },
   "keywords": [
     "cats",
