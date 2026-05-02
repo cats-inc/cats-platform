@@ -242,10 +242,10 @@ foreach ($candidate in $candidatePathEntries) {
   if (Test-PathEntryPresent -Entries $pathEntries -Expected $candidate) {
     continue
   }
-  if (-not (Test-Path -LiteralPath $candidate -PathType Container)) {
-    # Skip directories that have not been created by an installer yet.
-    continue
-  }
+  # Add unconditionally so users can run this helper before installing the
+  # native CLIs. Windows' PATH lookup silently ignores entries pointing at
+  # non-existent directories, so seeding ahead of install has no side effect
+  # but lets the next fresh terminal see the binaries the moment they appear.
   [void]$missingPathEntries.Add($candidate)
 }
 

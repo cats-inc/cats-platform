@@ -224,7 +224,7 @@ export const DESKTOP_SETUP_ASSETS: DesktopSetupAsset[] = [
     resumable: true,
     notes: [
       'Sets the CurrentUser PowerShell ExecutionPolicy to RemoteSigned and adds known per-user CLI install directories (~/.local/bin, %LOCALAPPDATA%/Kiro-Cli, %LOCALAPPDATA%/cursor-agent) to the user PATH so launches like `claude auth login` succeed in a fresh terminal.',
-      'Idempotent and user-scoped: never touches Machine PATH or Machine policy. Only appends PATH entries for directories that already exist on disk.',
+      'Idempotent and user-scoped: never touches Machine PATH or Machine policy. PATH entries are seeded unconditionally so the helper can run before native CLI installs; Windows ignores PATH entries that point at non-existent directories.',
     ],
   },
   {
