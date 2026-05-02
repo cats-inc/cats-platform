@@ -1,6 +1,7 @@
 import type {
   PlatformProductDescriptor,
   PlatformProductSettingsDescriptor,
+  PlatformSurfaceId,
 } from '../../shared/platform-contract.js';
 import {
   createTranslator,
@@ -52,16 +53,32 @@ export function resolvePlatformProductDisplayName(
   product: PlatformProductDescriptor,
   t: PlatformProductCopyTranslator = defaultPlatformProductCopyTranslator,
 ): string {
-  const copyKeys = resolvePlatformProductCopyKeys(product.id);
-  return copyKeys ? t(copyKeys.nameKey) : product.productName;
+  return resolvePlatformProductDisplayNameById(product.id, product.productName, t);
 }
 
 export function resolvePlatformProductSubtitle(
   product: PlatformProductDescriptor,
   t: PlatformProductCopyTranslator = defaultPlatformProductCopyTranslator,
 ): string {
-  const copyKeys = resolvePlatformProductCopyKeys(product.id);
-  return copyKeys ? t(copyKeys.subtitleKey) : product.subtitle;
+  return resolvePlatformProductSubtitleById(product.id, product.subtitle, t);
+}
+
+export function resolvePlatformProductDisplayNameById(
+  productId: PlatformProductDescriptor['id'] | PlatformSurfaceId,
+  fallbackName: string,
+  t: PlatformProductCopyTranslator = defaultPlatformProductCopyTranslator,
+): string {
+  const copyKeys = resolvePlatformProductCopyKeys(productId);
+  return copyKeys ? t(copyKeys.nameKey) : fallbackName;
+}
+
+export function resolvePlatformProductSubtitleById(
+  productId: PlatformProductDescriptor['id'] | PlatformSurfaceId,
+  fallbackSubtitle: string,
+  t: PlatformProductCopyTranslator = defaultPlatformProductCopyTranslator,
+): string {
+  const copyKeys = resolvePlatformProductCopyKeys(productId);
+  return copyKeys ? t(copyKeys.subtitleKey) : fallbackSubtitle;
 }
 
 export function resolvePlatformProductSettingsLabel(

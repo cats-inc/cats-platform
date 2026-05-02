@@ -7,6 +7,10 @@ import {
   listPlatformSurfaceDescriptors,
   platformSurfaceProductName,
 } from '../../core/platformSurface.js';
+import {
+  resolvePlatformProductDisplayNameById,
+  resolvePlatformProductSubtitleById,
+} from '../../app/renderer/platformProductCopy.js';
 import { useI18n } from '../../app/renderer/i18n/useI18n.js';
 import { messageKeys } from '../../shared/i18n/index.js';
 import {
@@ -53,6 +57,11 @@ export function PlatformSurfaceSwitcher({
   const menuRef = useRef<HTMLDivElement>(null);
   const [menuStyle, setMenuStyle] = useState<CSSProperties>();
   const descriptors = useMemo(() => listPlatformSurfaceDescriptors(), []);
+  const activeProductName = resolvePlatformProductDisplayNameById(
+    activeSurface,
+    platformSurfaceProductName(activeSurface),
+    t,
+  );
 
   useEffect(() => {
     if (!open) {
@@ -129,6 +138,16 @@ export function PlatformSurfaceSwitcher({
         {descriptors.map((descriptor) => {
           const current = descriptor.id === activeSurface;
           const swatchClassName = `platformSurfaceSwatch platformSurfaceSwatch${descriptor.id[0].toUpperCase()}${descriptor.id.slice(1)}`;
+          const productName = resolvePlatformProductDisplayNameById(
+            descriptor.id,
+            descriptor.productName,
+            t,
+          );
+          const subtitle = resolvePlatformProductSubtitleById(
+            descriptor.id,
+            descriptor.subtitle,
+            t,
+          );
           return (
             <button
               key={descriptor.id}
@@ -150,9 +169,9 @@ export function PlatformSurfaceSwitcher({
               <span className={swatchClassName} aria-hidden="true" />
               <span className="platformSurfaceMenuCopy">
                 <span className="platformSurfaceMenuTitleRow">
-                  <span className="platformSurfaceMenuTitle">{descriptor.productName}</span>
+                  <span className="platformSurfaceMenuTitle">{productName}</span>
                 </span>
-                <span className="platformSurfaceMenuSubtitle">{descriptor.subtitle}</span>
+                <span className="platformSurfaceMenuSubtitle">{subtitle}</span>
               </span>
               {current ? (
                 <span className="platformSurfaceMenuCheck" aria-hidden="true">
@@ -200,12 +219,12 @@ export function PlatformSurfaceSwitcher({
         aria-haspopup="menu"
         aria-expanded={open}
         aria-label={t(messageKeys.sharedPlatformSurfaceSwitcherAriaLabel, {
-          productName: platformSurfaceProductName(activeSurface),
+          productName: activeProductName,
         })}
         onClick={() => setOpen((current) => !current)}
       >
         <span className="platformSurfaceTriggerRow">
-          <span className="brandLabel">{platformSurfaceProductName(activeSurface)}</span>
+          <span className="brandLabel">{activeProductName}</span>
           <svg
             className="platformSurfaceChevron"
             width="12"
