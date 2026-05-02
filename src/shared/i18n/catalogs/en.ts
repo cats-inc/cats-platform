@@ -1632,6 +1632,24 @@ export const enCatalog: MessageCatalog = {
   'shared.operator.meta.budget': 'Budget: {budgetLevel}',
   'shared.operator.inspectRunButton': 'Inspect run',
   'shared.operator.noTraceRecords': 'No trace records yet for this run.',
+  'shared.operator.action.requestRetry': 'Request Retry',
+  'shared.operator.action.retryAgain': 'Retry Again',
+  'shared.operator.action.retrying': 'Retrying',
+  'shared.operator.action.retryRequested': 'Retry Requested',
+  'shared.operator.action.acknowledge': 'Acknowledge',
+  'shared.operator.action.acknowledged': 'Acknowledged',
+  'shared.operator.action.retryDescription':
+    'Record that the operator wants this blocked or failed run retried.',
+  'shared.operator.action.retryFailedDescription':
+    'Retry failed. Operators can request another replay of the stored dispatch.',
+  'shared.operator.action.acknowledgeDescription':
+    'Record that the operator has seen the current guardrail or incident state.',
+  'shared.operator.action.status.retryInProgress': 'Retry in progress',
+  'shared.operator.action.status.retryFailed': 'Retry failed',
+  'shared.operator.action.status.retryFailedWithError': 'Retry failed: {error}',
+  'shared.operator.action.status.retryDispatched': 'Retry dispatched',
+  'shared.operator.action.status.retryRequested': 'Retry requested',
+  'shared.operator.action.status.acknowledged': 'Acknowledged',
   'shared.common.apply': 'Apply',
   'shared.common.cancel': 'Cancel',
   'shared.common.close': 'Close',
@@ -1817,6 +1835,13 @@ export const enCatalog: MessageCatalog = {
   'shared.approvalSummaryFallback':
     'Review this dispatch before Cats continue.',
   'shared.approvalRequestedBy': 'Requested by {requestedBy}',
+  'shared.approval.action.approve': 'Approve',
+  'shared.approval.action.reroute': 'Reroute',
+  'shared.approval.action.reject': 'Reject',
+  'shared.approval.action.approveDescription': 'Allow the orchestrator plan to proceed.',
+  'shared.approval.action.rerouteDescription':
+    'Send the plan back for a different handoff or dispatch path.',
+  'shared.approval.action.rejectDescription': 'Do not allow the plan to proceed.',
   'shared.catInspectTitle': 'Cat Preset',
   'shared.catInspectClose': 'Close',
   'shared.catInspectBossLabel': 'Boss',

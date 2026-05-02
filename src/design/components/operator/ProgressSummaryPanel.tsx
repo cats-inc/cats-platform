@@ -6,6 +6,11 @@ import {
 } from '../../operatorFormatting';
 import { useI18n } from '../../../app/renderer/i18n/useI18n.js';
 import { messageKeys } from '../../../shared/i18n/index.js';
+import {
+  resolveOperatorActionDescription,
+  resolveOperatorActionLabel,
+  resolveOperatorActionStatusLabel,
+} from './actionI18n.js';
 
 export interface OperatorProgressSummaryRun {
   id: string;
@@ -206,33 +211,41 @@ export function ProgressSummaryPanel({
               >
                 {t(messageKeys.sharedOperatorInspectRunButton)}
               </button>
-              {incidentActions.map((action) => (
-                <button
-                  key={`${action.kind}:${action.runId ?? action.taskId ?? action.checkpointId ?? action.outcomeId ?? 'global'}`}
-                  className={action.kind === 'retry'
-                    ? 'operatorActionButton operatorActionButtonPrimary'
-                    : 'operatorActionButton'}
-                  type="button"
-                  disabled={action.disabled}
-                  title={action.description}
-                  onClick={() => onOperatorAction({
-                    action: action.kind,
-                    taskId: action.taskId,
-                    runId: action.runId,
-                    checkpointId: action.checkpointId,
-                    outcomeId: action.outcomeId,
-                  })}
-                >
-                  {action.label}
-                </button>
-              ))}
+              {incidentActions.map((action) => {
+                const actionDescription = resolveOperatorActionDescription(
+                  action.description,
+                  t,
+                );
+                return (
+                  <button
+                    key={`${action.kind}:${action.runId ?? action.taskId ?? action.checkpointId ?? action.outcomeId ?? 'global'}`}
+                    className={action.kind === 'retry'
+                      ? 'operatorActionButton operatorActionButtonPrimary'
+                      : 'operatorActionButton'}
+                    type="button"
+                    disabled={action.disabled}
+                    title={actionDescription}
+                    onClick={() => onOperatorAction({
+                      action: action.kind,
+                      taskId: action.taskId,
+                      runId: action.runId,
+                      checkpointId: action.checkpointId,
+                      outcomeId: action.outcomeId,
+                    })}
+                  >
+                    {resolveOperatorActionLabel(action.label, t)}
+                  </button>
+                );
+              })}
             </div>
             {incidentActions.some((action) => action.statusLabel) ? (
               <div className="operatorMetaRow">
                 {incidentActions
                   .filter((action) => action.statusLabel)
                   .map((action) => (
-                    <span key={`status:${action.kind}`}>{action.statusLabel}</span>
+                    <span key={`status:${action.kind}`}>
+                      {resolveOperatorActionStatusLabel(action.statusLabel, t)}
+                    </span>
                   ))}
               </div>
             ) : null}

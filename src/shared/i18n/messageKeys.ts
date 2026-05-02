@@ -1605,6 +1605,29 @@ export const messageKeys = {
   sharedOperatorBudgetLabel: 'shared.operator.meta.budget',
   sharedOperatorInspectRunButton: 'shared.operator.inspectRunButton',
   sharedOperatorNoTraceRecords: 'shared.operator.noTraceRecords',
+  sharedOperatorActionRequestRetry: 'shared.operator.action.requestRetry',
+  sharedOperatorActionRetryAgain: 'shared.operator.action.retryAgain',
+  sharedOperatorActionRetrying: 'shared.operator.action.retrying',
+  sharedOperatorActionRetryRequested: 'shared.operator.action.retryRequested',
+  sharedOperatorActionAcknowledge: 'shared.operator.action.acknowledge',
+  sharedOperatorActionAcknowledged: 'shared.operator.action.acknowledged',
+  sharedOperatorActionRetryDescription: 'shared.operator.action.retryDescription',
+  sharedOperatorActionRetryFailedDescription:
+    'shared.operator.action.retryFailedDescription',
+  sharedOperatorActionAcknowledgeDescription:
+    'shared.operator.action.acknowledgeDescription',
+  sharedOperatorActionStatusRetryInProgress:
+    'shared.operator.action.status.retryInProgress',
+  sharedOperatorActionStatusRetryFailed:
+    'shared.operator.action.status.retryFailed',
+  sharedOperatorActionStatusRetryFailedWithError:
+    'shared.operator.action.status.retryFailedWithError',
+  sharedOperatorActionStatusRetryDispatched:
+    'shared.operator.action.status.retryDispatched',
+  sharedOperatorActionStatusRetryRequested:
+    'shared.operator.action.status.retryRequested',
+  sharedOperatorActionStatusAcknowledged:
+    'shared.operator.action.status.acknowledged',
   sharedAudiencePopoverHeader: 'shared.audience.popoverHeader',
   sharedAudienceSelectAudienceLabel: 'shared.audience.selectAudienceLabel',
   sharedAudienceWorkflowSequential: 'shared.audience.workflowSequential',
@@ -1857,6 +1880,15 @@ export const messageKeys = {
   sharedApprovalRequester: 'shared.approvalRequester',
   sharedApprovalSummaryFallback: 'shared.approvalSummaryFallback',
   sharedApprovalRequestedBy: 'shared.approvalRequestedBy',
+  sharedApprovalActionApprove: 'shared.approval.action.approve',
+  sharedApprovalActionReroute: 'shared.approval.action.reroute',
+  sharedApprovalActionReject: 'shared.approval.action.reject',
+  sharedApprovalActionApproveDescription:
+    'shared.approval.action.approveDescription',
+  sharedApprovalActionRerouteDescription:
+    'shared.approval.action.rerouteDescription',
+  sharedApprovalActionRejectDescription:
+    'shared.approval.action.rejectDescription',
   sharedCatInspectTitle: 'shared.catInspectTitle',
   sharedCatInspectClose: 'shared.catInspectClose',
   sharedCatInspectBossLabel: 'shared.catInspectBossLabel',

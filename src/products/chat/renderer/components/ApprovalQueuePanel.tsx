@@ -6,6 +6,10 @@ import {
 } from '../../../../shared/workspaceBusy.js';
 import { messageKeys } from '../../../../shared/i18n/index.js';
 import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
+import {
+  resolveApprovalActionDescription,
+  resolveApprovalActionLabel,
+} from '../../../../design/components/operator/actionI18n.js';
 
 export interface ApprovalQueuePanelProps {
   approvals: CoreApprovalQueueItem[];
@@ -67,10 +71,14 @@ export function ApprovalQueuePanel({
                         : 'operatorActionButton'}
                       type="button"
                       disabled={isBusy}
-                      title={option.description}
+                      title={resolveApprovalActionDescription(
+                        option.action,
+                        option.description,
+                        t,
+                      )}
                       onClick={() => onDecision(approval.taskId, option.action)}
                     >
-                      {option.label}
+                      {resolveApprovalActionLabel(option.action, option.label, t)}
                     </button>
                   ))}
                 </div>
