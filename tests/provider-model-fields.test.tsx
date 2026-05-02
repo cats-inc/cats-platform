@@ -33,6 +33,7 @@ import {
   createStaticProviderModelCatalog,
   normalizeProviderAdvancedModelCatalog,
 } from '../src/shared/providerCatalog.ts';
+import { createTranslator } from '../src/shared/i18n/index.ts';
 import { formatProviderEventCapabilitiesSummary } from '../src/shared/providerEventCapabilities.ts';
 import { resolveCatalogTargetSelection } from '../src/shared/providerSelection.ts';
 
@@ -374,12 +375,12 @@ test('unknown capability truth stays silent in provider hints', () => {
 
 test('support badge labels match runtime catalog support tiers', () => {
   assert.deepEqual(resolveProviderSupportBadge('full'), {
-    label: 'Advanced',
+    labelKey: 'shared.providerModel.support.advanced',
     tone: 'advanced',
   });
   assert.equal(resolveProviderSupportBadge('entry_only'), null);
   assert.deepEqual(resolveProviderSupportBadge('read_only'), {
-    label: 'Read-only',
+    labelKey: 'shared.providerModel.support.readOnly',
     tone: 'readOnly',
   });
 });
@@ -506,6 +507,72 @@ test('provider registry empty states distinguish runtime failure from no usable 
     }),
     null,
   );
+});
+
+test('provider registry and model placeholders use the supplied translator', () => {
+  const zh = createTranslator('zh-TW');
+
+  assert.equal(
+    resolveProviderRegistryPlaceholder({
+      providersLoaded: false,
+      registryState: 'ready',
+    }, zh),
+    '正在載入可用的供應商...',
+  );
+  assert.equal(
+    resolveProviderRegistryHint({
+      providersLoaded: true,
+      registry: {
+        state: 'no_usable_targets',
+        providers: [],
+      },
+    }, zh),
+    'cats-runtime 已連線，但沒有回報任何目前可用的供應商目標。',
+  );
+
+  const viewState = resolveProviderModelFieldsViewState({
+    selectedProvider: null,
+    provider: '',
+    instance: '',
+    model: '',
+    modelSelection: null,
+    catalogLoading: false,
+    providersLoaded: false,
+    providerRegistry: {
+      state: 'ready',
+      providers: [],
+    },
+    effectiveCatalog: {
+      provider: '',
+      backend: null,
+      instance: null,
+      defaultModel: null,
+      source: 'config',
+      cache: null,
+      models: [],
+      warnings: [],
+    },
+    effectiveAdvancedCatalog: {
+      provider: '',
+      backend: null,
+      instance: null,
+      defaultModel: null,
+      source: 'config',
+      cache: null,
+      entries: [],
+      presets: [],
+      controls: [],
+      defaultSelection: null,
+      support: { tier: 'entry_only', notes: [] },
+      warnings: [],
+    },
+    isLegacyModelTarget: false,
+    translate: zh,
+  });
+
+  assert.equal(viewState.providerPlaceholder, '正在載入可用的供應商...');
+  assert.equal(viewState.modelPlaceholder, '正在等待可用的供應商...');
+  assert.equal(viewState.providerRegistryHint, '正在檢查 cats-runtime 可用的供應商目標。');
 });
 
 test('static provider registry fallback gives selectors immediate provider options', () => {

@@ -1743,9 +1743,26 @@ export const enCatalog: MessageCatalog = {
   'shared.providerModel.controls.disabled': 'Disabled',
   'shared.providerModel.controls.optionalPlaceholder': 'Optional',
   'shared.providerModel.field.providerLabel': 'Provider',
+  'shared.providerModel.field.loadingProviders': 'Loading available providers...',
   'shared.providerModel.field.selectProviderHint': 'Select an available provider',
+  'shared.providerModel.field.providerLoadFailed': 'Could not load runtime-backed providers',
+  'shared.providerModel.field.noProviders': 'No runtime-backed providers available',
+  'shared.providerModel.field.registryCheckingHint':
+    'Checking cats-runtime for usable provider targets.',
+  'shared.providerModel.field.registryStaleHint':
+    'Showing last known provider targets while cats-runtime reconnects.',
+  'shared.providerModel.field.registryLoadFailedHint':
+    'Could not load currently usable provider targets from cats-runtime.',
+  'shared.providerModel.field.registryEmptyHint':
+    'cats-runtime is connected, but it did not report any currently usable provider targets.',
   'shared.providerModel.field.providerInstanceLabel': 'Provider instance',
   'shared.providerModel.field.modelLabel': 'Model',
+  'shared.providerModel.field.retryProvidersFirst': 'Retry loading providers first',
+  'shared.providerModel.field.selectProviderFirst': 'Select an available provider first',
+  'shared.providerModel.field.waitingProviders': 'Waiting for available providers...',
+  'shared.providerModel.field.loadingModels': 'Loading available models...',
+  'shared.providerModel.field.selectModel': 'Select a model',
+  'shared.providerModel.field.noModels': 'No runtime-backed models available',
   'shared.providerModel.field.customLegacyModelLabel': 'Custom legacy model...',
   'shared.providerModel.field.legacyModelIdLabel': 'Legacy model ID',
   'shared.providerModel.field.legacyModelIdPlaceholder': 'e.g. claude-sonnet-4-6',
@@ -1762,6 +1779,14 @@ export const enCatalog: MessageCatalog = {
   'shared.providerModel.field.requestScopedWarning':
     'Request-only runtime overrides are hidden here because this selector persists chat/session defaults.',
   'shared.providerModel.field.openRuntimeSetupLabel': 'Open Cats Runtime setup',
+  'shared.providerModel.field.advancedCatalogUnavailable':
+    'Runtime advanced model catalog unavailable.',
+  'shared.providerModel.field.catalogKindModel': 'model',
+  'shared.providerModel.field.catalogKindAdvancedModel': 'advanced model',
+  'shared.providerModel.field.runtimeCatalogUnavailable':
+    'Runtime {catalogKind} catalog unavailable.',
+  'shared.providerModel.field.runtimeCatalogUnavailableWarning':
+    'Using the product {catalogKind} catalog while cats-runtime refreshes: {message}',
   'shared.memoryEditorDialog.title': 'Add memory',
   'shared.memoryEditorDialog.categoryLabel': 'Category',
   'shared.memoryEditorDialog.contentLabel': 'Content',

@@ -27,9 +27,19 @@ import {
   rememberExecutionLabel,
   resolveControlDisplayLabels,
 } from '../../shared/executionLabel.js';
-import { messageKeys, type MessageKey } from '../../shared/i18n/index.js';
+import {
+  messageKeys,
+  t as defaultTranslate,
+  type MessageInterpolationValues,
+  type MessageKey,
+} from '../../shared/i18n/index.js';
 
 export const PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS = 30_000;
+
+export type ProviderModelFieldsTranslate = (
+  key: MessageKey,
+  values?: MessageInterpolationValues,
+) => string;
 
 export function createEmptyProviderModelCatalog(
   provider: string,
@@ -93,43 +103,49 @@ export function sanitizeProviderRegistryReadModel(
   };
 }
 
-export function resolveProviderRegistryPlaceholder(input: {
-  providersLoaded: boolean;
-  registryState: ProductProviderRegistryState;
-  providerCount?: number;
-}): string {
+export function resolveProviderRegistryPlaceholder(
+  input: {
+    providersLoaded: boolean;
+    registryState: ProductProviderRegistryState;
+    providerCount?: number;
+  },
+  translate: ProviderModelFieldsTranslate = defaultTranslate,
+): string {
   if (!input.providersLoaded) {
-    return 'Loading available providers...';
+    return translate(messageKeys.sharedProviderModelFieldLoadingProviders);
   }
 
   if ((input.providerCount ?? 0) > 0) {
-    return 'Select an available provider';
+    return translate(messageKeys.sharedProviderModelFieldSelectProviderHint);
   }
 
   return input.registryState === 'runtime_unreachable'
-    ? 'Could not load runtime-backed providers'
-    : 'No runtime-backed providers available';
+    ? translate(messageKeys.sharedProviderModelFieldProviderLoadFailed)
+    : translate(messageKeys.sharedProviderModelFieldNoProviders);
 }
 
-export function resolveProviderRegistryHint(input: {
-  providersLoaded: boolean;
-  registry: ProductProviderRegistryReadModel;
-}): string {
+export function resolveProviderRegistryHint(
+  input: {
+    providersLoaded: boolean;
+    registry: ProductProviderRegistryReadModel;
+  },
+  translate: ProviderModelFieldsTranslate = defaultTranslate,
+): string {
   if (!input.providersLoaded) {
-    return 'Checking cats-runtime for usable provider targets.';
+    return translate(messageKeys.sharedProviderModelFieldRegistryCheckingHint);
   }
 
   if (input.registry.providers.length > 0) {
     return input.registry.warnings?.[0]
-      ?? 'Showing last known provider targets while cats-runtime reconnects.';
+      ?? translate(messageKeys.sharedProviderModelFieldRegistryStaleHint);
   }
 
   if (input.registry.state === 'runtime_unreachable') {
     return input.registry.warnings?.[0]
-      ?? 'Could not load currently usable provider targets from cats-runtime.';
+      ?? translate(messageKeys.sharedProviderModelFieldRegistryLoadFailedHint);
   }
 
-  return 'cats-runtime is connected, but it did not report any currently usable provider targets.';
+  return translate(messageKeys.sharedProviderModelFieldRegistryEmptyHint);
 }
 
 export function resolveProviderRegistrySetupHref(
@@ -669,8 +685,16 @@ export function resolveAdvancedCatalogFallback(input: {
   modelsResult:
     | { status: 'fulfilled'; value: ProviderModelCatalog }
     | { status: 'rejected'; reason: unknown };
+  translate?: ProviderModelFieldsTranslate;
 }): ProviderAdvancedModelCatalog {
-  const { provider, instance, catalog, advancedCatalogResult, modelsResult } = input;
+  const {
+    provider,
+    instance,
+    catalog,
+    advancedCatalogResult,
+    modelsResult,
+    translate = defaultTranslate,
+  } = input;
   if (advancedCatalogResult.status === 'fulfilled') {
     return advancedCatalogResult.value;
   }
@@ -682,7 +706,7 @@ export function resolveAdvancedCatalogFallback(input: {
         ...advancedFallbackCatalog.warnings,
         advancedCatalogResult.reason instanceof Error
           ? advancedCatalogResult.reason.message
-          : 'Runtime advanced model catalog unavailable.',
+          : translate(messageKeys.sharedProviderModelFieldAdvancedCatalogUnavailable),
       ],
     };
   }
@@ -691,7 +715,7 @@ export function resolveAdvancedCatalogFallback(input: {
     instance,
     advancedCatalogResult.reason instanceof Error
       ? advancedCatalogResult.reason.message
-      : 'Runtime advanced model catalog unavailable.',
+      : translate(messageKeys.sharedProviderModelFieldAdvancedCatalogUnavailable),
   );
 }
 
@@ -737,6 +761,7 @@ export function resolveProviderModelFieldsViewState(input: {
   effectiveCatalog: ProviderModelCatalog;
   effectiveAdvancedCatalog: ProviderAdvancedModelCatalog;
   isLegacyModelTarget: boolean;
+  translate?: ProviderModelFieldsTranslate;
 }): {
   resolvedInstance: string;
   instanceOptions: ProductProviderInstanceDescriptor[];
@@ -776,6 +801,7 @@ export function resolveProviderModelFieldsViewState(input: {
     effectiveCatalog,
     effectiveAdvancedCatalog,
     isLegacyModelTarget,
+    translate = defaultTranslate,
   } = input;
   const resolvedInstance = selectedProvider
     ? resolveSelectedProviderInstance(selectedProvider, instance)
@@ -852,23 +878,23 @@ export function resolveProviderModelFieldsViewState(input: {
     providersLoaded,
     registryState: providerRegistry.state,
     providerCount: providerRegistry.providers.length,
-  });
+  }, translate);
   const hasProviderOptions = providerRegistry.providers.length > 0;
   const modelPlaceholder = !selectedProvider
     ? (providersLoaded
         ? providerRegistry.state === 'runtime_unreachable' && !hasProviderOptions
-          ? 'Retry loading providers first'
-          : 'Select an available provider first'
-        : 'Waiting for available providers...')
+          ? translate(messageKeys.sharedProviderModelFieldRetryProvidersFirst)
+          : translate(messageKeys.sharedProviderModelFieldSelectProviderFirst)
+        : translate(messageKeys.sharedProviderModelFieldWaitingProviders))
     : catalogLoading
-      ? 'Loading available models...'
+      ? translate(messageKeys.sharedProviderModelFieldLoadingModels)
       : allowLegacyManualModelEntry
-        ? 'Select a model'
-        : 'No runtime-backed models available';
+        ? translate(messageKeys.sharedProviderModelFieldSelectModel)
+        : translate(messageKeys.sharedProviderModelFieldNoModels);
   const providerRegistryHint = resolveProviderRegistryHint({
     providersLoaded,
     registry: providerRegistry,
-  });
+  }, translate);
   const providerRegistrySetupHref = resolveProviderRegistrySetupHref(providerRegistry);
   const canRetryProviderRegistry = providersLoaded
     && providerRegistry.providers.length === 0

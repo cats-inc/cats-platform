@@ -1773,10 +1773,31 @@ export const messageKeys = {
   sharedProviderModelControlDisabled: 'shared.providerModel.controls.disabled',
   sharedProviderModelControlOptionalPlaceholder: 'shared.providerModel.controls.optionalPlaceholder',
   sharedProviderModelFieldProviderLabel: 'shared.providerModel.field.providerLabel',
+  sharedProviderModelFieldLoadingProviders: 'shared.providerModel.field.loadingProviders',
   sharedProviderModelFieldSelectProviderHint: 'shared.providerModel.field.selectProviderHint',
+  sharedProviderModelFieldProviderLoadFailed:
+    'shared.providerModel.field.providerLoadFailed',
+  sharedProviderModelFieldNoProviders: 'shared.providerModel.field.noProviders',
+  sharedProviderModelFieldRegistryCheckingHint:
+    'shared.providerModel.field.registryCheckingHint',
+  sharedProviderModelFieldRegistryStaleHint:
+    'shared.providerModel.field.registryStaleHint',
+  sharedProviderModelFieldRegistryLoadFailedHint:
+    'shared.providerModel.field.registryLoadFailedHint',
+  sharedProviderModelFieldRegistryEmptyHint:
+    'shared.providerModel.field.registryEmptyHint',
   sharedProviderModelFieldProviderInstanceLabel:
     'shared.providerModel.field.providerInstanceLabel',
   sharedProviderModelFieldModelLabel: 'shared.providerModel.field.modelLabel',
+  sharedProviderModelFieldRetryProvidersFirst:
+    'shared.providerModel.field.retryProvidersFirst',
+  sharedProviderModelFieldSelectProviderFirst:
+    'shared.providerModel.field.selectProviderFirst',
+  sharedProviderModelFieldWaitingProviders:
+    'shared.providerModel.field.waitingProviders',
+  sharedProviderModelFieldLoadingModels: 'shared.providerModel.field.loadingModels',
+  sharedProviderModelFieldSelectModel: 'shared.providerModel.field.selectModel',
+  sharedProviderModelFieldNoModels: 'shared.providerModel.field.noModels',
   sharedProviderModelFieldCustomLegacyModelLabel:
     'shared.providerModel.field.customLegacyModelLabel',
   sharedProviderModelFieldLegacyModelIdLabel:
@@ -1801,6 +1822,16 @@ export const messageKeys = {
     'shared.providerModel.field.requestScopedWarning',
   sharedProviderModelFieldOpenRuntimeSetupLabel:
     'shared.providerModel.field.openRuntimeSetupLabel',
+  sharedProviderModelFieldAdvancedCatalogUnavailable:
+    'shared.providerModel.field.advancedCatalogUnavailable',
+  sharedProviderModelFieldCatalogKindModel:
+    'shared.providerModel.field.catalogKindModel',
+  sharedProviderModelFieldCatalogKindAdvancedModel:
+    'shared.providerModel.field.catalogKindAdvancedModel',
+  sharedProviderModelFieldRuntimeCatalogUnavailable:
+    'shared.providerModel.field.runtimeCatalogUnavailable',
+  sharedProviderModelFieldRuntimeCatalogUnavailableWarning:
+    'shared.providerModel.field.runtimeCatalogUnavailableWarning',
   sharedMemoryEditorDialogTitle: 'shared.memoryEditorDialog.title',
   sharedMemoryEditorDialogCategoryLabel: 'shared.memoryEditorDialog.categoryLabel',
   sharedMemoryEditorDialogContentLabel: 'shared.memoryEditorDialog.contentLabel',

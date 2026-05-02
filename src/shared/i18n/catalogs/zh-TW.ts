@@ -1698,9 +1698,26 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.providerModel.controls.disabled': '停用',
   'shared.providerModel.controls.optionalPlaceholder': '選填',
   'shared.providerModel.field.providerLabel': '供應商',
+  'shared.providerModel.field.loadingProviders': '正在載入可用的供應商...',
   'shared.providerModel.field.selectProviderHint': '請選擇可用的供應商',
+  'shared.providerModel.field.providerLoadFailed': '無法載入 runtime 支援的供應商',
+  'shared.providerModel.field.noProviders': '沒有 runtime 支援的供應商可用',
+  'shared.providerModel.field.registryCheckingHint':
+    '正在檢查 cats-runtime 可用的供應商目標。',
+  'shared.providerModel.field.registryStaleHint':
+    'cats-runtime 重新連線時，先顯示上次可用的供應商目標。',
+  'shared.providerModel.field.registryLoadFailedHint':
+    '無法從 cats-runtime 載入目前可用的供應商目標。',
+  'shared.providerModel.field.registryEmptyHint':
+    'cats-runtime 已連線，但沒有回報任何目前可用的供應商目標。',
   'shared.providerModel.field.providerInstanceLabel': '供應商實例',
   'shared.providerModel.field.modelLabel': '模型',
+  'shared.providerModel.field.retryProvidersFirst': '請先重新載入供應商',
+  'shared.providerModel.field.selectProviderFirst': '請先選擇可用的供應商',
+  'shared.providerModel.field.waitingProviders': '正在等待可用的供應商...',
+  'shared.providerModel.field.loadingModels': '正在載入可用模型...',
+  'shared.providerModel.field.selectModel': '選擇模型',
+  'shared.providerModel.field.noModels': '沒有 runtime 支援的模型可用',
   'shared.providerModel.field.customLegacyModelLabel': '自訂遺留模型...',
   'shared.providerModel.field.legacyModelIdLabel': '遺留模型 ID',
   'shared.providerModel.field.legacyModelIdPlaceholder': '例如 claude-sonnet-4-6',
@@ -1717,6 +1734,14 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.providerModel.field.requestScopedWarning':
     '這裡隱藏了只可套用於個別請求的 override，因為這組 selector 會寫回聊天/會話預設。',
   'shared.providerModel.field.openRuntimeSetupLabel': '開啟 Cats Runtime 設定',
+  'shared.providerModel.field.advancedCatalogUnavailable':
+    'Runtime 進階模型目錄無法使用。',
+  'shared.providerModel.field.catalogKindModel': '模型',
+  'shared.providerModel.field.catalogKindAdvancedModel': '進階模型',
+  'shared.providerModel.field.runtimeCatalogUnavailable':
+    'Runtime {catalogKind}目錄無法使用。',
+  'shared.providerModel.field.runtimeCatalogUnavailableWarning':
+    'cats-runtime 重新整理時，先使用產品內建的{catalogKind}目錄：{message}',
   'shared.memoryEditorDialog.title': '新增記憶',
   'shared.memoryEditorDialog.categoryLabel': '分類',
   'shared.memoryEditorDialog.contentLabel': '內容',

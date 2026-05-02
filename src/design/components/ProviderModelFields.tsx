@@ -133,7 +133,8 @@ export function ProviderModelFields({
     hasSelectedProvider: Boolean(selectedProvider),
     fetchProviderModels,
     fetchAdvancedProviderModels,
-  })
+    translate: t,
+  });
   const {
     persistedLegacyModelTarget,
     isLegacyModelTarget,
@@ -190,6 +191,7 @@ export function ProviderModelFields({
     effectiveCatalog,
     effectiveAdvancedCatalog,
     isLegacyModelTarget,
+    translate: t,
   });
 
   useProviderRegistryAutoRecheck({

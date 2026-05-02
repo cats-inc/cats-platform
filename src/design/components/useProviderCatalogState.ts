@@ -17,7 +17,9 @@ import {
   createEmptyProviderAdvancedModelCatalog,
   createEmptyProviderModelCatalog,
   resolveAdvancedCatalogFallback,
+  type ProviderModelFieldsTranslate,
 } from './providerModelFieldsSupport.js';
+import { messageKeys, t as defaultTranslate } from '../../shared/i18n/index.js';
 
 function readCatalogFailureMessage(error: unknown, fallback: string): string {
   return error instanceof Error ? error.message : fallback;
@@ -45,10 +47,18 @@ function createWarmProviderAdvancedModelCatalog(
   });
 }
 
-function createRuntimeCatalogUnavailableWarning(error: unknown, catalogKind: string): string {
-  return `Using the product ${catalogKind} catalog while cats-runtime refreshes: ${
-    readCatalogFailureMessage(error, `Runtime ${catalogKind} catalog unavailable.`)
-  }`;
+function createRuntimeCatalogUnavailableWarning(
+  error: unknown,
+  catalogKind: string,
+  translate: ProviderModelFieldsTranslate,
+): string {
+  const fallback = translate(messageKeys.sharedProviderModelFieldRuntimeCatalogUnavailable, {
+    catalogKind,
+  });
+  return translate(messageKeys.sharedProviderModelFieldRuntimeCatalogUnavailableWarning, {
+    catalogKind,
+    message: readCatalogFailureMessage(error, fallback),
+  });
 }
 
 function peekCachedCatalogPair(
@@ -83,7 +93,9 @@ export function useProviderCatalogState(input: {
     provider: string,
     instance?: string | null,
   ) => Promise<ProviderAdvancedModelCatalog>;
+  translate?: ProviderModelFieldsTranslate;
 }) {
+  const translate = input.translate ?? defaultTranslate;
   const initialPeek = peekCachedCatalogPair(
     input.provider,
     input.resolvedInstance,
@@ -154,7 +166,11 @@ export function useProviderCatalogState(input: {
         : createWarmProviderModelCatalog(
             input.provider,
             input.resolvedInstance || null,
-            createRuntimeCatalogUnavailableWarning(modelsResult.reason, 'model'),
+            createRuntimeCatalogUnavailableWarning(
+              modelsResult.reason,
+              translate(messageKeys.sharedProviderModelFieldCatalogKindModel),
+              translate,
+            ),
           );
       setCatalog(nextCatalog);
 
@@ -165,12 +181,17 @@ export function useProviderCatalogState(input: {
           catalog: nextCatalog,
           advancedCatalogResult: advancedResult,
           modelsResult,
+          translate,
         }));
       } else {
         setAdvancedCatalog(createWarmProviderAdvancedModelCatalog(
           input.provider,
           input.resolvedInstance || null,
-          createRuntimeCatalogUnavailableWarning(advancedResult.reason, 'advanced model'),
+          createRuntimeCatalogUnavailableWarning(
+            advancedResult.reason,
+            translate(messageKeys.sharedProviderModelFieldCatalogKindAdvancedModel),
+            translate,
+          ),
         ));
       }
 
@@ -186,6 +207,7 @@ export function useProviderCatalogState(input: {
     input.hasSelectedProvider,
     input.provider,
     input.resolvedInstance,
+    translate,
   ]);
 
   const fallbackCatalog = createEmptyProviderModelCatalog(input.provider, input.resolvedInstance || null);
