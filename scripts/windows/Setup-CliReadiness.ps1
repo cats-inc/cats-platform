@@ -60,6 +60,45 @@ $ErrorActionPreference = 'Stop'
 $HelperId = 'windows-cli-readiness-helper'
 $DesiredPolicy = 'RemoteSigned'
 $AcceptablePolicies = @('RemoteSigned', 'Unrestricted', 'Bypass')
+$ExecutionPolicyRegistrySubKey = 'Software\Microsoft\PowerShell\1\ShellIds\Microsoft.PowerShell'
+
+function Read-CurrentUserExecutionPolicy {
+  # Read the registry directly instead of calling Get-ExecutionPolicy. When the
+  # bridge spawns powershell.exe with redirected I/O and an inherited PSModulePath
+  # that points at PowerShell 7's modules, Microsoft.PowerShell.Security fails to
+  # autoload — taking Get-ExecutionPolicy / Set-ExecutionPolicy down with it.
+  try {
+    $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey($ExecutionPolicyRegistrySubKey)
+    if ($null -eq $key) {
+      return 'Undefined'
+    }
+    try {
+      $value = $key.GetValue('ExecutionPolicy')
+    } finally {
+      $key.Dispose()
+    }
+    if ($null -eq $value -or [string]::IsNullOrWhiteSpace([string]$value)) {
+      return 'Undefined'
+    }
+    return [string]$value
+  } catch {
+    return 'Undefined'
+  }
+}
+
+function Set-CurrentUserExecutionPolicyRegistry {
+  param([string]$Policy)
+
+  $key = [Microsoft.Win32.Registry]::CurrentUser.CreateSubKey($ExecutionPolicyRegistrySubKey)
+  if ($null -eq $key) {
+    throw "Failed to open or create HKCU:\$ExecutionPolicyRegistrySubKey"
+  }
+  try {
+    $key.SetValue('ExecutionPolicy', $Policy, [Microsoft.Win32.RegistryValueKind]::String)
+  } finally {
+    $key.Dispose()
+  }
+}
 
 function Normalize-PathValue {
   param(
@@ -186,7 +225,7 @@ if ($isAdmin -and -not $AllowAdmin) {
 $currentPolicy = if ($PSBoundParameters.ContainsKey('CurrentExecutionPolicy')) {
   $CurrentExecutionPolicy
 } else {
-  (Get-ExecutionPolicy -Scope CurrentUser).ToString()
+  Read-CurrentUserExecutionPolicy
 }
 
 $pathProbe = if ($PSBoundParameters.ContainsKey('CurrentUserPath')) {
@@ -243,7 +282,7 @@ $warnings = [System.Collections.Generic.List[string]]::new()
 
 if ($policyNeedsUpdate) {
   try {
-    Set-ExecutionPolicy -ExecutionPolicy $DesiredPolicy -Scope CurrentUser -Force -ErrorAction Stop
+    Set-CurrentUserExecutionPolicyRegistry -Policy $DesiredPolicy
     [void]$appliedChanges.Add("Set CurrentUser ExecutionPolicy to $DesiredPolicy")
     $currentPolicy = $DesiredPolicy
   } catch {
