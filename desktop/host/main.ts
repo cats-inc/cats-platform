@@ -158,6 +158,7 @@ import {
   captureWlrootsNativeScreenshotRegion,
   isLikelyWlrootsScreenshotSession,
 } from './screenshotWlrootsCapture.js';
+import { createExternalDesktopOpenDeduper } from './externalOpenGate.js';
 import {
   assertMainWindowVoiceCaptureIpcSender,
   DESKTOP_VOICE_CAPTURE_CANCEL_CHANNEL,
@@ -218,6 +219,7 @@ const RUNTIME_CLI_INVENTORY_POLL_INTERVAL_MS = 2_000;
 const RUNTIME_PROVIDER_DIAGNOSTICS_TIMEOUT_MS = 5_000;
 const BOOTSTRAP_CLI_INVENTORY_FAILURE_SUMMARY =
   'Cats could not confirm the local CLI inventory. Retry the startup check.';
+const externalDesktopOpenDeduper = createExternalDesktopOpenDeduper();
 
 function clearCliInventoryError(): void {
   latestCliInventoryError = null;
@@ -412,7 +414,11 @@ async function captureNativeScreenshotRegion(
 }
 
 async function openExternalDesktopUrl(rawUrl: string): Promise<void> {
-  await shell.openExternal(validateDesktopUrl(rawUrl));
+  const url = validateDesktopUrl(rawUrl);
+  if (!externalDesktopOpenDeduper.shouldOpen(url)) {
+    return;
+  }
+  await shell.openExternal(url);
 }
 
 function reportExternalUrlOpenFailure(error: unknown): void {
