@@ -117,6 +117,7 @@ async function seedWindowsSetupAssets(packageRoot) {
   await seedFile(join(packageRoot, 'scripts', 'windows', '_PackagedUninstall.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', '_NpmCliInstaller.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Node.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-VcRedist.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-GitHubCli.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Setup-NodeGlobalPrefix.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Setup-CliReadiness.ps1'), '# helper');
