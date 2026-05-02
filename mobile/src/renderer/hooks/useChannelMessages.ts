@@ -14,6 +14,9 @@ import {
 import { loadConnectionConfig } from '../../api/persistence';
 import type { ResolveAttachmentUrl } from '../MessageBody';
 import {
+  getMobileApiCopy,
+  resolveDefaultMobileLocale,
+  type MobileApiCopy,
   type MobileAppShellPayload,
   type MobileChannelMessagesPayload,
   type MobileRenderedMessage,
@@ -109,7 +112,7 @@ function buildDataState(
   };
 }
 
-function classifyFetchError(error: unknown): ChannelMessagesState {
+function classifyFetchError(error: unknown, copy: MobileApiCopy): ChannelMessagesState {
   if (error instanceof MobileApiError) {
     if (error.status === 404) {
       return { kind: 'channelNotFound' };
@@ -119,7 +122,7 @@ function classifyFetchError(error: unknown): ChannelMessagesState {
   return {
     kind: 'error',
     error: new MobileApiError(
-      error instanceof Error ? error.message : 'Unknown error.',
+      error instanceof Error ? error.message : copy.unknownError,
       null,
       error,
     ),
@@ -132,6 +135,7 @@ export function useChannelMessages(channelId: string): ChannelMessagesHook {
   const [version, setVersion] = useState(0);
   const activeRef = useRef(true);
   const initialFocusRef = useRef(true);
+  const copy = getMobileApiCopy(resolveDefaultMobileLocale());
 
   useEffect(() => {
     activeRef.current = true;
@@ -159,13 +163,13 @@ export function useChannelMessages(channelId: string): ChannelMessagesHook {
         if (!activeRef.current) {
           return;
         }
-        setState(classifyFetchError(error));
+        setState(classifyFetchError(error, copy));
       }
     })();
     return () => {
       activeRef.current = false;
     };
-  }, [channelId, version]);
+  }, [channelId, copy, version]);
 
   // While ChatView is the focused screen, open an SSE subscription
   // to `/api/events/chat` and refetch the conversation when the
@@ -249,7 +253,7 @@ export function useChannelMessages(channelId: string): ChannelMessagesHook {
           setSendState({
             kind: 'error',
             error: new MobileApiError(
-              'Set a desktop base URL in Settings before sending.',
+              copy.configureBaseUrlBeforeSending,
               null,
               null,
             ),
@@ -270,7 +274,7 @@ export function useChannelMessages(channelId: string): ChannelMessagesHook {
           setSendState({
             kind: 'error',
             error: new MobileApiError(
-              error instanceof Error ? error.message : 'Send failed.',
+              error instanceof Error ? error.message : copy.sendFailed,
               null,
               error,
             ),
@@ -278,7 +282,7 @@ export function useChannelMessages(channelId: string): ChannelMessagesHook {
         }
       }
     },
-    [channelId],
+    [channelId, copy],
   );
 
   return { state, refetch, send, sendState };

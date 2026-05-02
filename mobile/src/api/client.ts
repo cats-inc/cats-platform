@@ -1,4 +1,8 @@
 import type { ConnectionConfig } from './persistence';
+import {
+  getMobileApiCopy,
+  resolveDefaultMobileLocale,
+} from '../../../src/mobile/index.js';
 
 /**
  * Thin typed `fetch` wrapper for the mobile client. Reads the persisted
@@ -44,8 +48,9 @@ export function createMobileApiClient(
   config: ConnectionConfig,
 ): MobileApiClient {
   if (!config.baseUrl) {
+    const copy = getMobileApiCopy(resolveDefaultMobileLocale());
     throw new MobileApiError(
-      'Mobile API client requires a configured base URL. Set "Desktop base URL" in Settings.',
+      copy.configureBaseUrlForClient,
       null,
       null,
     );

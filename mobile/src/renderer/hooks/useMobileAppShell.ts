@@ -3,7 +3,11 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { createMobileApiClient, MobileApiError } from '../../api/client';
 import { loadConnectionConfig } from '../../api/persistence';
-import type { MobileAppShellPayload } from '../../../../src/mobile/index.js';
+import {
+  getMobileApiCopy,
+  resolveDefaultMobileLocale,
+  type MobileAppShellPayload,
+} from '../../../../src/mobile/index.js';
 
 /**
  * Shared hook that fetches `/api/app-shell` and exposes the explicit
@@ -35,6 +39,7 @@ export function useMobileAppShell(): MobileAppShellHook {
   const [state, setState] = useState<MobileAppShellState>({ kind: 'loading' });
   const [version, setVersion] = useState(0);
   const initialFocusRef = useRef(true);
+  const copy = getMobileApiCopy(resolveDefaultMobileLocale());
 
   useEffect(() => {
     let active = true;
@@ -65,7 +70,7 @@ export function useMobileAppShell(): MobileAppShellHook {
           setState({
             kind: 'error',
             error: new MobileApiError(
-              error instanceof Error ? error.message : 'Unknown error.',
+              error instanceof Error ? error.message : copy.unknownError,
               null,
               error,
             ),
@@ -76,7 +81,7 @@ export function useMobileAppShell(): MobileAppShellHook {
     return () => {
       active = false;
     };
-  }, [version]);
+  }, [copy, version]);
 
   // Re-fetch on every screen focus _after_ the initial mount, so the
   // user setting a desktop base URL in Settings and returning to a

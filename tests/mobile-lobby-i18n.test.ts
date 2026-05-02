@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  getMobileApiCopy,
   getMobileChatCopy,
   getMobileChannelTitle,
   getMobileSettingsCopy,
@@ -121,4 +122,18 @@ test('mobile tabs copy exposes localized fixed controls', () => {
   assert.equal(getMobileChannelTitle(zh, 'work', 'unknown'), '新工作');
   assert.equal(zh.directCatDesktopOnlyTitle, '直接聊天僅限桌面版');
   assert.equal(en.parallelChatDesktopOnlyTitle, 'Parallel chat — desktop only');
+});
+
+test('mobile api copy exposes localized deterministic errors', () => {
+  const zh = getMobileApiCopy('zh-TW');
+  const en = getMobileApiCopy('en');
+
+  assert.equal(
+    zh.configureBaseUrlBeforeCreatingChannel,
+    '建立頻道前，請先在設定中填入桌面版基底網址。',
+  );
+  assert.equal(zh.configureBaseUrlBeforeSending, '送出前，請先在設定中填入桌面版基底網址。');
+  assert.equal(zh.createChannelFailed, '無法建立頻道。');
+  assert.equal(zh.sendFailed, '無法送出。');
+  assert.equal(en.unknownError, 'Unknown error.');
 });

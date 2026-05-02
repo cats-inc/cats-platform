@@ -40,6 +40,15 @@ export interface MobileChatCopy {
   productLabel: Record<MobileProductMode, string>;
 }
 
+export interface MobileApiCopy {
+  configureBaseUrlBeforeCreatingChannel: string;
+  configureBaseUrlBeforeSending: string;
+  configureBaseUrlForClient: string;
+  createChannelFailed: string;
+  sendFailed: string;
+  unknownError: string;
+}
+
 export interface MobileSettingsCopy {
   advancedSection: string;
   approvalsOnlyDescription: string;
@@ -160,6 +169,31 @@ const MOBILE_CHAT_COPY: Record<MobileLocale, MobileChatCopy> = {
       code: '程式碼',
       work: '工作',
     },
+  },
+};
+
+const MOBILE_API_COPY: Record<MobileLocale, MobileApiCopy> = {
+  en: {
+    configureBaseUrlBeforeCreatingChannel:
+      'Set a desktop base URL in Settings before creating a channel.',
+    configureBaseUrlBeforeSending:
+      'Set a desktop base URL in Settings before sending.',
+    configureBaseUrlForClient:
+      'Mobile API client requires a configured base URL. Set "Desktop base URL" in Settings.',
+    createChannelFailed: 'Create channel failed.',
+    sendFailed: 'Send failed.',
+    unknownError: 'Unknown error.',
+  },
+  'zh-TW': {
+    configureBaseUrlBeforeCreatingChannel:
+      '建立頻道前，請先在設定中填入桌面版基底網址。',
+    configureBaseUrlBeforeSending:
+      '送出前，請先在設定中填入桌面版基底網址。',
+    configureBaseUrlForClient:
+      'Mobile API client 需要已設定的基底網址。請在設定中填入「桌面版網址」。',
+    createChannelFailed: '無法建立頻道。',
+    sendFailed: '無法送出。',
+    unknownError: '未知錯誤。',
   },
 };
 
@@ -335,6 +369,10 @@ export function getMobileLobbyCopy(locale?: string | null): MobileLobbyCopy {
 
 export function getMobileChatCopy(locale?: string | null): MobileChatCopy {
   return MOBILE_CHAT_COPY[resolveMobileLocale(locale)];
+}
+
+export function getMobileApiCopy(locale?: string | null): MobileApiCopy {
+  return MOBILE_API_COPY[resolveMobileLocale(locale)];
 }
 
 export function getMobileSettingsCopy(locale?: string | null): MobileSettingsCopy {

@@ -2,9 +2,11 @@ import { useCallback, useState } from 'react';
 
 import { createMobileApiClient, MobileApiError } from '../../api/client';
 import { loadConnectionConfig } from '../../api/persistence';
-import type {
-  MobileCreateChannelInput,
-  MobileCreateChannelResponse,
+import {
+  getMobileApiCopy,
+  resolveDefaultMobileLocale,
+  type MobileCreateChannelInput,
+  type MobileCreateChannelResponse,
 } from '../../../../src/mobile/index.js';
 
 /**
@@ -35,6 +37,7 @@ const CREATE_CHANNEL_PATH = '/api/channels';
 
 export function useCreateChannel(): CreateChannelHook {
   const [state, setState] = useState<CreateChannelState>({ kind: 'idle' });
+  const copy = getMobileApiCopy(resolveDefaultMobileLocale());
 
   const create = useCallback(
     async (input: MobileCreateChannelInput): Promise<string> => {
@@ -43,7 +46,7 @@ export function useCreateChannel(): CreateChannelHook {
         const config = await loadConnectionConfig();
         if (!config.baseUrl) {
           const error = new MobileApiError(
-            'Set a desktop base URL in Settings before creating a channel.',
+            copy.configureBaseUrlBeforeCreatingChannel,
             null,
             null,
           );
@@ -62,7 +65,7 @@ export function useCreateChannel(): CreateChannelHook {
           error instanceof MobileApiError
             ? error
             : new MobileApiError(
-                error instanceof Error ? error.message : 'Create channel failed.',
+                error instanceof Error ? error.message : copy.createChannelFailed,
                 null,
                 error,
               );
@@ -70,7 +73,7 @@ export function useCreateChannel(): CreateChannelHook {
         throw apiError;
       }
     },
-    [],
+    [copy],
   );
 
   const reset = useCallback(() => {
