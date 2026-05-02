@@ -1797,6 +1797,8 @@ export const enCatalog: MessageCatalog = {
   'shared.providerModel.field.noProviders': 'No runtime-backed providers available',
   'shared.providerModel.field.registryCheckingHint':
     'Checking cats-runtime for usable provider targets.',
+  'shared.providerModel.field.registryUsingProductCatalogHint':
+    'Using the product provider catalog while cats-runtime provider targets are checked.',
   'shared.providerModel.field.registryStaleHint':
     'Showing last known provider targets while cats-runtime reconnects.',
   'shared.providerModel.field.registryLoadFailedHint':

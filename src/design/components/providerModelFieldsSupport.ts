@@ -35,6 +35,12 @@ import {
 } from '../../shared/i18n/index.js';
 
 export const PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS = 30_000;
+export const PRODUCT_PROVIDER_CATALOG_CHECKING_WARNING =
+  'Using the product provider catalog while cats-runtime provider targets are checked.';
+export const LAST_SAVED_PROVIDER_TARGETS_WARNING =
+  'Using last saved provider targets while cats-runtime reconnects.';
+export const PROVIDER_LOAD_FAILED_WARNING = 'Failed to load providers.';
+export const PROVIDER_REFRESH_FAILED_WARNING = 'Failed to refresh providers.';
 
 export type ProviderModelFieldsTranslate = (
   key: MessageKey,
@@ -136,16 +142,38 @@ export function resolveProviderRegistryHint(
   }
 
   if (input.registry.providers.length > 0) {
-    return input.registry.warnings?.[0]
+    return translateProviderRegistryWarning(input.registry.warnings?.[0], translate)
       ?? translate(messageKeys.sharedProviderModelFieldRegistryStaleHint);
   }
 
   if (input.registry.state === 'runtime_unreachable') {
-    return input.registry.warnings?.[0]
+    return translateProviderRegistryWarning(input.registry.warnings?.[0], translate)
       ?? translate(messageKeys.sharedProviderModelFieldRegistryLoadFailedHint);
   }
 
   return translate(messageKeys.sharedProviderModelFieldRegistryEmptyHint);
+}
+
+export function translateProviderRegistryWarning(
+  warning: string | null | undefined,
+  translate: ProviderModelFieldsTranslate = defaultTranslate,
+): string | null {
+  if (!warning) {
+    return null;
+  }
+
+  switch (warning) {
+    case PRODUCT_PROVIDER_CATALOG_CHECKING_WARNING:
+      return translate(messageKeys.sharedProviderModelFieldRegistryUsingProductCatalogHint);
+    case LAST_SAVED_PROVIDER_TARGETS_WARNING:
+      return translate(messageKeys.sharedProviderModelFieldRegistryStaleHint);
+    case PROVIDER_LOAD_FAILED_WARNING:
+      return translate(messageKeys.sharedProviderModelFieldProviderLoadFailed);
+    case PROVIDER_REFRESH_FAILED_WARNING:
+      return translate(messageKeys.sharedProviderModelFieldRegistryLoadFailedHint);
+    default:
+      return warning;
+  }
 }
 
 export function resolveProviderRegistrySetupHref(

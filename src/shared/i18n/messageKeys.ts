@@ -1831,6 +1831,8 @@ export const messageKeys = {
   sharedProviderModelFieldNoProviders: 'shared.providerModel.field.noProviders',
   sharedProviderModelFieldRegistryCheckingHint:
     'shared.providerModel.field.registryCheckingHint',
+  sharedProviderModelFieldRegistryUsingProductCatalogHint:
+    'shared.providerModel.field.registryUsingProductCatalogHint',
   sharedProviderModelFieldRegistryStaleHint:
     'shared.providerModel.field.registryStaleHint',
   sharedProviderModelFieldRegistryLoadFailedHint:

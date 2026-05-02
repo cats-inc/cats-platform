@@ -1752,6 +1752,8 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.providerModel.field.noProviders': '沒有執行階段支援的供應器可用',
   'shared.providerModel.field.registryCheckingHint':
     '正在檢查 cats-runtime 可用的供應器目標。',
+  'shared.providerModel.field.registryUsingProductCatalogHint':
+    '檢查 cats-runtime 供應器目標時，先使用產品內建供應器目錄。',
   'shared.providerModel.field.registryStaleHint':
     'cats-runtime 重新連線時，先顯示上次可用的供應器目標。',
   'shared.providerModel.field.registryLoadFailedHint':

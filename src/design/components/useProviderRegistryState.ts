@@ -4,11 +4,9 @@ import { peekProviderRegistryClientCache } from '../../app/renderer/providerRegi
 import type { ProductProviderRegistryReadModel } from '../../shared/providerCatalog.js';
 import {
   createStaticProviderRegistryReadModel,
+  PRODUCT_PROVIDER_CATALOG_CHECKING_WARNING,
   sanitizeProviderRegistryReadModel,
 } from './providerModelFieldsSupport.js';
-
-const INITIAL_PROVIDER_REGISTRY_WARNING =
-  'Using the product provider catalog while cats-runtime provider targets are checked.';
 
 export function useProviderRegistryState(input: {
   fetchProviderRegistry: (options?: { force?: boolean }) => Promise<ProductProviderRegistryReadModel>;
@@ -17,7 +15,7 @@ export function useProviderRegistryState(input: {
   const initialCached = peekProviderRegistryClientCache();
   const initialRegistry = initialCached
     ? sanitizeProviderRegistryReadModel(initialCached)
-    : createStaticProviderRegistryReadModel([INITIAL_PROVIDER_REGISTRY_WARNING]);
+    : createStaticProviderRegistryReadModel([PRODUCT_PROVIDER_CATALOG_CHECKING_WARNING]);
   const [providers, setProviders] = useState<ProductProviderRegistryReadModel['providers']>(
     initialRegistry.providers,
   );

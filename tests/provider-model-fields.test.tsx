@@ -9,6 +9,8 @@ import {
   filterPersistentControlValues,
   formatCatalogEntryLabel,
   hasExplicitDefaultEnumOption,
+  PRODUCT_PROVIDER_CATALOG_CHECKING_WARNING,
+  PROVIDER_LOAD_FAILED_WARNING,
   PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
   listPersistentControlOptions,
   resolveProviderRegistryHint,
@@ -462,6 +464,17 @@ test('provider registry empty states distinguish runtime failure from no usable 
       providersLoaded: true,
       registry: {
         state: 'runtime_unreachable',
+        providers: [],
+        warnings: [PROVIDER_LOAD_FAILED_WARNING],
+      },
+    }, createTranslator('zh-TW')),
+    '無法載入執行階段支援的供應器',
+  );
+  assert.equal(
+    resolveProviderRegistryHint({
+      providersLoaded: true,
+      registry: {
+        state: 'runtime_unreachable',
         providers: [
           {
             id: 'claude',
@@ -476,6 +489,27 @@ test('provider registry empty states distinguish runtime failure from no usable 
       },
     }),
     'Showing last known provider targets while cats-runtime reconnects.',
+  );
+  assert.equal(
+    resolveProviderRegistryHint({
+      providersLoaded: true,
+      registry: {
+        state: 'ready',
+        providers: [
+          {
+            id: 'claude',
+            label: 'Claude',
+            defaultModel: null,
+            defaultInstance: null,
+            defaultBackend: null,
+            instances: [],
+            modelsPath: '/api/providers/claude/models',
+          },
+        ],
+        warnings: [PRODUCT_PROVIDER_CATALOG_CHECKING_WARNING],
+      },
+    }, createTranslator('zh-TW')),
+    '檢查 cats-runtime 供應器目標時，先使用產品內建供應器目錄。',
   );
   assert.equal(
     resolveProviderRegistryHint({
@@ -517,7 +551,7 @@ test('provider registry and model placeholders use the supplied translator', () 
       providersLoaded: false,
       registryState: 'ready',
     }, zh),
-    '正在載入可用的供應商...',
+    '正在載入可用的供應器...',
   );
   assert.equal(
     resolveProviderRegistryHint({
@@ -527,7 +561,7 @@ test('provider registry and model placeholders use the supplied translator', () 
         providers: [],
       },
     }, zh),
-    'cats-runtime 已連線，但沒有回報任何目前可用的供應商目標。',
+    'cats-runtime 已連線，但沒有回報任何目前可用的供應器目標。',
   );
 
   const viewState = resolveProviderModelFieldsViewState({
@@ -570,9 +604,9 @@ test('provider registry and model placeholders use the supplied translator', () 
     translate: zh,
   });
 
-  assert.equal(viewState.providerPlaceholder, '正在載入可用的供應商...');
-  assert.equal(viewState.modelPlaceholder, '正在等待可用的供應商...');
-  assert.equal(viewState.providerRegistryHint, '正在檢查 cats-runtime 可用的供應商目標。');
+  assert.equal(viewState.providerPlaceholder, '正在載入可用的供應器...');
+  assert.equal(viewState.modelPlaceholder, '正在等待可用的供應器...');
+  assert.equal(viewState.providerRegistryHint, '正在檢查 cats-runtime 可用的供應器目標。');
 });
 
 test('static provider registry fallback gives selectors immediate provider options', () => {

@@ -36,6 +36,10 @@ import { messageKeys } from '../../shared/i18n/index.js';
 export {
   attachExecutionLabelToProviderTarget,
   CUSTOM_LEGACY_MODEL_VALUE,
+  LAST_SAVED_PROVIDER_TARGETS_WARNING,
+  PRODUCT_PROVIDER_CATALOG_CHECKING_WARNING,
+  PROVIDER_LOAD_FAILED_WARNING,
+  PROVIDER_REFRESH_FAILED_WARNING,
   PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS,
   catalogMatchesTarget,
   countRequestScopedControls,
@@ -61,6 +65,7 @@ export {
   shouldDeferCatalogTargetReconciliation,
   shouldShowInstanceField,
   shouldTreatPersistedTargetAsLegacyModel,
+  translateProviderRegistryWarning,
   updatePersistentControlValues,
 } from './providerModelFieldsSupport.js';
 
