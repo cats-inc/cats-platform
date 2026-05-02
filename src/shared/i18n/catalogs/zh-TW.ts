@@ -43,10 +43,10 @@ export const zhTWCatalog: MessageCatalog = {
   'lobby.greeting.openSurface': '開啟適合這項任務的產品。',
   'lobby.greeting.awake': 'Cats Inc 已就緒。',
   'lobby.greeting.continue': '回到最適合推進工作的地方。',
-  'shared.runtimeStatus.tooltip.ready': 'Cats Runtime 已連線',
-  'shared.runtimeStatus.tooltip.degraded': 'Cats Runtime 正在啟動',
-  'shared.runtimeStatus.tooltip.unavailable': 'Cats Runtime 離線',
-  'shared.runtimeStatus.tooltip.unknown': '正在檢查 Cats Runtime 狀態…',
+  'shared.runtimeStatus.tooltip.ready': 'Cats 執行階段已連線',
+  'shared.runtimeStatus.tooltip.degraded': 'Cats 執行階段正在啟動',
+  'shared.runtimeStatus.tooltip.unavailable': 'Cats 執行階段離線',
+  'shared.runtimeStatus.tooltip.unknown': '正在檢查 Cats 執行階段狀態…',
   'settings.general.profileTitle': '個人檔案',
   'settings.general.profileDescription':
     '這是跨 Chat、Code、Work、Lobby 的平台統一個人檔案。',
@@ -172,7 +172,7 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.runtime.standaloneSetupTitle': '單機設定',
   'settings.runtime.standaloneSetupDescription':
     '當需要供應器修復或進行更深入掃描時，請開啟獨立執行階段設定頁。',
-  'settings.runtime.openStandaloneSetup': '開啟 Cats Runtime 設定',
+  'settings.runtime.openStandaloneSetup': '開啟 Cats 執行階段設定',
   'settings.runtime.cancelActionLabel': '取消',
   'settings.runtime.cancelActionFallbackLabel': '關閉',
   'settings.runtime.refreshFailure': '刷新失敗。',
@@ -514,8 +514,8 @@ export const zhTWCatalog: MessageCatalog = {
   'work.run.openAriaLabel': '開啟執行 {runTitle}',
   'work.run.openSubRunAriaLabel': '開啟子執行 {runTitle}',
   'work.run.subRunChip': '子執行',
-  'work.run.stopErrorWithError': 'Runtime 取消失敗：{error}',
-  'work.run.stopErrorFallback': 'Runtime 取消失敗，執行未標記為已取消。',
+  'work.run.stopErrorWithError': '執行階段取消失敗：{error}',
+  'work.run.stopErrorFallback': '執行階段取消失敗，執行未標記為已取消。',
   'work.run.stopNotStoppable':
     '此執行無法停止：沒有橋接監督式執行階段工作階段。',
   'work.run.stopNotStoppableGeneric': '此執行無法停止。',
@@ -1642,9 +1642,9 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.imageUpload.clickHint': '點擊以選擇圖片',
   'shared.imageUpload.dragHint': '拖曳來移動畫面，滾動可縮放',
   'shared.workspaceNavigation.deleteChannelRuntimeCleanupFeedbackOne':
-    '對話已刪除；Cats Runtime 保留了 {count} 個連結的執行階段工作階段。如需清理磁碟，請開啟執行階段診斷。',
+    '對話已刪除；Cats 執行階段保留了 {count} 個連結的執行階段工作階段。如需清理磁碟，請開啟執行階段診斷。',
   'shared.workspaceNavigation.deleteChannelRuntimeCleanupFeedbackMany':
-    '對話已刪除；Cats Runtime 保留了 {count} 個連結的執行階段工作階段。如需清理磁碟，請開啟執行階段診斷。',
+    '對話已刪除；Cats 執行階段保留了 {count} 個連結的執行階段工作階段。如需清理磁碟，請開啟執行階段診斷。',
   'shared.workspaceNavigation.renameChatError': '重新命名聊天失敗。',
   'shared.workspaceNavigation.deleteChatError': '刪除聊天失敗。',
   'shared.workspaceNavigation.renameParallelChatError': '重新命名平行聊天失敗。',
@@ -1783,7 +1783,7 @@ export const zhTWCatalog: MessageCatalog = {
     '此供應器目標只會對持久化的聊天/會話設定曝光基礎模型。',
   'shared.providerModel.field.requestScopedWarning':
     '這裡隱藏了只可套用於個別請求的覆寫，因為這組選擇器會寫回聊天/會話預設。',
-  'shared.providerModel.field.openRuntimeSetupLabel': '開啟 Cats Runtime 設定',
+  'shared.providerModel.field.openRuntimeSetupLabel': '開啟 Cats 執行階段設定',
   'shared.providerModel.field.advancedCatalogUnavailable':
     '執行階段進階模型目錄無法使用。',
   'shared.providerModel.field.catalogKindModel': '模型',
@@ -1857,15 +1857,15 @@ export const zhTWCatalog: MessageCatalog = {
   'setup.wizard.failedMessage': '設定失敗。',
   'setup.guideCat.runtimeUnavailable': '供應器目錄無法使用',
   'setup.guideCat.noUsableTargets': '找不到可用供應器',
-  'setup.guideCat.runtimeConnected': 'Cats Runtime 已連線',
-  'setup.guideCat.runtimeNotDetected': '未偵測到 Cats Runtime',
+  'setup.guideCat.runtimeConnected': 'Cats 執行階段已連線',
+  'setup.guideCat.runtimeNotDetected': '未偵測到 Cats 執行階段',
   'setup.guideCat.nameLabel': '導覽貓名稱',
   'setup.guideCat.nameHint': 'Cats 會保留這個名稱，後續可依語系調整。',
-  'setup.guideCat.openRuntimeSetup': '開啟 Cats Runtime 設定',
+  'setup.guideCat.openRuntimeSetup': '開啟 Cats 執行階段設定',
   'setup.guideCat.unavailableNote':
-    '即使導覽貓未啟用也能使用。若遇到連線逾時，請在此重試，或前往 Cats Runtime 設定頁。',
+    '即使導覽貓未啟用也能使用。若遇到連線逾時，請在此重試，或前往 Cats 執行階段設定頁。',
   'setup.guideCat.noUsableTargetsNote':
-    'Cats Runtime 已可連線，但目前沒有回報任何可用的導覽貓供應器設定。',
+    'Cats 執行階段已可連線，但目前沒有回報任何可用的導覽貓供應器設定。',
   'settings.assistants.defaultName': '助理',
   'settings.assistants.statusFailed': '狀態更新失敗（{status}）',
   'settings.assistants.saveFailed': '儲存失敗。',

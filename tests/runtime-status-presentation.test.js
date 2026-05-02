@@ -134,10 +134,10 @@ describe('resolveRuntimeTooltip', () => {
   it('localizes copy when a translator is provided', () => {
     const zh = createTranslator('zh-TW');
 
-    assert.equal(resolveRuntimeTooltip('ready', zh), 'Cats Runtime 已連線');
-    assert.equal(resolveRuntimeTooltip('degraded', zh), 'Cats Runtime 正在啟動');
-    assert.equal(resolveRuntimeTooltip('unavailable', zh), 'Cats Runtime 離線');
-    assert.equal(resolveRuntimeTooltip('unknown', zh), '正在檢查 Cats Runtime 狀態…');
+    assert.equal(resolveRuntimeTooltip('ready', zh), 'Cats 執行階段已連線');
+    assert.equal(resolveRuntimeTooltip('degraded', zh), 'Cats 執行階段正在啟動');
+    assert.equal(resolveRuntimeTooltip('unavailable', zh), 'Cats 執行階段離線');
+    assert.equal(resolveRuntimeTooltip('unknown', zh), '正在檢查 Cats 執行階段狀態…');
   });
 });
 

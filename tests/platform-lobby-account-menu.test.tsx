@@ -147,7 +147,7 @@ test('PlatformLobby localizes runtime status chrome', () => {
 
   assert.match(
     markup,
-    /<button[^>]+class="lobbyIdentityRuntime"[^>]+aria-label="執行階段狀態：Cats Runtime 已連線"/u,
+    /<button[^>]+class="lobbyIdentityRuntime"[^>]+aria-label="執行階段狀態：Cats 執行階段已連線"/u,
   );
 });
 

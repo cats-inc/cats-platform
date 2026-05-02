@@ -103,5 +103,5 @@ test('shared sidebar view model localizes runtime footer copy when given a trans
     t: createTranslator('zh-TW'),
   });
 
-  assert.equal(viewModel.runtimeFooterLabel, 'Cats Runtime 正在啟動');
+  assert.equal(viewModel.runtimeFooterLabel, 'Cats 執行階段正在啟動');
 });
