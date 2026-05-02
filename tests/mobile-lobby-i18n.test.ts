@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  getMobileChatCopy,
   type MobileAppShellPayload,
   resolveMobileLocale,
   selectMobileLobby,
@@ -73,4 +74,16 @@ test('selectMobileLobby keeps English lobby chrome by default locale family', ()
     ],
   );
   assert.equal(data.recentActivity[0]?.hint, 'just now');
+});
+
+test('mobile chat copy exposes localized fixed controls', () => {
+  const zh = getMobileChatCopy('zh-TW');
+  const en = getMobileChatCopy('en-US');
+
+  assert.equal(zh.sendAction, '送出');
+  assert.equal(zh.retryAction, '重試');
+  assert.equal(zh.composerPlaceholder.code, '描述程式碼任務…');
+  assert.equal(zh.productLabel.work, '工作');
+  assert.equal(en.sendAction, 'Send');
+  assert.equal(en.productLabel.code, 'CODE');
 });

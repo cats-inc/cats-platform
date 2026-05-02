@@ -1,4 +1,5 @@
 export type MobileLocale = 'en' | 'zh-TW';
+export type MobileProductMode = 'chat' | 'code' | 'work';
 
 export interface MobileLobbyCopy {
   connectDesktopTitle: string;
@@ -18,6 +19,19 @@ export interface MobileLobbyCopy {
   todayLabel: (input: { weekday: string; isoDate: string }) => string;
   unreadTotal: (count: number) => string;
   justNow: string;
+}
+
+export interface MobileChatCopy {
+  channelNotFoundBody: string;
+  channelNotFoundTitle: string;
+  connectDesktopBody: string;
+  connectDesktopTitle: string;
+  couldNotLoadMessagesTitle: string;
+  emptyMessages: string;
+  retryAction: string;
+  sendAction: string;
+  composerPlaceholder: Record<MobileProductMode, string>;
+  productLabel: Record<MobileProductMode, string>;
 }
 
 const MOBILE_LOBBY_COPY: Record<MobileLocale, MobileLobbyCopy> = {
@@ -61,6 +75,50 @@ const MOBILE_LOBBY_COPY: Record<MobileLocale, MobileLobbyCopy> = {
   },
 };
 
+const MOBILE_CHAT_COPY: Record<MobileLocale, MobileChatCopy> = {
+  en: {
+    channelNotFoundBody:
+      'This channel does not exist on your desktop. It may have been deleted from the desktop, or the link is stale.',
+    channelNotFoundTitle: 'Conversation not found',
+    connectDesktopBody: 'Set the desktop base URL in Settings so this device can fetch messages.',
+    connectDesktopTitle: 'Connect to your desktop',
+    couldNotLoadMessagesTitle: 'Could not load messages',
+    emptyMessages: 'No messages yet. Send the first one below.',
+    retryAction: 'Retry',
+    sendAction: 'Send',
+    composerPlaceholder: {
+      chat: 'Message your cats…',
+      code: 'Describe the code task…',
+      work: 'Describe the work item…',
+    },
+    productLabel: {
+      chat: 'CHAT',
+      code: 'CODE',
+      work: 'WORK',
+    },
+  },
+  'zh-TW': {
+    channelNotFoundBody: '這個頻道不存在於你的桌面版。它可能已在桌面版被刪除，或連結已失效。',
+    channelNotFoundTitle: '找不到對話',
+    connectDesktopBody: '請在設定中填入桌面版基底網址，讓這台裝置能取得訊息。',
+    connectDesktopTitle: '連接桌面版',
+    couldNotLoadMessagesTitle: '無法載入訊息',
+    emptyMessages: '還沒有訊息。可在下方送出第一則訊息。',
+    retryAction: '重試',
+    sendAction: '送出',
+    composerPlaceholder: {
+      chat: '傳訊息給你的貓咪…',
+      code: '描述程式碼任務…',
+      work: '描述工作項目…',
+    },
+    productLabel: {
+      chat: '聊天',
+      code: '程式碼',
+      work: '工作',
+    },
+  },
+};
+
 export function resolveMobileLocale(locale?: string | null): MobileLocale {
   const normalized = locale?.replace(/_/gu, '-').toLowerCase() ?? '';
   if (
@@ -84,6 +142,10 @@ export function resolveDefaultMobileLocale(): MobileLocale {
 
 export function getMobileLobbyCopy(locale?: string | null): MobileLobbyCopy {
   return MOBILE_LOBBY_COPY[resolveMobileLocale(locale)];
+}
+
+export function getMobileChatCopy(locale?: string | null): MobileChatCopy {
+  return MOBILE_CHAT_COPY[resolveMobileLocale(locale)];
 }
 
 export function formatMobileTodayLabel(now: Date, locale?: string | null): string {

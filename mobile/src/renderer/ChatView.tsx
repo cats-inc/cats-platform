@@ -22,7 +22,12 @@ import {
 } from './hooks/useChannelMessages';
 import { MessageBody, type ResolveAttachmentUrl } from './MessageBody';
 import { MessageBubble } from './MessageBubble';
-import type { MobileRenderedMessage } from '../../../src/mobile/index.js';
+import {
+  getMobileChatCopy,
+  resolveDefaultMobileLocale,
+  type MobileChatCopy,
+  type MobileRenderedMessage,
+} from '../../../src/mobile/index.js';
 import { colors, radii, spacing, typography } from './theme';
 
 export type ChatViewProductMode = 'chat' | 'code' | 'work';
@@ -31,12 +36,6 @@ export interface ChatViewProps {
   channelId: string;
   productMode: ChatViewProductMode;
 }
-
-const COMPOSER_PLACEHOLDER: Record<ChatViewProductMode, string> = {
-  chat: 'Message your cats…',
-  code: 'Describe the code task…',
-  work: 'Describe the work item…',
-};
 
 const KEYBOARD_VERTICAL_OFFSET_IOS = 88;
 
@@ -53,6 +52,7 @@ const STICKY_BOTTOM_THRESHOLD_PX = 80;
  */
 export function ChatView({ channelId, productMode }: ChatViewProps) {
   const { state, refetch, send, sendState } = useChannelMessages(channelId);
+  const copy = getMobileChatCopy(resolveDefaultMobileLocale());
 
   return (
     <KeyboardAvoidingView
@@ -62,7 +62,7 @@ export function ChatView({ channelId, productMode }: ChatViewProps) {
         Platform.OS === 'ios' ? KEYBOARD_VERTICAL_OFFSET_IOS : 0
       }
     >
-      {renderBody({ state, productMode, channelId, refetch, send, sendState })}
+      {renderBody({ state, productMode, channelId, refetch, send, sendState, copy })}
     </KeyboardAvoidingView>
   );
 }
@@ -74,6 +74,7 @@ interface RenderBodyArgs {
   refetch: () => void;
   send: (body: string) => Promise<void>;
   sendState: ChannelSendState;
+  copy: MobileChatCopy;
 }
 
 function renderBody({
@@ -83,6 +84,7 @@ function renderBody({
   refetch,
   send,
   sendState,
+  copy,
 }: RenderBodyArgs) {
   switch (state.kind) {
     case 'loading':
@@ -94,19 +96,19 @@ function renderBody({
     case 'unconfigured':
       return (
         <PanelView
-          title="Connect to your desktop"
-          body="Set the desktop base URL in Settings so this device can fetch messages."
+          title={copy.connectDesktopTitle}
+          body={copy.connectDesktopBody}
         />
       );
     case 'channelNotFound':
       return (
         <PanelView
-          title="Conversation not found"
-          body="This channel does not exist on your desktop. It may have been deleted from the desktop, or the link is stale."
+          title={copy.channelNotFoundTitle}
+          body={copy.channelNotFoundBody}
         />
       );
     case 'error':
-      return <ErrorView error={state.error} onRetry={refetch} />;
+      return <ErrorView error={state.error} onRetry={refetch} copy={copy} />;
     case 'data':
       return (
         <LiveConversation
@@ -116,6 +118,7 @@ function renderBody({
           refetch={refetch}
           send={send}
           sendState={sendState}
+          copy={copy}
         />
       );
   }
@@ -128,6 +131,7 @@ interface LiveConversationProps {
   refetch: () => void;
   send: (body: string) => Promise<void>;
   sendState: ChannelSendState;
+  copy: MobileChatCopy;
 }
 
 function LiveConversation({
@@ -137,6 +141,7 @@ function LiveConversation({
   refetch,
   send,
   sendState,
+  copy,
 }: LiveConversationProps) {
   const listRef = useRef<FlatList<MobileRenderedMessage>>(null);
   const isNearBottomRef = useRef<boolean>(true);
@@ -211,7 +216,7 @@ function LiveConversation({
         }
         ListEmptyComponent={
           <Text style={styles.emptyState}>
-            No messages yet. Send the first one below.
+            {copy.emptyMessages}
           </Text>
         }
       />
@@ -226,7 +231,7 @@ function LiveConversation({
         <TextInput
           value={draft}
           onChangeText={setDraft}
-          placeholder={COMPOSER_PLACEHOLDER[productMode]}
+          placeholder={copy.composerPlaceholder[productMode]}
           placeholderTextColor={colors.fg.muted}
           multiline
           editable={!sending}
@@ -247,7 +252,7 @@ function LiveConversation({
           {sending ? (
             <ActivityIndicator color={colors.fg.inverse} size="small" />
           ) : (
-            <Text style={styles.sendButtonLabel}>Send</Text>
+            <Text style={styles.sendButtonLabel}>{copy.sendAction}</Text>
           )}
         </Pressable>
       </View>
@@ -298,6 +303,7 @@ interface ChatViewHeaderProps {
 }
 
 function ChatViewHeader({ title, productMode }: ChatViewHeaderProps) {
+  const copy = getMobileChatCopy(resolveDefaultMobileLocale());
   // Phase 5 TODO: this header is where product-mode side-panel
   // triggers will live (CodeBuilderView / ApprovalQueuePanel /
   // ProjectDetailView / DeliveryPanel as bottom sheets per
@@ -306,21 +312,14 @@ function ChatViewHeader({ title, productMode }: ChatViewHeaderProps) {
   // recents / lens screens, not as inline panels here.
   return (
     <View style={styles.header}>
-      <Text style={styles.headerEyebrow}>{productLabel(productMode)}</Text>
+      <Text style={styles.headerEyebrow}>{productLabel(productMode, copy)}</Text>
       <Text style={styles.headerTitle}>{title}</Text>
     </View>
   );
 }
 
-function productLabel(productMode: ChatViewProductMode): string {
-  switch (productMode) {
-    case 'chat':
-      return 'CHAT';
-    case 'code':
-      return 'CODE';
-    case 'work':
-      return 'WORK';
-  }
+function productLabel(productMode: ChatViewProductMode, copy: MobileChatCopy): string {
+  return copy.productLabel[productMode];
 }
 
 interface PanelViewProps {
@@ -340,12 +339,13 @@ function PanelView({ title, body }: PanelViewProps) {
 interface ErrorViewProps {
   error: MobileApiError;
   onRetry: () => void;
+  copy: MobileChatCopy;
 }
 
-function ErrorView({ error, onRetry }: ErrorViewProps) {
+function ErrorView({ error, onRetry, copy }: ErrorViewProps) {
   return (
     <View style={styles.panel}>
-      <Text style={styles.panelTitle}>Could not load messages</Text>
+      <Text style={styles.panelTitle}>{copy.couldNotLoadMessagesTitle}</Text>
       <Text style={styles.panelBody}>{error.message}</Text>
       <Pressable
         accessibilityRole="button"
@@ -355,7 +355,7 @@ function ErrorView({ error, onRetry }: ErrorViewProps) {
           pressed ? styles.retryButtonPressed : null,
         ]}
       >
-        <Text style={styles.retryButtonLabel}>Retry</Text>
+        <Text style={styles.retryButtonLabel}>{copy.retryAction}</Text>
       </Pressable>
     </View>
   );
