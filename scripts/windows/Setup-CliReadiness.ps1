@@ -105,14 +105,14 @@ function Test-PathEntryPresent {
 
 function Get-CandidatePathEntries {
   param(
-    [string]$Home,
+    [string]$HomeDir,
     [string]$LocalApp
   )
 
   $candidates = [System.Collections.Generic.List[string]]::new()
 
-  if (-not [string]::IsNullOrWhiteSpace($Home)) {
-    [void]$candidates.Add((Join-Path $Home '.local\bin'))
+  if (-not [string]::IsNullOrWhiteSpace($HomeDir)) {
+    [void]$candidates.Add((Join-Path $HomeDir '.local\bin'))
   }
   if (-not [string]::IsNullOrWhiteSpace($LocalApp)) {
     [void]$candidates.Add((Join-Path $LocalApp 'Kiro-Cli'))
@@ -195,7 +195,7 @@ $pathProbe = if ($PSBoundParameters.ContainsKey('CurrentUserPath')) {
   [System.Environment]::GetEnvironmentVariable('Path', 'User')
 }
 $pathEntries = Get-PathEntries -PathValue $pathProbe
-$candidatePathEntries = Get-CandidatePathEntries -Home $UserHome -LocalApp $LocalAppData
+$candidatePathEntries = Get-CandidatePathEntries -HomeDir $UserHome -LocalApp $LocalAppData
 
 $policyNeedsUpdate = -not ($AcceptablePolicies -contains $currentPolicy)
 $missingPathEntries = [System.Collections.Generic.List[string]]::new()
