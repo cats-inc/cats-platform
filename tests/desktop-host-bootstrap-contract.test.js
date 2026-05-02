@@ -22,6 +22,8 @@ test('desktop host bounds fresh-start CLI inventory scans without failing pendin
   assert.match(source, /function scheduleRuntimeCliInventoryPoll\(/);
   assert.match(source, /async function pollRuntimeCliInventory\(/);
   assert.match(source, /await maybeOpenApp\(snapshot\);/);
+  assert.match(source, /shouldAllowDesktopBootstrapWindowNavigation\(\{/);
+  assert.match(source, /windowNavigationAllowed && startupLaunchContext\?\.showWindowOnStartup !== false/u);
   assert.match(source, /actionId === 'retry_cli_scan'/);
   assert.match(source, /retryCliScanPromise \?\?= runRetryCliScanAction\(\)/);
   assert.match(source, /shouldRefreshCliInventoryAfterSetupAction\(action\.helperId\)/);

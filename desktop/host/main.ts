@@ -8,6 +8,7 @@ import {
   shouldRevealDesktopBootstrapRecovery,
   shouldNavigateDesktopBootstrap,
   resolveDesktopWindowRevealNavigation,
+  shouldAllowDesktopBootstrapWindowNavigation,
 } from './bootstrapNavigation.js';
 import {
   resolveCatsHomeDir,
@@ -1501,8 +1502,13 @@ async function maybeOpenApp(snapshot: DesktopBootstrapSnapshot): Promise<void> {
   if (!mainWindow || !hostConfig) {
     return;
   }
+  const windowNavigationAllowed = shouldAllowDesktopBootstrapWindowNavigation({
+    bootstrapPageVisible,
+    windowRevealRequested: bootstrapWindowRevealRequested,
+  });
   const shouldNavigate = shouldNavigateDesktopBootstrap({
-    showWindowOnStartup: startupLaunchContext?.showWindowOnStartup !== false,
+    showWindowOnStartup:
+      windowNavigationAllowed && startupLaunchContext?.showWindowOnStartup !== false,
     windowRevealRequested: bootstrapWindowRevealRequested,
   });
   const nextUrl = resolveDesktopBootstrapNavigation(snapshot, {
@@ -1514,7 +1520,8 @@ async function maybeOpenApp(snapshot: DesktopBootstrapSnapshot): Promise<void> {
     return;
   }
   if (shouldRevealDesktopBootstrapRecovery(snapshot, {
-    showWindowOnStartup: startupLaunchContext?.showWindowOnStartup !== false,
+    showWindowOnStartup:
+      windowNavigationAllowed && startupLaunchContext?.showWindowOnStartup !== false,
     windowRevealRequested: bootstrapWindowRevealRequested,
   })) {
     await ensureBootstrapPageVisible();

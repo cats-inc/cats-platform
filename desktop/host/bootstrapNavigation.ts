@@ -68,6 +68,13 @@ export function shouldNavigateDesktopBootstrap(options: {
   return options.showWindowOnStartup || options.windowRevealRequested;
 }
 
+export function shouldAllowDesktopBootstrapWindowNavigation(options: {
+  bootstrapPageVisible: boolean;
+  windowRevealRequested: boolean;
+}): boolean {
+  return options.bootstrapPageVisible || options.windowRevealRequested;
+}
+
 export function shouldRevealDesktopBootstrapRecovery(
   snapshot: NavSnapshot,
   options: {

@@ -3,8 +3,26 @@ import test from 'node:test';
 
 import {
   resolveDesktopBootstrapNavigation,
+  shouldAllowDesktopBootstrapWindowNavigation,
   shouldRevealDesktopBootstrapRecovery,
 } from '../build/desktop/bootstrapNavigation.js';
+
+test('desktop bootstrap window navigation is allowed only while bootstrap is visible or reveal is pending', () => {
+  assert.equal(shouldAllowDesktopBootstrapWindowNavigation({
+    bootstrapPageVisible: true,
+    windowRevealRequested: false,
+  }), true);
+
+  assert.equal(shouldAllowDesktopBootstrapWindowNavigation({
+    bootstrapPageVisible: false,
+    windowRevealRequested: true,
+  }), true);
+
+  assert.equal(shouldAllowDesktopBootstrapWindowNavigation({
+    bootstrapPageVisible: false,
+    windowRevealRequested: false,
+  }), false);
+});
 
 test('desktop bootstrap navigation stays on host onboarding before setup by default', () => {
   const nextUrl = resolveDesktopBootstrapNavigation({
