@@ -23,8 +23,12 @@ const OPERATOR_ACTION_DESCRIPTION_KEYS: Record<string, MessageKey> = {
     messageKeys.sharedOperatorActionRetryFailedDescription,
   'Record that the operator wants this blocked or failed run retried.':
     messageKeys.sharedOperatorActionRetryDescription,
+  'Record that the operator wants this blocked or failed task retried.':
+    messageKeys.sharedOperatorActionRetryTaskDescription,
   'Record that the operator has seen the current guardrail or incident state.':
     messageKeys.sharedOperatorActionAcknowledgeDescription,
+  'Record that the operator has seen the current blocked or failed state.':
+    messageKeys.sharedOperatorActionAcknowledgeBlockedDescription,
 };
 
 const OPERATOR_ACTION_STATUS_KEYS: Record<string, MessageKey> = {

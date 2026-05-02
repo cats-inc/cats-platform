@@ -1628,10 +1628,14 @@ export const messageKeys = {
   sharedOperatorActionAcknowledge: 'shared.operator.action.acknowledge',
   sharedOperatorActionAcknowledged: 'shared.operator.action.acknowledged',
   sharedOperatorActionRetryDescription: 'shared.operator.action.retryDescription',
+  sharedOperatorActionRetryTaskDescription:
+    'shared.operator.action.retryTaskDescription',
   sharedOperatorActionRetryFailedDescription:
     'shared.operator.action.retryFailedDescription',
   sharedOperatorActionAcknowledgeDescription:
     'shared.operator.action.acknowledgeDescription',
+  sharedOperatorActionAcknowledgeBlockedDescription:
+    'shared.operator.action.acknowledgeBlockedDescription',
   sharedOperatorActionStatusRetryInProgress:
     'shared.operator.action.status.retryInProgress',
   sharedOperatorActionStatusRetryFailed:

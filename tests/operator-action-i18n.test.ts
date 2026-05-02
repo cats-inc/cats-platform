@@ -26,6 +26,20 @@ test('operator action labels and statuses localize known values', () => {
     ),
     '記錄操作員已查看目前的保護條件或事件狀態。',
   );
+  assert.equal(
+    resolveOperatorActionDescription(
+      'Record that the operator wants this blocked or failed task retried.',
+      zh,
+    ),
+    '記錄操作員希望重試這個受阻或失敗的任務。',
+  );
+  assert.equal(
+    resolveOperatorActionDescription(
+      'Record that the operator has seen the current blocked or failed state.',
+      zh,
+    ),
+    '記錄操作員已查看目前受阻或失敗的狀態。',
+  );
 });
 
 test('approval action labels and descriptions localize by action kind', () => {

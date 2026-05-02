@@ -1655,10 +1655,14 @@ export const enCatalog: MessageCatalog = {
   'shared.operator.action.acknowledged': 'Acknowledged',
   'shared.operator.action.retryDescription':
     'Record that the operator wants this blocked or failed run retried.',
+  'shared.operator.action.retryTaskDescription':
+    'Record that the operator wants this blocked or failed task retried.',
   'shared.operator.action.retryFailedDescription':
     'Retry failed. Operators can request another replay of the stored dispatch.',
   'shared.operator.action.acknowledgeDescription':
     'Record that the operator has seen the current guardrail or incident state.',
+  'shared.operator.action.acknowledgeBlockedDescription':
+    'Record that the operator has seen the current blocked or failed state.',
   'shared.operator.action.status.retryInProgress': 'Retry in progress',
   'shared.operator.action.status.retryFailed': 'Retry failed',
   'shared.operator.action.status.retryFailedWithError': 'Retry failed: {error}',
