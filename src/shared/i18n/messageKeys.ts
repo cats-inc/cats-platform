@@ -64,6 +64,9 @@ export const messageKeys = {
     'settings.general.languagePreferenceDescription',
   settingsGeneralLanguageSelectAriaLabel: 'settings.general.languageSelectAriaLabel',
   settingsGeneralLanguageAutoOption: 'settings.general.languageAutoOption',
+  settingsGeneralLanguageEnglishOption: 'settings.general.languageEnglishOption',
+  settingsGeneralLanguageTraditionalChineseOption:
+    'settings.general.languageTraditionalChineseOption',
   settingsGeneralLobbyMotionTitle: 'settings.general.lobbyMotionTitle',
   settingsGeneralLobbyMotionDescription: 'settings.general.lobbyMotionDescription',
   settingsGeneralLobbyMotionOffLabel: 'settings.general.lobbyMotionOffLabel',

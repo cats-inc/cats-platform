@@ -64,6 +64,8 @@ export const zhTWCatalog: MessageCatalog = {
     '自動偵測會跟隨瀏覽器或桌面語言。語言名稱會以該語言自身顯示。',
   'settings.general.languageSelectAriaLabel': '顯示語言',
   'settings.general.languageAutoOption': '自動偵測',
+  'settings.general.languageEnglishOption': '英文',
+  'settings.general.languageTraditionalChineseOption': '繁體中文',
   'settings.general.lobbyMotionTitle': '大廳動畫',
   'settings.general.lobbyMotionDescription':
     '選擇 Lobby 背景的動態感。預設使用較為平緩版本。',

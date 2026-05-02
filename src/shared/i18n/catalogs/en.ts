@@ -64,6 +64,8 @@ export const enCatalog: MessageCatalog = {
     'Auto-detect follows your browser or desktop language. Named languages are shown in their own language.',
   'settings.general.languageSelectAriaLabel': 'Display language',
   'settings.general.languageAutoOption': 'Auto-detect',
+  'settings.general.languageEnglishOption': 'English',
+  'settings.general.languageTraditionalChineseOption': 'Traditional Chinese',
   'settings.general.lobbyMotionTitle': 'Lobby motion',
   'settings.general.lobbyMotionDescription':
     'Choose how lively the Lobby background should feel. Reduced is the default.',

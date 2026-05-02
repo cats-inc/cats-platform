@@ -447,8 +447,10 @@ export function PlatformSettingsGeneral({
                 aria-label={t('settingsGeneralLanguageSelectAriaLabel')}
               >
                 <option value="auto">{t('settingsGeneralLanguageAutoOption')}</option>
-                <option value="en">English</option>
-                <option value="zh-TW">繁體中文</option>
+                <option value="en">{t('settingsGeneralLanguageEnglishOption')}</option>
+                <option value="zh-TW">
+                  {t('settingsGeneralLanguageTraditionalChineseOption')}
+                </option>
               </select>
             }
           />

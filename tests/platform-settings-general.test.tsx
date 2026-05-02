@@ -4,6 +4,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
 import { StaticRouter } from 'react-router-dom';
 
+import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
 import { PlatformSettingsGeneral } from '../src/app/renderer/settings/PlatformSettingsGeneral.tsx';
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
 
@@ -95,10 +96,30 @@ test('PlatformSettingsGeneral renders lobby motion controls without desktop star
   assert.match(markup, /Display language/u);
   assert.match(markup, /Auto-detect/u);
   assert.match(markup, /English/u);
-  assert.match(markup, /繁體中文/u);
+  assert.match(markup, /Traditional Chinese/u);
   assert.match(markup, /Reduced is the default/u);
   assert.doesNotMatch(markup, /Desktop startup/u);
   assert.match(markup, /checked/u);
+});
+
+test('PlatformSettingsGeneral localizes display language options', () => {
+  const markup = renderToStaticMarkup(
+    <I18nProvider locale="zh-TW" languagePreference="zh-TW">
+      <StaticRouter location="/settings/general">
+        <PlatformSettingsGeneral
+          payload={createPayload()}
+          feedback=""
+          onPayloadUpdate={() => {}}
+          onFeedback={() => {}}
+        />
+      </StaticRouter>
+    </I18nProvider>,
+  );
+
+  assert.match(markup, /顯示語言/u);
+  assert.match(markup, /英文/u);
+  assert.match(markup, /繁體中文/u);
+  assert.doesNotMatch(markup, /Traditional Chinese/u);
 });
 
 test('PlatformSettingsGeneral points disabled guide cat users to Assistants', () => {
