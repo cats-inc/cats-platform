@@ -352,6 +352,21 @@ export const enCatalog: MessageCatalog = {
     'Open Cats after sign-in startup',
   'settings.desktop.startupOpenWindowDescription':
     'When disabled, Cats can start in the background after you sign in without opening the main window automatically. Opening Cats yourself still shows the app.',
+  'work.newChatDraft.startProjectChipLabel': 'Start a project',
+  'work.newChatDraft.startProjectPrompt':
+    'Spin up a new project workspace and outline its milestones.',
+  'work.newChatDraft.addTaskChipLabel': 'Add a task',
+  'work.newChatDraft.addTaskPrompt':
+    'Capture a new task with owner, deadline, and priority.',
+  'work.newChatDraft.planSprintChipLabel': 'Plan a sprint',
+  'work.newChatDraft.planSprintPrompt':
+    'Plan the next sprint with goals and a delivery cadence.',
+  'work.newChatDraft.scheduleReviewChipLabel': 'Schedule a review',
+  'work.newChatDraft.scheduleReviewPrompt':
+    'Schedule a project review with the right cats invited.',
+  'work.newChatDraft.triageBacklogChipLabel': 'Triage backlog',
+  'work.newChatDraft.triageBacklogPrompt':
+    'Walk the backlog with me and triage what to ship next.',
   'work.items.listTitle': 'Work items',
   'work.items.newAction': 'New work item',
   'work.items.createNewWorkItem': 'New work item',

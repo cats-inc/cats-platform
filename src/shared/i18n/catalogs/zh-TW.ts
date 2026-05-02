@@ -331,6 +331,21 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.desktop.startupOpenWindowLabel': '登入後自動開啟主視窗',
   'settings.desktop.startupOpenWindowDescription':
     '停用時，Cats 可在登入後背景啟動，但不會自動開啟主視窗；之後手動開啟仍可進入。',
+  'work.newChatDraft.startProjectChipLabel': '開始專案',
+  'work.newChatDraft.startProjectPrompt':
+    '建立一個新的專案工作區，並列出里程碑。',
+  'work.newChatDraft.addTaskChipLabel': '新增任務',
+  'work.newChatDraft.addTaskPrompt':
+    '新增一個任務，包含負責人、期限和優先順序。',
+  'work.newChatDraft.planSprintChipLabel': '規劃衝刺',
+  'work.newChatDraft.planSprintPrompt':
+    '規劃下一個衝刺，包含目標和交付節奏。',
+  'work.newChatDraft.scheduleReviewChipLabel': '安排檢視',
+  'work.newChatDraft.scheduleReviewPrompt':
+    '安排一次專案檢視，並邀請合適的貓咪參與。',
+  'work.newChatDraft.triageBacklogChipLabel': '整理待辦',
+  'work.newChatDraft.triageBacklogPrompt':
+    '和我一起檢視待辦清單，整理下一步要交付的項目。',
   'work.items.listTitle': '工作項目',
   'work.items.newAction': '新增工作項目',
   'work.items.createNewWorkItem': '新增工作項目',

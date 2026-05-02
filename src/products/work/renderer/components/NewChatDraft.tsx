@@ -9,6 +9,8 @@ import { ComposerSurfaceChip } from '../../../shared/renderer/components/Compose
 import { isAdvancedDraftControlsEnabled } from '../../../shared/advancedDraftControls.js';
 import { resolveChatNewChatDraftBuilderControls } from '../../../shared/renderer/draftBuilderControls.js';
 import type { PlatformSurfaceId } from '../../../../shared/platform-contract.js';
+import { messageKeys, type MessageKey } from '../../../../shared/i18n/index.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
 
 export interface NewChatDraftProps extends SharedNewChatDraftProps {
   draftSurface: PlatformSurfaceId;
@@ -23,36 +25,41 @@ export interface NewChatDraftProps extends SharedNewChatDraftProps {
 const WORK_STARTER_CHIPS = [
   {
     id: 'work-start-project',
-    label: 'Start a project',
-    prompt: 'Spin up a new project workspace and outline its milestones.',
+    labelKey: messageKeys.workNewChatDraftStartProjectChipLabel,
+    promptKey: messageKeys.workNewChatDraftStartProjectPrompt,
   },
   {
     id: 'work-add-task',
-    label: 'Add a task',
-    prompt: 'Capture a new task with owner, deadline, and priority.',
+    labelKey: messageKeys.workNewChatDraftAddTaskChipLabel,
+    promptKey: messageKeys.workNewChatDraftAddTaskPrompt,
   },
   {
     id: 'work-plan-sprint',
-    label: 'Plan a sprint',
-    prompt: 'Plan the next sprint with goals and a delivery cadence.',
+    labelKey: messageKeys.workNewChatDraftPlanSprintChipLabel,
+    promptKey: messageKeys.workNewChatDraftPlanSprintPrompt,
   },
   {
     id: 'work-schedule-review',
-    label: 'Schedule a review',
-    prompt: 'Schedule a project review with the right cats invited.',
+    labelKey: messageKeys.workNewChatDraftScheduleReviewChipLabel,
+    promptKey: messageKeys.workNewChatDraftScheduleReviewPrompt,
   },
   {
     id: 'work-triage-backlog',
-    label: 'Triage backlog',
-    prompt: 'Walk the backlog with me and triage what to ship next.',
+    labelKey: messageKeys.workNewChatDraftTriageBacklogChipLabel,
+    promptKey: messageKeys.workNewChatDraftTriageBacklogPrompt,
   },
 ] as const;
 
-function buildWorkStarterChips(props: NewChatDraftProps) {
+type WorkDraftTranslate = (key: MessageKey) => string;
+
+function buildWorkStarterChips(
+  props: NewChatDraftProps,
+  t: WorkDraftTranslate,
+) {
   return WORK_STARTER_CHIPS.map((chip) => ({
     id: chip.id,
-    label: chip.label,
-    onClick: () => props.onComposerChange(chip.prompt),
+    label: t(chip.labelKey),
+    onClick: () => props.onComposerChange(t(chip.promptKey)),
   }));
 }
 
@@ -81,6 +88,7 @@ function buildWorkSurfaceTag(props: NewChatDraftProps) {
  * row without navigating off the current URL.
  */
 function WorkChatDraft(props: NewChatDraftProps) {
+  const { t } = useI18n();
   const advancedDraftControlsEnabled = isAdvancedDraftControlsEnabled(
     props.payload.chat.advancedDraftControls,
     'work',
@@ -100,7 +108,7 @@ function WorkChatDraft(props: NewChatDraftProps) {
       }}
       builderControls={builderControls}
       starterChips={{
-        leading: buildWorkStarterChips(props),
+        leading: buildWorkStarterChips(props, t),
       }}
     />
   );

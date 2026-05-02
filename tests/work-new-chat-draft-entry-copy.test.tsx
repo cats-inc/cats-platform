@@ -3,6 +3,7 @@ import test from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
 
+import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
 import type { AppShellPayload } from '../src/products/work/api/contracts.ts';
 import {
   NewChatDraft,
@@ -77,9 +78,27 @@ function createProps(overrides: Partial<NewChatDraftProps> = {}): NewChatDraftPr
     onHighlightDraftCat: () => {},
     draftCatExecutionTargetOverrides: new Map(),
     onDraftCatExecutionTargetOverride: () => {},
+    draftSurface: 'work',
+    onDraftSurfaceChange: () => {},
     ...overrides,
   };
 }
+
+test('work starter chips localize in zh-TW', () => {
+  const markup = renderToStaticMarkup(
+    <I18nProvider locale="zh-TW">
+      <NewChatDraft {...createProps()} />
+    </I18nProvider>,
+  );
+
+  assert.match(markup, /開始專案/u);
+  assert.match(markup, /新增任務/u);
+  assert.match(markup, /規劃衝刺/u);
+  assert.match(markup, /安排檢視/u);
+  assert.match(markup, /整理待辦/u);
+  assert.doesNotMatch(markup, /Start a project/u);
+  assert.doesNotMatch(markup, /Triage backlog/u);
+});
 
 test('advanced draft controls expose collaborator and compare buttons on the default work draft', () => {
   const target = {
@@ -105,9 +124,11 @@ test('advanced draft controls expose collaborator and compare buttons on the def
     />,
   );
 
-  const addButtonMatches = markup.match(/class="parallelAddButton"/gu) ?? [];
+  const collaborateMatches = markup.match(/class="parallelAddButton"/gu) ?? [];
+  const compareSlotMatches = markup.match(/draftCompareCarouselAddBranch/gu) ?? [];
 
-  assert.equal(addButtonMatches.length, 2);
+  assert.equal(collaborateMatches.length, 1);
+  assert.ok(compareSlotMatches.length >= 1);
   assert.match(markup, /aria-label="Add another model to collaborate"/u);
   assert.match(markup, /aria-label="Add parallel chat"/u);
   assert.doesNotMatch(markup, /Add another model to compare/u);

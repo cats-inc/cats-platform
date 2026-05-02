@@ -328,6 +328,18 @@ export const messageKeys = {
   settingsDesktopStartupOpenWindowLabel: 'settings.desktop.startupOpenWindowLabel',
   settingsDesktopStartupOpenWindowDescription:
     'settings.desktop.startupOpenWindowDescription',
+  workNewChatDraftStartProjectChipLabel: 'work.newChatDraft.startProjectChipLabel',
+  workNewChatDraftStartProjectPrompt: 'work.newChatDraft.startProjectPrompt',
+  workNewChatDraftAddTaskChipLabel: 'work.newChatDraft.addTaskChipLabel',
+  workNewChatDraftAddTaskPrompt: 'work.newChatDraft.addTaskPrompt',
+  workNewChatDraftPlanSprintChipLabel: 'work.newChatDraft.planSprintChipLabel',
+  workNewChatDraftPlanSprintPrompt: 'work.newChatDraft.planSprintPrompt',
+  workNewChatDraftScheduleReviewChipLabel:
+    'work.newChatDraft.scheduleReviewChipLabel',
+  workNewChatDraftScheduleReviewPrompt: 'work.newChatDraft.scheduleReviewPrompt',
+  workNewChatDraftTriageBacklogChipLabel:
+    'work.newChatDraft.triageBacklogChipLabel',
+  workNewChatDraftTriageBacklogPrompt: 'work.newChatDraft.triageBacklogPrompt',
   workItemsListTitle: 'work.items.listTitle',
   workItemsListNewAction: 'work.items.newAction',
   workItemsListCreateNewWorkItem: 'work.items.createNewWorkItem',
