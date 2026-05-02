@@ -1,5 +1,11 @@
 export type MobileLocale = 'en' | 'zh-TW';
 export type MobileProductMode = 'chat' | 'code' | 'work';
+export type MobileTabId = 'lobby' | MobileProductMode | 'settings';
+
+export interface MobileChannelTitleMap {
+  fallback: string;
+  [actionId: string]: string | undefined;
+}
 
 export interface MobileLobbyCopy {
   connectDesktopTitle: string;
@@ -57,6 +63,19 @@ export interface MobileSettingsCopy {
   pushNotificationsDescription: string;
   pushNotificationsLabel: string;
   settingsTitle: string;
+}
+
+export interface MobileTabsCopy {
+  channelTitle: Record<MobileProductMode, MobileChannelTitleMap>;
+  createChannelError: (message: string) => string;
+  creatingChannelLabel: string;
+  desktopOnlyOkAction: string;
+  directCatDesktopOnlyBody: Record<MobileProductMode, string>;
+  directCatDesktopOnlyTitle: string;
+  dismissAction: string;
+  parallelChatDesktopOnlyBody: string;
+  parallelChatDesktopOnlyTitle: string;
+  tabTitle: Record<MobileTabId, string>;
 }
 
 const MOBILE_LOBBY_COPY: Record<MobileLocale, MobileLobbyCopy> = {
@@ -198,6 +217,97 @@ const MOBILE_SETTINGS_COPY: Record<MobileLocale, MobileSettingsCopy> = {
   },
 };
 
+const MOBILE_TABS_COPY: Record<MobileLocale, MobileTabsCopy> = {
+  en: {
+    channelTitle: {
+      chat: {
+        fallback: 'New chat',
+        new: 'New chat',
+        group: 'New group chat',
+      },
+      code: {
+        fallback: 'New code',
+        new: 'New code',
+        team: 'New team code',
+        peer: 'New peer code',
+      },
+      work: {
+        fallback: 'New work',
+        new: 'New work',
+        team: 'New team work',
+        parallel: 'New parallel work',
+      },
+    },
+    createChannelError: (message) => `Could not create channel: ${message}`,
+    creatingChannelLabel: 'Creating channel…',
+    desktopOnlyOkAction: 'OK',
+    directCatDesktopOnlyBody: {
+      chat:
+        'Tapping a cat to start a direct conversation is not yet wired on mobile. Start the direct lane on the desktop; it will appear in RECENTS here once created.',
+      code:
+        'Tapping a clowder member to start a direct conversation is not yet wired on mobile. Start the direct lane on the desktop; it will appear in RECENTS here once created.',
+      work:
+        'Tapping a cattery member to start a direct conversation is not yet wired on mobile. Start the direct lane on the desktop; it will appear in RECENTS here once created.',
+    },
+    directCatDesktopOnlyTitle: 'Direct cat chat — desktop only',
+    dismissAction: 'Dismiss',
+    parallelChatDesktopOnlyBody:
+      'Parallel chat creation is not yet wired on mobile. Use the desktop app to start one; it will appear in RECENTS here once created.',
+    parallelChatDesktopOnlyTitle: 'Parallel chat — desktop only',
+    tabTitle: {
+      lobby: 'Lobby',
+      chat: 'Chat',
+      code: 'Code',
+      work: 'Work',
+      settings: 'Settings',
+    },
+  },
+  'zh-TW': {
+    channelTitle: {
+      chat: {
+        fallback: '新聊天',
+        new: '新聊天',
+        group: '新群組聊天',
+      },
+      code: {
+        fallback: '新程式碼',
+        new: '新程式碼',
+        team: '新團隊程式碼',
+        peer: '新同儕程式碼',
+      },
+      work: {
+        fallback: '新工作',
+        new: '新工作',
+        team: '新團隊工作',
+        parallel: '新平行工作',
+      },
+    },
+    createChannelError: (message) => `無法建立頻道：${message}`,
+    creatingChannelLabel: '建立頻道中…',
+    desktopOnlyOkAction: '確定',
+    directCatDesktopOnlyBody: {
+      chat:
+        'Mobile 尚未支援點選貓咪開始直接對話。請在桌面版開始，建立後會出現在這裡的近期項目。',
+      code:
+        'Mobile 尚未支援點選成員開始直接對話。請在桌面版開始，建立後會出現在這裡的近期項目。',
+      work:
+        'Mobile 尚未支援點選成員開始直接對話。請在桌面版開始，建立後會出現在這裡的近期項目。',
+    },
+    directCatDesktopOnlyTitle: '直接聊天僅限桌面版',
+    dismissAction: '關閉',
+    parallelChatDesktopOnlyBody:
+      'Mobile 尚未支援建立平行聊天。請在桌面版開始，建立後會出現在這裡的近期項目。',
+    parallelChatDesktopOnlyTitle: '平行聊天僅限桌面版',
+    tabTitle: {
+      lobby: '大廳',
+      chat: '聊天',
+      code: '程式碼',
+      work: '工作',
+      settings: '設定',
+    },
+  },
+};
+
 export function resolveMobileLocale(locale?: string | null): MobileLocale {
   const normalized = locale?.replace(/_/gu, '-').toLowerCase() ?? '';
   if (
@@ -229,6 +339,18 @@ export function getMobileChatCopy(locale?: string | null): MobileChatCopy {
 
 export function getMobileSettingsCopy(locale?: string | null): MobileSettingsCopy {
   return MOBILE_SETTINGS_COPY[resolveMobileLocale(locale)];
+}
+
+export function getMobileTabsCopy(locale?: string | null): MobileTabsCopy {
+  return MOBILE_TABS_COPY[resolveMobileLocale(locale)];
+}
+
+export function getMobileChannelTitle(
+  copy: MobileTabsCopy,
+  productMode: MobileProductMode,
+  actionId: string,
+): string {
+  return copy.channelTitle[productMode][actionId] ?? copy.channelTitle[productMode].fallback;
 }
 
 export function formatMobileTodayLabel(now: Date, locale?: string | null): string {

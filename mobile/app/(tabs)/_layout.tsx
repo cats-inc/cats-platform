@@ -2,6 +2,10 @@ import { Tabs } from 'expo-router';
 import { Text } from 'react-native';
 
 import { colors, typography } from '../../src/renderer/theme';
+import {
+  getMobileTabsCopy,
+  resolveDefaultMobileLocale,
+} from '../../../src/mobile/index.js';
 
 type TabIconProps = { color: string };
 
@@ -12,6 +16,8 @@ function tabIcon(glyph: string) {
 }
 
 export default function TabsLayout() {
+  const copy = getMobileTabsCopy(resolveDefaultMobileLocale());
+
   return (
     <Tabs
       screenOptions={{
@@ -30,23 +36,23 @@ export default function TabsLayout() {
     >
       <Tabs.Screen
         name="lobby"
-        options={{ title: 'Lobby', tabBarIcon: tabIcon('🏠') }}
+        options={{ title: copy.tabTitle.lobby, tabBarIcon: tabIcon('🏠') }}
       />
       <Tabs.Screen
         name="chat"
-        options={{ title: 'Chat', tabBarIcon: tabIcon('💬') }}
+        options={{ title: copy.tabTitle.chat, tabBarIcon: tabIcon('💬') }}
       />
       <Tabs.Screen
         name="code"
-        options={{ title: 'Code', tabBarIcon: tabIcon('⌘') }}
+        options={{ title: copy.tabTitle.code, tabBarIcon: tabIcon('⌘') }}
       />
       <Tabs.Screen
         name="work"
-        options={{ title: 'Work', tabBarIcon: tabIcon('📋') }}
+        options={{ title: copy.tabTitle.work, tabBarIcon: tabIcon('📋') }}
       />
       <Tabs.Screen
         name="settings"
-        options={{ title: 'Settings', tabBarIcon: tabIcon('⚙') }}
+        options={{ title: copy.tabTitle.settings, tabBarIcon: tabIcon('⚙') }}
       />
     </Tabs>
   );

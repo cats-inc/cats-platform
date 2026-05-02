@@ -3,7 +3,9 @@ import test from 'node:test';
 
 import {
   getMobileChatCopy,
+  getMobileChannelTitle,
   getMobileSettingsCopy,
+  getMobileTabsCopy,
   type MobileAppShellPayload,
   resolveMobileLocale,
   selectMobileLobby,
@@ -105,4 +107,18 @@ test('mobile settings copy exposes localized fixed controls', () => {
   );
   assert.equal(en.settingsTitle, 'Settings');
   assert.equal(en.openWebDashboardLabel, 'Open web dashboard');
+});
+
+test('mobile tabs copy exposes localized fixed controls', () => {
+  const zh = getMobileTabsCopy('zh-TW');
+  const en = getMobileTabsCopy('en');
+
+  assert.equal(zh.tabTitle.settings, '設定');
+  assert.equal(zh.creatingChannelLabel, '建立頻道中…');
+  assert.equal(zh.dismissAction, '關閉');
+  assert.equal(zh.createChannelError('offline'), '無法建立頻道：offline');
+  assert.equal(getMobileChannelTitle(zh, 'code', 'peer'), '新同儕程式碼');
+  assert.equal(getMobileChannelTitle(zh, 'work', 'unknown'), '新工作');
+  assert.equal(zh.directCatDesktopOnlyTitle, '直接聊天僅限桌面版');
+  assert.equal(en.parallelChatDesktopOnlyTitle, 'Parallel chat — desktop only');
 });

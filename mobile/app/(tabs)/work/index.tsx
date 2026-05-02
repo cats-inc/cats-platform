@@ -15,17 +15,23 @@ import { useCreateChannel } from '../../../src/renderer/hooks/useCreateChannel';
 import { useProductSidebarData } from '../../../src/renderer/hooks/useProductSidebarData';
 import { TrimmedProductSidebar } from '../../../src/renderer/sidebars/TrimmedProductSidebar';
 import { colors, spacing, typography } from '../../../src/renderer/theme';
+import {
+  getMobileChannelTitle,
+  getMobileTabsCopy,
+  resolveDefaultMobileLocale,
+} from '../../../../src/mobile/index.js';
 
 export default function WorkSidebarScreen() {
   const router = useRouter();
   const createChannel = useCreateChannel();
   const { state } = useProductSidebarData('work');
+  const copy = getMobileTabsCopy(resolveDefaultMobileLocale());
 
   const handlePrimaryAction = useCallback(
     async (actionId: string) => {
       try {
         const channelId = await createChannel.create({
-          title: titleForAction(actionId),
+          title: getMobileChannelTitle(copy, 'work', actionId),
           topic: '',
           originSurface: 'work',
           entryKind: actionId === 'team' ? 'group' : 'solo',
@@ -35,16 +41,16 @@ export default function WorkSidebarScreen() {
         // hook state already carries the error; banner renders.
       }
     },
-    [createChannel, router],
+    [copy, createChannel, router],
   );
 
   const handleSelectCat = useCallback(() => {
     Alert.alert(
-      'Direct cat chat — desktop only',
-      'Tapping a cattery member to start a direct conversation is not yet wired on mobile. Start the direct lane on the desktop; it will appear in RECENTS here once created.',
-      [{ text: 'OK', style: 'cancel' }],
+      copy.directCatDesktopOnlyTitle,
+      copy.directCatDesktopOnlyBody.work,
+      [{ text: copy.desktopOnlyOkAction, style: 'cancel' }],
     );
-  }, []);
+  }, [copy]);
 
   const handleSelectRecent = useCallback(
     (channelId: string) => {
@@ -58,17 +64,17 @@ export default function WorkSidebarScreen() {
       {createChannel.state.kind === 'error' ? (
         <View style={styles.errorBanner}>
           <Text style={styles.errorBannerText} numberOfLines={2}>
-            Could not create channel: {createChannel.state.error.message}
+            {copy.createChannelError(createChannel.state.error.message)}
           </Text>
           <Pressable onPress={createChannel.reset}>
-            <Text style={styles.errorBannerDismiss}>Dismiss</Text>
+            <Text style={styles.errorBannerDismiss}>{copy.dismissAction}</Text>
           </Pressable>
         </View>
       ) : null}
       {createChannel.state.kind === 'creating' ? (
         <View style={styles.creatingOverlay}>
           <ActivityIndicator color={colors.accent.primary} />
-          <Text style={styles.creatingLabel}>Creating channel…</Text>
+          <Text style={styles.creatingLabel}>{copy.creatingChannelLabel}</Text>
         </View>
       ) : (
         <TrimmedProductSidebar
@@ -86,19 +92,6 @@ export default function WorkSidebarScreen() {
       )}
     </SafeAreaView>
   );
-}
-
-function titleForAction(actionId: string): string {
-  switch (actionId) {
-    case 'new':
-      return 'New work';
-    case 'team':
-      return 'New team work';
-    case 'parallel':
-      return 'New parallel work';
-    default:
-      return 'New work';
-  }
 }
 
 const styles = StyleSheet.create({
