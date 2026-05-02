@@ -22,6 +22,11 @@ import {
   saveNotificationPreferences,
 } from '../../api/persistence';
 import { useMobileAppShell } from '../hooks/useMobileAppShell';
+import {
+  getMobileSettingsCopy,
+  resolveDefaultMobileLocale,
+  type MobileSettingsCopy,
+} from '../../../../src/mobile/index.js';
 import { colors, radii, spacing, typography } from '../theme';
 
 export function Settings() {
@@ -35,6 +40,7 @@ export function Settings() {
       approvalsOnly: false,
     });
   const { state: shellState } = useMobileAppShell();
+  const copy = getMobileSettingsCopy(resolveDefaultMobileLocale());
 
   useEffect(() => {
     let active = true;
@@ -76,7 +82,7 @@ export function Settings() {
   };
 
   const webDashboardUrl = resolveWebDashboardUrl(connectionConfig);
-  const profile = resolveProfile(shellState, connectionConfig);
+  const profile = resolveProfile(shellState, connectionConfig, copy);
 
   return (
     <ScrollView
@@ -84,33 +90,34 @@ export function Settings() {
       contentContainerStyle={styles.content}
     >
       <View style={styles.header}>
-        <Text style={styles.title}>Settings</Text>
+        <Text style={styles.title}>{copy.settingsTitle}</Text>
       </View>
 
       <Section
-        label="Profile"
-        description="Your platform-wide profile across Chat, Code, Work, and Lobby."
-        footer="Edit your avatar and name on the desktop."
+        label={copy.profileSection}
+        description={copy.profileSectionDescription}
+        footer={copy.profileFooter}
       >
         <View style={styles.profileCard}>
           <ProfileAvatar
             avatarUrl={profile.avatarUrl}
             avatarColor={profile.avatarColor}
             initials={profile.initials}
+            accessibilityLabel={copy.ownerAvatarLabel}
           />
           <View style={styles.profileText}>
-            <Text style={styles.profileLabel}>Name</Text>
+            <Text style={styles.profileLabel}>{copy.nameLabel}</Text>
             <Text style={styles.profileName}>{profile.displayName}</Text>
           </View>
         </View>
       </Section>
 
       <Section
-        label="Desktop"
-        description="Where this device should reach your desktop cats."
+        label={copy.desktopSection}
+        description={copy.desktopSectionDescription}
       >
         <View style={styles.baseUrlRow}>
-          <Text style={styles.baseUrlLabel}>Desktop URL</Text>
+          <Text style={styles.baseUrlLabel}>{copy.desktopUrlLabel}</Text>
           <TextInput
             value={baseUrlDraft}
             onChangeText={setBaseUrlDraft}
@@ -124,26 +131,26 @@ export function Settings() {
             style={styles.baseUrlInput}
           />
           <Text style={styles.baseUrlHint}>
-            Use the LAN address of the machine running cats. Saves on blur.
+            {copy.baseUrlHint}
           </Text>
         </View>
       </Section>
 
       <Section
-        label="Notifications"
-        footer="Notification delivery is not yet enabled. Your choices are saved on this device."
+        label={copy.notificationsSection}
+        footer={copy.notificationsFooter}
       >
         <ToggleRow
-          label="Push notifications"
-          description="Alerts when an approval, escalation, or task completion lands."
+          label={copy.pushNotificationsLabel}
+          description={copy.pushNotificationsDescription}
           value={notificationPrefs.enabled}
           onValueChange={(enabled) =>
             updateNotifications({ ...notificationPrefs, enabled })
           }
         />
         <ToggleRow
-          label="Approvals only"
-          description="Suppress task completion and informational pushes."
+          label={copy.approvalsOnlyLabel}
+          description={copy.approvalsOnlyDescription}
           value={notificationPrefs.approvalsOnly}
           onValueChange={(approvalsOnly) =>
             updateNotifications({ ...notificationPrefs, approvalsOnly })
@@ -152,7 +159,7 @@ export function Settings() {
         />
       </Section>
 
-      <Section label="Advanced">
+      <Section label={copy.advancedSection}>
         <Pressable
           accessibilityRole="link"
           accessibilityState={{ disabled: webDashboardUrl === null }}
@@ -175,12 +182,12 @@ export function Settings() {
                 webDashboardUrl === null ? styles.linkRowLabelDisabled : null,
               ]}
             >
-              Open web dashboard
+              {copy.openWebDashboardLabel}
             </Text>
             <Text style={styles.linkRowDescription}>
               {webDashboardUrl === null
-                ? 'Set the desktop URL above to enable this link.'
-                : `Opens ${webDashboardUrl}`}
+                ? copy.openWebDashboardDisabledDescription
+                : copy.openWebDashboardDescription(webDashboardUrl)}
             </Text>
           </View>
           <Text style={styles.linkRowChevron}>›</Text>
@@ -200,10 +207,11 @@ interface ProfileFields {
 function resolveProfile(
   shellState: ReturnType<typeof useMobileAppShell>['state'],
   connectionConfig: ConnectionConfig,
+  copy: MobileSettingsCopy,
 ): ProfileFields {
   if (shellState.kind !== 'data') {
     return {
-      displayName: 'Not connected',
+      displayName: copy.notConnectedName,
       initials: '—',
       avatarColor: null,
       avatarUrl: null,
@@ -212,7 +220,7 @@ function resolveProfile(
   const { ownerDisplayName, ownerAvatarColor, ownerAvatarUrl } =
     shellState.payload;
   const trimmed = ownerDisplayName.trim();
-  const displayName = trimmed.length > 0 ? trimmed : 'Owner';
+  const displayName = trimmed.length > 0 ? trimmed : copy.ownerFallbackName;
   const initials = nameInitials(displayName);
   const absoluteAvatarUrl = ownerAvatarUrl
     ? resolveAvatarAbsoluteUrl(ownerAvatarUrl, connectionConfig)
@@ -255,16 +263,22 @@ interface ProfileAvatarProps {
   avatarUrl: string | null;
   avatarColor: string | null;
   initials: string;
+  accessibilityLabel: string;
 }
 
-function ProfileAvatar({ avatarUrl, avatarColor, initials }: ProfileAvatarProps) {
+function ProfileAvatar({
+  avatarUrl,
+  avatarColor,
+  initials,
+  accessibilityLabel,
+}: ProfileAvatarProps) {
   const fallbackColor = avatarColor ?? colors.bubble.mentionDefault;
   if (avatarUrl) {
     return (
       <Image
         source={{ uri: avatarUrl }}
         style={[styles.avatar, { backgroundColor: fallbackColor }]}
-        accessibilityLabel="Owner avatar"
+        accessibilityLabel={accessibilityLabel}
       />
     );
   }

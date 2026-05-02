@@ -3,6 +3,7 @@ import test from 'node:test';
 
 import {
   getMobileChatCopy,
+  getMobileSettingsCopy,
   type MobileAppShellPayload,
   resolveMobileLocale,
   selectMobileLobby,
@@ -86,4 +87,22 @@ test('mobile chat copy exposes localized fixed controls', () => {
   assert.equal(zh.productLabel.work, '工作');
   assert.equal(en.sendAction, 'Send');
   assert.equal(en.productLabel.code, 'CODE');
+});
+
+test('mobile settings copy exposes localized fixed controls', () => {
+  const zh = getMobileSettingsCopy('zh-TW');
+  const en = getMobileSettingsCopy('en');
+
+  assert.equal(zh.settingsTitle, '設定');
+  assert.equal(zh.desktopUrlLabel, '桌面版網址');
+  assert.equal(
+    zh.openWebDashboardDisabledDescription,
+    '先在上方設定桌面版網址，才能啟用這個連結。',
+  );
+  assert.equal(
+    zh.openWebDashboardDescription('http://192.168.1.2:8181'),
+    '開啟 http://192.168.1.2:8181',
+  );
+  assert.equal(en.settingsTitle, 'Settings');
+  assert.equal(en.openWebDashboardLabel, 'Open web dashboard');
 });
