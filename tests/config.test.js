@@ -56,7 +56,7 @@ test('loadConfig derives storage paths from canonical root directories', () => {
   assert.equal(config.debugLiveTrace, false);
   assert.equal(config.debugKeepRuntimeSessionsOnProductDelete, false);
   assert.equal(config.chatProviderAgentDecisionEnabled, false);
-  assert.equal(config.mobilePairingEnabled, false);
+  assert.equal(config.mobilePairingEnabled, true);
   assert.equal(config.mobileBundleRoot, path.resolve(process.cwd(), 'build', 'mobile'));
   assert.equal(config.runtimeStaleSessionRetryLimit, 3);
   assert.equal(config.maxChatParticipants, 7);

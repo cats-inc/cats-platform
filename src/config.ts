@@ -167,7 +167,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
       env.CATS_CHAT_PROVIDER_AGENT_DECISION_ENABLED,
       false,
     ),
-    mobilePairingEnabled: parseBoolean(env.CATS_DESKTOP_MOBILE_PAIRING_ENABLED, false),
+    mobilePairingEnabled: parseBoolean(env.CATS_DESKTOP_MOBILE_PAIRING_ENABLED, true),
     mobileBundleRoot: env.CATS_MOBILE_BUNDLE_ROOT?.trim()
       || path.resolve(process.cwd(), 'build', 'mobile'),
     runtimeDataDir: path.join(runtimeDir, 'data'),
