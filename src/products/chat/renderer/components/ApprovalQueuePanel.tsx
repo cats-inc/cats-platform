@@ -55,7 +55,7 @@ export function ApprovalQueuePanel({
                     <p>{approval.summary ?? t(messageKeys.chatApprovalQueueDefaultSummary)}</p>
                   </div>
                   <span className="operatorMetaText">
-                    {formatOperatorTimestamp(approval.requestedAt)}
+                    {formatOperatorTimestamp(approval.requestedAt, t)}
                   </span>
                 </div>
                 <div className="operatorMetaRow">

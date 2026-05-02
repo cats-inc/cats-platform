@@ -35,7 +35,7 @@ export function ActivityFeed({ items }: ActivityFeedProps) {
               <div className="operatorTimelineBody">
                 <div className="operatorTimelineHeader">
                   <strong>{item.label}</strong>
-                  <span>{formatOperatorTimestamp(item.createdAt)}</span>
+                  <span>{formatOperatorTimestamp(item.createdAt, t)}</span>
                 </div>
                 <p>{item.message}</p>
                 {item.actorName ? (
