@@ -331,8 +331,10 @@ export const enCatalog: MessageCatalog = {
   'settings.desktop.mobilePairingOpenPairingUrlLabel': 'Open pairing URL',
   'settings.desktop.mobilePairingCopyEnvValuesSuccess':
     'Copied mobile pairing env values.',
+  'settings.desktop.mobilePairingConfirmRestart':
+    'Apply 0.0.0.0 binding and restart Cats Desktop now? Unsaved changes will be lost.',
   'settings.desktop.mobilePairingDesktopUpdateSuccess':
-    'Updated {envPath}. Restart Cats Desktop to apply.',
+    'Updated {envPath}. Restarting Cats Desktop…',
   'settings.desktop.mobilePairingDesktopUpdateFailure':
     'Failed to update desktop env.',
   'settings.desktop.startupTitle': 'Startup behavior',

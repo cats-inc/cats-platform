@@ -177,6 +177,7 @@ declare module 'electron' {
     }): void;
     quit(): void;
     exit(exitCode?: number): void;
+    relaunch(options?: { args?: string[]; execPath?: string }): void;
     on(event: string, listener: (...args: any[]) => void): void;
   };
 }

@@ -2204,6 +2204,10 @@ async function main(): Promise<void> {
     }
     return await enableDesktopMobilePairingEnv(hostConfig);
   });
+  ipcMain.handle('cats-host:relaunch', () => {
+    app.relaunch();
+    app.quit();
+  });
   ipcMain.handle('cats-host:update-platform-shell', async (_event, payload: unknown) => {
     const nextState = applyDesktopHostPlatformShellUpdate({
       appShell: latestAppShellPayload,

@@ -313,6 +313,8 @@ export const messageKeys = {
     'settings.desktop.mobilePairingOpenPairingUrlLabel',
   settingsDesktopMobilePairingCopyEnvValuesSuccess:
     'settings.desktop.mobilePairingCopyEnvValuesSuccess',
+  settingsDesktopMobilePairingConfirmRestart:
+    'settings.desktop.mobilePairingConfirmRestart',
   settingsDesktopMobilePairingDesktopUpdateSuccess:
     'settings.desktop.mobilePairingDesktopUpdateSuccess',
   settingsDesktopMobilePairingDesktopUpdateFailure:

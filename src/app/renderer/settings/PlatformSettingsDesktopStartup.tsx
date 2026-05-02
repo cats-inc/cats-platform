@@ -146,6 +146,7 @@ export function PlatformSettingsDesktopStartup({
       window as Window & {
         catsDesktopHost?: {
           enableMobilePairing?: () => Promise<DesktopMobilePairingEnvUpdateResult>;
+          relaunch?: () => Promise<void>;
         };
       }
     ).catsDesktopHost;
@@ -158,19 +159,26 @@ export function PlatformSettingsDesktopStartup({
       return;
     }
 
+    const confirmed = window.confirm(t('settingsDesktopMobilePairingConfirmRestart'));
+    if (!confirmed) {
+      return;
+    }
+
     setApplyingMobilePairingEnv(true);
     try {
       const result = await desktopHost.enableMobilePairing();
       showToast(t('settingsDesktopMobilePairingDesktopUpdateSuccess', {
         envPath: result.envPath,
       }));
+      if (desktopHost.relaunch) {
+        await desktopHost.relaunch();
+      }
     } catch (error) {
       showToast(
         error instanceof Error
           ? error.message
           : t('settingsDesktopMobilePairingDesktopUpdateFailure'),
       );
-    } finally {
       setApplyingMobilePairingEnv(false);
     }
   }

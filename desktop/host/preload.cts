@@ -227,6 +227,9 @@ const bridge = {
   enableMobilePairing(): Promise<DesktopMobilePairingEnvUpdateResult> {
     return ipcRenderer.invoke('cats-host:enable-mobile-pairing');
   },
+  relaunch(): Promise<void> {
+    return ipcRenderer.invoke('cats-host:relaunch');
+  },
   updatePlatformShell(
     payload: DesktopHostPlatformShellUpdate,
   ): Promise<void> {

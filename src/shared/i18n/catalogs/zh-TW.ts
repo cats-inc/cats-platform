@@ -314,8 +314,10 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.desktop.mobilePairingNoPairingUrlStatus': 'QR 尚未準備',
   'settings.desktop.mobilePairingOpenPairingUrlLabel': '開啟配對網址',
   'settings.desktop.mobilePairingCopyEnvValuesSuccess': '已複製手機配對 env 值。',
+  'settings.desktop.mobilePairingConfirmRestart':
+    '套用 0.0.0.0 綁定並重新啟動 Cats Desktop？未儲存的變更將遺失。',
   'settings.desktop.mobilePairingDesktopUpdateSuccess':
-    '已更新 {envPath}，請重新啟動 Cats Desktop 套用。',
+    '已更新 {envPath}，正在重新啟動 Cats Desktop…',
   'settings.desktop.mobilePairingDesktopUpdateFailure': '更新桌面環境設定失敗。',
   'settings.desktop.startupTitle': '啟動行為',
   'settings.desktop.startupDescription':
