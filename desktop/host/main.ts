@@ -57,11 +57,7 @@ import {
   type RuntimeDiagnosticsHealthPayload,
   type RuntimeProviderDiagnosticsPayload,
 } from './readiness.js';
-import {
-  isDesktopHostActionId,
-  resolveDesktopInAppNavigationUrl,
-  validateDesktopUrl,
-} from './security.js';
+import { isDesktopHostActionId, validateDesktopUrl } from './security.js';
 import {
   readPersistedSetupCompletionState,
   type PersistedSetupCompletionState,
@@ -434,25 +430,15 @@ function shouldAllowInAppNavigation(
   rawUrl: string,
   config: DesktopHostConfig,
 ): boolean {
-  return resolveDesktopInAppNavigationUrl(rawUrl, {
-    appBaseUrl: config.appBaseUrl,
-    allowedHosts: resolveAllowedAppHosts(config),
-  }) !== null;
-}
-
-async function openDesktopWindowRequestedUrl(
-  rawUrl: string,
-  config: DesktopHostConfig,
-): Promise<void> {
-  const inAppUrl = resolveDesktopInAppNavigationUrl(rawUrl, {
-    appBaseUrl: config.appBaseUrl,
-    allowedHosts: resolveAllowedAppHosts(config),
-  });
-  if (inAppUrl) {
-    await showMainWindow(inAppUrl);
-    return;
+  try {
+    const currentAppUrl = new URL(config.appBaseUrl);
+    const nextUrl = new URL(validateDesktopUrl(rawUrl, {
+      allowedHosts: resolveAllowedAppHosts(config),
+    }));
+    return nextUrl.origin === currentAppUrl.origin;
+  } catch {
+    return false;
   }
-  await openExternalDesktopUrl(rawUrl);
 }
 
 async function ensureBootstrapPageVisible(): Promise<void> {
@@ -1870,7 +1856,7 @@ async function createMainWindow(
   });
 
   window.webContents.setWindowOpenHandler(({ url }) => {
-    void openDesktopWindowRequestedUrl(url, config).catch(reportExternalUrlOpenFailure);
+    void openExternalDesktopUrl(url).catch(reportExternalUrlOpenFailure);
     return { action: 'deny' };
   });
   window.webContents.on('will-navigate', (event, url) => {

@@ -5,7 +5,6 @@ import test from 'node:test';
 
 import {
   isDesktopHostActionId,
-  resolveDesktopInAppNavigationUrl,
   validateDesktopUrl,
 } from '../build/desktop/security.js';
 
@@ -38,34 +37,6 @@ test('validateDesktopUrl only accepts http/https URLs from allow-listed hosts', 
   }), /allow-listed/);
 });
 
-test('resolveDesktopInAppNavigationUrl keeps relative and same-origin app URLs in app', () => {
-  const appBaseUrl = 'http://127.0.0.1:8181/lobby';
-  const allowedHosts = ['127.0.0.1', 'localhost'];
-
-  assert.equal(
-    resolveDesktopInAppNavigationUrl('/runtime/setup', { appBaseUrl, allowedHosts }),
-    'http://127.0.0.1:8181/runtime/setup',
-  );
-  assert.equal(
-    resolveDesktopInAppNavigationUrl(
-      'http://127.0.0.1:8181/runtime/setup?welcome=1',
-      { appBaseUrl, allowedHosts },
-    ),
-    'http://127.0.0.1:8181/runtime/setup?welcome=1',
-  );
-  assert.equal(
-    resolveDesktopInAppNavigationUrl('http://127.0.0.1:3110/setup', {
-      appBaseUrl,
-      allowedHosts,
-    }),
-    null,
-  );
-  assert.equal(
-    resolveDesktopInAppNavigationUrl('https://example.com/docs', { appBaseUrl, allowedHosts }),
-    null,
-  );
-});
-
 test('isDesktopHostActionId rejects unknown IPC action ids', () => {
   assert.equal(isDesktopHostActionId('retry'), true);
   assert.equal(isDesktopHostActionId('quit'), true);
@@ -82,7 +53,6 @@ test('desktop main process keeps Electron sandboxing enabled and validates IPC a
   assert.match(source, /setWindowOpenHandler/);
   assert.match(source, /will-navigate/);
   assert.match(source, /openExternalDesktopUrl/);
-  assert.match(source, /openDesktopWindowRequestedUrl/);
 });
 
 test('preload and contracts keep the same desktop host action ids', async () => {
