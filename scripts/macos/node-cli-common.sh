@@ -578,18 +578,18 @@ EOF
       fi
     elif [ "$force" = 'true' ]; then
       planned_action='reinstall'
-      npm install -g "$package_name" --force
+      npm install -g --include=optional "$package_name" --force
       changed_count=$((changed_count + 1))
       applied_changes+=("${package_name}:reinstall")
     elif [ "$upgrade" = 'true' ]; then
       if [ "$installed" = 'false' ]; then
         planned_action='install'
-        npm install -g "$package_name"
+        npm install -g --include=optional "$package_name"
         changed_count=$((changed_count + 1))
         applied_changes+=("${package_name}:install")
       elif [ "$is_outdated" = 'true' ]; then
         planned_action='upgrade'
-        npm install -g "$package_name@latest"
+        npm install -g --include=optional "$package_name@latest"
         changed_count=$((changed_count + 1))
         applied_changes+=("${package_name}:upgrade")
       else
@@ -597,7 +597,7 @@ EOF
       fi
     elif [ "$installed" = 'false' ]; then
       planned_action='install'
-      npm install -g "$package_name"
+      npm install -g --include=optional "$package_name"
       changed_count=$((changed_count + 1))
       applied_changes+=("${package_name}:install")
     else
@@ -1329,15 +1329,15 @@ run_npm_cli_provider() {
   local applied=()
   case "$planned_action" in
     install)
-      npm install -g "$package_name" >/dev/null
+      npm install -g --include=optional "$package_name" >/dev/null
       applied+=("${package_name}:install")
       ;;
     upgrade)
-      npm install -g "${package_name}@latest" >/dev/null
+      npm install -g --include=optional "${package_name}@latest" >/dev/null
       applied+=("${package_name}:upgrade")
       ;;
     reinstall)
-      npm install -g "$package_name" --force >/dev/null
+      npm install -g --include=optional "$package_name" --force >/dev/null
       applied+=("${package_name}:reinstall")
       ;;
   esac

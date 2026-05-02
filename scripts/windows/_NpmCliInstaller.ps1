@@ -520,7 +520,11 @@ function Invoke-PackagedNpmCliInstall {
     exit 0
   }
 
-  $arguments = @('install', '-g')
+  # --include=optional defends against user-level `omit=optional` in npmrc.
+  # Without it, packages like @openai/codex skip their platform-specific
+  # binaries (codex-win32-x64, codex-darwin-arm64, ...), leaving a shim that
+  # silently exits when invoked. Pure-JS CLIs (gemini, copilot) don't notice.
+  $arguments = @('install', '-g', '--include=optional')
   if ($plannedAction -eq 'upgrade') {
     $arguments += "$PackageName@latest"
   } else {
