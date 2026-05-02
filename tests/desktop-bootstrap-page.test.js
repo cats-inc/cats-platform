@@ -24,6 +24,14 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /Cats is ready to set up/);
   assert.match(html, /Try again first/);
   assert.match(html, /Return/);
+  assert.match(html, /BOOTSTRAP_COPY/);
+  assert.match(html, /resolveBootstrapLocale/);
+  assert.match(html, /localizeActionLabel/);
+  assert.match(html, /displayStatus/);
+  assert.match(html, /'zh-TW'/);
+  assert.match(html, /Cats 需要快速重新啟動/);
+  assert.match(html, /顯示詳細資料/);
+  assert.match(html, /歡迎。你可以現在安裝 CLI/);
 
   // Back button to leave detail mode
   assert.match(html, /recovery-back/);
@@ -49,7 +57,7 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
 
   // Runtime diagnostics lives in advanced details, not Local helpers, and is not runtimeReady-gated
   assert.match(html, /function DiagnosticsSection\(snap\)[\s\S]*open_runtime_diagnostics/);
-  assert.match(html, /return ExpandableSection\('Local helpers', \[el\('div', \{ class: 'card' \}, rows\.flat\(\)\)\]\);/);
+  assert.match(html, /return ExpandableSection\(tx\('section\.localHelpers'\), \[el\('div', \{ class: 'card' \}, rows\.flat\(\)\)\]\);/);
   assert.match(html, /Open advanced diagnostics/);
   assert.doesNotMatch(html, /var runtimeReady = snap\.services\.some/);
 
@@ -102,7 +110,7 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /showCheckingSpinner: !setupSnap/);
   assert.match(html, /if \(!card\.helperId\) return;/);
   assert.match(html, /supportsApply: nodeReady \? false : helper\.supportsApply/);
-  assert.match(html, /btnLabel = card\.supportsApply === false \? 'Installed' : 'Reinstall';/);
+  assert.match(html, /btnLabel = card\.supportsApply === false \? tx\('status\.installed'\) : tx\('status\.reinstall'\);/);
   assert.doesNotMatch(html, /node-prerequisite-loading/);
   assert.match(html, /ONBOARDING_NODE_HELPER_SUFFIX = '-node-host-installer'/);
   assert.match(html, /cli-row-break/);

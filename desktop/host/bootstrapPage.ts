@@ -499,15 +499,15 @@ export function buildDesktopBootstrapPage(): string {
         <h1 class="hero-title">Cats</h1>
         <p id="splash-summary" class="hero-summary">
           <span id="splash-dot" class="dot dot-warn dot-pulse"></span>
-          <span id="splash-text">Starting up\u2026</span>
+          <span id="splash-text"></span>
         </p>
       </section>
       <p id="slow-hint" class="slow-hint hero-summary"></p>
       <div id="error-area" class="error-area">
-        <p class="hero-summary">Mew\u2026 something tripped me up during startup.</p>
+        <p id="startup-error-copy" class="hero-summary"></p>
         <div class="error-actions">
-          <button id="btn-retry" class="btn" type="button">Retry</button>
-          <button id="btn-details" class="btn" type="button">Show details</button>
+          <button id="btn-retry" class="btn" type="button"></button>
+          <button id="btn-details" class="btn" type="button"></button>
         </div>
       </div>
     </div>
@@ -520,6 +520,279 @@ export function buildDesktopBootstrapPage(): string {
     /* ================================================================
      *  Utilities
      * ================================================================ */
+
+    var BOOTSTRAP_COPY = {
+      en: {
+        'action.continue': 'Continue',
+        'action.continueSetupFix': 'Continue setup fix',
+        'action.return': '\u2190 Return',
+        'action.retry': 'Retry',
+        'action.showDetails': 'Show details',
+        'action.showFewer': 'Show fewer',
+        'action.showMore': 'Show more',
+        'actionLabel.continueToSetup': 'Continue to Setup',
+        'actionLabel.enterReadyChatFlow': 'Enter ready chat flow',
+        'actionLabel.openCats': 'Open Cats',
+        'actionLabel.openRuntimeDiagnostics': 'Open runtime diagnostics',
+        'actionLabel.openSetup': 'Open Setup',
+        'actionLabel.openSetupLower': 'Open setup',
+        'actionLabel.prepareFirstRunSetup': 'Prepare first-run setup or remediation handoff',
+        'actionLabel.resumePackagedSetup': 'Resume packaged setup',
+        'actionLabel.resumeSetup': 'Resume Setup',
+        'actionLabel.retryCheck': 'Retry Check',
+        'actionLabel.retryCliScan': 'Retry CLI Scan',
+        'actionLabel.retryDesktopHostStartup': 'Retry desktop host startup',
+        'actionLabel.retryStartup': 'Retry Startup',
+        'actionLabel.scanReadiness': 'Scan provider and prerequisite readiness',
+        'actionLabel.startPlatformServer': 'Start cats-platform server',
+        'actionLabel.startRuntimeSidecar': 'Start cats-runtime sidecar',
+        'diagnostics.advancedLoading': 'Advanced diagnostics are still loading.',
+        'diagnostics.attempt': 'Attempt: ',
+        'diagnostics.current': 'current',
+        'diagnostics.entries': '{count} entries',
+        'diagnostics.history': 'History: ',
+        'diagnostics.host': 'host: ',
+        'diagnostics.hostState': 'Host state: ',
+        'diagnostics.layerSummary': 'Layer summary',
+        'diagnostics.log': '{service} log: ',
+        'diagnostics.noLogPaths': 'No advanced log paths available yet.',
+        'diagnostics.openAdvanced': 'Open advanced diagnostics',
+        'diagnostics.product': 'product: ',
+        'diagnostics.recentEvents': 'Recent events',
+        'diagnostics.runtime': 'runtime: ',
+        'fixed.startupError': 'Mew\u2026 something tripped me up during startup.',
+        'issue.serviceError': '{service} error',
+        'issue.noSpecificIssues': 'No specific issues were reported.',
+        'loading.almostReady': 'Almost ready\u2026',
+        'loading.ready': 'Ready.',
+        'loading.retrying': 'Trying again\u2026',
+        'loading.startingUp': 'Starting up\u2026',
+        'onboarding.headline': 'Welcome. Install a CLI now or continue into setup.',
+        'onboarding.installCli': 'Install a CLI',
+        'onboarding.installNodeFirst': 'Install Node first',
+        'onboarding.nodeLabel': 'Node.js / npm',
+        'onboarding.nodeStatus': 'Required by npm CLIs',
+        'recovery.summary.details': 'See details below.',
+        'recovery.summary.failedHelper': 'A local helper did not start. Try again first; use advanced details only if it keeps failing.',
+        'recovery.summary.failedService': '{service} did not start. Try again first; use advanced details only if it keeps failing.',
+        'recovery.summary.fixBelow': 'Finish the setup fix below, then Cats will continue.',
+        'recovery.summary.helperAttention': 'You can keep using Cats now. Repair the local helper when convenient, or open advanced details if you need them.',
+        'recovery.summary.noCliAfterSetup': 'Cats did not find an installed CLI. Install at least one CLI below, then continue.',
+        'recovery.summary.noCliBeforeSetup': 'Cats needs at least one installed CLI before setup can continue.',
+        'recovery.summary.readyForSetup': 'Local helpers are running. Continue into setup to get started.',
+        'recovery.title.failed': 'Cats needs a quick restart',
+        'recovery.title.helperAttention': 'Cats can open, but one helper needs attention',
+        'recovery.title.installCliContinue': 'Install a CLI to continue using Cats',
+        'recovery.title.oneSetupFix': 'Cats needs one setup fix',
+        'recovery.title.pickCli': 'Pick a CLI to get started',
+        'recovery.title.readyForSetup': 'Cats is ready to set up',
+        'recovery.title.recovery': 'Cats recovery',
+        'section.advancedDiagnostics': 'Advanced diagnostics',
+        'section.advancedLogsPaths': 'Advanced logs and paths',
+        'section.diagnostics': 'Diagnostics',
+        'section.localHelpers': 'Local helpers',
+        'section.setupFix': 'Setup fix',
+        'section.whatNeedsAttention': 'What needs attention',
+        'setup.noSummary': 'No summary recorded.',
+        'setup.recommendedNextStep': 'Recommended next step',
+        'setup.restartNeeded': 'A restart is needed before the next step.',
+        'setupPack.apiBaseline': 'API baseline',
+        'setupPack.localModel': 'local model pack',
+        'setupPack.nativeCli': 'native CLI pack',
+        'setupPack.wslPowerUser': 'WSL power-user pack',
+        'slowHint.almostDone': 'Almost done, really! Just a whisker away~',
+        'slowHint.firstLaunch': 'First launch takes a moment. Still stretching\u2026',
+        'slowHint.retry': 'Mew\u2026 sorry. Let me try that one more time, okay?',
+        'slowHint.wantToPlay': 'Want to play? Hang in there, almost ready~',
+        'status.checking': 'checking',
+        'status.error': 'error',
+        'status.failed': 'failed',
+        'status.info': 'info',
+        'status.install': 'Install',
+        'status.installed': 'Installed',
+        'status.installedWithCheck': '\u2713 Installed',
+        'status.installing': 'Installing\u2026',
+        'status.ok': 'ok',
+        'status.pending': 'pending',
+        'status.ready': 'ready',
+        'status.reinstall': 'Reinstall',
+        'status.running': 'running',
+        'status.starting': 'starting',
+        'status.unavailable': 'unavailable',
+        'status.warning': 'warning'
+      },
+      'zh-TW': {
+        'action.continue': '繼續',
+        'action.continueSetupFix': '繼續設定修復',
+        'action.return': '\u2190 返回',
+        'action.retry': '重試',
+        'action.showDetails': '顯示詳細資料',
+        'action.showFewer': '顯示較少',
+        'action.showMore': '顯示更多',
+        'actionLabel.continueToSetup': '繼續設定',
+        'actionLabel.enterReadyChatFlow': '進入可用的聊天流程',
+        'actionLabel.openCats': '開啟 Cats',
+        'actionLabel.openRuntimeDiagnostics': '開啟執行階段診斷',
+        'actionLabel.openSetup': '開啟設定',
+        'actionLabel.openSetupLower': '開啟設定',
+        'actionLabel.prepareFirstRunSetup': '準備首次設定或修復交接',
+        'actionLabel.resumePackagedSetup': '繼續套裝設定',
+        'actionLabel.resumeSetup': '繼續設定',
+        'actionLabel.retryCheck': '重新檢查',
+        'actionLabel.retryCliScan': '重新掃描 CLI',
+        'actionLabel.retryDesktopHostStartup': '重試桌面主機啟動',
+        'actionLabel.retryStartup': '重試啟動',
+        'actionLabel.scanReadiness': '掃描供應器與先決條件狀態',
+        'actionLabel.startPlatformServer': '啟動 cats-platform 伺服器',
+        'actionLabel.startRuntimeSidecar': '啟動 cats-runtime sidecar',
+        'diagnostics.advancedLoading': '進階診斷仍在載入。',
+        'diagnostics.attempt': '嘗試：',
+        'diagnostics.current': '目前',
+        'diagnostics.entries': '{count} 筆',
+        'diagnostics.history': '歷程：',
+        'diagnostics.host': '主機：',
+        'diagnostics.hostState': '主機狀態：',
+        'diagnostics.layerSummary': '層級摘要',
+        'diagnostics.log': '{service} 日誌：',
+        'diagnostics.noLogPaths': '尚無進階日誌路徑。',
+        'diagnostics.openAdvanced': '開啟進階診斷',
+        'diagnostics.product': '產品：',
+        'diagnostics.recentEvents': '最近事件',
+        'diagnostics.runtime': '執行階段：',
+        'fixed.startupError': '喵…啟動時有地方出錯了。',
+        'issue.serviceError': '{service} 錯誤',
+        'issue.noSpecificIssues': '沒有回報具體問題。',
+        'loading.almostReady': '幾乎準備好了…',
+        'loading.ready': '已就緒。',
+        'loading.retrying': '正在重試…',
+        'loading.startingUp': '正在啟動…',
+        'onboarding.headline': '歡迎。你可以現在安裝 CLI，或繼續進入設定。',
+        'onboarding.installCli': '安裝 CLI',
+        'onboarding.installNodeFirst': '請先安裝 Node',
+        'onboarding.nodeLabel': 'Node.js / npm',
+        'onboarding.nodeStatus': 'npm CLI 需要此項',
+        'recovery.summary.details': '請查看下方詳細資料。',
+        'recovery.summary.failedHelper': '本機輔助程式未啟動。請先重試；只有持續失敗時才需要使用進階詳細資料。',
+        'recovery.summary.failedService': '{service} 未啟動。請先重試；只有持續失敗時才需要使用進階詳細資料。',
+        'recovery.summary.fixBelow': '完成下方設定修復後，Cats 會繼續。',
+        'recovery.summary.helperAttention': '你現在可以繼續使用 Cats。方便時再修復本機輔助程式；需要時也可以開啟進階詳細資料。',
+        'recovery.summary.noCliAfterSetup': 'Cats 沒有找到已安裝的 CLI。請在下方至少安裝一個 CLI，然後繼續。',
+        'recovery.summary.noCliBeforeSetup': 'Cats 需要至少一個已安裝的 CLI，才能繼續設定。',
+        'recovery.summary.readyForSetup': '本機輔助程式已在執行。請繼續進入設定開始使用。',
+        'recovery.title.failed': 'Cats 需要快速重新啟動',
+        'recovery.title.helperAttention': 'Cats 可以開啟，但有一個本機輔助程式需要處理',
+        'recovery.title.installCliContinue': '安裝 CLI 以繼續使用 Cats',
+        'recovery.title.oneSetupFix': 'Cats 需要完成一項設定修復',
+        'recovery.title.pickCli': '選一個 CLI 開始',
+        'recovery.title.readyForSetup': 'Cats 已準備好進行設定',
+        'recovery.title.recovery': 'Cats 復原',
+        'section.advancedDiagnostics': '進階診斷',
+        'section.advancedLogsPaths': '進階日誌與路徑',
+        'section.diagnostics': '診斷',
+        'section.localHelpers': '本機輔助程式',
+        'section.setupFix': '設定修復',
+        'section.whatNeedsAttention': '需要處理的項目',
+        'setup.noSummary': '未記錄摘要。',
+        'setup.recommendedNextStep': '建議的下一步',
+        'setup.restartNeeded': '下一步前需要重新啟動。',
+        'setupPack.apiBaseline': 'API 基礎設定',
+        'setupPack.localModel': '本機模型套件',
+        'setupPack.nativeCli': '原生 CLI 套件',
+        'setupPack.wslPowerUser': 'WSL 進階使用者套件',
+        'slowHint.almostDone': '真的快完成了，只差最後一步~',
+        'slowHint.firstLaunch': '第一次啟動需要一點時間，還在準備…',
+        'slowHint.retry': '喵…抱歉，讓我再試一次，好嗎？',
+        'slowHint.wantToPlay': '快好了，請再稍等一下~',
+        'status.checking': '檢查中',
+        'status.error': '錯誤',
+        'status.failed': '失敗',
+        'status.info': '資訊',
+        'status.install': '安裝',
+        'status.installed': '已安裝',
+        'status.installedWithCheck': '\u2713 已安裝',
+        'status.installing': '安裝中…',
+        'status.ok': '正常',
+        'status.pending': '待處理',
+        'status.ready': '就緒',
+        'status.reinstall': '重新安裝',
+        'status.running': '執行中',
+        'status.starting': '啟動中',
+        'status.unavailable': '無法使用',
+        'status.warning': '警告'
+      }
+    };
+
+    var BOOTSTRAP_ACTION_LABEL_KEYS = {
+      'Continue to Setup': 'actionLabel.continueToSetup',
+      'Enter ready chat flow': 'actionLabel.enterReadyChatFlow',
+      'Open Cats': 'actionLabel.openCats',
+      'Open runtime diagnostics': 'actionLabel.openRuntimeDiagnostics',
+      'Open setup': 'actionLabel.openSetupLower',
+      'Open Setup': 'actionLabel.openSetup',
+      'Prepare first-run setup or remediation handoff': 'actionLabel.prepareFirstRunSetup',
+      'Resume packaged setup': 'actionLabel.resumePackagedSetup',
+      'Resume Setup': 'actionLabel.resumeSetup',
+      'Retry Check': 'actionLabel.retryCheck',
+      'Retry CLI Scan': 'actionLabel.retryCliScan',
+      'Retry desktop host startup': 'actionLabel.retryDesktopHostStartup',
+      'Retry Startup': 'actionLabel.retryStartup',
+      'Scan provider and prerequisite readiness': 'actionLabel.scanReadiness',
+      'Start cats-platform server': 'actionLabel.startPlatformServer',
+      'Start cats-runtime sidecar': 'actionLabel.startRuntimeSidecar'
+    };
+
+    var BOOTSTRAP_STATUS_LABEL_KEYS = {
+      checking: 'status.checking',
+      error: 'status.error',
+      failed: 'status.failed',
+      info: 'status.info',
+      ok: 'status.ok',
+      pending: 'status.pending',
+      ready: 'status.ready',
+      running: 'status.running',
+      starting: 'status.starting',
+      unavailable: 'status.unavailable',
+      warning: 'status.warning'
+    };
+
+    function resolveBootstrapLocale(languages) {
+      var list = Array.isArray(languages) ? languages : [];
+      for (var i = 0; i < list.length; i++) {
+        var value = String(list[i] || '').toLowerCase();
+        if (value === 'zh-tw' || value === 'zh-hant' || value.indexOf('zh-hant-') === 0) {
+          return 'zh-TW';
+        }
+        if (value.indexOf('zh') === 0) return 'zh-TW';
+      }
+      return 'en';
+    }
+
+    var bootstrapLocale = resolveBootstrapLocale(
+      navigator.languages && navigator.languages.length
+        ? navigator.languages
+        : [navigator.language]
+    );
+    document.documentElement.lang = bootstrapLocale;
+
+    function tx(key, values) {
+      var catalog = BOOTSTRAP_COPY[bootstrapLocale] || BOOTSTRAP_COPY.en;
+      var template = catalog[key] || BOOTSTRAP_COPY.en[key] || key;
+      if (!values) return template;
+      for (var k in values) {
+        template = template.split('{' + k + '}').join(String(values[k]));
+      }
+      return template;
+    }
+
+    function localizeActionLabel(label) {
+      var key = BOOTSTRAP_ACTION_LABEL_KEYS[label];
+      return key ? tx(key) : label;
+    }
+
+    function displayStatus(status) {
+      var key = BOOTSTRAP_STATUS_LABEL_KEYS[status];
+      return key ? tx(key) : String(status || '').replace(/_/g, ' ');
+    }
 
     function el(tag, attrs) {
       var e = document.createElement(tag);
@@ -555,10 +828,10 @@ export function buildDesktopBootstrapPage(): string {
 
     function describeSetupPack(pack) {
       var m = {
-        api_baseline: 'API baseline',
-        native_cli_pack: 'native CLI pack',
-        local_model_pack: 'local model pack',
-        wsl_power_user_pack: 'WSL power-user pack'
+        api_baseline: tx('setupPack.apiBaseline'),
+        native_cli_pack: tx('setupPack.nativeCli'),
+        local_model_pack: tx('setupPack.localModel'),
+        wsl_power_user_pack: tx('setupPack.wslPowerUser')
       };
       return m[pack] || null;
     }
@@ -639,10 +912,10 @@ export function buildDesktopBootstrapPage(): string {
     ];
     var ONBOARDING_NODE_HELPER_SUFFIX = '-node-host-installer';
     var ONBOARDING_CARD_LABELS = {
-      node: 'Node.js / npm'
+      node: tx('onboarding.nodeLabel')
     };
     var ONBOARDING_CARD_STATUS = {
-      node: 'Required by npm CLIs'
+      node: tx('onboarding.nodeStatus')
     };
     var ONBOARDING_PROVIDER_LABELS = {
       claude_code: 'Claude',
@@ -778,17 +1051,17 @@ export function buildDesktopBootstrapPage(): string {
       var installing = Boolean(cliInstallingState[card.helperId]);
       var btnLabel, statusClass, statusContent, btnContent;
       if (installing) {
-        btnLabel = 'Installing…';
+        btnLabel = tx('status.installing');
         statusClass = '';
         statusContent = ' ';
         btnContent = btnLabel;
       } else if (card.installed) {
-        btnLabel = card.supportsApply === false ? 'Installed' : 'Reinstall';
+        btnLabel = card.supportsApply === false ? tx('status.installed') : tx('status.reinstall');
         statusClass = 'c-ok';
-        statusContent = '✓ Installed';
+        statusContent = tx('status.installedWithCheck');
         btnContent = btnLabel;
       } else {
-        btnLabel = 'Install';
+        btnLabel = tx('status.install');
         statusClass = '';
         statusContent = card.statusText || ' ';
         btnContent = btnLabel;
@@ -830,7 +1103,7 @@ export function buildDesktopBootstrapPage(): string {
         if (!candidate || !candidate.available) continue;
         var card = toProviderInstallCard(candidate);
         if (options && options.waitForNodePrerequisite) {
-          card.statusText = options.nodePrerequisiteStatusText || 'Install Node first';
+          card.statusText = options.nodePrerequisiteStatusText || tx('onboarding.installNodeFirst');
           card.supportsApply = false;
           if (options.showCheckingSpinner) {
             card.checkingHint = 'spinner-in-button';
@@ -855,7 +1128,7 @@ export function buildDesktopBootstrapPage(): string {
       var nodeReady = isNodePrerequisiteReady(setupSnap);
       appendProviderCards(entries, snapshot, ONBOARDING_NPM_PROVIDER_ORDER, {
         waitForNodePrerequisite: !nodeReady,
-        nodePrerequisiteStatusText: setupSnap ? 'Install Node first' : ' ',
+        nodePrerequisiteStatusText: setupSnap ? tx('onboarding.installNodeFirst') : ' ',
         showCheckingSpinner: !setupSnap
       });
 
@@ -926,6 +1199,7 @@ export function buildDesktopBootstrapPage(): string {
     var splashEl = document.getElementById('splash');
     var splashDot = document.getElementById('splash-dot');
     var splashText = document.getElementById('splash-text');
+    var startupErrorCopy = document.getElementById('startup-error-copy');
     var errorArea = document.getElementById('error-area');
     var recoveryEl = document.getElementById('recovery');
     var onboardingEl = document.getElementById('onboarding');
@@ -933,10 +1207,17 @@ export function buildDesktopBootstrapPage(): string {
     var btnDetails = document.getElementById('btn-details');
     var slowHint = document.getElementById('slow-hint');
 
+    function applyStaticCopy() {
+      splashText.textContent = tx('loading.startingUp');
+      startupErrorCopy.textContent = tx('fixed.startupError');
+      btnRetry.textContent = tx('action.retry');
+      btnDetails.textContent = tx('action.showDetails');
+    }
+
     function friendlyLoadingSummary(phase) {
-      if (phase === 'checking_prerequisites') return 'Almost ready\u2026';
-      if (phase === 'ready_for_setup' || phase === 'ready_for_chat') return 'Ready.';
-      return 'Starting up\u2026';
+      if (phase === 'checking_prerequisites') return tx('loading.almostReady');
+      if (phase === 'ready_for_setup' || phase === 'ready_for_chat') return tx('loading.ready');
+      return tx('loading.startingUp');
     }
 
     function clearSlowHintTimer() {
@@ -972,7 +1253,7 @@ export function buildDesktopBootstrapPage(): string {
       onboardingEl.classList.add('hidden');
       splashDot.className = 'dot dot-warn dot-pulse';
       splashDot.style.display = '';
-      splashText.textContent = 'Trying again\u2026';
+      splashText.textContent = tx('loading.retrying');
       errorArea.classList.remove('visible');
       showSlowHintMessage(retryHintMessage);
     }
@@ -1011,45 +1292,46 @@ export function buildDesktopBootstrapPage(): string {
      * ================================================================ */
 
     function recoveryTitle(snap) {
-      if (snap.phase === 'failed') return 'Cats needs a quick restart';
+      if (snap.phase === 'failed') return tx('recovery.title.failed');
       if (snap.phase === 'needs_prerequisites') {
         if (isCliMissing(snap)) {
           return snap.app && snap.app.setupCompleteAt
-            ? 'Install a CLI to continue using Cats'
-            : 'Pick a CLI to get started';
+            ? tx('recovery.title.installCliContinue')
+            : tx('recovery.title.pickCli');
         }
         return snap.app && snap.app.setupCompleteAt
-          ? 'Cats can open, but one helper needs attention'
-          : 'Cats needs one setup fix';
+          ? tx('recovery.title.helperAttention')
+          : tx('recovery.title.oneSetupFix');
       }
-      if (snap.phase === 'ready_for_setup') return 'Cats is ready to set up';
-      return 'Cats recovery';
+      if (snap.phase === 'ready_for_setup') return tx('recovery.title.readyForSetup');
+      return tx('recovery.title.recovery');
     }
 
     function recoverySummary(snap) {
       if (snap.phase === 'failed') {
         var failedSvc = snap.services.find(function (s) { return s.status === 'failed'; });
         if (failedSvc) {
-          return getServiceDisplayName(failedSvc.name)
-            + ' did not start. Try again first; use advanced details only if it keeps failing.';
+          return tx('recovery.summary.failedService', {
+            service: getServiceDisplayName(failedSvc.name)
+          });
         }
-        return 'A local helper did not start. Try again first; use advanced details only if it keeps failing.';
+        return tx('recovery.summary.failedHelper');
       }
       if (snap.phase === 'needs_prerequisites') {
         if (isCliMissing(snap)) {
           return snap.app && snap.app.setupCompleteAt
-            ? 'Cats did not find an installed CLI. Install at least one CLI below, then continue.'
-            : 'Cats needs at least one installed CLI before setup can continue.';
+            ? tx('recovery.summary.noCliAfterSetup')
+            : tx('recovery.summary.noCliBeforeSetup');
         }
         if (snap.app && snap.app.setupCompleteAt) {
-          return 'You can keep using Cats now. Repair the local helper when convenient, or open advanced details if you need them.';
+          return tx('recovery.summary.helperAttention');
         }
-        return 'Finish the setup fix below, then Cats will continue.';
+        return tx('recovery.summary.fixBelow');
       }
       if (snap.phase === 'ready_for_setup') {
-        return 'Local helpers are running. Continue into setup to get started.';
+        return tx('recovery.summary.readyForSetup');
       }
-      return snap.summary || 'See details below.';
+      return snap.summary || tx('recovery.summary.details');
     }
 
     /* ================================================================
@@ -1079,7 +1361,7 @@ export function buildDesktopBootstrapPage(): string {
 
     function RecoverySummaryCard(snap, bridge) {
       var actionButtons = (snap.actions || []).map(function (action) {
-        return Btn(action.label, {
+        return Btn(localizeActionLabel(action.label), {
           primary: action.primary === true,
           disabled: action.disabled,
           onclick: function () {
@@ -1118,7 +1400,7 @@ export function buildDesktopBootstrapPage(): string {
           items.push(el('div', { class: 'card' },
             el('div', { class: 'issue-head' },
               el('span', { class: 'issue-title' }, issue.title),
-              el('span', { class: 'issue-sev c-' + s }, issue.severity)
+              el('span', { class: 'issue-sev c-' + s }, displayStatus(issue.severity))
             ),
             el('div', { class: 'detail-meta' }, issue.detail)
           ));
@@ -1129,8 +1411,10 @@ export function buildDesktopBootstrapPage(): string {
         if (svc.error) {
           items.push(el('div', { class: 'card' },
             el('div', { class: 'issue-head' },
-              el('span', { class: 'issue-title' }, getServiceDisplayName(svc.name) + ' error'),
-              el('span', { class: 'issue-sev c-err' }, 'error')
+              el('span', { class: 'issue-title' }, tx('issue.serviceError', {
+                service: getServiceDisplayName(svc.name)
+              })),
+              el('span', { class: 'issue-sev c-err' }, displayStatus('error'))
             ),
             el('div', { class: 'detail-meta' }, svc.error),
             svc.lastOutput
@@ -1140,9 +1424,9 @@ export function buildDesktopBootstrapPage(): string {
         }
       });
       if (items.length === 0) {
-        items.push(el('div', { class: 'detail-meta' }, 'No specific issues were reported.'));
+        items.push(el('div', { class: 'detail-meta' }, tx('issue.noSpecificIssues')));
       }
-      return ExpandableSection('What needs attention', items);
+      return ExpandableSection(tx('section.whatNeedsAttention'), items);
     }
 
     function ServiceStatusSection(snap) {
@@ -1152,7 +1436,7 @@ export function buildDesktopBootstrapPage(): string {
           el('div', { class: 'svc-row' },
             Dot(svc.status, isPending),
             el('span', { class: 'svc-name' }, getServiceDisplayName(svc.name)),
-            el('span', { class: 'svc-status c-' + sc(svc.status) }, svc.status),
+            el('span', { class: 'svc-status c-' + sc(svc.status) }, displayStatus(svc.status)),
             el('code', { class: 'svc-url' }, svc.healthUrl)
           )
         ];
@@ -1167,13 +1451,13 @@ export function buildDesktopBootstrapPage(): string {
         return parts;
       });
 
-      return ExpandableSection('Local helpers', [el('div', { class: 'card' }, rows.flat())]);
+      return ExpandableSection(tx('section.localHelpers'), [el('div', { class: 'card' }, rows.flat())]);
     }
 
     function DiagnosticsSection(snap) {
       var diagnostics = snap.diagnostics;
       var actionRow = el('div', { class: 'actions', style: 'margin-top:12px' },
-        Btn('Open advanced diagnostics', {
+        Btn(tx('diagnostics.openAdvanced'), {
           onclick: function () {
             bridge.runAction('open_runtime_diagnostics');
           }
@@ -1181,8 +1465,8 @@ export function buildDesktopBootstrapPage(): string {
       );
 
       if (!diagnostics || !diagnostics.aggregation) {
-        return ExpandableSection('Diagnostics', [
-          el('div', { class: 'detail-meta' }, 'Advanced diagnostics are still loading.'),
+        return ExpandableSection(tx('section.diagnostics'), [
+          el('div', { class: 'detail-meta' }, tx('diagnostics.advancedLoading')),
           actionRow,
         ]);
       }
@@ -1191,13 +1475,13 @@ export function buildDesktopBootstrapPage(): string {
       var content = [];
 
       content.push(el('div', { class: 'card' },
-        CardHead('Layer summary', agg.attemptId || 'current', 'c-ok'),
+        CardHead(tx('diagnostics.layerSummary'), agg.attemptId || tx('diagnostics.current'), 'c-ok'),
         el('div', { class: 'detail-meta' },
-          el('strong', null, 'runtime: '), agg.layers.runtime.summary),
+          el('strong', null, tx('diagnostics.runtime')), agg.layers.runtime.summary),
         el('div', { class: 'detail-meta' },
-          el('strong', null, 'product: '), agg.layers.product.summary),
+          el('strong', null, tx('diagnostics.product')), agg.layers.product.summary),
         el('div', { class: 'detail-meta' },
-          el('strong', null, 'host: '), agg.layers.host.summary)
+          el('strong', null, tx('diagnostics.host')), agg.layers.host.summary)
       ));
 
       var chronology = Array.isArray(agg.chronology) ? agg.chronology.slice(0, 8) : [];
@@ -1217,14 +1501,15 @@ export function buildDesktopBootstrapPage(): string {
           );
         });
         content.push(el('div', { class: 'card' },
-          CardHead('Recent events', String(chronology.length) + ' entries', 'c-warn'),
+          CardHead(tx('diagnostics.recentEvents'),
+            tx('diagnostics.entries', { count: chronology.length }), 'c-warn'),
           chronoItems
         ));
       }
 
       content.push(actionRow);
 
-      return ExpandableSection('Advanced diagnostics', content);
+      return ExpandableSection(tx('section.advancedDiagnostics'), content);
     }
 
     function LogsAndPathsSection(snap) {
@@ -1233,18 +1518,18 @@ export function buildDesktopBootstrapPage(): string {
 
       if (snap.hostStatePath) {
         items.push(el('div', { class: 'detail-meta' },
-          el('strong', null, 'Host state: '),
+          el('strong', null, tx('diagnostics.hostState')),
           el('code', { class: 'detail-code' }, snap.hostStatePath)));
       }
       if (diagnostics) {
         if (diagnostics.activeAttemptId) {
           items.push(el('div', { class: 'detail-meta' },
-            el('strong', null, 'Attempt: '),
+            el('strong', null, tx('diagnostics.attempt')),
             el('code', { class: 'detail-code' }, diagnostics.activeAttemptId)));
         }
         if (diagnostics.product && diagnostics.product.historyPath) {
           items.push(el('div', { class: 'detail-meta' },
-            el('strong', null, 'History: '),
+            el('strong', null, tx('diagnostics.history')),
             el('code', { class: 'detail-code' }, diagnostics.product.historyPath)));
         }
         if (Array.isArray(diagnostics.serviceLogs)) {
@@ -1252,16 +1537,18 @@ export function buildDesktopBootstrapPage(): string {
             .filter(function (e) { return e && e.logPath; })
             .forEach(function (e) {
               items.push(el('div', { class: 'detail-meta' },
-                el('strong', null, getServiceDisplayName(e.service) + ' log: '),
+                el('strong', null, tx('diagnostics.log', {
+                  service: getServiceDisplayName(e.service)
+                })),
                 el('code', { class: 'detail-code' }, e.logPath)));
             });
         }
       }
       if (items.length === 0) {
-        items.push(el('div', { class: 'detail-meta' }, 'No advanced log paths available yet.'));
+        items.push(el('div', { class: 'detail-meta' }, tx('diagnostics.noLogPaths')));
       }
 
-      return ExpandableSection('Advanced logs and paths', [el('div', { class: 'card' }, items)]);
+      return ExpandableSection(tx('section.advancedLogsPaths'), [el('div', { class: 'card' }, items)]);
     }
 
     function SetupRecoverySection(snap, setupSnap, bridge) {
@@ -1274,7 +1561,7 @@ export function buildDesktopBootstrapPage(): string {
       if (setupSnap && setupSnap.resumeAction) {
         var ra = setupSnap.resumeAction;
         var rac = [
-          CardHead('Recommended next step',
+          CardHead(tx('setup.recommendedNextStep'),
             ra.reason.replace(/_/g, ' '), 'c-warn'),
           el('div', { class: 'detail-meta' }, ra.summary),
           renderInterruptions(ra.interruptions)
@@ -1282,7 +1569,7 @@ export function buildDesktopBootstrapPage(): string {
         if (Array.isArray(ra.manualSteps) && ra.manualSteps.length) {
           rac.push(el('div', { class: 'detail-meta' }, ra.manualSteps[0]));
         }
-        rac.push(Btn('Continue setup fix', {
+        rac.push(Btn(tx('action.continueSetupFix'), {
           onclick: function () {
             var self = this;
             self.disabled = true;
@@ -1299,13 +1586,13 @@ export function buildDesktopBootstrapPage(): string {
           : lastAction.status === 'ready' ? 'ok' : 'warn';
         var lac = [
           CardHead(lastAction.label || lastAction.helperId,
-            lastAction.status || lastAction.runState, 'c-' + las),
+            displayStatus(lastAction.status || lastAction.runState), 'c-' + las),
           el('div', { class: 'detail-meta' },
-            lastAction.summary || 'No summary recorded.')
+            lastAction.summary || tx('setup.noSummary'))
         ];
         if (lastAction.restartRequired) {
           lac.push(el('div', { class: 'detail-meta c-warn' },
-            'A restart is needed before the next step.'));
+            tx('setup.restartNeeded')));
         }
         if (lastAction.error) {
           lac.push(el('div', { class: 'detail-meta c-err' }, lastAction.error));
@@ -1313,7 +1600,7 @@ export function buildDesktopBootstrapPage(): string {
         cards.push(el('div', { class: 'card' }, lac));
       }
 
-      return ExpandableSection('Setup fix', cards);
+      return ExpandableSection(tx('section.setupFix'), cards);
     }
 
     /* ================================================================
@@ -1381,11 +1668,11 @@ export function buildDesktopBootstrapPage(): string {
     var slowHintStep = 0;
     var retryHintActive = false;
     var slowHintMessages = [
-      'First launch takes a moment. Still stretching\u2026',
-      'Want to play? Hang in there, almost ready~',
-      'Almost done, really! Just a whisker away~'
+      tx('slowHint.firstLaunch'),
+      tx('slowHint.wantToPlay'),
+      tx('slowHint.almostDone')
     ];
-    var retryHintMessage = 'Mew\u2026 sorry. Let me try that one more time, okay?';
+    var retryHintMessage = tx('slowHint.retry');
 
     function scheduleSlowHint() {
       if (retryHintActive || slowHintHandle !== null || slowHintStep >= slowHintMessages.length) {
@@ -1452,12 +1739,12 @@ export function buildDesktopBootstrapPage(): string {
             self.disabled = false;
           });
         }
-      }, 'Continue');
+      }, tx('action.continue'));
 
       var cardSet = buildCliCards(snap, currentSetupSnapshot, { alwaysExpanded: false });
       var actions = [continueBtn];
       if (cardSet.hasHiddenCards) {
-        var moreLabel = onboardingExpanded ? 'Show fewer' : 'Show more';
+        var moreLabel = onboardingExpanded ? tx('action.showFewer') : tx('action.showMore');
         actions.push(el('button', {
           class: 'btn',
           onclick: function () {
@@ -1472,7 +1759,7 @@ export function buildDesktopBootstrapPage(): string {
           el('h1', { class: 'hero-title' }, 'Cats')
         ),
         el('p', { class: 'onboarding-headline' },
-          'Welcome. Install a CLI now or continue into setup.'),
+          tx('onboarding.headline')),
         el('div', { class: 'onboarding-actions' }, actions),
         el('div', { class: 'cli-grid' }, cardSet.elements)
       );
@@ -1483,7 +1770,7 @@ export function buildDesktopBootstrapPage(): string {
       if (!inv || inv.source !== 'runtime' || inv.total > 0) return null;
       var cardSet = buildCliCards(snap, currentSetupSnapshot, { alwaysExpanded: true });
       if (cardSet.elements.length === 0) return null;
-      return ExpandableSection('Install a CLI', [
+      return ExpandableSection(tx('onboarding.installCli'), [
         el('div', { class: 'cli-grid' }, cardSet.elements)
       ]);
     }
@@ -1507,7 +1794,7 @@ export function buildDesktopBootstrapPage(): string {
           showRecoveryDetails = false;
           doRender();
         }
-      }, '\u2190 Return');
+      }, tx('action.return'));
 
       /* Summary card with 3-slot action row */
       var summary = RecoverySummaryCard(snap, bridge);
@@ -1617,6 +1904,7 @@ export function buildDesktopBootstrapPage(): string {
     }
 
     function main() {
+      applyStaticCopy();
       if (!bridge) {
         splashDot.style.display = 'none';
         splashText.textContent = '';
