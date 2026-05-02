@@ -40,7 +40,6 @@ interface ProviderModelBrainCardProps {
     instance?: string | null,
   ) => Promise<ProviderAdvancedModelCatalog>;
   onProviderRegistryChange?: (registry: ProductProviderRegistryReadModel) => void;
-  providerRegistrySetupHrefOverride?: string | null;
 }
 
 export function ProviderModelBrainCard({

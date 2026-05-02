@@ -111,7 +111,6 @@ export function SettingsCatsCanvas({
   const navigate = useNavigate();
   const isCreateRoute = location.pathname.endsWith('/cats/new');
   const { t } = useI18n();
-  const runtimeSetupHref = `${payload.runtime.baseUrl.replace(/\/$/, '')}/setup`;
 
   useEffect(() => {
     // Clear any residual parent feedback once on entry so stale messages from other screens do not leak through.
@@ -749,7 +748,6 @@ export function SettingsCatsCanvas({
                   instance={catForm.instance}
                   model={catForm.model}
                   modelSelection={catForm.modelSelection}
-                  providerRegistrySetupHrefOverride={runtimeSetupHref}
                   onTargetChange={(target) => setCatForm({
                     ...catForm,
                     provider: target.provider,
@@ -1019,7 +1017,6 @@ export function SettingsCatsCanvas({
                   instance={selectedCat.defaultExecutionTarget.instance ?? ''}
                   model={selectedCat.defaultExecutionTarget.model ?? ''}
                   modelSelection={selectedCat.defaultModelSelection ?? null}
-                  providerRegistrySetupHrefOverride={runtimeSetupHref}
                   onTargetChange={(target) => {
                     void commitCatProfile(
                       selectedCat.id,
