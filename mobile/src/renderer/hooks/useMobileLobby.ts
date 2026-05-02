@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 
 import type { MobileApiError } from '../../api/client';
 import {
+  resolveDefaultMobileLocale,
   type MobileLobbyData,
   selectMobileLobby,
 } from '../../../../src/mobile/index.js';
@@ -27,12 +28,13 @@ export interface MobileLobbyHook {
  */
 export function useMobileLobby(): MobileLobbyHook {
   const { state: shellState, refetch } = useMobileAppShell();
+  const locale = resolveDefaultMobileLocale();
   const data = useMemo(
     () =>
       shellState.kind === 'data'
-        ? selectMobileLobby(shellState.payload)
+        ? selectMobileLobby(shellState.payload, { locale })
         : null,
-    [shellState],
+    [locale, shellState],
   );
 
   let state: MobileLobbyState;

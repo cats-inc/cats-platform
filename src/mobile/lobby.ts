@@ -1,4 +1,11 @@
 import type { MobileAppShellPayload } from './contracts.js';
+import {
+  formatMobileTimeAgo,
+  formatMobileTodayLabel,
+  getMobileLobbyCopy,
+  resolveDefaultMobileLocale,
+  resolveMobileLocale,
+} from './i18n.js';
 
 /**
  * Mobile-side Lobby content. Per SPEC-095 Open Question resolution
@@ -35,17 +42,9 @@ export interface SelectMobileLobbyOptions {
   now?: Date;
   /** Cap on the recent-activity rows. Defaults to 3. */
   activityLimit?: number;
+  /** UI locale used for Cats-owned mobile lobby copy. */
+  locale?: string | null;
 }
-
-const DAY_NAMES = [
-  'Sunday',
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-];
 
 export function selectMobileLobby(
   payload: MobileAppShellPayload,
@@ -53,9 +52,12 @@ export function selectMobileLobby(
 ): MobileLobbyData {
   const now = options.now ?? new Date();
   const activityLimit = options.activityLimit ?? 3;
+  const locale = options.locale
+    ? resolveMobileLocale(options.locale)
+    : resolveDefaultMobileLocale();
+  const copy = getMobileLobbyCopy(locale);
 
-  const isoDate = now.toISOString().slice(0, 10);
-  const todayLabel = `Today · ${DAY_NAMES[now.getDay()]} · ${isoDate}`;
+  const todayLabel = formatMobileTodayLabel(now, locale);
 
   const activeChannels = payload.chat.channels.filter(
     (channel) => channel.status === 'active',
@@ -64,26 +66,26 @@ export function selectMobileLobby(
   const stats: MobileLobbyStat[] = [
     {
       id: 'active-channels',
-      label: 'Active conversations',
+      label: copy.statActiveConversations,
       value: String(activeChannels.length),
     },
     {
       id: 'cats',
-      label: 'Cats',
+      label: copy.statCats,
       value: String(payload.chat.cats.length),
     },
     {
       id: 'channels-with-unread',
-      label: 'Unread',
+      label: copy.statUnread,
       value: String(
         activeChannels.filter((channel) => channel.unreadCount > 0).length,
       ),
       hint:
         activeChannels.length > 0
-          ? `${activeChannels.reduce(
+          ? copy.unreadTotal(activeChannels.reduce(
               (total, channel) => total + channel.unreadCount,
               0,
-            )} message(s) total`
+            ))
           : undefined,
     },
   ];
@@ -101,32 +103,9 @@ export function selectMobileLobby(
     .map(({ channel, timestamp }) => ({
       id: channel.id,
       title: channel.title,
-      hint: timestamp > 0 ? formatTimeAgo(timestamp, now) : '—',
+      hint: timestamp > 0 ? formatMobileTimeAgo(timestamp, now, locale) : '—',
       channelId: channel.id,
     }));
 
   return { todayLabel, stats, recentActivity };
-}
-
-function formatTimeAgo(timestamp: number, now: Date): string {
-  const elapsedMs = now.getTime() - timestamp;
-  if (elapsedMs < 0) {
-    return 'just now';
-  }
-  const minutes = Math.floor(elapsedMs / 60_000);
-  if (minutes < 1) {
-    return 'just now';
-  }
-  if (minutes < 60) {
-    return `${minutes} min ago`;
-  }
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) {
-    return `${hours} hr ago`;
-  }
-  const days = Math.floor(hours / 24);
-  if (days < 7) {
-    return `${days} day${days === 1 ? '' : 's'} ago`;
-  }
-  return new Date(timestamp).toISOString().slice(0, 10);
 }

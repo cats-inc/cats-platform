@@ -11,14 +11,20 @@ import {
 import { useMobileLobby } from '../hooks/useMobileLobby';
 import type {
   MobileLobbyActivityEntry,
+  MobileLobbyCopy,
   MobileLobbyData,
   MobileLobbyStat,
+} from '../../../../src/mobile/index.js';
+import {
+  getMobileLobbyCopy,
+  resolveDefaultMobileLocale,
 } from '../../../../src/mobile/index.js';
 import { colors, radii, spacing, typography } from '../theme';
 
 export function Lobby() {
   const router = useRouter();
   const { state } = useMobileLobby();
+  const copy = getMobileLobbyCopy(resolveDefaultMobileLocale());
 
   if (state.kind === 'loading') {
     return (
@@ -30,9 +36,9 @@ export function Lobby() {
   if (state.kind === 'unconfigured') {
     return (
       <Panel
-        title="Connect to your desktop"
-        body="Set the desktop base URL in Settings to load your lobby."
-        actionLabel="Open Settings"
+        title={copy.connectDesktopTitle}
+        body={copy.connectDesktopBody}
+        actionLabel={copy.openSettingsAction}
         onAction={() => router.push('/(tabs)/settings')}
       />
     );
@@ -40,7 +46,7 @@ export function Lobby() {
   if (state.kind === 'error') {
     return (
       <Panel
-        title="Could not load lobby"
+        title={copy.couldNotLoadLobbyTitle}
         body={state.error.message}
       />
     );
@@ -49,6 +55,7 @@ export function Lobby() {
   return (
     <LobbyBody
       data={state.data}
+      copy={copy}
       onSelectActivity={(entry) =>
         router.push(`/(tabs)/chat/${entry.channelId}`)
       }
@@ -61,6 +68,7 @@ export function Lobby() {
 
 interface LobbyBodyProps {
   data: MobileLobbyData;
+  copy: MobileLobbyCopy;
   onSelectActivity: (entry: MobileLobbyActivityEntry) => void;
   onOpenChat: () => void;
   onOpenCode: () => void;
@@ -69,6 +77,7 @@ interface LobbyBodyProps {
 
 function LobbyBody({
   data,
+  copy,
   onSelectActivity,
   onOpenChat,
   onOpenCode,
@@ -78,7 +87,7 @@ function LobbyBody({
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>{data.todayLabel}</Text>
-        <Text style={styles.title}>Lobby</Text>
+        <Text style={styles.title}>{copy.lobbyTitle}</Text>
       </View>
 
       <View style={styles.statRow}>
@@ -88,19 +97,19 @@ function LobbyBody({
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionLabel}>Quick entry</Text>
+        <Text style={styles.sectionLabel}>{copy.quickEntryTitle}</Text>
         <View style={styles.quickEntryRow}>
-          <QuickEntryChip label="Chat" onPress={onOpenChat} />
-          <QuickEntryChip label="Code" onPress={onOpenCode} />
-          <QuickEntryChip label="Work" onPress={onOpenWork} />
+          <QuickEntryChip label={copy.quickEntryChat} onPress={onOpenChat} />
+          <QuickEntryChip label={copy.quickEntryCode} onPress={onOpenCode} />
+          <QuickEntryChip label={copy.quickEntryWork} onPress={onOpenWork} />
         </View>
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionLabel}>Recent activity</Text>
+        <Text style={styles.sectionLabel}>{copy.recentActivityTitle}</Text>
         {data.recentActivity.length === 0 ? (
           <Text style={styles.emptyActivity}>
-            No active conversations yet. Start one from the Chat tab.
+            {copy.emptyRecentActivity}
           </Text>
         ) : (
           data.recentActivity.map((entry) => (
