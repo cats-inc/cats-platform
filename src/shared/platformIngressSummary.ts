@@ -1,4 +1,5 @@
 import os from 'node:os';
+import process from 'node:process';
 
 import { PLATFORM_RUNTIME_ROOT_PATH } from './runtimeIngressPaths.js';
 
@@ -35,6 +36,14 @@ export type NetworkInterfaceAddressLike = {
 export type NetworkInterfacesLike = Record<string, NetworkInterfaceAddressLike[] | undefined>;
 
 type InterfaceReachability = 'lan' | 'overlay' | 'virtual';
+type RuntimePlatform = NodeJS.Platform;
+
+const TRUSTED_OVERLAY_INTERFACE_PATTERN =
+  /tailscale|headscale|nebula|zerotier|wireguard/u;
+const COMMON_VIRTUAL_INTERFACE_PATTERN =
+  /wsl|docker|vethernet|hyper-v|virtualbox|vmware|podman|vboxnet/u;
+const MACOS_PEER_OR_TUNNEL_INTERFACE_PATTERN =
+  /^(?:utun\d+|awdl\d*|llw\d*|ap\d+|bridge\d+|gif\d+|stf\d*)$/u;
 
 function isIpv4Family(family: string | number | null | undefined): boolean {
   return family === 'IPv4' || family === 4;
@@ -52,22 +61,25 @@ function isLoopbackHost(host: string): boolean {
     || normalized === '::1';
 }
 
-function classifyInterfaceReachability(interfaceName: string): InterfaceReachability {
+function classifyInterfaceReachability(
+  interfaceName: string,
+  platform: RuntimePlatform,
+): InterfaceReachability {
   const normalized = interfaceName.trim().toLowerCase();
-  // Intentionally avoid matching macOS `utun*`: that namespace is shared by
-  // NetworkExtension-based VPNs, iCloud Private Relay, and unrelated kernel
-  // tunnels. Labeling those as trusted overlay URLs would mislead operators
-  // about which interfaces are safe to use for browser ingress.
   if (
-    /tailscale|headscale|nebula|zerotier|wireguard/u.test(normalized)
+    TRUSTED_OVERLAY_INTERFACE_PATTERN.test(normalized)
     || /^wg\d/u.test(normalized)
     || /^zt[a-z0-9]/u.test(normalized)
   ) {
     return 'overlay';
   }
   if (
-    /wsl|docker|vethernet|hyper-v|virtualbox|vmware|podman|vboxnet/u.test(normalized)
+    COMMON_VIRTUAL_INTERFACE_PATTERN.test(normalized)
     || /^br-/u.test(normalized)
+    || (
+      platform === 'darwin'
+      && MACOS_PEER_OR_TUNNEL_INTERFACE_PATTERN.test(normalized)
+    )
   ) {
     return 'virtual';
   }
@@ -76,6 +88,7 @@ function classifyInterfaceReachability(interfaceName: string): InterfaceReachabi
 
 function listExternalIpv4Addresses(
   networkInterfaces: NetworkInterfacesLike,
+  platform: RuntimePlatform,
 ): Record<InterfaceReachability, string[]> {
   const addresses = {
     lan: new Set<string>(),
@@ -84,7 +97,7 @@ function listExternalIpv4Addresses(
   } satisfies Record<InterfaceReachability, Set<string>>;
 
   for (const [interfaceName, entries] of Object.entries(networkInterfaces)) {
-    const reachability = classifyInterfaceReachability(interfaceName);
+    const reachability = classifyInterfaceReachability(interfaceName, platform);
     for (const entry of entries ?? []) {
       const address = entry.address?.trim();
       if (!address || entry.internal || !isIpv4Family(entry.family)) {
@@ -109,11 +122,13 @@ export function summarizePlatformIngress(input: {
   host: string;
   port: number;
   networkInterfaces?: NetworkInterfacesLike;
+  platform?: RuntimePlatform;
 }): PlatformIngressSummary {
   const host = input.host.trim() || '127.0.0.1';
   const port = input.port;
   const interfaces = input.networkInterfaces ?? os.networkInterfaces();
-  const externalIpv4Addresses = listExternalIpv4Addresses(interfaces);
+  const platform = input.platform ?? process.platform;
+  const externalIpv4Addresses = listExternalIpv4Addresses(interfaces, platform);
   const wildcardHost = isWildcardHost(host);
   const loopbackHost = isLoopbackHost(host);
   const mode: PlatformIngressBindingSummary['mode'] = loopbackHost

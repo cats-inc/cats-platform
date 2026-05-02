@@ -86,11 +86,13 @@ export function buildMobilePairingReadiness(input: {
   host: string;
   port: number;
   networkInterfaces?: NetworkInterfacesLike;
+  platform?: NodeJS.Platform;
 }): PlatformMobilePairingReadiness {
   const ingress = summarizePlatformIngress({
     host: input.host,
     port: input.port,
     networkInterfaces: input.networkInterfaces,
+    platform: input.platform,
   });
   const selectedLanUrl = ingress.urls.lanUrls[0] ?? null;
   const selectedLanIp = firstUrlHost(selectedLanUrl);

@@ -65,6 +65,28 @@ test('mobile pairing readiness selects the first LAN URL for wildcard binds', ()
   assert.equal(readiness.pairingUrl, 'exp://10.0.0.8:8181');
 });
 
+test('mobile pairing readiness ignores macOS utun addresses when selecting the QR URL', () => {
+  const readiness = buildMobilePairingReadiness({
+    enabled: true,
+    host: '0.0.0.0',
+    port: 8181,
+    platform: 'darwin',
+    networkInterfaces: {
+      utun4: [
+        { address: '100.85.60.127', family: 'IPv4', internal: false },
+      ],
+      en0: [
+        { address: '192.168.1.244', family: 'IPv4', internal: false },
+      ],
+    },
+  });
+
+  assert.equal(readiness.selectedLanIp, '192.168.1.244');
+  assert.equal(readiness.selectedLanUrl, 'http://192.168.1.244:8181');
+  assert.equal(readiness.diagnosticManifestUrl, 'http://192.168.1.244:8181/api/mobile/manifest');
+  assert.equal(readiness.pairingUrl, 'exp://192.168.1.244:8181');
+});
+
 test('mobile pairing readiness does not turn non-LAN specific binds into bind override prompts', () => {
   const readiness = buildMobilePairingReadiness({
     enabled: true,

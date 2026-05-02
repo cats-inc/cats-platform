@@ -143,10 +143,11 @@ test('summarizePlatformIngress classifies WireGuard and ZeroTier interfaces as o
   ]);
 });
 
-test('summarizePlatformIngress does not blanket-classify macOS utun* as trusted overlay', () => {
+test('summarizePlatformIngress excludes macOS peer and tunnel interfaces from LAN candidates', () => {
   const summary = summarizePlatformIngress({
     host: '0.0.0.0',
     port: 8181,
+    platform: 'darwin',
     networkInterfaces: {
       utun3: [
         { address: '100.64.1.1', family: 'IPv4', internal: false },
@@ -154,22 +155,58 @@ test('summarizePlatformIngress does not blanket-classify macOS utun* as trusted 
       utun7: [
         { address: '10.99.0.5', family: 'IPv4', internal: false },
       ],
+      awdl0: [
+        { address: '169.254.20.10', family: 'IPv4', internal: false },
+      ],
+      bridge100: [
+        { address: '192.168.64.1', family: 'IPv4', internal: false },
+      ],
       en0: [
         { address: '192.168.1.25', family: 'IPv4', internal: false },
       ],
     },
   });
 
+  assert.deepEqual(summary.urls.lanUrls, ['http://192.168.1.25:8181']);
   assert.deepEqual(summary.urls.overlayUrls, []);
-  assert.ok(!summary.urls.overlayUrls.some((url) => url.includes('100.64.1.1')));
-  assert.ok(!summary.urls.overlayUrls.some((url) => url.includes('10.99.0.5')));
-  assert.ok(summary.urls.lanUrls.includes('http://192.168.1.25:8181'));
+  assert.ok(summary.notes.some((note) => /virtual adapter IPv4 addresses/u.test(note)));
+});
+
+test('summarizePlatformIngress keeps macOS-only interface exclusions off Linux', () => {
+  const summary = summarizePlatformIngress({
+    host: '0.0.0.0',
+    port: 8181,
+    platform: 'linux',
+    networkInterfaces: {
+      ap0: [
+        { address: '10.20.0.7', family: 'IPv4', internal: false },
+      ],
+      bridge0: [
+        { address: '192.168.64.1', family: 'IPv4', internal: false },
+      ],
+      enp0s3: [
+        { address: '192.168.1.25', family: 'IPv4', internal: false },
+      ],
+    },
+  });
+
+  assert.deepEqual(summary.urls.lanUrls, [
+    'http://10.20.0.7:8181',
+    'http://192.168.1.25:8181',
+    'http://192.168.64.1:8181',
+  ]);
+  assert.deepEqual(summary.urls.overlayUrls, []);
+  assert.equal(
+    summary.notes.some((note) => /virtual adapter IPv4 addresses/u.test(note)),
+    false,
+  );
 });
 
 test('summarizePlatformIngress treats Linux docker bridges and VirtualBox host-only nets as virtual', () => {
   const summary = summarizePlatformIngress({
     host: '0.0.0.0',
     port: 8181,
+    platform: 'linux',
     networkInterfaces: {
       'br-abc123': [
         { address: '172.18.0.1', family: 'IPv4', internal: false },
