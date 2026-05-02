@@ -26,6 +26,7 @@
     "build:server-bundle": "node scripts/bundle-server.mjs",
     "build:mobile": "npm run mobile:install && npm run mobile:export && node scripts/check-mobile-build.mjs",
     "build:mobile:check": "npm run mobile:install && npm run mobile:typecheck && npm run mobile:export && node scripts/check-mobile-build.mjs",
+    "build:no-mobile": "npm run clean:build && node scripts/build-server-artifacts.mjs && npm run build:web && npm run build:host",
     "build:web": "vite build",
     "build:test-ui": "esbuild tests/*.test.tsx --bundle --platform=node --format=esm --outdir=build/test",
     "clean:build": "node scripts/clean-build.mjs",

@@ -941,21 +941,23 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
     sidecarLayout: 'bundle',
   });
 
-  assert.deepEqual(parseBuildDesktopInstallerArgs([]), {
+  assert.deepEqual(parseBuildDesktopInstallerArgs([], {}), {
     help: false,
     target: 'current',
     arch: null,
     format: null,
     sidecarLayout: 'split',
+    skipMobile: false,
   });
   assert.deepEqual(
-    parseBuildDesktopInstallerArgs(['--target', 'linux', '--arch', 'arm64', '--format', 'deb', '--sidecar-layout', 'bundle']),
+    parseBuildDesktopInstallerArgs(['--target', 'linux', '--arch', 'arm64', '--format', 'deb', '--sidecar-layout', 'bundle'], {}),
     {
       help: false,
       target: 'linux',
       arch: 'arm64',
       format: 'deb',
       sidecarLayout: 'bundle',
+      skipMobile: false,
     },
   );
   assert.deepEqual(
@@ -966,6 +968,40 @@ test('desktop packaging scripts keep icon selection outside the build flags', ()
       arch: null,
       format: null,
       sidecarLayout: 'bundle',
+      skipMobile: false,
+    },
+  );
+  assert.deepEqual(
+    parseBuildDesktopInstallerArgs(['--skip-mobile'], {}),
+    {
+      help: false,
+      target: 'current',
+      arch: null,
+      format: null,
+      sidecarLayout: 'split',
+      skipMobile: true,
+    },
+  );
+  assert.deepEqual(
+    parseBuildDesktopInstallerArgs([], { CATS_SKIP_MOBILE: '1' }),
+    {
+      help: false,
+      target: 'current',
+      arch: null,
+      format: null,
+      sidecarLayout: 'split',
+      skipMobile: true,
+    },
+  );
+  assert.deepEqual(
+    parseBuildDesktopInstallerArgs(['--no-skip-mobile'], { CATS_SKIP_MOBILE: 'true' }),
+    {
+      help: false,
+      target: 'current',
+      arch: null,
+      format: null,
+      sidecarLayout: 'split',
+      skipMobile: false,
     },
   );
 });

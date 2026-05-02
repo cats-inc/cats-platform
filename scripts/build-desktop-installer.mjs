@@ -10,6 +10,15 @@ const SCRIPT_PATH = fileURLToPath(import.meta.url);
 const PROJECT_ROOT = resolve(dirname(SCRIPT_PATH), '..');
 const RUNTIME_ROOT = resolve(PROJECT_ROOT, '..', 'cats-runtime');
 const NATIVE_BUILD_ROOT = resolve(PROJECT_ROOT, 'build', 'native');
+const MOBILE_BUILD_ROOT = resolve(PROJECT_ROOT, 'build', 'mobile');
+
+if (typeof process.loadEnvFile === 'function') {
+  try {
+    process.loadEnvFile(resolve(PROJECT_ROOT, '.env'));
+  } catch {
+    // .env is optional; ignore when missing or unreadable.
+  }
+}
 
 function printHelp() {
   process.stdout.write(`Usage: node scripts/build-desktop-installer.mjs [options]
@@ -20,10 +29,20 @@ Options:
   --format <nsis|dmg|pkg|zip|AppImage|deb|tar.gz>
                                          Override the configured installer formats.
   --sidecar-layout <split|bundle>         Choose loose-file or bundled sidecars for both app/runtime.
+  --skip-mobile                           Skip the mobile bundle (\`expo export\`). Also honored via
+                                          CATS_SKIP_MOBILE=1 in the environment or .env.
   --help                                  Show this help text.
 
 Without --arch/--format, the electron-builder target matrix from package.json is preserved.
 `);
+}
+
+function parseSkipMobileFlag(value) {
+  if (typeof value !== 'string') {
+    return false;
+  }
+  const normalized = value.trim().toLowerCase();
+  return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
 }
 
 function resolveSidecarLayout(value) {
@@ -41,11 +60,12 @@ export function parseArgs(argv, env = process.env) {
   let arch = null;
   let format = null;
   let sidecarLayout = resolveSidecarLayout(env.CATS_DESKTOP_SIDECAR_LAYOUT);
+  let skipMobile = parseSkipMobileFlag(env.CATS_SKIP_MOBILE);
 
   for (let index = 0; index < argv.length; index += 1) {
     const value = argv[index];
     if (value === '--help' || value === '-h') {
-      return { help: true, target, arch, format, sidecarLayout };
+      return { help: true, target, arch, format, sidecarLayout, skipMobile };
     }
     if (value === '--target') {
       target = argv[index + 1] ?? 'current';
@@ -67,10 +87,18 @@ export function parseArgs(argv, env = process.env) {
       index += 1;
       continue;
     }
+    if (value === '--skip-mobile') {
+      skipMobile = true;
+      continue;
+    }
+    if (value === '--no-skip-mobile') {
+      skipMobile = false;
+      continue;
+    }
     throw new Error(`Unknown option: ${value}`);
   }
 
-  return { help: false, target, arch, format, sidecarLayout };
+  return { help: false, target, arch, format, sidecarLayout, skipMobile };
 }
 
 async function resolveNodeCliScript(command) {
@@ -161,6 +189,17 @@ async function prepareNativeBuildRoot() {
   await writeFile(
     resolve(NATIVE_BUILD_ROOT, 'README.txt'),
     'Native helper binaries staged for the Cats desktop installer.\n',
+    'utf8',
+  );
+}
+
+async function ensureMobileSkipPlaceholder() {
+  await mkdir(MOBILE_BUILD_ROOT, { recursive: true });
+  await writeFile(
+    resolve(MOBILE_BUILD_ROOT, '.skip-marker'),
+    'Mobile bundle was skipped at build time (CATS_SKIP_MOBILE / --skip-mobile).\n'
+      + 'This artifact does not include an OTA-updatable mobile bundle, so keep\n'
+      + 'CATS_DESKTOP_MOBILE_PAIRING_ENABLED=false for the matching runtime.\n',
     'utf8',
   );
 }
@@ -310,7 +349,16 @@ async function main() {
     CATS_DESKTOP_SIDECAR_LAYOUT: parsed.sidecarLayout,
   };
   await runCommand('npm', ['run', 'build'], RUNTIME_ROOT, sidecarBuildEnv);
-  await runCommand('npm', ['run', 'build'], PROJECT_ROOT, sidecarBuildEnv);
+  const platformBuildScript = parsed.skipMobile ? 'build:no-mobile' : 'build';
+  if (parsed.skipMobile) {
+    process.stdout.write(
+      '[build-desktop-installer] CATS_SKIP_MOBILE active — running build:no-mobile and seeding build/mobile/.skip-marker after build.\n',
+    );
+  }
+  await runCommand('npm', ['run', platformBuildScript], PROJECT_ROOT, sidecarBuildEnv);
+  if (parsed.skipMobile) {
+    await ensureMobileSkipPlaceholder();
+  }
   await buildNativeVoiceHelpers(resolvedTarget, parsed.arch);
   await runCommand(
     'node',
