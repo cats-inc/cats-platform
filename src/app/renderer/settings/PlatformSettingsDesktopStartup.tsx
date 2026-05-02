@@ -235,6 +235,7 @@ export function PlatformSettingsDesktopStartup({
 
   return (
     <>
+      {mobilePairing.enabled ? (
       <SettingsSection
         className="settingsMobilePairing"
         header={(
@@ -251,26 +252,7 @@ export function PlatformSettingsDesktopStartup({
       >
         <div className="settingsMobilePairingGrid">
           <div className="settingsMobilePairingDetails">
-            {!mobilePairing.enabled ? (
-              <SettingsOptionRow
-                label={t('settingsDesktopMobilePairingEnableLabel')}
-                description={t('settingsDesktopMobilePairingEnableDescription')}
-                control={(
-                  <button
-                    type="button"
-                    className="secondaryButton"
-                    disabled={applyingMobilePairingEnv}
-                    onClick={() => void enableMobilePairingEnv()}
-                  >
-                    {applyingMobilePairingEnv
-                      ? t('settingsDesktopMobilePairingApplyingButton')
-                      : t('settingsDesktopMobilePairingEnableButton')}
-                  </button>
-                )}
-              />
-            ) : (
-              <>
-                <dl className="settingsMobilePairingFacts">
+            <dl className="settingsMobilePairingFacts">
                   <div>
                     <dt>{t('settingsDesktopMobilePairingBindLabel')}</dt>
                     <dd>{mobilePairing.bindHost}:{mobilePairing.bindPort}</dd>
@@ -358,8 +340,6 @@ export function PlatformSettingsDesktopStartup({
                   layout="stack"
                 />
                 ) : null}
-              </>
-            )}
           </div>
 
           <div className="settingsMobilePairingQr" data-state={mobilePairing.pairingUrlStatus}>
@@ -374,6 +354,7 @@ export function PlatformSettingsDesktopStartup({
           </div>
         </div>
       </SettingsSection>
+      ) : null}
 
       <SettingsSection
         header={(
