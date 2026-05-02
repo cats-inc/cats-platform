@@ -816,7 +816,7 @@ function publishSnapshot(snapshot: DesktopBootstrapSnapshot): DesktopBootstrapSn
   latestSnapshot = enriched;
   trayController?.updateMenu(
     shuttingDown
-      ? buildDesktopTrayQuittingMenuState()
+      ? buildDesktopTrayQuittingMenuState(app.getLocale())
       : resolveDesktopTrayMenuState(enriched),
   );
   writePersistedHostState(enriched);
@@ -832,6 +832,7 @@ function resolveDesktopTrayMenuState(snapshot: DesktopBootstrapSnapshot) {
     fallbackSetupCompleteAt: latestPersistedSetupState.setupCompleteAt,
     actions: snapshot.actions,
     products: latestAppShellPayload?.products,
+    locale: app.getLocale(),
   });
 }
 
@@ -978,7 +979,7 @@ function buildTrayControllerOptions(): Parameters<typeof createDesktopTrayContro
 
 async function syncTrayController(): Promise<void> {
   if (shuttingDown) {
-    trayController?.updateMenu(buildDesktopTrayQuittingMenuState());
+    trayController?.updateMenu(buildDesktopTrayQuittingMenuState(app.getLocale()));
     return;
   }
 
@@ -1922,7 +1923,7 @@ async function shutdownHost(): Promise<void> {
     try {
       voiceCaptureController?.dispose();
       voiceCaptureController = null;
-      activeTrayController?.updateMenu(buildDesktopTrayQuittingMenuState());
+      activeTrayController?.updateMenu(buildDesktopTrayQuittingMenuState(app.getLocale()));
       const drain = supervisor?.stopAll() ?? Promise.resolve();
       const shutdownWatchdogMs = hostConfig
         ? resolveShutdownWatchdogMs(hostConfig, supervisor?.getManagedServiceCount() ?? 0)

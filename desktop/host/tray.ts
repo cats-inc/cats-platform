@@ -9,7 +9,11 @@ import type {
 import type { DesktopBootstrapPhase, DesktopHostActionId } from './contracts.js';
 import { resolveDesktopTrayInteractionPolicy } from './trayInteractionPolicy.js';
 import { createGuardedTrayLifecycle } from './trayLifecycle.js';
-import type { DesktopTrayMenuState } from './trayMenu.js';
+import {
+  normalizeDesktopTrayLocale,
+  type DesktopTrayLocale,
+  type DesktopTrayMenuState,
+} from './trayMenu.js';
 
 export interface DesktopTrayController {
   showWindow(): void;
@@ -40,14 +44,40 @@ function createBundledTrayImage(name: string): Electron.NativeImage | null {
   return null;
 }
 
-function buildStatusLabel(phase: DesktopBootstrapPhase | undefined, summary: string): string {
+function resolveDesktopTrayLocale(): DesktopTrayLocale {
+  try {
+    return normalizeDesktopTrayLocale(app.getLocale());
+  } catch {
+    return 'en';
+  }
+}
+
+function buildStatusLabel(
+  phase: DesktopBootstrapPhase | undefined,
+  summary: string,
+  locale: DesktopTrayLocale,
+): string {
   if (phase === 'starting_services') {
-    return 'Starting Cats services...';
+    return locale === 'zh-TW'
+      ? '正在啟動 Cats 服務...'
+      : 'Starting Cats services...';
   }
   if (phase === 'checking_prerequisites') {
-    return 'Checking Cats readiness...';
+    return locale === 'zh-TW'
+      ? '正在檢查 Cats 就緒狀態...'
+      : 'Checking Cats readiness...';
   }
   return summary;
+}
+
+function localizeTrayShellLabel(
+  label: 'quit' | 'settings',
+  locale: DesktopTrayLocale,
+): string {
+  if (locale !== 'zh-TW') {
+    return label === 'settings' ? 'Settings' : 'Quit';
+  }
+  return label === 'settings' ? '設定' : '結束';
 }
 
 async function createTrayIcon(): Promise<Electron.NativeImage> {
@@ -98,6 +128,7 @@ function buildDesktopTrayMenuTemplate(
   >,
   showWindow: () => void,
 ): MenuItemConstructorOptions[] {
+  const locale = resolveDesktopTrayLocale();
   if (state.lockedLabel) {
     return [{
       label: state.lockedLabel,
@@ -148,7 +179,7 @@ function buildDesktopTrayMenuTemplate(
   if (state.setupCompleteAt) {
     pushSeparator();
     template.push({
-      label: 'Settings',
+      label: localizeTrayShellLabel('settings', locale),
       click: () => {
         runTrayAction(async () => {
           if (options.canInteract?.() === false) {
@@ -163,14 +194,14 @@ function buildDesktopTrayMenuTemplate(
 
   if (template.length === 0) {
     template.push({
-      label: buildStatusLabel(state.phase, state.summary),
+      label: buildStatusLabel(state.phase, state.summary, locale),
       enabled: false,
     });
   }
 
   pushSeparator();
   template.push({
-    label: 'Quit',
+    label: localizeTrayShellLabel('quit', locale),
     click: () => {
       if (options.canInteract?.() === false) {
         return;

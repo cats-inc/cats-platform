@@ -40,6 +40,8 @@ export interface DesktopTrayMenuState {
   lockedTooltip?: string;
 }
 
+export type DesktopTrayLocale = 'en' | 'zh-TW';
+
 interface BuildDesktopTrayMenuStateOptions {
   phase: DesktopBootstrapPhase;
   summary: string;
@@ -47,6 +49,7 @@ interface BuildDesktopTrayMenuStateOptions {
   fallbackSetupCompleteAt?: string | null;
   actions: ReadonlyArray<Pick<DesktopHostAction, 'id' | 'label' | 'primary'>>;
   products: ReadonlyArray<DesktopTrayProductDescriptor> | null | undefined;
+  locale?: string | null;
 }
 
 const TRAY_PRIMARY_ACTION_IDS = new Set<DesktopHostActionId>([
@@ -74,8 +77,57 @@ function isVisibleTrayProduct(product: DesktopTrayProductDescriptor): boolean {
   return Boolean(product.productName?.trim());
 }
 
-function toTrayProductLabel(productName: string): string {
+export function normalizeDesktopTrayLocale(
+  locale: string | null | undefined,
+): DesktopTrayLocale {
+  const normalized = locale?.replace(/_/gu, '-').toLowerCase() ?? '';
+  return normalized === 'zh-tw'
+    || normalized === 'zh-hant'
+    || normalized.startsWith('zh-tw-')
+    || normalized.startsWith('zh-hant-')
+    ? 'zh-TW'
+    : 'en';
+}
+
+function localizeTrayActionLabel(
+  action: Pick<DesktopHostAction, 'id' | 'label'>,
+  locale: DesktopTrayLocale,
+): string {
+  if (locale !== 'zh-TW') {
+    return action.label;
+  }
+
+  switch (action.id) {
+    case 'open_chat':
+      return '開啟 Cats';
+    case 'open_setup':
+      return '開啟設定';
+    case 'resume_setup':
+      return '繼續封裝設定';
+    case 'retry':
+    case 'retry_cli_scan':
+      return '重試';
+    default:
+      return action.label;
+  }
+}
+
+function toTrayProductLabel(productName: string, locale: DesktopTrayLocale): string {
   const trimmed = productName.trim();
+  if (locale === 'zh-TW') {
+    if (trimmed === 'Cats Chat') {
+      return '開啟聊天';
+    }
+    if (trimmed === 'Cats Work') {
+      return '開啟工作';
+    }
+    if (trimmed === 'Cats Code') {
+      return '開啟程式碼';
+    }
+    return trimmed.startsWith('Cats ')
+      ? `開啟 ${trimmed.slice('Cats '.length)}`
+      : `開啟 ${trimmed}`;
+  }
   return trimmed.startsWith('Cats ')
     ? `Open ${trimmed.slice('Cats '.length)}`
     : `Open ${trimmed}`;
@@ -85,12 +137,13 @@ export function buildDesktopTrayMenuState(
   options: BuildDesktopTrayMenuStateOptions,
 ): DesktopTrayMenuState {
   const effectiveSetupCompleteAt = options.setupCompleteAt ?? options.fallbackSetupCompleteAt ?? null;
+  const locale = normalizeDesktopTrayLocale(options.locale);
   const products = effectiveSetupCompleteAt
     ? (options.products ?? [])
       .filter(isVisibleTrayProduct)
       .map((product) => ({
         id: product.id?.trim() || product.routePrefix!.trim(),
-        label: toTrayProductLabel(product.productName!.trim()),
+        label: toTrayProductLabel(product.productName!.trim(), locale),
         path: product.routePrefix!.trim(),
       }))
     : [];
@@ -99,18 +152,27 @@ export function buildDesktopTrayMenuState(
     phase: options.phase,
     summary: options.summary,
     setupCompleteAt: effectiveSetupCompleteAt,
-    actions: options.actions.filter((action) => TRAY_PRIMARY_ACTION_IDS.has(action.id)),
+    actions: options.actions
+      .filter((action) => TRAY_PRIMARY_ACTION_IDS.has(action.id))
+      .map((action) => ({
+        ...action,
+        label: localizeTrayActionLabel(action, locale),
+      })),
     products,
   };
 }
 
-export function buildDesktopTrayQuittingMenuState(): DesktopTrayMenuState {
+export function buildDesktopTrayQuittingMenuState(
+  localeInput?: string | null,
+): DesktopTrayMenuState {
+  const locale = normalizeDesktopTrayLocale(localeInput);
+  const lockedLabel = locale === 'zh-TW' ? '正在結束...' : 'Quitting...';
   return {
-    summary: 'Quitting...',
+    summary: lockedLabel,
     setupCompleteAt: null,
     actions: [],
     products: [],
-    lockedLabel: 'Quitting...',
-    lockedTooltip: 'Cats — quitting',
+    lockedLabel,
+    lockedTooltip: locale === 'zh-TW' ? 'Cats — 正在結束' : 'Cats — quitting',
   };
 }
