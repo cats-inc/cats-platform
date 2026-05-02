@@ -13,6 +13,7 @@ import {
   SettingsSectionHeader,
   SettingsSubSection,
 } from '../../../design/components/settings/index.js';
+import { resolveRuntimeSetupExternalHref } from '../../../shared/runtimeExternalLinks.js';
 import { ToastContainer, useToast } from '../../../design/components/Toast.js';
 import {
   fetchAdvancedProviderModels,
@@ -56,7 +57,7 @@ export function SettingsAssistants({
   const guideCatName = resolveClientGuideCatName();
   const guideCatEnabled = guideCat ? isGuideCatEnabledStatus(guideCat.status) : false;
   const assistantPresets = payload.assistantPresets ?? [];
-  const runtimeSetupHref = `${payload.runtime.baseUrl.replace(/\/$/, '')}/setup`;
+  const runtimeSetupHref = resolveRuntimeSetupExternalHref(payload.runtime);
 
   const { t } = useI18n();
   const defaultAssistantName = t(messageKeys.settingsAssistantsNamePlaceholder);

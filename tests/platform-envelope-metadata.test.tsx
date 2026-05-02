@@ -31,6 +31,7 @@ test('platform envelope metadata helpers expose stable app, runtime, and respons
     }),
     {
       baseUrl: '/runtime',
+      externalBaseUrl: 'http://localhost:8123',
       reachable: true,
       status: 'ready',
       service: 'runtime-dev',

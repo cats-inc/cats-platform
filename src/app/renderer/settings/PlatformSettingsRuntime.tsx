@@ -20,6 +20,7 @@ import {
   type RuntimeLifecycleHelperSummary,
 } from '../../../shared/desktopRecoveryBridge.js';
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
+import { resolveRuntimeSetupExternalHref } from '../../../shared/runtimeExternalLinks.js';
 import { resolveRuntimePresentationStatus } from '../../../shared/runtimeStatusPresentation.js';
 import {
   deriveHelperActions,
@@ -97,7 +98,7 @@ export function PlatformSettingsRuntime({
   const [runningHelperId, setRunningHelperId] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<UninstallPrompt | null>(null);
   const runtimeChip = resolveRuntimeStatusChip(payload.runtime, payload.runtimeSetup, t);
-  const runtimeSetupHref = `${payload.runtime.baseUrl.replace(/\/$/, '')}/setup`;
+  const runtimeSetupHref = resolveRuntimeSetupExternalHref(payload.runtime);
 
   const actionLabel = (action: RuntimeLifecycleAction): string => {
     switch (action) {

@@ -26,6 +26,7 @@ export function attachPlatformRuntimeRoot(
   return {
     ...runtime,
     baseUrl: PLATFORM_RUNTIME_ROOT_PATH,
+    externalBaseUrl: runtime.externalBaseUrl ?? runtime.baseUrl,
   };
 }
 
