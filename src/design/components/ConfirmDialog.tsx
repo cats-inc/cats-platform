@@ -1,5 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
+import { useI18n } from '../../app/renderer/i18n/useI18n.js';
+import { messageKeys } from '../../shared/i18n/index.js';
+
 export type ConfirmDialogAction = 'confirm' | 'cancel' | 'auxiliary';
 
 export interface ConfirmDialogOptions {
@@ -47,6 +50,7 @@ export function ConfirmDialog({
   dialog: { options: ConfirmDialogOptions } | null;
   onClose: (action: ConfirmDialogAction | boolean) => void;
 }) {
+  const { t } = useI18n();
   const initialFocusRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -82,7 +86,7 @@ export function ConfirmDialog({
             type="button"
             onClick={() => onClose('cancel')}
           >
-            {dialog.options.cancelLabel ?? 'Cancel'}
+            {dialog.options.cancelLabel ?? t(messageKeys.sharedCommonCancel)}
           </button>
           {dialog.options.auxiliaryLabel ? (
             <button
@@ -100,7 +104,7 @@ export function ConfirmDialog({
             type="button"
             onClick={() => onClose('confirm')}
           >
-            {dialog.options.confirmLabel ?? 'Delete'}
+            {dialog.options.confirmLabel ?? t(messageKeys.sharedCommonDelete)}
           </button>
         </div>
       </div>

@@ -1644,6 +1644,7 @@ export const messageKeys = {
   sharedCommonApply: 'shared.common.apply',
   sharedCommonCancel: 'shared.common.cancel',
   sharedCommonClose: 'shared.common.close',
+  sharedCommonDelete: 'shared.common.delete',
   sharedCommonRetry: 'shared.common.retry',
   sharedGuideCatPanelGreeting: 'shared.guideCat.panelGreeting',
   sharedGuideCatWelcomeGreeting: 'shared.guideCat.welcomeGreeting',

@@ -1574,6 +1574,7 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.common.apply': '套用',
   'shared.common.cancel': '取消',
   'shared.common.close': '關閉',
+  'shared.common.delete': '刪除',
   'shared.common.retry': '重試',
   'shared.guideCat.panelGreeting':
     '嗨 {ownerDisplayName}，我是 {guideCatName}，你的導覽貓。可以點這些項目開始，或關閉面板自己探索吧。',

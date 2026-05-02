@@ -1620,6 +1620,7 @@ export const enCatalog: MessageCatalog = {
   'shared.common.apply': 'Apply',
   'shared.common.cancel': 'Cancel',
   'shared.common.close': 'Close',
+  'shared.common.delete': 'Delete',
   'shared.common.retry': 'Retry',
   'shared.guideCat.panelGreeting':
     'Hi {ownerDisplayName}, I\'m {guideCatName} — your guide cat. Pick any of these to get started, or close this panel and explore on your own.',
