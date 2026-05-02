@@ -19,6 +19,7 @@ import {
   isDesktopEnvironment,
   type RuntimeLifecycleHelperSummary,
 } from '../../../shared/desktopRecoveryBridge.js';
+import { PLATFORM_RUNTIME_SETUP_PATH } from '../../../shared/runtimeIngressPaths.js';
 import type { RuntimeSetupSummary } from '../../../shared/runtimeSetup.js';
 import { resolveRuntimePresentationStatus } from '../../../shared/runtimeStatusPresentation.js';
 import {
@@ -97,7 +98,6 @@ export function PlatformSettingsRuntime({
   const [runningHelperId, setRunningHelperId] = useState<string | null>(null);
   const [confirmation, setConfirmation] = useState<UninstallPrompt | null>(null);
   const runtimeChip = resolveRuntimeStatusChip(payload.runtime, payload.runtimeSetup, t);
-  const runtimeSetupHref = `${payload.runtime.baseUrl.replace(/\/$/, '')}/setup`;
 
   const actionLabel = (action: RuntimeLifecycleAction): string => {
     switch (action) {
@@ -352,7 +352,7 @@ export function PlatformSettingsRuntime({
       >
         <a
           className="secondaryButton settingsInlineLink"
-          href={runtimeSetupHref}
+          href={PLATFORM_RUNTIME_SETUP_PATH}
           target="_blank"
           rel="noreferrer"
         >
