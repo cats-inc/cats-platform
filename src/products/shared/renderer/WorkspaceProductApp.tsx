@@ -111,6 +111,7 @@ import {
 } from "../../../shared/runtimeSessionPolicy.js";
 import { messageKeys } from "../../../shared/i18n/messageKeys.js";
 import { useI18n } from "../../../app/renderer/i18n/index.js";
+import { resolvePlatformProductDisplayNameById } from "../../../app/renderer/platformProductCopy.js";
 import {
   buildFolderBrowserContentProps,
   resolveVisibleChatChannel,
@@ -1404,10 +1405,13 @@ export function createWorkspaceProductApp({
         setFeedback,
       });
 
-    useProductChannelDocumentTitle(
+    const localizedProductName = resolvePlatformProductDisplayNameById(
+      shellSurface,
       `Cats ${productName}`,
-      routeChannelTitle,
+      t,
     );
+
+    useProductChannelDocumentTitle(localizedProductName, routeChannelTitle);
 
     useEffect(() => {
       setBrowserLiveTraceEnabled(readyPayload?.chat.capabilities.debugLiveTrace === true);

@@ -81,11 +81,22 @@ export function resolvePlatformProductSubtitleById(
   return copyKeys ? t(copyKeys.subtitleKey) : fallbackSubtitle;
 }
 
+export function resolvePlatformProductShortLabelById(
+  productId: PlatformProductDescriptor['id'] | PlatformSurfaceId,
+  fallbackLabel: string,
+  t: PlatformProductCopyTranslator = defaultPlatformProductCopyTranslator,
+): string {
+  const copyKeys = resolvePlatformProductCopyKeys(productId);
+  return copyKeys ? t(copyKeys.settingsLabelKey) : fallbackLabel;
+}
+
 export function resolvePlatformProductSettingsLabel(
   productId: PlatformProductDescriptor['id'],
   entry: PlatformProductSettingsDescriptor,
   t: PlatformProductCopyTranslator = defaultPlatformProductCopyTranslator,
 ): string {
   const copyKeys = resolvePlatformProductCopyKeys(productId);
-  return copyKeys && entry.id === productId ? t(copyKeys.settingsLabelKey) : entry.label;
+  return entry.id === productId
+    ? resolvePlatformProductShortLabelById(productId, entry.label, t)
+    : entry.label;
 }

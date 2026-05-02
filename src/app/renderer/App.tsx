@@ -19,6 +19,7 @@ import {
   platformSurfaceLabel,
   platformSurfaceRoutePrefix,
 } from '../../core/platformSurface.js';
+import { resolvePlatformProductShortLabelById } from './platformProductCopy.js';
 import { I18nProvider } from './i18n/I18nProvider.js';
 import {
   createTranslator,
@@ -123,7 +124,11 @@ function ProductSurfaceFallback({
   translate: (key: MessageKey, values?: MessageInterpolationValues) => string;
   onVisibilityChange: (visible: boolean) => void;
 }) {
-  const surfaceLabel = platformSurfaceLabel(surface);
+  const surfaceLabel = resolvePlatformProductShortLabelById(
+    surface,
+    platformSurfaceLabel(surface),
+    translate,
+  );
 
   useEffect(() => {
     onVisibilityChange(true);
