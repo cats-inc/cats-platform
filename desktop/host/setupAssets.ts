@@ -205,6 +205,29 @@ function createUnixSetupSupportAssets(platform: UnixAssetPlatform): DesktopSetup
 
 export const DESKTOP_SETUP_ASSETS: DesktopSetupAsset[] = [
   {
+    id: 'windows-cli-readiness-helper-script',
+    helperId: 'windows-cli-readiness-helper',
+    label: 'Windows PowerShell + PATH readiness helper',
+    kind: 'prerequisite_helper',
+    pack: 'native_cli_pack',
+    platform: 'windows',
+    sourceRelativePath: 'scripts/windows/Setup-CliReadiness.ps1',
+    stageRelativePath: 'shared/setup-assets/windows/Setup-CliReadiness.ps1',
+    packagedRelativePath: 'desktop/setup-assets/windows/Setup-CliReadiness.ps1',
+    targetPlatforms: ['windows'],
+    supportsCheckOnly: true,
+    supportsApply: true,
+    supportsUpgrade: false,
+    supportsForce: false,
+    supportsUninstall: false,
+    requiresElevation: false,
+    resumable: true,
+    notes: [
+      'Sets the CurrentUser PowerShell ExecutionPolicy to RemoteSigned and adds known per-user CLI install directories (~/.local/bin, %LOCALAPPDATA%/Kiro-Cli, %LOCALAPPDATA%/cursor-agent) to the user PATH so launches like `claude auth login` succeed in a fresh terminal.',
+      'Idempotent and user-scoped: never touches Machine PATH or Machine policy. Only appends PATH entries for directories that already exist on disk.',
+    ],
+  },
+  {
     id: 'windows-node-host-installer-script',
     helperId: 'windows-node-host-installer',
     label: 'Windows Node.js LTS host installer',

@@ -119,6 +119,7 @@ async function seedWindowsSetupAssets(packageRoot) {
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Node.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-GitHubCli.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Setup-NodeGlobalPrefix.ps1'), '# helper');
+  await seedFile(join(packageRoot, 'scripts', 'windows', 'Setup-CliReadiness.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-ClaudeCode.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-CursorAgent.ps1'), '# helper');
   await seedFile(join(packageRoot, 'scripts', 'windows', 'Install-Goose.ps1'), '# helper');
