@@ -97,7 +97,6 @@ export interface RuntimeHealthPayload {
 
 export interface RuntimeStatusSummary {
   baseUrl: string;
-  externalBaseUrl?: string;
   reachable: boolean;
   status: string;
   service?: string;

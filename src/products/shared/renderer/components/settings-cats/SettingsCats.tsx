@@ -11,7 +11,6 @@ import {
   SettingsSectionHeader,
   SettingsSubSection,
 } from '../../../../../design/components/settings/index.js';
-import { resolveRuntimeSetupExternalHref } from '../../../../../shared/runtimeExternalLinks.js';
 import { isCatBusy, type WorkspaceBusyState } from '../../../../../shared/workspaceBusy.js';
 import {
   fetchAdvancedProviderModels,
@@ -112,7 +111,7 @@ export function SettingsCatsCanvas({
   const navigate = useNavigate();
   const isCreateRoute = location.pathname.endsWith('/cats/new');
   const { t } = useI18n();
-  const runtimeSetupHref = resolveRuntimeSetupExternalHref(payload.runtime);
+  const runtimeSetupHref = `${payload.runtime.baseUrl.replace(/\/$/, '')}/setup`;
 
   useEffect(() => {
     // Clear any residual parent feedback once on entry so stale messages from other screens do not leak through.

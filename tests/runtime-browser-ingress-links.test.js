@@ -40,13 +40,13 @@ test('settings runtime setup link opens the runtime origin while setup recovery 
     ),
   ]);
 
-  assert.match(settingsSource, /resolveRuntimeSetupExternalHref\(payload\.runtime\)/u);
+  assert.match(settingsSource, /payload\.runtime\.baseUrl\.replace/u);
   assert.doesNotMatch(settingsSource, /href=\{PLATFORM_RUNTIME_SETUP_PATH\}/u);
 
-  assert.match(assistantsSource, /resolveRuntimeSetupExternalHref\(payload\.runtime\)/u);
+  assert.match(assistantsSource, /payload\.runtime\.baseUrl\.replace/u);
   assert.match(assistantsSource, /providerRegistrySetupHrefOverride=\{runtimeSetupHref\}/u);
 
-  assert.match(catsSource, /resolveRuntimeSetupExternalHref\(payload\.runtime\)/u);
+  assert.match(catsSource, /payload\.runtime\.baseUrl\.replace/u);
   assert.match(catsSource, /providerRegistrySetupHrefOverride=\{runtimeSetupHref\}/u);
 
   assert.match(providerFieldsSource, /effectiveProviderRegistrySetupHref/u);
