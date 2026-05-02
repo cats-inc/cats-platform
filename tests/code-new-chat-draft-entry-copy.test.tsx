@@ -3,6 +3,7 @@ import test from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
 
+import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
 import type { AppShellPayload } from '../src/products/code/api/contracts.ts';
 import {
   buildCodeNewChatDraftSidePanelSections,
@@ -78,6 +79,8 @@ function createProps(overrides: Partial<NewChatDraftProps> = {}): NewChatDraftPr
     onRemoveDraftTemporaryParticipant: () => {},
     onUpdateDraftTemporaryParticipant: () => {},
     autoResize: () => {},
+    draftSurface: 'code',
+    onDraftSurfaceChange: () => {},
     draftDefaultRecipientCatId: null,
     onDraftDefaultRecipientChange: () => {},
     draftHighlightedCatId: null,
@@ -357,6 +360,27 @@ test('new code default draft prefers payload-backed assist greeting and shows up
   assert.doesNotMatch(markup, /class="draftHeaderAccessory"/u);
 });
 
+test('new code helper chips localize in zh-TW', () => {
+  const markup = renderToStaticMarkup(
+    <I18nProvider locale="zh-TW">
+      <NewChatDraft
+        {...createProps({
+          greeting: 'Legacy code greeting.',
+          payload: createCodeAssistPayload(),
+        })}
+      />
+    </I18nProvider>,
+  );
+
+  assert.match(markup, />建置番茄鐘應用程式</u);
+  assert.match(markup, />修復錯誤</u);
+  assert.match(markup, />重構程式碼</u);
+  assert.match(markup, />撰寫測試</u);
+  assert.match(markup, />開始專案</u);
+  assert.doesNotMatch(markup, />Build a pomodoro app</u);
+  assert.doesNotMatch(markup, />Start a project</u);
+});
+
 test('new code helper chips stay visible while the user types manually', () => {
   const assistPayload = createCodeAssistPayload();
   const assistReadModel = assistPayload.guideCatAssist?.codeNewDraft;
@@ -541,7 +565,7 @@ test('advanced draft controls expose collaborator and compare buttons on the def
 
   const addButtonMatches = markup.match(/class="parallelAddButton"/gu) ?? [];
 
-  assert.equal(addButtonMatches.length, 2);
+  assert.equal(addButtonMatches.length, 1);
   assert.match(markup, /aria-label="Add another model to collaborate"/u);
   assert.match(markup, /aria-label="Add parallel chat"/u);
   assert.doesNotMatch(markup, /Add another model to compare/u);

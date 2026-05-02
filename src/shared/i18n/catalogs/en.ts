@@ -1972,6 +1972,19 @@ export const enCatalog: MessageCatalog = {
   'code.newDraft.workspace.sandbox': 'Sandbox',
   'code.newDraft.permission.readOnly': 'Read only',
   'code.newDraft.permission.fullAccess': 'Full access',
+  'code.newDraft.starter.pomodoro.label': 'Build a pomodoro app',
+  'code.newDraft.starter.pomodoro.prompt': 'Write a small pomodoro timer app.',
+  'code.newDraft.starter.fixBug.label': 'Fix a bug',
+  'code.newDraft.starter.fixBug.prompt': 'Find and fix a bug in this codebase.',
+  'code.newDraft.starter.refactor.label': 'Refactor code',
+  'code.newDraft.starter.refactor.prompt':
+    'Refactor this code without changing behavior.',
+  'code.newDraft.starter.writeTests.label': 'Write tests',
+  'code.newDraft.starter.writeTests.prompt':
+    'Add tests for the code we last touched.',
+  'code.newDraft.starter.startProject.label': 'Start a project',
+  'code.newDraft.starter.startProject.prompt':
+    'Start a small project to track milestones.',
   'code.taskPills.ariaLabel': 'Task reminders',
   'code.taskPills.mock.authMiddleware': 'Refactor auth middleware',
   'code.taskPills.mock.kiroSessionDelete': 'Fix Kiro session delete',

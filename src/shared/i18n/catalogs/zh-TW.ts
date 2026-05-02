@@ -1924,6 +1924,19 @@ export const zhTWCatalog: MessageCatalog = {
   'code.newDraft.workspace.sandbox': '沙盒',
   'code.newDraft.permission.readOnly': '唯讀',
   'code.newDraft.permission.fullAccess': '完整存取',
+  'code.newDraft.starter.pomodoro.label': '建置番茄鐘應用程式',
+  'code.newDraft.starter.pomodoro.prompt': '寫一個小型番茄鐘計時器應用程式。',
+  'code.newDraft.starter.fixBug.label': '修復錯誤',
+  'code.newDraft.starter.fixBug.prompt': '找出並修復這個程式碼庫中的錯誤。',
+  'code.newDraft.starter.refactor.label': '重構程式碼',
+  'code.newDraft.starter.refactor.prompt':
+    '在不改變行為的前提下重構這段程式碼。',
+  'code.newDraft.starter.writeTests.label': '撰寫測試',
+  'code.newDraft.starter.writeTests.prompt':
+    '為我們上次碰過的程式碼新增測試。',
+  'code.newDraft.starter.startProject.label': '開始專案',
+  'code.newDraft.starter.startProject.prompt':
+    '開始一個小專案來追蹤里程碑。',
   'code.taskPills.ariaLabel': '任務提醒',
   'code.taskPills.mock.authMiddleware': '重構驗證中介層',
   'code.taskPills.mock.kiroSessionDelete': '修復 Kiro 工作階段刪除',

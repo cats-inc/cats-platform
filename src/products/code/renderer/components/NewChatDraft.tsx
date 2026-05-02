@@ -181,6 +181,7 @@ export function buildCodeNewChatDraftSidePanelSections(
   const draftCopy = buildNewCodeDraftCopy(t);
   const sections = buildChatNewChatDraftSidePanelSections({
     ...input,
+    t,
     sidePanelCopy: buildNewCodeChatDraftSidePanelCopy(draftCopy),
   });
   const sessionProfileSection = buildCodeNewChatDraftSessionProfileSection(input, t);
@@ -218,7 +219,39 @@ export function resolveCodeNewChatDraftSurfaceKind(input: {
 // chips. Bump if the chip strip ever exceeds five.
 const CODE_HELPER_CHIP_LIMIT = 5;
 
-function resolveCodeDraftHelperChips(props: NewChatDraftProps): Array<{
+const CODE_HELPER_CHIP_COPY_BY_ID: Record<
+  string,
+  {
+    labelKey: MessageKey;
+    promptKey: MessageKey;
+  }
+> = {
+  'code-pomodoro': {
+    labelKey: messageKeys.codeNewDraftStarterPomodoroLabel,
+    promptKey: messageKeys.codeNewDraftStarterPomodoroPrompt,
+  },
+  'code-fix-bug': {
+    labelKey: messageKeys.codeNewDraftStarterFixBugLabel,
+    promptKey: messageKeys.codeNewDraftStarterFixBugPrompt,
+  },
+  'code-refactor': {
+    labelKey: messageKeys.codeNewDraftStarterRefactorLabel,
+    promptKey: messageKeys.codeNewDraftStarterRefactorPrompt,
+  },
+  'code-write-tests': {
+    labelKey: messageKeys.codeNewDraftStarterWriteTestsLabel,
+    promptKey: messageKeys.codeNewDraftStarterWriteTestsPrompt,
+  },
+  'cross:work:start-project': {
+    labelKey: messageKeys.codeNewDraftStarterStartProjectLabel,
+    promptKey: messageKeys.codeNewDraftStarterStartProjectPrompt,
+  },
+};
+
+function resolveCodeDraftHelperChips(
+  props: NewChatDraftProps,
+  t?: CodeDraftTranslate,
+): Array<{
   id: string;
   label: string;
   prompt: string;
@@ -226,11 +259,14 @@ function resolveCodeDraftHelperChips(props: NewChatDraftProps): Array<{
   return (props.payload.guideCatAssist?.codeNewDraft?.bundle.content.entryChips ?? [])
     .filter((chip) => chip.prompt.trim().length > 0)
     .slice(0, CODE_HELPER_CHIP_LIMIT)
-    .map((chip) => ({
-      id: chip.id,
-      label: chip.label?.trim() || chip.prompt,
-      prompt: chip.prompt,
-    }));
+    .map((chip) => {
+      const localizedCopy = t ? CODE_HELPER_CHIP_COPY_BY_ID[chip.id] : null;
+      return {
+        id: chip.id,
+        label: localizedCopy ? t(localizedCopy.labelKey) : chip.label?.trim() || chip.prompt,
+        prompt: localizedCopy ? t(localizedCopy.promptKey) : chip.prompt,
+      };
+    });
 }
 
 // Chip IDs prefixed with `cross:work:` (or `cross:chat:`) hand off to the
@@ -394,7 +430,7 @@ function buildWorkspaceDraftProps(input: {
 function CodeDirectLaneDraft(props: NewChatDraftProps) {
   const { t } = useI18n();
   const draftCopy = buildNewCodeDraftCopy(t);
-  const helperChips = resolveCodeDraftHelperChips(props);
+  const helperChips = resolveCodeDraftHelperChips(props, t);
   const { permissionChip, whereExtras } = useDraftSessionChips({
     draftCwd: props.draftCwd,
     busy: props.busy,
@@ -432,7 +468,7 @@ function CodeChatDraft(props: NewChatDraftProps) {
     props.payload.chat.advancedDraftControls,
     'code',
   );
-  const helperChips = resolveCodeDraftHelperChips(props);
+  const helperChips = resolveCodeDraftHelperChips(props, t);
   const { permissionChip, whereExtras } = useDraftSessionChips({
     draftCwd: props.draftCwd,
     busy: props.busy,
