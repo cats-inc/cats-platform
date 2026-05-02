@@ -5,6 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server.browser';
 import { StaticRouter } from 'react-router-dom';
 
 import { GuideCatPlacementProvider } from '../src/app/renderer/GuideCatPlacementProvider.tsx';
+import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
 import { PlatformLobby } from '../src/app/renderer/PlatformLobby.tsx';
 import type { PlatformHostEnvelope } from '../src/shared/platform-contract.ts';
 import {
@@ -124,6 +125,30 @@ test('PlatformLobby renders the split-click account chrome in the top bar', () =
   assert.doesNotMatch(markup, /aria-haspopup/u);
   assert.doesNotMatch(markup, /aria-expanded/u);
   assert.doesNotMatch(markup, />Settings</u);
+});
+
+test('PlatformLobby localizes runtime status chrome', () => {
+  const markup = renderToStaticMarkup(
+    <I18nProvider locale="zh-TW" languagePreference="zh-TW">
+      <StaticRouter location="/lobby">
+        <GuideCatPlacementProvider
+          guideCat={null}
+          placement="floating"
+          floatingAnchor={null}
+          sidecarMode="auto"
+          onPersistSeen={() => {}}
+          onCommit={() => {}}
+        >
+          <PlatformLobby envelope={createEnvelope()} />
+        </GuideCatPlacementProvider>
+      </StaticRouter>
+    </I18nProvider>,
+  );
+
+  assert.match(
+    markup,
+    /<button[^>]+class="lobbyIdentityRuntime"[^>]+aria-label="執行階段狀態：Cats Runtime 已連線"/u,
+  );
 });
 
 test('PlatformLobby reuses remembered runtime-backed labels for lobby cat tooltips', () => {

@@ -86,7 +86,7 @@ export function PlatformLobby({
   const greeting = envelope.lobby.guideCatAssist?.bundle.content.greeting?.trim() || fallbackGreeting;
   const runtimeStatus = resolveRuntimePresentationStatus(envelope.runtime);
   const dotClass = resolveRuntimeLobbyDotClassName(runtimeStatus);
-  const runtimeTooltip = resolveRuntimeTooltip(runtimeStatus);
+  const runtimeTooltip = resolveRuntimeTooltip(runtimeStatus, t);
   const runtimeStatusLabel = t('lobbyRuntimeStatusLabel', { runtimeStatus: runtimeTooltip });
 
   const avatarStyle = envelope.ownerAvatarUrl

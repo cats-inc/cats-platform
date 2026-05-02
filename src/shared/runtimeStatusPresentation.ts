@@ -10,8 +10,10 @@ import {
   PLATFORM_RUNTIME_ROOT_PATH,
   PLATFORM_RUNTIME_SETUP_PATH,
 } from './runtimeIngressPaths.js';
+import type { MessageKey } from './i18n/messageKeys.js';
 
 export type RuntimePresentationStatus = 'ready' | 'degraded' | 'unavailable' | 'unknown';
+export type RuntimeTooltipTranslator = (key: MessageKey) => string;
 
 export interface RuntimePresentationInput {
   reachable?: boolean;
@@ -40,15 +42,29 @@ export function resolveRuntimePresentationStatus(
   return runtime.reachable ? 'ready' : 'unknown';
 }
 
+export function resolveRuntimeTooltipKey(
+  status: RuntimePresentationStatus,
+): MessageKey {
+  switch (status) {
+    case 'ready': return 'sharedRuntimeStatusTooltipReady';
+    case 'degraded': return 'sharedRuntimeStatusTooltipDegraded';
+    case 'unavailable': return 'sharedRuntimeStatusTooltipUnavailable';
+    default: return 'sharedRuntimeStatusTooltipUnknown';
+  }
+}
+
+const DEFAULT_RUNTIME_TOOLTIP_COPY: Record<RuntimePresentationStatus, string> = {
+  ready: 'Cats Runtime is connected',
+  degraded: 'Cats Runtime is starting up',
+  unavailable: 'Cats Runtime is offline',
+  unknown: 'Checking Cats Runtime status\u2026',
+};
+
 export function resolveRuntimeTooltip(
   status: RuntimePresentationStatus,
+  t?: RuntimeTooltipTranslator,
 ): string {
-  switch (status) {
-    case 'ready': return 'Cats Runtime is connected';
-    case 'degraded': return 'Cats Runtime is starting up';
-    case 'unavailable': return 'Cats Runtime is offline';
-    default: return 'Checking Cats Runtime status\u2026';
-  }
+  return t ? t(resolveRuntimeTooltipKey(status)) : DEFAULT_RUNTIME_TOOLTIP_COPY[status];
 }
 
 // -- Sidebar runtime-status dot (product sidebars) --

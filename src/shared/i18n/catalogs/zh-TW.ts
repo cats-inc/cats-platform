@@ -43,6 +43,10 @@ export const zhTWCatalog: MessageCatalog = {
   'lobby.greeting.openSurface': '開啟適合這項任務的產品。',
   'lobby.greeting.awake': 'Cats Inc 已就緒。',
   'lobby.greeting.continue': '回到最適合推進工作的地方。',
+  'shared.runtimeStatus.tooltip.ready': 'Cats Runtime 已連線',
+  'shared.runtimeStatus.tooltip.degraded': 'Cats Runtime 正在啟動',
+  'shared.runtimeStatus.tooltip.unavailable': 'Cats Runtime 離線',
+  'shared.runtimeStatus.tooltip.unknown': '正在檢查 Cats Runtime 狀態…',
   'settings.general.profileTitle': '個人檔案',
   'settings.general.profileDescription':
     '這是跨 Chat、Code、Work、Lobby 的平台統一個人檔案。',

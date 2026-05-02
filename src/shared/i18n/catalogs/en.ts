@@ -43,6 +43,10 @@ export const enCatalog: MessageCatalog = {
   'lobby.greeting.openSurface': 'Open the surface that fits the task.',
   'lobby.greeting.awake': 'Cats Inc is awake.',
   'lobby.greeting.continue': 'Continue where the work makes sense.',
+  'shared.runtimeStatus.tooltip.ready': 'Cats Runtime is connected',
+  'shared.runtimeStatus.tooltip.degraded': 'Cats Runtime is starting up',
+  'shared.runtimeStatus.tooltip.unavailable': 'Cats Runtime is offline',
+  'shared.runtimeStatus.tooltip.unknown': 'Checking Cats Runtime status…',
   'settings.general.profileTitle': 'Profile',
   'settings.general.profileDescription':
     'This is your platform-wide profile across Chat, Code, Work, and Lobby.',

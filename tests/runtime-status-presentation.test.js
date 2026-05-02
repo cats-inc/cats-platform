@@ -10,6 +10,7 @@ import {
   resolveRuntimeRecoveryTarget,
   resolveRuntimeRecoveryUrl,
 } from '../build/server/shared/runtimeStatusPresentation.js';
+import { createTranslator } from '../build/server/shared/i18n/index.js';
 
 describe('resolveRuntimePresentationStatus', () => {
   it('returns unknown when runtime is null', () => {
@@ -128,6 +129,15 @@ describe('resolveRuntimeTooltip', () => {
 
   it('returns checking copy for unknown', () => {
     assert.match(resolveRuntimeTooltip('unknown'), /Checking/);
+  });
+
+  it('localizes copy when a translator is provided', () => {
+    const zh = createTranslator('zh-TW');
+
+    assert.equal(resolveRuntimeTooltip('ready', zh), 'Cats Runtime 已連線');
+    assert.equal(resolveRuntimeTooltip('degraded', zh), 'Cats Runtime 正在啟動');
+    assert.equal(resolveRuntimeTooltip('unavailable', zh), 'Cats Runtime 離線');
+    assert.equal(resolveRuntimeTooltip('unknown', zh), '正在檢查 Cats Runtime 狀態…');
   });
 });
 

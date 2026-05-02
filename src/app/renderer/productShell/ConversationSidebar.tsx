@@ -227,6 +227,7 @@ export function ConversationSidebar<
   activeMyCatId,
   onDirectChatCat,
 }: ConversationSidebarProps<TCat, TChannel, TPayload, TDot>) {
+  const { t } = useI18n();
   const currentPath = globalThis.location?.pathname ?? '/';
   const {
     activeSurface,
@@ -243,8 +244,8 @@ export function ConversationSidebar<
     recentEntries,
     shellSurface,
     currentPath,
+    t,
   });
-  const { t } = useI18n();
   const resolvedMyCatsSectionLabel = myCatsSectionLabel
     ?? t(messageKeys.conversationSidebarMyCatsLabel);
   const resolvedMyCatsSectionCats = myCatsSectionCats ?? visibleCats;

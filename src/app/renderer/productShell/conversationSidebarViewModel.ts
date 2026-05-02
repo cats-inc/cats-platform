@@ -4,6 +4,7 @@ import { normalizePlatformSurface } from '../../../shared/platformSurfaces.js';
 import {
   resolveRuntimePresentationStatus,
   resolveRuntimeTooltip,
+  type RuntimeTooltipTranslator,
 } from '../../../shared/runtimeStatusPresentation.js';
 
 interface ConversationSidebarCat {
@@ -138,8 +139,9 @@ export function buildConversationSidebarViewModel<
   recentEntries?: readonly ConversationSidebarRecentEntry<TChannel>[];
   shellSurface?: PlatformSurfaceId;
   currentPath: string;
+  t?: RuntimeTooltipTranslator;
 }) {
-  const { payload, helpers, recentEntries, currentPath } = input;
+  const { payload, helpers, recentEntries, currentPath, t } = input;
   const activeSurface = input.shellSurface ?? resolvePlatformSurfaceFromPath(currentPath);
   const visibleCats = payload.chat.cats.filter((cat) => helpers.isVisibleCat(cat));
   const resolvedRuntime = payload.runtime ?? {
@@ -173,6 +175,6 @@ export function buildConversationSidebarViewModel<
     telegramBoundCatIds,
     resolvedRecentEntries,
     runtimeFooterStatus,
-    runtimeFooterLabel: resolveRuntimeTooltip(runtimeFooterStatus),
+    runtimeFooterLabel: resolveRuntimeTooltip(runtimeFooterStatus, t),
   };
 }

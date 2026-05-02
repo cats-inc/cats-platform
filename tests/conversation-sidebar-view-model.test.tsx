@@ -4,6 +4,7 @@ import test from 'node:test';
 import {
   buildConversationSidebarViewModel,
 } from '../src/app/renderer/productShell/conversationSidebarViewModel.ts';
+import { createTranslator } from '../src/shared/i18n/index.ts';
 
 test('shared sidebar view model filters grouped recents by active product surface', () => {
   const workChannel = {
@@ -77,4 +78,30 @@ test('shared sidebar view model filters grouped recents by active product surfac
       entry.kind === 'group' ? entry.title : entry.channel.title),
     ['Work compare'],
   );
+});
+
+test('shared sidebar view model localizes runtime footer copy when given a translator', () => {
+  const viewModel = buildConversationSidebarViewModel({
+    payload: {
+      runtime: {
+        baseUrl: 'http://localhost:8484',
+        reachable: true,
+        status: 'degraded',
+      },
+      chat: {
+        cats: [],
+        channels: [],
+        botBindings: [],
+      },
+    },
+    helpers: {
+      isVisibleCat: () => true,
+      isDirectLaneSummary: () => false,
+    },
+    shellSurface: 'chat',
+    currentPath: '/chat',
+    t: createTranslator('zh-TW'),
+  });
+
+  assert.equal(viewModel.runtimeFooterLabel, 'Cats Runtime 正在啟動');
 });
