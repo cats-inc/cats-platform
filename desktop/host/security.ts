@@ -8,6 +8,11 @@ interface ValidateDesktopUrlOptions {
   allowedHosts?: Iterable<string> | null;
 }
 
+interface ResolveDesktopInAppUrlOptions {
+  appBaseUrl: string;
+  allowedHosts?: Iterable<string> | null;
+}
+
 const DESKTOP_HOST_ACTION_ID_SET = new Set<string>(DESKTOP_HOST_ACTION_IDS);
 const HOSTNAME_PATTERN = /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)(?:\.(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?))*$/iu;
 const BRACKETED_IPV6_PATTERN = /^\[[0-9a-f:.]+\]$/iu;
@@ -87,6 +92,28 @@ export function validateDesktopUrl(
     }
   }
   return url.toString();
+}
+
+export function resolveDesktopInAppNavigationUrl(
+  rawValue: string,
+  options: ResolveDesktopInAppUrlOptions,
+): string | null {
+  try {
+    const allowedHosts = options.allowedHosts ?? null;
+    const appUrl = new URL(validateDesktopUrl(options.appBaseUrl, {
+      allowedHosts,
+    }));
+    const nextUrl = new URL(rawValue, appUrl);
+    const validatedUrl = new URL(validateDesktopUrl(nextUrl.toString(), {
+      allowedHosts,
+    }));
+    if (validatedUrl.origin !== appUrl.origin) {
+      return null;
+    }
+    return validatedUrl.toString();
+  } catch {
+    return null;
+  }
 }
 
 export function parseDesktopAllowedHosts(rawValue: string | undefined): string[] {
