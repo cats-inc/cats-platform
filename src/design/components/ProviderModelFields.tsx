@@ -83,6 +83,7 @@ interface SharedProviderModelFieldsProps {
     instance?: string | null,
   ) => Promise<ProviderAdvancedModelCatalog>;
   onProviderRegistryChange?: (registry: ProductProviderRegistryReadModel) => void;
+  providerRegistrySetupHrefOverride?: string | null;
   /** When true, the inline Retry button under the Provider dropdown is hidden
    * so callers can surface it elsewhere (e.g. in the Brain subcard header). */
   hideInlineRetry?: boolean;
@@ -101,6 +102,7 @@ export function ProviderModelFields({
   fetchProviderModels,
   fetchAdvancedProviderModels,
   onProviderRegistryChange,
+  providerRegistrySetupHrefOverride,
   hideInlineRetry = false,
   onRegistryRecoveryChange,
 }: SharedProviderModelFieldsProps) {
@@ -191,13 +193,15 @@ export function ProviderModelFields({
     effectiveAdvancedCatalog,
     isLegacyModelTarget,
   });
+  const effectiveProviderRegistrySetupHref =
+    providerRegistrySetupHrefOverride ?? providerRegistrySetupHref;
 
   useProviderRegistryAutoRecheck({
     providersLoaded,
     providerCount: providerOptions.length,
     registryState: providerRegistry.state,
     retryable: providerRegistry.recovery?.retryable !== false,
-    providerRegistrySetupHref,
+    providerRegistrySetupHref: effectiveProviderRegistrySetupHref,
     lastAutoProviderRegistryRecheckAt,
     reloadProviderRegistry,
   });
@@ -219,9 +223,9 @@ export function ProviderModelFields({
     onRegistryRecoveryChangeRef.current?.({
       canRetry: canRetryProviderRegistry,
       retry: stableForceReload,
-      setupHref: providerRegistrySetupHref,
+      setupHref: effectiveProviderRegistrySetupHref,
     });
-  }, [canRetryProviderRegistry, providerRegistrySetupHref, stableForceReload]);
+  }, [canRetryProviderRegistry, effectiveProviderRegistrySetupHref, stableForceReload]);
   useEffect(() => () => {
     onRegistryRecoveryChangeRef.current?.(null);
   }, []);
@@ -325,7 +329,7 @@ export function ProviderModelFields({
           <ProviderRegistryRecovery
             providerRegistryHint={providerRegistryHint}
             canRetryProviderRegistry={canRetryProviderRegistry}
-            providerRegistrySetupHref={providerRegistrySetupHref}
+            providerRegistrySetupHref={effectiveProviderRegistrySetupHref}
             forceReloadProviderRegistry={forceReloadProviderRegistry}
             hideRetry={hideInlineRetry}
           />

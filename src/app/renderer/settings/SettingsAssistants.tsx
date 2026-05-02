@@ -56,6 +56,7 @@ export function SettingsAssistants({
   const guideCatName = resolveClientGuideCatName();
   const guideCatEnabled = guideCat ? isGuideCatEnabledStatus(guideCat.status) : false;
   const assistantPresets = payload.assistantPresets ?? [];
+  const runtimeSetupHref = `${payload.runtime.baseUrl.replace(/\/$/, '')}/setup`;
 
   const { t } = useI18n();
   const defaultAssistantName = t(messageKeys.settingsAssistantsNamePlaceholder);
@@ -439,6 +440,7 @@ export function SettingsAssistants({
                 instance={guideCat?.executionTarget.instance ?? ''}
                 model={guideCat?.executionTarget.model ?? ''}
                 modelSelection={guideCat?.modelSelection ?? null}
+                providerRegistrySetupHrefOverride={runtimeSetupHref}
                 onTargetChange={(target) => {
                   void commitGuideCat({
                     provider: target.provider,
@@ -604,6 +606,7 @@ export function SettingsAssistants({
                   instance={createDraft.instance}
                   model={createDraft.model}
                   modelSelection={createDraft.modelSelection}
+                  providerRegistrySetupHrefOverride={runtimeSetupHref}
                   onTargetChange={(target) =>
                     setCreateDraft((prev) => ({
                       ...prev,
@@ -684,6 +687,7 @@ export function SettingsAssistants({
                   instance={selectedAssistant.executionTarget.instance ?? ''}
                   model={selectedAssistant.executionTarget.model ?? ''}
                   modelSelection={selectedAssistant.modelSelection}
+                  providerRegistrySetupHrefOverride={runtimeSetupHref}
                   onTargetChange={(target) => {
                     void commitAssistant(
                       selectedAssistant.id,
