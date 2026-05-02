@@ -79,7 +79,7 @@ export function PlatformLobby({
   const entries = buildPlatformLobbyEntries({
     products: envelope.products,
     lastUsedSurface: envelope.lastProductSurface ?? null,
-  });
+  }, t);
   const appEntries = buildPlatformLobbyAppEntries({
     installedApps: envelope.installedApps ?? [],
   });

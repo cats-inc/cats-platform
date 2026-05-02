@@ -6,6 +6,7 @@ import { StaticRouter } from 'react-router-dom';
 
 import { buildPlatformSettingsProductEntries } from '../src/app/renderer/settings/PlatformSettingsShell.tsx';
 import { PlatformSettingsShell } from '../src/app/renderer/settings/PlatformSettingsShell.tsx';
+import { createTranslator } from '../src/shared/i18n/index.ts';
 import type { PlatformProductDescriptor } from '../src/shared/platform-contract.ts';
 
 function createProduct(overrides: Partial<PlatformProductDescriptor>): PlatformProductDescriptor {
@@ -95,6 +96,53 @@ test('buildPlatformSettingsProductEntries flattens visible product settings entr
       path: '/invest/settings/general',
     },
   ]);
+});
+
+test('buildPlatformSettingsProductEntries localizes Cats-owned product settings labels', () => {
+  const entries = buildPlatformSettingsProductEntries([
+    createProduct({
+      id: 'chat',
+      productName: 'Cats Chat',
+      settings: [
+        {
+          id: 'chat',
+          label: 'Chat',
+          path: '/settings/chat',
+        },
+      ],
+    }),
+    createProduct({
+      id: 'code',
+      surface: 'code',
+      routePrefix: '/code',
+      productName: 'Cats Code',
+      settings: [
+        {
+          id: 'code',
+          label: 'Code',
+          path: '/settings/code',
+        },
+      ],
+    }),
+    createProduct({
+      id: 'invest',
+      surface: null,
+      routePrefix: '/invest',
+      productName: 'Cats Invest',
+      group: 'office',
+      installPolicy: 'optional',
+      installState: 'attention',
+      settings: [
+        {
+          id: 'general',
+          label: 'Invest',
+          path: '/invest/settings/general',
+        },
+      ],
+    }),
+  ], createTranslator('zh-TW'));
+
+  assert.deepEqual(entries.map((entry) => entry.label), ['聊天', '程式碼', 'Invest']);
 });
 
 test('PlatformSettingsShell places Apps under Work and above Runtime', () => {

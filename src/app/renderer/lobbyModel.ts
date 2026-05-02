@@ -13,6 +13,10 @@ import {
   type MessageInterpolationValues,
   type MessageKey,
 } from '../../shared/i18n/index.js';
+import {
+  resolvePlatformProductDisplayName,
+  resolvePlatformProductSubtitle,
+} from './platformProductCopy.js';
 
 type LobbyModelTranslator = (
   key: MessageKey,
@@ -42,16 +46,19 @@ export interface PlatformLobbyAppEntry {
   trustTier: CatsAppTrustTier;
 }
 
-export function buildPlatformLobbyEntries(options: {
-  products: readonly PlatformProductDescriptor[];
-  lastUsedSurface: PlatformSurfaceId | null;
-}): PlatformLobbyProductEntry[] {
+export function buildPlatformLobbyEntries(
+  options: {
+    products: readonly PlatformProductDescriptor[];
+    lastUsedSurface: PlatformSurfaceId | null;
+  },
+  t: LobbyModelTranslator = defaultLobbyModelTranslator,
+): PlatformLobbyProductEntry[] {
   return options.products
     .map((d) => ({
       productId: d.id,
       surface: d.surface,
-      productName: d.productName,
-      subtitle: d.subtitle,
+      productName: resolvePlatformProductDisplayName(d, t),
+      subtitle: resolvePlatformProductSubtitle(d, t),
       routePrefix: d.routePrefix,
       lastUsed: d.surface !== null && d.surface === options.lastUsedSurface,
       available: d.installState === 'available',

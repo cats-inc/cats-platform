@@ -8,6 +8,10 @@ import type {
 import { isDesktopEnvironment } from '../../../shared/desktopRecoveryBridge.js';
 import { getSettingsExitDelta } from './settingsExitMemory.js';
 import { useI18n } from '../i18n/index.js';
+import {
+  resolvePlatformProductSettingsLabel,
+  type PlatformProductCopyTranslator,
+} from '../platformProductCopy.js';
 
 type PlatformSettingsSection =
   | 'general'
@@ -33,12 +37,14 @@ export interface PlatformSettingsShellProps {
 
 export function buildPlatformSettingsProductEntries(
   products: readonly PlatformProductDescriptor[],
+  t?: PlatformProductCopyTranslator,
 ) : PlatformSettingsProductEntry[] {
   return products
     .filter((product) => product.installState !== 'available' && (product.settings?.length ?? 0) > 0)
     .flatMap((product) =>
       (product.settings ?? []).map((entry) => ({
         ...entry,
+        label: resolvePlatformProductSettingsLabel(product.id, entry, t),
         productId: product.id,
       })),
     );
@@ -51,9 +57,9 @@ export function PlatformSettingsShell({
   children,
 }: PlatformSettingsShellProps) {
   const navigate = useNavigate();
-  const productEntries = buildPlatformSettingsProductEntries(products);
   const showDesktop = isDesktopEnvironment();
   const { t } = useI18n();
+  const productEntries = buildPlatformSettingsProductEntries(products, t);
 
   // settingsExitMemory tracks the idx just before the user entered /settings
   // in this session. If we have that memory, navigate(-N) jumps past all

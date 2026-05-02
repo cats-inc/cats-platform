@@ -8,7 +8,9 @@ import { GuideCatPlacementProvider } from '../src/app/renderer/GuideCatPlacement
 import { PlatformLobby } from '../src/app/renderer/PlatformLobby.tsx';
 import {
   buildPlatformLobbyAppEntries,
+  buildPlatformLobbyEntries,
 } from '../src/app/renderer/lobbyModel.ts';
+import { createTranslator } from '../src/shared/i18n/index.ts';
 import type { PlatformHostEnvelope } from '../src/shared/platform-contract.ts';
 
 function createEnvelope(
@@ -153,6 +155,71 @@ test('buildPlatformLobbyAppEntries includes only enabled active app launch entri
   });
 
   assert.deepEqual(entries.map((entry) => entry.routePath), ['/apps/user.pomodoro']);
+});
+
+test('buildPlatformLobbyEntries localizes Cats-owned product descriptors', () => {
+  const entries = buildPlatformLobbyEntries({
+    products: [
+      {
+        id: 'chat',
+        surface: 'chat',
+        routePrefix: '/chat',
+        productName: 'Cats Chat',
+        subtitle: 'Conversations with companions and personal agents',
+        group: 'home',
+        installPolicy: 'required',
+        installState: 'installed',
+        maturity: 'active',
+        setup: { selectable: true },
+      },
+      {
+        id: 'code',
+        surface: 'code',
+        routePrefix: '/code',
+        productName: 'Cats Code',
+        subtitle: 'Repos, runs, and codespaces',
+        group: 'office',
+        installPolicy: 'required',
+        installState: 'installed',
+        maturity: 'preview',
+        setup: { selectable: true },
+      },
+      {
+        id: 'learn',
+        surface: null,
+        routePrefix: '/learn',
+        productName: 'Cats Learn',
+        subtitle: 'Courses and flashcards',
+        group: 'home',
+        installPolicy: 'optional',
+        installState: 'installed',
+        maturity: 'preview',
+        setup: { selectable: false },
+      },
+    ],
+    lastUsedSurface: null,
+  }, createTranslator('zh-TW'));
+
+  assert.deepEqual(
+    entries.map((entry) => ({
+      productName: entry.productName,
+      subtitle: entry.subtitle,
+    })),
+    [
+      {
+        productName: 'Cats Chat',
+        subtitle: '與陪伴者和個人代理人對話',
+      },
+      {
+        productName: 'Cats Code',
+        subtitle: '程式碼庫、執行與程式工作區',
+      },
+      {
+        productName: 'Cats Learn',
+        subtitle: 'Courses and flashcards',
+      },
+    ],
+  );
 });
 
 test('PlatformLobby renders installed Apps from the envelope and removes the Pomodoro mock', () => {
