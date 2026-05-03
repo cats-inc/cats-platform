@@ -35,6 +35,7 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /displayBootstrapPhase/);
   assert.match(html, /localizeSetupReason/);
   assert.match(html, /localizeSetupSummary/);
+  assert.match(html, /localizeSetupPackLabel/);
   assert.match(html, /displayStatus/);
   assert.match(html, /'zh-TW'/);
   assert.match(html, /Cats 需要快速重新啟動/);
@@ -59,6 +60,8 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /完成 \{helperLabel\} 的手動後續步驟/);
   assert.match(html, /啟動 cats-runtime 伴隨服務/);
   assert.match(html, /API 基準設定/);
+  assert.match(html, /本機模型套件/);
+  assert.match(html, /選用能力套件/);
   assert.match(html, /WSL 發行版需要先完成第一次啟動/);
   assert.match(html, /重新啟動 Cats 桌面主機/);
   assert.match(html, /就緒稽核標記缺少的主機基礎元件/);
@@ -68,6 +71,7 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /桌面服務已就緒。請繼續進入設定/);
   assert.match(html, /桌面服務與至少一個供應器路徑已就緒/);
   assert.match(html, /Cats 需要供應器復原，但設定仍已完成/);
+  assert.match(html, /pack: localizeSetupPackLabel\(optionalMatch\[1\]\)/);
   assert.match(html, /return snap\.summary \? localizeBootstrapSummary\(snap\.summary\) : tx\('recovery\.summary\.details'\);/);
 
   // Back button to leave detail mode

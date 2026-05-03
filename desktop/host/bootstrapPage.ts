@@ -699,6 +699,7 @@ export function buildDesktopBootstrapPage(): string {
         'setupPack.apiBaseline': 'API baseline',
         'setupPack.localModel': 'local model pack',
         'setupPack.nativeCli': 'native CLI pack',
+        'setupPack.optionalCapability': 'optional capability pack',
         'setupPack.wslPowerUser': 'WSL power-user pack',
         'eventKind.helperRunCompleted': 'Helper finished',
         'eventKind.hostPhaseChanged': 'Desktop host phase changed',
@@ -921,6 +922,7 @@ export function buildDesktopBootstrapPage(): string {
         'setupPack.apiBaseline': 'API 基準設定',
         'setupPack.localModel': '本機模型套件',
         'setupPack.nativeCli': '原生 CLI 套件',
+        'setupPack.optionalCapability': '選用能力套件',
         'setupPack.wslPowerUser': 'WSL 進階使用者套件',
         'eventKind.helperRunCompleted': '輔助程式已完成',
         'eventKind.hostPhaseChanged': '桌面主機階段已變更',
@@ -1054,6 +1056,14 @@ export function buildDesktopBootstrapPage(): string {
       force: 'setupMode.force',
       uninstall: 'setupMode.uninstall',
       upgrade: 'setupMode.upgrade'
+    };
+
+    var BOOTSTRAP_SETUP_PACK_LABEL_KEYS = {
+      'API baseline': 'setupPack.apiBaseline',
+      'local model pack': 'setupPack.localModel',
+      'native CLI pack': 'setupPack.nativeCli',
+      'optional capability pack': 'setupPack.optionalCapability',
+      'WSL power-user pack': 'setupPack.wslPowerUser'
     };
 
     var BOOTSTRAP_ISSUE_TITLE_KEYS = {
@@ -1201,7 +1211,9 @@ export function buildDesktopBootstrapPage(): string {
       if (issue.id === 'setup-optional-capability-pack') {
         var optionalMatch = title.match(/^Optional (.+) is available for follow-through$/);
         if (optionalMatch) {
-          return tx('issue.optionalPackFollowThrough.title', { pack: optionalMatch[1] });
+          return tx('issue.optionalPackFollowThrough.title', {
+            pack: localizeSetupPackLabel(optionalMatch[1])
+          });
         }
       }
       if (issue.id && String(issue.id).indexOf('provider-') === 0) {
@@ -1244,6 +1256,12 @@ export function buildDesktopBootstrapPage(): string {
     function localizeSetupMode(mode) {
       var text = String(mode || '');
       var key = BOOTSTRAP_SETUP_MODE_KEYS[text];
+      return key ? tx(key) : text;
+    }
+
+    function localizeSetupPackLabel(label) {
+      var text = String(label || '').trim();
+      var key = BOOTSTRAP_SETUP_PACK_LABEL_KEYS[text];
       return key ? tx(key) : text;
     }
 
