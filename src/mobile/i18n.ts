@@ -190,7 +190,7 @@ const MOBILE_API_COPY: Record<MobileLocale, MobileApiCopy> = {
     configureBaseUrlBeforeSending:
       '送出前，請先在設定中填入桌面版基底網址。',
     configureBaseUrlForClient:
-      'Mobile API client 需要已設定的基底網址。請在設定中填入「桌面版網址」。',
+      '行動版 API 用戶端需要已設定的基底網址。請在設定中填入「桌面版網址」。',
     createChannelFailed: '無法建立頻道。',
     sendFailed: '無法送出。',
     unknownError: '未知錯誤。',
@@ -321,16 +321,16 @@ const MOBILE_TABS_COPY: Record<MobileLocale, MobileTabsCopy> = {
     desktopOnlyOkAction: '確定',
     directCatDesktopOnlyBody: {
       chat:
-        'Mobile 尚未支援點選貓咪開始直接對話。請在桌面版開始，建立後會出現在這裡的近期項目。',
+        '行動版尚未支援點選貓咪開始直接對話。請在桌面版開始，建立後會出現在這裡的近期項目。',
       code:
-        'Mobile 尚未支援點選成員開始直接對話。請在桌面版開始，建立後會出現在這裡的近期項目。',
+        '行動版尚未支援點選成員開始直接對話。請在桌面版開始，建立後會出現在這裡的近期項目。',
       work:
-        'Mobile 尚未支援點選成員開始直接對話。請在桌面版開始，建立後會出現在這裡的近期項目。',
+        '行動版尚未支援點選成員開始直接對話。請在桌面版開始，建立後會出現在這裡的近期項目。',
     },
     directCatDesktopOnlyTitle: '直接聊天僅限桌面版',
     dismissAction: '關閉',
     parallelChatDesktopOnlyBody:
-      'Mobile 尚未支援建立平行聊天。請在桌面版開始，建立後會出現在這裡的近期項目。',
+      '行動版尚未支援建立平行聊天。請在桌面版開始，建立後會出現在這裡的近期項目。',
     parallelChatDesktopOnlyTitle: '平行聊天僅限桌面版',
     tabTitle: {
       lobby: '大廳',
