@@ -4,6 +4,7 @@ import { peekProviderRegistryClientCache } from '../../app/renderer/providerRegi
 import type { ProductProviderRegistryReadModel } from '../../shared/providerCatalog.js';
 import {
   createStaticProviderRegistryReadModel,
+  PROVIDER_LOAD_FAILED_WARNING,
   PRODUCT_PROVIDER_CATALOG_CHECKING_WARNING,
   sanitizeProviderRegistryReadModel,
 } from './providerModelFieldsSupport.js';
@@ -65,7 +66,7 @@ export function useProviderRegistryState(input: {
     if (requestId !== providerRegistryRequestIdRef.current) {
       return;
     }
-    const errorMessage = error instanceof Error ? error.message : 'Failed to load providers.';
+    const errorMessage = error instanceof Error ? error.message : PROVIDER_LOAD_FAILED_WARNING;
     setProviderRegistry((current) => {
       const baseWarnings = (current.warnings ?? []).filter((warning) => warning !== errorMessage);
       const keepProviders = current.providers.length > 0;
