@@ -96,6 +96,16 @@ test('shared zh-TW catalog avoids raw English for known product chrome fallbacks
   assert.equal(t(messageKeys.codeSidebarSourceCodeTask), '程式碼任務');
   assert.equal(t(messageKeys.codeWorkspaceSourceTask), '程式碼任務');
   assert.equal(t(messageKeys.codeWorkspacesListSourceCodes), '程式碼任務');
+  assert.equal(
+    t(messageKeys.chatCompanionSettingsTelegramBindingSettingsLabel),
+    '設定 > 我的貓咪',
+  );
+  assert.equal(
+    t(messageKeys.conversationSidebarOpenAccountSettingsLabel),
+    '開啟帳號設定',
+  );
+  assert.equal(t(messageKeys.designAccountIdentityMenuLabel), '帳號選單');
+  assert.equal(t(messageKeys.designAccountIdentityMenuMenuLabel), '帳號選單');
   assert.equal(t(messageKeys.codeBuilderModelPlaceholder), '預設');
   assert.equal(t(messageKeys.codeExecutionDefaultModel), '預設');
   assert.equal(t(messageKeys.codeRelayLabelDefault), '預設');
