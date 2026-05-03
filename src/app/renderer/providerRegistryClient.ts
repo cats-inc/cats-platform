@@ -3,6 +3,11 @@ import type {
   ProductProviderInstanceDescriptor,
 } from '../../shared/providerCatalog.js';
 import { normalizeProductProviderEventCapabilities } from '../../shared/providerCatalog.js';
+import {
+  PROVIDER_LOAD_FAILED_WARNING,
+  PROVIDER_REFRESH_FAILED_WARNING,
+  createProviderCachedRefreshFailedWarning,
+} from '../../shared/providerRegistryWarnings.js';
 
 export const PROVIDER_REGISTRY_CLIENT_CACHE_TTL_MS = 15_000;
 export const PROVIDER_REGISTRY_CLIENT_STALE_IF_ERROR_MS = 10 * 60_000;
@@ -101,7 +106,7 @@ function appendProviderRegistryWarning(
 function resolveProviderRegistryFailureMessage(
   value: ProductProviderRegistryReadModel,
 ): string {
-  return value.warnings?.[0] ?? 'Failed to refresh providers.';
+  return value.warnings?.[0] ?? PROVIDER_REFRESH_FAILED_WARNING;
 }
 
 function writeProviderRegistryClientCache(
@@ -129,7 +134,7 @@ async function loadProviderRegistry(
     const response = await fetchImpl(url);
     if (!response.ok) {
       return createRuntimeUnreachableRegistry(
-        await readProviderRegistryErrorMessage(response, 'Failed to load providers.'),
+        await readProviderRegistryErrorMessage(response, PROVIDER_LOAD_FAILED_WARNING),
       );
     }
 
@@ -137,7 +142,7 @@ async function loadProviderRegistry(
     return normalizeProviderRegistryPayload(payload);
   } catch (error) {
     return createRuntimeUnreachableRegistry(
-      error instanceof Error ? error.message : 'Failed to load providers.',
+      error instanceof Error ? error.message : PROVIDER_LOAD_FAILED_WARNING,
     );
   }
 }
@@ -188,9 +193,9 @@ export async function fetchProviderRegistryFromClientCache(options: {
       if (cachedValue && providerRegistryClientCache.staleIfErrorUntilMs > Date.now()) {
         return appendProviderRegistryWarning(
           cachedValue,
-          `Using cached providers because refresh failed: ${
-            resolveProviderRegistryFailureMessage(value)
-          }`,
+          createProviderCachedRefreshFailedWarning(
+            resolveProviderRegistryFailureMessage(value),
+          ),
         );
       }
 

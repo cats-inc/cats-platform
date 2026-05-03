@@ -33,14 +33,22 @@ import {
   type MessageInterpolationValues,
   type MessageKey,
 } from '../../shared/i18n/index.js';
+import {
+  LAST_SAVED_PROVIDER_TARGETS_WARNING,
+  PRODUCT_PROVIDER_CATALOG_CHECKING_WARNING,
+  PROVIDER_LOAD_FAILED_WARNING,
+  PROVIDER_REFRESH_FAILED_WARNING,
+  readProviderCachedRefreshFailedWarning,
+} from '../../shared/providerRegistryWarnings.js';
+
+export {
+  LAST_SAVED_PROVIDER_TARGETS_WARNING,
+  PRODUCT_PROVIDER_CATALOG_CHECKING_WARNING,
+  PROVIDER_LOAD_FAILED_WARNING,
+  PROVIDER_REFRESH_FAILED_WARNING,
+} from '../../shared/providerRegistryWarnings.js';
 
 export const PROVIDER_REGISTRY_AUTO_RECHECK_COOLDOWN_MS = 30_000;
-export const PRODUCT_PROVIDER_CATALOG_CHECKING_WARNING =
-  'Using the product provider catalog while cats-runtime provider targets are checked.';
-export const LAST_SAVED_PROVIDER_TARGETS_WARNING =
-  'Using last saved provider targets while cats-runtime reconnects.';
-export const PROVIDER_LOAD_FAILED_WARNING = 'Failed to load providers.';
-export const PROVIDER_REFRESH_FAILED_WARNING = 'Failed to refresh providers.';
 
 export type ProviderModelFieldsTranslate = (
   key: MessageKey,
@@ -160,6 +168,14 @@ export function translateProviderRegistryWarning(
 ): string | null {
   if (!warning) {
     return null;
+  }
+
+  const cachedRefreshFailure = readProviderCachedRefreshFailedWarning(warning);
+  if (cachedRefreshFailure !== null) {
+    return translate(messageKeys.sharedProviderModelFieldRegistryCachedRefreshFailedHint, {
+      message: translateProviderRegistryWarning(cachedRefreshFailure, translate)
+        ?? cachedRefreshFailure,
+    });
   }
 
   switch (warning) {

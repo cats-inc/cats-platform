@@ -2,6 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  readProviderCachedRefreshFailedWarning,
+} from '../src/shared/providerRegistryWarnings.ts';
+
+import {
   clearProviderRegistryClientCache,
   fetchProviderRegistryFromClientCache,
   prefetchProviderRegistryFromClientCache,
@@ -246,7 +250,10 @@ test('client provider registry cache serves the last good registry after transie
     assert.equal(calls, 2);
     assert.equal(stale.state, 'ready');
     assert.equal(stale.providers[0]?.id, 'claude');
-    assert.match(stale.warnings?.at(-1) ?? '', /Using cached providers/u);
+    assert.equal(
+      readProviderCachedRefreshFailedWarning(stale.warnings?.at(-1) ?? ''),
+      'The operation was aborted due to timeout',
+    );
   } finally {
     Date.now = originalDateNow;
     clearProviderRegistryClientCache();

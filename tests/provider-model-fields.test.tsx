@@ -551,7 +551,7 @@ test('provider registry and model placeholders use the supplied translator', () 
       providersLoaded: false,
       registryState: 'ready',
     }, zh),
-    '正在載入可用的供應器...',
+    '正在載入可用的供應器…',
   );
   assert.equal(
     resolveProviderRegistryHint({
@@ -604,8 +604,8 @@ test('provider registry and model placeholders use the supplied translator', () 
     translate: zh,
   });
 
-  assert.equal(viewState.providerPlaceholder, '正在載入可用的供應器...');
-  assert.equal(viewState.modelPlaceholder, '正在等待可用的供應器...');
+  assert.equal(viewState.providerPlaceholder, '正在載入可用的供應器…');
+  assert.equal(viewState.modelPlaceholder, '正在等待可用的供應器…');
   assert.equal(viewState.providerRegistryHint, '正在檢查 cats-runtime 可用的供應器目標。');
 });
 

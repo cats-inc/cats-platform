@@ -1841,6 +1841,8 @@ export const enCatalog: MessageCatalog = {
     'Using the product provider catalog while cats-runtime provider targets are checked.',
   'shared.providerModel.field.registryStaleHint':
     'Showing last known provider targets while cats-runtime reconnects.',
+  'shared.providerModel.field.registryCachedRefreshFailedHint':
+    'Showing cached provider targets because refresh failed: {message}',
   'shared.providerModel.field.registryLoadFailedHint':
     'Could not load currently usable provider targets from cats-runtime.',
   'shared.providerModel.field.registryEmptyHint':

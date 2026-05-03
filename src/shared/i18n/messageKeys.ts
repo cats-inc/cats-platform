@@ -1888,6 +1888,8 @@ export const messageKeys = {
     'shared.providerModel.field.registryUsingProductCatalogHint',
   sharedProviderModelFieldRegistryStaleHint:
     'shared.providerModel.field.registryStaleHint',
+  sharedProviderModelFieldRegistryCachedRefreshFailedHint:
+    'shared.providerModel.field.registryCachedRefreshFailedHint',
   sharedProviderModelFieldRegistryLoadFailedHint:
     'shared.providerModel.field.registryLoadFailedHint',
   sharedProviderModelFieldRegistryEmptyHint:

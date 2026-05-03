@@ -1796,6 +1796,8 @@ export const zhTWCatalog: MessageCatalog = {
     '檢查 cats-runtime 供應器目標時，先使用產品內建供應器目錄。',
   'shared.providerModel.field.registryStaleHint':
     'cats-runtime 重新連線時，先顯示上次可用的供應器目標。',
+  'shared.providerModel.field.registryCachedRefreshFailedHint':
+    '重新整理失敗，先顯示快取的供應器目標：{message}',
   'shared.providerModel.field.registryLoadFailedHint':
     '無法從 cats-runtime 載入目前可用的供應器目標。',
   'shared.providerModel.field.registryEmptyHint':
