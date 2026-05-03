@@ -228,6 +228,12 @@ export const enCatalog: MessageCatalog = {
   'settings.runtime.helperLabel.npmPrefixHelper':
     '{platform} npm prefix and PATH prerequisite helper',
   'settings.runtime.helperLabel.setupReadinessAudit': '{platform} setup readiness audit',
+  'settings.runtime.helperLabel.packagedBackgroundProcessHelper':
+    '{platform} packaged setup background process helper',
+  'settings.runtime.helperLabel.packagedProviderUninstallHelper':
+    '{platform} packaged provider uninstall helper',
+  'settings.runtime.helperLabel.packagedNpmGlobalCliInstallerHelper':
+    '{platform} packaged npm-global CLI installer helper',
   'settings.runtime.helperLabel.nativeProviderInstaller':
     '{platform} native {providerLabel} installer',
   'settings.runtime.helperLabel.providerInstaller': '{platform} {providerLabel} installer',

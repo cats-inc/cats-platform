@@ -228,6 +228,27 @@ function localizeRuntimeLifecycleHelperLabel(
     });
   }
 
+  match = label.match(/^(Windows|Linux|macOS) packaged setup background process helper$/u);
+  if (match) {
+    return t(messageKeys.settingsRuntimeHelperLabelPackagedBackgroundProcessHelper, {
+      platform: match[1],
+    });
+  }
+
+  match = label.match(/^(Windows|Linux|macOS) packaged provider uninstall helper$/u);
+  if (match) {
+    return t(messageKeys.settingsRuntimeHelperLabelPackagedProviderUninstallHelper, {
+      platform: match[1],
+    });
+  }
+
+  match = label.match(/^(Windows|Linux|macOS) packaged npm-global CLI installer helper$/u);
+  if (match) {
+    return t(messageKeys.settingsRuntimeHelperLabelPackagedNpmGlobalCliInstallerHelper, {
+      platform: match[1],
+    });
+  }
+
   match = label.match(/^(Windows|Linux|macOS) native (.+) installer$/u);
   if (match) {
     return t(messageKeys.settingsRuntimeHelperLabelNativeProviderInstaller, {

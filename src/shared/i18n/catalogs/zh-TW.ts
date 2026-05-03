@@ -219,6 +219,12 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.runtime.helperLabel.npmPrefixHelper':
     '{platform} npm prefix 與 PATH 先決條件輔助工具',
   'settings.runtime.helperLabel.setupReadinessAudit': '{platform} 設定就緒稽核',
+  'settings.runtime.helperLabel.packagedBackgroundProcessHelper':
+    '{platform} 套裝設定背景程序輔助工具',
+  'settings.runtime.helperLabel.packagedProviderUninstallHelper':
+    '{platform} 套裝供應器解除安裝輔助工具',
+  'settings.runtime.helperLabel.packagedNpmGlobalCliInstallerHelper':
+    '{platform} 套裝 npm-global CLI 安裝器輔助工具',
   'settings.runtime.helperLabel.nativeProviderInstaller':
     '{platform} 原生 {providerLabel} 安裝器',
   'settings.runtime.helperLabel.providerInstaller': '{platform} {providerLabel} 安裝器',

@@ -706,6 +706,9 @@ export function buildDesktopBootstrapPage(): string {
         'setupHelper.githubCliHostInstaller': '{platform} GitHub CLI host installer',
         'setupHelper.npmPrefixHelper': '{platform} npm prefix and PATH prerequisite helper',
         'setupHelper.setupReadinessAudit': '{platform} setup readiness audit',
+        'setupHelper.packagedBackgroundProcessHelper': '{platform} packaged setup background process helper',
+        'setupHelper.packagedProviderUninstallHelper': '{platform} packaged provider uninstall helper',
+        'setupHelper.packagedNpmGlobalCliInstallerHelper': '{platform} packaged npm-global CLI installer helper',
         'setupHelper.nativeProviderInstaller': '{platform} native {providerLabel} installer',
         'setupHelper.localModelInstaller': '{platform} {providerLabel} local-model installer',
         'setupHelper.providerInstaller': '{platform} {providerLabel} installer',
@@ -937,6 +940,9 @@ export function buildDesktopBootstrapPage(): string {
         'setupHelper.githubCliHostInstaller': '{platform} GitHub CLI 主機安裝器',
         'setupHelper.npmPrefixHelper': '{platform} npm 前置路徑與 PATH 先決條件輔助程式',
         'setupHelper.setupReadinessAudit': '{platform} 設定就緒稽核',
+        'setupHelper.packagedBackgroundProcessHelper': '{platform} 套裝設定背景程序輔助程式',
+        'setupHelper.packagedProviderUninstallHelper': '{platform} 套裝供應器解除安裝輔助程式',
+        'setupHelper.packagedNpmGlobalCliInstallerHelper': '{platform} 套裝 npm-global CLI 安裝器輔助程式',
         'setupHelper.nativeProviderInstaller': '{platform} 原生 {providerLabel} 安裝器',
         'setupHelper.localModelInstaller': '{platform} {providerLabel} 本機模型安裝器',
         'setupHelper.providerInstaller': '{platform} {providerLabel} 安裝器',
@@ -1305,6 +1311,21 @@ export function buildDesktopBootstrapPage(): string {
       match = text.match(/^(Windows|Linux|macOS) setup readiness audit$/);
       if (match) {
         return tx('setupHelper.setupReadinessAudit', { platform: match[1] });
+      }
+
+      match = text.match(/^(Windows|Linux|macOS) packaged setup background process helper$/);
+      if (match) {
+        return tx('setupHelper.packagedBackgroundProcessHelper', { platform: match[1] });
+      }
+
+      match = text.match(/^(Windows|Linux|macOS) packaged provider uninstall helper$/);
+      if (match) {
+        return tx('setupHelper.packagedProviderUninstallHelper', { platform: match[1] });
+      }
+
+      match = text.match(/^(Windows|Linux|macOS) packaged npm-global CLI installer helper$/);
+      if (match) {
+        return tx('setupHelper.packagedNpmGlobalCliInstallerHelper', { platform: match[1] });
       }
 
       match = text.match(/^(Windows|Linux|macOS) native (.+) installer$/);

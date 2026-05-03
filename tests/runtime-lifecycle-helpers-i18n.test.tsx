@@ -54,6 +54,27 @@ test('runtime lifecycle helper labels localize known packaged helper patterns', 
     }), t),
     'Linux OpenAI Codex CLI 安裝器',
   );
+  assert.equal(
+    presentRuntimeLifecycleHelperLabel(helper({
+      id: 'windows-hidden-process-support-script',
+      label: 'Windows packaged setup background process helper',
+    }), t),
+    'Windows 套裝設定背景程序輔助工具',
+  );
+  assert.equal(
+    presentRuntimeLifecycleHelperLabel(helper({
+      id: 'windows-packaged-uninstall-support-script',
+      label: 'Windows packaged provider uninstall helper',
+    }), t),
+    'Windows 套裝供應器解除安裝輔助工具',
+  );
+  assert.equal(
+    presentRuntimeLifecycleHelperLabel(helper({
+      id: 'windows-npm-cli-installer-support-script',
+      label: 'Windows packaged npm-global CLI installer helper',
+    }), t),
+    'Windows 套裝 npm-global CLI 安裝器輔助工具',
+  );
 });
 
 test('runtime lifecycle unavailable action reasons use localized helper labels', () => {

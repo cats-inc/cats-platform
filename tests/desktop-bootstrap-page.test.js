@@ -65,6 +65,9 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /選用能力套件/);
   assert.match(html, /\{platform\} Node\.js LTS 主機安裝器/);
   assert.match(html, /\{platform\} 設定就緒稽核/);
+  assert.match(html, /\{platform\} 套裝設定背景程序輔助程式/);
+  assert.match(html, /\{platform\} 套裝供應器解除安裝輔助程式/);
+  assert.match(html, /\{platform\} 套裝 npm-global CLI 安裝器輔助程式/);
   assert.match(html, /\{platform\} 原生 \{providerLabel\} 安裝器/);
   assert.match(html, /WSL 發行版需要先完成第一次啟動/);
   assert.match(html, /重新啟動 Cats 桌面主機/);
@@ -77,6 +80,9 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /Cats 需要供應器復原，但設定仍已完成/);
   assert.match(html, /pack: localizeSetupPackLabel\(optionalMatch\[1\]\)/);
   assert.match(html, /helperLabel: localizeSetupHelperLabel\(match\[1\]\)/);
+  assert.match(html, /setupHelper\.packagedBackgroundProcessHelper/);
+  assert.match(html, /setupHelper\.packagedProviderUninstallHelper/);
+  assert.match(html, /setupHelper\.packagedNpmGlobalCliInstallerHelper/);
   assert.match(html, /lastAction\.label \? localizeSetupHelperLabel\(lastAction\.label\) : lastAction\.helperId/);
   assert.match(html, /return snap\.summary \? localizeBootstrapSummary\(snap\.summary\) : tx\('recovery\.summary\.details'\);/);
 

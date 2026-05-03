@@ -219,6 +219,12 @@ export const messageKeys = {
     'settings.runtime.helperLabel.npmPrefixHelper',
   settingsRuntimeHelperLabelSetupReadinessAudit:
     'settings.runtime.helperLabel.setupReadinessAudit',
+  settingsRuntimeHelperLabelPackagedBackgroundProcessHelper:
+    'settings.runtime.helperLabel.packagedBackgroundProcessHelper',
+  settingsRuntimeHelperLabelPackagedProviderUninstallHelper:
+    'settings.runtime.helperLabel.packagedProviderUninstallHelper',
+  settingsRuntimeHelperLabelPackagedNpmGlobalCliInstallerHelper:
+    'settings.runtime.helperLabel.packagedNpmGlobalCliInstallerHelper',
   settingsRuntimeHelperLabelNativeProviderInstaller:
     'settings.runtime.helperLabel.nativeProviderInstaller',
   settingsRuntimeHelperLabelProviderInstaller:
