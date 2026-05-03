@@ -587,6 +587,28 @@ export function buildDesktopBootstrapPage(): string {
           'Packaged setup failed before completion response was returned.',
         'diagnostics.summary.runtimeStatusChanged': 'Observed a runtime status change.',
         'diagnostics.summary.runtimeUnavailableShort': 'Runtime is unavailable.',
+        'diagnostics.summary.startingLocalServices':
+          'Starting local Cats services and waiting for readiness.',
+        'diagnostics.summary.localServicesPrereq':
+          'Local services are ready. Running prerequisite checks.',
+        'diagnostics.summary.localServicesCliInventory':
+          'Local services are ready. Checking local CLI inventory.',
+        'diagnostics.summary.noCliInstalledAfterSetup':
+          'No CLI is currently installed. Install one to continue using Cats.',
+        'diagnostics.summary.welcomeInstallCli':
+          'Welcome. Install a CLI to get started with Cats.',
+        'diagnostics.summary.desktopReadySetup':
+          'Desktop services are ready. Continue into setup.',
+        'diagnostics.summary.desktopReadyChooseProvider':
+          'Desktop services are ready. Continue into setup to choose a provider path.',
+        'diagnostics.summary.runtimeSetupRequired':
+          'Cats Runtime setup is still required. Continue into setup.',
+        'diagnostics.summary.desktopReadyProvider':
+          'Desktop services and at least one provider path are ready.',
+        'diagnostics.summary.desktopReadyNoReprobe':
+          'Desktop services are ready. Opening Cats without a startup provider reprobe.',
+        'diagnostics.summary.providerRecoveryNeeded':
+          'Cats needs provider recovery, but setup remains complete and Cats can still open.',
         'fixed.startupError': 'Mew\u2026 something tripped me up during startup.',
         'issue.serviceError': '{service} error',
         'issue.noSpecificIssues': 'No specific issues were reported.',
@@ -787,6 +809,28 @@ export function buildDesktopBootstrapPage(): string {
           '套裝設定在回傳完成回應前失敗。',
         'diagnostics.summary.runtimeStatusChanged': '已觀察到執行階段狀態變更。',
         'diagnostics.summary.runtimeUnavailableShort': '執行階段無法使用。',
+        'diagnostics.summary.startingLocalServices':
+          '正在啟動本機 Cats 服務並等待就緒。',
+        'diagnostics.summary.localServicesPrereq':
+          '本機服務已就緒。正在檢查先決條件。',
+        'diagnostics.summary.localServicesCliInventory':
+          '本機服務已就緒。正在檢查本機 CLI 清單。',
+        'diagnostics.summary.noCliInstalledAfterSetup':
+          '目前尚未安裝 CLI。請安裝一個 CLI 以繼續使用 Cats。',
+        'diagnostics.summary.welcomeInstallCli':
+          '歡迎。請安裝 CLI 以開始使用 Cats。',
+        'diagnostics.summary.desktopReadySetup':
+          '桌面服務已就緒。請繼續進入設定。',
+        'diagnostics.summary.desktopReadyChooseProvider':
+          '桌面服務已就緒。請繼續進入設定以選擇供應器路徑。',
+        'diagnostics.summary.runtimeSetupRequired':
+          'Cats Runtime 仍需要設定。請繼續進入設定。',
+        'diagnostics.summary.desktopReadyProvider':
+          '桌面服務與至少一個供應器路徑已就緒。',
+        'diagnostics.summary.desktopReadyNoReprobe':
+          '桌面服務已就緒。將開啟 Cats，且不重新執行啟動供應器探測。',
+        'diagnostics.summary.providerRecoveryNeeded':
+          'Cats 需要供應器復原，但設定仍已完成，Cats 仍可開啟。',
         'fixed.startupError': '喵…啟動時有地方出錯了。',
         'issue.serviceError': '{service} 錯誤',
         'issue.noSpecificIssues': '沒有回報具體問題。',
@@ -1068,6 +1112,28 @@ export function buildDesktopBootstrapPage(): string {
       'Observed a runtime status change.':
         'diagnostics.summary.runtimeStatusChanged',
       'Runtime is unavailable.': 'diagnostics.summary.runtimeUnavailableShort',
+      'Starting local Cats services and waiting for readiness.':
+        'diagnostics.summary.startingLocalServices',
+      'Local services are ready. Running prerequisite checks.':
+        'diagnostics.summary.localServicesPrereq',
+      'Local services are ready. Checking local CLI inventory.':
+        'diagnostics.summary.localServicesCliInventory',
+      'No CLI is currently installed. Install one to continue using Cats.':
+        'diagnostics.summary.noCliInstalledAfterSetup',
+      'Welcome. Install a CLI to get started with Cats.':
+        'diagnostics.summary.welcomeInstallCli',
+      'Desktop services are ready. Continue into setup.':
+        'diagnostics.summary.desktopReadySetup',
+      'Desktop services are ready. Continue into setup to choose a provider path.':
+        'diagnostics.summary.desktopReadyChooseProvider',
+      'Cats Runtime setup is still required. Continue into setup.':
+        'diagnostics.summary.runtimeSetupRequired',
+      'Desktop services and at least one provider path are ready.':
+        'diagnostics.summary.desktopReadyProvider',
+      'Desktop services are ready. Opening Cats without a startup provider reprobe.':
+        'diagnostics.summary.desktopReadyNoReprobe',
+      'Cats needs provider recovery, but setup remains complete and Cats can still open.':
+        'diagnostics.summary.providerRecoveryNeeded',
       'Restored desktop host state is incomplete; rechecking desktop services.':
         'diagnostics.summary.restoredIncomplete',
       'Runtime diagnostics are not available yet.': 'diagnostics.summary.runtimeUnavailable'
@@ -1788,7 +1854,7 @@ export function buildDesktopBootstrapPage(): string {
       if (snap.phase === 'ready_for_setup') {
         return tx('recovery.summary.readyForSetup');
       }
-      return snap.summary || tx('recovery.summary.details');
+      return snap.summary ? localizeBootstrapSummary(snap.summary) : tx('recovery.summary.details');
     }
 
     /* ================================================================

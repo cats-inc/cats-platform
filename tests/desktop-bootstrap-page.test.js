@@ -63,6 +63,12 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /重新啟動 Cats 桌面主機/);
   assert.match(html, /就緒稽核標記缺少的主機基礎元件/);
   assert.match(html, /請啟動 Docker Desktop/);
+  assert.match(html, /本機服務已就緒。正在檢查先決條件/);
+  assert.match(html, /本機服務已就緒。正在檢查本機 CLI 清單/);
+  assert.match(html, /桌面服務已就緒。請繼續進入設定/);
+  assert.match(html, /桌面服務與至少一個供應器路徑已就緒/);
+  assert.match(html, /Cats 需要供應器復原，但設定仍已完成/);
+  assert.match(html, /return snap\.summary \? localizeBootstrapSummary\(snap\.summary\) : tx\('recovery\.summary\.details'\);/);
 
   // Back button to leave detail mode
   assert.match(html, /recovery-back/);
