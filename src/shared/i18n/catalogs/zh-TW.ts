@@ -2080,6 +2080,10 @@ export const zhTWCatalog: MessageCatalog = {
   'code.builder.detailsPlaceholder': '描述完成狀態與驗收條件…',
   'code.builder.detailsLabel': '細節 / 驗收條件（選填）',
   'code.builder.errorCodespaceResolve': '無法解析這個程式工作區。',
+  'code.builder.errorCodespacePathInvalid':
+    '選取的路徑不存在或不是資料夾：{path}',
+  'code.builder.errorCodespaceNoPath':
+    '找不到有效的程式工作區路徑。請選擇資料夾，或確認房間工作區存在。',
   'code.builder.errorTaskCreate': '無法建立程式碼任務。',
   'code.builder.errorTaskCreateMissingId':
     '建立任務的回應缺少 task id。',

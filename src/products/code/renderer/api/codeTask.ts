@@ -52,6 +52,8 @@ export interface ResolveWorkspaceInput {
 export interface ResolveWorkspaceResponse {
   workspace?: CodeWorkspaceSummary | null;
   error?: string | null;
+  errorCode?: 'selected_path_invalid' | 'no_valid_workspace_path' | null;
+  errorPath?: string | null;
 }
 
 export interface PlanStepInput {

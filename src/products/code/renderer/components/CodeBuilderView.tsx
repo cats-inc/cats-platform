@@ -88,7 +88,15 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
       });
 
       if (!result.workspace) {
-        setFeedback(result.error || t(messageKeys.codeBuilderErrorCodespaceResolve));
+        if (result.errorCode === 'selected_path_invalid' && result.errorPath) {
+          setFeedback(t(messageKeys.codeBuilderErrorCodespacePathInvalid, {
+            path: result.errorPath,
+          }));
+        } else if (result.errorCode === 'no_valid_workspace_path') {
+          setFeedback(t(messageKeys.codeBuilderErrorCodespaceNoPath));
+        } else {
+          setFeedback(result.error || t(messageKeys.codeBuilderErrorCodespaceResolve));
+        }
         return null;
       }
 

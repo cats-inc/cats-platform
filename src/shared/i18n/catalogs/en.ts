@@ -2130,6 +2130,10 @@ export const enCatalog: MessageCatalog = {
   'code.builder.detailsPlaceholder': 'Describe what done looks like...',
   'code.builder.detailsLabel': 'Details / acceptance criteria (optional)',
   'code.builder.errorCodespaceResolve': 'Could not resolve that codespace.',
+  'code.builder.errorCodespacePathInvalid':
+    'Selected path does not exist or is not a directory: {path}',
+  'code.builder.errorCodespaceNoPath':
+    'No valid codespace path found. Choose a folder or make sure the room workspace exists.',
   'code.builder.errorTaskCreate': 'Could not create the Code task.',
   'code.builder.errorTaskCreateMissingId':
     'Task creation response did not include a task id.',

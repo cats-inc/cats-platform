@@ -28,6 +28,8 @@ test('resolveCodeWorkspace rejects a nonexistent explicit path', async () => {
   assert.equal(result.resolved, false);
   assert.equal(result.workspace, null);
   assert.ok(result.error);
+  assert.equal(result.errorCode, 'selected_path_invalid');
+  assert.equal(result.errorPath, '/nonexistent/path/that/does/not/exist');
   assert.match(result.error, /does not exist/u);
 });
 
@@ -60,6 +62,8 @@ test('resolveCodeWorkspace returns error when no paths are valid', async () => {
   assert.equal(result.resolved, false);
   assert.equal(result.workspace, null);
   assert.ok(result.error);
+  assert.equal(result.errorCode, 'no_valid_workspace_path');
+  assert.equal(result.errorPath, null);
 });
 
 test('resolveCodeWorkspace prefers explicit path over fallbacks', async () => {
@@ -98,4 +102,3 @@ test('resolveCodeWorkspace treats empty strings as absent', async () => {
   });
   assert.equal(result.resolved, false);
 });
-

@@ -12,10 +12,16 @@ export interface ResolveCodeWorkspaceInput {
   roomWorkspacePath?: string | null;
 }
 
+export type CodeWorkspaceResolutionErrorCode =
+  | 'selected_path_invalid'
+  | 'no_valid_workspace_path';
+
 export interface CodeWorkspaceResolutionResult {
   resolved: boolean;
   workspace: CodeWorkspaceSummary | null;
   error: string | null;
+  errorCode?: CodeWorkspaceResolutionErrorCode | null;
+  errorPath?: string | null;
 }
 
 async function isDirectory(dirPath: string): Promise<boolean> {
@@ -46,6 +52,8 @@ export async function resolveCodeWorkspace(
       resolved: false,
       workspace: null,
       error: `Selected path does not exist or is not a directory: ${explicit}`,
+      errorCode: 'selected_path_invalid',
+      errorPath: explicit,
     };
   }
 
@@ -81,5 +89,7 @@ export async function resolveCodeWorkspace(
     resolved: false,
     workspace: null,
     error: 'No valid workspace path found. Provide an explicit path or ensure the room workspace exists.',
+    errorCode: 'no_valid_workspace_path',
+    errorPath: null,
   };
 }

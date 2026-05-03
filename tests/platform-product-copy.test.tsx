@@ -85,6 +85,14 @@ test('shared zh-TW catalog avoids raw English for known product chrome fallbacks
   );
   assert.equal(t(messageKeys.workWarRoomLoadingBody), '正在更新最新戰情室快照。');
   assert.equal(t(messageKeys.codeBuilderErrorTaskCreate), '無法建立程式碼任務。');
+  assert.equal(
+    t(messageKeys.codeBuilderErrorCodespacePathInvalid, { path: 'C:/missing' }),
+    '選取的路徑不存在或不是資料夾：C:/missing',
+  );
+  assert.equal(
+    t(messageKeys.codeBuilderErrorCodespaceNoPath),
+    '找不到有效的程式工作區路徑。請選擇資料夾，或確認房間工作區存在。',
+  );
   assert.equal(t(messageKeys.codeBuilderErrorTaskExecution), '無法啟動程式碼任務。');
   assert.equal(t(messageKeys.codeBuilderErrorTaskResume), '無法接續這個程式碼任務。');
   assert.equal(

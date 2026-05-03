@@ -2168,6 +2168,8 @@ export const messageKeys = {
   codeBuilderDetailPlaceholder: 'code.builder.detailsPlaceholder',
   codeBuilderDetailsLabel: 'code.builder.detailsLabel',
   codeBuilderErrorCodespaceResolve: 'code.builder.errorCodespaceResolve',
+  codeBuilderErrorCodespacePathInvalid: 'code.builder.errorCodespacePathInvalid',
+  codeBuilderErrorCodespaceNoPath: 'code.builder.errorCodespaceNoPath',
   codeBuilderErrorTaskCreate: 'code.builder.errorTaskCreate',
   codeBuilderErrorTaskCreateMissingId: 'code.builder.errorTaskCreateMissingId',
   codeBuilderErrorTaskExecution: 'code.builder.errorTaskExecution',
