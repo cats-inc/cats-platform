@@ -701,6 +701,14 @@ export function buildDesktopBootstrapPage(): string {
         'setupPack.nativeCli': 'native CLI pack',
         'setupPack.optionalCapability': 'optional capability pack',
         'setupPack.wslPowerUser': 'WSL power-user pack',
+        'setupHelper.windowsCliReadiness': 'Windows PowerShell + PATH readiness helper',
+        'setupHelper.nodeHostInstaller': '{platform} Node.js LTS host installer',
+        'setupHelper.githubCliHostInstaller': '{platform} GitHub CLI host installer',
+        'setupHelper.npmPrefixHelper': '{platform} npm prefix and PATH prerequisite helper',
+        'setupHelper.setupReadinessAudit': '{platform} setup readiness audit',
+        'setupHelper.nativeProviderInstaller': '{platform} native {providerLabel} installer',
+        'setupHelper.localModelInstaller': '{platform} {providerLabel} local-model installer',
+        'setupHelper.providerInstaller': '{platform} {providerLabel} installer',
         'eventKind.helperRunCompleted': 'Helper finished',
         'eventKind.hostPhaseChanged': 'Desktop host phase changed',
         'eventKind.resumeActionChanged': 'Setup recovery step changed',
@@ -924,6 +932,14 @@ export function buildDesktopBootstrapPage(): string {
         'setupPack.nativeCli': '原生 CLI 套件',
         'setupPack.optionalCapability': '選用能力套件',
         'setupPack.wslPowerUser': 'WSL 進階使用者套件',
+        'setupHelper.windowsCliReadiness': 'Windows PowerShell + PATH 就緒檢查輔助程式',
+        'setupHelper.nodeHostInstaller': '{platform} Node.js LTS 主機安裝器',
+        'setupHelper.githubCliHostInstaller': '{platform} GitHub CLI 主機安裝器',
+        'setupHelper.npmPrefixHelper': '{platform} npm 前置路徑與 PATH 先決條件輔助程式',
+        'setupHelper.setupReadinessAudit': '{platform} 設定就緒稽核',
+        'setupHelper.nativeProviderInstaller': '{platform} 原生 {providerLabel} 安裝器',
+        'setupHelper.localModelInstaller': '{platform} {providerLabel} 本機模型安裝器',
+        'setupHelper.providerInstaller': '{platform} {providerLabel} 安裝器',
         'eventKind.helperRunCompleted': '輔助程式已完成',
         'eventKind.hostPhaseChanged': '桌面主機階段已變更',
         'eventKind.resumeActionChanged': '設定復原步驟已變更',
@@ -1265,6 +1281,59 @@ export function buildDesktopBootstrapPage(): string {
       return key ? tx(key) : text;
     }
 
+    function localizeSetupHelperLabel(label) {
+      var text = String(label || '').trim();
+      if (text === 'Windows PowerShell + PATH readiness helper') {
+        return tx('setupHelper.windowsCliReadiness');
+      }
+
+      var match = text.match(/^(Windows|Linux|macOS) Node\.js LTS host installer$/);
+      if (match) {
+        return tx('setupHelper.nodeHostInstaller', { platform: match[1] });
+      }
+
+      match = text.match(/^(Windows|Linux|macOS) GitHub CLI host installer$/);
+      if (match) {
+        return tx('setupHelper.githubCliHostInstaller', { platform: match[1] });
+      }
+
+      match = text.match(/^(Windows|Linux|macOS) npm prefix and PATH prerequisite helper$/);
+      if (match) {
+        return tx('setupHelper.npmPrefixHelper', { platform: match[1] });
+      }
+
+      match = text.match(/^(Windows|Linux|macOS) setup readiness audit$/);
+      if (match) {
+        return tx('setupHelper.setupReadinessAudit', { platform: match[1] });
+      }
+
+      match = text.match(/^(Windows|Linux|macOS) native (.+) installer$/);
+      if (match) {
+        return tx('setupHelper.nativeProviderInstaller', {
+          platform: match[1],
+          providerLabel: match[2]
+        });
+      }
+
+      match = text.match(/^(Windows|Linux|macOS) (.+) local-model installer$/);
+      if (match) {
+        return tx('setupHelper.localModelInstaller', {
+          platform: match[1],
+          providerLabel: match[2]
+        });
+      }
+
+      match = text.match(/^(Windows|Linux|macOS) (.+) installer$/);
+      if (match) {
+        return tx('setupHelper.providerInstaller', {
+          platform: match[1],
+          providerLabel: match[2]
+        });
+      }
+
+      return text;
+    }
+
     function localizeSetupSummary(summary) {
       var text = String(summary || '');
       var match = null;
@@ -1276,58 +1345,76 @@ export function buildDesktopBootstrapPage(): string {
       }
       match = text.match(/^Run (.+) to install the missing host substrate flagged by the readiness audit.$/);
       if (match) {
-        return tx('setupSummary.runMissingHostSubstrate', { helperLabel: match[1] });
+        return tx('setupSummary.runMissingHostSubstrate', {
+          helperLabel: localizeSetupHelperLabel(match[1])
+        });
       }
       match = text.match(/^Restart the host or Windows session, then rerun (.+) in (.+) mode.$/);
       if (match) {
         return tx('setupSummary.restartThenRerunMode', {
-          helperLabel: match[1],
+          helperLabel: localizeSetupHelperLabel(match[1]),
           mode: localizeSetupMode(match[2])
         });
       }
       match = text.match(/^Restart Windows or the current session, then rerun (.+).$/);
       if (match) {
-        return tx('setupSummary.restartThenRerun', { helperLabel: match[1] });
+        return tx('setupSummary.restartThenRerun', {
+          helperLabel: localizeSetupHelperLabel(match[1])
+        });
       }
       match = text.match(/^Relaunch Cats Desktop Host, then rerun (.+) to verify the updated packaged setup state.$/);
       if (match) {
-        return tx('setupSummary.relaunchThenVerify', { helperLabel: match[1] });
+        return tx('setupSummary.relaunchThenVerify', {
+          helperLabel: localizeSetupHelperLabel(match[1])
+        });
       }
       match = text.match(/^(.+) requires an elevated host step before it can continue.$/);
       if (match) {
-        return tx('setupSummary.elevationRequired', { helperLabel: match[1] });
+        return tx('setupSummary.elevationRequired', {
+          helperLabel: localizeSetupHelperLabel(match[1])
+        });
       }
       match = text.match(/^Complete the required sign-in flow, then rerun (.+) in (.+) mode.$/);
       if (match) {
         return tx('setupSummary.authThenRerunMode', {
-          helperLabel: match[1],
+          helperLabel: localizeSetupHelperLabel(match[1]),
           mode: localizeSetupMode(match[2])
         });
       }
       match = text.match(/^Retry (.+) after addressing the last failure.$/);
       if (match) {
-        return tx('setupSummary.retryAfterFailure', { helperLabel: match[1] });
+        return tx('setupSummary.retryAfterFailure', {
+          helperLabel: localizeSetupHelperLabel(match[1])
+        });
       }
       match = text.match(/^Run (.+) to install the missing packaged setup requirement.$/);
       if (match) {
-        return tx('setupSummary.runMissingRequirement', { helperLabel: match[1] });
+        return tx('setupSummary.runMissingRequirement', {
+          helperLabel: localizeSetupHelperLabel(match[1])
+        });
       }
       match = text.match(/^Finish the manual follow-through for (.+), then rerun a verification step.$/);
       if (match) {
-        return tx('setupSummary.finishManualFollowThrough', { helperLabel: match[1] });
+        return tx('setupSummary.finishManualFollowThrough', {
+          helperLabel: localizeSetupHelperLabel(match[1])
+        });
       }
       match = text.match(/^Run (.+) again to apply the remaining packaged setup changes.$/);
       if (match) {
-        return tx('setupSummary.runApplyRemainingChanges', { helperLabel: match[1] });
+        return tx('setupSummary.runApplyRemainingChanges', {
+          helperLabel: localizeSetupHelperLabel(match[1])
+        });
       }
       match = text.match(/^Rerun (.+) in check mode if you want to verify the packaged setup state again.$/);
       if (match) {
-        return tx('setupSummary.rerunCheckToVerify', { helperLabel: match[1] });
+        return tx('setupSummary.rerunCheckToVerify', {
+          helperLabel: localizeSetupHelperLabel(match[1])
+        });
       }
       match = text.match(/^(.+) (check|apply|upgrade|force|uninstall) finished with (.+).$/);
       if (match) {
         return tx('setupSummary.finishedWithStatus', {
-          helperLabel: match[1],
+          helperLabel: localizeSetupHelperLabel(match[1]),
           mode: localizeSetupMode(match[2]),
           status: displayStatus(match[3])
         });
@@ -2126,7 +2213,8 @@ export function buildDesktopBootstrapPage(): string {
         var las = lastAction.runState === 'failed' ? 'err'
           : lastAction.status === 'ready' ? 'ok' : 'warn';
         var lac = [
-          CardHead(lastAction.label || lastAction.helperId,
+          CardHead(
+            lastAction.label ? localizeSetupHelperLabel(lastAction.label) : lastAction.helperId,
             displayStatus(lastAction.status || lastAction.runState), 'c-' + las),
           el('div', { class: 'detail-meta' },
             lastAction.summary ? localizeSetupSummary(lastAction.summary) : tx('setup.noSummary'))
