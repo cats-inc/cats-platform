@@ -15,14 +15,16 @@ export const EMPTY_WORK_GRAPH: WorkGraphProjection = {
   diagnostics: [],
 };
 
-async function fetchWorkGraph(): Promise<WorkGraphProjection> {
+async function fetchWorkGraph(errorMessage: string): Promise<WorkGraphProjection> {
   const response = await fetch(WORK_API_GRAPH_PATH);
-  return expectJson<WorkGraphProjection>(response, "Failed to load work graph");
+  return expectJson<WorkGraphProjection>(response, errorMessage);
 }
 
-export function useWorkGraphQuery(): UseQueryResult<WorkGraphProjection> {
+export function useWorkGraphQuery(
+  errorMessage: string,
+): UseQueryResult<WorkGraphProjection> {
   return useQuery({
     queryKey: WORK_GRAPH_QUERY_KEY,
-    queryFn: fetchWorkGraph,
+    queryFn: () => fetchWorkGraph(errorMessage),
   });
 }

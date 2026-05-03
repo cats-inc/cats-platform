@@ -39,7 +39,7 @@ export function BrokenLinksPage(): JSX.Element {
     (searchParams.get("severity") as SeverityFilter | null) ?? "all";
   const selectedId = searchParams.get("selectedId");
   const queryClient = useQueryClient();
-  const graph = useWorkGraphQuery().data ?? EMPTY_WORK_GRAPH;
+  const graph = useWorkGraphQuery(t("workGraphLoadErrorFallback")).data ?? EMPTY_WORK_GRAPH;
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
   // Every link in the graph is producer-stored, so every Remove
   // affordance is enabled.
@@ -55,7 +55,7 @@ export function BrokenLinksPage(): JSX.Element {
       setRemovingId(linkId);
       setRemoveError(null);
       try {
-        await removeWorkLink(linkId);
+        await removeWorkLink(linkId, t("workTopdownBrokenLinksRemoveUnknownError"));
         await queryClient.invalidateQueries({ queryKey: WORK_GRAPH_QUERY_KEY });
       } catch (err) {
         setRemoveError(

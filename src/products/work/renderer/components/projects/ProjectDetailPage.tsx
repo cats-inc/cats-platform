@@ -29,7 +29,7 @@ export function ProjectDetailPage(): JSX.Element {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const graph = useWorkGraphQuery().data ?? EMPTY_WORK_GRAPH;
+  const graph = useWorkGraphQuery(t("workGraphLoadErrorFallback")).data ?? EMPTY_WORK_GRAPH;
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
   const projectsQuery = useProjectsQuery();
 

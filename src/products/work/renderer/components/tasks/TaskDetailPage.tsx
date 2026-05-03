@@ -36,7 +36,7 @@ export function TaskDetailPage(): JSX.Element {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { t } = useI18n();
-  const graph = useWorkGraphQuery().data ?? EMPTY_WORK_GRAPH;
+  const graph = useWorkGraphQuery(t("workGraphLoadErrorFallback")).data ?? EMPTY_WORK_GRAPH;
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
   const tasksQuery = useTasksQuery();
   const projectsQuery = useProjectsQuery();

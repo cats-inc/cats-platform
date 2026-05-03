@@ -35,12 +35,12 @@ export function WorkItemDetailPage(): JSX.Element {
   const { workItemId } = useParams<{ workItemId: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const graph = useWorkGraphQuery().data ?? EMPTY_WORK_GRAPH;
-  const indexes = useMemo(() => buildIndexes(graph), [graph]);
   const workItemsQuery = useWorkItemsQuery();
   const projectsQuery = useProjectsQuery();
   const missionsQuery = useMissionsQuery();
   const { t } = useI18n();
+  const graph = useWorkGraphQuery(t("workGraphLoadErrorFallback")).data ?? EMPTY_WORK_GRAPH;
+  const indexes = useMemo(() => buildIndexes(graph), [graph]);
 
   const allWorkItems = workItemsQuery.data?.workItems ?? [];
   const workItem = workItemId

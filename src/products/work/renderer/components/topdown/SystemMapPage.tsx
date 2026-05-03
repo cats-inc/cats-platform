@@ -29,7 +29,7 @@ export function SystemMapPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const selectedId = searchParams.get("selectedId");
 
-  const graph = useWorkGraphQuery().data ?? EMPTY_WORK_GRAPH;
+  const graph = useWorkGraphQuery(t("workGraphLoadErrorFallback")).data ?? EMPTY_WORK_GRAPH;
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
 
   const byLayer = useMemo(() => {

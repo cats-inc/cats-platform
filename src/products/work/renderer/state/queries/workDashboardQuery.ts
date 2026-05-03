@@ -5,9 +5,11 @@ import type { WorkDashboardProjection } from "../../../api/projection.js";
 
 export const WORK_DASHBOARD_QUERY_KEY = ["workDashboard"] as const;
 
-export function useWorkDashboardQuery(): UseQueryResult<WorkDashboardProjection> {
+export function useWorkDashboardQuery(
+  errorMessage: string,
+): UseQueryResult<WorkDashboardProjection> {
   return useQuery({
     queryKey: WORK_DASHBOARD_QUERY_KEY,
-    queryFn: ({ signal }) => fetchWorkDashboard(signal),
+    queryFn: ({ signal }) => fetchWorkDashboard(errorMessage, signal),
   });
 }

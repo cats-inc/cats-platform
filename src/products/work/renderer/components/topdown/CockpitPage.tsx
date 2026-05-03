@@ -106,7 +106,7 @@ export function CockpitPage(): JSX.Element {
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = (searchParams.get("tab") as CockpitTab | null) ?? "command";
   const selectedId = searchParams.get("selectedId");
-  const graph = useWorkGraphQuery().data ?? EMPTY_WORK_GRAPH;
+  const graph = useWorkGraphQuery(t("workGraphLoadErrorFallback")).data ?? EMPTY_WORK_GRAPH;
   const indexes = useMemo(() => buildIndexes(graph), [graph]);
 
   const buckets = useMemo(() => {

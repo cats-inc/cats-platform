@@ -33,6 +33,7 @@ interface CoreTraceListResponse {
 
 export async function fetchTracesByRunId(
   runId: string,
+  errorMessage: string,
   signal?: AbortSignal,
 ): Promise<CoreTraceSummary[]> {
   const params = new URLSearchParams();
@@ -40,7 +41,7 @@ export async function fetchTracesByRunId(
   const response = await fetch(`/api/core/traces?${params.toString()}`, { signal });
   const payload = await expectJson<CoreTraceListResponse>(
     response,
-    'Failed to load run traces',
+    errorMessage,
   );
   return payload.traces;
 }

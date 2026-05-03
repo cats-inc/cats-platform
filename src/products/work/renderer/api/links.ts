@@ -31,6 +31,7 @@ export interface ListWorkLinksQuery {
 
 export async function createWorkLink(
   input: CreateWorkLinkInput,
+  errorMessage: string,
   signal?: AbortSignal,
 ): Promise<CreateWorkLinkResult> {
   const response = await fetch(WORK_API_LINKS_PATH, {
@@ -39,21 +40,23 @@ export async function createWorkLink(
     body: JSON.stringify(input),
     signal,
   });
-  return expectJson<CreateWorkLinkResult>(response, 'Failed to create link');
+  return expectJson<CreateWorkLinkResult>(response, errorMessage);
 }
 
 export async function removeWorkLink(
   linkId: string,
+  errorMessage: string,
   signal?: AbortSignal,
 ): Promise<{ removed: boolean; linkId: string }> {
   const response = await fetch(buildWorkApiLinkPath(linkId), {
     method: 'DELETE',
     signal,
   });
-  return expectJson<{ removed: boolean; linkId: string }>(response, 'Failed to remove link');
+  return expectJson<{ removed: boolean; linkId: string }>(response, errorMessage);
 }
 
 export async function listWorkLinks(
+  errorMessage: string,
   query: ListWorkLinksQuery = {},
   signal?: AbortSignal,
 ): Promise<WorkGraphLink[]> {
@@ -66,7 +69,7 @@ export async function listWorkLinks(
   const response = await fetch(url, { signal });
   const payload = await expectJson<{ links: WorkGraphLink[] }>(
     response,
-    'Failed to list links',
+    errorMessage,
   );
   return payload.links;
 }

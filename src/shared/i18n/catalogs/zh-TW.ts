@@ -465,6 +465,7 @@ export const zhTWCatalog: MessageCatalog = {
   'work.sidebar.newCatteryLabel': '新增貓窩',
   'work.query.httpError': '請求失敗，狀態碼 {status}。',
   'work.query.httpErrorWithStatusText': '請求失敗，狀態碼 {status} {statusText}。',
+  'work.graph.loadErrorFallback': '載入工作圖譜失敗。',
   'work.missions.listTitle': '任務群',
   'work.missions.lede':
     '任務群不同於一般任務。當任務已排程時會綁定到工作項目，否則則由代理人於內部啟動。',
@@ -567,6 +568,7 @@ export const zhTWCatalog: MessageCatalog = {
   'work.run.noSubRuns': '沒有子執行。',
   'work.run.traceTitle': '追蹤 {count}',
   'work.run.traceLoading': '載入追蹤中…',
+  'work.run.traceLoadFallback': '載入執行追蹤失敗。',
   'work.run.traceLoadError': '載入追蹤失敗：{errorMessage}',
   'work.run.traceEmptyQueued':
     '執行正在排隊；協調器派發後會出現追蹤紀錄。',

@@ -829,7 +829,7 @@ function WorkWarRoomOpenWorkItemButton({
 
 export function WarRoomView() {
   const { t } = useI18n();
-  const dashboardQuery = useWorkDashboardQuery();
+  const dashboardQuery = useWorkDashboardQuery(t('workWarRoomLoadError'));
   const payload = dashboardQuery.data ?? null;
   const error = dashboardQuery.error
     ? dashboardQuery.error instanceof Error

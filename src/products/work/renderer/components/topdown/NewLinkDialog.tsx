@@ -163,12 +163,15 @@ export function NewLinkDialog({
     setSubmitting(true);
     setError(null);
     try {
-      const result = await createWorkLink({
-        kind,
-        source: selfRef,
-        target: { recordFamily: targetRefKind, recordId: selectedTarget.sourceRecordId },
-        note: trimmedNote.length === 0 ? null : trimmedNote,
-      });
+      const result = await createWorkLink(
+        {
+          kind,
+          source: selfRef,
+          target: { recordFamily: targetRefKind, recordId: selectedTarget.sourceRecordId },
+          note: trimmedNote.length === 0 ? null : trimmedNote,
+        },
+        t("workTopdownNewLinkErrorFailed"),
+      );
       await queryClient.invalidateQueries({ queryKey: WORK_GRAPH_QUERY_KEY });
       onCreated?.(result.link.id);
       onClose();

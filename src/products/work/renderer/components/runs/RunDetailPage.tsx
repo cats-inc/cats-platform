@@ -118,7 +118,7 @@ export function RunDetailPage(): JSX.Element {
   const { t } = useI18n();
   const runsQuery = useRunsQuery();
   const tasksQuery = useTasksQuery();
-  const graph = useWorkGraphQuery().data ?? EMPTY_WORK_GRAPH;
+  const graph = useWorkGraphQuery(t("workGraphLoadErrorFallback")).data ?? EMPTY_WORK_GRAPH;
   const [stopBlockerMessage, setStopBlockerMessage] = useState<string | null>(null);
 
   const allRuns = runsQuery.data?.runs ?? [];
@@ -218,7 +218,11 @@ export function RunDetailPage(): JSX.Element {
 
     async function loadOnce() {
       try {
-        const traces = await fetchTracesByRunId(runId!, controller.signal);
+        const traces = await fetchTracesByRunId(
+          runId!,
+          t("workRunTraceLoadFallback"),
+          controller.signal,
+        );
         if (cancelled) return;
         setTraceState({ status: "ready", traces, error: null });
       } catch (err) {

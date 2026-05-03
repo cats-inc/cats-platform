@@ -486,6 +486,7 @@ export const enCatalog: MessageCatalog = {
   'work.sidebar.newCatteryLabel': 'New cattery',
   'work.query.httpError': 'Request failed with status {status}.',
   'work.query.httpErrorWithStatusText': 'Request failed with status {status} {statusText}.',
+  'work.graph.loadErrorFallback': 'Failed to load work graph.',
   'work.missions.listTitle': 'Missions',
   'work.missions.lede':
     'Agent missions — distinct from tasks. Anchored to a Work Item when planned, or fully internal when spawned by an agent.',
@@ -591,6 +592,7 @@ export const enCatalog: MessageCatalog = {
   'work.run.noSubRuns': 'No sub-runs.',
   'work.run.traceTitle': 'Trace {count}',
   'work.run.traceLoading': 'Loading trace…',
+  'work.run.traceLoadFallback': 'Failed to load run trace.',
   'work.run.traceLoadError': 'Failed to load trace: {errorMessage}',
   'work.run.traceEmptyQueued':
     'Run is queued; trace records appear once the orchestrator dispatches.',
