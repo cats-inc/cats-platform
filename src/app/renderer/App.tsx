@@ -248,7 +248,11 @@ export default function PlatformApp() {
       options?: { suppressErrors?: boolean },
     ): Promise<void> => {
       try {
-        const envelope = await fetchPlatformEnvelope(signal);
+        const envelope = await fetchPlatformEnvelope({
+          signal,
+          fallbackMessageForStatus: (status) =>
+            t('appLoadStateFailedWithStatus', { status }),
+        });
         if (!signal?.aborted) {
           startTransition(() => setState({ status: 'ready', envelope }));
         }
@@ -327,7 +331,11 @@ export default function PlatformApp() {
       const controller = new AbortController();
       refreshController = controller;
 
-      void fetchPlatformEnvelope(controller.signal)
+      void fetchPlatformEnvelope({
+        signal: controller.signal,
+        fallbackMessageForStatus: (status) =>
+          t('appLoadStateFailedWithStatus', { status }),
+      })
         .then((envelope) => {
           if (controller.signal.aborted) {
             return;
@@ -386,7 +394,7 @@ export default function PlatformApp() {
       window.removeEventListener('focus', handleFocus);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [isLobbyRoute, state.status]);
+  }, [isLobbyRoute, state.status, t]);
 
   const envelope = state.status === 'ready' ? state.envelope : null;
   const setupComplete = Boolean(envelope?.setupCompleteAt);

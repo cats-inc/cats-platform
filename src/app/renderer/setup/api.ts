@@ -16,19 +16,34 @@ import {
 } from '../providerCatalogClient.js';
 import { fetchProviderRegistryFromClientCache } from '../providerRegistryClient.js';
 
-async function readErrorMessage(response: Response, fallback: string): Promise<string> {
+interface SetupApiRequestOptions {
+  signal?: AbortSignal;
+  fallbackMessageForStatus: (status: number) => string;
+  errorMessagesByCode?: Readonly<Record<string, string>>;
+}
+
+async function readErrorMessage(
+  response: Response,
+  options: SetupApiRequestOptions,
+): Promise<string> {
   try {
     const payload = await response.json();
+    if (typeof payload?.error?.code === 'string') {
+      const mappedMessage = options.errorMessagesByCode?.[payload.error.code];
+      if (mappedMessage) {
+        return mappedMessage;
+      }
+    }
     if (typeof payload?.error?.message === 'string') {
       return payload.error.message;
     }
   } catch { /* ignore */ }
-  return fallback;
+  return options.fallbackMessageForStatus(response.status);
 }
 
 export async function completePlatformSetup(
   input: PlatformSetupCompleteInput,
-  signal?: AbortSignal,
+  options: SetupApiRequestOptions,
 ): Promise<PlatformHostEnvelope> {
   const response = await fetch('/api/platform/setup/complete', {
     method: 'POST',
@@ -37,34 +52,34 @@ export async function completePlatformSetup(
       Accept: 'application/json',
     },
     body: JSON.stringify(input),
-    signal,
+    signal: options.signal,
   });
 
   if (!response.ok) {
-    throw new Error(await readErrorMessage(response, `Setup failed (${response.status})`));
+    throw new Error(await readErrorMessage(response, options));
   }
 
   return (await response.json()) as PlatformHostEnvelope;
 }
 
 export async function fetchPlatformEnvelope(
-  signal?: AbortSignal,
+  options: SetupApiRequestOptions,
 ): Promise<PlatformHostEnvelope> {
   const response = await fetch('/api/app-shell', {
     headers: { Accept: 'application/json' },
-    signal,
+    signal: options.signal,
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to load app state (${response.status})`);
+    throw new Error(options.fallbackMessageForStatus(response.status));
   }
 
   return (await response.json()) as PlatformHostEnvelope;
 }
 
 export async function markPlatformSetupOpened(
-  attemptId?: string | null,
-  signal?: AbortSignal,
+  attemptId: string | null,
+  options: SetupApiRequestOptions,
 ): Promise<ProductBootstrapDiagnosticsReadModel> {
   const response = await fetch('/api/platform/bootstrap-diagnostics/opened', {
     method: 'POST',
@@ -73,11 +88,11 @@ export async function markPlatformSetupOpened(
       Accept: 'application/json',
     },
     body: JSON.stringify({ attemptId: attemptId ?? null }),
-    signal,
+    signal: options.signal,
   });
 
   if (!response.ok) {
-    throw new Error(await readErrorMessage(response, `Failed to record setup open (${response.status})`));
+    throw new Error(await readErrorMessage(response, options));
   }
 
   return (await response.json()) as ProductBootstrapDiagnosticsReadModel;

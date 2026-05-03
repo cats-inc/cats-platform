@@ -72,6 +72,12 @@ export function PlatformSetupWizard({
         guideCatInstance: createGuideCat ? (instance || undefined) : undefined,
         guideCatModel: createGuideCat ? (model || undefined) : undefined,
         guideCatModelSelection: createGuideCat ? modelSelection : undefined,
+      }, {
+        fallbackMessageForStatus: (status) => t(messageKeys.setupWizardFailedWithStatus, { status }),
+        errorMessagesByCode: {
+          already_complete: t(messageKeys.setupWizardAlreadyCompleteError),
+          bad_request: t(messageKeys.setupWizardInvalidRequestError),
+        },
       });
       await syncDesktopHostPlatformShell(result);
       onComplete(result);
@@ -97,8 +103,11 @@ export function PlatformSetupWizard({
       return;
     }
     setupOpenedRecorded.current = true;
-    void markPlatformSetupOpened(attemptId).catch(() => undefined);
-  }, [attemptId]);
+    void markPlatformSetupOpened(attemptId, {
+      fallbackMessageForStatus: (status) =>
+        t(messageKeys.setupWizardRecordOpenFailedWithStatus, { status }),
+    }).catch(() => undefined);
+  }, [attemptId, t]);
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent): void {

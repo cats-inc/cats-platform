@@ -29,6 +29,10 @@ test('shared zh-TW catalog avoids raw English for known product chrome fallbacks
   const t = createTranslator('zh-TW');
 
   assert.equal(t(messageKeys.sharedPlatformSurfaceSwitcherOpenLobby), '開啟大廳');
+  assert.equal(
+    t(messageKeys.appLoadStateFailedWithStatus, { status: 503 }),
+    '載入應用程式狀態失敗（503）',
+  );
   assert.equal(t(messageKeys.appHostBackToLobby), '返回大廳');
   assert.equal(
     t(messageKeys.settingsGeneralProfileDescription),
@@ -95,6 +99,16 @@ test('shared zh-TW catalog avoids raw English for known product chrome fallbacks
   assert.equal(
     t(messageKeys.sharedProviderModelFieldLoadingProviders),
     '正在載入可用的供應器…',
+  );
+  assert.equal(
+    t(messageKeys.setupWizardFailedWithStatus, { status: 500 }),
+    '設定失敗（500）',
+  );
+  assert.equal(t(messageKeys.setupWizardAlreadyCompleteError), '設定已完成。');
+  assert.equal(t(messageKeys.setupWizardInvalidRequestError), '設定請求無效。');
+  assert.equal(
+    t(messageKeys.setupWizardRecordOpenFailedWithStatus, { status: 503 }),
+    '記錄設定開啟狀態失敗（503）',
   );
   assert.equal(t(messageKeys.setupWizardOpeningCatsAction), '正在開啟 Cats…');
   assert.equal(t(messageKeys.conversationSidebarRenamingLabel), '重新命名中…');
