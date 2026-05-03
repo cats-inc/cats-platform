@@ -85,7 +85,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
         path: workspacePath.trim() || null,
         conversationRepoPath: fallbackConversationRepoPath,
         roomWorkspacePath: fallbackRoomWorkspacePath,
-      });
+      }, t(messageKeys.codeBuilderErrorCodespaceResolve));
 
       if (!result.workspace) {
         if (result.errorCode === 'selected_path_invalid' && result.errorPath) {
@@ -141,7 +141,10 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
 
       // Fetch task detail for artifacts
       try {
-        const detail = await fetchCodeTaskDetail(state.taskId);
+        const detail = await fetchCodeTaskDetail(
+          state.taskId,
+          t(messageKeys.codeBuilderErrorTaskDetailLoad),
+        );
         if (cancelled) {
           return;
         }
@@ -169,7 +172,10 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
       // Observe runtime session to detect completion
       if (state.sessionId && step === 'running') {
         try {
-          const observation = await observeRuntimeSession(state.sessionId);
+          const observation = await observeRuntimeSession(
+            state.sessionId,
+            t(messageKeys.codeBuilderRuntimeObservationFailed),
+          );
           if (cancelled) {
             return;
           }
@@ -199,7 +205,7 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
       cancelled = true;
       clearInterval(interval);
     };
-  }, [step, state.taskId, state.sessionId, workspacePath, refreshRepoStatus]);
+  }, [step, state.taskId, state.sessionId, workspacePath, refreshRepoStatus, t]);
 
   const handleWorkspaceSubmit = useCallback(async () => {
     const resolvedWorkspace = await resolveWorkspaceBinding();
@@ -284,7 +290,10 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
 
     let nextFeedback = t(messageKeys.codeBuilderFeedbackResumeTask, { taskId: resumedTaskId });
     try {
-      const detail = await fetchCodeTaskDetail(resumedTaskId);
+      const detail = await fetchCodeTaskDetail(
+        resumedTaskId,
+        t(messageKeys.codeBuilderErrorTaskDetailLoad),
+      );
       if (detail.workspace) {
         setWorkspaceSummary(detail.workspace);
         setWorkspacePath(detail.workspace.workspacePath);
@@ -323,24 +332,39 @@ export function CodeBuilderView({ selectedChannelContext = null }: CodeBuilderVi
   const usingExistingTask = activeTaskId !== null;
 
   const handlePreviewCommit = useCallback(async (message: string) => {
-    return apiPreviewCommit({ workspacePath, message });
-  }, [workspacePath]);
+    return apiPreviewCommit(
+      { workspacePath, message },
+      t(messageKeys.codeDeliveryCommitFailed),
+    );
+  }, [t, workspacePath]);
 
   const handleApplyCommit = useCallback(async (message: string) => {
-    return apiApplyCommit({ workspacePath, message });
-  }, [workspacePath]);
+    return apiApplyCommit(
+      { workspacePath, message },
+      t(messageKeys.codeDeliveryCommitFailed),
+    );
+  }, [t, workspacePath]);
 
   const handlePreviewPush = useCallback(async () => {
-    return apiPreviewPush({ workspacePath });
-  }, [workspacePath]);
+    return apiPreviewPush(
+      { workspacePath },
+      t(messageKeys.codeDeliveryPushFailed),
+    );
+  }, [t, workspacePath]);
 
   const handleApplyPush = useCallback(async () => {
-    return apiApplyPush({ workspacePath });
-  }, [workspacePath]);
+    return apiApplyPush(
+      { workspacePath },
+      t(messageKeys.codeDeliveryPushFailed),
+    );
+  }, [t, workspacePath]);
 
   const handleExportArtifacts = useCallback(async () => {
-    return apiExportArtifacts({ workspacePath });
-  }, [workspacePath]);
+    return apiExportArtifacts(
+      { workspacePath },
+      t(messageKeys.codeDeliveryExportFailed),
+    );
+  }, [t, workspacePath]);
 
   const handleRefreshRepoStatus = useCallback(() => {
     refreshRepoStatus(workspacePath);

@@ -56,18 +56,18 @@ export function useCodeTaskExecution() {
     stopPolling();
     pollRef.current = setInterval(async () => {
       try {
-        const plan = await fetchCodePlan(taskId);
+        const plan = await fetchCodePlan(taskId, t(messageKeys.codePlanLoadError));
         setState((prev) => ({ ...prev, plan }));
       } catch {
         // Polling errors are non-fatal.
       }
     }, 5_000);
-  }, [stopPolling]);
+  }, [stopPolling, t]);
 
   const create = useCallback(async (input: CreateCodeTaskInput) => {
     setState((prev) => ({ ...prev, phase: 'creating', error: null }));
     try {
-      const result = await createCodeTask(input);
+      const result = await createCodeTask(input, t(messageKeys.codeBuilderErrorTaskCreate));
       const taskId = result.task.taskId;
       if (!taskId) {
         throw new Error(t(messageKeys.codeBuilderErrorTaskCreateMissingId));
@@ -90,7 +90,11 @@ export function useCodeTaskExecution() {
   const execute = useCallback(async (taskId: string, input: ExecuteCodeTaskInput) => {
     setState((prev) => ({ ...prev, phase: 'executing', error: null }));
     try {
-      const result = await executeCodeTask(taskId, input);
+      const result = await executeCodeTask(
+        taskId,
+        input,
+        t(messageKeys.codeBuilderErrorTaskExecution),
+      );
       setState((prev) => ({
         ...prev,
         phase: 'running',
@@ -111,9 +115,9 @@ export function useCodeTaskExecution() {
   const resume = useCallback(async (taskId: string) => {
     setState((prev) => ({ ...prev, phase: 'executing', error: null }));
     try {
-      await resumeCodeTask(taskId);
+      await resumeCodeTask(taskId, t(messageKeys.codeBuilderErrorTaskResume));
       try {
-        const plan = await fetchCodePlan(taskId);
+        const plan = await fetchCodePlan(taskId, t(messageKeys.codePlanLoadError));
         setState((prev) => ({ ...prev, phase: 'idle', taskId, plan }));
       } catch {
         setState((prev) => ({ ...prev, phase: 'idle', taskId }));
@@ -131,12 +135,15 @@ export function useCodeTaskExecution() {
 
   const refreshRepoStatus = useCallback(async (workspacePath: string) => {
     try {
-      const result = await inspectRepoStatus({ workspacePath });
+      const result = await inspectRepoStatus(
+        { workspacePath },
+        t(messageKeys.codeDeliveryErrorRepoStatusUnavailable),
+      );
       setState((prev) => ({ ...prev, repoStatus: result }));
     } catch {
       // Non-fatal — repo may not exist yet.
     }
-  }, []);
+  }, [t]);
 
   const reset = useCallback(() => {
     stopPolling();

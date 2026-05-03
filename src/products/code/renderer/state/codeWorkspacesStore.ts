@@ -83,7 +83,7 @@ export function refreshCodeWorkspaces(options: {
   error = null;
   invalidate();
 
-  refreshPromise = fetchCodeWorkspaces()
+  refreshPromise = fetchCodeWorkspaces(t(messageKeys.codeWorkspacesLoadError))
     .then((payload) => {
       currentWorkspaces = payload.workspaces;
       error = null;

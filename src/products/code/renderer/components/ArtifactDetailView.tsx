@@ -68,7 +68,7 @@ export function ArtifactDetailView() {
     setLoading(true);
     setError(null);
 
-    void fetchCodeArtifactDetail(artifactId)
+    void fetchCodeArtifactDetail(artifactId, t(messageKeys.codeArtifactDetailLoadFailed))
       .then((detail) => {
         if (cancelled) {
           return;

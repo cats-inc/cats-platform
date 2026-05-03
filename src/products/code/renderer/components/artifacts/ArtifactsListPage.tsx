@@ -91,7 +91,7 @@ export function ArtifactsListPage(): JSX.Element {
     setLoading(true);
     setError(null);
 
-    void fetchCodeArtifacts()
+    void fetchCodeArtifacts(t(messageKeys.codeArtifactListLoadFailed))
       .then((payload) => {
         if (cancelled) return;
         setArtifacts(payload.artifacts);

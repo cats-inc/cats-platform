@@ -84,12 +84,12 @@ test('CodeBuilderView exposes resume, workspace binding, and execution summary s
     'utf8',
   );
 
-  assert.match(source, /Resume task/u);
+  assert.match(source, /messageKeys\.codeBuilderResumePrompt/u);
   assert.match(source, /resolveCodeBuilderExecutionTaskId\(state\.taskId, resumeTaskId\)/u);
   assert.match(source, /resolveWorkspaceBinding/u);
   assert.match(source, /conversationRepoPath: fallbackConversationRepoPath/u);
   assert.match(source, /roomWorkspacePath: fallbackRoomWorkspacePath/u);
-  assert.match(source, /Task \$\{resumedTaskId\} is ready to continue\./u);
+  assert.match(source, /messageKeys\.codeBuilderFeedbackResumeTask/u);
   assert.match(source, /CodeExecutionSummaryPanel/u);
   assert.match(source, /continuationBlockedReason=\{continuationBlockedReason\}/u);
   assert.match(source, /deliveryMode=\{deliveryMode\}/u);

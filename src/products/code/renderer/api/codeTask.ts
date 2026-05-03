@@ -25,6 +25,7 @@ import {
   CODE_API_ARTIFACTS_PATH,
   CODE_API_TASKS_PATH,
 } from '../../shared/apiPaths.js';
+import { messageKeys, t as translate } from '../../../../shared/i18n/index.js';
 
 export interface CreateCodeTaskInput {
   title: string;
@@ -250,12 +251,26 @@ export interface CodeWorkspaceDetailResponse {
 
 export async function resolveWorkspace(
   input: ResolveWorkspaceInput,
+  errorMessage = translate(messageKeys.codeBuilderErrorCodespaceResolve),
 ): Promise<ResolveWorkspaceResponse> {
-  return postJson<ResolveWorkspaceResponse>(CODE_API_CODESPACE_RESOLVE_PATH, input);
+  return postJson<ResolveWorkspaceResponse>(
+    CODE_API_CODESPACE_RESOLVE_PATH,
+    input,
+    'POST',
+    errorMessage,
+  );
 }
 
-export async function createCodeTask(input: CreateCodeTaskInput): Promise<CreateCodeTaskResponse> {
-  const response = await postJson<{ task: unknown }>(CODE_API_TASKS_PATH, input);
+export async function createCodeTask(
+  input: CreateCodeTaskInput,
+  errorMessage = translate(messageKeys.codeBuilderErrorTaskCreate),
+): Promise<CreateCodeTaskResponse> {
+  const response = await postJson<{ task: unknown }>(
+    CODE_API_TASKS_PATH,
+    input,
+    'POST',
+    errorMessage,
+  );
   return {
     task: readCodeTaskBuilderDetail(response.task),
   };
@@ -264,10 +279,13 @@ export async function createCodeTask(input: CreateCodeTaskInput): Promise<Create
 export async function executeCodeTask(
   taskId: string,
   input: ExecuteCodeTaskInput,
+  errorMessage = translate(messageKeys.codeBuilderErrorTaskExecution),
 ): Promise<ExecuteCodeTaskResponse> {
   const response = await postJson<{ task: unknown; runId: string; sessionId: string }>(
     buildCodeApiTaskExecutePath(taskId),
     input,
+    'POST',
+    errorMessage,
   );
   return {
     task: readCodeTaskBuilderDetail(response.task),
@@ -276,19 +294,28 @@ export async function executeCodeTask(
   };
 }
 
-export async function resumeCodeTask(taskId: string): Promise<ResumeCodeTaskResponse> {
+export async function resumeCodeTask(
+  taskId: string,
+  errorMessage = translate(messageKeys.codeBuilderErrorTaskResume),
+): Promise<ResumeCodeTaskResponse> {
   const response = await postJson<{ task: unknown }>(
     buildCodeApiTaskResumePath(taskId),
     {},
+    'POST',
+    errorMessage,
   );
   return {
     task: readCodeTaskBuilderDetail(response.task),
   };
 }
 
-export async function fetchCodePlan(taskId: string): Promise<CodePlanState | null> {
+export async function fetchCodePlan(
+  taskId: string,
+  errorMessage = translate(messageKeys.codePlanLoadError),
+): Promise<CodePlanState | null> {
   const response = await fetchJson<{ plan?: CodePlanState | null }>(
     buildCodeApiTaskPlanPath(taskId),
+    errorMessage,
   );
   return response.plan ?? null;
 }
@@ -297,123 +324,183 @@ export async function updateCodePlan(
   taskId: string,
   steps: PlanStepInput[],
   replan = false,
+  errorMessage = translate(messageKeys.codePlanUpdateError),
 ): Promise<unknown> {
   return postJson(buildCodeApiTaskPlanPath(taskId), {
     steps,
     replan,
-  }, 'PUT');
+  }, 'PUT', errorMessage);
 }
 
 export async function updateCodePlanStep(
   taskId: string,
   stepId: string,
   status: PlanStepInput['status'],
+  errorMessage = translate(messageKeys.codePlanStepUpdateError),
 ): Promise<unknown> {
   return postJson(
     buildCodeApiTaskPlanStepPath(taskId, stepId),
     { status },
     'PATCH',
+    errorMessage,
   );
 }
 
-export async function inspectRepoStatus(input: DeliveryRepoInput): Promise<CodeDeliveryResult> {
-  return postJson<CodeDeliveryResult>(CODE_API_DELIVERY_REPO_STATUS_PATH, input);
+export async function inspectRepoStatus(
+  input: DeliveryRepoInput,
+  errorMessage = translate(messageKeys.codeDeliveryErrorRepoStatusUnavailable),
+): Promise<CodeDeliveryResult> {
+  return postJson<CodeDeliveryResult>(
+    CODE_API_DELIVERY_REPO_STATUS_PATH,
+    input,
+    'POST',
+    errorMessage,
+  );
 }
 
-export async function previewCommit(input: DeliveryRepoInput): Promise<CodeDeliveryResult> {
+export async function previewCommit(
+  input: DeliveryRepoInput,
+  errorMessage = translate(messageKeys.codeDeliveryCommitFailed),
+): Promise<CodeDeliveryResult> {
   return postJson<CodeDeliveryResult>(CODE_API_DELIVERY_REPO_COMMIT_PATH, {
     ...input,
     apply: false,
-  });
+  }, 'POST', errorMessage);
 }
 
-export async function applyCommit(input: DeliveryRepoInput): Promise<CodeDeliveryResult> {
+export async function applyCommit(
+  input: DeliveryRepoInput,
+  errorMessage = translate(messageKeys.codeDeliveryCommitFailed),
+): Promise<CodeDeliveryResult> {
   return postJson<CodeDeliveryResult>(CODE_API_DELIVERY_REPO_COMMIT_PATH, {
     ...input,
     apply: true,
-  });
+  }, 'POST', errorMessage);
 }
 
-export async function previewPush(input: DeliveryRepoInput): Promise<CodeDeliveryResult> {
+export async function previewPush(
+  input: DeliveryRepoInput,
+  errorMessage = translate(messageKeys.codeDeliveryPushFailed),
+): Promise<CodeDeliveryResult> {
   return postJson<CodeDeliveryResult>(CODE_API_DELIVERY_REPO_PUSH_PATH, {
     ...input,
     apply: false,
-  });
+  }, 'POST', errorMessage);
 }
 
-export async function applyPush(input: DeliveryRepoInput): Promise<CodeDeliveryResult> {
+export async function applyPush(
+  input: DeliveryRepoInput,
+  errorMessage = translate(messageKeys.codeDeliveryPushFailed),
+): Promise<CodeDeliveryResult> {
   return postJson<CodeDeliveryResult>(CODE_API_DELIVERY_REPO_PUSH_PATH, {
     ...input,
     apply: true,
-  });
+  }, 'POST', errorMessage);
 }
 
-export async function exportArtifacts(input: {
-  workspacePath?: string | null;
-  sessionId?: string | null;
-  artifactIds?: string[];
-}): Promise<CodeDeliveryResult> {
-  return postJson<CodeDeliveryResult>(CODE_API_DELIVERY_ARTIFACT_EXPORT_PATH, input);
+export async function exportArtifacts(
+  input: {
+    workspacePath?: string | null;
+    sessionId?: string | null;
+    artifactIds?: string[];
+  },
+  errorMessage = translate(messageKeys.codeDeliveryExportFailed),
+): Promise<CodeDeliveryResult> {
+  return postJson<CodeDeliveryResult>(
+    CODE_API_DELIVERY_ARTIFACT_EXPORT_PATH,
+    input,
+    'POST',
+    errorMessage,
+  );
 }
 
 export async function fetchCodeTaskDetail(
   taskId: string,
+  errorMessage = translate(messageKeys.codeBuilderErrorTaskDetailLoad),
 ): Promise<CodeTaskBuilderDetailSummary> {
   return readCodeTaskBuilderDetail(
-    await fetchJson(buildCodeApiTaskPath(taskId)),
+    await fetchJson(buildCodeApiTaskPath(taskId), errorMessage),
   );
 }
 
 export async function fetchCodeArtifactDetail(
   artifactId: string,
+  errorMessage = translate(messageKeys.codeArtifactDetailLoadFailed),
 ): Promise<CodeArtifactDetailResponse> {
   return fetchJson<CodeArtifactDetailResponse>(
     buildCodeApiArtifactPath(artifactId),
+    errorMessage,
   );
 }
 
-export async function fetchCodeArtifacts(): Promise<CodeArtifactListResponse> {
-  return fetchJson<CodeArtifactListResponse>(CODE_API_ARTIFACTS_PATH);
+export async function fetchCodeArtifacts(
+  errorMessage = translate(messageKeys.codeArtifactListLoadFailed),
+): Promise<CodeArtifactListResponse> {
+  return fetchJson<CodeArtifactListResponse>(CODE_API_ARTIFACTS_PATH, errorMessage);
 }
 
-export async function fetchCodeWorkspaces(): Promise<CodeWorkspaceListResponse> {
-  return fetchJson<CodeWorkspaceListResponse>(CODE_API_CODESPACES_PATH);
+export async function fetchCodeWorkspaces(
+  errorMessage = translate(messageKeys.codeWorkspacesLoadError),
+): Promise<CodeWorkspaceListResponse> {
+  return fetchJson<CodeWorkspaceListResponse>(CODE_API_CODESPACES_PATH, errorMessage);
 }
 
 export async function fetchCodeWorkspaceDetail(
   workspaceId: string,
+  errorMessage = translate(messageKeys.codeWorkspaceDetailError),
 ): Promise<CodeWorkspaceDetailResponse> {
   return fetchJson<CodeWorkspaceDetailResponse>(
     buildCodeApiCodespacePath(workspaceId),
+    errorMessage,
   );
 }
 
 export async function observeRuntimeSession(
   sessionId: string,
+  errorMessage = translate(messageKeys.codeBuilderRuntimeObservationFailed),
 ): Promise<RuntimeObservationResponse> {
   return fetchJson<RuntimeObservationResponse>(
     buildCodeApiRuntimeSessionObservePath(sessionId),
+    errorMessage,
   );
 }
 
-function fetchJson<T>(url: string): Promise<T> {
-  return fetch(url).then(async (response) => {
-    if (!response.ok) {
-      throw new Error(`GET ${url} failed: ${response.status}`);
+async function fetchJson<T>(url: string, errorMessage: string): Promise<T> {
+  try {
+    const response = await fetch(url);
+    return await expectCodeJson<T>(response, errorMessage);
+  } catch (error) {
+    if (error instanceof Error && error.message === errorMessage) {
+      throw error;
     }
-    return response.json() as Promise<T>;
-  });
+    throw new Error(errorMessage);
+  }
 }
 
-function postJson<T>(url: string, body: unknown, method = 'POST'): Promise<T> {
-  return fetch(url, {
-    method,
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(body),
-  }).then(async (response) => {
-    if (!response.ok) {
-      throw new Error(`${method} ${url} failed: ${response.status}`);
+async function postJson<T>(
+  url: string,
+  body: unknown,
+  method = 'POST',
+  errorMessage = translate(messageKeys.codeBuilderErrorCodespaceResolve),
+): Promise<T> {
+  try {
+    const response = await fetch(url, {
+      method,
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    return await expectCodeJson<T>(response, errorMessage);
+  } catch (error) {
+    if (error instanceof Error && error.message === errorMessage) {
+      throw error;
     }
-    return response.json() as Promise<T>;
-  });
+    throw new Error(errorMessage);
+  }
+}
+
+async function expectCodeJson<T>(response: Response, errorMessage: string): Promise<T> {
+  if (!response.ok) {
+    throw new Error(errorMessage);
+  }
+  return response.json() as Promise<T>;
 }

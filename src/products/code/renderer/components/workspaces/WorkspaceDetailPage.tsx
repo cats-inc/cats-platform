@@ -139,7 +139,7 @@ export function WorkspaceDetailPage(): JSX.Element {
     setError(null);
     setPayload(null);
 
-    void fetchCodeWorkspaceDetail(codespaceId)
+    void fetchCodeWorkspaceDetail(codespaceId, t(messageKeys.codeWorkspaceDetailError))
       .then((nextPayload) => {
         if (!cancelled) {
           setPayload(nextPayload);
