@@ -1,7 +1,10 @@
 import type { ProductPreviewSurfaceTarget } from '../../../../core/previewSurfaces.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
-import { labelCodeArtifactStatusForLocale } from './codeStatusLabels.js';
+import {
+  labelCodeArtifactKindForLocale,
+  labelCodeArtifactStatusForLocale,
+} from './codeStatusLabels.js';
 
 export interface ArtifactItem {
   id: string;
@@ -101,7 +104,7 @@ export function BuildPreviewPanel({
                 </span>
               </div>
               <div className="operatorMetaRow">
-                <span>{artifact.kind}</span>
+                <span>{labelCodeArtifactKindForLocale(artifact.kind, t)}</span>
                 {artifact.path ? <span>{artifact.path}</span> : null}
               </div>
               {onOpenArtifact ? (

@@ -10,10 +10,29 @@ const WORKSPACE_STATUS_LABEL_KEYS: Record<string, MessageKey> = {
   archived: messageKeys.codeWorkspaceStatusArchived,
 };
 
+const ARTIFACT_KIND_LABEL_KEYS: Record<string, MessageKey> = {
+  attachment: messageKeys.codeArtifactKindAttachmentLabel,
+  build: messageKeys.codeArtifactKindBuildLabel,
+  dataset: messageKeys.codeArtifactDatasetLabel,
+  document: messageKeys.codeArtifactKindDocumentLabel,
+  preview: messageKeys.codeArtifactKindPreviewLabel,
+  report: messageKeys.codeArtifactKindReportLabel,
+  transcript_export: messageKeys.codeArtifactKindTranscriptLabel,
+};
+
 const ARTIFACT_STATUS_LABEL_KEYS: Record<string, MessageKey> = {
   draft: messageKeys.codeArtifactStatusDraft,
   ready: messageKeys.codeArtifactStatusReady,
   published: messageKeys.codeArtifactStatusPublished,
+};
+
+const CONVERSATION_KIND_LABEL_KEYS: Record<string, MessageKey> = {
+  chat_channel: messageKeys.codeConversationKindChatChannel,
+  chat_root: messageKeys.codeConversationKindChatRoot,
+  code_thread: messageKeys.codeConversationKindCodeThread,
+  direct_message: messageKeys.codeConversationKindDirectMessage,
+  parallel_group: messageKeys.codeConversationKindParallelGroup,
+  work_thread: messageKeys.codeConversationKindWorkThread,
 };
 
 const RECORD_STATUS_LABEL_KEYS: Record<string, MessageKey> = {
@@ -66,6 +85,30 @@ export function labelCodeArtifactStatusForLocale(
     t,
     ARTIFACT_STATUS_LABEL_KEYS,
     messageKeys.codeArtifactStatusUnknown,
+  );
+}
+
+export function labelCodeArtifactKindForLocale(
+  kind: string,
+  t: CodeTranslator,
+): string {
+  return labelStatus(
+    kind,
+    t,
+    ARTIFACT_KIND_LABEL_KEYS,
+    messageKeys.codeArtifactKindUnknownLabel,
+  );
+}
+
+export function labelCodeConversationKindForLocale(
+  kind: string,
+  t: CodeTranslator,
+): string {
+  return labelStatus(
+    kind,
+    t,
+    CONVERSATION_KIND_LABEL_KEYS,
+    messageKeys.codeConversationKindUnknown,
   );
 }
 

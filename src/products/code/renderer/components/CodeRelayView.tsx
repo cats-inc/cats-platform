@@ -91,6 +91,19 @@ function labelRelayStatus(status: string, t: ReturnType<typeof useI18n>['t']): s
   }
 }
 
+function labelRelayAuthorKind(kind: string, t: ReturnType<typeof useI18n>['t']): string {
+  switch (kind) {
+    case 'agent':
+      return t(messageKeys.codeRelayAuthorKindAgent);
+    case 'system':
+      return t(messageKeys.codeRelayAuthorKindSystem);
+    case 'user':
+      return t(messageKeys.codeRelayAuthorKindUser);
+    default:
+      return kind.trim() || t(messageKeys.codeRelayAuthorKindUnknown);
+  }
+}
+
 function selectedRosterIds(entries: CodeRelayRosterEntryPayload[]): string[] {
   return entries
     .filter((entry) => entry.enabled)
@@ -698,7 +711,7 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
                               {responseMessage ? (
                                 <div className="codeRelayMessageBlock">
                                   <p className="codeRelayMessageMeta">
-                                    {responseMessage.authorKind} ·{' '}
+                                    {labelRelayAuthorKind(responseMessage.authorKind, t)} ·{' '}
                                     {formatTimestamp(responseMessage.createdAt, locale, t)}
                                   </p>
                                   <pre className="codeRelayMessageBody">{responseMessage.content}</pre>

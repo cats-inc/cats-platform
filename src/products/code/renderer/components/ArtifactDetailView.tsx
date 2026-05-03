@@ -15,7 +15,9 @@ import {
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
 import {
+  labelCodeArtifactKindForLocale,
   labelCodeArtifactStatusForLocale,
+  labelCodeConversationKindForLocale,
   labelCodeRecordStatusForLocale,
 } from './codeStatusLabels.js';
 
@@ -29,27 +31,6 @@ function artifactStatusClassName(status: string): string {
       return 'operatorStatusBadge isMuted';
     default:
       return 'operatorStatusBadge isAttention';
-  }
-}
-
-function labelArtifactKind(kind: string, t: ReturnType<typeof useI18n>['t']): string {
-  switch (kind) {
-    case 'build':
-      return t(messageKeys.codeArtifactKindBuildLabel);
-    case 'preview':
-      return t(messageKeys.codeArtifactKindPreviewLabel);
-    case 'document':
-      return t(messageKeys.codeArtifactKindDocumentLabel);
-    case 'report':
-      return t(messageKeys.codeArtifactKindReportLabel);
-    case 'attachment':
-      return t(messageKeys.codeArtifactKindAttachmentLabel);
-    case 'transcript_export':
-      return t(messageKeys.codeArtifactKindTranscriptLabel);
-    case 'dataset':
-      return t(messageKeys.codeArtifactDatasetLabel);
-    default:
-      return kind || t(messageKeys.codeArtifactKindUnknownLabel);
   }
 }
 
@@ -199,7 +180,7 @@ export function ArtifactDetailView() {
           <div className="operatorMetaRow">
             <span>
               {t(messageKeys.codeArtifactMetaKind, {
-                kind: labelArtifactKind(payload.artifact.kind, t),
+                kind: labelCodeArtifactKindForLocale(payload.artifact.kind, t),
               })}
             </span>
             <span>{t(messageKeys.codeArtifactMetaUpdated, { updatedAt: payload.artifact.updatedAt })}</span>
@@ -295,7 +276,9 @@ export function ArtifactDetailView() {
             <article className="operatorCard">
               <div className="operatorCardHeader">
                 <strong>{t(messageKeys.codeArtifactDetailConversationLabel)}</strong>
-                <span className="operatorStatusBadge isMuted">{payload.conversation.kind}</span>
+                <span className="operatorStatusBadge isMuted">
+                  {labelCodeConversationKindForLocale(payload.conversation.kind, t)}
+                </span>
               </div>
               <p>{payload.conversation.title}</p>
             </article>
@@ -328,7 +311,7 @@ export function ArtifactDetailView() {
                 </div>
                 {artifact.summary ? <p>{artifact.summary}</p> : null}
                 <div className="operatorMetaRow">
-                  <span>{labelArtifactKind(artifact.kind, t)}</span>
+                  <span>{labelCodeArtifactKindForLocale(artifact.kind, t)}</span>
                   {artifact.path ? <span>{artifact.path}</span> : null}
                 </div>
                 <div className="operatorActionRow">

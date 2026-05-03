@@ -15,6 +15,7 @@ import { messageKeys } from '../../../../../shared/i18n/messageKeys.js';
 import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import {
   labelCodeArtifactStatusForLocale,
+  labelCodeConversationKindForLocale,
   labelCodeRecordStatusForLocale,
   labelCodeWorkspaceStatusForLocale,
 } from '../codeStatusLabels.js';
@@ -342,7 +343,7 @@ export function WorkspaceDetailPage(): JSX.Element {
               {conversations.map((conversation) => (
                 <li key={conversation.id} className="codeWorkspaceDetail__item">
                   <span className="codeWorkspaceDetail__itemKind">
-                    {conversation.kind}
+                    {labelCodeConversationKindForLocale(conversation.kind, t)}
                   </span>
                   <span className="codeWorkspaceDetail__itemTitle">
                     {conversation.title}
