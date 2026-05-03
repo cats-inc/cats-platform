@@ -110,6 +110,12 @@ test('shared zh-TW catalog avoids raw English for known product chrome fallbacks
     t(messageKeys.sharedProviderModelFieldLoadingProviders),
     '正在載入可用的供應器…',
   );
+  assert.equal(t(messageKeys.sharedProviderModelFieldCustomLegacyModelLabel), '自訂舊版模型…');
+  assert.equal(t(messageKeys.sharedProviderModelFieldLegacyModelIdLabel), '舊版模型 ID');
+  assert.equal(
+    t(messageKeys.sharedProviderModelFieldLegacyModelIdHint),
+    '手動輸入模型 ID 會直接傳遞。執行階段會把它視為舊版 `model` 欄位，而不是結構化項目/預設選擇。',
+  );
   assert.equal(
     t(messageKeys.setupWizardFailedWithStatus, { status: 500 }),
     '設定失敗（500）',
