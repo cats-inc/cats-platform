@@ -29,12 +29,14 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /localizeActionLabel/);
   assert.match(html, /localizeIssueTitle/);
   assert.match(html, /localizeIssueDetail/);
+  assert.match(html, /localizeBootstrapSummary/);
   assert.match(html, /displayStatus/);
   assert.match(html, /'zh-TW'/);
   assert.match(html, /Cats 需要快速重新啟動/);
   assert.match(html, /桌面主機未完成啟動/);
   assert.match(html, /目前沒有可用的供應器目標/);
   assert.match(html, /桌面主機尚未完成先決條件掃描/);
+  assert.match(html, /產品 onboarding 診斷尚無法使用/);
   assert.match(html, /結束 Cats/);
   assert.match(html, /顯示詳細資料/);
   assert.match(html, /歡迎。你可以現在安裝 CLI/);

@@ -561,6 +561,14 @@ export function buildDesktopBootstrapPage(): string {
         'diagnostics.product': 'product: ',
         'diagnostics.recentEvents': 'Recent events',
         'diagnostics.runtime': 'runtime: ',
+        'diagnostics.summary.hostUnavailable': 'Host diagnostics are not available yet.',
+        'diagnostics.summary.noProductEvents':
+          'No product-owned onboarding events were recorded for this bootstrap attempt yet.',
+        'diagnostics.summary.productUnavailable': 'Product diagnostics are not available yet.',
+        'diagnostics.summary.productOnboardingUnavailable': 'Product onboarding diagnostics are not available yet.',
+        'diagnostics.summary.restoredIncomplete':
+          'Restored desktop host state is incomplete; rechecking desktop services.',
+        'diagnostics.summary.runtimeUnavailable': 'Runtime diagnostics are not available yet.',
         'fixed.startupError': 'Mew\u2026 something tripped me up during startup.',
         'issue.serviceError': '{service} error',
         'issue.noSpecificIssues': 'No specific issues were reported.',
@@ -682,6 +690,14 @@ export function buildDesktopBootstrapPage(): string {
         'diagnostics.product': '產品：',
         'diagnostics.recentEvents': '最近事件',
         'diagnostics.runtime': '執行階段：',
+        'diagnostics.summary.hostUnavailable': '主機診斷尚無法使用。',
+        'diagnostics.summary.noProductEvents':
+          '此 bootstrap 嘗試尚未記錄產品擁有的 onboarding 事件。',
+        'diagnostics.summary.productUnavailable': '產品診斷尚無法使用。',
+        'diagnostics.summary.productOnboardingUnavailable': '產品 onboarding 診斷尚無法使用。',
+        'diagnostics.summary.restoredIncomplete':
+          '已還原的桌面主機狀態不完整；正在重新檢查桌面服務。',
+        'diagnostics.summary.runtimeUnavailable': '執行階段診斷尚無法使用。',
         'fixed.startupError': '喵…啟動時有地方出錯了。',
         'issue.serviceError': '{service} 錯誤',
         'issue.noSpecificIssues': '沒有回報具體問題。',
@@ -829,6 +845,18 @@ export function buildDesktopBootstrapPage(): string {
         'issue.runtimeDiagnosticsPending.detail'
     };
 
+    var BOOTSTRAP_SUMMARY_KEYS = {
+      'Host diagnostics are not available yet.': 'diagnostics.summary.hostUnavailable',
+      'No product-owned onboarding events were recorded for this bootstrap attempt yet.':
+        'diagnostics.summary.noProductEvents',
+      'Product diagnostics are not available yet.': 'diagnostics.summary.productUnavailable',
+      'Product onboarding diagnostics are not available yet.':
+        'diagnostics.summary.productOnboardingUnavailable',
+      'Restored desktop host state is incomplete; rechecking desktop services.':
+        'diagnostics.summary.restoredIncomplete',
+      'Runtime diagnostics are not available yet.': 'diagnostics.summary.runtimeUnavailable'
+    };
+
     function resolveBootstrapLocale(languages) {
       var list = Array.isArray(languages) ? languages : [];
       for (var i = 0; i < list.length; i++) {
@@ -893,6 +921,12 @@ export function buildDesktopBootstrapPage(): string {
     function localizeIssueDetail(detail) {
       var text = String(detail || '');
       var key = BOOTSTRAP_ISSUE_DETAIL_KEYS[text];
+      return key ? tx(key) : text;
+    }
+
+    function localizeBootstrapSummary(summary) {
+      var text = String(summary || '');
+      var key = BOOTSTRAP_SUMMARY_KEYS[text];
       return key ? tx(key) : text;
     }
 
@@ -1579,18 +1613,18 @@ export function buildDesktopBootstrapPage(): string {
       content.push(el('div', { class: 'card' },
         CardHead(tx('diagnostics.layerSummary'), agg.attemptId || tx('diagnostics.current'), 'c-ok'),
         el('div', { class: 'detail-meta' },
-          el('strong', null, tx('diagnostics.runtime')), agg.layers.runtime.summary),
+          el('strong', null, tx('diagnostics.runtime')), localizeBootstrapSummary(agg.layers.runtime.summary)),
         el('div', { class: 'detail-meta' },
-          el('strong', null, tx('diagnostics.product')), agg.layers.product.summary),
+          el('strong', null, tx('diagnostics.product')), localizeBootstrapSummary(agg.layers.product.summary)),
         el('div', { class: 'detail-meta' },
-          el('strong', null, tx('diagnostics.host')), agg.layers.host.summary)
+          el('strong', null, tx('diagnostics.host')), localizeBootstrapSummary(agg.layers.host.summary))
       ));
 
       var chronology = Array.isArray(agg.chronology) ? agg.chronology.slice(0, 8) : [];
       if (chronology.length) {
         var chronoItems = chronology.map(function (evt) {
           return el('div', { class: 'chrono-item' },
-            el('div', { class: 'chrono-summary' }, evt.summary),
+            el('div', { class: 'chrono-summary' }, localizeBootstrapSummary(evt.summary)),
             el('div', { class: 'chrono-meta' },
               el('span', null, evt.layer),
               el('span', null, evt.kind),
