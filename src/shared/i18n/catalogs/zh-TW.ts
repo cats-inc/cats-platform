@@ -1092,7 +1092,7 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.composer.error.chooseTwoParallelChats':
     '送出前請至少選擇兩個平行聊天室。',
   'chat.composer.error.noActiveParallelThread':
-    '已建立平行聊天室，但沒有作用中的 thread。',
+    '已建立平行聊天室，但沒有作用中的討論串。',
   'chat.composer.error.noParallelChatForSending':
     '目前沒有可送出訊息的平行聊天室。',
   'chat.composer.error.noChatForSending': '目前沒有可送出訊息的聊天室。',
@@ -1181,7 +1181,7 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.parallelFooter.prevAriaLabel': '前一個平行聊天室',
   'chat.parallelFooter.nextAriaLabel': '下一個平行聊天室',
   'chat.parallelFooter.tabsAriaLabel': '平行聊天室',
-  'chat.parallelFooter.threadLabel': '線程 {threadIndex}',
+  'chat.parallelFooter.threadLabel': '討論串 {threadIndex}',
   'chat.parallelFooter.defaultModelLabel': '模型',
   'chat.compareCards.prevCardAriaLabel': '上一張卡片',
   'chat.compareCards.nextCardAriaLabel': '下一張卡片',

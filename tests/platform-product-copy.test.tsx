@@ -106,6 +106,14 @@ test('shared zh-TW catalog avoids raw English for known product chrome fallbacks
   );
   assert.equal(t(messageKeys.designAccountIdentityMenuLabel), '帳號選單');
   assert.equal(t(messageKeys.designAccountIdentityMenuMenuLabel), '帳號選單');
+  assert.equal(
+    t(messageKeys.chatComposerErrorNoActiveParallelThread),
+    '已建立平行聊天室，但沒有作用中的討論串。',
+  );
+  assert.equal(
+    t(messageKeys.chatParallelFooterThreadLabel, { threadIndex: 2 }),
+    '討論串 2',
+  );
   assert.equal(t(messageKeys.codeBuilderModelPlaceholder), '預設');
   assert.equal(t(messageKeys.codeExecutionDefaultModel), '預設');
   assert.equal(t(messageKeys.codeRelayLabelDefault), '預設');
