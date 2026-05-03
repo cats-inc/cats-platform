@@ -168,17 +168,17 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.runtime.modelCatalogsTitle': '模型目錄',
   'settings.runtime.modelCatalogsDescription':
     '立即要求 cats-runtime 重新整理每個供應器的模型清單，讓新版本模型可在大腦選單中即時使用，而不必等背景快取過期。',
-  'settings.runtime.refreshingState': '刷新中',
-  'settings.runtime.refreshCatalogsButton': '刷新模型目錄',
+  'settings.runtime.refreshingState': '重新整理中',
+  'settings.runtime.refreshCatalogsButton': '重新整理模型目錄',
   'settings.runtime.standaloneSetupTitle': '單機設定',
   'settings.runtime.standaloneSetupDescription':
     '當需要供應器修復或進行更深入掃描時，請開啟獨立執行階段設定頁。',
   'settings.runtime.openStandaloneSetup': '開啟 Cats 執行階段設定',
   'settings.runtime.cancelActionLabel': '取消',
   'settings.runtime.cancelActionFallbackLabel': '關閉',
-  'settings.runtime.refreshFailure': '刷新失敗。',
-  'settings.runtime.refreshSummary': '已刷新 {refreshed} 個目標{pluralSuffix}',
-  'settings.runtime.refreshSummaryWithFailures': '已刷新 {refreshed} · {failed} 失敗',
+  'settings.runtime.refreshFailure': '重新整理失敗。',
+  'settings.runtime.refreshSummary': '已重新整理 {refreshed} 個目標{pluralSuffix}',
+  'settings.runtime.refreshSummaryWithFailures': '已重新整理 {refreshed} · {failed} 失敗',
   'settings.runtime.uninstallTitle': '解除安裝 {label}',
   'settings.runtime.uninstallDescriptionPrefix': '這將移除使用者擁有的檔案',
   'settings.runtime.uninstallDescriptionSuffix':

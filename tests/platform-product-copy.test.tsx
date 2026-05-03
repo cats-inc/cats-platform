@@ -47,6 +47,8 @@ test('shared zh-TW catalog avoids raw English for known product chrome fallbacks
     t(messageKeys.settingsRuntimeUninstallDescriptionSuffix).startsWith('驗證檔案'),
     true,
   );
+  assert.equal(t(messageKeys.settingsRuntimeRefreshCatalogsButton), '重新整理模型目錄');
+  assert.equal(t(messageKeys.settingsRuntimeRefreshFailure), '重新整理失敗。');
   assert.equal(t(messageKeys.settingsAppsNoLobbyRoute), '沒有大廳路由');
   assert.equal(
     t(messageKeys.settingsDesktopMobilePairingEnableDescription),
