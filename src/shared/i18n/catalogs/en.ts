@@ -1683,7 +1683,9 @@ export const enCatalog: MessageCatalog = {
   'shared.guideCat.welcomeMeetCats': 'Meet your cats',
   'shared.guideCat.welcomeExploreProducts': 'Explore products',
   'shared.guideCat.welcomeHideNow': 'Hide for now',
+  'shared.guideCat.pillOpenLabel': 'Open guide: {guideCatName}',
   'shared.guideCat.pillDisableLabel': 'Disable guide cat',
+  'shared.guideCat.dockUndockLabel': 'Undock {guideCatName}',
   'shared.guideCat.dialog.disableTitle': 'Disable {guideCatName}?',
   'shared.guideCat.dialog.disableMessage':
     'This turns off {guideCatName} help in Cats. If you just want it out of the way, you can dock it now instead. You can enable it again from Settings > Assistants.',

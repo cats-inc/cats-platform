@@ -1638,7 +1638,9 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.guideCat.welcomeMeetCats': '認識你的貓',
   'shared.guideCat.welcomeExploreProducts': '探索產品',
   'shared.guideCat.welcomeHideNow': '先隱藏',
+  'shared.guideCat.pillOpenLabel': '開啟導覽：{guideCatName}',
   'shared.guideCat.pillDisableLabel': '停用導覽貓',
+  'shared.guideCat.dockUndockLabel': '取消停駐 {guideCatName}',
   'shared.guideCat.dialog.disableTitle': '停用 {guideCatName}？',
   'shared.guideCat.dialog.disableMessage':
     '這會關閉 {guideCatName} 的導覽幫助。若只是想先藏起來，可先將其收進側欄。你隨時可以回到「設定」>「助手」重新開啟。',

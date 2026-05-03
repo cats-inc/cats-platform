@@ -101,7 +101,7 @@ export function CollapsedPill({
         className="guideCatPill"
         onPointerDown={onPointerDown}
         onClick={onClick}
-        aria-label={`Open guide: ${displayName}`}
+        aria-label={t(messageKeys.sharedGuideCatPillOpenLabel, { guideCatName: displayName })}
         data-tooltip={tooltip}
         data-tooltip-delay="1000"
       >

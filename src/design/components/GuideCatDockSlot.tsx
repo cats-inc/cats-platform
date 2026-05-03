@@ -11,14 +11,16 @@ import {
   useRegisterGuideCatDockSlot,
 } from '../../app/renderer/GuideCatPlacementProvider.js';
 import type { GuideCatDockSlotKind } from '../../app/renderer/guideCatPlacement.js';
+import { useI18n } from '../../app/renderer/i18n/useI18n.js';
 import {
   buildCatTooltip,
   resolveExecutionTargetLabel,
 } from '../../shared/executionLabel.js';
-import { GUIDE_CAT_AVATAR_URL } from './GuideCatSidecar.js';
 import {
   resolveClientGuideCatName,
 } from '../../shared/guideCatIdentity.js';
+import { messageKeys } from '../../shared/i18n/index.js';
+import { GUIDE_CAT_AVATAR_URL } from './GuideCatSidecar.js';
 
 export interface GuideCatDockSlotProps {
   slotKind: GuideCatDockSlotKind;
@@ -38,6 +40,7 @@ export function GuideCatDockSlot({ slotKind }: GuideCatDockSlotProps) {
     undock,
   } = useGuideCatPlacement();
   const registerRef = useRegisterGuideCatDockSlot(slotKind);
+  const { t } = useI18n();
 
   const setRef = useCallback(
     (node: HTMLDivElement | null) => {
@@ -56,6 +59,12 @@ export function GuideCatDockSlot({ slotKind }: GuideCatDockSlotProps) {
     projection.kind === 'docked' && projection.slot === slotKind;
   const isPreview = state.preview;
   const displayName = resolveClientGuideCatName();
+  const openGuideLabel = t(messageKeys.sharedGuideCatPillOpenLabel, {
+    guideCatName: displayName,
+  });
+  const undockGuideLabel = t(messageKeys.sharedGuideCatDockUndockLabel, {
+    guideCatName: displayName,
+  });
 
   const tooltip = buildDockedTooltip(guideCat);
 
@@ -110,7 +119,7 @@ export function GuideCatDockSlot({ slotKind }: GuideCatDockSlotProps) {
             className="guideCatPill guideCatPill--docked"
             onPointerDown={handleDockPointerDown}
             onClick={handlePillClick}
-            aria-label={`Open guide: ${displayName}`}
+            aria-label={openGuideLabel}
             data-tooltip={tooltip}
             data-tooltip-delay="1000"
           >
@@ -127,7 +136,7 @@ export function GuideCatDockSlot({ slotKind }: GuideCatDockSlotProps) {
               <button
                 type="button"
                 className="guideCatDockUndockSlot"
-                aria-label={`Undock ${displayName}`}
+                aria-label={undockGuideLabel}
                 onClick={(event) => {
                   event.stopPropagation();
                   undock();
