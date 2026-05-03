@@ -38,12 +38,17 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /桌面主機未完成啟動/);
   assert.match(html, /目前沒有可用的供應器目標/);
   assert.match(html, /桌面主機尚未完成先決條件掃描/);
-  assert.match(html, /產品 onboarding 診斷尚無法使用/);
+  assert.match(html, /產品初始引導診斷尚無法使用/);
   assert.match(html, /結束 Cats/);
   assert.match(html, /顯示詳細資料/);
   assert.match(html, /歡迎。你可以現在安裝 CLI/);
   assert.match(html, /手動後續步驟/);
   assert.match(html, /完成 \{helperLabel\} 的手動後續步驟/);
+  assert.match(html, /啟動 cats-runtime 伴隨服務/);
+  assert.match(html, /API 基準設定/);
+  assert.match(html, /WSL 發行版需要先完成第一次啟動/);
+  assert.match(html, /重新啟動 Cats 桌面主機/);
+  assert.match(html, /就緒稽核標記缺少的主機基礎元件/);
   assert.match(html, /請啟動 Docker Desktop/);
 
   // Back button to leave detail mode
