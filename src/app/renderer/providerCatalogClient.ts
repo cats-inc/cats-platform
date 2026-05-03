@@ -7,6 +7,14 @@ import {
 } from '../../shared/providerCatalog.js';
 
 export const PROVIDER_CATALOG_CLIENT_CACHE_TTL_MS = 15_000;
+export const PROVIDER_MODEL_CATALOG_LOAD_FAILED_WARNING =
+  'provider_catalog.model.load_failed';
+export const PROVIDER_MODEL_CATALOG_INCOMPLETE_WARNING =
+  'provider_catalog.model.incomplete_response';
+export const PROVIDER_ADVANCED_CATALOG_LOAD_FAILED_WARNING =
+  'provider_catalog.advanced.load_failed';
+export const PROVIDER_ADVANCED_CATALOG_INCOMPLETE_WARNING =
+  'provider_catalog.advanced.incomplete_response';
 
 type ProviderCatalogFetch = typeof fetch;
 
@@ -192,12 +200,15 @@ export async function fetchProviderModelCatalogFromClientCache(options: {
       );
       if (!response.ok) {
         throw new Error(
-          await readProviderCatalogErrorMessage(response, 'Failed to load provider models.'),
+          await readProviderCatalogErrorMessage(
+            response,
+            PROVIDER_MODEL_CATALOG_LOAD_FAILED_WARNING,
+          ),
         );
       }
 
       return normalizeProviderModelCatalog(
-        await readProviderCatalogJson(response, 'Provider catalog response was incomplete.'),
+        await readProviderCatalogJson(response, PROVIDER_MODEL_CATALOG_INCOMPLETE_WARNING),
         provider,
       );
     },
@@ -226,7 +237,7 @@ export async function fetchProviderAdvancedCatalogFromClientCache(options: {
         throw new Error(
           await readProviderCatalogErrorMessage(
             response,
-            'Failed to load advanced provider models.',
+            PROVIDER_ADVANCED_CATALOG_LOAD_FAILED_WARNING,
           ),
         );
       }
@@ -234,7 +245,7 @@ export async function fetchProviderAdvancedCatalogFromClientCache(options: {
       return normalizeProviderAdvancedModelCatalog(
         await readProviderCatalogJson(
           response,
-          'Advanced provider catalog response was incomplete.',
+          PROVIDER_ADVANCED_CATALOG_INCOMPLETE_WARNING,
         ),
         provider,
       );

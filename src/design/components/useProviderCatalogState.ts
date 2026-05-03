@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react';
 
 import {
+  PROVIDER_ADVANCED_CATALOG_INCOMPLETE_WARNING,
+  PROVIDER_ADVANCED_CATALOG_LOAD_FAILED_WARNING,
+  PROVIDER_MODEL_CATALOG_INCOMPLETE_WARNING,
+  PROVIDER_MODEL_CATALOG_LOAD_FAILED_WARNING,
   peekProviderAdvancedCatalogFromClientCache,
   peekProviderModelCatalogFromClientCache,
 } from '../../app/renderer/providerCatalogClient.js';
@@ -21,8 +25,24 @@ import {
 } from './providerModelFieldsSupport.js';
 import { messageKeys, t as defaultTranslate } from '../../shared/i18n/index.js';
 
+function isProviderCatalogFallbackWarning(message: string): boolean {
+  return message === PROVIDER_MODEL_CATALOG_LOAD_FAILED_WARNING
+    || message === PROVIDER_MODEL_CATALOG_INCOMPLETE_WARNING
+    || message === PROVIDER_ADVANCED_CATALOG_LOAD_FAILED_WARNING
+    || message === PROVIDER_ADVANCED_CATALOG_INCOMPLETE_WARNING;
+}
+
 function readCatalogFailureMessage(error: unknown, fallback: string): string {
-  return error instanceof Error ? error.message : fallback;
+  if (!(error instanceof Error)) {
+    return fallback;
+  }
+  return isProviderCatalogFallbackWarning(error.message) ? fallback : error.message;
+}
+
+function localizeCatalogFailureReason(error: unknown, fallback: string): unknown {
+  return error instanceof Error && isProviderCatalogFallbackWarning(error.message)
+    ? new Error(fallback)
+    : error;
 }
 
 function createWarmProviderModelCatalog(
@@ -175,11 +195,22 @@ export function useProviderCatalogState(input: {
       setCatalog(nextCatalog);
 
       if (advancedResult.status === 'fulfilled' || modelsResult.status === 'fulfilled') {
+        const advancedCatalogUnavailableMessage = translate(
+          messageKeys.sharedProviderModelFieldAdvancedCatalogUnavailable,
+        );
         setAdvancedCatalog(resolveAdvancedCatalogFallback({
           provider: input.provider,
           instance: input.resolvedInstance || null,
           catalog: nextCatalog,
-          advancedCatalogResult: advancedResult,
+          advancedCatalogResult: advancedResult.status === 'rejected'
+            ? {
+                status: 'rejected',
+                reason: localizeCatalogFailureReason(
+                  advancedResult.reason,
+                  advancedCatalogUnavailableMessage,
+                ),
+              }
+            : advancedResult,
           modelsResult,
           translate,
         }));
