@@ -60,6 +60,34 @@ const TRAY_PRIMARY_ACTION_IDS = new Set<DesktopHostActionId>([
   'retry_cli_scan',
 ]);
 
+const ZH_TW_TRAY_SUMMARY_BY_ENGLISH: Record<string, string> = {
+  'Starting Cats services.': '正在啟動 Cats 服務。',
+  'Starting local Cats services and waiting for readiness.':
+    '正在啟動本機 Cats 服務並等待就緒。',
+  'Local services are ready. Running prerequisite checks.':
+    '本機服務已就緒。正在執行先決條件檢查。',
+  'Local services are ready. Checking local CLI inventory.':
+    '本機服務已就緒。正在檢查本機 CLI 清單。',
+  'No CLI is currently installed. Install one to continue using Cats.':
+    '目前未安裝任何 CLI。請安裝至少一個 CLI 以繼續使用 Cats。',
+  'Welcome. Install a CLI to get started with Cats.':
+    '歡迎。請安裝 CLI 開始使用 Cats。',
+  'Desktop services are ready. Continue into setup.':
+    '桌面服務已就緒。請繼續進入設定。',
+  'Desktop services are ready. Continue into setup to choose a provider path.':
+    '桌面服務已就緒。請繼續進入設定以選擇供應器路徑。',
+  'Cats Runtime is unavailable. Open Cats to recover in-app once the runtime is back.':
+    'Cats Runtime 無法使用。Runtime 恢復後，請開啟 Cats 在應用程式內復原。',
+  'Cats Runtime setup is still required. Continue into setup.':
+    'Cats Runtime 仍需要設定。請繼續進入設定。',
+  'Desktop services and at least one provider path are ready.':
+    '桌面服務與至少一個供應器路徑已就緒。',
+  'Desktop services are ready. Opening Cats without a startup provider reprobe.':
+    '桌面服務已就緒。將開啟 Cats，不重新執行啟動供應器檢查。',
+  'Cats needs provider recovery, but setup remains complete and Cats can still open.':
+    'Cats 需要供應器復原，但設定仍已完成，Cats 仍可開啟。',
+};
+
 function isVisibleTrayProduct(product: DesktopTrayProductDescriptor): boolean {
   const routePrefix = product.routePrefix?.trim();
   if (!routePrefix?.startsWith('/')) {
@@ -112,6 +140,13 @@ function localizeTrayActionLabel(
   }
 }
 
+function localizeTraySummary(summary: string, locale: DesktopTrayLocale): string {
+  if (locale !== 'zh-TW') {
+    return summary;
+  }
+  return ZH_TW_TRAY_SUMMARY_BY_ENGLISH[summary] ?? summary;
+}
+
 function toTrayProductLabel(productName: string, locale: DesktopTrayLocale): string {
   const trimmed = productName.trim();
   if (locale === 'zh-TW') {
@@ -150,7 +185,7 @@ export function buildDesktopTrayMenuState(
 
   return {
     phase: options.phase,
-    summary: options.summary,
+    summary: localizeTraySummary(options.summary, locale),
     setupCompleteAt: effectiveSetupCompleteAt,
     actions: options.actions
       .filter((action) => TRAY_PRIMARY_ACTION_IDS.has(action.id))

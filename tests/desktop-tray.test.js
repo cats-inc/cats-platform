@@ -165,6 +165,7 @@ test('tray menu localizes product shortcuts and primary actions for zh-TW', () =
       ['retry', '重試'],
     ],
   );
+  assert.equal(state.summary, '桌面服務與至少一個供應器路徑已就緒。');
   assert.deepEqual(
     state.products.map((product) => [product.id, product.label, product.path]),
     [
