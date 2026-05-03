@@ -32,6 +32,7 @@ const TASK_RENDERER_METADATA_KEY = "workRenderer";
 
 async function createTaskFromDialog(
   input: CreateTaskInput,
+  errorMessage: string,
 ): Promise<{ id: string }> {
   const rendererExtras: Record<string, unknown> = {};
   if (input.priority) rendererExtras.priority = input.priority;
@@ -50,7 +51,7 @@ async function createTaskFromDialog(
     status: input.status,
     parentTaskId: input.parentTaskId,
     metadata,
-  });
+  }, errorMessage);
   return { id: result.task.id };
 }
 
@@ -85,7 +86,8 @@ export function NewTaskDialog({
   const [acceptanceCriteria, setAcceptanceCriteria] = useState("");
 
   const createMutation = useMutation({
-    mutationFn: createTaskFromDialog,
+    mutationFn: (input: CreateTaskInput) =>
+      createTaskFromDialog(input, t("workNewTaskCreateError")),
     onSuccess: async (task) => {
       await queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });
       onClose();

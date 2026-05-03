@@ -49,7 +49,7 @@ export function WorkItemDetailPage(): JSX.Element {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      await removeWorkItem(id);
+      await removeWorkItem(id, t("workItemDeleteError"));
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: WORK_ITEMS_QUERY_KEY });

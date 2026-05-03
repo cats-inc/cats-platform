@@ -27,13 +27,14 @@ interface CreateWorkItemInput {
 
 async function createWorkItemFromDialog(
   input: CreateWorkItemInput,
+  errorMessage: string,
 ): Promise<{ id: string }> {
   const result = await restCreateWorkItem({
     title: input.title,
     summary: input.summary,
     status: input.status,
     projectId: input.projectId,
-  });
+  }, errorMessage);
   return { id: result.workItem.id };
 }
 
@@ -62,7 +63,8 @@ export function NewWorkItemDialog({
   const [status, setStatus] = useState<CoreWorkItemStatus>("draft");
 
   const createMutation = useMutation({
-    mutationFn: createWorkItemFromDialog,
+    mutationFn: (input: CreateWorkItemInput) =>
+      createWorkItemFromDialog(input, t("workNewWorkItemCreateError")),
     onSuccess: async (workItem) => {
       await queryClient.invalidateQueries({ queryKey: WORK_ITEMS_QUERY_KEY });
       onClose();

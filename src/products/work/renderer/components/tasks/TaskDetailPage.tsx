@@ -48,7 +48,7 @@ export function TaskDetailPage(): JSX.Element {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      await removeWorkTask(id);
+      await removeWorkTask(id, t("workTaskDeleteError"));
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: TASKS_QUERY_KEY });

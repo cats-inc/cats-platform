@@ -509,7 +509,7 @@ function buildPinnedProjectItems(
           destructive: true,
           onClick: () => {
             props.onOverflowMenuToggle(null);
-            void removeWorkProject(project.id).then(() =>
+            void removeWorkProject(project.id, t('workProjectDeleteError')).then(() =>
               sharedQueryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY }),
             );
           },

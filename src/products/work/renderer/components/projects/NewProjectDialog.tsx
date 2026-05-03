@@ -26,12 +26,13 @@ interface CreateProjectInput {
 
 async function createProjectFromDialog(
   input: CreateProjectInput,
+  errorMessage: string,
 ): Promise<{ id: string }> {
   const result = await restCreateWorkProject({
     title: input.title,
     summary: input.summary,
     status: input.status,
-  });
+  }, errorMessage);
   return { id: result.project.id };
 }
 
@@ -60,7 +61,8 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps): JSX.Elemen
   const [status, setStatus] = useState<CoreProjectStatus>("planned");
 
   const createMutation = useMutation({
-    mutationFn: createProjectFromDialog,
+    mutationFn: (input: CreateProjectInput) =>
+      createProjectFromDialog(input, t("workNewProjectCreateError")),
     onSuccess: async (project) => {
       await queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY });
       onClose();

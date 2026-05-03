@@ -61,17 +61,21 @@ export interface CreateTaskInput {
   metadata?: Record<string, unknown>;
 }
 
-export async function listWorkProjects(signal?: AbortSignal): Promise<CoreProjectRecord[]> {
+export async function listWorkProjects(
+  errorMessage: string,
+  signal?: AbortSignal,
+): Promise<CoreProjectRecord[]> {
   const response = await fetch(WORK_API_RAW_PROJECTS_PATH, { signal });
   const payload = await expectJson<{ projects: CoreProjectRecord[] }>(
     response,
-    'Failed to list projects',
+    errorMessage,
   );
   return payload.projects;
 }
 
 export async function createWorkProject(
   input: CreateProjectInput,
+  errorMessage: string,
   signal?: AbortSignal,
 ): Promise<{ project: CoreProjectRecord; created: boolean }> {
   const response = await fetch(WORK_API_PROJECTS_PATH, {
@@ -82,12 +86,13 @@ export async function createWorkProject(
   });
   return expectJson<{ project: CoreProjectRecord; created: boolean }>(
     response,
-    'Failed to create project',
+    errorMessage,
   );
 }
 
 export async function removeWorkProject(
   projectId: string,
+  errorMessage: string,
   signal?: AbortSignal,
 ): Promise<{ removed: boolean; projectId: string }> {
   const response = await fetch(buildWorkApiProjectPath(projectId), {
@@ -96,21 +101,25 @@ export async function removeWorkProject(
   });
   return expectJson<{ removed: boolean; projectId: string }>(
     response,
-    'Failed to remove project',
+    errorMessage,
   );
 }
 
-export async function listWorkItems(signal?: AbortSignal): Promise<CoreWorkItemRecord[]> {
+export async function listWorkItems(
+  errorMessage: string,
+  signal?: AbortSignal,
+): Promise<CoreWorkItemRecord[]> {
   const response = await fetch(WORK_API_RAW_WORK_ITEMS_PATH, { signal });
   const payload = await expectJson<{ workItems: CoreWorkItemRecord[] }>(
     response,
-    'Failed to list work items',
+    errorMessage,
   );
   return payload.workItems;
 }
 
 export async function createWorkItem(
   input: CreateWorkItemInput,
+  errorMessage: string,
   signal?: AbortSignal,
 ): Promise<{ workItem: CoreWorkItemRecord; created: boolean }> {
   const response = await fetch(WORK_API_WORK_ITEMS_PATH, {
@@ -121,12 +130,13 @@ export async function createWorkItem(
   });
   return expectJson<{ workItem: CoreWorkItemRecord; created: boolean }>(
     response,
-    'Failed to create work item',
+    errorMessage,
   );
 }
 
 export async function removeWorkItem(
   workItemId: string,
+  errorMessage: string,
   signal?: AbortSignal,
 ): Promise<{ removed: boolean; workItemId: string }> {
   const response = await fetch(buildWorkApiWorkItemPath(workItemId), {
@@ -135,21 +145,25 @@ export async function removeWorkItem(
   });
   return expectJson<{ removed: boolean; workItemId: string }>(
     response,
-    'Failed to remove work item',
+    errorMessage,
   );
 }
 
-export async function listWorkTasks(signal?: AbortSignal): Promise<CoreTaskRecord[]> {
+export async function listWorkTasks(
+  errorMessage: string,
+  signal?: AbortSignal,
+): Promise<CoreTaskRecord[]> {
   const response = await fetch(WORK_API_RAW_TASKS_PATH, { signal });
   const payload = await expectJson<{ tasks: CoreTaskRecord[] }>(
     response,
-    'Failed to list tasks',
+    errorMessage,
   );
   return payload.tasks;
 }
 
 export async function createWorkTask(
   input: CreateTaskInput,
+  errorMessage: string,
   signal?: AbortSignal,
 ): Promise<{ task: CoreTaskRecord; created: boolean }> {
   const response = await fetch(WORK_API_TASKS_PATH, {
@@ -160,12 +174,13 @@ export async function createWorkTask(
   });
   return expectJson<{ task: CoreTaskRecord; created: boolean }>(
     response,
-    'Failed to create task',
+    errorMessage,
   );
 }
 
 export async function removeWorkTask(
   taskId: string,
+  errorMessage: string,
   signal?: AbortSignal,
 ): Promise<{ removed: boolean; taskId: string }> {
   const response = await fetch(buildWorkApiTaskPath(taskId), {
@@ -174,6 +189,6 @@ export async function removeWorkTask(
   });
   return expectJson<{ removed: boolean; taskId: string }>(
     response,
-    'Failed to remove task',
+    errorMessage,
   );
 }

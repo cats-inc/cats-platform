@@ -39,7 +39,7 @@ export function ProjectDetailPage(): JSX.Element {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      await removeWorkProject(id);
+      await removeWorkProject(id, t("workProjectDeleteError"));
     },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: PROJECTS_QUERY_KEY });
