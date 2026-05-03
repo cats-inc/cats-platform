@@ -6,6 +6,7 @@ import {
   presentRuntimeLifecycleDetail,
   presentRuntimeLifecycleHelperLabel,
   presentRuntimeLifecycleStatus,
+  presentRuntimeLifecycleUnsupportedReason,
 } from '../src/app/renderer/settings/runtimeLifecycleHelpers.ts';
 import type { RuntimeLifecycleHelperSummary } from '../src/shared/desktopRecoveryBridge.ts';
 import { createTranslator } from '../src/shared/i18n/index.ts';
@@ -62,6 +63,25 @@ test('runtime lifecycle unavailable action reasons use localized helper labels',
   assert.equal(
     actions.find((entry) => entry.action === 'install')?.reason,
     'Windows 原生 Claude Code 安裝器 目前未內建於這個主機版本。',
+  );
+});
+
+test('runtime lifecycle unsupported platform reasons localize deterministic host text', () => {
+  const t = createTranslator('zh-TW');
+  const unsupportedReason =
+    'Windows native Claude Code installer is currently only supported on Linux hosts.';
+  const actions = deriveHelperActions(helper({
+    supported: false,
+    unsupportedReason,
+  }), t);
+
+  assert.equal(
+    actions.find((entry) => entry.action === 'install')?.reason,
+    'Windows 原生 Claude Code 安裝器 目前只支援 Linux 主機。',
+  );
+  assert.equal(
+    presentRuntimeLifecycleUnsupportedReason('raw host failure', t),
+    'raw host failure',
   );
 });
 

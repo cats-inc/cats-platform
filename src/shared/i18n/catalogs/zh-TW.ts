@@ -226,6 +226,13 @@ export const zhTWCatalog: MessageCatalog = {
     '{platform} {providerLabel} 本機模型安裝器',
   'settings.runtime.helperUnavailableReason':
     '{helperLabel} 目前未內建於這個主機版本。',
+  'settings.runtime.helperUnsupportedPlatformReason':
+    '{helperLabel} 目前只支援 {platformSupport}。',
+  'settings.runtime.platformSupport.allDesktop': 'Windows、macOS 或 Linux 主機',
+  'settings.runtime.platformSupport.windows': 'Windows 主機',
+  'settings.runtime.platformSupport.windowsWsl': '支援 WSL 的 Windows 主機',
+  'settings.runtime.platformSupport.macos': 'macOS 主機',
+  'settings.runtime.platformSupport.linux': 'Linux 主機',
   'settings.runtime.helperUnsupportedActionReason':
     '{helperLabel} 不支援{actionLabel}。',
   'settings.runtime.lifecycleStatus.authRequired': '需要驗證',

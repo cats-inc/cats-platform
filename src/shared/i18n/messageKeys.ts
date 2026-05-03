@@ -227,6 +227,18 @@ export const messageKeys = {
     'settings.runtime.helperLabel.localModelInstaller',
   settingsRuntimeHelperUnavailableReason:
     'settings.runtime.helperUnavailableReason',
+  settingsRuntimeHelperUnsupportedPlatformReason:
+    'settings.runtime.helperUnsupportedPlatformReason',
+  settingsRuntimePlatformSupportAllDesktop:
+    'settings.runtime.platformSupport.allDesktop',
+  settingsRuntimePlatformSupportWindows:
+    'settings.runtime.platformSupport.windows',
+  settingsRuntimePlatformSupportWindowsWsl:
+    'settings.runtime.platformSupport.windowsWsl',
+  settingsRuntimePlatformSupportMacos:
+    'settings.runtime.platformSupport.macos',
+  settingsRuntimePlatformSupportLinux:
+    'settings.runtime.platformSupport.linux',
   settingsRuntimeHelperUnsupportedActionReason:
     'settings.runtime.helperUnsupportedActionReason',
   settingsRuntimeLifecycleStatusAuthRequired:

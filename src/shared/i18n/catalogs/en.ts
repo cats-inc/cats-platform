@@ -235,6 +235,13 @@ export const enCatalog: MessageCatalog = {
     '{platform} {providerLabel} local-model installer',
   'settings.runtime.helperUnavailableReason':
     '{helperLabel} is not currently bundled with this host build.',
+  'settings.runtime.helperUnsupportedPlatformReason':
+    '{helperLabel} is currently only supported on {platformSupport}.',
+  'settings.runtime.platformSupport.allDesktop': 'Windows, macOS, or Linux hosts',
+  'settings.runtime.platformSupport.windows': 'Windows hosts',
+  'settings.runtime.platformSupport.windowsWsl': 'Windows hosts with WSL support',
+  'settings.runtime.platformSupport.macos': 'macOS hosts',
+  'settings.runtime.platformSupport.linux': 'Linux hosts',
   'settings.runtime.helperUnsupportedActionReason':
     '{helperLabel} does not support {actionLabel}.',
   'settings.runtime.lifecycleStatus.authRequired': 'authentication required',

@@ -71,7 +71,7 @@ export function deriveHelperActions(
     label: actionLabel(action, t),
     available: helper.supported && helper.available && helperSupportsAction(helper, action),
     reason: !helper.supported
-      ? helper.unsupportedReason
+      ? presentRuntimeLifecycleUnsupportedReason(helper.unsupportedReason, t)
       : !helper.available
         ? t(messageKeys.settingsRuntimeHelperUnavailableReason, {
             helperLabel,
@@ -108,6 +108,46 @@ export function presentRuntimeLifecycleHelperLabel(
   t: RuntimeLifecycleI18n = defaultRuntimeLifecycleI18n,
 ): string {
   return localizeRuntimeLifecycleHelperLabel(helper.label, t);
+}
+
+function presentRuntimeLifecyclePlatformSupport(
+  platformSupport: string,
+  t: RuntimeLifecycleI18n,
+): string {
+  switch (platformSupport) {
+    case 'Windows, macOS, or Linux hosts':
+      return t(messageKeys.settingsRuntimePlatformSupportAllDesktop);
+    case 'Windows hosts':
+      return t(messageKeys.settingsRuntimePlatformSupportWindows);
+    case 'Windows hosts with WSL support':
+      return t(messageKeys.settingsRuntimePlatformSupportWindowsWsl);
+    case 'macOS hosts':
+      return t(messageKeys.settingsRuntimePlatformSupportMacos);
+    case 'Linux hosts':
+      return t(messageKeys.settingsRuntimePlatformSupportLinux);
+    default:
+      return platformSupport;
+  }
+}
+
+export function presentRuntimeLifecycleUnsupportedReason(
+  reason: string | null | undefined,
+  t: RuntimeLifecycleI18n = defaultRuntimeLifecycleI18n,
+): string | null {
+  const text = String(reason ?? '').trim();
+  if (!text) {
+    return null;
+  }
+
+  const match = text.match(/^(.+) is currently only supported on (.+)\.$/u);
+  if (!match) {
+    return text;
+  }
+
+  return t(messageKeys.settingsRuntimeHelperUnsupportedPlatformReason, {
+    helperLabel: localizeRuntimeLifecycleHelperLabel(match[1], t),
+    platformSupport: presentRuntimeLifecyclePlatformSupport(match[2], t),
+  });
 }
 
 export function presentRuntimeLifecycleStatus(
