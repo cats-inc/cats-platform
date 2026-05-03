@@ -563,6 +563,27 @@ export function buildDesktopBootstrapPage(): string {
         'fixed.startupError': 'Mew\u2026 something tripped me up during startup.',
         'issue.serviceError': '{service} error',
         'issue.noSpecificIssues': 'No specific issues were reported.',
+        'issue.hostStartupError.title': 'Desktop host failed to finish startup',
+        'issue.runtimeUnreachable.title': 'Cats cannot reach cats-runtime',
+        'issue.runtimeUnreachable.detail': 'The local app booted, but its runtime dependency is still unreachable.',
+        'issue.noProviderTargets.title': 'No provider targets are configured yet',
+        'issue.noProviderTargets.detail.afterSetup': 'Setup is complete. Open Cats to recover in-app after you restore a provider path.',
+        'issue.noProviderTargets.detail.beforeSetup': 'Continue into setup to choose an API baseline or optional local CLI provider path.',
+        'issue.noReadyProviderPath.title': 'No provider target is currently ready',
+        'issue.providerDiagnosticsAttention.detail': 'Provider diagnostics need attention.',
+        'issue.providerDefaultTarget.title': '{target} needs attention',
+        'issue.optionalPackFollowThrough.title': 'Optional {pack} is available for follow-through',
+        'issue.setup.followThrough.title': 'Packaged setup still needs follow-through',
+        'issue.setup.restartRequired.title': 'Packaged setup needs a Windows restart before it can continue',
+        'issue.setup.relaunchRequired.title': 'Packaged setup needs the desktop host to relaunch',
+        'issue.setup.elevationRequired.title': 'Packaged setup needs elevation before it can continue',
+        'issue.setup.authRequired.title': 'Installed provider still needs authentication',
+        'issue.setup.firstWslBootRequired.title': 'WSL distro needs its first boot before setup can continue',
+        'issue.setup.dockerWarmUpRequired.title': 'Docker still needs to finish starting before setup can continue',
+        'issue.setup.recoveryRequired.title': 'Packaged setup helper needs recovery',
+        'issue.setup.manualFollowThrough.title': 'Packaged setup still has manual follow-through',
+        'issue.runtimeDiagnosticsPending.title': 'Runtime diagnostics are still loading',
+        'issue.runtimeDiagnosticsPending.detail': 'The desktop host has not finished its prerequisite scan yet.',
         'loading.almostReady': 'Almost ready\u2026',
         'loading.ready': 'Ready.',
         'loading.retrying': 'Trying again\u2026',
@@ -662,6 +683,27 @@ export function buildDesktopBootstrapPage(): string {
         'fixed.startupError': '喵…啟動時有地方出錯了。',
         'issue.serviceError': '{service} 錯誤',
         'issue.noSpecificIssues': '沒有回報具體問題。',
+        'issue.hostStartupError.title': '桌面主機未完成啟動',
+        'issue.runtimeUnreachable.title': 'Cats 無法連線到 cats-runtime',
+        'issue.runtimeUnreachable.detail': '本機應用程式已啟動，但仍無法連線到執行階段相依服務。',
+        'issue.noProviderTargets.title': '尚未設定任何供應器目標',
+        'issue.noProviderTargets.detail.afterSetup': '設定已完成。還原供應器路徑後，請開啟 Cats 在應用程式內復原。',
+        'issue.noProviderTargets.detail.beforeSetup': '請繼續進入設定，選擇 API baseline 或選用的本機 CLI 供應器路徑。',
+        'issue.noReadyProviderPath.title': '目前沒有可用的供應器目標',
+        'issue.providerDiagnosticsAttention.detail': '供應器診斷需要處理。',
+        'issue.providerDefaultTarget.title': '{target} 需要處理',
+        'issue.optionalPackFollowThrough.title': '可選的 {pack} 可繼續後續處理',
+        'issue.setup.followThrough.title': '套裝設定仍需要後續處理',
+        'issue.setup.restartRequired.title': '套裝設定需要 Windows 重新啟動後才能繼續',
+        'issue.setup.relaunchRequired.title': '套裝設定需要重新啟動桌面主機',
+        'issue.setup.elevationRequired.title': '套裝設定需要提升權限後才能繼續',
+        'issue.setup.authRequired.title': '已安裝的供應器仍需要驗證',
+        'issue.setup.firstWslBootRequired.title': 'WSL distro 需要先完成第一次啟動，設定才能繼續',
+        'issue.setup.dockerWarmUpRequired.title': 'Docker 仍需要完成啟動，設定才能繼續',
+        'issue.setup.recoveryRequired.title': '套裝設定輔助程式需要復原',
+        'issue.setup.manualFollowThrough.title': '套裝設定仍有手動後續步驟',
+        'issue.runtimeDiagnosticsPending.title': '執行階段診斷仍在載入',
+        'issue.runtimeDiagnosticsPending.detail': '桌面主機尚未完成先決條件掃描。',
         'loading.almostReady': '幾乎準備好了…',
         'loading.ready': '已就緒。',
         'loading.retrying': '正在重試…',
@@ -755,6 +797,35 @@ export function buildDesktopBootstrapPage(): string {
       warning: 'status.warning'
     };
 
+    var BOOTSTRAP_ISSUE_TITLE_KEYS = {
+      'host-startup-error': 'issue.hostStartupError.title',
+      'cats-runtime-unreachable': 'issue.runtimeUnreachable.title',
+      'no-provider-targets': 'issue.noProviderTargets.title',
+      'no-ready-provider-path': 'issue.noReadyProviderPath.title',
+      'setup-restart-required': 'issue.setup.restartRequired.title',
+      'setup-relaunch-required': 'issue.setup.relaunchRequired.title',
+      'setup-elevation-required': 'issue.setup.elevationRequired.title',
+      'setup-auth-required': 'issue.setup.authRequired.title',
+      'setup-first-wsl-boot-required': 'issue.setup.firstWslBootRequired.title',
+      'setup-docker-warm-up-required': 'issue.setup.dockerWarmUpRequired.title',
+      'setup-recovery-required': 'issue.setup.recoveryRequired.title',
+      'setup-manual-follow-through': 'issue.setup.manualFollowThrough.title',
+      'runtime-diagnostics-pending': 'issue.runtimeDiagnosticsPending.title'
+    };
+
+    var BOOTSTRAP_ISSUE_DETAIL_KEYS = {
+      'The local app booted, but its runtime dependency is still unreachable.':
+        'issue.runtimeUnreachable.detail',
+      'Setup is complete. Open Cats to recover in-app after you restore a provider path.':
+        'issue.noProviderTargets.detail.afterSetup',
+      'Continue into setup to choose an API baseline or optional local CLI provider path.':
+        'issue.noProviderTargets.detail.beforeSetup',
+      'Provider diagnostics need attention.':
+        'issue.providerDiagnosticsAttention.detail',
+      'The desktop host has not finished its prerequisite scan yet.':
+        'issue.runtimeDiagnosticsPending.detail'
+    };
+
     function resolveBootstrapLocale(languages) {
       var list = Array.isArray(languages) ? languages : [];
       for (var i = 0; i < list.length; i++) {
@@ -792,6 +863,34 @@ export function buildDesktopBootstrapPage(): string {
     function displayStatus(status) {
       var key = BOOTSTRAP_STATUS_LABEL_KEYS[status];
       return key ? tx(key) : String(status || '').replace(/_/g, ' ');
+    }
+
+    function localizeIssueTitle(issue) {
+      if (!issue) return '';
+      var key = BOOTSTRAP_ISSUE_TITLE_KEYS[issue.id];
+      if (key) return tx(key);
+      var title = String(issue.title || '');
+      if (issue.id === 'setup-optional-capability-pack') {
+        var optionalMatch = title.match(/^Optional (.+) is available for follow-through$/);
+        if (optionalMatch) {
+          return tx('issue.optionalPackFollowThrough.title', { pack: optionalMatch[1] });
+        }
+      }
+      if (issue.id && String(issue.id).indexOf('provider-') === 0) {
+        return tx('issue.providerDefaultTarget.title', {
+          target: title.replace(/ needs attention$/u, '')
+        });
+      }
+      if (title === 'Packaged setup still needs follow-through') {
+        return tx('issue.setup.followThrough.title');
+      }
+      return title;
+    }
+
+    function localizeIssueDetail(detail) {
+      var text = String(detail || '');
+      var key = BOOTSTRAP_ISSUE_DETAIL_KEYS[text];
+      return key ? tx(key) : text;
     }
 
     function el(tag, attrs) {
@@ -1399,10 +1498,10 @@ export function buildDesktopBootstrapPage(): string {
           var s = issue.severity === 'error' ? 'err' : issue.severity === 'warning' ? 'warn' : 'ok';
           items.push(el('div', { class: 'card' },
             el('div', { class: 'issue-head' },
-              el('span', { class: 'issue-title' }, issue.title),
+              el('span', { class: 'issue-title' }, localizeIssueTitle(issue)),
               el('span', { class: 'issue-sev c-' + s }, displayStatus(issue.severity))
             ),
-            el('div', { class: 'detail-meta' }, issue.detail)
+            el('div', { class: 'detail-meta' }, localizeIssueDetail(issue.detail))
           ));
         });
       }
