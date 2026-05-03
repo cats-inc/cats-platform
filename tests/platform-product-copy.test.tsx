@@ -49,6 +49,38 @@ test('shared zh-TW catalog avoids raw English for known product chrome fallbacks
     '將寫入桌面端需要的環境變數值以開啟 LAN 存取。套用後請重新啟動 Cats 桌面版。',
   );
   assert.equal(t(messageKeys.settingsDesktopStartupSignInLabel), '登入電腦時啟動 Cats 桌面版');
+  assert.equal(
+    t(messageKeys.workRunsListLede),
+    '所有核心執行的平面清單。點入執行可檢視追蹤與子執行。執行由協調器派發建立，不在此頁建立。',
+  );
+  assert.equal(
+    t(messageKeys.workSchedulesListLede),
+    '目前版本中，排程執行只會在 Cats 運行時觸發。',
+  );
+  assert.equal(
+    t(messageKeys.workScheduleNoTriggerReceipts),
+    '尚無觸發回條。',
+  );
+  assert.equal(
+    t(messageKeys.workTaskNoActorsAssignedFallback),
+    '（未指派核心對象）',
+  );
+  assert.equal(
+    t(messageKeys.workTopdownCockpitNoActorRoles),
+    '尚無擁有者角色。',
+  );
+  assert.equal(t(messageKeys.workWarRoomLoadingBody), '正在更新最新戰情室快照。');
+  assert.equal(t(messageKeys.codeBuilderErrorTaskCreate), '無法建立程式碼任務。');
+  assert.equal(t(messageKeys.codeBuilderErrorTaskExecution), '無法啟動程式碼任務。');
+  assert.equal(t(messageKeys.codeBuilderErrorTaskResume), '無法接續這個程式碼任務。');
+  assert.equal(
+    t(messageKeys.codeBuilderWorkspaceResumeHelp),
+    '接續功能適用於你想繼續處理的草稿、已阻擋或失敗程式碼任務。',
+  );
+  assert.equal(
+    t(messageKeys.codeWorkspaceDetailNoTasks),
+    '目前沒有程式碼任務連結到這個程式工作區。',
+  );
   assert.equal(t(messageKeys.codeBuilderModelPlaceholder), '預設');
   assert.equal(t(messageKeys.codeExecutionDefaultModel), '預設');
   assert.equal(t(messageKeys.codeRelayLabelDefault), '預設');
