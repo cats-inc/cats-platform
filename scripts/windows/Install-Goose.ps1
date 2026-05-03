@@ -196,18 +196,60 @@ function Invoke-GooseInstaller {
   if ($SkipInstaller) {
     return [pscustomobject]@{
       skipped = $true
+      success = $true
+      exitCode = 0
+      stderr = ''
     }
   }
 
+  $tempScript = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(),
+    "cats-goose-install-$([System.Guid]::NewGuid().ToString('N')).ps1")
+  $stdoutPath = "$tempScript.stdout"
+  $stderrPath = "$tempScript.stderr"
+
   try {
-    $env:CONFIGURE = 'false'
+    # Persist the upstream installer to disk and run it in a child PowerShell.
+    # Using a child process instead of Invoke-Expression decouples our outer
+    # Set-StrictMode + $ErrorActionPreference='Stop' contract from the upstream
+    # script, so its `Write-Error` / `exit 1` paths terminate the child only
+    # and let this wrapper continue to emit a structured result with the
+    # captured stderr — instead of dying silently and producing no JSON for
+    # the bridge to surface.
     $installScript = Invoke-RestMethod 'https://raw.githubusercontent.com/block/goose/main/download_cli.ps1'
-    Invoke-Expression $installScript
+    [System.IO.File]::WriteAllText($tempScript, [string]$installScript, [System.Text.UTF8Encoding]::new($false))
+
+    $env:CONFIGURE = 'false'
+    $process = Start-Process -FilePath 'powershell.exe' `
+      -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $tempScript) `
+      -Wait -PassThru -NoNewWindow `
+      -RedirectStandardOutput $stdoutPath `
+      -RedirectStandardError $stderrPath
+
+    $stderrRaw = if (Test-Path -LiteralPath $stderrPath -PathType Leaf) {
+      Get-Content -LiteralPath $stderrPath -Raw -ErrorAction SilentlyContinue
+    } else { $null }
+    $stderr = if ($null -eq $stderrRaw) { '' } else { [string]$stderrRaw }
+
     return [pscustomobject]@{
       skipped = $false
+      success = ($process.ExitCode -eq 0)
+      exitCode = $process.ExitCode
+      stderr = [string]$stderr
+    }
+  } catch {
+    return [pscustomobject]@{
+      skipped = $false
+      success = $false
+      exitCode = -1
+      stderr = "Failed to invoke Goose installer: $($_.Exception.Message)"
     }
   } finally {
     Remove-Item Env:\CONFIGURE -ErrorAction SilentlyContinue
+    foreach ($path in @($tempScript, $stdoutPath, $stderrPath)) {
+      if (Test-Path -LiteralPath $path -PathType Leaf) {
+        Remove-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+      }
+    }
   }
 }
 
@@ -323,20 +365,37 @@ if ($CheckOnly) {
 }
 
 $shouldInstall = $Force -or $Upgrade -or -not $detected.installed
+$installFailed = $false
+$installSkipped = $false
 if ($shouldInstall) {
   $installResult = Invoke-GooseInstaller
-  if ($installResult.skipped) {
+  $installSkipped = [bool]$installResult.skipped
+  $installFailed = (-not $installSkipped) -and (-not $installResult.success)
+
+  if ($installSkipped) {
     $warnings.Add('Installer invocation was skipped by request.')
+  } elseif ($installFailed) {
+    $stderrSnippet = if ([string]::IsNullOrWhiteSpace($installResult.stderr)) {
+      'no stderr captured'
+    } else {
+      ($installResult.stderr.Trim() -split "`r?`n" |
+        Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+        Select-Object -Last 8) -join ' | '
+    }
+    $warnings.Add("Goose installer exited $($installResult.exitCode): $stderrSnippet")
   }
   $warnings.Add('Goose may require Windows Defender approval before the binary becomes available.')
 
   Start-Sleep -Seconds 2
   $detected = Detect-GooseInstall
-  if (-not $detected.installed -and -not $SkipInstaller) {
-    throw 'Goose installation completed but goose was still not detected.'
+  if (-not $detected.installed -and -not $installSkipped -and -not $installFailed) {
+    $warnings.Add('Goose installation completed but goose.exe was not detected at the expected path.')
+    $installFailed = $true
   }
 
-  if ($Force) {
+  if ($installFailed) {
+    # No applied change to record when the install did not produce a binary.
+  } elseif ($Force) {
     $appliedChanges.Add('reinstall_goose_native')
   } elseif ($Upgrade) {
     $appliedChanges.Add('upgrade_goose_native')
@@ -348,7 +407,7 @@ if ($shouldInstall) {
 $manualSteps.Add('Run `goose configure`, or set OPENAI_API_KEY / ANTHROPIC_API_KEY before first use.')
 $authSatisfied = [bool]$detected.installed -and (Test-GooseAuthSatisfied)
 $interruptions = [System.Collections.Generic.List[object]]::new()
-if ($shouldInstall) {
+if ($shouldInstall -and -not $installFailed) {
   $interruptions.Add([pscustomobject]@{
       kind = 'relaunch_required'
       summary = 'Relaunch Cats Desktop Host after the Goose install step, then rerun the packaged setup check.'
@@ -357,7 +416,7 @@ if ($shouldInstall) {
       requiresElevation = $false
     })
 }
-if (-not $authSatisfied) {
+if (-not $installFailed -and -not $authSatisfied) {
   $interruptions.Add([pscustomobject]@{
       kind = 'auth_required'
       summary = 'Complete goose configure or set OPENAI_API_KEY / ANTHROPIC_API_KEY, then rerun the packaged setup check.'
@@ -367,10 +426,18 @@ if (-not $authSatisfied) {
     })
 }
 
+$status = if ($installFailed) {
+  'failed'
+} elseif ($interruptions.Count -gt 0) {
+  [string]$interruptions[0].kind
+} else {
+  'ready'
+}
+
 $result = [pscustomobject]@{
   helper = 'windows-goose-native-installer'
   mode = $executionMode
-  status = if ($interruptions.Count -gt 0) { [string]$interruptions[0].kind } else { 'ready' }
+  status = $status
   installed = [bool]$detected.installed
   detectedVersion = if ($detected.detectedVersion) { $detected.detectedVersion } else { $null }
   commandPath = $detected.commandPath
@@ -381,4 +448,5 @@ $result = [pscustomobject]@{
   manualSteps = $manualSteps.ToArray()
   interruptions = $interruptions.ToArray()
 }
-Write-StructuredResult -Result $result -ExitCode 0
+$exitCode = if ($installFailed) { 1 } else { 0 }
+Write-StructuredResult -Result $result -ExitCode $exitCode
