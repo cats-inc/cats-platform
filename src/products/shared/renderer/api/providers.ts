@@ -60,8 +60,12 @@ export async function refreshProviderModelCatalogs(): Promise<RefreshProviderCat
   if (!response.ok) {
     let message = createProviderCatalogRefreshFailedStatusMessage(response.status);
     try {
-      const body = await response.json() as { error?: { message?: string } };
-      if (typeof body.error?.message === 'string') {
+      const body = await response.json() as {
+        error?: { code?: string; message?: string };
+      };
+      if (body.error?.code === 'provider_catalog_refresh_failed') {
+        message = createProviderCatalogRefreshFailedStatusMessage(response.status);
+      } else if (typeof body.error?.message === 'string') {
         message = body.error.message;
       }
     } catch {

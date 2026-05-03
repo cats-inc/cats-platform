@@ -1465,7 +1465,7 @@ export async function handleRefreshProviderCatalogs(
       response,
       503,
       'provider_catalog_refresh_failed',
-      error instanceof Error ? error.message : 'Failed to refresh provider model catalogs.',
+      error instanceof Error ? error.message : 'provider_catalog_refresh_failed',
     );
   }
 }
