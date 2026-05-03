@@ -81,6 +81,14 @@ test('shared zh-TW catalog avoids raw English for known product chrome fallbacks
     t(messageKeys.codeWorkspaceDetailNoTasks),
     '目前沒有程式碼任務連結到這個程式工作區。',
   );
+  assert.equal(t(messageKeys.chatCompanionResourcesLoadingState), '載入中…');
+  assert.equal(
+    t(messageKeys.sharedProviderModelFieldLoadingProviders),
+    '正在載入可用的供應器…',
+  );
+  assert.equal(t(messageKeys.setupWizardOpeningCatsAction), '正在開啟 Cats…');
+  assert.equal(t(messageKeys.conversationSidebarRenamingLabel), '重新命名中…');
+  assert.equal(t(messageKeys.sharedCommonSaving), '儲存中…');
   assert.equal(t(messageKeys.codeBuilderModelPlaceholder), '預設');
   assert.equal(t(messageKeys.codeExecutionDefaultModel), '預設');
   assert.equal(t(messageKeys.codeRelayLabelDefault), '預設');
