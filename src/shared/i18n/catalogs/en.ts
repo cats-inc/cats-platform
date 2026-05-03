@@ -1163,6 +1163,8 @@ export const enCatalog: MessageCatalog = {
   'chat.concurrentCluster.dismissActionLabel': 'Dismiss',
   'chat.concurrentCluster.dismissActionTitle': 'Dismiss layout',
   'chat.concurrent.toolLabel': 'tool',
+  'chat.concurrent.progress.finalizing': 'Finalizing...',
+  'chat.concurrent.progress.finishing': 'Finishing...',
   'chat.concurrent.copyLabeledResponseLabel': 'Copy message from {speakerName}',
   'chat.concurrent.copyUnnamedResponseLabel': 'Copy unnamed response',
   'chat.focusRail.unnamedResponseLabel': 'unnamed response',

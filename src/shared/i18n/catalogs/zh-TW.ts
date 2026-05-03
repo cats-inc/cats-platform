@@ -1129,6 +1129,8 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.concurrentCluster.dismissActionLabel': '關閉',
   'chat.concurrentCluster.dismissActionTitle': '關閉佈局',
   'chat.concurrent.toolLabel': '工具',
+  'chat.concurrent.progress.finalizing': '正在完成…',
+  'chat.concurrent.progress.finishing': '即將完成…',
   'chat.concurrent.copyLabeledResponseLabel': '複製來自 {speakerName} 的訊息',
   'chat.concurrent.copyUnnamedResponseLabel': '複製未命名回應',
   'chat.focusRail.unnamedResponseLabel': '未命名回應',

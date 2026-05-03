@@ -424,12 +424,17 @@ export function SegmentContentBody({
   showTrailingDots: boolean;
   showProgressDetails: boolean;
 }): JSX.Element | null {
+  const { t } = useI18n();
   if (segment.phase === 'waiting') {
     return <span className="typingDots"><span /><span /><span /></span>;
   }
   if (renderedBlocks.length === 0) {
     if (showProgressDetails && segment.progressText) {
-      return <p className="typingStatusText">{segment.progressText}</p>;
+      return (
+        <p className="typingStatusText">
+          {localizeLiveProgressText(segment.progressText, t)}
+        </p>
+      );
     }
     // A streaming segment with identity but no visible text/progress/tools/events yet
     // is the "waiting for reply" state - show typing dots instead of an orphan avatar.
@@ -449,6 +454,20 @@ export function SegmentContentBody({
       ) : null}
     </>
   );
+}
+
+function localizeLiveProgressText(
+  text: string,
+  translate: (key: MessageKey, values?: MessageInterpolationValues) => string,
+): string {
+  switch (text) {
+    case 'Finalizing...':
+      return translate(messageKeys.chatConcurrentProgressFinalizing);
+    case 'Finishing...':
+      return translate(messageKeys.chatConcurrentProgressFinishing);
+    default:
+      return text;
+  }
 }
 
 function InlineStackLayout<Participant>(props: ClusterLayoutProps<Participant>): JSX.Element {

@@ -1150,6 +1150,8 @@ export const messageKeys = {
   chatConcurrentClusterDismissActionLabel: 'chat.concurrentCluster.dismissActionLabel',
   chatConcurrentClusterDismissActionTitle: 'chat.concurrentCluster.dismissActionTitle',
   chatConcurrentToolLabel: 'chat.concurrent.toolLabel',
+  chatConcurrentProgressFinalizing: 'chat.concurrent.progress.finalizing',
+  chatConcurrentProgressFinishing: 'chat.concurrent.progress.finishing',
   chatConcurrentCopyLabeledResponseLabel: 'chat.concurrent.copyLabeledResponseLabel',
   chatConcurrentCopyUnnamedResponseLabel: 'chat.concurrent.copyUnnamedResponseLabel',
   chatFocusRailUnnamedResponseLabel: 'chat.focusRail.unnamedResponseLabel',

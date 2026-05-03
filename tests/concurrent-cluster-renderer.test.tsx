@@ -4,6 +4,7 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
 
 import { createLiveIndicatorSegmentState } from '../src/shared/liveIndicator.ts';
+import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
 import {
   ConcurrentClusterRenderer,
   type ConcurrentClusterRendererProps,
@@ -61,27 +62,35 @@ function renderConcurrentCluster(
   mode: 'inline_stack' | 'compare_cards' | 'focus_rail' | 'adaptive',
   segments: ConcurrentClusterRendererProps<ResolvedChannelParticipant>['segments'],
   actions: ConcurrentClusterRendererProps<ResolvedChannelParticipant>['actions'] = [],
+  options: {
+    locale?: 'en' | 'zh-TW';
+    showProgressDetails?: boolean;
+  } = {},
 ): string {
   const liveSpeakerParticipant = createParticipant('participant-latest', 'Latest Speaker');
   return renderToStaticMarkup(
-    <ConcurrentClusterRenderer
-      mode={mode}
-      segments={segments}
-      cats={[]}
-      bossCatId={null}
-      selectedChannelId="channel-1"
-      disabledMentionNames={[]}
-      liveSpeakerParticipant={liveSpeakerParticipant}
-      liveSpeakerParticipantCat={null}
-      resolveLiveIndicatorSegmentParticipant={() => null}
-      resolveParticipantCatRecord={() => null}
-      buildParticipantAvatarClassName={() => 'catAvatar transcriptAvatar'}
-      buildParticipantAvatarStyle={() => undefined}
-      resolveParticipantAvatarUrl={() => null}
-      resolveParticipantDisplayName={(participant) => participant.name}
-      showProgressDetails={false}
-      actions={actions}
-    />,
+    <I18nProvider
+      locale={options.locale ?? 'en'}
+    >
+      <ConcurrentClusterRenderer
+        mode={mode}
+        segments={segments}
+        cats={[]}
+        bossCatId={null}
+        selectedChannelId="channel-1"
+        disabledMentionNames={[]}
+        liveSpeakerParticipant={liveSpeakerParticipant}
+        liveSpeakerParticipantCat={null}
+        resolveLiveIndicatorSegmentParticipant={() => null}
+        resolveParticipantCatRecord={() => null}
+        buildParticipantAvatarClassName={() => 'catAvatar transcriptAvatar'}
+        buildParticipantAvatarStyle={() => undefined}
+        resolveParticipantAvatarUrl={() => null}
+        resolveParticipantDisplayName={(participant) => participant.name}
+        showProgressDetails={options.showProgressDetails ?? false}
+        actions={actions}
+      />
+    </I18nProvider>,
   );
 }
 
@@ -310,6 +319,30 @@ test('inline_stack exposes copy actions as soon as sealed concurrent bubbles hav
   assert.match(markup, /aria-label="Copy message from Claude-CLI"/u);
   assert.match(markup, /aria-label="Copy message from Codex-CLI"/u);
   assert.doesNotMatch(markup, /aria-label="Copy message from Gemini-CLI"/u);
+});
+
+test('inline_stack localizes Cats-owned live progress fallback text', () => {
+  const markup = renderConcurrentCluster(
+    'inline_stack',
+    [
+      createLiveIndicatorSegmentState({
+        phase: 'sealed',
+        sourceMessageId: 'message-1',
+        laneId: 'lane-1',
+        targetStateId: 'target-1',
+        segmentIndex: 0,
+        progressText: 'Finalizing...',
+      }),
+    ],
+    [],
+    {
+      locale: 'zh-TW',
+      showProgressDetails: true,
+    },
+  );
+
+  assert.match(markup, /正在完成…/u);
+  assert.doesNotMatch(markup, /Finalizing/u);
 });
 
 test('ConcurrentClusterRenderer renders cluster actions independently from mode-specific layout', () => {
