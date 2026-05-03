@@ -66,6 +66,31 @@ function relayThreadStatusClass(status: string): string {
   }
 }
 
+function labelRelayStatus(status: string, t: ReturnType<typeof useI18n>['t']): string {
+  switch (status) {
+    case 'active':
+      return t(messageKeys.codeRelayStatusActive);
+    case 'available':
+      return t(messageKeys.codeRelayStatusAvailable);
+    case 'completed':
+      return t(messageKeys.codeRelayStatusCompleted);
+    case 'failed':
+      return t(messageKeys.codeRelayStatusFailed);
+    case 'requested':
+      return t(messageKeys.codeRelayStatusRequested);
+    case 'running':
+      return t(messageKeys.codeRelayStatusRunning);
+    case 'unavailable':
+      return t(messageKeys.codeRelayStatusUnavailable);
+    case 'waiting_for_agents':
+      return t(messageKeys.codeRelayStatusWaitingForAgents);
+    case 'waiting_for_user':
+      return t(messageKeys.codeRelayStatusWaitingForUser);
+    default:
+      return status.trim() || t(messageKeys.codeRelayStatusUnknown);
+  }
+}
+
 function selectedRosterIds(entries: CodeRelayRosterEntryPayload[]): string[] {
   return entries
     .filter((entry) => entry.enabled)
@@ -442,7 +467,7 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
                   <div className="operatorCardHeader">
                     <strong>{selectedThread.thread.title}</strong>
                     <span className={relayThreadStatusClass(selectedThread.thread.status)}>
-                      {selectedThread.thread.status}
+                      {labelRelayStatus(selectedThread.thread.status, t)}
                     </span>
                   </div>
                   <p>{selectedThread.thread.summary ?? t(messageKeys.codeRelayNoObjective)}</p>
@@ -485,7 +510,7 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
                       <div className="operatorCardHeader">
                         <strong>{entry.label}</strong>
                         <span className={relayStatusBadgeClass(entry.availability)}>
-                          {entry.availability}
+                          {labelRelayStatus(entry.availability, t)}
                         </span>
                       </div>
                       <p>
@@ -637,7 +662,9 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
                     <article key={round.id} className="operatorCard codeRelayRoundCard">
                       <div className="operatorCardHeader">
                         <strong>{round.objective}</strong>
-                        <span className={relayThreadStatusClass(round.status)}>{round.status}</span>
+                        <span className={relayThreadStatusClass(round.status)}>
+                          {labelRelayStatus(round.status, t)}
+                        </span>
                       </div>
                       <p>{round.prompt}</p>
                       <div className="codeRelayMetaRow">
@@ -661,7 +688,9 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
                             <div key={dispatch.id} className="codeRelayDispatchCard">
                               <div className="codeRelayDispatchHeader">
                                 <strong>{agent?.label ?? dispatch.agentId}</strong>
-                                <span className={relayStatusBadgeClass(dispatch.status)}>{dispatch.status}</span>
+                                <span className={relayStatusBadgeClass(dispatch.status)}>
+                                  {labelRelayStatus(dispatch.status, t)}
+                                </span>
                               </div>
                               {dispatch.error ? (
                                 <p className="codeRelayDispatchError">{dispatch.error}</p>
