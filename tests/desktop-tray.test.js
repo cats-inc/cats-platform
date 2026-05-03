@@ -196,6 +196,24 @@ test('tray menu strips runtime diagnostics even when upstream actions still incl
   );
 });
 
+test('tray menu translates runtime recovery summaries for zh-TW', () => {
+  const state = buildDesktopTrayMenuState({
+    phase: 'needs_prerequisites',
+    summary: 'Cats Runtime is unavailable. Open Cats to recover in-app once the runtime is back.',
+    setupCompleteAt: '2026-04-04T10:00:00.000Z',
+    locale: 'zh-TW',
+    actions: [
+      { id: 'open_chat', label: 'Open Cats', primary: true },
+    ],
+    products: [],
+  });
+
+  assert.equal(
+    state.summary,
+    'Cats 執行階段無法使用。執行階段恢復後，請開啟 Cats 在應用程式內復原。',
+  );
+});
+
 test('tray menu hides unavailable or disabled products from app-shell descriptors', () => {
   const state = buildDesktopTrayMenuState({
     phase: 'ready_for_chat',

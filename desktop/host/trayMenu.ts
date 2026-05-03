@@ -77,9 +77,9 @@ const ZH_TW_TRAY_SUMMARY_BY_ENGLISH: Record<string, string> = {
   'Desktop services are ready. Continue into setup to choose a provider path.':
     '桌面服務已就緒。請繼續進入設定以選擇供應器路徑。',
   'Cats Runtime is unavailable. Open Cats to recover in-app once the runtime is back.':
-    'Cats Runtime 無法使用。Runtime 恢復後，請開啟 Cats 在應用程式內復原。',
+    'Cats 執行階段無法使用。執行階段恢復後，請開啟 Cats 在應用程式內復原。',
   'Cats Runtime setup is still required. Continue into setup.':
-    'Cats Runtime 仍需要設定。請繼續進入設定。',
+    'Cats 執行階段仍需要設定。請繼續進入設定。',
   'Desktop services and at least one provider path are ready.':
     '桌面服務與至少一個供應器路徑已就緒。',
   'Desktop services are ready. Opening Cats without a startup provider reprobe.':
