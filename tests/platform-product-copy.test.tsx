@@ -114,6 +114,11 @@ test('shared zh-TW catalog avoids raw English for known product chrome fallbacks
     t(messageKeys.chatParallelFooterThreadLabel, { threadIndex: 2 }),
     '討論串 2',
   );
+  assert.equal(
+    t(messageKeys.workRunStopConfirmation, { runTitle: 'demo' }),
+    '要停止執行「demo」嗎？\n\n'
+      + 'Cats 會先透過監督式執行階段工作階段要求執行階段取消，再將執行標記為已取消。已送出的外部副作用不會回復。',
+  );
   assert.equal(t(messageKeys.codeBuilderModelPlaceholder), '預設');
   assert.equal(t(messageKeys.codeExecutionDefaultModel), '預設');
   assert.equal(t(messageKeys.codeRelayLabelDefault), '預設');

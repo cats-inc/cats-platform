@@ -549,7 +549,7 @@ export const zhTWCatalog: MessageCatalog = {
     '此執行無法停止：沒有橋接監督式執行階段工作階段。',
   'work.run.stopNotStoppableGeneric': '此執行無法停止。',
   'work.run.stopConfirmation':
-    '要停止執行「{runTitle}」嗎？\n\nCats 會先透過監督式 session 要求 runtime 取消，再將執行標記為已取消。已送出的外部副作用不會回復。',
+    '要停止執行「{runTitle}」嗎？\n\nCats 會先透過監督式執行階段工作階段要求執行階段取消，再將執行標記為已取消。已送出的外部副作用不會回復。',
   'work.run.stopError': '停止執行失敗。',
   'work.run.stopRouteFailed': '停止執行失敗。HTTP {statusCode}。',
   'work.run.backArrowLabel': '返回任務',
