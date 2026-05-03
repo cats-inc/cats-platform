@@ -14,45 +14,13 @@ import {
 import { messageKeys } from '../../../../../shared/i18n/messageKeys.js';
 import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import {
+  labelCodeArtifactKindForLocale,
   labelCodeArtifactStatusForLocale,
   labelCodeConversationKindForLocale,
   labelCodeRecordStatusForLocale,
   labelCodeWorkspaceStatusForLocale,
 } from '../codeStatusLabels.js';
 import './workspaces.css';
-
-type CodeArtifactKind =
-  | 'build'
-  | 'preview'
-  | 'document'
-  | 'report'
-  | 'attachment'
-  | 'transcript_export'
-  | 'dataset';
-
-function labelArtifactKind(
-  kind: string,
-  t: ReturnType<typeof useI18n>['t'],
-): string {
-  switch (kind as CodeArtifactKind) {
-    case 'build':
-      return t(messageKeys.codeArtifactKindBuildLabel);
-    case 'preview':
-      return t(messageKeys.codeArtifactKindPreviewLabel);
-    case 'document':
-      return t(messageKeys.codeArtifactKindDocumentLabel);
-    case 'report':
-      return t(messageKeys.codeArtifactKindReportLabel);
-    case 'attachment':
-      return t(messageKeys.codeArtifactKindAttachmentLabel);
-    case 'transcript_export':
-      return t(messageKeys.codeArtifactKindTranscriptLabel);
-    case 'dataset':
-      return t(messageKeys.codeArtifactDatasetLabel);
-    default:
-      return kind || t(messageKeys.codeArtifactKindUnknownLabel);
-  }
-}
 
 function labelWorkspaceSource(
   source: CodeWorkspaceSource,
@@ -110,7 +78,7 @@ function renderArtifactItem(
         className="codeWorkspaceDetail__item"
       >
         <span className="codeWorkspaceDetail__itemKind">
-          {labelArtifactKind(art.kind, t)}
+          {labelCodeArtifactKindForLocale(art.kind, t)}
         </span>
         <span className="codeWorkspaceDetail__itemTitle">
           {art.title}

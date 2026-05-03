@@ -8,7 +8,10 @@ import {
 import { buildCodeArtifactPath } from '../../codePaths.js';
 import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import { messageKeys } from '../../../../../shared/i18n/messageKeys.js';
-import { labelCodeArtifactStatusForLocale } from '../codeStatusLabels.js';
+import {
+  labelCodeArtifactKindForLocale,
+  labelCodeArtifactStatusForLocale,
+} from '../codeStatusLabels.js';
 import './artifactsList.css';
 
 type CodeArtifactKind =
@@ -32,27 +35,6 @@ const FILTER_ORDER: readonly KindFilter[] = [
   'transcript_export',
   'dataset',
 ];
-
-function labelArtifactKind(kind: string, t: ReturnType<typeof useI18n>['t']): string {
-  switch (kind) {
-    case 'build':
-      return t(messageKeys.codeArtifactKindBuildLabel);
-    case 'preview':
-      return t(messageKeys.codeArtifactKindPreviewLabel);
-    case 'document':
-      return t(messageKeys.codeArtifactKindDocumentLabel);
-    case 'report':
-      return t(messageKeys.codeArtifactKindReportLabel);
-    case 'attachment':
-      return t(messageKeys.codeArtifactKindAttachmentLabel);
-    case 'transcript_export':
-      return t(messageKeys.codeArtifactKindTranscriptLabel);
-    case 'dataset':
-      return t(messageKeys.codeArtifactDatasetLabel);
-    default:
-      return kind || t(messageKeys.codeArtifactKindUnknownLabel);
-  }
-}
 
 function formatRelative(iso: string, locale: string): string {
   const then = new Date(iso).getTime();
@@ -145,7 +127,9 @@ export function ArtifactsListPage(): JSX.Element {
               onClick={() => setFilter(kind)}
               aria-pressed={filter === kind}
             >
-              {kind === 'all' ? t(messageKeys.codeArtifactListAllFilter) : labelArtifactKind(kind, t)}
+              {kind === 'all'
+                ? t(messageKeys.codeArtifactListAllFilter)
+                : labelCodeArtifactKindForLocale(kind, t)}
             </button>
           ))}
         </div>
@@ -176,7 +160,7 @@ export function ArtifactsListPage(): JSX.Element {
                       <span
                         className={`codeArtifactsList__kindPill codeArtifactsList__kindPill--${art.kind}`}
                       >
-                        {labelArtifactKind(art.kind, t)}
+                        {labelCodeArtifactKindForLocale(art.kind, t)}
                       </span>
                       <div className="codeArtifactsList__rowText">
                         <span className="codeArtifactsList__rowTitle">
