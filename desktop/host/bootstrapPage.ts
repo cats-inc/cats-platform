@@ -562,6 +562,8 @@ export function buildDesktopBootstrapPage(): string {
         'diagnostics.recentEvents': 'Recent events',
         'diagnostics.runtime': 'runtime: ',
         'diagnostics.summary.hostUnavailable': 'Host diagnostics are not available yet.',
+        'diagnostics.summary.desktopHostFailed': 'Desktop host failed.',
+        'diagnostics.summary.hostPhaseChanged': 'Desktop host phase is {phase}. {summary}',
         'diagnostics.summary.noProductEvents':
           'No product-owned onboarding events were recorded for this bootstrap attempt yet.',
         'diagnostics.summary.productUnavailable': 'Product diagnostics are not available yet.',
@@ -583,6 +585,8 @@ export function buildDesktopBootstrapPage(): string {
           'Packaged platform setup completed.',
         'diagnostics.summary.productSetupFailedBeforeResponse':
           'Packaged setup failed before completion response was returned.',
+        'diagnostics.summary.runtimeStatusChanged': 'Observed a runtime status change.',
+        'diagnostics.summary.runtimeUnavailableShort': 'Runtime is unavailable.',
         'fixed.startupError': 'Mew\u2026 something tripped me up during startup.',
         'issue.serviceError': '{service} error',
         'issue.noSpecificIssues': 'No specific issues were reported.',
@@ -674,11 +678,33 @@ export function buildDesktopBootstrapPage(): string {
         'setupPack.localModel': 'local model pack',
         'setupPack.nativeCli': 'native CLI pack',
         'setupPack.wslPowerUser': 'WSL power-user pack',
+        'eventKind.helperRunCompleted': 'Helper finished',
+        'eventKind.hostPhaseChanged': 'Desktop host phase changed',
+        'eventKind.resumeActionChanged': 'Setup recovery step changed',
+        'eventKind.runtimeServiceUnavailableObserved': 'Runtime service unavailable',
+        'eventKind.runtimeStatusObserved': 'Runtime status observed',
+        'eventKind.serviceExitedBeforeReady': 'Service exited before ready',
+        'eventKind.setupCompleted': 'Setup completed',
+        'eventKind.setupFailed': 'Setup failed',
+        'eventKind.setupOpened': 'Setup opened',
+        'eventKind.setupPayloadFallback': 'Setup payload fallback used',
+        'eventKind.setupStarted': 'Setup started',
+        'eventKind.setupStatePersisted': 'Setup state persisted',
+        'eventLayer.host': 'host',
+        'eventLayer.product': 'product',
+        'eventLayer.runtime': 'runtime',
+        'phase.checkingPrerequisites': 'checking prerequisites',
+        'phase.failed': 'failed',
+        'phase.needsPrerequisites': 'needs prerequisites',
+        'phase.readyForChat': 'ready for chat',
+        'phase.readyForSetup': 'ready for setup',
+        'phase.startingServices': 'starting services',
         'slowHint.almostDone': 'Almost done, really! Just a whisker away~',
         'slowHint.firstLaunch': 'First launch takes a moment. Still stretching\u2026',
         'slowHint.retry': 'Mew\u2026 sorry. Let me try that one more time, okay?',
         'slowHint.wantToPlay': 'Want to play? Hang in there, almost ready~',
         'status.checking': 'checking',
+        'status.degraded': 'degraded',
         'status.error': 'error',
         'status.failed': 'failed',
         'status.info': 'info',
@@ -736,6 +762,8 @@ export function buildDesktopBootstrapPage(): string {
         'diagnostics.recentEvents': '最近事件',
         'diagnostics.runtime': '執行階段：',
         'diagnostics.summary.hostUnavailable': '主機診斷尚無法使用。',
+        'diagnostics.summary.desktopHostFailed': '桌面主機失敗。',
+        'diagnostics.summary.hostPhaseChanged': '桌面主機階段為「{phase}」。{summary}',
         'diagnostics.summary.noProductEvents':
           '此啟動設定嘗試尚未記錄產品擁有的初始引導事件。',
         'diagnostics.summary.productUnavailable': '產品診斷尚無法使用。',
@@ -757,6 +785,8 @@ export function buildDesktopBootstrapPage(): string {
           '套裝平台設定已完成。',
         'diagnostics.summary.productSetupFailedBeforeResponse':
           '套裝設定在回傳完成回應前失敗。',
+        'diagnostics.summary.runtimeStatusChanged': '已觀察到執行階段狀態變更。',
+        'diagnostics.summary.runtimeUnavailableShort': '執行階段無法使用。',
         'fixed.startupError': '喵…啟動時有地方出錯了。',
         'issue.serviceError': '{service} 錯誤',
         'issue.noSpecificIssues': '沒有回報具體問題。',
@@ -848,11 +878,33 @@ export function buildDesktopBootstrapPage(): string {
         'setupPack.localModel': '本機模型套件',
         'setupPack.nativeCli': '原生 CLI 套件',
         'setupPack.wslPowerUser': 'WSL 進階使用者套件',
+        'eventKind.helperRunCompleted': '輔助程式已完成',
+        'eventKind.hostPhaseChanged': '桌面主機階段已變更',
+        'eventKind.resumeActionChanged': '設定復原步驟已變更',
+        'eventKind.runtimeServiceUnavailableObserved': '執行階段服務無法使用',
+        'eventKind.runtimeStatusObserved': '已觀察到執行階段狀態',
+        'eventKind.serviceExitedBeforeReady': '服務在就緒前結束',
+        'eventKind.setupCompleted': '設定已完成',
+        'eventKind.setupFailed': '設定失敗',
+        'eventKind.setupOpened': '設定已開啟',
+        'eventKind.setupPayloadFallback': '已使用設定酬載備援',
+        'eventKind.setupStarted': '設定已開始',
+        'eventKind.setupStatePersisted': '設定狀態已保存',
+        'eventLayer.host': '主機',
+        'eventLayer.product': '產品',
+        'eventLayer.runtime': '執行階段',
+        'phase.checkingPrerequisites': '檢查先決條件',
+        'phase.failed': '失敗',
+        'phase.needsPrerequisites': '需要先決條件',
+        'phase.readyForChat': '可進入聊天',
+        'phase.readyForSetup': '可進入設定',
+        'phase.startingServices': '啟動服務',
         'slowHint.almostDone': '真的快完成了，只差最後一步~',
         'slowHint.firstLaunch': '第一次啟動需要一點時間，還在準備…',
         'slowHint.retry': '喵…抱歉，讓我再試一次，好嗎？',
         'slowHint.wantToPlay': '快好了，請再稍等一下~',
         'status.checking': '檢查中',
+        'status.degraded': '降級',
         'status.error': '錯誤',
         'status.failed': '失敗',
         'status.info': '資訊',
@@ -894,6 +946,7 @@ export function buildDesktopBootstrapPage(): string {
 
     var BOOTSTRAP_STATUS_LABEL_KEYS = {
       checking: 'status.checking',
+      degraded: 'status.degraded',
       error: 'status.error',
       failed: 'status.failed',
       info: 'status.info',
@@ -905,6 +958,36 @@ export function buildDesktopBootstrapPage(): string {
       unavailable: 'status.unavailable',
       warning: 'status.warning',
       completed: 'status.completed'
+    };
+
+    var BOOTSTRAP_EVENT_LAYER_LABEL_KEYS = {
+      host: 'eventLayer.host',
+      product: 'eventLayer.product',
+      runtime: 'eventLayer.runtime'
+    };
+
+    var BOOTSTRAP_EVENT_KIND_LABEL_KEYS = {
+      helper_run_completed: 'eventKind.helperRunCompleted',
+      host_phase_changed: 'eventKind.hostPhaseChanged',
+      resume_action_changed: 'eventKind.resumeActionChanged',
+      runtime_service_unavailable_observed: 'eventKind.runtimeServiceUnavailableObserved',
+      runtime_status_observed: 'eventKind.runtimeStatusObserved',
+      service_exited_before_ready: 'eventKind.serviceExitedBeforeReady',
+      setup_completed: 'eventKind.setupCompleted',
+      setup_failed: 'eventKind.setupFailed',
+      setup_opened: 'eventKind.setupOpened',
+      setup_payload_fallback: 'eventKind.setupPayloadFallback',
+      setup_started: 'eventKind.setupStarted',
+      setup_state_persisted: 'eventKind.setupStatePersisted'
+    };
+
+    var BOOTSTRAP_PHASE_LABEL_KEYS = {
+      checking_prerequisites: 'phase.checkingPrerequisites',
+      failed: 'phase.failed',
+      needs_prerequisites: 'phase.needsPrerequisites',
+      ready_for_chat: 'phase.readyForChat',
+      ready_for_setup: 'phase.readyForSetup',
+      starting_services: 'phase.startingServices'
     };
 
     var BOOTSTRAP_SETUP_REASON_KEYS = {
@@ -960,6 +1043,7 @@ export function buildDesktopBootstrapPage(): string {
 
     var BOOTSTRAP_SUMMARY_KEYS = {
       'Host diagnostics are not available yet.': 'diagnostics.summary.hostUnavailable',
+      'Desktop host failed.': 'diagnostics.summary.desktopHostFailed',
       'No product-owned onboarding events were recorded for this bootstrap attempt yet.':
         'diagnostics.summary.noProductEvents',
       'Product diagnostics are not available yet.': 'diagnostics.summary.productUnavailable',
@@ -981,6 +1065,9 @@ export function buildDesktopBootstrapPage(): string {
         'diagnostics.summary.productPlatformSetupCompleted',
       'Packaged setup failed before completion response was returned.':
         'diagnostics.summary.productSetupFailedBeforeResponse',
+      'Observed a runtime status change.':
+        'diagnostics.summary.runtimeStatusChanged',
+      'Runtime is unavailable.': 'diagnostics.summary.runtimeUnavailableShort',
       'Restored desktop host state is incomplete; rechecking desktop services.':
         'diagnostics.summary.restoredIncomplete',
       'Runtime diagnostics are not available yet.': 'diagnostics.summary.runtimeUnavailable'
@@ -1025,6 +1112,21 @@ export function buildDesktopBootstrapPage(): string {
       return key ? tx(key) : String(status || '').replace(/_/g, ' ');
     }
 
+    function displayBootstrapLayer(layer) {
+      var key = BOOTSTRAP_EVENT_LAYER_LABEL_KEYS[layer];
+      return key ? tx(key) : String(layer || '').replace(/_/g, ' ');
+    }
+
+    function displayBootstrapEventKind(kind) {
+      var key = BOOTSTRAP_EVENT_KIND_LABEL_KEYS[kind];
+      return key ? tx(key) : String(kind || '').replace(/_/g, ' ');
+    }
+
+    function displayBootstrapPhase(phase) {
+      var key = BOOTSTRAP_PHASE_LABEL_KEYS[phase];
+      return key ? tx(key) : String(phase || '').replace(/_/g, ' ');
+    }
+
     function localizeIssueTitle(issue) {
       if (!issue) return '';
       var key = BOOTSTRAP_ISSUE_TITLE_KEYS[issue.id];
@@ -1056,7 +1158,15 @@ export function buildDesktopBootstrapPage(): string {
     function localizeBootstrapSummary(summary) {
       var text = String(summary || '');
       var key = BOOTSTRAP_SUMMARY_KEYS[text];
-      return key ? tx(key) : text;
+      if (key) return tx(key);
+      var hostPhaseMatch = text.match(/^Desktop host phase is ([^.]+)\. ?(.*)$/);
+      if (hostPhaseMatch) {
+        return tx('diagnostics.summary.hostPhaseChanged', {
+          phase: displayBootstrapPhase(hostPhaseMatch[1]),
+          summary: localizeBootstrapSummary(hostPhaseMatch[2])
+        });
+      }
+      return text;
     }
 
     function localizeSetupReason(reason) {
@@ -1837,9 +1947,9 @@ export function buildDesktopBootstrapPage(): string {
           return el('div', { class: 'chrono-item' },
             el('div', { class: 'chrono-summary' }, localizeBootstrapSummary(evt.summary)),
             el('div', { class: 'chrono-meta' },
-              el('span', null, evt.layer),
-              el('span', null, evt.kind),
-              el('span', null, evt.status),
+              el('span', null, displayBootstrapLayer(evt.layer)),
+              el('span', null, displayBootstrapEventKind(evt.kind)),
+              el('span', null, displayStatus(evt.status)),
               el('span', null, evt.timestamp)
             ),
             evt.error && evt.error.message

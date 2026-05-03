@@ -30,6 +30,9 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /localizeIssueTitle/);
   assert.match(html, /localizeIssueDetail/);
   assert.match(html, /localizeBootstrapSummary/);
+  assert.match(html, /displayBootstrapLayer/);
+  assert.match(html, /displayBootstrapEventKind/);
+  assert.match(html, /displayBootstrapPhase/);
   assert.match(html, /localizeSetupReason/);
   assert.match(html, /localizeSetupSummary/);
   assert.match(html, /displayStatus/);
@@ -42,6 +45,12 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /已開啟套裝平台設定/);
   assert.match(html, /已開始送出套裝設定/);
   assert.match(html, /套裝設定在回傳完成回應前失敗/);
+  assert.match(html, /桌面主機階段為/);
+  assert.match(html, /桌面主機階段已變更/);
+  assert.match(html, /執行階段服務無法使用/);
+  assert.match(html, /設定狀態已保存/);
+  assert.match(html, /服務在就緒前結束/);
+  assert.match(html, /降級/);
   assert.match(html, /Packaged platform setup was opened[\s\S]*diagnostics\.summary\.productSetupOpened/);
   assert.match(html, /結束 Cats/);
   assert.match(html, /顯示詳細資料/);
@@ -81,6 +90,9 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /function DiagnosticsSection\(snap\)[\s\S]*open_runtime_diagnostics/);
   assert.match(html, /return ExpandableSection\(tx\('section\.localHelpers'\), \[el\('div', \{ class: 'card' \}, rows\.flat\(\)\)\]\);/);
   assert.match(html, /Open advanced diagnostics/);
+  assert.match(html, /displayBootstrapLayer\(evt\.layer\)/);
+  assert.match(html, /displayBootstrapEventKind\(evt\.kind\)/);
+  assert.match(html, /displayStatus\(evt\.status\)/);
   assert.doesNotMatch(html, /var runtimeReady = snap\.services\.some/);
 
   // Setup recovery section
