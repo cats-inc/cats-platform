@@ -10,7 +10,7 @@ export const zhTWCatalog: MessageCatalog = {
   'app.title': 'Cats',
   'appHost.label': '應用程式',
   'appHost.notInstalledTitle': '此應用程式未安裝',
-  'appHost.backToLobby': '返回 Lobby',
+  'appHost.backToLobby': '返回大廳',
   'appHost.subtitleRendererPending': '應用程式元件尚未準備好',
   'appHost.subtitleDisabled': '應用程式已停用',
   'appHost.sectionPackage': '套件',
@@ -49,7 +49,7 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.runtimeStatus.tooltip.unknown': '正在檢查 Cats 執行階段狀態…',
   'settings.general.profileTitle': '個人檔案',
   'settings.general.profileDescription':
-    '這是跨 Chat、Code、Work、Lobby 的平台統一個人檔案。',
+    '這是跨聊天、程式碼、工作與大廳的平台統一個人檔案。',
   'settings.general.avatarLabel': '頭像',
   'settings.general.avatarChangeLabel': '更改頭像',
   'settings.general.avatarUploadLabel': '上傳頭像',
@@ -72,7 +72,7 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.general.languageTraditionalChineseOption': '繁體中文',
   'settings.general.lobbyMotionTitle': '大廳動畫',
   'settings.general.lobbyMotionDescription':
-    '選擇 Lobby 背景的動態感。預設使用較為平緩版本。',
+    '選擇大廳背景的動態感。預設使用較為平緩版本。',
   'settings.general.lobbyMotionOffLabel': '關閉',
   'settings.general.lobbyMotionOffDescription': '背景保持靜止，移除彈跳的貓咪效果。',
   'settings.general.lobbyMotionReducedLabel': '減弱',
@@ -97,7 +97,7 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.general.updateNameError': '無法更新名字',
   'settings.general.updateAssistantLanguageError': '無法更新助理語言',
   'settings.general.updateLanguageError': '無法更新語言',
-  'settings.general.updateLobbyAnimationError': '無法更新 Lobby 動畫',
+  'settings.general.updateLobbyAnimationError': '無法更新大廳動畫',
   'settings.general.updateGuideCatModeError': '無法更新導覽貓模式',
   'settings.general.removeAvatarError': '無法移除頭像',
   'settings.general.saveAvatarError': '無法儲存頭像',
@@ -181,7 +181,7 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.runtime.uninstallTitle': '解除安裝 {label}',
   'settings.runtime.uninstallDescriptionPrefix': '這將移除使用者擁有的檔案',
   'settings.runtime.uninstallDescriptionSuffix':
-    'Auth 檔案、API 金鑰與外部設定不受影響。正在使用該供應器的工作階段將持續失敗，直到您切換到其他供應器。',
+    '驗證檔案、API 金鑰與外部設定不受影響。正在使用該供應器的工作階段將持續失敗，直到您切換到其他供應器。',
   'settings.runtime.uninstallHelperLabel': '輔助工具：{helperId}',
   'settings.runtime.uninstallScriptLabel': '腳本：{scriptPath}',
   'settings.runtime.computingPlannedRemovals': '正在計算預期移除項目…',
@@ -262,7 +262,7 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.apps.reviewButton': '預覽',
   'settings.apps.readyStatusChip': '就緒',
   'settings.apps.needsReviewStatusChip': '待審核',
-  'settings.apps.noLobbyRoute': '沒有 Lobby 路由',
+  'settings.apps.noLobbyRoute': '沒有大廳路由',
   'settings.apps.installButton': '安裝',
   'settings.apps.enableAction': '啟用',
   'settings.apps.disableAction': '停用',
@@ -277,7 +277,7 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.apps.enableMessage':
     '啟用「{appDisplayName}」？只要其權限允許，就會在 Cats 顯示。',
   'settings.apps.disableMessage':
-    '停用「{appDisplayName}」？其在 Lobby 與應用程式專屬路由將不再顯示。',
+    '停用「{appDisplayName}」？其在大廳與應用程式專屬路由將不再顯示。',
   'settings.apps.installTitle': '安裝應用程式',
   'settings.apps.installMessage':
     '安裝「{appDisplayName}」？安裝後將自動啟用。',
@@ -328,7 +328,7 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.desktop.mobilePairingStatusValidationPending': '等待資訊清單驗證',
   'settings.desktop.mobilePairingEnableLabel': '啟用手機配對',
   'settings.desktop.mobilePairingEnableDescription':
-    '將寫入桌面端需要的環境變數值以開啟 LAN 存取。套用後請重新啟動 Cats Desktop。',
+    '將寫入桌面端需要的環境變數值以開啟 LAN 存取。套用後請重新啟動 Cats 桌面版。',
   'settings.desktop.mobilePairingEnableButton': '啟用',
   'settings.desktop.mobilePairingApplyingButton': '套用中…',
   'settings.desktop.mobilePairingBindLabel': '繫結位址',
@@ -359,16 +359,16 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.desktop.mobilePairingOpenPairingUrlLabel': '開啟配對網址',
   'settings.desktop.mobilePairingCopyEnvValuesSuccess': '已複製手機配對環境變數值。',
   'settings.desktop.mobilePairingConfirmRestart':
-    '套用 0.0.0.0 綁定並重新啟動 Cats Desktop？未儲存的變更將遺失。',
+    '套用 0.0.0.0 綁定並重新啟動 Cats 桌面版？未儲存的變更將遺失。',
   'settings.desktop.mobilePairingDesktopUpdateSuccess':
-    '已更新 {envPath}，正在重新啟動 Cats Desktop…',
+    '已更新 {envPath}，正在重新啟動 Cats 桌面版…',
   'settings.desktop.mobilePairingDesktopUpdateFailure': '更新桌面環境設定失敗。',
   'settings.desktop.startupTitle': '啟動行為',
   'settings.desktop.startupDescription':
-    '控制是否在登入時啟動 Cats Desktop、是否自動打開主視窗，以及關閉視窗時是否保留在系統列。',
-  'settings.desktop.startupSignInLabel': '登入電腦時啟動 Cats Desktop',
+    '控制是否在登入時啟動 Cats 桌面版、是否自動打開主視窗，以及關閉視窗時是否保留在系統列。',
+  'settings.desktop.startupSignInLabel': '登入電腦時啟動 Cats 桌面版',
   'settings.desktop.startupSignInDescription':
-    '登入後讓 Cats Desktop 在背景準備就緒。',
+    '登入後讓 Cats 桌面版在背景準備就緒。',
   'settings.desktop.startupTrayLabel': '關閉視窗時保留在系統匣',
   'settings.desktop.startupTrayDescription':
     '啟用時，關閉視窗只會隱藏應用程式並持續運行；停用則直接退出。',
