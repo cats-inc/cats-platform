@@ -569,6 +569,20 @@ export function buildDesktopBootstrapPage(): string {
         'diagnostics.summary.restoredIncomplete':
           'Restored desktop host state is incomplete; rechecking desktop services.',
         'diagnostics.summary.runtimeUnavailable': 'Runtime diagnostics are not available yet.',
+        'diagnostics.summary.productOnboardingEmpty':
+          'No product-owned onboarding events have been recorded yet.',
+        'diagnostics.summary.productSetupOpened': 'Packaged platform setup was opened.',
+        'diagnostics.summary.productSetupSubmissionStarted':
+          'Packaged setup submission started.',
+        'diagnostics.summary.productSetupStatePersisted':
+          'Setup state snapshot persisted.',
+        'diagnostics.summary.productSetupPayloadFallback':
+          'Setup completed but app shell payload used a fallback envelope.',
+        'diagnostics.summary.productSetupCompleted': 'Packaged setup completed.',
+        'diagnostics.summary.productPlatformSetupCompleted':
+          'Packaged platform setup completed.',
+        'diagnostics.summary.productSetupFailedBeforeResponse':
+          'Packaged setup failed before completion response was returned.',
         'fixed.startupError': 'Mew\u2026 something tripped me up during startup.',
         'issue.serviceError': '{service} error',
         'issue.noSpecificIssues': 'No specific issues were reported.',
@@ -729,6 +743,20 @@ export function buildDesktopBootstrapPage(): string {
         'diagnostics.summary.restoredIncomplete':
           '已還原的桌面主機狀態不完整；正在重新檢查桌面服務。',
         'diagnostics.summary.runtimeUnavailable': '執行階段診斷尚無法使用。',
+        'diagnostics.summary.productOnboardingEmpty':
+          '尚未記錄產品擁有的初始引導事件。',
+        'diagnostics.summary.productSetupOpened': '已開啟套裝平台設定。',
+        'diagnostics.summary.productSetupSubmissionStarted':
+          '已開始送出套裝設定。',
+        'diagnostics.summary.productSetupStatePersisted':
+          '已保存設定狀態快照。',
+        'diagnostics.summary.productSetupPayloadFallback':
+          '設定已完成，但應用程式殼層酬載使用了備援信封。',
+        'diagnostics.summary.productSetupCompleted': '套裝設定已完成。',
+        'diagnostics.summary.productPlatformSetupCompleted':
+          '套裝平台設定已完成。',
+        'diagnostics.summary.productSetupFailedBeforeResponse':
+          '套裝設定在回傳完成回應前失敗。',
         'fixed.startupError': '喵…啟動時有地方出錯了。',
         'issue.serviceError': '{service} 錯誤',
         'issue.noSpecificIssues': '沒有回報具體問題。',
@@ -937,6 +965,22 @@ export function buildDesktopBootstrapPage(): string {
       'Product diagnostics are not available yet.': 'diagnostics.summary.productUnavailable',
       'Product onboarding diagnostics are not available yet.':
         'diagnostics.summary.productOnboardingUnavailable',
+      'No product-owned onboarding events have been recorded yet.':
+        'diagnostics.summary.productOnboardingEmpty',
+      'Packaged platform setup was opened.':
+        'diagnostics.summary.productSetupOpened',
+      'Packaged setup submission started.':
+        'diagnostics.summary.productSetupSubmissionStarted',
+      'Setup state snapshot persisted.':
+        'diagnostics.summary.productSetupStatePersisted',
+      'Setup completed but app shell payload used a fallback envelope.':
+        'diagnostics.summary.productSetupPayloadFallback',
+      'Packaged setup completed.':
+        'diagnostics.summary.productSetupCompleted',
+      'Packaged platform setup completed.':
+        'diagnostics.summary.productPlatformSetupCompleted',
+      'Packaged setup failed before completion response was returned.':
+        'diagnostics.summary.productSetupFailedBeforeResponse',
       'Restored desktop host state is incomplete; rechecking desktop services.':
         'diagnostics.summary.restoredIncomplete',
       'Runtime diagnostics are not available yet.': 'diagnostics.summary.runtimeUnavailable'

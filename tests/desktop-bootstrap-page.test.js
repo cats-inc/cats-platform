@@ -39,6 +39,10 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /目前沒有可用的供應器目標/);
   assert.match(html, /桌面主機尚未完成先決條件掃描/);
   assert.match(html, /產品初始引導診斷尚無法使用/);
+  assert.match(html, /已開啟套裝平台設定/);
+  assert.match(html, /已開始送出套裝設定/);
+  assert.match(html, /套裝設定在回傳完成回應前失敗/);
+  assert.match(html, /Packaged platform setup was opened[\s\S]*diagnostics\.summary\.productSetupOpened/);
   assert.match(html, /結束 Cats/);
   assert.match(html, /顯示詳細資料/);
   assert.match(html, /歡迎。你可以現在安裝 CLI/);
