@@ -225,6 +225,28 @@ export const messageKeys = {
     'settings.runtime.helperUnavailableReason',
   settingsRuntimeHelperUnsupportedActionReason:
     'settings.runtime.helperUnsupportedActionReason',
+  settingsRuntimeLifecycleStatusAuthRequired:
+    'settings.runtime.lifecycleStatus.authRequired',
+  settingsRuntimeLifecycleStatusBlocked:
+    'settings.runtime.lifecycleStatus.blocked',
+  settingsRuntimeLifecycleStatusChangesRequired:
+    'settings.runtime.lifecycleStatus.changesRequired',
+  settingsRuntimeLifecycleStatusFailed:
+    'settings.runtime.lifecycleStatus.failed',
+  settingsRuntimeLifecycleStatusNotInstalled:
+    'settings.runtime.lifecycleStatus.notInstalled',
+  settingsRuntimeLifecycleStatusPreview:
+    'settings.runtime.lifecycleStatus.preview',
+  settingsRuntimeLifecycleStatusReady:
+    'settings.runtime.lifecycleStatus.ready',
+  settingsRuntimeLifecycleStatusRestartRequired:
+    'settings.runtime.lifecycleStatus.restartRequired',
+  settingsRuntimeLifecycleStatusUninstalled:
+    'settings.runtime.lifecycleStatus.uninstalled',
+  settingsRuntimeLifecycleDetailLaunchWslFirstBoot:
+    'settings.runtime.lifecycleDetail.launchWslFirstBoot',
+  settingsRuntimeLifecycleDetailStartDockerWarmUp:
+    'settings.runtime.lifecycleDetail.startDockerWarmUp',
   settingsRouteTitleAssistants: 'settings.route.title.assistants',
   settingsRouteTitleMyCats: 'settings.route.title.myCats',
   settingsRouteTitleChat: 'settings.route.title.chat',

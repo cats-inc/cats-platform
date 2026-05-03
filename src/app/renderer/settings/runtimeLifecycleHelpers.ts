@@ -110,6 +110,48 @@ export function presentRuntimeLifecycleHelperLabel(
   return localizeRuntimeLifecycleHelperLabel(helper.label, t);
 }
 
+export function presentRuntimeLifecycleStatus(
+  status: string | null | undefined,
+  t: RuntimeLifecycleI18n = defaultRuntimeLifecycleI18n,
+): string {
+  switch (status) {
+    case 'auth_required':
+      return t(messageKeys.settingsRuntimeLifecycleStatusAuthRequired);
+    case 'blocked':
+      return t(messageKeys.settingsRuntimeLifecycleStatusBlocked);
+    case 'changes_required':
+      return t(messageKeys.settingsRuntimeLifecycleStatusChangesRequired);
+    case 'failed':
+      return t(messageKeys.settingsRuntimeLifecycleStatusFailed);
+    case 'not_installed':
+      return t(messageKeys.settingsRuntimeLifecycleStatusNotInstalled);
+    case 'preview':
+      return t(messageKeys.settingsRuntimeLifecycleStatusPreview);
+    case 'ready':
+      return t(messageKeys.settingsRuntimeLifecycleStatusReady);
+    case 'restart_required':
+      return t(messageKeys.settingsRuntimeLifecycleStatusRestartRequired);
+    case 'uninstalled':
+      return t(messageKeys.settingsRuntimeLifecycleStatusUninstalled);
+    default:
+      return String(status ?? '');
+  }
+}
+
+export function presentRuntimeLifecycleDetail(
+  detail: string | null | undefined,
+  t: RuntimeLifecycleI18n = defaultRuntimeLifecycleI18n,
+): string {
+  switch (detail) {
+    case 'Launch the target WSL distro once to finish first-user setup, then rerun the packaged setup check.':
+      return t(messageKeys.settingsRuntimeLifecycleDetailLaunchWslFirstBoot);
+    case 'Start Docker Desktop and wait for the engine to become ready, then rerun the packaged setup check.':
+      return t(messageKeys.settingsRuntimeLifecycleDetailStartDockerWarmUp);
+    default:
+      return presentRuntimeLifecycleStatus(detail, t) || String(detail ?? '');
+  }
+}
+
 function localizeRuntimeLifecycleHelperLabel(
   label: string,
   t: RuntimeLifecycleI18n,
@@ -279,13 +321,13 @@ function buildOutcome(
         ? t(messageKeys.settingsRuntimeActionPartialWithDetail, {
             helperLabel,
             actionLabel: actionText,
-            status: normalizedStatus,
-            detail,
+            status: presentRuntimeLifecycleStatus(normalizedStatus, t),
+            detail: presentRuntimeLifecycleDetail(detail, t),
           })
         : t(messageKeys.settingsRuntimeActionPartial, {
             helperLabel,
             actionLabel: actionText,
-            status: normalizedStatus,
+            status: presentRuntimeLifecycleStatus(normalizedStatus, t),
           });
     }
     const detail = lastAction.summary || lastAction.warnings[0] || status;
@@ -293,7 +335,7 @@ function buildOutcome(
       ? t(messageKeys.settingsRuntimeActionFailedWithDetail, {
           helperLabel,
           actionLabel: actionText,
-          detail,
+          detail: presentRuntimeLifecycleDetail(detail, t),
         })
       : t(messageKeys.settingsRuntimeActionFailed, {
           helperLabel,

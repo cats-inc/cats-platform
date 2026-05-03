@@ -225,6 +225,19 @@ export const zhTWCatalog: MessageCatalog = {
     '{helperLabel} 目前未內建於這個主機版本。',
   'settings.runtime.helperUnsupportedActionReason':
     '{helperLabel} 不支援{actionLabel}。',
+  'settings.runtime.lifecycleStatus.authRequired': '需要驗證',
+  'settings.runtime.lifecycleStatus.blocked': '已封鎖',
+  'settings.runtime.lifecycleStatus.changesRequired': '需要變更',
+  'settings.runtime.lifecycleStatus.failed': '失敗',
+  'settings.runtime.lifecycleStatus.notInstalled': '尚未安裝',
+  'settings.runtime.lifecycleStatus.preview': '預覽',
+  'settings.runtime.lifecycleStatus.ready': '就緒',
+  'settings.runtime.lifecycleStatus.restartRequired': '需要重新啟動',
+  'settings.runtime.lifecycleStatus.uninstalled': '已解除安裝',
+  'settings.runtime.lifecycleDetail.launchWslFirstBoot':
+    '請先啟動目標 WSL distro 一次以完成首次使用者設定，然後重新執行套裝設定檢查。',
+  'settings.runtime.lifecycleDetail.startDockerWarmUp':
+    '請啟動 Docker Desktop，等待引擎就緒後重新執行套裝設定檢查。',
   'settings.route.title.assistants': '助理',
   'settings.route.title.myCats': '我的貓咪',
   'settings.route.title.chat': '聊天',

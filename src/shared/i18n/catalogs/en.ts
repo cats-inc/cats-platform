@@ -234,6 +234,19 @@ export const enCatalog: MessageCatalog = {
     '{helperLabel} is not currently bundled with this host build.',
   'settings.runtime.helperUnsupportedActionReason':
     '{helperLabel} does not support {actionLabel}.',
+  'settings.runtime.lifecycleStatus.authRequired': 'authentication required',
+  'settings.runtime.lifecycleStatus.blocked': 'blocked',
+  'settings.runtime.lifecycleStatus.changesRequired': 'changes required',
+  'settings.runtime.lifecycleStatus.failed': 'failed',
+  'settings.runtime.lifecycleStatus.notInstalled': 'not installed',
+  'settings.runtime.lifecycleStatus.preview': 'preview',
+  'settings.runtime.lifecycleStatus.ready': 'ready',
+  'settings.runtime.lifecycleStatus.restartRequired': 'restart required',
+  'settings.runtime.lifecycleStatus.uninstalled': 'uninstalled',
+  'settings.runtime.lifecycleDetail.launchWslFirstBoot':
+    'Launch the target WSL distro once to finish first-user setup, then rerun the packaged setup check.',
+  'settings.runtime.lifecycleDetail.startDockerWarmUp':
+    'Start Docker Desktop and wait for the engine to become ready, then rerun the packaged setup check.',
   'settings.route.title.assistants': 'Assistants',
   'settings.route.title.myCats': 'My Cats',
   'settings.route.title.chat': 'Chat',

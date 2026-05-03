@@ -3,7 +3,9 @@ import test from 'node:test';
 
 import {
   deriveHelperActions,
+  presentRuntimeLifecycleDetail,
   presentRuntimeLifecycleHelperLabel,
+  presentRuntimeLifecycleStatus,
 } from '../src/app/renderer/settings/runtimeLifecycleHelpers.ts';
 import type { RuntimeLifecycleHelperSummary } from '../src/shared/desktopRecoveryBridge.ts';
 import { createTranslator } from '../src/shared/i18n/index.ts';
@@ -60,5 +62,18 @@ test('runtime lifecycle unavailable action reasons use localized helper labels',
   assert.equal(
     actions.find((entry) => entry.action === 'install')?.reason,
     'Windows 原生 Claude Code 安裝器 目前未內建於這個主機版本。',
+  );
+});
+
+test('runtime lifecycle status and known manual details localize in zh-TW', () => {
+  const t = createTranslator('zh-TW');
+
+  assert.equal(presentRuntimeLifecycleStatus('changes_required', t), '需要變更');
+  assert.equal(
+    presentRuntimeLifecycleDetail(
+      'Start Docker Desktop and wait for the engine to become ready, then rerun the packaged setup check.',
+      t,
+    ),
+    '請啟動 Docker Desktop，等待引擎就緒後重新執行套裝設定檢查。',
   );
 });
