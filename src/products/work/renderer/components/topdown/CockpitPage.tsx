@@ -334,7 +334,7 @@ function CommandCenter({
             key={id}
             className="commandCenter__bucket"
             data-bucket={id}
-            aria-label={id}
+            aria-label={getTabLabel(id)}
           >
             <header className="commandCenter__bucketHead">
               <h3>{getTabLabel(id)}</h3>
