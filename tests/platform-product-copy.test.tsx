@@ -69,6 +69,16 @@ test('shared zh-TW catalog avoids raw English for known product chrome fallbacks
     t(messageKeys.workTopdownCockpitNoActorRoles),
     '尚無擁有者角色。',
   );
+  assert.equal(t(messageKeys.workTopdownLinkageTitle), '連結關係');
+  assert.equal(
+    t(messageKeys.workTopdownUpstreamBlocksLine, { maxDepth: 3 }),
+    '每列項目的上游阻擋鏈（深度 ≤ 3）',
+  );
+  assert.equal(t(messageKeys.workTopdownBrokenLinksTitle), '斷裂連結');
+  assert.equal(
+    t(messageKeys.workTopdownBrokenLinksRemoveTooltipRemovable),
+    '請透過產生器管線移除此連結。',
+  );
   assert.equal(t(messageKeys.workWarRoomLoadingBody), '正在更新最新戰情室快照。');
   assert.equal(t(messageKeys.codeBuilderErrorTaskCreate), '無法建立程式碼任務。');
   assert.equal(t(messageKeys.codeBuilderErrorTaskExecution), '無法啟動程式碼任務。');

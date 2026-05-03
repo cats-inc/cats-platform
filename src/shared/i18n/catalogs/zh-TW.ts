@@ -794,11 +794,11 @@ export const zhTWCatalog: MessageCatalog = {
   'work.topdown.cockpitRecentActivitySummary': '{count} 筆項目',
   'work.topdown.cockpitRecentActivityEmpty': '沒有近期活動。',
   'work.topdown.cockpitNoActorRoles': '尚無擁有者角色。',
-  'work.topdown.linkageTitle': '鏈接關係',
+  'work.topdown.linkageTitle': '連結關係',
   'work.topdown.linkageAddAction': '新增連結',
-  'work.topdown.linkageNoLinksYetPrefix': '目前尚無鏈接，請使用',
+  'work.topdown.linkageNoLinksYetPrefix': '目前尚無連結，請使用',
   'work.topdown.linkageNoLinksYetSuffix':
-    '以將此項目連接到專案、工作項目或任務。',
+    '以將此項目連結到專案、工作項目或任務。',
   'work.topdown.linkageViewKindBlocksLabel': '阻擋',
   'work.topdown.linkageViewKindBlockedByLabel': '被阻擋',
   'work.topdown.linkageViewKindRelatedToLabel': '關聯',
@@ -836,13 +836,13 @@ export const zhTWCatalog: MessageCatalog = {
   'work.topdown.upstreamBlockersAriaLabel': '上游阻塞',
   'work.topdown.blockersTitle': '阻塞',
   'work.topdown.upstreamBlocksLine':
-    '每列項目的上游 blocks 鏈（深度 ≤ {maxDepth}）',
+    '每列項目的上游阻擋鏈（深度 ≤ {maxDepth}）',
   'work.topdown.noUpstreamBlockers': '此列表中沒有上游阻塞。',
   'work.topdown.brokenLinksEyebrow': '由上而下 · 合規',
-  'work.topdown.brokenLinksTitle': '連線破損',
+  'work.topdown.brokenLinksTitle': '斷裂連結',
   'work.topdown.brokenLinksLede':
-    '當 Producer 寫入未符合 SPEC-083《最小錨點集合》或 SPEC-090 連結完整性時，'
-    + '在投影層的診斷結果。',
+    '當產生器寫入未符合 SPEC-083《最小錨點集合》或 SPEC-090 連結完整性的連結時，'
+    + '在投影層顯示的診斷結果。',
   'work.topdown.brokenLinksErrorMetricSuffix': '錯誤',
   'work.topdown.brokenLinksWarningMetricSuffix': '警告',
   'work.topdown.brokenLinksInfoMetricSuffix': '資訊',
@@ -859,23 +859,23 @@ export const zhTWCatalog: MessageCatalog = {
   'work.topdown.brokenLinksNoSpecificObject':
     '系統問題 — 未指定特定物件',
   'work.topdown.brokenLinksRemoveTooltipRemovable':
-    '請透過 Producer 管線移除此連線。',
+    '請透過產生器管線移除此連結。',
   'work.topdown.brokenLinksRemoveTooltipDemoSeed':
-    '示範資料 — 請重啟 UI 清理，或先透過 Producer '
+    '示範資料 — 請重新啟動使用者介面清理，或先透過產生器'
     + '管線寫回。',
-  'work.topdown.brokenLinksRemoveAction': '移除此連線',
+  'work.topdown.brokenLinksRemoveAction': '移除此連結',
   'work.topdown.brokenLinksRemoveUnknownError':
-    '移除連線失敗。',
+    '移除連結失敗。',
   'work.topdown.brokenLinksRemovingInProgress': '移除中…',
   'work.topdown.brokenLinksRemovableOnlyDemo':
-    '示範資料 — 僅可透過 Producer API 移除 producer 寫入的連線。',
+    '示範資料 — 僅可透過產生器 API 移除產生器寫入的連結。',
   'work.topdown.brokenLinksCycleRemovableRows':
     '可移除列 ({count}):',
   'work.topdown.brokenLinksDeletedLabel': '（已刪除）',
   'work.topdown.selectionLost': '選取遺失',
   'work.topdown.objectNotInProjectionTitle': '物件不在投影中',
   'work.topdown.objectNotInProjectionMessage':
-    '所選 id {selectedId} 不在目前的投影中。',
+    '所選 ID {selectedId} 不在目前的投影中。',
   'work.topdown.identityTitle': '身分',
   'work.topdown.identityKind': '類型',
   'work.topdown.identityStatus': '狀態',
