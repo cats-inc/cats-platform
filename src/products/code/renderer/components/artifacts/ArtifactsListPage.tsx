@@ -8,6 +8,7 @@ import {
 import { buildCodeArtifactPath } from '../../codePaths.js';
 import { useI18n } from '../../../../../app/renderer/i18n/index.js';
 import { messageKeys } from '../../../../../shared/i18n/messageKeys.js';
+import { labelCodeArtifactStatusForLocale } from '../codeStatusLabels.js';
 import './artifactsList.css';
 
 type CodeArtifactKind =
@@ -212,7 +213,7 @@ export function ArtifactsListPage(): JSX.Element {
                       <span
                         className={`codeArtifactsList__statusPill codeArtifactsList__statusPill--${art.status}`}
                       >
-                        {art.status}
+                        {labelCodeArtifactStatusForLocale(art.status, t)}
                       </span>
                     </div>
                   </Link>

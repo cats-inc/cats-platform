@@ -14,6 +14,10 @@ import {
 } from '../codePaths.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
+import {
+  labelCodeArtifactStatusForLocale,
+  labelCodeRecordStatusForLocale,
+} from './codeStatusLabels.js';
 
 function artifactStatusClassName(status: string): string {
   switch (status) {
@@ -188,7 +192,7 @@ export function ArtifactDetailView() {
                 : t(messageKeys.codeArtifactDetailArtifactOutput)}
             </strong>
             <span className={artifactStatusClassName(payload.artifact.status)}>
-              {payload.artifact.status}
+              {labelCodeArtifactStatusForLocale(payload.artifact.status, t)}
             </span>
           </div>
           {payload.artifact.summary ? <p>{payload.artifact.summary}</p> : null}
@@ -246,7 +250,9 @@ export function ArtifactDetailView() {
             <article className="operatorCard">
               <div className="operatorCardHeader">
                 <strong>{t(messageKeys.codeArtifactDetailTaskLabel)}</strong>
-                <span className={artifactStatusClassName(payload.task.status)}>{payload.task.status}</span>
+                <span className={artifactStatusClassName(payload.task.status)}>
+                  {labelCodeRecordStatusForLocale(payload.task.status, t)}
+                </span>
               </div>
               <p>{payload.task.title}</p>
             </article>
@@ -257,7 +263,7 @@ export function ArtifactDetailView() {
               <div className="operatorCardHeader">
                 <strong>{t(messageKeys.codeArtifactDetailWorkItemLinkedLabel)}</strong>
                 <span className={artifactStatusClassName(payload.workItem.status)}>
-                  {payload.workItem.status}
+                  {labelCodeRecordStatusForLocale(payload.workItem.status, t)}
                 </span>
               </div>
               <p>{payload.workItem.title}</p>
@@ -277,7 +283,9 @@ export function ArtifactDetailView() {
             <article className="operatorCard">
               <div className="operatorCardHeader">
                 <strong>{t(messageKeys.codeArtifactDetailProjectLabel)}</strong>
-                <span className={artifactStatusClassName(payload.project.status)}>{payload.project.status}</span>
+                <span className={artifactStatusClassName(payload.project.status)}>
+                  {labelCodeRecordStatusForLocale(payload.project.status, t)}
+                </span>
               </div>
               <p>{payload.project.title}</p>
             </article>
@@ -314,7 +322,9 @@ export function ArtifactDetailView() {
               <article key={artifact.id} className="operatorCard">
                 <div className="operatorCardHeader">
                   <strong>{artifact.title}</strong>
-                  <span className={artifactStatusClassName(artifact.status)}>{artifact.status}</span>
+                  <span className={artifactStatusClassName(artifact.status)}>
+                    {labelCodeArtifactStatusForLocale(artifact.status, t)}
+                  </span>
                 </div>
                 {artifact.summary ? <p>{artifact.summary}</p> : null}
                 <div className="operatorMetaRow">

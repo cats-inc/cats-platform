@@ -13,6 +13,11 @@ import {
 } from '../../api/codeTask.js';
 import { messageKeys } from '../../../../../shared/i18n/messageKeys.js';
 import { useI18n } from '../../../../../app/renderer/i18n/index.js';
+import {
+  labelCodeArtifactStatusForLocale,
+  labelCodeRecordStatusForLocale,
+  labelCodeWorkspaceStatusForLocale,
+} from '../codeStatusLabels.js';
 import './workspaces.css';
 
 type CodeArtifactKind =
@@ -110,7 +115,7 @@ function renderArtifactItem(
           {art.title}
         </span>
         <span className="codeWorkspaceDetail__itemMeta">
-          {art.status}
+          {labelCodeArtifactStatusForLocale(art.status, t)}
         </span>
         <span className="codeWorkspaceDetail__itemUpdated">
           {formatRelative(art.updatedAt, locale)}
@@ -227,7 +232,7 @@ export function WorkspaceDetailPage(): JSX.Element {
           <span
             className={`codeWorkspacesList__statusPill codeWorkspacesList__statusPill--${workspace.status}`}
           >
-            {workspace.status}
+            {labelCodeWorkspaceStatusForLocale(workspace.status, t)}
           </span>
         </div>
         <div className="channelTopBarEnd codeWsDetailTopBar__end">
@@ -249,7 +254,7 @@ export function WorkspaceDetailPage(): JSX.Element {
             <dt>{t(messageKeys.codeWorkspaceDetailOverviewSource)}</dt>
             <dd>{labelWorkspaceSource(workspace.source, t)}</dd>
             <dt>{t(messageKeys.codeWorkspaceDetailOverviewStatus)}</dt>
-            <dd>{workspace.status}</dd>
+            <dd>{labelCodeWorkspaceStatusForLocale(workspace.status, t)}</dd>
             <dt>{t(messageKeys.codeWorkspaceDetailOverviewLastActive)}</dt>
             <dd>
               {new Intl.DateTimeFormat(locale, {
@@ -343,7 +348,7 @@ export function WorkspaceDetailPage(): JSX.Element {
                     {conversation.title}
                   </span>
                   <span className="codeWorkspaceDetail__itemMeta">
-                    {conversation.status}
+                    {labelCodeRecordStatusForLocale(conversation.status, t)}
                   </span>
                   <span className="codeWorkspaceDetail__itemUpdated">
                     {formatRelative(conversation.lastMessageAt ?? conversation.updatedAt, locale)}
@@ -376,7 +381,7 @@ export function WorkspaceDetailPage(): JSX.Element {
                     {task.title}
                   </span>
                   <span className="codeWorkspaceDetail__itemMeta">
-                    {task.status}
+                    {labelCodeRecordStatusForLocale(task.status, t)}
                   </span>
                 </li>
               ))}

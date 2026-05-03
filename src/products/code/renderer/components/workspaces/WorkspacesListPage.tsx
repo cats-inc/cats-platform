@@ -11,6 +11,7 @@ import type {
 import { buildCodeCodespacePath } from '../../codePaths.js';
 import { messageKeys } from '../../../../../shared/i18n/messageKeys.js';
 import { useI18n } from '../../../../../app/renderer/i18n/index.js';
+import { labelCodeWorkspaceStatusForLocale } from '../codeStatusLabels.js';
 import './workspaces.css';
 
 function labelWorkspaceSource(
@@ -148,7 +149,7 @@ export function WorkspacesListPage(): JSX.Element {
                       <span
                         className={`codeWorkspacesList__statusPill codeWorkspacesList__statusPill--${ws.status}`}
                       >
-                        {ws.status}
+                        {labelCodeWorkspaceStatusForLocale(ws.status, t)}
                       </span>
                     </div>
                   </Link>
