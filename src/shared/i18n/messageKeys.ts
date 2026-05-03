@@ -205,6 +205,26 @@ export const messageKeys = {
     'settings.runtime.previewMissingResult',
   settingsRuntimePreviewFailed: 'settings.runtime.previewFailed',
   settingsRuntimeFixStepCount: 'settings.runtime.fixStepCount',
+  settingsRuntimeHelperLabelWindowsCliReadiness:
+    'settings.runtime.helperLabel.windowsCliReadiness',
+  settingsRuntimeHelperLabelNodeHostInstaller:
+    'settings.runtime.helperLabel.nodeHostInstaller',
+  settingsRuntimeHelperLabelGithubCliHostInstaller:
+    'settings.runtime.helperLabel.githubCliHostInstaller',
+  settingsRuntimeHelperLabelNpmPrefixHelper:
+    'settings.runtime.helperLabel.npmPrefixHelper',
+  settingsRuntimeHelperLabelSetupReadinessAudit:
+    'settings.runtime.helperLabel.setupReadinessAudit',
+  settingsRuntimeHelperLabelNativeProviderInstaller:
+    'settings.runtime.helperLabel.nativeProviderInstaller',
+  settingsRuntimeHelperLabelProviderInstaller:
+    'settings.runtime.helperLabel.providerInstaller',
+  settingsRuntimeHelperLabelLocalModelInstaller:
+    'settings.runtime.helperLabel.localModelInstaller',
+  settingsRuntimeHelperUnavailableReason:
+    'settings.runtime.helperUnavailableReason',
+  settingsRuntimeHelperUnsupportedActionReason:
+    'settings.runtime.helperUnsupportedActionReason',
   settingsRouteTitleAssistants: 'settings.route.title.assistants',
   settingsRouteTitleMyCats: 'settings.route.title.myCats',
   settingsRouteTitleChat: 'settings.route.title.chat',

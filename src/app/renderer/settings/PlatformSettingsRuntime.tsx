@@ -25,6 +25,7 @@ import { resolveRuntimePresentationStatus } from '../../../shared/runtimeStatusP
 import {
   deriveHelperActions,
   fetchRuntimeLifecycleHelpers,
+  presentRuntimeLifecycleHelperLabel,
   previewRuntimeLifecycleUninstall,
   runRuntimeLifecycleAction,
   selectLifecycleHelpers,
@@ -276,10 +277,11 @@ export function PlatformSettingsRuntime({
               {lifecycleHelpers.map((helper) => {
                 const actions = deriveHelperActions(helper, t);
                 const isThisHelperRunning = runningHelperId === helper.id;
+                const helperLabel = presentRuntimeLifecycleHelperLabel(helper, t);
                 return (
                   <li key={helper.id} className="settingsRuntimeHelperRow">
                     <div className="settingsRuntimeHelperHead">
-                      <strong>{helper.label}</strong>
+                      <strong>{helperLabel}</strong>
                       <span>{helper.packagedRelativePath}</span>
                     </div>
                     <div className="settingsRuntimeHelperActions">
@@ -405,12 +407,13 @@ function UninstallConfirmBody({
   prompt: UninstallPrompt;
   t: (key: MessageKey, values?: MessageInterpolationValues) => string;
 }) {
+  const helperLabel = presentRuntimeLifecycleHelperLabel(prompt.helper, t);
   return (
     <>
-      <h3>{t('settingsRuntimeUninstallTitle', { label: prompt.helper.label })}?</h3>
+      <h3>{t('settingsRuntimeUninstallTitle', { label: helperLabel })}?</h3>
       <p>
         {t('settingsRuntimeUninstallDescriptionPrefix')}
-        <strong> {prompt.helper.label}</strong>.
+        <strong> {helperLabel}</strong>.
         {' '}
         {t('settingsRuntimeUninstallDescriptionSuffix')}
       </p>

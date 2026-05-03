@@ -209,6 +209,22 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.runtime.previewMissingResult': '主機未回傳預覽結果。',
   'settings.runtime.previewFailed': '預覽失敗。',
   'settings.runtime.fixStepCount': '{count} 個步驟{pluralSuffix}',
+  'settings.runtime.helperLabel.windowsCliReadiness':
+    'Windows PowerShell + PATH 就緒檢查輔助工具',
+  'settings.runtime.helperLabel.nodeHostInstaller': '{platform} Node.js LTS 主機安裝器',
+  'settings.runtime.helperLabel.githubCliHostInstaller': '{platform} GitHub CLI 主機安裝器',
+  'settings.runtime.helperLabel.npmPrefixHelper':
+    '{platform} npm prefix 與 PATH 先決條件輔助工具',
+  'settings.runtime.helperLabel.setupReadinessAudit': '{platform} 設定就緒稽核',
+  'settings.runtime.helperLabel.nativeProviderInstaller':
+    '{platform} 原生 {providerLabel} 安裝器',
+  'settings.runtime.helperLabel.providerInstaller': '{platform} {providerLabel} 安裝器',
+  'settings.runtime.helperLabel.localModelInstaller':
+    '{platform} {providerLabel} 本機模型安裝器',
+  'settings.runtime.helperUnavailableReason':
+    '{helperLabel} 目前未內建於這個主機版本。',
+  'settings.runtime.helperUnsupportedActionReason':
+    '{helperLabel} 不支援{actionLabel}。',
   'settings.route.title.assistants': '助理',
   'settings.route.title.myCats': '我的貓咪',
   'settings.route.title.chat': '聊天',

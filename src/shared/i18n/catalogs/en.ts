@@ -218,6 +218,22 @@ export const enCatalog: MessageCatalog = {
   'settings.runtime.previewMissingResult': 'Host did not return a preview result.',
   'settings.runtime.previewFailed': 'Preview failed.',
   'settings.runtime.fixStepCount': '{count} fix step{pluralSuffix}',
+  'settings.runtime.helperLabel.windowsCliReadiness':
+    'Windows PowerShell + PATH readiness helper',
+  'settings.runtime.helperLabel.nodeHostInstaller': '{platform} Node.js LTS host installer',
+  'settings.runtime.helperLabel.githubCliHostInstaller': '{platform} GitHub CLI host installer',
+  'settings.runtime.helperLabel.npmPrefixHelper':
+    '{platform} npm prefix and PATH prerequisite helper',
+  'settings.runtime.helperLabel.setupReadinessAudit': '{platform} setup readiness audit',
+  'settings.runtime.helperLabel.nativeProviderInstaller':
+    '{platform} native {providerLabel} installer',
+  'settings.runtime.helperLabel.providerInstaller': '{platform} {providerLabel} installer',
+  'settings.runtime.helperLabel.localModelInstaller':
+    '{platform} {providerLabel} local-model installer',
+  'settings.runtime.helperUnavailableReason':
+    '{helperLabel} is not currently bundled with this host build.',
+  'settings.runtime.helperUnsupportedActionReason':
+    '{helperLabel} does not support {actionLabel}.',
   'settings.route.title.assistants': 'Assistants',
   'settings.route.title.myCats': 'My Cats',
   'settings.route.title.chat': 'Chat',

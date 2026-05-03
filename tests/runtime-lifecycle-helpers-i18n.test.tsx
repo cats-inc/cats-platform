@@ -1,0 +1,64 @@
+import assert from 'node:assert/strict';
+import test from 'node:test';
+
+import {
+  deriveHelperActions,
+  presentRuntimeLifecycleHelperLabel,
+} from '../src/app/renderer/settings/runtimeLifecycleHelpers.ts';
+import type { RuntimeLifecycleHelperSummary } from '../src/shared/desktopRecoveryBridge.ts';
+import { createTranslator } from '../src/shared/i18n/index.ts';
+
+function helper(overrides: Partial<RuntimeLifecycleHelperSummary> = {}): RuntimeLifecycleHelperSummary {
+  return {
+    id: 'windows-claude-native-installer',
+    label: 'Windows native Claude Code installer',
+    kind: 'provider_installer',
+    pack: 'native_cli_pack',
+    platform: 'windows',
+    packagedRelativePath: 'desktop/setup-assets/windows/Install-ClaudeCode.ps1',
+    supportsCheckOnly: true,
+    supportsApply: true,
+    supportsUpgrade: true,
+    supportsForce: true,
+    supportsUninstall: true,
+    requiresElevation: false,
+    available: true,
+    supported: true,
+    unsupportedReason: null,
+    ...overrides,
+  };
+}
+
+test('runtime lifecycle helper labels localize known packaged helper patterns', () => {
+  const t = createTranslator('zh-TW');
+
+  assert.equal(
+    presentRuntimeLifecycleHelperLabel(helper(), t),
+    'Windows 原生 Claude Code 安裝器',
+  );
+  assert.equal(
+    presentRuntimeLifecycleHelperLabel(helper({
+      id: 'windows-node-host-installer',
+      label: 'Windows Node.js LTS host installer',
+    }), t),
+    'Windows Node.js LTS 主機安裝器',
+  );
+  assert.equal(
+    presentRuntimeLifecycleHelperLabel(helper({
+      id: 'linux-codex-native-installer',
+      label: 'Linux OpenAI Codex CLI installer',
+      platform: 'linux',
+    }), t),
+    'Linux OpenAI Codex CLI 安裝器',
+  );
+});
+
+test('runtime lifecycle unavailable action reasons use localized helper labels', () => {
+  const t = createTranslator('zh-TW');
+  const actions = deriveHelperActions(helper({ available: false }), t);
+
+  assert.equal(
+    actions.find((entry) => entry.action === 'install')?.reason,
+    'Windows 原生 Claude Code 安裝器 目前未內建於這個主機版本。',
+  );
+});

@@ -256,15 +256,23 @@ function resolveCodeDraftHelperChips(
   label: string;
   prompt: string;
 }> {
+  const translate = t;
   return (props.payload.guideCatAssist?.codeNewDraft?.bundle.content.entryChips ?? [])
     .filter((chip) => chip.prompt.trim().length > 0)
     .slice(0, CODE_HELPER_CHIP_LIMIT)
     .map((chip) => {
-      const localizedCopy = t ? CODE_HELPER_CHIP_COPY_BY_ID[chip.id] : null;
+      const localizedCopy = translate ? CODE_HELPER_CHIP_COPY_BY_ID[chip.id] : null;
+      if (localizedCopy && translate) {
+        return {
+          id: chip.id,
+          label: translate(localizedCopy.labelKey),
+          prompt: translate(localizedCopy.promptKey),
+        };
+      }
       return {
         id: chip.id,
-        label: localizedCopy ? t(localizedCopy.labelKey) : chip.label?.trim() || chip.prompt,
-        prompt: localizedCopy ? t(localizedCopy.promptKey) : chip.prompt,
+        label: chip.label?.trim() || chip.prompt,
+        prompt: chip.prompt,
       };
     });
 }

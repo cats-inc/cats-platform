@@ -65,6 +65,7 @@ export function deriveHelperActions(
   t: RuntimeLifecycleI18n = defaultRuntimeLifecycleI18n,
 ): RuntimeLifecycleActionAvailability[] {
   const actions: RuntimeLifecycleAction[] = ['check', 'install', 'upgrade', 'repair', 'uninstall'];
+  const helperLabel = presentRuntimeLifecycleHelperLabel(helper, t);
   return actions.map((action) => ({
     action,
     label: actionLabel(action, t),
@@ -72,9 +73,14 @@ export function deriveHelperActions(
     reason: !helper.supported
       ? helper.unsupportedReason
       : !helper.available
-        ? `${helper.label} is not currently bundled with this host build.`
+        ? t(messageKeys.settingsRuntimeHelperUnavailableReason, {
+            helperLabel,
+          })
         : !helperSupportsAction(helper, action)
-          ? `${helper.label} does not support ${action} mode.`
+          ? t(messageKeys.settingsRuntimeHelperUnsupportedActionReason, {
+              helperLabel,
+              actionLabel: actionLabel(action, t).toLowerCase(),
+            })
           : null,
   }));
 }
@@ -95,6 +101,76 @@ export function actionLabel(
     case 'uninstall':
       return t(messageKeys.settingsRuntimeActionUninstallLabel);
   }
+}
+
+export function presentRuntimeLifecycleHelperLabel(
+  helper: Pick<RuntimeLifecycleHelperSummary, 'label'>,
+  t: RuntimeLifecycleI18n = defaultRuntimeLifecycleI18n,
+): string {
+  return localizeRuntimeLifecycleHelperLabel(helper.label, t);
+}
+
+function localizeRuntimeLifecycleHelperLabel(
+  label: string,
+  t: RuntimeLifecycleI18n,
+): string {
+  if (label === 'Windows PowerShell + PATH readiness helper') {
+    return t(messageKeys.settingsRuntimeHelperLabelWindowsCliReadiness);
+  }
+
+  let match = label.match(/^(Windows|Linux|macOS) Node\.js LTS host installer$/u);
+  if (match) {
+    return t(messageKeys.settingsRuntimeHelperLabelNodeHostInstaller, {
+      platform: match[1],
+    });
+  }
+
+  match = label.match(/^(Windows|Linux|macOS) GitHub CLI host installer$/u);
+  if (match) {
+    return t(messageKeys.settingsRuntimeHelperLabelGithubCliHostInstaller, {
+      platform: match[1],
+    });
+  }
+
+  match = label.match(/^(Windows|Linux|macOS) npm prefix and PATH prerequisite helper$/u);
+  if (match) {
+    return t(messageKeys.settingsRuntimeHelperLabelNpmPrefixHelper, {
+      platform: match[1],
+    });
+  }
+
+  match = label.match(/^(Windows|Linux|macOS) setup readiness audit$/u);
+  if (match) {
+    return t(messageKeys.settingsRuntimeHelperLabelSetupReadinessAudit, {
+      platform: match[1],
+    });
+  }
+
+  match = label.match(/^(Windows|Linux|macOS) native (.+) installer$/u);
+  if (match) {
+    return t(messageKeys.settingsRuntimeHelperLabelNativeProviderInstaller, {
+      platform: match[1],
+      providerLabel: match[2],
+    });
+  }
+
+  match = label.match(/^(Windows|Linux|macOS) (.+) local-model installer$/u);
+  if (match) {
+    return t(messageKeys.settingsRuntimeHelperLabelLocalModelInstaller, {
+      platform: match[1],
+      providerLabel: match[2],
+    });
+  }
+
+  match = label.match(/^(Windows|Linux|macOS) (.+) installer$/u);
+  if (match) {
+    return t(messageKeys.settingsRuntimeHelperLabelProviderInstaller, {
+      platform: match[1],
+      providerLabel: match[2],
+    });
+  }
+
+  return label;
 }
 
 export type LifecycleOutcomeKind = 'success' | 'partial' | 'failure';
@@ -183,6 +259,7 @@ function buildOutcome(
 
   const kind = classifyLastActionForAction(lastAction, action);
   const status = lastAction.status;
+  const helperLabel = presentRuntimeLifecycleHelperLabel(helper, t);
   const message = (() => {
     if (kind === 'success') {
       return t(
@@ -190,7 +267,7 @@ function buildOutcome(
           ? messageKeys.settingsRuntimeActionSuccessNothingToRemove
           : messageKeys.settingsRuntimeActionSuccessComplete,
         {
-          helperLabel: helper.label,
+          helperLabel,
           actionLabel: actionText,
         },
       );
@@ -200,13 +277,13 @@ function buildOutcome(
       const detail = lastAction.warnings[0] ?? lastAction.manualSteps[0];
       return detail
         ? t(messageKeys.settingsRuntimeActionPartialWithDetail, {
-            helperLabel: helper.label,
+            helperLabel,
             actionLabel: actionText,
             status: normalizedStatus,
             detail,
           })
         : t(messageKeys.settingsRuntimeActionPartial, {
-            helperLabel: helper.label,
+            helperLabel,
             actionLabel: actionText,
             status: normalizedStatus,
           });
@@ -214,12 +291,12 @@ function buildOutcome(
     const detail = lastAction.summary || lastAction.warnings[0] || status;
     return detail
       ? t(messageKeys.settingsRuntimeActionFailedWithDetail, {
-          helperLabel: helper.label,
+          helperLabel,
           actionLabel: actionText,
           detail,
         })
       : t(messageKeys.settingsRuntimeActionFailed, {
-          helperLabel: helper.label,
+          helperLabel,
           actionLabel: actionText,
         });
   })();
@@ -292,7 +369,7 @@ export async function runRuntimeLifecycleAction(
       message: error instanceof Error
         ? error.message
         : t(messageKeys.settingsRuntimeActionFailed, {
-            helperLabel: helper.label,
+            helperLabel: presentRuntimeLifecycleHelperLabel(helper, t),
             actionLabel: actionLabel(action, t).toLowerCase(),
           }),
     };
