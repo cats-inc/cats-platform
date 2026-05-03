@@ -1487,6 +1487,7 @@ export function createWorkspaceProductApp({
       showingMyCatDirectLane,
       routeDirectLaneSummary,
       readySelectedChannel,
+      unknownRendererErrorMessage: t(messageKeys.sharedProductRendererUnknownError),
     });
     // ADR-041 owns collection-tier chat invalidations on every product shell.
     // The matching `useWorkspaceChatEvents` call is hoisted to the top of the

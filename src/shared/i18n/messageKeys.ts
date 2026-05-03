@@ -18,6 +18,7 @@ export const messageKeys = {
   sharedProductRendererErrorEyebrow: 'shared.productRenderer.errorEyebrow',
   sharedProductRendererChatUnavailableTitle:
     'shared.productRenderer.chatUnavailableTitle',
+  sharedProductRendererUnknownError: 'shared.productRenderer.unknownError',
   sharedProductBootLoadingAria: 'shared.product.bootLoadingAria',
   platformProductChatName: 'platform.product.chat.name',
   platformProductChatSubtitle: 'platform.product.chat.subtitle',

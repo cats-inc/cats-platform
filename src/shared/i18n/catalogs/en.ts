@@ -19,6 +19,7 @@ export const enCatalog: MessageCatalog = {
   'appHost.sectionPublisher': 'Publisher',
   'shared.productRenderer.errorEyebrow': 'Renderer Error',
   'shared.productRenderer.chatUnavailableTitle': 'Chat unavailable',
+  'shared.productRenderer.unknownError': 'Unknown renderer error.',
   'shared.product.bootLoadingAria': 'Loading Cats {productName}',
   'platform.product.chat.name': 'Cats Chat',
   'platform.product.chat.subtitle': 'Conversations with companions and personal agents',

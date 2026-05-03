@@ -233,6 +233,7 @@ test('runWorkspaceInitialAppShellLoad publishes warm payload first and then the 
       path: '/code/chats/channel-ready',
     },
     signal: controller.signal,
+    unknownRendererErrorMessage: 'localized renderer fallback',
     consumeWarmPayload: () => warmPayload,
     fetchAppShell: async () => fetchedPayload,
     onReady: (payload) => {
@@ -266,6 +267,7 @@ test('runWorkspaceInitialAppShellLoad suppresses fetch errors after a warm paylo
       path: '/code/chats/channel-ready',
     },
     signal: controller.signal,
+    unknownRendererErrorMessage: 'localized renderer fallback',
     consumeWarmPayload: () => warmPayload,
     fetchAppShell: async () => {
       throw new Error('network timeout');
@@ -294,6 +296,7 @@ test('runWorkspaceInitialAppShellLoad reports fetch failures only when the route
       path: '/work/chats/channel-ready',
     },
     signal: controller.signal,
+    unknownRendererErrorMessage: 'localized renderer fallback',
     fetchAppShell: async () => {
       throw new Error('backend unavailable');
     },
@@ -321,6 +324,7 @@ test('runWorkspaceInitialAppShellLoad ignores aborted fetch completions and fail
       path: '/work/chats/channel-ready',
     },
     signal: controller.signal,
+    unknownRendererErrorMessage: 'localized renderer fallback',
     fetchAppShell: async () => deferred.promise,
     onReady: (payload) => {
       readyPayloads.push(payload);
@@ -347,6 +351,7 @@ test('runWorkspaceInitialAppShellLoad ignores aborted fetch completions and fail
       path: '/work/chats/channel-ready',
     },
     signal: AbortSignal.abort(),
+    unknownRendererErrorMessage: 'localized renderer fallback',
     fetchAppShell: async () => {
       throw new Error('aborted late');
     },

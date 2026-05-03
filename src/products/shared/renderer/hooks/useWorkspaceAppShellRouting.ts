@@ -75,6 +75,7 @@ export interface WorkspaceAppShellRoutingOptions<
   showingMyCatDirectLane: boolean;
   routeDirectLaneSummary: { id: string } | null;
   readySelectedChannel: SelectedChannelView | null;
+  unknownRendererErrorMessage: string;
   fetchAppShell?: (signal: AbortSignal) => Promise<TPayload>;
   updateSelectedChannel?: (channelId: string, signal: AbortSignal) => Promise<TPayload>;
   isRouteSelectionBlocked?: (
@@ -154,6 +155,7 @@ export async function runWorkspaceInitialAppShellLoad<
     consumeWarmPayload?: (match: CrossSurfaceNavigationRouteTarget) => TPayload | null;
     onReady: (payload: TPayload) => void;
     onError: (message: string) => void;
+    unknownRendererErrorMessage: string;
   },
 ): Promise<void> {
   const warmPayload = resolveInitialWorkspaceWarmNavigationPayload<TPayload>({
@@ -174,7 +176,9 @@ export async function runWorkspaceInitialAppShellLoad<
     input.onReady(payload);
   } catch (error: unknown) {
     if (!input.signal.aborted && !warmPayload && !input.initialHadReadyState) {
-      input.onError(error instanceof Error ? error.message : 'Unknown renderer error');
+      input.onError(
+        error instanceof Error ? error.message : input.unknownRendererErrorMessage,
+      );
     }
   }
 }
@@ -252,6 +256,7 @@ export function useWorkspaceAppShellRouting<
     showingMyCatDirectLane,
     routeDirectLaneSummary,
     readySelectedChannel,
+    unknownRendererErrorMessage,
     fetchAppShell =
       fetchWorkspaceAppShell as unknown as (signal: AbortSignal) => Promise<TPayload>,
     updateSelectedChannel = updateWorkspaceSelectedChannel as unknown as (
@@ -319,6 +324,7 @@ export function useWorkspaceAppShellRouting<
       },
       fetchAppShell,
       signal: controller.signal,
+      unknownRendererErrorMessage,
       onReady: (payload) => {
         startTransition(() => {
           setState({ status: 'ready', payload });

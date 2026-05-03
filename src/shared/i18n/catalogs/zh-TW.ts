@@ -19,6 +19,7 @@ export const zhTWCatalog: MessageCatalog = {
   'appHost.sectionPublisher': '提供者',
   'shared.productRenderer.errorEyebrow': '渲染器錯誤',
   'shared.productRenderer.chatUnavailableTitle': '聊天無法使用',
+  'shared.productRenderer.unknownError': '未知的渲染器錯誤。',
   'shared.product.bootLoadingAria': '正在載入 Cats {productName}',
   'platform.product.chat.name': 'Cats Chat',
   'platform.product.chat.subtitle': '與陪伴者和個人代理人對話',
