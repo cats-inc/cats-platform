@@ -96,6 +96,17 @@ test('CodeBuilderView exposes resume, workspace binding, and execution summary s
   assert.match(source, /setSessionStatus\('running'\)/u);
 });
 
+test('CodeExecutionSummaryPanel localizes visible control enum labels', () => {
+  const source = readFileSync(
+    new URL('../src/products/code/renderer/components/CodeExecutionSummaryPanel.tsx', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(source, /labelCodeTaskStrategyForLocale/u);
+  assert.match(source, /labelCodeDeliveryModeForLocale/u);
+  assert.match(source, /labelCodeBlockedReasonForLocale/u);
+});
+
 test('code task renderer api normalizes detail responses and unwraps plan envelopes', () => {
   const source = readFileSync(
     new URL('../src/products/code/renderer/api/codeTask.ts', import.meta.url),
@@ -113,7 +124,23 @@ test('DeliveryPanel consumes typed delivery results without inline unknown casts
   );
 
   assert.match(source, /onPreviewCommit: \(message: string\) => Promise<CodeDeliveryResult>/u);
+  assert.match(source, /labelCodeDeliveryModeForLocale/u);
+  assert.match(source, /labelCodeDeliveryDecisionForLocale/u);
   assert.doesNotMatch(source, /\)\s+as DeliveryPreview/u);
+});
+
+test('Code control label helpers cover visible enum values with i18n keys', () => {
+  const source = readFileSync(
+    new URL('../src/products/code/renderer/components/codeStatusLabels.ts', import.meta.url),
+    'utf8',
+  );
+
+  assert.match(source, /artifact_only:\s*messageKeys\.codeExecutionDeliveryModeArtifactOnly/u);
+  assert.match(source, /commit_only:\s*messageKeys\.codeExecutionDeliveryModeCommitOnly/u);
+  assert.match(source, /approval_pending:\s*messageKeys\.codeExecutionBlockedReasonApprovalPending/u);
+  assert.match(source, /reflexion:\s*messageKeys\.codeExecutionStrategyReflexion/u);
+  assert.match(source, /human_verify:\s*messageKeys\.codeRelayModeHumanVerify/u);
+  assert.match(source, /main_coder:\s*messageKeys\.codeRelayRoleMainCoder/u);
 });
 
 test('ArtifactDetailView consumes typed artifact detail responses without local casts', () => {

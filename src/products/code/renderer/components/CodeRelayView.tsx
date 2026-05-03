@@ -13,6 +13,10 @@ import {
   type CodeRelayThreadsPayload,
 } from '../api/relay.js';
 import { ProviderModelFields } from './ProviderModelFields.js';
+import {
+  labelCodeRelayModeForLocale,
+  labelCodeRelayRoleForLocale,
+} from './codeStatusLabels.js';
 
 interface CodeRelaySelectedChannelContext {
   title: string;
@@ -536,7 +540,11 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
                             model: entry.model ?? t(messageKeys.codeRelayLabelDefault),
                           })}
                         </span>
-                        <span>{t(messageKeys.codeRelayLabelRole, { role: entry.recentRole })}</span>
+                        <span>
+                          {t(messageKeys.codeRelayLabelRole, {
+                            role: labelCodeRelayRoleForLocale(entry.recentRole, t),
+                          })}
+                        </span>
                       </div>
                       <div
                         className="codeRelayProviderFields"
@@ -681,7 +689,11 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
                       </div>
                       <p>{round.prompt}</p>
                       <div className="codeRelayMetaRow">
-                        <span>{t(messageKeys.codeRelayLabelMode, { mode: round.mode })}</span>
+                        <span>
+                          {t(messageKeys.codeRelayLabelMode, {
+                            mode: labelCodeRelayModeForLocale(round.mode, t),
+                          })}
+                        </span>
                         <span>
                           {t(messageKeys.codeRelayLabelStarted, {
                             startedAt: formatTimestamp(round.startedAt, locale, t),

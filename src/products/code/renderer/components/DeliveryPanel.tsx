@@ -5,6 +5,10 @@ import type {
 } from '../api/codeTask.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
+import {
+  labelCodeDeliveryDecisionForLocale,
+  labelCodeDeliveryModeForLocale,
+} from './codeStatusLabels.js';
 
 export type RepoStatus = CodeDeliveryResult;
 
@@ -30,6 +34,11 @@ function PreviewResult({ preview, label }: { preview: DeliveryPreview; label: st
     : preview.state === 'blocked'
       ? t(messageKeys.codeDeliveryStatusBlocked)
       : t(messageKeys.codeDeliveryStatusUnknown);
+  const contractModeLabel = labelCodeDeliveryModeForLocale(preview.contract?.mode, t);
+  const contractDecisionLabel = labelCodeDeliveryDecisionForLocale(
+    preview.contract?.applyDecision,
+    t,
+  );
 
   return (
     <div className="codeDeliveryPreview">
@@ -110,11 +119,11 @@ function PreviewResult({ preview, label }: { preview: DeliveryPreview; label: st
           <p className="codeDeliveryPreviewLabel">{t(messageKeys.codeDeliveryContractLabel)}</p>
           <div className="operatorMetaRow">
             <span>
-              {t(messageKeys.codeDeliveryMetaMode, { mode: preview.contract.mode ?? '-' })}
+              {t(messageKeys.codeDeliveryMetaMode, { mode: contractModeLabel ?? '-' })}
             </span>
             <span>
               {t(messageKeys.codeDeliveryMetaDecision, {
-                decision: preview.contract.applyDecision ?? '-',
+                decision: contractDecisionLabel ?? '-',
               })}
             </span>
           </div>

@@ -1,5 +1,10 @@
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
+import {
+  labelCodeBlockedReasonForLocale,
+  labelCodeDeliveryModeForLocale,
+  labelCodeTaskStrategyForLocale,
+} from './codeStatusLabels.js';
 
 export interface CodeExecutionSummaryPanelProps {
   taskId: string | null;
@@ -34,10 +39,6 @@ function statusBadgeClass(status: string | null): string {
   }
 }
 
-function formatControlLabel(value: string | null): string | null {
-  return value ? value.split('_').join(' ') : null;
-}
-
 function formatStatusLabel(
   status: string | null,
   t: ReturnType<typeof useI18n>['t'],
@@ -58,7 +59,7 @@ function formatStatusLabel(
     case null:
       return t(idleKey);
     default:
-      return formatControlLabel(status) ?? t(messageKeys.codeExecutionStatusUnknown);
+      return status.trim() || t(messageKeys.codeExecutionStatusUnknown);
   }
 }
 
@@ -87,8 +88,9 @@ export function CodeExecutionSummaryPanel({
     : deliveryMode
       ? t(messageKeys.codeExecutionStatusActiveLabel)
       : t(messageKeys.codeExecutionStatusIdleLabel);
-  const formattedDeliveryMode = formatControlLabel(deliveryMode);
-  const formattedBlockedReason = formatControlLabel(continuationBlockedReason);
+  const formattedDeliveryMode = labelCodeDeliveryModeForLocale(deliveryMode, t);
+  const formattedBlockedReason = labelCodeBlockedReasonForLocale(continuationBlockedReason, t);
+  const formattedTaskStrategy = labelCodeTaskStrategyForLocale(effectiveStrategy, t);
   const modelLabel = model?.trim() ? model : t(messageKeys.codeExecutionDefaultModel);
 
   return (
@@ -114,9 +116,9 @@ export function CodeExecutionSummaryPanel({
             ) : (
               <span>{t(messageKeys.codeExecutionNoTask)}</span>
             )}
-            {effectiveStrategy ? (
+            {formattedTaskStrategy ? (
               <span>
-                {t(messageKeys.codeExecutionTaskStrategy, { strategy: effectiveStrategy })}
+                {t(messageKeys.codeExecutionTaskStrategy, { strategy: formattedTaskStrategy })}
               </span>
             ) : null}
           </div>

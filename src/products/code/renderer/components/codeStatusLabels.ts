@@ -50,6 +50,52 @@ const RECORD_STATUS_LABEL_KEYS: Record<string, MessageKey> = {
   running: messageKeys.codeRecordStatusRunning,
 };
 
+const RELAY_MODE_LABEL_KEYS: Record<string, MessageKey> = {
+  build: messageKeys.codeRelayModeBuild,
+  discover: messageKeys.codeRelayModeDiscover,
+  document: messageKeys.codeRelayModeDocument,
+  fit: messageKeys.codeRelayModeFit,
+  human_verify: messageKeys.codeRelayModeHumanVerify,
+  repair: messageKeys.codeRelayModeRepair,
+  review: messageKeys.codeRelayModeReview,
+  shape: messageKeys.codeRelayModeShape,
+};
+
+const RELAY_ROLE_LABEL_KEYS: Record<string, MessageKey> = {
+  critic: messageKeys.codeRelayRoleCritic,
+  drafter: messageKeys.codeRelayRoleDrafter,
+  idle: messageKeys.codeRelayRoleIdle,
+  main_coder: messageKeys.codeRelayRoleMainCoder,
+  reviewer: messageKeys.codeRelayRoleReviewer,
+  summarizer: messageKeys.codeRelayRoleSummarizer,
+};
+
+const DELIVERY_MODE_LABEL_KEYS: Record<string, MessageKey> = {
+  artifact_only: messageKeys.codeExecutionDeliveryModeArtifactOnly,
+  commit_only: messageKeys.codeExecutionDeliveryModeCommitOnly,
+  deploy_preview: messageKeys.codeExecutionDeliveryModeDeployPreview,
+  pr_with_checks: messageKeys.codeExecutionDeliveryModePrWithChecks,
+  push_branch: messageKeys.codeExecutionDeliveryModePushBranch,
+};
+
+const TASK_STRATEGY_LABEL_KEYS: Record<string, MessageKey> = {
+  pdca: messageKeys.codeExecutionStrategyPdca,
+  react: messageKeys.codeExecutionStrategyReact,
+  reflexion: messageKeys.codeExecutionStrategyReflexion,
+};
+
+const BLOCKED_REASON_LABEL_KEYS: Record<string, MessageKey> = {
+  approval_pending: messageKeys.codeExecutionBlockedReasonApprovalPending,
+};
+
+const DELIVERY_DECISION_LABEL_KEYS: Record<string, MessageKey> = {
+  approve: messageKeys.codeDeliveryDecisionApprove,
+  complete: messageKeys.codeDeliveryDecisionComplete,
+  reject: messageKeys.codeDeliveryDecisionReject,
+  reroute: messageKeys.codeDeliveryDecisionReroute,
+  wait: messageKeys.codeDeliveryDecisionWait,
+};
+
 function labelStatus(
   status: string,
   t: CodeTranslator,
@@ -62,6 +108,19 @@ function labelStatus(
     return t(key);
   }
   return status.trim() || t(fallbackKey);
+}
+
+function labelOptionalControlValue(
+  value: string | null | undefined,
+  t: CodeTranslator,
+  labels: Record<string, MessageKey>,
+): string | null {
+  const normalized = value?.trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+  const key = labels[normalized];
+  return key ? t(key) : value!.trim();
 }
 
 export function labelCodeWorkspaceStatusForLocale(
@@ -122,4 +181,56 @@ export function labelCodeRecordStatusForLocale(
     RECORD_STATUS_LABEL_KEYS,
     messageKeys.codeRecordStatusUnknown,
   );
+}
+
+export function labelCodeRelayModeForLocale(
+  mode: string,
+  t: CodeTranslator,
+): string {
+  return labelStatus(
+    mode,
+    t,
+    RELAY_MODE_LABEL_KEYS,
+    messageKeys.codeRelayStatusUnknown,
+  );
+}
+
+export function labelCodeRelayRoleForLocale(
+  role: string,
+  t: CodeTranslator,
+): string {
+  return labelStatus(
+    role,
+    t,
+    RELAY_ROLE_LABEL_KEYS,
+    messageKeys.codeRelayStatusUnknown,
+  );
+}
+
+export function labelCodeDeliveryModeForLocale(
+  mode: string | null | undefined,
+  t: CodeTranslator,
+): string | null {
+  return labelOptionalControlValue(mode, t, DELIVERY_MODE_LABEL_KEYS);
+}
+
+export function labelCodeTaskStrategyForLocale(
+  strategy: string | null | undefined,
+  t: CodeTranslator,
+): string | null {
+  return labelOptionalControlValue(strategy, t, TASK_STRATEGY_LABEL_KEYS);
+}
+
+export function labelCodeBlockedReasonForLocale(
+  reason: string | null | undefined,
+  t: CodeTranslator,
+): string | null {
+  return labelOptionalControlValue(reason, t, BLOCKED_REASON_LABEL_KEYS);
+}
+
+export function labelCodeDeliveryDecisionForLocale(
+  decision: string | null | undefined,
+  t: CodeTranslator,
+): string | null {
+  return labelOptionalControlValue(decision, t, DELIVERY_DECISION_LABEL_KEYS);
 }
