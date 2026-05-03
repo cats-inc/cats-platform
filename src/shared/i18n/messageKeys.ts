@@ -1836,6 +1836,8 @@ export const messageKeys = {
     'shared.settingsCats.telegramBindingRemoved',
   sharedSettingsCatsTelegramBindingRemoveError:
     'shared.settingsCats.telegramBindingRemoveError',
+  sharedSettingsCatsTelegramDiagnosticsLoadError:
+    'shared.settingsCats.telegramDiagnosticsLoadError',
   sharedSettingsCatsCoverPhotoLabel: 'shared.settingsCats.coverPhotoLabel',
   sharedSettingsCatsChangeCoverPhotoLabel: 'shared.settingsCats.changeCoverPhotoLabel',
   sharedSettingsCatsUploadCoverPhotoLabel: 'shared.settingsCats.uploadCoverPhotoLabel',

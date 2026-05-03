@@ -1752,6 +1752,8 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.settingsCats.telegramBindingCreateError': '建立綁定失敗。',
   'shared.settingsCats.telegramBindingRemoved': '綁定已移除。',
   'shared.settingsCats.telegramBindingRemoveError': '移除綁定失敗。',
+  'shared.settingsCats.telegramDiagnosticsLoadError':
+    '載入 Telegram 診斷資訊失敗。',
   'shared.settingsCats.lastInboundLabel': '最後入站 {time}',
   'shared.settingsCats.connectTelegramLabel': '連線 Telegram',
   'shared.settingsCats.unavailableHint': '已封存或非聊天貓無法使用。',

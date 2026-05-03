@@ -6,8 +6,9 @@ import {
   createSettingsCatsTelegramAutoLoader,
   createSettingsCatsTelegramScopeKey,
   fetchSettingsCatsTelegramSnapshot,
-  SETTINGS_CATS_TELEGRAM_ERROR_MESSAGE,
 } from '../../settings-cats/telegramDiagnostics.js';
+import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { messageKeys } from '../../../../shared/i18n/index.js';
 import {
   fetchTelegramTransportDiagnostics,
   fetchTelegramTransportStatus,
@@ -23,6 +24,7 @@ export function useSettingsCatsTelegram(payload: AppShellPayload): {
   telegramError: string;
   refreshTelegramDiagnostics: () => Promise<void>;
 } {
+  const { t } = useI18n();
   const botBindings = payload.chat.botBindings ?? [];
   const telegramScopeKey = createSettingsCatsTelegramScopeKey({
     bossCatId: payload.chat.bossCatId,
@@ -38,26 +40,31 @@ export function useSettingsCatsTelegram(payload: AppShellPayload): {
   }));
 
   useEffect(() => {
-    const loadRun = beginSettingsCatsTelegramScopeLoad(telegramAutoLoader, telegramScopeKey, {
-      onStart() {
-        setTelegramLoading(true);
-        setTelegramError('');
+    const loadRun = beginSettingsCatsTelegramScopeLoad(
+      telegramAutoLoader,
+      telegramScopeKey,
+      t(messageKeys.sharedSettingsCatsTelegramDiagnosticsLoadError),
+      {
+        onStart() {
+          setTelegramLoading(true);
+          setTelegramError('');
+        },
+        onSuccess(snapshot) {
+          setTelegramStatus(snapshot.status);
+          setTelegramDiagnostics(snapshot.diagnostics);
+        },
+        onError(message) {
+          setTelegramStatus(null);
+          setTelegramDiagnostics(null);
+          setTelegramError(message);
+        },
+        onFinish() {
+          setTelegramLoading(false);
+        },
       },
-      onSuccess(snapshot) {
-        setTelegramStatus(snapshot.status);
-        setTelegramDiagnostics(snapshot.diagnostics);
-      },
-      onError(message) {
-        setTelegramStatus(null);
-        setTelegramDiagnostics(null);
-        setTelegramError(message);
-      },
-      onFinish() {
-        setTelegramLoading(false);
-      },
-    });
+    );
     return loadRun.cancel;
-  }, [telegramAutoLoader, telegramScopeKey]);
+  }, [telegramAutoLoader, telegramScopeKey, t]);
 
   async function refreshTelegramDiagnostics(): Promise<void> {
     setTelegramLoading(true);
@@ -73,7 +80,9 @@ export function useSettingsCatsTelegram(payload: AppShellPayload): {
       setTelegramStatus(null);
       setTelegramDiagnostics(null);
       setTelegramError(
-        error instanceof Error ? error.message : SETTINGS_CATS_TELEGRAM_ERROR_MESSAGE,
+        error instanceof Error
+          ? error.message
+          : t(messageKeys.sharedSettingsCatsTelegramDiagnosticsLoadError),
       );
     } finally {
       setTelegramLoading(false);

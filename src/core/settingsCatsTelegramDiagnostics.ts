@@ -1,5 +1,3 @@
-export const SETTINGS_CATS_TELEGRAM_ERROR_MESSAGE = 'Failed to load Telegram diagnostics.';
-
 export interface SettingsCatsTelegramBindingScope {
   id: string;
   status: string;
@@ -32,6 +30,7 @@ export interface SettingsCatsTelegramLoadRun {
 export interface SettingsCatsTelegramAutoLoader<TStatus, TDiagnostics> {
   loadForScope: (
     scopeKey: string,
+    fallbackErrorMessage: string,
     handlers: SettingsCatsTelegramLoadHandlers<TStatus, TDiagnostics>,
   ) => SettingsCatsTelegramLoadRun;
   resetScope: () => void;
@@ -68,6 +67,7 @@ export async function fetchSettingsCatsTelegramSnapshot<TStatus, TDiagnostics>(
 
 function startSettingsCatsTelegramLoad<TStatus, TDiagnostics>(
   fetchers: SettingsCatsTelegramFetchers<TStatus, TDiagnostics>,
+  fallbackErrorMessage: string,
   handlers: SettingsCatsTelegramLoadHandlers<TStatus, TDiagnostics>,
 ): SettingsCatsTelegramLoadRun {
   let cancelled = false;
@@ -85,7 +85,7 @@ function startSettingsCatsTelegramLoad<TStatus, TDiagnostics>(
         return;
       }
       handlers.onError(
-        error instanceof Error ? error.message : SETTINGS_CATS_TELEGRAM_ERROR_MESSAGE,
+        error instanceof Error ? error.message : fallbackErrorMessage,
       );
     })
     .finally(() => {
@@ -109,13 +109,13 @@ export function createSettingsCatsTelegramAutoLoader<TStatus, TDiagnostics>(
   let lastScopeKey: string | null = null;
 
   return {
-    loadForScope(scopeKey, handlers) {
+    loadForScope(scopeKey, fallbackErrorMessage, handlers) {
       if (scopeKey === lastScopeKey) {
         return createNoopLoadRun();
       }
 
       lastScopeKey = scopeKey;
-      return startSettingsCatsTelegramLoad(fetchers, handlers);
+      return startSettingsCatsTelegramLoad(fetchers, fallbackErrorMessage, handlers);
     },
 
     resetScope() {
@@ -127,9 +127,10 @@ export function createSettingsCatsTelegramAutoLoader<TStatus, TDiagnostics>(
 export function beginSettingsCatsTelegramScopeLoad<TStatus, TDiagnostics>(
   loader: SettingsCatsTelegramAutoLoader<TStatus, TDiagnostics>,
   scopeKey: string,
+  fallbackErrorMessage: string,
   handlers: SettingsCatsTelegramLoadHandlers<TStatus, TDiagnostics>,
 ): SettingsCatsTelegramLoadRun {
-  const loadRun = loader.loadForScope(scopeKey, handlers);
+  const loadRun = loader.loadForScope(scopeKey, fallbackErrorMessage, handlers);
 
   return {
     ...loadRun,

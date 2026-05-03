@@ -1798,6 +1798,8 @@ export const enCatalog: MessageCatalog = {
   'shared.settingsCats.telegramBindingCreateError': 'Failed to create binding.',
   'shared.settingsCats.telegramBindingRemoved': 'Binding removed.',
   'shared.settingsCats.telegramBindingRemoveError': 'Failed to remove binding.',
+  'shared.settingsCats.telegramDiagnosticsLoadError':
+    'Failed to load Telegram diagnostics.',
   'shared.settingsCats.lastInboundLabel': 'Last inbound {time}',
   'shared.settingsCats.connectTelegramLabel': 'Connect Telegram',
   'shared.settingsCats.unavailableHint': 'Unavailable for archived or non-chat cats.',
