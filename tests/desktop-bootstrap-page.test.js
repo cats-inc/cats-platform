@@ -30,6 +30,8 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /localizeIssueTitle/);
   assert.match(html, /localizeIssueDetail/);
   assert.match(html, /localizeBootstrapSummary/);
+  assert.match(html, /localizeSetupReason/);
+  assert.match(html, /localizeSetupSummary/);
   assert.match(html, /displayStatus/);
   assert.match(html, /'zh-TW'/);
   assert.match(html, /Cats 需要快速重新啟動/);
@@ -40,6 +42,9 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /結束 Cats/);
   assert.match(html, /顯示詳細資料/);
   assert.match(html, /歡迎。你可以現在安裝 CLI/);
+  assert.match(html, /手動後續步驟/);
+  assert.match(html, /完成 \{helperLabel\} 的手動後續步驟/);
+  assert.match(html, /請啟動 Docker Desktop/);
 
   // Back button to leave detail mode
   assert.match(html, /recovery-back/);

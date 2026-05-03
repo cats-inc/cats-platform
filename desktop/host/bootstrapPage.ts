@@ -626,6 +626,36 @@ export function buildDesktopBootstrapPage(): string {
         'setup.noSummary': 'No summary recorded.',
         'setup.recommendedNextStep': 'Recommended next step',
         'setup.restartNeeded': 'A restart is needed before the next step.',
+        'setupReason.authRequired': 'authentication required',
+        'setupReason.changesRequired': 'changes required',
+        'setupReason.dockerWarmUpRequired': 'Docker warm-up required',
+        'setupReason.elevationRequired': 'elevation required',
+        'setupReason.firstWslBootRequired': 'first WSL boot required',
+        'setupReason.manualFollowUp': 'manual follow-through',
+        'setupReason.notInstalled': 'not installed',
+        'setupReason.relaunchRequired': 'relaunch required',
+        'setupReason.restartRequired': 'restart required',
+        'setupReason.retryFailed': 'retry failed',
+        'setupReason.verificationRecommended': 'verification recommended',
+        'setupMode.apply': 'apply',
+        'setupMode.check': 'check',
+        'setupMode.force': 'force',
+        'setupMode.uninstall': 'uninstall',
+        'setupMode.upgrade': 'upgrade',
+        'setupSummary.authThenRerunMode': 'Complete the required sign-in flow, then rerun {helperLabel} in {mode} mode.',
+        'setupSummary.elevationRequired': '{helperLabel} requires an elevated host step before it can continue.',
+        'setupSummary.finishManualFollowThrough': 'Finish the manual follow-through for {helperLabel}, then rerun a verification step.',
+        'setupSummary.finishedWithStatus': '{helperLabel} {mode} finished with {status}.',
+        'setupSummary.launchWslFirstBoot': 'Launch the target WSL distro once to finish first-user setup, then rerun the packaged setup check.',
+        'setupSummary.relaunchThenVerify': 'Relaunch Cats Desktop Host, then rerun {helperLabel} to verify the updated packaged setup state.',
+        'setupSummary.rerunCheckToVerify': 'Rerun {helperLabel} in check mode if you want to verify the packaged setup state again.',
+        'setupSummary.restartThenRerun': 'Restart Windows or the current session, then rerun {helperLabel}.',
+        'setupSummary.restartThenRerunMode': 'Restart the host or Windows session, then rerun {helperLabel} in {mode} mode.',
+        'setupSummary.retryAfterFailure': 'Retry {helperLabel} after addressing the last failure.',
+        'setupSummary.runApplyRemainingChanges': 'Run {helperLabel} again to apply the remaining packaged setup changes.',
+        'setupSummary.runMissingHostSubstrate': 'Run {helperLabel} to install the missing host substrate flagged by the readiness audit.',
+        'setupSummary.runMissingRequirement': 'Run {helperLabel} to install the missing packaged setup requirement.',
+        'setupSummary.startDockerWarmUp': 'Start Docker Desktop and wait for the engine to become ready, then rerun the packaged setup check.',
         'setupPack.apiBaseline': 'API baseline',
         'setupPack.localModel': 'local model pack',
         'setupPack.nativeCli': 'native CLI pack',
@@ -649,7 +679,8 @@ export function buildDesktopBootstrapPage(): string {
         'status.running': 'running',
         'status.starting': 'starting',
         'status.unavailable': 'unavailable',
-        'status.warning': 'warning'
+        'status.warning': 'warning',
+        'status.completed': 'completed'
       },
       'zh-TW': {
         'action.continue': '繼續',
@@ -755,6 +786,36 @@ export function buildDesktopBootstrapPage(): string {
         'setup.noSummary': '未記錄摘要。',
         'setup.recommendedNextStep': '建議的下一步',
         'setup.restartNeeded': '下一步前需要重新啟動。',
+        'setupReason.authRequired': '需要驗證',
+        'setupReason.changesRequired': '需要變更',
+        'setupReason.dockerWarmUpRequired': 'Docker 需要暖機',
+        'setupReason.elevationRequired': '需要提升權限',
+        'setupReason.firstWslBootRequired': '需要第一次啟動 WSL',
+        'setupReason.manualFollowUp': '手動後續步驟',
+        'setupReason.notInstalled': '尚未安裝',
+        'setupReason.relaunchRequired': '需要重新啟動桌面主機',
+        'setupReason.restartRequired': '需要重新啟動',
+        'setupReason.retryFailed': '重試失敗',
+        'setupReason.verificationRecommended': '建議重新驗證',
+        'setupMode.apply': '套用',
+        'setupMode.check': '檢查',
+        'setupMode.force': '強制執行',
+        'setupMode.uninstall': '解除安裝',
+        'setupMode.upgrade': '升級',
+        'setupSummary.authThenRerunMode': '完成必要登入流程後，請以{mode}模式重新執行 {helperLabel}。',
+        'setupSummary.elevationRequired': '{helperLabel} 需要提升權限的主機步驟後才能繼續。',
+        'setupSummary.finishManualFollowThrough': '完成 {helperLabel} 的手動後續步驟，然後重新執行驗證步驟。',
+        'setupSummary.finishedWithStatus': '{helperLabel} 的{mode}已完成，狀態為{status}。',
+        'setupSummary.launchWslFirstBoot': '請先啟動目標 WSL distro 一次以完成首次使用者設定，然後重新執行套裝設定檢查。',
+        'setupSummary.relaunchThenVerify': '請重新啟動 Cats Desktop Host，然後重新執行 {helperLabel} 以驗證更新後的套裝設定狀態。',
+        'setupSummary.rerunCheckToVerify': '如需再次驗證套裝設定狀態，請以檢查模式重新執行 {helperLabel}。',
+        'setupSummary.restartThenRerun': '請重新啟動 Windows 或目前工作階段，然後重新執行 {helperLabel}。',
+        'setupSummary.restartThenRerunMode': '請重新啟動主機或 Windows 工作階段，然後以{mode}模式重新執行 {helperLabel}。',
+        'setupSummary.retryAfterFailure': '處理上一次失敗後，請重試 {helperLabel}。',
+        'setupSummary.runApplyRemainingChanges': '請再次執行 {helperLabel}，套用剩餘的套裝設定變更。',
+        'setupSummary.runMissingHostSubstrate': '請執行 {helperLabel}，安裝 readiness audit 標記缺少的主機基礎元件。',
+        'setupSummary.runMissingRequirement': '請執行 {helperLabel}，安裝缺少的套裝設定需求。',
+        'setupSummary.startDockerWarmUp': '請啟動 Docker Desktop，等待引擎就緒後重新執行套裝設定檢查。',
         'setupPack.apiBaseline': 'API 基礎設定',
         'setupPack.localModel': '本機模型套件',
         'setupPack.nativeCli': '原生 CLI 套件',
@@ -778,7 +839,8 @@ export function buildDesktopBootstrapPage(): string {
         'status.running': '執行中',
         'status.starting': '啟動中',
         'status.unavailable': '無法使用',
-        'status.warning': '警告'
+        'status.warning': '警告',
+        'status.completed': '已完成'
       }
     };
 
@@ -813,7 +875,30 @@ export function buildDesktopBootstrapPage(): string {
       running: 'status.running',
       starting: 'status.starting',
       unavailable: 'status.unavailable',
-      warning: 'status.warning'
+      warning: 'status.warning',
+      completed: 'status.completed'
+    };
+
+    var BOOTSTRAP_SETUP_REASON_KEYS = {
+      auth_required: 'setupReason.authRequired',
+      changes_required: 'setupReason.changesRequired',
+      docker_warm_up_required: 'setupReason.dockerWarmUpRequired',
+      elevation_required: 'setupReason.elevationRequired',
+      first_wsl_boot_required: 'setupReason.firstWslBootRequired',
+      manual_follow_up: 'setupReason.manualFollowUp',
+      not_installed: 'setupReason.notInstalled',
+      relaunch_required: 'setupReason.relaunchRequired',
+      restart_required: 'setupReason.restartRequired',
+      retry_failed: 'setupReason.retryFailed',
+      verification_recommended: 'setupReason.verificationRecommended'
+    };
+
+    var BOOTSTRAP_SETUP_MODE_KEYS = {
+      apply: 'setupMode.apply',
+      check: 'setupMode.check',
+      force: 'setupMode.force',
+      uninstall: 'setupMode.uninstall',
+      upgrade: 'setupMode.upgrade'
     };
 
     var BOOTSTRAP_ISSUE_TITLE_KEYS = {
@@ -921,13 +1006,95 @@ export function buildDesktopBootstrapPage(): string {
     function localizeIssueDetail(detail) {
       var text = String(detail || '');
       var key = BOOTSTRAP_ISSUE_DETAIL_KEYS[text];
-      return key ? tx(key) : text;
+      return key ? tx(key) : localizeSetupSummary(text);
     }
 
     function localizeBootstrapSummary(summary) {
       var text = String(summary || '');
       var key = BOOTSTRAP_SUMMARY_KEYS[text];
       return key ? tx(key) : text;
+    }
+
+    function localizeSetupReason(reason) {
+      var text = String(reason || '');
+      var key = BOOTSTRAP_SETUP_REASON_KEYS[text];
+      return key ? tx(key) : text.replace(/_/g, ' ');
+    }
+
+    function localizeSetupMode(mode) {
+      var text = String(mode || '');
+      var key = BOOTSTRAP_SETUP_MODE_KEYS[text];
+      return key ? tx(key) : text;
+    }
+
+    function localizeSetupSummary(summary) {
+      var text = String(summary || '');
+      var match = null;
+      if (text === 'Launch the target WSL distro once to finish first-user setup, then rerun the packaged setup check.') {
+        return tx('setupSummary.launchWslFirstBoot');
+      }
+      if (text === 'Start Docker Desktop and wait for the engine to become ready, then rerun the packaged setup check.') {
+        return tx('setupSummary.startDockerWarmUp');
+      }
+      match = text.match(/^Run (.+) to install the missing host substrate flagged by the readiness audit.$/);
+      if (match) {
+        return tx('setupSummary.runMissingHostSubstrate', { helperLabel: match[1] });
+      }
+      match = text.match(/^Restart the host or Windows session, then rerun (.+) in (.+) mode.$/);
+      if (match) {
+        return tx('setupSummary.restartThenRerunMode', {
+          helperLabel: match[1],
+          mode: localizeSetupMode(match[2])
+        });
+      }
+      match = text.match(/^Restart Windows or the current session, then rerun (.+).$/);
+      if (match) {
+        return tx('setupSummary.restartThenRerun', { helperLabel: match[1] });
+      }
+      match = text.match(/^Relaunch Cats Desktop Host, then rerun (.+) to verify the updated packaged setup state.$/);
+      if (match) {
+        return tx('setupSummary.relaunchThenVerify', { helperLabel: match[1] });
+      }
+      match = text.match(/^(.+) requires an elevated host step before it can continue.$/);
+      if (match) {
+        return tx('setupSummary.elevationRequired', { helperLabel: match[1] });
+      }
+      match = text.match(/^Complete the required sign-in flow, then rerun (.+) in (.+) mode.$/);
+      if (match) {
+        return tx('setupSummary.authThenRerunMode', {
+          helperLabel: match[1],
+          mode: localizeSetupMode(match[2])
+        });
+      }
+      match = text.match(/^Retry (.+) after addressing the last failure.$/);
+      if (match) {
+        return tx('setupSummary.retryAfterFailure', { helperLabel: match[1] });
+      }
+      match = text.match(/^Run (.+) to install the missing packaged setup requirement.$/);
+      if (match) {
+        return tx('setupSummary.runMissingRequirement', { helperLabel: match[1] });
+      }
+      match = text.match(/^Finish the manual follow-through for (.+), then rerun a verification step.$/);
+      if (match) {
+        return tx('setupSummary.finishManualFollowThrough', { helperLabel: match[1] });
+      }
+      match = text.match(/^Run (.+) again to apply the remaining packaged setup changes.$/);
+      if (match) {
+        return tx('setupSummary.runApplyRemainingChanges', { helperLabel: match[1] });
+      }
+      match = text.match(/^Rerun (.+) in check mode if you want to verify the packaged setup state again.$/);
+      if (match) {
+        return tx('setupSummary.rerunCheckToVerify', { helperLabel: match[1] });
+      }
+      match = text.match(/^(.+) (check|apply|upgrade|force|uninstall) finished with (.+).$/);
+      if (match) {
+        return tx('setupSummary.finishedWithStatus', {
+          helperLabel: match[1],
+          mode: localizeSetupMode(match[2]),
+          status: displayStatus(match[3])
+        });
+      }
+      return text;
     }
 
     function el(tag, attrs) {
@@ -1324,7 +1491,7 @@ export function buildDesktopBootstrapPage(): string {
     function renderInterruptions(interruptions) {
       if (!Array.isArray(interruptions) || interruptions.length === 0) return null;
       return el('div', { class: 'chip-list' },
-        interruptions.map(function (entry) { return Chip(entry.kind || ''); })
+        interruptions.map(function (entry) { return Chip(localizeSetupReason(entry.kind || '')); })
       );
     }
 
@@ -1698,12 +1865,12 @@ export function buildDesktopBootstrapPage(): string {
         var ra = setupSnap.resumeAction;
         var rac = [
           CardHead(tx('setup.recommendedNextStep'),
-            ra.reason.replace(/_/g, ' '), 'c-warn'),
-          el('div', { class: 'detail-meta' }, ra.summary),
+            localizeSetupReason(ra.reason), 'c-warn'),
+          el('div', { class: 'detail-meta' }, localizeSetupSummary(ra.summary)),
           renderInterruptions(ra.interruptions)
         ];
         if (Array.isArray(ra.manualSteps) && ra.manualSteps.length) {
-          rac.push(el('div', { class: 'detail-meta' }, ra.manualSteps[0]));
+          rac.push(el('div', { class: 'detail-meta' }, localizeSetupSummary(ra.manualSteps[0])));
         }
         rac.push(Btn(tx('action.continueSetupFix'), {
           onclick: function () {
@@ -1724,7 +1891,7 @@ export function buildDesktopBootstrapPage(): string {
           CardHead(lastAction.label || lastAction.helperId,
             displayStatus(lastAction.status || lastAction.runState), 'c-' + las),
           el('div', { class: 'detail-meta' },
-            lastAction.summary || tx('setup.noSummary'))
+            lastAction.summary ? localizeSetupSummary(lastAction.summary) : tx('setup.noSummary'))
         ];
         if (lastAction.restartRequired) {
           lac.push(el('div', { class: 'detail-meta c-warn' },
