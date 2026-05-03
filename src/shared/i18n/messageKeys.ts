@@ -175,6 +175,8 @@ export const messageKeys = {
   settingsRuntimeCancelActionLabel: 'settings.runtime.cancelActionLabel',
   settingsRuntimeCancelActionFallbackLabel: 'settings.runtime.cancelActionFallbackLabel',
   settingsRuntimeRefreshFailure: 'settings.runtime.refreshFailure',
+  settingsRuntimeRefreshFailureWithStatus:
+    'settings.runtime.refreshFailureWithStatus',
   settingsRuntimeRefreshSummary: 'settings.runtime.refreshSummary',
   settingsRuntimeRefreshSummaryWithFailures: 'settings.runtime.refreshSummaryWithFailures',
   settingsRuntimeUninstallTitle: 'settings.runtime.uninstallTitle',

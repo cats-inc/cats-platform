@@ -182,6 +182,7 @@ export const enCatalog: MessageCatalog = {
   'settings.runtime.cancelActionLabel': 'Cancel',
   'settings.runtime.cancelActionFallbackLabel': 'Close',
   'settings.runtime.refreshFailure': 'Refresh failed.',
+  'settings.runtime.refreshFailureWithStatus': 'Refresh failed ({status}).',
   'settings.runtime.refreshSummary': 'Refreshed {refreshed} target{pluralSuffix}',
   'settings.runtime.refreshSummaryWithFailures':
     'Refreshed {refreshed} · {failed} failed',

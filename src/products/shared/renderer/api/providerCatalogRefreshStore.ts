@@ -3,6 +3,10 @@ import {
   type RefreshProviderCatalogsResult,
 } from './providers.js';
 
+export {
+  readProviderCatalogRefreshFailedStatus,
+} from './providers.js';
+
 type StateListener = () => void;
 
 export type ProviderCatalogRefreshResult =

@@ -177,6 +177,7 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.runtime.cancelActionLabel': '取消',
   'settings.runtime.cancelActionFallbackLabel': '關閉',
   'settings.runtime.refreshFailure': '重新整理失敗。',
+  'settings.runtime.refreshFailureWithStatus': '重新整理失敗（{status}）。',
   'settings.runtime.refreshSummary': '已重新整理 {refreshed} 個目標{pluralSuffix}',
   'settings.runtime.refreshSummaryWithFailures': '已重新整理 {refreshed} · {failed} 失敗',
   'settings.runtime.uninstallTitle': '解除安裝 {label}',

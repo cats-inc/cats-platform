@@ -11,6 +11,7 @@ import {
 import type { AppShellPayload } from '../../../products/shared/api/workspaceContracts.js';
 import {
   getProviderCatalogRefreshSnapshot,
+  readProviderCatalogRefreshFailedStatus,
   subscribeProviderCatalogRefresh,
   subscribeProviderCatalogRefreshResult,
   triggerProviderCatalogRefresh,
@@ -116,6 +117,15 @@ export function PlatformSettingsRuntime({
   };
 
   const pluralSuffix = (count: number): string => (count === 1 ? '' : 's');
+  const presentRefreshError = useCallback((error: unknown): string => {
+    if (!(error instanceof Error)) {
+      return t('settingsRuntimeRefreshFailure');
+    }
+    const status = readProviderCatalogRefreshFailedStatus(error.message);
+    return status === null
+      ? error.message
+      : t('settingsRuntimeRefreshFailureWithStatus', { status });
+  }, [t]);
 
   const refreshHelpers = useCallback(async () => {
     if (!desktopEnvironment) return;
@@ -148,14 +158,10 @@ export function PlatformSettingsRuntime({
           }));
         }
       } else {
-        showToast(
-          result.error instanceof Error
-            ? result.error.message
-            : t('settingsRuntimeRefreshFailure'),
-        );
+        showToast(presentRefreshError(result.error));
       }
     });
-  }, [showToast, t]);
+  }, [presentRefreshError, showToast, t]);
 
   const handleRefresh = () => {
     void triggerProviderCatalogRefresh().catch(() => undefined);
