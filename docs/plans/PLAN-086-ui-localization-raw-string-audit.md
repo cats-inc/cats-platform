@@ -81,6 +81,8 @@ The final 2026-05-04 cleanup localized:
 - Work Top-down diagnostic headers localize severity and diagnostic-kind
   metadata instead of rendering `error`, `warning`, `orphan_link`, or
   `link_cycle`-style tokens
+- Work run detail localizes trace kind, outcome status, and artifact status
+  metadata instead of rendering raw execution/result tokens
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

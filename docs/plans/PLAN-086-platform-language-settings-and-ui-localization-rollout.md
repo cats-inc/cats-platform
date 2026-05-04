@@ -371,6 +371,7 @@ known-gaps list.
 | 2026-05-04 | Work Top-down object drawers now localize structural layer metadata (`interaction`, `planning`, `execution`) instead of rendering raw graph layer tokens. |
 | 2026-05-04 | Work task product binding pills now localize `work`, `code`, `chat`, and `unbound` metadata across Tasks list/detail and Top-down cards. |
 | 2026-05-04 | Work Top-down diagnostic headers now localize severity and diagnostic-kind metadata across Broken Links and object drawers. |
+| 2026-05-04 | Work run detail now localizes trace kind, outcome status, and artifact status metadata instead of rendering raw execution/result tokens. |
 
 ---
 

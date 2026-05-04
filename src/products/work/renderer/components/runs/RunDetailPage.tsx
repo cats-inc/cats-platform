@@ -31,6 +31,11 @@ import {
   type CoreTraceSummary,
 } from "../../api/traces.js";
 import { presentWorkRunSummary } from "./runSummaryLabels.js";
+import {
+  formatRunArtifactStatusLabel,
+  formatRunOutcomeStatusLabel,
+  formatRunTraceKindLabel,
+} from "./runDetailLabels.js";
 import "./runs.css";
 
 interface TraceState {
@@ -440,7 +445,7 @@ export function RunDetailPage(): JSX.Element {
                       className={`runDetail__traceRow runDetail__traceRow--${trace.kind}`}
                     >
                       <span className="runDetail__traceKind">
-                        {trace.kind}
+                        {formatRunTraceKindLabel(trace.kind, t)}
                       </span>
                       <span
                         className="runDetail__traceActor"
@@ -488,7 +493,9 @@ export function RunDetailPage(): JSX.Element {
               {outcomes.map((o) => (
                 <li key={o.id} className="runDetail__simpleRow">
                   <span className="runDetail__simpleTitle">{o.title}</span>
-                  <span className="runDetail__simpleStatus">{o.status}</span>
+                  <span className="runDetail__simpleStatus">
+                    {formatRunOutcomeStatusLabel(o.status, t)}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -504,7 +511,9 @@ export function RunDetailPage(): JSX.Element {
               {artifacts.map((a) => (
                 <li key={a.id} className="runDetail__simpleRow">
                   <span className="runDetail__simpleTitle">{a.title}</span>
-                  <span className="runDetail__simpleStatus">{a.status}</span>
+                  <span className="runDetail__simpleStatus">
+                    {formatRunArtifactStatusLabel(a.status, t)}
+                  </span>
                 </li>
               ))}
             </ul>
