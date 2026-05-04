@@ -13,11 +13,11 @@ test('work timeline titles localize deterministic Core timeline titles', () => {
   assert.equal(presentWorkTimelineTitle('Checkpoint: Ship gate', t), '檢查點：Ship gate');
   assert.equal(
     presentWorkTimelineTitle('Evidence: provider-agent run loop', t),
-    '證據：provider-agent 執行迴圈',
+    '證據：供應器代理人執行迴圈',
   );
   assert.equal(
     presentWorkTimelineTitle('Provider-agent plan: plan-123', t),
-    'Provider-agent 計畫：plan-123',
+    '供應器代理人計畫：plan-123',
   );
 });
 

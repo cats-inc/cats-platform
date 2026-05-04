@@ -1121,7 +1121,7 @@ export const zhTWCatalog: MessageCatalog = {
   'work.warRoom.workItemsEmptyBadge': '空',
   'work.warRoom.workItemsEmptyBody': '目前沒有符合條件的工作項目。',
   'work.warRoom.workItemsEmptyTitle': '沒有找到工作項目',
-  'work.timeline.evidence.providerAgentRunLoop': 'provider-agent 執行迴圈',
+  'work.timeline.evidence.providerAgentRunLoop': '供應器代理人執行迴圈',
   'work.timeline.evidence.supervision': '監督證據',
   'work.timeline.title.approvalBinding': '核准綁定（{kind}）',
   'work.timeline.title.approvalDecided': '核准已決定',
@@ -1132,7 +1132,7 @@ export const zhTWCatalog: MessageCatalog = {
   'work.timeline.title.evidence': '證據：{source}',
   'work.timeline.title.note': '備註',
   'work.timeline.title.operatorAction': '操作員動作',
-  'work.timeline.title.providerAgentPlan': 'Provider-agent 計畫：{planId}',
+  'work.timeline.title.providerAgentPlan': '供應器代理人計畫：{planId}',
   'work.timeline.title.statusChanged': '狀態已變更',
   'work.timeline.title.trace': '追蹤（{kind}）',
   'work.timeline.title.workItemUpdated': '工作項目已更新',
@@ -1167,7 +1167,7 @@ export const zhTWCatalog: MessageCatalog = {
   'work.execution.reason.runFailed': '執行失敗',
   'work.execution.reason.userCancelled': '使用者已取消',
   'work.execution.reason.workflowReviewRequired': '需要工作流程審查',
-  'work.execution.replaySource.orchestratorReplay': 'Orchestrator 重放',
+  'work.execution.replaySource.orchestratorReplay': '協調器重放',
   'work.execution.replaySource.orchestratorStartupRecovery':
     'Orchestrator 啟動修復',
   'work.execution.replaySource.workflowContinuationReplay':

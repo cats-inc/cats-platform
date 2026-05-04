@@ -122,6 +122,8 @@ The final 2026-05-04 cleanup localized:
 - Chat companion message reference previews localize parser invalid-reason
   tokens such as `malformed_percent_encoding` while keeping the parser contract
   stable
+- Work timeline and execution replay labels now translate owner-facing
+  provider-agent/orchestrator terms in Traditional Chinese catalog entries
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

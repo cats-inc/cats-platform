@@ -58,6 +58,7 @@ test('work execution presentation localizes known runtime tokens', () => {
   assert.equal(formatWorkTokenValue('approval_pending', t), '等待核准');
   assert.equal(formatWorkApprovalStatus('pending', t), '等待核准');
   assert.equal(formatWorkTokenValue('workflow-continuation-replay', t), '工作流程延續重放');
+  assert.equal(formatWorkTokenValue('orchestrator_replay', t), '協調器重放');
   assert.equal(formatWorkTokenValue('in_progress', t), '進行中');
   assert.equal(formatWorkTokenList(['custom_action'], t), 'Custom Action');
 });
