@@ -14,6 +14,7 @@ import type { DesktopMobilePairingEnvUpdateResult } from '../../../shared/deskto
 import { type MessageKey } from '../../../shared/i18n/index.js';
 import { useI18n } from '../i18n/index.js';
 import { createQrCodeMatrix } from './qrCode.js';
+import { formatSettingsDesktopStartupMutationError } from './settingsDesktopStartupErrorLabels.js';
 
 export interface PlatformSettingsDesktopStartupProps {
   payload: AppShellPayload;
@@ -174,11 +175,11 @@ export function PlatformSettingsDesktopStartup({
         await desktopHost.relaunch();
       }
     } catch (error) {
-      showToast(
-        error instanceof Error
-          ? error.message
-          : t('settingsDesktopMobilePairingDesktopUpdateFailure'),
-      );
+      showToast(formatSettingsDesktopStartupMutationError(
+        error,
+        t('settingsDesktopMobilePairingDesktopUpdateFailure'),
+        t,
+      ));
       setApplyingMobilePairingEnv(false);
     }
   }
@@ -235,7 +236,7 @@ export function PlatformSettingsDesktopStartup({
         ...payload,
         desktop: previousDesktopPrefs,
       });
-      showToast(error instanceof Error ? error.message : failureMessage);
+      showToast(formatSettingsDesktopStartupMutationError(error, failureMessage, t));
     } finally {
       setSavingDesktopPrefs(false);
     }

@@ -5,7 +5,9 @@ import { renderToStaticMarkup } from 'react-dom/server.browser';
 import { StaticRouter } from 'react-router-dom';
 
 import { PlatformSettingsDesktopStartup } from '../src/app/renderer/settings/PlatformSettingsDesktopStartup.tsx';
+import { formatSettingsDesktopStartupMutationError } from '../src/app/renderer/settings/settingsDesktopStartupErrorLabels.ts';
 import type { AppShellPayload } from '../src/products/chat/api/contracts.ts';
+import { createTranslator } from '../src/shared/i18n/index.ts';
 
 function createMobilePairing(
   overrides: Partial<AppShellPayload['desktop']['mobilePairing']> = {},
@@ -113,6 +115,35 @@ function createPayload(
     bootstrapAttemptId: null,
   } as unknown as AppShellPayload;
 }
+
+test('PlatformSettingsDesktopStartup localizes deterministic desktop host mutation errors', () => {
+  const t = createTranslator('zh-TW');
+
+  assert.equal(
+    formatSettingsDesktopStartupMutationError(
+      new Error('Desktop host is not initialized.'),
+      t('settingsDesktopMobilePairingDesktopUpdateFailure'),
+      t,
+    ),
+    '更新桌面環境設定失敗。',
+  );
+  assert.equal(
+    formatSettingsDesktopStartupMutationError(
+      new Error('Invalid desktop startup preferences payload.'),
+      t('settingsConversationPreferenceUpdateFailure'),
+      t,
+    ),
+    '更新偏好失敗。',
+  );
+  assert.equal(
+    formatSettingsDesktopStartupMutationError(
+      new Error('EACCES: permission denied'),
+      t('settingsDesktopMobilePairingDesktopUpdateFailure'),
+      t,
+    ),
+    'EACCES: permission denied',
+  );
+});
 
 test('PlatformSettingsDesktopStartup renders desktop controls with system tray before window opening', () => {
   const previousBridge = (globalThis as typeof globalThis & {

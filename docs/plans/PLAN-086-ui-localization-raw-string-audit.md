@@ -171,6 +171,9 @@ The final 2026-05-04 cleanup localized:
   while preserving unknown provider/runtime diagnostics
 - Workspace channel continuity reset feedback maps deterministic channel reset
   fallback failures to localized feedback while preserving unknown diagnostics
+- Settings Desktop startup/mobile-pairing feedback maps deterministic desktop
+  host bridge initialization and payload validation failures to localized
+  feedback while preserving OS/filesystem diagnostics
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.
