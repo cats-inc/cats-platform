@@ -587,6 +587,8 @@ export function buildDesktopBootstrapPage(): string {
           'Packaged setup failed before completion response was returned.',
         'diagnostics.summary.runtimeStatusChanged': 'Observed a runtime status change.',
         'diagnostics.summary.runtimeUnavailableShort': 'Runtime is unavailable.',
+        'diagnostics.summary.runtimeUnavailableInAppRecovery':
+          'Cats Runtime is unavailable. Open Cats to recover in-app once the runtime is back.',
         'diagnostics.summary.startingLocalServices':
           'Starting local Cats services and waiting for readiness.',
         'diagnostics.summary.localServicesPrereq':
@@ -822,6 +824,8 @@ export function buildDesktopBootstrapPage(): string {
           '套裝設定在回傳完成回應前失敗。',
         'diagnostics.summary.runtimeStatusChanged': '已觀察到執行階段狀態變更。',
         'diagnostics.summary.runtimeUnavailableShort': '執行階段無法使用。',
+        'diagnostics.summary.runtimeUnavailableInAppRecovery':
+          'Cats Runtime 無法使用。待執行階段恢復後，請開啟 Cats 在應用程式內復原。',
         'diagnostics.summary.startingLocalServices':
           '正在啟動本機 Cats 服務並等待就緒。',
         'diagnostics.summary.localServicesPrereq':
@@ -1146,6 +1150,8 @@ export function buildDesktopBootstrapPage(): string {
       'Observed a runtime status change.':
         'diagnostics.summary.runtimeStatusChanged',
       'Runtime is unavailable.': 'diagnostics.summary.runtimeUnavailableShort',
+      'Cats Runtime is unavailable. Open Cats to recover in-app once the runtime is back.':
+        'diagnostics.summary.runtimeUnavailableInAppRecovery',
       'Starting local Cats services and waiting for readiness.':
         'diagnostics.summary.startingLocalServices',
       'Local services are ready. Running prerequisite checks.':

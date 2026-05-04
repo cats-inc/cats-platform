@@ -38,6 +38,8 @@ The final 2026-05-04 cleanup localized:
   codes
 - runtime skill profile source records no longer carry unused English labels or
   descriptions; Settings Cats owns the localized skill profile presentation
+- the desktop bootstrap runtime-unavailable recovery summary that is emitted by
+  readiness snapshots and shown in bootstrap diagnostics/recovery presentation
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

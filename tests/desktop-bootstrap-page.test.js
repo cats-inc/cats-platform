@@ -50,6 +50,8 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /桌面主機階段為/);
   assert.match(html, /桌面主機階段已變更/);
   assert.match(html, /執行階段服務無法使用/);
+  assert.match(html, /Cats Runtime is unavailable\. Open Cats to recover in-app once the runtime is back\.[\s\S]*diagnostics\.summary\.runtimeUnavailableInAppRecovery/);
+  assert.match(html, /Cats Runtime 無法使用。待執行階段恢復後，請開啟 Cats 在應用程式內復原。/);
   assert.match(html, /設定狀態已保存/);
   assert.match(html, /服務在就緒前結束/);
   assert.match(html, /降級/);
