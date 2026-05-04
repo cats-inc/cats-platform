@@ -53,6 +53,7 @@ import {
   isWorkWorkItemsPath,
 } from '../workPaths.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { getWorkObjectStatusLabel } from './topdown/WorkObjectCard.js';
 
 export interface SidebarProps {
   payload: AppShellPayload;
@@ -492,7 +493,7 @@ function buildPinnedProjectItems(
       onClick: () => props.onOpenProject?.(project.id),
       statusDot: {
         className: `projectsList__dot projectsList__dot--small projectsList__dot--${project.status}`,
-        title: project.status.replace(/_/g, ' '),
+        title: getWorkObjectStatusLabel(project.status, t),
       },
       overflowActions: [
         {

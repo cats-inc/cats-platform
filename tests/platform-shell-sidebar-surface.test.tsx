@@ -417,6 +417,66 @@ test('Work sidebar marks Projects active for portfolio routes', () => {
   });
 });
 
+test('Work sidebar localizes pinned project status tooltip labels', () => {
+  const t = createTranslator('zh-TW');
+  const props = createWorkSidebarConversationProps(
+    {
+      payload: createPayload(),
+      sidebarOpen: true,
+      accountMenuOpen: false,
+      overflowMenuOpenId: null,
+      busy: clearBusyState(),
+      surface: 'chats',
+      shellSurface: 'work',
+      routeChannelId: null,
+      accountMenuRef: { current: null } as RefObject<HTMLDivElement>,
+      onToggleSidebar: () => {},
+      onCollapsedSidebarClick: () => {},
+      onOpenChatsOverview: () => {},
+      onStartNewChat: () => {},
+      onSelect: () => {},
+      onDeleteChannel: () => {},
+      onRenameChannel: () => {},
+      onArchiveCat: () => {},
+      onAccountMenuToggle: () => {},
+      onOverflowMenuToggle: () => {},
+      onNavigateSettings: () => {},
+      onNavigateRuntime: () => {},
+      onSwitchProduct: () => {},
+      activeMyCatId: null,
+      onDirectChatCat: () => {},
+      onOpenProjects: () => {},
+      onOpenProject: () => {},
+    },
+    {
+      pinnedProjects: [{
+        id: 'project-1',
+        title: 'Roadmap',
+        status: 'paused',
+        summary: null,
+        repoPath: null,
+        primaryConversationId: null,
+        primaryConversationTitle: null,
+        primaryConversationSourceChannelId: null,
+        ownerActorId: 'actor-owner',
+        ownerName: 'Owner',
+        attention: 'none',
+        linkedWorkItemCount: 0,
+        activeWorkItemCount: 0,
+        linkedTaskCount: 0,
+        linkedActivityCount: 0,
+        attentionDecisionCount: 0,
+        attentionBlockedCount: 0,
+        updatedAt: '2026-04-07T00:00:00.000Z',
+      }],
+    },
+    t,
+  );
+
+  const projectsGroup = props.extraActionGroups?.find((group) => group.key === 'projects');
+  assert.equal(projectsGroup?.pinnedItems?.[0]?.statusDot?.title, '已暫停');
+});
+
 test('Work sidebar marks Work Items active for managed-work routes', () => {
   withLocationPathname('/work/work-items/work-item-123', () => {
     const tree = createWorkSidebarElement({

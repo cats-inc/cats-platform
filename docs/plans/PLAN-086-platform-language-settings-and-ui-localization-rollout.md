@@ -377,6 +377,7 @@ known-gaps list.
 | 2026-05-04 | Runtime Settings lifecycle feedback now localizes desktop setup helper summary templates beyond the WSL/Docker manual-detail cases. |
 | 2026-05-04 | Cats Code sidebar pinned codespace status tooltips now reuse localized workspace status labels instead of raw status tokens. |
 | 2026-05-04 | Desktop bootstrap diagnostics and setup-fix cards now localize known packaged setup helper error templates while preserving unknown stderr/exception text as content. |
+| 2026-05-04 | Work sidebar pinned project status tooltips now reuse localized Work object status labels instead of raw status tokens. |
 
 ---
 

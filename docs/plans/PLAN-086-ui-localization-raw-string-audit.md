@@ -80,6 +80,8 @@ The final 2026-05-04 cleanup localized:
   `planning`, `execution`) instead of rendering raw graph layer tokens
 - Work task product binding pills localize known binding metadata (`work`,
   `code`, `chat`, `unbound`) across Tasks list/detail and Top-down cards
+- Work sidebar pinned project status tooltips use localized Work object status
+  labels instead of raw status tokens
 - Work Top-down diagnostic headers localize severity and diagnostic-kind
   metadata instead of rendering `error`, `warning`, `orphan_link`, or
   `link_cycle`-style tokens
