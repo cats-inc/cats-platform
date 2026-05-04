@@ -312,6 +312,30 @@ test('runWorkspaceInitialAppShellLoad reports fetch failures only when the route
   assert.deepEqual(errors, ['backend unavailable']);
 });
 
+test('runWorkspaceInitialAppShellLoad localizes internal app shell fallback errors', async () => {
+  const controller = new AbortController();
+  const errors: string[] = [];
+
+  await runWorkspaceInitialAppShellLoad({
+    initialHadReadyState: false,
+    match: {
+      surface: 'work',
+      path: '/work/chats/channel-ready',
+    },
+    signal: controller.signal,
+    unknownRendererErrorMessage: 'localized renderer fallback',
+    fetchAppShell: async () => {
+      throw new Error('cats app shell returned 503');
+    },
+    onReady: () => {},
+    onError: (message) => {
+      errors.push(message);
+    },
+  });
+
+  assert.deepEqual(errors, ['localized renderer fallback']);
+});
+
 test('runWorkspaceInitialAppShellLoad ignores aborted fetch completions and failures', async () => {
   const controller = new AbortController();
   const readyPayloads: Array<ReturnType<typeof createPayload>> = [];

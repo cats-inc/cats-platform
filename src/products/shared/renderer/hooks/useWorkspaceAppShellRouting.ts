@@ -177,10 +177,22 @@ export async function runWorkspaceInitialAppShellLoad<
   } catch (error: unknown) {
     if (!input.signal.aborted && !warmPayload && !input.initialHadReadyState) {
       input.onError(
-        error instanceof Error ? error.message : input.unknownRendererErrorMessage,
+        formatWorkspaceInitialAppShellLoadError(error, input.unknownRendererErrorMessage),
       );
     }
   }
+}
+
+export function formatWorkspaceInitialAppShellLoadError(
+  error: unknown,
+  fallback: string,
+): string {
+  if (!(error instanceof Error)) {
+    return fallback;
+  }
+  return /^cats app shell returned \d+$/u.test(error.message)
+    ? fallback
+    : error.message;
 }
 
 export function shouldApplyWorkspaceBackgroundRefresh<

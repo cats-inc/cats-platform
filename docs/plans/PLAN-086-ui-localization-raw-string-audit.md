@@ -137,6 +137,8 @@ The final 2026-05-04 cleanup localized:
   mutation errors to localized feedback while preserving unknown diagnostics
 - Settings Cats memory save/delete feedback localizes deterministic memory API
   validation and not-found errors, and delete now rejects failed responses
+- Workspace product app-shell initial load maps internal `cats app shell returned
+  {status}` fallback errors to localized renderer failure copy
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.
