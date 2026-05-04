@@ -29,6 +29,12 @@ The final 2026-05-04 cleanup localized:
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.
 
+`tests/ui-localization-raw-string-audit.test.tsx` guards the highest-signal
+renderer/product directories against obvious new raw English UI chrome in
+`label`, `title`, `description`, `placeholder`, tooltip, and `aria-label`
+literals. If that test fails, either move the string into the shared i18n
+catalogs or update this allowlist with a SPEC-097 reason.
+
 ## Allowlist
 
 | Category | Examples | Decision |

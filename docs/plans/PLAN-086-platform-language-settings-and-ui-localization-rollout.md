@@ -233,7 +233,7 @@ share the same default response-language policy.
 - [x] **8.4** Report progress using only user-visible chrome as the denominator.
       Do not count debug/internal/API fallback literals as incomplete
       localization work.
-- [ ] **8.5** Add a lightweight test or script if practical to prevent obvious
+- [x] **8.5** Add a lightweight test or script if practical to prevent obvious
       new unlocalized Settings/product chrome strings.
 - [x] **8.6** Update this plan's progress log with remaining known gaps.
 
@@ -350,6 +350,7 @@ known-gaps list.
 | 2026-04-29 | Plan created with ADR-093 / SPEC-097 for platform language settings and UI localization rollout |
 | 2026-05-01 | Clarified extraction boundary: localization work targets owner-facing Cats UI chrome only; API/query fallbacks, debug diagnostics, logs, route/method/class/enum identifiers, and smoke/test strings must not be extracted or counted as progress debt. |
 | 2026-05-04 | Completed the final raw-string audit slice for Desktop bootstrap/onboarding, Runtime Settings helper presentation, shared runtime chips, and product renderer chrome. Remaining hits are documented in `PLAN-086-ui-localization-raw-string-audit.md`; the only known open localization-policy gap is persisted Chat relay prompt/system-note templates, which need a separate server/transcript locale policy before translation. |
+| 2026-05-04 | Added `tests/ui-localization-raw-string-audit.test.tsx` as a lightweight guard against obvious new raw English `label`, `title`, `placeholder`, tooltip, and `aria-label` literals in renderer/product UI chrome. |
 
 ---
 
