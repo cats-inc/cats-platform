@@ -23,6 +23,7 @@ import {
 import {
   resolveClientGuideCatName,
 } from '../../../shared/guideCatIdentity.js';
+import { formatSetupWizardCompletionError } from './setupWizardErrorLabels.js';
 
 type PendingAction = 'complete' | null;
 
@@ -83,7 +84,11 @@ export function PlatformSetupWizard({
       await syncDesktopHostPlatformShell(result);
       onComplete(result);
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : t(messageKeys.setupWizardFailedMessage));
+      setFeedback(formatSetupWizardCompletionError(
+        error,
+        t(messageKeys.setupWizardFailedMessage),
+        t,
+      ));
     } finally {
       setBusyAction(null);
     }

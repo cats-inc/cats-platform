@@ -174,6 +174,9 @@ The final 2026-05-04 cleanup localized:
 - Settings Desktop startup/mobile-pairing feedback maps deterministic desktop
   host bridge initialization and payload validation failures to localized
   feedback while preserving OS/filesystem diagnostics
+- Setup Wizard completion feedback maps deterministic desktop host platform
+  shell bridge validation failures to localized feedback while preserving
+  unknown network/host diagnostics
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.
