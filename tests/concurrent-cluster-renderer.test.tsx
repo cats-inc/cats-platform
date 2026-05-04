@@ -331,7 +331,8 @@ test('inline_stack localizes Cats-owned live progress fallback text', () => {
         laneId: 'lane-1',
         targetStateId: 'target-1',
         segmentIndex: 0,
-        progressText: 'Finalizing...',
+        progressText: 'Finalizing turn',
+        progressKind: 'finalizing',
       }),
     ],
     [],
@@ -342,7 +343,7 @@ test('inline_stack localizes Cats-owned live progress fallback text', () => {
   );
 
   assert.match(markup, /正在完成…/u);
-  assert.doesNotMatch(markup, /Finalizing/u);
+  assert.doesNotMatch(markup, /Finalizing turn/u);
 });
 
 test('ConcurrentClusterRenderer renders cluster actions independently from mode-specific layout', () => {

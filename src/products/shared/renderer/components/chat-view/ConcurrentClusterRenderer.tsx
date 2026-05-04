@@ -432,7 +432,7 @@ export function SegmentContentBody({
     if (showProgressDetails && segment.progressText) {
       return (
         <p className="typingStatusText">
-          {localizeLiveProgressText(segment.progressText, t)}
+          {localizeLiveProgressText(segment.progressText, segment.progressKind, t)}
         </p>
       );
     }
@@ -458,8 +458,12 @@ export function SegmentContentBody({
 
 function localizeLiveProgressText(
   text: string,
+  progressKind: string | null | undefined,
   translate: (key: MessageKey, values?: MessageInterpolationValues) => string,
 ): string {
+  if (progressKind === 'finalizing') {
+    return translate(messageKeys.chatConcurrentProgressFinalizing);
+  }
   switch (text) {
     case 'Finalizing...':
       return translate(messageKeys.chatConcurrentProgressFinalizing);

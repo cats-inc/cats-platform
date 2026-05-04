@@ -40,6 +40,8 @@ The final 2026-05-04 cleanup localized:
   descriptions; Settings Cats owns the localized skill profile presentation
 - the desktop bootstrap runtime-unavailable recovery summary that is emitted by
   readiness snapshots and shown in bootstrap diagnostics/recovery presentation
+- live finalization progress now uses the semantic `progressKind=finalizing`
+  signal before falling back to legacy English progress text matching
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.
