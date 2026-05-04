@@ -48,6 +48,9 @@ The final 2026-05-04 cleanup localized:
 - Chat parallel relay command copy, persisted transcript notes, and relay prompt
   templates now resolve through the shared English / Traditional Chinese i18n
   catalogs, with English retained as the fallback when no locale is supplied
+- Cats Code relay roster availability summaries now persist structured probe
+  kinds/values and render deterministic runtime probe copy through the shared
+  i18n catalogs
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

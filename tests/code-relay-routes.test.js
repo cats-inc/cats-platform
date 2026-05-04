@@ -165,9 +165,12 @@ test('Code relay routes create threads, update roster, and fan out prompts', asy
     const providerPatchPayload = await providerPatchResponse.json();
     assert.equal(providerPatchPayload.threads[0].roster[0].provider, 'cursor');
     assert.equal(providerPatchPayload.threads[0].roster[0].availability, 'unavailable');
-    assert.match(
+    assert.deepEqual(
       providerPatchPayload.threads[0].roster[0].availabilitySummary,
-      /Runtime does not report/u,
+      {
+        kind: 'provider_path_missing',
+        providerLabel: 'Cursor',
+      },
     );
 
     const fanOutResponse = await fetch(

@@ -2478,6 +2478,15 @@ export const zhTWCatalog: MessageCatalog = {
   'code.relay.authorKind.system': '系統',
   'code.relay.authorKind.unknown': '未知',
   'code.relay.authorKind.user': '使用者',
+  'code.relay.availability.instanceUnavailable':
+    '{providerLabel} 執行個體「{instance}」無法在 cats-runtime 中使用。',
+  'code.relay.availability.providerPathMissing':
+    '執行階段沒有回報已設定的 {providerLabel} 供應器路徑。',
+  'code.relay.availability.providerPathReady':
+    '{providerLabel} 的執行階段供應器路徑已就緒。',
+  'code.relay.availability.runtimeConfigUnavailable':
+    '執行階段供應器設定無法使用。',
+  'code.relay.availability.runtimeReadyVia': '執行階段已透過 {target} 就緒。',
   'code.relay.error.agentRequired': '請至少選擇一個代理人。',
   'code.relay.error.fanOutPromptRequired': '分派提示為必填。',
   'code.relay.error.threadRequired': '請先建立或選擇分派討論串。',

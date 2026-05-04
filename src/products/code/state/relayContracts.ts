@@ -1,4 +1,5 @@
 import type { ProviderModelSelection } from '../../../shared/providerSelection.js';
+import type { CodeRelayAvailabilitySummary } from '../shared/relayAvailabilitySummary.js';
 
 export type CodeRelayMode =
   | 'discover'
@@ -58,7 +59,7 @@ export interface CodeRelayRosterEntry {
   modelSelection: ProviderModelSelection | null;
   transport: 'runtime_session_bridge';
   availability: CodeRelayAvailabilityState;
-  availabilitySummary: string | null;
+  availabilitySummary: CodeRelayAvailabilitySummary | null;
   quotaNote: string | null;
   recentRole: CodeRelayRecentRole;
   enabled: boolean;

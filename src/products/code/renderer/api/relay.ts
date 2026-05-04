@@ -7,6 +7,7 @@ import {
   CODE_API_RELAY_THREADS_PATH,
 } from '../../shared/apiPaths.js';
 import { CODE_PRODUCT_NAME } from '../../shared/productMetadata.js';
+import type { CodeRelayAvailabilitySummary } from '../../shared/relayAvailabilitySummary.js';
 
 export interface CodeRelayRosterEntryPayload {
   id: string;
@@ -17,7 +18,7 @@ export interface CodeRelayRosterEntryPayload {
   modelSelection: ProviderModelSelection | null;
   transport: string;
   availability: 'unknown' | 'available' | 'unavailable';
-  availabilitySummary: string | null;
+  availabilitySummary: CodeRelayAvailabilitySummary | null;
   quotaNote: string | null;
   recentRole: string;
   enabled: boolean;

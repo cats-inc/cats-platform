@@ -17,6 +17,7 @@ import {
   labelCodeRelayModeForLocale,
   labelCodeRelayRoleForLocale,
 } from './codeStatusLabels.js';
+import { presentCodeRelayAvailabilitySummary } from './codeRelayAvailabilitySummaryLabels.js';
 
 interface CodeRelaySelectedChannelContext {
   title: string;
@@ -530,10 +531,7 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
                           {labelRelayStatus(entry.availability, t)}
                         </span>
                       </div>
-                      <p>
-                        {entry.availabilitySummary
-                          ?? `${entry.provider}:${entry.instance ?? t(messageKeys.codeRelayLabelDefault)}`}
-                      </p>
+                      <p>{presentCodeRelayAvailabilitySummary(entry, t)}</p>
                       <div className="codeRelayMetaRow">
                         <span>
                           {t(messageKeys.codeRelayLabelModel, {

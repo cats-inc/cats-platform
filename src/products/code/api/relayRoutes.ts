@@ -126,7 +126,7 @@ function probeRelayRosterEntries(
     return entries.map((entry) => ({
       ...entry,
       availability: 'unknown',
-      availabilitySummary: 'Runtime provider config unavailable.',
+      availabilitySummary: { kind: 'runtime_config_unavailable' },
     }));
   }
 
@@ -136,7 +136,10 @@ function probeRelayRosterEntries(
       return {
         ...entry,
         availability: 'unavailable',
-        availabilitySummary: `Runtime does not report a configured ${entry.label} provider path.`,
+        availabilitySummary: {
+          kind: 'provider_path_missing',
+          providerLabel: entry.label,
+        },
       };
     }
 
@@ -147,7 +150,11 @@ function probeRelayRosterEntries(
         return {
           ...entry,
           availability: 'unavailable',
-          availabilitySummary: `${entry.label} instance "${resolvedInstance}" is not available in cats-runtime.`,
+          availabilitySummary: {
+            kind: 'instance_unavailable',
+            providerLabel: entry.label,
+            instance: resolvedInstance,
+          },
         };
       }
 
@@ -155,14 +162,20 @@ function probeRelayRosterEntries(
         ...entry,
         instance: resolvedInstance,
         availability: 'available',
-        availabilitySummary: `Runtime ready via ${instanceConfig.target ?? instanceConfig.id}.`,
+        availabilitySummary: {
+          kind: 'runtime_ready_via',
+          target: instanceConfig.target ?? instanceConfig.id,
+        },
       };
     }
 
     return {
       ...entry,
       availability: 'available',
-      availabilitySummary: `Runtime provider path ready for ${entry.label}.`,
+      availabilitySummary: {
+        kind: 'provider_path_ready',
+        providerLabel: entry.label,
+      },
     };
   });
 }

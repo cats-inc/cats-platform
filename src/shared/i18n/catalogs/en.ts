@@ -2537,6 +2537,15 @@ export const enCatalog: MessageCatalog = {
   'code.relay.authorKind.system': 'System',
   'code.relay.authorKind.unknown': 'Unknown',
   'code.relay.authorKind.user': 'User',
+  'code.relay.availability.instanceUnavailable':
+    '{providerLabel} instance "{instance}" is not available in cats-runtime.',
+  'code.relay.availability.providerPathMissing':
+    'Runtime does not report a configured {providerLabel} provider path.',
+  'code.relay.availability.providerPathReady':
+    'Runtime provider path ready for {providerLabel}.',
+  'code.relay.availability.runtimeConfigUnavailable':
+    'Runtime provider config unavailable.',
+  'code.relay.availability.runtimeReadyVia': 'Runtime ready via {target}.',
   'code.relay.error.agentRequired': 'Select at least one agent.',
   'code.relay.error.fanOutPromptRequired': 'Fan out prompt is required.',
   'code.relay.error.threadRequired': 'Create or select a relay thread first.',

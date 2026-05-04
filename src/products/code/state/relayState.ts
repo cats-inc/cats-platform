@@ -13,6 +13,7 @@ import {
   parseProviderModelSelection,
   type ProviderModelSelection,
 } from '../../../shared/providerSelection.js';
+import type { CodeRelayAvailabilitySummary } from '../shared/relayAvailabilitySummary.js';
 import type {
   CodeRelayConnectorContract,
   CodeRelayDispatchRecord,
@@ -62,6 +63,34 @@ function readAvailability(value: unknown): CodeRelayRosterEntry['availability'] 
   return value === 'available' || value === 'unavailable' || value === 'unknown'
     ? value
     : 'unknown';
+}
+
+function readAvailabilitySummary(value: unknown): CodeRelayAvailabilitySummary | null {
+  const record = asRecord(value);
+  const kind = readString(record?.kind);
+  switch (kind) {
+    case 'runtime_config_unavailable':
+      return { kind };
+    case 'provider_path_missing': {
+      const providerLabel = readString(record?.providerLabel);
+      return providerLabel ? { kind, providerLabel } : null;
+    }
+    case 'instance_unavailable': {
+      const providerLabel = readString(record?.providerLabel);
+      const instance = readString(record?.instance);
+      return providerLabel && instance ? { kind, providerLabel, instance } : null;
+    }
+    case 'runtime_ready_via': {
+      const target = readString(record?.target);
+      return target ? { kind, target } : null;
+    }
+    case 'provider_path_ready': {
+      const providerLabel = readString(record?.providerLabel);
+      return providerLabel ? { kind, providerLabel } : null;
+    }
+    default:
+      return null;
+  }
 }
 
 function readRecentRole(value: unknown): CodeRelayRosterEntry['recentRole'] {
@@ -210,7 +239,7 @@ export function readCodeRelayThread(project: CoreProjectRecord): CodeRelayThread
         modelSelection: parseProviderModelSelection(entry.modelSelection),
         transport: readTransport(entry.transport),
         availability: readAvailability(entry.availability),
-        availabilitySummary: readString(entry.availabilitySummary),
+        availabilitySummary: readAvailabilitySummary(entry.availabilitySummary),
         quotaNote: readString(entry.quotaNote),
         recentRole: readRecentRole(entry.recentRole),
         enabled: entry.enabled !== false,

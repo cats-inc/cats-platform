@@ -2571,6 +2571,16 @@ export const messageKeys = {
   codeRelayAuthorKindSystem: 'code.relay.authorKind.system',
   codeRelayAuthorKindUnknown: 'code.relay.authorKind.unknown',
   codeRelayAuthorKindUser: 'code.relay.authorKind.user',
+  codeRelayAvailabilityInstanceUnavailable:
+    'code.relay.availability.instanceUnavailable',
+  codeRelayAvailabilityProviderPathMissing:
+    'code.relay.availability.providerPathMissing',
+  codeRelayAvailabilityProviderPathReady:
+    'code.relay.availability.providerPathReady',
+  codeRelayAvailabilityRuntimeConfigUnavailable:
+    'code.relay.availability.runtimeConfigUnavailable',
+  codeRelayAvailabilityRuntimeReadyVia:
+    'code.relay.availability.runtimeReadyVia',
   codeRelayErrorAgentRequired: 'code.relay.error.agentRequired',
   codeRelayErrorFanOutPromptRequired: 'code.relay.error.fanOutPromptRequired',
   codeRelayErrorThreadRequired: 'code.relay.error.threadRequired',
