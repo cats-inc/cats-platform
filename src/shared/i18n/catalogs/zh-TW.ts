@@ -2445,6 +2445,10 @@ export const zhTWCatalog: MessageCatalog = {
   'catHome.notFound.title': '找不到這隻貓',
   'catHome.notFound.body':
     '此工作區中沒有 id 為「{catId}」的貓。可能已被移除，或連結已失效。',
+  'catsList.title': '我的貓咪',
+  'catsList.eyebrow': '貓咪',
+  'catsList.emptyState': '尚未有貓咪。可從大廳新增一隻；新增後就會在這裡列出。',
+  'catsList.backToLobby': '返回大廳',
 
   'code.activeComposer.detachedBranch': '分離分支',
   'code.newDraft.greeting': '準備開始寫程式。',

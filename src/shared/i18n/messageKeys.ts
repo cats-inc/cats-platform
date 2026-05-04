@@ -3173,6 +3173,10 @@ export const messageKeys = {
   catHomeLensStubBody: 'catHome.lens.stubBody',
   catHomeNotFoundTitle: 'catHome.notFound.title',
   catHomeNotFoundBody: 'catHome.notFound.body',
+  catsListTitle: 'catsList.title',
+  catsListEyebrow: 'catsList.eyebrow',
+  catsListEmptyState: 'catsList.emptyState',
+  catsListBackToLobby: 'catsList.backToLobby',
 } as const;
 
 export type MessageCatalogId = (typeof messageKeys)[keyof typeof messageKeys];

@@ -2496,6 +2496,11 @@ export const enCatalog: MessageCatalog = {
   'catHome.notFound.title': 'Cat not found',
   'catHome.notFound.body':
     'No Cat with id "{catId}" exists in this workspace. It may have been removed, or the link is stale.',
+  'catsList.title': 'My Cats',
+  'catsList.eyebrow': 'Cats',
+  'catsList.emptyState':
+    'No cats yet. Open the Lobby to add one — once any cat is registered it will appear here.',
+  'catsList.backToLobby': 'Back to Lobby',
 
   'code.activeComposer.detachedBranch': 'Detached branch',
   'code.newDraft.greeting': 'Ready to code.',
