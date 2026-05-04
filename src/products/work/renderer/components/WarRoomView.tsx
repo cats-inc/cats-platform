@@ -14,6 +14,7 @@ import {
 import {
   getWorkObjectStatusLabel,
 } from './topdown/WorkObjectCard';
+import { presentWorkTimelineTitle } from './workTimelineLabels.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 
 type WorkOperatorInboxItem = WorkDashboardProjection['sections']['operatorInbox']['items'][number];
@@ -324,7 +325,9 @@ function OperatorInboxSection({
               <div className="operatorMetaRow">
                 <span>
                   {t('workWarRoomMetaLabelLatest')}:{' '}
-                  {item.latestTimelineItem?.title ?? t('workWarRoomMetaValueNoTimelineItem')}
+                  {item.latestTimelineItem
+                    ? presentWorkTimelineTitle(item.latestTimelineItem.title, t)
+                    : t('workWarRoomMetaValueNoTimelineItem')}
                 </span>
                 <span>{formatTimestamp(item.latestTimelineItem?.timestamp, t)}</span>
               </div>

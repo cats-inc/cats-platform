@@ -361,6 +361,7 @@ known-gaps list.
 | 2026-05-04 | Converted Cats Code relay roster availability summaries from persisted English sentences to structured runtime probe kinds/values rendered through shared English / Traditional Chinese catalogs. |
 | 2026-05-04 | Localized known Cats-owned Work run summaries in list/detail presentation, including supervised Work, Code task, scheduled mission, provider-agent, and Code relay fan-out summaries; runtime-authored summaries remain content. |
 | 2026-05-04 | Extended shared operator action i18n coverage to the recovery-specific retry tooltip for replaying stored dispatch/workflow continuations. |
+| 2026-05-04 | War Room latest timeline titles now localize known Cats-owned Core timeline templates, supervision evidence prefixes, provider-agent plan prefixes, and checkpoint/trace prefixes while preserving user/runtime-authored titles. |
 
 ---
 

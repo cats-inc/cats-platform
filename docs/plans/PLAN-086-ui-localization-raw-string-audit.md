@@ -56,6 +56,9 @@ The final 2026-05-04 cleanup localized:
   content
 - operator retry action tooltips now cover the recovery-specific stored
   dispatch/workflow continuation description through the shared action i18n map
+- War Room latest timeline titles localize known Cats-owned Core timeline
+  templates and prefix-based supervision evidence/provider-agent/checkpoint
+  titles while preserving unknown user/runtime-authored titles verbatim
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

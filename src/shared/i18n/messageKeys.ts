@@ -1079,6 +1079,26 @@ export const messageKeys = {
   workWarRoomWorkItemsEmptyBadge: 'work.warRoom.workItemsEmptyBadge',
   workWarRoomWorkItemsEmptyBody: 'work.warRoom.workItemsEmptyBody',
   workWarRoomWorkItemsEmptyTitle: 'work.warRoom.workItemsEmptyTitle',
+  workTimelineEvidenceProviderAgentRunLoop:
+    'work.timeline.evidence.providerAgentRunLoop',
+  workTimelineEvidenceSupervision: 'work.timeline.evidence.supervision',
+  workTimelineTitleApprovalBinding:
+    'work.timeline.title.approvalBinding',
+  workTimelineTitleApprovalDecided: 'work.timeline.title.approvalDecided',
+  workTimelineTitleApprovalRequested: 'work.timeline.title.approvalRequested',
+  workTimelineTitleArtifactRecorded: 'work.timeline.title.artifactRecorded',
+  workTimelineTitleCheckpoint: 'work.timeline.title.checkpoint',
+  workTimelineTitleCheckpointRecorded:
+    'work.timeline.title.checkpointRecorded',
+  workTimelineTitleEvidence: 'work.timeline.title.evidence',
+  workTimelineTitleNote: 'work.timeline.title.note',
+  workTimelineTitleOperatorAction: 'work.timeline.title.operatorAction',
+  workTimelineTitleProviderAgentPlan:
+    'work.timeline.title.providerAgentPlan',
+  workTimelineTitleStatusChanged: 'work.timeline.title.statusChanged',
+  workTimelineTitleTrace: 'work.timeline.title.trace',
+  workTimelineTitleWorkItemUpdated:
+    'work.timeline.title.workItemUpdated',
   workNewWorkItemTitle: 'work.newWorkItem.title',
   workNewWorkItemTitleLabel: 'work.newWorkItem.titleLabel',
   workNewWorkItemSummaryLabel: 'work.newWorkItem.summaryLabel',
