@@ -21,6 +21,7 @@ import {
 import { emptyCatForm, type CatFormState } from '../workspaceChatUtils.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { messageKeys } from '../../../../shared/i18n/index.js';
+import { formatWorkspaceCatAssignmentMutationError } from './workspaceCatAssignmentErrorLabels.js';
 
 export interface WorkspaceCatAssignmentPayloadLike {
   chat: {
@@ -171,7 +172,11 @@ export function useWorkspaceCatAssignmentActions<
         setFeedback('');
       });
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : t(messageKeys.chatCatAssignmentErrorCreateCat));
+      setFeedback(formatWorkspaceCatAssignmentMutationError(
+        error,
+        t(messageKeys.chatCatAssignmentErrorCreateCat),
+        t,
+      ));
     } finally {
       setBusy(clearBusyState());
     }
@@ -215,7 +220,11 @@ export function useWorkspaceCatAssignmentActions<
         setFeedback('');
       });
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : t(messageKeys.chatCatAssignmentErrorAssignCat));
+      setFeedback(formatWorkspaceCatAssignmentMutationError(
+        error,
+        t(messageKeys.chatCatAssignmentErrorAssignCat),
+        t,
+      ));
     } finally {
       setBusy(clearBusyState());
     }
@@ -239,7 +248,11 @@ export function useWorkspaceCatAssignmentActions<
         setFeedback('');
       });
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : t(messageKeys.chatCatAssignmentErrorRemoveCat));
+      setFeedback(formatWorkspaceCatAssignmentMutationError(
+        error,
+        t(messageKeys.chatCatAssignmentErrorRemoveCat),
+        t,
+      ));
     } finally {
       setBusy(clearBusyState());
     }
@@ -276,7 +289,11 @@ export function useWorkspaceCatAssignmentActions<
       setAddCatOpen(false);
       setFeedback('');
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : t(messageKeys.chatCatAssignmentErrorCreateCat));
+      setFeedback(formatWorkspaceCatAssignmentMutationError(
+        error,
+        t(messageKeys.chatCatAssignmentErrorCreateCat),
+        t,
+      ));
     } finally {
       setBusy(clearBusyState());
     }

@@ -1374,6 +1374,13 @@ export const enCatalog: MessageCatalog = {
   'chat.catAssignment.error.createCat': 'Failed to create cat.',
   'chat.catAssignment.error.assignCat': 'Failed to assign cat.',
   'chat.catAssignment.error.removeCat': 'Failed to remove cat.',
+  'chat.catAssignment.error.channelNotFound': 'This chat channel was not found.',
+  'chat.catAssignment.error.assignmentNotFound':
+    'This cat is not assigned to the selected chat.',
+  'chat.catAssignment.error.directLeadOnly':
+    'Direct lanes can only keep their lead cat.',
+  'chat.catAssignment.error.participantLimitReached':
+    'This chat already has the maximum {maxParticipants} participants.',
   'chat.companion.tab.status': 'Status',
   'chat.companion.tab.sources': 'Sources',
   'chat.companion.tab.memory': 'Memory',

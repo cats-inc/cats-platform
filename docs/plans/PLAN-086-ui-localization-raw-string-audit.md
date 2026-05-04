@@ -140,6 +140,9 @@ The final 2026-05-04 cleanup localized:
   validation and not-found errors, and delete now rejects failed responses
 - Workspace product app-shell initial load maps internal `cats app shell returned
   {status}` fallback errors to localized renderer failure copy
+- Workspace cat assignment actions map deterministic channel, assignment, direct
+  lane, participant-limit, and shared cat validation failures to localized
+  feedback while preserving unknown diagnostics
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

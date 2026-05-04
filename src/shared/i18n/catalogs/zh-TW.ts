@@ -1340,6 +1340,13 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.catAssignment.error.createCat': '建立貓失敗。',
   'chat.catAssignment.error.assignCat': '指派貓失敗。',
   'chat.catAssignment.error.removeCat': '移除貓失敗。',
+  'chat.catAssignment.error.channelNotFound': '找不到這個聊天室。',
+  'chat.catAssignment.error.assignmentNotFound':
+    '這隻貓咪尚未指派到選取的聊天室。',
+  'chat.catAssignment.error.directLeadOnly':
+    '直接對話只能保留該對話的主要貓咪。',
+  'chat.catAssignment.error.participantLimitReached':
+    '這個聊天室已達參與者上限（最多 {maxParticipants} 位）。',
   'chat.companion.tab.status': '狀態',
   'chat.companion.tab.sources': '來源',
   'chat.companion.tab.memory': '記憶',

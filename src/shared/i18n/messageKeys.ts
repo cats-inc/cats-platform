@@ -1404,6 +1404,14 @@ export const messageKeys = {
   chatCatAssignmentErrorCreateCat: 'chat.catAssignment.error.createCat',
   chatCatAssignmentErrorAssignCat: 'chat.catAssignment.error.assignCat',
   chatCatAssignmentErrorRemoveCat: 'chat.catAssignment.error.removeCat',
+  chatCatAssignmentErrorChannelNotFound:
+    'chat.catAssignment.error.channelNotFound',
+  chatCatAssignmentErrorAssignmentNotFound:
+    'chat.catAssignment.error.assignmentNotFound',
+  chatCatAssignmentErrorDirectLeadOnly:
+    'chat.catAssignment.error.directLeadOnly',
+  chatCatAssignmentErrorParticipantLimitReached:
+    'chat.catAssignment.error.participantLimitReached',
   chatCompanionTabStatus: 'chat.companion.tab.status',
   chatCompanionTabSources: 'chat.companion.tab.sources',
   chatCompanionTabMemory: 'chat.companion.tab.memory',
