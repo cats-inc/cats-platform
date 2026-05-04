@@ -1,10 +1,12 @@
-import { useRef, type MouseEvent as ReactMouseEvent } from 'react';
+import { useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { useMatch, useNavigate } from 'react-router-dom';
 
 import { GuideCatDockSlot } from '../../../design/components/GuideCatDockSlot.js';
 import { platformSurfaceRoutePrefix } from '../../../core/platformSurface.js';
 import { messageKeys } from '../../../shared/i18n/messageKeys.js';
 import { nameInitials } from '../../../shared/nameInitials.js';
+import { buildMyCatPathForPrefix } from '../productShell/myCatNavigation.js';
+import { updateCatProfile } from '../../../products/shared/renderer/api/chat.js';
 import type {
   PlatformHostEnvelope,
   PlatformSurfaceId,
@@ -20,6 +22,7 @@ import {
 } from '../productShell/ConversationSidebarMyCats.js';
 import { ConversationSidebarFooter } from '../productShell/ConversationSidebarFooter.js';
 import { ConversationSidebarNavigation } from '../productShell/ConversationSidebarNavigation.js';
+import { useSidebarOverflowMenuDismiss } from '../productShell/useSidebarOverflowMenuDismiss.js';
 import type {
   ConversationSidebarAction,
   ConversationSidebarCat,
@@ -61,7 +64,23 @@ const LOBBY_HELPERS: ConversationSidebarHelpers<
   catInitials: (name: string) => nameInitials(name),
   presentChannelTitle: (title: string) => title,
   isVisibleCat: () => true,
-  sortCatsForDisplay: (cats) => cats,
+  /* Boss-first ordering, then keep the platform registry order for
+   * the rest (envelope.lobby.cats already arrives in createdAt order
+   * from the platform host). Mirrors `sortChatCatsForDisplay` in
+   * workspaceChatUtils.tsx so the lobby sidebar's MY CATS reads the
+   * same as the chat sidebar's. Array.prototype.sort is stable
+   * (ES2019), so non-boss cats retain their incoming order. */
+  sortCatsForDisplay: (cats, options) => {
+    const bossId = Array.isArray(options.bossCatIds)
+      ? options.bossCatIds[0] ?? null
+      : options.bossCatIds ?? null;
+    if (!bossId) return cats;
+    return [...cats].sort((left, right) => {
+      const leftRank = left.id === bossId ? 0 : 1;
+      const rightRank = right.id === bossId ? 0 : 1;
+      return leftRank - rightRank;
+    });
+  },
   isDirectLaneSummary: () => false,
   findDirectLaneForCat: () => null,
   resolveMyCatStatusDot: () => LOBBY_PASSIVE_DOT,
@@ -113,11 +132,47 @@ export function LobbyAppShellSidebar({
   const { t } = useI18n();
   const navigate = useNavigate();
   const accountMenuRef = useRef<HTMLDivElement>(null);
+  const [overflowMenuOpenId, setOverflowMenuOpenId] = useState<string | null>(
+    null,
+  );
+  // Outside-click dismissal for the row "..." popover. Same behaviour
+  // chat / code / work get from `useAppChrome` — extracted into a
+  // shared hook so this lobby sidebar doesn't reinvent it.
+  useSidebarOverflowMenuDismiss(overflowMenuOpenId, setOverflowMenuOpenId);
 
   const activeCatMatch = useMatch('/cats/:catId/*');
   const activeCatId = activeCatMatch?.params.catId ?? null;
 
   const { payload, cats, bossCatId } = buildSidebarPayload(envelope);
+
+  /* Archive flow for the row's three-dots → Archive popover. Mirrors
+   * the chat sidebar's `onArchiveCat`, but without the workspace
+   * payload state container the chat product wraps around it: we
+   * confirm with a native dialog, hit `PATCH /api/cats/:id` with
+   * `{ archive: true }`, and then `location.reload()` so the
+   * platform host's envelope refreshes and the cat drops out of the
+   * MY CATS list. Imperfect, but matches the user's "popover should
+   * still archive" expectation without rebuilding the chat product's
+   * busy/feedback machinery here. */
+  const onArchiveCat = async (catId: string): Promise<void> => {
+    const cat = envelope.lobby.cats.find((entry) => entry.id === catId);
+    const catName = cat?.name ?? catId;
+    const confirmed = window.confirm(
+      t(messageKeys.sharedSettingsCatsArchiveWithTelegramConfirmMessage, {
+        catName,
+      }),
+    );
+    if (!confirmed) return;
+    try {
+      await updateCatProfile(catId, { archive: true });
+    } catch {
+      // Surface a minimal error — the platform-level state container
+      // for richer toasts isn't available from this sidebar.
+      window.alert(t(messageKeys.sharedSettingsCatsArchiveError));
+      return;
+    }
+    window.location.reload();
+  };
   const runtimeFooterStatus = resolveRuntimePresentationStatus(payload.runtime);
   const runtimeFooterLabel = resolveRuntimeTooltip(runtimeFooterStatus, t);
 
@@ -221,13 +276,23 @@ export function LobbyAppShellSidebar({
               activeMyCatId={activeCatId}
               telegramBoundCatIds={new Set()}
               helpers={LOBBY_HELPERS}
-              overflowMenuOpenId={null}
-              onOverflowMenuToggle={() => undefined}
+              overflowMenuOpenId={overflowMenuOpenId}
+              onOverflowMenuToggle={setOverflowMenuOpenId}
               onDirectChatCat={(catId) =>
                 navigate(`/cats/${encodeURIComponent(catId)}`)
               }
-              onArchiveCat={() => undefined}
+              onArchiveCat={(catId) => {
+                void onArchiveCat(catId);
+              }}
               emptyStatePlaceholder={catsPlaceholder}
+              onDirectMessageCat={(catId) =>
+                navigate(
+                  buildMyCatPathForPrefix(
+                    platformSurfaceRoutePrefix('chat'),
+                    catId,
+                  ),
+                )
+              }
             />
           </div>
 

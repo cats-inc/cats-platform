@@ -296,6 +296,16 @@
   background: var(--panel-hover);
 }
 
+.myCatOverflowMenuDivider {
+  /* Mirrors `.recentOverflowMenuDivider` in chat-thread-base.css —
+   * 1px hairline of `--border` between popover entries (currently
+   * Direct message ↑ / Archive ↓ in the lobby drill-down sidebar). */
+  height: 1px;
+  margin: 4px 8px;
+  border: 0;
+  background: var(--border);
+}
+
 .catAvatarRow {
   display: flex;
   gap: 8px;

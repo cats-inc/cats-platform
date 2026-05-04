@@ -2463,6 +2463,7 @@ export const enCatalog: MessageCatalog = {
   'conversationSidebar.directMessagesLabel': 'Direct Messages',
   'conversationSidebar.telegramBoundTooltip': 'Telegram bot bound',
   'conversationSidebar.archiveButton': 'Archive',
+  'conversationSidebar.directMessageButton': 'Direct message',
   'design.sidePanel.closeLabel': 'Close',
   'design.accountIdentityMenu.label': 'Account menu',
   'design.accountIdentityMenu.menuLabel': 'Account menu',

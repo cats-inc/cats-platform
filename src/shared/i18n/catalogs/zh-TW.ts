@@ -2413,6 +2413,7 @@ export const zhTWCatalog: MessageCatalog = {
   'conversationSidebar.directMessagesLabel': '直接訊息',
   'conversationSidebar.telegramBoundTooltip': '已綁定 Telegram 機器人',
   'conversationSidebar.archiveButton': '封存',
+  'conversationSidebar.directMessageButton': '直接訊息',
   'design.sidePanel.closeLabel': '關閉',
   'design.accountIdentityMenu.label': '帳號選單',
   'design.accountIdentityMenu.menuLabel': '帳號選單',

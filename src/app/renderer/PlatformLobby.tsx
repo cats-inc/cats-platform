@@ -1,6 +1,14 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
+// `.catAvatarBoss` (the gold ring on the boss-cat avatar) is the
+// canonical boss-cat visual primitive — it lives in
+// `chat-thread-base.css` next to `.catAvatar`. Pulling that file in
+// here so the lobby card's avatars get the same gold ring as the
+// sidebar's MY CATS list. Same one-source-of-truth approach the
+// drill-down `EntitiesShell` already uses.
+import '../../products/shared/renderer/styles/chat-thread-base.css';
+
 import { GuideCatDockSlot } from '../../design/components/GuideCatDockSlot.js';
 import { messageKeys, type MessageKey } from '../../shared/i18n/index.js';
 import { nameInitials } from '../../shared/nameInitials.js';
@@ -36,6 +44,9 @@ interface LobbyEntityRowSummary {
   name: string;
   avatarUrl: string | null;
   avatarColor: string | null;
+  /** Drives the gold-ring boss outline on the avatar. Cats can be the
+   * boss; clowders / catteries can't, so they always pass false. */
+  isBoss: boolean;
 }
 
 interface LobbyEntityCard {
@@ -69,7 +80,26 @@ function summarizeCat(cat: PlatformLobbyCatSummary): LobbyEntityRowSummary {
     name: cat.name,
     avatarUrl: cat.avatarUrl,
     avatarColor: cat.avatarColor,
+    isBoss: cat.isBoss,
   };
+}
+
+/**
+ * Boss-first ordering for the lobby cats card. Mirrors
+ * `sortChatCatsForDisplay` in `workspaceChatUtils.tsx` (used by the
+ * chat / code / work sidebars + the lobby drill-down sidebar). Boss
+ * cats float to the top; the rest keep the platform host's incoming
+ * order, which is already createdAt-ascending. Stable sort (ES2019)
+ * preserves that secondary order.
+ */
+function sortLobbyCatsForDisplay(
+  cats: readonly PlatformLobbyCatSummary[],
+): PlatformLobbyCatSummary[] {
+  return [...cats].sort((left, right) => {
+    const leftRank = left.isBoss ? 0 : 1;
+    const rightRank = right.isBoss ? 0 : 1;
+    return leftRank - rightRank;
+  });
 }
 
 function summarizeClowder(
@@ -80,6 +110,7 @@ function summarizeClowder(
     name: clowder.name,
     avatarUrl: clowder.avatarUrl,
     avatarColor: null,
+    isBoss: false,
   };
 }
 
@@ -91,6 +122,7 @@ function summarizeCattery(
     name: cattery.name,
     avatarUrl: cattery.avatarUrl,
     avatarColor: null,
+    isBoss: false,
   };
 }
 
@@ -105,7 +137,14 @@ function LobbyEntityAvatar({ row }: { row: LobbyEntityRowSummary }) {
       ? { background: row.avatarColor }
       : undefined;
   return (
-    <span className="lobbyEntityAvatar" style={style}>
+    <span
+      className={
+        row.isBoss
+          ? 'lobbyEntityAvatar catAvatarBoss'
+          : 'lobbyEntityAvatar'
+      }
+      style={style}
+    >
       {row.avatarUrl ? null : nameInitials(row.name)}
     </span>
   );
@@ -141,7 +180,7 @@ export function PlatformLobby({
     platformShellSurface: envelope.lastProductSurface ?? 'chat',
   };
 
-  const cats = envelope.lobby.cats;
+  const cats = sortLobbyCatsForDisplay(envelope.lobby.cats);
   const clowders = envelope.lobby.clowders ?? [];
   const catteries = envelope.lobby.catteries ?? [];
 

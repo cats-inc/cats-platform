@@ -2583,6 +2583,7 @@ export const messageKeys = {
   conversationSidebarDirectMessagesLabel: 'conversationSidebar.directMessagesLabel',
   conversationSidebarTelegramBoundTooltip: 'conversationSidebar.telegramBoundTooltip',
   conversationSidebarArchiveButton: 'conversationSidebar.archiveButton',
+  conversationSidebarDirectMessageButton: 'conversationSidebar.directMessageButton',
   codeActiveComposerDetachedBranch: 'code.activeComposer.detachedBranch',
   codeNewDraftGreeting: 'code.newDraft.greeting',
   codeNewDraftGreetingOpenRepo: 'code.newDraft.greeting.openRepo',

@@ -22,6 +22,7 @@ function MyCatRowItem<TCat extends ConversationSidebarCat>({
   onDirectChat,
   onArchive,
   onOverflowToggle,
+  onDirectMessage,
 }: {
   cat: TCat;
   isBoss: boolean;
@@ -34,6 +35,15 @@ function MyCatRowItem<TCat extends ConversationSidebarCat>({
   onDirectChat: () => void;
   onArchive: () => void;
   onOverflowToggle: () => void;
+  /**
+   * When provided, the overflow popover surfaces a "Direct message"
+   * entry above a divider before Archive. Distinct from
+   * `onDirectChat` (the row's primary click, which the lobby sidebar
+   * routes to the entity's CatHome page rather than the chat lane).
+   * Chat / Code / Work leave this undefined — their row click is
+   * already the direct lane, so a popover duplicate would be noise.
+   */
+  onDirectMessage?: () => void;
 }) {
   const { t } = useI18n();
   const overflowButtonRef = useRef<HTMLButtonElement>(null);
@@ -107,6 +117,14 @@ function MyCatRowItem<TCat extends ConversationSidebarCat>({
           style={overflowMenuStyle}
           onClick={(event) => event.stopPropagation()}
         >
+          {onDirectMessage ? (
+            <>
+              <button type="button" onClick={onDirectMessage}>
+                {t(messageKeys.conversationSidebarDirectMessageButton)}
+              </button>
+              <hr className="myCatOverflowMenuDivider" aria-hidden="true" />
+            </>
+          ) : null}
           <button type="button" disabled={false} onClick={onArchive}>
             {t(messageKeys.conversationSidebarArchiveButton)}
           </button>
@@ -245,6 +263,7 @@ export function ConversationSidebarMyCatsSection<
   onDirectChatCat,
   onArchiveCat,
   emptyStatePlaceholder,
+  onDirectMessageCat,
 }: {
   label?: string;
   cats: readonly TCat[];
@@ -258,6 +277,10 @@ export function ConversationSidebarMyCatsSection<
   onDirectChatCat: (catId: string) => void;
   onArchiveCat: (catId: string) => void;
   emptyStatePlaceholder?: ConversationSidebarMyCatsPlaceholder;
+  /** When provided, the overflow popover surfaces "Direct message"
+   * before a divider above Archive (lobby drill-down sidebar uses
+   * this to jump into Cats Chat's direct lane for the cat). */
+  onDirectMessageCat?: (catId: string) => void;
 }) {
   const { t } = useI18n();
   const activeCats = helpers.sortCatsForDisplay(
@@ -309,6 +332,14 @@ export function ConversationSidebarMyCatsSection<
               onOverflowToggle={() => onOverflowMenuToggle(
                 catOverflowOpen ? null : overflowKey,
               )}
+              onDirectMessage={
+                onDirectMessageCat
+                  ? () => {
+                      onOverflowMenuToggle(null);
+                      onDirectMessageCat(cat.id);
+                    }
+                  : undefined
+              }
             />
           );
         })}

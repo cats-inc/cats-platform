@@ -203,7 +203,17 @@ test('Lobby cats card renders the boss cat with avatar + ellipsis-friendly name 
   // name. Name overflow ellipsis is asserted via the CSS class — the
   // class chain pins the contract that lets the rule apply.
   assert.match(markup, /class="lobbyEntityItem"/u);
-  assert.match(markup, /class="lobbyEntityAvatar"/u);
+  // The avatar span carries `lobbyEntityAvatar` plus an optional
+  // `catAvatarBoss` modifier when the cat is the boss — see
+  // chat-thread-base.css for the gold-ring rule. Match on the lead
+  // class so we don't pin the test to a particular boss state.
+  assert.match(markup, /class="lobbyEntityAvatar(?:\s|")/u);
+  // The Concierge fixture is `isBoss: true`, so the markup must
+  // carry the `catAvatarBoss` modifier alongside `lobbyEntityAvatar`.
+  // This is the regression guard for the "lobby card avatar didn't
+  // get the gold ring" bug — boss visual lives in chat-thread-base.css
+  // and the lobby card has to import that bundle.
+  assert.match(markup, /class="lobbyEntityAvatar catAvatarBoss"/u);
   assert.match(markup, /class="lobbyEntityName">Concierge</u);
   // Cats card now shows "1 total"; clowders / catteries still hide
   // the footer entirely (count = 0).
