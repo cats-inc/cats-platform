@@ -158,6 +158,9 @@ The final 2026-05-04 cleanup localized:
 - Channel participant update controls map deterministic participant validation
   and not-found failures to localized feedback while preserving unknown
   diagnostics
+- Settings Cats Telegram diagnostics load feedback maps deterministic transport
+  status/diagnostics fallback failures to localized feedback while preserving
+  unknown diagnostics
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

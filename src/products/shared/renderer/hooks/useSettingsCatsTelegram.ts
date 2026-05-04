@@ -15,6 +15,7 @@ import {
   type TelegramTransportDiagnostics,
   type TelegramTransportStatus,
 } from '../api/index.js';
+import { formatSettingsCatsTelegramLoadError } from './settingsCatsTelegramErrorLabels.js';
 
 export function useSettingsCatsTelegram(payload: AppShellPayload): {
   botBindings: NonNullable<AppShellPayload['chat']['botBindings']>;
@@ -30,6 +31,9 @@ export function useSettingsCatsTelegram(payload: AppShellPayload): {
     bossCatId: payload.chat.bossCatId,
     botBindings,
   });
+  const telegramDiagnosticsLoadError = t(
+    messageKeys.sharedSettingsCatsTelegramDiagnosticsLoadError,
+  );
   const [telegramStatus, setTelegramStatus] = useState<TelegramTransportStatus | null>(null);
   const [telegramDiagnostics, setTelegramDiagnostics] = useState<TelegramTransportDiagnostics | null>(null);
   const [telegramLoading, setTelegramLoading] = useState(false);
@@ -43,7 +47,7 @@ export function useSettingsCatsTelegram(payload: AppShellPayload): {
     const loadRun = beginSettingsCatsTelegramScopeLoad(
       telegramAutoLoader,
       telegramScopeKey,
-      t(messageKeys.sharedSettingsCatsTelegramDiagnosticsLoadError),
+      telegramDiagnosticsLoadError,
       {
         onStart() {
           setTelegramLoading(true);
@@ -56,7 +60,10 @@ export function useSettingsCatsTelegram(payload: AppShellPayload): {
         onError(message) {
           setTelegramStatus(null);
           setTelegramDiagnostics(null);
-          setTelegramError(message);
+          setTelegramError(formatSettingsCatsTelegramLoadError(
+            message,
+            telegramDiagnosticsLoadError,
+          ));
         },
         onFinish() {
           setTelegramLoading(false);
@@ -64,7 +71,7 @@ export function useSettingsCatsTelegram(payload: AppShellPayload): {
       },
     );
     return loadRun.cancel;
-  }, [telegramAutoLoader, telegramScopeKey, t]);
+  }, [telegramAutoLoader, telegramDiagnosticsLoadError, telegramScopeKey]);
 
   async function refreshTelegramDiagnostics(): Promise<void> {
     setTelegramLoading(true);
@@ -79,11 +86,10 @@ export function useSettingsCatsTelegram(payload: AppShellPayload): {
     } catch (error) {
       setTelegramStatus(null);
       setTelegramDiagnostics(null);
-      setTelegramError(
-        error instanceof Error
-          ? error.message
-          : t(messageKeys.sharedSettingsCatsTelegramDiagnosticsLoadError),
-      );
+      setTelegramError(formatSettingsCatsTelegramLoadError(
+        error,
+        telegramDiagnosticsLoadError,
+      ));
     } finally {
       setTelegramLoading(false);
     }
