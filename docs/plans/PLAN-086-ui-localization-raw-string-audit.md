@@ -51,6 +51,8 @@ The final 2026-05-04 cleanup localized:
 - Cats Code relay roster availability summaries now persist structured probe
   kinds/values and render deterministic runtime probe copy through the shared
   i18n catalogs
+- Cats Code sidebar pinned codespace status tooltips now use localized
+  workspace status labels instead of raw status tokens
 - Work run list/detail pages localize known Cats-owned deterministic run
   summaries at presentation time while preserving runtime-authored summaries as
   content

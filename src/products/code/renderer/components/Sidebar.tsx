@@ -48,6 +48,7 @@ import {
   isCodeCodespacesPath,
   isCodeRelayPath,
 } from '../codePaths.js';
+import { labelCodeWorkspaceStatusForLocale } from './codeStatusLabels.js';
 
 export interface SidebarProps {
   payload: AppShellPayload;
@@ -203,7 +204,7 @@ function createExtraActionGroups(
           ),
         },
       ],
-      pinnedItems: buildPinnedWorkspaceItems(props, currentPath, workspacesSnapshot),
+      pinnedItems: buildPinnedWorkspaceItems(props, currentPath, workspacesSnapshot, t),
     });
   }
 
@@ -311,6 +312,7 @@ function buildPinnedWorkspaceItems(
   props: SidebarProps,
   currentPath: string,
   snapshot: CodeWorkspacesSnapshot,
+  t: Translate,
 ): ConversationSidebarPinnedItem[] {
   if (!props.onOpenWorkspace) return [];
   return snapshot.workspaces
@@ -322,7 +324,7 @@ function buildPinnedWorkspaceItems(
       onClick: () => props.onOpenWorkspace?.(ws.id),
       statusDot: {
         className: `codeWorkspacesList__dot codeWorkspacesList__dot--small codeWorkspacesList__dot--${ws.status}`,
-        title: ws.status,
+        title: labelCodeWorkspaceStatusForLocale(ws.status, t),
       },
     }));
 }

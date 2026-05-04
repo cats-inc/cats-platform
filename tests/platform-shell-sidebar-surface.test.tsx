@@ -14,6 +14,7 @@ import type { AppShellPayload as WorkAppShellPayload } from '../src/products/wor
 import type { AppShellPayload as CodeAppShellPayload } from '../src/products/code/api/contracts.ts';
 import type { PlatformSurfaceId } from '../src/shared/platform-contract.ts';
 import { clearBusyState } from '../src/shared/workspaceBusy.ts';
+import { createTranslator } from '../src/shared/i18n/index.ts';
 
 function createWorkSidebarElement(
   props: Parameters<typeof createWorkSidebarConversationProps>[0],
@@ -570,6 +571,62 @@ test('Code sidebar labels execution-context navigation as Codespaces', () => {
   const workspacesGroup = props.extraActionGroups?.find((group) => group.key === 'workspaces');
   assert.equal(workspacesGroup?.ariaLabel, 'Codespaces');
   assert.equal(workspacesGroup?.items[0]?.label, 'Codespaces');
+});
+
+test('Code sidebar localizes pinned codespace status tooltip labels', () => {
+  const props = createCodeSidebarConversationProps(
+    {
+      payload: createPayload() as unknown as CodeAppShellPayload,
+      sidebarOpen: true,
+      accountMenuOpen: false,
+      overflowMenuOpenId: null,
+      busy: clearBusyState(),
+      surface: 'chats',
+      shellSurface: 'code',
+      routeChannelId: null,
+      accountMenuRef: { current: null } as RefObject<HTMLDivElement>,
+      onToggleSidebar: () => {},
+      onCollapsedSidebarClick: () => {},
+      onOpenChatsOverview: () => {},
+      onStartNewChat: () => {},
+      onSelect: () => {},
+      onDeleteChannel: () => {},
+      onRenameChannel: () => {},
+      onArchiveCat: () => {},
+      onAccountMenuToggle: () => {},
+      onOverflowMenuToggle: () => {},
+      onNavigateSettings: () => {},
+      onNavigateRuntime: () => {},
+      onSwitchProduct: () => {},
+      activeMyCatId: null,
+      onDirectChatCat: () => {},
+      onOpenWorkspaces: () => {},
+      onOpenWorkspace: () => {},
+    },
+    {
+      t: createTranslator('zh-TW'),
+      workspacesSnapshot: {
+        loading: false,
+        error: null,
+        pinnedIds: new Set(['workspace-1']),
+        workspaces: [{
+          id: 'workspace-1',
+          title: 'Main workspace',
+          summary: null,
+          path: 'C:/repo',
+          status: 'active',
+          source: 'task_workspace',
+          conversationCount: 0,
+          taskCount: 0,
+          artifactCount: 0,
+          lastActiveAt: '2026-04-07T00:00:00.000Z',
+        }],
+      },
+    },
+  );
+
+  const workspacesGroup = props.extraActionGroups?.find((group) => group.key === 'workspaces');
+  assert.equal(workspacesGroup?.pinnedItems?.[0]?.statusDot?.title, '作用中');
 });
 
 test('Code sidebar shows the My Clowders empty placeholder', () => {
