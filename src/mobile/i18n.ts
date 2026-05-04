@@ -32,6 +32,13 @@ export interface MobileLobbyCopy {
   newCattery: string;
   expandSectionLabel: (sectionLabel: string) => string;
   collapseSectionLabel: (sectionLabel: string) => string;
+  entityDetailEyebrow: string;
+  entityDetailTitleCat: string;
+  entityDetailTitleClowder: string;
+  entityDetailTitleCattery: string;
+  entityDetailIdLabel: string;
+  entityDetailBody: string;
+  entityDetailBackToLobbyLabel: string;
 }
 
 export interface MobileChatCopy {
@@ -126,6 +133,14 @@ const MOBILE_LOBBY_COPY: Record<MobileLocale, MobileLobbyCopy> = {
     newCattery: '+ New Cattery',
     expandSectionLabel: (sectionLabel) => `Expand ${sectionLabel}`,
     collapseSectionLabel: (sectionLabel) => `Collapse ${sectionLabel}`,
+    entityDetailEyebrow: 'Coming soon',
+    entityDetailTitleCat: 'Cat home',
+    entityDetailTitleClowder: 'Clowder home',
+    entityDetailTitleCattery: 'Cattery home',
+    entityDetailIdLabel: 'ID',
+    entityDetailBody:
+      'This entity page is being built. The route resolves; richer content lands with PLAN-091 phase 6 once the data model SPEC is approved.',
+    entityDetailBackToLobbyLabel: 'Back to Lobby',
   },
   'zh-TW': {
     connectDesktopTitle: '連接桌面版',
@@ -144,6 +159,13 @@ const MOBILE_LOBBY_COPY: Record<MobileLocale, MobileLobbyCopy> = {
     newCattery: '+ 新增貓窩',
     expandSectionLabel: (sectionLabel) => `展開 ${sectionLabel}`,
     collapseSectionLabel: (sectionLabel) => `收合 ${sectionLabel}`,
+    entityDetailEyebrow: '開發中',
+    entityDetailTitleCat: '貓的主頁',
+    entityDetailTitleClowder: '貓群主頁',
+    entityDetailTitleCattery: '貓窩主頁',
+    entityDetailIdLabel: '識別碼',
+    entityDetailBody: '此頁面正在建置中。路由已連通，等 PLAN-091 phase 6 的資料模型 SPEC 通過後就會接上實際內容。',
+    entityDetailBackToLobbyLabel: '返回大廳',
   },
 };
 

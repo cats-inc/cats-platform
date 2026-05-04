@@ -5,6 +5,7 @@ import {
   getMobileApiCopy,
   getMobileChatCopy,
   getMobileChannelTitle,
+  getMobileLobbyCopy,
   getMobileSettingsCopy,
   getMobileTabsCopy,
   type MobileAppShellPayload,
@@ -62,6 +63,40 @@ test('selectMobileLobby projects chat cats into the mobile sidebar shape (PLAN-0
   ]);
   assert.deepEqual(data.clowders, []);
   assert.deepEqual(data.catteries, []);
+});
+
+test('mobile lobby copy ships sidebar section labels and entity-detail strings (PLAN-091 phase 5)', () => {
+  const en = getMobileLobbyCopy('en');
+  const zh = getMobileLobbyCopy('zh-TW');
+
+  assert.equal(en.sectionMyCats, 'My Cats');
+  assert.equal(en.sectionMyClowders, 'My Clowders');
+  assert.equal(en.sectionMyCatteries, 'My Catteries');
+  assert.equal(en.newCat, '+ New Cat');
+  assert.equal(en.expandSectionLabel('My Cats'), 'Expand My Cats');
+  assert.equal(en.collapseSectionLabel('My Cats'), 'Collapse My Cats');
+
+  assert.equal(zh.sectionMyCats, '我的貓咪');
+  assert.equal(zh.sectionMyClowders, '我的貓群');
+  assert.equal(zh.sectionMyCatteries, '我的貓窩');
+  assert.equal(zh.newCat, '+ 新增貓咪');
+  assert.equal(zh.expandSectionLabel('我的貓咪'), '展開 我的貓咪');
+
+  // Entity detail (Stack screens that drill into a single Cat /
+  // Clowder / Cattery from the Lobby tab)
+  assert.equal(en.entityDetailEyebrow, 'Coming soon');
+  assert.equal(en.entityDetailTitleCat, 'Cat home');
+  assert.equal(en.entityDetailTitleClowder, 'Clowder home');
+  assert.equal(en.entityDetailTitleCattery, 'Cattery home');
+  assert.equal(en.entityDetailIdLabel, 'ID');
+  assert.equal(en.entityDetailBackToLobbyLabel, 'Back to Lobby');
+  assert.match(en.entityDetailBody, /This entity page is being built/u);
+
+  assert.equal(zh.entityDetailEyebrow, '開發中');
+  assert.equal(zh.entityDetailTitleCat, '貓的主頁');
+  assert.equal(zh.entityDetailTitleClowder, '貓群主頁');
+  assert.equal(zh.entityDetailTitleCattery, '貓窩主頁');
+  assert.equal(zh.entityDetailBackToLobbyLabel, '返回大廳');
 });
 
 test('selectMobileLobby honors catsLimit when slicing the projection', () => {

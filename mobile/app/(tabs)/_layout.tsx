@@ -54,6 +54,18 @@ export default function TabsLayout() {
         name="settings"
         options={{ title: copy.tabTitle.settings, tabBarIcon: tabIcon('⚙') }}
       />
+      {/*
+        Per PLAN-091 phase 5, the mobile Lobby tab is the only entry
+        point for the platform entity routes (Cat / Clowder / Cattery
+        homes). The detail screens live inside the (tabs) group so the
+        bottom tab bar stays mounted while the user drills into a
+        specific entity, but they do not appear as tabs themselves —
+        href: null hides them from the tab bar while keeping the
+        Stack-style push reachable from Lobby row taps.
+      */}
+      <Tabs.Screen name="cats/[id]" options={{ href: null }} />
+      <Tabs.Screen name="clowders/[id]" options={{ href: null }} />
+      <Tabs.Screen name="catteries/[id]" options={{ href: null }} />
     </Tabs>
   );
 }
