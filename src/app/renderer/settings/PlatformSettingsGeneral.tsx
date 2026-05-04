@@ -560,7 +560,7 @@ export function PlatformSettingsGeneral({
                 <button
                   type="button"
                 className="secondaryButton"
-                onClick={() => navigate('/settings/cats/assistants')}
+                onClick={() => navigate('/settings/assistants')}
               >
                 {t('settingsGeneralOpenAssistantsButton')}
               </button>

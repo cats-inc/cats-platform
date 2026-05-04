@@ -34,8 +34,8 @@ export function resolveSettingsSectionConfig(
   pathname: string,
   translate: (key: MessageKey) => string,
 ): { section: string; title: string } {
-  if (pathname.startsWith('/settings/cats/assistants')) {
-    return { section: 'cats:assistants', title: translate('settingsRouteTitleAssistants') };
+  if (pathname.startsWith('/settings/assistants')) {
+    return { section: 'assistants', title: translate('settingsRouteTitleAssistants') };
   }
   if (pathname.startsWith('/settings/cats')) {
     return { section: 'cats:my-cats', title: translate('settingsRouteTitleMyCats') };
@@ -109,7 +109,7 @@ export function buildPlatformSettingsRouteTree<TPayload extends WorkspaceAppShel
         element={<Navigate to="/settings/cats" replace />}
       />
       <Route
-        path="cats/assistants"
+        path="assistants"
         element={(
           <SettingsAssistants
             payload={payload}
