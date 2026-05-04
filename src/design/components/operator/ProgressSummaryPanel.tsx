@@ -4,6 +4,7 @@ import {
   operatorDeliveryGateLabel,
   operatorDeliveryModeLabel,
   operatorSeverityClassName,
+  operatorWorkflowShapeLabel,
   runStatusLabel,
   runStatusSeverity,
 } from '../../operatorFormatting';
@@ -158,7 +159,10 @@ export function ProgressSummaryPanel({
                 {inspector.workflowShape ? (
                   <span>
                     {t(messageKeys.sharedOperatorMetaShape, {
-                      shape: inspector.workflowShape,
+                      shape: operatorWorkflowShapeLabel(
+                        inspector.workflowShape,
+                        t,
+                      ),
                     })}
                   </span>
                 ) : null}

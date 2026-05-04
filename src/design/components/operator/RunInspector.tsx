@@ -3,7 +3,9 @@ import {
   checkpointStatusLabel,
   checkpointStatusSeverity,
   formatOperatorTimestamp,
+  operatorBranchStrategyLabel,
   operatorSeverityClassName,
+  operatorWorkflowShapeLabel,
   outcomeStatusLabel,
   outcomeStatusSeverity,
   runStatusLabel,
@@ -143,7 +145,10 @@ export function RunInspector({
                 {inspector.workflowShape ? (
                   <span>
                     {t(messageKeys.sharedOperatorMetaShape, {
-                      shape: inspector.workflowShape,
+                      shape: operatorWorkflowShapeLabel(
+                        inspector.workflowShape,
+                        t,
+                      ),
                     })}
                   </span>
                 ) : null}
@@ -224,7 +229,10 @@ export function RunInspector({
                           : ''}
                         {branch.branchStrategy
                           ? `${t(messageKeys.sharedOperatorBranchStrategy, {
-                            strategy: branch.branchStrategy,
+                            strategy: operatorBranchStrategyLabel(
+                              branch.branchStrategy,
+                              t,
+                            ),
                           })} `
                           : ''}
                         {branch.parentCheckpointId

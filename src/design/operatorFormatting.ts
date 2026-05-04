@@ -59,6 +59,15 @@ const fallbackOperatorTranslate: OperatorTranslate = (key) => {
     [messageKeys.sharedOperatorBudgetLevelNormal]: 'Normal',
     [messageKeys.sharedOperatorBudgetLevelWarning]: 'Warning',
     [messageKeys.sharedOperatorBudgetLevelBlocked]: 'Blocked',
+    [messageKeys.sharedOperatorWorkflowShapeSequential]: 'Sequential',
+    [messageKeys.sharedOperatorWorkflowShapeConcurrent]: 'Concurrent',
+    [messageKeys.sharedOperatorWorkflowShapeConverge]: 'Converge',
+    [messageKeys.sharedOperatorBranchStrategyForkIfPossible]: 'Fork if possible',
+    [messageKeys.sharedOperatorBranchStrategyFreshNoParent]:
+      'Fresh branch without parent',
+    [messageKeys.sharedOperatorBranchStrategySingleTargetReview]:
+      'Single-target review',
+    [messageKeys.sharedOperatorBranchStrategyTransplantContext]: 'Transplant context',
   };
 
   return fallback[key] ?? String(key);
@@ -282,6 +291,20 @@ const OPERATOR_BUDGET_LEVEL_KEYS: Record<string, MessageKey> = {
   warning: messageKeys.sharedOperatorBudgetLevelWarning,
 };
 
+const OPERATOR_WORKFLOW_SHAPE_KEYS: Record<string, MessageKey> = {
+  concurrent: messageKeys.sharedOperatorWorkflowShapeConcurrent,
+  converge: messageKeys.sharedOperatorWorkflowShapeConverge,
+  parallel: messageKeys.sharedOperatorWorkflowShapeConcurrent,
+  sequential: messageKeys.sharedOperatorWorkflowShapeSequential,
+};
+
+const OPERATOR_BRANCH_STRATEGY_KEYS: Record<string, MessageKey> = {
+  fork_if_possible: messageKeys.sharedOperatorBranchStrategyForkIfPossible,
+  fresh_no_parent: messageKeys.sharedOperatorBranchStrategyFreshNoParent,
+  single_target_review: messageKeys.sharedOperatorBranchStrategySingleTargetReview,
+  transplant_context: messageKeys.sharedOperatorBranchStrategyTransplantContext,
+};
+
 function normalizeOperatorToken(value: string): string {
   return value.trim().toLowerCase().replace(/-/gu, '_');
 }
@@ -326,4 +349,18 @@ export function operatorBudgetAlertLevelLabel(
   t: OperatorTranslate = fallbackOperatorTranslate,
 ): string {
   return formatOperatorToken(level, OPERATOR_BUDGET_LEVEL_KEYS, t);
+}
+
+export function operatorWorkflowShapeLabel(
+  shape: string,
+  t: OperatorTranslate = fallbackOperatorTranslate,
+): string {
+  return formatOperatorToken(shape, OPERATOR_WORKFLOW_SHAPE_KEYS, t);
+}
+
+export function operatorBranchStrategyLabel(
+  strategy: string,
+  t: OperatorTranslate = fallbackOperatorTranslate,
+): string {
+  return formatOperatorToken(strategy, OPERATOR_BRANCH_STRATEGY_KEYS, t);
 }

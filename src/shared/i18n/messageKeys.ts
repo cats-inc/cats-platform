@@ -1982,6 +1982,14 @@ export const messageKeys = {
   sharedOperatorNoBranchesRecorded: 'shared.operator.noBranchesRecorded',
   sharedOperatorBranchHandoff: 'shared.operator.branch.handoff',
   sharedOperatorBranchStrategy: 'shared.operator.branch.strategy',
+  sharedOperatorBranchStrategyForkIfPossible:
+    'shared.operator.branchStrategy.forkIfPossible',
+  sharedOperatorBranchStrategyFreshNoParent:
+    'shared.operator.branchStrategy.freshNoParent',
+  sharedOperatorBranchStrategySingleTargetReview:
+    'shared.operator.branchStrategy.singleTargetReview',
+  sharedOperatorBranchStrategyTransplantContext:
+    'shared.operator.branchStrategy.transplantContext',
   sharedOperatorBranchFromCheckpoint: 'shared.operator.branch.fromCheckpoint',
   sharedOperatorBranchNoLineage: 'shared.operator.branch.noLineage',
   sharedOperatorSectionOutcomes: 'shared.operator.section.outcomes',
@@ -2018,6 +2026,9 @@ export const messageKeys = {
   sharedOperatorBudgetLevelNormal: 'shared.operator.budgetLevel.normal',
   sharedOperatorBudgetLevelWarning: 'shared.operator.budgetLevel.warning',
   sharedOperatorBudgetLevelBlocked: 'shared.operator.budgetLevel.blocked',
+  sharedOperatorWorkflowShapeSequential: 'shared.operator.workflowShape.sequential',
+  sharedOperatorWorkflowShapeConcurrent: 'shared.operator.workflowShape.concurrent',
+  sharedOperatorWorkflowShapeConverge: 'shared.operator.workflowShape.converge',
   sharedOperatorInspectRunButton: 'shared.operator.inspectRunButton',
   sharedOperatorNoTraceRecords: 'shared.operator.noTraceRecords',
   sharedOperatorActionRequestRetry: 'shared.operator.action.requestRetry',

@@ -6,9 +6,11 @@ import { renderToStaticMarkup } from 'react-dom/server.browser';
 import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
 import {
   branchStatusLabel,
+  operatorBranchStrategyLabel,
   operatorBudgetAlertLevelLabel,
   operatorDeliveryGateLabel,
   operatorDeliveryModeLabel,
+  operatorWorkflowShapeLabel,
   runStatusLabel,
 } from '../src/design/operatorFormatting.ts';
 import { createTranslator } from '../src/shared/i18n/index.ts';
@@ -50,6 +52,16 @@ test('operator policy metadata labels localize known policy tokens', () => {
     '需要發布成果物',
   );
   assert.equal(operatorBudgetAlertLevelLabel('blocked', zh), '受阻');
+  assert.equal(operatorWorkflowShapeLabel('converge', zh), '匯合');
+  assert.equal(operatorWorkflowShapeLabel('parallel', zh), '並行');
+  assert.equal(
+    operatorBranchStrategyLabel('transplant_context', zh),
+    '沿用上下文',
+  );
+  assert.equal(
+    operatorBranchStrategyLabel('fresh_no_parent', zh),
+    '新分支無父層',
+  );
 });
 
 test('progress summary renders localized policy metadata tokens', async () => {
@@ -69,7 +81,7 @@ test('progress summary renders localized policy metadata tokens', async () => {
             targetCount: 1,
           },
           workflowStageId: null,
-          workflowShape: null,
+          workflowShape: 'converge',
           reviewRequired: false,
         }}
         effectivePolicy={{
@@ -88,9 +100,11 @@ test('progress summary renders localized policy metadata tokens', async () => {
   );
 
   assert.match(markup, /交付：僅提交/u);
+  assert.match(markup, /形態：匯合/u);
   assert.match(markup, /門檻：需要擁有者核准, 需要發布成果物/u);
   assert.match(markup, /預算：受阻/u);
   assert.doesNotMatch(markup, /commit_only/u);
+  assert.doesNotMatch(markup, /converge/u);
   assert.doesNotMatch(markup, /owner_approval_required/u);
   assert.doesNotMatch(markup, /publish_artifact_required/u);
 });
@@ -114,14 +128,14 @@ test('run inspector renders localized tab and branch status metadata', async () 
               participantName: 'Code Cat',
               status: 'waiting_for_converge',
               handoffReason: null,
-              branchStrategy: null,
+              branchStrategy: 'transplant_context',
               parentCheckpointId: null,
               error: null,
             },
           ],
           outcomes: [],
           workflowStageId: null,
-          workflowShape: null,
+          workflowShape: 'converge',
           reviewRequired: false,
           guardReason: null,
           cooldownLabel: null,
@@ -132,8 +146,12 @@ test('run inspector renders localized tab and branch status metadata', async () 
   );
 
   assert.match(markup, /<span>已完成<\/span>/u);
+  assert.match(markup, /形態：匯合/u);
+  assert.match(markup, /策略：沿用上下文/u);
   assert.match(markup, /<span class="operatorMetaText">等待匯合<\/span>/u);
   assert.doesNotMatch(markup, /waiting_for_converge/u);
+  assert.doesNotMatch(markup, /transplant_context/u);
+  assert.doesNotMatch(markup, /converge/u);
   assert.doesNotMatch(markup, /<span>Completed<\/span>/u);
 });
 

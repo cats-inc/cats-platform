@@ -98,6 +98,8 @@ The final 2026-05-04 cleanup localized:
 - Shared operator progress summaries localize effective delivery mode, delivery
   gate, and budget alert metadata such as `commit_only`,
   `owner_approval_required`, and `blocked`
+- Shared operator progress summaries and Run Inspector localize workflow shape
+  and branch strategy metadata such as `converge` and `transplant_context`
 - Runtime Settings lifecycle feedback localizes desktop setup helper summary
   templates such as retry, restart, manual follow-through, missing requirement,
   and helper-finished status messages
