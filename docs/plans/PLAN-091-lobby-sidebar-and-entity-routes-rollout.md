@@ -197,9 +197,9 @@ Out of scope (covered elsewhere or deferred):
 > approved. Until then, `/clowders/:id` and `/catteries/:id` continue to
 > render the Phase 1 stub.
 
-- [ ] Approve ADR-100 and SPEC-103 with the user; resolve their open
-      questions (Clowder Members-vs-Cats tab collapse, Cattery temp
-      membership, etc.)
+- [ ] Approve ADR-100 and SPEC-103 with the user; resolve remaining
+      open questions (Cattery temp membership, archive vs delete
+      semantics, primary-Cattery affinity field, etc.)
 - [ ] Add Core types: `Cat` (existing), `Clowder`, `Cattery`,
       `ClowderMembership`, `CatteryMembership`, `MembershipStatus =
       'formal' | 'temp' | 'external'`

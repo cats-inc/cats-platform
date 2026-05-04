@@ -73,17 +73,19 @@ canvas shape rendered at each entity route.
    `+ New X` row at its tail.
 3. Clicking an entity row shall navigate to the canonical entity URL:
    `/cats/:catId`, `/clowders/:clowderId`, `/catteries/:catteryId`.
-4. Sidebar state (which sections are collapsed, which entity is active) is
-   URL-driven where reasonable; collapsed/expanded is `localStorage`-backed
-   per ADR-098 spirit (ephemeral UI, not navigable view).
+4. The Lobby sidebar has no "selected entity" state because clicking a
+   row navigates the user away from `/lobby` (FR-7). The only sidebar
+   state is per-section collapse/expand, persisted in `localStorage`
+   (ephemeral UI, not navigable; consistent with ADR-098 spirit).
 
 #### Lobby Canvas
 
-5. With **no entity selected**, the Lobby canvas shall preserve the existing
-   `PlatformLobby` content: `lobbyTopBar` (brand + GuideCatDockSlot +
-   identity pill), `lobbyHero` greeting, products grid, apps grid. The
-   `LobbyBouncingCats` background shall remain visible behind sidebar and
-   canvas.
+5. The Lobby canvas has a single rendered state: it preserves the
+   existing `PlatformLobby` content — `lobbyTopBar` (brand +
+   GuideCatDockSlot + identity pill), `lobbyHero` greeting, products
+   grid, apps grid — with `LobbyBouncingCats` as the fixed background
+   behind sidebar and canvas. There is no entity-detail mode inside the
+   Lobby canvas.
 6. The top-right `LobbyCatRoster` (stacked cat avatars in `lobbyTopBar`)
    shall be **removed** once Lobby sidebar ships, to avoid duplicate rosters.
    The identity pill and `GuideCatDockSlot` shall remain.
@@ -265,7 +267,7 @@ StandaloneEntityPage (routes: /cats/:id, /clowders/:id, /catteries/:id)
 
 ### Wireframes
 
-#### Web Lobby — no entity selected (preserved canvas)
+#### Web Lobby (`/lobby`) — single rendered state
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
