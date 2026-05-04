@@ -2482,6 +2482,19 @@ export const messageKeys = {
   settingsAssistantsRoleHintUpdateFailed: 'settings.assistants.roleHintUpdateFailed',
   settingsAssistantsBrainUpdateFailed: 'settings.assistants.brainUpdateFailed',
   settingsAssistantsCreateFailed: 'settings.assistants.createFailed',
+  settingsAssistantsApiInvalidRequestBody: 'settings.assistants.api.invalidRequestBody',
+  settingsAssistantsApiAssistantNameRequired:
+    'settings.assistants.api.assistantNameRequired',
+  settingsAssistantsApiAssistantProviderRequired:
+    'settings.assistants.api.assistantProviderRequired',
+  settingsAssistantsApiAssistantModelRequired:
+    'settings.assistants.api.assistantModelRequired',
+  settingsAssistantsApiAssistantNotFound: 'settings.assistants.api.assistantNotFound',
+  settingsAssistantsApiGuideCatNameManaged:
+    'settings.assistants.api.guideCatNameManaged',
+  settingsAssistantsApiGuideCatStatusInvalid:
+    'settings.assistants.api.guideCatStatusInvalid',
+  settingsAssistantsApiGuideCatNotFound: 'settings.assistants.api.guideCatNotFound',
   conversationSidebarChatsLabel: 'conversationSidebar.chatsLabel',
   conversationSidebarRecentsLabel: 'conversationSidebar.recentsLabel',
   conversationSidebarNoChatsLabel: 'conversationSidebar.noChatsLabel',

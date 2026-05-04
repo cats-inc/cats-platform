@@ -25,6 +25,7 @@ import {
 } from '../../../shared/guideCatIdentity.js';
 import { useI18n } from '../i18n/index.js';
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
+import { readSettingsAssistantsApiErrorMessage } from './settingsAssistantsApiErrors.js';
 
 export interface SettingsAssistantsProps {
   payload: AppShellPayload;
@@ -131,12 +132,14 @@ export function SettingsAssistants({
           body: JSON.stringify(body),
         });
         if (!response.ok) {
-          const errorPayload = await response.json().catch(() => null);
           throw new Error(
-            (errorPayload as { error?: { message?: string } } | null)?.error?.message
-              ?? t(messageKeys.settingsAssistantsSaveFailedWithError, {
+            await readSettingsAssistantsApiErrorMessage(
+              response,
+              t,
+              t(messageKeys.settingsAssistantsSaveFailedWithError, {
                 status: response.status,
               }),
+            ),
           );
         }
         const result = (await response.json()) as { guideCat: GuideCatRecord };
@@ -163,12 +166,14 @@ export function SettingsAssistants({
           body: JSON.stringify({ status }),
         });
         if (!response.ok) {
-          const errorPayload = await response.json().catch(() => null);
           throw new Error(
-            (errorPayload as { error?: { message?: string } } | null)?.error?.message
-              ?? t(messageKeys.settingsAssistantsStatusUpdateFailed, {
+            await readSettingsAssistantsApiErrorMessage(
+              response,
+              t,
+              t(messageKeys.settingsAssistantsStatusUpdateFailed, {
                 status: response.status,
               }),
+            ),
           );
         }
         const result = (await response.json()) as { guideCat: GuideCatRecord };
@@ -243,12 +248,14 @@ export function SettingsAssistants({
           body: JSON.stringify(body),
         });
         if (!response.ok) {
-          const errorPayload = await response.json().catch(() => null);
           throw new Error(
-            (errorPayload as { error?: { message?: string } } | null)?.error?.message
-              ?? t(messageKeys.settingsAssistantsSaveFailedWithError, {
+            await readSettingsAssistantsApiErrorMessage(
+              response,
+              t,
+              t(messageKeys.settingsAssistantsSaveFailedWithError, {
                 status: response.status,
               }),
+            ),
           );
         }
         const result = (await response.json()) as {
@@ -264,7 +271,7 @@ export function SettingsAssistants({
         setAssistantBusy(false);
       }
     },
-    [assistantPresets, onPayloadUpdate, payload, toastError],
+    [assistantPresets, onPayloadUpdate, payload, toastError, t],
   );
 
   const handleCreateAssistant = useCallback(async () => {
@@ -283,12 +290,14 @@ export function SettingsAssistants({
         }),
       });
       if (!response.ok) {
-        const errorPayload = await response.json().catch(() => null);
         throw new Error(
-          (errorPayload as { error?: { message?: string } } | null)?.error?.message
-            ?? t(messageKeys.settingsAssistantsSaveFailedWithError, {
+          await readSettingsAssistantsApiErrorMessage(
+            response,
+            t,
+            t(messageKeys.settingsAssistantsSaveFailedWithError, {
               status: response.status,
             }),
+          ),
         );
       }
       const result = (await response.json()) as {
@@ -326,10 +335,12 @@ export function SettingsAssistants({
         },
       );
       if (!response.ok) {
-        const errorPayload = await response.json().catch(() => null);
         throw new Error(
-          (errorPayload as { error?: { message?: string } } | null)?.error?.message
-            ?? t(messageKeys.settingsAssistantsStatusFailed, { status: response.status }),
+          await readSettingsAssistantsApiErrorMessage(
+            response,
+            t,
+            t(messageKeys.settingsAssistantsStatusFailed, { status: response.status }),
+          ),
         );
       }
       const result = (await response.json()) as {
