@@ -36,6 +36,7 @@ import {
   formatRunOutcomeStatusLabel,
   formatRunTraceKindLabel,
 } from "./runDetailLabels.js";
+import { formatRunStopBlockerMessage } from "../runCancellationLabels.js";
 import "./runs.css";
 
 interface TraceState {
@@ -88,22 +89,6 @@ function isTerminalRunStatus(status: WorkRunListItem["status"]): boolean {
   return status === "completed" || status === "failed" || status === "cancelled";
 }
 
-function buildRuntimeAbortBlockerMessage(
-  result: WorkRunStopResponse,
-  t: ReturnType<typeof useI18n>["t"],
-): string {
-  const { runtimeAbort } = result;
-  if (runtimeAbort.status === "failed") {
-    return runtimeAbort.error
-      ? t("workRunStopErrorWithError", { error: runtimeAbort.error })
-      : t("workRunStopErrorFallback");
-  }
-  if (runtimeAbort.status === "not_applicable") {
-    return t("workRunStopNotStoppable");
-  }
-  return t("workRunStopNotStoppableGeneric");
-}
-
 function formatDuration(start: string | null, end: string | null): string | null {
   if (!start) return null;
   const startMs = Date.parse(start);
@@ -147,9 +132,7 @@ export function RunDetailPage(): JSX.Element {
         queryClient.invalidateQueries({ queryKey: WORK_GRAPH_QUERY_KEY }),
       ]);
       if (result.status === 'not_stoppable') {
-        setStopBlockerMessage(
-          result.message ?? buildRuntimeAbortBlockerMessage(result, t),
-        );
+        setStopBlockerMessage(formatRunStopBlockerMessage(result, t));
       } else {
         setStopBlockerMessage(null);
       }

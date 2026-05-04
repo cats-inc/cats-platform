@@ -13,6 +13,7 @@ import {
 import { RUNS_QUERY_KEY, useRunsQuery } from "../../state/queries/runsQuery.js";
 import { useTasksQuery } from "../../state/queries/tasksQuery.js";
 import { useWorkItemsQuery } from "../../state/queries/workItemsQuery.js";
+import { formatMissionCancelBlockedMessage } from "../runCancellationLabels.js";
 import {
   WORK_MISSIONS_PATH,
   buildWorkRunPath,
@@ -48,14 +49,8 @@ export function MissionDetailPage(): JSX.Element {
         queryClient.invalidateQueries({ queryKey: RUNS_QUERY_KEY }),
       ]);
       if (result.status === "blocked") {
-        const detail = result.blockers
-          .map((blocker) => `${blocker.runId}: ${blocker.reason}`)
-          .join("; ");
         setCancelBlockerMessage(
-          result.message
-            ?? t("workMissionCancelBlocked", {
-              detail: detail || t("workMissionCancelBlockedNoDetails"),
-            }),
+          formatMissionCancelBlockedMessage(result.blockers, t),
         );
       } else {
         setCancelBlockerMessage(null);

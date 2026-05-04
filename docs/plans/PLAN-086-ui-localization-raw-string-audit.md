@@ -116,6 +116,9 @@ The final 2026-05-04 cleanup localized:
 - The raw-string audit guard now also scans literal JSX text nodes and literal
   JSX expression children, while continuing to ignore icon/entity-only text
   such as close buttons and overflow glyphs
+- Work run stop and mission cancel blocked feedback localize known run
+  cancellation blocker reasons instead of rendering deterministic server
+  summary text directly
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

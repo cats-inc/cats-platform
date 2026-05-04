@@ -532,6 +532,13 @@ export const zhTWCatalog: MessageCatalog = {
   'work.mission.cancelRouteFailed': '取消任務失敗。HTTP {statusCode}。',
   'work.mission.cancelLabel': '取消',
   'work.mission.cancelLabelBusy': '取消中…',
+  'work.cancellation.blocker.runNotStoppable': '此執行無法停止。',
+  'work.cancellation.blocker.noRuntimeSession':
+    '此執行沒有橋接監督式執行階段工作階段。',
+  'work.cancellation.blocker.runtimeClientUnavailable':
+    '執行階段用戶端無法使用。',
+  'work.cancellation.blocker.runtimeCancellationFailed':
+    '取消執行階段失敗：{error}',
   'work.mission.summaryTitle': '任務群概覽',
   'work.mission.statusLabel': '狀態',
   'work.mission.assignedAgentLabel': '指派代理人',

@@ -510,6 +510,14 @@ export const messageKeys = {
   workMissionCancelRouteFailed: 'work.mission.cancelRouteFailed',
   workMissionCancelLabel: 'work.mission.cancelLabel',
   workMissionCancelLabelBusy: 'work.mission.cancelLabelBusy',
+  workCancellationBlockerRunNotStoppable:
+    'work.cancellation.blocker.runNotStoppable',
+  workCancellationBlockerNoRuntimeSession:
+    'work.cancellation.blocker.noRuntimeSession',
+  workCancellationBlockerRuntimeClientUnavailable:
+    'work.cancellation.blocker.runtimeClientUnavailable',
+  workCancellationBlockerRuntimeCancellationFailed:
+    'work.cancellation.blocker.runtimeCancellationFailed',
   workMissionSummaryTitle: 'work.mission.summaryTitle',
   workMissionStatusLabel: 'work.mission.statusLabel',
   workMissionAssignedAgentLabel: 'work.mission.assignedAgentLabel',

@@ -554,6 +554,13 @@ export const enCatalog: MessageCatalog = {
     'Mission cancel failed. HTTP {statusCode}.',
   'work.mission.cancelLabel': 'Cancel',
   'work.mission.cancelLabelBusy': 'Cancelling…',
+  'work.cancellation.blocker.runNotStoppable': 'Run is not stoppable.',
+  'work.cancellation.blocker.noRuntimeSession':
+    'No supervised runtime session is bridged.',
+  'work.cancellation.blocker.runtimeClientUnavailable':
+    'Runtime client is unavailable.',
+  'work.cancellation.blocker.runtimeCancellationFailed':
+    'Runtime cancellation failed: {error}',
   'work.mission.summaryTitle': 'Mission summary',
   'work.mission.statusLabel': 'Status',
   'work.mission.assignedAgentLabel': 'Assigned agent',
