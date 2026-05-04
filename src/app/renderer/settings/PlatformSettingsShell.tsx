@@ -97,14 +97,14 @@ export function PlatformSettingsShell({
           >
             {t('settingsShellSubsectionMyCats')}
           </button>
+          <button
+            className={section === 'assistants' ? 'settingsTab settingsTabActive' : 'settingsTab'}
+            type="button"
+            onClick={() => navigate('/settings/assistants')}
+          >
+            {t('settingsShellSubsectionAssistants')}
+          </button>
         </div>
-        <button
-          className={section === 'assistants' ? 'settingsTab settingsTabActive' : 'settingsTab'}
-          type="button"
-          onClick={() => navigate('/settings/assistants')}
-        >
-          {t('settingsShellSubsectionAssistants')}
-        </button>
         {productEntries.map((entry) => (
           <button
             key={`${entry.productId}:${entry.id}`}

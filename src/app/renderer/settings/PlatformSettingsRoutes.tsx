@@ -106,7 +106,7 @@ export function buildPlatformSettingsRouteTree<TPayload extends WorkspaceAppShel
       <Route path="cats/new" element={catsElement} />
       <Route
         path="cats/my-cats"
-        element={<Navigate to="/cats" replace />}
+        element={<Navigate to="/settings/cats" replace />}
       />
       <Route
         path="assistants"
