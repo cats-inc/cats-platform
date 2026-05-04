@@ -578,6 +578,18 @@ export const zhTWCatalog: MessageCatalog = {
   'work.run.backLabel': '任務',
   'work.run.stopLabel': '停止',
   'work.run.stopLabelBusy': '停止中…',
+  'work.run.summary.blockedBeforeRuntimeLaunch':
+    '執行階段啟動完成前已阻擋。',
+  'work.run.summary.blockedBeforeScheduledRuntimeLaunch':
+    '排程執行階段啟動完成前已阻擋。',
+  'work.run.summary.launchingScheduledMission':
+    '正在透過監督式執行階段邊界啟動排程任務。',
+  'work.run.summary.providerAgentRuntimeMessageCompleted':
+    '供應器代理人執行階段訊息已完成。',
+  'work.run.summary.queuedSupervisedWorkRun': '已排入監督式工作執行。',
+  'work.run.summary.relayFanOutDispatch': '已為 {agentLabel} 建立分派執行。',
+  'work.run.summary.startedSupervisedCodeTaskExecution':
+    '已啟動監督式程式任務執行。',
   'work.run.summaryTitle': '執行摘要',
   'work.run.statusLabel': '狀態',
   'work.run.updatedLabel': '更新於',

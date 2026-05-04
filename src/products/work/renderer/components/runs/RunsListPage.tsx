@@ -5,6 +5,7 @@ import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import { getWorkObjectStatusLabel } from "../topdown/WorkObjectCard";
 import { useRunsQuery } from "../../state/queries/runsQuery.js";
 import { buildWorkRunPath } from "../../workPaths.js";
+import { presentWorkRunSummary } from "./runSummaryLabels.js";
 import "./runs.css";
 
 export function RunsListPage(): JSX.Element {
@@ -61,7 +62,7 @@ export function RunsListPage(): JSX.Element {
                         <span className="runsList__rowTitle">{run.title}</span>
                         {run.summary ? (
                           <span className="runsList__rowSummary">
-                            {run.summary}
+                            {presentWorkRunSummary(run.summary, t)}
                           </span>
                         ) : null}
                       </div>

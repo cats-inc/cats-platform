@@ -30,6 +30,7 @@ import {
   fetchTracesByRunId,
   type CoreTraceSummary,
 } from "../../api/traces.js";
+import { presentWorkRunSummary } from "./runSummaryLabels.js";
 import "./runs.css";
 
 interface TraceState {
@@ -389,7 +390,9 @@ export function RunDetailPage(): JSX.Element {
             ) : null}
           </dl>
           {run.summary ? (
-            <p className="runDetail__summaryBody">{run.summary}</p>
+            <p className="runDetail__summaryBody">
+              {presentWorkRunSummary(run.summary, t)}
+            </p>
           ) : null}
         </section>
 

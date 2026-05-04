@@ -602,6 +602,18 @@ export const enCatalog: MessageCatalog = {
   'work.run.backLabel': 'Tasks',
   'work.run.stopLabel': 'Stop',
   'work.run.stopLabelBusy': 'Stopping…',
+  'work.run.summary.blockedBeforeRuntimeLaunch':
+    'Blocked before runtime launch completed.',
+  'work.run.summary.blockedBeforeScheduledRuntimeLaunch':
+    'Blocked before scheduled runtime launch completed.',
+  'work.run.summary.launchingScheduledMission':
+    'Launching scheduled mission through supervised runtime boundary.',
+  'work.run.summary.providerAgentRuntimeMessageCompleted':
+    'Provider-agent runtime message completed.',
+  'work.run.summary.queuedSupervisedWorkRun': 'Queued supervised Work run.',
+  'work.run.summary.relayFanOutDispatch': 'Relay fan-out dispatch for {agentLabel}.',
+  'work.run.summary.startedSupervisedCodeTaskExecution':
+    'Started supervised Code task execution.',
   'work.run.summaryTitle': 'Run summary',
   'work.run.statusLabel': 'Status',
   'work.run.updatedLabel': 'Updated',
