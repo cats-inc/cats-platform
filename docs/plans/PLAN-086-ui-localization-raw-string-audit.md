@@ -143,7 +143,7 @@ The final 2026-05-04 cleanup localized:
 - Workspace cat assignment actions map deterministic channel, assignment, direct
   lane, participant-limit, and shared cat validation failures to localized
   feedback while preserving unknown diagnostics
-- Shared workspace navigation and product navigation overrides map deterministic
+- Shared workspace navigation and Chat/Code/Work product navigation overrides map deterministic
   chat/channel/parallel-chat mutation failures and cat archive/delete failures
   to localized feedback while preserving unknown diagnostics
 - Product settings preference controls map deterministic conversation behavior
