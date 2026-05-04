@@ -119,21 +119,79 @@ test('Lobby /lobby renders WITHOUT the appshell sidebar (PLAN-091 phase 7 correc
   // drill-in cards directly.
   assert.doesNotMatch(markup, /<aside[^>]*class="sidebar/u);
   assert.doesNotMatch(markup, /class="screen claudeShell/u);
-  // Greeting + entity drill-in cards render.
-  assert.match(markup, />My identities</u);
-  assert.match(markup, />My Cats</u);
-  assert.match(markup, />My Clowders</u);
-  assert.match(markup, />My Catteries</u);
+  // Three column headers replace the previous single "My identities"
+  // eyebrow. Each header is a button (clicking it navigates to the
+  // entity's list page) and reuses the `eyebrow` typography (uppercase
+  // is supplied by CSS, not by the i18n string).
+  assert.match(markup, /<button[^>]*class="lobbyEntityColumnHeader"[^>]*>Cats</u);
+  assert.match(markup, /<button[^>]*class="lobbyEntityColumnHeader"[^>]*>Clowders</u);
+  assert.match(markup, /<button[^>]*class="lobbyEntityColumnHeader"[^>]*>Catteries</u);
 });
 
-test('Lobby entity cards land in the My identities section with the per-entity classes', () => {
+test('Lobby entity cards keep their per-entity classes with a shared neutral accent', () => {
   const markup = renderApp('/lobby', createEnvelope());
 
-  // Each card carries an entity-specific class so CSS can pin a
-  // colour and downstream tests can locate them.
+  // The per-entity classes survive (downstream tests + future
+  // surface-specific tweaks rely on them) even though all three now
+  // paint the same neutral accent stripe via
+  // `.platformLobbyCard--entity .platformLobbyCardAccent`.
   assert.match(markup, /platformLobbyCard--entity-cats/u);
   assert.match(markup, /platformLobbyCard--entity-clowders/u);
   assert.match(markup, /platformLobbyCard--entity-catteries/u);
+});
+
+test('Lobby entity cards show three fixed rows + a count footer (placeholder when empty)', () => {
+  // Empty envelope (no cats / clowders / catteries) — the first row
+  // of each card should render the "+ New X" placeholder via the
+  // shared PlaceholderGlyph, and a count footer should appear with
+  // "0 total".
+  const markup = renderApp('/lobby', createEnvelope());
+
+  assert.match(markup, /class="lobbyEntityItem lobbyEntityItemPlaceholder"/u);
+  assert.match(markup, />New cat</u);
+  assert.match(markup, />New clowder</u);
+  assert.match(markup, />New cattery</u);
+  // Three "0 total" footers — one per card. CSS uppercases the text;
+  // the i18n string itself is lowercase "total".
+  const totalMatches = markup.match(/class="lobbyEntityCardTotal"/gu) ?? [];
+  assert.equal(totalMatches.length, 3);
+  assert.match(markup, />0 total</u);
+});
+
+test('Lobby cats card renders the boss cat with avatar + ellipsis-friendly name when populated', () => {
+  const markup = renderApp(
+    '/lobby',
+    createEnvelope({
+      lobby: {
+        animationMode: 'reduced',
+        cats: [
+          {
+            id: 'cat-concierge',
+            name: 'Concierge',
+            avatarColor: '#8B7E74',
+            avatarUrl: null,
+            isBoss: true,
+            defaultExecutionTarget: { provider: 'anthropic', instance: null, model: 'claude-opus-4-7' },
+            defaultModelSelection: null,
+            executionLabel: 'Claude Opus 4.7',
+          },
+        ],
+        clowders: [],
+        catteries: [],
+      },
+    }),
+  );
+
+  // The cat's row renders inside the cats column with the shared
+  // `.lobbyEntityItem` class (button), the 28×28 `.lobbyEntityAvatar`
+  // disc, and the `.lobbyEntityName` text node carrying the cat's
+  // name. Name overflow ellipsis is asserted via the CSS class — the
+  // class chain pins the contract that lets the rule apply.
+  assert.match(markup, /class="lobbyEntityItem"/u);
+  assert.match(markup, /class="lobbyEntityAvatar"/u);
+  assert.match(markup, /class="lobbyEntityName">Concierge</u);
+  // Cats card now shows "1 total"; clowders / catteries still 0.
+  assert.match(markup, />1 total</u);
 });
 
 test('Drilled-down /cats route mounts the chat-style appshell (claudeShell + sidebar + canvas)', () => {

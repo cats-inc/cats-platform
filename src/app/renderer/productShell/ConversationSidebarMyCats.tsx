@@ -133,7 +133,12 @@ export interface ConversationSidebarMyCatsPlaceholder {
   iconKind?: ConversationSidebarMyCatsPlaceholderIconKind;
 }
 
-function PlaceholderGlyph({
+/**
+ * Exported so PlatformLobby's entity card list can reuse the same
+ * three glyphs (single-person / group-people / org-chart) without
+ * copying the SVG paths.
+ */
+export function PlaceholderGlyph({
   iconKind,
 }: {
   iconKind: ConversationSidebarMyCatsPlaceholderIconKind;

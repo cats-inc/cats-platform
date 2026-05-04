@@ -236,9 +236,13 @@
 .platformLobbyCard--work .platformLobbyCardAccent { background: #4F6C92; }
 .platformLobbyCard--app .platformLobbyCardAccent { background: #3F7F78; }
 .platformLobbyCard--module .platformLobbyCardAccent { background: #7A5C98; }
-.platformLobbyCard--entity-cats .platformLobbyCardAccent { background: #C97A6A; }
-.platformLobbyCard--entity-clowders .platformLobbyCardAccent { background: #B57BAB; }
-.platformLobbyCard--entity-catteries .platformLobbyCardAccent { background: #6BA3C2; }
+/* Entity cards (Cats / Clowders / Catteries) share a single neutral
+ * stripe — the column header above the card identifies the kind, so
+ * the per-kind brand tints would just add visual noise.
+ * `--muted-soft` (#8C857D) reads as a clear mid-grey without going
+ * either too dark (--muted, #6B6560) or too washed-out
+ * (--border, #E4DFD7). */
+.platformLobbyCard--entity .platformLobbyCardAccent { background: var(--muted-soft); }
 
 .platformLobbyCard--recent {
   box-shadow: 0 0 0 2px var(--accent-soft);
@@ -286,6 +290,199 @@
   font-size: var(--text-sm);
 }
 
+/* ── Entity columns (Cats / Clowders / Catteries) ────────────────
+ * Three column headers (`<button class="eyebrow lobbyEntityColumnHeader">`)
+ * sit above three entity cards on a shared 3-column grid so the
+ * eyebrows line up exactly with each card's left edge. Each card now
+ * holds a fixed-height list of three rows + a count footer; the card
+ * itself is no longer clickable (the eyebrow links to /<entity> and
+ * each row links to its detail). The previous hover-lift on
+ * `.platformLobbyCard` is suppressed for entity variants because they
+ * contain interactive children of their own.
+ * ────────────────────────────────────────────────────────────── */
+
+.lobbyEntities {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.lobbyEntityColumn {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.lobbyEntityColumnHeader {
+  /* Mirrors `.lobbyProductsEyebrow` exactly so CATS / CLOWDERS /
+   * CATTERIES read at the same weight + tint as PRODUCTS / APPS
+   * below. The button reset (transparent bg, no border, inherited
+   * font for the click affordance) sits on top of those shared
+   * typographic rules. */
+  display: inline-block;
+  align-self: flex-start;
+  margin: 0 0 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.12s ease;
+}
+
+.lobbyEntityColumnHeader:hover {
+  color: var(--text);
+}
+
+.platformLobbyCard--entity {
+  /* Override the generic `.platformLobbyCard` hover lift — entity
+   * cards house their own clickable rows and shouldn't react to a
+   * stray hover. */
+  cursor: default;
+  padding: var(--space-5) var(--space-3) var(--space-3);
+  gap: var(--space-1);
+}
+
+.platformLobbyCard--entity:hover {
+  box-shadow: none;
+  transform: none;
+}
+
+.lobbyEntityCardItems {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.lobbyEntityRow {
+  display: flex;
+  min-width: 0;
+  /* Row height is locked so the card's three-slot footprint stays
+   * stable whether a row is filled, empty, or showing the placeholder. */
+  min-height: 36px;
+}
+
+.lobbyEntityRowEmpty {
+  /* Visually empty but still occupies a row's vertical space. */
+  visibility: hidden;
+}
+
+.lobbyEntityItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-width: 0;
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.lobbyEntityItem:hover {
+  background: var(--panel-hover);
+}
+
+.lobbyEntityAvatar {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: #8B7E74;
+  color: #fff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  overflow: hidden;
+}
+
+.lobbyEntityName {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-sm);
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Placeholder row mirrors the sidebar "+ New X" affordance. The
+ * default tint is the warm-yellow Cats placeholder; per-kind
+ * overrides below paint Clowders green / Catteries blue, matching the
+ * `.sidebar[data-shell-surface="lobby"] [data-lens-kind=...]`
+ * mapping in extras.css so the lobby card and the sidebar agree. */
+.lobbyEntityRowPlaceholder .lobbyEntityItem,
+.lobbyEntityItemPlaceholder {
+  background: color-mix(in srgb, var(--panel) 78%, #d4a030 22%);
+  cursor: default;
+  opacity: 0.95;
+}
+
+.lobbyEntityColumn--clowders .lobbyEntityItemPlaceholder {
+  background: color-mix(in srgb, var(--panel) 78%, #48a064 22%);
+  color: #2e6f43;
+}
+
+.lobbyEntityColumn--catteries .lobbyEntityItemPlaceholder {
+  background: color-mix(in srgb, var(--panel) 78%, #5f87f0 22%);
+  color: #3856a0;
+}
+
+.lobbyEntityItemPlaceholder:disabled {
+  cursor: default;
+}
+
+.lobbyEntityAvatarPlaceholder {
+  background: #d4cec8;
+  color: var(--muted);
+  outline: 1px dashed rgba(110, 101, 92, 0.35);
+  outline-offset: -2px;
+}
+
+.lobbyEntityAvatarPlaceholder svg {
+  display: block;
+  pointer-events: none;
+}
+
+.lobbyEntityNamePlaceholder {
+  color: var(--muted);
+  font-style: italic;
+}
+
+.lobbyEntityColumn--clowders .lobbyEntityNamePlaceholder {
+  color: #2e6f43;
+}
+
+.lobbyEntityColumn--catteries .lobbyEntityNamePlaceholder {
+  color: #3856a0;
+}
+
+.lobbyEntityCardTotal {
+  margin: var(--space-2) 0 0;
+  padding: 0 var(--space-2);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  /* Warm red, distinct from the muted accent stripe so the count
+   * reads as a deliberate footer, not a third "tint" on the card. */
+  color: #B0413E;
+}
+
 /* ── Responsive ── */
 
 @media (max-width: 640px) {
@@ -294,6 +491,10 @@
   }
 
   .platformLobbyGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .lobbyEntities {
     grid-template-columns: 1fr;
   }
 }

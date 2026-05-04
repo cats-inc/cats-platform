@@ -4,7 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import { GuideCatDockSlot } from '../../design/components/GuideCatDockSlot.js';
 import { messageKeys, type MessageKey } from '../../shared/i18n/index.js';
 import { nameInitials } from '../../shared/nameInitials.js';
-import type { PlatformHostEnvelope } from '../../shared/platform-contract.js';
+import type {
+  PlatformHostEnvelope,
+  PlatformLobbyCatSummary,
+  PlatformLobbyCatterySummary,
+  PlatformLobbyClowderSummary,
+} from '../../shared/platform-contract.js';
 import {
   resolveRuntimeLobbyDotClassName,
   resolveRuntimePresentationStatus,
@@ -18,13 +23,77 @@ import {
   pickLobbyGreeting,
 } from './lobbyModel.js';
 import { resolveGuideCatAssistGreeting } from '../../shared/guideCatAssistPresentation.js';
+import {
+  PlaceholderGlyph,
+  type ConversationSidebarMyCatsPlaceholderIconKind,
+} from './productShell/ConversationSidebarMyCats.js';
+
+const LOBBY_CARD_ROW_COUNT = 3;
+
+interface LobbyEntityRowSummary {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  avatarColor: string | null;
+}
 
 interface LobbyEntityCard {
   key: 'cats' | 'clowders' | 'catteries';
-  labelKey: MessageKey;
-  subtitleKey: MessageKey;
-  count: number;
+  headerLabelKey: MessageKey;
+  rows: readonly LobbyEntityRowSummary[];
+  totalCount: number;
   routePath: '/cats' | '/clowders' | '/catteries';
+  detailPathPrefix: '/cats/' | '/clowders/' | '/catteries/';
+  placeholderLabelKey: MessageKey;
+  placeholderIconKind: ConversationSidebarMyCatsPlaceholderIconKind;
+}
+
+function summarizeCat(cat: PlatformLobbyCatSummary): LobbyEntityRowSummary {
+  return {
+    id: cat.id,
+    name: cat.name,
+    avatarUrl: cat.avatarUrl,
+    avatarColor: cat.avatarColor,
+  };
+}
+
+function summarizeClowder(
+  clowder: PlatformLobbyClowderSummary,
+): LobbyEntityRowSummary {
+  return {
+    id: clowder.id,
+    name: clowder.name,
+    avatarUrl: clowder.avatarUrl,
+    avatarColor: null,
+  };
+}
+
+function summarizeCattery(
+  cattery: PlatformLobbyCatterySummary,
+): LobbyEntityRowSummary {
+  return {
+    id: cattery.id,
+    name: cattery.name,
+    avatarUrl: cattery.avatarUrl,
+    avatarColor: null,
+  };
+}
+
+function LobbyEntityAvatar({ row }: { row: LobbyEntityRowSummary }) {
+  const style = row.avatarUrl
+    ? {
+        backgroundImage: `url(${row.avatarUrl})`,
+        backgroundSize: 'cover' as const,
+        backgroundPosition: 'center' as const,
+      }
+    : row.avatarColor
+      ? { background: row.avatarColor }
+      : undefined;
+  return (
+    <span className="lobbyEntityAvatar" style={style}>
+      {row.avatarUrl ? null : nameInitials(row.name)}
+    </span>
+  );
 }
 
 export function PlatformLobby({
@@ -57,27 +126,40 @@ export function PlatformLobby({
     platformShellSurface: envelope.lastProductSurface ?? 'chat',
   };
 
+  const cats = envelope.lobby.cats;
+  const clowders = envelope.lobby.clowders ?? [];
+  const catteries = envelope.lobby.catteries ?? [];
+
   const entityCards: LobbyEntityCard[] = [
     {
       key: 'cats',
-      labelKey: messageKeys.lobbyEntityCardCats,
-      subtitleKey: messageKeys.lobbyEntityCardCatsSubtitle,
-      count: envelope.lobby.cats.length,
+      headerLabelKey: messageKeys.lobbyEntityColumnHeaderCats,
+      rows: cats.slice(0, LOBBY_CARD_ROW_COUNT).map(summarizeCat),
+      totalCount: cats.length,
       routePath: '/cats',
+      detailPathPrefix: '/cats/',
+      placeholderLabelKey: messageKeys.lobbySidebarNewCat,
+      placeholderIconKind: 'singlePerson',
     },
     {
       key: 'clowders',
-      labelKey: messageKeys.lobbyEntityCardClowders,
-      subtitleKey: messageKeys.lobbyEntityCardClowdersSubtitle,
-      count: (envelope.lobby.clowders ?? []).length,
+      headerLabelKey: messageKeys.lobbyEntityColumnHeaderClowders,
+      rows: clowders.slice(0, LOBBY_CARD_ROW_COUNT).map(summarizeClowder),
+      totalCount: clowders.length,
       routePath: '/clowders',
+      detailPathPrefix: '/clowders/',
+      placeholderLabelKey: messageKeys.lobbySidebarNewClowder,
+      placeholderIconKind: 'groupPeople',
     },
     {
       key: 'catteries',
-      labelKey: messageKeys.lobbyEntityCardCatteries,
-      subtitleKey: messageKeys.lobbyEntityCardCatteriesSubtitle,
-      count: (envelope.lobby.catteries ?? []).length,
+      headerLabelKey: messageKeys.lobbyEntityColumnHeaderCatteries,
+      rows: catteries.slice(0, LOBBY_CARD_ROW_COUNT).map(summarizeCattery),
+      totalCount: catteries.length,
       routePath: '/catteries',
+      detailPathPrefix: '/catteries/',
+      placeholderLabelKey: messageKeys.lobbySidebarNewCattery,
+      placeholderIconKind: 'orgChart',
     },
   ];
 
@@ -154,25 +236,81 @@ export function PlatformLobby({
           <h1 className="lobbyGreeting">{greeting}</h1>
         </div>
 
-        <div className="lobbyProducts">
-          <p className="lobbyProductsEyebrow">{t(messageKeys.lobbyEntitiesSectionTitle)}</p>
-          <div className="platformLobbyGrid">
-            {entityCards.map((card) => (
+        <div className="lobbyEntities">
+          {entityCards.map((card) => (
+            <div
+              key={card.key}
+              className={`lobbyEntityColumn lobbyEntityColumn--${card.key}`}
+            >
               <button
-                key={card.key}
                 type="button"
-                className={`contentCard platformLobbyCard platformLobbyCard--entity platformLobbyCard--entity-${card.key}`}
+                className="lobbyEntityColumnHeader"
                 onClick={() => navigate(card.routePath)}
               >
-                <div className="platformLobbyCardAccent" />
-                <span className="platformLobbyCardName">{t(card.labelKey)}</span>
-                <span className="platformLobbyCardSub">{t(card.subtitleKey)}</span>
-                <span className="platformLobbyCardHint">
-                  {t(messageKeys.lobbyEntityCardCount, { count: card.count })}
-                </span>
+                {t(card.headerLabelKey)}
               </button>
-            ))}
-          </div>
+              <div
+                className={`contentCard platformLobbyCard platformLobbyCard--entity platformLobbyCard--entity-${card.key}`}
+              >
+                <div className="platformLobbyCardAccent" />
+                <ul className="lobbyEntityCardItems">
+                  {Array.from({ length: LOBBY_CARD_ROW_COUNT }, (_, index) => {
+                    const row = card.rows[index];
+                    if (row) {
+                      return (
+                        <li key={row.id} className="lobbyEntityRow">
+                          <button
+                            type="button"
+                            className="lobbyEntityItem"
+                            onClick={() =>
+                              navigate(`${card.detailPathPrefix}${encodeURIComponent(row.id)}`)
+                            }
+                          >
+                            <LobbyEntityAvatar row={row} />
+                            <span className="lobbyEntityName">{row.name}</span>
+                          </button>
+                        </li>
+                      );
+                    }
+                    if (index === 0 && card.totalCount === 0) {
+                      return (
+                        <li
+                          key={`${card.key}-placeholder`}
+                          className="lobbyEntityRow lobbyEntityRowPlaceholder"
+                        >
+                          <button
+                            type="button"
+                            className="lobbyEntityItem lobbyEntityItemPlaceholder"
+                            disabled
+                          >
+                            <span
+                              className="lobbyEntityAvatar lobbyEntityAvatarPlaceholder"
+                              aria-hidden="true"
+                            >
+                              <PlaceholderGlyph iconKind={card.placeholderIconKind} />
+                            </span>
+                            <span className="lobbyEntityName lobbyEntityNamePlaceholder">
+                              {t(card.placeholderLabelKey)}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    }
+                    return (
+                      <li
+                        key={`${card.key}-empty-${index}`}
+                        className="lobbyEntityRow lobbyEntityRowEmpty"
+                        aria-hidden="true"
+                      />
+                    );
+                  })}
+                </ul>
+                <p className="lobbyEntityCardTotal">
+                  {t(messageKeys.lobbyEntityCardTotal, { count: card.totalCount })}
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
 
         <div className="lobbyProducts">
