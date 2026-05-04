@@ -1615,7 +1615,9 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.screenshotCapture.tooltipWebPicker': '擷取螢幕、視窗或分頁',
   'shared.screenshotCapture.tooltipUnavailable': '此環境無法使用螢幕擷取',
   'shared.screenshotCapture.permissionRequired':
-    '需要螢幕錄製權限才能擷取截圖。',
+    '需要螢幕錄製權限才能擷取截圖。請在 macOS「系統設定」授予 Cats 螢幕存取權，然後重新啟動 Cats。',
+  'shared.screenshotCapture.permissionStatusUnknown':
+    '螢幕錄製權限狀態未知：{status}',
   'shared.screenshotCapture.failed': '擷取截圖失敗。',
   'shared.screenshotCapture.frameLoadFailed': '讀取擷取畫面失敗。',
   'shared.screenshotCapture.frameEmpty': '擷取畫面是空的。',
@@ -1626,6 +1628,14 @@ export const zhTWCatalog: MessageCatalog = {
     '截圖失敗：選取的顯示器已無法使用。',
   'shared.screenshotCapture.regionUnsupported':
     '此桌面環境無法使用區域截圖。',
+  'shared.screenshotCapture.noDisplays':
+    '沒有可用於截圖的顯示器。',
+  'shared.screenshotCapture.wlrootsSessionUnsupported':
+    '目前工作階段無法使用原生 wlroots 截圖。',
+  'shared.screenshotCapture.wlrootsToolsRequired':
+    '原生 wlroots 截圖需要 grim 和 slurp。',
+  'shared.screenshotCapture.wlrootsSelectionParseFailed':
+    '無法解析 wlroots 截圖選取範圍。',
   'chat.newChatDraft.cancelSendAria': '取消發送',
   'chat.newChatDraft.sendAria': '送出',
   'chat.newChatDraft.sendAllChatsAria': '送出給全部聊天室',

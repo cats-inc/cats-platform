@@ -1657,7 +1657,9 @@ export const enCatalog: MessageCatalog = {
   'shared.screenshotCapture.tooltipUnavailable':
     'Screen capture is unavailable in this environment',
   'shared.screenshotCapture.permissionRequired':
-    'Screen Recording permission is required to capture a screenshot.',
+    'Screen Recording permission is required to capture a screenshot. Grant Cats screen access in macOS System Settings, then restart Cats.',
+  'shared.screenshotCapture.permissionStatusUnknown':
+    'Screen Recording permission status is unknown: {status}',
   'shared.screenshotCapture.failed': 'Failed to capture screenshot.',
   'shared.screenshotCapture.frameLoadFailed': 'Failed to load captured screen frame.',
   'shared.screenshotCapture.frameEmpty': 'Captured screen frame is empty.',
@@ -1668,6 +1670,14 @@ export const enCatalog: MessageCatalog = {
     'Screenshot failed: the selected display is no longer available.',
   'shared.screenshotCapture.regionUnsupported':
     'Region screenshot capture is unavailable on this desktop environment.',
+  'shared.screenshotCapture.noDisplays':
+    'No displays are available for screenshot capture.',
+  'shared.screenshotCapture.wlrootsSessionUnsupported':
+    'Native wlroots screenshot capture is not available in this session.',
+  'shared.screenshotCapture.wlrootsToolsRequired':
+    'Native wlroots screenshot capture requires grim and slurp.',
+  'shared.screenshotCapture.wlrootsSelectionParseFailed':
+    'Could not parse wlroots screenshot selection geometry.',
   'chat.newChatDraft.cancelSendAria': 'Cancel send',
   'chat.newChatDraft.sendAria': 'Send',
   'chat.newChatDraft.sendAllChatsAria': 'Send to all chats',

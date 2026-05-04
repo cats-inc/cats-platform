@@ -365,6 +365,7 @@ known-gaps list.
 | 2026-05-04 | Work execution presentation now localizes known strategy, delivery-mode, next-action, and delivery-action tokens in War Room while preserving unknown runtime tokens through the existing Title Case fallback. |
 | 2026-05-04 | War Room recovery/control-plane metadata now localizes known approval status, replay state/source, attention reason, and workflow blocked-reason tokens while preserving activity messages and replay errors as content. |
 | 2026-05-04 | Code Builder execution control labels now localize known workflow blocked reasons beyond approval pending while preserving unknown runtime guard tokens verbatim. |
+| 2026-05-04 | Shared screenshot capture feedback now localizes known desktop-host permission and wlroots/no-display error messages at the renderer boundary while preserving unknown host errors as content. |
 
 ---
 

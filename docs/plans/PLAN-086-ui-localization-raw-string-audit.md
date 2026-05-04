@@ -67,6 +67,9 @@ The final 2026-05-04 cleanup localized:
   while preserving activity messages and replay errors as content
 - Code Builder execution control labels localize known workflow blocked reasons
   beyond approval pending while preserving unknown runtime guard tokens verbatim
+- Shared screenshot capture feedback localizes known desktop-host permission,
+  wlroots, and no-display error messages at the renderer boundary while
+  preserving unknown host errors as content
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

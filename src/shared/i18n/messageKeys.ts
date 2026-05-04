@@ -1724,6 +1724,8 @@ export const messageKeys = {
     'shared.screenshotCapture.tooltipUnavailable',
   sharedScreenshotCapturePermissionRequired:
     'shared.screenshotCapture.permissionRequired',
+  sharedScreenshotCapturePermissionStatusUnknown:
+    'shared.screenshotCapture.permissionStatusUnknown',
   sharedScreenshotCaptureFailed: 'shared.screenshotCapture.failed',
   sharedScreenshotCaptureFrameLoadFailed:
     'shared.screenshotCapture.frameLoadFailed',
@@ -1739,6 +1741,14 @@ export const messageKeys = {
     'shared.screenshotCapture.displayUnavailable',
   sharedScreenshotCaptureRegionUnsupported:
     'shared.screenshotCapture.regionUnsupported',
+  sharedScreenshotCaptureNoDisplays:
+    'shared.screenshotCapture.noDisplays',
+  sharedScreenshotCaptureWlrootsSessionUnsupported:
+    'shared.screenshotCapture.wlrootsSessionUnsupported',
+  sharedScreenshotCaptureWlrootsToolsRequired:
+    'shared.screenshotCapture.wlrootsToolsRequired',
+  sharedScreenshotCaptureWlrootsSelectionParseFailed:
+    'shared.screenshotCapture.wlrootsSelectionParseFailed',
   chatNewChatDraftCancelSendAria: 'chat.newChatDraft.cancelSendAria',
   chatNewChatDraftSendAria: 'chat.newChatDraft.sendAria',
   chatNewChatDraftSendAllChatsAria: 'chat.newChatDraft.sendAllChatsAria',

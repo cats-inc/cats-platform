@@ -15,6 +15,7 @@ import {
   resolveScreenshotCaptureRoute,
   stopMediaStreamTracks,
 } from '../src/products/shared/renderer/screenshotCapture.ts';
+import { createTranslator } from '../src/shared/i18n/index.ts';
 
 type ChatComposerAreaRenderProps = ComponentProps<typeof ChatComposerArea>;
 
@@ -186,6 +187,7 @@ test('screenshot web fallback can stop media tracks before PNG encoding', () => 
 });
 
 test('screenshot permission errors resolve to toast feedback', async () => {
+  const zh = createTranslator('zh-TW');
   const hostGlobal = globalThis as typeof globalThis & {
     catsDesktopHost?: unknown;
   };
@@ -196,17 +198,54 @@ test('screenshot permission errors resolve to toast feedback', async () => {
       screenshotRegionCaptureAvailable: true,
       captureScreenshotRegion: async () => ({
         outcome: 'permission_denied',
-        message: 'Screen Recording permission is required to capture a screenshot.',
+        message:
+          'Screen Recording permission is required to capture a screenshot. Grant Cats screen access in macOS System Settings, then restart Cats.',
       }),
     };
 
     await assert.rejects(
-      () => captureScreenshotFile('desktop_region'),
+      () => captureScreenshotFile('desktop_region', zh),
       (error) => {
         assert.equal(isScreenshotPermissionDeniedError(error), true);
-        assert.deepEqual(resolveScreenshotCaptureFeedback(error), {
+        assert.deepEqual(resolveScreenshotCaptureFeedback(error, zh), {
           surface: 'toast',
-          message: 'Screen Recording permission is required to capture a screenshot.',
+          message:
+            '需要螢幕錄製權限才能擷取截圖。請在 macOS「系統設定」授予 Cats 螢幕存取權，然後重新啟動 Cats。',
+        });
+        return true;
+      },
+    );
+  } finally {
+    if (previous === undefined) {
+      delete hostGlobal.catsDesktopHost;
+    } else {
+      hostGlobal.catsDesktopHost = previous;
+    }
+  }
+});
+
+test('desktop screenshot host messages localize before toast feedback', async () => {
+  const zh = createTranslator('zh-TW');
+  const hostGlobal = globalThis as typeof globalThis & {
+    catsDesktopHost?: unknown;
+  };
+  const previous = hostGlobal.catsDesktopHost;
+
+  try {
+    hostGlobal.catsDesktopHost = {
+      screenshotRegionCaptureAvailable: true,
+      captureScreenshotRegion: async () => ({
+        outcome: 'platform_unsupported',
+        message: 'Native wlroots screenshot capture requires grim and slurp.',
+      }),
+    };
+
+    await assert.rejects(
+      () => captureScreenshotFile('desktop_region', zh),
+      (error) => {
+        assert.deepEqual(resolveScreenshotCaptureFeedback(error, zh), {
+          surface: 'toast',
+          message: '原生 wlroots 截圖需要 grim 和 slurp。',
         });
         return true;
       },

@@ -10,6 +10,22 @@ import {
 export type ScreenshotCaptureRoute = 'desktop_region' | 'web_picker' | 'unavailable';
 
 const SCREENSHOT_PERMISSION_DENIED_ERROR_CODE = 'screenshot_permission_denied';
+const MACOS_SCREEN_RECORDING_PERMISSION_MESSAGE =
+  'Screen Recording permission is required to capture a screenshot. Grant Cats screen access in macOS System Settings, then restart Cats.';
+
+const DESKTOP_SCREENSHOT_HOST_MESSAGE_KEYS: Record<string, MessageKey> = {
+  [MACOS_SCREEN_RECORDING_PERMISSION_MESSAGE]:
+    messageKeys.sharedScreenshotCapturePermissionRequired,
+  'Native wlroots screenshot capture requires grim and slurp.':
+    messageKeys.sharedScreenshotCaptureWlrootsToolsRequired,
+  'Native wlroots screenshot capture is not available in this session.':
+    messageKeys.sharedScreenshotCaptureWlrootsSessionUnsupported,
+  'No displays are available for screenshot capture.':
+    messageKeys.sharedScreenshotCaptureNoDisplays,
+  'Could not parse wlroots screenshot selection geometry.':
+    messageKeys.sharedScreenshotCaptureWlrootsSelectionParseFailed,
+};
+
 type ScreenshotCaptureI18n = (
   key: MessageKey,
   values?: MessageInterpolationValues,
@@ -114,6 +130,28 @@ export function resolveScreenshotCaptureFeedback(
 
 function pad(value: number, width: number): string {
   return String(value).padStart(width, '0');
+}
+
+function localizeDesktopScreenshotHostMessage(
+  message: string,
+  t: ScreenshotCaptureI18n,
+): string {
+  const trimmed = message.trim();
+  const key = DESKTOP_SCREENSHOT_HOST_MESSAGE_KEYS[trimmed];
+  if (key) {
+    return t(key);
+  }
+
+  const permissionStatusMatch = trimmed.match(
+    /^Screen Recording permission status is unknown: (.+)$/u,
+  );
+  if (permissionStatusMatch) {
+    return t(messageKeys.sharedScreenshotCapturePermissionStatusUnknown, {
+      status: permissionStatusMatch[1],
+    });
+  }
+
+  return message;
 }
 
 export function createScreenshotFilename(now = new Date()): string {
@@ -279,11 +317,15 @@ function buildDesktopScreenshotError(
   }
 
   if (result.outcome === 'permission_denied') {
-    return new ScreenshotPermissionDeniedError(result.message);
+    return new ScreenshotPermissionDeniedError(
+      result.message
+        ? localizeDesktopScreenshotHostMessage(result.message, t)
+        : t(messageKeys.sharedScreenshotCapturePermissionRequired),
+    );
   }
 
   if (result.message) {
-    return new Error(result.message);
+    return new Error(localizeDesktopScreenshotHostMessage(result.message, t));
   }
 
   if (result.outcome === 'platform_unsupported') {
