@@ -2,22 +2,16 @@ import type { RuntimeSkillManifest } from '../runtime/client.js';
 
 export interface SkillProfileOption {
   id: string;
-  label: string;
-  description: string;
   requestedSkills: string[];
 }
 
 export const SKILL_PROFILE_OPTIONS: SkillProfileOption[] = [
   {
     id: 'none',
-    label: 'None',
-    description: 'Do not attach any runtime-managed skill package.',
     requestedSkills: [],
   },
   {
     id: 'companion',
-    label: 'Companion',
-    description: 'Warm, direct companion behavior backed by runtime-managed SKILL.md.',
     requestedSkills: ['companion'],
   },
 ];

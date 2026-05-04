@@ -36,6 +36,8 @@ The final 2026-05-04 cleanup localized:
   including a Traditional Chinese command catalog registered with Telegram
   `language_code=zh` and per-message reply localization from sender language
   codes
+- runtime skill profile source records no longer carry unused English labels or
+  descriptions; Settings Cats owns the localized skill profile presentation
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.
