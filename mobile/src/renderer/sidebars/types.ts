@@ -1,3 +1,7 @@
+import type {
+  MobileSidebarCatStatus as SidebarCatStatus,
+} from '../../../../src/mobile/index.js';
+
 /**
  * Sidebar types. Data shapes are aliased from the cats-platform mobile-
  * safe boundary so any drift between the wire DTO and the mobile UX
@@ -15,9 +19,10 @@
 export type {
   MobileChatSidebarData as ChatSidebarData,
   MobileSidebarCat as SidebarCatEntry,
-  MobileSidebarCatStatus as SidebarCatStatus,
   MobileSidebarRecent as SidebarRecentEntry,
 } from '../../../../src/mobile/index.js';
+
+export type { SidebarCatStatus };
 
 /**
  * Trimmed product sidebar (Chat / Code / Work) per SPEC-095. All
@@ -49,6 +54,12 @@ export interface TrimmedSidebarConfig {
   myLensLabel: string;
   /** Label for the RECENTS row, e.g. `Recents (Code)`. */
   recentsLabel: string;
+  /** Empty row copy for the product-specific MY-lens section. */
+  emptyCatsLabel: string;
+  /** Empty row copy for the product-scoped recents section. */
+  emptyRecentsLabel: string;
+  /** Visible status labels for cat presence chips. */
+  catStatusLabels: Record<SidebarCatStatus, string>;
 }
 
 export interface TrimmedSidebarCallbacks {

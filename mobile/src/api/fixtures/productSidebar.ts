@@ -1,4 +1,17 @@
 import type { TrimmedSidebarConfig } from '../../renderer/sidebars/types';
+import {
+  getMobileProductSidebarCopy,
+  type MobileProductMode,
+} from '../../../../src/mobile/index.js';
+
+const SIDEBAR_ACTION_IDS: Record<
+  MobileProductMode,
+  TrimmedSidebarConfig['primaryActions'][number]['id'][]
+> = {
+  chat: ['new', 'group', 'parallel'],
+  code: ['new', 'team', 'peer'],
+  work: ['new', 'team', 'parallel'],
+};
 
 /**
  * Trimmed sidebar configs for the Chat / Code / Work tabs. Mobile
@@ -17,41 +30,39 @@ import type { TrimmedSidebarConfig } from '../../renderer/sidebars/types';
  * (+New code / +Team code / +Peer code). Work mirrors the same
  * shape (+New work / +Team work / +Peer work).
  */
-export const chatSidebarConfig: TrimmedSidebarConfig = {
-  product: 'chat',
-  productLabel: 'CHAT',
-  primaryActions: [
-    { id: 'new', label: '+ New chat' },
-    { id: 'group', label: '+ Group chat' },
-    { id: 'parallel', label: '+ Parallel chat' },
-  ],
-  myLensLabel: 'MY CATS',
-  recentsLabel: 'RECENTS',
-};
+function createSidebarConfig(
+  product: MobileProductMode,
+  locale?: string | null,
+): TrimmedSidebarConfig {
+  const copy = getMobileProductSidebarCopy(locale);
+  const productCopy = copy.products[product];
+  return {
+    product,
+    productLabel: productCopy.productLabel,
+    primaryActions: SIDEBAR_ACTION_IDS[product].map((id) => ({
+      id,
+      label: productCopy.primaryActions[id] ?? id,
+    })) as TrimmedSidebarConfig['primaryActions'],
+    myLensLabel: productCopy.myLensLabel,
+    recentsLabel: productCopy.recentsLabel,
+    emptyCatsLabel: copy.emptyCatsLabel,
+    emptyRecentsLabel: copy.emptyRecentsLabel,
+    catStatusLabels: copy.statusLabel,
+  };
+}
 
-export const codeSidebarConfig: TrimmedSidebarConfig = {
-  product: 'code',
-  productLabel: 'CODE',
-  primaryActions: [
-    { id: 'new', label: '+ New code' },
-    { id: 'team', label: '+ Team code' },
-    { id: 'peer', label: '+ Peer code' },
-  ],
-  myLensLabel: 'MY CLOWDERS',
-  recentsLabel: 'RECENTS',
-};
+export function getChatSidebarConfig(locale?: string | null): TrimmedSidebarConfig {
+  return createSidebarConfig('chat', locale);
+}
 
-export const workSidebarConfig: TrimmedSidebarConfig = {
-  product: 'work',
-  productLabel: 'WORK',
-  primaryActions: [
-    { id: 'new', label: '+ New work' },
-    { id: 'team', label: '+ Team work' },
-    // The web Cats Work surface uses Parallel (not Peer) for the
-    // third entry — it mirrors the +Parallel chat shape rather
-    // than the +Peer code one. Mobile follows the web naming.
-    { id: 'parallel', label: '+ Parallel work' },
-  ],
-  myLensLabel: 'MY CATTERIES',
-  recentsLabel: 'RECENTS',
-};
+export function getCodeSidebarConfig(locale?: string | null): TrimmedSidebarConfig {
+  return createSidebarConfig('code', locale);
+}
+
+export function getWorkSidebarConfig(locale?: string | null): TrimmedSidebarConfig {
+  return createSidebarConfig('work', locale);
+}
+
+export const chatSidebarConfig: TrimmedSidebarConfig = getChatSidebarConfig('en');
+export const codeSidebarConfig: TrimmedSidebarConfig = getCodeSidebarConfig('en');
+export const workSidebarConfig: TrimmedSidebarConfig = getWorkSidebarConfig('en');

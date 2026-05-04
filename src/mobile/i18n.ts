@@ -87,6 +87,20 @@ export interface MobileTabsCopy {
   tabTitle: Record<MobileTabId, string>;
 }
 
+export interface MobileProductSidebarProductCopy {
+  productLabel: string;
+  primaryActions: Record<string, string>;
+  myLensLabel: string;
+  recentsLabel: string;
+}
+
+export interface MobileProductSidebarCopy {
+  emptyCatsLabel: string;
+  emptyRecentsLabel: string;
+  statusLabel: Record<'ready' | 'warm' | 'sleeping', string>;
+  products: Record<MobileProductMode, MobileProductSidebarProductCopy>;
+}
+
 const MOBILE_LOBBY_COPY: Record<MobileLocale, MobileLobbyCopy> = {
   en: {
     connectDesktopTitle: 'Connect to your desktop',
@@ -342,6 +356,91 @@ const MOBILE_TABS_COPY: Record<MobileLocale, MobileTabsCopy> = {
   },
 };
 
+const MOBILE_PRODUCT_SIDEBAR_COPY: Record<MobileLocale, MobileProductSidebarCopy> = {
+  en: {
+    emptyCatsLabel: 'No cats yet.',
+    emptyRecentsLabel: 'No recent conversations yet.',
+    statusLabel: {
+      ready: 'Ready',
+      warm: 'Warm',
+      sleeping: 'Sleeping',
+    },
+    products: {
+      chat: {
+        productLabel: 'CHAT',
+        primaryActions: {
+          new: '+ New chat',
+          group: '+ Group chat',
+          parallel: '+ Parallel chat',
+        },
+        myLensLabel: 'MY CATS',
+        recentsLabel: 'RECENTS',
+      },
+      code: {
+        productLabel: 'CODE',
+        primaryActions: {
+          new: '+ New code',
+          team: '+ Team code',
+          peer: '+ Peer code',
+        },
+        myLensLabel: 'MY CLOWDERS',
+        recentsLabel: 'RECENTS',
+      },
+      work: {
+        productLabel: 'WORK',
+        primaryActions: {
+          new: '+ New work',
+          team: '+ Team work',
+          parallel: '+ Parallel work',
+        },
+        myLensLabel: 'MY CATTERIES',
+        recentsLabel: 'RECENTS',
+      },
+    },
+  },
+  'zh-TW': {
+    emptyCatsLabel: '尚未有貓咪。',
+    emptyRecentsLabel: '尚未有近期對話。',
+    statusLabel: {
+      ready: '可用',
+      warm: '暖機中',
+      sleeping: '休眠中',
+    },
+    products: {
+      chat: {
+        productLabel: '聊天',
+        primaryActions: {
+          new: '+ 新聊天',
+          group: '+ 群組聊天',
+          parallel: '+ 平行聊天',
+        },
+        myLensLabel: '我的貓咪',
+        recentsLabel: '近期項目',
+      },
+      code: {
+        productLabel: '程式碼',
+        primaryActions: {
+          new: '+ 新程式碼',
+          team: '+ 團隊程式碼',
+          peer: '+ 同儕程式碼',
+        },
+        myLensLabel: '我的貓群',
+        recentsLabel: '近期項目',
+      },
+      work: {
+        productLabel: '工作',
+        primaryActions: {
+          new: '+ 新工作',
+          team: '+ 團隊工作',
+          parallel: '+ 平行工作',
+        },
+        myLensLabel: '我的貓舍',
+        recentsLabel: '近期項目',
+      },
+    },
+  },
+};
+
 export function resolveMobileLocale(locale?: string | null): MobileLocale {
   const normalized = locale?.replace(/_/gu, '-').toLowerCase() ?? '';
   if (
@@ -381,6 +480,12 @@ export function getMobileSettingsCopy(locale?: string | null): MobileSettingsCop
 
 export function getMobileTabsCopy(locale?: string | null): MobileTabsCopy {
   return MOBILE_TABS_COPY[resolveMobileLocale(locale)];
+}
+
+export function getMobileProductSidebarCopy(
+  locale?: string | null,
+): MobileProductSidebarCopy {
+  return MOBILE_PRODUCT_SIDEBAR_COPY[resolveMobileLocale(locale)];
 }
 
 export function getMobileChannelTitle(

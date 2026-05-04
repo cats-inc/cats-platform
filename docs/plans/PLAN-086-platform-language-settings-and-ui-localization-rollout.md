@@ -351,6 +351,7 @@ known-gaps list.
 | 2026-05-01 | Clarified extraction boundary: localization work targets owner-facing Cats UI chrome only; API/query fallbacks, debug diagnostics, logs, route/method/class/enum identifiers, and smoke/test strings must not be extracted or counted as progress debt. |
 | 2026-05-04 | Completed the final raw-string audit slice for Desktop bootstrap/onboarding, Runtime Settings helper presentation, shared runtime chips, and product renderer chrome. Remaining hits are documented in `PLAN-086-ui-localization-raw-string-audit.md`; the only known open localization-policy gap is persisted Chat relay prompt/system-note templates, which need a separate server/transcript locale policy before translation. |
 | 2026-05-04 | Added `tests/ui-localization-raw-string-audit.test.tsx` as a lightweight guard against obvious new raw English `label`, `title`, `placeholder`, tooltip, and `aria-label` literals in renderer/product UI chrome. |
+| 2026-05-04 | Localized mobile product sidebar fixed chrome: Chat/Code/Work primary actions, MY-lens and Recents section labels, empty states, and cat status labels now flow through mobile English / Traditional Chinese copy. |
 
 ---
 

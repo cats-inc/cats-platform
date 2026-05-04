@@ -25,6 +25,8 @@ The final 2026-05-04 cleanup localized:
 - desktop readiness and bootstrap summaries that are intentionally surfaced to
   the owner
 - shared runtime connection chip labels
+- mobile product sidebar primary actions, section labels, empty states, and cat
+  status labels
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

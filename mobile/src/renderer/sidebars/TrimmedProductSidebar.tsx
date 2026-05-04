@@ -47,14 +47,14 @@ function buildRows(
     ? data.cats.map<Row>((entry) => ({ kind: 'cat', entry }))
     : [{
         kind: 'empty' as const,
-        label: 'No cats yet.',
+        label: config.emptyCatsLabel,
         sectionId: 'my-lens',
       }];
   const recentRows: Row[] = data.recents.length > 0
     ? data.recents.map<Row>((entry) => ({ kind: 'recent', entry }))
     : [{
         kind: 'empty' as const,
-        label: 'No recent conversations yet.',
+        label: config.emptyRecentsLabel,
         sectionId: 'recents',
       }];
   return [
@@ -83,7 +83,12 @@ export function TrimmedProductSidebar({
       data={rows}
       keyExtractor={rowKey}
       renderItem={(info) =>
-        renderRow(info, { onPrimaryAction, onSelectCat, onSelectRecent })
+        renderRow(info, {
+          catStatusLabels: config.catStatusLabels,
+          onPrimaryAction,
+          onSelectCat,
+          onSelectRecent,
+        })
       }
     />
   );
@@ -107,6 +112,7 @@ function rowKey(row: Row, index: number): string {
 }
 
 interface RowCallbacks {
+  catStatusLabels: Record<MobileSidebarCatStatus, string>;
   onPrimaryAction: (actionId: string) => void;
   onSelectCat: (catId: string) => void;
   onSelectRecent: (channelId: string) => void;
@@ -145,6 +151,7 @@ function renderRow(
       return (
         <CatRow
           entry={item.entry}
+          statusLabels={callbacks.catStatusLabels}
           onPress={() => callbacks.onSelectCat(item.entry.id)}
         />
       );
@@ -183,10 +190,11 @@ function PrimaryActionButton({ action, onPress }: PrimaryActionButtonProps) {
 
 interface CatRowProps {
   entry: MobileSidebarCat;
+  statusLabels: Record<MobileSidebarCatStatus, string>;
   onPress: () => void;
 }
 
-function CatRow({ entry, onPress }: CatRowProps) {
+function CatRow({ entry, statusLabels, onPress }: CatRowProps) {
   const initials = entry.name
     .split(/\s+/)
     .map((part) => part[0] ?? '')
@@ -215,7 +223,7 @@ function CatRow({ entry, onPress }: CatRowProps) {
         </Text>
         <View style={styles.catStatusInline}>
           <StatusDot status={entry.status} />
-          <Text style={styles.catStatusText}>{statusLabel(entry.status)}</Text>
+          <Text style={styles.catStatusText}>{statusLabels[entry.status]}</Text>
         </View>
       </View>
     </Pressable>
@@ -269,17 +277,6 @@ function StatusDot({ status }: StatusDotProps) {
     }
   })();
   return <View style={[styles.statusDot, { backgroundColor: dotColor }]} />;
-}
-
-function statusLabel(status: MobileSidebarCatStatus): string {
-  switch (status) {
-    case 'ready':
-      return 'Ready';
-    case 'warm':
-      return 'Warm';
-    case 'sleeping':
-      return 'Sleeping';
-  }
 }
 
 const styles = StyleSheet.create({

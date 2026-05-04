@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 
-import { chatSidebarConfig } from '../../../src/api/fixtures/productSidebar';
+import { getChatSidebarConfig } from '../../../src/api/fixtures/productSidebar';
 import { useCreateChannel } from '../../../src/renderer/hooks/useCreateChannel';
 import { useProductSidebarData } from '../../../src/renderer/hooks/useProductSidebarData';
 import { TrimmedProductSidebar } from '../../../src/renderer/sidebars/TrimmedProductSidebar';
@@ -25,7 +25,9 @@ export default function ChatSidebarScreen() {
   const router = useRouter();
   const createChannel = useCreateChannel();
   const { state } = useProductSidebarData('chat');
-  const copy = getMobileTabsCopy(resolveDefaultMobileLocale());
+  const locale = resolveDefaultMobileLocale();
+  const copy = getMobileTabsCopy(locale);
+  const sidebarConfig = getChatSidebarConfig(locale);
 
   const handlePrimaryAction = useCallback(
     async (actionId: string) => {
@@ -86,7 +88,7 @@ export default function ChatSidebarScreen() {
         </View>
       ) : (
         <TrimmedProductSidebar
-          config={chatSidebarConfig}
+          config={sidebarConfig}
           data={{
             cats: state.kind === 'data' ? state.cats : [],
             recents: state.kind === 'data' ? state.recents : [],

@@ -10,7 +10,7 @@ import {
   View,
 } from 'react-native';
 
-import { codeSidebarConfig } from '../../../src/api/fixtures/productSidebar';
+import { getCodeSidebarConfig } from '../../../src/api/fixtures/productSidebar';
 import { useCreateChannel } from '../../../src/renderer/hooks/useCreateChannel';
 import { useProductSidebarData } from '../../../src/renderer/hooks/useProductSidebarData';
 import { TrimmedProductSidebar } from '../../../src/renderer/sidebars/TrimmedProductSidebar';
@@ -25,7 +25,9 @@ export default function CodeSidebarScreen() {
   const router = useRouter();
   const createChannel = useCreateChannel();
   const { state } = useProductSidebarData('code');
-  const copy = getMobileTabsCopy(resolveDefaultMobileLocale());
+  const locale = resolveDefaultMobileLocale();
+  const copy = getMobileTabsCopy(locale);
+  const sidebarConfig = getCodeSidebarConfig(locale);
 
   const handlePrimaryAction = useCallback(
     async (actionId: string) => {
@@ -78,7 +80,7 @@ export default function CodeSidebarScreen() {
         </View>
       ) : (
         <TrimmedProductSidebar
-          config={codeSidebarConfig}
+          config={sidebarConfig}
           data={{
             cats: state.kind === 'data' ? state.cats : [],
             recents: state.kind === 'data' ? state.recents : [],
