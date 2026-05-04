@@ -20,6 +20,16 @@ const fallbackOperatorTranslate: OperatorTranslate = (key) => {
     [messageKeys.sharedOperatorRunStatusFailed]: 'Failed',
     [messageKeys.sharedOperatorRunStatusCancelled]: 'Cancelled',
     [messageKeys.sharedOperatorRunStatusQueued]: 'Queued',
+    [messageKeys.sharedOperatorWorkflowStageBlocked]: 'Blocked',
+    [messageKeys.sharedOperatorWorkflowStageConcurrentFanOut]: 'Concurrent fan-out',
+    [messageKeys.sharedOperatorWorkflowStageContinuationHandoff]:
+      'Continuation handoff',
+    [messageKeys.sharedOperatorWorkflowStageConvergeReview]: 'Converge review',
+    [messageKeys.sharedOperatorWorkflowStageDispatch]: 'Dispatch',
+    [messageKeys.sharedOperatorWorkflowStageInitialDispatch]: 'Initial dispatch',
+    [messageKeys.sharedOperatorWorkflowStageRuntimeError]: 'Runtime error',
+    [messageKeys.sharedOperatorWorkflowStageStartupRecovery]: 'Startup recovery',
+    [messageKeys.sharedOperatorWorkflowStageTurnCompleted]: 'Turn completed',
     [messageKeys.sharedOperatorBranchStatusPending]: 'Pending',
     [messageKeys.sharedOperatorBranchStatusRunning]: 'Running',
     [messageKeys.sharedOperatorBranchStatusCompleted]: 'Completed',
@@ -310,6 +320,19 @@ const OPERATOR_WORKFLOW_SHAPE_KEYS: Record<string, MessageKey> = {
   sequential: messageKeys.sharedOperatorWorkflowShapeSequential,
 };
 
+const OPERATOR_WORKFLOW_STAGE_KEYS: Record<string, MessageKey> = {
+  blocked: messageKeys.sharedOperatorWorkflowStageBlocked,
+  concurrent_fan_out: messageKeys.sharedOperatorWorkflowStageConcurrentFanOut,
+  continuation_handoff:
+    messageKeys.sharedOperatorWorkflowStageContinuationHandoff,
+  converge_review: messageKeys.sharedOperatorWorkflowStageConvergeReview,
+  dispatch: messageKeys.sharedOperatorWorkflowStageDispatch,
+  initial_dispatch: messageKeys.sharedOperatorWorkflowStageInitialDispatch,
+  runtime_error: messageKeys.sharedOperatorWorkflowStageRuntimeError,
+  startup_recovery: messageKeys.sharedOperatorWorkflowStageStartupRecovery,
+  turn_completed: messageKeys.sharedOperatorWorkflowStageTurnCompleted,
+};
+
 const OPERATOR_BRANCH_STRATEGY_KEYS: Record<string, MessageKey> = {
   fork_if_possible: messageKeys.sharedOperatorBranchStrategyForkIfPossible,
   fresh_no_parent: messageKeys.sharedOperatorBranchStrategyFreshNoParent,
@@ -389,6 +412,13 @@ export function operatorWorkflowShapeLabel(
   t: OperatorTranslate = fallbackOperatorTranslate,
 ): string {
   return formatOperatorToken(shape, OPERATOR_WORKFLOW_SHAPE_KEYS, t);
+}
+
+export function operatorWorkflowStageLabel(
+  stage: string,
+  t: OperatorTranslate = fallbackOperatorTranslate,
+): string {
+  return formatOperatorToken(stage, OPERATOR_WORKFLOW_STAGE_KEYS, t);
 }
 
 export function operatorBranchStrategyLabel(

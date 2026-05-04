@@ -7,6 +7,7 @@ import {
   operatorGuardReasonLabel,
   operatorSeverityClassName,
   operatorWorkflowShapeLabel,
+  operatorWorkflowStageLabel,
   runStatusLabel,
   runStatusSeverity,
 } from '../../operatorFormatting';
@@ -154,7 +155,7 @@ export function ProgressSummaryPanel({
                 {inspector.workflowStageId ? (
                   <span>
                     {t(messageKeys.sharedOperatorMetaStage, {
-                      stage: inspector.workflowStageId,
+                      stage: operatorWorkflowStageLabel(inspector.workflowStageId, t),
                     })}
                   </span>
                 ) : null}

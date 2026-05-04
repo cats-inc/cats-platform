@@ -102,6 +102,8 @@ The final 2026-05-04 cleanup localized:
   and branch strategy metadata such as `converge` and `transplant_context`
 - Shared operator Run Inspector localizes branch handoff reason metadata such
   as `explicit_mention` and `workflow_continuation`
+- Shared operator progress summaries and Run Inspector localize workflow stage
+  metadata such as `concurrent_fan_out` and `continuation_handoff`
 - Shared operator guardrail/cooldown callouts localize known deterministic
   guard labels such as `anti_ping_pong`, `max_dispatches`, and
   `Cooldown active` while preserving custom runtime-authored cooldown text

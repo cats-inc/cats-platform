@@ -1969,6 +1969,22 @@ export const messageKeys = {
   sharedOperatorMetaStarted: 'shared.operator.meta.started',
   sharedOperatorMetaUpdated: 'shared.operator.meta.updated',
   sharedOperatorMetaStage: 'shared.operator.meta.stage',
+  sharedOperatorWorkflowStageBlocked: 'shared.operator.workflowStage.blocked',
+  sharedOperatorWorkflowStageConcurrentFanOut:
+    'shared.operator.workflowStage.concurrentFanOut',
+  sharedOperatorWorkflowStageContinuationHandoff:
+    'shared.operator.workflowStage.continuationHandoff',
+  sharedOperatorWorkflowStageConvergeReview:
+    'shared.operator.workflowStage.convergeReview',
+  sharedOperatorWorkflowStageDispatch: 'shared.operator.workflowStage.dispatch',
+  sharedOperatorWorkflowStageInitialDispatch:
+    'shared.operator.workflowStage.initialDispatch',
+  sharedOperatorWorkflowStageRuntimeError:
+    'shared.operator.workflowStage.runtimeError',
+  sharedOperatorWorkflowStageStartupRecovery:
+    'shared.operator.workflowStage.startupRecovery',
+  sharedOperatorWorkflowStageTurnCompleted:
+    'shared.operator.workflowStage.turnCompleted',
   sharedOperatorMetaShape: 'shared.operator.meta.shape',
   sharedOperatorMetaReviewRequired: 'shared.operator.meta.reviewRequired',
   sharedOperatorMetaGuardrail: 'shared.operator.meta.guardrail',

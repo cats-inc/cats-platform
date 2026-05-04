@@ -14,6 +14,7 @@ import {
   operatorDeliveryModeLabel,
   operatorGuardReasonLabel,
   operatorWorkflowShapeLabel,
+  operatorWorkflowStageLabel,
   runStatusLabel,
 } from '../src/design/operatorFormatting.ts';
 import { createTranslator } from '../src/shared/i18n/index.ts';
@@ -57,6 +58,8 @@ test('operator policy metadata labels localize known policy tokens', () => {
   assert.equal(operatorBudgetAlertLevelLabel('blocked', zh), '受阻');
   assert.equal(operatorWorkflowShapeLabel('converge', zh), '匯合');
   assert.equal(operatorWorkflowShapeLabel('parallel', zh), '並行');
+  assert.equal(operatorWorkflowStageLabel('concurrent_fan_out', zh), '並行展開');
+  assert.equal(operatorWorkflowStageLabel('continuation_handoff', zh), '續接交接');
   assert.equal(
     operatorBranchStrategyLabel('transplant_context', zh),
     '沿用上下文',
@@ -92,7 +95,7 @@ test('progress summary renders localized policy metadata tokens', async () => {
             continuationCount: 0,
             targetCount: 1,
           },
-          workflowStageId: null,
+          workflowStageId: 'concurrent_fan_out',
           workflowShape: 'converge',
           reviewRequired: false,
         }}
@@ -112,12 +115,14 @@ test('progress summary renders localized policy metadata tokens', async () => {
   );
 
   assert.match(markup, /交付：僅提交/u);
+  assert.match(markup, /階段：並行展開/u);
   assert.match(markup, /形態：匯合/u);
   assert.match(markup, /門檻：需要擁有者核准, 需要發布成果物/u);
   assert.match(markup, /預算：受阻/u);
   assert.match(markup, /保護條件：防止來回轉派/u);
   assert.match(markup, /冷卻：冷卻中/u);
   assert.doesNotMatch(markup, /commit_only/u);
+  assert.doesNotMatch(markup, /concurrent_fan_out/u);
   assert.doesNotMatch(markup, /converge/u);
   assert.doesNotMatch(markup, /anti_ping_pong/u);
   assert.doesNotMatch(markup, /Cooldown active/u);
@@ -150,7 +155,7 @@ test('run inspector renders localized tab and branch status metadata', async () 
             },
           ],
           outcomes: [],
-          workflowStageId: null,
+          workflowStageId: 'continuation_handoff',
           workflowShape: 'converge',
           reviewRequired: false,
           guardReason: 'max_dispatches',
@@ -162,6 +167,7 @@ test('run inspector renders localized tab and branch status metadata', async () 
   );
 
   assert.match(markup, /<span>已完成<\/span>/u);
+  assert.match(markup, /階段：續接交接/u);
   assert.match(markup, /形態：匯合/u);
   assert.match(markup, /交接：明確提及/u);
   assert.match(markup, /策略：沿用上下文/u);
@@ -170,6 +176,7 @@ test('run inspector renders localized tab and branch status metadata', async () 
   assert.match(markup, /<span class="operatorMetaText">等待匯合<\/span>/u);
   assert.doesNotMatch(markup, /waiting_for_converge/u);
   assert.doesNotMatch(markup, /explicit_mention/u);
+  assert.doesNotMatch(markup, /continuation_handoff/u);
   assert.doesNotMatch(markup, /transplant_context/u);
   assert.doesNotMatch(markup, /converge/u);
   assert.doesNotMatch(markup, /max_dispatches/u);

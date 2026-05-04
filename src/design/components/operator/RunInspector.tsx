@@ -9,6 +9,7 @@ import {
   operatorGuardReasonLabel,
   operatorSeverityClassName,
   operatorWorkflowShapeLabel,
+  operatorWorkflowStageLabel,
   outcomeStatusLabel,
   outcomeStatusSeverity,
   runStatusLabel,
@@ -141,7 +142,7 @@ export function RunInspector({
                 {inspector.workflowStageId ? (
                   <span>
                     {t(messageKeys.sharedOperatorMetaStage, {
-                      stage: inspector.workflowStageId,
+                      stage: operatorWorkflowStageLabel(inspector.workflowStageId, t),
                     })}
                   </span>
                 ) : null}
