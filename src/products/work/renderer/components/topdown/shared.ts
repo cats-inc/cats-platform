@@ -1,5 +1,7 @@
 import type {
   WorkAttentionState,
+  WorkGraphDiagnosticKind,
+  WorkGraphDiagnosticSeverity,
   WorkGraphEvidenceAttachment,
   WorkGraphGateDecorator,
   WorkGraphLayer,
@@ -70,6 +72,30 @@ const WORK_TASK_PRODUCT_BINDING_LABEL_KEY: Record<
   unbound: "workTopdownTaskProductBindingUnbound",
 };
 
+const WORKGRAPH_DIAGNOSTIC_SEVERITY_LABEL_KEY: Record<
+  WorkGraphDiagnosticSeverity,
+  MessageKey
+> = {
+  error: "workTopdownBrokenLinksSeverityErrorLabel",
+  warning: "workTopdownBrokenLinksSeverityWarningLabel",
+  info: "workTopdownBrokenLinksSeverityInfoLabel",
+};
+
+const WORKGRAPH_DIAGNOSTIC_KIND_LABEL_KEY: Record<
+  WorkGraphDiagnosticKind,
+  MessageKey
+> = {
+  broken_fk: "workTopdownDiagnosticKindBrokenFk",
+  missing_project_anchor: "workTopdownDiagnosticKindMissingProjectAnchor",
+  missing_planning_execution_bridge:
+    "workTopdownDiagnosticKindMissingPlanningExecutionBridge",
+  unanchored_run: "workTopdownDiagnosticKindUnanchoredRun",
+  unanchored_evidence: "workTopdownDiagnosticKindUnanchoredEvidence",
+  missing_gate_subject: "workTopdownDiagnosticKindMissingGateSubject",
+  orphan_link: "workTopdownDiagnosticKindOrphanLink",
+  link_cycle: "workTopdownDiagnosticKindLinkCycle",
+};
+
 export function getWorkGraphKindLabel(
   kind: WorkGraphObjectKind,
   t: (key: MessageKey, values?: Record<string, string | number>) => string,
@@ -113,6 +139,20 @@ export function getWorkTaskProductBindingLabel(
   t: (key: MessageKey, values?: Record<string, string | number>) => string,
 ): string {
   return t(WORK_TASK_PRODUCT_BINDING_LABEL_KEY[binding]);
+}
+
+export function getWorkGraphDiagnosticSeverityLabel(
+  severity: WorkGraphDiagnosticSeverity,
+  t: (key: MessageKey, values?: Record<string, string | number>) => string,
+): string {
+  return t(WORKGRAPH_DIAGNOSTIC_SEVERITY_LABEL_KEY[severity]);
+}
+
+export function getWorkGraphDiagnosticKindLabel(
+  kind: WorkGraphDiagnosticKind,
+  t: (key: MessageKey, values?: Record<string, string | number>) => string,
+): string {
+  return t(WORKGRAPH_DIAGNOSTIC_KIND_LABEL_KEY[kind]);
 }
 
 export function getWorkGraphGateStateLabel(

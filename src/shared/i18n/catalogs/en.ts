@@ -940,6 +940,15 @@ export const enCatalog: MessageCatalog = {
   'work.topdown.brokenLinksCycleRemovableRows':
     'Removable rows ({count}):',
   'work.topdown.brokenLinksDeletedLabel': '(deleted)',
+  'work.topdown.diagnosticKind.brokenFk': 'Broken reference',
+  'work.topdown.diagnosticKind.missingProjectAnchor': 'Missing project anchor',
+  'work.topdown.diagnosticKind.missingPlanningExecutionBridge':
+    'Missing planning/execution bridge',
+  'work.topdown.diagnosticKind.unanchoredRun': 'Unanchored run',
+  'work.topdown.diagnosticKind.unanchoredEvidence': 'Unanchored evidence',
+  'work.topdown.diagnosticKind.missingGateSubject': 'Missing gate subject',
+  'work.topdown.diagnosticKind.orphanLink': 'Orphan link',
+  'work.topdown.diagnosticKind.linkCycle': 'Link cycle',
   'work.topdown.selectionLost': 'Selection lost',
   'work.topdown.objectNotInProjectionTitle': 'Object not in projection',
   'work.topdown.objectNotInProjectionMessage':

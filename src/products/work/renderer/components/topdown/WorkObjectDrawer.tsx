@@ -7,6 +7,7 @@ import {
   getWorkGraphGateStateLabel,
   getWorkGraphKindLabel,
   getWorkGraphLayerLabel,
+  getWorkGraphDiagnosticKindLabel,
   formatRelative,
   type WorkGraphIndexes,
 } from "./shared";
@@ -197,7 +198,9 @@ export function WorkObjectDrawer({
               key={d.id}
               className={`topDownDrawer__diagnostic topDownDrawer__diagnostic--${d.severity}`}
             >
-              <span className="topDownDrawer__diagnosticKind">{d.kind}</span>
+              <span className="topDownDrawer__diagnosticKind">
+                {getWorkGraphDiagnosticKindLabel(d.kind, t)}
+              </span>
               <p>{d.message}</p>
             </li>
           ))}

@@ -26,7 +26,7 @@ function renderPage(): string {
 
 test('BrokenLinksPage renders an orphan_link row with both endpoints and a deleted marker', () => {
   const markup = renderPage();
-  assert.match(markup, /orphan_link/u);
+  assert.match(markup, /Orphan link/u);
   assert.match(markup, /Landing page rev 3/u);
   assert.match(markup, /task-deleted-fixture/u);
   assert.match(markup, /\(deleted\)/u);
@@ -39,7 +39,7 @@ test('BrokenLinksPage renders the orphan_link Remove affordance enabled for prod
 
 test('BrokenLinksPage renders a link_cycle row with cycle endpoints in traversal order', () => {
   const markup = renderPage();
-  assert.match(markup, /link_cycle/u);
+  assert.match(markup, /Link cycle/u);
   assert.match(markup, /Identify CS response-time bottleneck/u);
   assert.match(markup, /\[orphan\] Forgotten retention email idea/u);
   assert.match(markup, /↺/u);
@@ -47,8 +47,8 @@ test('BrokenLinksPage renders a link_cycle row with cycle endpoints in traversal
 
 test('BrokenLinksPage exposes one Remove affordance per cycleLinkIds entry', () => {
   const markup = renderPage();
-  assert.match(markup, /Remove\s*<code>link-cycle-a<\/code>/u);
-  assert.match(markup, /Remove\s*<code>link-cycle-b<\/code>/u);
+  assert.match(markup, /Remove this link\s*<code>link-cycle-a<\/code>/u);
+  assert.match(markup, /Remove this link\s*<code>link-cycle-b<\/code>/u);
 });
 
 test('BrokenLinksPage does not surface orphan link rows under linksByEndpoint anywhere on the page', () => {

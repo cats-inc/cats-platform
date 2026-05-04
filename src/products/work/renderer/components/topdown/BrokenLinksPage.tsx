@@ -11,6 +11,8 @@ import {
 import {
   buildIndexes,
   endpointKey,
+  getWorkGraphDiagnosticKindLabel,
+  getWorkGraphDiagnosticSeverityLabel,
   getWorkGraphKindLabel,
   type WorkGraphIndexes,
 } from "./shared";
@@ -232,6 +234,7 @@ function DiagnosticRow({
   onRemoveLink,
   removingId,
 }: DiagnosticRowProps): JSX.Element {
+  const { t } = useI18n();
   return (
     <article
       className={`brokenLinks__row brokenLinks__row--${diagnostic.severity}`}
@@ -240,9 +243,11 @@ function DiagnosticRow({
         <span
           className={`brokenLinks__sev brokenLinks__sev--${diagnostic.severity}`}
         >
-          {diagnostic.severity.toUpperCase()}
+          {getWorkGraphDiagnosticSeverityLabel(diagnostic.severity, t)}
         </span>
-        <code className="brokenLinks__kind">{diagnostic.kind}</code>
+        <span className="brokenLinks__kind">
+          {getWorkGraphDiagnosticKindLabel(diagnostic.kind, t)}
+        </span>
         <RowSubject diagnostic={diagnostic} indexes={indexes} />
       </header>
       <p className="brokenLinks__msg">{diagnostic.message}</p>

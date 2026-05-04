@@ -908,6 +908,15 @@ export const zhTWCatalog: MessageCatalog = {
   'work.topdown.brokenLinksCycleRemovableRows':
     '可移除列 ({count}):',
   'work.topdown.brokenLinksDeletedLabel': '（已刪除）',
+  'work.topdown.diagnosticKind.brokenFk': '斷裂參照',
+  'work.topdown.diagnosticKind.missingProjectAnchor': '缺少專案錨點',
+  'work.topdown.diagnosticKind.missingPlanningExecutionBridge':
+    '缺少規劃/執行橋接',
+  'work.topdown.diagnosticKind.unanchoredRun': '未錨定的執行',
+  'work.topdown.diagnosticKind.unanchoredEvidence': '未錨定的證據',
+  'work.topdown.diagnosticKind.missingGateSubject': '缺少閘門對象',
+  'work.topdown.diagnosticKind.orphanLink': '孤立連結',
+  'work.topdown.diagnosticKind.linkCycle': '連結循環',
   'work.topdown.selectionLost': '選取遺失',
   'work.topdown.objectNotInProjectionTitle': '物件不在投影中',
   'work.topdown.objectNotInProjectionMessage':

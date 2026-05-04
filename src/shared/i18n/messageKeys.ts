@@ -925,6 +925,22 @@ export const messageKeys = {
   workTopdownBrokenLinksCycleRemovableRows:
     'work.topdown.brokenLinksCycleRemovableRows',
   workTopdownBrokenLinksDeletedLabel: 'work.topdown.brokenLinksDeletedLabel',
+  workTopdownDiagnosticKindBrokenFk:
+    'work.topdown.diagnosticKind.brokenFk',
+  workTopdownDiagnosticKindMissingProjectAnchor:
+    'work.topdown.diagnosticKind.missingProjectAnchor',
+  workTopdownDiagnosticKindMissingPlanningExecutionBridge:
+    'work.topdown.diagnosticKind.missingPlanningExecutionBridge',
+  workTopdownDiagnosticKindUnanchoredRun:
+    'work.topdown.diagnosticKind.unanchoredRun',
+  workTopdownDiagnosticKindUnanchoredEvidence:
+    'work.topdown.diagnosticKind.unanchoredEvidence',
+  workTopdownDiagnosticKindMissingGateSubject:
+    'work.topdown.diagnosticKind.missingGateSubject',
+  workTopdownDiagnosticKindOrphanLink:
+    'work.topdown.diagnosticKind.orphanLink',
+  workTopdownDiagnosticKindLinkCycle:
+    'work.topdown.diagnosticKind.linkCycle',
   workTopdownTaskProductBindingTitle: 'work.topdown.taskProductBindingTitle',
   workTopdownTaskProductBindingUnbound:
     'work.topdown.taskProductBindingUnbound',
