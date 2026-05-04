@@ -135,6 +135,8 @@ The final 2026-05-04 cleanup localized:
   failures to localized toast feedback instead of rendering raw server messages
 - Settings Cats registry maps deterministic cat roster and Telegram binding
   mutation errors to localized feedback while preserving unknown diagnostics
+- Settings Cats memory save/delete feedback localizes deterministic memory API
+  validation and not-found errors, and delete now rejects failed responses
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

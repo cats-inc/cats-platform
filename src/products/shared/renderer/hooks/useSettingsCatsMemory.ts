@@ -13,6 +13,7 @@ import {
 } from '../api/index.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { messageKeys } from '../../../../shared/i18n/index.js';
+import { formatSettingsCatsMemoryMutationError } from './settingsCatsMemoryErrorLabels.js';
 
 export interface SettingsCatsMemoryController {
   memoryForm: {
@@ -83,7 +84,11 @@ export function useSettingsCatsMemory(input: {
       setCatMemory((prev) => [item, ...prev.filter((existing) => existing.id !== item.id)]);
       setMemoryForm({ category: 'fact', content: '' });
     } catch (error) {
-      input.onFeedback(error instanceof Error ? error.message : t(messageKeys.sharedSettingsCatsMemorySaveError));
+      input.onFeedback(formatSettingsCatsMemoryMutationError(
+        error,
+        t(messageKeys.sharedSettingsCatsMemorySaveError),
+        t,
+      ));
     } finally {
       input.onBusy(clearBusyState());
     }
@@ -95,7 +100,11 @@ export function useSettingsCatsMemory(input: {
       await deleteCatMemory(catId, memoryId);
       setCatMemory((prev) => prev.filter((memoryRecord) => memoryRecord.id !== memoryId));
     } catch (error) {
-      input.onFeedback(error instanceof Error ? error.message : t(messageKeys.sharedSettingsCatsMemoryDeleteError));
+      input.onFeedback(formatSettingsCatsMemoryMutationError(
+        error,
+        t(messageKeys.sharedSettingsCatsMemoryDeleteError),
+        t,
+      ));
     } finally {
       input.onBusy(clearBusyState());
     }

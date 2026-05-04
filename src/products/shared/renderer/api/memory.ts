@@ -46,9 +46,10 @@ export async function deleteCatMemory(
   memoryId: string,
   signal?: AbortSignal,
 ): Promise<void> {
-  await fetch(`/api/cats/${encodeURIComponent(catId)}/memory/${encodeURIComponent(memoryId)}`, {
+  const response = await fetch(`/api/cats/${encodeURIComponent(catId)}/memory/${encodeURIComponent(memoryId)}`, {
     method: 'DELETE',
     headers: { Accept: 'application/json' },
     signal,
   });
+  await expectJson<unknown>(response, `cat memory delete returned ${response.status}`);
 }
