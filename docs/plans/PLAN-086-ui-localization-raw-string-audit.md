@@ -93,6 +93,9 @@ The final 2026-05-04 cleanup localized:
 - Runtime Settings lifecycle feedback localizes desktop setup helper summary
   templates such as retry, restart, manual follow-through, missing requirement,
   and helper-finished status messages
+- Desktop bootstrap diagnostics and setup-fix cards localize known packaged
+  setup helper error templates such as missing helper assets, unsupported modes,
+  unsupported host platforms, and missing structured output
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

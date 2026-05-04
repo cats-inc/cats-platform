@@ -668,6 +668,12 @@ export function buildDesktopBootstrapPage(): string {
         'setup.noSummary': 'No summary recorded.',
         'setup.recommendedNextStep': 'Recommended next step',
         'setup.restartNeeded': 'A restart is needed before the next step.',
+        'setupError.failedBeforeStructuredOutput': '{helperLabel} failed before emitting structured output.',
+        'setupError.missingPackaged': '{helperLabel} is missing from the current packaged host build.',
+        'setupError.notBundled': '{helperLabel} is not currently bundled with this host build.',
+        'setupError.unsupportedHost': '{helperLabel} is not supported on this host.',
+        'setupError.unsupportedMode': '{helperLabel} does not support {mode} mode.',
+        'setupError.unsupportedPlatform': '{helperLabel} is currently only supported on {platformSupport}.',
         'setupReason.authRequired': 'authentication required',
         'setupReason.changesRequired': 'changes required',
         'setupReason.dockerWarmUpRequired': 'Docker warm-up required',
@@ -703,6 +709,11 @@ export function buildDesktopBootstrapPage(): string {
         'setupPack.nativeCli': 'native CLI pack',
         'setupPack.optionalCapability': 'optional capability pack',
         'setupPack.wslPowerUser': 'WSL power-user pack',
+        'setupPlatform.linuxHosts': 'Linux hosts',
+        'setupPlatform.macosHosts': 'macOS hosts',
+        'setupPlatform.windowsHosts': 'Windows hosts',
+        'setupPlatform.windowsMacLinuxHosts': 'Windows, macOS, or Linux hosts',
+        'setupPlatform.windowsWslHosts': 'Windows hosts with WSL support',
         'setupHelper.windowsCliReadiness': 'Windows PowerShell + PATH readiness helper',
         'setupHelper.windowsVcRedist': 'Windows Microsoft Visual C++ 2015-2022 Redistributable (x64)',
         'setupHelper.nodeHostInstaller': '{platform} Node.js LTS host installer',
@@ -905,6 +916,12 @@ export function buildDesktopBootstrapPage(): string {
         'setup.noSummary': '未記錄摘要。',
         'setup.recommendedNextStep': '建議的下一步',
         'setup.restartNeeded': '下一步前需要重新啟動。',
+        'setupError.failedBeforeStructuredOutput': '{helperLabel} 在輸出結構化結果前失敗。',
+        'setupError.missingPackaged': '目前的套裝主機版本缺少 {helperLabel}。',
+        'setupError.notBundled': '目前的主機版本未套裝 {helperLabel}。',
+        'setupError.unsupportedHost': '{helperLabel} 不支援這台主機。',
+        'setupError.unsupportedMode': '{helperLabel} 不支援{mode}模式。',
+        'setupError.unsupportedPlatform': '{helperLabel} 目前只支援{platformSupport}。',
         'setupReason.authRequired': '需要驗證',
         'setupReason.changesRequired': '需要變更',
         'setupReason.dockerWarmUpRequired': 'Docker 需要暖機',
@@ -940,6 +957,11 @@ export function buildDesktopBootstrapPage(): string {
         'setupPack.nativeCli': '原生 CLI 套件',
         'setupPack.optionalCapability': '選用能力套件',
         'setupPack.wslPowerUser': 'WSL 進階使用者套件',
+        'setupPlatform.linuxHosts': 'Linux 主機',
+        'setupPlatform.macosHosts': 'macOS 主機',
+        'setupPlatform.windowsHosts': 'Windows 主機',
+        'setupPlatform.windowsMacLinuxHosts': 'Windows、macOS 或 Linux 主機',
+        'setupPlatform.windowsWslHosts': '支援 WSL 的 Windows 主機',
         'setupHelper.windowsCliReadiness': 'Windows PowerShell + PATH 就緒檢查輔助程式',
         'setupHelper.windowsVcRedist': 'Windows Microsoft Visual C++ 2015-2022 可轉散發套件 (x64)',
         'setupHelper.nodeHostInstaller': '{platform} Node.js LTS 主機安裝器',
@@ -1092,6 +1114,14 @@ export function buildDesktopBootstrapPage(): string {
       'native CLI pack': 'setupPack.nativeCli',
       'optional capability pack': 'setupPack.optionalCapability',
       'WSL power-user pack': 'setupPack.wslPowerUser'
+    };
+
+    var BOOTSTRAP_SETUP_PLATFORM_SUPPORT_KEYS = {
+      'Linux hosts': 'setupPlatform.linuxHosts',
+      'macOS hosts': 'setupPlatform.macosHosts',
+      'Windows hosts': 'setupPlatform.windowsHosts',
+      'Windows, macOS, or Linux hosts': 'setupPlatform.windowsMacLinuxHosts',
+      'Windows hosts with WSL support': 'setupPlatform.windowsWslHosts'
     };
 
     var BOOTSTRAP_ISSUE_TITLE_KEYS = {
@@ -1295,6 +1325,12 @@ export function buildDesktopBootstrapPage(): string {
       return key ? tx(key) : text;
     }
 
+    function localizeSetupPlatformSupport(support) {
+      var text = String(support || '').trim();
+      var key = BOOTSTRAP_SETUP_PLATFORM_SUPPORT_KEYS[text];
+      return key ? tx(key) : text;
+    }
+
     function localizeSetupHelperLabel(label) {
       var text = String(label || '').trim();
       if (text === 'Windows PowerShell + PATH readiness helper') {
@@ -1364,6 +1400,50 @@ export function buildDesktopBootstrapPage(): string {
         });
       }
 
+      return text;
+    }
+
+    function localizeSetupError(error) {
+      var text = String(error || '');
+      var match = null;
+      match = text.match(/^(.+) is not currently bundled with this host build\.$/);
+      if (match) {
+        return tx('setupError.notBundled', {
+          helperLabel: localizeSetupHelperLabel(match[1])
+        });
+      }
+      match = text.match(/^(.+) is missing from the current packaged host build\.$/);
+      if (match) {
+        return tx('setupError.missingPackaged', {
+          helperLabel: localizeSetupHelperLabel(match[1])
+        });
+      }
+      match = text.match(/^(.+) does not support (.+) mode\.$/);
+      if (match) {
+        return tx('setupError.unsupportedMode', {
+          helperLabel: localizeSetupHelperLabel(match[1]),
+          mode: localizeSetupMode(match[2])
+        });
+      }
+      match = text.match(/^(.+) failed before emitting structured output\.$/);
+      if (match) {
+        return tx('setupError.failedBeforeStructuredOutput', {
+          helperLabel: localizeSetupHelperLabel(match[1])
+        });
+      }
+      match = text.match(/^(.+) is currently only supported on (.+)\.$/);
+      if (match) {
+        return tx('setupError.unsupportedPlatform', {
+          helperLabel: localizeSetupHelperLabel(match[1]),
+          platformSupport: localizeSetupPlatformSupport(match[2])
+        });
+      }
+      match = text.match(/^(.+) is not supported on this host\.$/);
+      if (match) {
+        return tx('setupError.unsupportedHost', {
+          helperLabel: localizeSetupHelperLabel(match[1])
+        });
+      }
       return text;
     }
 
@@ -2157,7 +2237,7 @@ export function buildDesktopBootstrapPage(): string {
               el('span', null, evt.timestamp)
             ),
             evt.error && evt.error.message
-              ? el('div', { class: 'detail-meta c-err' }, evt.error.message)
+              ? el('div', { class: 'detail-meta c-err' }, localizeSetupError(evt.error.message))
               : false
           );
         });
@@ -2257,7 +2337,7 @@ export function buildDesktopBootstrapPage(): string {
             tx('setup.restartNeeded')));
         }
         if (lastAction.error) {
-          lac.push(el('div', { class: 'detail-meta c-err' }, lastAction.error));
+          lac.push(el('div', { class: 'detail-meta c-err' }, localizeSetupError(lastAction.error)));
         }
         cards.push(el('div', { class: 'card' }, lac));
       }

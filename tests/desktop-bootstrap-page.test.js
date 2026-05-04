@@ -37,6 +37,7 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /localizeSetupSummary/);
   assert.match(html, /localizeSetupPackLabel/);
   assert.match(html, /localizeSetupHelperLabel/);
+  assert.match(html, /localizeSetupError/);
   assert.match(html, /displayStatus/);
   assert.match(html, /'zh-TW'/);
   assert.match(html, /Cats 需要快速重新啟動/);
@@ -61,6 +62,9 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /歡迎。你可以現在安裝 CLI/);
   assert.match(html, /手動後續步驟/);
   assert.match(html, /完成 \{helperLabel\} 的手動後續步驟/);
+  assert.match(html, /目前的主機版本未套裝 \{helperLabel\}/);
+  assert.match(html, /\{helperLabel\} 不支援\{mode\}模式/);
+  assert.match(html, /支援 WSL 的 Windows 主機/);
   assert.match(html, /啟動 cats-runtime 伴隨服務/);
   assert.match(html, /API 基準設定/);
   assert.match(html, /本機模型套件/);
@@ -87,6 +91,8 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /setupHelper\.packagedProviderUninstallHelper/);
   assert.match(html, /setupHelper\.packagedNpmGlobalCliInstallerHelper/);
   assert.match(html, /lastAction\.label \? localizeSetupHelperLabel\(lastAction\.label\) : lastAction\.helperId/);
+  assert.match(html, /localizeSetupError\(evt\.error\.message\)/);
+  assert.match(html, /localizeSetupError\(lastAction\.error\)/);
   assert.match(html, /return snap\.summary \? localizeBootstrapSummary\(snap\.summary\) : tx\('recovery\.summary\.details'\);/);
 
   // Back button to leave detail mode
