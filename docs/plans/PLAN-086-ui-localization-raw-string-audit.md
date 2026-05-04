@@ -101,15 +101,19 @@ The final 2026-05-04 cleanup localized:
 - Desktop bootstrap diagnostics and setup-fix cards localize known packaged
   setup helper error templates such as missing helper assets, unsupported modes,
   unsupported host platforms, and missing structured output
+- The raw-string audit guard now also scans literal JSX text nodes and literal
+  JSX expression children, while continuing to ignore icon/entity-only text
+  such as close buttons and overflow glyphs
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.
 
 `tests/ui-localization-raw-string-audit.test.tsx` guards the highest-signal
 desktop and mobile renderer/product directories against obvious new raw English
-UI chrome in `label`, `title`, `description`, `placeholder`, tooltip, and
-`aria-label` literals. If that test fails, either move the string into the
-shared i18n catalogs or update this allowlist with a SPEC-097 reason.
+UI chrome in `label`, `title`, `description`, `placeholder`, tooltip,
+`aria-label`, and literal JSX text nodes. If that test fails, either move the
+string into the shared i18n catalogs or update this allowlist with a SPEC-097
+reason.
 
 ## Allowlist
 
@@ -131,7 +135,8 @@ Revisit this allowlist when:
 - server routes start accepting an explicit locale for product clients
 - new persisted Cats-owned transcript/system-note templates are introduced
 - a new Settings, setup, Chat, Code, Work, or Guide Cat component adds direct
-  `title`, `label`, `placeholder`, tooltip, toast, or `aria-label` literals
+  `title`, `label`, `placeholder`, tooltip, toast, `aria-label`, or JSX text
+  literals
 
 When a string moves out of the allowlist, add a stable message key, English and
 Traditional Chinese catalog entries, and a focused test covering the rendered
