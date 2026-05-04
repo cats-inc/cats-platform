@@ -129,6 +129,8 @@ The final 2026-05-04 cleanup localized:
 - Work create/delete dialogs map known deterministic CRUD validation and
   not-found API messages to localized renderer copy while preserving unknown
   server exceptions
+- Platform setup/onboarding maps coded setup API failures such as bad request,
+  already-complete, and internal server errors to localized wizard feedback
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

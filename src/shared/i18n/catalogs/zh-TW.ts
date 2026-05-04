@@ -2283,6 +2283,7 @@ export const zhTWCatalog: MessageCatalog = {
   'setup.wizard.failedWithStatus': '設定失敗（{status}）',
   'setup.wizard.alreadyCompleteError': '設定已完成。',
   'setup.wizard.invalidRequestError': '設定請求無效。',
+  'setup.wizard.serverError': '無法完成設定，請稍後再試。',
   'setup.wizard.recordOpenFailedWithStatus':
     '記錄設定開啟狀態失敗（{status}）',
   'setup.guideCat.runtimeUnavailable': '供應器目錄無法使用',

@@ -122,6 +122,7 @@ test('shared zh-TW catalog avoids raw English for known product chrome fallbacks
   );
   assert.equal(t(messageKeys.setupWizardAlreadyCompleteError), '設定已完成。');
   assert.equal(t(messageKeys.setupWizardInvalidRequestError), '設定請求無效。');
+  assert.equal(t(messageKeys.setupWizardServerError), '無法完成設定，請稍後再試。');
   assert.equal(
     t(messageKeys.setupWizardRecordOpenFailedWithStatus, { status: 503 }),
     '記錄設定開啟狀態失敗（503）',

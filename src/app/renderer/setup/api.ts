@@ -22,7 +22,7 @@ interface SetupApiRequestOptions {
   errorMessagesByCode?: Readonly<Record<string, string>>;
 }
 
-async function readErrorMessage(
+export async function readSetupApiErrorMessage(
   response: Response,
   options: SetupApiRequestOptions,
 ): Promise<string> {
@@ -33,6 +33,7 @@ async function readErrorMessage(
       if (mappedMessage) {
         return mappedMessage;
       }
+      return options.fallbackMessageForStatus(response.status);
     }
     if (typeof payload?.error?.message === 'string') {
       return payload.error.message;
@@ -56,7 +57,7 @@ export async function completePlatformSetup(
   });
 
   if (!response.ok) {
-    throw new Error(await readErrorMessage(response, options));
+    throw new Error(await readSetupApiErrorMessage(response, options));
   }
 
   return (await response.json()) as PlatformHostEnvelope;
@@ -92,7 +93,7 @@ export async function markPlatformSetupOpened(
   });
 
   if (!response.ok) {
-    throw new Error(await readErrorMessage(response, options));
+    throw new Error(await readSetupApiErrorMessage(response, options));
   }
 
   return (await response.json()) as ProductBootstrapDiagnosticsReadModel;

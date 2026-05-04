@@ -2442,6 +2442,7 @@ export const messageKeys = {
   setupWizardFailedWithStatus: 'setup.wizard.failedWithStatus',
   setupWizardAlreadyCompleteError: 'setup.wizard.alreadyCompleteError',
   setupWizardInvalidRequestError: 'setup.wizard.invalidRequestError',
+  setupWizardServerError: 'setup.wizard.serverError',
   setupWizardRecordOpenFailedWithStatus: 'setup.wizard.recordOpenFailedWithStatus',
   setupGuideCatRuntimeUnavailable: 'setup.guideCat.runtimeUnavailable',
   setupGuideCatNoUsableTargets: 'setup.guideCat.noUsableTargets',

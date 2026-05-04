@@ -77,6 +77,7 @@ export function PlatformSetupWizard({
         errorMessagesByCode: {
           already_complete: t(messageKeys.setupWizardAlreadyCompleteError),
           bad_request: t(messageKeys.setupWizardInvalidRequestError),
+          internal_error: t(messageKeys.setupWizardServerError),
         },
       });
       await syncDesktopHostPlatformShell(result);

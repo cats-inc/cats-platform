@@ -2328,6 +2328,7 @@ export const enCatalog: MessageCatalog = {
   'setup.wizard.failedWithStatus': 'Setup failed ({status})',
   'setup.wizard.alreadyCompleteError': 'Setup has already been completed.',
   'setup.wizard.invalidRequestError': 'Setup request is invalid.',
+  'setup.wizard.serverError': 'Setup could not be completed. Please try again.',
   'setup.wizard.recordOpenFailedWithStatus':
     'Failed to record setup open ({status})',
   'setup.guideCat.runtimeUnavailable': 'Provider registry unavailable',
