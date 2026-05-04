@@ -31,10 +31,14 @@ In scope:
   `LobbyCatRoster`)
 - Standalone entity pages for deep-links
 
-Out of scope (deferred to follow-up SPECs):
-- Full Clowder/Cattery data model and registry (Phase 6 prerequisite)
-- Membership management business logic (invites, roles)
-- Cross-product Code/Work lens implementation (SPEC-064 follow-up)
+Out of scope (covered elsewhere or deferred):
+- Full Clowder/Cattery data model and registry — covered by
+  [SPEC-103](../specs/SPEC-103-clowder-and-cattery-data-model.md);
+  Phase 6 prerequisite, gated on user approval
+- Membership management business logic (invites, roles, ACL) — future
+  follow-up plan
+- Cross-product Code/Work lens implementation — covered by SPEC-064
+  follow-up
 - Tablet-specific mobile layout
 - Recent-cats compressed roster (replacement for removed
   `LobbyCatRoster`)
@@ -127,8 +131,10 @@ Out of scope (deferred to follow-up SPECs):
       `lobbyModel.ts` to expose cats/clowders/catteries summaries)
 - [ ] Refactor `PlatformLobby.tsx` into a 2-column layout:
   - left: `LobbySidebar`
-  - right: `LobbyCanvas` (renders LobbyHome content if no entity selected,
-    or `EntityDetailPane` if an entity route is mounted as a child)
+  - right: existing LobbyHome content (hero + products + apps).
+    LobbyCanvas only ever renders LobbyHome — there is no entity-detail
+    state inside Lobby. Clicking a sidebar row navigates the user away
+    to `/cats/:id` etc.
 - [ ] Sidebar interaction: clicking a row navigates to the canonical
       entity URL (`/cats/:catId`, `/clowders/:clowderId`,
       `/catteries/:catteryId`). The user **leaves** `/lobby`. There is
@@ -283,7 +289,9 @@ Out of scope (deferred to follow-up SPECs):
   rendered** (the screen body is now the sidebar list); helpers
   (`StatCard`, `QuickEntryChip`, `ActivityRow`) and dropped i18n keys
   are not imported anywhere
-- **Phase 6**: depends on follow-up SPEC
+- **Phase 6**: depends on user approval of ADR-100 + SPEC-103 (both
+  written and committed; pending sign-off and resolution of their
+  remaining open questions)
 
 Per CLAUDE.md, run **only targeted tests** (e.g.
 `tests/platform-lobby*.test.tsx`, `tests/sidebar-my-cats-navigation.test.tsx`,
@@ -299,7 +307,7 @@ suite unless explicitly asked.
 | Sidebar adds visual weight to a previously minimal Lobby | Low | Default-collapsed sections; users opt-in to expand |
 | `/settings/cats` vs `/cats/:id` partition unclear | Medium | SPEC-102 §Settings narrows `/settings/cats` to global preferences and lifts `SettingsAssistants` to top-level `/settings/assistants`; `/settings/cats/my-cats` redirects to `/cats` |
 | Removing mobile Lobby's `statRow / quickEntryRow / recentActivity` loses discoverability for chat/code/work | Low | Bottom-tab nav already provides product entry; recentActivity can come back as its own surface if needed (out of scope for this plan) |
-| Phase 6 (Clowder/Cattery) has no data model yet | High | Phase 6 gated on a follow-up SPEC; Phases 1–5 ship without it; sidebar shows empty state for clowders/catteries until Phase 6 |
+| Phase 6 (Clowder/Cattery) blocks on ADR-100 + SPEC-103 approval | Medium | ADR-100 + SPEC-103 are written; Phase 6 gated on user sign-off + remaining open questions. Phases 1–5 ship without them; sidebar shows empty state for clowders/catteries until Phase 6 |
 | Lobby sidebar duplicates Chat sidebar's Direct Messages | Low | They serve different intents (Lobby = manage, Chat = converse); SPEC-102 §Boundaries makes the distinction explicit |
 
 ## Resolved Decisions

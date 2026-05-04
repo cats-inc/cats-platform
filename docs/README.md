@@ -59,6 +59,11 @@ The `scripts/` directory contains platform-specific scripts for this project:
 
 Recent additions:
 
+- [ADR-100](./decisions/100-cats-as-canonical-identity-with-clowder-and-cattery-as-associations.md) — cats are canonical identity, Clowder/Cattery are membership associations with formal/temp/external status as a first-class field
+- [ADR-099](./decisions/099-promote-cats-clowders-catteries-to-platform-entities.md) — promote Cats/Clowders/Catteries to first-class platform entities with canonical top-level URLs (`/cats/:id`, `/clowders/:id`, `/catteries/:id`); clean-cut path migration per AGENTS.md
+- [SPEC-103](./specs/SPEC-103-clowder-and-cattery-data-model.md) — Clowder/Cattery data model, entity-specific membership filters and transitions, aggregate Cats tab semantics
+- [SPEC-102](./specs/SPEC-102-lobby-sidebar-ia-and-entity-routes.md) — Lobby sidebar IA, canonical entity routes, EntityDetailPane shared shell, mobile Lobby tab replaced wholesale, Chat sidebar's MY CATS renamed to Direct Messages
+- [PLAN-091](./plans/PLAN-091-lobby-sidebar-and-entity-routes-rollout.md) — 6-phase Lobby sidebar and entity routes rollout (Phase 6 gated on ADR-100 + SPEC-103 approval)
 - [ADR-098](./decisions/098-url-driven-canvas-and-platform-shared-viewer.md)
 - [platform-viewer-policy](./platform-viewer-policy.md)
 - [ADR-097](./decisions/097-store-code-canvas-focus-on-task-metadata.md) — superseded by ADR-098
@@ -233,4 +238,4 @@ The main platform-foundation docs are current, but these areas still need dedica
 
 ---
 
-*Last updated: 2026-04-30*
+*Last updated: 2026-05-05*

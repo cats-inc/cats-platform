@@ -25,18 +25,21 @@ canvas shape rendered at each entity route.
   making them children of the Lobby surface
 - Preserve the existing `PlatformLobby` canvas (lobbyTopBar identity pill,
   lobbyHero greeting, products grid, apps grid, `LobbyBouncingCats`
-  background) when no entity is selected
-- Replace only the hero/products/apps stack with an entity detail pane when
-  an entity is selected via Lobby
-- Keep web ↔ mobile navigation parity at the section level (web: sidebar +
-  canvas; mobile: scrollable sections + push nav)
+  background) — Lobby is a single page with one rendered state
+- Lobby sidebar row clicks navigate to the canonical entity URL
+  (`/cats/:id`, `/clowders/:id`, `/catteries/:id`); the user leaves
+  `/lobby`. Entity detail is rendered standalone, never inside Lobby
+  chrome. Per ADR-099, Lobby is a viewport, not a parent
+- Keep web ↔ mobile navigation parity at the section level: both list the
+  same three sections; both navigate to the canonical entity route on tap
 - Rename Chat sidebar's `MY CATS` to `Direct Messages` and migrate the
   projection path
 
 ## Non-Goals
 
-- Defining the full Clowder/Cattery data model (follow-up SPEC required
-  before Phase 6 of PLAN-091)
+- Defining the full Clowder/Cattery data model — covered by
+  [SPEC-103](./SPEC-103-clowder-and-cattery-data-model.md), which is
+  Phase 6's prerequisite
 - Cross-product Code/Work lens implementation (covered by SPEC-064)
 - Reshaping mobile bottom-tabs
 - Membership management business logic (invites, roles, billing)
@@ -110,8 +113,11 @@ canvas shape rendered at each entity route.
 12. For Cattery (`/catteries/:id`), the tabs are: `Members / Clowders /
     Cats / Settings`. Default = `Members`.
 13. Tab selection is URL-driven via the second path segment:
-    `/cats/:id/overview`, `/clowders/:id/members`, etc. Bare
-    `/cats/:id` redirects to the default tab.
+    - `/cats/:id/{overview|chat|work|code}`
+    - `/clowders/:id/{cats|settings}`
+    - `/catteries/:id/{members|clowders|cats|settings}`
+    Bare `/{type}/:id` redirects to the default tab (Cat=Overview;
+    Clowder=Cats; Cattery=Members).
 14. The entity route is **always** standalone — it never renders inside
     Lobby chrome. The page consists of `EntityDetailPane` with a slim
     breadcrumb back to `/lobby`. Smoke tests must assert that
@@ -166,10 +172,13 @@ canvas shape rendered at each entity route.
     `app/(tabs)/cats/[id].tsx`, `app/(tabs)/clowders/[id].tsx`,
     `app/(tabs)/catteries/[id].tsx`.
 25. Mobile entity screens shall render a tab bar matching the web pane's
-    tabs (Overview/Chat/Work/Code for cats; Members/Cats/Settings for
-    clowders; Members/Clowders/Cats/Settings for catteries) using full-
-    screen layout. The mobile entity screen reuses the same render-time
-    contracts as `EntityDetailPane` even if its native shell differs.
+    tabs:
+    - Cats: `Overview / Chat / Work / Code`
+    - Clowders: `Cats / Settings`
+    - Catteries: `Members / Clowders / Cats / Settings`
+    using full-screen layout. The mobile entity screen reuses the same
+    render-time contracts as `EntityDetailPane` even if its native shell
+    differs.
 
 #### Settings
 

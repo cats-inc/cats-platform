@@ -77,8 +77,10 @@ Two illustrative cases:
 - As a freelancer Cat, I want to be a `formal` member of my own one-Cat
   Cattery and an `external` member of three client Catteries, with each
   context independent.
-- As a Cattery admin, I want adding a temp contractor to expire
-  automatically rather than requiring a manual "remove" later.
+- As a Clowder lead, I want to add a temp contractor to my task force
+  with an automatic expiry rather than having to manually remove them
+  later. (Temp status lives at the Clowder level, not the Cattery
+  level — see FR-12, 13.)
 - As an org chart viewer, I want to filter "show only formal members"
   to see the company's actual reporting structure without temp /
   external noise.
