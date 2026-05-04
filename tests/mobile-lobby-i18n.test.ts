@@ -43,41 +43,47 @@ function createPayload(): MobileAppShellPayload {
   };
 }
 
-test('selectMobileLobby localizes zh-TW lobby chrome', () => {
-  const data = selectMobileLobby(createPayload(), {
-    now: new Date('2026-05-03T12:00:00.000Z'),
-    locale: 'zh-Hant-TW',
-  });
-
+test('selectMobileLobby projects chat cats into the mobile sidebar shape (PLAN-091 phase 5)', () => {
+  // Locale resolution still routes zh-Hant-TW → zh-TW for the rest of
+  // the mobile copy surfaces; assert that pre-existing contract here
+  // even though selectMobileLobby itself no longer takes a locale.
   assert.equal(resolveMobileLocale('zh-Hant-TW'), 'zh-TW');
-  assert.equal(data.todayLabel, '今天 · 星期日 · 2026-05-03');
-  assert.deepEqual(
-    data.stats.map((stat) => [stat.id, stat.label, stat.value, stat.hint ?? null]),
-    [
-      ['active-channels', '進行中對話', '1', null],
-      ['cats', '貓咪', '1', null],
-      ['channels-with-unread', '未讀', '1', '共 2 則訊息'],
-    ],
-  );
-  assert.equal(data.recentActivity[0]?.hint, '剛剛');
+
+  const data = selectMobileLobby(createPayload());
+
+  assert.deepEqual(data.cats, [
+    {
+      id: 'cat-1',
+      name: 'Catlas',
+      avatarUrl: null,
+      avatarColor: null,
+      isBoss: false,
+    },
+  ]);
+  assert.deepEqual(data.clowders, []);
+  assert.deepEqual(data.catteries, []);
 });
 
-test('selectMobileLobby keeps English lobby chrome by default locale family', () => {
-  const data = selectMobileLobby(createPayload(), {
-    now: new Date('2026-05-03T12:00:00.000Z'),
-    locale: 'en-US',
-  });
-
-  assert.equal(data.todayLabel, 'Today · Sunday · 2026-05-03');
-  assert.deepEqual(
-    data.stats.map((stat) => [stat.id, stat.label, stat.value, stat.hint ?? null]),
-    [
-      ['active-channels', 'Active conversations', '1', null],
-      ['cats', 'Cats', '1', null],
-      ['channels-with-unread', 'Unread', '1', '2 messages total'],
-    ],
+test('selectMobileLobby honors catsLimit when slicing the projection', () => {
+  const data = selectMobileLobby(
+    {
+      ...createPayload(),
+      chat: {
+        cats: [
+          { id: 'a', name: 'A', avatarColor: null, status: 'active', products: ['chat'] },
+          { id: 'b', name: 'B', avatarColor: null, status: 'active', products: ['chat'] },
+          { id: 'c', name: 'C', avatarColor: null, status: 'active', products: ['chat'] },
+        ],
+        channels: [],
+      },
+    },
+    { catsLimit: 2 },
   );
-  assert.equal(data.recentActivity[0]?.hint, 'just now');
+
+  assert.deepEqual(
+    data.cats.map((cat) => cat.id),
+    ['a', 'b'],
+  );
 });
 
 test('mobile chat copy exposes localized fixed controls', () => {

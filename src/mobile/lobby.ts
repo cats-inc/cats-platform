@@ -1,111 +1,64 @@
 import type { MobileAppShellPayload } from './contracts.js';
-import {
-  formatMobileTimeAgo,
-  formatMobileTodayLabel,
-  getMobileLobbyCopy,
-  resolveDefaultMobileLocale,
-  resolveMobileLocale,
-} from './i18n.js';
 
 /**
- * Mobile-side Lobby content. Per SPEC-095 Open Question resolution
- * (commit `536215df`), mobile renders a *subset* of the platform
- * `/lobby` projection — and only against data the desktop already
- * exposes. Until a dedicated mobile lobby endpoint lands, the
- * selector below derives the lobby UX from the same
- * `MobileAppShellPayload` the sidebars consume, so nothing gets
- * fabricated in the renderer.
+ * Mobile-side Lobby content. Per PLAN-091 phase 5 (and the user's IA
+ * correction logged in SPEC-102 §Resolved Decisions), the mobile
+ * Lobby tab IS the sidebar — three sections (My Cats / My Clowders /
+ * My Catteries) projected from the same `MobileAppShellPayload` the
+ * sidebars consume. The earlier `stats / quickEntryRow /
+ * recentActivity` shape was removed cleanly in the same change. Phase
+ * 6 lands the actual Clowder/Cattery registries (ADR-100 + SPEC-103);
+ * until then the latter two sections render their empty state.
  */
 
-export interface MobileLobbyStat {
+export interface MobileLobbyCatSummary {
   id: string;
-  label: string;
-  value: string;
-  hint?: string;
-}
-
-export interface MobileLobbyActivityEntry {
-  id: string;
-  title: string;
-  hint: string;
-  channelId: string;
+  name: string;
+  avatarUrl: string | null;
+  avatarColor: string | null;
+  isBoss: boolean;
 }
 
 export interface MobileLobbyData {
-  todayLabel: string;
-  stats: MobileLobbyStat[];
-  recentActivity: MobileLobbyActivityEntry[];
+  cats: MobileLobbyCatSummary[];
+  /**
+   * Phase 6 (ADR-100 + SPEC-103) extends the mobile contract with
+   * real Clowder / Cattery summaries. Until then the section renders
+   * empty.
+   */
+  clowders: readonly unknown[];
+  catteries: readonly unknown[];
 }
 
 export interface SelectMobileLobbyOptions {
-  /** Override "now" in tests so the snapshot is deterministic. */
-  now?: Date;
-  /** Cap on the recent-activity rows. Defaults to 3. */
-  activityLimit?: number;
-  /** UI locale used for Cats-owned mobile lobby copy. */
-  locale?: string | null;
+  /** Cap on the cats list. Optional — undefined returns the full list. */
+  catsLimit?: number;
 }
 
 export function selectMobileLobby(
   payload: MobileAppShellPayload,
   options: SelectMobileLobbyOptions = {},
 ): MobileLobbyData {
-  const now = options.now ?? new Date();
-  const activityLimit = options.activityLimit ?? 3;
-  const locale = options.locale
-    ? resolveMobileLocale(options.locale)
-    : resolveDefaultMobileLocale();
-  const copy = getMobileLobbyCopy(locale);
+  // The mobile chat contract (`MobileChatShellState`) is intentionally
+  // a strict subset of the desktop one — it does not carry bossCatId or
+  // avatarUrl today. Surface the fields we have; extend the boundary
+  // contract when Phase 6 lands richer entity payloads.
+  const cats: MobileLobbyCatSummary[] = payload.chat.cats.map((cat) => ({
+    id: cat.id,
+    name: cat.name,
+    avatarUrl: null,
+    avatarColor: cat.avatarColor ?? null,
+    isBoss: false,
+  }));
 
-  const todayLabel = formatMobileTodayLabel(now, locale);
+  const limited =
+    typeof options.catsLimit === 'number' && options.catsLimit >= 0
+      ? cats.slice(0, options.catsLimit)
+      : cats;
 
-  const activeChannels = payload.chat.channels.filter(
-    (channel) => channel.status === 'active',
-  );
-
-  const stats: MobileLobbyStat[] = [
-    {
-      id: 'active-channels',
-      label: copy.statActiveConversations,
-      value: String(activeChannels.length),
-    },
-    {
-      id: 'cats',
-      label: copy.statCats,
-      value: String(payload.chat.cats.length),
-    },
-    {
-      id: 'channels-with-unread',
-      label: copy.statUnread,
-      value: String(
-        activeChannels.filter((channel) => channel.unreadCount > 0).length,
-      ),
-      hint:
-        activeChannels.length > 0
-          ? copy.unreadTotal(activeChannels.reduce(
-              (total, channel) => total + channel.unreadCount,
-              0,
-            ))
-          : undefined,
-    },
-  ];
-
-  const recentActivity = activeChannels
-    .map((channel) => {
-      const last = channel.lastMessageAt ?? channel.lastActivatedAt;
-      return {
-        channel,
-        timestamp: last ? Date.parse(last) : 0,
-      };
-    })
-    .sort((a, b) => b.timestamp - a.timestamp)
-    .slice(0, activityLimit)
-    .map(({ channel, timestamp }) => ({
-      id: channel.id,
-      title: channel.title,
-      hint: timestamp > 0 ? formatMobileTimeAgo(timestamp, now, locale) : '—',
-      channelId: channel.id,
-    }));
-
-  return { todayLabel, stats, recentActivity };
+  return {
+    cats: limited,
+    clowders: [],
+    catteries: [],
+  };
 }

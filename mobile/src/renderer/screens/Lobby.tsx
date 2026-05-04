@@ -1,3 +1,4 @@
+import { useCallback, useState } from 'react';
 import { useRouter } from 'expo-router';
 import {
   ActivityIndicator,
@@ -10,16 +11,26 @@ import {
 
 import { useMobileLobby } from '../hooks/useMobileLobby';
 import type {
-  MobileLobbyActivityEntry,
+  MobileLobbyCatSummary,
   MobileLobbyCopy,
   MobileLobbyData,
-  MobileLobbyStat,
 } from '../../../../src/mobile/index.js';
 import {
   getMobileLobbyCopy,
   resolveDefaultMobileLocale,
 } from '../../../../src/mobile/index.js';
 import { colors, radii, spacing, typography } from '../theme';
+
+type SectionKey = 'cats' | 'clowders' | 'catteries';
+
+interface SectionDescriptor {
+  key: SectionKey;
+  label: string;
+  count: number;
+  newRowLabel: string;
+  emptyLabel: string;
+  empty: boolean;
+}
 
 export function Lobby() {
   const router = useRouter();
@@ -56,12 +67,9 @@ export function Lobby() {
     <LobbyBody
       data={state.data}
       copy={copy}
-      onSelectActivity={(entry) =>
-        router.push(`/(tabs)/chat/${entry.channelId}`)
+      onSelectCat={(catId) =>
+        router.push(`/(tabs)/cats/${encodeURIComponent(catId)}`)
       }
-      onOpenChat={() => router.push('/(tabs)/chat')}
-      onOpenCode={() => router.push('/(tabs)/code')}
-      onOpenWork={() => router.push('/(tabs)/work')}
     />
   );
 }
@@ -69,117 +77,140 @@ export function Lobby() {
 interface LobbyBodyProps {
   data: MobileLobbyData;
   copy: MobileLobbyCopy;
-  onSelectActivity: (entry: MobileLobbyActivityEntry) => void;
-  onOpenChat: () => void;
-  onOpenCode: () => void;
-  onOpenWork: () => void;
+  onSelectCat: (catId: string) => void;
 }
 
-function LobbyBody({
-  data,
-  copy,
-  onSelectActivity,
-  onOpenChat,
-  onOpenCode,
-  onOpenWork,
-}: LobbyBodyProps) {
+function LobbyBody({ data, copy, onSelectCat }: LobbyBodyProps) {
+  const sections: SectionDescriptor[] = [
+    {
+      key: 'cats',
+      label: copy.sectionMyCats,
+      count: data.cats.length,
+      newRowLabel: copy.newCat,
+      emptyLabel: copy.emptyCats,
+      empty: data.cats.length === 0,
+    },
+    {
+      key: 'clowders',
+      label: copy.sectionMyClowders,
+      count: data.clowders.length,
+      newRowLabel: copy.newClowder,
+      emptyLabel: copy.emptyClowders,
+      empty: data.clowders.length === 0,
+    },
+    {
+      key: 'catteries',
+      label: copy.sectionMyCatteries,
+      count: data.catteries.length,
+      newRowLabel: copy.newCattery,
+      emptyLabel: copy.emptyCatteries,
+      empty: data.catteries.length === 0,
+    },
+  ];
+
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
       <View style={styles.header}>
-        <Text style={styles.eyebrow}>{data.todayLabel}</Text>
         <Text style={styles.title}>{copy.lobbyTitle}</Text>
       </View>
 
-      <View style={styles.statRow}>
-        {data.stats.map((stat) => (
-          <StatCard key={stat.id} stat={stat} />
-        ))}
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionLabel}>{copy.quickEntryTitle}</Text>
-        <View style={styles.quickEntryRow}>
-          <QuickEntryChip label={copy.quickEntryChat} onPress={onOpenChat} />
-          <QuickEntryChip label={copy.quickEntryCode} onPress={onOpenCode} />
-          <QuickEntryChip label={copy.quickEntryWork} onPress={onOpenWork} />
-        </View>
-      </View>
-
-      <View style={styles.section}>
-        <Text style={styles.sectionLabel}>{copy.recentActivityTitle}</Text>
-        {data.recentActivity.length === 0 ? (
-          <Text style={styles.emptyActivity}>
-            {copy.emptyRecentActivity}
-          </Text>
-        ) : (
-          data.recentActivity.map((entry) => (
-            <ActivityRow
-              key={entry.id}
-              entry={entry}
-              onPress={() => onSelectActivity(entry)}
-            />
-          ))
-        )}
-      </View>
-
+      {sections.map((section) => (
+        <SidebarSection key={section.key} section={section} copy={copy}>
+          {section.key === 'cats'
+            ? data.cats.map((cat) => (
+                <CatRow key={cat.id} cat={cat} onPress={() => onSelectCat(cat.id)} />
+              ))
+            : null}
+        </SidebarSection>
+      ))}
     </ScrollView>
   );
 }
 
-interface StatCardProps {
-  stat: MobileLobbyStat;
+interface SidebarSectionProps {
+  section: SectionDescriptor;
+  copy: MobileLobbyCopy;
+  children: React.ReactNode;
 }
 
-function StatCard({ stat }: StatCardProps) {
+function SidebarSection({ section, copy, children }: SidebarSectionProps) {
+  // Default collapsed (PLAN-091 §Resolved Decisions). User-driven
+  // expand state is local to the screen for the mobile slice — the
+  // desktop sidebar persists in `localStorage`; AsyncStorage parity on
+  // mobile is a separate task.
+  const [expanded, setExpanded] = useState(false);
+  const toggle = useCallback(() => setExpanded((current) => !current), []);
+  const toggleLabel = expanded
+    ? copy.collapseSectionLabel(section.label)
+    : copy.expandSectionLabel(section.label);
+
   return (
-    <View style={styles.statCard}>
-      <Text style={styles.statValue}>{stat.value}</Text>
-      <Text style={styles.statLabel}>{stat.label}</Text>
-      {stat.hint ? <Text style={styles.statHint}>{stat.hint}</Text> : null}
+    <View style={styles.section}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={toggleLabel}
+        accessibilityState={{ expanded }}
+        onPress={toggle}
+        style={({ pressed }) => [
+          styles.sectionHeader,
+          pressed ? styles.sectionHeaderPressed : null,
+        ]}
+      >
+        <Text style={styles.sectionChevron}>{expanded ? '▾' : '▸'}</Text>
+        <Text style={styles.sectionLabel}>{section.label}</Text>
+        <Text style={styles.sectionCount}>({section.count})</Text>
+      </Pressable>
+      {expanded ? (
+        <View style={styles.sectionBody}>
+          {section.empty ? (
+            <Text style={styles.sectionEmpty}>{section.emptyLabel}</Text>
+          ) : (
+            children
+          )}
+          <Pressable
+            accessibilityRole="button"
+            style={({ pressed }) => [
+              styles.newRow,
+              pressed ? styles.newRowPressed : null,
+            ]}
+          >
+            <Text style={styles.newRowLabel}>{section.newRowLabel}</Text>
+          </Pressable>
+        </View>
+      ) : null}
     </View>
   );
 }
 
-interface QuickEntryChipProps {
-  label: string;
+interface CatRowProps {
+  cat: MobileLobbyCatSummary;
   onPress: () => void;
 }
 
-function QuickEntryChip({ label, onPress }: QuickEntryChipProps) {
+function CatRow({ cat, onPress }: CatRowProps) {
   return (
     <Pressable
+      accessibilityRole="link"
       onPress={onPress}
       style={({ pressed }) => [
-        styles.quickEntryChip,
-        pressed ? styles.quickEntryChipPressed : null,
+        styles.catRow,
+        pressed ? styles.catRowPressed : null,
       ]}
     >
-      <Text style={styles.quickEntryLabel}>{label}</Text>
-    </Pressable>
-  );
-}
-
-interface ActivityRowProps {
-  entry: MobileLobbyActivityEntry;
-  onPress: () => void;
-}
-
-function ActivityRow({ entry, onPress }: ActivityRowProps) {
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.activityRow,
-        pressed ? styles.activityRowPressed : null,
-      ]}
-    >
-      <View style={styles.activityRowText}>
-        <Text style={styles.activityTitle} numberOfLines={2}>
-          {entry.title}
+      <View
+        style={[
+          styles.catAvatar,
+          cat.avatarColor ? { backgroundColor: cat.avatarColor } : null,
+        ]}
+      >
+        <Text style={styles.catInitial} numberOfLines={1}>
+          {cat.name.slice(0, 1).toUpperCase()}
         </Text>
-        <Text style={styles.activityHint}>{entry.hint}</Text>
       </View>
-      <Text style={styles.activityChevron}>›</Text>
+      <Text style={styles.catName} numberOfLines={1}>
+        {cat.name}
+      </Text>
+      <Text style={styles.catChevron}>›</Text>
     </Pressable>
   );
 }
@@ -225,108 +256,99 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: spacing.lg,
-    gap: spacing.lg,
+    gap: spacing.md,
   },
   header: {
     gap: spacing.xs,
-  },
-  eyebrow: {
-    color: colors.fg.muted,
-    ...typography.label,
-    letterSpacing: 0.6,
   },
   title: {
     color: colors.fg.primary,
     ...typography.display,
   },
-  statRow: {
-    flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  statCard: {
-    flex: 1,
-    padding: spacing.md,
+  section: {
     borderRadius: radii.md,
-    backgroundColor: colors.bg.panel,
     borderWidth: 1,
     borderColor: colors.border.subtle,
-    gap: 2,
+    backgroundColor: colors.bg.panel,
   },
-  statValue: {
-    color: colors.fg.primary,
-    ...typography.title,
-  },
-  statLabel: {
-    color: colors.fg.secondary,
-    ...typography.caption,
-  },
-  statHint: {
-    color: colors.fg.muted,
-    ...typography.label,
-  },
-  section: {
-    gap: spacing.sm,
-  },
-  sectionLabel: {
-    color: colors.fg.muted,
-    ...typography.label,
-    letterSpacing: 0.6,
-  },
-  quickEntryRow: {
+  sectionHeader: {
     flexDirection: 'row',
-    gap: spacing.sm,
-  },
-  quickEntryChip: {
-    flexGrow: 1,
-    flexBasis: 0,
+    alignItems: 'center',
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
-    borderRadius: radii.md,
-    backgroundColor: colors.bg.panel,
-    borderWidth: 1,
-    borderColor: colors.border.subtle,
-    alignItems: 'center',
+    gap: spacing.sm,
   },
-  quickEntryChipPressed: {
+  sectionHeaderPressed: {
     backgroundColor: colors.bg.panelHover,
   },
-  quickEntryLabel: {
+  sectionChevron: {
+    color: colors.fg.muted,
+    width: 14,
+    textAlign: 'center',
+  },
+  sectionLabel: {
+    flex: 1,
     color: colors.fg.primary,
     ...typography.bodyStrong,
   },
-  activityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.sm,
-    paddingHorizontal: spacing.md,
-    borderRadius: radii.sm,
-    gap: spacing.sm,
-  },
-  activityRowPressed: {
-    backgroundColor: colors.bg.panelHover,
-  },
-  activityRowText: {
-    flex: 1,
-    gap: 2,
-  },
-  activityTitle: {
-    color: colors.fg.primary,
-    ...typography.body,
-  },
-  activityHint: {
+  sectionCount: {
     color: colors.fg.muted,
     ...typography.caption,
   },
-  activityChevron: {
+  sectionBody: {
+    paddingHorizontal: spacing.md,
+    paddingBottom: spacing.sm,
+    gap: spacing.xs,
+  },
+  sectionEmpty: {
+    color: colors.fg.muted,
+    ...typography.caption,
+    paddingVertical: spacing.xs,
+  },
+  catRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.sm,
+    gap: spacing.sm,
+  },
+  catRowPressed: {
+    backgroundColor: colors.bg.panelHover,
+  },
+  catAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: '#8B7E74',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  catInitial: {
+    color: '#fff',
+    ...typography.label,
+  },
+  catName: {
+    flex: 1,
+    color: colors.fg.primary,
+    ...typography.body,
+  },
+  catChevron: {
     color: colors.fg.muted,
     fontSize: 22,
     lineHeight: 22,
   },
-  emptyActivity: {
-    color: colors.fg.muted,
-    ...typography.body,
-    paddingHorizontal: spacing.md,
+  newRow: {
     paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    borderRadius: radii.sm,
+  },
+  newRowPressed: {
+    backgroundColor: colors.bg.panelHover,
+  },
+  newRowLabel: {
+    color: colors.accent.primary,
+    ...typography.caption,
   },
   panel: {
     flex: 1,
