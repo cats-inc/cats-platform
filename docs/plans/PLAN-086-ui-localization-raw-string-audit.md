@@ -133,6 +133,8 @@ The final 2026-05-04 cleanup localized:
   already-complete, and internal server errors to localized wizard feedback
 - Settings Assistants maps deterministic assistant and Guide Cat API validation
   failures to localized toast feedback instead of rendering raw server messages
+- Settings Cats registry maps deterministic cat roster and Telegram binding
+  mutation errors to localized feedback while preserving unknown diagnostics
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

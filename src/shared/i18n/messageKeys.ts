@@ -2307,6 +2307,23 @@ export const messageKeys = {
   sharedSettingsCatsRecoverConfirmLabel: 'shared.settingsCats.recoverConfirmLabel',
   sharedSettingsCatsRecoverSuccess: 'shared.settingsCats.recoverSuccess',
   sharedSettingsCatsRecoverError: 'shared.settingsCats.recoverError',
+  sharedSettingsCatsErrorNameRequired: 'shared.settingsCats.error.nameRequired',
+  sharedSettingsCatsErrorProviderRequired: 'shared.settingsCats.error.providerRequired',
+  sharedSettingsCatsErrorNameEmpty: 'shared.settingsCats.error.nameEmpty',
+  sharedSettingsCatsErrorAlreadyArchived: 'shared.settingsCats.error.alreadyArchived',
+  sharedSettingsCatsErrorAlreadyActive: 'shared.settingsCats.error.alreadyActive',
+  sharedSettingsCatsErrorArchiveRecoverConflict:
+    'shared.settingsCats.error.archiveRecoverConflict',
+  sharedSettingsCatsErrorNoProducts: 'shared.settingsCats.error.noProducts',
+  sharedSettingsCatsErrorBotTokenDuplicate: 'shared.settingsCats.error.botTokenDuplicate',
+  sharedSettingsCatsErrorNameDuplicate: 'shared.settingsCats.error.nameDuplicate',
+  sharedSettingsCatsErrorLimitReached: 'shared.settingsCats.error.limitReached',
+  sharedSettingsCatsErrorNotFound: 'shared.settingsCats.error.notFound',
+  sharedSettingsCatsErrorNotActive: 'shared.settingsCats.error.notActive',
+  sharedSettingsCatsErrorNotAvailableInChat:
+    'shared.settingsCats.error.notAvailableInChat',
+  sharedSettingsCatsErrorBotBindingNotFound:
+    'shared.settingsCats.error.botBindingNotFound',
   sharedPlatformSurfaceSwitcherMenuLabel: 'shared.platformSurfaceSwitcher.menuLabel',
   sharedPlatformSurfaceSwitcherOpenLobby: 'shared.platformSurfaceSwitcher.openLobby',
   sharedPlatformSurfaceSwitcherAriaLabel: 'shared.platformSurfaceSwitcher.ariaLabel',

@@ -25,6 +25,7 @@ import {
   useSettingsCatsRegistryActions,
   type BotFormState,
 } from '../../hooks/useSettingsCatsRegistryActions.js';
+import { formatSettingsCatsRegistryMutationError } from '../../hooks/settingsCatsRegistryErrorLabels.js';
 import { useSettingsCatsTelegram } from '../../hooks/useSettingsCatsTelegram.js';
 import { AvatarCropDialog } from '../../../../../design/components/AvatarCropDialog.js';
 import { CoverCropDialog } from '../../../../../design/components/CoverCropDialog.js';
@@ -355,11 +356,11 @@ export function SettingsCatsCanvas({
         onPayloadUpdate(next);
         return true;
       } catch (error) {
-        toastFeedback(error instanceof Error ? error.message : errorLabel);
+        toastFeedback(formatSettingsCatsRegistryMutationError(error, errorLabel, t));
         return false;
       }
     },
-    [onPayloadUpdate, toastFeedback],
+    [onPayloadUpdate, t, toastFeedback],
   );
 
   const handleCreateCat = async () => {
@@ -377,11 +378,11 @@ export function SettingsCatsCanvas({
           setPendingCreateAvatar(null);
         } catch (error) {
           setPendingCreateAvatar(null);
-          toastFeedback(
-            error instanceof Error
-              ? error.message
-              : t(messageKeys.settingsGeneralSaveAvatarError),
-          );
+          toastFeedback(formatSettingsCatsRegistryMutationError(
+            error,
+            t(messageKeys.settingsGeneralSaveAvatarError),
+            t,
+          ));
         }
       }
       if (pendingCreateCover) {

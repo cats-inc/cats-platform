@@ -2159,6 +2159,22 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.settingsCats.recoverConfirmLabel': '復原',
   'shared.settingsCats.recoverSuccess': '{catName} 已復原。',
   'shared.settingsCats.recoverError': '復原貓咪失敗。',
+  'shared.settingsCats.error.nameRequired': '請輸入貓咪名稱。',
+  'shared.settingsCats.error.providerRequired': '請選擇貓咪供應器。',
+  'shared.settingsCats.error.nameEmpty': '貓咪名稱不可空白。',
+  'shared.settingsCats.error.alreadyArchived': '這隻貓咪已封存。',
+  'shared.settingsCats.error.alreadyActive': '這隻貓咪已啟用。',
+  'shared.settingsCats.error.archiveRecoverConflict':
+    '貓咪不可同時封存與復原。',
+  'shared.settingsCats.error.noProducts': '請至少為這隻貓咪選擇一個產品。',
+  'shared.settingsCats.error.botTokenDuplicate':
+    '這個 bot token 已被另一個綁定使用。',
+  'shared.settingsCats.error.nameDuplicate': '已存在名為「{name}」的貓咪。',
+  'shared.settingsCats.error.limitReached': '已達貓咪數量上限（最多 {maxCats} 隻）。',
+  'shared.settingsCats.error.notFound': '找不到這隻貓咪。',
+  'shared.settingsCats.error.notActive': '這隻貓咪尚未啟用。',
+  'shared.settingsCats.error.notAvailableInChat': '這隻貓咪無法在 Cats Chat 使用。',
+  'shared.settingsCats.error.botBindingNotFound': '找不到 bot 綁定。',
   'shared.platformSurfaceSwitcher.menuLabel': '切換產品',
   'shared.platformSurfaceSwitcher.openLobby': '開啟大廳',
   'shared.platformSurfaceSwitcher.ariaLabel':

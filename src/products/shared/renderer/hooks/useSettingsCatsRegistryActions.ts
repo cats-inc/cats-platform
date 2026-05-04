@@ -16,6 +16,7 @@ import { updateCatProfile } from '../api/index.js';
 import { emptyCatForm, type CatFormState } from '../workspaceChatUtils.js';
 import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
+import { formatSettingsCatsRegistryMutationError } from './settingsCatsRegistryErrorLabels.js';
 
 export type { BotFormState } from './settingsCatsRegistryActions.js';
 
@@ -84,9 +85,11 @@ export function useSettingsCatsRegistryActions(options: {
         setExpandedCatId(null);
       }
     } catch (error) {
-      onFeedback(error instanceof Error
-        ? error.message
-        : t(messageKeys.sharedSettingsCatsArchiveError));
+      onFeedback(formatSettingsCatsRegistryMutationError(
+        error,
+        t(messageKeys.sharedSettingsCatsArchiveError),
+        t,
+      ));
     } finally {
       onBusy(clearBusyState());
     }
@@ -108,9 +111,11 @@ export function useSettingsCatsRegistryActions(options: {
       onPayloadUpdate(next);
       onFeedback(t(messageKeys.sharedSettingsCatsRecoverSuccess, { catName }));
     } catch (error) {
-      onFeedback(error instanceof Error
-        ? error.message
-        : t(messageKeys.sharedSettingsCatsRecoverError));
+      onFeedback(formatSettingsCatsRegistryMutationError(
+        error,
+        t(messageKeys.sharedSettingsCatsRecoverError),
+        t,
+      ));
     } finally {
       onBusy(clearBusyState());
     }

@@ -21,6 +21,7 @@ import {
   updateCatProfile,
 } from '../api/index.js';
 import type { CatFormState } from '../workspaceChatUtils.js';
+import { formatSettingsCatsRegistryMutationError } from './settingsCatsRegistryErrorLabels.js';
 
 export interface BotFormState {
   botName: string;
@@ -82,9 +83,11 @@ export function createSettingsCatsRegistryActions(
       context.onFeedback(t(messageKeys.sharedSettingsCatsSaveSuccess));
       return result;
     } catch (error) {
-      context.onFeedback(error instanceof Error
-        ? error.message
-        : t(messageKeys.sharedSettingsCatsSaveError));
+      context.onFeedback(formatSettingsCatsRegistryMutationError(
+        error,
+        t(messageKeys.sharedSettingsCatsSaveError),
+        t,
+      ));
       return null;
     } finally {
       context.onBusy(clearBusyState());
@@ -109,9 +112,11 @@ export function createSettingsCatsRegistryActions(
       context.setRenameValue('');
       context.onFeedback(t(messageKeys.sharedSettingsCatsRenameSuccess));
     } catch (error) {
-      context.onFeedback(error instanceof Error
-        ? error.message
-        : t(messageKeys.sharedSettingsCatsRenameError));
+      context.onFeedback(formatSettingsCatsRegistryMutationError(
+        error,
+        t(messageKeys.sharedSettingsCatsRenameError),
+        t,
+      ));
     } finally {
       context.onBusy(clearBusyState());
     }
@@ -128,9 +133,11 @@ export function createSettingsCatsRegistryActions(
         context.setExpandedCatId(null);
       }
     } catch (error) {
-      context.onFeedback(error instanceof Error
-        ? error.message
-        : t(messageKeys.sharedSettingsCatsDeleteError));
+      context.onFeedback(formatSettingsCatsRegistryMutationError(
+        error,
+        t(messageKeys.sharedSettingsCatsDeleteError),
+        t,
+      ));
     } finally {
       context.onBusy(clearBusyState());
     }
@@ -143,9 +150,11 @@ export function createSettingsCatsRegistryActions(
       context.onPayloadUpdate(result);
       context.onFeedback(t(messageKeys.sharedSettingsCatsBossUpdated));
     } catch (error) {
-      context.onFeedback(error instanceof Error
-        ? error.message
-        : t(messageKeys.sharedSettingsCatsSetBossCatError));
+      context.onFeedback(formatSettingsCatsRegistryMutationError(
+        error,
+        t(messageKeys.sharedSettingsCatsSetBossCatError),
+        t,
+      ));
     } finally {
       context.onBusy(clearBusyState());
     }
@@ -159,9 +168,11 @@ export function createSettingsCatsRegistryActions(
       });
       context.onPayloadUpdate(result);
     } catch (error) {
-      context.onFeedback(error instanceof Error
-        ? error.message
-        : t(messageKeys.sharedSettingsCatsSkillUpdateError));
+      context.onFeedback(formatSettingsCatsRegistryMutationError(
+        error,
+        t(messageKeys.sharedSettingsCatsSkillUpdateError),
+        t,
+      ));
     } finally {
       context.onBusy(clearBusyState());
     }
@@ -188,9 +199,11 @@ export function createSettingsCatsRegistryActions(
       context.setBotForm(emptyBotForm());
       context.onFeedback(t(messageKeys.sharedSettingsCatsTelegramBindingCreated));
     } catch (error) {
-      context.onFeedback(error instanceof Error
-        ? error.message
-        : t(messageKeys.sharedSettingsCatsTelegramBindingCreateError));
+      context.onFeedback(formatSettingsCatsRegistryMutationError(
+        error,
+        t(messageKeys.sharedSettingsCatsTelegramBindingCreateError),
+        t,
+      ));
     } finally {
       context.onBusy(clearBusyState());
     }
@@ -203,9 +216,11 @@ export function createSettingsCatsRegistryActions(
       context.onPayloadUpdate(result);
       context.onFeedback(t(messageKeys.sharedSettingsCatsTelegramBindingRemoved));
     } catch (error) {
-      context.onFeedback(error instanceof Error
-        ? error.message
-        : t(messageKeys.sharedSettingsCatsTelegramBindingRemoveError));
+      context.onFeedback(formatSettingsCatsRegistryMutationError(
+        error,
+        t(messageKeys.sharedSettingsCatsTelegramBindingRemoveError),
+        t,
+      ));
     } finally {
       context.onBusy(clearBusyState());
     }
