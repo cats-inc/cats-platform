@@ -369,6 +369,7 @@ known-gaps list.
 | 2026-05-04 | Chat companion settings now reuse the shared Telegram inbound-mode i18n labels so binding metadata no longer renders raw `polling` / `webhook` tokens. |
 | 2026-05-04 | Work Top-down object drawers now localize evidence relation metadata (`artifact`, `activity`, `outcome`) instead of rendering raw relation tokens. |
 | 2026-05-04 | Work Top-down object drawers now localize structural layer metadata (`interaction`, `planning`, `execution`) instead of rendering raw graph layer tokens. |
+| 2026-05-04 | Work task product binding pills now localize `work`, `code`, `chat`, and `unbound` metadata across Tasks list/detail and Top-down cards. |
 
 ---
 

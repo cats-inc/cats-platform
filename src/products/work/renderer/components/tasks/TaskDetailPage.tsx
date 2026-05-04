@@ -9,6 +9,7 @@ import {
   buildIndexes,
   formatRelative,
   getWorkGraphAttentionLabel,
+  getWorkTaskProductBindingLabel,
 } from "../topdown/shared";
 import { removeWorkTask } from "../../api/workRecords.js";
 import { useProjectsQuery } from "../../state/queries/projectsQuery.js";
@@ -94,6 +95,9 @@ export function TaskDetailPage(): JSX.Element {
   const taskRuns = (runsQuery.data?.runs ?? [])
     .filter((r) => r.taskId === task.id)
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  const productBindingLabel = task.productBinding
+    ? getWorkTaskProductBindingLabel(task.productBinding, t)
+    : null;
 
   const activities = graph.objects
     .filter((o) => o.kind === "activity" && o.linkedTaskId === task.id)
@@ -158,10 +162,10 @@ export function TaskDetailPage(): JSX.Element {
             <span
               className={`tasksList__binding tasksList__binding--${task.productBinding}`}
               title={t("workTopdownTaskProductBindingTitle", {
-                productBinding: task.productBinding,
+                productBinding: productBindingLabel ?? "",
               })}
             >
-              {task.productBinding}
+              {productBindingLabel}
             </span>
           ) : null}
           <span

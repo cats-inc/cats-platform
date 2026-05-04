@@ -4,6 +4,7 @@ import {
   getWorkGraphAttentionLabel,
   getWorkGraphKindLabel,
   getWorkGraphGateStateLabel,
+  getWorkTaskProductBindingLabel,
 } from "./shared";
 import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import type { WorkGraphGateDecorator, WorkGraphObjectSummary } from "./types";
@@ -30,6 +31,10 @@ export function WorkObjectCard({
       ? null
       : getWorkGraphAttentionLabel(object.attention, t);
   const statusLabel = getWorkObjectStatusLabel(object.status, t);
+  const productBindingLabel =
+    object.kind === "task" && object.productBinding
+      ? getWorkTaskProductBindingLabel(object.productBinding, t)
+      : null;
   const parentTaskLabel =
     object.kind === "run"
       ? t("workTopdownParentTaskOwningLabel")
@@ -60,14 +65,14 @@ export function WorkObjectCard({
     >
       <header className="topDownCard__head">
         <span className="topDownCard__kind">{kindLabel}</span>
-        {object.kind === "task" && object.productBinding ? (
+        {object.kind === "task" && object.productBinding && productBindingLabel ? (
           <span
             className={`topDownCard__binding topDownCard__binding--${object.productBinding}`}
             title={t("workTopdownTaskProductBindingTitle", {
-              productBinding: object.productBinding,
+              productBinding: productBindingLabel,
             })}
           >
-            {object.productBinding}
+            {productBindingLabel}
           </span>
         ) : null}
         {attentionTag ? (

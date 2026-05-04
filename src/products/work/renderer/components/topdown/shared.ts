@@ -8,6 +8,7 @@ import type {
   WorkGraphObjectKind,
   WorkGraphObjectSummary,
   WorkGraphProjection,
+  WorkTaskProductBinding,
 } from "./types";
 import type { MessageKey } from "../../../../../shared/i18n/index.js";
 
@@ -59,6 +60,16 @@ const WORKGRAPH_LAYER_LABEL_KEY: Record<WorkGraphLayer, MessageKey> = {
   execution: "workTopdownSystemMapLayerExecutionLabel",
 };
 
+const WORK_TASK_PRODUCT_BINDING_LABEL_KEY: Record<
+  WorkTaskProductBinding,
+  MessageKey
+> = {
+  work: "platformProductWorkSettingsLabel",
+  code: "platformProductCodeSettingsLabel",
+  chat: "platformProductChatSettingsLabel",
+  unbound: "workTopdownTaskProductBindingUnbound",
+};
+
 export function getWorkGraphKindLabel(
   kind: WorkGraphObjectKind,
   t: (key: MessageKey, values?: Record<string, string | number>) => string,
@@ -95,6 +106,13 @@ export function getWorkGraphLayerLabel(
   t: (key: MessageKey, values?: Record<string, string | number>) => string,
 ): string {
   return t(WORKGRAPH_LAYER_LABEL_KEY[layer]);
+}
+
+export function getWorkTaskProductBindingLabel(
+  binding: WorkTaskProductBinding,
+  t: (key: MessageKey, values?: Record<string, string | number>) => string,
+): string {
+  return t(WORK_TASK_PRODUCT_BINDING_LABEL_KEY[binding]);
 }
 
 export function getWorkGraphGateStateLabel(

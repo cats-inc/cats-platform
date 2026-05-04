@@ -825,6 +825,7 @@ export const enCatalog: MessageCatalog = {
   'work.topdown.parentTaskLabel': 'Parent task',
   'work.topdown.parentWorkItemLabel': 'Parent work item: {parentWorkItemTitle}',
   'work.topdown.taskProductBindingTitle': 'Product binding: {productBinding}',
+  'work.topdown.taskProductBindingUnbound': 'Unbound',
   'work.topdown.parentTaskTooltip':
     'Related task: {linkedTaskTitle} ({linkType})',
   'work.topdown.crossCuttingLayer': 'Cross-cutting',

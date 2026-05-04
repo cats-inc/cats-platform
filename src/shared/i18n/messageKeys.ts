@@ -926,6 +926,8 @@ export const messageKeys = {
     'work.topdown.brokenLinksCycleRemovableRows',
   workTopdownBrokenLinksDeletedLabel: 'work.topdown.brokenLinksDeletedLabel',
   workTopdownTaskProductBindingTitle: 'work.topdown.taskProductBindingTitle',
+  workTopdownTaskProductBindingUnbound:
+    'work.topdown.taskProductBindingUnbound',
   workTopdownParentTaskTooltip: 'work.topdown.parentTaskTooltip',
   workTopdownSelectionLost: 'work.topdown.selectionLost',
   workTopdownObjectNotInProjectionTitle: 'work.topdown.objectNotInProjectionTitle',

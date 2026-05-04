@@ -76,6 +76,8 @@ The final 2026-05-04 cleanup localized:
   `activity`, `outcome`) instead of rendering raw relation tokens
 - Work Top-down object drawers localize structural layer metadata (`interaction`,
   `planning`, `execution`) instead of rendering raw graph layer tokens
+- Work task product binding pills localize known binding metadata (`work`,
+  `code`, `chat`, `unbound`) across Tasks list/detail and Top-down cards
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

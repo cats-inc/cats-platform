@@ -5,6 +5,7 @@ import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import {
   formatRelative,
   getWorkGraphAttentionLabel,
+  getWorkTaskProductBindingLabel,
 } from "../topdown/shared";
 import { getWorkObjectStatusLabel } from "../topdown/WorkObjectCard";
 import { useTasksQuery } from "../../state/queries/tasksQuery.js";
@@ -69,91 +70,96 @@ export function TasksListPage(): JSX.Element {
           </p>
         ) : (
           <ul className="tasksList__list">
-            {tasks.map((task) => (
-              <li key={task.id} className="tasksList__row">
-                <Link
-                  to={task.id}
-                  className="tasksList__rowLink"
-                  aria-label={t("workTasksListOpenTaskAria", {
-                    title: task.title,
-                  })}
-                >
-                  <div className="tasksList__rowMain">
-                    <span
-                      className={`projectsList__dot projectsList__dot--${task.status}`}
-                      aria-hidden="true"
-                    />
-                    <div className="tasksList__rowText">
-                      <span className="tasksList__rowTitle">
-                        {task.title}
-                      </span>
-                      {task.summary ? (
-                        <span className="tasksList__rowSummary">
-                          {task.summary}
+            {tasks.map((task) => {
+              const productBindingLabel = task.productBinding
+                ? getWorkTaskProductBindingLabel(task.productBinding, t)
+                : null;
+              return (
+                <li key={task.id} className="tasksList__row">
+                  <Link
+                    to={task.id}
+                    className="tasksList__rowLink"
+                    aria-label={t("workTasksListOpenTaskAria", {
+                      title: task.title,
+                    })}
+                  >
+                    <div className="tasksList__rowMain">
+                      <span
+                        className={`projectsList__dot projectsList__dot--${task.status}`}
+                        aria-hidden="true"
+                      />
+                      <div className="tasksList__rowText">
+                        <span className="tasksList__rowTitle">
+                          {task.title}
+                        </span>
+                        {task.summary ? (
+                          <span className="tasksList__rowSummary">
+                            {task.summary}
+                          </span>
+                        ) : null}
+                      </div>
+                    </div>
+                    <div className="tasksList__rowMeta">
+                      {task.productBinding ? (
+                        <span
+                          className={`tasksList__binding tasksList__binding--${task.productBinding}`}
+                          title={t("workTopdownTaskProductBindingTitle", {
+                            productBinding: productBindingLabel ?? "",
+                          })}
+                        >
+                          {productBindingLabel}
                         </span>
                       ) : null}
-                    </div>
-                  </div>
-                  <div className="tasksList__rowMeta">
-                    {task.productBinding ? (
+                      {task.projectTitle ? (
+                        <span className="tasksList__chip tasksList__chip--project">
+                          {task.projectTitle}
+                        </span>
+                      ) : null}
+                      {task.workItemTitle ? (
+                        <span className="tasksList__chip tasksList__chip--workItem">
+                          {task.workItemTitle}
+                        </span>
+                      ) : null}
+                      {task.priority ? (
+                        <span
+                          className={`tasksList__priority tasksList__priority--${task.priority}`}
+                          title={formatTaskPriorityTitle(task.priority, t)}
+                        >
+                          {formatTaskPriorityLabel(task.priority, t)}
+                        </span>
+                      ) : null}
+                      {task.attention === "decision_needed" ? (
+                        <span className="tasksList__pip tasksList__pip--decision">
+                          {t("workObjectAttentionDecisionNeeded")}
+                        </span>
+                      ) : null}
+                      {task.attention === "blocked" || task.attention === "failed" ? (
+                        <span className="tasksList__pip tasksList__pip--blocked">
+                          {getWorkGraphAttentionLabel(task.attention, t)}
+                        </span>
+                      ) : null}
+                      {task.assigneeName ? (
+                        <span className="tasksList__assignee">
+                          {task.assigneeName}
+                        </span>
+                      ) : task.ownerRole ? (
+                        <span className="tasksList__assignee tasksList__assignee--role">
+                          {task.ownerRole}
+                        </span>
+                      ) : null}
+                      <span className="tasksList__metric tasksList__metric--muted">
+                        {formatRelative(task.updatedAt, t)}
+                      </span>
                       <span
-                        className={`tasksList__binding tasksList__binding--${task.productBinding}`}
-                        title={t("workTopdownTaskProductBindingTitle", {
-                          productBinding: task.productBinding,
-                        })}
+                        className={`tasksList__statusPill tasksList__statusPill--${task.status}`}
                       >
-                        {task.productBinding}
+                        {formatTaskStatusLabel(task.status, t)}
                       </span>
-                    ) : null}
-                    {task.projectTitle ? (
-                      <span className="tasksList__chip tasksList__chip--project">
-                        {task.projectTitle}
-                      </span>
-                    ) : null}
-                    {task.workItemTitle ? (
-                      <span className="tasksList__chip tasksList__chip--workItem">
-                        {task.workItemTitle}
-                      </span>
-                    ) : null}
-                    {task.priority ? (
-                  <span
-                    className={`tasksList__priority tasksList__priority--${task.priority}`}
-                    title={formatTaskPriorityTitle(task.priority, t)}
-                  >
-                        {formatTaskPriorityLabel(task.priority, t)}
-                      </span>
-                    ) : null}
-                    {task.attention === "decision_needed" ? (
-                      <span className="tasksList__pip tasksList__pip--decision">
-                        {t("workObjectAttentionDecisionNeeded")}
-                      </span>
-                    ) : null}
-                    {task.attention === "blocked" || task.attention === "failed" ? (
-                      <span className="tasksList__pip tasksList__pip--blocked">
-                        {getWorkGraphAttentionLabel(task.attention, t)}
-                      </span>
-                    ) : null}
-                    {task.assigneeName ? (
-                      <span className="tasksList__assignee">
-                        {task.assigneeName}
-                      </span>
-                    ) : task.ownerRole ? (
-                      <span className="tasksList__assignee tasksList__assignee--role">
-                        {task.ownerRole}
-                      </span>
-                    ) : null}
-                    <span className="tasksList__metric tasksList__metric--muted">
-                      {formatRelative(task.updatedAt, t)}
-                    </span>
-                    <span
-                      className={`tasksList__statusPill tasksList__statusPill--${task.status}`}
-                    >
-                      {formatTaskStatusLabel(task.status, t)}
-                    </span>
-                  </div>
-                </Link>
-              </li>
-            ))}
+                    </div>
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
         )}
       </main>

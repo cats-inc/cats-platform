@@ -798,6 +798,7 @@ export const zhTWCatalog: MessageCatalog = {
   'work.topdown.parentTaskLabel': '上層任務',
   'work.topdown.parentWorkItemLabel': '上層工作項目：{parentWorkItemTitle}',
   'work.topdown.taskProductBindingTitle': '產品綁定：{productBinding}',
+  'work.topdown.taskProductBindingUnbound': '未綁定',
   'work.topdown.parentTaskTooltip':
     '關聯任務：{linkedTaskTitle}（{linkType}）',
   'work.topdown.crossCuttingLayer': '跨層次',
