@@ -43,6 +43,15 @@ const WORKGRAPH_ATTENTION_LABEL_KEY: Partial<
   recently_shipped: "workObjectAttentionRecentlyShipped",
 };
 
+const WORKGRAPH_EVIDENCE_RELATION_LABEL_KEY: Record<
+  WorkGraphEvidenceAttachment["relation"],
+  MessageKey
+> = {
+  artifact: "workObjectKindArtifact",
+  activity: "workObjectKindActivity",
+  outcome: "workObjectKindOutcome",
+};
+
 export function getWorkGraphKindLabel(
   kind: WorkGraphObjectKind,
   t: (key: MessageKey, values?: Record<string, string | number>) => string,
@@ -65,6 +74,13 @@ export function getWorkGraphAttentionLabel(
     : t("workObjectAttentionUnknown", {
         attention: attention.replace(/_/g, " "),
       });
+}
+
+export function getWorkGraphEvidenceRelationLabel(
+  relation: WorkGraphEvidenceAttachment["relation"],
+  t: (key: MessageKey, values?: Record<string, string | number>) => string,
+): string {
+  return t(WORKGRAPH_EVIDENCE_RELATION_LABEL_KEY[relation]);
 }
 
 export function getWorkGraphGateStateLabel(

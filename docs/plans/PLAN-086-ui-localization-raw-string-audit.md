@@ -72,6 +72,8 @@ The final 2026-05-04 cleanup localized:
   preserving unknown host errors as content
 - Chat companion settings reuse the shared Telegram inbound-mode i18n labels so
   binding metadata no longer renders raw `polling` / `webhook` tokens
+- Work Top-down object drawers localize evidence relation metadata (`artifact`,
+  `activity`, `outcome`) instead of rendering raw relation tokens
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

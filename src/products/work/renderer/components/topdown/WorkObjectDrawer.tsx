@@ -3,6 +3,7 @@ import { useState } from "react";
 import { SidePanel, type SidePanelSection } from "../../../../../design/components/SidePanel";
 import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import {
+  getWorkGraphEvidenceRelationLabel,
   getWorkGraphGateStateLabel,
   getWorkGraphKindLabel,
   formatRelative,
@@ -119,7 +120,9 @@ export function WorkObjectDrawer({
               const target = indexes.objectsById.get(a.evidenceObjectId);
               return (
                 <li key={a.evidenceObjectId}>
-                  <span className="topDownDrawer__refKind">{a.relation}</span>
+                  <span className="topDownDrawer__refKind">
+                    {getWorkGraphEvidenceRelationLabel(a.relation, t)}
+                  </span>
                   {target ? (
                     <button
                       type="button"

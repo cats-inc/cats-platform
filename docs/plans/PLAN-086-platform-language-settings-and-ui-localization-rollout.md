@@ -367,6 +367,7 @@ known-gaps list.
 | 2026-05-04 | Code Builder execution control labels now localize known workflow blocked reasons beyond approval pending while preserving unknown runtime guard tokens verbatim. |
 | 2026-05-04 | Shared screenshot capture feedback now localizes known desktop-host permission and wlroots/no-display error messages at the renderer boundary while preserving unknown host errors as content. |
 | 2026-05-04 | Chat companion settings now reuse the shared Telegram inbound-mode i18n labels so binding metadata no longer renders raw `polling` / `webhook` tokens. |
+| 2026-05-04 | Work Top-down object drawers now localize evidence relation metadata (`artifact`, `activity`, `outcome`) instead of rendering raw relation tokens. |
 
 ---
 
