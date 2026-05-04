@@ -10,13 +10,14 @@
 |-------|-------|
 | **Status** | Active allowlist |
 | **Last audited** | 2026-05-04 |
-| **Scope** | Cats desktop renderer, desktop host bootstrap/onboarding, Chat, Code, Work, shared design components |
+| **Scope** | Cats desktop renderer, mobile renderer/app shell, desktop host bootstrap/onboarding, Chat, Code, Work, shared design components |
 
 ## Current Result
 
-Focused scans over renderer, desktop bootstrap, setup, Settings, Chat, Code,
-Work, and shared design files did not find remaining normal-path Cats-owned UI
-chrome that should be translated immediately.
+Focused scans over desktop renderer, mobile renderer/app shell, desktop
+bootstrap, setup, Settings, Chat, Code, Work, and shared design files did not
+find remaining normal-path Cats-owned UI chrome that should be translated
+immediately.
 
 The final 2026-05-04 cleanup localized:
 
@@ -47,10 +48,10 @@ Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.
 
 `tests/ui-localization-raw-string-audit.test.tsx` guards the highest-signal
-renderer/product directories against obvious new raw English UI chrome in
-`label`, `title`, `description`, `placeholder`, tooltip, and `aria-label`
-literals. If that test fails, either move the string into the shared i18n
-catalogs or update this allowlist with a SPEC-097 reason.
+desktop and mobile renderer/product directories against obvious new raw English
+UI chrome in `label`, `title`, `description`, `placeholder`, tooltip, and
+`aria-label` literals. If that test fails, either move the string into the
+shared i18n catalogs or update this allowlist with a SPEC-097 reason.
 
 ## Allowlist
 

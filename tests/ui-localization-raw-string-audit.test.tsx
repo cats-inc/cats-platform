@@ -6,6 +6,8 @@ import path from 'node:path';
 const ROOT = process.cwd();
 
 const SCAN_ROOTS = [
+  'mobile/app',
+  'mobile/src/renderer',
   'src/app/renderer',
   'src/design',
   'src/products/chat/renderer',
