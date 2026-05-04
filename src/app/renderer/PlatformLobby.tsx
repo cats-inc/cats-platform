@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { GuideCatDockSlot } from '../../design/components/GuideCatDockSlot.js';
+import { messageKeys, type MessageKey } from '../../shared/i18n/index.js';
 import { nameInitials } from '../../shared/nameInitials.js';
 import type { PlatformHostEnvelope } from '../../shared/platform-contract.js';
 import {
@@ -16,8 +17,15 @@ import {
   buildPlatformLobbyEntries,
   pickLobbyGreeting,
 } from './lobbyModel.js';
-import { LobbySidebar } from './lobby/LobbySidebar.js';
 import { resolveGuideCatAssistGreeting } from '../../shared/guideCatAssistPresentation.js';
+
+interface LobbyEntityCard {
+  key: 'cats' | 'clowders' | 'catteries';
+  labelKey: MessageKey;
+  subtitleKey: MessageKey;
+  count: number;
+  routePath: '/cats' | '/clowders' | '/catteries';
+}
 
 export function PlatformLobby({
   envelope,
@@ -48,6 +56,30 @@ export function PlatformLobby({
   const settingsNavState = {
     platformShellSurface: envelope.lastProductSurface ?? 'chat',
   };
+
+  const entityCards: LobbyEntityCard[] = [
+    {
+      key: 'cats',
+      labelKey: messageKeys.lobbyEntityCardCats,
+      subtitleKey: messageKeys.lobbyEntityCardCatsSubtitle,
+      count: envelope.lobby.cats.length,
+      routePath: '/cats',
+    },
+    {
+      key: 'clowders',
+      labelKey: messageKeys.lobbyEntityCardClowders,
+      subtitleKey: messageKeys.lobbyEntityCardClowdersSubtitle,
+      count: (envelope.lobby.clowders ?? []).length,
+      routePath: '/clowders',
+    },
+    {
+      key: 'catteries',
+      labelKey: messageKeys.lobbyEntityCardCatteries,
+      subtitleKey: messageKeys.lobbyEntityCardCatteriesSubtitle,
+      count: (envelope.lobby.catteries ?? []).length,
+      routePath: '/catteries',
+    },
+  ];
 
   return (
     <div className="screen lobbyScreen">
@@ -118,77 +150,88 @@ export function PlatformLobby({
           </div>
         </div>
 
-        <div className="lobbyMain">
-          <LobbySidebar
-            cats={envelope.lobby.cats}
-            clowders={envelope.lobby.clowders ?? []}
-            catteries={envelope.lobby.catteries ?? []}
-          />
+        <div className="lobbyHero">
+          <h1 className="lobbyGreeting">{greeting}</h1>
+        </div>
 
-          <div className="lobbyCanvas">
-            <div className="lobbyHero">
-              <h1 className="lobbyGreeting">{greeting}</h1>
-            </div>
+        <div className="lobbyProducts">
+          <p className="lobbyProductsEyebrow">{t(messageKeys.lobbyEntitiesSectionTitle)}</p>
+          <div className="platformLobbyGrid">
+            {entityCards.map((card) => (
+              <button
+                key={card.key}
+                type="button"
+                className={`contentCard platformLobbyCard platformLobbyCard--entity platformLobbyCard--entity-${card.key}`}
+                onClick={() => navigate(card.routePath)}
+              >
+                <div className="platformLobbyCardAccent" />
+                <span className="platformLobbyCardName">{t(card.labelKey)}</span>
+                <span className="platformLobbyCardSub">{t(card.subtitleKey)}</span>
+                <span className="platformLobbyCardHint">
+                  {t(messageKeys.lobbyEntityCardCount, { count: card.count })}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
 
-            <div className="lobbyProducts">
-              <p className="lobbyProductsEyebrow">{t('lobbyProductsSectionTitle')}</p>
-              <div className="platformLobbyGrid">
-                {entries.map((entry) => {
-                  const productClassName = 'contentCard platformLobbyCard'
-                    + ` platformLobbyCard--${entry.surface ?? 'module'}`
-                    + (entry.lastUsed ? ' platformLobbyCard--recent' : '')
-                    + (entry.available ? ' platformLobbyCard--mock' : '');
-                  const content = (
-                    <>
-                      <div className="platformLobbyCardAccent" />
-                      <span className="platformLobbyCardName">{entry.productName}</span>
-                      <span className="platformLobbyCardSub">{entry.subtitle}</span>
-                      {entry.lastUsed ? (
-                        <span className="platformLobbyCardHint">{t('lobbyContinueText')}</span>
-                      ) : null}
-                    </>
-                  );
+        <div className="lobbyProducts">
+          <p className="lobbyProductsEyebrow">{t('lobbyProductsSectionTitle')}</p>
+          <div className="platformLobbyGrid">
+            {entries.map((entry) => {
+              const productClassName = 'contentCard platformLobbyCard'
+                + ` platformLobbyCard--${entry.surface ?? 'module'}`
+                + (entry.lastUsed ? ' platformLobbyCard--recent' : '')
+                + (entry.available ? ' platformLobbyCard--mock' : '');
+              const content = (
+                <>
+                  <div className="platformLobbyCardAccent" />
+                  <span className="platformLobbyCardName">{entry.productName}</span>
+                  <span className="platformLobbyCardSub">{entry.subtitle}</span>
+                  {entry.lastUsed ? (
+                    <span className="platformLobbyCardHint">{t('lobbyContinueText')}</span>
+                  ) : null}
+                </>
+              );
 
-                  return entry.available ? (
-                    <div key={entry.productId} className={productClassName}>
-                      {content}
-                    </div>
-                  ) : (
-                    <button
-                      key={entry.productId}
-                      type="button"
-                      className={productClassName}
-                      onClick={() => navigate(entry.routePrefix)}
-                    >
-                      {content}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+              return entry.available ? (
+                <div key={entry.productId} className={productClassName}>
+                  {content}
+                </div>
+              ) : (
+                <button
+                  key={entry.productId}
+                  type="button"
+                  className={productClassName}
+                  onClick={() => navigate(entry.routePrefix)}
+                >
+                  {content}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
-            <div className="lobbyProducts">
-              <p className="lobbyProductsEyebrow">{t('lobbyAppsSectionTitle')}</p>
-              <div className="platformLobbyGrid">
-                {appEntries.length > 0 ? appEntries.map((entry) => (
-                  <button
-                    key={`${entry.appId}:${entry.entryId}`}
-                    type="button"
-                    className="contentCard platformLobbyCard platformLobbyCard--app"
-                    onClick={() => navigate(entry.routePath)}
-                    aria-label={t('lobbyOpenEntry', { entryTitle: entry.title })}
-                  >
-                    <div className="platformLobbyCardAccent" />
-                    <span className="platformLobbyCardName">{entry.title}</span>
-                    {entry.subtitle ? (
-                      <span className="platformLobbyCardSub">{entry.subtitle}</span>
-                    ) : null}
-                  </button>
-                )) : (
-                  <p className="lobbyAppsEmpty">{t('lobbyAppsEmptyState')}</p>
-                )}
-              </div>
-            </div>
+        <div className="lobbyProducts">
+          <p className="lobbyProductsEyebrow">{t('lobbyAppsSectionTitle')}</p>
+          <div className="platformLobbyGrid">
+            {appEntries.length > 0 ? appEntries.map((entry) => (
+              <button
+                key={`${entry.appId}:${entry.entryId}`}
+                type="button"
+                className="contentCard platformLobbyCard platformLobbyCard--app"
+                onClick={() => navigate(entry.routePath)}
+                aria-label={t('lobbyOpenEntry', { entryTitle: entry.title })}
+              >
+                <div className="platformLobbyCardAccent" />
+                <span className="platformLobbyCardName">{entry.title}</span>
+                {entry.subtitle ? (
+                  <span className="platformLobbyCardSub">{entry.subtitle}</span>
+                ) : null}
+              </button>
+            )) : (
+              <p className="lobbyAppsEmpty">{t('lobbyAppsEmptyState')}</p>
+            )}
           </div>
         </div>
       </div>

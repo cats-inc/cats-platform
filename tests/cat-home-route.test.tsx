@@ -107,12 +107,15 @@ test('CatHome renders Overview by default with default-executor summary and Memb
   assert.match(markup, />Default executor</u);
   assert.match(markup, />Claude Opus 4\.7</u);
   assert.match(markup, />cat-concierge</u);
-  assert.match(markup, /href="\/lobby"/u);
   // PLAN-091 phase 6c: Memberships heading renders, empty-state copy
   // shows because the platform envelope does not yet carry per-cat
   // membership records.
   assert.match(markup, />Memberships</u);
   assert.match(markup, /No memberships yet/u);
+  // Per phase 7, the back-to-Lobby breadcrumb lives on EntitiesShell
+  // (the surrounding workspace shell), not on the pane itself. The
+  // pane no longer renders a /lobby <Link>.
+  assert.doesNotMatch(markup, /class="entityDetailBreadcrumb/u);
 });
 
 test('CatHome /cats/:id/overview deep-link still renders Overview with active tab', () => {

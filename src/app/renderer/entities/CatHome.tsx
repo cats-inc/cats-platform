@@ -200,8 +200,6 @@ export function CatHome({ envelope }: { envelope: PlatformHostEnvelope }) {
   return (
     <EntityDetailPane
       ariaLabel={t(messageKeys.catHomeAriaLabel)}
-      breadcrumbLabel={t(messageKeys.entityDetailBreadcrumbLobby)}
-      breadcrumbHref="/lobby"
       avatar={<CatAvatar cat={cat} />}
       title={cat.name}
       subtitle={cat.isBoss ? t(messageKeys.catHomeBossBadge) : undefined}

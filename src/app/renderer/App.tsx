@@ -43,6 +43,7 @@ import { CatHome } from './entities/CatHome.js';
 import { CatsListPage } from './entities/CatsListPage.js';
 import { CatteryHome } from './entities/CatteryHome.js';
 import { ClowderHome } from './entities/ClowderHome.js';
+import { EntitiesShell } from './lobby/EntitiesShell.js';
 import { PlatformLobby } from './PlatformLobby';
 import {
   GuideCatPlacementProvider,
@@ -635,13 +636,15 @@ export default function PlatformApp() {
         ) : null}
         <Routes>
           <Route path="/lobby" element={<PlatformLobby envelope={readyEnvelope} />} />
-          <Route path="/cats" element={<CatsListPage envelope={readyEnvelope} />} />
-          <Route path="/cats/:catId" element={<CatHome envelope={readyEnvelope} />} />
-          <Route path="/cats/:catId/:lens" element={<CatHome envelope={readyEnvelope} />} />
-          <Route path="/clowders/:clowderId" element={<ClowderHome envelope={readyEnvelope} />} />
-          <Route path="/clowders/:clowderId/:tab" element={<ClowderHome envelope={readyEnvelope} />} />
-          <Route path="/catteries/:catteryId" element={<CatteryHome envelope={readyEnvelope} />} />
-          <Route path="/catteries/:catteryId/:tab" element={<CatteryHome envelope={readyEnvelope} />} />
+          <Route element={<EntitiesShell envelope={readyEnvelope} />}>
+            <Route path="/cats" element={<CatsListPage envelope={readyEnvelope} />} />
+            <Route path="/cats/:catId" element={<CatHome envelope={readyEnvelope} />} />
+            <Route path="/cats/:catId/:lens" element={<CatHome envelope={readyEnvelope} />} />
+            <Route path="/clowders/:clowderId" element={<ClowderHome envelope={readyEnvelope} />} />
+            <Route path="/clowders/:clowderId/:tab" element={<ClowderHome envelope={readyEnvelope} />} />
+            <Route path="/catteries/:catteryId" element={<CatteryHome envelope={readyEnvelope} />} />
+            <Route path="/catteries/:catteryId/:tab" element={<CatteryHome envelope={readyEnvelope} />} />
+          </Route>
           <Route path="/apps/:appId/*" element={<AppHostRoute envelope={readyEnvelope} />} />
           <Route path="/products" element={<Navigate to="/lobby" replace />} />
           <Route path="/settings/*" element={settingsSurfaceElement} />

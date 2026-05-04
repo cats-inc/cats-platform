@@ -15,11 +15,11 @@
 }
 
 /* ── Lobby container ─────────────────────────────────────────────
- * 2-column layout (PLAN-091 phase 4): top bar spans both columns,
- * sidebar (left) lists Cats / Clowders / Catteries, canvas (right)
- * keeps the existing greeting + products + apps stack. The previous
- * .lobbyCatRoster (top-right stacked cat avatars) is retired —
- * sidebar is the single roster surface now.
+ * Per PLAN-091 phase 7 (correction round), `/lobby` itself has NO
+ * sidebar. Lobby is a clean landing page — greeting + entity cards
+ * + products grid + apps grid — and the appshell sidebar lives on
+ * the drilled-down entity routes (`/cats`, `/clowders`,
+ * `/catteries`, …). The earlier `.lobbyMain` 2-column grid is gone.
  * ────────────────────────────────────────────────────────────── */
 
 .platformLobby {
@@ -30,22 +30,83 @@
      sibling, so the stacking assurance from z-index:1 is redundant here. */
   display: grid;
   gap: var(--space-7);
-  width: min(100%, 1024px);
+  width: min(100%, 720px);
   margin-inline: auto;
-  padding-inline: var(--space-4);
 }
 
-.lobbyMain {
+/* ── EntitiesShell ───────────────────────────────────────────────
+ * Workspace shell for /cats, /clowders, /catteries and their /:id
+ * routes. Mirrors the chat / code / work appshell visually:
+ * top bar (back-to-Lobby + identity pill), sidebar (left rail with
+ * the three entity sections), content area (right). Per PLAN-091
+ * phase 7, /lobby itself does NOT use this shell — Lobby is a
+ * sidebar-free landing page.
+ * ────────────────────────────────────────────────────────────── */
+
+.entitiesShellScreen {
+  position: relative;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+  width: 100%;
+}
+
+.entitiesShellTopBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+
+.entitiesShellBackLink {
+  color: var(--accent);
+  font-weight: 600;
+  text-decoration: none;
+  letter-spacing: 0.02em;
+}
+
+.entitiesShellBackLink:hover {
+  text-decoration: underline;
+}
+
+.entitiesShellTopBarEnd {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.entitiesShellMain {
   display: grid;
   grid-template-columns: 280px minmax(0, 1fr);
-  gap: var(--space-6);
-  align-items: start;
+  gap: 0;
+  height: 100%;
+  min-height: 0;
 }
 
-.lobbyCanvas {
-  display: grid;
-  gap: var(--space-7);
+.entitiesShellMain > .lobbySidebar {
+  border-radius: 0;
+  border-top: 0;
+  border-bottom: 0;
+  border-left: 0;
+  border-right: 1px solid var(--border);
+}
+
+.entitiesShellContent {
   min-width: 0;
+  overflow: auto;
+  padding: var(--space-6) var(--space-5);
+}
+
+@media (max-width: 640px) {
+  .entitiesShellMain {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .entitiesShellMain > .lobbySidebar {
+    display: none;
+  }
 }
 
 /* ── Top bar: avatar + name + runtime dot ── */
@@ -363,6 +424,9 @@
 .platformLobbyCard--work .platformLobbyCardAccent { background: #4F6C92; }
 .platformLobbyCard--app .platformLobbyCardAccent { background: #3F7F78; }
 .platformLobbyCard--module .platformLobbyCardAccent { background: #7A5C98; }
+.platformLobbyCard--entity-cats .platformLobbyCardAccent { background: #C97A6A; }
+.platformLobbyCard--entity-clowders .platformLobbyCardAccent { background: #B57BAB; }
+.platformLobbyCard--entity-catteries .platformLobbyCardAccent { background: #6BA3C2; }
 
 .platformLobbyCard--recent {
   box-shadow: 0 0 0 2px var(--accent-soft);
@@ -415,10 +479,6 @@
 @media (max-width: 640px) {
   .platformLobby {
     width: 100%;
-  }
-
-  .lobbyMain {
-    grid-template-columns: minmax(0, 1fr);
   }
 
   .platformLobbyGrid {

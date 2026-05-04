@@ -142,7 +142,6 @@ test('ClowderHome renders Cats tab by default and shows the parent-Cattery chip'
   assert.match(markup, />Part of Acme Co\./u);
   assert.match(markup, /aria-current="page"[^>]*>Cats</u);
   assert.match(markup, /No cats in this Clowder yet/u);
-  assert.match(markup, /href="\/lobby"/u);
 });
 
 test('ClowderHome shows the cross-unit task force chip when parentCatteryId is null', () => {

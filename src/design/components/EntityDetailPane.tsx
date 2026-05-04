@@ -9,8 +9,6 @@ export interface EntityDetailPaneTab {
 }
 
 export interface EntityDetailPaneProps {
-  breadcrumbLabel: string;
-  breadcrumbHref: string;
   ariaLabel: string;
   avatar: ReactNode;
   title: string;
@@ -20,9 +18,15 @@ export interface EntityDetailPaneProps {
   children: ReactNode;
 }
 
+/**
+ * Pane shell for an entity (Cat / Clowder / Cattery) — header with
+ * avatar / title / actions, tab bar, and body slot. The page-level
+ * breadcrumb (back to /lobby) is provided by the surrounding
+ * EntitiesShell, so this pane does NOT render its own breadcrumb.
+ * Per PLAN-091 phase 7, every entity route mounts inside
+ * EntitiesShell; standalone usage is no longer supported.
+ */
 export function EntityDetailPane({
-  breadcrumbLabel,
-  breadcrumbHref,
   ariaLabel,
   avatar,
   title,
@@ -32,13 +36,7 @@ export function EntityDetailPane({
   children,
 }: EntityDetailPaneProps) {
   return (
-    <div className="screen entityDetailScreen" aria-label={ariaLabel}>
-      <nav className="entityDetailBreadcrumb" aria-label={breadcrumbLabel}>
-        <Link to={breadcrumbHref} className="entityDetailBreadcrumbLink">
-          <span aria-hidden="true">←</span>
-          <span>{breadcrumbLabel}</span>
-        </Link>
-      </nav>
+    <div className="entityDetailPane" aria-label={ariaLabel}>
       <header className="entityDetailHeader">
         <span className="entityDetailAvatar">{avatar}</span>
         <div className="entityDetailHeading">

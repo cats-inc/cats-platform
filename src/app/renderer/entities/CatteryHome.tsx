@@ -111,8 +111,6 @@ export function CatteryHome({ envelope }: { envelope: PlatformHostEnvelope }) {
   return (
     <EntityDetailPane
       ariaLabel={t(messageKeys.catteryHomeAriaLabel)}
-      breadcrumbLabel={t(messageKeys.entityDetailBreadcrumbLobby)}
-      breadcrumbHref="/lobby"
       avatar={<CatteryAvatar cattery={cattery} />}
       title={cattery.name}
       tabs={tabs}

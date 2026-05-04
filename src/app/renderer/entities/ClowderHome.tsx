@@ -117,8 +117,6 @@ export function ClowderHome({ envelope }: { envelope: PlatformHostEnvelope }) {
   return (
     <EntityDetailPane
       ariaLabel={t(messageKeys.clowderHomeAriaLabel)}
-      breadcrumbLabel={t(messageKeys.entityDetailBreadcrumbLobby)}
-      breadcrumbHref="/lobby"
       avatar={<ClowderAvatar clowder={clowder} />}
       title={clowder.name}
       subtitle={subtitle}
