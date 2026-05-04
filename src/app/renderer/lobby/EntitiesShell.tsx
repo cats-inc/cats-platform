@@ -1,27 +1,24 @@
-import { Link, Outlet, useNavigate } from 'react-router-dom';
+import { Outlet } from 'react-router-dom';
 
-import { GuideCatDockSlot } from '../../../design/components/GuideCatDockSlot.js';
 import { messageKeys } from '../../../shared/i18n/index.js';
-import { nameInitials } from '../../../shared/nameInitials.js';
 import type { PlatformHostEnvelope } from '../../../shared/platform-contract.js';
-import {
-  resolveRuntimeLobbyDotClassName,
-  resolveRuntimePresentationStatus,
-  resolveRuntimeTooltip,
-} from '../../../shared/runtimeStatusPresentation.js';
 import { useI18n } from '../i18n/index.js';
-import { LobbySidebar } from './LobbySidebar.js';
+import { LobbyAppShellSidebar } from './LobbyAppShellSidebar.js';
 
 /**
- * Workspace shell for the platform entity routes (/cats, /clowders,
- * /catteries and their /:id and /:id/:tab variants). Mirrors the
- * chat / code / work appshell layout — sidebar on the left, identity
- * pill in the top bar, content area on the right — so navigating
- * around entity homes feels continuous with the rest of the platform.
+ * Workspace shell for the Lobby drill-down entity routes (/cats,
+ * /clowders, /catteries and their `/:id` / `/:id/:tab` variants).
  *
- * Per PLAN-091 phase 7 (correction round), `/lobby` itself is bare —
- * the appshell sidebar only appears once the user drills in from a
- * Lobby canvas card. Clicking the breadcrumb returns to /lobby.
+ * Layout mirrors the chat / code / work appshell exactly: the
+ * sidebar (top: surface switcher → "Open Lobby" gets back to /lobby;
+ * middle: three lens sections; bottom: GuideCatDock + identity pill)
+ * sits at the left, the matched route renders inside the
+ * `<Outlet />` on the right. There is no separate "back to Lobby"
+ * top bar — the surface switcher provides the navigation back, just
+ * like chat / code / work do.
+ *
+ * Per PLAN-091 phase 7, `/lobby` itself does NOT mount this shell —
+ * it is the bare landing page that drills into the entity routes.
  */
 export function EntitiesShell({
   envelope,
@@ -29,78 +26,15 @@ export function EntitiesShell({
   envelope: PlatformHostEnvelope;
 }) {
   const { t } = useI18n();
-  const navigate = useNavigate();
-
-  const runtimeStatus = resolveRuntimePresentationStatus(envelope.runtime);
-  const dotClass = resolveRuntimeLobbyDotClassName(runtimeStatus);
-  const runtimeTooltip = resolveRuntimeTooltip(runtimeStatus, t);
-  const runtimeStatusLabel = t(messageKeys.lobbyRuntimeStatusLabel, {
-    runtimeStatus: runtimeTooltip,
-  });
-
-  const avatarStyle = envelope.ownerAvatarUrl
-    ? {
-        backgroundImage: `url(${envelope.ownerAvatarUrl})`,
-        backgroundSize: 'cover' as const,
-        backgroundPosition: 'center' as const,
-      }
-    : undefined;
-
-  const settingsNavState = {
-    platformShellSurface: envelope.lastProductSurface ?? 'chat',
-  };
-
   return (
     <div
       className="screen entitiesShellScreen"
       aria-label={t(messageKeys.entitiesShellAriaLabel)}
     >
-      <div className="entitiesShellTopBar">
-        <Link to="/lobby" className="entitiesShellBackLink">
-          {t(messageKeys.entitiesShellBackToLobby)}
-        </Link>
-        <div className="entitiesShellTopBarEnd">
-          <GuideCatDockSlot slotKind="lobby" />
-          <div
-            className="lobbyIdentity"
-            role="group"
-            aria-label={t(messageKeys.lobbyAccountSettingsAriaLabel)}
-          >
-            <button
-              type="button"
-              className="lobbyIdentityMainButton"
-              onClick={() => navigate('/settings/general', { state: settingsNavState })}
-              aria-label={t(messageKeys.lobbyOpenAccountSettings)}
-            >
-              <span className="lobbyAvatar" style={avatarStyle}>
-                {envelope.ownerAvatarUrl
-                  ? null
-                  : nameInitials(envelope.ownerDisplayName)}
-              </span>
-              <span className="lobbyOwnerName">{envelope.ownerDisplayName}</span>
-            </button>
-            <button
-              type="button"
-              className="lobbyIdentityRuntime"
-              onClick={() => navigate('/settings/runtime', { state: settingsNavState })}
-              data-tooltip={runtimeTooltip}
-              aria-label={runtimeStatusLabel}
-            >
-              <span className={dotClass} aria-hidden="true" />
-            </button>
-          </div>
-        </div>
-      </div>
-      <div className="entitiesShellMain">
-        <LobbySidebar
-          cats={envelope.lobby.cats}
-          clowders={envelope.lobby.clowders ?? []}
-          catteries={envelope.lobby.catteries ?? []}
-        />
-        <main className="entitiesShellContent">
-          <Outlet />
-        </main>
-      </div>
+      <LobbyAppShellSidebar envelope={envelope} />
+      <main className="entitiesShellContent">
+        <Outlet />
+      </main>
     </div>
   );
 }

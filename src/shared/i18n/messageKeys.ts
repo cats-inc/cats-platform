@@ -3179,19 +3179,17 @@ export const messageKeys = {
   catsListEyebrow: 'catsList.eyebrow',
   catsListEmptyState: 'catsList.emptyState',
   catsListBackToLobby: 'catsList.backToLobby',
-  lobbySidebarAriaLabel: 'lobbySidebar.ariaLabel',
+  // Lobby drill-down sidebar reuses the ConversationSidebarMyCatsSection
+  // primitive (per the user's IA correction in PLAN-091 phase 7). The
+  // section needs only a header label and a "+ New X" placeholder
+  // label per kind; the chat/code/work-style aria + empty-state +
+  // toggle copy is supplied by the section component itself.
   lobbySidebarSectionCats: 'lobbySidebar.section.cats',
   lobbySidebarSectionClowders: 'lobbySidebar.section.clowders',
   lobbySidebarSectionCatteries: 'lobbySidebar.section.catteries',
   lobbySidebarNewCat: 'lobbySidebar.newCat',
   lobbySidebarNewClowder: 'lobbySidebar.newClowder',
   lobbySidebarNewCattery: 'lobbySidebar.newCattery',
-  lobbySidebarEmptyCats: 'lobbySidebar.empty.cats',
-  lobbySidebarEmptyClowders: 'lobbySidebar.empty.clowders',
-  lobbySidebarEmptyCatteries: 'lobbySidebar.empty.catteries',
-  lobbySidebarToggleExpand: 'lobbySidebar.toggle.expand',
-  lobbySidebarToggleCollapse: 'lobbySidebar.toggle.collapse',
-  lobbySidebarRowAriaCat: 'lobbySidebar.row.aria.cat',
   lobbyEntitiesSectionTitle: 'lobby.entitiesSectionTitle',
   lobbyEntityCardCats: 'lobby.entityCard.cats',
   lobbyEntityCardCatsSubtitle: 'lobby.entityCard.catsSubtitle',
@@ -3201,7 +3199,6 @@ export const messageKeys = {
   lobbyEntityCardCatteriesSubtitle: 'lobby.entityCard.catteriesSubtitle',
   lobbyEntityCardCount: 'lobby.entityCard.count',
   entitiesShellAriaLabel: 'entitiesShell.ariaLabel',
-  entitiesShellBackToLobby: 'entitiesShell.backToLobby',
   clowderHomeAriaLabel: 'clowderHome.ariaLabel',
   clowderHomeChipPartOf: 'clowderHome.chip.partOf',
   clowderHomeChipCrossUnit: 'clowderHome.chip.crossUnit',

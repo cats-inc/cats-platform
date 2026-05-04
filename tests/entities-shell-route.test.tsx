@@ -113,11 +113,11 @@ function renderApp(pathname: string, envelope: PlatformHostEnvelope): string {
 test('Lobby /lobby renders WITHOUT the appshell sidebar (PLAN-091 phase 7 correction)', () => {
   const markup = renderApp('/lobby', createEnvelope());
 
-  // The Lobby canvas is bare on /lobby — no LobbySidebar / appshell
-  // sidebar, no Cats / Clowders / Catteries section list visible from
-  // the hero alone.
-  assert.doesNotMatch(markup, /class="lobbySidebar"/u);
-  assert.doesNotMatch(markup, /class="entitiesShellMain"/u);
+  // /lobby is bare — no <aside class="sidebar"> at all, no
+  // EntitiesShell wrapper. Lobby's own canvas paints the entity
+  // drill-in cards directly.
+  assert.doesNotMatch(markup, /<aside[^>]*class="sidebar/u);
+  assert.doesNotMatch(markup, /class="entitiesShellScreen"/u);
   // Greeting + entity drill-in cards render.
   assert.match(markup, />My identities</u);
   assert.match(markup, />My Cats</u);
@@ -135,16 +135,24 @@ test('Lobby entity cards land in the My identities section with the per-entity c
   assert.match(markup, /platformLobbyCard--entity-catteries/u);
 });
 
-test('Drilled-down /cats route mounts the EntitiesShell with sidebar + back-to-Lobby link', () => {
+test('Drilled-down /cats route mounts the EntitiesShell with the appshell sidebar', () => {
   const markup = renderApp('/cats', createEnvelope());
 
   assert.match(markup, /class="screen entitiesShellScreen"/u);
-  assert.match(markup, /class="entitiesShellTopBar"/u);
-  assert.match(markup, /class="entitiesShellMain"/u);
-  assert.match(markup, /class="lobbySidebar"/u);
-  assert.match(markup, /class="entitiesShellBackLink"[^>]*href="\/lobby"/u);
-  // The CatsListPage content renders inside the shell.
+  // The sidebar uses the same chrome chat / code / work do — the
+  // outer aside wears the `sidebar` class and contains the
+  // `sidebarInner` scroll container plus the `sidebarFooter`.
+  assert.match(markup, /<aside[^>]*class="sidebar"[^>]*data-shell-surface="lobby"/u);
+  assert.match(markup, /class="sidebarInner"/u);
+  assert.match(markup, /class="sidebarFooter"/u);
+  // No standalone "back to Lobby" affordance — the surface switcher
+  // at the top of the sidebar is the way back.
+  assert.doesNotMatch(markup, /class="entitiesShellBackLink"/u);
+  // Three lens sections render (header sectionLabels: My Cats /
+  // Clowders / Catteries).
   assert.match(markup, />My Cats</u);
+  assert.match(markup, />My Clowders</u);
+  assert.match(markup, />My Catteries</u);
 });
 
 test('Drilled-down /cats/:catId route also mounts the EntitiesShell', () => {
@@ -172,7 +180,7 @@ test('Drilled-down /cats/:catId route also mounts the EntitiesShell', () => {
   );
 
   assert.match(markup, /class="screen entitiesShellScreen"/u);
-  assert.match(markup, /class="lobbySidebar"/u);
+  assert.match(markup, /<aside[^>]*class="sidebar"[^>]*data-shell-surface="lobby"/u);
   assert.match(markup, />Concierge</u);
 });
 
@@ -206,11 +214,11 @@ test('Drilled-down /clowders/:id and /catteries/:id routes both mount the Entiti
 
   const clowderMarkup = renderApp('/clowders/clw-dev', envelope);
   assert.match(clowderMarkup, /class="screen entitiesShellScreen"/u);
-  assert.match(clowderMarkup, /class="lobbySidebar"/u);
+  assert.match(clowderMarkup, /<aside[^>]*class="sidebar"[^>]*data-shell-surface="lobby"/u);
   assert.match(clowderMarkup, />Dev Team</u);
 
   const catteryMarkup = renderApp('/catteries/acme', envelope);
   assert.match(catteryMarkup, /class="screen entitiesShellScreen"/u);
-  assert.match(catteryMarkup, /class="lobbySidebar"/u);
+  assert.match(catteryMarkup, /<aside[^>]*class="sidebar"[^>]*data-shell-surface="lobby"/u);
   assert.match(catteryMarkup, />Acme Co\.</u);
 });
