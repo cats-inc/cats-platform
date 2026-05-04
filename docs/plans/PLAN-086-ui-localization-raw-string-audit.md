@@ -59,6 +59,9 @@ The final 2026-05-04 cleanup localized:
 - War Room latest timeline titles localize known Cats-owned Core timeline
   templates and prefix-based supervision evidence/provider-agent/checkpoint
   titles while preserving unknown user/runtime-authored titles verbatim
+- Work War Room execution presentation localizes known strategy, delivery-mode,
+  next-action, and delivery-action tokens while preserving unknown runtime tokens
+  through the existing Title Case fallback
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

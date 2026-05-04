@@ -1099,6 +1099,35 @@ export const messageKeys = {
   workTimelineTitleTrace: 'work.timeline.title.trace',
   workTimelineTitleWorkItemUpdated:
     'work.timeline.title.workItemUpdated',
+  workExecutionActionAcknowledge: 'work.execution.action.acknowledge',
+  workExecutionActionApprove: 'work.execution.action.approve',
+  workExecutionActionComplete: 'work.execution.action.complete',
+  workExecutionActionCreateCommit: 'work.execution.action.createCommit',
+  workExecutionActionDispatch: 'work.execution.action.dispatch',
+  workExecutionActionOpenPullRequest:
+    'work.execution.action.openPullRequest',
+  workExecutionActionPublishPreview: 'work.execution.action.publishPreview',
+  workExecutionActionReject: 'work.execution.action.reject',
+  workExecutionActionRequestReview: 'work.execution.action.requestReview',
+  workExecutionActionReroute: 'work.execution.action.reroute',
+  workExecutionActionRetry: 'work.execution.action.retry',
+  workExecutionActionWait: 'work.execution.action.wait',
+  workExecutionActionWaitForChecks: 'work.execution.action.waitForChecks',
+  workExecutionDeliveryModeArtifactOnly:
+    'work.execution.deliveryMode.artifactOnly',
+  workExecutionDeliveryModeCommitOnly:
+    'work.execution.deliveryMode.commitOnly',
+  workExecutionDeliveryModeDeployPreview:
+    'work.execution.deliveryMode.deployPreview',
+  workExecutionDeliveryModePrWithChecks:
+    'work.execution.deliveryMode.prWithChecks',
+  workExecutionDeliveryModePushBranch:
+    'work.execution.deliveryMode.pushBranch',
+  workExecutionStrategyPdca: 'work.execution.strategy.pdca',
+  workExecutionStrategyPlanAndExecute:
+    'work.execution.strategy.planAndExecute',
+  workExecutionStrategyReact: 'work.execution.strategy.react',
+  workExecutionStrategyReflexion: 'work.execution.strategy.reflexion',
   workNewWorkItemTitle: 'work.newWorkItem.title',
   workNewWorkItemTitleLabel: 'work.newWorkItem.titleLabel',
   workNewWorkItemSummaryLabel: 'work.newWorkItem.summaryLabel',
