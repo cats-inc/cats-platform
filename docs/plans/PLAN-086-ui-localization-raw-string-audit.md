@@ -100,6 +100,8 @@ The final 2026-05-04 cleanup localized:
   `owner_approval_required`, and `blocked`
 - Shared operator progress summaries and Run Inspector localize workflow shape
   and branch strategy metadata such as `converge` and `transplant_context`
+- Shared operator Run Inspector localizes branch handoff reason metadata such
+  as `explicit_mention` and `workflow_continuation`
 - Shared operator guardrail/cooldown callouts localize known deterministic
   guard labels such as `anti_ping_pong`, `max_dispatches`, and
   `Cooldown active` while preserving custom runtime-authored cooldown text

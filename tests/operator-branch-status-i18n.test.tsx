@@ -6,6 +6,7 @@ import { renderToStaticMarkup } from 'react-dom/server.browser';
 import { I18nProvider } from '../src/app/renderer/i18n/index.ts';
 import {
   branchStatusLabel,
+  operatorBranchHandoffReasonLabel,
   operatorBranchStrategyLabel,
   operatorBudgetAlertLevelLabel,
   operatorCooldownLabel,
@@ -68,6 +69,11 @@ test('operator policy metadata labels localize known policy tokens', () => {
   assert.equal(operatorGuardReasonLabel('max_dispatches', zh), '達到最大派工次數');
   assert.equal(operatorCooldownLabel('Cooldown active', zh), '冷卻中');
   assert.equal(operatorCooldownLabel('Retry after owner review', zh), 'Retry after owner review');
+  assert.equal(operatorBranchHandoffReasonLabel('explicit_mention', zh), '明確提及');
+  assert.equal(
+    operatorBranchHandoffReasonLabel('workflow_continuation', zh),
+    '工作流程續接',
+  );
 });
 
 test('progress summary renders localized policy metadata tokens', async () => {
@@ -137,7 +143,7 @@ test('run inspector renders localized tab and branch status metadata', async () 
               id: 'branch-1',
               participantName: 'Code Cat',
               status: 'waiting_for_converge',
-              handoffReason: null,
+              handoffReason: 'explicit_mention',
               branchStrategy: 'transplant_context',
               parentCheckpointId: null,
               error: null,
@@ -157,11 +163,13 @@ test('run inspector renders localized tab and branch status metadata', async () 
 
   assert.match(markup, /<span>已完成<\/span>/u);
   assert.match(markup, /形態：匯合/u);
+  assert.match(markup, /交接：明確提及/u);
   assert.match(markup, /策略：沿用上下文/u);
   assert.match(markup, /保護條件：達到最大派工次數/u);
   assert.match(markup, /冷卻：冷卻中/u);
   assert.match(markup, /<span class="operatorMetaText">等待匯合<\/span>/u);
   assert.doesNotMatch(markup, /waiting_for_converge/u);
+  assert.doesNotMatch(markup, /explicit_mention/u);
   assert.doesNotMatch(markup, /transplant_context/u);
   assert.doesNotMatch(markup, /converge/u);
   assert.doesNotMatch(markup, /max_dispatches/u);

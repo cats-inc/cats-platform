@@ -3,6 +3,7 @@ import {
   checkpointStatusLabel,
   checkpointStatusSeverity,
   formatOperatorTimestamp,
+  operatorBranchHandoffReasonLabel,
   operatorBranchStrategyLabel,
   operatorCooldownLabel,
   operatorGuardReasonLabel,
@@ -226,7 +227,10 @@ export function RunInspector({
                       <p>
                         {branch.handoffReason
                           ? `${t(messageKeys.sharedOperatorBranchHandoff, {
-                            handoffReason: branch.handoffReason,
+                            handoffReason: operatorBranchHandoffReasonLabel(
+                              branch.handoffReason,
+                              t,
+                            ),
                           })} `
                           : ''}
                         {branch.branchStrategy

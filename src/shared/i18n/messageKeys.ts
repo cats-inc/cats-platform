@@ -1997,6 +1997,18 @@ export const messageKeys = {
     'shared.operator.branchStrategy.singleTargetReview',
   sharedOperatorBranchStrategyTransplantContext:
     'shared.operator.branchStrategy.transplantContext',
+  sharedOperatorBranchHandoffExplicitMention:
+    'shared.operator.branchHandoff.explicitMention',
+  sharedOperatorBranchHandoffOperatorReroute:
+    'shared.operator.branchHandoff.operatorReroute',
+  sharedOperatorBranchHandoffRoomDefault:
+    'shared.operator.branchHandoff.roomDefault',
+  sharedOperatorBranchHandoffRoomEntry:
+    'shared.operator.branchHandoff.roomEntry',
+  sharedOperatorBranchHandoffRuntimeRetry:
+    'shared.operator.branchHandoff.runtimeRetry',
+  sharedOperatorBranchHandoffWorkflowContinuation:
+    'shared.operator.branchHandoff.workflowContinuation',
   sharedOperatorBranchFromCheckpoint: 'shared.operator.branch.fromCheckpoint',
   sharedOperatorBranchNoLineage: 'shared.operator.branch.noLineage',
   sharedOperatorSectionOutcomes: 'shared.operator.section.outcomes',

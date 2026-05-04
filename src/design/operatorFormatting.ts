@@ -73,6 +73,13 @@ const fallbackOperatorTranslate: OperatorTranslate = (key) => {
     [messageKeys.sharedOperatorBranchStrategySingleTargetReview]:
       'Single-target review',
     [messageKeys.sharedOperatorBranchStrategyTransplantContext]: 'Transplant context',
+    [messageKeys.sharedOperatorBranchHandoffExplicitMention]: 'Explicit mention',
+    [messageKeys.sharedOperatorBranchHandoffOperatorReroute]: 'Operator reroute',
+    [messageKeys.sharedOperatorBranchHandoffRoomDefault]: 'Room default',
+    [messageKeys.sharedOperatorBranchHandoffRoomEntry]: 'Room entry',
+    [messageKeys.sharedOperatorBranchHandoffRuntimeRetry]: 'Runtime retry',
+    [messageKeys.sharedOperatorBranchHandoffWorkflowContinuation]:
+      'Workflow continuation',
   };
 
   return fallback[key] ?? String(key);
@@ -310,6 +317,16 @@ const OPERATOR_BRANCH_STRATEGY_KEYS: Record<string, MessageKey> = {
   transplant_context: messageKeys.sharedOperatorBranchStrategyTransplantContext,
 };
 
+const OPERATOR_BRANCH_HANDOFF_KEYS: Record<string, MessageKey> = {
+  explicit_mention: messageKeys.sharedOperatorBranchHandoffExplicitMention,
+  operator_reroute: messageKeys.sharedOperatorBranchHandoffOperatorReroute,
+  room_default: messageKeys.sharedOperatorBranchHandoffRoomDefault,
+  room_entry: messageKeys.sharedOperatorBranchHandoffRoomEntry,
+  runtime_retry: messageKeys.sharedOperatorBranchHandoffRuntimeRetry,
+  workflow_continuation:
+    messageKeys.sharedOperatorBranchHandoffWorkflowContinuation,
+};
+
 const OPERATOR_GUARD_REASON_KEYS: Record<string, MessageKey> = {
   anti_ping_pong: messageKeys.sharedOperatorGuardAntiPingPong,
   max_continuations: messageKeys.sharedOperatorGuardMaxContinuations,
@@ -379,6 +396,13 @@ export function operatorBranchStrategyLabel(
   t: OperatorTranslate = fallbackOperatorTranslate,
 ): string {
   return formatOperatorToken(strategy, OPERATOR_BRANCH_STRATEGY_KEYS, t);
+}
+
+export function operatorBranchHandoffReasonLabel(
+  reason: string,
+  t: OperatorTranslate = fallbackOperatorTranslate,
+): string {
+  return formatOperatorToken(reason, OPERATOR_BRANCH_HANDOFF_KEYS, t);
 }
 
 export function operatorGuardReasonLabel(
