@@ -17,6 +17,7 @@ import {
 } from '../../../design/components/settings/index.js';
 import { useI18n } from '../i18n/index.js';
 import { updateProductConversationBehaviorPreference } from './productConversationBehaviorApi.js';
+import { formatSettingsPreferenceMutationError } from './settingsPreferenceErrorLabels.js';
 
 const PRODUCT_LABEL_BY_SURFACE: Record<ConversationBehaviorSurface, string> = {
   chat: 'settingsConversationProductLabelChat',
@@ -78,7 +79,7 @@ export function ProductConversationBehaviorSection({
       startTransition(() => onPayloadUpdate(next));
     } catch (error) {
       onPayloadUpdate(payload);
-      onError(error instanceof Error ? error.message : errorFallback);
+      onError(formatSettingsPreferenceMutationError(error, errorFallback, t));
     }
   }
 

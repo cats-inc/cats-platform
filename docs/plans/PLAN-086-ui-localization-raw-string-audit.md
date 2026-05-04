@@ -146,6 +146,9 @@ The final 2026-05-04 cleanup localized:
 - Shared workspace navigation and product navigation overrides map deterministic
   chat/channel/parallel-chat mutation failures and cat archive/delete failures
   to localized feedback while preserving unknown diagnostics
+- Product settings preference controls map deterministic conversation behavior
+  and advanced draft control API fallback failures to localized feedback while
+  preserving unknown diagnostics
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

@@ -11,6 +11,7 @@ import {
 } from '../../../products/shared/advancedDraftControls.js';
 import { ProductAdvancedDraftControlsSection } from './ProductAdvancedDraftControlsSection.js';
 import { ProductConversationBehaviorSection } from './ProductConversationBehaviorSection.js';
+import { formatSettingsPreferenceMutationError } from './settingsPreferenceErrorLabels.js';
 import { useI18n } from '../i18n/index.js';
 
 export interface PlatformSettingsChatProps {
@@ -47,7 +48,11 @@ export function PlatformSettingsChat({
           advancedDraftControls: previous,
         },
       });
-      showToast(error instanceof Error ? error.message : t('settingsChatAdvancedControlsFailure'));
+      showToast(formatSettingsPreferenceMutationError(
+        error,
+        t('settingsChatAdvancedControlsFailure'),
+        t,
+      ));
     }
   }
 

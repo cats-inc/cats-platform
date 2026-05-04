@@ -10,6 +10,7 @@ import {
 import { useI18n } from '../i18n/index.js';
 import { ProductAdvancedDraftControlsSection } from './ProductAdvancedDraftControlsSection.js';
 import { ProductConversationBehaviorSection } from './ProductConversationBehaviorSection.js';
+import { formatSettingsPreferenceMutationError } from './settingsPreferenceErrorLabels.js';
 
 export interface PlatformSettingsCodeProps {
   payload: AppShellPayload;
@@ -46,11 +47,11 @@ export function PlatformSettingsCode({
           advancedDraftControls: previous,
         },
       });
-      showToast(
-        error instanceof Error
-          ? error.message
-          : t('settingsConversationPreferenceUpdateFailure'),
-      );
+      showToast(formatSettingsPreferenceMutationError(
+        error,
+        t('settingsConversationPreferenceUpdateFailure'),
+        t,
+      ));
     }
   }
 

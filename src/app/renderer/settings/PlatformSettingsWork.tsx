@@ -9,6 +9,7 @@ import {
 } from '../../../products/shared/advancedDraftControls.js';
 import { ProductAdvancedDraftControlsSection } from './ProductAdvancedDraftControlsSection.js';
 import { ProductConversationBehaviorSection } from './ProductConversationBehaviorSection.js';
+import { formatSettingsPreferenceMutationError } from './settingsPreferenceErrorLabels.js';
 import { useI18n } from '../i18n/index.js';
 
 export interface PlatformSettingsWorkProps {
@@ -46,11 +47,11 @@ export function PlatformSettingsWork({
           advancedDraftControls: previous,
         },
       });
-      showToast(
-        error instanceof Error
-          ? error.message
-          : t('settingsConversationPreferenceUpdateFailure'),
-      );
+      showToast(formatSettingsPreferenceMutationError(
+        error,
+        t('settingsConversationPreferenceUpdateFailure'),
+        t,
+      ));
     }
   }
 
