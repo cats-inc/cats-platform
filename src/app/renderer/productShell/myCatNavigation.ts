@@ -19,13 +19,17 @@ function normalizeRouteToken(value: string | null | undefined): string | null {
 }
 
 export function buildMyCatPathForPrefix(chatPrefix: string, catId: string): string {
+  // PLAN-091 phase 2 path migration: `/chat/my-cats/:catId` collapsed to
+  // `/chat/dm/:catId`. Chat's own AppRoutes only registers `dm/:catId`,
+  // and the platform-shell `WorkspaceAppRoutes` was updated to match,
+  // so all surfaces resolve direct-lane navigation through `/dm` now.
   const normalizedCatId = normalizeRouteToken(catId);
-  const myCatsPathPrefix = `${chatPrefix}/my-cats`;
+  const directMessagePathPrefix = `${chatPrefix}/dm`;
   if (!normalizedCatId) {
-    return myCatsPathPrefix;
+    return directMessagePathPrefix;
   }
 
-  return `${myCatsPathPrefix}/${encodeURIComponent(normalizedCatId)}`;
+  return `${directMessagePathPrefix}/${encodeURIComponent(normalizedCatId)}`;
 }
 
 export function findDirectLaneForCat<TChannel extends ChatChannelSummaryRef>(

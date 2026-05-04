@@ -25,7 +25,7 @@ export interface WorkspaceLocationState {
 export function useWorkspaceLocationState(chatPrefix: string): WorkspaceLocationState {
   const location = useLocation();
   const channelMatch = useMatch(`${chatPrefix}/chats/:channelId`);
-  const myCatMatch = useMatch(`${chatPrefix}/my-cats/:catId`);
+  const myCatMatch = useMatch(`${chatPrefix}/dm/:catId`);
   const routeChannelId = channelMatch?.params.channelId ?? null;
   const routeMyCatId = myCatMatch?.params.catId ?? null;
   const showingNewChatDraft = isWorkspaceNewChatPath(chatPrefix, location.pathname);

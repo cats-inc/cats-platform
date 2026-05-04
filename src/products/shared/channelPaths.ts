@@ -29,7 +29,12 @@ export function resolveWorkspaceNewChatPath(chatPrefix: string): string {
 }
 
 export function resolveWorkspaceMyCatsPathPrefix(chatPrefix: string): string {
-  return `${chatPrefix}/my-cats`;
+  // PLAN-091 phase 2 path migration finished off — see
+  // `buildMyCatPathForPrefix` in app/renderer/productShell/myCatNavigation.ts
+  // for the same /dm switch. Helper name kept ("MyCats" still names the
+  // shared agent-registry concept per ADR-065) to avoid a sprawling
+  // rename, but the URL is now `/{prefix}/dm/...`.
+  return `${chatPrefix}/dm`;
 }
 
 export function resolveWorkspaceAppEntryPath(

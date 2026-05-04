@@ -80,7 +80,7 @@ export function WorkspaceAppRoutes({
           element={<Navigate to={chatsPath} replace />}
         />
         <Route
-          path="my-cats/:catId"
+          path="dm/:catId"
           element={
             showDirectLaneBoot
               ? renderBootShell()
