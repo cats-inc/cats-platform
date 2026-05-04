@@ -170,6 +170,21 @@ test('LobbyAppShellSidebar surface switcher trigger reads "Cats Lobby" via the l
   assert.match(markup, /class="brandLabel">Cats Lobby</u);
 });
 
+test('LobbyAppShellSidebar renders the "Main page" primary action with hover (no active highlight)', () => {
+  const markup = renderApp('/cats', createEnvelope());
+
+  // Mirrors chat's "+ New chat" slot. The primary action should
+  // render as a `<button class="navItem">` (no `navItemActive`,
+  // since /lobby is never the surface this sidebar runs on) carrying
+  // the "Main page" label. The button is the user's path back to the
+  // unframed /lobby canvas.
+  assert.match(
+    markup,
+    /<button[^>]*class="navItem"[^>]*>(?:(?!class="navItemActive").)*Main page/su,
+  );
+  assert.doesNotMatch(markup, /class="navItemActive"[^>]*>(?:[^<]*)Main page/su);
+});
+
 test('Drilled-down /cats/:catId route also mounts the EntitiesShell', () => {
   const markup = renderApp(
     '/cats/cat-concierge',

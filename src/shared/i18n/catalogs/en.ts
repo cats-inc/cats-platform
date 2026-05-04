@@ -2504,6 +2504,7 @@ export const enCatalog: MessageCatalog = {
   'lobbySidebar.newCat': 'New cat',
   'lobbySidebar.newClowder': 'New clowder',
   'lobbySidebar.newCattery': 'New cattery',
+  'lobbySidebar.mainPage': 'Main page',
   'lobby.entitiesSectionTitle': 'My identities',
   'lobby.entityCard.cats': 'My Cats',
   'lobby.entityCard.catsSubtitle': 'Individual agents you own.',

@@ -21,6 +21,7 @@ import {
 import { ConversationSidebarFooter } from '../productShell/ConversationSidebarFooter.js';
 import { ConversationSidebarNavigation } from '../productShell/ConversationSidebarNavigation.js';
 import type {
+  ConversationSidebarAction,
   ConversationSidebarCat,
   ConversationSidebarChannel,
   ConversationSidebarHelpers,
@@ -134,6 +135,36 @@ export function LobbyAppShellSidebar({
     navigate(platformSurfaceRoutePrefix(surface));
   };
 
+  // Mirrors chat's "+ New chat" slot: primary action with hover but
+  // no `active` highlight (the bare /lobby route never lives inside
+  // EntitiesShell, so this button could not be the "current" surface
+  // anyway). Click navigates to `/lobby`, which renders the unframed
+  // landing page — no sidebar at all — by virtue of falling outside
+  // the EntitiesShell <Route element=> wrapper.
+  const primaryActions: readonly ConversationSidebarAction[] = [
+    {
+      key: 'lobby-main-page',
+      label: t(messageKeys.lobbySidebarMainPage),
+      onClick: () => navigate('/lobby'),
+      icon: (
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M2 7l6-5 6 5" />
+          <path d="M3.5 7v6h9V7" />
+          <path d="M6.5 13v-3h3v3" />
+        </svg>
+      ),
+    },
+  ];
+
   const catsPlaceholder: ConversationSidebarMyCatsPlaceholder = {
     label: t(messageKeys.lobbySidebarNewCat),
     onClick: () => undefined,
@@ -160,7 +191,7 @@ export function LobbyAppShellSidebar({
         <ConversationSidebarNavigation
           activeSurface={fallbackSurface}
           sidebarOpen={sidebarOpen}
-          primaryActions={[]}
+          primaryActions={primaryActions}
           onToggleSidebar={onToggleSidebar}
           onSwitchProduct={onSwitchProduct}
           surfaceLabelOverride={t(messageKeys.entitiesShellSurfaceLabel)}

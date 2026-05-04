@@ -3189,6 +3189,7 @@ export const messageKeys = {
   lobbySidebarNewCat: 'lobbySidebar.newCat',
   lobbySidebarNewClowder: 'lobbySidebar.newClowder',
   lobbySidebarNewCattery: 'lobbySidebar.newCattery',
+  lobbySidebarMainPage: 'lobbySidebar.mainPage',
   lobbyEntitiesSectionTitle: 'lobby.entitiesSectionTitle',
   lobbyEntityCardCats: 'lobby.entityCard.cats',
   lobbyEntityCardCatsSubtitle: 'lobby.entityCard.catsSubtitle',
