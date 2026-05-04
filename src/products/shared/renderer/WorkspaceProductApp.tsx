@@ -98,6 +98,7 @@ import { useWorkspaceChatEvents } from "./hooks/useWorkspaceChatEvents.js";
 import { useWorkspaceCatAssignmentActions } from "./hooks/useWorkspaceCatAssignmentActions.js";
 import { createUseComposerSubmit } from "./hooks/useWorkspaceComposerSubmit.js";
 import { useWorkspaceGovernanceActions } from "./hooks/useWorkspaceGovernanceActions.js";
+import { formatSettingsCatsRegistryMutationError } from "./hooks/settingsCatsRegistryErrorLabels.js";
 import {
   applyChannelSubscriptionPatchToLoadState,
   applyChannelSubscriptionSnapshotToLoadState,
@@ -625,11 +626,11 @@ export function createWorkspaceProductApp({
           const payload = await updateCatProfile(catId, { archive: true });
           setState({ status: "ready", payload });
         } catch (error) {
-          setFeedback(
-            error instanceof Error
-              ? error.message
-              : t(messageKeys.sharedSettingsCatsArchiveError),
-          );
+          setFeedback(formatSettingsCatsRegistryMutationError(
+            error,
+            t(messageKeys.sharedSettingsCatsArchiveError),
+            t,
+          ));
         } finally {
           setBusy(clearBusyState());
         }

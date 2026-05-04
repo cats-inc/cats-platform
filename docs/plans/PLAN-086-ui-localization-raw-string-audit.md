@@ -134,7 +134,8 @@ The final 2026-05-04 cleanup localized:
 - Settings Assistants maps deterministic assistant and Guide Cat API validation
   failures to localized toast feedback instead of rendering raw server messages
 - Settings Cats registry maps deterministic cat roster and Telegram binding
-  mutation errors to localized feedback while preserving unknown diagnostics
+  mutation errors to localized feedback, including product app archive actions,
+  while preserving unknown diagnostics
 - Settings Cats memory save/delete feedback localizes deterministic memory API
   validation and not-found errors, and delete now rejects failed responses
 - Workspace product app-shell initial load maps internal `cats app shell returned
