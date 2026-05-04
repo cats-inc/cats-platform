@@ -2,6 +2,7 @@ import type {
   WorkAttentionState,
   WorkGraphEvidenceAttachment,
   WorkGraphGateDecorator,
+  WorkGraphLayer,
   WorkGraphLink,
   WorkGraphLinkEndpointRef,
   WorkGraphObjectKind,
@@ -52,6 +53,12 @@ const WORKGRAPH_EVIDENCE_RELATION_LABEL_KEY: Record<
   outcome: "workObjectKindOutcome",
 };
 
+const WORKGRAPH_LAYER_LABEL_KEY: Record<WorkGraphLayer, MessageKey> = {
+  interaction: "workTopdownSystemMapLayerInteractionLabel",
+  planning: "workTopdownSystemMapLayerPlanningLabel",
+  execution: "workTopdownSystemMapLayerExecutionLabel",
+};
+
 export function getWorkGraphKindLabel(
   kind: WorkGraphObjectKind,
   t: (key: MessageKey, values?: Record<string, string | number>) => string,
@@ -81,6 +88,13 @@ export function getWorkGraphEvidenceRelationLabel(
   t: (key: MessageKey, values?: Record<string, string | number>) => string,
 ): string {
   return t(WORKGRAPH_EVIDENCE_RELATION_LABEL_KEY[relation]);
+}
+
+export function getWorkGraphLayerLabel(
+  layer: WorkGraphLayer,
+  t: (key: MessageKey, values?: Record<string, string | number>) => string,
+): string {
+  return t(WORKGRAPH_LAYER_LABEL_KEY[layer]);
 }
 
 export function getWorkGraphGateStateLabel(

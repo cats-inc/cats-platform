@@ -6,6 +6,7 @@ import {
   getWorkGraphEvidenceRelationLabel,
   getWorkGraphGateStateLabel,
   getWorkGraphKindLabel,
+  getWorkGraphLayerLabel,
   formatRelative,
   type WorkGraphIndexes,
 } from "./shared";
@@ -79,7 +80,11 @@ export function WorkObjectDrawer({
           />
           <Field
             label={t("workTopdownIdentityLayer")}
-            value={object.structuralLayer ?? t("workTopdownCrossCuttingLayer")}
+            value={
+              object.structuralLayer
+                ? getWorkGraphLayerLabel(object.structuralLayer, t)
+                : t("workTopdownCrossCuttingLayer")
+            }
           />
           {object.ownerRole ? (
             <Field label={t("workTopdownIdentityOwnerRole")} value={object.ownerRole} />

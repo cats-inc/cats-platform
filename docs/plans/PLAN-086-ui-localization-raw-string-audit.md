@@ -74,6 +74,8 @@ The final 2026-05-04 cleanup localized:
   binding metadata no longer renders raw `polling` / `webhook` tokens
 - Work Top-down object drawers localize evidence relation metadata (`artifact`,
   `activity`, `outcome`) instead of rendering raw relation tokens
+- Work Top-down object drawers localize structural layer metadata (`interaction`,
+  `planning`, `execution`) instead of rendering raw graph layer tokens
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

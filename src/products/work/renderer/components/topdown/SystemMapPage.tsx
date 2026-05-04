@@ -6,7 +6,7 @@ import {
   useWorkGraphQuery,
 } from "../../state/queries/workGraphQuery.js";
 import { useI18n } from "../../../../../app/renderer/i18n/index.js";
-import { buildIndexes } from "./shared";
+import { buildIndexes, getWorkGraphLayerLabel } from "./shared";
 import type { WorkGraphLayer, WorkGraphObjectSummary } from "./types";
 import { WorkObjectCard, pickEvidence } from "./WorkObjectCard";
 import { WorkObjectDrawer } from "./WorkObjectDrawer";
@@ -103,12 +103,12 @@ export function SystemMapPage(): JSX.Element {
               className="systemMap__pane"
               data-layer={pane.layer}
               aria-label={t("workTopdownSystemMapLayerAriaLabel", {
-                layerLabel: getSystemMapLayerLabel(pane.layer, t),
+                layerLabel: getWorkGraphLayerLabel(pane.layer, t),
               })}
             >
               <header className="systemMap__paneHead">
                 <h2 className="systemMap__paneTitle">
-                  {getSystemMapLayerLabel(pane.layer, t)}
+                  {getWorkGraphLayerLabel(pane.layer, t)}
                 </h2>
                 <span className="systemMap__paneCount">{objects.length}</span>
                 <p className="systemMap__paneDescription">
@@ -148,17 +148,6 @@ export function SystemMapPage(): JSX.Element {
       />
     </div>
   );
-}
-
-function getSystemMapLayerLabel(
-  layer: WorkGraphLayer,
-  t: ReturnType<typeof useI18n>["t"],
-): string {
-  return layer === "interaction"
-    ? t("workTopdownSystemMapLayerInteractionLabel")
-    : layer === "planning"
-      ? t("workTopdownSystemMapLayerPlanningLabel")
-      : t("workTopdownSystemMapLayerExecutionLabel");
 }
 
 function getSystemMapLayerDescription(
