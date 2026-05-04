@@ -54,6 +54,13 @@ interface LobbyEntityCard {
   detailPathPrefix: '/cats/' | '/clowders/' | '/catteries/';
   placeholderLabelKey: MessageKey;
   placeholderIconKind: ConversationSidebarMyCatsPlaceholderIconKind;
+  /**
+   * Where the "+ New X" placeholder routes when clicked. `null` for
+   * entities that don't have an add flow yet (clowders / catteries
+   * are still read-only as of PLAN-091 phase 6) — those render as
+   * static placeholders.
+   */
+  placeholderTarget: string | null;
 }
 
 function summarizeCat(cat: PlatformLobbyCatSummary): LobbyEntityRowSummary {
@@ -151,6 +158,7 @@ export function PlatformLobby({
       detailPathPrefix: '/cats/',
       placeholderLabelKey: messageKeys.lobbySidebarNewCat,
       placeholderIconKind: 'singlePerson',
+      placeholderTarget: '/settings/cats/new',
     },
     {
       key: 'clowders',
@@ -164,6 +172,7 @@ export function PlatformLobby({
       detailPathPrefix: '/clowders/',
       placeholderLabelKey: messageKeys.lobbySidebarNewClowder,
       placeholderIconKind: 'groupPeople',
+      placeholderTarget: null,
     },
     {
       key: 'catteries',
@@ -177,6 +186,7 @@ export function PlatformLobby({
       detailPathPrefix: '/catteries/',
       placeholderLabelKey: messageKeys.lobbySidebarNewCattery,
       placeholderIconKind: 'orgChart',
+      placeholderTarget: null,
     },
   ];
 
@@ -300,6 +310,7 @@ export function PlatformLobby({
                       );
                     }
                     if (index === 0 && card.totalCount === 0) {
+                      const placeholderTarget = card.placeholderTarget;
                       return (
                         <li
                           key={`${card.key}-placeholder`}
@@ -308,7 +319,19 @@ export function PlatformLobby({
                           <button
                             type="button"
                             className="lobbyEntityItem lobbyEntityItemPlaceholder"
-                            disabled
+                            disabled={placeholderTarget === null}
+                            onClick={
+                              placeholderTarget === null
+                                ? undefined
+                                : (event) => {
+                                    /* Stop the click from also reaching
+                                     * `.lobbyEntityCardLink` underneath
+                                     * (which would route to `/cats`
+                                     * instead of the add-cat page). */
+                                    event.stopPropagation();
+                                    navigate(placeholderTarget);
+                                  }
+                            }
                           >
                             <span
                               className="lobbyEntityAvatar lobbyEntityAvatarPlaceholder"

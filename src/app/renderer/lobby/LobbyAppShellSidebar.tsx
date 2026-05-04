@@ -167,17 +167,26 @@ export function LobbyAppShellSidebar({
 
   const catsPlaceholder: ConversationSidebarMyCatsPlaceholder = {
     label: t(messageKeys.lobbySidebarNewCat),
-    onClick: () => undefined,
+    /* Mirrors the chat sidebar's "+ New cat" affordance — the
+     * canonical add-cat flow lives at `/settings/cats/new` (see
+     * `useWorkspaceAppNavigationActions.onCreateNewCat`). We carry
+     * the same `platformShellSurface` nav state so the settings
+     * pane knows which surface chrome to wrap itself in on return. */
+    onClick: () =>
+      navigate('/settings/cats/new', { state: settingsNavState }),
     iconKind: 'singlePerson',
   };
+  /* Clowders / Catteries don't have an add route yet (PLAN-091 phase
+   * 6 only landed read-only entity homes). Pass `undefined` so the
+   * placeholder renders as a static, non-interactive row instead of
+   * a noop button — clearer UX than a click affordance that does
+   * nothing. Add routes will land in a later phase. */
   const clowdersPlaceholder: ConversationSidebarMyCatsPlaceholder = {
     label: t(messageKeys.lobbySidebarNewClowder),
-    onClick: () => undefined,
     iconKind: 'groupPeople',
   };
   const catteriesPlaceholder: ConversationSidebarMyCatsPlaceholder = {
     label: t(messageKeys.lobbySidebarNewCattery),
-    onClick: () => undefined,
     iconKind: 'orgChart',
   };
 
