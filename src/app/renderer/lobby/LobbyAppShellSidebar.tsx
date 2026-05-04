@@ -157,52 +157,63 @@ export function LobbyAppShellSidebar({
         />
 
         <div className="sidebarScrollable">
-          <ConversationSidebarMyCatsSection
-            label={t(messageKeys.lobbySidebarSectionCats)}
-            cats={cats}
-            bossCatId={bossCatId}
-            payloadChannels={[]}
-            activeMyCatId={activeCatId}
-            telegramBoundCatIds={new Set()}
-            helpers={LOBBY_HELPERS}
-            overflowMenuOpenId={null}
-            onOverflowMenuToggle={() => undefined}
-            onDirectChatCat={(catId) =>
-              navigate(`/cats/${encodeURIComponent(catId)}`)
-            }
-            onArchiveCat={() => undefined}
-            emptyStatePlaceholder={catsPlaceholder}
-          />
+          {/* The three sections inherit the same MyCatsSection
+           * primitive chat / code / work use, but each carries a
+           * `data-lens-kind` so the original per-product placeholder
+           * tints (chat orange / code green / work blue) survive into
+           * the Lobby drill-down sidebar — see extras.css. */}
+          <div data-lens-kind="cats">
+            <ConversationSidebarMyCatsSection
+              label={t(messageKeys.lobbySidebarSectionCats)}
+              cats={cats}
+              bossCatId={bossCatId}
+              payloadChannels={[]}
+              activeMyCatId={activeCatId}
+              telegramBoundCatIds={new Set()}
+              helpers={LOBBY_HELPERS}
+              overflowMenuOpenId={null}
+              onOverflowMenuToggle={() => undefined}
+              onDirectChatCat={(catId) =>
+                navigate(`/cats/${encodeURIComponent(catId)}`)
+              }
+              onArchiveCat={() => undefined}
+              emptyStatePlaceholder={catsPlaceholder}
+            />
+          </div>
 
-          <ConversationSidebarMyCatsSection
-            label={t(messageKeys.lobbySidebarSectionClowders)}
-            cats={[]}
-            bossCatId={null}
-            payloadChannels={[]}
-            activeMyCatId={null}
-            telegramBoundCatIds={new Set()}
-            helpers={LOBBY_HELPERS}
-            overflowMenuOpenId={null}
-            onOverflowMenuToggle={() => undefined}
-            onDirectChatCat={() => undefined}
-            onArchiveCat={() => undefined}
-            emptyStatePlaceholder={clowdersPlaceholder}
-          />
+          <div data-lens-kind="clowders">
+            <ConversationSidebarMyCatsSection
+              label={t(messageKeys.lobbySidebarSectionClowders)}
+              cats={[]}
+              bossCatId={null}
+              payloadChannels={[]}
+              activeMyCatId={null}
+              telegramBoundCatIds={new Set()}
+              helpers={LOBBY_HELPERS}
+              overflowMenuOpenId={null}
+              onOverflowMenuToggle={() => undefined}
+              onDirectChatCat={() => undefined}
+              onArchiveCat={() => undefined}
+              emptyStatePlaceholder={clowdersPlaceholder}
+            />
+          </div>
 
-          <ConversationSidebarMyCatsSection
-            label={t(messageKeys.lobbySidebarSectionCatteries)}
-            cats={[]}
-            bossCatId={null}
-            payloadChannels={[]}
-            activeMyCatId={null}
-            telegramBoundCatIds={new Set()}
-            helpers={LOBBY_HELPERS}
-            overflowMenuOpenId={null}
-            onOverflowMenuToggle={() => undefined}
-            onDirectChatCat={() => undefined}
-            onArchiveCat={() => undefined}
-            emptyStatePlaceholder={catteriesPlaceholder}
-          />
+          <div data-lens-kind="catteries">
+            <ConversationSidebarMyCatsSection
+              label={t(messageKeys.lobbySidebarSectionCatteries)}
+              cats={[]}
+              bossCatId={null}
+              payloadChannels={[]}
+              activeMyCatId={null}
+              telegramBoundCatIds={new Set()}
+              helpers={LOBBY_HELPERS}
+              overflowMenuOpenId={null}
+              onOverflowMenuToggle={() => undefined}
+              onDirectChatCat={() => undefined}
+              onArchiveCat={() => undefined}
+              emptyStatePlaceholder={catteriesPlaceholder}
+            />
+          </div>
         </div>
       </div>
 
