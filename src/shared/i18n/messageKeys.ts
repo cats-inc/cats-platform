@@ -274,6 +274,35 @@ export const messageKeys = {
     'settings.runtime.lifecycleDetail.launchWslFirstBoot',
   settingsRuntimeLifecycleDetailStartDockerWarmUp:
     'settings.runtime.lifecycleDetail.startDockerWarmUp',
+  settingsRuntimeLifecycleDetailRunMissingHostSubstrate:
+    'settings.runtime.lifecycleDetail.runMissingHostSubstrate',
+  settingsRuntimeLifecycleDetailRestartThenRerunMode:
+    'settings.runtime.lifecycleDetail.restartThenRerunMode',
+  settingsRuntimeLifecycleDetailRestartThenRerun:
+    'settings.runtime.lifecycleDetail.restartThenRerun',
+  settingsRuntimeLifecycleDetailRelaunchThenVerify:
+    'settings.runtime.lifecycleDetail.relaunchThenVerify',
+  settingsRuntimeLifecycleDetailElevationRequired:
+    'settings.runtime.lifecycleDetail.elevationRequired',
+  settingsRuntimeLifecycleDetailAuthThenRerunMode:
+    'settings.runtime.lifecycleDetail.authThenRerunMode',
+  settingsRuntimeLifecycleDetailRetryAfterFailure:
+    'settings.runtime.lifecycleDetail.retryAfterFailure',
+  settingsRuntimeLifecycleDetailRunMissingRequirement:
+    'settings.runtime.lifecycleDetail.runMissingRequirement',
+  settingsRuntimeLifecycleDetailFinishManualFollowThrough:
+    'settings.runtime.lifecycleDetail.finishManualFollowThrough',
+  settingsRuntimeLifecycleDetailRunApplyRemainingChanges:
+    'settings.runtime.lifecycleDetail.runApplyRemainingChanges',
+  settingsRuntimeLifecycleDetailRerunCheckToVerify:
+    'settings.runtime.lifecycleDetail.rerunCheckToVerify',
+  settingsRuntimeLifecycleDetailFinishedWithStatus:
+    'settings.runtime.lifecycleDetail.finishedWithStatus',
+  settingsRuntimeLifecycleModeApply: 'settings.runtime.lifecycleMode.apply',
+  settingsRuntimeLifecycleModeCheck: 'settings.runtime.lifecycleMode.check',
+  settingsRuntimeLifecycleModeForce: 'settings.runtime.lifecycleMode.force',
+  settingsRuntimeLifecycleModeUninstall: 'settings.runtime.lifecycleMode.uninstall',
+  settingsRuntimeLifecycleModeUpgrade: 'settings.runtime.lifecycleMode.upgrade',
   settingsRouteTitleAssistants: 'settings.route.title.assistants',
   settingsRouteTitleMyCats: 'settings.route.title.myCats',
   settingsRouteTitleChat: 'settings.route.title.chat',

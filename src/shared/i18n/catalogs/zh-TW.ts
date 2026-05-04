@@ -259,6 +259,35 @@ export const zhTWCatalog: MessageCatalog = {
     '請先啟動目標 WSL distro 一次以完成首次使用者設定，然後重新執行套裝設定檢查。',
   'settings.runtime.lifecycleDetail.startDockerWarmUp':
     '請啟動 Docker Desktop，等待引擎就緒後重新執行套裝設定檢查。',
+  'settings.runtime.lifecycleDetail.runMissingHostSubstrate':
+    '請執行 {helperLabel}，安裝就緒稽核標記缺少的主機基礎元件。',
+  'settings.runtime.lifecycleDetail.restartThenRerunMode':
+    '請重新啟動主機或 Windows 工作階段，然後以{mode}模式重新執行 {helperLabel}。',
+  'settings.runtime.lifecycleDetail.restartThenRerun':
+    '請重新啟動 Windows 或目前工作階段，然後重新執行 {helperLabel}。',
+  'settings.runtime.lifecycleDetail.relaunchThenVerify':
+    '請重新啟動 Cats 桌面主機，然後重新執行 {helperLabel} 以驗證更新後的套裝設定狀態。',
+  'settings.runtime.lifecycleDetail.elevationRequired':
+    '{helperLabel} 需要提升權限的主機步驟後才能繼續。',
+  'settings.runtime.lifecycleDetail.authThenRerunMode':
+    '完成必要登入流程後，請以{mode}模式重新執行 {helperLabel}。',
+  'settings.runtime.lifecycleDetail.retryAfterFailure':
+    '處理上一次失敗後，請重試 {helperLabel}。',
+  'settings.runtime.lifecycleDetail.runMissingRequirement':
+    '請執行 {helperLabel}，安裝缺少的套裝設定需求。',
+  'settings.runtime.lifecycleDetail.finishManualFollowThrough':
+    '完成 {helperLabel} 的手動後續步驟，然後重新執行驗證步驟。',
+  'settings.runtime.lifecycleDetail.runApplyRemainingChanges':
+    '請再次執行 {helperLabel}，套用剩餘的套裝設定變更。',
+  'settings.runtime.lifecycleDetail.rerunCheckToVerify':
+    '如需再次驗證套裝設定狀態，請以檢查模式重新執行 {helperLabel}。',
+  'settings.runtime.lifecycleDetail.finishedWithStatus':
+    '{helperLabel} 的{mode}已完成，狀態為{status}。',
+  'settings.runtime.lifecycleMode.apply': '套用',
+  'settings.runtime.lifecycleMode.check': '檢查',
+  'settings.runtime.lifecycleMode.force': '強制執行',
+  'settings.runtime.lifecycleMode.uninstall': '解除安裝',
+  'settings.runtime.lifecycleMode.upgrade': '升級',
   'settings.route.title.assistants': '助理',
   'settings.route.title.myCats': '我的貓咪',
   'settings.route.title.chat': '聊天',

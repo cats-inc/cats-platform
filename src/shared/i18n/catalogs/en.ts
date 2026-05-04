@@ -268,6 +268,35 @@ export const enCatalog: MessageCatalog = {
     'Launch the target WSL distro once to finish first-user setup, then rerun the packaged setup check.',
   'settings.runtime.lifecycleDetail.startDockerWarmUp':
     'Start Docker Desktop and wait for the engine to become ready, then rerun the packaged setup check.',
+  'settings.runtime.lifecycleDetail.runMissingHostSubstrate':
+    'Run {helperLabel} to install the missing host substrate flagged by the readiness audit.',
+  'settings.runtime.lifecycleDetail.restartThenRerunMode':
+    'Restart the host or Windows session, then rerun {helperLabel} in {mode} mode.',
+  'settings.runtime.lifecycleDetail.restartThenRerun':
+    'Restart Windows or the current session, then rerun {helperLabel}.',
+  'settings.runtime.lifecycleDetail.relaunchThenVerify':
+    'Relaunch Cats Desktop Host, then rerun {helperLabel} to verify the updated packaged setup state.',
+  'settings.runtime.lifecycleDetail.elevationRequired':
+    '{helperLabel} requires an elevated host step before it can continue.',
+  'settings.runtime.lifecycleDetail.authThenRerunMode':
+    'Complete the required sign-in flow, then rerun {helperLabel} in {mode} mode.',
+  'settings.runtime.lifecycleDetail.retryAfterFailure':
+    'Retry {helperLabel} after addressing the last failure.',
+  'settings.runtime.lifecycleDetail.runMissingRequirement':
+    'Run {helperLabel} to install the missing packaged setup requirement.',
+  'settings.runtime.lifecycleDetail.finishManualFollowThrough':
+    'Finish the manual follow-through for {helperLabel}, then rerun a verification step.',
+  'settings.runtime.lifecycleDetail.runApplyRemainingChanges':
+    'Run {helperLabel} again to apply the remaining packaged setup changes.',
+  'settings.runtime.lifecycleDetail.rerunCheckToVerify':
+    'Rerun {helperLabel} in check mode if you want to verify the packaged setup state again.',
+  'settings.runtime.lifecycleDetail.finishedWithStatus':
+    '{helperLabel} {mode} finished with {status}.',
+  'settings.runtime.lifecycleMode.apply': 'apply',
+  'settings.runtime.lifecycleMode.check': 'check',
+  'settings.runtime.lifecycleMode.force': 'force',
+  'settings.runtime.lifecycleMode.uninstall': 'uninstall',
+  'settings.runtime.lifecycleMode.upgrade': 'upgrade',
   'settings.route.title.assistants': 'Assistants',
   'settings.route.title.myCats': 'My Cats',
   'settings.route.title.chat': 'Chat',

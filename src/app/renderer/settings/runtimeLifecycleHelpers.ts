@@ -178,18 +178,129 @@ export function presentRuntimeLifecycleStatus(
   }
 }
 
+function presentRuntimeLifecycleMode(
+  mode: string | null | undefined,
+  t: RuntimeLifecycleI18n,
+): string {
+  switch (mode) {
+    case 'apply':
+      return t(messageKeys.settingsRuntimeLifecycleModeApply);
+    case 'check':
+      return t(messageKeys.settingsRuntimeLifecycleModeCheck);
+    case 'force':
+      return t(messageKeys.settingsRuntimeLifecycleModeForce);
+    case 'uninstall':
+      return t(messageKeys.settingsRuntimeLifecycleModeUninstall);
+    case 'upgrade':
+      return t(messageKeys.settingsRuntimeLifecycleModeUpgrade);
+    default:
+      return String(mode ?? '');
+  }
+}
+
 export function presentRuntimeLifecycleDetail(
   detail: string | null | undefined,
   t: RuntimeLifecycleI18n = defaultRuntimeLifecycleI18n,
 ): string {
-  switch (detail) {
+  const text = String(detail ?? '').trim();
+  let match: RegExpMatchArray | null;
+
+  switch (text) {
     case 'Launch the target WSL distro once to finish first-user setup, then rerun the packaged setup check.':
       return t(messageKeys.settingsRuntimeLifecycleDetailLaunchWslFirstBoot);
     case 'Start Docker Desktop and wait for the engine to become ready, then rerun the packaged setup check.':
       return t(messageKeys.settingsRuntimeLifecycleDetailStartDockerWarmUp);
-    default:
-      return presentRuntimeLifecycleStatus(detail, t) || String(detail ?? '');
   }
+
+  match = text.match(/^Run (.+) to install the missing host substrate flagged by the readiness audit\.$/u);
+  if (match) {
+    return t(messageKeys.settingsRuntimeLifecycleDetailRunMissingHostSubstrate, {
+      helperLabel: localizeRuntimeLifecycleHelperLabel(match[1], t),
+    });
+  }
+
+  match = text.match(/^Restart the host or Windows session, then rerun (.+) in (.+) mode\.$/u);
+  if (match) {
+    return t(messageKeys.settingsRuntimeLifecycleDetailRestartThenRerunMode, {
+      helperLabel: localizeRuntimeLifecycleHelperLabel(match[1], t),
+      mode: presentRuntimeLifecycleMode(match[2], t),
+    });
+  }
+
+  match = text.match(/^Restart Windows or the current session, then rerun (.+)\.$/u);
+  if (match) {
+    return t(messageKeys.settingsRuntimeLifecycleDetailRestartThenRerun, {
+      helperLabel: localizeRuntimeLifecycleHelperLabel(match[1], t),
+    });
+  }
+
+  match = text.match(/^Relaunch Cats Desktop Host, then rerun (.+) to verify the updated packaged setup state\.$/u);
+  if (match) {
+    return t(messageKeys.settingsRuntimeLifecycleDetailRelaunchThenVerify, {
+      helperLabel: localizeRuntimeLifecycleHelperLabel(match[1], t),
+    });
+  }
+
+  match = text.match(/^(.+) requires an elevated host step before it can continue\.$/u);
+  if (match) {
+    return t(messageKeys.settingsRuntimeLifecycleDetailElevationRequired, {
+      helperLabel: localizeRuntimeLifecycleHelperLabel(match[1], t),
+    });
+  }
+
+  match = text.match(/^Complete the required sign-in flow, then rerun (.+) in (.+) mode\.$/u);
+  if (match) {
+    return t(messageKeys.settingsRuntimeLifecycleDetailAuthThenRerunMode, {
+      helperLabel: localizeRuntimeLifecycleHelperLabel(match[1], t),
+      mode: presentRuntimeLifecycleMode(match[2], t),
+    });
+  }
+
+  match = text.match(/^Retry (.+) after addressing the last failure\.$/u);
+  if (match) {
+    return t(messageKeys.settingsRuntimeLifecycleDetailRetryAfterFailure, {
+      helperLabel: localizeRuntimeLifecycleHelperLabel(match[1], t),
+    });
+  }
+
+  match = text.match(/^Run (.+) to install the missing packaged setup requirement\.$/u);
+  if (match) {
+    return t(messageKeys.settingsRuntimeLifecycleDetailRunMissingRequirement, {
+      helperLabel: localizeRuntimeLifecycleHelperLabel(match[1], t),
+    });
+  }
+
+  match = text.match(/^Finish the manual follow-through for (.+), then rerun a verification step\.$/u);
+  if (match) {
+    return t(messageKeys.settingsRuntimeLifecycleDetailFinishManualFollowThrough, {
+      helperLabel: localizeRuntimeLifecycleHelperLabel(match[1], t),
+    });
+  }
+
+  match = text.match(/^Run (.+) again to apply the remaining packaged setup changes\.$/u);
+  if (match) {
+    return t(messageKeys.settingsRuntimeLifecycleDetailRunApplyRemainingChanges, {
+      helperLabel: localizeRuntimeLifecycleHelperLabel(match[1], t),
+    });
+  }
+
+  match = text.match(/^Rerun (.+) in check mode if you want to verify the packaged setup state again\.$/u);
+  if (match) {
+    return t(messageKeys.settingsRuntimeLifecycleDetailRerunCheckToVerify, {
+      helperLabel: localizeRuntimeLifecycleHelperLabel(match[1], t),
+    });
+  }
+
+  match = text.match(/^(.+) (check|apply|upgrade|force|uninstall) finished with (.+)\.$/u);
+  if (match) {
+    return t(messageKeys.settingsRuntimeLifecycleDetailFinishedWithStatus, {
+      helperLabel: localizeRuntimeLifecycleHelperLabel(match[1], t),
+      mode: presentRuntimeLifecycleMode(match[2], t),
+      status: presentRuntimeLifecycleStatus(match[3], t) || match[3],
+    });
+  }
+
+  return presentRuntimeLifecycleStatus(text, t) || text;
 }
 
 function localizeRuntimeLifecycleHelperLabel(

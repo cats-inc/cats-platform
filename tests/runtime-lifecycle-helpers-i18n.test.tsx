@@ -124,4 +124,39 @@ test('runtime lifecycle status and known manual details localize in zh-TW', () =
     ),
     '請啟動 Docker Desktop，等待引擎就緒後重新執行套裝設定檢查。',
   );
+  assert.equal(
+    presentRuntimeLifecycleDetail(
+      'Run Windows Node.js LTS host installer to install the missing host substrate flagged by the readiness audit.',
+      t,
+    ),
+    '請執行 Windows Node.js LTS 主機安裝器，安裝就緒稽核標記缺少的主機基礎元件。',
+  );
+  assert.equal(
+    presentRuntimeLifecycleDetail(
+      'Restart the host or Windows session, then rerun Windows native Claude Code installer in check mode.',
+      t,
+    ),
+    '請重新啟動主機或 Windows 工作階段，然後以檢查模式重新執行 Windows 原生 Claude Code 安裝器。',
+  );
+  assert.equal(
+    presentRuntimeLifecycleDetail(
+      'Retry Windows native Claude Code installer after addressing the last failure.',
+      t,
+    ),
+    '處理上一次失敗後，請重試 Windows 原生 Claude Code 安裝器。',
+  );
+  assert.equal(
+    presentRuntimeLifecycleDetail(
+      'Finish the manual follow-through for Windows native Claude Code installer, then rerun a verification step.',
+      t,
+    ),
+    '完成 Windows 原生 Claude Code 安裝器 的手動後續步驟，然後重新執行驗證步驟。',
+  );
+  assert.equal(
+    presentRuntimeLifecycleDetail(
+      'Windows native Claude Code installer apply finished with changes_required.',
+      t,
+    ),
+    'Windows 原生 Claude Code 安裝器 的套用已完成，狀態為需要變更。',
+  );
 });
