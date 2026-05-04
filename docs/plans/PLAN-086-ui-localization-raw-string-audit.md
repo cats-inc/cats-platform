@@ -166,6 +166,9 @@ The final 2026-05-04 cleanup localized:
 - Settings Apps package review/install/mutation feedback maps common package
   validation and app-state failures to localized feedback while preserving
   unknown diagnostics
+- Shared workspace execution-target save feedback maps deterministic new-chat
+  default and channel pending-target API fallback failures to localized feedback
+  while preserving unknown provider/runtime diagnostics
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

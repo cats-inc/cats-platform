@@ -10,7 +10,9 @@ import {
   toExecutionTargetValue,
   toSoloChannelExecutionTargetValue,
 } from '../src/products/shared/renderer/hooks/useWorkspaceExecutionTargetState.ts';
+import { formatWorkspaceExecutionTargetMutationError } from '../src/products/shared/renderer/hooks/workspaceExecutionTargetErrorLabels.ts';
 import { resolveDispatchExecutionTargetValue } from '../src/products/chat/renderer/hooks/useComposerSubmit.ts';
+import { createTranslator } from '../src/shared/i18n/index.ts';
 
 function createProviderRegistry(): ProductProviderRegistryReadModel {
   return {
@@ -36,6 +38,43 @@ function createProviderRegistry(): ProductProviderRegistryReadModel {
     ],
   };
 }
+
+test('execution target save feedback localizes known workspace mutation fallbacks', () => {
+  const t = createTranslator('zh-TW');
+
+  assert.equal(
+    formatWorkspaceExecutionTargetMutationError(
+      new Error('cats new chat defaults update returned 500'),
+      t('sharedExecutionTargetSaveNewChatDefaultsError'),
+      t,
+    ),
+    '儲存新增聊天室模型預設值失敗。',
+  );
+  assert.equal(
+    formatWorkspaceExecutionTargetMutationError(
+      new Error('cats channel update returned 404'),
+      t('sharedExecutionTargetSaveChatReplySettingsError'),
+      t,
+    ),
+    '儲存這個聊天室的 AI 回覆設定失敗。',
+  );
+  assert.equal(
+    formatWorkspaceExecutionTargetMutationError(
+      new Error('Channel not found: channel-1'),
+      t('sharedExecutionTargetSaveChatReplySettingsError'),
+      t,
+    ),
+    '找不到這個聊天室。',
+  );
+  assert.equal(
+    formatWorkspaceExecutionTargetMutationError(
+      new Error('provider runtime unavailable'),
+      t('sharedExecutionTargetSaveChatReplySettingsError'),
+      t,
+    ),
+    'provider runtime unavailable',
+  );
+});
 
 test('execution target helper defaults stay Claude-backed and normalize trimmed persisted providers', () => {
   assert.deepEqual(createDefaultExecutionTargetValue(), {

@@ -41,6 +41,7 @@ import {
 import type { RoomRoutingMode } from '../../../../shared/roomRouting.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { messageKeys } from '../../../../shared/i18n/index.js';
+import { formatWorkspaceExecutionTargetMutationError } from './workspaceExecutionTargetErrorLabels.js';
 
 export interface ExecutionTargetDefaultsLike {
   provider?: string | null;
@@ -767,11 +768,11 @@ export function useWorkspaceExecutionTargetState<
             return;
           }
           pendingNewChatDefaultsSaveAbort.current = null;
-          setFeedback(
-            error instanceof Error
-              ? error.message
-              : t(messageKeys.sharedExecutionTargetSaveNewChatDefaultsError),
-          );
+          setFeedback(formatWorkspaceExecutionTargetMutationError(
+            error,
+            t(messageKeys.sharedExecutionTargetSaveNewChatDefaultsError),
+            t,
+          ));
         });
     }, debounceMs);
 
@@ -871,11 +872,11 @@ export function useWorkspaceExecutionTargetState<
             return;
           }
           pendingSoloChannelExecutionTargetSaveAbort.current = null;
-          setFeedback(
-            error instanceof Error
-              ? error.message
-              : t(messageKeys.sharedExecutionTargetSaveChatReplySettingsError),
-          );
+          setFeedback(formatWorkspaceExecutionTargetMutationError(
+            error,
+            t(messageKeys.sharedExecutionTargetSaveChatReplySettingsError),
+            t,
+          ));
         });
     }, debounceMs);
 
