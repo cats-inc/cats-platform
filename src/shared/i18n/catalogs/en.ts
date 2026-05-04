@@ -1861,6 +1861,8 @@ export const enCatalog: MessageCatalog = {
   'shared.operator.action.acknowledged': 'Acknowledged',
   'shared.operator.action.retryDescription':
     'Record that the operator wants this blocked or failed run retried.',
+  'shared.operator.action.replayStoredDispatchDescription':
+    'Replay the stored dispatch or workflow continuation through the existing operator seam.',
   'shared.operator.action.retryTaskDescription':
     'Record that the operator wants this blocked or failed task retried.',
   'shared.operator.action.retryFailedDescription':

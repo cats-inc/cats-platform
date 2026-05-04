@@ -1815,6 +1815,8 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.operator.action.acknowledged': '已知悉',
   'shared.operator.action.retryDescription':
     '記錄操作員希望重試這個受阻或失敗的執行。',
+  'shared.operator.action.replayStoredDispatchDescription':
+    '透過既有操作員路徑重放已儲存的派工或工作流程延續。',
   'shared.operator.action.retryTaskDescription':
     '記錄操作員希望重試這個受阻或失敗的任務。',
   'shared.operator.action.retryFailedDescription':

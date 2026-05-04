@@ -23,6 +23,8 @@ const OPERATOR_ACTION_DESCRIPTION_KEYS: Record<string, MessageKey> = {
     messageKeys.sharedOperatorActionRetryFailedDescription,
   'Record that the operator wants this blocked or failed run retried.':
     messageKeys.sharedOperatorActionRetryDescription,
+  'Replay the stored dispatch or workflow continuation through the existing operator seam.':
+    messageKeys.sharedOperatorActionReplayStoredDispatchDescription,
   'Record that the operator wants this blocked or failed task retried.':
     messageKeys.sharedOperatorActionRetryTaskDescription,
   'Record that the operator has seen the current guardrail or incident state.':

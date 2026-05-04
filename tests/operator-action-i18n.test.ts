@@ -35,6 +35,13 @@ test('operator action labels and statuses localize known values', () => {
   );
   assert.equal(
     resolveOperatorActionDescription(
+      'Replay the stored dispatch or workflow continuation through the existing operator seam.',
+      zh,
+    ),
+    '透過既有操作員路徑重放已儲存的派工或工作流程延續。',
+  );
+  assert.equal(
+    resolveOperatorActionDescription(
       'Record that the operator has seen the current blocked or failed state.',
       zh,
     ),

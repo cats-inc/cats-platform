@@ -54,6 +54,8 @@ The final 2026-05-04 cleanup localized:
 - Work run list/detail pages localize known Cats-owned deterministic run
   summaries at presentation time while preserving runtime-authored summaries as
   content
+- operator retry action tooltips now cover the recovery-specific stored
+  dispatch/workflow continuation description through the shared action i18n map
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

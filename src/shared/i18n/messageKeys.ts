@@ -1845,6 +1845,8 @@ export const messageKeys = {
   sharedOperatorActionAcknowledge: 'shared.operator.action.acknowledge',
   sharedOperatorActionAcknowledged: 'shared.operator.action.acknowledged',
   sharedOperatorActionRetryDescription: 'shared.operator.action.retryDescription',
+  sharedOperatorActionReplayStoredDispatchDescription:
+    'shared.operator.action.replayStoredDispatchDescription',
   sharedOperatorActionRetryTaskDescription:
     'shared.operator.action.retryTaskDescription',
   sharedOperatorActionRetryFailedDescription:
