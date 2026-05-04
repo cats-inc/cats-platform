@@ -119,7 +119,11 @@ export function PlatformLobby({
         </div>
 
         <div className="lobbyMain">
-          <LobbySidebar cats={envelope.lobby.cats} />
+          <LobbySidebar
+            cats={envelope.lobby.cats}
+            clowders={envelope.lobby.clowders ?? []}
+            catteries={envelope.lobby.catteries ?? []}
+          />
 
           <div className="lobbyCanvas">
             <div className="lobbyHero">

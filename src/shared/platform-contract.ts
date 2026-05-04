@@ -112,6 +112,46 @@ export interface PlatformLobbyCatSummary {
   executionLabel: string | null;
 }
 
+/**
+ * Cross-cutting membership status for both Clowder and Cattery
+ * memberships, per ADR-100 §Decision and SPEC-103 §FR 11-13. Cattery
+ * membership rejects `temp` at the validator boundary (FR-12); the
+ * shared union is kept for the Clowder side and for filter/transition
+ * helpers that operate generically over both entity types.
+ */
+export type MembershipStatus = 'formal' | 'temp' | 'external';
+
+/**
+ * A clowder summary as it appears in the Lobby sidebar / list. Phase
+ * 6 of PLAN-091 ships the full ClowderRecord (with members, cat list,
+ * createdAt/By, etc.); the sidebar only needs identification + a
+ * couple of counts to size the row.
+ */
+export interface PlatformLobbyClowderSummary {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  /** When non-null, this Clowder is part of the named Cattery's formal org chart. */
+  parentCatteryId: string | null;
+  catCount: number;
+  memberCount: number;
+}
+
+/**
+ * A cattery summary as it appears in the Lobby sidebar / list. Same
+ * scope-shrinking comment as PlatformLobbyClowderSummary applies.
+ */
+export interface PlatformLobbyCatterySummary {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  memberCount: number;
+  /** Count of Clowders with `parentCatteryId === this.id`. */
+  clowderCount: number;
+  /** Aggregate Cats reachable through formal Clowders + direct members, deduped. */
+  catCount: number;
+}
+
 export interface PlatformLobbyPreferences {
   animationMode: PlatformLobbyAnimationMode;
 }
@@ -146,6 +186,14 @@ export interface PlatformLanguagePreferences {
 
 export interface PlatformLobbyState extends PlatformLobbyPreferences {
   cats: PlatformLobbyCatSummary[];
+  /**
+   * PLAN-091 phase 6 widens the Lobby payload to carry Clowder /
+   * Cattery summaries alongside Cats. Until the storage layer ships,
+   * the server emits empty arrays; the renderer treats absence and
+   * `[]` identically (defensive default in `LobbySidebar`).
+   */
+  clowders?: PlatformLobbyClowderSummary[];
+  catteries?: PlatformLobbyCatterySummary[];
   guideCatAssist?: GuideCatAssistSurfaceReadModel | null;
 }
 

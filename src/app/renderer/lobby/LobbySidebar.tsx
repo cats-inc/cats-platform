@@ -3,7 +3,11 @@ import { Link } from 'react-router-dom';
 
 import { messageKeys, type MessageKey } from '../../../shared/i18n/index.js';
 import { nameInitials } from '../../../shared/nameInitials.js';
-import type { PlatformLobbyCatSummary } from '../../../shared/platform-contract.js';
+import type {
+  PlatformLobbyCatSummary,
+  PlatformLobbyCatterySummary,
+  PlatformLobbyClowderSummary,
+} from '../../../shared/platform-contract.js';
 import { useI18n } from '../i18n/index.js';
 
 type SectionKey = 'cats' | 'clowders' | 'catteries';
@@ -147,14 +151,32 @@ function NewEntityRow({
   );
 }
 
+function ClowderRowAvatar({ clowder }: { clowder: PlatformLobbyClowderSummary }) {
+  const style = clowder.avatarUrl
+    ? { backgroundImage: `url(${clowder.avatarUrl})`, backgroundSize: 'cover' as const, backgroundPosition: 'center' as const }
+    : undefined;
+  return (
+    <span className="lobbySidebarAvatar" style={style}>
+      {clowder.avatarUrl ? null : nameInitials(clowder.name)}
+    </span>
+  );
+}
+
+function CatteryRowAvatar({ cattery }: { cattery: PlatformLobbyCatterySummary }) {
+  const style = cattery.avatarUrl
+    ? { backgroundImage: `url(${cattery.avatarUrl})`, backgroundSize: 'cover' as const, backgroundPosition: 'center' as const }
+    : undefined;
+  return (
+    <span className="lobbySidebarAvatar" style={style}>
+      {cattery.avatarUrl ? null : nameInitials(cattery.name)}
+    </span>
+  );
+}
+
 export interface LobbySidebarProps {
   cats: readonly PlatformLobbyCatSummary[];
-  // Phase 6 (ADR-100 + SPEC-103) lands the real Clowder / Cattery
-  // registries. Until then the sections are reachable but render their
-  // empty state. Keep them as plain `readonly unknown[]` so this
-  // component does not couple to a future shape that may change.
-  clowders?: readonly unknown[];
-  catteries?: readonly unknown[];
+  clowders?: readonly PlatformLobbyClowderSummary[];
+  catteries?: readonly PlatformLobbyCatterySummary[];
   onCreateCat?: () => void;
   onCreateClowder?: () => void;
   onCreateCattery?: () => void;
@@ -197,14 +219,42 @@ export function LobbySidebar({
       <SidebarSection section="clowders" count={clowders.length}>
         {clowders.length === 0 ? (
           <p className="lobbySidebarEmpty">{t(SECTION_EMPTY_LABEL_KEY.clowders)}</p>
-        ) : null}
+        ) : (
+          <ul className="lobbySidebarItems">
+            {clowders.map((clowder) => (
+              <li key={clowder.id} className="lobbySidebarItem">
+                <Link
+                  to={`/clowders/${encodeURIComponent(clowder.id)}`}
+                  className="lobbySidebarRow"
+                >
+                  <ClowderRowAvatar clowder={clowder} />
+                  <span className="lobbySidebarRowName">{clowder.name}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
         <NewEntityRow section="clowders" onClick={onCreateClowder} />
       </SidebarSection>
 
       <SidebarSection section="catteries" count={catteries.length}>
         {catteries.length === 0 ? (
           <p className="lobbySidebarEmpty">{t(SECTION_EMPTY_LABEL_KEY.catteries)}</p>
-        ) : null}
+        ) : (
+          <ul className="lobbySidebarItems">
+            {catteries.map((cattery) => (
+              <li key={cattery.id} className="lobbySidebarItem">
+                <Link
+                  to={`/catteries/${encodeURIComponent(cattery.id)}`}
+                  className="lobbySidebarRow"
+                >
+                  <CatteryRowAvatar cattery={cattery} />
+                  <span className="lobbySidebarRowName">{cattery.name}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
         <NewEntityRow section="catteries" onClick={onCreateCattery} />
       </SidebarSection>
     </aside>

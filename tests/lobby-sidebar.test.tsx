@@ -6,7 +6,11 @@ import { StaticRouter } from 'react-router-dom';
 
 import { I18nProvider } from '../src/app/renderer/i18n/I18nProvider.tsx';
 import { LobbySidebar } from '../src/app/renderer/lobby/LobbySidebar.tsx';
-import type { PlatformLobbyCatSummary } from '../src/shared/platform-contract.ts';
+import type {
+  PlatformLobbyCatSummary,
+  PlatformLobbyCatterySummary,
+  PlatformLobbyClowderSummary,
+} from '../src/shared/platform-contract.ts';
 
 const conciergeCat: PlatformLobbyCatSummary = {
   id: 'cat-concierge',
@@ -19,11 +23,21 @@ const conciergeCat: PlatformLobbyCatSummary = {
   executionLabel: 'Claude Opus 4.7',
 };
 
-function renderSidebar(cats: readonly PlatformLobbyCatSummary[]): string {
+function renderSidebar(
+  cats: readonly PlatformLobbyCatSummary[],
+  options: {
+    clowders?: readonly PlatformLobbyClowderSummary[];
+    catteries?: readonly PlatformLobbyCatterySummary[];
+  } = {},
+): string {
   return renderToStaticMarkup(
     <I18nProvider locale="en">
       <StaticRouter location="/lobby">
-        <LobbySidebar cats={cats} />
+        <LobbySidebar
+          cats={cats}
+          clowders={options.clowders}
+          catteries={options.catteries}
+        />
       </StaticRouter>
     </I18nProvider>,
   );
@@ -73,6 +87,49 @@ test('LobbySidebar renders a + New row for every section even when empty', () =>
   // assert the section structure is present.
   assert.match(markup, /data-section="cats"/u);
   assert.match(markup, />\(0\)</u);
+});
+
+test('LobbySidebar renders typed Clowder rows with /clowders/:id links when supplied (PLAN-091 phase 6 scaffolding)', () => {
+  const sidebarMarkup = renderSidebar(
+    [],
+    {
+      clowders: [
+        {
+          id: 'clw-dev',
+          name: 'Dev Team',
+          avatarUrl: null,
+          parentCatteryId: 'acme',
+          catCount: 3,
+          memberCount: 5,
+        },
+      ],
+    },
+  );
+
+  // Section header still defaults to collapsed; the row only paints
+  // when expanded. The smoke check that the type plumbing works lives
+  // in the section count + the expand-affordance copy.
+  assert.match(sidebarMarkup, /data-section="clowders"[\s\S]*?\(1\)/u);
+});
+
+test('LobbySidebar renders typed Cattery rows with /catteries/:id links when supplied (PLAN-091 phase 6 scaffolding)', () => {
+  const sidebarMarkup = renderSidebar(
+    [],
+    {
+      catteries: [
+        {
+          id: 'acme',
+          name: 'Acme Co.',
+          avatarUrl: null,
+          memberCount: 12,
+          clowderCount: 3,
+          catCount: 7,
+        },
+      ],
+    },
+  );
+
+  assert.match(sidebarMarkup, /data-section="catteries"[\s\S]*?\(1\)/u);
 });
 
 test('LobbySidebar reads/writes localStorage when window.localStorage is available', () => {
