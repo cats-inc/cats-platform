@@ -214,6 +214,8 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.runtime.fixStepCount': '{count} 個步驟{pluralSuffix}',
   'settings.runtime.helperLabel.windowsCliReadiness':
     'Windows PowerShell + PATH 就緒檢查輔助工具',
+  'settings.runtime.helperLabel.windowsVcRedist':
+    'Windows Microsoft Visual C++ 2015-2022 可轉散發套件 (x64)',
   'settings.runtime.helperLabel.nodeHostInstaller': '{platform} Node.js LTS 主機安裝器',
   'settings.runtime.helperLabel.githubCliHostInstaller': '{platform} GitHub CLI 主機安裝器',
   'settings.runtime.helperLabel.npmPrefixHelper':

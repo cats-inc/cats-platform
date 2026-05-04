@@ -48,6 +48,13 @@ test('runtime lifecycle helper labels localize known packaged helper patterns', 
   );
   assert.equal(
     presentRuntimeLifecycleHelperLabel(helper({
+      id: 'windows-vcredist-installer',
+      label: 'Windows Microsoft Visual C++ 2015-2022 Redistributable (x64)',
+    }), t),
+    'Windows Microsoft Visual C++ 2015-2022 可轉散發套件 (x64)',
+  );
+  assert.equal(
+    presentRuntimeLifecycleHelperLabel(helper({
       id: 'linux-codex-native-installer',
       label: 'Linux OpenAI Codex CLI installer',
       platform: 'linux',

@@ -78,6 +78,7 @@ test('desktop bootstrap page renders summary-first recovery with collapsed detai
   assert.match(html, /桌面服務已就緒。請繼續進入設定/);
   assert.match(html, /桌面服務與至少一個供應器路徑已就緒/);
   assert.match(html, /Cats 需要供應器復原，但設定仍已完成/);
+  assert.match(html, /Windows Microsoft Visual C\+\+ 2015-2022 可轉散發套件 \(x64\)/);
   assert.match(html, /pack: localizeSetupPackLabel\(optionalMatch\[1\]\)/);
   assert.match(html, /helperLabel: localizeSetupHelperLabel\(match\[1\]\)/);
   assert.match(html, /setupHelper\.packagedBackgroundProcessHelper/);

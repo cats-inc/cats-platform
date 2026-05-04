@@ -223,6 +223,8 @@ export const enCatalog: MessageCatalog = {
   'settings.runtime.fixStepCount': '{count} fix step{pluralSuffix}',
   'settings.runtime.helperLabel.windowsCliReadiness':
     'Windows PowerShell + PATH readiness helper',
+  'settings.runtime.helperLabel.windowsVcRedist':
+    'Windows Microsoft Visual C++ 2015-2022 Redistributable (x64)',
   'settings.runtime.helperLabel.nodeHostInstaller': '{platform} Node.js LTS host installer',
   'settings.runtime.helperLabel.githubCliHostInstaller': '{platform} GitHub CLI host installer',
   'settings.runtime.helperLabel.npmPrefixHelper':

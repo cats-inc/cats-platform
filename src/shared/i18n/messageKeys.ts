@@ -211,6 +211,8 @@ export const messageKeys = {
   settingsRuntimeFixStepCount: 'settings.runtime.fixStepCount',
   settingsRuntimeHelperLabelWindowsCliReadiness:
     'settings.runtime.helperLabel.windowsCliReadiness',
+  settingsRuntimeHelperLabelWindowsVcRedist:
+    'settings.runtime.helperLabel.windowsVcRedist',
   settingsRuntimeHelperLabelNodeHostInstaller:
     'settings.runtime.helperLabel.nodeHostInstaller',
   settingsRuntimeHelperLabelGithubCliHostInstaller:

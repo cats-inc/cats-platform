@@ -200,6 +200,10 @@ function localizeRuntimeLifecycleHelperLabel(
     return t(messageKeys.settingsRuntimeHelperLabelWindowsCliReadiness);
   }
 
+  if (label === 'Windows Microsoft Visual C++ 2015-2022 Redistributable (x64)') {
+    return t(messageKeys.settingsRuntimeHelperLabelWindowsVcRedist);
+  }
+
   let match = label.match(/^(Windows|Linux|macOS) Node\.js LTS host installer$/u);
   if (match) {
     return t(messageKeys.settingsRuntimeHelperLabelNodeHostInstaller, {

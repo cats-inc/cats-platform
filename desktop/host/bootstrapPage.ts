@@ -702,6 +702,7 @@ export function buildDesktopBootstrapPage(): string {
         'setupPack.optionalCapability': 'optional capability pack',
         'setupPack.wslPowerUser': 'WSL power-user pack',
         'setupHelper.windowsCliReadiness': 'Windows PowerShell + PATH readiness helper',
+        'setupHelper.windowsVcRedist': 'Windows Microsoft Visual C++ 2015-2022 Redistributable (x64)',
         'setupHelper.nodeHostInstaller': '{platform} Node.js LTS host installer',
         'setupHelper.githubCliHostInstaller': '{platform} GitHub CLI host installer',
         'setupHelper.npmPrefixHelper': '{platform} npm prefix and PATH prerequisite helper',
@@ -936,6 +937,7 @@ export function buildDesktopBootstrapPage(): string {
         'setupPack.optionalCapability': '選用能力套件',
         'setupPack.wslPowerUser': 'WSL 進階使用者套件',
         'setupHelper.windowsCliReadiness': 'Windows PowerShell + PATH 就緒檢查輔助程式',
+        'setupHelper.windowsVcRedist': 'Windows Microsoft Visual C++ 2015-2022 可轉散發套件 (x64)',
         'setupHelper.nodeHostInstaller': '{platform} Node.js LTS 主機安裝器',
         'setupHelper.githubCliHostInstaller': '{platform} GitHub CLI 主機安裝器',
         'setupHelper.npmPrefixHelper': '{platform} npm 前置路徑與 PATH 先決條件輔助程式',
@@ -1291,6 +1293,10 @@ export function buildDesktopBootstrapPage(): string {
       var text = String(label || '').trim();
       if (text === 'Windows PowerShell + PATH readiness helper') {
         return tx('setupHelper.windowsCliReadiness');
+      }
+
+      if (text === 'Windows Microsoft Visual C++ 2015-2022 Redistributable (x64)') {
+        return tx('setupHelper.windowsVcRedist');
       }
 
       var match = text.match(/^(Windows|Linux|macOS) Node\.js LTS host installer$/);
