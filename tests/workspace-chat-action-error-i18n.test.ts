@@ -28,6 +28,31 @@ test('workspace chat action localizes known governance and cancellation errors',
     ),
     '目前聊天不屬於這個平行聊天群組。',
   );
+  assert.equal(
+    localizeWorkspaceChatActionErrorMessage(
+      'The source chat is not part of this Parallel chat group.',
+      t,
+    ),
+    '來源聊天不屬於這個平行聊天群組。',
+  );
+  assert.equal(
+    localizeWorkspaceChatActionErrorMessage(
+      'No parallel chat targets were selected for this relay.',
+      t,
+    ),
+    '請至少選擇一個平行聊天轉送目標。',
+  );
+  assert.equal(
+    localizeWorkspaceChatActionErrorMessage('Message not found.', t),
+    '找不到這則訊息。',
+  );
+  assert.equal(
+    localizeWorkspaceChatActionErrorMessage(
+      'Cannot retry while this room already has an active turn.',
+      t,
+    ),
+    '請等目前回應結束後再重試。',
+  );
 });
 
 test('workspace chat action formatter hides local API fallback strings', () => {
@@ -56,6 +81,22 @@ test('workspace chat action formatter hides local API fallback strings', () => {
       t,
     ),
     '停止回應失敗。',
+  );
+  assert.equal(
+    formatWorkspaceChatActionError(
+      new Error('channel message retry returned 500'),
+      '重試回應失敗。',
+      t,
+    ),
+    '重試回應失敗。',
+  );
+  assert.equal(
+    formatWorkspaceChatActionError(
+      new Error('parallel chat relay returned 500'),
+      '轉送比較失敗。',
+      t,
+    ),
+    '轉送比較失敗。',
   );
   assert.equal(
     formatWorkspaceChatActionError(

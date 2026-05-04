@@ -1368,6 +1368,20 @@ export const enCatalog: MessageCatalog = {
   'chat.composer.error.stopFailed': 'Failed to stop response.',
   'chat.composer.error.activeChatNotInParallelGroup':
     'The active chat is not part of this parallel chat group.',
+  'chat.composer.error.sourceChatNotInParallelGroup':
+    'The source chat is not part of this parallel chat group.',
+  'chat.composer.error.parallelBranchOutsideGroup':
+    'One or more parallel branches target a chat outside this parallel chat group.',
+  'chat.composer.error.noParallelRelayTargets':
+    'Select at least one parallel chat target for this relay.',
+  'chat.composer.error.messageNotFound': 'Message not found.',
+  'chat.composer.error.retryInvalidSender': 'Only your messages can be retried.',
+  'chat.composer.error.retryInProgress':
+    'Wait for the active response to finish before retrying.',
+  'chat.composer.error.retryNotLatest':
+    'Only the latest acknowledged message can be retried.',
+  'chat.composer.error.retryNotAvailable':
+    'Retry is available only for the latest failed acknowledged message.',
   'chat.governance.error.updateApproval': 'Failed to update approval.',
   'chat.governance.error.submitChoiceResponse': 'Failed to submit choice response.',
   'chat.governance.error.recordOperatorAction': 'Failed to record operator action.',

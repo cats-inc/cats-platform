@@ -152,6 +152,9 @@ The final 2026-05-04 cleanup localized:
 - Operator loop, governance, and message stop controls map deterministic core,
   channel messaging, and channel/parallel cancellation failures to localized
   feedback while preserving unknown diagnostics
+- Composer send/retry and parallel relay compare controls map deterministic
+  channel messaging, retry, and parallel relay failures to localized feedback
+  while preserving unknown diagnostics
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

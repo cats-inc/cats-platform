@@ -13,6 +13,7 @@ import {
 } from '../../../../shared/workspaceBusy.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { messageKeys } from '../../../../shared/i18n/index.js';
+import { formatWorkspaceChatActionError } from './workspaceChatActionErrorLabels.js';
 
 interface SelectedChannelLike {
   id: string;
@@ -72,7 +73,11 @@ export function useWorkspaceCompareRelay<TPayload extends { chat: unknown }>(inp
         );
       }
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : t(messageKeys.chatComposerErrorRelayCompareFailed));
+      setFeedback(formatWorkspaceChatActionError(
+        error,
+        t(messageKeys.chatComposerErrorRelayCompareFailed),
+        t,
+      ));
     } finally {
       setBusy(clearBusyState());
     }

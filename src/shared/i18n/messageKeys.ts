@@ -1395,6 +1395,19 @@ export const messageKeys = {
   chatComposerErrorStopFailed: 'chat.composer.error.stopFailed',
   chatComposerErrorActiveChatNotInParallelGroup:
     'chat.composer.error.activeChatNotInParallelGroup',
+  chatComposerErrorSourceChatNotInParallelGroup:
+    'chat.composer.error.sourceChatNotInParallelGroup',
+  chatComposerErrorParallelBranchOutsideGroup:
+    'chat.composer.error.parallelBranchOutsideGroup',
+  chatComposerErrorNoParallelRelayTargets:
+    'chat.composer.error.noParallelRelayTargets',
+  chatComposerErrorMessageNotFound: 'chat.composer.error.messageNotFound',
+  chatComposerErrorRetryInvalidSender:
+    'chat.composer.error.retryInvalidSender',
+  chatComposerErrorRetryInProgress: 'chat.composer.error.retryInProgress',
+  chatComposerErrorRetryNotLatest: 'chat.composer.error.retryNotLatest',
+  chatComposerErrorRetryNotAvailable:
+    'chat.composer.error.retryNotAvailable',
   chatGovernanceErrorUpdateApproval: 'chat.governance.error.updateApproval',
   chatGovernanceErrorSubmitChoiceResponse:
     'chat.governance.error.submitChoiceResponse',

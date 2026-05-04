@@ -1334,6 +1334,18 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.composer.error.stopFailed': '停止回應失敗。',
   'chat.composer.error.activeChatNotInParallelGroup':
     '目前聊天不屬於這個平行聊天群組。',
+  'chat.composer.error.sourceChatNotInParallelGroup':
+    '來源聊天不屬於這個平行聊天群組。',
+  'chat.composer.error.parallelBranchOutsideGroup':
+    '一個或多個平行分支指向這個平行聊天群組以外的聊天。',
+  'chat.composer.error.noParallelRelayTargets':
+    '請至少選擇一個平行聊天轉送目標。',
+  'chat.composer.error.messageNotFound': '找不到這則訊息。',
+  'chat.composer.error.retryInvalidSender': '只能重試你送出的訊息。',
+  'chat.composer.error.retryInProgress': '請等目前回應結束後再重試。',
+  'chat.composer.error.retryNotLatest': '只能重試最新一則已確認的訊息。',
+  'chat.composer.error.retryNotAvailable':
+    '只有最新一則已確認且失敗的訊息可以重試。',
   'chat.governance.error.updateApproval': '更新核准狀態失敗。',
   'chat.governance.error.submitChoiceResponse': '送出選項回覆失敗。',
   'chat.governance.error.recordOperatorAction': '記錄操作員動作失敗。',

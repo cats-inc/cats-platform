@@ -36,6 +36,7 @@ import {
   setDraftParallelTargetRuntimeSessionPolicy,
   updateDraftParallelTargetAt,
 } from '../../../shared/renderer/draftParallelTargets.js';
+import { formatWorkspaceChatActionError } from '../../../shared/renderer/hooks/workspaceChatActionErrorLabels.js';
 import { useI18n } from '../../../../app/renderer/i18n/useI18n.js';
 import { messageKeys } from '../../../../shared/i18n/index.js';
 
@@ -315,7 +316,11 @@ export function useParallelChatDraft(options: {
         );
       }
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : t(messageKeys.chatComposerErrorRelayCompareFailed));
+      setFeedback(formatWorkspaceChatActionError(
+        error,
+        t(messageKeys.chatComposerErrorRelayCompareFailed),
+        t,
+      ));
     } finally {
       setBusy(clearBusyState());
     }

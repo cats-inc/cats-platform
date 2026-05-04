@@ -69,6 +69,7 @@ import {
   type PendingDispatchHydration,
 } from './useComposerRequestLifecycle.js';
 import { useComposerSubmitBindings } from './useComposerSubmitBindings.js';
+import { formatWorkspaceChatActionError } from './workspaceChatActionErrorLabels.js';
 import type { DraftParallelTargetBranchFields } from '../draftParallelTargets.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { messageKeys } from '../../../../shared/i18n/index.js';
@@ -520,7 +521,11 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
       if (isAbortError(error)) {
         setFeedback('');
       } else {
-        setFeedback(error instanceof Error ? error.message : t(messageKeys.chatComposerErrorSendFailed));
+        setFeedback(formatWorkspaceChatActionError(
+          error,
+          t(messageKeys.chatComposerErrorSendFailed),
+          t,
+        ));
       }
       navigateWithinManagedFlow(rollbackPath);
     } finally {
@@ -632,7 +637,11 @@ export function useWorkspaceComposerSubmit<ModelValue extends WorkspaceExecution
       if (isAbortError(error)) {
         setFeedback('');
       } else {
-        setFeedback(error instanceof Error ? error.message : t(messageKeys.chatComposerErrorRetryFailed));
+        setFeedback(formatWorkspaceChatActionError(
+          error,
+          t(messageKeys.chatComposerErrorRetryFailed),
+          t,
+        ));
       }
     } finally {
       if (!keepBusyAfterReturn) {

@@ -73,6 +73,7 @@ import {
   sameExecutionTargetValue,
 } from '../../../shared/renderer/hooks/useWorkspaceExecutionTargetState.js';
 import { useComposerSubmitBindings } from '../../../shared/renderer/hooks/useComposerSubmitBindings.js';
+import { formatWorkspaceChatActionError } from '../../../shared/renderer/hooks/workspaceChatActionErrorLabels.js';
 import type { DraftParallelTargetBranchFields } from '../../../shared/renderer/draftParallelTargets.js';
 import {
   buildCrossSurfaceChannelPath,
@@ -706,7 +707,11 @@ export function useComposerSubmit(options: {
       if (isAbortError(error)) {
         setFeedback('');
       } else {
-        setFeedback(error instanceof Error ? error.message : t(messageKeys.chatComposerErrorSendFailed));
+        setFeedback(formatWorkspaceChatActionError(
+          error,
+          t(messageKeys.chatComposerErrorSendFailed),
+          t,
+        ));
       }
       navigateWithinManagedFlow(rollbackPath);
     } finally {
@@ -810,7 +815,11 @@ export function useComposerSubmit(options: {
       if (isAbortError(error)) {
         setFeedback('');
       } else {
-        setFeedback(error instanceof Error ? error.message : t(messageKeys.chatComposerErrorRetryFailed));
+        setFeedback(formatWorkspaceChatActionError(
+          error,
+          t(messageKeys.chatComposerErrorRetryFailed),
+          t,
+        ));
       }
     } finally {
       if (!keepBusyAfterReturn) {

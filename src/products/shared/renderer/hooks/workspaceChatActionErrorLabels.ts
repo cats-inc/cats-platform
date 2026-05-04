@@ -17,6 +17,8 @@ const LOCAL_FALLBACK_PATTERNS = [
   /^cats core operator action returned \d+$/u,
   /^cats channel messaging returned \d+$/u,
   /^cats channel cancel returned \d+$/u,
+  /^channel message retry returned \d+$/u,
+  /^parallel chat relay returned \d+$/u,
   /^parallel chat cancel returned \d+$/u,
 ];
 
@@ -31,6 +33,44 @@ export function localizeWorkspaceChatActionErrorMessage(
 
   if (message === 'The active chat is not part of this Parallel chat group.') {
     return t(messageKeys.chatComposerErrorActiveChatNotInParallelGroup);
+  }
+
+  if (message === 'The source chat is not part of this Parallel chat group.') {
+    return t(messageKeys.chatComposerErrorSourceChatNotInParallelGroup);
+  }
+
+  if (
+    message
+    === 'One or more parallel branch inputs target a chat outside this Parallel chat group.'
+  ) {
+    return t(messageKeys.chatComposerErrorParallelBranchOutsideGroup);
+  }
+
+  if (message === 'No parallel chat targets were selected for this relay.') {
+    return t(messageKeys.chatComposerErrorNoParallelRelayTargets);
+  }
+
+  if (message === 'Message not found.' || message.startsWith('Channel message not found:')) {
+    return t(messageKeys.chatComposerErrorMessageNotFound);
+  }
+
+  if (message === 'Only user messages can be retried.') {
+    return t(messageKeys.chatComposerErrorRetryInvalidSender);
+  }
+
+  if (message === 'Cannot retry while this room already has an active turn.') {
+    return t(messageKeys.chatComposerErrorRetryInProgress);
+  }
+
+  if (message === 'Only the latest acknowledged user message can be retried.') {
+    return t(messageKeys.chatComposerErrorRetryNotLatest);
+  }
+
+  if (
+    message
+    === 'Retry is only available for the latest failed acknowledged user message.'
+  ) {
+    return t(messageKeys.chatComposerErrorRetryNotAvailable);
   }
 
   return null;
