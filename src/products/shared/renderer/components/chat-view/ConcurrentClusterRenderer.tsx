@@ -150,7 +150,9 @@ export function renderContentBlockSegment(
 
   if (block.kind === 'status' && block.text) {
     return (
-      <p key={block.id} className="typingStatusText">{block.text}</p>
+      <p key={block.id} className="typingStatusText">
+        {localizeCatsOwnedLiveText(block.text, null, translate)}
+      </p>
     );
   }
 
@@ -432,7 +434,7 @@ export function SegmentContentBody({
     if (showProgressDetails && segment.progressText) {
       return (
         <p className="typingStatusText">
-          {localizeLiveProgressText(segment.progressText, segment.progressKind, t)}
+          {localizeCatsOwnedLiveText(segment.progressText, segment.progressKind, t)}
         </p>
       );
     }
@@ -456,7 +458,7 @@ export function SegmentContentBody({
   );
 }
 
-function localizeLiveProgressText(
+function localizeCatsOwnedLiveText(
   text: string,
   progressKind: string | null | undefined,
   translate: (key: MessageKey, values?: MessageInterpolationValues) => string,
@@ -469,6 +471,10 @@ function localizeLiveProgressText(
       return translate(messageKeys.chatConcurrentProgressFinalizing);
     case 'Finishing...':
       return translate(messageKeys.chatConcurrentProgressFinishing);
+    case 'Runtime stream unavailable':
+      return translate(messageKeys.chatConcurrentErrorRuntimeStreamUnavailable);
+    case 'Proxy error':
+      return translate(messageKeys.chatConcurrentErrorProxy);
     default:
       return text;
   }

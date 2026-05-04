@@ -357,6 +357,7 @@ known-gaps list.
 | 2026-05-04 | Localized Telegram command descriptions and deterministic slash-command replies, including zh command catalog registration via Telegram `language_code=zh` while preserving English fallback commands. |
 | 2026-05-04 | Removed unused English labels/descriptions from runtime skill profile source records; Settings Cats remains the owner of localized skill profile presentation. |
 | 2026-05-04 | Localized Chat parallel relay command definitions, persisted outgoing/incoming transcript notes, and deterministic relay prompt templates via shared English / Traditional Chinese catalogs; relay requests carry the initiating renderer locale and preserve English fallback behavior. |
+| 2026-05-04 | Localized deterministic live runtime error progress/status text such as runtime stream unavailable and proxy errors at renderer presentation time while keeping SSE payloads protocol-stable. |
 
 ---
 

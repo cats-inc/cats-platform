@@ -1289,6 +1289,9 @@ export const messageKeys = {
   chatConcurrentToolLabel: 'chat.concurrent.toolLabel',
   chatConcurrentProgressFinalizing: 'chat.concurrent.progress.finalizing',
   chatConcurrentProgressFinishing: 'chat.concurrent.progress.finishing',
+  chatConcurrentErrorRuntimeStreamUnavailable:
+    'chat.concurrent.error.runtimeStreamUnavailable',
+  chatConcurrentErrorProxy: 'chat.concurrent.error.proxy',
   chatConcurrentCopyLabeledResponseLabel: 'chat.concurrent.copyLabeledResponseLabel',
   chatConcurrentCopyUnnamedResponseLabel: 'chat.concurrent.copyUnnamedResponseLabel',
   chatFocusRailUnnamedResponseLabel: 'chat.focusRail.unnamedResponseLabel',

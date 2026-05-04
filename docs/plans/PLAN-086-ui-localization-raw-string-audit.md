@@ -43,6 +43,8 @@ The final 2026-05-04 cleanup localized:
   readiness snapshots and shown in bootstrap diagnostics/recovery presentation
 - live finalization progress now uses the semantic `progressKind=finalizing`
   signal before falling back to legacy English progress text matching
+- deterministic live runtime error progress/status text is localized at
+  renderer presentation time while SSE payloads remain protocol-stable
 - Chat parallel relay command copy, persisted transcript notes, and relay prompt
   templates now resolve through the shared English / Traditional Chinese i18n
   catalogs, with English retained as the fallback when no locale is supplied
@@ -74,7 +76,7 @@ Revisit this allowlist when:
 
 - a raw API projection string becomes visible in normal renderer UI
 - server routes start accepting an explicit locale for product clients
-- persisted Cats-owned transcript/system-note templates gain a locale policy
+- new persisted Cats-owned transcript/system-note templates are introduced
 - a new Settings, setup, Chat, Code, Work, or Guide Cat component adds direct
   `title`, `label`, `placeholder`, tooltip, toast, or `aria-label` literals
 

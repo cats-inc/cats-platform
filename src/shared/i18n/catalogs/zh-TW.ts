@@ -1241,6 +1241,8 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.concurrent.toolLabel': '工具',
   'chat.concurrent.progress.finalizing': '正在完成…',
   'chat.concurrent.progress.finishing': '即將完成…',
+  'chat.concurrent.error.runtimeStreamUnavailable': '執行階段串流無法使用',
+  'chat.concurrent.error.proxy': '代理串流發生錯誤',
   'chat.concurrent.copyLabeledResponseLabel': '複製來自 {speakerName} 的訊息',
   'chat.concurrent.copyUnnamedResponseLabel': '複製未命名回應',
   'chat.focusRail.unnamedResponseLabel': '未命名回應',

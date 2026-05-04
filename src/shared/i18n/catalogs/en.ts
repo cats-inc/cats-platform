@@ -1275,6 +1275,8 @@ export const enCatalog: MessageCatalog = {
   'chat.concurrent.toolLabel': 'tool',
   'chat.concurrent.progress.finalizing': 'Finalizing...',
   'chat.concurrent.progress.finishing': 'Finishing...',
+  'chat.concurrent.error.runtimeStreamUnavailable': 'Runtime stream unavailable',
+  'chat.concurrent.error.proxy': 'Proxy error',
   'chat.concurrent.copyLabeledResponseLabel': 'Copy message from {speakerName}',
   'chat.concurrent.copyUnnamedResponseLabel': 'Copy unnamed response',
   'chat.focusRail.unnamedResponseLabel': 'unnamed response',

@@ -346,6 +346,62 @@ test('inline_stack localizes Cats-owned live progress fallback text', () => {
   assert.doesNotMatch(markup, /Finalizing turn/u);
 });
 
+test('inline_stack localizes Cats-owned live runtime error progress text', () => {
+  const markup = renderConcurrentCluster(
+    'inline_stack',
+    [
+      createLiveIndicatorSegmentState({
+        phase: 'sealed',
+        sourceMessageId: 'message-1',
+        laneId: 'lane-1',
+        targetStateId: 'target-1',
+        segmentIndex: 0,
+        progressText: 'Runtime stream unavailable',
+        progressKind: 'error',
+      }),
+    ],
+    [],
+    {
+      locale: 'zh-TW',
+      showProgressDetails: true,
+    },
+  );
+
+  assert.match(markup, /執行階段串流無法使用/u);
+  assert.doesNotMatch(markup, /Runtime stream unavailable/u);
+});
+
+test('inline_stack localizes Cats-owned live runtime status block text', () => {
+  const markup = renderConcurrentCluster(
+    'inline_stack',
+    [
+      createLiveIndicatorSegmentState({
+        phase: 'sealed',
+        sourceMessageId: 'message-1',
+        laneId: 'lane-1',
+        targetStateId: 'target-1',
+        segmentIndex: 0,
+        contentBlocks: [
+          {
+            id: 'status-proxy-error',
+            kind: 'status',
+            index: 0,
+            status: 'error',
+            text: 'Proxy error',
+          },
+        ],
+      }),
+    ],
+    [],
+    {
+      locale: 'zh-TW',
+    },
+  );
+
+  assert.match(markup, /代理串流發生錯誤/u);
+  assert.doesNotMatch(markup, /Proxy error/u);
+});
+
 test('ConcurrentClusterRenderer renders cluster actions independently from mode-specific layout', () => {
   const markup = renderConcurrentCluster(
     'compare_cards',
