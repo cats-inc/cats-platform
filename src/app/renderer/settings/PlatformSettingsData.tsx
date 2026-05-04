@@ -6,6 +6,7 @@ import {
   type WorkspaceBusyState,
 } from '../../../shared/workspaceBusy.js';
 import { useI18n } from '../i18n/index.js';
+import { formatSettingsDataMutationError } from './settingsDataErrorLabels.js';
 
 export interface PlatformSettingsDataProps {
   payload: AppShellPayload;
@@ -25,7 +26,10 @@ export function PlatformSettingsData({
     try {
       await onResetSetup();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : t('settingsDataResetFailure'));
+      showToast(formatSettingsDataMutationError(
+        error,
+        t('settingsDataResetFailure'),
+      ));
     }
   }
 
