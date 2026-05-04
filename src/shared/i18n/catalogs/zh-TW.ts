@@ -49,6 +49,9 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.runtimeStatus.tooltip.degraded': 'Cats 執行階段正在啟動',
   'shared.runtimeStatus.tooltip.unavailable': 'Cats 執行階段離線',
   'shared.runtimeStatus.tooltip.unknown': '正在檢查 Cats 執行階段狀態…',
+  'shared.runtimeStatus.chip.ready': '執行階段已連線',
+  'shared.runtimeStatus.chip.degraded': '執行階段降級',
+  'shared.runtimeStatus.chip.unavailable': '執行階段無法使用',
   'settings.general.profileTitle': '個人檔案',
   'settings.general.profileDescription':
     '這是跨聊天、程式碼、工作與大廳的平台統一個人檔案。',

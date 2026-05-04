@@ -49,6 +49,9 @@ export const enCatalog: MessageCatalog = {
   'shared.runtimeStatus.tooltip.degraded': 'Cats Runtime is starting up',
   'shared.runtimeStatus.tooltip.unavailable': 'Cats Runtime is offline',
   'shared.runtimeStatus.tooltip.unknown': 'Checking Cats Runtime status…',
+  'shared.runtimeStatus.chip.ready': 'Runtime connected',
+  'shared.runtimeStatus.chip.degraded': 'Runtime degraded',
+  'shared.runtimeStatus.chip.unavailable': 'Runtime unavailable',
   'settings.general.profileTitle': 'Profile',
   'settings.general.profileDescription':
     'This is your platform-wide profile across Chat, Code, Work, and Lobby.',
