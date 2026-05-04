@@ -8,6 +8,7 @@ import {
 } from '../../../../shared/workspaceBusy.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 import { messageKeys } from '../../../../shared/i18n/index.js';
+import { formatWorkspaceChatActionError } from './workspaceChatActionErrorLabels.js';
 
 export function useWorkspaceChannelParticipantUpdate<TPayload>(input: {
   updateChannelParticipantApi: (
@@ -34,7 +35,11 @@ export function useWorkspaceChannelParticipantUpdate<TPayload>(input: {
         setFeedback('');
       });
     } catch (error) {
-      setFeedback(error instanceof Error ? error.message : t(messageKeys.chatParticipantsErrorUpdateParticipant));
+      setFeedback(formatWorkspaceChatActionError(
+        error,
+        t(messageKeys.chatParticipantsErrorUpdateParticipant),
+        t,
+      ));
     } finally {
       setBusy(clearBusyState());
     }

@@ -1386,6 +1386,11 @@ export const enCatalog: MessageCatalog = {
   'chat.governance.error.submitChoiceResponse': 'Failed to submit choice response.',
   'chat.governance.error.recordOperatorAction': 'Failed to record operator action.',
   'chat.participants.error.updateParticipant': 'Failed to update participant.',
+  'chat.participants.error.noFields': 'Update at least one participant field.',
+  'chat.participants.error.notFound': 'Participant not found in this chat.',
+  'chat.participants.error.temporaryOnly':
+    'Only temporary participants can be renamed here.',
+  'chat.participants.error.nameRequired': 'Participant name is required.',
   'chat.catAssignment.createdAssignHint': 'Cat created. Open "Choose existing" to assign it.',
   'chat.catAssignment.error.createCat': 'Failed to create cat.',
   'chat.catAssignment.error.assignCat': 'Failed to assign cat.',

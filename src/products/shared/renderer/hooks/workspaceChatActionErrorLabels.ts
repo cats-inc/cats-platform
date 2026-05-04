@@ -17,6 +17,7 @@ const LOCAL_FALLBACK_PATTERNS = [
   /^cats core operator action returned \d+$/u,
   /^cats channel messaging returned \d+$/u,
   /^cats channel cancel returned \d+$/u,
+  /^cats channel participant update returned \d+$/u,
   /^channel message retry returned \d+$/u,
   /^parallel chat relay returned \d+$/u,
   /^parallel chat cancel returned \d+$/u,
@@ -52,6 +53,25 @@ export function localizeWorkspaceChatActionErrorMessage(
 
   if (message === 'Message not found.' || message.startsWith('Channel message not found:')) {
     return t(messageKeys.chatComposerErrorMessageNotFound);
+  }
+
+  if (message === 'At least one participant field must be updated.') {
+    return t(messageKeys.chatParticipantsErrorNoFields);
+  }
+
+  if (
+    message.startsWith('Channel participant assignment not found:')
+    || message.startsWith('Temporary participant assignment not found:')
+  ) {
+    return t(messageKeys.chatParticipantsErrorNotFound);
+  }
+
+  if (message === 'Only temporary participants can be renamed here.') {
+    return t(messageKeys.chatParticipantsErrorTemporaryOnly);
+  }
+
+  if (message === 'Temporary participant name is required') {
+    return t(messageKeys.chatParticipantsErrorNameRequired);
   }
 
   if (message === 'Only user messages can be retried.') {

@@ -48,6 +48,27 @@ test('workspace chat action localizes known governance and cancellation errors',
   );
   assert.equal(
     localizeWorkspaceChatActionErrorMessage(
+      'At least one participant field must be updated.',
+      t,
+    ),
+    '請至少更新一個參與者欄位。',
+  );
+  assert.equal(
+    localizeWorkspaceChatActionErrorMessage(
+      'Channel participant assignment not found: participant-1',
+      t,
+    ),
+    '在這個聊天室中找不到該參與者。',
+  );
+  assert.equal(
+    localizeWorkspaceChatActionErrorMessage(
+      'Only temporary participants can be renamed here.',
+      t,
+    ),
+    '只能在這裡重新命名臨時參與者。',
+  );
+  assert.equal(
+    localizeWorkspaceChatActionErrorMessage(
       'Cannot retry while this room already has an active turn.',
       t,
     ),
@@ -89,6 +110,14 @@ test('workspace chat action formatter hides local API fallback strings', () => {
       t,
     ),
     '重試回應失敗。',
+  );
+  assert.equal(
+    formatWorkspaceChatActionError(
+      new Error('cats channel participant update returned 500'),
+      '更新參與者失敗。',
+      t,
+    ),
+    '更新參與者失敗。',
   );
   assert.equal(
     formatWorkspaceChatActionError(

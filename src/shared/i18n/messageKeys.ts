@@ -1415,6 +1415,11 @@ export const messageKeys = {
     'chat.governance.error.recordOperatorAction',
   chatParticipantsErrorUpdateParticipant:
     'chat.participants.error.updateParticipant',
+  chatParticipantsErrorNoFields: 'chat.participants.error.noFields',
+  chatParticipantsErrorNotFound: 'chat.participants.error.notFound',
+  chatParticipantsErrorTemporaryOnly:
+    'chat.participants.error.temporaryOnly',
+  chatParticipantsErrorNameRequired: 'chat.participants.error.nameRequired',
   chatCatAssignmentCreatedAssignHint: 'chat.catAssignment.createdAssignHint',
   chatCatAssignmentErrorCreateCat: 'chat.catAssignment.error.createCat',
   chatCatAssignmentErrorAssignCat: 'chat.catAssignment.error.assignCat',
