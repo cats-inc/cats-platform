@@ -2,6 +2,7 @@ import {
   type EvidenceCounts,
   type WorkGraphIndexes,
   getWorkGraphAttentionLabel,
+  getWorkActorRoleLabel,
   getWorkGraphKindLabel,
   getWorkGraphGateStateLabel,
   getWorkTaskProductBindingLabel,
@@ -99,7 +100,9 @@ export function WorkObjectCard({
       (object.kind === "work_item" && object.linkedWorkItemTitle) ? (
         <footer className="topDownCard__foot">
           {object.ownerRole ? (
-            <span className="topDownCard__role">{object.ownerRole}</span>
+            <span className="topDownCard__role">
+              {getWorkActorRoleLabel(object.ownerRole, t)}
+            </span>
           ) : null}
           {(object.kind === "run" || object.kind === "task") &&
           object.linkedTaskTitle ? (

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { SidePanel, type SidePanelSection } from "../../../../../design/components/SidePanel";
 import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import {
+  getWorkActorRoleLabel,
   getWorkGraphEvidenceRelationLabel,
   getWorkGraphGateStateLabel,
   getWorkGraphKindLabel,
@@ -88,7 +89,10 @@ export function WorkObjectDrawer({
             }
           />
           {object.ownerRole ? (
-            <Field label={t("workTopdownIdentityOwnerRole")} value={object.ownerRole} />
+            <Field
+              label={t("workTopdownIdentityOwnerRole")}
+              value={getWorkActorRoleLabel(object.ownerRole, t)}
+            />
           ) : null}
           {object.nextAction ? (
             <Field

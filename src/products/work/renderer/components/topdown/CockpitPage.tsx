@@ -8,7 +8,7 @@ import {
 import type { MessageKey } from "../../../../../shared/i18n/index.js";
 import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import { BlockersRail } from "./BlockersRail";
-import { buildIndexes, formatRelative } from "./shared";
+import { buildIndexes, formatRelative, getWorkActorRoleLabel } from "./shared";
 import type {
   WorkAttentionState,
   WorkGraphObjectKind,
@@ -502,28 +502,35 @@ function TeamsLanes({
   }
   return (
     <div className="teamsLanes">
-      {lanes.map((lane) => (
-        <section key={lane.role} className="teamsLanes__lane" aria-label={lane.role}>
-          <header className="teamsLanes__head">
-            <h3>{lane.role}</h3>
-            <span className="teamsLanes__count">{lane.items.length}</span>
-          </header>
-          <div className="teamsLanes__body">
-            {lane.items.map((o) => (
-              <WorkObjectCard
-                key={o.id}
-                object={o}
-                evidence={pickEvidence(indexes, o.id)}
-                gates={indexes.gatesBySubject.get(o.id) ?? []}
-                selected={selectedId === o.id}
-                onSelect={(next) =>
-                  onSelect(selectedId === next ? null : next)
-                }
-              />
-            ))}
-          </div>
-        </section>
-      ))}
+      {lanes.map((lane) => {
+        const roleLabel = getWorkActorRoleLabel(lane.role, t);
+        return (
+          <section
+            key={lane.role}
+            className="teamsLanes__lane"
+            aria-label={roleLabel}
+          >
+            <header className="teamsLanes__head">
+              <h3>{roleLabel}</h3>
+              <span className="teamsLanes__count">{lane.items.length}</span>
+            </header>
+            <div className="teamsLanes__body">
+              {lane.items.map((o) => (
+                <WorkObjectCard
+                  key={o.id}
+                  object={o}
+                  evidence={pickEvidence(indexes, o.id)}
+                  gates={indexes.gatesBySubject.get(o.id) ?? []}
+                  selected={selectedId === o.id}
+                  onSelect={(next) =>
+                    onSelect(selectedId === next ? null : next)
+                  }
+                />
+              ))}
+            </div>
+          </section>
+        );
+      })}
     </div>
   );
 }

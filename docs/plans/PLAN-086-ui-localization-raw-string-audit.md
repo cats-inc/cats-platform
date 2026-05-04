@@ -82,6 +82,9 @@ The final 2026-05-04 cleanup localized:
   `code`, `chat`, `unbound`) across Tasks list/detail and Top-down cards
 - Work sidebar pinned project status tooltips use localized Work object status
   labels instead of raw status tokens
+- Work actor role chips/headings localize common Cats-owned role tokens such as
+  `planner`, `reviewer`, and `main_coder` while preserving unknown
+  user-authored roles
 - Work Top-down diagnostic headers localize severity and diagnostic-kind
   metadata instead of rendering `error`, `warning`, `orphan_link`, or
   `link_cycle`-style tokens

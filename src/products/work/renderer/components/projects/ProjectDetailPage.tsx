@@ -6,6 +6,7 @@ import { LinkageSection } from "../topdown/LinkageSection";
 import {
   buildIndexes,
   formatRelative,
+  getWorkActorRoleLabel,
   getWorkGraphAttentionLabel,
   getWorkGraphKindLabel,
 } from "../topdown/shared";
@@ -284,7 +285,7 @@ function ItemsSection({
               </span>
               {item.ownerRole ? (
                 <span className="projectDetail__itemOwner">
-                  {item.ownerRole}
+                  {getWorkActorRoleLabel(item.ownerRole, t)}
                 </span>
               ) : null}
             </li>

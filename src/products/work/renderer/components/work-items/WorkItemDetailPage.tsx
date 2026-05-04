@@ -7,6 +7,7 @@ import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import {
   buildIndexes,
   formatRelative,
+  getWorkActorRoleLabel,
   getWorkGraphAttentionLabel,
   getWorkGraphKindLabel,
 } from "../topdown/shared";
@@ -325,7 +326,7 @@ function ItemsSection({
               </span>
               {item.ownerRole ? (
                 <span className="workItemDetail__itemOwner">
-                  {item.ownerRole}
+                  {getWorkActorRoleLabel(item.ownerRole, t)}
                 </span>
               ) : null}
             </li>

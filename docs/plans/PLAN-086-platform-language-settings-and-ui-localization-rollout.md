@@ -378,6 +378,7 @@ known-gaps list.
 | 2026-05-04 | Cats Code sidebar pinned codespace status tooltips now reuse localized workspace status labels instead of raw status tokens. |
 | 2026-05-04 | Desktop bootstrap diagnostics and setup-fix cards now localize known packaged setup helper error templates while preserving unknown stderr/exception text as content. |
 | 2026-05-04 | Work sidebar pinned project status tooltips now reuse localized Work object status labels instead of raw status tokens. |
+| 2026-05-04 | Work actor role presentation now localizes common Cats-owned role tokens in Top-down, project/work-item detail, and task list surfaces while preserving unknown user-authored roles. |
 
 ---
 

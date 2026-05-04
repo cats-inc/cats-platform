@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import {
   formatRelative,
+  getWorkActorRoleLabel,
   getWorkGraphAttentionLabel,
   getWorkTaskProductBindingLabel,
 } from "../topdown/shared";
@@ -144,7 +145,7 @@ export function TasksListPage(): JSX.Element {
                         </span>
                       ) : task.ownerRole ? (
                         <span className="tasksList__assignee tasksList__assignee--role">
-                          {task.ownerRole}
+                          {getWorkActorRoleLabel(task.ownerRole, t)}
                         </span>
                       ) : null}
                       <span className="tasksList__metric tasksList__metric--muted">

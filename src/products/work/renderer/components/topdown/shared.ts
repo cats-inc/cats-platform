@@ -96,6 +96,21 @@ const WORKGRAPH_DIAGNOSTIC_KIND_LABEL_KEY: Record<
   link_cycle: "workTopdownDiagnosticKindLinkCycle",
 };
 
+const WORK_ACTOR_ROLE_LABEL_KEY: Record<string, MessageKey> = {
+  assistant: "workActorRoleAssistant",
+  boss: "workActorRoleBoss",
+  coder: "workActorRoleCoder",
+  coordinator: "workActorRoleCoordinator",
+  critic: "workActorRoleCritic",
+  drafter: "workActorRoleDrafter",
+  main_coder: "workActorRoleMainCoder",
+  orchestrator: "workActorRoleOrchestrator",
+  owner: "workActorRoleOwner",
+  planner: "workActorRolePlanner",
+  reviewer: "workActorRoleReviewer",
+  summarizer: "workActorRoleSummarizer",
+};
+
 export function getWorkGraphKindLabel(
   kind: WorkGraphObjectKind,
   t: (key: MessageKey, values?: Record<string, string | number>) => string,
@@ -153,6 +168,15 @@ export function getWorkGraphDiagnosticKindLabel(
   t: (key: MessageKey, values?: Record<string, string | number>) => string,
 ): string {
   return t(WORKGRAPH_DIAGNOSTIC_KIND_LABEL_KEY[kind]);
+}
+
+export function getWorkActorRoleLabel(
+  role: string,
+  t: (key: MessageKey, values?: Record<string, string | number>) => string,
+): string {
+  const normalized = role.trim().toLowerCase();
+  const key = WORK_ACTOR_ROLE_LABEL_KEY[normalized];
+  return key ? t(key) : role;
 }
 
 export function getWorkGraphGateStateLabel(
