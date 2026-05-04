@@ -2555,8 +2555,18 @@ export const messageKeys = {
     'code.execution.deliveryMode.prWithChecks',
   codeExecutionDeliveryModePushBranch:
     'code.execution.deliveryMode.pushBranch',
+  codeExecutionBlockedReasonAntiPingPong:
+    'code.execution.blockedReason.antiPingPong',
   codeExecutionBlockedReasonApprovalPending:
     'code.execution.blockedReason.approvalPending',
+  codeExecutionBlockedReasonMaxDispatches:
+    'code.execution.blockedReason.maxDispatches',
+  codeExecutionBlockedReasonNoValidTargets:
+    'code.execution.blockedReason.noValidTargets',
+  codeExecutionBlockedReasonStartupRecovery:
+    'code.execution.blockedReason.startupRecovery',
+  codeExecutionBlockedReasonUserCancelled:
+    'code.execution.blockedReason.userCancelled',
   codeExecutionUnknownDeliveryMode: 'code.execution.unknownDeliveryMode',
   codeExecutionUnknownValue: 'code.execution.unknownValue',
   codeExecutionUnknownValueUnknown: 'code.execution.unknownValueUnknown',

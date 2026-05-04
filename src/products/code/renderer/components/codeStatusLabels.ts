@@ -85,7 +85,12 @@ const TASK_STRATEGY_LABEL_KEYS: Record<string, MessageKey> = {
 };
 
 const BLOCKED_REASON_LABEL_KEYS: Record<string, MessageKey> = {
+  anti_ping_pong: messageKeys.codeExecutionBlockedReasonAntiPingPong,
   approval_pending: messageKeys.codeExecutionBlockedReasonApprovalPending,
+  max_dispatches: messageKeys.codeExecutionBlockedReasonMaxDispatches,
+  no_valid_targets: messageKeys.codeExecutionBlockedReasonNoValidTargets,
+  startup_recovery: messageKeys.codeExecutionBlockedReasonStartupRecovery,
+  user_cancelled: messageKeys.codeExecutionBlockedReasonUserCancelled,
 };
 
 const DELIVERY_DECISION_LABEL_KEYS: Record<string, MessageKey> = {

@@ -65,6 +65,8 @@ The final 2026-05-04 cleanup localized:
 - War Room recovery/control-plane metadata localizes known approval status,
   replay state/source, attention reason, and workflow blocked-reason tokens
   while preserving activity messages and replay errors as content
+- Code Builder execution control labels localize known workflow blocked reasons
+  beyond approval pending while preserving unknown runtime guard tokens verbatim
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.
