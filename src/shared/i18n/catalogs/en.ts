@@ -1275,6 +1275,22 @@ export const enCatalog: MessageCatalog = {
   'work.newProject.submitLabel': 'Create project',
   'work.newProject.submitBusyLabel': 'Creating…',
   'work.newProject.createError': 'Failed to create project.',
+  'work.crud.error.titleRequired': 'Title is required.',
+  'work.crud.error.invalidInput': 'Invalid input.',
+  'work.crud.error.projectIdRequired': 'Project id is required.',
+  'work.crud.error.workItemIdRequired': 'Work item id is required.',
+  'work.crud.error.taskIdRequired': 'Task id is required.',
+  'work.crud.error.projectNotFound': 'No project with id {id}.',
+  'work.crud.error.workItemNotFound': 'No work item with id {id}.',
+  'work.crud.error.taskNotFound': 'No task with id {id}.',
+  'work.crud.error.mustBeStringWhenProvided':
+    'Value must be a string when provided.',
+  'work.crud.error.metadataObjectRequired':
+    'Metadata must be an object when provided.',
+  'work.crud.error.fieldStringOrNull':
+    '{fieldName} must be a string or null.',
+  'work.crud.error.fieldStringArray': '{fieldName} must be a string array.',
+  'work.crud.error.mustBeOneOf': 'Value must be one of: {values}.',
   'work.item.loadingTitle': 'Loading work item',
   'work.item.relatedWorkItemTitle': 'Related work item',
   'chat.newChatDraft.sidePanelTitle': 'New Chat Setup',

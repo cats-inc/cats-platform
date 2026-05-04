@@ -17,6 +17,7 @@ import { useI18n } from "../../../../../app/renderer/i18n/index.js";
 import { getWorkObjectStatusLabel } from "../topdown/WorkObjectCard";
 import { WORK_PROJECTS_PATH } from "../../workPaths.js";
 import { PROJECTS_QUERY_KEY } from "../../state/queries/projectsQuery.js";
+import { formatWorkCrudMutationError } from "../workCrudErrorLabels.js";
 
 interface CreateProjectInput {
   title: string;
@@ -71,9 +72,11 @@ export function NewProjectDialog({ onClose }: NewProjectDialogProps): JSX.Elemen
   });
   const submitting = createMutation.isPending;
   const error = createMutation.error
-    ? createMutation.error instanceof Error
-      ? createMutation.error.message
-      : t("workNewProjectCreateError")
+    ? formatWorkCrudMutationError(
+      createMutation.error,
+      t("workNewProjectCreateError"),
+      t,
+    )
     : null;
 
   useEffect(() => {

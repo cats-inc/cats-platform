@@ -17,6 +17,7 @@ import {
 import { WORK_WORK_ITEMS_PATH } from "../../workPaths.js";
 import { useProjectsQuery } from "../../state/queries/projectsQuery.js";
 import { WORK_ITEMS_QUERY_KEY } from "../../state/queries/workItemsQuery.js";
+import { formatWorkCrudMutationError } from "../workCrudErrorLabels.js";
 
 interface CreateWorkItemInput {
   title: string;
@@ -73,9 +74,11 @@ export function NewWorkItemDialog({
   });
   const submitting = createMutation.isPending;
   const error = createMutation.error
-    ? createMutation.error instanceof Error
-      ? createMutation.error.message
-      : t("workNewWorkItemCreateError")
+    ? formatWorkCrudMutationError(
+      createMutation.error,
+      t("workNewWorkItemCreateError"),
+      t,
+    )
     : null;
 
   useEffect(() => {

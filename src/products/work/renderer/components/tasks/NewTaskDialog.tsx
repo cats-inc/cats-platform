@@ -17,6 +17,7 @@ import {
   useTasksQuery,
 } from "../../state/queries/tasksQuery.js";
 import type { TaskPriority } from "../../../shared/workGraphTypes.js";
+import { formatWorkCrudMutationError } from "../workCrudErrorLabels.js";
 
 interface CreateTaskInput {
   title: string;
@@ -96,9 +97,11 @@ export function NewTaskDialog({
   });
   const submitting = createMutation.isPending;
   const error = createMutation.error
-    ? createMutation.error instanceof Error
-      ? createMutation.error.message
-      : t("workNewTaskCreateError")
+    ? formatWorkCrudMutationError(
+      createMutation.error,
+      t("workNewTaskCreateError"),
+      t,
+    )
     : null;
 
   useEffect(() => {

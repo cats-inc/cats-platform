@@ -1241,6 +1241,22 @@ export const zhTWCatalog: MessageCatalog = {
   'work.newProject.submitLabel': '建立專案',
   'work.newProject.submitBusyLabel': '建立中…',
   'work.newProject.createError': '建立專案失敗。',
+  'work.crud.error.titleRequired': '標題為必填。',
+  'work.crud.error.invalidInput': '輸入內容無效。',
+  'work.crud.error.projectIdRequired': '專案 id 為必填。',
+  'work.crud.error.workItemIdRequired': '工作項目 id 為必填。',
+  'work.crud.error.taskIdRequired': '任務 id 為必填。',
+  'work.crud.error.projectNotFound': '找不到 id 為 {id} 的專案。',
+  'work.crud.error.workItemNotFound': '找不到 id 為 {id} 的工作項目。',
+  'work.crud.error.taskNotFound': '找不到 id 為 {id} 的任務。',
+  'work.crud.error.mustBeStringWhenProvided': '提供時，值必須是字串。',
+  'work.crud.error.metadataObjectRequired':
+    '提供 metadata 時，必須是物件。',
+  'work.crud.error.fieldStringOrNull':
+    '欄位 {fieldName} 必須是字串或 null。',
+  'work.crud.error.fieldStringArray':
+    '欄位 {fieldName} 必須是字串陣列。',
+  'work.crud.error.mustBeOneOf': '值必須是以下其中一個：{values}。',
   'work.item.loadingTitle': '載入工作項目',
   'work.item.relatedWorkItemTitle': '關聯工作項目',
   'chat.newChatDraft.sidePanelTitle': '新增聊天室設定',

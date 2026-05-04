@@ -126,6 +126,9 @@ The final 2026-05-04 cleanup localized:
   provider-agent/orchestrator terms in Traditional Chinese catalog entries
 - Cats Code Relay localizes connector transport metadata such as
   `runtime_session_bridge` instead of showing protocol tokens as labels
+- Work create/delete dialogs map known deterministic CRUD validation and
+  not-found API messages to localized renderer copy while preserving unknown
+  server exceptions
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

@@ -23,6 +23,7 @@ import {
   useWorkGraphQuery,
 } from "../../state/queries/workGraphQuery.js";
 import { WORK_PROJECTS_PATH } from "../../workPaths.js";
+import { formatWorkCrudMutationError } from "../workCrudErrorLabels.js";
 import "./projects.css";
 
 export function ProjectDetailPage(): JSX.Element {
@@ -70,9 +71,11 @@ export function ProjectDetailPage(): JSX.Element {
   }
 
   const deleteError = deleteMutation.error
-    ? deleteMutation.error instanceof Error
-      ? deleteMutation.error.message
-      : t("workProjectDeleteError")
+    ? formatWorkCrudMutationError(
+      deleteMutation.error,
+      t("workProjectDeleteError"),
+      t,
+    )
     : null;
 
   const workItems = graph.objects.filter(

@@ -30,6 +30,7 @@ import {
   buildWorkMissionPath,
   buildWorkWorkItemPath,
 } from "../../workPaths.js";
+import { formatWorkCrudMutationError } from "../workCrudErrorLabels.js";
 import "./work-items.css";
 
 export function WorkItemDetailPage(): JSX.Element {
@@ -78,9 +79,11 @@ export function WorkItemDetailPage(): JSX.Element {
   }
 
   const deleteError = deleteMutation.error
-    ? deleteMutation.error instanceof Error
-      ? deleteMutation.error.message
-      : t("workItemDeleteError")
+    ? formatWorkCrudMutationError(
+      deleteMutation.error,
+      t("workItemDeleteError"),
+      t,
+    )
     : null;
 
   const linkedProject = workItem.projectId
