@@ -2031,6 +2031,8 @@ export const enCatalog: MessageCatalog = {
   'shared.settingsCats.deleteSuccess': '{catName} deleted.',
   'shared.settingsCats.deleteError': 'Failed to delete cat.',
   'shared.settingsCats.bossUpdated': 'Boss Cat updated.',
+  'shared.settingsCats.status.active': 'Active',
+  'shared.settingsCats.status.archived': 'Archived',
   'shared.settingsCats.makeBossCatLabel': 'Make {name} the Boss Cat',
   'shared.settingsCats.setBossCatLabel': 'Set as Boss Cat',
   'shared.settingsCats.setBossCatError': 'Failed to set Boss Cat.',

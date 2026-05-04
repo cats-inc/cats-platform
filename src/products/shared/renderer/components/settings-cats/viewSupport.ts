@@ -30,6 +30,29 @@ export function getMemoryCategoryLabel(category: string): MessageKey | null {
   return match ? match.label : null;
 }
 
+export function getCatRecordStatusLabel(status: string): MessageKey | null {
+  if (status === 'active') {
+    return messageKeys.sharedSettingsCatsStatusActive;
+  }
+  if (status === 'archived') {
+    return messageKeys.sharedSettingsCatsStatusArchived;
+  }
+  return null;
+}
+
+export function getCatProductSurfaceLabel(surface: string): MessageKey | null {
+  if (surface === 'chat') {
+    return messageKeys.platformProductChatSettingsLabel;
+  }
+  if (surface === 'code') {
+    return messageKeys.platformProductCodeSettingsLabel;
+  }
+  if (surface === 'work') {
+    return messageKeys.platformProductWorkSettingsLabel;
+  }
+  return null;
+}
+
 export function formatTransportTimestamp(value: string | null | undefined): string {
   if (!value) {
     return '—';

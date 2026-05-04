@@ -1985,6 +1985,8 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.settingsCats.deleteSuccess': '{catName} 已刪除。',
   'shared.settingsCats.deleteError': '刪除貓咪失敗。',
   'shared.settingsCats.bossUpdated': '主控貓已更新。',
+  'shared.settingsCats.status.active': '啟用',
+  'shared.settingsCats.status.archived': '已封存',
   'shared.settingsCats.makeBossCatLabel': '將 {name} 設為主控貓',
   'shared.settingsCats.setBossCatLabel': '設為主控貓',
   'shared.settingsCats.setBossCatError': '無法將其設為主控貓。',

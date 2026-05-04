@@ -13,6 +13,10 @@ import type { BotFormState } from '../../hooks/settingsCatsRegistryActions.js';
 import { executionLabel, sortChatCatsForDisplay } from '../../workspaceChatUtils.js';
 import type { SettingsCatsRegistryController } from './SettingsCats.js';
 import { SettingsCatsDetailPanel } from './SettingsCatsDetailPanel.js';
+import {
+  getCatProductSurfaceLabel,
+  getCatRecordStatusLabel,
+} from './viewSupport.js';
 
 export interface SharedSettingsCatsRegistryDetailPanelProps {
   busy: WorkspaceBusyState;
@@ -106,6 +110,7 @@ export function WorkspaceSettingsCatsRegistry({
             const isBossCat = cat.id === payload.chat.bossCatId;
             const isExpanded = expandedCatId === cat.id;
             const catBindings = botBindings.filter((binding) => binding.catId === cat.id);
+            const catStatusLabelKey = getCatRecordStatusLabel(cat.status);
 
             return (
               <article key={cat.id} className="catCard">
@@ -126,9 +131,14 @@ export function WorkspaceSettingsCatsRegistry({
                     <p>{executionLabel(cat)}</p>
                     {cat.products.length > 0 ? (
                       <div className="chipRow" style={{ marginTop: 4 }}>
-                        {cat.products.map((surface) => (
-                          <span key={surface} className="productBadge">{surface}</span>
-                        ))}
+                        {cat.products.map((surface) => {
+                          const productLabelKey = getCatProductSurfaceLabel(surface);
+                          return (
+                            <span key={surface} className="productBadge">
+                              {productLabelKey ? t(productLabelKey) : surface}
+                            </span>
+                          );
+                        })}
                       </div>
                     ) : null}
                   </div>
@@ -142,7 +152,7 @@ export function WorkspaceSettingsCatsRegistry({
                           : 'statusChip statusChipMuted'
                       }
                     >
-                      {cat.status}
+                      {catStatusLabelKey ? t(catStatusLabelKey) : cat.status}
                     </span>
                     {cat.status === 'archived' ? (
                       <>

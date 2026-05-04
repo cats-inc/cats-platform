@@ -83,6 +83,8 @@ The final 2026-05-04 cleanup localized:
   `link_cycle`-style tokens
 - Work run detail localizes trace kind, outcome status, and artifact status
   metadata instead of rendering raw execution/result tokens
+- Settings Cats registry localizes cat status and built-in product badge
+  metadata instead of rendering `active`, `archived`, `chat`, `code`, or `work`
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

@@ -2101,6 +2101,8 @@ export const messageKeys = {
   sharedSettingsCatsDeleteSuccess: 'shared.settingsCats.deleteSuccess',
   sharedSettingsCatsDeleteError: 'shared.settingsCats.deleteError',
   sharedSettingsCatsBossUpdated: 'shared.settingsCats.bossUpdated',
+  sharedSettingsCatsStatusActive: 'shared.settingsCats.status.active',
+  sharedSettingsCatsStatusArchived: 'shared.settingsCats.status.archived',
   sharedSettingsCatsMakeBossCatLabel: 'shared.settingsCats.makeBossCatLabel',
   sharedSettingsCatsSetBossCatError: 'shared.settingsCats.setBossCatError',
   sharedSettingsCatsSkillUpdateError: 'shared.settingsCats.skillUpdateError',
