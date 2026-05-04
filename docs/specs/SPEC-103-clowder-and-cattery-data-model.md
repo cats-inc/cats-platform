@@ -129,10 +129,18 @@ Two illustrative cases:
 9. A Cattery's "Clowders" tab lists all Clowders with `parentCatteryId
    === thisCattery.id`. The list is **derived**, not stored on the
    Cattery record.
-10. A Cattery's "Cats" tab lists all Cats with formal participation in
-    the Cattery — both direct (Cattery.members) and indirect (members of
-    formal Clowders), deduped by `catId`. UI may render a "via
-    [Clowder]" hint per row.
+10. A Cattery's "Cats" tab is an **aggregate** view of every Cat
+    reachable from the Cattery, deduped by `catId`. The sources are:
+    - direct `CatteryMembership` records (status `formal | external`),
+      and
+    - members of formal Clowders within the Cattery (any
+      `ClowderMembership.status` — `formal | temp | external`).
+    The default `statusFilter` is `formal` (the org-chart "正常編制"
+    view, which only shows direct formal Cattery members and members of
+    formal Clowders whose own Clowder status is `formal`). Switching to
+    `all` exposes temp / external participants reached via Clowders. UI
+    renders a "via [Clowder]" hint per indirect row and surfaces the
+    Clowder-level status chip.
 
 #### Membership Records
 
@@ -174,11 +182,12 @@ Two illustrative cases:
     being a member of Cattery A — they appear as a Clowder member only.
     This is the canonical mechanism for "external collaborator on a
     specific project".
-17. The Cattery's "Cats" tab (FR 10) lists Cats reached via formal
-    Clowders even if they are not direct Cattery members. UI labels the
-    row with their Clowder-level status (`temp` / `external`) and may
-    surface a chip "external to this Cattery" when the Cat has no direct
-    Cattery membership.
+17. (Reserved.) The aggregate semantics for the Cattery `Cats` tab —
+    including indirect members reached via formal Clowders, the
+    "external to this Cattery" chip when no direct membership exists,
+    and the per-row Clowder-level status — are defined inline in FR-10.
+    This entry is kept as a numbering placeholder so existing references
+    do not need to renumber.
 
 #### Queries / Surfaces
 
@@ -196,26 +205,55 @@ Two illustrative cases:
     - `listCatsByCattery(catteryId, { includeIndirect })` — for
       Cattery's Cats tab; `includeIndirect` toggles direct-only vs
       direct + via-formal-Clowders dedup
-19. Each list endpoint shall accept a `statusFilter` parameter:
-    - `'all'` (default)
-    - `'formal'`
-    - `'temp'`
-    - `'external'`
-    - `'formal_or_temp'` (for "people involved in our day-to-day")
-20. The `org chart` view (Cattery detail "Clowders" + "Cats" tab) shall
-    default to `statusFilter: 'formal'` to match the user's stated
-    "Cattery 中是正常編制" expectation.
+19. List endpoint `statusFilter` is **entity-specific** because Cattery
+    membership has no `temp` status (FR-12, 13):
+    - **Clowder list endpoints** (`listCatsByClowder`, `listClowdersByCat`,
+      `listClowdersByCattery`) accept:
+      - `'all'` (default)
+      - `'formal'`
+      - `'temp'`
+      - `'external'`
+      - `'formal_or_temp'` ("people involved in our day-to-day")
+    - **Cattery direct-member list endpoints** (`listCatsByCattery`
+      with `includeIndirect: false`, `listCatteriesByCat`) accept:
+      - `'all'` (default)
+      - `'formal'`
+      - `'external'`
+      - `'temp'` and `'formal_or_temp'` are rejected as invalid input
+        (Cattery memberships cannot have `temp` status; the validator
+        returns 400)
+    - **Cattery aggregate Cats** (`listCatsByCattery` with
+      `includeIndirect: true`, FR-10) accepts the full Clowder-side set
+      because indirect rows can carry any Clowder status:
+      - `'all'`
+      - `'formal'` (default for the org-chart view)
+      - `'temp'`
+      - `'external'`
+      - `'formal_or_temp'`
+20. The `org-chart` view (Cattery detail Clowders tab; aggregate Cats
+    tab) defaults to `statusFilter: 'formal'` to match the user's
+    "Cattery 中是正常編制" expectation. The Members tab (direct only)
+    also defaults to `'formal'`.
 
 #### Status Transitions
 
-21. Allowed transitions for `MembershipStatus`:
-    - `temp → formal` (promotion)
-    - `formal → external` (e.g. employee leaves but stays as
-      collaborator)
-    - `external → formal` (becomes employee)
-    - `temp → external` (sprint contractor becomes ongoing collaborator)
-    - `formal → temp` (rare but allowed; e.g. converting an employee to
-      contractor)
+21. Allowed transitions are **entity-specific** because the available
+    status set differs (FR-12, 13):
+    - **Clowder membership** (`formal | temp | external`):
+      - `temp → formal` (promotion)
+      - `formal → external` (e.g. employee leaves but stays as
+        collaborator)
+      - `external → formal` (becomes employee)
+      - `temp → external` (sprint contractor becomes ongoing
+        collaborator)
+      - `formal → temp` (rare but allowed; e.g. converting an employee
+        to contractor)
+      - `external → temp` (guest becomes a defined-end-date contractor)
+    - **Cattery membership** (`formal | external`):
+      - `formal → external`
+      - `external → formal`
+      - Any transition involving `temp` is rejected as invalid input
+        because Cattery memberships cannot have that status.
 22. Removal is a separate operation from status transition. Removing a
     membership record deletes the row; it does not change status.
 23. `expiresAt` (only meaningful for `status === 'temp'`):
@@ -272,17 +310,17 @@ Two illustrative cases:
 
 ### Clowder detail (`/clowders/:clowderId`)
 
-- Tabs (per SPEC-102 FR-11): `Members / Cats / Settings`
-  - `Members`: humans/owners — Cats with `role ∈ {lead, member}` and
-    explicit "people who run this Clowder" semantics. (The Clowder
-    itself doesn't separate "members" from "cats" the way a Cattery
-    does; consider collapsing to one tab.) — **Open question**.
+- Tabs (locked, per SPEC-102 FR-11): `Cats / Settings`. Default = `Cats`.
+  A Clowder is a flat task force; it does not separate "humans who run
+  it" from "cats inside" the way a Cattery does, so collapsing to one
+  member-bearing tab is correct.
+- `Cats` tab: full member list (`listCatsByClowder`) with `status` chips
+  (`formal | temp | external`). Default `statusFilter: 'all'` because a
+  task force usually wants to see every active participant.
 - Header should show:
   - if `parentCatteryId !== null` — chip "Part of [Cattery name]"
     linking to the Cattery
   - if `parentCatteryId === null` — chip "Cross-unit task force"
-- Tab `Cats`: full member list with `status` chips (formal/temp/
-  external).
 
 ### Cattery detail (`/catteries/:catteryId`)
 
@@ -317,11 +355,6 @@ Two illustrative cases:
 
 ## Open Questions
 
-- [ ] Clowder detail `Members` vs `Cats` tabs (FR-11 in SPEC-102):
-      should they be separate, or collapsed into one tab? A Clowder
-      arguably has only "Cats" (no separation between "humans who run
-      it" and "cats inside"). **Tentative**: collapse to `Cats /
-      Settings`.
 - [ ] Cattery-level temp membership: the current decision is no
       `temp` status at Cattery level. If "30-day evaluation employee"
       becomes a real case, revisit.

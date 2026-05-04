@@ -129,24 +129,25 @@ Out of scope (deferred to follow-up SPECs):
   - left: `LobbySidebar`
   - right: `LobbyCanvas` (renders LobbyHome content if no entity selected,
     or `EntityDetailPane` if an entity route is mounted as a child)
-- [ ] Add `/lobby/cat/:catId`, `/lobby/clowder/:clowderId`,
-      `/lobby/cattery/:catteryId` as **child routes** under `/lobby` so the
-      Lobby chrome (sidebar + topbar + bouncing cats) remains mounted while
-      the canvas renders the entity pane
+- [ ] Sidebar interaction: clicking a row navigates to the canonical
+      entity URL (`/cats/:catId`, `/clowders/:clowderId`,
+      `/catteries/:catteryId`). The user **leaves** `/lobby`. There is
+      no `/lobby/{type}/:id` family; per ADR-099, Lobby is a viewport,
+      not a parent. SPEC-102 §Resolved Decisions and §Route Shape
 - [ ] Remove `LobbyCatRoster` from `lobbyTopBar`
-- [ ] Sidebar interaction: clicking a row navigates to `/lobby/{type}/:id`;
-      `LobbyCanvas` resolves the inner route and renders `EntityDetailPane`
 - [ ] Sidebar sections default to **collapsed**; persist user-driven
       expand/collapse in `localStorage` per section
 - [ ] CSS: extend `platform-lobby.css` for sidebar + 2-column layout;
       handle `@media (max-width: 640px)` to stack (sidebar above canvas)
       on narrow widths
 - [ ] Tests:
-  - [ ] Lobby with no entity renders LobbyHome (existing tests should
-        still pass)
-  - [ ] `/lobby/cat/:id` mounts EntityDetailPane inside Lobby chrome
+  - [ ] `/lobby` renders LobbyHome (sidebar + hero + products + apps)
+        — existing tests should still pass
   - [ ] `/cats/:id` (standalone) mounts EntityDetailPane without Lobby
         chrome
+  - [ ] `/lobby/cat/:id` (and `/lobby/clowder/...`, `/lobby/cattery/...`)
+        is **not** registered — assert 404 to lock in that the
+        viewport-route family does not exist
 
 ### Phase 5: Mobile Lobby Replacement (sidebar-as-tab)
 
@@ -202,14 +203,22 @@ Out of scope (deferred to follow-up SPECs):
       embedded arrays (SPEC-103 §Storage)
 - [ ] Implement `ClowderHome.tsx`:
   - Header chip: "Part of [Cattery]" or "Cross-unit task force"
-  - Tabs: per SPEC-103 §Surface Implications (likely `Cats / Settings`)
+  - Tabs (locked): `Cats / Settings`, default = `Cats`
   - Status chips on each Cat row (`formal | temp | external`)
+  - `Cats` tab default `statusFilter: 'all'`
 - [ ] Implement `CatteryHome.tsx`:
-  - Tabs: `Members / Clowders / Cats / Settings`
-  - Members tab default `statusFilter: 'formal'` (org chart view)
+  - Tabs (locked): `Members / Clowders / Cats / Settings`, default
+    = `Members`
+  - Members tab: direct members only; `statusFilter` accepts
+    `all | formal | external` (no `temp` for Cattery, per SPEC-103
+    FR-12, 19); default `formal`
   - Clowders tab: derived list `parentCatteryId === thisCattery.id`
   - Cats tab: aggregate (direct + via formal Clowders), deduped by
-    catId, with "via [Clowder]" hint
+    catId, with "via [Clowder]" hint; `statusFilter` accepts the full
+    Clowder-side set (`all | formal | temp | external | formal_or_temp`)
+    because indirect rows can carry any Clowder status; default `formal`
+  - Membership status transitions enforce entity-specific rules
+    (SPEC-103 FR-21): `temp` involvement rejected at Cattery level
 - [ ] Add `Memberships` section to `CatHome.tsx` Overview lens listing
       Clowders + Catteries this Cat is in
 - [ ] Membership management UI initial pass: add member, change status,
@@ -241,9 +250,11 @@ Out of scope (deferred to follow-up SPECs):
 - `src/products/work/renderer/components/Sidebar.tsx` — same (Phase 2)
 - `src/shared/i18n/messageKeys.ts` — new keys (Phase 2, 3, 5)
 - `src/shared/i18n/catalogs/en.ts` and `zh-TW.ts` — translations
-- `src/products/chat/...` — register `/chat/dm/:catId` route + alias
-  (Phase 1)
-- `mobile/src/renderer/screens/Lobby.tsx` — extend (Phase 5)
+- `src/products/chat/...` — register `/chat/dm/:catId` route and
+  **remove** `/chat/my-cats/:catId` registration (Phase 2; no alias)
+- `mobile/src/renderer/screens/Lobby.tsx` — replace body with sidebar-
+  as-tab content (Phase 5; old `header / statRow / quickEntryRow /
+  recentActivity` removed in same change)
 - `mobile/app/(tabs)/cats/[id].tsx` etc. — new screens (Phase 5)
 - `tests/platform-shell-sidebar-surface.test.tsx` — update
 - `tests/platform-lobby*.test.tsx` — update
@@ -254,14 +265,24 @@ Out of scope (deferred to follow-up SPECs):
 - **Phase 1**: route smoke tests for each new canonical entity route
 - **Phase 2**: i18n catalog completeness; sidebar test snapshot updates;
   every former `/chat/my-cats/...` caller now emits `/chat/dm/...` (a
-  test that greps the source for `my-cats` to catch stragglers, before
-  it hits a 404 in production)
+  test that greps the source for `my-cats` to catch stragglers); **404
+  assertion** on `/chat/my-cats/:catId` to prove the path no longer
+  resolves (replaces the alias-test pattern AGENTS.md forbids)
 - **Phase 3**: per-lens render smoke tests; `/cats/:id` standalone page
-  renders without `PlatformLobby` mounted
-- **Phase 4**: existing PlatformLobby tests pass for "no entity selected";
-  new tests for `/lobby/cat/:id` and `LobbyCatRoster` removal
-- **Phase 5**: mobile lobby renders three new sections; tap navigates;
-  existing `quickEntryRow` and `recentActivity` unchanged
+  renders without `PlatformLobby` mounted; **404 assertion** on
+  `/settings/cats/assistants` after the lift to `/settings/assistants`
+- **Phase 4**: existing PlatformLobby tests pass for `/lobby` rendering
+  LobbyHome (sidebar + hero + products + apps); `LobbyCatRoster` removal
+  asserted; **404 assertion** on `/lobby/cat/:id`,
+  `/lobby/clowder/:id`, `/lobby/cattery/:id` to prove the
+  viewport-route family does not exist; sidebar row click navigates
+  away from `/lobby` to canonical entity route
+- **Phase 5**: mobile Lobby renders the three new sections; tap
+  navigates to canonical entity route; assert that the previous
+  `statRow / quickEntryRow / recentActivity` blocks are **no longer
+  rendered** (the screen body is now the sidebar list); helpers
+  (`StatCard`, `QuickEntryChip`, `ActivityRow`) and dropped i18n keys
+  are not imported anywhere
 - **Phase 6**: depends on follow-up SPEC
 
 Per CLAUDE.md, run **only targeted tests** (e.g.
@@ -292,13 +313,19 @@ suite unless explicitly asked.
   facade only.
 - **Phase 6 prerequisite docs** → ADR-100 + SPEC-103 (both written;
   pending user review).
+- **Lobby URL shape** → only `/lobby` exists; no `/lobby/{type}/:id`
+  family. Sidebar row click navigates to canonical entity URL. SPEC-102
+  §Resolved Decisions, §Route Shape.
+- **Clowder detail tabs** → locked at `Cats / Settings`. SPEC-102 FR-11,
+  SPEC-103 §Surface Implications.
+- **Cattery vs Clowder status semantics** → entity-specific filter
+  values and transitions; Cattery never accepts `temp`. SPEC-103 FR-19,
+  21.
 
 ## Open Questions
 
 - [ ] Should there be a `+ New Cat` modal that's reachable from both
       Lobby sidebar and `/cats` list page, or two separate flows?
-- [ ] Phase 6: Clowder Members-vs-Cats tab — collapse to one tab or keep
-      two? (Tracked in SPEC-103 open questions.)
 
 ## References
 

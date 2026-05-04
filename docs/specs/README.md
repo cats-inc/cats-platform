@@ -48,6 +48,8 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 | Spec | Title | Status | Related Plan |
 |------|-------|--------|--------------|
+| [SPEC-103](./SPEC-103-clowder-and-cattery-data-model.md) | Clowder and Cattery Data Model and Membership Semantics | Draft | [PLAN-091](../plans/PLAN-091-lobby-sidebar-and-entity-routes-rollout.md), [ADR-100](../decisions/100-cats-as-canonical-identity-with-clowder-and-cattery-as-associations.md) |
+| [SPEC-102](./SPEC-102-lobby-sidebar-ia-and-entity-routes.md) | Lobby Sidebar IA and Entity Routes | Draft | [PLAN-091](../plans/PLAN-091-lobby-sidebar-and-entity-routes-rollout.md), [ADR-099](../decisions/099-promote-cats-clowders-catteries-to-platform-entities.md) |
 | [SPEC-101](./SPEC-101-cats-code-artifact-canvas.md) | Cats Code Artifact Canvas | Draft | [PLAN-090](../plans/PLAN-090-cats-code-artifact-canvas-rollout.md), [ADR-098](../decisions/098-url-driven-canvas-and-platform-shared-viewer.md) (supersedes [ADR-097](../decisions/097-store-code-canvas-focus-on-task-metadata.md)) |
 | [SPEC-100](./SPEC-100-platform-authentication-admin-bootstrap-and-google-identity.md) | Platform Authentication, Admin Bootstrap, and Google Identity | Draft | [PLAN-089](../plans/PLAN-089-platform-authentication-and-google-identity-rollout.md), [ADR-096](../decisions/096-adopt-platform-owned-auth-sessions-with-google-as-identity-provider.md) |
 | [SPEC-099](./SPEC-099-mobile-pairing-manifest-server.md) | Mobile Pairing Manifest Server in Cats Desktop | Draft | [PLAN-088](../plans/PLAN-088-mobile-pairing-manifest-server-rollout.md), [ADR-095](../decisions/095-distribute-mobile-as-static-expo-go-bundle-served-by-desktop.md) |
@@ -156,6 +158,6 @@ Use [000-template.md](./000-template.md) as the starting point for new specs.
 
 ---
 
-*Last updated: 2026-04-30 (SPEC-101 added for Cats Code Artifact Canvas; SPEC-100 added for platform authentication, admin bootstrap, and Google identity; SPEC-099 added for the Mobile pairing manifest server in Cats Desktop; SPEC-098 added for Cats App Packages and the extension interface; SPEC-097 added for platform language settings and UI localization; SPEC-096 added for Mission cancel and Run stop public cancellation contract.)*
+*Last updated: 2026-05-05 (SPEC-103 added: Clowder/Cattery data model with formal/temp/external membership status, entity-specific filter and transition rules, and aggregate Cats tab semantics for Catteries; SPEC-102 added: Lobby sidebar IA, canonical entity routes, EntityDetailPane, mobile Lobby tab replaced wholesale, Chat sidebar's MY CATS renamed to Direct Messages with clean-cut path migration; SPEC-101 added for Cats Code Artifact Canvas; SPEC-100 added for platform authentication, admin bootstrap, and Google identity; SPEC-099 added for the Mobile pairing manifest server in Cats Desktop; SPEC-098 added for Cats App Packages and the extension interface; SPEC-097 added for platform language settings and UI localization; SPEC-096 added for Mission cancel and Run stop public cancellation contract.)*
 
 *See also: [plans/](../plans/) for implementation plans*

@@ -46,6 +46,7 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 | Plan | Title | Status | Related Spec |
 |------|-------|--------|--------------|
+| [PLAN-091](./PLAN-091-lobby-sidebar-and-entity-routes-rollout.md) | Lobby Sidebar and Entity Routes Rollout | Draft | [SPEC-102](../specs/SPEC-102-lobby-sidebar-ia-and-entity-routes.md), [SPEC-103](../specs/SPEC-103-clowder-and-cattery-data-model.md), [ADR-099](../decisions/099-promote-cats-clowders-catteries-to-platform-entities.md), [ADR-100](../decisions/100-cats-as-canonical-identity-with-clowder-and-cattery-as-associations.md) |
 | [PLAN-090](./PLAN-090-cats-code-artifact-canvas-rollout.md) | Cats Code Artifact Canvas Rollout | Draft | [SPEC-101](../specs/SPEC-101-cats-code-artifact-canvas.md), [ADR-098](../decisions/098-url-driven-canvas-and-platform-shared-viewer.md) (supersedes [ADR-097](../decisions/097-store-code-canvas-focus-on-task-metadata.md)) |
 | [PLAN-089](./PLAN-089-platform-authentication-and-google-identity-rollout.md) | Platform Authentication and Google Identity Rollout | Draft | [SPEC-100](../specs/SPEC-100-platform-authentication-admin-bootstrap-and-google-identity.md), [ADR-096](../decisions/096-adopt-platform-owned-auth-sessions-with-google-as-identity-provider.md) |
 | [PLAN-088](./PLAN-088-mobile-pairing-manifest-server-rollout.md) | Mobile Pairing Manifest Server Rollout | Draft | [SPEC-099](../specs/SPEC-099-mobile-pairing-manifest-server.md), [ADR-095](../decisions/095-distribute-mobile-as-static-expo-go-bundle-served-by-desktop.md) |
@@ -144,6 +145,6 @@ Use [000-template.md](./000-template.md) as the starting point for new plans.
 
 ---
 
-*Last updated: 2026-04-30 (PLAN-090 added for Cats Code Artifact Canvas rollout; PLAN-089 added for platform authentication and Google identity rollout; PLAN-088 added for Mobile pairing manifest server rollout; PLAN-087 added for Cats App Package interface rollout; PLAN-086 added for platform language settings and UI localization rollout; PLAN-085 added for Mission cancel and Run stop rollout.)*
+*Last updated: 2026-05-05 (PLAN-091 added: 6-phase Lobby sidebar and entity routes rollout; Phase 6 gated on ADR-100 + SPEC-103; clean-cut path migration with no aliases per AGENTS.md; PLAN-090 added for Cats Code Artifact Canvas rollout; PLAN-089 added for platform authentication and Google identity rollout; PLAN-088 added for Mobile pairing manifest server rollout; PLAN-087 added for Cats App Package interface rollout; PLAN-086 added for platform language settings and UI localization rollout; PLAN-085 added for Mission cancel and Run stop rollout.)*
 
 *See also: [specs/](../specs/) for feature specifications*
