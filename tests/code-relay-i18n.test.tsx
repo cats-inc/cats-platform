@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import { createTranslator } from '../src/shared/i18n/index.ts';
+import { labelRelayTransport } from '../src/products/code/renderer/components/CodeRelayView.tsx';
 import { presentCodeRelayAvailabilitySummary } from '../src/products/code/renderer/components/codeRelayAvailabilitySummaryLabels.ts';
 import type { CodeRelayRosterEntryPayload } from '../src/products/code/renderer/api/relay.ts';
 
@@ -68,3 +69,13 @@ test('code relay availability summaries keep provider fallback stable', () => {
   );
 });
 
+test('code relay transport metadata localizes known connector transports', () => {
+  const t = createTranslator('zh-TW');
+
+  assert.equal(
+    labelRelayTransport('runtime_session_bridge', t),
+    '執行階段工作階段橋接',
+  );
+  assert.equal(labelRelayTransport(null, t), '未知傳輸');
+  assert.equal(labelRelayTransport('future_pipe', t), '未知傳輸（future_pipe）');
+});

@@ -109,6 +109,20 @@ function labelRelayAuthorKind(kind: string, t: ReturnType<typeof useI18n>['t']):
   }
 }
 
+export function labelRelayTransport(
+  transport: string | null | undefined,
+  t: ReturnType<typeof useI18n>['t'],
+): string {
+  const value = transport?.trim();
+  if (!value) {
+    return t(messageKeys.codeRelayTransportUnknown);
+  }
+  if (value === 'runtime_session_bridge') {
+    return t(messageKeys.codeRelayTransportRuntimeSessionBridge);
+  }
+  return t(messageKeys.codeRelayTransportUnknownWithValue, { transport: value });
+}
+
 function selectedRosterIds(entries: CodeRelayRosterEntryPayload[]): string[] {
   return entries
     .filter((entry) => entry.enabled)
@@ -381,7 +395,7 @@ export function CodeRelayView({ selectedChannelContext = null }: CodeRelayViewPr
           <div className="operatorCardHeader">
             <strong>{t(messageKeys.codeRelayLabelRuntimeProviderSurface)}</strong>
             <span className="operatorStatusBadge isMuted">
-              {payload?.contract.transport ?? t(messageKeys.codeRelayTransportUnknown)}
+              {labelRelayTransport(payload?.contract.transport, t)}
             </span>
           </div>
           <p>{payload?.contract.supportedProviders.join(', ') || t(messageKeys.codeRelayLabelContractLoading)}</p>

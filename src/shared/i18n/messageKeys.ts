@@ -2957,6 +2957,9 @@ export const messageKeys = {
   codeRelayTitleProjectThread: 'code.relay.titleProjectThread',
   codeRelayTitleTimeline: 'code.relay.titleTimeline',
   codeRelayTransportUnknown: 'code.relay.transportUnknown',
+  codeRelayTransportUnknownWithValue: 'code.relay.transportUnknownWithValue',
+  codeRelayTransportRuntimeSessionBridge:
+    'code.relay.transportRuntimeSessionBridge',
   codeSidebarCodespaceLabel: 'code.sidebar.codespace',
   codeSidebarCodeBuilderTitle: 'code.sidebar.codeBuilderTitle',
   codeSidebarCodespacesLabel: 'code.sidebar.codespaces',

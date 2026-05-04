@@ -124,6 +124,8 @@ The final 2026-05-04 cleanup localized:
   stable
 - Work timeline and execution replay labels now translate owner-facing
   provider-agent/orchestrator terms in Traditional Chinese catalog entries
+- Cats Code Relay localizes connector transport metadata such as
+  `runtime_session_bridge` instead of showing protocol tokens as labels
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.
