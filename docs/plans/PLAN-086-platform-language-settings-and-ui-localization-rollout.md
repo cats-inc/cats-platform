@@ -218,24 +218,24 @@ share the same default response-language policy.
 
 ### Phase 8: Final Raw-String Audit
 
-- [ ] **8.1** Run a broad raw-string scan over renderer TypeScript/TSX files.
+- [x] **8.1** Run a broad raw-string scan over renderer TypeScript/TSX files.
       If `rg` is unavailable, use `grep -RIn`.
-- [ ] **8.2** Classify every remaining literal string as:
+- [x] **8.2** Classify every remaining literal string as:
       - localized now
       - dynamic/user/provider/runtime content
       - protocol/config/code identifier
       - API/query internal fallback
       - debug-only diagnostic
       - unknown fallback
-- [ ] **8.3** Create or update a raw-string allowlist document or source module.
+- [x] **8.3** Create or update a raw-string allowlist document or source module.
       Suggested doc: `docs/plans/PLAN-086-ui-localization-raw-string-audit.md`
       if the list is too large for the plan progress log.
-- [ ] **8.4** Report progress using only user-visible chrome as the denominator.
+- [x] **8.4** Report progress using only user-visible chrome as the denominator.
       Do not count debug/internal/API fallback literals as incomplete
       localization work.
 - [ ] **8.5** Add a lightweight test or script if practical to prevent obvious
       new unlocalized Settings/product chrome strings.
-- [ ] **8.6** Update this plan's progress log with remaining known gaps.
+- [x] **8.6** Update this plan's progress log with remaining known gaps.
 
 **Deliverables**: the migration has an explicit evidence trail and future agents
 can tell intentional raw strings from missed extraction work.
@@ -349,6 +349,7 @@ known-gaps list.
 |------|--------|
 | 2026-04-29 | Plan created with ADR-093 / SPEC-097 for platform language settings and UI localization rollout |
 | 2026-05-01 | Clarified extraction boundary: localization work targets owner-facing Cats UI chrome only; API/query fallbacks, debug diagnostics, logs, route/method/class/enum identifiers, and smoke/test strings must not be extracted or counted as progress debt. |
+| 2026-05-04 | Completed the final raw-string audit slice for Desktop bootstrap/onboarding, Runtime Settings helper presentation, shared runtime chips, and product renderer chrome. Remaining hits are documented in `PLAN-086-ui-localization-raw-string-audit.md`; the only known open localization-policy gap is persisted Chat relay prompt/system-note templates, which need a separate server/transcript locale policy before translation. |
 
 ---
 
