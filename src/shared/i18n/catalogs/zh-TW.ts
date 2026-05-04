@@ -2080,6 +2080,13 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.workspaceNavigation.ungroupParallelChatError': '取消群組平行聊天失敗。',
   'shared.workspaceNavigation.deleteParallelChatGroupError': '刪除所有聊天失敗。',
   'shared.workspaceNavigation.parallelChatFallbackName': '這個平行聊天',
+  'shared.workspaceNavigation.error.chatNotFound': '找不到這個聊天工作區。',
+  'shared.workspaceNavigation.error.channelNotFound': '找不到這個聊天室。',
+  'shared.workspaceNavigation.error.parallelChatGroupNotFound':
+    '找不到這個平行聊天群組。',
+  'shared.workspaceNavigation.error.titleRequired': '聊天標題不可空白。',
+  'shared.workspaceNavigation.error.parallelChatTitleRequired':
+    '平行聊天標題不可空白。',
   'shared.settingsCatsRegistry.sectionLabel': '註冊表',
   'shared.settingsCatsRegistry.savedCatsLabel': '已儲存貓咪',
   'shared.settingsCatsRegistry.noCatsYetLabel': '尚未有貓咪',

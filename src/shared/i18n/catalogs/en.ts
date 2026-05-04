@@ -2125,6 +2125,13 @@ export const enCatalog: MessageCatalog = {
   'shared.workspaceNavigation.ungroupParallelChatError': 'Failed to ungroup parallel chat.',
   'shared.workspaceNavigation.deleteParallelChatGroupError': 'Failed to delete all chats.',
   'shared.workspaceNavigation.parallelChatFallbackName': 'this parallel chat',
+  'shared.workspaceNavigation.error.chatNotFound': 'This chat workspace was not found.',
+  'shared.workspaceNavigation.error.channelNotFound': 'This chat channel was not found.',
+  'shared.workspaceNavigation.error.parallelChatGroupNotFound':
+    'This parallel chat group was not found.',
+  'shared.workspaceNavigation.error.titleRequired': 'Chat title cannot be empty.',
+  'shared.workspaceNavigation.error.parallelChatTitleRequired':
+    'Parallel chat title cannot be empty.',
   'shared.settingsCatsRegistry.sectionLabel': 'Registry',
   'shared.settingsCatsRegistry.savedCatsLabel': 'Saved cats',
   'shared.settingsCatsRegistry.noCatsYetLabel': 'No cats yet',

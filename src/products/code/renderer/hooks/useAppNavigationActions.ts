@@ -19,6 +19,7 @@ import {
   useWorkspaceAppNavigationActions,
   type WorkspaceNavigationLoadState,
 } from '../../../shared/renderer/hooks/useWorkspaceAppNavigationActions.js';
+import { formatSettingsCatsRegistryMutationError } from '../../../shared/renderer/hooks/settingsCatsRegistryErrorLabels.js';
 import { messageKeys } from '../../../../shared/i18n/messageKeys.js';
 import { useI18n } from '../../../../app/renderer/i18n/index.js';
 
@@ -79,9 +80,11 @@ export function useAppNavigationActions(options: {
       const payload = await updateCatProfile(catId, { archive: true });
       setState({ status: 'ready', payload });
     } catch (error) {
-      setFeedback(error instanceof Error
-        ? error.message
-        : t(messageKeys.sharedSettingsCatsArchiveError));
+      setFeedback(formatSettingsCatsRegistryMutationError(
+        error,
+        t(messageKeys.sharedSettingsCatsArchiveError),
+        t,
+      ));
     } finally {
       setBusy(clearBusyState());
     }

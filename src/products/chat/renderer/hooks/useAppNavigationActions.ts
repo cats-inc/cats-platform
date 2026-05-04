@@ -31,6 +31,8 @@ import {
   useWorkspaceAppNavigationActions,
   type WorkspaceNavigationLoadState,
 } from '../../../shared/renderer/hooks/useWorkspaceAppNavigationActions.js';
+import { formatSettingsCatsRegistryMutationError } from '../../../shared/renderer/hooks/settingsCatsRegistryErrorLabels.js';
+import { formatWorkspaceNavigationMutationError } from '../../../shared/renderer/hooks/workspaceNavigationErrorLabels.js';
 import {
   buildDeleteParallelChatGroupConfirmation,
 } from '../../../shared/renderer/deleteConfirmations.js';
@@ -172,9 +174,11 @@ export function useAppNavigationActions(options: {
         setFeedback('');
       });
     } catch (error) {
-      setFeedback(error instanceof Error
-        ? error.message
-        : t(messageKeys.sharedWorkspaceNavigationRenameParallelChatError));
+      setFeedback(formatWorkspaceNavigationMutationError(
+        error,
+        t(messageKeys.sharedWorkspaceNavigationRenameParallelChatError),
+        t,
+      ));
     } finally {
       setBusy(clearBusyState());
     }
@@ -189,9 +193,11 @@ export function useAppNavigationActions(options: {
         setFeedback('');
       });
     } catch (error) {
-      setFeedback(error instanceof Error
-        ? error.message
-        : t(messageKeys.sharedWorkspaceNavigationUngroupParallelChatError));
+      setFeedback(formatWorkspaceNavigationMutationError(
+        error,
+        t(messageKeys.sharedWorkspaceNavigationUngroupParallelChatError),
+        t,
+      ));
     } finally {
       setBusy(clearBusyState());
     }
@@ -216,9 +222,11 @@ export function useAppNavigationActions(options: {
       });
       navigate(resolveVisibleChatPath(payload.chat.channels, payload.chat.selectedChannelId));
     } catch (error) {
-      setFeedback(error instanceof Error
-        ? error.message
-        : t(messageKeys.sharedWorkspaceNavigationDeleteParallelChatGroupError));
+      setFeedback(formatWorkspaceNavigationMutationError(
+        error,
+        t(messageKeys.sharedWorkspaceNavigationDeleteParallelChatGroupError),
+        t,
+      ));
     } finally {
       setBusy(clearBusyState());
     }
@@ -246,9 +254,11 @@ export function useAppNavigationActions(options: {
       const payload = await updateCatProfile(catId, { archive: true });
       startTransition(() => setState({ status: 'ready', payload }));
     } catch (error) {
-      setFeedback(error instanceof Error
-        ? error.message
-        : t(messageKeys.sharedSettingsCatsArchiveError));
+      setFeedback(formatSettingsCatsRegistryMutationError(
+        error,
+        t(messageKeys.sharedSettingsCatsArchiveError),
+        t,
+      ));
     } finally {
       setBusy(clearBusyState());
     }

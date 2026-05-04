@@ -2224,6 +2224,16 @@ export const messageKeys = {
     'shared.workspaceNavigation.deleteParallelChatGroupError',
   sharedWorkspaceNavigationParallelChatFallbackName:
     'shared.workspaceNavigation.parallelChatFallbackName',
+  sharedWorkspaceNavigationErrorChatNotFound:
+    'shared.workspaceNavigation.error.chatNotFound',
+  sharedWorkspaceNavigationErrorChannelNotFound:
+    'shared.workspaceNavigation.error.channelNotFound',
+  sharedWorkspaceNavigationErrorParallelChatGroupNotFound:
+    'shared.workspaceNavigation.error.parallelChatGroupNotFound',
+  sharedWorkspaceNavigationErrorTitleRequired:
+    'shared.workspaceNavigation.error.titleRequired',
+  sharedWorkspaceNavigationErrorParallelChatTitleRequired:
+    'shared.workspaceNavigation.error.parallelChatTitleRequired',
   sharedSettingsCatsRegistrySectionLabel: 'shared.settingsCatsRegistry.sectionLabel',
   sharedSettingsCatsRegistrySavedCatsLabel: 'shared.settingsCatsRegistry.savedCatsLabel',
   sharedSettingsCatsRegistryNoCatsYetLabel: 'shared.settingsCatsRegistry.noCatsYetLabel',

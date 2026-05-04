@@ -44,6 +44,8 @@ import {
   buildDeleteCatConfirmation,
   buildDeleteParallelChatGroupConfirmation,
 } from '../deleteConfirmations.js';
+import { formatSettingsCatsRegistryMutationError } from './settingsCatsRegistryErrorLabels.js';
+import { formatWorkspaceNavigationMutationError } from './workspaceNavigationErrorLabels.js';
 import { syncDesktopHostPlatformShellState } from '../../../../app/renderer/setup/desktopHostBridge.js';
 import { clearRememberedExecutionLabels } from '../../../../shared/executionLabel.js';
 import {
@@ -332,9 +334,11 @@ export function useWorkspaceAppNavigationActions<
         setFeedback('');
       });
     } catch (error) {
-      setFeedback(error instanceof Error
-        ? error.message
-        : t(messageKeys.sharedWorkspaceNavigationRenameChatError));
+      setFeedback(formatWorkspaceNavigationMutationError(
+        error,
+        t(messageKeys.sharedWorkspaceNavigationRenameChatError),
+        t,
+      ));
     } finally {
       setBusy(clearBusyState());
     }
@@ -360,9 +364,11 @@ export function useWorkspaceAppNavigationActions<
         ),
       );
     } catch (error) {
-      setFeedback(error instanceof Error
-        ? error.message
-        : t(messageKeys.sharedWorkspaceNavigationDeleteChatError));
+      setFeedback(formatWorkspaceNavigationMutationError(
+        error,
+        t(messageKeys.sharedWorkspaceNavigationDeleteChatError),
+        t,
+      ));
     } finally {
       setBusy(clearBusyState());
     }
@@ -390,9 +396,11 @@ export function useWorkspaceAppNavigationActions<
         setFeedback('');
       });
     } catch (error) {
-      setFeedback(error instanceof Error
-        ? error.message
-        : t(messageKeys.sharedWorkspaceNavigationRenameParallelChatError));
+      setFeedback(formatWorkspaceNavigationMutationError(
+        error,
+        t(messageKeys.sharedWorkspaceNavigationRenameParallelChatError),
+        t,
+      ));
     } finally {
       setBusy(clearBusyState());
     }
@@ -407,9 +415,11 @@ export function useWorkspaceAppNavigationActions<
         setFeedback('');
       });
     } catch (error) {
-      setFeedback(error instanceof Error
-        ? error.message
-        : t(messageKeys.sharedWorkspaceNavigationUngroupParallelChatError));
+      setFeedback(formatWorkspaceNavigationMutationError(
+        error,
+        t(messageKeys.sharedWorkspaceNavigationUngroupParallelChatError),
+        t,
+      ));
     } finally {
       setBusy(clearBusyState());
     }
@@ -445,9 +455,11 @@ export function useWorkspaceAppNavigationActions<
         ),
       );
     } catch (error) {
-      setFeedback(error instanceof Error
-        ? error.message
-        : t(messageKeys.sharedWorkspaceNavigationDeleteParallelChatGroupError));
+      setFeedback(formatWorkspaceNavigationMutationError(
+        error,
+        t(messageKeys.sharedWorkspaceNavigationDeleteParallelChatGroupError),
+        t,
+      ));
     } finally {
       setBusy(clearBusyState());
     }
@@ -478,9 +490,11 @@ export function useWorkspaceAppNavigationActions<
       const payload = await navigationApi.deleteGlobalCat(catId);
       startTransition(() => setState({ status: 'ready', payload }));
     } catch (error) {
-      setFeedback(error instanceof Error
-        ? error.message
-        : t(messageKeys.sharedSettingsCatsDeleteError));
+      setFeedback(formatSettingsCatsRegistryMutationError(
+        error,
+        t(messageKeys.sharedSettingsCatsDeleteError),
+        t,
+      ));
     } finally {
       setBusy(clearBusyState());
     }
