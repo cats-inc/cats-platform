@@ -363,6 +363,7 @@ known-gaps list.
 | 2026-05-04 | Extended shared operator action i18n coverage to the recovery-specific retry tooltip for replaying stored dispatch/workflow continuations. |
 | 2026-05-04 | War Room latest timeline titles now localize known Cats-owned Core timeline templates, supervision evidence prefixes, provider-agent plan prefixes, and checkpoint/trace prefixes while preserving user/runtime-authored titles. |
 | 2026-05-04 | Work execution presentation now localizes known strategy, delivery-mode, next-action, and delivery-action tokens in War Room while preserving unknown runtime tokens through the existing Title Case fallback. |
+| 2026-05-04 | War Room recovery/control-plane metadata now localizes known approval status, replay state/source, attention reason, and workflow blocked-reason tokens while preserving activity messages and replay errors as content. |
 
 ---
 

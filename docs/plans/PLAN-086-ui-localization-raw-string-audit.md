@@ -62,6 +62,9 @@ The final 2026-05-04 cleanup localized:
 - Work War Room execution presentation localizes known strategy, delivery-mode,
   next-action, and delivery-action tokens while preserving unknown runtime tokens
   through the existing Title Case fallback
+- War Room recovery/control-plane metadata localizes known approval status,
+  replay state/source, attention reason, and workflow blocked-reason tokens
+  while preserving activity messages and replay errors as content
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

@@ -1113,6 +1113,14 @@ export const messageKeys = {
   workExecutionActionRetry: 'work.execution.action.retry',
   workExecutionActionWait: 'work.execution.action.wait',
   workExecutionActionWaitForChecks: 'work.execution.action.waitForChecks',
+  workExecutionApprovalStatusApproved:
+    'work.execution.approvalStatus.approved',
+  workExecutionApprovalStatusNotRequested:
+    'work.execution.approvalStatus.notRequested',
+  workExecutionApprovalStatusPending:
+    'work.execution.approvalStatus.pending',
+  workExecutionApprovalStatusRejected:
+    'work.execution.approvalStatus.rejected',
   workExecutionDeliveryModeArtifactOnly:
     'work.execution.deliveryMode.artifactOnly',
   workExecutionDeliveryModeCommitOnly:
@@ -1128,6 +1136,30 @@ export const messageKeys = {
     'work.execution.strategy.planAndExecute',
   workExecutionStrategyReact: 'work.execution.strategy.react',
   workExecutionStrategyReflexion: 'work.execution.strategy.reflexion',
+  workExecutionReasonApprovalPending:
+    'work.execution.reason.approvalPending',
+  workExecutionReasonChildTasksInProgress:
+    'work.execution.reason.childTasksInProgress',
+  workExecutionReasonMaxDispatches: 'work.execution.reason.maxDispatches',
+  workExecutionReasonNoValidTargets:
+    'work.execution.reason.noValidTargets',
+  workExecutionReasonRetryAvailable: 'work.execution.reason.retryAvailable',
+  workExecutionReasonRunBlocked: 'work.execution.reason.runBlocked',
+  workExecutionReasonRunFailed: 'work.execution.reason.runFailed',
+  workExecutionReasonUserCancelled: 'work.execution.reason.userCancelled',
+  workExecutionReasonWorkflowReviewRequired:
+    'work.execution.reason.workflowReviewRequired',
+  workExecutionReplaySourceOrchestratorReplay:
+    'work.execution.replaySource.orchestratorReplay',
+  workExecutionReplaySourceOrchestratorStartupRecovery:
+    'work.execution.replaySource.orchestratorStartupRecovery',
+  workExecutionReplaySourceWorkflowContinuationReplay:
+    'work.execution.replaySource.workflowContinuationReplay',
+  workExecutionReplayStateFailed: 'work.execution.replayState.failed',
+  workExecutionReplayStateInProgress:
+    'work.execution.replayState.inProgress',
+  workExecutionReplayStatePending: 'work.execution.replayState.pending',
+  workExecutionReplayStateReady: 'work.execution.replayState.ready',
   workNewWorkItemTitle: 'work.newWorkItem.title',
   workNewWorkItemTitleLabel: 'work.newWorkItem.titleLabel',
   workNewWorkItemSummaryLabel: 'work.newWorkItem.summaryLabel',

@@ -16,26 +16,49 @@ const defaultWorkPresentationI18n = createTranslator('en');
 const WORK_TOKEN_LABEL_KEYS: Record<string, MessageKey> = {
   acknowledge: messageKeys.workExecutionActionAcknowledge,
   approve: messageKeys.workExecutionActionApprove,
+  approval_pending: messageKeys.workExecutionReasonApprovalPending,
+  approved: messageKeys.workExecutionApprovalStatusApproved,
   artifact_only: messageKeys.workExecutionDeliveryModeArtifactOnly,
+  child_tasks_in_progress:
+    messageKeys.workExecutionReasonChildTasksInProgress,
   commit_only: messageKeys.workExecutionDeliveryModeCommitOnly,
   complete: messageKeys.workExecutionActionComplete,
   create_commit: messageKeys.workExecutionActionCreateCommit,
   deploy_preview: messageKeys.workExecutionDeliveryModeDeployPreview,
   dispatch: messageKeys.workExecutionActionDispatch,
+  failed: messageKeys.workExecutionReplayStateFailed,
+  in_progress: messageKeys.workExecutionReplayStateInProgress,
+  max_dispatches: messageKeys.workExecutionReasonMaxDispatches,
+  no_valid_targets: messageKeys.workExecutionReasonNoValidTargets,
+  not_requested: messageKeys.workExecutionApprovalStatusNotRequested,
   open_pull_request: messageKeys.workExecutionActionOpenPullRequest,
+  orchestrator_replay: messageKeys.workExecutionReplaySourceOrchestratorReplay,
+  orchestrator_startup_recovery:
+    messageKeys.workExecutionReplaySourceOrchestratorStartupRecovery,
   pdca: messageKeys.workExecutionStrategyPdca,
+  pending: messageKeys.workExecutionReplayStatePending,
   plan_and_execute: messageKeys.workExecutionStrategyPlanAndExecute,
   pr_with_checks: messageKeys.workExecutionDeliveryModePrWithChecks,
   publish_preview: messageKeys.workExecutionActionPublishPreview,
   push_branch: messageKeys.workExecutionDeliveryModePushBranch,
+  ready: messageKeys.workExecutionReplayStateReady,
   react: messageKeys.workExecutionStrategyReact,
   reflexion: messageKeys.workExecutionStrategyReflexion,
   reject: messageKeys.workExecutionActionReject,
+  rejected: messageKeys.workExecutionApprovalStatusRejected,
   request_review: messageKeys.workExecutionActionRequestReview,
   retry: messageKeys.workExecutionActionRetry,
+  retry_available: messageKeys.workExecutionReasonRetryAvailable,
   reroute: messageKeys.workExecutionActionReroute,
+  run_blocked: messageKeys.workExecutionReasonRunBlocked,
+  run_failed: messageKeys.workExecutionReasonRunFailed,
+  user_cancelled: messageKeys.workExecutionReasonUserCancelled,
   wait: messageKeys.workExecutionActionWait,
   wait_for_checks: messageKeys.workExecutionActionWaitForChecks,
+  workflow_continuation_replay:
+    messageKeys.workExecutionReplaySourceWorkflowContinuationReplay,
+  workflow_review_required:
+    messageKeys.workExecutionReasonWorkflowReviewRequired,
 };
 
 function normalizeWorkToken(value: string): string {
@@ -85,6 +108,23 @@ export function formatWorkTokenList(
     .map((value) => formatWorkToken(value, '', translate))
     .filter((value) => value.length > 0);
   return formatted.length > 0 ? formatted.join(', ') : resolvedFallback;
+}
+
+export function formatWorkTokenValue(
+  value: string | null | undefined,
+  t: WorkPresentationI18n = defaultWorkPresentationI18n,
+  fallback?: string,
+): string {
+  return formatWorkToken(value, fallback ?? t(messageKeys.workWarRoomMetaValueNotSpecified), t);
+}
+
+export function formatWorkApprovalStatus(
+  status: string | null | undefined,
+  t: WorkPresentationI18n = defaultWorkPresentationI18n,
+): string {
+  return normalizeWorkToken(status ?? '') === 'pending'
+    ? t(messageKeys.workExecutionApprovalStatusPending)
+    : formatWorkTokenValue(status, t);
 }
 
 export function formatWorkExecutionProduct(

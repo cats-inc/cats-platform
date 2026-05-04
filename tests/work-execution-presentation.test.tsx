@@ -4,10 +4,12 @@ import test from 'node:test';
 import {
   formatWorkCorrelation,
   formatWorkDeliveryMode,
+  formatWorkApprovalStatus,
   formatWorkExecutionProduct,
   formatWorkExecutionStrategy,
   formatWorkRuntimeBridgeProduct,
   formatWorkTokenList,
+  formatWorkTokenValue,
 } from '../src/products/work/renderer/workExecutionPresentation.ts';
 import { createTranslator } from '../src/shared/i18n/index.ts';
 
@@ -53,5 +55,9 @@ test('work execution presentation localizes known runtime tokens', () => {
     formatWorkTokenList(['retry', 'wait', 'create_commit'], t),
     '重試, 等待, 建立提交',
   );
+  assert.equal(formatWorkTokenValue('approval_pending', t), '等待核准');
+  assert.equal(formatWorkApprovalStatus('pending', t), '等待核准');
+  assert.equal(formatWorkTokenValue('workflow-continuation-replay', t), '工作流程延續重放');
+  assert.equal(formatWorkTokenValue('in_progress', t), '進行中');
   assert.equal(formatWorkTokenList(['custom_action'], t), 'Custom Action');
 });

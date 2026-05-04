@@ -7,9 +7,11 @@ import { listCatActorLinks } from '../actorLinks.js';
 import { useWorkDashboardQuery } from '../state/queries/workDashboardQuery.js';
 import {
   formatWorkDeliveryMode,
+  formatWorkApprovalStatus,
   formatWorkExecutionProduct,
   formatWorkExecutionStrategy,
   formatWorkTokenList,
+  formatWorkTokenValue,
 } from '../workExecutionPresentation.js';
 import {
   getWorkObjectStatusLabel,
@@ -294,7 +296,7 @@ function OperatorInboxSection({
               <div className="operatorMetaRow">
                 <span>
                   {t('workWarRoomMetaLabelReasons')}:{' '}
-                  {compactList(item.attention.reasons, t)}
+                  {formatWorkTokenList(item.attention.reasons, t)}
                 </span>
                 <span>
                   {t('workWarRoomMetaLabelActions')}:{' '}
@@ -318,8 +320,11 @@ function OperatorInboxSection({
                 </span>
                 <span>
                   {t('workWarRoomMetaLabelWorkflow')}:{' '}
-                  {item.workflowContinuation?.blockedReason ??
-                    t('workWarRoomMetaValueNoReplayBlock')}
+                  {formatWorkTokenValue(
+                    item.workflowContinuation?.blockedReason,
+                    t,
+                    t('workWarRoomMetaValueNoReplayBlock'),
+                  )}
                 </span>
               </div>
               <div className="operatorMetaRow">
@@ -415,7 +420,10 @@ function ControlPlaneSection({
                     })
                   : item.workflowContinuation?.blockedReason
                     ? t('workWarRoomControlPlaneBlockedBy', {
-                        reason: item.workflowContinuation.blockedReason,
+                        reason: formatWorkTokenValue(
+                          item.workflowContinuation.blockedReason,
+                          t,
+                        ),
                       })
                     : t('workWarRoomControlPlaneNoTargets')}
               </p>
@@ -442,11 +450,19 @@ function ControlPlaneSection({
               <div className="operatorMetaRow">
                 <span>
                   {t('workWarRoomMetaLabelReplay')}:{' '}
-                  {item.workflowContinuation?.replayState ?? t('workWarRoomMetaValueNotRecorded')}
+                  {formatWorkTokenValue(
+                    item.workflowContinuation?.replayState,
+                    t,
+                    t('workWarRoomMetaValueNotRecorded'),
+                  )}
                 </span>
                 <span>
                   {t('workWarRoomMetaLabelBlocked')}:{' '}
-                  {item.workflowContinuation?.blockedReason ?? t('workWarRoomMetaValueNo')}
+                  {formatWorkTokenValue(
+                    item.workflowContinuation?.blockedReason,
+                    t,
+                    t('workWarRoomMetaValueNo'),
+                  )}
                 </span>
               </div>
               <div className="operatorMetaRow">
@@ -720,7 +736,9 @@ function RecoverySection({
               </div>
               <p>
                 {item.latestActivity?.message ??
-                  item.workflowContinuationReplay?.blockedReason ??
+                  (item.workflowContinuationReplay?.blockedReason
+                    ? formatWorkTokenValue(item.workflowContinuationReplay.blockedReason, t)
+                    : null) ??
                   item.dispatchReplay?.replayError ??
                   t('workWarRoomRecoveryNoRecoveryNote')}
               </p>
@@ -729,24 +747,37 @@ function RecoverySection({
                   {t('workWarRoomMetaLabelDelivery')}: {formatWorkDeliveryMode(item.context?.deliveryMode, t)}
                 </span>
                 <span>
-                  {t('workWarRoomMetaLabelApproval')}: {item.approval.status}
+                  {t('workWarRoomMetaLabelApproval')}:{' '}
+                  {formatWorkApprovalStatus(item.approval.status, t)}
                 </span>
               </div>
               <div className="operatorMetaRow">
                 <span>
                   {t('workWarRoomMetaLabelReplay')}:{' '}
-                  {item.workflowContinuationReplay?.replayState ??
-                    item.dispatchReplay?.replayState ??
-                    t('workWarRoomMetaValueNone')}
+                  {formatWorkTokenValue(
+                    item.workflowContinuationReplay?.replayState ??
+                      item.dispatchReplay?.replayState,
+                    t,
+                    t('workWarRoomMetaValueNone'),
+                  )}
                 </span>
                 <span>
-                  {t('workWarRoomMetaLabelBlocked')}: {item.workflowContinuationReplay?.blockedReason ?? t('workWarRoomMetaValueNo')}
+                  {t('workWarRoomMetaLabelBlocked')}:{' '}
+                  {formatWorkTokenValue(
+                    item.workflowContinuationReplay?.blockedReason,
+                    t,
+                    t('workWarRoomMetaValueNo'),
+                  )}
                 </span>
               </div>
               <div className="operatorMetaRow">
                 <span>
                   {t('workWarRoomMetaLabelLatestSource')}:{' '}
-                  {item.latestActivity?.source ?? t('workWarRoomMetaValueNotRecorded')}
+                  {formatWorkTokenValue(
+                    item.latestActivity?.source,
+                    t,
+                    t('workWarRoomMetaValueNotRecorded'),
+                  )}
                 </span>
                 <span>{formatTimestamp(item.latestActivity?.createdAt, t)}</span>
               </div>
