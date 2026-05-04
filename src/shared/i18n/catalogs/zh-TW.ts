@@ -2434,6 +2434,10 @@ export const zhTWCatalog: MessageCatalog = {
   'catHome.overview.executorLabel': '預設執行對象',
   'catHome.overview.executorMissing': '尚未設定預設執行對象',
   'catHome.overview.idLabel': '識別碼',
+  'catHome.overview.memberships.heading': '所屬',
+  'catHome.overview.memberships.empty': '尚未加入任何貓群或貓窩。',
+  'catHome.overview.memberships.clowdersGroup': '貓群',
+  'catHome.overview.memberships.catteriesGroup': '貓窩',
   'catHome.lens.stubBody':
     '{lens} 鏡頭尚未實作。等 SPEC-064 鏡頭投影完成後，這裡會顯示這隻貓在 {lens} 面向的狀態。',
   'catHome.notFound.title': '找不到這隻貓',

@@ -2484,6 +2484,11 @@ export const enCatalog: MessageCatalog = {
   'catHome.overview.executorLabel': 'Default executor',
   'catHome.overview.executorMissing': 'No default executor configured',
   'catHome.overview.idLabel': 'ID',
+  'catHome.overview.memberships.heading': 'Memberships',
+  'catHome.overview.memberships.empty':
+    'No memberships yet. This Cat is not part of any Clowder or Cattery in this workspace.',
+  'catHome.overview.memberships.clowdersGroup': 'Clowders',
+  'catHome.overview.memberships.catteriesGroup': 'Catteries',
   'catHome.lens.stubBody':
     'The {lens} lens is not implemented yet. Once SPEC-064 lens projections land, this view will surface {lens}-specific state for this Cat.',
   'catHome.notFound.title': 'Cat not found',

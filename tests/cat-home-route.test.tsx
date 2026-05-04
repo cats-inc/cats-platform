@@ -93,7 +93,7 @@ function renderCatRoute(pathname: string, envelope: PlatformHostEnvelope): strin
   );
 }
 
-test('CatHome renders Overview by default with default-executor summary', () => {
+test('CatHome renders Overview by default with default-executor summary and Memberships placeholder', () => {
   const markup = renderCatRoute(
     '/cats/cat-concierge',
     createEnvelope({
@@ -108,6 +108,11 @@ test('CatHome renders Overview by default with default-executor summary', () => 
   assert.match(markup, />Claude Opus 4\.7</u);
   assert.match(markup, />cat-concierge</u);
   assert.match(markup, /href="\/lobby"/u);
+  // PLAN-091 phase 6c: Memberships heading renders, empty-state copy
+  // shows because the platform envelope does not yet carry per-cat
+  // membership records.
+  assert.match(markup, />Memberships</u);
+  assert.match(markup, /No memberships yet/u);
 });
 
 test('CatHome /cats/:id/overview deep-link still renders Overview with active tab', () => {

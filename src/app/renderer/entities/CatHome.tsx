@@ -1,10 +1,15 @@
-import { useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import { EntityDetailPane } from '../../../design/components/EntityDetailPane.js';
 import { buildCatExecutionLabel } from '../../../shared/executionLabel.js';
 import { messageKeys, type MessageKey } from '../../../shared/i18n/index.js';
 import { nameInitials } from '../../../shared/nameInitials.js';
-import type { PlatformHostEnvelope, PlatformLobbyCatSummary } from '../../../shared/platform-contract.js';
+import type {
+  PlatformHostEnvelope,
+  PlatformLobbyCatSummary,
+  PlatformLobbyCatterySummary,
+  PlatformLobbyClowderSummary,
+} from '../../../shared/platform-contract.js';
 import { useI18n } from '../i18n/index.js';
 
 export type CatLens = 'overview' | 'chat' | 'work' | 'code';
@@ -42,7 +47,74 @@ function CatAvatar({ cat }: { cat: PlatformLobbyCatSummary }) {
   );
 }
 
-function CatOverview({ cat }: { cat: PlatformLobbyCatSummary }) {
+function CatOverviewMemberships({
+  clowders,
+  catteries,
+}: {
+  clowders: readonly PlatformLobbyClowderSummary[];
+  catteries: readonly PlatformLobbyCatterySummary[];
+}) {
+  const { t } = useI18n();
+  const hasAny = clowders.length > 0 || catteries.length > 0;
+
+  return (
+    <section className="catHomeOverviewMemberships">
+      <h3 className="catHomeOverviewMembershipsHeading">
+        {t(messageKeys.catHomeOverviewMembershipsHeading)}
+      </h3>
+      {!hasAny ? (
+        <p className="catHomeOverviewMembershipsEmpty">
+          {t(messageKeys.catHomeOverviewMembershipsEmpty)}
+        </p>
+      ) : (
+        <div className="catHomeOverviewMembershipsBody">
+          {clowders.length > 0 ? (
+            <div className="catHomeOverviewMembershipsGroup">
+              <p className="eyebrow">
+                {t(messageKeys.catHomeOverviewMembershipClowdersGroup)}
+              </p>
+              <ul>
+                {clowders.map((clowder) => (
+                  <li key={clowder.id}>
+                    <Link to={`/clowders/${encodeURIComponent(clowder.id)}`}>
+                      {clowder.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+          {catteries.length > 0 ? (
+            <div className="catHomeOverviewMembershipsGroup">
+              <p className="eyebrow">
+                {t(messageKeys.catHomeOverviewMembershipCatteriesGroup)}
+              </p>
+              <ul>
+                {catteries.map((cattery) => (
+                  <li key={cattery.id}>
+                    <Link to={`/catteries/${encodeURIComponent(cattery.id)}`}>
+                      {cattery.name}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function CatOverview({
+  cat,
+  clowders,
+  catteries,
+}: {
+  cat: PlatformLobbyCatSummary;
+  clowders: readonly PlatformLobbyClowderSummary[];
+  catteries: readonly PlatformLobbyCatterySummary[];
+}) {
   const { t } = useI18n();
   const executor = cat.defaultExecutionTarget
     ? buildCatExecutionLabel({
@@ -65,6 +137,7 @@ function CatOverview({ cat }: { cat: PlatformLobbyCatSummary }) {
           <dd>{executor ?? t(messageKeys.catHomeOverviewExecutorMissing)}</dd>
         </div>
       </dl>
+      <CatOverviewMemberships clowders={clowders} catteries={catteries} />
     </div>
   );
 }
@@ -134,7 +207,18 @@ export function CatHome({ envelope }: { envelope: PlatformHostEnvelope }) {
       subtitle={cat.isBoss ? t(messageKeys.catHomeBossBadge) : undefined}
       tabs={tabs}
     >
-      {activeLens === 'overview' ? <CatOverview cat={cat} /> : <CatLensStub lens={activeLens} />}
+      {activeLens === 'overview' ? (
+        // The Lobby payload does not yet carry per-cat membership
+        // records (PLAN-091 phase 6 covers the schema; the storage
+        // layer is a later slice). Until then, the Memberships
+        // section renders its empty state regardless of how many
+        // clowders or catteries the workspace has — the structural
+        // hook is in place for a future slice that filters by
+        // actual membership rather than by registry presence.
+        <CatOverview cat={cat} clowders={[]} catteries={[]} />
+      ) : (
+        <CatLensStub lens={activeLens} />
+      )}
     </EntityDetailPane>
   );
 }
