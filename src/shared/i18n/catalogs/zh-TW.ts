@@ -1643,6 +1643,13 @@ export const zhTWCatalog: MessageCatalog = {
   'shared.operator.traceKind.outcome': '結果',
   'shared.operator.traceKind.status': '狀態',
   'shared.operator.traceKind.note': '附註',
+  'shared.operator.activity.label.recovery': '復原',
+  'shared.operator.activity.label.replay': '重放',
+  'shared.operator.activity.label.decision': '決策',
+  'shared.operator.activity.label.action': '動作',
+  'shared.operator.activity.label.artifact': '成果物',
+  'shared.operator.activity.label.update': '更新',
+  'shared.operator.activity.label.trace': '軌跡',
   'shared.operator.eyebrow.inspector': '檢視器',
   'shared.operator.runInspector.title': '執行檢視',
   'shared.operator.runInspector.noHistory':

@@ -33,9 +33,33 @@ const fallbackOperatorTranslate: OperatorTranslate = (key) => {
     [messageKeys.sharedOperatorTraceKindOutcome]: 'Outcome',
     [messageKeys.sharedOperatorTraceKindStatus]: 'Status',
     [messageKeys.sharedOperatorTraceKindNote]: 'Note',
+    [messageKeys.sharedOperatorActivityLabelRecovery]: 'Recovery',
+    [messageKeys.sharedOperatorActivityLabelReplay]: 'Replay',
+    [messageKeys.sharedOperatorActivityLabelDecision]: 'Decision',
+    [messageKeys.sharedOperatorActivityLabelAction]: 'Action',
+    [messageKeys.sharedOperatorActivityLabelArtifact]: 'Artifact',
+    [messageKeys.sharedOperatorActivityLabelUpdate]: 'Update',
+    [messageKeys.sharedOperatorActivityLabelTrace]: 'Trace',
   };
 
   return fallback[key] ?? String(key);
+};
+
+const OPERATOR_ACTIVITY_LABEL_KEYS: Record<string, MessageKey> = {
+  Approval: messageKeys.sharedOperatorTraceKindApproval,
+  Checkpoint: messageKeys.sharedOperatorTraceKindCheckpoint,
+  Dispatch: messageKeys.sharedOperatorTraceKindDispatch,
+  Error: messageKeys.sharedOperatorTraceKindError,
+  Outcome: messageKeys.sharedOperatorTraceKindOutcome,
+  Status: messageKeys.sharedOperatorTraceKindStatus,
+  Note: messageKeys.sharedOperatorTraceKindNote,
+  Recovery: messageKeys.sharedOperatorActivityLabelRecovery,
+  Replay: messageKeys.sharedOperatorActivityLabelReplay,
+  Decision: messageKeys.sharedOperatorActivityLabelDecision,
+  Action: messageKeys.sharedOperatorActivityLabelAction,
+  Artifact: messageKeys.sharedOperatorActivityLabelArtifact,
+  Update: messageKeys.sharedOperatorActivityLabelUpdate,
+  Trace: messageKeys.sharedOperatorActivityLabelTrace,
 };
 
 export function formatOperatorTimestamp(
@@ -187,4 +211,12 @@ export function traceKindLabel(
     default:
       return t(messageKeys.sharedOperatorTraceKindNote);
   }
+}
+
+export function operatorActivityLabel(
+  label: string,
+  t: OperatorTranslate = fallbackOperatorTranslate,
+): string {
+  const key = OPERATOR_ACTIVITY_LABEL_KEYS[label];
+  return key ? t(key) : label;
 }

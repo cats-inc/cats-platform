@@ -1689,6 +1689,13 @@ export const enCatalog: MessageCatalog = {
   'shared.operator.traceKind.outcome': 'Outcome',
   'shared.operator.traceKind.status': 'Status',
   'shared.operator.traceKind.note': 'Note',
+  'shared.operator.activity.label.recovery': 'Recovery',
+  'shared.operator.activity.label.replay': 'Replay',
+  'shared.operator.activity.label.decision': 'Decision',
+  'shared.operator.activity.label.action': 'Action',
+  'shared.operator.activity.label.artifact': 'Artifact',
+  'shared.operator.activity.label.update': 'Update',
+  'shared.operator.activity.label.trace': 'Trace',
   'shared.operator.eyebrow.inspector': 'Inspector',
   'shared.operator.runInspector.title': 'Run inspector',
   'shared.operator.runInspector.noHistory':

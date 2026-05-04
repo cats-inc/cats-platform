@@ -1,6 +1,7 @@
 import type { ChatOperatorActivityItem } from '../../operator-loop/index.js';
 import {
   formatOperatorTimestamp,
+  operatorActivityLabel,
   operatorSeverityClassName,
 } from '../../../../design/operatorFormatting.js';
 import { messageKeys } from '../../../../shared/i18n/index.js';
@@ -36,7 +37,7 @@ export function ActivityFeed({ items }: ActivityFeedProps) {
               />
               <div className="operatorTimelineBody">
                 <div className="operatorTimelineHeader">
-                  <strong>{item.label}</strong>
+                  <strong>{operatorActivityLabel(item.label, t)}</strong>
                   <span>{formatOperatorTimestamp(item.createdAt, t)}</span>
                 </div>
                 <p>{item.message}</p>
