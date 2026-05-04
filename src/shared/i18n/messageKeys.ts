@@ -3155,6 +3155,13 @@ export const messageKeys = {
   designAccountIdentityMenuEnvironmentLabel:
     'design.accountIdentityMenu.environmentLabel',
   designNotificationDismissLabel: 'design.notification.dismissLabel',
+  entityComingSoonEyebrow: 'entity.comingSoon.eyebrow',
+  entityComingSoonTitleCat: 'entity.comingSoon.title.cat',
+  entityComingSoonTitleClowder: 'entity.comingSoon.title.clowder',
+  entityComingSoonTitleCattery: 'entity.comingSoon.title.cattery',
+  entityComingSoonBody: 'entity.comingSoon.body',
+  entityComingSoonIdLabel: 'entity.comingSoon.idLabel',
+  entityComingSoonBackToLobby: 'entity.comingSoon.backToLobby',
 } as const;
 
 export type MessageCatalogId = (typeof messageKeys)[keyof typeof messageKeys];

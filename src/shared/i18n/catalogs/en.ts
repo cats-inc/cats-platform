@@ -2473,6 +2473,15 @@ export const enCatalog: MessageCatalog = {
   'design.accountIdentityMenu.environmentLabel': 'Environment',
   'design.notification.dismissLabel': 'Dismiss',
 
+  'entity.comingSoon.eyebrow': 'Coming soon',
+  'entity.comingSoon.title.cat': 'Cat home',
+  'entity.comingSoon.title.clowder': 'Clowder home',
+  'entity.comingSoon.title.cattery': 'Cattery home',
+  'entity.comingSoon.body':
+    'This page is being built. The route is wired up, but the entity view is not implemented yet.',
+  'entity.comingSoon.idLabel': 'ID',
+  'entity.comingSoon.backToLobby': 'Back to Lobby',
+
   'code.activeComposer.detachedBranch': 'Detached branch',
   'code.newDraft.greeting': 'Ready to code.',
   'code.newDraft.greeting.openRepo': 'Open the repo and start small.',

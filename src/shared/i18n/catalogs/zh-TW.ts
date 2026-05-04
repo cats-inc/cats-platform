@@ -2423,6 +2423,14 @@ export const zhTWCatalog: MessageCatalog = {
   'design.accountIdentityMenu.environmentLabel': '環境',
   'design.notification.dismissLabel': '關閉',
 
+  'entity.comingSoon.eyebrow': '開發中',
+  'entity.comingSoon.title.cat': '貓的主頁',
+  'entity.comingSoon.title.clowder': '貓群主頁',
+  'entity.comingSoon.title.cattery': '貓窩主頁',
+  'entity.comingSoon.body': '此頁面正在建置中。路由已連通，但實際內容尚未實作。',
+  'entity.comingSoon.idLabel': '識別碼',
+  'entity.comingSoon.backToLobby': '返回大廳',
+
   'code.activeComposer.detachedBranch': '分離分支',
   'code.newDraft.greeting': '準備開始寫程式。',
   'code.newDraft.greeting.openRepo': '開啟 repo，從小處開始。',

@@ -39,6 +39,7 @@ import {
 } from './routeMap';
 import { GuideCatSidecar } from '../../design/components/GuideCatSidecar';
 import { AppHostRoute } from './AppHostRoute.js';
+import { EntityComingSoon } from './entities/EntityComingSoon.js';
 import { PlatformLobby } from './PlatformLobby';
 import {
   GuideCatPlacementProvider,
@@ -631,6 +632,12 @@ export default function PlatformApp() {
         ) : null}
         <Routes>
           <Route path="/lobby" element={<PlatformLobby envelope={readyEnvelope} />} />
+          <Route path="/cats/:catId" element={<EntityComingSoon kind="cat" />} />
+          <Route path="/cats/:catId/:lens" element={<EntityComingSoon kind="cat" />} />
+          <Route path="/clowders/:clowderId" element={<EntityComingSoon kind="clowder" />} />
+          <Route path="/clowders/:clowderId/:tab" element={<EntityComingSoon kind="clowder" />} />
+          <Route path="/catteries/:catteryId" element={<EntityComingSoon kind="cattery" />} />
+          <Route path="/catteries/:catteryId/:tab" element={<EntityComingSoon kind="cattery" />} />
           <Route path="/apps/:appId/*" element={<AppHostRoute envelope={readyEnvelope} />} />
           <Route path="/products" element={<Navigate to="/lobby" replace />} />
           <Route path="/settings/*" element={settingsSurfaceElement} />
