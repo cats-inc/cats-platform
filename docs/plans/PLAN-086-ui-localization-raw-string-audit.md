@@ -163,6 +163,9 @@ The final 2026-05-04 cleanup localized:
   unknown diagnostics
 - Settings Data reset feedback maps deterministic setup reset fallback failures
   to localized feedback while preserving unknown diagnostics
+- Settings Apps package review/install/mutation feedback maps common package
+  validation and app-state failures to localized feedback while preserving
+  unknown diagnostics
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

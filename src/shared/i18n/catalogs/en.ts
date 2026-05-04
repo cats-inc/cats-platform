@@ -373,6 +373,17 @@ export const enCatalog: MessageCatalog = {
   'settings.apps.mutationFailedFallback': 'The action failed.',
   'settings.apps.packagePathRequired': 'Package path is required.',
   'settings.apps.validationFailed': 'Package validation failed.',
+  'settings.apps.error.notInstalled': 'Cats app "{appId}" is not installed.',
+  'settings.apps.error.notEnabled': 'Cats app "{appId}" is not enabled.',
+  'settings.apps.error.packagePathNotFound': 'Package path does not exist: {path}.',
+  'settings.apps.error.invalidManifestJson': 'cats.app.json is not valid JSON.',
+  'settings.apps.error.cannotReadManifest': 'Cannot read cats.app.json.',
+  'settings.apps.error.reservedAppId': 'Cats app id "{appId}" is reserved.',
+  'settings.apps.error.duplicateAppId': 'Cats app id "{appId}" is already installed.',
+  'settings.apps.error.manifestInvalid': 'Cats app manifest must be an object.',
+  'settings.apps.error.validationIssueWithPath':
+    'Package validation failed at {path}: {code}.',
+  'settings.apps.error.validationIssue': 'Package validation failed: {code}.',
   'settings.apps.openPairingUrl': 'Open pairing URL',
   'settings.data.resetAllDataTitle': 'Reset all data',
   'settings.data.resetAllDataDescription':

@@ -19,6 +19,10 @@ import type { CatsAppManifestValidationIssue } from '../../../shared/catsAppVali
 import { type MessageKey } from '../../../shared/i18n/index.js';
 import { dispatchPlatformEnvelopeRefresh } from '../platformEnvelopeEvents.js';
 import { useI18n } from '../i18n/index.js';
+import {
+  formatSettingsAppsMutationError,
+  localizeSettingsAppsValidationIssue,
+} from './settingsAppsErrorLabels.js';
 
 type AppPackageMutation = 'enable' | 'disable' | 'uninstall';
 
@@ -163,7 +167,7 @@ function summarizeValidationIssues(
   issues: readonly CatsAppManifestValidationIssue[] = [],
   t: (key: MessageKey, values?: Record<string, unknown>) => string,
 ): string {
-  return issues[0]?.message ?? t('settingsAppsValidationFailed');
+  return localizeSettingsAppsValidationIssue(issues[0], t);
 }
 
 async function readMutationError(
@@ -286,9 +290,11 @@ export function PlatformSettingsApps({
       dispatchPlatformEnvelopeRefresh();
     } catch (error) {
       showToast(
-        error instanceof Error
-          ? error.message
-          : t('settingsAppsMutationFailedFallback'),
+        formatSettingsAppsMutationError(
+          error,
+          t('settingsAppsMutationFailedFallback'),
+          t,
+        ),
       );
     } finally {
       setBusyAction(null);
@@ -324,9 +330,11 @@ export function PlatformSettingsApps({
     } catch (error) {
       setInstallReview(null);
       showToast(
-        error instanceof Error
-          ? error.message
-          : t('settingsAppsValidationFailed'),
+        formatSettingsAppsMutationError(
+          error,
+          t('settingsAppsValidationFailed'),
+          t,
+        ),
       );
     } finally {
       setInstallBusy(false);
@@ -384,9 +392,11 @@ export function PlatformSettingsApps({
       }
     } catch (error) {
       showToast(
-        error instanceof Error
-          ? error.message
-          : t('settingsAppsMutationFailed', { action: t('settingsAppsInstallButton') }),
+        formatSettingsAppsMutationError(
+          error,
+          t('settingsAppsMutationFailed', { action: t('settingsAppsInstallButton') }),
+          t,
+        ),
       );
     } finally {
       setInstallBusy(false);
@@ -579,4 +589,3 @@ export function PlatformSettingsApps({
     </>
   );
 }
-

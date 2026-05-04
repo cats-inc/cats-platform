@@ -360,6 +360,17 @@ export const zhTWCatalog: MessageCatalog = {
   'settings.apps.mutationFailedFallback': '操作失敗。',
   'settings.apps.packagePathRequired': '請填寫套件路徑。',
   'settings.apps.validationFailed': '套件驗證失敗。',
+  'settings.apps.error.notInstalled': 'Cats app「{appId}」尚未安裝。',
+  'settings.apps.error.notEnabled': 'Cats app「{appId}」尚未啟用。',
+  'settings.apps.error.packagePathNotFound': '找不到套件路徑：{path}。',
+  'settings.apps.error.invalidManifestJson': 'cats.app.json 不是有效的 JSON。',
+  'settings.apps.error.cannotReadManifest': '無法讀取 cats.app.json。',
+  'settings.apps.error.reservedAppId': 'Cats app id「{appId}」已被保留。',
+  'settings.apps.error.duplicateAppId': 'Cats app id「{appId}」已安裝。',
+  'settings.apps.error.manifestInvalid': 'Cats app manifest 必須是物件。',
+  'settings.apps.error.validationIssueWithPath':
+    '套件驗證失敗（{path}）：{code}。',
+  'settings.apps.error.validationIssue': '套件驗證失敗：{code}。',
   'settings.apps.openPairingUrl': '開啟配對網址',
   'settings.data.resetAllDataTitle': '重設所有資料',
   'settings.data.resetAllDataDescription':

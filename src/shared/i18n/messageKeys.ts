@@ -369,6 +369,21 @@ export const messageKeys = {
   settingsAppsMutationFailedFallback: 'settings.apps.mutationFailedFallback',
   settingsAppsPackagePathRequired: 'settings.apps.packagePathRequired',
   settingsAppsValidationFailed: 'settings.apps.validationFailed',
+  settingsAppsErrorNotInstalled: 'settings.apps.error.notInstalled',
+  settingsAppsErrorNotEnabled: 'settings.apps.error.notEnabled',
+  settingsAppsErrorPackagePathNotFound:
+    'settings.apps.error.packagePathNotFound',
+  settingsAppsErrorInvalidManifestJson:
+    'settings.apps.error.invalidManifestJson',
+  settingsAppsErrorCannotReadManifest:
+    'settings.apps.error.cannotReadManifest',
+  settingsAppsErrorReservedAppId: 'settings.apps.error.reservedAppId',
+  settingsAppsErrorDuplicateAppId: 'settings.apps.error.duplicateAppId',
+  settingsAppsErrorManifestInvalid: 'settings.apps.error.manifestInvalid',
+  settingsAppsErrorValidationIssueWithPath:
+    'settings.apps.error.validationIssueWithPath',
+  settingsAppsErrorValidationIssue:
+    'settings.apps.error.validationIssue',
   settingsAppsOpenPairingUrl: 'settings.apps.openPairingUrl',
   settingsDataResetAllDataTitle: 'settings.data.resetAllDataTitle',
   settingsDataResetAllDataDescription: 'settings.data.resetAllDataDescription',
