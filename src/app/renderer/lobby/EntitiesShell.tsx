@@ -1,3 +1,9 @@
+import {
+  useCallback,
+  useEffect,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+} from 'react';
 import { Outlet } from 'react-router-dom';
 
 // The Lobby drill-down workspace mounts the same appshell layout
@@ -7,10 +13,22 @@ import { Outlet } from 'react-router-dom';
 // bundle and were previously only loaded once a product surface
 // rendered. Pull the bundle in here so /cats, /clowders, /catteries
 // render with the same chrome before any product is mounted.
+//
+// `chat-thread-base.css` carries the `.catAvatar` / `.catAvatarBoss`
+// primitives the sidebar's MyCatRowItem uses (28×28 disc, boss-cat
+// outline, default tint). Without it the avatars in the MY CATS
+// section collapse to 0×0 spans. We pull just the base file (not the
+// per-product `chat-thread.css`) since we don't render thread / message
+// chrome on entity drill-down routes.
 import '../../../products/shared/renderer/styles/chat-shell-base.css';
+import '../../../products/shared/renderer/styles/chat-thread-base.css';
 import '../../../products/shared/renderer/styles/extras.css';
 
 import type { PlatformHostEnvelope } from '../../../shared/platform-contract.js';
+import {
+  readSidebarOpenPreference,
+  writeSidebarOpenPreference,
+} from '../../../shared/sidebarPreference.js';
 import { LobbyAppShellSidebar } from './LobbyAppShellSidebar.js';
 
 /**
@@ -23,15 +41,72 @@ import { LobbyAppShellSidebar } from './LobbyAppShellSidebar.js';
  * `<main className="canvas">` on the right hosting the matched
  * route's content. There is no separate top bar — the sidebar is the
  * appshell chrome.
+ *
+ * Sidebar-open state lives here so the outer `.claudeShell` grid can
+ * flip its column track (260px → 48px) via
+ * `claudeShellSidebarCollapsed` in lockstep with the sidebar's own
+ * `.sidebarCollapsed` modifier. The state is persisted to localStorage
+ * with the SAME `cats.sidebar-open` key chat / code / work use (see
+ * `useAppChrome` + `shared/sidebarPreference.ts`) so a refresh keeps
+ * the user's last toggle and the choice carries across products.
+ *
+ * `onCollapsedSidebarClick` mirrors the product chrome's affordance
+ * for "click any non-interactive area while collapsed to expand" —
+ * otherwise the only way back is the toggle button.
  */
 export function EntitiesShell({
   envelope,
 }: {
   envelope: PlatformHostEnvelope;
 }) {
+  const [sidebarOpen, setSidebarOpen] = useState<boolean>(() =>
+    readSidebarOpenPreference(
+      typeof window === 'undefined' ? null : window.localStorage,
+    ),
+  );
+
+  useEffect(() => {
+    writeSidebarOpenPreference(
+      typeof window === 'undefined' ? null : window.localStorage,
+      sidebarOpen,
+    );
+  }, [sidebarOpen]);
+
+  const onToggleSidebar = useCallback(() => {
+    setSidebarOpen((current) => !current);
+  }, []);
+
+  const onCollapsedSidebarClick = useCallback(
+    (event: ReactMouseEvent<HTMLElement>) => {
+      if (sidebarOpen) {
+        return;
+      }
+      const target = event.target as HTMLElement;
+      if (
+        target.closest('button, a, input, textarea, select, [role="button"]')
+        || target.closest('.accountMenu')
+      ) {
+        return;
+      }
+      setSidebarOpen(true);
+    },
+    [sidebarOpen],
+  );
+
   return (
-    <div className="screen claudeShell">
-      <LobbyAppShellSidebar envelope={envelope} />
+    <div
+      className={
+        sidebarOpen
+          ? 'screen claudeShell'
+          : 'screen claudeShell claudeShellSidebarCollapsed'
+      }
+    >
+      <LobbyAppShellSidebar
+        envelope={envelope}
+        sidebarOpen={sidebarOpen}
+        onToggleSidebar={onToggleSidebar}
+        onCollapsedSidebarClick={onCollapsedSidebarClick}
+      />
       <main className="canvas">
         <Outlet />
       </main>

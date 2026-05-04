@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, type MouseEvent as ReactMouseEvent } from 'react';
 import { useMatch, useNavigate } from 'react-router-dom';
 
 import { GuideCatDockSlot } from '../../../design/components/GuideCatDockSlot.js';
@@ -100,13 +100,18 @@ function buildSidebarPayload(envelope: PlatformHostEnvelope): {
 
 export function LobbyAppShellSidebar({
   envelope,
+  sidebarOpen,
+  onToggleSidebar,
+  onCollapsedSidebarClick,
 }: {
   envelope: PlatformHostEnvelope;
+  sidebarOpen: boolean;
+  onToggleSidebar: () => void;
+  onCollapsedSidebarClick: (event: ReactMouseEvent<HTMLElement>) => void;
 }) {
   const { t } = useI18n();
   const navigate = useNavigate();
   const accountMenuRef = useRef<HTMLDivElement>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
 
   const activeCatMatch = useMatch('/cats/:catId/*');
   const activeCatId = activeCatMatch?.params.catId ?? null;
@@ -132,27 +137,31 @@ export function LobbyAppShellSidebar({
   const catsPlaceholder: ConversationSidebarMyCatsPlaceholder = {
     label: t(messageKeys.lobbySidebarNewCat),
     onClick: () => undefined,
+    iconKind: 'singlePerson',
   };
   const clowdersPlaceholder: ConversationSidebarMyCatsPlaceholder = {
     label: t(messageKeys.lobbySidebarNewClowder),
     onClick: () => undefined,
+    iconKind: 'groupPeople',
   };
   const catteriesPlaceholder: ConversationSidebarMyCatsPlaceholder = {
     label: t(messageKeys.lobbySidebarNewCattery),
     onClick: () => undefined,
+    iconKind: 'orgChart',
   };
 
   return (
     <aside
       className={sidebarOpen ? 'sidebar' : 'sidebar sidebarCollapsed'}
       data-shell-surface="lobby"
+      onClick={onCollapsedSidebarClick}
     >
       <div className="sidebarInner">
         <ConversationSidebarNavigation
           activeSurface={fallbackSurface}
           sidebarOpen={sidebarOpen}
           primaryActions={[]}
-          onToggleSidebar={() => setSidebarOpen((current) => !current)}
+          onToggleSidebar={onToggleSidebar}
           onSwitchProduct={onSwitchProduct}
           surfaceLabelOverride={t(messageKeys.entitiesShellSurfaceLabel)}
         />

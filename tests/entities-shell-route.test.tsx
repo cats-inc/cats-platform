@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server.browser';
@@ -196,6 +197,25 @@ test('Drilled-down /cats/:catId route also mounts the EntitiesShell', () => {
   assert.match(markup, /<div[^>]*class="screen claudeShell"/u);
   assert.match(markup, /<aside[^>]*class="sidebar"[^>]*data-shell-surface="lobby"/u);
   assert.match(markup, />Concierge</u);
+  // The sidebar's MyCatRowItem renders the cat's avatar inside a
+  // `<span class="myCatAvatarWrap catAvatar [catAvatarBoss]">`. The
+  // `.catAvatar` base styling (28×28 disc, font, color) lives in
+  // `chat-thread-base.css`; if EntitiesShell stops importing that
+  // bundle the avatar collapses to 0×0 even though the markup is
+  // intact. Asserting the class chain here pins both the markup and
+  // the implicit CSS-import contract.
+  assert.match(markup, /class="myCatAvatarWrap catAvatar catAvatarBoss"/u);
+});
+
+test('EntitiesShell loads the chat-thread-base avatar primitives so MY CATS rows show the 28px disc', () => {
+  // Sanity check that EntitiesShell.tsx still imports the file
+  // carrying `.catAvatar` rules. Imports are easy to drop accidentally
+  // when refactoring style bundles, and SSR markup alone can't surface
+  // an "invisible avatar" regression. Tests run from the package root
+  // (`node --test build/test/*.js`), so resolve relative to cwd.
+  const path = `${process.cwd()}/src/app/renderer/lobby/EntitiesShell.tsx`;
+  const source = readFileSync(path, 'utf8');
+  assert.match(source, /chat-thread-base\.css/u);
 });
 
 test('Drilled-down /clowders/:id and /catteries/:id routes both mount the EntitiesShell', () => {
