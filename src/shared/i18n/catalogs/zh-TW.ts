@@ -1524,6 +1524,18 @@ export const zhTWCatalog: MessageCatalog = {
   'chat.companionMessageReferenceUnsupportedVersionLabel':
     '不支援的參考版本',
   'chat.companionMessageReferenceMalformedLabel': '參考格式錯誤',
+  'chat.companionMessageReference.invalidWrongScheme':
+    '參考必須使用 cats://。',
+  'chat.companionMessageReference.invalidWrongHost':
+    '參考必須指向 companion。',
+  'chat.companionMessageReference.invalidMalformedPercentEncoding':
+    '參考包含錯誤的百分比編碼。',
+  'chat.companionMessageReference.invalidBadSegmentCount':
+    '參考路徑段數不正確。',
+  'chat.companionMessageReference.invalidEmptyPathSegment':
+    '參考包含空白路徑段。',
+  'chat.companionMessageReference.invalidUnknownTargetType':
+    '參考目標類型未知。',
   'chat.companionMessageReferenceLoadingLabel': '正在載入參考預覽',
   'chat.companionMessageReferenceUnavailableLabel': '無法取得參考內容',
   'chat.companionMessageReferenceOpenInCompanionAction': '在陪伴者中開啟',

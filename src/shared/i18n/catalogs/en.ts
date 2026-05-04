@@ -1561,6 +1561,18 @@ export const enCatalog: MessageCatalog = {
   'chat.companionMessageReferenceUnsupportedVersionLabel':
     'Unsupported reference version',
   'chat.companionMessageReferenceMalformedLabel': 'Malformed reference',
+  'chat.companionMessageReference.invalidWrongScheme':
+    'Reference must use cats://.',
+  'chat.companionMessageReference.invalidWrongHost':
+    'Reference must point to companion.',
+  'chat.companionMessageReference.invalidMalformedPercentEncoding':
+    'Reference contains malformed percent encoding.',
+  'chat.companionMessageReference.invalidBadSegmentCount':
+    'Reference has the wrong number of path segments.',
+  'chat.companionMessageReference.invalidEmptyPathSegment':
+    'Reference contains an empty path segment.',
+  'chat.companionMessageReference.invalidUnknownTargetType':
+    'Reference target type is unknown.',
   'chat.companionMessageReferenceLoadingLabel': 'Loading reference preview',
   'chat.companionMessageReferenceUnavailableLabel':
     'Companion reference unavailable',

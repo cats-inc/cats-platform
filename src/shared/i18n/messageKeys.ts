@@ -1638,6 +1638,18 @@ export const messageKeys = {
     'chat.companionMessageReferenceUnsupportedVersionLabel',
   chatCompanionMessageReferenceMalformedLabel:
     'chat.companionMessageReferenceMalformedLabel',
+  chatCompanionMessageReferenceInvalidWrongScheme:
+    'chat.companionMessageReference.invalidWrongScheme',
+  chatCompanionMessageReferenceInvalidWrongHost:
+    'chat.companionMessageReference.invalidWrongHost',
+  chatCompanionMessageReferenceInvalidMalformedPercentEncoding:
+    'chat.companionMessageReference.invalidMalformedPercentEncoding',
+  chatCompanionMessageReferenceInvalidBadSegmentCount:
+    'chat.companionMessageReference.invalidBadSegmentCount',
+  chatCompanionMessageReferenceInvalidEmptyPathSegment:
+    'chat.companionMessageReference.invalidEmptyPathSegment',
+  chatCompanionMessageReferenceInvalidUnknownTargetType:
+    'chat.companionMessageReference.invalidUnknownTargetType',
   chatCompanionMessageReferenceLoadingLabel: 'chat.companionMessageReferenceLoadingLabel',
   chatCompanionMessageReferenceUnavailableLabel:
     'chat.companionMessageReferenceUnavailableLabel',

@@ -119,6 +119,9 @@ The final 2026-05-04 cleanup localized:
 - Work run stop and mission cancel blocked feedback localize known run
   cancellation blocker reasons instead of rendering deterministic server
   summary text directly
+- Chat companion message reference previews localize parser invalid-reason
+  tokens such as `malformed_percent_encoding` while keeping the parser contract
+  stable
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

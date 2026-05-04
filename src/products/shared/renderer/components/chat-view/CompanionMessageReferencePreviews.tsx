@@ -7,6 +7,7 @@ import {
 import {
   parseCompanionContentReference,
   type CompanionContentReference,
+  type CompanionReferenceParseInvalidReason,
 } from '../../../../chat/companion/contentReference.js';
 import type {
   CompanionContentAvailability,
@@ -45,7 +46,7 @@ interface PreviewState {
   loading: boolean;
   preview: CompanionContentPreview | null;
   fallbackSnapshot: CompanionMessageReferenceSnapshot | null;
-  parseInvalidReason?: string;
+  parseInvalidReason?: CompanionReferenceParseInvalidReason;
   parseUnsupportedVersion?: string;
 }
 
@@ -375,7 +376,7 @@ function renderPreviewCard(
         </span>
         {entry.parseInvalidReason ? (
           <span className="companionReferenceCardSubtle">
-            ({entry.parseInvalidReason})
+            ({labelCompanionReferenceInvalidReason(entry.parseInvalidReason, t)})
           </span>
         ) : null}
       </div>
@@ -432,6 +433,30 @@ function renderPreviewCard(
       </span>
     </div>
   );
+}
+
+export function labelCompanionReferenceInvalidReason(
+  reason: CompanionReferenceParseInvalidReason,
+  t: (key: MessageKey) => string,
+): string {
+  switch (reason) {
+    case 'wrong_scheme':
+      return t(messageKeys.chatCompanionMessageReferenceInvalidWrongScheme);
+    case 'wrong_host':
+      return t(messageKeys.chatCompanionMessageReferenceInvalidWrongHost);
+    case 'malformed_percent_encoding':
+      return t(
+        messageKeys.chatCompanionMessageReferenceInvalidMalformedPercentEncoding,
+      );
+    case 'bad_segment_count':
+      return t(messageKeys.chatCompanionMessageReferenceInvalidBadSegmentCount);
+    case 'empty_path_segment':
+      return t(messageKeys.chatCompanionMessageReferenceInvalidEmptyPathSegment);
+    case 'unknown_target_type':
+      return t(messageKeys.chatCompanionMessageReferenceInvalidUnknownTargetType);
+    default:
+      return reason satisfies never;
+  }
 }
 
 function labelForAvailability(
