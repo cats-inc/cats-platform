@@ -2463,7 +2463,7 @@ export const enCatalog: MessageCatalog = {
   'conversationSidebar.deleteAllLabel': 'Delete All',
   'conversationSidebar.openAccountSettingsLabel': 'Open account settings',
   'conversationSidebar.runtimeStatusAriaLabel': 'Runtime status: {status}',
-  'conversationSidebar.myCatsLabel': 'My Cats',
+  'conversationSidebar.directMessagesLabel': 'Direct Messages',
   'conversationSidebar.telegramBoundTooltip': 'Telegram bot bound',
   'conversationSidebar.archiveButton': 'Archive',
   'design.sidePanel.closeLabel': 'Close',

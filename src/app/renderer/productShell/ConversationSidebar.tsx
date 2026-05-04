@@ -247,7 +247,7 @@ export function ConversationSidebar<
     t,
   });
   const resolvedMyCatsSectionLabel = myCatsSectionLabel
-    ?? t(messageKeys.conversationSidebarMyCatsLabel);
+    ?? t(messageKeys.conversationSidebarDirectMessagesLabel);
   const resolvedMyCatsSectionCats = myCatsSectionCats ?? visibleCats;
   const showMyCatsSection =
     forceShowMyCatsSection

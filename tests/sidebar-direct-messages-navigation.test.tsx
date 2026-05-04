@@ -335,7 +335,7 @@ function readRuntimeFooterLabel(tree: ReactNode): string {
   return footer.props.runtimeFooterLabel;
 }
 
-test('clicking a My Cats entry without an existing direct lane opens that Cat lane in place', () => {
+test('clicking a Direct Messages entry without an existing direct lane opens that Cat lane in place', () => {
   const payload = createPayload([]);
   const actions: Array<{ kind: 'navigate'; path: string }> = [];
 
@@ -353,7 +353,7 @@ test('clicking a My Cats entry without an existing direct lane opens that Cat la
   ]);
 });
 
-test('clicking a My Cats entry with an existing hidden direct lane stays on the My Cats route', () => {
+test('clicking a Direct Messages entry with an existing hidden direct lane stays on the Direct Messages route', () => {
   const payload = createPayload([
     createChannel({
       id: 'direct-thread-1',
@@ -379,7 +379,7 @@ test('clicking a My Cats entry with an existing hidden direct lane stays on the 
   ]);
 });
 
-test('My Cats lookup still finds direct lanes by channelKind when roomMode is legacy-mismatched', () => {
+test('Direct Messages lookup still finds direct lanes by channelKind when roomMode is legacy-mismatched', () => {
   const channels = [
     createChannel({
       id: 'direct-thread-1',
@@ -463,7 +463,7 @@ test('Cat with direct lane + error shows error (red)', () => {
   assert.equal(resolveMyCatStatusDot('error' as ParticipantSessionStatus), 'error');
 });
 
-test('Cat active in non-direct room only does not affect My Cats dot', () => {
+test('Cat active in non-direct room only does not affect Direct Messages dot', () => {
   const channels = [
     createChannel({ id: 'boss-room', title: 'Work', defaultRecipientCatId: 'companion-cat' }),
   ];
@@ -472,7 +472,7 @@ test('Cat active in non-direct room only does not affect My Cats dot', () => {
   assert.equal(resolveMyCatStatusDot(lane?.defaultRecipientLeaseStatus), 'no_dot');
 });
 
-test('clicking My Cats row still preserves existing navigation behavior with status dots', () => {
+test('clicking Direct Messages row still preserves existing navigation behavior with status dots', () => {
   const payload = createPayload([
     createChannel({
       id: 'direct-thread-1',
@@ -536,7 +536,7 @@ test('changing selected chat does not affect footer runtime dot', () => {
   assert.equal(readRuntimeFooterLabel(tree), 'Cats Runtime is connected');
 });
 
-test('My Cats status dots and footer runtime dot coexist', () => {
+test('Direct Messages status dots and footer runtime dot coexist', () => {
   const payload = createPayload(
     [createChannel({
       id: 'dl-1', title: 'Companion', defaultRecipientCatId: 'companion-cat',

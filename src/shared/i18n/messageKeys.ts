@@ -2583,7 +2583,7 @@ export const messageKeys = {
   conversationSidebarDeleteAllLabel: 'conversationSidebar.deleteAllLabel',
   conversationSidebarOpenAccountSettingsLabel: 'conversationSidebar.openAccountSettingsLabel',
   conversationSidebarRuntimeStatusAriaLabel: 'conversationSidebar.runtimeStatusAriaLabel',
-  conversationSidebarMyCatsLabel: 'conversationSidebar.myCatsLabel',
+  conversationSidebarDirectMessagesLabel: 'conversationSidebar.directMessagesLabel',
   conversationSidebarTelegramBoundTooltip: 'conversationSidebar.telegramBoundTooltip',
   conversationSidebarArchiveButton: 'conversationSidebar.archiveButton',
   codeActiveComposerDetachedBranch: 'code.activeComposer.detachedBranch',

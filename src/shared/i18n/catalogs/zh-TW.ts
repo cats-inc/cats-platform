@@ -2413,7 +2413,7 @@ export const zhTWCatalog: MessageCatalog = {
   'conversationSidebar.deleteAllLabel': '刪除全部',
   'conversationSidebar.openAccountSettingsLabel': '開啟帳號設定',
   'conversationSidebar.runtimeStatusAriaLabel': '執行階段狀態：{status}',
-  'conversationSidebar.myCatsLabel': '我的貓咪',
+  'conversationSidebar.directMessagesLabel': '直接訊息',
   'conversationSidebar.telegramBoundTooltip': '已綁定 Telegram 機器人',
   'conversationSidebar.archiveButton': '封存',
   'design.sidePanel.closeLabel': '關閉',

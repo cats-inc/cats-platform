@@ -212,7 +212,7 @@ export function ConversationSidebarMyCatsSection<
   const showPlaceholder = activeCats.length === 0 && emptyStatePlaceholder != null;
   return (
     <section className="myCatsSection">
-      <p className="sectionLabel">{label ?? t(messageKeys.conversationSidebarMyCatsLabel)}</p>
+      <p className="sectionLabel">{label ?? t(messageKeys.conversationSidebarDirectMessagesLabel)}</p>
       <div className="myCatsList">
         {showPlaceholder ? (
           <MyCatPlaceholderRow
