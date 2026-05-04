@@ -166,7 +166,7 @@ canvas shape rendered at each entity route.
     - `My Cats`
     - `My Clowders`
     - `My Catteries`
-23. Each section shall be collapsible (default collapsed, see FR-30) and
+23. Each section shall be collapsible (default collapsed, see FR-29) and
     expose a `+ New X` row at its tail, identical in structure to the web
     sidebar.
 24. Tapping a row shall push to the corresponding entity screen via the
