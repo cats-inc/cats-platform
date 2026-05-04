@@ -12,7 +12,7 @@ export const NEW_CHAT_PRESET_QUERY_PARAM = 'preset';
 export const NEW_CHAT_PRESET_GROUP = 'group';
 export const NEW_CHAT_PRESET_PARALLEL = 'parallel';
 export const SETUP_PATH = '/setup';
-export const MY_CATS_PATH_PREFIX = `${CHAT_PREFIX}/my-cats`;
+export const DIRECT_MESSAGE_PATH_PREFIX = `${CHAT_PREFIX}/dm`;
 export type NewChatPreset = 'default' | 'group' | 'parallel';
 
 export function resolveAppEntryPath(setupCompleteAt: string | null | undefined): string {
@@ -44,13 +44,13 @@ export function buildNewGroupChatPath(): string {
   return `${NEW_CHAT_PATH}?${params.toString()}`;
 }
 
-export function buildMyCatPath(catId: string): string {
+export function buildDirectMessagePath(catId: string): string {
   const normalizedCatId = normalizeRouteToken(catId);
   if (!normalizedCatId) {
-    return MY_CATS_PATH_PREFIX;
+    return DIRECT_MESSAGE_PATH_PREFIX;
   }
 
-  return `${MY_CATS_PATH_PREFIX}/${encodeURIComponent(normalizedCatId)}`;
+  return `${DIRECT_MESSAGE_PATH_PREFIX}/${encodeURIComponent(normalizedCatId)}`;
 }
 
 export function readNewChatDefaultRecipientCatId(search: string): string | null {

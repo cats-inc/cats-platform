@@ -4,7 +4,7 @@ import test from 'node:test';
 import {
   buildNewChatPath,
   buildNewGroupChatPath,
-  buildMyCatPath,
+  buildDirectMessagePath,
   buildChannelPath,
   createChannelExportFilename,
   isNewChatPath,
@@ -119,7 +119,7 @@ test('new-chat route helpers preserve direct-cat draft state without creating a 
 
   assert.equal(buildNewChatPath(catId), `/chat/new?cat=${catId}`);
   assert.equal(buildNewGroupChatPath(), '/chat/new?preset=group');
-  assert.equal(buildMyCatPath(catId), `/chat/my-cats/${catId}`);
+  assert.equal(buildDirectMessagePath(catId), `/chat/dm/${catId}`);
   assert.equal(buildNewChatPath('   '), NEW_CHAT_PATH);
   assert.equal(readNewChatDefaultRecipientCatId(`?cat=${catId}`), catId);
   assert.equal(readNewChatDefaultRecipientCatId(''), null);

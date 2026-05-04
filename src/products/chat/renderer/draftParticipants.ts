@@ -7,7 +7,7 @@ import {
 } from '../../shared/renderer/draftParticipants.js';
 import {
   NEW_CHAT_PATH,
-  buildMyCatPath,
+  buildDirectMessagePath,
   buildNewChatPath,
   resolveVisibleChatPath,
 } from '../shared/channelPaths.js';
@@ -74,7 +74,7 @@ export function resolveDraftRoutePath(input: {
   return resolveWorkspaceDraftRoutePath({
     ...input,
     newChatPath: NEW_CHAT_PATH,
-    buildMyCatPath,
+    buildMyCatPath: buildDirectMessagePath,
     buildNewChatPath,
   });
 }

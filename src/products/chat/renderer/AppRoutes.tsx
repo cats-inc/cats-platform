@@ -163,7 +163,7 @@ export function AppRoutes({
           }
         />
         <Route
-          path="my-cats/:catId"
+          path="dm/:catId"
           element={
             companionMode && companionCat && hasCompanionSkill(companionCat) ? (
               <CompanionWorkspace

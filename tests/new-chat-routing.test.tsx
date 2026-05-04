@@ -31,7 +31,7 @@ import { createDefaultRoomRoutingState } from '../src/core/roomRoutingState.ts';
 import {
   NEW_CHAT_PATH,
   buildChannelPath,
-  buildMyCatPath,
+  buildDirectMessagePath,
   buildNewChatPath,
   isOptimisticDraftChannelId,
 } from '../src/products/chat/shared/channelPaths.ts';
@@ -827,14 +827,14 @@ test('resolveDraftRoutePath keeps generic, lead-scoped, and direct draft entries
 
   assert.equal(resolveDraftRoutePath({ route: genericRoute }), NEW_CHAT_PATH);
   assert.equal(resolveDraftRoutePath({ route: leadScopedRoute }), buildNewChatPath('cat-lead'));
-  assert.equal(resolveDraftRoutePath({ route: directLaneRoute }), buildMyCatPath('cat-direct'));
+  assert.equal(resolveDraftRoutePath({ route: directLaneRoute }), buildDirectMessagePath('cat-direct'));
   assert.equal(
     resolveDraftRoutePath({ route: leadScopedRoute, nextDefaultRecipientCatId: 'cat-reviewer' }),
     buildNewChatPath('cat-reviewer'),
   );
   assert.equal(
     resolveDraftRoutePath({ route: directLaneRoute, nextDefaultRecipientCatId: 'cat-reviewer' }),
-    buildMyCatPath('cat-reviewer'),
+    buildDirectMessagePath('cat-reviewer'),
   );
 });
 

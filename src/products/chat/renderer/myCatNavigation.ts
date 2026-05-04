@@ -1,6 +1,6 @@
 import type { ChatChannelSummary } from '../api/contracts.js';
 import type { ParticipantSessionStatus } from '../../../shared/roomRouting.js';
-import { buildMyCatPath } from '../shared/channelPaths.js';
+import { buildDirectMessagePath } from '../shared/channelPaths.js';
 import { isDirectLaneSummary } from '../shared/channelTopology.js';
 import { messageKeys, type MessageKey } from '../../../shared/i18n/index.js';
 
@@ -61,5 +61,5 @@ export function resolveMyCatNavigationTarget(
   _channels: ChatChannelSummary[],
   catId: string,
 ): MyCatNavigationTarget {
-  return { kind: 'direct_lane', path: buildMyCatPath(catId) };
+  return { kind: 'direct_lane', path: buildDirectMessagePath(catId) };
 }

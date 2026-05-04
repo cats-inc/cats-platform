@@ -7,7 +7,7 @@ import { ConversationSidebarMyCatsSection } from '../src/app/renderer/productShe
 import { ConversationSidebarRecentsSection } from '../src/app/renderer/productShell/ConversationSidebarRecents.tsx';
 import type { AppShellPayload, ChatChannelSummary } from '../src/products/chat/api/contracts.ts';
 import type { ParticipantSessionStatus } from '../src/shared/roomRouting.ts';
-import { buildMyCatPath } from '../src/shared/channelPaths.ts';
+import { buildDirectMessagePath } from '../src/shared/channelPaths.ts';
 import { Sidebar } from '../src/products/chat/renderer/components/Sidebar.tsx';
 import { clearBusyState } from '../src/shared/workspaceBusy.ts';
 import {
@@ -349,7 +349,7 @@ test('clicking a My Cats entry without an existing direct lane opens that Cat la
   companionButton.props.onClick?.();
 
   assert.deepEqual(actions, [
-    { kind: 'navigate', path: buildMyCatPath('companion-cat') },
+    { kind: 'navigate', path: buildDirectMessagePath('companion-cat') },
   ]);
 });
 
@@ -375,7 +375,7 @@ test('clicking a My Cats entry with an existing hidden direct lane stays on the 
   companionButton.props.onClick?.();
 
   assert.deepEqual(actions, [
-    { kind: 'navigate', path: buildMyCatPath('companion-cat') },
+    { kind: 'navigate', path: buildDirectMessagePath('companion-cat') },
   ]);
 });
 
@@ -493,7 +493,7 @@ test('clicking My Cats row still preserves existing navigation behavior with sta
   const companionButton = findMyCatButton(myCatsTree, 'Companion');
   companionButton.props.onClick?.();
 
-  assert.deepEqual(actions, [{ kind: 'navigate', path: buildMyCatPath('companion-cat') }]);
+  assert.deepEqual(actions, [{ kind: 'navigate', path: buildDirectMessagePath('companion-cat') }]);
 });
 
 // --- Runtime Footer Status Dot Tests ---

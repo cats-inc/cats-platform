@@ -19,8 +19,8 @@ import {
 } from './lobbyModel.js';
 import { resolveGuideCatAssistGreeting } from '../../shared/guideCatAssistPresentation.js';
 
-function buildDirectLanePath(catId: string): string {
-  return `/chat/my-cats/${encodeURIComponent(catId)}`;
+function buildDirectMessagePath(catId: string): string {
+  return `/chat/dm/${encodeURIComponent(catId)}`;
 }
 
 function buildLobbyCatTooltip(cat: PlatformLobbyCatSummary): string {
@@ -108,7 +108,7 @@ export function PlatformLobby({
           <div className="lobbyTopBarEnd">
             <LobbyCatRoster
               cats={envelope.lobby.cats}
-              onSelect={(catId) => navigate(buildDirectLanePath(catId))}
+              onSelect={(catId) => navigate(buildDirectMessagePath(catId))}
             />
             <GuideCatDockSlot slotKind="lobby" />
             <div className="lobbyIdentity" role="group" aria-label={t('lobbyAccountSettingsAriaLabel')}>

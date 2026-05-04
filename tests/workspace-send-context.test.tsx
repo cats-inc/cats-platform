@@ -131,7 +131,7 @@ test('prepareWorkspaceSendContext creates missing direct lanes, uses draft files
     isCatScopedLaneRoute: true,
     hydratedDirectLane: null,
     currentChannelId: '',
-    currentRollbackPath: '/chat/my-cats/cat-lead',
+    currentRollbackPath: '/chat/dm/cat-lead',
     body: 'Wake up and inspect the direct lane attachment.',
     existingCount: 3,
     draftCwd: 'C:/repo/direct-lane',
@@ -192,14 +192,14 @@ test('prepareWorkspaceSendContext creates missing direct lanes, uses draft files
   assert.equal(createdInputs[0]?.entryKind, 'direct');
   assert.equal(createdInputs[0]?.defaultRecipientId, 'cat-lead');
   assert.equal(result.channelId, 'channel-direct-1');
-  assert.equal(result.rollbackPath, '/chat/my-cats/cat-lead');
+  assert.equal(result.rollbackPath, '/chat/dm/cat-lead');
   assert.equal(result.soloDispatchTarget, null);
   assert.equal(
     result.messageBody,
     '[Attached files in working directory:]\n- .cats-attachments/direct.txt\n\nWake up and inspect the direct lane attachment.',
   );
   assert.equal(stateUpdates.length, 1);
-  assert.deepEqual(navigations, [{ path: '/chat/my-cats/cat-lead', replace: true }]);
+  assert.deepEqual(navigations, [{ path: '/chat/dm/cat-lead', replace: true }]);
 
   result.restoreFiles();
   assert.deepEqual(restoreCalls, [draftFiles]);
