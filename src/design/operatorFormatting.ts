@@ -7,6 +7,7 @@ import type {
   CoreRunRecord,
   CoreTraceRecord,
 } from '../core/types.js';
+import type { RoomWorkflowTargetStatus } from '../shared/roomRouting.js';
 
 export type OperatorSeverity = 'muted' | 'progress' | 'attention' | 'error' | 'success';
 type OperatorTranslate = (key: MessageKey, params?: Record<string, unknown>) => string;
@@ -19,6 +20,13 @@ const fallbackOperatorTranslate: OperatorTranslate = (key) => {
     [messageKeys.sharedOperatorRunStatusFailed]: 'Failed',
     [messageKeys.sharedOperatorRunStatusCancelled]: 'Cancelled',
     [messageKeys.sharedOperatorRunStatusQueued]: 'Queued',
+    [messageKeys.sharedOperatorBranchStatusPending]: 'Pending',
+    [messageKeys.sharedOperatorBranchStatusRunning]: 'Running',
+    [messageKeys.sharedOperatorBranchStatusCompleted]: 'Completed',
+    [messageKeys.sharedOperatorBranchStatusFailed]: 'Failed',
+    [messageKeys.sharedOperatorBranchStatusBlocked]: 'Blocked',
+    [messageKeys.sharedOperatorBranchStatusCancelled]: 'Cancelled',
+    [messageKeys.sharedOperatorBranchStatusWaitingForConverge]: 'Waiting for converge',
     [messageKeys.sharedOperatorCheckpointStatusCompleted]: 'Completed',
     [messageKeys.sharedOperatorCheckpointStatusCancelled]: 'Cancelled',
     [messageKeys.sharedOperatorCheckpointStatusOpen]: 'Open',
@@ -130,6 +138,28 @@ export function runStatusSeverity(status: CoreRunRecord['status']): OperatorSeve
       return 'success';
     default:
       return 'muted';
+  }
+}
+
+export function branchStatusLabel(
+  status: RoomWorkflowTargetStatus,
+  t: OperatorTranslate = fallbackOperatorTranslate,
+): string {
+  switch (status) {
+    case 'pending':
+      return t(messageKeys.sharedOperatorBranchStatusPending);
+    case 'running':
+      return t(messageKeys.sharedOperatorBranchStatusRunning);
+    case 'completed':
+      return t(messageKeys.sharedOperatorBranchStatusCompleted);
+    case 'failed':
+      return t(messageKeys.sharedOperatorBranchStatusFailed);
+    case 'blocked':
+      return t(messageKeys.sharedOperatorBranchStatusBlocked);
+    case 'cancelled':
+      return t(messageKeys.sharedOperatorBranchStatusCancelled);
+    default:
+      return t(messageKeys.sharedOperatorBranchStatusWaitingForConverge);
   }
 }
 

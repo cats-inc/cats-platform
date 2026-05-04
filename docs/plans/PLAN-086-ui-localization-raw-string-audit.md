@@ -85,6 +85,9 @@ The final 2026-05-04 cleanup localized:
   metadata instead of rendering raw execution/result tokens
 - Settings Cats registry localizes cat status and built-in product badge
   metadata instead of rendering `active`, `archived`, `chat`, `code`, or `work`
+- Shared operator Run Inspector localizes workflow branch status metadata such
+  as `pending`, `running`, `blocked`, and `waiting_for_converge`, and run tabs
+  now use the active UI locale for run status labels
 
 Remaining raw-string hits belong to the allowlisted categories below unless a
 future UI change renders them as normal owner-facing chrome.

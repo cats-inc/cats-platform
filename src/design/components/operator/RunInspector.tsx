@@ -1,4 +1,5 @@
 import {
+  branchStatusLabel,
   checkpointStatusLabel,
   checkpointStatusSeverity,
   formatOperatorTimestamp,
@@ -14,6 +15,7 @@ import {
 } from './TraceList';
 import { useI18n } from '../../../app/renderer/i18n/useI18n.js';
 import { messageKeys } from '../../../shared/i18n/index.js';
+import type { RoomWorkflowTargetStatus } from '../../../shared/roomRouting.js';
 
 export interface OperatorRunInspectorRun {
   id: string;
@@ -97,7 +99,7 @@ export function RunInspector({
                 type="button"
                 onClick={() => onSelectRun(run.id)}
               >
-                <span>{runStatusLabel(run.status as never)}</span>
+                <span>{runStatusLabel(run.status as never, t)}</span>
                 <strong>{run.title}</strong>
               </button>
             ))}
@@ -210,7 +212,9 @@ export function RunInspector({
                     <article key={branch.id} className="operatorListItem">
                       <div className="operatorListItemHeader">
                         <strong>{branch.participantName}</strong>
-                        <span className="operatorMetaText">{branch.status}</span>
+                        <span className="operatorMetaText">
+                          {branchStatusLabel(branch.status as RoomWorkflowTargetStatus, t)}
+                        </span>
                       </div>
                       <p>
                         {branch.handoffReason

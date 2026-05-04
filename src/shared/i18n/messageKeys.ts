@@ -1889,6 +1889,14 @@ export const messageKeys = {
   sharedOperatorRunStatusFailed: 'shared.operator.runStatus.failed',
   sharedOperatorRunStatusCancelled: 'shared.operator.runStatus.cancelled',
   sharedOperatorRunStatusQueued: 'shared.operator.runStatus.queued',
+  sharedOperatorBranchStatusPending: 'shared.operator.branchStatus.pending',
+  sharedOperatorBranchStatusRunning: 'shared.operator.branchStatus.running',
+  sharedOperatorBranchStatusCompleted: 'shared.operator.branchStatus.completed',
+  sharedOperatorBranchStatusFailed: 'shared.operator.branchStatus.failed',
+  sharedOperatorBranchStatusBlocked: 'shared.operator.branchStatus.blocked',
+  sharedOperatorBranchStatusCancelled: 'shared.operator.branchStatus.cancelled',
+  sharedOperatorBranchStatusWaitingForConverge:
+    'shared.operator.branchStatus.waitingForConverge',
   sharedOperatorCheckpointStatusCompleted:
     'shared.operator.checkpointStatus.completed',
   sharedOperatorCheckpointStatusCancelled:

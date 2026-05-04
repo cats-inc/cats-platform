@@ -373,6 +373,7 @@ known-gaps list.
 | 2026-05-04 | Work Top-down diagnostic headers now localize severity and diagnostic-kind metadata across Broken Links and object drawers. |
 | 2026-05-04 | Work run detail now localizes trace kind, outcome status, and artifact status metadata instead of rendering raw execution/result tokens. |
 | 2026-05-04 | Settings Cats registry now localizes cat status and built-in product badge metadata instead of rendering raw status/product tokens. |
+| 2026-05-04 | Shared operator Run Inspector now localizes workflow branch status metadata and passes the active UI locale into run-tab status labels. |
 
 ---
 
