@@ -4,6 +4,8 @@ import {
   checkpointStatusSeverity,
   formatOperatorTimestamp,
   operatorBranchStrategyLabel,
+  operatorCooldownLabel,
+  operatorGuardReasonLabel,
   operatorSeverityClassName,
   operatorWorkflowShapeLabel,
   outcomeStatusLabel,
@@ -160,14 +162,14 @@ export function RunInspector({
             {inspector.guardReason ? (
               <div className="operatorCallout operatorCalloutAttention">
                 {t(messageKeys.sharedOperatorMetaGuardrail, {
-                  guardrail: inspector.guardReason,
+                  guardrail: operatorGuardReasonLabel(inspector.guardReason, t),
                 })}
               </div>
             ) : null}
             {inspector.cooldownLabel ? (
               <div className="operatorCallout operatorCalloutMuted">
                 {t(messageKeys.sharedOperatorMetaCooldown, {
-                  cooldown: inspector.cooldownLabel,
+                  cooldown: operatorCooldownLabel(inspector.cooldownLabel, t),
                 })}
               </div>
             ) : null}

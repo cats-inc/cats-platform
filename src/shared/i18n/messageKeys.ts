@@ -1973,6 +1973,13 @@ export const messageKeys = {
   sharedOperatorMetaReviewRequired: 'shared.operator.meta.reviewRequired',
   sharedOperatorMetaGuardrail: 'shared.operator.meta.guardrail',
   sharedOperatorMetaCooldown: 'shared.operator.meta.cooldown',
+  sharedOperatorGuardMaxContinuations:
+    'shared.operator.guard.maxContinuations',
+  sharedOperatorGuardMaxDispatches: 'shared.operator.guard.maxDispatches',
+  sharedOperatorGuardMaxTargetVisits:
+    'shared.operator.guard.maxTargetVisits',
+  sharedOperatorGuardAntiPingPong: 'shared.operator.guard.antiPingPong',
+  sharedOperatorCooldownActive: 'shared.operator.cooldown.active',
   sharedOperatorSectionTrace: 'shared.operator.section.trace',
   sharedOperatorSectionCheckpoints: 'shared.operator.section.checkpoints',
   sharedOperatorNoCheckpointsRecorded: 'shared.operator.noCheckpointsRecorded',

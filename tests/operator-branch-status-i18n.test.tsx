@@ -8,8 +8,10 @@ import {
   branchStatusLabel,
   operatorBranchStrategyLabel,
   operatorBudgetAlertLevelLabel,
+  operatorCooldownLabel,
   operatorDeliveryGateLabel,
   operatorDeliveryModeLabel,
+  operatorGuardReasonLabel,
   operatorWorkflowShapeLabel,
   runStatusLabel,
 } from '../src/design/operatorFormatting.ts';
@@ -62,6 +64,10 @@ test('operator policy metadata labels localize known policy tokens', () => {
     operatorBranchStrategyLabel('fresh_no_parent', zh),
     '新分支無父層',
   );
+  assert.equal(operatorGuardReasonLabel('anti_ping_pong', zh), '防止來回轉派');
+  assert.equal(operatorGuardReasonLabel('max_dispatches', zh), '達到最大派工次數');
+  assert.equal(operatorCooldownLabel('Cooldown active', zh), '冷卻中');
+  assert.equal(operatorCooldownLabel('Retry after owner review', zh), 'Retry after owner review');
 });
 
 test('progress summary renders localized policy metadata tokens', async () => {
@@ -91,8 +97,8 @@ test('progress summary renders localized policy metadata tokens', async () => {
         }}
         incidentActions={[]}
         pendingApprovalCount={0}
-        guardReason={null}
-        cooldownLabel={null}
+        guardReason="anti_ping_pong"
+        cooldownLabel="Cooldown active"
         onInspectRun={() => {}}
         onOperatorAction={() => {}}
       />
@@ -103,8 +109,12 @@ test('progress summary renders localized policy metadata tokens', async () => {
   assert.match(markup, /形態：匯合/u);
   assert.match(markup, /門檻：需要擁有者核准, 需要發布成果物/u);
   assert.match(markup, /預算：受阻/u);
+  assert.match(markup, /保護條件：防止來回轉派/u);
+  assert.match(markup, /冷卻：冷卻中/u);
   assert.doesNotMatch(markup, /commit_only/u);
   assert.doesNotMatch(markup, /converge/u);
+  assert.doesNotMatch(markup, /anti_ping_pong/u);
+  assert.doesNotMatch(markup, /Cooldown active/u);
   assert.doesNotMatch(markup, /owner_approval_required/u);
   assert.doesNotMatch(markup, /publish_artifact_required/u);
 });
@@ -137,8 +147,8 @@ test('run inspector renders localized tab and branch status metadata', async () 
           workflowStageId: null,
           workflowShape: 'converge',
           reviewRequired: false,
-          guardReason: null,
-          cooldownLabel: null,
+          guardReason: 'max_dispatches',
+          cooldownLabel: 'Cooldown active',
         }}
         onSelectRun={() => {}}
       />
@@ -148,10 +158,14 @@ test('run inspector renders localized tab and branch status metadata', async () 
   assert.match(markup, /<span>已完成<\/span>/u);
   assert.match(markup, /形態：匯合/u);
   assert.match(markup, /策略：沿用上下文/u);
+  assert.match(markup, /保護條件：達到最大派工次數/u);
+  assert.match(markup, /冷卻：冷卻中/u);
   assert.match(markup, /<span class="operatorMetaText">等待匯合<\/span>/u);
   assert.doesNotMatch(markup, /waiting_for_converge/u);
   assert.doesNotMatch(markup, /transplant_context/u);
   assert.doesNotMatch(markup, /converge/u);
+  assert.doesNotMatch(markup, /max_dispatches/u);
+  assert.doesNotMatch(markup, /Cooldown active/u);
   assert.doesNotMatch(markup, /<span>Completed<\/span>/u);
 });
 

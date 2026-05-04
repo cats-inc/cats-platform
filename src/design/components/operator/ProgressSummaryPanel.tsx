@@ -1,8 +1,10 @@
 import {
   formatOperatorTimestamp,
   operatorBudgetAlertLevelLabel,
+  operatorCooldownLabel,
   operatorDeliveryGateLabel,
   operatorDeliveryModeLabel,
+  operatorGuardReasonLabel,
   operatorSeverityClassName,
   operatorWorkflowShapeLabel,
   runStatusLabel,
@@ -207,14 +209,14 @@ export function ProgressSummaryPanel({
             {guardReason ? (
               <div className="operatorCallout operatorCalloutAttention">
                 {t(messageKeys.sharedOperatorMetaGuardrail, {
-                  guardrail: guardReason,
+                  guardrail: operatorGuardReasonLabel(guardReason, t),
                 })}
               </div>
             ) : null}
             {cooldownLabel ? (
               <div className="operatorCallout operatorCalloutMuted">
                 {t(messageKeys.sharedOperatorMetaCooldown, {
-                  cooldown: cooldownLabel,
+                  cooldown: operatorCooldownLabel(cooldownLabel, t),
                 })}
               </div>
             ) : null}

@@ -41,6 +41,11 @@ const fallbackOperatorTranslate: OperatorTranslate = (key) => {
     [messageKeys.sharedOperatorTraceKindOutcome]: 'Outcome',
     [messageKeys.sharedOperatorTraceKindStatus]: 'Status',
     [messageKeys.sharedOperatorTraceKindNote]: 'Note',
+    [messageKeys.sharedOperatorGuardMaxContinuations]: 'Max continuations',
+    [messageKeys.sharedOperatorGuardMaxDispatches]: 'Max dispatches',
+    [messageKeys.sharedOperatorGuardMaxTargetVisits]: 'Max target visits',
+    [messageKeys.sharedOperatorGuardAntiPingPong]: 'Anti ping-pong',
+    [messageKeys.sharedOperatorCooldownActive]: 'Cooldown active',
     [messageKeys.sharedOperatorActivityLabelRecovery]: 'Recovery',
     [messageKeys.sharedOperatorActivityLabelReplay]: 'Replay',
     [messageKeys.sharedOperatorActivityLabelDecision]: 'Decision',
@@ -305,6 +310,17 @@ const OPERATOR_BRANCH_STRATEGY_KEYS: Record<string, MessageKey> = {
   transplant_context: messageKeys.sharedOperatorBranchStrategyTransplantContext,
 };
 
+const OPERATOR_GUARD_REASON_KEYS: Record<string, MessageKey> = {
+  anti_ping_pong: messageKeys.sharedOperatorGuardAntiPingPong,
+  max_continuations: messageKeys.sharedOperatorGuardMaxContinuations,
+  max_dispatches: messageKeys.sharedOperatorGuardMaxDispatches,
+  max_target_visits: messageKeys.sharedOperatorGuardMaxTargetVisits,
+};
+
+const OPERATOR_COOLDOWN_LABEL_KEYS: Record<string, MessageKey> = {
+  'cooldown active': messageKeys.sharedOperatorCooldownActive,
+};
+
 function normalizeOperatorToken(value: string): string {
   return value.trim().toLowerCase().replace(/-/gu, '_');
 }
@@ -363,4 +379,20 @@ export function operatorBranchStrategyLabel(
   t: OperatorTranslate = fallbackOperatorTranslate,
 ): string {
   return formatOperatorToken(strategy, OPERATOR_BRANCH_STRATEGY_KEYS, t);
+}
+
+export function operatorGuardReasonLabel(
+  reason: string,
+  t: OperatorTranslate = fallbackOperatorTranslate,
+): string {
+  return formatOperatorToken(reason, OPERATOR_GUARD_REASON_KEYS, t);
+}
+
+export function operatorCooldownLabel(
+  label: string,
+  t: OperatorTranslate = fallbackOperatorTranslate,
+): string {
+  const normalized = label.trim().toLowerCase();
+  const key = OPERATOR_COOLDOWN_LABEL_KEYS[normalized];
+  return key ? t(key) : label;
 }
